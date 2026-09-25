@@ -1,0 +1,92 @@
+# Building a tool into the suite
+
+Notes for the sessions that rebuild each tool (phases 2–9). Read CLAUDE.md and `docs/PLAN.md` first. `tests/fixtures/demo-tool.js` is a small working example of everything below.
+
+## 1. List it
+
+In `shared/data/tools.js`, set the tool's `built: true` and list its files, relative to the suite's top folder:
+
+```js
+{ id: 'crest', ..., built: true, saves: false,
+  files: { css: ['tools/crest/crest.css'], js: ['tools/crest/data/parts.js', 'tools/crest/rules.js', 'tools/crest/tool.js'] } }
+```
+
+The shell loads the styles, then the scripts in order, with plain tags. No modules, no `fetch()`. Content goes in `data/*.js` files that set `window.TSI_DATA.<something>`.
+
+## 2. Register it
+
+```js
+(function () {
+  'use strict';
+  var TSI = window.TSI;
+  var crest = TSI.crest = TSI.crest || {};   // the tool's own namespace for its code
+
+  TSI.registerTool('crest', {
+    start: function (ctx) { /* draw into ctx.root */ },
+    stop: function (ctx) { /* optional: save, wait for something; may return a promise (up to 2.5 s) */ },
+    validateImport: function (records) { /* optional: return a plain-English reason to refuse a file, or null */ }
+  });
+}());
+```
+
+`start` may return a promise. If `start` throws, the shell shows "… couldn't open" with the details, and a way home.
+
+## 3. What `ctx` gives you
+
+| | |
+|---|---|
+| `ctx.root` | The `<main>` element to draw into. It has the classes `tsi-tool tsi-tool--<id>`. |
+| `ctx.life` | The lifecycle helper. Use it for **every** timer, animation frame, listener, key shortcut, sound and video: `life.setTimeout`, `life.setInterval`, `life.raf`, `life.wait(ms)`, `life.on(target, type, fn)`, `life.onKey(fn)`, `life.audio(src, {loop, volume})`, `life.track(videoEl)`, `life.onStop(fn)`. It stops them all when the tool closes, and shows the error bar if one of them throws. `life.onKey` skips key presses while typing in a text box or while a pop-up is open. |
+| `ctx.store` | This tool's saves: `get(name, fallback)`, `set(name, value)`, `remove(name)`, `has(name)`, `names()`, `savedAt(name)`. Names become `tsi.<tool>.<name>`. Reading is instant; writing saves a moment later. Values must be plain JSON (use data URLs for pictures). |
+| `ctx.store.quarantine(name, reason)` | When a save can't be read: sets it aside (never deletes it), tells the user, and you start fresh. |
+| `ctx.playerLink({ view, getState, onMessage, onStatus })` | A player window (see below). It closes when the tool closes. |
+| `ctx.setLeaveCheck(fn)` | For tools that don't save: `fn` returns a message such as "This will end the ritual in progress." when leaving would lose something, or `null`. The shell asks before Home, Switch tool, or closing the tab. |
+| `ctx.notify`, `ctx.modal` | Notices (`TSI.notify(text, { type: 'ok' | 'warn' | 'error', actions })`) and pop-ups (`TSI.modal.confirm`, `.alert`, `.open`). Use these instead of `alert()` and `confirm()`. |
+
+Other shared helpers: `TSI.el(tag, attrs, children)` builds elements (text is always set as text, never HTML). `TSI.oneAtATime(fn)` makes a button ignore double clicks and held-down Enter. `TSI.the(name)` puts "the" before a name, unless it already starts with "The". Other helpers: `TSI.download`, `TSI.pickFile`, `TSI.readFileText`, `TSI.dates`, and `TSI.keys.isTyping`.
+
+## 4. Saving and backups
+
+- Tools with `saves: true` get **Export**, **Import** and a "Saved ✓" status in the top bar automatically, and are included in **Back up everything**. You don't write any of that.
+- If a save fails, the shell shows the warning. Just keep calling `ctx.store.set`; it retries.
+- Check what you load. If it doesn't make sense, call `ctx.store.quarantine` and start fresh. Never delete a save.
+
+## 5. Player windows
+
+The tool side:
+
+```js
+var link = ctx.playerLink({ view: 'noticeboard', getState: function () { return {...}; }, onMessage: function (type, payload) {} });
+button.onclick = function () { link.open(); };   // must be from a click
+link.sync();                                      // after every change: sends getState()
+```
+
+The players' side is a view. Add it to the tool's entry in `tools.js`: `playerViews: { noticeboard: { css: [...], js: [...] } }`. Then register it:
+
+```js
+TSI.registerPlayerView('noticeboard', {
+  title: 'Notice Board',
+  mount: function (root, api) { /* api.send(type, payload) talks back */ },
+  state: function (payload) { /* redraw everything */ },
+  message: function (type, payload) { /* optional */ }
+});
+```
+
+Refreshing either window and reloading the tool's page are handled. Messages are checked by which window sent them.
+
+## 6. Styles
+
+- Prefix every class with `tsi-<tool>-` (e.g. `tsi-crest-preview`) and scope rules under `.tsi-tool--<tool>`. Never restyle the shared `tsi-` components, `body` or bare elements.
+- Use the tokens in `shared/tokens.css` (colours, fonts, sizes, spacing, radii, motion). Put anything a tool needs that isn't there in the tool's own CSS, named `--tsi-<tool>-…`.
+- Use one crimson main button (`tsi-btn tsi-btn--primary`) per panel. All other buttons are outlined gold (`tsi-btn`).
+- Body text is Cormorant Garamond in sentence case. Capitals only for headings, labels and buttons. Crimson is never used for text.
+- Signature animations: multiply their length by `var(--tsi-signature-slowdown)`. It's 2.5 when "reduce motion" is on.
+- Don't put a URL inside a CSS custom property: Chromium resolves it against the stylesheet that uses the property, not the one that sets it. Set background pictures directly on the element or in the tool's own CSS. For painted art behind a screen, see `.tsi-art` in `components.css`.
+- It must fit 1707 × 930 (pixel ratio 1.5) with no sideways scroll and its main controls in view. Explorer, Combat Tracker and Bastion must also fit 1920 × 1080.
+
+## 7. Tests
+
+- Keep game rules in plain functions (`rules.js`) and add `tests/rules/<tool>.test.js`. Add it, and the files it tests, to `tests/rules.html`.
+- Add `tests/e2e/phaseN.test.js` using `tests/e2e/helpers.js`. Open `index.html?tool=<id>` as `file://` at both sizes with the internet off, and click through the main flows.
+- Check no internet requests are made (`context.log.net`) and no files are missing (`context.log.failed`).
+- Buttons ignore a second click within 350 ms, so pause between repeated clicks in tests (the helpers do).

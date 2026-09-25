@@ -1,0 +1,10 @@
+/* Test only: styles for the Demo tool (tests/fixtures/demo-tool.js). */
+.tsi-demo {
+  max-width: 900px;
+  margin: 24px auto;
+  padding: 0 var(--tsi-gutter);
+  display: grid;
+  gap: 16px;
+}
+.tsi-demo__row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 10px; }
+.tsi-demo__value { font: 700 20px var(--tsi-font-display); min-width: 3ch; }
