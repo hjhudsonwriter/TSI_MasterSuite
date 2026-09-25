@@ -2,7 +2,7 @@
 
 Every bug found in the eight old tools during planning, and what the rebuild will do about each one. CLAUDE.md's rule: **only fix a bug if it breaks the tool, loses saved data, or applies something twice.** Everything else stays exactly as it was, and is listed here for Harry to decide on later.
 
-**Status: planning only.** Nothing is fixed yet, because no tool has been rebuilt. Each tool's session updates its own entries as it goes: it marks each one fixed, or confirms it was left alone, and adds anything new it finds.
+**Status: phase 1 (the shell) is built.** The shell's share of the suite-wide (SUI) fixes is in place and tested. Each entry has a **Phase 1** line saying what's done. No tool has been rebuilt yet, so the tool entries are unchanged. Each tool's session updates its own entries as it goes: it marks each one fixed, or confirms it was left alone, and adds anything new it finds.
 
 ## How to read an entry
 
@@ -53,54 +53,63 @@ These come from checking the eight tools against each other: the collision audit
 - **Before:** Four tools put 49–174 names each in the page's shared space (`state`, `$`, `STORAGE_KEY`, `startRound`, `setStatus`…). Loaded together, the second tool refuses to start, or a button silently runs the other tool's code. Inline `onclick` text in the Ritual, Bastion and Explorer relies on page-wide names.
 - **After (planned):** Each tool lives in its own namespace (`window.TSI.<tool>`) with `start()`/`stop()`, and only one tool is loaded per page load. Inline `onclick` handlers become normal listeners.
 - **Evidence:** Collision audit, planning session. Tested by loading two tools into one page.
+- **Phase 1:** Done in the shell. Only one tool is loaded per page load, and tools register through `TSI.registerTool` with their code under `window.TSI.<tool>`. Tested with the Demo tool in `tests/harness.html`.
 
 ### SUI-02 · Styles leak between tools
 **Fixed by the new design**
 - **Before:** 44 class names are shared by 2–7 tools with different looks (`.btn`, `.modal`, `.panel`, `.hidden`…). Every tool styles `body`, bare buttons and inputs. The Ritual's `.modal` would hide the Arenas and Pelagosi pop-ups. 22 CSS variables share names but mean different things (`--ink` is dark in some tools, light in others).
 - **After (planned):** Every tool's classes are prefixed and scoped under its own root. One shared token set. A tool's styles load only while it's open.
 - **Evidence:** Collision audit.
+- **Phase 1:** All shared styles are prefixed `tsi-`, and a tool's styles load only while it's open. Each tool prefixes and scopes its own in its phase (`docs/BUILDING-A-TOOL.md`).
 
 ### SUI-03 · Things keep running after a tool is closed
 **Fixed by the new design**
 - **Before:** After its screen was removed, the Ritual heartbeat and the Arenas crowd kept playing, Pelagosi's timers kept firing (pop-ups over other screens), Explorer's 5 page-wide listeners stayed attached, and the Ritual and Pelagosi left classes on `<html>`/`<body>`.
 - **After (planned):** Each tool opens with a fresh page load (`index.html?tool=…`). Each tool also has a `stop()`, and a shared lifecycle helper tracks timers, sounds, videos and listeners.
 - **Evidence:** Collision audit (runtime tests).
+- **Phase 1:** Done and tested. Each tool opens with a fresh page load. Before leaving, the shell calls the tool's `stop()`, then stops everything the lifecycle helper tracks (timers, animation frames, listeners, key shortcuts, sounds, videos), closes pop-ups and player windows, and saves. Tests: `tests/rules.html` (Lifecycle) and the "closing a tool stops…" click-through.
 
 ### SUI-04 · Keyboard shortcuts fire while typing
 **Fixed by the new design**
 - **Before:** Typing "Nell never ends" moved the Ritual from round 1 to 4 (N, E). The battlemap swallowed spaces, and Explorer hid its controls on "h".
 - **After (planned):** Shortcuts only work in their own tool and never while a text box has focus.
 - **Evidence:** Collision audit (runtime test).
+- **Phase 1:** Done and tested. `life.onKey` ignores key presses while a text box has focus or a pop-up is open.
 
 ### SUI-05 · The small browser storage is shared by every file on the laptop and fills silently
 **Fixed by the new design**
 - **Before:** In Chromium, every double-clicked page shares one storage area of about 5.24 million characters (measured). One 4 MB battlemap fills it. Most old tools then fail to save with no message (Tracker, Notice Board, Explorer, Bastion); Arenas strips every portrait.
 - **After (planned):** Saves go in the browser's built-in database (IndexedDB), whose names start with `tsi.`. A save failure shows a clear warning.
 - **Evidence:** Measured in Chromium from file://. IndexedDB worked with hundreds of MB free and is also shared by every file:// page, hence the `tsi.` prefix.
+- **Phase 1:** Done and tested. Saves go in the browser's built-in database (`tsi.suite`). A failed save shows "Not saved" and a warning with an Export button, and it retries on the next change; tested with storage pretending to be full. If the database can't be used, the suite falls back to the small storage and says so, and if that fails too it warns that nothing is being saved.
 
 ### SUI-06 · Two open copies overwrite each other's saves
 **Fixed by the new design**
 - **Before:** Tested in the Tracker and the Notice Board: whichever copy saves last wipes the other's changes.
 - **After (planned):** One saver per tool; a second tab shows a "suite already open" warning.
 - **Evidence:** Tracker test5.js; Notice Board v2 test D.
+- **Phase 1:** Done and tested. Both tabs show an "Already open" warning, which goes when one closes. Switching tools or reloading never sets off a false warning. It warns rather than blocks: both tabs can still save, so Harry closes one.
 
 ### SUI-07 · Error details are hidden on double-clicked pages
 **Fixed by the new design**
 - **Before:** Chromium reports errors from separate script files on file:// pages only as "Script error.", so failures are silent.
 - **After (planned):** The shell catches each tool's errors itself and shows a plain-English bar.
 - **Evidence:** Collision audit (runtime test).
+- **Phase 1:** Done and tested. Errors show a plain-English bar with Details and Reload. Errors in a tool's start and stop, and in anything run through the lifecycle helper, show full details. Other errors still show the bar, but may only say "Script error."
 
 ### SUI-08 · Fonts come from Google (seven tools)
 **Must fix** · won't work offline
 - **Before:** The Tracker, Notice Board, Explorer, Bastion, Arenas, Ritual and Pelagosi load fonts from Google Fonts. Offline, they fall back to plain system fonts.
 - **After (planned):** The fonts are bundled unmodified in `shared/fonts/` with their SIL OFL licences.
 - **Evidence:** Every tool's runtime test (ERR_CERT_AUTHORITY_INVALID for fonts.googleapis.com).
+- **Phase 1:** Fixed for the whole suite: the fonts are bundled in `shared/fonts/`. Tested with the internet off; nothing loads from the internet.
 
 ### SUI-09 · Data and pictures can't be loaded from a double-clicked file
 **Must fix** · won't work double-clicked
 - **Before:** `fetch()` of local JSON is blocked, so the Notice Board, Explorer, Bastion and Arenas don't work. A "GitHub Pages" path helper builds wrong folders (`file:///home/…`) in the Explorer, Bastion and Ritual.
 - **After (planned):** Data becomes `.js` files loaded with plain script tags, and every path becomes a plain relative path.
 - **Evidence:** Per-tool entries below.
+- **Phase 1:** The shell loads each tool's files with plain script tags and relative paths, and never uses `fetch()`. Each tool's data is converted to `.js` files in its phase.
 
 ### SUI-10 · Layouts don't fit Harry's laptop or the TV
 **Must fix** (layout requirement)
@@ -112,42 +121,49 @@ These come from checking the eight tools against each other: the collision audit
   - The Arenas rules panel is clipped on short screens.
 - **After (planned):** Every tool fits the laptop (about 1707 × 930 in a maximised Edge window, pixel ratio 1.5) with no sideways scrolling and its main controls in view. The Explorer, Combat Tracker/Battlemap and Bastion also fit the TV (1920 × 1080), including when a window moves between the screens.
 - **Evidence:** Layout measurements in the planning session. Harry's answer 4.
+- **Phase 1:** The home screen fits the laptop window (1707 × 930), full screen (1707 × 1067), the TV (1920 × 1080) and a smaller window (1280 × 720), with no sideways scroll. Each tool is checked in its phase.
 
 ### SUI-11 · Body text is set in capitals
 **Deliberate change** (CLAUDE.md "sleeker")
 - **Before:** 92.5% of the Bastion's visible words are in Cinzel, which has no lower-case letters, plus 15 `text-transform: uppercase` rules.
 - **After (planned):** Body text is in Cormorant Garamond, in sentence case. Capitals only for headings, labels and buttons. Log text stays exactly as the rules code writes it.
 - **Evidence:** Design extraction.
+- **Phase 1:** The shared components follow this. Each tool in its phase.
 
 ### SUI-12 · The Bastion's focus ring is accidentally pink-red, and its hover and pill styles contradict each other
 **Deliberate change** (Harry's answer 14)
 - **Before:** A later CSS rule overrides the intended gold focus ring with pink-red, and the hover border with white. `.pill` is defined three times.
 - **After (planned):** One gold focus ring and one set of button and pill styles from the shared tokens.
 - **Evidence:** bastion_manager/styles.css:110-121, 135-139, 270, 1021, 1209.
+- **Phase 1:** Done in the shared styles: one gold focus ring, one button and pill style.
 
 ### SUI-13 · Buttons without a class show in Arial
 **Fixed by the new design**
 - **Before:** The compendium list, compendium search and modal ✕ in the Bastion don't inherit the page font.
 - **After (planned):** The shared base style sets `button, input, select { font: inherit }`.
 - **Evidence:** Design extraction.
+- **Phase 1:** Done in the shared base styles.
 
 ### SUI-14 · No tool respects the reduce-motion setting
 **Fixed by the new design**
 - **Before:** 24 `@keyframes` across five tools, and no `prefers-reduced-motion` rule anywhere.
 - **After (planned):** Shared animation lengths drop to zero under reduce-motion; signature animations slow down (Harry's answer 8).
 - **Evidence:** Design extraction.
+- **Phase 1:** Done for the shared styles and tested: with "reduce motion" on, the home cards don't move on hover. The tokens give tools `--tsi-signature-slowdown` for their own animations.
 
 ### SUI-15 · Crimson used as text is hard to read
 **Fixed by the new design**
 - **Before:** Crimson text reaches only 2.5–2.9:1 contrast on the dark backgrounds, and gold on crimson 3.5:1.
 - **After (planned):** Crimson is never used for text; primary buttons carry parchment-coloured text. Everything else measured passes.
 - **Evidence:** Contrast measurements in the design extraction.
+- **Phase 1:** The shared components follow this (the crimson main button has parchment text). Each tool in its phase.
 
 ### SUI-16 · Too many "main" buttons
 **Fixed by the new design**
 - **Before:** The Bastion shows 5 crimson primary buttons at once and Arenas 3; the Notice Board makes every button crimson.
 - **After (planned):** One filled crimson main action per panel; the others are outlined gold.
 - **Evidence:** Design extraction.
+- **Phase 1:** The shared components provide one crimson main button style. Each tool in its phase.
 
 ---
 

@@ -321,18 +321,23 @@ This plan governs how the suite is built. CLAUDE.md's rules always win over it. 
 ## 2. Suite structure
 
 ### Folder layout
+*(Updated after phase 1 to match what was built.)*
 ```
 index.html            ← the only file Harry double-clicks
 player.html           ← the page every player window uses (battlemap, notice board)
 shared/
   tokens.css          ← colours, fonts, sizes, spacing, defined once
-  components.css      ← buttons, cards, pills, panels, pop-ups, top bar, form fields
+  components.css      ← buttons, cards, pills, panels, pop-ups, top bar, notices, form fields
+  shell.css           ← the home screen and the frame tools sit in
+  player.css          ← the player-window page
   fonts/              ← unmodified font files (SIL OFL)
   art/                ← hub logo, hero.png, the tools' wide crest logo (each stored once)
-  js/                 ← core, shell, lifecycle, store, backup, modal, player-link
-  lib/pdfjs/          ← PDF.js 3.11.174 (Combat Tracker only)
+  data/tools.js       ← the eight tools, their groups, phases and files; the shop link
+  js/                 ← core, lifecycle, modal, store-rules, store, backup-rules, backup,
+                        player-link, player-page, tabguard, shell
+  lib/pdfjs/          ← PDF.js 3.11.174 (Combat Tracker only, phase 7)
 tools/<tool>/
-  tool.js             ← window.TSI.<tool> with start() and stop()
+  tool.js             ← TSI.registerTool('<tool>', { start, stop }); its own code under window.TSI.<tool>
   rules.js            ← game rules as plain, testable functions
   view*.js            ← screen code
   <tool>.css          ← every class prefixed and scoped to the tool
@@ -341,12 +346,14 @@ tools/<tool>/
   assets/extras/      ← art the old tool never used (kept for later versions)
 tools/quests/shop-link.js   ← Matt's Firebase settings: the only copy (section A)
 tools/quests/lib/firebase/  ← Firebase 9.22.0 compat library
-tests/rules.html      ← double-click to run every rules test
+tests/rules.html      ← double-click to run every rules test (tests in tests/rules/)
+tests/harness.html    ← index.html plus a pretend Demo tool, for testing the shell
+tests/fixtures/       ← the Demo tool
 tests/e2e/            ← Playwright click-throughs for future sessions
 licences/             ← font licences, PDF.js and Firebase (Apache 2.0), artwork notes
-docs/                 ← PLAN, PROGRESS, KNOWN_ISSUES, ASSETS
+docs/                 ← PLAN, PROGRESS, KNOWN_ISSUES, ASSETS, BUILDING-A-TOOL
 ```
-Every HTML page sits in the top folder and the fonts sit below it.
+Every page Harry uses sits in the top folder and the fonts sit below it. The test pages in `tests/` are the exception; in Firefox they'd show fallback fonts, which doesn't matter for tests.
 
 ### Opening and closing tools
 - **One tool per page load.** Opening a tool loads `index.html?tool=bastion`, which brings in only that tool's styles, data and code. Home and "Switch tool" reload the page the same way. A page load is the only thing *guaranteed* to stop every timer, sound, video and listener, which the old tools didn't manage (KNOWN_ISSUES `SUI-03`).
