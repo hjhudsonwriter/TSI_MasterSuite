@@ -109,3 +109,6 @@ h1.tsi-topbar__tool { margin: 0; }
   margin: 40px auto;
 }
 .tsi-shell-message__actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* The test page (tests/harness.html) is labelled in the top bar. */
+.tsi-topbar__test { flex-shrink: 0; }

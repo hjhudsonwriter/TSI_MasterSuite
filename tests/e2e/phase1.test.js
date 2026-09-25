@@ -27,8 +27,12 @@ const EXPECTED_CARDS = [
 function demoRecord(count, note) {
   return { key: 'tsi.demo.state', value: { count: count, note: note || '' }, savedAt: '2026-09-25T13:03:00.000Z' };
 }
-function toolFile(tool, records) {
-  return { format: 'tsi-backup', version: 1, kind: 'tool', tool: tool, suite: 'The Scarlett Isles: D&D Tool Suite', savedAt: '2026-09-25T13:03:00.000Z', records: records };
+/* A tool export. space: 'suite' (the real suite; files from phase 1 have no space
+   at all) or 'test' (the test page, tests/harness.html). */
+function toolFile(tool, records, space) {
+  const f = { format: 'tsi-backup', version: 1, kind: 'tool', tool: tool, suite: 'The Scarlett Isles: D&D Tool Suite', savedAt: '2026-09-25T13:03:00.000Z', records: records };
+  if (space) f.space = space;
+  return f;
 }
 
 async function openDemo(page) {
@@ -272,7 +276,8 @@ async function waitSaved(page) {
       await Promise.all([page.waitForURL(/\?tool=demo$/), page.click('.tsi-card[data-tool=demo]')]);
       await page.waitForSelector('[data-test=count]');
       equal(await page.textContent('.tsi-topbar__tool'), 'Demo tool');
-      equal(await page.title(), 'Demo tool · The Scarlett Isles');
+      equal(await page.title(), 'Test page · Demo tool · The Scarlett Isles');
+      equal(await page.textContent('.tsi-topbar__test'), 'Test page');
       assert(await page.isVisible('[data-test=export]') && await page.isVisible('[data-test=import]'), 'Export/Import missing');
       equal(await page.textContent('[data-test=save-status]'), 'Saved ✓');
       assert(await page.$eval('.tsi-art', a => getComputedStyle(a).display === 'none'), 'home art should be hidden in a tool');
@@ -308,26 +313,26 @@ async function waitSaved(page) {
 
     await check('Export downloads just this tool\'s data', async () => {
       const d = await H.download(page, '[data-test=export]');
-      assert(/^tsi-demo-\d{4}-\d{2}-\d{2}-\d{4}\.json$/.test(d.name), d.name);
+      assert(/^tsi-test-demo-\d{4}-\d{2}-\d{2}-\d{4}\.json$/.test(d.name), d.name);
       const b = JSON.parse(d.text);
-      equal([b.kind, b.tool, b.records.length, b.records[0].value.count], ['tool', 'demo', 1, 3]);
+      equal([b.kind, b.space, b.tool, b.records.length, b.records[0].value.count], ['tool', 'test', 'demo', 1, 3]);
     });
 
     await check('Import refuses another tool\'s file, a whole-suite backup and a bad file, changing nothing', async () => {
-      await H.chooseFile(page, '[data-test=import]', H.writeTemp('quests.json', toolFile('quests', [{ key: 'tsi.quests.accepted', value: [], savedAt: '2026-09-25T13:03:00.000Z' }])));
+      await H.chooseFile(page, '[data-test=import]', H.writeTemp('quests.json', toolFile('quests', [{ key: 'tsi.quests.accepted', value: [], savedAt: '2026-09-25T13:03:00.000Z' }], 'test')));
       assert(/from the Notice Board Quest Generator, not the Demo tool/.test(await H.modalText(page)));
       await H.clickModal(page, 'OK');
-      await H.chooseFile(page, '[data-test=import]', H.writeTemp('suite.json', { format: 'tsi-backup', version: 1, kind: 'suite', savedAt: '2026-09-25T13:03:00.000Z', records: [] }));
+      await H.chooseFile(page, '[data-test=import]', H.writeTemp('suite.json', { format: 'tsi-backup', version: 1, kind: 'suite', space: 'test', savedAt: '2026-09-25T13:03:00.000Z', records: [] }));
       assert(/whole-suite backup/.test(await H.modalText(page)));
       await H.clickModal(page, 'OK');
-      await H.chooseFile(page, '[data-test=import]', H.writeTemp('bad-demo.json', toolFile('demo', [{ key: 'tsi.demo.state', value: { count: 'lots', note: '' }, savedAt: '2026-09-25T13:03:00.000Z' }])));
+      await H.chooseFile(page, '[data-test=import]', H.writeTemp('bad-demo.json', toolFile('demo', [{ key: 'tsi.demo.state', value: { count: 'lots', note: '' }, savedAt: '2026-09-25T13:03:00.000Z' }], 'test')));
       assert(/isn't a number/.test(await H.modalText(page)));
       await H.clickModal(page, 'OK');
       equal(await demoCount(page), 3);
       equal(await savedCount(page), 3);
     });
 
-    const goodImport = H.writeTemp('good-demo.json', toolFile('demo', [demoRecord(7, 'Imported note')]));
+    const goodImport = H.writeTemp('good-demo.json', toolFile('demo', [demoRecord(7, 'Imported note')], 'test'));
 
     await check('Import shows what\'s in the file and asks first; Cancel changes nothing', async () => {
       await H.chooseFile(page, '[data-test=import]', goodImport);
@@ -370,7 +375,7 @@ async function waitSaved(page) {
 
     await check('other tools\' data is untouched by an import', async () => {
       await page.evaluate(() => { TSI.store.set('tsi.other.thing', { keep: true }); return TSI.store.flush(); });
-      await H.chooseFile(page, '[data-test=import]', H.writeTemp('good-demo2.json', toolFile('demo', [demoRecord(9)])));
+      await H.chooseFile(page, '[data-test=import]', H.writeTemp('good-demo2.json', toolFile('demo', [demoRecord(9)], 'test')));
       await page.waitForSelector('.tsi-modal');
       await page.uncheck('.tsi-modal input[type=checkbox]');
       await Promise.all([page.waitForEvent('load'), H.clickModal(page, 'Import')]);
@@ -408,7 +413,7 @@ async function waitSaved(page) {
       await H.chooseFile(page, '[data-test=restore]', file);
       await page.waitForSelector('.tsi-modal');
       const [copy] = await Promise.all([page.waitForEvent('download'), page.waitForEvent('load'), H.clickModal(page, 'Restore')]);
-      assert(/^tsi-backup-everything-/.test(copy.suggestedFilename()), 'copy of current data first');
+      assert(/^tsi-test-backup-everything-/.test(copy.suggestedFilename()), 'copy of current data first');
       await H.waitForNotice(page, /Restored the backup saved on/);
       equal(await savedCount(page), 9);
     });
@@ -558,7 +563,7 @@ async function waitSaved(page) {
     let two;
     await check('a second tab shows a warning in both', async () => {
       two = await context.newPage();
-      await two.goto(INDEX);
+      await two.goto(HARNESS);
       await H.waitForNotice(two, /Already open\./, 4000);
       await H.waitForNotice(one, /Already open\./, 4000);
       await H.shot(two, 'second-tab-warning');
@@ -567,6 +572,17 @@ async function waitSaved(page) {
     await check('the warning goes once the other tab is closed', async () => {
       await two.close();
       await one.waitForFunction(() => !Array.from(document.querySelectorAll('.tsi-notice')).some(n => /Already open/.test(n.textContent)), null, { timeout: 12000 });
+    });
+
+    await check('the real suite open twice warns too', async () => {
+      const a = await context.newPage();
+      const b = await context.newPage();
+      await a.goto(INDEX);
+      await b.goto(INDEX);
+      await H.waitForNotice(a, /Already open\./, 4000);
+      await H.waitForNotice(b, /Already open\./, 4000);
+      await a.close();
+      await b.close();
     });
     await context.close();
   }
@@ -631,7 +647,7 @@ async function waitSaved(page) {
 
     await check('a record damaged inside the browser\'s database is set aside too', async () => {
       await page.evaluate(() => new Promise((res, rej) => {
-        const r = indexedDB.open('tsi.suite', 1);
+        const r = indexedDB.open('tsi.test', 1);
         r.onsuccess = () => {
           const tx = r.result.transaction('records', 'readwrite');
           tx.objectStore('records').put({ key: 'tsi.demo.extra', value: 1 }); /* no savedAt */
@@ -668,7 +684,104 @@ async function waitSaved(page) {
       await page.waitForSelector('[data-test=count]');
       equal(await demoCount(page), 1);
       const raw = await page.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith('tsi.')).sort());
-      assert(raw.includes('tsi.demo.state'), raw);
+      assert(raw.includes('tsi.test:tsi.demo.state'), raw);
+      assert(!raw.includes('tsi.demo.state'), 'the test page wrote a real save name: ' + raw);
+      const real = await context.newPage();
+      await real.goto(INDEX);
+      await real.waitForSelector('.tsi-card');
+      equal(await real.evaluate(() => TSI.store.ready.then(() => [TSI.store.mode, TSI.store.keys()])), ['local', []], 'the real suite saw test data');
+      await real.close();
+    });
+    await context.close();
+  }
+
+  /* ------------------------------------------------------------------ */
+  section('The test page is kept apart from the real suite');
+  {
+    const context = await H.newContext(browser, 'laptop');
+    const test = await context.newPage();
+    const real = await context.newPage();
+
+    await check('each uses its own database; test saves never show in the real suite', async () => {
+      await openDemo(test);
+      await test.click('[data-test=add]');
+      await test.click('[data-test=add]');
+      await waitSaved(test);
+      equal(await test.evaluate(() => [TSI.space, TSI.store.databaseName]), ['test', 'tsi.test']);
+      await real.goto(INDEX);
+      await real.waitForSelector('.tsi-card');
+      equal(await real.evaluate(() => TSI.store.ready.then(() => [TSI.space, TSI.store.databaseName, TSI.store.keys()])), ['suite', 'tsi.suite', []]);
+      const b = JSON.parse((await H.download(real, '[data-test=backup-everything]')).text);
+      equal([b.space, b.records.length], ['suite', 0]);
+    });
+
+    await check('the two don\'t warn "Already open" about each other', async () => {
+      await real.waitForTimeout(3000);
+      for (const p of [test, real]) {
+        const texts = await H.noticeTexts(p);
+        assert(!texts.some(t => /Already open/.test(t)), 'false warning: ' + texts);
+      }
+    });
+
+    await check('the real suite refuses the test page\'s backups, and the other way round', async () => {
+      await test.goto(HARNESS);
+      await test.waitForSelector('.tsi-card');
+      const testBackup = await H.download(test, '[data-test=backup-everything]');
+      assert(/^tsi-test-backup-everything-/.test(testBackup.name), testBackup.name);
+      await H.chooseFile(real, '[data-test=restore]', H.writeTemp('from-test.json', testBackup.text));
+      assert(/came from the suite's test page/.test(await H.modalText(real)));
+      await H.clickModal(real, 'OK');
+      equal(await real.evaluate(() => TSI.store.keys()), []);
+
+      const realBackup = await H.download(real, '[data-test=backup-everything]');
+      await H.chooseFile(test, '[data-test=restore]', H.writeTemp('from-real.json', realBackup.text));
+      assert(/came from the real suite/.test(await H.modalText(test)));
+      await H.clickModal(test, 'OK');
+      equal(await savedCount(test), 2);
+    });
+
+    await check('test data left in the real database by phase 1 is removed', async () => {
+      await real.evaluate(() => new Promise((res, rej) => {
+        const r = indexedDB.open('tsi.suite', 1);
+        r.onsuccess = () => {
+          const tx = r.result.transaction('records', 'readwrite');
+          tx.objectStore('records').put({ key: 'tsi.demo.state', value: { count: 4, note: '' }, savedAt: '2026-09-25T13:03:00.000Z' });
+          tx.objectStore('records').put({ key: 'tsi.other.thing', value: 1, savedAt: '2026-09-25T13:03:00.000Z' });
+          tx.oncomplete = () => { r.result.close(); res(); };
+          tx.onerror = () => rej(tx.error);
+        };
+      }));
+      await real.reload();
+      await real.waitForSelector('.tsi-card');
+      equal(await real.evaluate(() => TSI.store.ready.then(() => TSI.store.flush()).then(() => TSI.store.keys())), ['tsi.other.thing']);
+      const left = await real.evaluate(() => new Promise(res => {
+        const r = indexedDB.open('tsi.suite', 1);
+        r.onsuccess = () => {
+          const q = r.result.transaction('records').objectStore('records').getAllKeys();
+          q.onsuccess = () => { r.result.close(); res(q.result); };
+        };
+      }));
+      equal(left, ['tsi.other.thing']);
+    });
+
+    await check('an older backup holding test data restores without it, and says so', async () => {
+      const old = { format: 'tsi-backup', version: 1, kind: 'suite', savedAt: '2026-09-25T13:03:00.000Z', records: [
+        demoRecord(5), { key: 'tsi.other.thing', value: 2, savedAt: '2026-09-25T13:03:00.000Z' }
+      ] };
+      await H.chooseFile(real, '[data-test=restore]', H.writeTemp('phase1-backup.json', old));
+      const text = await H.modalText(real);
+      assert(/1 item of test data from the test page, which will be left out/.test(text), text);
+      assert(!/Demo tool/.test(text), text);
+      await real.uncheck('.tsi-modal input[type=checkbox]');
+      await Promise.all([real.waitForEvent('load'), H.clickModal(real, 'Restore')]);
+      await real.waitForSelector('.tsi-card');
+      equal(await real.evaluate(() => TSI.store.ready.then(() => [TSI.store.keys(), TSI.store.get('tsi.other.thing')])), [['tsi.other.thing'], 2]);
+      await real.evaluate(() => { TSI.store.remove('tsi.other.thing'); return TSI.store.flush(); });
+    });
+
+    await check('no errors on the way', async () => {
+      equal(context.log.errors, []);
+      equal(context.log.consoleErrors, []);
     });
     await context.close();
   }

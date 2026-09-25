@@ -10,8 +10,9 @@
   'use strict';
 
   var TSI = window.TSI;
-  var KEY = 'tsi.suite.tabs';
-  var ID_KEY = 'tsi.suite.tab-id';
+  var NAMES = TSI.storeRules.spaceNames(TSI.space);
+  var KEY = NAMES.tabs;       /* the test page keeps its own list, so it never warns about the real suite */
+  var ID_KEY = NAMES.tabId;
   var BEAT_MS = 2000;
   var STALE_MS = 7000;
   var notice = null;

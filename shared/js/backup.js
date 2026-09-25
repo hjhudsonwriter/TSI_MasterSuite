@@ -15,7 +15,7 @@
   }
 
   function downloadBackup(backup, kind, toolId) {
-    var name = rules.fileName(kind, toolId, new Date(backup.savedAt));
+    var name = rules.fileName(kind, toolId, new Date(backup.savedAt), TSI.space);
     TSI.download(name, JSON.stringify(backup, null, 2), 'application/json');
     return name;
   }
@@ -27,6 +27,9 @@
       parts.push(TSI.el('ul', null, summary.lines.map(function (line) { return TSI.el('li', { text: line }); })));
     } else {
       parts.push(TSI.el('p', null, TSI.el('em', { text: 'Nothing saved: the file is empty.' })));
+    }
+    if (backup.skippedTest) {
+      parts.push(TSI.el('p', { text: 'It also holds ' + backup.skippedTest + ' item' + (backup.skippedTest === 1 ? '' : 's') + ' of test data from the test page, which will be left out.' }));
     }
     parts.push(TSI.el('p', { text: warning }));
     var box = null;
@@ -47,8 +50,16 @@
         if (!result.ok) {
           return TSI.modal.alert({ title: title, message: result.reason + '\n\nNothing was changed.' }).then(function () { return null; });
         }
-        result.backup.fileName = file.name;
-        return result.backup;
+        /* The real suite and the test page never load each other's backups. */
+        var wrongPlace = rules.checkSpace(result.backup, TSI.space);
+        if (wrongPlace) {
+          return TSI.modal.alert({ title: title, message: wrongPlace }).then(function () { return null; });
+        }
+        var cleaned = rules.withoutTestData(result.backup, TSI.space);
+        var backup = cleaned.backup;
+        backup.skippedTest = cleaned.skipped;
+        backup.fileName = file.name;
+        return backup;
       }, function () {
         return TSI.modal.alert({ title: title, message: 'That file couldn\'t be read. Nothing was changed.' }).then(function () { return null; });
       });
@@ -56,7 +67,7 @@
   }
 
   function flash(text, type) {
-    try { sessionStorage.setItem('tsi.suite.flash', JSON.stringify({ text: text, type: type || 'ok' })); } catch (e) { /* no flash message */ }
+    try { sessionStorage.setItem(TSI.storeRules.spaceNames(TSI.space).flash, JSON.stringify({ text: text, type: type || 'ok' })); } catch (e) { /* no flash message */ }
   }
 
   function reload() {
@@ -68,7 +79,7 @@
     /* Download every saved item in the suite as one dated file. */
     backupEverything: function (options) {
       return TSI.store.flush().then(function () {
-        var backup = rules.makeSuiteBackup(TSI.store.records(), new Date());
+        var backup = rules.makeSuiteBackup(TSI.store.records(), new Date(), TSI.space);
         var name = downloadBackup(backup, 'suite');
         if (!options || !options.quiet) {
           TSI.notify('Saved to your Downloads folder as ' + name + '.', { type: 'ok', title: 'Backup downloaded.', timeout: 8000, id: 'tsi-backup' });
@@ -121,7 +132,7 @@
     /* Download one tool's saved data. */
     exportTool: function (toolId, options) {
       return TSI.store.flush().then(function () {
-        var backup = rules.makeToolBackup(toolId, nameOf(toolId), TSI.store.records(toolId), new Date());
+        var backup = rules.makeToolBackup(toolId, nameOf(toolId), TSI.store.records(toolId), new Date(), TSI.space);
         var name = downloadBackup(backup, 'tool', toolId);
         if (!options || !options.quiet) {
           TSI.notify('Saved to your Downloads folder as ' + name + '.', { type: 'ok', title: 'Exported.', timeout: 8000, id: 'tsi-backup' });

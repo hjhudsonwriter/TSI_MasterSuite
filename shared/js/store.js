@@ -10,14 +10,19 @@
 
    If the database can't be used, the suite falls back to the old shared
    storage, and if that fails too, keeps changes in memory only. Either way
-   the shell shows a warning. */
+   the shell shows a warning.
+
+   The test page (tests/harness.html) uses its own database ("tsi.test") and
+   its own fallback storage names, so test data never mixes with real saves. */
 (function () {
   'use strict';
 
   var TSI = window.TSI;
   var rules = TSI.storeRules;
 
-  var DB_NAME = 'tsi.suite';
+  var NAMES = rules.spaceNames(TSI.space);
+  var DB_NAME = NAMES.db;
+  var SPACE = NAMES.space;
   var DB_STORE = 'records';
   var WRITE_DELAY = 120;
   var OPEN_TIMEOUT = 4000;
@@ -64,8 +69,8 @@
       write: function (batch) {
         return new Promise(function (resolve) {
           batch.forEach(function (op) {
-            if (op.op === 'put') localStorage.setItem(op.key, JSON.stringify(op.record));
-            else localStorage.removeItem(op.key);
+            if (op.op === 'put') localStorage.setItem(rules.localKey(op.key, SPACE), JSON.stringify(op.record));
+            else localStorage.removeItem(rules.localKey(op.key, SPACE));
           });
           resolve();
         });
@@ -127,20 +132,31 @@
   }
 
   function readLocal() {
-    var probe = 'tsi.suite.probe';
+    var probe = NAMES.db + '.probe';
     localStorage.setItem(probe, '1');
     localStorage.removeItem(probe);
     var rows = [];
     for (var i = 0; i < localStorage.length; i++) {
-      var key = localStorage.key(i);
-      if (!rules.isValidKey(key) || rules.toolOf(key) === 'suite') continue;
-      try { rows.push(JSON.parse(localStorage.getItem(key))); } catch (e) { rows.push({ key: key, broken: localStorage.getItem(key) }); }
+      var key = rules.fromLocalKey(localStorage.key(i), SPACE);
+      if (!key) continue;
+      var raw = localStorage.getItem(localStorage.key(i));
+      var row;
+      try { row = JSON.parse(raw); } catch (e) { row = { key: key, broken: raw }; }
+      /* A record must be stored under its own name. */
+      if (row && typeof row === 'object' && row.key !== key) row = { key: key, broken: raw };
+      rows.push(row);
     }
     return rows;
   }
 
   function loadRows(rows) {
     rows.forEach(function (row) {
+      /* Leftover data from the test page's Demo tool (phase 1 kept it in the
+         real database) is test junk: remove it so it can't reach a backup. */
+      if (SPACE === 'suite' && row && typeof row.key === 'string' && rules.isTestOnly(row.key)) {
+        pending.set(row.key, { op: 'delete', key: row.key });
+        return;
+      }
       if (rules.isRecord(row)) {
         cache.set(row.key, row);
       } else {
@@ -240,6 +256,10 @@
   TSI.store = {
     ready: ready,
 
+    /* 'suite' for the real suite, 'test' for the test page. */
+    space: SPACE,
+    databaseName: DB_NAME,
+
     get mode() { return backend ? backend.mode : 'opening'; },
 
     status: function () { return status; },
@@ -287,7 +307,7 @@
     /* Every saved key, optionally only one tool's. */
     keys: function (tool) {
       return Array.from(cache.keys()).filter(function (key) {
-        return !tool || rules.toolOf(key) === tool;
+        return (!tool || rules.toolOf(key) === tool) && !(SPACE === 'suite' && rules.isTestOnly(key));
       }).sort();
     },
 
@@ -303,6 +323,8 @@
       requireReady();
       scope = scope || {};
       if (!scope.all && !rules.isValidToolId(scope.tool)) throw new Error('Replace needs a tool or { all: true }.');
+      /* Test data never goes into the real suite. */
+      if (SPACE === 'suite') records = records.filter(function (r) { return !(r && rules.isTestOnly(r.key)); });
       records.forEach(function (r) {
         if (!rules.isRecord(r)) throw new Error('A record in the file is damaged.');
         if (!scope.all && rules.toolOf(r.key) !== scope.tool) throw new Error('The file holds another tool\'s data (' + r.key + ').');

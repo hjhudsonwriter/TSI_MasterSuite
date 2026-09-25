@@ -73,4 +73,31 @@
     t.equal(R.describeFailure({ name: 'QuotaExceededError' }), 'The browser\'s storage space for the suite is full.');
     t.ok(/refused/.test(R.describeFailure(new Error('x'))));
   });
+
+  group('Saving: the test page is kept apart');
+
+  test('the real suite and the test page use different databases and names', function (t) {
+    var real = R.spaceNames('suite');
+    var fake = R.spaceNames('test');
+    t.equal(real.db, 'tsi.suite');
+    t.equal(fake.db, 'tsi.test');
+    ['db', 'local', 'tabs', 'tabId', 'flash', 'file'].forEach(function (k) { t.ok(real[k] !== fake[k], k + ' differs'); });
+    t.equal(R.spaceNames('anything else').db, 'tsi.suite', 'anything unknown counts as the real suite');
+  });
+
+  test('the test page\'s small-storage names can never be read as real saves', function (t) {
+    var stored = R.localKey('tsi.demo.state', 'test');
+    t.equal(stored, 'tsi.test:tsi.demo.state');
+    t.equal(R.fromLocalKey(stored, 'test'), 'tsi.demo.state');
+    t.equal(R.fromLocalKey(stored, 'suite'), null, 'the real suite ignores it');
+    t.equal(R.fromLocalKey('tsi.bastion.state', 'suite'), 'tsi.bastion.state');
+    t.equal(R.fromLocalKey('tsi.bastion.state', 'test'), null, 'the test page ignores real saves');
+    t.equal(R.fromLocalKey('tsi.suite.tabs', 'suite'), null, 'the shell\'s own bookkeeping isn\'t a save');
+  });
+
+  test('the Demo tool\'s data is test-only', function (t) {
+    t.ok(R.isTestOnly('tsi.demo.state'));
+    t.ok(!R.isTestOnly('tsi.crest.state'));
+    t.ok(!R.isTestOnly('nonsense'));
+  });
 }());

@@ -16,6 +16,12 @@
   TSI.root = document.documentElement.getAttribute('data-tsi-root') || '';
   TSI.path = function (p) { return TSI.root + p; };
 
+  /* Which saved data this page uses. The real suite is "suite". The test page
+     (tests/harness.html, <html data-tsi-space="test">) is "test": it has its own
+     database, storage names and backups, so test data never mixes with real
+     saves. See TSI.storeRules.spaceNames. */
+  TSI.space = document.documentElement.getAttribute('data-tsi-space') === 'test' ? 'test' : 'suite';
+
   /* ---------- Tools register themselves here ---------- */
   TSI.tools = TSI.tools || {};
   TSI.registerTool = function (id, def) {

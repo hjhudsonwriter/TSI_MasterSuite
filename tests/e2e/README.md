@@ -22,6 +22,6 @@ Each phase adds its own `phaseN.test.js`. `helpers.js` holds the shared pieces: 
 
 ## What the tests use
 
-- `tests/harness.html` is a copy of `index.html` that adds a pretend **Demo tool** (`tests/fixtures/`). It tests saving, Export and Import, shutting a tool down, player windows and error handling before any real tool exists. It shares the browser's saved data with the real suite, so if you open it on the table laptop, use the Demo tool's "Clear the demo tool's data" button afterwards.
+- `tests/harness.html` is a copy of `index.html` that adds a pretend **Demo tool** (`tests/fixtures/`). It tests saving, Export and Import, shutting a tool down, player windows and error handling before any real tool exists. It has its own saved data (the browser database `tsi.test`, set by `data-tsi-space="test"` on its `<html>`) and its own backups, so nothing it does can reach the real suite's saves or backups, and neither will load the other's backup files. The top bar says "Test page".
 - Buttons ignore a second click within 350 ms (double-click protection), so the helpers pause briefly before clicking the same button again.
 - Don't use Playwright's request interception with player windows: it stops their stylesheets loading.

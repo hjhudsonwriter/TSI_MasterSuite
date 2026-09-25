@@ -50,6 +50,11 @@
     return page + (toolId ? '?tool=' + encodeURIComponent(toolId) : '');
   }
 
+  /* The test page's tab says so, so it's never mistaken for the real suite. */
+  function setTitle(text) {
+    document.title = (TSI.space === 'test' ? 'Test page · ' : '') + text;
+  }
+
   function wait(ms) { return new Promise(function (resolve) { setTimeout(resolve, ms); }); }
 
   /* ---------- Leaving and switching ---------- */
@@ -231,6 +236,7 @@
 
     var bar = TSI.el('header', { class: 'tsi-topbar' }, [
       home,
+      TSI.space === 'test' ? TSI.el('span', { class: 'tsi-pill tsi-topbar__test', title: 'This is the test page. Its saved data and backups are kept apart from the real suite\'s.', text: 'Test page' }) : null,
       info ? TSI.el('span', { class: 'tsi-topbar__sep', 'aria-hidden': 'true', text: '›' }) : null,
       info ? TSI.el('h1', { class: 'tsi-topbar__tool', text: info.name }) : null,
       TSI.el('span', { class: 'tsi-topbar__spacer' }),
@@ -295,8 +301,9 @@
   function showFlash() {
     var raw = null;
     try {
-      raw = sessionStorage.getItem('tsi.suite.flash');
-      sessionStorage.removeItem('tsi.suite.flash');
+      var flashKey = rules.spaceNames(TSI.space).flash;
+      raw = sessionStorage.getItem(flashKey);
+      sessionStorage.removeItem(flashKey);
     } catch (e) { return; }
     if (!raw) return;
     try {
@@ -329,7 +336,7 @@
 
   function renderHome(main) {
     document.body.classList.add('tsi-page--home');
-    document.title = TSI.SUITE_NAME;
+    setTitle(TSI.SUITE_NAME);
     var shop = (DATA.links || {}).knightlyTreasures;
     main.className = 'tsi-home';
 
@@ -442,7 +449,7 @@
 
   function openTool(info, main) {
     document.body.classList.add('tsi-page--tool', 'tsi-page--' + info.id);
-    document.title = info.name + ' · The Scarlett Isles';
+    setTitle(info.name + ' · The Scarlett Isles');
     main.className = 'tsi-tool tsi-tool--' + info.id;
     main.setAttribute('aria-busy', 'true');
     var loading = TSI.el('p', { class: 'tsi-shell-loading', text: 'Opening ' + TSI.the(info.name) + '…' });
