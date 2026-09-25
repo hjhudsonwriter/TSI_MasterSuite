@@ -1,7 +1,8 @@
 /* The Scarlett Isles: D&D Tool Suite — the list of tools and home-screen groups.
    This is content, so it lives in a data file. When a tool is rebuilt in its
    phase, set built: true and list the files the shell must load for it
-   (paths relative to the suite's top folder).
+   (paths relative to the suite's top folder). art (optional) is a painted
+   picture shown behind the tool, as on the home screen.
 
    Card descriptions: the four the old hub page had are copied word for word
    (scarlett-isles-dnd/index.html). The others use each tool's own wording. */
@@ -60,10 +61,20 @@ window.TSI_DATA.tools = [
     name: 'Clan Crest Creator',
     group: 'players',
     phase: '2',
-    built: false,
+    built: true,
     saves: false,
     desc: 'Forge your heraldry. Pick parts, roll random, then download a transparent PNG.',
-    files: { css: [], js: [] }
+    art: 'shared/art/hero.png',
+    files: {
+      css: ['tools/crest/crest.css'],
+      js: [
+        'tools/crest/data/crest-data.js',
+        'tools/crest/data/motto-font.js',
+        'tools/crest/rules.js',
+        'tools/crest/draw.js',
+        'tools/crest/tool.js'
+      ]
+    }
   },
   {
     id: 'arenas',

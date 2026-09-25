@@ -449,6 +449,14 @@
 
   function openTool(info, main) {
     document.body.classList.add('tsi-page--tool', 'tsi-page--' + info.id);
+    if (info.art) {
+      /* The tool's painted art behind a dark overlay, like the home screen. */
+      var art = document.querySelector('.tsi-art__img');
+      if (art) {
+        art.style.backgroundImage = 'url("' + TSI.path(info.art) + '")';
+        document.body.classList.add('tsi-page--art');
+      }
+    }
     setTitle(info.name + ' · The Scarlett Isles');
     main.className = 'tsi-tool tsi-tool--' + info.id;
     main.setAttribute('aria-busy', 'true');

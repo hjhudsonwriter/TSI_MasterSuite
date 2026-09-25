@@ -3,9 +3,10 @@
    The home screen, the top bar's extra pieces, and the frame tools sit in.
    ========================================================================== */
 
-body.tsi-page--tool { background: var(--tsi-page-fill); background-attachment: fixed; }
-/* The home screen's painted art only shows on the home screen; tools bring their own. */
-body.tsi-page--tool > .tsi-art { display: none; }
+body.tsi-page--tool:not(.tsi-page--art) { background: var(--tsi-page-fill); background-attachment: fixed; }
+/* The painted art shows on the home screen, and behind a tool only if the tool
+   asks for it (art: in shared/data/tools.js). */
+body.tsi-page--tool:not(.tsi-page--art) > .tsi-art { display: none; }
 
 /* ---------- Top bar extras ---------- */
 .tsi-topbar__sep {
