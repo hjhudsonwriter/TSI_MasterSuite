@@ -11,12 +11,13 @@
 *::before,
 *::after { box-sizing: border-box; }
 
+/* The near-black base sits on the page itself. The body stays see-through, so
+   painted art placed behind the content (.tsi-art) shows. */
 html { height: 100%; background: var(--tsi-bg); }
 
 body {
   margin: 0;
   min-height: 100%;
-  background: var(--tsi-bg);
   color: var(--tsi-text);
   font: 400 var(--tsi-fs-body)/var(--tsi-lh-body) var(--tsi-font-body);
   -webkit-font-smoothing: antialiased;
@@ -402,17 +403,20 @@ a.tsi-card:focus-visible {
 }
 body.tsi-modal-open { overflow: hidden; }
 
-/* ---------- Notices (plain-English bars under the top bar) ---------- */
+/* ---------- Notices (plain-English messages in the bottom-right corner) ----------
+   Kept in a corner so they don't sit over a tool's main controls. */
 .tsi-notices {
   position: fixed;
-  top: calc(var(--tsi-topbar-h) + 10px);
-  left: 50%;
-  transform: translateX(-50%);
+  right: 16px;
+  bottom: 16px;
   z-index: var(--tsi-z-notice);
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: 8px;
-  width: min(760px, calc(100vw - 32px));
+  width: min(520px, calc(100vw - 32px));
+  max-height: calc(100vh - var(--tsi-topbar-h) - 32px);
+  overflow: auto;
   pointer-events: none;
 }
 .tsi-notice {

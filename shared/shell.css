@@ -91,6 +91,7 @@ h1.tsi-topbar__tool { margin: 0; }
 /* ---------- Tool frame ---------- */
 .tsi-tool {
   position: relative;
+  display: flow-root; /* keeps a tool's top margin inside the frame */
   min-height: calc(100vh - var(--tsi-topbar-h));
 }
 
