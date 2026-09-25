@@ -671,11 +671,11 @@ One phase per session, or one clearly defined chunk. The next phase starts only 
 ### Still to answer, before each tool's phase
 Defaults are in brackets; "keep" means keep it as the old tool does it.
 
-**Clan Crest Creator**
-- **K1** The Round shield's line and "handle": keep? *(keep)*
-- **K2** Random names: "StormOath", "Storm Oath" or "Stormoath"? *(keep)*
-- **K3** "Scarlet" with one t in the name lists: correct it? *(keep)*
-- **K4** Motto font in the PNG? *(the suite font, embedded so the preview matches)*
+**Clan Crest Creator** *(answered by Harry, 25 September 2026; built in phase 2)*
+- **K1** The Round shield's line and "handle": keep? **Keep as it is.**
+- **K2** Random names: "StormOath", "Storm Oath" or "Stormoath"? **Keep as it is ("StormOath").**
+- **K3** "Scarlet" with one t in the name lists: correct it? **Two t's where it means the Scarlett Isles, one where it's the colour.** So "of the Scarlett Isles" and the motto "In Scarlett We Stand" (Harry: the motto means the Isles). The "Scarlet" name word (the colour, like Black and Iron) and the "Scarlet & Gold" palette keep one t.
+- **K4** Motto font in the PNG? **Agreed: the suite font (Cinzel), packed into the PNG so the preview matches.**
 
 **Pelagosi Puzzle Trials**
 - **P1** Who clicks: Harry or the players? On a TV? *(Harry, one screen)*

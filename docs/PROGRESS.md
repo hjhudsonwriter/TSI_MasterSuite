@@ -2,11 +2,43 @@
 
 ## Where things stand
 
-**Phase 1 (the shell) is built and tested. Phase 2 (Clan Crest Creator) is next, and waits for Harry's go-ahead and his answers to K1–K4.**
+**Phase 2 (Clan Crest Creator) is built and tested. Phase 3 (Pelagosi Puzzle Trials) is next, and waits for Harry's go-ahead and his answers to P1–P4.**
 
-Double-click `index.html` to open the suite. The home screen shows all eight tools. Each says "Coming in phase N" until its phase is done. The plan is in `docs/PLAN.md`, the bug list in `docs/KNOWN_ISSUES.md`, and the notes for building each tool in `docs/BUILDING-A-TOOL.md`.
+Double-click `index.html` to open the suite. The Clan Crest Creator opens from its card. The other six tools say "Coming in phase N" until their phases are done. The plan is in `docs/PLAN.md`, the bug list in `docs/KNOWN_ISSUES.md`, and the notes for building each tool in `docs/BUILDING-A-TOOL.md`.
 
 ## Done
+
+### Phase 2: Clan Crest Creator (25 September 2026)
+- **Rebuilt as it was:**
+  - Same parts, 12 palettes, 16 sigils, names and mottos.
+  - Random Name, Random Crest and Reset.
+  - The 2048 × 2048 see-through PNG, named after the clan.
+  - It saves nothing, as before.
+- **In the suite's look.** Your laptop showed Download half off the screen and Random Crest and Reset below it. The four control groups now sit two by two beside the preview, so every control and Download fit your laptop, full screen and the TV. The hub's painted art shows behind it, as in the old tool.
+- **Your answers:**
+  - K1 and K2: kept as they were.
+  - K3: "of the Scarlett Isles" and the motto "In Scarlett We Stand" have two t's; the "Scarlet" name word and the "Scarlet & Gold" palette keep one.
+  - K4: the motto is in Cinzel in the preview and the PNG, with the font packed inside the downloaded picture.
+- **Checked against the old tool:**
+  - The drawing code was carried across line for line and compared with the old tool's over 12,480 settings, with no differences apart from the planned part names and motto font.
+  - Random Crest and Random Name roll the same results from the same dice.
+  - A downloaded PNG without a motto is byte-for-byte the old tool's.
+- **Structure:**
+  - Content in `tools/crest/data/`, rules in `rules.js`, the drawing in `draw.js`, the screen in `tool.js`, styles in `crest.css`.
+  - Every rule is scoped to the Crest, and every id starts `tsi-crest-field-` (controls) or `tsi-crest-svg-` (the drawing).
+- **Phase 1 fix: the test page is kept apart from the real suite.** `tests/harness.html` now has its own database (`tsi.test`) and its own backups.
+  - The real suite refuses test backups, and the test page refuses real ones.
+  - Any Demo tool data left in the real database from phase 1 is removed.
+  - The test page says "Test page" in the top bar and the browser tab.
+- **Tests:**
+  - `tests/rules.html` now has 68 rules tests. Among them, three crests the old tool drew must match character for character.
+  - `tests/e2e/phase2.test.js`: 31 click-through checks.
+  - `tests/e2e/phase1.test.js`: now 65 checks, including the test page's separation.
+  - All pass.
+- **Found and fixed while building:**
+  - A drop-down and a hidden part of the crest drawing were given the same internal name, which made every crest draw darker. Separate prefixes fixed it, and a test now checks that no two ids on the page match.
+  - The phase 1 tests assumed no tool was built. They now read which tools are built from the tool list.
+
 
 ### Phase 1: the shell (25 September 2026)
 - **Home screen:**
@@ -61,13 +93,14 @@ Double-click `index.html` to open the suite. The home screen shows all eight too
   - The old-save import phase removed.
 
 ## Next
-**Phase 2: Clan Crest Creator** (with Harry's go-ahead). It proves that opening and closing a tool and scoped styles work. Its "done when" list is in `docs/PLAN.md` section 4. Before it starts, Harry answers K1–K4.
+**Phase 3: Pelagosi Puzzle Trials** (with Harry's go-ahead). It proves that timers and sounds stop cleanly. Its "done when" list is in `docs/PLAN.md` section 4. Before it starts, Harry answers P1–P4.
 
 ## Open questions for Harry
 
 Each tool's questions are needed before that tool's phase. The full wording and defaults are in `docs/PLAN.md` section 6.
 
-- **Clan Crest Creator (phase 2):** K1–K4
+- **Clan Crest Creator (phase 2):** answered (K1–K4).
+  - One small follow-up: the Crest saves nothing, so leaving it loses the current design. As the plan says, it doesn't ask "Leave?" first, just like the old tool. Would you like it to ask when you've changed the design?
 - **Pelagosi Puzzle Trials (phase 3):** P1–P4
 - **Notice Board (phase 4):** N1–N5
 - **Heartwood Ritual (phase 5):** R1–R10. **R2 has no default:** when should the Husk roll happen?
@@ -81,5 +114,6 @@ Each tool's questions are needed before that tool's phase. The full wording and 
 - **Testing:** the sandbox's Playwright Chromium can't play MP4s, and it can't reach the Firebase database or the shop. Put those checks on Harry's Edge checklist.
 - **Matt's database:** never write to the live Knightly Treasures database while testing.
 - **Building a tool:** follow `docs/BUILDING-A-TOOL.md`. Set `built: true` in `shared/data/tools.js` and the card, the Switch tool menu, Export/Import and backups all follow.
-- **Running the tests:** double-click `tests/rules.html`, or run `NODE_PATH=/opt/node22/lib/node_modules node tests/e2e/phase1.test.js` in this sandbox (see `tests/e2e/README.md`). Re-run every earlier phase's click-through after changing anything in `shared/`.
-- **Not tested here (phase 1):** Edge itself, the TV, and Windows' "Animation effects" switch (the reduce-motion setting was simulated). These are on Harry's checklist in the pull request.
+- **Running the tests:** double-click `tests/rules.html`, or run `NODE_PATH=/opt/node22/lib/node_modules node tests/e2e/phaseN.test.js` for each phase in this sandbox (see `tests/e2e/README.md`). Re-run every earlier phase's click-through after changing anything in `shared/`.
+- **Not tested here:** Edge itself, the TV, and Windows' "Animation effects" switch (the reduce-motion setting was simulated). Phase 2 adds opening a downloaded crest PNG in another program. These are on Harry's checklist in each pull request.
+- **Old-tool comparisons:** `tests/e2e/phase2.test.js` compares the Crest with the old tool when `_legacy/clan-crest-creator` is there. Re-clone it before changing `tools/crest/`.

@@ -12,6 +12,8 @@ Everything the suite needs is stored in this folder tree, so it works with no in
 
 The font files were checked byte-for-byte (SHA-256) against the google/fonts repository on 25 September 2026.
 
+**Packed copy of Cinzel (phase 2).** `tools/crest/data/motto-font.js` holds `shared/fonts/Cinzel-VariableFont_wght.ttf`, unchanged, written out as base64 text. The Clan Crest Creator packs it inside each downloaded PNG's picture so the motto matches the preview (Harry's answer K4). Same font, same licence (SIL OFL 1.1, `licences/fonts/Cinzel-OFL.txt`). `tests/e2e/phase2.test.js` checks the copy matches the font file exactly.
+
 The PDF.js (Combat Tracker, phase 7) and Firebase (Notice Board shop link, phase 4) libraries are added here in their phases, with their Apache 2.0 licences.
 
 For the campaign artwork, see `ARTWORK.md`.
