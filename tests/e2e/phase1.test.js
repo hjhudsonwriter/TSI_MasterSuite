@@ -23,6 +23,11 @@ const EXPECTED_CARDS = [
   ['The Heartwood Ritual', 'Set Pieces', '5'],
   ['Pelagosi Puzzle Trials', 'Set Pieces', '3']
 ];
+/* Which tools are built so far comes from shared/data/tools.js, so these
+   checks keep working as each phase lands. */
+const TOOLS = H.toolList();
+const BUILT = new Set(TOOLS.filter(t => t.built).map(t => t.name));
+const UNBUILT = TOOLS.find(t => !t.built) || null;
 
 function demoRecord(count, note) {
   return { key: 'tsi.demo.state', value: { count: count, note: note || '' }, savedAt: '2026-09-25T13:03:00.000Z' };
@@ -100,7 +105,7 @@ async function waitSaved(page) {
         assert(/^"?Cormorant Garamond/.test(f.body), 'body font ' + f.body);
       });
 
-      await check('all eight tools, in their groups, each saying its phase', async () => {
+      await check('all eight tools, in their groups; built ones open, the rest say their phase', async () => {
         const cards = await page.$$eval('.tsi-card', cs => cs.map(c => [
           c.querySelector('.tsi-card__title').textContent,
           c.querySelector('.tsi-pill').textContent,
@@ -111,22 +116,30 @@ async function waitSaved(page) {
         cards.forEach((c, i) => {
           equal(c[0], EXPECTED_CARDS[i][0], 'card ' + (i + 1) + ' name');
           equal(c[1], EXPECTED_CARDS[i][1], c[0] + ' group');
-          equal(c[2], 'Coming in phase ' + EXPECTED_CARDS[i][2], c[0] + ' label');
-          assert(c[3] === 'DIV' && c[4] === 'true', c[0] + ' should not be openable yet');
+          if (BUILT.has(c[0])) {
+            equal(c[2], 'Open', c[0] + ' label');
+            assert(c[3] === 'A' && c[4] === null, c[0] + ' should open');
+          } else {
+            equal(c[2], 'Coming in phase ' + EXPECTED_CARDS[i][2], c[0] + ' label');
+            assert(c[3] === 'DIV' && c[4] === 'true', c[0] + ' should not be openable yet');
+          }
         });
       });
 
-      await check('an unbuilt tool can\'t be opened', async () => {
-        await page.click('.tsi-card[data-tool=crest]');
+      if (UNBUILT) await check('an unbuilt tool can\'t be opened', async () => {
+        await page.click('.tsi-card[data-tool=' + UNBUILT.id + ']');
         await page.waitForTimeout(300);
         equal(page.url(), INDEX);
       });
 
       await check('opening an unbuilt tool by its address shows home and says when it\'s coming', async () => {
         const p2 = await context.newPage();
-        await p2.goto(INDEX + '?tool=crest');
-        await H.waitForNotice(p2, /The Clan Crest Creator is coming in phase 2/);
-        equal(await p2.$$eval('.tsi-card', c => c.length), 8);
+        if (UNBUILT) {
+          await p2.goto(INDEX + '?tool=' + UNBUILT.id);
+          const the = /^The /.test(UNBUILT.name) ? UNBUILT.name : 'The ' + UNBUILT.name;
+          await H.waitForNotice(p2, new RegExp(the.replace(/[&]/g, '\\$&') + ' is coming in phase ' + UNBUILT.phase));
+          equal(await p2.$$eval('.tsi-card', c => c.length), 8);
+        }
         await p2.goto(INDEX + '?tool=nonsense');
         await H.waitForNotice(p2, /no tool called "nonsense"/);
         await p2.close();
@@ -185,7 +198,7 @@ async function waitSaved(page) {
     await page.goto(INDEX);
     await page.waitForSelector('.tsi-card');
 
-    await check('lists Home and all eight tools, grouped, unbuilt ones not clickable', async () => {
+    await check('lists Home and all eight tools, grouped; unbuilt ones not clickable', async () => {
       await page.click('[data-test=switch-tool]');
       await page.waitForSelector('.tsi-menu:not([hidden])');
       const items = await page.$$eval('.tsi-menu__item', xs => xs.map(x => [x.dataset.tool, x.getAttribute('aria-disabled'), x.textContent]));
@@ -193,7 +206,11 @@ async function waitSaved(page) {
       equal(items[0][0], 'home');
       const groups = await page.$$eval('.tsi-menu__group', gs => gs.map(g => g.textContent));
       equal(groups, ['DM Tool', 'World', 'Players', 'Set Pieces']);
-      items.slice(1).forEach(i => assert(i[1] === 'true' && /Coming in phase \d/.test(i[2]), i[2]));
+      items.slice(1).forEach(i => {
+        const built = TOOLS.find(t => t.id === i[0]).built;
+        if (built) assert(i[1] === null && !/Coming in phase/.test(i[2]), i[2]);
+        else assert(i[1] === 'true' && /Coming in phase \d/.test(i[2]), i[2]);
+      });
       equal(await page.getAttribute('[data-test=switch-tool]', 'aria-expanded'), 'true');
       await H.shot(page, 'switch-tool-menu');
     });

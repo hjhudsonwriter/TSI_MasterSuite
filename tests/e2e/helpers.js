@@ -22,6 +22,16 @@ const SIZES = {
   smallWindow: { viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1.5 }
 };
 
+/* The suite's tool list (shared/data/tools.js), read the same way the page does. */
+function toolList() {
+  const vm = require('vm');
+  const ctx = { window: {} };
+  ctx.window.window = ctx.window;
+  vm.createContext(ctx);
+  vm.runInContext('var window = this.window;' + fs.readFileSync(path.join(ROOT, 'shared/data/tools.js'), 'utf8'), ctx);
+  return JSON.parse(JSON.stringify(ctx.window.TSI_DATA.tools));
+}
+
 function fileUrl(rel) { return 'file://' + path.join(ROOT, rel).split(path.sep).join('/'); }
 
 const results = [];
@@ -140,6 +150,6 @@ function summary() {
 }
 
 module.exports = {
-  chromium, ROOT, SHOTS, SIZES, fileUrl, section, check, assert, equal, newContext, watch, shot, writeTemp,
+  chromium, ROOT, SHOTS, SIZES, fileUrl, toolList, section, check, assert, equal, newContext, watch, shot, writeTemp,
   chooseFile, download, dismissNotices, noticeTexts, waitForNotice, modalText, clickModal, layoutCheck, summary, results
 };
