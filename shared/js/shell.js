@@ -240,13 +240,23 @@
   }
 
   /* ---------- Save status and warnings ---------- */
+  var savingTimer = null;
+
   function showSaveStatus(s) {
     var inTool = current && current.info.saves;
-    if (statusEl) {
+    if (savingTimer) { clearTimeout(savingTimer); savingTimer = null; }
+    if (statusEl && s.state === 'saving') {
+      /* Most saves take a few milliseconds; only say "Saving…" if one takes a while. */
+      savingTimer = setTimeout(function () {
+        savingTimer = null;
+        statusEl.dataset.state = 'saving';
+        statusEl.title = '';
+        statusEl.textContent = 'Saving…';
+      }, 400);
+    } else if (statusEl) {
       statusEl.dataset.state = s.state;
       statusEl.title = '';
-      if (s.state === 'saving') statusEl.textContent = 'Saving…';
-      else if (s.state === 'saved') {
+      if (s.state === 'saved') {
         statusEl.textContent = 'Saved ✓';
         statusEl.title = 'Saved in this browser at ' + TSI.dates.human(s.at);
       } else if (s.state === 'failed') statusEl.textContent = 'Not saved';
