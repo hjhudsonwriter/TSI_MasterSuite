@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en-GB" data-tsi-root="../">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rules tests · The Scarlett Isles: D&amp;D Tool Suite</title>
+  <link rel="stylesheet" href="../shared/tokens.css">
+  <link rel="stylesheet" href="../shared/components.css">
+  <style>
+    body { background: var(--tsi-page-fill); background-attachment: fixed; }
+    .rt { max-width: 980px; margin: 0 auto; padding: 28px var(--tsi-gutter) 60px; }
+    .rt h1 { font-size: 26px; letter-spacing: var(--tsi-track-title); margin-bottom: 6px; }
+    .rt-intro { color: var(--tsi-text-muted); margin: 0 0 18px; }
+    .rt-summary { font: 700 20px/1.3 var(--tsi-font-display); letter-spacing: var(--tsi-track-label); padding: 14px 16px; border-radius: var(--tsi-radius-md); border: 2px solid var(--tsi-line); margin-bottom: 18px; }
+    .rt-summary--pass { border-color: var(--tsi-ok); }
+    .rt-summary--fail { border-color: var(--tsi-danger); }
+    .rt-group { font-size: 15px; letter-spacing: var(--tsi-track-heading); text-transform: uppercase; color: var(--tsi-gold-text); margin: 22px 0 8px; }
+    .rt-list { list-style: none; margin: 0; padding: 0; }
+    .rt-list li { padding: 4px 0; font-size: var(--tsi-fs-body-sm); }
+    .rt-mark { font-family: var(--tsi-font-display); font-weight: 700; }
+    .rt-pass .rt-mark { color: var(--tsi-ok); }
+    .rt-fail .rt-mark { color: var(--tsi-danger); }
+    .rt-error { margin: 4px 0 0 22px; font: 13px/1.4 var(--tsi-font-mono); color: var(--tsi-danger); }
+  </style>
+</head>
+<body>
+  <main class="rt">
+    <h1>Rules tests</h1>
+    <p class="rt-intro">Checks the suite's rules (saving, backups, shutting tools down and, later, each tool's game rules) without clicking through the tools. Double-click this file to run them. Nothing here changes your saved data.</p>
+    <div id="summary" class="rt-summary" role="status">Running…</div>
+    <div id="results"></div>
+  </main>
+
+  <!-- The code being tested -->
+  <script src="../shared/data/tools.js"></script>
+  <script src="../shared/js/core.js"></script>
+  <script src="../shared/js/lifecycle.js"></script>
+  <script src="../shared/js/modal.js"></script>
+  <script src="../shared/js/store-rules.js"></script>
+  <script src="../shared/js/backup-rules.js"></script>
+
+  <!-- The tests (each tool's phase adds its own file here) -->
+  <script src="runner.js"></script>
+  <script src="rules/store-rules.test.js"></script>
+  <script src="rules/backup-rules.test.js"></script>
+  <script src="rules/core.test.js"></script>
+  <script src="rules/lifecycle.test.js"></script>
+</body>
+</html>
