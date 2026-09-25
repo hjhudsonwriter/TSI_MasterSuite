@@ -1,0 +1,433 @@
+/* ==========================================================================
+   The Scarlett Isles: D&D Tool Suite — shared components
+   Base page styles and the pieces every tool uses: top bar, buttons, cards,
+   pill tags, panels, pop-ups, notices and form fields. All class names start
+   with "tsi-". Tools keep their own styles in their own folders, prefixed and
+   scoped to the tool, and never restyle these.
+   ========================================================================== */
+
+/* ---------- Base ---------- */
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html { height: 100%; }
+
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--tsi-bg);
+  color: var(--tsi-text);
+  font: 400 var(--tsi-fs-body)/var(--tsi-lh-body) var(--tsi-font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Buttons and fields take the page font (the old Bastion's unclassed buttons fell back to Arial). */
+button, input, select, textarea { font: inherit; color: inherit; }
+
+h1, h2, h3, h4 { font-family: var(--tsi-font-display); font-weight: 700; margin: 0; }
+
+a { color: var(--tsi-cream); }
+
+/* One gold focus ring everywhere (Harry's answer 14). */
+:focus-visible {
+  outline: 2px solid var(--tsi-gold);
+  outline-offset: 2px;
+}
+
+img { max-width: 100%; }
+
+.tsi-sr-only {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0);
+  white-space: nowrap; border: 0;
+}
+
+[hidden] { display: none !important; }
+
+/* ---------- Painted art behind a dark overlay (hub technique) ---------- */
+.tsi-art {
+  position: fixed;
+  inset: 0;
+  z-index: var(--tsi-z-art);
+  background:
+    radial-gradient(1000px 520px at 20% 10%, var(--tsi-ember), transparent 60%),
+    radial-gradient(900px 520px at 80% 20%, var(--tsi-candle), transparent 55%),
+    var(--tsi-art-img, none) center / cover no-repeat;
+  filter: saturate(1.05) contrast(1.05);
+  transform: scale(1.02);
+  pointer-events: none;
+}
+.tsi-art::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(0, 0, 0, .12), rgba(0, 0, 0, .76) 70%),
+    linear-gradient(to bottom, rgba(0, 0, 0, .25), rgba(0, 0, 0, .68));
+}
+
+/* ---------- Top bar (the same in every tool) ---------- */
+.tsi-topbar {
+  position: sticky;
+  top: 0;
+  z-index: var(--tsi-z-sticky);
+  height: var(--tsi-topbar-h);
+  display: flex;
+  align-items: center;
+  gap: var(--tsi-space-4);
+  padding: 0 var(--tsi-gutter);
+  background: var(--tsi-topbar-bg);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border-bottom: 2px solid var(--tsi-line-control);
+  box-shadow: var(--tsi-shadow-topbar);
+}
+.tsi-topbar__home {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 4px 8px 4px 4px;
+  border-radius: var(--tsi-radius-md);
+  color: var(--tsi-text);
+  text-decoration: none;
+}
+.tsi-topbar__home:hover .tsi-topbar__title { color: var(--tsi-gold-text); }
+.tsi-topbar__logo {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, .6));
+}
+.tsi-topbar__title {
+  font: 700 16px/1.1 var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-heading);
+  color: var(--tsi-text);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, .65);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color var(--tsi-dur-fast) var(--tsi-ease);
+}
+.tsi-topbar__tool {
+  font: 600 14px/1.1 var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-label);
+  color: var(--tsi-gold-text);
+  white-space: nowrap;
+}
+.tsi-topbar__spacer { flex: 1; }
+.tsi-topbar__actions { display: flex; align-items: center; gap: var(--tsi-space-2); }
+.tsi-topbar__status {
+  font: 400 var(--tsi-fs-label)/1 var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-label);
+  color: var(--tsi-text-soft);
+  white-space: nowrap;
+}
+.tsi-topbar__status[data-state="failed"] { color: var(--tsi-danger); }
+
+/* ---------- Drop-down menu (Switch tool, tool Backup menu) ---------- */
+.tsi-menu-wrap { position: relative; }
+.tsi-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: var(--tsi-z-menu);
+  min-width: 320px;
+  max-height: calc(100vh - var(--tsi-topbar-h) - 24px);
+  overflow: auto;
+  padding: 8px;
+  border-radius: var(--tsi-radius-lg);
+  border: 2px solid var(--tsi-line-panel);
+  background: var(--tsi-modal-fill);
+  box-shadow: var(--tsi-shadow-modal);
+}
+.tsi-menu__group {
+  margin: 8px 8px 4px;
+  font: 400 11px/1 var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-pill);
+  text-transform: uppercase;
+  color: var(--tsi-text-soft);
+}
+.tsi-menu__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--tsi-radius-sm);
+  background: transparent;
+  color: var(--tsi-text);
+  font: 600 14px/1.2 var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-button);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.tsi-menu__item:hover:not([aria-disabled="true"]) { border-color: var(--tsi-line); background: rgba(0, 0, 0, .25); }
+.tsi-menu__item[aria-current="page"] { border-color: var(--tsi-line-control); }
+.tsi-menu__item[aria-disabled="true"] { color: var(--tsi-text-faint); cursor: default; }
+.tsi-menu__note {
+  font: 400 var(--tsi-fs-label)/1 var(--tsi-font-body);
+  font-style: italic;
+  color: var(--tsi-text-soft);
+  white-space: nowrap;
+}
+
+/* ---------- Buttons: outlined gold, plus one crimson main action per panel ---------- */
+.tsi-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--tsi-radius-md);
+  border: var(--tsi-border-control);
+  background: var(--tsi-btn-bg);
+  color: var(--tsi-text);
+  font: 600 var(--tsi-fs-button)/1.2 var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-button);
+  text-decoration: none;
+  box-shadow: var(--tsi-shadow-btn);
+  cursor: pointer;
+  transition: border-color var(--tsi-dur-fast) var(--tsi-ease), background var(--tsi-dur-fast) var(--tsi-ease), filter var(--tsi-dur-fast) var(--tsi-ease);
+}
+.tsi-btn:hover { border-color: var(--tsi-line-hover); background: var(--tsi-btn-bg-hover); }
+.tsi-btn:focus-visible { border-color: var(--tsi-gold-text); box-shadow: var(--tsi-focus-ring); }
+.tsi-btn:disabled,
+.tsi-btn[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
+/* The one main action on a panel. Text stays parchment: crimson is never used for text. */
+.tsi-btn--primary {
+  background: var(--tsi-crimson-fill);
+  border-color: rgba(214, 178, 94, .75);
+  color: var(--tsi-text);
+}
+.tsi-btn--primary:hover { filter: brightness(1.08); background: var(--tsi-crimson-fill); }
+.tsi-btn--ghost { background: transparent; box-shadow: none; }
+.tsi-btn--small { padding: 6px 10px; border-radius: 12px; font-size: var(--tsi-fs-label); box-shadow: none; }
+
+/* ---------- Pill tags ---------- */
+.tsi-pill {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: var(--tsi-radius-pill);
+  font: 400 11px/1 var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-pill);
+  text-transform: uppercase;
+  color: var(--tsi-pill-text);
+  background: var(--tsi-pill-bg);
+  border: 1px solid var(--tsi-pill-line);
+}
+
+/* ---------- Cards (thin gold border, soft fire glow) ---------- */
+.tsi-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 18px 18px 16px;
+  min-height: 190px;
+  overflow: hidden;
+  color: var(--tsi-ink-hub);
+  text-decoration: none;
+  border-radius: var(--tsi-radius-lg);
+  border: 1px solid var(--tsi-glass-line);
+  background: var(--tsi-glass-fill);
+  box-shadow: var(--tsi-shadow-card);
+  transition: transform var(--tsi-dur-fast) var(--tsi-ease), border-color var(--tsi-dur-fast) var(--tsi-ease), box-shadow var(--tsi-dur-fast) var(--tsi-ease);
+}
+.tsi-card::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  pointer-events: none;
+  background:
+    radial-gradient(650px 240px at 20% 10%, rgba(255, 140, 80, .10), transparent 60%),
+    radial-gradient(520px 220px at 80% 20%, rgba(255, 220, 170, .08), transparent 55%);
+}
+.tsi-card > * { position: relative; }
+a.tsi-card:hover,
+a.tsi-card:focus-visible {
+  transform: var(--tsi-lift);
+  border-color: var(--tsi-glass-line-hover);
+  box-shadow: var(--tsi-shadow-card-hover);
+}
+.tsi-card__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.tsi-card__title {
+  margin: 12px 0 8px;
+  font: 700 var(--tsi-fs-h3)/1.2 var(--tsi-font-display);
+  letter-spacing: .03em;
+}
+.tsi-card__desc {
+  flex: 1;
+  margin: 0 0 14px;
+  color: var(--tsi-ink-hub-muted);
+  font-size: 17px;
+  line-height: 1.25;
+}
+.tsi-card__cta {
+  font: 400 var(--tsi-fs-label)/1 var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-label);
+  text-transform: uppercase;
+  color: var(--tsi-cream);
+  border-top: 1px solid rgba(255, 210, 150, .14);
+  padding-top: 12px;
+}
+.tsi-card--soon { cursor: default; }
+.tsi-card--soon .tsi-card__cta { color: var(--tsi-text-faint); }
+
+/* ---------- Panels (burgundy, gold border) ---------- */
+.tsi-panel {
+  background: var(--tsi-panel-fill);
+  border: var(--tsi-border-panel);
+  border-radius: var(--tsi-radius-xl);
+  box-shadow: var(--tsi-shadow-panel);
+  overflow: hidden;
+}
+.tsi-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--tsi-head-fill);
+  border-bottom: 1px solid var(--tsi-line-head);
+}
+.tsi-panel__title {
+  margin: 0;
+  font: 700 14px/1.2 var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-heading);
+  text-transform: uppercase;
+  color: var(--tsi-gold-text);
+}
+.tsi-panel__body { padding: 14px 16px 16px; }
+
+/* ---------- Form fields ---------- */
+.tsi-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font: 400 var(--tsi-fs-label) var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-label);
+  color: var(--tsi-text-muted);
+}
+.tsi-input {
+  appearance: none;
+  padding: 10px 12px;
+  border-radius: var(--tsi-radius-md);
+  border: var(--tsi-border-control);
+  background: var(--tsi-field-bg);
+  color: var(--tsi-text);
+  font: 400 var(--tsi-fs-body-sm) var(--tsi-font-body);
+}
+.tsi-input::placeholder { color: var(--tsi-text-faint); }
+.tsi-input option { background: var(--tsi-option-bg); }
+.tsi-input:focus { outline: none; border-color: var(--tsi-gold-text); box-shadow: var(--tsi-focus-ring); }
+.tsi-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: var(--tsi-fs-body-sm);
+  cursor: pointer;
+}
+.tsi-check input { accent-color: var(--tsi-gold); width: 18px; height: 18px; margin-top: 3px; }
+
+/* ---------- Pop-ups (modals) ---------- */
+.tsi-modal-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: var(--tsi-z-modal);
+  display: grid;
+  place-items: center;
+  padding: var(--tsi-gutter);
+  background: var(--tsi-scrim);
+}
+.tsi-modal {
+  width: min(640px, 96vw);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--tsi-radius-lg);
+  border: 2px solid rgba(214, 178, 94, .70);
+  background: var(--tsi-modal-fill);
+  box-shadow: var(--tsi-shadow-modal);
+  overflow: hidden;
+}
+.tsi-modal__head {
+  padding: 14px 18px;
+  border-bottom: var(--tsi-border);
+  background: linear-gradient(180deg, rgba(0, 0, 0, .32), rgba(0, 0, 0, 0));
+}
+.tsi-modal__title {
+  font: 800 14px/1.3 var(--tsi-font-display);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--tsi-gold-text);
+}
+.tsi-modal__body { padding: 16px 18px 8px; overflow: auto; }
+.tsi-modal__body p { margin: 0 0 12px; }
+.tsi-modal__body ul { margin: 0 0 12px; padding-left: 22px; }
+.tsi-modal__foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 18px 18px;
+}
+.tsi-modal__details {
+  margin: 8px 0 12px;
+  padding: 10px 12px;
+  max-height: 180px;
+  overflow: auto;
+  border: var(--tsi-border);
+  border-radius: var(--tsi-radius-sm);
+  background: rgba(0, 0, 0, .35);
+  font: 400 12px/1.4 var(--tsi-font-mono);
+  white-space: pre-wrap;
+  color: var(--tsi-text-muted);
+}
+body.tsi-modal-open { overflow: hidden; }
+
+/* ---------- Notices (plain-English bars under the top bar) ---------- */
+.tsi-notices {
+  position: fixed;
+  top: calc(var(--tsi-topbar-h) + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--tsi-z-notice);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(760px, calc(100vw - 32px));
+  pointer-events: none;
+}
+.tsi-notice {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--tsi-radius-md);
+  border: 1px solid var(--tsi-line-control);
+  background: rgba(10, 7, 8, .94);
+  box-shadow: var(--tsi-shadow-panel);
+  font-size: var(--tsi-fs-body-sm);
+}
+.tsi-notice__text { flex: 1; }
+.tsi-notice__text strong { font-family: var(--tsi-font-display); font-weight: 700; letter-spacing: var(--tsi-track-label); }
+.tsi-notice__actions { display: flex; gap: 6px; flex-shrink: 0; }
+.tsi-notice--warn { border-color: var(--tsi-warn); }
+.tsi-notice--error { border-color: var(--tsi-danger); }
+.tsi-notice--ok { border-color: var(--tsi-ok); }
+
+/* ---------- Links to websites (need internet) ---------- */
+.tsi-extlink {
+  color: var(--tsi-cream);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(255, 210, 150, .3);
+}
+.tsi-extlink:hover { border-bottom-color: var(--tsi-cream); }
+.tsi-extlink__note { color: var(--tsi-text-faint); font-style: italic; }

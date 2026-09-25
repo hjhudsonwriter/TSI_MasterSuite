@@ -1,0 +1,217 @@
+/* ==========================================================================
+   The Scarlett Isles: D&D Tool Suite — design tokens
+   One shared set of colours, type, spacing, shapes and motion, used by the
+   shell and every tool. Values come from the old hub page
+   (scarlett-isles-dnd/styles.css) and the Bastion Manager
+   (bastion_manager/styles.css). See docs/PLAN.md section 3.
+   Fonts are bundled locally (licences in licences/fonts/).
+   ========================================================================== */
+
+/* ---------- Fonts (unmodified files from google/fonts, SIL OFL 1.1) ---------- */
+@font-face {
+  font-family: "Cinzel";
+  src: url("fonts/Cinzel-VariableFont_wght.ttf") format("truetype");
+  font-weight: 400 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Cormorant Garamond";
+  src: url("fonts/CormorantGaramond-VariableFont_wght.ttf") format("truetype");
+  font-weight: 300 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Cormorant Garamond";
+  src: url("fonts/CormorantGaramond-Italic-VariableFont_wght.ttf") format("truetype");
+  font-weight: 300 700;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Uncial Antiqua";
+  src: url("fonts/UncialAntiqua-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "IM Fell English";
+  src: url("fonts/IMFellEnglish-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "IM Fell English";
+  src: url("fonts/IMFellEnglish-Italic.ttf") format("truetype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "IM Fell English SC";
+  src: url("fonts/IMFellEnglishSC-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* ---------- Colour: surfaces (Bastion styles.css:7-11, hub :4-5, :20) ---------- */
+  --tsi-bg: #050506;
+  --tsi-bg-warm: #0a0708;
+  --tsi-panel: #2a0f14;
+  --tsi-panel-deep: #1b0a0d;
+  --tsi-panel-raised: #3a1219;
+  --tsi-page-fill:
+    radial-gradient(1200px 700px at 20% 0%, rgba(177, 18, 42, .18), transparent 55%),
+    radial-gradient(900px 600px at 85% 10%, rgba(214, 178, 94, .10), transparent 60%),
+    linear-gradient(180deg, #050506, #0a0708);
+  --tsi-panel-fill: linear-gradient(180deg, rgba(58, 18, 25, .92), rgba(27, 10, 13, .92));
+  --tsi-modal-fill: linear-gradient(180deg, rgba(58, 18, 25, .96), rgba(27, 10, 13, .96));
+  --tsi-glass-fill: linear-gradient(180deg, rgba(8, 6, 5, .58), rgba(10, 7, 6, .72));
+  --tsi-inset-fill: linear-gradient(180deg, rgba(0, 0, 0, .25), rgba(0, 0, 0, .05));
+  --tsi-head-fill: linear-gradient(180deg, rgba(0, 0, 0, .35), rgba(0, 0, 0, 0));
+  --tsi-field-bg: rgba(0, 0, 0, .45);
+  --tsi-btn-bg: rgba(0, 0, 0, .35);
+  --tsi-btn-bg-hover: rgba(0, 0, 0, .45);
+  --tsi-topbar-bg: rgba(0, 0, 0, .78);
+  --tsi-scrim: rgba(0, 0, 0, .72);
+  --tsi-option-bg: #0b090a;
+
+  /* ---------- Colour: text ---------- */
+  --tsi-text: #f5f1e8;
+  --tsi-text-muted: #d2c7b8;
+  --tsi-text-soft: rgba(210, 199, 184, .85);
+  --tsi-text-faint: rgba(245, 241, 232, .55);
+  --tsi-ink-hub: rgba(255, 255, 255, .92);
+  --tsi-ink-hub-muted: rgba(255, 255, 255, .72);
+
+  /* ---------- Colour: brand ---------- */
+  --tsi-crimson: #b1122a;
+  --tsi-crimson-deep: #7a0c1b;
+  --tsi-crimson-fill: linear-gradient(135deg, rgba(177, 18, 42, .98), rgba(122, 12, 27, .88));
+  --tsi-gold: #d6b25e;
+  --tsi-gold-deep: #a67c2f;
+  --tsi-gold-text: rgba(214, 178, 94, .95);
+  --tsi-line-faint: rgba(214, 178, 94, .25);
+  --tsi-line: rgba(214, 178, 94, .35);
+  --tsi-line-head: rgba(214, 178, 94, .45);
+  --tsi-line-control: rgba(214, 178, 94, .55);
+  --tsi-line-panel: rgba(214, 178, 94, .65);
+  --tsi-line-feature: rgba(214, 178, 94, .80);
+  --tsi-line-hover: rgba(214, 178, 94, .85);
+  --tsi-hairline: rgba(255, 255, 255, .10);
+
+  /* ---------- Colour: home-screen warmth (hub :7, :28-29, :145-147) ---------- */
+  --tsi-ember: rgba(255, 120, 60, .18);
+  --tsi-candle: rgba(255, 200, 140, .12);
+  --tsi-cream: rgba(255, 210, 150, .85);
+  --tsi-glass-line: rgba(255, 206, 150, .18);
+  --tsi-glass-line-hover: rgba(255, 206, 150, .28);
+  --tsi-pill-text: rgba(255, 255, 255, .78);
+  --tsi-pill-bg: rgba(255, 150, 90, .14);
+  --tsi-pill-line: rgba(255, 170, 120, .18);
+
+  /* ---------- Colour: status and content ---------- */
+  --tsi-ok: rgba(70, 230, 179, .95);
+  --tsi-danger: rgba(255, 122, 122, .9);
+  --tsi-warn: #e8c46a;
+  --tsi-telluria: #37c85f;
+  --tsi-aurush: #eb3737;
+  --tsi-pelagos: #3c91ff;
+
+  /* ---------- Type ---------- */
+  --tsi-font-display: "Cinzel", Georgia, serif;
+  --tsi-font-body: "Cormorant Garamond", Georgia, serif;
+  --tsi-font-title: "Uncial Antiqua", "Cinzel", serif;
+  --tsi-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --tsi-fs-label: 12px;
+  --tsi-fs-button: 14px;
+  --tsi-fs-body-sm: 16px;
+  --tsi-fs-body: 18px;
+  --tsi-fs-lead: 20px;
+  --tsi-fs-h3: 18px;
+  --tsi-fs-h2: 22px;
+  --tsi-fs-h1: 34px;
+  --tsi-lh-body: 1.4;
+  --tsi-lh-tight: 1.05;
+  --tsi-track-kicker: .16em;
+  --tsi-track-pill: .14em;
+  --tsi-track-heading: .10em;
+  --tsi-track-label: .06em;
+  --tsi-track-button: .04em;
+  --tsi-track-title: .05em;
+
+  /* ---------- Spacing ---------- */
+  --tsi-space-1: 4px;
+  --tsi-space-2: 8px;
+  --tsi-space-3: 12px;
+  --tsi-space-4: 16px;
+  --tsi-gutter: 18px;
+  --tsi-space-6: 24px;
+  --tsi-space-7: 34px;
+
+  /* ---------- Shapes ---------- */
+  --tsi-radius-sm: 10px;
+  --tsi-radius-md: 14px;
+  --tsi-radius-row: 16px;
+  --tsi-radius-lg: 18px;
+  --tsi-radius-xl: 22px;
+  --tsi-radius-pill: 999px;
+  --tsi-border: 1px solid var(--tsi-line);
+  --tsi-border-control: 1px solid var(--tsi-line-control);
+  --tsi-border-panel: 2px solid var(--tsi-line-panel);
+  --tsi-border-feature: 3px solid var(--tsi-line-feature);
+
+  /* ---------- Shadows and glow ---------- */
+  --tsi-shadow-btn: 0 10px 22px rgba(0, 0, 0, .35);
+  --tsi-shadow-panel: 0 18px 40px rgba(0, 0, 0, .55);
+  --tsi-shadow-card: 0 16px 60px rgba(0, 0, 0, .55);
+  --tsi-shadow-card-hover: 0 18px 70px rgba(0, 0, 0, .62);
+  --tsi-shadow-modal: 0 24px 70px rgba(0, 0, 0, .65);
+  --tsi-shadow-topbar: 0 10px 24px rgba(0, 0, 0, .45);
+  --tsi-glow-gold: 0 0 10px rgba(214, 178, 94, .55), 0 0 26px rgba(214, 178, 94, .25);
+  --tsi-focus-ring: 0 0 0 3px rgba(214, 178, 94, .18);
+  --tsi-text-shadow-title: 0 10px 30px rgba(0, 0, 0, .55);
+
+  /* ---------- Motion ---------- */
+  --tsi-dur-fast: 140ms;
+  --tsi-dur-base: 200ms;
+  --tsi-dur-slow: 400ms;
+  --tsi-ease: ease;
+  --tsi-lift: translateY(-3px);
+  /* Tools multiply their signature animation lengths by this (Harry's answer 8:
+     with "reduce motion" on, signature animations slow down rather than stop). */
+  --tsi-signature-slowdown: 1;
+
+  /* ---------- Layers ---------- */
+  --tsi-z-art: -2;
+  --tsi-z-base: 0;
+  --tsi-z-raised: 1;
+  --tsi-z-sticky: 100;
+  --tsi-z-menu: 300;
+  --tsi-z-notice: 700;
+  --tsi-z-tooltip: 800;
+  --tsi-z-modal: 900;
+  --tsi-z-toast: 950;
+  --tsi-z-cinematic: 1000;
+
+  /* ---------- Layout ---------- */
+  --tsi-width-home: 1320px;
+  --tsi-width-tool: 1680px;
+  --tsi-topbar-h: 56px;
+}
+
+/* Reduce motion: shared animations stop; tools slow their signature ones down. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --tsi-dur-fast: 0ms;
+    --tsi-dur-base: 0ms;
+    --tsi-dur-slow: 0ms;
+    --tsi-lift: none;
+    --tsi-signature-slowdown: 2.5;
+  }
+}
