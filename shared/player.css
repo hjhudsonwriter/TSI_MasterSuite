@@ -1,0 +1,42 @@
+/* ==========================================================================
+   The Scarlett Isles: D&D Tool Suite — player windows
+   The page every player window uses (player.html). Views add their own
+   styles, prefixed with their tool's name.
+   ========================================================================== */
+
+html, body.tsi-player { height: 100%; }
+body.tsi-player {
+  background: var(--tsi-page-fill);
+  overflow: hidden;
+}
+
+#tsi-player-root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+/* A quiet line in the corner when the window isn't in touch with the suite. */
+.tsi-player__status {
+  position: fixed;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  z-index: var(--tsi-z-toast);
+  padding: 8px 14px;
+  border-radius: var(--tsi-radius-pill);
+  border: 1px solid var(--tsi-line);
+  background: rgba(10, 7, 8, .9);
+  color: var(--tsi-text-muted);
+  font: 400 var(--tsi-fs-label)/1.2 var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-label);
+  pointer-events: none;
+}
+
+/* The built-in "check" view, used to test player windows. */
+.tsi-player-check {
+  max-width: 640px;
+  margin: 60px auto;
+}
+.tsi-player-check__text { font-size: var(--tsi-fs-lead); margin: 0 0 8px; }
+.tsi-player-check__count { color: var(--tsi-text-muted); margin: 0 0 14px; }

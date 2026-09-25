@@ -1,0 +1,110 @@
+/* ==========================================================================
+   The Scarlett Isles: D&D Tool Suite — shell styles
+   The home screen, the top bar's extra pieces, and the frame tools sit in.
+   ========================================================================== */
+
+body.tsi-page--tool { background: var(--tsi-page-fill); background-attachment: fixed; }
+/* The home screen's painted art only shows on the home screen; tools bring their own. */
+body.tsi-page--tool > .tsi-art { display: none; }
+
+/* ---------- Top bar extras ---------- */
+.tsi-topbar__sep {
+  color: var(--tsi-line-panel);
+  font: 400 20px/1 var(--tsi-font-display);
+  margin: 0 -6px;
+}
+h1.tsi-topbar__tool { margin: 0; }
+.tsi-topbar__home[aria-current="page"] { cursor: default; }
+
+/* ---------- Home screen ---------- */
+.tsi-home {
+  max-width: var(--tsi-width-home);
+  margin: 0 auto;
+  padding: 28px var(--tsi-gutter) 24px;
+}
+
+.tsi-home__brand {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  margin: 0 0 24px;
+}
+.tsi-home__logo {
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
+  flex-shrink: 0;
+  filter: drop-shadow(0 18px 30px rgba(0, 0, 0, .55));
+}
+.tsi-home__title {
+  margin: 0 0 8px;
+  font: 800 var(--tsi-fs-h1)/var(--tsi-lh-tight) var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-title);
+  color: var(--tsi-ink-hub);
+  text-shadow: var(--tsi-text-shadow-title);
+}
+.tsi-home__tagline {
+  margin: 0;
+  max-width: 68ch;
+  font-size: var(--tsi-fs-body);
+  color: var(--tsi-ink-hub-muted);
+}
+
+.tsi-home__cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+.tsi-home__cards .tsi-card { min-height: 188px; }
+
+.tsi-home__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 18px;
+  margin-top: 18px;
+  padding: 14px 4px 0;
+  color: rgba(255, 255, 255, .6);
+  font-size: var(--tsi-fs-body-sm);
+}
+.tsi-home__footer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.tsi-home__shop { margin-right: 8px; }
+
+/* Narrow windows (e.g. the laptop's window made small): fewer columns. */
+@media (max-width: 1100px) {
+  .tsi-home__cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 620px) {
+  .tsi-home__cards { grid-template-columns: 1fr; }
+  .tsi-home__brand { align-items: flex-start; }
+  .tsi-home__logo { width: 90px; height: 90px; }
+  .tsi-home__title { font-size: 28px; }
+  .tsi-topbar__title { display: none; }
+}
+
+/* ---------- Tool frame ---------- */
+.tsi-tool {
+  position: relative;
+  min-height: calc(100vh - var(--tsi-topbar-h));
+}
+
+.tsi-shell-loading {
+  margin: 0;
+  padding: 40px var(--tsi-gutter);
+  text-align: center;
+  font: 400 var(--tsi-fs-button) var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-label);
+  color: var(--tsi-text-soft);
+}
+
+.tsi-shell-message {
+  max-width: 760px;
+  margin: 40px auto;
+}
+.tsi-shell-message__actions { display: flex; gap: 8px; flex-wrap: wrap; }
