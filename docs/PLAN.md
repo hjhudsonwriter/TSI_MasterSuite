@@ -683,12 +683,12 @@ Defaults are in brackets; "keep" means keep it as the old tool does it.
 - **P3** Should a double-clicked rune count once? **Keep it as it is:** it still counts twice.
 - **P4** Pressure carrying into the basin, and Reset behaving differently in each mode? **Keep both as they are** (KNOWN_ISSUES PEL-18).
 
-**Notice Board Quest Generator**
-- **N1** Exactly one bounty at levels 7–10? *(keep)*
-- **N2** Bounties shown outside their level band (e.g. quest 77)? *(keep)*
-- **N3** One Clan Honour and one Temple Honour value for all? *(keep)*
-- **N4** Should the players' screen show only the notices, with no buttons? *(yes)*
-- **N5** Root and Veinwood text in outlines and in 6 bounties: keep word for word until Harry sends replacements? *(keep)*
+**Notice Board Quest Generator** *(answered by Harry, 26 September 2026: all the defaults; built in phase 4)*
+- **N1** Exactly one bounty at levels 7–10? **Keep.**
+- **N2** Bounties shown outside their level band (e.g. quest 77)? **Keep.**
+- **N3** One Clan Honour and one Temple Honour value for all? **Keep.**
+- **N4** Should the players' screen show only the notices, with no buttons? **Yes.**
+- **N5** Root and Veinwood text in outlines and in 6 bounties: keep word for word until Harry sends replacements? **Keep.**
 
 **The Heartwood Ritual**
 - **R1** Home-screen name: "The Heartwood Ritual" or "The Lullaby of the Rootbound Heart"? *(The Heartwood Ritual)*

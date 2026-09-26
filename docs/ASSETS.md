@@ -60,3 +60,14 @@ All 18 media files from the old tool, each checked byte-for-byte after copying. 
 **Five sounds still to come (Harry's answer P2).** The old tool also named five sounds that were never supplied: `water-stir.wav`, `pressure-rise.wav`, `current-reverse.wav`, `tidal-surge.wav` and `basin-wake.wav`. Harry will provide them. Each has a ready-made place in `tools/pelagosi/data/pelagosi-data.js` and stays silent until its file is added to `tools/pelagosi/assets/audio/` and switched on there (see the note in that folder).
 
 The empty `.keep` placeholder files in the old repo's folders weren't copied.
+
+## Notice Board Quest Generator (phase 4)
+
+The old tool had one picture. It isn't a copy of any file in the other old repos.
+
+| Old path | New path | Size | Used |
+|---|---|---|---|
+| `scarlett-isles-quest-generator/assets/ui/noticeboard.png` | `tools/quests/assets/noticeboard.png` | 2.78 MB, 1536 × 1024 | Yes: the wooden notice board, on the DM's screen and in the players' window |
+
+The empty `.keep` placeholder in the old `assets/ui/` folder wasn't copied. The quest data (`data/quests.json`) is content, not media: it's in `tools/quests/data/quests-data.js`.
+

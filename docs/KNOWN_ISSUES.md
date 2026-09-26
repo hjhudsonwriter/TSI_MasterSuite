@@ -2,7 +2,7 @@
 
 Every bug found in the eight old tools during planning, and what the rebuild will do about each one. CLAUDE.md's rule: **only fix a bug if it breaks the tool, loses saved data, or applies something twice.** Everything else stays exactly as it was, and is listed here for Harry to decide on later.
 
-**Status: phases 1 (the shell), 2 (Clan Crest Creator) and 3 (Pelagosi Puzzle Trials) are built.** The shell's share of the suite-wide (SUI) fixes is in place and tested, and each entry has a **Phase 1** line saying what's done. Every Clan Crest Creator entry has a **Phase 2** line and every Pelagosi entry a **Phase 3** line, saying whether it was fixed, changed or kept. The other tools' entries are unchanged until their phases. Each tool's session updates its own entries as it goes: it marks each one fixed, or confirms it was left alone, and adds anything new it finds.
+**Status: phases 1 (the shell), 2 (Clan Crest Creator), 3 (Pelagosi Puzzle Trials) and 4 (Notice Board) are built.** The shell's share of the suite-wide (SUI) fixes is in place and tested, and each entry has a **Phase 1** line saying what's done. Every Clan Crest Creator entry has a **Phase 2** line, every Pelagosi entry a **Phase 3** line and every Notice Board entry a **Phase 4** line, saying whether it was fixed, changed or kept. The other tools' entries are unchanged until their phases. Each tool's session updates its own entries as it goes: it marks each one fixed, or confirms it was left alone, and adds anything new it finds.
 
 ## How to read an entry
 
@@ -419,6 +419,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **After (planned):** Store the quests as a .js data file loaded with a normal script tag, with a check for 180 records.
 - **Checker's note:** Must fix to rebuild: turn the data into a .js file.
 - **Evidence:** app.js:683; console 'Fetch API cannot load file:///…/data/quests.json. URL scheme "file" is not supported.' (run1_raw.js, raw_file_load.png)
+- **Phase 4:** Fixed. The 180 quests are in `tools/quests/data/quests-data.js`, word for word, loaded with a plain script tag. Tests: "Loaded 180" with the internet off; the rules tests count 180 quests numbered 1 to 180.
 
 ### QST-02 · Fonts and Firebase come from the internet
 **Must fix** · won't work double-clicked / offline
@@ -428,6 +429,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **Decision note:** Fonts are bundled. The Firebase library is also bundled locally; its connection to Matt's shop stays online by design (answer 11, Option A) and skips quietly offline.
 - **Checker's note:** Neither stops the old tool working: fonts fall back, and the Firebase failure is caught at app.js:23-34. Both still break CLAUDE.md's no-internet rule, so remove Firebase and bundle the fonts.
 - **Evidence:** index.html:7-9, 118-119; requestfailed in run1
+- **Phase 4:** Fixed. The fonts come from the suite folder. The Firebase library (9.22.0, as before) is stored in `tools/quests/lib/firebase/` and only the Notice Board loads it. With no internet, the only thing the page reaches for is Matt's database, which fails quietly in the background: no error bar, and the Notice Board works fully. (The old tool couldn't even load the library offline; the new one keeps retrying the connection, which is harmless and invisible.) Tests: the page with the internet off, and the ★ with the internet off.
 
 ### QST-03 · Players' window keeps showing notices after the board is cleared or emptied
 **Must fix** · breaks the tool · listed in the handover
@@ -436,6 +438,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **After (planned):** The new player page receives the board by postMessage after every change, including an empty board.
 - **Checker's note:** There is a third case the survey missed: Generate with no matching quests. The handover asks for this to be fixed (line 117). The postMessage player page fixes it if it also sends empty boards.
 - **Evidence:** app.js:744-748 (Clear never updates the popout), 535-538 (empty board returns before the update at 644). Verified: DM 0 / players 3 after Clear; DM 0 / players 1 after declining all.
+- **Phase 4:** Fixed. The players' window is sent the whole board after every change, including Clear, declining the last notice and a Generate that finds nothing. Test: "it follows Generate, Decline, Clear and an empty Generate straight away".
 
 ### QST-04 · Quest Outline panel cut off on laptop screens
 **Must fix** · breaks the tool
@@ -444,6 +447,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **After (planned):** The rebuilt layout sizes the three columns to fit a laptop screen.
 - **Checker's note:** On Harry's likely laptop widths the start of every outline line is unreadable. The new layout fixes it anyway.
 - **Evidence:** styles.css:340-349 (fixed minimum column widths, centred); run4_layout.js: leftPanelX -158 at 1280, -115 at 1366, -78 at 1440, -30 at 1536; laptop_1366.png
+- **Phase 4:** Fixed. The three columns fit the laptop, full screen and the TV, and each panel scrolls inside itself. Tests at all four sizes.
 
 ### QST-05 · Saving isn't protected against errors
 **Must fix** · loses saved data
@@ -452,6 +456,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **After (planned):** The shared save system catches errors and keeps a copy of anything it can't read.
 - **Checker's note:** It really is lost data: an accept that looks successful vanishes on reload. It becomes likely in the suite, because every tool shares one storage area of about 5 MB (see missed items). The shared save module must catch failed saves and warn Harry.
 - **Evidence:** app.js:48, 119, 127 (setItem not wrapped in try/catch); 114-117 (a corrupt save becomes [] and is overwritten)
+- **Phase 4:** Fixed by the suite's saving: a failed save shows "Not saved" and a warning; a save that can't be read is set aside and kept, never deleted. Test: "a damaged save is set aside, not deleted, and Accept still works".
 
 ### QST-06 · Pop-out Board stops working after the DM page is reloaded
 **Must fix** · won't work double-clicked / offline
@@ -459,6 +464,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **Before:** If Harry refreshes the main Notice Board page while the players' window is open, the Pop-out Board button stops working. The players' screen stays stuck on the old notices until someone closes it by hand. This only happens when the tool is opened from a file, which is how the suite will run.
 - **After (planned):** Use the planned separate player page with postMessage. When the DM page loads, or when Pop-out is pressed, reconnect to the same named window, and have the player page announce 'ready' to window.opener.
 - **Evidence:** v3b_output.txt: after the DM page reloads, clicking Pop-out Board throws "Blocked a frame with origin \"null\" from accessing a frame with origin \"null\"" at app.js:765 (popWin.document). The players' window keeps its old cards. The scratch test quests-verify/pm2/test.js shows the postMessage design recovers: after a DM reload the player page's window.opener still reaches the DM tab, window.open('', name) returns the existing players' window, and window.open(url, name) reuses it.
+- **Phase 4:** Fixed. After the DM's page is reloaded, the players' window reconnects by itself, and Pop-out Board brings the same window forward rather than opening a second one. Test.
 
 ### QST-07 · Two open copies of the tool overwrite each other's saves
 **Must fix** · loses saved data
@@ -466,6 +472,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **Before:** If the Notice Board is open in two tabs or windows at once, whichever one saves last wipes out what the other one saved: accepted quests, outlines, and the star.
 - **After (planned):** The shared save module should re-read before writing (or listen for storage changes from other tabs) and warn if the suite is open twice.
 - **Evidence:** v2_output.txt D: tab A accepted 42 and 7 and starred 42. Tab B, opened earlier, then accepted 179. The save became [179]. After a reload, tab A showed only [179], the star key still pointed at 42 (a quest no longer in the list), and the outlines for 42 and 7 were gone. Cause: whole-list saves from memory (app.js:119, 127) and nothing listens for changes from other tabs.
+- **Phase 4:** Covered by the suite's "Already open" warning (SUI-06). As with every tool, it warns rather than blocks, so close one of the two.
 
 ### QST-08 · Players' window goes blank if refreshed
 **Fixed by the new design** · other
@@ -475,6 +482,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **Decision note:** The new player window asks for the board when it loads.
 - **Checker's note:** Workaround: press Pop-out Board again. That only works if the DM page has not been reloaded as well (see the new bug). A real F5 keypress in desktop Chrome was not tested separately; the headless reload behaved like this.
 - **Evidence:** run3_misc.js: after reload the popout has no content (popout_after_refresh.png)
+- **Phase 4:** Fixed. A refreshed players' window asks for the board and gets it straight back. Test.
 
 ### QST-09 · Players' window updated once per notice
 **Fixed by the new design** · other
@@ -484,6 +492,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **Decision note:** One update per board change.
 - **Checker's note:** Harmless.
 - **Evidence:** app.js:644 inside forEach; run2 'calls: 6'
+- **Phase 4:** Fixed. One update per change.
 
 ### QST-10 · Old error message tells you to use GitHub Pages
 **Fixed by the new design** · other
@@ -493,6 +502,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **Decision note:** The GitHub Pages advice is removed; data can no longer fail to load.
 - **Checker's note:** Reword it in the rebuild.
 - **Evidence:** app.js:844
+- **Phase 4:** Fixed. The quests can't fail to load any more, so the message has gone.
 
 ### QST-11 · Leftover unused code
 **Fixed by the new design** · other
@@ -502,6 +512,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **Decision note:** Not ported.
 - **Checker's note:** Don't port any of it.
 - **Evidence:** app.js:459-464, 508-512, 816, 346-350
+- **Phase 4:** Not ported.
 
 ### QST-12 · Damaged saves stop Accept working
 **Fixed by the new design** · other
@@ -510,6 +521,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **After (planned):** The shared load and import code checks shapes (a list of quests with number ids; an outline object keyed by id; a number for the star) and keeps a copy of anything it rejects.
 - **Decision note:** The shared save layer checks the shape of saved data and keeps a copy of anything it rejects.
 - **Evidence:** v1_output.txt C: a saved value of 'null' makes Accept throw "Cannot read properties of null (reading 'some')", '{}' throws 'accepted.some is not a function', and an outline save of 'null' throws on Accept after the quest was already saved (the list then wrongly shows 'No accepted quests yet'). The old tool itself never writes these values.
+- **Phase 4:** Fixed. Saved data is checked as it loads (anything damaged is set aside) and when a file is imported (a damaged file is refused and nothing changes). Tests, and rules tests for each check.
 
 ### QST-13 · Removing the starred quest sent two identical online updates
 **Deliberate change** · other
@@ -519,6 +531,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **Decision note:** Harry chose to keep the Knightly Treasures link (answer 11, Option A). The suite sends one update per change; the shop sees no difference.
 - **Checker's note:** This only affected the online shop. The quest details were identical but the timestamps could differ. It goes away with Firebase, and nothing in the game was counted twice.
 - **Evidence:** app.js:372 and 449; run2 'writesForRemove: 2'
+- **Phase 4:** Done. Removing the ★ quest sends the shop one message. A test compares every message with the old tool's: they're identical, except that the old tool sent this one twice.
 
 ### QST-14 · Dead Accept/Decline buttons on the players' screen
 **Later, Harry's call** · other · listed in the handover
@@ -528,6 +541,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **Decision note:** N4 (default: players' screen shows the notices only)
 - **Checker's note:** The handover also notes this (line 117). Ask Harry whether players should see buttons at all.
 - **Evidence:** app.js:807 cloneNode copies buttons without their click handlers; verified popout Accept click → DM accepted count unchanged
+- **Phase 4:** Changed as Harry chose (N4): the players' window shows the notices only, with no buttons. Test.
 
 ### QST-15 · Empty-board and error messages hidden behind the board art
 **Later, Harry's call** · other
@@ -536,6 +550,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** Note for testing: elementFromPoint does not show this, because the art layer has pointer-events:none. Only a screenshot shows it.
 - **Evidence:** styles.css:158-181 (art layer is positioned; #emptyState isn't); screenshots raw_file_load.png, flow07_empty_board.png
+- **Phase 4:** Kept: the "No notices yet" card is still underneath the board art. The load-error message no longer exists (QST-10).
 
 ### QST-16 · Every level 7-10 board always includes a bounty
 **Later, Harry's call** · other
@@ -545,6 +560,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **Decision note:** N1
 - **Checker's note:** A rules question for Harry. Keep it as it is in the faithful rebuild.
 - **Evidence:** app.js:730-738; 200/200 boards at Lv7 had exactly 1 bounty; Quest Type Bounty + Count 6 → 1 notice; Bolt Isle Lv7 Count 6 → 3 of pool 12
+- **Phase 4:** Kept (N1). Tests: exactly one bounty on 200 level 7 boards; Count 1 gives just the bounty; Quest Type Bounty gives one notice.
 
 ### QST-17 · A level 11-13 bounty only appears at levels 7-10
 **Later, Harry's call** · other
@@ -554,6 +570,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **Decision note:** N2
 - **Checker's note:** Five bounties are affected, not one. Harry's call.
 - **Evidence:** app.js:496-498; quests.json id 77 level 11-13; run5 id77AtL11 false
+- **Phase 4:** Kept (N2). Test: quest 77 shows at levels 7 and 10 but not 11.
 
 ### QST-18 · Rescue quest outline has no proper enemy
 **Later, Harry's call** · other
@@ -562,6 +579,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** Keep for now.
 - **Evidence:** app.js:185, 241-243; run2 OUTLINES.rescue
+- **Phase 4:** Kept. Test.
 
 ### QST-19 · Root/Veinwood themes in notice-board content
 **Later, Harry's call** · other · listed in the handover
@@ -571,6 +589,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **Decision note:** N5 (kept word for word until Harry sends replacements)
 - **Checker's note:** This is content, not a bug. Keep the text word for word until Harry sends approved replacements.
 - **Evidence:** app.js:173, 259; quests.json ids 105, 122, 123, 125, 143, 155
+- **Phase 4:** Kept word for word (N5), in `tools/quests/data/quests-data.js` and `tools/quests/data/outline-data.js`, ready for Harry's replacements.
 
 ### QST-20 · Party Level box shows out-of-range numbers
 **Later, Harry's call** · other
@@ -579,6 +598,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** Harry's call.
 - **Evidence:** app.js:488; run2 CLAMP
+- **Phase 4:** Kept. Test.
 
 ### QST-21 · Accepted quests are frozen copies
 **Later, Harry's call** · other
@@ -587,6 +607,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** Keep the behaviour. Relevant to the later import step.
 - **Evidence:** app.js:356-357, 157
+- **Phase 4:** Kept.
 
 ### QST-22 · Declining a notice re-tilts all the other notices
 **Later, Harry's call** · other
@@ -594,6 +615,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **Before:** When you decline one notice, every other notice on the board (and on the players' screen) jumps to a new random angle.
 - **After:** Kept as it is in the rebuild.
 - **Evidence:** v1_output.txt: tilts before a decline [0.48, -1.13, -0.51, -1.20, -0.57, 0.34]deg; after [0.93, -0.03, 0.93, -1.07, -0.59]deg. renderParchments redraws every card with a new Math.random tilt (app.js:544, 624).
+- **Phase 4:** Kept. Test: given the same dice, the new tilts after a Decline match the old tool's exactly.
 
 ### QST-23 · Removing an accepted quest is instant, with no way back
 **Later, Harry's call** · other
@@ -601,6 +623,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **Before:** Clicking the ✕ removes an accepted quest straight away, with no 'are you sure?'. The only way to get it back is to keep pressing Generate until it happens to appear again.
 - **After:** Kept as it is in the rebuild.
 - **Evidence:** app.js:406 (the ✕ is a small span), 440-456 (removes immediately). At Lv 7 the random pool has 97 quests (pool.py).
+- **Phase 4:** Kept.
 
 ### QST-24 · Firebase update left mismatched quote marks in outline text
 **Later, Harry's call** · other
@@ -608,6 +631,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **Before:** The shop update of 11 Feb swapped some curly apostrophes for straight ones and left odd pairs, so outlines read "The ‘villain' is being coerced…", "‘catch'" and "‘doing'".
 - **After:** Kept as it is in the rebuild.
 - **Evidence:** git show a6dab50 (Matt Owen): ’ replaced with ' across the word banks; today app.js:187, 212, 221 have mismatched ‘…' pairs
+- **Phase 4:** Kept word for word.
 
 ### QST-25 · Outlines saved between 23 Jan and 5 Feb 2026 say 'A notice calls for help.'
 **No longer relevant** · other
@@ -616,6 +640,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **After:** Kept as it is in the rebuild.
 - **Decision note:** Old saves are not being imported (answer 9).
 - **Evidence:** git show 1eed80b:data/quests.json: all 100 quests use 'summary', and a8e3e66 (5 Feb) moved it to 'description'. app.js:245 premise = description || notice (it never reads summary). A node check on old record 42 gives the premise 'A notice calls for help.', while current data gives the real text. app.js:157 never rebuilds a cached outline. OUTLINE_KEY was added 23 Jan (377dbe5).
+- **Phase 4:** No longer relevant (no old saves are imported).
 
 ### QST-26 · Star tooltip still mentions the shop
 **No longer relevant** · other
@@ -624,7 +649,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **After:** Kept as it is in the rebuild.
 - **Decision note:** The shop link is kept (answer 11, Option A), so "Primary quest for shop" stays true.
 - **Evidence:** app.js:401
-
+- **Phase 4:** Kept: "Primary quest for shop" on the ★ quest, "Set as primary quest" on the others.
 
 ## Scarlett Isles Explorer
 Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
