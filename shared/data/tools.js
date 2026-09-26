@@ -110,10 +110,19 @@ window.TSI_DATA.tools = [
     name: 'The Heartwood Ritual',
     group: 'set',
     phase: '5',
-    built: false,
+    built: true,
     saves: false,
     desc: 'The Lullaby of the Rootbound Heart. Tellurian Re-Binding Engine.',
-    files: { css: [], js: [] }
+    /* The roots picture; the Ritual lays its own root film and veil over it. */
+    art: 'tools/ritual/assets/img/root-background.png',
+    files: {
+      css: ['tools/ritual/ritual.css'],
+      js: [
+        'tools/ritual/data/ritual-data.js',
+        'tools/ritual/rules.js',
+        'tools/ritual/tool.js'
+      ]
+    }
   },
   {
     id: 'pelagosi',
