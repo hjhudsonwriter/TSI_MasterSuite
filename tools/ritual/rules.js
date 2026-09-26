@@ -86,7 +86,7 @@
 
     /* ---------- One ritual ---------- */
     create: function (D, rng) {
-      rng = rng || Math.random;
+      rng = rng || function () { return Math.random(); };
       var S = R.newState(D);
       var fx = [];
       /* What the Pulse box shows. As in the old tool it's worked out just
