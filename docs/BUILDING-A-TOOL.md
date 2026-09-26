@@ -13,6 +13,8 @@ In `shared/data/tools.js`, set the tool's `built: true` and list its files, rela
 
 The shell loads the styles, then the scripts in order, with plain tags. No modules, no `fetch()`. Content goes in `data/*.js` files that set `window.TSI_DATA.<something>`.
 
+To show painted art behind the tool, as the home screen does, add `art: 'path/to/picture.png'` to the entry. The Crest uses `shared/art/hero.png`.
+
 ## 2. Register it
 
 ```js
@@ -42,6 +44,8 @@ The shell loads the styles, then the scripts in order, with plain tags. No modul
 | `ctx.playerLink({ view, getState, onMessage, onStatus })` | A player window (see below). It closes when the tool closes. |
 | `ctx.setLeaveCheck(fn)` | For tools that don't save: `fn` returns a message such as "This will end the ritual in progress." when leaving would lose something, or `null`. The shell asks before Home, Switch tool, or closing the tab. |
 | `ctx.notify`, `ctx.modal` | Notices (`TSI.notify(text, { type: 'ok' | 'warn' | 'error', actions })`) and pop-ups (`TSI.modal.confirm`, `.alert`, `.open`). Use these instead of `alert()` and `confirm()`. |
+
+The test page (`tests/harness.html`) keeps its saved data apart from the real suite (`TSI.space` is `'test'`, the database is `tsi.test`). Tools don't need to do anything about this.
 
 Other shared helpers: `TSI.el(tag, attrs, children)` builds elements (text is always set as text, never HTML). `TSI.oneAtATime(fn)` makes a button ignore double clicks and held-down Enter. `TSI.the(name)` puts "the" before a name, unless it already starts with "The". Other helpers: `TSI.download`, `TSI.pickFile`, `TSI.readFileText`, `TSI.dates`, and `TSI.keys.isTyping`.
 
@@ -81,6 +85,7 @@ Refreshing either window and reloading the tool's page are handled. Messages are
 - Use one crimson main button (`tsi-btn tsi-btn--primary`) per panel. All other buttons are outlined gold (`tsi-btn`).
 - Body text is Cormorant Garamond in sentence case. Capitals only for headings, labels and buttons. Crimson is never used for text.
 - Signature animations: multiply their length by `var(--tsi-signature-slowdown)`. It's 2.5 when "reduce motion" is on.
+- Give ids two different prefixes: one for controls (e.g. `tsi-crest-field-…`) and one for parts of a drawing (e.g. `tsi-crest-svg-…`). In phase 2 a drop-down and an SVG filter shared an id, and every crest drew darker. `tests/e2e/phase2.test.js` checks every id on the page is unique; copy that check.
 - Don't put a URL inside a CSS custom property: Chromium resolves it against the stylesheet that uses the property, not the one that sets it. Set background pictures directly on the element or in the tool's own CSS. For painted art behind a screen, see `.tsi-art` in `components.css`.
 - It must fit 1707 × 930 (pixel ratio 1.5) with no sideways scroll and its main controls in view. Explorer, Combat Tracker and Bastion must also fit 1920 × 1080.
 

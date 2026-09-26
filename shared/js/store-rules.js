@@ -17,6 +17,38 @@
   var rules = {
     RESERVED_TOOLS: ['suite', 'quarantine'],
 
+    /* Tools that only exist on the test page. Their data is never kept in,
+       backed up from or restored into the real suite. */
+    TEST_ONLY_TOOLS: ['demo'],
+
+    isTestOnly: function (key) {
+      return rules.TEST_ONLY_TOOLS.indexOf(rules.toolOf(key)) !== -1;
+    },
+
+    /* The storage names for each "space". The real suite and the test page
+       never share a database, a storage key or a backup file.
+       - db: the browser database's name
+       - local: the prefix for the small fallback storage (the test page's
+         keys contain a colon, which a real save name can never have)
+       - tabs, tabId, flash: the shell's own bookkeeping
+       - file: the start of backup file names */
+    spaceNames: function (space) {
+      if (space === 'test') {
+        return { space: 'test', db: 'tsi.test', local: 'tsi.test:', tabs: 'tsi.test:tabs', tabId: 'tsi.test:tab-id', flash: 'tsi.test:flash', file: 'tsi-test-' };
+      }
+      return { space: 'suite', db: 'tsi.suite', local: '', tabs: 'tsi.suite.tabs', tabId: 'tsi.suite.tab-id', flash: 'tsi.suite.flash', file: 'tsi-' };
+    },
+
+    /* The fallback-storage key for a save, and back again (null if it isn't one of this space's). */
+    localKey: function (key, space) { return rules.spaceNames(space).local + key; },
+    fromLocalKey: function (storageKey, space) {
+      var prefix = rules.spaceNames(space).local;
+      if (typeof storageKey !== 'string' || storageKey.indexOf(prefix) !== 0) return null;
+      var key = storageKey.slice(prefix.length);
+      if (!rules.isValidKey(key) || rules.toolOf(key) === 'suite') return null;
+      return key;
+    },
+
     isValidKey: function (key) {
       return typeof key === 'string' && key.length <= MAX_KEY_LENGTH && KEY_PATTERN.test(key);
     },

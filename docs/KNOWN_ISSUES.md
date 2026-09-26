@@ -2,7 +2,7 @@
 
 Every bug found in the eight old tools during planning, and what the rebuild will do about each one. CLAUDE.md's rule: **only fix a bug if it breaks the tool, loses saved data, or applies something twice.** Everything else stays exactly as it was, and is listed here for Harry to decide on later.
 
-**Status: phase 1 (the shell) is built.** The shell's share of the suite-wide (SUI) fixes is in place and tested. Each entry has a **Phase 1** line saying what's done. No tool has been rebuilt yet, so the tool entries are unchanged. Each tool's session updates its own entries as it goes: it marks each one fixed, or confirms it was left alone, and adds anything new it finds.
+**Status: phases 1 (the shell) and 2 (Clan Crest Creator) are built.** The shell's share of the suite-wide (SUI) fixes is in place and tested, and each entry has a **Phase 1** line saying what's done. Every Clan Crest Creator entry has a **Phase 2** line saying whether it was fixed, changed or kept. The other tools' entries are unchanged until their phases. Each tool's session updates its own entries as it goes: it marks each one fixed, or confirms it was left alone, and adds anything new it finds.
 
 ## How to read an entry
 
@@ -21,12 +21,12 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 
 | Tool | Must fix | Fixed by design | Deliberate | Later (Harry's call) | Not relevant / not a bug |
 |---|---|---|---|---|---|
-| Suite-wide (SUI) | 3 | 11 | 2 | 0 | 0 |
+| Suite-wide (SUI) | 5 | 11 | 2 | 0 | 0 |
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
 | Scarlett Isles Explorer (EXP) | 12 | 3 | 0 | 12 | 0 |
 | The Ironbow Bastion Manager (BAS) | 15 | 1 | 1 | 18 | 0 |
-| Clan Crest Creator (CRS) | 0 | 3 | 0 | 8 | 1 |
+| Clan Crest Creator (CRS) | 0 | 4 | 2 | 7 | 1 |
 | Arenas of The Scarlett Isles (ARN) | 8 | 2 | 0 | 17 | 0 |
 | The Heartwood Ritual (RIT) | 9 | 1 | 0 | 15 | 1 |
 | Pelagosi Puzzle Trials (PEL) | 11 | 1 | 0 | 5 | 0 |
@@ -166,6 +166,22 @@ These come from checking the eight tools against each other: the collision audit
 - **Phase 1:** The shared components provide one crimson main button style. Each tool in its phase.
 
 ---
+
+
+### SUI-17 · The test page shared its saved data and backups with the real suite
+**Must fix** · could mix test data into real saves (found after phase 1; Harry asked for the fix)
+
+- **Before:** In phase 1, `tests/harness.html` (the test page with the pretend Demo tool) saved into the same browser database as the real suite. Its Demo tool data could appear in "Back up everything", and a test backup could be restored into the real suite.
+- **After:** Fixed in phase 2. The test page has its own database (`tsi.test`), its own small-storage names and its own "already open" list. Its backups are marked as test backups (`"space": "test"`) and named `tsi-test-…`. The real suite refuses test backups and the test page refuses real ones. Any Demo tool data left in the real database is removed when the suite opens, and left out if an older backup holds it. The test page says "Test page" in the top bar and the browser tab.
+- **Evidence:** tests/e2e/phase1.test.js "The test page is kept apart from the real suite"; tests/rules.html "Saving: the test page is kept apart" and "Backups: the test page is kept apart".
+
+
+### SUI-18 · Dates in pop-ups read differently in Edge ("Friday, 25 September")
+**Fixed** · found by Harry's phase 2 check of `tests/rules.html` in Edge
+
+- **Before:** The suite asked the browser for its own UK date format. Edge writes "Friday, 25 September 2026" (with a comma) and the test browser "Friday 25 September 2026", so one rules test failed in Edge only. The dates appear in the Restore and Import pop-ups and the save-status tooltip.
+- **After:** Dates are written out by the suite itself, "Friday 25 September 2026 at 14:03", the same in every browser. A new rules test pretends to be Edge to make sure of it.
+- **Evidence:** `shared/js/core.js` (`TSI.dates.human`); `tests/rules/core.test.js` "dates read the same in every browser".
 
 ## Combat Tracker & VTT Battlemap
 Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point there).
@@ -1126,6 +1142,7 @@ Old repo: `_legacy/clan-crest-creator` (file:line references point there).
 - **Decision note:** Every SVG id gets a tsi-crest- prefix (namespacing rule).
 - **Checker's note:** A rebuild requirement (namespacing), not a legacy bug. The bigger clash risk is the HTML control ids; see new_bugs.
 - **Evidence:** app.js:296-299, 318, 324, 330, 335, 399, 404. No clashes found in the other seven legacy tools (grep).
+- **Phase 2:** Fixed. The drawing's hidden part names now start `tsi-crest-svg-` (clip, texture, gloss, shadow, stripes). The tests check every id on the page is unique.
 
 ### CRS-02 · Crest's control ids clash with the Heartwood Ritual's
 **Fixed by the new design** · breaks the tool
@@ -1134,6 +1151,7 @@ Old repo: `_legacy/clan-crest-creator` (file:line references point there).
 - **After (planned):** Must do as part of the rebuild (CLAUDE.md namespacing): prefix every crest element id (e.g. tsi-crest-reset), or look elements up inside the crest's own root element rather than the whole page. The handover's section 13 warns about generic DOM ids in general but does not name this clash.
 - **Decision note:** Namespacing rule: ids prefixed and looked up inside the tool.
 - **Evidence:** The crest looks up elements by id with getElementById (app.js:4, 115, 130): 'btnReset' and 'bannerText'. The Ritual uses the same ids: tellurian-ritual-engine/index.html:194 (id="bannerText"), :294 (id="btnReset"), ritual.js:108, 139. getElementById returns the first match in the page.
+- **Phase 2:** Fixed. The Crest's controls are built inside its own screen and never looked up across the page, and their ids start `tsi-crest-field-`. While building, the tests caught a new clash of the same kind (the Texture drop-down and the drawing's texture layer shared a name, which darkened every crest). It was fixed before release by the two prefixes above.
 
 ### CRS-03 · Crest stylesheet restyles every element on the page, not just the crest
 **Fixed by the new design** · breaks the tool
@@ -1142,6 +1160,7 @@ Old repo: `_legacy/clan-crest-creator` (file:line references point there).
 - **After (planned):** Must do in the rebuild: scope every rule under a crest root class (e.g. .tsi-crest label), give the classes a crest- prefix, and take body and page-wide styling from the shared design tokens.
 - **Decision note:** Namespacing rule: styles prefixed and scoped to the tool.
 - **Evidence:** styles.css:13-21 (*, html, body with background #080707 and a system font), 150-153 (label), 155-167 (select, input[type=text]), 169-171 (input[type=range]). The classes are also generic (.btn, .panel, .grid, .row, .block, .preview, .bg, .topbar, .wrap, .hint); .btn is also used by the Ritual.
+- **Phase 2:** Fixed. Every rule in `tools/crest/crest.css` is scoped under `.tsi-tool--crest` and every class starts `tsi-crest-`. The page-wide styles come from the shared tokens. A test reads the stylesheet and checks it.
 
 ### CRS-04 · Round shield has a line through the middle and a stick hanging below
 **Later, Harry's call** · other
@@ -1151,15 +1170,17 @@ Old repo: `_legacy/clan-crest-creator` (file:line references point there).
 - **Decision note:** K1
 - **Checker's note:** Cosmetic, and in the PNG too. Keep it for the faithful rebuild and ask Harry.
 - **Evidence:** shieldPathRound app.js:686-693 draws the circle, then a curve from the top down to y+h-40 and closes back to the top, so the border stroke traces a vertical line. Screenshot 05_round_sun_solid.png and 06_contact_sheet.png (round).
+- **Phase 2:** Kept as it is (Harry's answer K1). The Round shield is drawn exactly as before.
 
 ### CRS-05 · Downloaded PNG uses a different font for the motto than the preview
-**Later, Harry's call** · other
+**Deliberate change** (Harry's answer K4; was *Later, Harry's call*) · other
 
 - **Before:** The motto on screen is in a plain modern font, but the saved picture uses an old-fashioned newspaper-style font instead, because the picture can't see the page's fonts. What you see is not quite what you get.
-- **After:** Kept as it is in the rebuild.
+- **After:** The motto uses the suite's Cinzel font in both the preview and the PNG (see Phase 2).
 - **Decision note:** K4 (default: the suite font, embedded so preview and PNG match)
 - **Checker's note:** Not a fix-now bug. It is a rebuild decision, because the new suite font would change the preview anyway.
 - **Evidence:** No font-family on banner text (app.js:581-583, 595-597, 617-619). Preview font = system sans (styles.css:17); export crop 07b_export_banner_zoom.png shows serif 'HOLD FAST'.
+- **Phase 2:** Changed (Harry's answer K4). The motto is now set in the suite's Cinzel font in the preview **and** the PNG. The font file is packed inside the downloaded picture (`tools/crest/data/motto-font.js`, the unchanged Cinzel file as base64), so what you see is what you get. A test checks the PNG really uses it.
 
 ### CRS-06 · Long mottos spill off the banner and get cut off
 **Later, Harry's call** · other · listed in the handover
@@ -1168,6 +1189,7 @@ Old repo: `_legacy/clan-crest-creator` (file:line references point there).
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** Harry's call later. Not from the handover, which lists it only as a test case.
 - **Evidence:** renderBanner fixed font-size 34 and banner width 464 (app.js:572-624). Playwright bbox: 26 W's = x -10, width 1,045 in a 1,024 image; 'In Scarlet We Stand' ribbon = 269-756 vs banner 280-744. Screenshots 03_longbanner_*.png.
+- **Phase 2:** Kept as it is. Long mottos still run past the banner.
 
 ### CRS-07 · Random names have no space between the two words
 **Later, Harry's call** · other
@@ -1177,6 +1199,7 @@ Old repo: `_legacy/clan-crest-creator` (file:line references point there).
 - **Decision note:** K2
 - **Checker's note:** Faithful: keep it and ask Harry.
 - **Evidence:** app.js:15 `${a}${b}${c}`; Playwright random samples 'StormOath', 'EmberCircle of the Salt Coast', 'ScarletKindred'.
+- **Phase 2:** Kept as it is (Harry's answer K2): "StormOath", no space.
 
 ### CRS-08 · 'Etched' texture only darkens the shield
 **Later, Harry's call** · other
@@ -1185,6 +1208,7 @@ Old repo: `_legacy/clan-crest-creator` (file:line references point there).
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** Cosmetic. Keep it.
 - **Evidence:** renderTexture etch (app.js:456-464) displaces a plain black rectangle at 25% opacity, so only its edges move. Contact sheet 06_contact_sheet.png, texture row.
+- **Phase 2:** Kept as it is.
 
 ### CRS-09 · Error message tells the user to open the developer console
 **Later, Harry's call** · other
@@ -1193,6 +1217,7 @@ Old repo: `_legacy/clan-crest-creator` (file:line references point there).
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** Later: use a plain-English message.
 - **Evidence:** app.js:210-213
+- **Phase 2:** Kept the old wording ("Download failed. Open console for details."), now shown in the suite's own pop-up with the technical details underneath, instead of a browser alert.
 
 ### CRS-10 · An invisible control character in the motto makes the download fail
 **Later, Harry's call** · other
@@ -1200,6 +1225,7 @@ Old repo: `_legacy/clan-crest-creator` (file:line references point there).
 - **Before:** If a hidden control character gets into the motto box (only possible by pasting, not by typing), the preview still shows the crest but Download fails with the 'Open console' message. Ordinary typing, including emoji, '&', '<' and quotes, works fine.
 - **After:** Kept as it is in the rebuild.
 - **Evidence:** Motto set to 'Hold\u0001Fast': the preview renders 'HOLD\u0001FAST', and Download gives no file plus alert 'Download failed. Open console for details.' (run1.out ctrlChar). XMLSerializer outputs the character raw, so the SVG image is not valid XML and img.onerror fires (app.js:633-645). Tab, emoji and '&' all exported OK.
+- **Phase 2:** Kept as it is. A hidden control character pasted into the motto still makes Download fail, with the message above.
 
 ### CRS-11 · Double-clicking Download saves two copies
 **Later, Harry's call** · other
@@ -1207,6 +1233,7 @@ Old repo: `_legacy/clan-crest-creator` (file:line references point there).
 - **Before:** Clicking Download twice quickly saves two identical pictures, e.g. a second copy named 'Blackstone_Wardens (1).png'. Nothing is lost or counted twice; it just leaves an extra file.
 - **After:** Kept as it is in the rebuild.
 - **Evidence:** page.dblclick('#btnDownload') produced 2 download events, both 'Blackstone_Wardens.png' (run1.out doubleClickDownloads). The handler has no busy flag (app.js:201-214).
+- **Phase 2:** Kept as it is: a double click still saves two copies. The tests check this still happens, so it isn't changed by accident.
 
 ### CRS-12 · Some clan names give a wrong or odd file name
 **Checked: not a bug** · other
@@ -1215,7 +1242,23 @@ Old repo: `_legacy/clan-crest-creator` (file:line references point there).
 - **After:** Kept as it is in the rebuild.
 - **Decision note:** Refuted by the checker: the "download" file names came from the test machine's language setting. Only the "..." name mismatch remains (trivial).
 - **Evidence:** safeFileName app.js:278-285 only strips / \ : * ? " < > | and spaces. Playwright run2.js/run3.js/run4.js (a plain test link with 'Café Oath.png' also became 'download', so possibly headless-only).
+- **Phase 2:** Kept as it is: the same file-name clean-up as the old tool.
 
+
+
+### CRS-13 · "Scarlet" with one t where it means the Scarlett Isles
+**Deliberate change** (Harry's answer K3, 25 September 2026)
+
+- **Before:** The random place "of the Scarlet Isles" and the random motto "In Scarlet We Stand" spelled the Isles with one t.
+- **After:** Both have two t's: "of the Scarlett Isles" and "In Scarlett We Stand". Harry decided the motto means the Isles. Where "Scarlet" is the colour, it keeps one t: the "Scarlet" first word in random names (like Black, Iron and Ember) and the "Scarlet & Gold" palette.
+- **Evidence:** app.js:7, 9, 55, 258. The tests check the spellings.
+
+### CRS-14 · Download, Random Crest and Reset are below the fold on the laptop
+**Fixed by the new design** · layout (SUI-10)
+
+- **Before:** In a maximised window on Harry's laptop (1707 × 930), the Download button was half off the bottom of the screen, and Random Crest and Reset were fully below it. The page was 1,042 px tall.
+- **After:** The four control groups sit two by two beside the preview. Every control, the preview and Download are in view at 1707 × 930, in full screen and on the TV, with no sideways scroll. The preview crest grows with the window's height.
+- **Evidence:** Measured in the planning and phase 2 sessions; tests/e2e/phase2.test.js "Fits the laptop and the TV".
 
 ## Arenas of The Scarlett Isles
 Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point there).

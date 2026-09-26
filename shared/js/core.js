@@ -16,6 +16,12 @@
   TSI.root = document.documentElement.getAttribute('data-tsi-root') || '';
   TSI.path = function (p) { return TSI.root + p; };
 
+  /* Which saved data this page uses. The real suite is "suite". The test page
+     (tests/harness.html, <html data-tsi-space="test">) is "test": it has its own
+     database, storage names and backups, so test data never mixes with real
+     saves. See TSI.storeRules.spaceNames. */
+  TSI.space = document.documentElement.getAttribute('data-tsi-space') === 'test' ? 'test' : 'suite';
+
   /* ---------- Tools register themselves here ---------- */
   TSI.tools = TSI.tools || {};
   TSI.registerTool = function (id, def) {
@@ -117,6 +123,8 @@
 
   /* ---------- Dates, in UK style ---------- */
   function pad(n) { return (n < 10 ? '0' : '') + n; }
+  var DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  var MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   TSI.dates = {
     /* 2026-09-25-1403, for file names */
     stamp: function (d) {
@@ -124,11 +132,14 @@
       return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + '-' + pad(d.getHours()) + pad(d.getMinutes());
     },
     /* Thursday 25 September 2026 at 14:03 */
+    /* Written out by hand rather than with the browser's own UK date format,
+       because browsers disagree: Edge writes "Friday, 25 September" and the
+       test browser "Friday 25 September". */
     human: function (value) {
       var d = value instanceof Date ? value : new Date(value);
       if (isNaN(d.getTime())) return 'an unknown date';
-      var day = d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-      return day + ' at ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+      return DAY_NAMES[d.getDay()] + ' ' + d.getDate() + ' ' + MONTH_NAMES[d.getMonth()] + ' ' + d.getFullYear() +
+        ' at ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
     }
   };
 

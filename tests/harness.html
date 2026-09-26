@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en-GB" data-tsi-root="../">
+<html lang="en-GB" data-tsi-root="../" data-tsi-space="test">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -12,8 +12,9 @@
 <body>
   <!-- Test copy of index.html with an extra "Demo tool" for checking the shell
        (saving, backups, shutting down, player windows). The same scripts as
-       index.html, plus tests/fixtures/demo-tool-data.js. It uses the same
-       saved data as the real suite, so only use it for testing. -->
+       index.html, plus tests/fixtures/demo-tool-data.js.
+       data-tsi-space="test" gives it its own saved data (database "tsi.test")
+       and its own backups, completely separate from the real suite's. -->
   <div class="tsi-art" aria-hidden="true"><div class="tsi-art__img" style="background-image: url('../shared/art/hero.png')"></div></div>
   <main id="tsi-main"></main>
 

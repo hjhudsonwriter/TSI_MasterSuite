@@ -100,4 +100,42 @@
     t.equal(s.total, 4);
     t.same(s.lines, ['Notice Board Quest Generator: 2 saved items', 'The Ironbow Bastion Manager: 1 saved item', 'Damaged saves set aside: 1 saved item']);
   });
+
+  group('Backups: the test page is kept apart');
+
+  test('backups say where they came from, and old ones count as the real suite\'s', function (t) {
+    t.equal(B.makeSuiteBackup([], when, 'test').space, 'test');
+    t.equal(B.makeSuiteBackup([], when).space, 'suite');
+    t.equal(B.makeToolBackup('demo', 'Demo tool', [], when, 'test').space, 'test');
+    var old = B.makeSuiteBackup([], when);
+    delete old.space;
+    t.equal(B.parse(JSON.stringify(old)).backup.space, 'suite');
+    var odd = B.makeSuiteBackup([], when);
+    odd.space = 'elsewhere';
+    t.ok(!B.parse(JSON.stringify(odd)).ok, 'an unknown place is refused');
+  });
+
+  test('test backups have their own file names', function (t) {
+    t.equal(B.fileName('suite', null, when, 'test'), 'tsi-test-backup-everything-2026-09-25-1403.json');
+    t.equal(B.fileName('tool', 'demo', when, 'test'), 'tsi-test-demo-2026-09-25-1403.json');
+    t.equal(B.fileName('suite', null, when, 'suite'), 'tsi-backup-everything-2026-09-25-1403.json');
+  });
+
+  test('the real suite refuses test backups, and the test page refuses real ones', function (t) {
+    var fromTest = B.makeSuiteBackup([], when, 'test');
+    var fromReal = B.makeSuiteBackup([], when, 'suite');
+    t.ok(/test page/.test(B.checkSpace(fromTest, 'suite')));
+    t.ok(/real suite/.test(B.checkSpace(fromReal, 'test')));
+    t.equal(B.checkSpace(fromReal, 'suite'), null);
+    t.equal(B.checkSpace(fromTest, 'test'), null);
+  });
+
+  test('test data in an older backup is left out of the real suite', function (t) {
+    var backup = B.makeSuiteBackup([rec('tsi.demo.state', 1), rec('tsi.quests.accepted', 2)], when);
+    var out = B.withoutTestData(backup, 'suite');
+    t.equal(out.skipped, 1);
+    t.same(out.backup.records.map(function (r) { return r.key; }), ['tsi.quests.accepted']);
+    t.equal(backup.records.length, 2, 'the original is untouched');
+    t.equal(B.withoutTestData(backup, 'test').skipped, 0, 'the test page keeps it');
+  });
 }());

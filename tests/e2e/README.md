@@ -18,10 +18,10 @@ node tests/e2e/phase1.test.js
 
 If Playwright is installed globally, point Node at it, e.g. `NODE_PATH=$(npm root -g) node tests/e2e/phase1.test.js`. Screenshots go to the folder in `TSI_SHOTS` (or the system temp folder).
 
-Each phase adds its own `phaseN.test.js`. `helpers.js` holds the shared pieces: screen sizes, a record of any internet requests or missing files, and helpers for downloads, file pickers, pop-ups and notices.
+Each phase adds its own `phaseN.test.js`: `phase1.test.js` is the shell, `phase2.test.js` the Clan Crest Creator. `phase2.test.js` also compares the Crest's drawing, random rolls and PNG with the old tool when `_legacy/clan-crest-creator` is present (clone it from the link in the handover's section 16), and says it skipped that part when it isn't. `helpers.js` holds the shared pieces: screen sizes, a record of any internet requests or missing files, and helpers for downloads, file pickers, pop-ups and notices.
 
 ## What the tests use
 
-- `tests/harness.html` is a copy of `index.html` that adds a pretend **Demo tool** (`tests/fixtures/`). It tests saving, Export and Import, shutting a tool down, player windows and error handling before any real tool exists. It shares the browser's saved data with the real suite, so if you open it on the table laptop, use the Demo tool's "Clear the demo tool's data" button afterwards.
+- `tests/harness.html` is a copy of `index.html` that adds a pretend **Demo tool** (`tests/fixtures/`). It tests saving, Export and Import, shutting a tool down, player windows and error handling before any real tool exists. It has its own saved data (the browser database `tsi.test`, set by `data-tsi-space="test"` on its `<html>`) and its own backups, so nothing it does can reach the real suite's saves or backups, and neither will load the other's backup files. The top bar says "Test page".
 - Buttons ignore a second click within 350 ms (double-click protection), so the helpers pause briefly before clicking the same button again.
 - Don't use Playwright's request interception with player windows: it stops their stylesheets loading.

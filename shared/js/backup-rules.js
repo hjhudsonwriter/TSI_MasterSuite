@@ -3,10 +3,14 @@
    {
      "format": "tsi-backup", "version": 1,
      "kind": "suite" | "tool", "tool": "<id, for a tool backup>",
+     "space": "suite" | "test",
      "suite": "The Scarlett Isles: D&D Tool Suite",
      "savedAt": "2026-09-25T13:03:00.000Z",
      "records": [ { "key": "tsi.quests.accepted", "value": ..., "savedAt": "..." } ]
-   } */
+   }
+   "space" says where it came from: the real suite, or the test page
+   (tests/harness.html). Each only restores its own backups. Files made before
+   phase 2 have no "space" and count as the real suite's. */
 (function () {
   'use strict';
 
@@ -25,22 +29,24 @@
     FORMAT: 'tsi-backup',
     VERSION: 1,
 
-    makeSuiteBackup: function (records, when) {
+    makeSuiteBackup: function (records, when, space) {
       return {
         format: rules.FORMAT,
         version: rules.VERSION,
         kind: 'suite',
+        space: space === 'test' ? 'test' : 'suite',
         suite: SUITE_NAME,
         savedAt: new Date(when || Date.now()).toISOString(),
         records: records
       };
     },
 
-    makeToolBackup: function (toolId, toolName, records, when) {
+    makeToolBackup: function (toolId, toolName, records, when, space) {
       return {
         format: rules.FORMAT,
         version: rules.VERSION,
         kind: 'tool',
+        space: space === 'test' ? 'test' : 'suite',
         tool: toolId,
         toolName: toolName || toolId,
         suite: SUITE_NAME,
@@ -49,10 +55,12 @@
       };
     },
 
-    /* tsi-backup-everything-2026-09-25-1403.json  or  tsi-quests-2026-09-25-1403.json */
-    fileName: function (kind, toolId, when) {
+    /* tsi-backup-everything-2026-09-25-1403.json  or  tsi-quests-2026-09-25-1403.json
+       (the test page's start tsi-test-). */
+    fileName: function (kind, toolId, when, space) {
       var stamp = fileStamp(when instanceof Date ? when : new Date(when || Date.now()));
-      return kind === 'suite' ? 'tsi-backup-everything-' + stamp + '.json' : 'tsi-' + toolId + '-' + stamp + '.json';
+      var start = store().spaceNames(space).file;
+      return kind === 'suite' ? start + 'backup-everything-' + stamp + '.json' : start + toolId + '-' + stamp + '.json';
     },
 
     /* Read a backup file's text. Returns { ok: true, backup } or { ok: false, reason } in plain English. */
@@ -75,6 +83,10 @@
       if (data.kind !== 'suite' && data.kind !== 'tool') {
         return { ok: false, reason: 'This backup file is damaged (it doesn\'t say what it holds).' };
       }
+      if (data.space !== undefined && data.space !== 'suite' && data.space !== 'test') {
+        return { ok: false, reason: 'This backup file is damaged (it doesn\'t say where it came from).' };
+      }
+      if (data.space === undefined) data.space = 'suite';
       if (data.kind === 'tool' && !store().isValidToolId(data.tool)) {
         return { ok: false, reason: 'This backup file is damaged (it doesn\'t say which tool it\'s from).' };
       }
@@ -96,6 +108,27 @@
         }
       }
       return { ok: true, backup: data };
+    },
+
+    /* Does this backup belong here? The real suite never takes the test page's
+       backups, and the test page never takes the real suite's. Returns a reason, or null. */
+    checkSpace: function (backup, space) {
+      var here = space === 'test' ? 'test' : 'suite';
+      if (backup.space === here) return null;
+      if (here === 'suite') {
+        return 'This backup came from the suite\'s test page (tests/harness.html), not from the suite itself, so it can\'t be loaded here. Nothing was changed.';
+      }
+      return 'This backup came from the real suite. The test page only loads its own test backups, so your real data stays out of it. Nothing was changed.';
+    },
+
+    /* The real suite leaves out any test-only data (e.g. the test page's Demo
+       tool) that an older backup might hold. Returns { backup, skipped }. */
+    withoutTestData: function (backup, space) {
+      if (space === 'test') return { backup: backup, skipped: 0 };
+      var kept = backup.records.filter(function (r) { return !store().isTestOnly(r.key); });
+      if (kept.length === backup.records.length) return { backup: backup, skipped: 0 };
+      var copy = Object.assign({}, backup, { records: kept });
+      return { backup: copy, skipped: backup.records.length - kept.length };
     },
 
     /* Can this backup be restored from the home screen? Returns a reason, or null if yes. */

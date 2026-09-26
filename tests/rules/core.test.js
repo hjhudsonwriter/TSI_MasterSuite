@@ -15,7 +15,19 @@
 
   test('dates in UK style', function (t) {
     t.equal(TSI.dates.human(new Date(2026, 8, 25, 14, 3)), 'Friday 25 September 2026 at 14:03');
+    t.equal(TSI.dates.human(new Date(2027, 0, 1, 0, 5)), 'Friday 1 January 2027 at 00:05', 'single-digit day, just after midnight');
+    t.equal(TSI.dates.human(new Date(2026, 11, 31, 23, 59).toISOString()), 'Thursday 31 December 2026 at 23:59', 'from saved text');
     t.equal(TSI.dates.human('not a date'), 'an unknown date');
+  });
+
+  test('dates read the same in every browser (Edge adds a comma to its own UK format)', function (t) {
+    var real = Date.prototype.toLocaleDateString;
+    Date.prototype.toLocaleDateString = function () { return 'Friday, 25 September 2026'; };
+    try {
+      t.equal(TSI.dates.human(new Date(2026, 8, 25, 14, 3)), 'Friday 25 September 2026 at 14:03');
+    } finally {
+      Date.prototype.toLocaleDateString = real;
+    }
   });
 
   group('Core: keyboard');
