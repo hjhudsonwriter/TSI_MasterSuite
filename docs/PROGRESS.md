@@ -31,13 +31,14 @@ Double-click `index.html` to open the suite. The Clan Crest Creator opens from i
   - Any Demo tool data left in the real database from phase 1 is removed.
   - The test page says "Test page" in the top bar and the browser tab.
 - **Tests:**
-  - `tests/rules.html` now has 68 rules tests. Among them, three crests the old tool drew must match character for character.
+  - `tests/rules.html` now has 69 rules tests. Among them, three crests the old tool drew must match character for character.
   - `tests/e2e/phase2.test.js`: 31 click-through checks.
   - `tests/e2e/phase1.test.js`: now 65 checks, including the test page's separation.
   - All pass.
 - **Found and fixed while building:**
   - A drop-down and a hidden part of the crest drawing were given the same internal name, which made every crest draw darker. Separate prefixes fixed it, and a test now checks that no two ids on the page match.
   - The phase 1 tests assumed no tool was built. They now read which tools are built from the tool list.
+- **Found by Harry in Edge (26 September):** one rules test failed because Edge writes its UK dates with a comma ("Friday, 25 September"). The suite now writes dates itself, the same in every browser, and a new test pretends to be Edge to keep it that way (KNOWN_ISSUES SUI-18).
 
 
 ### Phase 1: the shell (25 September 2026)
@@ -115,5 +116,6 @@ Each tool's questions are needed before that tool's phase. The full wording and 
 - **Matt's database:** never write to the live Knightly Treasures database while testing.
 - **Building a tool:** follow `docs/BUILDING-A-TOOL.md`. Set `built: true` in `shared/data/tools.js` and the card, the Switch tool menu, Export/Import and backups all follow.
 - **Running the tests:** double-click `tests/rules.html`, or run `NODE_PATH=/opt/node22/lib/node_modules node tests/e2e/phaseN.test.js` for each phase in this sandbox (see `tests/e2e/README.md`). Re-run every earlier phase's click-through after changing anything in `shared/`.
+- **Browser differences:** don't rely on the browser's own date or number formats (`toLocaleDateString` and the like); Edge's differ from the test browser's. Write them out in code, as `TSI.dates` does.
 - **Not tested here:** Edge itself, the TV, and Windows' "Animation effects" switch (the reduce-motion setting was simulated). Phase 2 adds opening a downloaded crest PNG in another program. These are on Harry's checklist in each pull request.
 - **Old-tool comparisons:** `tests/e2e/phase2.test.js` compares the Crest with the old tool when `_legacy/clan-crest-creator` is there. Re-clone it before changing `tools/crest/`.

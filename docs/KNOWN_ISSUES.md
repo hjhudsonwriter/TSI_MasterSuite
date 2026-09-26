@@ -21,7 +21,7 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 
 | Tool | Must fix | Fixed by design | Deliberate | Later (Harry's call) | Not relevant / not a bug |
 |---|---|---|---|---|---|
-| Suite-wide (SUI) | 4 | 11 | 2 | 0 | 0 |
+| Suite-wide (SUI) | 5 | 11 | 2 | 0 | 0 |
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
 | Scarlett Isles Explorer (EXP) | 12 | 3 | 0 | 12 | 0 |
@@ -174,6 +174,14 @@ These come from checking the eight tools against each other: the collision audit
 - **Before:** In phase 1, `tests/harness.html` (the test page with the pretend Demo tool) saved into the same browser database as the real suite. Its Demo tool data could appear in "Back up everything", and a test backup could be restored into the real suite.
 - **After:** Fixed in phase 2. The test page has its own database (`tsi.test`), its own small-storage names and its own "already open" list. Its backups are marked as test backups (`"space": "test"`) and named `tsi-test-…`. The real suite refuses test backups and the test page refuses real ones. Any Demo tool data left in the real database is removed when the suite opens, and left out if an older backup holds it. The test page says "Test page" in the top bar and the browser tab.
 - **Evidence:** tests/e2e/phase1.test.js "The test page is kept apart from the real suite"; tests/rules.html "Saving: the test page is kept apart" and "Backups: the test page is kept apart".
+
+
+### SUI-18 · Dates in pop-ups read differently in Edge ("Friday, 25 September")
+**Fixed** · found by Harry's phase 2 check of `tests/rules.html` in Edge
+
+- **Before:** The suite asked the browser for its own UK date format. Edge writes "Friday, 25 September 2026" (with a comma) and the test browser "Friday 25 September 2026", so one rules test failed in Edge only. The dates appear in the Restore and Import pop-ups and the save-status tooltip.
+- **After:** Dates are written out by the suite itself, "Friday 25 September 2026 at 14:03", the same in every browser. A new rules test pretends to be Edge to make sure of it.
+- **Evidence:** `shared/js/core.js` (`TSI.dates.human`); `tests/rules/core.test.js` "dates read the same in every browser".
 
 ## Combat Tracker & VTT Battlemap
 Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point there).
