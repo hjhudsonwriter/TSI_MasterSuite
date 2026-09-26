@@ -677,11 +677,11 @@ Defaults are in brackets; "keep" means keep it as the old tool does it.
 - **K3** "Scarlet" with one t in the name lists: correct it? **Two t's where it means the Scarlett Isles, one where it's the colour.** So "of the Scarlett Isles" and the motto "In Scarlett We Stand" (Harry: the motto means the Isles). The "Scarlet" name word (the colour, like Black and Iron) and the "Scarlet & Gold" palette keep one t.
 - **K4** Motto font in the PNG? **Agreed: the suite font (Cinzel), packed into the PNG so the preview matches.**
 
-**Pelagosi Puzzle Trials**
-- **P1** Who clicks: Harry or the players? On a TV? *(Harry, one screen)*
-- **P2** Does Harry have the five missing sounds? *(stay silent)*
-- **P3** Should a double-clicked rune count once? *(keep)*
-- **P4** Pressure carrying into the basin, and Reset behaving differently in each mode? *(keep)*
+**Pelagosi Puzzle Trials** *(answered by Harry, 26 September 2026; built in phase 3)*
+- **P1** Who clicks: Harry or the players? On a TV? **Harry clicks, on the laptop.** So it's laid out for the laptop first; it fits the TV too.
+- **P2** Does Harry have the five missing sounds? **Yes, Harry will provide them.** Each has a ready-made slot and stays silent until its file is added (see `tools/pelagosi/assets/audio/ADD-THE-FIVE-SOUNDS-HERE.txt`).
+- **P3** Should a double-clicked rune count once? **Keep it as it is:** it still counts twice.
+- **P4** Pressure carrying into the basin, and Reset behaving differently in each mode? **Keep both as they are** (KNOWN_ISSUES PEL-18).
 
 **Notice Board Quest Generator**
 - **N1** Exactly one bounty at levels 7–10? *(keep)*

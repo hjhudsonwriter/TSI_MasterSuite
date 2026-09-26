@@ -2,7 +2,7 @@
 
 Every bug found in the eight old tools during planning, and what the rebuild will do about each one. CLAUDE.md's rule: **only fix a bug if it breaks the tool, loses saved data, or applies something twice.** Everything else stays exactly as it was, and is listed here for Harry to decide on later.
 
-**Status: phases 1 (the shell) and 2 (Clan Crest Creator) are built.** The shell's share of the suite-wide (SUI) fixes is in place and tested, and each entry has a **Phase 1** line saying what's done. Every Clan Crest Creator entry has a **Phase 2** line saying whether it was fixed, changed or kept. The other tools' entries are unchanged until their phases. Each tool's session updates its own entries as it goes: it marks each one fixed, or confirms it was left alone, and adds anything new it finds.
+**Status: phases 1 (the shell), 2 (Clan Crest Creator) and 3 (Pelagosi Puzzle Trials) are built.** The shell's share of the suite-wide (SUI) fixes is in place and tested, and each entry has a **Phase 1** line saying what's done. Every Clan Crest Creator entry has a **Phase 2** line and every Pelagosi entry a **Phase 3** line, saying whether it was fixed, changed or kept. The other tools' entries are unchanged until their phases. Each tool's session updates its own entries as it goes: it marks each one fixed, or confirms it was left alone, and adds anything new it finds.
 
 ## How to read an entry
 
@@ -29,7 +29,7 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 | Clan Crest Creator (CRS) | 0 | 4 | 2 | 7 | 1 |
 | Arenas of The Scarlett Isles (ARN) | 8 | 2 | 0 | 17 | 0 |
 | The Heartwood Ritual (RIT) | 9 | 1 | 0 | 15 | 1 |
-| Pelagosi Puzzle Trials (PEL) | 11 | 1 | 0 | 5 | 0 |
+| Pelagosi Puzzle Trials (PEL) | 11 | 1 | 0 | 6 | 0 |
 
 (The counts are worked out from the entries below. If they ever disagree, the entries win.)
 
@@ -1704,6 +1704,7 @@ Old repo: `_legacy/pelagosi_marker_rune_puzzle` (file:line references point ther
 - **After (planned):** Give each puzzle its own list of pending timers and a stop() that clears them, pauses sounds and bumps its run token. Call stop() for both puzzles on puzzle switch and on tool close (this is also the suite's clean-shutdown rule).
 - **Checker's note:** Worse outcomes of the same cause are listed as new bugs: an empty Round 1 that starts itself (T3), and puzzles starting themselves after switching back (T2, J). resetTidalToIdle also strips the Memory classes stage-solved and round-awake-1/2 (1004), so the coupling goes both ways.
 - **Evidence:** setActivePuzzle only resets the newly chosen mode (app.js:360-364). Test F: switching to Tidal mid-sequence left the status reading 'Round 1, Reply' and played 2 rune-place sounds after the switch. Test G: 'The Marker Sinks' modal opened over the Tidal stage (screenshot 11). Test N: 'The Chamber Opens' opened over the memory stage (screenshot 23). Test O: the memory restart removed the body class tidal-started (resetMemoryVisualState, app.js:544).
+- **Phase 3:** Fixed. Each puzzle now has its own set of timers. Changing puzzle stops both puzzles first (their timers are cancelled, their sounds stop and any open pop-up closes), then starts the chosen one fresh. The two puzzles' resets still clear each other's glow, as before, but a puzzle you've switched away from is now stopped, so this can no longer happen out of sight. Test: switching puzzle mid-sequence plays no more rune sounds and the Status panel isn't overwritten.
 
 ### PEL-02 · Reset during the Memory ending still shows the success window
 **Must fix** · breaks the tool · listed in the handover
@@ -1712,6 +1713,7 @@ Old repo: `_legacy/pelagosi_marker_rune_puzzle` (file:line references point ther
 - **After (planned):** Track the ending timers and clear them in the reset.
 - **Checker's note:** BEGIN then START TRIAL during the ending does the same, because startMemoryTrial (650-653) cancels nothing.
 - **Evidence:** Anonymous timeouts at app.js:726-745 are never cancelled. Test H: after reset, successModal was visible while memoryState.phase was 'showing' and the status read 'Something shifts below' (screenshot 12).
+- **Phase 3:** Fixed. Reset cancels the ending's timers. Test: Reset during the ending gives no success window, ending text or cavern sound afterwards.
 
 ### PEL-03 · Reset in the pause between Memory rounds skips Round I
 **Must fix** · breaks the tool · listed in the handover
@@ -1720,6 +1722,7 @@ Old repo: `_legacy/pelagosi_marker_rune_puzzle` (file:line references point ther
 - **After (planned):** Track this timer and cancel it on reset, or check the run token before advancing.
 - **Checker's note:** If the player switches puzzles and back instead of pressing Reset, the same timer starts an EMPTY round (see new bug).
 - **Evidence:** app.js:685-687 calls startRound(roundIndex+1) with no check. Test D: straight after reset the round was 0; 2.5 s later it was round index 1 and the label read 'Round 2 of 3'.
+- **Phase 3:** Fixed. Reset cancels the pause between rounds. Test: after Reset in the pause, the trial stays on round I.
 
 ### PEL-04 · Reset during a Memory failure surge restarts the trial twice
 **Must fix** · applies something twice · listed in the handover
@@ -1728,6 +1731,7 @@ Old repo: `_legacy/pelagosi_marker_rune_puzzle` (file:line references point ther
 - **After (planned):** Track and clear the failure timer on reset.
 - **Checker's note:** Reset (the survey's test) and BEGIN then START both trigger it. The DC 12 consequence text is not shown twice; the restart itself is what happens twice.
 - **Evidence:** app.js:707-711 is never cancelled. Test E: the sequence after reset was [remains, anchor, life, depth, remains] and 1.8 s later it was [remains, life, remains, depth, life]; runToken went up by 2.
+- **Phase 3:** Fixed. Reset cancels the surge's restart. Test: Reset during the surge starts one new sequence, and it isn't replaced a moment later.
 
 ### PEL-05 · Reset during a Tidal surge unlocks the puzzle by itself
 **Must fix** · breaks the tool · listed in the handover
@@ -1736,6 +1740,7 @@ Old repo: `_legacy/pelagosi_marker_rune_puzzle` (file:line references point ther
 - **After (planned):** Track the surge timer and clear it in resetTidalToIdle, or check the tidal run token inside the callback.
 - **Checker's note:** Switching puzzle away and back during the surge has the same effect (runtime J).
 - **Evidence:** app.js:1101-1107 is never cancelled; tidalState.runToken is never checked. Test K: right after reset phase was idle and locked; 2.2 s later phase was 'outer', unlocked, rune buttons enabled, started=false (screenshot 21).
+- **Phase 3:** Fixed. Reset cancels the surge's timer. Test: after Reset during the surge, the pillars stay locked and the puzzle waits for BEGIN.
 
 ### PEL-06 · Reset during the Tidal ending still opens the success window
 **Must fix** · breaks the tool · listed in the handover
@@ -1744,6 +1749,7 @@ Old repo: `_legacy/pelagosi_marker_rune_puzzle` (file:line references point ther
 - **After (planned):** Track the ending timers and clear them on reset, switch and close.
 - **Checker's note:** BEGIN then START SEQUENCE during the ending gives the same result (runtime T5).
 - **Evidence:** app.js:1193-1207 timers are never cancelled. Test L: after reset phase was idle, tidalSuccessModal was visible, and the status read 'Behind the northern arch…' (screenshot 22).
+- **Phase 3:** Fixed. Reset cancels the ending's timers. Test: Reset during the chamber opening gives no "The Chamber Opens" window, "Stone unlocks" text or cavern sound afterwards.
 
 ### PEL-07 · A double-click on CHECK ALIGNMENT counts as two checks
 **Must fix** · applies something twice
@@ -1752,6 +1758,7 @@ Old repo: `_legacy/pelagosi_marker_rune_puzzle` (file:line references point ther
 - **After (planned):** Ignore a second click on CHECK/ATTUNE while the event banner from the previous check is showing (about 1.7-1.9 s), or within about 0.4 s. Confirm with Harry that this counts as protection, not a rule change.
 - **Checker's note:** Worse than the survey says: from Rising, a double-click fires the damaging surge. The fix counts as click protection, not a rule change.
 - **Evidence:** checkTidalAlignment has no lock between clicks (app.js:1132-1175). run4: a double-click on the wrong layout gave pressure 2 and attempts 2. Test M: a double-click on the correct layout gave phase basin, pressure 1, attempts 2 and the event 'THE BASIN RIPPLES'.
+- **Phase 3:** Fixed with the suite's double-click protection: a second click on CHECK ALIGNMENT or ATTUNE BASIN within 0.6 seconds is ignored. Deliberate checks a second apart count as before. Tests: a double click on a wrong layout raises the pressure one step and counts one attempt; on the right layout it opens the basin and nothing more.
 
 ### PEL-08 · Fonts missing offline
 **Must fix** · won't work double-clicked / offline
@@ -1760,6 +1767,7 @@ Old repo: `_legacy/pelagosi_marker_rune_puzzle` (file:line references point ther
 - **After (planned):** Bundle the fonts locally, with their licences.
 - **Checker's note:** Bundle both fonts (SIL OFL) locally.
 - **Evidence:** index.html:10; runtime font request failed; screenshots 01 and 16.
+- **Phase 3:** Fixed. Uncial Antiqua (headings) and Cormorant Garamond (text) are bundled with the suite, so they show with the internet off. Test: the headings use the bundled Uncial Antiqua, and nothing is requested from the internet.
 
 ### PEL-09 · Switching away and back during the Memory round pause starts an empty round
 **Must fix** · breaks the tool
@@ -1767,6 +1775,7 @@ Old repo: `_legacy/pelagosi_marker_rune_puzzle` (file:line references point ther
 - **Before:** Say you win a Memory round, switch to the Tidal puzzle during the short pause, then switch back. The Memory puzzle then starts a 'Round 1' by itself without showing any runes. The rune buttons unlock, and any rune you press counts as wrong, so the table is told to make the DC 12 save for a sequence nobody saw.
 - **After (planned):** Same fix as the switching bug: one list of pending timers per puzzle, cleared on switch, reset, start and tool close. Also check the run token inside the timer before starting a round.
 - **Evidence:** The stale timer at app.js:685-687 calls startRound(roundIndex+1) after resetMemoryToIdle has set roundIndex to -1 and masterSequence to [] (565-570). getRoundSequence then returns [] (420-423), so playRoundSequence goes straight to the reply step (592-620). Runtime T3: 2.8 s after switching back, phase was 'input', started false, seq [], 5 buttons enabled, 0 reply slots, label 'Round 1 of 3'. Clicking Anchor gave phase 'failed' and stage 'The sea rejects the order'. Screenshots v03-empty-round-after-switch.png and v03b-empty-round-click-fails.png.
+- **Phase 3:** Fixed. Leaving a puzzle cancels its timers and bumps its run token. Test: switching away and back in the pause leaves the Memory trial waiting for BEGIN.
 
 ### PEL-10 · Switching away and back during a surge makes the puzzle start by itself
 **Must fix** · breaks the tool
@@ -1774,6 +1783,7 @@ Old repo: `_legacy/pelagosi_marker_rune_puzzle` (file:line references point ther
 - **Before:** If you switch puzzle while a surge is playing (the Memory 'sea rejects the order' or the Tidal chamber surge) and then switch back, the puzzle you returned to starts itself about two seconds later. Nobody has pressed BEGIN.
 - **After (planned):** Clear each puzzle's pending timers and bump its run token whenever it is left, reset or restarted.
 - **Evidence:** Memory: the stale timer at app.js:707-711 calls resetTrialAndRestart. Runtime T2: right after switching back, phase idle and started false; 2 s later phase 'showing', started true, stage 'Round 1, Observe' (screenshot v02-memory-autostarts-after-switch.png). Tidal: the stale timer at app.js:1101-1107. Runtime J: right after switching back, phase idle and locked; 2 s later phase outer, unlocked, stage 'The chamber resets'.
+- **Phase 3:** Fixed, as PEL-09. Tests: switching away and back during either surge leaves that puzzle waiting for BEGIN.
 
 ### PEL-11 · Starting again from the rules window during an ending or surge has the same leftovers as Reset
 **Must fix** · breaks the tool
@@ -1781,6 +1791,7 @@ Old repo: `_legacy/pelagosi_marker_rune_puzzle` (file:line references point ther
 - **Before:** Pressing BEGIN and then START while an ending or a surge is still playing causes the same trouble as Reset. The Tidal 'The Chamber Opens' window pops up over a puzzle you have just restarted, and the Memory trial restarts twice with two different sequences.
 - **After (planned):** Call the same 'stop this puzzle' routine at the start of startMemoryTrial, startTidalSequence, Reset, puzzle switch and tool close.
 - **Evidence:** BEGIN is never disabled (1214-1220). startTidalSequence (1019-1030) and startMemoryTrial (650-653) cancel no pending timers. Runtime T5: 0.5 s into the Tidal ending, BEGIN then START SEQUENCE gave phase outer, unlocked, attempts 0; 3.5 s later tidalSuccessModal was visible and stage read 'Stone unlocks' (screenshot v05-tidal-modal-over-restarted.png). Runtime T6: in Memory the sequence changed after 1.7 s and runToken went from 5 to 7.
+- **Phase 3:** Fixed. START TRIAL and START SEQUENCE now cancel the puzzle's leftover timers first, just as Reset does, so the Memory trial restarts only once (the same fix as PEL-04). Tests: BEGIN then START during either ending gives no window over the restarted puzzle.
 
 ### PEL-12 · Doesn't fit a laptop screen and ignores reduced motion
 **Fixed by the new design** · other
@@ -1790,6 +1801,7 @@ Old repo: `_legacy/pelagosi_marker_rune_puzzle` (file:line references point ther
 - **Decision note:** Covered by the laptop layout requirement and the reduced-motion rule.
 - **Checker's note:** The problem is wider than the survey says. Handle it in the rebuild's layout; it is not a rule change.
 - **Evidence:** run2: inputButtonsInView all false at 1366x768, and checkTidalButton is below the fold. styles.css:185-191 and 305-307 (min-height 48rem). No prefers-reduced-motion rule in styles.css.
+- **Phase 3:** Fixed. The layout is now three columns: the puzzle choice, inscription and rune meanings on the left, the stage and its controls in the middle, and the status and notes on the right. On your laptop (1707 × 930), in full screen and on the TV, the rune buttons, BEGIN, Reset, CHECK ALIGNMENT and Shuffle are all in view with no scrolling. The Tidal chamber keeps its 3:2 shape, so the pillars sit on their plinths at every size. With reduce motion on, the shakes, tremors and screen flashes are gentler and the drifting light is slower. The rune flashes keep their exact timings because they're part of the puzzle.
 
 ### PEL-13 · A double-click on a Memory rune counts as two answers
 **Later, Harry's call** · other
@@ -1799,6 +1811,7 @@ Old repo: `_legacy/pelagosi_marker_rune_puzzle` (file:line references point ther
 - **Decision note:** P3
 - **Checker's note:** 'Always fails' is wrong: the last rune of a round is safe. Only one DC 12 consequence is given, so this is not 'applies twice'. Leave it as is, and ask Harry, as the survey says.
 - **Evidence:** handleRuneInput has no debounce (app.js:748-775) and there are no back-to-back repeats (app.js:412). run4: a double-click on the correct first rune gave input [depth, depth] and phase 'failed'.
+- **Phase 3:** Kept, as Harry asked (P3). A test checks a double-clicked rune still counts twice.
 
 ### PEL-14 · Five extra sound effects are missing
 **Later, Harry's call** · other
@@ -1808,6 +1821,7 @@ Old repo: `_legacy/pelagosi_marker_rune_puzzle` (file:line references point ther
 - **Decision note:** P2
 - **Checker's note:** No change to behaviour needed. Those moments stay silent.
 - **Evidence:** app.js:261-267; runtime requestfailed ERR_FILE_NOT_FOUND for all five.
+- **Phase 3:** Kept silent, as Harry asked (P2), but each sound now has a ready-made slot. The suite doesn't ask for the missing files, so there are no "file not found" errors. When Harry supplies them, they go in `tools/pelagosi/assets/audio/` with the names listed in `ADD-THE-FIVE-SOUNDS-HERE.txt`, and are switched on in `tools/pelagosi/data/pelagosi-data.js`.
 
 ### PEL-15 · Some sounds restart on top of themselves
 **Later, Harry's call** · other
@@ -1816,6 +1830,7 @@ Old repo: `_legacy/pelagosi_marker_rune_puzzle` (file:line references point ther
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** Cosmetic only. Harry's call.
 - **Evidence:** app.js:658 and 726; app.js:1158 and 1098. The test B audio log ends puzzle-solve, puzzle-solve, cavern-open.
+- **Phase 3:** Kept. The solve chime still plays twice at the end of the Memory trial, and the fail sound restarts at a Tidal surge.
 
 ### PEL-16 · BEGIN in the middle of a Memory sequence hides the sequence
 **Later, Harry's call** · other
@@ -1824,6 +1839,7 @@ Old repo: `_legacy/pelagosi_marker_rune_puzzle` (file:line references point ther
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** Faithful behaviour. Leave it.
 - **Evidence:** app.js:1214-1220 only opens the modal. run2: the rules were open while phase stayed 'showing'.
+- **Phase 3:** Kept. A test checks that the sequence carries on behind the rules window.
 
 ### PEL-17 · Basin box overlaps the pillar tiles
 **Later, Harry's call** · other
@@ -1832,3 +1848,12 @@ Old repo: `_legacy/pelagosi_marker_rune_puzzle` (file:line references point ther
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** Cosmetic. In the same state, the disabled pillar tiles are dimmed to 42% opacity (styles.css:618-625), which makes them hard to read.
 - **Evidence:** Screenshot 18 at 1600x1000; basin selector and pillar positions at styles.css:809-813 and index.html:171-201.
+- **Phase 3:** Kept. The basin box and pillar tiles have the same proportions as before, so the overlap and the dimmed tiles look as they did.
+
+### PEL-18 · Pressure carries into the basin, and Reset works differently in each puzzle
+**Later, Harry's call** · other · added in phase 3 to record Harry's answer P4
+
+- **Before:** In the Tidal Sequence, any pressure built up while aligning the pillars is still there when the basin step starts, so one wrong ATTUNE BASIN can reach the Surge sooner. Reset CURRENT PUZZLE starts a new Memory trial straight away, but puts the Tidal Sequence back to "press BEGIN".
+- **After:** Kept as it is (P4).
+- **Evidence:** A wrong basin name calls increaseTidalPressure on the same pressure the pillar checks built up, and unlocking the basin doesn't reset it (app.js:1080-1081, 1163-1175). Reset calls resetTrialAndRestart for Memory but resetTidalToIdle for Tidal (app.js:1240-1247). Tests: tests/e2e/phase3.test.js "a wrong check's pressure carries into the basin step" and "RESET SEQUENCE puts it back to the start".
+- **Phase 3:** Kept.

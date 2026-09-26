@@ -18,7 +18,7 @@ node tests/e2e/phase1.test.js
 
 If Playwright is installed globally, point Node at it, e.g. `NODE_PATH=$(npm root -g) node tests/e2e/phase1.test.js`. Screenshots go to the folder in `TSI_SHOTS` (or the system temp folder).
 
-Each phase adds its own `phaseN.test.js`: `phase1.test.js` is the shell, `phase2.test.js` the Clan Crest Creator. `phase2.test.js` also compares the Crest's drawing, random rolls and PNG with the old tool when `_legacy/clan-crest-creator` is present (clone it from the link in the handover's section 16), and says it skipped that part when it isn't. `helpers.js` holds the shared pieces: screen sizes, a record of any internet requests or missing files, and helpers for downloads, file pickers, pop-ups and notices.
+Each phase adds its own `phaseN.test.js`: `phase1.test.js` is the shell, `phase2.test.js` the Clan Crest Creator and `phase3.test.js` the Pelagosi Puzzle Trials. `phase2.test.js` also compares the Crest's drawing, random rolls and PNG with the old tool when `_legacy/clan-crest-creator` is present, and `phase3.test.js` compares Pelagosi's sequences, counts and on-screen texts with the old tool when `_legacy/pelagosi_marker_rune_puzzle` is present (clone them from the links in the handover's section 16). Each says it skipped that part when the old tool isn't there. `helpers.js` holds the shared pieces: screen sizes, a record of any internet requests or missing files, and helpers for downloads, file pickers, pop-ups and notices.
 
 ## What the tests use
 

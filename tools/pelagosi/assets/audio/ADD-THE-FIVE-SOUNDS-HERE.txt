@@ -1,0 +1,14 @@
+Pelagosi Puzzle Trials: five sounds still to come
+
+The Tidal Sequence has a place for five more sounds. The old tool named them,
+but the files were never made, so those moments are silent for now:
+
+  water-stir.wav       pressure rises to Stirring
+  pressure-rise.wav    pressure rises to Rising
+  current-reverse.wav  pressure rises to Reversing
+  tidal-surge.wav      the chamber surges
+  basin-wake.wav       the central basin wakes
+
+When you have them, give them to a Claude Code session and ask it to add the
+Pelagosi sounds. It will put them in this folder with exactly these names and
+switch each one on in tools/pelagosi/data/pelagosi-data.js (ready: true).
