@@ -2,11 +2,43 @@
 
 ## Where things stand
 
-**Phase 2 (Clan Crest Creator) is built and tested. Phase 3 (Pelagosi Puzzle Trials) is next, and waits for Harry's go-ahead and his answers to P1–P4.**
+**Phase 3 (Pelagosi Puzzle Trials) is built and tested. Phase 4 (Notice Board) is next, and waits for Harry's go-ahead and his answers to N1–N5.**
 
-Double-click `index.html` to open the suite. The Clan Crest Creator opens from its card. The other six tools say "Coming in phase N" until their phases are done. The plan is in `docs/PLAN.md`, the bug list in `docs/KNOWN_ISSUES.md`, and the notes for building each tool in `docs/BUILDING-A-TOOL.md`.
+Double-click `index.html` to open the suite. The Clan Crest Creator and the Pelagosi Puzzle Trials open from their cards. The other six tools say "Coming in phase N" until their phases are done. The plan is in `docs/PLAN.md`, the bug list in `docs/KNOWN_ISSUES.md`, and the notes for building each tool in `docs/BUILDING-A-TOOL.md`.
 
 ## Done
+
+### Phase 3: Pelagosi Puzzle Trials (26 September 2026)
+- **Rebuilt as it was:**
+  - **The Marker Remembers:** three rounds of 3, 4 and 5 runes at the old speeds, the same five runes, the DC 12 Dexterity surge, and the Marker sinking at the end with its tremor and cavern sound.
+  - **The Tidal Sequence:** the same starting disorder, the Flow → Echo ↓ Depth ← Stone ↑ solution, the basin answer (Current), and pressure from Calm to Surge with the same hints and DCs. Shuffle Pillars never lands on the answer.
+  - The same wording everywhere, the same pop-ups, art, sounds, flashes and drifting light. It saves nothing, as before.
+- **Your answers:**
+  - P1: laid out for you clicking on the laptop. It fits the TV too.
+  - P2: the five missing Tidal sounds each have a ready-made slot and stay silent until you supply them. The note in `tools/pelagosi/assets/audio/` lists their names.
+  - P3: a double-clicked Memory rune still counts twice.
+  - P4: pressure still carries into the basin step, and Reset still restarts Memory straight away but sends the Tidal Sequence back to BEGIN (KNOWN_ISSUES PEL-18).
+- **Fixed (they broke the tool or applied something twice):**
+  - Leftover timers. In the old tool, Reset, switching puzzle, or starting again during an animation left old timers running. The puzzle could then skip to round II, restart twice, unlock itself, or pop up a success window over a fresh puzzle. Each puzzle now has its own set of timers, cancelled whenever it's reset, restarted, switched away from or closed (PEL-01 to 06, 09 to 11).
+  - A double click on CHECK ALIGNMENT counted as two checks. It now counts once (PEL-07).
+  - Fonts now work offline (PEL-08).
+  - The old tool needed scrolling on a laptop. The new three-column layout fits your laptop, full screen and the TV with every button in view, and the chamber keeps its 3:2 shape so the pillars sit on their plinths (PEL-12).
+- **Kept as they were:** the solve chime playing twice, BEGIN during a sequence opening the rules over it, and the basin box overlapping the pillar tiles (PEL-15 to 17).
+- **Reduce motion:** the shakes, tremors and screen flashes are gentler and the drifting light slower. The rune flashes keep their exact timings, because they're part of the puzzle.
+- **Leaving mid-puzzle** asks "Leave the Pelagosi Puzzle Trials?" first.
+- **Checked against the old tool:**
+  - The Memory sequence is built exactly as the old tool built it, given the same dice (300 sequences).
+  - The Tidal counts and checks agree with the old tool on 500 random layouts.
+  - A whole Tidal session and a whole Memory trial show the same texts, step by step, as the old tool.
+- **Structure:**
+  - Content in `tools/pelagosi/data/pelagosi-data.js`, rules in `rules.js`, the screen in `tool.js`, styles in `pelagosi.css`. Every class starts `tsi-pel-`.
+  - Art and sounds in `tools/pelagosi/assets/`; the two unused files in `assets/extras/` (listed in `docs/ASSETS.md`).
+  - The shared lifecycle helper gained **timer groups** (`life.group()`), described in `docs/BUILDING-A-TOOL.md`, for tools with several animations that must stop separately.
+- **Tests:**
+  - `tests/rules.html` now has 90 rules tests, including the Pelagosi rules and timer groups.
+  - `tests/e2e/phase3.test.js`: 58 click-through checks, including every leftover-timer bug re-created to show it's gone.
+  - The phase 1 (65) and phase 2 (31) click-throughs still pass.
+  - All pass.
 
 ### Phase 2: Clan Crest Creator (25 September 2026)
 - **Rebuilt as it was:**
@@ -94,7 +126,7 @@ Double-click `index.html` to open the suite. The Clan Crest Creator opens from i
   - The old-save import phase removed.
 
 ## Next
-**Phase 3: Pelagosi Puzzle Trials** (with Harry's go-ahead). It proves that timers and sounds stop cleanly. Its "done when" list is in `docs/PLAN.md` section 4. Before it starts, Harry answers P1–P4.
+**Phase 4: Notice Board Quest Generator** (with Harry's go-ahead). It's the first tool that saves, the first with a player window, and it carries the ★ → Knightly Treasures link. Its "done when" list is in `docs/PLAN.md` section 4. Before it starts, Harry answers N1–N5.
 
 ## Open questions for Harry
 
@@ -102,7 +134,8 @@ Each tool's questions are needed before that tool's phase. The full wording and 
 
 - **Clan Crest Creator (phase 2):** answered (K1–K4).
   - One small follow-up: the Crest saves nothing, so leaving it loses the current design. As the plan says, it doesn't ask "Leave?" first, just like the old tool. Would you like it to ask when you've changed the design?
-- **Pelagosi Puzzle Trials (phase 3):** P1–P4
+- **Pelagosi Puzzle Trials (phase 3):** answered (P1–P4).
+  - When you have the five Tidal sounds, give them to a session and ask it to add the Pelagosi sounds.
 - **Notice Board (phase 4):** N1–N5
 - **Heartwood Ritual (phase 5):** R1–R10. **R2 has no default:** when should the Husk roll happen?
 - **Arenas (phase 6):** A1–A9
@@ -118,4 +151,6 @@ Each tool's questions are needed before that tool's phase. The full wording and 
 - **Running the tests:** double-click `tests/rules.html`, or run `NODE_PATH=/opt/node22/lib/node_modules node tests/e2e/phaseN.test.js` for each phase in this sandbox (see `tests/e2e/README.md`). Re-run every earlier phase's click-through after changing anything in `shared/`.
 - **Browser differences:** don't rely on the browser's own date or number formats (`toLocaleDateString` and the like); Edge's differ from the test browser's. Write them out in code, as `TSI.dates` does.
 - **Not tested here:** Edge itself, the TV, and Windows' "Animation effects" switch (the reduce-motion setting was simulated). Phase 2 adds opening a downloaded crest PNG in another program. These are on Harry's checklist in each pull request.
-- **Old-tool comparisons:** `tests/e2e/phase2.test.js` compares the Crest with the old tool when `_legacy/clan-crest-creator` is there. Re-clone it before changing `tools/crest/`.
+- **Old-tool comparisons:** `tests/e2e/phase2.test.js` compares the Crest with the old tool when `_legacy/clan-crest-creator` is there, and `tests/e2e/phase3.test.js` compares Pelagosi with `_legacy/pelagosi_marker_rune_puzzle`. Re-clone them before changing `tools/crest/` or `tools/pelagosi/`.
+- **Timers in tools with several animations:** use a `life.group()` per puzzle, scene or round, and clear it on reset, restart and switch (see `docs/BUILDING-A-TOOL.md`). The Ritual and Arenas will need the same.
+- **Sound in tests:** the test browser can load the sounds but nobody hears them. The Pelagosi test records which sounds start and when; hearing them is on Harry's checklist.
