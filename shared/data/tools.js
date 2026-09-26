@@ -31,10 +31,29 @@ window.TSI_DATA.tools = [
     name: 'Notice Board Quest Generator',
     group: 'dm',
     phase: '4',
-    built: false,
+    built: true,
     saves: true,
     desc: 'Generate quests fast, keep your hooks sharp, and your plots sharper.',
-    files: { css: [], js: [] }
+    files: {
+      css: ['tools/quests/board.css', 'tools/quests/quests.css'],
+      js: [
+        'tools/quests/data/quests-data.js',
+        'tools/quests/data/outline-data.js',
+        'tools/quests/lib/firebase/firebase-app-compat.js',
+        'tools/quests/lib/firebase/firebase-database-compat.js',
+        'tools/quests/shop-link.js',
+        'tools/quests/rules.js',
+        'tools/quests/board.js',
+        'tools/quests/tool.js'
+      ]
+    },
+    /* The players' pop-out board. */
+    playerViews: {
+      noticeboard: {
+        css: ['tools/quests/board.css', 'tools/quests/player.css'],
+        js: ['tools/quests/data/outline-data.js', 'tools/quests/board.js', 'tools/quests/player.js']
+      }
+    }
   },
   {
     id: 'bastion',

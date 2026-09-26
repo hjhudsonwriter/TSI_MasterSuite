@@ -1,0 +1,15 @@
+/* ==========================================================================
+   Notice Board Quest Generator — the players' window.
+   The board fills the window. On a big screen such as the TV the notices are
+   drawn larger, so they can be read from across the table.
+   ========================================================================== */
+
+.tsi-player--noticeboard .tsi-quests-stage {
+  position: absolute;
+  inset: 0;
+  padding: 14px;
+}
+
+@media (min-width: 1500px) {
+  .tsi-player--noticeboard { --tsi-quests-scale: 1.3; }
+}
