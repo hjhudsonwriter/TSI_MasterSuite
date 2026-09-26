@@ -690,17 +690,17 @@ Defaults are in brackets; "keep" means keep it as the old tool does it.
 - **N4** Should the players' screen show only the notices, with no buttons? **Yes.**
 - **N5** Root and Veinwood text in outlines and in 6 bounties: keep word for word until Harry sends replacements? **Keep.**
 
-**The Heartwood Ritual**
-- **R1** Home-screen name: "The Heartwood Ritual" or "The Lullaby of the Rootbound Heart"? *(The Heartwood Ritual)*
-- **R2** When should the Husk's 50% roll, and the Buckbear and Wyvern checks, happen: once per round advance, or once per player action? *(no default: this changes how often Husks appear)*
-- **R3** One Heartwood event per round? *(allow repeats; block only accidental double presses)*
-- **R4** Should failed attempts, Husks and Buckbears still crack locked stones? *(keep)*
-- **R5** A live Wyvern is ignored at round 8: intended? *(keep)*
-- **R6** Silence Assist slot vs a typed slot: which wins? *(assist, as now)*
-- **R7** Keep the `` ` ``, N and E keys? Remove the leftover P? *(keep the three; remove P)*
-- **R8** Sound: an on/off switch, or enable only? *(enable only)*
-- **R9** Strained Binding shows "Ritual collapse / Racing": change the wording? *(keep)*
-- **R10** Bring back the log panel? *(no)*
+**The Heartwood Ritual** *(answered by Harry, 26 September 2026: R2 as below, the defaults for the rest; built in phase 5)*
+- **R1** Home-screen name: "The Heartwood Ritual" or "The Lullaby of the Rootbound Heart"? **The Heartwood Ritual.**
+- **R2** When should the Husk's 50% roll, and the Buckbear and Wyvern checks, happen: once per round advance, or once per player action? **Once per round: when Next Round is pressed.**
+- **R3** One Heartwood event per round? **Allow repeats; block only accidental double presses.**
+- **R4** Should failed attempts, Husks and Buckbears still crack locked stones? **Keep.**
+- **R5** A live Wyvern is ignored at round 8: intended? **Keep.**
+- **R6** Silence Assist slot vs a typed slot: which wins? **The Assist, as now.**
+- **R7** Keep the `` ` ``, N and E keys? Remove the leftover P? **Keep the three; remove P.**
+- **R8** Sound: an on/off switch, or enable only? **Enable only.**
+- **R9** Strained Binding shows "Ritual collapse / Racing": change the wording? **Keep.**
+- **R10** Bring back the log panel? **No.**
 
 **Arenas of The Scarlett Isles**
 - **A1** Should the third totem breaking end the round as a win, and should 8 successes still win without breaking any? *(keep)*

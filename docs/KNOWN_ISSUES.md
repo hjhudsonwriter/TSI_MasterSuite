@@ -2,7 +2,7 @@
 
 Every bug found in the eight old tools during planning, and what the rebuild will do about each one. CLAUDE.md's rule: **only fix a bug if it breaks the tool, loses saved data, or applies something twice.** Everything else stays exactly as it was, and is listed here for Harry to decide on later.
 
-**Status: phases 1 (the shell), 2 (Clan Crest Creator), 3 (Pelagosi Puzzle Trials) and 4 (Notice Board) are built.** The shell's share of the suite-wide (SUI) fixes is in place and tested, and each entry has a **Phase 1** line saying what's done. Every Clan Crest Creator entry has a **Phase 2** line, every Pelagosi entry a **Phase 3** line and every Notice Board entry a **Phase 4** line, saying whether it was fixed, changed or kept. The other tools' entries are unchanged until their phases. Each tool's session updates its own entries as it goes: it marks each one fixed, or confirms it was left alone, and adds anything new it finds.
+**Status: phases 1 (the shell), 2 (Clan Crest Creator), 3 (Pelagosi Puzzle Trials), 4 (Notice Board) and 5 (The Heartwood Ritual) are built.** The shell's share of the suite-wide (SUI) fixes is in place and tested, and each entry has a **Phase 1** line saying what's done. Every Clan Crest Creator entry has a **Phase 2** line, every Pelagosi entry a **Phase 3** line, every Notice Board entry a **Phase 4** line and every Heartwood Ritual entry a **Phase 5** line, saying whether it was fixed, changed or kept. The other tools' entries are unchanged until their phases. Each tool's session updates its own entries as it goes: it marks each one fixed, or confirms it was left alone, and adds anything new it finds.
 
 ## How to read an entry
 
@@ -1514,6 +1514,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **After (planned):** Rebuild reset as 'create a fresh ritual state, stop the finale timers, then redraw'. Clear armed assists and restore the heartbeat state at the same time.
 - **Checker's note:** The state really is reset; only the screen update and the 'Ritual reset.' toast are lost, because the error is thrown before renderAll (1318). It still counts as breaking the tool, because the DM sees the Reset button apparently do nothing. Rebuild Reset as a fresh state plus a redraw.
 - **Evidence:** ritual.js:1316 sets logEl.innerHTML where logEl is null (the #log element doesn't exist), so an error is thrown before toastMsg/renderAll (1317-1318). Test: pageerror 'Cannot set properties of null (setting innerHTML)'; the screen still showed p3/s1 and 'Dormant' after reset, then zeros after the next click.
+- **Phase 5:** Fixed. Reset starts a completely fresh ritual and redraws the screen: the round, pips, stones, threat, event and Pulse go back to the start, any film or Final Seal screen closes, and "Ritual reset." shows. Test.
 
 ### RIT-02 · Silence stone buttons are off-screen on common laptop screens
 **Must fix** · breaks the tool
@@ -1522,6 +1523,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **After (planned):** Lay out the rebuilt stage (with the suite's top bar) so all three stones' buttons fit and work at 1366x768. Check with Playwright at 1366x768 and 1536x864.
 - **Checker's note:** The DM Dock has no Silence Attempt, so zooming out (Ctrl -) is the only workaround. The rebuilt layout, with the suite top bar on top, must fit at 1366x768 in a normal window. Ask Harry what his screen size is.
 - **Evidence:** styles.css:51 body overflow:hidden; styles.css:182 arena height; styles.css:292 .stone--bottom bottom:-24px. test5: Silence button centre off-screen at 1366x768 (bottom 794 > 768), 1536x864 and 1280x720; fine at 1440x900 and 1920x1080.
+- **Phase 5:** Fixed. The arena is drawn at the old tool's size and scaled to fit the window, keeping its shape: about 91% on the laptop, full size on the TV. Every stone's Attempt and Assist and the main buttons are in view on the laptop, full screen, the TV and a 1280 × 720 window. Tests at all four sizes.
 
 ### RIT-03 · Stone crack pictures never show when opened as a file
 **Must fix** · won't work double-clicked / offline
@@ -1530,6 +1532,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **After (planned):** Remove the GitHub Pages path helper and use relative paths.
 - **Checker's note:** This happens on every double-click, internet or not. It is a file-path problem rather than an internet one. styles.css:30-32 already defines --img-crack-1..3 relative to the stylesheet, and those would work from file://, but nothing uses them.
 - **Evidence:** ritual.js:37-47 withBase and 515-517; test: url("/home/assets/img/cracks_1.png") ERR_FILE_NOT_FOUND
+- **Phase 5:** Fixed. The crack pictures come from the Ritual's own folder. Test: the first cracks show after a failed roll.
 
 ### RIT-04 · Wyvern and ending cinematics need the internet
 **Must fix** · won't work double-clicked / offline · listed in the handover
@@ -1538,6 +1541,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **After (planned):** Bundle the four videos locally (two from the release; the other two are already identical files in the repo) and point to them relatively. Keep the missing-video fallback.
 - **Checker's note:** from_handover is correct. Bundle the files locally: 2 are byte-identical to files already in the repo (md5 c06f1501 and dd080aaa); true_seal and strained_binding exist only in the release.
 - **Evidence:** ritual.js:31-34; test: every cinematic request failed and the overlay closed via the error handler (ritual.js:327-338)
+- **Phase 5:** Fixed. The four films are in `tools/ritual/assets/video/` and play inside the page with no internet. If a film can't play it closes, as before, and a waiting Final Seal still follows. The test browser can't play MP4 films, so playing them is on Harry's Edge checklist.
 
 ### RIT-05 · Fonts need the internet
 **Must fix** · won't work double-clicked / offline
@@ -1546,6 +1550,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **After (planned):** Bundle both fonts locally with their licences.
 - **Checker's note:** The page falls back to Georgia or the default serif, so it doesn't break, but the tool depends on Google Fonts to look right.
 - **Evidence:** styles.css:3; test: request to fonts.googleapis.com failed
+- **Phase 5:** Fixed. Cinzel and IM Fell English come from the suite folder. Test.
 
 ### RIT-06 · The Husk's 50% chance is rolled several times per click, and threats can appear from screen refreshes
 **Must fix** · applies something twice · listed in the handover
@@ -1555,6 +1560,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **Decision note:** R2 decides when the one roll happens (no default).
 - **Checker's note:** One 50% chance is applied up to 4 times in one action, so it fits the 'applies twice' category, and the handover asks for it to be fixed. Fixing it will make Husks appear noticeably less often, which changes the game balance, so Harry must say when the one roll should happen before it is built.
 - **Evidence:** ritual.js:679 Math.random() < 0.5 inside updatePulse (558), called by renderAll (554) from 13 places (887, 893, 902, 909, 932, 954, 973, 988, 1007, 1022, 1027, 1318, 1387). test F: 4 rolls from one Veinwood Thrum, 2 from a ±Progress pair, 1 from ◀, and a Husk spawned from a dock +Progress.
+- **Phase 5:** Fixed as Harry chose (R2): the Husk's 50% roll and the Buckbear and Wyvern checks happen once, when Next Round moves the round on. Stress piling up, Dock clicks and stepping a round back never summon anything. Husks will appear less often than before, which is what R2 means. Tests, including one where the old tool summons a Husk from a Dock click and the rebuild doesn't.
 
 ### RIT-07 · Double-clicking Next Round skips a round
 **Must fix** · applies something twice
@@ -1563,6 +1569,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **After (planned):** Ignore repeat clicks and key presses on Next Round for a moment (or until the round change has finished).
 - **Checker's note:** The guard needs to cover the mouse, the N key and Enter/Space on a focused button. Double-clicking at round 7 with no threat would jump straight to the finale.
 - **Evidence:** ritual.js:935-1023 has no guard, and a normal advance shows no banner to catch the second click (1020-1022). test K: a double-click went from round 1 to 3; N N went from 3 to 5.
+- **Phase 5:** Fixed. Next Round (its button, the Dock's, N, or Enter or Space on the button) ignores a second press within 0.6 seconds, and holding N down counts once. Tests.
 
 ### RIT-08 · The same Heartwood event can be applied again
 **Must fix** · applies something twice · listed in the handover
@@ -1572,6 +1579,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **Decision note:** Accidental double presses only; R3 decides whether an event may be applied again later in the round.
 - **Checker's note:** Only the accidental double press (mouse or keyboard) is a fix-now item. Whether an event may be applied once per round is a rule for Harry to decide. Keep the guard even if the rebuilt banner stops catching clicks.
 - **Evidence:** ritual.js:926-933 has no 'already applied' check. test K: a double-click added +1 stress only (the second click landed on the banner); a click after the banner cleared added another +1. test E: Veinwood Thrum applied twice.
+- **Phase 5:** Fixed. Apply Event ignores a second press within 0.6 seconds, by mouse or keyboard; applying the same event again later still works (R3). Tests.
 
 ### RIT-09 · Clicking Enable Sound twice plays two heartbeats
 **Must fix** · applies something twice
@@ -1581,6 +1589,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **Decision note:** R8 decides on/off switch vs enable-only.
 - **Checker's note:** Also, the button already says 'Sound Enabled' before play() is tried (178-180 run before 184), so if play() fails it still claims sound is on.
 - **Evidence:** ritual.js:155-191 creates new Audio objects every click; test C: 12 Audio objects and 2 looping heartbeats playing
+- **Phase 5:** Fixed (R8: Enable Sound only, no off switch). Once sound is on, Enable Sound does nothing more, so there's only ever one heartbeat. If the browser refuses sound, the button stays ready to try again. Test.
 
 ### RIT-10 · Reset doesn't clear armed assists, finale timers or the paused heartbeat
 **Fixed by the new design** · other
@@ -1590,6 +1599,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **Decision note:** Reset is rebuilt as a fresh ritual state that also clears assists and timers.
 - **Checker's note:** The Reset fix covers this. The finale timers can't really fire after a Reset, because the seal overlay (z-index 200) covers the Dock until its 5.2 s timer ends.
 - **Evidence:** ritual.js:1282-1319 never touches state.assistPending, the finaleSlowdown interval (758-765) or the seal timeout (778-781). test J: a failed Weight after reset gave +2 stress.
+- **Phase 5:** Fixed. Reset clears armed Assists and the Final Seal's timers and screen, closes any film, and brings the heartbeat back. Tests.
 
 ### RIT-11 · Silence Assist slot overrides the slot typed in the attempt
 **Later, Harry's call** · other · listed in the handover
@@ -1599,6 +1609,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **Decision note:** R6
 - **Checker's note:** The handover flags this too (from_handover true). It is a rule to confirm with Harry, not something to fix now.
 - **Evidence:** ritual.js:1232-1239 (preset wins); 1036 and 1082-1083 (preview reads a box just reset to 0). test D: assist slot 0 plus typed slot 9 with roll 9 failed at DC 12.
+- **Phase 5:** Kept (R6). Test: the Assist's slot beats the one typed, and its preview shows slot 0.
 
 ### RIT-12 · An empty roll counts as a roll of 0
 **Later, Harry's call** · other
@@ -1607,6 +1618,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** This is Harry's call. It combines with the new 'Enter on Cancel' bug.
 - **Evidence:** ritual.js:1176-1180: Number('') is 0, so the 'Enter a numeric roll result' check never fires. test2: an empty Weight attempt gave +1 stress; letters typed into the number box did the same for Memory.
+- **Phase 5:** Kept. Rules test.
 
 ### RIT-13 · The status line still says 'Binding in progress' after a seal or collapse
 **Later, Harry's call** · other
@@ -1615,6 +1627,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** A display-only fix, as the survey says.
 - **Evidence:** ritual.js:577-591 writes the labels before the phase changes at 596-634, with no redraw afterwards. test I: t+6 s after the seal still showed 'Steady / Binding in progress'.
+- **Phase 5:** Kept. Test.
 
 ### RIT-14 · A second cinematic triggered while one is showing is dropped for good
 **Later, Harry's call** · other
@@ -1623,6 +1636,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** This can happen from one ordinary event click, so flag it prominently to Harry as a later decision. It also happens if N is pressed during the Wyvern video.
 - **Evidence:** ritual.js:238-241 ignores the new video if the overlay is open, but the 'shown' flag was already set (604-606, 626-628, 968-970, 983-985). test4 allCracked: the collapse right after the Wyvern appeared never requested fractured_containment.mp4.
+- **Phase 5:** Kept. Test.
 
 ### RIT-15 · The heartbeat gets permanently quieter after the first cinematic
 **Later, Harry's call** · other
@@ -1631,6 +1645,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** Cosmetic.
 - **Evidence:** ritual.js:163 (0.90) vs 304 (0.55)
+- **Phase 5:** Kept. Test.
 
 ### RIT-16 · The narrative log is never shown
 **Later, Harry's call** · other
@@ -1640,6 +1655,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **Decision note:** R10
 - **Checker's note:** A question for Harry.
 - **Evidence:** ritual.js:697-698 returns early; no #log element in index.html
+- **Phase 5:** Kept (R10: no log panel). The log's lines weren't carried across, since nothing showed them.
 
 ### RIT-17 · The threat panel still works after the ritual has ended
 **Later, Harry's call** · other
@@ -1648,6 +1664,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** Harry's call.
 - **Evidence:** ritual.js:806-815 has no phase check; test4 wyvernAtRound8 left the Wyvern panel on screen after Strained Binding
+- **Phase 5:** Kept.
 
 ### RIT-18 · Cracked stones don't look permanently cracked
 **Later, Harry's call** · other
@@ -1656,6 +1673,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** Harry's call.
 - **Evidence:** ritual.js:513-526 (image by stress, hidden when locked); there is no visual for the cracked flag
+- **Phase 5:** Kept.
 
 ### RIT-19 · The P key plays the True Seal ending at any time
 **Later, Harry's call** · other
@@ -1665,6 +1683,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **Decision note:** R7 (default: remove P)
 - **Checker's note:** It does not set pendingFinalSeal, so no seal overlay follows. Ask Harry.
 - **Evidence:** ritual.js:1380-1383 'TEMP TEST'; test K confirmed
+- **Phase 5:** Changed as Harry chose (R7): the P key is gone. Test.
 
 ### RIT-20 · Shortcut keys still work while a cinematic or banner covers the screen
 **Later, Harry's call** · other
@@ -1673,6 +1692,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **After:** Kept as it is in the rebuild.
 - **Decision note:** R7
 - **Evidence:** ritual.js:1368-1384: the window keydown listener only checks whether the modal is open. t2 T7: with the cinematic overlay open, N took the round from 1 to 2 and E changed the event from Root Surge to False Calm, and the overlay stayed open.
+- **Phase 5:** Kept (R7: the `, N and E keys stay, and still work behind a film). Test. As in every tool, keys are now ignored while typing in a box (SUI-04), so ` no longer opens the Dock while you type a roll.
 
 ### RIT-21 · Important banners are replaced by a later banner in the same click
 **Later, Harry's call** · other
@@ -1680,6 +1700,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **Before:** When one action causes several things at once, only the last banner stays on screen. A stone cracking from an event or a failed Silence roll shows the event or 'Silence Frays' banner instead of 'GLYPH FRACTURE'. When an event collapses the ritual, 'RITUAL COLLAPSE' is replaced by the event banner. The Wyvern's arrival text plays unseen behind its 47-second video.
 - **After:** Kept as it is in the rebuild.
 - **Evidence:** t3 T16: a failed Silence attempt at stress 3 ends on the banner 'Silence Frays' (stress 4, cracked), and Echo of What Was at Memory stress 3 ends on the banner 'Echo of What Was'. t2 T6: after the collapse, the banner showing was 'Veinwood Thrum'. Code: applyEvent calls showBanner after ev.apply() (929-930), applyModal Silence at 1246-1261, and spawnThreat at 791-797 shows the banner under the z-index 9999 video.
+- **Phase 5:** Kept. Rules test.
 
 ### RIT-22 · Pressing Enter with Cancel selected applies the roll
 **Later, Harry's call** · other
@@ -1687,6 +1708,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **Before:** In the roll window, if the Cancel button is selected and you press Enter, the roll is applied instead of cancelled.
 - **After:** Kept as it is in the rebuild.
 - **Evidence:** ritual.js:1371-1373: Enter always calls applyModal. t2 T11: with roll 1 typed, Cancel focused and Enter pressed, weight stress went to 1 and the modal closed.
+- **Phase 5:** Kept. Test.
 
 ### RIT-23 · A beaten Buckbear comes straight back on the next click
 **Later, Harry's call** · other
@@ -1694,6 +1716,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **Before:** From round 6 onwards, if no stone is locked, beating the Buckbear doesn't help for long. The very next button press, even a harmless DM Dock one, summons a fresh Buckbear at full health.
 - **After:** Kept as it is in the rebuild.
 - **Evidence:** ritual.js:684-686 runs in updatePulse on every redraw. t2 T8: a Buckbear appeared at round 6, two Heavy Blows beat it (the panel was hidden), then a dock -Progress click on a stone at 0 brought a new Rootbound Buckbear.
+- **Phase 5:** Changed by Harry's answer R2: a beaten Buckbear no longer comes straight back on the next click. From round 6 with no stone locked, a new one comes at the next Next Round instead. Rules test.
 
 ### RIT-24 · No way to skip or close a cinematic
 **Later, Harry's call** · other
@@ -1701,6 +1724,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **Before:** Once a video starts, the DM can't stop it. The Wyvern video lasts 48 seconds and the endings 58. If a video never finishes loading, the screen stays black for good.
 - **After:** Kept as it is in the rebuild.
 - **Evidence:** The overlay closes only on the video's ended or error events (ritual.js:310-339), and there is no close button (index.html:323-333, z-index 9999). In t2 T6 and T7, with the request left hanging, the overlay stayed open until the test forced the video's 'ended' event.
+- **Phase 5:** Kept.
 
 ### RIT-25 · The time-out endings show no message if their video doesn't play
 **Later, Harry's call** · other
@@ -1708,6 +1732,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **Before:** At round 8, Strained Binding and Fractured Containment show only a 2-second pop-up line and then the video. If the video is missing (as it is now without internet), the table sees no ending at all. Only the True Seal has a fallback screen.
 - **After:** Kept as it is in the rebuild.
 - **Evidence:** ritual.js:958-989 has no showBanner in either time-out branch, only toastMsg. By contrast, a True Seal video error still triggers the Final Seal overlay (315-338). The handover's proposed gate (master-handover.md:376) asks for 'correct media fallback' for all three endings.
+- **Phase 5:** Kept.
 
 ### RIT-26 · The unused cinematics/player.html can't find its video
 **No longer relevant** · other
@@ -1717,7 +1742,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **Decision note:** Not ported; the films play inside the Ritual page.
 - **Checker's note:** Leave it out of the rebuild.
 - **Evidence:** player.html:50-59; test: file:///home/assets/video/ritual_collapse.mp4 not found
-
+- **Phase 5:** Not ported. Nor were the old page's unused film window (an iframe) and its hidden early copy of the Wyvern film, which only helped it start sooner over the internet.
 
 ## Pelagosi Puzzle Trials
 Old repo: `_legacy/pelagosi_marker_rune_puzzle` (file:line references point there).

@@ -71,3 +71,25 @@ The old tool had one picture. It isn't a copy of any file in the other old repos
 
 The empty `.keep` placeholder in the old `assets/ui/` folder wasn't copied. The quest data (`data/quests.json`) is content, not media: it's in `tools/quests/data/quests-data.js`.
 
+## The Heartwood Ritual (phase 5)
+
+Every picture, sound and film from the old Ritual, plus the four films from its `v1.1-ritual-endings` release (`_legacy/_ritual_release/`), each checked byte-for-byte after copying (MD5). Two films were stored twice in the old repo and release; each is kept once. None of these files is shared with another old tool. The one file the old Ritual never used is in `extras/`.
+
+| Old path (`tellurian-ritual-engine/assets/…` unless shown) | New path (`tools/ritual/assets/…`) | Size | Used |
+|---|---|---|---|
+| `img/heartwood_tree.png` | `img/heartwood_tree.png` | 3.03 MB, 1536 × 1024 | Yes: the Heartwood |
+| `img/weight_stone.png`, `memory_stone.png`, `silence_stone.png` | `img/` (same names) | 3.41, 3.40, 3.34 MB, 1536 × 1024 | Yes: the three stones |
+| `img/cracks_1.png`, `cracks_2.png`, `cracks_3.png` | `img/` (same names) | 59, 110, 68 KB, 1400 × 1400 | Yes: cracks at Stress 1, 2 and 3+ |
+| `img/husk.png`, `buckbear.png`, `wyvern.png` | `img/` (same names) | 0.57, 1.29, 1.26 MB, 1400 × 1400 | Yes: the threats' art |
+| `img/root-background.png` | `img/root-background.png` | 3.22 MB, 1536 × 1024 | Yes: the roots behind the whole screen |
+| `audio/heartbeat_loop.mp3` | `audio/heartbeat_loop.mp3` | 1.09 MB | Yes: the heartbeat |
+| `audio/sfx_progress.mp3`, `sfx_stress.mp3`, `sfx_lock.mp3`, `sfx_interrupt.mp3`, `sfx_seal.mp3` | `audio/` (same names) | 257, 81, 259, 210, 513 KB | Yes: progress, stress, lock, threats and endings, the seal |
+| `video/root_loop.mp4` | `video/root_loop.mp4` | 12.0 MB | Yes: the moving roots behind the screen |
+| `video/wyvern_emergency.mp4` = `_ritual_release/wyvern_emergency.mp4` | `video/wyvern_emergency.mp4` | 11.4 MB | Yes: the Wyvern's film. Two identical copies, stored once |
+| `_ritual_release/true_seal.mp4` | `video/true_seal.mp4` | 29.6 MB | Yes: the True Seal ending |
+| `_ritual_release/strained_binding.mp4` | `video/strained_binding.mp4` | 29.9 MB | Yes: the Strained Binding ending |
+| `_ritual_release/fractured_containment.mp4` = `video/ritual_collapse.mp4` | `video/fractured_containment.mp4` | 10.8 MB | Yes: the Fractured Containment ending and the collapse. Two identical copies under different names, stored once |
+| `video/wyvern_emergency_optimized.mp4` | `extras/wyvern_emergency_optimized.mp4` | 6.95 MB | No: never used by the old tool (a smaller version of the Wyvern film) |
+
+Not copied: the empty `.keep` placeholders and `favicon.ico`, which is a single byte with no picture in it. The old `cinematics/player.html` was a page, not media, and isn't used (KNOWN_ISSUES RIT-26).
+
