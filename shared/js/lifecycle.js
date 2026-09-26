@@ -122,6 +122,61 @@
 
       untrack: function (el) { media.delete(el); },
 
+      /* A group of timers that can be cancelled together, e.g. one per puzzle,
+         cleared on Reset without stopping the whole tool. Everything in a group
+         also stops when the tool closes.
+           var timers = life.group();
+           timers.setTimeout(fn, ms); await timers.wait(ms); timers.raf(fn);
+           timers.clear();       // cancels them all; waits never finish
+           timers.generation     // goes up by one on every clear() */
+      group: function () {
+        var ids = new Set();
+        var rafs = new Set();
+        var generation = 0;
+        var g = {
+          get generation() { return generation; },
+
+          setTimeout: function (fn, ms) {
+            var id = life.setTimeout(function () {
+              ids.delete(id);
+              fn();
+            }, ms);
+            if (id !== null) ids.add(id);
+            return id;
+          },
+
+          clearTimeout: function (id) {
+            life.clearTimeout(id);
+            ids.delete(id);
+          },
+
+          /* Resolves after ms, unless the group is cleared first (then it never does). */
+          wait: function (ms) {
+            return new Promise(function (resolve) { g.setTimeout(resolve, ms); });
+          },
+
+          raf: function (fn) {
+            var id = life.raf(function (t) {
+              rafs.delete(id);
+              fn(t);
+            });
+            if (id !== null) rafs.add(id);
+            return id;
+          },
+
+          clear: function () {
+            generation++;
+            ids.forEach(function (id) { life.clearTimeout(id); });
+            rafs.forEach(function (id) { life.cancelRaf(id); });
+            ids.clear();
+            rafs.clear();
+          },
+
+          counts: function () { return { timeouts: ids.size, frames: rafs.size }; }
+        };
+        return g;
+      },
+
       /* Anything else to do when the tool closes. */
       onStop: function (fn) {
         if (stopped) {

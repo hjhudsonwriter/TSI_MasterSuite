@@ -148,4 +148,56 @@
       t.equal(seen.length, 1);
     });
   });
+
+  group('Lifecycle: timer groups (e.g. one per puzzle)');
+
+  test('clearing a group cancels its timers and leaves the rest running', function (t) {
+    var life = TSI.createLife('test');
+    var a = life.group();
+    var b = life.group();
+    var fired = [];
+    a.setTimeout(function () { fired.push('a'); }, 10);
+    b.setTimeout(function () { fired.push('b'); }, 10);
+    a.clear();
+    return t.wait(40).then(function () {
+      life.stop();
+      t.same(fired, ['b']);
+    });
+  });
+
+  test('a wait in a cleared group never finishes, so an old run can\'t carry on', function (t) {
+    var life = TSI.createLife('test');
+    var g = life.group();
+    var steps = [];
+    g.wait(10).then(function () { steps.push('too late'); });
+    g.clear();
+    t.equal(g.generation, 1);
+    return t.wait(40).then(function () {
+      life.stop();
+      t.same(steps, []);
+    });
+  });
+
+  test('a group keeps working after it\'s cleared', function (t) {
+    var life = TSI.createLife('test');
+    var g = life.group();
+    g.clear();
+    var fired = 0;
+    g.setTimeout(function () { fired++; }, 5);
+    return t.wait(30).then(function () {
+      life.stop();
+      t.equal(fired, 1);
+      t.same(g.counts(), { timeouts: 0, frames: 0 });
+    });
+  });
+
+  test('closing the tool stops every group too', function (t) {
+    var life = TSI.createLife('test');
+    var g = life.group();
+    var fired = 0;
+    g.setTimeout(function () { fired++; }, 10);
+    g.raf(function () { fired++; });
+    life.stop();
+    return t.wait(60).then(function () { t.equal(fired, 0); });
+  });
 }());

@@ -101,10 +101,17 @@ window.TSI_DATA.tools = [
     name: 'Pelagosi Puzzle Trials',
     group: 'set',
     phase: '3',
-    built: false,
+    built: true,
     saves: false,
     desc: 'The Marker Remembers and The Tidal Sequence.',
-    files: { css: [], js: [] }
+    files: {
+      css: ['tools/pelagosi/pelagosi.css'],
+      js: [
+        'tools/pelagosi/data/pelagosi-data.js',
+        'tools/pelagosi/rules.js',
+        'tools/pelagosi/tool.js'
+      ]
+    }
   }
 ];
 

@@ -1,0 +1,937 @@
+/* ==========================================================================
+   Pelagosi Puzzle Trials — styles
+   The sea-blue stages (the Marker and the flooded chamber), the runes, the
+   flashes, surges and overlays are the old tool's
+   (pelagosi_marker_rune_puzzle/styles.css), carried across. The side panels,
+   buttons and pop-ups use the suite's shared look (PLAN section 3: "Pelagosi:
+   the sea-blue chamber, runes, flashes and sounds" stay; Uncial Antiqua for
+   its headings).
+   Every rule is scoped to .tsi-tool--pelagosi (or, for the pop-ups, which
+   sit outside the tool's area, to its page, .tsi-page--pelagosi) and every
+   class starts "tsi-pel-". Laid out so both puzzles fit the laptop (1707 × 930) with the
+   rune buttons and Check in view (KNOWN_ISSUES PEL-12).
+   ========================================================================== */
+
+.tsi-tool--pelagosi {
+  --tsi-pel-text: #e7f8ff;
+  --tsi-pel-soft: #b9d9eb;
+  --tsi-pel-glow: #6fd9ff;
+  --tsi-pel-glow-strong: #b7f1ff;
+  --tsi-pel-height: calc(100vh - var(--tsi-topbar-h) - 24px);
+}
+
+.tsi-tool--pelagosi .tsi-pel {
+  position: relative;
+  padding: 12px 16px;
+  isolation: isolate;
+}
+
+/* The whole-screen flash on a round won, the basin waking and the chamber opening. */
+.tsi-tool--pelagosi .tsi-pel::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(214, 252, 255, 0.26), rgba(126, 232, 255, 0.12) 26%, transparent 64%);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 50;
+}
+.tsi-tool--pelagosi .tsi-pel--screen-flash::after { animation: tsi-pel-screen-flash 720ms ease-out; }
+@keyframes tsi-pel-screen-flash {
+  0% { opacity: 0; }
+  16% { opacity: 0.7; }
+  100% { opacity: 0; }
+}
+
+/* Drifting sea light behind everything. */
+.tsi-tool--pelagosi .tsi-pel-ambient {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(40px);
+  opacity: 0.35;
+  pointer-events: none;
+  z-index: -1;
+  animation: tsi-pel-drift calc(18s * var(--tsi-signature-slowdown)) ease-in-out infinite alternate;
+}
+.tsi-tool--pelagosi .tsi-pel-ambient--a { width: 22rem; height: 22rem; left: -4rem; top: 6rem; background: rgba(39, 123, 194, 0.22); }
+.tsi-tool--pelagosi .tsi-pel-ambient--b { width: 28rem; height: 28rem; right: -8rem; top: 14rem; background: rgba(93, 216, 255, 0.12); animation-duration: calc(23s * var(--tsi-signature-slowdown)); }
+.tsi-tool--pelagosi .tsi-pel-ambient--c { width: 18rem; height: 18rem; left: 44%; bottom: 8rem; background: rgba(74, 144, 255, 0.12); animation-duration: calc(20s * var(--tsi-signature-slowdown)); }
+@keyframes tsi-pel-drift {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(1.4rem, -1rem, 0) scale(1.09); }
+}
+
+/* ---------- Layout: side columns and the stage ---------- */
+.tsi-tool--pelagosi .tsi-pel-grid {
+  display: grid;
+  grid-template-columns: 290px minmax(0, 1fr) 290px;
+  gap: 14px;
+  align-items: start;
+  max-width: 1880px;
+  margin: 0 auto;
+}
+.tsi-tool--pelagosi .tsi-pel-col { display: grid; gap: 12px; min-width: 0; }
+.tsi-tool--pelagosi .tsi-pel-centre {
+  min-width: 0;
+  height: var(--tsi-pel-height);
+  min-height: 600px;
+}
+.tsi-tool--pelagosi .tsi-pel-stage {
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  min-height: 0;
+}
+.tsi-tool--pelagosi .tsi-pel--memory .tsi-pel-stage--memory,
+.tsi-tool--pelagosi .tsi-pel--tidal .tsi-pel-stage--tidal { display: flex; }
+
+/* ---------- Side panels (the suite's panels, Pelagosi headings) ---------- */
+.tsi-tool--pelagosi .tsi-pel-panel { padding: 12px 14px 14px; }
+.tsi-tool--pelagosi .tsi-pel-h {
+  margin: 0 0 8px;
+  font: 400 17px/1.2 var(--tsi-font-title);
+  color: var(--tsi-gold-text);
+}
+.tsi-tool--pelagosi .tsi-pel-copy {
+  margin: 0;
+  font-size: var(--tsi-fs-body-sm);
+  line-height: 1.4;
+  color: var(--tsi-text-muted);
+}
+.tsi-tool--pelagosi .tsi-pel-small { font-size: 15px; }
+
+.tsi-tool--pelagosi .tsi-pel-intro { text-align: center; }
+.tsi-tool--pelagosi .tsi-pel-choose {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+  text-align: left;
+}
+.tsi-tool--pelagosi .tsi-pel-choose-label {
+  font: 400 var(--tsi-fs-label)/1 var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-label);
+  color: var(--tsi-text-muted);
+}
+.tsi-tool--pelagosi .tsi-pel-select { width: 100%; padding: 7px 10px; cursor: pointer; }
+.tsi-tool--pelagosi .tsi-pel-eyebrow {
+  margin: 0 0 4px;
+  font: 400 11px/1.3 var(--tsi-font-display);
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: #9edff4;
+}
+.tsi-tool--pelagosi .tsi-pel-title {
+  margin: 0 0 6px;
+  font: 400 26px/1.15 var(--tsi-font-title);
+  color: var(--tsi-pel-text);
+  text-shadow: 0 0 20px rgba(111, 217, 255, 0.28);
+}
+.tsi-tool--pelagosi .tsi-pel-hero {
+  margin: 0 0 12px;
+  font-size: var(--tsi-fs-body-sm);
+  line-height: 1.35;
+  color: var(--tsi-text-muted);
+}
+.tsi-tool--pelagosi .tsi-pel-begin { min-width: 140px; }
+
+.tsi-tool--pelagosi .tsi-pel-inscription {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.4;
+  font-style: italic;
+  color: var(--tsi-text);
+}
+.tsi-tool--pelagosi .tsi-pel-legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.tsi-tool--pelagosi .tsi-pel-legend li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15.5px;
+  line-height: 1.25;
+  color: var(--tsi-text-muted);
+}
+.tsi-tool--pelagosi .tsi-pel-legend-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: rgba(61, 142, 181, 0.18);
+  color: var(--tsi-pel-glow-strong);
+}
+
+.tsi-tool--pelagosi .tsi-pel-stage-label {
+  margin: 0 0 4px;
+  font: 600 17px/1.3 var(--tsi-font-body);
+  color: var(--tsi-text);
+}
+.tsi-tool--pelagosi .tsi-pel-cycle {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border-radius: var(--tsi-radius-md);
+  border: 1px solid var(--tsi-line-faint);
+  background: rgba(0, 0, 0, .25);
+  font-size: 16px;
+  text-align: center;
+}
+.tsi-tool--pelagosi .tsi-pel-reset { width: 100%; margin-top: 10px; }
+
+/* ---------- The consoles under each stage ---------- */
+.tsi-tool--pelagosi .tsi-pel-console { display: grid; gap: 10px; flex: 0 0 auto; }
+.tsi-tool--pelagosi .tsi-pel-console .tsi-pel-h { margin-bottom: 4px; }
+.tsi-tool--pelagosi .tsi-pel-console-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+.tsi-tool--pelagosi .tsi-pel-console-main { min-width: 0; }
+.tsi-tool--pelagosi .tsi-pel-console-row--reply { align-items: center; justify-content: flex-start; }
+.tsi-tool--pelagosi .tsi-pel-console-row--actions { align-items: center; justify-content: flex-start; }
+.tsi-tool--pelagosi .tsi-pel-count {
+  flex: 0 0 auto;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(123, 213, 250, 0.24);
+  background: rgba(8, 24, 40, 0.65);
+  color: var(--tsi-pel-glow-strong);
+  font-size: 15px;
+  white-space: nowrap;
+}
+.tsi-tool--pelagosi .tsi-pel-pips { display: flex; gap: 10px; }
+.tsi-tool--pelagosi .tsi-pel-pip {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 999px;
+  background: rgba(139, 230, 255, 0.18);
+  border: 1px solid rgba(170, 240, 255, 0.46);
+  transition: background 220ms ease, box-shadow 220ms ease, transform 220ms ease;
+}
+.tsi-tool--pelagosi .tsi-pel-pip.tsi-pel-complete {
+  background: rgba(190, 248, 255, 0.95);
+  box-shadow: 0 0 16px rgba(184, 243, 255, 0.45);
+  transform: scale(1.06);
+}
+.tsi-tool--pelagosi .tsi-pel-pip.tsi-pel-current {
+  background: rgba(100, 210, 255, 0.42);
+  box-shadow: 0 0 14px rgba(111, 217, 255, 0.22);
+}
+.tsi-tool--pelagosi .tsi-pel-tracker-title {
+  margin: 0 0 0 14px;
+  font: 400 15px/1 var(--tsi-font-title);
+  color: var(--tsi-gold-text);
+  white-space: nowrap;
+}
+.tsi-tool--pelagosi .tsi-pel-tracker { display: flex; gap: 8px; flex-wrap: wrap; }
+.tsi-tool--pelagosi .tsi-pel-slot {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0.8rem;
+  border: 1px solid rgba(123, 213, 250, 0.18);
+  background: rgba(8, 24, 40, 0.68);
+  display: grid;
+  place-items: center;
+}
+.tsi-tool--pelagosi .tsi-pel-slot img { width: 1.8rem; opacity: 0; transform: scale(0.75); transition: opacity 180ms ease, transform 180ms ease; }
+.tsi-tool--pelagosi .tsi-pel-slot.tsi-pel-filled {
+  border-color: rgba(186, 246, 255, 0.7);
+  background: rgba(10, 32, 52, 0.84);
+  box-shadow: 0 0 16px rgba(124, 228, 255, 0.16), inset 0 0 18px rgba(112, 225, 255, 0.08);
+}
+.tsi-tool--pelagosi .tsi-pel-slot.tsi-pel-filled img { opacity: 1; transform: scale(1); }
+.tsi-tool--pelagosi .tsi-pel-slot.tsi-pel-wrong { animation: tsi-pel-flash-wrong 580ms ease; }
+
+/* ---------- The stage frames ---------- */
+.tsi-tool--pelagosi .tsi-pel-frame {
+  position: relative;
+  border-radius: 1.6rem;
+  background:
+    radial-gradient(circle at 50% 24%, rgba(118, 233, 255, 0.12), transparent 30%),
+    linear-gradient(180deg, rgba(6, 24, 42, 0.94), rgba(4, 13, 24, 0.94));
+  border: 1px solid rgba(123, 213, 250, 0.26);
+  overflow: hidden;
+  box-shadow: 0 24px 44px rgba(0, 0, 0, 0.52);
+  color: var(--tsi-pel-text);
+}
+.tsi-tool--pelagosi .tsi-pel-marker-frame { flex: 1 1 auto; min-height: 440px; }
+.tsi-tool--pelagosi .tsi-pel-frame::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(139, 230, 255, 0.08), transparent 20%, transparent 78%, rgba(139, 230, 255, 0.06)),
+    repeating-linear-gradient(105deg, rgba(255, 255, 255, 0.02) 0 2px, transparent 2px 16px);
+  pointer-events: none;
+  z-index: 1;
+}
+.tsi-tool--pelagosi .tsi-pel-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 44%, rgba(201, 250, 255, 0.34), rgba(102, 216, 255, 0.14) 28%, transparent 58%),
+    radial-gradient(circle at 50% 78%, rgba(123, 232, 255, 0.2), transparent 48%);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+.tsi-tool--pelagosi .tsi-pel-frame.tsi-pel-pulse::after { animation: tsi-pel-pulse-flash 950ms ease-out; }
+@keyframes tsi-pel-pulse-flash {
+  0% { opacity: 0; }
+  18% { opacity: 1; }
+  100% { opacity: 0; }
+}
+.tsi-tool--pelagosi .tsi-pel-tremor { animation: tsi-pel-tremor 1100ms ease-in-out; }
+@keyframes tsi-pel-tremor {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  18% { transform: translate3d(-2px, 1px, 0); }
+  36% { transform: translate3d(2px, -1px, 0); }
+  54% { transform: translate3d(-1px, 1px, 0); }
+  72% { transform: translate3d(1px, -1px, 0); }
+}
+.tsi-tool--pelagosi .tsi-pel-shake { animation: tsi-pel-shake 540ms linear; }
+@keyframes tsi-pel-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-7px); }
+  40% { transform: translateX(7px); }
+  60% { transform: translateX(-5px); }
+  80% { transform: translateX(5px); }
+}
+
+.tsi-tool--pelagosi .tsi-pel-marker-image,
+.tsi-tool--pelagosi .tsi-pel-tidal-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: cover;
+  object-position: center center;
+  display: block;
+  filter: drop-shadow(0 0 28px rgba(91, 205, 255, 0.18));
+  user-select: none;
+  pointer-events: none;
+  transition: transform 2200ms cubic-bezier(.2, .8, .2, 1), opacity 1800ms ease, filter 1800ms ease;
+}
+
+/* ---------- The Marker Remembers ---------- */
+.tsi-tool--pelagosi .tsi-pel-water-ring,
+.tsi-tool--pelagosi .tsi-pel-water-drain,
+.tsi-tool--pelagosi .tsi-pel-cavern-seam,
+.tsi-tool--pelagosi .tsi-pel-surge { position: absolute; pointer-events: none; }
+.tsi-tool--pelagosi .tsi-pel-water-ring {
+  inset: auto 50% 6% auto;
+  transform: translateX(50%);
+  width: 70%;
+  aspect-ratio: 1 / 0.28;
+  border-radius: 50%;
+  border: 2px solid rgba(118, 233, 255, 0.16);
+  box-shadow: 0 0 0 1px rgba(118, 233, 255, 0.05) inset, 0 0 24px rgba(78, 187, 245, 0.16);
+}
+.tsi-tool--pelagosi .tsi-pel-water-drain {
+  inset: auto 50% 10% auto;
+  transform: translateX(50%) scale(0.5);
+  width: 22%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(133, 241, 255, 0.28), transparent 70%);
+  opacity: 0;
+  transition: opacity 900ms ease, transform 1600ms ease;
+}
+.tsi-tool--pelagosi .tsi-pel-cavern-seam {
+  left: 50%;
+  bottom: 7.8%;
+  transform: translateX(-50%) scaleX(0.15);
+  width: 20rem;
+  height: 0.8rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent 0%, rgba(119, 232, 255, 0.96) 18%, rgba(201, 252, 255, 1) 50%, rgba(119, 232, 255, 0.96) 82%, transparent 100%);
+  box-shadow: 0 0 22px rgba(133, 231, 255, 0.55), 0 0 55px rgba(54, 183, 245, 0.28);
+  opacity: 0;
+  transition: opacity 400ms ease, transform 1400ms cubic-bezier(.2, .8, .2, 1);
+}
+
+.tsi-tool--pelagosi .tsi-pel-chamber {
+  position: absolute;
+  left: 50%;
+  top: 12%;
+  transform: translateX(-50%);
+  width: min(80%, 28rem);
+  display: grid;
+  gap: 0.7rem;
+  z-index: 4;
+}
+.tsi-tool--pelagosi .tsi-pel-caption {
+  margin: 0;
+  text-align: center;
+  font-size: 1.2rem;
+  letter-spacing: 0.04rem;
+  color: #dff9ff;
+  text-shadow: 0 0 14px rgba(111, 217, 255, 0.18);
+}
+.tsi-tool--pelagosi .tsi-pel-display {
+  position: relative;
+  min-height: clamp(11rem, 30vh, 18rem);
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  border-radius: 1.35rem;
+  background: rgba(3, 12, 24, 0.6);
+  border: 1px solid rgba(96, 180, 224, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02), 0 12px 30px rgba(0, 0, 0, 0.34);
+  overflow: hidden;
+}
+.tsi-tool--pelagosi .tsi-pel-display::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(113, 224, 255, 0.08), transparent 60%);
+  pointer-events: none;
+}
+.tsi-tool--pelagosi .tsi-pel-halo {
+  position: absolute;
+  width: 62%;
+  max-height: 90%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 1px solid rgba(163, 243, 255, 0.18);
+  box-shadow: 0 0 30px rgba(109, 211, 255, 0.12);
+  opacity: 0.7;
+}
+.tsi-tool--pelagosi .tsi-pel-display-rune {
+  position: relative;
+  width: min(44%, 8.75rem);
+  opacity: 0;
+  transform: scale(0.82);
+  filter: drop-shadow(0 0 18px rgba(124, 228, 255, 0.22));
+  transition: opacity 180ms ease, transform 180ms ease, filter 180ms ease;
+  z-index: 1;
+}
+.tsi-tool--pelagosi .tsi-pel-display.tsi-pel-showing .tsi-pel-display-rune {
+  opacity: 1;
+  transform: scale(1);
+  filter: drop-shadow(0 0 24px rgba(190, 248, 255, 0.3));
+}
+.tsi-tool--pelagosi .tsi-pel-display.tsi-pel-awaiting {
+  border-color: rgba(176, 244, 255, 0.36);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04), 0 0 34px rgba(123, 232, 255, 0.2), 0 12px 30px rgba(0, 0, 0, 0.34);
+}
+.tsi-tool--pelagosi .tsi-pel-display.tsi-pel-awaiting .tsi-pel-halo {
+  transform: scale(1.08);
+  border-color: rgba(186, 246, 255, 0.34);
+  box-shadow: 0 0 34px rgba(125, 226, 255, 0.22);
+}
+.tsi-tool--pelagosi .tsi-pel-placeholder {
+  position: relative;
+  display: grid;
+  gap: 0.55rem;
+  text-align: center;
+  color: #bfe4f4;
+  z-index: 1;
+}
+.tsi-tool--pelagosi .tsi-pel-placeholder-glyph { font-size: 2.2rem; color: rgba(184, 244, 255, 0.76); }
+.tsi-tool--pelagosi .tsi-pel-placeholder-text { font-size: 1.1rem; line-height: 1.35; }
+
+.tsi-tool--pelagosi .tsi-pel-prompt {
+  position: absolute;
+  left: 50%;
+  top: 56%;
+  transform: translate(-50%, -50%) scale(0.96);
+  padding: 0.8rem 1.35rem;
+  border-radius: 999px;
+  background: rgba(3, 12, 24, 0.8);
+  border: 1px solid rgba(176, 244, 255, 0.26);
+  box-shadow: 0 0 22px rgba(111, 217, 255, 0.18);
+  color: #effcff;
+  font: 400 1rem/1.2 var(--tsi-font-title);
+  letter-spacing: 0.08rem;
+  text-align: center;
+  opacity: 0;
+  z-index: 5;
+  pointer-events: none;
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+.tsi-tool--pelagosi .tsi-pel-prompt.tsi-pel-active { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+
+.tsi-tool--pelagosi .tsi-pel-runes {
+  position: absolute;
+  left: 50%;
+  bottom: 7%;
+  transform: translateX(-50%);
+  width: min(92%, 46rem);
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.75rem;
+  z-index: 4;
+}
+.tsi-tool--pelagosi .tsi-pel-rune-btn,
+.tsi-tool--pelagosi .tsi-pel-pillar-rune,
+.tsi-tool--pelagosi .tsi-pel-pillar-arrow,
+.tsi-tool--pelagosi .tsi-pel-basin-btn {
+  color: var(--tsi-pel-text);
+  cursor: pointer;
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, background 180ms ease, opacity 180ms ease, filter 180ms ease;
+}
+.tsi-tool--pelagosi .tsi-pel-rune-btn {
+  min-height: 6.4rem;
+  padding: 0.45rem 0.3rem 0.6rem;
+  border-radius: 1.1rem;
+  background: rgba(3, 12, 24, 0.72);
+  border: 1px solid rgba(96, 180, 224, 0.2);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02), 0 10px 24px rgba(0, 0, 0, 0.3);
+  display: grid;
+  place-items: center;
+  gap: 0.25rem;
+  position: relative;
+  overflow: hidden;
+}
+.tsi-tool--pelagosi .tsi-pel-rune-btn img { width: 3.4rem; pointer-events: none; filter: drop-shadow(0 0 14px rgba(124, 228, 255, 0.24)); }
+.tsi-tool--pelagosi .tsi-pel-rune-btn span {
+  color: rgba(227, 244, 255, 0.92);
+  letter-spacing: 0.04rem;
+  text-shadow: 0 0 10px rgba(91, 205, 255, 0.12);
+  font-size: 0.95rem;
+  line-height: 1.08;
+  text-align: center;
+}
+.tsi-tool--pelagosi .tsi-pel-rune-btn:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 0 22px rgba(124, 228, 255, 0.2);
+  border-color: rgba(170, 240, 255, 0.86);
+}
+.tsi-tool--pelagosi .tsi-pel-rune-btn.tsi-pel-correct {
+  transform: translateY(-3px);
+  background: rgba(8, 31, 52, 0.9);
+  border-color: rgba(196, 248, 255, 0.95);
+  box-shadow: 0 0 28px rgba(124, 228, 255, 0.3), inset 0 0 18px rgba(123, 232, 255, 0.14);
+}
+.tsi-tool--pelagosi .tsi-pel-rune-btn.tsi-pel-correct img { filter: drop-shadow(0 0 22px rgba(196, 248, 255, 0.42)); }
+.tsi-tool--pelagosi .tsi-pel-rune-btn.tsi-pel-correct span { color: #f3fdff; text-shadow: 0 0 14px rgba(140, 232, 255, 0.24); }
+.tsi-tool--pelagosi .tsi-pel-rune-btn.tsi-pel-wrong { animation: tsi-pel-flash-wrong 580ms ease; }
+.tsi-tool--pelagosi .tsi-pel-rune-btn:disabled,
+.tsi-tool--pelagosi .tsi-pel-pillar-rune:disabled,
+.tsi-tool--pelagosi .tsi-pel-pillar-arrow:disabled { opacity: 0.42; cursor: default; }
+@keyframes tsi-pel-flash-wrong {
+  0% { transform: translateY(0); box-shadow: 0 0 0 rgba(0, 0, 0, 0); }
+  35% { transform: translateY(-2px); box-shadow: 0 0 28px rgba(189, 245, 255, 0.34); }
+  100% { transform: translateY(0); box-shadow: 0 0 0 rgba(0, 0, 0, 0); }
+}
+
+.tsi-tool--pelagosi .tsi-pel-event,
+.tsi-tool--pelagosi .tsi-pel-round-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 0.4rem;
+  text-align: center;
+  background: radial-gradient(circle at center, rgba(126, 234, 255, 0.16), rgba(7, 16, 27, 0.04) 42%, rgba(3, 10, 18, 0.28));
+  opacity: 0;
+  transition: opacity 220ms ease;
+  z-index: 7;
+  pointer-events: none;
+}
+.tsi-tool--pelagosi .tsi-pel-event.tsi-pel-active,
+.tsi-tool--pelagosi .tsi-pel-round-overlay.tsi-pel-active { opacity: 1; }
+.tsi-tool--pelagosi .tsi-pel-event p,
+.tsi-tool--pelagosi .tsi-pel-event span,
+.tsi-tool--pelagosi .tsi-pel-round-title,
+.tsi-tool--pelagosi .tsi-pel-round-text {
+  margin: 0;
+  font-family: var(--tsi-font-title);
+  color: #effcff;
+  text-shadow: 0 0 18px rgba(184, 244, 255, 0.34);
+}
+.tsi-tool--pelagosi .tsi-pel-event p { font-size: clamp(1.4rem, 2vw, 2rem); letter-spacing: 0.1rem; }
+.tsi-tool--pelagosi .tsi-pel-event span {
+  max-width: 32rem;
+  color: #c8f4ff;
+  font-family: var(--tsi-font-body);
+  font-size: 1.25rem;
+  padding: 0 1.25rem;
+}
+.tsi-tool--pelagosi .tsi-pel-wave {
+  position: absolute;
+  inset: 12% 8%;
+  border-radius: 50%;
+  border: 2px solid rgba(188, 248, 255, 0.32);
+  filter: blur(1px);
+  animation: tsi-pel-wave 1100ms ease-out;
+}
+.tsi-tool--pelagosi .tsi-pel-round-title { font-size: clamp(1.4rem, 2vw, 2rem); letter-spacing: 0.1rem; }
+.tsi-tool--pelagosi .tsi-pel-round-text { font-size: clamp(0.95rem, 1.4vw, 1.15rem); letter-spacing: 0.16rem; color: #c8f4ff; }
+@keyframes tsi-pel-wave {
+  from { transform: scale(0.62); opacity: 0.9; }
+  to { transform: scale(1.22); opacity: 0; }
+}
+
+.tsi-tool--pelagosi .tsi-pel-surge {
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at center, rgba(120, 234, 255, 0.18), rgba(7, 16, 27, 0.1) 45%, rgba(3, 10, 18, 0.65));
+  opacity: 0;
+  transition: opacity 220ms ease;
+  z-index: 6;
+}
+.tsi-tool--pelagosi .tsi-pel-surge.tsi-pel-active { opacity: 1; }
+.tsi-tool--pelagosi .tsi-pel-surge-wave {
+  position: absolute;
+  inset: 12% 8%;
+  border-radius: 50%;
+  border: 2px solid rgba(188, 248, 255, 0.44);
+  filter: blur(1px);
+  animation: tsi-pel-surge 900ms ease;
+}
+.tsi-tool--pelagosi .tsi-pel-surge p {
+  position: relative;
+  font-family: var(--tsi-font-title);
+  font-size: clamp(1.5rem, 2vw, 2.2rem);
+  letter-spacing: 0.1rem;
+  color: #e4fbff;
+  text-shadow: 0 0 18px rgba(184, 244, 255, 0.42);
+}
+@keyframes tsi-pel-surge {
+  from { transform: scale(0.55); opacity: 0.9; }
+  to { transform: scale(1.26); opacity: 0; }
+}
+
+.tsi-tool--pelagosi .tsi-pel--round-awake-1 .tsi-pel-marker-image { filter: brightness(1.04) saturate(1.04) drop-shadow(0 0 30px rgba(120, 225, 255, 0.22)); }
+.tsi-tool--pelagosi .tsi-pel--round-awake-1 .tsi-pel-water-ring { opacity: 0.42; box-shadow: 0 0 0 1px rgba(118, 233, 255, 0.08) inset, 0 0 28px rgba(78, 187, 245, 0.2); }
+.tsi-tool--pelagosi .tsi-pel--round-awake-1 .tsi-pel-halo { border-color: rgba(172, 244, 255, 0.24); box-shadow: 0 0 34px rgba(109, 211, 255, 0.16); }
+.tsi-tool--pelagosi .tsi-pel--round-awake-2 .tsi-pel-marker-image { filter: brightness(1.1) saturate(1.08) drop-shadow(0 0 34px rgba(142, 236, 255, 0.26)); }
+.tsi-tool--pelagosi .tsi-pel--round-awake-2 .tsi-pel-water-ring { opacity: 0.62; transform: translateX(50%) scale(1.04); box-shadow: 0 0 0 1px rgba(118, 233, 255, 0.1) inset, 0 0 36px rgba(78, 187, 245, 0.24); }
+.tsi-tool--pelagosi .tsi-pel--round-awake-2 .tsi-pel-halo { border-color: rgba(194, 248, 255, 0.34); box-shadow: 0 0 42px rgba(125, 226, 255, 0.22); }
+.tsi-tool--pelagosi .tsi-pel--stage-solved .tsi-pel-marker-image { transform: translateY(8%) scale(0.94); opacity: 0.72; filter: brightness(0.88) saturate(0.9) drop-shadow(0 0 30px rgba(133, 231, 255, 0.22)); }
+.tsi-tool--pelagosi .tsi-pel--stage-solved .tsi-pel-water-drain { opacity: 0; transform: translateX(50%) scale(0.5); }
+.tsi-tool--pelagosi .tsi-pel--stage-solved .tsi-pel-cavern-seam { opacity: 0; transform: translateX(-50%) scaleX(0.15); }
+.tsi-tool--pelagosi .tsi-pel--stage-solved .tsi-pel-water-ring { opacity: 0.58; transform: translateX(50%) scale(1.02); transition: transform 1800ms ease, opacity 1200ms ease; }
+
+/* ---------- The Tidal Sequence ---------- */
+/* The chamber keeps the picture's 3:2 shape so the pillars stay on their plinths;
+   it grows to the largest size the space allows. */
+.tsi-tool--pelagosi .tsi-pel-tidal-fit {
+  flex: 1 1 auto;
+  min-height: 0;
+  container-type: size;
+  display: grid;
+  place-items: center;
+}
+.tsi-tool--pelagosi .tsi-pel-tidal-frame {
+  width: min(100cqw, 150cqh);
+  aspect-ratio: 3 / 2;
+  container-type: inline-size;
+}
+.tsi-tool--pelagosi .tsi-pel--tidal-started .tsi-pel-tidal-image { filter: brightness(1.06) saturate(1.05) drop-shadow(0 0 32px rgba(111, 217, 255, 0.24)); }
+.tsi-tool--pelagosi .tsi-pel--tidal-solved .tsi-pel-tidal-image { filter: brightness(1.16) saturate(1.1) drop-shadow(0 0 42px rgba(183, 241, 255, 0.3)); }
+
+.tsi-tool--pelagosi .tsi-pel-basin-aura {
+  position: absolute;
+  left: 50%;
+  top: 65.4%;
+  width: 15%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(184, 244, 255, 0.36), rgba(73, 199, 245, 0.18) 42%, transparent 70%);
+  box-shadow: 0 0 34px rgba(111, 217, 255, 0.22);
+  opacity: 0;
+  transition: opacity 500ms ease, transform 900ms ease;
+  z-index: 2;
+  pointer-events: none;
+}
+.tsi-tool--pelagosi .tsi-pel--tidal-started .tsi-pel-basin-aura { opacity: 0.28; }
+.tsi-tool--pelagosi .tsi-pel--tidal-pressure-2 .tsi-pel-basin-aura { opacity: 0.46; }
+.tsi-tool--pelagosi .tsi-pel--tidal-pressure-3 .tsi-pel-basin-aura { opacity: 0.64; transform: translate(-50%, -50%) scale(1.12); }
+.tsi-tool--pelagosi .tsi-pel--tidal-pressure-4 .tsi-pel-basin-aura { opacity: 0.88; transform: translate(-50%, -50%) scale(1.28); }
+.tsi-tool--pelagosi .tsi-pel--tidal-solved .tsi-pel-basin-aura {
+  opacity: 0.92;
+  transform: translate(-50%, -50%) scale(1.28);
+  animation: tsi-pel-basin-solved calc(2200ms * var(--tsi-signature-slowdown)) ease-in-out infinite alternate;
+}
+@keyframes tsi-pel-basin-solved {
+  from { filter: brightness(1); }
+  to { filter: brightness(1.32); }
+}
+
+.tsi-tool--pelagosi .tsi-pel-water-pressure {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    linear-gradient(180deg, transparent 0%, transparent 54%, rgba(90, 206, 255, 0.11) 68%, rgba(72, 190, 245, 0.2) 100%),
+    radial-gradient(circle at 50% 66%, rgba(183, 241, 255, 0.18), transparent 24%);
+  transition: opacity 520ms ease, filter 520ms ease;
+}
+.tsi-tool--pelagosi .tsi-pel--tidal-pressure-1 .tsi-pel-water-pressure { opacity: 0.2; }
+.tsi-tool--pelagosi .tsi-pel--tidal-pressure-2 .tsi-pel-water-pressure { opacity: 0.38; }
+.tsi-tool--pelagosi .tsi-pel--tidal-pressure-3 .tsi-pel-water-pressure { opacity: 0.58; animation: tsi-pel-sway calc(1.8s * var(--tsi-signature-slowdown)) ease-in-out infinite alternate; }
+.tsi-tool--pelagosi .tsi-pel--tidal-pressure-4 .tsi-pel-water-pressure { opacity: 0.82; filter: brightness(1.25); animation: tsi-pel-sway calc(820ms * var(--tsi-signature-slowdown)) ease-in-out infinite alternate; }
+@keyframes tsi-pel-sway {
+  from { transform: translateY(0); }
+  to { transform: translateY(-0.55rem); }
+}
+
+.tsi-tool--pelagosi .tsi-pel-flow {
+  position: absolute;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0;
+  background: linear-gradient(90deg, transparent, rgba(183, 241, 255, 0.92), transparent);
+  box-shadow: 0 0 22px rgba(111, 217, 255, 0.35);
+  transition: opacity 420ms ease;
+}
+.tsi-tool--pelagosi .tsi-pel-flow--top,
+.tsi-tool--pelagosi .tsi-pel-flow--bottom { height: 0.35rem; width: 20%; left: 40%; }
+.tsi-tool--pelagosi .tsi-pel-flow--top { top: 52%; }
+.tsi-tool--pelagosi .tsi-pel-flow--bottom { top: 76%; }
+.tsi-tool--pelagosi .tsi-pel-flow--right,
+.tsi-tool--pelagosi .tsi-pel-flow--left {
+  width: 0.35rem;
+  height: 24%;
+  top: 52%;
+  background: linear-gradient(180deg, transparent, rgba(183, 241, 255, 0.92), transparent);
+}
+.tsi-tool--pelagosi .tsi-pel-flow--right { left: 60%; }
+.tsi-tool--pelagosi .tsi-pel-flow--left { left: 40%; }
+.tsi-tool--pelagosi .tsi-pel--tidal-solved .tsi-pel-flow { opacity: 0.72; }
+
+/* Pillar sizes follow the chamber's width (the old tool sized them to the
+   window, 6% of it, which matched a chamber about 1050 px wide). */
+.tsi-tool--pelagosi .tsi-pel-pillar {
+  position: absolute;
+  left: var(--tsi-pel-x);
+  top: var(--tsi-pel-y);
+  transform: translate(-50%, -50%);
+  width: clamp(3.6rem, 9.7cqw, 6.4rem);
+  display: grid;
+  justify-items: center;
+  gap: 0.28rem;
+  z-index: 4;
+}
+.tsi-tool--pelagosi .tsi-pel-pillar-rune {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 1.05rem;
+  background: rgba(3, 12, 24, 0.7);
+  border: 1px solid rgba(140, 224, 255, 0.24);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02), 0 12px 24px rgba(0, 0, 0, 0.36);
+  display: grid;
+  place-items: center;
+  padding: 0.36rem;
+}
+.tsi-tool--pelagosi .tsi-pel-pillar-rune img { width: 72%; filter: drop-shadow(0 0 13px rgba(111, 217, 255, 0.25)); pointer-events: none; }
+.tsi-tool--pelagosi .tsi-pel-pillar-rune span {
+  font-size: 0.78rem;
+  letter-spacing: 0.04rem;
+  color: rgba(232, 251, 255, 0.92);
+  text-shadow: 0 0 10px rgba(91, 205, 255, 0.18);
+  line-height: 1;
+}
+.tsi-tool--pelagosi .tsi-pel-pillar-arrow {
+  width: 2.6rem;
+  height: 2.05rem;
+  border-radius: 999px;
+  background: rgba(4, 15, 27, 0.86);
+  border: 1px solid rgba(140, 224, 255, 0.28);
+  color: var(--tsi-pel-glow-strong);
+  font-size: 1.16rem;
+  line-height: 1;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
+}
+.tsi-tool--pelagosi .tsi-pel-pillar-rune:hover:not(:disabled),
+.tsi-tool--pelagosi .tsi-pel-pillar-arrow:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: rgba(183, 241, 255, 0.86);
+  box-shadow: 0 0 24px rgba(111, 217, 255, 0.24);
+}
+.tsi-tool--pelagosi .tsi-pel-pillar.tsi-pel-rune-ok .tsi-pel-pillar-rune {
+  border-color: rgba(183, 241, 255, 0.82);
+  box-shadow: 0 0 22px rgba(111, 217, 255, 0.22), inset 0 0 18px rgba(111, 217, 255, 0.1);
+}
+.tsi-tool--pelagosi .tsi-pel-pillar.tsi-pel-dir-ok .tsi-pel-pillar-arrow {
+  border-color: rgba(183, 241, 255, 0.82);
+  background: rgba(14, 45, 70, 0.88);
+  box-shadow: 0 0 18px rgba(111, 217, 255, 0.24);
+}
+.tsi-tool--pelagosi .tsi-pel-pillar.tsi-pel-complete .tsi-pel-pillar-rune,
+.tsi-tool--pelagosi .tsi-pel-pillar.tsi-pel-complete .tsi-pel-pillar-arrow {
+  border-color: rgba(229, 252, 255, 0.98);
+  box-shadow: 0 0 26px rgba(183, 241, 255, 0.38), inset 0 0 22px rgba(111, 217, 255, 0.16);
+}
+
+.tsi-tool--pelagosi .tsi-pel-basin {
+  position: absolute;
+  left: 50%;
+  top: 65.4%;
+  transform: translate(-50%, -50%);
+  z-index: 5;
+  width: clamp(4.4rem, 11.1cqw, 7.3rem);
+  display: grid;
+  justify-items: center;
+  gap: 0.28rem;
+  padding: 0.35rem;
+  border-radius: 1.15rem;
+  background: rgba(3, 12, 24, 0.66);
+  border: 1px solid rgba(183, 241, 255, 0.28);
+  box-shadow: 0 0 24px rgba(111, 217, 255, 0.18), inset 0 0 18px rgba(111, 217, 255, 0.06);
+  transition: opacity 240ms ease, transform 240ms ease;
+}
+.tsi-tool--pelagosi .tsi-pel-basin p {
+  margin: 0;
+  font-size: 0.76rem;
+  letter-spacing: 0.08rem;
+  text-transform: uppercase;
+  color: #d8f8ff;
+  text-shadow: 0 0 10px rgba(111, 217, 255, 0.25);
+}
+.tsi-tool--pelagosi .tsi-pel-basin-btn {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 1rem;
+  background: rgba(4, 15, 27, 0.82);
+  border: 1px solid rgba(140, 224, 255, 0.3);
+  display: grid;
+  place-items: center;
+  padding: 0.34rem;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.35);
+}
+.tsi-tool--pelagosi .tsi-pel-basin-btn img { width: 70%; filter: drop-shadow(0 0 13px rgba(111, 217, 255, 0.25)); pointer-events: none; }
+.tsi-tool--pelagosi .tsi-pel-basin-btn span { font-size: 0.75rem; line-height: 1; color: rgba(232, 251, 255, 0.94); pointer-events: none; }
+.tsi-tool--pelagosi .tsi-pel-basin-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: rgba(183, 241, 255, 0.9);
+  box-shadow: 0 0 25px rgba(111, 217, 255, 0.3);
+}
+.tsi-tool--pelagosi .tsi-pel-basin-btn.tsi-pel-basin-ok {
+  border-color: rgba(229, 252, 255, 0.98);
+  box-shadow: 0 0 30px rgba(183, 241, 255, 0.48), inset 0 0 24px rgba(111, 217, 255, 0.18);
+}
+.tsi-tool--pelagosi .tsi-pel-basin-btn.tsi-pel-basin-wrong { border-color: rgba(155, 232, 255, 0.85); animation: tsi-pel-flash-wrong 580ms ease; }
+.tsi-tool--pelagosi .tsi-pel-basin.tsi-pel-basin-solved {
+  background: rgba(8, 34, 54, 0.78);
+  box-shadow: 0 0 36px rgba(183, 241, 255, 0.42), inset 0 0 24px rgba(111, 217, 255, 0.16);
+}
+
+/* ---------- The Tidal console ---------- */
+.tsi-tool--pelagosi .tsi-pel-console-row--tidal { align-items: stretch; }
+.tsi-tool--pelagosi .tsi-pel-tidal-pips { display: flex; gap: 8px; align-items: center; flex: 0 0 auto; }
+.tsi-tool--pelagosi .tsi-pel-tidal-pip {
+  min-width: 2.4rem;
+  display: inline-grid;
+  place-items: center;
+  padding: 0.35rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(139, 230, 255, 0.18);
+  border: 1px solid rgba(170, 240, 255, 0.46);
+  color: var(--tsi-pel-text);
+  font: 700 13px/1 var(--tsi-font-display);
+  letter-spacing: 0.06rem;
+  transition: background 220ms ease, box-shadow 220ms ease, transform 220ms ease;
+}
+.tsi-tool--pelagosi .tsi-pel-tidal-pip.tsi-pel-complete {
+  background: rgba(190, 248, 255, 0.95);
+  color: #04111d;
+  box-shadow: 0 0 16px rgba(184, 243, 255, 0.45);
+  transform: scale(1.06);
+}
+.tsi-tool--pelagosi .tsi-pel-tidal-pip.tsi-pel-rune-ok:not(.tsi-pel-complete),
+.tsi-tool--pelagosi .tsi-pel-tidal-pip.tsi-pel-dir-ok:not(.tsi-pel-complete) {
+  background: rgba(64, 177, 225, 0.34);
+  box-shadow: 0 0 12px rgba(111, 217, 255, 0.18);
+}
+.tsi-tool--pelagosi .tsi-pel-pressure {
+  flex: 1 1 auto;
+  display: grid;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: var(--tsi-radius-md);
+  background: rgba(8, 24, 40, 0.72);
+  border: 1px solid rgba(123, 213, 250, 0.2);
+}
+.tsi-tool--pelagosi .tsi-pel-pressure-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 15px;
+  color: var(--tsi-pel-soft);
+}
+.tsi-tool--pelagosi .tsi-pel-pressure-head strong {
+  color: var(--tsi-pel-glow-strong);
+  font: 700 12px/1 var(--tsi-font-display);
+  letter-spacing: 0.08rem;
+  text-transform: uppercase;
+}
+.tsi-tool--pelagosi .tsi-pel-pressure-track { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.35rem; }
+.tsi-tool--pelagosi .tsi-pel-segment {
+  height: 0.7rem;
+  border-radius: 999px;
+  background: rgba(139, 230, 255, 0.14);
+  border: 1px solid rgba(170, 240, 255, 0.22);
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.2);
+  transition: background 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
+}
+.tsi-tool--pelagosi .tsi-pel-segment.tsi-pel-active { background: rgba(111, 217, 255, 0.62); border-color: rgba(190, 248, 255, 0.75); box-shadow: 0 0 13px rgba(111, 217, 255, 0.28); }
+.tsi-tool--pelagosi .tsi-pel-segment.tsi-pel-danger { background: rgba(210, 246, 255, 0.95); box-shadow: 0 0 18px rgba(190, 248, 255, 0.45); }
+.tsi-tool--pelagosi .tsi-pel-pressure .tsi-pel-copy { color: var(--tsi-pel-soft); font-size: 14.5px; }
+.tsi-tool--pelagosi .tsi-pel-actions { display: flex; gap: 10px; flex: 0 0 auto; }
+.tsi-tool--pelagosi .tsi-pel-tip { margin-left: 4px; }
+
+/* ---------- Pop-up text (pop-ups sit outside the tool's area, so these are scoped to its page) ---------- */
+.tsi-page--pelagosi .tsi-pel-modal-eyebrow {
+  margin: 0 0 10px;
+  font: 400 11px/1.3 var(--tsi-font-display);
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--tsi-text-soft);
+}
+.tsi-page--pelagosi .tsi-pel-modal-list { margin: 0 0 12px; padding-left: 22px; line-height: 1.45; }
+.tsi-page--pelagosi .tsi-pel-modal-list li { margin-bottom: 4px; }
+.tsi-page--pelagosi .tsi-pel-modal-foot { font-style: italic; color: var(--tsi-text-muted); }
+
+.tsi-tool--pelagosi .tsi-pel-hidden { display: none !important; }
+
+/* ---------- Reduce motion: gentler shakes and flashes, slower drifting light ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .tsi-tool--pelagosi .tsi-pel-shake { animation-name: tsi-pel-shake-soft; }
+  .tsi-tool--pelagosi .tsi-pel-tremor { animation-name: tsi-pel-tremor-soft; }
+  .tsi-tool--pelagosi .tsi-pel--screen-flash::after { animation-name: tsi-pel-screen-flash-soft; }
+  .tsi-tool--pelagosi .tsi-pel-rune-btn:hover:not(:disabled),
+  .tsi-tool--pelagosi .tsi-pel-rune-btn.tsi-pel-correct,
+  .tsi-tool--pelagosi .tsi-pel-pillar-rune:hover:not(:disabled),
+  .tsi-tool--pelagosi .tsi-pel-pillar-arrow:hover:not(:disabled),
+  .tsi-tool--pelagosi .tsi-pel-basin-btn:hover:not(:disabled) { transform: none; }
+}
+@keyframes tsi-pel-shake-soft {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}
+@keyframes tsi-pel-tremor-soft {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(-1px, 0, 0); }
+}
+@keyframes tsi-pel-screen-flash-soft {
+  0% { opacity: 0; }
+  30% { opacity: 0.3; }
+  100% { opacity: 0; }
+}
+
+/* ---------- Smaller windows: stack the columns and scroll down ---------- */
+@media (max-width: 1260px) {
+  .tsi-tool--pelagosi .tsi-pel-grid { grid-template-columns: minmax(0, 1fr); }
+  .tsi-tool--pelagosi .tsi-pel-centre { order: -1; height: auto; }
+  .tsi-tool--pelagosi .tsi-pel-marker-frame { min-height: 560px; }
+  .tsi-tool--pelagosi .tsi-pel-tidal-fit { container-type: normal; display: block; }
+  .tsi-tool--pelagosi .tsi-pel-tidal-frame { width: 100%; }
+  .tsi-tool--pelagosi .tsi-pel-col { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+}
