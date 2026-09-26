@@ -1,0 +1,478 @@
+/* ==========================================================================
+   Arenas of The Scarlett Isles — the screen.
+   The old tool's pieces (POV scene with its overlays, the turn panel, the
+   party, opponents and Round Console) in the suite's look, laid out so
+   everything fits the laptop (1707 × 930) and the TV (KNOWN_ISSUES ARN-10):
+
+     [ scene (16:9, fitted)      ] [ turn panel ] [ Party     ]
+     [ gold / success / turn     ] [ (own       ] [ Opponents ]
+     [ Round Console + Play Turn ] [  column)   ] [           ]
+
+   The scene keeps the old 16:9 frame, the pictures' crop (centre, 35% down)
+   and the overlay order (base, totems, then the fighters on top). The Lion's
+   Mark and its announcement keep their old look. Every rule is scoped to
+   .tsi-tool--arenas and every class starts "tsi-arn-".
+   ========================================================================== */
+
+.tsi-tool--arenas [hidden] { display: none !important; }
+
+.tsi-tool--arenas .tsi-arn {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 10px;
+  height: calc(100vh - var(--tsi-topbar-h));
+  min-height: 600px;
+  padding: 10px 16px 14px;
+  box-sizing: border-box;
+  max-width: 2200px;
+  margin: 0 auto;
+}
+
+/* ---------- Title and controls ---------- */
+.tsi-tool--arenas .tsi-arn-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.tsi-tool--arenas .tsi-arn-brand-title {
+  margin: 0;
+  font: 600 22px/1.15 var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-title);
+  color: var(--tsi-gold-text);
+  text-shadow: var(--tsi-text-shadow-title);
+}
+.tsi-tool--arenas .tsi-arn-brand-sub {
+  margin-top: 2px;
+  color: var(--tsi-text-muted);
+  font-size: var(--tsi-fs-body-sm);
+}
+.tsi-tool--arenas .tsi-arn-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 10px;
+}
+.tsi-tool--arenas .tsi-arn-divider {
+  width: 1px;
+  height: 34px;
+  margin: 0 4px;
+  background: var(--tsi-line-panel);
+}
+.tsi-tool--arenas .tsi-arn-field { gap: 4px; }
+.tsi-tool--arenas .tsi-arn-input {
+  height: 38px;
+  padding: 4px 10px;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+.tsi-tool--arenas .tsi-arn-controls .tsi-arn-input { width: auto; min-width: 190px; }
+.tsi-tool--arenas select.tsi-arn-input {
+  padding-right: 28px;
+  background-image: linear-gradient(45deg, transparent 50%, var(--tsi-gold-text) 50%), linear-gradient(135deg, var(--tsi-gold-text) 50%, transparent 50%);
+  background-position: calc(100% - 15px) 16px, calc(100% - 10px) 16px;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+.tsi-tool--arenas .tsi-arn-controls .tsi-btn { height: 38px; }
+
+/* ---------- The three columns ---------- */
+.tsi-tool--arenas .tsi-arn-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 420px 330px;
+  gap: 12px;
+  min-height: 0;
+}
+.tsi-tool--arenas .tsi-arn-stage,
+.tsi-tool--arenas .tsi-arn-docklane,
+.tsi-tool--arenas .tsi-arn-side {
+  min-height: 0;
+  min-width: 0;
+  border-radius: var(--tsi-radius-lg);
+  border: var(--tsi-border);
+  background: var(--tsi-panel-fill);
+  box-shadow: var(--tsi-shadow-panel);
+}
+
+/* The stage is a size container, so the scene can be as big as fits while
+   leaving room for the stats line and the Round Console underneath. */
+.tsi-tool--arenas .tsi-arn-stage {
+  container-type: size;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.tsi-tool--arenas .tsi-arn-scene-fit {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: center;
+  background: rgba(0, 0, 0, .35);
+}
+.tsi-tool--arenas .tsi-arn-scene {
+  container-type: inline-size;
+  position: relative;
+  width: min(100cqw, (100cqh - 250px) * 16 / 9);
+  aspect-ratio: 16 / 9;
+  min-width: 320px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, .35);
+}
+.tsi-tool--arenas .tsi-arn-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 35%;
+  pointer-events: none;
+  user-select: none;
+}
+.tsi-tool--arenas .tsi-arn-layer--base { z-index: 1; }
+.tsi-tool--arenas .tsi-arn-layer--boss2 { z-index: 2; } /* the totems, behind the swordsmen */
+.tsi-tool--arenas .tsi-arn-layer--boss { z-index: 3; }
+
+/* ---------- The Lion's Mark (bottom-left of the scene) ---------- */
+.tsi-tool--arenas .tsi-arn-mark {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  z-index: 50;
+  width: clamp(120px, 12cqw, 180px);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+}
+.tsi-tool--arenas .tsi-arn-mark-icon {
+  width: 100%;
+  height: auto;
+  max-height: 140px;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, .65)) drop-shadow(0 0 10px rgba(217, 40, 40, .35));
+}
+.tsi-tool--arenas .tsi-arn-mark-name {
+  font: 800 16px/1.1 var(--tsi-font-display);
+  letter-spacing: .6px;
+  text-align: center;
+  color: rgba(243, 240, 232, .95);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, .85), 0 0 12px rgba(217, 179, 95, .28);
+}
+/* The pulse when the marked player takes damage. */
+.tsi-tool--arenas .tsi-arn-mark--pulse .tsi-arn-mark-icon {
+  animation: tsi-arn-mark-pulse calc(900ms * var(--tsi-signature-slowdown)) ease-out infinite;
+}
+@keyframes tsi-arn-mark-pulse {
+  0% { transform: scale(1); }
+  25% { transform: scale(1.12); }
+  50% { transform: scale(1); }
+  75% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
+/* ---------- The Lion's Mark announcement (over the whole scene) ---------- */
+.tsi-tool--arenas .tsi-arn-announce {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.tsi-tool--arenas .tsi-arn-announce::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, .18);
+}
+.tsi-tool--arenas .tsi-arn-announce-icon {
+  position: absolute;
+  width: min(34cqw, 520px);
+  height: auto;
+  object-fit: contain;
+  opacity: .95;
+  filter: drop-shadow(0 12px 28px rgba(0, 0, 0, .7)) drop-shadow(0 0 18px rgba(180, 30, 40, .35));
+  animation: tsi-arn-announce-pulse calc(1.2s * var(--tsi-signature-slowdown)) ease-in-out infinite;
+}
+.tsi-tool--arenas .tsi-arn-announce-text {
+  position: relative;
+  z-index: 1;
+  max-width: 85%;
+  text-align: center;
+  font: 800 clamp(22px, 3cqw, 46px)/1.15 var(--tsi-font-display);
+  letter-spacing: .4px;
+  color: rgba(245, 240, 228, .98);
+  text-shadow: 0 3px 14px rgba(0, 0, 0, .95), 0 0 12px rgba(217, 179, 95, .28);
+}
+@keyframes tsi-arn-announce-pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+/* ---------- Stats line under the scene ---------- */
+.tsi-tool--arenas .tsi-arn-footer {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 10px;
+  padding: 8px 10px;
+  border-top: 1px solid var(--tsi-line-faint);
+  background: rgba(0, 0, 0, .18);
+}
+.tsi-tool--arenas .tsi-arn-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px 12px;
+  border: 1px solid var(--tsi-line-panel);
+  border-radius: var(--tsi-radius-pill);
+  background: rgba(255, 255, 255, .04);
+  font-size: var(--tsi-fs-body-sm);
+  color: var(--tsi-text-muted);
+}
+.tsi-tool--arenas .tsi-arn-pill[data-test="status"] { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.tsi-tool--arenas .tsi-arn-pill strong { color: var(--tsi-text); font-variant-numeric: tabular-nums; }
+.tsi-tool--arenas .tsi-arn-pill--right { margin-left: auto; flex: 0 0 auto; white-space: nowrap; }
+.tsi-tool--arenas .tsi-arn-muted { color: var(--tsi-text-muted); }
+
+/* ---------- Blocks (Party, Opponents, Round Console) ---------- */
+.tsi-tool--arenas .tsi-arn-block {
+  padding: 10px 12px 12px;
+  border-bottom: 1px solid var(--tsi-line-faint);
+}
+.tsi-tool--arenas .tsi-arn-block:last-child { border-bottom: 0; }
+.tsi-tool--arenas .tsi-arn-block-title {
+  margin: 0 0 8px;
+  font: 600 var(--tsi-fs-button) var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-heading);
+  text-transform: uppercase;
+  color: var(--tsi-gold-text);
+}
+
+/* The Round Console fills the rest of the stage under the scene. */
+.tsi-tool--arenas .tsi-arn-block--console {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--tsi-line-faint);
+  border-bottom: 0;
+}
+.tsi-tool--arenas .tsi-arn-console {
+  flex: 1 1 auto;
+  min-height: 60px;
+  overflow: auto;
+  padding: 8px 10px;
+  border: 1px solid var(--tsi-line-panel);
+  border-radius: var(--tsi-radius-sm);
+  background: rgba(0, 0, 0, .28);
+  font: 13px/1.4 var(--tsi-font-mono);
+  color: var(--tsi-text-soft);
+  white-space: pre-wrap;
+}
+.tsi-tool--arenas .tsi-arn-console-actions {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* ---------- Party and opponents (right column) ---------- */
+.tsi-tool--arenas .tsi-arn-side {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+.tsi-tool--arenas .tsi-arn-list { display: flex; flex-direction: column; gap: 8px; }
+.tsi-tool--arenas .tsi-arn-card {
+  padding: 8px 10px;
+  border: 1px solid var(--tsi-line-panel);
+  border-radius: var(--tsi-radius-sm);
+  background: rgba(255, 255, 255, .03);
+  font-size: var(--tsi-fs-body-sm);
+}
+.tsi-tool--arenas .tsi-arn-card--overtime { border-color: rgba(235, 55, 55, .55); background: rgba(177, 18, 42, .18); }
+.tsi-tool--arenas .tsi-arn-card-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.tsi-tool--arenas .tsi-arn-portrait-row { justify-content: flex-start; }
+.tsi-tool--arenas .tsi-arn-grow { flex: 1 1 auto; min-width: 0; }
+.tsi-tool--arenas .tsi-arn-portrait {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  object-fit: cover;
+  background: rgba(0, 0, 0, .35);
+}
+.tsi-tool--arenas .tsi-arn-small { font-size: 14px; }
+.tsi-tool--arenas .tsi-arn-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border: 1px solid var(--tsi-line-panel);
+  border-radius: var(--tsi-radius-pill);
+  font-size: 13px;
+  color: var(--tsi-text-muted);
+  white-space: nowrap;
+}
+.tsi-tool--arenas .tsi-arn-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.tsi-tool--arenas .tsi-arn-hp {
+  height: 9px;
+  margin-top: 8px;
+  overflow: hidden;
+  border-radius: var(--tsi-radius-pill);
+  border: 1px solid rgba(255, 255, 255, .07);
+  background: rgba(255, 255, 255, .06);
+}
+.tsi-tool--arenas .tsi-arn-hp-fill { height: 100%; background: rgba(217, 179, 95, .9); }
+.tsi-tool--arenas .tsi-arn-small-btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.tsi-tool--arenas .tsi-arn-small-btns .tsi-btn { padding: 4px 9px; }
+.tsi-tool--arenas .tsi-arn-kbd {
+  padding: 1px 7px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .06);
+  font: 13px var(--tsi-font-mono);
+  color: var(--tsi-text);
+}
+
+/* The old tool's red button (Forfeit, Remove, Count as Loss), outlined so the
+   one filled crimson button in each panel stays the main action. */
+.tsi-tool--arenas .tsi-arn-btn--danger {
+  border-color: rgba(235, 90, 90, .7);
+  background: rgba(122, 12, 27, .25);
+  color: #f3b0b0;
+  box-shadow: none;
+}
+.tsi-tool--arenas .tsi-arn-btn--danger:hover { background: rgba(177, 18, 42, .4); border-color: rgba(235, 90, 90, .95); }
+.tsi-tool--arenas .tsi-btn:disabled { opacity: .45; cursor: not-allowed; filter: none; }
+
+/* ---------- The turn panel (middle column) ---------- */
+.tsi-tool--arenas .tsi-arn-docklane {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.tsi-tool--arenas .tsi-arn-dock-idle {
+  margin: auto;
+  padding: 24px;
+  text-align: center;
+  color: var(--tsi-text-faint);
+  font-style: italic;
+}
+.tsi-tool--arenas .tsi-arn-dock {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 14px;
+  background: rgba(0, 0, 0, .35);
+}
+.tsi-tool--arenas .tsi-arn-dock-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 8px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--tsi-line-faint);
+}
+.tsi-tool--arenas .tsi-arn-dock-title {
+  font: 600 17px/1.2 var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-label);
+  color: var(--tsi-gold-text);
+}
+.tsi-tool--arenas .tsi-arn-dock-sub { margin-top: 2px; font-size: 15px; color: var(--tsi-text-muted); }
+.tsi-tool--arenas .tsi-arn-icon-btn {
+  flex: 0 0 auto;
+  padding: 4px 10px;
+  border: var(--tsi-border-control);
+  border-radius: var(--tsi-radius-sm);
+  background: transparent;
+  color: var(--tsi-text);
+  cursor: pointer;
+}
+.tsi-tool--arenas .tsi-arn-icon-btn:hover { border-color: var(--tsi-gold-text); }
+.tsi-tool--arenas .tsi-arn-icon-btn:focus-visible { outline: none; box-shadow: var(--tsi-focus-ring); }
+.tsi-tool--arenas .tsi-arn-dock-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tsi-tool--arenas .tsi-arn-dock-actions {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.tsi-tool--arenas .tsi-arn-dock-actions:empty { display: none; }
+.tsi-tool--arenas .tsi-arn-dock .tsi-arn-field > span { font-size: 11px; }
+.tsi-tool--arenas .tsi-arn-dock .tsi-arn-input { height: 34px; font-size: 15px; }
+.tsi-tool--arenas .tsi-arn-dock .tsi-btn { padding: 6px 12px; }
+.tsi-tool--arenas .tsi-arn-grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px 10px; align-items: end; }
+.tsi-tool--arenas .tsi-arn-gap { margin-top: 8px; }
+.tsi-tool--arenas .tsi-arn-note { margin-top: 6px; }
+.tsi-tool--arenas .tsi-arn-list-text { margin: 6px 0 0; padding-left: 20px; color: var(--tsi-text-soft); }
+.tsi-tool--arenas .tsi-arn-list-text li { margin: 2px 0; }
+.tsi-tool--arenas .tsi-arn-list-text .tsi-arn-badge { margin-left: 4px; }
+
+/* Skill Check above Attack Roll (the column is narrower than the old strip). */
+.tsi-tool--arenas .tsi-arn-split { display: flex; flex-direction: column; gap: 8px; }
+.tsi-tool--arenas .tsi-arn-pane {
+  padding: 8px 10px 10px;
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: var(--tsi-radius-sm);
+  background: rgba(255, 255, 255, .03);
+}
+.tsi-tool--arenas .tsi-arn-pane-title {
+  margin-bottom: 6px;
+  font: 700 12px var(--tsi-font-display);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--tsi-gold-text);
+}
+.tsi-tool--arenas .tsi-arn-meta { margin-bottom: 6px; font-size: 14px; color: var(--tsi-text-muted); white-space: pre-wrap; }
+.tsi-tool--arenas .tsi-arn-out { margin-top: 8px; font-size: 15px; }
+.tsi-tool--arenas .tsi-arn-out strong { color: var(--tsi-text); }
+.tsi-tool--arenas .tsi-arn-active {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  font-family: var(--tsi-font-body);
+  font-size: 15px;
+  letter-spacing: 0;
+  color: var(--tsi-text);
+}
+.tsi-tool--arenas .tsi-arn-active .tsi-arn-portrait { width: 30px; height: 30px; }
+
+/* Add Player */
+.tsi-tool--arenas .tsi-arn-form { display: flex; flex-direction: column; gap: 12px; }
+.tsi-tool--arenas .tsi-arn-row { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+.tsi-tool--arenas .tsi-arn-hint { display: block; margin-top: 4px; font: 13px var(--tsi-font-body); letter-spacing: 0; color: var(--tsi-text-faint); }
+.tsi-tool--arenas .tsi-arn-file { font: 14px var(--tsi-font-body); color: var(--tsi-text-soft); }
+
+/* ---------- Smaller windows ---------- */
+@media (max-width: 1500px) {
+  .tsi-tool--arenas .tsi-arn-main { grid-template-columns: minmax(0, 1fr) 380px 300px; }
+}
+/* Below about 1400 px wide the party moves under the scene and the page scrolls down. */
+@media (max-width: 1400px) {
+  .tsi-tool--arenas .tsi-arn { height: auto; }
+  .tsi-tool--arenas .tsi-arn-main {
+    grid-template-columns: minmax(0, 1fr) 380px;
+    grid-template-rows: minmax(560px, calc(100vh - var(--tsi-topbar-h) - 110px)) auto;
+  }
+  .tsi-tool--arenas .tsi-arn-side { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; overflow: visible; }
+  .tsi-tool--arenas .tsi-arn-side .tsi-arn-block { border-bottom: 0; }
+}

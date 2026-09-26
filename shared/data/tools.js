@@ -100,10 +100,17 @@ window.TSI_DATA.tools = [
     name: 'Arenas of The Scarlett Isles',
     group: 'set',
     phase: '6',
-    built: false,
+    built: true,
     saves: true,
     desc: 'Swyth: The Salt-Ring Trials and Middlemount: The Lion’s Crown.',
-    files: { css: [], js: [] }
+    files: {
+      css: ['tools/arenas/arenas.css'],
+      js: [
+        'tools/arenas/data/arenas-data.js',
+        'tools/arenas/rules.js',
+        'tools/arenas/tool.js'
+      ]
+    }
   },
   {
     id: 'ritual',
