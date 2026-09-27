@@ -240,8 +240,9 @@ function serve(dir) {
     });
     if (size !== 'smallWindow') {
       await check(size + ': six notices fit on the board three across', async () => {
-        const tops = await page.$$eval('[data-test=parchments] [data-test=notice]', ns => ns.map(n => Math.round(n.getBoundingClientRect().top / 20)));
-        equal(new Set(tops).size, 2, 'rows');
+        /* Notices are tilted and nudged a little at random, so a new row starts only where there's a real gap. */
+        const tops = await page.$$eval('[data-test=parchments] [data-test=notice]', ns => ns.map(n => n.getBoundingClientRect().top).sort((a, b) => a - b));
+        equal(tops.filter((t, i) => i === 0 || t - tops[i - 1] > 60).length, 2, 'rows');
         const scroll = await page.$eval('.tsi-quests-scroll', s => s.scrollHeight - s.clientHeight);
         assert(scroll <= 40, 'the board needs scrolling by ' + scroll + 'px');
       });
