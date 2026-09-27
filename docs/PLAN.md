@@ -493,6 +493,8 @@ One phase per session, or one clearly defined chunk. The next phase starts only 
 | 9a / 9b / 9c | Bastion core (laptop + TV) / Hall, trade and Council / identity, war and Compendium | the largest tool |
 | Later | A short how-to guide for Harry, with his go-ahead | |
 
+**Phases 4, 5 and 6 were built together** (26 September 2026), at Harry's request to speed the build up: one session, one pull request and one combined checklist, grouped by tool. Each tool still has its own commits, tests and docs. The phases after 6 go back to one per session unless Harry asks otherwise.
+
 ### "Done when" lists (Harry checks these in Edge)
 
 **Phase 1: Shell**
@@ -702,16 +704,16 @@ Defaults are in brackets; "keep" means keep it as the old tool does it.
 - **R9** Strained Binding shows "Ritual collapse / Racing": change the wording? **Keep.**
 - **R10** Bring back the log panel? **No.**
 
-**Arenas of The Scarlett Isles**
-- **A1** Should the third totem breaking end the round as a win, and should 8 successes still win without breaking any? *(keep)*
-- **A2** All opponents down: an automatic win? And when a win and a loss land on the same turn, which counts? *(keep)*
-- **A3** Lion's Mark once per rotation; can the active player be marked; do players already at 0 HP count towards "two down"? *(keep)*
-- **A4** DM picks who acts, or automatic rotation? *(rotation)*
-- **A5** Apply damage once per turn, or once per attack roll? *(once per turn)*
-- **A6** Lock a skill roll once rolled? *(unlocked)*
-- **A7** Accept "2d8+3"? *(keep)*
-- **A8** Middlemount defeat wording? *(keep)*
-- **A9** Overtime hits a random player, even in the Lion's Mark round? *(keep)*
+**Arenas of The Scarlett Isles** *(answered by Harry, 26 September 2026: all the defaults; built in phase 6)*
+- **A1** Should the third totem breaking end the round as a win, and should 8 successes still win without breaking any? **Keep.**
+- **A2** All opponents down: an automatic win? And when a win and a loss land on the same turn, which counts? **Keep.**
+- **A3** Lion's Mark once per rotation; can the active player be marked; do players already at 0 HP count towards "two down"? **Keep.**
+- **A4** DM picks who acts, or automatic rotation? **Rotation.**
+- **A5** Apply damage once per turn, or once per attack roll? **Once per turn.**
+- **A6** Lock a skill roll once rolled? **Unlocked.**
+- **A7** Accept "2d8+3"? **Keep** (it still reads as 2).
+- **A8** Middlemount defeat wording? **Keep.**
+- **A9** Overtime hits a random player, even in the Lion's Mark round? **Keep.**
 
 **Combat Tracker & VTT Battlemap**
 - **C1** NPCs never take turns? *(keep)*

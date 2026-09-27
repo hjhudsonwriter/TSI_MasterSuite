@@ -93,3 +93,37 @@ Every picture, sound and film from the old Ritual, plus the four films from its 
 
 Not copied: the empty `.keep` placeholders and `favicon.ico`, which is a single byte with no picture in it. The old `cinematics/player.html` was a page, not media, and isn't used (KNOWN_ISSUES RIT-26).
 
+
+## Arenas of The Scarlett Isles (phase 6)
+
+All 71 pictures and sounds from the old Arenas tool, copied byte-for-byte (checked with MD5 after copying). The old tool had no duplicates, and none of these files is a copy of a file in any other old repo. The folders keep their old names. The two files the old tool never used are in `extras/`. Where the table says "(same names)", every file in the row keeps its name.
+
+| Old path (`arenas-of-the-scarlett-isles/assets/…`) | New path (`tools/arenas/assets/…`) | Size | Used |
+|---|---|---|---|
+| `maps/swyth_base_rounds_1_2.png` | `maps/swyth_base_rounds_1_2.png` | 4.96 MB, 3072 × 2048 | Yes: Swyth's arena for Round 1, Arena Duelists |
+| `maps/swyth_beast_pen_round_4.png` | `maps/swyth_beast_pen_round_4.png` | 6.70 MB, 3072 × 2048 | Yes: the Beast-Pen |
+| `maps/swyth_wyvern_rite_round_5.png` | `maps/swyth_wyvern_rite_round_5.png` | 6.72 MB, 3072 × 2048 | Yes: the Wyvern Rite |
+| `maps/middlemount_lions_crown.png` | `maps/middlemount_lions_crown.png` | 3.75 MB, 1536 × 1024 | Yes: all three Middlemount rounds |
+| `overlays/arena_duelists_standard.png`, `_hit.png`, `_fail.png` | `overlays/` (same names) | 1.50, 2.43, 2.18 MB | Yes: both duelists standing, hit and striking back (both Arena Duelists rounds) |
+| `overlays/arena_duelists_defeated_1.png`, `_defeated_2.png`, `_hit_1.png`, `_hit_2.png`, `_fail_1.png`, `_fail_2.png` | `overlays/` (same names) | 0.99, 1.39, 1.57, 0.93, 1.88, 1.39 MB | Yes: once one duelist has fallen, the one left standing, hit and striking back |
+| `overlays/beast_pen_standard.png` and the five `beast_pen_standard_…_dead.png` | `overlays/` (same names) | 0.45 to 0.57 MB each | Yes: the Beast-Pen's beasts standing, with whichever have fallen |
+| `overlays/beast_pen_hit_standard.png` and the four `beast_pen_hit_…_dead.png` | `overlays/` (same names) | 1.22 to 1.96 MB each | Yes: a hit, with whichever beasts have fallen |
+| `overlays/beast_pen_boar_fail_standard.png` and the three `beast_pen_boar_fail_hyena_…_dead.png` | `overlays/` (same names) | 1.75 to 1.79 MB each | Yes: the boar striking back |
+| `overlays/beast_pen_hyena_fail_standard.png`, `_hyena_fail_hyena_dead.png`, `_hyena_fail_hyena_boar_dead.png` | `overlays/` (same names) | 1.52, 1.49, 1.32 MB | Yes: a hyena striking back |
+| `overlays/lion_swordsman_standard.png`, `_hit.png`, `_fail.png`, `_1_dead.png`, `_2_dead.png`, `_both_dead.png` | `overlays/` (same names) | 0.48, 0.95, 1.81, 0.41, 0.53, 0.46 MB | Yes: the Lion Totems round's two swordsmen |
+| `overlays/lions_totems_standard.png`, `_hit.png`, `_fail.png`, `_standard_1_dead.png`, `_standard_2_dead.png`, `_standard_3_dead.png` | `overlays/` (same names) | 1.33, 2.03, 2.96, 1.31, 1.27, 1.20 MB | Yes: the three Lion Totems, behind the swordsmen |
+| `overlays/lions_mark_standard.png`, `_hit.png`, `_fail.png` | `overlays/` (same names) | 0.68, 1.86, 2.35 MB | Yes: the Bacca Lion Knight |
+| `overlays/lions_mark_icon.png` | `overlays/lions_mark_icon.png` | 1.67 MB, 1400 × 1400 | Yes: the Lion's Mark badge and announcement |
+| `wyvern_standard.png`, `wyvern_hit.png`, `wyvern_slash.png`, `wyvern_tail_strike.png` | `wyvern_standard.png`, `wyvern_hit.png`, `wyvern_slash.png`, `wyvern_tail_strike.png` | 0.93, 2.75, 4.06, 4.03 MB | Yes: the Wyvern standing, hit, and its two attacks |
+| `sfx/crowd_standard.mp3` | `sfx/crowd_standard.mp3` | 717 KB | Yes: the crowd, looping through a round |
+| `sfx/crowd_hit.mp3`, `crowd_fail.mp3` | `sfx/` (same names) | 139, 96 KB | Yes: the crowd on every hit and failure |
+| `sfx/arena_duelist_hit.mp3`, `arena_duelist_fail.mp3` | `sfx/` (same names) | 53, 61 KB | Yes: Swyth's Arena Duelists, and a hit on a Lion swordsman |
+| `sfx/beast_pen_hit.mp3`, `beast_pen_fail.mp3` | `sfx/` (same names) | 95, 95 KB | Yes: the Beast-Pen |
+| `sfx/wyvern_hit.mp3`, `wyvern_fail.mp3` | `sfx/` (same names) | 141, 108 KB | Yes: the Wyvern Rite |
+| `sfx/lions_totems_hit.mp3`, `lions_totems_fail.mp3` | `sfx/` (same names) | 251, 253 KB | Yes: the Lion Totems |
+| `sfx/lions_mark_hit_1.mp3`, `_hit_2.mp3`, `_hit_3.mp3`, `_fail_1.mp3`, `_fail_2.mp3`, `_fail_3.mp3` | `sfx/` (same names) | 50, 28, 60, 116, 42, 27 KB | Yes: the Lion's Mark round plays each set of three together |
+| `sfx/horn_blast.mp3` | `sfx/horn_blast.mp3` | 170 KB | Yes: the horn when a player gets the Lion's Mark |
+| `sfx/lions_totems_destroyed.mp3` | `extras/lions_totems_destroyed.mp3` | 124 KB | No: never used by the old tool |
+| `tokens/ring.png` | `extras/ring.png` | 3.5 KB, 256 × 256 | No: never used by the old tool |
+
+Not copied: the empty `.keep` placeholders. The arenas and rounds (`data/arenas.json`) are content, not media: they're in `tools/arenas/data/arenas-data.js`.

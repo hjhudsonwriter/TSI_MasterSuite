@@ -2,7 +2,7 @@
 
 Every bug found in the eight old tools during planning, and what the rebuild will do about each one. CLAUDE.md's rule: **only fix a bug if it breaks the tool, loses saved data, or applies something twice.** Everything else stays exactly as it was, and is listed here for Harry to decide on later.
 
-**Status: phases 1 (the shell), 2 (Clan Crest Creator), 3 (Pelagosi Puzzle Trials), 4 (Notice Board) and 5 (The Heartwood Ritual) are built.** The shell's share of the suite-wide (SUI) fixes is in place and tested, and each entry has a **Phase 1** line saying what's done. Every Clan Crest Creator entry has a **Phase 2** line, every Pelagosi entry a **Phase 3** line, every Notice Board entry a **Phase 4** line and every Heartwood Ritual entry a **Phase 5** line, saying whether it was fixed, changed or kept. The other tools' entries are unchanged until their phases. Each tool's session updates its own entries as it goes: it marks each one fixed, or confirms it was left alone, and adds anything new it finds.
+**Status: phases 1 (the shell), 2 (Clan Crest Creator), 3 (Pelagosi Puzzle Trials), 4 (Notice Board), 5 (The Heartwood Ritual) and 6 (Arenas of The Scarlett Isles) are built.** The shell's share of the suite-wide (SUI) fixes is in place and tested, and each entry has a **Phase 1** line saying what's done. Every Clan Crest Creator entry has a **Phase 2** line, every Pelagosi entry a **Phase 3** line, every Notice Board entry a **Phase 4** line, every Heartwood Ritual entry a **Phase 5** line and every Arenas entry a **Phase 6** line, saying whether it was fixed, changed or kept. The other tools' entries are unchanged until their phases. Each tool's session updates its own entries as it goes: it marks each one fixed, or confirms it was left alone, and adds anything new it finds.
 
 ## How to read an entry
 
@@ -1295,6 +1295,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **After (planned):** Store the arena data as a .js data file loaded with a normal script tag (window.TSI_DATA.arenas). No values change.
 - **Checker's note:** load() runs before the fetch (1856), so an old save is never damaged even when the tool fails to start.
 - **Evidence:** app.js:1858 fetch('data/arenas.json'). Test t1: 'Fetch API cannot load file:///…/data/arenas.json. URL scheme "file" is not supported.', pageerror 'Failed to fetch', 0 dropdown options.
+- **Phase 6:** Fixed. The arenas load from `tools/arenas/data/arenas-data.js` with a plain script tag, word for word the same as the old `arenas.json`. Test: from a double-clicked file with the internet off, the Arena and Round lists fill and Enter The Arena works.
 
 ### ARN-02 · Apply can deal one hit's damage again and again
 **Must fix** · applies something twice · listed in the handover
@@ -1304,6 +1305,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **Decision note:** A5 decides once per turn or once per attack roll (default: once per turn).
 - **Checker's note:** After the target dies, the DM can switch to another living target in the dropdown and Apply the same hit again.
 - **Evidence:** app.js:1617-1653: damageApplied is set at 1652 but never checked; 1587 clears it on each attack roll. Test t2: 3 clicks with damage 10 took Arena Duelist 1 from 45 to 15 HP, and the hit sound played 3 times.
+- **Phase 6:** Fixed (Harry's answer A5: once per turn). A turn's damage is applied once. A second Apply, even after re-rolling the attack, says "Damage has already been applied this turn." and changes nothing. Test.
 
 ### ARN-03 · Round prize can be paid more than once
 **Must fix** · applies something twice · listed in the handover
@@ -1312,6 +1314,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **After (planned):** Record that the round is finished and the prize paid, and pay the prize at most once per round. After a result, turn off End Round, Forfeit and Play Turn until the next round starts or Leave Arena is pressed.
 - **Checker's note:** After a Defeat, End Round → Count as Win also pays the prize. The same 'round finished' flag covers this.
 - **Evidence:** endRound adds reward_gp on every call (app.js:1244-1248); the End Round button has no 'already finished' check (1949-1969). Test t2: gold went from 500 to 1000 on a round already cleared.
+- **Phase 6:** Fixed. A round's result is recorded once. The prize is paid once and saved, and Play Turn, End Round and Forfeit turn off until the next round starts or Leave Arena is pressed. This also covers the checker's case (Count as Win after a Defeat). Test.
 
 ### ARN-04 · The round keeps running after it has been won or lost
 **Must fix** · applies something twice
@@ -1320,6 +1323,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **After (planned):** Use the same 'round finished' flag as the prize fix.
 - **Checker's note:** Forfeit after a win still shows a Defeat dock, and the crowd loop keeps playing until Leave Arena.
 - **Evidence:** endRound never sets runActive = false (app.js:1240-1296); openTurnDock only checks runActive (1396). Test t2: after 'Round Cleared', Play Turn plus Resolve raised gold from 1000 to 1500 and applied overtime damage.
+- **Phase 6:** Fixed, with ARN-03. After a result, Play Turn is off, so no more turns, overtime or prizes, and Forfeit is off, so a win can't be followed by a Defeat panel. The crowd keeps playing until Leave Arena, as before. Test.
 
 ### ARN-05 · When storage is full, every portrait is erased and a 'not added' player comes back
 **Must fix** · loses saved data
@@ -1328,6 +1332,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **After (planned):** Save through the shared save module. If storage is full, keep the last good save exactly as it was, tell Harry clearly, and keep memory and storage in step. Never drop portraits silently.
 - **Checker's note:** The chosen fix is right: keep the last good save, keep memory and storage in step, and tell Harry.
 - **Evidence:** app.js:211-219 (strips all images and saves), 1839-1846 (only memory is rolled back). Test t5: with storage filled, adding 'Cael' with a portrait showed the alert; memory held [Runa(portrait), Bram(portrait)] while storage and the reloaded page held [Runa, Bram, Cael] with no portraits. Origin check: location.origin 'file://' is shared by other file pages.
+- **Phase 6:** Fixed. The party saves through the suite's shared saving, which never strips portraits. If the browser's storage is full, a warning bar says so and offers Export. The player stays on screen with their portrait, and the save catches up on the next change. Test with a storage that pretends to be full.
 
 ### ARN-06 · Fonts come from the internet
 **Must fix** · won't work double-clicked / offline
@@ -1336,6 +1341,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **After (planned):** Use the suite's locally bundled Cinzel and IM Fell English SC.
 - **Checker's note:** Nothing breaks. Only the Lion's Mark lettering (styles.css:532, 594) falls back to Georgia. It is still a CLAUDE.md 'no online resources' item.
 - **Evidence:** index.html:8-10; test: requestfailed fonts.googleapis.com ERR_CERT_AUTHORITY_INVALID
+- **Phase 6:** Fixed. The Lion's Mark lettering uses the suite's bundled Cinzel. Test: the fonts load with the internet off.
 
 ### ARN-07 · Double-clicking Play Turn uses up two turns and skips a player
 **Must fix** · applies something twice
@@ -1343,6 +1349,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **Before:** If you double-click Play Turn, or click it again while a turn is already open, the tool counts two turns. The player whose turn it should have been is skipped, and overtime arrives a turn early. In the Lion's Mark round it can also re-pick the mark and blow the horn again.
 - **After (planned):** Ignore Play Turn while a turn is already open. Whether a cancelled turn should count stays Harry's call.
 - **Evidence:** openTurnDock adds to the turn counter and the rotation on every call, with no check for a turn already open (app.js:1411, 1437, 1422-1433). Run t2.js: the turn counter went 1→3 after one double-click, and the active player shown was Cael (Bram skipped).
+- **Phase 6:** Fixed. While a turn panel is open, Play Turn does nothing, and a double click counts once. Test: a double click and then another click give turn 1, for the first player.
 
 ### ARN-08 · Double-clicking Add with a portrait adds the player twice
 **Must fix** · applies something twice
@@ -1350,6 +1357,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **Before:** When you add a player with a picture, a quick double-click on Add creates two copies of that player, each with the portrait. Both are saved.
 - **After (planned):** Turn off the Add button while the portrait is being processed. Accept only one submit per open form.
 - **Evidence:** The submit handler is async and waits while the portrait is shrunk (app.js:1833), before it adds the player (1837) and closes the form (1849), so a second submit gets through. Run t4.js: stored players ['Runa:4391','Runa:4391'] after one double-click. Without a portrait, no duplicate appeared.
+- **Phase 6:** Fixed. Add turns off while the portrait is being shrunk, and each form adds one player. Test: two submits in a row add one player.
 
 ### ARN-09 · Replaying Lion Totems shows the swordsmen already dead
 **Fixed by the new design** · other
@@ -1359,6 +1367,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **Decision note:** Each round starts from fresh state.
 - **Checker's note:** Display only. A fresh per-round state in the rebuild removes it.
 - **Evidence:** state.mmR2Dead is created at app.js:420 and never reset by resetRunState (999-1017) or startRound (1019-1034). Test t4: on re-entering mm_r2 the overlay was lion_swordsman_both_dead.png while both had 90 HP.
+- **Phase 6:** Fixed. Every round starts with fresh tracking of who has fallen. Test: replaying the Lion Totems shows both swordsmen standing.
 
 ### ARN-10 · Rules panel is cut off on laptop-sized screens
 **Fixed by the new design** · other
@@ -1367,6 +1376,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **After (planned):** Let the dock scroll in the rebuilt layout (a layout change, not a rule change). Ask Harry for his laptop's screen size.
 - **Decision note:** Covered by the laptop/TV layout requirement.
 - **Evidence:** styles.css:180 sets the dock lane height to max calc(100vh - 92px - 220px) with overflow hidden (185); #dockBody has overflow hidden, 'no scrolling in dock' (307-308). Run t8.js: at 1366x768 the rules body was 302px against 478px of content, with approaches and DCs clipped. At 1280x720 the Win/Lose card was clipped too; nothing was clipped at 1920x950. Screenshot v8_rules_1366x768.png. The turn panel's controls were not clipped at any size tested.
+- **Phase 6:** Fixed. The turn panel has its own column beside the arena picture and scrolls if it must. The Round Console sits under the picture, so Play Turn is always in view. On the laptop (in a window and full screen) and the TV, the rules panel shows everything down to the DCs, and the whole turn panel, Play Turn and the top controls are in view with no sideways scroll. In a window narrower than about 1400 px, the party moves under the picture and the page scrolls down. Tests at four sizes.
 
 ### ARN-11 · Pass or fail is read from the tick symbol, and choices can be changed after rolling
 **Later, Harry's call** · other · listed in the handover
@@ -1376,6 +1386,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **Decision note:** A6. The roll is stored as data behind the scenes either way.
 - **Checker's note:** The rules module will need the roll stored as data anyway (a behind-the-scenes change). Locking the roll is Harry's call.
 - **Evidence:** app.js:1738-1740 (tick check and dropdowns read at resolve time); mem.skill stored at 1572 but never used. Test t3: Bram rolled Nature at Easy (DC 16), switched to Hard plus Animal Handling, and the log said 'Bram mastered the beast line (Hard): +2 successes'.
+- **Phase 6:** Kept (A6). The roll is now kept as data behind the scenes, but, as before, the approach and difficulty are read when Resolve Turn is pressed, and the skill check can be re-rolled.
 
 ### ARN-12 · 'All opponents down' overrides a win or loss on the same turn
 **Later, Harry's call** · other · listed in the handover
@@ -1385,6 +1396,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **Decision note:** A2
 - **Checker's note:** Not re-run at runtime, but the code order is clear. It is a rules question for Harry.
 - **Evidence:** app.js:1784-1798. Test t3: failures 3/3 with both duelists at 0 gave 'Opponents defeated. Round can end now.' and no Defeat. In r5, overtime pushed failures to 2/2 while successes reached 12, which was scored as a win (+50,000).
+- **Phase 6:** Kept (A2). Rules test.
 
 ### ARN-13 · Lion Totems can be won without breaking a single totem
 **Later, Harry's call** · other · listed in the handover
@@ -1394,6 +1406,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **Decision note:** A1
 - **Checker's note:** Rules question for Harry.
 - **Evidence:** arenas.json:228, 238-240 vs app.js:1765, 1790. Test t4: 8 successes with all totems at 45 HP gave 'Round Cleared' and +8000 gold; three totems down gave only a status message.
+- **Phase 6:** Kept (A1). Test: breaking all three totems says the round can end now; End Round then counts the win.
 
 ### ARN-14 · A cancelled turn still counts
 **Later, Harry's call** · other
@@ -1402,6 +1415,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** The double-click form of this is a separate new bug (applies_twice).
 - **Evidence:** app.js:1411 and 1437 advance turn and turnIndex before anything is rolled; Cancel just hides the dock (1546). Test t2: Bram's turn was cancelled, the next turn went to Cael, and overtime damage started at turn 7 after only 6 real turns.
+- **Phase 6:** Kept. Test: a cancelled turn moves on to the next player.
 
 ### ARN-15 · Leaving the arena leaves the enemy picture and the Lion's Mark badge on screen
 **Later, Harry's call** · other
@@ -1410,6 +1424,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** If a 5.2 s restore timer is still pending, it hides the layer later. The HUD stays either way.
 - **Evidence:** The Leave Arena handler (app.js:1285-1293) calls resetRunState (999-1017), which never refreshes the scene or the HUD. Test t4 screenshot t4_after_leave.png: the Lion Knight and the 'Cael' mark were still showing after 'Run ended'.
+- **Phase 6:** Kept. Test: after Leave Arena, the last picture and the Lion's Mark stay on screen.
 
 ### ARN-16 · Missed attacks show no picture in four rounds
 **Later, Harry's call** · other
@@ -1418,6 +1433,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** The four rounds are r1 and mm_r1 (before a duelist falls), r5 and mm_r3.
 - **Evidence:** getFailOverlaySrc returns overlays.pc_fail (app.js:494, 504), but no round has that key (script check). showOverlay ignores an empty source (746). Test t3: the r1 and r5 overlays stayed on standard while wyvern_fail.mp3 and crowd_fail.mp3 played.
+- **Phase 6:** Kept. Test: a missed attack in the Arena Duelists round plays the sounds and shows no picture.
 
 ### ARN-17 · Middlemount Opening Bout shows both duelists on a failure after one has fallen
 **Later, Harry's call** · other
@@ -1426,6 +1442,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** Checked by reading the code only.
 - **Evidence:** The r1-only branch at app.js:1172 (mm_r1 drops to the generic path at 1181). Test t4: after Duelist 1 fell in mm_r1, a skill failure showed arena_duelists_fail.png.
+- **Phase 6:** Kept.
 
 ### ARN-18 · Damage with a bonus becomes a tiny number
 **Later, Harry's call** · other
@@ -1434,6 +1451,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **After:** Kept as it is in the rebuild.
 - **Decision note:** A7
 - **Evidence:** app.js:1641-1645 (/^\d+d\d+$/ test, then parseInt). Test t4: '2d8+3' gave 'Damage applied: 2'.
+- **Phase 6:** Kept (A7). Rules test: "2d8+3" deals 2.
 
 ### ARN-19 · Defeat message always names the Swyth trials
 **Later, Harry's call** · other
@@ -1442,6 +1460,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **After:** Kept as it is in the rebuild.
 - **Decision note:** A8
 - **Evidence:** app.js:1254; test t4 mm_r3 defeat subtitle
+- **Phase 6:** Kept (A8). Test: a Middlemount defeat says "The Salt-Ring Trials end here."
 
 ### ARN-20 · Round list doesn't follow 'Proceed to Next Round'
 **Later, Harry's call** · other
@@ -1450,6 +1469,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** Fixed as soon as the first Play Turn saves (1711).
 - **Evidence:** startRound (app.js:1019-1051) neither refreshes the dropdowns nor saves. Test t6: state r4 with the dropdown showing r1; after reload roundId was r1.
+- **Phase 6:** Kept. Test.
 
 ### ARN-21 · Breaking the last totem with the side-panel buttons doesn't topple the guardians
 **Later, Harry's call** · other
@@ -1458,6 +1478,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** The survey said this wasn't runtime-tested; it now is.
 - **Evidence:** The rule exists only at app.js:1670-1686; the enemy card handler (939-995) has none. Found by reading the code; not tested at runtime.
+- **Phase 6:** Kept.
 
 ### ARN-22 · Round progress is lost on reload
 **Later, Harry's call** · other · listed in the handover
@@ -1466,6 +1487,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** Not a regression. The old tool never saved it.
 - **Evidence:** app.js:199-206; test t3 before and after reload
+- **Phase 6:** Kept. Only the party, gold and chosen arena and round are saved, as before.
 
 ### ARN-23 · Lion's Mark round is lost on the first turn if two players are already down
 **Later, Harry's call** · other
@@ -1474,6 +1496,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **After:** Kept as it is in the rebuild.
 - **Decision note:** A3
 - **Evidence:** defeatByTwoDown counts every player at 0 HP (app.js:1771-1772), and startRound never heals (1019-1051). Run t7.js: with Cael and Dara set to 0 before mm_r3, the first turn was a success (1/10) and the Defeat dock appeared (screenshot v7_mm_r3_pre_down_defeat.png).
+- **Phase 6:** Kept (A3). Rules test.
 
 ### ARN-24 · An unreadable portrait makes Add silently do nothing
 **Later, Harry's call** · other
@@ -1481,6 +1504,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **Before:** If you pick a picture the browser can't open (for example an iPhone HEIC photo), clicking Add does nothing and shows no message. The player isn't added.
 - **After:** Kept as it is in the rebuild.
 - **Evidence:** Image decode failure rejects (app.js:179-184), and the submit handler has no error handling (1823-1834). Run t9.js with a fake .png: pageerror 'Uncaught (in promise) #<Event>', the player was not stored, the form stayed open and no dialog appeared.
+- **Phase 6:** Kept. The failed picture no longer causes a hidden error, but Add still does nothing visible and the form stays open. Test.
 
 ### ARN-25 · Footer gold doesn't update after a win
 **Later, Harry's call** · other
@@ -1488,6 +1512,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **Before:** After a round is won, the gold counter under the arena still shows the old total until the next turn or reset. The results panel shows the right figure.
 - **After:** Kept as it is in the rebuild.
 - **Evidence:** resolveTurnFromDock refreshes the stats (1781) before endRound adds the prize (1246); endRound never calls renderHeaderStats. Run t10.js: footer gold 0, results panel 'Total gold' 500, stored totalGold 500.
+- **Phase 6:** Kept. Test: after a win the footer still shows the old gold until the next change.
 
 ### ARN-26 · Removing an opponent with Remove doesn't update the death pictures in Middlemount
 **Later, Harry's call** · other
@@ -1495,6 +1520,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **Before:** In Middlemount Round 1 and the Lion Totems round, using Remove on an opponent leaves its picture standing, as if it were still alive. Swyth Round 1 and the Beast-Pen handle Remove correctly.
 - **After:** Kept as it is in the rebuild.
 - **Evidence:** The card handler records deaths on Remove only for r1/r4 (app.js:944-945, 984-989). mm_r1/mm_r2 pictures are worked out from the HP of enemies still in the list (343-357, 433-434, 444-447). Run t10.js: mm_r1 after removing Duelist 1 still showed arena_duelists_standard.png (r1 showed defeated_1). mm_r2 after removing Totem 1 and Swordsman 1 still showed both standard overlays.
+- **Phase 6:** Kept.
 
 ### ARN-27 · Changing the Arena or Round list, or pressing Enter The Arena, wipes a round in progress without asking
 **Later, Harry's call** · other
@@ -1502,7 +1528,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **Before:** Mid-round, touching the Arena or Round dropdown resets the whole round (score, turn, opponents) with no 'are you sure?'. Pressing Enter The Arena again restarts the round from scratch. Damage the party has taken stays.
 - **After:** Kept as it is in the rebuild.
 - **Evidence:** The select change handlers call resetRunState directly (app.js:1872-1889). enterArenaBtn calls startRound unconditionally (1891-1895), which zeroes the score and respawns enemies (1025-1042). Found by reading the code.
-
+- **Phase 6:** Kept. Leaving the tool mid-round now asks first (Harry's answer 7), but changing the lists or pressing Enter The Arena still restarts the round without asking, as before.
 
 ## The Heartwood Ritual
 Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
