@@ -709,7 +709,9 @@ function serve(dir) {
       ['press', 'next-round'], ['press', 'next-round'], ['press', 'next-round'],
       ['press', 'strike-15'],
       ['press', 'next-round'], ['press', 'next-round'],
-      ['press', 'next-round'], ['wait', 500],
+      /* Let each tool's ending film fail to load and close (the test browser can't play MP4s; the old tool's
+         is refused over the web, the new one's from a file), so the last step doesn't depend on which closes first. */
+      ['press', 'next-round'], ['wait', 2000],
       ['press', 'dock-prev-round']
     ];
 
