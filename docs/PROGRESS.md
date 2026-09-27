@@ -2,11 +2,60 @@
 
 ## Where things stand
 
-**Phase 3 (Pelagosi Puzzle Trials) is built and tested. Phase 4 (Notice Board) is next, and waits for Harry's go-ahead and his answers to N1–N5.**
+**Phases 4 (Notice Board), 5 (The Heartwood Ritual) and 6 (Arenas of The Scarlett Isles) are built and tested.** At Harry's request they were built together, in one session with one pull request and one combined checklist. **Phase 7 (Combat Tracker desk) is next,** and waits for Harry's go-ahead and his answers to C1–C11.
 
-Double-click `index.html` to open the suite. The Clan Crest Creator and the Pelagosi Puzzle Trials open from their cards. The other six tools say "Coming in phase N" until their phases are done. The plan is in `docs/PLAN.md`, the bug list in `docs/KNOWN_ISSUES.md`, and the notes for building each tool in `docs/BUILDING-A-TOOL.md`.
+Double-click `index.html` to open the suite. Five tools now open from their cards: the Clan Crest Creator, the Pelagosi Puzzle Trials, the Notice Board, The Heartwood Ritual and the Arenas. The other three say "Coming in phase N" until their phases are done. The plan is in `docs/PLAN.md`, the bug list in `docs/KNOWN_ISSUES.md`, and the notes for building each tool in `docs/BUILDING-A-TOOL.md`.
 
 ## Done
+
+### Phase 6: Arenas of The Scarlett Isles (26–27 September 2026)
+- **Rebuilt as it was:**
+  - Both arenas and all six rounds, with the same prizes, DCs, approaches, opponents, failure damage, tempo limits and overtime.
+  - The arena picture with its standing, hit and fail pictures: the fallen duelist stays fallen, the Beast-Pen shows whichever beasts are down, the swordsmen stand in front of the three Lion Totems, and the Lion's Mark badge and its big announcement with the horn.
+  - The turn panel (skill check, attack roll, damage and Apply), the rules and results panels, End Round, Forfeit, Back to Start, Reset Run and Add Player, and every sound at the old volumes, with the crowd looping through a round.
+  - It saves the party (with portraits), the gold and the chosen arena and round, as before.
+- **Your answers (all the defaults):** A1–A3 and A7–A9 kept as they were; players take turns in order (A4); damage is applied once per turn (A5); a skill roll can still be re-rolled or changed before Resolve Turn (A6).
+- **Fixed (they broke the tool, lost data or applied something twice):**
+  - It works double-clicked and offline (ARN-01, ARN-06).
+  - Apply deals a turn's damage once, even after re-rolling the attack (ARN-02).
+  - A round's prize is paid once. After a result, Play Turn, End Round and Forfeit are off until the next round or Leave Arena (ARN-03, ARN-04).
+  - A full storage no longer wipes everyone's portraits: a warning appears, nothing is stripped, and it saves again on the next change (ARN-05).
+  - A double click on Play Turn or Add counts once (ARN-07, ARN-08).
+  - Replaying the Lion Totems starts with both swordsmen standing (ARN-09).
+- **Layout:** the arena picture keeps its 16:9 frame and grows to fit. The turn panel has its own column beside it, and the Round Console (with Play Turn) sits under the picture, so the whole turn and Play Turn are in view on your laptop and the TV (ARN-10). Party and Opponents are on the right.
+- **Kept as they were** (listed in KNOWN_ISSUES ARN-11 to ARN-27), for example: a cancelled turn still counts, the footer gold catches up only after the next change, and changing the Arena or Round list restarts a round without asking.
+- **Leaving mid-round** asks "Leave the Arenas of The Scarlett Isles?" first, and closing the tool stops the crowd and every picture timer.
+- **Reduce motion:** the Lion's Mark pulses and the announcement throb more slowly.
+- **Checked against the old tool:** with the same dice, the two tools played all six rounds side by side (wins, losses, hits, misses, the Beast-Pen bonus, totems, the Lion's Mark and overtime) and showed the same thing at every one of 186 steps: scores, HP, gold, pictures, sounds, panels and the log.
+- **Structure:** arenas and media list in `tools/arenas/data/arenas-data.js`, rules in `rules.js`, the screen in `tool.js`, styles in `arenas.css`. All 71 pictures and sounds are in `tools/arenas/assets/`, the two unused ones in `extras/` (`docs/ASSETS.md`).
+
+### Phase 5: The Heartwood Ritual (26 September 2026)
+- **Rebuilt as it was:** the three stones (Weight, Memory and Silence) with their rolls, Assists, Progress, Stress and cracks; the eight rounds; the six Heartwood events; the Husk, Buckbear and Wyvern; the Pulse; the three endings and the Final Seal; the DM Dock and the `` ` ``, N and E keys; the heartbeat and sounds; and the root film behind the screen. The films play inside the page, as before. It saves nothing, as before.
+- **Your answers:** R2, threats are checked once per round, when Next Round is pressed. The rest are the defaults: the name stays "The Heartwood Ritual" (R1), events can repeat (R3), sound is Enable only (R8), the P key is gone (R7) and there's no log panel (R10).
+- **Fixed:**
+  - Reset Ritual crashed and left the old ritual on screen (RIT-01). It now starts completely fresh.
+  - The Silence buttons were off the bottom of a laptop screen (RIT-02). The Ritual is now drawn at the old size and scaled to fit: about 91% on your laptop, full size on the TV.
+  - The crack pictures, films and fonts work offline (RIT-03 to RIT-05).
+  - Threats no longer roll on every redraw (RIT-06, R2).
+  - A double press on Next Round or Apply Event counts once, and Enable Sound can't start two heartbeats (RIT-07 to RIT-09).
+  - Reset also clears armed Assists, the finale's timers and a paused heartbeat (RIT-10).
+- **Leaving mid-ritual** asks first, and closing it stops the heartbeat, films and timers.
+- **Checked against the old tool:** 46 moves played in both side by side, with the screens compared after each.
+
+### Phase 4: Notice Board Quest Generator (26 September 2026)
+- **Rebuilt as it was:** all 180 quests word for word; the filters (level, count, type, province, faction and the honour settings); Generate, Decline, Accept with the quest outline, the ★ and Remove; the accepted list grouped by province; the wooden notice board; and the players' pop-out board.
+- **Your answers (all the defaults):** one bounty at levels 7–10 (N1) and the bounty level bands (N2) kept; one Clan and one Temple Honour value (N3); the players' window shows the notices only, with no buttons (N4); the Root and Veinwood text kept word for word until you send replacements (N5).
+- **Saving:** accepted quests, their outlines and the ★ are saved, with Export, Import and "Back up everything".
+- **The Knightly Treasures link (your Option A):** the ★ still tells Matt Owen's shop which quest is active, with the same message at the same moments as the old tool. Offline it skips quietly; next time the Notice Board opens online, the shop catches up. Removing the ★ quest now sends one message instead of two identical ones. "Open shop ↗" sits beside it. The Firebase library is stored in the suite folder, and only the Notice Board loads it.
+- **Fixed:** it works double-clicked and offline; the players' window no longer goes stale and reconnects after a reload; a full or damaged save is reported and kept, never lost (QST-01 to QST-07).
+- **Layout:** Quest Outline, the board and Accepted Quests side by side, fitting your laptop and the TV.
+- **Checked against the old tool:** with the same dice, the same boards, wording and tilts; every quest's outline word for word; the same shop messages (one fewer on removing the ★ quest).
+
+### Tests for phases 4 to 6
+- `tests/rules.html`: 171 rules tests (81 new: Notice Board, Ritual and Arenas).
+- `tests/e2e/phase4.test.js` (64 checks), `phase5.test.js` (53) and `phase6.test.js` (79). All pass.
+- The earlier click-throughs (phases 1 to 3) still pass.
+- **Not tested here:** the live Knightly Treasures link (this sandbox can't reach Matt's database, and tests never write to it), the films playing (the test browser can't play MP4s), hearing the sounds, Edge itself and the TV. These are on Harry's checklist.
 
 ### Phase 3: Pelagosi Puzzle Trials (26 September 2026)
 - **Rebuilt as it was:**
@@ -126,7 +175,7 @@ Double-click `index.html` to open the suite. The Clan Crest Creator and the Pela
   - The old-save import phase removed.
 
 ## Next
-**Phase 4: Notice Board Quest Generator** (with Harry's go-ahead). It's the first tool that saves, the first with a player window, and it carries the ★ → Knightly Treasures link. Its "done when" list is in `docs/PLAN.md` section 4. Before it starts, Harry answers N1–N5.
+**Phase 7a: Combat Tracker desk** (with Harry's go-ahead), then 7b, the Battlemap. It's the first tool with a two-way player window, the PDF reader and large maps, and it must work on the TV. Its "done when" lists are in `docs/PLAN.md` section 4. Before it starts, Harry answers C1–C11 (C6 has no default).
 
 ## Open questions for Harry
 
@@ -136,9 +185,10 @@ Each tool's questions are needed before that tool's phase. The full wording and 
   - One small follow-up: the Crest saves nothing, so leaving it loses the current design. As the plan says, it doesn't ask "Leave?" first, just like the old tool. Would you like it to ask when you've changed the design?
 - **Pelagosi Puzzle Trials (phase 3):** answered (P1–P4).
   - When you have the five Tidal sounds, give them to a session and ask it to add the Pelagosi sounds.
-- **Notice Board (phase 4):** N1–N5
-- **Heartwood Ritual (phase 5):** R1–R10. **R2 has no default:** when should the Husk roll happen?
-- **Arenas (phase 6):** A1–A9
+- **Notice Board (phase 4):** answered (N1–N5).
+- **Heartwood Ritual (phase 5):** answered (R1–R10).
+- **Arenas (phase 6):** answered (A1–A9).
+  - Three kept behaviours you're likely to notice at the table: a cancelled turn still uses up that player's go (ARN-14); the gold under the arena catches up only after the next change (ARN-25); and changing the Arena or Round list mid-round restarts it without asking (ARN-27). Say if you'd like any changed.
 - **Combat Tracker (phase 7):** C1–C11. **C6 has no default:** fix the line-of-sight cones, or leave them out?
 - **Explorer (phase 8):** E1–E16
 - **Bastion (phase 9):** B2–B13 and B15–B24. **B2 has no default:** one or three Host Delegation rolls?
@@ -151,6 +201,9 @@ Each tool's questions are needed before that tool's phase. The full wording and 
 - **Running the tests:** double-click `tests/rules.html`, or run `NODE_PATH=/opt/node22/lib/node_modules node tests/e2e/phaseN.test.js` for each phase in this sandbox (see `tests/e2e/README.md`). Re-run every earlier phase's click-through after changing anything in `shared/`.
 - **Browser differences:** don't rely on the browser's own date or number formats (`toLocaleDateString` and the like); Edge's differ from the test browser's. Write them out in code, as `TSI.dates` does.
 - **Not tested here:** Edge itself, the TV, and Windows' "Animation effects" switch (the reduce-motion setting was simulated). Phase 2 adds opening a downloaded crest PNG in another program. These are on Harry's checklist in each pull request.
-- **Old-tool comparisons:** `tests/e2e/phase2.test.js` compares the Crest with the old tool when `_legacy/clan-crest-creator` is there, and `tests/e2e/phase3.test.js` compares Pelagosi with `_legacy/pelagosi_marker_rune_puzzle`. Re-clone them before changing `tools/crest/` or `tools/pelagosi/`.
-- **Timers in tools with several animations:** use a `life.group()` per puzzle, scene or round, and clear it on reset, restart and switch (see `docs/BUILDING-A-TOOL.md`). The Ritual and Arenas will need the same.
+- **Old-tool comparisons:** each tool's click-through compares it with the old tool when that tool is in `_legacy/` (see `tests/e2e/README.md`). Re-clone the old repo before changing a built tool.
+- **Timers in tools with several animations:** use a `life.group()` per puzzle, scene or round, and clear it on reset, restart and switch (see `docs/BUILDING-A-TOOL.md`).
+- **Clock control in tests:** `phase6.test.js` controls the page's clock (Playwright's `page.clock`) to move the 5-second pictures on. Its fast-forward sometimes moves the page's clock by less than asked, so the test checks and repeats (`passTime`).
+- **Fixed dice in tests:** the Arenas (like the old tool) make each opponent's id from a roll plus the time. If a test fixes the dice before a round starts, the opponents share an id and the target list can't tell them apart. Use varied dice (`__seed`) whenever a round starts.
+- **The Notice Board's shop link in tests:** `phase4.test.js` plays Matt's database with a stand-in. Never point a test at the real one.
 - **Sound in tests:** the test browser can load the sounds but nobody hears them. The Pelagosi test records which sounds start and when; hearing them is on Harry's checklist.
