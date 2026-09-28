@@ -239,12 +239,14 @@
      actions: [{ label, onClick, primary }]. Returns { close }. */
   var noticeHost = null;
   var noticesById = {};
+  /* Notices show inside whatever is in full screen, so they're seen there too. */
   function host() {
-    if (noticeHost && noticeHost.isConnected) return noticeHost;
-    noticeHost = TSI.el('div', { class: 'tsi-notices', role: 'region', 'aria-label': 'Notices' });
-    document.body.appendChild(noticeHost);
+    var parent = document.fullscreenElement || document.body;
+    if (!noticeHost) noticeHost = TSI.el('div', { class: 'tsi-notices', role: 'region', 'aria-label': 'Notices' });
+    if (noticeHost.parentNode !== parent) parent.appendChild(noticeHost);
     return noticeHost;
   }
+  document.addEventListener('fullscreenchange', function () { if (noticeHost && noticeHost.isConnected) host(); });
 
   TSI.notify = function (message, options) {
     options = options || {};
