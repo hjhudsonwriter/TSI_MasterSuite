@@ -21,7 +21,7 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 
 | Tool | Must fix | Fixed by design | Deliberate | Later (Harry's call) | Not relevant / not a bug |
 |---|---|---|---|---|---|
-| Suite-wide (SUI) | 5 | 11 | 2 | 0 | 0 |
+| Suite-wide (SUI) | 5 | 11 | 2 | 1 | 0 |
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
 | Scarlett Isles Explorer (EXP) | 12 | 4 | 0 | 13 | 0 |
@@ -182,6 +182,14 @@ These come from checking the eight tools against each other: the collision audit
 - **Before:** The suite asked the browser for its own UK date format. Edge writes "Friday, 25 September 2026" (with a comma) and the test browser "Friday 25 September 2026", so one rules test failed in Edge only. The dates appear in the Restore and Import pop-ups and the save-status tooltip.
 - **After:** Dates are written out by the suite itself, "Friday 25 September 2026 at 14:03", the same in every browser. A new rules test pretends to be Edge to make sure of it.
 - **Evidence:** `shared/js/core.js` (`TSI.dates.human`); `tests/rules/core.test.js` "dates read the same in every browser".
+
+
+### SUI-19 · Every copy of the suite on a computer shares one set of saves
+**Later, Harry's call** · found while writing the how-to guide (not an old-tool bug: it's how Edge and Chrome treat double-clicked pages)
+
+- **Before:** Edge keeps the saves of every double-clicked page together, whatever folder it's in. So a new version downloaded to test opens with the saves from the copy used at the table, and anything done while testing changes those same saves.
+- **After:** Kept, and explained in the how-to guide ("Saving and backups") and the README: back up everything after each session and before trying a new version. The only way round it would be to tie saves to the folder's location, which would lose them whenever the folder is moved or renamed, so it isn't recommended.
+- **Evidence:** a probe in the test browser (Chromium, the engine inside Edge), 28 September 2026: two copies of `index.html` in different folders read and wrote the same `tsi.` saves. `guide.html#saving`.
 
 ## Combat Tracker & VTT Battlemap
 Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point there).
