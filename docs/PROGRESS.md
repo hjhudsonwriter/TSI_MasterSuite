@@ -45,7 +45,7 @@ Double-click `index.html` to open the suite. Six tools now open from their cards
   - The desk's three panels fit your laptop and the TV, with every main button in view; long lists scroll inside their panel.
   - The Battlemap window's map fills everything below its controls, and fills the screen in fullscreen. In fullscreen, the side buttons sit to the left, clear of the ruler.
 - **Checked against the old tool:**
-  - With the same dice, the old tracker and the rebuild played the same fight (building the library and encounter, initiative, 30 turns of damage, healing and conditions, Pause, Begin, End, Save and Load, and a library edit) and showed the same desk at each of 42 steps.
+  - With the same dice, the old tracker and the rebuild played the same fight (building the library and encounter, initiative, turn after turn of damage, healing and conditions until the monsters fell, Pause, Begin, End, Save and Load, and a library edit) and showed the same desk at each of 42 steps.
   - Both give the same campaign file.
   - Both Battlemaps show the same tokens, the same turn highlight and the same hidden monsters.
 - **Structure:**
@@ -56,6 +56,7 @@ Double-click `index.html` to open the suite. Six tools now open from their cards
   - `tests/rules.html`: 205 rules tests (34 new).
   - `tests/e2e/phase7.test.js`: 78 checks.
   - The earlier click-throughs (phases 1 to 6) still pass.
+  - The shared test helper now keeps a picture load the page itself cancelled (a redraw before the picture had loaded) apart from a missing file. One of the Pelagosi checks had failed once on such a load; missing files are still caught.
   - **Not tested here:** Edge itself; the real TV, including dragging the Battlemap between the laptop (sharper screen) and the TV; and pictures or stat blocks from the web. These are on Harry's checklist.
 
 ### Phase 6: Arenas of The Scarlett Isles (26–27 September 2026)

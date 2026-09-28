@@ -61,9 +61,16 @@ function equal(a, b, msg) {
 /* A browser context with a record of anything that went wrong or reached for the internet. */
 async function newContext(browser, size, extra) {
   const context = await browser.newContext(Object.assign({}, SIZES[size || 'laptop'], extra || {}));
-  const log = { net: [], failed: [], errors: [], consoleErrors: [] };
+  const log = { net: [], failed: [], aborted: [], errors: [], consoleErrors: [] };
   context.on('request', r => { if (!r.url().startsWith('file:') && !r.url().startsWith('data:') && !r.url().startsWith('blob:')) log.net.push(r.url()); });
-  context.on('requestfailed', r => { if (r.url().startsWith('file:')) log.failed.push(r.url() + ' ' + (r.failure() || {}).errorText); });
+  /* A missing file fails with ERR_FILE_NOT_FOUND. ERR_ABORTED only means the page
+     itself stopped a load (say, a picture replaced by a redraw before it had
+     loaded), so those are kept apart rather than counted as missing files. */
+  context.on('requestfailed', r => {
+    if (!r.url().startsWith('file:')) return;
+    const why = (r.failure() || {}).errorText;
+    (why === 'net::ERR_ABORTED' ? log.aborted : log.failed).push(r.url() + ' ' + why);
+  });
   context.on('page', p => watch(p, log));
   context.log = log;
   return context;
