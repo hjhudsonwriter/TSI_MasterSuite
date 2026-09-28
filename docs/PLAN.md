@@ -493,7 +493,7 @@ One phase per session, or one clearly defined chunk. The next phase starts only 
 | 9a / 9b / 9c | Bastion core (laptop + TV) / Hall, trade and Council / identity, war and Compendium | the largest tool |
 | Later | A short how-to guide for Harry, with his go-ahead | |
 
-**Phases 4, 5 and 6 were built together** (26 September 2026), at Harry's request to speed the build up: one session, one pull request and one combined checklist, grouped by tool. Each tool still has its own commits, tests and docs. The phases after 6 go back to one per session unless Harry asks otherwise.
+**Phases 4, 5 and 6 were built together** (26 September 2026), at Harry's request to speed the build up: one session, one pull request and one combined checklist, grouped by tool. Each tool still has its own commits, tests and docs. For the last three tools Harry chose (28 September 2026) **one tool per go, each in a single session**: the Combat Tracker (7a and 7b together), then the Explorer (8a and 8b), then the Bastion (9a to 9c), each with its own pull request.
 
 ### "Done when" lists (Harry checks these in Edge)
 
@@ -715,60 +715,60 @@ Defaults are in brackets; "keep" means keep it as the old tool does it.
 - **A8** Middlemount defeat wording? **Keep.**
 - **A9** Overtime hits a random player, even in the Lion's Mark round? **Keep.**
 
-**Combat Tracker & VTT Battlemap**
-- **C1** NPCs never take turns? *(keep)*
-- **C2** Healing from 0 HP: clear DEFEATED? Do PCs at 0 get turns? *(clear it when healed above 0; PCs at 0 still skipped)*
-- **C3** Pause then Begin: carry on the round, or restart at round 1? *(keep; fix the wording)*
-- **C4** Adding combatants mid-fight resets to round 1? *(keep)*
-- **C5** Initiative by auto-roll only? *(keep)*
-- **C6** Line-of-sight cones: fix them, or leave them out? *(no default)*
-- **C7** A way to bring removed tokens back? *(no)*
-- **C8** Is hiding all monsters at once enough? *(yes)*
-- **C9** Typical map size? *(up to 4 MB)*
-- **C10** Should Reset also clear the map? *(keep)*
-- **C11** Clear the fog as soon as a token is let go? *(yes)*
+**Combat Tracker & VTT Battlemap** *(answered by Harry, 28 September 2026: C6 as below, the defaults for the rest)*
+- **C1** NPCs never take turns? **Keep.**
+- **C2** Healing from 0 HP: clear DEFEATED? Do PCs at 0 get turns? **Clear it when healed above 0; PCs at 0 still skipped.**
+- **C3** Pause then Begin: carry on the round, or restart at round 1? **Keep; fix the wording.**
+- **C4** Adding combatants mid-fight resets to round 1? **Keep.**
+- **C5** Initiative by auto-roll only? **Keep.**
+- **C6** Line-of-sight cones: fix them, or leave them out? **Leave it out** (the button never worked; it could come back later as an upgrade).
+- **C7** A way to bring removed tokens back? **No.**
+- **C8** Is hiding all monsters at once enough? **Yes.**
+- **C9** Typical map size? **Up to 4 MB.**
+- **C10** Should Reset also clear the map? **Keep.**
+- **C11** Clear the fog as soon as a token is let go? **Yes.**
 
-**Scarlett Isles Explorer**
-- **E1** Save the event gold tally? *(no, as now)*
-- **E2** Rations as text only? *(keep)*
-- **E3** The 146 unreachable second scenes? *(keep the text)*
-- **E4** Camp-night order: campfire (or main event), then weather, then the Bastion prompt? *(yes)*
-- **E5** Queue plays main events immediately? *(yes)*
-- **E6** Is the current events set the one Harry wants, and was dropping "Fresh Tracks (Late)" deliberate? *(yes)*
-- **E7** Weather save choices and Lethargy as text only? *(keep)*
-- **E8** Closing weather without rolling still uses up the wait? *(keep)*
-- **E9** Should Reset Travel clear the weather wait? *(keep)*
-- **E10** Keep the 18 markers without pictures hidden? *(keep)*
-- **E11** The three one-way map links? *(keep)*
-- **E12** Show line breaks in event text? *(keep)*
-- **E13** Should a refused move put the fog back? *(keep)*
-- **E14** Should Reset Fog ask first? *(keep)*
-- **E15** DM notes on the Result screen? *(later)*
-- **E16** Once pins are tied to the map picture, check all 33 sit on their towns. Were they placed in a maximised Edge window on this laptop? *(yes)*
+**Scarlett Isles Explorer** *(answered by Harry, 28 September 2026: all the defaults)*
+- **E1** Save the event gold tally? **No, as now.**
+- **E2** Rations as text only? **Keep.**
+- **E3** The 146 unreachable second scenes? **Keep the text.**
+- **E4** Camp-night order: campfire (or main event), then weather, then the Bastion prompt? **Yes.**
+- **E5** Queue plays main events immediately? **Yes.**
+- **E6** Is the current events set the one Harry wants, and was dropping "Fresh Tracks (Late)" deliberate? **Yes.**
+- **E7** Weather save choices and Lethargy as text only? **Keep.**
+- **E8** Closing weather without rolling still uses up the wait? **Keep.**
+- **E9** Should Reset Travel clear the weather wait? **Keep.**
+- **E10** Keep the 18 markers without pictures hidden? **Keep.**
+- **E11** The three one-way map links? **Keep.**
+- **E12** Show line breaks in event text? **Keep.**
+- **E13** Should a refused move put the fog back? **Keep.**
+- **E14** Should Reset Fog ask first? **Keep.**
+- **E15** DM notes on the Result screen? **Later.**
+- **E16** Once pins are tied to the map picture, check all 33 sit on their towns. Were they placed in a maximised Edge window on this laptop? **Yes.**
 
-**The Ironbow Bastion Manager**
-- **B2** Host Delegation: one roll or three? Does Political Capital change once or twice? *(no default)*
-- **B3** A consortium pays twice: intended? *(keep)*
-- **B4** Hall upgrades: free, or 600 / 1,200 gp? *(free)*
-- **B5** Honour the Trade Agreement duration choice? *(keep, ignored)*
-- **B6** Grant the Writ of Authority +2? *(keep, not granted)*
-- **B7** Gaming Hall gold, War Room upkeep, Craft Magic Item level limit? *(keep, not applied)*
-- **B8** Lowering the level: what happens to buildings above the limit? *(kept, marked "over capacity")*
-- **B9** Refund cancelled orders? *(no refund)*
-- **B10** Beasts counted by row? *(keep)*
-- **B11** Fix the Treasure event so 99–00 can come up? *(yes, recommended)*
-- **B12** Show the four overlays with mismatched names? *(keep hidden)*
-- **B13** Which Bastion map is the real one? *(the one in use)*
-- **B15** Hidden compendium descriptions and cards; the Export button's online lookup? *(keep hidden; drop the lookup)*
-- **B16** Library research notes? *(keep)*
-- **B17** Can the treasury go below zero? *(keep)*
-- **B18** Do players ever open their own copy? *(no)*
-- **B19** "Seize Outpost (placeholder)" label? *(keep)*
-- **B20** A natural 1 on a Hall action counts as success: intended? *(keep)*
-- **B21** Should a new consortium reopen an expired route? *(keep)*
-- **B22** More than one war action per turn? *(keep)*
-- **B23** Show the shrine charm effects? *(keep hidden)*
-- **B24** Check the old DM-session-hub repo for anything the Bastion is missing? *(leave it out)*
+**The Ironbow Bastion Manager** *(answered by Harry, 28 September 2026: B2 as below, the defaults for the rest)*
+- **B2** Host Delegation: one roll or three? Does Political Capital change once or twice? **The delegation's own two rolls count.** All three dice prompts stay; the Diplomacy (DC 13) and Insight (DC 12) rolls set Political Capital (+15 / +8 / 0 / −12) and the Favour Token. The first roll still sets the rest (such as the 2-turn cooldown on a bad failure) but no longer changes Political Capital.
+- **B3** A consortium pays twice: intended? **Keep.**
+- **B4** Hall upgrades: free, or 600 / 1,200 gp? **Free.**
+- **B5** Honour the Trade Agreement duration choice? **Keep, ignored.**
+- **B6** Grant the Writ of Authority +2? **Keep, not granted.**
+- **B7** Gaming Hall gold, War Room upkeep, Craft Magic Item level limit? **Keep, not applied.**
+- **B8** Lowering the level: what happens to buildings above the limit? **Kept, marked "over capacity".**
+- **B9** Refund cancelled orders? **No refund.**
+- **B10** Beasts counted by row? **Keep.**
+- **B11** Fix the Treasure event so 99–00 can come up? **Yes.**
+- **B12** Show the four overlays with mismatched names? **Keep hidden.**
+- **B13** Which Bastion map is the real one? **The one in use.**
+- **B15** Hidden compendium descriptions and cards; the Export button's online lookup? **Keep hidden; drop the lookup.**
+- **B16** Library research notes? **Keep.**
+- **B17** Can the treasury go below zero? **Keep.**
+- **B18** Do players ever open their own copy? **No.**
+- **B19** "Seize Outpost (placeholder)" label? **Keep.**
+- **B20** A natural 1 on a Hall action counts as success: intended? **Keep.**
+- **B21** Should a new consortium reopen an expired route? **Keep.**
+- **B22** More than one war action per turn? **Keep.**
+- **B23** Show the shrine charm effects? **Keep hidden.**
+- **B24** Check the old DM-session-hub repo for anything the Bastion is missing? **Leave it out.**
 
 *(B1 and B14 are settled by answers 9 and 10. C12 is settled by answer 10. N6 was dropped because the shop link is kept.)*
 
