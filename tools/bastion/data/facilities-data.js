@@ -1,0 +1,987 @@
+/* The Ironbow Bastion Manager: the 18 facilities, their functions, options, costs and specials.
+   A word-for-word copy of the old tool's data/facilities.json, stored as a script so it
+   loads from a double-clicked file. Edit it here. */
+window.TSI_DATA = window.TSI_DATA || {};
+window.TSI_DATA.bastionFacilities = [
+  {
+    "name": "Arcane Study",
+    "id": "arcane_study",
+    "requiredLevel": 5,
+    "functions": [
+      {
+        "id": "craft_common",
+        "label": "Craft Common",
+        "options": [
+          {
+            "label": "Bead of Nourishment"
+          },
+          {
+            "label": "Bead of Refreshment"
+          },
+          {
+            "label": "Lock of Trickery"
+          },
+          {
+            "label": "Mystery Key"
+          },
+          {
+            "label": "Potion of Climbing"
+          }
+        ],
+        "costGP": 0,
+        "costText": "0",
+        "notes": null
+      },
+      {
+        "id": "craft_uncommon",
+        "label": "Craft Uncommon",
+        "options": [
+          {
+            "label": "Bag of Holding"
+          },
+          {
+            "label": "Cap of Water Breathing"
+          },
+          {
+            "label": "Circlet of Blasting"
+          },
+          {
+            "label": "Cloak of Protection"
+          },
+          {
+            "label": "Gem of Brightness"
+          },
+          {
+            "label": "Hat of Disguise"
+          },
+          {
+            "label": "Potion of Poison"
+          },
+          {
+            "label": "Potion of Resistance"
+          },
+          {
+            "label": "Potion of Water Breathing"
+          },
+          {
+            "label": "Saddle of the Cavalier"
+          },
+          {
+            "label": "Sending Stones"
+          }
+        ],
+        "costGP": 0,
+        "costText": "0",
+        "notes": null
+      }
+    ]
+  },
+  {
+    "name": "Workshop",
+    "id": "workshop",
+    "requiredLevel": 5,
+    "functions": [
+      {
+        "id": "craft",
+        "label": "Craft",
+        "options": [],
+        "costGP": 0,
+        "costText": "0",
+        "notes": "Outputs/dropdowns for the Craft function will be populated based on the selected toolsets added to the workshop facility (see TOOLS_TABLES sheet):\nSmith’s Tools\nTinker’s Tools\nAlchemist’s Supplies\nWeaver’s Tools\nLeatherworker’s Tools\nCarpenter’s Tools\nMason’s Tools\nGlassblower’s Tools\nCobbler’s Tools\nThieves’ Tools\nBrewer’s Supplies\nCalligrapher’s Supplies"
+      },
+      {
+        "id": "craft_magic_item",
+        "label": "Craft Magic Item",
+        "options": [
+          {
+            "label": "Bead of Nourishment"
+          },
+          {
+            "label": "Bead of Refreshment"
+          },
+          {
+            "label": "Charlatan's Die"
+          },
+          {
+            "label": "Bag of Holding"
+          },
+          {
+            "label": "Boots of Striding and Springing"
+          },
+          {
+            "label": "Boots of the Winterlands"
+          },
+          {
+            "label": "Gloves of Swimming and Climbing"
+          },
+          {
+            "label": "Gloves of Thievery"
+          },
+          {
+            "label": "Potion of Healing (greater)"
+          },
+          {
+            "label": "Potion of Water Breathing"
+          },
+          {
+            "label": "Ring of Jumping"
+          },
+          {
+            "label": "Ring of Swimming"
+          },
+          {
+            "label": "Ring of Warmth"
+          },
+          {
+            "label": "Rope of Climbing"
+          },
+          {
+            "label": "Stone of Good Luck"
+          },
+          {
+            "label": "Shield of Expression"
+          },
+          {
+            "label": "Walloping Ammunition"
+          },
+          {
+            "label": "Saddle of the Cavalier"
+          },
+          {
+            "label": "Sentinel Shield"
+          },
+          {
+            "label": "Shield, +1"
+          },
+          {
+            "label": "Sword of Vengeance"
+          },
+          {
+            "label": "Wraps of Unarmed Power, +1"
+          }
+        ],
+        "costGP": 0,
+        "costText": "0",
+        "notes": "This function (Craft Magic Item) is not available until the players reach Level 9."
+      }
+    ]
+  },
+  {
+    "name": "Barracks",
+    "id": "barracks",
+    "requiredLevel": 5,
+    "functions": [
+      {
+        "id": "recruit_defenders",
+        "label": "Recruit Defenders",
+        "options": [],
+        "costGP": 0,
+        "costText": "0",
+        "notes": "1d4 defenders recruited and added to Bastion Defenders Panel"
+      }
+    ]
+  },
+  {
+    "name": "Watchtower",
+    "id": "watchtower",
+    "requiredLevel": 5,
+    "functions": [
+      {
+        "id": "patrol",
+        "label": "Patrol",
+        "options": [],
+        "costGP": 0,
+        "costText": "0",
+        "notes": "Gives Advantage on all rolls for Bastion Defenders if the Bastion is attacked during the next turn"
+      }
+    ]
+  },
+  {
+    "name": "Dock",
+    "id": "dock",
+    "requiredLevel": 5,
+    "functions": [
+      {
+        "id": "charter_berth",
+        "label": "Charter Berth",
+        "options": [
+          {
+            "label": "Keelboat",
+            "costGP": 100,
+            "costText": "100GP"
+          },
+          {
+            "label": "Longship",
+            "costGP": 200,
+            "costText": "200GP"
+          },
+          {
+            "label": "Sloop",
+            "costGP": 400,
+            "costText": "400GP"
+          },
+          {
+            "label": "Cutter",
+            "costGP": 500,
+            "costText": "500GP"
+          },
+          {
+            "label": "Brig",
+            "costGP": 750,
+            "costText": "750GP"
+          },
+          {
+            "label": "Warship",
+            "costGP": 900,
+            "costText": "900 GP"
+          },
+          {
+            "label": "Galley",
+            "costGP": 1000,
+            "costText": "1000GP"
+          },
+          {
+            "label": "Galleon",
+            "costGP": 1250,
+            "costText": "1250GP"
+          }
+        ],
+        "costGP": null,
+        "costText": "100GP\n200GP\n400GP\n500GP\n750GP\n900 GP\n1000GP\n1250GP",
+        "notes": null
+      }
+    ]
+  },
+  {
+    "name": "Armoury",
+    "id": "armoury",
+    "requiredLevel": 5,
+    "functions": [
+      {
+        "id": "arm_defenders",
+        "label": "Arm Defenders",
+        "options": [],
+        "costGP": null,
+        "costText": "100GP + (current bastion defenders x 100GP)",
+        "notes": "Once action completed, Bastion Defenders Panel shows 'Armed'"
+      }
+    ]
+  },
+  {
+    "name": "Garden",
+    "id": "garden",
+    "requiredLevel": 5,
+    "functions": [
+      {
+        "id": "harvest",
+        "label": "Harvest",
+        "options": [
+          {
+            "label": "Antitoxin (2 vials)"
+          },
+          {
+            "label": "Rations (100)"
+          },
+          {
+            "label": "Healer's Kit"
+          },
+          {
+            "label": "Potion of Healing"
+          },
+          {
+            "label": "Basic Poison"
+          }
+        ],
+        "costGP": 0,
+        "costText": "0",
+        "notes": null
+      }
+    ]
+  },
+  {
+    "name": "Gaming Hall",
+    "id": "gaming_hall",
+    "requiredLevel": 9,
+    "functions": [
+      {
+        "id": "trade",
+        "label": "Trade",
+        "options": [],
+        "costGP": 0,
+        "costText": "0",
+        "notes": "AUTO ROLL - 1d100 and based on the roll, add the corresponding GP to the treasury (using AUTO ROLL functions again):\n01-50\n1d6 × 10 GP\n51-85\n2d6 × 10 GP\n86-95\n4d6 × 10 GP\n96-00\n10d6 × 10 GP"
+      }
+    ]
+  },
+  {
+    "name": "Smithy",
+    "id": "smithy",
+    "requiredLevel": 5,
+    "functions": [
+      {
+        "id": "craft",
+        "label": "Craft",
+        "options": [
+          {
+            "label": "Battleaxe"
+          },
+          {
+            "label": "Handaxe"
+          },
+          {
+            "label": "Greataxe"
+          },
+          {
+            "label": "Warhammer"
+          },
+          {
+            "label": "War pick"
+          },
+          {
+            "label": "Longsword"
+          },
+          {
+            "label": "Shortsword"
+          },
+          {
+            "label": "Greatsword"
+          },
+          {
+            "label": "Scimitar"
+          },
+          {
+            "label": "Rapier"
+          },
+          {
+            "label": "Dagger"
+          },
+          {
+            "label": "Spear"
+          },
+          {
+            "label": "Trident"
+          },
+          {
+            "label": "Mace"
+          },
+          {
+            "label": "Morningstar"
+          },
+          {
+            "label": "Flail"
+          },
+          {
+            "label": "Halberd"
+          },
+          {
+            "label": "Glaive"
+          },
+          {
+            "label": "Pike"
+          },
+          {
+            "label": "Lance"
+          },
+          {
+            "label": "Chain shirt"
+          },
+          {
+            "label": "Scale mail"
+          },
+          {
+            "label": "Chain mail"
+          },
+          {
+            "label": "Plate armor"
+          },
+          {
+            "label": "Ring mail"
+          },
+          {
+            "label": "Half plate"
+          },
+          {
+            "label": "Manacles"
+          },
+          {
+            "label": "Caltrops"
+          },
+          {
+            "label": "Grappling hook"
+          }
+        ],
+        "costGP": null,
+        "costText": null,
+        "notes": null
+      }
+    ]
+  },
+  {
+    "name": "Library",
+    "id": "library",
+    "requiredLevel": 5,
+    "functions": [
+      {
+        "id": "research",
+        "label": "Research",
+        "options": [
+          {
+            "label": "Geographical Scriptures"
+          },
+          {
+            "label": "Religious Scriptures"
+          },
+          {
+            "label": "Combat Scriptures"
+          },
+          {
+            "label": "Political scriptures"
+          }
+        ],
+        "costGP": 0,
+        "costText": "0",
+        "notes": null
+      }
+    ]
+  },
+  {
+    "name": "Laboratory",
+    "id": "laboratory",
+    "requiredLevel": 9,
+    "functions": [
+      {
+        "id": "craft",
+        "label": "Craft",
+        "options": [
+          {
+            "label": "Burnt Othur Fumes (Poison)"
+          },
+          {
+            "label": "Essence of Ether (Poison)"
+          },
+          {
+            "label": "Torpor (Poison)"
+          },
+          {
+            "label": "Acid vial"
+          },
+          {
+            "label": "Alchemist’s fire"
+          },
+          {
+            "label": "Basic poison"
+          },
+          {
+            "label": "Antitoxin"
+          },
+          {
+            "label": "Firebomb (reskinned alchemist’s fire)"
+          },
+          {
+            "label": "Frost vial (cold variant)"
+          },
+          {
+            "label": "Sticky bomb (glue grenade)"
+          },
+          {
+            "label": "Potion of healing (common)"
+          },
+          {
+            "label": "Potion of greater healing (base item)"
+          },
+          {
+            "label": "Potion of superior healing (base item)"
+          },
+          {
+            "label": "Potion of supreme healing (base item)"
+          },
+          {
+            "label": "Potion of climbing (base item)"
+          },
+          {
+            "label": "Potion of water breathing (base item)"
+          },
+          {
+            "label": "Potion of resistance (base item)"
+          },
+          {
+            "label": "Darkvision draught (base item)"
+          },
+          {
+            "label": "Stoneskin varnish (base item)"
+          },
+          {
+            "label": "Vitality tonic (base item)"
+          }
+        ],
+        "costGP": 0,
+        "costText": "0",
+        "notes": null
+      }
+    ]
+  },
+  {
+    "name": "Greenhouse",
+    "id": "greenhouse",
+    "requiredLevel": 9,
+    "functions": [
+      {
+        "id": "harvest",
+        "label": "Harvest",
+        "options": [
+          {
+            "label": "Greater Potion of Healing"
+          },
+          {
+            "label": "Truth Serum"
+          },
+          {
+            "label": "Assassin's Blood"
+          },
+          {
+            "label": "Pale Tincture"
+          },
+          {
+            "label": "Malice"
+          }
+        ],
+        "costGP": 0,
+        "costText": "0",
+        "notes": null
+      }
+    ]
+  },
+  {
+    "name": "Menagerie",
+    "id": "menagerie",
+    "requiredLevel": 13,
+    "functions": [
+      {
+        "id": "recruit_beast",
+        "label": "Recruit Beast",
+        "options": [
+          {
+            "label": "Ape",
+            "costGP": 500,
+            "costText": "500 GP"
+          },
+          {
+            "label": "Black Bear",
+            "costGP": 500,
+            "costText": "500 GP"
+          },
+          {
+            "label": "Brown Bear",
+            "costGP": 1000,
+            "costText": "1,000 GP"
+          },
+          {
+            "label": "Constrictor Snake",
+            "costGP": 250,
+            "costText": "250 GP"
+          },
+          {
+            "label": "Crocodile",
+            "costGP": 500,
+            "costText": "500 GP"
+          },
+          {
+            "label": "Dire Wolf",
+            "costGP": 1000,
+            "costText": "1,000 GP"
+          },
+          {
+            "label": "Giant Vulture",
+            "costGP": 1000,
+            "costText": "1,000 GP"
+          },
+          {
+            "label": "Hyena",
+            "costGP": 50,
+            "costText": "50 GP"
+          },
+          {
+            "label": "Jackal",
+            "costGP": 50,
+            "costText": "50 GP"
+          },
+          {
+            "label": "Lion",
+            "costGP": 1000,
+            "costText": "1,000 GP"
+          },
+          {
+            "label": "Owlbear",
+            "costGP": 3500,
+            "costText": "3,500 GP"
+          },
+          {
+            "label": "Panther",
+            "costGP": 250,
+            "costText": "250 GP"
+          },
+          {
+            "label": "Tiger",
+            "costGP": 1000,
+            "costText": "1,000 GP"
+          }
+        ],
+        "costGP": null,
+        "costText": "500 GP\n500 GP\n1,000 GP\n250 GP\n500 GP\n1,000 GP\n1,000 GP\n50 GP\n50 GP\n1,000 GP\n3,500 GP\n250 GP\n1,000 GP",
+        "notes": "Recruited Beasts are listed in the Bastion Defenders Panel"
+      }
+    ]
+  },
+  {
+    "name": "War Room",
+    "id": "war_room",
+    "requiredLevel": 17,
+    "functions": [
+      {
+        "id": "recruit",
+        "label": "Recruit",
+        "options": [
+          {
+            "label": "Lieutenant (1)"
+          },
+          {
+            "label": "Regiment (100)"
+          }
+        ],
+        "costGP": 0,
+        "costText": "0",
+        "notes": "No cost for recruitment, but each soldier in the regiment costs 1GP per bastion turn. \nLieutenants and Soldiers are added to the 'Military' Panel."
+      }
+    ]
+  },
+  {
+    "name": "Hall of Emissaries",
+    "id": "hall_of_emissaries",
+    "requiredLevel": 5,
+    "threshold": "Political / Trade",
+    "description": "A neutral hall for delegations, contracts, arbitration and inter-clan diplomacy.",
+    "functions": [
+      {
+        "id": "upgrade_hall",
+        "label": "Upgrade Hall (Level Up)",
+        "costGP": 0,
+        "special": {
+          "type": "upgrade_facility",
+          "maxLevel": 3,
+          "costByNextLevel": {
+            "2": 600,
+            "3": 1200
+          }
+        }
+      },
+      {
+        "id": "secure_trade_agreement",
+        "label": "Secure Trade Agreement",
+        "costGP": 250,
+        "requiredFacilityLevel": 1,
+        "options": [
+          {
+            "label": "Clan Blackstone",
+            "value": "Blackstone"
+          },
+          {
+            "label": "Clan Rowthorn",
+            "value": "Rowthorn"
+          },
+          {
+            "label": "Clan Karr",
+            "value": "Karr"
+          },
+          {
+            "label": "Clan Farmer",
+            "value": "Farmer"
+          },
+          {
+            "label": "Clan Slade",
+            "value": "Slade"
+          },
+          {
+            "label": "Clan Bacca",
+            "value": "Bacca"
+          },
+          {
+            "label": "Clan Molten",
+            "value": "Molten"
+          }
+        ],
+        "special": {
+          "type": "emissary_action",
+          "kind": "trade_agreement",
+          "durationTurns": 4,
+          "incomeMin": 60,
+          "incomeMax": 140
+        }
+      },
+      {
+        "id": "host_delegation",
+        "label": "Host Delegation",
+        "costGP": 150,
+        "requiredFacilityLevel": 1,
+        "options": [
+          {
+            "label": "Clan Blackstone",
+            "value": "Blackstone"
+          },
+          {
+            "label": "Clan Rowthorn",
+            "value": "Rowthorn"
+          },
+          {
+            "label": "Clan Karr",
+            "value": "Karr"
+          },
+          {
+            "label": "Clan Farmer",
+            "value": "Farmer"
+          },
+          {
+            "label": "Clan Slade",
+            "value": "Slade"
+          },
+          {
+            "label": "Clan Bacca",
+            "value": "Bacca"
+          },
+          {
+            "label": "Clan Molten",
+            "value": "Molten"
+          }
+        ],
+        "special": {
+          "type": "emissary_action",
+          "kind": "host_delegation",
+          "durationTurns": 2,
+          "oneTimeTreasuryMin": 80,
+          "oneTimeTreasuryMax": 220
+        }
+      },
+      {
+        "id": "inter_clan_summit",
+        "label": "Inter-Clan Summit",
+        "costGP": 450,
+        "requiredFacilityLevel": 2,
+        "options": [
+          {
+            "label": "Blackstone + Rowthorn",
+            "value": "Blackstone/Rowthorn"
+          },
+          {
+            "label": "Blackstone + Karr",
+            "value": "Blackstone/Karr"
+          },
+          {
+            "label": "Rowthorn + Karr",
+            "value": "Rowthorn/Karr"
+          },
+          {
+            "label": "Farmer + Slade",
+            "value": "Farmer/Slade"
+          },
+          {
+            "label": "Bacca + Molten",
+            "value": "Bacca/Molten"
+          }
+        ],
+        "special": {
+          "type": "emissary_action",
+          "kind": "summit",
+          "durationTurns": 3,
+          "costReductionPct": 25
+        }
+      },
+      {
+        "id": "arbitration_authority",
+        "label": "Secure Writ of Authority",
+        "costGP": 600,
+        "requiredFacilityLevel": 3,
+        "special": {
+          "type": "emissary_action",
+          "kind": "arbitration",
+          "durationTurns": 4,
+          "incomeMin": 90,
+          "incomeMax": 190
+        }
+      },
+      {
+        "id": "trade_consortium",
+        "label": "Trade Consortium",
+        "costGP": 900,
+        "requiredFacilityLevel": 3,
+        "special": {
+          "type": "emissary_action",
+          "kind": "consortium",
+          "durationTurns": 5,
+          "incomeMin": 140,
+          "incomeMax": 260
+        }
+      }
+    ]
+  },
+  {
+    "name": "Shrine of Telluria",
+    "id": "shrine_telluria",
+    "requiredLevel": 8,
+    "functions": [
+      {
+        "id": "craft",
+        "label": "Craft",
+        "options": [
+          {
+            "label": "Tellurian Root Charm",
+            "notes": "Advantage on CON saving throws once per short rest. Value = 100gp."
+          },
+          {
+            "label": "Tellurian Stone Charm",
+            "notes": "Advantage on WIS saving throws once per short rest when on natural ground (earth, rock, etc). Value = 120gp."
+          }
+        ],
+        "costGP": 0,
+        "costText": "0",
+        "notes": null
+      },
+      {
+        "id": "pray",
+        "label": "Pray",
+        "options": [
+          {
+            "label": "Telluria's Guidance",
+            "special": {
+              "type": "oracle_hint",
+              "god": "telluria"
+            }
+          },
+          {
+            "label": "Telluria's Embrace",
+            "special": {
+              "type": "blessing_rest",
+              "god": "telluria"
+            }
+          },
+          {
+            "label": "Telluria's Blessing",
+            "special": {
+              "type": "favour_blessing",
+              "god": "telluria"
+            }
+          }
+        ],
+        "costGP": 0,
+        "costText": "0",
+        "notes": null
+      }
+    ]
+  },
+  {
+    "name": "Shrine of Aurush",
+    "id": "shrine_aurush",
+    "requiredLevel": 8,
+    "functions": [
+      {
+        "id": "craft",
+        "label": "Craft",
+        "options": [
+          {
+            "label": "Aurush Sun Charm",
+            "notes": "Advantage on DEX saving throws once per short rest while in bright light. Value = 100gp."
+          },
+          {
+            "label": "Aurush Ember Charm",
+            "notes": "Advantage on CHA saving throws once per short rest against fear or charm. Value = 120gp."
+          }
+        ],
+        "costGP": 0,
+        "costText": "0",
+        "notes": null
+      },
+      {
+        "id": "pray",
+        "label": "Pray",
+        "options": [
+          {
+            "label": "Aurush's Insight",
+            "special": {
+              "type": "oracle_hint",
+              "god": "aurush"
+            }
+          },
+          {
+            "label": "Aurush's Radiance",
+            "special": {
+              "type": "blessing_rest",
+              "god": "aurush"
+            }
+          },
+          {
+            "label": "Aurush's Blessing",
+            "special": {
+              "type": "favour_blessing",
+              "god": "aurush"
+            }
+          }
+        ],
+        "costGP": 0,
+        "costText": "0",
+        "notes": null
+      }
+    ]
+  },
+  {
+    "name": "Shrine of Pelagos",
+    "id": "shrine_pelagos",
+    "requiredLevel": 8,
+    "functions": [
+      {
+        "id": "craft",
+        "label": "Craft",
+        "options": [
+          {
+            "label": "Pelagos Tide Charm",
+            "notes": "Advantage on STR saving throws once per short rest while wet or near open water. Value = 100gp."
+          },
+          {
+            "label": "Pelagos Current Charm",
+            "notes": "Advantage on INT saving throws once per short rest to resist disorientation/illusion. Value = 120gp."
+          }
+        ],
+        "costGP": 0,
+        "costText": "0",
+        "notes": null
+      },
+      {
+        "id": "pray",
+        "label": "Pray",
+        "options": [
+          {
+            "label": "Pelagos's Tidings",
+            "special": {
+              "type": "oracle_hint",
+              "god": "pelagos"
+            }
+          },
+          {
+            "label": "Pelagos's Deep Rest",
+            "special": {
+              "type": "blessing_rest",
+              "god": "pelagos"
+            }
+          },
+          {
+            "label": "Pelagos's Blessing",
+            "special": {
+              "type": "favour_blessing",
+              "god": "pelagos"
+            }
+          }
+        ],
+        "costGP": 0,
+        "costText": "0",
+        "notes": null
+      }
+    ]
+  }
+];
