@@ -303,6 +303,8 @@
   .tsi-tool--encounter .tsi-enc-main { grid-template-columns: minmax(270px, 320px) minmax(0, 1fr) minmax(270px, 320px); gap: 10px; }
   .tsi-tool--encounter .tsi-enc-table-head,
   .tsi-tool--encounter .tsi-enc-roster-row { grid-template-columns: 40px 44px minmax(0, 1.3fr) 66px minmax(0, 1fr) 80px; gap: 8px; }
+  .tsi-tool--encounter .tsi-enc-tabs { gap: 2px; padding: 8px 10px 0; }
+  .tsi-tool--encounter .tsi-enc-tab { padding: 7px 6px; letter-spacing: .04em; }
 }
 @media (max-width: 1200px) {
   .tsi-tool--encounter .tsi-enc { height: auto; }
