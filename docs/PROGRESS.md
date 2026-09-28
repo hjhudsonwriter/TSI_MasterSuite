@@ -2,11 +2,23 @@
 
 ## Where things stand
 
-**Phase 9 (The Ironbow Bastion Manager) is built and tested: 9a to 9c together, in one session, as Harry chose.** That completes the faithful rebuild: all eight tools open from their cards. **Next is the short how-to guide** (a later phase), with Harry's go-ahead, and any upgrades Harry asks for after trying the rebuilt tools.
+**The rebuild is complete, and the short how-to guide is written.** All eight tools open from their cards, and `guide.html` (linked at the foot of the home screen) explains them. What comes next is up to Harry: after trying the rebuilt tools at the table, he can ask for upgrades, fixes to kept behaviours, or the joined-up ideas in sections 12 to 15 of the handover.
 
 Double-click `index.html` to open the suite. The plan is in `docs/PLAN.md`, the bug list in `docs/KNOWN_ISSUES.md`, and the notes for building each tool in `docs/BUILDING-A-TOOL.md`.
 
 ## Done
+
+### The how-to guide (28 September 2026)
+- **`guide.html`**, beside `index.html`, linked as **How-to guide** at the foot of the home screen. It's a plain page in the suite's look, works with no internet, and prints black on white (Ctrl + P).
+- **What it covers:**
+  - opening the suite, the home screen and the top bar;
+  - your two screens (moving windows to the TV, F11, the players' windows, the Explorer's full screen);
+  - saving and backups;
+  - each of the eight tools at the table, in a few lines, with a link that opens it;
+  - what to do if something goes wrong;
+  - how to get changes made.
+- **Found while writing it:** in Edge's engine, every copy of the suite on a computer shares **one set of saves**, wherever its folder is (checked in the test browser, the same engine). Moving or renaming the folder keeps the saves, but a new version downloaded to try out opens the real saves too. The guide and the README tell Harry to back up first.
+- **Tests:** `tests/e2e/guide.test.js`, 20 checks. It opens the guide from the home screen at every screen size with the internet off, prints it, and follows every link. It also checks every button or label the guide names in bold really exists in its tool. The shell's click-through (phase 1) still passes.
 
 ### Phase 9: The Ironbow Bastion Manager (28 September 2026)
 - **Rebuilt as it was:**
@@ -310,7 +322,7 @@ Double-click `index.html` to open the suite. The plan is in `docs/PLAN.md`, the 
   - The old-save import phase removed.
 
 ## Next
-**The short how-to guide for Harry** (a later phase in CLAUDE.md), with Harry's go-ahead. After trying the rebuilt tools, Harry can also ask for upgrades; sections 12 to 15 of the handover hold the ideas it proposed.
+Nothing is planned: the rebuild and the guide are done. Harry decides what comes next after trying the tools at the table. The kept behaviours he's most likely to want changed are listed under Open questions below; each tool's full list is in `docs/KNOWN_ISSUES.md`.
 
 ## Open questions for Harry
 
@@ -349,4 +361,6 @@ Each tool's questions are needed before that tool's phase. The full wording and 
 - **Fullscreen in tests:** headless Chromium supports `requestFullscreen()`, so `phase7.test.js` and `phase8.test.js` check the fullscreen layouts. The Escape key doesn't leave full screen there: call `document.exitFullscreen()` instead.
 - **Pop-ups and full screen:** shared pop-ups and notices open inside whatever is in full screen, and move there if full screen starts while one is open (`shared/js/modal.js`, `core.js`).
 - **The Bastion's comparison with the old tool:** the old tool builds its file paths from the first folder in the address, so `phase9.test.js` serves `_legacy/` and opens `/bastion_manager/index.html`. It saves some changes only on its next save, so the test nudges the treasury box before reading its save. `TSI.bastion.debug.change(fn)` sets up a check by changing the Bastion directly.
+- **Keep the guide up to date:** when a tool's buttons or labels change, update `guide.html` too. `tests/e2e/guide.test.js` fails if the guide names a button that no longer exists.
+- **Harry's saves and test copies:** every copy of the suite on Harry's laptop shares one set of saves in Edge. A branch he downloads to test opens his real saves, so each pull request's checklist should start with "Back up everything first".
 - **Sound in tests:** the test browser can load the sounds but nobody hears them. The Pelagosi test records which sounds start and when; hearing them is on Harry's checklist.
