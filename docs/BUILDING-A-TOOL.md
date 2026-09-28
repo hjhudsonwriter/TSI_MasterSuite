@@ -55,6 +55,7 @@ Other shared helpers: `TSI.el(tag, attrs, children)` builds elements (text is al
 - Tools with `saves: true` get **Export**, **Import** and a "Saved ✓" status in the top bar automatically, and are included in **Back up everything**. You don't write any of that.
 - If a save fails, the shell shows the warning. Just keep calling `ctx.store.set`; it retries.
 - Check what you load. If it doesn't make sense, call `ctx.store.quarantine` and start fresh. Never delete a save.
+- **Long actions with several pop-ups** (such as the Bastion's Advance Bastion Turn, which can ask for many dice rolls): save where you've got to in the state itself (the Bastion's `turnInProgress`), and apply and save each step as soon as its answer is in. Then a cancelled pop-up or a closed window loses nothing, and the action can be finished later. After every `await` of a pop-up, check `ctx.life.alive`: when the tool closes, open pop-ups close as if cancelled, and nothing more should change.
 
 ## 5. Player windows
 
