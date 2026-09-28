@@ -44,7 +44,7 @@ To show painted art behind the tool, as the home screen does, add `art: 'path/to
 | `ctx.store.quarantine(name, reason)` | When a save can't be read: sets it aside (never deletes it), tells the user, and you start fresh. |
 | `ctx.playerLink({ view, getState, onMessage, onStatus })` | A player window (see below). It closes when the tool closes. |
 | `ctx.setLeaveCheck(fn)` | For tools that don't save: `fn` returns a message such as "This will end the ritual in progress." when leaving would lose something, or `null`. The shell asks before Home, Switch tool, or closing the tab. |
-| `ctx.notify`, `ctx.modal` | Notices (`TSI.notify(text, { type: 'ok' | 'warn' | 'error', actions })`) and pop-ups (`TSI.modal.confirm`, `.alert`, `.open`). Use these instead of `alert()` and `confirm()`. |
+| `ctx.notify`, `ctx.modal` | Notices (`TSI.notify(text, { type: 'ok' | 'warn' | 'error', actions })`) and pop-ups (`TSI.modal.confirm`, `.alert`, `.open`). Use these instead of `alert()` and `confirm()`: they open inside whatever is in full screen, so the TV view shows them. A pop-up that changes as you go (the Explorer's events) can pass `className` and `onOpen({ dialog, title, body, foot, close })` to `TSI.modal.open`. |
 
 The test page (`tests/harness.html`) keeps its saved data apart from the real suite (`TSI.space` is `'test'`, the database is `tsi.test`). Tools don't need to do anything about this.
 

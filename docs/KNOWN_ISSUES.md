@@ -2,7 +2,7 @@
 
 Every bug found in the eight old tools during planning, and what the rebuild will do about each one. CLAUDE.md's rule: **only fix a bug if it breaks the tool, loses saved data, or applies something twice.** Everything else stays exactly as it was, and is listed here for Harry to decide on later.
 
-**Status: phases 1 (the shell), 2 (Clan Crest Creator), 3 (Pelagosi Puzzle Trials), 4 (Notice Board), 5 (The Heartwood Ritual), 6 (Arenas of The Scarlett Isles) and 7 (Combat Tracker & VTT Battlemap) are built.** The shell's share of the suite-wide (SUI) fixes is in place and tested, and each entry has a **Phase 1** line saying what's done. Every Clan Crest Creator entry has a **Phase 2** line, every Pelagosi entry a **Phase 3** line, every Notice Board entry a **Phase 4** line, every Heartwood Ritual entry a **Phase 5** line, every Arenas entry a **Phase 6** line and every Combat Tracker entry a **Phase 7** line, saying whether it was fixed, changed or kept. The other tools' entries are unchanged until their phases. Each tool's session updates its own entries as it goes: it marks each one fixed, or confirms it was left alone, and adds anything new it finds.
+**Status: phases 1 (the shell), 2 (Clan Crest Creator), 3 (Pelagosi Puzzle Trials), 4 (Notice Board), 5 (The Heartwood Ritual), 6 (Arenas of The Scarlett Isles), 7 (Combat Tracker & VTT Battlemap) and 8 (Scarlett Isles Explorer) are built.** The shell's share of the suite-wide (SUI) fixes is in place and tested, and each entry has a **Phase 1** line saying what's done. Every Clan Crest Creator entry has a **Phase 2** line, every Pelagosi entry a **Phase 3** line, every Notice Board entry a **Phase 4** line, every Heartwood Ritual entry a **Phase 5** line, every Arenas entry a **Phase 6** line, every Combat Tracker entry a **Phase 7** line and every Explorer entry a **Phase 8** line, saying whether it was fixed, changed or kept. The other tools' entries are unchanged until their phases. Each tool's session updates its own entries as it goes: it marks each one fixed, or confirms it was left alone, and adds anything new it finds.
 
 ## How to read an entry
 
@@ -24,7 +24,7 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 | Suite-wide (SUI) | 5 | 11 | 2 | 0 | 0 |
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
-| Scarlett Isles Explorer (EXP) | 12 | 3 | 0 | 12 | 0 |
+| Scarlett Isles Explorer (EXP) | 12 | 4 | 0 | 13 | 0 |
 | The Ironbow Bastion Manager (BAS) | 15 | 1 | 1 | 18 | 0 |
 | Clan Crest Creator (CRS) | 0 | 4 | 2 | 7 | 1 |
 | Arenas of The Scarlett Isles (ARN) | 8 | 2 | 0 | 17 | 0 |
@@ -690,6 +690,7 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 - **Decision note:** E4 confirms the order (default: campfire or main event, then weather, then the Bastion prompt).
 - **Checker's note:** The handover acceptance also requires that 'an event cannot be lost behind a weather modal'. The fix queues the pop-ups, and each outcome applies only on its own click.
 - **Evidence:** app.js:2358-2414 calls openEventModal/openWeatherModal one after another on the same #evModal. Playwright with the random roll forced: day 2 and 5 final pop-up 'Weather', campfire discarded; day 8 final 'Bastion Turn', lastWeatherDay=8, activeWeather=null.
+- **Phase 8:** Fixed. Make Camp's pop-ups now wait their turn: the campfire event (or a due main event), then any weather, then the Bastion prompt (E4), one after another. Each outcome applies only when its own button is pressed. Tests, including day 8 with weather, and a side-by-side run with the old tool.
 
 ### EXP-02 · Enter or Space repeats Make Camp behind the pop-up
 **Must fix** · applies something twice
@@ -698,6 +699,7 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 - **After (planned):** The shared modal moves focus into the pop-up and blocks the page behind it until it closes.
 - **Checker's note:** The shared modal should move focus into the pop-up and trap it there.
 - **Evidence:** misc_test.js: activeElement = explorerMakeCamp; day 2, then after Enter and Space, day 4.
+- **Phase 8:** Fixed by the suite's pop-ups: the keyboard focus moves into the pop-up and the page behind can't be reached, and Make Camp ignores a second press within a moment. Test: Enter and Space after Make Camp leave the day as it was.
 
 ### EXP-03 · Heroes' miles forgotten after a reload
 **Must fix** · loses saved data
@@ -706,6 +708,7 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 - **After (planned):** Restore milesUsed when loading, and when importing old saves.
 - **Checker's note:** Import is affected in the same way, because it also goes through this load path after its reload (1329-1333).
 - **Evidence:** app.js:1213-1225 merges x, y, size, groupId and axial but not milesUsed. flow_test: pills K12/U6/M6 before reload, all 0 after; the next save wrote 0s.
+- **Phase 8:** Fixed. Each hero's miles are saved and come back when the Explorer reopens or a backup is imported. Tests.
 
 ### EXP-04 · With Snap on, changing map leaves the party drawn in the old spot
 **Must fix** · breaks the tool
@@ -714,6 +717,7 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 - **After (planned):** After a spawn, recalculate each token's hex from its new position.
 - **Checker's note:** Borderline breaks_tool. It is the same root cause as the new 'Snap on + fullscreen/resize mis-charges miles' bug, so fix them together.
 - **Evidence:** applyPartySpawnWithFormation (app.js:152-169) changes x/y but keeps the old t.axial, and renderTokens draws from axial when snap is on (1855-1906). transition_test.js snap_true: kaelen saved x 0.688, drawn x 0.119.
+- **Phase 8:** Fixed. A hero's hex is always worked out from where the hero is, never kept separately, so after arriving on a linked map with Snap on the heroes are drawn exactly where the tool thinks they are. Tests.
 
 ### EXP-05 · Uploading a large map stops all saving
 **Must fix** · loses saved data
@@ -722,6 +726,7 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 - **After (planned):** Keep the uploaded picture in IndexedDB (tsi.explorer.uploadedMap), wrap every save in try/catch and show a plain 'couldn't save' warning.
 - **Checker's note:** The numbers need correcting: the quota is about 5.24M characters, and a 3.9 MB file fits when the Explorer is alone (see corrections).
 - **Evidence:** 4 MB checked on file size (app.js:2120), but base64 is about 1.33x. explorerSave (441-443) has no try/catch. env_test: a 4.1 MB file gave an uncaught QuotaExceededError, the map was not shown, the Hex Grid button stopped responding and nothing saved. Chromium file:// budget is about 4.98M characters, shared by all file:// pages.
+- **Phase 8:** Fixed. An uploaded map is kept separately in the browser's database, so it can't crowd out the journey, and a failed save shows a warning with nothing on screen lost. The old 4 MB limit and its message are kept. Tests, including a storage that pretends to be full.
 
 ### EXP-06 · Pictures, videos and data paths assume the old website address
 **Must fix** · won't work double-clicked / offline
@@ -730,6 +735,7 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 - **After (planned):** Use plain relative paths.
 - **Checker's note:** logo.png (536) and hero.png (CSS) use plain relative paths and do load.
 - **Evidence:** app.js:6-20 withBase. file:// test: file:///home/assets/maps/the_north_isle.jpg ERR_FILE_NOT_FOUND.
+- **Phase 8:** Fixed. Plain relative paths. Test: all 10 maps, 15 town maps and 11 main-event pictures load from a double-clicked file with the internet off.
 
 ### EXP-07 · Events and pins are downloaded in a way browsers block from a file
 **Must fix** · won't work double-clicked / offline
@@ -737,6 +743,7 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 - **Before:** Opened by double-click, the travel and campfire events and the location pins never load, so Make Camp and travel show nothing.
 - **After (planned):** Turn the JSON files into script data files loaded with <script>.
 - **Evidence:** app.js:188, 269 fetch(); console 'URL scheme "file" is not supported'.
+- **Phase 8:** Fixed. The events, pins and the rest are script data files in `tools/explorer/data/`. The events file is word for word (279 travel and 322 campfire events). Tests.
 
 ### EXP-08 · Fonts need the internet
 **Must fix** · won't work double-clicked / offline
@@ -744,6 +751,7 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 - **Before:** Without Wi-Fi the special fantasy fonts don't load and the tool falls back to a plain font.
 - **After (planned):** Bundle the fonts locally.
 - **Evidence:** index.html:8-10; ERR_CERT_AUTHORITY_INVALID; document.fonts empty.
+- **Phase 8:** Fixed. The fonts come from the suite folder, including IM Fell English SC for the Explorer's buttons. Test.
 
 ### EXP-09 · Import replaces the journey without asking
 **Must fix** · other
@@ -753,6 +761,7 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 - **Decision note:** CLAUDE.md: safe imports always ask first.
 - **Checker's note:** The suite rules require a confirm anyway. See the new bug: a malformed but shape-passing file permanently breaks the tool.
 - **Evidence:** app.js:1315-1334; flow_test: 0 dialogs, day jumped to 42.
+- **Phase 8:** Fixed. Import (the Explorer's Import Save, or the top bar's Import) shows what's in the file and asks first, offering to download the current journey; Cancel changes nothing. The page then reloads with the imported journey. Tests.
 
 ### EXP-10 · Map pins, grid, fog and tokens shift with window size
 **Must fix** · other
@@ -762,6 +771,7 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 - **Decision note:** Moved from later because the Explorer must work on both the 16:10 laptop and the 16:9 TV (answer 4). Positions tie to the map picture; the 33 marker positions are converted once and Harry checks them (E16).
 - **Checker's note:** In fullscreen the pins sit in the same place on any 16:9 screen. The drift shows up in windowed mode and between windowed and fullscreen.
 - **Evidence:** aspect_test.js: Coldpass pin at 0.718 of map width (1400x1100) vs 0.832 (1280x720); hexes across the map 16.1 vs 10.5.
+- **Phase 8:** Fixed. Pins, the hex grid, fog and heroes are placed on the map picture, so they stay put at any window size, in full screen and on the TV. The hex size is now in map units: 38 is 38 screen pixels when a map fills the TV in full screen, as before, and it scales with the map everywhere else. The 33 pins and 17 entry points were converted once. Checking them against the towns drawn on the maps showed they were placed in the Explorer's **full-screen** view on the laptop (1707 × 1067), not a maximised window as E16 assumed, so that's how they were converted. Port Brawdlyn and Fork Farm (both hidden) fit the windowed view better, so those two were converted that way. The old numbers are kept beside the new ones in `tools/explorer/data/explorer-data.js`. `tests/pin-check.html` shows all 33 for Harry's check (E16). Tests at the laptop (window and full screen), the TV (window and full screen) and a small window: nothing moved. A side effect: heroes stay on the map picture itself, so they can't be parked in the dark bands beside a 4:3 map.
 
 ### EXP-11 · With Snap on, going fullscreen (or any window resize) makes moves cost the wrong miles
 **Must fix** · breaks the tool
@@ -769,6 +779,7 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 - **Before:** If Snap is on and the map area changes size, for example when Harry presses Fullscreen for the TV, the heroes are still drawn where they were, but the tool now thinks they are somewhere else. The next time a hero is dragged one hex, the tool charges for the distance from that invisible spot. In the test, a one-hex move cost 18 miles instead of 6, and the same happens after reopening the browser at a different window size.
 - **After (planned):** When Snap is on, work out each hero's hex from the saved position (after any resize, fullscreen change, load or map change, or on every draw). The same change fixes the map-transition bug.
 - **Evidence:** t_snap_fs2.js at 1366x768, then fullscreen 1368x770. Snap on: drawn top-left [735,377] vs saved position [837,524] px; a visible one-hex drag took Kaelen from 6 to 24 miles. Snap off: drawn [867,504] and saved [868,505] agree; the same drag went from 6 to 12. Code: renderTokens draws from pixel-based t.axial (1855-1906), while drag start and cost use x/y (2597-2615, 2762-2768). The resize handler (2245-2247) never re-syncs, and load restores the old axial (1222-1224).
+- **Phase 8:** Fixed with EXP-04 and EXP-10. Test: with Snap on, a one-hex drag in full screen costs 6 miles.
 
 ### EXP-12 · A slightly wrong backup file can lock up the Explorer for good
 **Must fix** · breaks the tool
@@ -776,6 +787,7 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 - **Before:** Import only checks that the file has 'grid', 'tokens' and 'travel'. A hand-edited or damaged backup that passes that check but has an empty entry in the heroes list is saved, and after that the Explorer crashes every time it opens. No buttons work until the browser's stored data is cleared. From a double-clicked file, clearing that data would also wipe every other tool's saves.
 - **After (planned):** The suite's safe import must check every hero entry (and the other fields) before replacing anything. Loading must survive a bad save by falling back to defaults and keeping a copy of the bad data.
 - **Evidence:** t_import.js with bad_save.json {"grid":{},"tokens":[null],"travel":{}}: 0 dialogs, reload, pageerror "Cannot read properties of null (reading 'id')", Hex Grid button dead. After a second reload: 2 page errors and the bad save still stored. Code: looksLikeExplorerSave 1289-1296, explorerSave(obj) at 1329, crash at 1212.
+- **Phase 8:** Fixed. Every hero entry and the other parts of a file are checked before anything is replaced: a damaged file is refused with a message and nothing changes. A damaged save is set aside (kept, never deleted) and the Explorer starts fresh. Tests.
 
 ### EXP-13 · H key hides the controls everywhere
 **Fixed by the new design** · other
@@ -785,6 +797,7 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 - **Decision note:** Shortcuts only work in their own tool and never while typing.
 - **Checker's note:** The uiHidden class also stays set after leaving fullscreen, so the button still reads 'Show UI'.
 - **Evidence:** app.js:2236-2241 window keydown.
+- **Phase 8:** Fixed by the new design. H works only while the Explorer is open, never while typing or while a pop-up is open, and not with Ctrl or Alt held (so Ctrl + H still opens Edge's history). Hide UI now also works outside full screen, where the old button changed its label but did nothing. Tests.
 
 ### EXP-14 · Double-clicking Make Camp makes the night's event vanish
 **Fixed by the new design** · other
@@ -793,6 +806,7 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 - **After (planned):** In the shared modal, don't close event pop-ups on a backdrop click (or ignore clicks for a moment after opening). Harry's call.
 - **Decision note:** The shared pop-up takes focus and can't be clicked through by accident.
 - **Evidence:** t_camp.js: dblclick on Make Camp took the saved day from 4 to 5 and left the pop-up closed. Code: backdrop click closes the modal (1166). The Make Camp button sits under the full-screen backdrop (styles.css .evModal_backdrop inset:0).
+- **Phase 8:** Fixed by the new design. The shared pop-up ignores clicks outside it, and Make Camp ignores a second click within a moment. Test: a double click camps once and the event stays up.
 
 ### EXP-15 · Browser pop-up messages throw the TV view out of fullscreen
 **Fixed by the new design** · other
@@ -801,6 +815,7 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 - **After (planned):** Using the suite's own in-page messages and confirm boxes, inside the Explorer's fullscreen frame, fixes this.
 - **Decision note:** The suite's own in-page pop-ups stay inside the fullscreen view.
 - **Evidence:** t_fs_alert.js: fullscreenElement 'explorerFsWrap' before an alert and null after it. Built-in pop-ups at app.js:529, 788, 1095, 2122, 2143, 2158, 2192, 2203, 2306, 2319, 2431. The test used headless Chromium; confirm by hand in Chrome and Edge.
+- **Phase 8:** Fixed by the new design. All messages, confirmations and the Pick Marker XY box are the suite's own pop-ups, and pop-ups and notices now open inside full screen. Test.
 
 ### EXP-16 · Event gold tally and log are not saved and reset weekly
 **Later, Harry's call** · other · listed in the handover
@@ -810,6 +825,7 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 - **Decision note:** E1
 - **Checker's note:** The original never saved this, so it is not 'loses saved data' under the policy.
 - **Evidence:** saveNow 1239-1251 and buildSavePayload 1255-1268 omit trackers; 2397 resets gold; 864 writes the log, which nothing displays. flow_test goldAfterReload 0.
+- **Phase 8:** Kept (E1). Event gold shows while the Explorer is open, resets weekly and on reopening, and isn't saved or backed up.
 
 ### EXP-17 · Rations are only mentioned, never counted
 **Later, Harry's call** · other · listed in the handover
@@ -818,6 +834,7 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 - **After:** Kept as it is in the rebuild.
 - **Decision note:** E2
 - **Evidence:** app.js:870 notice only; no ration store; CSS styles a missing #explorerRations.
+- **Phase 8:** Kept (E2).
 
 ### EXP-18 · Gold display doesn't update straight after an outcome
 **Later, Harry's call** · other
@@ -825,6 +842,7 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 - **Before:** After an event gives or takes gold, the Gold number stays the same until you next move a token.
 - **After:** Kept as it is in the rebuild.
 - **Evidence:** applyOutcome (847-877) never refreshes the HUD; flow_test: notice '-10 gold' while #explorerGold showed 0.
+- **Phase 8:** Kept. Test (the side-by-side run shows the same Gold figure as the old tool at every step).
 
 ### EXP-19 · Fog button shows Off after reopening when fog is on
 **Later, Harry's call** · other
@@ -832,6 +850,7 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 - **Before:** After a reload the Fog of War button says Off even though fog is showing, so the first click appears to do nothing.
 - **After:** Kept as it is in the rebuild.
 - **Evidence:** updateFogToggleUI (1579) is not called at start-up; misc_test: saved enabled=true, label 'Fog of War: Off'.
+- **Phase 8:** Kept. Test: after reopening with fog on, the button reads "Fog of War: Off".
 
 ### EXP-20 · Region dropdown doesn't follow the loaded map
 **Later, Harry's call** · other
@@ -839,6 +858,7 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 - **Before:** Loading North Isle switches the events to North Isle, but the Region box still says Northern Province.
 - **After:** Kept as it is in the rebuild.
 - **Evidence:** provinceSel set only at 2053; flow_test: dropdown northern_province, state the_north_isle.
+- **Phase 8:** Kept.
 
 ### EXP-21 · Reset Travel leaves the weather wait behind
 **Later, Harry's call** · other
@@ -848,6 +868,7 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 - **Decision note:** E9
 - **Checker's note:** travelEventDay blocks the day-1 travel event only when the reset happens on day 1 after that day's event.
 - **Evidence:** app.js:2430-2442; misc_test: lastWeatherDay stayed 11; no weather on days 2-5 even when forced.
+- **Phase 8:** Kept (E9). Rules test.
 
 ### EXP-22 · Weather can be closed without rolling
 **Later, Harry's call** · other
@@ -856,6 +877,7 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 - **After:** Kept as it is in the rebuild.
 - **Decision note:** E8
 - **Evidence:** openWeatherModal 1034-1134 passes choices [], so renderStep adds a Close (922-931); lastWeatherDay is set at 2384 before resolving.
+- **Phase 8:** Kept (E8). Test.
 
 ### EXP-23 · Line breaks in event text are lost
 **Later, Harry's call** · other
@@ -865,6 +887,7 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 - **Decision note:** E12
 - **Checker's note:** This also affects the weather 'EFFECT:' line built with \n\n at 1114.
 - **Evidence:** .evModal_desc has no white-space rule (styles.css:635-642, 823-827, 928-931); screenshot http_07_main_event_letter.png.
+- **Phase 8:** Kept (E12).
 
 ### EXP-24 · 146 events have a second part that can never be reached
 **Later, Harry's call** · other
@@ -873,6 +896,7 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 - **After:** Kept as it is in the rebuild.
 - **Decision note:** E3
 - **Evidence:** analyse2.py: 146 events with an unreachable 'step2' (e.g. Bridge Out, Roadside Peddler).
+- **Phase 8:** Kept (E3). The text is still in the events file.
 
 ### EXP-25 · A refused 'Too far' move still uncovers the fog and the pins
 **Later, Harry's call** · other
@@ -881,6 +905,7 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 - **After:** Kept as it is in the rebuild.
 - **Decision note:** E13
 - **Evidence:** t_transition_fog.js with fog on: 19 revealed hexes before and 90 after a refused drag. Pins went from 0 to 3. Kaelen's miles stayed at 0 with notice 'Too far...'. Code: reveals happen during the drag (2709-2712, 2740-2750), while the refusal branch (2793-2818) restores positions and hexes but not the fog store. The next saveNow writes it.
+- **Phase 8:** Kept (E13).
 
 ### EXP-26 · Grid opacity slider at 0 still shows the grid
 **Later, Harry's call** · other
@@ -888,6 +913,7 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 - **Before:** Dragging the grid opacity all the way down to 0 brings the grid back at its default strength instead of hiding it.
 - **After:** Kept as it is in the rebuild.
 - **Evidence:** app.js:1755 uses 'Number(state.grid.opacity) || 0.35', so 0 becomes 0.35. t_opacity.js: slider 0.05 gave max alpha 29, slider 0 gave max alpha 166 (drawn at 35%).
+- **Phase 8:** Kept. Rules test.
 
 ### EXP-27 · Reset Fog wipes a map's explored area with no 'are you sure?'
 **Later, Harry's call** · other
@@ -896,7 +922,23 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 - **After:** Kept as it is in the rebuild.
 - **Decision note:** E14
 - **Evidence:** app.js:1637-1655: no confirm, and saveNow runs via updateFogFromFocus or directly. Compare the confirms at 2143 and 2431.
+- **Phase 8:** Kept (E14). Test.
 
+### EXP-28 · An empty weather roll counts as a roll of 0
+**Later, Harry's call** · other · found in phase 8
+
+- **Before:** Pressing Resolve with nothing typed in the weather roll box resolves the weather as a roll of 0, which is always a failure. The "Enter a valid roll number." message can never appear, because the box only takes numbers: a typed letter just leaves it empty.
+- **After:** Kept as it is in the rebuild. The rebuild puts the keyboard focus on the pop-up's heading rather than the roll box, so an Enter press meant for the previous pop-up can't resolve the weather before anyone has rolled.
+- **Evidence:** app.js:1077 (type="number") and 1093-1097: `Number('')` is 0. Phase 8 test: typing "e" leaves the box empty, and Resolve gives the Failure result.
+- **Phase 8:** Kept. Test.
+
+### EXP-29 · A quick double click on an event choice can also pick the next step's choice
+**Fixed by the new design** · other · found in phase 8
+
+- **Before:** An event's choice buttons are rebuilt in the same place for each step, so the second click of a double click can land on the next step's first button, skipping a scene or picking an outcome no one chose.
+- **After:** Clicks in the first moment after an event's buttons change are ignored, so a double click counts once.
+- **Evidence:** app.js:918-983 (the choices are cleared and rebuilt on every step). Found while rebuilding, from the code.
+- **Phase 8:** Fixed. Test: a double click on Continue moves on one step only.
 
 ## The Ironbow Bastion Manager
 Old repo: `_legacy/bastion_manager` (file:line references point there).

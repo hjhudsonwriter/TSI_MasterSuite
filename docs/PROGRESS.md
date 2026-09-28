@@ -2,11 +2,54 @@
 
 ## Where things stand
 
-**Phase 7 (Combat Tracker & VTT Battlemap) is built and tested: the desk and the Battlemap together, in one session, as Harry chose.** **Phase 8 (the Scarlett Isles Explorer, 8a and 8b together) is next,** and waits for Harry's go-ahead. His answers to its questions (E1–E16) are in: all the defaults.
+**Phase 8 (the Scarlett Isles Explorer) is built and tested: 8a and 8b together, in one session, as Harry chose.** **Phase 9 (The Ironbow Bastion Manager, 9a to 9c together) is next,** and waits for Harry's go-ahead. His answers to its questions are in (B2 as he chose, the defaults for the rest).
 
-Double-click `index.html` to open the suite. Six tools now open from their cards: the Clan Crest Creator, the Pelagosi Puzzle Trials, the Notice Board, The Heartwood Ritual, the Arenas and the Combat Tracker. The Explorer and the Bastion say "Coming in phase N" until their phases are done. The plan is in `docs/PLAN.md`, the bug list in `docs/KNOWN_ISSUES.md`, and the notes for building each tool in `docs/BUILDING-A-TOOL.md`.
+Double-click `index.html` to open the suite. Seven tools now open from their cards: the Clan Crest Creator, the Pelagosi Puzzle Trials, the Notice Board, The Heartwood Ritual, the Arenas, the Combat Tracker and the Explorer. The Bastion says "Coming in phase 9" until its phase is done. The plan is in `docs/PLAN.md`, the bug list in `docs/KNOWN_ISSUES.md`, and the notes for building each tool in `docs/BUILDING-A-TOOL.md`.
 
 ## Done
+
+### Phase 8: Scarlett Isles Explorer (28 September 2026)
+- **Rebuilt as it was:**
+  - **Maps:** the ten province maps (Load), uploading your own map (up to 4 MB), Clear map, Fullscreen and Hide UI (or H).
+  - **The hex grid:** on/off, Hex − / +, the four nudges, opacity and the size readout; Snap; Pick Marker XY.
+  - **The heroes:** Kaelen, Umbrys, Magnus, Elara and Charles; click, Ctrl + click and box select; Group and Ungroup; Token − / + and the mouse wheel.
+  - **Travel:** 6 miles a hex for every hero in the move, 30 a day, moves over 30 refused, Free Move, the pace and effects, each hero's miles, Reset Travel.
+  - **Map changes:** each map sets its event region, and moving between linked maps puts the party at the entry point in formation (the three one-way links kept, E11).
+  - **Fog of war:** two hexes round the hero whose miles show, kept per map; Reset Fog; town pins appear once uncovered.
+  - **Town pins:** the 15 with a town map show and open it; the 18 without stay hidden (E10).
+  - **Events:** a travel event once a day at a random 6–24 miles; a campfire event at Make Camp; choices, steps and results from the old events file, word for word (279 travel and 322 campfire events).
+  - **Weather:** after a 3-day wait, a 45% chance at camp; you roll at the table and type the result; the looping video covers the map for that day.
+  - **Main campaign events:** The Tide Remembers and The Turning Tide, played at once by Queue (E5), with all 11 pictures.
+  - **The weekly Bastion prompt** on days 8, 15, 22 and so on.
+  - It saves the whole journey (map, grid, snap, Free Move, day, weather, fog, heroes and their miles) and the uploaded map. Both are in Export Save, the top bar's Export and "Back up everything".
+- **Your answers:** all the defaults (E1–E16). E4: camp shows the campfire (or main) event, then the weather, then the Bastion prompt.
+- **Fixed (they broke the tool, lost data or applied something twice):**
+  - Make Camp's pop-ups follow one another instead of replacing each other, so no event or weather is lost (EXP-01).
+  - Enter or Space after Make Camp, or a double click, can't camp twice or make the event vanish (EXP-02, EXP-14).
+  - Heroes' miles survive reopening (EXP-03).
+  - Pins, grid, fog and heroes are tied to the map picture, so a hex covers the same ground on the laptop and the TV, in a window or full screen, and a one-hex move always costs 6 miles (EXP-04, EXP-10, EXP-11).
+  - A big uploaded map can't stop the saving (EXP-05); a damaged file can't lock the Explorer (EXP-12); Import asks first (EXP-09).
+  - It works double-clicked and offline: maps, pins, events, pictures, videos and fonts (EXP-06 to EXP-08).
+  - Messages stay inside full screen (EXP-15), and H only works in the Explorer, never while typing (EXP-13).
+  - A double click on an event's choice counts once (EXP-29, found while rebuilding).
+- **The 33 pins (E16):** converted once. Checked against the towns drawn on the maps, they were placed in the Explorer's **full-screen** view on the laptop, not a maximised window, so they were converted that way. Two hidden pins (Port Brawdlyn, Fork Farm) fit the windowed view better and were converted that way. `tests/pin-check.html` shows every map with all 33 pins for Harry to check.
+- **Kept as they were** (KNOWN_ISSUES EXP-16 to EXP-28), including: event gold isn't saved and resets weekly (E1); the Fog of War button reads Off after reopening; the Region list doesn't follow the loaded map; closing the weather without rolling still starts the 3-day wait (E8); an empty roll box counts as 0; Reset Fog doesn't ask (E14).
+- **Small changes:**
+  - **Layout:** the map fills the middle, with the controls on the left and the travel panel on the right, so a 4:3 map gets the laptop's whole height; the same in full screen. Hide UI now also works outside full screen.
+  - **Header:** the suite's top bar replaces the old logo and title; the empty "Tips: ..." line is gone.
+  - **Heroes** stay on the map picture itself, so they can't be parked in the dark bands beside a 4:3 map.
+  - **Weather:** yesterday's weather video goes as soon as you make camp (before, it stayed until the next click on the map).
+  - **Pick Marker XY** now gives positions on the map picture (the form the pins use), and no longer starts a selection box.
+  - **The weather pop-up** puts the keyboard focus on its heading, so an Enter meant for the last pop-up can't resolve the weather by accident.
+- **Checked against the old tool:** with the same dice, the old Explorer and the rebuild made the same journey (the North Isle, a group, ten days of moves, a refused move, Free Move, ten camps with travel and campfire events, two weather rolls, the day-8 Bastion prompt, both main events and Reset Travel). They showed the same travel panel, the same saved journey and the same pop-ups, pictures and results at each of 60 steps.
+- **Structure:**
+  - `tools/explorer/rules.js` (rules and map geometry), `tool.js` (the screen), `explorer.css`, and `data/` (`explorer-data.js` for maps, pins, entry points, main events, weather and heroes; `events-data.js` for the events).
+  - The shared pop-ups and notices now open inside full screen.
+- **Tests:**
+  - `tests/rules.html`: 247 rules tests (42 new).
+  - `tests/e2e/phase8.test.js`: 63 checks.
+  - The earlier click-throughs (phases 1 to 7) still pass.
+  - **Not tested here:** Edge itself; the weather videos playing (the test browser can't play MP4s); the real TV, including dragging the window between the laptop and the TV. These are on Harry's checklist.
 
 ### Phase 7: Combat Tracker & VTT Battlemap (28 September 2026)
 - **Rebuilt as it was:**
@@ -226,7 +269,7 @@ Double-click `index.html` to open the suite. Six tools now open from their cards
   - The old-save import phase removed.
 
 ## Next
-**Phase 8: the Scarlett Isles Explorer**, 8a and 8b together (maps and movement, then events, camp and weather), with Harry's go-ahead. It must work on the laptop and the TV, with its map pins tied to the map pictures (the Battlemap's approach). Harry checks the 33 pins once afterwards (E16). Its "done when" lists are in `docs/PLAN.md` section 4. Then phase 9, the Bastion (9a to 9c together).
+**Phase 9: The Ironbow Bastion Manager**, 9a to 9c together (the core, then Hall, trade and Council, then identity, war and the Compendium), with Harry's go-ahead. It must fit the laptop and the TV. Its "done when" lists are in `docs/PLAN.md` section 4. After that, the how-to guide (a later phase, with Harry's go-ahead).
 
 ## Open questions for Harry
 
@@ -241,7 +284,9 @@ Each tool's questions are needed before that tool's phase. The full wording and 
 - **Arenas (phase 6):** answered (A1–A9).
   - Three kept behaviours you're likely to notice at the table: a cancelled turn still uses up that player's go (ARN-14); the gold under the arena catches up only after the next change (ARN-25); and changing the Arena or Round list mid-round restarts it without asking (ARN-27). Say if you'd like any changed.
 - **Combat Tracker (phase 7):** answered (C1–C11).
-- **Explorer (phase 8):** answered (E1–E16: all the defaults). After it's built, Harry checks the 33 map pins sit on their towns (E16).
+- **Explorer (phase 8):** answered (E1–E16: all the defaults).
+  - E16: the pins turned out to have been placed in the Explorer's full-screen view, not a maximised window, and were converted that way. Please double-click `tests/pin-check.html` and check all 33 sit on their towns; tell the next session about any that don't.
+  - Kept behaviours you're likely to notice: the Fog of War button reads Off after reopening (EXP-19); the Region list doesn't follow the loaded map (EXP-20); and pressing Resolve with an empty roll box counts as a roll of 0 (EXP-28). Say if you'd like any changed.
 - **Bastion (phase 9):** answered (B2: the delegation's own two rolls set Political Capital; the defaults for the rest).
 
 ## Notes for future sessions
@@ -257,6 +302,7 @@ Each tool's questions are needed before that tool's phase. The full wording and 
 - **Clock control in tests:** `phase6.test.js` controls the page's clock (Playwright's `page.clock`) to move the 5-second pictures on. Its fast-forward sometimes moves the page's clock by less than asked, so the test checks and repeats (`passTime`).
 - **Fixed dice in tests:** the Arenas (like the old tool) make each opponent's id from a roll plus the time. If a test fixes the dice before a round starts, the opponents share an id and the target list can't tell them apart. Use varied dice (`__seed`) whenever a round starts.
 - **The Notice Board's shop link in tests:** `phase4.test.js` plays Matt's database with a stand-in. Never point a test at the real one.
-- **Two-way player windows and map positions:** see the Battlemap note in `docs/BUILDING-A-TOOL.md` section 5. The Explorer should reuse the "board units" geometry in `tools/encounter/rules.js`.
-- **Fullscreen in tests:** headless Chromium supports `requestFullscreen()` in a pop-up window, so `phase7.test.js` checks the fullscreen layout.
+- **Two-way player windows and map positions:** see the Battlemap note in `docs/BUILDING-A-TOOL.md` section 5. The Explorer uses the same idea with its own board (1440 units wide, so its old sizes are screen pixels on the TV in full screen).
+- **Fullscreen in tests:** headless Chromium supports `requestFullscreen()`, so `phase7.test.js` and `phase8.test.js` check the fullscreen layouts. The Escape key doesn't leave full screen there: call `document.exitFullscreen()` instead.
+- **Pop-ups and full screen:** shared pop-ups and notices open inside whatever is in full screen, and move there if full screen starts while one is open (`shared/js/modal.js`, `core.js`).
 - **Sound in tests:** the test browser can load the sounds but nobody hears them. The Pelagosi test records which sounds start and when; hearing them is on Harry's checklist.
