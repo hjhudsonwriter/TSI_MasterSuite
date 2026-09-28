@@ -1,0 +1,313 @@
+/* ==========================================================================
+   Combat Tracker & VTT Battlemap — the DM's desk.
+   The old three panels (Storage | Combatants by Initiative | the active
+   combatant) in the suite's look, sized so the whole desk fits the laptop
+   (1707 × 930) and the TV (1920 × 1080). Long lists scroll inside their
+   panel. The wide crest shows faintly behind, as it did in the old tool.
+   Every rule is scoped to .tsi-tool--encounter and every class starts
+   "tsi-enc-". The Battlemap window's styles are in battlemap.css.
+   ========================================================================== */
+
+.tsi-tool--encounter [hidden] { display: none !important; }
+
+.tsi-tool--encounter .tsi-enc {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 10px;
+  height: calc(100vh - var(--tsi-topbar-h));
+  min-height: 600px;
+  padding: 10px 16px 14px;
+  box-sizing: border-box;
+  max-width: 2000px;
+  margin: 0 auto;
+}
+
+/* ---------- Title and top actions ---------- */
+.tsi-tool--encounter .tsi-enc-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.tsi-tool--encounter .tsi-enc-title {
+  margin: 0;
+  font: 600 22px/1.15 var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-title);
+  color: var(--tsi-gold-text);
+  text-shadow: var(--tsi-text-shadow-title);
+}
+.tsi-tool--encounter .tsi-enc-head-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* ---------- The three panels ---------- */
+.tsi-tool--encounter .tsi-enc-main {
+  display: grid;
+  grid-template-columns: minmax(300px, 370px) minmax(0, 1fr) minmax(300px, 370px);
+  gap: 14px;
+  min-height: 0;
+}
+.tsi-tool--encounter .tsi-enc-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  border-radius: var(--tsi-radius-lg);
+  border: var(--tsi-border);
+  background: var(--tsi-panel-fill);
+  box-shadow: var(--tsi-shadow-panel);
+  overflow: hidden;
+}
+.tsi-tool--encounter .tsi-enc-panel-head {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid var(--tsi-line-faint);
+  background: var(--tsi-head-fill);
+}
+.tsi-tool--encounter .tsi-enc-panel-title {
+  margin: 0;
+  font: 600 var(--tsi-fs-button) var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-heading);
+  text-transform: uppercase;
+  color: var(--tsi-gold-text);
+}
+.tsi-tool--encounter .tsi-enc-panel-sub { margin: 3px 0 0; font-size: 15px; line-height: 1.3; }
+.tsi-tool--encounter .tsi-enc-panel-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px 14px 16px;
+}
+.tsi-tool--encounter .tsi-enc-muted { color: var(--tsi-text-muted); }
+.tsi-tool--encounter .tsi-enc-tiny { font-size: 14px; }
+.tsi-tool--encounter .tsi-enc-hint { margin: 4px 0 8px; font-size: 14px; line-height: 1.3; color: var(--tsi-text-faint); }
+
+/* ---------- Fields and rows ---------- */
+.tsi-tool--encounter .tsi-enc-field { gap: 4px; margin-bottom: 8px; min-width: 0; }
+.tsi-tool--encounter .tsi-enc-input {
+  height: 36px;
+  padding: 4px 10px;
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+}
+.tsi-tool--encounter select.tsi-enc-input {
+  padding-right: 28px;
+  background-image: linear-gradient(45deg, transparent 50%, var(--tsi-gold-text) 50%), linear-gradient(135deg, var(--tsi-gold-text) 50%, transparent 50%);
+  background-position: calc(100% - 15px) 15px, calc(100% - 10px) 15px;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+.tsi-tool--encounter .tsi-enc-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 6px 0; }
+.tsi-tool--encounter .tsi-enc-row--two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; margin: 0; }
+.tsi-tool--encounter .tsi-enc-row--split { justify-content: space-between; }
+.tsi-tool--encounter .tsi-enc-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+.tsi-tool--encounter .tsi-enc-pill { font-size: 13px; padding: 3px 10px; }
+.tsi-tool--encounter .tsi-enc-section-title {
+  margin: 14px 0 8px;
+  font: 600 13px var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-label);
+  text-transform: uppercase;
+  color: var(--tsi-gold-text);
+}
+.tsi-tool--encounter .tsi-enc-section-title:first-child { margin-top: 4px; }
+.tsi-tool--encounter .tsi-enc-subcard {
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  border: 1px solid var(--tsi-line-panel);
+  border-radius: var(--tsi-radius-md);
+  background: rgba(255, 255, 255, .03);
+}
+.tsi-tool--encounter .tsi-enc-subcard-title {
+  margin: 0 0 4px;
+  font: 600 14px var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-label);
+  color: var(--tsi-text);
+}
+.tsi-tool--encounter .tsi-enc-subcard p { margin: 0 0 6px; font-size: 15px; line-height: 1.3; }
+.tsi-tool--encounter .tsi-enc-file { max-width: 100%; font: 14px var(--tsi-font-body); color: var(--tsi-text-soft); }
+
+/* ---------- Storage tabs ---------- */
+.tsi-tool--encounter .tsi-enc-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 8px 14px 0;
+  border-bottom: 1px solid var(--tsi-line-faint);
+}
+.tsi-tool--encounter .tsi-enc-tab {
+  padding: 7px 10px;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: var(--tsi-radius-sm) var(--tsi-radius-sm) 0 0;
+  background: transparent;
+  color: var(--tsi-text-muted);
+  font: 600 12px var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-label);
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.tsi-tool--encounter .tsi-enc-tab:hover { color: var(--tsi-text); }
+.tsi-tool--encounter .tsi-enc-tab:focus-visible { outline: none; box-shadow: var(--tsi-focus-ring); }
+.tsi-tool--encounter .tsi-enc-tab--active {
+  color: var(--tsi-gold-text);
+  border-color: var(--tsi-line-panel);
+  background: rgba(255, 255, 255, .05);
+}
+
+/* ---------- Lists (library, saved encounters) ---------- */
+.tsi-tool--encounter .tsi-enc-list { display: flex; flex-direction: column; gap: 6px; }
+.tsi-tool--encounter .tsi-enc-item {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 7px 8px;
+  border: 1px solid var(--tsi-line-faint);
+  border-radius: var(--tsi-radius-sm);
+  background: rgba(255, 255, 255, .03);
+  cursor: pointer;
+  transition: border-color var(--tsi-dur-fast) var(--tsi-ease), background var(--tsi-dur-fast) var(--tsi-ease);
+}
+.tsi-tool--encounter .tsi-enc-item--plain { grid-template-columns: minmax(0, 1fr); cursor: default; }
+.tsi-tool--encounter .tsi-enc-item:hover { border-color: var(--tsi-line-hover); }
+.tsi-tool--encounter .tsi-enc-item:focus-visible { outline: none; box-shadow: var(--tsi-focus-ring); }
+.tsi-tool--encounter .tsi-enc-item--selected {
+  border-color: rgba(214, 178, 94, .7);
+  background: linear-gradient(180deg, rgba(214, 178, 94, .16), rgba(122, 12, 27, .10));
+}
+.tsi-tool--encounter .tsi-enc-item-main { min-width: 0; }
+.tsi-tool--encounter .tsi-enc-item-title { font-weight: 700; font-size: 17px; line-height: 1.2; color: var(--tsi-text); overflow-wrap: anywhere; }
+.tsi-tool--encounter .tsi-enc-item-meta { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+.tsi-tool--encounter .tsi-enc-item-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.tsi-tool--encounter .tsi-enc-item--plain .tsi-enc-item-actions { justify-content: flex-start; margin-top: 6px; }
+.tsi-tool--encounter .tsi-enc-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 1px solid rgba(214, 178, 94, .3);
+  background: rgba(0, 0, 0, .3);
+}
+.tsi-tool--encounter .tsi-enc-avatar--lg { width: 64px; height: 64px; border-radius: 14px; flex: 0 0 auto; }
+
+/* Badges */
+.tsi-tool--encounter .tsi-enc-badge {
+  display: inline-block;
+  padding: 1px 7px;
+  border: 1px solid var(--tsi-line-panel);
+  border-radius: var(--tsi-radius-pill);
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--tsi-text-muted);
+  white-space: nowrap;
+}
+.tsi-tool--encounter .tsi-enc-badge--pc { border-color: rgba(214, 178, 94, .6); color: var(--tsi-gold-text); }
+.tsi-tool--encounter .tsi-enc-badge--monster { border-color: rgba(235, 90, 90, .55); color: #f0a8a8; }
+.tsi-tool--encounter .tsi-enc-badge--npc { border-color: rgba(120, 170, 255, .45); color: #b9cdf5; }
+.tsi-tool--encounter .tsi-enc-badge--defeated { border-color: rgba(235, 90, 90, .8); background: rgba(177, 18, 42, .3); color: #ffd0d0; }
+
+/* ---------- The board ---------- */
+.tsi-tool--encounter .tsi-enc-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 12px;
+  padding: 10px 14px 4px;
+}
+.tsi-tool--encounter .tsi-enc-grow { flex: 1 1 200px; }
+.tsi-tool--encounter .tsi-enc-control-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.tsi-tool--encounter .tsi-enc-table-head,
+.tsi-tool--encounter .tsi-enc-roster-row {
+  display: grid;
+  grid-template-columns: 44px 52px minmax(0, 1.3fr) 76px minmax(0, 1fr) 86px;
+  gap: 10px;
+  align-items: center;
+}
+.tsi-tool--encounter .tsi-enc-table-head {
+  padding: 6px 22px 6px 22px;
+  border-bottom: 1px solid var(--tsi-line-faint);
+  font: 600 12px var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-label);
+  text-transform: uppercase;
+  color: var(--tsi-text-faint);
+}
+.tsi-tool--encounter .tsi-enc-board-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tsi-tool--encounter .tsi-enc-roster-row {
+  padding: 6px 8px;
+  border: 1px solid var(--tsi-line-faint);
+  border-radius: var(--tsi-radius-sm);
+  background: rgba(255, 255, 255, .03);
+  cursor: pointer;
+}
+.tsi-tool--encounter .tsi-enc-roster-row:hover { border-color: var(--tsi-line-hover); }
+.tsi-tool--encounter .tsi-enc-roster-row--target { border-color: rgba(214, 178, 94, .55); }
+.tsi-tool--encounter .tsi-enc-roster-row--current {
+  border-color: rgba(214, 178, 94, .9);
+  background: linear-gradient(90deg, rgba(214, 178, 94, .2), rgba(122, 12, 27, .12));
+  box-shadow: 0 0 0 1px rgba(214, 178, 94, .35), 0 0 18px rgba(214, 178, 94, .15);
+}
+.tsi-tool--encounter .tsi-enc-roster-row--defeated { opacity: .75; filter: grayscale(.2); }
+.tsi-tool--encounter .tsi-enc-cell { font-variant-numeric: tabular-nums; font-size: 17px; color: var(--tsi-text); }
+.tsi-tool--encounter .tsi-enc-cell--actions { text-align: right; }
+.tsi-tool--encounter .tsi-enc-name { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; min-width: 0; }
+.tsi-tool--encounter .tsi-enc-name-text { font-weight: 700; font-size: 17px; color: var(--tsi-text); overflow-wrap: anywhere; }
+.tsi-tool--encounter .tsi-enc-conds { display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
+.tsi-tool--encounter .tsi-enc-board-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 14px 10px;
+  border-top: 1px solid var(--tsi-line-faint);
+}
+.tsi-tool--encounter .tsi-enc-turn { font-size: 15px; }
+
+/* ---------- The inspector ---------- */
+.tsi-tool--encounter .tsi-enc-insp-head { flex-direction: column; align-items: stretch; }
+.tsi-tool--encounter .tsi-enc-insp-top { display: flex; gap: 12px; align-items: center; }
+.tsi-tool--encounter .tsi-enc-insp-name {
+  margin: 0;
+  font: 600 19px/1.2 var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-label);
+  color: var(--tsi-gold-text);
+}
+.tsi-tool--encounter .tsi-enc-insp-top p { margin: 3px 0 0; font-size: 15px; }
+.tsi-tool--encounter .tsi-enc-insp-stats { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+.tsi-tool--encounter .tsi-enc-statblock { margin: 0 0 8px; }
+.tsi-tool--encounter .tsi-enc-cond-row { display: grid; grid-template-columns: minmax(0, 1fr) 78px auto; gap: 8px; align-items: end; }
+.tsi-tool--encounter .tsi-enc-cond-row .tsi-btn { margin-bottom: 8px; height: 36px; }
+
+/* The old tool's red button (End). */
+.tsi-tool--encounter .tsi-enc-btn--danger {
+  border-color: rgba(235, 90, 90, .7);
+  background: rgba(122, 12, 27, .25);
+  color: #f3b0b0;
+  box-shadow: none;
+}
+.tsi-tool--encounter .tsi-enc-btn--danger:hover { background: rgba(177, 18, 42, .4); border-color: rgba(235, 90, 90, .95); }
+.tsi-tool--encounter .tsi-btn:disabled { opacity: .45; cursor: not-allowed; filter: none; }
+
+/* ---------- Smaller windows ---------- */
+@media (max-width: 1450px) {
+  .tsi-tool--encounter .tsi-enc-main { grid-template-columns: minmax(270px, 320px) minmax(0, 1fr) minmax(270px, 320px); gap: 10px; }
+  .tsi-tool--encounter .tsi-enc-table-head,
+  .tsi-tool--encounter .tsi-enc-roster-row { grid-template-columns: 40px 44px minmax(0, 1.3fr) 66px minmax(0, 1fr) 80px; gap: 8px; }
+  .tsi-tool--encounter .tsi-enc-tabs { gap: 2px; padding: 8px 10px 0; }
+  .tsi-tool--encounter .tsi-enc-tab { padding: 7px 6px; letter-spacing: .04em; }
+}
+@media (max-width: 1200px) {
+  .tsi-tool--encounter .tsi-enc { height: auto; }
+  .tsi-tool--encounter .tsi-enc-main { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(520px, auto) auto; }
+  .tsi-tool--encounter .tsi-enc-board { grid-column: 1 / -1; grid-row: 1; }
+}

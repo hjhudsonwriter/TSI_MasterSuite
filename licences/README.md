@@ -10,6 +10,7 @@ Everything the suite needs is stored in this folder tree, so it works with no in
 | `shared/fonts/IMFellEnglish-Regular.ttf`, `shared/fonts/IMFellEnglish-Italic.ttf` | IM Fell English (Heartwood Ritual body text) | SIL OFL 1.1: `licences/fonts/IMFellEnglish-OFL.txt` | google/fonts `ofl/imfellenglish/IMFeENrm28P.ttf`, `IMFeENit28P.ttf` |
 | `shared/fonts/IMFellEnglishSC-Regular.ttf` | IM Fell English SC (Explorer buttons, Lion's Mark lettering) | SIL OFL 1.1: `licences/fonts/IMFellEnglishSC-OFL.txt` | google/fonts `ofl/imfellenglishsc/IMFeENsc28P.ttf` |
 | `tools/quests/lib/firebase/firebase-app-compat.js`, `firebase-database-compat.js` | Firebase 9.22.0 (the Notice Board's ★ → Knightly Treasures link) | Apache 2.0: `licences/firebase-Apache-2.0.txt` | npm `firebase@9.22.0` |
+| `shared/lib/pdfjs/pdf.min.js`, `pdf.worker.min.js` | PDF.js 3.11.174 (the Combat Tracker's "Import PDF") | Apache 2.0: `licences/pdfjs-Apache-2.0.txt` | npm `pdfjs-dist@3.11.174`, `legacy/build/` |
 
 The font files were checked byte-for-byte (SHA-256) against the google/fonts repository on 25 September 2026.
 
@@ -17,6 +18,6 @@ The font files were checked byte-for-byte (SHA-256) against the google/fonts rep
 
 **Firebase (phase 4).** `tools/quests/lib/firebase/firebase-app-compat.js` and `firebase-database-compat.js` are Firebase 9.22.0, the version the old Notice Board loaded from Google's servers, in its plain-script ("compat") form. Licence: Apache 2.0, `licences/firebase-Apache-2.0.txt`. Source: the `firebase@9.22.0` package on npm (the same files Google serves at `gstatic.com/firebasejs/9.22.0/`), unchanged; SHA-256 `2d038b9f…80c1` and `1fdd331f…f129`. Only the Notice Board loads them, for the ★ → Knightly Treasures link.
 
-The PDF.js library (Combat Tracker, phase 7) is added here in its phase, with its Apache 2.0 licence.
+**PDF.js (phase 7).** `shared/lib/pdfjs/pdf.min.js` and `pdf.worker.min.js` are PDF.js 3.11.174, the version and "legacy" build the old Combat Tracker loaded from jsDelivr, taken unchanged from the `pdfjs-dist@3.11.174` package on npm (jsDelivr serves the same files); SHA-256 `978fd1b2…aa6c` and `38cde531…96f2`. Licence: Apache 2.0, `licences/pdfjs-Apache-2.0.txt`. Only the Combat Tracker loads them, and only when you import a PDF. Loaded with plain script tags, PDF.js reads the file on the page itself (its "fake worker"), because browsers don't allow a separate worker from a double-clicked file.
 
 For the campaign artwork, see `ARTWORK.md`.

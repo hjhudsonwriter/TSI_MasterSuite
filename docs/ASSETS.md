@@ -15,7 +15,7 @@ Third-party files (fonts and libraries) are listed in `licences/README.md`, not 
 |---|---|---|---|---|
 | `shared/art/logo-hub.png` | `scarlett-isles-dnd/assets/logo.png` | 2.86 MB, 1400 × 1400, transparent | Yes: home screen and top bar | The old hub's crest logo. Harry chose it as the suite logo. |
 | `shared/art/hero.png` | `scarlett-isles-dnd/assets/hero.png` = `scarlett-isles-explorer/assets/hero.png` = `clan-crest-creator/assets/hero.png` | 3.28 MB, 1536 × 1024 | Yes: home-screen background, and behind the Clan Crest Creator (phase 2) | Three byte-identical copies, stored once. The Explorer will use it too. |
-| `shared/art/logo-crest-wide.png` | `clan-crest-creator/assets/logo.png` = `scarlett-isles-explorer/assets/logo.png` = `scarlettisles-encounter-tracker/logo.png` | 3.00 MB, 1536 × 1024 | Not yet | The wide crest the old Explorer, Crest and Tracker used in their headers. Three identical copies, stored once. The Combat Tracker keeps it as its faint watermark (phase 7). |
+| `shared/art/logo-crest-wide.png` | `clan-crest-creator/assets/logo.png` = `scarlett-isles-explorer/assets/logo.png` = `scarlettisles-encounter-tracker/logo.png` | 3.00 MB, 1536 × 1024 | Yes: faint behind the Combat Tracker desk, and in the Battlemap window's header (phase 7) | The wide crest the old Explorer, Crest and Tracker used in their headers. Three identical copies, stored once. |
 
 Both logos and the hero art carry embedded Content Credentials naming ChatGPT as the creator. See `licences/ARTWORK.md`.
 
@@ -127,3 +127,18 @@ All 71 pictures and sounds from the old Arenas tool, copied byte-for-byte (check
 | `tokens/ring.png` | `extras/ring.png` | 3.5 KB, 256 × 256 | No: never used by the old tool |
 
 Not copied: the empty `.keep` placeholders. The arenas and rounds (`data/arenas.json`) are content, not media: they're in `tools/arenas/data/arenas-data.js`.
+
+## Combat Tracker & VTT Battlemap (phase 7)
+
+The old tracker had three picture files. Its crest logo was brought across in phase 1 as the shared wide crest. The desk shows it faintly behind the panels, as the old tool did, and the Battlemap window shows it in its header.
+
+| Old path (`scarlettisles-encounter-tracker/…`) | New path | Size | Used |
+|---|---|---|---|
+| `logo.png` | `shared/art/logo-crest-wide.png` (phase 1; the same file as the old Crest's and Explorer's logos) | 3.00 MB, 1536 × 1024 | Yes: faint behind the desk, and in the Battlemap window's header |
+| `assets/ChatGPT Image Dec 29, 2025, 12_29_52 AM.png` | `tools/encounter/assets/extras/rune-stone.png` | 1.98 MB, 1024 × 1024 | No: never used by the old tool (a rune stone wrapped in roots). Renamed, because the old name had spaces and a comma. |
+
+Not copied:
+- `assets/icon-192.png` is a single byte with no picture in it. It was the "install as app" icon, which isn't carried across (KNOWN_ISSUES ENC-11).
+- `assets/.gitkeep`, an empty placeholder.
+
+The combatants' pictures and stat-block links are web addresses you type in. They load only when the laptop is online; otherwise the plain stand-in picture shows, as before.

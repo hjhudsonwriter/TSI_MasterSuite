@@ -21,10 +21,22 @@ window.TSI_DATA.tools = [
     name: 'Combat Tracker & VTT Battlemap',
     group: 'dm',
     phase: '7',
-    built: false,
+    built: true,
     saves: true,
     desc: 'Run fights smoothly: initiative, notes, conditions and momentum.',
-    files: { css: [], js: [] }
+    /* The wide crest, faint behind the desk, as in the old tool. */
+    art: 'shared/art/logo-crest-wide.png',
+    files: {
+      css: ['tools/encounter/encounter.css'],
+      js: ['tools/encounter/rules.js', 'tools/encounter/tool.js']
+    },
+    /* The Battlemap: the map with its controls, which the DM drags to the TV. */
+    playerViews: {
+      battlemap: {
+        css: ['tools/encounter/battlemap.css'],
+        js: ['shared/js/modal.js', 'tools/encounter/rules.js', 'tools/encounter/battlemap.js']
+      }
+    }
   },
   {
     id: 'quests',

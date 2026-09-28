@@ -498,7 +498,7 @@ async function setBasin(page, rune) {
     });
 
     await check('the five sounds still to come are never asked for (P2)', async () => {
-      const asked = context.log.failed.concat(await plays(page)).filter(u => MISSING_SOUNDS.some(m => u.includes(m)));
+      const asked = context.log.failed.concat(context.log.aborted, await plays(page)).filter(u => MISSING_SOUNDS.some(m => u.includes(m)));
       equal(asked, []);
     });
 

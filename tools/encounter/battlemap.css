@@ -1,0 +1,234 @@
+/* ==========================================================================
+   Combat Tracker & VTT Battlemap — the Battlemap window.
+   The old vtt.html in the suite's look: a short header, the controls, then
+   the map filling the rest of the window, so it fills the TV when the window
+   is maximised there, and the whole screen in fullscreen. Layers, bottom to
+   top: map picture, grid, tokens, fog, monsters above the fog, the ruler's
+   line, then the ruler button and the fullscreen side buttons. Every rule is
+   scoped to .tsi-player--battlemap and every class starts "tsi-bm-".
+   ========================================================================== */
+
+.tsi-player--battlemap [hidden] { display: none !important; }
+
+.tsi-player--battlemap .tsi-bm {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px 14px;
+  box-sizing: border-box;
+}
+
+/* ---------- Header and controls ---------- */
+.tsi-player--battlemap .tsi-bm-head { display: flex; align-items: center; gap: 12px; }
+.tsi-player--battlemap .tsi-bm-logo { height: 40px; width: auto; }
+.tsi-player--battlemap .tsi-bm-title {
+  margin: 0;
+  font: 600 20px/1.15 var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-title);
+  color: var(--tsi-gold-text);
+  text-shadow: var(--tsi-text-shadow-title);
+}
+.tsi-player--battlemap .tsi-bm-status { margin: 2px 0 0; font-size: 15px; color: var(--tsi-text-muted); }
+.tsi-player--battlemap .tsi-bm-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+.tsi-player--battlemap .tsi-bm-group { display: inline-flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.tsi-player--battlemap .tsi-bm-hint { font-size: 14px; color: var(--tsi-text-faint); }
+.tsi-player--battlemap .tsi-bm-upload { cursor: pointer; }
+
+/* ---------- The map stage ---------- */
+.tsi-player--battlemap .tsi-bm-stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 320px;
+  overflow: hidden;
+  border-radius: var(--tsi-radius-lg);
+  border: 1px solid rgba(214, 178, 94, .22);
+  background:
+    radial-gradient(800px 500px at 50% 40%, rgba(122, 15, 26, .16), transparent 65%),
+    radial-gradient(900px 600px at 50% 70%, rgba(201, 162, 39, .10), transparent 70%),
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, .03) 0 6px, rgba(255, 255, 255, 0) 6px 12px),
+    rgba(0, 0, 0, .55);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, .45), inset 0 0 0 1px rgba(201, 162, 39, .10);
+  touch-action: none;
+  user-select: none;
+}
+.tsi-player--battlemap .tsi-bm-stage:fullscreen { border-radius: 0; border: 0; }
+
+/* The board: sized in board units and scaled onto the screen by the script. */
+.tsi-player--battlemap .tsi-bm-world {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+.tsi-player--battlemap .tsi-bm-world--map { z-index: 1; }
+.tsi-player--battlemap .tsi-bm-world--tokens { z-index: 10; }
+.tsi-player--battlemap .tsi-bm-world--above { z-index: 22; }
+.tsi-player--battlemap .tsi-bm-map {
+  display: block;
+  width: 100%;
+  height: 100%;
+  user-select: none;
+  pointer-events: none;
+}
+.tsi-player--battlemap .tsi-bm-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.tsi-player--battlemap .tsi-bm-canvas--grid { z-index: 5; }
+.tsi-player--battlemap .tsi-bm-canvas--fog { z-index: 20; }
+.tsi-player--battlemap .tsi-bm-canvas--measure { z-index: 25; }
+
+/* ---------- Tokens ---------- */
+.tsi-player--battlemap .tsi-bm-token {
+  position: absolute;
+  width: var(--tsi-bm-token, 56px);
+  height: var(--tsi-bm-token, 56px);
+  pointer-events: auto;
+  touch-action: none;
+  cursor: grab;
+  outline: none;
+}
+.tsi-player--battlemap .tsi-bm-token:active { cursor: grabbing; }
+.tsi-player--battlemap .tsi-bm-token-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  border-radius: 10px;
+  border: 2px solid rgba(201, 162, 39, .18);
+  box-shadow: 0 10px 18px rgba(0, 0, 0, .35);
+  background: rgba(0, 0, 0, .25);
+  object-fit: cover;
+  pointer-events: none;
+}
+.tsi-player--battlemap .tsi-bm-token:hover .tsi-bm-token-img { border-color: rgba(201, 162, 39, .34); }
+/* The label sits under the picture and grows with the map's zoom only (--tsi-bm-label-scale). */
+.tsi-player--battlemap .tsi-bm-token-label {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 6px * var(--tsi-bm-label-scale, 1));
+  transform: translateX(-50%) scale(var(--tsi-bm-label-scale, 1));
+  transform-origin: 50% 0;
+  padding: 2px 6px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, .14);
+  background: rgba(0, 0, 0, .55);
+  color: rgba(231, 231, 234, .95);
+  font: 400 12px/1.3 var(--tsi-font-body);
+  white-space: nowrap;
+}
+.tsi-player--battlemap .tsi-bm-token--selected .tsi-bm-token-img {
+  border-color: rgba(201, 162, 39, .6);
+  box-shadow: 0 0 0 2px rgba(201, 162, 39, .8), 0 10px 18px rgba(0, 0, 0, .35);
+}
+/* Whose turn it is. */
+.tsi-player--battlemap .tsi-bm-token--active .tsi-bm-token-img {
+  border-color: rgba(201, 162, 39, .95);
+  animation: tsi-bm-turn calc(1.15s * var(--tsi-signature-slowdown)) ease-out infinite;
+}
+@keyframes tsi-bm-turn {
+  0% { box-shadow: 0 10px 18px rgba(0, 0, 0, .35), 0 0 0 0 rgba(201, 162, 39, .55), 0 0 18px rgba(201, 162, 39, .25); }
+  70% { box-shadow: 0 10px 18px rgba(0, 0, 0, .35), 0 0 0 10px rgba(201, 162, 39, 0), 0 0 26px rgba(201, 162, 39, .15); }
+  100% { box-shadow: 0 10px 18px rgba(0, 0, 0, .35), 0 0 0 14px rgba(201, 162, 39, 0), 0 0 18px rgba(201, 162, 39, 0); }
+}
+/* Hidden monsters: invisible to everyone, the DM included, as before. */
+.tsi-player--battlemap .tsi-bm-token--hidden { opacity: 0; pointer-events: none; }
+
+/* Ctrl + drag selection box. */
+.tsi-player--battlemap .tsi-bm-marquee {
+  position: absolute;
+  z-index: 26;
+  border: 1px solid rgba(201, 162, 39, .55);
+  background: rgba(201, 162, 39, .12);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .35) inset;
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+/* ---------- The ruler ---------- */
+.tsi-player--battlemap .tsi-bm-ruler {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 50;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, .16);
+  background: rgba(0, 0, 0, .55);
+  color: rgba(231, 231, 234, .92);
+  font-size: 18px;
+  cursor: pointer;
+}
+.tsi-player--battlemap .tsi-bm-ruler:focus-visible { outline: none; box-shadow: var(--tsi-focus-ring); }
+.tsi-player--battlemap .tsi-bm-ruler--on { border-color: rgba(201, 162, 39, .65); box-shadow: 0 0 0 3px rgba(201, 162, 39, .18); }
+.tsi-player--battlemap .tsi-bm-readout {
+  position: absolute;
+  left: 58px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 30;
+  padding: 6px 10px;
+  border-radius: var(--tsi-radius-pill);
+  border: 1px solid rgba(255, 255, 255, .16);
+  background: rgba(0, 0, 0, .65);
+  color: rgba(231, 231, 234, .92);
+  font: 400 14px var(--tsi-font-body);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* ---------- Fullscreen side buttons ---------- */
+.tsi-player--battlemap .tsi-bm-sidebar {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 40;
+  display: none;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, .14);
+  background: rgba(0, 0, 0, .45);
+  backdrop-filter: blur(6px);
+}
+.tsi-player--battlemap .tsi-bm-stage:fullscreen .tsi-bm-sidebar { display: grid; grid-template-columns: 104px; justify-items: center; }
+/* In fullscreen the ruler moves to the right of the side buttons. */
+.tsi-player--battlemap .tsi-bm-stage:fullscreen .tsi-bm-ruler { left: 146px; }
+.tsi-player--battlemap .tsi-bm-stage:fullscreen .tsi-bm-readout { left: 194px; }
+.tsi-player--battlemap .tsi-bm-side-btn {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, .16);
+  background: rgba(255, 255, 255, .06);
+  color: rgba(231, 231, 234, .92);
+  font: 600 12px var(--tsi-font-display);
+  cursor: pointer;
+}
+.tsi-player--battlemap .tsi-bm-side-btn:hover { border-color: rgba(214, 178, 94, .5); }
+.tsi-player--battlemap .tsi-bm-side-btn:focus-visible { outline: none; box-shadow: var(--tsi-focus-ring); }
+.tsi-player--battlemap .tsi-bm-side-btn--small { height: 38px; border-radius: 12px; }
+.tsi-player--battlemap .tsi-bm-side-row { display: grid; grid-auto-flow: column; gap: 8px; justify-content: center; }
+.tsi-player--battlemap .tsi-bm-side-pad { display: grid; gap: 8px; justify-items: center; }
+.tsi-player--battlemap .tsi-bm-side-group { width: 100%; color: rgba(231, 231, 234, .9); }
+.tsi-player--battlemap .tsi-bm-side-label { margin-bottom: 6px; font: 600 11px var(--tsi-font-display); letter-spacing: var(--tsi-track-label); text-transform: uppercase; }
+.tsi-player--battlemap .tsi-bm-side-hint { margin-top: 6px; font-size: 13px; opacity: .75; }
+.tsi-player--battlemap .tsi-bm-slider { width: 100%; accent-color: var(--tsi-gold); }

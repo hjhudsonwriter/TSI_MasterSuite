@@ -79,6 +79,13 @@ TSI.registerPlayerView('noticeboard', {
 
 Refreshing either window and reloading the tool's page are handled. Messages are checked by which window sent them.
 
+**A player window with its own controls (the Battlemap, phase 7).** The Combat Tracker's Battlemap is a view with DM controls that also goes on the TV. Its pattern:
+- **The tool keeps every save.** The view sends each change back with `api.send('vtt', patch)` and the tool saves it (`onMessage`). So there's only one saver, and nothing is lost when the window closes.
+- **The full picture goes over once.** `getState()` holds the big map picture, so `link.sync()` is used only when the window connects (the link does that itself). After that, the tool sends small messages with `link.send(type, payload)`.
+- **A window name and size.** `ctx.playerLink({ view, name, features })` keeps the old tool's window name and size.
+- **Views can load shared files.** A view can list `shared/js/modal.js` in its `js` to use pop-ups.
+- **Tie positions to the map picture, not the window.** Use "board units" (`tools/encounter/rules.js`: `board`, `view`, `toScreen`, `toWorld`), so tokens, pins, the grid and fog stay put when the window is resized, zoomed, made fullscreen or moved between the laptop and the TV. Draw canvases in screen space and redraw them on resize and when the screen's sharpness changes (a `matchMedia('(resolution: …dppx)')` listener). The Explorer needs the same.
+
 ## 6. Styles
 
 - Prefix every class with `tsi-<tool>-` (e.g. `tsi-crest-preview`) and scope rules under `.tsi-tool--<tool>`. Never restyle the shared `tsi-` components, `body` or bare elements.
