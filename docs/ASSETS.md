@@ -14,7 +14,7 @@ Third-party files (fonts and libraries) are listed in `licences/README.md`, not 
 | New path | Old path(s) | Size | Used | Notes |
 |---|---|---|---|---|
 | `shared/art/logo-hub.png` | `scarlett-isles-dnd/assets/logo.png` | 2.86 MB, 1400 × 1400, transparent | Yes: home screen and top bar | The old hub's crest logo. Harry chose it as the suite logo. |
-| `shared/art/hero.png` | `scarlett-isles-dnd/assets/hero.png` = `scarlett-isles-explorer/assets/hero.png` = `clan-crest-creator/assets/hero.png` | 3.28 MB, 1536 × 1024 | Yes: home-screen background, and behind the Clan Crest Creator (phase 2) | Three byte-identical copies, stored once. The Explorer will use it too. |
+| `shared/art/hero.png` | `scarlett-isles-dnd/assets/hero.png` = `scarlett-isles-explorer/assets/hero.png` = `clan-crest-creator/assets/hero.png` | 3.28 MB, 1536 × 1024 | Yes: home-screen background, behind the Clan Crest Creator (phase 2) and behind the Explorer (phase 8) | Three byte-identical copies, stored once. |
 | `shared/art/logo-crest-wide.png` | `clan-crest-creator/assets/logo.png` = `scarlett-isles-explorer/assets/logo.png` = `scarlettisles-encounter-tracker/logo.png` | 3.00 MB, 1536 × 1024 | Yes: faint behind the Combat Tracker desk, and in the Battlemap window's header (phase 7) | The wide crest the old Explorer, Crest and Tracker used in their headers. Three identical copies, stored once. |
 
 Both logos and the hero art carry embedded Content Credentials naming ChatGPT as the creator. See `licences/ARTWORK.md`.
@@ -142,3 +142,59 @@ Not copied:
 - `assets/.gitkeep`, an empty placeholder.
 
 The combatants' pictures and stat-block links are web addresses you type in. They load only when the laptop is online; otherwise the plain stand-in picture shows, as before.
+
+## Scarlett Isles Explorer (phase 8)
+
+All 43 media files from the old Explorer. 41 are copied into `tools/explorer/assets/` and checked byte-for-byte after copying; none of them duplicates another file. The other two, `hero.png` and `logo.png`, were already stored once in `shared/art/` in phase 1. The old tool used every file, so there's no `extras/` folder.
+
+| Old path (`scarlett-isles-explorer/assets/…`) | New path | Size | Used |
+|---|---|---|---|
+| `hero.png` | `shared/art/hero.png` (phase 1; the same file as the hub's and the Crest's) | 3.28 MB, 1536 × 1024 | Yes: the painted art behind the Explorer, as in the old tool |
+| `logo.png` | `shared/art/logo-crest-wide.png` (phase 1; the same file as the Crest's and the Tracker's) | 3.00 MB, 1536 × 1024 | Not by the Explorer: the old tool showed it in its own header, which the suite's top bar replaces. The Combat Tracker still uses it. |
+| `maps/eastern_province_north.jpg` | `tools/explorer/assets/maps/eastern_province_north.jpg` | 786 KB, 2048 × 1536 | Yes: the Eastern Province (North) map |
+| `maps/eastern_province_south.jpg` | `tools/explorer/assets/maps/eastern_province_south.jpg` | 830 KB, 2048 × 1536 | Yes: the Eastern Province (South) map |
+| `maps/midland_province.jpg` | `tools/explorer/assets/maps/midland_province.jpg` | 1.07 MB, 2048 × 1536 | Yes: the Midland Province map |
+| `maps/northern_province_east.jpg` | `tools/explorer/assets/maps/northern_province_east.jpg` | 847 KB, 2048 × 1536 | Yes: the Northern Province (East) map |
+| `maps/northern_province_west.jpg` | `tools/explorer/assets/maps/northern_province_west.jpg` | 836 KB, 2048 × 1536 | Yes: the Northern Province (West) map |
+| `maps/southern_province_east.jpg` | `tools/explorer/assets/maps/southern_province_east.jpg` | 915 KB, 2048 × 1536 | Yes: the Southern Province (East) map |
+| `maps/southern_province_west.jpg` | `tools/explorer/assets/maps/southern_province_west.jpg` | 693 KB, 2048 × 1536 | Yes: the Southern Province (West) map |
+| `maps/the_east_isle.jpg` | `tools/explorer/assets/maps/the_east_isle.jpg` | 893 KB, 2048 × 1536 | Yes: The East Isle map |
+| `maps/the_north_isle.jpg` | `tools/explorer/assets/maps/the_north_isle.jpg` | 789 KB, 2048 × 1536 | Yes: The North Isle map |
+| `maps/western_province_south.jpg` | `tools/explorer/assets/maps/western_province_south.jpg` | 620 KB, 2048 × 1536 | Yes: the Western Province (South) map |
+| `submaps/alderbridge.png` | `tools/explorer/assets/submaps/alderbridge.png` | 6.04 MB, 2048 × 1536 | Yes: the Alderbridge town map (its pin opens it) |
+| `submaps/bleakharbour.png` | `tools/explorer/assets/submaps/bleakharbour.png` | 5.70 MB, 2048 × 1536 | Yes: the Bleakharbour town map (its pin opens it) |
+| `submaps/bretan.png` | `tools/explorer/assets/submaps/bretan.png` | 5.18 MB, 2048 × 1536 | Yes: the Bretan town map (its pin opens it) |
+| `submaps/coldpass.png` | `tools/explorer/assets/submaps/coldpass.png` | 5.07 MB, 2048 × 1536 | Yes: the Coldpass town map (its pin opens it) |
+| `submaps/goldport.png` | `tools/explorer/assets/submaps/goldport.png` | 5.97 MB, 2048 × 1536 | Yes: the Goldport town map (its pin opens it) |
+| `submaps/greymyr.png` | `tools/explorer/assets/submaps/greymyr.png` | 3.29 MB, 2048 × 1536 | Yes: the Greymyr town map (its pin opens it) |
+| `submaps/middlemount.png` | `tools/explorer/assets/submaps/middlemount.png` | 5.67 MB, 2048 × 1536 | Yes: the Middlemount town map (its pin opens it) |
+| `submaps/moorcastle.png` | `tools/explorer/assets/submaps/moorcastle.png` | 5.17 MB, 2048 × 1536 | Yes: the Moorcastle town map (its pin opens it) |
+| `submaps/nightwood.png` | `tools/explorer/assets/submaps/nightwood.png` | 5.06 MB, 2048 × 1536 | Yes: the Nightwood town map (its pin opens it) |
+| `submaps/slades_muster.png` | `tools/explorer/assets/submaps/slades_muster.png` | 5.37 MB, 2048 × 1536 | Yes: the Slade’s Muster town map (its pin opens it) |
+| `submaps/swyth.png` | `tools/explorer/assets/submaps/swyth.png` | 4.01 MB, 2048 × 1536 | Yes: the Swyth town map (its pin opens it) |
+| `submaps/the_bleakhold.png` | `tools/explorer/assets/submaps/the_bleakhold.png` | 4.76 MB, 2048 × 1536 | Yes: the The Bleakhold town map (its pin opens it) |
+| `submaps/the_city_of_coin.png` | `tools/explorer/assets/submaps/the_city_of_coin.png` | 5.54 MB, 2048 × 1536 | Yes: the The City of Coin town map (its pin opens it) |
+| `submaps/timberport.png` | `tools/explorer/assets/submaps/timberport.png` | 4.92 MB, 2048 × 1536 | Yes: the Timberport town map (its pin opens it) |
+| `submaps/wolfhaven.png` | `tools/explorer/assets/submaps/wolfhaven.png` | 4.90 MB, 2048 × 1536 | Yes: the Wolfhaven town map (its pin opens it) |
+| `main_events/tide_remembers_1.png` | `tools/explorer/assets/main_events/tide_remembers_1.png` | 2.17 MB, 1024 × 1024 | Yes: The Tide Remembers - Prologue, picture 1 |
+| `main_events/tide_remembers_2.png` | `tools/explorer/assets/main_events/tide_remembers_2.png` | 1.86 MB, 1024 × 1024 | Yes: The Tide Remembers - Prologue, picture 2 |
+| `main_events/tide_remembers_3.png` | `tools/explorer/assets/main_events/tide_remembers_3.png` | 1.91 MB, 1024 × 1024 | Yes: The Tide Remembers - Prologue, picture 3 |
+| `main_events/turning_tide_1.png` | `tools/explorer/assets/main_events/turning_tide_1.png` | 666 KB, 932 × 518 | Yes: The Turning Tide, picture 1 |
+| `main_events/turning_tide_2.png` | `tools/explorer/assets/main_events/turning_tide_2.png` | 643 KB, 932 × 518 | Yes: The Turning Tide, picture 2 |
+| `main_events/turning_tide_3.png` | `tools/explorer/assets/main_events/turning_tide_3.png` | 760 KB, 932 × 518 | Yes: The Turning Tide, picture 3 |
+| `main_events/turning_tide_4.png` | `tools/explorer/assets/main_events/turning_tide_4.png` | 714 KB, 932 × 518 | Yes: The Turning Tide, picture 4 |
+| `main_events/turning_tide_5.png` | `tools/explorer/assets/main_events/turning_tide_5.png` | 599 KB, 932 × 518 | Yes: The Turning Tide, picture 5 |
+| `main_events/turning_tide_6.png` | `tools/explorer/assets/main_events/turning_tide_6.png` | 641 KB, 932 × 518 | Yes: The Turning Tide, picture 6 |
+| `main_events/turning_tide_7.png` | `tools/explorer/assets/main_events/turning_tide_7.png` | 371 KB, 932 × 518 | Yes: The Turning Tide, picture 7 |
+| `main_events/turning_tide_8.png` | `tools/explorer/assets/main_events/turning_tide_8.png` | 750 KB, 932 × 518 | Yes: The Turning Tide, picture 8 |
+| `overlays/blizzard_overlay.mp4` | `tools/explorer/assets/overlays/blizzard_overlay.mp4` | 6.78 MB | Yes: the looping video over the map on a White Blizzard day |
+| `overlays/rain_overlay.mp4` | `tools/explorer/assets/overlays/rain_overlay.mp4` | 5.00 MB | Yes: the looping video over the map on a Cold Downpour day |
+| `overlays/storm_overlay.mp4` | `tools/explorer/assets/overlays/storm_overlay.mp4` | 6.55 MB | Yes: the looping video over the map on a Black Storm day |
+| `overlays/sun_heat_overlay.mp4` | `tools/explorer/assets/overlays/sun_heat_overlay.mp4` | 6.42 MB | Yes: the looping video over the map on a Sun & Heatwave day |
+| `markers/marker_gold.png` | `tools/explorer/assets/markers/marker_gold.png` | 5 KB, 40 × 40 | Yes: every town pin |
+
+Not copied:
+- The `.keep` placeholder files in `assets/`, `maps/`, `submaps/`, `main_events/`, `overlays/` and `markers/`: empty files, not art.
+- `data/events_BACKUP.json`: not media. It's the events file with one extra event, "Fresh Tracks (Late)", which Harry confirmed was dropped on purpose (E6). The events in use are in `tools/explorer/data/events-data.js`, word for word.
+
+The weather videos are MP4s. The test browser can't play MP4s, so they are checked by Harry in Edge.

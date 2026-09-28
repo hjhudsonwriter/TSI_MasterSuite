@@ -1,0 +1,279 @@
+/* ==========================================================================
+   Scarlett Isles Explorer.
+   The map fills the middle; the map controls sit on the left and the travel
+   panel on the right, so a 4:3 map gets the laptop's whole height. The same
+   layout goes to full screen (the TV), and Hide UI leaves only the map.
+   Buttons keep the old Explorer's IM Fell English SC lettering (its
+   signature); the rest is the suite's look.
+   Every rule is scoped to the Explorer and every class starts "tsi-exp-".
+   ========================================================================== */
+
+.tsi-tool--explorer [hidden],
+.tsi-page--explorer .tsi-exp-event [hidden] { display: none !important; }
+
+.tsi-tool--explorer .tsi-exp {
+  height: calc(100vh - var(--tsi-topbar-h));
+  min-height: 560px;
+  padding: 10px 14px 12px;
+  box-sizing: border-box;
+}
+
+.tsi-tool--explorer .tsi-exp-wrap {
+  display: grid;
+  grid-template-columns: 252px minmax(0, 1fr) 292px;
+  gap: 12px;
+  height: 100%;
+  min-height: 0;
+}
+/* Full screen: the same three columns, edge to edge. */
+.tsi-tool--explorer .tsi-exp-wrap:fullscreen {
+  padding: 10px;
+  box-sizing: border-box;
+  background: var(--tsi-bg);
+}
+/* Hide UI: just the map. */
+.tsi-tool--explorer .tsi-exp-wrap--bare { grid-template-columns: minmax(0, 1fr); }
+.tsi-tool--explorer .tsi-exp-wrap--bare > .tsi-exp-side { display: none; }
+.tsi-tool--explorer .tsi-exp-wrap--bare:fullscreen { padding: 0; }
+.tsi-tool--explorer .tsi-exp-wrap--bare:fullscreen .tsi-exp-stage { border-radius: 0; border: 0; }
+
+/* ---------- The side columns ---------- */
+.tsi-tool--explorer .tsi-exp-side {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px;
+  border-radius: var(--tsi-radius-lg);
+  border: var(--tsi-border);
+  background: var(--tsi-panel-fill);
+  box-shadow: var(--tsi-shadow-panel);
+}
+.tsi-tool--explorer .tsi-exp-intro { margin: 0; font-size: 15px; line-height: 1.3; color: var(--tsi-text-muted); }
+.tsi-tool--explorer .tsi-exp-section { display: flex; flex-direction: column; gap: 6px; }
+.tsi-tool--explorer .tsi-exp-section-title {
+  margin: 0;
+  font: 600 12px/1.2 var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-heading);
+  text-transform: uppercase;
+  color: var(--tsi-gold-text);
+}
+.tsi-tool--explorer .tsi-exp-travel-title { font-size: 14px; }
+.tsi-tool--explorer .tsi-exp-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.tsi-tool--explorer .tsi-exp-row > .tsi-btn { flex: 1 1 auto; }
+.tsi-tool--explorer .tsi-exp-row--select { flex-wrap: nowrap; }
+.tsi-tool--explorer .tsi-exp-row--select > .tsi-exp-select { flex: 1 1 auto; min-width: 0; }
+.tsi-tool--explorer .tsi-exp-row--select > .tsi-btn { flex: 0 0 auto; }
+.tsi-tool--explorer .tsi-exp-select { padding: 6px 8px; font-size: 15px; }
+.tsi-tool--explorer .tsi-exp-arrow { flex: 1 1 0; min-width: 0; padding-left: 4px; padding-right: 4px; }
+.tsi-tool--explorer .tsi-exp-field { display: flex; flex-direction: column; gap: 2px; font-size: 14px; color: var(--tsi-text-muted); }
+.tsi-tool--explorer .tsi-exp-range { width: 100%; accent-color: var(--tsi-gold); }
+.tsi-tool--explorer .tsi-exp-readout { font-size: 14px; color: var(--tsi-text-muted); }
+.tsi-tool--explorer .tsi-exp-upload { cursor: pointer; }
+
+/* The Explorer's buttons keep their old lettering. */
+.tsi-tool--explorer .tsi-btn,
+.tsi-page--explorer .tsi-exp-event .tsi-btn,
+.tsi-page--explorer .tsi-exp-place .tsi-btn {
+  font-family: "IM Fell English SC", var(--tsi-font-display);
+  font-weight: 400;
+  letter-spacing: .05em;
+}
+.tsi-tool--explorer .tsi-btn--small { font-size: 15px; padding: 5px 10px; }
+/* A toggle that's on (Hex Grid: On, Snap: On, Free Move: ON…). */
+.tsi-tool--explorer .tsi-exp-on {
+  border-color: var(--tsi-gold-text);
+  box-shadow: inset 0 0 0 1px rgba(214, 178, 94, .35);
+  background: rgba(122, 15, 26, .45);
+}
+
+/* ---------- The travel panel ---------- */
+.tsi-tool--explorer .tsi-exp-line { margin: 0; font-size: 17px; line-height: 1.3; }
+.tsi-tool--explorer .tsi-exp-line strong { font-weight: 700; }
+.tsi-tool--explorer .tsi-exp-day { font: 600 20px/1.2 var(--tsi-font-display); color: var(--tsi-gold-text); }
+.tsi-tool--explorer .tsi-exp-muted { color: var(--tsi-text-muted); }
+.tsi-tool--explorer .tsi-exp-effects { font-weight: 700; }
+.tsi-tool--explorer .tsi-exp-notice {
+  margin: 0;
+  min-height: 1.3em;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--tsi-cream);
+}
+.tsi-tool--explorer .tsi-exp-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.tsi-tool--explorer .tsi-exp-pill {
+  padding: 7px 11px;
+  border-radius: var(--tsi-radius-pill);
+  border: var(--tsi-border-control);
+  background: rgba(18, 22, 27, .65);
+  color: var(--tsi-text);
+  font: 400 16px/1.1 var(--tsi-font-body);
+  cursor: pointer;
+}
+.tsi-tool--explorer .tsi-exp-pill strong { margin-left: 4px; }
+.tsi-tool--explorer .tsi-exp-pill:focus-visible { outline: none; box-shadow: var(--tsi-focus-ring); }
+.tsi-tool--explorer .tsi-exp-pill--focus { outline: 2px solid rgba(214, 178, 94, .7); outline-offset: 1px; }
+.tsi-tool--explorer .tsi-exp-pill--done { opacity: .7; }
+.tsi-tool--explorer .tsi-exp-camp { width: 100%; padding: 11px 14px; font-size: 18px; }
+
+/* ---------- The map ---------- */
+.tsi-tool--explorer .tsi-exp-stage {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: var(--tsi-radius-lg);
+  border: 1px solid rgba(40, 48, 58, .9);
+  background: rgba(0, 0, 0, .35);
+  touch-action: none;
+  user-select: none;
+}
+/* The board: sized in map units and scaled onto the screen by the script. */
+.tsi-tool--explorer .tsi-exp-world {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+.tsi-tool--explorer .tsi-exp-world--map { z-index: 1; }
+.tsi-tool--explorer .tsi-exp-map { display: block; width: 100%; height: 100%; user-select: none; pointer-events: none; }
+.tsi-tool--explorer .tsi-exp-weather {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: .55;
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+.tsi-tool--explorer .tsi-exp-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.tsi-tool--explorer .tsi-exp-canvas--grid { z-index: 3; }
+.tsi-tool--explorer .tsi-exp-pins { position: absolute; inset: 0; z-index: 14; pointer-events: none; }
+.tsi-tool--explorer .tsi-exp-canvas--fog { z-index: 16; }
+.tsi-tool--explorer .tsi-exp-world--tokens { z-index: 18; }
+
+/* Town pins: the tip of the pin sits on the town. */
+.tsi-tool--explorer .tsi-exp-pin {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.tsi-tool--explorer .tsi-exp-pin img {
+  display: block;
+  width: 34px;
+  height: 34px;
+  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, .45));
+  transition: transform var(--tsi-dur-fast) var(--tsi-ease);
+}
+.tsi-tool--explorer .tsi-exp-pin:hover img { transform: scale(1.08); }
+.tsi-tool--explorer .tsi-exp-pin:focus-visible { outline: none; box-shadow: var(--tsi-focus-ring); border-radius: 8px; }
+.tsi-tool--explorer .tsi-exp-pin-star { font-size: 28px; color: var(--tsi-gold-text); }
+
+/* Heroes: crimson discs with a gold rim, sized in map units. */
+.tsi-tool--explorer .tsi-exp-token {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  border-radius: 999px;
+  border: 2px solid rgba(201, 162, 39, .55);
+  background: rgba(122, 15, 26, .55);
+  box-shadow: 0 10px 18px rgba(0, 0, 0, .35);
+  color: rgba(231, 231, 234, .95);
+  font: 900 16px/1 var(--tsi-font-body);
+  user-select: none;
+  touch-action: none;
+  pointer-events: auto;
+  cursor: grab;
+}
+.tsi-tool--explorer .tsi-exp-token span { letter-spacing: .5px; }
+.tsi-tool--explorer .tsi-exp-token:active { cursor: grabbing; }
+.tsi-tool--explorer .tsi-exp-token--selected {
+  outline: 3px solid rgba(201, 162, 39, .65);
+  outline-offset: 2px;
+  box-shadow: 0 10px 18px rgba(0, 0, 0, .35), 0 0 0 6px rgba(201, 162, 39, .12);
+}
+
+.tsi-tool--explorer .tsi-exp-marquee {
+  position: absolute;
+  z-index: 30;
+  border: 1px solid rgba(201, 162, 39, .65);
+  background: rgba(201, 162, 39, .12);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .35);
+  border-radius: 10px;
+  pointer-events: none;
+}
+.tsi-tool--explorer .tsi-exp-showui { position: absolute; left: 10px; top: 10px; z-index: 50; }
+
+/* ---------- Event, weather and town pop-ups ----------
+   The pop-up's small heading is the old line above the title (Travel Event •
+   Northern Province • Funnel); the big title and the story sit under it. */
+.tsi-page--explorer .tsi-exp-event,
+.tsi-page--explorer .tsi-exp-place { width: min(980px, 96vw); }
+.tsi-page--explorer .tsi-exp-place { width: min(1100px, 96vw); }
+.tsi-page--explorer .tsi-exp-event .tsi-modal__title,
+.tsi-page--explorer .tsi-exp-place .tsi-modal__title { font-size: 15px; }
+.tsi-page--explorer .tsi-exp-event-title {
+  margin: 0 0 10px;
+  font: 600 32px/1.1 var(--tsi-font-display);
+  letter-spacing: .03em;
+  color: var(--tsi-text);
+}
+.tsi-page--explorer .tsi-exp-event-title:focus { outline: none; }
+.tsi-page--explorer .tsi-exp-event--main .tsi-exp-event-title { font-size: 38px; line-height: 1.05; }
+.tsi-page--explorer .tsi-exp-event-media { margin: 4px 0 12px; }
+.tsi-page--explorer .tsi-exp-event-media img {
+  display: block;
+  width: 100%;
+  max-height: 44vh;
+  object-fit: cover;
+  border-radius: 18px;
+  border: 1px solid rgba(214, 178, 94, .25);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, .35);
+}
+.tsi-page--explorer .tsi-exp-event--main .tsi-exp-event-media img { max-height: 48vh; }
+.tsi-page--explorer .tsi-exp-event-desc {
+  max-height: 56vh;
+  overflow: auto;
+  margin: 0 0 6px;
+  font-size: 20px;
+  line-height: 1.4;
+}
+.tsi-page--explorer .tsi-exp-event--main .tsi-exp-event-desc { font-size: 21px; }
+.tsi-page--explorer .tsi-exp-event-prompt {
+  margin: 12px 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(214, 178, 94, .22);
+  background: rgba(0, 0, 0, .25);
+  font-size: 19px;
+}
+.tsi-page--explorer .tsi-exp-rollrow { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.tsi-page--explorer .tsi-exp-rollrow .tsi-exp-select { min-width: 260px; font-size: 16px; }
+.tsi-page--explorer .tsi-exp-roll { width: 140px; font-size: 18px; }
+.tsi-page--explorer .tsi-exp-tip { margin: 10px 0 0; font-size: 15px; color: var(--tsi-text-muted); }
+.tsi-page--explorer .tsi-exp-muted { color: var(--tsi-text-muted); }
+.tsi-page--explorer .tsi-exp-choices { display: grid; gap: 10px; margin-top: 14px; }
+.tsi-page--explorer .tsi-exp-choice { justify-content: flex-start; text-align: left; padding: 12px 16px; font-size: 18px; }
+.tsi-page--explorer .tsi-exp-place-media {
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid rgba(214, 178, 94, .25);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, .35);
+}
+.tsi-page--explorer .tsi-exp-place-media img { display: block; width: 100%; height: auto; max-height: 64vh; object-fit: contain; }
+.tsi-page--explorer .tsi-exp-pickbox { width: 100%; font-family: var(--tsi-font-mono); font-size: 15px; }
+
+/* The TV in full screen: bigger event text, as before. */
+.tsi-tool--explorer .tsi-exp-wrap:fullscreen .tsi-exp-event-desc { font-size: 22px; }
+.tsi-tool--explorer .tsi-exp-wrap:fullscreen .tsi-exp-event-title { font-size: 36px; }
+.tsi-tool--explorer .tsi-exp-wrap:fullscreen .tsi-exp-choice { font-size: 19px; }

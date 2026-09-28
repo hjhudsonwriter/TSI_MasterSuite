@@ -82,10 +82,20 @@ window.TSI_DATA.tools = [
     name: 'Scarlett Isles Explorer',
     group: 'world',
     phase: '8',
-    built: false,
+    built: true,
     saves: true,
     desc: 'Explore the Isles. Maps, regions, and the world’s moving parts.',
-    files: { css: [], js: [] }
+    /* The painted hero art behind the Explorer, as in the old tool. */
+    art: 'shared/art/hero.png',
+    files: {
+      css: ['tools/explorer/explorer.css'],
+      js: [
+        'tools/explorer/data/explorer-data.js',
+        'tools/explorer/data/events-data.js',
+        'tools/explorer/rules.js',
+        'tools/explorer/tool.js'
+      ]
+    }
   },
   {
     id: 'crest',

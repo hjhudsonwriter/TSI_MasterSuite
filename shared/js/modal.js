@@ -3,8 +3,12 @@
    inside itself, and Esc chooses the safe answer. Clicking outside does
    nothing, so a stray click can't cancel or confirm anything.
 
-   TSI.modal.open({ title, message | body, details, actions: [{ label, value, primary }], escValue })
-     → Promise of the chosen action's value
+   TSI.modal.open({ title, message | body, details, actions: [{ label, value, primary }], escValue,
+                    className, onOpen })
+     → Promise of the chosen action's value. className adds a class to the
+     pop-up; onOpen({ dialog, title, body, foot, close }) runs once it shows,
+     for pop-ups that change as you go (such as the Explorer's events).
+   A pop-up opens inside whatever is in full screen, so it shows there too.
    TSI.modal.confirm({ title, message, okLabel, cancelLabel, body }) → Promise<boolean>
    TSI.modal.alert({ title, message, details }) → Promise */
 (function () {
@@ -41,7 +45,7 @@
 
       var foot = TSI.el('div', { class: 'tsi-modal__foot' });
       var dialog = TSI.el('div', {
-        class: 'tsi-modal' + (options.wide ? ' tsi-modal--wide' : ''),
+        class: 'tsi-modal' + (options.wide ? ' tsi-modal--wide' : '') + (options.className ? ' ' + options.className : ''),
         role: options.role || 'dialog',
         'aria-modal': 'true',
         'aria-labelledby': titleId
@@ -105,15 +109,32 @@
 
       document.addEventListener('keydown', onKey, true);
       stack.push(entry);
-      document.body.appendChild(scrim);
+      (document.fullscreenElement || document.body).appendChild(scrim);
       document.body.classList.add('tsi-modal-open');
 
       /* Focus the first field if there is one, otherwise the safe (first) button. */
       var field = body.querySelector('input, select, textarea');
       var target = field || foot.querySelector('button') || primaryButton;
       if (target) target.focus();
+
+      if (typeof options.onOpen === 'function') {
+        options.onOpen({ dialog: dialog, title: dialog.querySelector('.tsi-modal__title'), body: body, foot: foot, close: close });
+      }
     });
   }
+
+  /* Going in or out of full screen: move open pop-ups to where they can be seen. */
+  document.addEventListener('fullscreenchange', function () {
+    var parent = document.fullscreenElement || document.body;
+    stack.forEach(function (entry) {
+      if (entry.scrim.parentNode === parent) return;
+      var active = document.activeElement;
+      parent.appendChild(entry.scrim);
+      if (active && entry.scrim.contains(active) && active.focus) {
+        try { active.focus({ preventScroll: true }); } catch (e) { /* ignore */ }
+      }
+    });
+  });
 
   TSI.modal = {
     open: open,
