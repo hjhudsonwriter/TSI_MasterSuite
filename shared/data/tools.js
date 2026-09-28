@@ -31,10 +31,29 @@ window.TSI_DATA.tools = [
     name: 'Notice Board Quest Generator',
     group: 'dm',
     phase: '4',
-    built: false,
+    built: true,
     saves: true,
     desc: 'Generate quests fast, keep your hooks sharp, and your plots sharper.',
-    files: { css: [], js: [] }
+    files: {
+      css: ['tools/quests/board.css', 'tools/quests/quests.css'],
+      js: [
+        'tools/quests/data/quests-data.js',
+        'tools/quests/data/outline-data.js',
+        'tools/quests/lib/firebase/firebase-app-compat.js',
+        'tools/quests/lib/firebase/firebase-database-compat.js',
+        'tools/quests/shop-link.js',
+        'tools/quests/rules.js',
+        'tools/quests/board.js',
+        'tools/quests/tool.js'
+      ]
+    },
+    /* The players' pop-out board. */
+    playerViews: {
+      noticeboard: {
+        css: ['tools/quests/board.css', 'tools/quests/player.css'],
+        js: ['tools/quests/data/outline-data.js', 'tools/quests/board.js', 'tools/quests/player.js']
+      }
+    }
   },
   {
     id: 'bastion',
@@ -81,20 +100,36 @@ window.TSI_DATA.tools = [
     name: 'Arenas of The Scarlett Isles',
     group: 'set',
     phase: '6',
-    built: false,
+    built: true,
     saves: true,
     desc: 'Swyth: The Salt-Ring Trials and Middlemount: The Lion’s Crown.',
-    files: { css: [], js: [] }
+    files: {
+      css: ['tools/arenas/arenas.css'],
+      js: [
+        'tools/arenas/data/arenas-data.js',
+        'tools/arenas/rules.js',
+        'tools/arenas/tool.js'
+      ]
+    }
   },
   {
     id: 'ritual',
     name: 'The Heartwood Ritual',
     group: 'set',
     phase: '5',
-    built: false,
+    built: true,
     saves: false,
     desc: 'The Lullaby of the Rootbound Heart. Tellurian Re-Binding Engine.',
-    files: { css: [], js: [] }
+    /* The roots picture; the Ritual lays its own root film and veil over it. */
+    art: 'tools/ritual/assets/img/root-background.png',
+    files: {
+      css: ['tools/ritual/ritual.css'],
+      js: [
+        'tools/ritual/data/ritual-data.js',
+        'tools/ritual/rules.js',
+        'tools/ritual/tool.js'
+      ]
+    }
   },
   {
     id: 'pelagosi',

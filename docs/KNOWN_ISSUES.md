@@ -2,7 +2,7 @@
 
 Every bug found in the eight old tools during planning, and what the rebuild will do about each one. CLAUDE.md's rule: **only fix a bug if it breaks the tool, loses saved data, or applies something twice.** Everything else stays exactly as it was, and is listed here for Harry to decide on later.
 
-**Status: phases 1 (the shell), 2 (Clan Crest Creator) and 3 (Pelagosi Puzzle Trials) are built.** The shell's share of the suite-wide (SUI) fixes is in place and tested, and each entry has a **Phase 1** line saying what's done. Every Clan Crest Creator entry has a **Phase 2** line and every Pelagosi entry a **Phase 3** line, saying whether it was fixed, changed or kept. The other tools' entries are unchanged until their phases. Each tool's session updates its own entries as it goes: it marks each one fixed, or confirms it was left alone, and adds anything new it finds.
+**Status: phases 1 (the shell), 2 (Clan Crest Creator), 3 (Pelagosi Puzzle Trials), 4 (Notice Board), 5 (The Heartwood Ritual) and 6 (Arenas of The Scarlett Isles) are built.** The shell's share of the suite-wide (SUI) fixes is in place and tested, and each entry has a **Phase 1** line saying what's done. Every Clan Crest Creator entry has a **Phase 2** line, every Pelagosi entry a **Phase 3** line, every Notice Board entry a **Phase 4** line, every Heartwood Ritual entry a **Phase 5** line and every Arenas entry a **Phase 6** line, saying whether it was fixed, changed or kept. The other tools' entries are unchanged until their phases. Each tool's session updates its own entries as it goes: it marks each one fixed, or confirms it was left alone, and adds anything new it finds.
 
 ## How to read an entry
 
@@ -419,6 +419,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **After (planned):** Store the quests as a .js data file loaded with a normal script tag, with a check for 180 records.
 - **Checker's note:** Must fix to rebuild: turn the data into a .js file.
 - **Evidence:** app.js:683; console 'Fetch API cannot load file:///…/data/quests.json. URL scheme "file" is not supported.' (run1_raw.js, raw_file_load.png)
+- **Phase 4:** Fixed. The 180 quests are in `tools/quests/data/quests-data.js`, word for word, loaded with a plain script tag. Tests: "Loaded 180" with the internet off; the rules tests count 180 quests numbered 1 to 180.
 
 ### QST-02 · Fonts and Firebase come from the internet
 **Must fix** · won't work double-clicked / offline
@@ -428,6 +429,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **Decision note:** Fonts are bundled. The Firebase library is also bundled locally; its connection to Matt's shop stays online by design (answer 11, Option A) and skips quietly offline.
 - **Checker's note:** Neither stops the old tool working: fonts fall back, and the Firebase failure is caught at app.js:23-34. Both still break CLAUDE.md's no-internet rule, so remove Firebase and bundle the fonts.
 - **Evidence:** index.html:7-9, 118-119; requestfailed in run1
+- **Phase 4:** Fixed. The fonts come from the suite folder. The Firebase library (9.22.0, as before) is stored in `tools/quests/lib/firebase/` and only the Notice Board loads it. With no internet, the only thing the page reaches for is Matt's database, which fails quietly in the background: no error bar, and the Notice Board works fully. (The old tool couldn't even load the library offline; the new one keeps retrying the connection, which is harmless and invisible.) Tests: the page with the internet off, and the ★ with the internet off.
 
 ### QST-03 · Players' window keeps showing notices after the board is cleared or emptied
 **Must fix** · breaks the tool · listed in the handover
@@ -436,6 +438,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **After (planned):** The new player page receives the board by postMessage after every change, including an empty board.
 - **Checker's note:** There is a third case the survey missed: Generate with no matching quests. The handover asks for this to be fixed (line 117). The postMessage player page fixes it if it also sends empty boards.
 - **Evidence:** app.js:744-748 (Clear never updates the popout), 535-538 (empty board returns before the update at 644). Verified: DM 0 / players 3 after Clear; DM 0 / players 1 after declining all.
+- **Phase 4:** Fixed. The players' window is sent the whole board after every change, including Clear, declining the last notice and a Generate that finds nothing. Test: "it follows Generate, Decline, Clear and an empty Generate straight away".
 
 ### QST-04 · Quest Outline panel cut off on laptop screens
 **Must fix** · breaks the tool
@@ -444,6 +447,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **After (planned):** The rebuilt layout sizes the three columns to fit a laptop screen.
 - **Checker's note:** On Harry's likely laptop widths the start of every outline line is unreadable. The new layout fixes it anyway.
 - **Evidence:** styles.css:340-349 (fixed minimum column widths, centred); run4_layout.js: leftPanelX -158 at 1280, -115 at 1366, -78 at 1440, -30 at 1536; laptop_1366.png
+- **Phase 4:** Fixed. The three columns fit the laptop, full screen and the TV, and each panel scrolls inside itself. Tests at all four sizes.
 
 ### QST-05 · Saving isn't protected against errors
 **Must fix** · loses saved data
@@ -452,6 +456,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **After (planned):** The shared save system catches errors and keeps a copy of anything it can't read.
 - **Checker's note:** It really is lost data: an accept that looks successful vanishes on reload. It becomes likely in the suite, because every tool shares one storage area of about 5 MB (see missed items). The shared save module must catch failed saves and warn Harry.
 - **Evidence:** app.js:48, 119, 127 (setItem not wrapped in try/catch); 114-117 (a corrupt save becomes [] and is overwritten)
+- **Phase 4:** Fixed by the suite's saving: a failed save shows "Not saved" and a warning; a save that can't be read is set aside and kept, never deleted. Test: "a damaged save is set aside, not deleted, and Accept still works".
 
 ### QST-06 · Pop-out Board stops working after the DM page is reloaded
 **Must fix** · won't work double-clicked / offline
@@ -459,6 +464,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **Before:** If Harry refreshes the main Notice Board page while the players' window is open, the Pop-out Board button stops working. The players' screen stays stuck on the old notices until someone closes it by hand. This only happens when the tool is opened from a file, which is how the suite will run.
 - **After (planned):** Use the planned separate player page with postMessage. When the DM page loads, or when Pop-out is pressed, reconnect to the same named window, and have the player page announce 'ready' to window.opener.
 - **Evidence:** v3b_output.txt: after the DM page reloads, clicking Pop-out Board throws "Blocked a frame with origin \"null\" from accessing a frame with origin \"null\"" at app.js:765 (popWin.document). The players' window keeps its old cards. The scratch test quests-verify/pm2/test.js shows the postMessage design recovers: after a DM reload the player page's window.opener still reaches the DM tab, window.open('', name) returns the existing players' window, and window.open(url, name) reuses it.
+- **Phase 4:** Fixed. After the DM's page is reloaded, the players' window reconnects by itself, and Pop-out Board brings the same window forward rather than opening a second one. Test.
 
 ### QST-07 · Two open copies of the tool overwrite each other's saves
 **Must fix** · loses saved data
@@ -466,6 +472,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **Before:** If the Notice Board is open in two tabs or windows at once, whichever one saves last wipes out what the other one saved: accepted quests, outlines, and the star.
 - **After (planned):** The shared save module should re-read before writing (or listen for storage changes from other tabs) and warn if the suite is open twice.
 - **Evidence:** v2_output.txt D: tab A accepted 42 and 7 and starred 42. Tab B, opened earlier, then accepted 179. The save became [179]. After a reload, tab A showed only [179], the star key still pointed at 42 (a quest no longer in the list), and the outlines for 42 and 7 were gone. Cause: whole-list saves from memory (app.js:119, 127) and nothing listens for changes from other tabs.
+- **Phase 4:** Covered by the suite's "Already open" warning (SUI-06). As with every tool, it warns rather than blocks, so close one of the two.
 
 ### QST-08 · Players' window goes blank if refreshed
 **Fixed by the new design** · other
@@ -475,6 +482,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **Decision note:** The new player window asks for the board when it loads.
 - **Checker's note:** Workaround: press Pop-out Board again. That only works if the DM page has not been reloaded as well (see the new bug). A real F5 keypress in desktop Chrome was not tested separately; the headless reload behaved like this.
 - **Evidence:** run3_misc.js: after reload the popout has no content (popout_after_refresh.png)
+- **Phase 4:** Fixed. A refreshed players' window asks for the board and gets it straight back. Test.
 
 ### QST-09 · Players' window updated once per notice
 **Fixed by the new design** · other
@@ -484,6 +492,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **Decision note:** One update per board change.
 - **Checker's note:** Harmless.
 - **Evidence:** app.js:644 inside forEach; run2 'calls: 6'
+- **Phase 4:** Fixed. One update per change.
 
 ### QST-10 · Old error message tells you to use GitHub Pages
 **Fixed by the new design** · other
@@ -493,6 +502,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **Decision note:** The GitHub Pages advice is removed; data can no longer fail to load.
 - **Checker's note:** Reword it in the rebuild.
 - **Evidence:** app.js:844
+- **Phase 4:** Fixed. The quests can't fail to load any more, so the message has gone.
 
 ### QST-11 · Leftover unused code
 **Fixed by the new design** · other
@@ -502,6 +512,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **Decision note:** Not ported.
 - **Checker's note:** Don't port any of it.
 - **Evidence:** app.js:459-464, 508-512, 816, 346-350
+- **Phase 4:** Not ported.
 
 ### QST-12 · Damaged saves stop Accept working
 **Fixed by the new design** · other
@@ -510,6 +521,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **After (planned):** The shared load and import code checks shapes (a list of quests with number ids; an outline object keyed by id; a number for the star) and keeps a copy of anything it rejects.
 - **Decision note:** The shared save layer checks the shape of saved data and keeps a copy of anything it rejects.
 - **Evidence:** v1_output.txt C: a saved value of 'null' makes Accept throw "Cannot read properties of null (reading 'some')", '{}' throws 'accepted.some is not a function', and an outline save of 'null' throws on Accept after the quest was already saved (the list then wrongly shows 'No accepted quests yet'). The old tool itself never writes these values.
+- **Phase 4:** Fixed. Saved data is checked as it loads (anything damaged is set aside) and when a file is imported (a damaged file is refused and nothing changes). Tests, and rules tests for each check.
 
 ### QST-13 · Removing the starred quest sent two identical online updates
 **Deliberate change** · other
@@ -519,6 +531,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **Decision note:** Harry chose to keep the Knightly Treasures link (answer 11, Option A). The suite sends one update per change; the shop sees no difference.
 - **Checker's note:** This only affected the online shop. The quest details were identical but the timestamps could differ. It goes away with Firebase, and nothing in the game was counted twice.
 - **Evidence:** app.js:372 and 449; run2 'writesForRemove: 2'
+- **Phase 4:** Done. Removing the ★ quest sends the shop one message. A test compares every message with the old tool's: they're identical, except that the old tool sent this one twice.
 
 ### QST-14 · Dead Accept/Decline buttons on the players' screen
 **Later, Harry's call** · other · listed in the handover
@@ -528,6 +541,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **Decision note:** N4 (default: players' screen shows the notices only)
 - **Checker's note:** The handover also notes this (line 117). Ask Harry whether players should see buttons at all.
 - **Evidence:** app.js:807 cloneNode copies buttons without their click handlers; verified popout Accept click → DM accepted count unchanged
+- **Phase 4:** Changed as Harry chose (N4): the players' window shows the notices only, with no buttons. Test.
 
 ### QST-15 · Empty-board and error messages hidden behind the board art
 **Later, Harry's call** · other
@@ -536,6 +550,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** Note for testing: elementFromPoint does not show this, because the art layer has pointer-events:none. Only a screenshot shows it.
 - **Evidence:** styles.css:158-181 (art layer is positioned; #emptyState isn't); screenshots raw_file_load.png, flow07_empty_board.png
+- **Phase 4:** Kept: the "No notices yet" card is still underneath the board art. The load-error message no longer exists (QST-10).
 
 ### QST-16 · Every level 7-10 board always includes a bounty
 **Later, Harry's call** · other
@@ -545,6 +560,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **Decision note:** N1
 - **Checker's note:** A rules question for Harry. Keep it as it is in the faithful rebuild.
 - **Evidence:** app.js:730-738; 200/200 boards at Lv7 had exactly 1 bounty; Quest Type Bounty + Count 6 → 1 notice; Bolt Isle Lv7 Count 6 → 3 of pool 12
+- **Phase 4:** Kept (N1). Tests: exactly one bounty on 200 level 7 boards; Count 1 gives just the bounty; Quest Type Bounty gives one notice.
 
 ### QST-17 · A level 11-13 bounty only appears at levels 7-10
 **Later, Harry's call** · other
@@ -554,6 +570,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **Decision note:** N2
 - **Checker's note:** Five bounties are affected, not one. Harry's call.
 - **Evidence:** app.js:496-498; quests.json id 77 level 11-13; run5 id77AtL11 false
+- **Phase 4:** Kept (N2). Test: quest 77 shows at levels 7 and 10 but not 11.
 
 ### QST-18 · Rescue quest outline has no proper enemy
 **Later, Harry's call** · other
@@ -562,6 +579,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** Keep for now.
 - **Evidence:** app.js:185, 241-243; run2 OUTLINES.rescue
+- **Phase 4:** Kept. Test.
 
 ### QST-19 · Root/Veinwood themes in notice-board content
 **Later, Harry's call** · other · listed in the handover
@@ -571,6 +589,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **Decision note:** N5 (kept word for word until Harry sends replacements)
 - **Checker's note:** This is content, not a bug. Keep the text word for word until Harry sends approved replacements.
 - **Evidence:** app.js:173, 259; quests.json ids 105, 122, 123, 125, 143, 155
+- **Phase 4:** Kept word for word (N5), in `tools/quests/data/quests-data.js` and `tools/quests/data/outline-data.js`, ready for Harry's replacements.
 
 ### QST-20 · Party Level box shows out-of-range numbers
 **Later, Harry's call** · other
@@ -579,6 +598,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** Harry's call.
 - **Evidence:** app.js:488; run2 CLAMP
+- **Phase 4:** Kept. Test.
 
 ### QST-21 · Accepted quests are frozen copies
 **Later, Harry's call** · other
@@ -587,6 +607,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** Keep the behaviour. Relevant to the later import step.
 - **Evidence:** app.js:356-357, 157
+- **Phase 4:** Kept.
 
 ### QST-22 · Declining a notice re-tilts all the other notices
 **Later, Harry's call** · other
@@ -594,6 +615,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **Before:** When you decline one notice, every other notice on the board (and on the players' screen) jumps to a new random angle.
 - **After:** Kept as it is in the rebuild.
 - **Evidence:** v1_output.txt: tilts before a decline [0.48, -1.13, -0.51, -1.20, -0.57, 0.34]deg; after [0.93, -0.03, 0.93, -1.07, -0.59]deg. renderParchments redraws every card with a new Math.random tilt (app.js:544, 624).
+- **Phase 4:** Kept. Test: given the same dice, the new tilts after a Decline match the old tool's exactly.
 
 ### QST-23 · Removing an accepted quest is instant, with no way back
 **Later, Harry's call** · other
@@ -601,6 +623,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **Before:** Clicking the ✕ removes an accepted quest straight away, with no 'are you sure?'. The only way to get it back is to keep pressing Generate until it happens to appear again.
 - **After:** Kept as it is in the rebuild.
 - **Evidence:** app.js:406 (the ✕ is a small span), 440-456 (removes immediately). At Lv 7 the random pool has 97 quests (pool.py).
+- **Phase 4:** Kept.
 
 ### QST-24 · Firebase update left mismatched quote marks in outline text
 **Later, Harry's call** · other
@@ -608,6 +631,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **Before:** The shop update of 11 Feb swapped some curly apostrophes for straight ones and left odd pairs, so outlines read "The ‘villain' is being coerced…", "‘catch'" and "‘doing'".
 - **After:** Kept as it is in the rebuild.
 - **Evidence:** git show a6dab50 (Matt Owen): ’ replaced with ' across the word banks; today app.js:187, 212, 221 have mismatched ‘…' pairs
+- **Phase 4:** Kept word for word.
 
 ### QST-25 · Outlines saved between 23 Jan and 5 Feb 2026 say 'A notice calls for help.'
 **No longer relevant** · other
@@ -616,6 +640,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **After:** Kept as it is in the rebuild.
 - **Decision note:** Old saves are not being imported (answer 9).
 - **Evidence:** git show 1eed80b:data/quests.json: all 100 quests use 'summary', and a8e3e66 (5 Feb) moved it to 'description'. app.js:245 premise = description || notice (it never reads summary). A node check on old record 42 gives the premise 'A notice calls for help.', while current data gives the real text. app.js:157 never rebuilds a cached outline. OUTLINE_KEY was added 23 Jan (377dbe5).
+- **Phase 4:** No longer relevant (no old saves are imported).
 
 ### QST-26 · Star tooltip still mentions the shop
 **No longer relevant** · other
@@ -624,7 +649,7 @@ Old repo: `_legacy/scarlett-isles-quest-generator` (file:line references point t
 - **After:** Kept as it is in the rebuild.
 - **Decision note:** The shop link is kept (answer 11, Option A), so "Primary quest for shop" stays true.
 - **Evidence:** app.js:401
-
+- **Phase 4:** Kept: "Primary quest for shop" on the ★ quest, "Set as primary quest" on the others.
 
 ## Scarlett Isles Explorer
 Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
@@ -1270,6 +1295,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **After (planned):** Store the arena data as a .js data file loaded with a normal script tag (window.TSI_DATA.arenas). No values change.
 - **Checker's note:** load() runs before the fetch (1856), so an old save is never damaged even when the tool fails to start.
 - **Evidence:** app.js:1858 fetch('data/arenas.json'). Test t1: 'Fetch API cannot load file:///…/data/arenas.json. URL scheme "file" is not supported.', pageerror 'Failed to fetch', 0 dropdown options.
+- **Phase 6:** Fixed. The arenas load from `tools/arenas/data/arenas-data.js` with a plain script tag, word for word the same as the old `arenas.json`. Test: from a double-clicked file with the internet off, the Arena and Round lists fill and Enter The Arena works.
 
 ### ARN-02 · Apply can deal one hit's damage again and again
 **Must fix** · applies something twice · listed in the handover
@@ -1279,6 +1305,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **Decision note:** A5 decides once per turn or once per attack roll (default: once per turn).
 - **Checker's note:** After the target dies, the DM can switch to another living target in the dropdown and Apply the same hit again.
 - **Evidence:** app.js:1617-1653: damageApplied is set at 1652 but never checked; 1587 clears it on each attack roll. Test t2: 3 clicks with damage 10 took Arena Duelist 1 from 45 to 15 HP, and the hit sound played 3 times.
+- **Phase 6:** Fixed (Harry's answer A5: once per turn). A turn's damage is applied once. A second Apply, even after re-rolling the attack, says "Damage has already been applied this turn." and changes nothing. Test.
 
 ### ARN-03 · Round prize can be paid more than once
 **Must fix** · applies something twice · listed in the handover
@@ -1287,6 +1314,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **After (planned):** Record that the round is finished and the prize paid, and pay the prize at most once per round. After a result, turn off End Round, Forfeit and Play Turn until the next round starts or Leave Arena is pressed.
 - **Checker's note:** After a Defeat, End Round → Count as Win also pays the prize. The same 'round finished' flag covers this.
 - **Evidence:** endRound adds reward_gp on every call (app.js:1244-1248); the End Round button has no 'already finished' check (1949-1969). Test t2: gold went from 500 to 1000 on a round already cleared.
+- **Phase 6:** Fixed. A round's result is recorded once. The prize is paid once and saved, and Play Turn, End Round and Forfeit turn off until the next round starts or Leave Arena is pressed. This also covers the checker's case (Count as Win after a Defeat). Test.
 
 ### ARN-04 · The round keeps running after it has been won or lost
 **Must fix** · applies something twice
@@ -1295,6 +1323,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **After (planned):** Use the same 'round finished' flag as the prize fix.
 - **Checker's note:** Forfeit after a win still shows a Defeat dock, and the crowd loop keeps playing until Leave Arena.
 - **Evidence:** endRound never sets runActive = false (app.js:1240-1296); openTurnDock only checks runActive (1396). Test t2: after 'Round Cleared', Play Turn plus Resolve raised gold from 1000 to 1500 and applied overtime damage.
+- **Phase 6:** Fixed, with ARN-03. After a result, Play Turn is off, so no more turns, overtime or prizes, and Forfeit is off, so a win can't be followed by a Defeat panel. The crowd keeps playing until Leave Arena, as before. Test.
 
 ### ARN-05 · When storage is full, every portrait is erased and a 'not added' player comes back
 **Must fix** · loses saved data
@@ -1303,6 +1332,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **After (planned):** Save through the shared save module. If storage is full, keep the last good save exactly as it was, tell Harry clearly, and keep memory and storage in step. Never drop portraits silently.
 - **Checker's note:** The chosen fix is right: keep the last good save, keep memory and storage in step, and tell Harry.
 - **Evidence:** app.js:211-219 (strips all images and saves), 1839-1846 (only memory is rolled back). Test t5: with storage filled, adding 'Cael' with a portrait showed the alert; memory held [Runa(portrait), Bram(portrait)] while storage and the reloaded page held [Runa, Bram, Cael] with no portraits. Origin check: location.origin 'file://' is shared by other file pages.
+- **Phase 6:** Fixed. The party saves through the suite's shared saving, which never strips portraits. If the browser's storage is full, a warning bar says so and offers Export. The player stays on screen with their portrait, and the save catches up on the next change. Test with a storage that pretends to be full.
 
 ### ARN-06 · Fonts come from the internet
 **Must fix** · won't work double-clicked / offline
@@ -1311,6 +1341,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **After (planned):** Use the suite's locally bundled Cinzel and IM Fell English SC.
 - **Checker's note:** Nothing breaks. Only the Lion's Mark lettering (styles.css:532, 594) falls back to Georgia. It is still a CLAUDE.md 'no online resources' item.
 - **Evidence:** index.html:8-10; test: requestfailed fonts.googleapis.com ERR_CERT_AUTHORITY_INVALID
+- **Phase 6:** Fixed. The Lion's Mark lettering uses the suite's bundled Cinzel. Test: the fonts load with the internet off.
 
 ### ARN-07 · Double-clicking Play Turn uses up two turns and skips a player
 **Must fix** · applies something twice
@@ -1318,6 +1349,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **Before:** If you double-click Play Turn, or click it again while a turn is already open, the tool counts two turns. The player whose turn it should have been is skipped, and overtime arrives a turn early. In the Lion's Mark round it can also re-pick the mark and blow the horn again.
 - **After (planned):** Ignore Play Turn while a turn is already open. Whether a cancelled turn should count stays Harry's call.
 - **Evidence:** openTurnDock adds to the turn counter and the rotation on every call, with no check for a turn already open (app.js:1411, 1437, 1422-1433). Run t2.js: the turn counter went 1→3 after one double-click, and the active player shown was Cael (Bram skipped).
+- **Phase 6:** Fixed. While a turn panel is open, Play Turn does nothing, and a double click counts once. Test: a double click and then another click give turn 1, for the first player.
 
 ### ARN-08 · Double-clicking Add with a portrait adds the player twice
 **Must fix** · applies something twice
@@ -1325,6 +1357,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **Before:** When you add a player with a picture, a quick double-click on Add creates two copies of that player, each with the portrait. Both are saved.
 - **After (planned):** Turn off the Add button while the portrait is being processed. Accept only one submit per open form.
 - **Evidence:** The submit handler is async and waits while the portrait is shrunk (app.js:1833), before it adds the player (1837) and closes the form (1849), so a second submit gets through. Run t4.js: stored players ['Runa:4391','Runa:4391'] after one double-click. Without a portrait, no duplicate appeared.
+- **Phase 6:** Fixed. Add turns off while the portrait is being shrunk, and each form adds one player. Test: two submits in a row add one player.
 
 ### ARN-09 · Replaying Lion Totems shows the swordsmen already dead
 **Fixed by the new design** · other
@@ -1334,6 +1367,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **Decision note:** Each round starts from fresh state.
 - **Checker's note:** Display only. A fresh per-round state in the rebuild removes it.
 - **Evidence:** state.mmR2Dead is created at app.js:420 and never reset by resetRunState (999-1017) or startRound (1019-1034). Test t4: on re-entering mm_r2 the overlay was lion_swordsman_both_dead.png while both had 90 HP.
+- **Phase 6:** Fixed. Every round starts with fresh tracking of who has fallen. Test: replaying the Lion Totems shows both swordsmen standing.
 
 ### ARN-10 · Rules panel is cut off on laptop-sized screens
 **Fixed by the new design** · other
@@ -1342,6 +1376,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **After (planned):** Let the dock scroll in the rebuilt layout (a layout change, not a rule change). Ask Harry for his laptop's screen size.
 - **Decision note:** Covered by the laptop/TV layout requirement.
 - **Evidence:** styles.css:180 sets the dock lane height to max calc(100vh - 92px - 220px) with overflow hidden (185); #dockBody has overflow hidden, 'no scrolling in dock' (307-308). Run t8.js: at 1366x768 the rules body was 302px against 478px of content, with approaches and DCs clipped. At 1280x720 the Win/Lose card was clipped too; nothing was clipped at 1920x950. Screenshot v8_rules_1366x768.png. The turn panel's controls were not clipped at any size tested.
+- **Phase 6:** Fixed. The turn panel has its own column beside the arena picture and scrolls if it must. The Round Console sits under the picture, so Play Turn is always in view. On the laptop (in a window and full screen) and the TV, the rules panel shows everything down to the DCs, and the whole turn panel, Play Turn and the top controls are in view with no sideways scroll. In a window narrower than about 1400 px, the party moves under the picture and the page scrolls down. Tests at four sizes.
 
 ### ARN-11 · Pass or fail is read from the tick symbol, and choices can be changed after rolling
 **Later, Harry's call** · other · listed in the handover
@@ -1351,6 +1386,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **Decision note:** A6. The roll is stored as data behind the scenes either way.
 - **Checker's note:** The rules module will need the roll stored as data anyway (a behind-the-scenes change). Locking the roll is Harry's call.
 - **Evidence:** app.js:1738-1740 (tick check and dropdowns read at resolve time); mem.skill stored at 1572 but never used. Test t3: Bram rolled Nature at Easy (DC 16), switched to Hard plus Animal Handling, and the log said 'Bram mastered the beast line (Hard): +2 successes'.
+- **Phase 6:** Kept (A6). The roll is now kept as data behind the scenes, but, as before, the approach and difficulty are read when Resolve Turn is pressed, and the skill check can be re-rolled.
 
 ### ARN-12 · 'All opponents down' overrides a win or loss on the same turn
 **Later, Harry's call** · other · listed in the handover
@@ -1360,6 +1396,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **Decision note:** A2
 - **Checker's note:** Not re-run at runtime, but the code order is clear. It is a rules question for Harry.
 - **Evidence:** app.js:1784-1798. Test t3: failures 3/3 with both duelists at 0 gave 'Opponents defeated. Round can end now.' and no Defeat. In r5, overtime pushed failures to 2/2 while successes reached 12, which was scored as a win (+50,000).
+- **Phase 6:** Kept (A2). Rules test.
 
 ### ARN-13 · Lion Totems can be won without breaking a single totem
 **Later, Harry's call** · other · listed in the handover
@@ -1369,6 +1406,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **Decision note:** A1
 - **Checker's note:** Rules question for Harry.
 - **Evidence:** arenas.json:228, 238-240 vs app.js:1765, 1790. Test t4: 8 successes with all totems at 45 HP gave 'Round Cleared' and +8000 gold; three totems down gave only a status message.
+- **Phase 6:** Kept (A1). Test: breaking all three totems says the round can end now; End Round then counts the win.
 
 ### ARN-14 · A cancelled turn still counts
 **Later, Harry's call** · other
@@ -1377,6 +1415,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** The double-click form of this is a separate new bug (applies_twice).
 - **Evidence:** app.js:1411 and 1437 advance turn and turnIndex before anything is rolled; Cancel just hides the dock (1546). Test t2: Bram's turn was cancelled, the next turn went to Cael, and overtime damage started at turn 7 after only 6 real turns.
+- **Phase 6:** Kept. Test: a cancelled turn moves on to the next player.
 
 ### ARN-15 · Leaving the arena leaves the enemy picture and the Lion's Mark badge on screen
 **Later, Harry's call** · other
@@ -1385,6 +1424,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** If a 5.2 s restore timer is still pending, it hides the layer later. The HUD stays either way.
 - **Evidence:** The Leave Arena handler (app.js:1285-1293) calls resetRunState (999-1017), which never refreshes the scene or the HUD. Test t4 screenshot t4_after_leave.png: the Lion Knight and the 'Cael' mark were still showing after 'Run ended'.
+- **Phase 6:** Kept. Test: after Leave Arena, the last picture and the Lion's Mark stay on screen.
 
 ### ARN-16 · Missed attacks show no picture in four rounds
 **Later, Harry's call** · other
@@ -1393,6 +1433,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** The four rounds are r1 and mm_r1 (before a duelist falls), r5 and mm_r3.
 - **Evidence:** getFailOverlaySrc returns overlays.pc_fail (app.js:494, 504), but no round has that key (script check). showOverlay ignores an empty source (746). Test t3: the r1 and r5 overlays stayed on standard while wyvern_fail.mp3 and crowd_fail.mp3 played.
+- **Phase 6:** Kept. Test: a missed attack in the Arena Duelists round plays the sounds and shows no picture.
 
 ### ARN-17 · Middlemount Opening Bout shows both duelists on a failure after one has fallen
 **Later, Harry's call** · other
@@ -1401,6 +1442,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** Checked by reading the code only.
 - **Evidence:** The r1-only branch at app.js:1172 (mm_r1 drops to the generic path at 1181). Test t4: after Duelist 1 fell in mm_r1, a skill failure showed arena_duelists_fail.png.
+- **Phase 6:** Kept.
 
 ### ARN-18 · Damage with a bonus becomes a tiny number
 **Later, Harry's call** · other
@@ -1409,6 +1451,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **After:** Kept as it is in the rebuild.
 - **Decision note:** A7
 - **Evidence:** app.js:1641-1645 (/^\d+d\d+$/ test, then parseInt). Test t4: '2d8+3' gave 'Damage applied: 2'.
+- **Phase 6:** Kept (A7). Rules test: "2d8+3" deals 2.
 
 ### ARN-19 · Defeat message always names the Swyth trials
 **Later, Harry's call** · other
@@ -1417,6 +1460,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **After:** Kept as it is in the rebuild.
 - **Decision note:** A8
 - **Evidence:** app.js:1254; test t4 mm_r3 defeat subtitle
+- **Phase 6:** Kept (A8). Test: a Middlemount defeat says "The Salt-Ring Trials end here."
 
 ### ARN-20 · Round list doesn't follow 'Proceed to Next Round'
 **Later, Harry's call** · other
@@ -1425,6 +1469,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** Fixed as soon as the first Play Turn saves (1711).
 - **Evidence:** startRound (app.js:1019-1051) neither refreshes the dropdowns nor saves. Test t6: state r4 with the dropdown showing r1; after reload roundId was r1.
+- **Phase 6:** Kept. Test.
 
 ### ARN-21 · Breaking the last totem with the side-panel buttons doesn't topple the guardians
 **Later, Harry's call** · other
@@ -1433,6 +1478,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** The survey said this wasn't runtime-tested; it now is.
 - **Evidence:** The rule exists only at app.js:1670-1686; the enemy card handler (939-995) has none. Found by reading the code; not tested at runtime.
+- **Phase 6:** Kept.
 
 ### ARN-22 · Round progress is lost on reload
 **Later, Harry's call** · other · listed in the handover
@@ -1441,6 +1487,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** Not a regression. The old tool never saved it.
 - **Evidence:** app.js:199-206; test t3 before and after reload
+- **Phase 6:** Kept. Only the party, gold and chosen arena and round are saved, as before.
 
 ### ARN-23 · Lion's Mark round is lost on the first turn if two players are already down
 **Later, Harry's call** · other
@@ -1449,6 +1496,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **After:** Kept as it is in the rebuild.
 - **Decision note:** A3
 - **Evidence:** defeatByTwoDown counts every player at 0 HP (app.js:1771-1772), and startRound never heals (1019-1051). Run t7.js: with Cael and Dara set to 0 before mm_r3, the first turn was a success (1/10) and the Defeat dock appeared (screenshot v7_mm_r3_pre_down_defeat.png).
+- **Phase 6:** Kept (A3). Rules test.
 
 ### ARN-24 · An unreadable portrait makes Add silently do nothing
 **Later, Harry's call** · other
@@ -1456,6 +1504,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **Before:** If you pick a picture the browser can't open (for example an iPhone HEIC photo), clicking Add does nothing and shows no message. The player isn't added.
 - **After:** Kept as it is in the rebuild.
 - **Evidence:** Image decode failure rejects (app.js:179-184), and the submit handler has no error handling (1823-1834). Run t9.js with a fake .png: pageerror 'Uncaught (in promise) #<Event>', the player was not stored, the form stayed open and no dialog appeared.
+- **Phase 6:** Kept. The failed picture no longer causes a hidden error, but Add still does nothing visible and the form stays open. Test.
 
 ### ARN-25 · Footer gold doesn't update after a win
 **Later, Harry's call** · other
@@ -1463,6 +1512,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **Before:** After a round is won, the gold counter under the arena still shows the old total until the next turn or reset. The results panel shows the right figure.
 - **After:** Kept as it is in the rebuild.
 - **Evidence:** resolveTurnFromDock refreshes the stats (1781) before endRound adds the prize (1246); endRound never calls renderHeaderStats. Run t10.js: footer gold 0, results panel 'Total gold' 500, stored totalGold 500.
+- **Phase 6:** Kept. Test: after a win the footer still shows the old gold until the next change.
 
 ### ARN-26 · Removing an opponent with Remove doesn't update the death pictures in Middlemount
 **Later, Harry's call** · other
@@ -1470,6 +1520,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **Before:** In Middlemount Round 1 and the Lion Totems round, using Remove on an opponent leaves its picture standing, as if it were still alive. Swyth Round 1 and the Beast-Pen handle Remove correctly.
 - **After:** Kept as it is in the rebuild.
 - **Evidence:** The card handler records deaths on Remove only for r1/r4 (app.js:944-945, 984-989). mm_r1/mm_r2 pictures are worked out from the HP of enemies still in the list (343-357, 433-434, 444-447). Run t10.js: mm_r1 after removing Duelist 1 still showed arena_duelists_standard.png (r1 showed defeated_1). mm_r2 after removing Totem 1 and Swordsman 1 still showed both standard overlays.
+- **Phase 6:** Kept.
 
 ### ARN-27 · Changing the Arena or Round list, or pressing Enter The Arena, wipes a round in progress without asking
 **Later, Harry's call** · other
@@ -1477,7 +1528,7 @@ Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point the
 - **Before:** Mid-round, touching the Arena or Round dropdown resets the whole round (score, turn, opponents) with no 'are you sure?'. Pressing Enter The Arena again restarts the round from scratch. Damage the party has taken stays.
 - **After:** Kept as it is in the rebuild.
 - **Evidence:** The select change handlers call resetRunState directly (app.js:1872-1889). enterArenaBtn calls startRound unconditionally (1891-1895), which zeroes the score and respawns enemies (1025-1042). Found by reading the code.
-
+- **Phase 6:** Kept. Leaving the tool mid-round now asks first (Harry's answer 7), but changing the lists or pressing Enter The Arena still restarts the round without asking, as before.
 
 ## The Heartwood Ritual
 Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
@@ -1489,6 +1540,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **After (planned):** Rebuild reset as 'create a fresh ritual state, stop the finale timers, then redraw'. Clear armed assists and restore the heartbeat state at the same time.
 - **Checker's note:** The state really is reset; only the screen update and the 'Ritual reset.' toast are lost, because the error is thrown before renderAll (1318). It still counts as breaking the tool, because the DM sees the Reset button apparently do nothing. Rebuild Reset as a fresh state plus a redraw.
 - **Evidence:** ritual.js:1316 sets logEl.innerHTML where logEl is null (the #log element doesn't exist), so an error is thrown before toastMsg/renderAll (1317-1318). Test: pageerror 'Cannot set properties of null (setting innerHTML)'; the screen still showed p3/s1 and 'Dormant' after reset, then zeros after the next click.
+- **Phase 5:** Fixed. Reset starts a completely fresh ritual and redraws the screen: the round, pips, stones, threat, event and Pulse go back to the start, any film or Final Seal screen closes, and "Ritual reset." shows. Test.
 
 ### RIT-02 · Silence stone buttons are off-screen on common laptop screens
 **Must fix** · breaks the tool
@@ -1497,6 +1549,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **After (planned):** Lay out the rebuilt stage (with the suite's top bar) so all three stones' buttons fit and work at 1366x768. Check with Playwright at 1366x768 and 1536x864.
 - **Checker's note:** The DM Dock has no Silence Attempt, so zooming out (Ctrl -) is the only workaround. The rebuilt layout, with the suite top bar on top, must fit at 1366x768 in a normal window. Ask Harry what his screen size is.
 - **Evidence:** styles.css:51 body overflow:hidden; styles.css:182 arena height; styles.css:292 .stone--bottom bottom:-24px. test5: Silence button centre off-screen at 1366x768 (bottom 794 > 768), 1536x864 and 1280x720; fine at 1440x900 and 1920x1080.
+- **Phase 5:** Fixed. The arena is drawn at the old tool's size and scaled to fit the window, keeping its shape: about 91% on the laptop, full size on the TV. Every stone's Attempt and Assist and the main buttons are in view on the laptop, full screen, the TV and a 1280 × 720 window. Tests at all four sizes.
 
 ### RIT-03 · Stone crack pictures never show when opened as a file
 **Must fix** · won't work double-clicked / offline
@@ -1505,6 +1558,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **After (planned):** Remove the GitHub Pages path helper and use relative paths.
 - **Checker's note:** This happens on every double-click, internet or not. It is a file-path problem rather than an internet one. styles.css:30-32 already defines --img-crack-1..3 relative to the stylesheet, and those would work from file://, but nothing uses them.
 - **Evidence:** ritual.js:37-47 withBase and 515-517; test: url("/home/assets/img/cracks_1.png") ERR_FILE_NOT_FOUND
+- **Phase 5:** Fixed. The crack pictures come from the Ritual's own folder. Test: the first cracks show after a failed roll.
 
 ### RIT-04 · Wyvern and ending cinematics need the internet
 **Must fix** · won't work double-clicked / offline · listed in the handover
@@ -1513,6 +1567,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **After (planned):** Bundle the four videos locally (two from the release; the other two are already identical files in the repo) and point to them relatively. Keep the missing-video fallback.
 - **Checker's note:** from_handover is correct. Bundle the files locally: 2 are byte-identical to files already in the repo (md5 c06f1501 and dd080aaa); true_seal and strained_binding exist only in the release.
 - **Evidence:** ritual.js:31-34; test: every cinematic request failed and the overlay closed via the error handler (ritual.js:327-338)
+- **Phase 5:** Fixed. The four films are in `tools/ritual/assets/video/` and play inside the page with no internet. If a film can't play it closes, as before, and a waiting Final Seal still follows. The test browser can't play MP4 films, so playing them is on Harry's Edge checklist.
 
 ### RIT-05 · Fonts need the internet
 **Must fix** · won't work double-clicked / offline
@@ -1521,6 +1576,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **After (planned):** Bundle both fonts locally with their licences.
 - **Checker's note:** The page falls back to Georgia or the default serif, so it doesn't break, but the tool depends on Google Fonts to look right.
 - **Evidence:** styles.css:3; test: request to fonts.googleapis.com failed
+- **Phase 5:** Fixed. Cinzel and IM Fell English come from the suite folder. Test.
 
 ### RIT-06 · The Husk's 50% chance is rolled several times per click, and threats can appear from screen refreshes
 **Must fix** · applies something twice · listed in the handover
@@ -1530,6 +1586,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **Decision note:** R2 decides when the one roll happens (no default).
 - **Checker's note:** One 50% chance is applied up to 4 times in one action, so it fits the 'applies twice' category, and the handover asks for it to be fixed. Fixing it will make Husks appear noticeably less often, which changes the game balance, so Harry must say when the one roll should happen before it is built.
 - **Evidence:** ritual.js:679 Math.random() < 0.5 inside updatePulse (558), called by renderAll (554) from 13 places (887, 893, 902, 909, 932, 954, 973, 988, 1007, 1022, 1027, 1318, 1387). test F: 4 rolls from one Veinwood Thrum, 2 from a ±Progress pair, 1 from ◀, and a Husk spawned from a dock +Progress.
+- **Phase 5:** Fixed as Harry chose (R2): the Husk's 50% roll and the Buckbear and Wyvern checks happen once, when Next Round moves the round on. Stress piling up, Dock clicks and stepping a round back never summon anything. Husks will appear less often than before, which is what R2 means. Tests, including one where the old tool summons a Husk from a Dock click and the rebuild doesn't.
 
 ### RIT-07 · Double-clicking Next Round skips a round
 **Must fix** · applies something twice
@@ -1538,6 +1595,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **After (planned):** Ignore repeat clicks and key presses on Next Round for a moment (or until the round change has finished).
 - **Checker's note:** The guard needs to cover the mouse, the N key and Enter/Space on a focused button. Double-clicking at round 7 with no threat would jump straight to the finale.
 - **Evidence:** ritual.js:935-1023 has no guard, and a normal advance shows no banner to catch the second click (1020-1022). test K: a double-click went from round 1 to 3; N N went from 3 to 5.
+- **Phase 5:** Fixed. Next Round (its button, the Dock's, N, or Enter or Space on the button) ignores a second press within 0.6 seconds, and holding N down counts once. Tests.
 
 ### RIT-08 · The same Heartwood event can be applied again
 **Must fix** · applies something twice · listed in the handover
@@ -1547,6 +1605,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **Decision note:** Accidental double presses only; R3 decides whether an event may be applied again later in the round.
 - **Checker's note:** Only the accidental double press (mouse or keyboard) is a fix-now item. Whether an event may be applied once per round is a rule for Harry to decide. Keep the guard even if the rebuilt banner stops catching clicks.
 - **Evidence:** ritual.js:926-933 has no 'already applied' check. test K: a double-click added +1 stress only (the second click landed on the banner); a click after the banner cleared added another +1. test E: Veinwood Thrum applied twice.
+- **Phase 5:** Fixed. Apply Event ignores a second press within 0.6 seconds, by mouse or keyboard; applying the same event again later still works (R3). Tests.
 
 ### RIT-09 · Clicking Enable Sound twice plays two heartbeats
 **Must fix** · applies something twice
@@ -1556,6 +1615,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **Decision note:** R8 decides on/off switch vs enable-only.
 - **Checker's note:** Also, the button already says 'Sound Enabled' before play() is tried (178-180 run before 184), so if play() fails it still claims sound is on.
 - **Evidence:** ritual.js:155-191 creates new Audio objects every click; test C: 12 Audio objects and 2 looping heartbeats playing
+- **Phase 5:** Fixed (R8: Enable Sound only, no off switch). Once sound is on, Enable Sound does nothing more, so there's only ever one heartbeat. If the browser refuses sound, the button stays ready to try again. Test.
 
 ### RIT-10 · Reset doesn't clear armed assists, finale timers or the paused heartbeat
 **Fixed by the new design** · other
@@ -1565,6 +1625,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **Decision note:** Reset is rebuilt as a fresh ritual state that also clears assists and timers.
 - **Checker's note:** The Reset fix covers this. The finale timers can't really fire after a Reset, because the seal overlay (z-index 200) covers the Dock until its 5.2 s timer ends.
 - **Evidence:** ritual.js:1282-1319 never touches state.assistPending, the finaleSlowdown interval (758-765) or the seal timeout (778-781). test J: a failed Weight after reset gave +2 stress.
+- **Phase 5:** Fixed. Reset clears armed Assists and the Final Seal's timers and screen, closes any film, and brings the heartbeat back. Tests.
 
 ### RIT-11 · Silence Assist slot overrides the slot typed in the attempt
 **Later, Harry's call** · other · listed in the handover
@@ -1574,6 +1635,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **Decision note:** R6
 - **Checker's note:** The handover flags this too (from_handover true). It is a rule to confirm with Harry, not something to fix now.
 - **Evidence:** ritual.js:1232-1239 (preset wins); 1036 and 1082-1083 (preview reads a box just reset to 0). test D: assist slot 0 plus typed slot 9 with roll 9 failed at DC 12.
+- **Phase 5:** Kept (R6). Test: the Assist's slot beats the one typed, and its preview shows slot 0.
 
 ### RIT-12 · An empty roll counts as a roll of 0
 **Later, Harry's call** · other
@@ -1582,6 +1644,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** This is Harry's call. It combines with the new 'Enter on Cancel' bug.
 - **Evidence:** ritual.js:1176-1180: Number('') is 0, so the 'Enter a numeric roll result' check never fires. test2: an empty Weight attempt gave +1 stress; letters typed into the number box did the same for Memory.
+- **Phase 5:** Kept. Rules test.
 
 ### RIT-13 · The status line still says 'Binding in progress' after a seal or collapse
 **Later, Harry's call** · other
@@ -1590,6 +1653,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** A display-only fix, as the survey says.
 - **Evidence:** ritual.js:577-591 writes the labels before the phase changes at 596-634, with no redraw afterwards. test I: t+6 s after the seal still showed 'Steady / Binding in progress'.
+- **Phase 5:** Kept. Test.
 
 ### RIT-14 · A second cinematic triggered while one is showing is dropped for good
 **Later, Harry's call** · other
@@ -1598,6 +1662,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** This can happen from one ordinary event click, so flag it prominently to Harry as a later decision. It also happens if N is pressed during the Wyvern video.
 - **Evidence:** ritual.js:238-241 ignores the new video if the overlay is open, but the 'shown' flag was already set (604-606, 626-628, 968-970, 983-985). test4 allCracked: the collapse right after the Wyvern appeared never requested fractured_containment.mp4.
+- **Phase 5:** Kept. Test.
 
 ### RIT-15 · The heartbeat gets permanently quieter after the first cinematic
 **Later, Harry's call** · other
@@ -1606,6 +1671,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** Cosmetic.
 - **Evidence:** ritual.js:163 (0.90) vs 304 (0.55)
+- **Phase 5:** Kept. Test.
 
 ### RIT-16 · The narrative log is never shown
 **Later, Harry's call** · other
@@ -1615,6 +1681,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **Decision note:** R10
 - **Checker's note:** A question for Harry.
 - **Evidence:** ritual.js:697-698 returns early; no #log element in index.html
+- **Phase 5:** Kept (R10: no log panel). The log's lines weren't carried across, since nothing showed them.
 
 ### RIT-17 · The threat panel still works after the ritual has ended
 **Later, Harry's call** · other
@@ -1623,6 +1690,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** Harry's call.
 - **Evidence:** ritual.js:806-815 has no phase check; test4 wyvernAtRound8 left the Wyvern panel on screen after Strained Binding
+- **Phase 5:** Kept.
 
 ### RIT-18 · Cracked stones don't look permanently cracked
 **Later, Harry's call** · other
@@ -1631,6 +1699,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** Harry's call.
 - **Evidence:** ritual.js:513-526 (image by stress, hidden when locked); there is no visual for the cracked flag
+- **Phase 5:** Kept.
 
 ### RIT-19 · The P key plays the True Seal ending at any time
 **Later, Harry's call** · other
@@ -1640,6 +1709,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **Decision note:** R7 (default: remove P)
 - **Checker's note:** It does not set pendingFinalSeal, so no seal overlay follows. Ask Harry.
 - **Evidence:** ritual.js:1380-1383 'TEMP TEST'; test K confirmed
+- **Phase 5:** Changed as Harry chose (R7): the P key is gone. Test.
 
 ### RIT-20 · Shortcut keys still work while a cinematic or banner covers the screen
 **Later, Harry's call** · other
@@ -1648,6 +1718,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **After:** Kept as it is in the rebuild.
 - **Decision note:** R7
 - **Evidence:** ritual.js:1368-1384: the window keydown listener only checks whether the modal is open. t2 T7: with the cinematic overlay open, N took the round from 1 to 2 and E changed the event from Root Surge to False Calm, and the overlay stayed open.
+- **Phase 5:** Kept (R7: the `, N and E keys stay, and still work behind a film). Test. As in every tool, keys are now ignored while typing in a box (SUI-04), so ` no longer opens the Dock while you type a roll.
 
 ### RIT-21 · Important banners are replaced by a later banner in the same click
 **Later, Harry's call** · other
@@ -1655,6 +1726,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **Before:** When one action causes several things at once, only the last banner stays on screen. A stone cracking from an event or a failed Silence roll shows the event or 'Silence Frays' banner instead of 'GLYPH FRACTURE'. When an event collapses the ritual, 'RITUAL COLLAPSE' is replaced by the event banner. The Wyvern's arrival text plays unseen behind its 47-second video.
 - **After:** Kept as it is in the rebuild.
 - **Evidence:** t3 T16: a failed Silence attempt at stress 3 ends on the banner 'Silence Frays' (stress 4, cracked), and Echo of What Was at Memory stress 3 ends on the banner 'Echo of What Was'. t2 T6: after the collapse, the banner showing was 'Veinwood Thrum'. Code: applyEvent calls showBanner after ev.apply() (929-930), applyModal Silence at 1246-1261, and spawnThreat at 791-797 shows the banner under the z-index 9999 video.
+- **Phase 5:** Kept. Rules test.
 
 ### RIT-22 · Pressing Enter with Cancel selected applies the roll
 **Later, Harry's call** · other
@@ -1662,6 +1734,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **Before:** In the roll window, if the Cancel button is selected and you press Enter, the roll is applied instead of cancelled.
 - **After:** Kept as it is in the rebuild.
 - **Evidence:** ritual.js:1371-1373: Enter always calls applyModal. t2 T11: with roll 1 typed, Cancel focused and Enter pressed, weight stress went to 1 and the modal closed.
+- **Phase 5:** Kept. Test.
 
 ### RIT-23 · A beaten Buckbear comes straight back on the next click
 **Later, Harry's call** · other
@@ -1669,6 +1742,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **Before:** From round 6 onwards, if no stone is locked, beating the Buckbear doesn't help for long. The very next button press, even a harmless DM Dock one, summons a fresh Buckbear at full health.
 - **After:** Kept as it is in the rebuild.
 - **Evidence:** ritual.js:684-686 runs in updatePulse on every redraw. t2 T8: a Buckbear appeared at round 6, two Heavy Blows beat it (the panel was hidden), then a dock -Progress click on a stone at 0 brought a new Rootbound Buckbear.
+- **Phase 5:** Changed by Harry's answer R2: a beaten Buckbear no longer comes straight back on the next click. From round 6 with no stone locked, a new one comes at the next Next Round instead. Rules test.
 
 ### RIT-24 · No way to skip or close a cinematic
 **Later, Harry's call** · other
@@ -1676,6 +1750,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **Before:** Once a video starts, the DM can't stop it. The Wyvern video lasts 48 seconds and the endings 58. If a video never finishes loading, the screen stays black for good.
 - **After:** Kept as it is in the rebuild.
 - **Evidence:** The overlay closes only on the video's ended or error events (ritual.js:310-339), and there is no close button (index.html:323-333, z-index 9999). In t2 T6 and T7, with the request left hanging, the overlay stayed open until the test forced the video's 'ended' event.
+- **Phase 5:** Kept.
 
 ### RIT-25 · The time-out endings show no message if their video doesn't play
 **Later, Harry's call** · other
@@ -1683,6 +1758,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **Before:** At round 8, Strained Binding and Fractured Containment show only a 2-second pop-up line and then the video. If the video is missing (as it is now without internet), the table sees no ending at all. Only the True Seal has a fallback screen.
 - **After:** Kept as it is in the rebuild.
 - **Evidence:** ritual.js:958-989 has no showBanner in either time-out branch, only toastMsg. By contrast, a True Seal video error still triggers the Final Seal overlay (315-338). The handover's proposed gate (master-handover.md:376) asks for 'correct media fallback' for all three endings.
+- **Phase 5:** Kept.
 
 ### RIT-26 · The unused cinematics/player.html can't find its video
 **No longer relevant** · other
@@ -1692,7 +1768,7 @@ Old repo: `_legacy/tellurian-ritual-engine` (file:line references point there).
 - **Decision note:** Not ported; the films play inside the Ritual page.
 - **Checker's note:** Leave it out of the rebuild.
 - **Evidence:** player.html:50-59; test: file:///home/assets/video/ritual_collapse.mp4 not found
-
+- **Phase 5:** Not ported. Nor were the old page's unused film window (an iframe) and its hidden early copy of the Wyvern film, which only helped it start sooner over the internet.
 
 ## Pelagosi Puzzle Trials
 Old repo: `_legacy/pelagosi_marker_rune_puzzle` (file:line references point there).

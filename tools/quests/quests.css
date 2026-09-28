@@ -1,0 +1,281 @@
+/* ==========================================================================
+   Notice Board Quest Generator — the DM's screen.
+   The old tool's layout (filters on top; Quest Outline | board | Accepted
+   Quests) in the suite's look, sized so it fits the laptop (1707 × 930) with
+   every panel in view (KNOWN_ISSUES QST-04). The panels scroll inside
+   themselves when they're long. Every rule is scoped to .tsi-tool--quests and
+   every class starts "tsi-quests-". The board itself is in board.css.
+   ========================================================================== */
+
+.tsi-tool--quests .tsi-quests {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 10px;
+  height: calc(100vh - var(--tsi-topbar-h));
+  min-height: 600px;
+  padding: 10px 16px 14px;
+  box-sizing: border-box;
+  max-width: 1880px;
+  margin: 0 auto;
+}
+
+/* ---------- Title and Pool ---------- */
+.tsi-tool--quests .tsi-quests-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.tsi-tool--quests .tsi-quests-heading {
+  margin: 0;
+  font: 600 22px/1.15 var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-title);
+  color: var(--tsi-gold-text);
+  text-shadow: var(--tsi-text-shadow-title);
+}
+.tsi-tool--quests .tsi-quests-sub {
+  margin: 2px 0 0;
+  color: var(--tsi-text-muted);
+  font-size: var(--tsi-fs-body-sm);
+}
+.tsi-tool--quests .tsi-quests-pool {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 16px;
+  border-radius: var(--tsi-radius-md);
+  border: var(--tsi-border);
+  background: var(--tsi-panel-fill);
+  box-shadow: var(--tsi-shadow-btn);
+}
+.tsi-tool--quests .tsi-quests-pool-title {
+  margin: 0;
+  font: 600 var(--tsi-fs-label) var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-heading);
+  text-transform: uppercase;
+  color: var(--tsi-gold-text);
+}
+.tsi-tool--quests .tsi-quests-kv {
+  display: grid;
+  grid-template-columns: auto auto auto auto;
+  align-items: baseline;
+  gap: 4px 10px;
+  color: var(--tsi-text-muted);
+  font-size: var(--tsi-fs-body-sm);
+}
+.tsi-tool--quests .tsi-quests-kv-value {
+  color: var(--tsi-text);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  min-width: 2.2em;
+}
+
+/* ---------- Filters ---------- */
+.tsi-tool--quests .tsi-quests-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px 12px;
+}
+.tsi-tool--quests .tsi-quests-field { gap: 4px; }
+.tsi-tool--quests .tsi-quests-input {
+  height: 38px;
+  padding: 4px 10px;
+  min-width: 150px;
+}
+.tsi-tool--quests select.tsi-quests-input {
+  padding-right: 28px;
+  background-image: linear-gradient(45deg, transparent 50%, var(--tsi-gold-text) 50%), linear-gradient(135deg, var(--tsi-gold-text) 50%, transparent 50%);
+  background-position: calc(100% - 15px) 16px, calc(100% - 10px) 16px;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+.tsi-tool--quests .tsi-quests-input--num { min-width: 0; width: 92px; }
+.tsi-tool--quests .tsi-quests-buttons {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* ---------- The three columns ---------- */
+.tsi-tool--quests .tsi-quests-main {
+  display: grid;
+  grid-template-columns: minmax(270px, 340px) minmax(0, 1fr) minmax(270px, 340px);
+  gap: 16px;
+  min-height: 0;
+}
+.tsi-tool--quests .tsi-quests-boardwrap { min-height: 0; min-width: 0; }
+
+.tsi-tool--quests .tsi-quests-side {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-radius: var(--tsi-radius-lg);
+  border: var(--tsi-border);
+  background: var(--tsi-panel-fill);
+  box-shadow: var(--tsi-shadow-panel);
+  overflow: hidden;
+}
+.tsi-tool--quests .tsi-quests-side-head {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--tsi-line-faint);
+  background: var(--tsi-head-fill);
+}
+/* The old tool's scarlet-to-ember rule under each panel title. */
+.tsi-tool--quests .tsi-quests-side-head::after {
+  content: "";
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: -1px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(177, 18, 42, .7), rgba(255, 180, 74, .25), transparent);
+}
+.tsi-tool--quests .tsi-quests-side-title {
+  margin: 0;
+  font: 600 var(--tsi-fs-button) var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-heading);
+  text-transform: uppercase;
+  color: var(--tsi-gold-text);
+}
+.tsi-tool--quests .tsi-quests-shop { font-size: var(--tsi-fs-body-sm); white-space: nowrap; }
+.tsi-tool--quests .tsi-quests-side-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px 14px 16px;
+  color: var(--tsi-text-muted);
+}
+.tsi-tool--quests .tsi-quests-muted { color: var(--tsi-text-soft); }
+
+/* ---------- Accepted Quests ---------- */
+.tsi-tool--quests .tsi-quests-acc-group { margin-bottom: 14px; }
+.tsi-tool--quests .tsi-quests-acc-prov {
+  margin: 6px 0 6px;
+  font: 600 13px var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-label);
+  text-transform: uppercase;
+  color: var(--tsi-gold-text);
+}
+.tsi-tool--quests .tsi-quests-acc-item {
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  border-radius: var(--tsi-radius-sm);
+  background: rgba(255, 255, 255, .04);
+  border: 1px solid rgba(255, 255, 255, .07);
+  cursor: pointer;
+  transition: filter var(--tsi-dur-fast) var(--tsi-ease), border-color var(--tsi-dur-fast) var(--tsi-ease);
+}
+.tsi-tool--quests .tsi-quests-acc-item:hover { filter: brightness(1.08); }
+.tsi-tool--quests .tsi-quests-acc-item:focus-visible { outline: none; box-shadow: var(--tsi-focus-ring); border-color: var(--tsi-gold-text); }
+.tsi-tool--quests .tsi-quests-acc-item--selected {
+  border-color: rgba(255, 180, 74, .35);
+  box-shadow: 0 0 0 3px rgba(255, 180, 74, .10), 0 12px 26px rgba(0, 0, 0, .35);
+  background: linear-gradient(180deg, rgba(255, 180, 74, .10), rgba(178, 30, 43, .06));
+}
+.tsi-tool--quests .tsi-quests-acc-item--primary {
+  border-left: 3px solid #d4a857;
+  background: linear-gradient(90deg, rgba(212, 168, 87, .1) 0%, transparent 50%);
+}
+.tsi-tool--quests .tsi-quests-acc-item--selected.tsi-quests-acc-item--primary {
+  background: linear-gradient(90deg, rgba(212, 168, 87, .14) 0%, rgba(255, 180, 74, .06) 60%);
+}
+.tsi-tool--quests .tsi-quests-acc-title {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 17px;
+  line-height: 1.2;
+  color: var(--tsi-text);
+}
+.tsi-tool--quests .tsi-quests-acc-item--primary .tsi-quests-acc-title { color: #f0c040; }
+.tsi-tool--quests .tsi-quests-acc-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 2px;
+  font-size: 15px;
+  color: var(--tsi-text-soft);
+}
+.tsi-tool--quests .tsi-quests-star,
+.tsi-tool--quests .tsi-quests-remove {
+  flex: 0 0 auto;
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.tsi-tool--quests .tsi-quests-star {
+  color: #7a716a;
+  font-size: 16px;
+  transition: color var(--tsi-dur-base) var(--tsi-ease), transform var(--tsi-dur-base) var(--tsi-ease);
+}
+.tsi-tool--quests .tsi-quests-star:hover { color: #d4a857; transform: scale(1.2); }
+.tsi-tool--quests .tsi-quests-star--on { color: #f0c040; text-shadow: 0 0 6px rgba(240, 192, 64, .5); }
+.tsi-tool--quests .tsi-quests-remove { color: var(--tsi-text-soft); font-size: 14px; }
+.tsi-tool--quests .tsi-quests-remove:hover { color: var(--tsi-text); }
+.tsi-tool--quests .tsi-quests-star:focus-visible,
+.tsi-tool--quests .tsi-quests-remove:focus-visible { outline: none; box-shadow: var(--tsi-focus-ring); }
+
+/* ---------- Quest Outline ---------- */
+.tsi-tool--quests .tsi-quests-qo-title {
+  margin: 0 0 6px;
+  font-weight: 700;
+  font-size: 19px;
+  line-height: 1.2;
+  color: var(--tsi-text);
+}
+.tsi-tool--quests .tsi-quests-qo-meta { margin: 0 0 8px; font-size: 15px; color: var(--tsi-text-soft); }
+.tsi-tool--quests .tsi-quests-qo-section {
+  margin: 10px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, .07);
+}
+.tsi-tool--quests .tsi-quests-qo-heading {
+  margin: 0 0 6px;
+  font: 600 var(--tsi-fs-label) var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-label);
+  text-transform: uppercase;
+  color: var(--tsi-text-muted);
+}
+.tsi-tool--quests .tsi-quests-qo-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: var(--tsi-fs-body-sm);
+  line-height: 1.35;
+  color: var(--tsi-text-muted);
+}
+.tsi-tool--quests .tsi-quests-qo-list li + li { margin-top: 3px; }
+.tsi-tool--quests .tsi-quests-qo-list strong { color: var(--tsi-text); }
+.tsi-tool--quests .tsi-quests-qo-pills { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; }
+.tsi-tool--quests .tsi-quests-qo-pill {
+  padding: 3px 9px;
+  border-radius: var(--tsi-radius-pill);
+  background: var(--tsi-pill-bg);
+  border: 1px solid var(--tsi-pill-line);
+  color: var(--tsi-pill-text);
+  font-size: 14px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tsi-tool--quests .tsi-quests-star:hover { transform: none; }
+}
+
+/* ---------- Narrow windows: the columns stack and the page scrolls ---------- */
+@media (max-width: 1100px) {
+  .tsi-tool--quests .tsi-quests { height: auto; grid-template-rows: auto; }
+  .tsi-tool--quests .tsi-quests-main { grid-template-columns: 1fr; }
+  .tsi-tool--quests .tsi-quests-boardwrap { height: 70vh; min-height: 480px; order: -1; }
+  .tsi-tool--quests .tsi-quests-side { max-height: 70vh; }
+  .tsi-tool--quests .tsi-quests-buttons { margin-left: 0; }
+}

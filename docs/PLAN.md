@@ -493,6 +493,8 @@ One phase per session, or one clearly defined chunk. The next phase starts only 
 | 9a / 9b / 9c | Bastion core (laptop + TV) / Hall, trade and Council / identity, war and Compendium | the largest tool |
 | Later | A short how-to guide for Harry, with his go-ahead | |
 
+**Phases 4, 5 and 6 were built together** (26 September 2026), at Harry's request to speed the build up: one session, one pull request and one combined checklist, grouped by tool. Each tool still has its own commits, tests and docs. The phases after 6 go back to one per session unless Harry asks otherwise.
+
 ### "Done when" lists (Harry checks these in Edge)
 
 **Phase 1: Shell**
@@ -683,35 +685,35 @@ Defaults are in brackets; "keep" means keep it as the old tool does it.
 - **P3** Should a double-clicked rune count once? **Keep it as it is:** it still counts twice.
 - **P4** Pressure carrying into the basin, and Reset behaving differently in each mode? **Keep both as they are** (KNOWN_ISSUES PEL-18).
 
-**Notice Board Quest Generator**
-- **N1** Exactly one bounty at levels 7–10? *(keep)*
-- **N2** Bounties shown outside their level band (e.g. quest 77)? *(keep)*
-- **N3** One Clan Honour and one Temple Honour value for all? *(keep)*
-- **N4** Should the players' screen show only the notices, with no buttons? *(yes)*
-- **N5** Root and Veinwood text in outlines and in 6 bounties: keep word for word until Harry sends replacements? *(keep)*
+**Notice Board Quest Generator** *(answered by Harry, 26 September 2026: all the defaults; built in phase 4)*
+- **N1** Exactly one bounty at levels 7–10? **Keep.**
+- **N2** Bounties shown outside their level band (e.g. quest 77)? **Keep.**
+- **N3** One Clan Honour and one Temple Honour value for all? **Keep.**
+- **N4** Should the players' screen show only the notices, with no buttons? **Yes.**
+- **N5** Root and Veinwood text in outlines and in 6 bounties: keep word for word until Harry sends replacements? **Keep.**
 
-**The Heartwood Ritual**
-- **R1** Home-screen name: "The Heartwood Ritual" or "The Lullaby of the Rootbound Heart"? *(The Heartwood Ritual)*
-- **R2** When should the Husk's 50% roll, and the Buckbear and Wyvern checks, happen: once per round advance, or once per player action? *(no default: this changes how often Husks appear)*
-- **R3** One Heartwood event per round? *(allow repeats; block only accidental double presses)*
-- **R4** Should failed attempts, Husks and Buckbears still crack locked stones? *(keep)*
-- **R5** A live Wyvern is ignored at round 8: intended? *(keep)*
-- **R6** Silence Assist slot vs a typed slot: which wins? *(assist, as now)*
-- **R7** Keep the `` ` ``, N and E keys? Remove the leftover P? *(keep the three; remove P)*
-- **R8** Sound: an on/off switch, or enable only? *(enable only)*
-- **R9** Strained Binding shows "Ritual collapse / Racing": change the wording? *(keep)*
-- **R10** Bring back the log panel? *(no)*
+**The Heartwood Ritual** *(answered by Harry, 26 September 2026: R2 as below, the defaults for the rest; built in phase 5)*
+- **R1** Home-screen name: "The Heartwood Ritual" or "The Lullaby of the Rootbound Heart"? **The Heartwood Ritual.**
+- **R2** When should the Husk's 50% roll, and the Buckbear and Wyvern checks, happen: once per round advance, or once per player action? **Once per round: when Next Round is pressed.**
+- **R3** One Heartwood event per round? **Allow repeats; block only accidental double presses.**
+- **R4** Should failed attempts, Husks and Buckbears still crack locked stones? **Keep.**
+- **R5** A live Wyvern is ignored at round 8: intended? **Keep.**
+- **R6** Silence Assist slot vs a typed slot: which wins? **The Assist, as now.**
+- **R7** Keep the `` ` ``, N and E keys? Remove the leftover P? **Keep the three; remove P.**
+- **R8** Sound: an on/off switch, or enable only? **Enable only.**
+- **R9** Strained Binding shows "Ritual collapse / Racing": change the wording? **Keep.**
+- **R10** Bring back the log panel? **No.**
 
-**Arenas of The Scarlett Isles**
-- **A1** Should the third totem breaking end the round as a win, and should 8 successes still win without breaking any? *(keep)*
-- **A2** All opponents down: an automatic win? And when a win and a loss land on the same turn, which counts? *(keep)*
-- **A3** Lion's Mark once per rotation; can the active player be marked; do players already at 0 HP count towards "two down"? *(keep)*
-- **A4** DM picks who acts, or automatic rotation? *(rotation)*
-- **A5** Apply damage once per turn, or once per attack roll? *(once per turn)*
-- **A6** Lock a skill roll once rolled? *(unlocked)*
-- **A7** Accept "2d8+3"? *(keep)*
-- **A8** Middlemount defeat wording? *(keep)*
-- **A9** Overtime hits a random player, even in the Lion's Mark round? *(keep)*
+**Arenas of The Scarlett Isles** *(answered by Harry, 26 September 2026: all the defaults; built in phase 6)*
+- **A1** Should the third totem breaking end the round as a win, and should 8 successes still win without breaking any? **Keep.**
+- **A2** All opponents down: an automatic win? And when a win and a loss land on the same turn, which counts? **Keep.**
+- **A3** Lion's Mark once per rotation; can the active player be marked; do players already at 0 HP count towards "two down"? **Keep.**
+- **A4** DM picks who acts, or automatic rotation? **Rotation.**
+- **A5** Apply damage once per turn, or once per attack roll? **Once per turn.**
+- **A6** Lock a skill roll once rolled? **Unlocked.**
+- **A7** Accept "2d8+3"? **Keep** (it still reads as 2).
+- **A8** Middlemount defeat wording? **Keep.**
+- **A9** Overtime hits a random player, even in the Lion's Mark round? **Keep.**
 
 **Combat Tracker & VTT Battlemap**
 - **C1** NPCs never take turns? *(keep)*

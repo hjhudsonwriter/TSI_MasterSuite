@@ -18,7 +18,18 @@ node tests/e2e/phase1.test.js
 
 If Playwright is installed globally, point Node at it, e.g. `NODE_PATH=$(npm root -g) node tests/e2e/phase1.test.js`. Screenshots go to the folder in `TSI_SHOTS` (or the system temp folder).
 
-Each phase adds its own `phaseN.test.js`: `phase1.test.js` is the shell, `phase2.test.js` the Clan Crest Creator and `phase3.test.js` the Pelagosi Puzzle Trials. `phase2.test.js` also compares the Crest's drawing, random rolls and PNG with the old tool when `_legacy/clan-crest-creator` is present, and `phase3.test.js` compares Pelagosi's sequences, counts and on-screen texts with the old tool when `_legacy/pelagosi_marker_rune_puzzle` is present (clone them from the links in the handover's section 16). Each says it skipped that part when the old tool isn't there. `helpers.js` holds the shared pieces: screen sizes, a record of any internet requests or missing files, and helpers for downloads, file pickers, pop-ups and notices.
+Each phase adds its own `phaseN.test.js`:
+
+- `phase1.test.js`: the shell
+- `phase2.test.js`: the Clan Crest Creator
+- `phase3.test.js`: the Pelagosi Puzzle Trials
+- `phase4.test.js`: the Notice Board, including its players' window and the ★ → Knightly Treasures link. A stand-in plays Matt's database (the test pretends to be the database's web connection), so nothing is ever sent to the real shop.
+- `phase5.test.js`: The Heartwood Ritual. The test browser can't play MP4 films, so a film ends the moment it starts, as it did in the old tool when a film couldn't load.
+- `phase6.test.js`: the Arenas of The Scarlett Isles. It controls the page's clock, so the 5-second pictures can be moved on without waiting.
+
+When the old tool is in `_legacy/`, most of them also play the same moves in it and compare: the Crest's drawing, rolls and PNG (`_legacy/clan-crest-creator`); Pelagosi's sequences, counts and texts (`_legacy/pelagosi_marker_rune_puzzle`); the Notice Board's boards, outlines, accepted list and shop messages (`_legacy/scarlett-isles-quest-generator`); the Ritual's screen after every move (`_legacy/tellurian-ritual-engine`); and the Arenas' whole game, round by round, with the same dice (`_legacy/arenas-of-the-scarlett-isles`). Old tools that load files with `fetch()` are served by a tiny web server inside the test. Clone them from the links in the handover's section 16. Each test says it skipped that part when the old tool isn't there.
+
+`helpers.js` holds the shared pieces: screen sizes, a record of any internet requests or missing files, and helpers for downloads, file pickers, pop-ups and notices.
 
 ## What the tests use
 

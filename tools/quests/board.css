@@ -1,0 +1,188 @@
+/* ==========================================================================
+   Notice Board Quest Generator — the wooden board and its parchment notices.
+   Used on the DM's screen (.tsi-tool--quests) and in the players' window
+   (.tsi-player--noticeboard). The board art, wood, paper colours, nails, tilt
+   and tags are the old tool's (scarlett-isles-quest-generator/styles.css); the
+   text uses the suite's fonts.
+   ========================================================================== */
+
+:is(.tsi-tool--quests, .tsi-player--noticeboard) {
+  --tsi-quests-wood1: #3a2416;
+  --tsi-quests-wood2: #24160d;
+  --tsi-quests-paper: #efe1c2;
+  --tsi-quests-paper2: #dfcaa0;
+  --tsi-quests-ink: #1e160f;
+  --tsi-quests-ink-soft: #3b3226;
+  --tsi-quests-scale: 1;
+}
+
+:is(.tsi-tool--quests, .tsi-player--noticeboard) .tsi-quests-board {
+  position: relative;
+  overflow: hidden;
+  height: 100%;
+  border-radius: var(--tsi-radius-lg);
+  border: 1px solid rgba(255, 255, 255, .09);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .4);
+  background:
+    linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, .15) 100%),
+    repeating-linear-gradient(90deg, transparent 0 16px, rgba(0, 0, 0, .13) 16px 18px),
+    linear-gradient(135deg, var(--tsi-quests-wood1) 0%, var(--tsi-quests-wood2) 70%);
+}
+
+/* The painted board, darkened a little so the notices stay readable. */
+:is(.tsi-tool--quests, .tsi-player--noticeboard) .tsi-quests-board::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, .18), rgba(0, 0, 0, .42)),
+    url("assets/noticeboard.png");
+  background-size: 200%;
+  background-position: center 60%;
+  background-repeat: no-repeat;
+  filter: contrast(1.06) saturate(1.05);
+}
+
+/* "No notices yet": underneath the board art, as in the old tool (QST-15, kept). */
+:is(.tsi-tool--quests, .tsi-player--noticeboard) .tsi-quests-empty-card {
+  max-width: 520px;
+  margin: 60px auto 0;
+  padding: 16px 18px;
+  border-radius: var(--tsi-radius-md);
+  background: rgba(255, 255, 255, .04);
+  border: 1px dashed rgba(255, 255, 255, .13);
+  text-align: center;
+}
+:is(.tsi-tool--quests, .tsi-player--noticeboard) .tsi-quests-empty-title { font-weight: 700; margin-bottom: 6px; }
+:is(.tsi-tool--quests, .tsi-player--noticeboard) .tsi-quests-empty-text { color: var(--tsi-text-muted); }
+
+:is(.tsi-tool--quests, .tsi-player--noticeboard) .tsi-quests-scroll {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 40px 0 24px;
+}
+
+:is(.tsi-tool--quests, .tsi-player--noticeboard) .tsi-quests-parchments {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(calc(260px * var(--tsi-quests-scale)), 1fr));
+  gap: calc(16px * var(--tsi-quests-scale));
+  max-width: 92%;
+  margin: 0 auto;
+  align-items: start;
+}
+
+:is(.tsi-tool--quests, .tsi-player--noticeboard) .tsi-quests-parchment {
+  position: relative;
+  border-radius: var(--tsi-radius-md);
+  padding: calc(14px * var(--tsi-quests-scale)) calc(14px * var(--tsi-quests-scale)) calc(12px * var(--tsi-quests-scale));
+  color: var(--tsi-quests-ink);
+  background:
+    radial-gradient(200px 120px at 10% 0%, rgba(255, 255, 255, .33) 0%, transparent 55%),
+    linear-gradient(180deg, var(--tsi-quests-paper) 0%, var(--tsi-quests-paper2) 100%);
+  border: 1px solid rgba(0, 0, 0, .13);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .33), inset 0 1px 0 rgba(255, 255, 255, .53);
+  transform: rotate(var(--tsi-quests-rot, 0deg));
+  font-family: var(--tsi-font-body);
+  font-size: calc(16px * var(--tsi-quests-scale));
+  line-height: 1.25;
+}
+
+:is(.tsi-tool--quests, .tsi-player--noticeboard) .tsi-quests-nail {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #f8f1e3 0%, #c7b7a0 30%, #5b4b3b 75%);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, .33);
+}
+:is(.tsi-tool--quests, .tsi-player--noticeboard) .tsi-quests-nail--r { left: auto; right: 10px; }
+
+:is(.tsi-tool--quests, .tsi-player--noticeboard) .tsi-quests-title {
+  font-weight: 700;
+  font-size: calc(19px * var(--tsi-quests-scale));
+  line-height: 1.15;
+  margin: 6px 0 8px;
+  padding: 0 14px;
+}
+:is(.tsi-tool--quests, .tsi-player--noticeboard) .tsi-quests-notice-text {
+  margin: 0 0 10px;
+}
+
+:is(.tsi-tool--quests, .tsi-player--noticeboard) .tsi-quests-bounty-head {
+  font-family: var(--tsi-font-display);
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  font-size: calc(18px * var(--tsi-quests-scale));
+  margin: 4px 0 6px;
+  padding: 0 14px;
+}
+:is(.tsi-tool--quests, .tsi-player--noticeboard) .tsi-quests-bounty-target {
+  font-weight: 700;
+  font-size: calc(19px * var(--tsi-quests-scale));
+  line-height: 1.15;
+  margin-bottom: 4px;
+}
+:is(.tsi-tool--quests, .tsi-player--noticeboard) .tsi-quests-bounty-reward {
+  font-weight: 700;
+  color: var(--tsi-quests-ink-soft);
+  margin-bottom: 8px;
+}
+
+:is(.tsi-tool--quests, .tsi-player--noticeboard) .tsi-quests-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+:is(.tsi-tool--quests, .tsi-player--noticeboard) .tsi-quests-tag {
+  font-size: calc(13.5px * var(--tsi-quests-scale));
+  font-weight: 600;
+  line-height: 1.2;
+  padding: 3px 8px;
+  border-radius: var(--tsi-radius-pill);
+  background: rgba(0, 0, 0, .06);
+  border: 1px solid rgba(0, 0, 0, .11);
+  color: #2b241a;
+}
+
+:is(.tsi-tool--quests, .tsi-player--noticeboard) .tsi-quests-sig {
+  margin-top: 10px;
+  font-size: calc(15px * var(--tsi-quests-scale));
+  color: var(--tsi-quests-ink-soft);
+  font-style: italic;
+}
+
+/* Accept and Decline, on the DM's board only. Accept is each notice's main action. */
+.tsi-tool--quests .tsi-quests-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+.tsi-tool--quests .tsi-quests-paper-btn {
+  padding: 6px 12px;
+  border-radius: var(--tsi-radius-sm);
+  border: 1px solid rgba(43, 36, 26, .45);
+  background: rgba(255, 255, 255, .45);
+  color: #2b241a;
+  font: 600 13px var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-button);
+  cursor: pointer;
+  transition: filter var(--tsi-dur-fast) var(--tsi-ease), background var(--tsi-dur-fast) var(--tsi-ease);
+}
+.tsi-tool--quests .tsi-quests-paper-btn:hover { background: rgba(255, 255, 255, .7); }
+.tsi-tool--quests .tsi-quests-paper-btn--accept {
+  border-color: rgba(122, 12, 27, .9);
+  background: var(--tsi-crimson-fill);
+  color: var(--tsi-text);
+}
+.tsi-tool--quests .tsi-quests-paper-btn--accept:hover { background: var(--tsi-crimson-fill); filter: brightness(1.1); }
+.tsi-tool--quests .tsi-quests-paper-btn:focus-visible { outline: 2px solid var(--tsi-quests-ink); outline-offset: 2px; }
