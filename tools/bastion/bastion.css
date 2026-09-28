@@ -1,0 +1,765 @@
+/* ==========================================================================
+   The Ironbow Bastion Manager.
+   The old layout in the suite's look: the Favour panel on the left (it
+   sticks while the page scrolls, like the old fixed panel), then the Turn
+   Log, Bastion Map and Bastion Event, then the old panels in their old
+   order. The tool's bar, with Advance Bastion Turn, sticks under the suite's
+   top bar. Everything fits the laptop (1707 wide) and the TV (1920 wide)
+   with no sideways scrolling; the page scrolls down, as the old one did.
+   Kept as the Bastion's signature: the Uncial wordmark, the map and its
+   building overlays, the facility paintings, the painted Hall behind the
+   Hall's pop-ups, the glowing trade routes, and the faint panel pictures.
+   Every rule is scoped to the Bastion and every class starts "tsi-bas-".
+   ========================================================================== */
+
+.tsi-tool--bastion [hidden],
+.tsi-page--bastion .tsi-bas-modal [hidden] { display: none !important; }
+
+.tsi-tool--bastion .tsi-bas {
+  --tsi-bas-bar-h: 64px;
+  max-width: 2000px;
+  margin: 0 auto;
+  padding: 0 16px 24px;
+  box-sizing: border-box;
+}
+.tsi-tool--bastion .tsi-bas-muted { color: var(--tsi-text-soft); font-size: var(--tsi-fs-body-sm); line-height: 1.35; }
+.tsi-tool--bastion .tsi-bas-muted b { color: var(--tsi-text); }
+.tsi-tool--bastion .tsi-bas-label {
+  font: 600 var(--tsi-fs-label)/1.3 var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-label);
+  text-transform: uppercase;
+  color: var(--tsi-gold-text);
+}
+.tsi-tool--bastion .tsi-bas-value { font: 700 26px/1.1 var(--tsi-font-display); margin: 4px 0 8px; }
+.tsi-tool--bastion .tsi-btn--small { font-size: 13px; }
+.tsi-tool--bastion .tsi-input { padding: 7px 10px; font-size: var(--tsi-fs-body-sm); min-width: 0; }
+.tsi-tool--bastion select.tsi-input,
+.tsi-page--bastion .tsi-bas-modal select.tsi-input {
+  padding-right: 28px;
+  background-image: linear-gradient(45deg, transparent 50%, var(--tsi-gold) 50%), linear-gradient(135deg, var(--tsi-gold) 50%, transparent 50%);
+  background-position: calc(100% - 15px) 55%, calc(100% - 10px) 55%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+.tsi-tool--bastion .tsi-bas-num { width: 100%; }
+.tsi-tool--bastion .tsi-bas-field,
+.tsi-page--bastion .tsi-bas-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font: 400 var(--tsi-fs-label) var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-label);
+  color: var(--tsi-text-muted);
+  min-width: 0;
+}
+.tsi-tool--bastion .tsi-bas-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.tsi-tool--bastion .tsi-bas-actions--start { justify-content: flex-start; }
+
+/* ---------- The tool's bar ---------- */
+.tsi-tool--bastion .tsi-bas-bar {
+  position: sticky;
+  top: var(--tsi-topbar-h);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 0 -16px;
+  padding: 10px 16px;
+  background: rgba(5, 5, 6, .9);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--tsi-line-head);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, .4);
+}
+.tsi-tool--bastion .tsi-bas-brand__title {
+  font: 400 21px/1.15 var(--tsi-font-title);
+  letter-spacing: .06em;
+  color: var(--tsi-text);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, .65);
+}
+.tsi-tool--bastion .tsi-bas-brand__sub {
+  margin-top: 3px;
+  font: 400 12px var(--tsi-font-display);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--tsi-gold-text);
+}
+.tsi-tool--bastion .tsi-bas-bar__controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+.tsi-tool--bastion .tsi-bas-field--inline { flex-direction: row; align-items: center; gap: 8px; }
+.tsi-tool--bastion .tsi-bas-level { width: 74px; }
+.tsi-tool--bastion .tsi-bas-advance { padding: 9px 16px; }
+
+/* ---------- Layout ---------- */
+.tsi-tool--bastion .tsi-bas-layout {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+  margin-top: 14px;
+}
+.tsi-tool--bastion .tsi-bas-main { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.tsi-tool--bastion .tsi-bas-top {
+  display: grid;
+  grid-template-columns: minmax(250px, 300px) minmax(0, 1fr) minmax(250px, 300px);
+  gap: 16px;
+  align-items: stretch;
+}
+
+/* ---------- Panels ---------- */
+.tsi-tool--bastion .tsi-bas-card {
+  position: relative;
+  min-width: 0;
+  background: var(--tsi-panel-fill);
+  border: var(--tsi-border-panel);
+  border-radius: var(--tsi-radius-xl);
+  box-shadow: var(--tsi-shadow-panel);
+  overflow: hidden;
+}
+.tsi-tool--bastion .tsi-bas-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--tsi-head-fill);
+  border-bottom: 1px solid var(--tsi-line-head);
+}
+.tsi-tool--bastion .tsi-bas-card__title {
+  margin: 0;
+  font: 600 15px/1.2 var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-heading);
+  text-transform: uppercase;
+  color: var(--tsi-gold-text);
+}
+.tsi-tool--bastion .tsi-bas-card__body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 12px; }
+.tsi-tool--bastion .tsi-bas-card.is-collapsed > .tsi-bas-card__body { display: none; }
+.tsi-tool--bastion .tsi-bas-card.is-collapsed > .tsi-bas-card__head { border-bottom: 0; }
+.tsi-tool--bastion .tsi-bas-collapse {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  margin-left: auto;
+  border-radius: 10px;
+  border: 1px solid var(--tsi-line-head);
+  background: rgba(0, 0, 0, .25);
+  color: var(--tsi-gold-text);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+.tsi-tool--bastion .tsi-bas-collapse:hover { background: rgba(0, 0, 0, .4); }
+.tsi-tool--bastion .tsi-bas-row,
+.tsi-tool--bastion .tsi-bas-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--tsi-line);
+  border-radius: var(--tsi-radius-row);
+  background: var(--tsi-inset-fill);
+}
+.tsi-tool--bastion .tsi-bas-row__top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.tsi-tool--bastion .tsi-bas-split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.tsi-tool--bastion .tsi-bas-status-pill,
+.tsi-tool--bastion .tsi-bas-turn-pill {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border-radius: var(--tsi-radius-pill);
+  border: 1px solid rgba(214, 178, 94, .75);
+  background: rgba(0, 0, 0, .35);
+  font: 600 12px/1 var(--tsi-font-display);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--tsi-gold-text);
+}
+
+/* The old gold pill buttons (Upgrade, Routes, Resolve, Council Ledger, Invest…). */
+.tsi-tool--bastion .tsi-bas-pill,
+.tsi-page--bastion .tsi-bas-modal .tsi-bas-pill {
+  padding: 7px 14px;
+  border-radius: var(--tsi-radius-pill);
+  border: 1px solid rgba(255, 215, 140, .55);
+  background: linear-gradient(180deg, rgba(140, 95, 25, .55), rgba(70, 40, 10, .55));
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .35), inset 0 1px 0 rgba(255, 255, 255, .12);
+  color: var(--tsi-gold-text);
+  font: 700 12px/1.1 var(--tsi-font-display);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.tsi-tool--bastion .tsi-bas-pill:hover,
+.tsi-page--bastion .tsi-bas-modal .tsi-bas-pill:hover { filter: brightness(1.12); }
+.tsi-tool--bastion .tsi-bas-pill:disabled { opacity: .45; cursor: not-allowed; filter: none; }
+.tsi-tool--bastion .tsi-bas-pill--alert { border-color: rgba(214, 178, 94, .8); box-shadow: 0 0 10px rgba(214, 178, 94, .55), 0 0 26px rgba(214, 178, 94, .25); }
+
+/* Lists (beasts, military, pending orders, war log). */
+.tsi-tool--bastion .tsi-bas-list { display: flex; flex-direction: column; gap: 8px; }
+.tsi-tool--bastion .tsi-bas-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--tsi-hairline);
+  border-radius: var(--tsi-radius-md);
+  background: rgba(255, 255, 255, .02);
+}
+.tsi-tool--bastion .tsi-bas-item--click { cursor: pointer; }
+.tsi-tool--bastion .tsi-bas-item__name { font-size: var(--tsi-fs-body-sm); line-height: 1.25; }
+.tsi-tool--bastion .tsi-bas-item__meta { font: 400 12px/1.3 var(--tsi-font-mono); color: var(--tsi-text-soft); }
+
+/* ---------- Favour of The Gods (left) ---------- */
+.tsi-tool--bastion .tsi-bas-side {
+  position: sticky;
+  top: calc(var(--tsi-topbar-h) + var(--tsi-bas-bar-h) + 14px);
+  max-height: calc(100vh - var(--tsi-topbar-h) - var(--tsi-bas-bar-h) - 28px);
+  overflow: auto;
+  padding: 12px;
+  border-radius: var(--tsi-radius-lg);
+  border: var(--tsi-border-panel);
+  background: var(--tsi-panel-fill);
+  box-shadow: var(--tsi-shadow-panel);
+}
+.tsi-tool--bastion .tsi-bas-side__title {
+  margin: 4px 0 8px;
+  font: 700 12px/1.2 var(--tsi-font-display);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--tsi-gold-text);
+}
+.tsi-tool--bastion .tsi-bas-side__title + .tsi-bas-meter { margin-top: 0; }
+.tsi-tool--bastion .tsi-bas-side__hint { margin: 2px 0 12px; font-size: 14px; }
+.tsi-tool--bastion .tsi-bas-meter {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr) 42px;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 6px;
+  padding: 6px 8px;
+  border: 1px solid var(--tsi-line-faint);
+  border-radius: var(--tsi-radius-md);
+  background: var(--tsi-inset-fill);
+}
+.tsi-tool--bastion .tsi-bas-meter__name { display: flex; align-items: center; gap: 7px; font-size: 15px; }
+.tsi-tool--bastion .tsi-bas-meter__val { font: 400 12px var(--tsi-font-mono); text-align: right; color: var(--tsi-text-muted); }
+.tsi-tool--bastion .tsi-bas-meter__btn { grid-column: 1 / -1; justify-self: end; }
+.tsi-tool--bastion .tsi-bas-meter__bar {
+  position: relative;
+  height: 10px;
+  border-radius: var(--tsi-radius-pill);
+  border: 1px solid var(--tsi-line);
+  background: rgba(0, 0, 0, .35);
+  overflow: hidden;
+}
+.tsi-tool--bastion .tsi-bas-bar-fill {
+  height: 100%;
+  width: 0;
+  border-radius: var(--tsi-radius-pill);
+  background: linear-gradient(90deg, rgba(214, 178, 94, .55), rgba(177, 18, 42, .65));
+}
+.tsi-tool--bastion .tsi-bas-bar-fill--pc { position: absolute; top: 0; left: 50%; background: linear-gradient(90deg, rgba(214, 178, 94, .45), rgba(177, 18, 42, .70)); }
+/* The neutral mark in the middle of each Political Capital bar. */
+.tsi-tool--bastion .tsi-bas-meter__bar--pc::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  background: rgba(214, 178, 94, .55);
+}
+.tsi-tool--bastion .tsi-bas-god-icon { width: 16px; height: 16px; flex-shrink: 0; }
+.tsi-tool--bastion .tsi-bas-god-icon path { fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.tsi-tool--bastion .tsi-bas-god-icon--telluria { color: var(--tsi-telluria); filter: drop-shadow(0 0 4px rgba(55, 200, 95, .6)); }
+.tsi-tool--bastion .tsi-bas-god-icon--aurush { color: var(--tsi-aurush); filter: drop-shadow(0 0 4px rgba(235, 55, 55, .6)); }
+.tsi-tool--bastion .tsi-bas-god-icon--pelagos { color: var(--tsi-pelagos); filter: drop-shadow(0 0 4px rgba(60, 145, 255, .6)); }
+.tsi-tool--bastion .tsi-bas-asset {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid var(--tsi-line-faint);
+  border-radius: var(--tsi-radius-md);
+  background: var(--tsi-inset-fill);
+}
+.tsi-tool--bastion .tsi-bas-asset__name { font-size: 15px; }
+.tsi-tool--bastion .tsi-bas-asset__desc { grid-column: 1; font-size: 14px; }
+.tsi-tool--bastion .tsi-bas-token-pill {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  min-width: 44px;
+  padding: 6px 10px;
+  text-align: center;
+  border-radius: var(--tsi-radius-pill);
+  border: 1px solid var(--tsi-line);
+  background: rgba(0, 0, 0, .25);
+  font: 400 13px var(--tsi-font-mono);
+  color: var(--tsi-gold-text);
+}
+
+/* ---------- Turn Log · Bastion Map · Bastion Event ---------- */
+.tsi-tool--bastion .tsi-bas-card--tall { display: flex; flex-direction: column; }
+.tsi-tool--bastion .tsi-bas-card--tall > .tsi-bas-card__body { flex: 1; min-height: 0; }
+.tsi-tool--bastion .tsi-bas-log {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: min(560px, calc(100vh - var(--tsi-topbar-h) - var(--tsi-bas-bar-h) - 130px));
+  min-height: 200px;
+  overflow: auto;
+  padding-right: 4px;
+}
+.tsi-tool--bastion .tsi-bas-log__entry { padding: 8px 10px; border: 1px solid var(--tsi-hairline); border-radius: var(--tsi-radius-md); background: rgba(255, 255, 255, .02); }
+.tsi-tool--bastion .tsi-bas-log__top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 10px; }
+.tsi-tool--bastion .tsi-bas-log__title { font: 600 13px/1.3 var(--tsi-font-display); letter-spacing: .03em; }
+.tsi-tool--bastion .tsi-bas-log__time { font: 400 12px var(--tsi-font-mono); color: var(--tsi-text-soft); }
+.tsi-tool--bastion .tsi-bas-log__body { margin-top: 4px; font-size: 15px; line-height: 1.3; color: var(--tsi-text-muted); }
+
+.tsi-tool--bastion .tsi-bas-card--map { border: var(--tsi-border-feature); background: linear-gradient(180deg, rgba(0, 0, 0, .55), rgba(0, 0, 0, .35)), var(--tsi-panel-fill); }
+.tsi-tool--bastion .tsi-bas-card--map > .tsi-bas-card__body { padding: 12px; gap: 8px; }
+.tsi-tool--bastion .tsi-bas-map { position: relative; }
+.tsi-tool--bastion .tsi-bas-map__img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: calc(100vh - var(--tsi-topbar-h) - var(--tsi-bas-bar-h) - 150px);
+  object-fit: contain;
+  border-radius: 12px;
+  border: 1px solid var(--tsi-line-head);
+}
+.tsi-tool--bastion .tsi-bas-map__overlays { position: absolute; inset: 0; pointer-events: none; border-radius: 12px; overflow: hidden; }
+.tsi-tool--bastion .tsi-bas-map__overlay { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.tsi-tool--bastion .tsi-bas-map__hint { font-size: 14px; }
+
+.tsi-tool--bastion .tsi-bas-event { font-size: var(--tsi-fs-body); line-height: 1.35; }
+.tsi-tool--bastion .tsi-bas-event--empty { color: var(--tsi-text-soft); }
+.tsi-tool--bastion .tsi-bas-event b { color: var(--tsi-text); }
+.tsi-tool--bastion .tsi-bas-event__title { font: 700 17px/1.2 var(--tsi-font-display); margin-bottom: 4px; }
+.tsi-tool--bastion .tsi-bas-event__roll { font: 400 13px var(--tsi-font-mono); color: var(--tsi-text-soft); margin-bottom: 8px; }
+.tsi-tool--bastion .tsi-bas-event ul { margin: 6px 0 0 18px; padding: 0; }
+.tsi-tool--bastion .tsi-bas-event li { margin: 4px 0; font-size: var(--tsi-fs-body-sm); }
+.tsi-tool--bastion .tsi-bas-event__note { margin-top: 10px; font-size: 14px; }
+
+/* ---------- Party Identity & Clan Influence ---------- */
+.tsi-tool--bastion .tsi-bas-req { font-size: 14px; }
+.tsi-tool--bastion .tsi-bas-clan-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 8px; }
+.tsi-tool--bastion .tsi-bas-clan-row {
+  display: grid;
+  grid-template-columns: 110px 70px minmax(0, 1fr) 64px;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid var(--tsi-line-faint);
+  border-radius: var(--tsi-radius-md);
+  background: var(--tsi-inset-fill);
+}
+.tsi-tool--bastion .tsi-bas-clan-row__name { font: 700 12px var(--tsi-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--tsi-gold-text); }
+.tsi-tool--bastion .tsi-bas-clan-row__pc { font-size: 15px; color: var(--tsi-text-soft); }
+.tsi-tool--bastion .tsi-bas-clan-row__pc b { color: var(--tsi-text); }
+.tsi-tool--bastion .tsi-bas-clan-row__field { font-size: 11px; }
+.tsi-tool--bastion .tsi-bas-clan-row__support { text-align: right; font: 400 12px var(--tsi-font-mono); color: var(--tsi-text); }
+.tsi-tool--bastion .tsi-bas-clan-row__support b { color: var(--tsi-gold-text); }
+.tsi-tool--bastion .tsi-bas-clan-grid--trust { grid-template-columns: 1fr; }
+
+/* ---------- Management (faint pictures behind each box) ---------- */
+.tsi-tool--bastion .tsi-bas-mgmt { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.tsi-tool--bastion .tsi-bas-box--art,
+.tsi-tool--bastion .tsi-bas-card--art { position: relative; overflow: hidden; }
+.tsi-tool--bastion .tsi-bas-box--art { min-height: 170px; }
+.tsi-tool--bastion .tsi-bas-box--art::before,
+.tsi-tool--bastion .tsi-bas-card--art::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: .14;
+  pointer-events: none;
+}
+.tsi-tool--bastion .tsi-bas-box--art > *,
+.tsi-tool--bastion .tsi-bas-card--art > * { position: relative; }
+.tsi-tool--bastion .tsi-bas-box--defenders::before { background-image: url("assets/panels/bastion_defenders.png"); }
+.tsi-tool--bastion .tsi-bas-box--treasury::before { background-image: url("assets/panels/treasury.png"); }
+.tsi-tool--bastion .tsi-bas-box--military::before { background-image: url("assets/panels/military.png"); }
+.tsi-tool--bastion .tsi-bas-card--warehouse::before { background-image: url("assets/panels/warehouse.png"); }
+.tsi-tool--bastion .tsi-bas-card--artisan::before { background-image: url("assets/panels/artisan_tools.png"); }
+
+/* ---------- Banner & War Council ---------- */
+.tsi-tool--bastion .tsi-bas-war-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.tsi-tool--bastion .tsi-bas-war-hint { font-size: 14px; }
+.tsi-tool--bastion .tsi-bas-war-log { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+
+/* ---------- Diplomacy & Trade (the Hall's painting, dimmed, behind) ---------- */
+.tsi-tool--bastion .tsi-bas-card--diplomacy::before,
+.tsi-tool--bastion .tsi-bas-card--diplomacy::after { content: ""; position: absolute; inset: 0; pointer-events: none; }
+.tsi-tool--bastion .tsi-bas-card--diplomacy::before {
+  background: url("assets/facilities/hall_of_emissaries.png") center / cover;
+  opacity: .16;
+  transform: scale(1.02);
+}
+.tsi-tool--bastion .tsi-bas-card--diplomacy::after { background: rgba(10, 5, 6, .72); }
+.tsi-tool--bastion .tsi-bas-card--diplomacy > * { position: relative; z-index: 1; }
+.tsi-tool--bastion .tsi-bas-card--diplomacy > .tsi-bas-card__head { background: none; align-items: flex-start; }
+.tsi-tool--bastion .tsi-bas-dip-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: start; flex: 1; min-width: 0; }
+.tsi-tool--bastion .tsi-bas-dip-head__right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; text-align: right; }
+.tsi-tool--bastion .tsi-bas-hall-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+.tsi-tool--bastion .tsi-bas-hall-head__title { font: 700 19px/1.1 var(--tsi-font-display); letter-spacing: .03em; margin-right: 2px; }
+.tsi-tool--bastion .tsi-bas-hall-level {
+  padding: 4px 10px;
+  border-radius: var(--tsi-radius-pill);
+  background: linear-gradient(135deg, #3a2b0f, #6b4d18);
+  border: 1px solid rgba(255, 215, 120, .4);
+  font: 700 12px var(--tsi-font-display);
+}
+.tsi-tool--bastion .tsi-bas-dip-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.tsi-tool--bastion .tsi-bas-dip-right { border-left: 1px solid rgba(255, 255, 255, .12); padding-left: 16px; min-width: 0; }
+.tsi-tool--bastion .tsi-bas-dip-boxes { display: flex; flex-direction: column; gap: 10px; }
+.tsi-tool--bastion .tsi-bas-dip-box {
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, .15);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, .55);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .25);
+}
+.tsi-tool--bastion .tsi-bas-dip-box__title { margin-bottom: 6px; font: 700 12px var(--tsi-font-display); letter-spacing: .06em; text-transform: uppercase; opacity: .8; }
+.tsi-tool--bastion .tsi-bas-dip-row { padding: 6px 0; border-top: 1px dashed rgba(255, 255, 255, .1); }
+.tsi-tool--bastion .tsi-bas-dip-row:first-of-type { border-top: 0; padding-top: 0; }
+.tsi-tool--bastion .tsi-bas-dip-row__name { font-weight: 700; font-size: var(--tsi-fs-body-sm); }
+.tsi-tool--bastion .tsi-bas-dip-row__meta { font-size: 14px; color: var(--tsi-text-soft); }
+.tsi-tool--bastion .tsi-bas-dip-foot { display: flex; }
+.tsi-tool--bastion .tsi-bas-hall {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 16px;
+  background: rgba(0, 0, 0, .2);
+}
+.tsi-tool--bastion .tsi-bas-hall__name { font: 700 17px/1.2 var(--tsi-font-display); letter-spacing: .02em; }
+.tsi-tool--bastion .tsi-bas-hall__img { height: 170px; overflow: hidden; border-radius: 14px; border: 1px solid rgba(255, 255, 255, .15); background: rgba(0, 0, 0, .25); }
+.tsi-tool--bastion .tsi-bas-hall__img img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center 38%; }
+.tsi-tool--bastion .tsi-bas-hall__fns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.tsi-tool--bastion .tsi-bas-tn { display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 1px solid var(--tsi-line-faint); }
+.tsi-tool--bastion .tsi-bas-tn-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.tsi-tool--bastion .tsi-bas-tn-stat { padding: 8px 12px; border: 1px solid var(--tsi-line-faint); border-radius: var(--tsi-radius-md); background: rgba(0, 0, 0, .18); }
+.tsi-tool--bastion .tsi-bas-tn-stat__label { font-size: 14px; color: var(--tsi-text-soft); }
+.tsi-tool--bastion .tsi-bas-tn-stat__val { margin-top: 2px; font: 400 14px var(--tsi-font-mono); color: var(--tsi-gold-text); }
+.tsi-tool--bastion .tsi-bas-tn-btns,
+.tsi-page--bastion .tsi-bas-modal .tsi-bas-tn-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.tsi-tool--bastion .tsi-bas-tn-routes { display: flex; flex-direction: column; gap: 6px; }
+.tsi-tool--bastion .tsi-bas-tn-route { padding: 8px 12px; border: 1px solid var(--tsi-line-faint); border-radius: var(--tsi-radius-md); background: rgba(0, 0, 0, .14); }
+.tsi-tool--bastion .tsi-bas-tn-route__name { font-weight: 700; }
+.tsi-tool--bastion .tsi-bas-tn-route__meta { font-size: 14px; color: var(--tsi-text-soft); }
+
+/* ---------- A facility function (also the Hall's actions) ---------- */
+.tsi-tool--bastion .tsi-bas-fn {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px dashed rgba(255, 255, 255, .16);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, .12);
+  min-width: 0;
+}
+.tsi-tool--bastion .tsi-bas-fn__head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.tsi-tool--bastion .tsi-bas-fn__name { font: 700 13px/1.25 var(--tsi-font-display); letter-spacing: .02em; }
+.tsi-tool--bastion .tsi-bas-fn__cost { flex-shrink: 0; font: 400 12px var(--tsi-font-mono); color: var(--tsi-text-soft); }
+.tsi-tool--bastion .tsi-bas-fn__select { width: 100%; }
+.tsi-tool--bastion .tsi-bas-fn__issue { width: 100%; }
+.tsi-tool--bastion .tsi-bas-fn__notes { font-size: 14px; line-height: 1.3; color: var(--tsi-text-soft); }
+
+/* ---------- Warehouse · Artisan Tools ---------- */
+.tsi-tool--bastion .tsi-bas-whrow { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 16px; align-items: stretch; }
+.tsi-tool--bastion .tsi-bas-wh__head,
+.tsi-tool--bastion .tsi-bas-wh__row {
+  display: grid;
+  grid-template-columns: minmax(0, 2.2fr) minmax(0, .6fr) minmax(0, .7fr) minmax(0, 2fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+.tsi-tool--bastion .tsi-bas-wh__head {
+  padding: 4px 8px 8px;
+  border-bottom: 1px solid var(--tsi-line);
+  font: 700 12px var(--tsi-font-display);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--tsi-gold-text);
+}
+.tsi-tool--bastion .tsi-bas-wh__body { display: flex; flex-direction: column; gap: 8px; max-height: 360px; overflow-y: auto; padding-right: 4px; }
+.tsi-tool--bastion .tsi-bas-wh__row { padding: 8px; border: 1px solid var(--tsi-line-faint); border-radius: var(--tsi-radius-row); background: var(--tsi-inset-fill); }
+.tsi-tool--bastion .tsi-bas-tool-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+
+/* ---------- Facilities ---------- */
+.tsi-tool--bastion .tsi-bas-build { padding: 12px; border: 1px solid var(--tsi-hairline); border-radius: 18px; background: rgba(255, 255, 255, .02); }
+.tsi-tool--bastion .tsi-bas-build__top,
+.tsi-tool--bastion .tsi-bas-build__grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+.tsi-tool--bastion .tsi-bas-build__grid { margin-top: 12px; }
+.tsi-tool--bastion .tsi-bas-build__right { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.tsi-tool--bastion .tsi-bas-slots { display: flex; flex-direction: column; gap: 8px; }
+.tsi-tool--bastion .tsi-bas-slot { padding: 8px 12px; border: 1px solid var(--tsi-line-faint); border-radius: var(--tsi-radius-row); background: var(--tsi-inset-fill); }
+.tsi-tool--bastion .tsi-bas-slot--empty { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+.tsi-tool--bastion .tsi-bas-slot__name { font: 700 14px/1.3 var(--tsi-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--tsi-gold-text); }
+.tsi-tool--bastion .tsi-bas-slot--over { border-color: rgba(232, 196, 106, .7); }
+.tsi-tool--bastion .tsi-bas-slot__over { margin-top: 4px; font-size: 14px; color: var(--tsi-warn); }
+.tsi-tool--bastion .tsi-bas-pending { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1px dashed rgba(255, 255, 255, .14); border-radius: var(--tsi-radius-md); background: rgba(0, 0, 0, .18); }
+
+.tsi-tool--bastion .tsi-bas-carousel-wrap { position: relative; }
+.tsi-tool--bastion .tsi-bas-carousel {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  padding: 12px 52px;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(214, 178, 94, .3) transparent;
+}
+.tsi-tool--bastion .tsi-bas-carousel:focus-visible { outline: 2px solid var(--tsi-line-head); outline-offset: 2px; border-radius: 14px; }
+.tsi-tool--bastion .tsi-bas-carousel__nav {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  width: 40px;
+  height: 78px;
+  transform: translateY(-50%);
+  border-radius: 16px;
+  border: 1px solid var(--tsi-line-head);
+  background: rgba(0, 0, 0, .45);
+  color: var(--tsi-gold-text);
+  font-size: 34px;
+  line-height: 1;
+  cursor: pointer;
+}
+.tsi-tool--bastion .tsi-bas-carousel__nav:hover { background: rgba(0, 0, 0, .6); }
+.tsi-tool--bastion .tsi-bas-carousel__nav:disabled { opacity: .35; cursor: default; }
+.tsi-tool--bastion .tsi-bas-carousel__nav--left { left: 6px; }
+.tsi-tool--bastion .tsi-bas-carousel__nav--right { right: 6px; }
+.tsi-tool--bastion .tsi-bas-fac {
+  flex: 0 0 400px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--tsi-line);
+  border-radius: var(--tsi-radius-xl);
+  background: linear-gradient(180deg, rgba(0, 0, 0, .25), rgba(0, 0, 0, .07));
+  overflow: hidden;
+  scroll-snap-align: start;
+}
+.tsi-tool--bastion .tsi-bas-fac__hero { position: relative; flex: 0 0 240px; border-bottom: 1px solid var(--tsi-line-faint); }
+.tsi-tool--bastion .tsi-bas-fac__img { display: block; width: 100%; height: 100%; object-fit: cover; filter: saturate(1.06) contrast(1.06); }
+.tsi-tool--bastion .tsi-bas-fac__img--empty { display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, .25); }
+.tsi-tool--bastion .tsi-bas-fac__overlay { position: absolute; left: 0; right: 0; bottom: 0; padding: 10px 12px; background: linear-gradient(180deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, .8)); }
+.tsi-tool--bastion .tsi-bas-fac__title { font: 700 16px/1.2 var(--tsi-font-display); letter-spacing: .06em; text-transform: uppercase; }
+.tsi-tool--bastion .tsi-bas-fac__tag {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 3px 9px;
+  border-radius: var(--tsi-radius-pill);
+  border: 1px solid rgba(70, 230, 179, .35);
+  background: rgba(0, 0, 0, .5);
+  font: 400 12px var(--tsi-font-display);
+  color: var(--tsi-ok);
+}
+.tsi-tool--bastion .tsi-bas-fac__body { flex: 1; padding: 12px; }
+.tsi-tool--bastion .tsi-bas-fac__fns { display: flex; flex-direction: column; gap: 8px; }
+.tsi-tool--bastion .tsi-bas-footer { margin: 4px 0 0; font-size: 14px; color: var(--tsi-text-soft); }
+
+/* ---------- Tooltip ---------- */
+.tsi-tool--bastion .tsi-bas-tip {
+  position: fixed;
+  z-index: var(--tsi-z-tooltip);
+  max-width: 420px;
+  padding: 10px 12px;
+  border-radius: var(--tsi-radius-md);
+  border: 1px solid rgba(214, 178, 94, .55);
+  background: rgba(0, 0, 0, .92);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .55);
+  font-size: 15px;
+  line-height: 1.3;
+  pointer-events: none;
+}
+.tsi-tool--bastion .tsi-bas-tip__title { margin-bottom: 6px; font: 700 12px var(--tsi-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--tsi-gold-text); }
+.tsi-tool--bastion .tsi-bas-tip ul { margin: 6px 0 0 18px; padding: 0; }
+.tsi-tool--bastion .tsi-bas-tip li { margin: 2px 0; }
+
+/* ==========================================================================
+   Pop-ups (they sit outside the tool, so they're scoped by the page)
+   ========================================================================== */
+.tsi-page--bastion .tsi-bas-modal .tsi-bas-muted { color: var(--tsi-text-soft); font-size: var(--tsi-fs-body-sm); line-height: 1.35; }
+.tsi-page--bastion .tsi-bas-modal .tsi-bas-muted b { color: var(--tsi-text); }
+.tsi-page--bastion .tsi-bas-modal .tsi-bas-field { margin-bottom: 10px; }
+.tsi-page--bastion .tsi-bas-modal .tsi-bas-field .tsi-input { width: 100%; box-sizing: border-box; }
+
+/* The painted Hall behind the Hall's pop-ups (hall_inner.png), as before. */
+.tsi-page--bastion .tsi-bas-modal--hall {
+  position: relative;
+  width: min(1100px, 96vw);
+  background: linear-gradient(180deg, rgba(58, 18, 25, .70), rgba(27, 10, 13, .86)), url("assets/facilities/hall_inner.png") center / cover;
+  border-radius: var(--tsi-radius-xl);
+}
+.tsi-page--bastion .tsi-bas-modal--hall::before { content: ""; position: absolute; inset: 0; background: rgba(0, 0, 0, .45); pointer-events: none; }
+.tsi-page--bastion .tsi-bas-modal--hall > * { position: relative; z-index: 1; }
+.tsi-page--bastion .tsi-bas-modal--hall .tsi-modal__title { font-size: 16px; }
+.tsi-page--bastion .tsi-bas-modal--hall .tsi-modal__body { font-size: var(--tsi-fs-body); }
+.tsi-page--bastion .tsi-bas-modal--hall .tsi-modal__foot .tsi-btn { font-size: 15px; padding: 10px 18px; }
+.tsi-page--bastion .tsi-bas-modal--dice { width: min(760px, 96vw); }
+.tsi-page--bastion .tsi-bas-modal .tsi-bas-d20 { width: 140px; font: 700 28px var(--tsi-font-mono); text-align: center; }
+.tsi-page--bastion .tsi-bas-modal .tsi-bas-dice-meta { margin: 0 0 12px; }
+.tsi-page--bastion .tsi-bas-modal .tsi-bas-rollrow { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 8px; }
+
+/* Result boxes. */
+.tsi-page--bastion .tsi-bas-res-top { margin-bottom: 10px; }
+.tsi-page--bastion .tsi-bas-res-action { font: 700 18px/1.2 var(--tsi-font-display); }
+.tsi-page--bastion .tsi-bas-res-target { margin-top: 2px; }
+.tsi-page--bastion .tsi-bas-res-roll {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--tsi-line-faint);
+  border-radius: var(--tsi-radius-md);
+  background: rgba(0, 0, 0, .22);
+  font: 400 14px/1.45 var(--tsi-font-mono);
+}
+.tsi-page--bastion .tsi-bas-res-roll--pre { white-space: pre-wrap; }
+.tsi-page--bastion .tsi-bas-res-summary {
+  min-height: 1.35em;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-left: 3px solid rgba(214, 178, 94, .65);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .03);
+}
+.tsi-page--bastion .tsi-bas-res-summary b { color: var(--tsi-gold-text); }
+.tsi-page--bastion .tsi-bas-res-changes { margin-top: 12px; }
+.tsi-page--bastion .tsi-bas-res-changes__title { margin-bottom: 6px; font: 700 12px var(--tsi-font-display); letter-spacing: .06em; text-transform: uppercase; opacity: .85; }
+.tsi-page--bastion .tsi-bas-res-list { margin: 0; padding-left: 20px; }
+.tsi-page--bastion .tsi-bas-res-list li { margin: 5px 0; }
+.tsi-page--bastion .tsi-bas-res-hero { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+.tsi-page--bastion .tsi-bas-res-hero img { flex-shrink: 0; width: 140px; border-radius: 14px; border: 1px solid var(--tsi-line-faint); }
+.tsi-page--bastion .tsi-bas-res-hero .tsi-bas-res-summary:first-child { margin-top: 0; }
+
+/* The Sea Trade Routes map: each running route glows (2631-2716, styles 1897-2016). */
+.tsi-page--bastion .tsi-bas-modal--trademap { width: min(1100px, 96vw); }
+.tsi-page--bastion .tsi-bas-trademap {
+  max-height: 58vh;
+  overflow: auto;
+  border-radius: 18px;
+  border: 1px solid var(--tsi-line-faint);
+  background: rgba(0, 0, 0, .25);
+  scrollbar-color: rgba(214, 178, 94, .3) transparent;
+}
+.tsi-page--bastion .tsi-bas-trademap__canvas { position: relative; }
+.tsi-page--bastion .tsi-bas-trademap__img { display: block; width: 100%; height: auto; filter: brightness(.92) contrast(1.05) saturate(1.04); }
+.tsi-page--bastion .tsi-bas-trademap__route {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  filter: drop-shadow(0 0 8px rgba(255, 245, 210, 1)) drop-shadow(0 0 18px rgba(255, 220, 150, .95)) drop-shadow(0 0 36px rgba(214, 178, 94, .85)) drop-shadow(0 0 78px rgba(214, 178, 94, .55));
+  animation: tsi-bas-route-pulse calc(1.9s * var(--tsi-signature-slowdown)) ease-in-out infinite;
+}
+.tsi-page--bastion .tsi-bas-trademap__route[data-clan="Rowthorn"] {
+  mix-blend-mode: normal;
+  filter: brightness(1.35) contrast(1.25) drop-shadow(0 0 10px rgba(255, 245, 210, .95)) drop-shadow(0 0 26px rgba(214, 178, 94, .7)) drop-shadow(0 0 60px rgba(214, 178, 94, .4));
+  animation: none;
+}
+@keyframes tsi-bas-route-pulse {
+  0%, 100% {
+    opacity: .78;
+    filter: drop-shadow(0 0 6px rgba(255, 245, 210, .95)) drop-shadow(0 0 14px rgba(255, 220, 150, .85)) drop-shadow(0 0 28px rgba(214, 178, 94, .7)) drop-shadow(0 0 60px rgba(214, 178, 94, .42));
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 10px rgba(255, 245, 210, 1)) drop-shadow(0 0 22px rgba(255, 220, 150, 1)) drop-shadow(0 0 44px rgba(214, 178, 94, .95)) drop-shadow(0 0 96px rgba(214, 178, 94, .65));
+  }
+}
+
+/* The Council Ledger (trade_disputes.png, faint, behind the petitions). */
+.tsi-page--bastion .tsi-bas-modal--ledger { width: min(900px, 96vw); }
+.tsi-page--bastion .tsi-bas-ledger { position: relative; padding: 4px; }
+.tsi-page--bastion .tsi-bas-ledger::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url("assets/ui/trade_disputes.png") center / cover;
+  opacity: .18;
+  filter: saturate(.9) contrast(1.05);
+  border-radius: 18px;
+  pointer-events: none;
+}
+.tsi-page--bastion .tsi-bas-ledger > * { position: relative; }
+.tsi-page--bastion .tsi-bas-ledger__list { display: flex; flex-direction: column; gap: 12px; margin: 12px 0; }
+.tsi-page--bastion .tsi-bas-dispute { padding: 12px; border: 1px solid var(--tsi-line-faint); border-radius: var(--tsi-radius-md); background: rgba(0, 0, 0, .35); }
+.tsi-page--bastion .tsi-bas-dispute__top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.tsi-page--bastion .tsi-bas-dispute__reason { margin: 6px 0; }
+.tsi-page--bastion .tsi-bas-dispute__choose { margin: 10px 0 6px; }
+
+/* The Compendium. */
+.tsi-page--bastion .tsi-bas-modal--compendium { width: min(1240px, 96vw); }
+.tsi-page--bastion .tsi-bas-comp { display: grid; grid-template-columns: minmax(260px, 400px) minmax(0, 1fr); gap: 14px; align-items: start; }
+.tsi-page--bastion .tsi-bas-comp__left,
+.tsi-page--bastion .tsi-bas-comp__detail { padding: 12px; border: 1px solid var(--tsi-line-faint); border-radius: var(--tsi-radius-md); background: rgba(0, 0, 0, .22); min-width: 0; }
+.tsi-page--bastion .tsi-bas-comp__search { width: 100%; box-sizing: border-box; margin-bottom: 10px; }
+.tsi-page--bastion .tsi-bas-comp__list { display: flex; flex-direction: column; gap: 6px; max-height: 52vh; overflow: auto; padding-right: 4px; }
+.tsi-page--bastion .tsi-bas-comp__item {
+  padding: 8px 10px;
+  text-align: left;
+  border-radius: 12px;
+  border: 1px solid rgba(214, 178, 94, .18);
+  background: rgba(0, 0, 0, .2);
+  color: var(--tsi-text);
+  font: 400 var(--tsi-fs-body-sm) var(--tsi-font-body);
+  cursor: pointer;
+}
+.tsi-page--bastion .tsi-bas-comp__item:hover { border-color: var(--tsi-line-hover); }
+.tsi-page--bastion .tsi-bas-comp__detail { max-height: 60vh; overflow: auto; }
+.tsi-page--bastion .tsi-bas-comp__title { margin-bottom: 8px; font: 700 18px/1.2 var(--tsi-font-display); letter-spacing: .04em; }
+.tsi-page--bastion .tsi-bas-comp__pills { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 12px; }
+.tsi-page--bastion .tsi-bas-comp__pill { padding: 5px 10px; border-radius: var(--tsi-radius-pill); border: 1px solid var(--tsi-line-faint); background: rgba(0, 0, 0, .25); font-size: 14px; }
+.tsi-page--bastion .tsi-bas-comp__summary { margin: 8px 0; }
+.tsi-page--bastion .tsi-bas-comp__card { margin: 10px 0; overflow: hidden; border-radius: 14px; border: 1px solid var(--tsi-line-faint); background: rgba(0, 0, 0, .18); }
+.tsi-page--bastion .tsi-bas-comp__card img { display: block; width: 100%; height: auto; }
+.tsi-page--bastion .tsi-bas-comp__link { margin-top: 10px; }
+.tsi-page--bastion .tsi-bas-comp__link a { color: var(--tsi-gold-text); }
+.tsi-page--bastion .tsi-bas-comp__status { flex: 1; align-self: center; text-align: left; }
+
+/* ==========================================================================
+   Narrower windows (the laptop's window made small): fewer columns.
+   ========================================================================== */
+@media (max-width: 1400px) {
+  .tsi-tool--bastion .tsi-bas-top { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .tsi-tool--bastion .tsi-bas-top > .tsi-bas-card--map { grid-column: 1 / -1; order: -1; }
+  .tsi-tool--bastion .tsi-bas-log { max-height: 420px; }
+  .tsi-tool--bastion .tsi-bas-hall__fns { grid-template-columns: 1fr; }
+}
+@media (max-width: 1150px) {
+  .tsi-tool--bastion .tsi-bas-layout { grid-template-columns: minmax(0, 1fr); }
+  .tsi-tool--bastion .tsi-bas-side { position: static; max-height: none; }
+  .tsi-tool--bastion .tsi-bas-dip-grid,
+  .tsi-tool--bastion .tsi-bas-whrow,
+  .tsi-tool--bastion .tsi-bas-build__top,
+  .tsi-tool--bastion .tsi-bas-build__grid,
+  .tsi-tool--bastion .tsi-bas-split { grid-template-columns: minmax(0, 1fr); }
+  .tsi-tool--bastion .tsi-bas-dip-right { border-left: 0; padding-left: 0; }
+  .tsi-tool--bastion .tsi-bas-dip-head { grid-template-columns: minmax(0, 1fr); }
+  .tsi-tool--bastion .tsi-bas-dip-head__right { align-items: flex-start; text-align: left; }
+  .tsi-tool--bastion .tsi-bas-hall-head { justify-content: flex-start; }
+  .tsi-page--bastion .tsi-bas-comp { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 900px) {
+  .tsi-tool--bastion .tsi-bas-top,
+  .tsi-tool--bastion .tsi-bas-mgmt,
+  .tsi-tool--bastion .tsi-bas-war-grid,
+  .tsi-tool--bastion .tsi-bas-tool-grid { grid-template-columns: minmax(0, 1fr); }
+  .tsi-tool--bastion .tsi-bas-clan-grid { grid-template-columns: minmax(0, 1fr); }
+  .tsi-tool--bastion .tsi-bas-clan-row { grid-template-columns: 1fr 1fr; }
+  .tsi-tool--bastion .tsi-bas-wh__head { display: none; }
+  .tsi-tool--bastion .tsi-bas-wh__row { grid-template-columns: minmax(0, 1fr); }
+  .tsi-tool--bastion .tsi-bas-fac { flex-basis: 86%; }
+}

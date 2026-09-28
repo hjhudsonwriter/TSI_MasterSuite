@@ -169,7 +169,7 @@
     if (isObj(s.turnInProgress) && typeof s.turnInProgress.stage === 'string') {
       d.turnInProgress = {
         turn: clampInt(s.turnInProgress.turn, 1),
-        stage: s.turnInProgress.stage,
+        stage: ['trade', 'tick', 'orders'].indexOf(s.turnInProgress.stage) === -1 ? 'orders' : s.turnInProgress.stage,
         skipped: arr(s.turnInProgress.skipped) ? s.turnInProgress.skipped.slice() : []
       };
     }
@@ -285,27 +285,32 @@
   };
 
   /* The construction slots to show. Lowering the level no longer deletes
-     buildings (BAS-04): a building in a slot above the new limit is kept and
-     marked over capacity, and empty slots can only be built in while there's
-     room. Only empty slots past the limit are dropped. */
+     buildings (BAS-04, B8): they're all kept and keep working, and any beyond
+     the new limit (counting in slot order) are marked over capacity. Empty
+     slots can only be built in while there's room; the screen hides the ones
+     that can't. Only empty slots past the limit are dropped. */
   R.slotRows = function (s, level) {
     R.normalizeBuiltExtras(s);
     var max = R.constructionSlotsForLevel(level);
     while (s.builtExtras.length < max) s.builtExtras.push('');
     while (s.builtExtras.length > max && !s.builtExtras[s.builtExtras.length - 1]) s.builtExtras.pop();
     var used = extras(s).length;
+    var seen = 0;
     return {
       max: max,
       used: used,
       over: Math.max(0, used - max),
       rows: s.builtExtras.map(function (entry, i) {
         var occupied = !!(entry && entry.facId);
-        return { index: i, entry: occupied ? entry : null, overCapacity: occupied && i >= max, canBuild: !occupied && used < max };
+        var over = false;
+        if (occupied) { over = seen >= max; seen += 1; }
+        return { index: i, entry: occupied ? entry : null, overCapacity: over, canBuild: !occupied && used < max };
       })
     };
   };
   R.startBuild = function (s, data, slotIndex, facId) {
     if (!facId) return { ok: false };
+    if (s.builtExtras[slotIndex]) return { ok: false };
     var fac = R.facility(data, facId);
     var req = Number(fac && fac.requiredLevel || 0);
     var name = (fac && fac.name) || facId;
@@ -1192,6 +1197,50 @@
     return { roll: roll, name: ev.name };
   };
 
+  /* ---------- Advance Bastion Turn, as resumable steps (560-604; BAS-02) ----------
+     The old order is kept: the turn number and diplomacy, then the trade
+     routes, then construction and the one-turn resets, then the orders due,
+     then the automatic event every 4th turn. state.turnInProgress remembers
+     the step reached ('trade', 'tick', 'orders'), so a cancelled roll or a
+     closed window loses nothing and the turn can be finished later. */
+  R.startTurn = function (s, now) {
+    s.turn += 1;
+    R.tickDiplomacy(s).forEach(function (l) { R.log(s, l[0], l[1], now); });
+    s.turnInProgress = { turn: s.turn, stage: 'trade', skipped: [] };
+  };
+  /* The turn's trade routes are resolved first, if the network has any running. */
+  R.routesDueThisTurn = function (s) {
+    return !!s.tradeNetwork.active && R.liveRoutes(s).length > 0 && s.tradeNetwork.lastResolvedTurn !== s.turn;
+  };
+  /* Routes still to settle this turn: running, and not already paid or disrupted this turn. */
+  R.routesToSettle = function (s) {
+    var done = R.settledThisTurn(s);
+    return R.liveRoutes(s).filter(function (r) { return done.indexOf(r.id) === -1; });
+  };
+  R.finishRoutes = function (s) { s.tradeNetwork.lastResolvedTurn = s.turn; };
+  R.tickTurn = function (s, data, now) {
+    R.tickConstruction(s).forEach(function (id) {
+      var fac = R.facility(data, id);
+      R.log(s, 'Construction Complete', (fac ? fac.name : id) + ' is now built and active.', now);
+    });
+    s.lastEvent = null;
+    s.defenders.patrolAdvantage = false;
+    if (s.turnInProgress) s.turnInProgress.stage = 'orders';
+  };
+  /* An order whose roll was cancelled stays pending; it's skipped for the
+     rest of this turn and comes up again next turn. */
+  R.skipOrder = function (s, id) {
+    if (s.turnInProgress && s.turnInProgress.skipped.indexOf(id) === -1) s.turnInProgress.skipped.push(id);
+  };
+  R.finishTurn = function (s, events, rand, now) {
+    if (s.turn % 4 === 0) {
+      var ev = R.rollEvent(s, events, rand, now);
+      R.log(s, 'Bastion Event', 'Auto event (Turn ' + s.turn + ') → Rolled ' + ev.roll + ' → ' + ev.name, now);
+    }
+    R.log(s, 'Turn Advanced', 'Bastion Turn is now ' + s.turn + '.', now);
+    s.turnInProgress = null;
+  };
+
   /* ---------- The Compendium (4098-4142) ---------- */
   R.compendiumIndex = function (facilities, tools) {
     var map = {};
@@ -1223,18 +1272,23 @@
   /* Export Compendium JSON without the online lookup (B15): entries already
      filled in are kept, the rest become stubs with a Roll20 link. */
   R.compendiumExport = function (index, existing) {
-    var out = Object.assign({}, existing || {});
+    var out = {};
+    Object.keys(existing || {}).forEach(function (k) { out[k] = Object.assign({}, existing[k]); });
+    var kept = 0;
+    var stubbed = 0;
     index.items.forEach(function (name) {
       var e = out[name];
       if (e && String(e.summary || '').trim()) {
         if (!e.roll20) e.roll20 = R.roll20Url(name);
+        kept += 1;
         return;
       }
       out[name] = { type: (e && e.type) || '', attunement: (e && e.attunement) || '', summary: (e && e.summary) || '', source: (e && e.source) || '', roll20: R.roll20Url(name) };
+      stubbed += 1;
     });
     var sorted = {};
     Object.keys(out).sort(function (a, b) { return a.localeCompare(b, undefined, { sensitivity: 'base' }); }).forEach(function (k) { sorted[k] = out[k]; });
-    return { version: 1, items: sorted };
+    return { file: { version: 1, items: sorted }, filled: 0, kept: kept, stubbed: stubbed };
   };
 
   ns.rules = R;

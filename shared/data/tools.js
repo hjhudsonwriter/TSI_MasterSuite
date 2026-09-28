@@ -72,10 +72,21 @@ window.TSI_DATA.tools = [
     name: 'The Ironbow Bastion Manager',
     group: 'dm',
     phase: '9',
-    built: false,
+    built: true,
     saves: true,
     desc: 'Manage facilities, turns, events, treasury and staff for your bastion.',
-    files: { css: [], js: [] }
+    files: {
+      css: ['tools/bastion/bastion.css'],
+      js: [
+        'tools/bastion/data/bastion-data.js',
+        'tools/bastion/data/facilities-data.js',
+        'tools/bastion/data/tools-data.js',
+        'tools/bastion/data/events-data.js',
+        'tools/bastion/data/compendium-data.js',
+        'tools/bastion/rules.js',
+        'tools/bastion/tool.js'
+      ]
+    }
   },
   {
     id: 'explorer',
