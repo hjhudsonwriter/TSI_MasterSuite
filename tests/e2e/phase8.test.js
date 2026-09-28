@@ -604,6 +604,17 @@ function serve(dir) {
       }
     });
 
+    await check('a double click on Continue moves on one step only', async () => {
+      await page.selectOption('[data-test=main-select]', 'turning_tide');
+      await pause(page);
+      await page.click('[data-test=queue]');
+      await pause(page);
+      await page.dblclick('.tsi-exp-choice');
+      await page.waitForTimeout(150);
+      equal((await eventView(page)).img, 'turning_tide_2.png');
+      await closeAll(page);
+    });
+
     await check('the letter from Maerys Vell reads as written', async () => {
       await page.selectOption('[data-test=main-select]', 'tide_remembers_prologue');
       await pause(page);
@@ -803,6 +814,22 @@ function serve(dir) {
       assert(keys.some(k => /^tsi\.quarantine\.explorer\.save\./.test(k)), keys.join());
     });
     equal(context.log.errors, []);
+    await context.close();
+  }
+
+  /* ------------------------------------------------------------------ */
+  section('The pin-check page (tests/pin-check.html)');
+  {
+    const { context, page } = await newPage(browser, 'laptop');
+    await check('it shows all ten maps with all 33 pins, 18 of them marked hidden', async () => {
+      await page.goto(H.fileUrl('tests/pin-check.html'));
+      await page.waitForFunction(() => Array.from(document.querySelectorAll('img.pc-picture')).every(i => i.complete && i.naturalWidth > 0));
+      equal(await page.$$eval('img.pc-picture', is => is.length), 10);
+      equal(await page.$$eval('.pc-pin', ps => ps.length), 33);
+      equal(await page.$$eval('.pc-pin--hidden', ps => ps.length), 18);
+      equal(context.log.errors, []);
+      equal(context.log.failed, []);
+    });
     await context.close();
   }
 
