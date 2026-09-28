@@ -114,7 +114,7 @@
         ]),
         section('Region', [provinceSelect]),
         section('Journey', [
-          row([btn('Export Save', exportSave, '', 'export'), btn('Import Save', importSave, '', 'import')])
+          row([btn('Export Save', exportSave, '', 'export-save'), btn('Import Save', importSave, '', 'import-save')])
         ])
       ]);
 
