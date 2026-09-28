@@ -119,7 +119,6 @@
       function numberInput(test, attrs) {
         return el('input', Object.assign({ type: 'number', step: '1', class: 'tsi-input tsi-bas-num', 'data-test': test }, attrs || {}));
       }
-      function focused(node) { return !!node && (document.activeElement === node || node.contains(document.activeElement)); }
       function setValue(input, value) { if (document.activeElement !== input) input.value = String(value); }
 
       /* A panel. Collapsible ones remember whether they're open (the old
@@ -801,7 +800,9 @@
       /* Edits save as they're typed (BAS-17). */
       function renderWarehouse() {
         R.ensureWarehouseRow(state, rand);
-        if (focused(whBody)) return;
+        /* Not while a box in it is being typed in (it's saved as it's typed). */
+        var active = document.activeElement;
+        if (active && active.tagName === 'INPUT' && whBody.contains(active)) return;
         TSI.clear(whBody);
         state.warehouse.forEach(function (row, i) {
           var item = el('input', { type: 'text', class: 'tsi-input', value: String(row.item === undefined || row.item === null ? '' : row.item), 'aria-label': 'Item', 'data-test': 'wh-item-' + i });
