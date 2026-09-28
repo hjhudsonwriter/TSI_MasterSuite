@@ -2,11 +2,61 @@
 
 ## Where things stand
 
-**Phases 4 (Notice Board), 5 (The Heartwood Ritual) and 6 (Arenas of The Scarlett Isles) are built and tested.** At Harry's request they were built together, in one session with one pull request and one combined checklist. **Phase 7 (Combat Tracker desk) is next,** and waits for Harry's go-ahead and his answers to C1–C11.
+**Phase 7 (Combat Tracker & VTT Battlemap) is built and tested: the desk and the Battlemap together, in one session, as Harry chose.** **Phase 8 (the Scarlett Isles Explorer, 8a and 8b together) is next,** and waits for Harry's go-ahead. His answers to its questions (E1–E16) are in: all the defaults.
 
-Double-click `index.html` to open the suite. Five tools now open from their cards: the Clan Crest Creator, the Pelagosi Puzzle Trials, the Notice Board, The Heartwood Ritual and the Arenas. The other three say "Coming in phase N" until their phases are done. The plan is in `docs/PLAN.md`, the bug list in `docs/KNOWN_ISSUES.md`, and the notes for building each tool in `docs/BUILDING-A-TOOL.md`.
+Double-click `index.html` to open the suite. Six tools now open from their cards: the Clan Crest Creator, the Pelagosi Puzzle Trials, the Notice Board, The Heartwood Ritual, the Arenas and the Combat Tracker. The Explorer and the Bastion say "Coming in phase N" until their phases are done. The plan is in `docs/PLAN.md`, the bug list in `docs/KNOWN_ISSUES.md`, and the notes for building each tool in `docs/BUILDING-A-TOOL.md`.
 
 ## Done
+
+### Phase 7: Combat Tracker & VTT Battlemap (28 September 2026)
+- **Rebuilt as it was:**
+  - **Storage:** the combatant library (PC, NPC and Monster, HP, initiative bonus, picture and stat-block links); Shift + click to edit; Add Selected with copies (Goblin, Goblin a…); saved encounters (Save, Load, Duplicate, Delete); campaign files (Import and Export Campaign JSON); and Import PDF.
+  - **The board and inspector:** Auto-roll Initiative, Begin, Pause and End; the target, Damage / Healing, conditions with turns, Complete Turn and Add Condition; the Open Stat Block link; Round & Momentum.
+  - **The Battlemap window**, which you can drag to the TV:
+    - the map picture, zoom and pan (Space + drag, Ctrl + wheel), and token size;
+    - dragging tokens, with Ctrl + click and Ctrl + drag to select several, and Shift + click to take one off the map;
+    - the grid, with snap, size and nudge, and the ruler;
+    - fog of war (on/off, cover, reveal, reset, range, monsters under or above);
+    - Hide monsters, and fullscreen with its side buttons;
+    - the highlight on whoever's turn it is.
+  - It saves the library, the encounter, the saved encounters, the Battlemap settings and the map picture.
+- **Your answers:**
+  - C6: the line-of-sight cone is left out (it never worked).
+  - C2: healing a creature above 0 HP clears DEFEATED; PCs at 0 are still skipped.
+  - C3: Pause/Begin still starts again from round 1, but now says so.
+  - C11: the fog clears as soon as you let go of a player's token.
+  - The rest are the defaults: NPCs never take turns (C1), adding combatants resets to round 1 (C4), initiative is auto-roll only (C5), no way to bring back a token taken off the map (C7), Hide Monsters hides them all (C8), maps up to 4 MB (C9), and Reset leaves the map (C10).
+- **Fixed (they broke the tool, lost data or applied something twice):**
+  - Complete Turn checks every box first. A wrong Turns number, or damage that isn't a number, changes nothing and doesn't move the turn on (ENC-01, ENC-28).
+  - Tokens, the grid and the fog are measured on the map picture. They stay on their squares when the window is resized, zoomed, made fullscreen or moved to the TV (ENC-03).
+  - Maps up to 4 MB are kept, and a full storage warns you (ENC-04, ENC-05).
+  - There's only one desk: the Battlemap has no "Back to Tracker" link, and it sends its changes to the desk to be saved (ENC-06).
+  - A bad campaign file or a damaged save can't break the tracker; nameless entries are skipped, and a damaged save is kept aside (ENC-07, ENC-08).
+  - PDF import and the fonts work offline (ENC-09, ENC-10).
+  - "Monsters: Above fog" works (ENC-12).
+  - Double clicks on Complete Turn, Add Selected and Save Current Encounter count once (ENC-13).
+- **Kept as they were** (KNOWN_ISSUES ENC-14 to ENC-26):
+  - Pause/Begin starting again from round 1.
+  - Hidden monsters are hidden from you too.
+  - The Battlemap's Hide monsters label catches up only with the next change to the fight.
+  - Fog squares ignore the grid nudge.
+  - Adding combatants mid-fight resets the round.
+- **Layout:**
+  - The desk's three panels fit your laptop and the TV, with every main button in view; long lists scroll inside their panel.
+  - The Battlemap window's map fills everything below its controls, and fills the screen in fullscreen. In fullscreen, the side buttons sit to the left, clear of the ruler.
+- **Checked against the old tool:**
+  - With the same dice, the old tracker and the rebuild played the same fight (building the library and encounter, initiative, 30 turns of damage, healing and conditions, Pause, Begin, End, Save and Load, and a library edit) and showed the same desk at each of 42 steps.
+  - Both give the same campaign file.
+  - Both Battlemaps show the same tokens, the same turn highlight and the same hidden monsters.
+- **Structure:**
+  - `tools/encounter/rules.js` (rules and map geometry), `tool.js` (the desk), `battlemap.js` (the Battlemap window), `encounter.css` and `battlemap.css`.
+  - PDF.js 3.11.174 is in `shared/lib/pdfjs/`, with its licence.
+  - The one unused picture is in `tools/encounter/assets/extras/`.
+- **Tests:**
+  - `tests/rules.html`: 205 rules tests (34 new).
+  - `tests/e2e/phase7.test.js`: 78 checks.
+  - The earlier click-throughs (phases 1 to 6) still pass.
+  - **Not tested here:** Edge itself; the real TV, including dragging the Battlemap between the laptop (sharper screen) and the TV; and pictures or stat blocks from the web. These are on Harry's checklist.
 
 ### Phase 6: Arenas of The Scarlett Isles (26–27 September 2026)
 - **Rebuilt as it was:**
@@ -175,7 +225,7 @@ Double-click `index.html` to open the suite. Five tools now open from their card
   - The old-save import phase removed.
 
 ## Next
-**Phase 7a: Combat Tracker desk** (with Harry's go-ahead), then 7b, the Battlemap. It's the first tool with a two-way player window, the PDF reader and large maps, and it must work on the TV. Its "done when" lists are in `docs/PLAN.md` section 4. Before it starts, Harry answers C1–C11 (C6 has no default).
+**Phase 8: the Scarlett Isles Explorer**, 8a and 8b together (maps and movement, then events, camp and weather), with Harry's go-ahead. It must work on the laptop and the TV, with its map pins tied to the map pictures (the Battlemap's approach). Harry checks the 33 pins once afterwards (E16). Its "done when" lists are in `docs/PLAN.md` section 4. Then phase 9, the Bastion (9a to 9c together).
 
 ## Open questions for Harry
 
@@ -189,9 +239,9 @@ Each tool's questions are needed before that tool's phase. The full wording and 
 - **Heartwood Ritual (phase 5):** answered (R1–R10).
 - **Arenas (phase 6):** answered (A1–A9).
   - Three kept behaviours you're likely to notice at the table: a cancelled turn still uses up that player's go (ARN-14); the gold under the arena catches up only after the next change (ARN-25); and changing the Arena or Round list mid-round restarts it without asking (ARN-27). Say if you'd like any changed.
-- **Combat Tracker (phase 7):** C1–C11. **C6 has no default:** fix the line-of-sight cones, or leave them out?
-- **Explorer (phase 8):** E1–E16
-- **Bastion (phase 9):** B2–B13 and B15–B24. **B2 has no default:** one or three Host Delegation rolls?
+- **Combat Tracker (phase 7):** answered (C1–C11).
+- **Explorer (phase 8):** answered (E1–E16: all the defaults). After it's built, Harry checks the 33 map pins sit on their towns (E16).
+- **Bastion (phase 9):** answered (B2: the delegation's own two rolls set Political Capital; the defaults for the rest).
 
 ## Notes for future sessions
 - **Old code:** re-clone the old repos into `_legacy/` if they're missing (the links are in handover section 16). Download the Ritual films from the release.
@@ -206,4 +256,6 @@ Each tool's questions are needed before that tool's phase. The full wording and 
 - **Clock control in tests:** `phase6.test.js` controls the page's clock (Playwright's `page.clock`) to move the 5-second pictures on. Its fast-forward sometimes moves the page's clock by less than asked, so the test checks and repeats (`passTime`).
 - **Fixed dice in tests:** the Arenas (like the old tool) make each opponent's id from a roll plus the time. If a test fixes the dice before a round starts, the opponents share an id and the target list can't tell them apart. Use varied dice (`__seed`) whenever a round starts.
 - **The Notice Board's shop link in tests:** `phase4.test.js` plays Matt's database with a stand-in. Never point a test at the real one.
+- **Two-way player windows and map positions:** see the Battlemap note in `docs/BUILDING-A-TOOL.md` section 5. The Explorer should reuse the "board units" geometry in `tools/encounter/rules.js`.
+- **Fullscreen in tests:** headless Chromium supports `requestFullscreen()` in a pop-up window, so `phase7.test.js` checks the fullscreen layout.
 - **Sound in tests:** the test browser can load the sounds but nobody hears them. The Pelagosi test records which sounds start and when; hearing them is on Harry's checklist.

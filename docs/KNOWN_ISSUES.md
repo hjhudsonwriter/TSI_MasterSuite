@@ -2,7 +2,7 @@
 
 Every bug found in the eight old tools during planning, and what the rebuild will do about each one. CLAUDE.md's rule: **only fix a bug if it breaks the tool, loses saved data, or applies something twice.** Everything else stays exactly as it was, and is listed here for Harry to decide on later.
 
-**Status: phases 1 (the shell), 2 (Clan Crest Creator), 3 (Pelagosi Puzzle Trials), 4 (Notice Board), 5 (The Heartwood Ritual) and 6 (Arenas of The Scarlett Isles) are built.** The shell's share of the suite-wide (SUI) fixes is in place and tested, and each entry has a **Phase 1** line saying what's done. Every Clan Crest Creator entry has a **Phase 2** line, every Pelagosi entry a **Phase 3** line, every Notice Board entry a **Phase 4** line, every Heartwood Ritual entry a **Phase 5** line and every Arenas entry a **Phase 6** line, saying whether it was fixed, changed or kept. The other tools' entries are unchanged until their phases. Each tool's session updates its own entries as it goes: it marks each one fixed, or confirms it was left alone, and adds anything new it finds.
+**Status: phases 1 (the shell), 2 (Clan Crest Creator), 3 (Pelagosi Puzzle Trials), 4 (Notice Board), 5 (The Heartwood Ritual), 6 (Arenas of The Scarlett Isles) and 7 (Combat Tracker & VTT Battlemap) are built.** The shell's share of the suite-wide (SUI) fixes is in place and tested, and each entry has a **Phase 1** line saying what's done. Every Clan Crest Creator entry has a **Phase 2** line, every Pelagosi entry a **Phase 3** line, every Notice Board entry a **Phase 4** line, every Heartwood Ritual entry a **Phase 5** line, every Arenas entry a **Phase 6** line and every Combat Tracker entry a **Phase 7** line, saying whether it was fixed, changed or kept. The other tools' entries are unchanged until their phases. Each tool's session updates its own entries as it goes: it marks each one fixed, or confirms it was left alone, and adds anything new it finds.
 
 ## How to read an entry
 
@@ -193,6 +193,7 @@ Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point 
 - **After (planned):** Check every input first. If anything is invalid, change nothing, show the message and don't advance. Keep this in the separated rules file.
 - **Checker's note:** Nuance: the DEFEATED mark is applied on the retry if the same target is still selected. The 'Damage must be a number' branch cannot be reached in Chromium: bad text in the number box reads as empty and is silently ignored (t11).
 - **Evidence:** app.js:309-312 returns before the defeated check at 327; app.js:914-942 carries on regardless. The damage-not-a-number branch (292-295) behaves the same but is rarely reachable. test2.js: Aria 30→25, turn went Aria→Goblin a; the retry went Goblin a→Borin; Goblin a at 0/7 with no DEFEATED.
+- **Phase 7:** Fixed. Complete Turn and Add Condition check every box before anything changes. If one is wrong, the message shows, nothing changes (no damage, no condition, no turn) and what was typed stays in the boxes. Test.
 
 ### ENC-02 · Healed creatures stay DEFEATED and never get another turn
 **Must fix** · breaks the tool · listed in the handover
@@ -202,6 +203,7 @@ Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point 
 - **Decision note:** C2 sets the exact rule (default: clear DEFEATED when healed above 0; PCs at 0 still skipped).
 - **Checker's note:** Needs Harry's policy on when the mark clears, and whether PCs at 0 HP get turns for death saves.
 - **Evidence:** app.js:327 sets defeated; nothing clears it. app.js:232 skips defeated; vtt.js:652 hides defeated monsters. test2.js: Borin 0→10 HP still [DEF]; the next 6 turns went Goblin→Aria→Goblin→Aria→Goblin→Aria.
+- **Phase 7:** Fixed as Harry chose (C2). Healing a creature above 0 HP clears DEFEATED, so it gets its turns back, and a healed monster comes back onto the Battlemap. PCs at 0 HP are still skipped. Tests.
 
 ### ENC-03 · Tokens slide off their map squares when you zoom, resize or go fullscreen
 **Must fix** · breaks the tool
@@ -210,6 +212,7 @@ Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point 
 - **After (planned):** Store token and fog positions in map-picture coordinates that don't change with zoom or window size. The handover's acceptance check requires alignment after resize, fullscreen, zoom and reload.
 - **Checker's note:** Ctrl+wheel zoom hides the problem until the next redraw, then tokens jump (t3). The handover's acceptance check requires alignment.
 - **Evidence:** vtt.js:476-493 divides by zoom; vtt.css:74-82 fits the map picture separately. test4.js: token at (0.839, 0.801) of the map moved to (0.805, 0.801) at 1100px wide, (0.934, 0.813) at 1500x700, (0.800, 0.788) fullscreen, and (0.567, 0.565) at zoom 1.45. Snap also uses the on-screen token size (vtt.js:851), so it lands off-grid while zoomed.
+- **Phase 7:** Fixed. Everything on the Battlemap (tokens, the grid, fog squares and the ruler) is measured on the map picture instead of the window. A token stays on the same spot of the map when the window is resized, zoomed, made fullscreen or moved to the TV, and after reopening. The grid, fog and ruler are redrawn sharply when the window changes screen. Tests at several window sizes and zooms; moving between Harry's two screens is on his checklist.
 
 ### ENC-04 · Maps near 4 MB silently fail to save or show
 **Must fix** · breaks the tool
@@ -219,6 +222,7 @@ Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point 
 - **Decision note:** C9. Map pictures move to the browser's built-in database.
 - **Checker's note:** The real ceiling is about 3.93 MB with otherwise empty storage. After a failure, the file picker keeps the same file, so choosing it again does nothing.
 - **Evidence:** vtt.js:519-535 and 150 (no try/catch). test3.js: a 4,072,528-byte PNG gave pageerror 'Setting the value of encounterTracker.vtt.mapImage exceeded the quota'; the map was not stored or shown. Storage limit measured at 5,242,880 characters, shared by all file:// pages.
+- **Phase 7:** Fixed. The map picture is saved in the browser's database, so maps up to the old 4 MB limit are kept (a 3.95 MB map in the test). Over 4 MB, the old message still shows. Tests.
 
 ### ENC-05 · When browser storage is full, changes silently don't save
 **Must fix** · loses saved data
@@ -227,6 +231,7 @@ Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point 
 - **After (planned):** The shared save system catches failures and warns. Big items go to IndexedDB.
 - **Checker's note:** A 3.6 MB map alone leaves only about 435K characters for every file:// page, so all eight suite tools would share what is left.
 - **Evidence:** app.js:127-133 and vtt.js:227-229 have no try/catch. test7.js: with storage nearly full, Add to Library threw 'exceeded the quota'; the entry was not shown and was gone after reload.
+- **Phase 7:** Fixed by the suite's saving: a failed save shows "Not saved" and a warning, and nothing on screen is lost. Test with a storage that pretends to be full.
 
 ### ENC-06 · Two tracker windows overwrite each other's saves
 **Must fix** · loses saved data
@@ -235,6 +240,7 @@ Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point 
 - **After (planned):** Remove the link from the map window. In the suite, have one saver per tool and warn if the suite is open twice.
 - **Checker's note:** Clicking Battlemap in the popup's tracker then turns the popup back into vtt.html, because it is the named window.
 - **Evidence:** vtt.html:22. app.js saves its whole in-memory copy (127-133) and never listens for changes. test5.js: one entry added in each window; only 'FromWindowB' survived.
+- **Phase 7:** Fixed. The Battlemap window has no "Back to Tracker" link, and a second click on Battlemap brings the same window forward. All saving happens on the desk. Tests.
 
 ### ENC-07 · A bad import file breaks the whole tracker until Reset
 **Must fix** · breaks the tool
@@ -243,6 +249,7 @@ Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point 
 - **After (planned):** Check each imported entry and skip or reject bad ones with a message.
 - **Checker's note:** The 'Campaign imported.' alert at 1029 never appears because render throws first. A nameless entry only crashes when another entry of the same type exists (comparator 426).
 - **Evidence:** app.js:1003-1025 accepts entries without a name; app.js:426 a.name.localeCompare throws. test2.js: pageerror 'Cannot read properties of undefined (reading 'localeCompare')'; library and board empty after reload.
+- **Phase 7:** Fixed. A campaign file's entries with no name or type are skipped, and the message says how many. A save or backup holding a nameless combatant is refused or set aside. Tests.
 
 ### ENC-08 · A damaged save is silently deleted
 **Must fix** · loses saved data
@@ -251,6 +258,7 @@ Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point 
 - **After (planned):** Keep a copy of an unreadable save and tell the user, rather than deleting it.
 - **Checker's note:** The old tool itself never writes bad JSON, so the trigger is outside it (hand edits, another page writing the key). It is still worth guarding in the shared save layer.
 - **Evidence:** app.js:96-99; vtt.js:220-222. test7.js: a corrupted save left the key deleted (null).
+- **Phase 7:** Fixed by the suite's saving: a save that can't be read is set aside and kept, never deleted. Test.
 
 ### ENC-09 · PDF import needs the internet
 **Must fix** · won't work double-clicked / offline
@@ -259,6 +267,7 @@ Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point 
 - **After (planned):** Bundle PDF.js 3.11.174 locally with its licence.
 - **Checker's note:** The name guess picks up the next capitalised word, as the survey says.
 - **Evidence:** index.html:264-270; test2.js alert. test_pdf.js: with PDF.js bundled locally it works from a double-clicked file ('Imported: Goblin Boss Small (HP 21)').
+- **Phase 7:** Fixed. PDF.js 3.11.174 is in the suite folder (`shared/lib/pdfjs/`) and loads only when a PDF is imported. Test: "Imported: Goblin Boss Small (HP 21)" with the internet off.
 
 ### ENC-10 · Fancy heading fonts need the internet
 **Must fix** · won't work double-clicked / offline
@@ -266,6 +275,7 @@ Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point 
 - **Before:** The Cinzel fonts come from Google, so offline the headings and buttons fall back to a plain serif.
 - **After (planned):** Bundle the fonts in the shared design tokens.
 - **Evidence:** styles.css:7; test1.js request failed; computed font falls back to Georgia.
+- **Phase 7:** Fixed. The fonts come from the suite folder. Test.
 
 ### ENC-11 · Offline cache and install button don't work from a file
 **Must fix** · won't work double-clicked / offline
@@ -274,6 +284,7 @@ Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point 
 - **After (planned):** Remove them. They aren't needed from a local folder.
 - **Checker's note:** Not really a blocker: it only logs a warning. It is simply removed.
 - **Evidence:** app.js:1090-1114; sw.js; test1.js warning 'The URL protocol of the current origin ('null') is not supported'.
+- **Phase 7:** Fixed. The install button, offline cache and web manifest aren't carried across.
 
 ### ENC-12 · 'Monsters: Above fog' does nothing
 **Must fix** · breaks the tool
@@ -281,6 +292,7 @@ Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point 
 - **Before:** The battlemap has a button to show monsters on top of the fog of war. Pressing it changes the label, but the monsters stay hidden under the fog exactly as before.
 - **After (planned):** In the rebuild, put above-fog monster tokens in a layer above the fog canvas. This is a feature the handover requires; if Harry prefers a strict rebuild, record it as 'other'.
 - **Evidence:** vtt.js:664-667 gives monster tokens z-index 30, but they sit inside #tokenLayer (z-index 10, a stacking context: a layer its contents cannot rise above; vtt.css:92-96), and the fog canvas at z-index 20 is its sibling (vtt.css:98-103, vtt.js:345). t6.js pixel at the goblin: [14,4,5] with Under and [14,4,5] with Above, against [141,49,56] with the fog revealed. shots/t6_monsters_above_fog.png
+- **Phase 7:** Fixed. With "Monsters: Above fog", monster tokens are drawn in a layer above the fog. Test.
 
 ### ENC-13 · Double-clicking action buttons does the action twice
 **Must fix** · applies something twice
@@ -288,6 +300,7 @@ Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point 
 - **Before:** A quick double-click on Complete Turn moves on two turns, so a creature silently loses its go. Double-clicking Add Selected adds everyone twice (including a second copy of each PC), and double-clicking Save Current Encounter saves two templates.
 - **After (planned):** Ignore a second click that arrives within a moment of the first on these action buttons. This changes no rules. It is user-triggered, so confirm with Harry that he counts it as a bug.
 - **Evidence:** No guard in app.js:914-942, 788-829 or 944-973. t1.js B: dblclick went from Borin's turn to Goblin a in round 2, skipping Aria. t10.js: roster [Aria, Goblin, Aria a, Goblin a]; 2 templates saved ('Encounter 1', 'Encounter 2')
+- **Phase 7:** Fixed. Complete Turn, Add Selected and Save Current Encounter count a double click once. Tests.
 
 ### ENC-14 · Resuming after Pause restarts the fight at round 1
 **Later, Harry's call** · other · listed in the handover
@@ -297,6 +310,7 @@ Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point 
 - **Decision note:** C3
 - **Checker's note:** The handover also says not to present this as a true resume. It could be argued to lose saved data (the round and turn position), so it's Harry's call: change the wording or preserve round and turn.
 - **Evidence:** app.js:869-891 and 347. test2.js: round 5 on Goblin's turn became round 1 on Aria's turn.
+- **Phase 7:** Kept (C3), with the wording fixed: Paused now says "Pressing Begin starts again from round 1, in initiative order." Test.
 
 ### ENC-15 · LOS cone overlays do nothing
 **Later, Harry's call** · other
@@ -306,6 +320,7 @@ Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point 
 - **Decision note:** C6 (fix it or leave it out; no default). Added minutes before the last commit, so an unfinished extension.
 - **Checker's note:** This was an unfinished extension added minutes before the snapshot (a674db3, cee8e6a on 2026-02-24). Handover s.2 says keep incomplete extensions out of scope. Ask Harry to drop it or finish it; it is not a core break.
 - **Evidence:** vtt.js:61-66 edits a fresh copy read from storage; vtt.js:227-229 saveVttState() ignores what it is given and saves the in-memory state instead; vtt.js:571-577 re-reads storage. test3.js: 0 cones in page and storage after Add; an injected cone didn't move, and 'Clear overlays' left it in place.
+- **Phase 7:** Left out, as Harry chose (C6): the Add LOS Cone, Remove overlay and Clear overlays buttons are gone.
 
 ### ENC-16 · Removed map tokens can't be brought back
 **Later, Harry's call** · other
@@ -314,6 +329,7 @@ Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point 
 - **After:** Kept as it is in the rebuild.
 - **Decision note:** C7
 - **Evidence:** vtt.js:796-802; 'removed' is never cleared anywhere. test3.js: Orc removed; no restore control.
+- **Phase 7:** Kept (C7). Test.
 
 ### ENC-17 · Single-token hiding is half-removed
 **Later, Harry's call** · other
@@ -322,6 +338,7 @@ Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point 
 - **After:** Kept as it is in the rebuild.
 - **Decision note:** C8
 - **Evidence:** vtt.js:674 reads vttState.hidden; nothing writes it except Reveal clearing it (app.js:141, 182). Setter removed in the January 2026 history.
+- **Phase 7:** Kept (C8).
 
 ### ENC-18 · Hide/Reveal Monsters buttons are wired twice
 **Later, Harry's call** · other
@@ -330,6 +347,7 @@ Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point 
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** Harmless because the result is the same.
 - **Evidence:** app.js:136-142 and 177-183
+- **Phase 7:** No longer happens: each button is wired once. Nothing looks any different.
 
 ### ENC-19 · Map's 'Hide monsters' label goes out of step
 **Later, Harry's call** · other
@@ -337,6 +355,7 @@ Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point 
 - **Before:** After hiding monsters from the tracker, the map's own button still says 'Hide monsters'.
 - **After:** Kept as it is in the rebuild.
 - **Evidence:** vtt.js:1359-1368 does not update the label (only 1190-1197, 1481-1483 do). test3.js.
+- **Phase 7:** Kept. Test.
 
 ### ENC-20 · Fullscreen side buttons don't work while the ruler is on
 **Later, Harry's call** · other
@@ -344,6 +363,7 @@ Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point 
 - **Before:** In fullscreen with the ruler switched on, clicking Grid and other side buttons starts a measurement instead.
 - **After:** Kept as it is in the rebuild.
 - **Evidence:** vtt.js:917-929 ignores only #btnMeasure. test6.js: fsBtnGrid click with the ruler on made no change.
+- **Phase 7:** Kept.
 
 ### ENC-21 · Space bar blocked on map buttons and can get stuck
 **Later, Harry's call** · other
@@ -352,6 +372,7 @@ Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point 
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** The stuck-after-losing-focus part is from reading the code (no blur reset), not tested.
 - **Evidence:** vtt.js:906-915. test3.js: Space on a focused Grid button did nothing, Enter worked.
+- **Phase 7:** Kept on the Battlemap. Space still doesn't press a focused Battlemap button. The desk has no Space shortcut, so typing spaces in its boxes works. Test.
 
 ### ENC-22 · Explored fog squares ignore the grid nudge and change with grid size
 **Later, Harry's call** · other
@@ -360,6 +381,7 @@ Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point 
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** From reading the code, not run.
 - **Evidence:** vtt.js:407-411 draws cells without offX/offY; cells are stored as grid numbers (vtt.js:772-778).
+- **Phase 7:** Kept.
 
 ### ENC-23 · Editing a combatant whose name ends in a single letter mangles copies
 **Later, Harry's call** · other
@@ -368,6 +390,7 @@ Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point 
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** Now tested, not only read. The suffix-after-z and repeat-after-remove parts are from reading the code (801-803).
 - **Evidence:** app.js:749-752, 801-803
+- **Phase 7:** Kept. Rules test.
 
 ### ENC-24 · Reset doesn't clear the battlemap
 **Later, Harry's call** · other
@@ -376,6 +399,7 @@ Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point 
 - **After:** Kept as it is in the rebuild.
 - **Decision note:** C10
 - **Evidence:** app.js:1084-1088; test2.js: the mapImage key remained after Reset.
+- **Phase 7:** Kept (C10). Test: Reset clears the library and encounter and keeps the map.
 
 ### ENC-25 · Fog doesn't lift when you drag a PC until you click somewhere else
 **Later, Harry's call** · other
@@ -384,6 +408,7 @@ Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point 
 - **After:** Kept as it is in the rebuild.
 - **Decision note:** C11 (default: clear the fog when you let go of a token)
 - **Evidence:** vtt.js:842-891 (drag move and release) saves positions and explored cells but never calls drawFog. t3.js: drawFog count unchanged through drag and drop; fog alpha 230 at the dropped PC, 2 after a click on empty map
+- **Phase 7:** Fixed as Harry chose (C11). The fog clears around a player's token as soon as it's let go. Test.
 
 ### ENC-26 · Adding combatants mid-fight stops the fight and resets it to round 1
 **Later, Harry's call** · other
@@ -392,6 +417,7 @@ Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point 
 - **After:** Kept as it is in the rebuild.
 - **Decision note:** C4
 - **Evidence:** app.js:788-829 always sets status 'ready', turnIndex 0 and round 1, and nothing disables Add Selected while running (352-358). t1.js C: 'running round=2 turn=Goblin a' became 'ready round=1 turn=Aria'; Complete Turn disabled; after Begin, round 1 and Aria's turn
+- **Phase 7:** Kept (C4).
 
 ### ENC-27 · Tokens with long names snap and reveal fog off-centre
 **Later, Harry's call** · other
@@ -399,6 +425,7 @@ Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point 
 - **Before:** When a character's name label is wider than their token picture, snapping puts the picture beside the grid corner instead of on it, and the fog circle is centred to one side of the token.
 - **After:** Kept as it is in the rebuild.
 - **Evidence:** vtt.js:862-869 (snap) and 428-434 (fog circle) assume the picture's centre is at left + picture width/2, but the token box is as wide as its label (vtt.css:106-113). t6.js: 'Lady Seraphine of the Crimson Vale' ended 16.4px off the intersection (token box 228.8px wide, picture 56px); a short name ('Aria') was exactly on it
+- **Phase 7:** Fixed as a side effect of ENC-03. Tokens are now placed by their picture's centre, so a long name no longer pulls snapping or the fog circle off-centre.
 
 ### ENC-28 · Mistyped damage is silently ignored while the turn still moves on
 **Later, Harry's call** · other
@@ -407,6 +434,7 @@ Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point 
 - **After:** Kept as it is in the rebuild.
 - **Decision note:** May be covered by the Complete Turn "check every input first" fix.
 - **Evidence:** The damage box is type=number (index.html:232), so Chromium reports '' for bad text and app.js:290 skips it. t11.js: typing '5-' gave value '' and the turn advanced Aria→Goblin with no damage and no dialog
+- **Phase 7:** Fixed by the ENC-01 check. Damage the browser can't read as a number shows "Damage must be a number." and changes nothing. Test.
 
 
 ## Notice Board Quest Generator
