@@ -76,6 +76,13 @@ h1.tsi-topbar__tool { margin: 0; }
   gap: 10px;
 }
 .tsi-home__shop { margin-right: 8px; }
+.tsi-home__guide {
+  margin-right: 8px;
+  color: var(--tsi-cream);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(255, 210, 150, .3);
+}
+.tsi-home__guide:hover { border-bottom-color: var(--tsi-cream); }
 
 /* Narrow windows (e.g. the laptop's window made small): fewer columns. */
 @media (max-width: 1100px) {

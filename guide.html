@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>How-to guide · The Scarlett Isles: D&amp;D Tool Suite</title>
+  <link rel="icon" href="shared/art/logo-hub.png">
+  <link rel="stylesheet" href="shared/tokens.css">
+  <link rel="stylesheet" href="shared/components.css">
+  <!-- The how-to guide. It's a plain page: edit the words below directly.
+       It needs no internet, like the rest of the suite. Ctrl + P prints it
+       (the print version is black on white). -->
+  <style>
+    body { background: var(--tsi-page-fill); background-attachment: fixed; }
+    .tsi-guide { max-width: 920px; margin: 0 auto; padding: 26px var(--tsi-gutter) 56px; }
+    .tsi-guide a { color: var(--tsi-gold-text); }
+    .tsi-guide__top { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+    .tsi-guide__brand { display: flex; align-items: center; gap: 16px; }
+    .tsi-guide__brand img { width: 76px; height: 76px; object-fit: contain; filter: drop-shadow(0 12px 22px rgba(0, 0, 0, .55)); }
+    .tsi-guide h1 { margin: 0; font: 700 30px/1.1 var(--tsi-font-display); letter-spacing: var(--tsi-track-title); color: var(--tsi-ink-hub); }
+    .tsi-guide__sub { margin: 4px 0 0; color: var(--tsi-text-muted); }
+    .tsi-guide__back { flex-shrink: 0; text-decoration: none; }
+    .tsi-guide p, .tsi-guide li { font-size: var(--tsi-fs-body); line-height: 1.45; }
+    .tsi-guide p { margin: 0 0 10px; }
+    .tsi-guide ul { margin: 0 0 12px; padding-left: 22px; }
+    .tsi-guide li { margin: 3px 0; }
+    .tsi-guide li ul { margin: 4px 0 6px; }
+    .tsi-guide__lead { font-size: var(--tsi-fs-lead); color: var(--tsi-text-muted); }
+    .tsi-guide__contents { margin: 0 0 22px; padding: 14px 18px; border: var(--tsi-border); border-radius: var(--tsi-radius-lg); background: var(--tsi-inset-fill); }
+    .tsi-guide__contents h2 { margin: 0 0 8px; font: 600 13px var(--tsi-font-display); letter-spacing: var(--tsi-track-heading); text-transform: uppercase; color: var(--tsi-gold-text); }
+    .tsi-guide__contents ol { margin: 0; padding-left: 22px; }
+    .tsi-guide__contents li { font-size: var(--tsi-fs-body-sm); }
+    .tsi-guide section { margin: 0 0 18px; padding: 16px 20px 8px; border: var(--tsi-border-panel); border-radius: var(--tsi-radius-xl); background: var(--tsi-panel-fill); box-shadow: var(--tsi-shadow-panel); }
+    .tsi-guide h2 { margin: 0 0 12px; font: 600 19px/1.2 var(--tsi-font-display); letter-spacing: var(--tsi-track-heading); text-transform: uppercase; color: var(--tsi-gold-text); }
+    .tsi-guide h3 { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 12px; margin: 18px 0 8px; padding-top: 14px; border-top: 1px solid var(--tsi-line-faint); font: 600 18px/1.25 var(--tsi-font-display); letter-spacing: .03em; color: var(--tsi-text); }
+    .tsi-guide h2 + h3 { margin-top: 0; padding-top: 0; border-top: 0; }
+    .tsi-guide h3 .tsi-pill { font-size: 10px; }
+    .tsi-guide h3 a { margin-left: auto; font: 400 14px var(--tsi-font-display); letter-spacing: var(--tsi-track-label); }
+    .tsi-guide h4 { margin: 10px 0 4px; font: 600 13px var(--tsi-font-display); letter-spacing: var(--tsi-track-label); text-transform: uppercase; color: var(--tsi-text-muted); }
+    .tsi-guide b { color: var(--tsi-text); }
+    .tsi-guide code { font: 400 15px var(--tsi-font-mono); color: var(--tsi-text); }
+    .tsi-guide kbd {
+      display: inline-block;
+      min-width: 1.4em;
+      padding: 0 6px;
+      border: 1px solid var(--tsi-line);
+      border-bottom-width: 2px;
+      border-radius: 6px;
+      background: rgba(0, 0, 0, .35);
+      font: 600 14px/1.5 var(--tsi-font-display);
+      text-align: center;
+      color: var(--tsi-text);
+    }
+    .tsi-guide__note { padding: 10px 14px; border-left: 3px solid var(--tsi-gold); border-radius: 10px; background: rgba(255, 255, 255, .04); }
+    .tsi-guide__foot { margin-top: 26px; font-size: var(--tsi-fs-body-sm); color: var(--tsi-text-soft); }
+
+    /* Printing: black on white, no background art or panels. */
+    @media print {
+      body { background: #fff; color: #000; }
+      .tsi-guide { max-width: none; padding: 0; }
+      .tsi-guide h1, .tsi-guide h3, .tsi-guide b, .tsi-guide code, .tsi-guide kbd { color: #000; }
+      .tsi-guide h2, .tsi-guide__contents h2 { color: #7a0c1b; }
+      .tsi-guide p, .tsi-guide li, .tsi-guide__sub, .tsi-guide__lead, .tsi-guide h4, .tsi-guide__foot { color: #000; }
+      .tsi-guide a { color: #000; text-decoration: none; }
+      .tsi-guide section, .tsi-guide__contents { background: none; box-shadow: none; border: 1px solid #999; }
+      .tsi-guide h3 { border-top-color: #bbb; }
+      .tsi-guide kbd { background: none; border-color: #666; }
+      .tsi-guide h3 .tsi-pill { color: #000; background: none; border-color: #999; }
+      .tsi-guide__back, .tsi-guide h3 a, .tsi-guide__brand img { display: none; }
+      .tsi-guide section { break-inside: auto; }
+      .tsi-guide h2, .tsi-guide h3 { break-after: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <main class="tsi-guide">
+    <header class="tsi-guide__top">
+      <div class="tsi-guide__brand">
+        <img src="shared/art/logo-hub.png" alt="">
+        <div>
+          <h1>How-to guide</h1>
+          <p class="tsi-guide__sub">The Scarlett Isles: D&amp;D Tool Suite</p>
+        </div>
+      </div>
+      <a class="tsi-btn tsi-guide__back" href="index.html" data-test="back-to-suite">Back to the suite</a>
+    </header>
+
+    <p class="tsi-guide__lead">How to run the suite at the table: opening it, using your two screens, keeping your saves safe, and each tool in a few lines. Press <kbd>Ctrl</kbd> + <kbd>P</kbd> to print it.</p>
+
+    <nav class="tsi-guide__contents" aria-label="Contents">
+      <h2>Contents</h2>
+      <ol>
+        <li><a href="#opening">Opening the suite</a></li>
+        <li><a href="#screens">Your two screens</a></li>
+        <li><a href="#saving">Saving and backups</a></li>
+        <li><a href="#tools">The tools at the table</a>:
+          <a href="#encounter">Combat Tracker &amp; VTT Battlemap</a> ·
+          <a href="#quests">Notice Board Quest Generator</a> ·
+          <a href="#bastion">The Ironbow Bastion Manager</a> ·
+          <a href="#explorer">Scarlett Isles Explorer</a> ·
+          <a href="#crest">Clan Crest Creator</a> ·
+          <a href="#arenas">Arenas of The Scarlett Isles</a> ·
+          <a href="#ritual">The Heartwood Ritual</a> ·
+          <a href="#pelagosi">Pelagosi Puzzle Trials</a></li>
+        <li><a href="#trouble">If something goes wrong</a></li>
+        <li><a href="#changes">Getting changes made</a></li>
+      </ol>
+    </nav>
+
+    <section id="opening">
+      <h2>1. Opening the suite</h2>
+      <ul>
+        <li>Keep the whole suite folder together. Double-click <code>index.html</code> and it opens in Edge. It needs no internet and nothing to install.</li>
+        <li>The home screen shows the eight tools in four groups: DM Tool, World, Players and Set Pieces. Click a card to open its tool.</li>
+        <li>Every tool has the same bar along the top:
+          <ul>
+            <li>the crest on the left takes you back to the home screen;</li>
+            <li><b>Switch tool</b> opens another tool;</li>
+            <li><b>Export</b> and <b>Import</b> (only in tools that save) copy that tool's data to or from a file;</li>
+            <li><b>Saved ✓</b> shows your work is saved.</li>
+          </ul>
+        </li>
+        <li>Leaving the Heartwood Ritual, the Pelagosi puzzles or an Arenas round part-way asks first, because they can't be picked up again later.</li>
+      </ul>
+    </section>
+
+    <section id="screens">
+      <h2>2. Your two screens</h2>
+      <ul>
+        <li>The TV extends the laptop's screen. Drag a window across, or press <kbd>Windows</kbd> + <kbd>Shift</kbd> + <kbd>←</kbd> or <kbd>→</kbd> to move the window you're in to the other screen.</li>
+        <li><kbd>F11</kbd> makes Edge fill the screen. Press it again to go back.</li>
+        <li>Two tools open a window for the players: the Combat Tracker's <b>Battlemap</b> and the Notice Board's <b>Pop-out Board</b>. Drag that window to the TV. It closes when you leave its tool.</li>
+        <li>In the Explorer, press <b>Fullscreen</b>, then <kbd>H</kbd> (or <b>Hide UI</b>) to show only the map. <kbd>H</kbd> again brings the panels back.</li>
+        <li>The tools are sized for the laptop at 150% and the TV at 100%. If one looks cut off, check <b>Scale</b> in Windows' Display settings for that screen.</li>
+      </ul>
+    </section>
+
+    <section id="saving">
+      <h2>3. Saving and backups</h2>
+      <p class="tsi-guide__note">Please read this one. Your saves live inside Edge on this laptop, not in the suite's folder.</p>
+      <ul>
+        <li>The Combat Tracker, Notice Board, Explorer, Bastion and Arenas save as you go. The Clan Crest Creator, the Heartwood Ritual and the Pelagosi puzzles save nothing, as before.</li>
+        <li>Because saves live in Edge:
+          <ul>
+            <li>another browser, another computer or an InPrivate window won't see them;</li>
+            <li>clearing Edge's browsing data (<b>Cookies and other site data</b>) deletes them, and so does Edge's setting to clear that data whenever Edge closes, if it's switched on;</li>
+            <li>every copy of the suite on this laptop shares the same saves. Moving or renaming the folder is fine. But a new version you download to try out opens your real saves too, so back up first.</li>
+          </ul>
+        </li>
+        <li><b>Back up everything</b> (on the home screen) puts one file, named <code>tsi-backup-everything-</code> and the date, in your Downloads folder. Do it after each session, and keep the files somewhere safe, such as OneDrive or a USB stick.</li>
+        <li><b>Restore</b> (on the home screen) loads a backup file. It shows what's in the file and asks before replacing anything.</li>
+        <li>For one tool, use <b>Export</b> and <b>Import</b> in its top bar. Import asks first, and offers to save a copy of what's there now.</li>
+        <li>If a save ever can't be read, the tool sets it aside (it isn't deleted) and starts fresh. Restore a backup, or ask a session to recover the copy that was set aside.</li>
+      </ul>
+    </section>
+
+    <section id="tools">
+      <h2>4. The tools at the table</h2>
+
+      <h3 id="encounter">Combat Tracker &amp; VTT Battlemap <span class="tsi-pill">DM Tool</span> <a href="index.html?tool=encounter">Open ›</a></h3>
+      <h4>Before the session</h4>
+      <ul>
+        <li><b>Library</b>: fill in Add Combatant (name, type, max HP, and if you like the initiative bonus, a picture and a stat-block link), then <b>Add to Library</b>. Click a saved combatant to select it; <kbd>Shift</kbd> + click edits it.</li>
+        <li>Select the ones for this fight and press <b>Add Selected</b>. Copies are named Goblin, Goblin a, and so on. Name the encounter in the middle panel; <b>Encounters</b> › <b>Save Current Encounter</b> keeps it for another night.</li>
+        <li><b>Import/Export</b>: <b>Export Campaign JSON</b> and <b>Import Campaign JSON</b> move your whole library to or from a file. <b>Import PDF (basic)</b> tries to read a name and HP from a PDF.</li>
+      </ul>
+      <h4>In the fight</h4>
+      <ul>
+        <li><b>Auto-roll Initiative</b>, then <b>Begin Encounter</b>.</li>
+        <li>On each turn, pick the <b>Target</b>, type the <b>Damage / Healing</b> (12 for damage, −5 to heal), add a condition and its turns if needed, then press <b>Complete Turn</b>.</li>
+        <li><b>Pause</b> and <b>End</b> stop the fight. <b>Begin</b> after a Pause starts again at round 1, as before.</li>
+        <li><b>Hide Monsters</b> hides every monster from the Battlemap (and from you); <b>Reveal Monsters</b> shows them again.</li>
+        <li><b>Battlemap</b> opens the map window. <b>Upload battlemap</b> (up to 4 MB), drag the tokens, and use the grid, <b>Snap</b>, <b>Fog</b> and the ruler (📏). Drag the window to the TV and press <b>Fullscreen</b>.</li>
+      </ul>
+
+      <h3 id="quests">Notice Board Quest Generator <span class="tsi-pill">DM Tool</span> <a href="index.html?tool=quests">Open ›</a></h3>
+      <ul>
+        <li>Set the filters (level, how many, type, province, faction and honour), then press <b>Generate</b>. The notices appear on the board.</li>
+        <li>Each notice has <b>Accept</b> and <b>Decline</b>. Accepted quests move to Accepted Quests, grouped by province, with their outline. <b>✕</b> takes one off the list.</li>
+        <li><b>★</b> marks the main quest. With Wi-Fi on, it also tells Matt Owen's Knightly Treasures shop which quest is active; offline it skips quietly and catches up next time. <b>Open shop ↗</b> opens the shop (it needs the internet).</li>
+        <li><b>Pop-out Board</b> opens the players' window. Drag it to the TV; it shows the notices only.</li>
+        <li><b>Clear</b> empties the board.</li>
+      </ul>
+
+      <h3 id="bastion">The Ironbow Bastion Manager <span class="tsi-pill">DM Tool</span> <a href="index.html?tool=bastion">Open ›</a></h3>
+      <ul>
+        <li>Set the <b>Party Level</b>, and type the gold in <b>Treasury</b>.</li>
+        <li><b>Facilities</b>: pick a facility in an empty construction slot and press <b>Build</b>; it takes 3 to 5 turns. Each facility's card has its orders: pick a choice and press <b>Issue Order</b>. The gold is taken straight away.</li>
+        <li><b>Advance Bastion Turn (+7 days)</b> moves on a week. Orders complete, building work counts down, income comes in, and every 4th turn a Bastion event is rolled.</li>
+        <li>When it needs a d20, type the roll made at the table (or press <b>Roll 1d20</b>), then <b>Continue</b>. If you cancel a roll, that order waits until next turn. If Edge closes mid-turn, reopen the Bastion and press <b>Finish Bastion Turn</b>.</li>
+        <li>Once the Hall of Emissaries is built, it runs your diplomacy. <b>Routes</b> shows the Sea Trade Routes map, <b>Resolve</b> pays this turn's trade routes, and <b>Council Ledger</b> settles disputes.</li>
+        <li>The Warehouse and Artisan Tools save as you type. <b>Compendium</b> lists every item the Bastion can make.</li>
+      </ul>
+
+      <h3 id="explorer">Scarlett Isles Explorer <span class="tsi-pill">World</span> <a href="index.html?tool=explorer">Open ›</a></h3>
+      <ul>
+        <li>Pick a map and press <b>Load</b>, or <b>Upload map</b> to use your own (up to 4 MB). Line the hex grid up once per screen with <b>Hex −</b>, <b>Hex +</b> and the arrows.</li>
+        <li>Drag the heroes. Each hex costs 6 miles, up to 30 a day. Select heroes (click, then <kbd>Ctrl</kbd> + click) and press <b>Group</b> to move them together. <b>Free Move</b> moves them without using miles.</li>
+        <li><b>Make Camp</b> ends the day: a campfire event, then any weather, then the Bastion reminder on days 8, 15, 22 and so on. Roll the weather at the table and type the result.</li>
+        <li><b>Fog of War</b> hides what the party hasn't seen. Town pins open their town maps.</li>
+        <li>For a main campaign event, choose it and press <b>Queue</b>.</li>
+        <li><b>Export Save</b> and <b>Import Save</b> copy the journey to or from a file.</li>
+      </ul>
+
+      <h3 id="crest">Clan Crest Creator <span class="tsi-pill">Players</span> <a href="index.html?tool=crest">Open ›</a></h3>
+      <ul>
+        <li>Name the clan, or press <b>🎲 Name</b>. Choose the shield, background, sigil and banner, or press <b>🎲 Random Crest</b>. <b>Reset</b> starts again.</li>
+        <li><b>⬇ Download PNG (transparent)</b> saves the crest as a picture. Nothing else is saved, so download any crest you want to keep.</li>
+      </ul>
+
+      <h3 id="arenas">Arenas of The Scarlett Isles <span class="tsi-pill">Set Pieces</span> <a href="index.html?tool=arenas">Open ›</a></h3>
+      <ul>
+        <li><b>Add Player</b> for each character (with a portrait if you like).</li>
+        <li>Choose the <b>Arena</b> and <b>Round</b>, then press <b>Enter The Arena</b>. <b>View Rules</b> shows the round's rules.</li>
+        <li><b>Play Turn</b> opens the turn panel for the active player: roll the Skill Check, then the Attack Roll and damage (<b>Apply</b>), and press <b>Resolve Turn</b>.</li>
+        <li><b>End Round</b> or <b>Forfeit</b> ends a round early. <b>Reset Run</b> restarts the round in progress. <b>Back to Start</b> restores everyone's HP, clears the gold and goes back to the first round; the players stay.</li>
+        <li>The party, portraits and gold are saved. Leaving in the middle of a round asks first.</li>
+      </ul>
+
+      <h3 id="ritual">The Heartwood Ritual <span class="tsi-pill">Set Pieces</span> <a href="index.html?tool=ritual">Open ›</a></h3>
+      <ul>
+        <li>Press <b>Enable Sound</b> first: the browser needs a click before it plays sound.</li>
+        <li>Each stone (Weight, Memory and Silence) has <b>Attempt</b> and <b>Assist</b>. Attempt opens the roll window: type the roll and press <kbd>Enter</kbd> (<kbd>Esc</kbd> closes it).</li>
+        <li><b>Next Round</b> (or <kbd>N</kbd>) moves on; threats are checked then. <b>Roll Event</b> (or <kbd>E</kbd>) rolls a Heartwood event, ◀ and ▶ pick a different one, and <b>Apply Event</b> applies it.</li>
+        <li><b>DM Dock</b> (or <kbd>`</kbd>, the key left of <kbd>1</kbd>) has your manual adjustments and <b>Reset Ritual</b>.</li>
+        <li>The films play inside the page. The Ritual saves nothing.</li>
+      </ul>
+
+      <h3 id="pelagosi">Pelagosi Puzzle Trials <span class="tsi-pill">Set Pieces</span> <a href="index.html?tool=pelagosi">Open ›</a></h3>
+      <ul>
+        <li>Choose the puzzle and press <b>BEGIN</b> for its instructions.</li>
+        <li><b>The Marker Remembers</b>: watch the runes light up, then click them in the same order (Anchor, Tide, Depth, Life, Remains). Three rounds, each longer and faster.</li>
+        <li><b>The Tidal Sequence</b>: turn each pillar's rune and arrow, then press <b>CHECK ALIGNMENT</b>. Wrong checks raise the Chamber Pressure. <b>SHUFFLE PILLARS</b> mixes them up.</li>
+        <li><b>RESET CURRENT PUZZLE</b> starts again. The puzzles save nothing.</li>
+      </ul>
+    </section>
+
+    <section id="trouble">
+      <h2>5. If something goes wrong</h2>
+      <ul>
+        <li><b>"The suite is also open in another tab or window"</b>: close one of them, or one can overwrite the other's saves.</li>
+        <li><b>A red "Something went wrong" bar</b>: press <b>Reload</b>. Your saved work stays. <b>Details</b> shows the technical message, which helps a session fix it.</li>
+        <li><b>"Saved (small storage)"</b> in the top bar: Edge is only letting the suite use a small save space. Back up often.</li>
+        <li><b>An Import is refused</b>: the file is from another tool, or damaged. Nothing was changed.</li>
+        <li><b>No sound</b>: check the laptop's volume, and in the Ritual press Enable Sound.</li>
+        <li><b>Web links, pictures or stat blocks from the internet</b>, and the Knightly Treasures shop, need Wi-Fi. Everything else works without it.</li>
+      </ul>
+    </section>
+
+    <section id="changes">
+      <h2>6. Getting changes made</h2>
+      <ul>
+        <li>The tools were rebuilt as they were. Behaviours that were kept on purpose, including a few odd ones, are listed in <code>docs/KNOWN_ISSUES.md</code>, each with a line saying what happened to it.</li>
+        <li>To change a rule, fix something or add a feature, start a session and describe it. The notes in <code>docs/</code> tell the session how the suite is built.</li>
+        <li>Quests, events, facilities, arenas and maps are kept in each tool's <code>data</code> folder, not buried in the code, so they can be changed without touching the rest.</li>
+        <li>Two check pages you can double-click: <code>tests/rules.html</code> runs the rules tests, and <code>tests/pin-check.html</code> shows every Explorer map with all its town pins.</li>
+      </ul>
+    </section>
+
+    <p class="tsi-guide__foot">© Scarlett Isles Campaign · <a href="index.html">Back to the suite</a></p>
+  </main>
+</body>
+</html>

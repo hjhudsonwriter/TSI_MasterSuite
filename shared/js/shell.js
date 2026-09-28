@@ -352,6 +352,13 @@
       TSI.el('footer', { class: 'tsi-home__footer' }, [
         TSI.el('div', { class: 'tsi-home__copy', text: '© Scarlett Isles Campaign' }),
         TSI.el('div', { class: 'tsi-home__footer-actions' }, [
+          /* The how-to guide: a plain page beside index.html (guide.html). */
+          TSI.el('a', {
+            class: 'tsi-home__guide',
+            href: TSI.path('guide.html'),
+            title: 'How to use the suite at the table, and how to keep your saves safe',
+            'data-test': 'guide-link'
+          }, 'How-to guide'),
           shop ? TSI.el('span', { class: 'tsi-home__shop' }, [
             TSI.el('a', {
               class: 'tsi-extlink',
