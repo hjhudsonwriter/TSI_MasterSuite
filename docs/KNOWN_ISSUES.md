@@ -2,7 +2,7 @@
 
 Every bug found in the eight old tools during planning, and what the rebuild will do about each one. CLAUDE.md's rule: **only fix a bug if it breaks the tool, loses saved data, or applies something twice.** Everything else stays exactly as it was, and is listed here for Harry to decide on later.
 
-**Status: phases 1 (the shell), 2 (Clan Crest Creator), 3 (Pelagosi Puzzle Trials), 4 (Notice Board), 5 (The Heartwood Ritual), 6 (Arenas of The Scarlett Isles), 7 (Combat Tracker & VTT Battlemap) and 8 (Scarlett Isles Explorer) are built.** The shell's share of the suite-wide (SUI) fixes is in place and tested, and each entry has a **Phase 1** line saying what's done. Every Clan Crest Creator entry has a **Phase 2** line, every Pelagosi entry a **Phase 3** line, every Notice Board entry a **Phase 4** line, every Heartwood Ritual entry a **Phase 5** line, every Arenas entry a **Phase 6** line, every Combat Tracker entry a **Phase 7** line and every Explorer entry a **Phase 8** line, saying whether it was fixed, changed or kept. The other tools' entries are unchanged until their phases. Each tool's session updates its own entries as it goes: it marks each one fixed, or confirms it was left alone, and adds anything new it finds.
+**Status: all nine phases are built: 1 (the shell), 2 (Clan Crest Creator), 3 (Pelagosi Puzzle Trials), 4 (Notice Board), 5 (The Heartwood Ritual), 6 (Arenas of The Scarlett Isles), 7 (Combat Tracker & VTT Battlemap), 8 (Scarlett Isles Explorer) and 9 (The Ironbow Bastion Manager).** The shell's share of the suite-wide (SUI) fixes is in place and tested, and each entry has a **Phase 1** line saying what's done. Every Clan Crest Creator entry has a **Phase 2** line, every Pelagosi entry a **Phase 3** line, every Notice Board entry a **Phase 4** line, every Heartwood Ritual entry a **Phase 5** line, every Arenas entry a **Phase 6** line, every Combat Tracker entry a **Phase 7** line, every Explorer entry a **Phase 8** line and every Bastion entry a **Phase 9** line, saying whether it was fixed, changed or kept. Each tool's session updates its own entries as it goes: it marks each one fixed, or confirms it was left alone, and adds anything new it finds.
 
 ## How to read an entry
 
@@ -25,7 +25,7 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
 | Scarlett Isles Explorer (EXP) | 12 | 4 | 0 | 13 | 0 |
-| The Ironbow Bastion Manager (BAS) | 15 | 1 | 1 | 18 | 0 |
+| The Ironbow Bastion Manager (BAS) | 15 | 2 | 5 | 17 | 1 |
 | Clan Crest Creator (CRS) | 0 | 4 | 2 | 7 | 1 |
 | Arenas of The Scarlett Isles (ARN) | 8 | 2 | 0 | 17 | 0 |
 | The Heartwood Ritual (RIT) | 9 | 1 | 0 | 15 | 1 |
@@ -950,6 +950,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **After (planned):** Restore every saved field (with safe defaults) in the new loader; add a round-trip test (save, reload, compare).
 - **Checker's note:** saveState writes the whole state (4911-4913), so exports made before a reload do contain these fields. A loader that restores every field will recover them from such files. Combined with the new 'route never reopens' bug, a reload kills those clans' trade routes for good.
 - **Evidence:** loadState copies only some fields (app.js:4841-4902); organization, clanHonor, honourRespectByClan, trustedClientsByClan, warLog and diplomacy are left out. Runtime: B2 agreements [] after reload; B3 'org type unsworn, warLog 0' and route expired with no income next turn; B5 identity lost after Download, Reset, Import.
+- **Phase 9:** Fixed. Reopening or importing restores everything: party identity, Clan Honour, Honour/Respect, Trusted Clients, the war log and all diplomacy, with Favour Tokens and cooldowns. Tests: a save-and-reload round trip in the rules tests, and reopening in the click-through.
 
 ### BAS-02 · Advance Turn loses orders if a dice roll is cancelled (or the page is reloaded mid-turn)
 **Must fix** · loses saved data · listed in the handover
@@ -958,6 +959,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **After (planned):** Make Advance Turn a resumable step list saved in state (e.g. state.turnInProgress): mark each order done only after its result is applied. A cancelled roll keeps the order pending, or re-asks on resume. Keep the exact rule order.
 - **Checker's note:** This affects all 5 Hall actions, not only Delegation. A reload during the start-of-turn trade roll strands orders instead of losing them (new bug).
 - **Evidence:** app.js:585-590 removes the due orders first; rollD20Manual returns null on cancel (1678) and roll.d20 then crashes (935). Host Delegation checks the wrong variable, if(!roll) instead of r1/r2 (1029, 1031). ensureDiplomacyState saves mid-turn (1549). Runtime B2: 'Cannot read properties of null (reading d20)', turn 2 to 3, Barracks order gone, defenders unchanged, pending [].
+- **Phase 9:** Fixed. Advance Bastion Turn now runs as saved steps, in the old order: the turn number and diplomacy, the trade routes, construction and the one-turn resets, each due order, then the automatic event. An order leaves the list only once its result is applied. A cancelled roll leaves its order pending, the Turn Log says so, and it comes up again next turn. Closing the window mid-turn reopens with the button reading "Finish Bastion Turn N". Tests: a cancelled roll, then the next turn; reopening during a roll.
 
 ### BAS-03 · Double-clicking Advance Turn can cancel a roll and lose orders
 **Must fix** · loses saved data
@@ -966,6 +968,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **After (planned):** Disable Advance Turn while a turn is resolving; don't let backdrop clicks cancel roll boxes; rely on the resumable turn above.
 - **Checker's note:** Also: with no roll due, a double-click runs two full turns, and Enter or Space re-triggers Advance behind an open box (new bugs). One fix covers all three: a 'turn in progress' guard.
 - **Evidence:** The backdrop click cancels (app.js:1727). The Advance button is never disabled while the turn resolves (560-604). Runtime B4 dblclick: turn 1 to 2, both orders gone, pageerror.
+- **Phase 9:** Fixed. Clicking outside a pop-up does nothing (the suite's pop-ups), and Advance is switched off while a turn is running. Test.
 
 ### BAS-04 · Lowering the Party Level deletes built facilities
 **Must fix** · loses saved data
@@ -975,6 +978,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **Decision note:** B8 decides how over-capacity buildings behave (default: kept and marked "over capacity").
 - **Checker's note:** A Hall under construction is lost the same way.
 - **Evidence:** renderFacilities trims builtExtras to the slot count (app.js:4333-4334) and the next save keeps the trimmed list. Runtime B1: level 9 with 4 builds, then level 5 and a treasury edit left 2, back to level 9 still showed 2 plus 2 empty slots.
+- **Phase 9:** Fixed (B8). Lowering the level keeps every building, and they keep working. Any beyond the new number of slots are marked "Over capacity", and nothing new can be built until there's room. Empty slots past the limit are hidden. Tests.
 
 ### BAS-05 · Cancelled trade-route roll lets routes pay out again
 **Must fix** · applies something twice
@@ -983,6 +987,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **After (planned):** Record each route's result for the turn as it is applied; skip routes already resolved this turn; resume only the unresolved ones.
 - **Checker's note:** A double-click on Resolve (second click on the backdrop = cancel) and Enter pressed while the box is open (new bug) trigger the same double pay.
 - **Evidence:** lastResolvedTurn is only set at the end (app.js:2571); the cancel path returns early (2520-2525) after earlier routes were already paid (2497-2506). Runtime B4: treasury 10000, 10100, 10200, 10300 from three Resolve clicks in one turn.
+- **Phase 9:** Fixed. Each route is recorded as settled the moment it pays (or is disrupted), so Resolve after a cancelled roll only offers the routes still waiting. Test: 100 + 200 gp, not 100 + 100 + 200.
 
 ### BAS-06 · Host Delegation applies Political Capital twice
 **Must fix** · applies something twice
@@ -992,6 +997,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **Decision note:** Only changed once Harry answers B2 (which roll set is the rule).
 - **Checker's note:** Needs Harry to choose which roll set is the real rule. The delegation's summary text is also lost (new bug).
 - **Evidence:** The outer tier PC change (app.js:958-977) applies to every kind, and the delegation block applies its own again (1045-1067). Runtime B2: 'Political Capital: +15 (Clan Rowthorn)' listed twice; rowthorn = 30.
+- **Phase 9:** Fixed (B2). Political Capital now changes once, by the Diplomacy (DC 13) and Insight (DC 12) rolls: +15 and a Favour Token for two successes, +8 for one, 0 for a near miss, −12 for two misses. All three dice boxes stay, and the first roll still sets the rest (the 2-turn cooldown on a bad failure, and how long the delegation lasts). Tests; the side-by-side run shows the old tool adding the first roll's change on top.
 
 ### BAS-07 · The tool does not start from a double-clicked file
 **Must fix** · won't work double-clicked / offline
@@ -1000,6 +1006,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **After (planned):** Data as .js files loaded with script tags; relative paths; everything wired inside the tool's namespace.
 - **Checker's note:** withBase builds file:///home/... from the first path segment (app.js:10-14).
 - **Evidence:** fetch of 4 JSON files (app.js:333-340) plus withBase (10-14). Runtime A: 'URL scheme file not supported', alert 'App error during init'.
+- **Phase 9:** Fixed. The data is in script files and every path is relative, so it opens from a double-clicked index.html. Test.
 
 ### BAS-08 · Facility pictures and map overlays missing from a double-clicked file
 **Must fix** · won't work double-clicked / offline
@@ -1008,6 +1015,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **After (planned):** Relative asset paths from the tool folder.
 - **Checker's note:** Verified by reading the code, not re-run. CSS backgrounds and trade/ledger art use relative paths and would load.
 - **Evidence:** withBase makes /home/assets/... paths (app.js:1269, 2180, 4453). Runtime C: ERR_FILE_NOT_FOUND for every facility picture and overlay.
+- **Phase 9:** Fixed. Every facility picture, the eight map overlays, the panel pictures, and the Hall and trade art load from a double-clicked file with no internet. Test.
 
 ### BAS-09 · Fonts need the internet
 **Must fix** · won't work double-clicked / offline
@@ -1015,6 +1023,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **Before:** Without Wi-Fi the tool loses its Cinzel and Uncial lettering and falls back to a plain system font.
 - **After (planned):** Bundle the fonts locally through the shared design tokens (with licences).
 - **Evidence:** styles.css:2 @import Google Fonts; runtime: blocked, fallback font in screenshots
+- **Phase 9:** Fixed by the suite's bundled fonts (phase 1). Test: nothing reaches for the internet.
 
 ### BAS-10 · Pressing Enter or Space while a dice box is open runs Advance Turn a second time
 **Must fix** · applies something twice
@@ -1022,6 +1031,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **Before:** After you click Advance Bastion Turn, the button behind the dice box stays selected. If you press Enter or Space to 'confirm' the box, the tool quietly starts another whole turn underneath it. The turn counter jumps by two, building work counts down twice, contract income is paid twice, and 'Turn Advanced' is logged twice.
 - **After (planned):** While a turn is resolving, ignore Advance (disable the button and keep a turn-in-progress flag). Move focus into each box and trap it there. Handle this inside the resumable-turn design.
 - **Evidence:** The boxes never move keyboard focus (openSIModalChoice app.js:1693-1750). Advance has no in-progress guard (560-604). Runtime t_enter.js A: document.activeElement = advanceTurnBtn; after Enter the turn went 2 to 3 while the first box was still open, Library construction went 3 to 1, and the log shows 'Turn Advanced: 3' twice. Test C: Space does the same with a war roll box.
+- **Phase 9:** Fixed. Advance is switched off while a turn runs, and the keyboard focus moves into each dice box and stays there. Test: Enter and Space while a dice box is open don't start another turn.
 
 ### BAS-11 · Pressing Enter while a trade-route dice box is open pays every route twice
 **Must fix** · applies something twice
@@ -1029,6 +1039,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **Before:** The same focus problem on the Resolve button: pressing Enter while the route roll box is open resolves the trade routes a second time in the same turn, and all the gold is paid twice.
 - **After (planned):** Busy guard on Resolve, plus recording each route as resolved for the turn as soon as it pays (same fix as the cancel double-pay).
 - **Evidence:** Resolve keeps focus (runtime t_more.js D: activeElement = btnResolveTradeRoutes; two stacked 'Resolve Route: Karr' boxes). Runtime t_resolve.js: one resolve 10000 to 10220; with one Enter press 10000 to 10440. lastResolvedTurn is only set at the end (2571).
+- **Phase 9:** Fixed, with BAS-05: Resolve can't start again while it's running, and the focus is inside the dice box. Test: Enter during a route roll.
 
 ### BAS-12 · Double-clicking Advance Turn runs two whole turns
 **Must fix** · applies something twice
@@ -1036,6 +1047,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **Before:** If nothing needs a dice roll, a double-click on Advance Bastion Turn moves the Bastion on two turns (14 days) at once. Building work and income tick twice, and there is no warning.
 - **After (planned):** Ignore repeat clicks while a turn is being resolved and for a short moment after. Ask Harry whether he also wants a confirm step.
 - **Evidence:** Runtime t_enter.js B: dblclick gave turn 1 to 3, Library remaining 3 to 1, two 'Turn Advanced' log lines. No guard exists (app.js:560-604).
+- **Phase 9:** Fixed. A second click within a moment, or while a turn is running, is ignored. No confirm step was added, as that would be a new feature; Harry can ask for one. Test: a double click advances one turn.
 
 ### BAS-13 · Orders can get stuck in Pending forever after a skipped turn
 **Must fix** · loses saved data · listed in the handover
@@ -1043,6 +1055,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **Before:** An order only completes on exactly the turn it was due. If the page is reloaded while the start-of-turn trade roll box is open (or a turn is skipped by the Enter problem above), that turn's orders never complete. They sit in Pending Orders showing an old turn, and the gold paid for them is gone.
 - **After (planned):** Complete every order whose due turn is at or before the current turn (<=), inside the resumable Advance transaction. Keep resolution order unchanged.
 - **Evidence:** Due check is o.completeTurn === state.turn (app.js:585-586). turn+1 is saved by tickDiplomacyOnAdvanceTurn before the trade box (562-576, 2385). Runtime t_more.js H: reload during the Karr route roll, then two Advances; at turn 5 the Barracks order still says 'Completes on Turn 3' and defenders are unchanged.
+- **Phase 9:** Fixed. Orders due this turn or any earlier one complete. Test.
 
 ### BAS-14 · Importing the wrong JSON file silently wipes the Bastion
 **Must fix** · loses saved data
@@ -1050,6 +1063,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **Before:** Import accepts any JSON file. If you pick another tool's save (easy once eight tools all export JSON), the tool says 'Import this save?', then loads a blank starting Bastion (0 gold, turn 1, empty warehouse). Your real save is gone.
 - **After (planned):** Check that the file is a Bastion save (tool id / schema version / expected fields) and refuse or warn clearly. Show what will be replaced before confirming. Keep a one-step undo backup of the current save.
 - **Evidence:** app.js:637-659 writes the parsed file straight to storage, with no check that it is a Bastion save. loadState fills defaults (4841-4907). Runtime t_import.js: treasury 4321, turn 9, warehouse [Longship] became 0, 1, ['New Item'] after importing {"players":[...],"prizeTotal":300}.
+- **Phase 9:** Fixed. Import checks the file first: another tool's file, or a Bastion save with a damaged part, is refused and nothing changes. It shows what's in the file, asks before replacing and offers a copy of the current data first. A damaged save in the browser is set aside, not deleted. Tests.
 
 ### BAS-15 · Double-clicking Queue War Action queues two wars
 **Must fix** · applies something twice
@@ -1058,6 +1072,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **After (planned):** Ignore rapid repeat clicks. Ask Harry whether more than one war action per turn is allowed at all.
 - **Decision note:** B22 decides whether more than one war per turn is allowed at all.
 - **Evidence:** The handler has no guard (app.js:472-507). queueWarAction pushes every time (5262-5275). Runtime t_more.js G: pending = ['War Action@2','War Action@2'] after one dblclick.
+- **Phase 9:** Fixed. A double click queues one war action. More than one a turn is still allowed (B22). Test.
 
 ### BAS-16 · Diplomacy panel collapse arrow does nothing
 **Fixed by the new design** · other
@@ -1066,6 +1081,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **After (planned):** Bind once in the rebuild.
 - **Decision note:** Panels use the shared collapse control, bound once.
 - **Evidence:** makeCardCollapsibleById runs twice for diplomacyPanel (app.js:158 and 2083) and binds two listeners. Runtime B6: collapsed false after one click.
+- **Phase 9:** Fixed. Each panel's ▾ button works, and a closed panel stays closed after reopening (saved in `tsi.bastion.ui`). Test.
 
 ### BAS-17 · Unsaved Warehouse and Artisan Tools edits vanish
 **Deliberate change** · other
@@ -1075,15 +1091,17 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **Decision note:** CLAUDE.md autosave rule: edits save as they are made.
 - **Checker's note:** The CLAUDE.md autosave rule removes this by design. Record it as a deliberate behaviour change.
 - **Evidence:** render() rebuilds both from saved state (app.js:1290-1292, 1380-1404, 3424-3451). Runtime B5: edit reverted to 'Rope'; artisan pick reverted to ''.
+- **Phase 9:** Changed as planned. Warehouse boxes save as you type, and Artisan Tools as you pick. Save Warehouse and Save still log as before. Tests.
 
 ### BAS-18 · Treasure event can never be rolled
-**Later, Harry's call** · other
+**Deliberate change** · other (Harry's answer B11)
 
 - **Before:** Rolls of 99 or 100 show 'Unknown' instead of the Treasure event, so Treasure never happens.
-- **After:** Kept as it is in the rebuild.
+- **After:** Fixed at Harry's request (B11).
 - **Decision note:** B11. Recommended fix (a one-character reading slip in Harry's own table); only with Harry's OK.
 - **Checker's note:** One-character content fix, but it doesn't break, lose or double anything, so it is Harry's call.
 - **Evidence:** resolveEvent reads '99-00' as 99 to 0 (app.js:4728-4736). Runtime B1: roll 99 and roll 100 both show 'Unknown, No description text found'.
+- **Phase 9:** Fixed at Harry's request (B11): rolls of 99 and 100 now give Treasure. Tests.
 
 ### BAS-19 · Four facility overlays never appear on the map
 **Later, Harry's call** · other
@@ -1092,6 +1110,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **After:** Kept as it is in the rebuild.
 - **Decision note:** B12
 - **Evidence:** app.js:1269 builds '<facId>_overlay.png'; the files are gambling_hall_overlay.png and shrine_of_{telluria,aurush,pelagos}_overlay.png. media.py shows exists=False; runtime 404s.
+- **Phase 9:** Kept (B12). The four overlays are in `tools/bastion/assets/extras/`.
 
 ### BAS-20 · Clicking a compendium card picture throws an error
 **Later, Harry's call** · other
@@ -1099,6 +1118,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **Before:** Clicking an item's card picture in the Compendium does nothing (the enlarge feature was never written).
 - **After:** Kept as it is in the rebuild.
 - **Evidence:** openImageViewer is called at app.js:4312 but defined nowhere. Runtime B5 pageerror 'openImageViewer is not defined'.
+- **Phase 9:** Kept: clicking a card picture still does nothing, now without an error.
 
 ### BAS-21 · Trade Agreement duration choice ignored
 **Later, Harry's call** · other
@@ -1107,6 +1127,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **After:** Kept as it is in the rebuild.
 - **Decision note:** B5
 - **Evidence:** meta.durationTurns is set (app.js:1998) but resolution uses fn.special.durationTurns (905, 979). Runtime B2: picked 6, got 5 turns.
+- **Phase 9:** Kept (B5): the Duration list is still offered and still ignored. Test (rules).
 
 ### BAS-22 · Hall upgrades are free
 **Later, Harry's call** · other
@@ -1116,6 +1137,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **Decision note:** B4
 - **Checker's note:** An upgrade can still be ordered at L3, for nothing.
 - **Evidence:** upgrade_hall costGP 0 and costByNextLevel unused (app.js:1215-1220, 3306). Runtime B3: 20000 to 20000.
+- **Phase 9:** Kept (B4): upgrades are free. Test.
 
 ### BAS-23 · Writ of Authority bonus never granted
 **Later, Harry's call** · other
@@ -1124,6 +1146,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **After:** Kept as it is in the rebuild.
 - **Decision note:** B6
 - **Evidence:** authorityBonusTurns is never set above 0 (app.js:2895, 2929; tooltip 3581-3587)
+- **Phase 9:** Kept (B6). Test.
 
 ### BAS-24 · Consortium pays twice each turn
 **Later, Harry's call** · other
@@ -1133,6 +1156,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **Decision note:** B3. If Harry says one income was intended, this becomes an "applies twice" fix.
 - **Checker's note:** The behaviour is real. Whether it is a bug depends on Harry: if he says one income was intended, it becomes an applies-twice fix.
 - **Evidence:** route yieldGP = consortium perTurn (app.js:1144); tickDiplomacy pays incomePerTurn (2336-2341) and routes pay routePayout (2497-2506). Runtime B4: +174 contract and +174 route.
+- **Phase 9:** Kept (B3). The side-by-side run shows the same two incomes as the old tool.
 
 ### BAS-25 · Beasts counted by row, not number
 **Later, Harry's call** · applies something twice
@@ -1142,6 +1166,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **Decision note:** B10. The checker notes the casualty part removes more beasts than it should.
 - **Checker's note:** The casualty part is damage counted twice. The availability undercount is 'other'. The handover warns against counting rows.
 - **Evidence:** app.js:476 and 5211 use .length; 5359-5363 splices a row. Runtime B6: 'Owlbear x2', war hint '1 beasts'.
+- **Phase 9:** Kept (B10). Test.
 
 ### BAS-26 · Library scripture notes never attach
 **Later, Harry's call** · other
@@ -1151,6 +1176,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **Decision note:** B16
 - **Checker's note:** The six shrine charm notes are hidden too (new item).
 - **Evidence:** Map keys 'Geographical', 'War' and so on (app.js:3290-3303) vs options 'Geographical Scriptures' and so on. Runtime B3: warehouse notes 'Library'.
+- **Phase 9:** Kept (B16). Test.
 
 ### BAS-27 · Trade Agreement routes never glow on the Sea Trade Routes map
 **Later, Harry's call** · other
@@ -1159,6 +1185,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** Verified by reading the code only.
 - **Evidence:** tradeRouteOverlayFileForClan compares lowercased 'clan blackstone' (app.js:2617-2629, 2652-2658)
+- **Phase 9:** Kept: Trade Agreement clans are listed under "Showing routes for" only if they have route art, as before.
 
 ### BAS-28 · Cancelling a pending order doesn't refund gold
 **Later, Harry's call** · other
@@ -1168,6 +1195,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **Decision note:** B9
 - **Checker's note:** Design question for Harry.
 - **Evidence:** app.js:3236-3244. Runtime B6: 1000, 600 after issue, 600 after cancel.
+- **Phase 9:** Kept (B9). Test.
 
 ### BAS-29 · Arbitration log shows '[object Object]'
 **Later, Harry's call** · other
@@ -1176,6 +1204,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **After:** Kept as it is in the rebuild.
 - **Checker's note:** The popup itself shows roll.d20 correctly (3014).
 - **Evidence:** app.js:2953-2954 uses ${roll} (an object). Runtime B4 log.
+- **Phase 9:** Kept. Test.
 
 ### BAS-30 · Compendium card pictures and local descriptions mostly hidden
 **Later, Harry's call** · other
@@ -1184,6 +1213,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **After:** Kept as it is in the rebuild.
 - **Decision note:** B15
 - **Evidence:** app.js:3904-3906 (exact names), 3665-3878 (no callers); data analysis: 36 of 55 cards matched
+- **Phase 9:** Kept (B15). The 36 matching cards show; the other 19 are in `tools/bastion/assets/extras/compendium_cards/`. The hand-written descriptions are kept, unused, in `tools/bastion/data/bastion-data.js`, so nothing Harry wrote is lost. The Export button's online lookup is dropped: it keeps the filled-in entries and writes the rest as stubs with a Roll20 link. Test.
 
 ### BAS-31 · Minor: duplicate Clear Warehouse handler; missing seal sound; broken HTML nesting; treasury can go negative then snap to 0 on reload
 **Later, Harry's call** · other
@@ -1193,6 +1223,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **Decision note:** B17 covers whether the treasury may go negative.
 - **Checker's note:** Also: once defenders drop to 0 through war casualties, the armed flag stays true, so later recruits show 'Armed' without paying (5354-5357, 263-266).
 - **Evidence:** app.js:530 and 1485; 3055; index.html:186-188, 497-499; app.js:1086 vs 4843
+- **Phase 9:** Kept where it still applies: "Cleared warehouse." is still logged twice, the treasury can still go below 0 and comes back as 0 on reopening (B17), and the armed flag stays on after war casualties. The seal sound was never played (its file never existed), and the page structure is new.
 
 ### BAS-32 · A Trade Consortium can never reopen a route that has expired
 **Later, Harry's call** · breaks the tool
@@ -1201,6 +1232,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **After:** Kept as it is in the rebuild.
 - **Decision note:** B21. Less urgent once the reload wipe (above) is fixed.
 - **Evidence:** The existence check ignores status: routes.some(r => clan matches) (app.js:1135-1136). Expired routes are never removed (2360-2369, 2375-2381). Runtime t_reopen.js: with an expired Blackstone route, a Great Success consortium gave '+260 gp/turn' but no 'Route opened' line; the route stayed 'expired' and the next Advance paid only contract income.
+- **Phase 9:** Kept (B21). Test.
 
 ### BAS-33 · A natural 1 on a Hall action counts as a success
 **Later, Harry's call** · other
@@ -1209,6 +1241,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **After:** Kept as it is in the rebuild.
 - **Decision note:** B20
 - **Evidence:** tierFromRoll returns 'critical_failure' (app.js:1862). The tier table has no branch for it (958-962), so it keeps turnsAdj 0, income ×1 and PC 0. formatTier prints 'Bad Failure' (1875). Runtime t_more.js E: roll 1 gave a 'Trade Agreement (4 turns) +69 gp/turn', PC +0, no cooldown. E2: roll 2 gave no deal, PC -20, cooldown 2.
+- **Phase 9:** Kept (B20). Test.
 
 ### BAS-34 · Host Delegation result box loses its summary line
 **Later, Harry's call** · other
@@ -1216,6 +1249,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **Before:** After a Host Delegation, the result box has an empty line where the outcome text should be (for example 'The delegation leaves impressed. Promises become leverage.'). The text is written but never shown or logged.
 - **After:** Kept as it is in the rebuild.
 - **Evidence:** Inner 'let summary' (app.js:1043) shadows the outer one (941), which stays ''. Runtime t_more.js F: the first .siResSummary is empty, and the log body ends with a blank summary.
+- **Phase 9:** Kept: the empty line still shows. Test.
 
 ### BAS-35 · Shrine charm effects are never shown
 **Later, Harry's call** · other
@@ -1224,6 +1258,47 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **After:** Kept as it is in the rebuild.
 - **Decision note:** B23
 - **Evidence:** The option notes are in facilities.json (shrine craft options). The generic warehouse path uses order notes only (app.js:1244-1246). issueOrder sets notes only for the Library (3284-3303). renderFunction shows fn.notes, not option notes (4542). The compendium entries for the charms are empty.
+- **Phase 9:** Kept hidden (B23).
+
+### BAS-36 · The page needs sideways scrolling on the laptop
+**Fixed by the new design** · other · found in phase 9
+
+- **Before:** On Harry's laptop (1707 wide) the page is 1754 wide, because the fixed Favour panel and the three columns beside it don't fit, so it scrolls sideways.
+- **After:** The Favour panel sits in the layout (it still sticks while the page scrolls), and the columns fit the laptop and the TV.
+- **Evidence:** index.html:35 and 142; styles.css:46 and 158 (a 340 px panel plus 340 + 680 + 340 px columns). Phase 9 screenshot of the old tool at 1707 × 930: page width 1754.
+- **Phase 9:** Fixed. Test at the laptop, full screen, the TV and a small window.
+
+### BAS-37 · Code that could never run is left out
+**No longer relevant** · other · found in phase 9
+
+- **Before:** The old app.js has parts nothing can reach: the Arbitration Authority pop-up (its button, `#btnArbitration`, doesn't exist), a route highlighter that reads canvas pixels (never called), an older way of running a facility's function straight away (never called), an animated dice roll (never called), an SVG route drawing (never called, and its data is missing), automatic Compendium descriptions (never called), a Reset Identity button that's always hidden, and a reputation adjuster (never called).
+- **After:** Not carried across, so nothing changes on screen. The Arbitration Authority pop-up's wording is still in the old repo if Harry wants it later.
+- **Evidence:** app.js:2071-2073 and 3066, 5632, 4560, 1607, 1796, 4144 and 1852 (where each starts); index.html:211.
+- **Phase 9:** Left out.
+
+### BAS-38 · Wording that no longer fits
+**Deliberate change** · other · found in phase 9
+
+- **Before:** The Form Clan and Brigade boxes say "Save is in TEST mode right now." The Pending Orders hint says to click "Take Bastion Turn", a button that doesn't exist. The map tip says the tool saves in "local storage" and that "Each player can have their own copy".
+- **After:** "This is persistent." stays; the TEST-mode sentence goes, as the suite has one save (answer 9). The hint names Advance Bastion Turn. The tip reads "This tool saves automatically in your browser." (the suite's own storage; B18).
+- **Evidence:** app.js:405 and 445; index.html:480 and 168.
+- **Phase 9:** Changed.
+
+### BAS-39 · The Warehouse and Artisan Tools panels show the wrong faint pictures
+**Deliberate change** · other · found in phase 9
+
+- **Before:** The Diplomacy & Trade panel is slipped into the same row as the Warehouse and Artisan Tools, which shifts the picture rules along: the Warehouse shows the artisan tools picture and Artisan Tools shows none.
+- **After:** Each shows its own picture, as the styles intended.
+- **Evidence:** app.js:2062 inserts the panel before the Warehouse; styles.css:701-706 pick the pictures by position.
+- **Phase 9:** Changed.
+
+### BAS-40 · Redrawing resets the facility lists and the carousel
+**Deliberate change** · other · found in phase 9
+
+- **Before:** After any change (issuing an order, say), every facility's list jumps back to its first choice and the carousel scrolls back to the start. A war report runs its lines together.
+- **After:** The lists keep your choice, the carousel stays where it was, and a war report shows its lines as written.
+- **Evidence:** app.js:4444-4497 rebuild everything on each render; 5139 puts the report's line breaks in an ordinary box.
+- **Phase 9:** Changed.
 
 
 ## Clan Crest Creator

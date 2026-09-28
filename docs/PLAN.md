@@ -493,7 +493,7 @@ One phase per session, or one clearly defined chunk. The next phase starts only 
 | 9a / 9b / 9c | Bastion core (laptop + TV) / Hall, trade and Council / identity, war and Compendium | the largest tool |
 | Later | A short how-to guide for Harry, with his go-ahead | |
 
-**Phases 4, 5 and 6 were built together** (26 September 2026), at Harry's request to speed the build up: one session, one pull request and one combined checklist, grouped by tool. Each tool still has its own commits, tests and docs. For the last three tools Harry chose (28 September 2026) **one tool per go, each in a single session**: the Combat Tracker (7a and 7b together), then the Explorer (8a and 8b), then the Bastion (9a to 9c), each with its own pull request. Phases 7 and 8 are done.
+**Phases 4, 5 and 6 were built together** (26 September 2026), at Harry's request to speed the build up: one session, one pull request and one combined checklist, grouped by tool. Each tool still has its own commits, tests and docs. For the last three tools Harry chose (28 September 2026) **one tool per go, each in a single session**: the Combat Tracker (7a and 7b together), then the Explorer (8a and 8b), then the Bastion (9a to 9c), each with its own pull request. Phases 7, 8 and 9 are done, which completes the rebuild.
 
 ### "Done when" lists (Harry checks these in Edge)
 
@@ -747,7 +747,7 @@ Defaults are in brackets; "keep" means keep it as the old tool does it.
 - **E16** Once pins are tied to the map picture, check all 33 sit on their towns. Were they placed in a maximised Edge window on this laptop? **Yes.**
   - *Found in phase 8:* checked against the towns drawn on the maps, the pins were placed in the Explorer's **full-screen** view on the laptop (1707 × 1067), not a maximised window, so they were converted that way (two hidden pins fit the windowed view better and were converted that way). `tests/pin-check.html` shows all 33 for Harry's check.
 
-**The Ironbow Bastion Manager** *(answered by Harry, 28 September 2026: B2 as below, the defaults for the rest)*
+**The Ironbow Bastion Manager** *(answered by Harry, 28 September 2026: B2 as below, the defaults for the rest; built in phase 9)*
 - **B2** Host Delegation: one roll or three? Does Political Capital change once or twice? **The delegation's own two rolls count.** All three dice prompts stay; the Diplomacy (DC 13) and Insight (DC 12) rolls set Political Capital (+15 / +8 / 0 / −12) and the Favour Token. The first roll still sets the rest (such as the 2-turn cooldown on a bad failure) but no longer changes Political Capital.
 - **B3** A consortium pays twice: intended? **Keep.**
 - **B4** Hall upgrades: free, or 600 / 1,200 gp? **Free.**
