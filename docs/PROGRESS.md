@@ -2,11 +2,52 @@
 
 ## Where things stand
 
-**Phase 8 (the Scarlett Isles Explorer) is built and tested: 8a and 8b together, in one session, as Harry chose.** **Phase 9 (The Ironbow Bastion Manager, 9a to 9c together) is next,** and waits for Harry's go-ahead. His answers to its questions are in (B2 as he chose, the defaults for the rest).
+**Phase 9 (The Ironbow Bastion Manager) is built and tested: 9a to 9c together, in one session, as Harry chose.** That completes the faithful rebuild: all eight tools open from their cards. **Next is the short how-to guide** (a later phase), with Harry's go-ahead, and any upgrades Harry asks for after trying the rebuilt tools.
 
-Double-click `index.html` to open the suite. Seven tools now open from their cards: the Clan Crest Creator, the Pelagosi Puzzle Trials, the Notice Board, The Heartwood Ritual, the Arenas, the Combat Tracker and the Explorer. The Bastion says "Coming in phase 9" until its phase is done. The plan is in `docs/PLAN.md`, the bug list in `docs/KNOWN_ISSUES.md`, and the notes for building each tool in `docs/BUILDING-A-TOOL.md`.
+Double-click `index.html` to open the suite. The plan is in `docs/PLAN.md`, the bug list in `docs/KNOWN_ISSUES.md`, and the notes for building each tool in `docs/BUILDING-A-TOOL.md`.
 
 ## Done
+
+### Phase 9: The Ironbow Bastion Manager (28 September 2026)
+- **Rebuilt as it was:**
+  - **The top bar:** Party Level, Compendium, Roll Bastion Event, Advance Bastion Turn (+7 days), Reset, Download Save and Import Save. It stays in view as the page scrolls.
+  - **Favour of The Gods, Political Capital and Diplomatic Assets** on the left, as the old fixed panel was, with Claim and Honour Change at the ends of the bars.
+  - **Turn Log, Bastion Map and Bastion Event:** the map shows each built facility that has overlay art; an automatic d100 event every 4th turn.
+  - **Party Identity & Clan Influence:** Form Clan (level 9, total support 360, 3 clans at 55) and Form Mercenary Brigade (level 7, 3 defenders), Honour/Respect, Clan Honour and Trusted Clients.
+  - **Management:** defenders (+1 and −1), Menagerie beasts, the treasury and the military list.
+  - **Banner & War Council:** war actions against a clan, resolved next turn at their DC, and the war log with View.
+  - **Diplomacy & Trade:** the five record lists and the Hall of Emissaries (Trade Agreement, Host Delegation, Inter-Clan Summit, Secure Writ of Authority, Trade Consortium, and free upgrades), each with its planning box, your d20 and the result box; the Ironbow Trade Network with Invest: Stability, Invest: Yield and High-Risk Routing; Routes (the Sea Trade Routes map with its glowing routes), Resolve and the Council Ledger.
+  - **Warehouse and Artisan Tools**, and **Facilities:** construction slots (0 / 2 / 4 / 5 / 6 by level, 3 to 5 turns to build), pending orders, and the carousel of facility cards with their orders.
+  - **The Compendium:** 265 items, search, details, the 36 card pictures, the Roll20 link and Export Compendium JSON.
+  - It saves the whole Bastion and which panels are closed. Both are in Download Save, the top bar's Export and "Back up everything".
+- **Your answers:** B2 as you chose (the delegation's own two rolls set Political Capital); the defaults for the rest. B11: Treasure (99–00) can now come up.
+- **Fixed (they broke the tool, lost data or applied something twice):**
+  - Reopening or importing keeps party identity, the war log and all diplomacy (BAS-01).
+  - Advance Bastion Turn runs as saved steps: a cancelled roll keeps its order (it comes up again next turn), and closing the window mid-turn loses nothing; it reopens ready to finish (BAS-02, BAS-13).
+  - A double click, Enter or Space can't run a turn twice, and a click outside a dice box can't cancel it (BAS-03, BAS-10, BAS-12).
+  - Lowering the party level keeps every building, marked "Over capacity" (BAS-04, B8).
+  - Each trade route pays once a turn, even after a cancelled roll or Enter (BAS-05, BAS-11).
+  - Host Delegation changes Political Capital once (BAS-06, B2).
+  - A double click queues one war action (BAS-15).
+  - Importing another tool's file, or a damaged one, is refused (BAS-14).
+  - It works double-clicked and offline, with every picture and the fonts (BAS-07 to BAS-09).
+  - The panels' ▾ buttons work and are remembered (BAS-16).
+  - Warehouse and Artisan Tools edits save themselves (BAS-17).
+- **Kept as they were** (KNOWN_ISSUES BAS-19 to BAS-35), including: Hall upgrades are free (B4); a consortium pays both its contract and its route (B3); the Trade Agreement's Duration list is ignored (B5); the Writ's +2 is never granted (B6); cancelling an order keeps the gold (B9); beasts are counted by row (B10); a natural 1 on a Hall action still signs the deal (B20); an expired route never reopens (B21); the four mismatched overlays and 19 cards stay hidden (B12, B15).
+- **Small changes:**
+  - **Layout:** the old page was 1754 wide, so it scrolled sideways on your laptop (BAS-36). The Favour panel now sits beside the rest and sticks as you scroll, and everything fits the laptop and the TV.
+  - **Wording:** the TEST-mode sentence in the Form Clan and Brigade boxes is gone; the Pending Orders hint names Advance Bastion Turn; the map tip says it saves in your browser (BAS-38).
+  - **Pictures:** the Warehouse and Artisan Tools panels each show their own faint picture (they had been shifted along; BAS-39).
+  - **Redrawing:** a facility's list keeps your choice and the carousel stays where it was after each order; a war report shows its lines as written (BAS-40).
+  - **Pop-ups:** the suite's own pop-ups, with the painted hall behind the Hall's, as before. Clicking outside one does nothing.
+  - **Unreachable code** (the old Arbitration Authority pop-up and a few more) is left out (BAS-37).
+- **Checked against the old tool:** with the same dice, the old Bastion and the rebuild ran the same 12-turn campaign (building, orders, crafting, research, prayer, a Trade Agreement, Hall upgrades, a summit, a consortium, a route lost at sea, a Council verdict, a raid, a beast and Bastion events). The saved Bastion matched at all 19 steps: gold, buildings, orders, warehouse, diplomacy, routes, disputes, the war log and every Turn Log line. A Host Delegation then differed only by the old double Political Capital (B2).
+- **Structure:** `tools/bastion/rules.js` (the rules), `tool.js` (the screen), `bastion.css`, and `data/` (`bastion-data.js` for the numbers and wording that were in the old code; `facilities-data.js`, `tools-data.js`, `events-data.js` and `compendium-data.js`, word for word from the old JSON files).
+- **Tests:**
+  - `tests/rules.html`: 301 rules tests (54 new).
+  - `tests/e2e/phase9.test.js`: 63 checks.
+  - The earlier click-throughs (phases 1 to 8) still pass.
+  - **Not tested here:** Edge itself; the real TV, including dragging the window between the laptop and the TV. These are on Harry's checklist.
 
 ### Phase 8: Scarlett Isles Explorer (28 September 2026)
 - **Rebuilt as it was:**
@@ -269,7 +310,7 @@ Double-click `index.html` to open the suite. Seven tools now open from their car
   - The old-save import phase removed.
 
 ## Next
-**Phase 9: The Ironbow Bastion Manager**, 9a to 9c together (the core, then Hall, trade and Council, then identity, war and the Compendium), with Harry's go-ahead. It must fit the laptop and the TV. Its "done when" lists are in `docs/PLAN.md` section 4. After that, the how-to guide (a later phase, with Harry's go-ahead).
+**The short how-to guide for Harry** (a later phase in CLAUDE.md), with Harry's go-ahead. After trying the rebuilt tools, Harry can also ask for upgrades; sections 12 to 15 of the handover hold the ideas it proposed.
 
 ## Open questions for Harry
 
@@ -288,6 +329,8 @@ Each tool's questions are needed before that tool's phase. The full wording and 
   - E16: the pins turned out to have been placed in the Explorer's full-screen view, not a maximised window, and were converted that way. Please double-click `tests/pin-check.html` and check all 33 sit on their towns; tell the next session about any that don't.
   - Kept behaviours you're likely to notice: the Fog of War button reads Off after reopening (EXP-19); the Region list doesn't follow the loaded map (EXP-20); and pressing Resolve with an empty roll box counts as a roll of 0 (EXP-28). Say if you'd like any changed.
 - **Bastion (phase 9):** answered (B2: the delegation's own two rolls set Political Capital; the defaults for the rest).
+  - Kept behaviours you're likely to notice: Hall upgrades cost nothing (BAS-22); a consortium pays its income twice a turn, once as a contract and once as a route (BAS-24); "Cleared warehouse." appears twice in the Turn Log (BAS-31); and a Host Delegation's result box has an empty line where its summary should be (BAS-34). Say if you'd like any changed.
+  - Advance Bastion Turn has no "Are you sure?" step, as before; a double click now counts once. Say if you'd like one.
 
 ## Notes for future sessions
 - **Old code:** re-clone the old repos into `_legacy/` if they're missing (the links are in handover section 16). Download the Ritual films from the release.
@@ -305,4 +348,5 @@ Each tool's questions are needed before that tool's phase. The full wording and 
 - **Two-way player windows and map positions:** see the Battlemap note in `docs/BUILDING-A-TOOL.md` section 5. The Explorer uses the same idea with its own board (1440 units wide, so its old sizes are screen pixels on the TV in full screen).
 - **Fullscreen in tests:** headless Chromium supports `requestFullscreen()`, so `phase7.test.js` and `phase8.test.js` check the fullscreen layouts. The Escape key doesn't leave full screen there: call `document.exitFullscreen()` instead.
 - **Pop-ups and full screen:** shared pop-ups and notices open inside whatever is in full screen, and move there if full screen starts while one is open (`shared/js/modal.js`, `core.js`).
+- **The Bastion's comparison with the old tool:** the old tool builds its file paths from the first folder in the address, so `phase9.test.js` serves `_legacy/` and opens `/bastion_manager/index.html`. It saves some changes only on its next save, so the test nudges the treasury box before reading its save. `TSI.bastion.debug.change(fn)` sets up a check by changing the Bastion directly.
 - **Sound in tests:** the test browser can load the sounds but nobody hears them. The Pelagosi test records which sounds start and when; hearing them is on Harry's checklist.

@@ -198,3 +198,156 @@ Not copied:
 - `data/events_BACKUP.json`: not media. It's the events file with one extra event, "Fresh Tracks (Late)", which Harry confirmed was dropped on purpose (E6). The events in use are in `tools/explorer/data/events-data.js`, word for word.
 
 The weather videos are MP4s. The test browser can't play MP4s, so they are checked by Harry in Edge.
+
+## The Ironbow Bastion Manager (phase 9)
+
+All 139 media files from the old Bastion (131 PNGs and 8 SVGs). 121 distinct files are stored in `tools/bastion/assets/` (93 MB), each checked byte-for-byte after copying; the other 18 are byte-for-byte copies of one of them, so they're listed here and not stored twice. 80 files are used; the 41 the old tool never showed are in `assets/extras/`. The sound `assets/sfx/wax_seal.mp3` was referenced by the old code but never existed, so there's nothing to bring across.
+
+| Old path (`bastion_manager/…`) | New path | Size | Used |
+|---|---|---|---|
+| `assets/bastion_artwork.png` | `tools/bastion/assets/bastion_artwork.png` | 2.21 MB, 1152 × 768 | Yes: the Bastion Map |
+| `data/compendium_cards/Antitoxin.png` | `tools/bastion/assets/compendium_cards/Antitoxin.png` | 22 KB, 444 × 175 | Yes: the Compendium card for Antitoxin |
+| `data/compendium_cards/Assassin's Blood.png` | `tools/bastion/assets/compendium_cards/Assassin's Blood.png` | 28 KB, 444 × 193 | Yes: the Compendium card for Assassin's Blood |
+| `data/compendium_cards/Bag of Holding.png` | `tools/bastion/assets/compendium_cards/Bag of Holding.png` | 72 KB, 436 × 478 | Yes: the Compendium card for Bag of Holding |
+| `data/compendium_cards/Basic Poison.png` | `tools/bastion/assets/compendium_cards/Basic Poison.png` | 31 KB, 444 × 229 | Yes: the Compendium card for Basic Poison |
+| `data/compendium_cards/Bead of Nourishment.png` | `tools/bastion/assets/compendium_cards/Bead of Nourishment.png` | 25 KB, 444 × 180 | Yes: the Compendium card for Bead of Nourishment |
+| `data/compendium_cards/Bead of Refreshment.png` | `tools/bastion/assets/compendium_cards/Bead of Refreshment.png` | 25 KB, 444 × 180 | Yes: the Compendium card for Bead of Refreshment |
+| `data/compendium_cards/Boots of Striding and Springing.png` | `tools/bastion/assets/compendium_cards/Boots of Striding and Springing.png` | 37 KB, 436 × 271 | Yes: the Compendium card for Boots of Striding and Springing |
+| `data/compendium_cards/Cap of Water Breathing.png` | `tools/bastion/assets/compendium_cards/Cap of Water Breathing.png` | 28 KB, 444 × 198 | Yes: the Compendium card for Cap of Water Breathing |
+| `data/compendium_cards/Charlatan's Die.png` | `tools/bastion/assets/compendium_cards/Charlatan's Die.png` | 18 KB, 444 × 162 | Yes: the Compendium card for Charlatan's Die |
+| `data/compendium_cards/Circlet of Blasting.png` | `tools/bastion/assets/compendium_cards/Circlet of Blasting.png` | 24 KB, 444 × 180 | Yes: the Compendium card for Circlet of Blasting |
+| `data/compendium_cards/Cloak of Protection.png` | `tools/bastion/assets/compendium_cards/Cloak of Protection.png` | 24 KB, 444 × 180 | Yes: the Compendium card for Cloak of Protection |
+| `data/compendium_cards/Dread Helm.png` | `tools/bastion/assets/compendium_cards/Dread Helm.png` | 20 KB, 444 × 162 | Yes: the Compendium card for Dread Helm |
+| `data/compendium_cards/Gem of Brightness.png` | `tools/bastion/assets/compendium_cards/Gem of Brightness.png` | 72 KB, 436 × 502 | Yes: the Compendium card for Gem of Brightness |
+| `data/compendium_cards/Hat of Disguise.png` | `tools/bastion/assets/compendium_cards/Hat of Disguise.png` | 23 KB, 444 × 180 | Yes: the Compendium card for Hat of Disguise |
+| `data/compendium_cards/Keelboat.png` | `tools/bastion/assets/compendium_cards/Keelboat.png` | 88 KB, 436 × 632 | Yes: the Compendium card for Keelboat |
+| `data/compendium_cards/Lock of Trickery.png` | `tools/bastion/assets/compendium_cards/Lock of Trickery.png` | 28 KB, 444 × 198 | Yes: the Compendium card for Lock of Trickery |
+| `data/compendium_cards/Longship.png` | `tools/bastion/assets/compendium_cards/Longship.png` | 89 KB, 436 × 650 | Yes: the Compendium card for Longship |
+| `data/compendium_cards/Moon-Touched Sword.png` | `tools/bastion/assets/compendium_cards/Moon-Touched Sword.png` | 44 KB, 436 × 359 | Yes: the Compendium card for Moon-Touched Sword |
+| `data/compendium_cards/Mystery Key.png` | `tools/bastion/assets/compendium_cards/Mystery Key.png` | 23 KB, 444 × 180 | Yes: the Compendium card for Mystery Key |
+| `data/compendium_cards/Potion of Climbing.png` | `tools/bastion/assets/compendium_cards/Potion of Climbing.png` | 33 KB, 444 × 257 | Yes: the Compendium card for Potion of Climbing |
+| `data/compendium_cards/Potion of Healing.png` | `tools/bastion/assets/compendium_cards/Potion of Healing.png` | 37 KB, 444 × 252 | Yes: the Compendium card for Potion of Healing |
+| `data/compendium_cards/Potion of Poison.png` | `tools/bastion/assets/compendium_cards/Potion of Poison.png` | 34 KB, 436 × 275 | Yes: the Compendium card for Potion of Poison |
+| `data/compendium_cards/Potion of Resistance.png` | `tools/bastion/assets/compendium_cards/Potion of Resistance.png` | 39 KB, 436 × 441 | Yes: the Compendium card for Potion of Resistance |
+| `data/compendium_cards/Potion of Water Breathing.png` | `tools/bastion/assets/compendium_cards/Potion of Water Breathing.png` | 28 KB, 444 × 221 | Yes: the Compendium card for Potion of Water Breathing |
+| `data/compendium_cards/Ring of Jumping.png` | `tools/bastion/assets/compendium_cards/Ring of Jumping.png` | 24 KB, 444 × 180 | Yes: the Compendium card for Ring of Jumping |
+| `data/compendium_cards/Ring of Swimming.png` | `tools/bastion/assets/compendium_cards/Ring of Swimming.png` | 20 KB, 444 × 162 | Yes: the Compendium card for Ring of Swimming |
+| `data/compendium_cards/Ring of Warmth.png` | `tools/bastion/assets/compendium_cards/Ring of Warmth.png` | 29 KB, 444 × 221 | Yes: the Compendium card for Ring of Warmth |
+| `data/compendium_cards/Rope of Climbing.png` | `tools/bastion/assets/compendium_cards/Rope of Climbing.png` | 63 KB, 436 × 424 | Yes: the Compendium card for Rope of Climbing |
+| `data/compendium_cards/Saddle of the Cavalier.png` | `tools/bastion/assets/compendium_cards/Saddle of the Cavalier.png` | 22 KB, 444 × 180 | Yes: the Compendium card for Saddle of the Cavalier |
+| `data/compendium_cards/Sending Stones.png` | `tools/bastion/assets/compendium_cards/Sending Stones.png` | 45 KB, 436 × 311 | Yes: the Compendium card for Sending Stones |
+| `data/compendium_cards/Sentinel Shield.png` | `tools/bastion/assets/compendium_cards/Sentinel Shield.png` | 26 KB, 444 × 216 | Yes: the Compendium card for Sentinel Shield |
+| `data/compendium_cards/Shield of Expression.png` | `tools/bastion/assets/compendium_cards/Shield of Expression.png` | 24 KB, 444 × 180 | Yes: the Compendium card for Shield of Expression |
+| `data/compendium_cards/Smoldering Armor.png` | `tools/bastion/assets/compendium_cards/Smoldering Armor.png` | 56 KB, 436 × 479 | Yes: the Compendium card for Smoldering Armor |
+| `data/compendium_cards/Sword of Vengeance.png` | `tools/bastion/assets/compendium_cards/Sword of Vengeance.png` | 83 KB, 436 × 590 | Yes: the Compendium card for Sword of Vengeance |
+| `data/compendium_cards/Truth Serum.png` | `tools/bastion/assets/compendium_cards/Truth Serum.png` | 23 KB, 444 × 175 | Yes: the Compendium card for Truth Serum |
+| `data/compendium_cards/Walloping Ammunition.png` | `tools/bastion/assets/compendium_cards/Walloping Ammunition.png` | 40 KB, 436 × 341 | Yes: the Compendium card for Walloping Ammunition |
+| `assets/facilities/arcane_study.png` | `tools/bastion/assets/facilities/arcane_study.png` | 1.73 MB, 1024 × 1024 | Yes: the Arcane Study card's picture |
+| `assets/facilities/armoury.png` | `tools/bastion/assets/facilities/armoury.png` | 1.99 MB, 1024 × 1024 | Yes: the Armoury card's picture |
+| `assets/facilities/barracks.png` | `tools/bastion/assets/facilities/barracks.png` | 1.95 MB, 1024 × 1024 | Yes: the Barracks card's picture |
+| `assets/facilities/docks.png` | `tools/bastion/assets/facilities/docks.png` | 1.83 MB, 1024 × 1024 | Yes: the Dock card's picture |
+| `assets/facilities/gambling_hall.png` | `tools/bastion/assets/facilities/gambling_hall.png` | 1.90 MB, 1024 × 1024 | Yes: the Gaming Hall card's picture |
+| `assets/facilities/garden.png` | `tools/bastion/assets/facilities/garden.png` | 2.06 MB, 1024 × 1024 | Yes: the Garden card's picture |
+| `assets/facilities/greenhouse.png` | `tools/bastion/assets/facilities/greenhouse.png` | 2.09 MB, 1024 × 1024 | Yes: the Greenhouse card's picture |
+| `assets/facilities/hall_inner.png` | `tools/bastion/assets/facilities/hall_inner.png` | 2.61 MB, 1536 × 1024 | Yes: the painted hall behind the Hall's pop-ups |
+| `assets/facilities/hall_of_emissaries.png` | `tools/bastion/assets/facilities/hall_of_emissaries.png` | 1.65 MB, 1024 × 1024 | Yes: the Hall's picture, and faint behind the Diplomacy & Trade panel |
+| `assets/facilities/laboratory.png` | `tools/bastion/assets/facilities/laboratory.png` | 2.06 MB, 1024 × 1024 | Yes: the Laboratory card's picture |
+| `assets/facilities/library.png` | `tools/bastion/assets/facilities/library.png` | 1.77 MB, 1024 × 1024 | Yes: the Library card's picture |
+| `assets/facilities/menagerie.png` | `tools/bastion/assets/facilities/menagerie.png` | 1.95 MB, 1024 × 1024 | Yes: the Menagerie card's picture |
+| `assets/facilities/shrine_of_aurush.png` | `tools/bastion/assets/facilities/shrine_of_aurush.png` | 2.54 MB, 1536 × 1024 | Yes: the Shrine of Aurush card's picture |
+| `assets/facilities/shrine_of_pelagos.png` | `tools/bastion/assets/facilities/shrine_of_pelagos.png` | 2.51 MB, 1536 × 1024 | Yes: the Shrine of Pelagos card's picture |
+| `assets/facilities/shrine_of_telluria.png` | `tools/bastion/assets/facilities/shrine_of_telluria.png` | 2.57 MB, 1536 × 1024 | Yes: the Shrine of Telluria card's picture |
+| `assets/facilities/smithy.png` | `tools/bastion/assets/facilities/smithy.png` | 1.93 MB, 1024 × 1024 | Yes: the Smithy card's picture |
+| `assets/facilities/war_room.png` | `tools/bastion/assets/facilities/war_room.png` | 1.93 MB, 1024 × 1024 | Yes: the War Room card's picture |
+| `assets/facilities/watchtower.png` | `tools/bastion/assets/facilities/watchtower.png` | 2.10 MB, 1024 × 1024 | Yes: the Watchtower card's picture |
+| `assets/facilities/workshop.png` | `tools/bastion/assets/facilities/workshop.png` | 1.90 MB, 1024 × 1024 | Yes: the Workshop card's picture |
+| `assets/arcane_study_overlay.png` | `tools/bastion/assets/overlays/arcane_study_overlay.png` | 67 KB, 1152 × 768 | Yes: shows the Arcane Study on the map once built |
+| `assets/garden_overlay.png` | `tools/bastion/assets/overlays/garden_overlay.png` | 76 KB, 1152 × 768 | Yes: shows the Garden on the map once built |
+| `assets/greenhouse_overlay.png` | `tools/bastion/assets/overlays/greenhouse_overlay.png` | 92 KB, 1152 × 768 | Yes: shows the Greenhouse on the map once built |
+| `assets/hall_of_emissaries_overlay.png` | `tools/bastion/assets/overlays/hall_of_emissaries_overlay.png` | 139 KB, 1152 × 768 | Yes: shows the Hall of Emissaries on the map once built |
+| `assets/laboratory_overlay.png` | `tools/bastion/assets/overlays/laboratory_overlay.png` | 70 KB, 1152 × 768 | Yes: shows the Laboratory on the map once built |
+| `assets/library_overlay.png` | `tools/bastion/assets/overlays/library_overlay.png` | 73 KB, 1152 × 768 | Yes: shows the Library on the map once built |
+| `assets/smithy_overlay.png` | `tools/bastion/assets/overlays/smithy_overlay.png` | 66 KB, 1152 × 768 | Yes: shows the Smithy on the map once built |
+| `assets/war_room_overlay.png` | `tools/bastion/assets/overlays/war_room_overlay.png` | 191 KB, 1152 × 768 | Yes: shows the War Room on the map once built |
+| `assets/artisan_tools.png` | `tools/bastion/assets/panels/artisan_tools.png` | 1.88 MB, 1024 × 1024 | Yes: faint behind the Artisan Tools panel |
+| `assets/bastion_defenders.png` | `tools/bastion/assets/panels/bastion_defenders.png` | 1.82 MB, 1024 × 1024 | Yes: faint behind the Bastion Defenders box |
+| `assets/military.png` | `tools/bastion/assets/panels/military.png` | 1.84 MB, 1024 × 1024 | Yes: faint behind the Military box |
+| `assets/treasury.png` | `tools/bastion/assets/panels/treasury.png` | 1.99 MB, 1024 × 1024 | Yes: faint behind the Treasury box |
+| `assets/warehouse.png` | `tools/bastion/assets/panels/warehouse.png` | 2.04 MB, 1024 × 1024 | Yes: faint behind the Warehouse panel |
+| `assets/ui/bacca_trade_route.png` | `tools/bastion/assets/ui/bacca_trade_route.png` | 27 KB, 1494 × 1996 | Yes: Bacca's glowing route on the Sea Trade Routes map |
+| `assets/ui/blackstone_trade_route.png` | `tools/bastion/assets/ui/blackstone_trade_route.png` | 52 KB, 1494 × 1996 | Yes: Blackstone's glowing route on the Sea Trade Routes map |
+| `assets/ui/clan_trading_locations.png` | `tools/bastion/assets/ui/clan_trading_locations.png` | 7.22 MB, 1494 × 1996 | Yes: the Sea Trade Routes map |
+| `assets/ui/farmer_trade_route.png` | `tools/bastion/assets/ui/farmer_trade_route.png` | 36 KB, 1494 × 1996 | Yes: Farmer's glowing route on the Sea Trade Routes map |
+| `assets/ui/karr_trade_route.png` | `tools/bastion/assets/ui/karr_trade_route.png` | 31 KB, 1494 × 1996 | Yes: Karr's glowing route on the Sea Trade Routes map |
+| `assets/ui/molten_trade_route.png` | `tools/bastion/assets/ui/molten_trade_route.png` | 38 KB, 1494 × 1996 | Yes: Molten's glowing route on the Sea Trade Routes map |
+| `assets/ui/rowthorn_trade_route.png` | `tools/bastion/assets/ui/rowthorn_trade_route.png` | 32 KB, 1494 × 1996 | Yes: Rowthorn's glowing route on the Sea Trade Routes map |
+| `assets/ui/slade_trade_route.png` | `tools/bastion/assets/ui/slade_trade_route.png` | 35 KB, 1494 × 1996 | Yes: Slade's glowing route on the Sea Trade Routes map |
+| `assets/ui/trade_disputes.png` | `tools/bastion/assets/ui/trade_disputes.png` | 2.57 MB, 1536 × 1024 | Yes: faint behind the Council Ledger |
+| `assets/ui/trade_signing.png` | `tools/bastion/assets/ui/trade_signing.png` | 4.39 MB, 2048 × 1365 | Yes: the trade network's result boxes |
+| `assets/ui/wax_stamp.png` | `tools/bastion/assets/ui/wax_stamp.png` | 2.09 MB, 1536 × 1024 | Yes: the Council Verdict box |
+| `data/compendium_cards/Acid.png` | `tools/bastion/assets/extras/compendium_cards/Acid.png` | 29 KB, 444 × 229 | No: a card whose name doesn't exactly match a Compendium item, so it never showed (B15) |
+| `data/compendium_cards/Alchemist's Fire.png` | `tools/bastion/assets/extras/compendium_cards/Alchemist's Fire.png` | 33 KB, 444 × 229 | No: a card whose name doesn't exactly match a Compendium item, so it never showed (B15) |
+| `data/compendium_cards/Arcane Focus.png` | `tools/bastion/assets/extras/compendium_cards/Arcane Focus.png` | 28 KB, 444 × 300 | No: a card whose name doesn't exactly match a Compendium item, so it never showed (B15) |
+| `data/compendium_cards/Common Clothes.png` | `tools/bastion/assets/extras/compendium_cards/Common Clothes.png` | 16 KB, 444 × 125 | No: a card whose name doesn't exactly match a Compendium item, so it never showed (B15) |
+| `data/compendium_cards/Essence of Ether.png` | `tools/bastion/assets/extras/compendium_cards/Essence of Ether.png` | 30 KB, 444 × 211 | No: a card whose name doesn't exactly match a Compendium item, so it never showed (B15) |
+| `data/compendium_cards/Fine Clothes.png` | `tools/bastion/assets/extras/compendium_cards/Fine Clothes.png` | 21 KB, 444 × 193 | No: a card whose name doesn't exactly match a Compendium item, so it never showed (B15) |
+| `data/compendium_cards/Half Plate Armor.png` | `tools/bastion/assets/extras/compendium_cards/Half Plate Armor.png` | 20 KB, 444 × 157 | No: a card whose name doesn't exactly match a Compendium item, so it never showed (B15) |
+| `data/compendium_cards/Leather Armor.png` | `tools/bastion/assets/extras/compendium_cards/Leather Armor.png` | 14 KB, 444 × 125 | No: a card whose name doesn't exactly match a Compendium item, so it never showed (B15) |
+| `data/compendium_cards/Padded Armor.png` | `tools/bastion/assets/extras/compendium_cards/Padded Armor.png` | 18 KB, 444 × 157 | No: a card whose name doesn't exactly match a Compendium item, so it never showed (B15) |
+| `data/compendium_cards/Plate Armor.png` | `tools/bastion/assets/extras/compendium_cards/Plate Armor.png` | 22 KB, 444 × 198 | No: a card whose name doesn't exactly match a Compendium item, so it never showed (B15) |
+| `data/compendium_cards/Potion of Greater Healing.png` | `tools/bastion/assets/extras/compendium_cards/Potion of Greater Healing.png` | 27 KB, 444 × 198 | No: a card whose name doesn't exactly match a Compendium item, so it never showed (B15) |
+| `data/compendium_cards/Potion of Superior Healing.png` | `tools/bastion/assets/extras/compendium_cards/Potion of Superior Healing.png` | 25 KB, 444 × 198 | No: a card whose name doesn't exactly match a Compendium item, so it never showed (B15) |
+| `data/compendium_cards/Potion of Supreme Healing.png` | `tools/bastion/assets/extras/compendium_cards/Potion of Supreme Healing.png` | 26 KB, 444 × 198 | No: a card whose name doesn't exactly match a Compendium item, so it never showed (B15) |
+| `data/compendium_cards/Rations.png` | `tools/bastion/assets/extras/compendium_cards/Rations.png` | 21 KB, 444 × 175 | No: a card whose name doesn't exactly match a Compendium item, so it never showed (B15) |
+| `data/compendium_cards/Spell Scroll.png` | `tools/bastion/assets/extras/compendium_cards/Spell Scroll.png` | 39 KB, 436 × 392 | No: a card whose name doesn't exactly match a Compendium item, so it never showed (B15) |
+| `data/compendium_cards/Studded Leather Armor.png` | `tools/bastion/assets/extras/compendium_cards/Studded Leather Armor.png` | 16 KB, 444 × 125 | No: a card whose name doesn't exactly match a Compendium item, so it never showed (B15) |
+| `data/compendium_cards/Torpor.png` | `tools/bastion/assets/extras/compendium_cards/Torpor.png` | 23 KB, 444 × 193 | No: a card whose name doesn't exactly match a Compendium item, so it never showed (B15) |
+| `data/compendium_cards/Vial.png` | `tools/bastion/assets/extras/compendium_cards/Vial.png` | 16 KB, 444 × 157 | No: a card whose name doesn't exactly match a Compendium item, so it never showed (B15) |
+| `data/compendium_cards/Wyvern Poison.png` | `tools/bastion/assets/extras/compendium_cards/Wyvern Poison.png` | 24 KB, 444 × 175 | No: a card whose name doesn't exactly match a Compendium item, so it never showed (B15) |
+| `assets/facilities/guildhall.png` | `tools/bastion/assets/extras/facilities/guildhall.png` | 1.79 MB, 1024 × 1024 | No: never used by the old tool |
+| `assets/facilities/scriptorium.png` | `tools/bastion/assets/extras/facilities/scriptorium.png` | 1.87 MB, 1024 × 1024 | No: never used by the old tool |
+| `assets/facilities/storehouse.png` | `tools/bastion/assets/extras/facilities/storehouse.png` | 1.92 MB, 1024 × 1024 | No: never used by the old tool |
+| `assets/gambling_hall_overlay.png` | `tools/bastion/assets/extras/gambling_hall_overlay.png` | 156 KB, 1152 × 768 | No: overlay art under a name the old tool never looked for, so it stays hidden (B12) |
+| `assets/images/bastion_artwork.png` | `tools/bastion/assets/extras/images/bastion_artwork.png` | 2.96 MB, 1536 × 1024 | No: another version of the Bastion map; the one in use is the real one (B13) |
+| `assets/images/trade_agreement.png` | `tools/bastion/assets/extras/images/trade_agreement.png` | 1.90 MB, 1536 × 1024 | No: never used by the old tool |
+| `assets/shrine_of_aurush_overlay.png` | `tools/bastion/assets/extras/shrine_of_aurush_overlay.png` | 66 KB, 1152 × 768 | No: overlay art under a name the old tool never looked for, so it stays hidden (B12) |
+| `assets/shrine_of_pelagos_overlay.png` | `tools/bastion/assets/extras/shrine_of_pelagos_overlay.png` | 87 KB, 1152 × 768 | No: overlay art under a name the old tool never looked for, so it stays hidden (B12) |
+| `assets/shrine_of_telluria_overlay.png` | `tools/bastion/assets/extras/shrine_of_telluria_overlay.png` | 67 KB, 1152 × 768 | No: overlay art under a name the old tool never looked for, so it stays hidden (B12) |
+| `assets/ui/all_trade_routes.png` | `tools/bastion/assets/extras/ui/all_trade_routes.png` | 150 KB, 1494 × 1996 | No: never used by the old tool |
+| `assets/ui/all_trade_routes.svg` | `tools/bastion/assets/extras/ui/all_trade_routes.svg` | 15 KB | No: an earlier drawing of the route; the tool used the PNG |
+| `assets/ui/arbitration_stamp.png` | `tools/bastion/assets/extras/ui/arbitration_stamp.png` | 4.52 MB, 2048 × 1365 | No: never used by the old tool |
+| `assets/ui/bacca_trade_route.svg` | `tools/bastion/assets/extras/ui/bacca_trade_route.svg` | 2 KB | No: an earlier drawing of the route; the tool used the PNG |
+| `assets/ui/blackstone_trade_route.svg` | `tools/bastion/assets/extras/ui/blackstone_trade_route.svg` | 3 KB | No: an earlier drawing of the route; the tool used the PNG |
+| `assets/ui/catastophy.png` | `tools/bastion/assets/extras/ui/catastophy.png` | 3.09 MB, 1536 × 1024 | No: never used by the old tool |
+| `assets/ui/farmer_trade_route.svg` | `tools/bastion/assets/extras/ui/farmer_trade_route.svg` | 4 KB | No: an earlier drawing of the route; the tool used the PNG |
+| `assets/ui/karr_trade_route.svg` | `tools/bastion/assets/extras/ui/karr_trade_route.svg` | 2 KB | No: an earlier drawing of the route; the tool used the PNG |
+| `assets/ui/molten_trade_route.svg` | `tools/bastion/assets/extras/ui/molten_trade_route.svg` | 4 KB | No: an earlier drawing of the route; the tool used the PNG |
+| `assets/ui/no_arrivals.png` | `tools/bastion/assets/extras/ui/no_arrivals.png` | 2.40 MB, 1536 × 1024 | No: never used by the old tool |
+| `assets/ui/rowthorn_trade_route.svg` | `tools/bastion/assets/extras/ui/rowthorn_trade_route.svg` | 2 KB | No: an earlier drawing of the route; the tool used the PNG |
+| `assets/ui/slade_trade_route.svg` | `tools/bastion/assets/extras/ui/slade_trade_route.svg` | 3 KB | No: an earlier drawing of the route; the tool used the PNG |
+| `assets/ui/war_panel.png` | `tools/bastion/assets/extras/ui/war_panel.png` | 2.56 MB, 1536 × 1024 | No: never used by the old tool |
+
+Byte-for-byte copies, stored once:
+
+| Old path (`bastion_manager/…`) | The same file as | Stored at |
+|---|---|---|
+| `assets/arcane_study.png` | `assets/facilities/arcane_study.png` | `tools/bastion/assets/facilities/arcane_study.png` |
+| `assets/armoury.png` | `assets/facilities/armoury.png` | `tools/bastion/assets/facilities/armoury.png` |
+| `assets/barracks.png` | `assets/facilities/barracks.png` | `tools/bastion/assets/facilities/barracks.png` |
+| `assets/docks.png` | `assets/facilities/docks.png` | `tools/bastion/assets/facilities/docks.png` |
+| `assets/facilities/menageri.png` | `assets/facilities/menagerie.png` | `tools/bastion/assets/facilities/menagerie.png` |
+| `assets/gambling_hall.png` | `assets/facilities/gambling_hall.png` | `tools/bastion/assets/facilities/gambling_hall.png` |
+| `assets/garden.png` | `assets/facilities/garden.png` | `tools/bastion/assets/facilities/garden.png` |
+| `assets/greenhouse.png` | `assets/facilities/greenhouse.png` | `tools/bastion/assets/facilities/greenhouse.png` |
+| `assets/guildhall.png` | `assets/facilities/guildhall.png` | `tools/bastion/assets/extras/facilities/guildhall.png` |
+| `assets/images/delegation_summit.png` | `assets/ui/wax_stamp.png` | `tools/bastion/assets/ui/wax_stamp.png` |
+| `assets/images/hall_inner.png` | `assets/facilities/hall_inner.png` | `tools/bastion/assets/facilities/hall_inner.png` |
+| `assets/library.png` | `assets/facilities/library.png` | `tools/bastion/assets/facilities/library.png` |
+| `assets/menageri.png` | `assets/facilities/menagerie.png` | `tools/bastion/assets/facilities/menagerie.png` |
+| `assets/scriptorium.png` | `assets/facilities/scriptorium.png` | `tools/bastion/assets/extras/facilities/scriptorium.png` |
+| `assets/smithy.png` | `assets/facilities/smithy.png` | `tools/bastion/assets/facilities/smithy.png` |
+| `assets/storehouse.png` | `assets/facilities/storehouse.png` | `tools/bastion/assets/extras/facilities/storehouse.png` |
+| `assets/watchtower.png` | `assets/facilities/watchtower.png` | `tools/bastion/assets/facilities/watchtower.png` |
+| `assets/workshop.png` | `assets/facilities/workshop.png` | `tools/bastion/assets/facilities/workshop.png` |
+
+Not copied: `build_compendium.py` and the `data/` JSON files are code and data, not media. The data is in `tools/bastion/data/`, word for word.
