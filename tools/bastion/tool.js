@@ -1565,7 +1565,9 @@
       /* For the tests. */
       ns.debug = {
         state: function () { return state; },
-        busy: function () { return turnRunning; }
+        busy: function () { return turnRunning; },
+        /* Change the Bastion directly (to set up a test), then save and redraw. */
+        change: function (fn) { fn(state); done(); }
       };
       life.onStop(function () { ns.debug = null; });
 

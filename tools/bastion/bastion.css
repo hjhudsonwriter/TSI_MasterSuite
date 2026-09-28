@@ -607,7 +607,7 @@
 .tsi-page--bastion .tsi-bas-modal--hall .tsi-modal__body { font-size: var(--tsi-fs-body); }
 .tsi-page--bastion .tsi-bas-modal--hall .tsi-modal__foot .tsi-btn { font-size: 15px; padding: 10px 18px; }
 .tsi-page--bastion .tsi-bas-modal--dice { width: min(760px, 96vw); }
-.tsi-page--bastion .tsi-bas-modal .tsi-bas-d20 { width: 140px; font: 700 28px var(--tsi-font-mono); text-align: center; }
+.tsi-page--bastion .tsi-bas-modal .tsi-bas-field .tsi-bas-d20 { width: 140px; font: 700 28px var(--tsi-font-mono); text-align: center; }
 .tsi-page--bastion .tsi-bas-modal .tsi-bas-dice-meta { margin: 0 0 12px; }
 .tsi-page--bastion .tsi-bas-modal .tsi-bas-rollrow { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 8px; }
 
