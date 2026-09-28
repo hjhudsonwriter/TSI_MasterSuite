@@ -72,7 +72,7 @@ This plan governs how the suite is built. CLAUDE.md's rules always win over it. 
 | Migrate old saves before building (sections 1, 14) | **Dropped completely.** Harry doesn't need old saves (answer 9). |
 | New joined-up features: a shared day counter, an Explorer→Bastion link, an audit log, Ritual/Arena save points, saved crest designs, reward transfers (sections 12–15) | Not built. These are proposals for after the rebuild. |
 | Keep external reference links (section 7), against CLAUDE.md's "no remote links" | Clickable links (Roll20, stat blocks, the shop) are fine. They only work online, and nothing loads them automatically. |
-| User and maintenance guides (sections 1, 15) | The how-to guide is a later phase. Notes for future sessions build up in `docs/`. |
+| User and maintenance guides (sections 1, 15) | A short how-to guide for Harry, `guide.html`, built after the rebuild. Notes for future sessions build up in `docs/`. |
 
 **CLAUDE.md vs the code:** the Ritual's cinematics play inside the Ritual page, not in a player window. The old `cinematics/player.html` is an unused leftover. CLAUDE.md now says so.
 
@@ -491,7 +491,7 @@ One phase per session, or one clearly defined chunk. The next phase starts only 
 | 7a / 7b | Combat Tracker desk / Battlemap (laptop + TV) | two-way player window, PDF reader, large maps |
 | 8a / 8b | Explorer maps and movement (laptop + TV) / events, camp and weather | large data files and video |
 | 9a / 9b / 9c | Bastion core (laptop + TV) / Hall, trade and Council / identity, war and Compendium | the largest tool |
-| Later | A short how-to guide for Harry, with his go-ahead | |
+| After 9 | A short how-to guide for Harry (`guide.html`), with his go-ahead: done | the guide matches the tools (a test checks every name it gives) |
 
 **Phases 4, 5 and 6 were built together** (26 September 2026), at Harry's request to speed the build up: one session, one pull request and one combined checklist, grouped by tool. Each tool still has its own commits, tests and docs. For the last three tools Harry chose (28 September 2026) **one tool per go, each in a single session**: the Combat Tracker (7a and 7b together), then the Explorer (8a and 8b), then the Bastion (9a to 9c), each with its own pull request. Phases 7, 8 and 9 are done, which completes the rebuild.
 
