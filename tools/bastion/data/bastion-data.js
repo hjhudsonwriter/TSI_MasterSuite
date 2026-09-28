@@ -158,6 +158,48 @@ window.TSI_DATA.bastion = {
     other: ['A diplomatic action issued from the Hall.', 'Resolves next Bastion Turn.', 'Outcome is determined by your roll and applies Political Capital changes.']
   },
 
+  /* The Compendium's card pictures (assets/compendium_cards/<name>.png). A card
+     shows only when its file name is exactly the item's name, as before, so
+     these 36 show (B15); the other 19 are in assets/extras/compendium_cards/. */
+  compendiumCards: [
+    "Antitoxin",
+    "Assassin's Blood",
+    "Bag of Holding",
+    "Basic Poison",
+    "Bead of Nourishment",
+    "Bead of Refreshment",
+    "Boots of Striding and Springing",
+    "Cap of Water Breathing",
+    "Charlatan's Die",
+    "Circlet of Blasting",
+    "Cloak of Protection",
+    "Dread Helm",
+    "Gem of Brightness",
+    "Hat of Disguise",
+    "Keelboat",
+    "Lock of Trickery",
+    "Longship",
+    "Moon-Touched Sword",
+    "Mystery Key",
+    "Potion of Climbing",
+    "Potion of Healing",
+    "Potion of Poison",
+    "Potion of Resistance",
+    "Potion of Water Breathing",
+    "Ring of Jumping",
+    "Ring of Swimming",
+    "Ring of Warmth",
+    "Rope of Climbing",
+    "Saddle of the Cavalier",
+    "Sending Stones",
+    "Sentinel Shield",
+    "Shield of Expression",
+    "Smoldering Armor",
+    "Sword of Vengeance",
+    "Truth Serum",
+    "Walloping Ammunition"
+  ],
+
   /* Hand-written compendium descriptions (3665-3878). The old tool never
      showed them, and they stay hidden (B15, kept). They're here so nothing
      Harry wrote is lost. */

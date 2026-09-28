@@ -1455,10 +1455,8 @@
           var info = COMPENDIUM[item] || null;
           var rollLink = info && info.roll20 ? info.roll20 : R.roll20Url(item);
           /* A card picture shows when one has the item's exact name (B15). */
-          var cardWrap = el('div', { class: 'tsi-bas-comp__card' }, el('img', {
-            src: asset('compendium_cards/' + encodeURIComponent(item) + '.png'), alt: item + ' card',
-            onerror: function () { cardWrap.remove(); }
-          }));
+          var cardWrap = B.compendiumCards.indexOf(item) === -1 ? null : el('div', { class: 'tsi-bas-comp__card', 'data-test': 'comp-card' },
+            el('img', { src: asset('compendium_cards/' + encodeURIComponent(item) + '.png'), alt: item + ' card' }));
           TSI.clear(detail);
           TSI.append(detail, [
             el('div', { class: 'tsi-bas-comp__title', text: item }),
@@ -1543,6 +1541,8 @@
 
       function renderAll() {
         hideTip();
+        /* Built facilities get level 1, as the old tool did on every redraw (1543-1547). */
+        R.ensureLevels(state, data);
         setValue(levelSelect, state.partyLevel);
         renderTurnButton();
         renderSide();

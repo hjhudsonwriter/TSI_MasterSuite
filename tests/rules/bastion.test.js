@@ -654,6 +654,8 @@
     t.equal(out.kept + out.stubbed, 265);
     t.equal(out.kept, 62);
     t.equal(out.file.version, 1);
+    t.equal(T.bastion.compendiumCards.length, 36);
+    t.same(T.bastion.compendiumCards.filter(function (n) { return idx.items.indexOf(n) === -1; }), [], 'every card belongs to an item');
     t.ok(out.file.items['Bag of Holding'].summary);
   });
 
