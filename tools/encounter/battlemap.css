@@ -207,9 +207,10 @@
   background: rgba(0, 0, 0, .45);
   backdrop-filter: blur(6px);
 }
-.tsi-player--battlemap .tsi-bm-stage:fullscreen .tsi-bm-sidebar { display: grid; }
-.tsi-player--battlemap .tsi-bm-stage:fullscreen .tsi-bm-ruler { left: 86px; }
-.tsi-player--battlemap .tsi-bm-stage:fullscreen .tsi-bm-readout { left: 134px; }
+.tsi-player--battlemap .tsi-bm-stage:fullscreen .tsi-bm-sidebar { display: grid; grid-template-columns: 104px; justify-items: center; }
+/* In fullscreen the ruler moves to the right of the side buttons. */
+.tsi-player--battlemap .tsi-bm-stage:fullscreen .tsi-bm-ruler { left: 146px; }
+.tsi-player--battlemap .tsi-bm-stage:fullscreen .tsi-bm-readout { left: 194px; }
 .tsi-player--battlemap .tsi-bm-side-btn {
   width: 44px;
   height: 44px;
@@ -227,7 +228,7 @@
 .tsi-player--battlemap .tsi-bm-side-btn--small { height: 38px; border-radius: 12px; }
 .tsi-player--battlemap .tsi-bm-side-row { display: grid; grid-auto-flow: column; gap: 8px; justify-content: center; }
 .tsi-player--battlemap .tsi-bm-side-pad { display: grid; gap: 8px; justify-items: center; }
-.tsi-player--battlemap .tsi-bm-side-group { color: rgba(231, 231, 234, .9); }
+.tsi-player--battlemap .tsi-bm-side-group { width: 100%; color: rgba(231, 231, 234, .9); }
 .tsi-player--battlemap .tsi-bm-side-label { margin-bottom: 6px; font: 600 11px var(--tsi-font-display); letter-spacing: var(--tsi-track-label); text-transform: uppercase; }
 .tsi-player--battlemap .tsi-bm-side-hint { margin-top: 6px; font-size: 13px; opacity: .75; }
 .tsi-player--battlemap .tsi-bm-slider { width: 100%; accent-color: var(--tsi-gold); }
