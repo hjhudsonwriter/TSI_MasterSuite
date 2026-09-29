@@ -376,15 +376,14 @@ Harry asked for a complete rework: the old tool's shields, colours and sigils we
   - The old-save import phase removed.
 
 ## Next
-Nothing is planned: the rebuild, the guide and the Crest rework are done. Harry reviews the new Crest, then decides what comes next after trying the tools at the table. The kept behaviours he's most likely to want changed are listed under Open questions below; each tool's full list is in `docs/KNOWN_ISSUES.md`.
+Nothing is planned: the rebuild, the guide and the Crest rework (with its traced sigils, approved and merged) are done. Harry decides what comes next after trying the tools at the table. The kept behaviours he's most likely to want changed are listed under Open questions below; each tool's full list is in `docs/KNOWN_ISSUES.md`.
 
 ## Open questions for Harry
 
 Each tool's questions are needed before that tool's phase. The full wording and defaults are in `docs/PLAN.md` section 6.
 
 - **Clan Crest Creator (phase 2, reworked 29 September 2026):** answered (K1–K4).
-  - After you've tried the new sigils: would you like any swapped? The same book has more to choose from, among them a Pegasus, Cockatrice, Wyvern, Phoenix, Double-headed Eagle, Lion Passant, Winged Lion, Merman, Owl, Falcon, Pelican, a ship (lymphad), an Elephant carrying a tower, a Hunting Horn and a Battle-axe. Would you like the Kraken back? There's no free heraldic drawing of one, so it would have to be drawn from scratch, or from art you supply.
-  - Are the accent parts right (see the list under Done)? For example, the unicorn's mane or the dragon's claws could take the accent colour too.
+  - **Sigils: answered (29 September 2026).** Harry reviewed the traced sigils and wants all twenty kept exactly as they are: the same sigils, the Dolphin in place of the Kraken, the Tower in place of the Castle, and the same accent parts. Don't swap, add or recolour any without his say-so.
   - The Crest still saves nothing, so leaving it loses the current design, and it doesn't ask "Leave?" first, as before. With so many more choices, would you like it to remember your last crest, or to ask before you leave?
 - **Pelagosi Puzzle Trials (phase 3):** answered (P1–P4).
   - When you have the five Tidal sounds, give them to a session and ask it to add the Pelagosi sounds.
