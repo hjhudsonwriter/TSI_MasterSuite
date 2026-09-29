@@ -1,60 +1,51 @@
-/* Phase 2 click-through: the Clan Crest Creator.
-   Opens index.html?tool=crest from its files with the internet off, checks
-   every control, Random Name, Random Crest, Reset and the PNG download, the
-   layout on the laptop and the TV, and shutting down cleanly. If the old tool
-   is in _legacy/clan-crest-creator, it also compares the drawing, the random
-   rolls and the downloaded PNG with the old tool.
+/* Clan Crest Creator click-through (phase 2, reworked September 2026 at
+   Harry's request: new shield shapes, sigils, colours and controls).
+   Opens index.html?tool=crest from its files with the internet off, and
+   checks the five tabs, every shape, division, band and sigil tile, the chips
+   and sliders, the colour palette and schemes, Random Name, Random Crest,
+   Reset, the PNG download, the layout on the laptop and the TV, and shutting
+   down cleanly.
    Run:  node tests/e2e/phase2.test.js */
 'use strict';
 
 const fs = require('fs');
 const path = require('path');
-const vm = require('vm');
 const H = require('./helpers');
 const { section, check, assert, equal } = H;
 
 const INDEX = H.fileUrl('index.html');
 const CREST = INDEX + '?tool=crest';
-const LEGACY_DIR = path.join(H.ROOT, '_legacy', 'clan-crest-creator');
-const HAS_LEGACY = fs.existsSync(path.join(LEGACY_DIR, 'app.js'));
-
-const DEFAULTS = {
-  clanName: 'Blackstone Wardens', shieldShape: 'heater', borderStyle: 'double', borderWidth: '12',
-  patternType: 'quarterly', palette: 'scarletGold', texture: 'grain', sigilType: 'stag',
-  sigilScale: '105', sigilFillMode: 'twoTone', bannerStyle: 'ribbon', bannerText: ''
-};
-const KEYS = Object.keys(DEFAULTS);
 
 async function openCrest(page) {
   await page.goto(CREST);
   await page.waitForSelector('.tsi-crest-svg svg');
 }
 
-/* What every control shows now. */
-async function controlValues(page) {
-  return page.$$eval('[data-key]', els => {
-    const out = {};
-    els.forEach(e => { out[e.dataset.key] = e.value; });
-    return out;
-  });
-}
+const state = page => page.evaluate(() => TSI.crest.debug.state());
 
-/* Set a control the way a person would: pick, slide or type. */
-async function setControl(page, key, value) {
-  const tag = await page.$eval('[data-key=' + key + ']', e => e.tagName + ':' + e.type);
-  if (tag.startsWith('SELECT')) await page.selectOption('[data-key=' + key + ']', String(value));
-  else if (tag === 'INPUT:range') {
-    await page.$eval('[data-key=' + key + ']', (e, v) => { e.value = v; e.dispatchEvent(new Event('input', { bubbles: true })); }, String(value));
-  } else await page.fill('[data-key=' + key + ']', String(value));
-}
-
-/* Does the preview show exactly what the drawing code draws for the current choices? */
+/* Does the preview show exactly what the drawing code draws for the current
+   choices? (Each picture numbers its hidden parts differently, so the
+   numbers are left out of the comparison.) */
 async function previewMatches(page) {
   return page.evaluate(() => {
+    const strip = s => s.replace(/(tsi-crest-svg-[a-z]+)-\d+/g, '$1');
     const t = document.createElement('div');
     t.innerHTML = TSI.crest.draw.svg(TSI.crest.debug.state());
-    return t.innerHTML === document.querySelector('.tsi-crest-svg').innerHTML;
+    return strip(t.innerHTML) === strip(document.querySelector('.tsi-crest-svg').innerHTML);
   });
+}
+
+async function tab(page, name) {
+  await page.click('[data-test=tab-' + name + ']');
+}
+
+/* Which tile or chip in a group is pressed. */
+function pressed(page, key) {
+  return page.$eval('[data-key=' + key + '] [aria-pressed=true]', e => e.getAttribute('data-value'));
+}
+
+async function slide(page, key, value) {
+  await page.$eval('#tsi-crest-field-' + key, (e, v) => { e.value = v; e.dispatchEvent(new Event('input', { bubbles: true })); }, String(value));
 }
 
 /* PNG facts: width, height and whether a corner is see-through. */
@@ -68,7 +59,7 @@ async function pngInfo(page, buffer) {
     c.height = img.height;
     const x = c.getContext('2d', { willReadFrequently: true });
     x.drawImage(img, 0, 0);
-    return { w: img.width, h: img.height, corner: Array.from(x.getImageData(4, 4, 1, 1).data), centre: Array.from(x.getImageData(img.width / 2, img.height / 2, 1, 1).data) };
+    return { w: img.width, h: img.height, corner: Array.from(x.getImageData(4, 4, 1, 1).data), centre: Array.from(x.getImageData(img.width / 2, img.height * 0.45, 1, 1).data) };
   }, buffer.toString('base64'));
 }
 
@@ -76,66 +67,6 @@ async function downloadPng(page) {
   await page.waitForTimeout(400);
   const [d] = await Promise.all([page.waitForEvent('download'), page.click('[data-test=download]')]);
   return { name: d.suggestedFilename(), bytes: fs.readFileSync(await d.path()) };
-}
-
-/* Run the old tool's app.js with a tiny stand-in page (no browser needed). */
-function legacyApp(random) {
-  const els = {};
-  function fake(id) {
-    if (!els[id]) {
-      const listeners = {};
-      els[id] = {
-        value: '', textContent: '', _html: '',
-        addEventListener(t, f) { (listeners[t] = listeners[t] || []).push(f); },
-        fire(t) { (listeners[t] || []).forEach(f => f()); },
-        set innerHTML(v) { this._html = v; }, get innerHTML() { return this._html; },
-        querySelector() { return null; }
-      };
-    }
-    return els[id];
-  }
-  const M = Object.create(Math);
-  M.random = () => random.next();
-  const ctx = { document: { getElementById: fake }, Math: M, console, String, Number, Object };
-  vm.createContext(ctx);
-  vm.runInContext(fs.readFileSync(path.join(LEGACY_DIR, 'app.js'), 'utf8'), ctx);
-  const EVENTS = { shieldShape: 'change', borderStyle: 'change', patternType: 'change', palette: 'change', texture: 'change', sigilType: 'change', sigilFillMode: 'change', bannerStyle: 'change', borderWidth: 'input', sigilScale: 'input', bannerText: 'input' };
-  return {
-    els,
-    draw(state) {
-      Object.keys(EVENTS).forEach(k => { els[k].value = String(state[k]); els[k].fire(EVENTS[k]); });
-      return els.svgHost.innerHTML;
-    }
-  };
-}
-
-function newCode() {
-  const ctx = { window: {}, Math, console };
-  ctx.window.window = ctx.window;
-  vm.createContext(ctx);
-  ['tools/crest/data/crest-data.js', 'tools/crest/rules.js', 'tools/crest/draw.js'].forEach(f => {
-    vm.runInContext('var window = this.window;' + fs.readFileSync(path.join(H.ROOT, f), 'utf8'), ctx);
-  });
-  return { draw: ctx.window.TSI.crest.draw, rules: ctx.window.TSI.crest.rules, data: ctx.window.TSI_DATA.crest };
-}
-
-/* The old drawing with the rebuild's two planned changes: part names start
-   tsi-crest-svg-, and the motto is in Cinzel (K4). */
-function expectedFromOld(old) {
-  return old.replace(/"clipShield"/g, '"tsi-crest-svg-clip"').replace(/url\(#clipShield\)/g, 'url(#tsi-crest-svg-clip)')
-    .replace(/id="tex"/g, 'id="tsi-crest-svg-texture"').replace(/url\(#tex\)/g, 'url(#tsi-crest-svg-texture)')
-    .replace(/gradGloss/g, 'tsi-crest-svg-gloss')
-    .replace(/id="shadow"/g, 'id="tsi-crest-svg-shadow"').replace(/url\(#shadow\)/g, 'url(#tsi-crest-svg-shadow)')
-    .replace(/stripePat/g, 'tsi-crest-svg-stripes')
-    .replace(/<text x="512"([^>]*?) font-size="34"/g, '<text x="512"$1 font-family="Cinzel" font-size="34"');
-}
-
-/* K3 spellings, applied to the old tool's random results. */
-function k3(s) { return s.replace('of the Scarlet Isles', 'of the Scarlett Isles').replace('In Scarlet We Stand', 'In Scarlett We Stand'); }
-
-function seeded(seed) {
-  let s = seed >>> 0;
-  return { next() { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; } };
 }
 
 (async () => {
@@ -174,21 +105,24 @@ function seeded(seed) {
       equal(art.body, 'none', 'the page body would hide the art');
     });
 
-    await check('no two things on the page share an id (KNOWN_ISSUES CRS-01, CRS-02)', async () => {
+    await check('no two things on the page share an id, with the colour palette open too (KNOWN_ISSUES CRS-01, CRS-02)', async () => {
+      await tab(page, 'colours');
+      await page.click('[data-panel=colours] .tsi-crest-colour[data-slot=field1]');
       const dupes = await page.evaluate(() => {
         const seen = {};
         document.querySelectorAll('[id]').forEach(e => { seen[e.id] = (seen[e.id] || 0) + 1; });
         return Object.keys(seen).filter(k => seen[k] > 1);
       });
       equal(dupes, []);
+      await page.keyboard.press('Escape');
       const svgIds = await page.$$eval('.tsi-crest-svg [id]', xs => xs.map(x => x.id));
-      assert(svgIds.length >= 4 && svgIds.every(i => i.startsWith('tsi-crest-svg-')), svgIds.join());
+      assert(svgIds.length >= 5 && svgIds.every(i => i.startsWith('tsi-crest-svg-')), svgIds.join());
     });
 
     await check('its styles only touch the Crest (every rule scoped, every class prefixed)', async () => {
       const css = fs.readFileSync(path.join(H.ROOT, 'tools/crest/crest.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
-      const selectors = css.split('}').map(r => r.split('{')[0].trim()).filter(Boolean).filter(s => !s.startsWith('@'));
-      selectors.forEach(s => s.split(',').forEach(one => {
+      const rules = css.replace(/@media[^{]*\{/g, '').split('}').map(r => r.split('{')[0].trim()).filter(Boolean);
+      rules.forEach(s => s.split(',').forEach(one => {
         one = one.trim();
         assert(one.startsWith('.tsi-tool--crest '), 'unscoped rule: ' + one);
         (one.match(/\.[\w-]+/g) || []).forEach(cls => assert(cls === '.tsi-tool--crest' || cls.startsWith('.tsi-crest') || cls === '.tsi-input', 'unprefixed class: ' + cls));
@@ -207,13 +141,16 @@ function seeded(seed) {
       await page.waitForSelector('.tsi-crest-svg svg');
     });
 
-    await check('closing it removes every listener it set up', async () => {
+    await check('closing it removes every listener it set up, and it stops reacting', async () => {
+      await tab(page, 'colours');
+      await page.click('[data-panel=colours] .tsi-crest-colour[data-slot=field1]');
       const before = await page.evaluate(() => TSI.shell.current().life.counts());
-      assert(before.listeners >= 16, 'listeners: ' + before.listeners);
+      assert(before.listeners >= 100, 'listeners: ' + before.listeners);
       await page.evaluate(() => TSI.shell.stopTool());
       equal(await page.evaluate(() => TSI.shell.current().life.counts()), { timeouts: 0, intervals: 0, frames: 0, listeners: 0, media: 0, cleanups: 0 });
+      equal(await page.$$eval('.tsi-crest-pop', x => x.length), 0, 'the colour palette closed with it');
       const svgBefore = await page.$eval('.tsi-crest-svg', e => e.innerHTML);
-      await page.selectOption('[data-key=shieldShape]', 'kite');
+      await page.$eval('[data-key=shield] [data-value=kite]', b => b.click());
       equal(await page.$eval('.tsi-crest-svg', e => e.innerHTML), svgBefore, 'a closed tool still reacted');
     });
 
@@ -233,105 +170,235 @@ function seeded(seed) {
     await context.setOffline(true);
     const page = await context.newPage();
     await openCrest(page);
-    const code = newCode();
+    const counts = await page.evaluate(() => ({
+      shields: TSI_DATA.crestShields.map(s => s.id), sigils: TSI_DATA.crestSigils.map(s => s.id),
+      divisions: TSI_DATA.crest.divisions.map(s => s.id), ordinaries: TSI_DATA.crest.ordinaries.map(s => s.id),
+      schemes: TSI_DATA.crest.schemes.map(s => s.id)
+    }));
 
-    await check('it starts on Blackstone Wardens: heater, double border, Scarlet & Gold quarterly with grain, two-tone stag, no banner', async () => {
-      equal(await controlValues(page), DEFAULTS);
+    await check('it starts on Blackstone Wardens: a gold lion rampant on a Scarlett crimson heater, gold rim, no motto', async () => {
+      const s = await state(page);
+      equal([s.clanName, s.shield, s.sigil, s.field1, s.sigilColour, s.rim], ['Blackstone Wardens', 'heater', 'lion', '#b1122a', '#d6b25e', 'plain']);
+      equal(await page.inputValue('#tsi-crest-field-clan-name'), 'Blackstone Wardens');
       equal(await page.textContent('[data-test=file-name]'), 'Blackstone_Wardens.png');
       equal(await page.$$eval('.tsi-crest-svg text', t => t.length), 0, 'no motto, so no banner');
       assert(await previewMatches(page), 'preview');
       await H.shot(page, 'crest-default');
     });
 
-    await check('each list has every choice from the old tool, in the same order', async () => {
-      const lists = await page.$$eval('select[data-key]', ss => {
-        const o = {};
-        ss.forEach(s => { o[s.dataset.key] = Array.from(s.options).map(x => [x.value, x.textContent]); });
-        return o;
-      });
-      const d = code.data;
-      const pairs = l => l.map(x => [x.id, x.name]);
-      equal(lists.shieldShape, pairs(d.shields));
-      equal(lists.borderStyle, pairs(d.borders));
-      equal(lists.patternType, pairs(d.patterns));
-      equal(lists.palette, pairs(d.palettes));
-      equal(lists.texture, pairs(d.textures));
-      equal(lists.sigilType, pairs(d.sigils));
-      equal(lists.sigilFillMode, pairs(d.iconStyles));
-      equal(lists.bannerStyle, pairs(d.banners));
-      equal(Object.values(lists).map(l => l.length), [6, 5, 8, 12, 4, 16, 3, 4]);
-      const ranges = await page.$$eval('input[type=range]', rs => rs.map(r => [r.dataset.key, r.min, r.max]));
-      equal(ranges, [['borderWidth', '4', '22'], ['sigilScale', '50', '140']]);
-      equal(await page.$eval('[data-key=clanName]', e => e.maxLength), 40);
-      equal(await page.$eval('[data-key=bannerText]', e => e.maxLength), 26);
-    });
-
-    await check('every choice in every list changes the preview to the right drawing', async () => {
-      const selects = await page.$$eval('select[data-key]', ss => ss.map(s => [s.dataset.key, Array.from(s.options).map(o => o.value)]));
-      await setControl(page, 'bannerText', 'Hold Fast');
-      for (const [key, values] of selects) {
-        for (const v of values) {
-          await setControl(page, key, v);
-          const state = await page.evaluate(() => TSI.crest.debug.state());
-          equal(state[key], v, key);
-          assert(await previewMatches(page), key + ' = ' + v);
-        }
-        await setControl(page, key, DEFAULTS[key] || values[0]);
+    await check('five tabs: one panel shows at a time, and the arrow keys move between tabs', async () => {
+      const names = await page.$$eval('[role=tab]', ts => ts.map(t => t.textContent));
+      equal(names, ['Shield', 'Field', 'Sigil', 'Colours', 'Motto']);
+      for (const t of ['field', 'sigil', 'colours', 'motto', 'shield']) {
+        await tab(page, t);
+        equal(await page.$$eval('[role=tabpanel]:not([hidden])', p => p.map(x => x.dataset.panel)), [t]);
+        equal(await page.getAttribute('[data-test=tab-' + t + ']', 'aria-selected'), 'true');
       }
+      await page.focus('[data-test=tab-shield]');
+      await page.keyboard.press('ArrowRight');
+      equal(await page.evaluate(() => document.activeElement.dataset.test), 'tab-field');
+      await page.keyboard.press('ArrowLeft');
+      await page.keyboard.press('ArrowLeft');
+      equal(await page.evaluate(() => document.activeElement.dataset.test), 'tab-motto');
+      await tab(page, 'shield');
     });
 
-    await check('both sliders work across their whole range', async () => {
-      for (const [key, lo, hi] of [['borderWidth', 4, 22], ['sigilScale', 50, 140]]) {
-        for (const v of [lo, Math.round((lo + hi) / 2), hi]) {
-          await setControl(page, key, v);
-          equal((await page.evaluate(() => TSI.crest.debug.state()))[key], v, key);
-          assert(await previewMatches(page), key);
+    await check('switching tabs doesn\'t move the preview', async () => {
+      const at = async () => page.$eval('.tsi-crest-svg', e => { const r = e.getBoundingClientRect(); return [Math.round(r.x), Math.round(r.y), Math.round(r.width)]; });
+      const first = await at();
+      for (const t of ['field', 'sigil', 'colours', 'motto', 'shield']) { await tab(page, t); equal(await at(), first, t); }
+    });
+
+    await check('all 17 shield shapes: each tile shows its shape and changes the crest', async () => {
+      equal(await page.$$eval('[data-key=shield] .tsi-crest-tile', t => t.map(x => x.dataset.value)), counts.shields);
+      for (const id of counts.shields) {
+        await page.click('[data-key=shield] [data-value=' + id + ']');
+        equal((await state(page)).shield, id);
+        equal(await pressed(page, 'shield'), id);
+        assert(await previewMatches(page), id);
+      }
+      await page.click('[data-key=shield] [data-value=heater]');
+    });
+
+    await check('rim styles, width and finish', async () => {
+      for (const id of ['none', 'fine', 'plain', 'double', 'studded', 'rope']) {
+        await page.click('[data-key=rim] [data-value=' + id + ']');
+        equal((await state(page)).rim, id);
+        assert(await previewMatches(page), id);
+      }
+      for (const v of [8, 30, 44]) {
+        await slide(page, 'rimWidth', v);
+        equal((await state(page)).rimWidth, v);
+        equal(await page.textContent('#tsi-crest-field-rimWidth + output'), String(v));
+        assert(await previewMatches(page), 'rim width ' + v);
+      }
+      for (const [key, ids] of [['lighting', ['flat', 'gloss', 'soft']], ['texture', ['none', 'grain', 'brushed', 'linen', 'parchment']]]) {
+        for (const id of ids) {
+          await page.click('[data-key=' + key + '] [data-value=' + id + ']');
+          equal((await state(page))[key], id);
+          equal(await pressed(page, key), id);
+          assert(await previewMatches(page), key + ' ' + id);
         }
       }
+      await slide(page, 'rimWidth', 24);
+      await page.click('[data-key=rim] [data-value=plain]');
     });
 
-    await check('a motto shows on the banner in capitals, in Cinzel', async () => {
-      await setControl(page, 'bannerStyle', 'ribbon');
-      await setControl(page, 'bannerText', 'Steel & Salt');
-      const t = await page.$eval('.tsi-crest-svg text', e => ({ text: e.textContent, font: getComputedStyle(e).fontFamily }));
-      equal(t.text, 'STEEL & SALT');
-      assert(/^"?Cinzel/.test(t.font), t.font);
+    await check('all 14 divisions and 12 bands', async () => {
+      await tab(page, 'field');
+      for (const [key, ids] of [['division', counts.divisions], ['ordinary', counts.ordinaries]]) {
+        equal(await page.$$eval('[data-key=' + key + '] .tsi-crest-tile', t => t.map(x => x.dataset.value)), ids);
+        for (const id of ids) {
+          await page.click('[data-key=' + key + '] [data-value=' + id + ']');
+          equal((await state(page))[key], id);
+          assert(await previewMatches(page), key + ' ' + id);
+        }
+      }
+      await H.shot(page, 'crest-field-tab');
+      await page.click('[data-key=division] [data-value=plain]');
+      await page.click('[data-key=ordinary] [data-value=none]');
+    });
+
+    await check('all 20 sigils, the size and up-or-down sliders, facing and relief', async () => {
+      await tab(page, 'sigil');
+      equal(await page.$$eval('[data-key=sigil] .tsi-crest-tile', t => t.map(x => x.dataset.value)), counts.sigils);
+      for (const id of counts.sigils) {
+        await page.click('[data-key=sigil] [data-value=' + id + ']');
+        equal((await state(page)).sigil, id);
+        assert(await previewMatches(page), id);
+      }
+      equal(await page.$eval('#tsi-crest-field-sigilSize', e => [e.min, e.max]), ['40', '150']);
+      for (const v of [40, 150, 100]) {
+        await slide(page, 'sigilSize', v);
+        equal((await state(page)).sigilSize, v);
+        assert(await previewMatches(page), 'size ' + v);
+      }
+      await slide(page, 'sigilShift', -25);
+      equal((await state(page)).sigilShift, -25);
+      await slide(page, 'sigilShift', 0);
+      await page.click('[data-key=sigilFace] [data-value=right]');
+      assert(/scale\(-/.test(await page.$eval('.tsi-crest-svg', e => e.innerHTML)), 'mirrored');
+      await page.click('[data-key=sigilFace] [data-value=left]');
+      await page.click('[data-key=relief] [data-value=flat]');
+      equal((await state(page)).relief, 'flat');
+      assert(!/tsi-crest-svg-relief/.test(await page.$eval('.tsi-crest-svg', e => e.innerHTML)), 'no relief lighting when flat');
+      await page.click('[data-key=relief] [data-value=raised]');
+      await page.click('[data-key=sigil] [data-value=lion]');
+      await H.shot(page, 'crest-sigil-tab');
+    });
+
+    await check('the colour palette: pick a named colour, or any colour; Escape closes it', async () => {
+      await page.click('.tsi-crest-colour[data-slot=sigilColour]');
+      await page.waitForSelector('[data-test=colour-picker]');
+      equal(await page.$$eval('.tsi-crest-pop .tsi-crest-swatch', s => s.length), 63);
+      equal(await page.$$eval('.tsi-crest-pop__group-name', g => g.map(x => x.textContent)), ['Metals & whites', 'Reds', 'Oranges & browns', 'Greens', 'Blues', 'Purples', 'Blacks & greys', 'The Scarlett Isles']);
+      equal(await page.evaluate(() => document.activeElement.getAttribute('aria-label')), 'Isles Gold', 'the current colour has the focus');
+      await H.shot(page, 'crest-colour-palette');
+      await page.click('.tsi-crest-pop .tsi-crest-swatch[aria-label="Silver (Argent)"]');
+      equal((await state(page)).sigilColour, '#d6dade');
+      equal(await page.$$eval('.tsi-crest-pop', p => p.length), 0, 'closed after picking');
+      equal(await page.textContent('.tsi-crest-colour[data-slot=sigilColour] .tsi-crest-colour__name'), 'Silver (Argent)');
+      assert(await previewMatches(page), 'preview');
+      await page.click('.tsi-crest-colour[data-slot=accentColour]');
+      await page.$eval('[data-test=custom-colour]', e => { e.value = '#123456'; e.dispatchEvent(new Event('change', { bubbles: true })); });
+      equal((await state(page)).accentColour, '#123456');
+      equal(await page.textContent('.tsi-crest-colour[data-slot=accentColour] .tsi-crest-colour__name'), 'Custom colour');
+      await page.click('.tsi-crest-colour[data-slot=lineColour]');
+      await page.keyboard.press('Escape');
+      equal(await page.$$eval('.tsi-crest-pop', p => p.length), 0);
+      equal(await page.evaluate(() => document.activeElement.dataset.slot), 'lineColour', 'focus back on its button');
+      await page.click('.tsi-crest-colour[data-slot=lineColour]');
+      await page.mouse.click(5, 300);
+      equal(await page.$$eval('.tsi-crest-pop', p => p.length), 0, 'a click elsewhere closes it');
+    });
+
+    await check('a colour scheme sets all nine colours; the Colours tab lists every colour on the crest', async () => {
+      await tab(page, 'colours');
+      equal(await page.$$eval('[data-key=scheme] .tsi-crest-tile', t => t.map(x => x.dataset.value)), counts.schemes);
+      await page.click('[data-key=scheme] [data-value=deepTide]');
+      const s = await state(page);
+      const sc = await page.evaluate(() => TSI_DATA.crest.schemes.filter(x => x.id === 'deepTide')[0]);
+      ['field1', 'field2', 'ordinaryColour', 'sigilColour', 'accentColour', 'lineColour', 'rimColour', 'ribbonColour', 'mottoColour'].forEach(k => equal(s[k], sc[k], k));
+      equal(await pressed(page, 'scheme'), 'deepTide');
+      equal(await page.$$eval('[data-panel=colours] .tsi-crest-colour', b => b.length), 9);
+      equal(await page.textContent('[data-panel=colours] .tsi-crest-colour[data-slot=field1] .tsi-crest-colour__name'), 'Navy');
+      assert(await previewMatches(page), 'preview');
+      await H.shot(page, 'crest-colours-tab');
+      await page.click('[data-panel=colours] .tsi-crest-colour[data-slot=field1]');
+      await page.click('.tsi-crest-pop .tsi-crest-swatch[aria-label="Vert (Green)"]');
+      equal(await page.$$eval('[data-key=scheme] [aria-pressed=true]', p => p.length), 0, 'changing one colour leaves the scheme');
+      equal(await page.textContent('[data-panel=field] .tsi-crest-colour[data-slot=field1] .tsi-crest-colour__name'), 'Vert (Green)', 'the Field tab\'s button follows');
+    });
+
+    await check('a motto shows on the ribbon, scroll or plaque, in capitals, in Cinzel, and shrinks to fit', async () => {
+      await tab(page, 'motto');
+      equal(await page.$eval('#tsi-crest-field-motto', e => e.maxLength), 30);
+      await page.fill('#tsi-crest-field-motto', 'Steel & Salt');
+      for (const b of ['ribbon', 'scroll', 'plaque']) {
+        await page.click('[data-key=banner] [data-value=' + b + ']');
+        const t = await page.$eval('.tsi-crest-svg text', e => ({ text: e.textContent, font: getComputedStyle(e).fontFamily }));
+        equal(t.text, 'STEEL & SALT', b);
+        assert(/^"?Cinzel/.test(t.font), t.font);
+        assert(await previewMatches(page), b);
+      }
+      await page.click('[data-key=banner] [data-value=ribbon]');
+      await page.fill('#tsi-crest-field-motto', 'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW');
+      await page.evaluate(() => document.fonts.ready);
+      const fit = await page.$eval('.tsi-crest-svg text', e => { const b = e.getBBox(); return { x1: b.x, x2: b.x + b.width }; });
+      assert(fit.x1 > 150 && fit.x2 < 874, 'a 30-letter motto stays on the ribbon: ' + JSON.stringify(fit));
+      await page.click('[data-key=banner] [data-value=none]');
+      equal(await page.$$eval('.tsi-crest-svg text', t => t.length), 0, 'None hides it');
+      await page.click('[data-key=banner] [data-value=ribbon]');
+      await page.fill('#tsi-crest-field-motto', 'Hold Fast');
       await H.shot(page, 'crest-motto');
     });
 
     await check('typing a name updates the file name', async () => {
-      await setControl(page, 'clanName', 'Tide’s Oath of Pelagos');
+      await page.fill('#tsi-crest-field-clan-name', 'Tide’s Oath of Pelagos');
       equal(await page.textContent('[data-test=file-name]'), 'Tide’s_Oath_of_Pelagos.png');
-      await setControl(page, 'clanName', '');
+      await page.fill('#tsi-crest-field-clan-name', '');
       equal(await page.textContent('[data-test=file-name]'), 'Clan_Crest.png');
     });
 
     await check('Random Name rolls a name like the old tool\'s', async () => {
       for (let i = 0; i < 20; i++) {
         await page.click('[data-test=random-name]');
-        const name = await page.inputValue('[data-key=clanName]');
+        const name = await page.inputValue('#tsi-crest-field-clan-name');
         assert(/^[A-Z][a-z]+[A-Z][a-z]+( of .+)?$/.test(name), name);
-        equal(await page.textContent('[data-test=file-name]'), code.rules.fileName(name));
+        equal(await page.textContent('[data-test=file-name]'), await page.evaluate(n => TSI.crest.rules.fileName(n), name));
       }
     });
 
-    await check('Random Crest rolls every control, and the preview follows', async () => {
+    await check('Random Crest rolls every part; every control and the preview follow', async () => {
       const seen = new Set();
       for (let i = 0; i < 25; i++) {
         await page.click('[data-test=random-crest]');
-        const shown = await controlValues(page);
-        const state = await page.evaluate(() => TSI.crest.debug.state());
-        KEYS.forEach(k => equal(shown[k], String(state[k]), k));
+        const s = await state(page);
+        for (const k of ['shield', 'division', 'ordinary', 'sigil', 'rim', 'lighting', 'texture', 'banner', 'sigilFace', 'relief']) equal(await pressed(page, k), s[k], k);
+        equal(await page.inputValue('#tsi-crest-field-clan-name'), s.clanName);
+        equal(await page.inputValue('#tsi-crest-field-motto'), s.motto);
+        equal(await page.inputValue('#tsi-crest-field-sigilSize'), String(s.sigilSize));
+        equal(await page.$eval('.tsi-crest-colour[data-slot=sigilColour] .tsi-crest-colour__chip', e => e.style.background), await page.evaluate(h => { const d = document.createElement('div'); d.style.background = h; return d.style.background; }, s.sigilColour));
         assert(await previewMatches(page), 'preview');
-        seen.add(state.shieldShape + state.palette);
+        seen.add(s.shield + s.sigil + s.scheme);
       }
-      assert(seen.size > 5, 'Random Crest doesn\'t look random');
+      assert(seen.size > 15, 'Random Crest doesn\'t look random');
+      await H.shot(page, 'crest-random');
     });
 
     await check('Reset goes back to Blackstone Wardens', async () => {
       await page.click('[data-test=reset]');
-      equal(await controlValues(page), DEFAULTS);
+      equal(await state(page), await page.evaluate(() => TSI.crest.rules.defaults()));
+      equal(await page.inputValue('#tsi-crest-field-clan-name'), 'Blackstone Wardens');
+      equal(await pressed(page, 'shield'), 'heater');
       assert(await previewMatches(page));
+    });
+
+    await check('nothing from the internet, nothing missing, no errors', async () => {
+      equal(context.log.net, []);
+      equal(context.log.failed, []);
+      equal(context.log.errors, []);
+      equal(context.log.consoleErrors, []);
     });
     await context.close();
   }
@@ -352,15 +419,36 @@ function seeded(seed) {
       equal([info.w, info.h], [2048, 2048]);
       equal(info.corner[3], 0, 'corner should be see-through');
       equal(info.centre[3], 255, 'the crest itself is solid');
+      await fs.promises.writeFile(path.join(H.SHOTS, 'crest-download.png'), png.bytes);
+    });
+
+    await check('every shape, texture, finish and rim downloads (all use only the crest\'s own drawing)', async () => {
+      const r = await page.evaluate(async () => {
+        const out = [];
+        const base = TSI.crest.debug.state();
+        const shapes = TSI_DATA.crestShields.map(s => s.id);
+        for (let i = 0; i < shapes.length; i++) {
+          const s = Object.assign({}, base, {
+            shield: shapes[i], sigil: TSI_DATA.crestSigils[i].id, texture: TSI_DATA.crest.textures[i % 5].id,
+            lighting: TSI_DATA.crest.lightings[i % 3].id, rim: TSI_DATA.crest.rims[i % 6].id, division: TSI_DATA.crest.divisions[i % 14].id,
+            ordinary: TSI_DATA.crest.ordinaries[i % 12].id, banner: ['ribbon', 'scroll', 'plaque'][i % 3], motto: i % 2 ? 'Hold Fast' : ''
+          });
+          try { const b = await TSI.crest.svgToPng(TSI.crest.draw.svg(s, { size: 512 }).trim(), 512); out.push(b.size > 1000); }
+          catch (e) { out.push(String(e)); }
+        }
+        return out;
+      });
+      assert(r.every(x => x === true), JSON.stringify(r));
     });
 
     await check('the file name follows the clan name', async () => {
-      await setControl(page, 'clanName', 'EmberCircle of the Salt Coast');
+      await page.fill('#tsi-crest-field-clan-name', 'EmberCircle of the Salt Coast');
       equal((await downloadPng(page)).name, 'EmberCircle_of_the_Salt_Coast.png');
     });
 
     await check('the PNG\'s motto uses the packed-in Cinzel font (Harry\'s answer K4)', async () => {
-      await setControl(page, 'bannerText', 'Hold Fast');
+      await page.click('[data-test=tab-motto]');
+      await page.fill('#tsi-crest-field-motto', 'Hold Fast');
       const png = await downloadPng(page);
       const compare = await page.evaluate(async () => {
         const s = TSI.crest.debug.state();
@@ -371,9 +459,14 @@ function seeded(seed) {
         return { differs: !(await same(withFont, noFont)) };
       });
       assert(compare.differs, 'the font made no difference, so it wasn\'t used');
-      const info = await pngInfo(page, png.bytes);
-      equal([info.w, info.h], [2048, 2048]);
+      equal([(await pngInfo(page, png.bytes)).w], [2048]);
       await fs.promises.writeFile(path.join(H.SHOTS, 'crest-download-with-motto.png'), png.bytes);
+    });
+
+    await check('a motto with a pasted control character still downloads (KNOWN_ISSUES CRS-10, fixed)', async () => {
+      await page.$eval('#tsi-crest-field-motto', e => { e.value = 'Hold\u0001Fast'; e.dispatchEvent(new Event('input', { bubbles: true })); });
+      const png = await downloadPng(page);
+      equal((await pngInfo(page, png.bytes)).w, 2048);
     });
 
     await check('the packed-in font is exactly the bundled Cinzel file', async () => {
@@ -383,11 +476,12 @@ function seeded(seed) {
     });
 
     await check('a double click downloads twice, as the old tool did (KNOWN_ISSUES CRS-11, kept)', async () => {
-      await setControl(page, 'clanName', 'Twice');
+      await page.fill('#tsi-crest-field-clan-name', 'Twice');
       const names = [];
       page.on('download', d => names.push(d.suggestedFilename()));
       await page.dblclick('[data-test=download]');
-      await page.waitForTimeout(1500);
+      for (let i = 0; i < 60 && names.length < 2; i++) await page.waitForTimeout(250);
+      await page.waitForTimeout(500);
       equal(names, ['Twice.png', 'Twice.png']);
     });
 
@@ -407,98 +501,32 @@ function seeded(seed) {
     await context.setOffline(true);
     const page = await context.newPage();
     await openCrest(page);
-    await setControl(page, 'bannerText', 'Hold Fast');
+    await page.evaluate(() => TSI.crest.debug.set({ motto: 'Hold Fast' }));
     await page.evaluate(() => document.fonts.ready);
-    await check(size + ': no sideways scroll' + (size === 'smallWindow' ? '' : '; every control, the preview and Download in view'), async () => {
-      const inView = size === 'smallWindow' ? [] : ['[data-key]', '[data-test=random-name]', '[data-test=random-crest]', '[data-test=reset]', '[data-test=download]', '.tsi-crest-hint', '.tsi-crest-svg'];
-      const l = await H.layoutCheck(page, inView);
-      assert(l.scrollWidth <= l.clientWidth, 'sideways scroll: ' + l.scrollWidth + ' > ' + l.clientWidth);
-      equal(l.outOfView, [], 'out of view');
-    });
+    const full = size !== 'smallWindow';
+    for (const t of ['shield', 'field', 'sigil', 'colours', 'motto']) {
+      await check(size + ', ' + t + ' tab: no sideways scroll' + (full ? '; the tab, the preview, Random Crest, Reset and Download in view' : ''), async () => {
+        await tab(page, t);
+        const inView = full ? ['[data-panel=' + t + '] .tsi-crest-section:last-child', '[data-test=random-name]', '[data-test=random-crest]', '[data-test=reset]', '[data-test=download]', '.tsi-crest-hint', '.tsi-crest-svg'] : [];
+        const l = await H.layoutCheck(page, inView);
+        assert(l.scrollWidth <= l.clientWidth, 'sideways scroll: ' + l.scrollWidth + ' > ' + l.clientWidth);
+        equal(l.outOfView, [], 'out of view');
+      });
+    }
+    if (full) {
+      await check(size + ': the colour palette opens fully in view', async () => {
+        await tab(page, 'colours');
+        for (const slot of ['field1', 'mottoColour']) {
+          await page.click('[data-panel=colours] .tsi-crest-colour[data-slot=' + slot + ']');
+          equal((await H.layoutCheck(page, ['.tsi-crest-pop'])).outOfView, [], slot);
+          await page.keyboard.press('Escape');
+        }
+      });
+    }
     await H.shot(page, 'crest-' + size);
     await context.close();
   }
 
-  /* ------------------------------------------------------------------ */
-  section('Faithful to the old tool' + (HAS_LEGACY ? '' : ' (skipped: _legacy/clan-crest-creator is missing)'));
-  if (HAS_LEGACY) {
-    const code = newCode();
-    const d = code.data;
-
-    await check('draws every combination exactly as the old tool did (apart from part names and the motto font)', async () => {
-      const random = seeded(1);
-      const old = legacyApp(random);
-      const mottos = ['', 'Hold Fast', 'Steel & Salt', '<Tide> "Oath" \'s', 'WWWWWWWWWWWWWWWWWWWWWWWWWW'];
-      let n = 0;
-      let bad = [];
-      const one = s => {
-        n++;
-        const want = expectedFromOld(old.draw(s));
-        if (code.draw.svg(s) !== want && bad.length < 3) bad.push(JSON.stringify(s));
-      };
-      for (const sh of d.shields) for (const b of d.borders) for (const p of d.patterns) for (const t of d.textures) {
-        one({ shieldShape: sh.id, borderStyle: b.id, borderWidth: 4 + n % 19, patternType: p.id, palette: d.palettes[n % 12].id, texture: t.id, sigilType: d.sigils[n % 16].id, sigilScale: 50 + n % 91, sigilFillMode: d.iconStyles[n % 3].id, bannerStyle: d.banners[n % 4].id, bannerText: mottos[n % 5] });
-      }
-      for (const sg of d.sigils) for (const m of d.iconStyles) for (const bn of d.banners) for (const pl of d.palettes) {
-        one({ shieldShape: d.shields[n % 6].id, borderStyle: 'double', borderWidth: 12, patternType: d.patterns[n % 8].id, palette: pl.id, texture: 'grain', sigilType: sg.id, sigilScale: 105, sigilFillMode: m.id, bannerStyle: bn.id, bannerText: mottos[n % 5] });
-      }
-      equal(bad, [], 'different drawings');
-      assert(n > 3000, 'compared ' + n);
-    });
-
-    await check('Random Crest and Random Name roll exactly as the old tool did, given the same dice', async () => {
-      let bad = 0;
-      for (let i = 0; i < 2000; i++) {
-        const oldRandom = seeded(i);
-        const old = legacyApp(oldRandom);
-        old.els.btnRandomAll.fire('click');
-        const dice = seeded(i);
-        const mine = code.rules.randomCrest(() => dice.next());
-        const want = {};
-        KEYS.forEach(k => { want[k] = k3(old.els[k].value); });
-        const mineS = {};
-        KEYS.forEach(k => { mineS[k] = String(mine[k]); });
-        if (JSON.stringify(want) !== JSON.stringify(mineS)) bad++;
-      }
-      equal(bad, 0, 'different rolls');
-    });
-
-    await check('the downloaded PNG is byte-for-byte the old tool\'s (crests without a motto)', async () => {
-      const context = await H.newContext(browser, 'laptop');
-      const oldPage = await context.newPage();
-      await oldPage.goto(H.fileUrl('_legacy/clan-crest-creator/index.html'));
-      await oldPage.waitForSelector('#svgHost svg');
-      const page = await context.newPage();
-      await openCrest(page);
-      const states = [
-        DEFAULTS,
-        Object.assign({}, DEFAULTS, { shieldShape: 'round', borderStyle: 'rope', borderWidth: '18', patternType: 'stripes', palette: 'seaSilver', texture: 'speckle', sigilType: 'sun', sigilScale: '130', sigilFillMode: 'outline' }),
-        Object.assign({}, DEFAULTS, { shieldShape: 'gothic', borderStyle: 'beaded', patternType: 'chevron', palette: 'dawn', texture: 'etch', sigilType: 'twinSwords', sigilFillMode: 'solid', bannerStyle: 'scroll' })
-      ];
-      for (const s of states) {
-        for (const k of KEYS) {
-          if (k === 'clanName') continue;
-          await setControl(page, k, s[k]);
-          const oldId = k;
-          const tag = await oldPage.$eval('#' + oldId, e => e.tagName + ':' + e.type);
-          if (tag.startsWith('SELECT')) await oldPage.selectOption('#' + oldId, String(s[k]));
-          else if (tag === 'INPUT:range') await oldPage.$eval('#' + oldId, (e, v) => { e.value = v; e.dispatchEvent(new Event('input', { bubbles: true })); }, String(s[k]));
-          else await oldPage.fill('#' + oldId, String(s[k]));
-        }
-        const mine = await downloadPng(page);
-        await oldPage.waitForTimeout(400);
-        const [od] = await Promise.all([oldPage.waitForEvent('download'), oldPage.click('#btnDownload')]);
-        const oldBytes = fs.readFileSync(await od.path());
-        assert(mine.bytes.equals(oldBytes), 'PNG differs for ' + JSON.stringify(s));
-      }
-      await context.close();
-    });
-  }
-
-  const failed = H.summary();
   await browser.close();
-  process.exit(failed ? 1 : 0);
-})().catch(err => {
-  console.error(err);
-  process.exit(2);
-});
+  process.exit(H.summary() ? 1 : 0);
+})();

@@ -1,887 +1,477 @@
 /* Clan Crest Creator — drawing.
-   Builds the crest as an SVG picture from the current choices. This is the old
-   tool's drawing code (clan-crest-creator/app.js, draw() to renderBanner(),
-   and the shield and sigil shapes), carried across line for line so every
-   crest looks exactly as it did. Only three things changed:
-   - The picture's hidden part names start "tsi-crest-svg-" (they were
-     "shadow", "tex" and so on), so nothing else on the page, including the
-     Crest's own controls, can clash with them (KNOWN_ISSUES CRS-01).
-   - The motto is set in the suite's Cinzel font (Harry's answer K4). For the
-     downloaded PNG the font file is packed inside the picture, because a
-     picture can't use the page's fonts; so the preview and the PNG match.
-   - It returns the picture as text instead of putting it on the page.
+   Builds the crest as an SVG picture (as text) from the current choices, in a
+   1024 × 1024 box with nothing behind it, so the PNG has a see-through
+   background. From the back:
+     the field (its colours and division) → the band (ordinary) → texture →
+     the sigil → light and shade → the rim → the motto ribbon.
+   Every hidden part name starts "tsi-crest-svg-" and ends with a number
+   unique to that picture, so previews, thumbnails and the tool's controls
+   can never borrow each other's parts (KNOWN_ISSUES CRS-01, CRS-02).
    Plain functions with no screen code, so tests can check them. */
 (function () {
-  "use strict";
+  'use strict';
 
-  const TSI = window.TSI = window.TSI || {};
-  const crest = TSI.crest = TSI.crest || {};
+  var TSI = window.TSI = window.TSI || {};
+  var crest = TSI.crest = TSI.crest || {};
+  var G = crest.geo;
+  var R = crest.rules;
 
-  const MOTTO_FONT = "Cinzel";
-  const PALETTES = () => window.TSI_DATA.crest.palettes;
+  var MOTTO_FONT = 'Cinzel';
+  var counter = 0;
 
-  // ---------- Shapes, by id (names and order are in data/crest-data.js) ----------
-  const SHIELDS = [
-    { id:"heater",  path: shieldPathHeater },
-    { id:"round",   path: shieldPathRound },
-    { id:"kite",    path: shieldPathKite },
-    { id:"spanish", path: shieldPathSpanish },
-    { id:"gothic",  path: shieldPathGothic },
-    { id:"badge",   path: shieldPathOval },
-  ];
+  function shieldList() { return window.TSI_DATA.crestShields; }
+  function sigilList() { return window.TSI_DATA.crestSigils; }
+  function find(list, id) {
+    for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
+    return list[0];
+  }
+  function n(v) { return String(Math.round(v * 10) / 10); }
+  function esc(s) {
+    return String(s === undefined || s === null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+  }
+  /* Control characters can't go in a picture's text (a pasted one used to stop
+     the download: KNOWN_ISSUES CRS-10), so they're left out. */
+  function cleanText(s) {
+    return String(s || '').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '');
+  }
+  function colour(hex, fallback) { return R.cleanHex(hex) || fallback || '#000000'; }
 
-  const SIGILS = [
-    { id:"sword", draw: sigilSword },
-    { id:"twinSwords", draw: sigilTwinSwords },
-    { id:"crown", draw: sigilCrown },
-    { id:"tree", draw: sigilTree },
-    { id:"wave", draw: sigilWave },
-    { id:"mountain", draw: sigilMountain },
-    { id:"moon", draw: sigilMoon },
-    { id:"sun", draw: sigilSun },
-    { id:"eye", draw: sigilEye },
-    { id:"anchor", draw: sigilAnchor },
-    { id:"book", draw: sigilBook },
-    { id:"rune", draw: sigilRuneKnot },
-    { id:"stag", draw: sigilStagSimple },
-    { id:"flame", draw: sigilFlame },
-    { id:"shield", draw: sigilMiniShield },
-    { id:"compass", draw: sigilCompass },
-  ];
-
-  /* For the downloaded PNG: the motto font packed into the picture. Only added
-     when a motto is shown, so crests without one stay small. */
-  function fontFace(banner, options){
-    if(!banner || !options.fontDataUrl) return "";
-    return `<style>@font-face{font-family:"${MOTTO_FONT}";src:url(${options.fontDataUrl}) format("truetype");font-weight:400 900;font-style:normal;}</style>`;
+  /* ---------- Where the shield sits ---------- */
+  /* With a motto ribbon the shield sits higher and a little smaller. */
+  function shieldBox(withBanner) {
+    return withBanner ? { x: 172, y: 36, w: 680, h: 770 } : { x: 142, y: 48, w: 740, h: 900 };
   }
 
-  function escapeHtml(s){
-    return String(s ?? "")
-      .replaceAll("&","&amp;")
-      .replaceAll("<","&lt;")
-      .replaceAll(">","&gt;")
-      .replaceAll('"',"&quot;")
-      .replaceAll("'","&#039;");
+  var outlineCache = {};
+  /* The shield's outline scaled into the box: its path, traced points, bounds
+     and fess point (the centre of the largest square inside it). */
+  function outline(shapeId, box) {
+    var key = shapeId + '|' + box.x + ',' + box.y + ',' + box.w + ',' + box.h;
+    if (outlineCache[key]) return outlineCache[key];
+    var sh = find(shieldList(), shapeId);
+    var cmds = G.parse(sh.d);
+    var xs = [], ys = [];
+    cmds.forEach(function (k) { if (k.c !== 'Z') { xs.push(k.x); ys.push(k.y); } });
+    var span = Math.max(Math.max.apply(null, xs) - Math.min.apply(null, xs), Math.max.apply(null, ys) - Math.min.apply(null, ys)) || 1;
+    var b = G.bounds(G.sample(cmds, span / 500));
+    var s = Math.min(box.w / b.w, box.h / b.h);
+    var tx = box.x + box.w / 2 - (b.x1 + b.w / 2) * s;
+    var ty = box.y + (box.h - b.h * s) / 2 - b.y1 * s;
+    var t = G.transform(cmds, s, tx, ty);
+    var parts = G.sample(t, 3);
+    var bb = G.bounds(parts);
+    var o = { id: sh.id, d: G.toPath(t), parts: parts, bb: bb, fx: 512, fy: G.centroid(parts)[1], fit: {} };
+    outlineCache[key] = o;
+    return o;
   }
 
-  // ---------- SVG render ----------
-  function draw(state, options){
-    options = options || {};
-    const palette = PALETTES().find(p => p.id === state.palette) || PALETTES()[0];
-    const shield = SHIELDS.find(s => s.id === state.shieldShape) || SHIELDS[0];
-
-    const W = 1024, H = 1024;
-    const shieldD = shield.path(180, 110, 664, 790);
-
-    const borderW = state.borderWidth;
-    const clipId = "tsi-crest-svg-clip";
-    const texId = "tsi-crest-svg-texture";
-    const gradId = "tsi-crest-svg-gloss";
-
-    const bg = renderPattern(state.patternType, palette, shieldD);
-    const texture = renderTexture(state.texture, texId);
-    const border = renderBorder(state.borderStyle, palette, shieldD, borderW);
-    const gloss = `
-      <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="rgba(255,255,255,0.30)"/>
-        <stop offset="0.35" stop-color="rgba(255,255,255,0.06)"/>
-        <stop offset="1" stop-color="rgba(0,0,0,0.25)"/>
-      </linearGradient>
-    `;
-
-    const sigil = renderSigil(state, palette);
-    const banner = renderBanner(state, palette);
-
-    const svg = `
-<svg xmlns="http://www.w3.org/2000/svg" width="${options.size || "100%"}" height="${options.size || "100%"}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Clan crest">
-  <defs>${fontFace(banner, options)}
-    <clipPath id="${clipId}">
-      <path d="${shieldD}"></path>
-    </clipPath>
-    ${bg.defs || ""}
-    ${texture.defs || ""}
-    ${gloss}
-    <filter id="tsi-crest-svg-shadow" x="-40%" y="-40%" width="180%" height="180%">
-      <feDropShadow dx="0" dy="22" stdDeviation="20" flood-color="rgba(0,0,0,0.55)"/>
-    </filter>
-  </defs>
-
-  <!-- Crest group only: transparent outside -->
-  <g filter="url(#tsi-crest-svg-shadow)">
-    <!-- Shield base -->
-    <path d="${shieldD}" fill="${palette.c}"></path>
-
-    <!-- Pattern clipped inside shield -->
-    <g clip-path="url(#${clipId})">
-      ${bg.body || ""}
-      ${texture.body || ""}
-      <!-- subtle vignette -->
-      <rect x="0" y="0" width="${W}" height="${H}" fill="rgba(0,0,0,0.10)"></rect>
-      <path d="${shieldD}" fill="url(#${gradId})" opacity="0.55"></path>
-    </g>
-
-    ${border}
-
-    <!-- Sigil -->
-    ${sigil}
-
-    <!-- Banner -->
-    ${banner}
-  </g>
-</svg>`;
-
-    return svg;
+  /* ---------- The sigil's own size ---------- */
+  /* Each traced sigil carries its box: [x, y, width, height] in its own units
+     (1000 on its longer side). */
+  function sigilBox(sig) {
+    return { x1: sig.box[0], y1: sig.box[1], w: sig.box[2], h: sig.box[3] };
   }
 
-  // ---------- Patterns ----------
-  function renderPattern(patternId, palette, shieldD){
-    const defs = [];
-    let body = "";
+  /* Where the sigil goes on this shield: the largest box of its shape inside
+     the rim, then the size and nudge the sliders ask for. */
+  function sigilPlace(o, sig, st) {
+    var box = sigilBox(sig);
+    var rimW = st.rim === 'none' ? 0 : Number(st.rimWidth) || 0;
+    var margin = rimW + 14;
+    var key = sig.id + '|' + margin;
+    if (!o.fit[key]) o.fit[key] = G.fitBox(o.parts, 512, box.w / box.h, margin, 3, [o.fy - o.bb.h * 0.07, o.fy + o.bb.h * 0.07]);
+    var fit = o.fit[key];
+    var size = (Number(st.sigilSize) || 100) / 100;
+    var scale = fit.h / box.h * size;
+    var shift = (Number(st.sigilShift) || 0) / 100 * fit.h;
+    return { cx: fit.cx, cy: fit.cy + shift, scale: scale, box: box };
+  }
 
-    // Helper rects clipped to shield
-    const full = `<rect x="0" y="0" width="1024" height="1024" fill="${palette.a}"></rect>`;
-    const halfTop = `<rect x="0" y="0" width="1024" height="512" fill="${palette.a}"></rect><rect x="0" y="512" width="1024" height="512" fill="${palette.b}"></rect>`;
-    const halfLeft = `<rect x="0" y="0" width="512" height="1024" fill="${palette.a}"></rect><rect x="512" y="0" width="512" height="1024" fill="${palette.b}"></rect>`;
+  /* ---------- The sigil itself ---------- */
+  /* A sigil traced from heraldic artwork (data/sigils.js) is one or more
+     parts (crossed swords are two), each in four layers: its body in the
+     sigil colour, the parts heralds colour separately (claws, tongue, horn,
+     hilts) in the accent colour, eyes and teeth in white, and its linework
+     on top in the line colour. */
+  var ART_WHITE = '#f7f4ec';
+  function sigilArt(sig, c) {
+    return sig.art.map(function (part) {
+      var out = '';
+      function layer(d, fill) { if (d) out += '<path d="' + d + '" fill="' + fill + '"/>'; }
+      layer(part.body, c.t);
+      layer(part.accent, c.a);
+      layer(part.white, ART_WHITE);
+      layer(part.lines, c.li);
+      return out;
+    }).join('');
+  }
 
-    switch(patternId){
-      case "solid":
-        body = `<rect x="0" y="0" width="1024" height="1024" fill="${palette.a}"></rect>`;
+  /* The sigil's colours. Its linework is the line colour, unless it would
+     vanish into the sigil (a black sigil with black lines), when it's drawn
+     in a lighter shade of the sigil, as heralds paint a sable beast. */
+  function sigilColours(st) {
+    var t = colour(st.sigilColour, '#d6b25e'), l = colour(st.lineColour, '#1a1110');
+    var li = R.contrast(t, l) < 2.2 ? (R.luminance(t) < 0.2 ? R.mix(t, '#ffffff', 0.5) : R.mix(t, '#000000', 0.55)) : l;
+    return { t: t, a: colour(st.accentColour, '#1f4fa8'), li: li };
+  }
+
+  /* ---------- The field ---------- */
+  function field(o, st, uid, defs) {
+    var c1 = colour(st.field1, '#b1122a'), c2 = colour(st.field2, '#d6b25e');
+    var bb = o.bb, fx = o.fx, fy = o.fy, big = 3000;
+    var line = R.darken(R.mix(c1, c2, 0.5), 0.55);
+    var out = '<rect x="' + n(bb.x1 - 20) + '" y="' + n(bb.y1 - 20) + '" width="' + n(bb.w + 40) + '" height="' + n(bb.h + 40) + '" fill="' + c1 + '"/>';
+    var W = bb.w, H = bb.h, splits = [];
+    function poly(pts, fill) { return '<path d="M ' + pts.map(function (p) { return n(p[0]) + ',' + n(p[1]); }).join(' L ') + ' Z" fill="' + fill + '"/>'; }
+    function seg(a, b) { splits.push('M ' + n(a[0]) + ',' + n(a[1]) + ' L ' + n(b[0]) + ',' + n(b[1])); }
+    switch (st.division) {
+      case 'perPale':
+        out += poly([[fx, fy - big], [fx + big, fy - big], [fx + big, fy + big], [fx, fy + big]], c2);
+        seg([fx, fy - big], [fx, fy + big]);
         break;
-      case "perFess":
-        body = halfTop;
+      case 'perFess':
+        out += poly([[fx - big, fy], [fx + big, fy], [fx + big, fy + big], [fx - big, fy + big]], c2);
+        seg([fx - big, fy], [fx + big, fy]);
         break;
-      case "perPale":
-        body = halfLeft;
+      case 'perBend':
+        out += poly([[fx - big, fy - big], [fx + big, fy + big], [fx - big, fy + big]], c2);
+        seg([fx - big, fy - big], [fx + big, fy + big]);
         break;
-      case "perBend":
-        body = `
-          <polygon points="0,0 1024,0 0,1024" fill="${palette.a}"></polygon>
-          <polygon points="1024,0 1024,1024 0,1024" fill="${palette.b}"></polygon>
-        `;
+      case 'perBendSinister':
+        out += poly([[fx + big, fy - big], [fx - big, fy + big], [fx + big, fy + big]], c2);
+        seg([fx + big, fy - big], [fx - big, fy + big]);
         break;
-      case "quarterly":
-        body = `
-          <rect x="0" y="0" width="512" height="512" fill="${palette.a}"></rect>
-          <rect x="512" y="0" width="512" height="512" fill="${palette.b}"></rect>
-          <rect x="0" y="512" width="512" height="512" fill="${palette.b}"></rect>
-          <rect x="512" y="512" width="512" height="512" fill="${palette.a}"></rect>
-        `;
-        break;
-      case "chevron":
-        body = `
-          ${full}
-          <polygon points="140,620 512,320 884,620 884,760 512,460 140,760" fill="${palette.b}" opacity="0.95"></polygon>
-        `;
-        break;
-      case "stripes": {
-        const stripe = `
-          <pattern id="tsi-crest-svg-stripes" width="80" height="80" patternUnits="userSpaceOnUse" patternTransform="rotate(18)">
-            <rect width="80" height="80" fill="${palette.a}"/>
-            <rect x="0" y="0" width="38" height="80" fill="${palette.b}" opacity="0.95"/>
-          </pattern>`;
-        defs.push(stripe);
-        body = `<rect x="0" y="0" width="1024" height="1024" fill="url(#tsi-crest-svg-stripes)"></rect>`;
+      case 'perChevron': {
+        var ay = fy - H * 0.06;
+        out += poly([[fx - big, ay + big], [fx, ay], [fx + big, ay + big]], c2);
+        seg([fx - big, ay + big], [fx, ay]); seg([fx, ay], [fx + big, ay + big]);
         break;
       }
-      case "cross":
-        body = `
-          ${full}
-          <rect x="440" y="0" width="144" height="1024" fill="${palette.b}" opacity="0.96"></rect>
-          <rect x="0" y="440" width="1024" height="144" fill="${palette.b}" opacity="0.96"></rect>
-        `;
+      case 'quarterly':
+        out += poly([[fx, fy - big], [fx + big, fy - big], [fx + big, fy], [fx, fy]], c2);
+        out += poly([[fx - big, fy], [fx, fy], [fx, fy + big], [fx - big, fy + big]], c2);
+        seg([fx, fy - big], [fx, fy + big]); seg([fx - big, fy], [fx + big, fy]);
+        break;
+      case 'perSaltire':
+        out += poly([[fx, fy], [fx - big, fy - big], [fx - big, fy + big]], c2);
+        out += poly([[fx, fy], [fx + big, fy - big], [fx + big, fy + big]], c2);
+        seg([fx - big, fy - big], [fx + big, fy + big]); seg([fx + big, fy - big], [fx - big, fy + big]);
+        break;
+      case 'gyronny':
+        for (var g = 0; g < 8; g++) {
+          var a1 = (-90 + g * 45) * Math.PI / 180, a2 = (-45 + g * 45) * Math.PI / 180;
+          if (g % 2) out += poly([[fx, fy], [fx + big * Math.cos(a1), fy + big * Math.sin(a1)], [fx + big * Math.cos(a2), fy + big * Math.sin(a2)]], c2);
+          seg([fx, fy], [fx + big * Math.cos(a1), fy + big * Math.sin(a1)]);
+        }
+        break;
+      case 'paly': {
+        var pw = W / 6;
+        for (var i = 1; i < 6; i += 2) out += '<rect x="' + n(bb.x1 + i * pw) + '" y="' + n(bb.y1 - 20) + '" width="' + n(pw) + '" height="' + n(H + 40) + '" fill="' + c2 + '"/>';
+        for (var j = 1; j < 6; j++) seg([bb.x1 + j * pw, bb.y1 - 20], [bb.x1 + j * pw, bb.y2 + 20]);
+        break;
+      }
+      case 'barry': {
+        var bh = H / 8;
+        for (var k = 1; k < 8; k += 2) out += '<rect x="' + n(bb.x1 - 20) + '" y="' + n(bb.y1 + k * bh) + '" width="' + n(W + 40) + '" height="' + n(bh) + '" fill="' + c2 + '"/>';
+        for (var m = 1; m < 8; m++) seg([bb.x1 - 20, bb.y1 + m * bh], [bb.x2 + 20, bb.y1 + m * bh]);
+        break;
+      }
+      case 'bendy': {
+        var sw = W / 6 * Math.SQRT1_2;
+        defs.push('<pattern id="tsi-crest-svg-bendy-' + uid + '" patternUnits="userSpaceOnUse" width="' + n(sw * 2) + '" height="' + n(sw * 2) + '" patternTransform="translate(' + n(fx) + ' ' + n(fy) + ') rotate(45)">' +
+          '<rect width="' + n(sw * 2) + '" height="' + n(sw * 2) + '" fill="' + c1 + '"/><rect x="' + n(sw) + '" width="' + n(sw) + '" height="' + n(sw * 2) + '" fill="' + c2 + '"/>' +
+          '<path d="M 0,0 V ' + n(sw * 2) + ' M ' + n(sw) + ',0 V ' + n(sw * 2) + '" stroke="' + line + '" stroke-opacity=".55" stroke-width="3"/></pattern>');
+        out += '<rect x="' + n(bb.x1 - 20) + '" y="' + n(bb.y1 - 20) + '" width="' + n(W + 40) + '" height="' + n(H + 40) + '" fill="url(#tsi-crest-svg-bendy-' + uid + ')"/>';
+        break;
+      }
+      case 'chequy': {
+        var q = W / 6;
+        defs.push('<pattern id="tsi-crest-svg-chequy-' + uid + '" patternUnits="userSpaceOnUse" width="' + n(q * 2) + '" height="' + n(q * 2) + '" patternTransform="translate(' + n(bb.x1) + ' ' + n(bb.y1) + ')">' +
+          '<rect width="' + n(q * 2) + '" height="' + n(q * 2) + '" fill="' + c1 + '"/><rect x="' + n(q) + '" width="' + n(q) + '" height="' + n(q) + '" fill="' + c2 + '"/><rect y="' + n(q) + '" width="' + n(q) + '" height="' + n(q) + '" fill="' + c2 + '"/>' +
+          '<path d="M 0,0 H ' + n(q * 2) + ' M 0,' + n(q) + ' H ' + n(q * 2) + ' M 0,0 V ' + n(q * 2) + ' M ' + n(q) + ',0 V ' + n(q * 2) + '" stroke="' + line + '" stroke-opacity=".5" stroke-width="3"/></pattern>');
+        out += '<rect x="' + n(bb.x1 - 20) + '" y="' + n(bb.y1 - 20) + '" width="' + n(W + 40) + '" height="' + n(H + 40) + '" fill="url(#tsi-crest-svg-chequy-' + uid + ')"/>';
+        break;
+      }
+      case 'lozengy': {
+        var lw = W / 5, lh = lw * 1.3;
+        defs.push('<pattern id="tsi-crest-svg-lozengy-' + uid + '" patternUnits="userSpaceOnUse" width="' + n(lw) + '" height="' + n(lh) + '" patternTransform="translate(' + n(fx - lw / 2) + ' ' + n(bb.y1) + ')">' +
+          '<rect width="' + n(lw) + '" height="' + n(lh) + '" fill="' + c1 + '"/><path d="M ' + n(lw / 2) + ',0 L ' + n(lw) + ',' + n(lh / 2) + ' L ' + n(lw / 2) + ',' + n(lh) + ' L 0,' + n(lh / 2) + ' Z" fill="' + c2 + '" stroke="' + line + '" stroke-opacity=".5" stroke-width="3"/></pattern>');
+        out += '<rect x="' + n(bb.x1 - 20) + '" y="' + n(bb.y1 - 20) + '" width="' + n(W + 40) + '" height="' + n(H + 40) + '" fill="url(#tsi-crest-svg-lozengy-' + uid + ')"/>';
+        break;
+      }
+      default: break;
+    }
+    if (splits.length) out += '<path d="' + splits.join(' ') + '" fill="none" stroke="' + line + '" stroke-opacity=".6" stroke-width="3"/>';
+    return out;
+  }
+
+  /* ---------- The band (ordinary) ---------- */
+  function ordinary(o, st) {
+    if (!st.ordinary || st.ordinary === 'none') return '';
+    var col = colour(st.ordinaryColour, '#d6b25e');
+    var edge = R.darken(col, 0.6);
+    var bb = o.bb, fx = o.fx, fy = o.fy, W = bb.w, H = bb.h, big = 3000;
+    var band = W * 0.22, h = band / 2, shapes = [];
+    function poly(pts) { return 'M ' + pts.map(function (p) { return n(p[0]) + ',' + n(p[1]); }).join(' L ') + ' Z'; }
+    function arm(ux, uy, len) {
+      var l = Math.hypot(ux, uy); ux /= l; uy /= l;
+      var px = -uy * h, py = ux * h;
+      return poly([[fx - px - ux * h, fy - py - uy * h], [fx + ux * len - px, fy + uy * len - py], [fx + ux * len + px, fy + uy * len + py], [fx + px - ux * h, fy + py - uy * h]]);
+    }
+    switch (st.ordinary) {
+      case 'chief': shapes.push(poly([[bb.x1 - 30, bb.y1 - 30], [bb.x2 + 30, bb.y1 - 30], [bb.x2 + 30, bb.y1 + H * 0.28], [bb.x1 - 30, bb.y1 + H * 0.28]])); break;
+      case 'fess': shapes.push(poly([[fx - big, fy - h * 1.1], [fx + big, fy - h * 1.1], [fx + big, fy + h * 1.1], [fx - big, fy + h * 1.1]])); break;
+      case 'pale': shapes.push(poly([[fx - h, fy - big], [fx + h, fy - big], [fx + h, fy + big], [fx - h, fy + big]])); break;
+      case 'bend': shapes.push(arm(1, 1, big), arm(-1, -1, big)); break;
+      case 'bendSinister': shapes.push(arm(-1, 1, big), arm(1, -1, big)); break;
+      case 'cross': shapes.push(arm(0, -1, big), arm(0, 1, big), arm(1, 0, big), arm(-1, 0, big)); break;
+      case 'saltire': shapes.push(arm(1, 1, big), arm(-1, -1, big), arm(-1, 1, big), arm(1, -1, big)); break;
+      case 'pall': shapes.push(arm(-1, -1, big), arm(1, -1, big), arm(0, 1, big)); break;
+      case 'chevron': {
+        var ay = fy - H * 0.08, v = band * Math.SQRT2;
+        shapes.push(poly([[fx - big, ay + big], [fx, ay], [fx + big, ay + big], [fx + big, ay + big + v], [fx, ay + v], [fx - big, ay + big + v]]));
+        break;
+      }
+      case 'pile': shapes.push(poly([[fx - W * 0.24, bb.y1 - 30], [fx + W * 0.24, bb.y1 - 30], [fx, bb.y1 + H * 0.82]])); break;
+      case 'bordure': {
+        var rimW = st.rim === 'none' ? 0 : Number(st.rimWidth) || 0;
+        var bw = rimW + W * 0.085;
+        return '<path d="' + o.d + '" fill="none" stroke="' + edge + '" stroke-width="' + n(bw * 2 + 6) + '"/>' +
+          '<path d="' + o.d + '" fill="none" stroke="' + col + '" stroke-width="' + n(bw * 2) + '"/>';
+      }
+      default: return '';
+    }
+    /* outlined as one piece: dark strokes underneath, the band on top */
+    return '<g fill="none" stroke="' + edge + '" stroke-width="6" stroke-linejoin="round">' + shapes.map(function (d) { return '<path d="' + d + '"/>'; }).join('') + '</g>' +
+      '<g fill="' + col + '">' + shapes.map(function (d) { return '<path d="' + d + '"/>'; }).join('') + '</g>';
+  }
+
+  /* ---------- Texture, light and shade ---------- */
+  function texture(st, uid, defs, bb) {
+    var id = 'tsi-crest-svg-texture-' + uid;
+    var rect = '<rect x="' + n(bb.x1 - 20) + '" y="' + n(bb.y1 - 20) + '" width="' + n(bb.w + 40) + '" height="' + n(bb.h + 40) + '"';
+    switch (st.texture) {
+      case 'parchment':
+        defs.push('<filter id="' + id + '" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="4" seed="7"/>' +
+          '<feColorMatrix values="0 0 0 0 0.25  0 0 0 0 0.18  0 0 0 0 0.1  0 0 0 1.1 -0.42"/></filter>');
+        return rect + ' filter="url(#' + id + ')" opacity=".55"/>';
+      case 'grain':
+        defs.push('<filter id="' + id + '" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="3" stitchTiles="stitch"/>' +
+          '<feColorMatrix values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.2 0.75"/></filter>');
+        return rect + ' filter="url(#' + id + ')" opacity=".32"/>';
+      case 'brushed':
+        defs.push('<filter id="' + id + '" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="0.004 0.55" numOctaves="2" seed="11"/>' +
+          '<feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1.4 -0.62"/></filter>');
+        return rect + ' filter="url(#' + id + ')" opacity=".45"/>';
+      case 'linen':
+        defs.push('<pattern id="' + id + '" patternUnits="userSpaceOnUse" width="7" height="7"><path d="M 0,0 H 7 M 0,0 V 7" stroke="#000" stroke-opacity=".16" stroke-width="1.6"/></pattern>');
+        return rect + ' fill="url(#' + id + ')"/>';
+      default: return '';
+    }
+  }
+
+  function lighting(st, o, uid, defs, rimW) {
+    if (st.lighting === 'flat') return '';
+    var bb = o.bb;
+    defs.push('<radialGradient id="tsi-crest-svg-sheen-' + uid + '" cx="0.32" cy="0.2" r="0.95"><stop offset="0" stop-color="#fff" stop-opacity=".26"/><stop offset=".45" stop-color="#fff" stop-opacity=".04"/><stop offset="1" stop-color="#000" stop-opacity=".32"/></radialGradient>');
+    defs.push('<filter id="tsi-crest-svg-soften-' + uid + '" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="14"/></filter>');
+    var out = '<rect x="' + n(bb.x1) + '" y="' + n(bb.y1) + '" width="' + n(bb.w) + '" height="' + n(bb.h) + '" fill="url(#tsi-crest-svg-sheen-' + uid + ')"/>' +
+      /* shade just inside the rim, so the field sits a little below it */
+      '<path d="' + o.d + '" fill="none" stroke="#000" stroke-opacity=".42" stroke-width="' + n(rimW * 2 + 34) + '" filter="url(#tsi-crest-svg-soften-' + uid + ')"/>';
+    if (st.lighting === 'gloss') {
+      defs.push('<linearGradient id="tsi-crest-svg-gloss-' + uid + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".34"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>');
+      var gx = bb.x1 - 40, gy = bb.y1 - 40, gw = bb.w + 80, gh = bb.h * 0.46;
+      out += '<path d="M ' + n(gx) + ',' + n(gy) + ' H ' + n(gx + gw) + ' V ' + n(gy + gh * 0.7) + ' Q ' + n(gx + gw / 2) + ',' + n(gy + gh * 1.25) + ' ' + n(gx) + ',' + n(gy + gh * 0.7) + ' Z" fill="url(#tsi-crest-svg-gloss-' + uid + ')"/>';
+    }
+    return out;
+  }
+
+  /* ---------- The rim ---------- */
+  function rim(o, st, uid, defs) {
+    var w = Number(st.rimWidth) || 0;
+    var base = colour(st.rimColour, '#d4a93c');
+    var light = R.lighten(base, 0.5), dark = R.darken(base, 0.5), line = R.darken(base, 0.78);
+    var gid = 'tsi-crest-svg-metal-' + uid;
+    defs.push('<linearGradient id="' + gid + '" gradientUnits="userSpaceOnUse" x1="' + n(o.bb.x1) + '" y1="' + n(o.bb.y1) + '" x2="' + n(o.bb.x2) + '" y2="' + n(o.bb.y2) + '">' +
+      '<stop offset="0" stop-color="' + light + '"/><stop offset=".38" stop-color="' + base + '"/><stop offset=".7" stop-color="' + R.darken(base, 0.18) + '"/><stop offset="1" stop-color="' + dark + '"/></linearGradient>');
+    var metal = 'url(#' + gid + ')';
+    function band(width, paint, extra) { return '<path d="' + o.d + '" fill="none" stroke="' + paint + '" stroke-width="' + n(width * 2) + '"' + (extra || '') + '/>'; }
+    var out = '';
+    switch (st.rim) {
+      case 'none': return '';
+      case 'fine': {
+        var fw = Math.max(4, w * 0.35);
+        out = band(fw + 2.5, line) + band(fw, metal);
+        break;
+      }
+      case 'double':
+        out = band(w + 2.5, line) + band(w, metal) + band(w * 0.6, line) + band(w * 0.45, metal) +
+          band(w * 0.18, light, ' stroke-opacity=".45"');
         break;
       default:
-        body = full;
+        out = band(w + 2.5, line) + band(w, metal) + band(w * 0.3, light, ' stroke-opacity=".4"');
+    }
+    if (st.rim === 'studded') {
+      var pts = G.insetPoints(o.parts, w / 2, Math.max(26, w * 2.4));
+      var sid = 'tsi-crest-svg-stud-' + uid;
+      defs.push('<radialGradient id="' + sid + '" cx=".35" cy=".3" r=".75"><stop offset="0" stop-color="' + R.lighten(base, 0.7) + '"/><stop offset=".5" stop-color="' + base + '"/><stop offset="1" stop-color="' + dark + '"/></radialGradient>');
+      var r = Math.max(4, w * 0.3);
+      out += pts.map(function (p) { return '<circle cx="' + n(p[0]) + '" cy="' + n(p[1]) + '" r="' + n(r) + '" fill="url(#' + sid + ')" stroke="' + line + '" stroke-width="2"/>'; }).join('');
+    }
+    if (st.rim === 'rope') {
+      var gap = Math.max(10, w * 0.62);
+      var ps = G.insetPoints(o.parts, w / 2, gap);
+      out += '<g stroke="' + line + '" stroke-width="' + n(Math.max(2.5, w * 0.12)) + '" stroke-linecap="round" stroke-opacity=".8">' + ps.map(function (p) {
+        var tx = p[2], ty = p[3], nx = -ty, ny = tx, a = w * 0.38, b = w * 0.3;
+        return '<path d="M ' + n(p[0] - tx * b - nx * a) + ',' + n(p[1] - ty * b - ny * a) + ' L ' + n(p[0] + tx * b + nx * a) + ',' + n(p[1] + ty * b + ny * a) + '"/>';
+      }).join('') + '</g>';
+    }
+    return out;
+  }
+
+  /* ---------- The motto ---------- */
+  function fontFace(options) {
+    if (!options.fontDataUrl) return '';
+    return '<style>@font-face{font-family:"' + MOTTO_FONT + '";src:url(' + options.fontDataUrl + ') format("truetype");font-weight:400 900;font-style:normal;}</style>';
+  }
+
+  /* The lettering's size, so the whole motto fits along the ribbon. */
+  function mottoSize(text, room, max) {
+    var len = Math.max(1, text.length);
+    return Math.min(max, room / (len * 0.86));
+  }
+
+  function banner(st, uid, defs) {
+    var text = cleanText(st.motto).trim();
+    if (!st.banner || st.banner === 'none' || !text) return '';
+    var fill = colour(st.ribbonColour, '#7a0a12'), ink = colour(st.mottoColour, '#e8cc7a');
+    var deep = R.darken(fill, 0.38), edge = R.darken(fill, 0.7), hi = R.lighten(fill, 0.22);
+    var metal = colour(st.rimColour, '#d4a93c');
+    var gid = 'tsi-crest-svg-ribbon-' + uid;
+    defs.push('<linearGradient id="' + gid + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + hi + '"/><stop offset=".5" stop-color="' + fill + '"/><stop offset="1" stop-color="' + R.darken(fill, 0.2) + '"/></linearGradient>');
+    var upper = esc(text.toUpperCase());
+    var style = 'font-family:' + MOTTO_FONT + ',serif;font-weight:700;letter-spacing:0.08em';
+    var stroke = ' stroke="' + edge + '" stroke-width="4" stroke-linejoin="round"';
+    var out = '';
+
+    if (st.banner === 'ribbon') {
+      /* a curved ribbon with its ends folded back behind it and cut in a swallowtail */
+      var pathId = 'tsi-crest-svg-motto-' + uid;
+      out += '<path d="M 218,832 L 92,846 L 146,896 L 86,954 L 232,928 Z" fill="' + deep + '"' + stroke + '/>';
+      out += '<path d="M 806,832 L 932,846 L 878,896 L 938,954 L 792,928 Z" fill="' + deep + '"' + stroke + '/>';
+      out += '<path d="M 218,832 L 262,866 L 232,928 Z" fill="' + edge + '"/><path d="M 806,832 L 762,866 L 792,928 Z" fill="' + edge + '"/>';
+      out += '<path d="M 196,812 Q 512,936 828,812 L 828,908 Q 512,1032 196,908 Z" fill="url(#' + gid + ')"' + stroke + '/>';
+      out += '<path d="M 204,826 Q 512,948 820,826" fill="none" stroke="' + R.lighten(fill, 0.4) + '" stroke-opacity=".35" stroke-width="3"/>';
+      defs.push('<path id="' + pathId + '" d="M 196,860 Q 512,984 828,860"/>');
+      var fs = mottoSize(text, 560, 52);
+      out += '<text fill="' + ink + '" font-size="' + n(fs) + '" style="' + style + '" dy="' + n(fs * 0.36) + '"><textPath href="#' + pathId + '" startOffset="50%" text-anchor="middle">' + upper + '</textPath></text>';
+      return out;
     }
 
-    return { defs: defs.join("\n"), body };
-  }
-
-  // ---------- Textures ----------
-  function renderTexture(textureId, texId){
-    if(textureId === "none") return { defs:"", body:"" };
-
-    const defs = [];
-    let body = "";
-
-    if(textureId === "grain"){
-      defs.push(`
-        <filter id="${texId}">
-          <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch" />
-          <feColorMatrix type="matrix" values="
-            1 0 0 0 0
-            0 1 0 0 0
-            0 0 1 0 0
-            0 0 0 .22 0" />
-        </filter>
-      `);
-      body = `<rect x="0" y="0" width="1024" height="1024" filter="url(#${texId})" opacity="0.55"></rect>`;
+    if (st.banner === 'scroll') {
+      /* a straight scroll with rolled ends */
+      out += '<path d="M 214,828 H 810 V 928 H 214 Z" fill="url(#' + gid + ')"' + stroke + '/>';
+      out += '<path d="M 214,928 C 176,928 150,904 150,874 C 150,846 172,828 200,828 C 228,828 244,848 244,872 C 244,894 226,906 208,906 C 190,906 180,892 182,878" fill="' + deep + '"' + stroke + '/>';
+      out += '<path d="M 810,928 C 848,928 874,904 874,874 C 874,846 852,828 824,828 C 796,828 780,848 780,872 C 780,894 798,906 816,906 C 834,906 844,892 842,878" fill="' + deep + '"' + stroke + '/>';
+      var fs2 = mottoSize(text, 500, 48);
+      out += '<text x="512" y="' + n(878 + fs2 * 0.36) + '" text-anchor="middle" fill="' + ink + '" font-size="' + n(fs2) + '" style="' + style + '">' + upper + '</text>';
+      return out;
     }
 
-    if(textureId === "speckle"){
-      defs.push(`
-        <filter id="${texId}">
-          <feTurbulence type="turbulence" baseFrequency="0.75" numOctaves="3" seed="8" />
-          <feColorMatrix type="matrix" values="
-            1 0 0 0 0
-            0 1 0 0 0
-            0 0 1 0 0
-            0 0 0 .18 0" />
-        </filter>
-      `);
-      body = `<rect x="0" y="0" width="1024" height="1024" filter="url(#${texId})" opacity="0.55"></rect>`;
+    /* plaque: a framed tablet in the rim's metal */
+    var pid = 'tsi-crest-svg-plaque-' + uid;
+    defs.push('<linearGradient id="' + pid + '" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="' + R.lighten(metal, 0.45) + '"/><stop offset=".5" stop-color="' + metal + '"/><stop offset="1" stop-color="' + R.darken(metal, 0.45) + '"/></linearGradient>');
+    out += '<rect x="206" y="822" width="612" height="120" rx="22" fill="url(#' + pid + ')" stroke="' + R.darken(metal, 0.75) + '" stroke-width="4"/>';
+    out += '<rect x="222" y="838" width="580" height="88" rx="13" fill="url(#' + gid + ')" stroke="' + edge + '" stroke-width="3"/>';
+    var fs3 = mottoSize(text, 520, 48);
+    out += '<text x="512" y="' + n(882 + fs3 * 0.36) + '" text-anchor="middle" fill="' + ink + '" font-size="' + n(fs3) + '" style="' + style + '">' + upper + '</text>';
+    return out;
+  }
+
+  function hasBanner(st) {
+    return !!(st.banner && st.banner !== 'none' && cleanText(st.motto).trim());
+  }
+
+  /* ---------- The whole crest ---------- */
+  function svg(st, options) {
+    options = options || {};
+    var uid = ++counter;
+    var defs = [];
+    var o = outline(st.shield, shieldBox(hasBanner(st)));
+    var sig = find(sigilList(), st.sigil);
+    var place = sigilPlace(o, sig, st);
+    var rimW = st.rim === 'none' ? 0 : (st.rim === 'fine' ? Math.max(4, (Number(st.rimWidth) || 0) * 0.35) : Number(st.rimWidth) || 0);
+    var clip = 'tsi-crest-svg-clip-' + uid;
+    defs.push('<clipPath id="' + clip + '"><path d="' + o.d + '"/></clipPath>');
+    defs.push('<filter id="tsi-crest-svg-shadow-' + uid + '" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="16" stdDeviation="16" flood-color="#000" flood-opacity=".55"/></filter>');
+
+    var raised = st.relief !== 'flat';
+    if (raised) {
+      defs.push('<filter id="tsi-crest-svg-relief-' + uid + '" x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB">' +
+        '<feGaussianBlur in="SourceAlpha" stdDeviation="3.5" result="blur"/>' +
+        '<feSpecularLighting in="blur" surfaceScale="3.2" specularConstant=".62" specularExponent="16" lighting-color="#ffffff" result="spec"><feDistantLight azimuth="225" elevation="46"/></feSpecularLighting>' +
+        '<feComposite in="spec" in2="SourceAlpha" operator="in" result="specIn"/>' +
+        '<feComposite in="SourceGraphic" in2="specIn" operator="arithmetic" k1="0" k2="1" k3=".55" k4="0" result="lit"/>' +
+        '<feDropShadow in="lit" dx="0" dy="6" stdDeviation="5" flood-color="#000" flood-opacity=".55"/></filter>');
     }
+    var flip = st.sigilFace === 'right' ? -1 : 1;
+    var b = place.box;
+    var sigilSvg = '<g clip-path="url(#' + clip + ')"><g' + (raised ? ' filter="url(#tsi-crest-svg-relief-' + uid + ')"' : '') + '>' +
+      '<g transform="translate(' + n(place.cx) + ' ' + n(place.cy) + ') scale(' + (flip * place.scale).toFixed(4) + ' ' + place.scale.toFixed(4) + ') translate(' + n(-(b.x1 + b.w / 2)) + ' ' + n(-(b.y1 + b.h / 2)) + ')">' +
+      sigilArt(sig, sigilColours(st)) + '</g></g></g>';
 
-    if(textureId === "etch"){
-      defs.push(`
-        <filter id="${texId}">
-          <feTurbulence type="fractalNoise" baseFrequency="0.18" numOctaves="4" seed="3" />
-          <feDisplacementMap in="SourceGraphic" scale="10" />
-        </filter>
-      `);
-      body = `<rect x="0" y="0" width="1024" height="1024" filter="url(#${texId})" opacity="0.25"></rect>`;
-    }
+    var body =
+      '<g clip-path="url(#' + clip + ')">' + field(o, st, uid, defs) + ordinary(o, st) + texture(st, uid, defs, o.bb) + '</g>' +
+      sigilSvg +
+      '<g clip-path="url(#' + clip + ')">' + lighting(st, o, uid, defs, rimW) + '<g clip-path="url(#' + clip + ')">' + rim(o, st, uid, defs) + '</g></g>' +
+      '<path d="' + o.d + '" fill="none" stroke="' + R.darken(colour(st.rimColour, '#d4a93c'), 0.8) + '" stroke-width="4" stroke-linejoin="round"/>';
 
-    return { defs: defs.join("\n"), body };
+    var ban = banner(st, uid, defs);
+    var size = options.size || '100%';
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + size + '" viewBox="0 0 1024 1024" role="img" aria-label="Clan crest">' +
+      '<defs>' + (ban ? fontFace(options) : '') + defs.join('') + '</defs>' +
+      '<g filter="url(#tsi-crest-svg-shadow-' + uid + ')">' + body + ban + '</g></svg>';
   }
 
-  // ---------- Borders ----------
-  function renderBorder(borderId, palette, shieldD, w){
-    const stroke = palette.b;
-    const stroke2 = "rgba(0,0,0,0.35)";
-    const inner = w * 0.55;
+  /* ---------- Small pictures for the choices ---------- */
+  var THUMB_BOX = { x: 112, y: 40, w: 800, h: 944 };
 
-    if(borderId === "plain"){
-      return `<path d="${shieldD}" fill="none" stroke="${stroke}" stroke-width="${w}" />`;
-    }
-
-    if(borderId === "double"){
-      return `
-        <path d="${shieldD}" fill="none" stroke="${stroke}" stroke-width="${w}" />
-        <path d="${shieldD}" fill="none" stroke="${stroke2}" stroke-width="${inner}" opacity="0.7"/>
-      `;
-    }
-
-    if(borderId === "notched"){
-      // Fake notches by dashed stroke
-      return `
-        <path d="${shieldD}" fill="none" stroke="${stroke}" stroke-width="${w}" stroke-linecap="round" stroke-dasharray="10 16"/>
-        <path d="${shieldD}" fill="none" stroke="${stroke2}" stroke-width="${inner}" opacity="0.55"/>
-      `;
-    }
-
-    if(borderId === "rope"){
-      return `
-        <path d="${shieldD}" fill="none" stroke="${stroke}" stroke-width="${w}" stroke-linecap="round" stroke-dasharray="3 9"/>
-        <path d="${shieldD}" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="${inner}" opacity="0.65"/>
-      `;
-    }
-
-    if(borderId === "beaded"){
-      return `
-        <path d="${shieldD}" fill="none" stroke="${stroke}" stroke-width="${w}" stroke-linecap="round" stroke-dasharray="1 18"/>
-        <path d="${shieldD}" fill="none" stroke="${stroke2}" stroke-width="${inner}" opacity="0.55"/>
-      `;
-    }
-
-    return `<path d="${shieldD}" fill="none" stroke="${stroke}" stroke-width="${w}" />`;
+  function thumbShape(shapeId, st) {
+    var o = outline(shapeId, THUMB_BOX);
+    return '<svg viewBox="0 0 1024 1024" aria-hidden="true"><path d="' + o.d + '" fill="' + colour(st.field1) + '" stroke="' + colour(st.rimColour) + '" stroke-width="48" stroke-linejoin="round"/></svg>';
   }
 
-  // ---------- Sigil ----------
-  function renderSigil(st, palette){
-    const sig = SIGILS.find(s => s.id === st.sigilType) || SIGILS[0];
-    const size = st.sigilScale;
-
-    const cx = 512, cy = 520;
-    const fillA = palette.b;
-    const fillB = palette.a;
-    const stroke = "rgba(0,0,0,0.55)";
-    const outline = "rgba(255,255,255,0.18)";
-
-    const mode = st.sigilFillMode;
-
-    const parts = sig.draw({ cx, cy, size, palette });
-
-    if(mode === "solid"){
-      return `
-        <g>
-          <g fill="${fillA}" stroke="${stroke}" stroke-width="6" stroke-linejoin="round">
-            ${parts.solid || parts.base || ""}
-          </g>
-        </g>
-      `;
-    }
-
-    if(mode === "outline"){
-      return `
-        <g>
-          <g fill="none" stroke="${fillA}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
-            ${parts.outline || parts.base || ""}
-          </g>
-          <g fill="none" stroke="${outline}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0.8">
-            ${parts.outline || parts.base || ""}
-          </g>
-        </g>
-      `;
-    }
-
-    // twoTone
-    return `
-      <g>
-        <g fill="${fillA}" stroke="${stroke}" stroke-width="6" stroke-linejoin="round">
-          ${parts.solid || parts.base || ""}
-        </g>
-        <g fill="${fillB}" opacity="0.70" stroke="rgba(0,0,0,0.35)" stroke-width="3" stroke-linejoin="round">
-          ${parts.accent || ""}
-        </g>
-      </g>
-    `;
+  function thumbField(kind, id, st) {
+    var uid = ++counter, defs = [];
+    var o = outline(st.shield, THUMB_BOX);
+    var clip = 'tsi-crest-svg-clip-' + uid;
+    defs.push('<clipPath id="' + clip + '"><path d="' + o.d + '"/></clipPath>');
+    var s2 = Object.assign({}, st, kind === 'division' ? { division: id, ordinary: 'none' } : { division: 'plain', ordinary: id, rim: 'none' });
+    var inner = field(o, s2, uid, defs) + ordinary(o, s2);
+    return '<svg viewBox="0 0 1024 1024" aria-hidden="true"><defs>' + defs.join('') + '</defs><g clip-path="url(#' + clip + ')">' + inner +
+      '</g><path d="' + o.d + '" fill="none" stroke="' + colour(st.rimColour) + '" stroke-width="40" stroke-linejoin="round"/></svg>';
   }
 
-  // ---------- Banner ----------
-  function renderBanner(st, palette){
-    const style = st.bannerStyle;
-    const text = (st.bannerText || "").trim();
-    if(style === "none" || !text) return "";
-
-    const fill = "rgba(10,8,8,0.65)";
-    const stroke = palette.b;
-
-    const x = 280, y = 820, w = 464, h = 120;
-    const safe = escapeHtml(text.toUpperCase());
-
-    if(style === "ribbon"){
-      return (
-        `<g>` +
-          `<path d="M ${x} ${y+40} Q 512 ${y-10} ${x+w} ${y+40} ` +
-                 `L ${x+w-40} ${y+92} Q 512 ${y+60} ${x+40} ${y+92} Z" ` +
-                `fill="${fill}" stroke="${stroke}" stroke-width="6" />` +
-          `<text x="512" y="${y+72}" text-anchor="middle" ` +
-                `font-family="${MOTTO_FONT}" font-size="34" font-weight="800" fill="${palette.b}" ` +
-                `style="letter-spacing:0.08em;">` +
-            `${safe}` +
-          `</text>` +
-        `</g>`
-      );
-    }
-
-    if(style === "plaque"){
-      return (
-        `<g>` +
-          `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="18" ` +
-                `fill="${fill}" stroke="${stroke}" stroke-width="6"/>` +
-          `<text x="512" y="${y+74}" text-anchor="middle" ` +
-                `font-family="${MOTTO_FONT}" font-size="34" font-weight="900" fill="${palette.b}" ` +
-                `style="letter-spacing:0.08em;">` +
-            `${safe}` +
-          `</text>` +
-        `</g>`
-      );
-    }
-
-    // scroll
-    return (
-      `<g>` +
-        `<path d="M ${x+20} ${y+22} Q ${x} ${y+60} ${x+22} ${y+98} ` +
-               `Q ${x+80} ${y+120} ${x+98} ${y+86} ` +
-               `Q ${x+112} ${y+58} ${x+90} ${y+34}" ` +
-              `fill="rgba(255,255,255,0.10)" stroke="${stroke}" stroke-width="6"/>` +
-        `<path d="M ${x+w-20} ${y+22} Q ${x+w} ${y+60} ${x+w-22} ${y+98} ` +
-               `Q ${x+w-80} ${y+120} ${x+w-98} ${y+86} ` +
-               `Q ${x+w-112} ${y+58} ${x+w-90} ${y+34}" ` +
-              `fill="rgba(255,255,255,0.10)" stroke="${stroke}" stroke-width="6"/>` +
-        `<rect x="${x+55}" y="${y+20}" width="${w-110}" height="${h-40}" rx="16" ` +
-              `fill="${fill}" stroke="${stroke}" stroke-width="6"/>` +
-        `<text x="512" y="${y+74}" text-anchor="middle" ` +
-              `font-family="${MOTTO_FONT}" font-size="34" font-weight="900" fill="${palette.b}" ` +
-              `style="letter-spacing:0.08em;">` +
-          `${safe}` +
-        `</text>` +
-      `</g>`
-    );
-  }
-
-  // ---------- Shield paths (simple + reliable) ----------
-  function shieldPathHeater(x,y,w,h){
-    const top = y;
-    const left = x, right = x+w;
-    const bottom = y+h;
-    const mid = x + w/2;
-
-    const neck = y + h*0.22;
-    const curve = y + h*0.62;
-
-    return [
-      `M ${left+80} ${top+30}`,
-      `Q ${mid} ${top-20} ${right-80} ${top+30}`,
-      `Q ${right+20} ${neck} ${right-40} ${curve}`,
-      `Q ${mid} ${bottom+10} ${left+40} ${curve}`,
-      `Q ${left-20} ${neck} ${left+80} ${top+30}`,
-      `Z`
-    ].join(" ");
-  }
-
-  function shieldPathRound(x,y,w,h){
-    const cx = x+w/2, cy = y+h*0.48;
-    const r = Math.min(w,h)*0.44;
-    return `M ${cx} ${y+40}
-      A ${r} ${r} 0 1 1 ${cx-0.01} ${y+40}
-      Q ${cx} ${y+h+10} ${cx} ${y+h-40}
-      Z`.replace(/\s+/g," ");
-  }
-
-  function shieldPathKite(x,y,w,h){
-    const mid = x+w/2;
-    return [
-      `M ${x+90} ${y+40}`,
-      `Q ${mid} ${y-10} ${x+w-90} ${y+40}`,
-      `L ${x+w-40} ${y+h*0.58}`,
-      `Q ${mid} ${y+h+20} ${x+40} ${y+h*0.58}`,
-      `Z`
-    ].join(" ");
-  }
-
-  function shieldPathSpanish(x,y,w,h){
-    const mid = x+w/2;
-    const bottom = y+h;
-    return [
-      `M ${x+90} ${y+40}`,
-      `Q ${mid} ${y-10} ${x+w-90} ${y+40}`,
-      `L ${x+w-60} ${y+h*0.70}`,
-      `Q ${mid} ${bottom+10} ${x+60} ${y+h*0.70}`,
-      `Z`
-    ].join(" ");
-  }
-
-  function shieldPathGothic(x,y,w,h){
-    const mid = x+w/2;
-    return [
-      `M ${x+110} ${y+70}`,
-      `Q ${mid} ${y-40} ${x+w-110} ${y+70}`,
-      `Q ${x+w+10} ${y+h*0.30} ${x+w-70} ${y+h*0.72}`,
-      `Q ${mid} ${y+h+22} ${x+70} ${y+h*0.72}`,
-      `Q ${x-10} ${y+h*0.30} ${x+110} ${y+70}`,
-      `Z`
-    ].join(" ");
-  }
-
-  function shieldPathOval(x,y,w,h){
-    const rx = w*0.40, ry = h*0.44;
-    const cx = x+w/2, cy = y+h*0.50;
-    return `M ${cx} ${cy-ry}
-      A ${rx} ${ry} 0 1 1 ${cx-0.01} ${cy-ry}
-      Z`.replace(/\s+/g," ");
-  }
-
-  // ---------- Sigil drawing (procedural SVG) ----------
-  function sigilSword({cx,cy,size}){
-    const s = size;
-    return {
-      base: `
-        <path d="M ${cx} ${cy-s*0.72} L ${cx+s*0.06} ${cy-s*0.15} L ${cx-s*0.06} ${cy-s*0.15} Z"></path>
-        <rect x="${cx-s*0.06}" y="${cy-s*0.15}" width="${s*0.12}" height="${s*0.62}" rx="${s*0.04}"></rect>
-        <rect x="${cx-s*0.28}" y="${cy+s*0.20}" width="${s*0.56}" height="${s*0.10}" rx="${s*0.05}"></rect>
-        <rect x="${cx-s*0.07}" y="${cy+s*0.24}" width="${s*0.14}" height="${s*0.22}" rx="${s*0.06}"></rect>
-        <circle cx="${cx}" cy="${cy+s*0.50}" r="${s*0.08}"></circle>
-      `,
-      solid: `
-        <path d="M ${cx} ${cy-s*0.72} L ${cx+s*0.06} ${cy-s*0.15} L ${cx-s*0.06} ${cy-s*0.15} Z"></path>
-        <rect x="${cx-s*0.06}" y="${cy-s*0.15}" width="${s*0.12}" height="${s*0.62}" rx="${s*0.04}"></rect>
-        <rect x="${cx-s*0.28}" y="${cy+s*0.20}" width="${s*0.56}" height="${s*0.10}" rx="${s*0.05}"></rect>
-        <rect x="${cx-s*0.07}" y="${cy+s*0.24}" width="${s*0.14}" height="${s*0.22}" rx="${s*0.06}"></rect>
-        <circle cx="${cx}" cy="${cy+s*0.50}" r="${s*0.08}"></circle>
-      `,
-      outline: `
-        <path d="M ${cx} ${cy-s*0.72} L ${cx+s*0.06} ${cy-s*0.15} L ${cx-s*0.06} ${cy-s*0.15} Z"></path>
-        <path d="M ${cx} ${cy-s*0.15} L ${cx} ${cy+s*0.48}"></path>
-        <path d="M ${cx-s*0.28} ${cy+s*0.25} L ${cx+s*0.28} ${cy+s*0.25}"></path>
-      `,
-      accent: `
-        <rect x="${cx-s*0.02}" y="${cy-s*0.10}" width="${s*0.04}" height="${s*0.46}" rx="${s*0.02}"></rect>
-      `
-    };
-  }
-
-  function sigilTwinSwords({cx,cy,size}){
-    const s = size;
-    return {
-      solid: `
-        <g transform="rotate(-25 ${cx} ${cy})">${sigilSword({cx,cy,size:s}).solid}</g>
-        <g transform="rotate(25 ${cx} ${cy})">${sigilSword({cx,cy,size:s}).solid}</g>
-      `,
-      outline: `
-        <g transform="rotate(-25 ${cx} ${cy})">${sigilSword({cx,cy,size:s}).outline}</g>
-        <g transform="rotate(25 ${cx} ${cy})">${sigilSword({cx,cy,size:s}).outline}</g>
-      `,
-      accent: `
-        <circle cx="${cx}" cy="${cy+s*0.45}" r="${s*0.10}"></circle>
-      `
-    };
-  }
-
-  function sigilCrown({cx,cy,size}){
-    const s = size;
-    const y = cy - s*0.10;
-    return {
-      solid: `
-        <path d="M ${cx-s*0.55} ${y+s*0.30}
-                 L ${cx-s*0.40} ${y-s*0.10}
-                 L ${cx-s*0.15} ${y+s*0.10}
-                 L ${cx} ${y-s*0.22}
-                 L ${cx+s*0.15} ${y+s*0.10}
-                 L ${cx+s*0.40} ${y-s*0.10}
-                 L ${cx+s*0.55} ${y+s*0.30}
-                 Z"></path>
-        <rect x="${cx-s*0.58}" y="${y+s*0.30}" width="${s*1.16}" height="${s*0.22}" rx="${s*0.08}"></rect>
-        <circle cx="${cx-s*0.40}" cy="${y-s*0.10}" r="${s*0.08}"></circle>
-        <circle cx="${cx}" cy="${y-s*0.22}" r="${s*0.09}"></circle>
-        <circle cx="${cx+s*0.40}" cy="${y-s*0.10}" r="${s*0.08}"></circle>
-      `,
-      outline: `
-        <path d="M ${cx-s*0.55} ${y+s*0.30}
-                 L ${cx-s*0.40} ${y-s*0.10}
-                 L ${cx-s*0.15} ${y+s*0.10}
-                 L ${cx} ${y-s*0.22}
-                 L ${cx+s*0.15} ${y+s*0.10}
-                 L ${cx+s*0.40} ${y-s*0.10}
-                 L ${cx+s*0.55} ${y+s*0.30}
-                 Z"></path>
-        <path d="M ${cx-s*0.58} ${y+s*0.41} L ${cx+s*0.58} ${y+s*0.41}"></path>
-      `,
-      accent: `
-        <rect x="${cx-s*0.45}" y="${y+s*0.36}" width="${s*0.90}" height="${s*0.10}" rx="${s*0.05}"></rect>
-      `
-    };
-  }
-
-  function sigilTree({cx,cy,size}){
-    const s = size;
-    return {
-      solid: `
-        <path d="M ${cx} ${cy-s*0.60}
-                 C ${cx+s*0.35} ${cy-s*0.55} ${cx+s*0.40} ${cy-s*0.10} ${cx+s*0.10} ${cy-s*0.02}
-                 C ${cx+s*0.30} ${cy+s*0.15} ${cx+s*0.10} ${cy+s*0.42} ${cx} ${cy+s*0.35}
-                 C ${cx-s*0.10} ${cy+s*0.42} ${cx-s*0.30} ${cy+s*0.15} ${cx-s*0.10} ${cy-s*0.02}
-                 C ${cx-s*0.40} ${cy-s*0.10} ${cx-s*0.35} ${cy-s*0.55} ${cx} ${cy-s*0.60}
-                 Z"></path>
-        <rect x="${cx-s*0.10}" y="${cy+s*0.20}" width="${s*0.20}" height="${s*0.45}" rx="${s*0.08}"></rect>
-      `,
-      outline: `
-        <path d="M ${cx} ${cy-s*0.60}
-                 C ${cx+s*0.35} ${cy-s*0.55} ${cx+s*0.40} ${cy-s*0.10} ${cx+s*0.10} ${cy-s*0.02}
-                 C ${cx+s*0.30} ${cy+s*0.15} ${cx+s*0.10} ${cy+s*0.42} ${cx} ${cy+s*0.35}
-                 C ${cx-s*0.10} ${cy+s*0.42} ${cx-s*0.30} ${cy+s*0.15} ${cx-s*0.10} ${cy-s*0.02}
-                 C ${cx-s*0.40} ${cy-s*0.10} ${cx-s*0.35} ${cy-s*0.55} ${cx} ${cy-s*0.60}
-                 Z"></path>
-        <path d="M ${cx} ${cy+s*0.20} L ${cx} ${cy+s*0.62}"></path>
-      `,
-      accent: `
-        <circle cx="${cx}" cy="${cy-s*0.18}" r="${s*0.10}"></circle>
-        <circle cx="${cx-s*0.18}" cy="${cy-s*0.05}" r="${s*0.07}"></circle>
-        <circle cx="${cx+s*0.18}" cy="${cy-s*0.05}" r="${s*0.07}"></circle>
-      `
-    };
-  }
-
-  function sigilWave({cx,cy,size}){
-    const s = size;
-    return {
-      solid: `
-        <path d="M ${cx-s*0.60} ${cy+s*0.05}
-                 C ${cx-s*0.35} ${cy-s*0.20} ${cx-s*0.10} ${cy-s*0.20} ${cx+s*0.10} ${cy+s*0.05}
-                 C ${cx+s*0.30} ${cy+s*0.25} ${cx+s*0.55} ${cy+s*0.25} ${cx+s*0.60} ${cy+s*0.05}
-                 L ${cx+s*0.60} ${cy+s*0.42}
-                 C ${cx+s*0.35} ${cy+s*0.62} ${cx-s*0.35} ${cy+s*0.62} ${cx-s*0.60} ${cy+s*0.42}
-                 Z"></path>
-        <circle cx="${cx+s*0.45}" cy="${cy-s*0.02}" r="${s*0.10}"></circle>
-      `,
-      outline: `
-        <path d="M ${cx-s*0.60} ${cy+s*0.05}
-                 C ${cx-s*0.35} ${cy-s*0.20} ${cx-s*0.10} ${cy-s*0.20} ${cx+s*0.10} ${cy+s*0.05}
-                 C ${cx+s*0.30} ${cy+s*0.25} ${cx+s*0.55} ${cy+s*0.25} ${cx+s*0.60} ${cy+s*0.05}"></path>
-        <path d="M ${cx-s*0.60} ${cy+s*0.32}
-                 C ${cx-s*0.20} ${cy+s*0.55} ${cx+s*0.20} ${cy+s*0.55} ${cx+s*0.60} ${cy+s*0.32}"></path>
-      `,
-      accent: `
-        <path d="M ${cx-s*0.35} ${cy+s*0.18}
-                 C ${cx-s*0.10} ${cy+s*0.02} ${cx+s*0.10} ${cy+s*0.02} ${cx+s*0.35} ${cy+s*0.18}"></path>
-      `
-    };
-  }
-
-  function sigilMountain({cx,cy,size}){
-    const s = size;
-    return {
-      solid: `
-        <polygon points="${cx-s*0.62},${cy+s*0.45} ${cx-s*0.10},${cy-s*0.30} ${cx+s*0.18},${cy+s*0.10} ${cx+s*0.48},${cy-s*0.10} ${cx+s*0.72},${cy+s*0.45}"></polygon>
-      `,
-      outline: `
-        <polyline points="${cx-s*0.62},${cy+s*0.45} ${cx-s*0.10},${cy-s*0.30} ${cx+s*0.18},${cy+s*0.10} ${cx+s*0.48},${cy-s*0.10} ${cx+s*0.72},${cy+s*0.45}"></polyline>
-      `,
-      accent: `
-        <polygon points="${cx-s*0.10},${cy-s*0.30} ${cx+s*0.02},${cy-s*0.12} ${cx-s*0.18},${cy-s*0.05}"></polygon>
-        <polygon points="${cx+s*0.48},${cy-s*0.10} ${cx+s*0.58},${cy+s*0.02} ${cx+s*0.38},${cy+s*0.06}"></polygon>
-      `
-    };
-  }
-
-  function sigilMoon({cx,cy,size}){
-    const s = size;
-    return {
-      solid: `
-        <path d="M ${cx+s*0.20} ${cy-s*0.45}
-                 A ${s*0.46} ${s*0.46} 0 1 0 ${cx+s*0.20} ${cy+s*0.45}
-                 A ${s*0.34} ${s*0.34} 0 1 1 ${cx+s*0.20} ${cy-s*0.45}
-                 Z"></path>
-      `,
-      outline: `
-        <path d="M ${cx+s*0.20} ${cy-s*0.45}
-                 A ${s*0.46} ${s*0.46} 0 1 0 ${cx+s*0.20} ${cy+s*0.45}"></path>
-        <path d="M ${cx+s*0.20} ${cy-s*0.45}
-                 A ${s*0.34} ${s*0.34} 0 1 1 ${cx+s*0.20} ${cy+s*0.45}"></path>
-      `,
-      accent: `
-        <circle cx="${cx-s*0.12}" cy="${cy-s*0.08}" r="${s*0.06}"></circle>
-        <circle cx="${cx+s*0.10}" cy="${cy+s*0.12}" r="${s*0.04}"></circle>
-      `
-    };
-  }
-
-  function sigilSun({cx,cy,size}){
-    const s = size;
-    let rays = "";
-    for(let i=0;i<12;i++){
-      const a = (Math.PI*2*i)/12;
-      const x1 = cx + Math.cos(a)*s*0.36;
-      const y1 = cy + Math.sin(a)*s*0.36;
-      const x2 = cx + Math.cos(a)*s*0.56;
-      const y2 = cy + Math.sin(a)*s*0.56;
-      rays += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"></line>`;
-    }
-    return {
-      solid: `
-        <circle cx="${cx}" cy="${cy}" r="${s*0.30}"></circle>
-        <g stroke="rgba(0,0,0,0.55)" stroke-width="8" stroke-linecap="round" fill="none">${rays}</g>
-      `,
-      outline: `
-        <circle cx="${cx}" cy="${cy}" r="${s*0.30}"></circle>
-        <g>${rays}</g>
-      `,
-      accent: `
-        <circle cx="${cx}" cy="${cy}" r="${s*0.14}"></circle>
-      `
-    };
-  }
-
-  function sigilEye({cx,cy,size}){
-    const s = size;
-    return {
-      solid: `
-        <path d="M ${cx-s*0.62} ${cy}
-                 Q ${cx} ${cy-s*0.45} ${cx+s*0.62} ${cy}
-                 Q ${cx} ${cy+s*0.45} ${cx-s*0.62} ${cy}
-                 Z"></path>
-        <circle cx="${cx}" cy="${cy}" r="${s*0.16}"></circle>
-      `,
-      outline: `
-        <path d="M ${cx-s*0.62} ${cy}
-                 Q ${cx} ${cy-s*0.45} ${cx+s*0.62} ${cy}
-                 Q ${cx} ${cy+s*0.45} ${cx-s*0.62} ${cy}"></path>
-        <circle cx="${cx}" cy="${cy}" r="${s*0.16}"></circle>
-      `,
-      accent: `<circle cx="${cx}" cy="${cy}" r="${s*0.07}"></circle>`
-    };
-  }
-
-  function sigilAnchor({cx,cy,size}){
-    const s = size;
-    return {
-      solid: `
-        <circle cx="${cx}" cy="${cy-s*0.42}" r="${s*0.10}"></circle>
-        <rect x="${cx-s*0.05}" y="${cy-s*0.32}" width="${s*0.10}" height="${s*0.70}" rx="${s*0.05}"></rect>
-        <path d="M ${cx-s*0.42} ${cy+s*0.05}
-                 Q ${cx} ${cy+s*0.42} ${cx+s*0.42} ${cy+s*0.05}
-                 L ${cx+s*0.34} ${cy+s*0.00}
-                 Q ${cx} ${cy+s*0.30} ${cx-s*0.34} ${cy+s*0.00}
-                 Z"></path>
-        <rect x="${cx-s*0.35}" y="${cy-s*0.10}" width="${s*0.70}" height="${s*0.10}" rx="${s*0.05}"></rect>
-      `,
-      outline: `
-        <circle cx="${cx}" cy="${cy-s*0.42}" r="${s*0.10}"></circle>
-        <path d="M ${cx} ${cy-s*0.32} L ${cx} ${cy+s*0.40}"></path>
-        <path d="M ${cx-s*0.42} ${cy+s*0.05}
-                 Q ${cx} ${cy+s*0.42} ${cx+s*0.42} ${cy+s*0.05}"></path>
-        <path d="M ${cx-s*0.35} ${cy-s*0.05} L ${cx+s*0.35} ${cy-s*0.05}"></path>
-      `,
-      accent: `<circle cx="${cx}" cy="${cy+s*0.18}" r="${s*0.07}"></circle>`
-    };
-  }
-
-  function sigilBook({cx,cy,size}){
-    const s = size;
-    return {
-      solid: `
-        <path d="M ${cx-s*0.50} ${cy-s*0.35}
-                 Q ${cx-s*0.15} ${cy-s*0.45} ${cx} ${cy-s*0.28}
-                 Q ${cx+s*0.15} ${cy-s*0.45} ${cx+s*0.50} ${cy-s*0.35}
-                 L ${cx+s*0.50} ${cy+s*0.38}
-                 Q ${cx+s*0.15} ${cy+s*0.28} ${cx} ${cy+s*0.45}
-                 Q ${cx-s*0.15} ${cy+s*0.28} ${cx-s*0.50} ${cy+s*0.38}
-                 Z"></path>
-        <rect x="${cx-s*0.03}" y="${cy-s*0.30}" width="${s*0.06}" height="${s*0.70}" rx="${s*0.03}"></rect>
-      `,
-      outline: `
-        <path d="M ${cx-s*0.50} ${cy-s*0.35}
-                 Q ${cx-s*0.15} ${cy-s*0.45} ${cx} ${cy-s*0.28}
-                 Q ${cx+s*0.15} ${cy-s*0.45} ${cx+s*0.50} ${cy-s*0.35}
-                 L ${cx+s*0.50} ${cy+s*0.38}
-                 Q ${cx+s*0.15} ${cy+s*0.28} ${cx} ${cy+s*0.45}
-                 Q ${cx-s*0.15} ${cy+s*0.28} ${cx-s*0.50} ${cy+s*0.38}
-                 Z"></path>
-        <path d="M ${cx} ${cy-s*0.28} L ${cx} ${cy+s*0.45}"></path>
-      `,
-      accent: `
-        <rect x="${cx-s*0.40}" y="${cy-s*0.18}" width="${s*0.18}" height="${s*0.06}" rx="${s*0.03}"></rect>
-        <rect x="${cx+s*0.22}" y="${cy-s*0.18}" width="${s*0.18}" height="${s*0.06}" rx="${s*0.03}"></rect>
-      `
-    };
-  }
-
-  function sigilRuneKnot({cx,cy,size}){
-    const s = size;
-    return {
-      solid: `
-        <path d="M ${cx} ${cy-s*0.55}
-                 C ${cx+s*0.35} ${cy-s*0.55} ${cx+s*0.55} ${cy-s*0.35} ${cx+s*0.55} ${cy}
-                 C ${cx+s*0.55} ${cy+s*0.35} ${cx+s*0.35} ${cy+s*0.55} ${cx} ${cy+s*0.55}
-                 C ${cx-s*0.35} ${cy+s*0.55} ${cx-s*0.55} ${cy+s*0.35} ${cx-s*0.55} ${cy}
-                 C ${cx-s*0.55} ${cy-s*0.35} ${cx-s*0.35} ${cy-s*0.55} ${cx} ${cy-s*0.55}
-                 Z"></path>
-        <path d="M ${cx} ${cy-s*0.30}
-                 C ${cx+s*0.18} ${cy-s*0.30} ${cx+s*0.30} ${cy-s*0.18} ${cx+s*0.30} ${cy}
-                 C ${cx+s*0.30} ${cy+s*0.18} ${cx+s*0.18} ${cy+s*0.30} ${cx} ${cy+s*0.30}
-                 C ${cx-s*0.18} ${cy+s*0.30} ${cx-s*0.30} ${cy+s*0.18} ${cx-s*0.30} ${cy}
-                 C ${cx-s*0.30} ${cy-s*0.18} ${cx-s*0.18} ${cy-s*0.30} ${cx} ${cy-s*0.30}
-                 Z" opacity="0.55"></path>
-      `,
-      outline: `
-        <path d="M ${cx} ${cy-s*0.55}
-                 C ${cx+s*0.35} ${cy-s*0.55} ${cx+s*0.55} ${cy-s*0.35} ${cx+s*0.55} ${cy}
-                 C ${cx+s*0.55} ${cy+s*0.35} ${cx+s*0.35} ${cy+s*0.55} ${cx} ${cy+s*0.55}
-                 C ${cx-s*0.35} ${cy+s*0.55} ${cx-s*0.55} ${cy+s*0.35} ${cx-s*0.55} ${cy}
-                 C ${cx-s*0.55} ${cy-s*0.35} ${cx-s*0.35} ${cy-s*0.55} ${cx} ${cy-s*0.55}"></path>
-      `,
-      accent: `
-        <circle cx="${cx}" cy="${cy}" r="${s*0.10}"></circle>
-      `
-    };
-  }
-
-  function sigilStagSimple({cx,cy,size}){
-    const s = size;
-    return {
-      solid: `
-        <path d="M ${cx} ${cy+s*0.45}
-                 Q ${cx-s*0.18} ${cy+s*0.20} ${cx-s*0.10} ${cy-s*0.05}
-                 Q ${cx-s*0.06} ${cy-s*0.30} ${cx} ${cy-s*0.38}
-                 Q ${cx+s*0.06} ${cy-s*0.30} ${cx+s*0.10} ${cy-s*0.05}
-                 Q ${cx+s*0.18} ${cy+s*0.20} ${cx} ${cy+s*0.45}
-                 Z"></path>
-        <path d="M ${cx-s*0.06} ${cy-s*0.34}
-                 Q ${cx-s*0.28} ${cy-s*0.44} ${cx-s*0.34} ${cy-s*0.62}
-                 Q ${cx-s*0.22} ${cy-s*0.56} ${cx-s*0.16} ${cy-s*0.50}
-                 Q ${cx-s*0.20} ${cy-s*0.68} ${cx-s*0.34} ${cy-s*0.78}
-                 Q ${cx-s*0.12} ${cy-s*0.76} ${cx-s*0.02} ${cy-s*0.62}
-                 Q ${cx-s*0.04} ${cy-s*0.52} ${cx-s*0.06} ${cy-s*0.44}
-                 Z"></path>
-        <path d="M ${cx+s*0.06} ${cy-s*0.34}
-                 Q ${cx+s*0.28} ${cy-s*0.44} ${cx+s*0.34} ${cy-s*0.62}
-                 Q ${cx+s*0.22} ${cy-s*0.56} ${cx+s*0.16} ${cy-s*0.50}
-                 Q ${cx+s*0.20} ${cy-s*0.68} ${cx+s*0.34} ${cy-s*0.78}
-                 Q ${cx+s*0.12} ${cy-s*0.76} ${cx+s*0.02} ${cy-s*0.62}
-                 Q ${cx+s*0.04} ${cy-s*0.52} ${cx+s*0.06} ${cy-s*0.44}
-                 Z"></path>
-      `,
-      outline: `
-        <path d="M ${cx} ${cy+s*0.45}
-                 Q ${cx-s*0.18} ${cy+s*0.20} ${cx-s*0.10} ${cy-s*0.05}
-                 Q ${cx-s*0.06} ${cy-s*0.30} ${cx} ${cy-s*0.38}
-                 Q ${cx+s*0.06} ${cy-s*0.30} ${cx+s*0.10} ${cy-s*0.05}
-                 Q ${cx+s*0.18} ${cy+s*0.20} ${cx} ${cy+s*0.45}"></path>
-        <path d="M ${cx-s*0.06} ${cy-s*0.34}
-                 Q ${cx-s*0.28} ${cy-s*0.44} ${cx-s*0.34} ${cy-s*0.62}
-                 Q ${cx-s*0.20} ${cy-s*0.68} ${cx-s*0.34} ${cy-s*0.78}"></path>
-        <path d="M ${cx+s*0.06} ${cy-s*0.34}
-                 Q ${cx+s*0.28} ${cy-s*0.44} ${cx+s*0.34} ${cy-s*0.62}
-                 Q ${cx+s*0.20} ${cy-s*0.68} ${cx+s*0.34} ${cy-s*0.78}"></path>
-      `,
-      accent: `
-        <circle cx="${cx}" cy="${cy-s*0.08}" r="${s*0.05}"></circle>
-      `
-    };
-  }
-
-  function sigilFlame({cx,cy,size}){
-    const s = size;
-    return {
-      solid: `
-        <path d="M ${cx} ${cy-s*0.60}
-                 C ${cx+s*0.20} ${cy-s*0.40} ${cx+s*0.32} ${cy-s*0.18} ${cx+s*0.20} ${cy+s*0.05}
-                 C ${cx+s*0.10} ${cy+s*0.30} ${cx-s*0.10} ${cy+s*0.45} ${cx} ${cy+s*0.55}
-                 C ${cx-s*0.10} ${cy+s*0.45} ${cx-s*0.32} ${cy+s*0.30} ${cx-s*0.20} ${cy+s*0.05}
-                 C ${cx-s*0.05} ${cy-s*0.10} ${cx+s*0.05} ${cy-s*0.22} ${cx} ${cy-s*0.60}
-                 Z"></path>
-      `,
-      outline: `
-        <path d="M ${cx} ${cy-s*0.60}
-                 C ${cx+s*0.20} ${cy-s*0.40} ${cx+s*0.32} ${cy-s*0.18} ${cx+s*0.20} ${cy+s*0.05}
-                 C ${cx+s*0.10} ${cy+s*0.30} ${cx-s*0.10} ${cy+s*0.45} ${cx} ${cy+s*0.55}
-                 C ${cx-s*0.10} ${cy+s*0.45} ${cx-s*0.32} ${cy+s*0.30} ${cx-s*0.20} ${cy+s*0.05}
-                 C ${cx-s*0.05} ${cy-s*0.10} ${cx+s*0.05} ${cy-s*0.22} ${cx} ${cy-s*0.60}"></path>
-      `,
-      accent: `
-        <path d="M ${cx} ${cy-s*0.25}
-                 C ${cx+s*0.10} ${cy-s*0.12} ${cx+s*0.12} ${cy+s*0.05} ${cx} ${cy+s*0.15}
-                 C ${cx-s*0.12} ${cy+s*0.05} ${cx-s*0.10} ${cy-s*0.12} ${cx} ${cy-s*0.25}
-                 Z"></path>
-      `
-    };
-  }
-
-  function sigilMiniShield({cx,cy,size}){
-    const s = size;
-    const d = shieldPathHeater(cx - s*0.45, cy - s*0.48, s*0.90, s*0.95);
-    return {
-      solid: `<path d="${d}"></path>`,
-      outline: `<path d="${d}"></path>`,
-      accent: `<path d="${d}" opacity="0.35"></path>`
-    };
-  }
-
-  function sigilCompass({cx,cy,size}){
-    const s = size;
-    return {
-      solid: `
-        <circle cx="${cx}" cy="${cy}" r="${s*0.34}"></circle>
-        <polygon points="${cx},${cy-s*0.58} ${cx+s*0.10},${cy-s*0.08} ${cx},${cy+s*0.10} ${cx-s*0.10},${cy-s*0.08}"></polygon>
-        <polygon points="${cx},${cy+s*0.58} ${cx+s*0.10},${cy+s*0.08} ${cx},${cy-s*0.10} ${cx-s*0.10},${cy+s*0.08}" opacity="0.65"></polygon>
-      `,
-      outline: `
-        <circle cx="${cx}" cy="${cy}" r="${s*0.34}"></circle>
-        <line x1="${cx}" y1="${cy-s*0.58}" x2="${cx}" y2="${cy+s*0.58}"></line>
-        <line x1="${cx-s*0.58}" y1="${cy}" x2="${cx+s*0.58}" y2="${cy}"></line>
-      `,
-      accent: `<circle cx="${cx}" cy="${cy}" r="${s*0.12}"></circle>`
-    };
+  function thumbSigil(sigilId, st) {
+    var sig = find(sigilList(), sigilId), b = sigilBox(sig);
+    var s = Math.min(1000 / b.w, 1000 / b.h);
+    return '<svg viewBox="0 0 1000 1000" aria-hidden="true"><g transform="translate(500 500) scale(' + s.toFixed(4) + ') translate(' + n(-(b.x1 + b.w / 2)) + ' ' + n(-(b.y1 + b.h / 2)) + ')">' +
+      sigilArt(sig, sigilColours(st)) + '</g></svg>';
   }
 
   crest.draw = {
-    /* The crest as SVG text. options.size sets the width and height (the PNG
-       uses 2048); options.fontDataUrl packs the motto font into the picture. */
-    svg: draw,
-    shieldIds: SHIELDS.map(s => s.id),
-    sigilIds: SIGILS.map(s => s.id),
-    MOTTO_FONT: MOTTO_FONT
+    svg: svg,
+    outline: outline,
+    shieldBox: shieldBox,
+    sigilBox: sigilBox,
+    sigilPlace: sigilPlace,
+    hasBanner: hasBanner,
+    cleanText: cleanText,
+    mottoSize: mottoSize,
+    thumbShape: thumbShape,
+    thumbField: thumbField,
+    thumbSigil: thumbSigil
   };
-})();
+}());

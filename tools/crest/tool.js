@@ -1,9 +1,11 @@
 /* Clan Crest Creator — the screen.
-   Name the clan (or roll a random name), choose the parts, roll a Random
-   Crest or Reset, and download a 2048 × 2048 PNG with a see-through
-   background. Nothing is saved, as in the old tool.
-   The content is in data/crest-data.js, the rules in rules.js and the drawing
-   in draw.js; this file builds the controls and wires them up. */
+   Name the clan (or roll a random name), design the crest in five tabs
+   (Shield, Field, Sigil, Colours, Motto), roll a Random Crest or Reset, and
+   download a 2048 × 2048 PNG with a see-through background. Nothing is
+   saved, as in the old tool.
+   The content is in data/*.js, the rules in rules.js, the shapes' geometry in
+   geometry.js and the drawing in draw.js; this file builds the controls and
+   wires them up. */
 (function () {
   'use strict';
 
@@ -56,50 +58,179 @@
       var R = crest.rules;
       var D = crest.draw;
       var data = window.TSI_DATA.crest;
+      var SHIELDS = window.TSI_DATA.crestShields;
+      var SIGILS = window.TSI_DATA.crestSigils;
       var lim = data.limits;
       var state = R.defaults();
-      var controls = {};
 
-      /* ---------- Building the controls ---------- */
       /* Control ids start "tsi-crest-field-"; the drawing's own parts use
          "tsi-crest-svg-", so the two can never share a name. */
       function id(name) { return 'tsi-crest-field-' + name; }
 
-      function select(key, options) {
-        var s = el('select', { class: 'tsi-input tsi-crest-select', id: id(key), 'data-key': key },
-          options.map(function (o) { return el('option', { value: o.id, text: o.name }); }));
-        life.on(s, 'change', function () {
-          state[key] = String(s.value);
-          draw();
-        });
-        controls[key] = s;
-        return s;
+      /* Every control that shows a value, so Random Crest and Reset can put
+         them all back in step: key → list of update functions. */
+      var syncers = {};
+      function onSync(key, fn) { (syncers[key] = syncers[key] || []).push(fn); }
+      function syncAll() {
+        Object.keys(syncers).forEach(function (k) { syncers[k].forEach(function (fn) { fn(state[k]); }); });
+        refreshThumbs();
+        updateFileHint();
       }
 
-      function slider(key, range) {
-        var r = el('input', { type: 'range', class: 'tsi-crest-range', id: id(key), 'data-key': key, min: range.min, max: range.max });
-        life.on(r, 'input', function () {
-          state[key] = R.clampInt(r.value, range.min, range.max);
-          draw();
-        });
-        controls[key] = r;
-        return r;
+      /* Change one or more choices, then redraw. */
+      function set(changes, opts) {
+        Object.assign(state, changes);
+        Object.keys(changes).forEach(function (k) { (syncers[k] || []).forEach(function (fn) { fn(state[k]); }); });
+        if (!opts || !opts.quick) refreshThumbs(Object.keys(changes));
+        draw();
       }
 
-      function row(label, key, control) {
-        return el('div', { class: 'tsi-crest-row' }, [
-          el('label', { class: 'tsi-crest-label', for: id(key), text: label }),
+      /* ---------- Small building blocks ---------- */
+      function button(label, test, onClick, extra) {
+        var b = el('button', Object.assign({ type: 'button', class: 'tsi-btn', 'data-test': test }, extra || {}), label);
+        life.on(b, 'click', onClick);
+        return b;
+      }
+
+      function field(label, control, forId) {
+        return el('div', { class: 'tsi-crest-field' }, [
+          el(forId ? 'label' : 'span', Object.assign({ class: 'tsi-crest-label', text: label }, forId ? { for: forId } : {})),
           control
         ]);
       }
 
-      function block(title, rows) {
-        return el('section', { class: 'tsi-crest-block', 'aria-label': title }, [
-          el('h3', { class: 'tsi-crest-block__title', text: title }),
-          rows
-        ]);
+      function section(title, children) {
+        return el('div', { class: 'tsi-crest-section' }, [
+          el('h3', { class: 'tsi-crest-section__title', text: title })
+        ].concat(children));
       }
 
+      /* A row of choice chips (rim style, finish, banner, …). */
+      function chips(key, list, label) {
+        var wrap = el('div', { class: 'tsi-crest-chips', role: 'group', 'aria-label': label, 'data-key': key });
+        var btns = list.map(function (o) {
+          var b = el('button', { type: 'button', class: 'tsi-crest-chip', 'data-value': o.id, title: o.note || o.name, 'aria-pressed': 'false' }, o.name);
+          life.on(b, 'click', function () { var c = {}; c[key] = o.id; set(c); });
+          wrap.appendChild(b);
+          return b;
+        });
+        onSync(key, function (v) { btns.forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-value') === v)); }); });
+        return wrap;
+      }
+
+      /* A grid of picture tiles (shapes, divisions, bands, sigils). */
+      var thumbGrids = [];
+      function tiles(key, list, label, thumb, deps, extraClass, onPick) {
+        var wrap = el('div', { class: 'tsi-crest-tiles ' + (extraClass || ''), role: 'group', 'aria-label': label, 'data-key': key });
+        var items = list.map(function (o) {
+          var pic = el('span', { class: 'tsi-crest-tile__pic' });
+          var b = el('button', { type: 'button', class: 'tsi-crest-tile', 'data-value': o.id, title: o.note ? o.name + ': ' + o.note : o.name, 'aria-pressed': 'false', 'aria-label': o.name }, [
+            pic, el('span', { class: 'tsi-crest-tile__name', text: o.name })
+          ]);
+          life.on(b, 'click', function () {
+            if (onPick) { onPick(o.id); return; }
+            var c = {}; c[key] = o.id; set(c);
+          });
+          wrap.appendChild(b);
+          return { b: b, pic: pic, o: o };
+        });
+        onSync(key, function (v) { items.forEach(function (it) { it.b.setAttribute('aria-pressed', String(it.o.id === v)); }); });
+        thumbGrids.push({ deps: deps, render: function () { items.forEach(function (it) { it.pic.innerHTML = thumb(it.o.id); }); } });
+        return wrap;
+      }
+
+      function refreshThumbs(changed) {
+        thumbGrids.forEach(function (g) {
+          if (!changed || g.deps.some(function (k) { return changed.indexOf(k) !== -1; })) g.render();
+        });
+      }
+
+      function slider(key, range, label, unit) {
+        var input = el('input', { type: 'range', class: 'tsi-crest-range', id: id(key), 'data-key': key, min: range.min, max: range.max, step: 1 });
+        var out = el('output', { class: 'tsi-crest-range__value', for: id(key) });
+        life.on(input, 'input', function () {
+          var c = {}; c[key] = R.clampInt(input.value, range.min, range.max);
+          set(c, { quick: true });
+        });
+        onSync(key, function (v) { input.value = String(v); out.textContent = (key === 'sigilShift' && v > 0 ? '+' : '') + v + unit; });
+        return field(label, el('div', { class: 'tsi-crest-range-row' }, [input, out]), id(key));
+      }
+
+      /* ---------- Colour buttons and the colour picker ---------- */
+      var pop = null;
+      function closePop(returnFocus) {
+        if (!pop) return;
+        var owner = pop.owner;
+        pop.node.remove();
+        pop = null;
+        if (returnFocus && owner) owner.focus();
+      }
+
+      function openPop(slotKey, owner) {
+        closePop();
+        var current = R.cleanHex(state[slotKey]);
+        var custom = el('input', { type: 'color', class: 'tsi-crest-pop__custom', value: current || '#000000', 'aria-label': 'Choose any colour', 'data-test': 'custom-colour' });
+        var groups = data.colourGroups.map(function (g) {
+          return el('div', { class: 'tsi-crest-pop__group' }, [
+            el('div', { class: 'tsi-crest-pop__group-name', text: g.name }),
+            el('div', { class: 'tsi-crest-pop__swatches' }, g.colours.map(function (c) {
+              var s = el('button', { type: 'button', class: 'tsi-crest-swatch', title: c.name, 'aria-label': c.name, 'aria-pressed': String(c.hex === current), 'data-hex': c.hex, style: 'background:' + c.hex });
+              life.on(s, 'click', function () { pick(c.hex); });
+              return s;
+            }))
+          ]);
+        });
+        function pick(hex) {
+          var c = { scheme: '' }; c[slotKey] = hex;
+          set(c);
+          closePop(true);
+        }
+        life.on(custom, 'change', function () { var h = R.cleanHex(custom.value); if (h) pick(h); });
+        var slot = data.colourSlots.filter(function (s) { return s.key === slotKey; })[0];
+        var node = el('div', { class: 'tsi-crest-pop', role: 'dialog', 'aria-label': 'Colour for ' + slot.name, 'data-test': 'colour-picker' }, [
+          el('div', { class: 'tsi-crest-pop__head' }, [
+            el('span', { class: 'tsi-crest-pop__title', text: slot.name }),
+            el('label', { class: 'tsi-crest-pop__custom-label' }, ['Any colour ', custom])
+          ])
+        ].concat(groups));
+        ctx.root.querySelector('.tsi-crest').appendChild(node);
+        /* place it beside its button, kept inside the window */
+        var br = owner.getBoundingClientRect(), host = ctx.root.querySelector('.tsi-crest').getBoundingClientRect();
+        var w = node.offsetWidth, h = node.offsetHeight;
+        var left = Math.min(Math.max(8, br.left - host.left), host.width - w - 8);
+        var top = br.bottom - host.top + 6;
+        if (br.bottom + 6 + h > window.innerHeight - 8) top = Math.max(8 - host.top, br.top - host.top - h - 6);
+        node.style.left = left + 'px';
+        node.style.top = top + 'px';
+        pop = { node: node, owner: owner };
+        var first = node.querySelector('[aria-pressed="true"]') || node.querySelector('.tsi-crest-swatch');
+        if (first) first.focus();
+      }
+
+      life.on(document, 'keydown', function (e) {
+        if (pop && e.key === 'Escape') { e.stopPropagation(); closePop(true); }
+      }, true);
+      life.on(document, 'pointerdown', function (e) {
+        if (pop && !pop.node.contains(e.target) && e.target !== pop.owner && !pop.owner.contains(e.target)) closePop(false);
+      }, true);
+
+      function colourButton(slotKey, label) {
+        var chip = el('span', { class: 'tsi-crest-colour__chip' });
+        var name = el('span', { class: 'tsi-crest-colour__name' });
+        var b = el('button', { type: 'button', class: 'tsi-crest-colour', 'data-slot': slotKey, 'aria-haspopup': 'dialog' }, [chip, name]);
+        life.on(b, 'click', function () {
+          if (pop && pop.owner === b) closePop(true);
+          else openPop(slotKey, b);
+        });
+        onSync(slotKey, function (v) {
+          chip.style.background = v;
+          name.textContent = R.colourName(v);
+          b.setAttribute('aria-label', label + ': ' + R.colourName(v) + '. Change colour');
+        });
+        return field(label, b);
+      }
+
+      /* ---------- The clan name ---------- */
       var nameInput = el('input', {
         id: id('clan-name'),
         class: 'tsi-input tsi-crest-name__input',
@@ -108,48 +239,143 @@
         maxlength: lim.clanNameLength,
         'data-key': 'clanName'
       });
-      controls.clanName = nameInput;
+      onSync('clanName', function (v) { if (nameInput.value !== v) nameInput.value = v; });
       life.on(nameInput, 'input', function () {
         state.clanName = nameInput.value;
         updateFileHint();
       });
 
       var mottoInput = el('input', {
-        id: id('bannerText'),
+        id: id('motto'),
         class: 'tsi-input',
         type: 'text',
         placeholder: 'Optional motto…',
         maxlength: lim.mottoLength,
-        'data-key': 'bannerText'
+        'data-key': 'motto'
       });
-      controls.bannerText = mottoInput;
-      life.on(mottoInput, 'input', function () {
-        state.bannerText = mottoInput.value;
-        draw();
-      });
+      onSync('motto', function (v) { if (mottoInput.value !== v) mottoInput.value = v; });
+      life.on(mottoInput, 'input', function () { set({ motto: mottoInput.value }, { quick: true }); });
 
-      function button(label, test, onClick, extra) {
-        var b = el('button', Object.assign({ type: 'button', class: 'tsi-btn', 'data-test': test }, extra || {}), label);
-        life.on(b, 'click', onClick);
-        return b;
+      /* ---------- The tabs ---------- */
+      function thumbShield(sid) { return D.thumbShape(sid, state); }
+      function thumbDivision(did) { return D.thumbField('division', did, state); }
+      function thumbOrdinary(oid) { return D.thumbField('ordinary', oid, state); }
+      function thumbSigil(gid) { return D.thumbSigil(gid, state); }
+      function thumbScheme(sid) {
+        var sc = data.schemes.filter(function (x) { return x.id === sid; })[0];
+        return D.thumbField('division', 'perPale', Object.assign({}, state, { field1: sc.field1, field2: sc.field2, rimColour: sc.rimColour, shield: 'heater' })) +
+          '<span class="tsi-crest-scheme-dot" style="background:' + sc.sigilColour + '"></span>';
+      }
+
+      var panels = [
+        {
+          id: 'shield', name: 'Shield',
+          body: [
+            section('Shape', [tiles('shield', SHIELDS, 'Shield shape', thumbShield, ['field1', 'rimColour'], 'tsi-crest-tiles--shapes')]),
+            section('Rim', [
+              chips('rim', data.rims, 'Rim style'),
+              el('div', { class: 'tsi-crest-pair' }, [slider('rimWidth', lim.rimWidth, 'Width', ''), colourButton('rimColour', 'Metal')])
+            ]),
+            section('Finish', [
+              field('Light', chips('lighting', data.lightings, 'Light')),
+              field('Texture', chips('texture', data.textures, 'Texture'))
+            ])
+          ]
+        },
+        {
+          id: 'field', name: 'Field',
+          body: [
+            section('Division', [
+              tiles('division', data.divisions, 'How the field is divided', thumbDivision, ['shield', 'field1', 'field2', 'rimColour'], 'tsi-crest-tiles--small'),
+              el('div', { class: 'tsi-crest-pair' }, [colourButton('field1', 'Colour'), colourButton('field2', 'Second colour')])
+            ]),
+            section('Band', [
+              tiles('ordinary', data.ordinaries, 'Band across the field', thumbOrdinary, ['shield', 'field1', 'ordinaryColour', 'rimColour'], 'tsi-crest-tiles--small'),
+              el('div', { class: 'tsi-crest-pair' }, [colourButton('ordinaryColour', 'Band colour')])
+            ])
+          ]
+        },
+        {
+          id: 'sigil', name: 'Sigil',
+          body: [
+            section('Sigil', [tiles('sigil', SIGILS, 'Sigil', thumbSigil, ['sigilColour', 'accentColour', 'lineColour'], 'tsi-crest-tiles--sigils')]),
+            section('Size and place', [
+              el('div', { class: 'tsi-crest-pair' }, [slider('sigilSize', lim.sigilSize, 'Size', '%'), slider('sigilShift', lim.sigilShift, 'Up or down', '')]),
+              el('div', { class: 'tsi-crest-pair' }, [field('Facing', chips('sigilFace', data.faces, 'Facing')), field('Relief', chips('relief', data.reliefs, 'Relief'))])
+            ]),
+            section('Colours', [
+              el('div', { class: 'tsi-crest-trio' }, [colourButton('sigilColour', 'Sigil'), colourButton('accentColour', 'Claws, tongue & gems'), colourButton('lineColour', 'Lines')])
+            ])
+          ]
+        },
+        {
+          id: 'colours', name: 'Colours',
+          body: [
+            section('Colour schemes', [tiles('scheme', data.schemes, 'Colour scheme', thumbScheme, [], 'tsi-crest-tiles--schemes', function (sid) {
+              state = R.applyScheme(state, sid);
+              syncAll();
+              draw();
+            })]),
+            section('Every colour on the crest', [
+              el('div', { class: 'tsi-crest-trio' }, data.colourSlots.map(function (s) { return colourButton(s.key, s.name); }))
+            ])
+          ]
+        },
+        {
+          id: 'motto', name: 'Motto',
+          body: [
+            section('Motto', [
+              field('Words', mottoInput, id('motto')),
+              field('Banner', chips('banner', data.banners, 'Banner')),
+              el('div', { class: 'tsi-crest-pair' }, [colourButton('ribbonColour', 'Ribbon'), colourButton('mottoColour', 'Lettering')]),
+              el('p', { class: 'tsi-crest-tip', text: 'The banner shows once there\'s a motto. Long mottos get smaller lettering so they fit.' })
+            ])
+          ]
+        }
+      ];
+
+      var tabButtons = [], tabPanels = [];
+      var tabList = el('div', { class: 'tsi-crest-tabs', role: 'tablist', 'aria-label': 'Crest parts' });
+      panels.forEach(function (p, i) {
+        var tab = el('button', { type: 'button', class: 'tsi-crest-tab', role: 'tab', id: id('tab-' + p.id), 'aria-controls': id('panel-' + p.id), 'aria-selected': String(i === 0), tabindex: i === 0 ? '0' : '-1', 'data-test': 'tab-' + p.id }, p.name);
+        var panel = el('div', { class: 'tsi-crest-panel-body', role: 'tabpanel', id: id('panel-' + p.id), 'aria-labelledby': id('tab-' + p.id), 'data-panel': p.id }, p.body);
+        if (i !== 0) panel.hidden = true;
+        life.on(tab, 'click', function () { showTab(i); });
+        life.on(tab, 'keydown', function (e) {
+          var k = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+          if (!k) return;
+          e.preventDefault();
+          var j = (i + k + panels.length) % panels.length;
+          showTab(j);
+          tabButtons[j].focus();
+        });
+        tabList.appendChild(tab);
+        tabButtons.push(tab);
+        tabPanels.push(panel);
+      });
+      function showTab(i) {
+        closePop(false);
+        tabButtons.forEach(function (t, j) {
+          t.setAttribute('aria-selected', String(i === j));
+          t.setAttribute('tabindex', i === j ? '0' : '-1');
+          tabPanels[j].hidden = i !== j;
+        });
       }
 
       var randomNameBtn = button('🎲 Name', 'random-name', function () {
-        state.clanName = R.randomName();
-        nameInput.value = state.clanName;
+        set({ clanName: R.randomName() }, { quick: true });
         updateFileHint();
-        draw();
       }, { title: 'Random name' });
 
       var randomAllBtn = button('🎲 Random Crest', 'random-crest', function () {
         state = R.randomCrest();
-        syncUI();
+        syncAll();
         draw();
       });
 
       var resetBtn = button('Reset', 'reset', function () {
         state = R.defaults();
-        syncUI();
+        syncAll();
         draw();
       }, { class: 'tsi-btn tsi-btn--ghost' });
 
@@ -159,11 +385,11 @@
       var preview = el('div', { class: 'tsi-crest-svg', 'aria-label': 'Crest preview', 'data-test': 'preview' });
 
       TSI.append(ctx.root, el('div', { class: 'tsi-crest' }, [
-        el('section', { class: 'tsi-panel tsi-crest-panel' }, [
+        el('section', { class: 'tsi-panel tsi-crest-card' }, [
           el('header', { class: 'tsi-crest-head' }, [
             el('div', { class: 'tsi-crest-heading' }, [
               el('h2', { class: 'tsi-crest-title', text: 'Forge your heraldry' }),
-              el('p', { class: 'tsi-crest-sub', text: 'Pick parts, roll random, then download a transparent PNG.' })
+              el('p', { class: 'tsi-crest-sub', text: 'Pick a shield, a field and a sigil, then download a transparent PNG.' })
             ]),
             el('div', { class: 'tsi-crest-name' }, [
               el('label', { class: 'tsi-sr-only', for: id('clan-name'), text: 'Clan/Party Name' }),
@@ -173,29 +399,9 @@
           ]),
           el('div', { class: 'tsi-crest-grid' }, [
             el('div', { class: 'tsi-crest-controls' }, [
-              el('div', { class: 'tsi-crest-blocks' }, [
-                block('Shield', [
-                  row('Shape', 'shieldShape', select('shieldShape', data.shields)),
-                  row('Border', 'borderStyle', select('borderStyle', data.borders)),
-                  row('Border width', 'borderWidth', slider('borderWidth', lim.borderWidth))
-                ]),
-                block('Background', [
-                  row('Pattern', 'patternType', select('patternType', data.patterns)),
-                  row('Palette', 'palette', select('palette', data.palettes)),
-                  row('Texture', 'texture', select('texture', data.textures))
-                ]),
-                block('Sigil', [
-                  row('Icon', 'sigilType', select('sigilType', data.sigils)),
-                  row('Size', 'sigilScale', slider('sigilScale', lim.sigilScale)),
-                  row('Icon style', 'sigilFillMode', select('sigilFillMode', data.iconStyles))
-                ]),
-                block('Banner', [
-                  row('Banner', 'bannerStyle', select('bannerStyle', data.banners)),
-                  row('Text', 'bannerText', mottoInput)
-                ])
-              ]),
-              el('div', { class: 'tsi-crest-btnrow' }, [randomAllBtn, resetBtn]),
-              el('p', { class: 'tsi-crest-tip', text: 'Tip: if your download looks “soft”, increase border width and avoid tiny details.' })
+              tabList,
+              el('div', { class: 'tsi-crest-panels' }, tabPanels),
+              el('div', { class: 'tsi-crest-btnrow' }, [randomAllBtn, resetBtn])
             ]),
             el('div', { class: 'tsi-crest-preview' }, [
               el('div', { class: 'tsi-crest-frame' }, preview),
@@ -209,11 +415,6 @@
       ]));
 
       /* ---------- Keeping the screen in step ---------- */
-      function syncUI() {
-        Object.keys(controls).forEach(function (key) { controls[key].value = String(state[key]); });
-        updateFileHint();
-      }
-
       function updateFileHint() {
         fileHint.textContent = R.fileName(state.clanName);
       }
@@ -236,12 +437,15 @@
         });
       }
 
-      syncUI();
+      life.onStop(function () { closePop(false); });
+
+      syncAll();
       draw();
 
       /* For the click-through tests. */
       crest.debug = {
         state: function () { return Object.assign({}, state); },
+        set: function (changes) { Object.assign(state, changes); syncAll(); draw(); },
         svg: function (options) { return D.svg(state, options); }
       };
     },

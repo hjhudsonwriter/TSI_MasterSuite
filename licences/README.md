@@ -20,4 +20,18 @@ The font files were checked byte-for-byte (SHA-256) against the google/fonts rep
 
 **PDF.js (phase 7).** `shared/lib/pdfjs/pdf.min.js` and `pdf.worker.min.js` are PDF.js 3.11.174, the version and "legacy" build the old Combat Tracker loaded from jsDelivr, taken unchanged from the `pdfjs-dist@3.11.174` package on npm (jsDelivr serves the same files); SHA-256 `978fd1b2…aa6c` and `38cde531…96f2`. Licence: Apache 2.0, `licences/pdfjs-Apache-2.0.txt`. Only the Combat Tracker loads them, and only when you import a PDF. Loaded with plain script tags, PDF.js reads the file on the page itself (its "fake worker"), because browsers don't allow a separate worker from a double-clicked file.
 
+**Shield outlines (Clan Crest Creator rework, 29 September 2026).** The 17 shield shapes in `tools/crest/data/shields.js` are outlines from Heraldicon (Heraldry.Digital, https://heraldicon.org, source at github.com/heraldry/heraldicon), copied exactly. Heraldicon releases its escutcheon outlines into the **public domain**, so no licence is needed; they're credited anyway, shape by shape, in the file and in `docs/ASSETS.md`:
+- Heraldicon's own drawings: Heater, Norman, Iberian, Old French, Modern French, English, Bohemian, Swiss, Lozenge, Oval and Round.
+- Drawn for Heraldicon by Korfi2Go: German, Italian and Pavise.
+- Heraldicon's tracings of public-domain drawings on Wikimedia Commons: Kite (after Perhelion), Polish (after Masur) and Renaissance (after Doc Taxon).
+
+**Sigils (Clan Crest Creator, redone 29 September 2026).** The twenty sigils in `tools/crest/data/sigils.js` are traced from **public-domain** heraldic drawings on Wikimedia Commons, so no licence is needed; they're credited anyway, sigil by sigil, in the file (with a link to each drawing's Commons page) and in `docs/ASSETS.md`. Each was traced into outlines and recoloured for the suite; the stag is mirrored to face left, and Crossed Swords is one sword drawn twice.
+- From A. C. Fox-Davies, *A Complete Guide to Heraldry* (1909): Eagle Displayed, Stag Trippant, Boar Passant, Wolf Passant, Dragon Segreant, Griffin Segreant, Bear Passant, Dolphin, Tower, Crossed Swords, Sun in Splendour, Anchor and Oak Tree; and, drawn for it by Graham Johnston, Raven, Rose and Crescent.
+- Lion Rampant: Inductiveload's tracing after Jiří Louda (Commons: `Lion rampant element.svg`).
+- Unicorn: John Vinycomb, *Fictitious and Symbolic Creatures in Art* (1906).
+- Fleur-de-lis: Jérôme de Bara, *Le Blason des Armoiries*.
+- Crown: Anka Friedrich's drawing after a US Federal Government picture (Commons: `Crown smpl.svg`).
+
+The tools that traced them are in `tools/crest/dev/` (see its README); the suite doesn't load them.
+
 For the campaign artwork, see `ARTWORK.md`.
