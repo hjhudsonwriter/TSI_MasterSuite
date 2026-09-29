@@ -124,7 +124,6 @@ window.TSI_DATA.tools = [
         'tools/crest/data/motto-font.js',
         'tools/crest/data/shields.js',
         'tools/crest/geometry.js',
-        'tools/crest/sigil-kit.js',
         'tools/crest/data/sigils.js',
         'tools/crest/rules.js',
         'tools/crest/draw.js',

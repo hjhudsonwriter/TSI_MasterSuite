@@ -1,5 +1,5 @@
-/* Clan Crest Creator: tools/crest/data/*.js, geometry.js, sigil-kit.js,
-   rules.js and draw.js (the reworked crest, September 2026). */
+/* Clan Crest Creator: tools/crest/data/*.js, geometry.js, rules.js and
+   draw.js (the reworked crest, September 2026). */
 (function () {
   var data = window.TSI_DATA.crest;
   var SHIELDS = window.TSI_DATA.crestShields;
@@ -46,13 +46,36 @@
     });
   });
 
-  test('every sigil has a note and layers with shapes in its 1000-unit box', function (t) {
+  test('every sigil has a note, a sensible size and path data in its four layers', function (t) {
+    var PATH = /^(M[-\d. ]+([clz][-\d. ]*)*)*$/;
     SIGILS.forEach(function (s) {
       t.ok(s.note && s.note.length > 20, s.id + ' note');
-      t.ok(s.layers.length >= 1, s.id + ' layers');
       var b = D.sigilBox(s);
-      t.ok(b.w > 300 && b.h > 300 && b.w < 1400 && b.h < 1400, s.id + ' size ' + Math.round(b.w) + ' × ' + Math.round(b.h));
+      t.ok(b.w > 200 && b.h > 200 && Math.max(b.w, b.h) === 1000, s.id + ' size ' + Math.round(b.w) + ' × ' + Math.round(b.h));
+      t.ok(Array.isArray(s.art) && s.art.length >= 1, s.id + ' has parts');
+      s.art.forEach(function (part, i) {
+        t.ok(part.body && G.parse(part.body).length > 10, s.id + ' part ' + i + ' has a body');
+        t.ok(part.lines && G.parse(part.lines).length > 10, s.id + ' part ' + i + ' has linework');
+        ['body', 'accent', 'white', 'lines'].forEach(function (k) {
+          t.ok(typeof part[k] === 'string' && PATH.test(part[k]), s.id + ' part ' + i + ' ' + k + ' is only path data');
+        });
+      });
     });
+  });
+
+  test('every sigil says where its artwork came from, and it is free to use', function (t) {
+    SIGILS.forEach(function (s) {
+      t.ok(s.credit && s.credit.length > 5, s.id + ' credit');
+      t.equal(s.licence, 'Public domain', s.id + ' licence');
+      t.ok(/^https:\/\/commons\.wikimedia\.org\/wiki\/File:[^\s'"]+\.svg$/.test(s.source), s.id + ' source ' + s.source);
+    });
+  });
+
+  test('nearly every sigil has parts in the accent colour, and the accent is used', function (t) {
+    var plain = SIGILS.filter(function (s) { return !s.art.some(function (p) { return p.accent; }); }).map(function (s) { return s.id; });
+    t.same(plain, ['sun', 'crescent'], 'only the sun and crescent are one colour');
+    var st = Object.assign(R.defaults(), { sigil: 'raven', sigilColour: '#e8c24a', accentColour: '#1f4fa8' });
+    t.ok(D.svg(st).indexOf('fill="#1f4fa8"') !== -1, 'the accent colour reaches the picture');
   });
 
   test('every named colour is a real colour, and no two are the same', function (t) {
@@ -291,11 +314,12 @@
     t.ok(/scale\(0\.\d+ 0\.\d+\)/.test(l) && /scale\(-0\.\d+ 0\.\d+\)/.test(r));
   });
 
-  test('a dark sigil gets lighter inner lines, so they still show', function (t) {
-    var dark = D.svg(Object.assign(R.defaults(), { sigilColour: '#161314', lineColour: '#1a1110' }));
-    var gold = D.svg(R.defaults());
-    t.ok(dark.indexOf('stroke="#1a1110" stroke-linecap="round" stroke-linejoin="round"') === -1, 'inner lines not black on black');
-    t.ok(gold.indexOf('stroke="#1a1110" stroke-linecap="round" stroke-linejoin="round"') !== -1, 'black inner lines on gold');
+  test('a dark sigil gets lighter linework, so it still shows', function (t) {
+    var dark = D.thumbSigil('lion', Object.assign(R.defaults(), { sigilColour: '#161314', lineColour: '#1a1110' }));
+    var gold = D.thumbSigil('lion', R.defaults());
+    t.ok(dark.indexOf('fill="#1a1110"') === -1, 'linework not black on black');
+    t.ok(dark.indexOf('fill="#161314"') !== -1, 'the body is the dark colour');
+    t.ok(gold.indexOf('fill="#1a1110"') !== -1, 'black linework on gold');
   });
 
   test('the small pictures for the choices draw', function (t) {

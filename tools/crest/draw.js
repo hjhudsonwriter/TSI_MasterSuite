@@ -17,7 +17,6 @@
   var R = crest.rules;
 
   var MOTTO_FONT = 'Cinzel';
-  var SIGIL_LINE = 12;      /* sigil outline, in the sigil's 1000-unit box */
   var counter = 0;
 
   function shieldList() { return window.TSI_DATA.crestShields; }
@@ -69,42 +68,10 @@
   }
 
   /* ---------- The sigil's own size ---------- */
-  var sigilBoxCache = {};
-  function transformPoint(p, at) {
-    /* the layer transforms used in data/sigils.js: translate(x y) and rotate(a cx cy) */
-    var out = [p[0], p[1]];
-    var ops = [], re = /(translate|rotate)\(([^)]*)\)/g, m;
-    while ((m = re.exec(at))) ops.push([m[1], m[2].split(/[\s,]+/).map(Number)]);
-    for (var i = ops.length - 1; i >= 0; i--) {
-      var a = ops[i][1];
-      if (ops[i][0] === 'translate') { out = [out[0] + (a[0] || 0), out[1] + (a[1] || 0)]; }
-      else {
-        var r = a[0] * Math.PI / 180, cx = a[1] || 0, cy = a[2] || 0, x = out[0] - cx, y = out[1] - cy;
-        out = [cx + x * Math.cos(r) - y * Math.sin(r), cy + x * Math.sin(r) + y * Math.cos(r)];
-      }
-    }
-    return out;
-  }
+  /* Each traced sigil carries its box: [x, y, width, height] in its own units
+     (1000 on its longer side). */
   function sigilBox(sig) {
-    if (sigilBoxCache[sig.id]) return sigilBoxCache[sig.id];
-    var pts = [];
-    sig.layers.forEach(function (ly) {
-      var ds = (ly.body || []).concat(ly.armed || []).concat((ly.strokes || []).map(function (x) { return x[0]; }));
-      ds.forEach(function (d) {
-        G.sample(G.parse(d), 8).forEach(function (part) {
-          part.forEach(function (p) {
-            var q = ly.at ? transformPoint(p, ly.at) : p;
-            pts.push(q);
-            if (ly.mirror) pts.push(ly.at ? transformPoint([1000 - p[0], p[1]], ly.at) : [1000 - q[0], q[1]]);
-          });
-        });
-      });
-    });
-    var b = G.bounds([pts]);
-    var pad = SIGIL_LINE;
-    var box = { x1: b.x1 - pad, y1: b.y1 - pad, w: b.w + pad * 2, h: b.h + pad * 2 };
-    sigilBoxCache[sig.id] = box;
-    return box;
+    return { x1: sig.box[0], y1: sig.box[1], w: sig.box[2], h: sig.box[3] };
   }
 
   /* Where the sigil goes on this shield: the largest box of its shape inside
@@ -123,52 +90,31 @@
   }
 
   /* ---------- The sigil itself ---------- */
-  function sigilLayers(sig, c, uid) {
-    var ow = SIGIL_LINE;
-    function blocks(ly) {
-      var under = '', fills = '', aunder = '', afills = '', det = '', ln = '', mk = '';
-      (ly.body || []).forEach(function (d) {
-        under += '<path d="' + d + '" stroke-width="' + (2 * ow) + '"/>';
-        fills += '<path d="' + d + '" fill="' + c.t + '" fill-rule="evenodd"/>';
-      });
-      (ly.strokes || []).forEach(function (x) {
-        under += '<path d="' + x[0] + '" stroke-width="' + (x[1] + 2 * ow) + '"/>';
-        fills += '<path d="' + x[0] + '" fill="none" stroke="' + c.t + '" stroke-width="' + x[1] + '" stroke-linecap="round" stroke-linejoin="round"/>';
-      });
-      (ly.armed || []).forEach(function (d) {
-        aunder += '<path d="' + d + '" stroke-width="' + (1.6 * ow) + '"/>';
-        afills += '<path d="' + d + '" fill="' + c.a + '" fill-rule="evenodd"/>';
-      });
-      (ly.detail || []).forEach(function (d) { det += '<path d="' + d + '"/>'; });
-      (ly.lines || []).forEach(function (x) { ln += '<path d="' + x[0] + '" stroke-width="' + x[1] + '"/>'; });
-      (ly.marks || []).forEach(function (x) { mk += '<path d="' + x[0] + '" stroke-width="' + x[1] + '"/>'; });
-      function U(x) { return x ? '<g fill="none" stroke="' + c.l + '" stroke-linejoin="round" stroke-linecap="round">' + x + '</g>' : ''; }
-      return [
-        U(under), fills ? '<g>' + fills + '</g>' : '', U(aunder), afills ? '<g>' + afills + '</g>' : '',
-        det ? '<g fill="' + c.li + '" fill-rule="evenodd">' + det + '</g>' : '',
-        ln ? '<g fill="none" stroke="' + c.li + '" stroke-linecap="round" stroke-linejoin="round">' + ln + '</g>' : '',
-        mk ? '<g fill="none" stroke="' + c.t + '" stroke-linecap="round">' + mk + '</g>' : ''
-      ];
-    }
-    return sig.layers.map(function (ly) {
+  /* A sigil traced from heraldic artwork (data/sigils.js) is one or more
+     parts (crossed swords are two), each in four layers: its body in the
+     sigil colour, the parts heralds colour separately (claws, tongue, horn,
+     hilts) in the accent colour, eyes and teeth in white, and its linework
+     on top in the line colour. */
+  var ART_WHITE = '#f7f4ec';
+  function sigilArt(sig, c) {
+    return sig.art.map(function (part) {
       var out = '';
-      blocks(ly).forEach(function (x) {
-        if (!x) return;
-        out += x;
-        if (ly.mirror) out += '<g transform="matrix(-1 0 0 1 1000 0)">' + x + '</g>';
-      });
-      return '<g' + (ly.at ? ' transform="' + ly.at + '"' : '') + '>' + out + '</g>';
+      function layer(d, fill) { if (d) out += '<path d="' + d + '" fill="' + fill + '"/>'; }
+      layer(part.body, c.t);
+      layer(part.accent, c.a);
+      layer(part.white, ART_WHITE);
+      layer(part.lines, c.li);
+      return out;
     }).join('');
   }
 
-  /* The sigil's colours. Its outline is always the line colour; its inner
-     lines too, unless they'd vanish into the sigil (a black sigil with black
-     lines), when they're drawn in a lighter shade of the sigil, as heralds
-     paint a sable beast. */
+  /* The sigil's colours. Its linework is the line colour, unless it would
+     vanish into the sigil (a black sigil with black lines), when it's drawn
+     in a lighter shade of the sigil, as heralds paint a sable beast. */
   function sigilColours(st) {
     var t = colour(st.sigilColour, '#d6b25e'), l = colour(st.lineColour, '#1a1110');
     var li = R.contrast(t, l) < 2.2 ? (R.luminance(t) < 0.2 ? R.mix(t, '#ffffff', 0.5) : R.mix(t, '#000000', 0.55)) : l;
-    return { t: t, a: colour(st.accentColour, '#1f4fa8'), l: l, li: li };
+    return { t: t, a: colour(st.accentColour, '#1f4fa8'), li: li };
   }
 
   /* ---------- The field ---------- */
@@ -474,7 +420,7 @@
     var b = place.box;
     var sigilSvg = '<g clip-path="url(#' + clip + ')"><g' + (raised ? ' filter="url(#tsi-crest-svg-relief-' + uid + ')"' : '') + '>' +
       '<g transform="translate(' + n(place.cx) + ' ' + n(place.cy) + ') scale(' + (flip * place.scale).toFixed(4) + ' ' + place.scale.toFixed(4) + ') translate(' + n(-(b.x1 + b.w / 2)) + ' ' + n(-(b.y1 + b.h / 2)) + ')">' +
-      sigilLayers(sig, sigilColours(st), uid) + '</g></g></g>';
+      sigilArt(sig, sigilColours(st)) + '</g></g></g>';
 
     var body =
       '<g clip-path="url(#' + clip + ')">' + field(o, st, uid, defs) + ordinary(o, st) + texture(st, uid, defs, o.bb) + '</g>' +
@@ -512,7 +458,7 @@
     var sig = find(sigilList(), sigilId), b = sigilBox(sig);
     var s = Math.min(1000 / b.w, 1000 / b.h);
     return '<svg viewBox="0 0 1000 1000" aria-hidden="true"><g transform="translate(500 500) scale(' + s.toFixed(4) + ') translate(' + n(-(b.x1 + b.w / 2)) + ' ' + n(-(b.y1 + b.h / 2)) + ')">' +
-      sigilLayers(sig, sigilColours(st), ++counter) + '</g></svg>';
+      sigilArt(sig, sigilColours(st)) + '</g></svg>';
   }
 
   crest.draw = {
