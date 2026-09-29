@@ -31,6 +31,10 @@ The old tool had two pictures, both already stored once in `shared/art/` (above)
 
 The crest itself is drawn by code (`tools/crest/draw.js`), not from picture files. The motto font packed into downloaded PNGs is listed in `licences/README.md`.
 
+**Crest rework (29 September 2026, at Harry's request).** The crest is still drawn by code, with no picture files. Its shapes are data:
+- **Shield outlines** (`tools/crest/data/shields.js`): 17 public-domain outlines from Heraldicon (heraldicon.org), copied exactly and credited shape by shape in the file and in `licences/README.md`.
+- **Sigils** (`tools/crest/data/sigils.js`): 20 sigils drawn for the suite, built from points with the kit in `tools/crest/sigil-kit.js`. No outside artwork.
+
 
 ## Pelagosi Puzzle Trials (phase 3)
 

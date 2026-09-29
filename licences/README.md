@@ -20,4 +20,11 @@ The font files were checked byte-for-byte (SHA-256) against the google/fonts rep
 
 **PDF.js (phase 7).** `shared/lib/pdfjs/pdf.min.js` and `pdf.worker.min.js` are PDF.js 3.11.174, the version and "legacy" build the old Combat Tracker loaded from jsDelivr, taken unchanged from the `pdfjs-dist@3.11.174` package on npm (jsDelivr serves the same files); SHA-256 `978fd1b2…aa6c` and `38cde531…96f2`. Licence: Apache 2.0, `licences/pdfjs-Apache-2.0.txt`. Only the Combat Tracker loads them, and only when you import a PDF. Loaded with plain script tags, PDF.js reads the file on the page itself (its "fake worker"), because browsers don't allow a separate worker from a double-clicked file.
 
+**Shield outlines (Clan Crest Creator rework, 29 September 2026).** The 17 shield shapes in `tools/crest/data/shields.js` are outlines from Heraldicon (Heraldry.Digital, https://heraldicon.org, source at github.com/heraldry/heraldicon), copied exactly. Heraldicon releases its escutcheon outlines into the **public domain**, so no licence is needed; they're credited anyway, shape by shape, in the file and in `docs/ASSETS.md`:
+- Heraldicon's own drawings: Heater, Norman, Iberian, Old French, Modern French, English, Bohemian, Swiss, Lozenge, Oval and Round.
+- Drawn for Heraldicon by Korfi2Go: German, Italian and Pavise.
+- Heraldicon's tracings of public-domain drawings on Wikimedia Commons: Kite (after Perhelion), Polish (after Masur) and Renaissance (after Doc Taxon).
+
+The twenty sigils (`tools/crest/data/sigils.js`) were drawn for the suite and use no one else's artwork.
+
 For the campaign artwork, see `ARTWORK.md`.

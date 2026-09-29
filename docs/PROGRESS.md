@@ -2,11 +2,26 @@
 
 ## Where things stand
 
-**The rebuild is complete, and the short how-to guide is written.** All eight tools open from their cards, and `guide.html` (linked at the foot of the home screen) explains them. What comes next is up to Harry: after trying the rebuilt tools at the table, he can ask for upgrades, fixes to kept behaviours, or the joined-up ideas in sections 12 to 15 of the handover.
+**The rebuild is complete, the short how-to guide is written, and the first upgrade is done: the Clan Crest Creator has been reworked at Harry's request.** All eight tools open from their cards, and `guide.html` (linked at the foot of the home screen) explains them. What comes next is up to Harry: after trying the tools at the table, he can ask for more upgrades, fixes to kept behaviours, or the joined-up ideas in sections 12 to 15 of the handover.
 
 Double-click `index.html` to open the suite. The plan is in `docs/PLAN.md`, the bug list in `docs/KNOWN_ISSUES.md`, and the notes for building each tool in `docs/BUILDING-A-TOOL.md`.
 
 ## Done
+
+### The Clan Crest Creator rework (29 September 2026)
+Harry asked for a complete rework: the old tool's shields, colours and sigils were never up to standard. Everything visual was started again; the clan name, random names, mottos, Random Crest, Reset and the transparent 2048 × 2048 PNG download work as before.
+- **17 real shield shapes**, chosen after comparing other shield creators (Heraldicon, DrawShield) and heraldry references on shield shapes by country and period: Heater, Norman, Kite, Iberian, Old French, Modern French, English, Bohemian, Swiss, German (the Tartsche, with its lance notch), Italian (the "horse's head"), Polish, Renaissance, Pavise, Lozenge, Oval and Round. The outlines are Heraldicon's public-domain ones, copied exactly and credited (`licences/README.md`). Each has a tooltip saying what it is.
+- **20 new sigils**, drawn for the suite in a traditional heraldic style (one colour with dark outlines and inner lines, and an accent colour for claws, tongues, horns and gems):
+  - **Beasts:** Lion Rampant, Eagle Displayed, Dragon, Griffin, Bear, Raven, Kraken, and the heads of a Stag, Boar, Wolf and Unicorn.
+  - **Emblems:** Fleur-de-lis, Crown, Castle, Crossed Swords, Rose, Sun in Splendour, Crescent Moon, Anchor and Oak Tree.
+  - **Size:** at 100% a sigil now fills the largest space inside the rim, centred on the shield's balance point. The slider runs from 40% to 150% (the old maximum was far too small). There's also Up or down, Facing (left or right) and Relief (raised or flat).
+- **Colours:** 63 named colours in eight families (the heraldic tinctures Or, Argent, Gules, Azure, Vert, Purpure and Sable with their shades, the stains Tenné, Sanguine and Murrey, blacks and greys, and the three gods' colours), plus **Any colour** for your own. Nine colour slots: field, second field colour, band, sigil, claws/tongue/gems, sigil lines, rim, motto ribbon and lettering. **20 colour schemes** set them all at once and keep heraldry's rule of tincture (the old tool had 12 palettes of three colours).
+- **The field:** 14 divisions (Plain, Per pale, Per fess, Per bend, Per bend sinister, Per chevron, Quarterly, Per saltire, Gyronny, Paly, Barry, Bendy, Chequy, Lozengy) and 12 bands (None, Chief, Fess, Pale, Bend, Bend sinister, Chevron, Cross, Saltire, Pall, Pile, Bordure).
+- **The finish:** a bevelled metal rim (None, Fine, Plain, Double, Studded or Rope, any width, any metal), light (Flat, Soft sheen or Enamel gloss), texture (None, Parchment, Grain, Brushed metal or Linen), and a soft shadow.
+- **The motto:** a curved ribbon with folded swallowtail ends, a scroll with rolled ends, or a framed plaque; the lettering shrinks so any motto up to 30 letters fits.
+- **The controls:** five tabs (Shield, Field, Sigil, Colours, Motto) with picture tiles instead of drop-down lists, and a colour palette on every colour button. Everything fits the laptop and the TV on every tab.
+- **Fixed on the way:** a pasted hidden character in the motto no longer stops the download (CRS-10). The Round shield's stray line (CRS-04) and the Etched texture (CRS-08) are gone with the old shapes and textures.
+- **Tests:** `tests/rules.html` now runs 319 rules tests, all passing, including every sigil fitting inside every shield's rim (340 pairs). `tests/e2e/phase2.test.js` has 55 checks, all passing: every tile, chip, slider, the colour palette and schemes, Random Crest, Reset, PNG downloads, and every tab on the laptop and the TV. The guide's Crest section is updated, and its test and phase 1's still pass.
 
 ### The how-to guide (28 September 2026)
 - **`guide.html`**, beside `index.html`, linked as **How-to guide** at the foot of the home screen. It's a plain page in the suite's look, works with no internet, and prints black on white (Ctrl + P).
@@ -322,14 +337,15 @@ Double-click `index.html` to open the suite. The plan is in `docs/PLAN.md`, the 
   - The old-save import phase removed.
 
 ## Next
-Nothing is planned: the rebuild and the guide are done. Harry decides what comes next after trying the tools at the table. The kept behaviours he's most likely to want changed are listed under Open questions below; each tool's full list is in `docs/KNOWN_ISSUES.md`.
+Nothing is planned: the rebuild, the guide and the Crest rework are done. Harry reviews the new Crest, then decides what comes next after trying the tools at the table. The kept behaviours he's most likely to want changed are listed under Open questions below; each tool's full list is in `docs/KNOWN_ISSUES.md`.
 
 ## Open questions for Harry
 
 Each tool's questions are needed before that tool's phase. The full wording and defaults are in `docs/PLAN.md` section 6.
 
-- **Clan Crest Creator (phase 2):** answered (K1–K4).
-  - One small follow-up: the Crest saves nothing, so leaving it loses the current design. As the plan says, it doesn't ask "Leave?" first, just like the old tool. Would you like it to ask when you've changed the design?
+- **Clan Crest Creator (phase 2, reworked 29 September 2026):** answered (K1–K4).
+  - After you've tried the new crest: which sigils or shapes would you like changed, added or redrawn? Each sigil is a list of points in `tools/crest/data/sigils.js`, so any one can be refined on its own.
+  - The Crest still saves nothing, so leaving it loses the current design, and it doesn't ask "Leave?" first, as before. With so many more choices, would you like it to remember your last crest, or to ask before you leave?
 - **Pelagosi Puzzle Trials (phase 3):** answered (P1–P4).
   - When you have the five Tidal sounds, give them to a session and ask it to add the Pelagosi sounds.
 - **Notice Board (phase 4):** answered (N1–N5).
@@ -345,6 +361,7 @@ Each tool's questions are needed before that tool's phase. The full wording and 
   - Advance Bastion Turn has no "Are you sure?" step, as before; a double click now counts once. Say if you'd like one.
 
 ## Notes for future sessions
+- **The Clan Crest Creator (reworked).** Shield outlines are in `tools/crest/data/shields.js`, exactly as Heraldicon drew them in their own units; `geometry.js` scales them into the picture, finds each shape's balance point, and fits a sigil inside the rim. Sigils are in `tools/crest/data/sigils.js`, drawn as lists of points with the kit in `sigil-kit.js` (smooth shapes, tapering strokes, mirroring) in a 1000 × 1000 box, in layers so a near leg is outlined over the body. To add a sigil, draw it the same way and add it to the list: the rules tests check it fits every shield. Colours and schemes are in `data/crest-data.js`; the tests check every scheme uses named colours and keeps the rule of tincture.
 - **Old code:** re-clone the old repos into `_legacy/` if they're missing (the links are in handover section 16). Download the Ritual films from the release.
 - **Testing:** the sandbox's Playwright Chromium can't play MP4s, and it can't reach the Firebase database or the shop. Put those checks on Harry's Edge checklist.
 - **Matt's database:** never write to the live Knightly Treasures database while testing.

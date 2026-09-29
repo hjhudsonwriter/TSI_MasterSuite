@@ -492,6 +492,7 @@ One phase per session, or one clearly defined chunk. The next phase starts only 
 | 8a / 8b | Explorer maps and movement (laptop + TV) / events, camp and weather | large data files and video |
 | 9a / 9b / 9c | Bastion core (laptop + TV) / Hall, trade and Council / identity, war and Compendium | the largest tool |
 | After 9 | A short how-to guide for Harry (`guide.html`), with his go-ahead: done | the guide matches the tools (a test checks every name it gives) |
+| First upgrade | **Clan Crest Creator rework** (Harry's request, 29 September 2026): 17 real shield shapes, 20 new sigils, 63 named colours and 20 schemes, divisions, bands, rims, finishes and new tabbed controls. Done | every sigil fits every shield; every tab fits the laptop and the TV |
 
 **Phases 4, 5 and 6 were built together** (26 September 2026), at Harry's request to speed the build up: one session, one pull request and one combined checklist, grouped by tool. Each tool still has its own commits, tests and docs. For the last three tools Harry chose (28 September 2026) **one tool per go, each in a single session**: the Combat Tracker (7a and 7b together), then the Explorer (8a and 8b), then the Bastion (9a to 9c), each with its own pull request. Phases 7, 8 and 9 are done, which completes the rebuild.
 
