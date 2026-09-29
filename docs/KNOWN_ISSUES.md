@@ -1312,6 +1312,8 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 ## Clan Crest Creator
 Old repo: `_legacy/clan-crest-creator` (file:line references point there).
 
+**Sigils redone (29 September 2026):** the twenty sigils were replaced with traced public-domain heraldic drawings (see `docs/PROGRESS.md`). No new bugs were found, and none of the entries below changed: the drawing still numbers every hidden part (CRS-01), and the PNG, the controls and the layout on the laptop and the TV all pass their tests as before.
+
 ### CRS-01 · Fixed internal ids in the crest drawing
 **Fixed by the new design** · other · listed in the handover
 

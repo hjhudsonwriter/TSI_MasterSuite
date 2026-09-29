@@ -2,16 +2,55 @@
 
 ## Where things stand
 
-**The rebuild is complete, the short how-to guide is written, and the first upgrade is done: the Clan Crest Creator has been reworked at Harry's request.** All eight tools open from their cards, and `guide.html` (linked at the foot of the home screen) explains them. What comes next is up to Harry: after trying the tools at the table, he can ask for more upgrades, fixes to kept behaviours, or the joined-up ideas in sections 12 to 15 of the handover.
+**The rebuild is complete, the short how-to guide is written, and the first upgrade is done: the Clan Crest Creator has been reworked at Harry's request, and its sigils redone from real heraldic artwork.** All eight tools open from their cards, and `guide.html` (linked at the foot of the home screen) explains them. What comes next is up to Harry: after trying the tools at the table, he can ask for more upgrades, fixes to kept behaviours, or the joined-up ideas in sections 12 to 15 of the handover.
 
 Double-click `index.html` to open the suite. The plan is in `docs/PLAN.md`, the bug list in `docs/KNOWN_ISSUES.md`, and the notes for building each tool in `docs/BUILDING-A-TOOL.md`.
 
 ## Done
 
+### The Crest's sigils, redone from real heraldic art (29 September 2026)
+Harry liked the rework but found the sigils still not professional enough, and chose Option 1: find professional, free-to-use heraldic artwork and plug it in, keeping the colours changeable.
+- **All 20 sigils replaced** with drawings from real heraldry books, traced into outlines the Crest can recolour. Most come from A. C. Fox-Davies' *A Complete Guide to Heraldry* (1909), so they share one engraved style. The lion is Inductiveload's tracing after Jiří Louda, the unicorn is John Vinycomb's (1906), the fleur-de-lis is Jérôme de Bara's, and the crown is a public-domain coronet. All are public domain, and each is credited in the data file, `licences/README.md` and `docs/ASSETS.md`.
+- **The colours still change.** Each sigil has four layers: its body in the sigil colour, its accent parts, white eyes and teeth, and its linework in the line colour. The linework turns a lighter shade on a dark sigil, as heralds paint a black beast.
+- **Accent parts on 18 of the 20**, marked by hand, following heraldry's custom of colouring claws, tongue and so on separately:
+  - the lion's claws and tongue;
+  - the eagle's beak, tongue and talons;
+  - the stag's antlers and hooves;
+  - the boar's tusk, mouth and hooves;
+  - the wolf's and bear's tongues;
+  - the unicorn's horn and hooves;
+  - the dragon's wing;
+  - the griffin's beak and fore-talons;
+  - the raven's beak and legs;
+  - the dolphin's fins;
+  - the fleur-de-lis's band;
+  - the crown's jewels and cap;
+  - the tower's gate;
+  - the swords' hilts;
+  - the rose's seeds and barbs;
+  - the anchor's stock;
+  - the oak's trunk and roots.
+
+  The Sun and Crescent are one colour.
+- **Changes to the list:**
+  - **Kraken → Dolphin.** No free heraldic kraken drawing exists. The heraldic dolphin is the traditional sea beast, fanged and finned.
+  - **Castle → Tower**, a single battlemented tower with its gate.
+  - The stag, boar, wolf and unicorn are now **whole beasts** rather than heads.
+  - The names now use heraldry's terms: Stag Trippant, Boar Passant, Wolf Passant, Dragon Segreant, Griffin Segreant and Bear Passant.
+- **How they were made (for future sessions):**
+  - Wikimedia's file server refused downloads from the sandbox, so each drawing was fetched as a large picture from Commons' own renderer, then traced with potrace.
+  - The data is outlines only: nothing loads from the internet, and no picture files were added.
+  - The tools and each sigil's settings are in `tools/crest/dev/`, which the suite doesn't load. Rebuilding from the same pictures gives an identical file.
+  - `tools/crest/sigil-kit.js`, the kit that drew the first sigils, is removed.
+- **Size and speed:** `data/sigils.js` is 0.9 MB. Changing a colour or sigil redraws in about 50 ms.
+- **Tests:**
+  - `tests/rules.html` runs 321 rules tests, all passing. New checks: every sigil's layers are plain outline data, every sigil has a credit, a public-domain licence and a Commons link, and the accent colour reaches the picture.
+  - `tests/e2e/phase2.test.js` passes all 55 checks, including PNG downloads and every tab on the laptop and the TV.
+
 ### The Clan Crest Creator rework (29 September 2026)
 Harry asked for a complete rework: the old tool's shields, colours and sigils were never up to standard. Everything visual was started again; the clan name, random names, mottos, Random Crest, Reset and the transparent 2048 × 2048 PNG download work as before.
 - **17 real shield shapes**, chosen after comparing other shield creators (Heraldicon, DrawShield) and heraldry references on shield shapes by country and period: Heater, Norman, Kite, Iberian, Old French, Modern French, English, Bohemian, Swiss, German (the Tartsche, with its lance notch), Italian (the "horse's head"), Polish, Renaissance, Pavise, Lozenge, Oval and Round. The outlines are Heraldicon's public-domain ones, copied exactly and credited (`licences/README.md`). Each has a tooltip saying what it is.
-- **20 new sigils**, drawn for the suite in a traditional heraldic style (one colour with dark outlines and inner lines, and an accent colour for claws, tongues, horns and gems):
+- **20 new sigils**, drawn for the suite in a traditional heraldic style (one colour with dark outlines and inner lines, and an accent colour for claws, tongues, horns and gems). *Replaced the same day by traced heraldic artwork (see above).*
   - **Beasts:** Lion Rampant, Eagle Displayed, Dragon, Griffin, Bear, Raven, Kraken, and the heads of a Stag, Boar, Wolf and Unicorn.
   - **Emblems:** Fleur-de-lis, Crown, Castle, Crossed Swords, Rose, Sun in Splendour, Crescent Moon, Anchor and Oak Tree.
   - **Size:** at 100% a sigil now fills the largest space inside the rim, centred on the shield's balance point. The slider runs from 40% to 150% (the old maximum was far too small). There's also Up or down, Facing (left or right) and Relief (raised or flat).
@@ -344,7 +383,8 @@ Nothing is planned: the rebuild, the guide and the Crest rework are done. Harry 
 Each tool's questions are needed before that tool's phase. The full wording and defaults are in `docs/PLAN.md` section 6.
 
 - **Clan Crest Creator (phase 2, reworked 29 September 2026):** answered (K1–K4).
-  - After you've tried the new crest: which sigils or shapes would you like changed, added or redrawn? Each sigil is a list of points in `tools/crest/data/sigils.js`, so any one can be refined on its own.
+  - After you've tried the new sigils: would you like any swapped? The same book has more to choose from, among them a Pegasus, Cockatrice, Wyvern, Phoenix, Double-headed Eagle, Lion Passant, Winged Lion, Merman, Owl, Falcon, Pelican, a ship (lymphad), an Elephant carrying a tower, a Hunting Horn and a Battle-axe. Would you like the Kraken back? There's no free heraldic drawing of one, so it would have to be drawn from scratch, or from art you supply.
+  - Are the accent parts right (see the list under Done)? For example, the unicorn's mane or the dragon's claws could take the accent colour too.
   - The Crest still saves nothing, so leaving it loses the current design, and it doesn't ask "Leave?" first, as before. With so many more choices, would you like it to remember your last crest, or to ask before you leave?
 - **Pelagosi Puzzle Trials (phase 3):** answered (P1–P4).
   - When you have the five Tidal sounds, give them to a session and ask it to add the Pelagosi sounds.
@@ -361,7 +401,7 @@ Each tool's questions are needed before that tool's phase. The full wording and 
   - Advance Bastion Turn has no "Are you sure?" step, as before; a double click now counts once. Say if you'd like one.
 
 ## Notes for future sessions
-- **The Clan Crest Creator (reworked).** Shield outlines are in `tools/crest/data/shields.js`, exactly as Heraldicon drew them in their own units; `geometry.js` scales them into the picture, finds each shape's balance point, and fits a sigil inside the rim. Sigils are in `tools/crest/data/sigils.js`, drawn as lists of points with the kit in `sigil-kit.js` (smooth shapes, tapering strokes, mirroring) in a 1000 × 1000 box, in layers so a near leg is outlined over the body. To add a sigil, draw it the same way and add it to the list: the rules tests check it fits every shield. Colours and schemes are in `data/crest-data.js`; the tests check every scheme uses named colours and keeps the rule of tincture.
+- **The Clan Crest Creator (reworked).** Shield outlines are in `tools/crest/data/shields.js`, exactly as Heraldicon drew them in their own units; `geometry.js` scales them into the picture, finds each shape's balance point, and fits a sigil inside the rim. Sigils are in `tools/crest/data/sigils.js`: public-domain heraldic drawings traced into four layers of outlines (body, accent, white, lines), 1000 units on their longer side. They're made by the scripts in `tools/crest/dev/` (see its README); to change or add one, edit its settings in `sigils.tsv` and rebuild, rather than editing the data file by hand. The rules tests check every sigil fits every shield. Colours and schemes are in `data/crest-data.js`; the tests check every scheme uses named colours and keeps the rule of tincture.
 - **Old code:** re-clone the old repos into `_legacy/` if they're missing (the links are in handover section 16). Download the Ritual films from the release.
 - **Testing:** the sandbox's Playwright Chromium can't play MP4s, and it can't reach the Firebase database or the shop. Put those checks on Harry's Edge checklist.
 - **Matt's database:** never write to the live Knightly Treasures database while testing.

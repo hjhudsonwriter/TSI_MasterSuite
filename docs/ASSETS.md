@@ -33,7 +33,32 @@ The crest itself is drawn by code (`tools/crest/draw.js`), not from picture file
 
 **Crest rework (29 September 2026, at Harry's request).** The crest is still drawn by code, with no picture files. Its shapes are data:
 - **Shield outlines** (`tools/crest/data/shields.js`): 17 public-domain outlines from Heraldicon (heraldicon.org), copied exactly and credited shape by shape in the file and in `licences/README.md`.
-- **Sigils** (`tools/crest/data/sigils.js`): 20 sigils drawn for the suite, built from points with the kit in `tools/crest/sigil-kit.js`. No outside artwork.
+- **Sigils** (`tools/crest/data/sigils.js`, redone the same day at Harry's request): 20 sigils traced from public-domain heraldic drawings on Wikimedia Commons and stored as outlines (no picture files were added). The pictures they were traced from aren't kept in the suite; `tools/crest/dev/fetch.py` downloads them again. Each sigil's source:
+
+| Sigil | Wikimedia Commons file | Drawn by |
+|---|---|---|
+| Lion Rampant | `Lion_rampant_element.svg` | Inductiveload, after Jiří Louda |
+| Eagle Displayed | `Coa_Illustration_Elements_Animal_Eagle_Displayed_with_Wings_Inverted.svg` | A. C. Fox-Davies, *A Complete Guide to Heraldry* (1909) |
+| Stag Trippant | `Coa_Illustration_Elements_Animal_Stag_Trippant.svg` (mirrored) | Fox-Davies |
+| Boar Passant | `Coa_Illustration_Elements_Animal_Boar_Passant.svg` | Fox-Davies |
+| Wolf Passant | `Coa_Illustration_Elements_Animal_Wolf_Passant.svg` | Fox-Davies |
+| Unicorn | `Coa_Illustration_Elements_Animal_Unicorn.svg` | John Vinycomb (1906) |
+| Dragon Segreant | `Coa_Illustration_Elements_Animal_Dragon_Segreant.svg` | Fox-Davies |
+| Griffin Segreant | `Coa_Illustration_Elements_Animal_Griffin_1.svg` | Fox-Davies |
+| Bear Passant | `Coa_Illustration_Elements_Animal_Bear_Passant.svg` | Fox-Davies |
+| Raven | `Coa_Illustration_Elements_Animal_Raven.svg` | Graham Johnston, for Fox-Davies |
+| Dolphin | `Coa_Illustration_Elements_Animal_Dolphin_Naiant.svg` | Fox-Davies |
+| Fleur-de-lis | `Coa_Illustration_Elements_Plant_Lily_3.svg` | Jérôme de Bara |
+| Crown | `Crown_smpl.svg` | Anka Friedrich, after a US Federal Government picture |
+| Tower | `Coa_Illustration_Elements_Building_Tower_1.svg` | Fox-Davies |
+| Crossed Swords | `Coa_Illustration_Elements_Arms_Sword_v2.svg` (drawn twice) | Fox-Davies |
+| Rose | `Coa_Illustration_Elements_Plant_Rose.svg` | Graham Johnston, for Fox-Davies |
+| Sun in Splendour | `Coa_Illustration_Elements_Planet_Sun_in_his_Splendor.svg` | Fox-Davies |
+| Crescent | `Coa_Illustration_Elements_Planet_Crescent.svg` | Graham Johnston, for Fox-Davies |
+| Anchor | `Coa_Illustration_Elements_Anchor.svg` | Fox-Davies |
+| Oak Tree | `Coa_Illustration_Elements_Plant_Oak_Tree_Fructed_and_Eradicated.svg` | Fox-Davies |
+
+All are public domain. They replace the rework's first sigils, which were drawn for the suite with a kit of shapes (`sigil-kit.js`); the kit has been removed.
 
 
 ## Pelagosi Puzzle Trials (phase 3)
