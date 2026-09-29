@@ -106,10 +106,10 @@
     var s = 'M ' + pt(left[0]);
     for (var q = 1; q < n; q++) s += ' L ' + pt(left[q]);
     var we = widthAt(1) / 2, ws = widthAt(0) / 2;
-    if (round && we > 0) s += ' A ' + f(we) + ' ' + f(we) + ' 0 0 1 ' + pt(right[n - 1]);
+    if (round && we > 0) s += ' A ' + f(we) + ' ' + f(we) + ' 0 0 0 ' + pt(right[n - 1]);
     else s += ' L ' + pt(right[n - 1]);
     for (var r = n - 2; r >= 0; r--) s += ' L ' + pt(right[r]);
-    if (round && ws > 0) s += ' A ' + f(ws) + ' ' + f(ws) + ' 0 0 1 ' + pt(left[0]);
+    if (round && ws > 0) s += ' A ' + f(ws) + ' ' + f(ws) + ' 0 0 0 ' + pt(left[0]);
     return s + ' Z';
   }
 

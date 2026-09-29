@@ -65,27 +65,38 @@
 
 
 
-  /* A wing raised up behind the back (elevated and addorsed): long feathers
-     pointing up and back from a band of short feathers over the shoulder.
-     Returns layers, back feather first. */
-  function raisedWing(dx, dy, sc, lean) {
-    lean = lean || 0;
-    function q(p) { return [dx + (p[0] + (560 - p[1]) * lean) * sc, dy + p[1] * sc]; }
-    var roots = [[520, 420], [566, 396], [612, 376], [658, 364], [704, 360], [748, 366], [790, 380]];
-    var tips = [[560, 40], [650, 20], [740, 30], [820, 70], [884, 140], [924, 230], [940, 330]];
+  /* ---------- the eagle's wing (left side, spread), shared ---------- */
+  var WING = {
+    roots: [[430, 362], [382, 318], [334, 270], [284, 222], [232, 176], [178, 138], [126, 110], [80, 96]],
+    tips: [[420, 660], [346, 664], [270, 640], [196, 596], [128, 530], [72, 446], [36, 350], [22, 246]],
+    arm: [[500, 320], [452, 300], [392, 236], [320, 150], [244, 84], [160, 52], [84, 56], [40, 90], [60, 120], [108, 150, 1], [150, 170], [176, 196, 1], [212, 206], [236, 242, 1], [270, 250], [290, 290, 1], [326, 296], [344, 336, 1], [380, 340], [398, 380, 1], [440, 386], [500, 420]],
+    armLines: [[[92, 84], [132, 120]], [[160, 78], [196, 130]], [[226, 104], [256, 160]], [[290, 146], [312, 204]], [[346, 204], [360, 260]], [[396, 260], [406, 312]]]
+  };
+  /* The wing's layers, each point passed through `map` first: feathers from
+     the tip in, then the arm over their roots. */
+  function wingLayers(map, sc) {
+    sc = sc || 1;
+    var mp = function (pts) { return pts.map(function (p) { var q = map(p); if (p.length > 2) q.push(p[2]); return q; }); };
     var out = [];
-    for (var i = roots.length - 1; i >= 0; i--) {
-      var r = roots[i], t = tips[i], m = [r[0] + (t[0] - r[0]) * 0.5 - 12, r[1] + (t[1] - r[1]) * 0.5];
-      out.push({
-        body: [T([q(r), q(m), q(t)], [86 * sc, 76 * sc, 0])],
-        lines: [[L([q([r[0] + (t[0] - r[0]) * 0.28, r[1] + (t[1] - r[1]) * 0.28]), q([r[0] + (t[0] - r[0]) * 0.7 - 8, r[1] + (t[1] - r[1]) * 0.7])]), 5 * sc]]
-      });
+    for (var i = WING.roots.length - 1; i >= 0; i--) {
+      var r = WING.roots[i], t = WING.tips[i], m = [r[0] + (t[0] - r[0]) * 0.5 - 14, r[1] + (t[1] - r[1]) * 0.5];
+      var q1 = [r[0] + (t[0] - r[0]) * 0.28, r[1] + (t[1] - r[1]) * 0.28], q2 = [r[0] + (t[0] - r[0]) * 0.7 - 10, r[1] + (t[1] - r[1]) * 0.7];
+      out.push({ body: [T(mp([r, m, t]), [84 * sc, 72 * sc, 0])], lines: [[L(mp([q1, q2])), 5 * sc]] });
     }
     out.push({
-      body: [S([q([470, 470]), q([488, 390]), q([540, 330]), q([610, 300]), q([700, 290]), q([780, 300]), q([840, 330]), q([830, 360, 1]), q([790, 350]), q([770, 380, 1]), q([730, 366]), q([704, 400, 1]), q([660, 390]), q([630, 424, 1]), q([590, 414]), q([556, 450, 1]), q([520, 450])])],
-      lines: [[L([q([520, 380]), q([610, 330]), q([720, 316]), q([810, 330])]), 6 * sc]]
+      body: [S(mp(WING.arm))],
+      lines: WING.armLines.map(function (l) { return [L(mp(l)), 5 * sc]; })
     });
     return out;
+  }
+  /* A wing raised behind the back: the eagle's left wing, mirrored to point
+     back, tilted up by `deg`, scaled by `sc` and set with its shoulder at `at`. */
+  function raised(at, deg, sc) {
+    var a = deg * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
+    return wingLayers(function (p) {
+      var x = (1000 - p[0]) - 500, y = p[1] - 370;
+      return [at[0] + (x * c - y * s) * sc, at[1] + (x * s + y * c) * sc];
+    }, sc);
   }
 
   /* ---------- the hind legs and tail shared by the rampant beasts ---------- */
@@ -220,34 +231,20 @@
       name: 'Eagle Displayed',
       note: 'The eagle with wings spread: empire, vision and command.',
       layers: (function () {
-        /* the long wing feathers, left side: roots along the wing, tips fanned out */
-        var roots = [[430, 362], [382, 318], [334, 270], [284, 222], [232, 176], [178, 138], [126, 110], [80, 96]];
-        var tips = [[420, 660], [346, 664], [270, 640], [196, 596], [128, 530], [72, 446], [36, 350], [22, 246]];
-        var feathers = roots.map(function (r, i) {
-          var t = tips[i], m = [r[0] + (t[0] - r[0]) * 0.5 - 14, r[1] + (t[1] - r[1]) * 0.5];
-          return T([r, m, t], [84, 72, 0]);
-        });
-        var quills = roots.map(function (r, i) {
-          var t = tips[i];
-          return [L([[r[0] + (t[0] - r[0]) * 0.28, r[1] + (t[1] - r[1]) * 0.28], [r[0] + (t[0] - r[0]) * 0.7 - 10, r[1] + (t[1] - r[1]) * 0.7]]), 5];
-        });
         var tail = [
           T([[500, 700], [500, 820], [500, 930]], [84, 80, 0]),
           T([[474, 700], [436, 812], [404, 906]], [80, 74, 0]),
           T([[452, 690], [382, 784], [318, 858]], [76, 68, 0])
         ];
         var layers = [];
-        /* tail feathers, outer first, then each wing feather from the tip in */
+        /* tail feathers, outer first, then both wings (mirrored) */
         tail.slice().reverse().forEach(function (d) { layers.push({ mirror: true, body: [d] }); });
-        feathers.slice().reverse().forEach(function (d, i) {
-          layers.push({ mirror: true, body: [d], lines: [quills[feathers.length - 1 - i]] });
-        });
+        wingLayers(function (p) { return [p[0], p[1]]; }).forEach(function (ly) { ly.mirror = true; layers.push(ly); });
         return layers.concat([
-          /* legs and the wing's arm (mirrored) */
+          /* legs (mirrored) */
           {
             mirror: true,
             body: [
-              S([[500, 320], [452, 300], [392, 236], [320, 150], [244, 84], [160, 52], [84, 56], [40, 90], [60, 120], [108, 150, 1], [150, 170], [176, 196, 1], [212, 206], [236, 242, 1], [270, 250], [290, 290, 1], [326, 296], [344, 336, 1], [380, 340], [398, 380, 1], [440, 386], [500, 420]]),
               S([[480, 640], [430, 670], [386, 716], [372, 766], [408, 772], [444, 744], [470, 716], [498, 700]])
             ],
             armed: [
@@ -256,11 +253,7 @@
               T([[390, 776], [384, 826], [370, 866]], [32, 26, 0]),
               T([[404, 764], [440, 788], [458, 820]], [28, 22, 0])
             ],
-            lines: [
-              [L([[92, 84], [132, 120]]), 5], [L([[160, 78], [196, 130]]), 5], [L([[226, 104], [256, 160]]), 5],
-              [L([[290, 146], [312, 204]]), 5], [L([[346, 204], [360, 260]]), 5], [L([[396, 260], [406, 312]]), 5],
-              [L([[420, 700], [448, 720]]), 5], [L([[404, 730], [430, 748]]), 5]
-            ]
+            lines: [[L([[420, 700], [448, 720]]), 5], [L([[404, 730], [430, 748]]), 5]]
           },
           /* body */
           {
@@ -546,7 +539,7 @@
       name: 'Griffin',
       note: 'The griffin, eagle before and lion behind: vigilance, valour and a guardian of treasure.',
       layers: (function () {
-        return [].concat(raisedWing(40, -30, 0.9, 0.1)).concat([
+        return [].concat(raised([540, 400], -28, 0.84)).concat([
           farHind,
           /* far fore leg: an eagle's, with talons */
           {
@@ -564,7 +557,7 @@
             armed: claws(520, 952, 175, 4, 20, 52, 20, 22),
             lines: standLines
           }
-        ]).concat(raisedWing(-10, 0, 1, 0)).concat([
+        ]).concat(raised([470, 420], -36, 0.92)).concat([
           /* feathered neck and eagle's head with ears */
           {
             body: [
@@ -653,33 +646,39 @@
       id: 'raven',
       name: 'Raven',
       note: 'A raven rising: wisdom, foresight and the messenger between worlds.',
-      layers: (function () {
-        return [].concat(raisedWing(20, -20, 0.9, 0.1)).concat([
-          {
-            body: [
-              /* tail */
-              S([[600, 700], [700, 800], [780, 900, 1], [700, 880], [660, 910, 1], [620, 850], [560, 760]]),
-              /* body and head */
-              S([[200, 300], [250, 240], [320, 220], [390, 250], [440, 330], [520, 420], [600, 540], [630, 660], [590, 740], [500, 760], [420, 720], [360, 620], [320, 500], [290, 400], [240, 360]])
-            ],
-            armed: [
-              S([[250, 262, 1], [180, 262], [110, 292, 1], [180, 300], [244, 308, 1]]),
-              T([[450, 740], [440, 810], [420, 870]], [34, 30, 26]),
-              T([[520, 752], [520, 820], [510, 880]], [34, 30, 26]),
-              T([[420, 870], [370, 890], [340, 890]], [22, 18, 0]),
-              T([[420, 872], [400, 910], [396, 940]], [22, 18, 0]),
-              T([[510, 880], [460, 900], [432, 902]], [22, 18, 0]),
-              T([[510, 882], [496, 920], [494, 950]], [22, 18, 0])
-            ],
-            detail: [E(290, 262, 12, 10, 0)],
-            lines: [
-              [L([[250, 290], [300, 300], [340, 320]]), 5],
-              [L([[360, 440], [400, 520], [420, 600]]), 5], [L([[400, 420], [460, 500], [500, 600]]), 5],
-              [L([[440, 640], [490, 690]]), 5], [L([[640, 780], [700, 860]]), 5]
-            ]
-          }
-        ]).concat(raisedWing(-40, 20, 0.95, 0));
-      }())
+      layers: [].concat(raised([520, 400], -32, 0.86)).concat([
+        {
+          body: [
+            /* tail, a long wedge */
+            S([[560, 640], [660, 740], [780, 880, 1], [720, 870], [690, 900, 1], [650, 860], [610, 880, 1], [590, 820], [520, 720]]),
+            /* legs */
+            T([[440, 700], [430, 790], [414, 868]], [44, 34, 30], true),
+            T([[500, 712], [506, 800], [500, 876]], [44, 34, 30], true),
+            /* body: breast, back and rump */
+            S([[268, 290], [300, 236], [360, 214], [420, 238], [470, 300], [540, 390], [600, 500], [628, 610], [600, 700], [520, 740], [440, 720], [380, 650], [330, 540], [292, 430], [262, 360]]),
+            /* shaggy throat */
+            locks([[300, 330], [276, 384], [312, 362], [300, 420], [334, 390], [330, 450], [356, 400]])
+          ],
+          armed: [
+            /* beak: deep, straight, a little hooked */
+            S([[292, 248, 1], [226, 244], [150, 262], [112, 282, 1], [170, 284], [236, 292], [292, 300, 1]]),
+            T([[414, 866], [376, 884], [340, 884]], [22, 18, 0]),
+            T([[414, 868], [398, 904], [394, 934]], [22, 18, 0]),
+            T([[420, 862], [446, 884], [456, 912]], [20, 16, 0]),
+            T([[500, 874], [462, 894], [430, 896]], [22, 18, 0]),
+            T([[500, 876], [490, 912], [490, 942]], [22, 18, 0]),
+            T([[506, 870], [534, 890], [546, 918]], [20, 16, 0])
+          ],
+          detail: [E(318, 256, 11, 10, 0)],
+          lines: [
+            [L([[232, 270], [290, 274]]), 5],
+            [L([[340, 470], [380, 560], [420, 640]]), 5], [L([[400, 440], [450, 540], [490, 640]]), 5],
+            [L([[470, 380], [530, 470], [570, 580]]), 5],
+            [L([[600, 720], [680, 820]]), 5], [L([[570, 740], [640, 850]]), 5],
+            [L([[424, 760], [446, 770]]), 4], [L([[420, 800], [442, 808]]), 4], [L([[490, 770], [514, 776]]), 4], [L([[492, 810], [516, 814]]), 4]
+          ]
+        }
+      ]).concat(raised([440, 420], -40, 0.94))
     },
 
     {

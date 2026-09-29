@@ -112,7 +112,7 @@
   function sigilPlace(o, sig, st) {
     var box = sigilBox(sig);
     var rimW = st.rim === 'none' ? 0 : Number(st.rimWidth) || 0;
-    var margin = rimW + 22;
+    var margin = rimW + 14;
     var key = sig.id + '|' + margin;
     if (!o.fit[key]) o.fit[key] = G.fitBox(o.parts, 512, box.w / box.h, margin, 3, [o.fy - o.bb.h * 0.07, o.fy + o.bb.h * 0.07]);
     var fit = o.fit[key];
@@ -145,8 +145,8 @@
       function U(x) { return x ? '<g fill="none" stroke="' + c.l + '" stroke-linejoin="round" stroke-linecap="round">' + x + '</g>' : ''; }
       return [
         U(under), fills ? '<g>' + fills + '</g>' : '', U(aunder), afills ? '<g>' + afills + '</g>' : '',
-        det ? '<g fill="' + c.l + '" fill-rule="evenodd">' + det + '</g>' : '',
-        ln ? '<g fill="none" stroke="' + c.l + '" stroke-linecap="round" stroke-linejoin="round">' + ln + '</g>' : '',
+        det ? '<g fill="' + c.li + '" fill-rule="evenodd">' + det + '</g>' : '',
+        ln ? '<g fill="none" stroke="' + c.li + '" stroke-linecap="round" stroke-linejoin="round">' + ln + '</g>' : '',
         mk ? '<g fill="none" stroke="' + c.t + '" stroke-linecap="round">' + mk + '</g>' : ''
       ];
     }
@@ -161,8 +161,14 @@
     }).join('');
   }
 
+  /* The sigil's colours. Its outline is always the line colour; its inner
+     lines too, unless they'd vanish into the sigil (a black sigil with black
+     lines), when they're drawn in a lighter shade of the sigil, as heralds
+     paint a sable beast. */
   function sigilColours(st) {
-    return { t: colour(st.sigilColour, '#d6b25e'), a: colour(st.accentColour, '#1f4fa8'), l: colour(st.lineColour, '#1a1110') };
+    var t = colour(st.sigilColour, '#d6b25e'), l = colour(st.lineColour, '#1a1110');
+    var li = R.contrast(t, l) < 2.2 ? (R.luminance(t) < 0.2 ? R.mix(t, '#ffffff', 0.5) : R.mix(t, '#000000', 0.55)) : l;
+    return { t: t, a: colour(st.accentColour, '#1f4fa8'), l: l, li: li };
   }
 
   /* ---------- The field ---------- */
