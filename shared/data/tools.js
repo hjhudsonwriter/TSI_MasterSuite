@@ -114,7 +114,7 @@ window.TSI_DATA.tools = [
     group: 'players',
     phase: '2',
     built: true,
-    saves: false,
+    saves: true,
     desc: 'Forge your heraldry. Pick parts, roll random, then download a transparent PNG.',
     art: 'shared/art/hero.png',
     files: {
