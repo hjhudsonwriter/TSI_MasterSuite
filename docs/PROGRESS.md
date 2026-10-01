@@ -2,11 +2,19 @@
 
 ## Where things stand
 
-**The rebuild is complete, the short how-to guide is written, and the first upgrade is done: the Clan Crest Creator has been reworked at Harry's request, and its sigils redone from real heraldic artwork.** All eight tools open from their cards, and `guide.html` (linked at the foot of the home screen) explains them. What comes next is up to Harry: after trying the tools at the table, he can ask for more upgrades, fixes to kept behaviours, or the joined-up ideas in sections 12 to 15 of the handover.
+**The rebuild is complete, the short how-to guide is written, and the first upgrades are done: the Clan Crest Creator has been reworked at Harry's request, its sigils redone from real heraldic artwork, and it now remembers your last design.** All eight tools open from their cards, and `guide.html` (linked at the foot of the home screen) explains them. What comes next is up to Harry: after trying the tools at the table, he can ask for more upgrades, fixes to kept behaviours, or the joined-up ideas in sections 12 to 15 of the handover.
 
 Double-click `index.html` to open the suite. The plan is in `docs/PLAN.md`, the bug list in `docs/KNOWN_ISSUES.md`, and the notes for building each tool in `docs/BUILDING-A-TOOL.md`.
 
 ## Done
+
+### The Crest remembers your last design (1 October 2026)
+Harry asked for the Crest to remember his last design (it saved nothing, as the old tool didn't).
+- **Saved as you go:** every change is saved: the name, every choice, colour and slider, and the motto. Closing the Crest, going Home or closing Edge keeps it, and it comes back next time.
+- **Like the other tools that save:** Export and Import in the top bar, a "Saved ✓" status, and it's included in "Back up everything" and Restore. Import asks before replacing the design, and refuses a damaged file or another tool's file.
+- **One design:** it keeps your last design only. Random Crest and Reset replace it, without asking, as before. Export keeps a copy as a file if you want to come back to one.
+- **Safe loading:** a saved choice that no longer exists (such as the old Kraken sigil) goes back to its default and the rest is kept; a save that isn't a design at all is set aside, never deleted, and the Crest starts fresh (KNOWN_ISSUES CRS-15).
+- **Tests:** `tests/rules.html` runs 325 rules tests, all passing (4 new: a design comes back exactly, unknown or out-of-range settings fall back, non-designs are refused, damaged imports are refused). `tests/e2e/phase2.test.js` has 68 checks, all passing (13 new: saving as you go, reopening, Home and back, Export, Import refusing a damaged or another tool's file, asking first, replacing, Back up everything, Reset, an old sigil, and a damaged save). The guide's Crest and saving sections are updated.
 
 ### The Crest's sigils, redone from real heraldic art (29 September 2026)
 Harry liked the rework but found the sigils still not professional enough, and chose Option 1: find professional, free-to-use heraldic artwork and plug it in, keeping the colours changeable.
@@ -384,7 +392,7 @@ Each tool's questions are needed before that tool's phase. The full wording and 
 
 - **Clan Crest Creator (phase 2, reworked 29 September 2026):** answered (K1–K4).
   - **Sigils: answered (29 September 2026).** Harry reviewed the traced sigils and wants all twenty kept exactly as they are: the same sigils, the Dolphin in place of the Kraken, the Tower in place of the Castle, and the same accent parts. Don't swap, add or recolour any without his say-so.
-  - The Crest still saves nothing, so leaving it loses the current design, and it doesn't ask "Leave?" first, as before. With so many more choices, would you like it to remember your last crest, or to ask before you leave?
+  - **Remembering the design: answered (1 October 2026).** Harry asked for it to remember his last design; done (see Done).
 - **Pelagosi Puzzle Trials (phase 3):** answered (P1–P4).
   - When you have the five Tidal sounds, give them to a session and ask it to add the Pelagosi sounds.
 - **Notice Board (phase 4):** answered (N1–N5).

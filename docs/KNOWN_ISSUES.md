@@ -26,7 +26,7 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
 | Scarlett Isles Explorer (EXP) | 12 | 4 | 0 | 13 | 0 |
 | The Ironbow Bastion Manager (BAS) | 15 | 2 | 5 | 17 | 1 |
-| Clan Crest Creator (CRS) | 0 | 4 | 4 | 3 | 3 |
+| Clan Crest Creator (CRS) | 0 | 4 | 5 | 3 | 3 |
 | Arenas of The Scarlett Isles (ARN) | 8 | 2 | 0 | 17 | 0 |
 | The Heartwood Ritual (RIT) | 9 | 1 | 0 | 15 | 1 |
 | Pelagosi Puzzle Trials (PEL) | 11 | 1 | 0 | 6 | 0 |
@@ -1451,6 +1451,13 @@ Old repo: `_legacy/clan-crest-creator` (file:line references point there).
 - **After:** The four control groups sit two by two beside the preview. Every control, the preview and Download are in view at 1707 × 930, in full screen and on the TV, with no sideways scroll. The preview crest grows with the window's height.
 - **Evidence:** Measured in the planning and phase 2 sessions; tests/e2e/phase2.test.js "Fits the laptop and the TV".
 - **Crest rework (29 September 2026):** Still fixed. The new tabbed controls, the crest and Download all fit the laptop (in a window and full screen) and the TV, on every tab, with no sideways scroll. Switching tabs doesn't move anything.
+
+### CRS-15 · The Crest forgets your design when you leave it
+**Deliberate change** (Harry's request, 1 October 2026) · other
+
+- **Before:** The Crest saved nothing, as in the old tool. Going Home, switching tool or closing the window lost the design, without asking.
+- **After:** The design is saved as you go and comes back next time. The Crest now has Export and Import in the top bar and is included in "Back up everything", like the tools that always saved. It keeps one design: Random Crest and Reset replace it, without asking, as before. A saved design is checked when it loads: a choice that no longer exists (such as the old Kraken sigil) goes back to its default and the rest is kept, and a save that isn't a design at all is set aside, never deleted.
+- **Evidence:** `tools/crest/tool.js` (saving), `tools/crest/rules.js` `cleanDesign` and `importProblem`; tests in `tests/rules/crest.test.js` ("remembering your design") and `tests/e2e/phase2.test.js` ("Remembering your design").
 
 ## Arenas of The Scarlett Isles
 Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point there).
