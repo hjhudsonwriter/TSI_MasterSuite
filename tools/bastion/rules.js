@@ -87,7 +87,14 @@
       /* New: Military Actions under way, one per war action that has come
          due (rolls, deployment), so each step is kept as it happens
          (Harry's request, 2 October 2026). */
-      militaryActions: []
+      militaryActions: [],
+      /* New in the war's phase 2 (war-campaign-rules.js): the enemy armies
+         drawn up for missions, by "target|objective|force"; Lieutenants and
+         beasts recovering from a battle; and the counter that seeds each new
+         mission's dice. */
+      warMissions: {},
+      warRecovery: [],
+      warMissionSeq: 0
     };
     R.ensureLevels(s, data);
     return s;
@@ -177,9 +184,13 @@
         skipped: arr(s.turnInProgress.skipped) ? s.turnInProgress.skipped.slice() : []
       };
     }
-    if (arr(s.militaryActions)) d.militaryActions = s.militaryActions.filter(R.isMilitaryAction).map(R.normalizeMilitaryAction);
+    if (arr(s.militaryActions)) d.militaryActions = s.militaryActions.filter(isObj);
     R.normalizeBuiltExtras(d);
     R.ensureLevels(d, data);
+    /* The war's records (missions, recovery, depleted regiments, Military
+       Actions, including upgrading phase 1 ones) are tidied last, by
+       war-campaign-rules.js, as they need everything else loaded. */
+    if (R.normalizeWar) R.normalizeWar(d, s, data);
     return d;
   };
   R.toSave = function (state) { return TSI.clone(state); };
@@ -192,11 +203,11 @@
     var marks = ['treasuryGP', 'partyLevel', 'turn', 'builtExtras', 'pendingOrders', 'defenders', 'warehouse'];
     var found = marks.filter(function (k) { return k in s; }).length;
     if (found < 4) return 'It doesn\'t look like a Bastion save.';
-    var lists = ['builtExtras', 'pendingOrders', 'defenderBeasts', 'military', 'warehouse', 'log', 'warLog', 'militaryActions'];
+    var lists = ['builtExtras', 'pendingOrders', 'defenderBeasts', 'military', 'warehouse', 'log', 'warLog', 'militaryActions', 'warRecovery'];
     for (var i = 0; i < lists.length; i++) {
       if (lists[i] in s && !Array.isArray(s[lists[i]])) return 'Its ' + lists[i] + ' list is damaged.';
     }
-    var maps = ['defenders', 'favour', 'politicalCapital', 'tradeNetwork', 'arbitration', 'diplomacy', 'organization', 'facilityLevels'];
+    var maps = ['defenders', 'favour', 'politicalCapital', 'tradeNetwork', 'arbitration', 'diplomacy', 'organization', 'facilityLevels', 'warMissions'];
     for (var j = 0; j < maps.length; j++) {
       if (maps[j] in s && s[maps[j]] !== null && !isObj(s[maps[j]])) return 'Its ' + maps[j] + ' record is damaged.';
     }
@@ -230,6 +241,25 @@
     return W ? W.isSettings(v) : isObj(v);
   };
 
+  /* The War Table's painted terrain (tsi.bastion.warTerrain): one painting
+     per map, { [mapKey]: { cols, rows, cells } }, cells being a string of
+     terrain codes (war-units-data.js), one per square, row by row. */
+  R.isWarTerrain = function (v) {
+    if (!isObj(v)) return false;
+    var war = window.TSI_DATA && window.TSI_DATA.bastionWar;
+    var codes = war ? war.terrain.map(function (t) { return t.code; }).join('') : null;
+    return Object.keys(v).every(function (k) {
+      var p = v[k];
+      if (!isObj(p) || typeof p.cells !== 'string') return false;
+      var cols = p.cols, rows = p.rows;
+      if (!Number.isInteger(cols) || !Number.isInteger(rows) || cols < 1 || rows < 1 || cols > 200 || rows > 200) return false;
+      if (p.cells.length !== cols * rows) return false;
+      if (!codes) return true;
+      for (var i = 0; i < p.cells.length; i++) if (codes.indexOf(p.cells.charAt(i)) === -1) return false;
+      return true;
+    });
+  };
+
   R.importProblem = function (records) {
     for (var i = 0; i < records.length; i++) {
       var r = records[i];
@@ -241,6 +271,7 @@
       if (r.key === 'tsi.bastion.crest' && !R.isCrest(r.value)) return 'This file\'s crest picture isn\'t in the right form, so it wasn\'t imported. Nothing was changed.';
       if (r.key === 'tsi.bastion.warMap' && !R.isWarMap(r.value)) return 'This file\'s battle map isn\'t in the right form, so it wasn\'t imported. Nothing was changed.';
       if (r.key === 'tsi.bastion.warTable' && !R.isWarTable(r.value)) return 'This file\'s War Table settings aren\'t in the right form, so it wasn\'t imported. Nothing was changed.';
+      if (r.key === 'tsi.bastion.warTerrain' && !R.isWarTerrain(r.value)) return 'This file\'s battle terrain isn\'t in the right form, so it wasn\'t imported. Nothing was changed.';
     }
     return null;
   };
@@ -483,10 +514,11 @@
   };
 
   /* ---------- Lists, warehouse, favour, Political Capital ---------- */
-  /* Same name adds to the count (5406-5415). */
+  /* Same name adds to the count (5406-5415). A regiment that came home
+     under strength has its own row (depleted), which is never added to. */
   R.addToList = function (list, name, meta) {
     var idx = -1;
-    for (var i = 0; i < list.length; i++) if (list[i].name === name) { idx = i; break; }
+    for (var i = 0; i < list.length; i++) if (list[i].name === name && list[i].depleted !== true) { idx = i; break; }
     if (idx >= 0) {
       list[idx].qty = (list[idx].qty || 1) + 1;
       list[idx].source = (meta && meta.source) || list[idx].source;
@@ -821,6 +853,9 @@
     }
     if (fac.id === 'war_room' && fn.id === 'recruit') {
       var unit = optionLabel || 'Unit';
+      /* A depleted regiment of that type is brought back to full strength
+         first (war-campaign-rules.js). */
+      if (R.recruitUnit) return [['Order Completed', label + ' → ' + R.recruitUnit(s, data, unit)]];
       R.addToList(s.military, unit, { source: 'War Room' });
       return [['Order Completed', label + ' → Recruited: ' + unit + '.']];
     }
@@ -1153,16 +1188,9 @@
       }
     }
   };
-  /* What can be committed. */
-  R.warAvailable = function (s) {
-    return {
-      defenders: clampInt(s.defenders.count || 0, 0),
-      beasts: R.beastQty(s),
-      lieutenants: R.militaryQty(s, /lieutenant/i),
-      regiments: R.militaryQty(s, /regiment/i),
-      fullWar: s.organization.type !== 'unsworn'
-    };
-  };
+  /* What can be committed: R.warAvailable and the phase 2 R.warForces are
+     in war-campaign-rules.js (they leave out anything already committed or
+     recovering). */
   R.warCommit = function (s, fields) {
     var a = R.warAvailable(s);
     return {
@@ -1244,15 +1272,14 @@
 
   /* ---------- The Military Action (Harry's request, 2 October 2026) ----------
      When a war action comes due, it becomes a Military Action instead of a
-     single roll: three rolls (Weather, Morale, Luck), then the War Table
-     (deploy in the bottom half, then Start Battle). Until combat is built,
-     the battle is then settled by the war's single roll, as before, with
-     Luck's +1 or −1 added. Every step is saved as it happens, and each one
-     only applies at its own step, so a cancelled roll or a closed window
-     loses nothing and nothing is applied twice.
-     step: 'weather' → 'morale' → 'luck' → 'deploy' → 'resolve'. */
-  R.MILITARY_STEPS = ['weather', 'morale', 'luck', 'deploy', 'resolve'];
-  var FORCE_KINDS = ['regiment', 'defenders', 'lieutenant', 'beast'];
+     single roll: three rolls (Weather, Morale, Luck), then the battle on the
+     War Table. Every step is saved as it happens, and each one only applies
+     at its own step, so a cancelled roll or a closed window loses nothing
+     and nothing is applied twice.
+     step: 'weather' → 'morale' → 'luck' → 'deploy' → 'battle'.
+     The opening rolls are here; the rest (starting the action, its battle
+     line-up, saving the battle, calling off, and the consequences) is in
+     war-campaign-rules.js, with R.MILITARY_STEPS. */
   function maData(data) { return data.bastion.war.militaryAction; }
 
   /* "Giant Vulture" → "GV"; "Ape" → "Ap". */
@@ -1263,61 +1290,18 @@
     return (words[0][0] + words[words.length - 1][0]).toUpperCase();
   };
 
-  /* One token per committed unit: each Regiment, every committed defender
-     together in one block, each Lieutenant, and each beast (named from the
-     Menagerie in list order; numbered when there are several of a kind). */
-  R.militaryForces = function (s, data, commit) {
-    var out = [];
-    var i;
-    for (i = 1; i <= commit.regiments; i++) out.push({ id: 'reg-' + i, kind: 'regiment', label: 'Regiment ' + i, sub: maData(data).regimentSize + ' soldiers' });
-    if (commit.defenders > 0) out.push({ id: 'def', kind: 'defenders', label: 'Bastion Defenders', count: commit.defenders });
-    for (i = 1; i <= commit.lieutenants; i++) out.push({ id: 'lt-' + i, kind: 'lieutenant', label: 'Lieutenant ' + i, short: 'L' + i });
-    var names = [];
-    (Array.isArray(s.defenderBeasts) ? s.defenderBeasts : []).forEach(function (row) {
-      var q = clampInt(row && row.qty !== undefined && row.qty !== null ? row.qty : 1, 0);
-      for (var k = 0; k < q; k++) names.push(String((row && row.name) || 'Beast'));
-    });
-    var picked = [];
-    for (i = 0; i < commit.beasts; i++) picked.push(names[i] || 'Beast');
-    var seen = {};
-    picked.forEach(function (nm, idx) {
-      var total = picked.filter(function (x) { return x === nm; }).length;
-      seen[nm] = (seen[nm] || 0) + 1;
-      /* Several of a kind are numbered on the token too: "GV1", "GV2"… ("G10" from ten). */
-      var ini = R.forceInitials(nm);
-      var short = total > 1 ? (seen[nm] < 10 ? ini : ini.charAt(0)) + seen[nm] : ini;
-      out.push({ id: 'beast-' + (idx + 1), kind: 'beast', label: total > 1 ? nm + ' ' + seen[nm] : nm, short: short });
-    });
-    return out;
-  };
-
   R.militaryById = function (s, id) {
     var list = Array.isArray(s.militaryActions) ? s.militaryActions : [];
     for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
     return null;
   };
-
-  /* The war order becomes a Military Action: the order is removed and the
-     action recorded in one step, so it can't come due twice. Its name comes
-     from the order's, so no dice are used up (the rest of the turn rolls
-     exactly as before). */
-  R.beginMilitaryAction = function (s, data, order, rand, now) {
-    var plan = R.warPlan(s, data, order);
-    var commit = { defenders: plan.defenders, beasts: plan.beasts, lieutenants: plan.lieutenants, regiments: plan.regiments };
-    var ma = {
-      id: 'ma-' + String(order.id), orderId: String(order.id), turn: s.turn,
-      objective: plan.objective, targetKey: plan.targetKey, targetName: plan.targetName,
-      commit: commit, forces: R.militaryForces(s, data, commit),
-      step: 'weather', weather: null, morale: null, luck: null,
-      deployment: { started: false, locked: false, positions: {} }
-    };
-    R.removeOrder(s, order.id);
-    if (!Array.isArray(s.militaryActions)) s.militaryActions = [];
-    s.militaryActions.push(ma);
-    R.log(s, 'War Turn', R.militaryName(ma) + ': your forces muster for battle. The Military Action is ready to begin.', now);
-    return ma;
+  /* "Raid vs Bacca": the objective's own name from war-units-data.js (the
+     old tool wrote its id in capitals, "SEIZE_OUTPOST vs Bacca"). */
+  R.militaryName = function (ma) {
+    var war = window.TSI_DATA && window.TSI_DATA.bastionWar;
+    var o = war && war.objectives && war.objectives[ma.objective || 'raid'];
+    return (o ? o.name : String(ma.objective || 'raid').toUpperCase()) + ' vs ' + ma.targetName;
   };
-  R.militaryName = function (ma) { return String(ma.objective || 'raid').toUpperCase() + ' vs ' + ma.targetName; };
 
   R.militaryWeather = function (data, id) {
     var m = maData(data);
@@ -1332,6 +1316,15 @@
     if (step === 'morale') return dc.morale + (ma.weather ? R.militaryWeather(data, ma.weather.id).moraleDc || 0 : 0);
     if (step === 'luck') return dc.luck;
     return null;
+  };
+  /* The Luck roll's modifier to every attack in the battle: the war data
+     file's (W.luck passMod / failMod), so the Luck box, the summary and the
+     battle always agree; +1 / −1 if that file isn't loaded. */
+  R.luckMod = function (data, pass) {
+    var w = (data && data.war) || (window.TSI_DATA && window.TSI_DATA.bastionWar);
+    var l = w && w.luck;
+    if (pass) return l && typeof l.passMod === 'number' ? l.passMod : 1;
+    return l && typeof l.failMod === 'number' ? l.failMod : -1;
   };
   R.militaryRollTitle = function (step) {
     return { weather: 'Weather Conditions', morale: 'Morale', luck: 'Luck' }[step] || 'Roll';
@@ -1354,9 +1347,11 @@
       ma.morale = rec;
       ma.step = 'luck';
     } else if (step === 'luck') {
-      rec.mod = pass ? 1 : -1;
+      rec.mod = R.luckMod(data, pass);
       ma.luck = rec;
       ma.step = 'deploy';
+      /* The three rolls now belong to the mission and the battle's line-up. */
+      if (R.warConditionsRolled) R.warConditionsRolled(s, data, ma);
     } else {
       return null;
     }
@@ -1413,130 +1408,6 @@
     return out;
   };
 
-  /* "6 defenders, 5 beasts, 1 Lieutenant, 2 Regiments" (what's committed). */
-  R.militaryCommitLine = function (commit) {
-    var parts = [];
-    function add(n, one, many) { if (n > 0) parts.push(n + ' ' + (n === 1 ? one : many)); }
-    add(commit.defenders, 'defender', 'defenders');
-    add(commit.beasts, 'beast', 'beasts');
-    add(commit.lieutenants, 'Lieutenant', 'Lieutenants');
-    add(commit.regiments, 'Regiment', 'Regiments');
-    return parts.length ? parts.join(', ') : 'no forces';
-  };
-  /* Where a Military Action has got to, for the War Council panel. */
-  R.militaryStatus = function (ma) {
-    if (ma.step === 'weather') return 'Ready to begin. First: the Weather Conditions roll.';
-    if (ma.step === 'morale') return 'Weather rolled. Next: the Morale roll.';
-    if (ma.step === 'luck') return 'Morale rolled. Next: the Luck roll.';
-    if (ma.step === 'deploy') return ma.deployment && ma.deployment.started ? 'Deploying on the War Table.' : 'Rolls done. Next: deploy your forces on the War Table.';
-    return 'Deployment locked. Next: the battle roll.';
-  };
-
-  /* Save the deployment from the War Table. Only while deploying; Start
-     Battle (locked) moves the action on to its last step. */
-  R.militaryDeploy = function (s, id, dep) {
-    var ma = R.militaryById(s, id);
-    if (!ma || ma.step !== 'deploy' || !isObj(dep)) return false;
-    ma.deployment = R.cleanDeployment(dep, ma.forces);
-    if (ma.deployment.locked) ma.step = 'resolve';
-    return true;
-  };
-  R.cleanDeployment = function (dep, forces) {
-    var ids = (forces || []).map(function (f) { return f.id; });
-    var positions = {};
-    var src = isObj(dep) && isObj(dep.positions) ? dep.positions : {};
-    Object.keys(src).forEach(function (k) {
-      var p = src[k];
-      if (ids.indexOf(k) === -1 || !isObj(p)) return;
-      var x = Number(p.x), y = Number(p.y);
-      if (!isFinite(x) || !isFinite(y)) return;
-      positions[k] = { x: Math.max(0, Math.min(1, x)), y: Math.max(0, Math.min(1, y)) };
-    });
-    var started = !!(isObj(dep) && dep.started);
-    return { started: started, locked: !!(started && dep.locked), positions: positions };
-  };
-
-  /* The war's plan, with Luck's +1 or −1 on the roll. */
-  R.militaryPlan = function (s, data, ma) {
-    var plan = R.warPlan(s, data, { meta: {
-      objective: ma.objective, targetKey: ma.targetKey,
-      commitDefenders: ma.commit.defenders, commitBeasts: ma.commit.beasts,
-      commitLieutenants: ma.commit.lieutenants, commitRegiments: ma.commit.regiments
-    } });
-    plan.luck = ma.luck ? ma.luck.mod : 0;
-    plan.mod += plan.luck;
-    return plan;
-  };
-  R.militaryNotes = function (data, ma) {
-    var lines = [];
-    if (ma.weather) lines.push('Weather: ' + R.militaryWeather(data, ma.weather.id).title + ' (d20 ' + ma.weather.total + ' vs DC ' + ma.weather.dc + ')');
-    if (ma.morale) lines.push('Morale: ' + (ma.morale.pass ? 'High' : 'Low') + ' (d20 ' + ma.morale.total + ' vs DC ' + ma.morale.dc + ')');
-    if (ma.luck) lines.push('Luck: ' + signed(ma.luck.mod) + ' to the roll (d20 ' + ma.luck.total + ' vs DC ' + ma.luck.dc + ')');
-    var placed = Object.keys((ma.deployment && ma.deployment.positions) || {}).length;
-    lines.push('Deployment: ' + placed + ' of ' + ma.forces.length + ' units placed on the War Table');
-    return lines;
-  };
-
-  /* After Start Battle: the war's single roll settles it, as before, and the
-     Military Action is done. Only at the 'resolve' step, so only once. */
-  R.finishMilitaryAction = function (s, data, id, roll, rand, now) {
-    var ma = R.militaryById(s, id);
-    if (!ma || ma.step !== 'resolve' || !roll) return null;
-    var line = R.resolveWar(s, data, R.militaryPlan(s, data, ma), roll, rand, now, R.militaryNotes(data, ma));
-    s.militaryActions = s.militaryActions.filter(function (x) { return x.id !== ma.id; });
-    return line;
-  };
-
-  /* Call it off: nothing is won or lost. */
-  R.callOffMilitaryAction = function (s, id, now) {
-    var ma = R.militaryById(s, id);
-    if (!ma) return false;
-    s.militaryActions = s.militaryActions.filter(function (x) { return x.id !== ma.id; });
-    R.log(s, 'War Turn', R.militaryName(ma) + ': the Military Action was called off. Nothing was won or lost.', now);
-    return true;
-  };
-
-  /* Checking a saved Military Action. */
-  R.isMilitaryAction = function (v) {
-    return isObj(v) && typeof v.id === 'string' && R.MILITARY_STEPS.indexOf(v.step) !== -1 && isObj(v.commit) && Array.isArray(v.forces);
-  };
-  function cleanRoll(r, extra) {
-    if (!isObj(r)) return null;
-    var out = { d20: clampInt(r.d20, 1, 20), total: clampInt(r.total, -100, 200), dc: clampInt(r.dc, 0, 100), pass: !!r.pass };
-    if (extra === 'id') out.id = typeof r.id === 'string' ? r.id : 'clear';
-    if (extra === 'mod') out.mod = r.mod === 1 ? 1 : -1;
-    return out;
-  }
-  R.normalizeMilitaryAction = function (v) {
-    var c = v.commit;
-    var commit = {
-      defenders: clampInt(c.defenders, 0), beasts: clampInt(c.beasts, 0),
-      lieutenants: clampInt(c.lieutenants, 0), regiments: clampInt(c.regiments, 0)
-    };
-    var forces = v.forces.filter(function (f) { return isObj(f) && typeof f.id === 'string' && FORCE_KINDS.indexOf(f.kind) !== -1; }).map(function (f) {
-      var out = { id: f.id, kind: f.kind, label: String(f.label || '') };
-      if (f.short !== undefined) out.short = String(f.short);
-      if (f.sub !== undefined) out.sub = String(f.sub);
-      if (f.count !== undefined) out.count = clampInt(f.count, 0);
-      return out;
-    });
-    var weather = cleanRoll(v.weather, 'id'), morale = cleanRoll(v.morale), luck = cleanRoll(v.luck, 'mod');
-    var deployment = R.cleanDeployment(v.deployment, forces);
-    /* A step can't be ahead of the results it needs. */
-    var at = R.MILITARY_STEPS.indexOf(v.step), step = v.step;
-    if (!weather && at > 0) step = 'weather';
-    else if (!morale && at > 1) step = 'morale';
-    else if (!luck && at > 2) step = 'luck';
-    else if (step === 'resolve' && !deployment.locked) step = 'deploy';
-    return {
-      id: v.id, orderId: String(v.orderId || ''), turn: clampInt(v.turn, 1),
-      objective: String(v.objective || 'raid'), targetKey: String(v.targetKey || ''), targetName: String(v.targetName || ''),
-      commit: commit, forces: forces, step: step,
-      weather: weather, morale: morale, luck: luck,
-      deployment: deployment
-    };
-  };
-
   /* ---------- Bastion events (4728-4736) ---------- */
   /* "99-00" means 99 to 100, so the Treasure event can come up (B11). */
   R.resolveEvent = function (roll, table) {
@@ -1566,6 +1437,8 @@
      closed window loses nothing and the turn can be finished later. */
   R.startTurn = function (s, now) {
     s.turn += 1;
+    /* Lieutenants and beasts whose recovery is over are fit again (war-campaign-rules.js). */
+    if (R.tickRecovery) R.tickRecovery(s, now);
     R.tickDiplomacy(s).forEach(function (l) { R.log(s, l[0], l[1], now); });
     s.turnInProgress = { turn: s.turn, stage: 'trade', skipped: [] };
   };

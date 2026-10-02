@@ -45,30 +45,43 @@ const setUp = (page, fn) => page.evaluate(src => TSI.bastion.debug.change(new Fu
 const text = (page, test) => page.textContent('[data-test="' + test + '"]');
 const pause = page => page.waitForTimeout(400);
 async function modalOpen(page) { return !!(await page.$('.tsi-modal')); }
-async function modalTitle(page) { const m = await page.$('.tsi-modal__title'); return m ? m.textContent() : null; }
+/* Waits briefly for the pop-up: some open only after a file has been read. */
+async function modalTitle(page) {
+  await page.waitForSelector('.tsi-modal__title', { timeout: 5000 }).catch(() => {});
+  const m = await page.$('.tsi-modal__title'); return m ? m.textContent() : null;
+}
 async function clickModal(page, label) { await page.click('.tsi-modal__foot button:text-is("' + label + '")'); await page.waitForTimeout(150); }
 async function d20(page, v) {
   await page.waitForSelector('[data-test=d20]');
   await page.fill('[data-test=d20]', String(v));
   await clickModal(page, 'Continue');
 }
-/* Answer every pop-up: type the next roll into dice boxes, press the main button on the rest.
-   A Military Action's War Table is answered too: Begin Deployment, then Start Battle. */
+/* Answer every pop-up: type the next roll into dice boxes, press the main button on the rest. */
 async function answerAll(page, rolls) {
   rolls = (rolls || []).slice();
   for (let n = 0; n < 60; n++) {
     await page.waitForTimeout(150);
-    if (await modalOpen(page)) {
-      if (await page.$('[data-test=d20]')) await d20(page, rolls.shift());
-      else { await page.click('.tsi-modal__foot button.tsi-btn--primary'); await page.waitForTimeout(150); }
-      continue;
-    }
-    if (!(await page.$('[data-test=wt-root]'))) return;
-    await page.waitForTimeout(400);
-    if (await page.isVisible('[data-test=wt-begin-deploy]')) await page.click('[data-test=wt-begin-deploy]');
-    else if (await page.isVisible('[data-test=wt-start-battle]')) await page.click('[data-test=wt-start-battle]');
-    else return;
+    if (!(await modalOpen(page))) return;
+    if (await page.$('[data-test=d20]')) await d20(page, rolls.shift());
+    else { await page.click('.tsi-modal__foot button.tsi-btn--primary'); await page.waitForTimeout(150); }
   }
+}
+/* Record what the Bastion passes to the War Table when it opens it (contract 8). */
+async function spyTable(page) {
+  await page.evaluate(() => {
+    window.__wtOpts = null;
+    const wt = TSI.bastion.warTable;
+    if (wt.__spied) return;
+    const open = wt.open;
+    wt.open = function (o) {
+      window.__wtOpts = {
+        keys: Object.keys(o).sort(), title: o.title, armyName: o.armyName, enemy: o.enemy, crest: o.crest, canCallOff: o.canCallOff,
+        summary: o.summary, battle: o.battle ? o.battle.phase : null, specUnits: o.spec ? o.spec.player.units.length : 0, inert: (o.inert || []).length
+      };
+      return open.apply(this, arguments);
+    };
+    wt.__spied = true;
+  });
 }
 async function advance(page, rolls) {
   await pause(page);
@@ -685,75 +698,159 @@ function serve(dir) {
       await H.shot(page, 'p9-crest-none');
     });
 
-    await check('five Giant Vultures can all be committed (BAS-25); a double click queues one war action (BAS-15); committing nothing is refused', async () => {
+    await check('the War Turn: target, objective, enemy force, and a box for each kind of force with what\'s free (war phase 2)', async () => {
       await setUp(page, (s) => {
         s.defenders.count = 4;
+        s.defenders.armed = true;
         s.defenderBeasts = [{ name: 'Giant Vulture', qty: 5 }];
-        s.military = [{ name: 'Lieutenant (1)', qty: 1 }, { name: 'Regiment (100)', qty: 2 }];
+        s.military = [{ name: 'Lieutenant (1)', qty: 1 }, { name: 'Regiment (100)', qty: 1 }, { name: 'Line Infantry (100)', qty: 1 }, { name: 'Archers (50)', qty: 1 }];
       });
+      equal(await page.$$eval('[data-test=war-objective] option', os => os.map(o => o.textContent)), ['Raid', 'Skirmish', 'Defend Bastion', 'Seize Outpost']);
+      equal(await page.$$eval('[data-test=war-tier] option', os => os.map(o => o.textContent)), ['Small local force', 'Established local force', 'Major force']);
+      equal(await page.inputValue('[data-test=war-tier]'), 'established');
+      equal(await page.$$eval('[data-test=war-forces] input', is => is.map(i => i.dataset.test)), ['war-defenders', 'war-lieutenants', 'war-unit-line', 'war-unit-archers', 'war-beast-giant-vulture']);
+      equal([await text(page, 'war-avail-defenders'), await text(page, 'war-avail-lieutenants'), await text(page, 'war-avail-unit-line'), await text(page, 'war-avail-unit-archers'), await text(page, 'war-avail-beast-giant-vulture')],
+        ['4 available', '1 available', '2 available', '1 available', '5 available'], 'the Regiment from before counts as Line Infantry');
+      /* Each name shows its stat block. */
+      await page.hover('.tsi-bas-war-field__name--tip:text-is("Line Infantry")');
+      await page.waitForSelector('[data-test=tooltip]:not([hidden])');
+      const tip = await text(page, 'tooltip');
+      assert(/^Line Infantry/.test(tip) && /Military unit • 100 soldiers/.test(tip) && /Cohesion5/.test(tip) && /Attack\+4/.test(tip) && /Defence13/.test(tip) && /Reliable general-purpose troops/.test(tip), tip);
+      await page.mouse.move(5, 5);
+      /* From the keyboard: moving to a box with Tab shows the same stat block beside it; a click into a box doesn't. */
+      await page.click('[data-test=war-defenders]');
+      equal(await page.isHidden('[data-test=tooltip]'), true, 'a click into a box shows nothing');
+      const focusTip = () => page.evaluate(() => [document.activeElement.dataset.test, document.activeElement.getAttribute('aria-describedby'), !document.querySelector('[data-test=tooltip]').hidden]);
+      await page.keyboard.press('Tab');
+      equal(await focusTip(), ['war-lieutenants', 'tsi-bas-tip', true]);
+      assert(/^Lieutenant/.test(await text(page, 'tooltip')), await text(page, 'tooltip'));
+      await page.keyboard.press('Tab');
+      equal(await focusTip(), ['war-unit-line', 'tsi-bas-tip', true]);
+      assert(/^Line Infantry/.test(await text(page, 'tooltip')) && /Cohesion5/.test(await text(page, 'tooltip')), await text(page, 'tooltip'));
+      equal((await H.layoutCheck(page, ['[data-test=tooltip]'])).outOfView, [], 'beside the box, in view');
+      await H.shot(page, 'p9-war-turn-keys');
+      await page.keyboard.press('Escape');
+      equal(await focusTip(), ['war-unit-line', null, false], 'Escape hides it');
+      await page.keyboard.press('Tab');
+      assert(/^Archers/.test(await text(page, 'tooltip')) && (await focusTip())[2], await text(page, 'tooltip'));
+      await page.keyboard.press('Tab');
+      equal(await focusTip(), ['war-beast-giant-vulture', 'tsi-bas-tip', true]);
+      assert(/^Giant Vulture/.test(await text(page, 'tooltip')) && /Flight/.test(await text(page, 'tooltip')), await text(page, 'tooltip'));
+      await page.keyboard.press('Tab');
+      equal(await page.isHidden('[data-test=tooltip]'), true, 'gone when the focus moves on');
+    });
+
+    await check('nothing that fights is refused; each box keeps to what\'s free once typed; Lieutenants typed first are kept', async () => {
       await page.selectOption('[data-test=war-target]', 'bacca');
-      await page.fill('[data-test=war-defenders]', '0');
-      await page.fill('[data-test=war-beasts]', '0');
+      for (const t of ['war-defenders', 'war-lieutenants', 'war-unit-line', 'war-unit-archers', 'war-beast-giant-vulture']) await page.fill('[data-test=' + t + ']', '0');
       await page.click('[data-test=queue-war]');
-      assert(/Commit at least something/.test(await H.modalText(page)));
+      assert(/Commit at least one force that fights/.test(await H.modalText(page)));
       await clickModal(page, 'OK');
-      await page.fill('[data-test=war-defenders]', '9');
-      await page.press('[data-test=war-defenders]', 'Tab');
-      equal(await page.inputValue('[data-test=war-defenders]'), '4', 'kept to what\'s available once typed');
-      await page.fill('[data-test=war-beasts]', '9');
-      await page.press('[data-test=war-beasts]', 'Tab');
-      equal(await page.inputValue('[data-test=war-beasts]'), '5', 'all five vultures, not just one');
-      assert(/Available: 4 defenders, 5 beasts, 1 lieutenants, 2 regiments/.test(await text(page, 'war-hint')), await text(page, 'war-hint'));
-      equal([await text(page, 'war-avail-defenders'), await text(page, 'war-avail-beasts'), await text(page, 'war-avail-lieutenants'), await text(page, 'war-avail-regiments')],
-        ['4 available', '5 available', '1 available', '2 available']);
-      /* Typed as a person does (Harry's report: they wouldn't take a number): never rewritten mid-typing. */
-      await page.click('[data-test=war-lieutenants]');
-      await page.keyboard.press('Backspace');
-      await page.keyboard.type('1');
-      equal(await page.inputValue('[data-test=war-lieutenants]'), '1');
-      await page.click('[data-test=war-regiments]');
+      /* A Lieutenant alone can't fight; the hint says why. */
+      await page.fill('[data-test=war-lieutenants]', '1');
+      await page.press('[data-test=war-lieutenants]', 'Tab');
+      equal(await page.inputValue('[data-test=war-lieutenants]'), '1', 'kept, though nothing is committed for it to lead yet');
+      assert(/Each Lieutenant leads one regiment or defender detachment, so none of them can march with these forces\./.test(await text(page, 'war-hint')), await text(page, 'war-hint'));
+      await pause(page);
+      await page.click('[data-test=queue-war]');
+      assert(/Commit at least one force that fights/.test(await H.modalText(page)));
+      await clickModal(page, 'OK');
+      equal((await st(page)).pendingOrders, []);
+      for (const [t, typed, kept] of [['war-defenders', '9', '4'], ['war-beast-giant-vulture', '9', '5'], ['war-unit-line', '5', '2']]) {
+        await page.fill('[data-test=' + t + ']', typed);
+        await page.press('[data-test=' + t + ']', 'Tab');
+        equal(await page.inputValue('[data-test=' + t + ']'), kept, t + ' kept to what\'s free once typed');
+      }
+      /* Typed as a person does: never rewritten mid-typing; the arrows stop at what's free. */
+      await page.click('[data-test=war-unit-archers]');
       await page.keyboard.press('Control+A');
-      await page.keyboard.type('2');
-      equal(await page.inputValue('[data-test=war-regiments]'), '2');
-      await page.press('[data-test=war-regiments]', 'ArrowUp');
-      equal(await page.inputValue('[data-test=war-regiments]'), '2', 'the arrows stop at what\'s available');
+      await page.keyboard.type('1');
+      equal(await page.inputValue('[data-test=war-unit-archers]'), '1');
+      await page.press('[data-test=war-unit-archers]', 'ArrowUp');
+      equal(await page.inputValue('[data-test=war-unit-archers]'), '1', 'the arrows stop at what\'s free');
+      equal(await text(page, 'war-hint'), 'Available: 4 defenders, 1 Lieutenant, 3 regiments, 5 beasts. Everything can be committed.');
+    });
+
+    await check('the intelligence estimate is drawn up once and saved; what you commit never changes it; your army\'s Battle Value follows', async () => {
+      const est = await text(page, 'war-intel-estimate');
+      assert(/^Estimated enemy: \d+–\d+ Battle Value; about \d+ to \d+ formations/.test(est), est);
+      assert(/^Raid: Secure and extract two of three supply markers/.test(await text(page, 'war-intel-rule')));
+      const before = (await st(page)).warMissions;
+      assert(before['bacca|raid|established'] && before['bacca|raid|established'].enemy.units.length > 0, Object.keys(before).join(','));
+      await page.fill('[data-test=war-defenders]', '3');
+      await page.fill('[data-test=war-defenders]', '4');
+      await page.press('[data-test=war-defenders]', 'Tab');
+      equal((await st(page)).warMissions, before, 'unchanged by what\'s committed');
+      equal(await text(page, 'war-intel-estimate'), est);
+      const bv = await page.evaluate(() => {
+        const R = TSI.bastion.rules;
+        const s = TSI.bastion.debug.state();
+        const commit = R.warCommit2(s, {}, { defenders: 4, lieutenants: 1, units: { line: 2, archers: 1 }, beasts: { 'Giant Vulture': 5 } });
+        return R.armyBV(s, {}, commit);
+      });
+      equal(await text(page, 'war-army-bv'), 'Your army: ' + bv + ' Battle Value');
+      await page.selectOption('[data-test=war-tier]', 'major');
+      assert((await st(page)).warMissions['bacca|raid|major'], 'a major force is drawn up when it\'s shown');
+      assert(await text(page, 'war-intel-estimate') !== est);
+      await page.selectOption('[data-test=war-tier]', 'established');
+      equal(await text(page, 'war-intel-estimate'), est, 'the same army as before');
+      await page.evaluate(() => document.querySelector('[data-card=war]').scrollIntoView({ block: 'start' }));
+      await page.evaluate(() => window.scrollBy(0, -130));
+      await H.shot(page, 'p9-war-turn');
+    });
+
+    await check('a double click queues one war action (BAS-15), against the mission shown', async () => {
       await pause(page);
       await page.dblclick('[data-test=queue-war]');
       await page.waitForTimeout(300);
-      equal((await st(page)).pendingOrders.map(o => [o.label, o.meta.commitDefenders, o.meta.commitBeasts, o.meta.commitLieutenants, o.meta.commitRegiments]), [['War Action', 4, 5, 1, 2]]);
+      const s = await st(page);
+      equal(s.pendingOrders.map(o => [o.label, o.meta.objective, o.meta.targetName, o.meta.tier, o.meta.missionKey, o.meta.commit]),
+        [['War Action', 'raid', 'Bacca', 'established', 'bacca|raid|established', { defenders: 4, lieutenants: 1, units: { line: 2, archers: 1 }, beasts: { 'Giant Vulture': 5 } }]]);
+      equal(s.log[0].title + ': ' + s.log[0].body, 'War Action Queued: Raid vs Bacca (resolves next Bastion Turn).');
+      equal(await text(page, 'war-avail-unit-line'), 'None free: committed to a war action');
     });
 
     await check('on Advance Bastion Turn the war becomes a Military Action: Begin, or Later from the War Council', async () => {
       await pause(page);
       await page.click('[data-test=advance]');
-      await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal__title'); return t && /^War Turn: RAID vs Bacca$/.test(t.textContent); });
+      /* On screen and in the log the objective has its own name: "Raid vs Bacca". */
+      await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal__title'); return t && /^War Turn: Raid vs Bacca$/.test(t.textContent); });
       const t = await H.modalText(page);
-      assert(/Your forces muster for battle/.test(t) && /Committed: 4 defenders, 5 beasts, 1 Lieutenant, 2 Regiments\./.test(t), t);
+      assert(/Your forces muster for battle/.test(t) && /Committed: 4 defenders, 1 Lieutenant, Line Infantry ×2, Archers, Giant Vulture ×5\./.test(t) && /Enemy: Established local force\. Estimated enemy: /.test(t), t);
+      equal((await H.layoutCheck(page, ['.tsi-modal', '.tsi-modal__foot button'])).outOfView, []);
+      await H.shot(page, 'p9-war-muster');
       await clickModal(page, 'Later');
       await page.waitForFunction(() => !TSI.bastion.debug.busy());
       const s = await st(page);
       equal(s.pendingOrders, [], 'the order is gone, so it can\'t come due twice');
-      equal(s.militaryActions.map(m => [m.step, m.objective, m.targetName, m.forces.length]), [['weather', 'raid', 'Bacca', 9]]);
-      assert(s.log.some(l => l.body === 'RAID vs Bacca: your forces muster for battle. The Military Action is ready to begin.'));
+      const ma = s.militaryActions[0];
+      equal([s.militaryActions.length, ma.v, ma.step, ma.objective, ma.targetName, ma.tier, ma.missionKey], [1, 2, 'weather', 'raid', 'Bacca', 'established', 'bacca|raid|established']);
+      equal([ma.spec.player.units.map(u => u.name), ma.spec.player.leaders.length, ma.spec.player.defenders.count],
+        [['Line Infantry', 'Line Infantry', 'Archers', 'Giant Vulture', 'Giant Vulture', 'Giant Vulture', 'Giant Vulture', 'Giant Vulture'], 1, 4]);
+      equal(ma.spec.enemy, s.warMissions['bacca|raid|established'].enemy, 'the enemy the scouts saw');
+      assert(s.log.some(l => l.body === 'Raid vs Bacca: your forces muster for battle. The Military Action is ready to begin.'));
       equal(await page.textContent('[data-test=ma-continue-0]'), 'Begin Military Action');
+      equal(await page.textContent('[data-test=ma-0] .tsi-bas-item__name'), 'Raid vs Bacca');
       equal(await page.textContent('[data-test=ma-status-0]'), 'Ready to begin. First: the Weather Conditions roll.');
+      equal(await page.isVisible('[data-test=ma-calloff-0]'), true);
       equal(await page.$eval('[data-test=queue-war]', b => b.classList.contains('tsi-btn--primary')), false, 'one main action in the panel');
       equal(await page.isDisabled('[data-test=advance]'), false);
     });
 
     await check('a waiting Military Action survives reopening, and a notice says where it is', async () => {
       await reopen(page);
-      await H.waitForNotice(page, /A Military Action \(RAID vs Bacca\) is waiting/);
+      await H.waitForNotice(page, /A Military Action \(Raid vs Bacca\) is waiting/);
       equal((await st(page)).militaryActions.length, 1);
     });
 
     await check('Weather (DC 12), Morale (DC 12) and Luck (DC 10), each with its story; a double click can\'t make the next roll', async () => {
+      await spyTable(page);
       await pause(page);
       await page.click('[data-test=ma-continue-0]');
       await page.waitForSelector('[data-test=d20]');
       equal((await H.noticeTexts(page)).filter(t => /is waiting/.test(t)), [], 'the notice goes once it has done its job');
       let t = await H.modalText(page);
-      assert(/Weather Conditions: RAID vs Bacca/.test(t) && /Modifier: \+0/.test(t) && /DC 12/.test(t), t);
+      assert(/Weather Conditions: Raid vs Bacca/.test(t) && /Modifier: \+0/.test(t) && /DC 12/.test(t), t);
       await d20(page, 15);
       await page.waitForSelector('[data-test=ma-result]');
       t = await H.modalText(page);
@@ -763,68 +860,39 @@ function serve(dir) {
       await page.waitForTimeout(500);
       equal([(await st(page)).militaryActions[0].step, !!(await page.$('[data-test=d20]'))], ['morale', true], 'the second click didn\'t press the Morale dice box');
       t = await H.modalText(page);
-      assert(/Morale: RAID vs Bacca/.test(t) && /DC 12/.test(t), t);
+      assert(/Morale: Raid vs Bacca/.test(t) && /DC 12/.test(t), t);
       await d20(page, 9);
       t = await H.modalText(page);
       assert(/Morale: Low/.test(t) && /d20 9 vs DC 12: Failed/.test(t) && /Even under a clear sky, doubt spreads/.test(t), t);
       await clickModal(page, 'Continue');
       t = await H.modalText(page);
-      assert(/Luck: RAID vs Bacca/.test(t) && /DC 10/.test(t), t);
+      assert(/Luck: Raid vs Bacca/.test(t) && /DC 10/.test(t), t);
       await d20(page, 3);
       t = await H.modalText(page);
       assert(/Luck: −1/.test(t) && /the Gods do not look kindly upon this needless bloodshed/.test(t), t);
       await clickModal(page, 'Continue');
       await page.waitForSelector('[data-test=wt-root]');
-      equal((await st(page)).militaryActions[0].step, 'deploy');
+      const ma = (await st(page)).militaryActions[0];
+      equal([ma.step, ma.spec.conditions], ['deploy', { weather: 'clear', moraleMod: -2, luckMod: -1 }]);
     });
 
-    /* Where each force sits, in board units, against the midline. */
-    const tokenBoxes = () => page.evaluate(() => {
-      const h = TSI.bastion.warTable.current, W = TSI.bastion.warTableRules;
-      const b = h.board(), set = h.settings(), d = h.deployment();
-      const ma = TSI.bastion.debug.state().militaryActions[0];
-      return ma.forces.filter(f => d.positions[f.id]).map(f => {
-        const p = d.positions[f.id], dim = W.tokenDims(f, set.grid, set.tokenScale);
-        return { id: f.id, top: p.y * b.h - dim.h / 2, bottom: p.y * b.h + dim.h / 2, left: p.x * b.w - dim.w / 2, right: p.x * b.w + dim.w / 2, mid: b.h / 2, w: b.w, h: b.h };
-      });
-    });
-    const allOnOurGround = boxes => boxes.every(x => x.top >= x.mid - 0.5 && x.bottom <= x.h + 0.5 && x.left >= -0.5 && x.right <= x.w + 0.5);
-
-    await check('the War Table: the conditions, the forces listed, then Begin Deployment sets every force on your ground', async () => {
-      assert(/RAID vs Bacca/.test(await text(page, 'wt-title')));
+    await check('the War Table opens with the line-up, the conditions, your Clan\'s name and the enemy; deployment is saved as it goes', async () => {
+      const o = await page.evaluate(() => window.__wtOpts);
+      equal(o.keys, ['armyName', 'battle', 'canCallOff', 'crest', 'enemy', 'host', 'inert', 'life', 'onCallOff', 'onChange', 'onClose', 'onEnd', 'rand', 'spec', 'store', 'summary', 'title', 'withdrawPreview']);
+      equal([o.title, o.armyName, o.enemy, o.crest, o.canCallOff, o.battle, o.specUnits, o.inert], ['Raid vs Bacca', 'Clan Ironbow', { clanKey: 'bacca', clanName: 'Bacca' }, null, true, null, 8, 2]);
+      equal(o.summary, [{ label: 'Weather', value: 'Clear Day' }, { label: 'Morale', value: 'Low' }, { label: 'Luck', value: '−1' }]);
+      assert(/Raid vs Bacca/.test(await text(page, 'wt-title')), await text(page, 'wt-title'));
       const sum = await text(page, 'wt-summary');
       assert(/Clear Day/.test(sum) && /Low/.test(sum) && /−1/.test(sum), sum);
-      equal(await page.$$eval('.tsi-bas-wt-token', t => t.length), 0, 'no forces on the map before deployment');
-      const roster = await text(page, 'wt-roster');
-      assert(/Regiment 1/.test(roster) && /Bastion Defenders/.test(roster) && /Lieutenant 1/.test(roster) && /Giant Vulture 5/.test(roster), roster);
       equal(await page.evaluate(() => document.querySelector('.tsi-bas-layout').inert), true, 'the Bastion behind is out of reach');
-      equal(await page.isVisible('[data-test=wt-start-battle]'), false);
+      equal(await page.isVisible('[data-test=wt-calloff]'), true, 'Call off, before the battle');
       await pause(page);
       await page.click('[data-test=wt-begin-deploy]');
-      await page.waitForTimeout(300);
-      equal(await page.$$eval('.tsi-bas-wt-token', t => t.map(x => x.dataset.kind).sort()), ['beast', 'beast', 'beast', 'beast', 'beast', 'defenders', 'lieutenant', 'regiment', 'regiment']);
-      const boxes = await tokenBoxes();
-      equal(boxes.length, 9);
-      assert(allOnOurGround(boxes), JSON.stringify(boxes));
-      const s = await st(page);
-      equal([s.militaryActions[0].deployment.started, Object.keys(s.militaryActions[0].deployment.positions).length], [true, 9], 'saved');
-      equal(await page.isVisible('[data-test=wt-start-battle]'), true);
+      await page.waitForTimeout(400);
+      equal(await page.$$eval('.tsi-bas-wt-token[data-side=player]', t => t.length), 8, 'two Line Infantry, the Archers and five Giant Vultures (the defenders support the regiments)');
+      const ma = (await st(page)).militaryActions[0];
+      equal([ma.step, ma.battle && ma.battle.phase, ma.battle.units.filter(u => u.side === 'player' && u.pos).length], ['deploy', 'deploy', 8], 'saved');
       await H.shot(page, 'p9-war-table-deployed');
-    });
-
-    await check('a force dragged towards the enemy stops at the midline; the move is saved and kept after closing and reopening', async () => {
-      const r = await page.evaluate(() => TSI.bastion.warTable.current.tokenScreenRect('reg-1'));
-      await page.mouse.move(r.x + r.w / 2, r.y + r.h / 2);
-      await page.mouse.down();
-      await page.mouse.move(r.x + r.w / 2 + 40, r.y - 600, { steps: 10 });
-      await page.mouse.up();
-      await page.waitForTimeout(300);
-      const reg = (await tokenBoxes()).find(b => b.id === 'reg-1');
-      assert(Math.abs(reg.top - reg.mid) < 1, JSON.stringify(reg));
-      const saved = (await st(page)).militaryActions[0].deployment.positions['reg-1'];
-      const live = await page.evaluate(() => TSI.bastion.warTable.current.deployment().positions['reg-1']);
-      equal(saved, live);
-      const before = await page.evaluate(() => TSI.bastion.warTable.current.tokenScreenRect('reg-1'));
       await pause(page);
       await page.click('[data-test=wt-close]');
       await page.waitForTimeout(200);
@@ -833,105 +901,146 @@ function serve(dir) {
       equal(await page.textContent('[data-test=ma-status-0]'), 'Deploying on the War Table.');
       await reopen(page);
       await H.dismissNotices(page);
+      await spyTable(page);
       await pause(page);
       await page.click('[data-test=ma-continue-0]');
       await page.waitForSelector('[data-test=wt-root]');
       await page.waitForTimeout(300);
-      const after = await page.evaluate(() => TSI.bastion.warTable.current.tokenScreenRect('reg-1'));
-      ['x', 'y', 'w', 'h'].forEach(k => assert(Math.abs(after[k] - before[k]) < 1, k + ' ' + JSON.stringify([before, after])));
+      equal((await page.evaluate(() => window.__wtOpts)).battle, 'deploy', 'the saved deployment goes back to the table');
       equal(await page.isVisible('[data-test=wt-begin-deploy]'), false, 'deployment carries on where it was');
+      equal(await page.$$eval('.tsi-bas-wt-token[data-side=player]', t => t.length), 8);
     });
 
-    await check('the War Table fits the laptop and the TV, with its controls in view, and a battle map can be uploaded', async () => {
+    await check('the War Table fits the laptop and the TV, with its controls in view', async () => {
       for (const size of ['laptop', 'laptopFull', 'tv']) {
         await page.setViewportSize(H.SIZES[size].viewport);
-        await page.waitForTimeout(250);
-        const lc = await H.layoutCheck(page, ['[data-test=wt-upload]', '[data-test=wt-grid]', '[data-test=wt-zoom-fit]', '[data-test=wt-fullscreen]', '[data-test=wt-close]', '[data-test=wt-start-battle]', '[data-test=wt-stage]']);
+        await page.waitForTimeout(300);
+        const lc = await H.layoutCheck(page, ['[data-test=wt-upload]', '[data-test=wt-zoom-fit]', '[data-test=wt-fullscreen]', '[data-test=wt-close]', '[data-test=wt-start-battle]', '[data-test=wt-calloff]', '[data-test=wt-stage]']);
         equal(lc.scrollWidth, lc.clientWidth, size + ': no sideways scroll');
         equal(lc.outOfView, [], size + ': in view');
-        assert(allOnOurGround(await tokenBoxes()), size);
       }
       await page.setViewportSize(H.SIZES.laptop.viewport);
-      await page.waitForTimeout(250);
-      await H.chooseFile(page, '[data-test=wt-upload]', writeCrest('battle-map.png', 900));
-      await page.waitForFunction(() => { const m = document.querySelector('[data-test=wt-map]'); return m && !m.hidden && m.naturalWidth > 0; });
-      equal(await page.evaluate(() => TSI.store.get('tsi.bastion.warMap').name), 'tsi-p9-battle-map.png');
-      assert(allOnOurGround(await tokenBoxes()), 'still on our ground on a square map');
-      await H.shot(page, 'p9-war-table-map');
+      await page.waitForTimeout(300);
     });
 
-    await check('Start Battle asks first, locks the deployment, and the battle is settled by the single roll with Luck on it', async () => {
-      await pause(page);
-      await page.click('[data-test=wt-start-battle]');
-      assert(/Lock in your deployment\?/.test(await H.modalText(page)));
-      await clickModal(page, 'Cancel');
-      equal((await st(page)).militaryActions[0].step, 'deploy');
+    await check('Start Battle; after the first activation Call off goes and Withdraw stays; the battle is saved as it goes', async () => {
       await pause(page);
       await page.click('[data-test=wt-start-battle]');
       await clickModal(page, 'Start Battle');
-      await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal__title'); return t && t.textContent === 'The Battle Is Joined'; });
-      assert(/Luck −1 is included/.test(await H.modalText(page)));
-      equal(await page.isVisible('[data-test=wt-banner]'), true);
-      equal((await st(page)).militaryActions[0].step, 'resolve');
-      await clickModal(page, 'Continue');
-      let t = await H.modalText(page);
-      assert(/War Turn: RAID vs Bacca/.test(t) && /Modifier: \+4/.test(t) && /DC 14/.test(t), t);
-      await clickModal(page, 'Cancel');
-      await page.waitForTimeout(200);
-      assert((await st(page)).log[0].body === 'RAID vs Bacca: the battle roll was cancelled. Press Continue in the War Council to roll it.');
-      equal((await st(page)).warLog, [], 'nothing settled yet');
-      /* The locked table offers the roll again. */
-      equal(await page.textContent('[data-test=wt-locked-action]'), 'Roll for the battle');
+      await page.waitForTimeout(400);
+      let ma = (await st(page)).militaryActions[0];
+      equal([ma.step, ma.battle.phase, ma.battle.started, ma.battle.turnSide], ['battle', 'battle', false, 'enemy'], 'Luck −1: the enemy acts first');
+      equal(await page.isVisible('[data-test=wt-calloff]'), true, 'still before the first activation');
       await pause(page);
-      await page.click('[data-test=wt-locked-action]');
-      await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal__title'); return t && t.textContent === 'The Battle Is Joined'; });
-      await clickModal(page, 'Continue');
-      await page.waitForSelector('[data-test=d20]');
-      await clickModal(page, 'Cancel');
+      await page.click('[data-test=wt-enemy-act]');
+      await page.waitForFunction(() => { const m = TSI.bastion.debug.state().militaryActions[0]; return m.battle.started && m.battle.turnSide === 'player'; }, null, { timeout: 8000 });
+      await page.waitForTimeout(400);
+      equal(await page.isVisible('[data-test=wt-calloff]'), false, 'Call off goes after the first activation');
+      equal(await page.isVisible('[data-test=wt-withdraw]'), true);
+      /* One of ours: Hold. */
+      ma = (await st(page)).militaryActions[0];
+      const ours = ma.battle.units.find(u => u.side === 'player' && u.pos && !u.activated && u.kind === 'formation');
+      await page.click('.tsi-bas-wt-token[data-id="' + ours.id + '"]');
       await page.waitForTimeout(200);
-      equal((await st(page)).warLog, [], 'still nothing settled');
-      /* Locked: a drag moves nothing. */
-      const r = await page.evaluate(() => TSI.bastion.warTable.current.tokenScreenRect('def'));
-      const was = (await st(page)).militaryActions[0].deployment.positions.def;
-      await page.mouse.move(r.x + r.w / 2, r.y + r.h / 2);
-      await page.mouse.down();
-      await page.mouse.move(r.x + r.w / 2 + 120, r.y + r.h / 2, { steps: 6 });
-      await page.mouse.up();
-      equal((await st(page)).militaryActions[0].deployment.positions.def, was);
+      await page.click('[data-test=wt-order-hold]');
+      await page.waitForTimeout(200);
+      await page.click('[data-test=wt-confirm]');
+      await page.waitForFunction(id => TSI.bastion.debug.state().militaryActions[0].battle.units.find(u => u.id === id).activated, ours.id, { timeout: 8000 });
+      ma = (await st(page)).militaryActions[0];
+      assert(ma.battle.log.some(l => l.text.indexOf(ours.label + ' holds') === 0), JSON.stringify(ma.battle.log.slice(-3)));
+      await H.shot(page, 'p9-war-table-battle');
       await pause(page);
       await page.click('[data-test=wt-close]');
-      equal(await page.textContent('[data-test=ma-status-0]'), 'Deployment locked. Next: the battle roll.');
+      await page.waitForTimeout(300);
+      assert(/^Battle under way: round 1 of 6\.$/.test(await page.textContent('[data-test=ma-status-0]')), await page.textContent('[data-test=ma-status-0]'));
+      equal(await page.$('[data-test=ma-calloff-0]'), null, 'no Call off in the War Council once the battle has begun');
+      equal(await page.textContent('[data-test=ma-continue-0]'), 'Continue');
+    });
+
+    await check('Withdraw: the War Report is applied once; the losses show in the Military panel and the Menagerie', async () => {
+      /* Set the battle up as if it had gone badly: Line Infantry 1 battered
+         (half Cohesion or less: 10% lost), Line Infantry 2 Defeated (60%
+         lost when the enemy holds the field), one Giant Vulture Routed
+         (separated for a turn). The Lieutenant rides with Line Infantry 1. */
+      await setUp(page, (s) => {
+        const b = s.militaryActions[0].battle;
+        const u = id => b.units.find(x => x.id === id);
+        u('p-line-1').cohesion = 1;
+        Object.assign(u('p-line-2'), { status: 'defeated', cohesion: 0, pos: null });
+        Object.assign(u('p-beast-1'), { status: 'routed', pos: null });
+        b.leaders.forEach(l => { if (l.side === 'player') l.hostId = 'p-line-1'; });
+      });
+      const turn = (await st(page)).turn;
+      await spyTable(page);
       await pause(page);
       await page.click('[data-test=ma-continue-0]');
       await page.waitForSelector('[data-test=wt-root]');
-      await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal__title'); return t && t.textContent === 'The Battle Is Joined'; });
-      await clickModal(page, 'Continue');
-      await d20(page, 15);
-      t = await H.modalText(page);
-      assert(/War Report/.test(t) && /Success: RAID vs Bacca/.test(t) && /Roll: d20 15 \+ mod 4 = 19 vs DC 14/.test(t) && /Clan Honour: \+6/.test(t), t);
-      assert(/Weather: Clear Day \(d20 15 vs DC 12\)/.test(t) && /Morale: Low \(d20 9 vs DC 12\)/.test(t) && /Luck: −1 to the roll \(d20 3 vs DC 10\)/.test(t) && /Deployment: 9 of 9 units placed on the War Table/.test(t), t);
+      equal((await page.evaluate(() => window.__wtOpts)).canCallOff, false);
+      await page.waitForTimeout(400);
+      await page.click('[data-test=wt-withdraw]');
+      await page.waitForSelector('[data-test=wt-withdraw-preview]');
+      const pre = await text(page, 'wt-withdraw-preview');
+      assert(/the battle counts as lost/.test(pre) && /Clan Honour: −4/.test(pre) && /Separated for 1 turn: Giant Vulture 1/.test(pre), pre);
+      await H.shot(page, 'p9-war-withdraw');
+      await clickModal(page, 'Withdraw');
+      await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal__title'); return t && t.textContent === 'War Report'; }, null, { timeout: 10000 });
+      await page.waitForTimeout(450);
+      const t = await H.modalText(page);
+      assert(/Withdrawal: Raid vs Bacca/.test(t) && /Result: Withdrawal in round 1 of 6/.test(t) && /Clan Honour: −4 \(now 36\)/.test(t), t);
+      assert(/Line Infantry 1: 100 soldiers → .*10 lost/.test(t) && /Line Infantry 2: 100 soldiers → .*60 lost/.test(t), t);
+      equal((await H.layoutCheck(page, ['.tsi-modal', '.tsi-modal__foot button'])).outOfView, [], 'the report fits the laptop (it scrolls inside)');
+      await H.shot(page, 'p9-war-report');
       await clickModal(page, 'Close');
       await page.waitForFunction(() => !document.querySelector('[data-test=wt-root]'));
-      const s = await st(page);
-      equal([s.militaryActions.length, s.warLog.length, s.warLog[0].title, s.clanHonor], [0, 1, 'Success: RAID vs Bacca', 46]);
       equal(await page.evaluate(() => document.querySelector('.tsi-bas-layout').inert), false);
-      await pause(page);
-      await page.click('[data-test=war-view-0]');
-      assert(/Morale: Low/.test(await H.modalText(page)));
-      await clickModal(page, 'Close');
+      const s = await st(page);
+      equal([s.militaryActions.length, s.warLog.length, s.warLog[0].title, s.clanHonor], [0, 1, 'Withdrawal: Raid vs Bacca', 36]);
+      equal(s.military.filter(r => r.depleted).map(r => r.strength).sort((a, b) => a - b), [40, 90]);
+      equal(s.military.filter(r => !r.depleted && /lieutenant/i.test(r.name)).map(r => r.qty), [1], 'the Lieutenant came home');
+      equal(s.warRecovery.map(r => [r.kind, r.name, r.status, r.untilTurn]), [['beast', 'Giant Vulture', 'separated', turn + 1]]);
+      const mil = await text(page, 'military');
+      assert(/Depleted: 90\/100/.test(mil) && /Depleted: 40\/100/.test(mil), mil);
+      assert(new RegExp('5 beasts • Flight \\(1 separated: back on Turn ' + (turn + 1) + '\\)').test(await text(page, 'beasts')), await text(page, 'beasts'));
+      equal(await text(page, 'war-avail-beast-giant-vulture'), '4 available');
+      /* Applied once: nothing more after reopening. */
+      await reopen(page);
+      const again = await st(page);
+      equal([again.warLog.length, again.log.filter(l => l.title === 'War Turn Resolved').length, again.military, again.clanHonor], [1, 1, s.military, 36]);
+      await page.evaluate(() => document.querySelector('[data-card=management]').scrollIntoView({ block: 'start' }));
+      await page.evaluate(() => window.scrollBy(0, -130));
+      await page.hover('[data-test^=military-type-]:has-text("Depleted: 90/100")');
+      await page.waitForSelector('[data-test=tooltip]:not([hidden])');
+      assert(/Depleted: \d+ of 100 soldiers came home/.test(await text(page, 'tooltip')), await text(page, 'tooltip'));
+      await H.shot(page, 'p9-war-depleted');
+      await page.mouse.move(5, 5);
     });
 
-    await check('a storm raises the Morale DC and shows its film; a cancelled roll waits; Call off asks, then wins and loses nothing', async () => {
-      await page.selectOption('[data-test=war-target]', 'bacca');
-      await page.fill('[data-test=war-defenders]', '2');
-      await page.fill('[data-test=war-beasts]', '0');
-      await page.fill('[data-test=war-lieutenants]', '0');
-      await page.fill('[data-test=war-regiments]', '0');
-      await pause(page);
-      await page.click('[data-test=queue-war]');
-      await pause(page);
-      await page.click('[data-test=advance]');
-      await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal__title'); return t && /^War Turn:/.test(t.textContent); });
+    await check('recovery: the separated Giant Vulture is back after Advance Bastion Turn', async () => {
+      await advance(page, []);
+      const s = await st(page);
+      equal(s.warRecovery, []);
+      assert(s.log.some(l => l.title === 'War Recovery' && l.body === 'Giant Vulture has found the way back to the Bastion.'), JSON.stringify(s.log.slice(0, 4)));
+      equal(/separated/.test(await text(page, 'beasts')), false);
+      equal(await text(page, 'war-avail-beast-giant-vulture'), '5 available');
+    });
+
+    await check('Call off keeps the enemy and the rolls made; the next attempt carries on from them (a storm raises the Morale DC and shows its film)', async () => {
+      async function queueRaid() {
+        await page.selectOption('[data-test=war-target]', 'bacca');
+        await page.selectOption('[data-test=war-objective]', 'raid');
+        await page.selectOption('[data-test=war-tier]', 'established');
+        for (const t of ['war-lieutenants', 'war-unit-line', 'war-unit-archers', 'war-beast-giant-vulture']) await page.fill('[data-test=' + t + ']', '0');
+        await page.fill('[data-test=war-defenders]', '2');
+        await pause(page);
+        await page.click('[data-test=queue-war]');
+        await pause(page);
+        await page.click('[data-test=advance]');
+        await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal__title'); return t && /^War Turn:/.test(t.textContent); });
+        return H.modalText(page);
+      }
+      const mission = () => st(page).then(s => s.warMissions['bacca|raid|established']);
+      await queueRaid();
+      const enemy = (await mission()).enemy;
       await clickModal(page, 'Begin Military Action');
       await d20(page, 2);
       await page.waitForSelector('[data-test=ma-result]');
@@ -944,7 +1053,7 @@ function serve(dir) {
       assert(new RegExp('DC ' + dc).test(await H.modalText(page)), 'Morale DC ' + dc);
       await clickModal(page, 'Cancel');
       await page.waitForFunction(() => !TSI.bastion.debug.busy());
-      const s = await st(page);
+      let s = await st(page);
       equal(s.militaryActions.map(m => m.step), ['morale']);
       assert(s.log.some(l => /the Morale roll was cancelled/.test(l.body)));
       equal(await page.textContent('[data-test=ma-status-0]'), 'Weather rolled. Next: the Morale roll.');
@@ -955,12 +1064,98 @@ function serve(dir) {
       equal((await st(page)).militaryActions.length, 1);
       await pause(page);
       await page.click('[data-test=ma-calloff-0]');
+      assert(/Call off the Military Action \(Raid vs Bacca\)\?/.test(await H.modalText(page)) && /The enemy army and the conditions rolled so far stay the same for the next attempt/.test(await H.modalText(page)), await H.modalText(page));
       await clickModal(page, 'Call off');
-      const after = await st(page);
-      equal(after.militaryActions, []);
-      equal([after.treasuryGP, after.defenders.count, after.warLog.length], before);
-      equal(after.log[0].body, 'RAID vs Bacca: the Military Action was called off. Nothing was won or lost.');
+      s = await st(page);
+      equal(s.militaryActions, []);
+      equal([s.treasuryGP, s.defenders.count, s.warLog.length], before, 'nothing won or lost');
+      equal(s.log[0].body, 'Raid vs Bacca: the Military Action was called off. Nothing was won or lost.');
       equal(await page.isVisible('[data-test=military-actions]'), false);
+      let m = await mission();
+      equal([m.enemy, !!m.conditions.weather, m.conditions.morale, m.conditions.luck], [enemy, true, null, null], 'the same enemy; the Weather roll kept');
+
+      /* Again: the muster pop-up says the Weather stands (and what it was), so
+         the next roll is Morale, with no second pop-up saying it again, even
+         after Later and Continue from the War Council. */
+      let t = await queueRaid();
+      assert(/the rolls it made stand: .+\. Next: the Morale roll\./.test(await text(page, 'ma-muster-text')), await text(page, 'ma-muster-text'));
+      assert(new RegExp('Weather ' + head.replace(/ \(.*\)$/, '').replace(/[()&]/g, '.')).test(t), t);
+      await clickModal(page, 'Later');
+      await page.waitForFunction(() => !TSI.bastion.debug.busy());
+      await pause(page);
+      await page.click('[data-test=ma-continue-0]');
+      await page.waitForSelector('[data-test=d20]');
+      equal(await page.$('[data-test=ma-unchanged]'), null, 'said once, in the muster pop-up');
+      assert(new RegExp('Morale: Raid vs Bacca[\\s\\S]*DC ' + dc).test(await H.modalText(page)), 'the storm still raises the Morale DC');
+      await d20(page, 18);
+      await page.waitForSelector('[data-test=ma-result]');
+      await clickModal(page, 'Continue');
+      await d20(page, 15);
+      await page.waitForSelector('[data-test=ma-result]');
+      await spyTable(page);
+      await clickModal(page, 'Continue');
+      await page.waitForSelector('[data-test=wt-root]');
+      equal((await page.evaluate(() => window.__wtOpts)).summary[0].value, head.replace(/ \(.*\)$/, ''), 'the same weather on the table');
+      /* Call off on the War Table, before the battle. */
+      await page.waitForTimeout(400);
+      await page.click('[data-test=wt-calloff]');
+      await clickModal(page, 'Cancel');
+      equal(!!(await page.$('[data-test=wt-root]')), true, 'Cancel keeps the table open');
+      await pause(page);
+      await page.click('[data-test=wt-calloff]');
+      await clickModal(page, 'Call off');
+      await page.waitForFunction(() => !document.querySelector('[data-test=wt-root]'));
+      s = await st(page);
+      equal([s.militaryActions.length, s.warLog.length], [0, 1]);
+      m = await mission();
+      equal([m.enemy, m.conditions.morale.d20, m.conditions.luck.d20], [enemy, 18, 15], 'all three rolls kept now');
+      equal(await page.evaluate(() => TSI.store.get('tsi.bastion.ui').warNoticed), {}, 'only actions still waiting are remembered');
+
+      /* Again: all the conditions stand. The Bastion is closed while the muster
+         pop-up shows, so on reopening "The conditions are unchanged" says it
+         instead, once; the turn's notice doesn't stay over the War Table. */
+      t = await queueRaid();
+      assert(/its conditions stand: .+, morale high, luck \+1\. There are no rolls this time\./.test(await text(page, 'ma-muster-text')), await text(page, 'ma-muster-text'));
+      await H.shot(page, 'p9-war-muster-again');
+      await reopen(page);
+      await H.waitForNotice(page, /was left part-way through/);
+      await spyTable(page);
+      await pause(page);
+      await page.click('[data-test=ma-continue-0]');
+      await page.waitForSelector('[data-test=ma-unchanged]');
+      t = await text(page, 'ma-text');
+      assert(/^The conditions are unchanged: .+, morale high, luck \+1\. /.test(t), t);
+      await H.shot(page, 'p9-war-unchanged');
+      await page.waitForTimeout(450);
+      await clickModal(page, 'Continue');
+      await page.waitForSelector('[data-test=wt-root]');
+      equal(await page.$('[data-test=d20]'), null, 'no dice');
+      equal((await H.noticeTexts(page)).filter(x => /left part-way through|is waiting/.test(x)), [], 'no notice over the War Table');
+      const o = await page.evaluate(() => window.__wtOpts);
+      equal([o.canCallOff, o.summary.map(x => x.value).slice(1)], [true, ['High', '+1']]);
+      await pause(page);
+      await page.click('[data-test=wt-begin-deploy]');
+      await page.waitForTimeout(300);
+      await page.click('[data-test=wt-close]');
+      await page.waitForTimeout(300);
+      /* Said once per action: not again on Continue, even after reopening. */
+      for (const again of [false, true]) {
+        if (again) { await reopen(page); await H.dismissNotices(page); }
+        await pause(page);
+        await page.click('[data-test=ma-continue-0]');
+        await page.waitForSelector('[data-test=wt-root]', { timeout: 5000 });
+        equal(await page.$('[data-test=ma-unchanged]'), null, again ? 'after reopening' : 'this visit');
+        await pause(page);
+        await page.click('[data-test=wt-close]');
+        await page.waitForTimeout(300);
+      }
+      await pause(page);
+      await page.click('[data-test=ma-calloff-0]');
+      await clickModal(page, 'Call off');
+      equal((await st(page)).militaryActions, []);
+      equal(await page.evaluate(() => TSI.store.get('tsi.bastion.ui').warNoticed), {});
+      await advance(page, []);
+      equal((await st(page)).turnInProgress, null, 'the turn left part-way is finished');
     });
 
     await check('identity, war log and diplomacy survive reopening (BAS-01)', async () => {
@@ -981,14 +1176,15 @@ function serve(dir) {
     await openBastion(page);
     await setUp(page, (s) => { s.partyLevel = 7; s.defenders.count = 3; });
 
-    await check('Unsworn: the Lieutenants and Regiments boxes look switched off and say why (Harry\'s report)', async () => {
-      await setUp(page, (s) => { s.military = [{ name: 'Lieutenant (1)', qty: 3 }, { name: 'Regiment (100)', qty: 3 }]; });
-      equal([await page.isDisabled('[data-test=war-lieutenants]'), await page.isDisabled('[data-test=war-regiments]')], [true, true]);
-      equal([await text(page, 'war-avail-lieutenants'), await text(page, 'war-avail-regiments')], ['Clan or Brigade only', 'Clan or Brigade only']);
+    await check('Unsworn: the Lieutenants and regiment boxes look switched off and say why (Harry\'s report)', async () => {
+      await setUp(page, (s) => { s.military = [{ name: 'Lieutenant (1)', qty: 3 }, { name: 'Regiment (100)', qty: 3 }, { name: 'Heavy Infantry (50)', qty: 1 }]; });
+      equal([await page.isDisabled('[data-test=war-lieutenants]'), await page.isDisabled('[data-test=war-unit-line]'), await page.isDisabled('[data-test=war-unit-heavy]')], [true, true, true]);
+      equal([await text(page, 'war-avail-lieutenants'), await text(page, 'war-avail-unit-line'), await text(page, 'war-avail-unit-heavy')], ['Clan or Brigade only', 'Clan or Brigade only', 'Clan or Brigade only']);
       assert(Number(await page.$eval('[data-test=war-lieutenants]', i => getComputedStyle(i).opacity)) < 0.6, 'greyed out');
-      assert(/Only a Clan or Mercenary Brigade/.test(await page.getAttribute('[data-test=war-lieutenants]', 'title')));
+      assert(/Only a Clan or Mercenary Brigade/.test(await page.getAttribute('[data-test=war-unit-line]', 'title')));
       assert(/Unsworn war is limited to defenders and beasts/.test(await text(page, 'war-hint')));
       await setUp(page, (s) => { s.military = []; });
+      equal(await text(page, 'war-avail-regiments'), 'Clan or Brigade only', 'with no regiments, one line says so');
     });
 
     await check('Form Mercenary Brigade links to the Crest Creator, which opens in a new tab with no "Already open" warning', async () => {
@@ -1033,36 +1229,249 @@ function serve(dir) {
       await H.shot(page, 'p9-crest-brigade');
     });
 
-    await check('Download Save includes the crest; Reset clears it with the rest of the Bastion', async () => {
-      await page.evaluate(() => TSI.store.flush());
+    await check('Download Save includes the crest and the War Table\'s terrain; Reset clears them with the rest of the Bastion', async () => {
+      await page.evaluate(() => { TSI.store.set('tsi.bastion.warTerrain', { none: { cols: 2, rows: 1, cells: 'w.' } }); return TSI.store.flush(); });
       const d = await H.download(page, '[data-test=download-save]');
       const keys = JSON.parse(d.text).records.map(r => r.key);
-      assert(keys.indexOf('tsi.bastion.crest') !== -1, keys.join(','));
+      assert(keys.indexOf('tsi.bastion.crest') !== -1 && keys.indexOf('tsi.bastion.warTerrain') !== -1, keys.join(','));
       await pause(page);
       await page.click('[data-test=reset]');
       await clickModal(page, 'Reset');
       await page.waitForSelector('[data-test=advance]');
       await page.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().organization.type === 'unsworn');
       equal(await page.evaluate(() => TSI.store.has('tsi.bastion.crest')), false);
+      equal(await page.evaluate(() => TSI.store.has('tsi.bastion.warTerrain')), false, 'the painted terrain goes too');
       equal((await crestInfo(page)).shown, false);
     });
 
     await check('leaving the Bastion while the War Table is open leaves nothing behind', async () => {
       await setUp(page, (s) => { s.defenders.count = 2; });
       await page.fill('[data-test=war-defenders]', '2');
+      await page.selectOption('[data-test=war-objective]', 'seize_outpost');
       await pause(page);
       await page.click('[data-test=queue-war]');
       await pause(page);
       await page.click('[data-test=advance]');
       await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal__title'); return t && /^War Turn:/.test(t.textContent); });
+      equal(await modalTitle(page), 'War Turn: Seize Outpost vs Blackstone', 'the objective\'s own name, not its id');
       await clickModal(page, 'Begin Military Action');
       for (let i = 0; i < 3; i++) { await d20(page, 15); await page.waitForSelector('[data-test=ma-result]'); await clickModal(page, 'Continue'); }
       await page.waitForSelector('[data-test=wt-root]');
+      assert(/Seize Outpost vs Blackstone/.test(await text(page, 'wt-title')), await text(page, 'wt-title'));
       await page.click('[data-test=home]');
       await page.waitForSelector('[data-test=backup-everything]');
       equal(await page.$('[data-test=wt-root]'), null);
       equal(await page.evaluate(() => !!(window.TSI.bastion && (TSI.bastion.debug || (TSI.bastion.warTable && TSI.bastion.warTable.current)))), false);
       equal(context.log.errors, []);
+    });
+    await context.close();
+  }
+
+  /* ------------------------------------------------------------------ */
+  section('The War Room, the Military panel and the Menagerie (war phase 2)');
+  {
+    const { context, page } = await newPage(browser, 'laptop');
+    await openBastion(page);
+    await setUp(page, (s) => {
+      s.partyLevel = 17;
+      s.builtExtras = [{ facId: 'war_room', status: 'built' }, { facId: 'menagerie', status: 'built' }, '', '', '', ''];
+      s.defenderBeasts = [{ name: 'Owlbear', qty: 1, source: 'Menagerie' }];
+    });
+    const showWarRoom = () => page.evaluate(() => {
+      document.querySelector('.tsi-bas-fac[data-fac=war_room]').scrollIntoView({ block: 'center', inline: 'center' });
+    }).then(() => page.waitForTimeout(500));
+    /* What the stat block should say for a War Room choice, from the war's data. */
+    const expected = label => page.evaluate(l => {
+      const b = TSI.bastion.rules.unitStatBlock({}, l);
+      return { title: b.title, rows: b.rows.map(r => r.name + r.value), traits: b.traits.map(t => t.name), distinction: b.distinction };
+    }, label);
+
+    await check('the War Room\'s Recruit list: the seven units in Harry\'s order, each with its stat block on hover', async () => {
+      await showWarRoom();
+      equal(await page.textContent('[data-test=wr-recruit]'), 'Lieutenant (1)');
+      equal(await page.getAttribute('[data-test=wr-recruit]', 'aria-haspopup'), 'listbox');
+      await page.click('[data-test=wr-recruit]');
+      await page.waitForSelector('[data-test=wr-list]');
+      equal(await page.getAttribute('[data-test=wr-recruit]', 'aria-expanded'), 'true');
+      equal(await page.$$eval('[data-test=wr-list] [role=option]', os => os.map(o => o.dataset.test + ' ' + o.textContent)),
+        ['wr-option-0 LieutenantOne officer', 'wr-option-1 Archers50 soldiers', 'wr-option-2 Levy Infantry150 soldiers', 'wr-option-3 Line Infantry100 soldiers', 'wr-option-4 Heavy Infantry50 soldiers', 'wr-option-5 Light Cavalry50 soldiers', 'wr-option-6 Shock Cavalry25 soldiers']);
+      const labels = await page.$$eval('[data-test="sel-war_room__recruit"] option', os => os.map(o => o.textContent));
+      equal(labels, await page.evaluate(() => TSI_DATA.bastionWar.warRoom.map(e => e.label)), 'the hidden list is the war data\'s');
+      for (let i = 0; i < labels.length; i++) {
+        await page.hover('[data-test=wr-option-' + i + ']');
+        await page.waitForSelector('[data-test=tooltip]:not([hidden])');
+        const tip = await text(page, 'tooltip');
+        const want = await expected(labels[i]);
+        assert(tip.indexOf(want.title) === 0, tip);
+        want.rows.concat(want.traits).forEach(x => assert(tip.indexOf(x) !== -1, labels[i] + ': ' + x + ' in ' + tip));
+        assert(tip.indexOf(want.distinction) !== -1, tip);
+        if (i > 0) assert(new RegExp('Military unit • ' + labels[i].match(/\((\d+)\)/)[1] + ' soldiers').test(tip), tip);
+        /* The list and its stat block fit the window. */
+        const lc = await H.layoutCheck(page, ['[data-test=wr-list]', '[data-test=tooltip]']);
+        equal(lc.outOfView, [], labels[i]);
+      }
+      const archers = await text(page, 'tooltip').then(() => page.hover('[data-test=wr-option-1]')).then(() => text(page, 'tooltip'));
+      assert(/Attack\+4 ranged \/ \+1 melee/.test(archers) && /Range 6\./.test(archers), archers);
+      await page.hover('[data-test=wr-option-0]');
+      assert(/Leads one formation: \+2 Resolve to it/.test(await text(page, 'tooltip')));
+      await page.hover('[data-test=wr-option-3]');
+      await H.shot(page, 'p9-war-room-list');
+      await page.keyboard.press('Escape');
+      equal(await page.$('[data-test=wr-list]'), null, 'Escape closes it');
+      equal(await page.isHidden('[data-test=tooltip]'), true);
+      equal(await page.textContent('[data-test=wr-recruit]'), 'Lieutenant (1)', 'nothing chosen');
+    });
+
+    await check('the keyboard: the arrows, Home and End move through it, showing each stat block; Enter chooses; the hidden list keeps in step', async () => {
+      await page.focus('[data-test=wr-recruit]');
+      await page.keyboard.press('ArrowDown');
+      await page.waitForSelector('[data-test=wr-list]');
+      equal(await page.evaluate(() => document.activeElement.dataset.test), 'wr-option-0');
+      for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowDown');
+      equal(await page.evaluate(() => document.activeElement.dataset.test), 'wr-option-3');
+      assert(/^Line Infantry/.test(await text(page, 'tooltip')) && await page.isVisible('[data-test=tooltip]'), 'the stat block follows the keys');
+      await page.keyboard.press('End');
+      equal(await page.evaluate(() => document.activeElement.dataset.test), 'wr-option-6');
+      assert(/^Shock Cavalry/.test(await text(page, 'tooltip')) && /Strong Charge/.test(await text(page, 'tooltip')));
+      await page.keyboard.press('Home');
+      await page.keyboard.press('ArrowDown');
+      await page.keyboard.press('ArrowDown');
+      await page.keyboard.press('ArrowDown');
+      await page.keyboard.press('Enter');
+      equal(await page.$('[data-test=wr-list]'), null);
+      equal([await page.textContent('[data-test=wr-recruit]'), await page.inputValue('[data-test="sel-war_room__recruit"]'), await page.evaluate(() => document.activeElement.dataset.test)],
+        ['Line Infantry (100)', '3', 'wr-recruit'], 'chosen, and the focus is back on the button');
+      /* Opened again, it starts on the choice, marked as chosen. */
+      await page.keyboard.press('Enter');
+      await page.waitForSelector('[data-test=wr-list]');
+      equal(await page.evaluate(() => document.activeElement.dataset.test), 'wr-option-3');
+      equal(await page.getAttribute('[data-test=wr-option-3]', 'aria-selected'), 'true');
+      await page.keyboard.press('Tab');
+      equal(await page.$('[data-test=wr-list]'), null, 'Tab closes it');
+      /* The hidden native list (for the tests) moves the button too. */
+      await page.selectOption('[data-test="sel-war_room__recruit"]', '1');
+      equal(await page.textContent('[data-test=wr-recruit]'), 'Archers (50)');
+      /* A click elsewhere closes it. */
+      await page.click('[data-test=wr-recruit]');
+      await page.waitForSelector('[data-test=wr-list]');
+      await page.mouse.click(5, 300);
+      equal(await page.$('[data-test=wr-list]'), null);
+    });
+
+    await check('Issue Order recruits as before; a depleted regiment is brought back to full strength first', async () => {
+      await page.click('[data-test=wr-recruit]');
+      await page.click('[data-test=wr-option-3]');
+      await issue(page, 'war_room', 'recruit');
+      let s = await st(page);
+      equal(s.pendingOrders.map(o => [o.label, o.optionLabel]), [['War Room: Recruit (Line Infantry (100))', 'Line Infantry (100)']]);
+      await advance(page, []);
+      s = await st(page);
+      equal(s.military, [{ name: 'Line Infantry (100)', qty: 1, source: 'War Room' }]);
+      assert(s.log.some(l => l.body === 'War Room: Recruit (Line Infantry (100)) → Recruited: Line Infantry (100).'), JSON.stringify(s.log.slice(0, 3)));
+      equal(await text(page, 'military-type-0'), 'Line Infantry • 100 soldiers');
+      await setUp(page, (st2) => { st2.military.push({ name: 'Line Infantry (100)', qty: 1, depleted: true, strength: 60, id: 'reg-x', source: 'War Room' }); });
+      equal(await text(page, 'military-type-1'), 'Line Infantry • Depleted: 60/100');
+      await page.evaluate(() => document.querySelector('[data-card=management]').scrollIntoView({ block: 'start' }));
+      await page.evaluate(() => window.scrollBy(0, -130));
+      await page.hover('[data-test=military-row-1]');
+      await page.waitForSelector('[data-test=tooltip]:not([hidden])');
+      const tip = await text(page, 'tooltip');
+      /* The stat block is the one it fights with: the battle line-up's own profile. */
+      const fights = await page.evaluate(() => {
+        const R = TSI.bastion.rules;
+        const s = Object.assign({}, TSI.bastion.debug.state(), { organization: { type: 'clan' } });
+        return R.playerSide(s, {}, { defenders: 0, lieutenants: 0, units: { line: 2 }, beasts: {} }).units.find(u => u.personnel === 60).profile;
+      });
+      equal([fights.cohesion, fights.bv], [3, 3]);
+      assert(/^Line Infantry/.test(tip) && /Military unit • 60 of 100 soldiers/.test(tip) && tip.indexOf('Cohesion' + fights.cohesion + 'Attack') !== -1 && tip.indexOf('Battle Value' + fights.bv + 'Depleted') !== -1 &&
+        /Depleted: 60 of 100 soldiers came home, so it fights at Cohesion 3 \(not 5\) and Battle Value 3 \(not 5\) until the War Room recruits Line Infantry again/.test(tip), tip);
+      await H.shot(page, 'p9-war-military');
+      await page.mouse.move(5, 5);
+      /* From the keyboard: Tab reaches each row, which shows its stat block. */
+      await page.focus('[data-test=military-remove-0]');
+      await page.keyboard.press('Tab');
+      equal(await page.evaluate(() => { const a = document.activeElement; return [a.dataset.test, a.getAttribute('role'), a.getAttribute('aria-label'), a.getAttribute('aria-describedby')]; }),
+        ['military-row-1', 'group', 'Line Infantry (100): Line Infantry • Depleted: 60/100', 'tsi-bas-tip']);
+      assert(await page.isVisible('[data-test=tooltip]') && /Military unit • 60 of 100 soldiers/.test(await text(page, 'tooltip')), await text(page, 'tooltip'));
+      equal((await H.layoutCheck(page, ['[data-test=tooltip]'])).outOfView, []);
+      await page.keyboard.press('Tab');
+      equal([await page.evaluate(() => document.activeElement.dataset.test), await page.isHidden('[data-test=tooltip]')], ['military-remove-1', true]);
+      await showWarRoom();
+      await page.click('[data-test=wr-recruit]');
+      await page.click('[data-test=wr-option-3]');
+      await issue(page, 'war_room', 'recruit');
+      await advance(page, []);
+      s = await st(page);
+      assert(s.log.some(l => l.body === 'War Room: Recruit (Line Infantry (100)) → Replacements bring Line Infantry back to 100.'), JSON.stringify(s.log.slice(0, 3)));
+      equal(s.military.map(r => [r.name, r.qty, !!r.depleted]), [['Line Infantry (100)', 2, false]]);
+      equal(await text(page, 'military-type-0'), 'Line Infantry • 2 × 100 soldiers');
+    });
+
+    await check('the Menagerie\'s beasts and the Lieutenants show their stat blocks, and who is away recovering', async () => {
+      await setUp(page, (s) => {
+        s.military.unshift({ name: 'Lieutenant (1)', qty: 2, source: 'War Room' });
+        s.warRecovery = [{ id: 'r1', kind: 'lieutenant', name: 'Lieutenant 2', status: 'wounded', untilTurn: s.turn + 2 }, { id: 'r2', kind: 'beast', name: 'Owlbear', status: 'recovered', untilTurn: s.turn + 1 }];
+      });
+      const turn = (await st(page)).turn;
+      equal(await text(page, 'military-type-0'), '2 Lieutenants (1 recovering: back on Turn ' + (turn + 2) + ')');
+      equal(await text(page, 'beast-type-0'), '1 beast • Terror (1 recovering: back on Turn ' + (turn + 1) + ')');
+      await page.hover('[data-test=beast-row-0]');
+      await page.waitForSelector('[data-test=tooltip]:not([hidden])');
+      const tip = await text(page, 'tooltip');
+      assert(/^Owlbear/.test(tip) && /Menagerie beast/.test(tip) && /Terror: A unit it damages/.test(tip) && /Owlbear: recovering, back on turn/.test(tip), tip);
+      await page.hover('[data-test=military-row-0]');
+      assert(/^Lieutenant/.test(await text(page, 'tooltip')) && /Lieutenant 2: wounded, back on turn/.test(await text(page, 'tooltip')));
+      await page.mouse.move(5, 5);
+    });
+
+    await check('the guide\'s "come back after" for wounded Lieutenants and beasts matches the recovery table', async () => {
+      /* Shortest and longest time away for a Lieutenant or beast that lives: separated, recovered, wounded, badly wounded. */
+      const span = await page.evaluate(() => {
+        const W = TSI_DATA.bastionWar;
+        const turns = W.recovery.filter(r => r.turns).map(r => r.turns).concat([W.separatedTurns, W.badlyWoundedTurns]);
+        return [Math.min.apply(null, turns), Math.max.apply(null, turns)];
+      });
+      const words = ['zero', 'one', 'two', 'three', 'four', 'five', 'six'];
+      const said = span[0] === span[1] ? words[span[0]] : words[span[0]] + ' to ' + words[span[1]];
+      const guide = fs.readFileSync(path.join(H.ROOT, 'guide.html'), 'utf8');
+      const m = /Wounded Lieutenants and beasts come back after ([^:<]+):/.exec(guide);
+      assert(m, 'the guide has no "Wounded Lieutenants and beasts come back after" sentence');
+      equal(m[1], said + ' Bastion turn' + (span[1] === 1 ? '' : 's'));
+    });
+
+    await check('the War Council and the War Room fit the laptop and the TV with no sideways scrolling', async () => {
+      await setUp(page, (s) => {
+        s.organization = { type: 'clan', name: 'Clan Ironbow', chief: '', motto: '', foundedAtTurn: 1 };
+        s.defenders.count = 30;
+        s.military.push({ name: 'Archers (50)', qty: 1 }, { name: 'Heavy Infantry (50)', qty: 2 }, { name: 'Light Cavalry (50)', qty: 1 }, { name: 'Shock Cavalry (25)', qty: 1 }, { name: 'Levy Infantry (150)', qty: 1 });
+        s.defenderBeasts.push({ name: 'Giant Vulture', qty: 3 }, { name: 'Dire Wolf', qty: 2 });
+      });
+      for (const size of ['laptop', 'laptopFull', 'tv']) {
+        await page.setViewportSize(H.SIZES[size].viewport);
+        await page.waitForTimeout(300);
+        await page.evaluate(() => document.querySelector('[data-card=war]').scrollIntoView({ block: 'start' }));
+        await page.evaluate(() => window.scrollBy(0, -130));
+        const lc = await H.layoutCheck(page, ['[data-test=war-forces]']);
+        equal(lc.scrollWidth, lc.clientWidth, size + ': no sideways scroll');
+        const fit = await page.evaluate(() => {
+          const card = document.querySelector('[data-card=war]').getBoundingClientRect();
+          return Array.from(document.querySelectorAll('[data-test=war-forces] > *, [data-test=war-intel], [data-test=war-army-bv], [data-test=queue-war]')).filter(e => { const r = e.getBoundingClientRect(); return r.left < card.left || r.right > card.right; }).length;
+        });
+        equal(fit, 0, size + ': everything inside the panel');
+        equal(await page.$$eval('[data-test=war-forces] input', is => is.length), 11, 'defenders, Lieutenants, six kinds of regiment and three kinds of beast');
+        await H.shot(page, 'p9-war-council-' + size);
+        await showWarRoom();
+        await page.click('[data-test=wr-recruit]');
+        await page.hover('[data-test=wr-option-6]');
+        equal((await H.layoutCheck(page, ['[data-test=wr-list]', '[data-test=tooltip]'])).outOfView, [], size + ': the list and its stat block in view');
+        await page.keyboard.press('Escape');
+      }
+      await page.setViewportSize(H.SIZES.laptop.viewport);
+    });
+
+    await check('nothing went wrong', async () => {
+      equal(context.log.errors, []);
+      equal(context.log.consoleErrors, []);
     });
     await context.close();
   }
@@ -1124,11 +1533,20 @@ function serve(dir) {
       equal((await st(page)).politicalCapital.molten, 0);
     });
 
-    await check('the Compendium: 265 items, search, details, card and Roll20 link', async () => {
+    await check('the Compendium: 270 items, search, details, card and Roll20 link; the War Room\'s units have their stats and no Roll20 link', async () => {
       await pause(page);
       await page.click('[data-test=compendium]');
       await page.waitForSelector('[data-test=comp-list]');
-      equal(await page.$$eval('.tsi-bas-comp__item', b => b.length), 265);
+      equal(await page.$$eval('.tsi-bas-comp__item', b => b.length), 270);
+      await page.fill('[data-test=comp-search]', 'line inf');
+      equal(await page.$$eval('.tsi-bas-comp__item', b => b.map(x => x.textContent)), ['Line Infantry (100)']);
+      await page.click('.tsi-bas-comp__item');
+      const u = await text(page, 'comp-detail');
+      assert(/Military unit • 100 soldiers • Cohesion 5 • Attack \+4 • Defence 13 • Move 3 • Resolve \+1 • Battle Value 5\. Reliable general-purpose troops\./.test(u) && /War Room • Recruit/.test(u), u);
+      equal(await page.$('[data-test=roll20]'), null, 'no Roll20 page for a War Room unit');
+      equal(await page.$$eval('.tsi-bas-comp__item', b => b.length), 1);
+      await page.fill('[data-test=comp-search]', 'regiment');
+      equal(await page.$$eval('.tsi-bas-comp__item', b => b.length), 0, 'the old Regiment (100) is no longer recruited');
       await page.fill('[data-test=comp-search]', 'bag of');
       equal(await page.$$eval('.tsi-bas-comp__item', b => b.map(x => x.textContent)), ['Bag of Holding']);
       await page.click('.tsi-bas-comp__item');
@@ -1146,11 +1564,35 @@ function serve(dir) {
       const [dl] = await Promise.all([page.waitForEvent('download'), page.click('[data-test=comp-export]')]);
       equal(dl.suggestedFilename(), 'compendium_items.json');
       const file = JSON.parse(fs.readFileSync(await dl.path(), 'utf8'));
-      equal([file.version, Object.keys(file.items).length], [1, 265]);
-      equal(await text(page, 'comp-status'), 'Done. Filled: 0 • Kept: 62 • Stubbed: 203. Downloading…');
+      equal([file.version, Object.keys(file.items).length], [1, 271]);
+      equal(await text(page, 'comp-status'), 'Done. Filled: 0 • Kept: 68 • Stubbed: 202. Downloading…');
+      /* The War Room's units: their stat blocks from the war's data, and no Roll20 link. */
+      const units = await page.evaluate(() => TSI_DATA.bastionWar.warRoom.filter(e => e.type).map(e => e.label));
+      equal(units.length, 6);
+      units.forEach(u => equal([file.items[u].source, file.items[u].roll20, /^Military unit • \d+ soldiers • Cohesion \d+ • Attack /.test(file.items[u].summary)], ['War Room', '', true], u));
+      equal(file.items['Line Infantry (100)'].summary, 'Military unit • 100 soldiers • Cohesion 5 • Attack +4 • Defence 13 • Move 3 • Resolve +1 • Battle Value 5. Reliable general-purpose troops.');
+      equal(file.items['Shock Cavalry (25)'].summary, 'Military unit • 25 soldiers • Cohesion 5 • Attack +5 • Defence 14 • Move 4 • Resolve +1 • Battle Value 8 • Strong Charge. Strong Charge, expensive.');
+      assert(/^https:\/\/roll20\.net\//.test(file.items['Bag of Holding'].roll20), 'other items keep theirs');
       await clickModal(page, 'Close');
       equal(context.log.net, []);
       equal(context.log.failed, []);
+    });
+
+    await check('the War Room\'s units in the Compendium follow war-units-data.js: a change there shows on screen and in the export', async () => {
+      /* As if Harry had edited Line Infantry's Attack and Defence in war-units-data.js. */
+      await page.evaluate(() => { const a = TSI_DATA.bastionWar.archetypes.line; window.__was = [a.attack, a.defence]; a.attack = 3; a.defence = 12; });
+      await pause(page);
+      await page.click('[data-test=compendium]');
+      await page.waitForSelector('[data-test=comp-list]');
+      await page.fill('[data-test=comp-search]', 'line inf');
+      await page.click('.tsi-bas-comp__item');
+      const u = await text(page, 'comp-detail');
+      assert(/Military unit • 100 soldiers • Cohesion 5 • Attack \+3 • Defence 12 • Move 3/.test(u), u);
+      const [dl] = await Promise.all([page.waitForEvent('download'), page.click('[data-test=comp-export]')]);
+      const file = JSON.parse(fs.readFileSync(await dl.path(), 'utf8'));
+      assert(/Attack \+3 • Defence 12/.test(file.items['Line Infantry (100)'].summary), file.items['Line Infantry (100)'].summary);
+      await clickModal(page, 'Close');
+      await page.evaluate(() => { const a = TSI_DATA.bastionWar.archetypes.line; a.attack = window.__was[0]; a.defence = window.__was[1]; });
     });
     await context.close();
   }
@@ -1325,25 +1767,6 @@ function serve(dir) {
     async function bothIssue(fac, fn, idx) { await O.issue(fac, fn, idx); await issue(page, fac, fn, idx); }
     async function bothHall(fn, idx, extra) { await O.hall(fn, idx, extra); await planHall(page, fn, idx, extra); }
     async function bothAdvance(rolls) { await O.advance(rolls); await advance(page, rolls); }
-    /* The raid's only differences: the Military Action's line in the log, and
-       its war-log entry, which adds Luck's +1 to the roll and notes the
-       weather, morale, luck and deployment. Everything else must match. */
-    function militaryAllow(o, n) {
-      n.log = n.log.filter(l => !/^War Turn: RAID vs Bacca: your forces muster for battle\./.test(l));
-      equal(n.warLog.length, o.warLog.length, 'war log length');
-      n.warLog.forEach((w, i) => {
-        const ow = o.warLog[i];
-        equal([w[0], w[1]], [ow[0], ow[1]], 'war log title');
-        const lines = w[2].split('\n');
-        const oldLines = ow[2].split('\n');
-        const roll = /^Roll: d20 (\d+) \+ mod (-?\d+) = (-?\d+) vs DC (\d+)$/;
-        const a = lines[0].match(roll), b = oldLines[0].match(roll);
-        assert(a && b && a[1] === b[1] && a[4] === b[4] && +a[2] === +b[2] + 1 && +a[3] === +b[3] + 1, 'the roll gains Luck\'s +1: ' + lines[0] + ' / ' + oldLines[0]);
-        equal(lines.filter(l => !/^(Weather|Morale|Luck|Deployment): /.test(l)).slice(1), oldLines.slice(1), 'the rest of the report');
-        equal(lines.filter(l => /^(Weather|Morale|Luck|Deployment): /.test(l)).length, 4, 'weather, morale, luck and deployment noted');
-        w[2] = ow[2];
-      });
-    }
     async function bothUpgrade() { await old.click('#hallUpgradePill'); await old.waitForTimeout(60); await pause(page); await page.click('[data-test=hall-upgrade]'); }
 
     await check('the same campaign gives the same Bastion, turn by turn', async () => {
@@ -1374,23 +1797,23 @@ function serve(dir) {
       await old.click('#btnHearDisputes'); await old.click('.siDisputeCard button:has-text("Split Claims")'); await O.answerAll([15]);
       await pause(page); await page.click('[data-test=ledger]'); await page.click('[data-test=rule-s]'); await answerAll(page, [15]);
       await compare('the Council Ledger splits the claims');
-      await old.selectOption('#warTargetSelect', 'bacca'); await old.fill('#warDefendersInput', '2'); await old.click('#btnQueueWarAction');
-      await page.selectOption('[data-test=war-target]', 'bacca'); await page.fill('[data-test=war-defenders]', '2'); await page.click('[data-test=queue-war]');
+      /* No war in either: the old Bastion settled a war with one roll, and
+         this one fights it on the War Table (war phase 2), so there is
+         nothing left to compare. The War Council's intelligence draws up
+         enemy armies with its own seeded dice, never Math.random, so both
+         Bastions' dice stay in step. */
       await bothIssue('menagerie', 'recruit_beast', 0);
-      await compare('a raid queued, a beast ordered');
-      /* The raid is now a Military Action (Harry's request, 2 October 2026):
-         Weather 15 (a clear day, so no dice are drawn for a storm), Morale 15,
-         Luck 15 (+1), the War Table, then the same single roll of 15. */
-      await O.advance([12, 15]); await advance(page, [12, 15, 15, 15, 15]);
-      await compare('turn 9: routes, the raid, the beast', militaryAllow);
+      await compare('a beast ordered');
+      await bothAdvance([12]); await compare('turn 9: routes, the beast');
       await old.click('#rollEventBtn'); await pause(page); await page.click('[data-test=roll-event]');
-      await compare('Roll Bastion Event', militaryAllow);
-      await bothAdvance([14]); await compare('turn 10', militaryAllow);
-      await bothAdvance([14]); await compare('turn 11', militaryAllow);
-      await bothAdvance([14]); await compare('turn 12: the automatic event', militaryAllow);
+      await compare('Roll Bastion Event');
+      await bothAdvance([14]); await compare('turn 10');
+      await bothAdvance([14]); await compare('turn 11');
+      await bothAdvance([14]); await compare('turn 12: the automatic event');
       /* The campaign really did all this. */
       const s = await st(page);
-      assert(s.warLog.length === 1 && s.defenderBeasts.length === 1 && s.facilityLevels.hall_of_emissaries === 3, JSON.stringify([s.warLog.length, s.defenderBeasts, s.facilityLevels]));
+      assert(s.warLog.length === 0 && s.defenderBeasts.length === 1 && s.facilityLevels.hall_of_emissaries === 3, JSON.stringify([s.warLog.length, s.defenderBeasts, s.facilityLevels]));
+      assert(Object.keys(s.warMissions).length > 0, 'the War Council drew up the enemy it showed, without touching Math.random');
       assert(s.diplomacy.summits.length + s.log.filter(l => /Inter-Clan Summit/.test(l.body)).length > 0);
       assert(s.log.some(l => l.title === 'Arbitration') && s.log.some(l => /catastrophic|Routes resolved/.test(l.body)));
       assert(s.warehouse.length >= 6, JSON.stringify(s.warehouse));
@@ -1401,7 +1824,6 @@ function serve(dir) {
       await bothHall('host_delegation', 1, { tone: 'assertive' });
       await bothAdvance([15, 14, 13]);
       await compare('a delegation to Rowthorn', (o, n) => {
-        militaryAllow(o, n);
         /* The old tool also added the first roll's +15 (a Great Success: 15 + 6 vs DC 13). */
         equal(o.pc.rowthorn - n.pc.rowthorn, 15, 'the old tool added it twice');
         o.pc.rowthorn = n.pc.rowthorn;

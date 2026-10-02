@@ -261,6 +261,11 @@
 .tsi-tool--bastion .tsi-bas-item--click { cursor: pointer; }
 .tsi-tool--bastion .tsi-bas-item__name { font-size: var(--tsi-fs-body-sm); line-height: 1.25; }
 .tsi-tool--bastion .tsi-bas-item__meta { font: 400 12px/1.3 var(--tsi-font-mono); color: var(--tsi-text-soft); }
+/* What a Military or Menagerie row is: its type and soldiers, depleted, who is away recovering. */
+.tsi-tool--bastion .tsi-bas-item__text { min-width: 0; }
+.tsi-tool--bastion .tsi-bas-item__type { font-size: 15px; line-height: 1.3; color: var(--tsi-text-muted); }
+/* Reached with the Tab key, which shows its stat block: the ring sits inside the row. */
+.tsi-tool--bastion .tsi-bas-item--tip:focus-visible { outline-offset: -2px; }
 
 /* ---------- Favour of The Gods (left) ---------- */
 .tsi-tool--bastion .tsi-bas-side {
@@ -445,6 +450,35 @@
 /* Under each War Turn box: how many are available, or why it can't be used. */
 .tsi-tool--bastion .tsi-bas-war-avail { font: 400 14px/1.3 var(--tsi-font-body); letter-spacing: 0; color: var(--tsi-text-soft); }
 .tsi-tool--bastion .tsi-bas-war-avail.is-none { color: var(--tsi-text-faint); font-style: italic; }
+/* War phase 2: one box per kind of force (defenders, Lieutenants, each kind of regiment and beast). */
+.tsi-tool--bastion .tsi-bas-war-sub { display: flex; flex-direction: column; gap: 8px; }
+.tsi-tool--bastion .tsi-bas-war-sub__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; }
+.tsi-tool--bastion .tsi-bas-war-forces { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.tsi-tool--bastion .tsi-bas-war-field {
+  padding: 8px 10px;
+  border: 1px solid var(--tsi-line-faint);
+  border-radius: var(--tsi-radius-md);
+  background: rgba(0, 0, 0, .18);
+}
+.tsi-tool--bastion .tsi-bas-war-field--empty { justify-content: center; }
+.tsi-tool--bastion .tsi-bas-war-field__name { color: var(--tsi-text-muted); }
+.tsi-tool--bastion .tsi-bas-war-field__name--tip { align-self: flex-start; cursor: help; border-bottom: 1px dotted var(--tsi-line-control); }
+/* The scouts' estimate, and your army's Battle Value with Queue War Action beside it. */
+.tsi-tool--bastion .tsi-bas-war-plan { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: stretch; }
+.tsi-tool--bastion .tsi-bas-war-intel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--tsi-line-control);
+  border-radius: var(--tsi-radius-md);
+  background: linear-gradient(180deg, rgba(58, 18, 25, .45), rgba(0, 0, 0, .3));
+}
+.tsi-tool--bastion .tsi-bas-war-intel__text { font-size: var(--tsi-fs-body-sm); line-height: 1.35; color: var(--tsi-text); }
+.tsi-tool--bastion .tsi-bas-war-intel__rule { font-size: 15px; }
+.tsi-tool--bastion .tsi-bas-war-plan__side { display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; gap: 10px; }
+.tsi-tool--bastion .tsi-bas-war-bv { font-size: var(--tsi-fs-body-sm); color: var(--tsi-text-muted); white-space: nowrap; }
+.tsi-tool--bastion .tsi-bas-war-bv b { font: 700 20px/1 var(--tsi-font-display); color: var(--tsi-gold-text); }
 /* A box that can't be used looks it (it looked just like a working one: Harry's report, 2 October 2026). */
 .tsi-tool--bastion .tsi-input:disabled { opacity: .45; cursor: not-allowed; }
 .tsi-tool--bastion .tsi-bas-war-log { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
@@ -567,6 +601,73 @@
 .tsi-tool--bastion .tsi-bas-fn__select { width: 100%; }
 .tsi-tool--bastion .tsi-bas-fn__issue { width: 100%; }
 .tsi-tool--bastion .tsi-bas-fn__notes { font-size: 14px; line-height: 1.3; color: var(--tsi-text-soft); }
+/* The War Room's Recruit list (war phase 2): a button that opens a list of units. */
+.tsi-tool--bastion .tsi-bas-pick-wrap { position: relative; }
+.tsi-tool--bastion .tsi-bas-pick {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+.tsi-tool--bastion .tsi-bas-pick:disabled { cursor: not-allowed; }
+.tsi-tool--bastion .tsi-bas-pick__value { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tsi-tool--bastion .tsi-bas-pick__caret {
+  flex-shrink: 0;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid var(--tsi-gold);
+}
+.tsi-tool--bastion .tsi-bas-pick[aria-expanded="true"] .tsi-bas-pick__caret { transform: rotate(180deg); }
+/* The native list it keeps in step: out of sight and out of reach. */
+.tsi-tool--bastion .tsi-bas-pick__native {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  opacity: 0;
+  pointer-events: none;
+}
+.tsi-tool--bastion .tsi-bas-pick__list {
+  position: fixed;
+  z-index: var(--tsi-z-menu);
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  box-sizing: border-box;
+  max-height: calc(100vh - 16px);
+  overflow: auto;
+  border: 1px solid var(--tsi-line-control);
+  border-radius: var(--tsi-radius-md);
+  background: linear-gradient(180deg, rgba(40, 14, 19, .98), rgba(12, 7, 9, .98));
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .6), var(--tsi-glow-gold);
+}
+.tsi-tool--bastion .tsi-bas-pick__opt {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 10px;
+  border-radius: var(--tsi-radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  outline: none;
+}
+.tsi-tool--bastion .tsi-bas-pick__opt:hover { background: rgba(214, 178, 94, .08); }
+.tsi-tool--bastion .tsi-bas-pick__opt:focus { background: rgba(214, 178, 94, .16); border-color: var(--tsi-line-control); }
+.tsi-tool--bastion .tsi-bas-pick__opt:focus-visible { box-shadow: var(--tsi-focus-ring); }
+.tsi-tool--bastion .tsi-bas-pick__opt[aria-selected="true"] .tsi-bas-pick__name { color: var(--tsi-gold-text); }
+.tsi-tool--bastion .tsi-bas-pick__opt[aria-selected="true"] .tsi-bas-pick__name::before { content: "✓ "; }
+.tsi-tool--bastion .tsi-bas-pick__name { font: 600 14px/1.2 var(--tsi-font-display); letter-spacing: .02em; color: var(--tsi-text); }
+.tsi-tool--bastion .tsi-bas-pick__size { font-size: 15px; color: var(--tsi-text-soft); white-space: nowrap; }
 
 /* ---------- Warehouse · Artisan Tools ---------- */
 .tsi-tool--bastion .tsi-bas-whrow { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 16px; align-items: stretch; }
@@ -680,6 +781,22 @@
 .tsi-tool--bastion .tsi-bas-tip__title { margin-bottom: 6px; font: 700 12px var(--tsi-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--tsi-gold-text); }
 .tsi-tool--bastion .tsi-bas-tip ul { margin: 6px 0 0 18px; padding: 0; }
 .tsi-tool--bastion .tsi-bas-tip li { margin: 2px 0; }
+/* A stat block in the tooltip (war phase 2), laid out as the War Table's. */
+.tsi-tool--bastion .tsi-bas-stat-lead { margin: -2px 0 8px; font-size: 15px; color: var(--tsi-text-muted); }
+.tsi-tool--bastion .tsi-bas-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; margin: 0; }
+.tsi-tool--bastion .tsi-bas-stat {
+  padding: 4px 6px;
+  border: 1px solid var(--tsi-line-faint);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .03);
+}
+.tsi-tool--bastion .tsi-bas-stat dt { font: 600 10px/1.15 var(--tsi-font-display); letter-spacing: .03em; text-transform: uppercase; color: var(--tsi-text-soft); white-space: nowrap; }
+.tsi-tool--bastion .tsi-bas-stat dd { margin: 1px 0 0; font: 700 16px/1.15 var(--tsi-font-body); color: var(--tsi-text); }
+.tsi-tool--bastion .tsi-bas-tip .tsi-bas-stat-traits,
+.tsi-tool--bastion .tsi-bas-tip .tsi-bas-stat-notes { margin: 8px 0 0; padding: 0 0 0 16px; font-size: 15px; color: var(--tsi-text-muted); }
+.tsi-tool--bastion .tsi-bas-stat-traits b { color: var(--tsi-gold-text); }
+.tsi-tool--bastion .tsi-bas-stat-flavour { margin: 8px 0 0; font-style: italic; font-size: 15px; color: var(--tsi-text-soft); }
+.tsi-tool--bastion .tsi-bas-stat-rule { margin: 8px 0 0; font-size: 15px; color: var(--tsi-text-muted); }
 
 /* ==========================================================================
    Pop-ups (they sit outside the tool, so they're scoped by the page)
@@ -744,7 +861,8 @@
   background: rgba(0, 0, 0, .22);
   font: 400 14px/1.45 var(--tsi-font-mono);
 }
-.tsi-page--bastion .tsi-bas-res-roll--pre { white-space: pre-wrap; }
+/* The War Report: a long report since war phase 2, so in the body font, not the dice box's. */
+.tsi-page--bastion .tsi-bas-res-roll--pre { white-space: pre-wrap; font: 500 var(--tsi-fs-body-sm)/1.4 var(--tsi-font-body); }
 .tsi-page--bastion .tsi-bas-res-summary {
   min-height: 1.35em;
   margin-top: 10px;
@@ -877,7 +995,9 @@
   .tsi-tool--bastion .tsi-bas-top,
   .tsi-tool--bastion .tsi-bas-mgmt,
   .tsi-tool--bastion .tsi-bas-war-grid,
+  .tsi-tool--bastion .tsi-bas-war-plan,
   .tsi-tool--bastion .tsi-bas-tool-grid { grid-template-columns: minmax(0, 1fr); }
+  .tsi-tool--bastion .tsi-bas-war-plan__side { align-items: flex-start; }
   .tsi-tool--bastion .tsi-bas-clan-grid { grid-template-columns: minmax(0, 1fr); }
   .tsi-tool--bastion .tsi-bas-clan-row { grid-template-columns: 1fr 1fr; }
   .tsi-tool--bastion .tsi-bas-wh__head { display: none; }
