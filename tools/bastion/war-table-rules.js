@@ -1,24 +1,28 @@
 /* The Ironbow Bastion Manager — the War Table's rules.
-   The War Table is the simplified battle map the Bastion opens during a
-   Military Action. These are its plain rules, with no page code, so they can
-   be tested on their own (tests/rules/bastion-war-table.test.js):
-   - the board: everything is measured on the map picture in "board units"
-     (1600 wide, as tall as the map's shape; 1600 × 900 with no map), so the
-     forces stay on the same spot of the map at any window size, zoom, full
-     screen, and when the window moves between the laptop and the TV;
-   - where the board sits on screen (view, toScreen, toWorld);
-   - the saved settings (grid, token size, camera) and the saved map record;
-   - token sizes, keeping every token on your ground (the bottom half),
-     snapping to the grid, and the opening battle line (formation).
-   Positions are saved as FRACTIONS of the board (0..1, token centres), so a
-   new map of a different shape keeps everyone in the same relative place. */
+   The War Table is the battle screen the Bastion opens during a Military
+   Action. The battle itself (every rule of play) lives in
+   war-battle-rules.js (TSI.bastion.battleRules); these are only the War
+   Table's own plain rules, with no page code, so they can be tested on
+   their own (tests/rules/bastion-war-table.test.js):
+   - the board: the battle grid in "board units" (1600 wide, one square
+     = 1600 ÷ the squares across), so a square is the same spot of the map
+     at any window size, zoom, in full screen and when the window moves
+     between the laptop and the TV;
+   - where the board sits on screen (view, toScreen, toWorld, the camera);
+   - the saved settings (grid lines, Snap, token size, camera, the chosen
+     battlefield width) and the saved map record;
+   - the painted terrain store ('warTerrain', one painting per map and
+     battlefield width) and a battle's own ground (battle.ground);
+   - which order a square chosen before an order proposes;
+   - the words the table shows: the objective and its progress, the attack
+     preview line, losses, why a unit can't be set out on a square, what
+     ending a battle early would do;
+   - stepping a proposed move with the arrow keys. */
 (function () {
   'use strict';
 
   var TSI = window.TSI = window.TSI || {};
   var bas = TSI.bastion = TSI.bastion || {};
-
-  var EPS = 1e-6;
 
   function clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
   function isObj(v) { return v !== null && typeof v === 'object' && !Array.isArray(v); }
@@ -27,30 +31,63 @@
     return (v === null || v === '' || typeof v === 'boolean' || !Number.isFinite(n)) ? fallback : n;
   }
   function round2(v) { return Math.round(v * 100) / 100; }
+  function war() { return (window.TSI_DATA && window.TSI_DATA.bastionWar) || null; }
+  function scale() {
+    var w = war();
+    var s = (w && w.scale) || {};
+    return { cols: num(s.cols, 22), minCols: num(s.minCols, 20), maxCols: num(s.maxCols, 24) };
+  }
+  function plural(n, one, many) { return n + ' ' + (n === 1 ? one : (many || one + 's')); }
+  /* " + 2" / " − 2" (a true minus sign, as the rest of the Bastion). */
+  function spaced(n) { return n < 0 ? ' − ' + Math.abs(n) : ' + ' + n; }
+  function signed(n) { return n < 0 ? '−' + Math.abs(n) : '+' + n; }
 
   var W = bas.warTableRules = {
     BOARD_W: 1600,
     MAX_UPLOAD_BYTES: 4 * 1024 * 1024,
-    GRID_MIN: 20,
-    GRID_MAX: 200,
-    GRID_STEP: 5,
-    GRID_STEP_BIG: 20,
+    /* Tokens are drawn at this share of their square (display only). */
     TOKEN_MIN: 0.5,
-    TOKEN_MAX: 2.5,
+    TOKEN_MAX: 1,
     TOKEN_STEP: 0.1,
+    TOKEN_DEFAULT: 0.9,
     ZOOM_MIN: 0.5,
     ZOOM_MAX: 3,
     ZOOM_STEP: 0.25,
-    /* The four kinds of force, in the order the roster lists them. */
-    KINDS: ['regiment', 'defenders', 'lieutenant', 'beast'],
-    KIND_NAMES: { regiment: 'Regiments', defenders: 'Defenders', lieutenant: 'Lieutenants', beast: 'Beasts' },
+    /* How many maps' "no terrain yet" warnings are remembered as dismissed. */
+    DISMISS_MAX: 50,
 
     clamp: clamp,
+    plural: plural,
+    spaced: spaced,
+    signed: signed,
 
-    /* ---------- The board ---------- */
-    board: function (mapW, mapH) {
-      if (mapW > 0 && mapH > 0) return { w: W.BOARD_W, h: W.BOARD_W * mapH / mapW };
-      return { w: W.BOARD_W, h: 900 };
+    /* ---------- The board: the battle grid in board units ---------- */
+    /* cols × rows squares, 1600 units across; one square is cell units. */
+    boardFor: function (cols, rows) {
+      var c = Math.max(1, Math.floor(num(cols, 22)));
+      var r = Math.max(1, Math.floor(num(rows, 12)));
+      var cell = W.BOARD_W / c;
+      return { w: W.BOARD_W, h: cell * r, cols: c, rows: r, cell: cell };
+    },
+    /* The square under a board point, or null off the board. */
+    cellAt: function (board, x, y) {
+      if (!(x >= 0) || !(y >= 0)) return null;
+      var c = Math.floor(x / board.cell);
+      var r = Math.floor(y / board.cell);
+      return c >= 0 && r >= 0 && c < board.cols && r < board.rows ? { c: c, r: r } : null;
+    },
+    /* The nearest square to a board point (always on the board). */
+    nearestCell: function (board, x, y) {
+      return {
+        c: clamp(Math.floor(num(x, 0) / board.cell), 0, board.cols - 1),
+        r: clamp(Math.floor(num(y, 0) / board.cell), 0, board.rows - 1)
+      };
+    },
+    cellCentre: function (board, c, r) { return { x: (c + 0.5) * board.cell, y: (r + 0.5) * board.cell }; },
+    /* A token's box in its square: drawn at tokenScale of the square, centred. */
+    tokenBox: function (board, c, r, tokenScale) {
+      var size = board.cell * clamp(num(tokenScale, W.TOKEN_DEFAULT), W.TOKEN_MIN, W.TOKEN_MAX);
+      return { x: c * board.cell + (board.cell - size) / 2, y: r * board.cell + (board.cell - size) / 2, size: size };
     },
 
     /* Where the board sits on screen. At zoom 1 the whole board fits the
@@ -62,15 +99,14 @@
       var f = Math.min(stageW / board.w, stageH / board.h);
       if (!(f > 0) || !Number.isFinite(f)) f = 1;
       var zoom = clamp(num(camera && camera.zoom, 1), W.ZOOM_MIN, W.ZOOM_MAX);
-      var scale = f * zoom;
+      var s = f * zoom;
       var cx = board.w / 2 + num(camera && camera.x, 0);
       var cy = board.h / 2 + num(camera && camera.y, 0);
-      return { fit: f, scale: scale, ox: stageW / 2 - scale * cx, oy: stageH / 2 - scale * cy };
+      return { fit: f, scale: s, ox: stageW / 2 - s * cx, oy: stageH / 2 - s * cy };
     },
     toScreen: function (v, x, y) { return { x: v.ox + v.scale * x, y: v.oy + v.scale * y }; },
     toWorld: function (v, sx, sy) { return { x: (sx - v.ox) / v.scale, y: (sy - v.oy) / v.scale }; },
 
-    /* Keep the centre of the stage over the board, so it can't be panned away. */
     /* The pan is kept within what the zoom allows, so the map always fills
        the view it can: at 100% or less it's centred, and zooming back out
        after a pan brings it back. */
@@ -91,40 +127,57 @@
       var before = W.view(stageW, stageH, board, camera);
       var p = W.toWorld(before, sx, sy);
       var z = clamp(num(zoom, 1), W.ZOOM_MIN, W.ZOOM_MAX);
-      var scale = before.fit * z;
+      var s = before.fit * z;
       return W.clampCamera({
-        x: p.x - board.w / 2 - (sx - stageW / 2) / scale,
-        y: p.y - board.h / 2 - (sy - stageH / 2) / scale,
+        x: p.x - board.w / 2 - (sx - stageW / 2) / s,
+        y: p.y - board.h / 2 - (sy - stageH / 2) / s,
         zoom: z
       }, board);
     },
 
-    /* ---------- Settings: grid, token size, camera ---------- */
+    /* ---------- Settings (saved as 'warTable') ----------
+       grid.show and grid.snap are display preferences only; tokenScale is
+       how big tokens are drawn inside their square; cols is the battlefield
+       width chosen before deployment; terrainDismissed lists the maps whose
+       "no terrain yet" warning was dismissed. */
     defaultSettings: function () {
-      return { grid: { show: true, size: 70, snap: false, offX: 0, offY: 0 }, tokenScale: 1, camera: { x: 0, y: 0, zoom: 1 } };
+      return {
+        grid: { show: true, snap: true },
+        tokenScale: W.TOKEN_DEFAULT,
+        camera: { x: 0, y: 0, zoom: 1 },
+        cols: scale().cols,
+        terrainDismissed: []
+      };
     },
     /* A plain object is accepted; normalizeSettings deals with the values. */
     isSettings: function (v) { return isObj(v); },
-    /* A clean copy, with anything missing filled in and everything in range. */
+    /* A clean copy, with anything missing filled in and everything in range.
+       Phase 1's grid size and offsets are let go (the grid is now the battle's). */
     normalizeSettings: function (v) {
       var d = W.defaultSettings();
       var s = isObj(v) ? v : {};
       var g = isObj(s.grid) ? s.grid : {};
       var c = isObj(s.camera) ? s.camera : {};
+      var sc = scale();
+      var seen = {};
+      var dismissed = (Array.isArray(s.terrainDismissed) ? s.terrainDismissed : []).filter(function (k) {
+        if (typeof k !== 'string' || !k || seen[k]) return false;
+        seen[k] = true;
+        return true;
+      }).slice(-W.DISMISS_MAX);
       return {
         grid: {
           show: typeof g.show === 'boolean' ? g.show : d.grid.show,
-          size: Math.round(clamp(num(g.size, d.grid.size), W.GRID_MIN, W.GRID_MAX)),
-          snap: typeof g.snap === 'boolean' ? g.snap : d.grid.snap,
-          offX: num(g.offX, 0),
-          offY: num(g.offY, 0)
+          snap: typeof g.snap === 'boolean' ? g.snap : d.grid.snap
         },
         tokenScale: round2(clamp(num(s.tokenScale, d.tokenScale), W.TOKEN_MIN, W.TOKEN_MAX)),
         camera: {
           x: num(c.x, 0),
           y: num(c.y, 0),
           zoom: round2(clamp(num(c.zoom, 1), W.ZOOM_MIN, W.ZOOM_MAX))
-        }
+        },
+        cols: Math.round(clamp(num(s.cols, sc.cols), sc.minCols, sc.maxCols)),
+        terrainDismissed: dismissed
       };
     },
 
@@ -143,293 +196,347 @@
       return (h >>> 0).toString(16);
     },
 
-    /* ---------- Deployment (saved by the Bastion) ---------- */
-    /* { started, locked, positions: { id: { x, y } } } with x, y as fractions of the board. */
-    normalizeDeployment: function (v) {
-      var d = isObj(v) ? v : {};
-      var positions = {};
-      if (isObj(d.positions)) {
-        Object.keys(d.positions).forEach(function (id) {
-          var p = d.positions[id];
-          if (isObj(p) && Number.isFinite(p.x) && Number.isFinite(p.y)) positions[id] = { x: clamp(p.x, 0, 1), y: clamp(p.y, 0, 1) };
-        });
-      }
-      var locked = d.locked === true;
-      return { started: d.started === true || locked, locked: locked, positions: positions };
+    /* ---------- Painted terrain (saved as 'warTerrain') ----------
+       { [mapKey]: { cols, rows, cells } }: one painting per map ('none' for
+       the plain board); cells is a string of terrain codes, row by row. */
+    codes: function () {
+      var w = war();
+      return w ? w.terrain.map(function (t) { return t.code; }) : ['.'];
     },
-
-    /* ---------- Forces and their tokens ---------- */
-    kindOf: function (force) {
-      var k = typeof force === 'string' ? force : (force && force.kind);
-      return W.KINDS.indexOf(k) === -1 ? 'lieutenant' : k;
+    isPainting: function (v) {
+      return isObj(v) && typeof v.cells === 'string' &&
+        Number.isInteger(v.cols) && Number.isInteger(v.rows) && v.cols >= 1 && v.rows >= 1 &&
+        v.cols <= 200 && v.rows <= 200 && v.cells.length === v.cols * v.rows;
     },
-    isCircle: function (force) {
-      var k = W.kindOf(force);
-      return k === 'lieutenant' || k === 'beast';
+    /* The saved store tidied: well-formed paintings kept (unknown codes
+       become open ground), anything else let go. */
+    cleanTerrainStore: function (v) {
+      var out = {};
+      if (!isObj(v)) return out;
+      var known = {};
+      W.codes().forEach(function (c) { known[c] = true; });
+      Object.keys(v).forEach(function (k) {
+        var p = v[k];
+        if (!W.isPainting(p)) return;
+        var cells = '';
+        for (var i = 0; i < p.cells.length; i++) cells += known[p.cells.charAt(i)] ? p.cells.charAt(i) : '.';
+        out[k] = { cols: p.cols, rows: p.rows, cells: cells };
+      });
+      return out;
     },
-    /* The forces list cleaned up: an id each, no repeats, a known kind. */
-    cleanForces: function (list) {
-      var seen = {};
+    blankPainting: function (cols, rows) {
+      var n = Math.max(1, cols) * Math.max(1, rows);
+      return { cols: cols, rows: rows, cells: new Array(n + 1).join('.') };
+    },
+    /* True when nothing but open ground is painted (or there's no painting). */
+    allOpen: function (painting) {
+      return !W.isPainting(painting) || !/[^.]/.test(painting.cells);
+    },
+    /* Paint these squares with code: a new painting and how many changed. */
+    paint: function (painting, cells, code) {
+      var p = painting;
+      var chars = p.cells.split('');
+      var changed = 0;
+      (cells || []).forEach(function (cell) {
+        if (!cell || cell.c < 0 || cell.r < 0 || cell.c >= p.cols || cell.r >= p.rows) return;
+        var i = cell.r * p.cols + cell.c;
+        if (chars[i] === code) return;
+        chars[i] = code;
+        changed += 1;
+      });
+      return { painting: { cols: p.cols, rows: p.rows, cells: chars.join('') }, changed: changed };
+    },
+    /* Every square on a straight line from a to b, both included (so a fast
+       drag paints without gaps). */
+    strokeCells: function (a, b) {
       var out = [];
-      (Array.isArray(list) ? list : []).forEach(function (f) {
-        if (!isObj(f) || f.id === undefined || f.id === null || f.id === '') return;
-        var id = String(f.id);
-        if (seen[id]) return;
-        seen[id] = true;
-        out.push(Object.assign({}, f, { id: id, kind: W.kindOf(f) }));
-      });
-      return out;
-    },
-    gridSize: function (grid) { return clamp(num(grid && grid.size, 70), W.GRID_MIN, W.GRID_MAX); },
-    /* A token's size in board units: lieutenants and beasts are circles one
-       square across; regiments and the Bastion Defenders are 3 × 2 squares. */
-    tokenDims: function (force, grid, tokenScale) {
-      var cell = W.gridSize(grid) * clamp(num(tokenScale, 1), W.TOKEN_MIN, W.TOKEN_MAX);
-      if (W.isCircle(force)) return { w: cell, h: cell, cols: 1, rows: 1, shape: 'circle' };
-      return { w: 3 * cell, h: 2 * cell, cols: 3, rows: 2, shape: 'rect' };
-    },
-
-    /* ---------- Your ground: the bottom half ---------- */
-    /* Keep the whole token on the board and in the bottom half (its top edge
-       on or below the midline). A token taller than the bottom half has its
-       top pinned to the midline; one wider than the board is centred. */
-    clampToBottomHalf: function (cx, cy, w, h, board) {
-      var mid = board.h / 2;
-      var x = w >= board.w ? board.w / 2 : clamp(num(cx, board.w / 2), w / 2, board.w - w / 2);
-      var y = h >= board.h - mid ? mid + h / 2 : clamp(num(cy, mid + h / 2), mid + h / 2, board.h - h / 2);
-      return { x: x, y: y };
-    },
-    /* True when the token is already where clampToBottomHalf would leave it. */
-    inBottomHalf: function (cx, cy, w, h, board) {
-      var c = W.clampToBottomHalf(cx, cy, w, h, board);
-      return Math.abs(c.x - cx) < EPS && Math.abs(c.y - cy) < EPS;
-    },
-
-    /* Snap a token so it covers whole squares: its centre goes on a square's
-       centre when it is an odd number of squares across (a circle, or 3
-       wide), and on a grid corner when even (2 tall). offX / offY shift the grid. */
-    snapToken: function (cx, cy, w, h, grid) {
-      var size = W.gridSize(grid);
-      var offX = num(grid && grid.offX, 0);
-      var offY = num(grid && grid.offY, 0);
-      function axis(c, span, off) {
-        var n = Math.max(1, Math.round(span / size));
-        if (n % 2 === 1) return off + (Math.floor((c - off) / size) + 0.5) * size;
-        return off + Math.round((c - off) / size) * size;
+      var x = a.c;
+      var y = a.r;
+      var dx = Math.abs(b.c - x);
+      var dy = -Math.abs(b.r - y);
+      var sx = x < b.c ? 1 : -1;
+      var sy = y < b.r ? 1 : -1;
+      var err = dx + dy;
+      for (var guard = 0; guard < 1000; guard++) {
+        out.push({ c: x, r: y });
+        if (x === b.c && y === b.r) break;
+        var e2 = 2 * err;
+        if (e2 >= dy) { err += dy; x += sx; }
+        if (e2 <= dx) { err += dx; y += sy; }
       }
-      return { x: axis(cx, w, offX), y: axis(cy, h, offY) };
+      return out;
+    },
+    /* One painting per map and battlefield width. store[mapKey] is the
+       painting last made for that map; a painting made for one of the map's
+       other widths is kept as store[mapKey + '@' + cols], so changing the
+       width and painting there never overwrites (or thins out) the painting
+       made at another width. */
+    widthKey: function (mapKey, cols) { return mapKey + '@' + cols; },
+    /* The painting for this map at this grid: its own if it has one
+       ({ own: true }), otherwise the map's latest painting redrawn for this
+       grid by battleRules.terrainForGrid ({ own: false, fromCols }), or open
+       ground. Nothing is saved. */
+    paintingFor: function (BR, store, mapKey, cols, rows) {
+      var s = isObj(store) ? store : {};
+      function fits(p) { return W.isPainting(p) && p.cols === cols && p.rows === rows; }
+      var main = s[mapKey];
+      if (fits(main)) return { painting: { cols: cols, rows: rows, cells: main.cells }, own: true, fromCols: null };
+      var other = s[W.widthKey(mapKey, cols)];
+      if (fits(other)) return { painting: { cols: cols, rows: rows, cells: other.cells }, own: true, fromCols: null };
+      var base = W.isPainting(main) ? main : null;
+      var p = BR.terrainForGrid(base, cols, rows);
+      return { painting: { cols: p.cols, rows: p.rows, cells: p.cells }, own: false, fromCols: base && !W.allOpen(base) ? base.cols : null };
+    },
+    /* A new store with this painting saved as the map's latest. The map's
+       previous latest painting, if it was for another grid, is kept under
+       its own width. The store passed in is not changed. */
+    storePainting: function (store, mapKey, painting) {
+      var out = Object.assign({}, isObj(store) ? store : {});
+      var old = out[mapKey];
+      if (W.isPainting(old) && (old.cols !== painting.cols || old.rows !== painting.rows)) out[W.widthKey(mapKey, old.cols)] = old;
+      delete out[W.widthKey(mapKey, painting.cols)];
+      out[mapKey] = { cols: painting.cols, rows: painting.rows, cells: painting.cells };
+      return out;
+    },
+    /* A new store without any of this map's paintings (Clear terrain). */
+    forgetPaintings: function (store, mapKey) {
+      var out = {};
+      var prefix = mapKey + '@';
+      Object.keys(isObj(store) ? store : {}).forEach(function (k) {
+        if (k !== mapKey && k.indexOf(prefix) !== 0) out[k] = store[k];
+      });
+      return out;
+    },
+    /* The battle's own ground, kept on the battle record from Begin
+       Deployment on: { mapKey, mapName, terrain: { cols, rows, cells } }.
+       The battle's terrain lives here, so another battle's setup, or a map
+       brought back mid-battle, can't change it. A tidy copy for this grid,
+       or null if it isn't in the right form. */
+    cleanGround: function (v, cols, rows) {
+      if (!isObj(v) || typeof v.mapKey !== 'string' || !v.mapKey) return null;
+      var t = v.terrain;
+      if (!W.isPainting(t) || t.cols !== cols || t.rows !== rows) return null;
+      var store = W.cleanTerrainStore({ t: t });
+      return {
+        mapKey: v.mapKey,
+        mapName: typeof v.mapName === 'string' ? v.mapName : '',
+        terrain: store.t
+      };
+    },
+    /* The dismissed list with this map added (newest last, capped). */
+    dismiss: function (list, key) {
+      var out = (Array.isArray(list) ? list : []).filter(function (k) { return k !== key; });
+      out.push(key);
+      return out.slice(-W.DISMISS_MAX);
     },
 
-    /* Where a token ends up after a move: snapped (when snap is on) and kept
-       on your ground. A snapped token that would cross the midline or the edge
-       steps back by whole squares, so it stays on the grid; only if that
-       can't work is it clamped. */
-    settle: function (cx, cy, w, h, board, grid, snap) {
-      if (!snap) return W.clampToBottomHalf(cx, cy, w, h, board);
-      var size = W.gridSize(grid);
-      var s = W.snapToken(cx, cy, w, h, grid);
-      var mid = board.h / 2;
-      function fit(c, half, lo, hi) {
-        var min = lo + half;
-        var max = hi - half;
-        if (max < min - EPS) return null;
-        if (c < min - EPS) c += Math.ceil((min - c) / size - EPS) * size;
-        if (c > max + EPS) c -= Math.ceil((c - max) / size - EPS) * size;
-        return (c < min - EPS || c > max + EPS) ? null : c;
+    /* ---------- Moving a proposed square with the arrow keys ----------
+       From square from, the first square in reach (keys 'c,r') in the
+       direction [dc, dr], skipping squares that aren't; null if none. */
+    arrowStep: function (reach, from, dir, cols, rows) {
+      if (!reach || !from || !dir) return null;
+      for (var k = 1; k <= Math.max(cols, rows); k++) {
+        var c = from.c + dir[0] * k;
+        var r = from.r + dir[1] * k;
+        if (c < 0 || r < 0 || c >= cols || r >= rows) return null;
+        if (reach[c + ',' + r]) return { c: c, r: r };
       }
-      var x = fit(s.x, w / 2, 0, board.w);
-      var y = fit(s.y, h / 2, mid, board.h);
-      var clamped = W.clampToBottomHalf(x === null ? s.x : x, y === null ? s.y : y, w, h, board);
-      return clamped;
+      return null;
     },
 
-    /* ---------- Fractions and board units ---------- */
-    fromFractions: function (positions, board) {
-      var out = {};
-      Object.keys(positions || {}).forEach(function (id) {
-        var p = positions[id];
-        if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) out[id] = { x: p.x * board.w, y: p.y * board.h };
+    /* ---------- Dragging a selected unit before choosing an order ----------
+       areas: { advance, march, disengage } (battleRules.reachable's maps, or
+       null). The order a drop on this square proposes: Advance & Attack
+       within the unit's Move, March beyond it, Disengage when it is in
+       melee; null when no order reaches the square. */
+    orderForCell: function (areas, cell) {
+      if (!areas || !cell) return null;
+      var k = cell.c + ',' + cell.r;
+      var order = null;
+      ['advance', 'march', 'disengage'].some(function (id) {
+        if (areas[id] && areas[id][k]) { order = id; return true; }
+        return false;
       });
-      return out;
-    },
-    toFractions: function (positions, board) {
-      var out = {};
-      Object.keys(positions || {}).forEach(function (id) {
-        var p = positions[id];
-        if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) out[id] = { x: p.x / board.w, y: p.y / board.h };
-      });
-      return out;
+      return order;
     },
 
-    /* Re-place every placed token after the board's shape, the grid or the
-       token size changes: each stays on your ground (and on the grid, when
-       snap is on). Fractions in, fractions out; tokens with no position are
-       left out, and so are positions for forces no longer listed. */
-    clampAll: function (positions, forces, board, grid, tokenScale) {
-      var out = {};
-      W.cleanForces(forces).forEach(function (f) {
-        var p = positions && positions[f.id];
-        if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return;
-        var d = W.tokenDims(f, grid, tokenScale);
-        var c = W.settle(p.x * board.w, p.y * board.h, d.w, d.h, board, grid, !!(grid && grid.snap));
-        out[f.id] = { x: c.x / board.w, y: c.y / board.h };
-      });
-      return out;
-    },
-    /* Positions for any listed force that hasn't got one yet (a force added
-       after deployment began), taken from the opening battle line. */
-    fillMissing: function (positions, forces, board, grid, tokenScale) {
-      var out = Object.assign({}, positions || {});
-      var line = null;
-      W.cleanForces(forces).forEach(function (f) {
-        if (out[f.id]) return;
-        if (!line) line = W.formation(forces, board, grid, tokenScale);
-        if (line[f.id]) out[f.id] = line[f.id];
-      });
-      return out;
-    },
-    /* True when two sets of fractions are the same (to a millionth). */
-    samePositions: function (a, b) {
-      var ka = Object.keys(a || {});
-      var kb = Object.keys(b || {});
-      if (ka.length !== kb.length) return false;
-      return ka.every(function (id) {
-        var p = a[id];
-        var q = b[id];
-        return q && Math.abs(p.x - q.x) < EPS && Math.abs(p.y - q.y) < EPS;
-      });
+    /* ---------- The battle log ----------
+       How many of the log's entries came after the one last seen (entries
+       are compared as objects, so this still works once the battle rules
+       start dropping the oldest entries at their limit). */
+    freshCount: function (log, seen) {
+      var list = Array.isArray(log) ? log : [];
+      if (!seen) return list.length;
+      var i = list.lastIndexOf(seen);
+      return i === -1 ? list.length : list.length - 1 - i;
     },
 
-    /* ---------- The opening battle line ----------
-       In the bottom half: the regiments in the front line just below the
-       midline, centred; the lieutenants behind the regiments; the Bastion
-       Defenders behind the centre; the beasts on the flanks of those rows,
-       left and right in turn. Long lines wrap into more (balanced) rows. If
-       everything can't fit, the rows close up and then overlap; every token
-       still ends on the board and in the bottom half. When snap is on, each
-       token is snapped to the grid. Returns { id: { x, y } } as fractions. */
-    formation: function (forces, board, grid, tokenScale) {
-      var list = W.cleanForces(forces);
-      var out = {};
-      if (!list.length) return out;
-      var cell = W.gridSize(grid) * clamp(num(tokenScale, 1), W.TOKEN_MIN, W.TOKEN_MAX);
-      var gap = cell * 0.25;        /* between banners, and from the board's edges */
-      var gapDisc = cell * 0.5;     /* between discs, so their name captions have room */
-      var gapRow = cell * 0.45;     /* between rows, below the captions */
-      var mid = board.h / 2;
-      var usableW = Math.max(cell, board.w - 2 * gap);
-      var byKind = { regiment: [], defenders: [], lieutenant: [], beast: [] };
-      list.forEach(function (f) { byKind[f.kind].push(f); });
+    /* ---------- Ending a battle early ----------
+       What "End the battle" would do now, worked out on a copy (the battle
+       passed in is not changed): { outcome, reason, couldChange }.
+       couldChange: you still have units on the field and the result
+       wouldn't be a victory, so playing on might change it. */
+    endEarlyPreview: function (BR, battle) {
+      if (!battle || battle.result || typeof BR.endBattleEarly !== 'function') return null;
+      var copy = JSON.parse(JSON.stringify(battle));
+      BR.endBattleEarly(copy);
+      var res = copy.result;
+      if (!res) return null;
+      var yours = (battle.units || []).some(function (u) { return u.side === 'player' && BR.onField(u); });
+      return { outcome: res.outcome, reason: res.reason || '', couldChange: yours && res.outcome !== 'victory' };
+    },
+    outcomeWord: function (outcome) {
+      return { victory: 'a victory', defeat: 'a defeat', draw: 'a draw', withdrawal: 'a withdrawal' }[outcome] || 'over';
+    },
 
-      /* Split a line into balanced rows that fit the width. */
-      function rowsOf(items, itemW, maxW, g) {
-        if (!items.length) return [];
-        var perRow = Math.max(1, Math.floor((maxW + g) / (itemW + g)));
-        var count = Math.ceil(items.length / perRow);
-        var each = Math.ceil(items.length / count);
-        var rows = [];
-        for (var i = 0; i < items.length; i += each) rows.push(items.slice(i, i + each));
-        return rows;
+    /* ---------- The d20 box ---------- */
+    /* Blank → null (roll for me); a whole number 1 to 20 → it; anything else → NaN. */
+    parseD20: function (text) {
+      var s = String(text === undefined || text === null ? '' : text).trim();
+      if (!s) return null;
+      if (!/^\d{1,2}$/.test(s)) return NaN;
+      var n = Number(s);
+      return n >= 1 && n <= 20 ? n : NaN;
+    },
+
+    /* ---------- Words ---------- */
+    roundText: function (battle) {
+      return 'Round ' + battle.round + ' of ' + battle.maxRounds;
+    },
+    turnText: function (battle) {
+      if (battle.result) return 'The battle is over';
+      return battle.turnSide === 'player' ? 'Your turn' : 'The enemy\'s turn';
+    },
+    /* The objective, its deadline and how it's going, in one line. */
+    objectiveText: function (battle, data) {
+      var D = data || war();
+      var o = battle.objective || { id: 'skirmish' };
+      var def = (D && D.objectives[o.id]) || { name: 'Skirmish' };
+      var last = 'by the end of round ' + battle.maxRounds;
+      if (o.id === 'raid') {
+        var need = num(def.need, 2);
+        var markers = o.markers || [];
+        var carried = markers.filter(function (m) { return m.state === 'carried'; }).length;
+        return def.name + ': carry off ' + need + ' of ' + markers.length + ' supplies ' + last + ' · ' +
+          (o.extracted || 0) + ' carried off' + (carried ? ', ' + carried + ' on the way' : '');
       }
-
-      var rows = [];
-      ['regiment', 'lieutenant', 'defenders'].forEach(function (kind) {
-        var items = byKind[kind];
-        if (!items.length) return;
-        var d = W.tokenDims(kind, grid, tokenScale);
-        var g = d.shape === 'circle' ? gapDisc : gap;
-        rowsOf(items, d.w, usableW, g).forEach(function (r) {
-          rows.push({ items: r, w: d.w, h: d.h, gap: g, centralW: r.length * d.w + (r.length - 1) * g, beasts: { left: [], right: [] } });
-        });
+      if (o.id === 'seize_outpost') {
+        var needS = num(def.holdRounds, 2);
+        return def.name + ': hold it at ' + needS + ' round ends in a row ' + last + ' · held ' +
+          plural((o.held && o.held.player) || 0, 'round end') + ' (' + needS + ' needed)';
+      }
+      if (o.id === 'defend') {
+        var needD = num(def.holdRounds, 2);
+        var held = (o.held && o.held.enemy) || 0;
+        return def.name + ': keep the enemy off your supply depot and your army unbroken ' + last + ' · ' +
+          (held ? 'the enemy has held it ' + plural(held, 'round end') + ' (' + needD + ' in a row loses)' : 'the enemy hasn\'t held it');
+      }
+      return def.name + ': break the enemy army, or lose the smaller share of your strength ' + last;
+    },
+    /* The attack worked out before the dice, in one line:
+       "d20 + 4 + 1 (Luck) vs 13: needs 8". pv is battleRules.previewAttack's. */
+    previewLine: function (pv) {
+      if (!pv) return '';
+      var s = 'd20' + spaced(pv.attack);
+      if (pv.capped) s += spaced(pv.modTotal) + ' (modifiers, capped)';
+      else (pv.mods || []).forEach(function (m) { if (m.value) s += spaced(m.value) + ' (' + m.label + ')'; });
+      var base = pv.defence - (pv.defenceMods || []).reduce(function (t, m) { return t + m.value; }, 0);
+      s += ' vs ' + pv.defence;
+      if (pv.defenceMods && pv.defenceMods.length) {
+        s += ' (' + base + (pv.defenceMods.map(function (m) { return spaced(m.value) + ' ' + m.label; }).join('')) + ')';
+      }
+      return s + ': ' + W.needsText(pv.needs);
+    },
+    /* What the d20 has to show (a natural 1 always misses, a natural 20 always hits). */
+    needsText: function (needs) {
+      if (needs > 20) return 'only a natural 20 hits';
+      if (needs <= 2) return 'needs 2 (only a natural 1 misses)';
+      return 'needs ' + needs;
+    },
+    /* A Resolve check worked out before the dice (battleRules.resolveCheck's mods). */
+    checkLine: function (mods, dc) {
+      var s = 'd20';
+      var total = 0;
+      (mods || []).forEach(function (m, i) {
+        total += m.value;
+        if (m.value || i === 0) s += spaced(m.value) + ' (' + m.label + ')';
       });
-
-      /* Beasts on the flanks of each row, nearest the centre first, then
-         rows of beasts at the back for any left over (or if they are alone). */
-      var beasts = byKind.beast.slice();
-      var b = W.tokenDims('beast', grid, tokenScale).w;
-      rows.forEach(function (row) {
-        if (!beasts.length) return;
-        var side = (usableW - row.centralW) / 2;
-        var cols = Math.max(0, Math.floor(side / (b + gapDisc)));
-        var perCol = Math.max(1, Math.floor((row.h + gapRow) / (b + gapRow)));
-        var cap = cols * perCol;
-        if (!cap) return;
-        var left = Math.min(cap, Math.ceil(beasts.length / 2));
-        var right = Math.min(cap, beasts.length - left);
-        if (left < cap && beasts.length - left - right > 0) left = Math.min(cap, beasts.length - right);
-        row.perCol = perCol;
-        /* Alternate sides, so beast 1 is on the left, beast 2 on the right… */
-        var takeL = left;
-        var takeR = right;
-        while ((takeL || takeR) && beasts.length) {
-          if (takeL) { row.beasts.left.push(beasts.shift()); takeL--; }
-          if (takeR && beasts.length) { row.beasts.right.push(beasts.shift()); takeR--; }
+      return s + ' vs DC ' + dc + ': ' + W.needsText(dc - total);
+    },
+    /* "Lost 7.5 of 39 Battle Value (19.2%)". loss is battleRules.armyLoss's. */
+    lossText: function (loss) {
+      return 'Lost ' + loss.lostBV + ' of ' + loss.startBV + ' Battle Value (' + loss.pct + '%)' + (loss.broken ? ': broken' : '');
+    },
+    statusWord: function (u) {
+      if (!u) return '';
+      if (u.withdrawn) return u.status === 'shaken' ? 'Shaken, withdrew' : 'Withdrew';
+      if (u.status === 'routed') return 'Routed';
+      if (u.status === 'defeated') return 'Defeated';
+      if (u.status === 'shaken') return 'Shaken';
+      return 'Steady';
+    },
+    /* Bastion Defenders supporting a regiment: "+10 defenders: +2 Cohesion". */
+    supportText: function (support) {
+      if (!support) return '';
+      return '+' + support.count + ' defenders: ' + (support.bonus ? signed(support.bonus) + ' Cohesion' : 'no Cohesion bonus');
+    },
+    /* The enemy's colours: the clan's own where established, else the plain enemy colours. */
+    clanStyle: function (data, clanKey) {
+      var D = data || war();
+      var c = D && D.clans && D.clans[clanKey];
+      return (c && c.style) || (D && D.enemyStyle) || { fill: '#2b2f36', ink: '#e7e2d6' };
+    },
+    /* "Bacca" → "B"; "Clan Bacca" → "B". */
+    clanInitial: function (name) {
+      var words = String(name || '').trim().split(/\s+/).filter(function (w) { return w && !/^(the|clan)$/i.test(w); });
+      return words.length ? words[0].charAt(0).toUpperCase() : '?';
+    },
+    /* Why a unit can't be set out on a square during deployment ('' if it can).
+       BR is battleRules; opts.dm lets the DM move the enemy within its zone. */
+    deployRefusal: function (BR, battle, unitId, cell, terrain, opts) {
+      var u = BR.unitById(battle, unitId);
+      if (!u) return 'There\'s no such unit.';
+      if (!cell || !BR.inBoard(battle, cell)) return 'That\'s off the battlefield.';
+      if (u.side !== 'player' && !(opts && opts.dm)) return 'The enemy\'s units can only be moved with DM: adjust enemy.';
+      var zone = BR.zoneOf(battle, cell.r);
+      if (zone === 'strip') return 'Nobody deploys in the no-deployment strip across the middle.';
+      if (zone !== u.side) return u.side === 'player' ? 'That\'s the enemy\'s ground: set your units out below the strip.' : 'The enemy deploys on its own ground, above the strip.';
+      var t = BR.terrainAt(BR.fitTerrain(battle, terrain), cell.c, cell.r);
+      if (t.impassable) return t.name + ': nobody can be set out there.';
+      var there = BR.unitAt(battle, cell);
+      if (there && there.id !== u.id) return 'That square is taken by ' + there.label + '.';
+      if (BR.fieldMarkerAt(battle, cell)) return 'Keep the supplies clear: nobody is set out on them.';
+      return BR.canDeploy(battle, unitId, cell, terrain, opts) ? '' : 'It can\'t be set out there.';
+    },
+    /* A side's forces for the roster: [{ id, name, items }] in roster order
+       (formations, detachments, leaders, beasts), empty groups left out. */
+    rosterGroups: function (battle, side) {
+      var units = (battle && battle.units) || [];
+      var leaders = (battle && battle.leaders) || [];
+      var mine = units.filter(function (u) { return u.side === side; });
+      return [
+        { id: 'formation', name: 'Formations', items: mine.filter(function (u) { return u.kind === 'formation'; }) },
+        { id: 'detachment', name: 'Detachments', items: mine.filter(function (u) { return u.kind === 'detachment'; }) },
+        { id: 'leader', name: side === 'player' ? 'Lieutenants' : 'Captains', items: leaders.filter(function (l) { return l.side === side; }) },
+        { id: 'beast', name: 'Beasts', items: mine.filter(function (u) { return u.kind === 'beast'; }) }
+      ].filter(function (g) { return g.items.length; });
+    },
+    /* What the scouts report before deployment: the enemy's units counted
+       by type ([{ name, count, sample }]) and its Captains. */
+    enemyIntel: function (battle) {
+      var out = [];
+      var byName = {};
+      ((battle && battle.units) || []).forEach(function (u) {
+        if (u.side !== 'enemy') return;
+        var name = (u.variant && u.variant.name) || u.name;
+        if (!byName[name]) {
+          byName[name] = { name: name, count: 0, sample: u };
+          out.push(byName[name]);
         }
+        byName[name].count += 1;
       });
-      rowsOf(beasts, b, usableW, gapDisc).forEach(function (r) {
-        rows.push({ items: r, w: b, h: b, gap: gapDisc, centralW: r.length * b + (r.length - 1) * gapDisc, beasts: { left: [], right: [] } });
-      });
-
-      /* Row tops from the midline down; close up, then overlap, if too tall. */
-      var heights = rows.map(function (r) { return r.h; });
-      var sumH = heights.reduce(function (a, h) { return a + h; }, 0);
-      var avail = board.h - mid;
-      var gapY = gapRow;
-      if (sumH + gapY * (rows.length + 1) > avail) gapY = Math.max(0, (avail - sumH) / (rows.length + 1));
-      var tops = [];
-      var y = mid + gapY;
-      rows.forEach(function (r) {
-        tops.push(y);
-        y += r.h + gapY;
-      });
-      var last = rows.length - 1;
-      var lastBottom = tops[last] + rows[last].h;
-      if (lastBottom > board.h + EPS && tops[last] > mid) {
-        var k = Math.max(0, (board.h - mid - rows[last].h) / (tops[last] - mid));
-        tops = tops.map(function (t) { return mid + (t - mid) * k; });
-      }
-
-      var centreX = board.w / 2;
-      rows.forEach(function (row, i) {
-        var cy = tops[i] + row.h / 2;
-        var x0 = centreX - row.centralW / 2;
-        row.items.forEach(function (f, j) {
-          out[f.id] = { x: x0 + j * (row.w + row.gap) + row.w / 2, y: cy };
-        });
-        var perCol = row.perCol || 1;
-        function flank(items, dir) {
-          var edge = dir < 0 ? x0 : x0 + row.centralW;
-          items.forEach(function (f, n) {
-            var col = Math.floor(n / perCol);
-            var inCol = n % perCol;
-            var inThisCol = Math.min(perCol, items.length - col * perCol);
-            out[f.id] = {
-              x: edge + dir * (gapDisc + b / 2 + col * (b + gapDisc)),
-              y: cy + (inCol - (inThisCol - 1) / 2) * (b + gapRow)
-            };
-          });
-        }
-        flank(row.beasts.left, -1);
-        flank(row.beasts.right, 1);
-      });
-
-      var snap = !!(grid && grid.snap);
-      var fractions = {};
-      list.forEach(function (f) {
-        var p = out[f.id];
-        var d = W.tokenDims(f, grid, tokenScale);
-        var c = W.settle(p.x, p.y, d.w, d.h, board, grid, snap);
-        fractions[f.id] = { x: c.x / board.w, y: c.y / board.h };
-      });
-      return fractions;
-    },
-
-    /* Forces grouped for the roster: [{ kind, name, items }] in roster order, empty groups left out. */
-    groups: function (forces) {
-      var list = W.cleanForces(forces);
-      return W.KINDS.map(function (kind) {
-        return { kind: kind, name: W.KIND_NAMES[kind], items: list.filter(function (f) { return f.kind === kind; }) };
-      }).filter(function (g) { return g.items.length; });
+      var captains = ((battle && battle.leaders) || []).filter(function (l) { return l.side === 'enemy'; }).length;
+      return { units: out, captains: captains };
     }
   };
 }());

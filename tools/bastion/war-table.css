@@ -1,15 +1,20 @@
 /* ==========================================================================
    The Ironbow Bastion Manager — the War Table (war-table.js).
-   A full-screen battle map over the Bastion during a Military Action: a
-   header (title, the battle's conditions and the map controls), the map on
-   the left and the forces on the right, with one crimson main action.
+   The battle screen over the Bastion during a Military Action: a header
+   (title, the battle's conditions, the round and whose turn, then the map,
+   battlefield and view controls), the battlefield on the left under its
+   objective line and any notes (never over its squares), and the side panel
+   on the right (forces, the selected unit, its orders, the battle log),
+   with one crimson main action at its foot.
    The suite's top bar stays in view above it. It fits the laptop
-   (1707 × 930 at 150%) and the TV (1920 × 1080) with nothing to scroll; on
-   a narrow window the forces go under the map.
-   The map and the forces sit in board units inside transformed layers, so
-   token text sizes are in board units too (--tsi-bas-wt-cell is one square
-   of token, --tsi-bas-wt-inv turns screen pixels into board units, for
-   text that must stay readable however far the map is zoomed out).
+   (1707 × 930 and 1707 × 1067 at 150%) and the TV (1920 × 1080) with
+   nothing to scroll but the side panel; on a narrow window the side panel
+   goes under the map.
+   The map and the units sit in board units inside transformed layers, so
+   their sizes are in board units too: --tsi-bas-wt-sq is one square,
+   --tsi-bas-wt-cell one token (the token-size setting's share of a square),
+   and --tsi-bas-wt-inv turns screen pixels into board units, for text that
+   must stay readable however far the map is zoomed out.
    Every rule is scoped to the Bastion and every class starts "tsi-bas-wt-".
    ========================================================================== */
 
@@ -19,6 +24,9 @@
 .tsi-page--bastion.tsi-bas-wt-open .tsi-notices { left: 16px; right: auto; }
 
 .tsi-tool--bastion .tsi-bas-wt {
+  --tsi-bas-wt-efill: #2b2f36;
+  --tsi-bas-wt-eink: #e7e2d6;
+  --tsi-bas-wt-side-w: 344px;
   position: fixed;
   top: var(--tsi-topbar-h);
   left: 0;
@@ -40,13 +48,13 @@
 .tsi-tool--bastion .tsi-bas-wt::backdrop { background: var(--tsi-bg); }
 .tsi-tool--bastion .tsi-bas-wt [hidden] { display: none !important; }
 
-/* ---------- Header: title, conditions, controls ---------- */
+/* ---------- Header: title, conditions, status, controls ---------- */
 .tsi-tool--bastion .tsi-bas-wt-head {
   display: flex;
   flex-direction: column;
   gap: 8px;
   min-width: 0;
-  padding: 10px 16px 10px;
+  padding: 9px 16px 9px;
   background: rgba(5, 5, 6, .88);
   border-bottom: 1px solid var(--tsi-line-head);
   box-shadow: 0 8px 18px rgba(0, 0, 0, .4);
@@ -54,13 +62,13 @@
 .tsi-tool--bastion .tsi-bas-wt-head__top {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
   min-width: 0;
 }
 .tsi-tool--bastion .tsi-bas-wt-title {
   display: flex;
   align-items: baseline;
-  flex-shrink: 1;
+  flex: 0 1 auto;
   min-width: 0;
   margin: 0;
   white-space: nowrap;
@@ -92,9 +100,10 @@
 }
 .tsi-tool--bastion .tsi-bas-wt-summary {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 6px;
+  flex-shrink: 0;
   min-width: 0;
   margin: 0;
   padding: 0;
@@ -104,7 +113,7 @@
   display: inline-flex;
   align-items: baseline;
   gap: 7px;
-  padding: 3px 12px 4px;
+  padding: 3px 11px 4px;
   border: 1px solid rgba(214, 178, 94, .45);
   border-radius: var(--tsi-radius-pill);
   background: rgba(0, 0, 0, .42);
@@ -112,12 +121,31 @@
   white-space: nowrap;
 }
 .tsi-tool--bastion .tsi-bas-wt-chip__label {
-  font: 600 10.5px/1 var(--tsi-font-display);
+  font: 600 var(--tsi-fs-label)/1 var(--tsi-font-display);
   letter-spacing: var(--tsi-track-pill);
   text-transform: uppercase;
   color: var(--tsi-gold-text);
 }
 .tsi-tool--bastion .tsi-bas-wt-chip__value { font: 700 16px/1.1 var(--tsi-font-body); color: var(--tsi-text); }
+
+/* The round and whose turn it is. */
+.tsi-tool--bastion .tsi-bas-wt-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+.tsi-tool--bastion .tsi-bas-wt-chip--round,
+.tsi-tool--bastion .tsi-bas-wt-chip--turn {
+  flex-shrink: 0;
+  font: 600 12px/1.2 var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-label);
+  text-transform: uppercase;
+}
+.tsi-tool--bastion .tsi-bas-wt-chip--player { border-color: var(--tsi-gold); color: #1a1206; background: linear-gradient(180deg, #e8c879, #c49a45); box-shadow: 0 0 12px rgba(214, 178, 94, .35); }
+.tsi-tool--bastion .tsi-bas-wt-chip--enemy { border-color: rgba(255, 140, 140, .7); color: var(--tsi-text); background: var(--tsi-crimson-fill); }
+.tsi-tool--bastion .tsi-bas-wt-chip--paused { border-color: var(--tsi-warn); color: var(--tsi-warn); }
+.tsi-tool--bastion .tsi-bas-wt-chip--over { color: var(--tsi-text-muted); }
 .tsi-tool--bastion .tsi-bas-wt-head__end { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-shrink: 0; }
 
 .tsi-tool--bastion .tsi-bas-wt-toolbar {
@@ -130,41 +158,123 @@
 .tsi-tool--bastion .tsi-bas-wt-tools {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 0 14px;
+  gap: 5px;
+  padding: 0 12px;
   border-left: 1px solid var(--tsi-line-faint);
 }
 .tsi-tool--bastion .tsi-bas-wt-tools:first-child { padding-left: 0; border-left: 0; }
 .tsi-tool--bastion .tsi-bas-wt-tools__label {
   margin-right: 2px;
-  font: 600 10.5px/1 var(--tsi-font-display);
+  font: 600 var(--tsi-fs-label)/1 var(--tsi-font-display);
   letter-spacing: var(--tsi-track-pill);
   text-transform: uppercase;
   color: var(--tsi-text-soft);
 }
+.tsi-tool--bastion .tsi-bas-wt-step { min-width: 30px; padding-left: 8px; padding-right: 8px; font-size: 15px; line-height: 1; }
+.tsi-tool--bastion .tsi-bas-wt-cols {
+  min-width: 128px;
+  font: 600 15px/1.2 var(--tsi-font-body);
+  text-align: center;
+  color: var(--tsi-text);
+  white-space: nowrap;
+}
 .tsi-tool--bastion .tsi-bas-wt-upload { cursor: pointer; }
 .tsi-tool--bastion .tsi-bas-wt-upload[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
 .tsi-tool--bastion .tsi-bas-wt-toggle[aria-pressed="true"] { border-color: var(--tsi-line-hover); color: var(--tsi-gold-text); background: rgba(214, 178, 94, .08); }
+.tsi-tool--bastion .tsi-bas-wt-dm.tsi-btn--primary { color: var(--tsi-text); }
 .tsi-tool--bastion .tsi-bas-wt-readout {
   margin-left: auto;
-  padding-left: 14px;
+  padding-left: 12px;
   font: italic 500 var(--tsi-fs-body-sm)/1.2 var(--tsi-font-body);
   color: var(--tsi-text-soft);
   white-space: nowrap;
 }
+.tsi-tool--bastion .tsi-bas-wt button:disabled { cursor: not-allowed; }
 
-/* ---------- Body: the map and the forces ---------- */
+/* ---------- Body: the battlefield and the side panel ---------- */
 .tsi-tool--bastion .tsi-bas-wt-body {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
+  grid-template-columns: minmax(0, 1fr) var(--tsi-bas-wt-side-w);
   gap: 14px;
   min-height: 0;
-  padding: 14px 16px 16px;
+  padding: 12px 16px 14px;
 }
 
-/* ---------- The stage (the map) ---------- */
+/* ---------- The battlefield's column: the objective, notes, the stage ---------- */
+.tsi-tool--bastion .tsi-bas-wt-stagecol {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  min-height: 0;
+}
+/* The objective, its deadline and its progress, in full. */
+.tsi-tool--bastion .tsi-bas-wt-objbar {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex: 0 0 auto;
+  min-width: 0;
+  padding: 5px 14px 6px;
+  border: 1px solid var(--tsi-line-control);
+  border-radius: var(--tsi-radius-md);
+  background: rgba(5, 5, 6, .6);
+}
+.tsi-tool--bastion .tsi-bas-wt-objbar__label {
+  flex-shrink: 0;
+  font: 600 var(--tsi-fs-label)/1.2 var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-pill);
+  text-transform: uppercase;
+  color: var(--tsi-gold-text);
+}
+.tsi-tool--bastion .tsi-bas-wt-objective {
+  min-width: 0;
+  font: 600 17px/1.25 var(--tsi-font-body);
+  color: var(--tsi-text);
+}
+/* Notes about the battlefield: one compact line each, above it. */
+.tsi-tool--bastion .tsi-bas-wt-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+.tsi-tool--bastion .tsi-bas-wt-note {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 5px 8px 5px 14px;
+  border: 1px solid var(--tsi-line-control);
+  border-radius: var(--tsi-radius-md);
+  background: rgba(5, 5, 6, .82);
+}
+.tsi-tool--bastion .tsi-bas-wt-note--warn { border-color: var(--tsi-warn); background: rgba(12, 9, 4, .92); }
+.tsi-tool--bastion .tsi-bas-wt-note--paused {
+  border: 2px solid var(--tsi-warn);
+  background: var(--tsi-modal-fill);
+  box-shadow: 0 0 14px rgba(232, 196, 106, .25);
+  animation: tsi-bas-wt-fade calc(300ms * var(--tsi-signature-slowdown)) var(--tsi-ease) both;
+}
+.tsi-tool--bastion .tsi-bas-wt-note__kicker {
+  flex-shrink: 0;
+  font: 600 13px/1.2 var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-pill);
+  text-transform: uppercase;
+  color: var(--tsi-gold-text);
+}
+.tsi-tool--bastion .tsi-bas-wt-note--warn .tsi-bas-wt-note__kicker,
+.tsi-tool--bastion .tsi-bas-wt-note--paused .tsi-bas-wt-note__kicker { color: var(--tsi-warn); }
+.tsi-tool--bastion .tsi-bas-wt-note__text { flex: 1 1 auto; min-width: 0; font: 600 16px/1.3 var(--tsi-font-body); color: var(--tsi-text); }
+.tsi-tool--bastion .tsi-bas-wt-note--warn .tsi-bas-wt-note__text { color: #f6e3b0; }
+.tsi-tool--bastion .tsi-bas-wt-note--prompt .tsi-bas-wt-note__text { color: var(--tsi-text-muted); }
+.tsi-tool--bastion .tsi-bas-wt-note__actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+/* ---------- The stage ---------- */
 .tsi-tool--bastion .tsi-bas-wt-stage {
   position: relative;
+  flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -188,16 +298,17 @@
 .tsi-tool--bastion .tsi-bas-wt-stage::before {
   inset: 0;
   z-index: 3;
-  box-shadow: inset 0 0 70px rgba(0, 0, 0, .55);
+  box-shadow: inset 0 0 60px rgba(0, 0, 0, .5);
 }
 .tsi-tool--bastion .tsi-bas-wt-stage::after {
   inset: 5px;
-  z-index: 8;
+  z-index: 10;
   border: 1px solid rgba(214, 178, 94, .22);
   border-radius: 12px;
 }
 .tsi-tool--bastion .tsi-bas-wt-stage--pannable { cursor: grab; }
 .tsi-tool--bastion .tsi-bas-wt-stage--panning { cursor: grabbing; }
+.tsi-tool--bastion .tsi-bas-wt--painting .tsi-bas-wt-stage { cursor: crosshair; }
 .tsi-tool--bastion .tsi-bas-wt--loading .tsi-bas-wt-stage > * { visibility: hidden; }
 
 .tsi-tool--bastion .tsi-bas-wt-world {
@@ -214,34 +325,21 @@
     radial-gradient(ellipse 70% 60% at 50% 15%, rgba(60, 14, 22, .55), transparent 70%),
     linear-gradient(180deg, #170b0e, #0d0809);
 }
+/* The picture fills the battlefield's squares (cropped a little if its shape differs). */
 .tsi-tool--bastion .tsi-bas-wt-map {
   display: block;
   width: 100%;
   height: 100%;
   max-width: none;
+  object-fit: cover;
   pointer-events: none;
   -webkit-user-drag: none;
   user-select: none;
 }
-
-/* The enemy's half: crimson-tinted; hatched while the forces are deployed. */
-.tsi-tool--bastion .tsi-bas-wt-enemy {
-  position: absolute;
-  z-index: 2;
-  pointer-events: none;
-  background: linear-gradient(180deg, rgba(122, 12, 27, .30), rgba(177, 18, 42, .12));
-  transition: background-color var(--tsi-dur-base) var(--tsi-ease);
-}
-.tsi-tool--bastion .tsi-bas-wt--deploying .tsi-bas-wt-enemy {
-  background:
-    repeating-linear-gradient(135deg, rgba(177, 18, 42, .22) 0 2px, transparent 2px 16px),
-    linear-gradient(180deg, rgba(40, 4, 10, .55), rgba(122, 12, 27, .30));
-}
-
 .tsi-tool--bastion .tsi-bas-wt-grid {
   position: absolute;
   inset: 0;
-  z-index: 3;
+  z-index: 2;
   width: 100%;
   height: 100%;
   pointer-events: none;
@@ -254,39 +352,136 @@
   border: 1px solid rgba(214, 178, 94, .55);
   box-shadow: 0 0 0 1px rgba(0, 0, 0, .6), 0 14px 40px rgba(0, 0, 0, .6);
 }
-.tsi-tool--bastion .tsi-bas-wt-midline {
-  position: absolute;
-  z-index: 4;
-  height: 2px;
-  margin-top: -1px;
-  pointer-events: none;
-  background: linear-gradient(90deg, rgba(214, 178, 94, .2), rgba(214, 178, 94, .95) 10%, rgba(240, 214, 150, 1) 50%, rgba(214, 178, 94, .95) 90%, rgba(214, 178, 94, .2));
-  box-shadow: 0 0 12px rgba(214, 178, 94, .55), 0 0 2px rgba(0, 0, 0, .9);
-}
 .tsi-tool--bastion .tsi-bas-wt-halflabel {
   position: absolute;
-  z-index: 4;
+  z-index: 6;
   padding: 3px 10px 4px;
   border: 1px solid var(--tsi-line);
   border-radius: var(--tsi-radius-pill);
-  background: rgba(5, 5, 6, .74);
-  font: 600 11px/1.1 var(--tsi-font-display);
+  background: rgba(5, 5, 6, .78);
+  font: 600 var(--tsi-fs-label)/1.1 var(--tsi-font-display);
   letter-spacing: var(--tsi-track-pill);
   text-transform: uppercase;
   color: var(--tsi-gold-text);
   white-space: nowrap;
   pointer-events: none;
 }
-.tsi-tool--bastion .tsi-bas-wt-halflabel--enemy { transform: translateY(calc(-100% - 8px)); border-color: rgba(177, 18, 42, .7); }
-.tsi-tool--bastion .tsi-bas-wt-halflabel--ours { transform: translateY(8px); }
+.tsi-tool--bastion .tsi-bas-wt-halflabel--enemy { transform: translateY(calc(-100% - 6px)); border-color: rgba(177, 18, 42, .7); }
+.tsi-tool--bastion .tsi-bas-wt-halflabel--strip { transform: translateY(-50%); color: var(--tsi-text-muted); border-color: var(--tsi-line-faint); }
+.tsi-tool--bastion .tsi-bas-wt-halflabel--ours { transform: translateY(6px); }
 
-/* ---------- The forces ---------- */
-.tsi-tool--bastion .tsi-bas-wt-world--tokens {
-  --tsi-bas-wt-cell: 70px;
+/* ---------- The world: zones, supplies, lit squares, tokens ---------- */
+.tsi-tool--bastion .tsi-bas-wt-world--units {
+  --tsi-bas-wt-sq: 70px;
+  --tsi-bas-wt-cell: 63px;
   --tsi-bas-wt-inv: 1;
+  /* The room between a token and its square's edge (more at small token
+     sizes), and how far corner badges sit out from the token: into that
+     room, so they never cover its name or soldier count. */
+  --tsi-bas-wt-gap: calc((var(--tsi-bas-wt-sq) - var(--tsi-bas-wt-cell)) / 2);
+  --tsi-bas-wt-out: calc(-1 * max(var(--tsi-bas-wt-gap), var(--tsi-bas-wt-cell) * .17));
   z-index: 5;
   pointer-events: none;
 }
+.tsi-tool--bastion .tsi-bas-wt-layer { position: absolute; inset: 0; pointer-events: none; }
+
+/* The depot and the outpost. */
+.tsi-tool--bastion .tsi-bas-wt-zone {
+  position: absolute;
+  box-sizing: border-box;
+  border: calc(var(--tsi-bas-wt-inv) * 2px) dashed rgba(240, 214, 150, .9);
+  background: rgba(214, 178, 94, .12);
+  box-shadow: inset 0 0 calc(var(--tsi-bas-wt-sq) * .3) rgba(214, 178, 94, .18);
+}
+.tsi-tool--bastion .tsi-bas-wt-zone--outpost {
+  border-color: rgba(255, 150, 150, .9);
+  background: rgba(177, 18, 42, .16);
+  box-shadow: inset 0 0 calc(var(--tsi-bas-wt-sq) * .3) rgba(177, 18, 42, .25);
+}
+.tsi-tool--bastion .tsi-bas-wt-zone__label,
+.tsi-tool--bastion .tsi-bas-wt-marker__label {
+  position: absolute;
+  padding: calc(var(--tsi-bas-wt-inv) * 2px) calc(var(--tsi-bas-wt-inv) * 8px);
+  border: calc(var(--tsi-bas-wt-inv) * 1px) solid var(--tsi-line-control);
+  border-radius: calc(var(--tsi-bas-wt-inv) * 999px);
+  background: rgba(5, 5, 6, .85);
+  font: 600 calc(var(--tsi-bas-wt-inv) * 12px)/1.15 var(--tsi-font-display);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--tsi-gold-text);
+  white-space: nowrap;
+}
+.tsi-tool--bastion .tsi-bas-wt-zone__label { left: 0; top: 0; transform: translateY(calc(-100% - var(--tsi-bas-wt-inv) * 3px)); }
+.tsi-tool--bastion .tsi-bas-wt-zone--outpost .tsi-bas-wt-zone__label { border-color: rgba(255, 150, 150, .7); color: #ffd2d2; }
+
+/* A supply marker: a crate on its square, labelled. */
+.tsi-tool--bastion .tsi-bas-wt-marker { position: absolute; display: flex; justify-content: center; }
+.tsi-tool--bastion .tsi-bas-wt-marker__crate {
+  width: 40%;
+  height: 40%;
+  margin-top: 14%;
+  box-sizing: border-box;
+  border: calc(var(--tsi-bas-wt-sq) * .04) solid #f0d696;
+  border-radius: calc(var(--tsi-bas-wt-sq) * .05);
+  background:
+    linear-gradient(45deg, transparent 44%, rgba(60, 36, 12, .9) 44%, rgba(60, 36, 12, .9) 56%, transparent 56%),
+    linear-gradient(-45deg, transparent 44%, rgba(60, 36, 12, .9) 44%, rgba(60, 36, 12, .9) 56%, transparent 56%),
+    linear-gradient(180deg, #b98a44, #7d5521);
+  box-shadow: 0 0 0 calc(var(--tsi-bas-wt-sq) * .015) rgba(0, 0, 0, .8), 0 0 calc(var(--tsi-bas-wt-sq) * .25) rgba(240, 214, 150, .55);
+}
+.tsi-tool--bastion .tsi-bas-wt-marker__label { left: 50%; bottom: 4%; transform: translateX(-50%); z-index: 1; }
+
+/* Lit squares: where a unit may be set out (while dragging), or where an order can move it. */
+.tsi-tool--bastion .tsi-bas-wt-cell {
+  position: absolute;
+  box-sizing: border-box;
+  border-radius: calc(var(--tsi-bas-wt-sq) * .08);
+}
+.tsi-tool--bastion .tsi-bas-wt-cell--deploy {
+  border: calc(var(--tsi-bas-wt-inv) * 1.5px) dashed rgba(240, 214, 150, .75);
+  background: rgba(240, 214, 150, .14);
+}
+.tsi-tool--bastion .tsi-bas-wt-cell--move {
+  pointer-events: auto;
+  cursor: pointer;
+  border: calc(var(--tsi-bas-wt-inv) * 1.5px) solid rgba(240, 214, 150, .7);
+  background: rgba(214, 178, 94, .2);
+  transition: background-color var(--tsi-dur-fast) var(--tsi-ease);
+}
+.tsi-tool--bastion .tsi-bas-wt-cell--move:hover { background: rgba(240, 214, 150, .4); }
+.tsi-tool--bastion .tsi-bas-wt-cell--here { border-style: dashed; background: rgba(214, 178, 94, .08); }
+/* A selected unit's reach before an order: March-only squares fainter. */
+.tsi-tool--bastion .tsi-bas-wt-cell--far {
+  border-style: dashed;
+  border-color: rgba(240, 214, 150, .45);
+  background: rgba(214, 178, 94, .08);
+}
+.tsi-tool--bastion .tsi-bas-wt-cell--far:hover { background: rgba(240, 214, 150, .28); }
+.tsi-tool--bastion .tsi-bas-wt-cell--dest {
+  border-width: calc(var(--tsi-bas-wt-inv) * 3px);
+  border-color: #fff1c6;
+  background: rgba(240, 214, 150, .45);
+}
+
+/* The proposed path and the ghost at its end. */
+.tsi-tool--bastion .tsi-bas-wt-path { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+.tsi-tool--bastion .tsi-bas-wt-path__line { fill: none; stroke: rgba(255, 241, 198, .95); stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 3px rgba(0, 0, 0, .9)); }
+.tsi-tool--bastion .tsi-bas-wt-path__end { fill: rgba(255, 241, 198, .95); }
+.tsi-tool--bastion .tsi-bas-wt-ghost {
+  position: absolute;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  border: calc(var(--tsi-bas-wt-inv) * 2px) dashed #fff1c6;
+  border-radius: calc(var(--tsi-bas-wt-cell) * .12);
+  background: rgba(214, 178, 94, .22);
+  color: var(--tsi-text);
+  pointer-events: none;
+  opacity: .9;
+}
+.tsi-tool--bastion .tsi-bas-wt-ghost.tsi-bas-wt-token--disc { border-radius: 50%; }
+
+/* ---------- Tokens ---------- */
 .tsi-tool--bastion .tsi-bas-wt-token {
   position: absolute;
   box-sizing: border-box;
@@ -294,167 +489,278 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 0;
   pointer-events: auto;
   color: var(--tsi-text);
   text-align: center;
   text-shadow: 0 1px 2px rgba(0, 0, 0, .85);
   touch-action: none;
   user-select: none;
-  transition: filter var(--tsi-dur-fast) var(--tsi-ease), box-shadow var(--tsi-dur-fast) var(--tsi-ease);
+  cursor: pointer;
+  transition: left 110ms linear, top 110ms linear, filter var(--tsi-dur-fast) var(--tsi-ease), opacity var(--tsi-dur-fast) var(--tsi-ease);
 }
-.tsi-tool--bastion .tsi-bas-wt-token--movable { cursor: grab; }
-.tsi-tool--bastion .tsi-bas-wt-token--movable:hover { filter: brightness(1.12); }
-.tsi-tool--bastion .tsi-bas-wt-token:hover,
-.tsi-tool--bastion .tsi-bas-wt-token:focus-visible { z-index: 1; }
-.tsi-tool--bastion .tsi-bas-wt-token--dragging { z-index: 2; cursor: grabbing; filter: brightness(1.15); }
+.tsi-tool--bastion .tsi-bas-wt--painting .tsi-bas-wt-token,
+.tsi-tool--bastion .tsi-bas-wt--painting .tsi-bas-wt-cell--move { pointer-events: none; }
 .tsi-tool--bastion .tsi-bas-wt-token:focus { outline: none; }
 .tsi-tool--bastion .tsi-bas-wt-token:focus-visible {
   outline: calc(var(--tsi-bas-wt-inv) * 2px) solid var(--tsi-gold);
   outline-offset: calc(var(--tsi-bas-wt-inv) * 3px);
 }
+.tsi-tool--bastion .tsi-bas-wt-token:hover,
+.tsi-tool--bastion .tsi-bas-wt-token:focus-visible { z-index: 2; filter: brightness(1.12); }
 
-/* Lieutenants and beasts: discs with a gold rim, like the Explorer's heroes. */
-.tsi-tool--bastion .tsi-bas-wt-token--disc {
-  border-radius: 50%;
+/* Shapes: formations and detachments are square banners, beasts discs. */
+.tsi-tool--bastion .tsi-bas-wt-token--block { border-radius: calc(var(--tsi-bas-wt-cell) * .12); }
+.tsi-tool--bastion .tsi-bas-wt-token--disc { border-radius: 50%; }
+
+/* Yours: gold outline. */
+.tsi-tool--bastion .tsi-bas-wt-token--player {
   border: calc(var(--tsi-bas-wt-cell) * .06) solid var(--tsi-gold);
   box-shadow:
-    0 0 0 calc(var(--tsi-bas-wt-cell) * .02) rgba(0, 0, 0, .7),
-    inset 0 0 0 calc(var(--tsi-bas-wt-cell) * .03) rgba(0, 0, 0, .45),
-    inset 0 calc(var(--tsi-bas-wt-cell) * .04) 0 rgba(255, 255, 255, .14),
-    0 calc(var(--tsi-bas-wt-cell) * .08) calc(var(--tsi-bas-wt-cell) * .2) rgba(0, 0, 0, .6);
+    0 0 0 calc(var(--tsi-bas-wt-cell) * .02) rgba(0, 0, 0, .75),
+    inset 0 0 0 calc(var(--tsi-bas-wt-cell) * .035) rgba(0, 0, 0, .45),
+    0 calc(var(--tsi-bas-wt-cell) * .07) calc(var(--tsi-bas-wt-cell) * .18) rgba(0, 0, 0, .6);
 }
-.tsi-tool--bastion .tsi-bas-wt-token--lieutenant { background: radial-gradient(circle at 35% 30%, #cf2a43, #8e1022 55%, #5a0812); }
-.tsi-tool--bastion .tsi-bas-wt-token--beast { background: radial-gradient(circle at 35% 30%, #5d8a45, #2f4d23 55%, #1a2c13); }
-.tsi-tool--bastion .tsi-bas-wt-token__short {
-  font: 700 max(calc(var(--tsi-bas-wt-cell) * .36), calc(var(--tsi-bas-wt-inv) * 13px))/1 var(--tsi-font-display);
-  letter-spacing: .04em;
-  color: var(--tsi-text);
-}
-.tsi-tool--bastion .tsi-bas-wt-token__cap {
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  max-width: calc(var(--tsi-bas-wt-cell) * 1.45);
-  margin-top: calc(var(--tsi-bas-wt-cell) * .06);
-  padding: calc(var(--tsi-bas-wt-cell) * .015) calc(var(--tsi-bas-wt-cell) * .07);
-  transform: translateX(-50%);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  border-radius: calc(var(--tsi-bas-wt-cell) * .1);
-  background: rgba(5, 5, 6, .78);
-  font: 700 max(calc(var(--tsi-bas-wt-cell) * .22), calc(var(--tsi-bas-wt-inv) * 12px))/1.15 var(--tsi-font-body);
-  color: var(--tsi-text);
-  pointer-events: none;
-}
-/* A disc on the bottom edge of the board shows its name above it instead. */
-.tsi-tool--bastion .tsi-bas-wt-token--cap-above .tsi-bas-wt-token__cap {
-  top: auto;
-  bottom: 100%;
-  margin-top: 0;
-  margin-bottom: calc(var(--tsi-bas-wt-cell) * .06);
-}
-
-/* Regiments and the Bastion Defenders: banners 3 squares by 2. */
-.tsi-tool--bastion .tsi-bas-wt-token--block {
-  gap: calc(var(--tsi-bas-wt-cell) * .04);
-  padding: calc(var(--tsi-bas-wt-cell) * .12);
-  overflow: hidden;
-  border-radius: calc(var(--tsi-bas-wt-cell) * .12);
-  border: calc(var(--tsi-bas-wt-cell) * .045) solid var(--tsi-gold);
-  box-shadow:
-    0 0 0 calc(var(--tsi-bas-wt-cell) * .02) rgba(0, 0, 0, .7),
-    inset 0 0 0 calc(var(--tsi-bas-wt-cell) * .04) rgba(0, 0, 0, .5),
-    inset 0 0 0 calc(var(--tsi-bas-wt-cell) * .065) rgba(214, 178, 94, .32),
-    0 calc(var(--tsi-bas-wt-cell) * .1) calc(var(--tsi-bas-wt-cell) * .25) rgba(0, 0, 0, .6);
-}
-.tsi-tool--bastion .tsi-bas-wt-token--regiment {
+.tsi-tool--bastion .tsi-bas-wt-token--player.tsi-bas-wt-token--formation {
   background:
-    radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, .12), transparent 60%),
+    radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, .14), transparent 60%),
     linear-gradient(180deg, #8e1022, #4a0a14);
 }
-.tsi-tool--bastion .tsi-bas-wt-token--defenders {
+.tsi-tool--bastion .tsi-bas-wt-token--player.tsi-bas-wt-token--detachment {
   background:
     radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, .14), transparent 60%),
     linear-gradient(180deg, #4b525b, #23282e);
 }
-.tsi-tool--bastion .tsi-bas-wt-token__label {
+.tsi-tool--bastion .tsi-bas-wt-token--player.tsi-bas-wt-token--beast { background: radial-gradient(circle at 35% 30%, #5d8a45, #2f4d23 55%, #1a2c13); }
+
+/* The enemy: its clan's colours (or the plain enemy colours), a dark-red double outline. */
+.tsi-tool--bastion .tsi-bas-wt-token--enemy {
+  color: var(--tsi-bas-wt-eink);
+  border: calc(var(--tsi-bas-wt-cell) * .1) double #8f1426;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, .12), transparent 60%),
+    var(--tsi-bas-wt-efill);
+  box-shadow:
+    0 0 0 calc(var(--tsi-bas-wt-cell) * .02) rgba(0, 0, 0, .85),
+    0 calc(var(--tsi-bas-wt-cell) * .07) calc(var(--tsi-bas-wt-cell) * .18) rgba(0, 0, 0, .6);
+}
+.tsi-tool--bastion .tsi-bas-wt-token__short {
   max-width: 100%;
   overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  font: 700 max(calc(var(--tsi-bas-wt-cell) * .25), calc(var(--tsi-bas-wt-inv) * 12px))/1.1 var(--tsi-font-display);
-  letter-spacing: .05em;
-  text-transform: uppercase;
-  color: var(--tsi-text);
+  font: 700 max(calc(var(--tsi-bas-wt-cell) * .3), calc(var(--tsi-bas-wt-inv) * 12px))/1 var(--tsi-font-display);
+  letter-spacing: .02em;
+  white-space: nowrap;
 }
 .tsi-tool--bastion .tsi-bas-wt-token__sub {
   max-width: 100%;
   overflow: hidden;
-  text-overflow: ellipsis;
+  margin-top: calc(var(--tsi-bas-wt-cell) * .02);
+  font: italic 700 max(calc(var(--tsi-bas-wt-cell) * .22), calc(var(--tsi-bas-wt-inv) * 12px))/1 var(--tsi-font-body);
   white-space: nowrap;
-  font: italic 600 max(calc(var(--tsi-bas-wt-cell) * .3), calc(var(--tsi-bas-wt-inv) * 13px))/1.1 var(--tsi-font-body);
-  color: var(--tsi-gold-text);
+  opacity: .92;
 }
-.tsi-tool--bastion .tsi-bas-wt-token__count {
-  font: 700 max(calc(var(--tsi-bas-wt-cell) * .56), calc(var(--tsi-bas-wt-inv) * 14px))/1 var(--tsi-font-display);
-  color: var(--tsi-gold);
-}
-
-/* ---------- Notes over the enemy's half: the no-map prompt, the battle banner ---------- */
-.tsi-tool--bastion .tsi-bas-wt-notes {
+.tsi-tool--bastion .tsi-bas-wt-token--player .tsi-bas-wt-token__sub { color: #f0d696; }
+/* Cohesion, as a bar along the foot of the token. */
+.tsi-tool--bastion .tsi-bas-wt-token__bar {
   position: absolute;
-  z-index: 6;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-  box-sizing: border-box;
+  left: 10%;
+  right: 10%;
+  bottom: calc(var(--tsi-bas-wt-cell) * .06);
+  height: max(calc(var(--tsi-bas-wt-cell) * .07), calc(var(--tsi-bas-wt-inv) * 3px));
   overflow: hidden;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .6);
+}
+.tsi-tool--bastion .tsi-bas-wt-token__fill { display: block; height: 100%; background: #e8c46a; }
+.tsi-tool--bastion .tsi-bas-wt-token--enemy .tsi-bas-wt-token__fill { background: #ff8a8a; }
+/* A little copy of your crest, or the enemy's pennant. */
+.tsi-tool--bastion .tsi-bas-wt-token__crest {
+  position: absolute;
+  top: var(--tsi-bas-wt-out);
+  left: var(--tsi-bas-wt-out);
+  width: max(calc(var(--tsi-bas-wt-cell) * .32), calc(var(--tsi-bas-wt-inv) * 13px));
+  height: max(calc(var(--tsi-bas-wt-cell) * .36), calc(var(--tsi-bas-wt-inv) * 15px));
+  object-fit: contain;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .9));
   pointer-events: none;
 }
-.tsi-tool--bastion .tsi-bas-wt-prompt {
-  max-width: 520px;
-  padding: 14px 22px 16px;
-  border: 1px solid var(--tsi-line-control);
-  border-radius: var(--tsi-radius-md);
-  background: rgba(5, 5, 6, .8);
-  box-shadow: var(--tsi-shadow-btn);
-  text-align: center;
+.tsi-tool--bastion .tsi-bas-wt-token__clan {
+  position: absolute;
+  top: var(--tsi-bas-wt-out);
+  left: var(--tsi-bas-wt-out);
+  width: max(calc(var(--tsi-bas-wt-cell) * .26), calc(var(--tsi-bas-wt-inv) * 12px));
+  height: max(calc(var(--tsi-bas-wt-cell) * .32), calc(var(--tsi-bas-wt-inv) * 15px));
+  filter: drop-shadow(0 0 calc(var(--tsi-bas-wt-inv) * 1px) #000) drop-shadow(0 0 calc(var(--tsi-bas-wt-inv) * .5px) #000);
+  pointer-events: none;
 }
-.tsi-tool--bastion .tsi-bas-wt-prompt__title {
-  margin: 0 0 4px;
-  font: 600 13px/1.2 var(--tsi-font-display);
-  letter-spacing: var(--tsi-track-pill);
-  text-transform: uppercase;
-  color: var(--tsi-gold-text);
+/* A swallow-tailed pennant in dark red, with a stripe of the clan's ink. */
+.tsi-tool--bastion .tsi-bas-wt-token__pennant {
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%);
+  background: linear-gradient(180deg, #b0182e 0 38%, var(--tsi-bas-wt-eink) 38% 52%, #7a0c1b 52% 100%);
 }
-.tsi-tool--bastion .tsi-bas-wt-prompt__text { margin: 0; font-size: var(--tsi-fs-body); color: var(--tsi-text-muted); }
-.tsi-tool--bastion .tsi-bas-wt-banner {
-  max-width: 620px;
-  padding: 16px 30px 18px;
-  border: 2px solid var(--tsi-line-feature);
+/* State badges: Shaken (S), Holding (H), held fast (G), carrying supplies (a crate). */
+.tsi-tool--bastion .tsi-bas-wt-token__badges {
+  position: absolute;
+  top: var(--tsi-bas-wt-out);
+  right: var(--tsi-bas-wt-out);
+  display: flex;
+  gap: calc(var(--tsi-bas-wt-cell) * .03);
+}
+.tsi-tool--bastion .tsi-bas-wt-badge {
+  display: grid;
+  place-items: center;
+  width: max(calc(var(--tsi-bas-wt-cell) * .3), calc(var(--tsi-bas-wt-inv) * 13px));
+  height: max(calc(var(--tsi-bas-wt-cell) * .3), calc(var(--tsi-bas-wt-inv) * 13px));
+  box-sizing: border-box;
+  border: max(calc(var(--tsi-bas-wt-cell) * .03), calc(var(--tsi-bas-wt-inv) * 1px)) solid rgba(0, 0, 0, .85);
+  border-radius: 50%;
+  font: 700 max(calc(var(--tsi-bas-wt-cell) * .18), calc(var(--tsi-bas-wt-inv) * 8px))/1 var(--tsi-font-display);
+  text-shadow: none;
+}
+.tsi-tool--bastion .tsi-bas-wt-badge--shaken { background: #f2c14e; color: #2a1a00; }
+.tsi-tool--bastion .tsi-bas-wt-badge--hold { background: #9fb7cf; color: #0d1a26; border-radius: 22% 22% 50% 50%; }
+.tsi-tool--bastion .tsi-bas-wt-badge--held { background: #c9a0e0; color: #22102c; }
+.tsi-tool--bastion .tsi-bas-wt-badge--carry {
+  border-radius: 12%;
+  transform: rotate(45deg) scale(.82);
+  background: linear-gradient(180deg, #b98a44, #7d5521);
+  border-color: #f0d696;
+}
+.tsi-tool--bastion .tsi-bas-wt-token__support {
+  position: absolute;
+  bottom: var(--tsi-bas-wt-out);
+  right: var(--tsi-bas-wt-out);
+  padding: 0 calc(var(--tsi-bas-wt-cell) * .05);
+  min-width: max(calc(var(--tsi-bas-wt-cell) * .3), calc(var(--tsi-bas-wt-inv) * 13px));
+  box-sizing: border-box;
+  border: max(calc(var(--tsi-bas-wt-cell) * .03), calc(var(--tsi-bas-wt-inv) * 1px)) solid var(--tsi-gold);
+  border-radius: calc(var(--tsi-bas-wt-cell) * .08);
+  background: #23282e;
+  font: 700 max(calc(var(--tsi-bas-wt-cell) * .18), calc(var(--tsi-bas-wt-inv) * 8px))/1.35 var(--tsi-font-display);
+  color: var(--tsi-text);
+  text-shadow: none;
+}
+/* A Lieutenant: a small red disc at its formation's corner; a Captain: a dark disc with a gold rim. */
+.tsi-tool--bastion .tsi-bas-wt-token__leader {
+  position: absolute;
+  bottom: var(--tsi-bas-wt-out);
+  left: var(--tsi-bas-wt-out);
+  display: grid;
+  place-items: center;
+  width: max(calc(var(--tsi-bas-wt-cell) * .34), calc(var(--tsi-bas-wt-inv) * 14px));
+  height: max(calc(var(--tsi-bas-wt-cell) * .34), calc(var(--tsi-bas-wt-inv) * 14px));
+  box-sizing: border-box;
+  border-radius: 50%;
+  font: 700 max(calc(var(--tsi-bas-wt-cell) * .18), calc(var(--tsi-bas-wt-inv) * 8px))/1 var(--tsi-font-display);
+  color: var(--tsi-text);
+  box-shadow: 0 0 0 max(calc(var(--tsi-bas-wt-cell) * .02), calc(var(--tsi-bas-wt-inv) * 1px)) rgba(0, 0, 0, .85);
+}
+.tsi-tool--bastion .tsi-bas-wt-token__leader--lieutenant {
+  border: max(calc(var(--tsi-bas-wt-cell) * .03), calc(var(--tsi-bas-wt-inv) * 1px)) solid #f0d696;
+  background: radial-gradient(circle at 35% 30%, #e0384f, #a3132a 55%, #5a0812);
+}
+.tsi-tool--bastion .tsi-bas-wt-token__leader--captain {
+  border: max(calc(var(--tsi-bas-wt-cell) * .05), calc(var(--tsi-bas-wt-inv) * 2px)) solid var(--tsi-gold);
+  background: radial-gradient(circle at 35% 30%, #3a3640, #141216 60%);
+  color: #f0d696;
+}
+
+/* Token states. */
+.tsi-tool--bastion .tsi-bas-wt-token--acted { filter: saturate(.3) brightness(.62); }
+.tsi-tool--bastion .tsi-bas-wt-token--acted:hover { filter: saturate(.5) brightness(.8); }
+.tsi-tool--bastion .tsi-bas-wt-token--ready { box-shadow: 0 0 0 calc(var(--tsi-bas-wt-inv) * 2px) rgba(255, 241, 198, .55), 0 0 calc(var(--tsi-bas-wt-cell) * .35) rgba(214, 178, 94, .55); }
+.tsi-tool--bastion .tsi-bas-wt-token--selected {
+  z-index: 3;
+  outline: calc(var(--tsi-bas-wt-inv) * 3px) solid #fff1c6;
+  outline-offset: calc(var(--tsi-bas-wt-inv) * 3px);
+}
+.tsi-tool--bastion .tsi-bas-wt-token--target {
+  outline: calc(var(--tsi-bas-wt-inv) * 3px) dashed #ff6b6b;
+  outline-offset: calc(var(--tsi-bas-wt-inv) * 3px);
+}
+.tsi-tool--bastion .tsi-bas-wt-token--aimed {
+  z-index: 3;
+  outline: calc(var(--tsi-bas-wt-inv) * 4px) solid #ff6b6b;
+  outline-offset: calc(var(--tsi-bas-wt-inv) * 3px);
+  box-shadow: 0 0 calc(var(--tsi-bas-wt-cell) * .45) rgba(255, 90, 90, .75);
+}
+.tsi-tool--bastion .tsi-bas-wt-token--acting {
+  z-index: 3;
+  filter: none;
+  box-shadow: 0 0 0 calc(var(--tsi-bas-wt-inv) * 3px) #fff1c6, 0 0 calc(var(--tsi-bas-wt-cell) * .6) rgba(255, 241, 198, .85);
+}
+.tsi-tool--bastion .tsi-bas-wt-token--hit {
+  z-index: 3;
+  box-shadow: 0 0 0 calc(var(--tsi-bas-wt-inv) * 3px) #ff6b6b, 0 0 calc(var(--tsi-bas-wt-cell) * .6) rgba(255, 90, 90, .85);
+}
+.tsi-tool--bastion .tsi-bas-wt-token--movable { cursor: grab; }
+.tsi-tool--bastion .tsi-bas-wt-token--dragging { z-index: 4; cursor: grabbing; transition: none; filter: brightness(1.15); opacity: .92; }
+
+/* A calculation floating over a square for a moment. */
+.tsi-tool--bastion .tsi-bas-wt-float {
+  position: absolute;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--tsi-bas-wt-inv) * 1px);
+  padding: calc(var(--tsi-bas-wt-inv) * 4px) calc(var(--tsi-bas-wt-inv) * 10px);
+  border: calc(var(--tsi-bas-wt-inv) * 1px) solid var(--tsi-gold);
+  border-radius: calc(var(--tsi-bas-wt-inv) * 10px);
+  background: rgba(5, 5, 6, .92);
+  box-shadow: 0 calc(var(--tsi-bas-wt-inv) * 6px) calc(var(--tsi-bas-wt-inv) * 16px) rgba(0, 0, 0, .6);
+  color: var(--tsi-text);
+  white-space: nowrap;
+  transform: translate(-50%, -100%);
+  animation: tsi-bas-wt-float 3s var(--tsi-ease) both;
+}
+.tsi-tool--bastion .tsi-bas-wt-float--hit { border-color: #ff8a8a; }
+.tsi-tool--bastion .tsi-bas-wt-float--miss { border-color: var(--tsi-line-control); }
+.tsi-tool--bastion .tsi-bas-wt-float__main { font: 700 calc(var(--tsi-bas-wt-inv) * 14px)/1.15 var(--tsi-font-body); }
+.tsi-tool--bastion .tsi-bas-wt-float__line { font: 700 calc(var(--tsi-bas-wt-inv) * 14px)/1.15 var(--tsi-font-body); color: var(--tsi-gold-text); }
+.tsi-tool--bastion .tsi-bas-wt-float--hit .tsi-bas-wt-float__line { color: #ffb3b3; }
+.tsi-tool--bastion .tsi-bas-wt-float--still { animation: none; }
+@keyframes tsi-bas-wt-float {
+  0% { opacity: 0; transform: translate(-50%, -80%); }
+  12% { opacity: 1; transform: translate(-50%, -100%); }
+  80% { opacity: 1; transform: translate(-50%, -110%); }
+  100% { opacity: 0; transform: translate(-50%, -120%); }
+}
+
+/* ---------- The result, over the middle of the stage ---------- */
+.tsi-tool--bastion .tsi-bas-wt-result {
+  position: absolute;
+  z-index: 9;
+  left: 50%;
+  top: 50%;
+  width: min(560px, calc(100% - 40px));
+  box-sizing: border-box;
+  padding: 18px 30px 20px;
+  border: 3px solid var(--tsi-line-feature);
   border-radius: var(--tsi-radius-lg);
   background: var(--tsi-modal-fill);
   box-shadow: var(--tsi-glow-gold), var(--tsi-shadow-modal);
   text-align: center;
-  animation: tsi-bas-wt-rise calc(600ms * var(--tsi-signature-slowdown)) var(--tsi-ease) both;
+  transform: translate(-50%, -50%);
 }
-.tsi-tool--bastion .tsi-bas-wt-banner__kicker {
+.tsi-tool--bastion .tsi-bas-wt-result__kicker {
   margin: 0 0 6px;
-  font: 600 12px/1.2 var(--tsi-font-display);
-  letter-spacing: var(--tsi-track-kicker);
+  font: 700 30px/1.1 var(--tsi-font-display);
+  letter-spacing: .08em;
   text-transform: uppercase;
   color: var(--tsi-gold-text);
 }
-.tsi-tool--bastion .tsi-bas-wt-banner__text { margin: 0; font: 600 22px/1.3 var(--tsi-font-body); color: var(--tsi-text); }
-@keyframes tsi-bas-wt-rise {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: none; }
+.tsi-tool--bastion .tsi-bas-wt-result--defeat .tsi-bas-wt-result__kicker,
+.tsi-tool--bastion .tsi-bas-wt-result--withdrawal .tsi-bas-wt-result__kicker { color: #ffb3b3; }
+.tsi-tool--bastion .tsi-bas-wt-result__text { margin: 0; font: 600 19px/1.35 var(--tsi-font-body); color: var(--tsi-text); }
+@keyframes tsi-bas-wt-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-/* ---------- The side panel: the forces and the main action ---------- */
+/* ---------- The side panel ---------- */
 .tsi-tool--bastion .tsi-bas-wt-side {
   display: flex;
   flex-direction: column;
@@ -469,132 +775,392 @@
 .tsi-tool--bastion .tsi-bas-wt-side__head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 10px;
-  padding: 12px 16px;
+  padding: 10px 16px;
   background: var(--tsi-head-fill);
   border-bottom: 1px solid var(--tsi-line-head);
 }
+.tsi-tool--bastion .tsi-bas-wt-side__crest { width: 26px; height: 30px; object-fit: contain; flex-shrink: 0; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .7)); }
 .tsi-tool--bastion .tsi-bas-wt-side__title {
+  flex: 1 1 auto;
+  min-width: 0;
   margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font: 600 15px/1.2 var(--tsi-font-display);
   letter-spacing: var(--tsi-track-heading);
   text-transform: uppercase;
   color: var(--tsi-gold-text);
 }
-.tsi-tool--bastion .tsi-bas-wt-side__count { font: italic 500 var(--tsi-fs-body-sm)/1 var(--tsi-font-body); color: var(--tsi-text-soft); white-space: nowrap; }
+.tsi-tool--bastion .tsi-bas-wt-side__count { flex-shrink: 0; font: italic 500 var(--tsi-fs-body-sm)/1 var(--tsi-font-body); color: var(--tsi-text-soft); white-space: nowrap; }
 .tsi-tool--bastion .tsi-bas-wt-side__body {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: auto;
-  padding: 12px 14px;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(214, 178, 94, .3) transparent;
-}
-.tsi-tool--bastion .tsi-bas-wt-side__foot {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 12px 14px 14px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 10px 12px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(214, 178, 94, .3) transparent;
+}
+/* In the battle the log keeps a share of its own: the body above it takes
+   what it needs (scrolling if it must), the log the rest, never less than
+   about four lines. */
+.tsi-tool--bastion .tsi-bas-wt-side--tabs .tsi-bas-wt-side__body { flex: 0 1 auto; }
+.tsi-tool--bastion .tsi-bas-wt-side--tabs .tsi-bas-wt-tabs { flex: 1 1 0; min-height: 132px; margin: 0 12px 10px; }
+.tsi-tool--bastion .tsi-bas-wt-side__foot {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px 12px;
   border-top: 1px solid var(--tsi-line-faint);
   background: rgba(0, 0, 0, .22);
 }
-.tsi-tool--bastion .tsi-bas-wt-roster { display: flex; flex-direction: column; gap: 10px; }
-.tsi-tool--bastion .tsi-bas-wt-group__title {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin: 0 0 5px;
+.tsi-tool--bastion .tsi-bas-wt-hint { margin: 0; font-size: var(--tsi-fs-body-sm); line-height: 1.3; color: var(--tsi-text-muted); }
+.tsi-tool--bastion .tsi-bas-wt-actions { display: flex; gap: 8px; }
+.tsi-tool--bastion .tsi-bas-wt-actions > * { flex: 1 1 0; }
+.tsi-tool--bastion .tsi-bas-wt-actions--minor { justify-content: flex-start; }
+.tsi-tool--bastion .tsi-bas-wt-actions--minor > * { flex: 0 1 auto; }
+.tsi-tool--bastion .tsi-bas-wt-main { width: 100%; padding: 10px 14px; font-size: 15px; }
+.tsi-tool--bastion .tsi-bas-wt-main.tsi-btn--ghost { flex: 0 0 34%; }
+
+.tsi-tool--bastion .tsi-bas-wt-section { display: flex; flex-direction: column; gap: 6px; }
+.tsi-tool--bastion .tsi-bas-wt-section__title,
+.tsi-tool--bastion .tsi-bas-wt-subhead {
+  margin: 0;
   font: 600 12px/1.2 var(--tsi-font-display);
   letter-spacing: var(--tsi-track-heading);
   text-transform: uppercase;
   color: var(--tsi-gold-text);
 }
+.tsi-tool--bastion .tsi-bas-wt-subhead { padding-bottom: 4px; border-bottom: 1px solid var(--tsi-line-faint); font-size: 13px; }
+.tsi-tool--bastion .tsi-bas-wt-subhead--enemy { margin-top: 6px; color: #ffc2c2; border-bottom-color: rgba(177, 18, 42, .5); }
+.tsi-tool--bastion .tsi-bas-wt-note { margin: 0; font: italic 500 15px/1.3 var(--tsi-font-body); color: var(--tsi-text-soft); }
+.tsi-tool--bastion .tsi-bas-wt-empty { margin: 0; font-style: italic; color: var(--tsi-text-soft); }
+.tsi-tool--bastion .tsi-bas-wt-alert {
+  padding: 8px 12px;
+  border: 1px solid var(--tsi-warn);
+  border-radius: var(--tsi-radius-sm);
+  background: rgba(60, 40, 6, .45);
+}
+.tsi-tool--bastion .tsi-bas-wt-alert p { margin: 0; font: 600 15px/1.3 var(--tsi-font-body); color: #f6e3b0; }
+.tsi-tool--bastion .tsi-bas-wt-alert p + p { margin-top: 4px; }
+
+/* The roster. */
+.tsi-tool--bastion .tsi-bas-wt-roster { display: flex; flex-direction: column; gap: 8px; }
+.tsi-tool--bastion .tsi-bas-wt-group__title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 4px;
+  font: 600 var(--tsi-fs-label)/1.2 var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-heading);
+  text-transform: uppercase;
+  color: var(--tsi-text-soft);
+}
 .tsi-tool--bastion .tsi-bas-wt-group__count {
-  min-width: 24px;
-  padding: 3px 7px;
+  min-width: 22px;
+  padding: 2px 6px;
   border: 1px solid var(--tsi-line-control);
   border-radius: var(--tsi-radius-pill);
   background: rgba(0, 0, 0, .35);
-  font: 600 11px/1 var(--tsi-font-display);
+  font: 600 var(--tsi-fs-label)/1 var(--tsi-font-display);
   text-align: center;
   color: var(--tsi-text);
 }
-.tsi-tool--bastion .tsi-bas-wt-list { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.tsi-tool--bastion .tsi-bas-wt-list { display: flex; flex-direction: column; gap: 3px; margin: 0; padding: 0; list-style: none; }
 .tsi-tool--bastion .tsi-bas-wt-item {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 4px 9px;
   min-width: 0;
-  padding: 3px 9px;
+  padding: 3px 8px;
   border: 1px solid var(--tsi-hairline);
   border-radius: var(--tsi-radius-sm);
   background: rgba(0, 0, 0, .25);
 }
+.tsi-tool--bastion .tsi-bas-wt-item--selected { border-color: var(--tsi-line-hover); background: rgba(214, 178, 94, .1); }
+.tsi-tool--bastion .tsi-bas-wt-item--gone { opacity: .62; }
+.tsi-tool--bastion .tsi-bas-wt-item--gone .tsi-bas-wt-item__name { text-decoration: line-through; text-decoration-color: rgba(245, 241, 232, .45); }
 .tsi-tool--bastion .tsi-bas-wt-item__name {
+  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font: 600 var(--tsi-fs-body-sm)/1.15 var(--tsi-font-body);
+  font: 600 var(--tsi-fs-body-sm)/1.2 var(--tsi-font-body);
   color: var(--tsi-text);
 }
 .tsi-tool--bastion .tsi-bas-wt-item__meta {
-  margin-left: auto;
   flex-shrink: 0;
   font: italic 500 15px/1.15 var(--tsi-font-body);
   color: var(--tsi-text-soft);
   white-space: nowrap;
 }
-.tsi-tool--bastion .tsi-bas-wt-swatch {
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  box-sizing: border-box;
-  border: 2px solid var(--tsi-gold);
-  font: 700 9px/1 var(--tsi-font-display);
+.tsi-tool--bastion .tsi-bas-wt-item__badge {
+  flex: 0 0 auto;
+  margin-left: 31px;
+  padding: 1px 8px;
+  border: 1px solid var(--tsi-line-control);
+  border-radius: var(--tsi-radius-pill);
+  background: rgba(35, 40, 46, .8);
+  font: 600 14px/1.25 var(--tsi-font-body);
   color: var(--tsi-text);
 }
-.tsi-tool--bastion .tsi-bas-wt-swatch--lieutenant,
-.tsi-tool--bastion .tsi-bas-wt-swatch--beast { width: 22px; height: 22px; border-radius: 50%; }
-/* A numbered beast's three letters ("GV1") still fit the little disc. */
-.tsi-tool--bastion .tsi-bas-wt-swatch--beast { width: 24px; height: 24px; font-size: 8px; letter-spacing: -.02em; }
-.tsi-tool--bastion .tsi-bas-wt-swatch--lieutenant { background: radial-gradient(circle at 35% 30%, #cf2a43, #8e1022 55%, #5a0812); }
-.tsi-tool--bastion .tsi-bas-wt-swatch--beast { background: radial-gradient(circle at 35% 30%, #5d8a45, #2f4d23 55%, #1a2c13); }
-.tsi-tool--bastion .tsi-bas-wt-swatch--regiment,
-.tsi-tool--bastion .tsi-bas-wt-swatch--defenders { width: 27px; height: 18px; border-width: 1.5px; border-radius: 4px; }
-.tsi-tool--bastion .tsi-bas-wt-swatch--regiment { background: linear-gradient(180deg, #8e1022, #4a0a14); }
-.tsi-tool--bastion .tsi-bas-wt-swatch--defenders { background: linear-gradient(180deg, #4b525b, #23282e); }
-.tsi-tool--bastion .tsi-bas-wt-empty { margin: 0; font-style: italic; color: var(--tsi-text-soft); }
-.tsi-tool--bastion .tsi-bas-wt-hint { margin: 0; font-size: var(--tsi-fs-body-sm); line-height: 1.35; color: var(--tsi-text-muted); }
-.tsi-tool--bastion .tsi-bas-wt-main { width: 100%; padding: 11px 16px; font-size: 15px; }
-.tsi-tool--bastion .tsi-bas-wt-locked {
-  margin: 0;
-  padding: 9px 12px;
-  border: 1px solid var(--tsi-line-control);
+.tsi-tool--bastion .tsi-bas-wt-item__leads { display: flex; align-items: center; gap: 6px; flex: 1 0 100%; box-sizing: border-box; min-width: 0; padding-left: 31px; font: 600 14px/1.2 var(--tsi-font-display); letter-spacing: .04em; color: var(--tsi-text-soft); }
+.tsi-tool--bastion .tsi-bas-wt-leader { flex: 1 1 auto; min-width: 0; padding: 4px 8px; font-size: 15px; border-radius: 10px; }
+.tsi-tool--bastion .tsi-bas-wt-swatch {
+  flex-shrink: 0;
+  box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--tsi-gold);
+  border-radius: 5px;
+  background: linear-gradient(180deg, #8e1022, #4a0a14);
+}
+.tsi-tool--bastion .tsi-bas-wt-swatch--detachment { background: linear-gradient(180deg, #4b525b, #23282e); }
+.tsi-tool--bastion .tsi-bas-wt-swatch--beast { border-radius: 50%; background: radial-gradient(circle at 35% 30%, #5d8a45, #2f4d23 55%, #1a2c13); }
+.tsi-tool--bastion .tsi-bas-wt-swatch--leader { width: 16px; height: 16px; margin: 0 3px; border-radius: 50%; border-color: #f0d696; background: radial-gradient(circle at 35% 30%, #e0384f, #a3132a 55%, #5a0812); }
+.tsi-tool--bastion .tsi-bas-wt-swatch--enemy { border: 3px double #8f1426; background: var(--tsi-bas-wt-efill); }
+.tsi-tool--bastion .tsi-bas-wt-swatch--enemy.tsi-bas-wt-swatch--leader { border: 2px solid var(--tsi-gold); background: radial-gradient(circle at 35% 30%, #3a3640, #141216 60%); }
+
+/* The army's losses against the break point. */
+.tsi-tool--bastion .tsi-bas-wt-losses { display: flex; flex-direction: column; gap: 4px; }
+.tsi-tool--bastion .tsi-bas-wt-loss__head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.tsi-tool--bastion .tsi-bas-wt-loss__name { font: 600 var(--tsi-fs-label)/1.2 var(--tsi-font-display); letter-spacing: var(--tsi-track-label); text-transform: uppercase; color: var(--tsi-gold-text); white-space: nowrap; }
+.tsi-tool--bastion .tsi-bas-wt-loss--enemy .tsi-bas-wt-loss__name { color: #ffc2c2; }
+.tsi-tool--bastion .tsi-bas-wt-loss__text { min-width: 0; font: 500 14px/1.2 var(--tsi-font-body); color: var(--tsi-text-muted); text-align: right; }
+.tsi-tool--bastion .tsi-bas-wt-loss__bar {
+  position: relative;
+  height: 7px;
+  margin: 3px 0 2px;
+  border: 1px solid var(--tsi-hairline);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .45);
+}
+.tsi-tool--bastion .tsi-bas-wt-loss__fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; background: linear-gradient(90deg, #a67c2f, #e8c46a); }
+.tsi-tool--bastion .tsi-bas-wt-loss--enemy .tsi-bas-wt-loss__fill { background: linear-gradient(90deg, #7a0c1b, #e0384f); }
+.tsi-tool--bastion .tsi-bas-wt-loss__mark { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--tsi-text); }
+
+/* The selected unit's card. */
+.tsi-tool--bastion .tsi-bas-wt-card {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 9px 11px;
+  border: 1px solid var(--tsi-line);
   border-radius: var(--tsi-radius-md);
-  background: rgba(0, 0, 0, .35);
-  font: 600 13px/1.2 var(--tsi-font-display);
-  letter-spacing: var(--tsi-track-label);
-  text-transform: uppercase;
+  background: rgba(0, 0, 0, .3);
+}
+.tsi-tool--bastion .tsi-bas-wt-card--enemy { border-color: rgba(177, 18, 42, .6); }
+.tsi-tool--bastion .tsi-bas-wt-card--empty { padding: 10px 12px; }
+.tsi-tool--bastion .tsi-bas-wt-card__head { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.tsi-tool--bastion .tsi-bas-wt-card__name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 700 18px/1.2 var(--tsi-font-body); color: var(--tsi-text); }
+.tsi-tool--bastion .tsi-bas-wt-card__side { flex-shrink: 0; font: 600 var(--tsi-fs-label)/1 var(--tsi-font-display); letter-spacing: var(--tsi-track-pill); text-transform: uppercase; color: var(--tsi-text-soft); }
+.tsi-tool--bastion .tsi-bas-wt-card__state { margin: 0; font: 600 15px/1.25 var(--tsi-font-body); color: var(--tsi-text-muted); }
+.tsi-tool--bastion .tsi-bas-wt-card__state--shaken { color: #f6d27a; }
+.tsi-tool--bastion .tsi-bas-wt-card__cohesion { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.tsi-tool--bastion .tsi-bas-wt-card__label { font: 600 var(--tsi-fs-label)/1.2 var(--tsi-font-display); letter-spacing: var(--tsi-track-label); text-transform: uppercase; color: var(--tsi-text-soft); white-space: nowrap; }
+.tsi-tool--bastion .tsi-bas-wt-pips { display: flex; flex-wrap: wrap; gap: 3px; justify-content: flex-end; }
+.tsi-tool--bastion .tsi-bas-wt-pip { width: 11px; height: 11px; box-sizing: border-box; border: 1.5px solid var(--tsi-gold); border-radius: 3px; background: rgba(0, 0, 0, .4); }
+.tsi-tool--bastion .tsi-bas-wt-pip--on { background: linear-gradient(180deg, #f0d696, #b68a3a); }
+.tsi-tool--bastion .tsi-bas-wt-card--enemy .tsi-bas-wt-pip { border-color: #e06070; }
+.tsi-tool--bastion .tsi-bas-wt-card--enemy .tsi-bas-wt-pip--on { background: linear-gradient(180deg, #ff8a8a, #b1122a); }
+.tsi-tool--bastion .tsi-bas-wt-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; margin: 0; }
+.tsi-tool--bastion .tsi-bas-wt-stats--card { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.tsi-tool--bastion .tsi-bas-wt-card--compact { gap: 3px; padding: 7px 11px; }
+.tsi-tool--bastion .tsi-bas-wt-stats--card .tsi-bas-wt-stat { flex-direction: row; justify-content: space-between; align-items: baseline; gap: 4px; padding: 2px 6px; }
+.tsi-tool--bastion .tsi-bas-wt-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 3px 2px;
+  border: 1px solid var(--tsi-hairline);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, .3);
   text-align: center;
-  color: var(--tsi-gold-text);
+}
+.tsi-tool--bastion .tsi-bas-wt-stat dt { font: 600 var(--tsi-fs-label)/1.1 var(--tsi-font-display); letter-spacing: .02em; text-transform: uppercase; color: var(--tsi-text-soft); }
+.tsi-tool--bastion .tsi-bas-wt-stat dd { margin: 0; font: 700 15px/1.15 var(--tsi-font-body); color: var(--tsi-text); }
+.tsi-tool--bastion .tsi-bas-wt-card__extras { margin: 0; padding: 0 0 0 16px; font: 500 15px/1.3 var(--tsi-font-body); color: var(--tsi-text-muted); }
+
+/* Orders, the proposal and the d20 box. */
+.tsi-tool--bastion .tsi-bas-wt-orders { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+.tsi-tool--bastion .tsi-bas-wt-order { padding: 6px 4px; font-size: var(--tsi-fs-label); line-height: 1.15; white-space: normal; }
+.tsi-tool--bastion .tsi-bas-wt-order[aria-pressed="true"] { border-color: #fff1c6; background: rgba(214, 178, 94, .22); color: #fff1c6; }
+.tsi-tool--bastion .tsi-bas-wt-order:disabled { opacity: .42; }
+.tsi-tool--bastion .tsi-bas-wt-prop {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 11px 10px;
+  border: 1px solid var(--tsi-line-feature);
+  border-radius: var(--tsi-radius-md);
+  background: rgba(214, 178, 94, .07);
+}
+.tsi-tool--bastion .tsi-bas-wt-prop__text p { margin: 0; font: 500 15px/1.3 var(--tsi-font-body); color: var(--tsi-text); }
+.tsi-tool--bastion .tsi-bas-wt-prop__text p + p { margin-top: 3px; }
+.tsi-tool--bastion .tsi-bas-wt-prop__order { font-weight: 700 !important; color: var(--tsi-gold-text) !important; }
+.tsi-tool--bastion .tsi-bas-wt-prop__target { font-weight: 700 !important; color: #ffc2c2 !important; }
+.tsi-tool--bastion .tsi-bas-wt-prop__calc {
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, .45);
+  font: 600 15px/1.3 var(--tsi-font-body) !important;
+  color: #fff1c6 !important;
+}
+.tsi-tool--bastion .tsi-bas-wt-d20 { display: flex; align-items: center; gap: 8px; }
+.tsi-tool--bastion .tsi-bas-wt-d20__label { font: 600 var(--tsi-fs-label)/1.2 var(--tsi-font-display); letter-spacing: var(--tsi-track-label); text-transform: uppercase; color: var(--tsi-gold-text); white-space: nowrap; }
+.tsi-tool--bastion .tsi-bas-wt-d20__input { width: 58px; padding: 5px 8px; font: 700 17px/1.1 var(--tsi-font-body); text-align: center; border-radius: 10px; }
+.tsi-tool--bastion .tsi-bas-wt-d20__help { font: italic 500 14px/1.2 var(--tsi-font-body); color: var(--tsi-text-soft); }
+.tsi-tool--bastion .tsi-bas-wt-rally { font-size: 15px; line-height: 1.25; }
+.tsi-tool--bastion .tsi-bas-wt-rally input { margin-top: 1px; }
+
+/* The battle log and the forces, in tabs. */
+.tsi-tool--bastion .tsi-bas-wt-tabs {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid var(--tsi-line-faint);
+  border-radius: var(--tsi-radius-md);
+  background: rgba(0, 0, 0, .25);
+  overflow: hidden;
+}
+.tsi-tool--bastion .tsi-bas-wt-tabs__bar { display: flex; border-bottom: 1px solid var(--tsi-line-faint); }
+.tsi-tool--bastion .tsi-bas-wt-tab {
+  flex: 1 1 0;
+  padding: 6px 8px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  font: 600 var(--tsi-fs-label)/1.2 var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-pill);
+  text-transform: uppercase;
+  color: var(--tsi-text-soft);
+  cursor: pointer;
+}
+.tsi-tool--bastion .tsi-bas-wt-tab[aria-selected="true"] { color: var(--tsi-gold-text); border-bottom-color: var(--tsi-gold); background: rgba(214, 178, 94, .06); }
+.tsi-tool--bastion .tsi-bas-wt-tab:focus-visible { outline: 2px solid var(--tsi-gold); outline-offset: -2px; }
+.tsi-tool--bastion .tsi-bas-wt-tabs__panel {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: auto;
+  padding: 6px 8px 8px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(214, 178, 94, .3) transparent;
+}
+.tsi-tool--bastion .tsi-bas-wt-log { display: flex; flex-direction: column; gap: 3px; margin: 0; padding: 0; list-style: none; }
+.tsi-tool--bastion .tsi-bas-wt-log__item {
+  display: flex;
+  gap: 7px;
+  padding: 3px 6px 3px 7px;
+  border-left: 3px solid var(--tsi-line-faint);
+  border-radius: 4px;
+  font: 500 15px/1.28 var(--tsi-font-body);
+  color: var(--tsi-text-muted);
+}
+.tsi-tool--bastion .tsi-bas-wt-log__item--player { border-left-color: var(--tsi-gold); }
+.tsi-tool--bastion .tsi-bas-wt-log__item--enemy { border-left-color: #c8283f; }
+.tsi-tool--bastion .tsi-bas-wt-log__item--round,
+.tsi-tool--bastion .tsi-bas-wt-log__item--result { border-left-color: transparent; background: rgba(214, 178, 94, .07); font-style: italic; color: var(--tsi-gold-text); }
+.tsi-tool--bastion .tsi-bas-wt-log__item--new { color: var(--tsi-text); background: rgba(214, 178, 94, .1); }
+.tsi-tool--bastion .tsi-bas-wt-log__round { flex-shrink: 0; min-width: 24px; font: 600 var(--tsi-fs-label)/1.45 var(--tsi-font-display); letter-spacing: .04em; color: var(--tsi-text-soft); }
+.tsi-tool--bastion .tsi-bas-wt-log__text { min-width: 0; }
+
+/* The terrain palette. */
+.tsi-tool--bastion .tsi-bas-wt-palette { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
+.tsi-tool--bastion .tsi-bas-wt-paint {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 4px 7px;
+  border: 1px solid var(--tsi-hairline);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, .3);
+  color: var(--tsi-text);
+  text-align: left;
+  cursor: pointer;
+}
+.tsi-tool--bastion .tsi-bas-wt-paint:hover { border-color: var(--tsi-line-control); }
+.tsi-tool--bastion .tsi-bas-wt-paint:focus-visible { outline: 2px solid var(--tsi-gold); outline-offset: 1px; }
+.tsi-tool--bastion .tsi-bas-wt-paint--on { border-color: #fff1c6; background: rgba(214, 178, 94, .18); box-shadow: inset 0 0 0 1px #fff1c6; }
+.tsi-tool--bastion .tsi-bas-wt-paint__swatch {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  box-sizing: border-box;
+  border: 1px solid rgba(245, 241, 232, .45);
+  border-radius: 5px;
+  font: 700 var(--tsi-fs-label)/1 var(--tsi-font-display);
+  color: var(--tsi-text);
+  text-shadow: 0 1px 2px #000;
+}
+.tsi-tool--bastion .tsi-bas-wt-paint__swatch--open {
+  background-image: linear-gradient(45deg, transparent 45%, #ff8a8a 45%, #ff8a8a 55%, transparent 55%) !important;
+  background-color: rgba(0, 0, 0, .3) !important;
+}
+.tsi-tool--bastion .tsi-bas-wt-paint__name { min-width: 0; font: 600 14px/1.15 var(--tsi-font-body); }
+.tsi-tool--bastion .tsi-bas-wt-paint__rule { margin: 2px 0 0; font: 500 15px/1.3 var(--tsi-font-body); color: var(--tsi-text-muted); }
+.tsi-tool--bastion .tsi-bas-wt-paint__rule b { color: var(--tsi-gold-text); }
+
+/* The tooltip with a unit's stat block. */
+.tsi-tool--bastion .tsi-bas-wt-tip {
+  position: fixed;
+  z-index: var(--tsi-z-tooltip);
+  width: 330px;
+  box-sizing: border-box;
+  padding: 10px 12px 11px;
+  border: 1px solid var(--tsi-line-feature);
+  border-radius: var(--tsi-radius-md);
+  background: linear-gradient(180deg, rgba(42, 15, 20, .98), rgba(15, 8, 10, .98));
+  box-shadow: var(--tsi-shadow-modal);
+  color: var(--tsi-text);
+  pointer-events: none;
+}
+.tsi-tool--bastion .tsi-bas-wt-tip__head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.tsi-tool--bastion .tsi-bas-wt-tip__title { font: 700 18px/1.2 var(--tsi-font-body); }
+.tsi-tool--bastion .tsi-bas-wt-tip__side { font: 600 var(--tsi-fs-label)/1 var(--tsi-font-display); letter-spacing: var(--tsi-track-pill); text-transform: uppercase; color: var(--tsi-gold-text); white-space: nowrap; }
+.tsi-tool--bastion .tsi-bas-wt-tip__state { margin: 2px 0 6px; font: 600 15px/1.25 var(--tsi-font-body); color: var(--tsi-text-muted); }
+.tsi-tool--bastion .tsi-bas-wt-tip__traits,
+.tsi-tool--bastion .tsi-bas-wt-tip__notes { margin: 6px 0 0; padding: 0 0 0 16px; font: 500 14.5px/1.3 var(--tsi-font-body); color: var(--tsi-text-muted); }
+.tsi-tool--bastion .tsi-bas-wt-tip__traits b { color: var(--tsi-gold-text); }
+.tsi-tool--bastion .tsi-bas-wt-tip__flavour { margin: 6px 0 0; font: italic 500 14.5px/1.3 var(--tsi-font-body); color: var(--tsi-text-soft); }
+
+/* Lists inside the War Table's pop-ups (Withdraw's consequences). */
+.tsi-modal .tsi-bas-wt-modal-list { margin: 8px 0 0; padding-left: 20px; }
+.tsi-modal .tsi-bas-wt-modal-list li + li { margin-top: 4px; }
+
+/* ---------- The TV: a little more room for the side panel ---------- */
+@media (min-width: 1800px) {
+  .tsi-tool--bastion .tsi-bas-wt { --tsi-bas-wt-side-w: 372px; }
 }
 
-/* ---------- Narrow windows: the forces go under the map ---------- */
+/* ---------- Narrow windows: the side panel goes under the map ---------- */
 @media (max-width: 1100px) {
   .tsi-tool--bastion .tsi-bas-wt { display: block; overflow-y: auto; }
   .tsi-tool--bastion .tsi-bas-wt-head__top { flex-wrap: wrap; }
+  .tsi-tool--bastion .tsi-bas-wt-title { max-width: none; }
   .tsi-tool--bastion .tsi-bas-wt-body {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: max(360px, calc(100vh - var(--tsi-topbar-h) - 230px)) auto;
   }
   .tsi-tool--bastion .tsi-bas-wt-side { min-height: auto; }
   .tsi-tool--bastion .tsi-bas-wt-side__body { flex: none; overflow: visible; }
+  .tsi-tool--bastion .tsi-bas-wt-side--tabs .tsi-bas-wt-tabs { flex: none; height: 320px; }
   .tsi-tool--bastion .tsi-bas-wt-readout { margin-left: 0; padding-left: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tsi-tool--bastion .tsi-bas-wt-token { transition: none; }
+  .tsi-tool--bastion .tsi-bas-wt-token,
+  .tsi-tool--bastion .tsi-bas-wt-cell--move { transition: none; }
+  .tsi-tool--bastion .tsi-bas-wt-float,
+  .tsi-tool--bastion .tsi-bas-wt-note--paused { animation: none; }
 }
