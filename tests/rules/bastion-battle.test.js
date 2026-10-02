@@ -456,6 +456,15 @@
     t.same(BR.objectiveProblems(make([], []), across(raid, 5)), [], 'a skirmish has nothing to reach');
   });
 
+  test('objectiveProblems: a river zig-zagging corner to corner across the board cuts it off just the same', function (t) {
+    var raid = make([U('p1', 'line')], [U('e1', 'line')], { objective: 'raid' });
+    var m = {};
+    for (var c = 0; c < raid.cols; c++) m[c + ',' + (5 + c % 2)] = 'x';
+    var zigzag = paint(raid, m);
+    BR.beginDeployment(raid, zigzag);
+    t.same(BR.objectiveProblems(raid, zigzag), ['Only 0 of the supply markers can be reached from your starting edge on foot, and the raid needs 2: deep water or cliffs are in the way.']);
+  });
+
   test('fitObjective: after a repaint while deploying, the objective moves off the new water, avoiding units; units stay put', function (t) {
     var b = make([U('p1', 'line')], [U('e1', 'line'), U('e2', 'line')], { objective: 'raid' });
     BR.beginDeployment(b, null);
@@ -632,6 +641,61 @@
     var croc = BR.reachable(b, 'p2', 'advance', terrain);
     t.ok(has(croc, 10, 8), 'it can stop in the water');
     t.ok(!has(croc, 11, 8));
+  });
+
+  /* A river or cliff painted on a slant: one diagonal drag of the Terrain
+     brush paints squares that touch only at their corners (here every
+     square with c + r = 16, from 16,0 down to 5,11). */
+  function slant(battle, code) {
+    var m = {};
+    for (var c = 0; c < battle.cols; c++) if (16 - c >= 0 && 16 - c < battle.rows) m[c + ',' + (16 - c)] = code;
+    return paint(battle, m);
+  }
+  function beyond(reach) { return Object.keys(reach).filter(function (k) { var p = k.split(',').map(Number); return p[0] + p[1] > 16; }); }
+  /* Does a path squeeze diagonally between two squares this unit can't enter? */
+  function squeezes(b, u, path, terrain) {
+    for (var i = 1; i < path.length; i++) {
+      var p = path[i - 1];
+      var q = path[i];
+      if (p.c !== q.c && p.r !== q.r && BR.moveCost(b, u, at(q.c, p.r), terrain) === Infinity && BR.moveCost(b, u, at(p.c, q.r), terrain) === Infinity) return true;
+    }
+    return false;
+  }
+
+  test('a river or cliff painted on a slant can\'t be crossed by stepping between its corners', function (t) {
+    ['x', 'k'].forEach(function (code) {
+      var what = code === 'x' ? 'deep water' : 'a cliff';
+      var b = fight(make([U('p1', 'line')], [U('e1', 'line')]), { p1: [8, 7], e1: [0, 0] });
+      var tt = slant(b, code);
+      t.same(beyond(BR.reachable(b, 'p1', 'advance', tt)), [], what + ': Advance stays on its own bank');
+      t.same(beyond(BR.reachable(b, 'p1', 'march', tt)), [], what + ': March stays on its own bank');
+      var res = BR.resolveOrder(b, { unitId: 'p1', id: 'advance', dest: at(9, 8) }, tt, d20(10));
+      t.ok(!res.ok, what + ': the move across the corner is refused');
+      t.same(BR.unitById(b, 'p1').pos, at(8, 7), what + ': it stays put');
+      t.ok(has(BR.reachable(b, 'p1', 'advance', tt), 7, 6), what + ': it can still move along its own bank');
+    });
+    var animals = fight(make([Beast('p1', 'Crocodile'), Beast('p2', 'Giant Vulture')], [U('e1', 'line')]), { p1: [8, 7], p2: [4, 9], e1: [0, 0] });
+    var water = slant(animals, 'x');
+    t.ok(has(BR.reachable(animals, 'p1', 'advance', water), 9, 8), 'a swimmer crosses the river');
+    t.ok(beyond(BR.reachable(animals, 'p2', 'advance', slant(animals, 'k'))).length > 0, 'a flyer crosses the cliff');
+  });
+
+  test('one square of water at a corner doesn\'t stop a diagonal step; two that touch at the corner do', function (t) {
+    var b = fight(make([U('p1', 'line')], [U('e1', 'line')]), { p1: [8, 7], e1: [0, 0] });
+    var one = paint(b, { '9,7': 'x' });
+    var reach = BR.reachable(b, 'p1', 'advance', one);
+    t.same(reach['9,8'].path, [at(8, 7), at(9, 8)], 'past one square of water');
+    t.equal(reach['9,8'].cost, 1);
+    var two = paint(b, { '9,7': 'x', '8,8': 'k' });
+    var round = BR.reachable(b, 'p1', 'advance', two);
+    t.equal(round['9,8'].cost, 3, 'between water and a cliff it has to go round');
+    t.ok(!squeezes(b, BR.unitById(b, 'p1'), round['9,8'].path, two), JSON.stringify(round['9,8'].path));
+    /* The straight line is as cheap as the way round only because of the
+       woods on it: the way round must still be the path given. */
+    var tie = paint(b, { '9,7': 'x', '8,8': 'x', '9,8': 'w', '10,9': 'w' });
+    var march = BR.reachable(b, 'p1', 'march', tie);
+    t.equal(march['11,10'].cost, 5);
+    t.ok(!squeezes(b, BR.unitById(b, 'p1'), march['11,10'].path, tie), JSON.stringify(march['11,10'].path));
   });
 
   test('Flight crosses water, cliffs and enemy units, ignores zones of control, and ends on an empty square', function (t) {
@@ -827,6 +891,23 @@
     t.same(shots({ '9,5': 'd' }), [false, false, false, false], 'dense woods on the line: neither can');
     t.same(shots({ '10,5': 'g' }), [true, true, true, true], 'a ridge beside the line');
     t.same(shots({ '9,5': 'g' }), [false, false, false, false], 'a ridge on the line');
+  });
+
+  test('line of sight can\'t slip between the corners of dense woods or a ridge painted on a slant', function (t) {
+    ['d', 'g'].forEach(function (code) {
+      var what = code === 'd' ? 'dense woods' : 'a ridge';
+      var f = fight(make([U('p1', 'archers')], [U('e1', 'archers')]), { p1: [11, 10], e1: [7, 6] });
+      var tt = slant(f, code);
+      t.ok(!BR.lineOfSight(f, tt, at(11, 10), at(7, 6)), what + ': the shooter can\'t see through');
+      t.ok(!BR.lineOfSight(f, tt, at(7, 6), at(11, 10)), what + ': nor can the target see back');
+      t.same(BR.attackOptions(f, 'p1', null, null, tt), [], what + ': no shot offered');
+      t.same(BR.attackOptions(f, 'e1', null, null, tt), [], what + ': nor back');
+      t.ok(BR.lineOfSight(f, tt, at(11, 10), at(15, 6)), what + ': along its own side of the line it still sees');
+    });
+    var b = make([], []);
+    t.ok(BR.lineOfSight(b, paint(b, { '9,7': 'd' }), at(11, 10), at(7, 6)), 'one square beside the corner doesn\'t block');
+    t.ok(BR.lineOfSight(b, paint(b, { '9,7': 'd', '8,8': 'w' }), at(11, 10), at(7, 6)), 'nor does it with ordinary woods at the other corner');
+    t.ok(!BR.lineOfSight(b, paint(b, { '9,7': 'd', '8,8': 'g' }), at(11, 10), at(7, 6)), 'dense woods and a ridge touching at the corner block');
   });
 
   test('no shooting into a melee', function (t) {
@@ -1447,6 +1528,25 @@
     t.ok(BR.canEndEarly(raid));
   });
 
+  test('the enemy breaking wins Defend Bastion at once; in Seize Outpost it withdraws and you still have to hold the outpost', function (t) {
+    var d = fight(make([U('p1', 'line')], [U('e1', 'line')], { objective: 'defend' }), { p1: [10, 8], e1: [10, 7] });
+    BR.unitById(d, 'e1').cohesion = 1;
+    t.equal(act(t, d, 'p1', 'advance', { targetId: 'e1', d20: 12 }).result.outcome, 'victory');
+    t.ok(d.result.broken.enemy);
+    var so = fight(make([U('p1', 'line'), U('p2', 'line')], [U('e1', 'line'), U('e2', 'line')], { objective: 'seize_outpost' }), { p1: [10, 4], p2: [3, 10], e1: [10, 3], e2: [20, 0] });
+    var e2 = BR.unitById(so, 'e2'); e2.status = 'defeated'; e2.pos = null;
+    BR.unitById(so, 'e1').cohesion = 1;
+    t.equal(act(t, so, 'p1', 'advance', { targetId: 'e1', d20: 12 }).result, null, 'no win yet');
+    t.equal(so.phase, 'battle');
+    t.ok(so.objective.zone && so.objective.zone.owner === 'enemy');
+    BR.unitById(so, 'p1').pos = { c: so.objective.zone.c0, r: so.objective.zone.r0 };
+    holdRound(t, so);
+    t.equal(so.phase, 'battle', 'held at one round end: not yet');
+    holdRound(t, so);
+    t.equal(so.phase, 'over');
+    t.equal(so.result.outcome, 'victory', 'held at two round ends in a row');
+  });
+
   test('a raid already won by two markers home stays a victory even if your army breaks', function (t) {
     var b = fight(make([U('p1', 'line')], [U('e1', 'line')], { objective: 'raid' }), { p1: [4, 10], e1: [20, 0] });
     b.objective.extracted = 2;
@@ -1519,12 +1619,22 @@
     var s = BR.statBlock(u);
     t.equal(s.title, 'Line Infantry 1');
     t.equal(row(s, 'cohesion').value, '5 / 7');
-    t.ok(s.notes.indexOf('Supported by 10 Bastion Defenders: +2 Cohesion.') !== -1, s.notes.join(' | '));
+    t.ok(s.notes.indexOf('Supported by 10 Bastion Defenders: +2 Cohesion, +1 Battle Value.') !== -1, s.notes.join(' | '));
+    t.equal(row(s, 'bv').value, '6', 'its Battle Value counts the support, as the army\'s total does');
     t.same(s.traits.map(function (x) { return x.name; }), ['Braced']);
     t.equal(s.distinction, W.archetypes.line.distinction);
     var bv = make([U('p1', 'line')], [], { defenders: { count: 100, armed: false } });
     t.ok(BR.statBlock(BR.unitById(bv, 'def-1')).notes[0].indexOf('unarmed') !== -1);
     t.equal(row(BR.statBlock(BR.unitById(bv, 'def-1')), 'attack').value, '+0');
+  });
+
+  test('the stat blocks\' Battle Values add up to the army\'s, support included', function (t) {
+    var b = make([U('p1', 'levy'), U('p2', 'line'), U('p3', 'line'), Beast('p4', 'Owlbear')], [], { defenders: { count: 20, armed: true } });
+    var levy = BR.statBlock(BR.unitById(b, 'p1'));
+    t.same([row(levy, 'cohesion').value, row(levy, 'bv').value], ['6 / 6', '4'], 'Levy with +2 support');
+    var sum = b.units.filter(function (u) { return u.side === 'player'; }).reduce(function (s, u) { return s + Number(row(BR.statBlock(u), 'bv').value); }, 0);
+    t.equal(sum, b.startBV.player);
+    t.equal(row(BR.statBlock('levy'), 'bv').value, '3', 'the profile on its own is unchanged');
   });
 
   test('stat blocks for beasts and Lieutenants; unknown names have none', function (t) {

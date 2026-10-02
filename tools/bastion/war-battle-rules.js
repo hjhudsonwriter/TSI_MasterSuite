@@ -248,12 +248,22 @@
   };
   /* Can a shooter on square a see square b? Blocked by any sight-blocking
      terrain strictly between them (dense woods, a ridge). Units never block.
-     Sight works both ways: if a can see b, b can see a. */
+     Nor can the line slip diagonally between two sight-blocking squares
+     that touch at their corners (a line of woods or a ridge painted on a
+     slant). Sight works both ways: if a can see b, b can see a (the same
+     squares, and the same corners, lie between them from either end). */
   BR.lineOfSight = function (battle, terrain, a, b) {
     var tt = fit(battle, terrain);
     var cells = BR.lineCells(a, b);
-    for (var i = 1; i < cells.length - 1; i++) {
-      if (BR.terrainAt(tt, cells[i].c, cells[i].r).blocksSight) return false;
+    function blocks(c, r) {
+      if ((c === a.c && r === a.r) || (c === b.c && r === b.r)) return false;
+      return !!BR.terrainAt(tt, c, r).blocksSight;
+    }
+    for (var i = 1; i < cells.length; i++) {
+      var p = cells[i - 1];
+      var q = cells[i];
+      if (i < cells.length - 1 && blocks(q.c, q.r)) return false;
+      if (p.c !== q.c && p.r !== q.r && blocks(q.c, p.r) && blocks(p.c, q.r)) return false;
     }
     return true;
   };
@@ -574,7 +584,8 @@
      and objectiveProblems explains why, so the War Table can warn. */
 
   /* Every square troops on foot can walk to from any open square in these
-     rows, round deep water and cliffs. Units don't count: they move. */
+     rows, round deep water and cliffs (never squeezing diagonally between
+     two that touch at their corners). Units don't count: they move. */
   function walkFrom(battle, tt, rows) {
     var seen = {};
     var queue = [];
@@ -590,6 +601,8 @@
         var n = { c: queue[i].c + DIRS[d][0], r: queue[i].r + DIRS[d][1] };
         var nk = key(n);
         if (seen[nk] || !BR.inBoard(battle, n) || BR.terrainAt(tt, n.c, n.r).impassable) continue;
+        if (n.c !== queue[i].c && n.r !== queue[i].r &&
+          BR.terrainAt(tt, n.c, queue[i].r).impassable && BR.terrainAt(tt, queue[i].c, n.r).impassable) continue;
         seen[nk] = true;
         queue.push(n);
       }
@@ -1083,6 +1096,13 @@
     if (t.difficult && (u.traits || []).some(function (tr) { return groundFor(tr).indexOf(t.id) !== -1; })) return 1;
     return num(t.cost, 1);
   }
+  /* A diagonal step can't squeeze between two squares this unit can't
+     enter that touch at their corners: a river or a cliff painted on a
+     slant is as solid as one painted straight. (Flight passes over.) */
+  function cornerBlocked(u, tt, from, to) {
+    if (from.c === to.c || from.r === to.r) return false;
+    return !isFinite(costIn(u, BR.terrainAt(tt, to.c, from.r))) && !isFinite(costIn(u, BR.terrainAt(tt, from.c, to.r)));
+  }
   BR.moveCost = function (battle, unit, cell, terrain) {
     var at = cellOf(cell);
     if (!at || !BR.inBoard(battle, at) || !unit) return Infinity;
@@ -1135,7 +1155,7 @@
         var o = occ[nk];
         if (o && o.side !== u.side && !flight) continue;
         var step = costIn(u, BR.terrainAt(tt, n.c, n.r));
-        if (!isFinite(step)) continue;
+        if (!isFinite(step) || cornerBlocked(u, tt, cur, n)) continue;
         var nc = cur.cost + step;
         if (nc > budget) continue;
         if (!nodes[nk] || nc < nodes[nk].cost) {
@@ -1182,7 +1202,7 @@
       var o = occ[nk];
       if (o && o.side !== u.side && !flight) return null;
       var step = costIn(u, BR.terrainAt(tt, n.c, n.r));
-      if (!isFinite(step)) return null;
+      if (!isFinite(step) || cornerBlocked(u, tt, path[path.length - 1], n)) return null;
       cost += step;
       if (i < steps && !flight && zoc[nk]) return null;
       path.push(n);
@@ -1804,7 +1824,10 @@
       distinction = (base && base.distinction) || '';
       if (unit.variant && unit.variant.name && unit.variant.name !== title) notes.push(unit.variant.name + '.');
       if (unit.type === 'defenders') notes.push(unit.personnel + ' Bastion Defenders' + (unit.armed === false ? ', unarmed (' + signed(D.defenders.unarmedAttack) + ' Attack).' : '.'));
-      if (unit.support) notes.push('Supported by ' + unit.support.count + ' Bastion Defenders: ' + signed(unit.support.bonus) + ' Cohesion.');
+      if (unit.support) {
+        var supBV = num(unit.support.bonus, 0) * W.defenders.supportBvPerPoint;
+        notes.push('Supported by ' + unit.support.count + ' Bastion Defenders: ' + signed(unit.support.bonus) + ' Cohesion' + (supBV ? ', ' + signed(supBV) + ' Battle Value.' : '.'));
+      }
       if (unit.kind !== 'beast' && unit.size && unit.personnel !== unit.size && unit.type !== 'defenders') notes.push(unit.personnel + ' of ' + unit.size + ' soldiers.');
     } else {
       title = src.name || '';
@@ -1822,6 +1845,9 @@
         value = hasRanged ? signed(num(p.rangedAttack, 0)) + ' ranged / ' + signed(num(p.attack, 0)) + ' melee' : signed(num(v, 0));
         if (hasRanged) text += ' Ranged attacks reach ' + num(p.range, 0) + ' squares.';
       } else if (s.key === 'resolve') value = signed(num(v, 0));
+      /* A unit's own Battle Value counts any defenders supporting it, as
+         the army's totals do, so the stat blocks add up to them. */
+      else if (s.key === 'bv' && unit) value = String(BR.unitBV(unit));
       else value = String(num(v, 0));
       return { key: s.key, name: s.name, value: value, text: text };
     });
