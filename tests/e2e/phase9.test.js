@@ -1424,6 +1424,21 @@ function serve(dir) {
       await page.mouse.move(5, 5);
     });
 
+    await check('the guide\'s "come back after" for wounded Lieutenants and beasts matches the recovery table', async () => {
+      /* Shortest and longest time away for a Lieutenant or beast that lives: separated, recovered, wounded, badly wounded. */
+      const span = await page.evaluate(() => {
+        const W = TSI_DATA.bastionWar;
+        const turns = W.recovery.filter(r => r.turns).map(r => r.turns).concat([W.separatedTurns, W.badlyWoundedTurns]);
+        return [Math.min.apply(null, turns), Math.max.apply(null, turns)];
+      });
+      const words = ['zero', 'one', 'two', 'three', 'four', 'five', 'six'];
+      const said = span[0] === span[1] ? words[span[0]] : words[span[0]] + ' to ' + words[span[1]];
+      const guide = fs.readFileSync(path.join(H.ROOT, 'guide.html'), 'utf8');
+      const m = /Wounded Lieutenants and beasts come back after ([^:<]+):/.exec(guide);
+      assert(m, 'the guide has no "Wounded Lieutenants and beasts come back after" sentence');
+      equal(m[1], said + ' Bastion turn' + (span[1] === 1 ? '' : 's'));
+    });
+
     await check('the War Council and the War Room fit the laptop and the TV with no sideways scrolling', async () => {
       await setUp(page, (s) => {
         s.organization = { type: 'clan', name: 'Clan Ironbow', chief: '', motto: '', foundedAtTurn: 1 };

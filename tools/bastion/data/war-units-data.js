@@ -86,7 +86,7 @@
       charge: { name: 'Charge', bonus: 2, text: 'Advance & Attack: move at least 2 in a straight line through open ground into melee for +2 on that attack. Not while Shaken or already engaged, not through difficult terrain, and not against a unit that is Holding.' },
       strong_charge: { name: 'Strong Charge', bonus: 3, charge: true, text: 'As Charge, but +3 on that attack.' },
       flight: { name: 'Flight', text: 'Flies over terrain, water, cliffs and other units (it still ends on an empty square); not held up by enemies it passes.' },
-      terror: { name: 'Terror', checkMod: -2, text: 'A unit it damages makes any Resolve check that follows at −2.' },
+      terror: { name: 'Terror', checkMod: -2, text: 'A unit it damages makes the Resolve check caused by that damage at −2 (not later checks or Rally).' },
       pack: { name: 'Pack', text: 'Gains the +2 surround bonus whenever another friendly unit is also fighting its target, from any direction.' },
       grapple: { name: 'Grapple', text: 'A unit it damages in melee can\'t March or Disengage on its next activation.' },
       climber: { name: 'Climber', ignores: ['woods', 'rubble', 'dense'], text: 'Woods, rubble and dense woods cost it no extra movement.' },
@@ -184,7 +184,7 @@
     objectives: {
       raid: { name: 'Raid', mult: 0.85, markers: 3, need: 2, markerCols: [0.2, 0.5, 0.8], rule: 'Secure and extract two of three supply markers through your starting edge by the end of round 6. Collecting a marker takes Interact.' },
       skirmish: { name: 'Skirmish', mult: 1.0, rule: 'Break the opposing army. At the end of round 6, the side that has lost the smaller share of its starting Battle Value wins; equal shares are a draw.' },
-      defend: { name: 'Defend Bastion', mult: 1.1, zone: { w: 4, h: 2 }, holdRounds: 2, rule: 'Stop the enemy holding your supply depot at two round ends in a row, and keep your army unbroken through round 6.' },
+      defend: { name: 'Defend Bastion', mult: 1.1, zone: { w: 4, h: 2 }, holdRounds: 2, rule: 'Stop the enemy holding your supply depot at two round ends in a row, and keep your army unbroken through round 6. Breaking the enemy army wins at once.' },
       seize_outpost: { name: 'Seize Outpost', mult: 1.2, zone: { w: 4, h: 2 }, holdRounds: 2, rule: 'Hold the outpost with a Steady unit, with no enemy unit in it, at two round ends in a row before the end of round 6.' }
     },
     tiers: [
@@ -259,7 +259,8 @@
         style: { fill: '#1c6f78', ink: '#ffffff' }
       }
     },
-    /* Every enemy army: at least this share of its Battle Value in infantry. */
+    /* Every enemy army: at least this share of its units' Battle Value
+       (not counting Captains) in infantry. */
     coreShare: 0.5,
     /* Enemy units without an established clan colour. */
     enemyStyle: { fill: '#2b2f36', ink: '#e7e2d6' },
@@ -281,9 +282,10 @@
     separatedTurns: 1,
 
     /* Rewards: the Bastion's existing amounts (bastion-data.js war.outcomes)
-       stay the baseline. A raid's gold follows the supplies extracted; a
-       draw changes nothing; a withdrawal costs the defeat's gold and
-       Political Capital but only half the Clan Honour. */
+       stay the baseline. A raid's gold follows the supplies extracted, even
+       on a defeat or withdrawal (one home: half the victory's gold); a
+       draw changes nothing; a withdrawal otherwise counts as a defeat for
+       gold and Political Capital, but costs only half the Clan Honour. */
     rewards: { withdrawalHonour: -4, victoryHonour: 6, defeatHonour: -8 }
   };
 }());

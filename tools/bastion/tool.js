@@ -1131,8 +1131,11 @@
         var tier = String(warTier.value);
         var key = R.missionKey(t, o, tier);
         var had = !!(state.warMissions && state.warMissions[key]);
+        var seen = had ? state.warMissions[key].seenTurn : undefined;
         var m = R.ensureMission(state, data, t, o, tier);
-        if (m && !had) save();
+        /* Saved when new, or when first shown this turn: the stamp keeps it
+           from being pruned while Harry browses other missions. */
+        if (m && (!had || m.seenTurn !== seen)) save();
         intelText.textContent = m ? R.missionEstimateLine(m, data) : 'No word from the scouts.';
         var wo = W.objectives[o];
         intelRule.textContent = wo ? wo.name + ': ' + wo.rule : '';
@@ -1275,7 +1278,9 @@
       /* The pop-up when the war comes due during Advance Bastion Turn. When
          an earlier attempt was called off, it says which rolls stand (so the
          "conditions are unchanged" pop-up isn't needed as well). */
-      function militaryPrompt(ma) {
+      /* cut: a line when an older war order musters with less than it
+         committed (its forces were shared with another order). */
+      function militaryPrompt(ma, cut) {
         var m = missionOf(ma);
         var again = inherited(ma);
         var later = 'Begin the Military Action now, or choose Later and begin it from the Banner & War Council panel.';
@@ -1292,6 +1297,7 @@
             el('div', { class: 'tsi-bas-ma-pop' }, [
               el('div', { class: 'tsi-bas-ma-pop__headline', text: 'Your forces muster for battle' }),
               muted('Committed: ' + R.militaryCommitLine(ma.commit) + '.'),
+              cut ? muted(cut.charAt(0).toUpperCase() + cut.slice(1)) : null,
               m ? muted('Enemy: ' + tierName(ma.tier) + '. ' + R.missionEstimateLine(m, data)) : null,
               chips.length ? el('div', { class: 'tsi-bas-ma__chips' }, chips.map(chip)) : null,
               el('p', { class: 'tsi-bas-ma-pop__text', 'data-test': 'ma-muster-text', text: text })
@@ -2178,11 +2184,12 @@
         if (kind === 'war') {
           /* The war order becomes a saved Military Action at once, so it can't
              come due twice; then Begin Military Action, or Later. */
+          var ordered = R.orderCommit(state, data, o);
           var ma = R.beginMilitaryAction(state, data, o, rand);
           done();
           /* Nothing committed to it was still free (the log says so): the order lapsed. */
           if (!ma) return life.alive ? null : 'stopped';
-          var go = await militaryPrompt(ma);
+          var go = await militaryPrompt(ma, R.musterShortfall(data, ordered, ma.commit));
           if (!life.alive) return 'stopped';
           if (go && (await runMilitary(ma.id)) === 'stopped') return 'stopped';
           return life.alive ? null : 'stopped';
