@@ -15,6 +15,8 @@
 
 /* The page behind doesn't scroll while the table is open. */
 .tsi-page--bastion.tsi-bas-wt-open { overflow: hidden; }
+/* Notices sit bottom-left while the War Table is open, clear of its main button (bottom-right). */
+.tsi-page--bastion.tsi-bas-wt-open .tsi-notices { left: 16px; right: auto; }
 
 .tsi-tool--bastion .tsi-bas-wt {
   position: fixed;
@@ -556,6 +558,8 @@
 }
 .tsi-tool--bastion .tsi-bas-wt-swatch--lieutenant,
 .tsi-tool--bastion .tsi-bas-wt-swatch--beast { width: 22px; height: 22px; border-radius: 50%; }
+/* A numbered beast's three letters ("GV1") still fit the little disc. */
+.tsi-tool--bastion .tsi-bas-wt-swatch--beast { width: 24px; height: 24px; font-size: 8px; letter-spacing: -.02em; }
 .tsi-tool--bastion .tsi-bas-wt-swatch--lieutenant { background: radial-gradient(circle at 35% 30%, #cf2a43, #8e1022 55%, #5a0812); }
 .tsi-tool--bastion .tsi-bas-wt-swatch--beast { background: radial-gradient(circle at 35% 30%, #5d8a45, #2f4d23 55%, #1a2c13); }
 .tsi-tool--bastion .tsi-bas-wt-swatch--regiment,

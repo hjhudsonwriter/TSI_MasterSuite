@@ -126,7 +126,7 @@ window.TSI_DATA.bastion = {
        Weather: pass the DC for a clear day; fail it and the weather is one
        of the Explorer's storms, at random. Morale's DC rises with bad
        weather. {leaders} / {Leaders} become "your Lieutenants" (or
-       "your sergeants" when no Lieutenants march). */
+       "you", the party, when no Lieutenants march). */
     militaryAction: {
       dc: { weather: 12, morale: 12, luck: 10 },
       clear: {
@@ -171,8 +171,8 @@ window.TSI_DATA.bastion = {
         }
       },
       luck: {
-        pass: 'Fortune smiles today. A hawk circles your banner three times before the march, and the ranks take it as a sign that the Gods ride with you. (+1 to all rolls in this war action)',
-        fail: 'Something strange is in the air today; perhaps the Gods do not look kindly upon this needless bloodshed… (−1 to all rolls in this war action)'
+        pass: 'Fortune smiles today. A hawk circles your banner three times before the march, and the ranks take it as a sign that the Gods ride with you. (+1 modifier on all attack rolls)',
+        fail: 'Something strange is in the air today, perhaps the Gods do not look kindly upon this needless bloodshed… (−1 modifier on all attack rolls)'
       },
       /* The Bastion's regiments are "Regiment (100)". */
       regimentSize: 100

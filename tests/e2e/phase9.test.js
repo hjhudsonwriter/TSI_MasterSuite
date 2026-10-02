@@ -732,13 +732,13 @@ function serve(dir) {
       await reopen(page);
       await H.waitForNotice(page, /A Military Action \(RAID vs Bacca\) is waiting/);
       equal((await st(page)).militaryActions.length, 1);
-      await H.dismissNotices(page);
     });
 
-    await check('Weather (DC 12), Morale (DC 12) and Luck (DC 10), each with its story', async () => {
+    await check('Weather (DC 12), Morale (DC 12) and Luck (DC 10), each with its story; a double click can\'t make the next roll', async () => {
       await pause(page);
       await page.click('[data-test=ma-continue-0]');
       await page.waitForSelector('[data-test=d20]');
+      equal((await H.noticeTexts(page)).filter(t => /is waiting/.test(t)), [], 'the notice goes once it has done its job');
       let t = await H.modalText(page);
       assert(/Weather Conditions: RAID vs Bacca/.test(t) && /Modifier: \+0/.test(t) && /DC 12/.test(t), t);
       await d20(page, 15);
@@ -746,7 +746,9 @@ function serve(dir) {
       t = await H.modalText(page);
       assert(/Clear Day/.test(t) && /d20 15 vs DC 12: Passed/.test(t) && /The sky holds clear and bright/.test(t), t);
       equal(await page.$('.tsi-bas-ma-pop__video'), null, 'no storm, no film');
-      await clickModal(page, 'Continue');
+      await page.dblclick('.tsi-modal__foot button:text-is("Continue")');
+      await page.waitForTimeout(500);
+      equal([(await st(page)).militaryActions[0].step, !!(await page.$('[data-test=d20]'))], ['morale', true], 'the second click didn\'t press the Morale dice box');
       t = await H.modalText(page);
       assert(/Morale: RAID vs Bacca/.test(t) && /DC 12/.test(t), t);
       await d20(page, 9);
@@ -865,6 +867,16 @@ function serve(dir) {
       await page.waitForTimeout(200);
       assert((await st(page)).log[0].body === 'RAID vs Bacca: the battle roll was cancelled. Press Continue in the War Council to roll it.');
       equal((await st(page)).warLog, [], 'nothing settled yet');
+      /* The locked table offers the roll again. */
+      equal(await page.textContent('[data-test=wt-locked-action]'), 'Roll for the battle');
+      await pause(page);
+      await page.click('[data-test=wt-locked-action]');
+      await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal__title'); return t && t.textContent === 'The Battle Is Joined'; });
+      await clickModal(page, 'Continue');
+      await page.waitForSelector('[data-test=d20]');
+      await clickModal(page, 'Cancel');
+      await page.waitForTimeout(200);
+      equal((await st(page)).warLog, [], 'still nothing settled');
       /* Locked: a drag moves nothing. */
       const r = await page.evaluate(() => TSI.bastion.warTable.current.tokenScreenRect('def'));
       const was = (await st(page)).militaryActions[0].deployment.positions.def;

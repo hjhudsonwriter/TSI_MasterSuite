@@ -71,12 +71,17 @@
     toWorld: function (v, sx, sy) { return { x: (sx - v.ox) / v.scale, y: (sy - v.oy) / v.scale }; },
 
     /* Keep the centre of the stage over the board, so it can't be panned away. */
+    /* The pan is kept within what the zoom allows, so the map always fills
+       the view it can: at 100% or less it's centred, and zooming back out
+       after a pan brings it back. */
     clampCamera: function (camera, board) {
       var c = isObj(camera) ? camera : {};
+      var zoom = clamp(num(c.zoom, 1), W.ZOOM_MIN, W.ZOOM_MAX);
+      var k = zoom > 1 ? 1 - 1 / zoom : 0;
       return {
-        x: clamp(num(c.x, 0), -board.w / 2, board.w / 2),
-        y: clamp(num(c.y, 0), -board.h / 2, board.h / 2),
-        zoom: clamp(num(c.zoom, 1), W.ZOOM_MIN, W.ZOOM_MAX)
+        x: clamp(num(c.x, 0), -board.w / 2 * k, board.w / 2 * k),
+        y: clamp(num(c.y, 0), -board.h / 2 * k, board.h / 2 * k),
+        zoom: zoom
       };
     },
 

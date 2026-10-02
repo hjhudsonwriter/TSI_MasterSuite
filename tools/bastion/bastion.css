@@ -194,7 +194,7 @@
 .tsi-tool--bastion .tsi-bas-crest-actions .tsi-btn { font-size: 12px; padding: 5px 10px; }
 
 /* The crest part of the Form Clan and Form Mercenary Brigade pop-ups. */
-.tsi-page--bastion .tsi-bas-modal--found { width: min(640px, 96vw); }
+.tsi-page--bastion .tsi-bas-modal.tsi-bas-modal--found { width: min(640px, 96vw); }
 .tsi-page--bastion .tsi-bas-modal .tsi-bas-crest-pick {
   display: flex;
   gap: 14px;
@@ -702,6 +702,8 @@
 .tsi-page--bastion .tsi-bas-modal .tsi-bas-rollrow { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 8px; }
 
 /* Result boxes. */
+/* For a moment after it opens, a Military Action pop-up's buttons ignore the mouse (a double click on the last one can't press these). */
+.tsi-page--bastion .tsi-bas-modal--settling .tsi-modal__foot { pointer-events: none; }
 /* The Military Action's pop-ups: the muster, each roll's result (the weather's video above it) and the battle. */
 .tsi-page--bastion .tsi-bas-modal--military { width: min(720px, 96vw); }
 .tsi-page--bastion .tsi-bas-ma-pop { display: flex; flex-direction: column; gap: 10px; }

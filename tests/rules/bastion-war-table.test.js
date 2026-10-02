@@ -101,8 +101,13 @@
     t.same([p.x.toFixed(4), p.y.toFixed(4)], ['300.0000', '200.0000']);
   });
 
-  test('the camera can\'t be panned off the board', function (t) {
-    t.same(W.clampCamera({ x: 5000, y: -5000, zoom: 9 }, { w: 1600, h: 900 }), { x: 800, y: -450, zoom: 3 });
+  test('the camera can\'t be panned off the board, and zooming back out re-centres it', function (t) {
+    var k = 1 - 1 / 3;
+    t.same(W.clampCamera({ x: 5000, y: -5000, zoom: 9 }, { w: 1600, h: 900 }), { x: 800 * k, y: -450 * k, zoom: 3 });
+    t.same(W.clampCamera({ x: 300, y: -200, zoom: 1 }, { w: 1600, h: 900 }), { x: 0, y: 0, zoom: 1 });
+    t.same(W.clampCamera({ x: 300, y: -200, zoom: 2 }, { w: 1600, h: 900 }), { x: 300, y: -200, zoom: 2 });
+    var k2 = 1 - 1 / 1.25;
+    t.same(W.clampCamera({ x: 500, y: -300, zoom: 1.25 }, { w: 1600, h: 900 }), { x: 800 * k2, y: -450 * k2, zoom: 1.25 });
   });
 
   group('Bastion War Table: settings and the saved map');

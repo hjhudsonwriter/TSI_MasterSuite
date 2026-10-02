@@ -79,7 +79,7 @@
       if (v === null || v === undefined) return null;
       if (check(v)) return v;
       try {
-        var q = store.quarantine(name, reason);
+        var q = store.quarantine(name, reason, 'the War Table opened without it (the rest of the Bastion is as it was)');
         if (q && typeof q.catch === 'function') q.catch(noop);
       } catch (e) { /* nothing more to do: start fresh */ }
       return null;
@@ -197,10 +197,13 @@
     var beginBtn = el('button', { type: 'button', class: 'tsi-btn tsi-btn--primary tsi-bas-wt-main', 'data-test': 'wt-begin-deploy' }, 'Begin Deployment');
     var startBtn = el('button', { type: 'button', class: 'tsi-btn tsi-btn--primary tsi-bas-wt-main', hidden: true, 'data-test': 'wt-start-battle' }, 'Start Battle');
     var lockedNote = el('p', { class: 'tsi-bas-wt-locked', hidden: true, text: 'Battle started' });
+    /* Optional: a main action once the deployment is locked (the Bastion's "Roll for the battle"). */
+    var lockedAct = o.lockedAction && typeof o.lockedAction.onClick === 'function' ? o.lockedAction : null;
+    var lockedBtn = el('button', { type: 'button', class: 'tsi-btn tsi-btn--primary tsi-bas-wt-main', hidden: true, 'data-test': 'wt-locked-action' }, lockedAct ? String(lockedAct.label || 'Continue') : '');
     var side = el('aside', { class: 'tsi-bas-wt-side', 'aria-label': 'Your forces' }, [
       el('div', { class: 'tsi-bas-wt-side__head' }, [el('h3', { class: 'tsi-bas-wt-side__title', text: 'Your forces' }), countEl]),
       el('div', { class: 'tsi-bas-wt-side__body' }, roster),
-      el('div', { class: 'tsi-bas-wt-side__foot' }, [hint, beginBtn, startBtn, lockedNote])
+      el('div', { class: 'tsi-bas-wt-side__foot' }, [hint, beginBtn, startBtn, lockedBtn, lockedNote])
     ]);
 
     var root = el('div', {
@@ -587,13 +590,15 @@
 
     /* After the board, the grid or the token size changes: everyone back on our ground. */
     function reclamp() {
-      if (!dep.started || dep.locked || loading) return;
+      if (!dep.started || loading) return;
       var filled = R.fillMissing(dep.positions, forces, board, settings.grid, settings.tokenScale);
       var next = Object.assign({}, filled, R.clampAll(filled, forces, board, settings.grid, settings.tokenScale));
       if (R.samePositions(next, dep.positions)) return;
       dep.positions = next;
       renderTokens();
-      notifyChange();
+      /* A locked deployment is only shown back on our ground (the map or sizes were
+         changed for another Military Action); it isn't changed or saved. */
+      if (!dep.locked) notifyChange();
     }
 
     function renderRoster() {
@@ -673,7 +678,8 @@
       beginBtn.hidden = started;
       setDisabled(beginBtn, loading || !forces.length);
       startBtn.hidden = !started || locked;
-      lockedNote.hidden = !locked;
+      lockedBtn.hidden = !locked || !lockedAct;
+      lockedNote.hidden = !locked || !!lockedAct;
       if (locked) hint.textContent = 'Your deployment is locked in. The enemy will take the field in the next build.';
       else if (started) hint.textContent = 'Drag your forces into place on your ground, below the gold line. Arrow keys nudge a selected token.';
       else if (!forces.length) hint.textContent = 'No forces were committed to this action, so there is nothing to deploy.';
@@ -719,6 +725,11 @@
       });
     });
     on(beginBtn, 'click', function () { beginDeployment(); });
+    var runLockedAction = TSI.oneAtATime(function () {
+      if (closed || !dep.locked || !lockedAct) return null;
+      return lockedAct.onClick();
+    });
+    on(lockedBtn, 'click', function () { return runLockedAction(); });
     on(startBtn, 'click', function () { return startBattle(); });
 
     /* ---------- Dragging the forces ---------- */

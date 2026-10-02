@@ -415,10 +415,12 @@
           return TSI.store.keys(id).map(function (k) { return k.slice(prefix.length); });
         },
         /* A save that can't be read is set aside (never deleted) and the user is told. */
-        quarantine: function (name, reason) {
+        /* lost: what carries on without it, if not the whole tool ("the tool started fresh"),
+           e.g. 'the Bastion opened without its crest picture'. */
+        quarantine: function (name, reason, lost) {
           return TSI.store.quarantine(rules.keyFor(id, name), reason).then(function (newKey) {
             if (newKey) {
-              TSI.notify('A save in ' + TSI.the(info.name) + ' couldn\'t be read, so it was set aside rather than deleted, and the tool started fresh. The damaged copy is kept in "Back up everything".', {
+              TSI.notify('A save in ' + TSI.the(info.name) + ' couldn\'t be read, so it was set aside rather than deleted, and ' + (typeof lost === 'string' && lost ? lost : 'the tool started fresh') + '. The damaged copy is kept in "Back up everything".', {
                 type: 'warn', title: 'Damaged save set aside.', id: 'tsi-quarantine-' + name
               });
             }

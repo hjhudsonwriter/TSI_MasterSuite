@@ -656,6 +656,21 @@
     t.same(s.defenderBeasts, []);
   });
 
+  test('the beast lost in a war is one that marched: the War Table\'s last-named, never one left at home', function (t) {
+    var s = fresh();
+    s.defenders.count = 3;
+    s.defenderBeasts = [{ name: 'Giant Vulture', qty: 5 }, { name: 'Ape', qty: 2 }];
+    t.same(R.militaryForces(s, data, { defenders: 0, beasts: 5, lieutenants: 0, regiments: 0 }).map(function (f) { return f.label; }).slice(-1), ['Giant Vulture 5']);
+    var plan = R.warPlan(s, data, { meta: { objective: 'raid', targetKey: 'bacca', commitDefenders: 3, commitBeasts: 5 } });
+    R.resolveWar(s, data, plan, roll(1, 4), dice([0.3]), 0);
+    t.same(s.defenderBeasts, [{ name: 'Giant Vulture', qty: 4 }, { name: 'Ape', qty: 2 }], 'the Apes stayed at home');
+    s.defenderBeasts = [{ name: 'Giant Vulture', qty: 1 }, { name: 'Ape', qty: 2 }];
+    R.removeBeasts(s, 1, 2);
+    t.same(s.defenderBeasts, [{ name: 'Giant Vulture', qty: 1 }, { name: 'Ape', qty: 1 }]);
+    R.removeBeasts(s, 1, 9);
+    t.same(s.defenderBeasts, [{ name: 'Giant Vulture', qty: 1 }], 'more committed than are left: the last one goes');
+  });
+
   group('Bastion: the Military Action');
 
   /* A Clan at war: 2 Regiments, 6 defenders, 1 Lieutenant and 3 of its 5 Giant Vultures. */
@@ -700,14 +715,16 @@
       { id: 'reg-2', kind: 'regiment', label: 'Regiment 2', sub: '100 soldiers' },
       { id: 'def', kind: 'defenders', label: 'Bastion Defenders', count: 6 },
       { id: 'lt-1', kind: 'lieutenant', label: 'Lieutenant 1', short: 'L1' },
-      { id: 'beast-1', kind: 'beast', label: 'Giant Vulture 1', short: 'GV' },
-      { id: 'beast-2', kind: 'beast', label: 'Giant Vulture 2', short: 'GV' },
-      { id: 'beast-3', kind: 'beast', label: 'Giant Vulture 3', short: 'GV' }
+      { id: 'beast-1', kind: 'beast', label: 'Giant Vulture 1', short: 'GV1' },
+      { id: 'beast-2', kind: 'beast', label: 'Giant Vulture 2', short: 'GV2' },
+      { id: 'beast-3', kind: 'beast', label: 'Giant Vulture 3', short: 'GV3' }
     ]);
     var s = fresh();
     s.defenderBeasts = [{ name: 'Ape', qty: 1 }, { name: 'Giant Vulture', qty: 2 }];
     t.same(R.militaryForces(s, data, { defenders: 0, beasts: 2, lieutenants: 0, regiments: 0 }).map(function (f) { return f.label; }), ['Ape', 'Giant Vulture']);
     t.same([R.forceInitials('Giant Vulture'), R.forceInitials('ape'), R.forceInitials('Dire Wolf Alpha'), R.forceInitials('')], ['GV', 'Ap', 'DA', '?']);
+    s.defenderBeasts = [{ name: 'Giant Vulture', qty: 11 }];
+    t.same(R.militaryForces(s, data, { defenders: 0, beasts: 11, lieutenants: 0, regiments: 0 }).map(function (f) { return f.short; }).slice(8), ['GV9', 'G10', 'G11'], 'each one can be told apart on the War Table');
   });
 
   test('Weather: pass the DC 12 for a clear day; fail and a storm is drawn at random', function (t) {
@@ -746,7 +763,7 @@
     var d = begun({ commitLieutenants: 0 });
     R.militaryRoll(d.s, data, d.ma.id, 'weather', roll(4, 4), dice([0.5]));
     R.militaryRoll(d.s, data, d.ma.id, 'morale', roll(20, 20), dice([0]));
-    t.ok(/^Soaked to the skin.+ Your sergeants make a jest/.test(R.militaryResult(data, d.ma, 'morale').text), 'no Lieutenants: the sergeants');
+    t.ok(/^Soaked to the skin.+ You make a jest/.test(R.militaryResult(data, d.ma, 'morale').text), 'no Lieutenants: the party themselves');
   });
 
   test('Luck: DC 10; pass is +1, fail is −1, then it\'s time to deploy', function (t) {
@@ -754,7 +771,7 @@
     t.same([b.ma.luck.mod, b.ma.step, R.militaryResult(data, b.ma, 'luck').headline], [1, 'deploy', 'Luck: +1']);
     var c = rolled(15, 15, 9);
     t.same([c.ma.luck.mod, R.militaryResult(data, c.ma, 'luck').headline], [-1, 'Luck: −1']);
-    t.ok(/Gods do not look kindly/.test(R.militaryResult(data, c.ma, 'luck').text));
+    t.equal(R.militaryResult(data, c.ma, 'luck').text, 'Something strange is in the air today, perhaps the Gods do not look kindly upon this needless bloodshed… (−1 modifier on all attack rolls)', 'Harry\'s words');
     t.same(R.militarySummary(data, c.ma), [{ label: 'Weather', value: 'Clear Day' }, { label: 'Morale', value: 'High' }, { label: 'Luck', value: '−1' }]);
     t.equal(R.militaryStatus(c.ma), 'Rolls done. Next: deploy your forces on the War Table.');
   });

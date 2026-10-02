@@ -39,17 +39,17 @@
       function asset(p) { return TSI.path('tools/bastion/assets/' + p); }
 
       /* ---------- Saves ---------- */
-      function load(name, check) {
+      function load(name, check, lost) {
         var v = ctx.store.get(name, null);
         if (v !== null && !check(v)) {
-          ctx.store.quarantine(name, 'It wasn\'t in the right form.');
+          ctx.store.quarantine(name, 'It wasn\'t in the right form.', lost);
           return null;
         }
         return v;
       }
       var saved = load('state', R.isSave);
       var state = saved ? R.fromSave(TSI.clone(saved), data) : R.defaultState(data);
-      var ui = load('ui', R.isUi) || {};
+      var ui = load('ui', R.isUi, 'the panels opened in their usual way (everything else is as it was)') || {};
       if (!ui.collapsed || typeof ui.collapsed !== 'object') ui.collapsed = {};
       function save() { ctx.store.set('state', R.toSave(state)); }
       function saveUi() { ctx.store.set('ui', TSI.clone(ui)); }
@@ -72,6 +72,19 @@
       }
       function plainModal(options) {
         return TSI.modal.open(Object.assign({ className: 'tsi-bas-modal' }, options));
+      }
+      /* A Military Action's pop-ups come one after another, so for a moment
+         after one opens its buttons ignore the mouse: a double click on the
+         last pop-up's button can't press this one's. */
+      function settling(options) {
+        var onOpen = options.onOpen;
+        return Object.assign({}, options, {
+          onOpen: function (parts) {
+            parts.dialog.classList.add('tsi-bas-modal--settling');
+            life.setTimeout(function () { parts.dialog.classList.remove('tsi-bas-modal--settling'); }, 400);
+            if (onOpen) onOpen(parts);
+          }
+        });
       }
       var CONTINUE = [{ label: 'Continue', value: true, primary: true }];
       var CLOSE = [{ label: 'Close', value: true, primary: true }];
@@ -97,13 +110,14 @@
             preview
           ])
         ];
-        return TSI.modal.open({
+        var dice = {
           title: options.title || 'Roll',
           className: 'tsi-bas-modal tsi-bas-modal--dice' + (options.skin === 'plain' ? '' : ' tsi-bas-modal--hall'),
           body: body,
           escValue: false,
           actions: [{ label: 'Cancel', value: false }, { label: 'Continue', value: true, primary: true }]
-        }).then(function (ok) { return ok ? R.readD20(input.value, mod) : null; });
+        };
+        return TSI.modal.open(options.settle ? settling(dice) : dice).then(function (ok) { return ok ? R.readD20(input.value, mod) : null; });
       }
 
       /* ---------- Small builders ---------- */
@@ -349,7 +363,7 @@
          ================================================================ */
       var CREST_MAX = 512;
       var CREST_FILE_LIMIT = 25 * 1024 * 1024;
-      var crest = load('crest', R.isCrest);
+      var crest = load('crest', R.isCrest, 'the Bastion opened without its crest picture (everything else is as it was)');
       function crestCreatorUrl() {
         return TSI.shell && TSI.shell.pageUrl ? TSI.shell.pageUrl('crest') : 'index.html?tool=crest';
       }
@@ -375,7 +389,8 @@
           var w = img.naturalWidth, h = img.naturalHeight;
           if (!w || !h) throw new Error('Not a picture');
           var scale = Math.min(1, max / Math.max(w, h));
-          if (scale === 1 && dataUrl.length <= 900000) return dataUrl;
+          /* Kept as it is only if it's small and labelled as a picture; anything else is redrawn. */
+          if (scale === 1 && dataUrl.length <= 900000 && /^data:image\/(png|jpeg|webp|gif);/.test(dataUrl)) return dataUrl;
           var c = document.createElement('canvas');
           c.width = Math.max(1, Math.round(w * scale));
           c.height = Math.max(1, Math.round(h * scale));
@@ -401,8 +416,10 @@
           return readDataUrl(file).then(function (dataUrl) {
             return shrinkPicture(dataUrl, CREST_MAX);
           }).then(function (small) {
-            return { dataUrl: small, key: R.hashText(small), name: String(file.name || 'crest.png') };
-          }, function () {
+            var c = { dataUrl: small, key: R.hashText(small), name: String(file.name || 'crest.png') };
+            if (!R.isCrest(c)) throw new Error('Not a picture');
+            return c;
+          }).then(null, function () {
             if (!life.alive) return null;
             return say('That file couldn\'t be read as a picture.').then(function () { return null; });
           });
@@ -770,15 +787,16 @@
           ]));
         });
       }
-      function openWarReport(w) {
-        return hallModal({
+      function openWarReport(w, settle) {
+        var report = {
           title: 'War Report',
           body: [
             el('div', { class: 'tsi-bas-res-top' }, [el('div', { class: 'tsi-bas-res-action', text: w.title }), muted(w.subtitle || '')]),
             el('div', { class: 'tsi-bas-res-roll tsi-bas-res-roll--pre', text: w.details || '' })
           ],
           actions: CLOSE
-        });
+        };
+        return hallModal(settle ? settling(report) : report);
       }
       /* A double click queues one war action, not two (BAS-15). More than one
          a turn is still allowed (B22). */
@@ -809,6 +827,7 @@
          ================================================================ */
       var militaryRunning = false;
       var warTableOpen = null;
+      var maNotice = null;
       function chip(item) {
         return el('span', { class: 'tsi-bas-ma-chip' }, [el('span', { class: 'tsi-bas-ma-chip__label', text: item.label }), ' ', el('b', { text: item.value })]);
       }
@@ -838,7 +857,7 @@
 
       /* The pop-up when the war comes due during Advance Bastion Turn. */
       function militaryPrompt(ma) {
-        return hallModal({
+        return hallModal(settling({
           title: 'War Turn: ' + R.militaryName(ma),
           className: 'tsi-bas-modal tsi-bas-modal--hall tsi-bas-modal--military',
           body: [
@@ -850,7 +869,7 @@
           ],
           escValue: false,
           actions: [{ label: 'Later', value: false }, { label: 'Begin Military Action', value: true, primary: true }]
-        });
+        }));
       }
 
       /* What a roll brought: the weather's video plays above the words. */
@@ -865,7 +884,7 @@
           video.setAttribute('src', TSI.path(res.video));
         }
         var verdict = res.pass ? 'Passed' : 'Failed';
-        var p = hallModal({
+        var p = hallModal(settling({
           title: res.title,
           className: 'tsi-bas-modal tsi-bas-modal--hall tsi-bas-modal--military',
           body: [
@@ -877,7 +896,7 @@
             ])
           ],
           actions: CONTINUE
-        });
+        }));
         if (video) {
           var play = video.play();
           if (play && play.catch) play.catch(function () {});
@@ -891,6 +910,8 @@
       /* Run a Military Action from wherever it has got to. Resolves when its
          rolls are done and the War Table is closed (or the battle settled). */
       async function runMilitary(id) {
+        /* The "waiting" notice has done its job (and mustn't cover the War Table's buttons). */
+        if (maNotice) { maNotice.close(); maNotice = null; }
         militaryRunning = true;
         renderTurnButton();
         renderMilitary();
@@ -902,7 +923,7 @@
             var step = ma.step;
             if (step === 'weather' || step === 'morale' || step === 'luck') {
               var dc = R.militaryDC(data, ma, step);
-              var roll = await rollD20({ title: R.militaryRollTitle(step) + ': ' + R.militaryName(ma), mod: 0, dc: dc });
+              var roll = await rollD20({ title: R.militaryRollTitle(step) + ': ' + R.militaryName(ma), mod: 0, dc: dc, settle: true });
               if (!life.alive) return 'stopped';
               if (!roll) {
                 log('War Turn', R.militaryName(ma) + ': the ' + R.militaryRollTitle(step) + ' roll was cancelled. The Military Action waits in the War Council.');
@@ -957,6 +978,8 @@
               save();
               return settleAndClose();
             },
+            /* After a cancelled battle roll, the locked table offers the roll again. */
+            lockedAction: { label: 'Roll for the battle', onClick: function () { return settleAndClose(); } },
             onClose: function () { finish(null); }
           });
           warTableOpen = handle;
@@ -976,7 +999,7 @@
         var ma = R.militaryById(state, id);
         if (!ma || ma.step !== 'resolve') return null;
         var plan = R.militaryPlan(state, data, ma);
-        await hallModal({
+        await hallModal(settling({
           title: 'The Battle Is Joined',
           className: 'tsi-bas-modal tsi-bas-modal--hall tsi-bas-modal--military',
           body: [
@@ -986,9 +1009,9 @@
             ])
           ],
           actions: CONTINUE
-        });
+        }));
         if (!life.alive) return 'stopped';
-        var roll = await rollD20({ title: plan.title, mod: plan.mod, dc: plan.dc });
+        var roll = await rollD20({ title: plan.title, mod: plan.mod, dc: plan.dc, settle: true });
         if (!life.alive) return 'stopped';
         if (!roll) {
           log('War Turn', R.militaryName(ma) + ': the battle roll was cancelled. Press Continue in the War Council to roll it.');
@@ -999,7 +1022,7 @@
         if (!line) return null;
         log(line[0], line[1]);
         done();
-        await openWarReport(state.warLog[0]);
+        await openWarReport(state.warLog[0], true);
         return life.alive ? 'done' : 'stopped';
       }, { minMs: 0 });
 
@@ -1939,9 +1962,9 @@
       }
 
       /* A Military Action waiting from before: say where to find it. */
-      if ((state.militaryActions || []).length && !state.turnInProgress) {
-        var maNotice = TSI.notify('A Military Action (' + R.militaryName(state.militaryActions[0]) + ') is waiting. Continue it from the Banner & War Council panel.', { id: 'tsi-bas-military', timeout: 12000 });
-        life.onStop(function () { maNotice.close(); });
+      if ((state.militaryActions || []).length) {
+        maNotice = TSI.notify('A Military Action (' + R.militaryName(state.militaryActions[0]) + ') is waiting. Continue it from the Banner & War Council panel.', { id: 'tsi-bas-military', timeout: 12000 });
+        life.onStop(function () { if (maNotice) maNotice.close(); });
       }
 
       /* For the tests. */

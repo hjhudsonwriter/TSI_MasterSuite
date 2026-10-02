@@ -1130,17 +1130,27 @@
       return sum + clampInt(it && it.qty !== undefined && it.qty !== null ? it.qty : 1, 0);
     }, 0);
   };
-  /* Lose n beasts one at a time from the end of the list, not whole rows. */
-  R.removeBeasts = function (s, n) {
-    var left = clampInt(n, 0);
-    for (var i = s.defenderBeasts.length - 1; i >= 0 && left > 0; i--) {
-      var row = s.defenderBeasts[i];
-      var q = clampInt(row && row.qty !== undefined && row.qty !== null ? row.qty : 1, 0);
-      var take = Math.min(q, left);
-      q -= take;
-      left -= take;
-      if (q <= 0) s.defenderBeasts.splice(i, 1);
-      else row.qty = q;
+  /* Lose n beasts one at a time, not whole rows. The beasts that march are
+     the first `committed` in list order (as the War Table names them), so
+     the losses come from those, the last-named first. With no `committed`,
+     from the end of the list. */
+  R.removeBeasts = function (s, n, committed) {
+    var list = s.defenderBeasts;
+    var total = R.beastQty(s);
+    var upto = committed === undefined || committed === null ? total : Math.min(total, clampInt(committed, 0));
+    var left = Math.min(clampInt(n, 0), upto);
+    for (; left > 0; left--, upto--) {
+      var idx = upto - 1, seen = 0;
+      for (var i = 0; i < list.length; i++) {
+        var row = list[i];
+        var q = clampInt(row && row.qty !== undefined && row.qty !== null ? row.qty : 1, 0);
+        if (idx < seen + q) {
+          if (q - 1 <= 0) list.splice(i, 1);
+          else row.qty = q - 1;
+          break;
+        }
+        seen += q;
+      }
     }
   };
   /* What can be committed. */
@@ -1203,7 +1213,7 @@
       s.defenders.count = Math.max(0, (s.defenders.count || 0) - defLoss);
       /* One beast is lost, not a whole row of them (BAS-25). */
       var beastLoss = Math.min(plan.beasts, plan.beasts > 0 ? 1 : 0);
-      if (beastLoss > 0) R.removeBeasts(s, beastLoss);
+      if (beastLoss > 0) R.removeBeasts(s, beastLoss, plan.beasts);
     }
     if (isClan) {
       clanHonorDelta = success ? 6 : -8;
@@ -1273,7 +1283,10 @@
     picked.forEach(function (nm, idx) {
       var total = picked.filter(function (x) { return x === nm; }).length;
       seen[nm] = (seen[nm] || 0) + 1;
-      out.push({ id: 'beast-' + (idx + 1), kind: 'beast', label: total > 1 ? nm + ' ' + seen[nm] : nm, short: R.forceInitials(nm) });
+      /* Several of a kind are numbered on the token too: "GV1", "GV2"… ("G10" from ten). */
+      var ini = R.forceInitials(nm);
+      var short = total > 1 ? (seen[nm] < 10 ? ini : ini.charAt(0)) + seen[nm] : ini;
+      out.push({ id: 'beast-' + (idx + 1), kind: 'beast', label: total > 1 ? nm + ' ' + seen[nm] : nm, short: short });
     });
     return out;
   };
@@ -1350,8 +1363,10 @@
     return R.militaryResult(data, ma, step);
   };
 
+  /* Who keeps the ranks going: the Lieutenants if any march, otherwise the
+     party themselves ("you"). */
   function leaders(ma, capital) {
-    var who = ma.commit && ma.commit.lieutenants > 0 ? 'your Lieutenants' : 'your sergeants';
+    var who = ma.commit && ma.commit.lieutenants > 0 ? 'your Lieutenants' : 'you';
     return capital ? who.charAt(0).toUpperCase() + who.slice(1) : who;
   }
   function signed(n) { return (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(n); }
