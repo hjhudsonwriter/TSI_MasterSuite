@@ -1295,7 +1295,13 @@
     for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
     return null;
   };
-  R.militaryName = function (ma) { return String(ma.objective || 'raid').toUpperCase() + ' vs ' + ma.targetName; };
+  /* "Raid vs Bacca": the objective's own name from war-units-data.js (the
+     old tool wrote its id in capitals, "SEIZE_OUTPOST vs Bacca"). */
+  R.militaryName = function (ma) {
+    var war = window.TSI_DATA && window.TSI_DATA.bastionWar;
+    var o = war && war.objectives && war.objectives[ma.objective || 'raid'];
+    return (o ? o.name : String(ma.objective || 'raid').toUpperCase()) + ' vs ' + ma.targetName;
+  };
 
   R.militaryWeather = function (data, id) {
     var m = maData(data);

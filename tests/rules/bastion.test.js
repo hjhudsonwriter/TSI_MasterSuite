@@ -25,14 +25,19 @@
 
   group('Bastion: content');
 
-  test('18 facilities, 12 tool tables (9 can be artisan tools), 11 events, 7 clans, 265 compendium items', function (t) {
+  test('18 facilities, 12 tool tables (9 can be artisan tools), 11 events, 7 clans, 270 compendium items (271 entries)', function (t) {
     t.equal(data.facilities.length, 18);
     t.equal(Object.keys(data.tools).length, 12);
     t.equal(R.toolTableNames(data.tools).length, 9);
     t.equal(data.events.eventTable.length, 11);
     t.same(T.bastion.clans.map(function (c) { return c.name; }), ['Blackstone', 'Bacca', 'Farmer', 'Slade', 'Molten', 'Rowthorn', 'Karr']);
-    t.equal(R.compendiumIndex(data.facilities, data.tools).items.length, 265);
-    t.equal(Object.keys(T.bastionCompendium.items).length, 265);
+    /* The old tool's 265, less Regiment (100), plus the six War Room units of the war's phase 2
+       (the old Regiment (100) entry is kept in the data, but nothing lists it any more). */
+    t.equal(R.compendiumIndex(data.facilities, data.tools).items.length, 270);
+    t.equal(Object.keys(T.bastionCompendium.items).length, 271);
+    /* The War Room's Recruit list is the war data's, in the same order. */
+    var warRoom = R.facility(data, 'war_room').functions[0].options.map(function (o) { return o.label; });
+    t.same(warRoom, T.bastionWar.warRoom.map(function (e) { return e.label; }));
   });
 
   test('every facility has a picture, and the eight overlays belong to real facilities', function (t) {
@@ -704,7 +709,7 @@
     t.same(b.ma.commit, { defenders: 6, lieutenants: 1, units: { line: 2 }, beasts: { 'Giant Vulture': 3 } }, 'its Regiments are Line Infantry; its beasts the first in the list');
     t.equal(b.ma.battle, null);
     t.same(b.ma.spec.player.units.map(function (u) { return u.label; }), ['Line Infantry 1', 'Line Infantry 2', 'Giant Vulture 1', 'Giant Vulture 2', 'Giant Vulture 3']);
-    t.equal(b.s.log[0].body, 'RAID vs Bacca: your forces muster for battle. The Military Action is ready to begin.');
+    t.equal(b.s.log[0].body, 'Raid vs Bacca: your forces muster for battle. The Military Action is ready to begin.');
     t.equal(R.militaryCommitLine(b.ma.commit), '6 defenders, 1 Lieutenant, Line Infantry ×2, Giant Vulture ×3');
     t.equal(R.militaryCommitLine({ defenders: 6, beasts: 3, lieutenants: 1, regiments: 2 }), '6 defenders, 1 Lieutenant, 3 beasts, 2 Regiments', 'phase 1\'s shape still reads');
   });
@@ -786,7 +791,7 @@
     t.same(b.s.militaryActions, []);
     t.ok(b.s.warMissions[b.ma.missionKey].conditions, 'the mission and its opening rolls are kept');
     t.same([b.s.treasuryGP, b.s.defenders.count, JSON.stringify(b.s.defenderBeasts), b.s.warLog.length], before);
-    t.equal(b.s.log[0].body, 'RAID vs Bacca: the Military Action was called off. Nothing was won or lost.');
+    t.equal(b.s.log[0].body, 'Raid vs Bacca: the Military Action was called off. Nothing was won or lost.');
     t.equal(R.callOffMilitaryAction(b.s, b.ma.id, 0), false);
   });
 
@@ -825,8 +830,8 @@
     t.equal(R.roll20Url('Bag of Holding'), 'https://roll20.net/compendium/dnd5e/Bag%20of%20Holding');
     var out = R.compendiumExport(idx, T.bastionCompendium.items);
     t.equal(out.filled, 0);
-    t.equal(out.kept + out.stubbed, 265);
-    t.equal(out.kept, 62);
+    t.equal(out.kept + out.stubbed, 270);
+    t.equal(out.kept, 68);
     t.equal(out.file.version, 1);
     t.equal(T.bastion.compendiumCards.length, 36);
     t.same(T.bastion.compendiumCards.filter(function (n) { return idx.items.indexOf(n) === -1; }), [], 'every card belongs to an item');
@@ -841,7 +846,7 @@
     s.clanHonor = 70;
     s.honourRespectByClan.karr = -3;
     s.trustedClientsByClan.slade = 20;
-    s.warLog = [{ id: 'w', title: 'Success: RAID vs Bacca' }];
+    s.warLog = [{ id: 'w', title: 'Success: Raid vs Bacca' }];
     s.diplomacy.agreements = [{ title: 'Trade Agreement', clan: 'Clan Karr', turnsLeft: 3, incomePerTurn: 90 }];
     s.diplomacy.tokens = 2;
     s.diplomacy.cooldowns = { summit: 1 };

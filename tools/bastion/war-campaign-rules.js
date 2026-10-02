@@ -887,10 +887,10 @@
     s.pendingOrders.push(order);
     return order;
   };
-  /* The log line for a queued war: ['War Action Queued', 'RAID vs Bacca (resolves next Bastion Turn).']. */
+  /* The log line for a queued war: ['War Action Queued', 'Raid vs Bacca (resolves next Bastion Turn).']. */
   R.warOrderLine = function (order) {
     var m = (order && order.meta) || {};
-    return ['War Action Queued', String(m.objective || 'raid').toUpperCase() + ' vs ' + (m.targetName || 'Unknown') + ' (resolves next Bastion Turn).'];
+    return ['War Action Queued', R.militaryName({ objective: m.objective, targetName: m.targetName || 'Unknown' }) + ' (resolves next Bastion Turn).'];
   };
 
   /* ---------- The Military Action ---------- */

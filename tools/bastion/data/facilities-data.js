@@ -1,6 +1,9 @@
 /* The Ironbow Bastion Manager: the 18 facilities, their functions, options, costs and specials.
    A word-for-word copy of the old tool's data/facilities.json, stored as a script so it
-   loads from a double-clicked file. Edit it here. */
+   loads from a double-clicked file. Edit it here.
+   One change since: the War Room's Recruit list is the war mini-game's units (phase 2,
+   Harry's decision of 2 October 2026), in the order and with the labels of
+   war-units-data.js (TSI_DATA.bastionWar.warRoom); keep the two the same. */
 window.TSI_DATA = window.TSI_DATA || {};
 window.TSI_DATA.bastionFacilities = [
   {
@@ -645,12 +648,27 @@ window.TSI_DATA.bastionFacilities = [
             "label": "Lieutenant (1)"
           },
           {
-            "label": "Regiment (100)"
+            "label": "Archers (50)"
+          },
+          {
+            "label": "Levy Infantry (150)"
+          },
+          {
+            "label": "Line Infantry (100)"
+          },
+          {
+            "label": "Heavy Infantry (50)"
+          },
+          {
+            "label": "Light Cavalry (50)"
+          },
+          {
+            "label": "Shock Cavalry (25)"
           }
         ],
         "costGP": 0,
         "costText": "0",
-        "notes": "No cost for recruitment, but each soldier in the regiment costs 1GP per bastion turn. \nLieutenants and Soldiers are added to the 'Military' Panel."
+        "notes": "No cost to recruit, but each soldier costs 1 gp per Bastion turn. Hover over a choice to see its stat block. Lieutenants and units join the Military panel when the order completes; a unit of a type that came home depleted brings that regiment back to full strength first."
       }
     ]
   },

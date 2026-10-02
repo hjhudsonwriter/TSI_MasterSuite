@@ -572,7 +572,7 @@
       commitDefenders: 30, commitBeasts: 3, commitLieutenants: 2, commitRegiments: 4
     });
     t.ok(s.warMissions['bacca|raid|small'], 'its mission is drawn up');
-    t.same(R.warOrderLine(o), ['War Action Queued', 'RAID vs Bacca (resolves next Bastion Turn).']);
+    t.same(R.warOrderLine(o), ['War Action Queued', 'Raid vs Bacca (resolves next Bastion Turn).']);
     t.equal(R.orderKind(data, o), 'war');
   });
 
@@ -628,7 +628,7 @@
     t.same([again.step, again.weather, again.morale, again.luck], ['deploy', b.ma.weather, b.ma.morale, b.ma.luck]);
     t.same(again.spec.enemy, enemy);
     t.same(again.spec.conditions, b.ma.spec.conditions);
-    t.equal(b.s.log[0].body, 'RAID vs Bacca: the conditions are unchanged: White Blizzard, morale high, luck −1.');
+    t.equal(b.s.log[0].body, 'Raid vs Bacca: the conditions are unchanged: White Blizzard, morale high, luck −1.');
     t.equal(R.militaryRoll(b.s, data, again.id, 'weather', roll(20), dice([0])), null, 'no rerolling');
   });
 
@@ -642,7 +642,7 @@
     t.same(s.warMissions[ma.missionKey].conditions, { weather: ma.weather, morale: ma.morale, luck: null });
     var again = R.beginMilitaryAction(s, data, queue(s, 'raid', one), dice([0.5]), 0);
     t.same([again.step, again.weather, again.morale, again.luck, again.spec.conditions], ['luck', ma.weather, ma.morale, null, null]);
-    t.equal(s.log[0].body, 'RAID vs Bacca: the rolls already made are unchanged: White Blizzard, morale low. Next: the Luck roll.');
+    t.equal(s.log[0].body, 'Raid vs Bacca: the rolls already made are unchanged: White Blizzard, morale low. Next: the Luck roll.');
     t.equal(R.militaryRoll(s, data, again.id, 'weather', roll(18), dice([0])), null, 'no rerolling the Weather');
     R.militaryRoll(s, data, again.id, 'luck', roll(15), dice([0]));
     t.same([again.step, again.spec.conditions.weather, again.spec.conditions.moraleMod], ['deploy', 'white_blizzard', W.morale.lowMod]);
@@ -662,7 +662,7 @@
     ['weather', 'morale', 'luck'].forEach(function (st) { R.militaryRoll(s, data, a.id, st, roll(2), dice([0])); });
     var b = R.beginMilitaryAction(s, data, queue(s, 'raid', one), dice([0.5]), 0);
     t.same([b.missionKey, b.step, b.weather], [a.missionKey, 'weather', null]);
-    t.equal(s.log[0].body, 'RAID vs Bacca: your forces muster for battle. The Military Action is ready to begin.');
+    t.equal(s.log[0].body, 'Raid vs Bacca: your forces muster for battle. The Military Action is ready to begin.');
     R.militaryRoll(s, data, b.id, 'weather', roll(18), dice([0]));
     t.ok(R.callOffMilitaryAction(s, a.id, 0));
     t.ok(R.callOffMilitaryAction(s, b.id, 0));
@@ -677,7 +677,7 @@
     s.defenderBeasts = s.defenderBeasts.filter(function (r) { return r.name !== 'Ape'; });
     t.equal(R.beginMilitaryAction(s, data, o, dice([0.5]), 0), null);
     t.same([s.pendingOrders.length, s.militaryActions.length], [0, 0]);
-    t.equal(s.log[0].body, 'RAID vs Bacca: nothing committed to it is still free to march, so the war order lapses.');
+    t.equal(s.log[0].body, 'Raid vs Bacca: nothing committed to it is still free to march, so the war order lapses.');
   });
 
   test('beginning the same war order twice gives the same Military Action, once', function (t) {
@@ -826,8 +826,8 @@
     ]);
     t.equal(b.s.warLog.length, 1);
     t.equal(b.s.warLog[0], res.report);
-    t.same([res.report.title, res.report.subtitle, res.report.at], ['Victory: RAID vs Bacca', 'Committed: 30 defenders, 2 Lieutenants, Line Infantry ×3, Archers, Giant Vulture ×2, Ape', 7]);
-    t.same([b.s.log[0].title, b.s.log[0].body], ['War Turn Resolved', 'Victory: RAID vs Bacca']);
+    t.same([res.report.title, res.report.subtitle, res.report.at], ['Victory: Raid vs Bacca', 'Committed: 30 defenders, 2 Lieutenants, Line Infantry ×3, Archers, Giant Vulture ×2, Ape', 7]);
+    t.same([b.s.log[0].title, b.s.log[0].body], ['War Turn Resolved', 'Victory: Raid vs Bacca']);
     var f = R.warForces(b.s, data);
     t.same([f.lieutenants, f.beasts], [0, { Ape: 1 }], 'the hurt can\'t be committed until they\'re back');
   });
@@ -894,7 +894,7 @@
     var b = ready('skirmish');
     R.militaryBattleSave(b.s, b.ma.id, battleFrom(b.ma, 'draw'));
     var res = R.finishBattle(b.s, data, b.ma.id, null, dice([0.5]), 0);
-    t.equal(res.report.title, 'Draw: SKIRMISH vs Bacca');
+    t.equal(res.report.title, 'Draw: Skirmish vs Bacca');
   });
 
   test('a skirmish lost: 60% for the Defeated, the defeat\'s gold and Political Capital; captured on a 2, killed on a 1', function (t) {
@@ -907,7 +907,7 @@
     t.same(b.s.warRecovery.map(function (r) { return [r.name, r.status]; }), [['Lieutenant 1', 'separated'], ['Giant Vulture', 'separated']]);
     t.ok(res.lines.indexOf('Lieutenant 2 (with Archers): captured by the enemy (d6 2).') !== -1);
     t.ok(res.lines.indexOf('Giant Vulture 1: killed (d6 1).') !== -1);
-    t.equal(res.report.title, 'Defeat: SKIRMISH vs Bacca');
+    t.equal(res.report.title, 'Defeat: Skirmish vs Bacca');
   });
 
   test('a draw changes no gold or standing; the Defeated lose 40%, and a 2 is badly wounded, not captured', function (t) {
@@ -927,7 +927,7 @@
     var res = R.finishBattle(b.s, data, b.ma.id, battleFrom(b.ma, 'withdrawal', hurtOpts({ round: 3 })), dice([d6(6), d6(6)]), 0);
     t.same([b.s.treasuryGP, b.s.politicalCapital.bacca, b.s.clanHonor], [50, 8, 36]);
     t.equal(b.s.military[4].strength, 20, 'Defeated with the field lost: 60%');
-    t.equal(res.report.title, 'Withdrawal: RAID vs Bacca');
+    t.equal(res.report.title, 'Withdrawal: Raid vs Bacca');
   });
 
   test('a raid\'s gold follows the supplies carried off: half for one, the defeat\'s for none', function (t) {
@@ -942,7 +942,7 @@
   test('every objective\'s amounts: Defend won, Seize Outpost lost', function (t) {
     var d = ready('defend');
     R.finishBattle(d.s, data, d.ma.id, battleFrom(d.ma, 'victory', {}), dice([0.5]), 0);
-    t.same([d.s.treasuryGP, d.s.politicalCapital.bacca, d.s.clanHonor, d.s.warLog[0].title], [100, 6, 46, 'Victory: DEFEND vs Bacca']);
+    t.same([d.s.treasuryGP, d.s.politicalCapital.bacca, d.s.clanHonor, d.s.warLog[0].title], [100, 6, 46, 'Victory: Defend Bastion vs Bacca']);
     var z = ready('seize_outpost');
     R.finishBattle(z.s, data, z.ma.id, battleFrom(z.ma, 'defeat', {}), dice([0.5]), 0);
     t.same([z.s.treasuryGP, z.s.politicalCapital.bacca, z.s.clanHonor], [40, 10, 32]);
