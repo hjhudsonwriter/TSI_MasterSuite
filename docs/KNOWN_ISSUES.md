@@ -25,7 +25,7 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
 | Scarlett Isles Explorer (EXP) | 12 | 4 | 0 | 13 | 0 |
-| The Ironbow Bastion Manager (BAS) | 16 | 2 | 13 | 16 | 1 |
+| The Ironbow Bastion Manager (BAS) | 17 | 2 | 13 | 17 | 1 |
 | Clan Crest Creator (CRS) | 0 | 4 | 5 | 3 | 3 |
 | Arenas of The Scarlett Isles (ARN) | 8 | 2 | 0 | 17 | 0 |
 | The Heartwood Ritual (RIT) | 9 | 1 | 0 | 15 | 1 |
@@ -1391,8 +1391,43 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 **Deliberate change** (Harry's request, 2 October 2026; war mini-game phase 2) · other
 
 - **Before:** An uploaded battle map was only a picture.
-- **After:** Each map can be given terrain square by square with the War Table's Terrain button. The types are woods, bog, rubble, dense woods, ridges, cover, deep water, cliffs and crossings, each with its rule. The War Table warns when a map has no terrain yet rather than guessing from its colours; until it's painted, everything counts as open ground. The painting is saved with the map. During a battle it can only be changed through the DM's pause.
+- **After:** Each map can be given terrain square by square with the War Table's Terrain button. The types are woods, bog, rubble, dense woods, ridges, cover, deep water, cliffs and crossings, each with its rule. The War Table warns when a map has no terrain yet rather than guessing from its colours; until it's painted, everything counts as open ground. The painting is saved with the map (one painting per map and battlefield width) and can be changed freely until Start Battle. During a battle, that battle's own terrain can be changed only through DM: pause, and that doesn't change the map's saved painting.
 - **Evidence:** `tools/bastion/war-table.js` (painting), `war-battle-rules.js` (the rules); `docs/WAR-RULES.md` section 4.
+
+### BAS-49 · Small things in the war battles, kept for now
+**Later, Harry's call** (found while checking war mini-game phase 2, 2 October 2026) · other
+
+Nothing here breaks a battle, loses data or applies anything twice, so each is kept as built. Say if you'd like any changed.
+- **Guards beside supply markers:** in a Raid, an enemy guard stands on a square next to its supply marker. Which square depends on the enemy's tie-breaks, so it's sometimes in front of the marker and sometimes behind it.
+- **One battle-map picture:** all battles share one uploaded picture. If it's replaced, a battle that was set out on the old picture plays on the plain board, with its own terrain, until that picture is uploaded again.
+- **A width with no painting of its own:** the War Table redraws the nearest width's painting square by square and warns you to check fords, bridges and narrow paths. Painting at that width saves a separate painting.
+- **Small token letters:** the S (Shaken), H (Holding), G (Held fast), L (Lieutenant) and C (Captain) badges are smaller than the suite's usual 12px text. Hovering over S, H or G says what it means; hovering over L or C shows the leader's name.
+- **A quick second Confirm:** a second press of Confirm within about a third of a second is ignored, like every double click in the suite, so one press never counts twice.
+- **Badges on units one behind the other:** side by side, a unit's badges never overlap its neighbour's. One square behind, a Shaken or Holding unit's top-right badge can partly cover the "+2" support badge of the unit in front, and an enemy Captain's disc can touch the pennant of the enemy below it. Keeping every badge inside its own square would cover the Cohesion bar or the name instead.
+- **Fighting across a river's corner:** a river painted on a slant can't be crossed between its corners, but two units on opposite banks whose squares touch at a corner are still in melee, as "touching, side or corner" says. Say if a river should keep them apart.
+- **Evidence:** `tools/bastion/war-ai.js` (placing guards), `war-table.js` and `war-table.css` (the map picture, terrain, badges), `war-battle-rules.js` (melee contact), `shared/js` (the double-click guard).
+
+### BAS-50 · Problems found while checking war phase 2, fixed before release
+**Must fix** (found while checking war mini-game phase 2, 2 October 2026; fixed) · breaks the tool
+
+None of these reached Harry: they were found by the checks on the new code and fixed in the same pull request. The one that touches existing saves is the first.
+- **War orders queued before phase 2 that shared forces:** phase 1 let two waiting war orders commit the same defenders. The first one queued lost its defenders and Lieutenants to the later one, and could lapse altogether → the first queued keeps its forces, later ones get what's left, and the muster pop-up and the log say when an order musters with less than it committed.
+- **A saved enemy army redrawn while browsing:** looking through other targets and objectives could throw away a mission picked on an earlier turn and draw a new enemy with a fresh variation roll → a mission is kept by when it was last shown, so the one on screen is never redrawn.
+- **Rivers and cliffs painted on a slant:** units stepped diagonally between two water or cliff squares that touch at a corner, and archers shot between two dense-woods or ridge squares the same way → neither gets through.
+- **The enemy stuck at a river or cliff:** it stood on the bank all battle instead of walking round to a ford or gap → it walks round.
+- **Enemy archers behind a ridge:** in range but with no clear shot, they held all battle → they move to a square with a clear shot.
+- **A Raid guard ignoring the winning carrier:** a guard held by its marker while your carrier walked home with the winning supplies → every enemy unit goes after a carrier that would win the raid.
+- **The enemy standing off:** in some Skirmishes the enemy held every activation and never attacked → it closes in by stages and attacks.
+- **Enemy archers walking into melee** → they never move next to your units, and shoot instead.
+- **Raid guards standing on their supply markers**, so the markers couldn't be collected → guards stand beside them.
+- **Terrain lost:** bringing a map back mid-battle overwrote its saved painting, and changing the battlefield width wiped a one-square ford → each battle keeps its own ground, and each map keeps one painting per width.
+- **Same names on both sides:** the log said things like "Line Infantry 2 attacks Line Infantry 2" → every enemy unit's name starts with its clan's ("Bacca Line Infantry 2").
+- **Equal losses shown for a won or lost Skirmish:** the War Report rounded both armies' losses to whole percents → one decimal place, as the battle decided it.
+- **A depleted regiment's stat block showed full strength** → it shows the strength it will actually fight at.
+- **The Compendium's War Room units had copied numbers** that could drift from the battle's → they're read from `war-units-data.js`.
+- **The War Table:** a selected unit showed no movement area; tokens could be left part-way along a move; the log stopped updating after 300 lines; the log was pushed out of view on the laptop; an uploaded map taller or wider than the board was cropped without a word; the depot's name and some badges were hidden under tokens; dragging onto an enemy gave a misleading message; Enter in the d20 box did nothing → all fixed. The War Table now says when a map's edges are hidden ("Edges hidden").
+- **Pop-ups over the War Table:** "The conditions are unchanged" could appear again and again, and a "Bastion Turn left part-way" notice could sit over the table → each appears once, and notices close when the table opens.
+- **Evidence:** `tools/bastion/war-battle-rules.js`, `war-ai.js`, `war-campaign-rules.js`, `war-table.js`, `war-table-rules.js`, `war-table.css`, `tool.js`; each fix has a test in `tests/rules/` or `tests/e2e/phase9.test.js` that fails on the code before it.
 
 ## Clan Crest Creator
 Old repo: `_legacy/clan-crest-creator` (file:line references point there).

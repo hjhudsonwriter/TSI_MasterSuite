@@ -61,7 +61,7 @@ Only the beasts you commit take the field, and each fights as its own unit with 
 The traits:
 - **Charge:** see Charging, below.
 - **Flight:** flies over terrain, water, cliffs and other units. It must still end on an empty square, and enemies it passes don't stop it.
-- **Terror:** a unit it damages makes any Resolve check that follows at −2.
+- **Terror:** a unit it damages makes the Resolve check caused by that damage at −2. Later checks and Rally aren't affected.
 - **Pack:** gets the +2 surround bonus whenever another friendly unit is also fighting its target, from any direction.
 - **Grapple:** a unit it damages in melee can't March or Disengage on its next activation.
 - **Climber:** woods, rubble and dense woods cost it no extra movement.
@@ -71,7 +71,7 @@ The traits:
 Defenders are individual people, while a Levy Infantry regiment is 150 soldiers. So defenders are counted by headcount and never become as strong as a regiment just because their counter looks the same.
 - **Armed defenders fight with the Levy Infantry profile.** A detachment of 150 has full strength: Cohesion 4 and Battle Value 3. A smaller detachment has 4 × (headcount ÷ 150) Cohesion, rounded, and at least 1.
 - **75 or more** (half a regiment) form a detachment of their own.
-- **Fewer than 75 join your regiments as support:** +1 Cohesion for every 5 armed defenders, up to +2 (10 defenders) per regiment.
+- **Fewer than 75 join your regiments as support:** +1 Cohesion for every 5 armed defenders, up to +2 (10 defenders) per regiment. Each point of support also adds ½ to the regiment's Battle Value (+1 for 10 armed defenders).
 - Any defenders left over, once every regiment has its support, form one small detachment. That way an army of defenders and beasts still has someone to fight.
 - **Unarmed defenders** fight the same way at −2 Attack. They give support at only +1 per 10, up to +1.
 - Defenders' casualties are counted separately from the regiments they support.
@@ -94,11 +94,11 @@ In the Banner & War Council panel you choose:
 
 That base is multiplied by the objective (Raid ×0.85, Skirmish ×1.0, Defend ×1.1, Seize Outpost ×1.2). It's then multiplied by one saved variation roll (d6): 1–2 makes the force smaller (×0.85), 3–4 as expected (×1.0), and 5–6 larger (×1.15).
 
-**The enemy army is drawn up and saved as soon as you pick the mission,** before you commit anything. Changing your committed troops never changes it. The panel shows an intelligence estimate, such as "Estimated enemy: 24–32 Battle Value; about five to seven formations; cavalry reported", next to "Your army: 31 Battle Value". That's guidance, not a win chance.
+**The enemy army is drawn up and saved as soon as you pick the mission,** before you commit anything. Changing your committed troops never changes it. The panel shows an intelligence estimate next to your own army's Battle Value, for example "Estimated enemy: 23–33 Battle Value; about 3 to 5 formations; archers reported." beside "Your army: 31 Battle Value" (an established local force, Skirmish). The Battle Value range runs from a "smaller" variation roll (×0.85) to a "larger" one (×1.15), widened by a point or so on each side, because a clan's army can come out slightly over or under its budget; the real army is always inside it. The formation count is the real number of formations, give or take one. That's guidance, not a win chance.
 
 ### The clans' armies
 Each clan's army is built from its own mix of troops:
-- a sensible infantry core: at least half the army's Battle Value;
+- a sensible infantry core: at least half the Battle Value of its units (Captains not counted);
 - limits on archers, cavalry and specialists;
 - the clan's own variant units: a normal unit with one distinctive trait;
 - Captains: one from a budget of 14, a second from 26 and a third from 38;
@@ -114,7 +114,7 @@ Each clan's army is built from its own mix of troops:
 | Molten | Well-equipped troops and specialist hired forces. | Molten Ironclads (Heavy Infantry, Armoured: +1 Defence); may hire a Brown Bear or an Owlbear |
 | Slade | Scouts, skirmishers and tactical redeployment. | Slade Outriders (Light Cavalry, Fleet: +1 Move) |
 
-These are proposed directions, for you to change. Enemy units use the same sizes as yours. Slade's colours (a white stallion on teal) are the only established ones, so the other clans are shown in a neutral enemy style with their initial.
+These are proposed directions, for you to change. Enemy units use the same sizes as yours. Slade's colours (a white stallion on teal) are the only established ones, so the other clans are shown in a neutral enemy style. Every enemy token carries a small pennant, and every enemy unit's name starts with its clan's ("Bacca Line Infantry 2"), so the log always says whose unit it is.
 
 ## 3. Before the battle
 
@@ -131,13 +131,13 @@ The opening rolls are Weather (DC 12), Morale (DC 12, plus 4 in a snowstorm, 2 i
 ## 4. The battlefield
 
 - **Squares:** the battle grid's squares are battlefield units, each one regiment's frontage across, not D&D's five-foot squares. Every formation, detachment and beast fills exactly one square.
-- **Size:** the board is 22 squares across by default (choose 20 to 24 before deployment begins); its depth follows the map's shape.
+- **Size:** the board is 22 squares across by default (choose 20 to 24 before deployment begins); its depth follows the map's shape, from 10 to 30 squares. A taller or wider picture has its edges trimmed evenly to fit, and the War Table says how much ("Edges hidden").
 - **Fixed scale:** Zoom, Fit, panning, the grid lines, Snap and token size are only for display. They never change movement or range. The scale is fixed once deployment begins.
 - **Deployment:** each army deploys in its own half. A no-deployment strip across the middle (2 or 3 rows) stops the armies starting in contact.
 - **Distance** counts diagonal steps the same as straight ones.
 
 ### Terrain
-A painted map is just a picture: the War Table can't tell a river from a road. So each map gets its own terrain, painted square by square with the **Terrain** button. The War Table warns you when a map has none yet; until then, everything counts as open ground.
+A painted map is just a picture: the War Table can't tell a river from a road. So each map gets its own terrain, painted square by square with the **Terrain** button. The War Table warns you when a map has none yet; until then, everything counts as open ground. The painting is saved with the map, one for each battlefield width, and can be changed freely until Start Battle. During a battle, **DM: pause** lets you repaint that battle's own ground; the map's saved painting isn't changed.
 
 | Terrain | Rule |
 |---|---|
@@ -178,18 +178,19 @@ Select one of your units, choose an order, drag the unit (or click a square) to 
 | **Disengage** | Leave melee at up to half movement, rounded up; cannot attack. |
 | **Interact** | Remain at an objective and perform its scenario action instead of attacking. |
 
-When you select a unit, the squares it can reach are shown.
+When you select a unit, the squares it can reach are lit: brightly for Advance & Attack, fainter beyond for March. Drag the unit, or click a lit square, to propose the move.
 
 ### Movement
 - **Enemies:** a move can't pass through an enemy unit or impassable terrain.
 - **Contact:** a unit stops when it moves next to an enemy.
 - **Friends:** it can pass through friendly units, but must end on an empty square.
+- **Corners:** a move can't squeeze diagonally between two deep-water or cliff squares that touch at their corners, so a river painted on a slant still stops it.
 - **Melee:** begins when opposing units touch, side or corner. A unit in melee can't make a ranged attack.
 - **Engaged units** can't move with Advance & Attack or March; they Disengage instead.
 
 ### Ranged attacks
 - **Range:** archers shoot up to 6 squares.
-- **Line of sight:** they need a clear line (dense woods and ridges block it).
+- **Line of sight:** they need a clear line (dense woods and ridges block it, including two that touch at their corners).
 - **Restrictions:** they can't shoot while in melee, or into an existing melee.
 
 ### Charging
@@ -224,20 +225,32 @@ One roll, no damage dice:
 - **Rally:** uses the same check. Success removes Shaken but restores no Cohesion. A rallied unit doesn't keep re-testing just for being below half; only fresh damage makes it check.
 - **Zero Cohesion:** the unit is **Defeated** at once, with no check.
 
+### How the enemy plays
+The War Table plays the enemy, one unit each time you press **Enemy acts**. It plays to its objective first:
+- **Raid:** guards stand beside the supply markers (never on them), and the rest go after your carriers. Once your carriers could win the raid, every enemy unit chases them.
+- **Defend Bastion:** it marches on your supply depot.
+- **Seize Outpost:** it keeps two units in the outpost and goes after your archers if they shoot into it.
+- **Everywhere:** it closes in by stages rather than standing off, walks round rivers and cliffs to a ford or gap, and fights what it touches. Its archers look for a clear shot and never walk into melee.
+
+It only knows what you could see on the board; it never peeks at your dice.
+
 ## 7. Winning
 
 | Objective | How you win |
 |---|---|
 | **Skirmish** | Break the opposing army. At the end of round 6, the side that has lost the smaller share of its starting Battle Value wins; equal shares are a draw. |
 | **Raid** | Collect and carry off two of the three supply markers through your own starting edge (the bottom row) by the end of round 6. Collecting one takes Interact; a unit carries one at a time, and drops it if it routs or falls. |
-| **Defend Bastion** | Don't let the enemy hold your supply depot at two round ends in a row, and keep your army unbroken through round 6. |
+| **Defend Bastion** | Don't let the enemy hold your supply depot at two round ends in a row, and keep your army unbroken through round 6, or break the enemy army first. |
 | **Seize Outpost** | Hold the outpost with a Steady unit, and no enemy unit in it, at two round ends in a row before the end of round 6. |
 
 **Holding a zone:** a side controls a zone when it has a Steady fighting unit inside and the other side has no fighting unit inside. Lieutenants and support groups can't hold a zone alone.
 
 **Breaking:** an army withdraws when 60% of its starting Battle Value has Routed or been Defeated, counted from the starting roster, not from the tokens left.
 - In a **Skirmish**, breaking the enemy wins.
-- In a **Raid** it doesn't bring the supplies home by itself; you still have to carry them off.
+- In **Defend Bastion**, breaking the enemy also wins at once; you don't have to hold out to round 6.
+- In a **Raid** it doesn't bring the supplies home by itself; what's left of the enemy leaves the field, but you still have to carry the supplies off.
+- In **Seize Outpost**, what's left of the enemy leaves the field, but the battle goes on: you still have to hold the outpost with a Steady unit at two round ends in a row before the end of round 6.
+- If your own army breaks first, you lose at once, whatever the objective.
 
 **Withdraw** replaces Call off once the battle has begun. It shows the likely consequences first. The battle then ends as a withdrawal and the real losses are counted.
 
@@ -283,7 +296,7 @@ The rewards follow the objective, the losses follow the battle, and the Bastion'
 - **Who's affected:** Political Capital changes with the target clan. A Clan's Honour goes +6 on a victory and −8 on a defeat. A Brigade's Trusted Clients change as before.
 - **A raid's gold** follows the supplies actually carried off: half for one, all for two. With none, it's the defeat's −50.
 - **A draw** changes nothing.
-- **A withdrawal** costs the defeat's gold and Political Capital, but only −4 Clan Honour.
+- **A withdrawal** counts as a defeat for gold and Political Capital, but costs only −4 Clan Honour. In a Raid, the gold still follows the supplies already carried off: with one home, a withdrawal pays +38 gp (half the victory's gold), and the −50 gp applies only if none were. (Two home wins the raid at once, so there's nothing to withdraw from.)
 - **A raid won with heavy losses** is still a won raid with heavy losses.
 
 The **War Report** records:
