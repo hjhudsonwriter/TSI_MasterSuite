@@ -216,10 +216,10 @@ All 43 media files from the old Explorer. 41 are copied into `tools/explorer/ass
 | `main_events/turning_tide_6.png` | `tools/explorer/assets/main_events/turning_tide_6.png` | 641 KB, 932 × 518 | Yes: The Turning Tide, picture 6 |
 | `main_events/turning_tide_7.png` | `tools/explorer/assets/main_events/turning_tide_7.png` | 371 KB, 932 × 518 | Yes: The Turning Tide, picture 7 |
 | `main_events/turning_tide_8.png` | `tools/explorer/assets/main_events/turning_tide_8.png` | 750 KB, 932 × 518 | Yes: The Turning Tide, picture 8 |
-| `overlays/blizzard_overlay.mp4` | `tools/explorer/assets/overlays/blizzard_overlay.mp4` | 6.78 MB | Yes: the looping video over the map on a White Blizzard day |
-| `overlays/rain_overlay.mp4` | `tools/explorer/assets/overlays/rain_overlay.mp4` | 5.00 MB | Yes: the looping video over the map on a Cold Downpour day |
+| `overlays/blizzard_overlay.mp4` | `tools/explorer/assets/overlays/blizzard_overlay.mp4` | 6.78 MB | Yes: the looping video over the map on a White Blizzard day; also the Bastion's Military Action, in its Snowstorm pop-up |
+| `overlays/rain_overlay.mp4` | `tools/explorer/assets/overlays/rain_overlay.mp4` | 5.00 MB | Yes: the looping video over the map on a Cold Downpour day; also the Bastion's Military Action, in its Rainstorm pop-up |
 | `overlays/storm_overlay.mp4` | `tools/explorer/assets/overlays/storm_overlay.mp4` | 6.55 MB | Yes: the looping video over the map on a Black Storm day |
-| `overlays/sun_heat_overlay.mp4` | `tools/explorer/assets/overlays/sun_heat_overlay.mp4` | 6.42 MB | Yes: the looping video over the map on a Sun & Heatwave day |
+| `overlays/sun_heat_overlay.mp4` | `tools/explorer/assets/overlays/sun_heat_overlay.mp4` | 6.42 MB | Yes: the looping video over the map on a Sun & Heatwave day; also the Bastion's Military Action, in its Heatwave pop-up |
 | `markers/marker_gold.png` | `tools/explorer/assets/markers/marker_gold.png` | 5 KB, 40 × 40 | Yes: every town pin |
 
 Not copied:

@@ -2,11 +2,36 @@
 
 ## Where things stand
 
-**The rebuild is complete, the short how-to guide is written, and the first upgrades are done: the Clan Crest Creator has been reworked at Harry's request, its sigils redone from real heraldic artwork, and it now remembers your last design.** All eight tools open from their cards, and `guide.html` (linked at the foot of the home screen) explains them. What comes next is up to Harry: after trying the tools at the table, he can ask for more upgrades, fixes to kept behaviours, or the joined-up ideas in sections 12 to 15 of the handover.
+**The rebuild is complete, the short how-to guide is written, and the first upgrades are done: the Clan Crest Creator has been reworked at Harry's request, its sigils redone from real heraldic artwork, and it now remembers your last design. The Bastion now takes a crest for your Clan or Brigade, counts beasts properly, and has phase 1 of the war mini-game: the Military Action and the War Table.** All eight tools open from their cards, and `guide.html` (linked at the foot of the home screen) explains them. What comes next is up to Harry: after trying the tools at the table, he can ask for more upgrades, fixes to kept behaviours, or the joined-up ideas in sections 12 to 15 of the handover.
 
 Double-click `index.html` to open the suite. The plan is in `docs/PLAN.md`, the bug list in `docs/KNOWN_ISSUES.md`, and the notes for building each tool in `docs/BUILDING-A-TOOL.md`.
 
 ## Done
+
+### The Bastion: crests, beasts and the Military Action, phase 1 (2 October 2026)
+Harry asked for three things in the Ironbow Bastion Manager.
+- **A crest for your Clan or Brigade** (KNOWN_ISSUES BAS-42):
+  - Form Clan and Form Mercenary Brigade have a **Crest (optional)** box. **Open the Clan Crest Creator ↗** opens the Crest in a new tab: design the crest, press Download PNG, come back and press **Upload crest…**.
+  - The crest then shows, in a gold frame, beside the Clan's or Brigade's name in Party Identity. **Change crest…** and **Remove crest** sit under the name, and a Clan or Brigade founded before this can **Add crest…** there.
+  - The picture is shrunk to 512 pixels a side when it's uploaded (the Crest's 2048-pixel PNG becomes about 50 KB), and its see-through background is kept. It's saved as `tsi.bastion.crest`, so Download Save and "Back up everything" include it, and Reset clears it.
+  - The "Already open" warning no longer appears just because the Crest is open in another tab (SUI-06): it now warns only when the same tool, or the home screen, is open in two tabs, because only then can one overwrite the other's saves.
+- **Beasts counted properly** (BAS-25, now fixed): five Giant Vultures are five beasts, so all five can be committed to a war. A lost war still costs one beast, and now it costs exactly one (×5 becomes ×4), not the whole row, and it's always one that marched: the last one named on the War Table, never one left at home. The war's modifier is unchanged: it still counts at most 2 beasts.
+- **The war mini-game, phase 1** (BAS-41), using Harry's answers:
+  - When a queued war comes due on Advance Bastion Turn, a pop-up offers **Begin Military Action** or **Later**. Later leaves it in a new **Military Actions** box at the top of the Banner & War Council panel, where Begin (or Continue) picks it up any time. **Call off** ends it with nothing won or lost; Harry didn't ask for this, so it's one of the questions below.
+  - **Weather Conditions**, DC 12: pass for a clear day; fail and a Snowstorm, Rainstorm or Heatwave is picked at random, with the Explorer's weather film playing in the pop-up.
+  - **Morale**, DC 12, plus 4 in a snowstorm, 2 in a rainstorm or 3 in a heatwave. Each weather has its own pass and fail story, using Harry's two examples for the snowstorm. The stories name "your Lieutenants" when Lieutenants march, and "you" (the party) when none do.
+  - **Luck**, DC 10: pass +1, fail −1, with Harry's own words for a fail: "Something strange is in the air today, perhaps the Gods do not look kindly upon this needless bloodshed… (−1 modifier on all attack rolls)".
+  - Then the **War Table** opens full screen inside the Bastion (the suite's top bar stays, so Home still works):
+    - **Upload battle map** (up to about 4 MB), or use the plain board. The map is kept for next time.
+    - The grid can be turned on and off, resized, and snapped to. Forces can be made bigger or smaller, and the view zoomed. **Full screen** puts the table on the whole screen, on the laptop or the TV.
+    - The header shows the weather, morale and luck. The side panel lists your forces: each Regiment, all the committed defenders in one block, each Lieutenant and each beast, named from the Menagerie ("Giant Vulture 1"…).
+    - **Begin Deployment** sets them out in a battle line on your ground, the bottom half. Lieutenants and beasts are round tokens like the Explorer's heroes; Regiments are larger rectangles; the defenders are one rectangle showing how many (×12). Drag them anywhere on your half; they stop at the midline. Arrow keys move a selected one too.
+    - **Start Battle** asks first, then locks the deployment, with "The enemy will take the field here in the next build" over the enemy's half. If the battle roll is cancelled, **Roll for the battle** on the locked table offers it again.
+    - Snap, Grid on/off, Zoom and Fit, panning when zoomed in, arrow keys and Clear map weren't asked for; they're the usual battlemap controls, and Harry can ask for any of them to go.
+  - As Harry chose, the battle is then settled by the war's old single roll, with Luck's +1 or −1 added, and the War Report and war log also list the weather, morale, luck and deployment. Weather and Morale don't change the result yet; that's the next phase.
+  - Every step is saved as it happens, so a cancelled roll, closing the War Table or closing Edge loses nothing, and nothing can be applied twice. Reopening the Bastion shows a notice when a Military Action is waiting. For a moment after each of its pop-ups opens, the buttons ignore the mouse, so a double click can't carry on into the next roll.
+  - **Not built yet, as Harry asked:** enemy forces and their deployment, what the rolls do to the fighting, and the combat itself.
+- **Tests:** `tests/rules.html` runs 371 rules tests, all passing (new: beasts by number and one beast lost; the Military Action's forces, each roll at its own step and only once, the storms and their Morale DCs, the stories, Luck on the battle roll, the war log's notes, Call off, saving part-way, damaged saves; crest and War Table saves; the War Table's board, clamping to your ground, snapping and battle lines; the tab warning's rule). `tests/e2e/phase9.test.js` has 76 checks, all passing, including the whole Military Action from Advance Bastion Turn to the War Report, the War Table on the laptop and the TV, uploading a map and a crest, Reset and backups. The side-by-side run with the old Bastion still matches step for step, apart from the war's extra log lines and Luck's +1 on its roll. `tests/e2e/phase1.test.js` has 73 checks, all passing, including the new tab-warning checks.
 
 ### The Crest remembers your last design (1 October 2026)
 Harry asked for the Crest to remember his last design (it saved nothing, as the old tool didn't).
@@ -343,7 +368,7 @@ Harry asked for a complete rework: the old tool's shields, colours and sigils we
   - Saves go in the browser's built-in database, named `tsi.suite`, with every key starting `tsi.`.
   - A failed save shows "Not saved" and a warning with Export.
   - A damaged save is set aside, never deleted.
-  - A second open tab shows an "Already open" warning.
+  - A second tab with the same tool, or the home screen, shows an "Already open" warning.
 - **Backups:**
   - **Back up everything** downloads a dated file. **Restore** checks the file, shows what's in it and asks first, offering to download what's there now.
   - Each saving tool gets Export and Import, which check the file the same way.
@@ -384,7 +409,7 @@ Harry asked for a complete rework: the old tool's shields, colours and sigils we
   - The old-save import phase removed.
 
 ## Next
-Nothing is planned: the rebuild, the guide and the Crest rework (with its traced sigils, approved and merged) are done. Harry decides what comes next after trying the tools at the table. The kept behaviours he's most likely to want changed are listed under Open questions below; each tool's full list is in `docs/KNOWN_ISSUES.md`.
+**The war mini-game, phase 2**, once Harry has tried phase 1 and settled its rules (see the Bastion questions below): the enemy forces (their size and strength, and their deployment in the top half), what Weather, Morale and Luck do in the fight, and how the combat itself works. Until then nothing else is planned; the kept behaviours Harry is most likely to want changed are listed under Open questions below, and each tool's full list is in `docs/KNOWN_ISSUES.md`.
 
 ## Open questions for Harry
 
@@ -406,6 +431,11 @@ Each tool's questions are needed before that tool's phase. The full wording and 
 - **Bastion (phase 9):** answered (B2: the delegation's own two rolls set Political Capital; the defaults for the rest).
   - Kept behaviours you're likely to notice: Hall upgrades cost nothing (BAS-22); a consortium pays its income twice a turn, once as a contract and once as a route (BAS-24); "Cleared warehouse." appears twice in the Turn Log (BAS-31); and a Host Delegation's result box has an empty line where its summary should be (BAS-34). Say if you'd like any changed.
   - Advance Bastion Turn has no "Are you sure?" step, as before; a double click now counts once. Say if you'd like one.
+  - **The war mini-game, before phase 2 (2 October 2026).** Phase 1 is built. For phase 2, Harry will decide: the enemy forces' size and strength and how they deploy; what Weather, Morale and Luck do in the fight (today only Luck's ±1 touches the result, on the old single roll); and how combat works. Also worth a word:
+    - Should the Weather, Morale and Luck rolls take any modifier, say from Lieutenants for Morale? Today they're plain d20s.
+    - **Call off** was added so a Military Action can be ended without fighting, with nothing won or lost. Keep it? And keep the War Table's extra controls (Snap, Grid on/off, Zoom, Fit, panning, arrow keys, Clear map)?
+    - When no Lieutenants march (always the case for an Unsworn party), the Morale stories say "you" where your example says "your Lieutenants". Is that right, or should someone else lead?
+    - Should the crest also appear on the War Table, say on your banner?
 
 ## Notes for future sessions
 - **The Clan Crest Creator (reworked).** Shield outlines are in `tools/crest/data/shields.js`, exactly as Heraldicon drew them in their own units; `geometry.js` scales them into the picture, finds each shape's balance point, and fits a sigil inside the rim. Sigils are in `tools/crest/data/sigils.js`: public-domain heraldic drawings traced into four layers of outlines (body, accent, white, lines), 1000 units on their longer side. They're made by the scripts in `tools/crest/dev/` (see its README); to change or add one, edit its settings in `sigils.tsv` and rebuild, rather than editing the data file by hand. The rules tests check every sigil fits every shield. Colours and schemes are in `data/crest-data.js`; the tests check every scheme uses named colours and keeps the rule of tincture.
@@ -424,6 +454,7 @@ Each tool's questions are needed before that tool's phase. The full wording and 
 - **Two-way player windows and map positions:** see the Battlemap note in `docs/BUILDING-A-TOOL.md` section 5. The Explorer uses the same idea with its own board (1440 units wide, so its old sizes are screen pixels on the TV in full screen).
 - **Fullscreen in tests:** headless Chromium supports `requestFullscreen()`, so `phase7.test.js` and `phase8.test.js` check the fullscreen layouts. The Escape key doesn't leave full screen there: call `document.exitFullscreen()` instead.
 - **Pop-ups and full screen:** shared pop-ups and notices open inside whatever is in full screen, and move there if full screen starts while one is open (`shared/js/modal.js`, `core.js`).
+- **The Bastion's Military Action and War Table:** the steps are in `tools/bastion/rules.js` (`beginMilitaryAction` … `finishMilitaryAction`), saved in the Bastion's `militaryActions` list; each step only applies at its own step, so nothing happens twice. The War Table is its own module: `war-table-rules.js` (board units, the bottom-half rule, snapping, the battle line) and `war-table.js` (`TSI.bastion.warTable.open(options)`; the header comment lists its options). It owns the saves `tsi.bastion.warMap` and `tsi.bastion.warTable`; the Bastion saves the deployment through `onChange`. Positions are fractions of the board, so they survive any screen. A Military Action's id comes from its war order's, so it uses no dice and the side-by-side run with the old Bastion stays in step. In `phase9.test.js`, `answerAll` also answers the War Table (Begin Deployment, then Start Battle). Phase 2 (the enemy) should put the enemy's tokens in the top half the same way.
 - **The Bastion's comparison with the old tool:** the old tool builds its file paths from the first folder in the address, so `phase9.test.js` serves `_legacy/` and opens `/bastion_manager/index.html`. It saves some changes only on its next save, so the test nudges the treasury box before reading its save. `TSI.bastion.debug.change(fn)` sets up a check by changing the Bastion directly.
 - **Keep the guide up to date:** when a tool's buttons or labels change, update `guide.html` too. `tests/e2e/guide.test.js` fails if the guide names a button that no longer exists.
 - **Harry's saves and test copies:** every copy of the suite on Harry's laptop shares one set of saves in Edge. A branch he downloads to test opens his real saves, so each pull request's checklist should start with "Back up everything first".
