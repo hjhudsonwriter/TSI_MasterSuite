@@ -698,16 +698,29 @@ function serve(dir) {
       assert(/Commit at least something/.test(await H.modalText(page)));
       await clickModal(page, 'OK');
       await page.fill('[data-test=war-defenders]', '9');
-      equal(await page.inputValue('[data-test=war-defenders]'), '4', 'kept to what\'s available');
+      await page.press('[data-test=war-defenders]', 'Tab');
+      equal(await page.inputValue('[data-test=war-defenders]'), '4', 'kept to what\'s available once typed');
       await page.fill('[data-test=war-beasts]', '9');
+      await page.press('[data-test=war-beasts]', 'Tab');
       equal(await page.inputValue('[data-test=war-beasts]'), '5', 'all five vultures, not just one');
       assert(/Available: 4 defenders, 5 beasts, 1 lieutenants, 2 regiments/.test(await text(page, 'war-hint')), await text(page, 'war-hint'));
-      await page.fill('[data-test=war-lieutenants]', '1');
-      await page.fill('[data-test=war-regiments]', '2');
+      equal([await text(page, 'war-avail-defenders'), await text(page, 'war-avail-beasts'), await text(page, 'war-avail-lieutenants'), await text(page, 'war-avail-regiments')],
+        ['4 available', '5 available', '1 available', '2 available']);
+      /* Typed as a person does (Harry's report: they wouldn't take a number): never rewritten mid-typing. */
+      await page.click('[data-test=war-lieutenants]');
+      await page.keyboard.press('Backspace');
+      await page.keyboard.type('1');
+      equal(await page.inputValue('[data-test=war-lieutenants]'), '1');
+      await page.click('[data-test=war-regiments]');
+      await page.keyboard.press('Control+A');
+      await page.keyboard.type('2');
+      equal(await page.inputValue('[data-test=war-regiments]'), '2');
+      await page.press('[data-test=war-regiments]', 'ArrowUp');
+      equal(await page.inputValue('[data-test=war-regiments]'), '2', 'the arrows stop at what\'s available');
       await pause(page);
       await page.dblclick('[data-test=queue-war]');
       await page.waitForTimeout(300);
-      equal((await st(page)).pendingOrders.map(o => [o.label, o.meta.commitBeasts]), [['War Action', 5]]);
+      equal((await st(page)).pendingOrders.map(o => [o.label, o.meta.commitDefenders, o.meta.commitBeasts, o.meta.commitLieutenants, o.meta.commitRegiments]), [['War Action', 4, 5, 1, 2]]);
     });
 
     await check('on Advance Bastion Turn the war becomes a Military Action: Begin, or Later from the War Council', async () => {
@@ -967,6 +980,16 @@ function serve(dir) {
     const { context, page } = await newPage(browser, 'laptop');
     await openBastion(page);
     await setUp(page, (s) => { s.partyLevel = 7; s.defenders.count = 3; });
+
+    await check('Unsworn: the Lieutenants and Regiments boxes look switched off and say why (Harry\'s report)', async () => {
+      await setUp(page, (s) => { s.military = [{ name: 'Lieutenant (1)', qty: 3 }, { name: 'Regiment (100)', qty: 3 }]; });
+      equal([await page.isDisabled('[data-test=war-lieutenants]'), await page.isDisabled('[data-test=war-regiments]')], [true, true]);
+      equal([await text(page, 'war-avail-lieutenants'), await text(page, 'war-avail-regiments')], ['Clan or Brigade only', 'Clan or Brigade only']);
+      assert(Number(await page.$eval('[data-test=war-lieutenants]', i => getComputedStyle(i).opacity)) < 0.6, 'greyed out');
+      assert(/Only a Clan or Mercenary Brigade/.test(await page.getAttribute('[data-test=war-lieutenants]', 'title')));
+      assert(/Unsworn war is limited to defenders and beasts/.test(await text(page, 'war-hint')));
+      await setUp(page, (s) => { s.military = []; });
+    });
 
     await check('Form Mercenary Brigade links to the Crest Creator, which opens in a new tab with no "Already open" warning', async () => {
       await pause(page);

@@ -729,6 +729,12 @@
       var warRegs = numberInput('war-regiments', { min: '0' });
       var warHint = muted('', 'tsi-bas-war-hint');
       warHint.setAttribute('data-test', 'war-hint');
+      /* Under each box: how many are available, or why it can't be used. */
+      function availNote(test) { return el('span', { class: 'tsi-bas-war-avail', 'data-test': test }); }
+      var defNote = availNote('war-avail-defenders');
+      var beastNote = availNote('war-avail-beasts');
+      var ltNote = availNote('war-avail-lieutenants');
+      var regNote = availNote('war-avail-regiments');
       var warLogList = el('div', { class: 'tsi-bas-list', 'data-test': 'war-log' });
       var queueWarBtn = btn('Queue War Action', function () { onQueueWar(); }, 'tsi-btn--primary', 'queue-war');
       /* Military Actions waiting or under way (Harry's request, 2 October 2026). */
@@ -738,7 +744,13 @@
         muted('Each war action becomes a Military Action when its Bastion Turn comes: roll for the weather, morale and luck, then deploy on the War Table.'),
         maList
       ]);
-      [warDef, warBeasts, warLts, warRegs].forEach(function (input) { life.on(input, 'input', clampWar); });
+      /* The notes follow as you type; the number is only kept within what's
+         available once you've finished typing it (or on Queue War Action),
+         so it's never rewritten under your fingers. */
+      [warDef, warBeasts, warLts, warRegs].forEach(function (input) {
+        life.on(input, 'input', function () { showWarAvailable(R.warAvailable(state)); });
+        life.on(input, 'change', clampWar);
+      });
       warCard.body.appendChild(maBox);
       TSI.append(warCard.body, el('div', { class: 'tsi-bas-row' }, [
         label('War Turn'),
@@ -746,17 +758,17 @@
         el('div', { class: 'tsi-bas-war-grid' }, [
           field('Target Clan', warTarget),
           field('Objective', warObjective),
-          field('Defenders Committed', warDef),
-          field('Beasts Committed', warBeasts),
-          field('Lieutenants Committed', warLts),
-          field('Regiments Committed', warRegs)
+          field('Defenders Committed', [warDef, defNote]),
+          field('Beasts Committed', [warBeasts, beastNote]),
+          field('Lieutenants Committed', [warLts, ltNote]),
+          field('Regiments Committed', [warRegs, regNote])
         ]),
         el('div', { class: 'tsi-bas-actions' }, [queueWarBtn]),
         warHint,
         el('div', { class: 'tsi-bas-war-log' }, [label('War Log'), muted('Newest first. Click an entry for details.'), warLogList])
       ]));
 
-      /* Numbers are kept within what's available as they're typed (5199-5260). */
+      /* Numbers are kept within what's available (5199-5260). */
       function clampWar() {
         var a = R.warAvailable(state);
         var c = R.warCommit(state, { defenders: warDef.value, beasts: warBeasts.value, lieutenants: warLts.value, regiments: warRegs.value });
@@ -764,8 +776,25 @@
         warBeasts.value = String(c.commitBeasts);
         warLts.value = String(c.commitLieutenants);
         warRegs.value = String(c.commitRegiments);
+        showWarAvailable(a);
+      }
+      function showWarAvailable(a) {
         warHint.textContent = 'Available: ' + a.defenders + ' defenders, ' + a.beasts + ' beasts, ' + a.lieutenants + ' lieutenants, ' + a.regiments + ' regiments. ' +
           (a.fullWar ? 'Full commitments enabled.' : 'Unsworn war is limited to defenders and beasts.');
+        /* The spinner arrows stop at what's available. */
+        warDef.max = String(a.defenders);
+        warBeasts.max = String(a.beasts);
+        warLts.max = String(a.lieutenants);
+        warRegs.max = String(a.regiments);
+        function note(node, n, none) { node.textContent = n > 0 ? n + ' available' : none; node.classList.toggle('is-none', !(n > 0)); }
+        note(defNote, a.defenders, 'None yet');
+        note(beastNote, a.beasts, 'None in the Menagerie yet');
+        var sworn = 'Only a Clan or Mercenary Brigade can commit Lieutenants and Regiments.';
+        [[warLts, ltNote, a.lieutenants], [warRegs, regNote, a.regiments]].forEach(function (x) {
+          if (!a.fullWar) { x[1].textContent = 'Clan or Brigade only'; x[1].classList.add('is-none'); }
+          else note(x[1], x[2], 'None yet: recruit in the War Room');
+          x[0].title = a.fullWar ? '' : sworn;
+        });
       }
       function renderWar() {
         var a = R.warAvailable(state);

@@ -442,6 +442,11 @@
 /* ---------- Banner & War Council ---------- */
 .tsi-tool--bastion .tsi-bas-war-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .tsi-tool--bastion .tsi-bas-war-hint { font-size: 14px; }
+/* Under each War Turn box: how many are available, or why it can't be used. */
+.tsi-tool--bastion .tsi-bas-war-avail { font: 400 14px/1.3 var(--tsi-font-body); letter-spacing: 0; color: var(--tsi-text-soft); }
+.tsi-tool--bastion .tsi-bas-war-avail.is-none { color: var(--tsi-text-faint); font-style: italic; }
+/* A box that can't be used looks it (it looked just like a working one: Harry's report, 2 October 2026). */
+.tsi-tool--bastion .tsi-input:disabled { opacity: .45; cursor: not-allowed; }
 .tsi-tool--bastion .tsi-bas-war-log { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
 /* Military Actions waiting in the War Council (Harry's request, 2 October 2026). */
 .tsi-tool--bastion .tsi-bas-ma-box { border-color: var(--tsi-line-control); box-shadow: var(--tsi-glow-gold); margin-bottom: 12px; }

@@ -25,7 +25,7 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
 | Scarlett Isles Explorer (EXP) | 12 | 4 | 0 | 13 | 0 |
-| The Ironbow Bastion Manager (BAS) | 15 | 2 | 8 | 16 | 1 |
+| The Ironbow Bastion Manager (BAS) | 16 | 2 | 8 | 16 | 1 |
 | Clan Crest Creator (CRS) | 0 | 4 | 5 | 3 | 3 |
 | Arenas of The Scarlett Isles (ARN) | 8 | 2 | 0 | 17 | 0 |
 | The Heartwood Ritual (RIT) | 9 | 1 | 0 | 15 | 1 |
@@ -1329,6 +1329,13 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **Before:** The Bastion had no crest. Form Clan asked for the Clan's name, Chief and motto; Form Mercenary Brigade for its name.
 - **After:** Both pop-ups have a **Crest (optional)** box: a link that opens the Clan Crest Creator in a new tab, and **Upload crest…** for the PNG it downloads. The crest shows beside the Clan's or Brigade's name in Party Identity, with **Change crest…** and **Remove crest** (which asks first); a Clan or Brigade founded earlier can **Add crest…** there. The picture is shrunk to 512 pixels a side and saved as `tsi.bastion.crest`, so it's in Download Save and "Back up everything"; Reset clears it with the rest of the Bastion.
 - **Evidence:** `tools/bastion/tool.js` (the crest section), `R.isCrest` in `tools/bastion/rules.js`; tests in `tests/rules/bastion.test.js` and `tests/e2e/phase9.test.js`.
+
+### BAS-43 · The Lieutenants and Regiments boxes won't take a number, with no sign why
+**Must fix** (Harry's report, 2 October 2026; fixed) · breaks the tool
+
+- **Before:** Harry had Lieutenants and Regiments available but the War Turn boxes wouldn't take any. The boxes are switched off for an Unsworn party (only a Clan or Mercenary Brigade can commit them, as in the old tool), but a switched-off box looked exactly like a working one, and the only clue was the end of the small line under the panel. The old tool looked the same. Each box also rewrote its number on every key press. That never failed in the test browser, but it could fight with your typing.
+- **After:** A switched-off box is greyed out, says "Clan or Brigade only" underneath, and explains why when you hover over it. Every box shows how many are available ("3 available", or "None yet: recruit in the War Room"). The arrows stop at that number, and a number is only checked once you've finished typing it (or when you press Queue War Action). The rule itself is unchanged.
+- **Evidence:** Could not be reproduced in the test browser: a Clan with Lieutenants and Regiments could commit them by typing, the arrow keys and Backspace, before, during and after a Military Action, on the laptop and the TV size. `tools/bastion/tool.js` (`showWarAvailable`), `tools/bastion/bastion.css`; tests in `tests/e2e/phase9.test.js`.
 
 
 ## Clan Crest Creator
