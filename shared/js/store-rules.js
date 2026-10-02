@@ -30,7 +30,8 @@
        - db: the browser database's name
        - local: the prefix for the small fallback storage (the test page's
          keys contain a colon, which a real save name can never have)
-       - tabs, tabId, flash: the shell's own bookkeeping
+       - tabs, tabId, flash: the shell's own bookkeeping (tabs: each open
+         tab's heartbeat, { at, tool }, for the "Already open" warning)
        - file: the start of backup file names */
     spaceNames: function (space) {
       if (space === 'test') {
@@ -106,6 +107,27 @@
       var rest = rules.isValidKey(key) ? key.slice(4) : 'unreadable';
       if (rest.indexOf('quarantine.') === 0) rest = rest.slice('quarantine.'.length);
       return 'tsi.quarantine.' + rest + '.' + stamp;
+    },
+
+    /* ---------- Two open copies (the "Already open" warning) ----------
+       Each open tab says which tool it has open: a tool id, '' for the home
+       screen (null is read as the home screen too). Anything else, such as
+       a heartbeat from before tabs said so, means "not known": null. */
+    tabTool: function (value) {
+      if (value === '' || value === null) return '';
+      return rules.isValidToolId(value) ? value : null;
+    },
+
+    /* Can two open tabs overwrite each other's saves? Saves are written one
+       name at a time and a tool only writes its own (tsi.<tool>.…), so two
+       tabs on different tools can't. They can when both have the same tool
+       open, when either is on the home screen (its Restore and Back up
+       everything cover every tool), and, to be safe, when either tab's tool
+       isn't known. Takes two results of tabTool. */
+    tabsClash: function (mine, theirs) {
+      if (mine === null || theirs === null || mine === undefined || theirs === undefined) return true;
+      if (mine === '' || theirs === '') return true;
+      return mine === theirs;
     },
 
     /* A plain-English reason for a failed save. */

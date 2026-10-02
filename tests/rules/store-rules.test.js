@@ -100,4 +100,34 @@
     t.ok(!R.isTestOnly('tsi.crest.state'));
     t.ok(!R.isTestOnly('nonsense'));
   });
+
+  group('Saving: two open tabs ("Already open")');
+
+  test('reads which tool a tab says it has open', function (t) {
+    t.equal(R.tabTool('bastion'), 'bastion');
+    t.equal(R.tabTool(''), '', 'the home screen');
+    t.equal(R.tabTool(null), '', 'null is the home screen too');
+    t.equal(R.tabTool(undefined), null, 'an older heartbeat that doesn\'t say isn\'t known');
+    ['Bastion', 'bas tion', 42, {}, true].forEach(function (v) { t.equal(R.tabTool(v), null, String(v) + ' isn\'t known'); });
+  });
+
+  test('two different tools don\'t clash; the same tool does', function (t) {
+    t.equal(R.tabsClash('bastion', 'crest'), false, 'the Bastion and the Crest');
+    t.equal(R.tabsClash('crest', 'bastion'), false, 'the other way round');
+    t.equal(R.tabsClash('bastion', 'bastion'), true, 'the Bastion twice');
+  });
+
+  test('the home screen clashes with everything (Restore and Back up everything cover every tool)', function (t) {
+    t.equal(R.tabsClash('', ''), true, 'two home screens');
+    t.equal(R.tabsClash('', 'bastion'), true, 'home and the Bastion');
+    t.equal(R.tabsClash('crest', ''), true, 'the Crest and home');
+  });
+
+  test('a tab whose tool isn\'t known clashes with everything, to be safe', function (t) {
+    t.equal(R.tabsClash(null, 'crest'), true);
+    t.equal(R.tabsClash('crest', null), true);
+    t.equal(R.tabsClash(R.tabTool(undefined), R.tabTool('crest')), true);
+    t.equal(R.tabsClash(undefined, 'crest'), true);
+    t.equal(R.tabsClash(null, null), true);
+  });
 }());

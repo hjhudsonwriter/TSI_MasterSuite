@@ -45,6 +45,7 @@
     return out;
   }
 
+  /* The address of a tool, or of home (no id), on this same page, relative to it. */
   function pageUrl(toolId) {
     var page = location.pathname.split('/').pop() || 'index.html';
     return page + (toolId ? '?tool=' + encodeURIComponent(toolId) : '');
@@ -506,7 +507,8 @@
     }
 
     buildTopbar(info);
-    TSI.tabGuard.start();
+    /* The "Already open" warning only minds another tab with the same tool, or the home screen. */
+    TSI.tabGuard.start(info ? info.id : '');
 
     TSI.store.onStatus(showSaveStatus);
     TSI.store.ready.then(function (mode) {
@@ -525,7 +527,10 @@
     reload: reload,
     stopTool: stopTool,
     current: function () { return current; },
-    orderedTools: orderedTools
+    orderedTools: orderedTools,
+    /* A link to a tool (or home, with no id) on this same page: 'index.html?tool=crest',
+       or 'harness.html?tool=crest' on the test page. For a link that opens in a new tab. */
+    pageUrl: pageUrl
   };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
