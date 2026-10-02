@@ -76,7 +76,7 @@ window.TSI_DATA.tools = [
     saves: true,
     desc: 'Manage facilities, turns, events, treasury and staff for your bastion.',
     files: {
-      css: ['tools/bastion/bastion.css'],
+      css: ['tools/bastion/bastion.css', 'tools/bastion/war-table.css'],
       js: [
         'tools/bastion/data/bastion-data.js',
         'tools/bastion/data/facilities-data.js',
@@ -84,6 +84,8 @@ window.TSI_DATA.tools = [
         'tools/bastion/data/events-data.js',
         'tools/bastion/data/compendium-data.js',
         'tools/bastion/rules.js',
+        'tools/bastion/war-table-rules.js',
+        'tools/bastion/war-table.js',
         'tools/bastion/tool.js'
       ]
     }
@@ -114,7 +116,7 @@ window.TSI_DATA.tools = [
     group: 'players',
     phase: '2',
     built: true,
-    saves: false,
+    saves: true,
     desc: 'Forge your heraldry. Pick parts, roll random, then download a transparent PNG.',
     art: 'shared/art/hero.png',
     files: {

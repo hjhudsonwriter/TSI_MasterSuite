@@ -39,17 +39,17 @@
       function asset(p) { return TSI.path('tools/bastion/assets/' + p); }
 
       /* ---------- Saves ---------- */
-      function load(name, check) {
+      function load(name, check, lost) {
         var v = ctx.store.get(name, null);
         if (v !== null && !check(v)) {
-          ctx.store.quarantine(name, 'It wasn\'t in the right form.');
+          ctx.store.quarantine(name, 'It wasn\'t in the right form.', lost);
           return null;
         }
         return v;
       }
       var saved = load('state', R.isSave);
       var state = saved ? R.fromSave(TSI.clone(saved), data) : R.defaultState(data);
-      var ui = load('ui', R.isUi) || {};
+      var ui = load('ui', R.isUi, 'the panels opened in their usual way (everything else is as it was)') || {};
       if (!ui.collapsed || typeof ui.collapsed !== 'object') ui.collapsed = {};
       function save() { ctx.store.set('state', R.toSave(state)); }
       function saveUi() { ctx.store.set('ui', TSI.clone(ui)); }
@@ -72,6 +72,19 @@
       }
       function plainModal(options) {
         return TSI.modal.open(Object.assign({ className: 'tsi-bas-modal' }, options));
+      }
+      /* A Military Action's pop-ups come one after another, so for a moment
+         after one opens its buttons ignore the mouse: a double click on the
+         last pop-up's button can't press this one's. */
+      function settling(options) {
+        var onOpen = options.onOpen;
+        return Object.assign({}, options, {
+          onOpen: function (parts) {
+            parts.dialog.classList.add('tsi-bas-modal--settling');
+            life.setTimeout(function () { parts.dialog.classList.remove('tsi-bas-modal--settling'); }, 400);
+            if (onOpen) onOpen(parts);
+          }
+        });
       }
       var CONTINUE = [{ label: 'Continue', value: true, primary: true }];
       var CLOSE = [{ label: 'Close', value: true, primary: true }];
@@ -97,13 +110,14 @@
             preview
           ])
         ];
-        return TSI.modal.open({
+        var dice = {
           title: options.title || 'Roll',
           className: 'tsi-bas-modal tsi-bas-modal--dice' + (options.skin === 'plain' ? '' : ' tsi-bas-modal--hall'),
           body: body,
           escValue: false,
           actions: [{ label: 'Cancel', value: false }, { label: 'Continue', value: true, primary: true }]
-        }).then(function (ok) { return ok ? R.readD20(input.value, mod) : null; });
+        };
+        return TSI.modal.open(options.settle ? settling(dice) : dice).then(function (ok) { return ok ? R.readD20(input.value, mod) : null; });
       }
 
       /* ---------- Small builders ---------- */
@@ -340,11 +354,139 @@
       }
 
       /* ================================================================
+         The crest (Harry's request, 2 October 2026)
+         A Clan or Brigade can upload a crest picture, such as the PNG the
+         Clan Crest Creator downloads. It's shrunk to at most 512 pixels a
+         side and saved apart from the Bastion, as tsi.bastion.crest. Only
+         the picture the user chose is drawn on the canvas, so the browser
+         allows this from a double-clicked file.
+         ================================================================ */
+      var CREST_MAX = 512;
+      var CREST_FILE_LIMIT = 25 * 1024 * 1024;
+      var crest = load('crest', R.isCrest, 'the Bastion opened without its crest picture (everything else is as it was)');
+      function crestCreatorUrl() {
+        return TSI.shell && TSI.shell.pageUrl ? TSI.shell.pageUrl('crest') : 'index.html?tool=crest';
+      }
+      function readDataUrl(file) {
+        return new Promise(function (resolve, reject) {
+          var reader = new FileReader();
+          reader.onload = function () { resolve(String(reader.result || '')); };
+          reader.onerror = function () { reject(reader.error || new Error('The file could not be read.')); };
+          reader.readAsDataURL(file);
+        });
+      }
+      function loadImage(src) {
+        return new Promise(function (resolve, reject) {
+          var img = new Image();
+          img.onload = function () { resolve(img); };
+          img.onerror = function () { reject(new Error('Not a picture')); };
+          img.src = src;
+        });
+      }
+      /* Shrink a big picture; keep its see-through parts (WebP, or PNG where WebP can't be made). */
+      function shrinkPicture(dataUrl, max) {
+        return loadImage(dataUrl).then(function (img) {
+          var w = img.naturalWidth, h = img.naturalHeight;
+          if (!w || !h) throw new Error('Not a picture');
+          var scale = Math.min(1, max / Math.max(w, h));
+          /* Kept as it is only if it's small and labelled as a picture; anything else is redrawn. */
+          if (scale === 1 && dataUrl.length <= 900000 && /^data:image\/(png|jpeg|webp|gif);/.test(dataUrl)) return dataUrl;
+          var c = document.createElement('canvas');
+          c.width = Math.max(1, Math.round(w * scale));
+          c.height = Math.max(1, Math.round(h * scale));
+          var g = c.getContext('2d');
+          g.imageSmoothingEnabled = true;
+          g.imageSmoothingQuality = 'high';
+          g.drawImage(img, 0, 0, c.width, c.height);
+          var out = c.toDataURL('image/webp', 0.92);
+          if (out.indexOf('data:image/webp') !== 0) out = c.toDataURL('image/png');
+          return out;
+        });
+      }
+      /* Ask for a crest picture. Resolves to { dataUrl, key, name }, or null. */
+      function pickCrest() {
+        return TSI.pickFile('image/png,image/jpeg,image/webp,image/gif,.png,.jpg,.jpeg,.webp,.gif').then(function (file) {
+          if (!file || !life.alive) return null;
+          if (file.type && !/^image\/(png|jpeg|webp|gif)$/.test(file.type)) {
+            return say('That file isn\'t a PNG, JPG, WebP or GIF picture. Choose the PNG the Crest Creator downloaded.').then(function () { return null; });
+          }
+          if (file.size > CREST_FILE_LIMIT) {
+            return say('That picture is too big (over 25 MB). Choose the PNG the Crest Creator downloaded.').then(function () { return null; });
+          }
+          return readDataUrl(file).then(function (dataUrl) {
+            return shrinkPicture(dataUrl, CREST_MAX);
+          }).then(function (small) {
+            var c = { dataUrl: small, key: R.hashText(small), name: String(file.name || 'crest.png') };
+            if (!R.isCrest(c)) throw new Error('Not a picture');
+            return c;
+          }).then(null, function () {
+            if (!life.alive) return null;
+            return say('That file couldn\'t be read as a picture.').then(function () { return null; });
+          });
+        });
+      }
+      function saveCrest(value) {
+        crest = value || null;
+        if (crest) ctx.store.set('crest', crest);
+        else if (ctx.store.has('crest')) ctx.store.remove('crest');
+      }
+      /* The crest part of the Form Clan and Form Mercenary Brigade pop-ups. */
+      function crestField(kindName) {
+        var chosen = null;
+        var img = el('img', { class: 'tsi-bas-crest-pick__img', alt: 'Your crest', hidden: true, 'data-test': 'crest-preview' });
+        var empty = el('div', { class: 'tsi-bas-crest-pick__empty', text: 'No crest yet' });
+        var upload = btn('Upload crest…', null, '', 'crest-upload');
+        var remove = btn('Remove', null, 'tsi-btn--ghost', 'crest-remove', { hidden: true });
+        function show() {
+          img.hidden = !chosen;
+          if (chosen) img.src = chosen.dataUrl; else img.removeAttribute('src');
+          empty.hidden = !!chosen;
+          remove.hidden = !chosen;
+          upload.textContent = chosen ? 'Change crest…' : 'Upload crest…';
+        }
+        upload.onclick = TSI.oneAtATime(function () {
+          return pickCrest().then(function (c) { if (c) { chosen = c; show(); } });
+        });
+        remove.onclick = function () { chosen = null; show(); };
+        var node = el('div', { class: 'tsi-bas-crest-pick', 'data-test': 'crest-field' }, [
+          el('div', { class: 'tsi-bas-crest-pick__frame' }, [img, empty]),
+          el('div', { class: 'tsi-bas-crest-pick__side' }, [
+            el('span', { class: 'tsi-bas-crest-pick__title', text: 'Crest (optional)' }),
+            muted('Design your ' + kindName + '’s crest in the Clan Crest Creator. It opens in a new tab: press Download PNG there, then come back and upload the PNG here.'),
+            el('a', { class: 'tsi-bas-crest-pick__link', href: crestCreatorUrl(), target: '_blank', rel: 'noopener', 'data-test': 'crest-creator-link' }, 'Open the Clan Crest Creator ↗'),
+            el('div', { class: 'tsi-bas-actions' }, [upload, remove])
+          ])
+        ]);
+        return { node: node, value: function () { return chosen; } };
+      }
+      /* Add, change or remove the crest after founding. */
+      var onChangeCrest = TSI.oneAtATime(function () {
+        if (state.organization.type === 'unsworn') return null;
+        return pickCrest().then(function (c) {
+          if (!c || !life.alive) return;
+          saveCrest(c);
+          renderIdentity();
+        });
+      });
+      var onRemoveCrest = TSI.oneAtATime(async function () {
+        if (!crest) return;
+        var ok = await ask('Remove the crest from ' + (state.organization.name || 'your ' + (state.organization.type === 'clan' ? 'Clan' : 'Brigade')) + '? You can upload it again later.', 'Remove');
+        if (!ok || !life.alive) return;
+        saveCrest(null);
+        renderIdentity();
+      });
+
+      /* ================================================================
          Party Identity & Clan Influence
          ================================================================ */
       var idCard = card('identity', 'Party Identity & Clan Influence', { collapsible: true });
       var orgDesc = muted('');
       var orgPill = el('div', { class: 'tsi-bas-status-pill', 'data-test': 'org', text: 'Unsworn' });
+      var crestImg = el('img', { class: 'tsi-bas-crest__img', alt: '', 'data-test': 'crest' });
+      var crestFrame = el('div', { class: 'tsi-bas-crest', hidden: true }, crestImg);
+      var crestAddBtn = btn('Add crest…', function () { onChangeCrest(); }, 'tsi-btn--ghost', 'crest-add');
+      var crestRemoveBtn = btn('Remove crest', function () { onRemoveCrest(); }, 'tsi-btn--ghost', 'crest-delete');
+      var crestActions = el('div', { class: 'tsi-bas-crest-actions', hidden: true }, [crestAddBtn, crestRemoveBtn]);
       var formClanBtn = btn('Form Clan', function () { onFormClan(); }, 'tsi-btn--primary', 'form-clan');
       var formMercBtn = btn('Form Mercenary Brigade', function () { onFormMerc(); }, '', 'form-merc');
       var reqHint = muted('', 'tsi-bas-req');
@@ -402,7 +544,10 @@
       ]);
       TSI.append(idCard.body, [
         el('div', { class: 'tsi-bas-row' }, [
-          el('div', { class: 'tsi-bas-row__top' }, [el('div', null, [label('Party Identity'), orgDesc]), orgPill]),
+          el('div', { class: 'tsi-bas-row__top' }, [
+            el('div', null, [label('Party Identity'), orgDesc]),
+            el('div', { class: 'tsi-bas-identity' }, [crestFrame, el('div', { class: 'tsi-bas-identity__name' }, [orgPill, crestActions])])
+          ]),
           el('div', { class: 'tsi-bas-actions' }, [formClanBtn, formMercBtn]),
           reqHint
         ]),
@@ -421,6 +566,19 @@
           : o.type === 'merc' ? 'You are contract-driven. Trusted Clients affects future contract access and payment tiers.'
           : 'Unsworn. You may found a Clan (support-based) or form a Mercenary Brigade (defenders + level).';
         reqHint.textContent = R.requirementsHint(state, data);
+        /* The crest sits beside the Clan's or Brigade's name. */
+        var sworn = o.type !== 'unsworn';
+        crestFrame.hidden = !(sworn && crest);
+        if (sworn && crest) {
+          if (crestImg.getAttribute('data-key') !== crest.key) {
+            crestImg.src = crest.dataUrl;
+            crestImg.setAttribute('data-key', crest.key);
+          }
+          crestImg.alt = 'Crest of ' + (o.name || (o.type === 'clan' ? 'the Clan' : 'the Brigade'));
+        }
+        crestActions.hidden = !sworn;
+        crestAddBtn.textContent = crest ? 'Change crest…' : 'Add crest…';
+        crestRemoveBtn.hidden = !crest;
         formClanBtn.disabled = !(o.type === 'unsworn' && R.canFormClan(state, data).ok);
         formMercBtn.disabled = !(o.type === 'unsworn' && R.canFormMerc(state, data).ok);
         honourBox.hidden = o.type !== 'clan';
@@ -440,15 +598,18 @@
         });
       }
 
-      async function onFormClan() {
+      /* One founding pop-up at a time, however many clicks. */
+      var onFormClan = TSI.oneAtATime(async function () {
         if (state.organization.type !== 'unsworn') return;
         if (!R.canFormClan(state, data).ok) { await say('Not eligible to form a Clan yet. See the requirements hint in the panel.'); return; }
         var name = el('input', { type: 'text', class: 'tsi-input', placeholder: 'e.g. Clan Ironbow', 'data-test': 'clan-name' });
         var chief = el('input', { type: 'text', class: 'tsi-input', placeholder: 'Elected Chief name', 'data-test': 'clan-chief' });
         var motto = el('input', { type: 'text', class: 'tsi-input', placeholder: 'e.g. Root and Steel', 'data-test': 'clan-motto' });
+        var crestPick = crestField('Clan');
         var ok = await hallModal({
           title: 'Form Clan',
-          body: [field('Clan Name', name), field('Clan Chief', chief), field('Motto (optional)', motto), muted('This is persistent.')],
+          className: 'tsi-bas-modal tsi-bas-modal--hall tsi-bas-modal--found',
+          body: [field('Clan Name', name), field('Clan Chief', chief), field('Motto (optional)', motto), crestPick.node, muted('This is persistent.')],
           escValue: false,
           actions: [{ label: 'Cancel', value: false }, { label: 'Confirm Founding', value: true, primary: true }]
         });
@@ -459,15 +620,18 @@
         state.organization = { type: 'clan', name: n, chief: ch, motto: motto.value.trim(), foundedAtTurn: state.turn || 1 };
         state.clanHonor = R.clampInt(state.clanHonor === undefined || state.clanHonor === null ? 40 : state.clanHonor, 0, 100);
         log('Identity', 'Founded Clan: ' + n + (ch ? ' (Chief: ' + ch + ')' : '') + '.');
+        saveCrest(crestPick.value());
         done();
-      }
-      async function onFormMerc() {
+      });
+      var onFormMerc = TSI.oneAtATime(async function () {
         if (state.organization.type !== 'unsworn') return;
         if (!R.canFormMerc(state, data).ok) { await say('Not eligible to form a Mercenary Brigade yet. See the requirements hint in the panel.'); return; }
         var name = el('input', { type: 'text', class: 'tsi-input', placeholder: 'e.g. The Ironbow Freeblades', 'data-test': 'merc-name' });
+        var crestPick = crestField('Brigade');
         var ok = await hallModal({
           title: 'Form Mercenary Brigade',
-          body: [field('Brigade Name', name), muted('This is persistent.')],
+          className: 'tsi-bas-modal tsi-bas-modal--hall tsi-bas-modal--found',
+          body: [field('Brigade Name', name), crestPick.node, muted('This is persistent.')],
           escValue: false,
           actions: [{ label: 'Cancel', value: false }, { label: 'Confirm Formation', value: true, primary: true }]
         });
@@ -476,8 +640,9 @@
         if (!n) { await say('Brigade Name is required.'); return; }
         state.organization = { type: 'merc', name: n, chief: '', motto: '', foundedAtTurn: state.turn || 1 };
         log('Identity', 'Formed Mercenary Brigade: ' + n + '.');
+        saveCrest(crestPick.value());
         done();
-      }
+      });
 
       /* ================================================================
          Management: Defenders · Treasury · Military
@@ -564,25 +729,46 @@
       var warRegs = numberInput('war-regiments', { min: '0' });
       var warHint = muted('', 'tsi-bas-war-hint');
       warHint.setAttribute('data-test', 'war-hint');
+      /* Under each box: how many are available, or why it can't be used. */
+      function availNote(test) { return el('span', { class: 'tsi-bas-war-avail', 'data-test': test }); }
+      var defNote = availNote('war-avail-defenders');
+      var beastNote = availNote('war-avail-beasts');
+      var ltNote = availNote('war-avail-lieutenants');
+      var regNote = availNote('war-avail-regiments');
       var warLogList = el('div', { class: 'tsi-bas-list', 'data-test': 'war-log' });
-      [warDef, warBeasts, warLts, warRegs].forEach(function (input) { life.on(input, 'input', clampWar); });
+      var queueWarBtn = btn('Queue War Action', function () { onQueueWar(); }, 'tsi-btn--primary', 'queue-war');
+      /* Military Actions waiting or under way (Harry's request, 2 October 2026). */
+      var maList = el('div', { class: 'tsi-bas-ma-list', 'data-test': 'military-actions' });
+      var maBox = el('div', { class: 'tsi-bas-row tsi-bas-ma-box', hidden: true }, [
+        label('Military Actions'),
+        muted('Each war action becomes a Military Action when its Bastion Turn comes: roll for the weather, morale and luck, then deploy on the War Table.'),
+        maList
+      ]);
+      /* The notes follow as you type; the number is only kept within what's
+         available once you've finished typing it (or on Queue War Action),
+         so it's never rewritten under your fingers. */
+      [warDef, warBeasts, warLts, warRegs].forEach(function (input) {
+        life.on(input, 'input', function () { showWarAvailable(R.warAvailable(state)); });
+        life.on(input, 'change', clampWar);
+      });
+      warCard.body.appendChild(maBox);
       TSI.append(warCard.body, el('div', { class: 'tsi-bas-row' }, [
         label('War Turn'),
         muted('Queue a war action. It resolves on the next Bastion Turn.'),
         el('div', { class: 'tsi-bas-war-grid' }, [
           field('Target Clan', warTarget),
           field('Objective', warObjective),
-          field('Defenders Committed', warDef),
-          field('Beasts Committed', warBeasts),
-          field('Lieutenants Committed', warLts),
-          field('Regiments Committed', warRegs)
+          field('Defenders Committed', [warDef, defNote]),
+          field('Beasts Committed', [warBeasts, beastNote]),
+          field('Lieutenants Committed', [warLts, ltNote]),
+          field('Regiments Committed', [warRegs, regNote])
         ]),
-        el('div', { class: 'tsi-bas-actions' }, [btn('Queue War Action', function () { onQueueWar(); }, 'tsi-btn--primary', 'queue-war')]),
+        el('div', { class: 'tsi-bas-actions' }, [queueWarBtn]),
         warHint,
         el('div', { class: 'tsi-bas-war-log' }, [label('War Log'), muted('Newest first. Click an entry for details.'), warLogList])
       ]));
 
-      /* Numbers are kept within what's available as they're typed (5199-5260). */
+      /* Numbers are kept within what's available (5199-5260). */
       function clampWar() {
         var a = R.warAvailable(state);
         var c = R.warCommit(state, { defenders: warDef.value, beasts: warBeasts.value, lieutenants: warLts.value, regiments: warRegs.value });
@@ -590,8 +776,25 @@
         warBeasts.value = String(c.commitBeasts);
         warLts.value = String(c.commitLieutenants);
         warRegs.value = String(c.commitRegiments);
+        showWarAvailable(a);
+      }
+      function showWarAvailable(a) {
         warHint.textContent = 'Available: ' + a.defenders + ' defenders, ' + a.beasts + ' beasts, ' + a.lieutenants + ' lieutenants, ' + a.regiments + ' regiments. ' +
           (a.fullWar ? 'Full commitments enabled.' : 'Unsworn war is limited to defenders and beasts.');
+        /* The spinner arrows stop at what's available. */
+        warDef.max = String(a.defenders);
+        warBeasts.max = String(a.beasts);
+        warLts.max = String(a.lieutenants);
+        warRegs.max = String(a.regiments);
+        function note(node, n, none) { node.textContent = n > 0 ? n + ' available' : none; node.classList.toggle('is-none', !(n > 0)); }
+        note(defNote, a.defenders, 'None yet');
+        note(beastNote, a.beasts, 'None in the Menagerie yet');
+        var sworn = 'Only a Clan or Mercenary Brigade can commit Lieutenants and Regiments.';
+        [[warLts, ltNote, a.lieutenants], [warRegs, regNote, a.regiments]].forEach(function (x) {
+          if (!a.fullWar) { x[1].textContent = 'Clan or Brigade only'; x[1].classList.add('is-none'); }
+          else note(x[1], x[2], 'None yet: recruit in the War Room');
+          x[0].title = a.fullWar ? '' : sworn;
+        });
       }
       function renderWar() {
         var a = R.warAvailable(state);
@@ -602,6 +805,7 @@
         if (warLts.value === '') warLts.value = '0';
         if (warRegs.value === '') warRegs.value = '0';
         clampWar();
+        renderMilitary();
         TSI.clear(warLogList);
         if (!state.warLog.length) { warLogList.appendChild(muted('No war actions recorded yet.')); return; }
         state.warLog.slice(0, 20).forEach(function (w, i) {
@@ -612,15 +816,16 @@
           ]));
         });
       }
-      function openWarReport(w) {
-        return hallModal({
+      function openWarReport(w, settle) {
+        var report = {
           title: 'War Report',
           body: [
             el('div', { class: 'tsi-bas-res-top' }, [el('div', { class: 'tsi-bas-res-action', text: w.title }), muted(w.subtitle || '')]),
             el('div', { class: 'tsi-bas-res-roll tsi-bas-res-roll--pre', text: w.details || '' })
           ],
           actions: CLOSE
-        });
+        };
+        return hallModal(settle ? settling(report) : report);
       }
       /* A double click queues one war action, not two (BAS-15). More than one
          a turn is still allowed (B22). */
@@ -635,6 +840,232 @@
         }
         var line = R.queueWarAction(state, Object.assign({ objective: String(warObjective.value || 'raid'), targetKey: targetKey, targetName: target ? target.name : 'Unknown' }, c), rand);
         log(line[0], line[1]);
+        done();
+      });
+
+      /* ================================================================
+         The Military Action (Harry's request, 2 October 2026)
+         When a war action comes due on Advance Bastion Turn, it becomes a
+         Military Action: Begin Military Action (or Later, from this panel),
+         then roll Weather Conditions, Morale and Luck, then the War Table:
+         Begin Deployment in the bottom half, then Start Battle. Until enemy
+         forces and combat are built, the battle is settled by the war's
+         single roll, as before, with Luck's +1 or −1. Every step is saved
+         as it happens (rules.js), so a cancelled roll or a closed window
+         loses nothing and nothing is applied twice.
+         ================================================================ */
+      var militaryRunning = false;
+      var warTableOpen = null;
+      var maNotice = null;
+      function chip(item) {
+        return el('span', { class: 'tsi-bas-ma-chip' }, [el('span', { class: 'tsi-bas-ma-chip__label', text: item.label }), ' ', el('b', { text: item.value })]);
+      }
+      function renderMilitary() {
+        var list = state.militaryActions || [];
+        maBox.hidden = !list.length;
+        /* While one waits, it's the panel's main action. */
+        queueWarBtn.classList.toggle('tsi-btn--primary', !list.length);
+        TSI.clear(maList);
+        list.forEach(function (ma, i) {
+          var summary = R.militarySummary(data, ma);
+          var busy = turnRunning || militaryRunning;
+          maList.appendChild(el('div', { class: 'tsi-bas-ma', 'data-test': 'ma-' + i }, [
+            el('div', { class: 'tsi-bas-ma__main' }, [
+              el('div', { class: 'tsi-bas-item__name', text: R.militaryName(ma) }),
+              el('div', { class: 'tsi-bas-item__meta', text: 'Committed: ' + R.militaryCommitLine(ma.commit) }),
+              el('div', { class: 'tsi-bas-ma__status', 'data-test': 'ma-status-' + i, text: R.militaryStatus(ma) }),
+              summary.length ? el('div', { class: 'tsi-bas-ma__chips' }, summary.map(chip)) : null
+            ]),
+            el('div', { class: 'tsi-bas-actions' }, [
+              btn('Call off', function () { onCallOff(ma.id); }, 'tsi-btn--ghost', 'ma-calloff-' + i, { disabled: busy }),
+              btn(ma.step === 'weather' ? 'Begin Military Action' : 'Continue', function () { onContinueMilitary(ma.id); }, 'tsi-btn--primary', 'ma-continue-' + i, { disabled: busy })
+            ])
+          ]));
+        });
+      }
+
+      /* The pop-up when the war comes due during Advance Bastion Turn. */
+      function militaryPrompt(ma) {
+        return hallModal(settling({
+          title: 'War Turn: ' + R.militaryName(ma),
+          className: 'tsi-bas-modal tsi-bas-modal--hall tsi-bas-modal--military',
+          body: [
+            el('div', { class: 'tsi-bas-ma-pop' }, [
+              el('div', { class: 'tsi-bas-ma-pop__headline', text: 'Your forces muster for battle' }),
+              muted('Committed: ' + R.militaryCommitLine(ma.commit) + '.'),
+              el('p', { class: 'tsi-bas-ma-pop__text', text: 'Begin the Military Action now: roll for the Weather Conditions, your forces’ Morale and their Luck, then deploy them on the War Table. Or choose Later and begin it from the Banner & War Council panel.' })
+            ])
+          ],
+          escValue: false,
+          actions: [{ label: 'Later', value: false }, { label: 'Begin Military Action', value: true, primary: true }]
+        }));
+      }
+
+      /* What a roll brought: the weather's video plays above the words. */
+      function militaryResultModal(res, roll) {
+        var video = null;
+        if (res.video) {
+          /* Shown once it can play, so a browser that can't play it shows no empty box. */
+          video = el('video', { class: 'tsi-bas-ma-pop__video', muted: true, playsinline: true, loop: true, preload: 'auto', 'aria-hidden': 'true', hidden: true });
+          video.muted = true;
+          video.addEventListener('loadeddata', function () { video.hidden = false; });
+          life.track(video);
+          video.setAttribute('src', TSI.path(res.video));
+        }
+        var verdict = res.pass ? 'Passed' : 'Failed';
+        var p = hallModal(settling({
+          title: res.title,
+          className: 'tsi-bas-modal tsi-bas-modal--hall tsi-bas-modal--military',
+          body: [
+            el('div', { class: 'tsi-bas-ma-pop', 'data-test': 'ma-result' }, [
+              video,
+              el('div', { class: 'tsi-bas-ma-pop__headline', 'data-test': 'ma-headline', text: res.headline }),
+              el('div', { class: 'tsi-bas-ma-pop__roll ' + (res.pass ? 'is-pass' : 'is-fail'), text: 'd20 ' + roll.total + ' vs DC ' + roll.dc + ': ' + verdict }),
+              el('p', { class: 'tsi-bas-ma-pop__text', 'data-test': 'ma-text', text: res.text })
+            ])
+          ],
+          actions: CONTINUE
+        }));
+        if (video) {
+          var play = video.play();
+          if (play && play.catch) play.catch(function () {});
+        }
+        return p.then(function (v) {
+          if (video) { video.pause(); video.removeAttribute('src'); video.load(); life.untrack(video); }
+          return v;
+        });
+      }
+
+      /* Run a Military Action from wherever it has got to. Resolves when its
+         rolls are done and the War Table is closed (or the battle settled). */
+      async function runMilitary(id) {
+        /* The "waiting" notice has done its job (and mustn't cover the War Table's buttons). */
+        if (maNotice) { maNotice.close(); maNotice = null; }
+        militaryRunning = true;
+        renderTurnButton();
+        renderMilitary();
+        try {
+          for (;;) {
+            if (!life.alive) return 'stopped';
+            var ma = R.militaryById(state, id);
+            if (!ma) return null;
+            var step = ma.step;
+            if (step === 'weather' || step === 'morale' || step === 'luck') {
+              var dc = R.militaryDC(data, ma, step);
+              var roll = await rollD20({ title: R.militaryRollTitle(step) + ': ' + R.militaryName(ma), mod: 0, dc: dc, settle: true });
+              if (!life.alive) return 'stopped';
+              if (!roll) {
+                log('War Turn', R.militaryName(ma) + ': the ' + R.militaryRollTitle(step) + ' roll was cancelled. The Military Action waits in the War Council.');
+                done();
+                return null;
+              }
+              var res = R.militaryRoll(state, data, id, step, roll, rand);
+              done();
+              if (res) {
+                var rec = R.militaryById(state, id)[step];
+                await militaryResultModal(res, rec);
+                if (!life.alive) return 'stopped';
+              }
+              continue;
+            }
+            return await openWarTable(id);
+          }
+        } finally {
+          militaryRunning = false;
+          if (life.alive) { renderTurnButton(); renderMilitary(); }
+        }
+      }
+
+      /* The War Table (war-table.js), full screen inside the Bastion. */
+      function openWarTable(id) {
+        return new Promise(function (resolve) {
+          var ma = R.militaryById(state, id);
+          if (!ma || !ns.warTable) { resolve(null); return; }
+          var handle = null;
+          var finished = false;
+          function finish(v) {
+            if (finished) return;
+            finished = true;
+            warTableOpen = null;
+            if (life.alive) renderAll();
+            resolve(v);
+          }
+          handle = ns.warTable.open({
+            host: page,
+            life: life,
+            store: ctx.store,
+            inert: [bar, layout],
+            title: R.militaryName(ma),
+            summary: R.militarySummary(data, ma),
+            forces: TSI.clone(ma.forces),
+            deployment: TSI.clone(ma.deployment),
+            onChange: function (dep) {
+              if (R.militaryDeploy(state, id, dep)) save();
+            },
+            onStartBattle: function (dep) {
+              R.militaryDeploy(state, id, dep);
+              save();
+              return settleAndClose();
+            },
+            /* After a cancelled battle roll, the locked table offers the roll again. */
+            lockedAction: { label: 'Roll for the battle', onClick: function () { return settleAndClose(); } },
+            onClose: function () { finish(null); }
+          });
+          warTableOpen = handle;
+          /* Settle the battle; once it's in the war log, the War Table closes. */
+          function settleAndClose() {
+            return Promise.resolve(settleBattle(id)).then(function (out) {
+              if (out === 'done') { handle.close(); finish(null); }
+            });
+          }
+          /* Back after a cancelled battle roll: the deployment is locked, so roll now. */
+          if (ma.step === 'resolve') settleAndClose();
+        });
+      }
+
+      /* After Start Battle: the war's single roll, with Luck's +1 or −1. */
+      var settleBattle = TSI.oneAtATime(async function (id) {
+        var ma = R.militaryById(state, id);
+        if (!ma || ma.step !== 'resolve') return null;
+        var plan = R.militaryPlan(state, data, ma);
+        await hallModal(settling({
+          title: 'The Battle Is Joined',
+          className: 'tsi-bas-modal tsi-bas-modal--hall tsi-bas-modal--military',
+          body: [
+            el('div', { class: 'tsi-bas-ma-pop' }, [
+              el('div', { class: 'tsi-bas-ma-pop__headline', text: 'Your deployment is locked' }),
+              el('p', { class: 'tsi-bas-ma-pop__text', text: 'Enemy forces and the battle itself come in the next build. For now the battle is settled as before, with the War Turn’s single roll' + (plan.luck ? ' (Luck ' + (plan.luck > 0 ? '+1' : '−1') + ' is included in the modifier).' : '.') })
+            ])
+          ],
+          actions: CONTINUE
+        }));
+        if (!life.alive) return 'stopped';
+        var roll = await rollD20({ title: plan.title, mod: plan.mod, dc: plan.dc, settle: true });
+        if (!life.alive) return 'stopped';
+        if (!roll) {
+          log('War Turn', R.militaryName(ma) + ': the battle roll was cancelled. Press Continue in the War Council to roll it.');
+          done();
+          return null;
+        }
+        var line = R.finishMilitaryAction(state, data, id, roll, rand);
+        if (!line) return null;
+        log(line[0], line[1]);
+        done();
+        await openWarReport(state.warLog[0], true);
+        return life.alive ? 'done' : 'stopped';
+      }, { minMs: 0 });
+
+      var onContinueMilitary = TSI.oneAtATime(function (id) {
+        if (turnRunning || militaryRunning) return false;
+        return runMilitary(id);
+      });
+      var onCallOff = TSI.oneAtATime(async function (id) {
+        if (turnRunning || militaryRunning) return;
+        var ma = R.militaryById(state, id);
+        if (!ma) return;
+        var ok = await ask('Call off the Military Action (' + R.militaryName(ma) + ')? Nothing is won or lost, and your forces stand down.', 'Call off');
+        if (!ok || !life.alive) return;
+        R.callOffMilitaryAction(state, id);
         done();
       });
 
@@ -1107,10 +1538,10 @@
       function renderTurnButton() {
         var tp = state.turnInProgress;
         advanceBtn.textContent = tp ? 'Finish Bastion Turn ' + tp.turn : 'Advance Bastion Turn (+7 days)';
-        advanceBtn.disabled = turnRunning;
+        advanceBtn.disabled = turnRunning || militaryRunning;
       }
       var onAdvance = TSI.oneAtATime(function () {
-        if (turnRunning) return false;
+        if (turnRunning || militaryRunning) return false;
         turnRunning = true;
         renderTurnButton();
         var finish = function () {
@@ -1168,20 +1599,14 @@
           return life.alive ? null : 'stopped';
         }
         if (kind === 'war') {
-          var plan = R.warPlan(state, data, o);
-          var roll = await rollD20({ title: plan.title, mod: plan.mod, dc: plan.dc });
-          if (!life.alive) return 'stopped';
-          if (!roll) {
-            R.skipOrder(state, o.id);
-            log('War Turn', 'War resolution cancelled at roll step. The war action stays pending for the next Bastion Turn.');
-            done();
-            return null;
-          }
-          var line = R.resolveWar(state, data, plan, roll, rand);
-          R.removeOrder(state, o.id);
-          log(line[0], line[1]);
+          /* The war order becomes a saved Military Action at once, so it can't
+             come due twice; then Begin Military Action, or Later. */
+          var ma = R.beginMilitaryAction(state, data, o, rand);
           done();
-          return null;
+          var go = await militaryPrompt(ma);
+          if (!life.alive) return 'stopped';
+          if (go && (await runMilitary(ma.id)) === 'stopped') return 'stopped';
+          return life.alive ? null : 'stopped';
         }
         if (kind === 'emissary') {
           var p = R.emissaryPlan(state, data, o);
@@ -1511,7 +1936,8 @@
       var onReset = TSI.oneAtATime(async function () {
         var ok = await ask('Reset the Bastion? This clears its saved data in this browser only. Download a save first if you might want it back.', 'Reset');
         if (!ok || !life.alive) return;
-        ctx.store.remove('state');
+        /* The crest and the War Table's map and settings go too; the panels' open or closed state stays. */
+        ['state', 'crest', 'warMap', 'warTable'].forEach(function (k) { if (ctx.store.has(k)) ctx.store.remove(k); });
         TSI.store.flush().then(function () { TSI.shell.reload(); });
       });
 
@@ -1533,7 +1959,8 @@
         facCard.root,
         el('p', { class: 'tsi-bas-footer', text: 'Built for D&D Beyond campaigns. Data comes from your spreadsheet and is editable.' })
       ]);
-      var page = el('div', { class: 'tsi-bas' }, [bar, el('div', { class: 'tsi-bas-layout' }, [side, main]), tip]);
+      var layout = el('div', { class: 'tsi-bas-layout' }, [side, main]);
+      var page = el('div', { class: 'tsi-bas' }, [bar, layout, tip]);
       ctx.root.appendChild(page);
       /* The Favour panel sticks just under the tool's bar, whatever its height. */
       var barWatch = new ResizeObserver(function () { if (life.alive) page.style.setProperty('--tsi-bas-bar-h', bar.offsetHeight + 'px'); });
@@ -1563,10 +1990,18 @@
         life.onStop(function () { if (turnNotice) turnNotice.close(); });
       }
 
+      /* A Military Action waiting from before: say where to find it. */
+      if ((state.militaryActions || []).length) {
+        maNotice = TSI.notify('A Military Action (' + R.militaryName(state.militaryActions[0]) + ') is waiting. Continue it from the Banner & War Council panel.', { id: 'tsi-bas-military', timeout: 12000 });
+        life.onStop(function () { if (maNotice) maNotice.close(); });
+      }
+
       /* For the tests. */
       ns.debug = {
         state: function () { return state; },
         busy: function () { return turnRunning; },
+        military: function () { return militaryRunning; },
+        warTable: function () { return warTableOpen; },
         /* Change the Bastion directly (to set up a test), then save and redraw. */
         change: function (fn) { fn(state); done(); }
       };

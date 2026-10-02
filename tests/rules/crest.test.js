@@ -194,6 +194,46 @@
     t.equal(R.fileName(new Array(46).join('a')).length, 44, '40 characters plus .png');
   });
 
+  group('Crest: remembering your design');
+
+  test('a saved design comes back exactly as it was', function (t) {
+    var s = R.randomCrest(dice([0.3, 0.7, 0.1, 0.9, 0.5]));
+    s.motto = 'Hold Fast';
+    t.same(R.cleanDesign(JSON.parse(JSON.stringify(s))), s);
+    var custom = Object.assign(R.defaults(), { scheme: '', sigilColour: '#123456' });
+    t.same(R.cleanDesign(custom), custom, 'a hand-picked colour, with no scheme');
+  });
+
+  test('anything unknown or out of range goes back to the default, and the rest is kept', function (t) {
+    var d = R.defaults();
+    var c = R.cleanDesign({ sigil: 'kraken', shield: 'nonsense', division: 'quarterly', sigilSize: 999, sigilShift: -99, rimWidth: 'wide',
+      field1: 'red', field2: '#ABC', scheme: 'gone', clanName: 'x'.repeat(60), motto: 'y'.repeat(50), extra: 'ignored' });
+    t.equal(c.sigil, d.sigil, 'a sigil that no longer exists');
+    t.equal(c.shield, d.shield, 'an unknown shield');
+    t.equal(c.division, 'quarterly', 'a real division is kept');
+    t.equal(c.sigilSize, data.limits.sigilSize.max, 'size kept in range');
+    t.equal(c.sigilShift, data.limits.sigilShift.min, 'shift kept in range');
+    t.equal(c.rimWidth, d.rimWidth, 'a rim width that isn\'t a number');
+    t.equal(c.field1, d.field1, 'a colour that isn\'t a colour');
+    t.equal(c.field2, '#aabbcc', 'a short colour is written out');
+    t.equal(c.scheme, d.scheme, 'an unknown scheme');
+    t.equal(c.clanName.length, data.limits.clanNameLength, 'name cut to length');
+    t.equal(c.motto.length, data.limits.mottoLength, 'motto cut to length');
+    t.ok(!('extra' in c), 'nothing extra is kept');
+    t.same(Object.keys(c).sort(), Object.keys(d).sort(), 'every setting is there');
+  });
+
+  test('something that isn\'t a design is refused', function (t) {
+    [null, undefined, 'lion', 42, [], [1, 2]].forEach(function (v) { t.equal(R.cleanDesign(v), null, JSON.stringify(v)); });
+    t.same(R.cleanDesign({}), R.defaults(), 'an empty design is the default one');
+  });
+
+  test('importing: a Crest file whose design isn\'t a design is refused', function (t) {
+    t.equal(R.importProblem([{ key: 'tsi.crest.design', value: R.defaults() }]), null, 'a good file');
+    t.equal(R.importProblem([{ key: 'tsi.crest.design', value: { sigil: 'raven' } }]), null, 'a partial design is fine');
+    t.ok(/isn't in the right form/.test(R.importProblem([{ key: 'tsi.crest.design', value: 'lion' }])), 'a broken file');
+  });
+
   group('Crest: shapes and fitting');
 
   test('reading outlines: arcs, short forms and relative moves', function (t) {

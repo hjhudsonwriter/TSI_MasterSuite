@@ -1,8 +1,9 @@
 /* Clan Crest Creator — the screen.
    Name the clan (or roll a random name), design the crest in five tabs
    (Shield, Field, Sigil, Colours, Motto), roll a Random Crest or Reset, and
-   download a 2048 × 2048 PNG with a see-through background. Nothing is
-   saved, as in the old tool.
+   download a 2048 × 2048 PNG with a see-through background. The design is
+   saved as you go, so it's there next time (Harry's request, 1 October
+   2026; the old tool saved nothing).
    The content is in data/*.js, the rules in rules.js, the shapes' geometry in
    geometry.js and the drawing in draw.js; this file builds the controls and
    wires them up. */
@@ -61,7 +62,15 @@
       var SHIELDS = window.TSI_DATA.crestShields;
       var SIGILS = window.TSI_DATA.crestSigils;
       var lim = data.limits;
-      var state = R.defaults();
+
+      /* Your last design, saved as you go. A save that isn't a design is set
+         aside (never deleted) and the Crest starts fresh. */
+      var saved = ctx.store.get('design', null);
+      var state = saved === null ? null : R.cleanDesign(saved);
+      if (saved !== null && !state) ctx.store.quarantine('design', 'The saved crest wasn\'t in the right form.');
+      if (!state) state = R.defaults();
+      var started = false;
+      function save() { if (started) ctx.store.set('design', Object.assign({}, state)); }
 
       /* Control ids start "tsi-crest-field-"; the drawing's own parts use
          "tsi-crest-svg-", so the two can never share a name. */
@@ -243,6 +252,7 @@
       life.on(nameInput, 'input', function () {
         state.clanName = nameInput.value;
         updateFileHint();
+        save();
       });
 
       var mottoInput = el('input', {
@@ -419,8 +429,10 @@
         fileHint.textContent = R.fileName(state.clanName);
       }
 
+      /* Every change ends here, so this is where the design is saved. */
       function draw() {
         preview.innerHTML = D.svg(state);
+        save();
       }
 
       /* ---------- Download ---------- */
@@ -441,6 +453,7 @@
 
       syncAll();
       draw();
+      started = true;
 
       /* For the click-through tests. */
       crest.debug = {
@@ -452,6 +465,10 @@
 
     stop: function () {
       crest.debug = null;
+    },
+
+    validateImport: function (records) {
+      return crest.rules.importProblem(records);
     }
   });
 }());

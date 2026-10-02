@@ -406,7 +406,7 @@ Every page Harry uses sits in the top folder and the fonts sit below it. The tes
   - It shows what's inside, asks before replacing, and offers to download the current data first.
   - The tools' own buttons stay too, such as the Tracker's library-only Campaign JSON.
 - **Whole suite:** "Back up everything" makes one dated file. "Restore" lists what's inside, asks, and replaces only the tools in the file.
-- **Crest, Ritual and Pelagosi** save nothing, as before, so they have no backup buttons.
+- **Ritual and Pelagosi** save nothing, as before, so they have no backup buttons. (The Crest saved nothing at first too; since 1 October 2026 it remembers your last design, at Harry's request, with Export, Import and backups like the other tools.)
 - **No import of old saves** (answer 9). The save formats are designed fresh, for example positions stored relative to the map picture.
 
 ### Assets
@@ -757,7 +757,7 @@ Defaults are in brackets; "keep" means keep it as the old tool does it.
 - **B7** Gaming Hall gold, War Room upkeep, Craft Magic Item level limit? **Keep, not applied.**
 - **B8** Lowering the level: what happens to buildings above the limit? **Kept, marked "over capacity".**
 - **B9** Refund cancelled orders? **No refund.**
-- **B10** Beasts counted by row? **Keep.**
+- **B10** Beasts counted by row? **Keep.** *(Changed 2 October 2026 at Harry's request: beasts are now counted by number; see KNOWN_ISSUES BAS-25.)*
 - **B11** Fix the Treasure event so 99–00 can come up? **Yes.**
 - **B12** Show the four overlays with mismatched names? **Keep hidden.**
 - **B13** Which Bastion map is the real one? **The one in use.**

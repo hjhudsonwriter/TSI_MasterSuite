@@ -25,8 +25,8 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
 | Scarlett Isles Explorer (EXP) | 12 | 4 | 0 | 13 | 0 |
-| The Ironbow Bastion Manager (BAS) | 15 | 2 | 5 | 17 | 1 |
-| Clan Crest Creator (CRS) | 0 | 4 | 4 | 3 | 3 |
+| The Ironbow Bastion Manager (BAS) | 16 | 2 | 8 | 16 | 1 |
+| Clan Crest Creator (CRS) | 0 | 4 | 5 | 3 | 3 |
 | Arenas of The Scarlett Isles (ARN) | 8 | 2 | 0 | 17 | 0 |
 | The Heartwood Ritual (RIT) | 9 | 1 | 0 | 15 | 1 |
 | Pelagosi Puzzle Trials (PEL) | 11 | 1 | 0 | 6 | 0 |
@@ -89,6 +89,7 @@ These come from checking the eight tools against each other: the collision audit
 - **After (planned):** One saver per tool; a second tab shows a "suite already open" warning.
 - **Evidence:** Tracker test5.js; Notice Board v2 test D.
 - **Phase 1:** Done and tested. Both tabs show an "Already open" warning, which goes when one closes. Switching tools or reloading never sets off a false warning. It warns rather than blocks: both tabs can still save, so Harry closes one.
+- **2 October 2026:** The warning now only appears when the two tabs could really overwrite each other: both have the **same tool** open, or either is on the **home screen** (whose Restore and Back up everything cover every tool). Two different tools, such as the Bastion in one tab and the Clan Crest Creator in another (which the Bastion's new crest link opens), don't warn, because each tool only saves its own records. The warning names what the other tab has open, for example "The Ironbow Bastion Manager is also open in another tab or window…". Tested in `tests/e2e/phase1.test.js`.
 
 ### SUI-07 · Error details are hidden on double-clicked pages
 **Fixed by the new design**
@@ -1167,14 +1168,14 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **Phase 9:** Kept (B3). The side-by-side run shows the same two incomes as the old tool.
 
 ### BAS-25 · Beasts counted by row, not number
-**Later, Harry's call** · applies something twice
+**Deliberate change** (fixed at Harry's request, 2 October 2026; was *Later, Harry's call*) · applies something twice
 
-- **Before:** Two of the same beast show as 'x2' but count as one beast for war, and a single beast casualty removes the whole pair.
-- **After:** Kept as it is in the rebuild.
+- **Before:** Two of the same beast show as 'x2' but count as one beast for war, and a single beast casualty removes the whole pair. Harry found it with five Giant Vultures: Beasts Committed would only go up to 1.
+- **After:** Beasts are counted by number: five Giant Vultures are five beasts, and all five can be committed. A lost war still costs one beast, and now it's one beast (the vultures go from ×5 to ×4), not the whole row. It's always one that marched: the committed beasts are the first in the Menagerie's list, as the War Table names them, and the last of those is lost. The war's modifier is unchanged: it still counts at most 2 beasts.
 - **Decision note:** B10. The checker notes the casualty part removes more beasts than it should.
 - **Checker's note:** The casualty part is damage counted twice. The availability undercount is 'other'. The handover warns against counting rows.
 - **Evidence:** app.js:476 and 5211 use .length; 5359-5363 splices a row. Runtime B6: 'Owlbear x2', war hint '1 beasts'.
-- **Phase 9:** Kept (B10). Test.
+- **Phase 9:** Kept at first (B10). **Fixed 2 October 2026** at Harry's request: `R.beastQty` and `R.removeBeasts` in `tools/bastion/rules.js`; tests in `tests/rules/bastion.test.js` ("five Giant Vultures are five beasts…") and `tests/e2e/phase9.test.js`. In the side-by-side run with the old Bastion, the only beast in that campaign is a single one, so nothing else changes.
 
 ### BAS-26 · Library scripture notes never attach
 **Later, Harry's call** · other
@@ -1307,6 +1308,34 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **After:** The lists keep your choice, the carousel stays where it was, and a war report shows its lines as written.
 - **Evidence:** app.js:4444-4497 rebuild everything on each render; 5139 puts the report's line breaks in an ordinary box.
 - **Phase 9:** Changed.
+
+### BAS-41 · A war action was settled by one roll
+**Deliberate change** (Harry's request, 2 October 2026) · other
+
+- **Before:** A queued war action resolved on the next Advance Bastion Turn with a single d20 roll against its DC, and that was all.
+- **After:** When the war comes due, a pop-up offers **Begin Military Action** or **Later** (Later leaves it waiting in the Banner & War Council panel, where Begin or Continue picks it up any time). Then three rolls, each a plain d20 with its own story:
+  - **Weather Conditions**, DC 12. Pass: a clear day. Fail: a Snowstorm, Rainstorm or Heatwave, picked at random, with the Explorer's weather film.
+  - **Morale**, DC 12, plus 4 in a snowstorm, 2 in a rainstorm or 3 in a heatwave.
+  - **Luck**, DC 10. Pass: +1, fail: −1.
+
+  Then the **War Table** opens full screen inside the Bastion: upload a battle map (or use the plain board), Begin Deployment, drag the forces about on your own ground (the bottom half), and Start Battle to lock them in. Until enemy forces and combat are built (Harry's next phase), the battle is then settled by the old single roll, with Luck's +1 or −1 added, and the war log also notes the weather, morale, luck and deployment. Weather and Morale don't change the result yet.
+- **Added beyond the request, for Harry to keep or drop:** **Call off** in the War Council, which ends a Military Action with nothing won or lost (otherwise a war, once due, could never be ended without fighting it); and, on the War Table, Snap, Grid on/off, Zoom and Fit, panning when zoomed in, arrow-key nudging and Clear map, the usual battlemap controls (the Combat Tracker's battlemap has the same kind).
+- **Saving:** every step is saved as it happens (`militaryActions` in the Bastion's save; the War Table's map and settings as `tsi.bastion.warMap` and `tsi.bastion.warTable`), so a cancelled roll, a closed War Table or a closed window loses nothing and nothing is applied twice. The war order is removed in the same step that creates the Military Action, so it can't come due twice.
+- **Evidence:** `tools/bastion/rules.js` (the Military Action section), `tools/bastion/war-table-rules.js`, `tools/bastion/war-table.js`, `tools/bastion/tool.js`; tests in `tests/rules/bastion.test.js`, `tests/rules/bastion-war-table.test.js` and `tests/e2e/phase9.test.js`. The side-by-side run with the old Bastion still matches, apart from the war log's extra lines and Luck's +1 on that raid's roll.
+
+### BAS-42 · No way to show the Clan's or Brigade's crest
+**Deliberate change** (Harry's request, 2 October 2026) · other
+
+- **Before:** The Bastion had no crest. Form Clan asked for the Clan's name, Chief and motto; Form Mercenary Brigade for its name.
+- **After:** Both pop-ups have a **Crest (optional)** box: a link that opens the Clan Crest Creator in a new tab, and **Upload crest…** for the PNG it downloads. The crest shows beside the Clan's or Brigade's name in Party Identity, with **Change crest…** and **Remove crest** (which asks first); a Clan or Brigade founded earlier can **Add crest…** there. The picture is shrunk to 512 pixels a side and saved as `tsi.bastion.crest`, so it's in Download Save and "Back up everything"; Reset clears it with the rest of the Bastion.
+- **Evidence:** `tools/bastion/tool.js` (the crest section), `R.isCrest` in `tools/bastion/rules.js`; tests in `tests/rules/bastion.test.js` and `tests/e2e/phase9.test.js`.
+
+### BAS-43 · The Lieutenants and Regiments boxes won't take a number, with no sign why
+**Must fix** (Harry's report, 2 October 2026; fixed) · breaks the tool
+
+- **Before:** Harry had Lieutenants and Regiments available but the War Turn boxes wouldn't take any. The boxes are switched off for an Unsworn party (only a Clan or Mercenary Brigade can commit them, as in the old tool), but a switched-off box looked exactly like a working one, and the only clue was the end of the small line under the panel. The old tool looked the same. Each box also rewrote its number on every key press. That never failed in the test browser, but it could fight with your typing.
+- **After:** A switched-off box is greyed out, says "Clan or Brigade only" underneath, and explains why when you hover over it. Every box shows how many are available ("3 available", or "None yet: recruit in the War Room"). The arrows stop at that number, and a number is only checked once you've finished typing it (or when you press Queue War Action). The rule itself is unchanged.
+- **Evidence:** Could not be reproduced in the test browser: a Clan with Lieutenants and Regiments could commit them by typing, the arrow keys and Backspace, before, during and after a Military Action, on the laptop and the TV size. `tools/bastion/tool.js` (`showWarAvailable`), `tools/bastion/bastion.css`; tests in `tests/e2e/phase9.test.js`.
 
 
 ## Clan Crest Creator
@@ -1451,6 +1480,13 @@ Old repo: `_legacy/clan-crest-creator` (file:line references point there).
 - **After:** The four control groups sit two by two beside the preview. Every control, the preview and Download are in view at 1707 × 930, in full screen and on the TV, with no sideways scroll. The preview crest grows with the window's height.
 - **Evidence:** Measured in the planning and phase 2 sessions; tests/e2e/phase2.test.js "Fits the laptop and the TV".
 - **Crest rework (29 September 2026):** Still fixed. The new tabbed controls, the crest and Download all fit the laptop (in a window and full screen) and the TV, on every tab, with no sideways scroll. Switching tabs doesn't move anything.
+
+### CRS-15 · The Crest forgets your design when you leave it
+**Deliberate change** (Harry's request, 1 October 2026) · other
+
+- **Before:** The Crest saved nothing, as in the old tool. Going Home, switching tool or closing the window lost the design, without asking.
+- **After:** The design is saved as you go and comes back next time. The Crest now has Export and Import in the top bar and is included in "Back up everything", like the tools that always saved. It keeps one design: Random Crest and Reset replace it, without asking, as before. A saved design is checked when it loads: a choice that no longer exists (such as the old Kraken sigil) goes back to its default and the rest is kept, and a save that isn't a design at all is set aside, never deleted.
+- **Evidence:** `tools/crest/tool.js` (saving), `tools/crest/rules.js` `cleanDesign` and `importProblem`; tests in `tests/rules/crest.test.js` ("remembering your design") and `tests/e2e/phase2.test.js` ("Remembering your design").
 
 ## Arenas of The Scarlett Isles
 Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point there).

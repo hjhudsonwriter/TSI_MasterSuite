@@ -1,6 +1,6 @@
 /* Clan Crest Creator — rules (plain functions, tested in tests/rules.html).
-   Random names, Random Crest, Reset, the download's file name, and the colour
-   sums the drawing uses. Random choices take an optional random-number
+   Random names, Random Crest, Reset, checking a saved design, the download's
+   file name, and the colour sums the drawing uses. Random choices take an optional random-number
    function, so tests can give them fixed "dice". */
 (function () {
   'use strict';
@@ -99,6 +99,46 @@
 
     defaults: function () {
       return Object.assign({}, data().defaults);
+    },
+
+    /* A saved or imported design, made safe to draw: every choice it knows
+       is kept, and anything missing, unknown or out of range (a sigil that
+       no longer exists, a broken colour) is put back to the default. Returns
+       null if it isn't a design at all. */
+    cleanDesign: function (v, shields, sigils) {
+      if (!v || typeof v !== 'object' || Array.isArray(v)) return null;
+      var d = data(), lim = d.limits;
+      var out = rules.defaults();
+      var lists = {
+        shield: shields || window.TSI_DATA.crestShields,
+        sigil: sigils || window.TSI_DATA.crestSigils,
+        division: d.divisions, ordinary: d.ordinaries, rim: d.rims, lighting: d.lightings,
+        texture: d.textures, banner: d.banners, relief: d.reliefs, sigilFace: d.faces
+      };
+      Object.keys(lists).forEach(function (k) {
+        if (lists[k].some(function (o) { return o.id === v[k]; })) out[k] = v[k];
+      });
+      if (v.scheme === '' || d.schemes.some(function (s) { return s.id === v.scheme; })) out.scheme = v.scheme;
+      ['sigilSize', 'sigilShift', 'rimWidth'].forEach(function (k) {
+        if (typeof v[k] === 'number' && isFinite(v[k])) out[k] = rules.clampInt(v[k], lim[k].min, lim[k].max);
+      });
+      if (typeof v.clanName === 'string') out.clanName = v.clanName.slice(0, lim.clanNameLength);
+      if (typeof v.motto === 'string') out.motto = v.motto.slice(0, lim.mottoLength);
+      d.colourSlots.forEach(function (slot) {
+        var hex = rules.cleanHex(v[slot.key]);
+        if (hex) out[slot.key] = hex;
+      });
+      return out;
+    },
+
+    /* Why an imported Crest file can't be used, or null if it can. */
+    importProblem: function (records) {
+      for (var i = 0; i < records.length; i++) {
+        if (records[i].key === 'tsi.crest.design' && !rules.cleanDesign(records[i].value)) {
+          return 'This file\'s crest isn\'t in the right form, so it wasn\'t imported. Nothing was changed.';
+        }
+      }
+      return null;
     },
 
     /* e.g. "StormOath" or "EmberCircle of the Salt Coast" (no space between the

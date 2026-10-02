@@ -45,6 +45,7 @@
     return out;
   }
 
+  /* The address of a tool, or of home (no id), on this same page, relative to it. */
   function pageUrl(toolId) {
     var page = location.pathname.split('/').pop() || 'index.html';
     return page + (toolId ? '?tool=' + encodeURIComponent(toolId) : '');
@@ -414,10 +415,12 @@
           return TSI.store.keys(id).map(function (k) { return k.slice(prefix.length); });
         },
         /* A save that can't be read is set aside (never deleted) and the user is told. */
-        quarantine: function (name, reason) {
+        /* lost: what carries on without it, if not the whole tool ("the tool started fresh"),
+           e.g. 'the Bastion opened without its crest picture'. */
+        quarantine: function (name, reason, lost) {
           return TSI.store.quarantine(rules.keyFor(id, name), reason).then(function (newKey) {
             if (newKey) {
-              TSI.notify('A save in ' + TSI.the(info.name) + ' couldn\'t be read, so it was set aside rather than deleted, and the tool started fresh. The damaged copy is kept in "Back up everything".', {
+              TSI.notify('A save in ' + TSI.the(info.name) + ' couldn\'t be read, so it was set aside rather than deleted, and ' + (typeof lost === 'string' && lost ? lost : 'the tool started fresh') + '. The damaged copy is kept in "Back up everything".', {
                 type: 'warn', title: 'Damaged save set aside.', id: 'tsi-quarantine-' + name
               });
             }
@@ -506,7 +509,8 @@
     }
 
     buildTopbar(info);
-    TSI.tabGuard.start();
+    /* The "Already open" warning only minds another tab with the same tool, or the home screen. */
+    TSI.tabGuard.start(info ? info.id : '');
 
     TSI.store.onStatus(showSaveStatus);
     TSI.store.ready.then(function (mode) {
@@ -525,7 +529,10 @@
     reload: reload,
     stopTool: stopTool,
     current: function () { return current; },
-    orderedTools: orderedTools
+    orderedTools: orderedTools,
+    /* A link to a tool (or home, with no id) on this same page: 'index.html?tool=crest',
+       or 'harness.html?tool=crest' on the test page. For a link that opens in a new tab. */
+    pageUrl: pageUrl
   };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);

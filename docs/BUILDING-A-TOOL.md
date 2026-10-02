@@ -7,7 +7,7 @@ Notes for the sessions that rebuild each tool (phases 2–9). Read CLAUDE.md and
 In `shared/data/tools.js`, set the tool's `built: true` and list its files, relative to the suite's top folder:
 
 ```js
-{ id: 'crest', ..., built: true, saves: false,
+{ id: 'crest', ..., built: true, saves: true,
   files: { css: ['tools/crest/crest.css'], js: ['tools/crest/data/parts.js', 'tools/crest/rules.js', 'tools/crest/tool.js'] } }
 ```
 

@@ -4,7 +4,8 @@
    checks the five tabs, every shape, division, band and sigil tile, the chips
    and sliders, the colour palette and schemes, Random Name, Random Crest,
    Reset, the PNG download, the layout on the laptop and the TV, and shutting
-   down cleanly.
+   down cleanly. Since 1 October 2026 it also remembers your last design
+   (Harry's request): reopening, Export, Import, backups and damaged saves.
    Run:  node tests/e2e/phase2.test.js */
 'use strict';
 
@@ -89,8 +90,8 @@ async function downloadPng(page) {
       equal(await page.title(), 'Clan Crest Creator · The Scarlett Isles');
     });
 
-    await check('it saves nothing, so there\'s no Export, Import or save status', async () => {
-      equal(await page.$$eval('[data-test=export], [data-test=import], [data-test=save-status]', x => x.length), 0);
+    await check('it has Export, Import and a save status, and saves nothing until you change something', async () => {
+      equal(await page.$$eval('[data-test=export], [data-test=import], [data-test=save-status]', x => x.length), 3);
       equal(await page.evaluate(() => TSI.store.ready.then(() => TSI.store.keys())), []);
     });
 
@@ -129,7 +130,7 @@ async function downloadPng(page) {
       }));
     });
 
-    await check('Home goes back to the home screen without asking (it saves nothing, as before)', async () => {
+    await check('Home goes back to the home screen without asking (the design is saved as you go)', async () => {
       await Promise.all([page.waitForURL(/index\.html$/), page.click('[data-test=home]')]);
       await page.waitForSelector('.tsi-card');
     });
@@ -152,6 +153,140 @@ async function downloadPng(page) {
       const svgBefore = await page.$eval('.tsi-crest-svg', e => e.innerHTML);
       await page.$eval('[data-key=shield] [data-value=kite]', b => b.click());
       equal(await page.$eval('.tsi-crest-svg', e => e.innerHTML), svgBefore, 'a closed tool still reacted');
+    });
+
+    await check('nothing from the internet, nothing missing, no errors', async () => {
+      equal(context.log.net, [], 'internet requests');
+      equal(context.log.failed, [], 'missing files');
+      equal(context.log.errors, [], 'page errors');
+      equal(context.log.consoleErrors, [], 'console errors');
+    });
+    await context.close();
+  }
+
+  /* ------------------------------------------------------------------ */
+  section('Remembering your design (internet off)');
+  {
+    const context = await H.newContext(browser, 'laptop');
+    await context.setOffline(true);
+    const page = await context.newPage();
+    await openCrest(page);
+    const saved = () => page.evaluate(() => TSI.store.flush().then(() => TSI.store.get('tsi.crest.design')));
+    let want;
+
+    await check('every change is saved as you go: name, shield, sigil, size, scheme and motto', async () => {
+      await page.fill('#tsi-crest-field-clan-name', 'Iron Oath');
+      await page.click('[data-key=shield] [data-value=kite]');
+      await tab(page, 'sigil');
+      await page.click('[data-key=sigil] [data-value=raven]');
+      await slide(page, 'sigilSize', 130);
+      await tab(page, 'colours');
+      await page.click('[data-key=scheme] [data-value=orSable]');
+      await tab(page, 'motto');
+      await page.fill('#tsi-crest-field-motto', 'Hold Fast');
+      want = await state(page);
+      equal([want.clanName, want.shield, want.sigil, want.sigilSize, want.scheme, want.motto], ['Iron Oath', 'kite', 'raven', 130, 'orSable', 'Hold Fast']);
+      equal(await saved(), want);
+      assert(/Saved/.test(await page.textContent('[data-test=save-status]')), 'save status');
+    });
+
+    await check('reopening the page brings the same design back, controls and all', async () => {
+      await openCrest(page);
+      equal(await state(page), want);
+      equal(await page.inputValue('#tsi-crest-field-clan-name'), 'Iron Oath');
+      equal(await page.inputValue('#tsi-crest-field-motto'), 'Hold Fast');
+      equal(await page.textContent('[data-test=file-name]'), 'Iron_Oath.png');
+      equal([await pressed(page, 'shield'), await pressed(page, 'sigil'), await pressed(page, 'scheme')], ['kite', 'raven', 'orSable']);
+      equal(await page.inputValue('#tsi-crest-field-sigilSize'), '130');
+      assert(await previewMatches(page), 'preview');
+    });
+
+    await check('going Home and back brings it back too', async () => {
+      await Promise.all([page.waitForURL(/index\.html$/), page.click('[data-test=home]')]);
+      await Promise.all([page.waitForURL(/\?tool=crest$/), page.click('.tsi-card[data-tool=crest]')]);
+      await page.waitForSelector('.tsi-crest-svg svg');
+      equal(await state(page), want);
+    });
+
+    let exported;
+    await check('Export downloads the design', async () => {
+      const d = await H.download(page, '[data-test=export]');
+      assert(/^tsi-crest-\d{4}-\d{2}-\d{2}-\d{4}\.json$/.test(d.name), d.name);
+      exported = JSON.parse(d.text);
+      equal([exported.kind, exported.tool, exported.records.map(r => r.key)], ['tool', 'crest', ['tsi.crest.design']]);
+      equal(exported.records[0].value, want);
+    });
+
+    await check('Import refuses a file whose crest is damaged, changing nothing', async () => {
+      const bad = Object.assign({}, exported, { records: [{ key: 'tsi.crest.design', value: 'a lion', savedAt: exported.savedAt }] });
+      await H.chooseFile(page, '[data-test=import]', H.writeTemp('bad-crest.json', bad));
+      assert(/crest isn't in the right form/.test(await H.modalText(page)));
+      await H.clickModal(page, 'OK');
+      equal(await state(page), want);
+    });
+
+    await check('Import refuses another tool\'s file', async () => {
+      const other = Object.assign({}, exported, { tool: 'quests', records: [{ key: 'tsi.quests.accepted', value: [], savedAt: exported.savedAt }] });
+      await H.chooseFile(page, '[data-test=import]', H.writeTemp('quests-file.json', other));
+      assert(/Notice Board/.test(await H.modalText(page)));
+      await H.clickModal(page, 'OK');
+      equal(await state(page), want);
+    });
+
+    const eagle = () => Object.assign({}, exported, { records: [{ key: 'tsi.crest.design', value: Object.assign({}, want, { sigil: 'eagle', clanName: 'Sky Wardens' }), savedAt: exported.savedAt }] });
+    await check('Import asks first; Cancel changes nothing', async () => {
+      await H.chooseFile(page, '[data-test=import]', H.writeTemp('eagle.json', eagle()));
+      assert(/Import into the Clan Crest Creator/.test(await H.modalText(page)));
+      await H.clickModal(page, 'Cancel');
+      equal(await state(page), want);
+    });
+
+    await check('Import replaces the design', async () => {
+      await H.chooseFile(page, '[data-test=import]', H.writeTemp('eagle2.json', eagle()));
+      await page.waitForSelector('.tsi-modal');
+      await page.uncheck('.tsi-modal input[type=checkbox]');
+      await Promise.all([page.waitForEvent('load'), H.clickModal(page, 'Import')]);
+      await page.waitForSelector('.tsi-crest-svg svg');
+      const s = await state(page);
+      equal([s.sigil, s.clanName, s.shield], ['eagle', 'Sky Wardens', 'kite']);
+    });
+
+    await check('"Back up everything" includes the Crest', async () => {
+      await page.click('[data-test=home]');
+      await page.waitForSelector('[data-test=backup-everything]');
+      const d = await H.download(page, '[data-test=backup-everything]');
+      const recs = JSON.parse(d.text).records;
+      const mine = recs.filter(r => r.key === 'tsi.crest.design');
+      equal(mine.length, 1);
+      equal(mine[0].value.sigil, 'eagle');
+    });
+
+    await check('Reset goes back to Blackstone Wardens, and that is remembered', async () => {
+      await openCrest(page);
+      await page.click('[data-test=reset]');
+      await saved();
+      await openCrest(page);
+      const s = await state(page);
+      equal(s, await page.evaluate(() => TSI.crest.rules.defaults()));
+    });
+
+    await check('a saved sigil that no longer exists falls back to the lion, keeping the rest', async () => {
+      await page.evaluate(() => { TSI.store.set('tsi.crest.design', Object.assign(TSI.crest.rules.defaults(), { sigil: 'kraken', shield: 'kite', clanName: 'Deep Watch' })); return TSI.store.flush(); });
+      await openCrest(page);
+      const s = await state(page);
+      equal([s.sigil, s.shield, s.clanName], ['lion', 'kite', 'Deep Watch']);
+      equal(await page.evaluate(() => TSI.store.keys('quarantine')), [], 'nothing set aside');
+    });
+
+    await check('a damaged save is set aside, not deleted, and the Crest starts fresh', async () => {
+      await page.evaluate(() => { TSI.store.set('tsi.crest.design', ['broken']); return TSI.store.flush(); });
+      await openCrest(page);
+      await H.waitForNotice(page, /set aside/);
+      equal(await state(page), await page.evaluate(() => TSI.crest.rules.defaults()));
+      const kept = await page.evaluate(() => TSI.store.keys('quarantine').map(k => TSI.store.get(k)));
+      equal(kept, [['broken']]);
+      await page.click('[data-key=shield] [data-value=oval]');
+      equal((await saved()).shield, 'oval');
     });
 
     await check('nothing from the internet, nothing missing, no errors', async () => {

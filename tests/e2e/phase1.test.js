@@ -605,6 +605,191 @@ async function waitSaved(page) {
   }
 
   /* ------------------------------------------------------------------ */
+  section('Two tabs: only the same tool, or the home screen, warns');
+  {
+    /* Saves are written one name at a time and each tool only writes its own,
+       so two different tools can be open side by side (the Bastion opens the
+       Crest in a new tab). The home screen's Restore and Back up everything
+       cover every tool, so a home tab still warns alongside anything. Each
+       check gets a fresh browser, so a tab closed in one can't affect the next. */
+    const ALREADY = /Already open\./;
+    const TAIL = ' is also open in another tab or window\\. If both stay open, one can overwrite the other\'s saves\\. Close one of them\\.';
+    const BASTION_TOO = new RegExp('Already open\\. The Ironbow Bastion Manager' + TAIL);
+    const DEMO_TOO = new RegExp('Already open\\. The Demo tool' + TAIL);
+    const HOME_TOO = new RegExp('Already open\\. The suite\'s home screen' + TAIL);
+    const SUITE_TOO = new RegExp('Already open\\. The suite' + TAIL);
+    const warned = async p => (await H.noticeTexts(p)).some(t => ALREADY.test(t));
+    const waitClear = (p, ms) => p.waitForFunction(() => !Array.from(document.querySelectorAll('.tsi-notice')).some(n => /Already open/.test(n.textContent)), null, { timeout: ms || 12000 });
+    const heartbeats = (p, space) => p.evaluate(k => JSON.parse(localStorage.getItem(k) || '{}'), space === 'test' ? 'tsi.test:tabs' : 'tsi.suite.tabs');
+    const counts = p => p.evaluate(() => [TSI.tabGuard.otherCount(), TSI.tabGuard.clashCount()]);
+    async function open(context, url) {
+      const p = await context.newPage();
+      await p.goto(url);
+      await p.waitForSelector('.tsi-topbar');
+      return p;
+    }
+    async function switchTo(p, toolId) {
+      await p.click('[data-test=switch-tool]');
+      await Promise.all([p.waitForNavigation(), p.click('.tsi-menu__item[data-tool=' + toolId + ']')]);
+      await p.waitForSelector('.tsi-topbar');
+    }
+    async function fresh(name, fn) {
+      const context = await H.newContext(browser, 'laptop');
+      await check(name, () => fn(context));
+      await context.close();
+    }
+
+    await fresh('two home tabs warn in both', async context => {
+      const a = await open(context, INDEX);
+      const b = await open(context, INDEX);
+      await H.waitForNotice(a, HOME_TOO, 4000);
+      await H.waitForNotice(b, HOME_TOO, 4000);
+      equal(await counts(a), [1, 1]);
+    });
+
+    await fresh('the Bastion in one tab and the Crest in another don\'t warn', async context => {
+      const bastion = await open(context, INDEX + '?tool=bastion');
+      const crest = await open(context, INDEX + '?tool=crest');
+      await crest.waitForTimeout(2600); /* more than one heartbeat */
+      for (const p of [bastion, crest]) {
+        assert(!(await warned(p)), 'false warning: ' + (await H.noticeTexts(p)));
+        equal(await counts(p), [1, 0], 'each sees the other tab, but they don\'t clash');
+      }
+      const beats = await heartbeats(crest);
+      equal([beats[await bastion.evaluate(() => TSI.tabGuard.id)].tool, beats[await crest.evaluate(() => TSI.tabGuard.id)].tool], ['bastion', 'crest']);
+      await H.shot(bastion, 'tabs-bastion-and-crest');
+    });
+
+    await fresh('the Bastion in two tabs warns in both, naming it; closing one clears the other', async context => {
+      const a = await open(context, INDEX + '?tool=bastion');
+      const b = await open(context, INDEX + '?tool=bastion');
+      await H.waitForNotice(a, BASTION_TOO, 4000);
+      await H.waitForNotice(b, BASTION_TOO, 4000);
+      await H.shot(b, 'tabs-bastion-twice');
+      await b.close();
+      await waitClear(a);
+      equal(await counts(a), [0, 0]);
+    });
+
+    await fresh('home plus the Bastion warns in both, each naming the other; closing home clears it', async context => {
+      const home = await open(context, INDEX);
+      const bastion = await open(context, INDEX + '?tool=bastion');
+      await H.waitForNotice(home, BASTION_TOO, 4000);
+      await H.waitForNotice(bastion, HOME_TOO, 4000);
+      equal(await home.evaluate(() => TSI.tabGuard.tool()), '');
+      equal(await bastion.evaluate(() => TSI.tabGuard.tool()), 'bastion');
+      const beats = await heartbeats(home);
+      equal(beats[await home.evaluate(() => TSI.tabGuard.id)].tool, '', 'home is recorded as \'\'');
+      await home.close();
+      await waitClear(bastion);
+    });
+
+    await fresh('switching tool updates the heartbeat at once', async context => {
+      const a = await open(context, INDEX + '?tool=bastion');
+      const b = await open(context, INDEX + '?tool=crest');
+      await b.waitForTimeout(2600);
+      assert(!(await warned(a)) && !(await warned(b)), 'false warning');
+      const id = await b.evaluate(() => TSI.tabGuard.id);
+
+      await switchTo(b, 'bastion');
+      const t0 = Date.now();
+      await H.waitForNotice(a, BASTION_TOO, 1500);
+      await H.waitForNotice(b, BASTION_TOO, 1500);
+      equal(await b.evaluate(() => TSI.tabGuard.id), id, 'the tab keeps its id');
+      equal((await heartbeats(a))[id].tool, 'bastion');
+      assert(Date.now() - t0 < 1500);
+
+      await switchTo(b, 'crest');
+      /* Well under the 7 seconds an old heartbeat takes to go stale. */
+      await waitClear(a, 2000);
+      await b.waitForTimeout(500);
+      assert(!(await warned(b)), 'false warning in the Crest');
+      equal((await heartbeats(a))[id].tool, 'crest');
+
+      await switchTo(b, 'home');
+      await H.waitForNotice(a, HOME_TOO, 1500);
+      await H.waitForNotice(b, BASTION_TOO, 1500);
+      equal((await heartbeats(a))[id].tool, '');
+    });
+
+    await fresh('a tab that doesn\'t say which tool it has open (an older heartbeat) still warns', async context => {
+      const crest = await open(context, INDEX + '?tool=crest');
+      await crest.evaluate(() => {
+        const map = JSON.parse(localStorage.getItem('tsi.suite.tabs') || '{}');
+        map.tOlderTab = { at: Date.now() };
+        localStorage.setItem('tsi.suite.tabs', JSON.stringify(map));
+      });
+      await H.waitForNotice(crest, SUITE_TOO, 3000); /* at the next heartbeat */
+      /* It stops beating, so the warning goes once it's stale. */
+      await waitClear(crest, 12000);
+    });
+
+    await fresh('Dismiss hides it until the other tabs change', async context => {
+      const a = await open(context, INDEX + '?tool=bastion');
+      const b = await open(context, INDEX + '?tool=bastion');
+      await H.waitForNotice(a, BASTION_TOO, 4000);
+      await H.waitForNotice(b, BASTION_TOO, 4000);
+      await a.click('.tsi-notice button:text-is("Dismiss")');
+      await a.waitForTimeout(4500); /* two heartbeats */
+      assert(!(await warned(a)), 'came back after Dismiss');
+      assert(await warned(b), 'the other tab\'s warning went too');
+      /* A home tab opens: the dismissed tab warns again, and the other tab's
+         wording changes, as each now clashes with a Bastion and a home screen. */
+      const c = await open(context, INDEX);
+      await H.waitForNotice(a, SUITE_TOO, 4000);
+      await H.waitForNotice(b, SUITE_TOO, 4000);
+      await H.waitForNotice(c, BASTION_TOO, 4000);
+      equal((await H.noticeTexts(b)).filter(t => ALREADY.test(t)).length, 1, 'one warning, not two');
+    });
+
+    await fresh('a link that opens the Crest in a new tab from the Bastion (TSI.shell.pageUrl) doesn\'t warn', async context => {
+      const bastion = await open(context, INDEX + '?tool=bastion');
+      equal(await bastion.evaluate(() => [TSI.shell.pageUrl('crest'), TSI.shell.pageUrl(), TSI.shell.pageUrl(null), TSI.shell.pageUrl('')]),
+        ['index.html?tool=crest', 'index.html', 'index.html', 'index.html']);
+      /* A new tab opened by a link copies sessionStorage (and so this tab's id); the guard still gives it its own. */
+      const [crest] = await Promise.all([
+        context.waitForEvent('page'),
+        bastion.evaluate(() => {
+          const a = document.createElement('a');
+          a.href = TSI.shell.pageUrl('crest');
+          a.target = '_blank';
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+        })
+      ]);
+      await crest.waitForSelector('.tsi-topbar');
+      equal(await crest.evaluate(() => [location.pathname.split('/').pop(), location.search, TSI.tabGuard.tool()]), ['index.html', '?tool=crest', 'crest']);
+      assert(await crest.evaluate(() => TSI.tabGuard.id) !== await bastion.evaluate(() => TSI.tabGuard.id), 'the new tab shares the Bastion\'s id');
+      await crest.waitForTimeout(2600);
+      for (const p of [bastion, crest]) {
+        assert(!(await warned(p)), 'false warning: ' + (await H.noticeTexts(p)));
+        equal(await counts(p), [1, 0]);
+      }
+    });
+
+    await fresh('the test page works the same: the Demo tool and the Crest don\'t warn, two Demo tabs do', async context => {
+      const demo = await open(context, HARNESS + '?tool=demo');
+      equal(await demo.evaluate(() => [TSI.shell.pageUrl('crest'), TSI.shell.pageUrl()]), ['harness.html?tool=crest', 'harness.html']);
+      const crest = await open(context, HARNESS + '?tool=crest');
+      await crest.waitForTimeout(2600);
+      for (const p of [demo, crest]) {
+        assert(!(await warned(p)), 'false warning: ' + (await H.noticeTexts(p)));
+        equal(await counts(p), [1, 0]);
+      }
+      equal((await heartbeats(demo, 'test'))[await demo.evaluate(() => TSI.tabGuard.id)].tool, 'demo');
+      const demo2 = await open(context, HARNESS + '?tool=demo');
+      await H.waitForNotice(demo, DEMO_TOO, 4000);
+      await H.waitForNotice(demo2, DEMO_TOO, 4000);
+      assert(!(await warned(crest)), 'the Crest warned about the Demo tool');
+      /* The real suite's Crest in this same browser isn't warned about by the test page's Crest. */
+      const realCrest = await open(context, INDEX + '?tool=crest');
+      await realCrest.waitForTimeout(2600);
+      assert(!(await warned(realCrest)), 'the test page set off the real suite\'s warning');
+    });
+  }
+
+  /* ------------------------------------------------------------------ */
   section('Errors, failed saves and damaged saves');
   {
     const context = await H.newContext(browser, 'laptop');
