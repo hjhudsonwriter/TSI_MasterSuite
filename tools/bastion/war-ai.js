@@ -28,7 +28,9 @@
       - Raid (the enemy defending): one guard to each supply marker still on
         the ground, standing next to it (not on it, so it can still be
         picked up by fighting past the guard); the rest chase anyone
-        carrying a marker, or close in.
+        carrying a marker, or close in. When the markers being carried
+        would win the raid if they got home, every unit chases the
+        carriers instead.
         (Raid, your side: one runner to each marker, the rest escort.)
       - The outpost or depot its side holds: keep a Steady unit (two, in an
         army of three or more) inside it, archers only if nobody else can;
@@ -42,7 +44,10 @@
         contact, where it couldn't attack.
       Archers, whatever their job, never end a move next to an enemy and
       never choose melee (only shots) unless they're already in it; while
-      closing in they keep out of reach of enemy melee.
+      closing in they keep out of reach of enemy melee, and make for a
+      square with a clear shot (in range and in line of sight).
+      Every "nearer" is measured on foot: round deep water and cliffs to a
+      ford, bridge or gap, not as the crow flies.
    6. Nothing useful: Hold.
    Which unit acts: one that can do the objective's urgent work right now
    (raids, your side), then units that can attack (the most expected damage
@@ -99,6 +104,79 @@
     return best;
   }
 
+  /* ---------- Walking distance ---------- */
+  /* Every movement goal is first written as the crow flies (squares to the
+     enemy, to the depot, to a marker...). Measured that way, a unit on a
+     river bank or under a cliff never gets "nearer" by walking along it to
+     a ford or a gap, so it would stand there for the rest of the battle.
+     So a goal is measured by the squares the unit would really have to
+     walk to get there, round the water and cliffs it can't cross. Other
+     units and zones of control are left out: they move. A square it can't
+     walk to the goal from at all keeps its straight-line value, far behind
+     every square it can (so it still heads that way, as before). */
+  var UNREACHABLE = 1e6;
+  /* Which squares this unit could ever stand on or walk through (other
+     units left out): 1 yes, 0 no. Once per kind of mover. */
+  function passGrid(ctx, u) {
+    var BR = ctx.BR;
+    var b = ctx.battle;
+    var k = (BR.hasTrait(u, 'flight') ? 'f' : '') + (BR.hasTrait(u, 'swimmer') ? 's' : '');
+    if (ctx.pass[k]) return ctx.pass[k];
+    var g = [];
+    for (var r = 0; r < b.rows; r++) for (var c = 0; c < b.cols; c++) g.push(isFinite(BR.moveCost(b, u, { c: c, r: r }, ctx.tt)) ? 1 : 0);
+    ctx.pass[k] = g;
+    return g;
+  }
+  /* goal(cell) → a number, lower is better, under 1 meaning "there" (a
+     fraction only settles ties). Returns the same kind of function,
+     measured on foot: the fewest steps (diagonals included) from the
+     square to one that is "there", plus the square's own fraction. On open
+     ground this is exactly the straight-line goal. */
+  function walkGoal(ctx, u, goal) {
+    var cache = ctx.walk[u.id] || (ctx.walk[u.id] = []);
+    for (var i = 0; i < cache.length; i++) if (cache[i].goal === goal) return cache[i].fn;
+    var cols = ctx.battle.cols;
+    var rows = ctx.battle.rows;
+    var pass = passGrid(ctx, u);
+    var n = cols * rows;
+    var gv = new Array(n);
+    var steps = new Array(n);
+    var front = [];
+    for (var j = 0; j < n; j++) {
+      steps[j] = -1;
+      if (!pass[j]) continue;
+      gv[j] = goal({ c: j % cols, r: Math.floor(j / cols) });
+      if (gv[j] < 1) { steps[j] = 0; front.push(j); }
+    }
+    for (var d = 1; front.length; d++) {
+      var next = [];
+      for (var f = 0; f < front.length; f++) {
+        var c0 = front[f] % cols;
+        var r0 = (front[f] - c0) / cols;
+        for (var dc = -1; dc <= 1; dc++) {
+          for (var dr = -1; dr <= 1; dr++) {
+            var nc = c0 + dc;
+            var nr = r0 + dr;
+            if ((!dc && !dr) || nc < 0 || nr < 0 || nc >= cols || nr >= rows) continue;
+            var k = nr * cols + nc;
+            if (!pass[k] || steps[k] !== -1) continue;
+            steps[k] = d;
+            next.push(k);
+          }
+        }
+      }
+      front = next;
+    }
+    var fn = function (cell) {
+      var k = cell.c >= 0 && cell.r >= 0 && cell.c < cols && cell.r < rows ? cell.r * cols + cell.c : -1;
+      if (k < 0 || steps[k] < 0) return UNREACHABLE + goal(cell);
+      var v = gv[k];
+      return isFinite(v) ? steps[k] + (v - Math.floor(v)) : v;
+    };
+    cache.push({ goal: goal, fn: fn });
+    return fn;
+  }
+
   /* The expected Cohesion damage of an attack worked out by previewAttack:
      the average over the twenty faces of the d20. */
   AI.expectedDamage = function (pv) {
@@ -114,11 +192,13 @@
     var BR = BRules();
     var ctx = {
       BR: BR, battle: battle, tt: BR.fitTerrain(battle, terrain), side: side,
-      index: {}, reach: {}, threatCache: {}
+      index: {}, reach: {}, threatCache: {}, pass: {}, walk: {}
     };
     battle.units.forEach(function (u, i) { ctx.index[u.id] = i; });
     ctx.mine = battle.units.filter(function (u) { return u.side === side && BR.onField(u); });
     ctx.opp = BR.enemiesOf(battle, side);
+    ctx.oppAt = {};
+    ctx.opp.forEach(function (o) { ctx.oppAt[key(o.pos)] = true; });
     ctx.oppReach = ctx.opp.map(function (o) {
       var mv = BR.effectiveMove(battle, o);
       return { u: o, melee: mv + 1, ranged: isRanged(o) ? mv + num(o.profile.range, 0) : 0 };
@@ -181,6 +261,10 @@
     }
 
     if (ctx.role === 'defender') {
+      /* Carriers that would win the raid by getting home: everyone goes
+         after them (a marker still on the ground no longer matters). */
+      var needD = num(W().objectives && W().objectives.raid && W().objectives.raid.need, 2);
+      if (ctx.oppCarriers.length && num(ctx.objective.extracted, 0) + ctx.oppCarriers.length >= needD) set(ctx.mine, 'interceptor');
       toMarkers(ctx.mine, ctx.fieldMarkers, 'guard');
       set(ctx.mine, ctx.oppCarriers.length ? 'interceptor' : 'screen');
     } else if (ctx.role === 'raider') {
@@ -351,8 +435,9 @@
      here is always melee reach (Move + 1): an archer's range never stops
      a unit closing in, or it would stand still while it was shot.
      Returns a plan, or null if no square is better than staying put. */
-  function movePlan(ctx, u, goal, opts, rule, tier) {
+  function movePlan(ctx, u, straightGoal, opts, rule, tier) {
     var BR = ctx.BR;
+    var goal = walkGoal(ctx, u, straightGoal);
     var o = opts || {};
     var cur = u.pos;
     var gCur = goal(cur);
@@ -428,13 +513,24 @@
     return movePlan(ctx, u, g, { march: true }, 'carry', TIER.urgent);
   }
 
-  /* The goal for closing in on the enemy: archers want them in range,
-     everyone else wants to be next to them. */
-  function approachGoal(u, targets) {
-    var range = isRanged(u) ? num(u.profile.range, 1) : 1;
+  /* The goal for closing in on the enemy: everyone but archers wants to be
+     next to them; archers want a shot: in range, in line of sight, and not
+     next to an enemy (a square in range without a shot counts as one step
+     short, so they move on to one that has it). */
+  function approachGoal(ctx, u, targets) {
+    if (!isRanged(u)) {
+      return function (cell) { return targets.length ? Math.max(0, minDist(cell, targets) - 1) : Infinity; };
+    }
+    var range = num(u.profile.range, 1);
     return function (cell) {
-      if (!targets.length) return Infinity;
-      return Math.max(0, minDist(cell, targets) - range);
+      var best = Infinity;
+      var k = key(cell);
+      for (var i = 0; i < targets.length && best > 0; i++) {
+        var d = dist(cell, targets[i].pos);
+        var g = d > range ? d - range : (d > 1 && !ctx.adjOpp[k] && !ctx.oppAt[k] && ctx.BR.lineOfSight(ctx.battle, ctx.tt, cell, targets[i].pos) ? 0 : 1);
+        if (g < best) best = g;
+      }
+      return best;
     };
   }
   /* Close in. Archers only where no more enemy melee could reach them than
@@ -443,7 +539,7 @@
   function approachPlan(ctx, u, targets, rule) {
     if (!targets.length) return null;
     var opts = isRanged(u) ? { safe: true, march: true, avoidContact: true } : { edge: true, march: true, avoidContact: true };
-    return movePlan(ctx, u, approachGoal(u, targets), opts, rule || 'approach', TIER.move);
+    return movePlan(ctx, u, approachGoal(ctx, u, targets), opts, rule || 'approach', TIER.move);
   }
 
   /* The plan for one unit. */
@@ -524,11 +620,11 @@
     if (role === 'interceptor') {
       var carriers = ctx.oppCarriers;
       var home = BR.baseline(battle, ctx.side === 'player' ? 'enemy' : 'player');
-      /* Get next to the carrier, ideally between it and its way home (the
-         fraction only settles ties between squares equally near). */
+      /* Get next to the carrier (0: there), ideally between it and its way
+         home (the fraction only settles ties between squares equally near). */
       var ig = function (cell) {
         var best = Infinity;
-        carriers.forEach(function (c) { best = Math.min(best, dist(cell, c.pos) + Math.abs(cell.r - home) / 1000); });
+        carriers.forEach(function (c) { best = Math.min(best, Math.max(0, dist(cell, c.pos) - 1) + Math.abs(cell.r - home) / 1000); });
         return best;
       };
       if (isRanged(u)) return approachPlan(ctx, u, carriers, 'intercept') || holdPlan(u);

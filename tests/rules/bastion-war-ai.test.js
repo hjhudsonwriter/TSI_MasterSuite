@@ -313,6 +313,33 @@
     t.same([AI.chooseOrder(b2, terrain).id, AI.chooseOrder(b2, terrain).rule], ['hold', 'hold']);
   });
 
+  test('in range but out of sight behind a short ridge: archers move to a square with a clear shot rather than Hold', function (t) {
+    /* The review's case: a ridge on rows 5–7, columns 6–15; your Line
+       Infantry six squares off behind it. Plenty of squares within a March
+       have a shot, aren't next to your unit and are out of its reach. */
+    var marks = {};
+    for (var r = 5; r <= 7; r++) for (var c = 6; c <= 15; c++) marks[c + ',' + r] = 'g';
+    function battle() { return fight(make([U('p1', 'line')], [U('e1', 'archers'), U('e2', 'archers')]), { p1: [10, 9], e1: [10, 3], e2: [11, 3] }); }
+    var b = battle();
+    var terrain = paint(b, marks);
+    t.equal(BR.attackOptions(b, 'e1', at(10, 3), null, terrain).length, 0, 'no shot from where they stand');
+    ['e1', 'e2'].forEach(function (id) {
+      var p = AI.planFor(b, id, terrain);
+      t.ok(p.order.id !== 'hold', id + ' moves: ' + JSON.stringify(p.order));
+      var d = BR.dist(p.order.dest, at(10, 9));
+      t.ok(d > 1 && d <= unit(b, id).profile.range, id + ': in range, not next to your unit');
+      t.ok(BR.lineOfSight(b, terrain, p.order.dest, at(10, 9)), id + ': a clear line of sight from ' + JSON.stringify(p.order.dest));
+      t.equal(reachCount(b, 'enemy', p.order.dest), 0, id + ': out of reach of your infantry next turn');
+    });
+    /* From there, it shoots. */
+    var o = AI.chooseOrder(b, terrain);
+    act(t, b, o, terrain);
+    var b2 = battle();
+    unit(b2, o.unitId).pos = { c: o.dest.c, r: o.dest.r };
+    var s = AI.planFor(b2, o.unitId, terrain);
+    t.same([s.rule, s.order.targetId], ['shoot', 'p1']);
+  });
+
   test('archers pick another target rather than shoot into a melee', function (t) {
     var b = fight(make([U('p1', 'levy'), U('p2', 'heavy')], [U('e1', 'archers'), U('e2', 'line')]), { p1: [8, 5], p2: [12, 5], e1: [10, 1], e2: [8, 4] });
     unit(b, 'p1').cohesion = 1;
@@ -423,6 +450,33 @@
     t.equal(off.rule, 'guard');
     t.equal(BR.dist(off.order.dest, at(17, 3)), 1);
     act(t, b, off.order);
+  });
+
+  test('raid: when the marker being carried would win the raid, even a guard leaves its marker to stop the carrier', function (t) {
+    /* The review's case: you have brought one marker home and are carrying
+       the second; the enemy's only unit left to act stands by marker 3. */
+    function battle(extracted) {
+      var b = fight(make([U('p1', 'line'), U('p2', 'line')], [U('e1', 'line'), U('e2', 'line')], { objective: 'raid' }),
+        { p1: [11, 7], p2: [2, 10], e1: [16, 3], e2: [0, 0] });
+      if (extracted) {
+        b.objective.markers[0].state = 'extracted';
+        b.objective.extracted = 1;
+      }
+      carry(b, 'p1', 'm2');
+      unit(b, 'e2').activated = true;
+      return b;
+    }
+    var b = battle(true);
+    var o = AI.chooseOrder(b, null);
+    t.same([o.unitId, o.rule], ['e1', 'intercept']);
+    t.ok(BR.adjacent(o.dest, at(11, 7)), 'next to the carrier: ' + JSON.stringify(o.dest));
+    act(t, b, o);
+    t.ok(BR.isEngaged(b, unit(b, 'p1')), 'your carrier is caught');
+    t.same(BR.reachable(b, 'p1', 'march', null), {}, 'so it can\'t March home');
+    t.ok(!b.result, 'the raid isn\'t over');
+    /* With nothing home yet, carrying this marker home doesn't win: the
+       guard keeps to its marker. */
+    t.equal(AI.planFor(battle(false), 'e1', null).rule, 'hold-guard');
   });
 
   test('raid: one guard to each supply marker', function (t) {
@@ -637,6 +691,89 @@
     t.equal(holds, 0, 'enemy Holds');
     t.ok(attacks >= 4, 'enemy attacks: ' + attacks);
     t.ok(b.result && b.result.lostPct.player > 0, 'your units were fought');
+  });
+
+  /* ---------- Rivers and cliffs ---------- */
+  group('War AI: finding the way round water and cliffs');
+
+  /* You Hold every turn; the enemy plays. Returns what happened. */
+  function holdAndWatch(t, b, terrain, crossRow) {
+    var rand = seeded(1);
+    var out = { holds: 0, crossed: 0, orders: [] };
+    for (var step = 0; step < 200 && b.phase === 'battle'; step++) {
+      var o;
+      if (b.turnSide === 'enemy') {
+        o = AI.chooseOrder(b, terrain);
+        if (o.id === 'hold' && b.round <= 3) out.holds += 1;
+        out.orders.push('r' + b.round + ' ' + o.unitId + ' ' + o.rule);
+      } else o = { unitId: BR.activeUnits(b, 'player')[0].id, id: 'hold' };
+      act(t, b, o, terrain, rand);
+      if (!out.crossed && b.units.some(function (u) { return u.side === 'enemy' && u.pos && u.pos.r >= crossRow; })) out.crossed = b.round;
+    }
+    return out;
+  }
+
+  test('a river whose only ford is off to one side: the enemy walks along the bank to it and crosses, rather than Holding on the bank', function (t) {
+    /* The review's case: deep water right across row 7 (the first row of
+       your half) but for a ford at column 2, and your units in the middle.
+       As the crow flies no step along the bank is nearer you, so it used
+       to stand on the bank and Hold all battle. */
+    ['skirmish', 'defend'].forEach(function (objective) {
+      var b = make([U('p1', 'line'), U('p2', 'line')], [U('e1', 'line'), U('e2', 'line'), U('e3', 'heavy')], { objective: objective });
+      var marks = {};
+      for (var c = 0; c < b.cols; c++) marks[c + ',7'] = c === 2 ? 'f' : 'x';
+      var terrain = paint(b, marks);
+      BR.beginDeployment(b, terrain);
+      BR.startBattle(b);
+      var w = holdAndWatch(t, b, terrain, 7);
+      t.equal(w.holds, 0, objective + ': enemy Holds in rounds 1 to 3 (' + w.orders.join(', ') + ')');
+      t.ok(w.crossed && w.crossed <= 2, objective + ': on the ford or across it by round 2 (round ' + w.crossed + ')');
+      t.ok(b.result && b.result.lostPct.player > 0, objective + ': it reached and fought your units');
+    });
+  });
+
+  test('a cliff line with a gap: even cavalry go round through the gap', function (t) {
+    var b = make([U('p1', 'archers'), U('p2', 'line')], [U('e1', 'line'), U('e2', 'line'), U('e3', 'light_cav')]);
+    var marks = {};
+    for (var c = 0; c < b.cols; c++) if (c !== 18 && c !== 19) marks[c + ',7'] = 'k';
+    var terrain = paint(b, marks);
+    BR.beginDeployment(b, terrain);
+    BR.startBattle(b);
+    var w = holdAndWatch(t, b, terrain, 8);
+    t.equal(w.holds, 0, 'enemy Holds in rounds 1 to 3 (' + w.orders.join(', ') + ')');
+    t.ok(w.crossed && w.crossed <= 2, 'through the gap by round 2 (round ' + w.crossed + ')');
+  });
+
+  test('with no way across at all, it still comes as near as it can, as before', function (t) {
+    var b = fight(make([U('p1', 'line')], [U('e1', 'line')]), { p1: [10, 10], e1: [10, 1] });
+    var marks = {};
+    for (var c = 0; c < b.cols; c++) marks[c + ',7'] = 'x';
+    var terrain = paint(b, marks);
+    var o = AI.chooseOrder(b, terrain);
+    t.equal(o.rule, 'approach');
+    t.ok(BR.dist(o.dest, at(10, 10)) < BR.dist(at(10, 1), at(10, 10)), 'closer');
+    unit(b, 'e1').pos = at(10, 6);
+    t.same([AI.chooseOrder(b, terrain).id, AI.chooseOrder(b, terrain).rule], ['hold', 'hold'], 'on the bank, with nowhere nearer to go');
+  });
+
+  test('raid: a guard on the far side of a river walks round by the ford to its marker', function (t) {
+    /* Water across row 2 from column 6 to the right edge: the guard at
+       (14,0) must go round by column 5 to reach a square next to the middle
+       marker at (11,3). */
+    var b = fight(make([U('p1', 'line')], [U('e1', 'line')], { objective: 'raid' }), { p1: [10, 11], e1: [14, 0] });
+    var marks = {};
+    for (var c = 6; c < b.cols; c++) marks[c + ',2'] = 'x';
+    var terrain = paint(b, marks);
+    var p = AI.planFor(b, 'e1', terrain);
+    t.equal(p.rule, 'guard');
+    t.ok(p.order.dest.c <= 9, 'it heads for the way round, not the bank: ' + JSON.stringify(p.order.dest));
+    /* Three activations (your unit far off) see it there. */
+    for (var i = 0; i < 3 && BR.dist(unit(b, 'e1').pos, at(11, 3)) !== 1; i++) {
+      unit(b, 'e1').activated = false;
+      b.turnSide = 'enemy';
+      act(t, b, AI.chooseOrder(b, terrain), terrain);
+    }
+    t.equal(BR.dist(unit(b, 'e1').pos, at(11, 3)), 1, 'next to its marker: ' + JSON.stringify(unit(b, 'e1').pos));
   });
 
   /* ---------- Which unit acts ---------- */
