@@ -374,8 +374,9 @@
     var world = el('div', { class: 'tsi-bas-wt-world tsi-bas-wt-world--units' }, [zonesEl, cellsEl, pathSvg, tokensEl, floatsEl]);
 
     /* Notes about the battlefield sit in a strip above it, never over its
-       squares: no map yet, no terrain yet, a battle whose own map isn't on
-       the table now, and the DM's pause. */
+       squares: no map yet, no terrain yet, a picture whose edges the
+       battlefield's shape hides, a battle whose own map isn't on the table
+       now, and the DM's pause. */
     var promptText = el('span', { class: 'tsi-bas-wt-note__text', text: 'Upload a battle map to begin. You can also deploy on the plain board.' });
     var prompt = el('div', { class: 'tsi-bas-wt-note tsi-bas-wt-note--prompt', 'data-test': 'wt-prompt' }, [
       el('span', { class: 'tsi-bas-wt-note__kicker', text: 'No battle map yet' }),
@@ -392,11 +393,18 @@
       el('span', { class: 'tsi-bas-wt-note__kicker', text: 'Plain board' }),
       missingText
     ]);
+    var trimText = el('span', { class: 'tsi-bas-wt-note__text' });
+    var trimDismiss = btn('Dismiss', 'wt-map-trimmed-dismiss', function () { dismissTrim(); }, { title: 'Hide this note for this map' });
+    var trimNote = el('div', { class: 'tsi-bas-wt-note tsi-bas-wt-note--warn', role: 'note', hidden: true, 'data-test': 'wt-map-trimmed' }, [
+      el('span', { class: 'tsi-bas-wt-note__kicker', text: 'Edges hidden' }),
+      trimText,
+      el('span', { class: 'tsi-bas-wt-note__actions' }, [trimDismiss])
+    ]);
     var banner = el('div', { class: 'tsi-bas-wt-note tsi-bas-wt-note--paused', role: 'status', hidden: true, 'data-test': 'wt-banner' }, [
       el('span', { class: 'tsi-bas-wt-note__kicker', text: 'Paused' }),
       el('span', { class: 'tsi-bas-wt-note__text', text: 'The battle waits. Replace the map or paint terrain: the squares and the battle stay as they are. Resume to carry on.' })
     ]);
-    var notesBar = el('div', { class: 'tsi-bas-wt-notes' }, [prompt, terrainWarning, missingNote, banner]);
+    var notesBar = el('div', { class: 'tsi-bas-wt-notes' }, [prompt, terrainWarning, trimNote, missingNote, banner]);
     var resultKicker = el('p', { class: 'tsi-bas-wt-result__kicker' });
     var resultText = el('p', { class: 'tsi-bas-wt-result__text' });
     var result = el('div', { class: 'tsi-bas-wt-result', role: 'status', hidden: true, 'data-test': 'wt-result' }, [resultKicker, resultText]);
@@ -1090,6 +1098,19 @@
       if (!map) return;
       changeSettings(function (s) { s.terrainDismissed = R.dismiss(s.terrainDismissed, map.key); });
     }
+    /* How much of the picture the battlefield's shape hides (R.mapTrim), while
+       the map can still be replaced; null otherwise or once dismissed. */
+    function trimNow() {
+      var ph = phase();
+      if (!mapShown() || loading || !mapSize || ui.terrainMode) return null;
+      if (!(ph === 'setup' || ph === 'deploy' || (ph === 'battle' && ui.paused))) return null;
+      if (settings.trimDismissed.indexOf(map.key) !== -1) return null;
+      return R.mapTrim(mapSize, grid());
+    }
+    function dismissTrim() {
+      if (!map) return;
+      changeSettings(function (s) { s.trimDismissed = R.dismiss(s.trimDismissed, map.key); });
+    }
 
     /* ---------- Units: words and pictures ---------- */
     function leaderOf(u) { return battle ? BR.leaderOf(battle, u) : null; }
@@ -1173,8 +1194,12 @@
       if (ob.zone) {
         var z = ob.zone;
         var mine = z.owner === 'player';
-        var box = el('div', { class: 'tsi-bas-wt-zone tsi-bas-wt-zone--' + (mine ? 'depot' : 'outpost'), 'data-test': 'wt-zone' }, [
-          el('span', { class: 'tsi-bas-wt-zone__label', text: mine ? 'Your supply depot' : 'The outpost' })
+        /* Its name hangs off the side toward its owner's own edge (below
+           your depot, above the outpost), where the armies' front lines
+           aren't set out; the other side if that's off the board. */
+        var below = mine ? z.r1 < b.rows - 1 : z.r0 === 0;
+        var box = el('div', { class: 'tsi-bas-wt-zone tsi-bas-wt-zone--' + (mine ? 'depot' : 'outpost') + (below ? ' tsi-bas-wt-zone--label-below' : ''), 'data-test': 'wt-zone' }, [
+          el('span', { class: 'tsi-bas-wt-zone__label', 'data-test': 'wt-zone-label', text: mine ? 'Your supply depot' : 'The outpost' })
         ]);
         box.style.left = (z.c0 * board.cell) + 'px';
         box.style.top = (z.r0 * board.cell) + 'px';
@@ -1671,7 +1696,7 @@
       var clear = btn('Clear terrain', 'wt-terrain-clear', function () { clearTerrain(); }, { title: 'Every square of this map back to open ground (asks first)' });
       return [
         sectionEl('Paint terrain', [
-          el('p', { class: 'tsi-bas-wt-note', text: 'Choose a terrain, then click or drag across the squares. The eraser puts open ground back. Saved for this map.' }),
+          el('p', { class: 'tsi-bas-wt-note', text: 'Choose a terrain, then click or drag across the squares. The eraser puts open ground back.' }),
           el('div', { class: 'tsi-bas-wt-palette', role: 'radiogroup', 'aria-label': 'Terrain' }, W.terrain.map(function (t) {
             return el('button', {
               type: 'button',
@@ -1808,7 +1833,8 @@
       setDisabled(clearBtn, !map || !editable, editable ? 'Remove the battle map' : pauseWhy);
       var gr = grid();
       colsEl.textContent = gr.cols + ' squares across';
-      colsEl.title = 'Battlefield: ' + gr.cols + ' squares across, ' + gr.rows + ' deep (the depth follows the map\'s shape).';
+      colsEl.title = 'Battlefield: ' + gr.cols + ' squares across, ' + gr.rows + ' deep (the depth follows the map\'s shape, from ' +
+        W.scale.minRows + ' to ' + W.scale.maxRows + ' squares; a taller or wider picture has its edges trimmed to fit).';
       var widthWhy = inSetup() ? null : 'The battlefield is fixed once deployment has begun: ' + gr.cols + ' squares across.';
       setDisabled(gridMinus, !inSetup() || settings.cols <= W.scale.minCols, widthWhy || 'Fewer squares across (at least ' + W.scale.minCols + ')');
       setDisabled(gridPlus, !inSetup() || settings.cols >= W.scale.maxCols, widthWhy || 'More squares across (at most ' + W.scale.maxCols + ')');
@@ -1860,6 +1886,12 @@
         'The saved battle map couldn\'t be shown. Please upload it again. You can also deploy on the plain board.' :
         'Upload a battle map to begin. You can also deploy on the plain board.';
       terrainWarning.hidden = !warningShown();
+      var trim = trimNow();
+      trimNote.hidden = !trim;
+      if (trim) {
+        var tt = R.mapTrimText(trim, grid(), inSetup());
+        if (trimText.textContent !== tt) trimText.textContent = tt;
+      }
       var gr = ground();
       missingNote.hidden = !mapMissing() || ui.terrainMode || ph === 'over';
       if (!missingNote.hidden) {
@@ -1869,7 +1901,7 @@
         if (missingText.textContent !== mt) missingText.textContent = mt;
       }
       banner.hidden = !(ph === 'battle' && ui.paused) || ui.terrainMode;
-      notesBar.hidden = prompt.hidden && terrainWarning.hidden && missingNote.hidden && banner.hidden;
+      notesBar.hidden = prompt.hidden && terrainWarning.hidden && trimNote.hidden && missingNote.hidden && banner.hidden;
       var res = battle && battle.result;
       result.hidden = !res;
       if (res) {
@@ -1978,7 +2010,9 @@
       var area = u ? areaOf(u) : null;
       var order = R.orderForCell(area, cell);
       if (!order) {
-        say(!cell ? 'That\'s off the battlefield.' : 'Out of reach: ' + u.label + ' can go to the lit squares (Advance & Attack within its Move; March, fainter, up to twice as far).');
+        var foe = cell ? BR.unitAt(battle, cell) : null;
+        say(!cell ? 'That\'s off the battlefield.' : foe && foe.side !== u.side ? enemySquareWords(u, foe) :
+          'Out of reach: ' + u.label + ' can go to the lit squares (Advance & Attack within its Move; March, fainter, up to twice as far).');
         renderWorld();
         return false;
       }
@@ -2050,17 +2084,30 @@
       ui.prop = null;
       refresh();
     }
+    /* What a drop on an enemy's square should have been: how to attack it
+       (R.attackRoute / R.enemySquareText), or why it can't be. */
+    function enemySquareWords(u, foe) {
+      var tt = terrain();
+      var prop = ui.prop && ui.prop.unitId === u.id ? ui.prop : null;
+      var order = prop ? prop.order : null;
+      var adv = BR.legalOrders(battle, u.id, tt).filter(function (x) { return x.id === 'advance'; })[0];
+      if (!adv || !adv.ok) return 'That square holds ' + foe.label + ', and ' + u.label + ' can\'t attack now' + (adv && adv.why ? ': ' + adv.why : '.');
+      var advancing = order === 'advance';
+      var reach = advancing && prop.reach ? prop.reach : BR.reachable(battle, u.id, 'advance', tt);
+      var route = R.attackRoute(BR, battle, u.id, foe.id, reach, advancing ? prop.dest : null, advancing ? prop.path : null, tt);
+      return R.enemySquareText(route, u.label, foe.label, order);
+    }
     /* Why a square can't be the move's destination. */
     function destRefusal(cell) {
       var prop = ui.prop;
       var u = unit(prop.unitId);
       if (!cell) return 'That\'s off the battlefield.';
       var there = BR.unitAt(battle, cell);
-      if (there && there.id !== u.id) return there.side === u.side ? 'A move can pass through friends, but must end on an empty square.' : 'That square holds the enemy: choose Advance & Attack and pick it as the target.';
+      if (there && there.id !== u.id) return there.side === u.side ? 'A move can pass through friends, but must end on an empty square.' : enemySquareWords(u, there);
       var t = BR.terrainAt(terrain(), cell.c, cell.r);
       if (t.impassable && !BR.hasTrait(u, 'flight') && !(t.water && BR.hasTrait(u, 'swimmer'))) return t.name + ': it can\'t go there.';
       if (prop.order === 'disengage') return 'Disengage can only fall back to a square within reach that is clear of every enemy.';
-      return 'Out of reach for this order (Move ' + BR.effectiveMove(battle, u) + (prop.order === 'march' ? ', doubled for March' : '') + '; rough ground costs double, and a unit stops when it moves next to an enemy).';
+      return 'Out of reach for this order (Move ' + BR.effectiveMove(battle, u) + (prop.order === 'march' ? ', doubled for March' : '') + '; rough ground costs double, deep water and cliffs can\'t be crossed (not even where two touch at a corner), and a unit stops when it moves next to an enemy).';
     }
     function chooseDest(cell) {
       var prop = ui.prop;
@@ -2411,6 +2458,9 @@
         return;
       }
       if (ui.prop && ui.prop.unitId === d.id) {
+        /* Let go where it started: back it goes (Advance & Attack takes it
+           as "attack from here"; March and Disengage keep their square). */
+        if (cell && same(cell, d.from) && ui.prop.order !== 'advance') { renderWorld(); return; }
         if (!cell || !chooseDest(cell)) renderWorld();
         return;
       }

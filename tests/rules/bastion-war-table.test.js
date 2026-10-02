@@ -110,14 +110,14 @@
   group('Bastion War Table: settings and the saved map');
 
   test('default settings: grid lines and Snap on, tokens at 90%, 22 squares across', function (t) {
-    t.same(W.defaultSettings(), { grid: { show: true, snap: true }, tokenScale: 0.9, camera: { x: 0, y: 0, zoom: 1 }, cols: D.scale.cols, terrainDismissed: [] });
+    t.same(W.defaultSettings(), { grid: { show: true, snap: true }, tokenScale: 0.9, camera: { x: 0, y: 0, zoom: 1 }, cols: D.scale.cols, terrainDismissed: [], trimDismissed: [] });
     t.same(W.normalizeSettings(undefined), W.defaultSettings());
     t.same(W.normalizeSettings({}), W.defaultSettings());
   });
 
   test('settings are put back in range and filled in; phase 1\'s grid size is let go', function (t) {
     var s = W.normalizeSettings({ grid: { show: false, size: 5, snap: 'yes', offX: 'x' }, tokenScale: 9, camera: { x: 12, zoom: 0.1 }, cols: 99 });
-    t.same(s, { grid: { show: false, snap: true }, tokenScale: 1, camera: { x: 12, y: 0, zoom: 0.5 }, cols: D.scale.maxCols, terrainDismissed: [] });
+    t.same(s, { grid: { show: false, snap: true }, tokenScale: 1, camera: { x: 12, y: 0, zoom: 0.5 }, cols: D.scale.maxCols, terrainDismissed: [], trimDismissed: [] });
     t.equal(W.normalizeSettings({ cols: 3 }).cols, D.scale.minCols);
     t.equal(W.normalizeSettings({ cols: 23.4 }).cols, 23);
     t.equal(W.normalizeSettings({ tokenScale: 0.1 }).tokenScale, 0.5);
@@ -136,6 +136,8 @@
     t.equal(kept.length, W.DISMISS_MAX);
     t.equal(kept[kept.length - 1], 'k69');
     t.same(W.dismiss(['a', 'b'], 'a'), ['b', 'a'], 'moved to the end, not repeated');
+    t.same(W.normalizeSettings({ trimDismissed: ['m', 'm', null, 'n'], terrainDismissed: ['a'] }).trimDismissed, ['m', 'n'], 'the "edges hidden" note keeps its own list');
+    t.equal(W.normalizeSettings({ trimDismissed: many }).trimDismissed.length, W.DISMISS_MAX);
     t.equal(W.dismiss(many, 'new').length, W.DISMISS_MAX);
   });
 
@@ -153,6 +155,41 @@
     t.ok(!W.isMap({ dataUrl: 'data:image/png;base64,AAAA' }), 'needs a key');
     t.ok(!W.isMap({ dataUrl: 'data:image/png;base64,AAAA', key: 'abc', name: 7 }));
     t.ok(!W.isMap('data:image/png;base64,AAAA') && !W.isMap(null));
+  });
+
+  test('a picture of another shape than the battlefield: how much of it is hidden, and the note', function (t) {
+    /* Found in review: a 1000 × 2000 picture became 22 × 30 squares and lost
+       16% at the top and bottom with no word said; 2400 × 900 became 22 × 10
+       and lost 9% at each side. */
+    var tall = W.mapTrim({ w: 1000, h: 2000 }, BR.gridFor({ w: 1000, h: 2000 }, 22));
+    t.same(tall, { edges: 'tall', each: 16 });
+    var wide = W.mapTrim({ w: 2400, h: 900 }, BR.gridFor({ w: 2400, h: 900 }, 22));
+    t.same(wide, { edges: 'wide', each: 9 });
+    /* Within the 10 to 30 rows the depth follows the picture: never a note. */
+    for (var c = D.scale.minCols; c <= D.scale.maxCols; c++) {
+      for (var rows = D.scale.minRows - 0.5; rows < D.scale.maxRows + 0.5; rows += 0.25) {
+        var pic = { w: 1600, h: 1600 * rows / c };
+        if (W.mapTrim(pic, BR.gridFor(pic, c))) { t.ok(false, c + ' across, ' + rows + ' deep shouldn\'t get a note'); return; }
+      }
+      var deep = { w: 1000, h: 1000 * (D.scale.maxRows + 2) / c };
+      var flat = { w: 1000, h: 1000 * (D.scale.minRows - 1) / c };
+      t.equal(W.mapTrim(deep, BR.gridFor(deep, c)).edges, 'tall', c + ' across: deeper than ' + D.scale.maxRows + ' rows gets the note');
+      t.equal(W.mapTrim(flat, BR.gridFor(flat, c)).edges, 'wide', c + ' across: flatter than ' + D.scale.minRows + ' rows gets the note');
+    }
+    t.same(W.mapTrim({ w: 1600, h: 900 }, { cols: 22, rows: 30 }), { edges: 'wide', each: 29 }, 'a new picture on a battle\'s fixed squares');
+    t.equal(W.mapTrim(null, { cols: 22, rows: 12 }), null);
+    t.equal(W.mapTrim({ w: 0, h: 900 }, { cols: 22, rows: 12 }), null);
+    t.equal(W.mapTrim({ w: 1600, h: 900 }, null), null);
+
+    var g30 = { cols: 22, rows: 30 };
+    t.equal(W.mapTrimText(tall, g30, true), 'About 16% of this picture is hidden at the top and 16% at the bottom: the battlefield is never more than 30 squares deep (22 × 30 now). ' +
+      'To see all of it, crop the picture to 11 : 15 (width : height, the shape of 22 × 30 squares) and use Replace map. Fewer squares across shows a little more of it.');
+    t.ok(!/Fewer squares/.test(W.mapTrimText(tall, { cols: D.scale.minCols, rows: 30 }, true)), 'not when it is already as narrow as it goes');
+    t.equal(W.mapTrimText(wide, { cols: 22, rows: 10 }, true), 'About 9% of this picture is hidden at the left and 9% at the right: the battlefield is never less than 10 squares deep (22 × 10 now). ' +
+      'To see all of it, crop the picture to 11 : 5 (width : height, the shape of 22 × 10 squares) and use Replace map. More squares across shows a little more of it.');
+    t.equal(W.mapTrimText({ edges: 'wide', each: 30 }, g30, false), 'About 30% of this picture is hidden at the left and 30% at the right: it is wider than the battlefield\'s squares (22 × 30, fixed when deployment began). ' +
+      'To see all of it, crop the picture to 11 : 15 (width : height, the shape of 22 × 30 squares) and use Replace map.');
+    t.equal(W.mapTrimText(null, g30, true), '');
   });
 
   test('hashText is the djb2 fingerprint', function (t) {
@@ -260,6 +297,45 @@
     t.equal(W.orderForCell(areas, null), null);
   });
 
+  test('a unit dropped on an enemy: how it could attack it this activation, and the words', function (t) {
+    /* Found in review: dragging a unit onto an enemy said "Out of reach", or
+       "choose Advance & Attack" when that order was already chosen. */
+    var b = battle();
+    BR.beginDeployment(b, null);
+    BR.startBattle(b);
+    b.units.forEach(function (u) { u.pos = null; });
+    function put(id, c, r) { BR.unitById(b, id).pos = { c: c, r: r }; }
+    function route(id, tid) { return W.attackRoute(BR, b, id, tid, BR.reachable(b, id, 'advance', null), null, null, null); }
+    put('p1', 5, 8); put('e2', 5, 5); put('p2', 10, 11); put('e3', 10, 2);
+    t.same(route('p1', 'e2'), { at: 'move', kind: 'melee' }, 'Line Infantry (Move 3) can step next to it first');
+    t.same(route('p2', 'e3'), { at: 'move', kind: 'ranged' }, 'Archers (range 6) can move into range');
+    put('p1', 5, 6);
+    t.same(route('p1', 'e2'), { at: 'here', kind: 'melee' }, 'already next to it');
+    put('e3', 10, 5);
+    t.same(route('p2', 'e3'), { at: 'here', kind: 'ranged' }, 'already in range');
+    put('p1', 0, 11); put('e2', 21, 0);
+    t.equal(route('p1', 'e2'), null, 'too far this activation');
+    t.equal(W.attackRoute(BR, b, 'p1', 'e2', null, null, null, null), null, 'no reach: from where it stands only');
+    t.same(W.attackRoute(BR, b, 'p1', 'e2', null, { c: 20, r: 1 }, [{ c: 0, r: 11 }, { c: 20, r: 1 }], null), { at: 'here', kind: 'melee' }, 'from the square already chosen');
+
+    var move = { at: 'move', kind: 'melee' };
+    t.equal(W.enemySquareText(move, 'Light Cavalry', 'Bacca Cragmen', null),
+      'To attack Bacca Cragmen, click a lit square next to it (Advance & Attack), then click Bacca Cragmen: the targets in reach are ringed in red.');
+    t.ok(/within range of it/.test(W.enemySquareText({ at: 'move', kind: 'ranged' }, 'Archers', 'Bacca Cragmen', null)));
+    t.equal(W.enemySquareText({ at: 'here', kind: 'melee' }, 'Light Cavalry', 'Bacca Cragmen', null),
+      'To attack Bacca Cragmen, choose Advance & Attack, then click Bacca Cragmen: Light Cavalry can attack it from where it stands.');
+    t.equal(W.enemySquareText(null, 'Light Cavalry', 'Bacca Cragmen', null),
+      'Bacca Cragmen is out of reach: Light Cavalry can\'t attack it this activation from any square it can reach. The lit squares show where it can go.');
+    var adv = W.enemySquareText(move, 'Light Cavalry', 'Bacca Cragmen', 'advance');
+    t.equal(adv, 'That square holds Bacca Cragmen, and a move must end on an empty square. To attack it, click a lit square next to it first, then click Bacca Cragmen: the targets in reach are ringed in red.');
+    t.ok(!/choose Advance & Attack/.test(adv), 'never tells you to choose the order you have chosen');
+    t.ok(/Click Bacca Cragmen to attack it/.test(W.enemySquareText({ at: 'here', kind: 'melee' }, 'Light Cavalry', 'Bacca Cragmen', 'advance')));
+    t.ok(/can't attack it this activation/.test(W.enemySquareText(null, 'Light Cavalry', 'Bacca Cragmen', 'advance')));
+    t.equal(W.enemySquareText(move, 'Light Cavalry', 'Bacca Cragmen', 'march'),
+      'That square holds Bacca Cragmen: March can\'t attack, and a move must end on an empty square. To attack it, choose Advance & Attack instead.');
+    t.ok(/Disengage can't attack.*can't attack it this activation/.test(W.enemySquareText(null, 'Line Infantry', 'Bacca Cragmen', 'disengage')));
+  });
+
   test('the log\'s new entries are counted from the last one seen, also once the oldest are dropped', function (t) {
     var log = [];
     for (var i = 0; i < 300; i++) log.push({ text: 'entry ' + i });
@@ -345,7 +421,7 @@
     s.objective.held.player = 1;
     t.equal(W.objectiveText(s, D), 'Seize Outpost: hold it at 2 round ends in a row by the end of round 6 · held 1 round end (2 needed)');
     var d = battle('defend');
-    t.equal(W.objectiveText(d, D), 'Defend Bastion: keep the enemy off your supply depot and your army unbroken by the end of round 6 · the enemy hasn\'t held it');
+    t.equal(W.objectiveText(d, D), 'Defend Bastion: keep the enemy off your supply depot and your army unbroken by the end of round 6, or break the enemy · the enemy hasn\'t held it');
     d.objective.held.enemy = 1;
     t.ok(/the enemy has held it 1 round end \(2 in a row loses\)$/.test(W.objectiveText(d, D)));
     t.equal(W.objectiveText(battle('skirmish'), D), 'Skirmish: break the enemy army, or lose the smaller share of your strength by the end of round 6');

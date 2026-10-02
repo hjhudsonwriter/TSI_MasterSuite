@@ -35,7 +35,7 @@
   function scale() {
     var w = war();
     var s = (w && w.scale) || {};
-    return { cols: num(s.cols, 22), minCols: num(s.minCols, 20), maxCols: num(s.maxCols, 24) };
+    return { cols: num(s.cols, 22), minCols: num(s.minCols, 20), maxCols: num(s.maxCols, 24), minRows: num(s.minRows, 10), maxRows: num(s.maxRows, 30) };
   }
   function plural(n, one, many) { return n + ' ' + (n === 1 ? one : (many || one + 's')); }
   /* " + 2" / " − 2" (a true minus sign, as the rest of the Bastion). */
@@ -55,6 +55,10 @@
     ZOOM_STEP: 0.25,
     /* How many maps' "no terrain yet" warnings are remembered as dismissed. */
     DISMISS_MAX: 50,
+    /* A picture that loses more than this share of its height or width to
+       the battlefield's shape gets a note (rounding the depth to whole
+       squares alone never loses more than half a row: under 5%). */
+    TRIM_WARN: 0.05,
 
     clamp: clamp,
     plural: plural,
@@ -139,14 +143,16 @@
        grid.show and grid.snap are display preferences only; tokenScale is
        how big tokens are drawn inside their square; cols is the battlefield
        width chosen before deployment; terrainDismissed lists the maps whose
-       "no terrain yet" warning was dismissed. */
+       "no terrain yet" warning was dismissed, trimDismissed those whose
+       "edges hidden" note was. */
     defaultSettings: function () {
       return {
         grid: { show: true, snap: true },
         tokenScale: W.TOKEN_DEFAULT,
         camera: { x: 0, y: 0, zoom: 1 },
         cols: scale().cols,
-        terrainDismissed: []
+        terrainDismissed: [],
+        trimDismissed: []
       };
     },
     /* A plain object is accepted; normalizeSettings deals with the values. */
@@ -159,12 +165,14 @@
       var g = isObj(s.grid) ? s.grid : {};
       var c = isObj(s.camera) ? s.camera : {};
       var sc = scale();
-      var seen = {};
-      var dismissed = (Array.isArray(s.terrainDismissed) ? s.terrainDismissed : []).filter(function (k) {
-        if (typeof k !== 'string' || !k || seen[k]) return false;
-        seen[k] = true;
-        return true;
-      }).slice(-W.DISMISS_MAX);
+      function keys(list) {
+        var seen = {};
+        return (Array.isArray(list) ? list : []).filter(function (k) {
+          if (typeof k !== 'string' || !k || seen[k]) return false;
+          seen[k] = true;
+          return true;
+        }).slice(-W.DISMISS_MAX);
+      }
       return {
         grid: {
           show: typeof g.show === 'boolean' ? g.show : d.grid.show,
@@ -177,7 +185,8 @@
           zoom: round2(clamp(num(c.zoom, 1), W.ZOOM_MIN, W.ZOOM_MAX))
         },
         cols: Math.round(clamp(num(s.cols, sc.cols), sc.minCols, sc.maxCols)),
-        terrainDismissed: dismissed
+        terrainDismissed: keys(s.terrainDismissed),
+        trimDismissed: keys(s.trimDismissed)
       };
     },
 
@@ -194,6 +203,41 @@
       var h = 5381;
       for (var i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0;
       return (h >>> 0).toString(16);
+    },
+
+    /* How much of the map picture the board hides. The picture fills the
+       battlefield's squares (cols × rows), trimmed evenly from two opposite
+       edges when its shape differs: the depth follows the picture's shape
+       only from minRows to maxRows squares, and from deployment on the
+       squares are fixed. null when under TRIM_WARN is lost; otherwise
+       { edges: 'tall' (the top and bottom are hidden) or 'wide' (the left
+       and right), each: the percentage hidden at each of those edges }. */
+    mapTrim: function (pic, grid) {
+      if (!isObj(pic) || !isObj(grid)) return null;
+      var pw = num(pic.w, 0), ph = num(pic.h, 0), c = num(grid.cols, 0), r = num(grid.rows, 0);
+      if (!(pw > 0 && ph > 0 && c > 0 && r > 0)) return null;
+      var p = pw / ph;
+      var b = c / r;
+      var cut = 1 - Math.min(p, b) / Math.max(p, b);
+      if (!(cut > W.TRIM_WARN + 1e-9)) return null;
+      return { edges: p < b ? 'tall' : 'wide', each: Math.max(1, Math.round(cut * 50)) };
+    },
+    /* The note for mapTrim's answer. setup: before deployment, while the
+       battlefield's width can still change (and its depth follows the map). */
+    mapTrimText: function (trim, grid, setup) {
+      if (!trim || !grid) return '';
+      var sc = scale();
+      var tall = trim.edges === 'tall';
+      var out = 'About ' + trim.each + '% of this picture is hidden at the ' + (tall ? 'top' : 'left') + ' and ' + trim.each + '% at the ' + (tall ? 'bottom' : 'right') + ': ';
+      if (setup && tall && grid.rows >= sc.maxRows) out += 'the battlefield is never more than ' + sc.maxRows + ' squares deep (' + grid.cols + ' × ' + grid.rows + ' now).';
+      else if (setup && !tall && grid.rows <= sc.minRows) out += 'the battlefield is never less than ' + sc.minRows + ' squares deep (' + grid.cols + ' × ' + grid.rows + ' now).';
+      else out += 'it is ' + (tall ? 'taller' : 'wider') + ' than the battlefield\'s squares (' + grid.cols + ' × ' + grid.rows + (setup ? '' : ', fixed when deployment began') + ').';
+      var g = function (a, b) { return b ? g(b, a % b) : a; };
+      var k = g(grid.cols, grid.rows) || 1;
+      out += ' To see all of it, crop the picture to ' + (grid.cols / k) + ' : ' + (grid.rows / k) + ' (width : height, the shape of ' + grid.cols + ' × ' + grid.rows + ' squares) and use Replace map.';
+      if (setup && tall && grid.cols > sc.minCols) out += ' Fewer squares across shows a little more of it.';
+      if (setup && !tall && grid.cols < sc.maxCols) out += ' More squares across shows a little more of it.';
+      return out;
     },
 
     /* ---------- Painted terrain (saved as 'warTerrain') ----------
@@ -360,6 +404,54 @@
       return order;
     },
 
+    /* ---------- A drop on an enemy's square ----------
+       Where unitId could attack targetId from by Advance & Attack this
+       activation: 'here' from the square chosen (from, reached along path;
+       its own square before a move is chosen), 'move' from another square
+       in reach (reach: battleRules.reachable's map for Advance & Attack),
+       or null. kind: 'melee' or 'ranged' (ranged preferred when a square
+       in reach offers it). */
+    attackRoute: function (BR, battle, unitId, targetId, reach, from, path, terrain) {
+      var u = BR.unitById(battle, unitId);
+      if (!u || !u.pos) return null;
+      var at = from || u.pos;
+      function kindFrom(cell, p) {
+        var o = BR.attackOptions(battle, unitId, cell, p, terrain).filter(function (x) { return x.targetId === targetId; })[0];
+        return o ? o.kind : null;
+      }
+      var k = kindFrom(at, path || [{ c: at.c, r: at.r }]);
+      if (k) return { at: 'here', kind: k };
+      var found = null;
+      Object.keys(reach || {}).some(function (key) {
+        var hit = reach[key];
+        if (!hit || !Array.isArray(hit.path) || !hit.path.length) return false;
+        var kk = kindFrom(hit.path[hit.path.length - 1], hit.path);
+        if (kk) found = { at: 'move', kind: kk };
+        return kk === 'ranged';
+      });
+      return found;
+    },
+    /* The words for a drop on an enemy's square. order: the order being
+       given (null before one is chosen). */
+    enemySquareText: function (route, unitLabel, targetLabel, order) {
+      var t = targetLabel;
+      if (order && order !== 'advance') {
+        var name = order === 'march' ? 'March' : order === 'disengage' ? 'Disengage' : 'This order';
+        return 'That square holds ' + t + ': ' + name + ' can\'t attack, and a move must end on an empty square.' +
+          (route ? ' To attack it, choose Advance & Attack instead.' : ' ' + unitLabel + ' can\'t attack it this activation.');
+      }
+      var where = route && route.kind === 'ranged' ? 'within range of it' : 'next to it';
+      if (order === 'advance') {
+        var lead = 'That square holds ' + t + ', and a move must end on an empty square.';
+        if (!route) return lead + ' ' + unitLabel + ' can\'t attack it this activation from any square it can reach.';
+        if (route.at === 'here') return lead + ' Click ' + t + ' to attack it from the square chosen: it is ringed in red.';
+        return lead + ' To attack it, click a lit square ' + where + ' first, then click ' + t + ': the targets in reach are ringed in red.';
+      }
+      if (!route) return t + ' is out of reach: ' + unitLabel + ' can\'t attack it this activation from any square it can reach. The lit squares show where it can go.';
+      if (route.at === 'here') return 'To attack ' + t + ', choose Advance & Attack, then click ' + t + ': ' + unitLabel + ' can attack it from where it stands.';
+      return 'To attack ' + t + ', click a lit square ' + where + ' (Advance & Attack), then click ' + t + ': the targets in reach are ringed in red.';
+    },
+
     /* ---------- The battle log ----------
        How many of the log's entries came after the one last seen (entries
        are compared as objects, so this still works once the battle rules
@@ -428,7 +520,7 @@
       if (o.id === 'defend') {
         var needD = num(def.holdRounds, 2);
         var held = (o.held && o.held.enemy) || 0;
-        return def.name + ': keep the enemy off your supply depot and your army unbroken ' + last + ' · ' +
+        return def.name + ': keep the enemy off your supply depot and your army unbroken ' + last + ', or break the enemy · ' +
           (held ? 'the enemy has held it ' + plural(held, 'round end') + ' (' + needD + ' in a row loses)' : 'the enemy hasn\'t held it');
       }
       return def.name + ': break the enemy army, or lose the smaller share of your strength ' + last;

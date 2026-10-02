@@ -325,7 +325,10 @@
     radial-gradient(ellipse 70% 60% at 50% 15%, rgba(60, 14, 22, .55), transparent 70%),
     linear-gradient(180deg, #170b0e, #0d0809);
 }
-/* The picture fills the battlefield's squares (cropped a little if its shape differs). */
+/* The picture fills the battlefield's squares. Within the 10 to 30 rows the
+   depth follows its shape, so under half a row is lost; a taller or wider
+   picture (or a new one on a battle's fixed squares) is trimmed evenly from
+   two edges, and the War Table says how much ("Edges hidden"). */
 .tsi-tool--bastion .tsi-bas-wt-map {
   display: block;
   width: 100%;
@@ -412,6 +415,7 @@
   white-space: nowrap;
 }
 .tsi-tool--bastion .tsi-bas-wt-zone__label { left: 0; top: 0; transform: translateY(calc(-100% - var(--tsi-bas-wt-inv) * 3px)); }
+.tsi-tool--bastion .tsi-bas-wt-zone--label-below .tsi-bas-wt-zone__label { top: auto; bottom: 0; transform: translateY(calc(100% + var(--tsi-bas-wt-inv) * 3px)); }
 .tsi-tool--bastion .tsi-bas-wt-zone--outpost .tsi-bas-wt-zone__label { border-color: rgba(255, 150, 150, .7); color: #ffd2d2; }
 
 /* A supply marker: a crate on its square, labelled. */
@@ -628,10 +632,12 @@
   background: linear-gradient(180deg, #b98a44, #7d5521);
   border-color: #f0d696;
 }
+/* The two bottom badges hang below the token, but sideways stay within its
+   own square, so they never meet the badges of a token beside it. */
 .tsi-tool--bastion .tsi-bas-wt-token__support {
   position: absolute;
   bottom: var(--tsi-bas-wt-out);
-  right: var(--tsi-bas-wt-out);
+  right: calc(-1 * var(--tsi-bas-wt-gap));
   padding: 0 calc(var(--tsi-bas-wt-cell) * .05);
   min-width: max(calc(var(--tsi-bas-wt-cell) * .3), calc(var(--tsi-bas-wt-inv) * 13px));
   box-sizing: border-box;
@@ -646,7 +652,7 @@
 .tsi-tool--bastion .tsi-bas-wt-token__leader {
   position: absolute;
   bottom: var(--tsi-bas-wt-out);
-  left: var(--tsi-bas-wt-out);
+  left: calc(-1 * var(--tsi-bas-wt-gap));
   display: grid;
   place-items: center;
   width: max(calc(var(--tsi-bas-wt-cell) * .34), calc(var(--tsi-bas-wt-inv) * 14px));
