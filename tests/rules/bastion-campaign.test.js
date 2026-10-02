@@ -263,6 +263,46 @@
     t.same([first.spec.player.units[0].personnel, second.spec.player.units[0].personnel], [100, 30], 'whichever begins first');
   });
 
+  test('phase 1 orders that shared the same forces: the first queued keeps its defenders and beasts, the later one gets what\'s left', function (t) {
+    /* Phase 1 let two waiting orders commit the same defenders. */
+    function setUp(beasts) {
+      var save = R.toSave(fresh());
+      save.organization = { type: 'unsworn', name: 'The Unsworn', chief: '', motto: '', foundedAtTurn: 1 };
+      save.turn = 6;
+      save.defenders = { count: 6, armed: true, patrolAdvantage: false };
+      save.defenderBeasts = [{ name: 'Ape', qty: 2, source: 'Menagerie' }];
+      save.pendingOrders = [['w1', 'raid', 'bacca', 'Bacca'], ['w2', 'skirmish', 'karr', 'Karr']].map(function (x) {
+        return { id: x[0], facId: 'war_council', fnId: 'war_action', optionIdx: 0, label: 'War Action', completeTurn: 7,
+          meta: { kind: 'war_action', objective: x[1], targetKey: x[2], targetName: x[3], commitDefenders: 6, commitBeasts: beasts, commitLieutenants: 0, commitRegiments: 0 } };
+      });
+      return R.fromSave(JSON.parse(JSON.stringify(save)), data);
+    }
+    var d = setUp(2), logged = d.log.length;
+    var a = R.beginMilitaryAction(d, data, d.pendingOrders[0], dice([0.5]), 0);
+    t.same(a.commit, { defenders: 6, lieutenants: 0, units: {}, beasts: { Ape: 2 } }, 'Raid vs Bacca (queued first) keeps its 6 defenders and both Apes');
+    t.same([d.log[0].body, d.log.length - logged], ['Raid vs Bacca: your forces muster for battle. The Military Action is ready to begin.', 1], 'nothing was cut, so nothing more is said');
+    t.equal(R.beginMilitaryAction(d, data, d.pendingOrders[0], dice([0.5]), 0), null, 'Skirmish vs Karr has nothing left');
+    t.equal(d.log[0].body, 'Skirmish vs Karr: nothing committed to it is still free to march, so the war order lapses.');
+    var e = setUp(0);
+    t.equal(R.beginMilitaryAction(e, data, e.pendingOrders[0], dice([0.5]), 0).commit.defenders, 6, 'defenders only: the first keeps them too');
+    t.equal(R.beginMilitaryAction(e, data, e.pendingOrders[0], dice([0.5]), 0), null);
+    t.same(R.warForces(setUp(0), data).defenders.count, 0, 'a new order still finds every waiting order\'s defenders held');
+  });
+
+  test('a war order that musters with less than it committed says so in the log', function (t) {
+    var s = army();
+    var o = queue(s, 'raid', { defenders: 20, beasts: { 'Giant Vulture': 2 } });
+    s.defenders.count = 12;
+    s.defenderBeasts = [{ name: 'Giant Vulture', qty: 1, source: 'Menagerie' }, { name: 'Ape', qty: 1, source: 'Menagerie' }];
+    var ma = R.beginMilitaryAction(s, data, o, dice([0.5]), 0);
+    t.same(ma.commit, { defenders: 12, lieutenants: 0, units: {}, beasts: { 'Giant Vulture': 1 } });
+    t.same(s.log.slice(0, 2).map(function (l) { return l.body; }), [
+      'Raid vs Bacca: your forces muster for battle. The Military Action is ready to begin.',
+      'Raid vs Bacca: not everything the war order committed is still free to march, so it musters with 12 defenders, Giant Vulture (the order had 20 defenders, Giant Vulture ×2).'
+    ]);
+    t.equal(R.musterShortfall(data, { beasts: { Ape: 1, 'Giant Vulture': 2 } }, { beasts: { 'Giant Vulture': 2, Ape: 1 } }), '', 'the same forces in another order: nothing to say');
+  });
+
   test('Lieutenants: never more than the formations and detachments they could lead, and never sent alone', function (t) {
     var s = army();
     t.equal(queue(s, 'defend', { lieutenants: 1 }), null, 'Lieutenants alone: refused');
@@ -409,6 +449,31 @@
     t.same(problems.slice(0, 5), []);
   });
 
+  test('every enemy unit\'s label has its clan\'s name, so it is never mixed up with your own', function (t) {
+    var problems = [];
+    Object.keys(W.clans).forEach(function (key) {
+      var clanName = R.clanName(data, key);
+      for (var seed = 1; seed <= 15; seed++) {
+        R.generateEnemy(data, key, 'skirmish', 'major', R.mulberry32(seed)).enemy.units.forEach(function (u) {
+          if (u.label.indexOf(clanName + ' ') !== 0) problems.push(key + ' ' + u.label);
+          if (u.label.indexOf(clanName + ' ' + clanName) === 0) problems.push('twice: ' + u.label);
+        });
+      }
+    });
+    t.same(problems.slice(0, 5), []);
+    var s = army();
+    var o = queue(s, 'skirmish', { units: { line: 2 } }, 'major', 'bacca');
+    var m = s.warMissions[o.meta.missionKey];
+    /* A mission drawn up before the labels had the clan's name. */
+    m.enemy.units.forEach(function (u) { if (u.variant === null) u.label = u.label.replace(/^Bacca /, ''); });
+    var ma = R.beginMilitaryAction(s, data, o, dice([0.5]), 0);
+    var mine = ma.spec.player.units.map(function (u) { return u.label; });
+    var theirs = ma.spec.enemy.units.map(function (u) { return u.label; });
+    t.ok(theirs.every(function (l) { return /^Bacca /.test(l) && !/^Bacca Bacca/.test(l); }), theirs.join(', '));
+    t.ok(theirs.every(function (l) { return mine.indexOf(l) === -1; }), mine.join(', ') + ' / ' + theirs.join(', '));
+    t.same(ma.spec.enemy.units.map(function (u) { return u.short; }), m.enemy.units.map(function (u) { return u.short; }), 'the tokens\' short names are unchanged');
+  });
+
   test('clans field their variants most of the time, with the variant\'s name, trait and changed profile', function (t) {
     function count(key, tier, name) {
       var n = 0, plain = 0;
@@ -468,7 +533,7 @@
   test('a mission is drawn up once, from its own seeded dice, and saved', function (t) {
     var s = army();
     var m = R.ensureMission(s, data, 'bacca', 'raid', 'small');
-    t.same(Object.keys(m), ['key', 'targetKey', 'targetName', 'objective', 'tier', 'variation', 'budget', 'enemy', 'conditions', 'createdTurn']);
+    t.same(Object.keys(m), ['key', 'targetKey', 'targetName', 'objective', 'tier', 'variation', 'budget', 'enemy', 'conditions', 'createdTurn', 'seenTurn']);
     t.same([m.key, m.targetName, m.conditions, m.createdTurn, s.warMissionSeq], ['bacca|raid|small', 'Bacca', null, 3, 1]);
     var g = R.generateEnemy(data, 'bacca', 'raid', 'small', R.mulberry32(R.missionSeed('bacca|raid|small', 3, 0)));
     t.same(m.enemy, g.enemy);
@@ -530,6 +595,30 @@
     R.ensureMission(s, data, 'molten', 'raid', 'major');
     t.equal(Object.keys(s.warMissions).length, 12, 'on the next turn the oldest are let go');
     t.ok(s.warMissions['molten|raid|major']);
+  });
+
+  test('a mission drawn up on an earlier turn and shown again this turn keeps its army, however many others are looked at', function (t) {
+    var s = army();
+    s.turn = 2;
+    var m = R.ensureMission(s, data, 'karr', 'raid', 'established');
+    var enemy = copy(m.enemy), variation = copy(m.variation), budget = m.budget;
+    s.turn = 5;
+    t.equal(R.ensureMission(s, data, 'karr', 'raid', 'established'), m, 'shown again on turn 5');
+    t.same([m.createdTurn, m.seenTurn], [2, 5]);
+    ['skirmish', 'defend'].forEach(function (o) {
+      Object.keys(W.clans).forEach(function (k) { R.ensureMission(s, data, k, o, 'established'); });
+    });
+    t.ok(Object.keys(s.warMissions).length > 12, 'more than 12 for now');
+    var again = s.warMissions['karr|raid|established'];
+    t.ok(again === m, 'not let go');
+    t.same([again.enemy, again.variation, again.budget, again.createdTurn], [enemy, variation, budget, 2], 'no new army, no new variation roll');
+    s.turn = 6;
+    R.ensureMission(s, data, 'bacca', 'raid', 'small');
+    t.equal(Object.keys(s.warMissions).length, 12, 'on the next turn the ones least recently shown are let go');
+    var old = { key: 'slade|raid|small', enemy: { units: [], leaders: [] }, conditions: null, createdTurn: 1 };
+    s.warMissions[old.key] = old;
+    R.ensureMission(s, data, 'farmer', 'raid', 'small');
+    t.ok(!s.warMissions[old.key], 'a mission saved without seenTurn goes by when it was drawn up');
   });
 
   test('the intelligence estimate always contains the real army\'s Battle Value', function (t) {
@@ -861,6 +950,15 @@
     t.equal(d.indexOf('Battle begins'), -1, 'only the important moments');
   });
 
+  test('the War Report\'s Battle Value lost is to one decimal place, as the result is decided', function (t) {
+    var b = ready('skirmish');
+    var battle = battleFrom(b.ma, 'defeat', hurtOpts({ reason: 'You lost the bigger share of your strength. You lost 33.3% of your Battle Value; the enemy lost 32.5%.' }));
+    battle.result.lostPct = { player: 33.3, enemy: 32.5 };
+    var d = R.finishBattle(b.s, data, b.ma.id, battle, dice([d6(3), d6(5)]), 0).report.details;
+    t.ok(d.indexOf('Battle Value lost: yours 33.3%, the enemy\'s 32.5%.') !== -1, d);
+    t.equal(d.indexOf('yours 33%'), -1, 'never rounded to equal-looking whole percents');
+  });
+
   test('applied once: a second finish, an unknown action or a battle with no result changes nothing', function (t) {
     var b = ready('raid');
     var battle = battleFrom(b.ma, 'victory', hurtOpts({ extracted: 2 }));
@@ -1056,6 +1154,15 @@
     var res = R.finishBattle(c.s, data, c.ma.id, battleFrom(c.ma, 'withdrawal', {}), dice([0.5]), 0);
     t.same([c.s.trustedClientsByClan.bacca, c.s.trustedClientsByClan.slade], [46, 49]);
     t.ok(res.lines.indexOf('Trusted Clients: Bacca −4, every other clan −1.') !== -1, res.lines.join(' | '));
+  });
+
+  test('a Raid withdrawal: the gold follows the supplies already home (+38 for one, the defeat\'s −50 for none); Honour −4', function (t) {
+    var s = army();
+    var ma = { objective: 'raid', targetName: 'Bacca' };
+    var one = R.warRewards(s, data, ma, { result: { extracted: 1 } }, 'withdrawal');
+    var none = R.warRewards(s, data, ma, { result: { extracted: 0 } }, 'withdrawal');
+    t.same([one.gp, one.pc, one.honour], [38, 8, -4]);
+    t.same([none.gp, none.pc, none.honour], [-50, 8, -4]);
   });
 
   group('Bastion war campaign: recovery and saving');

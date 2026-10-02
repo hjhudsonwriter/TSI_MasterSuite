@@ -133,6 +133,17 @@
     });
     return bases;
   }
+  /* The enemy's labels start with the clan's name ("Bacca Line Infantry 2"),
+     as its variants and Captains do, so the battle log, the War Table and
+     the War Report never mix them up with your own "Line Infantry 2". The
+     short names on the tokens are unchanged. Doing it twice changes nothing. */
+  function clanLabels(units, clanName) {
+    (Array.isArray(units) ? units : []).forEach(function (u) {
+      if (!isObj(u) || !clanName) return;
+      var label = String(u.label || u.name || '');
+      if (label.indexOf(clanName + ' ') !== 0) u.label = clanName + ' ' + label;
+    });
+  }
   /* Labels and short names for one side's units, numbered when there are
      several of a name: "Line Infantry 2" / "LI2" ("G10" from ten). */
   function nameUnits(units, w) {
@@ -380,7 +391,12 @@
      still waiting (by number, in the order they were queued: see
      warForces). opts.except leaves out one order or action (a waiting order
      left out still keeps its place in the queue); opts.ignoreOrders leaves
-     out every waiting order. */
+     out every waiting order.
+     Leaving out a waiting order (mustering it) also leaves out the
+     defenders, Lieutenants and beasts of the orders queued after it: they
+     share them in queue order, as they share the regiments, so the first
+     queued keeps its forces and the later ones get what's left. (Phase 1
+     let two orders commit the same defenders.) */
   function commitments(s, data, opts) {
     var read = readCommits(s, data);
     var out = { defenders: 0, lieutenants: 0, beasts: {}, maFull: {}, maRows: {}, queue: [] };
@@ -403,10 +419,12 @@
       });
     });
     if (!opts.ignoreOrders) {
+      var passed = false;
       warOrders(s).forEach(function (o) {
         var c = read.orders[o.id];
         var mine = opts.except !== undefined && o.id === opts.except;
-        if (!mine) addCommon(c);
+        if (mine) passed = true;
+        else if (!passed) addCommon(c);
         out.queue.push({ units: c.units, mine: mine });
       });
     }
@@ -732,10 +750,11 @@
     });
     units.forEach(function (u, i) { u.id = 'e' + (i + 1); });
     nameUnits(units, w);
+    var clanName = R.clanName(data, targetKey);
+    clanLabels(units, clanName);
 
     var hosts = units.filter(function (u) { return u.kind !== 'beast'; }).length;
     captains = Math.min(captains, hosts);
-    var clanName = R.clanName(data, targetKey);
     var leaders = [];
     for (var c = 1; c <= captains; c++) leaders.push({ id: 'c' + c, name: clanName + ' ' + w.captain.name + (captains > 1 ? ' ' + c : '') });
     return { variation: { roll: roll, mult: vrow.mult }, budget: budget, enemy: { units: units, leaders: leaders } };
@@ -752,9 +771,12 @@
     (Array.isArray(s.militaryActions) ? s.militaryActions : []).forEach(function (ma) { if (isObj(ma) && ma.missionKey) used[ma.missionKey] = true; });
     return used;
   }
-  /* Keep at most maxMissions: drop the oldest that has no opening rolls,
-     isn't waiting or under way, and was drawn up on an earlier turn. A
-     mission seen this turn is never dropped (there may be more than
+  /* The turn a mission was last shown (or drawn up, for one saved before
+     missions kept a note of that). */
+  function lastSeen(m) { return clampInt(m.seenTurn !== undefined ? m.seenTurn : m.createdTurn, 0); }
+  /* Keep at most maxMissions: drop the one least recently shown that has no
+     opening rolls, isn't waiting or under way, and wasn't shown this turn.
+     A mission seen this turn is never dropped (there may be more than
      maxMissions until the next turn), so looking through the others can't
      redraw an army the War Council has already shown. */
   function pruneMissions(s, data, keep) {
@@ -767,8 +789,8 @@
       var drop = null;
       keys.forEach(function (k) {
         var m = s.warMissions[k];
-        if (used[k] || m.conditions || clampInt(m.createdTurn, 0) >= turn) return;
-        if (!drop || clampInt(m.createdTurn, 0) < clampInt(s.warMissions[drop].createdTurn, 0)) drop = k;
+        if (used[k] || m.conditions || lastSeen(m) >= turn) return;
+        if (!drop || lastSeen(m) < lastSeen(s.warMissions[drop])) drop = k;
       });
       if (!drop) break;
       delete s.warMissions[drop];
@@ -778,18 +800,22 @@
 
   /* The mission for a target, objective and force: the saved one, or a new
      one drawn up now (and saved) with its own seeded dice, from the key, the
-     turn and s.warMissionSeq. */
+     turn and s.warMissionSeq. Either way it's noted as seen this turn
+     (seenTurn), so it isn't let go while the War Council is showing it. */
   R.ensureMission = function (s, data, targetKey, objective, tierId) {
     if (!isObj(s.warMissions)) s.warMissions = {};
     var key = R.missionKey(targetKey, objective, tierId);
-    if (isObj(s.warMissions[key])) return s.warMissions[key];
+    if (isObj(s.warMissions[key])) {
+      s.warMissions[key].seenTurn = s.turn;
+      return s.warMissions[key];
+    }
     var seq = clampInt(s.warMissionSeq, 0);
     var gen = R.generateEnemy(data, targetKey, objective, tierId, R.mulberry32(R.missionSeed(key, s.turn, seq)));
     if (!gen) return null;
     s.warMissionSeq = seq + 1;
     var mission = {
       key: key, targetKey: targetKey, targetName: R.clanName(data, targetKey), objective: objective, tier: tierId,
-      variation: gen.variation, budget: gen.budget, enemy: gen.enemy, conditions: null, createdTurn: s.turn
+      variation: gen.variation, budget: gen.budget, enemy: gen.enemy, conditions: null, createdTurn: s.turn, seenTurn: s.turn
     };
     s.warMissions[key] = mission;
     pruneMissions(s, data, key);
@@ -805,7 +831,7 @@
     if (!isObj(ma.spec) || !isObj(ma.spec.enemy)) return R.ensureMission(s, data, ma.targetKey, ma.objective, ma.tier);
     m = {
       key: ma.missionKey, targetKey: ma.targetKey, targetName: ma.targetName, objective: ma.objective, tier: ma.tier,
-      variation: null, budget: R.enemyBV(data, ma.spec.enemy), enemy: clone(ma.spec.enemy), conditions: null, createdTurn: s.turn
+      variation: null, budget: R.enemyBV(data, ma.spec.enemy), enemy: clone(ma.spec.enemy), conditions: null, createdTurn: s.turn, seenTurn: s.turn
     };
     s.warMissions[ma.missionKey] = m;
     return m;
@@ -852,7 +878,7 @@
       notes: notes
     };
   };
-  /* "Estimated enemy: 24–32 Battle Value; about 5 to 7 formations; cavalry reported." */
+  /* "Estimated enemy: 23–33 Battle Value; about 3 to 5 formations; archers reported." */
   R.missionEstimateLine = function (mission, data) {
     var e = R.missionEstimate(mission, data);
     return 'Estimated enemy: ' + e.bvLow + '–' + e.bvHigh + ' Battle Value; about ' + e.formationsLow + ' to ' + e.formationsHigh + ' formations' + (e.notes.length ? '; ' + e.notes.join(', ') : '') + '.';
@@ -909,9 +935,13 @@
      opening rolls. */
   R.buildSpec = function (s, data, ma, opts) {
     var mission = missionFor(s, data, ma);
+    var enemy = clone(mission ? mission.enemy : { units: [], leaders: [] });
+    /* A mission drawn up before the enemy's labels had the clan's name. */
+    var clanKey = mission && mission.targetKey ? mission.targetKey : ma.targetKey;
+    if (isObj(enemy) && wd(data).clans[clanKey]) clanLabels(enemy.units, R.clanName(data, clanKey));
     return {
       player: R.playerSide(s, data, ma.commit, opts),
-      enemy: clone(mission ? mission.enemy : { units: [], leaders: [] }),
+      enemy: enemy,
       objective: ma.objective,
       conditions: R.specConditions(data, ma)
     };
@@ -941,7 +971,8 @@
     var objective = w.objectives[meta.objective] ? String(meta.objective) : 'raid';
     var targetKey = w.clans[meta.targetKey] ? String(meta.targetKey) : 'blackstone';
     var tier = tierOf(w, meta.tier) ? String(meta.tier) : 'established';
-    var commit = R.warCommit2(s, data, R.orderCommit(s, data, order), { except: order.id });
+    var ordered = R.orderCommit(s, data, order);
+    var commit = R.warCommit2(s, data, ordered, { except: order.id });
     var ma = {
       id: 'ma-' + String(order.id), orderId: String(order.id), turn: s.turn, v: 2,
       objective: objective, targetKey: targetKey, targetName: R.clanName(data, targetKey), tier: tier, missionKey: '',
@@ -958,6 +989,8 @@
     R.removeOrder(s, order.id);
     if (!Array.isArray(s.militaryActions)) s.militaryActions = [];
     s.militaryActions.push(ma);
+    var cut = R.musterShortfall(data, ordered, commit);
+    if (cut) R.log(s, 'War Turn', R.militaryName(ma) + ': ' + cut, now);
     R.log(s, 'War Turn', R.militaryName(ma) + ': your forces muster for battle. The Military Action is ready to begin.', now);
     var cond = isObj(mission.conditions) ? mission.conditions : {};
     if (isObj(cond.weather)) {
@@ -1078,6 +1111,20 @@
       add(c.regiments, 'Regiment', 'Regiments');
     }
     return parts.length ? parts.join(', ') : 'no forces';
+  };
+  /* When a war order musters with less than it committed (some of it is no
+     longer free: a beast died, the defenders went down, or an earlier
+     order holds it), the sentence that says so; '' when nothing changed.
+     ordered and commit are in the phase 2 shape. */
+  R.musterShortfall = function (data, ordered, commit) {
+    var a = R.cleanCommit(ordered, data), b = R.cleanCommit(commit, data);
+    var same = a.defenders === b.defenders && a.lieutenants === b.lieutenants;
+    [[a.units, b.units], [a.beasts, b.beasts]].forEach(function (k) {
+      Object.keys(k[0]).concat(Object.keys(k[1])).forEach(function (n) { if ((k[0][n] || 0) !== (k[1][n] || 0)) same = false; });
+    });
+    if (same) return '';
+    return 'not everything the war order committed is still free to march, so it musters with ' + R.militaryCommitLine(b) +
+      ' (the order had ' + R.militaryCommitLine(a) + ').';
   };
 
   /* Where a Military Action has got to, for the War Council panel. */
@@ -1495,7 +1542,10 @@
     if (rolls.length) out.push('Opening rolls: ' + rolls.join('; ') + '.');
     out.push('Result: ' + headline(b, c));
     var lost = isObj(b.result.lostPct) ? b.result.lostPct : {};
-    if (lost.player !== undefined || lost.enemy !== undefined) out.push('Battle Value lost: yours ' + Math.round(Number(lost.player) || 0) + '%, the enemy\'s ' + Math.round(Number(lost.enemy) || 0) + '%.');
+    /* To one decimal place, as the result line and the War Table show them
+       (the Skirmish is decided on these). */
+    var pct = function (v) { return String(Math.round((Number(v) || 0) * 10) / 10); };
+    if (lost.player !== undefined || lost.enemy !== undefined) out.push('Battle Value lost: yours ' + pct(lost.player) + '%, the enemy\'s ' + pct(lost.enemy) + '%.');
     if (ma.objective === 'raid') out.push('Supplies carried off: ' + c.rewards.extracted + ' of ' + c.rewards.need + ' needed.');
 
     out.push('');
