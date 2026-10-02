@@ -117,7 +117,66 @@ window.TSI_DATA.bastion = {
       { value: 'skirmish', label: 'Skirmish' },
       { value: 'defend', label: 'Defend Bastion' },
       { value: 'seize_outpost', label: 'Seize Outpost (placeholder)' }
-    ]
+    ],
+
+    /* The Military Action (Harry's request, 2 October 2026): three rolls
+       before the battle, then the War Table. These change nothing yet
+       except Luck, which adds its +1 or −1 to the war's roll; what weather
+       and morale do in battle comes with the combat build.
+       Weather: pass the DC for a clear day; fail it and the weather is one
+       of the Explorer's storms, at random. Morale's DC rises with bad
+       weather. {leaders} / {Leaders} become "your Lieutenants" (or
+       "your sergeants" when no Lieutenants march). */
+    militaryAction: {
+      dc: { weather: 12, morale: 12, luck: 10 },
+      clear: {
+        id: 'clear', title: 'Clear Day', moraleDc: 0,
+        text: 'The sky holds clear and bright over the field. Banners hang still in the morning air, and every shout carries.'
+      },
+      /* The Explorer's weather events (tools/explorer/data/explorer-data.js),
+         with their films. */
+      storms: [
+        {
+          id: 'white_blizzard', title: 'White Blizzard', kind: 'Snowstorm', moraleDc: 4,
+          video: 'tools/explorer/assets/overlays/blizzard_overlay.mp4',
+          text: 'Snow comes suddenly, swallowing colour and distance. The world becomes a white corridor, and every breath feels borrowed.'
+        },
+        {
+          id: 'cold_rain', title: 'Cold Downpour', kind: 'Rainstorm', moraleDc: 2,
+          video: 'tools/explorer/assets/overlays/rain_overlay.mp4',
+          text: 'Rain needles through seams and straps. The road slicks, sounds carry oddly, and your pace becomes a negotiation.'
+        },
+        {
+          id: 'sun_heatwave', title: 'Sun & Heatwave', kind: 'Heatwave', moraleDc: 3,
+          video: 'tools/explorer/assets/overlays/sun_heat_overlay.mp4',
+          text: 'The sun presses down like a weight. Water warms, tempers shorten, and the road shimmers ahead in wavering ribbons.'
+        }
+      ],
+      morale: {
+        clear: {
+          pass: 'The march is easy under a clear sky. Songs carry down the column, and {leaders} find the ranks eager for the fight.',
+          fail: 'Even under a clear sky, doubt spreads through the ranks. Too many wonder whether this fight is worth the blood it will cost.'
+        },
+        white_blizzard: {
+          pass: 'Despite the biting cold of the march, {leaders} keep your forces’ spirits high through encouraging words around warm campfires.',
+          fail: 'The morale of your forces is low after a long march to the field in biting cold and ankle-deep snow.'
+        },
+        cold_rain: {
+          pass: 'Soaked to the skin, your forces still grin at one another through the downpour. {Leaders} make a jest of every puddle, and the ranks hold together.',
+          fail: 'Rain has found every seam and strap. Boots are heavy, tempers short, and the ranks reach the field sodden and sullen.'
+        },
+        sun_heatwave: {
+          pass: 'The sun hammers the column, but {leaders} ration the water well and rest the ranks in the shade. They arrive hot, but hungry for the fight.',
+          fail: 'The heat has drained the fight from your forces. They reach the field parched and slow, more eager for shade than for battle.'
+        }
+      },
+      luck: {
+        pass: 'Fortune smiles today. A hawk circles your banner three times before the march, and the ranks take it as a sign that the Gods ride with you. (+1 to all rolls in this war action)',
+        fail: 'Something strange is in the air today; perhaps the Gods do not look kindly upon this needless bloodshed… (−1 to all rolls in this war action)'
+      },
+      /* The Bastion's regiments are "Regiment (100)". */
+      regimentSize: 100
+    }
   },
 
   /* The three gods on the Favour panel. */
