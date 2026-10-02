@@ -86,14 +86,14 @@
       charge: { name: 'Charge', bonus: 2, text: 'Advance & Attack: move at least 2 in a straight line through open ground into melee for +2 on that attack. Not while Shaken or already engaged, not through difficult terrain, and not against a unit that is Holding.' },
       strong_charge: { name: 'Strong Charge', bonus: 3, charge: true, text: 'As Charge, but +3 on that attack.' },
       flight: { name: 'Flight', text: 'Flies over terrain, water, cliffs and other units (it still ends on an empty square); not held up by enemies it passes.' },
-      terror: { name: 'Terror', text: 'A unit it damages makes any Resolve check that follows at −2.' },
+      terror: { name: 'Terror', checkMod: -2, text: 'A unit it damages makes any Resolve check that follows at −2.' },
       pack: { name: 'Pack', text: 'Gains the +2 surround bonus whenever another friendly unit is also fighting its target, from any direction.' },
       grapple: { name: 'Grapple', text: 'A unit it damages in melee can\'t March or Disengage on its next activation.' },
-      climber: { name: 'Climber', text: 'Woods, rubble and dense woods cost it no extra movement.' },
+      climber: { name: 'Climber', ignores: ['woods', 'rubble', 'dense'], text: 'Woods, rubble and dense woods cost it no extra movement.' },
       swimmer: { name: 'Swimmer', text: 'Can cross and stand in deep water.' },
-      woodland: { name: 'Woodland', text: 'Woods and dense woods cost it no extra movement.' },
-      wader: { name: 'Wader', text: 'Bog and marsh cost it no extra movement.' },
-      cragsure: { name: 'Cragsure', text: 'Rubble and rocky ground cost it no extra movement.' },
+      woodland: { name: 'Woodland', ignores: ['woods', 'dense'], text: 'Woods and dense woods cost it no extra movement.' },
+      wader: { name: 'Wader', ignores: ['bog'], text: 'Bog and marsh cost it no extra movement.' },
+      cragsure: { name: 'Cragsure', ignores: ['rubble'], text: 'Rubble and rocky ground cost it no extra movement.' },
       steady: { name: 'Steady', resolve: 1, text: '+1 Resolve.' },
       hardy: { name: 'Hardy', text: 'Ignores the weather\'s penalties.' },
       braced: { name: 'Braced', text: 'Attackers never gain a Charge bonus against it, even when it isn\'t Holding.' },
@@ -182,10 +182,10 @@
 
     /* ---------- Missions: objectives, enemy strength, victory ---------- */
     objectives: {
-      raid: { name: 'Raid', mult: 0.85, markers: 3, need: 2, rule: 'Secure and extract two of three supply markers through your starting edge by the end of round 6. Collecting a marker takes Interact.' },
+      raid: { name: 'Raid', mult: 0.85, markers: 3, need: 2, markerCols: [0.2, 0.5, 0.8], rule: 'Secure and extract two of three supply markers through your starting edge by the end of round 6. Collecting a marker takes Interact.' },
       skirmish: { name: 'Skirmish', mult: 1.0, rule: 'Break the opposing army. At the end of round 6, the side that has lost the smaller share of its starting Battle Value wins; equal shares are a draw.' },
-      defend: { name: 'Defend Bastion', mult: 1.1, rule: 'Stop the enemy holding your supply depot at two round ends in a row, and keep your army unbroken through round 6.' },
-      seize_outpost: { name: 'Seize Outpost', mult: 1.2, rule: 'Hold the outpost with a Steady unit, with no enemy unit in it, at two round ends in a row before the end of round 6.' }
+      defend: { name: 'Defend Bastion', mult: 1.1, zone: { w: 4, h: 2 }, holdRounds: 2, rule: 'Stop the enemy holding your supply depot at two round ends in a row, and keep your army unbroken through round 6.' },
+      seize_outpost: { name: 'Seize Outpost', mult: 1.2, zone: { w: 4, h: 2 }, holdRounds: 2, rule: 'Hold the outpost with a Steady unit, with no enemy unit in it, at two round ends in a row before the end of round 6.' }
     },
     tiers: [
       { id: 'small', name: 'Small local force', bv: 18 },

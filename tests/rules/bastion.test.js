@@ -656,11 +656,10 @@
     t.same(s.defenderBeasts, []);
   });
 
-  test('the beast lost in a war is one that marched: the War Table\'s last-named, never one left at home', function (t) {
+  test('the beast lost in a war roll is one that marched (the first in the list), never one left at home', function (t) {
     var s = fresh();
     s.defenders.count = 3;
     s.defenderBeasts = [{ name: 'Giant Vulture', qty: 5 }, { name: 'Ape', qty: 2 }];
-    t.same(R.militaryForces(s, data, { defenders: 0, beasts: 5, lieutenants: 0, regiments: 0 }).map(function (f) { return f.label; }).slice(-1), ['Giant Vulture 5']);
     var plan = R.warPlan(s, data, { meta: { objective: 'raid', targetKey: 'bacca', commitDefenders: 3, commitBeasts: 5 } });
     R.resolveWar(s, data, plan, roll(1, 4), dice([0.3]), 0);
     t.same(s.defenderBeasts, [{ name: 'Giant Vulture', qty: 4 }, { name: 'Ape', qty: 2 }], 'the Apes stayed at home');
@@ -701,30 +700,17 @@
     var b = begun();
     t.same(b.s.pendingOrders, []);
     t.equal(b.s.militaryActions.length, 1);
-    t.same([b.ma.step, b.ma.objective, b.ma.targetName, b.ma.turn], ['weather', 'raid', 'Bacca', 1]);
-    t.same(b.ma.commit, { defenders: 6, beasts: 3, lieutenants: 1, regiments: 2 });
-    t.same(b.ma.deployment, { started: false, locked: false, positions: {} });
+    t.same([b.ma.step, b.ma.objective, b.ma.targetName, b.ma.turn, b.ma.v, b.ma.tier], ['weather', 'raid', 'Bacca', 1, 2, 'established'], 'a phase 1 order: an established local force');
+    t.same(b.ma.commit, { defenders: 6, lieutenants: 1, units: { line: 2 }, beasts: { 'Giant Vulture': 3 } }, 'its Regiments are Line Infantry; its beasts the first in the list');
+    t.equal(b.ma.battle, null);
+    t.same(b.ma.spec.player.units.map(function (u) { return u.label; }), ['Line Infantry 1', 'Line Infantry 2', 'Giant Vulture 1', 'Giant Vulture 2', 'Giant Vulture 3']);
     t.equal(b.s.log[0].body, 'RAID vs Bacca: your forces muster for battle. The Military Action is ready to begin.');
-    t.equal(R.militaryCommitLine(b.ma.commit), '6 defenders, 3 beasts, 1 Lieutenant, 2 Regiments');
+    t.equal(R.militaryCommitLine(b.ma.commit), '6 defenders, 1 Lieutenant, Line Infantry ×2, Giant Vulture ×3');
+    t.equal(R.militaryCommitLine({ defenders: 6, beasts: 3, lieutenants: 1, regiments: 2 }), '6 defenders, 1 Lieutenant, 3 beasts, 2 Regiments', 'phase 1\'s shape still reads');
   });
 
-  test('one token per Regiment, one block of defenders, one per Lieutenant and one per beast, named from the Menagerie', function (t) {
-    var b = begun();
-    t.same(b.ma.forces, [
-      { id: 'reg-1', kind: 'regiment', label: 'Regiment 1', sub: '100 soldiers' },
-      { id: 'reg-2', kind: 'regiment', label: 'Regiment 2', sub: '100 soldiers' },
-      { id: 'def', kind: 'defenders', label: 'Bastion Defenders', count: 6 },
-      { id: 'lt-1', kind: 'lieutenant', label: 'Lieutenant 1', short: 'L1' },
-      { id: 'beast-1', kind: 'beast', label: 'Giant Vulture 1', short: 'GV1' },
-      { id: 'beast-2', kind: 'beast', label: 'Giant Vulture 2', short: 'GV2' },
-      { id: 'beast-3', kind: 'beast', label: 'Giant Vulture 3', short: 'GV3' }
-    ]);
-    var s = fresh();
-    s.defenderBeasts = [{ name: 'Ape', qty: 1 }, { name: 'Giant Vulture', qty: 2 }];
-    t.same(R.militaryForces(s, data, { defenders: 0, beasts: 2, lieutenants: 0, regiments: 0 }).map(function (f) { return f.label; }), ['Ape', 'Giant Vulture']);
+  test('short names: a name\'s initials', function (t) {
     t.same([R.forceInitials('Giant Vulture'), R.forceInitials('ape'), R.forceInitials('Dire Wolf Alpha'), R.forceInitials('')], ['GV', 'Ap', 'DA', '?']);
-    s.defenderBeasts = [{ name: 'Giant Vulture', qty: 11 }];
-    t.same(R.militaryForces(s, data, { defenders: 0, beasts: 11, lieutenants: 0, regiments: 0 }).map(function (f) { return f.short; }).slice(8), ['GV9', 'G10', 'G11'], 'each one can be told apart on the War Table');
   });
 
   test('Weather: pass the DC 12 for a clear day; fail and a storm is drawn at random', function (t) {
@@ -776,38 +762,21 @@
     t.equal(R.militaryStatus(c.ma), 'Rolls done. Next: deploy your forces on the War Table.');
   });
 
-  test('deployment is saved only while deploying; unknown tokens are dropped; Start Battle moves on to the battle', function (t) {
-    var b = begun();
-    t.equal(R.militaryDeploy(b.s, b.ma.id, { started: true, positions: {} }), false, 'not before the rolls');
-    b = rolled(15, 15, 15);
-    t.ok(R.militaryDeploy(b.s, b.ma.id, { started: true, locked: false, positions: { 'reg-1': { x: 0.5, y: 0.7 }, 'ghost': { x: 0.5, y: 0.5 }, 'def': { x: 2, y: -1 }, 'lt-1': { x: 'a', y: 0.6 } } }));
-    t.same(b.ma.deployment, { started: true, locked: false, positions: { 'reg-1': { x: 0.5, y: 0.7 }, 'def': { x: 1, y: 0 } } });
-    t.equal(R.militaryStatus(b.ma), 'Deploying on the War Table.');
-    R.militaryDeploy(b.s, b.ma.id, { started: false, locked: true, positions: {} });
-    t.equal(b.ma.step, 'deploy', 'it can\'t be locked before deployment began');
-    R.militaryDeploy(b.s, b.ma.id, { started: true, locked: true, positions: { 'reg-1': { x: 0.4, y: 0.8 } } });
-    t.same([b.ma.step, b.ma.deployment.locked], ['resolve', true]);
-    t.equal(R.militaryDeploy(b.s, b.ma.id, { started: true, locked: false, positions: {} }), false, 'locked stays locked');
-  });
-
-  test('after Start Battle the war\'s single roll settles it, with Luck on the roll and the three rolls in the war log, once', function (t) {
-    var b = rolled(5, 18, 9, 0.5);
-    t.equal(R.finishMilitaryAction(b.s, data, b.ma.id, roll(13, 13), dice([0.3]), 0), null, 'not before Start Battle');
-    R.militaryDeploy(b.s, b.ma.id, { started: true, locked: true, positions: { 'reg-1': { x: 0.5, y: 0.6 }, 'def': { x: 0.5, y: 0.8 } } });
-    var plan = R.militaryPlan(b.s, data, b.ma);
-    t.same([plan.dc, plan.mod, plan.luck], [14, 3 + 2 + 1 - 1, -1], 'defenders +3, beasts +2, Lieutenant and Regiments +1, Luck −1');
-    var line = R.finishMilitaryAction(b.s, data, b.ma.id, roll(8, 8 + plan.mod), dice([0.3]), 0);
-    t.same(line, ['War Turn Resolved', 'Failure: RAID vs Bacca']);
-    t.same(b.s.militaryActions, []);
-    var w = b.s.warLog[0];
-    t.ok(/Roll: d20 8 \+ mod 5 = 13 vs DC 14/.test(w.details), w.details);
-    t.ok(/Weather: Cold Downpour \(d20 5 vs DC 12\)/.test(w.details), w.details);
-    t.ok(/Morale: High \(d20 18 vs DC 14\)/.test(w.details), w.details);
-    t.ok(/Luck: −1 to the roll \(d20 9 vs DC 10\)/.test(w.details), w.details);
-    t.ok(/Deployment: 2 of 7 units placed on the War Table/.test(w.details), w.details);
-    t.equal(b.s.warLog.length, 1);
-    t.equal(R.finishMilitaryAction(b.s, data, b.ma.id, roll(20, 20), dice([0.3]), 0), null, 'only once');
-    t.equal(b.s.warLog.length, 1);
+  test('Luck\'s modifier follows the war data file, so the Luck box, the summary and the battle agree', function (t) {
+    var W = T.bastionWar;
+    var data2 = Object.assign({}, data, { war: Object.assign({}, W, { luck: { passMod: 2, failMod: -3 } }) });
+    function luckAt(d20) {
+      var b = begun();
+      R.militaryRoll(b.s, data2, b.ma.id, 'weather', roll(15, 15), dice([0]));
+      R.militaryRoll(b.s, data2, b.ma.id, 'morale', roll(15, 15), dice([0]));
+      R.militaryRoll(b.s, data2, b.ma.id, 'luck', roll(d20, d20), dice([0]));
+      return b;
+    }
+    var up = luckAt(15), down = luckAt(2);
+    t.same([up.ma.luck.mod, R.militaryResult(data2, up.ma, 'luck').headline, R.militarySummary(data2, up.ma)[2].value, up.ma.spec.conditions.luckMod], [2, 'Luck: +2', '+2', 2]);
+    t.same([down.ma.luck.mod, R.militaryResult(data2, down.ma, 'luck').headline, down.ma.spec.conditions.luckMod], [-3, 'Luck: −3', -3]);
+    t.equal(R.fromSave(JSON.parse(JSON.stringify(R.toSave(up.s))), data2).militaryActions[0].luck.mod, 2, 'and on loading a save');
+    t.equal(R.luckMod(data, true), W.luck.passMod, 'the data file\'s own +1');
   });
 
   test('calling it off wins and loses nothing', function (t) {
@@ -815,6 +784,7 @@
     var before = [b.s.treasuryGP, b.s.defenders.count, JSON.stringify(b.s.defenderBeasts), b.s.warLog.length];
     t.ok(R.callOffMilitaryAction(b.s, b.ma.id, 0));
     t.same(b.s.militaryActions, []);
+    t.ok(b.s.warMissions[b.ma.missionKey].conditions, 'the mission and its opening rolls are kept');
     t.same([b.s.treasuryGP, b.s.defenders.count, JSON.stringify(b.s.defenderBeasts), b.s.warLog.length], before);
     t.equal(b.s.log[0].body, 'RAID vs Bacca: the Military Action was called off. Nothing was won or lost.');
     t.equal(R.callOffMilitaryAction(b.s, b.ma.id, 0), false);
@@ -890,10 +860,13 @@
     R.militaryRoll(s, data, ma.id, 'weather', roll(3, 3), dice([0.1]));
     R.militaryRoll(s, data, ma.id, 'morale', roll(17, 17), dice([0]));
     R.militaryRoll(s, data, ma.id, 'luck', roll(12, 12), dice([0]));
-    R.militaryDeploy(s, ma.id, { started: true, locked: false, positions: { def: { x: 0.25, y: 0.75 }, 'beast-5': { x: 0.9, y: 0.95 } } });
+    t.ok(R.militaryBattleSave(s, ma.id, { v: 2, phase: 'deploy', round: 1, maxRounds: 6, started: false, units: [{ id: 'p-beast-1', side: 'player', pos: { c: 3, r: 9 } }], leaders: [], log: [] }));
     var back = R.fromSave(JSON.parse(JSON.stringify(R.toSave(s))), data);
     t.same(back, s);
-    t.equal(back.militaryActions[0].forces.length, 6);
+    t.equal(back.militaryActions[0].spec.player.units.length, 5, 'five Giant Vultures');
+    t.same(back.militaryActions[0].battle.units[0].pos, { c: 3, r: 9 });
+    t.equal(back.warMissions[ma.missionKey].conditions, null, 'the rolls stay the action\'s own until it is called off');
+    t.same(back.militaryActions[0].spec.conditions, { weather: 'white_blizzard', moraleMod: T.bastionWar.morale.highMod, luckMod: T.bastionWar.luck.passMod });
   });
 
   test('a damaged Military Action is dropped; one whose step is ahead of its rolls goes back', function (t) {
@@ -905,9 +878,11 @@
       { id: 'b', step: 'deploy', commit: { defenders: 2 }, forces: [{ id: 'def', kind: 'defenders', label: 'Bastion Defenders', count: 2 }, { id: 'x', kind: 'dragon' }], weather: { d20: 14, total: 14, dc: 12, pass: true, id: 'clear' } },
       { id: 'c', step: 'resolve', commit: {}, forces: [], weather: { d20: 1, total: 1, dc: 12, pass: false, id: 'cold_rain' }, morale: { d20: 1, total: 1, dc: 14, pass: false }, luck: { d20: 1, total: 1, dc: 10, pass: false, mod: -1 }, deployment: { started: true, locked: false, positions: {} } }
     ];
+    save.defenders = { count: 2, armed: false, patrolAdvantage: false };
     var back = R.fromSave(save, data);
-    t.same(back.militaryActions.map(function (m) { return [m.id, m.step]; }), [['b', 'morale'], ['c', 'deploy']]);
-    t.same(back.militaryActions[0].forces.map(function (f) { return f.id; }), ['def'], 'an unknown kind of token is dropped');
+    t.same(back.militaryActions.map(function (m) { return [m.id, m.step, m.v]; }), [['b', 'morale', 2], ['c', 'deploy', 2]], 'phase 1 actions are upgraded; one waiting for the single roll goes back to deployment');
+    t.equal(back.militaryActions[0].forces, undefined, 'the old tokens and deployment are dropped');
+    t.same(back.militaryActions[0].spec.player.defenders, { count: 2, armed: false, source: { defenders: true } });
     t.ok(R.saveProblem(Object.assign(R.toSave(s), { militaryActions: 'x' })));
   });
 
