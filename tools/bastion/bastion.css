@@ -175,6 +175,58 @@
   color: var(--tsi-gold-text);
 }
 
+/* The Clan's or Brigade's crest, beside its name in Party Identity. */
+.tsi-tool--bastion .tsi-bas-identity { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
+.tsi-tool--bastion .tsi-bas-identity__name { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.tsi-tool--bastion .tsi-bas-crest {
+  width: 96px;
+  height: 96px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--tsi-line-control);
+  border-radius: var(--tsi-radius-md);
+  background: radial-gradient(circle at 50% 40%, rgba(214, 178, 94, .14), rgba(0, 0, 0, .35) 70%);
+  box-shadow: var(--tsi-glow-gold);
+}
+.tsi-tool--bastion .tsi-bas-crest__img { max-width: 88px; max-height: 88px; object-fit: contain; filter: drop-shadow(0 4px 8px rgba(0, 0, 0, .55)); }
+.tsi-tool--bastion .tsi-bas-crest-actions { display: flex; gap: 6px; }
+.tsi-tool--bastion .tsi-bas-crest-actions .tsi-btn { font-size: 12px; padding: 5px 10px; }
+
+/* The crest part of the Form Clan and Form Mercenary Brigade pop-ups. */
+.tsi-page--bastion .tsi-bas-modal--found { width: min(640px, 96vw); }
+.tsi-page--bastion .tsi-bas-modal .tsi-bas-crest-pick {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  margin: 4px 0 12px;
+  padding: 12px;
+  border: 1px solid var(--tsi-line);
+  border-radius: var(--tsi-radius-row);
+  background: rgba(0, 0, 0, .3);
+}
+.tsi-page--bastion .tsi-bas-modal .tsi-bas-crest-pick__frame {
+  width: 104px;
+  height: 104px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border: 1px dashed var(--tsi-line-control);
+  border-radius: var(--tsi-radius-md);
+  background: rgba(0, 0, 0, .35);
+}
+.tsi-page--bastion .tsi-bas-modal .tsi-bas-crest-pick__img { max-width: 96px; max-height: 96px; object-fit: contain; }
+.tsi-page--bastion .tsi-bas-modal .tsi-bas-crest-pick__empty { font: 400 var(--tsi-fs-label) var(--tsi-font-display); color: var(--tsi-text-faint); text-align: center; padding: 6px; }
+.tsi-page--bastion .tsi-bas-modal .tsi-bas-crest-pick__side { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.tsi-page--bastion .tsi-bas-modal .tsi-bas-crest-pick__title {
+  font: 400 var(--tsi-fs-label) var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-label);
+  color: var(--tsi-text-muted);
+}
+.tsi-page--bastion .tsi-bas-modal .tsi-bas-crest-pick__link { color: var(--tsi-gold); font: 600 13px var(--tsi-font-display); letter-spacing: var(--tsi-track-button); }
+.tsi-page--bastion .tsi-bas-modal .tsi-bas-crest-pick__link:hover { color: var(--tsi-text); }
+.tsi-page--bastion .tsi-bas-modal .tsi-bas-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
 /* The old gold pill buttons (Upgrade, Routes, Resolve, Council Ledger, Invest…). */
 .tsi-tool--bastion .tsi-bas-pill,
 .tsi-page--bastion .tsi-bas-modal .tsi-bas-pill {
@@ -391,6 +443,44 @@
 .tsi-tool--bastion .tsi-bas-war-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .tsi-tool--bastion .tsi-bas-war-hint { font-size: 14px; }
 .tsi-tool--bastion .tsi-bas-war-log { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+/* Military Actions waiting in the War Council (Harry's request, 2 October 2026). */
+.tsi-tool--bastion .tsi-bas-ma-box { border-color: var(--tsi-line-control); box-shadow: var(--tsi-glow-gold); margin-bottom: 12px; }
+.tsi-tool--bastion .tsi-bas-ma-list { display: flex; flex-direction: column; gap: 8px; }
+.tsi-tool--bastion .tsi-bas-ma {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--tsi-line);
+  border-radius: var(--tsi-radius-sm);
+  background: rgba(0, 0, 0, .3);
+}
+.tsi-tool--bastion .tsi-bas-ma__main { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.tsi-tool--bastion .tsi-bas-ma__status { font-size: var(--tsi-fs-body-sm); color: var(--tsi-text); }
+.tsi-tool--bastion .tsi-bas-ma__chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.tsi-tool--bastion .tsi-bas-ma .tsi-bas-actions { flex-shrink: 0; }
+.tsi-tool--bastion .tsi-bas-ma-chip,
+.tsi-page--bastion .tsi-bas-ma-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 3px 10px;
+  border: 1px solid var(--tsi-line);
+  border-radius: var(--tsi-radius-pill);
+  background: rgba(0, 0, 0, .35);
+  font-size: 14px;
+}
+.tsi-tool--bastion .tsi-bas-ma-chip__label,
+.tsi-page--bastion .tsi-bas-ma-chip__label {
+  font: 600 11px var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-label);
+  text-transform: uppercase;
+  color: var(--tsi-gold-text);
+}
+.tsi-tool--bastion .tsi-bas-ma-chip b,
+.tsi-page--bastion .tsi-bas-ma-chip b { color: var(--tsi-text); font-weight: 600; }
+
 
 /* ---------- Diplomacy & Trade (the Hall's painting, dimmed, behind) ---------- */
 .tsi-tool--bastion .tsi-bas-card--diplomacy::before,
@@ -612,6 +702,30 @@
 .tsi-page--bastion .tsi-bas-modal .tsi-bas-rollrow { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 8px; }
 
 /* Result boxes. */
+/* The Military Action's pop-ups: the muster, each roll's result (the weather's video above it) and the battle. */
+.tsi-page--bastion .tsi-bas-modal--military { width: min(720px, 96vw); }
+.tsi-page--bastion .tsi-bas-ma-pop { display: flex; flex-direction: column; gap: 10px; }
+.tsi-page--bastion .tsi-bas-ma-pop__video {
+  width: 100%;
+  aspect-ratio: 16 / 7;
+  object-fit: cover;
+  border: 1px solid var(--tsi-line-control);
+  border-radius: var(--tsi-radius-md);
+  background: #000;
+}
+.tsi-page--bastion .tsi-bas-ma-pop__headline { font: 700 22px/1.2 var(--tsi-font-display); letter-spacing: var(--tsi-track-label); color: var(--tsi-gold); }
+.tsi-page--bastion .tsi-bas-ma-pop__roll {
+  align-self: flex-start;
+  padding: 4px 12px;
+  border-radius: var(--tsi-radius-pill);
+  border: 1px solid var(--tsi-line-control);
+  background: rgba(0, 0, 0, .4);
+  font: 600 13px var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-label);
+}
+.tsi-page--bastion .tsi-bas-ma-pop__roll.is-pass { color: var(--tsi-ok); border-color: rgba(70, 230, 179, .5); }
+.tsi-page--bastion .tsi-bas-ma-pop__roll.is-fail { color: var(--tsi-danger); border-color: rgba(255, 122, 122, .5); }
+.tsi-page--bastion .tsi-bas-ma-pop__text { margin: 0; font-size: var(--tsi-fs-body); line-height: var(--tsi-lh-body); white-space: pre-line; }
 .tsi-page--bastion .tsi-bas-res-top { margin-bottom: 10px; }
 .tsi-page--bastion .tsi-bas-res-action { font: 700 18px/1.2 var(--tsi-font-display); }
 .tsi-page--bastion .tsi-bas-res-target { margin-top: 2px; }

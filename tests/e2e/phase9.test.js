@@ -52,14 +52,22 @@ async function d20(page, v) {
   await page.fill('[data-test=d20]', String(v));
   await clickModal(page, 'Continue');
 }
-/* Answer every pop-up: type the next roll into dice boxes, press the main button on the rest. */
+/* Answer every pop-up: type the next roll into dice boxes, press the main button on the rest.
+   A Military Action's War Table is answered too: Begin Deployment, then Start Battle. */
 async function answerAll(page, rolls) {
   rolls = (rolls || []).slice();
-  for (let n = 0; n < 30; n++) {
+  for (let n = 0; n < 60; n++) {
     await page.waitForTimeout(150);
-    if (!(await modalOpen(page))) return;
-    if (await page.$('[data-test=d20]')) await d20(page, rolls.shift());
-    else { await page.click('.tsi-modal__foot button.tsi-btn--primary'); await page.waitForTimeout(150); }
+    if (await modalOpen(page)) {
+      if (await page.$('[data-test=d20]')) await d20(page, rolls.shift());
+      else { await page.click('.tsi-modal__foot button.tsi-btn--primary'); await page.waitForTimeout(150); }
+      continue;
+    }
+    if (!(await page.$('[data-test=wt-root]'))) return;
+    await page.waitForTimeout(400);
+    if (await page.isVisible('[data-test=wt-begin-deploy]')) await page.click('[data-test=wt-begin-deploy]');
+    else if (await page.isVisible('[data-test=wt-start-battle]')) await page.click('[data-test=wt-start-battle]');
+    else return;
   }
 }
 async function advance(page, rolls) {
@@ -84,6 +92,40 @@ async function planHall(page, fn, idx, extra) {
   await page.click('.tsi-modal__foot button.tsi-btn--primary');
   await page.waitForTimeout(150);
 }
+/* A see-through PNG crest (a gold disc on nothing), like the Crest Creator's download. */
+function crestPng(size) {
+  const zlib = require('zlib');
+  const rows = [];
+  for (let y = 0; y < size; y++) {
+    const row = Buffer.alloc(1 + size * 4);
+    for (let x = 0; x < size; x++) {
+      const dx = x - size / 2, dy = y - size / 2;
+      if (dx * dx + dy * dy < (size * 0.4) * (size * 0.4)) row.set([214, 178, 94, 255], 1 + x * 4);
+    }
+    rows.push(row);
+  }
+  const crcTable = Array.from({ length: 256 }, (_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
+  const crc = b => { let c = 0xffffffff; for (const x of b) c = crcTable[(c ^ x) & 255] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
+  const chunk = (type, data) => {
+    const len = Buffer.alloc(4); len.writeUInt32BE(data.length);
+    const td = Buffer.concat([Buffer.from(type), data]);
+    const c = Buffer.alloc(4); c.writeUInt32BE(crc(td));
+    return Buffer.concat([len, td, c]);
+  };
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(size, 0); ihdr.writeUInt32BE(size, 4); ihdr.set([8, 6, 0, 0, 0], 8);
+  return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', zlib.deflateSync(Buffer.concat(rows))), chunk('IEND', Buffer.alloc(0))]);
+}
+function writeCrest(name, size) {
+  const p = path.join(require('os').tmpdir(), 'tsi-p9-' + name);
+  fs.writeFileSync(p, crestPng(size));
+  return p;
+}
+const crestInfo = page => page.evaluate(() => {
+  const i = document.querySelector('[data-test=crest]');
+  return { shown: !!(i && i.offsetWidth), w: i ? i.naturalWidth : 0, h: i ? i.naturalHeight : 0, alt: i ? i.alt : '' };
+});
+
 async function reopen(page) {
   await page.evaluate(() => TSI.store.flush());
   await page.reload();
@@ -611,10 +653,44 @@ function serve(dir) {
       equal(await text(page, 'org'), 'Clan: Clan Ironbow');
       equal(await page.isVisible('[data-test=honour-box]'), true);
       equal((await st(page)).log[0].body, 'Founded Clan: Clan Ironbow (Chief: Harry).');
+      equal((await crestInfo(page)).shown, false, 'no crest was chosen');
+      equal(await page.textContent('[data-test=crest-add]'), 'Add crest…');
     });
 
-    await check('a double click queues one war action (BAS-15); committing nothing is refused', async () => {
-      await setUp(page, (s) => { s.defenders.count = 4; });
+    await check('a crest can be added later, shrunk to 512 pixels, shown beside the name, kept after reopening, and removed', async () => {
+      await H.chooseFile(page, '[data-test=crest-add]', writeCrest('crest-later.png', 2048));
+      await page.waitForFunction(() => { const i = document.querySelector('[data-test=crest]'); return i && i.offsetWidth && i.naturalWidth; });
+      const c = await crestInfo(page);
+      equal([c.shown, c.w, c.h, c.alt], [true, 512, 512, 'Crest of Clan Ironbow']);
+      const saved = await page.evaluate(() => TSI.store.get('tsi.bastion.crest'));
+      assert(/^data:image\/(webp|png);base64,/.test(saved.dataUrl) && saved.dataUrl.length < 700000 && saved.name === 'tsi-p9-crest-later.png', JSON.stringify([saved.dataUrl.slice(0, 30), saved.dataUrl.length, saved.name]));
+      /* Beside the name: in the same row as the Clan's pill. */
+      const box = await page.evaluate(() => {
+        const a = document.querySelector('[data-test=crest]').getBoundingClientRect();
+        const b = document.querySelector('[data-test=org]').getBoundingClientRect();
+        return { gap: b.left - a.right, overlapY: Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) };
+      });
+      assert(box.gap >= 0 && box.gap < 60 && box.overlapY > 0, JSON.stringify(box));
+      await reopen(page);
+      equal((await crestInfo(page)).w, 512);
+      await pause(page);
+      await page.click('[data-test=crest-delete]');
+      await clickModal(page, 'Cancel');
+      equal((await crestInfo(page)).shown, true);
+      await pause(page);
+      await page.click('[data-test=crest-delete]');
+      await clickModal(page, 'Remove');
+      equal((await crestInfo(page)).shown, false);
+      equal(await page.evaluate(() => TSI.store.has('tsi.bastion.crest')), false);
+      await H.shot(page, 'p9-crest-none');
+    });
+
+    await check('five Giant Vultures can all be committed (BAS-25); a double click queues one war action (BAS-15); committing nothing is refused', async () => {
+      await setUp(page, (s) => {
+        s.defenders.count = 4;
+        s.defenderBeasts = [{ name: 'Giant Vulture', qty: 5 }];
+        s.military = [{ name: 'Lieutenant (1)', qty: 1 }, { name: 'Regiment (100)', qty: 2 }];
+      });
       await page.selectOption('[data-test=war-target]', 'bacca');
       await page.fill('[data-test=war-defenders]', '0');
       await page.fill('[data-test=war-beasts]', '0');
@@ -623,22 +699,243 @@ function serve(dir) {
       await clickModal(page, 'OK');
       await page.fill('[data-test=war-defenders]', '9');
       equal(await page.inputValue('[data-test=war-defenders]'), '4', 'kept to what\'s available');
+      await page.fill('[data-test=war-beasts]', '9');
+      equal(await page.inputValue('[data-test=war-beasts]'), '5', 'all five vultures, not just one');
+      assert(/Available: 4 defenders, 5 beasts, 1 lieutenants, 2 regiments/.test(await text(page, 'war-hint')), await text(page, 'war-hint'));
+      await page.fill('[data-test=war-lieutenants]', '1');
+      await page.fill('[data-test=war-regiments]', '2');
       await pause(page);
       await page.dblclick('[data-test=queue-war]');
       await page.waitForTimeout(300);
-      equal((await st(page)).pendingOrders.map(o => o.label), ['War Action']);
+      equal((await st(page)).pendingOrders.map(o => [o.label, o.meta.commitBeasts]), [['War Action', 5]]);
     });
 
-    await check('the war resolves next turn at its DC; the war log\'s View shows the report', async () => {
-      await advance(page, [15]);
+    await check('on Advance Bastion Turn the war becomes a Military Action: Begin, or Later from the War Council', async () => {
+      await pause(page);
+      await page.click('[data-test=advance]');
+      await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal__title'); return t && /^War Turn: RAID vs Bacca$/.test(t.textContent); });
+      const t = await H.modalText(page);
+      assert(/Your forces muster for battle/.test(t) && /Committed: 4 defenders, 5 beasts, 1 Lieutenant, 2 Regiments\./.test(t), t);
+      await clickModal(page, 'Later');
+      await page.waitForFunction(() => !TSI.bastion.debug.busy());
       const s = await st(page);
-      equal(s.warLog.map(w => w.title), ['Success: RAID vs Bacca']);
-      equal(s.clanHonor, 46);
+      equal(s.pendingOrders, [], 'the order is gone, so it can\'t come due twice');
+      equal(s.militaryActions.map(m => [m.step, m.objective, m.targetName, m.forces.length]), [['weather', 'raid', 'Bacca', 9]]);
+      assert(s.log.some(l => l.body === 'RAID vs Bacca: your forces muster for battle. The Military Action is ready to begin.'));
+      equal(await page.textContent('[data-test=ma-continue-0]'), 'Begin Military Action');
+      equal(await page.textContent('[data-test=ma-status-0]'), 'Ready to begin. First: the Weather Conditions roll.');
+      equal(await page.$eval('[data-test=queue-war]', b => b.classList.contains('tsi-btn--primary')), false, 'one main action in the panel');
+      equal(await page.isDisabled('[data-test=advance]'), false);
+    });
+
+    await check('a waiting Military Action survives reopening, and a notice says where it is', async () => {
+      await reopen(page);
+      await H.waitForNotice(page, /A Military Action \(RAID vs Bacca\) is waiting/);
+      equal((await st(page)).militaryActions.length, 1);
+      await H.dismissNotices(page);
+    });
+
+    await check('Weather (DC 12), Morale (DC 12) and Luck (DC 10), each with its story', async () => {
+      await pause(page);
+      await page.click('[data-test=ma-continue-0]');
+      await page.waitForSelector('[data-test=d20]');
+      let t = await H.modalText(page);
+      assert(/Weather Conditions: RAID vs Bacca/.test(t) && /Modifier: \+0/.test(t) && /DC 12/.test(t), t);
+      await d20(page, 15);
+      await page.waitForSelector('[data-test=ma-result]');
+      t = await H.modalText(page);
+      assert(/Clear Day/.test(t) && /d20 15 vs DC 12: Passed/.test(t) && /The sky holds clear and bright/.test(t), t);
+      equal(await page.$('.tsi-bas-ma-pop__video'), null, 'no storm, no film');
+      await clickModal(page, 'Continue');
+      t = await H.modalText(page);
+      assert(/Morale: RAID vs Bacca/.test(t) && /DC 12/.test(t), t);
+      await d20(page, 9);
+      t = await H.modalText(page);
+      assert(/Morale: Low/.test(t) && /d20 9 vs DC 12: Failed/.test(t) && /Even under a clear sky, doubt spreads/.test(t), t);
+      await clickModal(page, 'Continue');
+      t = await H.modalText(page);
+      assert(/Luck: RAID vs Bacca/.test(t) && /DC 10/.test(t), t);
+      await d20(page, 3);
+      t = await H.modalText(page);
+      assert(/Luck: −1/.test(t) && /the Gods do not look kindly upon this needless bloodshed/.test(t), t);
+      await clickModal(page, 'Continue');
+      await page.waitForSelector('[data-test=wt-root]');
+      equal((await st(page)).militaryActions[0].step, 'deploy');
+    });
+
+    /* Where each force sits, in board units, against the midline. */
+    const tokenBoxes = () => page.evaluate(() => {
+      const h = TSI.bastion.warTable.current, W = TSI.bastion.warTableRules;
+      const b = h.board(), set = h.settings(), d = h.deployment();
+      const ma = TSI.bastion.debug.state().militaryActions[0];
+      return ma.forces.filter(f => d.positions[f.id]).map(f => {
+        const p = d.positions[f.id], dim = W.tokenDims(f, set.grid, set.tokenScale);
+        return { id: f.id, top: p.y * b.h - dim.h / 2, bottom: p.y * b.h + dim.h / 2, left: p.x * b.w - dim.w / 2, right: p.x * b.w + dim.w / 2, mid: b.h / 2, w: b.w, h: b.h };
+      });
+    });
+    const allOnOurGround = boxes => boxes.every(x => x.top >= x.mid - 0.5 && x.bottom <= x.h + 0.5 && x.left >= -0.5 && x.right <= x.w + 0.5);
+
+    await check('the War Table: the conditions, the forces listed, then Begin Deployment sets every force on your ground', async () => {
+      assert(/RAID vs Bacca/.test(await text(page, 'wt-title')));
+      const sum = await text(page, 'wt-summary');
+      assert(/Clear Day/.test(sum) && /Low/.test(sum) && /−1/.test(sum), sum);
+      equal(await page.$$eval('.tsi-bas-wt-token', t => t.length), 0, 'no forces on the map before deployment');
+      const roster = await text(page, 'wt-roster');
+      assert(/Regiment 1/.test(roster) && /Bastion Defenders/.test(roster) && /Lieutenant 1/.test(roster) && /Giant Vulture 5/.test(roster), roster);
+      equal(await page.evaluate(() => document.querySelector('.tsi-bas-layout').inert), true, 'the Bastion behind is out of reach');
+      equal(await page.isVisible('[data-test=wt-start-battle]'), false);
+      await pause(page);
+      await page.click('[data-test=wt-begin-deploy]');
+      await page.waitForTimeout(300);
+      equal(await page.$$eval('.tsi-bas-wt-token', t => t.map(x => x.dataset.kind).sort()), ['beast', 'beast', 'beast', 'beast', 'beast', 'defenders', 'lieutenant', 'regiment', 'regiment']);
+      const boxes = await tokenBoxes();
+      equal(boxes.length, 9);
+      assert(allOnOurGround(boxes), JSON.stringify(boxes));
+      const s = await st(page);
+      equal([s.militaryActions[0].deployment.started, Object.keys(s.militaryActions[0].deployment.positions).length], [true, 9], 'saved');
+      equal(await page.isVisible('[data-test=wt-start-battle]'), true);
+      await H.shot(page, 'p9-war-table-deployed');
+    });
+
+    await check('a force dragged towards the enemy stops at the midline; the move is saved and kept after closing and reopening', async () => {
+      const r = await page.evaluate(() => TSI.bastion.warTable.current.tokenScreenRect('reg-1'));
+      await page.mouse.move(r.x + r.w / 2, r.y + r.h / 2);
+      await page.mouse.down();
+      await page.mouse.move(r.x + r.w / 2 + 40, r.y - 600, { steps: 10 });
+      await page.mouse.up();
+      await page.waitForTimeout(300);
+      const reg = (await tokenBoxes()).find(b => b.id === 'reg-1');
+      assert(Math.abs(reg.top - reg.mid) < 1, JSON.stringify(reg));
+      const saved = (await st(page)).militaryActions[0].deployment.positions['reg-1'];
+      const live = await page.evaluate(() => TSI.bastion.warTable.current.deployment().positions['reg-1']);
+      equal(saved, live);
+      const before = await page.evaluate(() => TSI.bastion.warTable.current.tokenScreenRect('reg-1'));
+      await pause(page);
+      await page.click('[data-test=wt-close]');
+      await page.waitForTimeout(200);
+      equal(await page.$('[data-test=wt-root]'), null);
+      equal(await page.evaluate(() => document.querySelector('.tsi-bas-layout').inert), false);
+      equal(await page.textContent('[data-test=ma-status-0]'), 'Deploying on the War Table.');
+      await reopen(page);
+      await H.dismissNotices(page);
+      await pause(page);
+      await page.click('[data-test=ma-continue-0]');
+      await page.waitForSelector('[data-test=wt-root]');
+      await page.waitForTimeout(300);
+      const after = await page.evaluate(() => TSI.bastion.warTable.current.tokenScreenRect('reg-1'));
+      ['x', 'y', 'w', 'h'].forEach(k => assert(Math.abs(after[k] - before[k]) < 1, k + ' ' + JSON.stringify([before, after])));
+      equal(await page.isVisible('[data-test=wt-begin-deploy]'), false, 'deployment carries on where it was');
+    });
+
+    await check('the War Table fits the laptop and the TV, with its controls in view, and a battle map can be uploaded', async () => {
+      for (const size of ['laptop', 'laptopFull', 'tv']) {
+        await page.setViewportSize(H.SIZES[size].viewport);
+        await page.waitForTimeout(250);
+        const lc = await H.layoutCheck(page, ['[data-test=wt-upload]', '[data-test=wt-grid]', '[data-test=wt-zoom-fit]', '[data-test=wt-fullscreen]', '[data-test=wt-close]', '[data-test=wt-start-battle]', '[data-test=wt-stage]']);
+        equal(lc.scrollWidth, lc.clientWidth, size + ': no sideways scroll');
+        equal(lc.outOfView, [], size + ': in view');
+        assert(allOnOurGround(await tokenBoxes()), size);
+      }
+      await page.setViewportSize(H.SIZES.laptop.viewport);
+      await page.waitForTimeout(250);
+      await H.chooseFile(page, '[data-test=wt-upload]', writeCrest('battle-map.png', 900));
+      await page.waitForFunction(() => { const m = document.querySelector('[data-test=wt-map]'); return m && !m.hidden && m.naturalWidth > 0; });
+      equal(await page.evaluate(() => TSI.store.get('tsi.bastion.warMap').name), 'tsi-p9-battle-map.png');
+      assert(allOnOurGround(await tokenBoxes()), 'still on our ground on a square map');
+      await H.shot(page, 'p9-war-table-map');
+    });
+
+    await check('Start Battle asks first, locks the deployment, and the battle is settled by the single roll with Luck on it', async () => {
+      await pause(page);
+      await page.click('[data-test=wt-start-battle]');
+      assert(/Lock in your deployment\?/.test(await H.modalText(page)));
+      await clickModal(page, 'Cancel');
+      equal((await st(page)).militaryActions[0].step, 'deploy');
+      await pause(page);
+      await page.click('[data-test=wt-start-battle]');
+      await clickModal(page, 'Start Battle');
+      await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal__title'); return t && t.textContent === 'The Battle Is Joined'; });
+      assert(/Luck −1 is included/.test(await H.modalText(page)));
+      equal(await page.isVisible('[data-test=wt-banner]'), true);
+      equal((await st(page)).militaryActions[0].step, 'resolve');
+      await clickModal(page, 'Continue');
+      let t = await H.modalText(page);
+      assert(/War Turn: RAID vs Bacca/.test(t) && /Modifier: \+4/.test(t) && /DC 14/.test(t), t);
+      await clickModal(page, 'Cancel');
+      await page.waitForTimeout(200);
+      assert((await st(page)).log[0].body === 'RAID vs Bacca: the battle roll was cancelled. Press Continue in the War Council to roll it.');
+      equal((await st(page)).warLog, [], 'nothing settled yet');
+      /* Locked: a drag moves nothing. */
+      const r = await page.evaluate(() => TSI.bastion.warTable.current.tokenScreenRect('def'));
+      const was = (await st(page)).militaryActions[0].deployment.positions.def;
+      await page.mouse.move(r.x + r.w / 2, r.y + r.h / 2);
+      await page.mouse.down();
+      await page.mouse.move(r.x + r.w / 2 + 120, r.y + r.h / 2, { steps: 6 });
+      await page.mouse.up();
+      equal((await st(page)).militaryActions[0].deployment.positions.def, was);
+      await pause(page);
+      await page.click('[data-test=wt-close]');
+      equal(await page.textContent('[data-test=ma-status-0]'), 'Deployment locked. Next: the battle roll.');
+      await pause(page);
+      await page.click('[data-test=ma-continue-0]');
+      await page.waitForSelector('[data-test=wt-root]');
+      await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal__title'); return t && t.textContent === 'The Battle Is Joined'; });
+      await clickModal(page, 'Continue');
+      await d20(page, 15);
+      t = await H.modalText(page);
+      assert(/War Report/.test(t) && /Success: RAID vs Bacca/.test(t) && /Roll: d20 15 \+ mod 4 = 19 vs DC 14/.test(t) && /Clan Honour: \+6/.test(t), t);
+      assert(/Weather: Clear Day \(d20 15 vs DC 12\)/.test(t) && /Morale: Low \(d20 9 vs DC 12\)/.test(t) && /Luck: −1 to the roll \(d20 3 vs DC 10\)/.test(t) && /Deployment: 9 of 9 units placed on the War Table/.test(t), t);
+      await clickModal(page, 'Close');
+      await page.waitForFunction(() => !document.querySelector('[data-test=wt-root]'));
+      const s = await st(page);
+      equal([s.militaryActions.length, s.warLog.length, s.warLog[0].title, s.clanHonor], [0, 1, 'Success: RAID vs Bacca', 46]);
+      equal(await page.evaluate(() => document.querySelector('.tsi-bas-layout').inert), false);
       await pause(page);
       await page.click('[data-test=war-view-0]');
-      const t = await H.modalText(page);
-      assert(/War Report/.test(t) && /Roll: d20 15 \+ mod 2 = 17 vs DC 14/.test(t) && /Clan Honour: \+6/.test(t), t);
+      assert(/Morale: Low/.test(await H.modalText(page)));
       await clickModal(page, 'Close');
+    });
+
+    await check('a storm raises the Morale DC and shows its film; a cancelled roll waits; Call off asks, then wins and loses nothing', async () => {
+      await page.selectOption('[data-test=war-target]', 'bacca');
+      await page.fill('[data-test=war-defenders]', '2');
+      await page.fill('[data-test=war-beasts]', '0');
+      await page.fill('[data-test=war-lieutenants]', '0');
+      await page.fill('[data-test=war-regiments]', '0');
+      await pause(page);
+      await page.click('[data-test=queue-war]');
+      await pause(page);
+      await page.click('[data-test=advance]');
+      await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal__title'); return t && /^War Turn:/.test(t.textContent); });
+      await clickModal(page, 'Begin Military Action');
+      await d20(page, 2);
+      await page.waitForSelector('[data-test=ma-result]');
+      const head = await text(page, 'ma-headline');
+      assert(['White Blizzard (Snowstorm)', 'Cold Downpour (Rainstorm)', 'Sun & Heatwave'].indexOf(head) !== -1, head);
+      assert(/^.*tools\/explorer\/assets\/overlays\/(blizzard|rain|sun_heat)_overlay\.mp4$/.test(await page.$eval('.tsi-bas-ma-pop__video', v => v.src)));
+      assert(/the Morale DC rises by [234]/.test(await text(page, 'ma-text')));
+      await clickModal(page, 'Continue');
+      const dc = { 'White Blizzard (Snowstorm)': 16, 'Cold Downpour (Rainstorm)': 14, 'Sun & Heatwave': 15 }[head];
+      assert(new RegExp('DC ' + dc).test(await H.modalText(page)), 'Morale DC ' + dc);
+      await clickModal(page, 'Cancel');
+      await page.waitForFunction(() => !TSI.bastion.debug.busy());
+      const s = await st(page);
+      equal(s.militaryActions.map(m => m.step), ['morale']);
+      assert(s.log.some(l => /the Morale roll was cancelled/.test(l.body)));
+      equal(await page.textContent('[data-test=ma-status-0]'), 'Weather rolled. Next: the Morale roll.');
+      const before = [s.treasuryGP, s.defenders.count, s.warLog.length];
+      await pause(page);
+      await page.click('[data-test=ma-calloff-0]');
+      await clickModal(page, 'Cancel');
+      equal((await st(page)).militaryActions.length, 1);
+      await pause(page);
+      await page.click('[data-test=ma-calloff-0]');
+      await clickModal(page, 'Call off');
+      const after = await st(page);
+      equal(after.militaryActions, []);
+      equal([after.treasuryGP, after.defenders.count, after.warLog.length], before);
+      equal(after.log[0].body, 'RAID vs Bacca: the Military Action was called off. Nothing was won or lost.');
+      equal(await page.isVisible('[data-test=military-actions]'), false);
     });
 
     await check('identity, war log and diplomacy survive reopening (BAS-01)', async () => {
@@ -648,6 +945,89 @@ function serve(dir) {
       const after = await st(page);
       ['organization', 'clanHonor', 'honourRespectByClan', 'trustedClientsByClan', 'warLog', 'diplomacy', 'politicalCapital'].forEach(k => equal(after[k], before[k], k));
       equal(await text(page, 'org'), 'Clan: Clan Ironbow');
+    });
+    await context.close();
+  }
+
+  /* ------------------------------------------------------------------ */
+  section('A crest from the Crest Creator (Harry\'s request, 2 October 2026)');
+  {
+    const { context, page } = await newPage(browser, 'laptop');
+    await openBastion(page);
+    await setUp(page, (s) => { s.partyLevel = 7; s.defenders.count = 3; });
+
+    await check('Form Mercenary Brigade links to the Crest Creator, which opens in a new tab with no "Already open" warning', async () => {
+      await pause(page);
+      await page.click('[data-test=form-merc]');
+      await page.waitForSelector('[data-test=crest-field]');
+      equal([await page.getAttribute('[data-test=crest-creator-link]', 'href'), await page.getAttribute('[data-test=crest-creator-link]', 'target')], ['index.html?tool=crest', '_blank']);
+      const [tab] = await Promise.all([context.waitForEvent('page'), page.click('[data-test=crest-creator-link]')]);
+      await tab.waitForSelector('[data-test=download]');
+      await tab.waitForTimeout(1500);
+      const warned = async p => (await H.noticeTexts(p)).some(t => /Already open/.test(t));
+      equal([await warned(tab), await warned(page)], [false, false]);
+      await tab.close();
+    });
+
+    await check('the crest picked in the pop-up shows there; Cancel saves nothing', async () => {
+      await H.chooseFile(page, '[data-test=crest-upload]', writeCrest('crest-pop.png', 1200));
+      await page.waitForSelector('[data-test=crest-preview]:not([hidden])');
+      equal(await page.textContent('[data-test=crest-upload]'), 'Change crest…');
+      await clickModal(page, 'Cancel');
+      equal(await page.evaluate(() => TSI.store.has('tsi.bastion.crest')), false);
+      equal((await st(page)).organization.type, 'unsworn');
+    });
+
+    await check('a refused file is explained; the crest is kept with the Brigade, beside its name', async () => {
+      await pause(page);
+      await page.click('[data-test=form-merc]');
+      await H.chooseFile(page, '[data-test=crest-upload]', H.writeTemp('not-a-crest.txt', 'hello'));
+      await page.waitForFunction(() => /PNG, JPG, WebP or GIF/.test(document.body.textContent));
+      await clickModal(page, 'OK');
+      await page.waitForTimeout(200);
+      equal(await page.isVisible('[data-test=crest-preview]'), false);
+      await H.chooseFile(page, '[data-test=crest-upload]', writeCrest('crest-brigade.png', 1200));
+      await page.waitForSelector('[data-test=crest-preview]:not([hidden])');
+      await page.fill('[data-test=merc-name]', 'The Ironbow Freeblades');
+      await clickModal(page, 'Confirm Formation');
+      await page.waitForFunction(() => { const i = document.querySelector('[data-test=crest]'); return i && i.offsetWidth && i.naturalWidth; });
+      const c = await crestInfo(page);
+      equal([c.w, c.h, c.alt], [512, 512, 'Crest of The Ironbow Freeblades']);
+      equal(await text(page, 'org'), 'Brigade: The Ironbow Freeblades');
+      await page.evaluate(() => document.querySelector('[data-card=identity]').scrollIntoView({ block: 'center' }));
+      await H.shot(page, 'p9-crest-brigade');
+    });
+
+    await check('Download Save includes the crest; Reset clears it with the rest of the Bastion', async () => {
+      await page.evaluate(() => TSI.store.flush());
+      const d = await H.download(page, '[data-test=download-save]');
+      const keys = JSON.parse(d.text).records.map(r => r.key);
+      assert(keys.indexOf('tsi.bastion.crest') !== -1, keys.join(','));
+      await pause(page);
+      await page.click('[data-test=reset]');
+      await clickModal(page, 'Reset');
+      await page.waitForSelector('[data-test=advance]');
+      await page.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().organization.type === 'unsworn');
+      equal(await page.evaluate(() => TSI.store.has('tsi.bastion.crest')), false);
+      equal((await crestInfo(page)).shown, false);
+    });
+
+    await check('leaving the Bastion while the War Table is open leaves nothing behind', async () => {
+      await setUp(page, (s) => { s.defenders.count = 2; });
+      await page.fill('[data-test=war-defenders]', '2');
+      await pause(page);
+      await page.click('[data-test=queue-war]');
+      await pause(page);
+      await page.click('[data-test=advance]');
+      await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal__title'); return t && /^War Turn:/.test(t.textContent); });
+      await clickModal(page, 'Begin Military Action');
+      for (let i = 0; i < 3; i++) { await d20(page, 15); await page.waitForSelector('[data-test=ma-result]'); await clickModal(page, 'Continue'); }
+      await page.waitForSelector('[data-test=wt-root]');
+      await page.click('[data-test=home]');
+      await page.waitForSelector('[data-test=backup-everything]');
+      equal(await page.$('[data-test=wt-root]'), null);
+      equal(await page.evaluate(() => !!(window.TSI.bastion && (TSI.bastion.debug || (TSI.bastion.warTable && TSI.bastion.warTable.current)))), false);
+      equal(context.log.errors, []);
     });
     await context.close();
   }
@@ -910,6 +1290,25 @@ function serve(dir) {
     async function bothIssue(fac, fn, idx) { await O.issue(fac, fn, idx); await issue(page, fac, fn, idx); }
     async function bothHall(fn, idx, extra) { await O.hall(fn, idx, extra); await planHall(page, fn, idx, extra); }
     async function bothAdvance(rolls) { await O.advance(rolls); await advance(page, rolls); }
+    /* The raid's only differences: the Military Action's line in the log, and
+       its war-log entry, which adds Luck's +1 to the roll and notes the
+       weather, morale, luck and deployment. Everything else must match. */
+    function militaryAllow(o, n) {
+      n.log = n.log.filter(l => !/^War Turn: RAID vs Bacca: your forces muster for battle\./.test(l));
+      equal(n.warLog.length, o.warLog.length, 'war log length');
+      n.warLog.forEach((w, i) => {
+        const ow = o.warLog[i];
+        equal([w[0], w[1]], [ow[0], ow[1]], 'war log title');
+        const lines = w[2].split('\n');
+        const oldLines = ow[2].split('\n');
+        const roll = /^Roll: d20 (\d+) \+ mod (-?\d+) = (-?\d+) vs DC (\d+)$/;
+        const a = lines[0].match(roll), b = oldLines[0].match(roll);
+        assert(a && b && a[1] === b[1] && a[4] === b[4] && +a[2] === +b[2] + 1 && +a[3] === +b[3] + 1, 'the roll gains Luck\'s +1: ' + lines[0] + ' / ' + oldLines[0]);
+        equal(lines.filter(l => !/^(Weather|Morale|Luck|Deployment): /.test(l)).slice(1), oldLines.slice(1), 'the rest of the report');
+        equal(lines.filter(l => /^(Weather|Morale|Luck|Deployment): /.test(l)).length, 4, 'weather, morale, luck and deployment noted');
+        w[2] = ow[2];
+      });
+    }
     async function bothUpgrade() { await old.click('#hallUpgradePill'); await old.waitForTimeout(60); await pause(page); await page.click('[data-test=hall-upgrade]'); }
 
     await check('the same campaign gives the same Bastion, turn by turn', async () => {
@@ -944,12 +1343,16 @@ function serve(dir) {
       await page.selectOption('[data-test=war-target]', 'bacca'); await page.fill('[data-test=war-defenders]', '2'); await page.click('[data-test=queue-war]');
       await bothIssue('menagerie', 'recruit_beast', 0);
       await compare('a raid queued, a beast ordered');
-      await bothAdvance([12, 15]); await compare('turn 9: routes, the raid, the beast');
+      /* The raid is now a Military Action (Harry's request, 2 October 2026):
+         Weather 15 (a clear day, so no dice are drawn for a storm), Morale 15,
+         Luck 15 (+1), the War Table, then the same single roll of 15. */
+      await O.advance([12, 15]); await advance(page, [12, 15, 15, 15, 15]);
+      await compare('turn 9: routes, the raid, the beast', militaryAllow);
       await old.click('#rollEventBtn'); await pause(page); await page.click('[data-test=roll-event]');
-      await compare('Roll Bastion Event');
-      await bothAdvance([14]); await compare('turn 10');
-      await bothAdvance([14]); await compare('turn 11');
-      await bothAdvance([14]); await compare('turn 12: the automatic event');
+      await compare('Roll Bastion Event', militaryAllow);
+      await bothAdvance([14]); await compare('turn 10', militaryAllow);
+      await bothAdvance([14]); await compare('turn 11', militaryAllow);
+      await bothAdvance([14]); await compare('turn 12: the automatic event', militaryAllow);
       /* The campaign really did all this. */
       const s = await st(page);
       assert(s.warLog.length === 1 && s.defenderBeasts.length === 1 && s.facilityLevels.hall_of_emissaries === 3, JSON.stringify([s.warLog.length, s.defenderBeasts, s.facilityLevels]));
@@ -963,6 +1366,7 @@ function serve(dir) {
       await bothHall('host_delegation', 1, { tone: 'assertive' });
       await bothAdvance([15, 14, 13]);
       await compare('a delegation to Rowthorn', (o, n) => {
+        militaryAllow(o, n);
         /* The old tool also added the first roll's +15 (a Great Success: 15 + 6 vs DC 13). */
         equal(o.pc.rowthorn - n.pc.rowthorn, 15, 'the old tool added it twice');
         o.pc.rowthorn = n.pc.rowthorn;
