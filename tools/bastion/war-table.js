@@ -965,6 +965,12 @@
       sayTimer = life.setTimeout(function () { sayTimer = null; ui.status = ''; if (!closed) renderHint(); }, 6000);
       renderHint();
     }
+    /* Clear the last message, so the hint goes back to what's on the table
+       (the caller re-renders). */
+    function quiet() {
+      ui.status = '';
+      if (sayTimer !== null) { life.clearTimeout(sayTimer); sayTimer = null; }
+    }
 
     /* ---------- Terrain painting ---------- */
     function terrainEditable() { return mapEditable() && !loading; }
@@ -2034,9 +2040,12 @@
         title: o.title ? 'Rules & objective · ' + String(o.title) : info.title,
         className: 'tsi-bas-wt-brief-modal',
         body: body,
-        actions: [{ label: starting ? 'Begin the battle' : 'Close', value: true, primary: true }]
-      });
+        actions: [{ label: starting ? 'Begin the battle' : 'Close', value: true, primary: true }],
+        /* Kept so closing the War Table closes the briefing too. */
+        onOpen: function (p) { briefingClose = p && typeof p.close === 'function' ? p.close : null; }
+      }).then(function (v) { briefingClose = null; return v; });
     }, { minMs: 0 });
+    var briefingClose = null;
 
     /* ---------- Orders ---------- */
     function canAct(u) {
@@ -2097,9 +2106,18 @@
       if (u.activated) return u.label + ' has already acted this round.';
       if (ui.prop && ui.prop.unitId !== u.id) return 'Finish or cancel the order you are giving first.';
       if (ui.prop && ui.prop.order && !MOVE_ORDERS[ui.prop.order]) return 'This order doesn\'t move the unit. Choose Advance & Attack, March or Disengage to move it.';
+      var engaged = BR.isEngaged(battle, u);
+      if (ui.prop && ui.prop.order === 'advance') {
+        return u.label + (engaged ? ' is fighting hand to hand, so Advance & Attack can\'t move it: it attacks from where it stands. Click an enemy next to it (ringed in red) to attack it.' :
+          ' has nowhere in reach to move to, so Advance & Attack attacks from where it stands: click an enemy ringed in red, if any.');
+      }
       var legal = BR.legalOrders(battle, u.id, terrain());
-      var why = legal.filter(function (x) { return MOVE_ORDERS[x.id] && x.why; }).map(function (x) { return x.why; })[0];
-      return u.label + ' can\'t move now' + (why ? ': ' + why : '.') + ' Choose an order instead.';
+      /* Engaged and unable to Disengage (held fast, or nowhere clear to fall
+         back to): that's the reason, not March's "Disengage first". */
+      var dis = legal.filter(function (x) { return x.id === 'disengage'; })[0];
+      var why = engaged && dis && !dis.ok ? dis.why :
+        legal.filter(function (x) { return MOVE_ORDERS[x.id] && x.why; }).map(function (x) { return x.why; })[0];
+      return u.label + ' can\'t move now' + (why ? ': ' + why : '.') + (engaged ? ' Click an enemy next to it to attack it, or choose an order.' : ' Choose an order instead.');
     }
     function clearProposal() { ui.prop = null; }
     function clearSelection() { ui.prop = null; ui.selectedId = null; }
@@ -2141,6 +2159,7 @@
     }
     function cancelProposal() {
       ui.prop = null;
+      quiet();
       refresh();
     }
     /* What a drop on an enemy's square should have been: how to attack it
@@ -2202,13 +2221,14 @@
       var tt = terrain();
       var prop = ui.prop;
       if (prop && prop.order === 'advance' && prop.targets.some(function (x) { return x.targetId === enemyId; })) {
-        if (prop.targetId !== enemyId) chooseTarget(enemyId);
+        /* Another target from the same square: the last message named the old one. */
+        if (prop.targetId !== enemyId) { quiet(); chooseTarget(enemyId); }
         return true;
       }
       var adv = BR.legalOrders(battle, u.id, tt).filter(function (x) { return x.id === 'advance'; })[0];
       var spot = adv && adv.ok ? R.attackFrom(BR, battle, u.id, foe.id, BR.reachable(battle, u.id, 'advance', tt), null, null, tt) : null;
       if (!spot) {
-        say(R.noAttackText(BR, battle, u.id, foe.id));
+        say(R.noAttackText(BR, battle, u.id, foe.id, tt));
         renderWorld();
         return true;
       }
@@ -2218,7 +2238,10 @@
       if (ui.prop.targetId !== enemyId && !chooseTarget(enemyId)) return true;
       var ranged = u.profile && u.profile.rangedAttack !== undefined && u.profile.rangedAttack !== null;
       var words = R.attackFromText(spot, u.label, foe.label, ranged);
+      /* From where it stands: no words of its own, but any earlier message
+         (a refusal, say) no longer fits. */
       if (words) say(words);
+      else { quiet(); renderHint(); }
       return true;
     }
     function chooseTarget(id) {
@@ -2360,7 +2383,7 @@
     function togglePause() {
       if (!inBattle()) return;
       ui.paused = !ui.paused;
-      if (ui.paused) clearProposal();
+      if (ui.paused) { clearProposal(); quiet(); }
       else ui.terrainMode = false;
       refresh();
     }
@@ -2550,6 +2573,7 @@
         var why = R.deployRefusal(BR, battle, d.id, cell, terrain(), opts);
         if (why) { say(why); renderWorld(); return; }
         BR.deployMove(battle, d.id, cell, terrain(), opts);
+        quiet();
         notifyChange();
         refresh();
         return;
@@ -2595,8 +2619,10 @@
       var at = R.nearestCell(board, w.x, w.y);
       var grab = { c: 0, r: 0 };
       if (isZone) {
-        grab.c = R.clamp(at.c - from.c, 0, ob.zone.c1 - ob.zone.c0);
-        grab.r = R.clamp(at.r - from.r, 0, ob.zone.r1 - ob.zone.r0);
+        /* Not clamped into the block: its name label hangs just outside it
+           (above or below), and grabbing the label mustn't shift it a row. */
+        grab.c = at.c - from.c;
+        grab.r = at.r - from.r;
       }
       drag = { kind: 'objective', what: what, node: node, pointerId: e.pointerId, sx: e.clientX, sy: e.clientY, from: from, grab: grab, moved: false };
       hideTip();
@@ -2641,6 +2667,7 @@
       var why = R.objectiveMoveRefusal(BR, battle, d.what, at, terrain());
       if (why) { say(why); renderWorld(); return; }
       BR.moveObjective(battle, d.what, at, terrain());
+      quiet();
       notifyChange();
       refresh();
     }
@@ -2648,6 +2675,13 @@
     function tokenClick(id) {
       var u = unit(id);
       if (!u) return;
+      /* A second click on the chosen target un-picks it, so the unit can
+         move without attacking (a drop on it keeps it: see endDrag). */
+      if (inBattle() && u.side !== 'player' && ui.prop && ui.prop.order === 'advance' && ui.prop.targetId === id && ui.prop.unitId === ui.selectedId && !ui.paused) {
+        quiet();
+        chooseTarget(id);
+        return;
+      }
       /* With one of your units selected, a click on an enemy attacks it. */
       if (inBattle() && u.side !== 'player' && attackEnemy(id)) return;
       if (inBattle() && ui.prop && ui.prop.unitId === id && ui.prop.reach && ui.prop.order === 'advance') { chooseDest(u.pos); return; }
@@ -2676,8 +2710,23 @@
         press = null;
         if (cancelled) return;
         if (Math.hypot(e.clientX - pr.sx, e.clientY - pr.sy) > 6) {
-          /* A token that can't be dragged now says why, rather than doing nothing. */
-          if (pr.kind === 'token') { var why = dragRefusal(unit(pr.id)); if (why) say(why); }
+          if (pr.kind === 'token') {
+            /* Your unit that can't move (fighting hand to hand, held fast,
+               boxed in, or Advance & Attack already chosen with nowhere to
+               go) let go on an enemy: attack it, as a drop would. */
+            var pu = unit(pr.id);
+            var w = pointerWorld(e);
+            var at = R.cellAt(board, w.x, w.y);
+            var foeAt = at && canAct(pu) && (!ui.prop || ui.prop.unitId === pu.id) ? BR.unitAt(battle, at) : null;
+            if (foeAt && foeAt.side !== pu.side) {
+              ui.selectedId = pu.id;
+              if (!attackEnemy(foeAt.id)) refresh(); else renderWorld();
+              return;
+            }
+            /* A token that can't be dragged now says why, rather than doing nothing. */
+            var why = dragRefusal(pu);
+            if (why) say(why);
+          }
           return;
         }
         if (pr.kind === 'token') tokenClick(pr.id);
@@ -2738,7 +2787,7 @@
         if (drag) { e.preventDefault(); endDrag(false); return; }
         if (ui.terrainMode) { e.preventDefault(); toggleTerrain(); return; }
         if (ui.prop) { e.preventDefault(); cancelProposal(); return; }
-        if (ui.selectedId) { e.preventDefault(); clearSelection(); refresh(); }
+        if (ui.selectedId) { e.preventDefault(); clearSelection(); quiet(); refresh(); }
       }
     });
 
@@ -2865,6 +2914,8 @@
         } catch (e) { /* ignore */ }
       }
       root.remove();
+      /* The briefing (Rules & objective) is the War Table's own pop-up: it goes too. */
+      if (briefingClose) { var shut = briefingClose; briefingClose = null; shut(undefined); }
       inertList.forEach(function (x) { x.el.inert = x.was; });
       if (!api.current || api.current === handle) document.body.classList.remove('tsi-bas-wt-open');
       if (api.current === handle) api.current = null;

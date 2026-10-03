@@ -181,7 +181,9 @@
 .tsi-tool--bastion .tsi-bas-wt-upload { cursor: pointer; }
 .tsi-tool--bastion .tsi-bas-wt-upload[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
 .tsi-tool--bastion .tsi-bas-wt-toggle[aria-pressed="true"] { border-color: var(--tsi-line-hover); color: var(--tsi-gold-text); background: rgba(214, 178, 94, .08); }
-.tsi-tool--bastion .tsi-bas-wt-dm.tsi-btn--primary { color: var(--tsi-text); }
+/* DM: adjust … and DM: pause while on: filled crimson, as the main action is
+   (this comes after the toggle rule above, of the same weight, so it wins). */
+.tsi-tool--bastion .tsi-bas-wt-dm.tsi-btn--primary { color: var(--tsi-text); background: var(--tsi-crimson-fill); border-color: rgba(214, 178, 94, .75); }
 .tsi-tool--bastion .tsi-bas-wt-readout {
   margin-left: auto;
   padding-left: 12px;
