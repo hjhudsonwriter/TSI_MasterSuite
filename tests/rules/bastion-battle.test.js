@@ -502,6 +502,73 @@
     t.same([b.objective.markers[0].c, b.objective.markers[0].r, b.objective.dmPlaced], [laidOut.c, laidOut.r, undefined], 'laid out afresh');
   });
 
+  test('a repaint while deploying leaves what the DM placed exactly where it was put, even out of reach on foot (and the warning stays); supplies the DM didn\'t move are still fitted', function (t) {
+    /* Review (3 October 2026): any repaint used to move a DM-placed marker,
+       depot or outpost that troops on foot couldn't reach, and the warning
+       went with it. */
+    function ring(marks, cc, rr, code) {
+      for (var c = cc - 1; c <= cc + 1; c++) for (var r = rr - 1; r <= rr + 1; r++) if ((c !== cc || r !== rr) && r >= 0) marks[c + ',' + r] = code;
+      return marks;
+    }
+    var b = make([U('p1', 'line')], [U('e1', 'line')], { objective: 'raid' });
+    BR.beginDeployment(b, null);
+    var marks = ring(ring({}, 8, 1, 'k'), 14, 1, 'k');
+    var tt = paint(b, marks);
+    t.ok(BR.fitObjective(b, tt));
+    t.ok(BR.moveObjective(b, { marker: 'm1' }, at(8, 1), tt), 'm1 into one ring of cliffs');
+    t.ok(BR.moveObjective(b, { marker: 'm2' }, at(14, 1), tt), 'm2 into the other');
+    var warn = ['Only 1 of the supply markers can be reached from your starting edge on foot, and the raid needs 2: deep water or cliffs are in the way.'];
+    t.same(BR.objectiveProblems(b, tt), warn);
+    var m3 = { c: b.objective.markers[2].c, r: b.objective.markers[2].r };
+    marks['0,11'] = 'w';
+    ring(marks, m3.c, m3.r, 'k');
+    tt = paint(b, marks);
+    t.ok(BR.fitObjective(b, tt));
+    t.same(b.objective.markers.slice(0, 2).map(function (m) { return [m.c, m.r]; }), [[8, 1], [14, 1]], 'the DM\'s two stay put');
+    var m = b.objective.markers[2];
+    t.ok(!(m.c === m3.c && m.r === m3.r) && !BR.terrainAt(tt, m.c, m.r).impassable, 'the one the DM didn\'t move is fitted out of its new ring');
+    t.same(BR.objectiveProblems(b, tt), warn, 'and the warning stays');
+    marks['8,1'] = 'x';
+    tt = paint(b, marks);
+    BR.fitObjective(b, tt);
+    t.ok(!(b.objective.markers[0].c === 8 && b.objective.markers[0].r === 1) && !BR.terrainAt(tt, b.objective.markers[0].c, b.objective.markers[0].r).impassable, 'painted over with deep water: it moves');
+    t.same([b.objective.markers[1].c, b.objective.markers[1].r], [14, 1]);
+
+    /* The depot: partly on deep water is fine, and it stays. */
+    var d = make([U('p1', 'line')], [U('e1', 'line')], { objective: 'defend' });
+    BR.beginDeployment(d, null);
+    var dm = {};
+    for (var c = 0; c <= 2; c++) for (var r = 9; r <= 10; r++) dm[c + ',' + r] = 'x';
+    var dt = paint(d, dm);
+    BR.fitObjective(d, dt);
+    t.ok(BR.moveObjective(d, { zone: true }, at(1, 9), dt));
+    var placed = JSON.stringify(d.objective.zone);
+    dm['20,0'] = 'w';
+    dt = paint(d, dm);
+    BR.fitObjective(d, dt);
+    t.equal(JSON.stringify(d.objective.zone), placed, 'kept, although half of it is deep water');
+    BR.zoneCells(d.objective.zone).forEach(function (q) { dm[q.c + ',' + q.r] = 'x'; });
+    dt = paint(d, dm);
+    BR.fitObjective(d, dt);
+    t.ok(BR.zoneCells(d.objective.zone).some(function (q) { return !BR.terrainAt(dt, q.c, q.r).impassable; }), 'all of it under water: it moves to ground that can be stood on');
+
+    /* The outpost: walled off by cliffs, where the DM put it. */
+    var s = make([U('p1', 'line')], [U('e1', 'line')], { objective: 'seize_outpost' });
+    BR.beginDeployment(s, null);
+    var sm = { '5,0': 'k', '5,1': 'k' };
+    for (c = 0; c <= 5; c++) sm[c + ',2'] = 'k';
+    var st = paint(s, sm);
+    BR.fitObjective(s, st);
+    t.ok(BR.moveObjective(s, { zone: true }, at(0, 0), st));
+    var cut = ['Your troops can\'t reach any square of the outpost on foot, so it can\'t be seized: deep water or cliffs are in the way.'];
+    t.same(BR.objectiveProblems(s, st), cut);
+    sm['21,11'] = 'w';
+    st = paint(s, sm);
+    BR.fitObjective(s, st);
+    t.same([s.objective.zone.c0, s.objective.zone.r0], [0, 0], 'kept where the DM put it');
+    t.same(BR.objectiveProblems(s, st), cut, 'and the warning stays');
+  });
+
   test('the DM may move your supply depot or the outpost as a block: it keeps its size, stays on its owner\'s ground, and needs a square to stand on', function (t) {
     var d = make([U('p1', 'line')], [U('e1', 'line')], { objective: 'defend' });
     BR.beginDeployment(d, null);

@@ -635,13 +635,17 @@
   /* The supply markers: each at its laid-out square if troops on foot can
      reach it from your starting edge; otherwise the nearest such square
      that is free (no other marker; no unit, while deploying). Failing that,
-     the nearest square that can at least be stood on. */
-  function settleMarkers(battle, tt, ideal) {
+     the nearest square that can at least be stood on. keep(m), if given:
+     markers it is true for stay exactly where they are (and their squares
+     are kept clear of the others). */
+  function settleMarkers(battle, tt, ideal, keep) {
     var reach = walkFrom(battle, tt, [BR.baseline(battle, 'player')]);
     var occ = occupancy(battle);
     var rows = BR.zoneRows(battle, 'enemy');
     var used = {};
+    if (keep) ideal.forEach(function (m) { if (keep(m)) used[key(m)] = true; });
     ideal.forEach(function (m) {
+      if (keep && keep(m)) return;
       function free(c, r) {
         if (used[c + ',' + r]) return false;
         return (c === m.c && r === m.r) || !occ[c + ',' + r];
@@ -688,13 +692,23 @@
 
   /* Lay the objective out afresh and fit it to the painting (see above).
      Only before the battle starts, while nothing has happened to it.
-     keepPlaced: where the DM has moved it while deploying (dmPlaced), it is
-     fitted from where the DM put it rather than laid out afresh. */
+     keepPlaced: once the DM has moved part of it while deploying
+     (dmPlaced), it is fitted from where it is now rather than laid out
+     afresh, and what the DM moved stays exactly where it was put:
+     - a supply marker the DM moved (its own dmPlaced), unless the new
+       painting makes its square deep water or cliff;
+     - the depot or outpost, unless the new painting leaves it with no
+       square troops can stand on.
+     Even where troops on foot can't reach it: objectiveProblems then warns. */
   function settleObjective(battle, tt, keepPlaced) {
     var o = battle.objective;
-    var fresh = keepPlaced && o.dmPlaced ? { markers: copy(o.markers), zone: o.zone ? copy(o.zone) : null } : layoutObjective(battle, o.id);
-    o.markers = settleMarkers(battle, tt, fresh.markers);
-    o.zone = fresh.zone ? settleZone(battle, tt, fresh.zone) : null;
+    var placed = !!(keepPlaced && o.dmPlaced);
+    var fresh = placed ? { markers: copy(o.markers), zone: o.zone ? copy(o.zone) : null } : layoutObjective(battle, o.id);
+    function standable(c, r) { return !BR.terrainAt(tt, c, r).impassable; }
+    o.markers = settleMarkers(battle, tt, fresh.markers, placed ? function (m) { return m.dmPlaced === true && standable(m.c, m.r); } : null);
+    o.zone = !fresh.zone ? null :
+      placed && BR.zoneCells(fresh.zone).some(function (c) { return standable(c.c, c.r); }) ? fresh.zone :
+        settleZone(battle, tt, fresh.zone);
   }
 
   /* After the painting changes while deploying (or before): the objective
@@ -719,8 +733,8 @@
      - The depot or outpost keeps its size and stays wholly on its owner's
        ground (the depot on yours, the outpost on the enemy's), with at least
        one square troops can stand on. Units may be inside it.
-     The objective is then marked dmPlaced, so a repaint while deploying
-     keeps it where it was put (fitObjective). */
+     The objective (and a moved marker) is then marked dmPlaced, so a
+     repaint while deploying keeps it where it was put (fitObjective). */
   function movedZone(z, at) {
     return { c0: at.c, r0: at.r, c1: at.c + z.c1 - z.c0, r1: at.r + z.r1 - z.r0, owner: z.owner };
   }
@@ -755,6 +769,7 @@
       var m = markerById(battle, what.marker);
       m.c = at.c;
       m.r = at.r;
+      m.dmPlaced = true;
     } else {
       o.zone = movedZone(o.zone, at);
     }
