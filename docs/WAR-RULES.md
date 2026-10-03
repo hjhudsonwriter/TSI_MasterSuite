@@ -160,7 +160,12 @@ Then:
 - **Your units:** drag them anywhere on your own half.
 - **Lieutenants:** choose which formation each leads.
 - **The enemy:** you don't normally place it, but **DM: adjust enemy** lets you move it within its own half.
-- **Start Battle** locks everything in.
+- **The objective:** in a Raid, Defend Bastion or Seize Outpost battle the same button is **DM: adjust enemy & supplies**, **& depot** or **& outpost**, and lets you drag the objective too:
+  - a supply marker anywhere on the enemy's half, on a square troops can stand on, with no unit or other marker on it (the squares light up while you drag);
+  - your supply depot or the outpost as a whole block, kept the same size, wholly on its owner's half (your depot on yours, the outpost on the enemy's), with at least one square troops can stand on. Units may stand inside it.
+
+  A drop that isn't allowed says why. Repainting terrain while deploying keeps them where you put them, unless the new painting puts one on deep water or a cliff; then it moves to the nearest square that works.
+- **Start Battle** locks everything in. **The battle briefing** then appears: how this battle is won and lost, today's conditions, and the rules in brief. The **Rules & objective** button at the top of the War Table shows it again at any time.
 
 ## 6. The battle
 
@@ -168,6 +173,13 @@ Then:
 
 ### Orders
 Select one of your units, choose an order, drag the unit (or click a square) to propose its move, pick a target, then **Confirm**. Nobody can drag units freely once the battle has started.
+
+**Attacking:** with one of your units selected, click any enemy (or drop your unit on it) to set up Advance & Attack on it. It doesn't matter whether that enemy has already acted or been attacked this round. Your unit attacks from where it stands if it can, which is always the case when the enemy is already next to it. Otherwise it moves to the best square in reach first, which the table shows before you confirm:
+- a square it can shoot from, for archers;
+- then one that gives a Charge;
+- then the shortest, most direct move.
+
+If the enemy can't be attacked this activation, the table says why: too far away; your unit is already fighting another enemy (Disengage first); or, for archers, it is in melee with one of your units, since archers never shoot into a melee.
 
 | Order | What happens |
 |---|---|

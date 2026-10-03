@@ -8,6 +8,20 @@ Double-click `index.html` to open the suite. The plan is in `docs/PLAN.md`, the 
 
 ## Done
 
+### The War Table: attacking, moving the objective, the battle briefing (3 October 2026)
+Harry tested phase 2 ("almost everything seems to be working perfectly") and asked for three changes.
+- **Attacking any enemy** (KNOWN_ISSUES BAS-51): Harry couldn't attack an enemy that had moved next to his unit, or one it had already been fighting. The battle rules allowed it; the screen didn't make it possible. Clicking an enemy only showed its card, and a unit already in contact has no lit squares to drag to, which was the other way to set an attack up. Now, with one of your units selected, clicking any enemy (or dropping your unit on it) sets up Advance & Attack on it:
+  - from where it stands when it can;
+  - otherwise from the best square in reach (a shot for archers, then a Charge, then the most direct move), shown before you confirm.
+
+  If it can't attack that enemy this activation, the table says why. Clicking an enemy with none of yours selected still shows its card.
+- **The DM moving the objective** (BAS-52): while deploying, the DM's button is now **DM: adjust enemy & supplies** (or **& depot**, **& outpost**). It lets you drag the supply markers anywhere on the enemy's half, and your supply depot or the outpost as a block on its owner's half. The button turns crimson while it's on. A drop that isn't allowed says why, and a repaint keeps your placement.
+- **The battle briefing** (BAS-53): after **Start Battle**, a pop-up sets out how this battle is won and lost, today's conditions and the rules in brief, built from the battle's own numbers. It fits the laptop and the TV without scrolling. The **Rules & objective** button at the top of the War Table shows it again at any time: in setup, while deploying or in battle.
+- **Tests:**
+  - `tests/rules.html` runs 654 rules tests, all passing. New ones cover: where a clicked enemy is attacked from; the reasons when it can't be; moving the objective, and why a square is refused; the button's label; and the briefing for every objective.
+  - `tests/e2e/war-table.test.js` has 115 checks, all passing. 24 are new and cover all three changes, including the briefing's fit at 1707 × 930, 1707 × 1067 and 1920 × 1080.
+  - `tests/e2e/phase9.test.js` checks the briefing in a whole war.
+
 ### The Bastion: the war mini-game, phase 2 (2 October 2026)
 Harry sent the full phase 2 brief and asked for it to be built without stopping to ask, taking the recommended decision wherever there was a choice. The whole rulebook, as built, is in **`docs/WAR-RULES.md`**; every number is in one file, `tools/bastion/data/war-units-data.js`, so any of them can be changed in one place.
 - **The War Room** (BAS-44): the Recruit list is Harry's seven units (Lieutenant, Archers 50, Levy Infantry 150, Line Infantry 100, Heavy Infantry 50, Light Cavalry 50, Shock Cavalry 25). Hovering over one, or reaching it with Tab, shows its stat block: Cohesion, Attack, Defence, Move, Resolve, Battle Value and Distinction, with Harry's meanings. Recruiting a unit type brings a Depleted regiment of that type back to full strength first. Old "Regiment (100)" rows fight as Line Infantry.
@@ -454,6 +468,7 @@ Each tool's questions are needed before that tool's phase. The full wording and 
     - Weather, Morale and Luck in battle (section 3): a snowstorm −1 Move, a rainstorm −2 on ranged attacks, a heatwave −1 on Resolve checks; Morale ±2 on your Resolve checks; Luck ±1 on your attacks and who acts first. The opening rolls themselves stay plain d20s; say if Lieutenants should add to Morale.
     - Call off until the first unit acts, then Withdraw (sections 3 and 7). The War Table's extra controls are kept; arrow keys pan, and move a unit only while you're proposing a legal move.
     - "You" in the Morale stories when no Lieutenant marches: kept. Your crest is on your army's banner and your formations.
+  - **Archers and melee (3 October 2026):** you asked that any unit can be attacked on any turn, and it can now. One rule from your phase 2 brief still limits archers: they never shoot while in melee, or into a melee. So an enemy already fighting one of your units can only be attacked hand to hand. If they can reach it, the table offers that instead, and says why. Say if archers should be allowed to shoot into a melee.
   - **Worth a look before playing much:**
     - **Defenders:** Harry's brief set unit sizes at 150 for Levy Infantry, so the brief's "20 per regiment" headcount was scaled up: 75 or more defenders form a detachment, fewer support a regiment (+1 Cohesion per 5, up to +2). Two choices went beyond the brief: defenders left over once every regiment has its support form one small detachment, however few (so an Unsworn party with only defenders and beasts can still fight); and **unarmed defenders fight at −2 Attack**, where the brief said they should give support rather than fight as ordinary infantry. Say if either should change.
     - **The clans' armies and variant units, and the beasts' profiles and traits,** are proposals (sections 1 and 2). Only Slade's colours (a white stallion on teal) are established; say if any clan should fight differently or have its own colours.

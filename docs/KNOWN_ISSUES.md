@@ -25,7 +25,7 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
 | Scarlett Isles Explorer (EXP) | 12 | 4 | 0 | 13 | 0 |
-| The Ironbow Bastion Manager (BAS) | 17 | 2 | 13 | 17 | 1 |
+| The Ironbow Bastion Manager (BAS) | 18 | 2 | 15 | 17 | 1 |
 | Clan Crest Creator (CRS) | 0 | 4 | 5 | 3 | 3 |
 | Arenas of The Scarlett Isles (ARN) | 8 | 2 | 0 | 17 | 0 |
 | The Heartwood Ritual (RIT) | 9 | 1 | 0 | 15 | 1 |
@@ -1428,6 +1428,40 @@ None of these reached Harry: they were found by the checks on the new code and f
 - **The War Table:** a selected unit showed no movement area; tokens could be left part-way along a move; the log stopped updating after 300 lines; the log was pushed out of view on the laptop; an uploaded map taller or wider than the board was cropped without a word; the depot's name and some badges were hidden under tokens; dragging onto an enemy gave a misleading message; Enter in the d20 box did nothing → all fixed. The War Table now says when a map's edges are hidden ("Edges hidden").
 - **Pop-ups over the War Table:** "The conditions are unchanged" could appear again and again, and a "Bastion Turn left part-way" notice could sit over the table → each appears once, and notices close when the table opens.
 - **Evidence:** `tools/bastion/war-battle-rules.js`, `war-ai.js`, `war-campaign-rules.js`, `war-table.js`, `war-table-rules.js`, `war-table.css`, `tool.js`; each fix has a test in `tests/rules/` or `tests/e2e/phase9.test.js` that fails on the code before it.
+
+### BAS-51 · Couldn't attack an enemy your unit was already fighting
+**Must fix** (Harry's report, 3 October 2026; fixed) · breaks the tool
+
+- **Before:** With one of your units selected, clicking an enemy only showed that enemy's card. To attack, you had to press Advance & Attack first, or drag your unit to a lit square next to the enemy, which set the order up for you. A unit already in contact with the enemy has no lit squares to drag to. So an enemy that had moved next to it, or that it had already been fighting, seemed impossible to attack. The battle rules themselves never stopped it.
+- **After:** With one of your units selected, clicking any enemy (or dropping your unit on it) sets up Advance & Attack on it, whether or not that enemy has acted or been attacked this round. It attacks from where it stands when it can; otherwise from the best square in reach (a shot for archers, then a Charge, then the most direct move), shown before you confirm. When it can't attack that enemy this activation, the table says why. For archers, one reason is the brief's rule that archers never shoot into a melee.
+- **Evidence:** reproduced in the test browser (an engaged Line Infantry, then a click on the adjacent enemy that had acted: its card showed, and no attack was set up). `tools/bastion/war-table.js` (`attackEnemy`), `war-table-rules.js` (`attackFrom`, `noAttackText`); tests in `tests/rules/bastion-war-table.test.js` and `tests/e2e/war-table.test.js`.
+
+### BAS-52 · The DM can move the supplies, the depot and the outpost while deploying
+**Deliberate change** (Harry's request, 3 October 2026) · other
+
+- **Before:** The supply markers (Raid), your supply depot (Defend Bastion) and the outpost (Seize Outpost) were placed by the War Table and couldn't be moved; only the enemy's units could, with DM: adjust enemy.
+- **After:** While deploying, that button is **DM: adjust enemy & supplies** (or **& depot**, **& outpost**) and also lets you drag the objective:
+  - a supply marker anywhere on the enemy's half, on a square troops can stand on, with no unit or other marker on it;
+  - the depot or outpost as a block of the same size, wholly on its owner's half, with at least one square troops can stand on.
+
+  A refused drop says why. A repaint while deploying keeps them where they were put, unless the new painting rules a square out.
+- **Evidence:** `tools/bastion/war-battle-rules.js` (`canMoveObjective`, `moveObjective`), `war-table-rules.js` (`objectiveMoveRefusal`), `war-table.js`; `docs/WAR-RULES.md` section 5.
+
+### BAS-53 · A battle briefing when the battle starts, and a Rules & objective button
+**Deliberate change** (Harry's request, 3 October 2026) · other
+
+- **Before:** The objective showed only as one line above the battlefield, and the rules were only in `docs/WAR-RULES.md`.
+- **After:** After Start Battle, a briefing appears. Its sections:
+  - How you win;
+  - How you lose;
+  - Today's conditions (the weather's effect, Morale and Luck);
+  - Turns;
+  - The six orders;
+  - Fighting;
+  - Morale.
+
+  Every number comes from the data file. It fits the laptop and the TV without scrolling. The **Rules & objective** button at the top of the War Table shows it again at any time: before deployment, while deploying, or during the battle. Reopening a saved battle doesn't show it again.
+- **Evidence:** `tools/bastion/war-table-rules.js` (`briefing`), `war-table.js` (`showBriefing`), `war-table.css`.
 
 ## Clan Crest Creator
 Old repo: `_legacy/clan-crest-creator` (file:line references point there).
