@@ -687,21 +687,78 @@
   }
 
   /* Lay the objective out afresh and fit it to the painting (see above).
-     Only before the battle starts, while nothing has happened to it. */
-  function settleObjective(battle, tt) {
+     Only before the battle starts, while nothing has happened to it.
+     keepPlaced: where the DM has moved it while deploying (dmPlaced), it is
+     fitted from where the DM put it rather than laid out afresh. */
+  function settleObjective(battle, tt, keepPlaced) {
     var o = battle.objective;
-    var fresh = layoutObjective(battle, o.id);
+    var fresh = keepPlaced && o.dmPlaced ? { markers: copy(o.markers), zone: o.zone ? copy(o.zone) : null } : layoutObjective(battle, o.id);
     o.markers = settleMarkers(battle, tt, fresh.markers);
     o.zone = fresh.zone ? settleZone(battle, tt, fresh.zone) : null;
   }
 
   /* After the painting changes while deploying (or before): the objective
      is laid out again and kept off ground troops on foot can't use or
-     reach. Units stay where they are. Returns true if it was allowed.
+     reach; while deploying, a supply marker, depot or outpost the DM has
+     moved stays where it was put unless the new painting rules that out.
+     Units stay where they are. Returns true if it was allowed.
      (beginDeployment does this itself.) */
   BR.fitObjective = function (battle, terrain) {
     if (!battle || (battle.phase !== 'setup' && battle.phase !== 'deploy') || !battle.objective) return false;
-    settleObjective(battle, fit(battle, terrain));
+    settleObjective(battle, fit(battle, terrain), battle.phase === 'deploy');
+    return true;
+  };
+
+  /* ---------- The DM moving the objective (while deploying) ----------
+     As the DM can move the enemy's units (DM: adjust enemy), so a supply
+     marker, your supply depot or the outpost can be moved before the battle
+     starts. what: { marker: id } or { zone: true }; cell: the marker's new
+     square, or the depot's or outpost's new top-left square.
+     - A supply marker stays on the enemy's ground, on a square troops can
+       stand on, with no unit and no other marker on it.
+     - The depot or outpost keeps its size and stays wholly on its owner's
+       ground (the depot on yours, the outpost on the enemy's), with at least
+       one square troops can stand on. Units may be inside it.
+     The objective is then marked dmPlaced, so a repaint while deploying
+     keeps it where it was put (fitObjective). */
+  function movedZone(z, at) {
+    return { c0: at.c, r0: at.r, c1: at.c + z.c1 - z.c0, r1: at.r + z.r1 - z.r0, owner: z.owner };
+  }
+  BR.canMoveObjective = function (battle, what, cell, terrain) {
+    if (!battle || battle.phase !== 'deploy' || !battle.objective || !isObj(what)) return false;
+    var at = cellOf(cell);
+    if (!at || !BR.inBoard(battle, at)) return false;
+    var o = battle.objective;
+    var tt = fit(battle, terrain);
+    if (what.marker !== undefined && what.marker !== null) {
+      var m = markerById(battle, what.marker);
+      if (!m || m.state !== 'field') return false;
+      if (BR.zoneOf(battle, at.r) !== 'enemy') return false;
+      if (BR.terrainAt(tt, at.c, at.r).impassable) return false;
+      if (BR.unitAt(battle, at)) return false;
+      return !o.markers.some(function (x) { return x !== m && x.state === 'field' && sameCell(x, at); });
+    }
+    if (what.zone === true && o.zone) {
+      var z = movedZone(o.zone, at);
+      if (z.c1 >= battle.cols || z.r1 >= battle.rows) return false;
+      var rows = BR.zoneRows(battle, z.owner);
+      for (var r = z.r0; r <= z.r1; r++) if (rows.indexOf(r) === -1) return false;
+      return BR.zoneCells(z).some(function (c) { return !BR.terrainAt(tt, c.c, c.r).impassable; });
+    }
+    return false;
+  };
+  BR.moveObjective = function (battle, what, cell, terrain) {
+    if (!BR.canMoveObjective(battle, what, cell, terrain)) return false;
+    var at = cellOf(cell);
+    var o = battle.objective;
+    if (what.marker !== undefined && what.marker !== null) {
+      var m = markerById(battle, what.marker);
+      m.c = at.c;
+      m.r = at.r;
+    } else {
+      o.zone = movedZone(o.zone, at);
+    }
+    o.dmPlaced = true;
     return true;
   };
 
@@ -995,7 +1052,8 @@
     var tt = fit(battle, terrain);
     battle.units.forEach(function (u) { u.pos = null; u.startPos = null; u.leaderId = null; });
     battle.leaders.forEach(function (l) { l.hostId = null; });
-    settleObjective(battle, tt);
+    if (battle.objective) delete battle.objective.dmPlaced;
+    settleObjective(battle, tt, false);
     var taken = {};
     var avoid = {};
     battle.objective.markers.forEach(function (m) { if (m.state === 'field') avoid[key(m)] = true; });

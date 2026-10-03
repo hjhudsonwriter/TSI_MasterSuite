@@ -465,6 +465,68 @@
     t.same(BR.objectiveProblems(raid, zigzag), ['Only 0 of the supply markers can be reached from your starting edge on foot, and the raid needs 2: deep water or cliffs are in the way.']);
   });
 
+  test('the DM may move a supply marker while deploying: anywhere on the enemy\'s ground that can be stood on, free of units and other supplies', function (t) {
+    /* Harry asked (3 October 2026) to move the supplies, outposts and depots as the enemy's units can be moved. */
+    var b = make([U('p1', 'line')], [U('e1', 'line'), U('e2', 'line')], { objective: 'raid' });
+    t.equal(BR.canMoveObjective(b, { marker: 'm1' }, at(2, 1), null), false, 'not before deploying');
+    BR.beginDeployment(b, null);
+    t.ok(BR.moveObjective(b, { marker: 'm1' }, at(2, 1), null));
+    t.same([b.objective.markers[0].c, b.objective.markers[0].r, b.objective.dmPlaced], [2, 1, true]);
+    t.equal(BR.canMoveObjective(b, { marker: 'm1' }, at(2, 10), null), false, 'not on your ground');
+    t.equal(BR.canMoveObjective(b, { marker: 'm1' }, at(2, 5), null), false, 'not on the strip');
+    t.equal(BR.canMoveObjective(b, { marker: 'm1' }, at(30, 1), null), false, 'not off the board');
+    var e1 = BR.unitById(b, 'e1').pos;
+    t.equal(BR.canMoveObjective(b, { marker: 'm1' }, e1, null), false, 'not on a unit');
+    var m2 = b.objective.markers[1];
+    t.equal(BR.canMoveObjective(b, { marker: 'm1' }, at(m2.c, m2.r), null), false, 'not on other supplies');
+    var water = paint(b, { '3,1': 'x' });
+    t.equal(BR.canMoveObjective(b, { marker: 'm1' }, at(3, 1), water), false, 'not on deep water');
+    t.equal(BR.canMoveObjective(b, { marker: 'nope' }, at(3, 1), null), false, 'no such marker');
+    t.equal(BR.canMoveObjective(b, { zone: true }, at(3, 1), null), false, 'a raid has no zone');
+    BR.startBattle(b);
+    t.equal(BR.moveObjective(b, { marker: 'm1' }, at(4, 1), null), false, 'not once the battle has started');
+  });
+
+  test('a repaint while deploying keeps the DM\'s placement (unless the new painting rules it out); a fresh deployment lays the objective out again', function (t) {
+    var b = make([U('p1', 'line')], [U('e1', 'line')], { objective: 'raid' });
+    BR.beginDeployment(b, null);
+    var laidOut = { c: b.objective.markers[0].c, r: b.objective.markers[0].r };
+    BR.moveObjective(b, { marker: 'm1' }, at(2, 1), null);
+    t.ok(BR.fitObjective(b, paint(b, { '9,9': 'c' })));
+    t.same([b.objective.markers[0].c, b.objective.markers[0].r], [2, 1], 'kept where the DM put it');
+    BR.fitObjective(b, paint(b, { '2,1': 'x' }));
+    var m = b.objective.markers[0];
+    t.ok(!(m.c === 2 && m.r === 1), 'moved off the new deep water');
+    t.equal(BR.dist(m, at(2, 1)), 1, 'to the nearest square');
+    BR.beginDeployment(b, null);
+    t.same([b.objective.markers[0].c, b.objective.markers[0].r, b.objective.dmPlaced], [laidOut.c, laidOut.r, undefined], 'laid out afresh');
+  });
+
+  test('the DM may move your supply depot or the outpost as a block: it keeps its size, stays on its owner\'s ground, and needs a square to stand on', function (t) {
+    var d = make([U('p1', 'line')], [U('e1', 'line')], { objective: 'defend' });
+    BR.beginDeployment(d, null);
+    var z = d.objective.zone;
+    var w = z.c1 - z.c0, h = z.r1 - z.r0;
+    t.ok(BR.moveObjective(d, { zone: true }, at(3, z.r0), null));
+    t.same(d.objective.zone, { c0: 3, r0: z.r0, c1: 3 + w, r1: z.r0 + h, owner: 'player' });
+    t.equal(BR.canMoveObjective(d, { zone: true }, at(3, 1), null), false, 'not on the enemy\'s ground');
+    t.equal(BR.canMoveObjective(d, { zone: true }, at(3, d.strip[d.strip.length - 1]), null), false, 'not on the strip');
+    t.equal(BR.canMoveObjective(d, { zone: true }, at(d.cols - w, z.r0), null), false, 'not off the board');
+    t.ok(BR.canMoveObjective(d, { zone: true }, at(d.cols - w - 1, d.rows - 1 - h), null), 'right up to the edges');
+    var marks = {};
+    for (var r = 7; r <= 8; r++) for (var c = 10; c <= 10 + w; c++) marks[c + ',' + r] = 'x';
+    var lake = paint(d, marks);
+    t.equal(BR.canMoveObjective(d, { zone: true }, at(10, 7), lake), false, 'not all deep water');
+    t.ok(BR.canMoveObjective(d, { zone: true }, at(9, 7), lake), 'partly is fine');
+    var p1 = BR.unitById(d, 'p1').pos;
+    t.ok(BR.canMoveObjective(d, { zone: true }, p1, null), 'units may be inside it');
+    var s = make([U('p1', 'line')], [U('e1', 'line')], { objective: 'seize_outpost' });
+    BR.beginDeployment(s, null);
+    t.ok(BR.moveObjective(s, { zone: true }, at(0, 0), null));
+    t.same([s.objective.zone.c0, s.objective.zone.r0, s.objective.zone.owner], [0, 0, 'enemy']);
+    t.equal(BR.canMoveObjective(s, { zone: true }, at(0, 8), null), false, 'the outpost stays on the enemy\'s ground');
+  });
+
   test('fitObjective: after a repaint while deploying, the objective moves off the new water, avoiding units; units stay put', function (t) {
     var b = make([U('p1', 'line')], [U('e1', 'line'), U('e2', 'line')], { objective: 'raid' });
     BR.beginDeployment(b, null);
