@@ -97,6 +97,13 @@ async function confirmModal(page, yes) {
   await page.click('.tsi-modal [data-value=' + (yes ? 'true' : 'false') + ']');
   await wait(120);
 }
+/* Start Battle, yes, then the battle briefing that follows (Begin the battle). */
+async function startBattle(page) {
+  await page.click('[data-test=wt-start-battle]');
+  await confirmModal(page, true);
+  await page.waitForSelector('[data-test=wt-briefing]');
+  await confirmModal(page, true);
+}
 async function uploadMap(page, file) {
   await page.setInputFiles('[data-test=wt-upload-input]', file);
   await page.waitForFunction(() => { const m = document.querySelector('[data-test=wt-map]'); return m && !m.hidden && m.naturalWidth > 0; });
@@ -400,8 +407,7 @@ async function enemyTurn(page) {
       await page.click('[data-test=wt-start-battle]');
       await confirmModal(page, false);
       equal((await bat(page)).phase, 'deploy');
-      await page.click('[data-test=wt-start-battle]');
-      await confirmModal(page, true);
+      await startBattle(page);
       equal((await bat(page)).phase, 'battle');
       equal(await page.evaluate(() => WT_LOG.lastBattle.phase), 'battle', 'saved');
     });
@@ -616,8 +622,7 @@ async function enemyTurn(page) {
       await page.evaluate(() => { T.close(); window.T = openTable({ spec: makeSpec('skirmish', { weather: 'cold_rain', moraleMod: 0, luckMod: -1 }), title: 'Skirmish vs Bacca', rand: seeded(11),
         onEnd: function (b) { WT_LOG.ends.push(b.result); return new Promise(function (r) { setTimeout(r, 2500); }); } }); });
       await page.click('[data-test=wt-begin-deploy]');
-      await page.click('[data-test=wt-start-battle]');
-      await confirmModal(page, true);
+      await startBattle(page);
       equal(await txt(page, 'wt-turn'), 'The enemy\'s turn', 'Luck failed: the enemy first');
       let guard = 0;
       while (!(await bat(page)).result && guard++ < 120) {
@@ -752,8 +757,7 @@ async function enemyTurn(page) {
       await page.evaluate(() => { WT_BATTLE = null; });
       await open(page, "{ spec: makeSpec('skirmish', { weather: 'clear', moraleMod: 0, luckMod: -1 }) }");
       await page.click('[data-test=wt-begin-deploy]');
-      await page.click('[data-test=wt-start-battle]');
-      await confirmModal(page, true);
+      await startBattle(page);
       await page.click('[data-test=wt-enemy-act]');
       await page.evaluate(() => T.close());
       await wait(3500);
@@ -891,8 +895,7 @@ async function enemyTurn(page) {
       await page.click('[data-test=wt-begin-deploy]');
       await check(size + ': deploy', async () => { await layoutOk(page, HEAD.concat(FOOT)); });
       await page.screenshot({ path: SHOTS + '/lay-' + size + '-3deploy.png' });
-      await page.click('[data-test=wt-start-battle]');
-      await confirmModal(page, true);
+      await startBattle(page);
       for (let i = 0; i < 5; i++) {
         const b = await bat(page);
         if (b.turnSide === 'player') await playerTurnByUI(page); else await enemyTurn(page);
@@ -918,8 +921,7 @@ async function enemyTurn(page) {
     await open(page, "{ spec: makeSpec('skirmish', { weather: 'clear', moraleMod: 0, luckMod: 1 }) }");
     await check('the calculation stands still; no stepping animation', async () => {
       await page.click('[data-test=wt-begin-deploy]');
-      await page.click('[data-test=wt-start-battle]');
-      await confirmModal(page, true);
+      await startBattle(page);
       await clickToken(page, 'p-archers-1');
       await page.click('[data-test=wt-order-advance]');
       const s = await st(page);
@@ -966,8 +968,7 @@ async function enemyTurn(page) {
     async function beginAndStart() {
       await page.click('[data-test=wt-begin-deploy]');
       await wait(60);
-      await page.click('[data-test=wt-start-battle]');
-      await confirmModal(page, true);
+      await startBattle(page);
     }
 
     await check('1. a map brought back mid-battle keeps its own saved terrain; the battle keeps its own', async () => {
@@ -1369,6 +1370,250 @@ async function enemyTurn(page) {
 
     await check('no errors', async () => equal(page.errors, []));
     await page.context().close();
+  }
+
+  if (!only || only === 'oct3') {
+    section('Harry\'s changes (3 October 2026): attacking, moving the objective, the briefing');
+    let page = await newPage(browser, 'laptop');
+    async function fresh() {
+      await page.evaluate(() => { if (window.T) { try { T.close(); } catch (e) { /* closed */ } } WT_MEM.clear(); WT_BATTLE = null; });
+      await page.waitForFunction(() => !document.querySelector('.tsi-modal'));
+    }
+    /* A battle under way with units exactly where a check wants them; acted: units that have already acted this round. */
+    async function scene(objective, where, acted) {
+      await fresh();
+      await page.evaluate(a => {
+        const BR = TSI.bastion.battleRules;
+        const x = BR.createBattle(makeSpec(a.objective), null);
+        BR.beginDeployment(x, null); BR.startBattle(x);
+        x.units.forEach(u => { u.pos = null; });
+        Object.keys(a.where).forEach(id => { BR.unitById(x, id).pos = { c: a.where[id][0], r: a.where[id][1] }; });
+        (a.acted || []).forEach(id => { BR.unitById(x, id).activated = true; });
+        x.turnSide = 'player';
+        WT_BATTLE = x;
+      }, { objective, where, acted: acted || [] });
+      await open(page);
+    }
+    const hint = () => page.textContent('.tsi-bas-wt-hint');
+    const prop = async () => { const x = await st(page); return x.order ? { order: x.order, targetId: x.targetId, dest: x.dest, targets: x.targets } : null; };
+
+    await check('an enemy that moved next to your unit (and has acted): click your unit, click the enemy, and the attack is set up from where it stands', async () => {
+      await scene('skirmish', { 'p-line-1': [10, 8], e2: [10, 7], e3: [3, 2] }, ['e2']);
+      await clickToken(page, 'p-line-1');
+      await clickToken(page, 'e2');
+      const p = await prop();
+      assert(p, 'a proposal');
+      equal([p.order, p.targetId, p.dest], ['advance', 'e2', { c: 10, r: 8 }]);
+      assert(/vs 13: needs/.test(await txt(page, 'wt-preview')));
+      await page.click('[data-test=wt-confirm]');
+      await page.waitForFunction(() => T.battle().units.find(u => u.id === 'p-line-1').activated);
+      assert(/Line Infantry 1 attacks Line Infantry 1/.test((await bat(page)).log.map(l => l.text).join(' | ')));
+    });
+    await check('an enemy already attacked this round can be attacked again by another unit', async () => {
+      await scene('skirmish', { 'p-line-1': [10, 8], 'p-heavy-1': [11, 8], e2: [10, 7], e3: [3, 2] }, ['e2', 'p-line-1']);
+      await page.evaluate(() => { const u = T.battle().units.find(x => x.id === 'e2'); u.cohesion -= 1; });
+      await clickToken(page, 'p-heavy-1');
+      await clickToken(page, 'e2');
+      equal([(await prop()).order, (await prop()).targetId], ['advance', 'e2']);
+    });
+    await check('an enemy a few squares off: your unit advances next to it and attacks, and the table says so', async () => {
+      await scene('skirmish', { 'p-line-1': [10, 9], e2: [10, 6], e3: [3, 2] }, ['e2']);
+      await clickToken(page, 'p-line-1');
+      await clickToken(page, 'e2');
+      const p = await prop();
+      equal([p.order, p.targetId, p.dest], ['advance', 'e2', { c: 10, r: 7 }]);
+      assert(/will advance to the square shown and attack Line Infantry 1/.test(await hint()), await hint());
+    });
+    await check('cavalry pick a square that gives a Charge', async () => {
+      await scene('skirmish', { 'p-light_cav-1': [10, 10], e2: [10, 5], e3: [3, 2] });
+      await clickToken(page, 'p-light_cav-1');
+      await clickToken(page, 'e2');
+      assert(/\(Charge\)/.test(await txt(page, 'wt-preview')), await txt(page, 'wt-preview'));
+      assert(/will charge Line Infantry 1/.test(await hint()));
+    });
+    await check('archers shoot from where they stand when they can', async () => {
+      await scene('skirmish', { 'p-archers-1': [10, 11], e2: [10, 6], e3: [3, 2] });
+      await clickToken(page, 'p-archers-1');
+      await clickToken(page, 'e2');
+      const p = await prop();
+      equal([p.order, p.targetId, p.dest], ['advance', 'e2', { c: 10, r: 11 }]);
+      await page.click('[data-test=wt-confirm]');
+      await page.waitForFunction(() => T.battle().units.find(u => u.id === 'p-archers-1').activated);
+      assert(/Archers 1 shoots at Line Infantry 1/.test((await bat(page)).log.map(l => l.text).join(' | ')));
+    });
+    await check('archers can\'t shoot into a melee: they go in hand to hand instead, and the table says why', async () => {
+      await scene('skirmish', { 'p-archers-1': [10, 11], 'p-line-1': [10, 8], e2: [10, 7], e3: [3, 2] }, ['e2']);
+      await clickToken(page, 'p-archers-1');
+      await clickToken(page, 'e2');
+      assert(/can't shoot Line Infantry 1 from any square in reach, so it will advance next to it and fight hand to hand/.test(await hint()), await hint());
+      equal((await prop()).targetId, 'e2');
+    });
+    await check('out of reach, or fighting another enemy: nothing is set up, the table says why, and your unit stays selected', async () => {
+      await scene('skirmish', { 'p-heavy-1': [20, 11], e2: [1, 0], e3: [3, 2] });
+      await clickToken(page, 'p-heavy-1');
+      await clickToken(page, 'e2');
+      assert(/is out of reach: Heavy Infantry 1 can't attack it this activation/.test(await hint()), await hint());
+      equal([(await st(page)).selected, await prop()], ['p-heavy-1', null]);
+      await scene('skirmish', { 'p-line-1': [10, 8], e2: [10, 7], e3: [14, 3] });
+      await clickToken(page, 'p-line-1');
+      await clickToken(page, 'e3');
+      assert(/fighting hand to hand, so it can only attack the enemies next to it\. To go after Levy Infantry 1, Disengage first\./.test(await hint()), await hint());
+    });
+    await check('dropping your unit on an enemy sets up the attack too', async () => {
+      await scene('skirmish', { 'p-line-1': [10, 9], e2: [10, 6], e3: [3, 2] });
+      await drag(page, await tokenAt(page, 'p-line-1'), await tokenAt(page, 'e2'));
+      const p = await prop();
+      equal([p.order, p.targetId, p.dest], ['advance', 'e2', { c: 10, r: 7 }]);
+    });
+    await check('with none of yours selected, clicking an enemy still shows its card', async () => {
+      await scene('skirmish', { 'p-line-1': [10, 9], e2: [10, 6], e3: [3, 2] });
+      await clickToken(page, 'e2');
+      equal([(await st(page)).selected, await prop()], ['e2', null]);
+    });
+
+    /* Moving the objective while deploying (DM). */
+    async function deployFresh(objective) {
+      await fresh();
+      await open(page, '{ spec: makeSpec(\'' + objective + '\') }');
+      await page.click('[data-test=wt-begin-deploy]');
+      await wait(80);
+    }
+    const objective = async () => (await bat(page)).objective;
+    const centreOf = r => ({ x: r.x + r.w / 2, y: r.y + r.h / 2 });
+    await check('Raid: DM: adjust enemy & supplies drags a supply marker anywhere on the enemy\'s ground (lit while dragging)', async () => {
+      await deployFresh('raid');
+      equal(await txt(page, 'wt-dm-enemy'), 'DM: adjust enemy & supplies');
+      const m1 = (await objective()).markers[0];
+      /* Off: the supplies stay put. */
+      await drag(page, await cellAt(page, m1.c, m1.r), await cellAt(page, 2, 1));
+      equal((await objective()).markers[0], m1, 'not moved without DM adjusting');
+      await page.click('[data-test=wt-dm-enemy]');
+      assert(await page.$eval('[data-test=wt-dm-enemy]', n => n.classList.contains('tsi-btn--primary')), 'lit while on');
+      assert(/drag the supplies anywhere on the enemy's ground/.test(await hint()));
+      const lit = await drag(page, await cellAt(page, m1.c, m1.r), await cellAt(page, 2, 1));
+      assert(lit > 20, 'the enemy\'s ground lights up: ' + lit);
+      const ob = await objective();
+      equal([ob.markers[0].c, ob.markers[0].r, ob.dmPlaced], [2, 1, true]);
+    });
+    await check('Raid: a drop on your ground, on a unit or on other supplies is refused with a reason', async () => {
+      const b = await bat(page);
+      const m2 = b.objective.markers[1];
+      await drag(page, await cellAt(page, m2.c, m2.r), await cellAt(page, 4, b.rows - 1));
+      assert(/The supplies stay on the enemy's ground, above the strip\./.test(await hint()), await hint());
+      const foe = b.units.find(u => u.side === 'enemy' && u.pos);
+      await drag(page, await cellAt(page, m2.c, m2.r), await cellAt(page, foe.pos.c, foe.pos.r));
+      assert(/That square is taken by/.test(await hint()), await hint());
+      await drag(page, await cellAt(page, m2.c, m2.r), await cellAt(page, 2, 1));
+      assert(/Another supply marker is already there\./.test(await hint()), await hint());
+      equal((await objective()).markers[1], m2, 'unchanged');
+    });
+    await check('Raid: the DM\'s placement survives a repaint while deploying, and Start Battle', async () => {
+      await page.click('[data-test=wt-terrain]');
+      await page.click('[data-test="wt-terrain-c"]');
+      await clickCell(page, 0, 0);
+      await page.click('[data-test=wt-terrain-done]');
+      await wait(80);
+      equal([(await objective()).markers[0].c, (await objective()).markers[0].r], [2, 1]);
+      await startBattle(page);
+      equal([(await objective()).markers[0].c, (await objective()).markers[0].r], [2, 1]);
+    });
+    await check('Defend Bastion: the depot is dragged as a block and stays on your ground', async () => {
+      await deployFresh('defend');
+      equal(await txt(page, 'wt-dm-enemy'), 'DM: adjust enemy & depot');
+      await page.click('[data-test=wt-dm-enemy]');
+      const z = (await objective()).zone;
+      await drag(page, await cellAt(page, z.c0 + 1, z.r0), await cellAt(page, 4, z.r0));
+      equal((await objective()).zone, { c0: 3, r0: z.r0, c1: 3 + z.c1 - z.c0, r1: z.r1, owner: 'player' }, 'moved, keeping the square it was picked up by under the pointer');
+      await drag(page, await cellAt(page, 4, z.r0), await cellAt(page, 4, 1));
+      assert(/Your supply depot stays on your ground, below the strip\./.test(await hint()), await hint());
+      await drag(page, await cellAt(page, 4, z.r0), await cellAt(page, (await bat(page)).cols - 1, z.r0));
+      assert(/would run off the battlefield/.test(await hint()), await hint());
+      equal((await objective()).zone.c0, 3, 'unchanged');
+    });
+    await check('Seize Outpost: the outpost is dragged on the enemy\'s ground', async () => {
+      await deployFresh('seize_outpost');
+      equal(await txt(page, 'wt-dm-enemy'), 'DM: adjust enemy & outpost');
+      await page.click('[data-test=wt-dm-enemy]');
+      const z = (await objective()).zone;
+      await drag(page, await cellAt(page, z.c0, z.r0), await cellAt(page, 15, 0));
+      equal([(await objective()).zone.c0, (await objective()).zone.r0], [15, 0]);
+      await page.click('[data-test=wt-dm-enemy]');
+      equal(await txt(page, 'wt-dm-enemy'), 'DM: adjust enemy & outpost', 'off again');
+    });
+    await check('Skirmish: the button is DM: adjust enemy, as before', async () => {
+      await deployFresh('skirmish');
+      equal(await txt(page, 'wt-dm-enemy'), 'DM: adjust enemy');
+    });
+
+    /* The briefing. */
+    for (const [obj, title, goal] of [
+      ['raid', 'Raid vs Bacca', /Carry off 2 of the 3 supply markers/],
+      ['defend', 'Defend Bastion vs Bacca', /Keep the enemy off your supply depot/],
+      ['seize_outpost', 'Seize Outpost vs Bacca', /Hold it at 2 round ends in a row/],
+      ['skirmish', 'Skirmish vs Bacca', /Break the enemy army/]
+    ]) {
+      await check('Start Battle shows the briefing (' + obj + '): how you win and lose, today\'s conditions, the rules in brief; Begin the battle closes it', async () => {
+        await fresh();
+        await open(page, '{ spec: makeSpec(\'' + obj + '\', { weather: \'cold_rain\', moraleMod: -2, luckMod: -1 }), title: \'' + title + '\' }');
+        await page.click('[data-test=wt-begin-deploy]');
+        await page.click('[data-test=wt-start-battle]');
+        await confirmModal(page, true);
+        await page.waitForSelector('[data-test=wt-briefing]');
+        equal(await page.textContent('.tsi-modal__title'), 'Rules & objective · ' + title);
+        assert(goal.test(await txt(page, 'wt-brief-goal')), await txt(page, 'wt-brief-goal'));
+        assert(/60% of its starting Battle Value/.test(await txt(page, 'wt-brief-lose')));
+        const cond = await txt(page, 'wt-brief-conditions');
+        assert(/Rainstorm: ranged attacks −2, for both armies/.test(cond) && /Morale low: −2/.test(cond) && /Luck: −1 on all your attack rolls/.test(cond), cond);
+        assert(/The enemy acts first in round 1/.test(await txt(page, 'wt-brief-turns')));
+        for (const id of ['orders', 'fighting', 'morale']) assert(await vis(page, 'wt-brief-' + id), id);
+        equal(await page.textContent('.tsi-modal__foot button'), 'Begin the battle');
+        await confirmModal(page, true);
+        equal(await page.$('.tsi-modal'), null);
+        equal((await bat(page)).phase, 'battle');
+      });
+    }
+    await check('Rules & objective opens the briefing at any time (setup, deployment, battle); Close closes it; reopening a battle doesn\'t show it again', async () => {
+      await fresh();
+      await open(page, '{ spec: makeSpec(\'raid\') }');
+      for (const step of ['setup', 'deploy', 'battle']) {
+        if (step === 'deploy') await page.click('[data-test=wt-begin-deploy]');
+        if (step === 'battle') await startBattle(page);
+        await page.click('[data-test=wt-briefing]');
+        await page.waitForSelector('[data-test=wt-briefing]');
+        assert(/Carry off 2 of the 3/.test(await txt(page, 'wt-brief-goal')), step);
+        equal(await page.textContent('.tsi-modal__foot button'), 'Close');
+        await confirmModal(page, true);
+      }
+      await page.evaluate(() => T.close());
+      await open(page);
+      await wait(300);
+      equal(await page.$('.tsi-modal'), null, 'not shown again');
+    });
+    await check('no errors', async () => equal(page.errors, []));
+    await page.context().close();
+
+    for (const size of ['laptop', 'laptopFull', 'tv']) {
+      await check(size + ': the briefing fits with nothing to scroll; the Rules & objective button is in view', async () => {
+        const p2 = await newPage(browser, size);
+        await p2.evaluate(() => { window.T = openTable({ spec: makeSpec('defend', { weather: 'sun_heatwave', moraleMod: 2, luckMod: 1 }), title: 'Defend Bastion vs Blackstone' }); });
+        await p2.waitForSelector('[data-test=wt-root]');
+        await layoutOk(p2, ['[data-test=wt-briefing]', '[data-test=wt-fullscreen]', '[data-test=wt-close]']);
+        await p2.click('[data-test=wt-begin-deploy]');
+        await p2.click('[data-test=wt-start-battle]');
+        await confirmModal(p2, true);
+        await p2.waitForSelector('[data-test=wt-briefing]');
+        const m = await p2.evaluate(() => {
+          const d = document.querySelector('.tsi-modal'); const b = d.querySelector('.tsi-modal__body'); const r = d.getBoundingClientRect();
+          return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, vw: innerWidth, vh: innerHeight, scrolls: b.scrollHeight > b.clientHeight + 1 };
+        });
+        assert(m.top >= 0 && m.left >= 0 && m.bottom <= m.vh && m.right <= m.vw, JSON.stringify(m));
+        assert(!m.scrolls, 'the briefing scrolls: ' + JSON.stringify(m));
+        await p2.screenshot({ path: path.join(SHOTS, 'wt-briefing-' + size + '.png') });
+        await confirmModal(p2, true);
+        equal(p2.errors, []);
+        await p2.context().close();
+      });
+    }
   }
 
   await browser.close();

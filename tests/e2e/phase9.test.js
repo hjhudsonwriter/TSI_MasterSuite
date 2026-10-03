@@ -927,6 +927,14 @@ function serve(dir) {
       await pause(page);
       await page.click('[data-test=wt-start-battle]');
       await clickModal(page, 'Start Battle');
+      /* The battle briefing: the objective and the rules in brief. */
+      await page.waitForSelector('[data-test=wt-briefing]');
+      equal(await modalTitle(page), 'Rules & objective · Raid vs Bacca');
+      const brief = await page.textContent('[data-test=wt-brief-goal]');
+      assert(/Carry off 2 of the 3 supply markers/.test(brief), brief);
+      equal((await H.layoutCheck(page, ['.tsi-modal', '.tsi-modal__foot button'])).outOfView, []);
+      await H.shot(page, 'p9-war-briefing');
+      await clickModal(page, 'Begin the battle');
       await page.waitForTimeout(400);
       let ma = (await st(page)).militaryActions[0];
       equal([ma.step, ma.battle.phase, ma.battle.started, ma.battle.turnSide], ['battle', 'battle', false, 'enemy'], 'Luck −1: the enemy acts first');
