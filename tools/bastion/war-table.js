@@ -331,6 +331,7 @@
     var dmEnemyBtn = btn('DM: adjust enemy', 'wt-dm-enemy', function () { toggleDmEnemy(); }, { cls: 'tsi-bas-wt-toggle tsi-bas-wt-dm', title: 'Let the DM drag the enemy\'s units within the enemy\'s own ground.' });
     var dmPauseBtn = btn('DM: pause', 'wt-dm-pause', function () { togglePause(); }, { cls: 'tsi-bas-wt-toggle tsi-bas-wt-dm', title: 'Pause the battle to replace the map or paint terrain. The squares and the battle stay as they are.' });
     var readout = el('span', { class: 'tsi-bas-wt-readout', 'aria-live': 'polite' });
+    var briefBtn = btn('Rules & objective', 'wt-briefing', function () { showBriefing(false); }, { title: 'How to win this battle, and the rules in brief.' });
     var fsBtn = btn('Full screen', 'wt-fullscreen', function () { toggleFullscreen(); });
     var closeBtn = btn('Close', 'wt-close', function () { closeByUser(); }, { title: 'Close the War Table. The battle is kept just as it is.' });
 
@@ -339,7 +340,7 @@
         titleEl,
         summaryEl,
         statusBox,
-        el('div', { class: 'tsi-bas-wt-head__end' }, [fsBtn, closeBtn])
+        el('div', { class: 'tsi-bas-wt-head__end' }, [briefBtn, fsBtn, closeBtn])
       ]),
       el('div', { class: 'tsi-bas-wt-toolbar' }, [
         tools('Map', [uploadLabel, clearBtn]),
@@ -1191,6 +1192,7 @@
       var b = preview();
       if (!b || !b.objective) return;
       var ob = b.objective;
+      var movable = objectiveMovable();
       if (ob.zone) {
         var z = ob.zone;
         var mine = z.owner === 'player';
@@ -1198,7 +1200,12 @@
            your depot, above the outpost), where the armies' front lines
            aren't set out; the other side if that's off the board. */
         var below = mine ? z.r1 < b.rows - 1 : z.r0 === 0;
-        var box = el('div', { class: 'tsi-bas-wt-zone tsi-bas-wt-zone--' + (mine ? 'depot' : 'outpost') + (below ? ' tsi-bas-wt-zone--label-below' : ''), 'data-test': 'wt-zone' }, [
+        var box = el('div', {
+          class: 'tsi-bas-wt-zone tsi-bas-wt-zone--' + (mine ? 'depot' : 'outpost') + (below ? ' tsi-bas-wt-zone--label-below' : '') + (movable ? ' tsi-bas-wt-objective--movable' : ''),
+          'data-test': 'wt-zone',
+          'data-move': movable ? 'zone' : null,
+          title: movable ? 'DM: drag to move ' + (mine ? 'your supply depot (it stays on your ground).' : 'the outpost (it stays on the enemy\'s ground).') : null
+        }, [
           el('span', { class: 'tsi-bas-wt-zone__label', 'data-test': 'wt-zone-label', text: mine ? 'Your supply depot' : 'The outpost' })
         ]);
         box.style.left = (z.c0 * board.cell) + 'px';
@@ -1209,7 +1216,13 @@
       }
       (ob.markers || []).forEach(function (m) {
         if (m.state !== 'field') return;
-        var node = el('div', { class: 'tsi-bas-wt-marker', 'data-test': 'wt-marker', 'data-id': m.id, title: 'Supplies: stand on them and use Interact to collect them, then bring them back to your starting edge.' }, [
+        var node = el('div', {
+          class: 'tsi-bas-wt-marker' + (movable ? ' tsi-bas-wt-objective--movable' : ''),
+          'data-test': 'wt-marker',
+          'data-id': m.id,
+          'data-move': movable ? 'marker' : null,
+          title: movable ? 'DM: drag to move these supplies (they stay on the enemy\'s ground).' : 'Supplies: stand on them and use Interact to collect them, then bring them back to your starting edge.'
+        }, [
           el('span', { class: 'tsi-bas-wt-marker__crate', 'aria-hidden': 'true' }),
           el('span', { class: 'tsi-bas-wt-marker__label', text: 'Supplies' })
         ]);
@@ -1795,13 +1808,17 @@
         else if (!hasForces()) text = 'No forces were committed to this action, so there is nothing to deploy.';
         else text = 'Choose the battlefield\'s width (Battlefield − / +) and paint any terrain, then Begin Deployment sets both armies out.';
       } else if (ph === 'deploy') {
-        text = ui.dmEnemy ? 'DM: adjust enemy is on: drag the enemy\'s units within their own ground.' : 'Drag your units to any square on your ground (lit while you drag). Choose who each Lieutenant leads, then Start Battle.';
+        var dmObj = battle && battle.objective ? battle.objective.id : 'skirmish';
+        text = ui.dmEnemy ? 'DM adjusting: drag the enemy\'s units within their own ground' +
+          ({ raid: ', and drag the supplies anywhere on the enemy\'s ground.', defend: ', and drag your supply depot anywhere on your ground.', seize_outpost: ', and drag the outpost anywhere on the enemy\'s ground.' }[dmObj] || '.') :
+          'Drag your units to any square on your ground (lit while you drag). Choose who each Lieutenant leads, then Start Battle.';
       } else if (ph === 'battle') {
         if (ui.paused) text = 'Paused. Replace the map or paint terrain, then press Resume.';
         else if (battle.turnSide === 'enemy') text = 'The enemy\'s turn: press Enemy acts for its next unit.';
         else if (ui.prop) text = proposalReady() ? 'Check the order, then Confirm (or Cancel).' : 'Choose a square for the move (arrow keys move the proposed square too).';
-        else if (areaOf(unit(ui.selectedId))) text = 'Click a lit square or drag the unit there to move it (Advance & Attack; March to the fainter squares), or choose an order.';
-        else if (BR.activeUnits(battle, 'player').length) text = 'Your turn: click one of your lit units, then choose an order (or drag it to where it should go).';
+        else if (areaOf(unit(ui.selectedId))) text = 'Click an enemy to attack it, click a lit square or drag the unit there to move it (Advance & Attack; March to the fainter squares), or choose an order.';
+        else if (canAct(unit(ui.selectedId))) text = 'Click an enemy to attack it, or choose an order.';
+        else if (BR.activeUnits(battle, 'player').length) text = 'Your turn: click one of your lit units, then click an enemy to attack it, or choose an order (or drag it to where it should go).';
         else text = 'Your units have all acted this round.';
       } else {
         text = battle && battle.result ? 'The battle is over: ' + (battle.result.reason || '') : 'The battle is over.';
@@ -1851,7 +1868,14 @@
       terrainBtn.textContent = ui.terrainMode ? 'Terrain: On' : 'Terrain';
       terrainBtn.setAttribute('aria-pressed', ui.terrainMode ? 'true' : 'false');
       dmEnemyBtn.hidden = ph !== 'deploy';
-      dmEnemyBtn.textContent = 'DM: adjust enemy' + (ui.dmEnemy ? ' (on)' : '');
+      var objId = battle && battle.objective ? battle.objective.id : 'skirmish';
+      /* On: lit crimson, as DM: pause is while paused (the label stays short
+         enough for the toolbar on the laptop). */
+      dmEnemyBtn.textContent = R.dmAdjustLabel(objId);
+      dmEnemyBtn.classList.toggle('tsi-btn--primary', ui.dmEnemy);
+      dmEnemyBtn.classList.toggle('tsi-btn--ghost', !ui.dmEnemy);
+      dmEnemyBtn.title = 'Let the DM drag the enemy\'s units within the enemy\'s own ground' +
+        ({ raid: ', and move the supplies (on the enemy\'s ground).', defend: ', and move your supply depot (on your ground).', seize_outpost: ', and move the outpost (on the enemy\'s ground).' }[objId] || '.');
       dmEnemyBtn.setAttribute('aria-pressed', ui.dmEnemy ? 'true' : 'false');
       dmPauseBtn.hidden = ph !== 'battle';
       dmPauseBtn.textContent = ui.paused ? 'Resume' : 'DM: pause';
@@ -1976,6 +2000,41 @@
         refresh();
         checkEnd();
         try { titleEl.focus({ preventScroll: true }); } catch (e) { /* ignore */ }
+        /* The briefing, so everyone knows what this battle is for. */
+        return showBriefing(true);
+      });
+    }, { minMs: 0 });
+
+    /* ---------- The battle briefing ----------
+       The objective, how this battle is won and lost, today's conditions
+       and the rules in brief (R.briefing), shown when the battle starts and
+       from the Rules & objective button at any time. */
+    var showBriefing = TSI.oneAtATime(function (starting) {
+      if (closed) return null;
+      var b = battle || preview();
+      var info = R.briefing(b, W);
+      function section(sec) {
+        return el('section', { class: 'tsi-bas-wt-brief__sec tsi-bas-wt-brief__sec--' + sec.id, 'data-test': 'wt-brief-' + sec.id }, [
+          el('h3', { class: 'tsi-bas-wt-brief__head', text: sec.heading }),
+          el('ul', { class: 'tsi-bas-wt-brief__list' }, sec.items.map(function (t) { return el('li', { text: t }); }))
+        ]);
+      }
+      /* Three columns: the objective and today's conditions; turns and
+         orders; fighting and morale. */
+      var cols = [info.sections.slice(0, 3), info.sections.slice(3, 5), info.sections.slice(5)];
+      var lead = starting ? 'The battle begins. This briefing is always here under Rules & objective.' : 'What this battle is for, and the rules in brief.';
+      var body = el('div', { class: 'tsi-bas-wt-brief', 'data-test': 'wt-briefing' }, [
+        el('p', { class: 'tsi-bas-wt-brief__lead', text: lead }),
+        el('div', { class: 'tsi-bas-wt-brief__cols' }, cols.map(function (list) {
+          return el('div', { class: 'tsi-bas-wt-brief__col' }, list.map(section));
+        }))
+      ]);
+      hideTip();
+      return TSI.modal.open({
+        title: o.title ? 'Rules & objective · ' + String(o.title) : info.title,
+        className: 'tsi-bas-wt-brief-modal',
+        body: body,
+        actions: [{ label: starting ? 'Begin the battle' : 'Close', value: true, primary: true }]
       });
     }, { minMs: 0 });
 
@@ -2126,6 +2185,40 @@
         prop.preview = prop.targetId ? BR.previewAttack(battle, u.id, prop.dest, prop.path, prop.targetId, terrain()) : null;
       }
       refresh();
+      return true;
+    }
+    /* Your selected unit and an enemy clicked (or your unit dropped on
+       one): Advance & Attack on it, from where the unit stands (or the
+       square already chosen) if it can attack from there, otherwise from the
+       best square in reach (R.attackFrom), whether or not that enemy has
+       acted or been attacked this round. If it can't be attacked this
+       activation, the table says why. Returns false when there's no unit of
+       yours ready to act selected, so the click just shows the enemy. */
+    function attackEnemy(enemyId) {
+      var u = unit(ui.selectedId);
+      var foe = unit(enemyId);
+      if (!canAct(u) || !foe || foe.side === u.side || !BR.onField(foe)) return false;
+      if (ui.prop && ui.prop.unitId !== u.id) return false;
+      var tt = terrain();
+      var prop = ui.prop;
+      if (prop && prop.order === 'advance' && prop.targets.some(function (x) { return x.targetId === enemyId; })) {
+        if (prop.targetId !== enemyId) chooseTarget(enemyId);
+        return true;
+      }
+      var adv = BR.legalOrders(battle, u.id, tt).filter(function (x) { return x.id === 'advance'; })[0];
+      var spot = adv && adv.ok ? R.attackFrom(BR, battle, u.id, foe.id, BR.reachable(battle, u.id, 'advance', tt), null, null, tt) : null;
+      if (!spot) {
+        say(R.noAttackText(BR, battle, u.id, foe.id));
+        renderWorld();
+        return true;
+      }
+      if (!prop || prop.order !== 'advance') chooseOrder('advance');
+      if (!ui.prop || ui.prop.order !== 'advance') return true;
+      if (!same(spot.cell, ui.prop.dest) && !chooseDest(spot.cell)) return true;
+      if (ui.prop.targetId !== enemyId && !chooseTarget(enemyId)) return true;
+      var ranged = u.profile && u.profile.rangedAttack !== undefined && u.profile.rangedAttack !== null;
+      var words = R.attackFromText(spot, u.label, foe.label, ranged);
+      if (words) say(words);
       return true;
     }
     function chooseTarget(id) {
@@ -2363,6 +2456,8 @@
         press = { kind: 'token', id: u && u.id, pointerId: e.pointerId, sx: e.clientX, sy: e.clientY };
         return;
       }
+      var objNode = e.target && e.target.closest ? e.target.closest('[data-move]') : null;
+      if (objNode && objectiveMovable()) { e.preventDefault(); startObjectiveDrag(e, objNode); return; }
       if (cellNode) {
         e.preventDefault();
         press = { kind: 'cell', cell: { c: Number(cellNode.getAttribute('data-c')), r: Number(cellNode.getAttribute('data-r')) }, pointerId: e.pointerId, sx: e.clientX, sy: e.clientY };
@@ -2402,6 +2497,7 @@
       return { x: fromC.x + now.x - d.start.x, y: fromC.y + now.y - d.start.y };
     }
     function moveDrag(e) {
+      if (drag.kind === 'objective') { moveObjectiveDrag(e); return; }
       if (!drag.moved && Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 4) return;
       if (!drag.moved) {
         drag.moved = true;
@@ -2439,6 +2535,7 @@
       try { if (d.node.hasPointerCapture && d.node.hasPointerCapture(d.pointerId)) d.node.releasePointerCapture(d.pointerId); } catch (err) { /* ignore */ }
       var hadLegal = !!dragLegal;
       dragLegal = null;
+      if (d.kind === 'objective') { endObjectiveDrag(d, save, e); return; }
       if (!d.moved) {
         if (save !== false) tokenClick(d.id);
         else if (hadLegal) renderWorld();
@@ -2457,6 +2554,14 @@
         refresh();
         return;
       }
+      /* Dropped on an enemy: attack it (from that square's neighbour, or
+         wherever in reach it can be attacked from). */
+      var foeThere = cell ? BR.unitAt(battle, cell) : null;
+      if (foeThere && foeThere.side !== 'player') {
+        ui.selectedId = d.id;
+        if (!attackEnemy(foeThere.id)) refresh(); else renderWorld();
+        return;
+      }
       if (ui.prop && ui.prop.unitId === d.id) {
         /* Let go where it started: back it goes (Advance & Attack takes it
            as "attack from here"; March and Disengage keep their square). */
@@ -2469,14 +2574,82 @@
       if (cell && same(cell, d.from)) { refresh(); return; }
       proposeAt(cell);
     }
+    /* ---------- The DM moving the objective (while deploying) ----------
+       With DM: adjust on, a supply marker, your depot or the outpost can be
+       dragged like the enemy's units (battleRules.moveObjective has the
+       rules; R.objectiveMoveRefusal says why a square won't do). The depot
+       or outpost moves as a block, keeping the square it was picked up by
+       under the pointer. */
+    function objectiveMovable() {
+      return !!battle && battle.phase === 'deploy' && ui.dmEnemy && !ui.terrainMode && !closed;
+    }
+    function startObjectiveDrag(e, node) {
+      var ob = battle.objective;
+      var isZone = node.getAttribute('data-move') === 'zone';
+      var what = isZone ? { zone: true } : { marker: node.getAttribute('data-id') };
+      var from = null;
+      if (isZone && ob.zone) from = { c: ob.zone.c0, r: ob.zone.r0 };
+      if (!isZone) (ob.markers || []).forEach(function (m) { if (m.id === what.marker) from = { c: m.c, r: m.r }; });
+      if (!from) return;
+      var w = pointerWorld(e);
+      var at = R.nearestCell(board, w.x, w.y);
+      var grab = { c: 0, r: 0 };
+      if (isZone) {
+        grab.c = R.clamp(at.c - from.c, 0, ob.zone.c1 - ob.zone.c0);
+        grab.r = R.clamp(at.r - from.r, 0, ob.zone.r1 - ob.zone.r0);
+      }
+      drag = { kind: 'objective', what: what, node: node, pointerId: e.pointerId, sx: e.clientX, sy: e.clientY, from: from, grab: grab, moved: false };
+      hideTip();
+      try { node.setPointerCapture(e.pointerId); } catch (err) { /* the window listeners still see the moves */ }
+    }
+    /* The square the marker, or the block's top-left square, would go to. */
+    function objectiveDropCell(e, d) {
+      var w = pointerWorld(e);
+      var at = R.nearestCell(board, w.x, w.y);
+      return { c: at.c - d.grab.c, r: at.r - d.grab.r };
+    }
+    function moveObjectiveDrag(e) {
+      var d = drag;
+      if (!d.moved && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 4) return;
+      var tt = terrain();
+      if (!d.moved) {
+        d.moved = true;
+        d.node.classList.add('tsi-bas-wt-objective--dragging');
+        if (!d.what.zone) {
+          var legal = {};
+          BR.zoneRows(battle, 'enemy').forEach(function (r) {
+            for (var c = 0; c < battle.cols; c++) if (!R.objectiveMoveRefusal(BR, battle, d.what, { c: c, r: r }, tt)) legal[c + ',' + r] = true;
+          });
+          dragLegal = legal;
+          renderCells();
+        }
+      }
+      var at = objectiveDropCell(e, d);
+      if (d.what.zone) {
+        d.node.style.left = (at.c * board.cell) + 'px';
+        d.node.style.top = (at.r * board.cell) + 'px';
+      } else {
+        cellBoxStyle(d.node, at.c, at.r, 0);
+      }
+      d.node.classList.toggle('tsi-bas-wt-objective--refused', !same(at, d.from) && !!R.objectiveMoveRefusal(BR, battle, d.what, at, tt));
+    }
+    function endObjectiveDrag(d, save, e) {
+      d.node.classList.remove('tsi-bas-wt-objective--dragging', 'tsi-bas-wt-objective--refused');
+      if (!d.moved || save === false || !e || closed || !objectiveMovable()) { renderWorld(); return; }
+      var at = objectiveDropCell(e, d);
+      if (same(at, d.from)) { renderWorld(); return; }
+      var why = R.objectiveMoveRefusal(BR, battle, d.what, at, terrain());
+      if (why) { say(why); renderWorld(); return; }
+      BR.moveObjective(battle, d.what, at, terrain());
+      notifyChange();
+      refresh();
+    }
+
     function tokenClick(id) {
       var u = unit(id);
       if (!u) return;
-      if (inBattle() && ui.prop && ui.prop.order === 'advance' && u.side !== 'player') {
-        if (chooseTarget(id)) return;
-        say(u.label + ' can\'t be attacked from ' + (ui.prop.dest && !same(ui.prop.dest, unit(ui.prop.unitId).pos) ? 'there' : 'here') + ': the targets in reach are ringed in red.');
-        return;
-      }
+      /* With one of your units selected, a click on an enemy attacks it. */
+      if (inBattle() && u.side !== 'player' && attackEnemy(id)) return;
       if (inBattle() && ui.prop && ui.prop.unitId === id && ui.prop.reach && ui.prop.order === 'advance') { chooseDest(u.pos); return; }
       select(id);
     }

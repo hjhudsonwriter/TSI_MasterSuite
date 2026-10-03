@@ -435,6 +435,14 @@
 }
 .tsi-tool--bastion .tsi-bas-wt-marker__label { left: 50%; bottom: 4%; transform: translateX(-50%); z-index: 1; }
 
+/* DM adjusting while deploying: the supplies, your depot and the outpost can be dragged. */
+.tsi-tool--bastion .tsi-bas-wt-objective--movable { pointer-events: auto; cursor: grab; touch-action: none; }
+.tsi-tool--bastion .tsi-bas-wt-zone.tsi-bas-wt-objective--movable { outline: calc(var(--tsi-bas-wt-inv) * 2px) solid rgba(255, 241, 198, .55); outline-offset: calc(var(--tsi-bas-wt-inv) * 2px); }
+.tsi-tool--bastion .tsi-bas-wt-marker.tsi-bas-wt-objective--movable .tsi-bas-wt-marker__crate { outline: calc(var(--tsi-bas-wt-inv) * 2px) solid rgba(255, 241, 198, .7); outline-offset: calc(var(--tsi-bas-wt-inv) * 2px); }
+.tsi-tool--bastion .tsi-bas-wt-objective--dragging { cursor: grabbing; z-index: 4; opacity: .9; }
+.tsi-tool--bastion .tsi-bas-wt-zone.tsi-bas-wt-objective--refused { border-color: #ff6b6b; background: rgba(177, 18, 42, .32); }
+.tsi-tool--bastion .tsi-bas-wt-marker.tsi-bas-wt-objective--refused .tsi-bas-wt-marker__crate { outline-color: #ff6b6b; }
+
 /* Lit squares: where a unit may be set out (while dragging), or where an order can move it. */
 .tsi-tool--bastion .tsi-bas-wt-cell {
   position: absolute;
@@ -1169,4 +1177,34 @@
   .tsi-tool--bastion .tsi-bas-wt-cell--move { transition: none; }
   .tsi-tool--bastion .tsi-bas-wt-float,
   .tsi-tool--bastion .tsi-bas-wt-note--paused { animation: none; }
+}
+
+/* The battle briefing (Rules & objective): three columns on Harry's
+   screens (the objective first), one on narrow ones. */
+.tsi-page--bastion .tsi-modal.tsi-bas-wt-brief-modal { width: min(1560px, 96vw); }
+.tsi-modal .tsi-bas-wt-brief__lead { margin: 0 0 10px; color: var(--tsi-text-muted); }
+.tsi-modal .tsi-bas-wt-brief__cols { display: grid; grid-template-columns: 1.1fr 1fr 1fr; gap: 4px 24px; align-items: start; }
+.tsi-modal .tsi-bas-wt-brief__sec { margin: 0 0 10px; }
+.tsi-modal .tsi-bas-wt-brief__head {
+  margin: 0 0 4px;
+  font: 700 var(--tsi-fs-label)/1.3 var(--tsi-font-display);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--tsi-gold-text);
+}
+.tsi-modal .tsi-bas-wt-brief__list { margin: 0; padding-left: 18px; line-height: 1.38; }
+.tsi-modal .tsi-bas-wt-brief__list li + li { margin-top: 3px; }
+.tsi-modal .tsi-bas-wt-brief__sec--goal {
+  padding: 10px 12px 10px 4px;
+  border: 1px solid rgba(214, 178, 94, .7);
+  border-radius: var(--tsi-radius-md);
+  background: rgba(214, 178, 94, .08);
+}
+.tsi-modal .tsi-bas-wt-brief__sec--goal .tsi-bas-wt-brief__head { padding-left: 8px; }
+.tsi-modal .tsi-bas-wt-brief__sec--goal li { font-size: 1.06em; }
+@media (max-width: 1100px) {
+  .tsi-modal .tsi-bas-wt-brief__cols { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 760px) {
+  .tsi-modal .tsi-bas-wt-brief__cols { grid-template-columns: 1fr; }
 }
