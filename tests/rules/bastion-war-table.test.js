@@ -516,4 +516,142 @@
     t.same(W.enemyIntel(null), { units: [], captains: 0 });
     t.same(W.rosterGroups(null, 'player'), []);
   });
+  group('Bastion War Table: attacking a clicked enemy, the DM moving the objective, the briefing (3 October 2026)');
+
+  /* A battle under way with units exactly where a test wants them. */
+  function inBattle(objective, where) {
+    var b = battle(objective);
+    BR.beginDeployment(b, null);
+    BR.startBattle(b);
+    b.units.forEach(function (u) { u.pos = null; });
+    Object.keys(where).forEach(function (id) { BR.unitById(b, id).pos = { c: where[id][0], r: where[id][1] }; });
+    b.turnSide = 'player';
+    return b;
+  }
+  function spotFor(b, id, tid) { return W.attackFrom(BR, b, id, tid, BR.reachable(b, id, 'advance', null), null, null, null); }
+
+  test('attackFrom: any enemy, whether or not it has acted or been attacked: from where the unit stands if it can, else the best square in reach', function (t) {
+    /* Harry couldn't attack an enemy that had moved next to his unit: the click only showed the enemy. */
+    var b = inBattle('skirmish', { p1: [5, 8], e2: [5, 7], e3: [15, 2] });
+    var e2 = BR.unitById(b, 'e2');
+    e2.activated = true;
+    e2.cohesion -= 1;
+    t.same(spotFor(b, 'p1', 'e2'), { cell: { c: 5, r: 8 }, path: [{ c: 5, r: 8 }], kind: 'melee', charge: false, moved: false }, 'engaged: it fights where it stands');
+    b = inBattle('skirmish', { p1: [5, 9], e2: [5, 6], e3: [15, 2] });
+    var s = spotFor(b, 'p1', 'e2');
+    t.same([s.cell, s.kind, s.moved, s.path.length], [{ c: 5, r: 7 }, 'melee', true, 3], 'straight ahead, next to it');
+    b = inBattle('skirmish', { p2: [10, 11], e3: [10, 6], e2: [1, 0] });
+    t.same([spotFor(b, 'p2', 'e3').kind, spotFor(b, 'p2', 'e3').moved], ['ranged', false], 'archers shoot from where they stand');
+    b = inBattle('skirmish', { p2: [10, 11], e3: [10, 3], e2: [1, 0] });
+    s = spotFor(b, 'p2', 'e3');
+    t.same([s.kind, s.moved, BR.dist(s.cell, { c: 10, r: 3 }) <= 6], ['ranged', true, true], 'archers move into range rather than into melee');
+    b = inBattle('skirmish', { p2: [10, 9], p1: [10, 7], e3: [10, 6], e2: [1, 0] });
+    s = spotFor(b, 'p2', 'e3');
+    t.same([s.kind, s.moved, BR.adjacent(s.cell, { c: 10, r: 6 })], ['melee', true, true], 'no shooting into a melee: hand to hand instead');
+    b = inBattle('skirmish', { p1: [0, 11], e2: [21, 0], e3: [15, 2] });
+    t.equal(spotFor(b, 'p1', 'e2'), null, 'out of reach');
+    t.same(W.attackFrom(BR, b, 'p1', 'e2', null, { c: 20, r: 1 }, [{ c: 0, r: 11 }, { c: 20, r: 1 }], null).cell, { c: 20, r: 1 }, 'the square already chosen, when it will do');
+  });
+
+  test('noAttackText: why a clicked enemy can\'t be attacked, in plain English', function (t) {
+    var b = inBattle('skirmish', { p1: [5, 8], e2: [5, 7], e3: [10, 3] });
+    t.equal(W.noAttackText(BR, b, 'p1', 'e3'), 'Line Infantry 1 is fighting hand to hand, so it can only attack the enemies next to it. To go after Line Infantry 3, Disengage first.');
+    b = inBattle('skirmish', { p2: [10, 11], p1: [10, 7], e3: [10, 6], e2: [1, 0] });
+    t.equal(W.noAttackText(BR, b, 'p2', 'e3'), 'Archers 2 can\'t shoot into a melee: Line Infantry 3 is already fighting one of your units, and no square in reach lets Archers 2 fight it hand to hand.');
+    b = inBattle('skirmish', { p2: [0, 11], e2: [21, 0], e3: [15, 2] });
+    t.equal(W.noAttackText(BR, b, 'p2', 'e2'), 'Line Infantry 2 is out of reach: Archers 2 can\'t attack it this activation from any square it can reach (archers need it within 6 squares, with a clear line of sight).');
+    b = inBattle('skirmish', { p1: [0, 11], e2: [21, 0], e3: [15, 2] });
+    t.equal(W.noAttackText(BR, b, 'p1', 'e2'), 'Line Infantry 2 is out of reach: Line Infantry 1 can\'t attack it this activation from any square it can reach.');
+  });
+
+  test('attackFromText: what the table says when a click also chose the square to attack from', function (t) {
+    var after = ' Click another lit square to attack from somewhere else, or Confirm.';
+    t.equal(W.attackFromText(null, 'A', 'B', false), '');
+    t.equal(W.attackFromText({ moved: false, kind: 'melee' }, 'A', 'B', false), '', 'from where it stands: the order card says it all');
+    t.equal(W.attackFromText({ moved: true, kind: 'ranged' }, 'Archers 2', 'Bacca Cragmen', true), 'Archers 2 will move to the square shown and shoot at Bacca Cragmen.' + after);
+    t.equal(W.attackFromText({ moved: true, kind: 'melee' }, 'Archers 2', 'Bacca Cragmen', true), 'Archers 2 can\'t shoot Bacca Cragmen from any square in reach, so it will advance next to it and fight hand to hand.' + after);
+    t.equal(W.attackFromText({ moved: true, kind: 'melee', charge: true }, 'Light Cavalry 1', 'Bacca Cragmen', false), 'Light Cavalry 1 will charge Bacca Cragmen from the square shown.' + after);
+    t.equal(W.attackFromText({ moved: true, kind: 'melee' }, 'Line Infantry 1', 'Bacca Cragmen', false), 'Line Infantry 1 will advance to the square shown and attack Bacca Cragmen.' + after);
+  });
+
+  test('objectiveMoveRefusal agrees with battleRules.canMoveObjective on every square, and says why', function (t) {
+    function sweep(b, what, tt) {
+      var bad = [];
+      for (var r = -1; r <= b.rows; r++) {
+        for (var c = -1; c <= b.cols; c++) {
+          var why = W.objectiveMoveRefusal(BR, b, what, { c: c, r: r }, tt);
+          if (!why !== BR.canMoveObjective(b, what, { c: c, r: r }, tt)) bad.push(c + ',' + r + ': ' + why);
+        }
+      }
+      return bad;
+    }
+    var raid = battle('raid');
+    BR.beginDeployment(raid, null);
+    var tt = W.paint(W.blankPainting(raid.cols, raid.rows), [{ c: 3, r: 1 }, { c: 4, r: 1 }], 'x').painting;
+    t.same(sweep(raid, { marker: 'm1' }, tt), []);
+    t.equal(W.objectiveMoveRefusal(BR, raid, { marker: 'm1' }, { c: 3, r: 9 }, tt), 'The supplies stay on the enemy\'s ground, above the strip.');
+    t.equal(W.objectiveMoveRefusal(BR, raid, { marker: 'm1' }, { c: 3, r: 1 }, tt), 'Deep water: the supplies can\'t go there.');
+    var foe = raid.units.filter(function (u) { return u.side === 'enemy'; })[0];
+    t.equal(W.objectiveMoveRefusal(BR, raid, { marker: 'm1' }, foe.pos, tt), 'That square is taken by ' + foe.label + '.');
+    var m2 = raid.objective.markers[1];
+    t.equal(W.objectiveMoveRefusal(BR, raid, { marker: 'm1' }, { c: m2.c, r: m2.r }, tt), 'Another supply marker is already there.');
+    t.equal(W.objectiveMoveRefusal(BR, raid, { marker: 'm1' }, null, tt), 'That\'s off the battlefield.');
+    ['defend', 'seize_outpost'].forEach(function (id) {
+      var b = battle(id);
+      BR.beginDeployment(b, null);
+      t.same(sweep(b, { zone: true }, tt), [], id);
+    });
+    var d = battle('defend');
+    BR.beginDeployment(d, null);
+    t.equal(W.objectiveMoveRefusal(BR, d, { zone: true }, { c: 3, r: 1 }, null), 'Your supply depot stays on your ground, below the strip.');
+    t.equal(W.objectiveMoveRefusal(BR, d, { zone: true }, { c: d.cols - 2, r: 8 }, null), 'Your supply depot would run off the battlefield.');
+    var lake = W.paint(W.blankPainting(d.cols, d.rows), [8, 9, 10, 11].reduce(function (a, c) { return a.concat([{ c: c, r: 7 }, { c: c, r: 8 }]); }, []), 'x').painting;
+    t.equal(W.objectiveMoveRefusal(BR, d, { zone: true }, { c: 8, r: 7 }, lake), 'Your supply depot needs at least one square troops can stand on.');
+    var so = battle('seize_outpost');
+    BR.beginDeployment(so, null);
+    t.equal(W.objectiveMoveRefusal(BR, so, { zone: true }, { c: 3, r: 8 }, null), 'The outpost stays on the enemy\'s ground, above the strip.');
+    var sk = battle('skirmish');
+    BR.beginDeployment(sk, null);
+    t.equal(W.objectiveMoveRefusal(BR, sk, { zone: true }, { c: 3, r: 8 }, null), 'That can\'t be moved.');
+    BR.startBattle(so);
+    t.equal(W.objectiveMoveRefusal(BR, so, { zone: true }, { c: 0, r: 0 }, null), 'The objective can only be moved while deploying.');
+  });
+
+  test('the DM\'s deployment button says what it lets the DM move', function (t) {
+    t.same(['raid', 'defend', 'seize_outpost', 'skirmish', 'nope'].map(W.dmAdjustLabel),
+      ['DM: adjust enemy & supplies', 'DM: adjust enemy & depot', 'DM: adjust enemy & outpost', 'DM: adjust enemy', 'DM: adjust enemy']);
+  });
+
+  test('the briefing: how this battle is won and lost, today\'s conditions and the rules in brief, with the numbers from the data', function (t) {
+    var b = battle('raid');
+    var r = W.briefing(b, D);
+    t.equal(r.title, 'Rules & objective: Raid');
+    t.same(r.sections.map(function (x) { return x.id; }), ['goal', 'lose', 'conditions', 'turns', 'orders', 'fighting', 'morale']);
+    t.equal(r.sections[0].items[0], 'Carry off 2 of the 3 supply markers (the crates on the enemy\'s side) by the end of round 6.');
+    t.ok(/Interact/.test(r.sections[0].items[1]) && /bottom row of the board/.test(r.sections[0].items[2]));
+    t.same(r.sections[1].items, ['Round 6 ends with fewer than 2 carried off.', 'Your army breaks: 60% of its starting Battle Value routed or defeated. The battle is lost at once.']);
+    t.same(r.sections[2].items, ['Weather: clear, so no effect.', 'Morale: no effect on Resolve checks.', 'Luck: +1 on all your attack rolls.']);
+    t.ok(/^6 rounds\..*Your forces act first in round 1; the side that starts swaps each round\.$/.test(r.sections[3].items[0]), r.sections[3].items[0]);
+    t.equal(r.sections[4].items.length, 6);
+    t.equal(r.sections[4].items[0], 'Advance & Attack: ' + D.orders[0].text);
+    t.ok(/A hit costs 1 Cohesion, 2 if it beats Defence by 5, 3 by 10\. A natural 1 misses; a natural 20 does 3\./.test(r.sections[5].items[0]), r.sections[5].items[0]);
+    t.ok(/never while in melee or into a melee/.test(r.sections[5].items[3]));
+    t.ok(/against 10\)\. Failing makes it Shaken: −2 Attack/.test(r.sections[6].items[0]));
+
+    b.conditions = { weather: 'white_blizzard', moraleMod: -2, luckMod: -1 };
+    b.firstSide = 'enemy';
+    r = W.briefing(b, D);
+    t.same(r.sections[2].items, ['Weather: Snowstorm: every unit moves 1 less (at least 1), for both armies.', 'Morale low: −2 on your units\' Resolve checks all battle.', 'Luck: −1 on all your attack rolls.']);
+    t.ok(/The enemy acts first in round 1/.test(r.sections[3].items[0]));
+
+    r = W.briefing(battle('defend'), D);
+    t.equal(r.title, 'Rules & objective: Defend Bastion');
+    t.same(r.sections[0].items, ['Keep the enemy off your supply depot (the dashed box on your side) until the end of round 6.', 'Or break the enemy army (60% of its Battle Value routed or defeated) to win at once.']);
+    t.equal(r.sections[1].items[0], 'The enemy holds your depot at 2 round ends in a row: a Steady enemy unit inside, and none of yours.');
+    r = W.briefing(battle('seize_outpost'), D);
+    t.ok(/Hold it at 2 round ends in a row, by the end of round 6: a Steady unit of yours inside, and no enemy unit inside\./.test(r.sections[0].items[1]));
+    r = W.briefing(battle('skirmish'), D);
+    t.equal(r.sections[0].items[0], 'Break the enemy army: it breaks when 60% of its Battle Value has been routed or defeated.');
+    t.same(W.briefing(null, D), { title: 'Rules & objective', sections: [] });
+  });
 }());

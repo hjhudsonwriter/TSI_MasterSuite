@@ -38,6 +38,11 @@
     return { cols: num(s.cols, 22), minCols: num(s.minCols, 20), maxCols: num(s.maxCols, 24), minRows: num(s.minRows, 10), maxRows: num(s.maxRows, 30) };
   }
   function plural(n, one, many) { return n + ' ' + (n === 1 ? one : (many || one + 's')); }
+  /* Score lists compared in order: is a smaller than b? */
+  function less(a, b) {
+    for (var i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] < b[i];
+    return false;
+  }
   /* " + 2" / " − 2" (a true minus sign, as the rest of the Bastion). */
   function spaced(n) { return n < 0 ? ' − ' + Math.abs(n) : ' + ' + n; }
   function signed(n) { return n < 0 ? '−' + Math.abs(n) : '+' + n; }
@@ -452,6 +457,66 @@
       return 'To attack ' + t + ', click a lit square ' + where + ' (Advance & Attack), then click ' + t + ': the targets in reach are ringed in red.';
     },
 
+    /* ---------- Clicking an enemy to attack it ----------
+       Where unitId should attack targetId from with Advance & Attack: where
+       it stands (or the square already chosen: from, reached along path) if
+       it can attack from there; otherwise the best square in reach (reach:
+       battleRules.reachable's map for Advance & Attack): a shot before a
+       fight hand to hand, a Charge before a plain attack, then the shortest
+       move, then the square most nearly straight ahead (nearest as the crow
+       flies), then the one nearest the top and left. Returns
+       { cell, path, kind: 'melee' | 'ranged', charge, moved } or null. */
+    attackFrom: function (BR, battle, unitId, targetId, reach, from, path, terrain) {
+      var u = BR.unitById(battle, unitId);
+      if (!u || !u.pos) return null;
+      function option(cell, p) {
+        return BR.attackOptions(battle, unitId, cell, p, terrain).filter(function (x) { return x.targetId === targetId; })[0] || null;
+      }
+      function sameSq(a, b) { return !!a && !!b && a.c === b.c && a.r === b.r; }
+      var at = from || u.pos;
+      var p0 = path || [{ c: at.c, r: at.r }];
+      var here = option(at, p0);
+      if (here) return { cell: { c: at.c, r: at.r }, path: p0, kind: here.kind, charge: !!here.charge, moved: !sameSq(at, u.pos) };
+      var best = null;
+      Object.keys(reach || {}).forEach(function (k) {
+        var hit = reach[k];
+        if (!hit || !Array.isArray(hit.path) || !hit.path.length) return;
+        var cell = hit.path[hit.path.length - 1];
+        var x = option(cell, hit.path);
+        if (!x) return;
+        var dc = cell.c - u.pos.c, dr = cell.r - u.pos.r;
+        var score = [x.kind === 'ranged' ? 0 : 1, x.charge ? 0 : 1, num(hit.cost, 0), dc * dc + dr * dr, cell.r, cell.c];
+        if (!best || less(score, best.score)) best = { score: score, cell: { c: cell.c, r: cell.r }, path: hit.path, kind: x.kind, charge: !!x.charge };
+      });
+      return best ? { cell: best.cell, path: best.path, kind: best.kind, charge: best.charge, moved: !sameSq(best.cell, u.pos) } : null;
+    },
+    /* Why unitId can't attack targetId this activation, in plain English. */
+    noAttackText: function (BR, battle, unitId, targetId) {
+      var u = BR.unitById(battle, unitId);
+      var t = BR.unitById(battle, targetId);
+      if (!u || !t) return 'That unit can\'t be attacked now.';
+      var ranged = u.profile && u.profile.rangedAttack !== undefined && u.profile.rangedAttack !== null;
+      var inMelee = battle.units.some(function (f) { return f.side === u.side && f.id !== u.id && BR.onField(f) && BR.adjacent(f.pos, t.pos); });
+      if (BR.isEngaged(battle, u) && !BR.adjacent(u.pos, t.pos)) {
+        return u.label + ' is fighting hand to hand, so it can only attack the enemies next to it. To go after ' + t.label + ', Disengage first.';
+      }
+      if (ranged && inMelee) {
+        return u.label + ' can\'t shoot into a melee: ' + t.label + ' is already fighting one of your units, and no square in reach lets ' + u.label + ' fight it hand to hand.';
+      }
+      return t.label + ' is out of reach: ' + u.label + ' can\'t attack it this activation from any square it can reach' +
+        (ranged ? ' (archers need it within ' + num(u.profile.range, 0) + ' squares, with a clear line of sight).' : '.');
+    },
+    /* What the table says when a click on an enemy also chose the square to
+       attack from (spot: attackFrom's). '' when the unit attacks from where it stands. */
+    attackFromText: function (spot, unitLabel, targetLabel, rangedUnit) {
+      if (!spot || !spot.moved) return '';
+      var after = ' Click another lit square to attack from somewhere else, or Confirm.';
+      if (spot.kind === 'ranged') return unitLabel + ' will move to the square shown and shoot at ' + targetLabel + '.' + after;
+      if (rangedUnit) return unitLabel + ' can\'t shoot ' + targetLabel + ' from any square in reach, so it will advance next to it and fight hand to hand.' + after;
+      if (spot.charge) return unitLabel + ' will charge ' + targetLabel + ' from the square shown.' + after;
+      return unitLabel + ' will advance to the square shown and attack ' + targetLabel + '.' + after;
+    },
+
     /* ---------- The battle log ----------
        How many of the log's entries came after the one last seen (entries
        are compared as objects, so this still works once the battle rules
@@ -600,6 +665,47 @@
       if (BR.fieldMarkerAt(battle, cell)) return 'Keep the supplies clear: nobody is set out on them.';
       return BR.canDeploy(battle, unitId, cell, terrain, opts) ? '' : 'It can\'t be set out there.';
     },
+    /* Why the DM can't move a supply marker, the depot or the outpost to a
+       square while deploying ('' if it can; battleRules.canMoveObjective has
+       the same rules). what: { marker: id } or { zone: true }; for the
+       depot or outpost, cell is its new top-left square. */
+    objectiveMoveRefusal: function (BR, battle, what, cell, terrain) {
+      var o = battle && battle.objective;
+      if (!o || !isObj(what)) return 'There\'s nothing there to move.';
+      if (battle.phase !== 'deploy') return 'The objective can only be moved while deploying.';
+      if (!cell || !BR.inBoard(battle, cell)) return 'That\'s off the battlefield.';
+      var tt = BR.fitTerrain(battle, terrain);
+      if (what.marker !== undefined && what.marker !== null) {
+        if (BR.zoneOf(battle, cell.r) !== 'enemy') return 'The supplies stay on the enemy\'s ground, above the strip.';
+        var t = BR.terrainAt(tt, cell.c, cell.r);
+        if (t.impassable) return t.name + ': the supplies can\'t go there.';
+        var there = BR.unitAt(battle, cell);
+        if (there) return 'That square is taken by ' + there.label + '.';
+        var other = (o.markers || []).some(function (m) { return m.id !== what.marker && m.state === 'field' && m.c === cell.c && m.r === cell.r; });
+        if (other) return 'Another supply marker is already there.';
+        return BR.canMoveObjective(battle, what, cell, terrain) ? '' : 'The supplies can\'t go there.';
+      }
+      if (what.zone === true && o.zone) {
+        var z = o.zone;
+        var name = z.owner === 'player' ? 'Your supply depot' : 'The outpost';
+        var w = z.c1 - z.c0 + 1;
+        var h = z.r1 - z.r0 + 1;
+        if (cell.c + w - 1 >= battle.cols || cell.r + h - 1 >= battle.rows) return name + ' would run off the battlefield.';
+        var rows = BR.zoneRows(battle, z.owner);
+        for (var r = cell.r; r < cell.r + h; r++) {
+          if (rows.indexOf(r) === -1) return name + (z.owner === 'player' ? ' stays on your ground, below the strip.' : ' stays on the enemy\'s ground, above the strip.');
+        }
+        var standable = false;
+        for (var rr = cell.r; rr < cell.r + h; rr++) for (var c = cell.c; c < cell.c + w; c++) if (!BR.terrainAt(tt, c, rr).impassable) standable = true;
+        if (!standable) return name + ' needs at least one square troops can stand on.';
+        return BR.canMoveObjective(battle, what, cell, terrain) ? '' : name + ' can\'t go there.';
+      }
+      return 'That can\'t be moved.';
+    },
+    /* The DM's deployment button: what it lets the DM move in this battle. */
+    dmAdjustLabel: function (objectiveId) {
+      return { raid: 'DM: adjust enemy & supplies', defend: 'DM: adjust enemy & depot', seize_outpost: 'DM: adjust enemy & outpost' }[objectiveId] || 'DM: adjust enemy';
+    },
     /* A side's forces for the roster: [{ id, name, items }] in roster order
        (formations, detachments, leaders, beasts), empty groups left out. */
     rosterGroups: function (battle, side) {
@@ -612,6 +718,101 @@
         { id: 'leader', name: side === 'player' ? 'Lieutenants' : 'Captains', items: leaders.filter(function (l) { return l.side === side; }) },
         { id: 'beast', name: 'Beasts', items: mine.filter(function (u) { return u.kind === 'beast'; }) }
       ].filter(function (g) { return g.items.length; });
+    },
+    /* ---------- The battle briefing ----------
+       The rules and the objective for this battle, as short as they can be,
+       for the pop-up shown when the battle starts and from the Rules &
+       objective button: { title, sections: [{ id, heading, items: [text] }] }.
+       Every number comes from war-units-data.js and the battle itself. */
+    briefing: function (battle, data) {
+      var D = data || war();
+      if (!D || !battle) return { title: 'Rules & objective', sections: [] };
+      var o = battle.objective || { id: 'skirmish' };
+      var def = D.objectives[o.id] || D.objectives.skirmish || { name: 'Skirmish' };
+      var rounds = num(battle.maxRounds, num(D.rounds, 6));
+      var breakPct = num(D.breakPct, 60);
+      var brk = 'Your army breaks: ' + breakPct + '% of its starting Battle Value routed or defeated. The battle is lost at once.';
+      var enemyBreak = breakPct + '% of its Battle Value routed or defeated';
+      var goal = [];
+      var lose = [];
+      if (o.id === 'raid') {
+        var need = num(def.need, 2);
+        var count = (o.markers || []).length || num(def.markers, 3);
+        goal.push('Carry off ' + need + ' of the ' + count + ' supply markers (the crates on the enemy\'s side) by the end of round ' + rounds + '.');
+        goal.push('Move a unit onto a marker. On a later activation, give it Interact to pick the marker up.');
+        goal.push('Bring it back to your own edge, the bottom row of the board: it\'s carried off when the unit ends a move there. A unit carries one marker at a time, and drops it if it routs or is defeated.');
+        goal.push('Breaking the enemy army doesn\'t win a raid on its own: you still need the supplies.');
+        lose.push('Round ' + rounds + ' ends with fewer than ' + need + ' carried off.');
+      } else if (o.id === 'defend') {
+        var hd = num(def.holdRounds, 2);
+        goal.push('Keep the enemy off your supply depot (the dashed box on your side) until the end of round ' + rounds + '.');
+        goal.push('Or break the enemy army (' + enemyBreak + ') to win at once.');
+        lose.push('The enemy holds your depot at ' + hd + ' round ends in a row: a Steady enemy unit inside, and none of yours.');
+      } else if (o.id === 'seize_outpost') {
+        var hs = num(def.holdRounds, 2);
+        goal.push('Take the outpost (the dashed box on the enemy\'s side).');
+        goal.push('Hold it at ' + hs + ' round ends in a row, by the end of round ' + rounds + ': a Steady unit of yours inside, and no enemy unit inside.');
+        goal.push('Breaking the enemy army doesn\'t win on its own: you still have to hold the outpost.');
+        lose.push('Round ' + rounds + ' ends before you\'ve held it at ' + hs + ' round ends in a row.');
+      } else {
+        goal.push('Break the enemy army: it breaks when ' + breakPct + '% of its Battle Value has been routed or defeated.');
+        goal.push('If neither army breaks by the end of round ' + rounds + ', the side that has lost the smaller share of its Battle Value wins. Equal shares are a draw.');
+        lose.push('Round ' + rounds + ' ends with you having lost the bigger share of your Battle Value.');
+      }
+      lose.push(brk);
+
+      var c = battle.conditions || {};
+      var wx = (D.weather && D.weather[c.weather]) || null;
+      var cond = [];
+      cond.push(!wx || c.weather === 'clear' || !c.weather ? 'Weather: clear, so no effect.' : 'Weather: ' + String(wx.text).replace(/\.$/, '') + ', for both armies.');
+      var mm = num(c.moraleMod, 0);
+      if (mm) cond.push('Morale ' + (mm > 0 ? 'high' : 'low') + ': ' + signed(mm) + ' on your units\' Resolve checks all battle.');
+      else cond.push('Morale: no effect on Resolve checks.');
+      var lm = num(c.luckMod, 0);
+      if (lm) cond.push('Luck: ' + signed(lm) + ' on all your attack rolls.');
+
+      var first = battle.firstSide === 'player' ? 'Your forces act' : 'The enemy acts';
+      var turns = [
+        rounds + ' rounds. Each round every unit acts once, and the sides take turns, one unit at a time. ' +
+          first + ' first in round ' + (battle.started ? num(battle.round, 1) : 1) + '; the side that starts swaps each round.',
+        'Your turn: click a unit to see where it can go, then click an enemy to attack it, drag the unit to a lit square, or choose an order. Check the preview, type your d20 (or leave it blank to roll), then Confirm.',
+        'The enemy\'s turn: press Enemy acts for each of its units.'
+      ];
+      var orders = (D.orders || []).map(function (x) { return x.name + ': ' + x.text; });
+
+      var A = D.attack || {};
+      var bands = (A.bands || []).slice().sort(function (a, b) { return a.margin - b.margin; });
+      var hitText = bands.length >= 3
+        ? 'A hit costs ' + bands[0].damage + ' Cohesion, ' + bands[1].damage + ' if it beats Defence by ' + bands[1].margin + ', ' + bands[2].damage + ' by ' + bands[2].margin + '.'
+        : 'A hit costs Cohesion.';
+      var charge = (D.traits && D.traits.charge && num(D.traits.charge.bonus, 2)) || 2;
+      var strong = (D.traits && D.traits.strong_charge && num(D.traits.strong_charge.bonus, 3)) || 3;
+      var archers = D.archetypes && D.archetypes.archers;
+      var fighting = [
+        'An attack is d20 + Attack + modifiers against Defence. ' + hitText + ' A natural 1 misses; a natural 20 does ' + num(A.nat20Damage, 3) + '.',
+        'A unit stops when it moves next to an enemy; touching side or corner, they fight hand to hand.',
+        'Charge ' + signed(charge) + ' (Shock Cavalry ' + signed(strong) + '): cavalry moving 2 or more squares in a straight line through open ground into the attack, not against a unit Holding or Braced. Surround ' +
+          signed(num(A.surroundBonus, 2)) + ': another of your units is fighting the target from ' + num(A.surroundAngle, 90) + '° or more away.',
+        'Archers shoot up to ' + num(archers && archers.range, 6) + ' squares with a clear line of sight, but never while in melee or into a melee.'
+      ];
+      var M = D.morale || {};
+      var morale = [
+        'At half Cohesion or below, a unit checks its Resolve (d20 + Resolve against ' + num(M.dc, 10) + '). Failing makes it Shaken: ' +
+          signed(num(A.shakenAttack, -2)) + ' Attack and no Charge. Shaken and damaged again, failing makes it Rout and leave the field. Rally removes Shaken.',
+        'At 0 Cohesion a unit is Defeated and leaves the field.'
+      ];
+      return {
+        title: 'Rules & objective: ' + def.name,
+        sections: [
+          { id: 'goal', heading: 'How you win', items: goal },
+          { id: 'lose', heading: 'How you lose', items: lose },
+          { id: 'conditions', heading: 'Today\'s conditions', items: cond },
+          { id: 'turns', heading: 'Turns', items: turns },
+          { id: 'orders', heading: 'The six orders', items: orders },
+          { id: 'fighting', heading: 'Fighting', items: fighting },
+          { id: 'morale', heading: 'Morale', items: morale }
+        ]
+      };
     },
     /* What the scouts report before deployment: the enemy's units counted
        by type ([{ name, count, sample }]) and its Captains. */
