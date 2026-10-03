@@ -564,6 +564,27 @@
     t.equal(W.noAttackText(BR, b, 'p1', 'e2'), 'Line Infantry 2 is out of reach: Line Infantry 1 can\'t attack it this activation from any square it can reach.');
   });
 
+  test('noAttackText only suggests Disengage when it can be given, and only blames the melee when the archers could otherwise shoot', function (t) {
+    /* Review (3 October 2026): a unit held fast by a Grapple was told to Disengage, which it can't. */
+    var b = inBattle('skirmish', { p1: [5, 8], e2: [5, 7], e3: [10, 3] });
+    BR.unitById(b, 'p1').heldFast = true;
+    t.equal(BR.legalOrders(b, 'p1', null).filter(function (o) { return o.id === 'disengage'; })[0].ok, false);
+    t.equal(W.noAttackText(BR, b, 'p1', 'e3', null), 'Line Infantry 1 is fighting hand to hand and can\'t Disengage this activation, so it can only attack the enemies next to it.');
+    /* No clear square to fall back to: cliffs all round, bar the enemy's side. */
+    b = inBattle('skirmish', { p1: [5, 8], e2: [5, 7], e3: [10, 3] });
+    var cliffs = [];
+    for (var c = 2; c <= 8; c++) for (var r = 6; r <= 11; r++) if (!(r === 8 && c === 5) && !(r === 7 && (c === 4 || c === 5 || c === 6))) cliffs.push({ c: c, r: r });
+    var tt = W.paint(W.blankPainting(b.cols, b.rows), cliffs, 'k').painting;
+    t.equal(BR.legalOrders(b, 'p1', tt).filter(function (o) { return o.id === 'disengage'; })[0].ok, false, 'boxed in');
+    t.ok(/can't Disengage this activation/.test(W.noAttackText(BR, b, 'p1', 'e3', tt)));
+    t.ok(/Disengage first\.$/.test(W.noAttackText(BR, b, 'p1', 'e3', null)), 'with open ground behind, it still says Disengage first');
+    /* Archers far out of range: the reason is the distance, not the melee. */
+    b = inBattle('skirmish', { p2: [2, 11], p1: [15, 4], e2: [15, 3], e3: [3, 0] });
+    t.equal(W.noAttackText(BR, b, 'p2', 'e2', null), 'Line Infantry 2 is out of reach: Archers 2 can\'t attack it this activation from any square it can reach (archers need it within 6 squares, with a clear line of sight).');
+    b = inBattle('skirmish', { p2: [10, 11], p1: [10, 7], e3: [10, 6], e2: [1, 0] });
+    t.ok(/can't shoot into a melee/.test(W.noAttackText(BR, b, 'p2', 'e3', null)), 'within range: the melee is the reason');
+  });
+
   test('attackFromText: what the table says when a click also chose the square to attack from', function (t) {
     var after = ' Click another lit square to attack from somewhere else, or Confirm.';
     t.equal(W.attackFromText(null, 'A', 'B', false), '');
@@ -653,5 +674,33 @@
     r = W.briefing(battle('skirmish'), D);
     t.equal(r.sections[0].items[0], 'Break the enemy army: it breaks when 60% of its Battle Value has been routed or defeated.');
     t.same(W.briefing(null, D), { title: 'Rules & objective', sections: [] });
+  });
+
+  test('the briefing: Charge for cavalry and beasts, Hardy units and the weather, and turns once a side has left the field', function (t) {
+    /* Review (3 October 2026). */
+    var r = W.briefing(battle('skirmish'), D);
+    t.ok(/cavalry and beasts with Charge \(such as the Lion\)/.test(r.sections[5].items[2]), r.sections[5].items[2]);
+    t.ok(D.beasts.Lion.trait === 'charge', 'the Lion has Charge');
+    var karr = BR.createBattle({
+      player: { units: [U('p1', 'line')], leaders: [] },
+      enemy: { units: [U('e1', 'line', { name: 'Karr Shieldbearers', label: 'Karr Shieldbearers', variant: { id: 'karr_shieldbearers', name: 'Karr Shieldbearers', trait: 'hardy' } })], leaders: [] },
+      objective: 'skirmish',
+      conditions: { weather: 'white_blizzard', moraleMod: 0, luckMod: 0 }
+    }, null);
+    t.ok(BR.hasTrait(BR.unitById(karr, 'e1'), 'hardy'));
+    t.equal(W.briefing(karr, D).sections[2].items[0], 'Weather: Snowstorm: every unit moves 1 less (at least 1), for both armies; Hardy units ignore it.');
+    karr.conditions.weather = 'clear';
+    t.equal(W.briefing(karr, D).sections[2].items[0], 'Weather: clear, so no effect.');
+    /* The enemy has broken and withdrawn from a raid: you take every turn. */
+    var b = inBattle('raid', { p1: [5, 9], p2: [6, 9] });
+    b.round = 2;
+    b.firstSide = 'enemy';
+    b.started = true;
+    var turns = W.briefing(b, D).sections[3].items[0];
+    t.ok(/The enemy has left the field, so your forces take every turn\.$/.test(turns), turns);
+    t.ok(!/The enemy acts first/.test(turns));
+    b = inBattle('raid', { p1: [5, 9], e2: [6, 2] });
+    b.firstSide = 'enemy';
+    t.ok(/The enemy acts first in round 1/.test(W.briefing(b, D).sections[3].items[0]), 'both sides on the field: as before');
   });
 }());

@@ -490,18 +490,37 @@
       });
       return best ? { cell: best.cell, path: best.path, kind: best.kind, charge: best.charge, moved: !sameSq(best.cell, u.pos) } : null;
     },
-    /* Why unitId can't attack targetId this activation, in plain English. */
-    noAttackText: function (BR, battle, unitId, targetId) {
+    /* Why unitId can't attack targetId this activation, in plain English.
+       terrain: the painting (null for none). */
+    noAttackText: function (BR, battle, unitId, targetId, terrain) {
       var u = BR.unitById(battle, unitId);
       var t = BR.unitById(battle, targetId);
       if (!u || !t) return 'That unit can\'t be attacked now.';
+      var tt = terrain || null;
       var ranged = u.profile && u.profile.rangedAttack !== undefined && u.profile.rangedAttack !== null;
       var inMelee = battle.units.some(function (f) { return f.side === u.side && f.id !== u.id && BR.onField(f) && BR.adjacent(f.pos, t.pos); });
       if (BR.isEngaged(battle, u) && !BR.adjacent(u.pos, t.pos)) {
-        return u.label + ' is fighting hand to hand, so it can only attack the enemies next to it. To go after ' + t.label + ', Disengage first.';
+        /* Disengage is only suggested when it can be given now (not while
+           held fast by a Grapple, or with no clear square to fall back to). */
+        var dis = BR.legalOrders(battle, u.id, tt).filter(function (o) { return o.id === 'disengage'; })[0];
+        if (dis && dis.ok) return u.label + ' is fighting hand to hand, so it can only attack the enemies next to it. To go after ' + t.label + ', Disengage first.';
+        return u.label + ' is fighting hand to hand and can\'t Disengage this activation, so it can only attack the enemies next to it.';
       }
       if (ranged && inMelee) {
-        return u.label + ' can\'t shoot into a melee: ' + t.label + ' is already fighting one of your units, and no square in reach lets ' + u.label + ' fight it hand to hand.';
+        /* The melee is only the reason when the archers could otherwise get
+           a shot: within range, with a clear line of sight, from a square in
+           reach where no enemy is next to them. */
+        var reach = BR.reachable(battle, u.id, 'advance', tt) || {};
+        var foes = BR.enemiesOf(battle, u.side);
+        var spots = [u.pos].concat(Object.keys(reach).map(function (k) {
+          var p = reach[k] && reach[k].path;
+          return p && p.length ? p[p.length - 1] : null;
+        }).filter(Boolean));
+        var couldShoot = spots.some(function (c) {
+          return !foes.some(function (e) { return BR.adjacent(e.pos, c); }) &&
+            BR.dist(c, t.pos) <= num(u.profile.range, 0) && BR.lineOfSight(battle, tt, c, t.pos);
+        });
+        if (couldShoot) return u.label + ' can\'t shoot into a melee: ' + t.label + ' is already fighting one of your units, and no square in reach lets ' + u.label + ' fight it hand to hand.';
       }
       return t.label + ' is out of reach: ' + u.label + ' can\'t attack it this activation from any square it can reach' +
         (ranged ? ' (archers need it within ' + num(u.profile.range, 0) + ' squares, with a clear line of sight).' : '.');
@@ -764,17 +783,29 @@
       var c = battle.conditions || {};
       var wx = (D.weather && D.weather[c.weather]) || null;
       var cond = [];
-      cond.push(!wx || c.weather === 'clear' || !c.weather ? 'Weather: clear, so no effect.' : 'Weather: ' + String(wx.text).replace(/\.$/, '') + ', for both armies.');
+      /* Hardy units (such as the Karr Shieldbearers) ignore the weather's penalties. */
+      var hardy = (battle.units || []).some(function (u) { return Array.isArray(u.traits) && u.traits.indexOf('hardy') !== -1; });
+      cond.push(!wx || c.weather === 'clear' || !c.weather ? 'Weather: clear, so no effect.' :
+        'Weather: ' + String(wx.text).replace(/\.$/, '') + ', for both armies' + (hardy ? '; Hardy units ignore it.' : '.'));
       var mm = num(c.moraleMod, 0);
       if (mm) cond.push('Morale ' + (mm > 0 ? 'high' : 'low') + ': ' + signed(mm) + ' on your units\' Resolve checks all battle.');
       else cond.push('Morale: no effect on Resolve checks.');
       var lm = num(c.luckMod, 0);
       if (lm) cond.push('Luck: ' + signed(lm) + ' on all your attack rolls.');
 
+      /* Mid-battle, a side with nobody left on the field takes no turns (the
+         battle rules pass the turn to the other side), so who "acts first"
+         would be wrong: say so instead. */
+      function onField(side) {
+        return (battle.units || []).some(function (u) { return u.side === side && u.pos && (u.status === 'steady' || u.status === 'shaken'); });
+      }
+      var under = battle.phase === 'battle';
       var first = battle.firstSide === 'player' ? 'Your forces act' : 'The enemy acts';
+      var who = under && !onField('enemy') ? 'The enemy has left the field, so your forces take every turn.' :
+        under && !onField('player') ? 'Your forces have left the field, so the enemy takes every turn.' :
+        first + ' first in round ' + (battle.started ? num(battle.round, 1) : 1) + '; the side that starts swaps each round.';
       var turns = [
-        rounds + ' rounds. Each round every unit acts once, and the sides take turns, one unit at a time. ' +
-          first + ' first in round ' + (battle.started ? num(battle.round, 1) : 1) + '; the side that starts swaps each round.',
+        rounds + ' rounds. Each round every unit acts once, and the sides take turns, one unit at a time. ' + who,
         'Your turn: click a unit to see where it can go, then click an enemy to attack it, drag the unit to a lit square, or choose an order. Check the preview, type your d20 (or leave it blank to roll), then Confirm.',
         'The enemy\'s turn: press Enemy acts for each of its units.'
       ];
@@ -791,7 +822,7 @@
       var fighting = [
         'An attack is d20 + Attack + modifiers against Defence. ' + hitText + ' A natural 1 misses; a natural 20 does ' + num(A.nat20Damage, 3) + '.',
         'A unit stops when it moves next to an enemy; touching side or corner, they fight hand to hand.',
-        'Charge ' + signed(charge) + ' (Shock Cavalry ' + signed(strong) + '): cavalry moving 2 or more squares in a straight line through open ground into the attack, not against a unit Holding or Braced. Surround ' +
+        'Charge ' + signed(charge) + ' (Shock Cavalry ' + signed(strong) + '): cavalry and beasts with Charge (such as the Lion), moving 2 or more squares in a straight line through open ground into the attack, not against a unit Holding or Braced. Surround ' +
           signed(num(A.surroundBonus, 2)) + ': another of your units is fighting the target from ' + num(A.surroundAngle, 90) + '° or more away.',
         'Archers shoot up to ' + num(archers && archers.range, 6) + ' squares with a clear line of sight, but never while in melee or into a melee.'
       ];
