@@ -18,8 +18,8 @@ Harry tested phase 2 ("almost everything seems to be working perfectly") and ask
 - **The DM moving the objective** (BAS-52): while deploying, the DM's button is now **DM: adjust enemy & supplies** (or **& depot**, **& outpost**). It lets you drag the supply markers anywhere on the enemy's half, and your supply depot or the outpost as a block on its owner's half. The button turns crimson while it's on. A drop that isn't allowed says why, and a repaint keeps your placement.
 - **The battle briefing** (BAS-53): after **Start Battle**, a pop-up sets out how this battle is won and lost, today's conditions and the rules in brief, built from the battle's own numbers. It fits the laptop and the TV without scrolling. The **Rules & objective** button at the top of the War Table shows it again at any time: in setup, while deploying or in battle.
 - **Tests:**
-  - `tests/rules.html` runs 654 rules tests, all passing. New ones cover: where a clicked enemy is attacked from; the reasons when it can't be; moving the objective, and why a square is refused; the button's label; and the briefing for every objective.
-  - `tests/e2e/war-table.test.js` has 115 checks, all passing. 24 are new and cover all three changes, including the briefing's fit at 1707 × 930, 1707 × 1067 and 1920 × 1080.
+  - `tests/rules.html` runs 657 rules tests, all passing. New ones cover: where a clicked enemy is attacked from; the reasons when it can't be; moving the objective, why a square is refused, and a repaint keeping the DM's placement; the button's label; and the briefing for every objective.
+  - `tests/e2e/war-table.test.js` has 122 checks, all passing. 31 are new and cover all three changes and the problems found while checking them (KNOWN_ISSUES BAS-54), including the briefing's fit at 1707 × 930, 1707 × 1067 and 1920 × 1080.
   - `tests/e2e/phase9.test.js` checks the briefing in a whole war.
 
 ### The Bastion: the war mini-game, phase 2 (2 October 2026)

@@ -164,7 +164,7 @@ Then:
   - a supply marker anywhere on the enemy's half, on a square troops can stand on, with no unit or other marker on it (the squares light up while you drag);
   - your supply depot or the outpost as a whole block, kept the same size, wholly on its owner's half (your depot on yours, the outpost on the enemy's), with at least one square troops can stand on. Units may stand inside it.
 
-  A drop that isn't allowed says why. Repainting terrain while deploying keeps them where you put them, unless the new painting puts one on deep water or a cliff; then it moves to the nearest square that works.
+  A drop that isn't allowed says why. Repainting terrain while deploying keeps what you moved exactly where you put it, even where troops on foot can't reach it (the War Table then warns you), unless the new painting puts a supply marker you moved on deep water or a cliff, or leaves the depot or outpost with no square troops can stand on; then it moves to the nearest place that works. Supplies you haven't moved are still fitted to the new painting.
 - **Start Battle** locks everything in. **The battle briefing** then appears: how this battle is won and lost, today's conditions, and the rules in brief. The **Rules & objective** button at the top of the War Table shows it again at any time.
 
 ## 6. The battle
@@ -174,12 +174,12 @@ Then:
 ### Orders
 Select one of your units, choose an order, drag the unit (or click a square) to propose its move, pick a target, then **Confirm**. Nobody can drag units freely once the battle has started.
 
-**Attacking:** with one of your units selected, click any enemy (or drop your unit on it) to set up Advance & Attack on it. It doesn't matter whether that enemy has already acted or been attacked this round. Your unit attacks from where it stands if it can, which is always the case when the enemy is already next to it. Otherwise it moves to the best square in reach first, which the table shows before you confirm:
+**Attacking:** with one of your units selected, click any enemy (or drop your unit on it) to set up Advance & Attack on it. A unit fighting hand to hand can't be dragged anywhere, but letting go of it on an enemy next to it still sets up the attack. Click the chosen target again to un-pick it, so the unit only moves. It doesn't matter whether that enemy has already acted or been attacked this round. Your unit attacks from where it stands if it can, which is always the case when the enemy is already next to it. Otherwise it moves to the best square in reach first, which the table shows before you confirm:
 - a square it can shoot from, for archers;
 - then one that gives a Charge;
 - then the shortest, most direct move.
 
-If the enemy can't be attacked this activation, the table says why: too far away; your unit is already fighting another enemy (Disengage first); or, for archers, it is in melee with one of your units, since archers never shoot into a melee.
+If the enemy can't be attacked this activation, the table says why: too far away; your unit is already fighting another enemy (Disengage first, unless it's held fast or has no clear square to fall back to, when it can only fight the enemies next to it); or, for archers that could otherwise shoot it, it is in melee with one of your units, since archers never shoot into a melee.
 
 | Order | What happens |
 |---|---|

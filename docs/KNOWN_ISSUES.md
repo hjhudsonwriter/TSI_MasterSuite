@@ -25,7 +25,7 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
 | Scarlett Isles Explorer (EXP) | 12 | 4 | 0 | 13 | 0 |
-| The Ironbow Bastion Manager (BAS) | 18 | 2 | 15 | 17 | 1 |
+| The Ironbow Bastion Manager (BAS) | 19 | 2 | 15 | 17 | 1 |
 | Clan Crest Creator (CRS) | 0 | 4 | 5 | 3 | 3 |
 | Arenas of The Scarlett Isles (ARN) | 8 | 2 | 0 | 17 | 0 |
 | The Heartwood Ritual (RIT) | 9 | 1 | 0 | 15 | 1 |
@@ -1462,6 +1462,21 @@ None of these reached Harry: they were found by the checks on the new code and f
 
   Every number comes from the data file. It fits the laptop and the TV without scrolling. The **Rules & objective** button at the top of the War Table shows it again at any time: before deployment, while deploying, or during the battle. Reopening a saved battle doesn't show it again.
 - **Evidence:** `tools/bastion/war-table-rules.js` (`briefing`), `war-table.js` (`showBriefing`), `war-table.css`.
+
+### BAS-54 · Problems found while checking Harry's three War Table changes, fixed before release
+**Must fix** (found while checking BAS-51 to BAS-53, 3 October 2026; fixed) · other
+
+None of these reached Harry: they were found by the checks on the new code and fixed in the same pull request.
+- **Dropping a unit that can't move on the enemy it's fighting:** a unit held fast, boxed in, or with Advance & Attack already chosen was refused ("Disengage first … Choose an order instead") → letting go of it on an enemy sets up the attack, as a click does.
+- **"Disengage first" for a unit that can't Disengage:** a unit held fast by a Grapple, or with no clear square to fall back to, was told to Disengage → it's told it can only fight the enemies next to it this activation.
+- **Archers out of range blamed on the melee:** archers far out of range of an enemy that was fighting one of your units were told they "can't shoot into a melee" → the melee is only the reason when they could otherwise shoot; otherwise the table says it's out of reach.
+- **Messages left over after the attack changed:** switching target named the old target, and Cancel, Esc, DM: pause, a good drop after a refused one, or a refusal followed by a good attack left the old message up for 6 seconds → the hint always matches what's on the table.
+- **A second click on the chosen target** no longer un-picked it (it did before) → it un-picks it again, so the unit can advance without attacking.
+- **The DM's objective moved by an unrelated repaint:** supplies, a depot or an outpost the DM placed out of reach on foot (or partly on deep water) were moved by any repaint, and the warning vanished → they stay where they were put unless the new painting rules their own square out, and the warning stays.
+- **The DM buttons didn't light up:** DM: adjust enemy (and DM: pause) looked the same on and off → filled crimson while on.
+- **The depot or outpost grabbed by its name label** jumped a row → it moves exactly with the pointer.
+- **The briefing:** "Charge" said cavalry only (beasts with Charge charge too); the weather line didn't say Hardy units ignore it; once the enemy had withdrawn it named the enemy as acting first; and a briefing opened just as the battle ended was left on screen over the Bastion → all fixed.
+- **Evidence:** `tools/bastion/war-table.js`, `war-table-rules.js`, `war-battle-rules.js`, `war-table.css`; each fix has a test in `tests/rules/bastion-war-table.test.js`, `tests/rules/bastion-battle.test.js` or `tests/e2e/war-table.test.js` that fails on the code before it.
 
 ## Clan Crest Creator
 Old repo: `_legacy/clan-crest-creator` (file:line references point there).
