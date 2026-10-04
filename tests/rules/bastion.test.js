@@ -418,7 +418,7 @@
     t.equal(s.turn, 2);
     t.equal(s.treasuryGP, 100);
     t.equal(s.diplomacy.agreements.length, 0, 'the agreement ran out');
-    t.same(s.turnInProgress, { turn: 2, stage: 'trade', skipped: [] });
+    t.same(s.turnInProgress, { turn: 2, stage: 'trade', skipped: [], attackRolled: false });
     R.tickTurn(s, data, 1);
     t.equal(s.turnInProgress.stage, 'orders');
     t.equal(s.lastEvent, null);
@@ -851,7 +851,7 @@
     s.diplomacy.tokens = 2;
     s.diplomacy.cooldowns = { summit: 1 };
     s.tradeNetwork.settled = { turn: 1, ids: ['r'] };
-    s.turnInProgress = { turn: 1, stage: 'orders', skipped: ['x'] };
+    s.turnInProgress = { turn: 1, stage: 'orders', skipped: ['x'], attackRolled: true };
     var back = R.fromSave(JSON.parse(JSON.stringify(R.toSave(s))), data);
     t.same(back, s);
   });
@@ -906,6 +906,6 @@
     s.turnInProgress = { turn: 2, stage: 'nonsense' };
     var back = R.fromSave(R.toSave(s), data);
     t.equal(back.treasuryGP, 0);
-    t.same(back.turnInProgress, { turn: 2, stage: 'orders', skipped: [] });
+    t.same(back.turnInProgress, { turn: 2, stage: 'orders', skipped: [], attackRolled: false }, 'a save from before wars has made no attack roll');
   });
 }());

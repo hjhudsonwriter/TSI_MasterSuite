@@ -94,7 +94,15 @@
          mission's dice. */
       warMissions: {},
       warRecovery: [],
-      warMissionSeq: 0
+      warMissionSeq: 0,
+      /* New in the war's round of 4 October 2026 (war-campaign-rules.js):
+         the Clans you're at war with, { clanKey: { since, last } } (the turn
+         the war began, and the turn of the latest War Action, muster,
+         battle or attack between you); and the facilities Under Repair
+         after a lost Defend Bastion, { facId: untilTurn } (Under Repair
+         while the turn is at or before untilTurn). */
+      wars: {},
+      repairs: {}
     };
     R.ensureLevels(s, data);
     return s;
@@ -181,9 +189,14 @@
       d.turnInProgress = {
         turn: clampInt(s.turnInProgress.turn, 1),
         stage: ['trade', 'tick', 'orders'].indexOf(s.turnInProgress.stage) === -1 ? 'orders' : s.turnInProgress.stage,
-        skipped: arr(s.turnInProgress.skipped) ? s.turnInProgress.skipped.slice() : []
+        skipped: arr(s.turnInProgress.skipped) ? s.turnInProgress.skipped.slice() : [],
+        /* The attack roll for this turn has been made (a save from before
+           wars hasn't made one, and has no wars to roll for). */
+        attackRolled: s.turnInProgress.attackRolled === true
       };
     }
+    d.wars = cleanWars(s.wars, d.turn);
+    d.repairs = cleanRepairs(s.repairs, data);
     if (arr(s.militaryActions)) d.militaryActions = s.militaryActions.filter(isObj);
     R.normalizeBuiltExtras(d);
     R.ensureLevels(d, data);
@@ -194,6 +207,35 @@
     return d;
   };
   R.toSave = function (state) { return TSI.clone(state); };
+
+  /* The wars, as saved: only known Clans, each with the turn it began and
+     the turn of the latest war activity, as whole numbers from 1 to the
+     current turn (the latest never before the first). Anything damaged is
+     dropped: that Clan is at peace. */
+  function okTurn(v) { return typeof v === 'number' && isFinite(v); }
+  function cleanWars(src, turn) {
+    var out = {};
+    if (!isObj(src)) return out;
+    CLAN_KEYS.forEach(function (k) {
+      var w = src[k];
+      if (!isObj(w) || !okTurn(w.since) || !okTurn(w.last)) return;
+      var since = clampInt(w.since, 1, turn);
+      out[k] = { since: since, last: clampInt(w.last, since, turn) };
+    });
+    return out;
+  }
+  /* The facilities Under Repair, as saved: only known facilities, each with
+     the last turn of its repairs as a whole number. Anything damaged is
+     dropped: that facility is working. */
+  function cleanRepairs(src, data) {
+    var out = {};
+    if (!isObj(src)) return out;
+    Object.keys(src).forEach(function (id) {
+      if (!R.facility(data, id) || !okTurn(src[id])) return;
+      out[id] = clampInt(src[id], 1);
+    });
+    return out;
+  }
 
   /* A reason a save can't be used, or null. Anything that would stop the
      Bastion opening is refused, so another tool's file or a damaged one
@@ -207,7 +249,7 @@
     for (var i = 0; i < lists.length; i++) {
       if (lists[i] in s && !Array.isArray(s[lists[i]])) return 'Its ' + lists[i] + ' list is damaged.';
     }
-    var maps = ['defenders', 'favour', 'politicalCapital', 'tradeNetwork', 'arbitration', 'diplomacy', 'organization', 'facilityLevels', 'warMissions'];
+    var maps = ['defenders', 'favour', 'politicalCapital', 'tradeNetwork', 'arbitration', 'diplomacy', 'organization', 'facilityLevels', 'warMissions', 'wars', 'repairs'];
     for (var j = 0; j < maps.length; j++) {
       if (maps[j] in s && s[maps[j]] !== null && !isObj(s[maps[j]])) return 'Its ' + maps[j] + ' record is damaged.';
     }
@@ -445,11 +487,28 @@
     return s.pendingOrders.some(function (o) { return o.facId === facId && o.fnId === fnId; });
   }
 
+  /* ---------- Under Repair (Harry, 4 October 2026) ----------
+     A lost Defend Bastion leaves some facilities Under Repair
+     (war-campaign-rules.js): s.repairs = { facId: untilTurn }. While the
+     turn is at or before untilTurn, the facility takes no orders, and
+     orders already running there wait. */
+  R.underRepair = function (s, facId) {
+    var u = isObj(s.repairs) ? s.repairs[facId] : undefined;
+    return typeof u === 'number' && Number(s.turn) <= u ? u : 0;
+  };
+  /* Why a facility can't take an order now, or null. */
+  function repairRefusal(s, fac) {
+    var until = R.underRepair(s, fac.id);
+    return until ? { ok: false, message: 'The ' + fac.name + ' is Under Repair until Bastion turn ' + until + '.' } : null;
+  }
+
   /* Issue an order from a facility card (3247-3344). optionIdx is the list's choice. */
   R.issueOrder = function (s, data, facId, fnId, optionIdx, rand) {
     var fac = R.facility(data, facId);
     var fn = R.fn(fac, fnId);
     if (!fac || !fn) return { ok: false };
+    var broken = repairRefusal(s, fac);
+    if (broken) return broken;
     if (pendingSame(s, facId, fnId)) return { ok: false, message: 'That order is already pending.' };
     var chosen = null;
     var optionLabel = null;
@@ -476,6 +535,8 @@
     var fac = R.facility(data, facId);
     var fn = R.fn(fac, fnId);
     if (!fac || !fn) return { ok: false };
+    var broken = repairRefusal(s, fac);
+    if (broken) return broken;
     if (pendingSame(s, facId, fnId)) return { ok: false, message: 'That order is already pending.' };
     var chosen = null;
     var optionLabel = null;
@@ -507,10 +568,14 @@
     return { ok: true, log: ['Order Issued', up.label] };
   };
 
-  /* Cancelling an order keeps the gold spent (B9, kept). */
-  R.cancelOrder = function (s, id) {
+  /* Cancelling an order keeps the gold spent (B9, kept). A War Action
+     cancelled on the turn it was queued gives back what declaring war
+     cost (R.undoWarDeclaration, war-campaign-rules.js), and says so. */
+  R.cancelOrder = function (s, id, data, now) {
+    var gone = s.pendingOrders.filter(function (x) { return String(x.id) === String(id); })[0];
     s.pendingOrders = s.pendingOrders.filter(function (x) { return String(x.id) !== String(id); });
-    return ['Orders', 'Cancelled an order.'];
+    var war = gone && R.undoWarDeclaration ? R.undoWarDeclaration(s, data, gone, now) : null;
+    return war || ['Orders', 'Cancelled an order.'];
   };
 
   /* ---------- Lists, warehouse, favour, Political Capital ---------- */
@@ -893,9 +958,12 @@
     if (R.isEmissary(fac, fn)) return 'emissary';
     return 'simple';
   };
-  /* Orders due now: on their turn or any turn since (BAS-13). */
+  /* Orders due now: on their turn or any turn since (BAS-13). Orders at a
+     facility Under Repair wait (they stay pending) until it's working. */
   R.dueOrders = function (s, skipped) {
-    return s.pendingOrders.filter(function (o) { return Number(o.completeTurn) <= s.turn && (skipped || []).indexOf(o.id) === -1; });
+    return s.pendingOrders.filter(function (o) {
+      return Number(o.completeTurn) <= s.turn && (skipped || []).indexOf(o.id) === -1 && !R.underRepair(s, o.facId);
+    });
   };
   R.removeOrder = function (s, id) {
     s.pendingOrders = s.pendingOrders.filter(function (o) { return o.id !== id; });
@@ -1437,10 +1505,16 @@
      closed window loses nothing and the turn can be finished later. */
   R.startTurn = function (s, now) {
     s.turn += 1;
-    /* Lieutenants and beasts whose recovery is over are fit again (war-campaign-rules.js). */
+    /* Lieutenants and beasts whose recovery is over are fit again; wars
+       with 6 quiet turns end; repairs that are done finish
+       (war-campaign-rules.js). */
     if (R.tickRecovery) R.tickRecovery(s, now);
+    if (R.tickWars) R.tickWars(s, now);
+    if (R.tickRepairs) R.tickRepairs(s, now);
     R.tickDiplomacy(s).forEach(function (l) { R.log(s, l[0], l[1], now); });
-    s.turnInProgress = { turn: s.turn, stage: 'trade', skipped: [] };
+    /* attackRolled: this turn's roll for an attack by a Clan at war has
+       been made (R.rollWarAttack), so a resumed turn can't roll it again. */
+    s.turnInProgress = { turn: s.turn, stage: 'trade', skipped: [], attackRolled: false };
   };
   /* The turn's trade routes are resolved first, if the network has any running. */
   R.routesDueThisTurn = function (s) {
