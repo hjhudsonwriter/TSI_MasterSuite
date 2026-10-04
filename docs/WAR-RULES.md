@@ -127,18 +127,21 @@ These are proposed directions, for you to change. Enemy units use the same sizes
 
 Honour & Respect stays within −5 to +5, and Political Capital within −100 to +100. The War Turn form shows the cost before you queue.
 
+**Cancelling a War Action** in the pending orders on the same Bastion turn it was queued gives back what it cost, and calls off the war if that War Action began it (if another War Action or a battle with that Clan is waiting, the war stays). So a War Action corrected by cancelling it and queueing it again costs once, not twice. Cancelled on a later turn, or after that turn's roll for an attack, the cost stays.
+
 While you're at war, an **At War** tag appears beside that Clan's name wherever it shows in the Bastion.
 
 **Peace:** a war ends by itself after **6 Bastion turns** with no War Action or Defend Bastion battle between you. The DM can also end it early with **Make peace** in the War Council, though not while a war order or a battle with that Clan is still waiting.
 
 ### The Defend Bastion event
-While you're at war, every **Advance Bastion Turn** rolls a d6 for each Clan you're at war with. On a 1, that Clan attacks, at most once a turn. "Sound the horns! Clan Bacca warships are approaching! Defend the Ironbow!"
+While you're at war, every **Advance Bastion Turn** rolls a d6 for each Clan you're at war with. On a 1, that Clan attacks, at most once a turn, and never while an earlier attack is still waiting to be fought: your army is standing at the Ironbow for that one. "Sound the horns! Clan Bacca warships are approaching! Defend the Ironbow!"
 - **Your defenders:** every force free at the Bastion stands to defend it: defenders, Lieutenants, regiments and beasts not committed elsewhere or recovering.
 - **The attackers:** an army from that Clan's roster, its size rolled on a d6: 1–2 a small local force, 3–5 an established local force, 6 a major force.
 - **The rolls and the battle:** the Weather, Morale and Luck rolls, then the War Table, on the Ironbow coast map with its terrain already painted. The objective is Defend Bastion: keep them off your supply depot, or break their army.
+- **The Watchtower's Patrol:** if a Patrol completed on the turn of the attack, the attack pop-up and the War Council remind the DM that the Bastion Defenders have Advantage on all their rolls in this battle, as the Patrol's card says. The War Table doesn't roll it for you: roll two d20s at the table and type in the higher.
 - **There's no Call off:** you can't refuse an attack. You can press Later and fight it from the War Council when you're ready.
 - **Winning:** the usual Defend Bastion rewards.
-- **Losing, or withdrawing:** you lose 1d10 × 5% (5% to 50%) of your treasury. 1d4 of your built facilities, chosen at random, are **Under Repair** for 2 Bastion turns: they take no orders, and orders already running there wait until the repairs are done.
+- **Losing, or withdrawing:** you lose 1d10 × 5% (5% to 50%) of your treasury, in place of the defeat's −25 gp. 1d4 of your built facilities, chosen at random, are **Under Repair** for 2 Bastion turns, the turn of the loss included (lost on turn 5, they take no orders on turns 5 and 6, and work again on turn 7). Orders already running there wait until the repairs are done. The defeat's −8 Political Capital with that Clan and −8 Clan Honour apply too; withdrawing counts as losing, so it costs the full −8 Clan Honour, not a withdrawal's −4.
 - **If nobody is free to defend,** the attack succeeds at once, with the same losses.
 
 ## 3. Before the battle
@@ -326,13 +329,13 @@ The rewards follow the objective, the losses follow the battle, and the Bastion'
 |---|---|---|
 | Raid | +75 gp, −10 Political Capital | −50 gp, +8 Political Capital |
 | Skirmish | +40 gp, −6 | −30 gp, +6 |
-| Defend Bastion | +0 gp, +6 | −25 gp, −8 |
+| Defend Bastion | +0 gp, +6 | 1d10 × 5% of the treasury (in place of gold; see The Defend Bastion event), −8 |
 | Seize Outpost | +60 gp, −12 | −60 gp, +10 |
 
 - **Who's affected:** Political Capital changes with the target clan. A Clan's Honour goes +6 on a victory and −8 on a defeat. A Brigade's Trusted Clients change as before.
 - **A raid's gold:** a won raid pays in full, whether the supplies came home or the enemy broke and fled. Otherwise the gold follows the supplies actually carried off: half for one; with none, it's the defeat's −50.
 - **A draw** changes nothing.
-- **A withdrawal** counts as a defeat for gold and Political Capital, but costs only −4 Clan Honour. In a Raid, the gold still follows the supplies already carried off: with one home, a withdrawal pays +38 gp (half the victory's gold), and the −50 gp applies only if none were. (Two home wins the raid at once, so there's nothing to withdraw from.)
+- **A withdrawal** counts as a defeat for gold and Political Capital, but costs only −4 Clan Honour. Withdrawing from a Defend Bastion is different: it counts as losing it in full, with the treasury loss and the repairs, and the defeat's −8 Clan Honour, not −4. In a Raid, the gold still follows the supplies already carried off: with one home, a withdrawal pays +38 gp (half the victory's gold), and the −50 gp applies only if none were. (Two home wins the raid at once, so there's nothing to withdraw from.)
 - **A raid won with heavy losses** is still a won raid with heavy losses.
 
 The **War Report** records:

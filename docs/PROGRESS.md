@@ -8,6 +8,28 @@ Double-click `index.html` to open the suite. The plan is in `docs/PLAN.md`, the 
 
 ## Done
 
+### Wars, the Defend Bastion event, weather films and a fairer victory rule (4 October 2026)
+Harry asked for six things, and answered four rule questions (all the recommended options).
+- **The archers rule stays as it is** (archers never shoot into a melee).
+- **Victory** (KNOWN_ISSUES BAS-55): Harry destroyed every enemy unit in a Seize Outpost and still lost, for not holding the outpost twice. Now breaking the enemy army (60% of its Battle Value routed or defeated) wins at once, whatever the objective. A raid won that way pays its full gold.
+- **Being at war** (BAS-56):
+  - **Declaring war:** Queue War Action asks first, then declares (or renews) war. It costs Honour & Respect and Political Capital with that Clan at once, by army size: −3 and −30 (under 20 Battle Value), −4 and −40 (20–39), −5 and −50 (40+).
+  - **At War tags:** an **At War** tag shows beside the Clan's name across the Bastion, including in lists, the log and pop-ups (not on the War Table).
+  - **The Wars box** in the War Council shows each war, with **Make peace** for the DM.
+  - **Peace on its own:** after 6 Bastion turns without a battle between you.
+  - **Cancelling:** a War Action cancelled on the turn it was queued gives its cost back.
+- **The Defend Bastion event** (BAS-57):
+  - **No longer a War Action.** While at war, each Advance Bastion Turn rolls a d6 per Clan at war; on a 1 that Clan attacks.
+  - **The pop-up:** "Sound the horns! Clan … warships are approaching! Defend the Ironbow!", with crossed swords. **Defend the Ironbow** leads to the three rolls, then the War Table on Harry's coast map, its terrain already painted (sea, pier, rocky shore and outcrops). **Later** waits in the War Council.
+  - **Losing (or withdrawing):** 5–50% of the treasury (1d10 × 5%), and 1d4 random facilities **Under Repair** for 2 Bastion turns, this one included. They take no orders, and orders already running there wait. Cards, the map and the order list say so.
+- **Weather films** (BAS-58): the Explorer's snow, rain and heat films loop over the War Table's battlefield, under the tokens. The **Weather: On / Off** button turns them off and on.
+- **Tests:**
+  - `tests/rules.html` runs 695 rules tests, all passing.
+  - `tests/e2e/phase9.test.js` has 107 checks, all passing, including a forced attack, a lost defence, repairs, peace and the legacy comparison.
+  - `tests/e2e/war-table.test.js` has 145 checks, all passing, including the weather layer and the coast map at all three screen sizes.
+  - The guide's check and phase 1 pass.
+- **Checked:** a final review in three areas, with each finding re-checked by a sceptic. It found 9 problems, all fixed (BAS-59), for example repairs lasting a turn too long and a war's cost being charged twice after Cancel.
+
 ### The War Table: attacking, moving the objective, the battle briefing (3 October 2026)
 Harry tested phase 2 ("almost everything seems to be working perfectly") and asked for three changes.
 - **Attacking any enemy** (KNOWN_ISSUES BAS-51): Harry couldn't attack an enemy that had moved next to his unit, or one it had already been fighting. The battle rules allowed it; the screen didn't make it possible. Clicking an enemy only showed its card, and a unit already in contact has no lit squares to drag to, which was the other way to set an attack up. Now, with one of your units selected, clicking any enemy (or dropping your unit on it) sets up Advance & Attack on it:
@@ -468,7 +490,15 @@ Each tool's questions are needed before that tool's phase. The full wording and 
     - Weather, Morale and Luck in battle (section 3): a snowstorm −1 Move, a rainstorm −2 on ranged attacks, a heatwave −1 on Resolve checks; Morale ±2 on your Resolve checks; Luck ±1 on your attacks and who acts first. The opening rolls themselves stay plain d20s; say if Lieutenants should add to Morale.
     - Call off until the first unit acts, then Withdraw (sections 3 and 7). The War Table's extra controls are kept; arrow keys pan, and move a unit only while you're proposing a legal move.
     - "You" in the Morale stories when no Lieutenant marches: kept. Your crest is on your army's banner and your formations.
-  - **Archers and melee (3 October 2026):** you asked that any unit can be attacked on any turn, and it can now. One rule from your phase 2 brief still limits archers: they never shoot while in melee, or into a melee. So an enemy already fighting one of your units can only be attacked hand to hand. If they can reach it, the table offers that instead, and says why. Say if archers should be allowed to shoot into a melee.
+  - **Archers and melee: answered (4 October 2026).** Keep it as it is: archers never shoot while in melee, or into a melee.
+  - **Wars and the Defend Bastion event (4 October 2026): choices made for you, to change if you like:**
+    - The attacking army's size is rolled on a d6: 1–2 a small local force, 3–5 established, 6 major.
+    - Winning a defence uses the usual Defend Bastion rewards, including +6 Political Capital with the attacking Clan, which may read oddly.
+    - Every force that's free defends. Forces held by a waiting War Action don't. Only one attack can wait at a time.
+    - A War Action cancelled on the turn it was queued gives its cost back; later, the cost stays.
+    - The Watchtower's Patrol gives the defenders Advantage, as its card says. The War Table only reminds you: roll two d20s at the table and type in the higher.
+    - The At War tag also appears inside headings and story text, such as "Sound the horns! Clan Bacca [At War] warships…". Say if you'd like fewer places.
+    - Nobody has yet seen the weather films play on the War Table (the test browser can't play them). Say whether they're too strong or too faint on the TV.
   - **Worth a look before playing much:**
     - **Defenders:** Harry's brief set unit sizes at 150 for Levy Infantry, so the brief's "20 per regiment" headcount was scaled up: 75 or more defenders form a detachment, fewer support a regiment (+1 Cohesion per 5, up to +2). Two choices went beyond the brief: defenders left over once every regiment has its support form one small detachment, however few (so an Unsworn party with only defenders and beasts can still fight); and **unarmed defenders fight at −2 Attack**, where the brief said they should give support rather than fight as ordinary infantry. Say if either should change.
     - **The clans' armies and variant units, and the beasts' profiles and traits,** are proposals (sections 1 and 2). Only Slade's colours (a white stallion on teal) are established; say if any clan should fight differently or have its own colours.

@@ -25,7 +25,7 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
 | Scarlett Isles Explorer (EXP) | 12 | 4 | 0 | 13 | 0 |
-| The Ironbow Bastion Manager (BAS) | 19 | 2 | 15 | 17 | 1 |
+| The Ironbow Bastion Manager (BAS) | 20 | 2 | 19 | 17 | 1 |
 | Clan Crest Creator (CRS) | 0 | 4 | 5 | 3 | 3 |
 | Arenas of The Scarlett Isles (ARN) | 8 | 2 | 0 | 17 | 0 |
 | The Heartwood Ritual (RIT) | 9 | 1 | 0 | 15 | 1 |
@@ -1477,6 +1477,55 @@ None of these reached Harry: they were found by the checks on the new code and f
 - **The depot or outpost grabbed by its name label** jumped a row → it moves exactly with the pointer.
 - **The briefing:** "Charge" said cavalry only (beasts with Charge charge too); the weather line didn't say Hardy units ignore it; once the enemy had withdrawn it named the enemy as acting first; and a briefing opened just as the battle ended was left on screen over the Bastion → all fixed.
 - **Evidence:** `tools/bastion/war-table.js`, `war-table-rules.js`, `war-battle-rules.js`, `war-table.css`; each fix has a test in `tests/rules/bastion-war-table.test.js`, `tests/rules/bastion-battle.test.js` or `tests/e2e/war-table.test.js` that fails on the code before it.
+
+### BAS-55 · Destroying the enemy army didn't win a Seize Outpost or a Raid
+**Deliberate change** (Harry's report and ruling, 4 October 2026) · other
+
+- **Before:** When the enemy army broke (60% of its Battle Value routed or defeated), what was left of it withdrew, but in a Seize Outpost you still had to hold the outpost at two round ends in a row, and in a Raid you still had to carry two supplies home, before round 6 ran out. Harry destroyed every enemy unit in a Seize Outpost and still lost.
+- **After:** Breaking the enemy army wins at once, whatever the objective. What's left of it flees the field. A raid won that way pays its full gold. The objective lines, the briefing and the rulebook say so.
+- **Evidence:** `tools/bastion/war-battle-rules.js` (`checkResult`), `war-campaign-rules.js` (`warRewards`); tests in `tests/rules/bastion-battle.test.js`.
+
+### BAS-56 · Being at war with a Clan: a serious cost, an At War tag, and peace
+**Deliberate change** (Harry's request, 4 October 2026) · other
+
+- **Before:** Queueing a War Action cost nothing until the battle, and nothing showed that you were at war.
+- **After:**
+  - **Declaring war:** Queue War Action declares war on the target Clan, or renews it, and asks first. It costs Honour & Respect and Political Capital with that Clan at once, by the size of the army committed: −3 and −30 under 20 Battle Value, −4 and −40 from 20, −5 and −50 from 40.
+  - **At War tags:** an **At War** tag shows beside the Clan's name wherever it appears in the Bastion.
+  - **Peace:** the war ends after 6 Bastion turns with no battle between you, or with **Make peace** in the new Wars box.
+  - **Cancelling:** cancelling a War Action on the turn it was queued gives the cost back.
+  - **Defend Bastion** is no longer offered as a War Action (see BAS-57).
+- **Evidence:** `tools/bastion/war-campaign-rules.js` (`declareWar`, `warsList`, `makePeace`, `tickWars`, `undoWarDeclaration`), `rules.js`, `tool.js`; `docs/WAR-RULES.md` "Being at war".
+
+### BAS-57 · The Defend Bastion event, with Harry's coast map, and facilities Under Repair
+**Deliberate change** (Harry's request, 4 October 2026) · other
+
+- **Before:** Defend Bastion was a War Action you chose to queue.
+- **After:**
+  - **The attack:** while you're at war, every Advance Bastion Turn rolls a d6 for each Clan at war. On a 1 (at most one attack at a time), "Sound the horns! Clan … warships are approaching! Defend the Ironbow!" appears with crossed swords.
+  - **The battle:** every free force defends, on Harry's coast map with its terrain painted. The battle can be put off with Later, but not called off.
+  - **Losing or withdrawing:** you lose 1d10 × 5% of the treasury, and 1d4 random facilities are **Under Repair** for 2 Bastion turns (this one included). While under repair they take no orders, and orders already running there wait.
+  - **Undefended:** if nobody is free to defend, the attack succeeds at once.
+- **Evidence:** `tools/bastion/war-campaign-rules.js` (`rollWarAttack`, `beginDefence`, `finishUndefended`, `finishBattle`), `rules.js` (repairs), `tool.js`, `war-table.js` (`presetMap`); the map is `tools/bastion/assets/war/defend-bastion-coast.jpg`.
+
+### BAS-58 · Weather films over the War Table
+**Deliberate change** (Harry's request, 4 October 2026) · other
+
+- **Before:** The battle's weather showed only as a word in the War Table's header.
+- **After:** In a snowstorm, rainstorm or heatwave, the Explorer's matching weather film loops over the battlefield, under the tokens. It's for show only. **Weather: On / Off** turns it off and on (remembered), and it starts off when Windows' reduced-motion setting is on.
+- **Evidence:** `tools/bastion/war-table.js`, `war-table.css`; the films are the Explorer's `tools/explorer/assets/overlays/*.mp4`. The test browser can't play MP4 files, so only the film's element was checked; seeing it play is on Harry's checklist.
+
+### BAS-59 · Problems found while checking the war changes of 4 October, fixed before release
+**Must fix** (found while checking BAS-55 to BAS-58, 4 October 2026; fixed) · breaks the tool
+
+None of these reached Harry.
+- **Repairs lasted 3 turns, not 2** → a facility lost on turn 5 works again on turn 7.
+- **A second Clan's attack while the first waited took the Bastion with no battle** (the army was counted as busy with the first) → no new attack is rolled while one is waiting.
+- **Cancelling a War Action and queueing it again charged the war's cost twice** → cancelling on the turn it was queued gives the cost back.
+- **Opening the coast map changed the DM's saved battlefield width** → the width he chose is kept.
+- **The undefended attack's pop-up gave a false reason** → it says nobody is free to defend.
+- **Smaller things:** the Watchtower's Patrol was forgotten in a defence (now a reminder in the pop-up and the War Council); the At War tag flickered in the cost line; "Clan MOLTEN" in capitals had no tag; the rulebook's Defend Bastion rewards were out of date → all fixed.
+- **Evidence:** the files above; each fix has a test in `tests/rules/` or `tests/e2e/`.
 
 ## Clan Crest Creator
 Old repo: `_legacy/clan-crest-creator` (file:line references point there).
