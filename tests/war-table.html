@@ -96,6 +96,11 @@
       };
       var crestSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 46"><path d="M2 2h36v20c0 12-9 19-18 22C11 41 2 34 2 22z" fill="#7a0c1b" stroke="#d6b25e" stroke-width="3"/><path d="M20 9l4 9h-8z M14 22h12v4H14z" fill="#d6b25e"/></svg>';
       window.WT_CREST = { dataUrl: 'data:image/svg+xml;base64,' + btoa(crestSvg) };
+      /* One of the suite's own maps, as the Bastion passes it for a Defend
+         Bastion event (its src is found from tests/ through data-tsi-root). */
+      window.presetOf = function (id, extra) {
+        return Object.assign({ key: 'preset:' + id }, W.presetMaps[id], extra || {});
+      };
       window.WT_BATTLE = null;
       window.openTable = function (extra) {
         var opts = Object.assign({

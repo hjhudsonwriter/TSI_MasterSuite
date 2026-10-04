@@ -110,14 +110,14 @@
   group('Bastion War Table: settings and the saved map');
 
   test('default settings: grid lines and Snap on, tokens at 90%, 22 squares across', function (t) {
-    t.same(W.defaultSettings(), { grid: { show: true, snap: true }, tokenScale: 0.9, camera: { x: 0, y: 0, zoom: 1 }, cols: D.scale.cols, terrainDismissed: [], trimDismissed: [] });
+    t.same(W.defaultSettings(), { grid: { show: true, snap: true }, tokenScale: 0.9, camera: { x: 0, y: 0, zoom: 1 }, cols: D.scale.cols, terrainDismissed: [], trimDismissed: [], weatherFx: null });
     t.same(W.normalizeSettings(undefined), W.defaultSettings());
     t.same(W.normalizeSettings({}), W.defaultSettings());
   });
 
   test('settings are put back in range and filled in; phase 1\'s grid size is let go', function (t) {
     var s = W.normalizeSettings({ grid: { show: false, size: 5, snap: 'yes', offX: 'x' }, tokenScale: 9, camera: { x: 12, zoom: 0.1 }, cols: 99 });
-    t.same(s, { grid: { show: false, snap: true }, tokenScale: 1, camera: { x: 12, y: 0, zoom: 0.5 }, cols: D.scale.maxCols, terrainDismissed: [], trimDismissed: [] });
+    t.same(s, { grid: { show: false, snap: true }, tokenScale: 1, camera: { x: 12, y: 0, zoom: 0.5 }, cols: D.scale.maxCols, terrainDismissed: [], trimDismissed: [], weatherFx: null });
     t.equal(W.normalizeSettings({ cols: 3 }).cols, D.scale.minCols);
     t.equal(W.normalizeSettings({ cols: 23.4 }).cols, 23);
     t.equal(W.normalizeSettings({ tokenScale: 0.1 }).tokenScale, 0.5);
@@ -702,5 +702,121 @@
     b = inBattle('raid', { p1: [5, 9], e2: [6, 2] });
     b.firstSide = 'enemy';
     t.ok(/The enemy acts first in round 1/.test(W.briefing(b, D).sections[3].items[0]), 'both sides on the field: as before');
+  });
+  group('Bastion War Table: the weather\'s film and the suite\'s own maps');
+
+  test('the weather\'s film: the Explorer\'s, for snow, rain and heat; none for clear weather', function (t) {
+    /* Harry (4 October 2026): the weather overlays on the War Table. */
+    t.equal(W.weatherOverlay(D, 'white_blizzard'), 'tools/explorer/assets/overlays/blizzard_overlay.mp4');
+    t.equal(W.weatherOverlay(D, 'cold_rain'), 'tools/explorer/assets/overlays/rain_overlay.mp4');
+    t.equal(W.weatherOverlay(D, 'sun_heatwave'), 'tools/explorer/assets/overlays/sun_heat_overlay.mp4');
+    t.equal(W.weatherOverlay(D, 'clear'), null);
+    t.equal(W.weatherOverlay(D, 'storm_of_frogs'), null, 'an unknown weather');
+    t.equal(W.weatherOverlay(D, undefined), null);
+    t.equal(W.weatherOverlay(D, 'toString'), null, 'not a property every object has');
+    t.equal(W.weatherOverlay(null, 'cold_rain'), 'tools/explorer/assets/overlays/rain_overlay.mp4', 'the suite\'s data by default');
+    Object.keys(D.weather).forEach(function (id) {
+      if (id !== 'clear') t.ok(/^tools\/explorer\/assets\/overlays\/[a-z_]+\.mp4$/.test(D.weather[id].overlay), id + ': a film in the Explorer\'s folder');
+    });
+  });
+
+  test('the Weather button: the DM\'s choice is kept; with none made, on unless reduced motion is asked for', function (t) {
+    t.equal(W.weatherOn(W.defaultSettings(), false), true, 'on by default');
+    t.equal(W.weatherOn(W.defaultSettings(), true), false, 'off by default with reduced motion');
+    t.equal(W.weatherOn({ weatherFx: false }, false), false);
+    t.equal(W.weatherOn({ weatherFx: true }, true), true, 'turned on by the DM, even with reduced motion');
+    t.equal(W.weatherOn(null, false), true);
+    t.equal(W.normalizeSettings({ weatherFx: false }).weatherFx, false, 'saved');
+    t.equal(W.normalizeSettings({ weatherFx: true }).weatherFx, true);
+    t.equal(W.normalizeSettings({ weatherFx: 'yes' }).weatherFx, null, 'anything else is "not chosen"');
+    t.equal(W.normalizeSettings({ weatherFx: 0 }).weatherFx, null);
+  });
+
+  test('the film covers the part of the board in view: the whole board at Fit, the stage when zoomed in', function (t) {
+    var board = W.boardFor(22, 22);
+    var v = W.view(1200, 700, board, { x: 0, y: 0, zoom: 1 });
+    var box = W.boardInView(v, board, 1200, 700);
+    t.same([Math.round(box.x), Math.round(box.y), Math.round(box.w), Math.round(box.h)], [250, 0, 700, 700], 'a square board, centred');
+    var z = W.view(1200, 700, board, { x: 0, y: 0, zoom: 3 });
+    t.same(W.boardInView(z, board, 1200, 700), { x: 0, y: 0, w: 1200, h: 700 }, 'zoomed in: the stage');
+    var wide = W.boardFor(22, 12);
+    var vw = W.view(1600, 1000, wide, { x: 0, y: 0, zoom: 0.5 });
+    var bw = W.boardInView(vw, wide, 1600, 1000);
+    t.ok(bw.x > 0 && bw.y > 0 && bw.x + bw.w < 1600 && bw.y + bw.h < 1000, 'zoomed out: the board, inside the stage');
+    t.equal(W.boardInView(null, board, 100, 100), null);
+    t.equal(W.boardInView({ fit: 1, scale: 1, ox: 5000, oy: 0 }, board, 100, 100), null, 'nothing in view');
+  });
+
+  test('the suite\'s own maps: keys, and a clean copy of the Defend Bastion coast', function (t) {
+    t.equal(W.presetKey('defend_coast'), 'preset:defend_coast');
+    t.ok(W.isPresetKey('preset:defend_coast'));
+    t.ok(!W.isPresetKey('preset:') && !W.isPresetKey('none') && !W.isPresetKey('1a2b3c') && !W.isPresetKey(null));
+    var p = W.cleanPreset(Object.assign({ key: 'preset:defend_coast' }, D.presetMaps.defend_coast));
+    t.same([p.key, p.name, p.src, p.w, p.h, p.preset], ['preset:defend_coast', 'The Ironbow coast', 'tools/bastion/assets/war/defend-bastion-coast.jpg', 1254, 1254, true]);
+    t.same([p.terrain.cols, p.terrain.rows, p.terrain.cells], [22, 22, D.presetMaps.defend_coast.cells]);
+    t.equal(p.terrain.cells.length, 484);
+    t.ok(/^x+ffx+$/.test(p.terrain.cells.slice(0, 22)), 'the sea along the top, with the crossing');
+    var g = BR.gridFor({ w: p.w, h: p.h }, p.terrain.cols);
+    t.same([g.cols, g.rows], [22, 22], 'its painting fits the battlefield its shape gives at its width');
+  });
+
+  test('a preset map that can\'t be used is refused; a damaged painting is left out', function (t) {
+    var good = Object.assign({ key: 'preset:defend_coast' }, D.presetMaps.defend_coast);
+    function withX(x) { return W.cleanPreset(Object.assign({}, good, x)); }
+    t.equal(withX({ key: 'defend_coast' }), null, 'needs a preset key');
+    t.equal(withX({ src: '' }), null);
+    t.equal(withX({ src: 'https://example.com/coast.jpg' }), null, 'no web addresses');
+    t.equal(withX({ src: 'file:///C:/maps/coast.jpg' }), null);
+    t.equal(withX({ src: 'data:image/png;base64,AAAA' }), null, 'a file in the suite, not a data URL');
+    t.equal(withX({ src: '/tools/coast.jpg' }), null, 'no leading slash');
+    t.equal(withX({ src: 'tools/../../secret.jpg' }), null, 'no ..');
+    t.equal(withX({ w: 0 }), null);
+    t.equal(withX({ h: 'tall' }), null);
+    t.equal(W.cleanPreset(null), null);
+    t.equal(withX({ cells: 'xxx' }).terrain, null, 'cells of the wrong length');
+    t.equal(withX({ cols: 0 }).terrain, null);
+    t.equal(withX({ cells: good.cells.replace(/^x/, '?') }).terrain.cells.charAt(0), '.', 'an unknown code is open ground');
+    t.equal(withX({ name: 7 }).name, '');
+  });
+
+  test('a battle set out on one of the suite\'s maps finds it again from its key', function (t) {
+    var p = W.presetFromKey(D, 'preset:defend_coast');
+    t.equal(p.key, 'preset:defend_coast');
+    t.equal(p.src, D.presetMaps.defend_coast.src);
+    t.equal(W.presetFromKey(null, 'preset:defend_coast').name, 'The Ironbow coast', 'the suite\'s data by default');
+    t.equal(W.presetFromKey(D, 'preset:atlantis'), null, 'not one of the suite\'s');
+    t.equal(W.presetFromKey(D, 'preset:toString'), null);
+    t.equal(W.presetFromKey(D, '1a2b3c'), null, 'an uploaded map\'s key');
+    t.equal(W.presetFromKey(D, 'none'), null);
+  });
+
+  test('the coast\'s terrain is painted in the first time, and never over the DM\'s own painting', function (t) {
+    var p = W.cleanPreset(Object.assign({ key: 'preset:defend_coast' }, D.presetMaps.defend_coast));
+    var empty = {};
+    var seeded = W.seedPreset(empty, p);
+    t.same(empty, {}, 'the store passed in is not changed');
+    t.same(seeded['preset:defend_coast'], { cols: 22, rows: 22, cells: p.terrain.cells });
+    var info = W.paintingFor(BR, seeded, 'preset:defend_coast', 22, 22);
+    t.ok(info.own && info.painting.cells === p.terrain.cells, 'its own painting at 22 across');
+    var at20 = W.paintingFor(BR, seeded, 'preset:defend_coast', 20, 20);
+    t.equal(at20.own, false);
+    t.equal(at20.fromCols, 22, 'another width: redrawn from it, with the note');
+    /* The DM's painting at 22 across is kept. */
+    var mine = { 'preset:defend_coast': { cols: 22, rows: 22, cells: new Array(485).join('w') } };
+    t.equal(W.seedPreset(mine, p), mine, 'nothing added');
+    /* Painted at another width only: the coast's is kept beside it. */
+    var other = { 'preset:defend_coast': W.blankPainting(20, 20) };
+    var both = W.seedPreset(other, p);
+    t.same(both['preset:defend_coast'], W.blankPainting(20, 20), 'the DM\'s latest stays the latest');
+    t.same(both['preset:defend_coast@22'].cells, p.terrain.cells);
+    t.equal(W.seedPreset(both, p), both, 'once is enough');
+    /* Cleared (a blank painting at its width): not painted in again. */
+    var cleared = { 'preset:defend_coast': W.blankPainting(22, 22) };
+    t.equal(W.seedPreset(cleared, p), cleared);
+    /* Other maps' paintings are left as they are; no painting, no seed. */
+    var others = { abc: W.blankPainting(22, 12) };
+    t.same(Object.keys(W.seedPreset(others, p)).sort(), ['abc', 'preset:defend_coast']);
+    t.equal(W.seedPreset(others, Object.assign({}, p, { terrain: null })), others);
+    t.equal(W.seedPreset(others, null), others);
   });
 }());

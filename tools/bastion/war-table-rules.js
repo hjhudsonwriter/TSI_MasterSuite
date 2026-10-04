@@ -10,7 +10,10 @@
      between the laptop and the TV;
    - where the board sits on screen (view, toScreen, toWorld, the camera);
    - the saved settings (grid lines, Snap, token size, camera, the chosen
-     battlefield width) and the saved map record;
+     battlefield width, the weather film) and the saved map record;
+   - the battle maps that come with the suite (presetMaps: the Defend
+     Bastion coast), their keys and their painted terrain;
+   - the weather's film over the battlefield: which one, and where;
    - the painted terrain store ('warTerrain', one painting per map and
      battlefield width) and a battle's own ground (battle.ground);
    - which order a square chosen before an order proposes;
@@ -149,7 +152,10 @@
        how big tokens are drawn inside their square; cols is the battlefield
        width chosen before deployment; terrainDismissed lists the maps whose
        "no terrain yet" warning was dismissed, trimDismissed those whose
-       "edges hidden" note was. */
+       "edges hidden" note was. weatherFx is the Weather button: true (the
+       weather's film plays over the battlefield), false (it doesn't), or
+       null when the DM hasn't chosen, which means on, unless the computer
+       asks for reduced motion (see weatherOn). Display only. */
     defaultSettings: function () {
       return {
         grid: { show: true, snap: true },
@@ -157,8 +163,15 @@
         camera: { x: 0, y: 0, zoom: 1 },
         cols: scale().cols,
         terrainDismissed: [],
-        trimDismissed: []
+        trimDismissed: [],
+        weatherFx: null
       };
+    },
+    /* Is the weather film shown? The DM's choice; with none made, on,
+       unless reduced motion is asked for (then it never starts by itself). */
+    weatherOn: function (settings, reduceMotion) {
+      var v = isObj(settings) ? settings.weatherFx : null;
+      return typeof v === 'boolean' ? v : !reduceMotion;
     },
     /* A plain object is accepted; normalizeSettings deals with the values. */
     isSettings: function (v) { return isObj(v); },
@@ -191,8 +204,32 @@
         },
         cols: Math.round(clamp(num(s.cols, sc.cols), sc.minCols, sc.maxCols)),
         terrainDismissed: keys(s.terrainDismissed),
-        trimDismissed: keys(s.trimDismissed)
+        trimDismissed: keys(s.trimDismissed),
+        weatherFx: typeof s.weatherFx === 'boolean' ? s.weatherFx : null
       };
+    },
+
+    /* ---------- The weather's film ----------
+       The Explorer's film for the battle's weather (war-units-data.js
+       weather[id].overlay, a path from the suite's folder), or null: clear
+       weather, an unknown one, or none given. */
+    weatherOverlay: function (data, weatherId) {
+      var D = data || war();
+      var w = D && D.weather && typeof weatherId === 'string' && Object.prototype.hasOwnProperty.call(D.weather, weatherId) ? D.weather[weatherId] : null;
+      return w && typeof w.overlay === 'string' && w.overlay ? w.overlay : null;
+    },
+    /* Where the film goes: the part of the board that is on the stage now
+       ({ x, y, w, h } in stage pixels), so it follows zoom and pan but its
+       snow or rain is drawn at the same size on screen; null when none of
+       the board is in view. */
+    boardInView: function (v, board, stageW, stageH) {
+      if (!v || !board) return null;
+      var a = W.toScreen(v, 0, 0);
+      var b = W.toScreen(v, board.w, board.h);
+      var x0 = Math.max(0, a.x), y0 = Math.max(0, a.y);
+      var x1 = Math.min(num(stageW, 0), b.x), y1 = Math.min(num(stageH, 0), b.y);
+      if (!(x1 > x0 && y1 > y0)) return null;
+      return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
     },
 
     /* ---------- The map picture (saved as 'warMap') ---------- */
@@ -372,6 +409,67 @@
         terrain: store.t
       };
     },
+    /* ---------- Battle maps that come with the suite ----------
+       war-units-data.js presetMaps: { [id]: { name, src, w, h, cols, rows,
+       cells } }. The War Table is given one as presetMap, keyed
+       'preset:' + id (the Defend Bastion event opens on its coast). Its
+       picture is a file in the suite's folder, shown with an <img>: never
+       saved as the War Table's map ('warMap'), never drawn on a canvas. */
+    PRESET_PREFIX: 'preset:',
+    presetKey: function (id) { return W.PRESET_PREFIX + String(id); },
+    isPresetKey: function (key) {
+      return typeof key === 'string' && key.indexOf(W.PRESET_PREFIX) === 0 && key.length > W.PRESET_PREFIX.length;
+    },
+    /* A clean copy of a preset map ({ key, name, src, w, h, preset: true,
+       terrain: { cols, rows, cells } or null }), or null if it can't be used:
+       a preset key, a picture inside the suite's folder (no web address, no
+       leading slash, no "..") and its size in pixels are needed. A painting
+       that isn't cols × rows codes is left out (terrain: null); unknown
+       codes become open ground. */
+    cleanPreset: function (v) {
+      if (!isObj(v) || !W.isPresetKey(v.key) || typeof v.src !== 'string' || !v.src) return null;
+      if (/^[a-z][a-z0-9+.-]*:/i.test(v.src) || /^[\/\\]/.test(v.src) || /(^|[\/\\])\.\.([\/\\]|$)/.test(v.src)) return null;
+      var w = num(v.w, 0);
+      var h = num(v.h, 0);
+      if (!(w > 0 && h > 0)) return null;
+      var t = { cols: v.cols, rows: v.rows, cells: v.cells };
+      return {
+        key: v.key,
+        name: typeof v.name === 'string' ? v.name : '',
+        src: v.src,
+        w: w,
+        h: h,
+        preset: true,
+        terrain: W.isPainting(t) ? W.cleanTerrainStore({ t: t }).t : null
+      };
+    },
+    /* The suite's own map for a key ('preset:defend_coast'), from the data,
+       or null: so a battle set out on it shows it again when reopened. */
+    presetFromKey: function (data, key) {
+      var D = data || war();
+      if (!D || !isObj(D.presetMaps) || !W.isPresetKey(key)) return null;
+      var id = key.slice(W.PRESET_PREFIX.length);
+      if (!Object.prototype.hasOwnProperty.call(D.presetMaps, id)) return null;
+      return W.cleanPreset(Object.assign({}, D.presetMaps[id], { key: key }));
+    },
+    /* The terrain store with the preset's own painting added, when the
+       store has no painting for its key at its width (the first time it is
+       used, or after its paintings were let go). A painting the DM made at
+       another width stays the map's latest; the preset's is kept beside it
+       under its own width. Returns the store passed in when nothing is
+       added (it is never changed). */
+    seedPreset: function (store, preset) {
+      var s = isObj(store) ? store : {};
+      if (!preset || !W.isPresetKey(preset.key) || !W.isPainting(preset.terrain)) return s;
+      var t = preset.terrain;
+      var main = s[preset.key];
+      if (W.isPainting(main) && main.cols === t.cols) return s;
+      if (W.isPainting(s[W.widthKey(preset.key, t.cols)])) return s;
+      var out = Object.assign({}, s);
+      out[W.isPainting(main) ? W.widthKey(preset.key, t.cols) : preset.key] = { cols: t.cols, rows: t.rows, cells: t.cells };
+      return out;
+    },
+
     /* The dismissed list with this map added (newest last, capped). */
     dismiss: function (list, key) {
       var out = (Array.isArray(list) ? list : []).filter(function (k) { return k !== key; });

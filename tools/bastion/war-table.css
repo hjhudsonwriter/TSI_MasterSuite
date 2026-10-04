@@ -349,6 +349,19 @@
   height: 100%;
   pointer-events: none;
 }
+/* The weather's film over the battlefield, as the Explorer shows the same
+   films over its maps: screened (its dark parts vanish, its snow, rain or
+   heat haze lighten the map) at partial strength, above the map and its
+   squares, below the units. Placed over the part of the board in view. */
+.tsi-tool--bastion .tsi-bas-wt-weather {
+  position: absolute;
+  z-index: 3;
+  display: block;
+  object-fit: cover;
+  opacity: .55;
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
 .tsi-tool--bastion .tsi-bas-wt-frame {
   position: absolute;
   z-index: 4;

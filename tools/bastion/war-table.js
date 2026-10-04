@@ -15,6 +15,8 @@
        spec,        // for battleRules.createBattle when battle is null
        battle,      // the saved battle (any phase), or null
        rand,        // () → [0, 1)
+       presetMap,   // optional: one of the suite's own maps ({ key: 'preset:' + id,
+                    // name, src, w, h, cols, rows, cells }, war-units-data.js presetMaps)
        canCallOff, withdrawPreview(battle) → [lines],
        onChange(battle), onEnd(battle) → Promise, onCallOff() → Promise<bool>, onClose()
      });
@@ -32,6 +34,18 @@
    also carries the table's battle.ground ({ mapKey, mapName, terrain }):
    the map it was set out on and its own terrain, so nothing done for
    another battle (or a picture brought back mid-battle) can change them.
+
+   A presetMap (the Defend Bastion coast) is the picture until the DM
+   replaces or clears it: shown from its file in the suite's folder with an
+   <img>, sized from its w and h, its terrain painted from its cells the
+   first time. It is never saved as 'warMap' and never drawn on a canvas. A
+   battle set out on it keeps its key ('preset:…') and shows it again when
+   reopened, with or without presetMap.
+
+   While the battle's weather has a film (war-units-data.js weather[id].
+   overlay, the Explorer's), it loops over the battlefield, above the map
+   and its squares and below the units. The Weather button turns it off
+   and on (saved with the settings); with reduced motion it starts off.
 
    Everything on the map is measured in board units (war-table-rules.js): the
    battle grid, 1600 units across. The map is an <img> in a transformed layer,
@@ -111,6 +125,16 @@
     /* The War Table's map picture (one, shared by every battle). */
     var savedMap = loadSaved('warMap', R.isMap, 'The War Table\'s battle map wasn\'t in the right form.');
     var terrainStore = R.cleanTerrainStore(loadSaved('warTerrain', function (v) { return v !== null && typeof v === 'object' && !Array.isArray(v); }, 'The War Table\'s terrain wasn\'t in the right form.'));
+    /* One of the suite's own maps, if the Bastion gave one (the Defend
+       Bastion coast): its terrain is painted in for its width the first
+       time (in memory; saved with the next painting). */
+    var preset = R.cleanPreset(o.presetMap);
+    if (preset) terrainStore = R.seedPreset(terrainStore, preset);
+    /* The suite's own map for a map key: the one given, or from the data. */
+    function presetFor(k) {
+      if (preset && preset.key === k) return preset;
+      return R.presetFromKey(W, k);
+    }
     /* The picture this table shows: the saved map, unless this battle was
        set out on another one (then the plain board, and a note). */
     var map = null;
@@ -126,6 +150,14 @@
     var battle = isBattle(o.battle) ? TSI.clone(o.battle) : null;
     if (battle && !Array.isArray(battle.log)) battle.log = [];
     var spec = o.spec && typeof o.spec === 'object' ? o.spec : null;
+    /* The width the DM chose with Battlefield − / + (saved for every
+       battle). A preset map's width, or a laid-out battle's own, below is
+       for this table only: it's never saved over the DM's choice (only
+       pressing − or + here changes that). */
+    var chosenCols = settings.cols;
+    /* A preset map opens at the width its terrain was painted for (the DM
+       can still change it before deployment). */
+    if (preset && preset.terrain && !battle) settings.cols = R.normalizeSettings({ cols: preset.terrain.cols }).cols;
     /* A battle laid out but not yet deployed keeps its own width. */
     if (battle && battle.phase === 'setup') settings.cols = R.normalizeSettings({ cols: battle.cols }).cols;
     /* From Begin Deployment on, the battle keeps its own ground on its record
@@ -134,18 +166,25 @@
        A battle saved without one takes the map and terrain the table has now. */
     if (battle && battle.phase !== 'setup') {
       var keptGround = R.cleanGround(battle.ground, battle.cols, battle.rows);
+      /* (With a preset map given, the battle was set out on it.) */
+      var setOn = preset || savedMap;
       battle.ground = keptGround || {
-        mapKey: savedMap ? savedMap.key : 'none',
-        mapName: savedMap && savedMap.name ? savedMap.name : '',
-        terrain: R.paintingFor(BR, terrainStore, savedMap ? savedMap.key : 'none', battle.cols, battle.rows).painting
+        mapKey: setOn ? setOn.key : 'none',
+        mapName: setOn && setOn.name ? setOn.name : '',
+        terrain: R.paintingFor(BR, terrainStore, setOn ? setOn.key : 'none', battle.cols, battle.rows).painting
       };
     }
     function ground() { return battle && battle.phase !== 'setup' && battle.ground ? battle.ground : null; }
     /* The battle's own map isn't the one on the War Table now. */
     function mapMissing() { var g = ground(); return !!g && g.mapKey !== 'none' && !(map && map.key === g.mapKey); }
+    /* Before deployment: the preset map if given, otherwise the saved map.
+       From deployment on: the battle's own map (one of the suite's, or the
+       saved map if it is still the same picture), or none. */
     function pictureFor() {
       var g = ground();
-      if (!g) return savedMap;
+      if (!g) return preset || savedMap;
+      var p = presetFor(g.mapKey);
+      if (p) return p;
       return savedMap && savedMap.key === g.mapKey ? savedMap : null;
     }
     map = pictureFor();
@@ -180,8 +219,13 @@
     function mapShown() { return !!map && !mapBroken; }
     /* The map whose terrain is in play: the battle's own from deployment on. */
     function mapKey() { var g = ground(); return g ? g.mapKey : (map ? map.key : 'none'); }
-    /* The board for the engine: the map picture's shape, or null (plain board). */
-    function engineBoard() { return mapShown() && mapSize ? { w: mapSize.w, h: mapSize.h } : null; }
+    /* The board for the engine: the map picture's shape, or null (plain
+       board). One of the suite's own maps keeps its shape (from its w and h)
+       even if its picture can't be shown, so its terrain still fits. */
+    function engineBoard() {
+      if (map && map.preset) return { w: map.w, h: map.h };
+      return mapShown() && mapSize ? { w: mapSize.w, h: mapSize.h } : null;
+    }
     function specWithCols() { return Object.assign({}, spec || {}, { cols: settings.cols }); }
     /* The grid: the battle's once there is one; before that, the chosen width on this map. */
     function grid() {
@@ -327,6 +371,7 @@
     var zoomOut = btn('−', 'wt-zoom-out', function () { zoomBy(-R.ZOOM_STEP); }, { aria: 'Zoom out', title: 'Zoom out (Ctrl + mouse wheel zooms too)', cls: 'tsi-bas-wt-step' });
     var zoomIn = btn('+', 'wt-zoom-in', function () { zoomBy(R.ZOOM_STEP); }, { aria: 'Zoom in', title: 'Zoom in (Ctrl + mouse wheel zooms too)', cls: 'tsi-bas-wt-step' });
     var zoomFit = btn('Fit', 'wt-zoom-fit', function () { setCamera({ x: 0, y: 0, zoom: 1 }); }, { title: 'Show the whole battlefield' });
+    var weatherBtn = btn('Weather: On', 'wt-weather-toggle', function () { toggleWeather(); }, { cls: 'tsi-bas-wt-toggle', title: 'Show or hide the weather over the battlefield (display only: the weather\'s rules apply either way)' });
     var terrainBtn = btn('Terrain', 'wt-terrain', function () { toggleTerrain(); }, { cls: 'tsi-bas-wt-toggle' });
     var dmEnemyBtn = btn('DM: adjust enemy', 'wt-dm-enemy', function () { toggleDmEnemy(); }, { cls: 'tsi-bas-wt-toggle tsi-bas-wt-dm', title: 'Let the DM drag the enemy\'s units within the enemy\'s own ground.' });
     var dmPauseBtn = btn('DM: pause', 'wt-dm-pause', function () { togglePause(); }, { cls: 'tsi-bas-wt-toggle tsi-bas-wt-dm', title: 'Pause the battle to replace the map or paint terrain. The squares and the battle stay as they are.' });
@@ -346,7 +391,7 @@
         tools('Map', [uploadLabel, clearBtn]),
         tools('Battlefield', [gridMinus, colsEl, gridPlus, gridBtn, snapBtn]),
         tools('Tokens', [tokMinus, tokPlus]),
-        tools('View', [zoomOut, zoomIn, zoomFit]),
+        tools('View', [zoomOut, zoomIn, zoomFit, weatherBtn]),
         tools('Terrain', [terrainBtn]),
         tools('DM', [dmEnemyBtn, dmPauseBtn], 'wt-dm-tools'),
         readout
@@ -354,12 +399,21 @@
     ]);
 
     /* The stage, bottom to top: the board (the map picture), the squares
-       (terrain, zones, grid lines; one canvas), the board's frame and the
-       ground labels, the world (zones, supplies, lit squares, the proposed
-       path, tokens, calculations), and the notes over it all. */
+       (terrain, zones, grid lines; one canvas), the weather's film, the
+       board's frame and the ground labels, the world (zones, supplies, lit
+       squares, the proposed path, tokens, calculations), and the notes over
+       it all. */
     var mapImg = el('img', { class: 'tsi-bas-wt-map', alt: 'Battle map', draggable: 'false', hidden: true, 'data-test': 'wt-map' });
     var boardLayer = el('div', { class: 'tsi-bas-wt-world tsi-bas-wt-world--board' }, mapImg);
     var gridCanvas = el('canvas', { class: 'tsi-bas-wt-grid', 'aria-hidden': 'true' });
+    /* The weather's film (the Explorer's), looped over the battlefield:
+       above the map and its squares, below the units. Display only. */
+    var weatherVideo = el('video', {
+      class: 'tsi-bas-wt-weather', muted: true, loop: true, playsinline: true, autoplay: !reduceMotion,
+      preload: 'auto', 'aria-hidden': 'true', tabindex: '-1', hidden: true, 'data-test': 'wt-weather'
+    });
+    weatherVideo.muted = true;
+    life.track(weatherVideo);
     var frame = el('div', { class: 'tsi-bas-wt-frame', 'aria-hidden': 'true' });
     var enemyLabel = el('span', { class: 'tsi-bas-wt-halflabel tsi-bas-wt-halflabel--enemy', 'aria-hidden': 'true', text: 'Enemy ground' });
     var stripLabel = el('span', { class: 'tsi-bas-wt-halflabel tsi-bas-wt-halflabel--strip', 'aria-hidden': 'true', text: 'No-deployment strip' });
@@ -394,6 +448,11 @@
       el('span', { class: 'tsi-bas-wt-note__kicker', text: 'Plain board' }),
       missingText
     ]);
+    var brokenText = el('span', { class: 'tsi-bas-wt-note__text' });
+    var brokenNote = el('div', { class: 'tsi-bas-wt-note tsi-bas-wt-note--warn', role: 'note', hidden: true, 'data-test': 'wt-map-broken' }, [
+      el('span', { class: 'tsi-bas-wt-note__kicker', text: 'Plain board' }),
+      brokenText
+    ]);
     var trimText = el('span', { class: 'tsi-bas-wt-note__text' });
     var trimDismiss = btn('Dismiss', 'wt-map-trimmed-dismiss', function () { dismissTrim(); }, { title: 'Hide this note for this map' });
     var trimNote = el('div', { class: 'tsi-bas-wt-note tsi-bas-wt-note--warn', role: 'note', hidden: true, 'data-test': 'wt-map-trimmed' }, [
@@ -405,12 +464,12 @@
       el('span', { class: 'tsi-bas-wt-note__kicker', text: 'Paused' }),
       el('span', { class: 'tsi-bas-wt-note__text', text: 'The battle waits. Replace the map or paint terrain: the squares and the battle stay as they are. Resume to carry on.' })
     ]);
-    var notesBar = el('div', { class: 'tsi-bas-wt-notes' }, [prompt, terrainWarning, trimNote, missingNote, banner]);
+    var notesBar = el('div', { class: 'tsi-bas-wt-notes' }, [prompt, terrainWarning, trimNote, missingNote, brokenNote, banner]);
     var resultKicker = el('p', { class: 'tsi-bas-wt-result__kicker' });
     var resultText = el('p', { class: 'tsi-bas-wt-result__text' });
     var result = el('div', { class: 'tsi-bas-wt-result', role: 'status', hidden: true, 'data-test': 'wt-result' }, [resultKicker, resultText]);
     var stage = el('div', { class: 'tsi-bas-wt-stage', 'data-test': 'wt-stage' }, [
-      boardLayer, gridCanvas, frame, enemyLabel, stripLabel, oursLabel, world, result
+      boardLayer, gridCanvas, weatherVideo, frame, enemyLabel, stripLabel, oursLabel, world, result
     ]);
     var stageCol = el('div', { class: 'tsi-bas-wt-stagecol' }, [objectiveBar, notesBar, stage]);
 
@@ -556,6 +615,13 @@
       frame.style.top = a.y + 'px';
       frame.style.width = (b.x - a.x) + 'px';
       frame.style.height = (b.y - a.y) + 'px';
+      /* The weather over the part of the board in view (its snow or rain
+         the same size on screen at any zoom). */
+      var wx = R.boardInView(view, board, s.w, s.h) || { x: 0, y: 0, w: 0, h: 0 };
+      weatherVideo.style.left = wx.x + 'px';
+      weatherVideo.style.top = wx.y + 'px';
+      weatherVideo.style.width = wx.w + 'px';
+      weatherVideo.style.height = wx.h + 'px';
       var g = grid();
       var labels = (phase() === 'setup' || phase() === 'deploy') && !ui.terrainMode;
       var top = R.toScreen(view, 0, g.strip[0] * board.cell).y;
@@ -749,12 +815,18 @@
     }
 
     /* ---------- The map picture ---------- */
+    /* An uploaded map is its data URL; one of the suite's own is a file in
+       its folder (found from this page through TSI.path). */
+    function pictureSrc(rec) { return rec.preset ? TSI.path(rec.src) : rec.dataUrl; }
     function showMap(rec, size) {
       map = rec || null;
       mapBroken = false;
       if (map) {
         mapImg.hidden = false;
-        if (mapImg.getAttribute('src') !== map.dataUrl) mapImg.src = map.dataUrl;
+        var src = pictureSrc(map);
+        if (mapImg.getAttribute('src') !== src) mapImg.setAttribute('src', src);
+        /* The suite's own maps are sized from their data, not the file. */
+        if (map.preset) size = { w: map.w, h: map.h };
         if (size && size.w > 0 && size.h > 0) {
           loading = false;
           mapSize = { w: size.w, h: size.h };
@@ -774,17 +846,19 @@
       refresh();
     }
     on(mapImg, 'load', function () {
-      if (!map || !mapImg.naturalWidth) return;
+      if (!map || !mapImg.naturalWidth || map.preset) return;
       var was = loading;
       loading = false;
       mapSize = { w: mapImg.naturalWidth, h: mapImg.naturalHeight };
       if (was) refresh();
     });
+    /* A picture that can't be shown: the plain board, with a note. One of
+       the suite's own keeps its squares and terrain. */
     on(mapImg, 'error', function () {
       if (!map || !mapImg.getAttribute('src')) return;
       loading = false;
       mapBroken = true;
-      mapSize = null;
+      mapSize = map.preset ? { w: map.w, h: map.h } : null;
       mapImg.hidden = true;
       refresh();
     });
@@ -840,8 +914,11 @@
       });
     });
 
-    /* The War Table's saved map (shared by every battle) changes. */
+    /* The War Table's saved map (shared by every battle) changes. Clearing
+       one of the suite's own maps leaves the saved map alone: it wasn't the
+       picture on the table. */
     function saveMapRecord(rec) {
+      if (!rec && map && map.preset) return;
       savedMap = rec || null;
       if (rec) store.set('warMap', rec); else store.remove('warMap');
     }
@@ -903,7 +980,8 @@
       if (phase() === 'deploy') return useMap(null, null);
       return TSI.modal.confirm({
         title: 'Clear map',
-        message: phase() === 'battle' ? 'Remove the battle map? The battle carries on on the plain board, with the same squares and terrain.' : 'Remove the battle map from the War Table?',
+        message: phase() === 'battle' ? 'Remove the battle map? The battle carries on on the plain board, with the same squares and terrain.' :
+          map.preset ? 'Take ' + (map.name || 'this map') + ' off the War Table? This battle is then set out on the plain board, unless you upload a map.' : 'Remove the battle map from the War Table?',
         okLabel: 'Clear map'
       }).then(function (yes) {
         if (!yes || closed || !life.alive) return null;
@@ -915,7 +993,7 @@
     var settingsTimer = null;
     function saveSettings() {
       if (settingsTimer !== null) { life.clearTimeout(settingsTimer); settingsTimer = null; }
-      store.set('warTable', TSI.clone(settings));
+      store.set('warTable', Object.assign(TSI.clone(settings), { cols: chosenCols }));
     }
     function saveSettingsSoon() {
       if (settingsTimer !== null) life.clearTimeout(settingsTimer);
@@ -931,7 +1009,7 @@
     function changeWidth(dir) {
       if (!inSetup()) return;
       var before = settings.cols;
-      changeSettings(function (s) { s.cols = s.cols + dir; });
+      changeSettings(function (s) { s.cols = s.cols + dir; chosenCols = R.normalizeSettings({ cols: s.cols }).cols; });
       if (settings.cols === before) return;
       if (battle) {
         BR.setBoard(battle, engineBoard(), settings.cols);
@@ -955,6 +1033,54 @@
     }
     function updateReadout() {
       readout.textContent = 'Zoom ' + Math.round(settings.camera.zoom * 100) + '% · Tokens ' + Math.round(settings.tokenScale * 100) + '%';
+    }
+
+    /* ---------- The weather's film ----------
+       The battle's weather (the spec's before there is a battle) and its
+       film, if it has one (R.weatherOverlay). The Weather button is only
+       there when it does. The film steps aside while terrain is being
+       painted, so the squares show plainly, and stops when the table closes. */
+    function weatherId() {
+      var c = battle ? battle.conditions : (spec && spec.conditions);
+      return c && typeof c.weather === 'string' ? c.weather : 'clear';
+    }
+    var weatherShown = null;
+    function stopWeather() {
+      weatherVideo.hidden = true;
+      weatherShown = null;
+      if (!weatherVideo.getAttribute('src')) return;
+      try {
+        weatherVideo.pause();
+        weatherVideo.removeAttribute('src');
+        weatherVideo.load();
+      } catch (e) { /* already let go */ }
+    }
+    function renderWeather() {
+      var film = R.weatherOverlay(W, weatherId());
+      var shown = !!film && R.weatherOn(settings, reduceMotion);
+      weatherBtn.hidden = !film;
+      weatherBtn.textContent = shown ? 'Weather: On' : 'Weather: Off';
+      weatherBtn.setAttribute('aria-pressed', shown ? 'true' : 'false');
+      if (!shown || ui.terrainMode || closed) { stopWeather(); return; }
+      var src = TSI.path(film);
+      weatherVideo.hidden = false;
+      if (weatherShown === src) return;
+      weatherShown = src;
+      if (weatherVideo.getAttribute('src') !== src) {
+        weatherVideo.setAttribute('src', src);
+        weatherVideo.load();
+      }
+      /* Started here as well as by autoplay: with reduced motion only once
+         the DM has turned it on. A browser that can't play it just shows
+         the battlefield. */
+      try {
+        var p = weatherVideo.play();
+        if (p && typeof p.catch === 'function') p.catch(noop);
+      } catch (e) { /* the battlefield shows without it */ }
+    }
+    function toggleWeather() {
+      if (!R.weatherOverlay(W, weatherId())) return;
+      changeSettings(function (s) { s.weatherFx = !R.weatherOn(s, reduceMotion); });
     }
 
     /* ---------- Short messages ---------- */
@@ -1028,7 +1154,13 @@
         if (!yes || closed || !life.alive || !terrainEditable()) return;
         var g = grid();
         var gr = ground();
-        if (!fighting) terrainStore = R.forgetPaintings(terrainStore, mapKey());
+        if (!fighting) {
+          terrainStore = R.forgetPaintings(terrainStore, mapKey());
+          /* One of the suite's own maps keeps a blank painting, so its
+             terrain isn't painted in again next time. */
+          var pre = presetFor(mapKey());
+          if (pre && pre.terrain) terrainStore[mapKey()] = R.blankPainting(pre.terrain.cols, pre.terrain.rows);
+        }
         if (gr) gr.terrain = R.blankPainting(g.cols, g.rows);
         persistTerrain();
         terrainChanged();
@@ -1911,7 +2043,7 @@
         var ot = R.objectiveText(b, W);
         if (objectiveEl.textContent !== ot) objectiveEl.textContent = ot;
       }
-      prompt.hidden = mapShown() || ph !== 'setup' || ui.terrainMode || loading;
+      prompt.hidden = mapShown() || (map && map.preset) || ph !== 'setup' || ui.terrainMode || loading;
       promptText.textContent = mapBroken ?
         'The saved battle map couldn\'t be shown. Please upload it again. You can also deploy on the plain board.' :
         'Upload a battle map to begin. You can also deploy on the plain board.';
@@ -1925,13 +2057,22 @@
       var gr = ground();
       missingNote.hidden = !mapMissing() || ui.terrainMode || ph === 'over';
       if (!missingNote.hidden) {
-        var mt = 'This battle was set out on another map' + (gr.mapName ? ' (' + gr.mapName + ')' : '') +
-          ', which is no longer on the War Table. Its squares and terrain are its own, as they were. To see the picture again, ' +
-          (ph === 'battle' ? 'pause (DM: pause), then ' : '') + 'use Replace map with the same picture.';
+        var mt = R.isPresetKey(gr.mapKey) ?
+          'This battle was set out on one of the suite\'s own maps' + (gr.mapName ? ' (' + gr.mapName + ')' : '') +
+            ', which can\'t be found. Its squares and terrain are its own, as they were.' :
+          'This battle was set out on another map' + (gr.mapName ? ' (' + gr.mapName + ')' : '') +
+            ', which is no longer on the War Table. Its squares and terrain are its own, as they were. To see the picture again, ' +
+            (ph === 'battle' ? 'pause (DM: pause), then ' : '') + 'use Replace map with the same picture.';
         if (missingText.textContent !== mt) missingText.textContent = mt;
       }
+      /* One of the suite's own pictures that couldn't be loaded. */
+      brokenNote.hidden = !(map && map.preset && mapBroken) || ui.terrainMode || ph === 'over';
+      if (!brokenNote.hidden) {
+        var bt = 'The picture of ' + (map.name || 'this map') + ' couldn\'t be loaded (' + map.src + '), so the battlefield is a plain board. Its squares and terrain are as they should be.';
+        if (brokenText.textContent !== bt) brokenText.textContent = bt;
+      }
       banner.hidden = !(ph === 'battle' && ui.paused) || ui.terrainMode;
-      notesBar.hidden = prompt.hidden && terrainWarning.hidden && trimNote.hidden && missingNote.hidden && banner.hidden;
+      notesBar.hidden = prompt.hidden && terrainWarning.hidden && trimNote.hidden && missingNote.hidden && brokenNote.hidden && banner.hidden;
       var res = battle && battle.result;
       result.hidden = !res;
       if (res) {
@@ -1953,6 +2094,7 @@
       renderNotes();
       layout();
       renderHead();
+      renderWeather();
       renderWorld();
       renderSide();
     }
@@ -2905,6 +3047,9 @@
       if (sayTimer !== null) { life.clearTimeout(sayTimer); sayTimer = null; }
       fx.clear();
       closed = true;
+      /* The weather's film stops and lets go of its file. */
+      stopWeather();
+      life.untrack(weatherVideo);
       if (resizer) resizer.disconnect();
       offs.splice(0).forEach(function (off) { off(); });
       if (document.fullscreenElement === root) {
@@ -2943,6 +3088,10 @@
       settings: function () { return TSI.clone(settings); },
       view: function () { return { fit: view.fit, scale: view.scale, ox: view.ox, oy: view.oy }; },
       terrain: function () { return TSI.clone(terrain()); },
+      /* The map on the table: its key, whether it is one of the suite's own, and whether its picture shows. */
+      map: function () { return { key: map ? map.key : null, name: map ? map.name || '' : '', preset: !!(map && map.preset), shown: mapShown(), groundKey: ground() ? ground().mapKey : null }; },
+      /* The weather: its id, its film (or null) and whether the film is shown. */
+      weather: function () { var film = R.weatherOverlay(W, weatherId()); return { id: weatherId(), film: film, on: !!film && R.weatherOn(settings, reduceMotion) && !closed }; },
       state: function () {
         var p = ui.prop;
         return {

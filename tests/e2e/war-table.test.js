@@ -1748,6 +1748,357 @@ async function enemyTurn(page) {
     }
   }
 
+  if (!only || only === 'oct4') {
+    section('Harry\'s changes (4 October 2026): the weather\'s film and the Defend Bastion coast');
+    const COAST = 'tools/bastion/assets/war/defend-bastion-coast.jpg';
+    const FILMS = {
+      white_blizzard: 'tools/explorer/assets/overlays/blizzard_overlay.mp4',
+      cold_rain: 'tools/explorer/assets/overlays/rain_overlay.mp4',
+      sun_heatwave: 'tools/explorer/assets/overlays/sun_heat_overlay.mp4'
+    };
+    /* The test browser can't play MP4 films (it has no H.264): the film's
+       element is checked, not the picture it would show. */
+    const film = p => p.evaluate(() => {
+      const v = document.querySelector('[data-test=wt-weather]');
+      if (!v) return null;
+      const cs = getComputedStyle(v);
+      const r = v.getBoundingClientRect();
+      return {
+        src: v.getAttribute('src'), hidden: v.hidden, shown: !v.hidden && r.width > 0 && r.height > 0, paused: v.paused,
+        muted: v.muted, loop: v.loop, autoplay: v.hasAttribute('autoplay'), playsinline: v.hasAttribute('playsinline'), aria: v.getAttribute('aria-hidden'),
+        z: Number(cs.zIndex), blend: cs.mixBlendMode, opacity: Number(cs.opacity), events: cs.pointerEvents,
+        rect: [r.left, r.top, r.width, r.height].map(Math.round)
+      };
+    });
+    const weatherBtn = p => p.evaluate(() => { const b = document.querySelector('[data-test=wt-weather-toggle]'); return { hidden: b.hidden || !b.offsetParent, text: b.textContent, pressed: b.getAttribute('aria-pressed') }; });
+    let page = await newPage(browser, 'laptop');
+    async function fresh(p) {
+      p = p || page;
+      await p.evaluate(() => { if (window.T) { try { T.close(); } catch (e) { /* closed */ } } WT_MEM.clear(); WT_BATTLE = null; WT_LOG.sets = []; });
+      await p.waitForFunction(() => !document.querySelector('.tsi-modal'));
+    }
+    const defence = (weather, more) => '{ spec: makeSpec(\'defend\', { weather: \'' + (weather || 'clear') + '\', moraleMod: 0, luckMod: 1 }), title: \'Defend Bastion vs Bacca\', presetMap: presetOf(\'defend_coast\'), canCallOff: false' + (more ? ', ' + more : '') + ' }';
+
+    for (const w of Object.keys(FILMS)) {
+      await check(w + ': its film loops over the battlefield: muted, looping, autoplaying, hidden from screen readers, screened as in the Explorer, between the squares and the units', async () => {
+        await fresh();
+        const before = await page.evaluate(() => WT_LIFE.counts().media);
+        await open(page, '{ spec: makeSpec(\'skirmish\', { weather: \'' + w + '\', moraleMod: 0, luckMod: 1 }) }');
+        const f = await film(page);
+        equal(f.src, '../' + FILMS[w], 'its film, found from this page through TSI.path');
+        assert(f.shown, 'shown: ' + JSON.stringify(f));
+        equal([f.muted, f.loop, f.autoplay, f.playsinline, f.aria], [true, true, true, true, 'true']);
+        equal([f.blend, f.opacity, f.events], ['screen', 0.55, 'none'], 'as the Explorer shows it');
+        equal(await page.evaluate(() => WT_LIFE.counts().media), before + 1, 'handed to the Bastion\'s life');
+        const order = await page.evaluate(() => {
+          const kids = Array.from(document.querySelector('[data-test=wt-stage]').children);
+          const z = n => Number(getComputedStyle(n).zIndex);
+          const v = document.querySelector('[data-test=wt-weather]');
+          return {
+            after: kids.indexOf(v) > kids.indexOf(document.querySelector('.tsi-bas-wt-grid')) && kids.indexOf(v) < kids.indexOf(document.querySelector('.tsi-bas-wt-world--units')),
+            z: [z(document.querySelector('.tsi-bas-wt-world--board')), z(document.querySelector('.tsi-bas-wt-grid')), z(v), z(document.querySelector('.tsi-bas-wt-world--units'))]
+          };
+        });
+        assert(order.after, 'between the squares and the units in the stage');
+        assert(order.z[0] < order.z[2] && order.z[1] < order.z[2] && order.z[2] < order.z[3], 'map and squares below, units above: ' + order.z);
+        const frame = await page.$eval('.tsi-bas-wt-frame', n => { const r = n.getBoundingClientRect(); return [r.left, r.top, r.width, r.height].map(Math.round); });
+        equal(f.rect, frame, 'over the whole board at Fit');
+        equal(await weatherBtn(page), { hidden: false, text: 'Weather: On', pressed: 'true' });
+        /* On through deployment and the battle (the battle's own weather). */
+        await page.click('[data-test=wt-begin-deploy]');
+        await startBattle(page);
+        equal((await bat(page)).conditions.weather, w);
+        assert((await film(page)).shown, 'still shown in the battle');
+        await page.click('[data-test=wt-zoom-in]');
+        await page.click('[data-test=wt-zoom-in]');
+        const z = await film(page);
+        const stage = await page.$eval('[data-test=wt-stage]', n => { const r = n.getBoundingClientRect(); return [r.left + n.clientLeft, r.top + n.clientTop, n.clientWidth, n.clientHeight].map(Math.round); });
+        assert(Math.abs(z.rect[2] - stage[2]) <= 1 && Math.abs(z.rect[3] - stage[3]) <= 1, 'zoomed in: over the stage, the board filling it: ' + JSON.stringify([z.rect, stage]));
+        const v = await page.evaluate(() => { window.V = document.querySelector('[data-test=wt-weather]'); T.close(); return { attached: V.isConnected, src: V.getAttribute('src'), paused: V.paused }; });
+        equal(v, { attached: false, src: null, paused: true }, 'closed: stopped, let go of its file and gone');
+        equal(await page.evaluate(() => WT_LIFE.counts().media), before, 'let go by the Bastion\'s life');
+      });
+    }
+    await check('clear weather: no film and no Weather button', async () => {
+      await fresh();
+      await open(page, '{ spec: makeSpec(\'skirmish\', { weather: \'clear\', moraleMod: 0, luckMod: 1 }) }');
+      const f = await film(page);
+      equal([f.hidden, f.src], [true, null]);
+      equal((await weatherBtn(page)).hidden, true);
+      equal(await page.evaluate(() => T.weather()), { id: 'clear', film: null, on: false });
+    });
+    await check('Weather: Off hides and stops the film; the choice is saved with the War Table\'s settings and kept when it reopens', async () => {
+      await fresh();
+      await open(page, '{ spec: makeSpec(\'raid\', { weather: \'cold_rain\', moraleMod: 0, luckMod: 1 }) }');
+      await page.click('[data-test=wt-weather-toggle]');
+      equal(await weatherBtn(page), { hidden: false, text: 'Weather: Off', pressed: 'false' });
+      const f = await film(page);
+      equal([f.hidden, f.src, f.paused], [true, null, true]);
+      equal(await page.evaluate(() => WT_STORE.get('warTable').weatherFx), false, 'saved');
+      await page.evaluate(() => T.close());
+      await open(page, '{ spec: makeSpec(\'raid\', { weather: \'white_blizzard\', moraleMod: 0, luckMod: 1 }) }');
+      equal((await weatherBtn(page)).text, 'Weather: Off', 'kept for the next battle');
+      equal((await film(page)).hidden, true);
+      await page.click('[data-test=wt-weather-toggle]');
+      equal((await weatherBtn(page)).text, 'Weather: On');
+      equal((await film(page)).src, '../' + FILMS.white_blizzard);
+      equal(await page.evaluate(() => WT_STORE.get('warTable').weatherFx), true);
+    });
+    await check('the film steps aside while terrain is painted, and comes back after', async () => {
+      await fresh();
+      await open(page, '{ spec: makeSpec(\'raid\', { weather: \'sun_heatwave\', moraleMod: 0, luckMod: 1 }) }');
+      await page.click('[data-test=wt-terrain]');
+      equal((await film(page)).hidden, true);
+      equal((await weatherBtn(page)).text, 'Weather: On', 'the button keeps the choice');
+      await page.click('[data-test=wt-terrain-done]');
+      assert((await film(page)).shown);
+    });
+    await check('the Bastion closing with the War Table open stops the film', async () => {
+      const p2 = await newPage(browser, 'laptop');
+      await p2.evaluate(() => { window.T = openTable({ spec: makeSpec('skirmish', { weather: 'cold_rain', moraleMod: 0, luckMod: 1 }) }); window.V = document.querySelector('[data-test=wt-weather]'); });
+      equal((await film(p2)).src, '../' + FILMS.cold_rain);
+      const v = await p2.evaluate(() => { WT_LIFE.stop(); return { table: !!document.querySelector('[data-test=wt-root]'), attached: V.isConnected, src: V.getAttribute('src'), paused: V.paused, media: WT_LIFE.counts().media }; });
+      equal(v, { table: false, attached: false, src: null, paused: true, media: 0 });
+      equal(p2.errors, []);
+      await p2.context().close();
+    });
+    await check('reduced motion: the film starts off and never plays by itself; the DM can turn it on', async () => {
+      const p2 = await newPage(browser, 'laptop', { reducedMotion: 'reduce' });
+      await p2.evaluate(() => { window.T = openTable({ spec: makeSpec('skirmish', { weather: 'white_blizzard', moraleMod: 0, luckMod: 1 }) }); });
+      await p2.waitForSelector('[data-test=wt-root]');
+      let f = await film(p2);
+      equal([f.hidden, f.src, f.autoplay], [true, null, false]);
+      equal(await weatherBtn(p2), { hidden: false, text: 'Weather: Off', pressed: 'false' });
+      await p2.click('[data-test=wt-weather-toggle]');
+      f = await film(p2);
+      equal([f.shown, f.src, f.autoplay], [true, '../' + FILMS.white_blizzard, false], 'shown once asked for, still without autoplay');
+      equal(await p2.evaluate(() => WT_STORE.get('warTable').weatherFx), true);
+      equal(p2.errors, []);
+      await p2.context().close();
+    });
+
+    await check('the Defend Bastion coast: shown from its file with an <img>, the board sized from it, never saved as the War Table\'s map, and no Call off', async () => {
+      await fresh();
+      await page.evaluate(() => WT_STORE.set('warMap', { dataUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', key: 'older', name: 'older.png' }));
+      await page.evaluate(() => { WT_LOG.sets = []; });
+      await open(page, defence('cold_rain'));
+      await page.waitForFunction(() => document.querySelector('[data-test=wt-map]').naturalWidth > 0);
+      const m = await page.evaluate(() => { const i = document.querySelector('[data-test=wt-map]'); return { tag: i.tagName, src: i.getAttribute('src'), w: i.naturalWidth, hidden: i.hidden }; });
+      equal(m, { tag: 'IMG', src: '../' + COAST, w: 1254, hidden: false });
+      equal(await page.evaluate(() => T.map()), { key: 'preset:defend_coast', name: 'The Ironbow coast', preset: true, shown: true, groundKey: null });
+      equal([(await page.evaluate(() => T.board())).cols, (await page.evaluate(() => T.board())).rows], [22, 22], 'a square picture: 22 × 22 squares');
+      equal(await txt(page, 'wt-upload'), 'Replace map');
+      assert(!(await vis(page, 'wt-prompt')), 'no "No battle map yet"');
+      assert(!(await vis(page, 'wt-calloff')), 'a defence can\'t be called off');
+      equal(await page.evaluate(() => WT_STORE.get('warMap').key), 'older', 'the saved map is left as it was');
+      equal(await page.evaluate(() => WT_LOG.sets.filter(n => n === 'warMap').length), 0);
+      /* The squares' canvas never has the picture drawn on it: it can still be read. */
+      equal(await page.evaluate(() => { try { document.querySelector('.tsi-bas-wt-grid').toDataURL(); return 'clean'; } catch (e) { return String(e.name); } }), 'clean');
+      await page.click('[data-test=wt-begin-deploy]');
+      assert(!(await vis(page, 'wt-calloff')), 'nor while deploying');
+      equal((await bat(page)).ground.mapKey, 'preset:defend_coast');
+      equal((await bat(page)).ground.mapName, 'The Ironbow coast');
+      equal((await bat(page)).objective.id, 'defend');
+    });
+    await check('its terrain is painted in from the data: the sea, the crossing and the rocks; at another width it is redrawn, with the note', async () => {
+      await fresh();
+      await open(page, defence());
+      const cells = await page.evaluate(() => TSI_DATA.bastionWar.presetMaps.defend_coast.cells);
+      equal((await page.evaluate(() => T.terrain())).cells, cells);
+      assert(!(await vis(page, 'wt-terrain-warning')), 'no "no terrain yet" warning');
+      assert(!(await vis(page, 'wt-terrain-resampled')));
+      await page.click('[data-test=wt-grid-minus]');
+      await page.click('[data-test=wt-grid-minus]');
+      equal([(await page.evaluate(() => T.board())).cols, (await page.evaluate(() => T.board())).rows], [20, 20]);
+      assert(await vis(page, 'wt-terrain-resampled'), 'the redrawn painting is pointed out');
+      assert((await txt(page, 'wt-terrain-resampled')).includes('painted 22 squares across and is redrawn here for 20'));
+      await page.click('[data-test=wt-grid-plus]');
+      await page.click('[data-test=wt-grid-plus]');
+      await page.click('[data-test=wt-begin-deploy]');
+      equal((await bat(page)).ground.terrain.cells, cells, 'the battle keeps it');
+      /* Painting at 22 across is the DM's own from then on. */
+      await fresh();
+      await open(page, defence());
+      await page.click('[data-test=wt-terrain]');
+      await page.click('[data-test=wt-terrain-w]');
+      await clickCell(page, 3, 18);
+      await page.click('[data-test=wt-terrain-done]');
+      const saved = await page.evaluate(() => WT_STORE.get('warTerrain')['preset:defend_coast']);
+      equal(saved.cells.charAt(18 * 22 + 3), 'w');
+      equal(saved.cells.slice(0, 66), cells.slice(0, 66));
+      await page.evaluate(() => T.close());
+      await open(page, defence());
+      equal((await page.evaluate(() => T.terrain())).cells.charAt(18 * 22 + 3), 'w', 'not painted over the next time');
+    });
+    await check('the coast\'s own width is never saved over the width the DM chose for every battle; Battlefield − / + on the coast is his choice', async () => {
+      await fresh();
+      /* The DM chose 24 squares across on an ordinary War Action. */
+      await page.evaluate(() => WT_STORE.set('warTable', { cols: 24 }));
+      await open(page, defence('cold_rain'));
+      equal((await page.evaluate(() => T.board())).cols, 22, 'the coast opens at its painted width');
+      await page.click('[data-test=wt-zoom-in]');
+      await page.click('[data-test=wt-weather-toggle]');
+      await wait(450);
+      const saved = await page.evaluate(() => WT_STORE.get('warTable'));
+      equal([saved.cols, saved.weatherFx, saved.camera.zoom > 1], [24, false, true], 'the zoom and the film are saved; the coast\'s width isn\'t: ' + JSON.stringify(saved));
+      await page.evaluate(() => T.close());
+      await open(page, '{ spec: makeSpec(\'raid\', { weather: \'clear\', moraleMod: 0, luckMod: 1 }) }');
+      equal(await txt(page, 'wt-cols'), '24 squares across', 'the next War Action opens at the DM\'s width');
+      await page.evaluate(() => T.close());
+      await open(page, defence('cold_rain'));
+      await page.click('[data-test=wt-grid-minus]');
+      equal([(await page.evaluate(() => T.board())).cols, await page.evaluate(() => WT_STORE.get('warTable').cols)], [21, 21], 'pressing − on the coast is his own choice: saved');
+      await page.evaluate(() => T.close());
+      await open(page, '{ spec: makeSpec(\'raid\', { weather: \'clear\', moraleMod: 0, luckMod: 1 }) }');
+      equal(await txt(page, 'wt-cols'), '21 squares across');
+    });
+    await check('Clear terrain on the coast stays cleared', async () => {
+      await fresh();
+      await open(page, defence());
+      await page.click('[data-test=wt-terrain]');
+      await page.click('[data-test=wt-terrain-clear]');
+      await confirmModal(page, true);
+      await page.click('[data-test=wt-terrain-done]');
+      assert(/^\.+$/.test((await page.evaluate(() => T.terrain())).cells), 'open ground');
+      await page.evaluate(() => T.close());
+      await open(page, defence());
+      assert(/^\.+$/.test((await page.evaluate(() => T.terrain())).cells), 'still open ground when it reopens');
+    });
+    await check('reopening a battle set out on the coast shows it again, with or without the preset passed in; no "Plain board" note', async () => {
+      await fresh();
+      await open(page, defence('white_blizzard'));
+      await page.click('[data-test=wt-begin-deploy]');
+      await page.evaluate(() => T.close());
+      await open(page, defence('white_blizzard'));
+      equal(await page.evaluate(() => T.map()), { key: 'preset:defend_coast', name: 'The Ironbow coast', preset: true, shown: true, groundKey: 'preset:defend_coast' });
+      assert(!(await vis(page, 'wt-map-missing')), 'no "Plain board" note');
+      await startBattle(page);
+      await page.evaluate(() => T.close());
+      await open(page, '{ title: \'Defend Bastion vs Bacca\' }');
+      await page.waitForFunction(() => document.querySelector('[data-test=wt-map]').naturalWidth > 0);
+      equal(await page.evaluate(() => document.querySelector('[data-test=wt-map]').getAttribute('src')), '../' + COAST, 'found from the battle\'s map key alone');
+      equal((await page.evaluate(() => T.map())).shown, true);
+      assert(!(await vis(page, 'wt-map-missing')));
+      assert((await film(page)).shown, 'and the battle\'s weather');
+      equal(await page.evaluate(() => WT_MEM.has('warMap')), false, 'never saved as the War Table\'s map');
+    });
+    await check('a battle set out on a suite map that can\'t be found: the plain board, and the note says so', async () => {
+      await fresh();
+      await open(page, defence());
+      await page.click('[data-test=wt-begin-deploy]');
+      await page.evaluate(() => { T.close(); WT_BATTLE.ground.mapKey = 'preset:atlantis'; WT_BATTLE.ground.mapName = 'Atlantis'; });
+      await open(page, '{ title: \'Defend Bastion vs Bacca\' }');
+      assert(await vis(page, 'wt-map-missing'));
+      assert(/one of the suite's own maps \(Atlantis\), which can't be found/.test(await txt(page, 'wt-map-missing')), await txt(page, 'wt-map-missing'));
+      assert(!/Replace map with the same picture/.test(await txt(page, 'wt-map-missing')));
+    });
+    await check('replacing the coast before deployment: the upload is the map (and saved as before); reopened before deploying, the coast is back', async () => {
+      await fresh();
+      await open(page, defence());
+      await uploadMap(page, MAPA);
+      const m = await page.evaluate(() => T.map());
+      assert(!m.preset && m.key !== 'preset:defend_coast', JSON.stringify(m));
+      equal([(await page.evaluate(() => T.board())).cols, (await page.evaluate(() => T.board())).rows], [22, 14], 'the board follows the new picture');
+      equal(await page.evaluate(() => WT_STORE.get('warMap').key), m.key, 'saved as the War Table\'s map, as any upload is');
+      await page.evaluate(() => T.close());
+      await open(page, defence());
+      equal((await page.evaluate(() => T.map())).key, 'preset:defend_coast');
+    });
+    await check('replacing the coast while deploying: asked first, then set out afresh on the new map, which a reopened battle keeps', async () => {
+      await fresh();
+      await open(page, defence());
+      await page.click('[data-test=wt-begin-deploy]');
+      await page.setInputFiles('[data-test=wt-upload-input]', MAPB);
+      await confirmModal(page, true);
+      await wait(250);
+      const m = await page.evaluate(() => T.map());
+      assert(!m.preset, 'the upload');
+      equal((await bat(page)).ground.mapKey, m.key);
+      equal((await bat(page)).phase, 'deploy');
+      await page.evaluate(() => T.close());
+      await open(page, defence());
+      equal((await page.evaluate(() => T.map())).key, m.key, 'the battle\'s own map, not the coast');
+    });
+    await check('clearing the coast: the plain board, and the War Table\'s saved map is left alone', async () => {
+      await fresh();
+      await page.evaluate(() => WT_STORE.set('warMap', { dataUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', key: 'older', name: 'older.png' }));
+      await open(page, defence());
+      await page.click('[data-test=wt-clear-map]');
+      assert(/Take The Ironbow coast off the War Table/.test(await page.textContent('.tsi-modal')), await page.textContent('.tsi-modal'));
+      await confirmModal(page, true);
+      equal(await page.evaluate(() => T.map()), { key: null, name: '', preset: false, shown: false, groundKey: null });
+      equal(await page.evaluate(() => WT_STORE.get('warMap').key), 'older');
+      /* While deploying, and during a paused battle. */
+      await fresh();
+      await page.evaluate(() => WT_STORE.set('warMap', { dataUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', key: 'older', name: 'older.png' }));
+      await open(page, defence());
+      await page.click('[data-test=wt-begin-deploy]');
+      await startBattle(page);
+      await page.click('[data-test=wt-dm-pause]');
+      await page.click('[data-test=wt-clear-map]');
+      await confirmModal(page, true);
+      equal((await bat(page)).ground.mapKey, 'none');
+      equal((await page.evaluate(() => T.board())).rows, 22, 'the same squares');
+      equal(await page.evaluate(() => WT_STORE.get('warMap').key), 'older');
+    });
+    await check('the coast\'s picture can\'t be loaded: the plain board, with its squares and terrain, and a note', async () => {
+      await fresh();
+      const before = page.errors.length;
+      await open(page, defence('clear', 'presetMap: presetOf(\'defend_coast\', { src: \'tools/bastion/assets/war/no-such-coast.jpg\' })'));
+      await page.waitForFunction(() => document.querySelector('[data-test=wt-map]').hidden);
+      assert(await vis(page, 'wt-map-broken'), 'the note');
+      assert(/The picture of The Ironbow coast couldn't be loaded \(tools\/bastion\/assets\/war\/no-such-coast\.jpg\)/.test(await txt(page, 'wt-map-broken')));
+      assert(!(await vis(page, 'wt-prompt')), 'not the "No battle map yet" prompt as well');
+      equal([(await page.evaluate(() => T.board())).cols, (await page.evaluate(() => T.board())).rows], [22, 22]);
+      equal((await page.evaluate(() => T.terrain())).cells, await page.evaluate(() => TSI_DATA.bastionWar.presetMaps.defend_coast.cells));
+      await page.click('[data-test=wt-begin-deploy]');
+      equal((await bat(page)).ground.mapKey, 'preset:defend_coast');
+      assert(await vis(page, 'wt-map-broken'), 'still said while deploying');
+      /* The missing file's own message from the browser is expected. */
+      page.errors.splice(before).forEach(e => assert(/no-such-coast\.jpg|ERR_FILE_NOT_FOUND/.test(e), 'unexpected: ' + e));
+    });
+    await check('a defence\'s briefing: keep the enemy off your depot, or break them', async () => {
+      await fresh();
+      await open(page, defence('cold_rain'));
+      await page.click('[data-test=wt-briefing]');
+      await page.waitForSelector('[data-test=wt-briefing]');
+      assert(/Keep the enemy off your supply depot/.test(await txt(page, 'wt-brief-goal')));
+      assert(/Rainstorm: ranged attacks −2/.test(await txt(page, 'wt-brief-conditions')));
+      await confirmModal(page, true);
+    });
+    await check('no errors', async () => equal(page.errors, []));
+    await page.context().close();
+
+    for (const size of ['laptop', 'laptopFull', 'tv']) {
+      await check(size + ': the coast in the rain fits, with the Weather button in the toolbar, in setup, deployment, battle and paused', async () => {
+        const p2 = await newPage(browser, size);
+        await p2.evaluate(x => { window.T = openTable((0, eval)('(' + x + ')')); }, defence('cold_rain'));
+        await p2.waitForSelector('[data-test=wt-root]');
+        await p2.waitForFunction(() => document.querySelector('[data-test=wt-map]').naturalWidth > 0);
+        const sels = HEAD.concat(FOOT).concat(['[data-test=wt-weather-toggle]', '[data-test=wt-briefing]']);
+        await layoutOk(p2, sels);
+        assert(await vis(p2, 'wt-weather-toggle'));
+        await p2.screenshot({ path: path.join(SHOTS, 'wt-oct4-' + size + '-1setup.png') });
+        await p2.click('[data-test=wt-begin-deploy]');
+        await layoutOk(p2, sels);
+        assert(await vis(p2, 'wt-dm-enemy') && await vis(p2, 'wt-weather-toggle'), 'the DM button and Weather both in view');
+        await p2.screenshot({ path: path.join(SHOTS, 'wt-oct4-' + size + '-2deploy.png') });
+        await startBattle(p2);
+        await layoutOk(p2, sels);
+        await p2.screenshot({ path: path.join(SHOTS, 'wt-oct4-' + size + '-3battle.png') });
+        await p2.click('[data-test=wt-dm-pause]');
+        await layoutOk(p2, sels.concat(['[data-test=wt-banner]']));
+        const head = await p2.$eval('.tsi-bas-wt-toolbar', n => n.getBoundingClientRect().height);
+        assert(head < 100, 'the toolbar stays within two rows: ' + head);
+        const f = await film(p2);
+        const frame = await p2.$eval('.tsi-bas-wt-frame', n => { const r = n.getBoundingClientRect(); return [r.left, r.top, r.width, r.height].map(Math.round); });
+        equal(f.rect, frame, 'the film over the board');
+        equal(p2.errors, []);
+        await p2.context().close();
+      });
+    }
+  }
+
   await browser.close();
   const bad = results.filter(r => !r.ok);
   console.log('\n' + (results.length - bad.length) + ' of ' + results.length + ' checks passed');
