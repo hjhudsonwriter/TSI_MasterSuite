@@ -80,7 +80,7 @@ Defenders are individual people, while a Levy Infantry regiment is 150 soldiers.
 
 In the Banner & War Council panel you choose:
 - the **target clan**;
-- the **objective**: Raid, Skirmish, Defend Bastion or Seize Outpost;
+- the **objective**: Raid, Skirmish or Seize Outpost (Defend Bastion isn't one you choose: it comes to you, as an event, when a Clan you're at war with attacks; see Being at war, below);
 - the **enemy force** you're going after: a small local force, an established local force or a major force;
 - the forces you commit.
 
@@ -116,6 +116,31 @@ Each clan's army is built from its own mix of troops:
 
 These are proposed directions, for you to change. Enemy units use the same sizes as yours. Slade's colours (a white stallion on teal) are the only established ones, so the other clans are shown in a neutral enemy style. Every enemy token carries a small pennant, and every enemy unit's name starts with its clan's ("Bacca Line Infantry 2"), so the log always says whose unit it is.
 
+### Being at war
+**Queue War Action declares war** on the target Clan, or renews the war if you're already at war with it. It asks first. Declaring war costs you with that Clan at once, by the Battle Value of the army you commit:
+
+| Your army | Honour & Respect | Political Capital |
+|---|---:|---:|
+| Under 20 Battle Value | −3 | −30 |
+| 20 to 39 | −4 | −40 |
+| 40 or more | −5 | −50 |
+
+Honour & Respect stays within −5 to +5, and Political Capital within −100 to +100. The War Turn form shows the cost before you queue.
+
+While you're at war, an **At War** tag appears beside that Clan's name wherever it shows in the Bastion.
+
+**Peace:** a war ends by itself after **6 Bastion turns** with no War Action or Defend Bastion battle between you. The DM can also end it early with **Make peace** in the War Council, though not while a war order or a battle with that Clan is still waiting.
+
+### The Defend Bastion event
+While you're at war, every **Advance Bastion Turn** rolls a d6 for each Clan you're at war with. On a 1, that Clan attacks, at most once a turn. "Sound the horns! Clan Bacca warships are approaching! Defend the Ironbow!"
+- **Your defenders:** every force free at the Bastion stands to defend it: defenders, Lieutenants, regiments and beasts not committed elsewhere or recovering.
+- **The attackers:** an army from that Clan's roster, its size rolled on a d6: 1–2 a small local force, 3–5 an established local force, 6 a major force.
+- **The rolls and the battle:** the Weather, Morale and Luck rolls, then the War Table, on the Ironbow coast map with its terrain already painted. The objective is Defend Bastion: keep them off your supply depot, or break their army.
+- **There's no Call off:** you can't refuse an attack. You can press Later and fight it from the War Council when you're ready.
+- **Winning:** the usual Defend Bastion rewards.
+- **Losing, or withdrawing:** you lose 1d10 × 5% (5% to 50%) of your treasury. 1d4 of your built facilities, chosen at random, are **Under Repair** for 2 Bastion turns: they take no orders, and orders already running there wait until the repairs are done.
+- **If nobody is free to defend,** the attack succeeds at once, with the same losses.
+
 ## 3. Before the battle
 
 The opening rolls are Weather (DC 12), Morale (DC 12, plus 4 in a snowstorm, 2 in a rainstorm, 3 in a heatwave) and Luck (DC 10). They now matter all battle:
@@ -125,6 +150,8 @@ The opening rolls are Weather (DC 12), Morale (DC 12, plus 4 in a snowstorm, 2 i
 | **Weather** | Snowstorm: every unit moves 1 less (at least 1). Rainstorm: ranged attacks −2. Heatwave: Resolve checks −1. Both armies are affected; the Hardy trait ignores it. |
 | **Morale** | High: +2 on your units' Resolve checks all battle. Low: −2. |
 | **Luck** | +1 or −1 on all your attack rolls. It also decides who acts first in round 1: you if Luck passed, the enemy if not. |
+
+**On the War Table** the weather's film (snow, rain or heat haze) plays over the battlefield for atmosphere. It's for show only, and the **Weather** button turns it off and on.
 
 **Call off** is still there until the first unit acts. Calling off keeps the mission's enemy army and opening rolls, so you can't reroll bad weather by calling off and trying again.
 
