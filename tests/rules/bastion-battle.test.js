@@ -1641,7 +1641,8 @@
     t.equal(b.result.reason, 'Your army broke: 60% of its Battle Value was Routed or Defeated, and it withdrew.');
   });
 
-  test('the enemy breaking wins a skirmish at once; in a raid it withdraws and the raid goes on', function (t) {
+  test('breaking the enemy army wins at once, whatever the objective: what is left of it flees the field', function (t) {
+    /* Harry (4 October 2026): he destroyed every enemy unit in a Seize Outpost and still lost, for not holding the outpost twice. */
     var sk = fight(make([U('p1', 'line')], [U('e1', 'line')]), { p1: [10, 8], e1: [10, 7] });
     BR.unitById(sk, 'e1').cohesion = 1;
     t.equal(act(t, sk, 'p1', 'advance', { targetId: 'e1', d20: 12 }).result.outcome, 'victory');
@@ -1650,30 +1651,29 @@
     ['e1', 'e2'].forEach(function (id) { var u = BR.unitById(raid, id); u.status = 'defeated'; u.pos = null; });
     BR.unitById(raid, 'e3').cohesion = 1;
     var res = act(t, raid, 'p1', 'advance', { targetId: 'e3', d20: 12 });
-    t.equal(res.result, null);
-    t.equal(raid.phase, 'battle');
-    t.same(['e4', 'e5'].map(function (id) { var u = BR.unitById(raid, id); return [u.pos, u.withdrawn, u.status]; }), [[null, true, 'steady'], [null, true, 'steady']]);
-    t.equal(raid.turnSide, 'player', 'only your forces are left to act');
-    t.ok(BR.canEndEarly(raid));
-  });
-
-  test('the enemy breaking wins Defend Bastion at once; in Seize Outpost it withdraws and you still have to hold the outpost', function (t) {
+    t.equal(res.result.outcome, 'victory', 'a raid is won with no supplies carried off yet');
+    t.equal(raid.objective.extracted, 0);
+    t.ok(/fled the field, leaving the supplies to you\./.test(raid.result.reason), raid.result.reason);
+    t.same(['e4', 'e5'].map(function (id) { var u = BR.unitById(raid, id); return [u.pos, u.withdrawn, u.status]; }), [[null, true, 'steady'], [null, true, 'steady']], 'the rest fled');
+    var so = fight(make([U('p1', 'line'), U('p2', 'line')], [U('e1', 'line'), U('e2', 'line')], { objective: 'seize_outpost' }), { p1: [10, 6], p2: [3, 10], e1: [10, 5], e2: [20, 0] });
+    var e2 = BR.unitById(so, 'e2'); e2.status = 'defeated'; e2.pos = null;
+    BR.unitById(so, 'e1').cohesion = 1;
+    t.equal(act(t, so, 'p1', 'advance', { targetId: 'e1', d20: 12 }).result.outcome, 'victory', 'the outpost needn\'t be held first');
+    t.equal(so.objective.held.player, 0);
+    t.ok(/leaving the outpost to you\./.test(so.result.reason), so.result.reason);
     var d = fight(make([U('p1', 'line')], [U('e1', 'line')], { objective: 'defend' }), { p1: [10, 8], e1: [10, 7] });
     BR.unitById(d, 'e1').cohesion = 1;
     t.equal(act(t, d, 'p1', 'advance', { targetId: 'e1', d20: 12 }).result.outcome, 'victory');
     t.ok(d.result.broken.enemy);
-    var so = fight(make([U('p1', 'line'), U('p2', 'line')], [U('e1', 'line'), U('e2', 'line')], { objective: 'seize_outpost' }), { p1: [10, 4], p2: [3, 10], e1: [10, 3], e2: [20, 0] });
-    var e2 = BR.unitById(so, 'e2'); e2.status = 'defeated'; e2.pos = null;
-    BR.unitById(so, 'e1').cohesion = 1;
-    t.equal(act(t, so, 'p1', 'advance', { targetId: 'e1', d20: 12 }).result, null, 'no win yet');
-    t.equal(so.phase, 'battle');
-    t.ok(so.objective.zone && so.objective.zone.owner === 'enemy');
-    BR.unitById(so, 'p1').pos = { c: so.objective.zone.c0, r: so.objective.zone.r0 };
-    holdRound(t, so);
-    t.equal(so.phase, 'battle', 'held at one round end: not yet');
-    holdRound(t, so);
-    t.equal(so.phase, 'over');
-    t.equal(so.result.outcome, 'victory', 'held at two round ends in a row');
+  });
+
+  test('your own army breaking first still loses, whatever the objective', function (t) {
+    ['raid', 'seize_outpost', 'defend', 'skirmish'].forEach(function (id) {
+      var b = fight(make([U('p1', 'line'), U('p2', 'line')], [U('e1', 'line'), U('e2', 'line')], { objective: id }), { p1: [10, 8], p2: [3, 10], e1: [10, 7], e2: [20, 0] }, { turn: 'enemy' });
+      var p2 = BR.unitById(b, 'p2'); p2.status = 'defeated'; p2.pos = null;
+      BR.unitById(b, 'p1').cohesion = 1;
+      t.equal(act(t, b, 'e1', 'advance', { targetId: 'p1', d20: 12 }).result.outcome, 'defeat', id);
+    });
   });
 
   test('a raid already won by two markers home stays a victory even if your army breaks', function (t) {

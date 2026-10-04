@@ -710,7 +710,7 @@ async function enemyTurn(page) {
       await page.evaluate(x => { WT_BATTLE = x; }, b);
       await open(page);
       assert((await txt(page, 'wt-zone')).includes('The outpost'));
-      assert((await txt(page, 'wt-objective')).includes('Seize Outpost: hold it at 2 round ends in a row by the end of round 6 · held 0 round ends (2 needed)'), await txt(page, 'wt-objective'));
+      assert((await txt(page, 'wt-objective')).includes('Seize Outpost: hold it at 2 round ends in a row by the end of round 6, or break the enemy · held 0 round ends (2 needed)'), await txt(page, 'wt-objective'));
       equal(await txt(page, 'wt-turn'), 'The enemy\'s turn');
       await enemyTurn(page);
       await page.evaluate(() => T.close());

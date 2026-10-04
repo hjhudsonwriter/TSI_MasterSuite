@@ -413,13 +413,13 @@
 
   test('the objective and its progress, with the deadline', function (t) {
     var r = battle('raid');
-    t.equal(W.objectiveText(r, D), 'Raid: carry off 2 of 3 supplies by the end of round 6 · 0 carried off');
+    t.equal(W.objectiveText(r, D), 'Raid: carry off 2 of 3 supplies by the end of round 6, or break the enemy · 0 carried off');
     r.objective.extracted = 1;
     r.objective.markers[0].state = 'carried';
-    t.equal(W.objectiveText(r, D), 'Raid: carry off 2 of 3 supplies by the end of round 6 · 1 carried off, 1 on the way');
+    t.equal(W.objectiveText(r, D), 'Raid: carry off 2 of 3 supplies by the end of round 6, or break the enemy · 1 carried off, 1 on the way');
     var s = battle('seize_outpost');
     s.objective.held.player = 1;
-    t.equal(W.objectiveText(s, D), 'Seize Outpost: hold it at 2 round ends in a row by the end of round 6 · held 1 round end (2 needed)');
+    t.equal(W.objectiveText(s, D), 'Seize Outpost: hold it at 2 round ends in a row by the end of round 6, or break the enemy · held 1 round end (2 needed)');
     var d = battle('defend');
     t.equal(W.objectiveText(d, D), 'Defend Bastion: keep the enemy off your supply depot and your army unbroken by the end of round 6, or break the enemy · the enemy hasn\'t held it');
     d.objective.held.enemy = 1;

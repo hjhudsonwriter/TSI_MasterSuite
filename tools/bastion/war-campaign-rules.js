@@ -1224,7 +1224,9 @@
     var gp = 0, pc = 0;
     if (res !== 'none') {
       pc = res === 'success' ? o.pc[0] : o.pc[1];
-      if (ma.objective === 'raid') gp = extracted > 0 ? Math.round(o.gp[0] * Math.min(extracted, need) / need) : o.gp[1];
+      /* A won raid pays in full (the enemy broke and fled, or the supplies
+         came home); otherwise the gold follows the supplies carried off. */
+      if (ma.objective === 'raid') gp = res === 'success' ? o.gp[0] : extracted > 0 ? Math.round(o.gp[0] * Math.min(extracted, need) / need) : o.gp[1];
       else gp = res === 'success' ? o.gp[0] : o.gp[1];
     }
     var type = isObj(s.organization) ? s.organization.type : 'unsworn';

@@ -182,10 +182,10 @@
 
     /* ---------- Missions: objectives, enemy strength, victory ---------- */
     objectives: {
-      raid: { name: 'Raid', mult: 0.85, markers: 3, need: 2, markerCols: [0.2, 0.5, 0.8], rule: 'Secure and extract two of three supply markers through your starting edge by the end of round 6. Collecting a marker takes Interact.' },
+      raid: { name: 'Raid', mult: 0.85, markers: 3, need: 2, markerCols: [0.2, 0.5, 0.8], rule: 'Secure and extract two of three supply markers through your starting edge by the end of round 6. Collecting a marker takes Interact. Breaking the enemy army wins at once.' },
       skirmish: { name: 'Skirmish', mult: 1.0, rule: 'Break the opposing army. At the end of round 6, the side that has lost the smaller share of its starting Battle Value wins; equal shares are a draw.' },
       defend: { name: 'Defend Bastion', mult: 1.1, zone: { w: 4, h: 2 }, holdRounds: 2, rule: 'Stop the enemy holding your supply depot at two round ends in a row, and keep your army unbroken through round 6. Breaking the enemy army wins at once.' },
-      seize_outpost: { name: 'Seize Outpost', mult: 1.2, zone: { w: 4, h: 2 }, holdRounds: 2, rule: 'Hold the outpost with a Steady unit, with no enemy unit in it, at two round ends in a row before the end of round 6.' }
+      seize_outpost: { name: 'Seize Outpost', mult: 1.2, zone: { w: 4, h: 2 }, holdRounds: 2, rule: 'Hold the outpost with a Steady unit, with no enemy unit in it, at two round ends in a row before the end of round 6. Breaking the enemy army wins at once.' }
     },
     tiers: [
       { id: 'small', name: 'Small local force', bv: 18 },

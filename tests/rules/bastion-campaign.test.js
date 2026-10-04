@@ -1165,6 +1165,12 @@
     t.same([none.gp, none.pc, none.honour], [-50, 8, -4]);
   });
 
+  test('a raid won by breaking the enemy pays the raid\'s full gold, with no supplies carried off', function (t) {
+    var s = army();
+    var won = R.warRewards(s, data, { objective: 'raid', targetName: 'Bacca' }, { result: { extracted: 0 } }, 'victory');
+    t.same([won.gp, won.pc, won.honour], [75, -10, 6]);
+  });
+
   group('Bastion war campaign: recovery and saving');
 
   test('each Bastion turn, anyone whose recovery is over is fit again', function (t) {

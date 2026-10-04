@@ -593,12 +593,12 @@
         var need = num(def.need, 2);
         var markers = o.markers || [];
         var carried = markers.filter(function (m) { return m.state === 'carried'; }).length;
-        return def.name + ': carry off ' + need + ' of ' + markers.length + ' supplies ' + last + ' · ' +
+        return def.name + ': carry off ' + need + ' of ' + markers.length + ' supplies ' + last + ', or break the enemy · ' +
           (o.extracted || 0) + ' carried off' + (carried ? ', ' + carried + ' on the way' : '');
       }
       if (o.id === 'seize_outpost') {
         var needS = num(def.holdRounds, 2);
-        return def.name + ': hold it at ' + needS + ' round ends in a row ' + last + ' · held ' +
+        return def.name + ': hold it at ' + needS + ' round ends in a row ' + last + ', or break the enemy · held ' +
           plural((o.held && o.held.player) || 0, 'round end') + ' (' + needS + ' needed)';
       }
       if (o.id === 'defend') {
@@ -760,7 +760,7 @@
         goal.push('Carry off ' + need + ' of the ' + count + ' supply markers (the crates on the enemy\'s side) by the end of round ' + rounds + '.');
         goal.push('Move a unit onto a marker. On a later activation, give it Interact to pick the marker up.');
         goal.push('Bring it back to your own edge, the bottom row of the board: it\'s carried off when the unit ends a move there. A unit carries one marker at a time, and drops it if it routs or is defeated.');
-        goal.push('Breaking the enemy army doesn\'t win a raid on its own: you still need the supplies.');
+        goal.push('Or break the enemy army (' + enemyBreak + ') to win at once: it flees and leaves the supplies to you.');
         lose.push('Round ' + rounds + ' ends with fewer than ' + need + ' carried off.');
       } else if (o.id === 'defend') {
         var hd = num(def.holdRounds, 2);
@@ -771,7 +771,7 @@
         var hs = num(def.holdRounds, 2);
         goal.push('Take the outpost (the dashed box on the enemy\'s side).');
         goal.push('Hold it at ' + hs + ' round ends in a row, by the end of round ' + rounds + ': a Steady unit of yours inside, and no enemy unit inside.');
-        goal.push('Breaking the enemy army doesn\'t win on its own: you still have to hold the outpost.');
+        goal.push('Or break the enemy army (' + enemyBreak + ') to win at once: it flees and leaves the outpost to you.');
         lose.push('Round ' + rounds + ' ends before you\'ve held it at ' + hs + ' round ends in a row.');
       } else {
         goal.push('Break the enemy army: it breaks when ' + breakPct + '% of its Battle Value has been routed or defeated.');

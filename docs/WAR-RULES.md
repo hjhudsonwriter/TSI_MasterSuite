@@ -251,17 +251,14 @@ It only knows what you could see on the board; it never peeks at your dice.
 | Objective | How you win |
 |---|---|
 | **Skirmish** | Break the opposing army. At the end of round 6, the side that has lost the smaller share of its starting Battle Value wins; equal shares are a draw. |
-| **Raid** | Collect and carry off two of the three supply markers through your own starting edge (the bottom row) by the end of round 6. Collecting one takes Interact; a unit carries one at a time, and drops it if it routs or falls. |
+| **Raid** | Collect and carry off two of the three supply markers through your own starting edge (the bottom row) by the end of round 6, or break the enemy army. Collecting one takes Interact; a unit carries one at a time, and drops it if it routs or falls. |
 | **Defend Bastion** | Don't let the enemy hold your supply depot at two round ends in a row, and keep your army unbroken through round 6, or break the enemy army first. |
-| **Seize Outpost** | Hold the outpost with a Steady unit, and no enemy unit in it, at two round ends in a row before the end of round 6. |
+| **Seize Outpost** | Hold the outpost with a Steady unit, and no enemy unit in it, at two round ends in a row before the end of round 6, or break the enemy army. |
 
 **Holding a zone:** a side controls a zone when it has a Steady fighting unit inside and the other side has no fighting unit inside. Lieutenants and support groups can't hold a zone alone.
 
-**Breaking:** an army withdraws when 60% of its starting Battle Value has Routed or been Defeated, counted from the starting roster, not from the tokens left.
-- In a **Skirmish**, breaking the enemy wins.
-- In **Defend Bastion**, breaking the enemy also wins at once; you don't have to hold out to round 6.
-- In a **Raid** it doesn't bring the supplies home by itself; what's left of the enemy leaves the field, but you still have to carry the supplies off.
-- In **Seize Outpost**, what's left of the enemy leaves the field, but the battle goes on: you still have to hold the outpost with a Steady unit at two round ends in a row before the end of round 6.
+**Breaking:** an army breaks when 60% of its starting Battle Value has Routed or been Defeated, counted from the starting roster, not from the tokens left.
+- **Breaking the enemy wins at once, whatever the objective** (Harry's ruling, 4 October 2026). What's left of the enemy flees the field. In a Raid that leaves the supplies to you, and the raid pays its full gold. In Seize Outpost it leaves the outpost to you.
 - If your own army breaks first, you lose at once, whatever the objective.
 
 **Withdraw** replaces Call off once the battle has begun. It shows the likely consequences first. The battle then ends as a withdrawal and the real losses are counted.
@@ -306,7 +303,7 @@ The rewards follow the objective, the losses follow the battle, and the Bastion'
 | Seize Outpost | +60 gp, −12 | −60 gp, +10 |
 
 - **Who's affected:** Political Capital changes with the target clan. A Clan's Honour goes +6 on a victory and −8 on a defeat. A Brigade's Trusted Clients change as before.
-- **A raid's gold** follows the supplies actually carried off: half for one, all for two. With none, it's the defeat's −50.
+- **A raid's gold:** a won raid pays in full, whether the supplies came home or the enemy broke and fled. Otherwise the gold follows the supplies actually carried off: half for one; with none, it's the defeat's −50.
 - **A draw** changes nothing.
 - **A withdrawal** counts as a defeat for gold and Political Capital, but costs only −4 Clan Honour. In a Raid, the gold still follows the supplies already carried off: with one home, a withdrawal pays +38 gp (half the victory's gold), and the −50 gp applies only if none were. (Two home wins the raid at once, so there's nothing to withdraw from.)
 - **A raid won with heavy losses** is still a won raid with heavy losses.

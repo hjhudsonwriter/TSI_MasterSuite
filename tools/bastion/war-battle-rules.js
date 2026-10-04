@@ -1743,8 +1743,8 @@
     addLog(battle, null, OUTCOME_WORDS[outcome] + '. ' + reason, 'result');
     return battle.result;
   }
-  /* The enemy army has broken in a raid or at the outpost: what's left of it
-     withdraws and the battle goes on without it. */
+  /* The enemy army has broken: what's left of it flees the field (and the
+     battle is won: checkResult). */
   function enemyWithdraws(battle) {
     var gone = battle.units.filter(function (u) { return u.side === 'enemy' && BR.onField(u); });
     if (!gone.length) return;
@@ -1754,7 +1754,7 @@
       u.heldFast = false;
       u.withdrawn = true;
     });
-    addLog(battle, 'enemy', 'The enemy army breaks: what is left of it withdraws from the field.', 'withdraw');
+    addLog(battle, 'enemy', 'The enemy army breaks: what is left of it flees the field.', 'withdraw');
   }
   function lostLine(battle) {
     var p = BR.armyLoss(battle, 'player');
@@ -1772,10 +1772,14 @@
     if (o.id === 'raid' && o.extracted >= raidNeed()) return finish(battle, 'victory', 'You brought ' + o.extracted + ' supply markers home.');
     var p = BR.armyLoss(battle, 'player');
     if (p.broken) return finish(battle, 'defeat', 'Your army broke: ' + p.pct + '% of its Battle Value was Routed or Defeated, and it withdrew.');
+    /* Breaking the enemy army wins at once, whatever the objective (Harry,
+       4 October 2026): what's left of it flees the field, leaving the
+       supplies, the outpost or your depot to you. */
     var e = BR.armyLoss(battle, 'enemy');
     if (e.broken) {
-      if (o.id === 'skirmish' || o.id === 'defend') return finish(battle, 'victory', 'The enemy army broke (' + e.pct + '% of its Battle Value Routed or Defeated) and withdrew.');
       enemyWithdraws(battle);
+      var left = { raid: ', leaving the supplies to you', seize_outpost: ', leaving the outpost to you', defend: ', leaving your supply depot safe' }[o.id] || '';
+      return finish(battle, 'victory', 'The enemy army broke (' + e.pct + '% of its Battle Value Routed or Defeated) and fled the field' + left + '.');
     }
     if (atRoundEnd === true) {
       if (o.id === 'seize_outpost' && o.held.player >= holdNeed(o.id)) return finish(battle, 'victory', 'You held the outpost at ' + o.held.player + ' round ends in a row.');
