@@ -519,6 +519,52 @@
 }
 .tsi-tool--bastion .tsi-bas-ma-chip b,
 .tsi-page--bastion .tsi-bas-ma-chip b { color: var(--tsi-text); font-weight: 600; }
+/* An attack on the Bastion waiting: a crimson edge. */
+.tsi-tool--bastion .tsi-bas-ma--defence { border-color: rgba(255, 122, 122, .55); box-shadow: inset 3px 0 0 var(--tsi-crimson); }
+
+/* ---------- Wars (Harry, 4 October 2026) ---------- */
+/* What queueing a War Action costs: beside Queue War Action. */
+.tsi-tool--bastion .tsi-bas-war-cost { max-width: 440px; font-size: 15px; line-height: 1.35; color: var(--tsi-text-muted); text-align: right; }
+.tsi-tool--bastion .tsi-bas-war-cost b { color: var(--tsi-danger); font-weight: 700; }
+/* The Clans you're at war with, and Make peace. */
+.tsi-tool--bastion .tsi-bas-wars-box { border-color: rgba(255, 122, 122, .45); margin-bottom: 12px; }
+.tsi-tool--bastion .tsi-bas-war-row__why { font-size: 15px; line-height: 1.3; color: var(--tsi-warn); }
+/* "At War", after a Clan's name wherever it shows (the page, its pop-ups and notices). */
+.tsi-tool--bastion .tsi-bas-atwar,
+.tsi-page--bastion .tsi-bas-atwar {
+  display: inline-block;
+  margin: 0 .15em 0 .4em;
+  padding: 2px 7px 1px;
+  border: 1px solid rgba(255, 140, 140, .6);
+  border-radius: var(--tsi-radius-pill);
+  background: var(--tsi-crimson-fill);
+  color: #fff;
+  font: 600 10px/1.3 var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-label);
+  text-transform: uppercase;
+  white-space: nowrap;
+  vertical-align: .15em;
+  text-shadow: none;
+}
+/* In the narrow Political Capital column, the tag goes under the name. */
+.tsi-tool--bastion .tsi-bas-meter__name { flex-wrap: wrap; row-gap: 3px; }
+.tsi-tool--bastion .tsi-bas-meter__name .tsi-bas-atwar { margin: 0; }
+/* Declare war on a Clan? (Queue War Action asks first.) */
+.tsi-page--bastion .tsi-bas-modal--war { width: min(680px, 96vw); }
+.tsi-page--bastion .tsi-bas-declare p { margin: 0 0 10px; }
+.tsi-page--bastion .tsi-bas-declare .tsi-bas-res-list { margin-bottom: 10px; }
+.tsi-page--bastion .tsi-bas-declare .tsi-bas-res-list b { color: var(--tsi-danger); }
+
+/* ---------- Under Repair (after a lost Defend Bastion) ---------- */
+.tsi-tool--bastion .tsi-bas-repair-label { color: var(--tsi-danger); font-size: .85em; letter-spacing: var(--tsi-track-label); white-space: nowrap; }
+.tsi-tool--bastion .tsi-bas-repair-text { color: var(--tsi-danger); }
+.tsi-tool--bastion .tsi-bas-fac.tsi-bas-fac--repair { border-color: rgba(255, 122, 122, .5); }
+.tsi-tool--bastion .tsi-bas-fac--repair .tsi-bas-fac__img { filter: grayscale(.55) brightness(.7) sepia(.25); }
+.tsi-tool--bastion .tsi-bas-fac__repair { margin-top: 2px; font-size: 15px; line-height: 1.3; color: #ffd0c8; }
+.tsi-tool--bastion .tsi-bas-fac__tag.tsi-bas-fac__tag--repair { border-color: rgba(255, 122, 122, .6); color: var(--tsi-danger); }
+.tsi-tool--bastion .tsi-bas-map__overlay--repair { filter: grayscale(.7) brightness(.55) sepia(.35); }
+.tsi-tool--bastion .tsi-bas-map__repairs { margin: 8px 0 4px; font-size: 15px; line-height: 1.35; color: #ffd0c8; }
+.tsi-tool--bastion .tsi-bas-map__repairs b { color: var(--tsi-danger); font: 600 12px var(--tsi-font-display); letter-spacing: var(--tsi-track-label); text-transform: uppercase; }
 
 
 /* ---------- Diplomacy & Trade (the Hall's painting, dimmed, behind) ---------- */
@@ -850,6 +896,25 @@
 .tsi-page--bastion .tsi-bas-ma-pop__roll.is-pass { color: var(--tsi-ok); border-color: rgba(70, 230, 179, .5); }
 .tsi-page--bastion .tsi-bas-ma-pop__roll.is-fail { color: var(--tsi-danger); border-color: rgba(255, 122, 122, .5); }
 .tsi-page--bastion .tsi-bas-ma-pop__text { margin: 0; font-size: var(--tsi-fs-body); line-height: var(--tsi-lh-body); white-space: pre-line; }
+/* "Sound the horns!": a Clan at war attacks the Bastion (crossed swords, a crimson edge). */
+.tsi-page--bastion .tsi-bas-modal--attack { border-color: rgba(255, 122, 122, .7); box-shadow: 0 0 0 1px rgba(177, 18, 42, .6), 0 0 30px rgba(177, 18, 42, .45), var(--tsi-shadow-modal); }
+.tsi-page--bastion .tsi-bas-modal--attack .tsi-modal__title { font-size: 20px; color: #ffd6cf; }
+.tsi-page--bastion .tsi-bas-attack__icon { display: flex; justify-content: center; margin: 2px 0 2px; }
+.tsi-page--bastion .tsi-bas-attack__swords { width: 84px; height: 84px; color: var(--tsi-gold); filter: drop-shadow(0 0 10px rgba(177, 18, 42, .85)); }
+.tsi-page--bastion .tsi-bas-attack__blade { fill: rgba(245, 241, 232, .9); stroke: currentColor; stroke-width: 1.5; stroke-linejoin: round; }
+.tsi-page--bastion .tsi-bas-attack__hilt { fill: none; stroke: currentColor; stroke-width: 4; stroke-linecap: round; }
+.tsi-page--bastion .tsi-bas-attack__pommel { fill: currentColor; }
+.tsi-page--bastion .tsi-bas-attack__headline { text-align: center; color: #ffe2b0; }
+.tsi-page--bastion .tsi-bas-attack__line { font-size: var(--tsi-fs-body-sm); }
+/* The Watchtower's Patrol: the defenders' Advantage, a reminder for the DM. */
+.tsi-page--bastion .tsi-bas-attack .tsi-bas-attack__patrol { color: var(--tsi-gold); }
+@media (prefers-reduced-motion: no-preference) {
+  .tsi-page--bastion .tsi-bas-attack__swords { animation: tsi-bas-horns 2.4s ease-in-out infinite; }
+  @keyframes tsi-bas-horns {
+    0%, 100% { filter: drop-shadow(0 0 8px rgba(177, 18, 42, .7)); }
+    50% { filter: drop-shadow(0 0 18px rgba(255, 90, 60, .95)); }
+  }
+}
 .tsi-page--bastion .tsi-bas-res-top { margin-bottom: 10px; }
 .tsi-page--bastion .tsi-bas-res-action { font: 700 18px/1.2 var(--tsi-font-display); }
 .tsi-page--bastion .tsi-bas-res-target { margin-top: 2px; }
@@ -998,6 +1063,7 @@
   .tsi-tool--bastion .tsi-bas-war-plan,
   .tsi-tool--bastion .tsi-bas-tool-grid { grid-template-columns: minmax(0, 1fr); }
   .tsi-tool--bastion .tsi-bas-war-plan__side { align-items: flex-start; }
+  .tsi-tool--bastion .tsi-bas-war-cost { text-align: left; }
   .tsi-tool--bastion .tsi-bas-clan-grid { grid-template-columns: minmax(0, 1fr); }
   .tsi-tool--bastion .tsi-bas-clan-row { grid-template-columns: 1fr 1fr; }
   .tsi-tool--bastion .tsi-bas-wh__head { display: none; }
