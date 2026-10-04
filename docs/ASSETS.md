@@ -380,3 +380,11 @@ Byte-for-byte copies, stored once:
 | `assets/workshop.png` | `assets/facilities/workshop.png` | `tools/bastion/assets/facilities/workshop.png` |
 
 Not copied: `build_compendium.py` and the `data/` JSON files are code and data, not media. The data is in `tools/bastion/data/`, word for word.
+
+### New art from Harry (4 October 2026)
+
+Not from an old repo: Harry supplied this picture himself for the Bastion's Defend Bastion battles.
+
+| New path | Size | Used |
+|---|---|---|
+| `tools/bastion/assets/war/defend-bastion-coast.jpg` | 371 KB, 1254 × 1254 | Yes: the War Table's battle map for the Defend Bastion event (the Ironbow coast with its pier). Its painted terrain is in `tools/bastion/data/war-units-data.js` (`presetMaps.defend_coast`). |

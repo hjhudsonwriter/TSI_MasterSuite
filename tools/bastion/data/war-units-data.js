@@ -154,12 +154,14 @@
     morale: { dc: 10, highMod: 2, lowMod: -2 },
     luck: { passMod: 1, failMod: -1 },
 
-    /* ---------- Weather in battle (both armies) ---------- */
+    /* ---------- Weather in battle (both armies) ----------
+       overlay: the Explorer's weather film, looped over the War Table's
+       battlefield while that weather holds (display only). */
     weather: {
       clear: { text: 'No effect.' },
-      white_blizzard: { moveMod: -1, text: 'Snowstorm: every unit moves 1 less (at least 1).' },
-      cold_rain: { rangedMod: -2, text: 'Rainstorm: ranged attacks −2.' },
-      sun_heatwave: { resolveMod: -1, text: 'Heatwave: Resolve checks −1.' }
+      white_blizzard: { moveMod: -1, text: 'Snowstorm: every unit moves 1 less (at least 1).', overlay: 'tools/explorer/assets/overlays/blizzard_overlay.mp4' },
+      cold_rain: { rangedMod: -2, text: 'Rainstorm: ranged attacks −2.', overlay: 'tools/explorer/assets/overlays/rain_overlay.mp4' },
+      sun_heatwave: { resolveMod: -1, text: 'Heatwave: Resolve checks −1.', overlay: 'tools/explorer/assets/overlays/sun_heat_overlay.mp4' }
     },
 
     /* ---------- Terrain (painted on the map, square by square) ----------
@@ -184,7 +186,9 @@
     objectives: {
       raid: { name: 'Raid', mult: 0.85, markers: 3, need: 2, markerCols: [0.2, 0.5, 0.8], rule: 'Secure and extract two of three supply markers through your starting edge by the end of round 6. Collecting a marker takes Interact. Breaking the enemy army wins at once.' },
       skirmish: { name: 'Skirmish', mult: 1.0, rule: 'Break the opposing army. At the end of round 6, the side that has lost the smaller share of its starting Battle Value wins; equal shares are a draw.' },
-      defend: { name: 'Defend Bastion', mult: 1.1, zone: { w: 4, h: 2 }, holdRounds: 2, rule: 'Stop the enemy holding your supply depot at two round ends in a row, and keep your army unbroken through round 6. Breaking the enemy army wins at once.' },
+      /* Not a War Action you can queue (warAction: false): it comes as the
+         Defend Bastion event, when a Clan you're at war with attacks (wars, defence below). */
+      defend: { name: 'Defend Bastion', warAction: false, mult: 1.1, zone: { w: 4, h: 2 }, holdRounds: 2, rule: 'Stop the enemy holding your supply depot at two round ends in a row, and keep your army unbroken through round 6. Breaking the enemy army wins at once.' },
       seize_outpost: { name: 'Seize Outpost', mult: 1.2, zone: { w: 4, h: 2 }, holdRounds: 2, rule: 'Hold the outpost with a Steady unit, with no enemy unit in it, at two round ends in a row before the end of round 6. Breaking the enemy army wins at once.' }
     },
     tiers: [
@@ -286,6 +290,80 @@
        on a defeat or withdrawal (one home: half the victory's gold); a
        draw changes nothing; a withdrawal otherwise counts as a defeat for
        gold and Political Capital, but costs only half the Clan Honour. */
-    rewards: { withdrawalHonour: -4, victoryHonour: 6, defeatHonour: -8 }
+    rewards: { withdrawalHonour: -4, victoryHonour: 6, defeatHonour: -8 },
+
+    /* ---------- Being at war with a Clan (Harry, 4 October 2026) ----------
+       Queueing a War Action against a Clan declares war on it (or renews the
+       war) and costs Honour & Respect and Political Capital with that Clan
+       at once, by the Battle Value of the army committed: the first row
+       whose maxBV the army is within (null: no limit). A war ends by itself
+       after quietTurns Bastion turns with no War Action or Defend Bastion
+       battle between you, or when the DM presses Make peace. While at war,
+       every Advance Bastion Turn rolls attackDie for each Clan at war: a 1
+       means it attacks your Bastion (one attack a turn at most). */
+    wars: {
+      penalties: [
+        { maxBV: 19, honourRespect: -3, politicalCapital: -30 },
+        { maxBV: 39, honourRespect: -4, politicalCapital: -40 },
+        { maxBV: null, honourRespect: -5, politicalCapital: -50 }
+      ],
+      quietTurns: 6,
+      attackDie: 6
+    },
+
+    /* ---------- The Defend Bastion event ----------
+       A Clan at war attacks: every force free at the Bastion defends it
+       (defenders, Lieutenants, regiments and beasts not committed elsewhere
+       or recovering), on the coast map below, against an army drawn up from
+       that Clan's roster for the objective 'defend', its size rolled on
+       tierDie (d6). Losing (or withdrawing) costs treasuryLoss (1d10 × 5%:
+       5% to 50% of the treasury, rounded down, in place of the usual gold)
+       and puts repairs.die (1d4) built facilities, chosen at random, Under
+       Repair for repairs.turns Bastion turns: no orders, and any already
+       running there wait. Winning uses the usual Defend Bastion rewards. */
+    defence: {
+      tierDie: [{ upTo: 2, tier: 'small' }, { upTo: 5, tier: 'established' }, { upTo: 6, tier: 'major' }],
+      treasuryLoss: { die: 10, pctPerPip: 5 },
+      repairs: { die: 4, turns: 2 },
+      map: 'defend_coast',
+      title: 'Sound the horns!',
+      text: 'Sound the horns! Clan {clan} warships are approaching! Defend the Ironbow!'
+    },
+
+    /* ---------- Battle maps that come with the suite ----------
+       src: the picture (shown with an <img>, never read into a canvas);
+       w, h: its size in pixels; cells: its painted terrain at cols × rows,
+       row by row (codes as in terrain above). The Defend Bastion event
+       opens on defend_coast: Harry's coast with the Ironbow's pier. */
+    presetMaps: {
+      defend_coast: {
+        name: 'The Ironbow coast',
+        src: 'tools/bastion/assets/war/defend-bastion-coast.jpg',
+        w: 1254, h: 1254, cols: 22, rows: 22,
+        cells:
+          'xxxxxxxxxxxxxffxxxxxxx' +
+          'rrrrrxxxxxxxxfxxxxxxxr' +
+          'rrrrrrxxxxxxrfrrxxxrrr' +
+          '...rr..rrrrrr.rrrxrrrr' +
+          '.........rrr..........' +
+          '.........rrr..........' +
+          '......................' +
+          'rrrrr.................' +
+          'rrrrrr............rrrr' +
+          'rrrrrr...........rrrrr' +
+          'rrrrrr..........rrrrrr' +
+          'rrrr........rr..rrrrrr' +
+          '...................rr.' +
+          '......................' +
+          '......................' +
+          '....rrr...............' +
+          '.....rr...............' +
+          '......................' +
+          '......................' +
+          '......................' +
+          '......................' +
+          '......................'
+      }
+    }
   };
 }());
