@@ -547,13 +547,75 @@
     var bad = JSON.parse(JSON.stringify(good));
     bad.journey = 5;
     t.ok(!R.isSave(bad));
-    bad.journey = { effects: {} };
-    t.ok(!R.isSave(bad));
+    var listy = JSON.parse(JSON.stringify(good));
+    listy.journey = { effects: {}, threads: 'x', gold: 40 };
+    t.ok(R.isSave(listy), 'a damaged list is tidied, not a reason to lose the whole journey');
+    t.same([R.fromSave(listy, D, E).journey.effects, R.fromSave(listy, D, E).journey.gold], [[], 40]);
     var messy = JSON.parse(JSON.stringify(good));
     messy.journey = { gold: 'lots', effects: [null, { id: 'e1', name: 'Rooted', untilDay: 'x' }], threads: [{ name: 'no id' }], current: { id: 'nope', step: 'start' }, tonight: { event: 'zz' } };
     t.ok(R.isSave(messy));
     var j = R.fromSave(messy, D, E).journey;
     t.same([j.gold, j.effects.length, j.effects[0].untilDay, j.threads.length, j.current, j.tonight], [0, 1, null, 0, null, null]);
+  });
+
+  test('a damaged event in progress can\'t crash the window: its values are cleaned', function (t) {
+    var saved = R.toSave(fresh('northern_province'));
+    saved.journey.current = { id: 't7', step: 'climb', vars: { failed: 'kaelen', succeeded: 7, hero: 5, stake: 'lots', adv: 'yes', heroName: 'Kaelen' }, changes: ['x', 3], ctx: { region: 'northern_province' } };
+    var s = R.fromSave(saved, D, E);
+    var c = s.journey.current;
+    t.same([c.vars.failed, c.vars.succeeded, c.vars.hero, c.vars.stake, c.vars.adv, c.changes], [[], [], undefined, undefined, false, ['x']]);
+    var v = J.view(s, E, null);
+    t.equal(v.type, 'each');
+    t.same(v.check.among, []);
+    saved.journey.current = { id: 't4', step: 'bout', round: null };
+    var s2 = R.fromSave(saved, D, E);
+    t.equal(s2.journey.current.round.n, 1, 'a contest step gets its round back');
+    t.ok(act(s2, { type: 'round', winner: 'hero', hero: 'kaelen' }), 'and the bout can go on');
+  });
+
+  test('new ids carry on above the ones in use, even if the count was lost', function (t) {
+    var saved = R.toSave(fresh());
+    saved.journey = { effects: [{ id: 'e7', name: 'Rooted', until: 'days', untilDay: 9 }], threads: [{ id: 't12', name: 'X' }] };
+    var s = R.fromSave(saved, D, E);
+    begin(s, 't1');
+    act(s, { type: 'check', result: 'success', hero: 'kaelen' });
+    t.equal(s.journey.effects[1].id, 'e13');
+  });
+
+  test('when tonight\'s camp is taken, a follow-up on its last day waits a day', function (t) {
+    var s = fresh('the_north_isle', 'the_north_isle');
+    s.travel.day = 6;
+    s.journey.tonight = { event: 'n17' };
+    s.journey.threads.push({ id: 't1', name: 'The Captain\'s Thanks', note: 'x', from: 'C12', day: 1, resolve: null, follow: { event: 'f3', scope: 'isles', mapKey: '', from: 3, to: 6 }, data: {} });
+    R.makeCamp(s, D, E, dice([0.99]));
+    t.equal(s.journey.current.id, 'n17');
+    t.same([s.journey.threads[0].follow.to, s.journey.threads[0].note], [7, 'x'], 'not dropped');
+    J.finish(s, E);
+    t.equal(J.travelRoll(s, E, ctx(s), dice([0.99])).event.id, 'f3', 'it comes the next day');
+  });
+
+  test('an event kept for later doesn\'t use up the day\'s travel roll', function (t) {
+    var s = fresh('midland_province');
+    var b = R.board(4 / 3);
+    begin(s, 't17', 'dm');
+    s.travel.nextTravelEventAtMiles = 6;
+    var drag = R.startDrag(s, b, ['kaelen'], 'kaelen');
+    var a = drag.startAxials.kaelen;
+    var p = R.axialToPixel(s.grid, a.q + 1, a.r);
+    R.place(b, R.token(s, 'kaelen'), p.x, p.y);
+    var res = R.finishMove(s, D, E, drag, b, dice([0]));
+    t.same([res.open, s.travel.travelEventDay, s.journey.rolledDay], [null, 0, 0]);
+  });
+
+  test('Reset Travel, then Skip: the day before the event moves too', function (t) {
+    var s = fresh('midland_province');
+    s.travel.day = 5;
+    s.journey.lastTravelDay = 3;
+    begin(s, 't2');
+    R.resetTravel(s);
+    J.skip(s);
+    t.equal(s.journey.lastTravelDay, -1, 'not a day in the future');
+    t.ok(J.travelRoll(s, E, ctx(s), dice([0, 0])), 'so today can still have an event');
   });
 
   test('Reset Travel moves effects, threads and follow-ups with the day', function (t) {

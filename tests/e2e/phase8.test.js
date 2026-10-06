@@ -928,6 +928,24 @@ function serve(dir) {
       equal(saved.journey.gold, before + 75);
       assert(saved.journey.log.length >= 5, saved.journey.log.length);
     });
+
+    await check('a campfire event rolled on the road waits for tonight\'s camp', async () => {
+      await page.evaluate(() => { const s = TSI.explorer.debug.state(); s.tokens.forEach(t => { t.milesUsed = 12; }); s.travel.lastWeatherDay = s.travel.day; });
+      await page.click('[data-test=roll-now]');
+      await H.clickModal(page, 'Campfire event');
+      await page.waitForTimeout(300);
+      equal(await modalOpen(page), false, 'not now');
+      const tonight = (await st(page)).journey.tonight;
+      assert(tonight && /^c\d+$/.test(tonight.event), JSON.stringify(tonight));
+      assert(/will come at tonight's camp\.$/.test(await text(page, 'notice')), await text(page, 'notice'));
+      await pause(page);
+      await page.click('[data-test=camp]');
+      await page.waitForSelector('.tsi-modal.tsi-exp-journey');
+      const j = await journeyView(page);
+      assert(/^Campfire event • /.test(j.meta) && /^C\d+$/.test(j.meta.split(' • ')[2]), j.meta);
+      equal((await st(page)).journey.current.id, tonight.event);
+      await closeAll(page);
+    });
     await H.shot(page, 'p8-new-panel');
     equal(context.log.errors, []);
     await context.close();

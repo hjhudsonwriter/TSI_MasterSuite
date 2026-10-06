@@ -569,7 +569,9 @@
     if (!travel.nextTravelEventAtMiles || travel.nextTravelEventAtMiles <= 0) {
       travel.nextTravelEventAtMiles = 6 + Math.floor(rand() * 19);
     }
-    if (travel.travelEventDay !== dayNow && miles > 0) {
+    /* An event still open (kept for later) waits; the day's roll isn't used up. */
+    var busy = !!(state.journey && state.journey.current);
+    if (travel.travelEventDay !== dayNow && miles > 0 && !busy) {
       var milesNow = Number(anchor.milesUsed) || 0;
       if (milesNow >= travel.nextTravelEventAtMiles) {
         travel.travelEventDay = dayNow;
@@ -579,13 +581,11 @@
         } else {
           var J = journeyRules();
           var d = journeyDefs(defs);
-          if (!(state.journey && state.journey.current)) {
-            var ctx = J.context(state, d);
-            var it = J.travelRoll(state, d, ctx, rand);
-            if (it) {
-              J.begin(state, d, it, ctx, rand);
-              open = { kind: 'journey' };
-            }
+          var ctx = J.context(state, d);
+          var it = J.travelRoll(state, d, ctx, rand);
+          if (it) {
+            J.begin(state, d, it, ctx, rand);
+            open = { kind: 'journey' };
           }
         }
       }
@@ -683,8 +683,10 @@
 
     var main = R.takeForcedMainEvent(state, data);
     var night = null;
-    if (main) queue.push({ kind: 'main', event: main });
-    else if (!busy) night = J.campOverride(state, d, ctx);
+    if (main) {
+      queue.push({ kind: 'main', event: main });
+      J.postponeFollow(state, d, ctx);
+    } else if (!busy) night = J.campOverride(state, d, ctx);
 
     travel.day = dayBefore + 1;
     if (travel.activeWeather) travel.activeWeather = null;

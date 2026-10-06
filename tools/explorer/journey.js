@@ -56,8 +56,7 @@
   J.problem = function (j) {
     if (j === undefined || j === null) return null;
     if (!isObj(j)) return 'Its events record is damaged.';
-    if ('effects' in j && !Array.isArray(j.effects)) return 'Its effects list is damaged.';
-    if ('threads' in j && !Array.isArray(j.threads)) return 'Its threads list is damaged.';
+    /* A damaged list inside it is tidied by J.clean, not a reason to lose the whole journey. */
     return null;
   };
 
@@ -92,12 +91,15 @@
     if (!isObj(c)) return null;
     var ev = J.def(defs, c.id);
     if (!ev || !str(c.step) || !ev.steps[c.step]) return null;
+    /* Each kind of value in its own form, so a damaged one can't crash the window. */
     var vars = {};
     if (isObj(c.vars)) {
       Object.keys(c.vars).forEach(function (k) {
         var v = c.vars[k];
-        if (typeof v === 'string' || typeof v === 'boolean' || isNum(v)) vars[k] = v;
-        else if (Array.isArray(v)) vars[k] = strList(v);
+        if (k === 'failed' || k === 'succeeded') vars[k] = strList(v);
+        else if (k === 'stake') { if (isNum(v)) vars[k] = v; }
+        else if (k === 'adv') vars[k] = v === true;
+        else if (typeof v === 'string') vars[k] = v;
       });
     }
     var out = {
@@ -113,6 +115,9 @@
     if (isObj(c.puzzle)) {
       out.puzzle = { wrong: int(c.puzzle.wrong, 0), hint: ['success', 'failure'].indexOf(c.puzzle.hint) !== -1 ? c.puzzle.hint : null, reveal: c.puzzle.reveal === true };
     }
+    var step = ev.steps[c.step];
+    if (step.contest && !out.round) out.round = { n: 1, hero: 0, opp: 0, d20: 10, history: [] };
+    if (step.puzzle && !out.puzzle) out.puzzle = { wrong: 0, hint: null, reveal: false };
     return out;
   }
 
@@ -132,7 +137,13 @@
     if (isObj(saved.tonight) && J.def(defs, saved.tonight.event)) j.tonight = { event: saved.tonight.event };
     j.current = cleanCurrent(saved.current, defs);
     j.log = strList(saved.log).slice(0, LOG_MAX);
-    j.seq = Math.max(0, int(saved.seq, 0));
+    /* New ids carry on above every id in use, even if seq was lost. */
+    var top = 0;
+    j.effects.concat(j.threads).forEach(function (x) {
+      var n = parseInt(String(x.id).slice(1), 10);
+      if (Number.isFinite(n)) top = Math.max(top, n);
+    });
+    j.seq = Math.max(0, int(saved.seq, 0), top);
     return j;
   };
 
@@ -228,7 +239,10 @@
     if (j.tonight) {
       var ev = J.def(defs, j.tonight.event);
       j.tonight = null;
-      if (ev) return item(ev.kind === 'night' ? 'night' : 'camp', ev);
+      if (ev) {
+        J.postponeFollow(state, defs, ctx);
+        return item(ev.kind === 'night' ? 'night' : 'camp', ev);
+      }
     }
     var d = day(state);
     var due = J.dueFollow(state, defs, ctx, d);
@@ -240,6 +254,16 @@
       return it;
     }
     return null;
+  };
+
+  /* When something else takes tonight's camp (tonight's set-up event, or a
+     main event), a follow-up on the last day of its window waits one more
+     day rather than being dropped. */
+  J.postponeFollow = function (state, defs, ctx) {
+    var d = day(state);
+    journey(state).threads.forEach(function (t) {
+      if (t.follow && t.follow.to === d && t.follow.from <= d && followFits(t.follow, ctx)) t.follow.to = d + 1;
+    });
   };
 
   /* A new day (after Make Camp has moved the day on): effects that have run
@@ -757,7 +781,10 @@
     });
     if (j.lastTravelDay) j.lastTravelDay += delta;
     if (j.rolledDay) j.rolledDay += delta;
-    if (j.current) j.current.day += delta;
+    if (j.current) {
+      j.current.day += delta;
+      if (j.current.prevLastTravelDay) j.current.prevLastTravelDay += delta;
+    }
   };
 
   /* The DM-only events for the Main Campaign list. */

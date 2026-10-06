@@ -1016,14 +1016,25 @@
         if (state.journey.current) { showEvents([{ kind: 'journey' }]); return; }
         TSI.modal.open({
           title: 'Roll an event now',
-          message: 'Draw an event from this map\'s pool now, whatever the dice say.',
+          message: 'Draw an event from this map\'s pool now, whatever the dice say. A campfire event drawn while the party is on the road waits for tonight\'s camp.',
           actions: [{ label: 'Cancel', value: null }, { label: 'Campfire event', value: 'camp' }, { label: 'Travel event', value: 'travel', primary: true }],
           escValue: null
         }).then(function (kind) {
           if (!kind || !life.alive || state.journey.current) return;
           var ctx = J.context(state, JDEFS);
+          /* A campfire event while the day is under way (someone has moved
+             today) belongs to tonight's camp: it comes at Make Camp, in
+             place of the night's own roll. */
+          var underWay = state.tokens.some(function (t) { return (Number(t.milesUsed) || 0) > 0; });
+          if (kind === 'camp' && underWay && state.journey.tonight) { note('Tonight\'s camp already has an event waiting.'); return; }
           var it = J.rollNow(state, JDEFS, ctx, kind, rand);
           if (!it) { note('There are no ' + (kind === 'camp' ? 'campfire' : 'travel') + ' events for this map and region.'); return; }
+          if (kind === 'camp' && underWay) {
+            state.journey.tonight = { event: it.event.id };
+            saveNow();
+            setNotice(it.event.code + ' ' + it.event.title + ' will come at tonight\'s camp.');
+            return;
+          }
           J.begin(state, JDEFS, it, ctx, rand);
           saveNow();
           updateTravelUI();
@@ -1075,7 +1086,15 @@
           if (!J.act(state, JDEFS, action, rand)) return;
           saveNow();
           updateTravelUI();
-          render();
+          safeRender();
+        }
+        /* If a step can't be drawn (a damaged save, say), the event is ended
+           rather than leaving a broken window that comes back every time. */
+        function safeRender() {
+          try { render(); } catch (err) {
+            TSI.reportError(err, 'an Explorer event');
+            if (api) api.close('broken');
+          }
         }
         function button(label, fn, cls, test) {
           return el('button', { type: 'button', class: 'tsi-btn' + (cls ? ' ' + cls : ''), 'data-test': test || null, onclick: fn }, label);
@@ -1271,12 +1290,19 @@
           onOpen: function (a) {
             api = a;
             a.foot.insertBefore(skipBtn, a.foot.firstChild);
-            render();
+            safeRender();
           }
         }).then(function (value) {
           journeyOpen = false;
           /* Closed by the suite (leaving the tool): the event waits, saved, for next time. */
           if (value === undefined || !life.alive) return null;
+          if (value === 'broken' && state.journey.current) {
+            J.finish(state, JDEFS);
+            saveNow();
+            updateTravelUI();
+            setNotice('That event couldn\'t be shown, so it was ended. What it had changed stays.');
+            return null;
+          }
           if (finished || !state.journey.current) return null;
           return TSI.modal.open({
             title: 'Close the event?',
