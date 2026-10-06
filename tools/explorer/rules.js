@@ -719,7 +719,7 @@
 
     /* The weekly Bastion prompt. The event gold is no longer cleared here:
        it's a saved running total the DM clears (Harry, 6 October 2026). */
-    if ((Number(travel.day) || 1) % 7 === 1) {
+    if (TSI.campaign.isBastionDay(Number(travel.day) || 1)) {
       queue.push({ kind: 'camp', event: data.bastionPrompt });
     }
 

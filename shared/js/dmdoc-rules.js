@@ -21,7 +21,7 @@
     MIN_W: 280,
     MIN_H: 200,
     DEFAULT_W: 440,
-    DEFAULT_H: 520,
+    DEFAULT_H: 680,
     /* The gap from the window's right edge and the top bar when it first opens. */
     GAP: 24,
     /* Arrow keys on the title bar move it this far (Shift: further). */

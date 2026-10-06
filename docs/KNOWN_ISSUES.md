@@ -21,7 +21,7 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 
 | Tool | Must fix | Fixed by design | Deliberate | Later (Harry's call) | Not relevant / not a bug |
 |---|---|---|---|---|---|
-| Suite-wide (SUI) | 5 | 11 | 4 | 1 | 0 |
+| Suite-wide (SUI) | 5 | 11 | 5 | 1 | 0 |
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
 | Scarlett Isles Explorer (EXP) | 12 | 5 | 5 | 13 | 0 |
@@ -212,8 +212,24 @@ These come from checking the eight tools against each other: the collision audit
   - **Remembered:** its place and size are saved under `tsi.dmdoc.` and included in Back up everything.
   - **Open or closed:** whether it's open is remembered per window, so it reopens after a tool switch in the same window but never pops up by itself in another window (such as one on the TV).
   - **On screen:** it's kept within the window on the laptop and the TV, and isn't shown inside a tool's own full-screen view.
-  - **Contents:** a placeholder; what it holds comes in the next build, as Harry asked.
+  - **Contents:** a placeholder at first; since 7 October 2026 it shows where the campaign stands (SUI-22).
 - **Evidence:** `shared/js/dmdoc.js`, `shared/js/dmdoc-rules.js`, `shared/js/store-rules.js`, `shared/js/backup-rules.js`, `shared/tokens.css`, `shared/components.css`; tests in `tests/rules/dmdoc.test.js` and `tests/e2e/phase1.test.js`.
+
+### SUI-22 · The DM doc shows where the campaign stands
+**Deliberate change** (Harry's request, 7 October 2026) · other
+
+- **Before:** The DM doc was an empty panel, and nothing in the suite showed the Explorer's and the Bastion's numbers side by side.
+- **After:** the DM doc reads the Explorer's and the Bastion's saves and shows, laid out in four tiles and three short sections:
+  - **Party level:** the level set in the Bastion (7, the Bastion's starting level, until the Bastion has saved).
+  - **Day:** the Explorer's day, and how many days have passed (Day 1 is 0 days passed).
+  - **Bastion turns:** how many the Bastion has completed (its turn counter starts at 1, so one less than the turn it's on).
+  - **Next Bastion turn:** how many days until the Explorer's weekly Bastion reminder, which comes at the Make Camp that starts Day 8, 15, 22 and so on.
+  - **Heroes:** the names of the Explorer's hero tokens.
+  - **Where the party is:** the Explorer's Region, its Clan and chief with the Clan's Political Capital (−100 to +100) and Honour/Respect (−5 to +5), and its god with that god's Favour (0–100%), all from the Bastion. Each is drawn as a bar as well as a number; a negative standing fills left of the centre, in crimson.
+  - **Active effects:** each of the Explorer's Active Effects, with who has it, what it does, when it ends and which event gave it, worded exactly as the Explorer's own list. They appear and go when the Explorer adds and removes them: most end at Make Camp, and any you remove in the Explorer goes too.
+- **How it stays up to date:** while it's open it reads both saves every 2 seconds, and straight away when the window comes back into view or this window saves, so a change made in another window (the Bastion on one screen, the Explorer on the other) shows by itself. When it's closed it reads nothing. It only reads: it never changes either tool's saves, so two windows can't save over each other through it.
+- **One shared list of regions:** the seven regions' Clan, chief and god now live in one file, `shared/data/regions.js`, which the Explorer's events and the DM doc both read. The Explorer's wording of when an effect ends, and the days its Bastion reminder comes, moved to `shared/js/campaign-rules.js` so the DM doc and the Explorer can never disagree. Nothing the Explorer does changed.
+- **Evidence:** `shared/js/campaign-rules.js`, `shared/data/regions.js`, `shared/js/dmdoc.js`, `shared/js/dmdoc-rules.js` (first height 680), `shared/components.css`, `tools/explorer/journey.js`, `tools/explorer/rules.js`, `tools/explorer/data/journey-events.js`; tests in `tests/rules/campaign.test.js`, `tests/rules/dmdoc.test.js`, `tests/e2e/dmdoc.test.js` and `tests/e2e/phase1.test.js`.
 
 ## Combat Tracker & VTT Battlemap
 Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point there).

@@ -1,7 +1,13 @@
 /* The Scarlett Isles: D&D Tool Suite — the DM doc.
-   A floating panel for the DM's own campaign notes, opened from the "DM doc"
-   button in the top bar on every screen (home and every tool). For now it
-   only opens, moves, resizes and closes; what goes in it comes in a later build.
+   A floating panel for the DM's eyes only, opened from the "DM doc" button
+   in the top bar on every screen (home and every tool). It shows where the
+   campaign stands (Harry, 7 October 2026), read from the Explorer's and the
+   Bastion's saves (shared/js/campaign-rules.js works it out): the party's
+   level and heroes; the day, the Bastion turns done and the days to the next
+   one; the Region, its Clan's Political Capital and Honour/Respect and its
+   god's favour; and the Explorer's Active Effects. While it's open it reads
+   the saves again every two seconds (and straight after this window saves),
+   so it keeps up even when the Explorer or the Bastion is in another window.
 
    - It floats above the open tool (z-index --tsi-z-dmdoc) but below the
      suite's notices and pop-ups, and the tool underneath keeps working.
@@ -25,7 +31,9 @@
   var R = TSI.dmDocRules;
   var KEY = 'tsi.dmdoc.layout';
   var OPEN_KEY = TSI.storeRules.spaceNames(TSI.space).dmdocOpen;
-  var PLACEHOLDER = 'Your DM doc will hold campaign notes for your eyes only. What goes in it comes in the next build.';
+  var EXPLORER_KEY = 'tsi.explorer.save';
+  var BASTION_KEY = 'tsi.bastion.state';
+  var REFRESH_MS = 2000;
 
   var toggleButton = null;
   var panel = null;
@@ -36,6 +44,10 @@
   var loaded = false;
   var started = false;
   var drag = null;
+  var body = null;       /* the panel's scrolling contents */
+  var shownKey = '';     /* what's on show, so an unchanged read doesn't redraw */
+  var timer = null;
+  var reading = false;
 
   /* ---------- The window ---------- */
   function view() {
@@ -126,8 +138,8 @@
       'data-test': 'dmdoc-panel'
     }, [
       bar,
-      TSI.el('div', { class: 'tsi-dmdoc__body' }, [
-        TSI.el('p', { class: 'tsi-dmdoc__placeholder', text: PLACEHOLDER })
+      body = TSI.el('div', { class: 'tsi-dmdoc__body', 'data-test': 'dmdoc-body' }, [
+        TSI.el('p', { class: 'tsi-dmdoc__note', text: 'Reading the Explorer and the Bastion…' })
       ]),
       TSI.el('p', { class: 'tsi-sr-only', id: hintId, text: 'Use the arrow keys to move the DM doc. Hold Shift to move it further.' }),
       grip
@@ -141,6 +153,117 @@
     bar.addEventListener('keydown', onBarKey);
 
     document.body.appendChild(panel);
+  }
+
+  /* ---------- What it shows ---------- */
+  var el = function (tag, attrs, kids) { return TSI.el(tag, attrs, kids); };
+  function signed(n) { return n > 0 ? '+' + n : String(n); }
+  function section(title, test, kids) {
+    return el('section', { class: 'tsi-dmdoc__sec', 'data-test': test }, [el('h3', { class: 'tsi-dmdoc__h', text: title })].concat(kids));
+  }
+  function tile(label, value, note, test) {
+    return el('div', { class: 'tsi-dmdoc__tile', 'data-test': test }, [
+      el('span', { class: 'tsi-dmdoc__tile-label', text: label }),
+      el('strong', { class: 'tsi-dmdoc__tile-value', text: value }),
+      note ? el('span', { class: 'tsi-dmdoc__tile-note', text: note }) : null
+    ]);
+  }
+  /* A bar: centred for a value that can go below zero, from the left for 0 to max. */
+  function meter(label, value, min, max, text, test) {
+    var known = value !== null && value !== undefined;
+    var fill = el('span', { class: 'tsi-dmdoc__fill' + (known && value < 0 ? ' tsi-dmdoc__fill--low' : '') });
+    if (known) {
+      if (min < 0) {
+        var half = Math.min(1, Math.abs(value) / max) * 50;
+        fill.style.left = (value >= 0 ? 50 : 50 - half) + '%';
+        fill.style.width = half + '%';
+      } else {
+        fill.style.left = '0';
+        fill.style.width = Math.max(0, Math.min(100, (value - min) / (max - min) * 100)) + '%';
+      }
+    }
+    return el('div', { class: 'tsi-dmdoc__meter', 'data-test': test }, [
+      el('span', { class: 'tsi-dmdoc__meter-label', text: label }),
+      el('span', { class: 'tsi-dmdoc__track' + (min < 0 ? ' tsi-dmdoc__track--signed' : ''), 'aria-hidden': 'true' }, fill),
+      el('strong', { class: 'tsi-dmdoc__meter-value', text: known ? text : '—' })
+    ]);
+  }
+
+  function render(sum) {
+    var parts = [];
+    var level = sum.level;
+    var nextB = sum.nextBastion;
+    parts.push(el('div', { class: 'tsi-dmdoc__tiles' }, [
+      tile('Party level', String(level.value), level.fromBastion ? 'from the Bastion' : 'Bastion not saved yet', 'dmdoc-level'),
+      tile('Day', sum.day === null ? '—' : String(sum.day), sum.day === null ? 'Explorer not started' : sum.daysPassed + (sum.daysPassed === 1 ? ' day passed' : ' days passed'), 'dmdoc-day'),
+      tile('Bastion turns', sum.bastionTurns === null ? '—' : String(sum.bastionTurns), sum.bastionTurns === null ? 'Bastion not saved yet' : 'completed', 'dmdoc-turns'),
+      tile('Next Bastion turn', nextB ? (nextB.inDays === 1 ? 'in 1 day' : 'in ' + nextB.inDays + ' days') : '—', nextB ? 'Day ' + nextB.day + ', at Make Camp' : '', 'dmdoc-next-bastion')
+    ]));
+
+    parts.push(section('Heroes', 'dmdoc-heroes', sum.heroes.length
+      ? [el('ul', { class: 'tsi-dmdoc__heroes' }, sum.heroes.map(function (n) { return el('li', { class: 'tsi-dmdoc__hero', text: n }); }))]
+      : [el('p', { class: 'tsi-dmdoc__note', text: 'Open the Explorer to see the heroes.' })]));
+
+    var where = [];
+    if (!sum.region) {
+      where.push(el('p', { class: 'tsi-dmdoc__note', text: 'Open the Explorer to see where the party is.' }));
+    } else {
+      where.push(el('p', { class: 'tsi-dmdoc__region', 'data-test': 'dmdoc-region', text: sum.region.label }));
+      where.push(el('div', { class: 'tsi-dmdoc__card', 'data-test': 'dmdoc-clan' }, [
+        el('p', { class: 'tsi-dmdoc__card-title' }, [el('strong', { text: 'Clan ' + sum.clan.name + '\'s territory' }), el('span', { class: 'tsi-dmdoc__muted', text: ' · ' + sum.clan.chief })]),
+        meter('Political Capital', sum.clan.politicalCapital, -100, 100, signed(sum.clan.politicalCapital), 'dmdoc-pc'),
+        meter('Honour/Respect', sum.clan.honourRespect, -5, 5, signed(sum.clan.honourRespect), 'dmdoc-hr')
+      ]));
+      where.push(el('div', { class: 'tsi-dmdoc__card tsi-dmdoc__card--' + sum.god.key, 'data-test': 'dmdoc-god' }, [
+        el('p', { class: 'tsi-dmdoc__card-title' }, [el('strong', { text: sum.god.name + '\'s lands' })]),
+        meter('Favour', sum.god.favour, 0, 100, sum.god.favour + '%', 'dmdoc-favour')
+      ]));
+      if (!sum.bastionSaved) where.push(el('p', { class: 'tsi-dmdoc__note', text: 'Open the Bastion to see the Clan\'s and the god\'s standing.' }));
+    }
+    parts.push(section('Where the party is', 'dmdoc-where', where));
+
+    parts.push(section('Active effects', 'dmdoc-effects', sum.effects.length
+      ? [el('ul', { class: 'tsi-dmdoc__effects' }, sum.effects.map(function (e) {
+        return el('li', { class: 'tsi-dmdoc__effect', 'data-test': 'dmdoc-effect' }, [
+          el('p', { class: 'tsi-dmdoc__effect-name' }, [el('strong', { text: e.name }), el('span', { class: 'tsi-dmdoc__muted', text: ' · ' + e.who })]),
+          e.text ? el('p', { class: 'tsi-dmdoc__effect-text', text: e.text }) : null,
+          el('p', { class: 'tsi-dmdoc__effect-until', text: e.until + (e.from ? ' · from ' + e.from : '') })
+        ]);
+      }))]
+      : [el('p', { class: 'tsi-dmdoc__note', text: 'None.' })]));
+
+    var top = body.scrollTop;
+    TSI.clear(body);
+    TSI.append(body, parts);
+    body.scrollTop = top;
+  }
+
+  /* Read the two saves as they are now, and redraw if anything changed. */
+  function refresh() {
+    if (!opened || !loaded || reading) return;
+    reading = true;
+    Promise.all([TSI.store.fresh(EXPLORER_KEY, null), TSI.store.fresh(BASTION_KEY, null)]).then(function (saves) {
+      reading = false;
+      if (!opened) return;
+      var sum = TSI.campaign.summary(saves[0], saves[1], (window.TSI_DATA && window.TSI_DATA.regions) || {});
+      var key = JSON.stringify(sum);
+      if (key === shownKey) return;
+      shownKey = key;
+      render(sum);
+    }, function (err) {
+      reading = false;
+      TSI.reportError(err, 'the DM doc');
+    });
+  }
+  function startReading() {
+    stopReading();
+    shownKey = '';
+    refresh();
+    timer = setInterval(function () { if (!document.hidden) refresh(); }, REFRESH_MS);
+  }
+  function stopReading() {
+    if (timer) clearInterval(timer);
+    timer = null;
   }
 
   /* ---------- Dragging and resizing (pointer events, so mouse, pen and touch all work) ---------- */
@@ -210,6 +333,7 @@
       fit();
       rememberOpen(true);
       setToggle();
+      startReading();
     }
     if (options && options.focus) bar.focus({ preventScroll: true });
   }
@@ -219,6 +343,7 @@
     if (!opened) return;
     finishDrag();
     opened = false;
+    stopReading();
     var hadFocus = panel.contains(document.activeElement);
     panel.hidden = true;
     rememberOpen(false);
@@ -286,6 +411,9 @@
       TSI.store.ready.then(function () {
         loaded = true;
         saved = readSaved();
+        /* Straight after this window saves (a tool changed something), read again. */
+        TSI.store.onStatus(function (st) { if (opened && st && st.state === 'saved') refresh(); });
+        document.addEventListener('visibilitychange', function () { if (opened && !document.hidden) refresh(); });
         if (wasOpen()) open({ focus: false });
       });
     },
@@ -294,6 +422,8 @@
     close: function () { close({ returnFocus: false }); },
     toggle: toggle,
     isOpen: function () { return opened; },
+    /* Read the saves again now (tests and tools may call it). */
+    refresh: refresh,
     /* Where it is on screen now ({ x, y, w, h }), or null when closed. */
     rect: function () { return opened && shown ? { x: shown.x, y: shown.y, w: shown.w, h: shown.h } : null; }
   };

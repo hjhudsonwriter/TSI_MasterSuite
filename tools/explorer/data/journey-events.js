@@ -51,18 +51,9 @@ window.TSI_DATA.journeyEvents = {
     campChance: 0.25
   },
 
-  /* The Explorer's own copy of each province's clan, chief and temple (from
-     the Notice Board's quest data), so events can say "a rider in {clan}
-     colours". isle: Pelagos' isles, for follow-ups that need an isle map. */
-  regions: {
-    northern_province: { god: 'telluria', clan: 'Blackstone', chief: 'Boris Blackstone', temple: 'Temple of Telluria' },
-    midland_province: { god: 'telluria', clan: 'Bacca', chief: 'Ario Bacca', temple: 'Temple of Telluria' },
-    eastern_province: { god: 'telluria', clan: 'Slade', chief: 'Harlan Slade', temple: 'Temple of Telluria' },
-    southern_province: { god: 'aurush', clan: 'Molten', chief: 'Callum Molten', temple: 'Temple of Aurush' },
-    western_province: { god: 'aurush', clan: 'Farmer', chief: 'Logan Farmer', temple: 'Temple of Aurush' },
-    the_north_isle: { god: 'pelagos', clan: 'Karr', chief: 'Helga Karr', temple: 'Temple of Pelagos', isle: true },
-    the_east_isle: { god: 'pelagos', clan: 'Rowthorn', chief: 'Doran Rowthorn', temple: 'Temple of Pelagos', isle: true }
-  },
+  /* Each province's clan, chief, god and temple, so events can say "a rider
+     in {clan} colours" (shared/data/regions.js, which the DM doc reads too). */
+  regions: window.TSI_DATA.regions,
 
   events: [
     /* ================= Travel events: anywhere ================= */

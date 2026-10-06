@@ -546,12 +546,133 @@ body.tsi-modal-open { overflow: hidden; }
   overflow: auto;
   padding: 14px 16px 26px;
 }
-.tsi-dmdoc__placeholder {
+/* What it shows: four figures at the top, then the heroes, where the party is, and the Active Effects. */
+.tsi-dmdoc__note {
   margin: 0;
   font-size: var(--tsi-fs-body-sm);
   color: var(--tsi-text-muted);
   font-style: italic;
 }
+.tsi-dmdoc__muted { color: var(--tsi-text-muted); }
+.tsi-dmdoc__tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.tsi-dmdoc__tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: var(--tsi-radius-sm);
+  border: 1px solid var(--tsi-line-faint);
+  background: rgba(0, 0, 0, .22);
+}
+.tsi-dmdoc__tile-label,
+.tsi-dmdoc__h,
+.tsi-dmdoc__meter-label {
+  font: 600 var(--tsi-fs-label)/1.3 var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-heading);
+  text-transform: uppercase;
+  color: var(--tsi-gold-text);
+}
+.tsi-dmdoc__tile-value {
+  font: 700 24px/1.15 var(--tsi-font-display);
+  text-transform: none;
+  color: var(--tsi-text);
+}
+.tsi-dmdoc__tile-note {
+  font-size: 15px;
+  line-height: 1.25;
+  color: var(--tsi-text-muted);
+}
+.tsi-dmdoc__sec { margin-top: 16px; }
+.tsi-dmdoc__h {
+  margin: 0 0 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--tsi-line-faint);
+}
+.tsi-dmdoc__heroes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tsi-dmdoc__hero {
+  padding: 2px 12px;
+  border-radius: var(--tsi-radius-pill);
+  border: 1px solid var(--tsi-line);
+  background: rgba(214, 178, 94, .08);
+  font-size: var(--tsi-fs-body-sm);
+}
+.tsi-dmdoc__region {
+  margin: 0 0 8px;
+  font: 700 17px/1.25 var(--tsi-font-display);
+  color: var(--tsi-text);
+}
+.tsi-dmdoc__card {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: var(--tsi-radius-sm);
+  border: 1px solid var(--tsi-line-faint);
+  background: rgba(0, 0, 0, .22);
+}
+.tsi-dmdoc__card-title { margin: 0 0 6px; font-size: var(--tsi-fs-body-sm); }
+.tsi-dmdoc__meter {
+  display: grid;
+  grid-template-columns: 9.5em minmax(60px, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+.tsi-dmdoc__track {
+  position: relative;
+  height: 8px;
+  border-radius: var(--tsi-radius-pill);
+  background: rgba(255, 255, 255, .08);
+  overflow: hidden;
+}
+/* A centre line for a value that can go below zero. */
+.tsi-dmdoc__track--signed::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--tsi-line-control);
+}
+.tsi-dmdoc__fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-radius: var(--tsi-radius-pill);
+  background: var(--tsi-gold);
+}
+.tsi-dmdoc__fill--low { background: var(--tsi-crimson); }
+.tsi-dmdoc__card--telluria .tsi-dmdoc__fill { background: var(--tsi-telluria); }
+.tsi-dmdoc__card--aurush .tsi-dmdoc__fill { background: var(--tsi-aurush); }
+.tsi-dmdoc__card--pelagos .tsi-dmdoc__fill { background: var(--tsi-pelagos); }
+.tsi-dmdoc__meter-value {
+  min-width: 3.2em;
+  text-align: right;
+  font: 700 15px/1.2 var(--tsi-font-display);
+  font-variant-numeric: tabular-nums;
+}
+.tsi-dmdoc__effects { margin: 0; padding: 0; list-style: none; }
+.tsi-dmdoc__effect {
+  padding: 6px 0 8px;
+  border-bottom: 1px solid rgba(214, 178, 94, .14);
+}
+.tsi-dmdoc__effect:last-child { border-bottom: 0; }
+.tsi-dmdoc__effect-name,
+.tsi-dmdoc__effect-text,
+.tsi-dmdoc__effect-until { margin: 0; }
+.tsi-dmdoc__effect-text { font-size: var(--tsi-fs-body-sm); line-height: 1.3; }
+.tsi-dmdoc__effect-until { font-size: 15px; color: var(--tsi-gold-text); }
 .tsi-dmdoc__grip {
   position: absolute;
   right: 0;

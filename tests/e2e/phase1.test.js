@@ -437,7 +437,6 @@ async function waitSaved(page) {
   section('The DM doc: a floating panel on every screen');
   {
     const KEY = 'tsi.dmdoc.layout';
-    const PLACEHOLDER = 'Your DM doc will hold campaign notes for your eyes only. What goes in it comes in the next build.';
     const box = (p, sel) => p.$eval(sel, e => { const r = e.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; });
     const rect = p => p.evaluate(() => TSI.dmDoc.rect());
     const saved = p => p.evaluate(k => TSI.store.ready.then(() => TSI.store.get(k, null)), KEY);
@@ -514,20 +513,20 @@ async function waitSaved(page) {
       await check(size + ': in a tool, the button opens it as a non-modal dialog, with focus on its title bar', async () => {
         assert(!(await isOpen(page)), 'reopened by itself after being closed');
         await page.click('[data-test=dm-doc]');
-        await page.waitForSelector('[data-test=dmdoc-panel]:not([hidden])');
+        await page.waitForSelector('[data-test=dmdoc-panel]:not([hidden]) [data-test=dmdoc-level]');
         const a = await page.$eval('[data-test=dmdoc-panel]', d => ({
           role: d.getAttribute('role'), modal: d.getAttribute('aria-modal'), label: d.getAttribute('aria-label'),
           title: d.querySelector('.tsi-dmdoc__title').textContent, font: getComputedStyle(d.querySelector('.tsi-dmdoc__title')).fontFamily,
           close: d.querySelector('[data-test=dmdoc-close]').getAttribute('aria-label'),
-          body: d.querySelector('.tsi-dmdoc__body').textContent, z: getComputedStyle(d).zIndex, position: getComputedStyle(d).position
+          body: /Party level/.test(d.querySelector('.tsi-dmdoc__body').textContent), z: getComputedStyle(d).zIndex, position: getComputedStyle(d).position
         }));
-        equal(a, { role: 'dialog', modal: 'false', label: 'DM doc', title: 'DM doc', font: a.font, close: 'Close the DM doc', body: PLACEHOLDER, z: '695', position: 'fixed' });
+        equal(a, { role: 'dialog', modal: 'false', label: 'DM doc', title: 'DM doc', font: a.font, close: 'Close the DM doc', body: true, z: '695', position: 'fixed' });
         assert(/^"?Cinzel/.test(a.font), a.font);
         equal(await page.getAttribute('[data-test=dm-doc]', 'aria-expanded'), 'true');
         equal(await focused(page), 'dmdoc-bar');
         const r = await panelMatches(page);
         const v = await view(page);
-        equal(r, { x: v.width - 440 - 24, y: v.top + 24, w: 440, h: 520 }, 'it first opens near the right edge, below the top bar');
+        equal(r, { x: v.width - 440 - 24, y: v.top + 24, w: 440, h: 680 }, 'it first opens near the right edge, below the top bar');
         await H.shot(page, 'dmdoc-' + size);
       });
 
@@ -578,9 +577,9 @@ async function waitSaved(page) {
       });
 
       await check(size + ': dragging the title bar moves it, and it\'s saved', async () => {
-        await moveTo(page, 840, 280);
+        await moveTo(page, 840, 100);
         const start = await panelMatches(page);
-        equal([start.x, start.y], [840, 280]);
+        equal([start.x, start.y], [840, 100]);
         await drag(page, '[data-test=dmdoc-bar]', { dx: -300, dy: 120 }, BAR_GRAB);
         const r = await panelMatches(page);
         equal(r, { x: start.x - 300, y: start.y + 120, w: start.w, h: start.h });
@@ -598,7 +597,7 @@ async function waitSaved(page) {
       await check(size + ': the corner grip resizes it, no smaller than 280 × 200', async () => {
         await moveTo(page, 300, 150);
         const before = await rect(page);
-        equal(before, { x: 300, y: 150, w: 440, h: 520 });
+        equal(before, { x: 300, y: 150, w: 440, h: 680 });
         await drag(page, '[data-test=dmdoc-grip]', { dx: 80, dy: 60 });
         const r = await panelMatches(page);
         equal(r, { x: before.x, y: before.y, w: before.w + 80, h: before.h + 60 });
