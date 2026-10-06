@@ -311,3 +311,8 @@
   .tsi-tool--encounter .tsi-enc-main { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(520px, auto) auto; }
   .tsi-tool--encounter .tsi-enc-board { grid-column: 1 / -1; grid-row: 1; }
 }
+
+/* A fight from the Explorer, offered in a pop-up (which sits outside the tool's area). */
+.tsi-enc-handoff .tsi-enc-muted { color: var(--tsi-text-muted); }
+.tsi-enc-handoff .tsi-enc-handoff-list { margin: 4px 0 12px; padding-left: 22px; }
+.tsi-enc-handoff .tsi-enc-handoff-list li { margin: 2px 0; }

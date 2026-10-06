@@ -555,7 +555,10 @@
       if (c2.next) return go(c2.next);
       return go(failed.length ? c2.anyFail : c2.noneFail);
     }
-    if (action.type === 'fight' && step.fight) return go(action.result === 'won' ? step.fight.won : step.fight.fled);
+    if (action.type === 'fight' && step.fight) {
+      delete cur.vars.fightId;
+      return go(action.result === 'won' ? step.fight.won : step.fight.fled);
+    }
     if (action.type === 'pick' && step.pick) {
       if (!setHero(state, cur, action.hero)) return false;
       return go(step.pick.go);
@@ -621,6 +624,19 @@
     j.used[cur.kind] = list.filter(function (id) { return id !== cur.id; });
     if (cur.kind === 'travel') j.lastTravelDay = cur.prevLastTravelDay;
     j.current = null;
+    return true;
+  };
+
+  /* The DM sent the fight on screen to the Combat Tracker ("Set up this
+     fight"): remember the hand-off's id, so the Combat Tracker's report can
+     be matched to it. Saved with the event; dropped when the fight's Won or
+     Fled is clicked. */
+  J.markFight = function (state, defs, id) {
+    var cur = journey(state).current;
+    if (!cur || typeof id !== 'string' || !id) return false;
+    var ev = J.def(defs, cur.id);
+    if (!ev || !ev.steps[cur.step] || !ev.steps[cur.step].fight) return false;
+    cur.vars.fightId = id;
     return true;
   };
 
@@ -691,7 +707,13 @@
       v.choices = step.choices.map(function (ch, i) { return { index: i, label: fill(ch.label) }; });
     } else if (step.fight) {
       v.type = 'fight';
-      v.fight = { suggest: step.fight.suggest || '' };
+      v.fight = {
+        suggest: step.fight.suggest || '',
+        encounter: step.fight.encounter || null,
+        /* Heroes who failed the check before an ambush are surprised. */
+        surprised: step.fight.surprise === 'failed' ? names(state, strList(cur.vars.failed)) : [],
+        sentId: typeof cur.vars.fightId === 'string' ? cur.vars.fightId : null
+      };
     } else if (step.contest) {
       var k = step.contest;
       var r = cur.round || { n: 1, hero: 0, opp: 0, d20: 10, history: [] };

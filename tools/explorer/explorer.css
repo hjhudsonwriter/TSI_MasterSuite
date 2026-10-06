@@ -355,6 +355,18 @@
   font-size: 18px;
 }
 .tsi-page--explorer .tsi-exp-history { margin: 0; padding-left: 20px; font-size: 15px; color: var(--tsi-text-muted); }
+/* A fight ready to set up in the Combat Tracker (fights-data.js). */
+.tsi-page--explorer .tsi-exp-fightsetup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(214, 178, 94, .22);
+  background: rgba(0, 0, 0, .2);
+}
+.tsi-page--explorer .tsi-exp-fightsetup .tsi-exp-tip { margin: 0; }
+.tsi-page--explorer .tsi-exp-fightlist { margin: 0; padding-left: 20px; font-size: 17px; line-height: 1.35; }
 .tsi-page--explorer .tsi-exp-changes {
   margin-top: 12px;
   padding: 8px 12px;

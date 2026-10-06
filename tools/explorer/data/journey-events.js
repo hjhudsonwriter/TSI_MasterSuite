@@ -25,9 +25,11 @@
      'each' asks the DM to tick who failed (among: 'failed' = only those who
      failed the last 'each' check), then goes to anyFail / noneFail (or next).
      pace: 'stealth' | 'perception' shows the travel-pace reminder.
-   - fight: { suggest, encounter, won, fled }. suggest is the line the DM
-     reads; encounter names the fight in data/fights-data.js, which the
-     "Set up this fight" button hands to the Combat Tracker.
+   - fight: { suggest, encounter, surprise, won, fled }. suggest is the
+     line the DM reads; encounter names the fight in data/fights-data.js,
+     which the "Set up this fight" button hands to the Combat Tracker;
+     surprise: 'failed' marks the heroes who failed the check before it as
+     surprised there.
    - Outcomes (apply): gold (a number, or { stake: n } for n × the stake),
      miles (6-mile steps, today), loseDay, effect, inspiration, thread,
      threadRename, threadClose, dm (a note for another tool, never applied
@@ -153,7 +155,7 @@ window.TSI_DATA.journeyEvents = {
         sprung: {
           text: 'The ambush springs.',
           apply: [{ note: { any: 'Surprised in the first round: {failed}.', none: 'Nobody is surprised.' } }],
-          fight: { suggest: 'Levels 7–10: a bandit captain, 2 veterans and 8 bandits. Levels 11–16: add 2 more veterans and a gladiator.', encounter: 't2', won: 'won', fled: 'fled' }
+          fight: { suggest: 'Levels 7–10: a bandit captain, 2 veterans and 8 bandits. Levels 11–16: add 2 more veterans and a gladiator.', encounter: 't2', surprise: 'failed', won: 'won', fled: 'fled' }
         },
         won: { text: 'The ambushers are beaten, and their cache is yours.', apply: [{ gold: 150 }], end: true },
         fled: { text: 'You get away.', end: true }
@@ -1321,7 +1323,7 @@ window.TSI_DATA.journeyEvents = {
         },
         fight: {
           text: 'Weapons out.',
-          fight: { suggest: 'Levels 7–10: the 2 toll-men (thugs) and 6 bandits. Levels 11–16: add 2 veterans.', encounter: 'f1', won: 'won', fled: 'fled' }
+          fight: { suggest: 'Levels 7–10: the 2 toll-men (thugs) and 6 bandits. Levels 11–16: add 2 veterans.', encounter: 'f1', surprise: 'failed', won: 'won', fled: 'fled' }
         },
         won: { text: 'Their whole takings are yours.', apply: [{ gold: 200 }, { threadClose: true }], end: true },
         fled: { text: 'You get away. They won\'t try again.', apply: [{ threadClose: true }], end: true },

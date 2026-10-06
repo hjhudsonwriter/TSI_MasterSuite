@@ -32,6 +32,8 @@
       var J = ns.journey;
       var DATA = window.TSI_DATA.explorer;
       var JDEFS = window.TSI_DATA.journeyEvents;
+      var F = ns.fights;
+      var FDATA = window.TSI_DATA.fights;
       function rand() { return Math.random(); }
 
       /* ---------- Saves ---------- */
@@ -1074,6 +1076,39 @@
          changed. Every change is applied and saved as it happens, so
          closing Edge, switching tool or a reload picks the event up again
          at the same step, and nothing applies twice. */
+      /* ---------- Fights set up in the Combat Tracker ---------- */
+      /* (Harry, 7 October 2026.) "Set up this fight" hands the fight to the
+         Combat Tracker (fights.js builds it, TSI.handoff carries it), opening
+         the tracker in a new window unless it's already open in one. The
+         party's level is the Bastion's, read again from the saves in case
+         the Bastion changed it in another window. When the tracker reports
+         every enemy down, the event window says so and points at Won. */
+      var levelInfo = F.partyLevel(TSI.store.get('tsi.bastion.state', null), FDATA);
+      var levelAskedAt = 0;
+      var journeyRefresh = null;   /* re-draws the event window while it's open */
+      function checkLevel() {
+        if (Date.now() - levelAskedAt < 3000) return;
+        levelAskedAt = Date.now();
+        TSI.store.fresh('tsi.bastion.state', null).then(function (saved) {
+          if (!life.alive) return;
+          var li = F.partyLevel(saved, FDATA);
+          if (li.level === levelInfo.level && li.fromBastion === levelInfo.fromBastion) return;
+          levelInfo = li;
+          if (journeyRefresh) journeyRefresh();
+        });
+      }
+      /* The fight is over, or its event is: the hand-off and its report go. */
+      function forgetFight(id) {
+        if (!id) return;
+        TSI.handoff.clear('fight', id);
+        TSI.handoff.clear('result', id);
+      }
+      function fightIdNow() {
+        var cur = state.journey.current;
+        return cur && typeof cur.vars.fightId === 'string' ? cur.vars.fightId : null;
+      }
+      TSI.handoff.listen(life, 'result', function () { if (journeyRefresh) journeyRefresh(); });
+
       var journeyOpen = false;
       function openJourney() {
         if (!state.journey.current || journeyOpen) return Promise.resolve(null);
@@ -1125,6 +1160,45 @@
         }
         function checkLine(label) {
           return el('p', { class: 'tsi-exp-check', 'data-test': 'check-line' }, [el('span', { class: 'tsi-exp-check__tag', text: 'Check' }), el('strong', { text: label })]);
+        }
+
+        function fightList(items) {
+          if (items.length < 2) return items.join('');
+          return items.slice(0, -1).join(', ') + ' and ' + items[items.length - 1];
+        }
+        function setUpFight(v) {
+          if (!ready()) return;
+          var cur = state.journey.current;
+          var ev = cur ? J.def(JDEFS, cur.id) : null;
+          if (!ev) return;
+          var region = cur.ctx.region || state.travel.provinceId;
+          var id = 'fight-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+          var h = F.build(FDATA, {
+            encounter: v.fight.encounter, region: region, regionName: R.provinceLabel(DATA, region), levelInfo: levelInfo,
+            event: { id: ev.id, code: ev.code, title: ev.title, step: cur.step, day: cur.day },
+            surprised: v.fight.surprised, id: id, at: new Date().toISOString()
+          });
+          if (!h) return;
+          if (!TSI.handoff.write('fight', h)) {
+            TSI.notify('The browser wouldn\'t pass the fight on. Set it up in the Combat Tracker by hand, from the suggested enemies.', { type: 'warn', title: 'Couldn\'t send the fight.', id: 'tsi-exp-fight-sent' });
+            return;
+          }
+          var before = cur.vars.fightId;
+          if (before && before !== id) TSI.handoff.clear('result', before);
+          J.markFight(state, JDEFS, id);
+          saveNow();
+          if (TSI.tabGuard && TSI.tabGuard.isOpenElsewhere('encounter')) {
+            TSI.notify('The Combat Tracker is already open in another window: the fight is waiting there. Choose Load the fight.', { type: 'ok', title: 'Fight sent.', id: 'tsi-exp-fight-sent', timeout: 9000 });
+          } else {
+            TSI.shell.openWindow('encounter');
+          }
+          safeRender();
+        }
+        function fightResult(v, result) {
+          if (!ready()) return;
+          var id = v.fight.sentId;
+          doAct({ type: 'fight', step: v.step, result: result });
+          if (id && fightIdNow() !== id) forgetFight(id);
         }
 
         function render() {
@@ -1188,10 +1262,30 @@
             parts.push(el('p', { class: 'tsi-exp-check' }, [el('span', { class: 'tsi-exp-check__tag', text: 'Fight' }), el('strong', { text: 'Run it in the Combat Tracker, then say how it went.' })]));
             if (v.fight.suggest) parts.push(tip('Suggested enemies: ' + v.fight.suggest));
             var shell = TSI.shell;
+            var canOpen = !!(shell && typeof shell.openWindow === 'function');
+            var region = cur.ctx.region || state.travel.provinceId;
+            var prev = v.fight.encounter ? F.preview(FDATA, v.fight.encounter, region, levelInfo) : null;
+            var report = v.fight.sentId ? TSI.handoff.read('result') : null;
+            var reportedWon = !!(report && report.id === v.fight.sentId && report.result === 'won');
+            if (prev) {
+              checkLevel();
+              parts.push(el('div', { class: 'tsi-exp-fightsetup', 'data-test': 'fight-setup' }, [
+                el('p', { class: 'tsi-exp-tip', 'data-test': 'fight-level', text: 'Party level ' + prev.level + (prev.fromBastion ? ' (from the Bastion)' : ' (the Bastion hasn\'t saved a level yet)') + ': the ' + prev.band.label + ' group.' }),
+                el('ul', { class: 'tsi-exp-fightlist', 'data-test': 'fight-monsters' }, prev.lines.map(function (line) { return el('li', { text: line }); })),
+                el('p', { class: 'tsi-exp-tip', 'data-test': 'fight-map', text: 'Battle map: ' + prev.map.title + ', ' + R.provinceLabel(DATA, region) + '.' }),
+                v.fight.surprised.length ? el('p', { class: 'tsi-exp-tip tsi-exp-tip--note', 'data-test': 'fight-surprised', text: 'Surprised in the first round: ' + fightList(v.fight.surprised) + '.' }) : null
+              ]));
+              if (reportedWon) {
+                parts.push(el('p', { class: 'tsi-exp-answer', 'data-test': 'fight-report' }, [el('strong', { text: 'The Combat Tracker reports: ' }), 'every enemy is down. Click Won to carry on.']));
+              } else if (v.fight.sentId) {
+                parts.push(el('p', { class: 'tsi-exp-tip tsi-exp-tip--note', 'data-test': 'fight-sent', text: 'Sent to the Combat Tracker: choose Load the fight there, then run it. The tracker tells this window when every enemy is down.' }));
+              }
+            }
             parts.push(buttons([
-              button('Won', function () { doAct({ type: 'fight', step: v.step, result: 'won' }); }, '', 'fight-won'),
-              button('Fled', function () { doAct({ type: 'fight', step: v.step, result: 'fled' }); }, '', 'fight-fled'),
-              shell && typeof shell.openWindow === 'function' ? button('Open the Combat Tracker in a new window ↗', function () { shell.openWindow('encounter'); }, 'tsi-btn--ghost', 'open-tracker') : null
+              prev && canOpen ? button(v.fight.sentId ? 'Send it again ↗' : 'Set up this fight in the Combat Tracker ↗', function () { setUpFight(v); }, v.fight.sentId ? 'tsi-btn--ghost' : 'tsi-btn--primary', 'fight-send') : null,
+              button('Won', function () { fightResult(v, 'won'); }, reportedWon ? 'tsi-btn--primary' : '', 'fight-won'),
+              button('Fled', function () { fightResult(v, 'fled'); }, '', 'fight-fled'),
+              !prev && canOpen ? button('Open the Combat Tracker in a new window ↗', function () { shell.openWindow('encounter'); }, 'tsi-btn--ghost', 'open-tracker') : null
             ]));
           } else if (v.type === 'contest') {
             var k = v.contest;
@@ -1276,6 +1370,7 @@
           if (!ready() || finished) return;
           var cur = state.journey.current;
           var ev = cur ? J.def(JDEFS, cur.id) : null;
+          forgetFight(fightIdNow());
           J.finish(state, JDEFS);
           finished = true;
           saveNow();
@@ -1287,7 +1382,9 @@
           if (!ready() || finished) return;
           var cur = state.journey.current;
           var ev = cur ? J.def(JDEFS, cur.id) : null;
+          var fid = fightIdNow();
           if (!J.skip(state)) return;
+          forgetFight(fid);
           finished = true;
           saveNow();
           updateTravelUI();
@@ -1304,13 +1401,16 @@
           onOpen: function (a) {
             api = a;
             a.foot.insertBefore(skipBtn, a.foot.firstChild);
+            journeyRefresh = safeRender;
             safeRender();
           }
         }).then(function (value) {
           journeyOpen = false;
+          journeyRefresh = null;
           /* Closed by the suite (leaving the tool): the event waits, saved, for next time. */
           if (value === undefined || !life.alive) return null;
           if (value === 'broken' && state.journey.current) {
+            forgetFight(fightIdNow());
             J.finish(state, JDEFS);
             saveNow();
             updateTravelUI();
@@ -1329,6 +1429,7 @@
             if (choice !== 'end') return openJourney();
             var cur = state.journey.current;
             var ev = cur ? J.def(JDEFS, cur.id) : null;
+            forgetFight(fightIdNow());
             J.finish(state, JDEFS);
             saveNow();
             updateTravelUI();
