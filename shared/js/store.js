@@ -40,6 +40,16 @@
   function idbBackend(db) {
     return {
       mode: 'idb',
+      /* One record as saved right now (another window may have changed it). */
+      read: function (key) {
+        return new Promise(function (resolve, reject) {
+          try {
+            var rq = db.transaction(DB_STORE, 'readonly').objectStore(DB_STORE).get(key);
+            rq.onsuccess = function () { resolve(rq.result || null); };
+            rq.onerror = function () { reject(rq.error); };
+          } catch (err) { reject(err); }
+        });
+      },
       write: function (batch) {
         return new Promise(function (resolve, reject) {
           var tx;
@@ -66,6 +76,13 @@
   function localBackend() {
     return {
       mode: 'local',
+      read: function (key) {
+        return new Promise(function (resolve) {
+          var row = null;
+          try { row = JSON.parse(localStorage.getItem(rules.localKey(key, SPACE)) || 'null'); } catch (e) { row = null; }
+          resolve(row);
+        });
+      },
       write: function (batch) {
         return new Promise(function (resolve) {
           batch.forEach(function (op) {
@@ -279,6 +296,21 @@
       requireReady();
       var record = cache.get(key);
       return record ? TSI.clone(record.value) : fallback;
+    },
+
+    /* The value as saved right now, read again from the browser: for another
+       tool's save, which a window open on a different tool may have changed
+       since this page opened (the Explorer reads the Bastion's party level
+       this way). Resolves with a copy, or fallback. A change this page is
+       still saving wins, and if the browser can't be read the copy read when
+       the page opened is used. */
+    fresh: function (key, fallback) {
+      requireReady();
+      var cached = function () { return TSI.store.get(key, fallback); };
+      if (pending.has(key) || inflight || !backend.read) return Promise.resolve(cached());
+      return backend.read(key).then(function (row) {
+        return rules.isRecord(row) && row.key === key ? TSI.clone(row.value) : (row ? cached() : fallback);
+      }, cached);
     },
 
     /* When the value was last saved (ISO text), or null. */

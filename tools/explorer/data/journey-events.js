@@ -25,6 +25,9 @@
      'each' asks the DM to tick who failed (among: 'failed' = only those who
      failed the last 'each' check), then goes to anyFail / noneFail (or next).
      pace: 'stealth' | 'perception' shows the travel-pace reminder.
+   - fight: { suggest, encounter, won, fled }. suggest is the line the DM
+     reads; encounter names the fight in data/fights-data.js, which the
+     "Set up this fight" button hands to the Combat Tracker.
    - Outcomes (apply): gold (a number, or { stake: n } for n × the stake),
      miles (6-mile steps, today), loseDay, effect, inspiration, thread,
      threadRename, threadClose, dm (a note for another tool, never applied
@@ -140,7 +143,7 @@ window.TSI_DATA.journeyEvents = {
         planner: { text: 'The plan worked.', apply: [{ inspiration: 'hero' }], end: true },
         heard: {
           text: 'They hear you coming, but nobody is surprised.',
-          fight: { suggest: 'Levels 7–10: a bandit captain, 2 veterans and 8 bandits. Levels 11–16: add 2 more veterans and a gladiator.', won: 'won', fled: 'fled' }
+          fight: { suggest: 'Levels 7–10: a bandit captain, 2 veterans and 8 bandits. Levels 11–16: add 2 more veterans and a gladiator.', encounter: 't2', won: 'won', fled: 'fled' }
         },
         round: { text: 'You go round the ford.', apply: [{ miles: -6 }], end: true },
         unread: {
@@ -150,7 +153,7 @@ window.TSI_DATA.journeyEvents = {
         sprung: {
           text: 'The ambush springs.',
           apply: [{ note: { any: 'Surprised in the first round: {failed}.', none: 'Nobody is surprised.' } }],
-          fight: { suggest: 'Levels 7–10: a bandit captain, 2 veterans and 8 bandits. Levels 11–16: add 2 more veterans and a gladiator.', won: 'won', fled: 'fled' }
+          fight: { suggest: 'Levels 7–10: a bandit captain, 2 veterans and 8 bandits. Levels 11–16: add 2 more veterans and a gladiator.', encounter: 't2', won: 'won', fled: 'fled' }
         },
         won: { text: 'The ambushers are beaten, and their cache is yours.', apply: [{ gold: 150 }], end: true },
         fled: { text: 'You get away.', end: true }
@@ -402,7 +405,7 @@ window.TSI_DATA.journeyEvents = {
             { label: 'Trace the roots: Wisdom (Survival), DC 16', go: 'trace' }
           ]
         },
-        destroy: { text: 'The Husk lurches out of the furrows.', fight: { suggest: 'One Rootbound Husk (35 HP, as in the Heartwood Ritual).', won: 'thanks', fled: 'fled' } },
+        destroy: { text: 'The Husk lurches out of the furrows.', fight: { suggest: 'One Rootbound Husk (35 HP, as in the Heartwood Ritual).', encounter: 't9', won: 'thanks', fled: 'fled' } },
         thanks: { text: 'The farmer presses all he has on you.', apply: [{ gold: 60 }], end: true },
         trace: {
           text: 'You follow the roots.',
@@ -416,7 +419,7 @@ window.TSI_DATA.journeyEvents = {
         cold: {
           text: 'The trail goes cold, and the Husk is waiting when you return.',
           apply: [{ miles: -6 }],
-          fight: { suggest: 'One Rootbound Husk (35 HP, as in the Heartwood Ritual).', won: 'coldWon', fled: 'fled' }
+          fight: { suggest: 'One Rootbound Husk (35 HP, as in the Heartwood Ritual).', encounter: 't9', won: 'coldWon', fled: 'fled' }
         },
         coldWon: { text: 'The Husk is destroyed.', end: true },
         fled: { text: 'You get away.', end: true }
@@ -603,7 +606,7 @@ window.TSI_DATA.journeyEvents = {
         },
         cutFight: {
           text: 'They reach for their weapons.',
-          fight: { suggest: 'Levels 7–10: a bandit captain, 4 thugs and 6 bandits. Levels 11–16: add 2 veterans.', won: 'cutWon', fled: 'fled' }
+          fight: { suggest: 'Levels 7–10: a bandit captain, 4 thugs and 6 bandits. Levels 11–16: add 2 veterans.', encounter: 't13', won: 'cutWon', fled: 'fled' }
         },
         cutWon: { text: 'The smugglers are beaten.', end: true },
         raid: {
@@ -613,7 +616,7 @@ window.TSI_DATA.journeyEvents = {
         surrender: { text: 'They surrender. The contraband is yours.', apply: [{ gold: 300 }], end: true },
         raidFight: {
           text: 'They see you coming.',
-          fight: { suggest: 'Levels 7–10: a bandit captain, 4 thugs and 6 bandits. Levels 11–16: add 2 veterans.', won: 'raidWon', fled: 'fled' }
+          fight: { suggest: 'Levels 7–10: a bandit captain, 4 thugs and 6 bandits. Levels 11–16: add 2 veterans.', encounter: 't13', won: 'raidWon', fled: 'fled' }
         },
         raidWon: { text: 'The smugglers are beaten. The contraband is yours.', apply: [{ gold: 300 }], end: true },
         fled: { text: 'You get away.', end: true },
@@ -1019,7 +1022,7 @@ window.TSI_DATA.journeyEvents = {
         scatter: { text: 'They scatter.', end: true },
         pack: {
           text: 'The pack loses patience.',
-          fight: { suggest: 'Levels 7–10: 12 wolves and the old one as a dire wolf. Levels 11–16: add 2 winter wolves.', won: 'beaten', fled: 'fled' }
+          fight: { suggest: 'Levels 7–10: 12 wolves and the old one as a dire wolf. Levels 11–16: add 2 winter wolves.', encounter: 'c6', won: 'beaten', fled: 'fled' }
         },
         beaten: { text: 'The pack is broken.', end: true },
         fled: { text: 'You get away from the pack.', end: true }
@@ -1141,7 +1144,7 @@ window.TSI_DATA.journeyEvents = {
         gone: { text: 'They go.', end: true },
         brawl: {
           text: 'His friends step forward.',
-          fight: { suggest: 'Levels 7–10: the collector (a spy) and his two friends (ogres). Levels 11–16: make the friends 2 hill giants.', won: 'beaten', fled: 'fled' }
+          fight: { suggest: 'Levels 7–10: the collector (a spy) and his two friends (ogres). Levels 11–16: make the friends 2 hill giants.', encounter: 'c9', won: 'beaten', fled: 'fled' }
         },
         beaten: { text: 'They limp off into the dark.', end: true },
         fled: { text: 'You get away.', end: true }
@@ -1173,7 +1176,7 @@ window.TSI_DATA.journeyEvents = {
         ride: {
           text: 'You ride through the night, and meet the raiders at dawn.',
           apply: [{ effect: { name: 'No long rest', text: 'no benefit from tonight\'s long rest', who: 'party', night: true } }],
-          fight: { suggest: 'Levels 7–10: a raider chief (a gladiator), 4 berserkers and 8 bandits. Levels 11–16: add 2 veterans.', won: 'rideWon', fled: 'fled' }
+          fight: { suggest: 'Levels 7–10: a raider chief (a gladiator), 4 berserkers and 8 bandits. Levels 11–16: add 2 veterans.', encounter: 'c10ride', won: 'rideWon', fled: 'fled' }
         },
         rideWon: {
           text: 'The raiders are beaten.',
@@ -1187,7 +1190,7 @@ window.TSI_DATA.journeyEvents = {
         passed: { text: 'A raiding band passes close in the dark and never sees you.', end: true },
         stumble: {
           text: 'A raiding band stumbles on your camp.',
-          fight: { suggest: 'Levels 7–10: a raider chief (a gladiator), 4 berserkers and 8 bandits. Levels 11–16: add 2 veterans.', won: 'beatenOff', fled: 'fled' }
+          fight: { suggest: 'Levels 7–10: a raider chief (a gladiator), 4 berserkers and 8 bandits. Levels 11–16: add 2 veterans.', encounter: 'c10camp', won: 'beatenOff', fled: 'fled' }
         },
         beatenOff: { text: 'You drive them off.', end: true },
         fled: { text: 'You get away.', end: true }
@@ -1284,7 +1287,7 @@ window.TSI_DATA.journeyEvents = {
         },
         fight: {
           text: 'They see you coming.',
-          fight: { suggest: 'Levels 7–10: a bandit captain and 8 bandits. Levels 11–16: add 4 thugs.', won: 'saved', fled: 'fled' }
+          fight: { suggest: 'Levels 7–10: a bandit captain and 8 bandits. Levels 11–16: add 4 thugs.', encounter: 'c12', won: 'saved', fled: 'fled' }
         },
         saved: {
           text: 'The wreckers are beaten. The ship is saved.',
@@ -1318,7 +1321,7 @@ window.TSI_DATA.journeyEvents = {
         },
         fight: {
           text: 'Weapons out.',
-          fight: { suggest: 'Levels 7–10: the 2 toll-men (thugs) and 6 bandits. Levels 11–16: add 2 veterans.', won: 'won', fled: 'fled' }
+          fight: { suggest: 'Levels 7–10: the 2 toll-men (thugs) and 6 bandits. Levels 11–16: add 2 veterans.', encounter: 'f1', won: 'won', fled: 'fled' }
         },
         won: { text: 'Their whole takings are yours.', apply: [{ gold: 200 }, { threadClose: true }], end: true },
         fled: { text: 'You get away. They won\'t try again.', apply: [{ threadClose: true }], end: true },

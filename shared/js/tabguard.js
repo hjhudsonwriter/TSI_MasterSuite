@@ -147,6 +147,13 @@
     tool: function () { return myTool; },
     /* Every other live tab of the suite (or of the test page), whatever it has open. */
     otherCount: function () { return others(read(), Date.now()).length; },
+    /* Is this tool open in another live tab or window? (The Explorer asks
+       before opening the Combat Tracker for a fight.) */
+    isOpenElsewhere: function (toolId) {
+      var map = read();
+      var now = Date.now();
+      return others(map, now).some(function (o) { return o.tool === toolId && !map[o.id].closing; });
+    },
     /* The other live tabs that set off the warning. */
     clashCount: function () { return clashing(read(), Date.now()).length; },
     /* Called once by the shell, with the open tool's id ('' or null for the home screen).
