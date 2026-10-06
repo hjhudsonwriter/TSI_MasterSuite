@@ -97,23 +97,44 @@
     t.same([M.rootbound_husk.hp, M.rootbound_husk.ac], [35, null], 'the Husk: 35 HP, as in the Heartwood Ritual');
   });
 
-  test('every map\'s start corners are on its grid, and the regional maps cover every region', function (t) {
+  test('every map\'s start corners are on its grid, and every region has a look', function (t) {
     Object.keys(FD.maps.settings).forEach(function (id) {
       var s = FD.maps.settings[id];
-      var corners = s.party.concat(s.foes, s.avoid || []);
+      var corners = s.party.concat(s.foes);
       Object.keys(FD.encounters).forEach(function (eid) { if (FD.encounters[eid].map === id && FD.encounters[eid].foes) corners = corners.concat(FD.encounters[eid].foes); });
       corners.forEach(function (p) { t.ok(p[0] >= 1 && p[0] < s.cols && p[1] >= 1 && p[1] < s.rows, id + ': ' + p + ' is inside the grid'); });
     });
-    t.same(Object.keys(FD.maps.regions).sort(), REGIONS.slice().sort(), 'a picture name for every region');
+    t.same(Object.keys(FD.maps.looks).sort(), REGIONS.slice().sort(), 'a look for every region');
+    Object.keys(FD.maps.looks).forEach(function (r) { t.ok(['green', 'warm', 'cold', 'misty'].indexOf(FD.maps.looks[r]) !== -1, r + '\'s look is one of the four'); });
+    Object.keys(FD.maps.settings).forEach(function (id) {
+      var s = FD.maps.settings[id];
+      (s.avoid || []).forEach(function (a) { t.ok(a.length === 4 && a[0] <= a[2] && a[1] <= a[3], id + ': an avoid area ' + a); });
+    });
   });
 
-  test('every battle map picture is there, 1800 × 1200 (30 × 20 squares of 60 pixels)', function (t) {
+  test('no one starts in the river, the sea, the fire, a tent or the fallen tree', function (t) {
+    var ford = F.mapFor(FD, 'ford', 'midland_province');
+    var key = function (list) { return list.map(function (p) { return p[0] + ',' + p[1]; }); };
+    t.ok(key(ford.avoid).indexOf('12,8') !== -1 && key(ford.avoid).indexOf('1,7') !== -1 && key(ford.avoid).indexOf('23,10') !== -1, 'the river, bank to bank');
+    t.equal(ford.avoid.length, 23 * 4);
+    var camp = F.mapFor(FD, 'camp', 'midland_province');
+    ['12,8', '13,9', '9,6', '16,7', '11,8', '14,8'].forEach(function (k) { t.ok(key(camp.avoid).indexOf(k) !== -1, 'camp: ' + k); });
+    var cove = F.mapFor(FD, 'cove', 'western_province');
+    t.ok(key(cove.avoid).indexOf('12,11') !== -1 && key(cove.avoid).indexOf('23,17') !== -1 && key(cove.avoid).indexOf('14,8') !== -1, 'the sea and the crates');
+    t.ok(key(cove.avoid).every(function (k) { var p = k.split(',').map(Number); return p[0] >= 1 && p[0] <= 23 && p[1] >= 1 && p[1] <= 17; }), 'only corners inside the map');
+  });
+
+  test('every battle map picture is there: Harry\'s 16, 1448 × 1086 (24 × 18 squares)', function (t) {
     var files = {};
     Object.keys(FD.maps.settings).forEach(function (id) {
       REGIONS.forEach(function (region) { files[F.mapFor(FD, id, region).src] = FD.maps.settings[id]; });
     });
     var list = Object.keys(files);
-    t.equal(list.length, 3 * 7 + 2, 'ford, road and camp for each of 7 regions, plus the cove and the rocks');
+    ['green', 'warm', 'cold', 'misty'].forEach(function (look) {
+      Object.keys(FD.maps.settings).forEach(function (id) { files[FD.maps.folder + id + '-' + look + '.png'] = FD.maps.settings[id]; });
+    });
+    list = Object.keys(files);
+    t.equal(list.length, 16, 'ford, camp, cove and road, each in four looks');
     return Promise.all(list.map(function (src) {
       return new Promise(function (resolve) {
         var img = new Image();
@@ -124,7 +145,7 @@
     })).then(function (sizes) {
       sizes.forEach(function (sz) {
         var s = files[sz.src];
-        t.same([sz.w, sz.h], [1800, 1200], sz.src);
+        t.same([sz.w, sz.h], [1448, 1086], sz.src);
         t.equal(sz.w / s.cols, sz.h / s.rows, sz.src + ': square grid squares');
       });
     });
@@ -140,12 +161,13 @@
     t.same([3, 7, 10, 11, 16, 20].map(function (n) { return F.band(FD, n).id; }), ['low', 'low', 'low', 'high', 'high', 'high']);
   });
 
-  test('a regional map has a picture per region; the cove and the rocks have one', function (t) {
-    t.equal(F.mapFor(FD, 'ford', 'southern_province').src, 'tools/encounter/assets/battlemaps/ford-southern.jpg');
-    t.equal(F.mapFor(FD, 'camp', 'the_north_isle').src, 'tools/encounter/assets/battlemaps/camp-north-isle.jpg');
-    t.equal(F.mapFor(FD, 'road', 'the_east_isle').src, 'tools/encounter/assets/battlemaps/road-east-isle.jpg');
-    t.equal(F.mapFor(FD, 'cove', 'northern_province').src, 'tools/encounter/assets/battlemaps/cove-western.jpg');
-    t.equal(F.mapFor(FD, 'ford', 'nowhere').src, 'tools/encounter/assets/battlemaps/ford-northern.jpg', 'an unknown region gets the first');
+  test('each region gets its look: green, warm, cold or misty', function (t) {
+    var src = function (setting, region) { return F.mapFor(FD, setting, region).src.split('/').pop(); };
+    t.same(['northern_province', 'midland_province', 'eastern_province'].map(function (r) { return src('ford', r); }), ['ford-green.png', 'ford-green.png', 'ford-green.png'], 'Telluria\'s lands');
+    t.same([src('camp', 'southern_province'), src('road', 'western_province')], ['camp-warm.png', 'road-warm.png'], 'Aurush\'s lands');
+    t.same([src('cove', 'the_north_isle'), src('ford', 'the_north_isle')], ['cove-cold.png', 'ford-cold.png'], 'the North Isle: snow and rock');
+    t.equal(src('road', 'the_east_isle'), 'road-misty.png', 'the East Isle: mist');
+    t.equal(src('ford', 'nowhere'), 'ford-green.png', 'an unknown region gets the first look');
     t.equal(F.mapFor(FD, 'nothing', 'northern_province'), null);
   });
 
@@ -157,9 +179,9 @@
     t.same([h.level, h.fromBastion, h.band.id], [12, true, 'high']);
     t.same(h.monsters.map(function (m) { return [m.name, m.count]; }), [['Old Wolf', 1], ['Winter Wolf', 2], ['Wolf', 12]]);
     t.equal(h.monsters[0].stat, 'Dire Wolf');
-    t.equal(h.map.src, 'tools/encounter/assets/battlemaps/camp-northern.jpg');
+    t.equal(h.map.src, 'tools/encounter/assets/battlemaps/camp-green.png');
     t.same(h.map.foes, FD.encounters.c6.foes, 'C6: the pack circles the camp');
-    t.same(h.map.avoid, FD.maps.settings.camp.avoid, 'no one starts in the fire');
+    t.same(h.map.avoid, F.mapFor(FD, 'camp', 'northern_province').avoid, 'no one starts in the fire');
     t.same(h.surprised, ['Kaelen']);
     t.equal(build('nothing'), null);
   });
@@ -433,7 +455,7 @@
     var h = build('c10camp', 'western_province', high);
     ER.loadHandoff(s, h);
     var pos = ER.startPositions(s.encounter.roster, h.map);
-    var size = 1600 / 30;
+    var size = 1600 / 24;
     var seen = {};
     s.encounter.roster.forEach(function (c) {
       var p = pos[c.encId];
@@ -441,7 +463,7 @@
       var col = p.x / size;
       var row = p.y / size;
       t.ok(Math.abs(col - Math.round(col)) < 1e-9 && Math.abs(row - Math.round(row)) < 1e-9, c.name + ' is on a grid corner');
-      t.ok(col >= 1 && col <= 29 && row >= 1 && row <= 19, c.name + ' is on the map');
+      t.ok(col >= 1 && col <= 23 && row >= 1 && row <= 17, c.name + ' is on the map');
       var key = Math.round(col) + ',' + Math.round(row);
       t.ok(!seen[key], c.name + ' has a corner of its own');
       Object.keys(seen).forEach(function (k) {
@@ -449,11 +471,11 @@
         t.ok(Math.max(Math.abs(q[0] - Math.round(col)), Math.abs(q[1] - Math.round(row))) >= 2, c.name + ' starts two squares from everyone else');
       });
       seen[key] = true;
-      t.ok(['15,10', '16,10', '15,11', '16,11'].indexOf(key) === -1, c.name + ' isn\'t in the fire');
-      if (c.type === 'pc') t.ok(Math.hypot(col - 15, row - 13) <= 2, c.name + ' starts by the party corner');
+      t.ok(['12,8', '13,8', '12,9', '13,9'].indexOf(key) === -1, c.name + ' isn\'t in the fire');
+      if (c.type === 'pc') t.ok(Math.hypot(col - 12, row - 11) <= 2, c.name + ' starts by the party corner');
     });
     var chief = s.encounter.roster.filter(function (c) { return c.name === 'Raider Chief'; })[0];
-    t.same([pos[chief.encId].x / size, pos[chief.encId].y / size], [4, 8], 'the leader takes the first foes corner');
+    t.same([pos[chief.encId].x / size, pos[chief.encId].y / size], [3, 8], 'the leader takes the first foes corner');
   });
 
   test('the Battlemap: the grid matched to the map, Snap on, tokens a square wide, the fog\'s explored squares cleared', function (t) {
@@ -462,8 +484,8 @@
     ER.loadHandoff(s, h);
     var vtt = ER.normalizeVtt({ grid: { show: false, snap: false, size: 70, offX: 12, offY: 4, opacity: 0.5 }, fog: { enabled: true, revealAll: false, exploredCells: ['1,1'] }, removed: { old: true }, camera: { x: 40, y: 10, zoom: 2 } });
     var patch = ER.handoffVtt(vtt, s.encounter.roster, h.map);
-    t.same([patch.grid.show, patch.grid.snap, patch.grid.size, patch.grid.offX, patch.grid.offY, patch.grid.opacity], [true, true, 1600 / 30, 0, 0, 0.5]);
-    t.equal(patch.tokenSize, 53);
+    t.same([patch.grid.show, patch.grid.snap, patch.grid.size, patch.grid.offX, patch.grid.offY, patch.grid.opacity], [true, true, 1600 / 24, 0, 0, 0.5]);
+    t.equal(patch.tokenSize, 67);
     t.same(patch.camera, { x: 0, y: 0, zoom: 1 });
     t.same([patch.fog.enabled, patch.fog.revealAll, patch.fog.exploredCells], [true, false, []], 'fog stays as you set it');
     t.same([patch.removed, patch.hidden], [{}, {}]);
@@ -472,12 +494,12 @@
   });
 
   test('the saved map can be one of the suite\'s battle maps, never anything else by path', function (t) {
-    t.ok(ER.isMapSave('tools/encounter/assets/battlemaps/ford-northern.jpg'));
+    t.ok(ER.isMapSave('tools/encounter/assets/battlemaps/ford-green.png'));
     t.ok(ER.isMapSave(''));
     t.ok(ER.isMapSave('data:image/png;base64,AAAA'));
     t.ok(!ER.isMapSave('tools/encounter/assets/battlemaps/../x.jpg'));
     t.ok(!ER.isMapSave('https://example.com/a.jpg'));
     t.ok(!ER.isMapSave('tools/explorer/assets/maps/midland_province.jpg'));
-    t.equal(ER.importProblem([{ key: 'tsi.encounter.mapImage', value: 'tools/encounter/assets/battlemaps/camp-midland.jpg' }]), null, 'an export with a suite map imports');
+    t.equal(ER.importProblem([{ key: 'tsi.encounter.mapImage', value: 'tools/encounter/assets/battlemaps/camp-misty.png' }]), null, 'an export with a suite map imports');
   });
 }());

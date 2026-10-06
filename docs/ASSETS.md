@@ -172,19 +172,37 @@ Not copied:
 
 The combatants' pictures and stat-block links are web addresses you type in. They load only when the laptop is online; otherwise the plain stand-in picture shows, as before.
 
-### Battle maps for Explorer fights (7 October 2026)
+### Battle maps for Explorer fights: Harry's art (7 October 2026)
 
-Not from an old repo: simple stand-in maps drawn for the suite by code (`docs/dev/make-battlemaps.py`), so every Explorer fight has a battle map until Harry has real ones. Each is a JPG of 1800 × 1200 pixels, a 30 × 20 grid of 5-foot squares (the grid isn't drawn on the picture; the Battlemap draws its own). The colours of each region's version are taken by eye from the Explorer's province maps. To use a real map, save it over the stand-in with the same name; if its grid isn't 30 × 20, change `cols` and `rows` for that setting in `tools/explorer/data/fights-data.js`.
+Not from an old repo: Harry made these 16 battle maps for the Explorer's fights and uploaded them on 7 October 2026. They replace the 23 stand-ins drawn by code the day before, which were deleted, along with the script that drew them.
+- **The files:** each is a PNG of 1448 × 1086 pixels, renamed and otherwise unchanged (byte for byte).
+- **The grid:** the suite lays a 24 × 18 grid of 5-foot squares over each (a tent is 2 squares). The grid isn't drawn on the pictures; the Battlemap draws its own.
+- **The four looks:** each kind of place comes in four looks. Which region uses which is set in `tools/explorer/data/fights-data.js` (`looks`):
+  - **green:** the Northern, Midland and Eastern Provinces (Telluria's lands);
+  - **warm:** the Southern and Western Provinces (Aurush's);
+  - **cold:** the North Isle;
+  - **misty:** the East Isle.
 
-| New path (`tools/encounter/assets/battlemaps/…`) | Size | Used by |
-|---|---|---|
-| `ford-northern.jpg`, `ford-midland.jpg`, `ford-eastern.jpg`, `ford-southern.jpg`, `ford-western.jpg`, `ford-north-isle.jpg`, `ford-east-isle.jpg` | 183–211 KB each | T2 The Ambush Sign, in the Region's version: a river across the middle, a shallow ford where the road crosses, woods on both banks |
-| `road-northern.jpg`, `road-midland.jpg`, `road-eastern.jpg`, `road-southern.jpg`, `road-western.jpg`, `road-north-isle.jpg`, `road-east-isle.jpg` | 188–226 KB each | F1 The Toll-Men Return, C10 The Beacons (riding through the night) and T9 (switched off): a road from west to east, a wooded rise to the north, a fallen tree ahead |
-| `camp-northern.jpg`, `camp-midland.jpg`, `camp-eastern.jpg`, `camp-southern.jpg`, `camp-western.jpg`, `camp-north-isle.jpg`, `camp-east-isle.jpg` | 192–231 KB each | C6 Wolf-Song, C9 The Debt Collector and C10 The Beacons (keeping watch): the party's camp in a clearing, with the fire, two tents and bedrolls |
-| `cove-western.jpg` | 148 KB | T13 Lights Below Redport: cliff top, the cliff path, a shingle beach with the smugglers' crates, lamp and boat, and the sea |
-| `rocks-north-isle.jpg` | 138 KB | C12 False Lights at Bleakharbour: moorland, a rocky shore with the wreckers' lanterns, and the sea |
+| Harry's file (uploaded to `main`) | New path (`tools/encounter/assets/battlemaps/…`) | Look | Size | Used by |
+|---|---|---|---|---|
+| `ChatGPT Image Oct 6, 2026, 10_03_26 PM-1.png` | `ford-green.png` | lush summer | 4.0 MB | T2 The Ambush Sign: a river across the middle, a ford of stepping stones where the road crosses |
+| `ChatGPT Image Oct 6, 2026, 10_03_28 PM-2.png` | `ford-warm.png` | dry, amber | 3.8 MB | T2 |
+| `ChatGPT Image Oct 6, 2026, 10_03_29 PM-3.png` | `ford-cold.png` | rocky, with heather | 4.1 MB | T2 |
+| `ChatGPT Image Oct 6, 2026, 10_03_31 PM-4.png` | `ford-misty.png` | dark, with fog | 3.4 MB | T2 |
+| `ChatGPT Image Oct 6, 2026, 10_03_32 PM-5.png` | `camp-green.png` | lush summer | 3.9 MB | C6 Wolf-Song, C9 The Debt Collector, C10 The Beacons (keeping watch): the camp, with its fire, two tents, logs and bedrolls |
+| `ChatGPT Image Oct 6, 2026, 10_03_34 PM-6.png` | `camp-warm.png` | dry, amber | 3.8 MB | the camp fights |
+| `ChatGPT Image Oct 6, 2026, 10_03_35 PM-7.png` | `camp-cold.png` | rocky, with heather | 4.2 MB | the camp fights |
+| `ChatGPT Image Oct 6, 2026, 10_03_37 PM-8.png` | `camp-misty.png` | dark, with fog | 3.5 MB | the camp fights |
+| `ChatGPT Image Oct 6, 2026, 10_09_02 PM-1.png` | `cove-green.png` | lush summer | 4.0 MB | T13 Lights Below Redport, C12 False Lights at Bleakharbour, and road fights near the sea: a shingle beach with crates and a boat, the sea below |
+| `ChatGPT Image Oct 6, 2026, 10_09_03 PM-2.png` | `cove-warm.png` | autumn | 4.0 MB | the cove fights (T13 at Redport uses this one) |
+| `ChatGPT Image Oct 6, 2026, 10_09_04 PM-3.png` | `cove-cold.png` | snow | 3.9 MB | the cove fights (C12 at Bleakharbour uses this one) |
+| `ChatGPT Image Oct 6, 2026, 10_09_04 PM-4.png` | `cove-misty.png` | dark, with fog | 3.9 MB | the cove fights |
+| `ChatGPT Image Oct 6, 2026, 10_09_05 PM-5.png` | `road-green.png` | lush summer | 4.1 MB | F1 The Toll-Men Return, C10 The Beacons (riding through the night), T9 (switched off): a road with a fallen tree across it |
+| `ChatGPT Image Oct 6, 2026, 10_09_06 PM-6.png` | `road-warm.png` | autumn | 3.9 MB | the road fights |
+| `ChatGPT Image Oct 6, 2026, 10_09_07 PM-7.png` | `road-cold.png` | snow | 4.1 MB | the road fights |
+| `ChatGPT Image Oct 6, 2026, 10_09_08 PM-8.png` | `road-misty.png` | dark, with fog | 3.1 MB | the road fights |
 
-The ford, road and camp come in a version for each region (Harry's choice); the cove and the rocks belong to one map each, because their events do. In all, 23 files, about 4.7 MB.
+In all, 16 files, about 62 MB. Harry uploaded them to the top of `main` by mistake; this branch moves them into place, so they leave the top of `main` when the pull request is merged.
 
 ## Scarlett Isles Explorer (phase 8)
 

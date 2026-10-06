@@ -31,21 +31,25 @@
     return bands[bands.length - 1] || null;
   };
 
-  /* A setting's battle map for a region: its picture and its grid and start places. */
+  /* A setting's battle map for a region: its picture (the region's look:
+     green, warm, cold or misty) and its grid and start places. The avoid
+     areas become the list of grid corners nobody starts on. */
   F.mapFor = function (data, settingId, region) {
     var maps = data.maps || {};
     var s = maps.settings && maps.settings[settingId];
     if (!s) return null;
-    var file = s.file;
-    if (s.regional) {
-      var part = (maps.regions || {})[region];
-      if (!part) part = maps.regions[Object.keys(maps.regions)[0]];
-      file = settingId + '-' + part + '.jpg';
-    }
+    var looks = maps.looks || {};
+    var look = looks[region] || looks[Object.keys(looks)[0]];
+    var avoid = [];
+    (s.avoid || []).forEach(function (a) {
+      for (var c = Math.max(1, a[0]); c <= Math.min(s.cols - 1, a[2]); c++) {
+        for (var r = Math.max(1, a[1]); r <= Math.min(s.rows - 1, a[3]); r++) avoid.push([c, r]);
+      }
+    });
     return {
-      setting: settingId, title: s.title, src: (maps.folder || '') + file,
+      setting: settingId, title: s.title, look: look, src: (maps.folder || '') + settingId + '-' + look + '.png',
       cols: s.cols, rows: s.rows,
-      party: (s.party || []).slice(), foes: (s.foes || []).slice(), avoid: (s.avoid || []).slice()
+      party: (s.party || []).slice(), foes: (s.foes || []).slice(), avoid: avoid
     };
   };
 

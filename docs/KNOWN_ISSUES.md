@@ -1031,9 +1031,10 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
     After **Not now**, **Load the Explorer's fight** at the top offers it again.
   - **Reporting back:** when every monster in the encounter is down, the tracker tells the Explorer (Harry's choice). The event window then says so and makes **Won** the main button. The DM still clicks Won or Fled.
   - **Tidying up:** Won, Fled, Skip or ending the event clears the hand-off. So does opening the Explorer when the waiting fight isn't from the event that's on now (after restoring a backup, say).
-- **The battle maps are stand-ins:** 23 simple maps drawn by code (ford, road and camp for each of the 7 regions, plus the cove below Redport and the rocks below Bleakharbour), for Harry to replace with real art (see `docs/ASSETS.md`).
+- **The battle maps** are Harry's 16 (7 October 2026): a ford, a camp, a cove and a road, each in four looks (green, warm, cold and misty), on a 24 × 18 grid; each region uses one look (see `docs/ASSETS.md`). They replaced 23 stand-ins drawn by code the day before.
   - T9 (switched off) uses the road map.
   - C10's ride through the night meets the raiders on the road; keeping watch, they find the camp.
+  - C12 at Bleakharbour is fought in the (snowy) cove.
 - **How the windows talk:** each Explorer and tracker window runs separately, so the fight and the report are passed through the browser's small shared storage (`tsi.suite.handoff` and `tsi.suite.handback`). They aren't saves, so they aren't in backups.
 - **Not tested:** Firefox (as SUI-20), and Edge itself; both windows were tested in Chromium from a double-clicked `index.html`.
 - **Evidence:**

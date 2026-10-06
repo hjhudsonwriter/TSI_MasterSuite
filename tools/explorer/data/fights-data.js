@@ -16,16 +16,22 @@
      licences/README.md): Armour Class, hit points, and the initiative
      bonus (its Dexterity modifier). link: the stat block on D&D Beyond
      (needs internet).
-   - maps: the battle-map pictures, in tools/encounter/assets/battlemaps/.
-     A regional setting has one picture per region, named
-     <setting>-<region>.jpg; the others have one picture (file). Every map
-     is a grid of cols × rows squares (5 ft each). party and foes are where
-     the tokens start: the grid corners (column, row) they spread out from,
-     the enemies shared round the foes corners in turn. avoid: corners no
-     token starts on (the campfire).
-     The pictures are simple stand-ins drawn by code
-     (docs/dev/make-battlemaps.py). To use your own picture instead, save it
-     over the stand-in with the same name, and set cols and rows to its grid.
+   - maps: Harry's battle maps (7 October 2026), in
+     tools/encounter/assets/battlemaps/. Each kind of place (setting) comes
+     in four looks, named <setting>-<look>.png:
+       green: lush summer;
+       warm: dry and amber (ford, camp) or autumn (cove, road);
+       cold: rocky heather (ford, camp) or snow (cove, road);
+       misty: dark, with fog.
+     looks says which look each region uses. To change a region's look,
+     change its word there; to use another picture, save it over one with
+     the same name. Every map is a grid of cols x rows squares (5 ft each;
+     24 x 18 suits these pictures, where a tent is 2 squares). party and
+     foes are where the tokens start: the grid corners (column, row) they
+     spread out from, the enemies shared round the foes corners in turn.
+     avoid lists areas no token starts in, as [first column, first row, last
+     column, last row] of grid corners (the river, the sea, the fire, tents,
+     crates, the fallen tree).
    - encounters: for each fight, its map setting and its two groups. coast,
      if given, is the setting used instead when the party is within 2 hexes
      of the sea (data/terrain-data.js; Harry, 7 October 2026: road fights
@@ -64,27 +70,27 @@ window.TSI_DATA.fights = {
 
   maps: {
     folder: 'tools/encounter/assets/battlemaps/',
-    /* Each region's part of a regional picture's name. */
-    regions: {
-      northern_province: 'northern',
-      midland_province: 'midland',
-      eastern_province: 'eastern',
-      southern_province: 'southern',
-      western_province: 'western',
-      the_north_isle: 'north-isle',
-      the_east_isle: 'east-isle'
+    /* Which look each region uses (Harry's maps, matched to the Explorer's
+       province maps): Telluria's green lands; Aurush's warm south and west;
+       the North Isle's snow and bare rock; the East Isle's mist (Greymyr). */
+    looks: {
+      northern_province: 'green',
+      midland_province: 'green',
+      eastern_province: 'green',
+      southern_province: 'warm',
+      western_province: 'warm',
+      the_north_isle: 'cold',
+      the_east_isle: 'misty'
     },
     settings: {
-      /* A river across the middle, with a shallow ford where the road crosses; woods on the flanks. */
-      ford: { title: 'The ford', regional: true, cols: 30, rows: 20, party: [[15, 17]], foes: [[15, 5], [8, 5], [22, 5], [5, 15], [25, 15]] },
-      /* A road from west to east, a wooded rise to the north and a fallen tree ahead. */
-      road: { title: 'The road', regional: true, cols: 30, rows: 20, party: [[6, 13]], foes: [[21, 8], [13, 4], [12, 16]] },
-      /* A clearing with the party's camp: the fire, two tents and bedrolls, trees all round. */
-      camp: { title: 'The camp', regional: true, cols: 30, rows: 20, party: [[15, 13]], foes: [[15, 3], [4, 7], [26, 7]], avoid: [[15, 10], [16, 10], [15, 11], [16, 11]] },
-      /* T13: the cove below Redport. The cliff path comes down at the west end; the smugglers' crates and boat are on the shingle. */
-      cove: { title: 'The cove', file: 'cove-western.jpg', cols: 30, rows: 20, party: [[7, 8]], foes: [[17, 9], [20, 11], [14, 11], [23, 12]] },
-      /* C12: the rocks below Bleakharbour, the sea to the south-east and the wreckers' lanterns on the rocks. */
-      rocks: { title: 'The rocks below Bleakharbour', file: 'rocks-north-isle.jpg', cols: 30, rows: 20, party: [[9, 6]], foes: [[17, 8], [13, 11], [20, 6]] }
+      /* A river across the middle, with a shallow ford of stepping stones where the road crosses; scrub and woods on both banks. */
+      ford: { title: 'The ford', cols: 24, rows: 18, party: [[12, 15]], foes: [[13, 3], [5, 3], [19, 3], [4, 13], [20, 13]], avoid: [[0, 7, 24, 10]] },
+      /* A road from west to east, a fallen tree across it ahead, scrub and boulders either side. */
+      road: { title: 'The road', cols: 24, rows: 18, party: [[5, 10]], foes: [[19, 8], [11, 4], [10, 14]], avoid: [[16, 7, 16, 8]] },
+      /* The party's camp in a clearing: the fire, two tents, logs and bedrolls, a path in from the south. */
+      camp: { title: 'The camp', cols: 24, rows: 18, party: [[12, 11]], foes: [[12, 2], [3, 6], [21, 6]], avoid: [[12, 8, 13, 9], [9, 6, 10, 7], [15, 6, 16, 7], [11, 8, 11, 8], [14, 8, 14, 8]] },
+      /* A shingle beach under a grassy bank, a path down at the west end, crates and a boat drawn up, the sea below. */
+      cove: { title: 'The cove', cols: 24, rows: 18, party: [[5, 7]], foes: [[13, 7], [17, 10], [10, 9], [20, 8]], avoid: [[0, 11, 24, 17], [13, 8, 16, 8], [13, 9, 13, 9], [11, 9, 11, 9]] }
     }
   },
 
@@ -95,7 +101,7 @@ window.TSI_DATA.fights = {
       low: [['bandit_captain', 1], ['veteran', 2], ['bandit', 8]],
       high: [['bandit_captain', 1], ['gladiator', 1], ['veteran', 4], ['bandit', 8]]
     },
-    /* T13 Lights Below Redport: "Levels 7–10: a bandit captain, 4 thugs and 6 bandits. Levels 11–16: add 2 veterans." */
+    /* T13 Lights Below Redport: "Levels 7–10: a bandit captain, 4 thugs and 6 bandits. Levels 11–16: add 2 veterans." The smugglers by their crates in the cove. */
     t13: {
       map: 'cove',
       low: [['bandit_captain', 1], ['thug', 4], ['bandit', 6]],
@@ -104,14 +110,14 @@ window.TSI_DATA.fights = {
     /* C6 Wolf-Song: "Levels 7–10: 12 wolves and the old one as a dire wolf. Levels 11–16: add 2 winter wolves." The pack circles the camp. */
     c6: {
       map: 'camp',
-      foes: [[15, 3], [5, 5], [25, 5], [4, 15], [26, 15], [10, 18], [20, 18]],
+      foes: [[12, 1], [4, 3], [20, 3], [3, 13], [21, 13], [8, 16], [16, 16]],
       low: [['dire_wolf', 1, 'Old Wolf'], ['wolf', 12]],
       high: [['dire_wolf', 1, 'Old Wolf'], ['winter_wolf', 2], ['wolf', 12]]
     },
     /* C9 The Debt Collector: "Levels 7–10: the collector (a spy) and his two friends (ogres). Levels 11–16: make the friends 2 hill giants." They're already in the camp. */
     c9: {
       map: 'camp',
-      foes: [[15, 7]],
+      foes: [[12, 5]],
       low: [['spy', 1, 'Debt Collector'], ['ogre', 2]],
       high: [['spy', 1, 'Debt Collector'], ['hill_giant', 2]]
     },
@@ -125,13 +131,13 @@ window.TSI_DATA.fights = {
     /* C10 The Beacons, keeping watch: the same raiders stumble on the camp, from the west (the coast). */
     c10camp: {
       map: 'camp',
-      foes: [[4, 8], [5, 14], [6, 3]],
+      foes: [[3, 8], [4, 13], [4, 3]],
       low: [['gladiator', 1, 'Raider Chief'], ['berserker', 4], ['bandit', 8]],
       high: [['gladiator', 1, 'Raider Chief'], ['veteran', 2], ['berserker', 4], ['bandit', 8]]
     },
-    /* C12 False Lights at Bleakharbour: "Levels 7–10: a bandit captain and 8 bandits. Levels 11–16: add 4 thugs." */
+    /* C12 False Lights at Bleakharbour: "Levels 7–10: a bandit captain and 8 bandits. Levels 11–16: add 4 thugs." On the shore below the camp. */
     c12: {
-      map: 'rocks',
+      map: 'cove',
       low: [['bandit_captain', 1], ['bandit', 8]],
       high: [['bandit_captain', 1], ['thug', 4], ['bandit', 8]]
     },

@@ -712,12 +712,19 @@
     /* Where everyone starts on the fight's battle map, in board units: PCs
        and NPCs round the party corners, monsters shared round the foes
        corners in turn, each on the nearest free grid corner (where Snap
-       puts tokens). Tokens start two squares apart, so their name labels
-       don't cover each other; only a crowd that runs out of room closes up. */
+       puts tokens). Tokens start two squares apart (no token on the eight
+       corners round another), so their name labels don't cover each other;
+       only a crowd that runs out of room closes up. */
     startPositions: function (roster, map) {
       var size = R.BOARD_W / map.cols;
-      var taken = {};
-      (map.avoid || []).forEach(function (p) { taken[p[0] + ',' + p[1]] = true; });
+      var blocked = {};   /* the avoid corners: the river, the fire... */
+      var taken = {};     /* corners with a token */
+      (map.avoid || []).forEach(function (p) { blocked[p[0] + ',' + p[1]] = true; });
+      /* No token on the eight corners round it. */
+      function clear(c, r) {
+        for (var dc = -1; dc <= 1; dc++) for (var dr = -1; dr <= 1; dr++) if (taken[(c + dc) + ',' + (r + dr)]) return false;
+        return true;
+      }
       var orders = {};
       function order(anchor) {
         var k = anchor[0] + ',' + anchor[1];
@@ -733,11 +740,16 @@
         orders[k] = list;
         return list;
       }
+      /* The nearest free corner with room round it; if the map's too full, the nearest free corner. */
       function place(anchor) {
         var list = order(anchor);
-        for (var i = 0; i < list.length; i++) {
-          var k = list[i][0] + ',' + list[i][1];
-          if (!taken[k]) { taken[k] = true; return { x: list[i][0] * size, y: list[i][1] * size }; }
+        for (var pass = 0; pass < 2; pass++) {
+          for (var i = 0; i < list.length; i++) {
+            var c = list[i][0], r = list[i][1], k = c + ',' + r;
+            if (blocked[k] || taken[k] || (pass === 0 && !clear(c, r))) continue;
+            taken[k] = true;
+            return { x: c * size, y: r * size };
+          }
         }
         return { x: anchor[0] * size, y: anchor[1] * size };
       }

@@ -11,8 +11,8 @@ const H = require('./helpers');
 const { section, check, assert, equal } = H;
 
 const INDEX = H.fileUrl('index.html');
-const FORD = 'tools/encounter/assets/battlemaps/ford-southern.jpg';
-const CAMP = 'tools/encounter/assets/battlemaps/camp-southern.jpg';
+const FORD = 'tools/encounter/assets/battlemaps/ford-warm.png';
+const CAMP = 'tools/encounter/assets/battlemaps/camp-warm.png';
 
 async function go(page, tool) {
   await page.goto(INDEX + '?tool=' + tool);
@@ -157,7 +157,7 @@ async function mapShown(map) {
       equal([captain.type, captain.maxHp, captain.initBonus, captain.refLink], ['monster', 65, 3, 'https://www.dndbeyond.com/monsters?filter-search=Bandit%20Captain']);
       equal(await tracker.evaluate(() => TSI.store.get('tsi.encounter.mapImage')), FORD);
       const vtt = await tracker.evaluate(() => TSI.encounter.debug.vtt());
-      equal([vtt.grid.show, vtt.grid.snap, Math.round(vtt.grid.size * 100) / 100, vtt.tokenSize], [true, true, 53.33, 53]);
+      equal([vtt.grid.show, vtt.grid.snap, Math.round(vtt.grid.size * 100) / 100, vtt.tokenSize], [true, true, 66.67, 67]);
       equal(Object.keys(vtt.tokenPos).length, 13);
       equal(await tracker.isHidden('[data-test=load-handoff]'), true);
       await waitSaved(tracker);
@@ -166,7 +166,7 @@ async function mapShown(map) {
     await check('the Battlemap shows the ford, with every token on a grid corner', async () => {
       map = await openMap(tracker);
       const shown = await mapShown(map);
-      equal([shown.src, shown.w, shown.h], [FORD, 1800, 1200]);
+      equal([shown.src, shown.w, shown.h], [FORD, 1448, 1086]);
       equal((await map.$$('[data-test=bm-token]')).length, 13);
       const v = await map.evaluate(() => TSI.encounter.battlemap.vtt());
       const size = v.grid.size;
@@ -306,7 +306,7 @@ async function mapShown(map) {
       await jClick(page, 'check-success');
       await jClick(page, 'choice-1');
       await jClick(page, 'check-failure');
-      equal(await jText(page, 'fight-map'), 'Battle map: The rocks below Bleakharbour, The North Isle.');
+      equal(await jText(page, 'fight-map'), 'Battle map: The cove, The North Isle.');
       equal(await jText(page, 'fight-level'), 'Party level 7 (the Bastion hasn\'t saved a level yet): the Levels 7–10 group.');
       const lay = await H.layoutCheck(page, ['.tsi-modal.tsi-exp-journey [data-test=fight-send]', '.tsi-modal.tsi-exp-journey [data-test=fight-fled]']);
       equal(lay.outOfView, []);
