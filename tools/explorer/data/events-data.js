@@ -1,4 +1,10 @@
-/* Scarlett Isles Explorer: the travel and campfire events.
+/* SWITCHED OFF (6 October 2026): Harry's new travel and campfire events in
+   journey-events.js replace these. This file is no longer loaded by the
+   suite (shared/data/tools.js), but it's kept, unchanged, so nothing is
+   lost. Its wording still mentions rations, which the Explorer no longer
+   tracks.
+
+   Scarlett Isles Explorer: the old travel and campfire events.
    A word-for-word copy of the old tool's data/events.json (7 regions, 279
    travel events and 322 campfire events), stored as a script so it loads
    from a double-clicked file. Edit the events here. Repeated events are

@@ -289,7 +289,7 @@ window.TSI_DATA.explorer = {
       text: 'The Ironbow awaits your orders.',
       choices: [{
         label: 'Close',
-        outcome: { gold: 0, rations: 0, note: 'Bastion turn prompt (weekly).', text: 'The Ironbow awaits your orders.' }
+        outcome: { gold: 0, note: 'Bastion turn prompt (weekly).', text: 'The Ironbow awaits your orders.' }
       }]
     }]
   },

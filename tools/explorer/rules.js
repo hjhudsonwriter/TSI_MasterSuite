@@ -11,7 +11,11 @@
    screen), which is where the old sizes (hex 38, token 46) came from.
 
    Every rule is as the old app.js had it; line numbers in comments point
-   there. Random picks take a rand() function so tests can fix the dice. */
+   there. Random picks take a rand() function so tests can fix the dice.
+
+   Harry's new events (6 October 2026) replace the old travel and campfire
+   events: when they happen and what they do is in journey.js, and the
+   events are in data/journey-events.js. Rations are gone entirely. */
 (function () {
   'use strict';
 
@@ -57,9 +61,13 @@
       nextTravelEventAtMiles: 0,
       lastWeatherDay: -999,
       activeWeather: null,
-      weatherEventDay: 0
+      weatherEventDay: 0,
+      /* Miles events added to (or took from) today's 30. */
+      milesAdjust: 0
     };
   };
+  function journeyRules() { return ns.journey; }
+  function journeyDefs(defs) { return defs || (window.TSI_DATA && window.TSI_DATA.journeyEvents) || { events: [], regions: {}, settings: {} }; }
 
   /* The heroes start in a diagonal line near the top left, as before. The old
      spots (0.12 + 0.07i, 0.18 + 0.06i of the map box) are converted like the
@@ -86,8 +94,10 @@
           milesUsed: 0
         };
       }),
-      /* Event gold and notes: kept while the Explorer is open, never saved (E1). */
-      trackers: { gold: 0, log: [] }
+      /* The events' gold, effects, threads and the event in progress
+         (journey.js). Saved since 6 October 2026: the gold is a running
+         total the DM clears (Harry's choice). */
+      journey: journeyRules().empty()
     };
   };
 
@@ -106,7 +116,8 @@
       fog: TSI.clone(state.fog),
       tokens: state.tokens.map(function (t) {
         return { id: t.id, name: t.name, initial: t.initial, x: t.x, y: t.y, size: t.size, groupId: t.groupId || null, milesUsed: t.milesUsed };
-      })
+      }),
+      journey: TSI.clone(state.journey || journeyRules().empty())
     };
   };
 
@@ -128,7 +139,7 @@
     if ('snap' in s && !isObj(s.snap)) return 'Its snap setting is damaged.';
     if (s.travel.activeWeather !== null && s.travel.activeWeather !== undefined && !isObj(s.travel.activeWeather)) return 'Its weather record is damaged.';
     if (s.travel.forcedMainEvent !== null && s.travel.forcedMainEvent !== undefined && !isObj(s.travel.forcedMainEvent)) return 'Its main-event record is damaged.';
-    return null;
+    return journeyRules().problem(s.journey);
   };
   R.isSave = function (s) { return R.saveProblem(s) === null; };
 
@@ -139,8 +150,9 @@
 
   /* Load a save over the defaults (old 1195-1227). Heroes are matched by id;
      their miles now come back too (EXP-03). */
-  R.fromSave = function (saved, data) {
+  R.fromSave = function (saved, data, defs) {
     var state = R.defaultState(data);
+    state.journey = journeyRules().clean(saved.journey, journeyDefs(defs));
     if (typeof saved.mapPresetId === 'string' && R.preset(data, saved.mapPresetId)) state.mapPresetId = saved.mapPresetId;
     if (typeof saved.mapUploadKey === 'string') state.mapUploadKey = saved.mapUploadKey;
     if (typeof saved.mapAspect === 'number' && saved.mapAspect > 0) state.mapAspect = saved.mapAspect;
@@ -155,7 +167,7 @@
     if (isObj(saved.travel)) {
       var t = saved.travel;
       var d = state.travel;
-      ['day', 'milesUsed', 'travelEventDay', 'nextTravelEventAtMiles', 'lastWeatherDay', 'weatherEventDay'].forEach(function (k) {
+      ['day', 'milesUsed', 'travelEventDay', 'nextTravelEventAtMiles', 'lastWeatherDay', 'weatherEventDay', 'milesAdjust'].forEach(function (k) {
         if (typeof t[k] === 'number' && Number.isFinite(t[k])) d[k] = t[k];
       });
       if (typeof t.provinceId === 'string' && R.province(data, t.provinceId)) d.provinceId = t.provinceId;
@@ -382,14 +394,19 @@
   };
 
   /* ---------- Travel ---------- */
-  /* Pace for the miles walked today (old 1665-1670). */
+  /* Pace for the miles walked today (old 1665-1670). Slow's "good foraging"
+     went with the rations (Harry, 6 October 2026). */
   R.travelMode = function (m) {
-    if (m <= 0) return { mode: '—', effects: '—' };
-    if (m <= 18) return { mode: 'Slow (≤18 miles)', effects: '+Stealth • good foraging' };
-    if (m <= 24) return { mode: 'Normal (≤24 miles)', effects: 'No effects' };
-    return { mode: 'Fast (≤30 miles)', effects: '−5 Passive Perception' };
+    if (m <= 0) return { mode: '—', effects: '—', key: null };
+    if (m <= 18) return { mode: 'Slow (≤18 miles)', effects: '+Stealth', key: 'slow' };
+    if (m <= 24) return { mode: 'Normal (≤24 miles)', effects: 'No effects', key: 'normal' };
+    return { mode: 'Fast (≤30 miles)', effects: '−5 Passive Perception', key: 'fast' };
   };
-  R.milesShown = function (t) { return R.clamp(Number(t && t.milesUsed) || 0, 0, R.DAY_MILES); };
+  /* Today's limit: 30 miles, plus or minus what events changed. */
+  R.dayLimit = function (state) { return journeyRules().dayLimit(state); };
+  R.milesShown = function (t, limit) {
+    return R.clamp(Number(t && t.milesUsed) || 0, 0, Math.max(R.DAY_MILES, Number(limit) || 0));
+  };
 
   /* Snap on: every hero moves to the centre of the hex it's in (old 2069-2110). */
   R.snapAll = function (state, board) {
@@ -502,10 +519,11 @@
       if (t) { t.x = st.x; t.y = st.y; }
     });
   };
-  /* A tired hero (30 miles) can't be dragged unless Free Move is on (old 2630-2632). */
+  /* A tired hero (today's limit, 30 miles unless an event changed it) can't
+     be dragged unless Free Move is on (old 2630-2632). */
   R.canDrag = function (state, anchorId) {
     var a = R.token(state, anchorId);
-    return !!state.freeMove || (Number(a && a.milesUsed) || 0) < R.DAY_MILES;
+    return !!state.freeMove || (Number(a && a.milesUsed) || 0) < R.dayLimit(state);
   };
 
   /* A forced main event that's due replaces the camp or travel event (old
@@ -528,51 +546,56 @@
      hex move sets the miles: 6 per hex, charged to every hero that moved.
      Returns { result: 'free' | 'tooFar' | 'moved', miles, open, tired }.
      'tooFar' means nothing was charged and the caller puts the heroes back.
-     open is the travel (or due main) event to show, if one triggered. */
-  R.finishMove = function (state, data, events, drag, board, rand) {
+     open is the event to show, if one triggered: a due main event (old
+     saves only), or a new travel event, already begun (kind 'journey'). */
+  R.finishMove = function (state, data, defs, drag, board, rand) {
     var anchor = R.token(state, drag.anchorId);
     if (!anchor || !drag.startAxial) return { result: 'none', miles: 0, open: null };
     var endAx = R.tokenHex(state, board, anchor);
     var miles = Math.round(R.hexDistance(drag.startAxial, endAx) * R.MILES_PER_HEX);
     if (state.freeMove) return { result: 'free', miles: miles, open: null };
 
+    var limit = R.dayLimit(state);
     var moved = drag.ids.length ? drag.ids : [anchor.id];
     for (var i = 0; i < moved.length; i++) {
       var t = R.token(state, moved[i]);
-      if (t && (Number(t.milesUsed) || 0) + miles > R.DAY_MILES) return { result: 'tooFar', miles: miles, open: null };
+      if (t && (Number(t.milesUsed) || 0) + miles > limit) return { result: 'tooFar', miles: miles, open: null };
     }
     moved.forEach(function (id) {
       var t = R.token(state, id);
       if (t) t.milesUsed = (Number(t.milesUsed) || 0) + miles;
     });
 
+    /* Once a day, when the party has gone a random 6 to 24 miles, the day's
+       travel roll is made (journey.js: 30%, never two days running). */
     var open = null;
     var travel = state.travel;
     var dayNow = Number(travel.day) || 1;
     if (!travel.nextTravelEventAtMiles || travel.nextTravelEventAtMiles <= 0) {
       travel.nextTravelEventAtMiles = 6 + Math.floor(rand() * 19);
     }
-    if (travel.travelEventDay !== dayNow) {
+    if (travel.travelEventDay !== dayNow && miles > 0) {
       var milesNow = Number(anchor.milesUsed) || 0;
       if (milesNow >= travel.nextTravelEventAtMiles) {
+        travel.travelEventDay = dayNow;
         var main = R.takeForcedMainEvent(state, data);
         if (main) {
-          travel.travelEventDay = dayNow;
           open = { kind: 'main', event: main };
         } else {
-          var prov = travel.provinceId || 'northern_province';
-          var region = events && events.provinces && events.provinces[prov];
-          if (region && region.travel_events && region.travel_events.length) {
-            var ev = pick(region.travel_events, rand);
-            if (ev) {
-              open = { kind: 'travel', event: ev };
-              travel.travelEventDay = dayNow;
+          var J = journeyRules();
+          var d = journeyDefs(defs);
+          if (!(state.journey && state.journey.current)) {
+            var ctx = J.context(state, d);
+            var it = J.travelRoll(state, d, ctx, rand);
+            if (it) {
+              J.begin(state, d, it, ctx, rand);
+              open = { kind: 'journey' };
             }
           }
         }
       }
     }
-    return { result: 'moved', miles: miles, open: open, tired: (Number(anchor.milesUsed) || 0) >= R.DAY_MILES };
+    return { result: 'moved', miles: miles, open: open, tired: (Number(anchor.milesUsed) || 0) >= limit };
   };
 
   /* ---------- Changing map (old loadPresetMapById 2153-2182) ---------- */
@@ -623,20 +646,23 @@
     var hasStart = event.steps.some(function (s) { return s.id === 'start'; });
     return hasStart ? 'start' : String(event.steps[0].id || 'start');
   };
-  /* An event's outcome: gold and a note go on the (unsaved) tally, and the
-     summary shows under the travel line (old applyOutcome 847-877). */
+  /* A main campaign event's outcome (the old step format, still used by
+     the main events and the weekly Bastion prompt): its gold goes on the
+     party's event gold, and the summary shows under the travel line (old
+     applyOutcome 847-877). Rations are gone (6 October 2026). */
   R.applyOutcome = function (state, outcome) {
     if (!outcome) return null;
-    if (!isObj(state.trackers)) state.trackers = { gold: 0, log: [] };
-    if (!Number.isFinite(state.trackers.gold)) state.trackers.gold = 0;
-    if (!Array.isArray(state.trackers.log)) state.trackers.log = [];
-    if (Number.isFinite(outcome.gold)) state.trackers.gold += outcome.gold;
-    var note = outcome.note ? String(outcome.note) : '';
-    if (note.trim()) state.trackers.log.unshift('Day ' + (Number(state.travel.day) || 1) + ': ' + note.trim());
+    if (!isObj(state.journey)) state.journey = journeyRules().empty();
+    var j = state.journey;
+    if (Number.isFinite(outcome.gold) && outcome.gold) j.gold = (Number(j.gold) || 0) + outcome.gold;
+    var note = outcome.note ? String(outcome.note).trim() : '';
     var parts = [];
     if (Number.isFinite(outcome.gold) && outcome.gold !== 0) parts.push((outcome.gold > 0 ? '+' : '') + outcome.gold + ' gold');
-    if (Number.isFinite(outcome.rations) && outcome.rations !== 0) parts.push((outcome.rations > 0 ? '+' : '') + outcome.rations + ' rations');
-    if (outcome.note && String(outcome.note).trim()) parts.push(String(outcome.note).trim());
+    if (note) parts.push(note);
+    if (parts.length) {
+      j.log.unshift('Day ' + (Number(state.travel.day) || 1) + ' · ' + parts.join(' • '));
+      if (j.log.length > 100) j.log.length = 100;
+    }
     return parts.length ? 'Outcome: ' + parts.join(' • ') : null;
   };
   R.outcomeText = function (o) {
@@ -644,54 +670,76 @@
   };
 
   /* Make Camp (old 2352-2427). Returns the night's pop-ups in order: the
-     campfire event (or a due main event), then any weather, then the weekly
-     Bastion prompt (E4). Before, each one replaced the last (EXP-01). */
-  R.makeCamp = function (state, data, events, rand) {
+     night's event (a due main event, tonight's set-up event, a follow-up on
+     its last day, or a campfire event), then any weather, then the weekly
+     Bastion prompt (E4). Before, each one replaced the last (EXP-01).
+     Weather is exactly as before. A campfire event is rolled after the
+     weather: 25%, skipped after a travel or weather event that day. A
+     journey event is begun here (kind 'journey'), so a reload picks it up. */
+  R.makeCamp = function (state, data, defs, rand) {
+    var J = journeyRules();
+    var d = journeyDefs(defs);
     var queue = [];
     var travel = state.travel;
-    var prov = travel.provinceId || 'northern_province';
-    var main = R.takeForcedMainEvent(state, data);
-    if (main) {
-      queue.push({ kind: 'main', event: main });
-    } else {
-      var region = events && events.provinces && events.provinces[prov];
-      if (region && region.campfire_events && region.campfire_events.length) {
-        var ev = pick(region.campfire_events, rand);
-        if (ev) queue.push({ kind: 'camp', event: ev });
-      }
-    }
+    if (!isObj(state.journey)) state.journey = J.empty();
+    var ctx = J.context(state, d);
+    var dayBefore = Number(travel.day) || 1;
+    var busy = !!state.journey.current;
 
-    travel.day = (Number(travel.day) || 1) + 1;
+    var main = R.takeForcedMainEvent(state, data);
+    var night = null;
+    if (main) queue.push({ kind: 'main', event: main });
+    else if (!busy) night = J.campOverride(state, d, ctx);
+
+    travel.day = dayBefore + 1;
     if (travel.activeWeather) travel.activeWeather = null;
 
     var dayNow = Number(travel.day) || 1;
     var last = Number(travel.lastWeatherDay) || -999;
+    var weatherTonight = false;
     if ((dayNow - last) >= data.weatherRules.cooldownDays && rand() < data.weatherRules.chance) {
       var w = data.weather[Math.floor(rand() * data.weather.length)];
       if (w) {
         queue.push({ kind: 'weather', weather: w, day: dayNow });
         travel.lastWeatherDay = dayNow;
         travel.weatherEventDay = dayNow;
+        weatherTonight = true;
       }
     }
 
+    /* A new day: miles back to 30, effects that have run out go. */
+    state.tokens.forEach(function (t) { t.milesUsed = 0; });
+    travel.milesAdjust = 0;
+    J.newDay(state);
+
+    if (!main && !busy) {
+      var it = night || J.campRoll(state, d, ctx, rand, dayBefore, weatherTonight);
+      if (it) {
+        J.begin(state, d, it, ctx, rand);
+        queue.unshift({ kind: 'journey' });
+      }
+    }
+
+    /* The weekly Bastion prompt. The event gold is no longer cleared here:
+       it's a saved running total the DM clears (Harry, 6 October 2026). */
     if ((Number(travel.day) || 1) % 7 === 1) {
-      if (!isObj(state.trackers)) state.trackers = { gold: 0, log: [] };
-      state.trackers.gold = 0;
       queue.push({ kind: 'camp', event: data.bastionPrompt });
     }
 
-    state.tokens.forEach(function (t) { t.milesUsed = 0; });
     travel.nextTravelEventAtMiles = 6 + Math.floor(rand() * 19);
     travel.travelEventDay = 0;
     return queue;
   };
 
   /* Reset Travel (old 2430-2442): back to day 1 with no miles. The weather
-     wait is left as it is (E9). */
+     wait is left as it is (E9). Effects and threads stay, and their days
+     move with the day counter. */
   R.resetTravel = function (state) {
+    var delta = 1 - (Number(state.travel.day) || 1);
     state.travel.day = 1;
+    state.travel.milesAdjust = 0;
     state.tokens.forEach(function (t) { t.milesUsed = 0; });
+    if (isObj(state.journey)) journeyRules().shiftDays(state, delta);
   };
 
   /* ---------- Weather ---------- */

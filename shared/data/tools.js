@@ -108,8 +108,11 @@ window.TSI_DATA.tools = [
       css: ['tools/explorer/explorer.css'],
       js: [
         'tools/explorer/data/explorer-data.js',
-        'tools/explorer/data/events-data.js',
+        /* Harry's new travel and campfire events (6 October 2026). The old
+           601 events in data/events-data.js are switched off: kept, not loaded. */
+        'tools/explorer/data/journey-events.js',
         'tools/explorer/rules.js',
+        'tools/explorer/journey.js',
         'tools/explorer/tool.js'
       ]
     }
