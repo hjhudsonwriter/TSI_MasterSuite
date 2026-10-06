@@ -581,7 +581,7 @@
         } else {
           var J = journeyRules();
           var d = journeyDefs(defs);
-          var ctx = J.context(state, d);
+          var ctx = J.context(state, d, { x: anchor.x, y: anchor.y });
           var it = J.travelRoll(state, d, ctx, rand);
           if (it) {
             J.begin(state, d, it, ctx, rand);

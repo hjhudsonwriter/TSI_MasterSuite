@@ -112,6 +112,7 @@ window.TSI_DATA.tools = [
            601 events in data/events-data.js are switched off: kept, not loaded. */
         'tools/explorer/data/journey-events.js',
         'tools/explorer/data/fights-data.js',
+        'tools/explorer/data/terrain-data.js',
         'tools/explorer/rules.js',
         'tools/explorer/journey.js',
         'tools/explorer/fights.js',

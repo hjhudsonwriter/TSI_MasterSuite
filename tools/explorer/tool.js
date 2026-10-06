@@ -1037,7 +1037,8 @@
           escValue: null
         }).then(function (kind) {
           if (!kind || !life.alive || state.journey.current) return;
-          var ctx = J.context(state, JDEFS);
+          var focus = R.focusToken(state, focusId);
+          var ctx = J.context(state, JDEFS, focus ? { x: focus.x, y: focus.y } : null);
           /* A campfire event while the day is under way (someone has moved
              today) belongs to tonight's camp: it comes at Make Camp, in
              place of the night's own roll. */
@@ -1181,7 +1182,7 @@
           var region = cur.ctx.region || state.travel.provinceId;
           var id = 'fight-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
           var h = F.build(FDATA, {
-            encounter: v.fight.encounter, region: region, regionName: R.provinceLabel(DATA, region), levelInfo: levelInfo,
+            encounter: v.fight.encounter, region: region, regionName: R.provinceLabel(DATA, region), levelInfo: levelInfo, near: cur.ctx.near,
             event: { id: ev.id, code: ev.code, title: ev.title, step: cur.step, day: cur.day },
             surprised: v.fight.surprised, id: id, at: new Date().toISOString()
           });
@@ -1271,7 +1272,7 @@
             var shell = TSI.shell;
             var canOpen = !!(shell && typeof shell.openWindow === 'function');
             var region = cur.ctx.region || state.travel.provinceId;
-            var prev = v.fight.encounter ? F.preview(FDATA, v.fight.encounter, region, levelInfo) : null;
+            var prev = v.fight.encounter ? F.preview(FDATA, v.fight.encounter, region, levelInfo, cur.ctx.near) : null;
             var report = v.fight.sentId ? TSI.handoff.read('result') : null;
             var reportedWon = !!(report && report.id === v.fight.sentId && report.result === 'won');
             if (prev) {
@@ -1279,7 +1280,7 @@
               parts.push(el('div', { class: 'tsi-exp-fightsetup', 'data-test': 'fight-setup' }, [
                 el('p', { class: 'tsi-exp-tip', 'data-test': 'fight-level', text: 'Party level ' + prev.level + (prev.fromBastion ? ' (from the Bastion)' : ' (the Bastion hasn\'t saved a level yet)') + ': the ' + prev.band.label + ' group.' }),
                 el('ul', { class: 'tsi-exp-fightlist', 'data-test': 'fight-monsters' }, prev.lines.map(function (line) { return el('li', { text: line }); })),
-                el('p', { class: 'tsi-exp-tip', 'data-test': 'fight-map', text: 'Battle map: ' + prev.map.title + ', ' + R.provinceLabel(DATA, region) + '.' }),
+                el('p', { class: 'tsi-exp-tip', 'data-test': 'fight-map', text: 'Battle map: ' + prev.map.title + ', ' + R.provinceLabel(DATA, region) + (prev.bySea ? ' (the party is near the sea).' : '.') }),
                 v.fight.surprised.length ? el('p', { class: 'tsi-exp-tip tsi-exp-tip--note', 'data-test': 'fight-surprised', text: 'Surprised in the first round: ' + fightList(v.fight.surprised) + '.' }) : null
               ]));
               if (reportedWon) {

@@ -216,6 +216,83 @@
     t.equal(J.markFight(R.defaultState(D), E, 'fight-x'), false, 'no event');
   });
 
+  group('Explorer fights: rivers and the coast');
+
+  var T = window.TSI_DATA.terrain;
+  function pin(mapId, id) {
+    return D.markersByMapId[mapId].filter(function (m) { return m.id === id; })[0];
+  }
+  function at(region, mapId, pinId) {
+    var s = R.defaultState(D);
+    s.travel.provinceId = region;
+    s.mapPresetId = mapId;
+    var p = pin(mapId, pinId);
+    s.tokens.forEach(function (tk) { tk.x = p.x; tk.y = p.y; });
+    return s;
+  }
+
+  test('every Explorer map has its river and coast marks', function (t) {
+    D.maps.forEach(function (m) {
+      var g = T.maps[m.id];
+      t.ok(g, m.id + ' is marked');
+      if (!g) return;
+      t.equal(g.length, T.rows, m.id + ': every row');
+      g.forEach(function (row, i) { t.ok(row.length === T.cols && /^[~\-ocrb.]+$/.test(row), m.id + ' row ' + i); });
+    });
+  });
+
+  test('the town pins: every port is near the sea, Alderbridge and Fork Farm are by a river', function (t) {
+    var near = function (mapId, pinId) { var p = pin(mapId, pinId); return J.nearAt(T, mapId, { x: p.x, y: p.y }); };
+    [['the_north_isle', 'bleakharbour'], ['western_province_south', 'redport'], ['the_east_isle', 'port_brawdlyn'], ['eastern_province_south', 'steelport'],
+      ['southern_province_east', 'moltenport'], ['northern_province_west', 'timberport'], ['southern_province_west', 'goldport']].forEach(function (x) {
+      var n = near(x[0], x[1]);
+      t.ok(n && n.known && n.coast, x[1] + ' is near the sea');
+    });
+    t.ok(near('northern_province_east', 'alderbridge').river, 'Alderbridge');
+    t.ok(near('southern_province_west', 'fork_farm').river, 'Fork Farm');
+    var mid = near('midland_province', 'middlemount');
+    t.same([mid.known, mid.river, mid.coast], [true, false, false], 'Middlemount is inland, away from the Rook');
+    t.same(J.nearAt(T, null, { x: 0.5, y: 0.5 }), { known: false, river: false, coast: false }, 'an uploaded map has no marks');
+    t.same(J.nearAt(T, 'midland_province', null), { known: false, river: false, coast: false });
+  });
+
+  test('T2 comes up only near a river (where the event needs a ford)', function (t) {
+    function pool(s) { return J.pool(E, 'travel', J.context(s, E)).map(function (ev) { return ev.id; }); }
+    t.ok(pool(at('northern_province', 'northern_province_east', 'alderbridge')).indexOf('t2') !== -1, 'at Alderbridge');
+    t.ok(pool(at('northern_province', 'northern_province_east', 'wolfhaven')).indexOf('t2') === -1, 'not at Wolfhaven, on the coast');
+    t.ok(pool(at('midland_province', 'midland_province', 'middlemount')).indexOf('t2') === -1, 'not at Middlemount');
+    var s = at('midland_province', 'midland_province', 'middlemount');
+    var a = pin('northern_province_east', 'alderbridge');
+    t.equal(J.context(s, E).near.river, false, 'the middle of the party');
+    s.mapPresetId = 'northern_province_east';
+    t.equal(J.context(s, E, { x: a.x, y: a.y }).near.river, true, 'or the hero given (the one just moved)');
+  });
+
+  test('what was near is kept with the event, and an older save has nothing near', function (t) {
+    var s = at('western_province', 'western_province_south', 'redport');
+    var ev = J.def(E, 'f1');
+    J.begin(s, E, { kind: 'follow', event: ev }, J.context(s, E), dice([0.5]));
+    t.same(s.journey.current.ctx.near, { known: true, river: false, coast: true });
+    var saved = JSON.parse(JSON.stringify(s.journey));
+    t.same(J.clean(saved, E).current.ctx.near, { known: true, river: false, coast: true });
+    delete saved.current.ctx.near;
+    t.same(J.clean(saved, E).current.ctx.near, { known: false, river: false, coast: false });
+  });
+
+  test('road fights near the sea are fought in the cove; camp fights stay in camp', function (t) {
+    var sea = { known: true, river: false, coast: true };
+    var inland = { known: true, river: false, coast: false };
+    var f1 = F.preview(FD, 'f1', 'western_province', low, sea);
+    t.same([f1.map.setting, f1.bySea], ['cove', true]);
+    t.same([F.preview(FD, 'f1', 'western_province', low, inland).map.setting, F.preview(FD, 'f1', 'western_province', low, null).map.setting], ['road', 'road']);
+    t.equal(F.preview(FD, 'c10ride', 'western_province', low, sea).map.setting, 'cove');
+    t.same([F.preview(FD, 'c9', 'southern_province', low, sea).map.setting, F.preview(FD, 'c10camp', 'western_province', low, sea).bySea], ['camp', false]);
+    t.equal(F.preview(FD, 't2', 'midland_province', low, { known: true, river: true, coast: true }).map.setting, 'ford', 'T2 keeps its ford');
+    var h = build('f1', 'western_province', low, { near: sea });
+    t.same([h.map.src, h.map.foes], [F.mapFor(FD, 'cove', 'western_province').src, FD.maps.settings.cove.foes]);
+    t.equal(ER.handoffProblem(h), null);
+  });
+
   group('Combat Tracker: a fight from the Explorer');
 
   test('a broken or strange hand-off is refused', function (t) {

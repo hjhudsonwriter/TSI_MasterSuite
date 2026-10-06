@@ -43,6 +43,14 @@ async function jClick(page, test) {
   await page.click('.tsi-modal.tsi-exp-journey [data-test="' + test + '"]');
   await page.waitForTimeout(100);
 }
+/* Done, then wait for the event window to close (a click inside the double-click guard is ignored, so try again). */
+async function done(page) {
+  for (let i = 0; i < 3; i++) {
+    await jClick(page, 'event-done');
+    try { await page.waitForSelector('.tsi-modal.tsi-exp-journey', { state: 'detached', timeout: 1500 }); return; } catch (e) { /* try again */ }
+  }
+  throw new Error('the event window didn\'t close');
+}
 const jText = (page, test) => page.$eval('.tsi-modal.tsi-exp-journey [data-test="' + test + '"]', e => e.textContent);
 const jHas = (page, test) => page.$('.tsi-modal.tsi-exp-journey [data-test="' + test + '"]').then(Boolean);
 const lines = (page, test) => page.$$eval('.tsi-modal [data-test="' + test + '"] li', ls => ls.map(l => l.textContent));
@@ -195,7 +203,7 @@ async function mapShown(map) {
       await jClick(page, 'fight-won');
       assert(/\+150 gold/.test(await jText(page, 'journey-changes')));
       equal(await handoffs(page), { fight: null, result: null });
-      await jClick(page, 'event-done');
+      await done(page);
     });
 
     await check('the tracker already open: the fight goes to it, Not now, then Load the Explorer\'s fight', async () => {
@@ -237,7 +245,7 @@ async function mapShown(map) {
       await jClick(page, 'fight-fled');
       equal(await handoffs(page), { fight: null, result: null });
       await tracker.waitForSelector('[data-test=load-handoff]', { state: 'hidden', timeout: 5000 });
-      await jClick(page, 'event-done');
+      await done(page);
     });
 
     await check('a fight left waiting by an event that\'s no longer on is cleared when the Explorer opens', async () => {
@@ -245,6 +253,35 @@ async function mapShown(map) {
       await go(page, 'explorer');
       equal(await handoffs(page), { fight: null, result: null });
       await tracker.waitForSelector('[data-test=load-handoff]', { state: 'hidden', timeout: 5000 });
+    });
+
+    await check('near the sea a road fight is fought in the cove, and T2 only comes up near a river', async () => {
+      await go(page, 'explorer');
+      await page.selectOption('[data-test=region]', 'western_province');
+      await page.selectOption('[data-test=map-select]', 'western_province_south');
+      await page.click('[data-test=load]');
+      await page.waitForTimeout(300);
+      const atPin = (mapId, pinId) => page.evaluate(([mapId, pinId]) => {
+        const p = TSI_DATA.explorer.markersByMapId[mapId].find(m => m.id === pinId);
+        TSI.explorer.debug.state().tokens.forEach(t => { t.x = p.x; t.y = p.y; });
+        const J = TSI.explorer.journey;
+        return J.pool(TSI_DATA.journeyEvents, 'travel', J.context(TSI.explorer.debug.state(), TSI_DATA.journeyEvents)).map(ev => ev.id);
+      }, [mapId, pinId]);
+      const pool = await atPin('western_province_south', 'redport');
+      assert(pool.indexOf('t2') === -1, 'no T2 at Redport: ' + pool);
+      await startEvent(page, 'f1');
+      await jClick(page, 'each-continue');
+      await jClick(page, 'choice-0');
+      equal(await jText(page, 'fight-map'), 'Battle map: The cove, Western Province (the party is near the sea).');
+      await jClick(page, 'fight-fled');
+      await done(page);
+      await atPin('western_province_south', 'shadowhall');
+      await startEvent(page, 'f1');
+      await jClick(page, 'each-continue');
+      await jClick(page, 'choice-0');
+      equal(await jText(page, 'fight-map'), 'Battle map: The road, Western Province.', 'inland, the road');
+      await jClick(page, 'fight-fled');
+      await done(page);
     });
 
     await check('nothing failed, and nothing reached for the internet', async () => {

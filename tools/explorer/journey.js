@@ -87,6 +87,11 @@
     return out;
   }
 
+  /* What was near the party when an event began; an older save has nothing near. */
+  function cleanNear(n) {
+    return isObj(n) ? { known: n.known === true, river: n.river === true, coast: n.coast === true } : { known: false, river: false, coast: false };
+  }
+
   function cleanCurrent(c, defs) {
     if (!isObj(c)) return null;
     var ev = J.def(defs, c.id);
@@ -105,7 +110,7 @@
     var out = {
       id: ev.id, kind: J.KINDS.indexOf(c.kind) !== -1 ? c.kind : ev.kind, step: c.step, vars: vars,
       changes: strList(c.changes), day: int(c.day, 1), phase: c.phase === 'camp' ? 'camp' : 'travel',
-      ctx: isObj(c.ctx) ? { region: str(c.ctx.region), mapId: str(c.ctx.mapId) || null, mapKey: str(c.ctx.mapKey) } : { region: '', mapId: null, mapKey: '' },
+      ctx: isObj(c.ctx) ? { region: str(c.ctx.region), mapId: str(c.ctx.mapId) || null, mapKey: str(c.ctx.mapKey), near: cleanNear(c.ctx.near) } : { region: '', mapId: null, mapKey: '', near: cleanNear(null) },
       thread: str(c.thread) || null, prevLastTravelDay: int(c.prevLastTravelDay, 0),
       opened: isObj(c.opened) ? c.opened : {}, round: null, puzzle: null
     };
@@ -158,17 +163,43 @@
   function day(state) { return Number(state.travel && state.travel.day) || 1; }
 
   /* ---------- Where the party is ---------- */
-  /* The Region picks the god's lands and the province; a map-only event needs that map loaded. */
-  J.context = function (state, defs) {
+  /* What's near a spot on a map (x, y from 0 to 1 across and down the
+     picture), from data/terrain-data.js: { known, river, coast }. known is
+     false on an uploaded map, which has no marks, and then nothing is near. */
+  J.nearAt = function (terrain, mapId, pos) {
+    var grid = terrain && terrain.maps && mapId ? terrain.maps[mapId] : null;
+    if (!grid || !pos || !isNum(pos.x) || !isNum(pos.y)) return { known: false, river: false, coast: false };
+    var c = Math.max(0, Math.min(terrain.cols - 1, Math.floor(pos.x * terrain.cols)));
+    var r = Math.max(0, Math.min(terrain.rows - 1, Math.floor(pos.y * terrain.rows)));
+    var ch = (grid[r] || '').charAt(c);
+    return { known: true, river: ch === 'r' || ch === 'b' || ch === '-', coast: ch === 'c' || ch === 'b' || ch === '~' };
+  };
+  /* The middle of the party (the average of the heroes' places). */
+  J.partyPos = function (state) {
+    var n = 0, sx = 0, sy = 0;
+    (state.tokens || []).forEach(function (t) {
+      if (!isNum(t.x) || !isNum(t.y)) return;
+      sx += t.x; sy += t.y; n++;
+    });
+    return n ? { x: sx / n, y: sy / n } : null;
+  };
+
+  /* The Region picks the god's lands and the province; a map-only event
+     needs that map loaded; near (Harry, 7 October 2026) is what's within
+     2 hexes of pos (a hero's place; the middle of the party if not given). */
+  J.context = function (state, defs, pos) {
     var region = (state.travel && state.travel.provinceId) || 'northern_province';
     var info = (defs.regions && defs.regions[region]) || {};
     var mapKey = state.mapPresetId ? 'preset:' + state.mapPresetId : state.mapUploadKey ? 'upload:' + state.mapUploadKey : 'none';
-    return { region: region, mapId: state.mapPresetId || null, mapKey: mapKey, god: info.god || null, isle: !!info.isle };
+    var near = J.nearAt(window.TSI_DATA && window.TSI_DATA.terrain, state.mapPresetId || null, pos || J.partyPos(state));
+    return { region: region, mapId: state.mapPresetId || null, mapKey: mapKey, god: info.god || null, isle: !!info.isle, near: near };
   };
 
   J.eligible = function (ev, ctx) {
     if (!ev || ev.off) return false;
     var w = ev.where || { any: true };
+    /* near: 'river' or 'coast' (T2 only near a river: Harry, 7 October 2026). */
+    if (w.near && !(ctx.near && ctx.near[w.near])) return false;
     if (w.any) return true;
     if (Array.isArray(w.maps)) return !!ctx.mapId && w.maps.indexOf(ctx.mapId) !== -1;
     if (Array.isArray(w.provinces)) return w.provinces.indexOf(ctx.region) !== -1;
@@ -313,7 +344,7 @@
     var cur = {
       id: ev.id, kind: it.kind, step: null, vars: {}, changes: [], day: day(state),
       phase: atCamp ? 'camp' : 'travel',
-      ctx: { region: ctx.region, mapId: ctx.mapId, mapKey: ctx.mapKey },
+      ctx: { region: ctx.region, mapId: ctx.mapId, mapKey: ctx.mapKey, near: cleanNear(ctx.near) },
       thread: it.thread || null, prevLastTravelDay: j.lastTravelDay, opened: {}, round: null, puzzle: null
     };
     if (ev.secret) cur.vars[ev.secret.key] = rand() < ev.secret.chance ? ev.secret.yes : ev.secret.no;

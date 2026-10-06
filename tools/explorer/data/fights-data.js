@@ -26,7 +26,10 @@
      The pictures are simple stand-ins drawn by code
      (docs/dev/make-battlemaps.py). To use your own picture instead, save it
      over the stand-in with the same name, and set cols and rows to its grid.
-   - encounters: for each fight, its map setting and its two groups. Each
+   - encounters: for each fight, its map setting and its two groups. coast,
+     if given, is the setting used instead when the party is within 2 hexes
+     of the sea (data/terrain-data.js; Harry, 7 October 2026: road fights
+     near the sea are fought in a cove). Each
      group entry is [monster, how many] or [monster, how many, name], where
      name is what the event calls that creature (it keeps the stat block of
      the monster). foes, if given, replaces the map's foes corners for this
@@ -79,7 +82,7 @@ window.TSI_DATA.fights = {
       /* A clearing with the party's camp: the fire, two tents and bedrolls, trees all round. */
       camp: { title: 'The camp', regional: true, cols: 30, rows: 20, party: [[15, 13]], foes: [[15, 3], [4, 7], [26, 7]], avoid: [[15, 10], [16, 10], [15, 11], [16, 11]] },
       /* T13: the cove below Redport. The cliff path comes down at the west end; the smugglers' crates and boat are on the shingle. */
-      cove: { title: 'The cove below Redport', file: 'cove-western.jpg', cols: 30, rows: 20, party: [[7, 8]], foes: [[17, 9], [20, 11], [14, 11], [23, 12]] },
+      cove: { title: 'The cove', file: 'cove-western.jpg', cols: 30, rows: 20, party: [[7, 8]], foes: [[17, 9], [20, 11], [14, 11], [23, 12]] },
       /* C12: the rocks below Bleakharbour, the sea to the south-east and the wreckers' lanterns on the rocks. */
       rocks: { title: 'The rocks below Bleakharbour', file: 'rocks-north-isle.jpg', cols: 30, rows: 20, party: [[9, 6]], foes: [[17, 8], [13, 11], [20, 6]] }
     }
@@ -115,6 +118,7 @@ window.TSI_DATA.fights = {
     /* C10 The Beacons, riding through the night: "Levels 7–10: a raider chief (a gladiator), 4 berserkers and 8 bandits. Levels 11–16: add 2 veterans." Met at dawn on the road. */
     c10ride: {
       map: 'road',
+      coast: 'cove',
       low: [['gladiator', 1, 'Raider Chief'], ['berserker', 4], ['bandit', 8]],
       high: [['gladiator', 1, 'Raider Chief'], ['veteran', 2], ['berserker', 4], ['bandit', 8]]
     },
@@ -134,6 +138,7 @@ window.TSI_DATA.fights = {
     /* F1 The Toll-Men Return: "Levels 7–10: the 2 toll-men (thugs) and 6 bandits. Levels 11–16: add 2 veterans." */
     f1: {
       map: 'road',
+      coast: 'cove',
       low: [['thug', 2, 'Toll-man'], ['bandit', 6]],
       high: [['thug', 2, 'Toll-man'], ['veteran', 2], ['bandit', 6]]
     },

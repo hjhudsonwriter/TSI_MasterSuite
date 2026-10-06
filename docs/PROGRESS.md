@@ -8,6 +8,14 @@ Double-click `index.html` to open the suite. The plan is in `docs/PLAN.md`, the 
 
 ## Done
 
+### Rivers and coast on the Explorer's maps (7 October 2026, after Harry's test)
+Harry tested the fight set-up ("everything seemed to work well") and asked that river and coastal battle maps only turn up at rivers and on the coast. He chose: T2 only near a river, and road fights near the sea in the cove (KNOWN_ISSUES EXP-35).
+- **The marks:** each of the 10 Explorer maps now has its rivers and coast marked (`tools/explorer/data/terrain-data.js`, made once from the map pictures by `docs/dev/make-terrain.py`). "Near" is within 2 hexes (12 miles): every port town is near the sea; Alderbridge and Fork Farm are by a river.
+- **T2 The Ambush Sign** comes up only when the party is near a river: parts of Midland, Northern Province (East and West) and Southern Province (West). It never comes up on an uploaded map.
+- **Near the sea**, F1's and C10's road fights are fought on the cove map, and the fight step says so. Camp fights stay in camp; T13 and C12 keep their maps.
+- **Tests:** 783 rules tests, all passing (5 new); `tests/e2e/fights.test.js` 15 checks and `tests/e2e/phase8.test.js` 81 checks, all passing.
+- **Harry's 16 battle maps** (4 each of camp, cove, road and ford) are next: he uploads them, and the next step matches each to the regions it suits and replaces the stand-ins.
+
 ### Explorer fights set up in the Combat Tracker (7 October 2026)
 Harry asked whether an Explorer fight could load a map and its monsters into the Combat Tracker by itself, and chose: a battle map for each region, the party level read from the Bastion, the SRD monsters closest to each event's enemies, and the tracker reporting back (KNOWN_ISSUES EXP-34).
 - **In the Explorer:** every fight step shows the fight ready to set up:
@@ -589,7 +597,8 @@ Each tool's questions are needed before that tool's phase. The full wording and 
 - **Explorer fights in the Combat Tracker (7 October 2026): choices made for you, to change if you like:**
   - **Names:** where an event names someone, the token does too, with the closest SRD stat block: the Debt Collector (a Spy, C9), the Old Wolf (a Dire Wolf, C6), the Raider Chief (a Gladiator, C10) and the two Toll-men (Thugs, F1). The rest use the SRD names (Bandit, Veteran and so on).
   - **The Rootbound Husk** (T9, switched off) has the Heartwood Ritual's 35 hit points, and no Armour Class or initiative bonus, because the Ritual gives none.
-  - **Which map:** T2 at the ford; F1, and C10's ride through the night, on the road; C6, C9 and C10's keeping watch at the camp; T13 in the cove; C12 on the rocks; T9 on the road.
+  - **Which map:** T2 at the ford; F1, and C10's ride through the night, on the road (or in the cove, near the sea: Harry's choice); C6, C9 and C10's keeping watch at the camp; T13 in the cove; C12 on the rocks; T9 on the road.
+  - **Rivers and coast:** "near" is 2 hexes (12 miles), chosen so every port town counts as coastal; T2 uses the position of the hero who just moved (or the selected hero, for Roll an event now).
   - **Where they start:** the pack circles the camp in C6; the debt collector and his friends are already by the fire in C9; the raiders come from the west in C10's keeping watch; the T2 ambushers wait across the ford and in the woods on both banks.
   - **Loading a fight** replaces only the monsters: the PCs and NPCs stay, with their hit points, and everyone's initiative is cleared.
   - **Surprised heroes** are matched to the tracker's PCs by name. "Kaelen" finds "Kaelen" or "Kaelen Ashford"; a hero with no PC of that name is listed so you can mark them by hand.
@@ -633,6 +642,7 @@ Each tool's questions are needed before that tool's phase. The full wording and 
   - **How the windows talk:** each window has its own copy of the saves, read when it opens, so the two windows talk through `TSI.handoff` (`shared/js/handoff.js`): small messages in the browser's shared storage, heard by the other window at once. `TSI.store.fresh(key)` reads another tool's save as it is now.
   - **The battle maps:** the stand-ins are drawn by `docs/dev/make-battlemaps.py` (Python with Pillow and NumPy). Its layouts must match the starting places in the data file. The Battlemap accepts a saved map path only inside `tools/encounter/assets/battlemaps/` (`isBundledMap`).
   - **Tests:** `tests/rules/fights.test.js` and `tests/e2e/fights.test.js`.
+  - **Rivers and coast:** `tools/explorer/data/terrain-data.js` is made by `docs/dev/make-terrain.py` (Python with Pillow, NumPy and SciPy). If a map picture changes, or a mark is wrong, add a correction to the script's FIXES and run it again. An event can ask for `near: 'river'` or `near: 'coast'` in its `where`, and a fight for a `coast` setting.
 - **The Clan Crest Creator (reworked).** Shield outlines are in `tools/crest/data/shields.js`, exactly as Heraldicon drew them in their own units; `geometry.js` scales them into the picture, finds each shape's balance point, and fits a sigil inside the rim. Sigils are in `tools/crest/data/sigils.js`: public-domain heraldic drawings traced into four layers of outlines (body, accent, white, lines), 1000 units on their longer side. They're made by the scripts in `tools/crest/dev/` (see its README); to change or add one, edit its settings in `sigils.tsv` and rebuild, rather than editing the data file by hand. The rules tests check every sigil fits every shield. Colours and schemes are in `data/crest-data.js`; the tests check every scheme uses named colours and keeps the rule of tincture.
 - **Old code:** re-clone the old repos into `_legacy/` if they're missing (the links are in handover section 16). Download the Ritual films from the release.
 - **Testing:** the sandbox's Playwright Chromium can't play MP4s, and it can't reach the Firebase database or the shop. Put those checks on Harry's Edge checklist.

@@ -24,7 +24,7 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 | Suite-wide (SUI) | 5 | 11 | 4 | 1 | 0 |
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
-| Scarlett Isles Explorer (EXP) | 12 | 5 | 4 | 13 | 0 |
+| Scarlett Isles Explorer (EXP) | 12 | 5 | 5 | 13 | 0 |
 | The Ironbow Bastion Manager (BAS) | 20 | 2 | 19 | 17 | 1 |
 | Clan Crest Creator (CRS) | 0 | 4 | 5 | 3 | 3 |
 | Arenas of The Scarlett Isles (ARN) | 8 | 2 | 0 | 17 | 0 |
@@ -1041,6 +1041,18 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
   - `tools/encounter/rules.js` (`loadHandoff`, `handoffWon`, `startPositions`, `handoffVtt`, `isBundledMap`), `tools/encounter/tool.js`, `tools/encounter/battlemap.js`;
   - `shared/js/handoff.js`, `TSI.store.fresh` and `TSI.tabGuard.isOpenElsewhere`;
   - tests: `tests/rules/fights.test.js`, `tests/e2e/fights.test.js`.
+
+### EXP-35 · The ford only near a river, and the cove near the sea
+**Deliberate change** (Harry's choice, 7 October 2026) · other
+
+- **Before:** T2 The Ambush Sign ("take them at the ford") could come up anywhere, so its ford battle map could appear far from any river.
+- **After:**
+  - **The marks:** where the rivers and the coast are on each of the Explorer's 10 maps is now marked, in `tools/explorer/data/terrain-data.js`. A script (`docs/dev/make-terrain.py`) found them once, from the map pictures' colours, with two corrections checked by eye: Midland has rivers and no coast, and the River Split's mouth on Southern Province (West).
+  - **"Near"** means within 2 hexes (12 miles). That counts every port town as near the sea (their pins sit up to 1.7 hexes from open water), and Alderbridge and Fork Farm as by a river.
+  - **T2** is now drawn only when the hero who has just moved (or, for Roll an event now, the selected hero) is near a river. That limits it to stretches of Midland, Northern Province (East and West) and Southern Province (West), and never on an uploaded map, which has no marks.
+  - **Road fights near the sea** (F1 The Toll-Men Return, and C10's dawn fight) are fought on the cove map. The fight step then says "(the party is near the sea)". Camp fights stay at the camp, and T13 and C12 keep their own maps.
+  - **What was near** is saved with the event, so it doesn't change if the event is kept for later.
+- **Evidence:** `tools/explorer/journey.js` (`nearAt`, `partyPos`, `context`, `eligible`), `tools/explorer/fights.js` (`settingFor`), `data/fights-data.js` (`coast`), `data/journey-events.js` (T2's `near: 'river'`), `rules.js` (`finishMove`); tests in `tests/rules/fights.test.js`, `tests/rules/explorer-journey.test.js` and `tests/e2e/fights.test.js`.
 
 ## The Ironbow Bastion Manager
 Old repo: `_legacy/bastion_manager` (file:line references point there).

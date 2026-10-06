@@ -70,22 +70,33 @@
     });
   };
 
-  /* Everything the event window shows before the fight is set up. null if this fight has no encounter. */
-  F.preview = function (data, encounterId, region, levelInfo) {
+  /* Which map setting a fight uses: its own, or (near the sea) its coast setting. */
+  F.settingFor = function (enc, near) {
+    return enc.coast && near && near.coast ? enc.coast : enc.map;
+  };
+
+  /* Everything the event window shows before the fight is set up. null if
+     this fight has no encounter. near: what was near the party when the
+     event began ({ river, coast }, from journey.js). */
+  F.preview = function (data, encounterId, region, levelInfo, near) {
     var enc = data.encounters && data.encounters[encounterId];
     if (!enc) return null;
     var band = F.band(data, levelInfo.level);
-    var map = F.mapFor(data, enc.map, region);
+    var setting = F.settingFor(enc, near);
+    var map = F.mapFor(data, setting, region);
     if (!band || !map) return null;
     var groups = F.groups(data, enc, band.id);
     var total = groups.reduce(function (n, g) { return n + g.count; }, 0);
-    return { band: band, map: map, groups: groups, total: total, lines: F.lines(groups), level: levelInfo.level, fromBastion: levelInfo.fromBastion };
+    return {
+      band: band, map: map, groups: groups, total: total, lines: F.lines(groups), level: levelInfo.level, fromBastion: levelInfo.fromBastion,
+      bySea: setting !== enc.map
+    };
   };
 
   /* The hand-off for the Combat Tracker.
-     opts: { encounter, region, regionName, levelInfo, event: { id, code, title, step, day }, surprised: [hero names], id, at } */
+     opts: { encounter, region, regionName, levelInfo, near, event: { id, code, title, step, day }, surprised: [hero names], id, at } */
   F.build = function (data, opts) {
-    var p = F.preview(data, opts.encounter, opts.region, opts.levelInfo);
+    var p = F.preview(data, opts.encounter, opts.region, opts.levelInfo, opts.near);
     if (!p) return null;
     var enc = data.encounters[opts.encounter];
     var ev = opts.event || {};
@@ -104,7 +115,7 @@
       monsters: p.groups,
       map: {
         src: p.map.src, title: p.map.title, cols: p.map.cols, rows: p.map.rows,
-        party: p.map.party, foes: enc.foes ? enc.foes.slice() : p.map.foes, avoid: p.map.avoid
+        party: p.map.party, foes: enc.foes && !p.bySea ? enc.foes.slice() : p.map.foes, avoid: p.map.avoid
       },
       surprised: (opts.surprised || []).slice()
     };

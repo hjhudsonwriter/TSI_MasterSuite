@@ -95,27 +95,29 @@
   group('Explorer events: when they happen');
 
   test('pools follow the Region, and map-only events need their map', function (t) {
-    t.same(poolIds(fresh('midland_province')), ['t1', 't2', 't3', 't4', 't6', 't7', 't8']);
+    t.same(poolIds(fresh('midland_province')), ['t1', 't3', 't4', 't6', 't7', 't8'], 'no T2 with no map: it needs a river nearby');
     t.ok(poolIds(fresh('midland_province', 'midland_province')).indexOf('t5') !== -1, 'the Ferry Puzzle where there\'s a river');
     t.ok(poolIds(fresh('eastern_province', 'eastern_province_north')).indexOf('t10') !== -1);
     t.ok(poolIds(fresh('eastern_province', 'eastern_province_south')).indexOf('t10') === -1, 'only on the Muster\'s map');
-    t.same(poolIds(fresh('southern_province', 'southern_province_west')), ['t1', 't2', 't3', 't4', 't5', 't6', 't11', 't12', 't14']);
+    var sw = fresh('southern_province', 'southern_province_west');
+    sw.tokens.forEach(function (tk) { tk.x = 0.052; tk.y = 0.7049; });   /* at Fork Farm, on the River Split */
+    t.same(poolIds(sw), ['t1', 't2', 't3', 't4', 't5', 't6', 't11', 't12', 't14']);
     var up = fresh('western_province');
     up.mapUploadKey = 'abc';
-    t.same(poolIds(up), ['t1', 't2', 't3', 't4', 't6', 't12'], 'an uploaded map gets the Region\'s events, not map-only ones');
+    t.same(poolIds(up), ['t1', 't3', 't4', 't6', 't12'], 'an uploaded map gets the Region\'s events, not map-only ones (nor T2: it has no river marks)');
     t.same(poolIds(fresh('the_north_isle', 'the_north_isle'), 'camp'), ['c1', 'c2', 'c3', 'c4', 'c11', 'c12']);
   });
 
   test('drawn like cards: nothing repeats until the pool is used up', function (t) {
     var s = fresh('midland_province');
     var seen = [];
-    for (var i = 0; i < 7; i++) {
+    for (var i = 0; i < 6; i++) {
       var ev = J.draw(s, E, 'travel', ctx(s), dice([0.37]));
       begin(s, ev.id);
       J.finish(s, E);
       seen.push(ev.id);
     }
-    t.equal(seen.slice().sort().join(), ['t1', 't2', 't3', 't4', 't6', 't7', 't8'].join(), 'all seven, once each');
+    t.equal(seen.slice().sort().join(), ['t1', 't3', 't4', 't6', 't7', 't8'].join(), 'all six, once each');
     var again = J.draw(s, E, 'travel', ctx(s), dice([0]));
     t.equal(again.id, 't1', 'then the pool is shuffled back in');
     t.equal(s.journey.used.travel.length, 0);

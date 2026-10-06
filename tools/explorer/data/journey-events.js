@@ -17,6 +17,9 @@
      the events uses 'dm' or 'night' at present.
    - where: { any: true } | { gods: [...] } | { provinces: [...] } | { maps: [...] }.
      gods and provinces follow the Region list; maps need that map loaded.
+     Any of them can add near: 'river' or 'coast': the party must be within
+     2 hexes of one, as marked in data/terrain-data.js (never on an uploaded
+     map, which has no marks).
    - steps: start is the first. A step shows text (and a verse), applies its
      apply list once when it's reached, then offers ONE of: check, choices,
      next, fight, contest, puzzle, pick, branch, or end: true.
@@ -119,7 +122,8 @@ window.TSI_DATA.journeyEvents = {
     },
 
     {
-      id: 't2', code: 'T2', kind: 'travel', title: 'The Ambush Sign', where: { any: true },
+      /* Only near a river: the ambush is "at the ford" (Harry, 7 October 2026). */
+      id: 't2', code: 'T2', kind: 'travel', title: 'The Ambush Sign', where: { any: true, near: 'river' },
       line: 'Survival, then Stealth or Perception · may lead to a fight',
       steps: {
         start: {
