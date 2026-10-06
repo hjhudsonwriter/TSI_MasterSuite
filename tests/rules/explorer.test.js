@@ -42,7 +42,8 @@
   test('events: Harry\'s new ones; the old 601 aren\'t loaded', function (t) {
     var on = E.events.filter(function (ev) { return !ev.off; });
     var kinds = function (k) { return on.filter(function (ev) { return ev.kind === k; }).length; };
-    t.equal(kinds('travel') + kinds('dm'), 17, '17 travel events, T17 among them as a DM event');
+    t.equal(kinds('travel'), 16, '16 travel events: T9 is switched off and T17 removed');
+    t.equal(kinds('dm') + kinds('night'), 0);
     t.equal(kinds('camp'), 12);
     t.equal(kinds('follow'), 3);
     t.equal(window.TSI_DATA.explorerEvents, undefined, 'the old events file is switched off');

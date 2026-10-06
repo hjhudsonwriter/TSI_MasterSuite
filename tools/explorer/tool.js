@@ -154,7 +154,7 @@
       var noticeEl = el('p', { class: 'tsi-exp-notice', role: 'status', 'data-test': 'notice' });
       var pills = el('div', { class: 'tsi-exp-pills' });
       var btnFreeMove = btn('Free Move: OFF', toggleFreeMove, '', 'free-move');
-      /* The DM-only events (T17 The Second Marker) are queued from here too, never drawn at random. */
+      /* Any DM-only events (kind 'dm', none at present) are queued from here too, never drawn at random. */
       var dmEvents = J.dmEvents(JDEFS);
       var mainSelect = el('select', { class: 'tsi-input tsi-exp-select', 'aria-label': 'Main campaign event', 'data-test': 'main-select' }, [el('option', { value: '', text: 'Force Main Campaign Event…' })].concat(
         DATA.mainEvents.map(function (ev) { return el('option', { value: ev.id, text: ev.title }); }),
@@ -839,7 +839,7 @@
           parts.prompt.hidden = true;
           var choices = step && Array.isArray(step.choices) ? step.choices : [];
           if (!choices.length) { setChoices([closer()]); return; }
-          setChoices(choices.map(function (ch) {
+          var buttons = choices.map(function (ch) {
             return choiceButton((ch && ch.label) || 'Continue', function () {
               if (ch && ch.next) { renderStep(String(ch.next)); return; }
               if (ch && ch.outcome) {
@@ -851,7 +851,21 @@
               }
               api.close('close');
             }, shownAt);
-          }));
+          });
+          /* The weekly Bastion reminder can open the Bastion Manager in its
+             own window (Harry, 7 October 2026), and stays open itself. */
+          if (event === DATA.bastionPrompt && TSI.shell && typeof TSI.shell.openWindow === 'function') {
+            var opener = choiceButton('Open the Bastion Manager in a new window ↗', function () {
+              if (opener.disabled) return;
+              opener.disabled = true;
+              TSI.shell.openWindow('bastion');
+              setNotice('The Bastion Manager opened in a new window.');
+              life.setTimeout(function () { opener.disabled = false; }, 1500);
+            }, shownAt);
+            opener.setAttribute('data-test', 'open-bastion');
+            buttons.push(opener);
+          }
+          setChoices(buttons);
         }
         return TSI.modal.open({
           title: R.eventMeta(DATA, state, kind, event),

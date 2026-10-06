@@ -883,15 +883,10 @@ function serve(dir) {
       await closePopup(page);
     });
 
-    await check('a DM event from the Main Campaign list', async () => {
-      await page.selectOption('[data-test=main-select]', 'dm:t17');
-      await pause(page);
-      await page.click('[data-test=queue]');
-      await page.waitForSelector('.tsi-modal.tsi-exp-journey');
-      const j = await journeyView(page);
-      assert(/^DM event • The East Isle • T17$/.test(j.meta), j.meta);
-      equal(j.skip, false, 'a DM event isn\'t skipped');
-      await closePopup(page);
+    await check('the Main Campaign list has no DM-only events (The Second Marker is removed)', async () => {
+      const opts = await page.$$eval('[data-test=main-select] option', o => o.map(x => x.textContent));
+      assert(!opts.some(t => /Second Marker/.test(t)), opts.join());
+      equal(await page.$('[data-test=main-select] optgroup'), null);
     });
 
     await check('the event window fits the laptop, full screen and the TV', async () => {
@@ -945,6 +940,26 @@ function serve(dir) {
       assert(/^Campfire event • /.test(j.meta) && /^C\d+$/.test(j.meta.split(' • ')[2]), j.meta);
       equal((await st(page)).journey.current.id, tonight.event);
       await closeAll(page);
+    });
+
+    await check('the Bastion reminder opens the Bastion Manager in a new window, and stays up', async () => {
+      await chances(page, 0, 0);
+      await page.evaluate(() => { const s = TSI.explorer.debug.state(); s.travel.day = 7; s.travel.lastWeatherDay = 7; });
+      await pause(page);
+      await page.click('[data-test=camp]');
+      await page.waitForSelector('.tsi-modal [data-test=open-bastion]');
+      equal((await eventView(page)).title, 'Bastion Turn');
+      await page.waitForTimeout(400);
+      const [win] = await Promise.all([context.waitForEvent('page'), page.click('.tsi-modal [data-test=open-bastion]')]);
+      await win.waitForLoadState();
+      assert(/\?tool=bastion$/.test(win.url()), win.url());
+      await win.close();
+      equal(await text(page, 'notice'), 'The Bastion Manager opened in a new window.');
+      equal((await eventView(page)).title, 'Bastion Turn', 'the reminder is still up');
+      await firstChoice(page);
+      equal((await eventView(page)).title, 'Result');
+      await closeAll(page);
+      await chances(page, 0.3, 0.25);
     });
     await H.shot(page, 'p8-new-panel');
     equal(context.log.errors, []);

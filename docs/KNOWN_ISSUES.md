@@ -982,7 +982,7 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 - **After:**
   - **The events:** 17 travel events, 12 campfire events and 3 follow-ups, each with at least one roll, a choice and a consequence that outlasts the pop-up.
     - T9 The Husk in the Furrows is written but switched off: no Rootbound creature before the Heartwood finale.
-    - T17 The Second Marker is a DM-only event, queued from the Main Campaign list.
+    - T17 The Second Marker was first built as a DM-only event, then removed at Harry's request (7 October 2026), leaving 16 travel events.
   - **How often:** once a day on the road, a 30% chance of a travel event, never two days running. At Make Camp, the weather is exactly as before, then a 25% chance of a campfire event, skipped after a travel or weather event that day. Events are drawn like cards: nothing repeats until a map's pool is used up.
   - **The event window:** one step at a time. It shows the check and its DC; the players roll and the DM clicks Success or Failure (or Fail by 5 or more). Then come choices, fights (run in the Combat Tracker, then Won or Fled), contests, riddles and puzzles, and a summary of what changed.
   - **What an event can change:** gold, today's miles, Active Effects, Threads, and DM notes for other tools (never applied automatically).

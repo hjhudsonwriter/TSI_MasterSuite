@@ -8,6 +8,13 @@ Double-click `index.html` to open the suite. The plan is in `docs/PLAN.md`, the 
 
 ## Done
 
+### After Harry's test: The Second Marker removed, and the Bastion from the weekly reminder (7 October 2026)
+Harry tested the 6 October build ("all tests passed and everything seems to be working fine") and asked for two changes.
+- **T17 The Second Marker is removed** from the Explorer's events (and its night fight with it), so the Main Campaign list has no DM events now. There are 16 travel events. An old save with it in progress, or set for tonight, simply drops it on loading; a thread it already opened stays in the Threads list for the DM.
+- **The weekly Bastion reminder** (days 8, 15, 22…) has **Open the Bastion Manager in a new window ↗**, which opens the Bastion beside the Explorer (for the TV or the laptop). The reminder stays up until it's closed, as before.
+- **Tests:** `tests/rules.html` runs 753 rules tests, all passing; `tests/e2e/phase8.test.js` has 81 checks, all passing, including the new button opening the Bastion in its own window.
+- **Harry's question** about the Explorer setting up fights in the Combat Tracker and Battlemap (a map and monsters ready to go) is answered in the session; it isn't built yet. See Next.
+
 ### The Explorer's new events, a new-window option, and the DM doc (6 October 2026)
 Harry asked for three things, and answered four questions (the DM doc as a floating panel; every recommendation in his events document except T9; event gold as a saved running total; follow-ups guaranteed on their last day). Mid-build he added a fourth: remove rations from the Explorer completely.
 - **Open a tool in a new window** (KNOWN_ISSUES SUI-20):
@@ -23,7 +30,7 @@ Harry asked for three things, and answered four questions (the DM doc as a float
   - **The events:**
     - 17 travel events, 12 campfire events and 3 follow-ups, written into one data file, `tools/explorer/data/journey-events.js`. How an event is written is explained at the top of that file.
     - T9 The Husk in the Furrows is written but switched off: no Rootbound creature before the Heartwood finale. Turning it on means deleting `off: true`.
-    - T17 The Second Marker is DM-only. It's queued from the Main Campaign list, and its "Guard the Marker" brings the chisel-wielders back at that night's camp.
+    - T17 The Second Marker was built as a DM-only event, then removed at Harry's request the next day (see 7 October).
     - The old 601 events are switched off: no longer loaded, but kept in `data/events-data.js`.
   - **How often:**
     - **Travel:** once a day on the road, at a random 6 to 24 miles (as before), there's a 30% chance of a travel event, never two days running.
@@ -514,6 +521,8 @@ Harry asked for a complete rework: the old tool's shields, colours and sigils we
   - The old-save import phase removed.
 
 ## Next
+**From the Explorer to the Combat Tracker (Harry's question, 7 October 2026):** a proposal is waiting for Harry's go-ahead. A fight in an Explorer event would hand the Combat Tracker a ready encounter (a battle map chosen by where the party is, and the monsters, sized to the party's level), which the DM loads with one click. It needs Harry's battle maps and a decision on which monsters and stat source to use.
+
 **Harry tries the new Explorer events at the table**, then says what to change: how often they come (30% and 25%), any DC or amount (all in `tools/explorer/data/journey-events.js`), and the choices listed under Open questions. His document suggests about 25 more map-specific events, written in the same style, once he's happy with it. **The DM doc's contents are the next build**: Harry decides what it should hold.
 
 **Harry tries a war at the table.** Play a battle or two of each objective (Raid, Skirmish, Defend Bastion, Seize Outpost) on the laptop and the TV, then say what to change: any number in `tools/bastion/data/war-units-data.js` (unit stats, enemy budgets, losses, recovery, rewards), the clans' armies, the beasts' profiles, or how the enemy plays. Harry has said fuller terrain rules could be a phase 3; nothing else is planned until he decides. The kept behaviours he's most likely to want changed are listed under Open questions below, and each tool's full list is in `docs/KNOWN_ISSUES.md`.
@@ -549,7 +558,7 @@ Each tool's questions are needed before that tool's phase. The full wording and 
   - **"Roll an event now":** a campfire event drawn while the party is on the road waits for tonight's camp. A travel event drawn by hand counts as that day's travel event.
   - **Follow-up windows:** F1 is days 1 to 3 after T1, F2 is exactly 7 days after T14, and F3 is days 2 to 5 after C12. If something else takes the camp on a follow-up's last day, it waits one more day.
   - **The old "Funnel" tag** was the old events' type label: a Funnel event offered several choices that narrowed to one outcome, and an Instant one had a single Continue. The new events show their skills line instead (for example "Insight, then Intimidation, Stealth or Persuasion").
-  - **Lore marked ⚑ in your document** is built as written: the Wardens as road-keepers (T1), what each god's blessing does, the heartbeat vision (C5, described by the DM), and The Second Marker as a DM-only event. T9 waits, switched off, until Rootbound creatures can appear before the finale.
+  - **Lore marked ⚑ in your document** is built as written: the Wardens as road-keepers (T1), what each god's blessing does, and the heartbeat vision (C5, described by the DM). T9 waits, switched off, until Rootbound creatures can appear before the finale.
 - **The DM doc (6 October 2026):**
   - **Where it first opens:** near the top right, where it covers some of a tool's buttons until moved.
   - **Full screen:** it isn't shown inside a tool's own full-screen view, such as the Explorer's map on the TV.

@@ -61,13 +61,13 @@
     });
   });
 
-  test('Harry\'s choices: T9 is switched off; T17 is a DM event, never drawn', function (t) {
+  test('Harry\'s choices: T9 is switched off; T17 The Second Marker is gone', function (t) {
     t.ok(J.def(E, 't9').off);
     ['northern_province', 'midland_province', 'eastern_province'].forEach(function (region) {
       t.ok(poolIds(fresh(region)).indexOf('t9') === -1, 'no T9 in ' + region);
     });
-    t.same(J.dmEvents(E).map(function (ev) { return ev.code; }), ['T17']);
-    t.ok(poolIds(fresh('the_north_isle', 'the_north_isle')).indexOf('t17') === -1);
+    t.same([J.def(E, 't17'), J.def(E, 'n17')], [null, null], 'removed (Harry, 7 October 2026)');
+    t.same(J.dmEvents(E), [], 'no DM-only events');
   });
 
   test('each province\'s clan, chief and temple match the Notice Board\'s', function (t) {
@@ -199,21 +199,14 @@
     t.equal(J.campRoll(s, E, ctx(s), dice([0, 0]), 5, false).kind, 'camp');
   });
 
-  test('T17\'s guard: that night\'s camp is the chisel-wielders\' return', function (t) {
+  test('an event set for tonight (a campfire event rolled on the road) takes the night\'s camp', function (t) {
     var s = fresh('the_north_isle', 'the_north_isle');
-    begin(s, 't17', 'dm');
-    act(s, { type: 'check', result: 'success', hero: 'umbrys' });
-    act(s, { type: 'choose', index: 1 });
-    t.same(s.journey.tonight, { event: 'n17' });
-    J.finish(s, E);
+    s.journey.tonight = { event: 'c3' };
     var q = R.makeCamp(s, D, E, dice([0.99]));
     t.equal(q[0].kind, 'journey');
-    t.same([s.journey.current.id, s.journey.current.kind], ['n17', 'night']);
+    t.same([s.journey.current.id, s.journey.current.kind, s.journey.current.phase], ['c3', 'camp', 'camp']);
     t.equal(s.journey.tonight, null);
-    act(s, { type: 'fight', result: 'won' });
-    act(s, { type: 'pick', hero: 'charles' });
-    t.equal(effect(s, 'Inspiration')[0].whoName, 'Charles');
-    t.ok(thread(s, 'The Second Marker'));
+    t.ok(s.journey.used.camp.indexOf('c3') !== -1, 'and it counts as drawn');
   });
 
   group('Explorer events: running one');
@@ -471,8 +464,8 @@
     act(s, { type: 'check', result: 'success', hero: 'kaelen' });
     t.ok(!J.canSkip(s), 'not once something has happened');
     t.ok(!J.skip(s));
-    begin(s, 't17', 'dm');
-    t.ok(!J.canSkip(s), 'a DM event is never skipped');
+    begin(s, 'f1', 'follow');
+    t.ok(!J.canSkip(s), 'a follow-up is never skipped');
   });
 
   test('pace reminders show on the checks they apply to, on the road only', function (t) {
@@ -585,10 +578,10 @@
   test('when tonight\'s camp is taken, a follow-up on its last day waits a day', function (t) {
     var s = fresh('the_north_isle', 'the_north_isle');
     s.travel.day = 6;
-    s.journey.tonight = { event: 'n17' };
+    s.journey.tonight = { event: 'c11' };
     s.journey.threads.push({ id: 't1', name: 'The Captain\'s Thanks', note: 'x', from: 'C12', day: 1, resolve: null, follow: { event: 'f3', scope: 'isles', mapKey: '', from: 3, to: 6 }, data: {} });
     R.makeCamp(s, D, E, dice([0.99]));
-    t.equal(s.journey.current.id, 'n17');
+    t.equal(s.journey.current.id, 'c11');
     t.same([s.journey.threads[0].follow.to, s.journey.threads[0].note], [7, 'x'], 'not dropped');
     J.finish(s, E);
     t.equal(J.travelRoll(s, E, ctx(s), dice([0.99])).event.id, 'f3', 'it comes the next day');
@@ -597,7 +590,8 @@
   test('an event kept for later doesn\'t use up the day\'s travel roll', function (t) {
     var s = fresh('midland_province');
     var b = R.board(4 / 3);
-    begin(s, 't17', 'dm');
+    begin(s, 't3');
+    s.journey.lastTravelDay = 0;
     s.travel.nextTravelEventAtMiles = 6;
     var drag = R.startDrag(s, b, ['kaelen'], 'kaelen');
     var a = drag.startAxials.kaelen;

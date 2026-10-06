@@ -6,13 +6,15 @@
    Harry's choices (6 October 2026): every recommendation in the draft's
    "Decisions for Harry", except T9 The Husk in the Furrows, which is written
    here but switched off (off: true): no Rootbound creature before the
-   Heartwood finale. T17 The Second Marker is a DM-only event, queued from the
-   Main Campaign list and never drawn at random.
+   Heartwood finale. T17 The Second Marker was removed at Harry's request
+   (7 October 2026), so there are 16 travel events.
 
    How an event is written (the rules are in journey.js):
    - kind: 'travel' (drawn on the road), 'camp' (drawn at Make Camp),
-     'follow' (brought back by a thread), 'dm' (queued by the DM) or 'night'
-     (set up by another event for that night's camp).
+     'follow' (brought back by a thread), 'dm' (never drawn: listed under
+     "DM events" in the Main Campaign list, to queue by hand) or 'night' (set
+     up by another event's tonight outcome for that night's camp). None of
+     the events uses 'dm' or 'night' at present.
    - where: { any: true } | { gods: [...] } | { provinces: [...] } | { maps: [...] }.
      gods and provinces follow the Region list; maps need that map loaded.
    - steps: start is the first. A step shows text (and a verse), applies its
@@ -726,69 +728,6 @@ window.TSI_DATA.journeyEvents = {
         },
         driven: { text: 'The current drives {hero} back. Nothing gained.', end: true },
         leave: { text: 'The fishermen nod, as if you\'ve done the wise thing.', end: true }
-      }
-    },
-
-    {
-      /* DM-only (Harry, 6 October 2026): queued from the Main Campaign list, never drawn at random. */
-      id: 't17', code: 'T17', kind: 'dm', title: 'The Second Marker', where: { any: true },
-      line: 'Investigation, Survival · main-story thread (North Isle, near The Bleakhold)',
-      steps: {
-        start: {
-          text: 'A Pelagosi Marker stands alone on the headland, crusted with salt. Its runes are the ones from The Marker Remembers: Anchor, Tide, Depth, Life and Remains. Around its keystone the stone is scarred with fresh chisel marks.',
-          check: { skill: 'Intelligence (Investigation)', dc: 15, who: 'one', success: 'interrupted', failure: 'fresh' }
-        },
-        interrupted: {
-          text: 'The marks are days old, and whoever made them was interrupted. A broken chisel lies in the grass, stamped with an Aurushi sunburst.',
-          choices: [
-            { label: 'Track them: Wisdom (Survival), DC 16', go: 'track' },
-            { label: 'Guard the Marker: make camp here', go: 'guard' },
-            { label: 'Leave it', go: 'leave' }
-          ]
-        },
-        fresh: {
-          text: 'The marks are fresh, nothing more.',
-          choices: [
-            { label: 'Track them: Wisdom (Survival), DC 16', go: 'track' },
-            { label: 'Guard the Marker: make camp here', go: 'guard' },
-            { label: 'Leave it', go: 'leave' }
-          ]
-        },
-        track: {
-          text: 'You look for their trail.',
-          check: { skill: 'Wisdom (Survival)', dc: 16, who: 'one', success: 'tracked', failure: 'shore' }
-        },
-        tracked: {
-          text: 'You find their trail.',
-          apply: [{ thread: { name: 'The Second Marker', note: 'Someone is chiselling at the Pelagosi Markers. DM: decide who they are.' } }],
-          end: true
-        },
-        shore: { text: 'The trail ends at the shoreline.', apply: [{ miles: -6 }], end: true },
-        guard: {
-          text: 'You make camp beside the Marker. Press Make Camp when you\'re ready: the chisel-wielders return tonight.',
-          apply: [{ tonight: 'n17' }],
-          end: true
-        },
-        leave: { text: 'You leave the Marker to the wind.', end: true }
-      }
-    },
-
-    {
-      /* The night that follows T17's "Guard the Marker": it replaces any campfire event. */
-      id: 'n17', code: 'T17', kind: 'night', title: 'The Second Marker: the Return', where: { any: true },
-      line: 'a fight at the Marker',
-      steps: {
-        start: {
-          text: 'In the dark, the chisel-wielders come back for the Marker.',
-          fight: { suggest: 'Levels 7–10: a veteran, a mage and 4 thugs. Levels 11–16: add a second mage and 2 veterans.', won: 'won', fled: 'fled' }
-        },
-        won: {
-          text: 'You hold one of them prisoner, to question.',
-          apply: [{ thread: { name: 'The Second Marker', note: 'You hold a prisoner from the chisel-wielders to question. DM: decide who they are.' } }],
-          pick: { prompt: 'Who was on watch? They gain Inspiration.', go: 'watch' }
-        },
-        watch: { text: 'The Marker is safe, for now.', apply: [{ inspiration: 'hero' }], end: true },
-        fled: { text: 'They get away into the dark.', end: true }
       }
     },
 
