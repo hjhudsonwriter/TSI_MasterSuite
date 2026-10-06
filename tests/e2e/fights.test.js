@@ -43,11 +43,14 @@ async function jClick(page, test) {
   await page.click('.tsi-modal.tsi-exp-journey [data-test="' + test + '"]');
   await page.waitForTimeout(100);
 }
-/* Done, then wait for the event window to close (a click inside the double-click guard is ignored, so try again). */
+/* Done, then wait for the event window to close (a click inside the double-click guard is ignored, so try again)
+   and for the Explorer to save it, so the next check's reload doesn't bring the event back. */
 async function done(page) {
   for (let i = 0; i < 3; i++) {
     await jClick(page, 'event-done');
-    try { await page.waitForSelector('.tsi-modal.tsi-exp-journey', { state: 'detached', timeout: 1500 }); return; } catch (e) { /* try again */ }
+    try { await page.waitForSelector('.tsi-modal.tsi-exp-journey', { state: 'detached', timeout: 1500 }); } catch (e) { continue; }
+    await waitSaved(page);
+    return;
   }
   throw new Error('the event window didn\'t close');
 }
