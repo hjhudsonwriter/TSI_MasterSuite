@@ -164,7 +164,8 @@
         counts[tool]++;
       });
       var lines = order.map(function (tool) {
-        var label = tool === 'quarantine' ? 'Damaged saves set aside' : ((nameOf && nameOf(tool)) || tool);
+        var families = store().SUITE_FAMILIES;
+        var label = Object.prototype.hasOwnProperty.call(families, tool) ? families[tool] : ((nameOf && nameOf(tool)) || tool);
         return label + ': ' + counts[tool] + ' saved item' + (counts[tool] === 1 ? '' : 's');
       });
       return { total: backup.records.length, lines: lines };

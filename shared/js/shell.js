@@ -13,7 +13,16 @@
      stop: function (ctx) { ... },           // optional; may return a promise (waited on up to 2.5 s)
      validateImport: function (records) {}   // optional; return a reason to refuse an import file
    });
-   and is listed in shared/data/tools.js with built: true and its files. */
+   and is listed in shared/data/tools.js with built: true and its files.
+
+   Opening a tool in a separate window: TSI.shell.openWindow('<id>') opens
+   that tool in a new browser window the size of the screen it's on (the
+   Switch tool menu's ↗ buttons use it, and a tool may call it, as the
+   Explorer does to open the Combat Tracker for a fight). It returns nothing,
+   and does nothing for an id that isn't a built tool. The new window is
+   opened with "noopener", so it starts with its own sessionStorage and gets
+   its own tab id from the "Already open" warning (tabguard.js); two different
+   tools in two windows don't warn, but the same tool twice still does. */
 (function () {
   'use strict';
 
@@ -49,6 +58,27 @@
   function pageUrl(toolId) {
     var page = location.pathname.split('/').pop() || 'index.html';
     return page + (toolId ? '?tool=' + encodeURIComponent(toolId) : '');
+  }
+
+  /* Open a tool in a new window, filling the screen this window is on.
+     noopener matters: without it the browser copies this window's
+     sessionStorage into the new one, and with it this tab's id for the
+     "Already open" warning. */
+  function openWindow(toolId) {
+    var info = typeof toolId === 'string' && toolId ? TSI.toolInfo(toolId) : null;
+    if (!info || !info.built) return;
+    var s = window.screen || {};
+    function whole(value, fallback) { return typeof value === 'number' && isFinite(value) ? Math.round(value) : fallback; }
+    var width = whole(s.availWidth, whole(s.width, window.outerWidth || 1280));
+    var height = whole(s.availHeight, whole(s.height, window.outerHeight || 800));
+    var left = whole(s.availLeft, 0);
+    var top = whole(s.availTop, 0);
+    var features = 'noopener,popup,left=' + left + ',top=' + top + ',width=' + width + ',height=' + height;
+    try {
+      window.open(pageUrl(info.id), '_blank', features);
+    } catch (err) {
+      TSI.reportError(err, 'opening ' + TSI.the(info.name) + ' in a new window');
+    }
   }
 
   /* The test page's tab says so, so it's never mistaken for the real suite. */
@@ -128,6 +158,11 @@
   });
 
   /* ---------- Top bar ---------- */
+  /* The Switch tool menu. Inside a tool, each other built tool's row also
+     has a small ↗ button that opens it in a new window instead. The open
+     tool, Home and unbuilt tools don't (the same tool twice, or home beside
+     a tool, would set off the "Already open" warning), and nor does the home
+     screen's menu, for the same reason. */
   function buildMenu(activeId) {
     var button = TSI.el('button', {
       type: 'button',
@@ -137,9 +172,10 @@
       'data-test': 'switch-tool'
     }, ['Switch tool ', TSI.el('span', { 'aria-hidden': 'true', text: '▾' })]);
     var menu = TSI.el('div', { class: 'tsi-menu', hidden: true, role: 'menu', 'aria-label': 'Switch tool' });
+    var inTool = !!activeId;
 
     function item(label, toolId, note, disabled) {
-      var node = TSI.el('button', {
+      return TSI.el('button', {
         type: 'button',
         class: 'tsi-menu__item',
         role: 'menuitem',
@@ -151,31 +187,62 @@
           close();
           go(toolId);
         }
-      }, [TSI.el('span', { text: label }), note ? TSI.el('span', { class: 'tsi-menu__note', text: note }) : null]);
-      return node;
+      }, [TSI.el('span', { class: 'tsi-menu__label', text: label }), note ? TSI.el('span', { class: 'tsi-menu__note', text: note }) : null]);
     }
 
-    menu.appendChild(item('Home', null, null, false));
+    function newWindowButton(t) {
+      var words = 'Open ' + t.name + ' in a new window';
+      return TSI.el('button', {
+        type: 'button',
+        class: 'tsi-menu__newwin',
+        role: 'menuitem',
+        title: words,
+        'data-newwin': t.id,
+        'data-test': 'newwin-' + t.id,
+        onclick: function () {
+          close(true);
+          openWindow(t.id);
+        }
+      }, [TSI.el('span', { 'aria-hidden': 'true', text: '↗' }), TSI.el('span', { class: 'tsi-sr-only', text: words })]);
+    }
+
+    /* One line of the menu. In a tool, rows without a ↗ keep its space, so the rows line up. */
+    function row(main, extra) {
+      if (!inTool) return main;
+      return TSI.el('div', { class: 'tsi-menu__row', role: 'none' }, [
+        main,
+        extra || TSI.el('span', { class: 'tsi-menu__newwin-gap', 'aria-hidden': 'true' })
+      ]);
+    }
+
+    menu.appendChild(row(item('Home', null, null, false)));
     (DATA.groups || []).forEach(function (g) {
       var tools = (DATA.tools || []).filter(function (t) { return t.group === g.id; });
       if (!tools.length) return;
       menu.appendChild(TSI.el('div', { class: 'tsi-menu__group', text: g.label }));
       tools.forEach(function (t) {
-        menu.appendChild(item(t.name, t.id, t.built ? null : 'Coming in phase ' + t.phase, !t.built));
+        var main = item(t.name, t.id, t.built ? null : 'Coming in phase ' + t.phase, !t.built);
+        menu.appendChild(row(main, t.built && t.id !== activeId ? newWindowButton(t) : null));
       });
     });
 
-    function items() { return Array.prototype.slice.call(menu.querySelectorAll('.tsi-menu__item')); }
+    /* Arrow keys go through every choice in order, the ↗ buttons included. */
+    function items() { return Array.prototype.slice.call(menu.querySelectorAll('.tsi-menu__item, .tsi-menu__newwin')); }
+    function setOpen(value) {
+      menu.hidden = !value;
+      button.setAttribute('aria-expanded', value ? 'true' : 'false');
+      /* While it's open, the top bar sits above the DM doc, so the menu shows over it. */
+      var topbar = wrap.closest('.tsi-topbar');
+      if (topbar) topbar.classList.toggle('tsi-topbar--menu-open', value);
+    }
     function openMenu() {
-      menu.hidden = false;
-      button.setAttribute('aria-expanded', 'true');
+      setOpen(true);
       var first = menu.querySelector('.tsi-menu__item[aria-current="page"]') || items()[0];
       if (first) first.focus();
     }
     function close(returnFocus) {
       if (menu.hidden) return;
-      menu.hidden = true;
-      button.setAttribute('aria-expanded', 'false');
+      setOpen(false);
       if (returnFocus) button.focus();
     }
 
@@ -183,11 +250,20 @@
     menu.addEventListener('keydown', function (event) {
       var list = items();
       var i = list.indexOf(document.activeElement);
+      var current = document.activeElement;
+      var rowOf = current && current.parentNode && current.parentNode.classList && current.parentNode.classList.contains('tsi-menu__row') ? current.parentNode : null;
       if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close(true); }
       else if (event.key === 'ArrowDown') { event.preventDefault(); list[(i + 1) % list.length].focus(); }
       else if (event.key === 'ArrowUp') { event.preventDefault(); list[(i - 1 + list.length) % list.length].focus(); }
       else if (event.key === 'Home') { event.preventDefault(); list[0].focus(); }
       else if (event.key === 'End') { event.preventDefault(); list[list.length - 1].focus(); }
+      else if (event.key === 'ArrowRight' && rowOf && rowOf.querySelector('.tsi-menu__newwin') && current.classList.contains('tsi-menu__item')) {
+        event.preventDefault();
+        rowOf.querySelector('.tsi-menu__newwin').focus();
+      } else if (event.key === 'ArrowLeft' && rowOf && current.classList.contains('tsi-menu__newwin')) {
+        event.preventDefault();
+        rowOf.querySelector('.tsi-menu__item').focus();
+      }
       else if (event.key === 'Tab') { close(); }
     });
     document.addEventListener('pointerdown', function (event) {
@@ -233,6 +309,8 @@
         onclick: TSI.oneAtATime(function () { return TSI.backup.importTool(info.id); })
       }, 'Import'));
     }
+    /* The DM doc (shared/js/dmdoc.js), on every screen, just left of Switch tool. */
+    if (TSI.dmDoc) actions.appendChild(TSI.dmDoc.button());
     actions.appendChild(buildMenu(info ? info.id : null));
 
     var bar = TSI.el('header', { class: 'tsi-topbar' }, [
@@ -509,6 +587,7 @@
     }
 
     buildTopbar(info);
+    if (TSI.dmDoc) TSI.dmDoc.start();
     /* The "Already open" warning only minds another tab with the same tool, or the home screen. */
     TSI.tabGuard.start(info ? info.id : '');
 
@@ -532,7 +611,9 @@
     orderedTools: orderedTools,
     /* A link to a tool (or home, with no id) on this same page: 'index.html?tool=crest',
        or 'harness.html?tool=crest' on the test page. For a link that opens in a new tab. */
-    pageUrl: pageUrl
+    pageUrl: pageUrl,
+    /* Open a built tool in a new window the size of this screen (see the top of this file). */
+    openWindow: openWindow
   };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);

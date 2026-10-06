@@ -2,8 +2,10 @@
    Every save is a "record": { key, value, savedAt }.
    Every key starts with "tsi.", then the tool's id, then a name:
      tsi.bastion.state   tsi.quests.accepted   tsi.encounter.mapImage
-   Two ids are kept for the suite itself: "suite" (the shell) and
-   "quarantine" (damaged saves set aside rather than deleted). */
+   Three ids are kept for the suite itself: "suite" (the shell),
+   "quarantine" (damaged saves set aside rather than deleted) and "dmdoc"
+   (the DM doc, the floating panel in the top bar, saved from every screen:
+   tsi.dmdoc.layout). Back up everything and Restore cover all of them. */
 (function () {
   'use strict';
 
@@ -15,7 +17,11 @@
   function pad(n) { return (n < 10 ? '0' : '') + n; }
 
   var rules = {
-    RESERVED_TOOLS: ['suite', 'quarantine'],
+    RESERVED_TOOLS: ['suite', 'quarantine', 'dmdoc'],
+
+    /* Saves that belong to the whole suite rather than one tool, and how a
+       backup's "are you sure?" pop-up names them. */
+    SUITE_FAMILIES: { quarantine: 'Damaged saves set aside', dmdoc: 'DM doc' },
 
     /* Tools that only exist on the test page. Their data is never kept in,
        backed up from or restored into the real suite. */
@@ -30,14 +36,16 @@
        - db: the browser database's name
        - local: the prefix for the small fallback storage (the test page's
          keys contain a colon, which a real save name can never have)
-       - tabs, tabId, flash: the shell's own bookkeeping (tabs: each open
-         tab's heartbeat, { at, tool }, for the "Already open" warning)
+       - tabs, tabId, flash, dmdocOpen: the shell's own bookkeeping (tabs:
+         each open tab's heartbeat, { at, tool }, for the "Already open"
+         warning; dmdocOpen: whether this window has the DM doc open, kept
+         per window so it never pops up on the TV's window by itself)
        - file: the start of backup file names */
     spaceNames: function (space) {
       if (space === 'test') {
-        return { space: 'test', db: 'tsi.test', local: 'tsi.test:', tabs: 'tsi.test:tabs', tabId: 'tsi.test:tab-id', flash: 'tsi.test:flash', file: 'tsi-test-' };
+        return { space: 'test', db: 'tsi.test', local: 'tsi.test:', tabs: 'tsi.test:tabs', tabId: 'tsi.test:tab-id', flash: 'tsi.test:flash', dmdocOpen: 'tsi.test:dmdoc-open', file: 'tsi-test-' };
       }
-      return { space: 'suite', db: 'tsi.suite', local: '', tabs: 'tsi.suite.tabs', tabId: 'tsi.suite.tab-id', flash: 'tsi.suite.flash', file: 'tsi-' };
+      return { space: 'suite', db: 'tsi.suite', local: '', tabs: 'tsi.suite.tabs', tabId: 'tsi.suite.tab-id', flash: 'tsi.suite.flash', dmdocOpen: 'tsi.suite.dmdoc-open', file: 'tsi-' };
     },
 
     /* The fallback-storage key for a save, and back again (null if it isn't one of this space's). */

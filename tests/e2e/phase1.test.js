@@ -234,6 +234,570 @@ async function waitSaved(page) {
   }
 
   /* ------------------------------------------------------------------ */
+  section('Top bar: Switch tool, opening a tool in a new window');
+  {
+    /* Inside a tool, each other built tool's row has a small ↗ button that
+       opens it in a separate window (TSI.shell.openWindow). Not the open
+       tool, Home, unbuilt tools, or anything on the home screen's menu: those
+       would set off the "Already open" warning. */
+    const ALREADY = /Already open\./;
+    const CREST_TOO = /Already open\. The Clan Crest Creator is also open in another tab or window\./;
+    const warned = async p => (await H.noticeTexts(p)).some(t => ALREADY.test(t));
+    const menuRows = p => p.$$eval('.tsi-menu__item', xs => xs.map(x => {
+      const row = x.parentNode.classList.contains('tsi-menu__row') ? x.parentNode : null;
+      const nw = row ? row.querySelector('.tsi-menu__newwin') : null;
+      return { tool: x.dataset.tool, newwin: nw ? { test: nw.dataset.test, title: nw.title, hidden: nw.querySelector('.tsi-sr-only').textContent, glyph: nw.querySelector('[aria-hidden=true]').textContent, role: nw.getAttribute('role') } : null };
+    }));
+    const others = id => TOOLS.filter(t => t.built && t.id !== id).map(t => t.id);
+
+    for (const size of ['laptop', 'tv']) {
+      const context = await H.newContext(browser, size);
+      const page = await context.newPage();
+
+      if (size === 'laptop') await check('the home screen\'s menu has no new-window buttons', async () => {
+        await page.goto(INDEX);
+        await page.waitForSelector('.tsi-card');
+        await page.click('[data-test=switch-tool]');
+        await page.waitForSelector('.tsi-menu:not([hidden])');
+        equal(await page.$$eval('.tsi-menu__newwin', b => b.length), 0);
+        equal(await page.$$eval('.tsi-menu__item', b => b.length), 9);
+        await page.keyboard.press('Escape');
+      });
+
+      await page.goto(INDEX + '?tool=crest');
+      await page.waitForSelector('.tsi-topbar__tool');
+
+      await check(size + ': inside a tool, every other built tool has a ↗ new-window button; the open tool and Home don\'t', async () => {
+        await page.click('[data-test=switch-tool]');
+        await page.waitForSelector('.tsi-menu:not([hidden])');
+        const rows = await menuRows(page);
+        equal(rows.length, 9, 'Home and the eight tools, as before');
+        equal(rows.filter(r => r.newwin).map(r => r.tool), others('crest'));
+        equal(rows.find(r => r.tool === 'home').newwin, null, 'Home');
+        equal(rows.find(r => r.tool === 'crest').newwin, null, 'the open tool');
+        rows.filter(r => r.newwin).forEach(r => {
+          const name = TOOLS.find(t => t.id === r.tool).name;
+          equal(r.newwin, { test: 'newwin-' + r.tool, title: 'Open ' + name + ' in a new window', hidden: 'Open ' + name + ' in a new window', glyph: '↗', role: 'menuitem' });
+        });
+      });
+
+      await check(size + ': the menu is tidy: names on one line, nothing sideways, all in view', async () => {
+        const m = await page.evaluate(() => {
+          const menu = document.querySelector('.tsi-menu');
+          const r = menu.getBoundingClientRect();
+          const labels = Array.from(menu.querySelectorAll('.tsi-menu__label')).map(l => {
+            const lh = parseFloat(getComputedStyle(l).lineHeight) || 17;
+            return [l.textContent, l.getClientRects().length, l.getBoundingClientRect().height <= lh * 1.5];
+          });
+          const rowTops = Array.from(menu.querySelectorAll('.tsi-menu__row')).every(row => {
+            const a = row.querySelector('.tsi-menu__item').getBoundingClientRect();
+            const b = row.lastElementChild.getBoundingClientRect();
+            return Math.abs(a.top - b.top) < 1 && b.left >= a.right;
+          });
+          return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, w: innerWidth, h: innerHeight, sw: menu.scrollWidth, cw: menu.clientWidth, labels, rowTops, page: [document.documentElement.scrollWidth, document.documentElement.clientWidth] };
+        });
+        m.labels.forEach(l => assert(l[1] === 1 && l[2], 'wrapped: ' + l[0]));
+        assert(m.rowTops, 'a ↗ button isn\'t at the right end of its row');
+        assert(m.sw <= m.cw, 'the menu scrolls sideways: ' + m.sw + ' > ' + m.cw);
+        assert(m.left >= 0 && m.right <= m.w && m.top >= 0 && m.bottom <= m.h, 'out of view: ' + JSON.stringify(m));
+        assert(m.page[0] <= m.page[1], 'the page scrolls sideways');
+        await H.shot(page, 'menu-newwin-' + size);
+      });
+
+      if (size === 'tv') { await context.close(); continue; }
+
+      await check('arrow keys go through the ↗ buttons too; → and ← move along a row', async () => {
+        const order = await page.$$eval('.tsi-menu__item, .tsi-menu__newwin', xs => xs.map(x => x.dataset.test || x.dataset.tool));
+        await page.keyboard.press('Home');
+        const seen = [];
+        for (let i = 0; i < order.length; i++) {
+          seen.push(await page.evaluate(() => document.activeElement.dataset.test || document.activeElement.dataset.tool));
+          await page.keyboard.press('ArrowDown');
+        }
+        equal(seen, order);
+        equal(await page.evaluate(() => document.activeElement.dataset.tool), 'home', 'ArrowDown wraps round');
+        await page.keyboard.press('End');
+        equal(await page.evaluate(() => document.activeElement.dataset.test), 'newwin-' + order[order.length - 1].replace('newwin-', ''));
+        await page.focus('.tsi-menu__item[data-tool=quests]');
+        await page.keyboard.press('ArrowRight');
+        equal(await page.evaluate(() => document.activeElement.dataset.test), 'newwin-quests');
+        await page.keyboard.press('ArrowLeft');
+        equal(await page.evaluate(() => document.activeElement.dataset.tool), 'quests');
+        await page.keyboard.press('ArrowUp');
+        equal(await page.evaluate(() => document.activeElement.dataset.test), 'newwin-encounter');
+        await page.keyboard.press('Escape');
+      });
+
+      let bastion = null;
+      await check('clicking ↗ opens the tool in a new window the size of the screen, and closes the menu', async () => {
+        await page.evaluate(() => {
+          window.__opened = [];
+          const real = window.open;
+          window.open = function (url, name, features) { window.__opened.push([url, name, features]); return real.apply(this, arguments); };
+        });
+        await page.click('[data-test=switch-tool]');
+        [bastion] = await Promise.all([context.waitForEvent('page'), page.click('[data-test=newwin-bastion]')]);
+        await bastion.waitForSelector('.tsi-topbar__tool');
+        equal(await bastion.evaluate(() => [location.pathname.split('/').pop(), location.search, document.querySelector('.tsi-topbar__tool').textContent, TSI.tabGuard.tool(), window.opener]),
+          ['index.html', '?tool=bastion', 'The Ironbow Bastion Manager', 'bastion', null]);
+        const opened = await page.evaluate(() => [window.__opened, screen.availLeft, screen.availTop, screen.availWidth, screen.availHeight]);
+        equal(opened[0].length, 1);
+        equal(opened[0][0].slice(0, 2), ['index.html?tool=bastion', '_blank']);
+        equal(opened[0][0][2], 'noopener,popup,left=' + opened[1] + ',top=' + opened[2] + ',width=' + opened[3] + ',height=' + opened[4]);
+        assert(await page.$eval('.tsi-menu', m => m.hidden), 'the menu stayed open');
+        equal(await page.getAttribute('[data-test=switch-tool]', 'aria-expanded'), 'false');
+        equal(await page.evaluate(() => document.activeElement.dataset.test), 'switch-tool');
+        equal(await page.evaluate(() => location.search), '?tool=crest', 'this window stays on the Crest');
+      });
+
+      await check('the new window has its own tab id; the two different tools don\'t warn "Already open"', async () => {
+        const ids = await Promise.all([page, bastion].map(p => p.evaluate(() => [TSI.tabGuard.id, sessionStorage.getItem('tsi.suite.tab-id')])));
+        assert(ids[0][0] !== ids[1][0], 'the new window shares the Crest\'s tab id');
+        equal([ids[0][0], ids[1][0]], [ids[0][1], ids[1][1]], 'each keeps its own id in its own sessionStorage');
+        await bastion.waitForTimeout(2600); /* more than one heartbeat */
+        const beats = await page.evaluate(() => JSON.parse(localStorage.getItem('tsi.suite.tabs')));
+        equal([beats[ids[0][0]].tool, beats[ids[1][0]].tool], ['crest', 'bastion'], 'neither overwrote the other\'s heartbeat');
+        for (const p of [page, bastion]) {
+          assert(!(await warned(p)), 'false warning: ' + (await H.noticeTexts(p)));
+          equal(await p.evaluate(() => [TSI.tabGuard.otherCount(), TSI.tabGuard.clashCount()]), [1, 0]);
+        }
+      });
+
+      await check('Enter on a ↗ button opens it too (here the Crest again, from the Bastion\'s window), and the same tool twice still warns', async () => {
+        await bastion.click('[data-test=switch-tool]');
+        await bastion.waitForSelector('.tsi-menu:not([hidden])');
+        equal((await menuRows(bastion)).filter(r => r.newwin).map(r => r.tool), others('bastion'));
+        await bastion.focus('[data-test=newwin-crest]');
+        const [crest2] = await Promise.all([context.waitForEvent('page'), bastion.keyboard.press('Enter')]);
+        await crest2.waitForSelector('.tsi-topbar__tool');
+        equal(await crest2.evaluate(() => location.search), '?tool=crest');
+        assert(await bastion.$eval('.tsi-menu', m => m.hidden), 'the menu stayed open');
+        await H.waitForNotice(page, CREST_TOO, 4000);
+        await H.waitForNotice(crest2, CREST_TOO, 4000);
+        await bastion.waitForTimeout(500);
+        assert(!(await warned(bastion)), 'the Bastion warned: ' + (await H.noticeTexts(bastion)));
+        await H.shot(crest2, 'newwin-crest-twice');
+        await crest2.close();
+        await page.waitForFunction(() => !Array.from(document.querySelectorAll('.tsi-notice')).some(n => /Already open/.test(n.textContent)), null, { timeout: 12000 });
+      });
+
+      await check('Space on a ↗ button opens it too', async () => {
+        await page.click('[data-test=switch-tool]');
+        await page.focus('[data-test=newwin-pelagosi]');
+        const [pel] = await Promise.all([context.waitForEvent('page'), page.keyboard.press('Space')]);
+        await pel.waitForSelector('.tsi-topbar__tool');
+        equal(await pel.textContent('.tsi-topbar__tool'), 'Pelagosi Puzzle Trials');
+        await pel.close();
+      });
+
+      await check('TSI.shell.openWindow opens built tools only, and returns nothing', async () => {
+        let extra = 0;
+        const count = () => { extra++; };
+        context.on('page', count);
+        const r = await page.evaluate(() => [TSI.shell.openWindow('nonsense'), TSI.shell.openWindow(null), TSI.shell.openWindow(''), TSI.shell.openWindow()]);
+        await page.waitForTimeout(800);
+        equal(extra, 0, 'windows opened');
+        const [enc] = await Promise.all([context.waitForEvent('page'), page.evaluate(() => { window.__r = TSI.shell.openWindow('encounter'); })]);
+        equal(await page.evaluate(() => window.__r), undefined);
+        await enc.waitForSelector('.tsi-topbar__tool');
+        equal(await enc.textContent('.tsi-topbar__tool'), 'Combat Tracker & VTT Battlemap');
+        context.off('page', count);
+        equal(r, [null, null, null, null]);
+        await enc.close();
+      });
+
+      await check('no errors on the way', async () => {
+        equal(context.log.errors, []);
+        equal(context.log.consoleErrors, []);
+        equal(context.log.failed, []);
+      });
+      await context.close();
+    }
+
+    const context = await H.newContext(browser, 'laptop');
+    /* Pretend the Arenas aren't built yet (before the shell builds its menu). */
+    await context.addInitScript(() => {
+      document.addEventListener('DOMContentLoaded', () => { window.TSI_DATA.tools.find(t => t.id === 'arenas').built = false; });
+    });
+    const page = await context.newPage();
+    await check('an unbuilt tool gets no ↗ button', async () => {
+      await page.goto(INDEX + '?tool=crest');
+      await page.waitForSelector('.tsi-topbar__tool');
+      await page.click('[data-test=switch-tool]');
+      const rows = await menuRows(page);
+      equal(await page.getAttribute('.tsi-menu__item[data-tool=arenas]', 'aria-disabled'), 'true');
+      equal(rows.find(r => r.tool === 'arenas').newwin, null);
+      equal(rows.filter(r => r.newwin).length, 6);
+      equal(await page.evaluate(() => { TSI.shell.openWindow('arenas'); return 'ok'; }), 'ok');
+    });
+    await context.close();
+  }
+
+  /* ------------------------------------------------------------------ */
+  section('The DM doc: a floating panel on every screen');
+  {
+    const KEY = 'tsi.dmdoc.layout';
+    const PLACEHOLDER = 'Your DM doc will hold campaign notes for your eyes only. What goes in it comes in the next build.';
+    const box = (p, sel) => p.$eval(sel, e => { const r = e.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; });
+    const rect = p => p.evaluate(() => TSI.dmDoc.rect());
+    const saved = p => p.evaluate(k => TSI.store.ready.then(() => TSI.store.get(k, null)), KEY);
+    const view = p => p.evaluate(() => ({ width: document.documentElement.clientWidth, height: document.documentElement.clientHeight, top: document.querySelector('.tsi-topbar').getBoundingClientRect().bottom }));
+    const isOpen = p => p.$eval('[data-test=dmdoc-panel]', d => !d.hidden).catch(() => false);
+    const focused = p => p.evaluate(() => document.activeElement && (document.activeElement.dataset.test || document.activeElement.tagName));
+    function inside(r, v) { return r.x >= 0 && r.y >= v.top && r.x + r.w <= v.width && r.y + r.h <= v.height; }
+    /* Drag something from a point on it (default: its middle) to (x, y) in the window, or by (dx, dy). */
+    async function drag(p, sel, to, from) {
+      const b = await box(p, sel);
+      const sx = b.x + (from ? from.x : b.w / 2);
+      const sy = b.y + (from ? from.y : b.h / 2);
+      const ex = to.dx !== undefined ? sx + to.dx : to.x;
+      const ey = to.dy !== undefined ? sy + to.dy : to.y;
+      await p.mouse.move(sx, sy);
+      await p.mouse.down();
+      await p.mouse.move((sx + ex) / 2, (sy + ey) / 2, { steps: 3 });
+      await p.mouse.move(ex, ey, { steps: 3 });
+      await p.mouse.up();
+    }
+    const BAR_GRAB = { x: 60, y: 20 };
+    /* Wait for the opening fade (200 ms) to finish, so what's measured is where it really is. */
+    const settled = p => p.evaluate(() => Promise.all(document.getAnimations().map(a => a.finished.catch(() => null))));
+    /* Drag the title bar so the panel's top-left corner ends at (x, y). */
+    async function moveTo(p, x, y) {
+      await settled(p);
+      const r = await rect(p);
+      const b = await box(p, '[data-test=dmdoc-bar]');
+      await drag(p, '[data-test=dmdoc-bar]', { x: x + (b.x - r.x) + BAR_GRAB.x, y: y + (b.y - r.y) + BAR_GRAB.y }, BAR_GRAB);
+    }
+    async function panelMatches(p) {
+      await settled(p);
+      const r = await rect(p);
+      const b = await box(p, '[data-test=dmdoc-panel]');
+      equal([b.x, b.y, b.w, b.h].map(Math.round), [r.x, r.y, r.w, r.h], 'on screen vs TSI.dmDoc.rect()');
+      return r;
+    }
+
+    for (const size of ['laptop', 'tv']) {
+      const context = await H.newContext(browser, size);
+      const page = await context.newPage();
+
+      await check(size + ': the home screen has a "DM doc" button just left of Switch tool; nothing is saved until it\'s used', async () => {
+        await page.goto(INDEX);
+        await page.waitForSelector('.tsi-card');
+        const b = await page.$eval('[data-test=dm-doc]', x => ({ text: x.textContent, expanded: x.getAttribute('aria-expanded'), controls: x.getAttribute('aria-controls'), next: x.nextElementSibling.querySelector('[data-test=switch-tool]') !== null, inBar: !!x.closest('.tsi-topbar') }));
+        equal(b, { text: 'DM doc', expanded: 'false', controls: 'tsi-dmdoc', next: true, inBar: true });
+        assert(!(await isOpen(page)), 'open by itself');
+        equal(await page.evaluate(() => TSI.store.ready.then(() => TSI.store.keys())), []);
+        const l = await H.layoutCheck(page, ['.tsi-topbar button']);
+        assert(l.scrollWidth <= l.clientWidth, 'sideways scroll');
+        equal(l.outOfView, []);
+      });
+
+      await check(size + ': on the home screen it opens, takes focus, sits below the top bar, and closes again', async () => {
+        await page.click('[data-test=dm-doc]');
+        await page.waitForSelector('[data-test=dmdoc-panel]:not([hidden])');
+        equal(await focused(page), 'dmdoc-bar');
+        const r = await panelMatches(page);
+        assert(inside(r, await view(page)), JSON.stringify(r));
+        await H.shot(page, 'dmdoc-home-' + size);
+        await page.click('[data-test=dm-doc]');
+        assert(!(await isOpen(page)), 'still open');
+        equal(await page.getAttribute('[data-test=dm-doc]', 'aria-expanded'), 'false');
+      });
+
+      await page.goto(INDEX + '?tool=bastion');
+      await page.waitForSelector('.tsi-topbar__tool');
+      await page.waitForTimeout(600);
+
+      await check(size + ': in a tool, the button opens it as a non-modal dialog, with focus on its title bar', async () => {
+        assert(!(await isOpen(page)), 'reopened by itself after being closed');
+        await page.click('[data-test=dm-doc]');
+        await page.waitForSelector('[data-test=dmdoc-panel]:not([hidden])');
+        const a = await page.$eval('[data-test=dmdoc-panel]', d => ({
+          role: d.getAttribute('role'), modal: d.getAttribute('aria-modal'), label: d.getAttribute('aria-label'),
+          title: d.querySelector('.tsi-dmdoc__title').textContent, font: getComputedStyle(d.querySelector('.tsi-dmdoc__title')).fontFamily,
+          close: d.querySelector('[data-test=dmdoc-close]').getAttribute('aria-label'),
+          body: d.querySelector('.tsi-dmdoc__body').textContent, z: getComputedStyle(d).zIndex, position: getComputedStyle(d).position
+        }));
+        equal(a, { role: 'dialog', modal: 'false', label: 'DM doc', title: 'DM doc', font: a.font, close: 'Close the DM doc', body: PLACEHOLDER, z: '695', position: 'fixed' });
+        assert(/^"?Cinzel/.test(a.font), a.font);
+        equal(await page.getAttribute('[data-test=dm-doc]', 'aria-expanded'), 'true');
+        equal(await focused(page), 'dmdoc-bar');
+        const r = await panelMatches(page);
+        const v = await view(page);
+        equal(r, { x: v.width - 440 - 24, y: v.top + 24, w: 440, h: 520 }, 'it first opens near the right edge, below the top bar');
+        await H.shot(page, 'dmdoc-' + size);
+      });
+
+      await check(size + ': it sits above the tool and its overlays, but below pop-ups and notices', async () => {
+        const top = (x, y) => page.evaluate(([x, y]) => {
+          const e = document.elementFromPoint(x, y);
+          return e.closest('.tsi-dmdoc') ? 'dmdoc' : e.closest('.tsi-modal-scrim') ? 'modal' : e.closest('.tsi-notice') ? 'notice' : e.closest('.tsi-dmdoc-test-overlay') ? 'overlay' : 'tool';
+        }, [x, y]);
+        const r = await rect(page);
+        const mid = [r.x + r.w / 2, r.y + r.h / 2];
+        equal(await top(r.x + 30, r.y + 20), 'dmdoc', 'over the Bastion\'s own bar');
+        /* A full-window overlay at the tools' highest layer (the Ritual's go up to 690; the War Table is at 80). */
+        await page.evaluate(() => {
+          const o = document.createElement('div');
+          o.className = 'tsi-dmdoc-test-overlay';
+          o.style.cssText = 'position:fixed;inset:0;z-index:690;background:rgba(0,0,0,.2)';
+          document.getElementById('tsi-main').appendChild(o);
+        });
+        equal(await top(mid[0], mid[1]), 'dmdoc', 'over a tool overlay');
+        equal(await top(20, r.y + 20), 'overlay');
+        await page.evaluate(() => document.querySelector('.tsi-dmdoc-test-overlay').remove());
+        await page.evaluate(() => { TSI.modal.alert({ title: 'A pop-up', message: 'Over the DM doc.' }); });
+        await page.waitForSelector('.tsi-modal');
+        equal(await top(mid[0], mid[1]), 'modal', 'a pop-up covers it');
+        await H.clickModal(page, 'OK');
+        equal(await isOpen(page), true, 'a pop-up doesn\'t close it');
+        const v = await view(page);
+        await drag(page, '[data-test=dmdoc-bar]', { x: v.width - 2, y: v.height - 2 }, BAR_GRAB);
+        await page.evaluate(() => { TSI.notify('A notice over the DM doc.', { id: 'dmdoc-test' }); });
+        const n = await box(page, '.tsi-notice');
+        const r2 = await rect(page);
+        assert(n.x < r2.x + r2.w && n.y + n.h > r2.y, 'the notice should overlap the panel for this check');
+        equal(await top(n.x + n.w - 10, n.y + n.h - 6), 'notice', 'a notice shows over it');
+        await H.dismissNotices(page);
+      });
+
+      await check(size + ': the Switch tool menu shows over it', async () => {
+        const v = await view(page);
+        await moveTo(page, v.width - 600, v.top + 10);
+        await page.click('[data-test=switch-tool]');
+        const m = await box(page, '.tsi-menu');
+        const r = await rect(page);
+        assert(m.x < r.x + r.w && m.x + m.w > r.x && m.y + m.h > r.y, 'the menu should overlap the panel for this check: ' + JSON.stringify([m, r]));
+        const ox = Math.max(m.x, r.x) + 20;
+        const oy = Math.max(m.y, r.y) + 20;
+        equal(await page.evaluate(([x, y]) => !!document.elementFromPoint(x, y).closest('.tsi-menu'), [ox, oy]), true);
+        await page.keyboard.press('Escape');
+      });
+
+      await check(size + ': dragging the title bar moves it, and it\'s saved', async () => {
+        await moveTo(page, 840, 280);
+        const start = await panelMatches(page);
+        equal([start.x, start.y], [840, 280]);
+        await drag(page, '[data-test=dmdoc-bar]', { dx: -300, dy: 120 }, BAR_GRAB);
+        const r = await panelMatches(page);
+        equal(r, { x: start.x - 300, y: start.y + 120, w: start.w, h: start.h });
+        await page.waitForTimeout(200);
+        equal(await saved(page), r);
+      });
+
+      await check(size + ': dragging from the close button doesn\'t move it', async () => {
+        const before = await rect(page);
+        await drag(page, '[data-test=dmdoc-close]', { dx: -200, dy: 80 });
+        equal(await rect(page), before);
+        assert(await isOpen(page), 'it closed');
+      });
+
+      await check(size + ': the corner grip resizes it, no smaller than 280 × 200', async () => {
+        await moveTo(page, 300, 150);
+        const before = await rect(page);
+        equal(before, { x: 300, y: 150, w: 440, h: 520 });
+        await drag(page, '[data-test=dmdoc-grip]', { dx: 80, dy: 60 });
+        const r = await panelMatches(page);
+        equal(r, { x: before.x, y: before.y, w: before.w + 80, h: before.h + 60 });
+        await drag(page, '[data-test=dmdoc-grip]', { x: before.x + 10, y: before.y + 10 });
+        const small = await panelMatches(page);
+        equal([small.x, small.y, small.w, small.h], [before.x, before.y, 280, 200]);
+        await page.waitForTimeout(200);
+        equal(await saved(page), small);
+        await drag(page, '[data-test=dmdoc-grip]', { dx: 200, dy: 250 });
+        equal(await panelMatches(page), { x: before.x, y: before.y, w: 480, h: 450 });
+      });
+
+      await check(size + ': it can\'t be dragged or resized out of the window, or over the top bar', async () => {
+        const v = await view(page);
+        await drag(page, '[data-test=dmdoc-bar]', { x: v.width - 2, y: v.height - 2 }, BAR_GRAB);
+        let r = await panelMatches(page);
+        equal([r.x + r.w, r.y + r.h], [v.width, v.height], 'bottom-right corner');
+        await drag(page, '[data-test=dmdoc-grip]', { x: v.width - 1, y: v.height - 1 }, { x: 4, y: 4 });
+        equal(await rect(page), r, 'no room to grow past the corner');
+        await drag(page, '[data-test=dmdoc-bar]', { x: 2, y: 2 }, BAR_GRAB);
+        r = await panelMatches(page);
+        equal([r.x, r.y], [0, v.top], 'top-left, just below the top bar');
+        await drag(page, '[data-test=dmdoc-grip]', { x: v.width - 1, y: v.height - 1 }, { x: 4, y: 4 });
+        r = await panelMatches(page);
+        equal([r.w, r.h], [v.width, v.height - v.top], 'no larger than the window');
+        assert(inside(r, v));
+        await drag(page, '[data-test=dmdoc-grip]', { dx: 520 - r.w, dy: 520 - r.h });
+        r = await panelMatches(page);
+        equal([r.x, r.y, r.w, r.h], [0, v.top, 520, 520]);
+      });
+
+      await check(size + ': arrow keys on the title bar move it (Shift: further), without scrolling the page', async () => {
+        await moveTo(page, 700, 200);
+        await page.focus('[data-test=dmdoc-bar]');
+        const before = await rect(page);
+        const scroll = await page.evaluate(() => document.scrollingElement.scrollTop);
+        await page.keyboard.press('ArrowRight');
+        await page.keyboard.press('ArrowDown');
+        await page.keyboard.press('Shift+ArrowLeft');
+        await page.keyboard.press('Shift+ArrowDown');
+        const r = await panelMatches(page);
+        equal([r.x, r.y], [before.x + 10 - 50, before.y + 10 + 50]);
+        equal(await page.evaluate(() => document.scrollingElement.scrollTop), scroll, 'the page scrolled');
+        await page.waitForTimeout(200);
+        equal(await saved(page), r);
+      });
+
+      await check(size + ': a smaller window keeps it inside; back to full size, it goes back where it was', async () => {
+        const before = await rect(page);
+        const full = H.SIZES[size].viewport;
+        await page.setViewportSize({ width: 1100, height: 600 });
+        await page.waitForTimeout(150);
+        const r = await panelMatches(page);
+        assert(inside(r, await view(page)), JSON.stringify(r));
+        await page.setViewportSize({ width: 600, height: 380 });
+        await page.waitForTimeout(150);
+        const tiny = await panelMatches(page);
+        const tv = await view(page);
+        assert(inside(tiny, tv) && tiny.w <= tv.width && tiny.h <= tv.height - tv.top, JSON.stringify([tiny, tv]));
+        await page.setViewportSize(full);
+        await page.waitForTimeout(150);
+        equal(await rect(page), before);
+        equal(await saved(page), before, 'resizing the window doesn\'t change what was saved');
+      });
+
+      await check(size + ': ✕ closes it and puts focus back on the button', async () => {
+        await page.click('[data-test=dmdoc-close]');
+        assert(!(await isOpen(page)), 'still open');
+        equal(await focused(page), 'dm-doc');
+        equal(await page.getAttribute('[data-test=dm-doc]', 'aria-expanded'), 'false');
+        equal(await page.evaluate(() => sessionStorage.getItem('tsi.suite.dmdoc-open')), null);
+      });
+
+      let placed;
+      await check(size + ': after switching tool it reopens in the same place, at the same size, without taking focus', async () => {
+        await page.click('[data-test=dm-doc]');
+        await moveTo(page, 610, 230);
+        await drag(page, '[data-test=dmdoc-grip]', { dx: -40, dy: -30 });
+        placed = await rect(page);
+        equal(placed, { x: 610, y: 230, w: 480, h: 490 });
+        await page.click('[data-test=switch-tool]');
+        await Promise.all([page.waitForNavigation(), page.click('.tsi-menu__item[data-tool=crest]')]);
+        await page.waitForSelector('[data-test=dmdoc-panel]:not([hidden])');
+        equal(await page.evaluate(() => location.search), '?tool=crest');
+        equal(await panelMatches(page), placed);
+        equal(await page.getAttribute('[data-test=dm-doc]', 'aria-expanded'), 'true');
+        assert(await page.evaluate(() => !document.querySelector('.tsi-dmdoc').contains(document.activeElement)), 'it took focus');
+        await H.shot(page, 'dmdoc-after-switch-' + size);
+      });
+
+      await check(size + ': closed, it stays closed after switching tool', async () => {
+        await page.click('[data-test=dm-doc]');
+        await page.click('[data-test=switch-tool]');
+        await Promise.all([page.waitForNavigation(), page.click('.tsi-menu__item[data-tool=pelagosi]')]);
+        await page.waitForSelector('.tsi-topbar__tool');
+        await page.evaluate(() => TSI.store.ready);
+        await page.waitForTimeout(300);
+        assert(!(await isOpen(page)), 'it reopened');
+        equal(await saved(page), placed, 'its place is still remembered');
+        await page.click('[data-test=dm-doc]');
+        equal(await panelMatches(page), placed);
+      });
+
+      await check(size + ': another window shares its place but doesn\'t open it by itself', async () => {
+        const other = await context.newPage();
+        await other.goto(INDEX + '?tool=crest');
+        await other.waitForSelector('.tsi-topbar__tool');
+        await other.evaluate(() => TSI.store.ready);
+        await other.waitForTimeout(300);
+        assert(!(await isOpen(other)), 'it opened by itself in another window');
+        await other.click('[data-test=dm-doc]');
+        equal(await panelMatches(other), placed);
+        await other.close();
+      });
+
+      if (size === 'laptop') {
+        await check('moving the window between the laptop (1707 × 930 at 1.5) and the TV (1920 × 1080 at 1) keeps it on screen', async () => {
+          const cdp = await context.newCDPSession(page);
+          const to = (width, height, deviceScaleFactor) => cdp.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor, mobile: false });
+          await to(1920, 1080, 1);
+          await page.waitForTimeout(200);
+          equal(await page.evaluate(() => [innerWidth, innerHeight, devicePixelRatio]), [1920, 1080, 1]);
+          equal(await panelMatches(page), placed, 'it fits on the TV as it was');
+          await drag(page, '[data-test=dmdoc-bar]', { x: 1918, y: 1078 }, BAR_GRAB);
+          const onTv = await panelMatches(page);
+          equal([onTv.x + onTv.w, onTv.y + onTv.h], [1920, 1080]);
+          await to(1707, 930, 1.5);
+          await page.waitForTimeout(200);
+          equal(await page.evaluate(() => [innerWidth, innerHeight, devicePixelRatio]), [1707, 930, 1.5]);
+          const onLaptop = await panelMatches(page);
+          equal([onLaptop.x + onLaptop.w, onLaptop.y + onLaptop.h, onLaptop.w, onLaptop.h], [1707, 930, onTv.w, onTv.h], 'pulled into the laptop\'s window, same size');
+          await to(1920, 1080, 1);
+          await page.waitForTimeout(200);
+          equal(await rect(page), onTv, 'back on the TV, it goes back where it was');
+          await to(1707, 930, 1.5);
+          await page.waitForTimeout(200);
+          await H.shot(page, 'dmdoc-moved-to-laptop');
+          await cdp.detach();
+        });
+      }
+
+      await check(size + ': Back up everything includes it; Restore brings it back, named "DM doc"', async () => {
+        await page.click('[data-test=home]');
+        await page.waitForSelector('.tsi-card');
+        await page.waitForSelector('[data-test=dmdoc-panel]:not([hidden])');
+        /* It floats over whatever is under it, so move it off the footer's buttons first. */
+        await moveTo(page, 20, 76);
+        await page.waitForTimeout(200);
+        const now = await saved(page);
+        equal([now.x, now.y], [20, 76]);
+        const d = await H.download(page, '[data-test=backup-everything]');
+        const b = JSON.parse(d.text);
+        const rec = b.records.find(r => r.key === KEY);
+        assert(rec, 'not in the backup: ' + b.records.map(r => r.key));
+        equal(rec.value, now);
+        rec.value = { x: 120, y: 150, w: 360, h: 300 };
+        await H.chooseFile(page, '[data-test=restore]', H.writeTemp('dmdoc-backup-' + size + '.json', b));
+        assert(/DM doc: 1 saved item/.test(await H.modalText(page)), await H.modalText(page));
+        await page.uncheck('.tsi-modal input[type=checkbox]');
+        await Promise.all([page.waitForEvent('load'), H.clickModal(page, 'Restore')]);
+        await page.waitForSelector('[data-test=dmdoc-panel]:not([hidden])');
+        equal(await saved(page), { x: 120, y: 150, w: 360, h: 300 });
+        equal(await panelMatches(page), { x: 120, y: 150, w: 360, h: 300 });
+      });
+
+      await check(size + ': no errors on the way', async () => {
+        equal(context.log.errors, []);
+        equal(context.log.consoleErrors, []);
+        equal(context.log.failed, []);
+        equal(context.log.net, []);
+      });
+      await context.close();
+    }
+
+    const context = await H.newContext(browser, 'laptop');
+    const page = await context.newPage();
+    await check('the tool underneath keeps working while it\'s open (Demo tool)', async () => {
+      await openDemo(page);
+      await page.click('[data-test=dm-doc]');
+      await page.waitForSelector('[data-test=dmdoc-panel]:not([hidden])');
+      await page.click('[data-test=add]');
+      await page.click('[data-test=add]');
+      equal(await demoCount(page), 2);
+      await page.fill('[data-test=note]', 'Typed with the DM doc open');
+      equal(await page.inputValue('[data-test=note]'), 'Typed with the DM doc open');
+      assert(await isOpen(page), 'it closed');
+      equal(await page.evaluate(() => [sessionStorage.getItem('tsi.test:dmdoc-open'), sessionStorage.getItem('tsi.suite.dmdoc-open')]), ['1', null], 'the test page keeps its own');
+      equal(await page.evaluate(() => TSI.store.ready.then(() => TSI.store.keys('dmdoc'))), [], 'nothing saved until it\'s moved');
+      await drag(page, '[data-test=dmdoc-bar]', { dx: -100, dy: 40 }, BAR_GRAB);
+      await page.waitForTimeout(200);
+      equal(await page.evaluate(() => TSI.store.keys('dmdoc')), [KEY]);
+      const exported = JSON.parse((await H.download(page, '[data-test=export]')).text);
+      equal(exported.records.map(r => r.key), ['tsi.demo.state'], 'a tool\'s Export leaves the DM doc out');
+    });
+    await check('no errors on the way', async () => {
+      equal(context.log.errors, []);
+      equal(context.log.consoleErrors, []);
+    });
+    await context.close();
+  }
+
+  /* ------------------------------------------------------------------ */
   section('Back up everything and Restore (home screen)');
   {
     const context = await H.newContext(browser, 'laptop');
