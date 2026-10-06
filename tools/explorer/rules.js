@@ -34,11 +34,6 @@
   function isObj(v) { return !!v && typeof v === 'object' && !Array.isArray(v); }
   R.clamp = function (n, min, max) { return Math.max(min, Math.min(max, n)); };
 
-  function pick(list, rand) {
-    if (!Array.isArray(list) || !list.length) return null;
-    return list[Math.floor(rand() * list.length)];
-  }
-
   /* ---------- Heroes and the starting state (old 444-513) ---------- */
   R.heroInitial = function (title) {
     var t = String(title || '').trim();

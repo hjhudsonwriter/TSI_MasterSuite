@@ -106,7 +106,44 @@ async function eventView(page) {
     };
   });
 }
-async function closePopup(page) { await pause(page); await page.click('.tsi-modal__foot button'); await page.waitForTimeout(150); }
+async function closePopup(page) {
+  await pause(page);
+  /* Harry's new event window: skip it if nothing has happened yet, otherwise close it and end it. */
+  if (await page.$('.tsi-modal [data-test=skip-event]:not([hidden])')) {
+    await page.click('.tsi-modal [data-test=skip-event]');
+  } else if (await page.$('.tsi-modal.tsi-exp-journey')) {
+    await page.click('.tsi-modal.tsi-exp-journey .tsi-modal__foot button:text-is("Close")');
+    await page.waitForTimeout(450);
+    await H.clickModal(page, 'End it now');
+  } else {
+    await page.click('.tsi-modal__foot button');
+  }
+  await page.waitForTimeout(150);
+}
+/* Force the event dice: travelChance and campChance (0 to 1). */
+async function chances(page, travel, camp) {
+  await page.evaluate(([t, c]) => { TSI_DATA.journeyEvents.settings.travelChance = t; TSI_DATA.journeyEvents.settings.campChance = c; }, [travel, camp]);
+}
+/* What the new event window shows. */
+async function journeyView(page) {
+  return page.evaluate(() => {
+    const m = document.querySelector('.tsi-modal.tsi-exp-journey');
+    if (!m) return null;
+    const q = s => { const e = m.querySelector(s); return e && !e.hidden ? e.textContent : ''; };
+    return {
+      meta: q('.tsi-modal__title'), title: q('[data-test=journey-title]'), line: q('[data-test=journey-line]'),
+      text: q('[data-test=journey-text]'), verse: q('[data-test=journey-verse]'), check: q('[data-test=check-line]'),
+      changes: q('[data-test=journey-changes]'),
+      buttons: Array.from(m.querySelectorAll('[data-test=journey-act] button')).map(b => b.textContent),
+      skip: !!m.querySelector('[data-test=skip-event]:not([hidden])')
+    };
+  });
+}
+async function jClick(page, test) {
+  await page.waitForTimeout(380);
+  await page.click('.tsi-modal.tsi-exp-journey [data-test="' + test + '"]');
+  await page.waitForTimeout(80);
+}
 async function firstChoice(page) { await pause(page); await page.click('.tsi-exp-choice >> nth=0'); await page.waitForTimeout(120); }
 async function closeAll(page) { let n = 0; while (await modalOpen(page) && n++ < 12) await closePopup(page); }
 
@@ -215,7 +252,7 @@ function serve(dir) {
       await page.evaluate(() => { TSI.explorer.debug.state().travel.nextTravelEventAtMiles = 99; });
       await dragHex(page, 'kaelen', 1, 0);
       equal((await st(page)).tokens.map(t => t.milesUsed), [6, 0, 0, 0, 0]);
-      equal([await text(page, 'miles'), await text(page, 'miles-left'), await text(page, 'mode'), await text(page, 'effects')], ['6', '24', 'Slow (≤18 miles)', '+Stealth • good foraging']);
+      equal([await text(page, 'miles'), await text(page, 'miles-left'), await text(page, 'mode'), await text(page, 'effects')], ['6', '24', 'Slow (≤18 miles)', '+Stealth']);
       equal(await page.$$eval('.tsi-exp-pill', ps => ps.map(p => p.textContent)), ['K 6/30', 'U 0/30', 'M 0/30', 'E 0/30', 'C 0/30']);
     });
 
@@ -450,31 +487,25 @@ function serve(dir) {
     const { context, page } = await newPage(browser, 'laptop');
     await openExplorer(page);
     await loadMap(page, 'the_east_isle');
-    /* A seed that brings weather on day 8. */
+    /* A seed that brings weather on day 8 (and so no campfire event). */
     const seed = await page.evaluate(() => {
       for (let s = 1; s < 500; s++) {
         window.__seed(s);
         const st = JSON.parse(JSON.stringify(TSI.explorer.debug.state()));
-        st.trackers = { gold: 0, log: [] };
         st.travel.day = 7;
-        if (TSI.explorer.rules.makeCamp(st, TSI_DATA.explorer, TSI_DATA.explorerEvents, Math.random).length === 3) return s;
+        const q = TSI.explorer.rules.makeCamp(st, TSI_DATA.explorer, TSI_DATA.journeyEvents, Math.random);
+        if (q.map(i => i.kind).join() === 'weather,camp') return s;
       }
       return null;
     });
 
-    await check('day 8: the campfire event, then weather, then the Bastion prompt, none lost (EXP-01)', async () => {
+    await check('day 8: the weather, then the Bastion prompt, none lost (EXP-01)', async () => {
       await page.evaluate(s => { TSI.explorer.debug.state().travel.day = 7; window.__seed(s); }, seed);
       await page.click('[data-test=camp]');
       const shown = [];
       let v = await eventView(page);
       shown.push(v.meta.split(' • ')[0] + ': ' + v.title);
-      assert(v.meta.indexOf('Campfire Event • The East Isle • ') === 0, v.meta);
       equal(await text(page, 'day'), 'Day 8');
-      await firstChoice(page);
-      while ((await eventView(page)).title !== 'Result') await firstChoice(page);
-      await closePopup(page);
-      v = await eventView(page);
-      shown.push(v.meta.split(' • ')[0] + ': ' + v.title);
       assert(v.roll, 'the weather asks for a roll');
       assert(/ROLL: /.test(v.desc) && /Enter the final table roll result below/.test(v.desc), v.desc);
       equal(v.choices, ['Close'], 'a Close as well as the roll (EXP-22 kept)');
@@ -498,10 +529,12 @@ function serve(dir) {
       await closePopup(page);
       equal(await modalOpen(page), false);
       equal(await text(page, 'notice'), 'Outcome: Bastion turn prompt (weekly).');
-      equal(shown.map(x => x.split(':')[0]), ['Campfire Event', 'Weather', 'Campfire Event']);
+      equal(shown.map(x => x.split(':')[0]), ['Weather', 'Campfire Event']);
     });
 
     await check('Enter or Space after Make Camp doesn\'t camp again (EXP-02)', async () => {
+      await chances(page, 0, 1);
+      await page.evaluate(() => { const s = TSI.explorer.debug.state(); s.travel.lastWeatherDay = s.travel.day; });
       await page.focus('[data-test=camp]');
       await page.keyboard.press('Enter');
       await page.waitForSelector('.tsi-modal');
@@ -523,6 +556,7 @@ function serve(dir) {
     });
 
     await check('a double click on Make Camp camps once, and the event stays up (EXP-14)', async () => {
+      await page.evaluate(() => { const s = TSI.explorer.debug.state(); s.travel.lastWeatherDay = s.travel.day; });
       await page.dblclick('[data-test=camp]');
       await page.waitForTimeout(200);
       equal(await text(page, 'day'), 'Day 10');
@@ -547,7 +581,8 @@ function serve(dir) {
     });
 
     await check('Enter can\'t resolve the weather by accident; an empty box counts as 0, as before', async () => {
-      await page.evaluate(() => { const s = TSI.explorer.debug.state(); s.travel.lastWeatherDay = -999; window.__seed(3); Math.random = (() => { const r = Math.random; let i = 0; return () => (i++ === 1 ? 0.01 : r()); })(); });
+      /* The night's first dice decide the weather: 0.01 brings it. */
+      await page.evaluate(() => { const s = TSI.explorer.debug.state(); s.travel.lastWeatherDay = -999; window.__seed(3); Math.random = (() => { const r = Math.random; let i = 0; return () => (i++ === 0 ? 0.01 : r()); })(); });
       await pause(page);
       await page.click('[data-test=camp]');
       await page.waitForSelector('.tsi-modal');
@@ -566,21 +601,38 @@ function serve(dir) {
       await closeAll(page);
     });
 
-    await check('a travel event: once a day, at the day\'s mark, with choices and a result', async () => {
+    await check('a campfire event comes before the Bastion prompt, none lost (EXP-01)', async () => {
+      await page.evaluate(() => { const s = TSI.explorer.debug.state(); s.travel.day = 21; s.travel.lastWeatherDay = 21; });
+      await pause(page);
+      await page.click('[data-test=camp]');
+      await page.waitForSelector('.tsi-modal.tsi-exp-journey');
+      const j = await journeyView(page);
+      assert(/^Campfire event • The East Isle • C\d+$/.test(j.meta), j.meta);
+      await closePopup(page);
+      const v = await eventView(page);
+      equal(v.title, 'Bastion Turn');
+      await closeAll(page);
+      await chances(page, 0.3, 0.25);
+    });
+
+    await check('a travel event: the day\'s roll, at the day\'s mark, once a day', async () => {
+      await chances(page, 1, 0);
       await page.click('[data-test=snap]');
-      await page.evaluate(() => { TSI.explorer.debug.state().travel.nextTravelEventAtMiles = 12; });
+      await page.evaluate(() => { const s = TSI.explorer.debug.state(); s.travel.nextTravelEventAtMiles = 12; s.travel.travelEventDay = 0; s.journey.lastTravelDay = 0; s.journey.rolledDay = 0; });
       await dragHex(page, 'charles', 1, 0);
       equal(await modalOpen(page), false, '6 miles: not yet');
       await dragHex(page, 'charles', 1, 0);
-      const v = await eventView(page);
-      assert(v && v.meta.indexOf('Travel Event • The East Isle • ') === 0, JSON.stringify(v));
-      const ids = await page.evaluate(() => TSI_DATA.explorerEvents.provinces.the_east_isle.travel_events.map(e => e.title));
-      assert(ids.includes(v.title), v.title);
-      while ((await eventView(page)).title !== 'Result') await firstChoice(page);
-      assert(/^Outcome: /.test(await text(page, 'notice')) || (await text(page, 'notice')) === '', await text(page, 'notice'));
-      await closeAll(page);
+      await page.waitForSelector('.tsi-modal.tsi-exp-journey');
+      const j = await journeyView(page);
+      assert(/^Travel event • The East Isle • T\d+$/.test(j.meta), j.meta);
+      const titles = await page.evaluate(() => { const J = TSI.explorer.journey; return J.pool(TSI_DATA.journeyEvents, 'travel', J.context(TSI.explorer.debug.state(), TSI_DATA.journeyEvents)).map(e => e.title); });
+      assert(titles.includes(j.title), j.title);
+      assert(j.skip, 'Skip this event is offered before anything happens');
+      await closePopup(page);
+      assert(/skipped/.test(await text(page, 'notice')), await text(page, 'notice'));
       await dragHex(page, 'charles', 1, 0);
-      equal(await modalOpen(page), false, 'only one a day');
+      equal(await modalOpen(page), false, 'one roll a day');
+      await chances(page, 0.3, 0.25);
     });
 
     await check('Queue plays a main event at once, with all its pictures', async () => {
@@ -643,6 +695,245 @@ function serve(dir) {
   }
 
   /* ------------------------------------------------------------------ */
+  section('Harry\'s new events (6 October 2026)');
+  {
+    const { context, page } = await newPage(browser, 'laptop');
+    await openExplorer(page);
+    await loadMap(page, 'the_east_isle');
+    await page.evaluate(() => { TSI.explorer.debug.state().travel.nextTravelEventAtMiles = 99; });
+    const start = (id, kind) => page.evaluate(([id, kind]) => TSI.explorer.debug.startEvent(id, kind), [id, kind]).then(async ok => { assert(ok, 'started ' + id); await page.waitForSelector('.tsi-modal.tsi-exp-journey'); });
+    const listText = test => page.textContent('[data-test=' + test + ']');
+
+    await check('the travel panel: event gold with Clear, Active Effects, Threads, Roll an event now; no rations anywhere', async () => {
+      equal(await text(page, 'gold'), '0');
+      equal((await listText('effects-list')).trim(), 'None.');
+      equal((await listText('threads-list')).trim(), 'None.');
+      equal(await text(page, 'roll-now'), 'Roll an event now');
+      assert(await page.isVisible('[data-test=gold-clear]'));
+      assert(!/ration|forag/i.test(await page.evaluate(() => document.body.innerText)), 'no rations or foraging');
+      const lay = await H.layoutCheck(page, ['[data-test=camp]', '[data-test=roll-now]']);
+      equal(lay.scrollWidth, lay.clientWidth, 'no sideways scroll');
+      equal(lay.outOfView, [], 'Make Camp and Roll an event now in view');
+    });
+
+    await check('Roll an event now, then Skip this event: the card goes back in the pool', async () => {
+      await page.click('[data-test=roll-now]');
+      await H.clickModal(page, 'Travel event');
+      await page.waitForSelector('.tsi-modal.tsi-exp-journey');
+      const j = await journeyView(page);
+      assert(/^Travel event • The East Isle • T\d+$/.test(j.meta), j.meta);
+      assert(j.skip);
+      await jClick(page, 'skip-event');
+      equal(await modalOpen(page), false);
+      const s = await st(page);
+      equal([s.journey.current, s.journey.used.travel], [null, []]);
+      assert(/skipped: it goes back into the pool/.test(await text(page, 'notice')));
+    });
+
+    await check('T1 step by step: the check and its DC, the hero who rolled, then what changed', async () => {
+      await start('t1');
+      let j = await journeyView(page);
+      equal([j.title, j.line], ['The Wardens\' Toll', 'Insight, then Intimidation, Stealth or Persuasion']);
+      assert(/Wisdom \(Insight\), DC 14/.test(j.check), j.check);
+      equal(j.buttons, ['Success', 'Failure']);
+      equal(await page.$$eval('.tsi-modal [data-test=hero-select] option', o => o.map(x => x.textContent)), ['Kaelen', 'Umbrys', 'Magnus', 'Elara', 'Charles']);
+      await page.selectOption('.tsi-modal [data-test=hero-select]', 'elara');
+      await jClick(page, 'check-success');
+      j = await journeyView(page);
+      assert(/Elara gains Toll-Wise: advantage on Insight against road-thieves \(ends Day 8\)/.test(j.changes), j.changes);
+      equal(j.skip, false, 'no skipping once something has happened');
+      assert(/Toll-Wise · Elara/.test(await listText('effects-list')), await listText('effects-list'));
+      await jClick(page, 'choice-0');
+      await jClick(page, 'check-success');
+      j = await journeyView(page);
+      assert(/^What changed/.test(j.changes) && /\+120 gold\. Party gold: 120\./.test(j.changes), j.changes);
+      equal(j.buttons, ['Done']);
+      await jClick(page, 'event-done');
+      equal(await modalOpen(page), false);
+      equal(await text(page, 'gold'), '120');
+      equal(await text(page, 'notice'), 'T1 The Wardens\' Toll: done.');
+    });
+
+    await check('an effect can be removed by hand, after asking', async () => {
+      await page.click('[data-test=effect-remove]');
+      assert(/Remove Toll-Wise \(Elara\)\?/.test(await H.modalText(page)));
+      await H.clickModal(page, 'Remove');
+      equal((await listText('effects-list')).trim(), 'None.');
+    });
+
+    await check('a thread with a reward: Resolve says what it gives, then pays once', async () => {
+      await start('t6');
+      assert(/in Rowthorn colours/.test((await journeyView(page)).text));
+      await jClick(page, 'check-success');
+      await jClick(page, 'next');
+      await jClick(page, 'choice-0');
+      await jClick(page, 'event-done');
+      assert(/The Sealed Dispatch/.test(await listText('threads-list')));
+      await page.click('[data-test=thread-resolve]');
+      const msg = await H.modalText(page);
+      assert(/\+250 gold/.test(msg) && /Clan Rowthorn/.test(msg), msg);
+      await H.clickModal(page, 'Resolve');
+      equal(await text(page, 'gold'), '370');
+      equal((await listText('threads-list')).trim(), 'None.');
+    });
+
+    await check('Clear sets the party gold back to 0, after asking', async () => {
+      await page.click('[data-test=gold-clear]');
+      await H.clickModal(page, 'Cancel');
+      equal(await text(page, 'gold'), '370');
+      await page.click('[data-test=gold-clear]');
+      await H.clickModal(page, 'Clear');
+      equal(await text(page, 'gold'), '0');
+    });
+
+    await check('a riddle: the verse, one hint, the DM\'s peek, two tries', async () => {
+      await start('t8');
+      let j = await journeyView(page);
+      assert(/I grip the hill but have no hand/.test(j.verse), j.verse);
+      await jClick(page, 'hint-success');
+      equal(await page.textContent('.tsi-modal [data-test=hint-text]'), 'Read out: "Look down, not up."');
+      equal(await page.$('.tsi-modal [data-test=hint-success]'), null, 'one hint only');
+      await jClick(page, 'riddle-reveal');
+      equal(await page.textContent('.tsi-modal [data-test=answer]'), 'Answer: Roots (or a root).');
+      await jClick(page, 'riddle-wrong');
+      equal(await page.textContent('.tsi-modal [data-test=wrong-text]'), 'The stone hums. One more try.');
+      await jClick(page, 'riddle-right');
+      j = await journeyView(page);
+      assert(/\+100 gold/.test(j.changes) && /potion of greater healing/.test(j.changes), j.changes);
+      await jClick(page, 'event-done');
+    });
+
+    await check('a fight: who\'s surprised, the suggested enemies, and the Combat Tracker in a new window', async () => {
+      await start('t2');
+      await jClick(page, 'check-failure');
+      await page.check('.tsi-modal [data-test=failed-kaelen]');
+      await jClick(page, 'each-continue');
+      const j = await journeyView(page);
+      assert(/Surprised in the first round: Kaelen\./.test(j.changes), j.changes);
+      assert(/Suggested enemies: Levels 7–10/.test(await page.textContent('.tsi-modal [data-test=journey-act]')));
+      if (await page.$('.tsi-modal [data-test=open-tracker]')) {
+        const [win] = await Promise.all([context.waitForEvent('page'), page.click('.tsi-modal [data-test=open-tracker]')]);
+        await win.waitForLoadState();
+        assert(/\?tool=encounter$/.test(win.url()), win.url());
+        await win.close();
+      } else {
+        throw new Error('no "Open the Combat Tracker in a new window" button');
+      }
+      await jClick(page, 'fight-won');
+      assert(/\+150 gold/.test((await journeyView(page)).changes));
+      await jClick(page, 'event-done');
+    });
+
+    await check('a contest: the knight\'s roll is shown, best of three', async () => {
+      await start('t4');
+      await jClick(page, 'choice-0');
+      const act = await page.textContent('.tsi-modal [data-test=journey-act]');
+      assert(/Round 1/.test(act) && /The knight rolls \d+ \+ 7 = \d+\./.test(act), act);
+      await page.selectOption('.tsi-modal [data-test=hero-select]', 'magnus');
+      await jClick(page, 'round-hero');
+      await jClick(page, 'round-hero');
+      const j = await journeyView(page);
+      assert(/\+200 gold/.test(j.changes) && /Magnus gains Inspiration/.test(j.changes) && /Clan Rowthorn/.test(j.changes), j.changes);
+      await jClick(page, 'event-done');
+    });
+
+    await check('pace: a Stealth check on a slow day says so', async () => {
+      await page.evaluate(() => { TSI.explorer.debug.state().tokens.forEach(t => { t.milesUsed = 12; }); });
+      await start('t2');
+      await jClick(page, 'check-success');
+      await jClick(page, 'choice-0');
+      assert(/Slow pace: advantage on Stealth checks\./.test(await page.textContent('.tsi-modal [data-test=journey-act]')));
+      await closePopup(page);
+    });
+
+    await check('closing part-way: keep it for later, or end it', async () => {
+      await start('t7');
+      await page.waitForTimeout(400);
+      await page.click('.tsi-modal.tsi-exp-journey .tsi-modal__foot button:text-is("Close")');
+      await page.waitForTimeout(400);
+      await H.clickModal(page, 'Keep it for later');
+      equal(await modalOpen(page), false);
+      equal(await text(page, 'roll-now'), 'Back to the event');
+      await page.click('[data-test=camp]');
+      await page.waitForSelector('.tsi-modal.tsi-exp-journey');
+      assert(/Finish or end the event in progress/.test(await text(page, 'notice')));
+      equal((await journeyView(page)).title, 'Rootfall');
+      equal((await st(page)).travel.day, 1, 'the day didn\'t move on');
+      await page.waitForTimeout(400);
+      await page.click('.tsi-modal.tsi-exp-journey .tsi-modal__foot button:text-is("Close")');
+      await page.waitForTimeout(400);
+      await H.clickModal(page, 'End it now');
+      const s = await st(page);
+      equal(s.journey.current, null);
+      assert(/^Day 1 · T7 Rootfall/.test(s.journey.log[0]), s.journey.log[0]);
+      equal(await text(page, 'roll-now'), 'Roll an event now');
+    });
+
+    await check('an event part-way through comes back after a reload, at the same step', async () => {
+      await start('t7');
+      await page.check('.tsi-modal [data-test=failed-umbrys]');
+      await jClick(page, 'each-continue');
+      await page.waitForTimeout(300);
+      await page.reload();
+      await page.waitForSelector('.tsi-modal.tsi-exp-journey');
+      const j = await journeyView(page);
+      equal(j.title, 'Rootfall');
+      assert(/Umbrys fell 20 feet/.test(j.text), j.text);
+      equal(await page.$$eval('.tsi-modal .tsi-exp-failed', l => l.map(x => x.textContent)), ['Umbrys failed']);
+      await closePopup(page);
+    });
+
+    await check('a DM event from the Main Campaign list', async () => {
+      await page.selectOption('[data-test=main-select]', 'dm:t17');
+      await pause(page);
+      await page.click('[data-test=queue]');
+      await page.waitForSelector('.tsi-modal.tsi-exp-journey');
+      const j = await journeyView(page);
+      assert(/^DM event • The East Isle • T17$/.test(j.meta), j.meta);
+      equal(j.skip, false, 'a DM event isn\'t skipped');
+      await closePopup(page);
+    });
+
+    await check('the event window fits the laptop, full screen and the TV', async () => {
+      for (const size of ['laptop', 'laptopFull', 'tv']) {
+        await page.setViewportSize(H.SIZES[size].viewport);
+        await page.waitForTimeout(200);
+        await start('t4');
+        await jClick(page, 'choice-0');
+        const fit = await page.evaluate(() => {
+          const d = document.querySelector('.tsi-modal.tsi-exp-journey');
+          const b = d.querySelector('.tsi-modal__body');
+          return { bottom: d.getBoundingClientRect().bottom, h: innerHeight, scroll: b.scrollHeight - b.clientHeight };
+        });
+        assert(fit.bottom <= fit.h && fit.scroll <= 2, size + ' ' + JSON.stringify(fit));
+        await H.shot(page, 'p8-new-event-' + size);
+        await closePopup(page);
+      }
+      await page.setViewportSize(H.SIZES.laptop.viewport);
+    });
+
+    await check('the events record is saved with the journey', async () => {
+      const before = Number(await text(page, 'gold'));
+      await start('t3');
+      await jClick(page, 'check-success');
+      await jClick(page, 'next');
+      await jClick(page, 'choice-1');
+      await jClick(page, 'choice-1');
+      await jClick(page, 'event-done');
+      await page.waitForTimeout(300);
+      await page.reload();
+      await page.waitForSelector('[data-test=camp]');
+      equal(Number(await text(page, 'gold')), before + 75);
+      const saved = await page.evaluate(() => TSI.store.get('tsi.explorer.save'));
+      equal(saved.journey.gold, before + 75);
+      assert(saved.journey.log.length >= 5, saved.journey.log.length);
+    });
+    await H.shot(page, 'p8-new-panel');
+    equal(context.log.errors, []);
+    await context.close();
+  }
+
+  /* ------------------------------------------------------------------ */
   section('Full screen, Hide UI and the H key');
   {
     const { context, page } = await newPage(browser, 'tv');
@@ -671,10 +962,14 @@ function serve(dir) {
     });
 
     await check('pop-ups and notices show inside full screen (EXP-15)', async () => {
+      /* Make sure tonight brings a campfire event. */
+      await chances(page, 0, 1);
+      await page.evaluate(() => { const s = TSI.explorer.debug.state(); s.travel.lastWeatherDay = s.travel.day; });
       await page.click('[data-test=camp]');
       await page.waitForSelector('.tsi-modal');
       assert(await page.evaluate(() => document.fullscreenElement.contains(document.querySelector('.tsi-modal'))));
       await closeAll(page);
+      await chances(page, 0.3, 0.25);
       await page.evaluate(() => TSI.notify('Test notice'));
       assert(await page.evaluate(() => document.fullscreenElement.contains(document.querySelector('.tsi-notices'))));
       equal(await page.evaluate(() => !!document.fullscreenElement), true, 'still full screen');
@@ -911,8 +1206,13 @@ function serve(dir) {
       }),
       async dragHex(id, dq, dr) { await dragHex(page, id, dq, dr); }
     };
+    /* Harry's new events (6 October 2026) replace the old travel and
+       campfire events, and draw their dice differently, so the event and
+       weather records no longer match the old tool's. What's compared is
+       everything the new events didn't change: days, miles, pace, the
+       panel, groups, Free Move, refused moves, main events, Reset Travel. */
     const pick = s => ({
-      travel: ['day', 'provinceId', 'travelEventDay', 'nextTravelEventAtMiles', 'lastWeatherDay', 'weatherEventDay', 'activeWeather', 'forcedMainEvent', 'forcedMainEventFired'].reduce((o, k) => { o[k] = s.travel[k]; return o; }, {}),
+      travel: ['day', 'provinceId', 'forcedMainEvent', 'forcedMainEventFired'].reduce((o, k) => { o[k] = s.travel[k]; return o; }, {}),
       miles: s.tokens.map(t => t.milesUsed),
       grouped: s.tokens.map(t => !!t.groupId),
       freeMove: s.freeMove,
@@ -923,15 +1223,23 @@ function serve(dir) {
     const met = {};
     async function compare(label) {
       const [oh, nh] = [await O.hud(), await N.hud()];
-      /* The old tool's pills put a space inside: "K 6/30". */
+      /* The old tool's pills put a space inside: "K 6/30". Slow's "good
+         foraging" went with the rations (Harry, 6 October 2026). */
       oh.pills = oh.pills.map(p => p.replace(/\s*\/\s*/, '/'));
+      oh.effects = oh.effects.replace(' • good foraging', '');
       equal(nh, oh, label + ' (travel panel)');
       equal(pick(await st(page)), pick(await O.state()), label + ' (saved journey)');
       steps.push(label);
     }
     /* Both show an event: compare, pick the first choice until the result, compare, close. */
     async function bothEvent(label) {
-      const ov = await O.modal();
+      let ov = await O.modal();
+      /* The old travel events: closed unanswered (the rebuild's new events are kept off here). */
+      if (ov && / Event • /.test(ov.meta) && ov.meta.indexOf('Main Campaign') !== 0) {
+        met[ov.meta.split(' • ')[0] + ' (old only)'] = (met[ov.meta.split(' • ')[0] + ' (old only)'] || 0) + 1;
+        await O.close();
+        ov = await O.modal();
+      }
       const nv = await eventView(page);
       assert(!!ov === !!nv, label + ': a pop-up in one but not the other: ' + JSON.stringify([ov, nv]));
       if (!ov) return;
@@ -951,45 +1259,29 @@ function serve(dir) {
       }
       if (await O.modal()) { await O.close(); await closePopup(page); }
     }
-    /* The night's pop-ups: the old tool shows only the last (EXP-01); the
-       rebuild shows each. Earlier ones are closed unanswered in the rebuild,
-       so both end in the same state. */
-    async function bothCamp(label, roll) {
+    /* The night's pop-ups (campfire, weather, Bastion prompt) are closed
+       unanswered in both, so both end the night in the same state. */
+    async function bothCamp(label) {
       await old.click('#explorerMakeCamp');
       await pause(page);
       await page.click('[data-test=camp]');
       await page.waitForTimeout(150);
-      const ov = await O.modal();
+      let n = 0;
+      while (await O.modal() && n++ < 6) await O.close();
       const kinds = [];
-      let nv = await eventView(page);
-      while (nv) {
-        kinds.push(nv.meta.split(' • ')[0]);
-        const last = await page.evaluate(() => document.querySelectorAll('.tsi-modal').length === 1) && nv.title === ov.title && nv.meta === ov.meta;
-        if (last) break;
+      n = 0;
+      while (await modalOpen(page) && n++ < 6) {
+        const v = await eventView(page);
+        if (v) kinds.push(v.meta.split(' • ')[0]);
         await closePopup(page);
-        nv = await eventView(page);
       }
-      assert(nv, label + ': the rebuild lost the old tool\'s last pop-up ' + JSON.stringify(ov));
-      equal({ meta: nv.meta, title: nv.title, desc: nv.desc, choices: nv.choices }, { meta: ov.meta, title: ov.title, desc: ov.desc, choices: ov.choices }, label + ' (last pop-up)');
-      if (ov.roll) {
-        met.Weather = (met.Weather || 0) + 1;
-        await old.fill('#weatherRollInput', String(roll));
-        await old.click('#weatherRollResolve');
-        await page.fill('[data-test=roll]', String(roll));
-        await page.click('[data-test=resolve]');
-        const o2 = await O.modal(), n2 = await eventView(page);
-        equal({ meta: n2.meta, title: n2.title, desc: n2.desc }, { meta: o2.meta, title: o2.title, desc: o2.desc }, label + ' weather result');
-        await O.close(); await closePopup(page);
-      } else {
-        await bothEvent(label);
-      }
-      await closeAll(page);
       return kinds;
     }
 
-    await check('the same journey gives the same days, miles, events, weather and panel, step by step', async () => {
+    await check('the same journey gives the same days, miles, pace and panel, step by step (events aside)', async () => {
       await old.evaluate(() => window.__seed(2026));
       await page.evaluate(() => window.__seed(2026));
+      await chances(page, 0, 0);
       await old.selectOption('#explorerMapPreset', 'the_north_isle'); await old.click('#explorerLoadPreset');
       await loadMap(page, 'the_north_isle');
       await old.click('#explorerSnapToggle');
@@ -1024,7 +1316,6 @@ function serve(dir) {
       }
       await compare('group Kaelen and Umbrys');
       const kinds = {};
-      const rolls = [13, 7, 17, 11, 14, 20, 3, 12, 16, 9];
       for (let day = 1; day <= 10; day++) {
         const sign = day % 2 ? 1 : -1;
         const moves = [['kaelen', sign, 0], ['magnus', 0, sign], ['elara', sign, sign], ['charles', 2 * sign, 0]];
@@ -1042,12 +1333,13 @@ function serve(dir) {
           await old.click('#explorerFreeMove'); await pause(page); await page.click('[data-test=free-move]');
           await compare('day 5: Free Move off');
         }
-        (await bothCamp('camp after day ' + day, rolls[day - 1])).forEach(k => { kinds[k] = (kinds[k] || 0) + 1; });
+        (await bothCamp('camp after day ' + day)).forEach(k => { kinds[k] = (kinds[k] || 0) + 1; });
         await compare('camp after day ' + day);
       }
-      /* The run met travel and campfire events, weather, a refused move and the Bastion prompt. */
-      assert(kinds['Campfire Event'] >= 10 && kinds.Weather >= 1, JSON.stringify(kinds));
-      assert(met['Travel Event'] >= 1 && met['Campfire Event'] >= 1 && met.Weather >= 1 && met['Bastion prompt'] === 1, JSON.stringify(met));
+      /* The run met the old travel events (closed unanswered), weather and
+         the Bastion prompt in the rebuild, and a refused move. */
+      assert(kinds.Weather >= 1, JSON.stringify(kinds));
+      assert(met['Travel Event (old only)'] >= 1, JSON.stringify(met));
       assert(steps.some(s => /day 3: elara moves 3,0/.test(s)), 'the too-far move was compared');
       console.log('      (met in both: ' + JSON.stringify(met) + ')');
     });

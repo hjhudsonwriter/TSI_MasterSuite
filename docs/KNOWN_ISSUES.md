@@ -24,7 +24,7 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 | Suite-wide (SUI) | 5 | 11 | 2 | 1 | 0 |
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
-| Scarlett Isles Explorer (EXP) | 12 | 4 | 0 | 13 | 0 |
+| Scarlett Isles Explorer (EXP) | 12 | 5 | 3 | 13 | 0 |
 | The Ironbow Bastion Manager (BAS) | 20 | 2 | 19 | 17 | 1 |
 | Clan Crest Creator (CRS) | 0 | 4 | 5 | 3 | 3 |
 | Arenas of The Scarlett Isles (ARN) | 8 | 2 | 0 | 17 | 0 |
@@ -835,6 +835,7 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 - **Checker's note:** The original never saved this, so it is not 'loses saved data' under the policy.
 - **Evidence:** saveNow 1239-1251 and buildSavePayload 1255-1268 omit trackers; 2397 resets gold; 864 writes the log, which nothing displays. flow_test goldAfterReload 0.
 - **Phase 8:** Kept (E1). Event gold shows while the Explorer is open, resets weekly and on reopening, and isn't saved or backed up.
+- **New events (6 October 2026):** changed at Harry's request (EXP-32): the party's event gold is now saved, backed up and kept as a running total until the DM presses Clear.
 
 ### EXP-17 · Rations are only mentioned, never counted
 **Later, Harry's call** · other · listed in the handover
@@ -844,6 +845,7 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 - **Decision note:** E2
 - **Evidence:** app.js:870 notice only; no ration store; CSS styles a missing #explorerRations.
 - **Phase 8:** Kept (E2).
+- **New events (6 October 2026):** gone (EXP-31). Rations are removed from the Explorer entirely, as Harry asked.
 
 ### EXP-18 · Gold display doesn't update straight after an outcome
 **Later, Harry's call** · other
@@ -906,6 +908,7 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 - **Decision note:** E3
 - **Evidence:** analyse2.py: 146 events with an unreachable 'step2' (e.g. Bridge Out, Roadside Peddler).
 - **Phase 8:** Kept (E3). The text is still in the events file.
+- **New events (6 October 2026):** no longer seen: the old events are switched off (EXP-30). Every step of the new events can be reached; the rules tests check it.
 
 ### EXP-25 · A refused 'Too far' move still uncovers the fog and the pins
 **Later, Harry's call** · other
@@ -948,6 +951,42 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 - **After:** Clicks in the first moment after an event's buttons change are ignored, so a double click counts once.
 - **Evidence:** app.js:918-983 (the choices are cleared and rebuilt on every step). Found while rebuilding, from the code.
 - **Phase 8:** Fixed. Test: a double click on Continue moves on one step only.
+
+### EXP-30 · Harry's new travel and campfire events replace the old 601
+**Deliberate change** (Harry's request and his events document, 6 October 2026) · other
+
+- **Before:** Every day on the road brought a travel event and every night a campfire event (about ten moments in five days), picked at random from 601 short events, most with a choice and a small outcome in gold or rations.
+- **After:**
+  - **The events:** 17 travel events, 12 campfire events and 3 follow-ups, each with at least one roll, a choice and a consequence that outlasts the pop-up.
+    - T9 The Husk in the Furrows is written but switched off: no Rootbound creature before the Heartwood finale.
+    - T17 The Second Marker is a DM-only event, queued from the Main Campaign list.
+  - **How often:** once a day on the road, a 30% chance of a travel event, never two days running. At Make Camp, the weather is exactly as before, then a 25% chance of a campfire event, skipped after a travel or weather event that day. Events are drawn like cards: nothing repeats until a map's pool is used up.
+  - **The event window:** one step at a time. It shows the check and its DC; the players roll and the DM clicks Success or Failure (or Fail by 5 or more). Then come choices, fights (run in the Combat Tracker, then Won or Fled), contests, riddles and puzzles, and a summary of what changed.
+  - **What an event can change:** gold, today's miles, Active Effects, Threads, and DM notes for other tools (never applied automatically).
+  - **The DM's controls:** Roll an event now and Skip this event.
+  - **The old events:** switched off (no longer loaded), not deleted.
+- **Evidence:** `tools/explorer/data/journey-events.js` (the events), `tools/explorer/journey.js` (the rules), `tools/explorer/tool.js` (the window and the travel panel); tests in `tests/rules/explorer-journey.test.js` and `tests/e2e/phase8.test.js`.
+
+### EXP-31 · Rations removed
+**Deliberate change** (Harry's request, 6 October 2026) · other
+
+- **Before:** Old events said "you gain 1 rations" in their text and in the notice line, and Slow pace said "good foraging", but nothing counted rations (EXP-17).
+- **After:** Every mention and every piece of code for rations is gone from the Explorer. Slow pace reads "+Stealth". The old events file, which is switched off, still has its original wording.
+- **Evidence:** `tools/explorer/rules.js` (`travelMode`, `applyOutcome`), `data/explorer-data.js` (the Bastion prompt); the click-through checks no "ration" or "forag" text appears.
+
+### EXP-32 · The party's event gold is saved, as a running total
+**Deliberate change** (Harry's choice, 6 October 2026) · other
+
+- **Before:** The Gold line was forgotten on reload and went back to 0 every 7 days (EXP-16).
+- **After:** It goes up and down as events pay and cost. It's saved with the journey, in Export and in Back up everything, and stays until the DM presses Clear (which asks first).
+- **Evidence:** `tools/explorer/journey.js` (`clearGold`), `rules.js` (`makeCamp` no longer resets it).
+
+### EXP-33 · An old event's outcome didn't belong to its choice
+**Fixed by the new design** · other · found by Harry's events document
+
+- **Before:** In the old events, Bandit Sign offered only Continue, yet its outcome said "You wait, then strike first" and paid 90 gold each.
+- **After:** The old events are switched off. In the new ones, every outcome belongs to the choice and roll that led to it, and every step can be reached; the rules tests walk every path.
+- **Evidence:** `tests/rules/explorer-journey.test.js` ("every event's steps link up").
 
 ## The Ironbow Bastion Manager
 Old repo: `_legacy/bastion_manager` (file:line references point there).

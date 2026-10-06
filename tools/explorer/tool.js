@@ -703,13 +703,13 @@
         if (res.result === 'tooFar') {
           /* Nobody moves; the fog it uncovered stays uncovered (E13). */
           R.undoDrag(state, d);
-          setNotice('Too far. One or more heroes would go past today\'s ' + R.dayLimit(state) + ' miles. Make Camp to reset.');
+          setNotice('Too far. One or more heroes would exceed ' + R.dayLimit(state) + ' miles. Make Camp to reset.');
           renderAll();
           return;
         }
         if (res.result === 'moved') {
           focusId = d.anchorId;
-          if (res.tired) setNotice(R.token(state, d.anchorId).initial + ' has reached today\'s ' + R.dayLimit(state) + ' miles. Make Camp to reset.');
+          if (res.tired) setNotice(R.token(state, d.anchorId).initial + ' has reached ' + R.dayLimit(state) + ' miles. Make Camp to reset.');
         }
         saveNow();
         renderAll();
@@ -1163,17 +1163,23 @@
           } else if (v.type === 'contest') {
             var k = v.contest;
             var winBtn = null;
-            var hsel = heroSelect(v.hero, 'Who takes part?', function () { if (winBtn) winBtn.textContent = heroLabel() + ' wins the round'; });
+            var score = el('strong');
+            var hsel = heroSelect(v.hero, 'Who takes part?', function () { showHero(); });
             var heroLabel = function () { var t = R.token(state, hsel.sel.value); return t ? t.name : 'The hero'; };
+            var showHero = function () {
+              score.textContent = heroLabel() + ' ' + k.heroWins + ' – ' + k.oppWins + ' ' + k.opponent;
+              if (winBtn) winBtn.textContent = heroLabel() + ' wins the round';
+            };
             parts.push(hsel.node);
             parts.push(el('p', { class: 'tsi-exp-check', 'data-test': 'contest-score' }, [
               el('span', { class: 'tsi-exp-check__tag', text: 'Round ' + k.round }),
-              el('strong', { text: 'Hero ' + k.heroWins + ' – ' + k.oppWins + ' ' + k.opponent })
+              score
             ]));
             parts.push(tip(k.opponent + ' rolls ' + k.d20 + ' + ' + k.bonus + ' = ' + k.total + '.', 'tsi-exp-tip--note'));
             parts.push(tip('The hero rolls ' + k.heroRoll + '. Higher wins the round; first to ' + k.need + ' takes it.'));
             if (k.adv) parts.push(tip(k.adv, 'tsi-exp-tip--note'));
             winBtn = button(heroLabel() + ' wins the round', function () { doAct({ type: 'round', step: v.step, winner: 'hero', hero: hsel.sel.value }); }, '', 'round-hero');
+            showHero();
             parts.push(buttons([
               winBtn,
               button(k.opponent + ' wins the round', function () { doAct({ type: 'round', step: v.step, winner: 'opp', hero: hsel.sel.value }); }, '', 'round-opp')
@@ -1338,6 +1344,16 @@
       /* For the tests. */
       ns.debug = {
         state: function () { return state; },
+        /* Start a chosen event (travel, camp, follow, dm), as if it had come up. */
+        startEvent: function (id, kind) {
+          var ev = J.def(JDEFS, id);
+          if (!ev || state.journey.current) return false;
+          J.begin(state, JDEFS, { kind: kind || ev.kind, event: ev }, J.context(state, JDEFS), rand);
+          saveNow();
+          updateTravelUI();
+          showEvents([{ kind: 'journey' }]);
+          return true;
+        },
         board: function () { return board; },
         view: function () { return view; },
         focus: function () { return focusId; },
