@@ -172,6 +172,20 @@ Not copied:
 
 The combatants' pictures and stat-block links are web addresses you type in. They load only when the laptop is online; otherwise the plain stand-in picture shows, as before.
 
+### Battle maps for Explorer fights (7 October 2026)
+
+Not from an old repo: simple stand-in maps drawn for the suite by code (`docs/dev/make-battlemaps.py`), so every Explorer fight has a battle map until Harry has real ones. Each is a JPG of 1800 × 1200 pixels, a 30 × 20 grid of 5-foot squares (the grid isn't drawn on the picture; the Battlemap draws its own). The colours of each region's version are taken by eye from the Explorer's province maps. To use a real map, save it over the stand-in with the same name; if its grid isn't 30 × 20, change `cols` and `rows` for that setting in `tools/explorer/data/fights-data.js`.
+
+| New path (`tools/encounter/assets/battlemaps/…`) | Size | Used by |
+|---|---|---|
+| `ford-northern.jpg`, `ford-midland.jpg`, `ford-eastern.jpg`, `ford-southern.jpg`, `ford-western.jpg`, `ford-north-isle.jpg`, `ford-east-isle.jpg` | 183–211 KB each | T2 The Ambush Sign, in the Region's version: a river across the middle, a shallow ford where the road crosses, woods on both banks |
+| `road-northern.jpg`, `road-midland.jpg`, `road-eastern.jpg`, `road-southern.jpg`, `road-western.jpg`, `road-north-isle.jpg`, `road-east-isle.jpg` | 188–226 KB each | F1 The Toll-Men Return, C10 The Beacons (riding through the night) and T9 (switched off): a road from west to east, a wooded rise to the north, a fallen tree ahead |
+| `camp-northern.jpg`, `camp-midland.jpg`, `camp-eastern.jpg`, `camp-southern.jpg`, `camp-western.jpg`, `camp-north-isle.jpg`, `camp-east-isle.jpg` | 192–231 KB each | C6 Wolf-Song, C9 The Debt Collector and C10 The Beacons (keeping watch): the party's camp in a clearing, with the fire, two tents and bedrolls |
+| `cove-western.jpg` | 148 KB | T13 Lights Below Redport: cliff top, the cliff path, a shingle beach with the smugglers' crates, lamp and boat, and the sea |
+| `rocks-north-isle.jpg` | 138 KB | C12 False Lights at Bleakharbour: moorland, a rocky shore with the wreckers' lanterns, and the sea |
+
+The ford, road and camp come in a version for each region (Harry's choice); the cove and the rocks belong to one map each, because their events do. In all, 23 files, about 4.7 MB.
+
 ## Scarlett Isles Explorer (phase 8)
 
 All 43 media files from the old Explorer. 41 are copied into `tools/explorer/assets/` and checked byte-for-byte after copying; none of them duplicates another file. The other two, `hero.png` and `logo.png`, were already stored once in `shared/art/` in phase 1. The old tool used every file, so there's no `extras/` folder.

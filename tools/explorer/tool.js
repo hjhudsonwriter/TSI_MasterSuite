@@ -1108,6 +1108,13 @@
         return cur && typeof cur.vars.fightId === 'string' ? cur.vars.fightId : null;
       }
       TSI.handoff.listen(life, 'result', function () { if (journeyRefresh) journeyRefresh(); });
+      /* A fight (or its report) left waiting by an event that isn't the one
+         on now (a restored backup, say) is cleared, so the Combat Tracker
+         stops offering it. */
+      ['fight', 'result'].forEach(function (kind) {
+        var h = TSI.handoff.read(kind);
+        if (h && h.id !== fightIdNow()) TSI.handoff.clear(kind, h.id);
+      });
 
       var journeyOpen = false;
       function openJourney() {

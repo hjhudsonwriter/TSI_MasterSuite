@@ -35,3 +35,7 @@ The font files were checked byte-for-byte (SHA-256) against the google/fonts rep
 The tools that traced them are in `tools/crest/dev/` (see its README); the suite doesn't load them.
 
 For the campaign artwork, see `ARTWORK.md`.
+
+**Monster statistics (Explorer fights, 7 October 2026).** The monster numbers in `tools/explorer/data/fights-data.js` (Armour Class, hit points and the initiative bonus from Dexterity, for the Bandit, Bandit Captain, Berserker, Dire Wolf, Gladiator, Hill Giant, Ogre, Spy, Thug, Veteran, Winter Wolf and Wolf) come from the System Reference Document 5.1 ("SRD 5.1") by Wizards of the Coast LLC, available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License (https://creativecommons.org/licenses/by/4.0/legalcode). Only the numbers and the creatures' names are used; the stat-block links open D&D Beyond in the browser (online only). The Rootbound Husk is the Heartwood Ritual's own creature, not from the SRD.
+
+**Battle maps (Explorer fights, 7 October 2026).** The 23 stand-in battle maps in `tools/encounter/assets/battlemaps/` were drawn for the suite by `docs/dev/make-battlemaps.py`; no outside art was used.

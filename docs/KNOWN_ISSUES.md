@@ -24,7 +24,7 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 | Suite-wide (SUI) | 5 | 11 | 4 | 1 | 0 |
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
-| Scarlett Isles Explorer (EXP) | 12 | 5 | 3 | 13 | 0 |
+| Scarlett Isles Explorer (EXP) | 12 | 5 | 4 | 13 | 0 |
 | The Ironbow Bastion Manager (BAS) | 20 | 2 | 19 | 17 | 1 |
 | Clan Crest Creator (CRS) | 0 | 4 | 5 | 3 | 3 |
 | Arenas of The Scarlett Isles (ARN) | 8 | 2 | 0 | 17 | 0 |
@@ -200,7 +200,7 @@ These come from checking the eight tools against each other: the collision audit
   - **The button:** inside a tool, every other tool in the Switch tool menu has a ↗ button that opens it in a separate Edge window, sized to the screen, so it can be dragged to the TV. The ↗ buttons can be reached with the arrow keys.
   - **Where it isn't:** there's no ↗ for the tool already open, for Home, or on the home screen's own menu. Each of those would set off the "Already open" warning, because the same tool, or the home screen, open twice could overwrite saves.
   - **Two tools, no warning:** two different tools in two windows don't warn, because each saves only its own data.
-  - **For the events:** the Explorer's event window uses the same opener for **Open the Combat Tracker in a new window ↗**.
+  - **For the events:** the Explorer's event window uses the same opener for **Set up this fight in the Combat Tracker ↗** (EXP-34).
 - **Evidence:** `shared/js/shell.js` (`TSI.shell.openWindow`, the menu rows), `shared/components.css`; tests in `tests/e2e/phase1.test.js`.
 
 ### SUI-21 · The DM doc: a floating panel for the DM's eyes only
@@ -1010,6 +1010,37 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 - **Before:** In the old events, Bandit Sign offered only Continue, yet its outcome said "You wait, then strike first" and paid 90 gold each.
 - **After:** The old events are switched off. In the new ones, every outcome belongs to the choice and roll that led to it, and every step can be reached; the rules tests walk every path.
 - **Evidence:** `tests/rules/explorer-journey.test.js` ("every event's steps link up").
+
+### EXP-34 · Fights are set up in the Combat Tracker, which reports back
+**Deliberate change** (Harry's request and answers, 7 October 2026) · other
+
+- **Before:** A fight in an event showed a line of suggested enemies and a button to open the Combat Tracker. The DM then built the fight by hand: the monsters, their HP, a map and the grid.
+- **After:**
+  - **In the Explorer:** the fight step shows the fight ready to go:
+    - the party level, read from the Bastion's saved level (Harry's choice; level 7 if the Bastion hasn't saved one), and the group it picks (levels 7–10 or 11–16, from the event's suggestion);
+    - the monsters, with SRD stat-block numbers (Harry's choice: the closest SRD creatures to each event's enemies);
+    - the battle map for that kind of place and region (Harry's choice: a version per region);
+    - who is surprised, in the two ambushes (T2 and F1).
+  - **Set up this fight in the Combat Tracker ↗** hands the fight over and opens the tracker in a new window. If the tracker is already open in another window, the fight goes there instead.
+  - **In the Combat Tracker:** a pop-up offers the fight. **Load the fight**:
+    - puts the monsters in the library (once, with their initiative bonus and stat-block link) and in the encounter, in place of any monsters already there;
+    - keeps the PCs and NPCs (with no PCs in the encounter, the library's PCs join);
+    - marks the surprised heroes Surprised for their first turn;
+    - puts the battle map, a matching grid with Snap on, and everyone's starting places on the Battlemap.
+
+    After **Not now**, **Load the Explorer's fight** at the top offers it again.
+  - **Reporting back:** when every monster in the encounter is down, the tracker tells the Explorer (Harry's choice). The event window then says so and makes **Won** the main button. The DM still clicks Won or Fled.
+  - **Tidying up:** Won, Fled, Skip or ending the event clears the hand-off. So does opening the Explorer when the waiting fight isn't from the event that's on now (after restoring a backup, say).
+- **The battle maps are stand-ins:** 23 simple maps drawn by code (ford, road and camp for each of the 7 regions, plus the cove below Redport and the rocks below Bleakharbour), for Harry to replace with real art (see `docs/ASSETS.md`).
+  - T9 (switched off) uses the road map.
+  - C10's ride through the night meets the raiders on the road; keeping watch, they find the camp.
+- **How the windows talk:** each Explorer and tracker window runs separately, so the fight and the report are passed through the browser's small shared storage (`tsi.suite.handoff` and `tsi.suite.handback`). They aren't saves, so they aren't in backups.
+- **Not tested:** Firefox (as SUI-20), and Edge itself; both windows were tested in Chromium from a double-clicked `index.html`.
+- **Evidence:**
+  - `tools/explorer/data/fights-data.js`, `tools/explorer/fights.js`, the fight steps in `data/journey-events.js` (`encounter`, `surprise`), `tools/explorer/tool.js`;
+  - `tools/encounter/rules.js` (`loadHandoff`, `handoffWon`, `startPositions`, `handoffVtt`, `isBundledMap`), `tools/encounter/tool.js`, `tools/encounter/battlemap.js`;
+  - `shared/js/handoff.js`, `TSI.store.fresh` and `TSI.tabGuard.isOpenElsewhere`;
+  - tests: `tests/rules/fights.test.js`, `tests/e2e/fights.test.js`.
 
 ## The Ironbow Bastion Manager
 Old repo: `_legacy/bastion_manager` (file:line references point there).

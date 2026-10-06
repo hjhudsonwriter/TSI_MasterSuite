@@ -240,6 +240,13 @@ async function mapShown(map) {
       await jClick(page, 'event-done');
     });
 
+    await check('a fight left waiting by an event that\'s no longer on is cleared when the Explorer opens', async () => {
+      await page.evaluate(() => localStorage.setItem('tsi.suite.handoff', JSON.stringify({ v: 1, id: 'fight-old', from: 'explorer' })));
+      await go(page, 'explorer');
+      equal(await handoffs(page), { fight: null, result: null });
+      await tracker.waitForSelector('[data-test=load-handoff]', { state: 'hidden', timeout: 5000 });
+    });
+
     await check('nothing failed, and nothing reached for the internet', async () => {
       equal(context.log.errors, []);
       equal(context.log.failed, []);
