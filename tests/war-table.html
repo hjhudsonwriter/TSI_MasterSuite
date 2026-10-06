@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en-GB" data-tsi-root="../" data-tsi-space="test">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>War Table test page</title>
+  <!-- The War Table on its own, with a pretend Bastion behind it: tests/e2e/war-table.test.js opens it. -->
+  <link rel="stylesheet" href="../shared/tokens.css">
+  <link rel="stylesheet" href="../shared/components.css">
+  <link rel="stylesheet" href="../shared/shell.css">
+  <link rel="stylesheet" href="../tools/bastion/bastion.css">
+  <link rel="stylesheet" href="../tools/bastion/war-table.css">
+</head>
+<body class="tsi-page--tool tsi-page--bastion">
+  <header class="tsi-topbar" id="topbar">
+    <a class="tsi-topbar__home" href="#"><span class="tsi-topbar__title">The Scarlett Isles: D&amp;D Tool Suite</span></a>
+    <span class="tsi-topbar__tool">The Ironbow Bastion Manager</span>
+    <span class="tsi-topbar__spacer"></span>
+    <button class="tsi-btn tsi-btn--small" id="topbtn" type="button">Home</button>
+  </header>
+  <main class="tsi-tool tsi-tool--bastion" id="main">
+    <div class="tsi-bas" id="bas">
+      <div class="tsi-bas-bar" id="basbar"><div class="tsi-bas-brand__title">The Ironbow Bastion</div><button class="tsi-btn tsi-btn--primary" id="advance" type="button">Advance Bastion Turn</button></div>
+      <div class="tsi-bas-layout" id="baslayout">
+        <div class="tsi-bas-card"><div class="tsi-bas-card__body"><p>Side</p></div></div>
+        <div class="tsi-bas-main"><div class="tsi-bas-card" style="height:2400px"><div class="tsi-bas-card__body"><p>Lots of Bastion content to make the page scroll.</p></div></div></div>
+      </div>
+    </div>
+  </main>
+
+  <script src="../shared/js/core.js"></script>
+  <script src="../shared/js/lifecycle.js"></script>
+  <script src="../shared/js/modal.js"></script>
+  <script src="../tools/bastion/data/war-units-data.js"></script>
+  <script src="../tools/bastion/war-table-rules.js"></script>
+  <script src="../tools/bastion/war-battle-rules.js"></script>
+  <script src="../tools/bastion/war-ai.js"></script>
+  <script src="../tools/bastion/war-table.js"></script>
+  <script>
+    (function () {
+      var W = TSI_DATA.bastionWar;
+      var mem = new Map();
+      var log = window.WT_LOG = { changes: 0, lastBattle: null, ends: [], callOffs: 0, closes: 0, quarantined: [], sets: [] };
+      window.WT_MEM = mem;
+      window.WT_STORE = {
+        get: function (n, fb) { return mem.has(n) ? JSON.parse(JSON.stringify(mem.get(n))) : fb; },
+        set: function (n, v) { log.sets.push(n); mem.set(n, JSON.parse(JSON.stringify(v))); },
+        remove: function (n) { mem.delete(n); },
+        has: function (n) { return mem.has(n); },
+        quarantine: function (n, reason) { log.quarantined.push([n, reason]); mem.delete(n); return Promise.resolve('q.' + n); }
+      };
+      window.WT_LIFE = TSI.createLife('The Ironbow Bastion Manager');
+      function U(id, type, n, extra) {
+        var a = W.archetypes[type];
+        var shorts = { levy: 'LV', line: 'LI', heavy: 'HI', archers: 'AR', light_cav: 'LC', shock_cav: 'SC' };
+        return Object.assign({ id: id, kind: 'formation', type: type, name: a.name, label: a.name + ' ' + n, short: shorts[type] + n, personnel: a.size, size: a.size, variant: null, source: { key: id } }, extra || {});
+      }
+      function V(id, type, variant, extra) {
+        var a = W.archetypes[type];
+        return Object.assign({ id: id, kind: 'formation', type: type, name: variant.name, label: variant.name, personnel: a.size, size: a.size, variant: variant, source: {} }, extra || {});
+      }
+      function B(id, name, label, short) { return { id: id, kind: 'beast', type: 'beast', name: name, label: label || name, short: short, source: { beast: name } }; }
+      window.makeSpec = function (objective, conditions) {
+        return {
+          player: {
+            units: [
+              U('p-line-1', 'line', 1), U('p-line-2', 'line', 2, { personnel: 80 }), U('p-heavy-1', 'heavy', 1), U('p-archers-1', 'archers', 1),
+              U('p-light_cav-1', 'light_cav', 1), B('p-beast-1', 'Dire Wolf', 'Dire Wolf', 'DW'), B('p-beast-2', 'Giant Vulture', 'Giant Vulture', 'GV')
+            ],
+            leaders: [{ id: 'lt-1', name: 'Lieutenant 1', source: {} }, { id: 'lt-2', name: 'Lieutenant 2', source: {} }],
+            defenders: { count: 12, armed: true, source: {} }
+          },
+          enemy: {
+            units: [
+              V('e1', 'heavy', { id: 'bacca_stoneguard', name: 'Bacca Stoneguard', trait: 'steady' }),
+              U('e2', 'line', 1), U('e3', 'levy', 1),
+              V('e4', 'levy', { id: 'bacca_cragmen', name: 'Bacca Cragmen', trait: 'cragsure' }),
+              U('e5', 'archers', 1), U('e6', 'light_cav', 1)
+            ],
+            leaders: [{ id: 'cpt-1', name: 'Captain 1' }]
+          },
+          objective: objective || 'raid',
+          conditions: conditions || { weather: 'clear', moraleMod: 2, luckMod: 1 }
+        };
+      };
+      /* A seeded rand() (mulberry32). */
+      window.seeded = function (seed) {
+        var a = seed >>> 0;
+        return function () {
+          a = (a + 0x6D2B79F5) >>> 0;
+          var t = a;
+          t = Math.imul(t ^ (t >>> 15), t | 1);
+          t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      };
+      var crestSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 46"><path d="M2 2h36v20c0 12-9 19-18 22C11 41 2 34 2 22z" fill="#7a0c1b" stroke="#d6b25e" stroke-width="3"/><path d="M20 9l4 9h-8z M14 22h12v4H14z" fill="#d6b25e"/></svg>';
+      window.WT_CREST = { dataUrl: 'data:image/svg+xml;base64,' + btoa(crestSvg) };
+      /* One of the suite's own maps, as the Bastion passes it for a Defend
+         Bastion event (its src is found from tests/ through data-tsi-root). */
+      window.presetOf = function (id, extra) {
+        return Object.assign({ key: 'preset:' + id }, W.presetMaps[id], extra || {});
+      };
+      window.WT_BATTLE = null;
+      window.openTable = function (extra) {
+        var opts = Object.assign({
+          host: document.getElementById('bas'),
+          life: window.WT_LIFE,
+          store: window.WT_STORE,
+          inert: [document.getElementById('basbar'), document.getElementById('baslayout')],
+          title: 'Raid vs Bacca',
+          summary: [{ label: 'Weather', value: 'Clear' }, { label: 'Morale', value: 'High' }, { label: 'Luck', value: '+1' }],
+          crest: window.WT_CREST,
+          armyName: 'Clan Ironbow',
+          enemy: { clanKey: 'bacca', clanName: 'Bacca' },
+          spec: window.makeSpec(),
+          battle: window.WT_BATTLE,
+          rand: window.seeded(7),
+          canCallOff: true,
+          withdrawPreview: function (b) { return ['Your losses so far: ' + b.units.filter(function (u) { return u.side === 'player' && u.status !== 'steady'; }).length + ' units.', 'Treasury: −20 gp.', 'Political Capital with Bacca: −2.']; },
+          onChange: function (b) { log.changes++; log.lastBattle = b; window.WT_BATTLE = b; },
+          onEnd: function (b) { log.ends.push(b.result); return new Promise(function (r) { setTimeout(r, 50); }); },
+          onCallOff: function () { log.callOffs++; return Promise.resolve(true); },
+          onClose: function () { log.closes++; }
+        }, extra || {});
+        return TSI.bastion.warTable.open(opts);
+      };
+    }());
+  </script>
+</body>
+</html>

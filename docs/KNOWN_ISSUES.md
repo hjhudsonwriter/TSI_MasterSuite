@@ -25,7 +25,7 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
 | Scarlett Isles Explorer (EXP) | 12 | 4 | 0 | 13 | 0 |
-| The Ironbow Bastion Manager (BAS) | 16 | 2 | 8 | 16 | 1 |
+| The Ironbow Bastion Manager (BAS) | 20 | 2 | 19 | 17 | 1 |
 | Clan Crest Creator (CRS) | 0 | 4 | 5 | 3 | 3 |
 | Arenas of The Scarlett Isles (ARN) | 8 | 2 | 0 | 17 | 0 |
 | The Heartwood Ritual (RIT) | 9 | 1 | 0 | 15 | 1 |
@@ -1312,6 +1312,8 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 ### BAS-41 · A war action was settled by one roll
 **Deliberate change** (Harry's request, 2 October 2026) · other
 
+*Phase 2 (2 October 2026, later): the single roll is gone. The battle on the War Table now decides the result (BAS-45); the rest of this entry describes phase 1.*
+
 - **Before:** A queued war action resolved on the next Advance Bastion Turn with a single d20 roll against its DC, and that was all.
 - **After:** When the war comes due, a pop-up offers **Begin Military Action** or **Later** (Later leaves it waiting in the Banner & War Council panel, where Begin or Continue picks it up any time). Then three rolls, each a plain d20 with its own story:
   - **Weather Conditions**, DC 12. Pass: a clear day. Fail: a Snowstorm, Rainstorm or Heatwave, picked at random, with the Explorer's weather film.
@@ -1337,6 +1339,193 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **After:** A switched-off box is greyed out, says "Clan or Brigade only" underneath, and explains why when you hover over it. Every box shows how many are available ("3 available", or "None yet: recruit in the War Room"). The arrows stop at that number, and a number is only checked once you've finished typing it (or when you press Queue War Action). The rule itself is unchanged.
 - **Evidence:** Could not be reproduced in the test browser: a Clan with Lieutenants and Regiments could commit them by typing, the arrow keys and Backspace, before, during and after a Military Action, on the laptop and the TV size. `tools/bastion/tool.js` (`showWarAvailable`), `tools/bastion/bastion.css`; tests in `tests/e2e/phase9.test.js`.
 
+
+### BAS-44 · The War Room recruited only Lieutenants and generic regiments
+**Deliberate change** (Harry's request, 2 October 2026; war mini-game phase 2) · other
+
+- **Before:** The War Room's Recruit list had "Lieutenant (1)" and "Regiment (100)". Regiments had no stats.
+- **After:** The list is Lieutenant (1), Archers (50), Levy Infantry (150), Line Infantry (100), Heavy Infantry (50), Light Cavalry (50) and Shock Cavalry (25). Each has a stat block (Cohesion, Attack, Defence, Move, Resolve, Battle Value and its distinction) shown when you hover over it in the list, in the Military panel and on the War Table. Regiments recruited before this fight as Line Infantry. The six new names join the Compendium's list, as the War Room's options always have.
+- **Evidence:** `tools/bastion/data/war-units-data.js` (the numbers), `data/facilities-data.js`, `tool.js`; `docs/WAR-RULES.md` section 1.
+
+### BAS-45 · The war is fought as a battle on the War Table
+**Deliberate change** (Harry's request, 2 October 2026; war mini-game phase 2) · other
+
+- **Before:** After Start Battle, the war was settled by the War Turn's single d20 roll with Luck added (phase 1, BAS-41).
+- **After:** The battle is played out on the War Table and its result decides everything:
+  - **The battlefield:** squares one regiment wide; a no-deployment strip across the middle; the enemy army deployed automatically.
+  - **Turns:** six rounds of alternating activations, with the orders Advance & Attack, March, Hold, Rally, Disengage and Interact.
+  - **Fighting:** Charge, surrounding, and ranged attacks with line of sight; one-roll attacks that cost Cohesion; Steady → Shaken → Routed.
+  - **Leaders and beasts:** Lieutenants lead formations; beasts fight with their own profiles and traits.
+  - **Winning:** each objective has its own victory rule, and an army breaks at 60% losses. Withdraw replaces Call off once the battle has begun.
+  - **The opening rolls now matter in battle:** the Weather's effects, Morale's ±2 on Resolve checks, and Luck's ±1 on your attacks (Luck also decides who goes first).
+  - **Rolls:** the enemy is played by the War Table. Your rolls can be typed or left to the table.
+
+  The full rules are in `docs/WAR-RULES.md`.
+- **Evidence:** `tools/bastion/war-battle-rules.js`, `war-ai.js`, `war-table.js`; tests in `tests/rules/bastion-battle.test.js`, `bastion-war-ai.test.js` and `tests/e2e/phase9.test.js`.
+
+### BAS-46 · The enemy's strength now comes from the mission
+**Deliberate change** (Harry's request, 2 October 2026; war mini-game phase 2) · other
+
+- **Before:** There was no enemy army: the War Turn's DC stood in for it.
+- **After:** You choose the enemy force you go after: a small local force (18 Battle Value), an established one (28) or a major force (40).
+  - **Its size:** that base is multiplied by the objective and by one saved variation roll.
+  - **Its make-up:** the army is drawn from the target clan's own mix of troops and variant units.
+  - **When it's fixed:** it's drawn up and saved as soon as you pick the mission, before you commit anything. Changing your commitment never redraws it, and it's never scaled to your level or your army.
+  - **What you see:** an intelligence estimate, with your own army's Battle Value beside it.
+  - **The clans:** their armies are proposed directions; only Slade's colours are established.
+- **Evidence:** `tools/bastion/war-campaign-rules.js` (`generateEnemy`, `ensureMission`, `missionEstimate`); `docs/WAR-RULES.md` section 2.
+
+### BAS-47 · A war now leaves lasting losses: depleted regiments and recovery
+**Deliberate change** (Harry's request, 2 October 2026; war mini-game phase 2) · other
+
+- **Before:** A lost war cost a third of the committed defenders and one beast; nothing else was ever lost.
+- **After:**
+  - **Personnel losses** follow each unit's final state in the battle: 0%, 10%, 25%, 40% or 60% of the soldiers present at the start.
+  - **Depleted regiments** stay in the Military panel and fight at reduced strength until recruiting the same unit type in the War Room tops them up. A regiment is removed only when no soldiers are left.
+  - **Lieutenants and beasts:** when one is Defeated, roll a d6 (killed, captured or badly wounded, wounded, or recovered). A Routed one is separated for a turn. They return by themselves on later Bastion turns.
+  - **Rewards** keep the existing amounts and follow the objective: a raid's gold follows the supplies carried off; a draw changes nothing; a withdrawal costs only half the Clan Honour.
+  - **The War Report** records everything, and it's all applied once.
+- **Evidence:** `tools/bastion/war-campaign-rules.js` (`finishBattle`, `tickRecovery`, `recruitUnit`); `docs/WAR-RULES.md` section 8.
+
+### BAS-48 · Battle maps get painted terrain rules
+**Deliberate change** (Harry's request, 2 October 2026; war mini-game phase 2) · other
+
+- **Before:** An uploaded battle map was only a picture.
+- **After:** Each map can be given terrain square by square with the War Table's Terrain button. The types are woods, bog, rubble, dense woods, ridges, cover, deep water, cliffs and crossings, each with its rule. The War Table warns when a map has no terrain yet rather than guessing from its colours; until it's painted, everything counts as open ground. The painting is saved with the map (one painting per map and battlefield width) and can be changed freely until Start Battle. During a battle, that battle's own terrain can be changed only through DM: pause, and that doesn't change the map's saved painting.
+- **Evidence:** `tools/bastion/war-table.js` (painting), `war-battle-rules.js` (the rules); `docs/WAR-RULES.md` section 4.
+
+### BAS-49 · Small things in the war battles, kept for now
+**Later, Harry's call** (found while checking war mini-game phase 2, 2 October 2026) · other
+
+Nothing here breaks a battle, loses data or applies anything twice, so each is kept as built. Say if you'd like any changed.
+- **Guards beside supply markers:** in a Raid, an enemy guard stands on a square next to its supply marker. Which square depends on the enemy's tie-breaks, so it's sometimes in front of the marker and sometimes behind it.
+- **One battle-map picture:** all battles share one uploaded picture. If it's replaced, a battle that was set out on the old picture plays on the plain board, with its own terrain, until that picture is uploaded again.
+- **A width with no painting of its own:** the War Table redraws the nearest width's painting square by square and warns you to check fords, bridges and narrow paths. Painting at that width saves a separate painting.
+- **Small token letters:** the S (Shaken), H (Holding), G (Held fast), L (Lieutenant) and C (Captain) badges are smaller than the suite's usual 12px text. Hovering over S, H or G says what it means; hovering over L or C shows the leader's name.
+- **A quick second Confirm:** a second press of Confirm within about a third of a second is ignored, like every double click in the suite, so one press never counts twice.
+- **Badges on units one behind the other:** side by side, a unit's badges never overlap its neighbour's. One square behind, a Shaken or Holding unit's top-right badge can partly cover the "+2" support badge of the unit in front, and an enemy Captain's disc can touch the pennant of the enemy below it. Keeping every badge inside its own square would cover the Cohesion bar or the name instead.
+- **Fighting across a river's corner:** a river painted on a slant can't be crossed between its corners, but two units on opposite banks whose squares touch at a corner are still in melee, as "touching, side or corner" says. Say if a river should keep them apart.
+- **Evidence:** `tools/bastion/war-ai.js` (placing guards), `war-table.js` and `war-table.css` (the map picture, terrain, badges), `war-battle-rules.js` (melee contact), `shared/js` (the double-click guard).
+
+### BAS-50 · Problems found while checking war phase 2, fixed before release
+**Must fix** (found while checking war mini-game phase 2, 2 October 2026; fixed) · breaks the tool
+
+None of these reached Harry: they were found by the checks on the new code and fixed in the same pull request. The one that touches existing saves is the first.
+- **War orders queued before phase 2 that shared forces:** phase 1 let two waiting war orders commit the same defenders. The first one queued lost its defenders and Lieutenants to the later one, and could lapse altogether → the first queued keeps its forces, later ones get what's left, and the muster pop-up and the log say when an order musters with less than it committed.
+- **A saved enemy army redrawn while browsing:** looking through other targets and objectives could throw away a mission picked on an earlier turn and draw a new enemy with a fresh variation roll → a mission is kept by when it was last shown, so the one on screen is never redrawn.
+- **Rivers and cliffs painted on a slant:** units stepped diagonally between two water or cliff squares that touch at a corner, and archers shot between two dense-woods or ridge squares the same way → neither gets through.
+- **The enemy stuck at a river or cliff:** it stood on the bank all battle instead of walking round to a ford or gap → it walks round.
+- **Enemy archers behind a ridge:** in range but with no clear shot, they held all battle → they move to a square with a clear shot.
+- **A Raid guard ignoring the winning carrier:** a guard held by its marker while your carrier walked home with the winning supplies → every enemy unit goes after a carrier that would win the raid.
+- **The enemy standing off:** in some Skirmishes the enemy held every activation and never attacked → it closes in by stages and attacks.
+- **Enemy archers walking into melee** → they never move next to your units, and shoot instead.
+- **Raid guards standing on their supply markers**, so the markers couldn't be collected → guards stand beside them.
+- **Terrain lost:** bringing a map back mid-battle overwrote its saved painting, and changing the battlefield width wiped a one-square ford → each battle keeps its own ground, and each map keeps one painting per width.
+- **Same names on both sides:** the log said things like "Line Infantry 2 attacks Line Infantry 2" → every enemy unit's name starts with its clan's ("Bacca Line Infantry 2").
+- **Equal losses shown for a won or lost Skirmish:** the War Report rounded both armies' losses to whole percents → one decimal place, as the battle decided it.
+- **A depleted regiment's stat block showed full strength** → it shows the strength it will actually fight at.
+- **The Compendium's War Room units had copied numbers** that could drift from the battle's → they're read from `war-units-data.js`.
+- **The War Table:** a selected unit showed no movement area; tokens could be left part-way along a move; the log stopped updating after 300 lines; the log was pushed out of view on the laptop; an uploaded map taller or wider than the board was cropped without a word; the depot's name and some badges were hidden under tokens; dragging onto an enemy gave a misleading message; Enter in the d20 box did nothing → all fixed. The War Table now says when a map's edges are hidden ("Edges hidden").
+- **Pop-ups over the War Table:** "The conditions are unchanged" could appear again and again, and a "Bastion Turn left part-way" notice could sit over the table → each appears once, and notices close when the table opens.
+- **Evidence:** `tools/bastion/war-battle-rules.js`, `war-ai.js`, `war-campaign-rules.js`, `war-table.js`, `war-table-rules.js`, `war-table.css`, `tool.js`; each fix has a test in `tests/rules/` or `tests/e2e/phase9.test.js` that fails on the code before it.
+
+### BAS-51 · Couldn't attack an enemy your unit was already fighting
+**Must fix** (Harry's report, 3 October 2026; fixed) · breaks the tool
+
+- **Before:** With one of your units selected, clicking an enemy only showed that enemy's card. To attack, you had to press Advance & Attack first, or drag your unit to a lit square next to the enemy, which set the order up for you. A unit already in contact with the enemy has no lit squares to drag to. So an enemy that had moved next to it, or that it had already been fighting, seemed impossible to attack. The battle rules themselves never stopped it.
+- **After:** With one of your units selected, clicking any enemy (or dropping your unit on it) sets up Advance & Attack on it, whether or not that enemy has acted or been attacked this round. It attacks from where it stands when it can; otherwise from the best square in reach (a shot for archers, then a Charge, then the most direct move), shown before you confirm. When it can't attack that enemy this activation, the table says why. For archers, one reason is the brief's rule that archers never shoot into a melee.
+- **Evidence:** reproduced in the test browser (an engaged Line Infantry, then a click on the adjacent enemy that had acted: its card showed, and no attack was set up). `tools/bastion/war-table.js` (`attackEnemy`), `war-table-rules.js` (`attackFrom`, `noAttackText`); tests in `tests/rules/bastion-war-table.test.js` and `tests/e2e/war-table.test.js`.
+
+### BAS-52 · The DM can move the supplies, the depot and the outpost while deploying
+**Deliberate change** (Harry's request, 3 October 2026) · other
+
+- **Before:** The supply markers (Raid), your supply depot (Defend Bastion) and the outpost (Seize Outpost) were placed by the War Table and couldn't be moved; only the enemy's units could, with DM: adjust enemy.
+- **After:** While deploying, that button is **DM: adjust enemy & supplies** (or **& depot**, **& outpost**) and also lets you drag the objective:
+  - a supply marker anywhere on the enemy's half, on a square troops can stand on, with no unit or other marker on it;
+  - the depot or outpost as a block of the same size, wholly on its owner's half, with at least one square troops can stand on.
+
+  A refused drop says why. A repaint while deploying keeps them where they were put, unless the new painting rules a square out.
+- **Evidence:** `tools/bastion/war-battle-rules.js` (`canMoveObjective`, `moveObjective`), `war-table-rules.js` (`objectiveMoveRefusal`), `war-table.js`; `docs/WAR-RULES.md` section 5.
+
+### BAS-53 · A battle briefing when the battle starts, and a Rules & objective button
+**Deliberate change** (Harry's request, 3 October 2026) · other
+
+- **Before:** The objective showed only as one line above the battlefield, and the rules were only in `docs/WAR-RULES.md`.
+- **After:** After Start Battle, a briefing appears. Its sections:
+  - How you win;
+  - How you lose;
+  - Today's conditions (the weather's effect, Morale and Luck);
+  - Turns;
+  - The six orders;
+  - Fighting;
+  - Morale.
+
+  Every number comes from the data file. It fits the laptop and the TV without scrolling. The **Rules & objective** button at the top of the War Table shows it again at any time: before deployment, while deploying, or during the battle. Reopening a saved battle doesn't show it again.
+- **Evidence:** `tools/bastion/war-table-rules.js` (`briefing`), `war-table.js` (`showBriefing`), `war-table.css`.
+
+### BAS-54 · Problems found while checking Harry's three War Table changes, fixed before release
+**Must fix** (found while checking BAS-51 to BAS-53, 3 October 2026; fixed) · other
+
+None of these reached Harry: they were found by the checks on the new code and fixed in the same pull request.
+- **Dropping a unit that can't move on the enemy it's fighting:** a unit held fast, boxed in, or with Advance & Attack already chosen was refused ("Disengage first … Choose an order instead") → letting go of it on an enemy sets up the attack, as a click does.
+- **"Disengage first" for a unit that can't Disengage:** a unit held fast by a Grapple, or with no clear square to fall back to, was told to Disengage → it's told it can only fight the enemies next to it this activation.
+- **Archers out of range blamed on the melee:** archers far out of range of an enemy that was fighting one of your units were told they "can't shoot into a melee" → the melee is only the reason when they could otherwise shoot; otherwise the table says it's out of reach.
+- **Messages left over after the attack changed:** switching target named the old target, and Cancel, Esc, DM: pause, a good drop after a refused one, or a refusal followed by a good attack left the old message up for 6 seconds → the hint always matches what's on the table.
+- **A second click on the chosen target** no longer un-picked it (it did before) → it un-picks it again, so the unit can advance without attacking.
+- **The DM's objective moved by an unrelated repaint:** supplies, a depot or an outpost the DM placed out of reach on foot (or partly on deep water) were moved by any repaint, and the warning vanished → they stay where they were put unless the new painting rules their own square out, and the warning stays.
+- **The DM buttons didn't light up:** DM: adjust enemy (and DM: pause) looked the same on and off → filled crimson while on.
+- **The depot or outpost grabbed by its name label** jumped a row → it moves exactly with the pointer.
+- **The briefing:** "Charge" said cavalry only (beasts with Charge charge too); the weather line didn't say Hardy units ignore it; once the enemy had withdrawn it named the enemy as acting first; and a briefing opened just as the battle ended was left on screen over the Bastion → all fixed.
+- **Evidence:** `tools/bastion/war-table.js`, `war-table-rules.js`, `war-battle-rules.js`, `war-table.css`; each fix has a test in `tests/rules/bastion-war-table.test.js`, `tests/rules/bastion-battle.test.js` or `tests/e2e/war-table.test.js` that fails on the code before it.
+
+### BAS-55 · Destroying the enemy army didn't win a Seize Outpost or a Raid
+**Deliberate change** (Harry's report and ruling, 4 October 2026) · other
+
+- **Before:** When the enemy army broke (60% of its Battle Value routed or defeated), what was left of it withdrew, but in a Seize Outpost you still had to hold the outpost at two round ends in a row, and in a Raid you still had to carry two supplies home, before round 6 ran out. Harry destroyed every enemy unit in a Seize Outpost and still lost.
+- **After:** Breaking the enemy army wins at once, whatever the objective. What's left of it flees the field. A raid won that way pays its full gold. The objective lines, the briefing and the rulebook say so.
+- **Evidence:** `tools/bastion/war-battle-rules.js` (`checkResult`), `war-campaign-rules.js` (`warRewards`); tests in `tests/rules/bastion-battle.test.js`.
+
+### BAS-56 · Being at war with a Clan: a serious cost, an At War tag, and peace
+**Deliberate change** (Harry's request, 4 October 2026) · other
+
+- **Before:** Queueing a War Action cost nothing until the battle, and nothing showed that you were at war.
+- **After:**
+  - **Declaring war:** Queue War Action declares war on the target Clan, or renews it, and asks first. It costs Honour & Respect and Political Capital with that Clan at once, by the size of the army committed: −3 and −30 under 20 Battle Value, −4 and −40 from 20, −5 and −50 from 40.
+  - **At War tags:** an **At War** tag shows beside the Clan's name wherever it appears in the Bastion.
+  - **Peace:** the war ends after 6 Bastion turns with no battle between you, or with **Make peace** in the new Wars box.
+  - **Cancelling:** cancelling a War Action on the turn it was queued gives the cost back.
+  - **Defend Bastion** is no longer offered as a War Action (see BAS-57).
+- **Evidence:** `tools/bastion/war-campaign-rules.js` (`declareWar`, `warsList`, `makePeace`, `tickWars`, `undoWarDeclaration`), `rules.js`, `tool.js`; `docs/WAR-RULES.md` "Being at war".
+
+### BAS-57 · The Defend Bastion event, with Harry's coast map, and facilities Under Repair
+**Deliberate change** (Harry's request, 4 October 2026) · other
+
+- **Before:** Defend Bastion was a War Action you chose to queue.
+- **After:**
+  - **The attack:** while you're at war, every Advance Bastion Turn rolls a d6 for each Clan at war. On a 1 (at most one attack at a time), "Sound the horns! Clan … warships are approaching! Defend the Ironbow!" appears with crossed swords.
+  - **The battle:** every free force defends, on Harry's coast map with its terrain painted. The battle can be put off with Later, but not called off.
+  - **Losing or withdrawing:** you lose 1d10 × 5% of the treasury, and 1d4 random facilities are **Under Repair** for 2 Bastion turns (this one included). While under repair they take no orders, and orders already running there wait.
+  - **Undefended:** if nobody is free to defend, the attack succeeds at once.
+- **Evidence:** `tools/bastion/war-campaign-rules.js` (`rollWarAttack`, `beginDefence`, `finishUndefended`, `finishBattle`), `rules.js` (repairs), `tool.js`, `war-table.js` (`presetMap`); the map is `tools/bastion/assets/war/defend-bastion-coast.jpg`.
+
+### BAS-58 · Weather films over the War Table
+**Deliberate change** (Harry's request, 4 October 2026) · other
+
+- **Before:** The battle's weather showed only as a word in the War Table's header.
+- **After:** In a snowstorm, rainstorm or heatwave, the Explorer's matching weather film loops over the battlefield, under the tokens. It's for show only. **Weather: On / Off** turns it off and on (remembered), and it starts off when Windows' reduced-motion setting is on.
+- **Evidence:** `tools/bastion/war-table.js`, `war-table.css`; the films are the Explorer's `tools/explorer/assets/overlays/*.mp4`. The test browser can't play MP4 files, so only the film's element was checked; seeing it play is on Harry's checklist.
+
+### BAS-59 · Problems found while checking the war changes of 4 October, fixed before release
+**Must fix** (found while checking BAS-55 to BAS-58, 4 October 2026; fixed) · breaks the tool
+
+None of these reached Harry.
+- **Repairs lasted 3 turns, not 2** → a facility lost on turn 5 works again on turn 7.
+- **A second Clan's attack while the first waited took the Bastion with no battle** (the army was counted as busy with the first) → no new attack is rolled while one is waiting.
+- **Cancelling a War Action and queueing it again charged the war's cost twice** → cancelling on the turn it was queued gives the cost back.
+- **Opening the coast map changed the DM's saved battlefield width** → the width he chose is kept.
+- **The undefended attack's pop-up gave a false reason** → it says nobody is free to defend.
+- **Smaller things:** the Watchtower's Patrol was forgotten in a defence (now a reminder in the pop-up and the War Council); the At War tag flickered in the cost line; "Clan MOLTEN" in capitals had no tag; the rulebook's Defend Bastion rewards were out of date → all fixed.
+- **Evidence:** the files above; each fix has a test in `tests/rules/` or `tests/e2e/`.
 
 ## Clan Crest Creator
 Old repo: `_legacy/clan-crest-creator` (file:line references point there).

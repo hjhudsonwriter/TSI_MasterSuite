@@ -83,8 +83,12 @@ window.TSI_DATA.tools = [
         'tools/bastion/data/tools-data.js',
         'tools/bastion/data/events-data.js',
         'tools/bastion/data/compendium-data.js',
+        'tools/bastion/data/war-units-data.js',
         'tools/bastion/rules.js',
         'tools/bastion/war-table-rules.js',
+        'tools/bastion/war-battle-rules.js',
+        'tools/bastion/war-ai.js',
+        'tools/bastion/war-campaign-rules.js',
         'tools/bastion/war-table.js',
         'tools/bastion/tool.js'
       ]

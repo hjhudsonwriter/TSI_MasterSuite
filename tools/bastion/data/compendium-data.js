@@ -1,6 +1,10 @@
-/* The Ironbow Bastion Manager: the 265 compendium entries (62 filled in, the rest name only).
-   A word-for-word copy of the old tool's data/compendium_items.json, stored as a script so it
-   loads from a double-clicked file. Edit it here. */
+/* The Ironbow Bastion Manager: the 271 compendium entries (68 filled in, the rest name only).
+   A word-for-word copy of the old tool's data/compendium_items.json (265 entries), stored as a
+   script so it loads from a double-clicked file, plus the six War Room units of the war
+   mini-game (phase 2), which have no Roll20 page. Edit it here.
+   The War Room units' summaries below only hold their places: the Bastion builds each one's
+   stat block from war-units-data.js when the Compendium opens (and in Export Compendium JSON),
+   so change their numbers there. */
 window.TSI_DATA = window.TSI_DATA || {};
 window.TSI_DATA.bastionCompendium = {
   "version": 1,
@@ -60,6 +64,13 @@ window.TSI_DATA.bastionCompendium = {
       "summary": "",
       "source": "",
       "roll20": "https://roll20.net/compendium/dnd5e/Arcane%20focus%20(orb)"
+    },
+    "Archers (50)": {
+      "type": "",
+      "attunement": "",
+      "summary": "A War Room unit of the war mini-game: the Compendium shows its stat block from war-units-data.js.",
+      "source": "War Room",
+      "roll20": ""
     },
     "Assassin's Blood": {
       "type": "",
@@ -901,6 +912,13 @@ window.TSI_DATA.bastionCompendium = {
       "source": "https://www.dnd5eapi.co/api/2014/equipment/healers-kit",
       "roll20": "https://roll20.net/compendium/dnd5e/Healer's%20Kit"
     },
+    "Heavy Infantry (50)": {
+      "type": "",
+      "attunement": "",
+      "summary": "A War Room unit of the war mini-game: the Compendium shows its stat block from war-units-data.js.",
+      "source": "War Room",
+      "roll20": ""
+    },
     "Hide armor": {
       "type": "Armor",
       "attunement": "No",
@@ -1020,12 +1038,33 @@ window.TSI_DATA.bastionCompendium = {
       "source": "",
       "roll20": "https://roll20.net/compendium/dnd5e/Leather%20shield%20straps"
     },
+    "Levy Infantry (150)": {
+      "type": "",
+      "attunement": "",
+      "summary": "A War Room unit of the war mini-game: the Compendium shows its stat block from war-units-data.js.",
+      "source": "War Room",
+      "roll20": ""
+    },
     "Lieutenant (1)": {
       "type": "",
       "attunement": "",
       "summary": "",
       "source": "",
       "roll20": "https://roll20.net/compendium/dnd5e/Lieutenant%20(1)"
+    },
+    "Light Cavalry (50)": {
+      "type": "",
+      "attunement": "",
+      "summary": "A War Room unit of the war mini-game: the Compendium shows its stat block from war-units-data.js.",
+      "source": "War Room",
+      "roll20": ""
+    },
+    "Line Infantry (100)": {
+      "type": "",
+      "attunement": "",
+      "summary": "A War Room unit of the war mini-game: the Compendium shows its stat block from war-units-data.js.",
+      "source": "War Room",
+      "roll20": ""
     },
     "Lion": {
       "type": "",
@@ -1481,6 +1520,13 @@ window.TSI_DATA.bastionCompendium = {
       "summary": "",
       "source": "",
       "roll20": "https://roll20.net/compendium/dnd5e/Shield%2C%20%2B1"
+    },
+    "Shock Cavalry (25)": {
+      "type": "",
+      "attunement": "",
+      "summary": "A War Room unit of the war mini-game: the Compendium shows its stat block from war-units-data.js.",
+      "source": "War Room",
+      "roll20": ""
     },
     "Shortsword": {
       "type": "Weapon",
