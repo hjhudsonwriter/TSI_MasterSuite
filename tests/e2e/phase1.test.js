@@ -460,7 +460,10 @@ async function waitSaved(page) {
     }
     const BAR_GRAB = { x: 60, y: 20 };
     /* Wait for the opening fade (200 ms) to finish, so what's measured is where it really is. */
-    const settled = p => p.evaluate(() => Promise.all(document.getAnimations().map(a => a.finished.catch(() => null))));
+    const settled = p => p.evaluate(() => Promise.race([
+      Promise.all(document.querySelector('.tsi-dmdoc').getAnimations().map(a => a.finished.catch(() => null))),
+      new Promise(res => setTimeout(res, 1000))
+    ]));
     /* Drag the title bar so the panel's top-left corner ends at (x, y). */
     async function moveTo(p, x, y) {
       await settled(p);
@@ -1565,6 +1568,12 @@ async function waitSaved(page) {
       const t = await page.$eval('.tsi-card[data-tool=demo]', c => getComputedStyle(c).transform);
       if (reduce) equal(t, 'none');
       else assert(/matrix\(1, 0, 0, 1, 0, -3\)/.test(t), t);
+    });
+    await check(reduce ? 'with "reduce motion" on, the DM doc appears without moving' : 'normally, the DM doc fades in', async () => {
+      await page.click('[data-test=dm-doc]');
+      const a = await page.$eval('[data-test=dmdoc-panel]', d => [getComputedStyle(d).animationName, getComputedStyle(d).animationDuration]);
+      if (reduce) equal(a[0], 'none');
+      else equal(a, ['tsi-dmdoc-in', '0.2s']);
     });
     await context.close();
   }

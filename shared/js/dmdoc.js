@@ -166,7 +166,13 @@
 
   function endDrag(event) {
     if (!drag || event.pointerId !== drag.id) return;
+    finishDrag();
+  }
+
+  /* Stop dragging (the pointer was let go, or the panel closed) and save where it ended up. */
+  function finishDrag() {
     var d = drag;
+    if (!d) return;
     drag = null;
     d.handle.removeEventListener('pointermove', onDragMove);
     d.handle.removeEventListener('pointerup', endDrag);
@@ -211,13 +217,8 @@
   /* options.returnFocus: put keyboard focus back on the top bar's button. */
   function close(options) {
     if (!opened) return;
+    finishDrag();
     opened = false;
-    if (drag) {
-      var d = drag;
-      drag = null;
-      try { d.handle.releasePointerCapture(d.id); } catch (e) { /* ignore */ }
-      panel.classList.remove('tsi-dmdoc--moving', 'tsi-dmdoc--resizing');
-    }
     var hadFocus = panel.contains(document.activeElement);
     panel.hidden = true;
     rememberOpen(false);
