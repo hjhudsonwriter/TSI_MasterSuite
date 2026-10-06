@@ -415,14 +415,8 @@
     return { until: 'dm', untilDay: null };
   }
 
-  J.untilText = function (e, today) {
-    if (e.until === 'used') return 'until used';
-    if (e.until === 'dm' || e.untilDay === null) return 'until you remove it';
-    if (e.until === 'camp' || e.until === 'night') {
-      return e.untilDay - today <= 1 ? 'until Make Camp' : 'until Make Camp on Day ' + (e.untilDay - 1);
-    }
-    return 'ends Day ' + e.untilDay;
-  };
+  /* When an effect ends: the same words the DM doc uses (shared/js/campaign-rules.js). */
+  J.untilText = function (e, today) { return TSI.campaign.untilText(e, today); };
 
   function targets(state, cur, who) {
     var vars = cur.vars;
