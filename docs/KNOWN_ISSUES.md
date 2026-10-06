@@ -21,7 +21,7 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 
 | Tool | Must fix | Fixed by design | Deliberate | Later (Harry's call) | Not relevant / not a bug |
 |---|---|---|---|---|---|
-| Suite-wide (SUI) | 5 | 11 | 2 | 1 | 0 |
+| Suite-wide (SUI) | 5 | 11 | 4 | 1 | 0 |
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
 | Scarlett Isles Explorer (EXP) | 12 | 5 | 3 | 13 | 0 |
@@ -191,6 +191,29 @@ These come from checking the eight tools against each other: the collision audit
 - **Before:** Edge keeps the saves of every double-clicked page together, whatever folder it's in. So a new version downloaded to test opens with the saves from the copy used at the table, and anything done while testing changes those same saves.
 - **After:** Kept, and explained in the how-to guide ("Saving and backups") and the README: back up everything after each session and before trying a new version. The only way round it would be to tie saves to the folder's location, which would lose them whenever the folder is moved or renamed, so it isn't recommended.
 - **Evidence:** a probe in the test browser (Chromium, the engine inside Edge), 28 September 2026: two copies of `index.html` in different folders read and wrote the same `tsi.` saves. `guide.html#saving`.
+
+### SUI-20 · Open a tool in a new window
+**Deliberate change** (Harry's request, 6 October 2026) · other
+
+- **Before:** Switch tool always replaced the tool on screen, so only one tool could be open at a time unless Harry opened a second tab himself.
+- **After:**
+  - **The button:** inside a tool, every other tool in the Switch tool menu has a ↗ button that opens it in a separate Edge window, sized to the screen, so it can be dragged to the TV. The ↗ buttons can be reached with the arrow keys.
+  - **Where it isn't:** there's no ↗ for the tool already open, for Home, or on the home screen's own menu. Each of those would set off the "Already open" warning, because the same tool, or the home screen, open twice could overwrite saves.
+  - **Two tools, no warning:** two different tools in two windows don't warn, because each saves only its own data.
+  - **For the events:** the Explorer's event window uses the same opener for **Open the Combat Tracker in a new window ↗**.
+- **Evidence:** `shared/js/shell.js` (`TSI.shell.openWindow`, the menu rows), `shared/components.css`; tests in `tests/e2e/phase1.test.js`.
+
+### SUI-21 · The DM doc: a floating panel for the DM's eyes only
+**Deliberate change** (Harry's request, 6 October 2026) · other
+
+- **Before:** There was nowhere to keep campaign notes.
+- **After:**
+  - **The panel:** **DM doc** in the top bar, on every screen, opens a floating panel over the tool. Drag it by its title bar (or move it with the arrow keys), resize it from the bottom-right corner, and close it with ✕. The tool underneath keeps working.
+  - **Remembered:** its place and size are saved under `tsi.dmdoc.` and included in Back up everything.
+  - **Open or closed:** whether it's open is remembered per window, so it reopens after a tool switch in the same window but never pops up by itself in another window (such as one on the TV).
+  - **On screen:** it's kept within the window on the laptop and the TV, and isn't shown inside a tool's own full-screen view.
+  - **Contents:** a placeholder; what it holds comes in the next build, as Harry asked.
+- **Evidence:** `shared/js/dmdoc.js`, `shared/js/dmdoc-rules.js`, `shared/js/store-rules.js`, `shared/js/backup-rules.js`, `shared/tokens.css`, `shared/components.css`; tests in `tests/rules/dmdoc.test.js` and `tests/e2e/phase1.test.js`.
 
 ## Combat Tracker & VTT Battlemap
 Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point there).
