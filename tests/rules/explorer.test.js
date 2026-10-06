@@ -2,7 +2,8 @@
 (function () {
   var R = TSI.explorer.rules;
   var D = window.TSI_DATA.explorer;
-  var E = window.TSI_DATA.explorerEvents;
+  /* Harry's new travel and campfire events (6 October 2026); the old 601 are switched off. */
+  var E = window.TSI_DATA.journeyEvents;
 
   /* Dice that come up in the given order (numbers from 0 up to 1). */
   function dice(list) {
@@ -38,17 +39,14 @@
     t.equal(R.mapProvince(D, 'somewhere_else'), 'northern_province', 'unknown maps fall back as before');
   });
 
-  test('events: 279 travel and 322 campfire, as the old file had', function (t) {
-    var travel = 0, camp = 0;
-    Object.keys(E.provinces).forEach(function (p) {
-      travel += E.provinces[p].travel_events.length;
-      camp += E.provinces[p].campfire_events.length;
-    });
-    t.equal(travel, 279);
-    t.equal(camp, 322);
-    t.equal(E.provinces.northern_province.travel_events.length, 39);
-    t.equal(E.provinces.the_north_isle.campfire_events.length, 40);
-    t.equal(E.provinces.midland_province.campfire_events.length, 47);
+  test('events: Harry\'s new ones; the old 601 aren\'t loaded', function (t) {
+    var on = E.events.filter(function (ev) { return !ev.off; });
+    var kinds = function (k) { return on.filter(function (ev) { return ev.kind === k; }).length; };
+    t.equal(kinds('travel'), 16, '16 travel events: T9 is switched off and T17 removed');
+    t.equal(kinds('dm') + kinds('night'), 0);
+    t.equal(kinds('camp'), 12);
+    t.equal(kinds('follow'), 3);
+    t.equal(window.TSI_DATA.explorerEvents, undefined, 'the old events file is switched off');
   });
 
   test('33 town pins on 10 maps; the 15 with a town map show (E10)', function (t) {
@@ -206,12 +204,13 @@
   test('pace wording by miles', function (t) {
     t.equal(R.travelMode(0).mode, '—');
     t.equal(R.travelMode(18).mode, 'Slow (≤18 miles)');
-    t.equal(R.travelMode(18).effects, '+Stealth • good foraging');
+    t.equal(R.travelMode(18).effects, '+Stealth', 'good foraging went with the rations');
+    t.equal(R.travelMode(18).key, 'slow');
     t.equal(R.travelMode(24).mode, 'Normal (≤24 miles)');
     t.equal(R.travelMode(30).effects, '−5 Passive Perception');
   });
 
-  test('a travel event comes once a day, at a random 6–24 miles', function (t) {
+  test('the day\'s travel roll comes once, at a random 6–24 miles', function (t) {
     var b = board43();
     var s = fresh();
     s.travel.provinceId = 'midland_province';
@@ -219,12 +218,37 @@
     var m1 = move(s, b, ['kaelen'], 'kaelen', 2, 0, dice([0.5, 0]));
     t.equal(s.travel.nextTravelEventAtMiles, 15);
     t.equal(m1.res.open, null, '12 miles: not yet');
+    /* 18 miles: the roll (0 is under 30%), then the draw (the first card). */
     var m2 = move(s, b, ['kaelen'], 'kaelen', 1, 0, dice([0]));
-    t.equal(m2.res.open.kind, 'travel');
-    t.equal(m2.res.open.event.id, E.provinces.midland_province.travel_events[0].id);
+    t.equal(m2.res.open.kind, 'journey');
+    t.equal(s.journey.current.id, 't1', 'begun at once, so a reload picks it up');
     t.equal(s.travel.travelEventDay, 1);
+    s.journey.current = null;
     var m3 = move(s, b, ['kaelen'], 'kaelen', 1, 0, dice([0]));
-    t.equal(m3.res.open, null, 'only one a day');
+    t.equal(m3.res.open, null, 'only one roll a day');
+  });
+
+  test('a miss on the 30% roll means no event today', function (t) {
+    var b = board43();
+    var s = fresh();
+    s.travel.nextTravelEventAtMiles = 6;
+    var m = move(s, b, ['kaelen'], 'kaelen', 1, 0, dice([0.3]));
+    t.equal(m.res.open, null, '0.30 is not under 30%');
+    t.equal(s.journey.rolledDay, 1);
+  });
+
+  test('an event can change today\'s 30 miles', function (t) {
+    var b = board43();
+    var s = fresh();
+    s.travel.milesAdjust = -6;
+    t.equal(R.dayLimit(s), 24);
+    var m = move(s, b, ['kaelen'], 'kaelen', 5, 0, dice([0.99]));
+    t.equal(m.res.result, 'tooFar', '30 miles is past today\'s 24');
+    s.travel.milesAdjust = 12;
+    var m2 = move(s, b, ['kaelen'], 'kaelen', 7, 0, dice([0.99]));
+    t.equal(m2.res.result, 'moved', '42 miles fits today\'s 42');
+    t.equal(R.milesShown(R.token(s, 'kaelen'), R.dayLimit(s)), 42);
+    t.ok(!R.canDrag(s, 'kaelen'), 'then the hero is tired');
   });
 
   test('Snap on puts every hero in the middle of its hex', function (t) {
@@ -337,23 +361,38 @@
 
   group('Explorer: camp, events and weather');
 
-  test('camp: the campfire event, then weather, then the Bastion prompt on day 8 (E4)', function (t) {
+  test('camp: weather, then the Bastion prompt on day 8 (E4); no campfire after weather', function (t) {
     var s = fresh();
     s.travel.day = 7;
     s.travel.provinceId = 'the_east_isle';
     s.tokens[0].milesUsed = 18;
-    s.trackers.gold = 40;
-    var q = R.makeCamp(s, D, E, dice([0, 0.1, 0.5, 0.5]));
-    t.same(q.map(function (i) { return i.kind; }), ['camp', 'weather', 'camp']);
-    t.equal(q[0].event.id, E.provinces.the_east_isle.campfire_events[0].id);
-    t.equal(q[1].weather.id, 'cold_rain');
-    t.equal(q[2].event.title, 'Bastion Turn');
+    s.travel.milesAdjust = -6;
+    s.journey.gold = 40;
+    var q = R.makeCamp(s, D, E, dice([0.1, 0.5, 0.5]));
+    t.same(q.map(function (i) { return i.kind; }), ['weather', 'camp']);
+    t.equal(q[0].weather.id, 'cold_rain');
+    t.equal(q[1].event.title, 'Bastion Turn');
     t.equal(s.travel.day, 8);
     t.same([s.travel.lastWeatherDay, s.travel.weatherEventDay], [8, 8]);
     t.equal(s.tokens[0].milesUsed, 0, 'miles reset');
+    t.equal(s.travel.milesAdjust, 0, 'and back to 30 a day');
     t.equal(s.travel.nextTravelEventAtMiles, 15);
     t.equal(s.travel.travelEventDay, 0);
-    t.equal(s.trackers.gold, 0, 'the event gold resets weekly, as before');
+    t.equal(s.journey.gold, 40, 'the event gold is a running total now (Harry, 6 October 2026)');
+    t.equal(s.journey.current, null);
+  });
+
+  test('camp: a campfire event comes first, begun at once (25%)', function (t) {
+    var s = fresh();
+    s.travel.day = 7;
+    s.travel.provinceId = 'the_east_isle';
+    var q = R.makeCamp(s, D, E, dice([0.9, 0.1, 0, 0.5]));
+    t.same(q.map(function (i) { return i.kind; }), ['journey', 'camp']);
+    t.equal(s.journey.current.id, 'c1');
+    t.equal(s.journey.current.kind, 'camp');
+    var s2 = fresh();
+    var q2 = R.makeCamp(s2, D, E, dice([0.9, 0.25, 0.5]));
+    t.equal(q2.length, 0, '0.25 is not under 25%');
   });
 
   test('the Bastion prompt comes on days 8, 15, 22 and never between', function (t) {
@@ -366,18 +405,18 @@
     t.same(days, [8, 15, 22]);
   });
 
-  test('weather: a 45% chance, then a 3-day wait', function (t) {
+  test('weather: a 45% chance, then a 3-day wait (unchanged)', function (t) {
     var s = fresh();
-    var q1 = R.makeCamp(s, D, E, dice([0, 0.44, 0]));
-    t.equal(q1[1].kind, 'weather', '0.44 is under 45%');
-    var q2 = R.makeCamp(s, D, E, dice([0, 0.0, 0]));
-    t.equal(q2.length, 1, 'day 3: still waiting');
-    var q3 = R.makeCamp(s, D, E, dice([0, 0.0, 0]));
-    t.equal(q3.length, 1, 'day 4: still waiting');
-    var q4 = R.makeCamp(s, D, E, dice([0, 0.45, 0]));
-    t.equal(q4.length, 1, 'day 5: 0.45 is not under 45%');
-    var q5 = R.makeCamp(s, D, E, dice([0, 0.1, 0.99]));
-    t.equal(q5[1].weather.id, 'sun_heatwave', 'day 6');
+    var q1 = R.makeCamp(s, D, E, dice([0.44, 0, 0.5]));
+    t.equal(q1[0].kind, 'weather', '0.44 is under 45%');
+    var q2 = R.makeCamp(s, D, E, dice([0.99]));
+    t.equal(q2.length, 0, 'day 3: still waiting');
+    var q3 = R.makeCamp(s, D, E, dice([0.99]));
+    t.equal(q3.length, 0, 'day 4: still waiting');
+    var q4 = R.makeCamp(s, D, E, dice([0.45, 0.99]));
+    t.equal(q4.length, 0, 'day 5: 0.45 is not under 45%');
+    var q5 = R.makeCamp(s, D, E, dice([0.1, 0.99]));
+    t.equal(q5[0].weather.id, 'sun_heatwave', 'day 6');
   });
 
   test('weather rolls: the old cut-offs', function (t) {
@@ -412,12 +451,12 @@
     t.equal(s.travel.activeWeather, null);
   });
 
-  test('outcomes: gold and a note go on the (unsaved) tally, with a summary', function (t) {
+  test('main-event outcomes: gold goes on the party\'s event gold; rations are ignored', function (t) {
     var s = fresh();
-    t.equal(R.applyOutcome(s, { gold: -10, rations: 2, note: 'Paid the toll.', text: 'x' }), 'Outcome: -10 gold • +2 rations • Paid the toll.');
-    t.equal(s.trackers.gold, -10);
-    t.same(s.trackers.log, ['Day 1: Paid the toll.']);
-    t.equal(R.applyOutcome(s, { gold: 0, rations: 0, note: '', text: 'x' }), null);
+    t.equal(R.applyOutcome(s, { gold: -10, rations: 2, note: 'Paid the toll.', text: 'x' }), 'Outcome: -10 gold • Paid the toll.');
+    t.equal(s.journey.gold, -10);
+    t.same(s.journey.log, ['Day 1 · -10 gold • Paid the toll.']);
+    t.equal(R.applyOutcome(s, { gold: 0, rations: 3, note: '', text: 'x' }), null);
     t.equal(R.outcomeText({ note: 'n' }), 'n');
     t.equal(R.outcomeText({}), 'The moment passes, leaving only the road ahead.');
   });
@@ -442,9 +481,10 @@
     var s = fresh();
     s.travel.day = 9;
     s.travel.lastWeatherDay = 8;
+    s.travel.milesAdjust = -12;
     s.tokens[2].milesUsed = 12;
     R.resetTravel(s);
-    t.same([s.travel.day, s.tokens[2].milesUsed, s.travel.lastWeatherDay], [1, 0, 8]);
+    t.same([s.travel.day, s.tokens[2].milesUsed, s.travel.lastWeatherDay, s.travel.milesAdjust], [1, 0, 8, 0]);
   });
 
   group('Explorer: saving');

@@ -115,7 +115,8 @@
         <li>Every tool has the same bar along the top:
           <ul>
             <li>the crest on the left takes you back to the home screen;</li>
-            <li><b>Switch tool</b> opens another tool;</li>
+            <li><b>Switch tool</b> opens another tool; the <b>↗</b> beside a tool opens it in a new Edge window instead, which you can drag to the TV;</li>
+            <li><b>DM doc</b> opens your DM doc, a panel for your eyes only that floats over the tool: drag it by its title bar, resize it from its bottom-right corner, and close it with ✕ (what it holds comes in a later build);</li>
             <li><b>Export</b> and <b>Import</b> (only in tools that save) copy that tool's data to or from a file;</li>
             <li><b>Saved ✓</b> shows your work is saved.</li>
           </ul>
@@ -172,6 +173,12 @@
         <li><b>Hide Monsters</b> hides every monster from the Battlemap (and from you); <b>Reveal Monsters</b> shows them again.</li>
         <li><b>Battlemap</b> opens the map window. <b>Upload battlemap</b> (up to 4 MB), drag the tokens, and use the grid, <b>Snap</b>, <b>Fog</b> and the ruler (📏). Drag the window to the TV and press <b>Fullscreen</b>.</li>
       </ul>
+      <h4>A fight from the Explorer</h4>
+      <ul>
+        <li>When the Explorer sends a fight, the tracker offers it: <b>Load the fight</b> puts its monsters in the encounter (and the library), and its battle map, grid and starting places on the Battlemap. Your PCs stay; heroes caught by an ambush are marked Surprised for their first turn. Then <b>Auto-roll Initiative</b> and <b>Begin Encounter</b>.</li>
+        <li>After <b>Not now</b>, <b>Load the Explorer's fight</b> at the top offers it again.</li>
+        <li>When every monster is down, the tracker tells the Explorer, where you press <b>Won</b>.</li>
+      </ul>
 
       <h3 id="quests">Notice Board Quest Generator <span class="tsi-pill">DM Tool</span> <a href="index.html?tool=quests">Open ›</a></h3>
       <ul>
@@ -206,7 +213,10 @@
       <ul>
         <li>Pick a map and press <b>Load</b>, or <b>Upload map</b> to use your own (up to 4 MB). Line the hex grid up once per screen with <b>Hex −</b>, <b>Hex +</b> and the arrows.</li>
         <li>Drag the heroes. Each hex costs 6 miles, up to 30 a day. Select heroes (click, then <kbd>Ctrl</kbd> + click) and press <b>Group</b> to move them together. <b>Free Move</b> moves them without using miles.</li>
-        <li><b>Make Camp</b> ends the day: a campfire event, then any weather, then the Bastion reminder on days 8, 15, 22 and so on. Roll the weather at the table and type the result.</li>
+        <li><b>Travel events:</b> once a day on the road, when the party has gone a few miles, there's a 30% chance of a travel event (never two days running). <b>Make Camp</b> ends the day: any weather (roll it at the table and type the result), or a 25% chance of a campfire event if the day has had neither a travel event nor weather. Then comes the Bastion reminder on days 8, 15, 22 and so on: its <b>Open the Bastion Manager in a new window ↗</b> opens the Bastion beside the Explorer, and the reminder stays up until you close it.</li>
+        <li><b>The event window</b> goes one step at a time. When it shows a check (for example <i>Wisdom (Insight), DC 14</i>), pick who rolls; the players roll at the table and you press <b>Success</b> or <b>Failure</b> (some checks also have <b>Fail by 5 or more</b>). For a check every hero makes, tick who failed. A fight pauses the event. It shows the enemies for the party's level (from the Bastion), the battle map for the Region (the cove, for a road fight near the sea), and who is surprised; <b>Set up this fight in the Combat Tracker ↗</b> opens the tracker in a new window with the fight ready to load. Run it there, then press <b>Won</b> or <b>Fled</b>; when every enemy is down, the tracker says so here. Riddles and puzzles have <b>Hint</b>, <b>Right answer</b> / <b>Wrong answer</b> or <b>Solved</b> / <b>Give up</b>; for a riddle, <b>Show the answer (DM)</b> lets you peek. At the end, the window lists what changed; press <b>Done</b>.</li>
+        <li>Events change the party's <b>Gold</b> (a running total: press <b>Clear</b> once you've put it on the players' sheets), today's miles, the <b>Active Effects</b> (who has what, and when it ends; ✕ removes one) and the <b>Threads</b> (story hooks; <b>Resolve</b> one when it's done, and it pays any reward it promised). Some threads bring a follow-up event a few days later. <i>DM notes</i> remind you about other tools, such as the Notice Board's clan honour, but never change them.</li>
+        <li><b>Skip this event</b> puts an event back in the pool before anything has happened. <b>Roll an event now</b> draws a travel or campfire event whenever you like (a campfire event drawn while the party is on the road waits for tonight's camp). Closing an event part-way offers <b>Keep it for later</b> (<b>Back to the event</b> brings it back) or <b>End it now</b>. An event part-way through also comes back after closing Edge or switching tool.</li>
         <li><b>Fog of War</b> hides what the party hasn't seen. Town pins open their town maps.</li>
         <li>For a main campaign event, choose it and press <b>Queue</b>.</li>
         <li><b>Export Save</b> and <b>Import Save</b> copy the journey to or from a file.</li>

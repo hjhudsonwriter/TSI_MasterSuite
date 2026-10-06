@@ -334,7 +334,7 @@ shared/
   art/                ← hub logo, hero.png, the tools' wide crest logo (each stored once)
   data/tools.js       ← the eight tools, their groups, phases and files; the shop link
   js/                 ← core, lifecycle, modal, store-rules, store, backup-rules, backup,
-                        player-link, player-page, tabguard, shell
+                        player-link, player-page, tabguard, dmdoc-rules, dmdoc, shell
   lib/pdfjs/          ← PDF.js 3.11.174 (Combat Tracker only, phase 7)
 tools/<tool>/
   tool.js             ← TSI.registerTool('<tool>', { start, stop }); its own code under window.TSI.<tool>
@@ -372,7 +372,7 @@ Every page Harry uses sits in the top folder and the fonts sit below it. The tes
   - **Set Pieces:** Arenas of The Scarlett Isles · The Heartwood Ritual · Pelagosi Puzzle Trials
 - **Unbuilt tools** show "Coming in phase N" and can't be opened.
 - **Footer:** Back up everything · Restore · "Knightly Treasures shop ↗" (needs internet).
-- **Top bar, the same in every tool:** crest (Home) · tool name · Switch tool · the tool's Export/Import (if it saves) · "Saved ✓".
+- **Top bar, the same in every tool:** crest (Home) · tool name · Switch tool · the tool's Export/Import (if it saves) · "Saved ✓" · DM doc (a floating, draggable panel for the DM's own notes; its place and size are saved as `tsi.dmdoc.layout`, so they're in Back up everything). Inside a tool, Switch tool's ↗ buttons open another tool in a new window (`TSI.shell.openWindow`).
 
 ### Screens
 - **Laptop:** 2560 × 1600 at 150%, which gives about **1707 × 930** of page space in a maximised Edge window (1707 × 1067 in F11). Every tool fits with no sideways scrolling and its main controls in view.

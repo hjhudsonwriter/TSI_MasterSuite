@@ -172,6 +172,38 @@ Not copied:
 
 The combatants' pictures and stat-block links are web addresses you type in. They load only when the laptop is online; otherwise the plain stand-in picture shows, as before.
 
+### Battle maps for Explorer fights: Harry's art (7 October 2026)
+
+Not from an old repo: Harry made these 16 battle maps for the Explorer's fights and uploaded them on 7 October 2026. They replace the 23 stand-ins drawn by code the day before, which were deleted, along with the script that drew them.
+- **The files:** each is a PNG of 1448 × 1086 pixels, renamed and otherwise unchanged (byte for byte).
+- **The grid:** the suite lays a 24 × 18 grid of 5-foot squares over each (a tent is 2 squares). The grid isn't drawn on the pictures; the Battlemap draws its own.
+- **The four looks:** each kind of place comes in four looks. Which region uses which is set in `tools/explorer/data/fights-data.js` (`looks`):
+  - **green:** the Northern, Midland and Eastern Provinces (Telluria's lands);
+  - **warm:** the Southern and Western Provinces (Aurush's);
+  - **cold:** the North Isle;
+  - **misty:** the East Isle.
+
+| Harry's file (uploaded to `main`) | New path (`tools/encounter/assets/battlemaps/…`) | Look | Size | Used by |
+|---|---|---|---|---|
+| `ChatGPT Image Oct 6, 2026, 10_03_26 PM-1.png` | `ford-green.png` | lush summer | 4.0 MB | T2 The Ambush Sign: a river across the middle, a ford of stepping stones where the road crosses |
+| `ChatGPT Image Oct 6, 2026, 10_03_28 PM-2.png` | `ford-warm.png` | dry, amber | 3.8 MB | T2 |
+| `ChatGPT Image Oct 6, 2026, 10_03_29 PM-3.png` | `ford-cold.png` | rocky, with heather | 4.1 MB | T2 |
+| `ChatGPT Image Oct 6, 2026, 10_03_31 PM-4.png` | `ford-misty.png` | dark, with fog | 3.4 MB | T2 |
+| `ChatGPT Image Oct 6, 2026, 10_03_32 PM-5.png` | `camp-green.png` | lush summer | 3.9 MB | C6 Wolf-Song, C9 The Debt Collector, C10 The Beacons (keeping watch): the camp, with its fire, two tents, logs and bedrolls |
+| `ChatGPT Image Oct 6, 2026, 10_03_34 PM-6.png` | `camp-warm.png` | dry, amber | 3.8 MB | the camp fights |
+| `ChatGPT Image Oct 6, 2026, 10_03_35 PM-7.png` | `camp-cold.png` | rocky, with heather | 4.2 MB | the camp fights |
+| `ChatGPT Image Oct 6, 2026, 10_03_37 PM-8.png` | `camp-misty.png` | dark, with fog | 3.5 MB | the camp fights |
+| `ChatGPT Image Oct 6, 2026, 10_09_02 PM-1.png` | `cove-green.png` | lush summer | 4.0 MB | T13 Lights Below Redport, C12 False Lights at Bleakharbour, and road fights near the sea: a shingle beach with crates and a boat, the sea below |
+| `ChatGPT Image Oct 6, 2026, 10_09_03 PM-2.png` | `cove-warm.png` | autumn | 4.0 MB | the cove fights (T13 at Redport uses this one) |
+| `ChatGPT Image Oct 6, 2026, 10_09_04 PM-3.png` | `cove-cold.png` | snow | 3.9 MB | the cove fights (C12 at Bleakharbour uses this one) |
+| `ChatGPT Image Oct 6, 2026, 10_09_04 PM-4.png` | `cove-misty.png` | dark, with fog | 3.9 MB | the cove fights |
+| `ChatGPT Image Oct 6, 2026, 10_09_05 PM-5.png` | `road-green.png` | lush summer | 4.1 MB | F1 The Toll-Men Return, C10 The Beacons (riding through the night), T9 (switched off): a road with a fallen tree across it |
+| `ChatGPT Image Oct 6, 2026, 10_09_06 PM-6.png` | `road-warm.png` | autumn | 3.9 MB | the road fights |
+| `ChatGPT Image Oct 6, 2026, 10_09_07 PM-7.png` | `road-cold.png` | snow | 4.1 MB | the road fights |
+| `ChatGPT Image Oct 6, 2026, 10_09_08 PM-8.png` | `road-misty.png` | dark, with fog | 3.1 MB | the road fights |
+
+In all, 16 files, about 62 MB. Harry uploaded them to the top of `main` by mistake; this branch moves them into place, so they leave the top of `main` when the pull request is merged.
+
 ## Scarlett Isles Explorer (phase 8)
 
 All 43 media files from the old Explorer. 41 are copied into `tools/explorer/assets/` and checked byte-for-byte after copying; none of them duplicates another file. The other two, `hero.png` and `logo.png`, were already stored once in `shared/art/` in phase 1. The old tool used every file, so there's no `extras/` folder.

@@ -48,7 +48,7 @@
         library: [],
         selectedLibraryIds: new Set(),
         savedEncounters: [],
-        encounter: { name: '', status: 'idle', roster: [], turnIndex: 0, round: 1 },
+        encounter: { name: '', status: 'idle', roster: [], turnIndex: 0, round: 1, handoff: null, reported: false },
         ui: { targetId: null }
       };
     },
@@ -88,6 +88,9 @@
       s.encounter.roster = Array.isArray(e.roster) ? e.roster : [];
       s.encounter.turnIndex = Number.isFinite(e.turnIndex) ? e.turnIndex : 0;
       s.encounter.round = Number.isFinite(e.round) ? e.round : 1;
+      /* An Explorer fight: its hand-off id, and whether its win has been reported. */
+      s.encounter.handoff = typeof e.handoff === 'string' && e.handoff ? e.handoff : null;
+      s.encounter.reported = e.reported === true;
       var ui = parsed.ui || {};
       s.ui.targetId = typeof ui.targetId === 'string' ? ui.targetId : null;
       s.encounter.roster.forEach(function (c) {
@@ -320,19 +323,25 @@
       ids.forEach(function (id) {
         var base = state.library.filter(function (x) { return x.id === id; })[0];
         if (!base) return;
-        var same = e.roster.filter(function (r) { return r.baseId === base.id; }).length;
-        e.roster.push({
-          encId: R.uid(), baseId: base.id,
-          name: base.name + (same === 0 ? '' : ' ' + String.fromCharCode(96 + same)),
-          type: base.type, maxHp: base.maxHp, curHp: base.maxHp, init: null,
-          avatar: base.avatar || '', refLink: base.refLink || '', conditions: [], defeated: false
-        });
+        e.roster.push(R.rosterCopy(e, base));
       });
       e.status = 'ready';
       e.turnIndex = 0;
       e.round = 1;
       state.ui.targetId = (e.roster[0] || {}).encId || null;
       return { ok: true };
+    },
+
+    /* A copy of a library entry for the encounter: a second copy gets " a",
+       then " b"... (old btnAddSelected). */
+    rosterCopy: function (e, base) {
+      var same = e.roster.filter(function (r) { return r.baseId === base.id; }).length;
+      return {
+        encId: R.uid(), baseId: base.id,
+        name: base.name + (same === 0 ? '' : ' ' + String.fromCharCode(96 + same)),
+        type: base.type, maxHp: base.maxHp, curHp: base.maxHp, init: null,
+        avatar: base.avatar || '', refLink: base.refLink || '', conditions: [], defeated: false
+      };
     },
 
     /* ---------- The fight ---------- */
@@ -393,6 +402,8 @@
       e.turnIndex = 0;
       e.round = 1;
       e.status = 'ready';
+      e.handoff = null;
+      e.reported = false;
       state.ui.targetId = (e.roster[0] || {}).encId || null;
     },
     duplicateSaved: function (state, se, now) {
@@ -491,7 +502,11 @@
       if (v.fog !== undefined && (!isObj(v.fog) || (v.fog.exploredCells !== undefined && !Array.isArray(v.fog.exploredCells)))) return false;
       return true;
     },
-    isMapSave: function (v) { return typeof v === 'string' && (v === '' || /^data:image\//.test(v)); },
+    /* The saved map: '' (none), a picture you uploaded (a data: address), or
+       one of the suite's own battle maps, which an Explorer fight sets
+       (a path inside tools/encounter/assets/battlemaps/). */
+    isMapSave: function (v) { return typeof v === 'string' && (v === '' || /^data:image\//.test(v) || R.isBundledMap(v)); },
+    isBundledMap: function (v) { return typeof v === 'string' && /^tools\/encounter\/assets\/battlemaps\/[a-z0-9-]+\.(jpg|jpeg|png|webp)$/.test(v); },
 
     /* Where the board sits on screen: fitted to the stage (the whole map in
        view), then the camera's zoom and pan. The pan is in board units.
@@ -568,6 +583,201 @@
     measureText: function (a, b, gridSize) {
       var d = R.distanceFeet(a, b, gridSize);
       return (Math.round(d.feet / 5) * 5) + ' ft (' + d.squares.toFixed(1) + ' sq)';
+    },
+
+    /* ================= A fight from the Explorer ================= */
+    /* (Harry, 7 October 2026.) The Explorer's "Set up this fight" hands over
+       a fight, built by tools/explorer/fights.js: { v: 1, id, name, region,
+       level, band, monsters: [{ name, stat, count, ac, hp, init, link }],
+       map: { src, title, cols, rows, party, foes, avoid }, surprised: [hero
+       names] }. It arrives through TSI.handoff. */
+
+    /* Can the tracker load it? null if so, otherwise why not. */
+    handoffProblem: function (h) {
+      if (!isObj(h) || h.v !== 1 || typeof h.id !== 'string' || !h.id) return 'It isn\'t a fight from the Explorer.';
+      if (!Array.isArray(h.monsters) || !h.monsters.length) return 'It has no monsters.';
+      var total = 0;
+      var monstersOk = h.monsters.every(function (m) {
+        if (!isObj(m) || typeof m.name !== 'string' || !m.name.trim() || !Number.isInteger(m.count) || m.count < 1 || m.count > 26) return false;
+        if (!Number.isFinite(m.hp) || m.hp < 1) return false;
+        if (m.init !== undefined && m.init !== null && !Number.isFinite(m.init)) return false;
+        if (m.link !== undefined && typeof m.link !== 'string') return false;
+        total += m.count;
+        return true;
+      });
+      if (!monstersOk || total > 60) return 'Its monsters aren\'t in the right form.';
+      var map = h.map;
+      function corners(list) {
+        return Array.isArray(list) && list.every(function (p) { return Array.isArray(p) && p.length === 2 && Number.isInteger(p[0]) && Number.isInteger(p[1]); });
+      }
+      if (!isObj(map) || !R.isBundledMap(map.src) || !Number.isInteger(map.cols) || !Number.isInteger(map.rows) ||
+        map.cols < 4 || map.cols > 200 || map.rows < 4 || map.rows > 200) return 'Its battle map isn\'t in the right form.';
+      if (!corners(map.party) || !corners(map.foes) || !map.party.length || !map.foes.length || (map.avoid !== undefined && !corners(map.avoid))) {
+        return 'Its starting places aren\'t in the right form.';
+      }
+      if (h.surprised !== undefined && !(Array.isArray(h.surprised) && h.surprised.every(function (n) { return typeof n === 'string'; }))) {
+        return 'Its list of surprised heroes isn\'t in the right form.';
+      }
+      return null;
+    },
+
+    /* Is this combatant that hero? "Kaelen" is "Kaelen" or "Kaelen Ashford", in any case. */
+    nameMatches: function (combatantName, heroName) {
+      var a = String(combatantName || '').trim().toLowerCase();
+      var b = String(heroName || '').trim().toLowerCase();
+      return !!a && !!b && (a === b || a.indexOf(b + ' ') === 0);
+    },
+
+    /* The library entry for one of the fight's monsters: one already there
+       with the same name and HP, or a new one with the stat block's
+       initiative bonus and link. An existing entry keeps your changes; only
+       a missing bonus or link is filled in. */
+    handoffLibraryEntry: function (state, m) {
+      var hp = Math.floor(m.hp);
+      var found = state.library.filter(function (x) { return x.type === 'monster' && x.name === m.name && Number(x.maxHp) === hp; })[0];
+      var init = Number.isFinite(m.init) ? Math.floor(m.init) : null;
+      if (found) {
+        if (!Number.isFinite(found.initBonus) && init !== null) found.initBonus = init;
+        if (!found.refLink && m.link) found.refLink = m.link;
+        return found;
+      }
+      var entry = { id: R.uid(), name: m.name, type: 'monster', maxHp: hp, curHp: hp, initBonus: init, avatar: '', refLink: m.link || '' };
+      state.library.push(entry);
+      return entry;
+    },
+
+    /* Load the fight. The monsters already in the encounter make way; the
+       PCs and NPCs stay (with no PCs, every PC in the library joins).
+       Everyone's initiative (and any Surprised left from the last fight) is
+       cleared, and the fight is Ready at round 1. The surprised heroes get
+       "Surprised" for their first turn.
+       Returns { monsters, pcsAdded, surprised: [combatants marked],
+       notFound: [heroes with no PC of that name] }. */
+    loadHandoff: function (state, h) {
+      var e = state.encounter;
+      e.roster = e.roster.filter(function (c) { return c.type !== 'monster'; });
+      var pcsAdded = 0;
+      if (!e.roster.some(function (c) { return c.type === 'pc'; })) {
+        R.libraryOrder(state.library).filter(function (x) { return x.type === 'pc'; }).forEach(function (base) {
+          e.roster.push(R.rosterCopy(e, base));
+          pcsAdded++;
+        });
+      }
+      /* A fresh fight: no initiative yet, and no one still Surprised from the last one. */
+      e.roster.forEach(function (c) {
+        c.init = null;
+        if (Array.isArray(c.conditions)) c.conditions = c.conditions.filter(function (x) { return (typeof x === 'object' && x ? x.name : x) !== 'Surprised'; });
+      });
+      var monsters = 0;
+      h.monsters.forEach(function (m) {
+        var base = R.handoffLibraryEntry(state, m);
+        for (var i = 0; i < m.count; i++) {
+          var c = R.rosterCopy(e, base);
+          c.handoff = h.id;
+          e.roster.push(c);
+          monsters++;
+        }
+      });
+      var marked = [];
+      var notFound = [];
+      (h.surprised || []).forEach(function (hero) {
+        var pcs = e.roster.filter(function (c) { return c.type === 'pc' && R.nameMatches(c.name, hero); });
+        if (!pcs.length) { notFound.push(hero); return; }
+        pcs.forEach(function (c) {
+          c.conditions = Array.isArray(c.conditions) ? c.conditions : [];
+          if (marked.indexOf(c.name) !== -1) return;
+          c.conditions.push({ name: 'Surprised', remaining: 1 });
+          marked.push(c.name);
+        });
+      });
+      if (typeof h.name === 'string' && h.name.trim()) e.name = h.name.trim();
+      e.status = 'ready';
+      e.turnIndex = 0;
+      e.round = 1;
+      e.handoff = h.id;
+      e.reported = false;
+      state.ui.targetId = (e.roster[0] || {}).encId || null;
+      return { monsters: monsters, pcsAdded: pcsAdded, surprised: marked, notFound: notFound };
+    },
+
+    /* Is the Explorer's fight won: every monster in the encounter down, and
+       at least one of them from the fight? Reported once (e.reported). */
+    handoffWon: function (e) {
+      if (!e.handoff || e.reported) return false;
+      var monsters = e.roster.filter(function (c) { return c.type === 'monster'; });
+      if (!monsters.some(function (c) { return c.handoff === e.handoff; })) return false;
+      return monsters.every(function (m) { return m.defeated || m.curHp <= 0; });
+    },
+
+    /* Where everyone starts on the fight's battle map, in board units: PCs
+       and NPCs round the party corners, monsters shared round the foes
+       corners in turn, each on the nearest free grid corner (where Snap
+       puts tokens). Tokens start two squares apart (no token on the eight
+       corners round another), so their name labels don't cover each other;
+       only a crowd that runs out of room closes up. */
+    startPositions: function (roster, map) {
+      var size = R.BOARD_W / map.cols;
+      var blocked = {};   /* the avoid corners: the river, the fire... */
+      var taken = {};     /* corners with a token */
+      (map.avoid || []).forEach(function (p) { blocked[p[0] + ',' + p[1]] = true; });
+      /* No token on the eight corners round it. */
+      function clear(c, r) {
+        for (var dc = -1; dc <= 1; dc++) for (var dr = -1; dr <= 1; dr++) if (taken[(c + dc) + ',' + (r + dr)]) return false;
+        return true;
+      }
+      var orders = {};
+      function order(anchor) {
+        var k = anchor[0] + ',' + anchor[1];
+        if (orders[k]) return orders[k];
+        var list = [];
+        for (var r = 1; r < map.rows; r++) for (var c = 1; c < map.cols; c++) list.push([c, r]);
+        function spaced(p) { return (p[0] - anchor[0]) % 2 === 0 && (p[1] - anchor[1]) % 2 === 0 ? 0 : 1; }
+        list.sort(function (a, b) {
+          var da = (a[0] - anchor[0]) * (a[0] - anchor[0]) + (a[1] - anchor[1]) * (a[1] - anchor[1]);
+          var db = (b[0] - anchor[0]) * (b[0] - anchor[0]) + (b[1] - anchor[1]) * (b[1] - anchor[1]);
+          return spaced(a) - spaced(b) || da - db || a[1] - b[1] || a[0] - b[0];
+        });
+        orders[k] = list;
+        return list;
+      }
+      /* The nearest free corner with room round it; if the map's too full, the nearest free corner. */
+      function place(anchor) {
+        var list = order(anchor);
+        for (var pass = 0; pass < 2; pass++) {
+          for (var i = 0; i < list.length; i++) {
+            var c = list[i][0], r = list[i][1], k = c + ',' + r;
+            if (blocked[k] || taken[k] || (pass === 0 && !clear(c, r))) continue;
+            taken[k] = true;
+            return { x: c * size, y: r * size };
+          }
+        }
+        return { x: anchor[0] * size, y: anchor[1] * size };
+      }
+      var pos = {};
+      var pi = 0;
+      var fi = 0;
+      roster.forEach(function (c) {
+        if (c.type === 'monster') pos[c.encId] = place(map.foes[fi++ % map.foes.length]);
+        else pos[c.encId] = place(map.party[pi++ % map.party.length]);
+      });
+      return pos;
+    },
+
+    /* The Battlemap settings for the fight's map: the grid on and matched to
+       the map's squares (5 ft each), Snap on, tokens one square wide, the
+       view reset, everyone at their start, and the fog's explored squares
+       cleared. Everything else (fog on or off, Hide Monsters) stays. */
+    handoffVtt: function (vtt, roster, map) {
+      var size = R.BOARD_W / map.cols;
+      return {
+        camera: { x: 0, y: 0, zoom: 1 },
+        tokenPos: R.startPositions(roster, map),
+        tokenSize: clamp(Math.round(size), 24, 140),
+        removed: {},
+        hidden: {},
+        grid: Object.assign({}, vtt.grid, { show: true, snap: true, size: size, offX: 0, offY: 0 }),
+        fog: Object.assign({}, vtt.fog, { exploredCells: [] })
+      };
     },
 
     importProblem: function (records) {

@@ -199,10 +199,12 @@
     }
 
     /* ---------- The map picture ---------- */
+    /* dataUrl: a picture you uploaded, or one of the suite's battle maps (a path, set by an Explorer fight). */
     function setMap(dataUrl) {
       mapUrl = dataUrl || '';
       if (mapUrl) {
-        if (mapImg.getAttribute('src') !== mapUrl) mapImg.src = mapUrl;
+        var src = R.isBundledMap(mapUrl) ? TSI.path(mapUrl) : mapUrl;
+        if (mapImg.getAttribute('src') !== src) mapImg.src = src;
         mapImg.hidden = false;
         if (mapImg.complete && mapImg.naturalWidth) mapLoaded();
       } else {

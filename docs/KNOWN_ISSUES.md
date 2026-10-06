@@ -21,10 +21,10 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 
 | Tool | Must fix | Fixed by design | Deliberate | Later (Harry's call) | Not relevant / not a bug |
 |---|---|---|---|---|---|
-| Suite-wide (SUI) | 5 | 11 | 2 | 1 | 0 |
+| Suite-wide (SUI) | 5 | 11 | 4 | 1 | 0 |
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
-| Scarlett Isles Explorer (EXP) | 12 | 4 | 0 | 13 | 0 |
+| Scarlett Isles Explorer (EXP) | 12 | 5 | 5 | 13 | 0 |
 | The Ironbow Bastion Manager (BAS) | 20 | 2 | 19 | 17 | 1 |
 | Clan Crest Creator (CRS) | 0 | 4 | 5 | 3 | 3 |
 | Arenas of The Scarlett Isles (ARN) | 8 | 2 | 0 | 17 | 0 |
@@ -191,6 +191,29 @@ These come from checking the eight tools against each other: the collision audit
 - **Before:** Edge keeps the saves of every double-clicked page together, whatever folder it's in. So a new version downloaded to test opens with the saves from the copy used at the table, and anything done while testing changes those same saves.
 - **After:** Kept, and explained in the how-to guide ("Saving and backups") and the README: back up everything after each session and before trying a new version. The only way round it would be to tie saves to the folder's location, which would lose them whenever the folder is moved or renamed, so it isn't recommended.
 - **Evidence:** a probe in the test browser (Chromium, the engine inside Edge), 28 September 2026: two copies of `index.html` in different folders read and wrote the same `tsi.` saves. `guide.html#saving`.
+
+### SUI-20 · Open a tool in a new window
+**Deliberate change** (Harry's request, 6 October 2026) · other
+
+- **Before:** Switch tool always replaced the tool on screen, so only one tool could be open at a time unless Harry opened a second tab himself.
+- **After:**
+  - **The button:** inside a tool, every other tool in the Switch tool menu has a ↗ button that opens it in a separate Edge window, sized to the screen, so it can be dragged to the TV. The ↗ buttons can be reached with the arrow keys.
+  - **Where it isn't:** there's no ↗ for the tool already open, for Home, or on the home screen's own menu. Each of those would set off the "Already open" warning, because the same tool, or the home screen, open twice could overwrite saves.
+  - **Two tools, no warning:** two different tools in two windows don't warn, because each saves only its own data.
+  - **For the events:** the Explorer's event window uses the same opener for **Set up this fight in the Combat Tracker ↗** (EXP-34).
+- **Evidence:** `shared/js/shell.js` (`TSI.shell.openWindow`, the menu rows), `shared/components.css`; tests in `tests/e2e/phase1.test.js`.
+
+### SUI-21 · The DM doc: a floating panel for the DM's eyes only
+**Deliberate change** (Harry's request, 6 October 2026) · other
+
+- **Before:** There was nowhere to keep campaign notes.
+- **After:**
+  - **The panel:** **DM doc** in the top bar, on every screen, opens a floating panel over the tool. Drag it by its title bar (or move it with the arrow keys), resize it from the bottom-right corner, and close it with ✕. The tool underneath keeps working.
+  - **Remembered:** its place and size are saved under `tsi.dmdoc.` and included in Back up everything.
+  - **Open or closed:** whether it's open is remembered per window, so it reopens after a tool switch in the same window but never pops up by itself in another window (such as one on the TV).
+  - **On screen:** it's kept within the window on the laptop and the TV, and isn't shown inside a tool's own full-screen view.
+  - **Contents:** a placeholder; what it holds comes in the next build, as Harry asked.
+- **Evidence:** `shared/js/dmdoc.js`, `shared/js/dmdoc-rules.js`, `shared/js/store-rules.js`, `shared/js/backup-rules.js`, `shared/tokens.css`, `shared/components.css`; tests in `tests/rules/dmdoc.test.js` and `tests/e2e/phase1.test.js`.
 
 ## Combat Tracker & VTT Battlemap
 Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point there).
@@ -835,6 +858,7 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 - **Checker's note:** The original never saved this, so it is not 'loses saved data' under the policy.
 - **Evidence:** saveNow 1239-1251 and buildSavePayload 1255-1268 omit trackers; 2397 resets gold; 864 writes the log, which nothing displays. flow_test goldAfterReload 0.
 - **Phase 8:** Kept (E1). Event gold shows while the Explorer is open, resets weekly and on reopening, and isn't saved or backed up.
+- **New events (6 October 2026):** changed at Harry's request (EXP-32): the party's event gold is now saved, backed up and kept as a running total until the DM presses Clear.
 
 ### EXP-17 · Rations are only mentioned, never counted
 **Later, Harry's call** · other · listed in the handover
@@ -844,6 +868,7 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 - **Decision note:** E2
 - **Evidence:** app.js:870 notice only; no ration store; CSS styles a missing #explorerRations.
 - **Phase 8:** Kept (E2).
+- **New events (6 October 2026):** gone (EXP-31). Rations are removed from the Explorer entirely, as Harry asked.
 
 ### EXP-18 · Gold display doesn't update straight after an outcome
 **Later, Harry's call** · other
@@ -906,6 +931,7 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 - **Decision note:** E3
 - **Evidence:** analyse2.py: 146 events with an unreachable 'step2' (e.g. Bridge Out, Roadside Peddler).
 - **Phase 8:** Kept (E3). The text is still in the events file.
+- **New events (6 October 2026):** no longer seen: the old events are switched off (EXP-30). Every step of the new events can be reached; the rules tests check it.
 
 ### EXP-25 · A refused 'Too far' move still uncovers the fog and the pins
 **Later, Harry's call** · other
@@ -948,6 +974,86 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 - **After:** Clicks in the first moment after an event's buttons change are ignored, so a double click counts once.
 - **Evidence:** app.js:918-983 (the choices are cleared and rebuilt on every step). Found while rebuilding, from the code.
 - **Phase 8:** Fixed. Test: a double click on Continue moves on one step only.
+
+### EXP-30 · Harry's new travel and campfire events replace the old 601
+**Deliberate change** (Harry's request and his events document, 6 October 2026) · other
+
+- **Before:** Every day on the road brought a travel event and every night a campfire event (about ten moments in five days), picked at random from 601 short events, most with a choice and a small outcome in gold or rations.
+- **After:**
+  - **The events:** 17 travel events, 12 campfire events and 3 follow-ups, each with at least one roll, a choice and a consequence that outlasts the pop-up.
+    - T9 The Husk in the Furrows is written but switched off: no Rootbound creature before the Heartwood finale.
+    - T17 The Second Marker was first built as a DM-only event, then removed at Harry's request (7 October 2026), leaving 16 travel events.
+  - **How often:** once a day on the road, a 30% chance of a travel event, never two days running. At Make Camp, the weather is exactly as before, then a 25% chance of a campfire event, skipped after a travel or weather event that day. Events are drawn like cards: nothing repeats until a map's pool is used up.
+  - **The event window:** one step at a time. It shows the check and its DC; the players roll and the DM clicks Success or Failure (or Fail by 5 or more). Then come choices, fights (run in the Combat Tracker, then Won or Fled), contests, riddles and puzzles, and a summary of what changed.
+  - **What an event can change:** gold, today's miles, Active Effects, Threads, and DM notes for other tools (never applied automatically).
+  - **The DM's controls:** Roll an event now and Skip this event.
+  - **The old events:** switched off (no longer loaded), not deleted.
+- **Evidence:** `tools/explorer/data/journey-events.js` (the events), `tools/explorer/journey.js` (the rules), `tools/explorer/tool.js` (the window and the travel panel); tests in `tests/rules/explorer-journey.test.js` and `tests/e2e/phase8.test.js`.
+
+### EXP-31 · Rations removed
+**Deliberate change** (Harry's request, 6 October 2026) · other
+
+- **Before:** Old events said "you gain 1 rations" in their text and in the notice line, and Slow pace said "good foraging", but nothing counted rations (EXP-17).
+- **After:** Every mention and every piece of code for rations is gone from the Explorer. Slow pace reads "+Stealth". The old events file, which is switched off, still has its original wording.
+- **Evidence:** `tools/explorer/rules.js` (`travelMode`, `applyOutcome`), `data/explorer-data.js` (the Bastion prompt); the click-through checks no "ration" or "forag" text appears.
+
+### EXP-32 · The party's event gold is saved, as a running total
+**Deliberate change** (Harry's choice, 6 October 2026) · other
+
+- **Before:** The Gold line was forgotten on reload and went back to 0 every 7 days (EXP-16).
+- **After:** It goes up and down as events pay and cost. It's saved with the journey, in Export and in Back up everything, and stays until the DM presses Clear (which asks first).
+- **Evidence:** `tools/explorer/journey.js` (`clearGold`), `rules.js` (`makeCamp` no longer resets it).
+
+### EXP-33 · An old event's outcome didn't belong to its choice
+**Fixed by the new design** · other · found by Harry's events document
+
+- **Before:** In the old events, Bandit Sign offered only Continue, yet its outcome said "You wait, then strike first" and paid 90 gold each.
+- **After:** The old events are switched off. In the new ones, every outcome belongs to the choice and roll that led to it, and every step can be reached; the rules tests walk every path.
+- **Evidence:** `tests/rules/explorer-journey.test.js` ("every event's steps link up").
+
+### EXP-34 · Fights are set up in the Combat Tracker, which reports back
+**Deliberate change** (Harry's request and answers, 7 October 2026) · other
+
+- **Before:** A fight in an event showed a line of suggested enemies and a button to open the Combat Tracker. The DM then built the fight by hand: the monsters, their HP, a map and the grid.
+- **After:**
+  - **In the Explorer:** the fight step shows the fight ready to go:
+    - the party level, read from the Bastion's saved level (Harry's choice; level 7 if the Bastion hasn't saved one), and the group it picks (levels 7–10 or 11–16, from the event's suggestion);
+    - the monsters, with SRD stat-block numbers (Harry's choice: the closest SRD creatures to each event's enemies);
+    - the battle map for that kind of place and region (Harry's choice: a version per region);
+    - who is surprised, in the two ambushes (T2 and F1).
+  - **Set up this fight in the Combat Tracker ↗** hands the fight over and opens the tracker in a new window. If the tracker is already open in another window, the fight goes there instead.
+  - **In the Combat Tracker:** a pop-up offers the fight. **Load the fight**:
+    - puts the monsters in the library (once, with their initiative bonus and stat-block link) and in the encounter, in place of any monsters already there;
+    - keeps the PCs and NPCs (with no PCs in the encounter, the library's PCs join);
+    - marks the surprised heroes Surprised for their first turn;
+    - puts the battle map, a matching grid with Snap on, and everyone's starting places on the Battlemap.
+
+    After **Not now**, **Load the Explorer's fight** at the top offers it again.
+  - **Reporting back:** when every monster in the encounter is down, the tracker tells the Explorer (Harry's choice). The event window then says so and makes **Won** the main button. The DM still clicks Won or Fled.
+  - **Tidying up:** Won, Fled, Skip or ending the event clears the hand-off. So does opening the Explorer when the waiting fight isn't from the event that's on now (after restoring a backup, say).
+- **The battle maps** are Harry's 16 (7 October 2026): a ford, a camp, a cove and a road, each in four looks (green, warm, cold and misty), on a 24 × 18 grid; each region uses one look (see `docs/ASSETS.md`). They replaced 23 stand-ins drawn by code the day before.
+  - T9 (switched off) uses the road map.
+  - C10's ride through the night meets the raiders on the road; keeping watch, they find the camp.
+  - C12 at Bleakharbour is fought in the (snowy) cove.
+- **How the windows talk:** each Explorer and tracker window runs separately, so the fight and the report are passed through the browser's small shared storage (`tsi.suite.handoff` and `tsi.suite.handback`). They aren't saves, so they aren't in backups.
+- **Not tested:** Firefox (as SUI-20), and Edge itself; both windows were tested in Chromium from a double-clicked `index.html`.
+- **Evidence:**
+  - `tools/explorer/data/fights-data.js`, `tools/explorer/fights.js`, the fight steps in `data/journey-events.js` (`encounter`, `surprise`), `tools/explorer/tool.js`;
+  - `tools/encounter/rules.js` (`loadHandoff`, `handoffWon`, `startPositions`, `handoffVtt`, `isBundledMap`), `tools/encounter/tool.js`, `tools/encounter/battlemap.js`;
+  - `shared/js/handoff.js`, `TSI.store.fresh` and `TSI.tabGuard.isOpenElsewhere`;
+  - tests: `tests/rules/fights.test.js`, `tests/e2e/fights.test.js`.
+
+### EXP-35 · The ford only near a river, and the cove near the sea
+**Deliberate change** (Harry's choice, 7 October 2026) · other
+
+- **Before:** T2 The Ambush Sign ("take them at the ford") could come up anywhere, so its ford battle map could appear far from any river.
+- **After:**
+  - **The marks:** where the rivers and the coast are on each of the Explorer's 10 maps is now marked, in `tools/explorer/data/terrain-data.js`. A script (`docs/dev/make-terrain.py`) found them once, from the map pictures' colours, with two corrections checked by eye: Midland has rivers and no coast, and the River Split's mouth on Southern Province (West).
+  - **"Near"** means within 2 hexes (12 miles). That counts every port town as near the sea (their pins sit up to 1.7 hexes from open water), and Alderbridge and Fork Farm as by a river.
+  - **T2** is now drawn only when the hero who has just moved (or, for Roll an event now, the selected hero) is near a river. That limits it to stretches of Midland, Northern Province (East and West) and Southern Province (West), and never on an uploaded map, which has no marks.
+  - **Road fights near the sea** (F1 The Toll-Men Return, and C10's dawn fight) are fought on the cove map. The fight step then says "(the party is near the sea)". Camp fights stay at the camp, and T13 and C12 keep their own maps.
+  - **What was near** is saved with the event, so it doesn't change if the event is kept for later.
+- **Evidence:** `tools/explorer/journey.js` (`nearAt`, `partyPos`, `context`, `eligible`), `tools/explorer/fights.js` (`settingFor`), `data/fights-data.js` (`coast`), `data/journey-events.js` (T2's `near: 'river'`), `rules.js` (`finishMove`); tests in `tests/rules/fights.test.js`, `tests/rules/explorer-journey.test.js` and `tests/e2e/fights.test.js`.
 
 ## The Ironbow Bastion Manager
 Old repo: `_legacy/bastion_manager` (file:line references point there).

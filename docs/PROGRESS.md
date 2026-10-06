@@ -2,11 +2,118 @@
 
 ## Where things stand
 
-**The rebuild is complete, the short how-to guide is written, and the first upgrades are done: the Clan Crest Creator has been reworked at Harry's request, its sigils redone from real heraldic artwork, and it now remembers your last design. The Bastion now takes a crest for your Clan or Brigade, counts beasts properly, and has phase 2 of the war mini-game: full battles on the War Table against an enemy that plays to its objective, with the result (losses, recovery and rewards) applied to the Bastion exactly once. The rules, as built, are in `docs/WAR-RULES.md`.** All eight tools open from their cards, and `guide.html` (linked at the foot of the home screen) explains them. What comes next is up to Harry: after trying the tools at the table, he can ask for more upgrades, fixes to kept behaviours, or the joined-up ideas in sections 12 to 15 of the handover.
+**The rebuild is complete, the short how-to guide is written, and the first upgrades are done: the Clan Crest Creator has been reworked at Harry's request, its sigils redone from real heraldic artwork, and it now remembers your last design. The Bastion now takes a crest for your Clan or Brigade, counts beasts properly, and has phase 2 of the war mini-game: full battles on the War Table against an enemy that plays to its objective, with the result (losses, recovery and rewards) applied to the Bastion exactly once. The rules, as built, are in `docs/WAR-RULES.md`. On 6 October 2026 the Explorer's travel and campfire events were replaced with Harry's new ones, any tool can be opened in a new window from Switch tool, and the DM doc opens as a floating panel (its contents come next). On 7 October the Explorer's fights started setting themselves up in the Combat Tracker (monsters, Harry's own battle maps and the grid, with the tracker reporting back when every enemy is down), the ford only near rivers and the cove near the sea.** All eight tools open from their cards, and `guide.html` (linked at the foot of the home screen) explains them. What comes next is up to Harry: after trying the tools at the table, he can ask for more upgrades, fixes to kept behaviours, or the joined-up ideas in sections 12 to 15 of the handover.
 
 Double-click `index.html` to open the suite. The plan is in `docs/PLAN.md`, the bug list in `docs/KNOWN_ISSUES.md`, and the notes for building each tool in `docs/BUILDING-A-TOOL.md`.
 
 ## Done
+
+### Harry's battle maps in place (7 October 2026)
+Harry made 16 battle maps (a ford, a camp, a cove and a road, each in four looks) and asked for them to replace the stand-ins, matched to the provinces they suit.
+- **Matched by look:**
+  - **green:** the Northern, Midland and Eastern Provinces (Telluria's lands);
+  - **warm** (dry amber, or autumn): the Southern and Western Provinces (Aurush's);
+  - **cold** (rocky heather, or snow): the North Isle;
+  - **misty:** the East Isle.
+
+  Each region's look is one word in `tools/explorer/data/fights-data.js` (`looks`), so it's easy to change.
+- **The grid:** 24 × 18 squares of 5 ft, which suits the art (a tent is 2 squares, the road about 2½, the river about 3½). The starting places were set on each layout, keeping everyone out of the river, the sea, the fire, the tents, the crates and the fallen tree. Tokens start two squares apart wherever there's room.
+- **C12 at Bleakharbour** is now fought in the snowy cove (Harry made no rocks map). T13 at Redport uses the autumn cove.
+- **The files:** Harry uploaded them to the top of `main`. This branch moves them, renamed and otherwise unchanged, into `tools/encounter/assets/battlemaps/`, and deletes the 23 stand-ins and the script that drew them (`docs/ASSETS.md`).
+- **Tests:** 784 rules tests, all passing; `tests/e2e/fights.test.js` 15 checks, all passing (the Battlemap shows the warm ford at 1448 × 1086).
+
+### Rivers and coast on the Explorer's maps (7 October 2026, after Harry's test)
+Harry tested the fight set-up ("everything seemed to work well") and asked that river and coastal battle maps only turn up at rivers and on the coast. He chose: T2 only near a river, and road fights near the sea in the cove (KNOWN_ISSUES EXP-35).
+- **The marks:** each of the 10 Explorer maps now has its rivers and coast marked (`tools/explorer/data/terrain-data.js`, made once from the map pictures by `docs/dev/make-terrain.py`). "Near" is within 2 hexes (12 miles): every port town is near the sea; Alderbridge and Fork Farm are by a river.
+- **T2 The Ambush Sign** comes up only when the party is near a river: parts of Midland, Northern Province (East and West) and Southern Province (West). It never comes up on an uploaded map.
+- **Near the sea**, F1's and C10's road fights are fought on the cove map, and the fight step says so. Camp fights stay in camp; T13 and C12 keep their maps.
+- **Tests:** 783 rules tests, all passing (5 new); `tests/e2e/fights.test.js` 15 checks and `tests/e2e/phase8.test.js` 81 checks, all passing.
+- **Harry's 16 battle maps** came next (see above).
+
+### Explorer fights set up in the Combat Tracker (7 October 2026)
+Harry asked whether an Explorer fight could load a map and its monsters into the Combat Tracker by itself, and chose: a battle map for each region, the party level read from the Bastion, the SRD monsters closest to each event's enemies, and the tracker reporting back (KNOWN_ISSUES EXP-34).
+- **In the Explorer:** every fight step shows the fight ready to set up:
+  - the party level (from the Bastion's saved level, read again at the moment in case the Bastion changed it in another window; level 7 if it never saved one) and the group it picks, levels 7–10 or 11–16, as the event suggests;
+  - each monster with its Armour Class and hit points;
+  - the battle map, for that kind of place and the Region;
+  - who's surprised, in the two ambushes (T2 and F1).
+- **Set up this fight in the Combat Tracker ↗** opens the tracker in a new window, ready to drag to the TV, and the fight waits there. If the tracker is already open in another window, the fight goes to it instead.
+- **In the Combat Tracker:** a pop-up offers the fight; **Load the fight**:
+  - adds the monsters to the library (once, with their initiative bonus and a D&D Beyond stat-block link) and to the encounter, in place of any monsters already there;
+  - keeps the PCs and NPCs (with none in the encounter, the library's PCs join);
+  - marks the surprised heroes Surprised for their first turn;
+  - sets the battle map, a matching 5-foot grid with Snap on, and everyone's starting places (two squares apart, so the names don't overlap).
+
+  After **Not now**, **Load the Explorer's fight** at the top of the tracker offers it again. Auto-roll Initiative uses the stat blocks' bonuses.
+- **Reporting back:** when every monster is down, the tracker says "Fight won." and the Explorer's event window says "The Combat Tracker reports: every enemy is down", with **Won** as the main button. The DM still clicks Won or Fled.
+- **The data:** `tools/explorer/data/fights-data.js` holds each fight's two groups (from the events' suggested enemies), the SRD numbers, and the battle maps with their grids and starting places. How it's written is explained at the top of the file.
+- **The battle maps were stand-ins at first** (replaced by Harry's own the same day, see above): 23 simple top-down maps drawn by code:
+  - a ford, a road and a camp for each of the 7 regions, coloured to match the Explorer's province maps;
+  - the cove below Redport (T13) and the rocks below Bleakharbour (C12).
+
+  Each was 1800 × 1200 pixels, 30 × 20 squares.
+- **Tests:**
+  - `tests/rules.html` runs 778 rules tests, all passing, 25 of them new (`tests/rules/fights.test.js`): every fight's data, every map picture, every fight in every region accepted by the tracker, loading, surprise, the report and the starting places.
+  - `tests/e2e/fights.test.js` (14 checks, all passing) clicks through the whole thing in two windows, offline: the level changed in another window, Set up, Load the fight, the Battlemap, beating every enemy, the report, Won, a tracker already open, Not now, a reload part-way and a restored backup.
+  - The earlier click-throughs still pass: phase 1 (125), phase 7 (78), phase 8 (81) and the guide (20).
+
+### After Harry's test: The Second Marker removed, and the Bastion from the weekly reminder (7 October 2026)
+Harry tested the 6 October build ("all tests passed and everything seems to be working fine") and asked for two changes.
+- **T17 The Second Marker is removed** from the Explorer's events (and its night fight with it), so the Main Campaign list has no DM events now. There are 16 travel events. An old save with it in progress, or set for tonight, simply drops it on loading; a thread it already opened stays in the Threads list for the DM.
+- **The weekly Bastion reminder** (days 8, 15, 22…) has **Open the Bastion Manager in a new window ↗**, which opens the Bastion beside the Explorer (for the TV or the laptop). The reminder stays up until it's closed, as before.
+- **Tests:** `tests/rules.html` runs 753 rules tests, all passing; `tests/e2e/phase8.test.js` has 81 checks, all passing, including the new button opening the Bastion in its own window.
+- **Harry's question** about the Explorer setting up fights in the Combat Tracker and Battlemap (a map and monsters ready to go) was answered in the session and built the same day (see above).
+
+### The Explorer's new events, a new-window option, and the DM doc (6 October 2026)
+Harry asked for three things, and answered four questions (the DM doc as a floating panel; every recommendation in his events document except T9; event gold as a saved running total; follow-ups guaranteed on their last day). Mid-build he added a fourth: remove rations from the Explorer completely.
+- **Open a tool in a new window** (KNOWN_ISSUES SUI-20):
+  - Inside a tool, every other tool in **Switch tool** has a **↗** that opens it in its own Edge window, sized to the screen, ready to drag to the TV.
+  - There's none for the tool already open, for Home, or on the home screen's menu, as those would set off the "Already open" warning.
+  - Two different tools in two windows don't warn.
+- **The DM doc** (SUI-21):
+  - **DM doc** in the top bar, on every screen, opens a floating panel over the tool. It can be dragged by its title bar, resized from its corner and closed with ✕, and the tool underneath keeps working.
+  - Its place and size are saved (and included in Back up everything).
+  - Whether it's open is remembered per window: it reopens after a tool switch, but never pops up by itself in a window on the TV.
+  - The contents are a placeholder, as asked.
+- **The Explorer's new travel and campfire events** (KNOWN_ISSUES EXP-30 to EXP-33), from Harry's document "Scarlett Isles Explorer: New Travel & Campfire Events (Draft)". Harry chose every recommendation in its "Decisions for Harry", except T9.
+  - **The events:**
+    - 17 travel events, 12 campfire events and 3 follow-ups, written into one data file, `tools/explorer/data/journey-events.js`. How an event is written is explained at the top of that file.
+    - T9 The Husk in the Furrows is written but switched off: no Rootbound creature before the Heartwood finale. Turning it on means deleting `off: true`.
+    - T17 The Second Marker was built as a DM-only event, then removed at Harry's request the next day (see 7 October).
+    - The old 601 events are switched off: no longer loaded, but kept in `data/events-data.js`.
+  - **How often:**
+    - **Travel:** once a day on the road, at a random 6 to 24 miles (as before), there's a 30% chance of a travel event, never two days running.
+    - **Make Camp:** the weather is exactly as before. Then there's a 25% chance of a campfire event, skipped after a travel event or weather that day.
+    - **Drawn like cards:** nothing repeats until a map's pool is used up.
+    - **Follow-ups:** a follow-up that's due takes the next travel event. On the last day of its window it happens whatever the roll, at that night's camp if the road didn't bring it (Harry's choice). On the wrong map, it's dropped and its thread stays.
+  - **The event window:**
+    - one step at a time;
+    - the check and its DC, who rolls, and Success, Failure or Fail by 5 or more;
+    - ticking who failed a check every hero makes;
+    - choices, fights (with a suggested enemy group, Won or Fled, and the Combat Tracker in a new window), best-of-three contests (the opponent's roll is shown), riddles and puzzles (one hint, and a DM's peek at riddle answers);
+    - a summary of what changed;
+    - the travel-pace reminder on the checks it applies to.
+
+    **Skip this event** works before anything has happened. **Keep it for later** and **Back to the event** handle a pause. An event part-way through comes back after closing Edge or switching tool, and nothing applies twice.
+  - **The travel panel:**
+    - **Gold:** the party's event gold is now saved, a running total with **Clear** (Harry's choice, EXP-32).
+    - **Active Effects:** who has what, and when it ends; ✕ removes one.
+    - **Threads:** story hooks; **Resolve** pays any reward a thread promised.
+    - **Roll an event now.**
+    - **Miles:** events can change today's 30 miles (shown as /24, /36 and so on).
+  - **Rations are gone** (EXP-31): every mention and every piece of code. Slow pace reads "+Stealth".
+- **Tests:**
+  - `tests/rules.html`: the new `explorer-journey.test.js` checks that every event's steps link up, plus pools, chances, follow-ups, each kind of step, effects, threads, gold, skipping, saving and Reset Travel.
+  - `tests/e2e/phase8.test.js`: rewritten for the new events, with a new section that plays each kind of step on screen at the laptop, full-screen and TV sizes.
+  - **Compared with the old Explorer:** the side-by-side run now covers what the events didn't change (days, miles, pace, the panel, groups, Free Move, refused moves, main events, Reset Travel). The old tool's own events are closed unanswered.
+- **Checked:**
+  - **Against Harry's document:** a check of all 33 events found 3 small slips, now fixed: C10 now covers the whole Western Province, C3 allows Help, and T9 no longer pays for a second fight.
+  - **A bug hunt** found 7 problems, all fixed and each with a test. The worst: a damaged event-in-progress record could jam the Explorer.
+- **Tests:**
+  - `tests/rules.html`: 753 rules tests, all passing.
+  - `tests/e2e/phase8.test.js`: 80 checks, all passing.
+  - `tests/e2e/phase1.test.js`: 125 checks, all passing, including the new window and the DM doc at both screen sizes.
+  - Every other click-through (phases 2–7 and 9, the guide and the War Table) passes.
 
 ### Wars, the Defend Bastion event, weather films and a fairer victory rule (4 October 2026)
 Harry asked for six things, and answered four rule questions (all the recommended options).
@@ -463,6 +570,10 @@ Harry asked for a complete rework: the old tool's shields, colours and sigils we
   - The old-save import phase removed.
 
 ## Next
+**Harry tries an Explorer fight at the table**, with the tracker's Battlemap on the TV, then says what to change. The likely things are the enemy groups or their names (in `tools/explorer/data/fights-data.js`), the starting places, and the choices listed under Open questions. **Battle maps:** Harry's 16 are in. Say if a region should use a different look (one word each in `looks`), or if a starting place sits badly on a map; more maps per place, or a rocks map for Bleakharbour, can be fitted the same way.
+
+**Harry tries the new Explorer events at the table**, then says what to change: how often they come (30% and 25%), any DC or amount (all in `tools/explorer/data/journey-events.js`), and the choices listed under Open questions. His document suggests about 25 more map-specific events, written in the same style, once he's happy with it. **The DM doc's contents are the next build**: Harry decides what it should hold.
+
 **Harry tries a war at the table.** Play a battle or two of each objective (Raid, Skirmish, Defend Bastion, Seize Outpost) on the laptop and the TV, then say what to change: any number in `tools/bastion/data/war-units-data.js` (unit stats, enemy budgets, losses, recovery, rewards), the clans' armies, the beasts' profiles, or how the enemy plays. Harry has said fuller terrain rules could be a phase 3; nothing else is planned until he decides. The kept behaviours he's most likely to want changed are listed under Open questions below, and each tool's full list is in `docs/KNOWN_ISSUES.md`.
 
 ## Open questions for Harry
@@ -479,6 +590,39 @@ Each tool's questions are needed before that tool's phase. The full wording and 
 - **Arenas (phase 6):** answered (A1–A9).
   - Three kept behaviours you're likely to notice at the table: a cancelled turn still uses up that player's go (ARN-14); the gold under the arena catches up only after the next change (ARN-25); and changing the Arena or Round list mid-round restarts it without asking (ARN-27). Say if you'd like any changed.
 - **Combat Tracker (phase 7):** answered (C1–C11).
+- **The Explorer's new events (6 October 2026): choices made for you, to change if you like:**
+  - **The Ferry Puzzle (T5)** comes only on the four maps with a river drawn on them: Midland, Northern (East), Northern (West) and Southern (West).
+  - **The Region list** chooses the province's events, and the clan, chief and temple in their words. Events tied to one map also need that map loaded, and an uploaded map gets the Region's events.
+  - **Fights:** each one suggests an enemy group for levels 7 to 16, from the 5e basic monsters (now also set up in the Combat Tracker: see the next item).
+  - C5 Listen: every hero listens; anyone not ticked as failed gains Rooted.
+  - C12: fleeing the wreckers' fight means the ship isn't saved (no thread, no Karr honour note).
+  - C8: the Exhaustion lasts until the next Make Camp (a long rest removes a level).
+  - C3: the rumour thread opens even when the tale fails ("she shares the rumour anyway"); Inspiration goes to the hero who rolled.
+  - T8: after a second wrong answer the hollow stays shut, even if everyone passes the Strength save.
+  - Sea-Chilled names two different banes (T15: Constitution saves; T16: Strength and Dexterity checks), as in the document.
+  - C2: a plain failure to cheat means a normal game, no advantage.
+  - C11 "camped near the shore" and the "near Redport / Wolfhaven / Slade's Muster" events aren't checked by the tool: they can come up anywhere on their map.
+  - Fights the document gives no reward for (T13 after a failed "Demand a cut", C9, C10 keep watch) pay nothing extra; Fled gives nothing.
+  - The bane names Strained (T18) and Slept Badly (C5) are mine; the document didn't name them.
+  - **"Roll an event now":** a campfire event drawn while the party is on the road waits for tonight's camp. A travel event drawn by hand counts as that day's travel event.
+  - **Follow-up windows:** F1 is days 1 to 3 after T1, F2 is exactly 7 days after T14, and F3 is days 2 to 5 after C12. If something else takes the camp on a follow-up's last day, it waits one more day.
+  - **The old "Funnel" tag** was the old events' type label: a Funnel event offered several choices that narrowed to one outcome, and an Instant one had a single Continue. The new events show their skills line instead (for example "Insight, then Intimidation, Stealth or Persuasion").
+  - **Lore marked ⚑ in your document** is built as written: the Wardens as road-keepers (T1), what each god's blessing does, and the heartbeat vision (C5, described by the DM). T9 waits, switched off, until Rootbound creatures can appear before the finale.
+- **Explorer fights in the Combat Tracker (7 October 2026): choices made for you, to change if you like:**
+  - **Names:** where an event names someone, the token does too, with the closest SRD stat block: the Debt Collector (a Spy, C9), the Old Wolf (a Dire Wolf, C6), the Raider Chief (a Gladiator, C10) and the two Toll-men (Thugs, F1). The rest use the SRD names (Bandit, Veteran and so on).
+  - **The Rootbound Husk** (T9, switched off) has the Heartwood Ritual's 35 hit points, and no Armour Class or initiative bonus, because the Ritual gives none.
+  - **Which map:** T2 at the ford; F1, and C10's ride through the night, on the road (or in the cove, near the sea: Harry's choice); C6, C9 and C10's keeping watch at the camp; T13 and C12 in the cove; T9 on the road.
+  - **Which look:** the Northern Province uses the green look with Midland and the East (Telluria's lands); the misty look, with its dark pines, could suit Nightwood's country instead. The East Isle is misty (Greymyr); the North Isle cold.
+  - **Rivers and coast:** "near" is 2 hexes (12 miles), chosen so every port town counts as coastal; T2 uses the position of the hero who just moved (or the selected hero, for Roll an event now).
+  - **Where they start:** the pack circles the camp in C6; the debt collector and his friends are already by the fire in C9; the raiders come from the west in C10's keeping watch; the T2 ambushers wait across the ford and in the woods on both banks.
+  - **Loading a fight** replaces only the monsters: the PCs and NPCs stay, with their hit points, and everyone's initiative is cleared.
+  - **Surprised heroes** are matched to the tracker's PCs by name. "Kaelen" finds "Kaelen" or "Kaelen Ashford"; a hero with no PC of that name is listed so you can mark them by hand.
+  - **The report** comes when every monster in the encounter is down, including any you added yourself, and only once.
+  - **Snap:** loading a fight turns the grid and Snap on, and sets tokens to one square wide. Tokens sit on grid corners, as Snap puts them.
+- **The DM doc (6 October 2026):**
+  - **Where it first opens:** near the top right, where it covers some of a tool's buttons until moved.
+  - **Full screen:** it isn't shown inside a tool's own full-screen view, such as the Explorer's map on the TV.
+  - **The next build:** say what it should hold. Two windows can be open at once, so its contents will need a guard against two windows saving over each other.
 - **Explorer (phase 8):** answered (E1–E16: all the defaults).
   - E16: the pins turned out to have been placed in the Explorer's full-screen view, not a maximised window, and were converted that way. Please double-click `tests/pin-check.html` and check all 33 sit on their towns; tell the next session about any that don't.
   - Kept behaviours you're likely to notice: the Fog of War button reads Off after reopening (EXP-19); the Region list doesn't follow the loaded map (EXP-20); and pressing Resolve with an empty roll box counts as a roll of 0 (EXP-28). Say if you'd like any changed.
@@ -508,6 +652,12 @@ Each tool's questions are needed before that tool's phase. The full wording and 
   - Kept behaviours from phase 2 you may notice are in `docs/KNOWN_ISSUES.md` BAS-49: one battle-map picture shared by all battles, guards sometimes in front of a marker and sometimes behind, a battlefield width with no painting of its own, the small letters on tokens, and a very quick second Confirm being ignored.
 
 ## Notes for future sessions
+- **Explorer fights → Combat Tracker (7 October 2026).**
+  - **The data:** fights are in `tools/explorer/data/fights-data.js`; a fight step names one with `encounter` (and `surprise: 'failed'` for an ambush). `tools/explorer/fights.js` builds the hand-off; `tools/encounter/rules.js` (`handoffProblem`, `loadHandoff`, `handoffWon`, `startPositions`, `handoffVtt`) loads it.
+  - **How the windows talk:** each window has its own copy of the saves, read when it opens, so the two windows talk through `TSI.handoff` (`shared/js/handoff.js`): small messages in the browser's shared storage, heard by the other window at once. `TSI.store.fresh(key)` reads another tool's save as it is now.
+  - **The battle maps:** Harry's art, named `<setting>-<look>.png` (`ford`, `camp`, `cove`, `road` × `green`, `warm`, `cold`, `misty`). The starting places and avoid areas in the data file are set for these layouts on a 24 × 18 grid; a new picture with a different layout needs them set again. The Battlemap accepts a saved map path only inside `tools/encounter/assets/battlemaps/` (`isBundledMap`).
+  - **Tests:** `tests/rules/fights.test.js` and `tests/e2e/fights.test.js`.
+  - **Rivers and coast:** `tools/explorer/data/terrain-data.js` is made by `docs/dev/make-terrain.py` (Python with Pillow, NumPy and SciPy). If a map picture changes, or a mark is wrong, add a correction to the script's FIXES and run it again. An event can ask for `near: 'river'` or `near: 'coast'` in its `where`, and a fight for a `coast` setting.
 - **The Clan Crest Creator (reworked).** Shield outlines are in `tools/crest/data/shields.js`, exactly as Heraldicon drew them in their own units; `geometry.js` scales them into the picture, finds each shape's balance point, and fits a sigil inside the rim. Sigils are in `tools/crest/data/sigils.js`: public-domain heraldic drawings traced into four layers of outlines (body, accent, white, lines), 1000 units on their longer side. They're made by the scripts in `tools/crest/dev/` (see its README); to change or add one, edit its settings in `sigils.tsv` and rebuild, rather than editing the data file by hand. The rules tests check every sigil fits every shield. Colours and schemes are in `data/crest-data.js`; the tests check every scheme uses named colours and keeps the rule of tincture.
 - **Old code:** re-clone the old repos into `_legacy/` if they're missing (the links are in handover section 16). Download the Ritual films from the release.
 - **Testing:** the sandbox's Playwright Chromium can't play MP4s, and it can't reach the Firebase database or the shop. Put those checks on Harry's Edge checklist.

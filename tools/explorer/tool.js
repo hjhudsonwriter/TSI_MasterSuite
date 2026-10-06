@@ -4,6 +4,12 @@
    maps, travel and campfire events, weather, main campaign events and the
    weekly Bastion prompt.
 
+   Harry's new travel and campfire events (6 October 2026) run in a
+   step-by-step event window (openJourney below; the rules are in
+   journey.js). The travel panel gains the party's event gold (saved, with
+   Clear), Active Effects and Threads, and the DM's Roll an event now and
+   Skip this event. Rations are gone.
+
    Layout: the map in the middle, the map controls on the left and the travel
    panel on the right, so a 4:3 map gets the whole height of the laptop.
    Fullscreen takes all three to the screen (for the TV); Hide UI (or H)
@@ -23,8 +29,11 @@
       var el = TSI.el;
       var life = ctx.life;
       var R = ns.rules;
+      var J = ns.journey;
       var DATA = window.TSI_DATA.explorer;
-      var EVENTS = window.TSI_DATA.explorerEvents;
+      var JDEFS = window.TSI_DATA.journeyEvents;
+      var F = ns.fights;
+      var FDATA = window.TSI_DATA.fights;
       function rand() { return Math.random(); }
 
       /* ---------- Saves ---------- */
@@ -37,7 +46,7 @@
         return v;
       }
       var saved = load('save', R.isSave);
-      var state = saved ? R.fromSave(TSI.clone(saved), DATA) : R.defaultState(DATA);
+      var state = saved ? R.fromSave(TSI.clone(saved), DATA, JDEFS) : R.defaultState(DATA);
       var upload = load('mapImage', R.isMapImage);
       if (state.mapUploadKey && (!upload || upload.key !== state.mapUploadKey)) {
         state.mapUploadKey = null;
@@ -137,31 +146,46 @@
       var dayLabel = el('strong', { class: 'tsi-exp-day', text: 'Day 1', 'data-test': 'day' });
       var milesUsedEl = el('strong', { text: '0', 'data-test': 'miles' });
       var milesLeftEl = el('strong', { text: '30', 'data-test': 'miles-left' });
+      var milesLimitEl = el('span', { text: '30', 'data-test': 'miles-limit' });
       var modeEl = el('strong', { text: '—', 'data-test': 'mode' });
       var effectsEl = el('span', { class: 'tsi-exp-effects', text: '—', 'data-test': 'effects' });
       var goldEl = el('strong', { text: '0', 'data-test': 'gold' });
+      var effectsList = el('div', { class: 'tsi-exp-list', 'data-test': 'effects-list' });
+      var threadsList = el('div', { class: 'tsi-exp-list', 'data-test': 'threads-list' });
+      var btnRollNow = btn('Roll an event now', rollEventNow, '', 'roll-now');
       var noticeEl = el('p', { class: 'tsi-exp-notice', role: 'status', 'data-test': 'notice' });
       var pills = el('div', { class: 'tsi-exp-pills' });
       var btnFreeMove = btn('Free Move: OFF', toggleFreeMove, '', 'free-move');
+      /* Any DM-only events (kind 'dm', none at present) are queued from here too, never drawn at random. */
+      var dmEvents = J.dmEvents(JDEFS);
       var mainSelect = el('select', { class: 'tsi-input tsi-exp-select', 'aria-label': 'Main campaign event', 'data-test': 'main-select' }, [el('option', { value: '', text: 'Force Main Campaign Event…' })].concat(
-        DATA.mainEvents.map(function (ev) { return el('option', { value: ev.id, text: ev.title }); })
+        DATA.mainEvents.map(function (ev) { return el('option', { value: ev.id, text: ev.title }); }),
+        dmEvents.length ? [el('optgroup', { label: 'DM events' }, dmEvents.map(function (ev) {
+          return el('option', { value: 'dm:' + ev.id, text: ev.code + ' ' + ev.title });
+        }))] : []
       ));
       var btnCamp = el('button', { type: 'button', class: 'tsi-btn tsi-btn--primary tsi-exp-camp', 'data-test': 'camp' }, 'Make Camp');
 
       var travel = el('aside', { class: 'tsi-exp-side tsi-exp-travel', 'aria-label': 'Travel' }, [
         el('h2', { class: 'tsi-exp-section-title tsi-exp-travel-title', text: 'Travel' }),
         el('p', { class: 'tsi-exp-line' }, [dayLabel]),
-        el('p', { class: 'tsi-exp-line' }, ['Miles (selected): ', milesUsedEl, '/30 • Remaining: ', milesLeftEl]),
+        el('p', { class: 'tsi-exp-line' }, ['Miles (selected): ', milesUsedEl, '/', milesLimitEl, ' • Remaining: ', milesLeftEl]),
         el('p', { class: 'tsi-exp-line' }, [el('span', { class: 'tsi-exp-muted', text: 'Mode: ' }), modeEl]),
-        el('p', { class: 'tsi-exp-line' }, [el('span', { class: 'tsi-exp-muted', text: 'Effects: ' }), effectsEl]),
-        el('p', { class: 'tsi-exp-line' }, [el('span', { class: 'tsi-exp-muted', text: 'Gold: ' }), goldEl]),
+        el('p', { class: 'tsi-exp-line' }, [el('span', { class: 'tsi-exp-muted', text: 'Pace effects: ' }), effectsEl]),
+        el('p', { class: 'tsi-exp-line tsi-exp-goldline' }, [
+          el('span', { class: 'tsi-exp-muted', text: 'Gold: ' }), goldEl,
+          btn('Clear', clearGold, 'tsi-exp-mini', 'gold-clear')
+        ]),
         noticeEl,
         pills,
         btnCamp,
         row([btnFreeMove, btn('Reset Travel', resetTravel, '', 'reset-travel')]),
+        row([btnRollNow]),
         section('Main campaign', [
           row([mainSelect, btn('Queue', queueMainEvent, '', 'queue')], 'tsi-exp-row--select')
-        ])
+        ]),
+        section('Active Effects', [effectsList]),
+        section('Threads', [threadsList])
       ]);
 
       var wrap = el('div', { class: 'tsi-exp-wrap' }, [controls, stage, travel]);
@@ -301,26 +325,32 @@
 
       function updateTravelUI() {
         var focus = R.focusToken(state, focusId);
-        var used = R.milesShown(focus);
+        var limit = R.dayLimit(state);
+        var used = R.milesShown(focus, limit);
         dayLabel.textContent = 'Day ' + (state.travel.day || 1);
         milesUsedEl.textContent = String(used);
-        milesLeftEl.textContent = String(R.DAY_MILES - used);
+        milesLimitEl.textContent = String(limit);
+        milesLeftEl.textContent = String(Math.max(0, limit - used));
         var mode = R.travelMode(used);
         modeEl.textContent = mode.mode;
         effectsEl.textContent = mode.effects;
-        goldEl.textContent = String(state.trackers.gold || 0);
+        goldEl.textContent = String(state.journey.gold || 0);
         TSI.clear(pills);
         state.tokens.forEach(function (t) {
-          var u = R.milesShown(t);
+          var u = R.milesShown(t, limit);
           pills.appendChild(el('button', {
             type: 'button',
-            class: 'tsi-exp-pill' + (t.id === focusId ? ' tsi-exp-pill--focus' : '') + (u >= R.DAY_MILES ? ' tsi-exp-pill--done' : ''),
+            class: 'tsi-exp-pill' + (t.id === focusId ? ' tsi-exp-pill--focus' : '') + (u >= limit ? ' tsi-exp-pill--done' : ''),
             title: t.name,
             'aria-pressed': t.id === focusId ? 'true' : 'false',
             dataset: { id: t.id },
             onclick: function () { focusId = t.id; updateTravelUI(); }
-          }, [t.initial + ' ', el('strong', { text: String(u) }), '/30']));
+          }, [t.initial + ' ', el('strong', { text: String(u) }), '/' + limit]));
         });
+        btnRollNow.textContent = state.journey.current ? 'Back to the event' : 'Roll an event now';
+        btnRollNow.classList.toggle('tsi-exp-on', !!state.journey.current);
+        renderEffects();
+        renderThreads();
       }
 
       function setOn(button, on) {
@@ -664,7 +694,7 @@
       function endDrag() {
         if (!drag) return;
         var d = drag;
-        var res = R.finishMove(state, DATA, EVENTS, d, board, rand);
+        var res = R.finishMove(state, DATA, JDEFS, d, board, rand);
         drag = null;
         if (res.result === 'free') {
           setNotice('Free Move: repositioned without spending miles.');
@@ -675,13 +705,13 @@
         if (res.result === 'tooFar') {
           /* Nobody moves; the fog it uncovered stays uncovered (E13). */
           R.undoDrag(state, d);
-          setNotice('Too far. One or more heroes would exceed 30 miles. Make Camp to reset.');
+          setNotice('Too far. One or more heroes would exceed ' + R.dayLimit(state) + ' miles. Make Camp to reset.');
           renderAll();
           return;
         }
         if (res.result === 'moved') {
           focusId = d.anchorId;
-          if (res.tired) setNotice(R.token(state, d.anchorId).initial + ' has reached 30 miles. Make Camp to reset.');
+          if (res.tired) setNotice(R.token(state, d.anchorId).initial + ' has reached ' + R.dayLimit(state) + ' miles. Make Camp to reset.');
         }
         saveNow();
         renderAll();
@@ -698,7 +728,7 @@
         setNotice(state.freeMove ? 'Free Move enabled: miles/events paused.' : 'Free Move disabled.');
       }
       function resetTravel() {
-        ask('Reset travel back to Day 1 and clear miles for ALL heroes?').then(function (ok) {
+        ask('Reset travel back to Day 1 and clear miles for ALL heroes? Active Effects and Threads stay, counted from the new Day 1.').then(function (ok) {
           if (!ok) return;
           R.resetTravel(state);
           setNotice('');
@@ -715,7 +745,12 @@
       /* Make Camp: the night's pop-ups show one after another (EXP-01), and
          a double click, Enter or Space can't camp twice (EXP-02). */
       var makeCamp = TSI.oneAtATime(function () {
-        var queue = R.makeCamp(state, DATA, EVENTS, rand);
+        /* An event left open waits to be finished first, so the day can't move on under it. */
+        if (state.journey.current) {
+          setNotice('Finish or end the event in progress before you make camp.');
+          return showEvents([{ kind: 'journey' }]);
+        }
+        var queue = R.makeCamp(state, DATA, JDEFS, rand);
         saveNow();
         setNotice('');
         updateTravelUI();
@@ -727,6 +762,7 @@
       function queueMainEvent() {
         var id = String(mainSelect.value || '').trim();
         if (!id) { note('Select a Main Campaign event first.'); return; }
+        if (id.indexOf('dm:') === 0) { startDmEvent(id.slice(3)); return; }
         var ev = R.mainEvent(DATA, id);
         if (!ev) return;
         showEvents([{ kind: 'main', event: ev }]);
@@ -743,6 +779,7 @@
         items.forEach(function (item) {
           chain = chain.then(function () {
             if (!life.alive) return null;
+            if (item.kind === 'journey') return openJourney();
             return item.kind === 'weather' ? openWeather(item) : openEvent(item.kind, item.event);
           }).catch(function (err) {
             /* One broken pop-up mustn't stop the rest of the night's pop-ups. */
@@ -804,7 +841,7 @@
           parts.prompt.hidden = true;
           var choices = step && Array.isArray(step.choices) ? step.choices : [];
           if (!choices.length) { setChoices([closer()]); return; }
-          setChoices(choices.map(function (ch) {
+          var buttons = choices.map(function (ch) {
             return choiceButton((ch && ch.label) || 'Continue', function () {
               if (ch && ch.next) { renderStep(String(ch.next)); return; }
               if (ch && ch.outcome) {
@@ -816,7 +853,21 @@
               }
               api.close('close');
             }, shownAt);
-          }));
+          });
+          /* The weekly Bastion reminder can open the Bastion Manager in its
+             own window (Harry, 7 October 2026), and stays open itself. */
+          if (event === DATA.bastionPrompt && TSI.shell && typeof TSI.shell.openWindow === 'function') {
+            var opener = choiceButton('Open the Bastion Manager in a new window ↗', function () {
+              if (opener.disabled) return;
+              opener.disabled = true;
+              TSI.shell.openWindow('bastion');
+              setNotice('The Bastion Manager opened in a new window.');
+              life.setTimeout(function () { opener.disabled = false; }, 1500);
+            }, shownAt);
+            opener.setAttribute('data-test', 'open-bastion');
+            buttons.push(opener);
+          }
+          setChoices(buttons);
         }
         return TSI.modal.open({
           title: R.eventMeta(DATA, state, kind, event),
@@ -904,6 +955,498 @@
         });
       }
 
+      /* ---------- Harry's new events: the panel's lists ---------- */
+      function renderEffects() {
+        TSI.clear(effectsList);
+        var list = state.journey.effects;
+        if (!list.length) { effectsList.appendChild(el('p', { class: 'tsi-exp-empty', text: 'None.' })); return; }
+        var today = Number(state.travel.day) || 1;
+        list.forEach(function (e) {
+          effectsList.appendChild(el('div', { class: 'tsi-exp-item', 'data-test': 'effect' }, [
+            el('div', { class: 'tsi-exp-item__body' }, [
+              el('div', { class: 'tsi-exp-item__name' }, [el('strong', { text: e.name }), ' · ' + e.whoName]),
+              e.text ? el('div', { class: 'tsi-exp-item__text', text: e.text }) : null,
+              el('div', { class: 'tsi-exp-item__meta', text: J.untilText(e, today) + (e.from ? ' · from ' + e.from : '') })
+            ]),
+            el('button', {
+              type: 'button', class: 'tsi-btn tsi-btn--small tsi-exp-mini', title: 'Remove ' + e.name,
+              'aria-label': 'Remove ' + e.name + ' (' + e.whoName + ')', 'data-test': 'effect-remove',
+              onclick: function () { removeEffect(e); }
+            }, '✕')
+          ]));
+        });
+      }
+      function removeEffect(e) {
+        ask('Remove ' + e.name + ' (' + e.whoName + ')?', 'Remove').then(function (ok) {
+          if (!ok || !J.removeEffect(state, e.id)) return;
+          saveNow();
+          updateTravelUI();
+          setNotice('Removed ' + e.name + ' (' + e.whoName + ').');
+        });
+      }
+      function renderThreads() {
+        TSI.clear(threadsList);
+        var list = state.journey.threads;
+        if (!list.length) { threadsList.appendChild(el('p', { class: 'tsi-exp-empty', text: 'None.' })); return; }
+        list.forEach(function (t) {
+          var due = J.threadDueText(t);
+          threadsList.appendChild(el('div', { class: 'tsi-exp-item', 'data-test': 'thread' }, [
+            el('div', { class: 'tsi-exp-item__body' }, [
+              el('div', { class: 'tsi-exp-item__name' }, el('strong', { text: t.name })),
+              t.note ? el('div', { class: 'tsi-exp-item__text', text: t.note }) : null,
+              el('div', { class: 'tsi-exp-item__meta', text: 'Day ' + t.day + (t.from ? ' · from ' + t.from : '') + (due ? ' · ' + due : '') })
+            ]),
+            el('button', {
+              type: 'button', class: 'tsi-btn tsi-btn--small tsi-exp-mini', title: 'Mark ' + t.name + ' resolved',
+              'data-test': 'thread-resolve', onclick: function () { resolveThread(t); }
+            }, 'Resolve')
+          ]));
+        });
+      }
+      function resolveThread(t) {
+        var lines = J.resolveLines(t);
+        var msg = 'Mark ' + t.name + ' resolved? It leaves the Threads list.' + (lines.length ? '\n\nResolving it: ' + lines.join(' ') : '');
+        ask(msg, 'Resolve').then(function (ok) {
+          if (!ok) return;
+          var res = J.resolveThread(state, t.id);
+          if (!res) return;
+          saveNow();
+          updateTravelUI();
+          setNotice('Resolved ' + t.name + (res.lines.length ? ': ' + res.lines.join(' ') : '.'));
+        });
+      }
+      function clearGold() {
+        var g = Number(state.journey.gold) || 0;
+        if (!g) { note('The party\'s event gold is already 0.'); return; }
+        ask('Set the party\'s event gold (' + g + ') back to 0? Do this once you\'ve moved it onto the players\' sheets.', 'Clear').then(function (ok) {
+          if (!ok) return;
+          J.clearGold(state);
+          saveNow();
+          updateTravelUI();
+          setNotice('Party gold cleared (was ' + g + ').');
+        });
+      }
+
+      /* ---------- Harry's new events: starting one by hand ---------- */
+      function rollEventNow() {
+        if (state.journey.current) { showEvents([{ kind: 'journey' }]); return; }
+        TSI.modal.open({
+          title: 'Roll an event now',
+          message: 'Draw an event from this map\'s pool now, whatever the dice say. A campfire event drawn while the party is on the road waits for tonight\'s camp.',
+          actions: [{ label: 'Cancel', value: null }, { label: 'Campfire event', value: 'camp' }, { label: 'Travel event', value: 'travel', primary: true }],
+          escValue: null
+        }).then(function (kind) {
+          if (!kind || !life.alive || state.journey.current) return;
+          var focus = R.focusToken(state, focusId);
+          var ctx = J.context(state, JDEFS, focus ? { x: focus.x, y: focus.y } : null);
+          /* A campfire event while the day is under way (someone has moved
+             today) belongs to tonight's camp: it comes at Make Camp, in
+             place of the night's own roll. */
+          var underWay = state.tokens.some(function (t) { return (Number(t.milesUsed) || 0) > 0; });
+          if (kind === 'camp' && underWay && state.journey.tonight) { note('Tonight\'s camp already has an event waiting.'); return; }
+          var it = J.rollNow(state, JDEFS, ctx, kind, rand);
+          if (!it) { note('There are no ' + (kind === 'camp' ? 'campfire' : 'travel') + ' events for this map and region.'); return; }
+          if (kind === 'camp' && underWay) {
+            state.journey.tonight = { event: it.event.id };
+            saveNow();
+            setNotice(it.event.code + ' ' + it.event.title + ' will come at tonight\'s camp.');
+            return;
+          }
+          J.begin(state, JDEFS, it, ctx, rand);
+          saveNow();
+          updateTravelUI();
+          showEvents([{ kind: 'journey' }]);
+        });
+      }
+      function startDmEvent(id) {
+        var ev = J.def(JDEFS, id);
+        if (!ev) return;
+        if (state.journey.current) { note('Finish the event in progress first.'); showEvents([{ kind: 'journey' }]); return; }
+        var ctx = J.context(state, JDEFS);
+        J.begin(state, JDEFS, { kind: 'dm', event: ev }, ctx, rand);
+        saveNow();
+        updateTravelUI();
+        setNotice('DM event: ' + ev.code + ' ' + ev.title + '.');
+        showEvents([{ kind: 'journey' }]);
+      }
+
+      /* ---------- Harry's new events: the event window ----------
+         One step at a time: the story, then the check to make (the players
+         roll at the table and the DM clicks Success or Failure), a choice,
+         a fight, a contest, a riddle or puzzle; and at the end, what
+         changed. Every change is applied and saved as it happens, so
+         closing Edge, switching tool or a reload picks the event up again
+         at the same step, and nothing applies twice. */
+      /* ---------- Fights set up in the Combat Tracker ---------- */
+      /* (Harry, 7 October 2026.) "Set up this fight" hands the fight to the
+         Combat Tracker (fights.js builds it, TSI.handoff carries it), opening
+         the tracker in a new window unless it's already open in one. The
+         party's level is the Bastion's, read again from the saves in case
+         the Bastion changed it in another window. When the tracker reports
+         every enemy down, the event window says so and points at Won. */
+      var levelInfo = F.partyLevel(TSI.store.get('tsi.bastion.state', null), FDATA);
+      var levelAskedAt = 0;
+      var journeyRefresh = null;   /* re-draws the event window while it's open */
+      function checkLevel() {
+        if (Date.now() - levelAskedAt < 3000) return;
+        levelAskedAt = Date.now();
+        TSI.store.fresh('tsi.bastion.state', null).then(function (saved) {
+          if (!life.alive) return;
+          var li = F.partyLevel(saved, FDATA);
+          if (li.level === levelInfo.level && li.fromBastion === levelInfo.fromBastion) return;
+          levelInfo = li;
+          if (journeyRefresh) journeyRefresh();
+        });
+      }
+      /* The fight is over, or its event is: the hand-off and its report go. */
+      function forgetFight(id) {
+        if (!id) return;
+        TSI.handoff.clear('fight', id);
+        TSI.handoff.clear('result', id);
+      }
+      function fightIdNow() {
+        var cur = state.journey.current;
+        return cur && typeof cur.vars.fightId === 'string' ? cur.vars.fightId : null;
+      }
+      TSI.handoff.listen(life, 'result', function () { if (journeyRefresh) journeyRefresh(); });
+      /* A fight (or its report) left waiting by an event that isn't the one
+         on now (a restored backup, say) is cleared, so the Combat Tracker
+         stops offering it. */
+      ['fight', 'result'].forEach(function (kind) {
+        var h = TSI.handoff.read(kind);
+        if (h && h.id !== fightIdNow()) TSI.handoff.clear(kind, h.id);
+      });
+
+      var journeyOpen = false;
+      function openJourney() {
+        if (!state.journey.current || journeyOpen) return Promise.resolve(null);
+        journeyOpen = true;
+        var api = null;
+        var shown = 0;
+        var finished = false;
+        var heading = el('h3', { class: 'tsi-exp-event-title', tabindex: '-1', 'data-test': 'journey-title' });
+        var sub = el('p', { class: 'tsi-exp-journey-line', 'data-test': 'journey-line' });
+        var textBox = el('div', { class: 'tsi-exp-event-desc tsi-exp-journey-text', 'data-test': 'journey-text' });
+        var verseBox = el('blockquote', { class: 'tsi-exp-verse', hidden: true, 'data-test': 'journey-verse' });
+        var dmNoteBox = el('p', { class: 'tsi-exp-tip', hidden: true });
+        var act = el('div', { class: 'tsi-exp-journey-act', 'data-test': 'journey-act' });
+        var changesBox = el('div', { class: 'tsi-exp-changes', hidden: true, 'data-test': 'journey-changes' });
+        var skipBtn = el('button', { type: 'button', class: 'tsi-btn', 'data-test': 'skip-event', title: 'Put this event back in the pool, as if it never came up' }, 'Skip this event');
+
+        function paceKey() {
+          var f = R.focusToken(state, focusId);
+          return R.travelMode(R.milesShown(f, R.dayLimit(state))).key;
+        }
+        function ready() { return Date.now() - shown >= 350; }
+        function doAct(action) {
+          if (!ready()) return;
+          if (!J.act(state, JDEFS, action, rand)) return;
+          saveNow();
+          updateTravelUI();
+          safeRender();
+        }
+        /* If a step can't be drawn (a damaged save, say), the event is ended
+           rather than leaving a broken window that comes back every time. */
+        function safeRender() {
+          try { render(); } catch (err) {
+            TSI.reportError(err, 'an Explorer event');
+            if (api) api.close('broken');
+          }
+        }
+        function button(label, fn, cls, test) {
+          return el('button', { type: 'button', class: 'tsi-btn' + (cls ? ' ' + cls : ''), 'data-test': test || null, onclick: fn }, label);
+        }
+        function buttons(list) { return el('div', { class: 'tsi-exp-btnrow' }, list); }
+        function tip(text, cls) { return el('p', { class: 'tsi-exp-tip' + (cls ? ' ' + cls : ''), text: text }); }
+        function heroSelect(selectedId, label, onChange) {
+          var sel = el('select', { class: 'tsi-input tsi-exp-select tsi-exp-herosel', 'aria-label': label, 'data-test': 'hero-select' }, state.tokens.map(function (t) {
+            return el('option', { value: t.id, text: t.name });
+          }));
+          sel.value = R.token(state, selectedId) ? selectedId : (R.token(state, focusId) ? focusId : (state.tokens[0] ? state.tokens[0].id : ''));
+          if (onChange) sel.addEventListener('change', onChange);
+          return { node: el('label', { class: 'tsi-exp-field tsi-exp-field--inline' }, [el('span', { text: label }), sel]), sel: sel };
+        }
+        function checkLine(label) {
+          return el('p', { class: 'tsi-exp-check', 'data-test': 'check-line' }, [el('span', { class: 'tsi-exp-check__tag', text: 'Check' }), el('strong', { text: label })]);
+        }
+
+        function fightList(items) {
+          if (items.length < 2) return items.join('');
+          return items.slice(0, -1).join(', ') + ' and ' + items[items.length - 1];
+        }
+        function setUpFight(v) {
+          if (!ready()) return;
+          var cur = state.journey.current;
+          var ev = cur ? J.def(JDEFS, cur.id) : null;
+          if (!ev) return;
+          var region = cur.ctx.region || state.travel.provinceId;
+          var id = 'fight-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+          var h = F.build(FDATA, {
+            encounter: v.fight.encounter, region: region, regionName: R.provinceLabel(DATA, region), levelInfo: levelInfo, near: cur.ctx.near,
+            event: { id: ev.id, code: ev.code, title: ev.title, step: cur.step, day: cur.day },
+            surprised: v.fight.surprised, id: id, at: new Date().toISOString()
+          });
+          if (!h) return;
+          if (!TSI.handoff.write('fight', h)) {
+            TSI.notify('The browser wouldn\'t pass the fight on. Set it up in the Combat Tracker by hand, from the suggested enemies.', { type: 'warn', title: 'Couldn\'t send the fight.', id: 'tsi-exp-fight-sent' });
+            return;
+          }
+          var before = cur.vars.fightId;
+          if (before && before !== id) TSI.handoff.clear('result', before);
+          J.markFight(state, JDEFS, id);
+          saveNow();
+          if (TSI.tabGuard && TSI.tabGuard.isOpenElsewhere('encounter')) {
+            TSI.notify('The Combat Tracker is already open in another window: the fight is waiting there. Choose Load the fight.', { type: 'ok', title: 'Fight sent.', id: 'tsi-exp-fight-sent', timeout: 9000 });
+          } else {
+            TSI.shell.openWindow('encounter');
+          }
+          safeRender();
+        }
+        function fightResult(v, result) {
+          if (!ready()) return;
+          var id = v.fight.sentId;
+          doAct({ type: 'fight', step: v.step, result: result });
+          if (id && fightIdNow() !== id) forgetFight(id);
+        }
+
+        function render() {
+          if (!life.alive) return;
+          var v = J.view(state, JDEFS, paceKey());
+          if (!v) return;
+          var cur = state.journey.current;
+          api.title.textContent = v.kindLabel + ' • ' + R.provinceLabel(DATA, cur.ctx.region || state.travel.provinceId) + ' • ' + v.code;
+          heading.textContent = v.title;
+          sub.textContent = v.line;
+          sub.hidden = !v.line;
+          textBox.textContent = v.text || '';
+          TSI.clear(verseBox);
+          verseBox.hidden = !v.verse;
+          if (v.verse) v.verse.forEach(function (line) { verseBox.appendChild(el('span', { class: 'tsi-exp-verse__line', text: line })); });
+          dmNoteBox.textContent = v.dmNote ? 'DM: ' + v.dmNote : '';
+          dmNoteBox.hidden = !v.dmNote;
+          skipBtn.hidden = !v.canSkip;
+
+          TSI.clear(act);
+          var parts = [];
+          if (v.answer && v.type !== 'puzzle') parts.push(el('p', { class: 'tsi-exp-answer', 'data-test': 'answer' }, [el('strong', { text: 'The answer: ' }), v.answer]));
+
+          if (v.type === 'check') {
+            var c = v.check;
+            parts.push(checkLine(c.label));
+            if (c.whoText) parts.push(tip(c.whoText));
+            var hs = null;
+            if (c.who === 'one') { hs = heroSelect(v.hero, 'Who rolls?'); parts.push(hs.node); }
+            if (c.who === 'same' && v.heroName) parts.push(tip(v.heroName + ' rolls.'));
+            if (c.adv) parts.push(tip(c.adv, 'tsi-exp-tip--note'));
+            if (c.pace) parts.push(tip(c.pace, 'tsi-exp-tip--note'));
+            var result = function (r) { return function () { doAct({ type: 'check', step: v.step, result: r, hero: hs ? hs.sel.value : null }); }; };
+            parts.push(buttons([
+              button('Success', result('success'), '', 'check-success'),
+              button('Failure', result('failure'), '', 'check-failure'),
+              c.failBy5 ? button('Fail by 5 or more', result('failBy5'), '', 'check-failby5') : null
+            ]));
+          } else if (v.type === 'each') {
+            var ec = v.check;
+            parts.push(checkLine(ec.label));
+            parts.push(tip(ec.whoText));
+            if (ec.pace) parts.push(tip(ec.pace, 'tsi-exp-tip--note'));
+            var boxes = ec.among.map(function (id) {
+              var t = R.token(state, id);
+              var box = el('input', { type: 'checkbox', value: id, 'data-test': 'failed-' + id });
+              return { box: box, node: el('label', { class: 'tsi-exp-failed' }, [box, el('span', { text: (t ? t.name : id) + ' failed' })]) };
+            });
+            parts.push(el('div', { class: 'tsi-exp-failedlist' }, boxes.map(function (b) { return b.node; })));
+            parts.push(tip('Leave everyone unticked if they all succeeded.'));
+            parts.push(buttons([button('Continue', function () {
+              doAct({ type: 'each', step: v.step, failed: boxes.filter(function (b) { return b.box.checked; }).map(function (b) { return b.box.value; }) });
+            }, 'tsi-btn--primary', 'each-continue')]));
+          } else if (v.type === 'choices') {
+            parts.push(el('div', { class: 'tsi-exp-choices' }, v.choices.map(function (ch) {
+              return button(ch.label, function () { doAct({ type: 'choose', step: v.step, index: ch.index }); }, 'tsi-exp-choice', 'choice-' + ch.index);
+            })));
+          } else if (v.type === 'next') {
+            parts.push(buttons([button('Continue', function () { doAct({ type: 'next', step: v.step }); }, 'tsi-btn--primary', 'next')]));
+          } else if (v.type === 'fight') {
+            parts.push(el('p', { class: 'tsi-exp-check' }, [el('span', { class: 'tsi-exp-check__tag', text: 'Fight' }), el('strong', { text: 'Run it in the Combat Tracker, then say how it went.' })]));
+            if (v.fight.suggest) parts.push(tip('Suggested enemies: ' + v.fight.suggest));
+            var shell = TSI.shell;
+            var canOpen = !!(shell && typeof shell.openWindow === 'function');
+            var region = cur.ctx.region || state.travel.provinceId;
+            var prev = v.fight.encounter ? F.preview(FDATA, v.fight.encounter, region, levelInfo, cur.ctx.near) : null;
+            var report = v.fight.sentId ? TSI.handoff.read('result') : null;
+            var reportedWon = !!(report && report.id === v.fight.sentId && report.result === 'won');
+            if (prev) {
+              checkLevel();
+              parts.push(el('div', { class: 'tsi-exp-fightsetup', 'data-test': 'fight-setup' }, [
+                el('p', { class: 'tsi-exp-tip', 'data-test': 'fight-level', text: 'Party level ' + prev.level + (prev.fromBastion ? ' (from the Bastion)' : ' (the Bastion hasn\'t saved a level yet)') + ': the ' + prev.band.label + ' group.' }),
+                el('ul', { class: 'tsi-exp-fightlist', 'data-test': 'fight-monsters' }, prev.lines.map(function (line) { return el('li', { text: line }); })),
+                el('p', { class: 'tsi-exp-tip', 'data-test': 'fight-map', text: 'Battle map: ' + prev.map.title + ', ' + R.provinceLabel(DATA, region) + (prev.bySea ? ' (the party is near the sea).' : '.') }),
+                v.fight.surprised.length ? el('p', { class: 'tsi-exp-tip tsi-exp-tip--note', 'data-test': 'fight-surprised', text: 'Surprised in the first round: ' + fightList(v.fight.surprised) + '.' }) : null
+              ]));
+              if (reportedWon) {
+                parts.push(el('p', { class: 'tsi-exp-answer', 'data-test': 'fight-report' }, [el('strong', { text: 'The Combat Tracker reports: ' }), 'every enemy is down. Click Won to carry on.']));
+              } else if (v.fight.sentId) {
+                parts.push(el('p', { class: 'tsi-exp-tip tsi-exp-tip--note', 'data-test': 'fight-sent', text: 'Sent to the Combat Tracker: choose Load the fight there, then run it. The tracker tells this window when every enemy is down.' }));
+              }
+            }
+            parts.push(buttons([
+              prev && canOpen ? button(v.fight.sentId ? 'Send it again ↗' : 'Set up this fight in the Combat Tracker ↗', function () { setUpFight(v); }, v.fight.sentId ? 'tsi-btn--ghost' : 'tsi-btn--primary', 'fight-send') : null,
+              button('Won', function () { fightResult(v, 'won'); }, reportedWon ? 'tsi-btn--primary' : '', 'fight-won'),
+              button('Fled', function () { fightResult(v, 'fled'); }, '', 'fight-fled'),
+              !prev && canOpen ? button('Open the Combat Tracker in a new window ↗', function () { shell.openWindow('encounter'); }, 'tsi-btn--ghost', 'open-tracker') : null
+            ]));
+          } else if (v.type === 'contest') {
+            var k = v.contest;
+            var winBtn = null;
+            var score = el('strong');
+            var hsel = heroSelect(v.hero, 'Who takes part?', function () { showHero(); });
+            var heroLabel = function () { var t = R.token(state, hsel.sel.value); return t ? t.name : 'The hero'; };
+            var showHero = function () {
+              score.textContent = heroLabel() + ' ' + k.heroWins + ' – ' + k.oppWins + ' ' + k.opponent;
+              if (winBtn) winBtn.textContent = heroLabel() + ' wins the round';
+            };
+            parts.push(hsel.node);
+            parts.push(el('p', { class: 'tsi-exp-check', 'data-test': 'contest-score' }, [
+              el('span', { class: 'tsi-exp-check__tag', text: 'Round ' + k.round }),
+              score
+            ]));
+            parts.push(tip(k.opponent + ' rolls ' + k.d20 + ' + ' + k.bonus + ' = ' + k.total + '.', 'tsi-exp-tip--note'));
+            parts.push(tip('The hero rolls ' + k.heroRoll + '. Higher wins the round; first to ' + k.need + ' takes it.'));
+            if (k.adv) parts.push(tip(k.adv, 'tsi-exp-tip--note'));
+            winBtn = button(heroLabel() + ' wins the round', function () { doAct({ type: 'round', step: v.step, winner: 'hero', hero: hsel.sel.value }); }, '', 'round-hero');
+            showHero();
+            parts.push(buttons([
+              winBtn,
+              button(k.opponent + ' wins the round', function () { doAct({ type: 'round', step: v.step, winner: 'opp', hero: hsel.sel.value }); }, '', 'round-opp')
+            ]));
+            if (k.history.length) parts.push(el('ul', { class: 'tsi-exp-history' }, k.history.map(function (h) { return el('li', { text: h }); })));
+          } else if (v.type === 'puzzle') {
+            var pz = v.puzzle;
+            parts.push(tip(pz.prompt));
+            if (pz.wrongText) parts.push(el('p', { class: 'tsi-exp-answer', 'data-test': 'wrong-text', text: pz.wrongText }));
+            if (pz.hint) {
+              if (!pz.hint.state) {
+                parts.push(el('div', { class: 'tsi-exp-hint' }, [
+                  el('span', { text: 'Hint: ' + pz.hint.label + ', one hero.' }),
+                  button('Hint: Success', function () { doAct({ type: 'hint', step: v.step, result: 'success' }); }, 'tsi-btn--small', 'hint-success'),
+                  button('Hint: Failure', function () { doAct({ type: 'hint', step: v.step, result: 'failure' }); }, 'tsi-btn--small', 'hint-failure')
+                ]));
+              } else if (pz.hint.state === 'success') {
+                parts.push(el('p', { class: 'tsi-exp-answer', 'data-test': 'hint-text' }, [el('strong', { text: 'Read out: ' }), '"' + pz.hint.text + '"']));
+              } else {
+                parts.push(tip('No hint.', 'tsi-exp-tip--note'));
+              }
+            }
+            if (pz.kind === 'riddle') {
+              parts.push(buttons([
+                button('Right answer', function () { doAct({ type: 'puzzle', step: v.step, result: 'solved' }); }, '', 'riddle-right'),
+                button('Wrong answer', function () { doAct({ type: 'puzzle', step: v.step, result: 'wrong' }); }, '', 'riddle-wrong'),
+                button(pz.reveal ? 'Hide the answer' : 'Show the answer (DM)', function () { doAct({ type: 'reveal', step: v.step }); }, 'tsi-btn--ghost', 'riddle-reveal')
+              ]));
+              if (pz.tries > 1) parts.push(tip('Wrong answers so far: ' + pz.wrong + ' of ' + pz.tries + '.'));
+              if (pz.answer) parts.push(el('p', { class: 'tsi-exp-answer', 'data-test': 'answer' }, [el('strong', { text: 'Answer: ' }), pz.answer]));
+            } else {
+              parts.push(buttons([
+                button('Solved', function () { doAct({ type: 'puzzle', step: v.step, result: 'solved' }); }, '', 'puzzle-solved'),
+                button('Give up', function () { doAct({ type: 'puzzle', step: v.step, result: 'giveUp' }); }, '', 'puzzle-giveup')
+              ]));
+            }
+          } else if (v.type === 'pick') {
+            var ps = heroSelect(v.hero, v.pick.prompt);
+            parts.push(ps.node);
+            parts.push(buttons([button('Continue', function () { doAct({ type: 'pick', step: v.step, hero: ps.sel.value }); }, 'tsi-btn--primary', 'pick-continue')]));
+          } else {
+            parts.push(buttons([button('Done', finish, 'tsi-btn--primary', 'event-done')]));
+          }
+          TSI.append(act, parts);
+
+          TSI.clear(changesBox);
+          var endNow = v.type === 'end';
+          changesBox.hidden = !v.changes.length && !endNow;
+          if (!changesBox.hidden) {
+            changesBox.appendChild(el('h4', { class: 'tsi-exp-changes__title', text: endNow ? 'What changed' : 'So far' }));
+            if (v.changes.length) changesBox.appendChild(el('ul', null, v.changes.map(function (line) { return el('li', { text: line }); })));
+            else changesBox.appendChild(el('p', { class: 'tsi-exp-tip', text: 'Nothing changed.' }));
+          }
+
+          shown = Date.now();
+          var first = act.querySelector('button, select, input');
+          if (first) first.focus(); else heading.focus();
+        }
+
+        function finish() {
+          if (!ready() || finished) return;
+          var cur = state.journey.current;
+          var ev = cur ? J.def(JDEFS, cur.id) : null;
+          forgetFight(fightIdNow());
+          J.finish(state, JDEFS);
+          finished = true;
+          saveNow();
+          updateTravelUI();
+          if (ev) setNotice(ev.code + ' ' + ev.title + ': done.');
+          api.close('done');
+        }
+        skipBtn.addEventListener('click', function () {
+          if (!ready() || finished) return;
+          var cur = state.journey.current;
+          var ev = cur ? J.def(JDEFS, cur.id) : null;
+          var fid = fightIdNow();
+          if (!J.skip(state)) return;
+          forgetFight(fid);
+          finished = true;
+          saveNow();
+          updateTravelUI();
+          setNotice((ev ? ev.code + ' ' + ev.title : 'Event') + ' skipped: it goes back into the pool.');
+          api.close('skipped');
+        });
+
+        return TSI.modal.open({
+          title: 'Event',
+          className: 'tsi-exp-event tsi-exp-journey',
+          body: [heading, sub, textBox, verseBox, dmNoteBox, act, changesBox],
+          actions: [{ label: 'Close', value: 'close' }],
+          escValue: 'close',
+          onOpen: function (a) {
+            api = a;
+            a.foot.insertBefore(skipBtn, a.foot.firstChild);
+            journeyRefresh = safeRender;
+            safeRender();
+          }
+        }).then(function (value) {
+          journeyOpen = false;
+          journeyRefresh = null;
+          /* Closed by the suite (leaving the tool): the event waits, saved, for next time. */
+          if (value === undefined || !life.alive) return null;
+          if (value === 'broken' && state.journey.current) {
+            forgetFight(fightIdNow());
+            J.finish(state, JDEFS);
+            saveNow();
+            updateTravelUI();
+            setNotice('That event couldn\'t be shown, so it was ended. What it had changed stays.');
+            return null;
+          }
+          if (finished || !state.journey.current) return null;
+          return TSI.modal.open({
+            title: 'Close the event?',
+            message: 'You can keep it for later (for example while a fight runs in the Combat Tracker): Back to the event in the Travel panel brings it back. Or end it now: what has happened so far stays.',
+            actions: [{ label: 'Back to the event', value: 'back' }, { label: 'Keep it for later', value: 'later' }, { label: 'End it now', value: 'end', primary: true }],
+            escValue: 'back'
+          }).then(function (choice) {
+            if (!life.alive || !state.journey.current) return null;
+            if (choice === 'later') { updateTravelUI(); setNotice('The event is waiting: press Back to the event.'); return null; }
+            if (choice !== 'end') return openJourney();
+            var cur = state.journey.current;
+            var ev = cur ? J.def(JDEFS, cur.id) : null;
+            forgetFight(fightIdNow());
+            J.finish(state, JDEFS);
+            saveNow();
+            updateTravelUI();
+            if (ev) setNotice(ev.code + ' ' + ev.title + ': ended early.');
+            return null;
+          });
+        });
+      }
+
       /* A town pin opens its town map. */
       function openPlace(m) {
         var body = [el('h3', { class: 'tsi-exp-event-title', text: m.label || 'Location' })];
@@ -950,6 +1493,16 @@
       /* For the tests. */
       ns.debug = {
         state: function () { return state; },
+        /* Start a chosen event (travel, camp, follow, dm), as if it had come up. */
+        startEvent: function (id, kind) {
+          var ev = J.def(JDEFS, id);
+          if (!ev || state.journey.current) return false;
+          J.begin(state, JDEFS, { kind: kind || ev.kind, event: ev }, J.context(state, JDEFS), rand);
+          saveNow();
+          updateTravelUI();
+          showEvents([{ kind: 'journey' }]);
+          return true;
+        },
         board: function () { return board; },
         view: function () { return view; },
         focus: function () { return focusId; },
@@ -971,6 +1524,8 @@
       life.onStop(function () { ns.debug = null; });
 
       renderAll();
+      /* An event left part-way (a reload, a tool switch, Edge closed) picks up where it was. */
+      if (state.journey.current) showEvents([{ kind: 'journey' }]);
     },
 
     validateImport: function (records) {

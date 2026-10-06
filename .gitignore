@@ -1,2 +1,5 @@
 # Old tool repos cloned for reference (scratch space, never committed)
 _legacy/
+
+# Python caches (from the scripts in docs/dev)
+__pycache__/

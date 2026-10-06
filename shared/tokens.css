@@ -193,6 +193,9 @@
   --tsi-z-raised: 1;
   --tsi-z-sticky: 100;
   --tsi-z-menu: 300;
+  /* The DM doc floats above every tool's own layers (the Ritual's reach 690)
+     but below notices, pop-ups and the Ritual's films. */
+  --tsi-z-dmdoc: 695;
   --tsi-z-notice: 700;
   --tsi-z-tooltip: 800;
   --tsi-z-modal: 900;

@@ -142,14 +142,20 @@ img { max-width: 100%; }
 
 /* ---------- Drop-down menu (Switch tool, tool Backup menu) ---------- */
 .tsi-menu-wrap { position: relative; }
+/* While the menu is open, the top bar (and so the menu) sits above the DM doc. */
+.tsi-topbar--menu-open { z-index: calc(var(--tsi-z-dmdoc) + 1); }
 .tsi-menu {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
   z-index: var(--tsi-z-menu);
+  /* As wide as its longest tool name (never wrapped), within the window. */
+  width: max-content;
   min-width: 320px;
+  max-width: calc(100vw - 2 * var(--tsi-gutter));
   max-height: calc(100vh - var(--tsi-topbar-h) - 24px);
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: 8px;
   border-radius: var(--tsi-radius-lg);
   border: 2px solid var(--tsi-line-panel);
@@ -183,12 +189,33 @@ img { max-width: 100%; }
 .tsi-menu__item:hover:not([aria-disabled="true"]) { border-color: var(--tsi-line); background: rgba(0, 0, 0, .25); }
 .tsi-menu__item[aria-current="page"] { border-color: var(--tsi-line-control); }
 .tsi-menu__item[aria-disabled="true"] { color: var(--tsi-text-faint); cursor: default; }
+.tsi-menu__label { white-space: nowrap; }
 .tsi-menu__note {
   font: 400 var(--tsi-fs-label)/1 var(--tsi-font-body);
   font-style: italic;
   color: var(--tsi-text-soft);
   white-space: nowrap;
 }
+/* Inside a tool: a tool's row, with its small "open in a new window" button at the right end. */
+.tsi-menu__row { display: flex; align-items: stretch; gap: 4px; }
+.tsi-menu__row > .tsi-menu__item { flex: 1 1 auto; width: auto; min-width: 0; }
+.tsi-menu__newwin,
+.tsi-menu__newwin-gap { flex: none; width: 36px; }
+.tsi-menu__newwin {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--tsi-radius-sm);
+  background: transparent;
+  color: var(--tsi-gold-text);
+  font: 600 16px/1 var(--tsi-font-display);
+  cursor: pointer;
+  transition: border-color var(--tsi-dur-fast) var(--tsi-ease), background var(--tsi-dur-fast) var(--tsi-ease);
+}
+.tsi-menu__newwin:hover,
+.tsi-menu__newwin:focus-visible { border-color: var(--tsi-line); background: rgba(0, 0, 0, .25); }
 
 /* ---------- Buttons: outlined gold, plus one crimson main action per panel ---------- */
 .tsi-btn {
@@ -446,3 +473,105 @@ body.tsi-modal-open { overflow: hidden; }
 }
 .tsi-extlink:hover { border-bottom-color: var(--tsi-cream); }
 .tsi-extlink__note { color: var(--tsi-text-faint); font-style: italic; }
+
+/* ---------- The DM doc (shared/js/dmdoc.js) ----------
+   A floating panel for the DM's own notes: dragged by its title bar, resized
+   by the grip in its bottom-right corner, above the tool but below notices
+   and pop-ups. The script sets its place and size. */
+.tsi-dmdoc-toggle[aria-expanded="true"] {
+  border-color: var(--tsi-gold-text);
+  background: rgba(214, 178, 94, .16);
+  box-shadow: 0 0 12px rgba(214, 178, 94, .28);
+}
+.tsi-dmdoc {
+  position: fixed;
+  z-index: var(--tsi-z-dmdoc);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: var(--tsi-radius-lg);
+  border: var(--tsi-border-panel);
+  /* Solid underneath, so the tool's own text never shows through the notes. */
+  background: var(--tsi-modal-fill) var(--tsi-panel-deep);
+  box-shadow: var(--tsi-shadow-modal), 0 0 26px rgba(214, 178, 94, .18);
+  color: var(--tsi-text);
+  font: 400 var(--tsi-fs-body)/var(--tsi-lh-body) var(--tsi-font-body);
+  letter-spacing: normal;
+  text-transform: none;
+  text-align: left;
+  animation: tsi-dmdoc-in var(--tsi-dur-base) var(--tsi-ease);
+}
+.tsi-dmdoc:focus { outline: none; }
+@keyframes tsi-dmdoc-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+.tsi-dmdoc__bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 8px 8px 16px;
+  background: var(--tsi-head-fill);
+  border-bottom: 1px solid var(--tsi-line-head);
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+.tsi-dmdoc__bar:focus-visible { outline-offset: -3px; }
+.tsi-dmdoc--moving .tsi-dmdoc__bar { cursor: grabbing; }
+.tsi-dmdoc__title {
+  margin: 0;
+  font: 700 14px/1.2 var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-heading);
+  text-transform: uppercase;
+  color: var(--tsi-gold-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tsi-dmdoc__close {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  font-size: 15px;
+  cursor: pointer;
+}
+.tsi-dmdoc__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 14px 16px 26px;
+}
+.tsi-dmdoc__placeholder {
+  margin: 0;
+  font-size: var(--tsi-fs-body-sm);
+  color: var(--tsi-text-muted);
+  font-style: italic;
+}
+.tsi-dmdoc__grip {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 22px;
+  height: 22px;
+  cursor: nwse-resize;
+  touch-action: none;
+  /* Three short gold lines in the corner. */
+  background:
+    linear-gradient(135deg, transparent 0 46%, var(--tsi-line-control) 46% 52%, transparent 52% 62%, var(--tsi-line-control) 62% 68%, transparent 68% 78%, var(--tsi-line-control) 78% 84%, transparent 84%);
+  border-bottom-right-radius: var(--tsi-radius-lg);
+}
+.tsi-dmdoc__grip:hover,
+.tsi-dmdoc--resizing .tsi-dmdoc__grip {
+  background:
+    linear-gradient(135deg, transparent 0 46%, var(--tsi-gold) 46% 52%, transparent 52% 62%, var(--tsi-gold) 62% 68%, transparent 68% 78%, var(--tsi-gold) 78% 84%, transparent 84%);
+}
+.tsi-dmdoc--moving,
+.tsi-dmdoc--resizing { user-select: none; -webkit-user-select: none; }
+@media (prefers-reduced-motion: reduce) {
+  .tsi-dmdoc { animation: none; }
+}

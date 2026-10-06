@@ -21,7 +21,12 @@
      install button and offline cache are gone (ENC-11);
    - Complete Turn, Add Selected and Save Current Encounter count a double
      click once (ENC-13);
-   - the Paused line says what Begin does (C3). */
+   - the Paused line says what Begin does (C3).
+
+   A fight set up in the Explorer (7 October 2026) arrives through
+   TSI.handoff: Load the fight puts its monsters in the encounter (and the
+   library), and its battle map, grid and starting places on the Battlemap.
+   When every enemy is down, the tracker tells the Explorer. */
 (function () {
   'use strict';
 
@@ -101,6 +106,7 @@
       var hideBtn = btn('Hide Monsters', 'monsters-hide', '', function () { hideMonsters(true); });
       var revealBtn = btn('Reveal Monsters', 'monsters-reveal', '', function () { hideMonsters(false); });
       var resetBtn = btn('Reset', 'reset-all', 'tsi-btn--ghost', function () { resetAll(); }, { title: 'Clears local data (library + encounter)' });
+      var loadFightBtn = btn('Load the Explorer\'s fight', 'load-handoff', 'tsi-btn--primary', function () { if (waiting) offerHandoff(waiting); }, { hidden: true, title: 'A fight set up in the Explorer is waiting' });
 
       /* Storage: the Library tab */
       var newName = input('new-name', { placeholder: 'e.g. Dannick Vale' });
@@ -230,7 +236,7 @@
       TSI.append(ctx.root, el('div', { class: 'tsi-enc' }, [
         el('header', { class: 'tsi-enc-head' }, [
           el('h1', { class: 'tsi-enc-title', text: 'Scarlett Isles Campaign – Combat Tracker' }),
-          el('div', { class: 'tsi-enc-head-actions' }, [battlemapBtn, hideBtn, revealBtn, resetBtn])
+          el('div', { class: 'tsi-enc-head-actions' }, [loadFightBtn, battlemapBtn, hideBtn, revealBtn, resetBtn])
         ]),
         el('div', { class: 'tsi-enc-main' }, [
           /* LEFT: Storage */
@@ -507,6 +513,8 @@
           e.turnIndex = 0;
           e.round = 1;
           e.status = 'idle';
+          e.handoff = null;
+          e.reported = false;
           state.ui.targetId = null;
           save();
           render();
@@ -537,6 +545,7 @@
         var res = R.addCondition(state, inp);
         if (!res.ok) { if (!res.silent) note(res.message); return; }
         clearUsedBoxes(inp, true);
+        reportIfWon();
         save();
         render();
       }
@@ -545,6 +554,7 @@
         var res = R.completeTurn(state, inp);
         if (!res.ok) { if (!res.silent) note(res.message); return; }
         clearUsedBoxes(inp, false);
+        reportIfWon();
         save();
         render();
       });
@@ -628,6 +638,82 @@
         });
       }
 
+      /* ---------- A fight from the Explorer ---------- */
+      /* (Harry, 7 October 2026.) The Explorer's "Set up this fight" leaves a
+         fight waiting (TSI.handoff). The tracker offers to load it as it
+         opens, or straight away if it's already open in another window, and
+         Load the Explorer's fight (at the top) offers it again after Not now.
+         When every enemy is down, the tracker tells the Explorer, which
+         points the DM at Won; the DM still decides. */
+      var waiting = null;   /* the waiting fight, if it isn't the one loaded */
+      var offered = null;   /* the id of the fight last offered, so it's offered once by itself */
+      function listText(items) {
+        if (items.length < 2) return items.join('');
+        return items.slice(0, -1).join(', ') + ' and ' + items[items.length - 1];
+      }
+      function handoffBody(h) {
+        return [
+          el('p', null, [el('strong', { text: h.name }), h.regionName ? ' · ' + h.regionName : '']),
+          el('p', { text: 'Party level ' + h.level + (h.fromBastion ? ' (from the Bastion)' : ' (the Bastion hasn\'t saved a level yet)') + ': the ' + (h.band && h.band.label ? h.band.label : '') + ' group.' }),
+          el('ul', { 'data-test': 'handoff-monsters' }, h.monsters.map(function (m) {
+            return el('li', { text: m.count + ' × ' + m.name + (m.stat && m.stat !== m.name ? ' (' + m.stat + ')' : '') + ', ' + m.hp + ' HP' });
+          })),
+          el('p', { text: 'Battle map: ' + (h.map.title || 'from the Explorer') + '.' }),
+          h.surprised && h.surprised.length ? el('p', { text: 'Surprised in the first round: ' + listText(h.surprised) + '.' }) : null,
+          el('p', { text: 'Loading it replaces the monsters in the encounter and the Battlemap\'s map. Your PCs stay.' })
+        ];
+      }
+      function checkHandoff() {
+        if (!life.alive) return;
+        var h = TSI.handoff.read('fight');
+        waiting = h && !R.handoffProblem(h) && h.id !== state.encounter.handoff ? h : null;
+        loadFightBtn.hidden = !waiting;
+        if (waiting && offered !== waiting.id) {
+          offered = waiting.id;
+          offerHandoff(waiting);
+        }
+      }
+      function offerHandoff(h) {
+        TSI.modal.open({
+          title: 'A fight from the Explorer',
+          className: 'tsi-enc-handoff',
+          body: handoffBody(h),
+          escValue: false,
+          actions: [{ label: 'Not now', value: false }, { label: 'Load the fight', value: true, primary: true }]
+        }).then(function (ok) { if (ok && life.alive) loadHandoff(h.id); });
+      }
+      function loadHandoff(id) {
+        var h = TSI.handoff.read('fight');
+        if (!h || h.id !== id || R.handoffProblem(h)) {
+          checkHandoff();
+          note('That fight isn\'t waiting any more: it was finished, or sent again, in the Explorer.');
+          return;
+        }
+        var res = R.loadHandoff(state, h);
+        ctx.store.set('mapImage', h.map.src);
+        saveVtt(R.handoffVtt(vtt, state.encounter.roster, h.map));
+        save();
+        render();
+        link.sync();
+        waiting = null;
+        loadFightBtn.hidden = true;
+        var lines = ['Loaded ' + res.monsters + (res.monsters === 1 ? ' monster' : ' monsters') + ' and the battle map (' + (h.map.title || 'from the Explorer') + ').'];
+        if (res.pcsAdded) lines.push('There were no PCs in the encounter, so the ' + res.pcsAdded + ' in your library joined.');
+        if (res.surprised.length) lines.push('Marked Surprised for their first turn: ' + listText(res.surprised) + '.');
+        if (res.notFound.length) lines.push('Surprised, but not found among the PCs: ' + listText(res.notFound) + '. Add Surprised to them by hand.');
+        lines.push(link.isOpen() ? 'The Battlemap shows the new map. Auto-roll Initiative, then Begin.' : 'Open the Battlemap to show the map, then Auto-roll Initiative and Begin.');
+        note(lines.join('\n\n'), 'Fight loaded');
+      }
+      /* Every enemy down in the Explorer's fight: tell the Explorer, once. */
+      function reportIfWon() {
+        var e = state.encounter;
+        if (!R.handoffWon(e)) return;
+        e.reported = true;
+        TSI.handoff.write('result', { id: e.handoff, result: 'won', at: new Date().toISOString() });
+        TSI.notify('Every enemy is down. The Explorer has been told: click Won there to carry on.', { title: 'Fight won.', type: 'ok', id: 'tsi-enc-handoff-won' });
+      }
+      TSI.handoff.listen(life, 'fight', function () { checkHandoff(); });
+
       /* ---------- Listeners ---------- */
       life.on(targetSelect, 'change', function () { state.ui.targetId = targetSelect.value || null; save(); render(); });
       life.on(encName, 'input', function () { state.encounter.name = encName.value; save(); link.send('tracker', trackerView()); });
@@ -640,6 +726,7 @@
       life.onStop(function () { enc.debug = null; });
 
       render();
+      checkHandoff();
     },
 
     validateImport: function (records) {
