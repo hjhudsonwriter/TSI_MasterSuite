@@ -414,8 +414,9 @@ window.TSI_DATA.journeyEvents = {
         cold: {
           text: 'The trail goes cold, and the Husk is waiting when you return.',
           apply: [{ miles: -6 }],
-          fight: { suggest: 'One Rootbound Husk (35 HP, as in the Heartwood Ritual).', won: 'thanks', fled: 'fled' }
+          fight: { suggest: 'One Rootbound Husk (35 HP, as in the Heartwood Ritual).', won: 'coldWon', fled: 'fled' }
         },
+        coldWon: { text: 'The Husk is destroyed.', end: true },
         fled: { text: 'You get away.', end: true }
       }
     },
@@ -940,7 +941,7 @@ window.TSI_DATA.journeyEvents = {
         },
         tale: {
           text: 'One player tells a real story at the table, a minute or two. If the table enjoys it, the DM gives advantage.',
-          check: { skill: 'Charisma (Performance)', dc: 15, who: 'one', help: false, success: 'won', failure: 'lost' }
+          check: { skill: 'Charisma (Performance)', dc: 15, who: 'one', success: 'won', failure: 'lost' }
         },
         won: {
           text: 'The pot is yours, and she trades you a rumour.',
@@ -1209,7 +1210,7 @@ window.TSI_DATA.journeyEvents = {
     },
 
     {
-      id: 'c10', code: 'C10', kind: 'camp', title: 'The Beacons', where: { maps: ['western_province_south'] },
+      id: 'c10', code: 'C10', kind: 'camp', title: 'The Beacons', where: { provinces: ['western_province'] },
       line: 'History, then a hard choice · a lost night\'s rest',
       steps: {
         start: {
