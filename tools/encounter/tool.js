@@ -654,13 +654,13 @@
       function handoffBody(h) {
         return [
           el('p', null, [el('strong', { text: h.name }), h.regionName ? ' · ' + h.regionName : '']),
-          el('p', { class: 'tsi-enc-muted', text: 'Party level ' + h.level + (h.fromBastion ? ' (from the Bastion)' : ' (the Bastion hasn\'t saved a level yet)') + ': the ' + (h.band && h.band.label ? h.band.label : '') + ' group.' }),
-          el('ul', { class: 'tsi-enc-handoff-list', 'data-test': 'handoff-monsters' }, h.monsters.map(function (m) {
+          el('p', { text: 'Party level ' + h.level + (h.fromBastion ? ' (from the Bastion)' : ' (the Bastion hasn\'t saved a level yet)') + ': the ' + (h.band && h.band.label ? h.band.label : '') + ' group.' }),
+          el('ul', { 'data-test': 'handoff-monsters' }, h.monsters.map(function (m) {
             return el('li', { text: m.count + ' × ' + m.name + (m.stat && m.stat !== m.name ? ' (' + m.stat + ')' : '') + ', ' + m.hp + ' HP' });
           })),
           el('p', { text: 'Battle map: ' + (h.map.title || 'from the Explorer') + '.' }),
           h.surprised && h.surprised.length ? el('p', { text: 'Surprised in the first round: ' + listText(h.surprised) + '.' }) : null,
-          el('p', { class: 'tsi-enc-muted', text: 'Loading it replaces the monsters in the encounter and the Battlemap\'s map. Your PCs stay.' })
+          el('p', { text: 'Loading it replaces the monsters in the encounter and the Battlemap\'s map. Your PCs stay.' })
         ];
       }
       function checkHandoff() {

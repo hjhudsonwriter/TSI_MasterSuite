@@ -648,8 +648,9 @@
 
     /* Load the fight. The monsters already in the encounter make way; the
        PCs and NPCs stay (with no PCs, every PC in the library joins).
-       Everyone's initiative is cleared and the fight is Ready at round 1.
-       The surprised heroes get "Surprised" for their first turn.
+       Everyone's initiative (and any Surprised left from the last fight) is
+       cleared, and the fight is Ready at round 1. The surprised heroes get
+       "Surprised" for their first turn.
        Returns { monsters, pcsAdded, surprised: [combatants marked],
        notFound: [heroes with no PC of that name] }. */
     loadHandoff: function (state, h) {
@@ -662,7 +663,11 @@
           pcsAdded++;
         });
       }
-      e.roster.forEach(function (c) { c.init = null; });
+      /* A fresh fight: no initiative yet, and no one still Surprised from the last one. */
+      e.roster.forEach(function (c) {
+        c.init = null;
+        if (Array.isArray(c.conditions)) c.conditions = c.conditions.filter(function (x) { return (typeof x === 'object' && x ? x.name : x) !== 'Surprised'; });
+      });
       var monsters = 0;
       h.monsters.forEach(function (m) {
         var base = R.handoffLibraryEntry(state, m);
@@ -679,7 +684,8 @@
         var pcs = e.roster.filter(function (c) { return c.type === 'pc' && R.nameMatches(c.name, hero); });
         if (!pcs.length) { notFound.push(hero); return; }
         pcs.forEach(function (c) {
-          c.conditions = (Array.isArray(c.conditions) ? c.conditions : []).filter(function (x) { return (typeof x === 'object' && x ? x.name : x) !== 'Surprised'; });
+          c.conditions = Array.isArray(c.conditions) ? c.conditions : [];
+          if (marked.indexOf(c.name) !== -1) return;
           c.conditions.push({ name: 'Surprised', remaining: 1 });
           marked.push(c.name);
         });
@@ -706,7 +712,8 @@
     /* Where everyone starts on the fight's battle map, in board units: PCs
        and NPCs round the party corners, monsters shared round the foes
        corners in turn, each on the nearest free grid corner (where Snap
-       puts tokens). */
+       puts tokens). Tokens start two squares apart, so their name labels
+       don't cover each other; only a crowd that runs out of room closes up. */
     startPositions: function (roster, map) {
       var size = R.BOARD_W / map.cols;
       var taken = {};
@@ -717,10 +724,11 @@
         if (orders[k]) return orders[k];
         var list = [];
         for (var r = 1; r < map.rows; r++) for (var c = 1; c < map.cols; c++) list.push([c, r]);
+        function spaced(p) { return (p[0] - anchor[0]) % 2 === 0 && (p[1] - anchor[1]) % 2 === 0 ? 0 : 1; }
         list.sort(function (a, b) {
           var da = (a[0] - anchor[0]) * (a[0] - anchor[0]) + (a[1] - anchor[1]) * (a[1] - anchor[1]);
           var db = (b[0] - anchor[0]) * (b[0] - anchor[0]) + (b[1] - anchor[1]) * (b[1] - anchor[1]);
-          return da - db || a[1] - b[1] || a[0] - b[0];
+          return spaced(a) - spaced(b) || da - db || a[1] - b[1] || a[0] - b[0];
         });
         orders[k] = list;
         return list;

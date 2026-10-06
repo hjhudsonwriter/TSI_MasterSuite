@@ -299,6 +299,9 @@
     t.same(byName['Kaelen Ashford'].conditions, [{ name: 'Surprised', remaining: 1 }]);
     t.same(byName.Elara.conditions, [{ name: 'Blessed', remaining: 2 }, { name: 'Surprised', remaining: 1 }], 'not twice');
     t.same(byName.Magnus.conditions, []);
+    var again = tracker([pc('Magnus', { conditions: [{ name: 'Surprised', remaining: 1 }, 'Prone'] })]);
+    ER.loadHandoff(again, build('f1'));
+    t.same(again.encounter.roster[0].conditions, ['Prone'], 'a Surprised left from the last fight goes');
     ER.tickDown(byName.Elara);
     t.same(byName.Elara.conditions, [{ name: 'Blessed', remaining: 1 }], 'gone after their first turn');
     t.ok(ER.nameMatches('KAELEN', 'kaelen') && !ER.nameMatches('Kaelenna', 'Kaelen') && !ER.nameMatches('', 'Kaelen'));
@@ -348,7 +351,7 @@
     t.same([ER.fromSave({}).encounter.handoff, ER.fromSave({ encounter: { handoff: 5 } }).encounter.handoff], [null, null]);
   });
 
-  test('start places: one token per grid corner, round the right corners, never in the fire', function (t) {
+  test('start places: one token per grid corner, two squares apart, round the right corners, never in the fire', function (t) {
     var s = tracker([pc('Kaelen'), pc('Elara'), pc('Magnus')]);
     var h = build('c10camp', 'western_province', high);
     ER.loadHandoff(s, h);
@@ -364,6 +367,10 @@
       t.ok(col >= 1 && col <= 29 && row >= 1 && row <= 19, c.name + ' is on the map');
       var key = Math.round(col) + ',' + Math.round(row);
       t.ok(!seen[key], c.name + ' has a corner of its own');
+      Object.keys(seen).forEach(function (k) {
+        var q = k.split(',').map(Number);
+        t.ok(Math.max(Math.abs(q[0] - Math.round(col)), Math.abs(q[1] - Math.round(row))) >= 2, c.name + ' starts two squares from everyone else');
+      });
       seen[key] = true;
       t.ok(['15,10', '16,10', '15,11', '16,11'].indexOf(key) === -1, c.name + ' isn\'t in the fire');
       if (c.type === 'pc') t.ok(Math.hypot(col - 15, row - 13) <= 2, c.name + ' starts by the party corner');

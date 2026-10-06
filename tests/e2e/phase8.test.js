@@ -803,7 +803,7 @@ function serve(dir) {
       await jClick(page, 'event-done');
     });
 
-    await check('a fight: who\'s surprised, the suggested enemies, and the Combat Tracker in a new window', async () => {
+    await check('a fight: who\'s surprised, the suggested enemies, and Set up opens the Combat Tracker in a new window', async () => {
       await start('t2');
       await jClick(page, 'check-failure');
       await page.check('.tsi-modal [data-test=failed-kaelen]');
@@ -811,14 +811,14 @@ function serve(dir) {
       const j = await journeyView(page);
       assert(/Surprised in the first round: Kaelen\./.test(j.changes), j.changes);
       assert(/Suggested enemies: Levels 7–10/.test(await page.textContent('.tsi-modal [data-test=journey-act]')));
-      if (await page.$('.tsi-modal [data-test=open-tracker]')) {
-        const [win] = await Promise.all([context.waitForEvent('page'), page.click('.tsi-modal [data-test=open-tracker]')]);
-        await win.waitForLoadState();
-        assert(/\?tool=encounter$/.test(win.url()), win.url());
-        await win.close();
-      } else {
-        throw new Error('no "Open the Combat Tracker in a new window" button');
-      }
+      /* The full set-up and report back is in tests/e2e/fights.test.js. */
+      assert(/Surprised in the first round: Kaelen\./.test(await page.textContent('.tsi-modal [data-test=fight-setup]')));
+      await page.waitForTimeout(380);
+      const [win] = await Promise.all([context.waitForEvent('page'), page.click('.tsi-modal [data-test=fight-send]')]);
+      await win.waitForLoadState();
+      assert(/\?tool=encounter$/.test(win.url()), win.url());
+      await win.waitForSelector('.tsi-modal__title:text-is("A fight from the Explorer")');
+      await win.close();
       await jClick(page, 'fight-won');
       assert(/\+150 gold/.test((await journeyView(page)).changes));
       await jClick(page, 'event-done');
