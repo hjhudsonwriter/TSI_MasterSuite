@@ -3,8 +3,10 @@
    heroes, the day, the Bastion turns and the next one, the Clan's and the
    god's standing for the Region, and the Explorer's Active Effects, read
    from the real Explorer and Bastion. An effect appears when an event gives
-   it and goes on the day it ends; a change made in another window shows up
-   by itself. It fits Harry's laptop and the TV.
+   it and goes on the day it ends; the party's gold and the Threads (added
+   the same day) follow the Explorer's as events add them and the DM resolves
+   or clears them; a change made in another window shows up by itself. It
+   fits Harry's laptop and the TV.
    Run with:  node tests/e2e/dmdoc.test.js */
 'use strict';
 
@@ -40,7 +42,10 @@ function doc(page) {
       heroes: Array.from(document.querySelectorAll('[data-test=dmdoc-panel] .tsi-dmdoc__hero')).map(e => e.textContent),
       region: q('dmdoc-region'), clan: q('dmdoc-clan'), god: q('dmdoc-god'), where: q('dmdoc-where'),
       effects: Array.from(document.querySelectorAll('[data-test=dmdoc-panel] [data-test=dmdoc-effect]')).map(t),
-      effectsText: q('dmdoc-effects')
+      effectsText: q('dmdoc-effects'),
+      gold: q('dmdoc-gold'), threadsCount: q('dmdoc-threads-count'),
+      threads: Array.from(document.querySelectorAll('[data-test=dmdoc-panel] [data-test=dmdoc-thread]')).map(t),
+      threadsText: q('dmdoc-threads')
     };
   });
 }
@@ -82,6 +87,23 @@ async function makeCamp(page) {
   await page.waitForTimeout(300);
   await closePopups(page);
 }
+/* Done, then wait for the event window to close and the Explorer to save. */
+async function done(page) {
+  for (let i = 0; i < 3; i++) {
+    await jClick(page, 'event-done');
+    try { await page.waitForSelector('.tsi-modal.tsi-exp-journey', { state: 'detached', timeout: 1500 }); } catch (e) { continue; }
+    await waitSaved(page);
+    return;
+  }
+  throw new Error('the event window didn\'t close');
+}
+/* Click a button in the suite's "are you sure?" pop-up by its label. */
+async function clickModal(page, label) {
+  await page.waitForTimeout(400);
+  await page.click('.tsi-modal .tsi-modal__foot button:text-is("' + label + '")');
+  await page.waitForSelector('.tsi-modal', { state: 'detached', timeout: 3000 });
+  await waitSaved(page);
+}
 async function jClick(page, test) {
   await page.waitForTimeout(400);
   await page.click('.tsi-modal.tsi-exp-journey [data-test="' + test + '"]');
@@ -107,6 +129,9 @@ async function jClick(page, test) {
       equal(d.next, 'Next Bastion turn —');
       equal(d.where, 'Where the party is Open the Explorer to see where the party is.');
       equal(d.effectsText, 'Active effects None.');
+      equal(d.gold, 'Party gold — Explorer not started');
+      equal(d.threadsCount, 'Threads — Explorer not started');
+      equal(d.threadsText, 'Threads None.');
       await H.shot(page, 'dmdoc-contents-empty');
     });
 
@@ -132,6 +157,7 @@ async function jClick(page, test) {
       equal(d.next, 'Next Bastion turn in 7 days Day 8, at Make Camp');
       equal(d.clan, 'Clan Farmer\'s territory · Logan Farmer Political Capital +12 Honour/Respect +2');
       equal(d.god, 'Aurush\'s lands Favour 35%');
+      equal([d.gold, d.threadsCount, d.threadsText], ['Party gold 0 from events, until cleared', 'Threads 0 none open', 'Threads None.']);
       await H.shot(page, 'dmdoc-contents-explorer');
     });
 
@@ -167,6 +193,56 @@ async function jClick(page, test) {
       equal(d.effectsText, 'Active effects None.', 'gone on Day 8, as the Explorer removes it');
       equal(d.next, 'Next Bastion turn in 7 days Day 15, at Make Camp');
       equal(await page.$eval('[data-test=effects-list]', e => e.textContent), 'None.');
+    });
+
+    await check('the party\'s gold and the Threads: they appear, change and go with the Explorer\'s', async () => {
+      const panelThreads = () => page.$$eval('[data-test=threads-list] [data-test=thread]', ls => ls.map(l => l.querySelector('strong').textContent));
+      let d = await until(page, x => x.threads.length === 1, 'C6\'s thread');
+      equal(d.threads, ['What Drove the Wolves Out Something bigger drove the wolves from their hunting grounds near Wolfhaven. Day 1 · from C6']);
+      equal([d.gold, d.threadsCount], ['Party gold 0 from events, until cleared', 'Threads 1 open']);
+
+      /* T6: deliver the letter sealed, a thread that pays when resolved. */
+      assert(await page.evaluate(() => TSI.explorer.debug.startEvent('t6', 'travel')), 'started T6');
+      await page.waitForSelector('.tsi-modal.tsi-exp-journey');
+      await jClick(page, 'check-success');
+      await jClick(page, 'next');
+      await jClick(page, 'choice-0');
+      await done(page);
+      d = await until(page, x => x.threads.length === 2, 'T6\'s thread');
+      equal(d.threads[1], 'The Sealed Dispatch Deliver the sealed letter to Chief Boris Blackstone of Clan Blackstone. Day 8 · from T6 When resolved: +250 gold · DM note: Notice Board: consider +1 clan honour with Clan Blackstone.');
+
+      /* T14 in the Southern Province: buy the share, −100 gold and a follow-up in 7 days. */
+      await page.selectOption('[data-test=region]', 'southern_province');
+      await waitSaved(page);
+      assert(await page.evaluate(() => TSI.explorer.debug.startEvent('t14', 'travel')), 'started T14');
+      await page.waitForSelector('.tsi-modal.tsi-exp-journey');
+      await jClick(page, 'check-failure');
+      await jClick(page, 'choice-0');
+      await done(page);
+      d = await until(page, x => x.threads.length === 3, 'T14\'s thread');
+      equal(d.threads[2], 'The Prospector\'s Claim A quarter-share in a gold vein. Word should come in 7 days. Day 8 · from T14 · Follow-up due Day 15');
+      equal(d.gold, 'Party gold -100 from events, until cleared', 'the same as the Explorer\'s Gold: ' + await page.textContent('[data-test=gold]'));
+      equal(d.threadsCount, 'Threads 3 open · next follow-up due Day 15');
+      equal(await panelThreads(), ['What Drove the Wolves Out', 'The Sealed Dispatch', 'The Prospector\'s Claim'], 'the Explorer\'s own list, in the same order');
+      await H.shot(page, 'dmdoc-contents-threads');
+
+      /* Resolve the Sealed Dispatch in the Explorer: +250 gold, and it goes from both lists. */
+      const rows = await page.$$('[data-test=threads-list] [data-test=thread]');
+      await (await rows[1].$('[data-test=thread-resolve]')).click();
+      await clickModal(page, 'Resolve');
+      d = await until(page, x => x.threads.length === 2, 'the resolved thread gone');
+      equal(d.threads.map(x => x.split(' Day ')[0].split(' ').slice(0, 3).join(' ')), ['What Drove the', 'The Prospector\'s Claim']);
+      equal(d.gold, 'Party gold 150 from events, until cleared');
+      equal(await page.textContent('[data-test=gold]'), '150');
+
+      /* Clear the gold in the Explorer, as the DM does once it's on the players' sheets. */
+      await page.click('[data-test=gold-clear]');
+      await clickModal(page, 'Clear');
+      d = await until(page, x => /^Party gold 0 /.test(x.gold || ''), 'the gold cleared');
+      equal(d.threadsCount, 'Threads 2 open · next follow-up due Day 15');
+
+      await page.selectOption('[data-test=region]', 'northern_province');
+      await waitSaved(page);
     });
 
     await check('a change made in another window shows up by itself', async () => {

@@ -16,7 +16,7 @@
   test('it first opens near the right edge, just below the top bar, on the laptop and the TV', function (t) {
     [LAPTOP, TV].forEach(function (v) {
       var r = D.defaultRect(v);
-      t.same([r.w, r.h], [440, 680], 'its first size (tall enough for what it shows, 7 October 2026)');
+      t.same([r.w, r.h], [440, 800], 'its first size (tall enough for what it shows, with the gold and Threads, 7 October 2026)');
       t.equal(r.x, v.width - 440 - 24, 'near the right edge');
       t.equal(r.y, v.top + 24, 'just below the top bar');
       t.ok(inside(r, v), 'inside the window');
@@ -61,7 +61,7 @@
   test('missing or odd numbers fall back to sensible ones', function (t) {
     var r = D.clamp({ x: NaN, y: 'top', w: null }, LAPTOP);
     t.ok(inside(r, LAPTOP), JSON.stringify(r));
-    t.same([r.x, r.y, r.w, r.h], [0, 56, 440, 680]);
+    t.same([r.x, r.y, r.w, r.h], [0, 56, 440, 800]);
     t.same(D.clamp(null, {}), { x: 0, y: 0, w: 0, h: 0 }, 'a window with no size doesn\'t throw');
   });
 

@@ -526,7 +526,7 @@ async function waitSaved(page) {
         equal(await focused(page), 'dmdoc-bar');
         const r = await panelMatches(page);
         const v = await view(page);
-        equal(r, { x: v.width - 440 - 24, y: v.top + 24, w: 440, h: 680 }, 'it first opens near the right edge, below the top bar');
+        equal(r, { x: v.width - 440 - 24, y: v.top + 24, w: 440, h: 800 }, 'it first opens near the right edge, below the top bar');
         await H.shot(page, 'dmdoc-' + size);
       });
 
@@ -577,12 +577,12 @@ async function waitSaved(page) {
       });
 
       await check(size + ': dragging the title bar moves it, and it\'s saved', async () => {
-        await moveTo(page, 840, 100);
+        await moveTo(page, 840, 70);
         const start = await panelMatches(page);
-        equal([start.x, start.y], [840, 100]);
-        await drag(page, '[data-test=dmdoc-bar]', { dx: -300, dy: 120 }, BAR_GRAB);
+        equal([start.x, start.y], [840, 70]);
+        await drag(page, '[data-test=dmdoc-bar]', { dx: -300, dy: 40 }, BAR_GRAB);
         const r = await panelMatches(page);
-        equal(r, { x: start.x - 300, y: start.y + 120, w: start.w, h: start.h });
+        equal(r, { x: start.x - 300, y: start.y + 40, w: start.w, h: start.h });
         await page.waitForTimeout(200);
         equal(await saved(page), r);
       });
@@ -595,12 +595,12 @@ async function waitSaved(page) {
       });
 
       await check(size + ': the corner grip resizes it, no smaller than 280 × 200', async () => {
-        await moveTo(page, 300, 150);
+        await moveTo(page, 300, 70);
         const before = await rect(page);
-        equal(before, { x: 300, y: 150, w: 440, h: 680 });
-        await drag(page, '[data-test=dmdoc-grip]', { dx: 80, dy: 60 });
+        equal(before, { x: 300, y: 70, w: 440, h: 800 });
+        await drag(page, '[data-test=dmdoc-grip]', { dx: 80, dy: 40 });
         const r = await panelMatches(page);
-        equal(r, { x: before.x, y: before.y, w: before.w + 80, h: before.h + 60 });
+        equal(r, { x: before.x, y: before.y, w: before.w + 80, h: before.h + 40 });
         await drag(page, '[data-test=dmdoc-grip]', { x: before.x + 10, y: before.y + 10 });
         const small = await panelMatches(page);
         equal([small.x, small.y, small.w, small.h], [before.x, before.y, 280, 200]);

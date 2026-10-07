@@ -4,10 +4,12 @@
    campaign stands (Harry, 7 October 2026), read from the Explorer's and the
    Bastion's saves (shared/js/campaign-rules.js works it out): the party's
    level and heroes; the day, the Bastion turns done and the days to the next
-   one; the Region, its Clan's Political Capital and Honour/Respect and its
-   god's favour; and the Explorer's Active Effects. While it's open it reads
-   the saves again every two seconds (and straight after this window saves),
-   so it keeps up even when the Explorer or the Bastion is in another window.
+   one; the party's event gold; the Region, its Clan's Political Capital and
+   Honour/Respect and its god's favour; and the Explorer's Active Effects and
+   Threads (the Threads added at Harry's request, 7 October 2026). While it's
+   open it reads the saves again every two seconds (and straight after this
+   window saves), so it keeps up even when the Explorer or the Bastion is in
+   another window.
 
    - It floats above the open tool (z-index --tsi-z-dmdoc) but below the
      suite's notices and pop-ups, and the tool underneath keeps working.
@@ -189,6 +191,14 @@
     ]);
   }
 
+  /* Under the Threads count: the soonest follow-up still to come, if any. */
+  function threadsNote(sum) {
+    if (sum.gold === null) return 'Explorer not started';
+    if (!sum.threads.length) return 'none open';
+    var n = sum.nextFollowUp;
+    return n ? 'open · next follow-up due ' + (n.from === n.to ? 'Day ' + n.from : 'Days ' + n.from + '–' + n.to) : 'open';
+  }
+
   function render(sum) {
     var parts = [];
     var level = sum.level;
@@ -197,7 +207,9 @@
       tile('Party level', String(level.value), level.fromBastion ? 'from the Bastion' : 'Bastion not saved yet', 'dmdoc-level'),
       tile('Day', sum.day === null ? '—' : String(sum.day), sum.day === null ? 'Explorer not started' : sum.daysPassed + (sum.daysPassed === 1 ? ' day passed' : ' days passed'), 'dmdoc-day'),
       tile('Bastion turns', sum.bastionTurns === null ? '—' : String(sum.bastionTurns), sum.bastionTurns === null ? 'Bastion not saved yet' : 'completed', 'dmdoc-turns'),
-      tile('Next Bastion turn', nextB ? (nextB.inDays === 1 ? 'in 1 day' : 'in ' + nextB.inDays + ' days') : '—', nextB ? 'Day ' + nextB.day + ', at Make Camp' : '', 'dmdoc-next-bastion')
+      tile('Next Bastion turn', nextB ? (nextB.inDays === 1 ? 'in 1 day' : 'in ' + nextB.inDays + ' days') : '—', nextB ? 'Day ' + nextB.day + ', at Make Camp' : '', 'dmdoc-next-bastion'),
+      tile('Party gold', sum.gold === null ? '—' : String(sum.gold), sum.gold === null ? 'Explorer not started' : 'from events, until cleared', 'dmdoc-gold'),
+      tile('Threads', sum.gold === null ? '—' : String(sum.threads.length), threadsNote(sum), 'dmdoc-threads-count')
     ]));
 
     parts.push(section('Heroes', 'dmdoc-heroes', sum.heroes.length
@@ -228,6 +240,17 @@
           el('p', { class: 'tsi-dmdoc__effect-name' }, [el('strong', { text: e.name }), el('span', { class: 'tsi-dmdoc__muted', text: ' · ' + e.who })]),
           e.text ? el('p', { class: 'tsi-dmdoc__effect-text', text: e.text }) : null,
           el('p', { class: 'tsi-dmdoc__effect-until', text: e.until + (e.from ? ' · from ' + e.from : '') })
+        ]);
+      }))]
+      : [el('p', { class: 'tsi-dmdoc__note', text: 'None.' })]));
+
+    parts.push(section('Threads', 'dmdoc-threads', sum.threads.length
+      ? [el('ul', { class: 'tsi-dmdoc__effects' }, sum.threads.map(function (t) {
+        return el('li', { class: 'tsi-dmdoc__effect', 'data-test': 'dmdoc-thread' }, [
+          el('p', { class: 'tsi-dmdoc__effect-name' }, [el('strong', { text: t.name })]),
+          t.note ? el('p', { class: 'tsi-dmdoc__effect-text', text: t.note }) : null,
+          el('p', { class: 'tsi-dmdoc__effect-until', text: (t.day === null ? '' : 'Day ' + t.day) + (t.from ? ' · from ' + t.from : '') + (t.due ? ' · ' + t.due : '') }),
+          t.reward.length ? el('p', { class: 'tsi-dmdoc__effect-until', text: 'When resolved: ' + t.reward.join(' · ') }) : null
         ]);
       }))]
       : [el('p', { class: 'tsi-dmdoc__note', text: 'None.' })]));
