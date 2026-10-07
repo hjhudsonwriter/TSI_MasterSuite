@@ -135,9 +135,61 @@
     t.same(sum(s, null).effects.map(function (x) { return x.name; }), ['Knot'], 'Wolf-Friend goes on Day 8');
   });
 
+  test('the party\'s gold: the Explorer\'s running total, 0 on a fresh journey, nothing before it has saved', function (t) {
+    var s = explorer();
+    t.equal(sum(s, null).gold, 0);
+    s.journey.gold = -100;
+    t.equal(sum(s, null).gold, -100, 'it can go below 0, as the Explorer\'s does');
+    TSI.explorer.journey.clearGold(s);
+    t.equal(sum(s, null).gold, 0, 'cleared in the Explorer');
+    t.equal(sum(null, bastion()).gold, null);
+  });
+
+  test('Threads show as the Explorer\'s list shows them, with what resolving each gives', function (t) {
+    var J = TSI.explorer.journey;
+    var s = explorer();
+    s.travel.day = 8;
+    s.journey.threads.push({ id: 't1', name: 'What Drove the Wolves Out', note: 'Something bigger.', from: 'C6', day: 1, resolve: null, follow: null, data: {} });
+    s.journey.threads.push({ id: 't2', name: 'The Sealed Dispatch', note: 'Deliver it.', from: 'T6', day: 8, resolve: { gold: 250, dm: 'Notice Board: consider +1 clan honour with Clan Blackstone.' }, follow: null, data: {} });
+    s.journey.threads.push({ id: 't3', name: 'The Prospector\'s Claim', note: 'A quarter-share.', from: 'T14', day: 8, resolve: null, follow: { event: 'f2', scope: 'any', mapKey: '', from: 15, to: 15 }, data: {} });
+    s.journey.threads.push({ id: 't4', name: 'The Captain\'s Thanks', note: 'She may come.', from: 'C12', day: 9, resolve: { gold: 0, dm: '' }, follow: { event: 'f3', scope: 'isles', mapKey: '', from: 11, to: 14 }, data: {} });
+    var th = sum(s, null).threads;
+    t.same(th.map(function (x) { return [x.name, x.day, x.from, x.due, x.reward]; }), [
+      ['What Drove the Wolves Out', 1, 'C6', '', []],
+      ['The Sealed Dispatch', 8, 'T6', '', ['+250 gold', 'DM note: Notice Board: consider +1 clan honour with Clan Blackstone.']],
+      ['The Prospector\'s Claim', 8, 'T14', 'Follow-up due Day 15', []],
+      ['The Captain\'s Thanks', 9, 'C12', 'Follow-up due Days 11–14', []]
+    ]);
+    s.journey.threads.forEach(function (x, i) {
+      t.equal(th[i].due, J.threadDueText(x), 'the Explorer says the same for ' + x.name);
+      t.same(th[i].reward, J.resolveLines(x).filter(function (l) { return !/follow-up/.test(l); }), 'what resolving gives, as the Explorer\'s "are you sure?" says');
+    });
+    t.same(sum(s, null).nextFollowUp, { name: 'The Captain\'s Thanks', from: 11, to: 14, text: 'Follow-up due Days 11–14' }, 'the soonest-ending follow-up comes first, as the Explorer brings them');
+    J.resolveThread(s, 't2');
+    t.same(sum(s, null).threads.map(function (x) { return x.name; }), ['What Drove the Wolves Out', 'The Prospector\'s Claim', 'The Captain\'s Thanks'], 'a resolved thread goes');
+    t.equal(sum(s, null).gold, 250, 'and its gold is added');
+    J.resolveThread(s, 't4');
+    t.equal(sum(s, null).nextFollowUp.name, 'The Prospector\'s Claim', 'then the next one');
+    s.journey.threads = [];
+    t.same([sum(s, null).threads, sum(s, null).nextFollowUp], [[], null]);
+  });
+
+  test('a follow-up that didn\'t come is no longer counted as due', function (t) {
+    var s = explorer();
+    s.journey.threads.push({ id: 't3', name: 'The Prospector\'s Claim', note: 'A quarter-share.', from: 'T14', day: 1, resolve: null, follow: { event: 'f2', scope: 'any', mapKey: '', from: 2, to: 2 }, data: {} });
+    t.equal(sum(s, null).nextFollowUp.text, 'Follow-up due Day 2');
+    s.travel.day = 3;
+    TSI.explorer.journey.newDay(s);
+    var th = sum(s, null).threads;
+    t.same([th.length, th[0].due, sum(s, null).nextFollowUp], [1, '', null], 'the thread stays, its follow-up gone, as in the Explorer');
+    t.ok(/didn't come/.test(th[0].note), th[0].note);
+  });
+
   test('a damaged Explorer save doesn\'t stop the summary', function (t) {
-    var s = sum({ tokens: 'x', travel: null, journey: { effects: [null, { text: 'no name' }] } }, 'junk');
-    t.same([s.heroes, s.day, s.bastionSaved, s.effects], [[], 1, false, []]);
+    var s = sum({ tokens: 'x', travel: null, journey: { gold: 'lots', effects: [null, { text: 'no name' }], threads: [7, { note: 'no name' }, { name: 'Odd', follow: { from: 'x' }, resolve: 'y' }] } }, 'junk');
+    t.same([s.heroes, s.day, s.bastionSaved, s.effects, s.gold], [[], 1, false, [], 0]);
+    t.same(s.threads.map(function (x) { return [x.name, x.due, x.reward]; }), [['Odd', '', []]]);
+    t.equal(s.nextFollowUp, null);
     t.equal(s.region.id, 'northern_province', 'the Explorer\'s own first region');
   });
 }());

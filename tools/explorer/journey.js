@@ -778,11 +778,7 @@
 
   /* What resolving a thread gives, as lines for the "are you sure?". */
   J.resolveLines = function (t) {
-    var lines = [];
-    if (t && t.resolve) {
-      if (t.resolve.gold) lines.push(signed(t.resolve.gold) + ' gold');
-      if (t.resolve.dm) lines.push('DM note: ' + t.resolve.dm);
-    }
+    var lines = TSI.campaign.rewardLines(t);   /* shared with the DM doc */
     if (t && t.follow) lines.push('Its follow-up won\'t happen.');
     return lines;
   };
@@ -801,10 +797,7 @@
     if (j.log.length > LOG_MAX) j.log.length = LOG_MAX;
     return { thread: t, lines: lines };
   };
-  J.threadDueText = function (t) {
-    if (!t || !t.follow) return '';
-    return t.follow.from === t.follow.to ? 'Follow-up due Day ' + t.follow.from : 'Follow-up due Days ' + t.follow.from + '–' + t.follow.to;
-  };
+  J.threadDueText = function (t) { return TSI.campaign.threadDueText(t); };   /* shared with the DM doc */
 
   J.clearGold = function (state) {
     var j = journey(state);
