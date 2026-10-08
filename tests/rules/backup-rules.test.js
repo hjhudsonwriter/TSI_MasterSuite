@@ -130,6 +130,38 @@
     t.equal(B.checkSpace(fromTest, 'test'), null);
   });
 
+  group('Backups: the campaign save (the Explorer and the Bastion together)');
+
+  test('a campaign file holds both tools, reads back exactly and is named for the campaign', function (t) {
+    var records = [rec('tsi.explorer.save', { tokens: [] }), rec('tsi.bastion.state', { day: 4 }), rec('tsi.bastion.crest', { dataUrl: 'data:image/png;base64,x', key: 'k' })];
+    var backup = B.makeCampaignBackup(records, when);
+    t.same([backup.kind, backup.tools], ['campaign', ['explorer', 'bastion']]);
+    var parsed = B.parse(JSON.stringify(backup));
+    t.ok(parsed.ok, parsed.reason);
+    t.same(parsed.backup.records, records);
+    t.equal(B.fileName('campaign', 'explorer', when), 'tsi-campaign-2026-09-25-1403.json');
+    t.equal(B.fileName('campaign', 'bastion', when, 'test'), 'tsi-test-campaign-2026-09-25-1403.json');
+    t.same([B.inCampaign('explorer'), B.inCampaign('bastion'), B.inCampaign('quests')], [true, true, false]);
+  });
+
+  test('a campaign file goes into the Explorer or the Bastion, not another tool or the home screen', function (t) {
+    var backup = B.makeCampaignBackup([rec('tsi.explorer.save', 1)], when);
+    t.equal(B.checkForTool(backup, 'explorer', names), null);
+    t.equal(B.checkForTool(backup, 'bastion', names), null);
+    t.ok(/campaign save \(the Explorer and the Bastion\), not the Notice Board Quest Generator file/.test(B.checkForTool(backup, 'quests', names)));
+    t.ok(/open the Scarlett Isles Explorer or The Ironbow Bastion Manager and use Import/.test(B.checkForSuite(backup, names)));
+    var mixed = B.makeCampaignBackup([rec('tsi.explorer.save', 1), rec('tsi.quests.accepted', [])], when);
+    var r = B.parse(JSON.stringify(mixed));
+    t.ok(!r.ok);
+    t.ok(/mixes in another tool/.test(r.reason), r.reason);
+  });
+
+  test('an Explorer file from before the campaign save still goes into the Explorer, not the Bastion', function (t) {
+    var old = B.makeToolBackup('explorer', 'Scarlett Isles Explorer', [rec('tsi.explorer.save', 1)], when);
+    t.equal(B.checkForTool(old, 'explorer', names), null);
+    t.ok(/not The Ironbow Bastion Manager/.test(B.checkForTool(old, 'bastion', names)));
+  });
+
   test('test data in an older backup is left out of the real suite', function (t) {
     var backup = B.makeSuiteBackup([rec('tsi.demo.state', 1), rec('tsi.quests.accepted', 2)], when);
     var out = B.withoutTestData(backup, 'suite');

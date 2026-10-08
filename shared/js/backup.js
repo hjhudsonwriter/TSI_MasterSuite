@@ -2,7 +2,10 @@
    "Back up everything" and "Restore" on the home screen, and each saving
    tool's Export and Import. Restoring or importing always shows what's in the
    file and asks first, and offers to download a copy of the current data
-   before anything is replaced. */
+   before anything is replaced.
+   The Explorer and the Bastion save as one campaign (Harry, 8 October
+   2026): Export in either downloads one campaign file holding both, and
+   Import in either replaces both from it, after checking both halves. */
 (function () {
   'use strict';
 
@@ -12,6 +15,21 @@
   function nameOf(toolId) {
     var info = TSI.toolInfo(toolId);
     return info ? info.name : null;
+  }
+
+  /* A tool's own check of an imported file's records (its rules'
+     importProblem), for the campaign, whose other tool isn't open here:
+     each campaign tool's rules register theirs in TSI.importChecks. */
+  function importCheck(toolId) {
+    var own = TSI.importChecks && TSI.importChecks[toolId];
+    if (typeof own === 'function') return own;
+    var def = TSI.tools[toolId];
+    return def && typeof def.validateImport === 'function' ? def.validateImport : null;
+  }
+  function checkRecords(toolId, records) {
+    var check = importCheck(toolId);
+    if (!check) return null;
+    try { return check(TSI.clone(records)); } catch (e) { return 'This file couldn\'t be checked: ' + e.message; }
   }
 
   function downloadBackup(backup, kind, toolId) {
@@ -129,11 +147,19 @@
       });
     },
 
-    /* Download one tool's saved data. */
+    /* Download one tool's saved data. For the Explorer or the Bastion, the
+       campaign file: both, each as last saved (the other may be open in
+       another window). */
     exportTool: function (toolId, options) {
       return TSI.store.flush().then(function () {
-        var backup = rules.makeToolBackup(toolId, nameOf(toolId), TSI.store.records(toolId), new Date(), TSI.space);
-        var name = downloadBackup(backup, 'tool', toolId);
+        if (!rules.inCampaign(toolId)) return rules.makeToolBackup(toolId, nameOf(toolId), TSI.store.records(toolId), new Date(), TSI.space);
+        return Promise.all(rules.CAMPAIGN.map(function (t) {
+          return t === toolId ? TSI.store.records(t) : TSI.store.freshRecords(t);
+        })).then(function (lists) {
+          return rules.makeCampaignBackup([].concat.apply([], lists), new Date(), TSI.space);
+        });
+      }).then(function (backup) {
+        var name = downloadBackup(backup, backup.kind, toolId);
         if (!options || !options.quiet) {
           TSI.notify('Saved to your Downloads folder as ' + name + '.', { type: 'ok', title: 'Exported.', timeout: 8000, id: 'tsi-backup' });
         }
@@ -147,20 +173,33 @@
       return chooseBackup(title).then(function (backup) {
         if (!backup) return false;
         var refusal = rules.checkForTool(backup, toolId, nameOf);
-        var def = TSI.tools[toolId];
-        if (!refusal && def && typeof def.validateImport === 'function') {
-          try { refusal = def.validateImport(TSI.clone(backup.records)); } catch (e) { refusal = 'This file couldn\'t be checked: ' + e.message; }
+        var campaign = !refusal && backup.kind === 'campaign';
+        /* The tools this file replaces: both campaign tools for a campaign
+           file, otherwise just this one (an Explorer file from before the
+           campaign save leaves the Bastion as it is). */
+        var scopeTools = campaign ? rules.CAMPAIGN.slice() : [toolId];
+        if (campaign) {
+          /* The other tool open in another window would save over what's imported. */
+          var open = rules.CAMPAIGN.filter(function (t) { return t !== toolId && TSI.tabGuard && TSI.tabGuard.isOpenElsewhere(t); })[0];
+          if (open) refusal = TSI.the(nameOf(open) || open, true) + ' is open in another window. Close it first: a campaign file replaces the Explorer and the Bastion together. Nothing was changed.';
+        }
+        for (var i = 0; !refusal && i < scopeTools.length; i++) {
+          var t = scopeTools[i];
+          refusal = checkRecords(t, backup.records.filter(function (r) { return TSI.storeRules.toolOf(r.key) === t; }));
         }
         if (refusal) return TSI.modal.alert({ title: title, message: refusal }).then(function () { return false; });
 
-        var hasCurrent = TSI.store.keys(toolId).length > 0;
+        var hasCurrent = scopeTools.some(function (t) { return TSI.store.keys(t).length > 0; });
+        var others = rules.inCampaign(toolId) && !campaign ? rules.CAMPAIGN.filter(function (t) { return t !== toolId; }).map(function (t) { return TSI.the(nameOf(t) || t); }).join(' and ') : '';
         var body = summaryBody(
           backup,
           'This file (' + backup.fileName + ') was exported on ' + TSI.dates.human(backup.savedAt) + '. It holds:',
-          hasCurrent
-            ? 'Importing replaces what ' + TSI.the(toolName) + ' has saved now. The rest of the suite isn\'t touched.'
-            : TSI.the(toolName, true) + ' has nothing saved yet, so nothing will be lost.',
-          hasCurrent ? 'First, download a copy of ' + TSI.the(toolName) + '\'s current data' : null
+          campaign
+            ? (hasCurrent ? 'Importing replaces what the Explorer and the Bastion have saved now, together (anything the file doesn\'t hold is cleared). The rest of the suite isn\'t touched.' : 'Neither the Explorer nor the Bastion has anything saved yet, so nothing will be lost.')
+            : hasCurrent
+              ? 'Importing replaces what ' + TSI.the(toolName) + ' has saved now. ' + (others ? others.charAt(0).toUpperCase() + others.slice(1) + ' is left as it is.' : 'The rest of the suite isn\'t touched.')
+              : TSI.the(toolName, true) + ' has nothing saved yet, so nothing will be lost.',
+          hasCurrent ? (campaign || others ? 'First, download a copy of the campaign as it is now' : 'First, download a copy of ' + TSI.the(toolName) + '\'s current data') : null
         );
         return TSI.modal.open({
           title: title,
@@ -177,7 +216,7 @@
           return stop.then(function () {
             return body.box && body.box.checked ? TSI.backup.exportTool(toolId, { quiet: true }) : null;
           }).then(function () {
-            return TSI.store.replace(backup.records, { tool: toolId });
+            return TSI.store.replace(backup.records, campaign ? { tools: scopeTools } : { tool: toolId });
           }).then(function (ok) {
             if (!ok) {
               flash('The import couldn\'t be saved. ' + TSI.store.status().reason, 'error');

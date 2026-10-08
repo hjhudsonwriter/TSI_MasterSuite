@@ -801,4 +801,9 @@
   };
 
   ns.rules = R;
+  /* The import check the campaign save uses from the other tool's page
+     (shared/js/backup.js): the Explorer and the Bastion export and import
+     together, so each page loads the other's rules to check its half. */
+  TSI.importChecks = TSI.importChecks || {};
+  TSI.importChecks.explorer = R.importProblem;
 }());

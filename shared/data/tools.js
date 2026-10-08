@@ -74,7 +74,7 @@ window.TSI_DATA.tools = [
     phase: '9',
     built: true,
     saves: true,
-    desc: 'Manage facilities, turns, events, treasury and staff for your bastion.',
+    desc: 'Manage facilities, orders, events, treasury and staff for your bastion, day by day with the Explorer.',
     files: {
       css: ['tools/bastion/bastion.css', 'tools/bastion/war-table.css'],
       js: [
@@ -90,6 +90,10 @@ window.TSI_DATA.tools = [
         'tools/bastion/war-ai.js',
         'tools/bastion/war-campaign-rules.js',
         'tools/bastion/war-table.js',
+        /* The Explorer's rules, only to check its half of a campaign file
+           on Import (the Explorer and the Bastion save as one campaign). */
+        'tools/explorer/rules.js',
+        'tools/explorer/journey.js',
         'tools/bastion/tool.js'
       ]
     }
@@ -116,6 +120,9 @@ window.TSI_DATA.tools = [
         'tools/explorer/rules.js',
         'tools/explorer/journey.js',
         'tools/explorer/fights.js',
+        /* The Bastion's rules, only to check its half of a campaign file
+           on Import (the Explorer and the Bastion save as one campaign). */
+        'tools/bastion/rules.js',
         'tools/explorer/tool.js'
       ]
     }

@@ -50,6 +50,16 @@
           } catch (err) { reject(err); }
         });
       },
+      /* Every record as saved right now. */
+      readAll: function () {
+        return new Promise(function (resolve, reject) {
+          try {
+            var rq = db.transaction(DB_STORE, 'readonly').objectStore(DB_STORE).getAll();
+            rq.onsuccess = function () { resolve(rq.result || []); };
+            rq.onerror = function () { reject(rq.error); };
+          } catch (err) { reject(err); }
+        });
+      },
       write: function (batch) {
         return new Promise(function (resolve, reject) {
           var tx;
@@ -82,6 +92,9 @@
           try { row = JSON.parse(localStorage.getItem(rules.localKey(key, SPACE)) || 'null'); } catch (e) { row = null; }
           resolve(row);
         });
+      },
+      readAll: function () {
+        return new Promise(function (resolve) { resolve(readLocal()); });
       },
       write: function (batch) {
         return new Promise(function (resolve) {
@@ -313,6 +326,23 @@
       }, cached);
     },
 
+    /* One tool's records as saved right now, read again from the browser
+       (for the campaign save: the Bastion, say, open in another window,
+       may have saved since this page opened). If this page has changes of
+       that tool's still to save, or the browser can't be read, the copies
+       in memory are used. */
+    freshRecords: function (tool) {
+      requireReady();
+      var cached = function () { return TSI.store.records(tool); };
+      var mine = Array.from(pending.keys()).some(function (k) { return rules.toolOf(k) === tool; });
+      if (mine || !backend.readAll) return Promise.resolve(cached());
+      return backend.readAll().then(function (rows) {
+        return rows.filter(function (r) {
+          return rules.isRecord(r) && rules.toolOf(r.key) === tool && !(SPACE === 'suite' && rules.isTestOnly(r.key));
+        }).sort(function (a, b) { return a.key < b.key ? -1 : a.key > b.key ? 1 : 0; }).map(function (r) { return TSI.clone(r); });
+      }, cached);
+    },
+
     /* When the value was last saved (ISO text), or null. */
     savedAt: function (key) {
       var record = cache.get(key);
@@ -349,20 +379,24 @@
     },
 
     /* Replace saved records in one go (used by Restore and Import).
-       scope: { all: true } replaces everything; { tool: 'bastion' } replaces one tool's.
+       scope: { all: true } replaces everything; { tool: 'bastion' } replaces one tool's;
+       { tools: ['explorer', 'bastion'] } replaces those tools' together (the campaign save).
        Resolves true once saved, false if the browser refused. */
     replace: function (records, scope) {
       requireReady();
       scope = scope || {};
-      if (!scope.all && !rules.isValidToolId(scope.tool)) throw new Error('Replace needs a tool or { all: true }.');
+      if (!scope.all && Array.isArray(scope.tools)) {
+        if (!scope.tools.length || !scope.tools.every(rules.isValidToolId)) throw new Error('Replace needs real tools.');
+      } else if (!scope.all && !rules.isValidToolId(scope.tool)) throw new Error('Replace needs a tool or { all: true }.');
+      var inScope = function (tool) { return scope.all || (Array.isArray(scope.tools) ? scope.tools.indexOf(tool) !== -1 : tool === scope.tool); };
       /* Test data never goes into the real suite. */
       if (SPACE === 'suite') records = records.filter(function (r) { return !(r && rules.isTestOnly(r.key)); });
       records.forEach(function (r) {
         if (!rules.isRecord(r)) throw new Error('A record in the file is damaged.');
-        if (!scope.all && rules.toolOf(r.key) !== scope.tool) throw new Error('The file holds another tool\'s data (' + r.key + ').');
+        if (!inScope(rules.toolOf(r.key))) throw new Error('The file holds another tool\'s data (' + r.key + ').');
       });
       var incoming = new Set(records.map(function (r) { return r.key; }));
-      TSI.store.keys(scope.all ? null : scope.tool).forEach(function (key) {
+      TSI.store.keys(null).filter(function (key) { return inScope(rules.toolOf(key)); }).forEach(function (key) {
         if (!incoming.has(key)) {
           cache.delete(key);
           pending.set(key, { op: 'delete', key: key });
