@@ -56,10 +56,17 @@ Harry said go for Build 3 (plan: `docs/BASTION-OVERHAUL.md` sections 3 and 4), n
 - **Tests:**
   - `tests/rules.html`: 813 rules tests, all passing. Five Brigade and old-war tests moved to the archive, and seven new ones cover the archive, an old Brigade save and its waiting war orders, Clan-only war, the crest record and the hand-off.
   - The archived tests (ten) pass with the archive loaded.
-  - `phase9.test.js`'s crest section, rewritten as "The crest, at any time (Build 3)", has 12 checks, all passing. It uses two windows: the Creator sends a crest, and the Bastion asks about it now, or when next opened.
-  - `phase2.test.js`: 71 checks, all passing, with a new "Use for the Bastion" section.
-  - `bastion-screen.test.js`: the badge check is rewritten.
-  - Every tool's click-through is being re-run because shared code changed (the hand-off).
+  - `phase9.test.js` (the Bastion): 114 checks, all passing. Its crest section, rewritten as "The crest, at any time (Build 3)", uses two windows: the Creator sends a crest, and the Bastion asks about it now or when next opened. It also covers a damaged crest and two Bastion windows.
+  - `bastion-screen.test.js`: 37 checks, all passing. New: the badge, Party Identity, Form Clan and the crest question fit every screen size, keyboard focus, and where notices sit.
+  - `phase2.test.js` (the Crest Creator): 71 checks, all passing, with a new "Use for the Bastion" section.
+  - Phase 1 (the shell): 126 checks, all passing. New: a hidden window's heartbeat, and a crashed window reloading.
+  - **Every tool's click-through was re-run at the end, on a quiet machine,** because shared code changed (the hand-off, pop-up focus and "Already open"). All pass:
+    - the two-window days test (15);
+    - fights (15);
+    - the War Table (145);
+    - the guide (20);
+    - Pelagosi (58), the Notice Board (64), the Ritual (53), the Arenas (79), the Combat Tracker (78), the Explorer (81) and the DM doc (11).
+  - **Run on a busy machine,** three side-by-side timing comparisons with the old tools went out of step. On a quiet machine they pass.
 
 ### The Bastion's new screen: the overhaul's Build 2 (8 October 2026)
 Harry said go for Build 2 (plan: `docs/BASTION-OVERHAUL.md` section 5). Every rule is as it was; only the screen changed (KNOWN_ISSUES BAS-64).

@@ -342,7 +342,10 @@ Built as planned in sections 3 and 4, with these differences and details (the co
 - **The crest record** gains an optional `design` (`R.isCrest` checks it's a set of settings).
 - **Form Clan's crest box:** Keep this crest appears once another has been picked; a crest uploaded there is used only on Confirm Founding. Founding without picking one keeps the Bastion's crest (before, it removed it).
 - **The badge's label:** "Add a crest" with no crest; under a crest, the Clan's name or "Unsworn".
-- **Tests:** rules tests for the archive, the old Brigade save, Clan-only war, the crest record and the hand-off; `phase9.test.js`'s crest section rewritten ("The crest, at any time (Build 3)") with two windows; `phase2.test.js` gains "Use for the Bastion"; `bastion-screen.test.js`'s badge check.
+- **The question while something else happens:** no day passes while it's open; it waits for a day being passed or the War Table; it's asked again if the Bastion closes mid-question; with two Bastion windows, answering in one closes it in the other; a crest that doesn't load as a picture is never offered (BAS-68).
+- **Messages from "Create in the Clan Crest Creator ↗"** are written inside the pop-up (a corner notice sits under its backdrop). Bastion notices sit on the left above the bottom bar.
+- **Shared changes made along the way:** "Already open" counts a hidden window for 90 seconds (SUI-27); a pop-up focuses its first box that can be seen (SUI-28).
+- **Tests:** 813 rules tests (the archive, the old Brigade save and its waiting war orders, Clan-only war, the crest record, the hand-off); `phase9.test.js` 114 checks (its crest section rewritten as "The crest, at any time (Build 3)", with two windows); `bastion-screen.test.js` 37; `phase2.test.js` 71 (with "Use for the Bastion"); phase 1 126 (hidden and crashed windows). Every suite re-run at the end and passing.
 - **Not built (later):** re-editing the Bastion's crest in the Creator from its saved design.
 
 ## 8. Harry's answers (8 October 2026)
