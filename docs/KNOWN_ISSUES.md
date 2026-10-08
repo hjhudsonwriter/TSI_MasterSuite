@@ -21,7 +21,7 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 
 | Tool | Must fix | Fixed by design | Deliberate | Later (Harry's call) | Not relevant / not a bug |
 |---|---|---|---|---|---|
-| Suite-wide (SUI) | 7 | 11 | 8 | 1 | 0 |
+| Suite-wide (SUI) | 8 | 11 | 8 | 1 | 0 |
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
 | Scarlett Isles Explorer (EXP) | 12 | 5 | 6 | 13 | 0 |
@@ -271,6 +271,13 @@ These come from checking the eight tools against each other: the collision audit
 - **Before:** Each open window writes a heartbeat every 2 seconds, and another window counted it as open only if the last one was under 7 seconds old. After 5 minutes hidden (minimised, or covered by another window, such as the Crest Creator opened over the Bastion), Edge runs a window's timers only about once a minute, so the hidden window soon looked closed. The "Already open" warning could then miss a second copy of the same tool (which can overwrite the first one's saves), and the Crest Creator could offer to open a second Bastion.
 - **After:** A hidden window says so in its heartbeat as soon as it's hidden, and counts as open for 90 seconds after its last one; shown again, it beats at once. A window that closes or reloads still says so at once and then stops beating (the browser reports it hidden just after it says it's going), so it never lingers and a reload keeps its id.
 - **Evidence:** `shared/js/tabguard.js` (`fresh`, `HIDDEN_STALE_MS`, the `visibilitychange` beat); tests in `tests/e2e/phase1.test.js` ("a hidden window's heartbeat counts for longer").
+
+### SUI-28 · A pop-up whose first box was hidden left the focus behind it
+**Must fix** (found by hands-on testing of Build 3, 8 October 2026; fixed) · other
+
+- **Before:** A pop-up put the focus in its first box, even a hidden one, where it can't go: the focus then stayed behind the pop-up, on whatever opened it. The Bastion's Party Identity for a party that isn't a Clan was one (Clan Honour is hidden until there's a Clan). One Tab got into the pop-up.
+- **After:** The focus goes to the first box that can be seen, else to the first button, as before.
+- **Evidence:** `shared/js/modal.js` (`open`); tests in `tests/e2e/bastion-screen.test.js`.
 
 ## Combat Tracker & VTT Battlemap
 Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point there).
@@ -1836,7 +1843,11 @@ None of these reached Harry.
 - **Days passed underneath the crest question** (opening the Bastion after several camps), so a roll or even the War Table could open under it → no day passes while it's open; they pass once it's answered.
 - **A former Brigade's waiting War Action** with Lieutenants or regiments lapsed, saying "nothing committed to it is still free to march", which wasn't why → the log and the muster say only a Clan can send them (and the Bastion says so as it opens).
 - **Form Clan's "Create a new one ↗"** shared its test name with Party Identity's button → its own name (`crest-new`).
-- **Evidence:** `tools/bastion/tool.js` (`checkCrestOffer`, `openCreator`, `crestField`, `checkClock`), `tools/bastion/war-campaign-rules.js` (`R.clanOnlyCut`, `beginMilitaryAction`, `musterShortfall`); tests in `tests/e2e/phase9.test.js` and `tests/rules/bastion-campaign.test.js`.
+- **After Remove, Keep this crest or founding a Clan,** the button that had the focus disappeared and the focus dropped out of the panel → it stays in the panel (Upload, or Clan Honour).
+- **The one-time "Mercenary Brigade … is no more" notice** stayed until dismissed, over the Clan Influence, Favour and War Council buttons → it goes after 20 seconds (the Day Log keeps it).
+- **A crest sent that wasn't really a picture** (only possible by hand) would be offered and saved, showing as a broken picture → it's dropped unless it loads as a picture.
+- **With two Bastion windows** (which "Already open" warns about), answering the crest question in one left it open in the other, which could still take the crest → the other window's question closes. A newer crest sent while it's asking takes its place.
+- **Evidence:** `tools/bastion/tool.js` (`checkCrestOffer`, `openCreator`, `crestField`, `checkClock`, `onRemoveCrest`, `onFormClan`), `tools/bastion/war-campaign-rules.js` (`R.clanOnlyCut`, `beginMilitaryAction`, `musterShortfall`); tests in `tests/e2e/phase9.test.js`, `tests/e2e/bastion-screen.test.js` and `tests/rules/bastion-campaign.test.js`.
 
 ## Clan Crest Creator
 Old repo: `_legacy/clan-crest-creator` (file:line references point there).

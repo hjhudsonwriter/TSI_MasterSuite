@@ -43,6 +43,12 @@ Harry said go for Build 3 (plan: `docs/BASTION-OVERHAUL.md` sections 3 and 4), n
   - **Days passing under the question:** days could pass underneath the crest question. Now they wait for your answer.
   - **A former Brigade's war order** lapsed giving the wrong reason. It now says only a Clan can send Lieutenants and regiments.
   - **"Already open" (all tools):** a window hidden for 5 minutes or more (minimised, or covered by another window) could stop counting as open. Edge slows its timers then. Now it counts for 90 seconds after its last heartbeat, and a closing window still stops counting straight away.
+  - **Keyboard focus:**
+    - Party Identity opened with the focus left behind it. Now the focus goes inside: any pop-up whose first box is hidden now focuses the first box you can see (SUI-28).
+    - Remove, Keep this crest and founding a Clan dropped the focus out of the panel. Now it stays in the panel.
+  - **The former-Brigade notice** stayed over the bottom-right buttons until dismissed. Now it goes after 20 seconds.
+  - **Two Bastion windows:** with two open, answering the crest question in one now closes it in the other.
+  - **A damaged crest:** a crest that isn't really a picture is never offered.
 - **The guide**, `docs/WAR-RULES.md` and KNOWN_ISSUES are updated.
 - **Tests:**
   - `tests/rules.html`: 813 rules tests, all passing. Five Brigade and old-war tests moved to the archive, and seven new ones cover the archive, an old Brigade save and its waiting war orders, Clan-only war, the crest record and the hand-off.
