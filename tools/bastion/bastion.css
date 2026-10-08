@@ -224,6 +224,15 @@
   color: var(--tsi-gold-text);
 }
 
+/* The suite's notices sit in the bottom-right corner, which on the Bastion
+   is the bottom bar's buttons (Clan Influence, Favour, War Council): here
+   they sit just above the bar (128 pixels, and its 15-pixel frame), over
+   the corner of the map. The War Table places them itself (war-table.css). */
+.tsi-page--bastion:not(.tsi-bas-wt-open) .tsi-notices {
+  bottom: 155px;
+  max-height: calc(100vh - var(--tsi-topbar-h) - 187px);
+}
+
 /* The bottom bar: the panel buttons either side of the facility grid. */
 .tsi-page--bastion .tsi-bas-bottom {
   flex: 0 0 auto;

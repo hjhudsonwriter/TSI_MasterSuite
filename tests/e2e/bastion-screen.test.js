@@ -82,6 +82,25 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
       await H.shot(page, 'bs-01-' + size);
     });
   }
+  await check('a notice sits above the bottom bar, never over its buttons, on the laptop and the TV', async () => {
+    for (const size of ['laptop', 'tv']) {
+      await page.setViewportSize(H.SIZES[size].viewport);
+      await page.waitForTimeout(200);
+      await page.evaluate(() => TSI.notify('A long notice, to see where it sits: it has two lines of words in it, at least, on both screens.', { type: 'info', title: 'Test.', id: 'tsi-bs-test' }));
+      const hits = await page.evaluate(() => ['open-influence', 'open-favour', 'open-war', 'open-warehouse'].map(t => {
+        const b = document.querySelector('[data-test=' + t + ']').getBoundingClientRect();
+        const hit = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2);
+        return t + ':' + !!(hit && hit.closest('[data-test=' + t + ']'));
+      }));
+      equal(hits, ['open-influence:true', 'open-favour:true', 'open-war:true', 'open-warehouse:true'], size);
+      const n = await rect(page, '.tsi-notices');
+      const bar = await rect(page, '.tsi-bas-bottom');
+      assert(n.bottom <= bar.y, size + ': the notices end above the bar: ' + JSON.stringify([n, bar]));
+      await page.evaluate(() => document.querySelectorAll('.tsi-notice').forEach(x => x.remove()));
+    }
+    await page.setViewportSize(H.SIZES.laptop.viewport);
+  });
+
   await check('moved from the laptop to the TV and back, the painting refits at once', async () => {
     await page.setViewportSize(H.SIZES.laptop.viewport);
     await page.waitForTimeout(200);

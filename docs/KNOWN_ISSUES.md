@@ -1845,6 +1845,7 @@ None of these reached Harry.
 - **Form Clan's "Create a new one ↗"** shared its test name with Party Identity's button → its own name (`crest-new`).
 - **After Remove, Keep this crest or founding a Clan,** the button that had the focus disappeared and the focus dropped out of the panel → it stays in the panel (Upload, or Clan Honour).
 - **The one-time "Mercenary Brigade … is no more" notice** stayed until dismissed, over the Clan Influence, Favour and War Council buttons → it goes after 20 seconds (the Day Log keeps it).
+- **Every Bastion notice** (since Build 2's screen) sat in the bottom-right corner, over those same buttons → on the Bastion's screen they sit just above the bottom bar, over the corner of the map. The War Table places them as before.
 - **A crest sent that wasn't really a picture** (only possible by hand) would be offered and saved, showing as a broken picture → it's dropped unless it loads as a picture.
 - **With two Bastion windows** (which "Already open" warns about), answering the crest question in one left it open in the other, which could still take the crest → the other window's question closes. A newer crest sent while it's asking takes its place.
 - **Evidence:** `tools/bastion/tool.js` (`checkCrestOffer`, `openCreator`, `crestField`, `checkClock`, `onRemoveCrest`, `onFormClan`), `tools/bastion/war-campaign-rules.js` (`R.clanOnlyCut`, `beginMilitaryAction`, `musterShortfall`); tests in `tests/e2e/phase9.test.js`, `tests/e2e/bastion-screen.test.js` and `tests/rules/bastion-campaign.test.js`.
