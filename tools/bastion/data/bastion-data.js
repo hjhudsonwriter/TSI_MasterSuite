@@ -82,26 +82,55 @@ window.TSI_DATA.bastion = {
 
   /* Hall of Emissaries: the DC for each action (908-915). */
   hallDC: { trade_agreement: 14, host_delegation: 13, summit: 12, arbitration: 15, consortium: 16 },
-  /* What a roll tier does to a Hall action (960-964): turns added, income
-     multiplier, Political Capital. A natural 1 has no row, so it counts as a
-     plain success with no change (B20, kept). */
+  /* What a roll tier does to a Hall action (960-964): days added to how
+     long its record lasts, income multiplier, Political Capital, and the
+     days the action is then cooling down. These were turns (+2 to −2, a
+     2-turn cooldown); since the days overhaul (8 October 2026) they're the
+     same at 7 days a turn. A natural 1 has no row, so it counts as a plain
+     success with no change (B20, kept). */
   hallTiers: {
-    critical_success: { turnsAdj: 2, incomeMult: 1.35, pcDelta: 25 },
-    great_success: { turnsAdj: 1, incomeMult: 1.20, pcDelta: 15 },
-    success: { turnsAdj: 0, incomeMult: 1.00, pcDelta: 8 },
-    failure: { turnsAdj: -1, incomeMult: 0.75, pcDelta: -10 },
-    bad_failure: { turnsAdj: -2, incomeMult: 0, pcDelta: -20, cooldown: 2 }
+    critical_success: { daysAdj: 14, incomeMult: 1.35, pcDelta: 25 },
+    great_success: { daysAdj: 7, incomeMult: 1.20, pcDelta: 15 },
+    success: { daysAdj: 0, incomeMult: 1.00, pcDelta: 8 },
+    failure: { daysAdj: -7, incomeMult: 0.75, pcDelta: -10 },
+    bad_failure: { daysAdj: -14, incomeMult: 0, pcDelta: -20, cooldownDays: 14 }
   },
+  /* A Trade Agreement runs for the weeks chosen when it's planned (Harry,
+     8 October 2026), plus or minus the roll tier's days, and never less
+     than one week. */
+  tradeAgreementWeeks: [1, 3, 6],
+  tradeAgreementDefaultWeeks: 3,
   /* Hosting a delegation (1011-1097). */
   delegation: { diplomacyDC: 13, insightDC: 12, toneMod: { conciliatory: 2, assertive: 0, opportunistic: -2 } },
   /* Trade Network investments (710-817). */
   networkUpgrades: {
-    stability: { costGP: 75, label: 'Ironbow Trade Network: Stability Investment' },
-    yield: { costGP: 90, label: 'Ironbow Trade Network: Yield Investment' },
-    toggle_high_risk: { costGP: 0, label: 'Ironbow Trade Network: Routing Doctrine Change' }
+    stability: { costGP: 75, days: 7, label: 'Ironbow Trade Network: Stability Investment' },
+    yield: { costGP: 90, days: 7, label: 'Ironbow Trade Network: Yield Investment' },
+    toggle_high_risk: { costGP: 0, days: 1, label: 'Ironbow Trade Network: Routing Doctrine Change' }
   },
   /* The Council Ledger (2884-3051). */
   councilDC: 13,
+
+  /* ---------- Time (the days overhaul, Harry, 8 October 2026) ----------
+     The Bastion follows the Explorer's day (docs/BASTION-OVERHAUL.md).
+     Each order's own days are in facilities-data.js; these are the rest.
+     - buildDays: building a facility, by its required level (the first row
+       whose level it reaches): 21 / 28 / 35 / 35 days at levels 5 / 9 / 13
+       / 17 (it was 3 / 4 / 5 / 5 turns).
+     - every: contracts send a shipment, sea routes settle and a Clan at war
+       rolls to attack, every this many days from when each began.
+     - patrolDays: the Watchtower's Patrol gives Advantage for this many
+       days after it completes (it was "this turn").
+     - musterDays: a War Action musters this many days after it's queued.
+     - eventEvery: the automatic Bastion event comes every this many days,
+       counted from Day 1 (Days 29, 57, 85…; it was every 4th turn). */
+  time: {
+    buildDays: [{ level: 17, days: 35 }, { level: 13, days: 35 }, { level: 9, days: 28 }, { level: 5, days: 21 }],
+    every: 7,
+    patrolDays: 7,
+    musterDays: 3,
+    eventEvery: 28
+  },
 
   /* War (5285-5339): DC, and gold and target Political Capital on success / failure. */
   war: {
@@ -209,12 +238,12 @@ window.TSI_DATA.bastion = {
 
   /* The Hall's hover notes (3552-3603). */
   hallTips: {
-    trade_agreement: ['Creates a timed Trade Agreement with a clan.', 'On resolution: a d20 vs DC determines income/turn, duration tilt, and Political Capital change.', 'Income is paid automatically each Bastion Turn while active.'],
+    trade_agreement: ['Creates a timed Trade Agreement with a clan, for 1, 3 or 6 weeks.', 'On resolution: a d20 vs DC determines the income per shipment, duration tilt, and Political Capital change.', 'A shipment arrives every 7 days while it runs, its gold paid automatically.'],
     host_delegation: ['Host a clan delegation at the Hall.', 'On resolution: two rolls (Diplomacy + Insight).', 'Strong outcomes can grant a Favour Token and boost Political Capital.'],
     summit: ['Convene an inter-clan summit to reduce costs on Hall actions.', 'On resolution: sets a % discount for future Hall actions for a limited time.', 'Also shifts Political Capital for both clans.'],
     arbitration: ['Secures a Writ of Authority from the capital.', 'Effect: +2 to Council Verdict rolls for the next 3 rulings.', 'Use Council Ledger to judge disputes created by disrupted routes.'],
-    consortium: ['Creates a Trade Consortium contract and activates the Ironbow Trade Network.', 'On resolution: opens a route for the chosen clan (with risk + yield).', 'Routes can later be resolved each turn for income, disruption, and disputes.'],
-    other: ['A diplomatic action issued from the Hall.', 'Resolves next Bastion Turn.', 'Outcome is determined by your roll and applies Political Capital changes.']
+    consortium: ['Creates a Trade Consortium contract and activates the Ironbow Trade Network.', 'On resolution: opens a route for the chosen clan (with risk + yield).', 'Each route sails every 7 days for income, disruption, and disputes.'],
+    other: ['A diplomatic action issued from the Hall.', 'Resolves when its days are up.', 'Outcome is determined by your roll and applies Political Capital changes.']
   },
 
   /* The Compendium's card pictures (assets/compendium_cards/<name>.png). A card
