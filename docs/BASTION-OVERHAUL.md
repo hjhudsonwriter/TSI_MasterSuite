@@ -330,6 +330,21 @@ Built as planned in section 5, with these differences (the code wins; also in KN
 
 (Build 2 and 3 could swap if Harry would rather see the crest first; the crest badge needs the new map panel, so they're ordered this way.)
 
+### Build 3 as built (8 October 2026)
+
+Built as planned in sections 3 and 4, with these differences and details (the code wins; also in KNOWN_ISSUES BAS-66, BAS-67, CRS-16 and SUI-26):
+
+- **The archive is a plug-in.** `tools/bastion/archive/mercenary-brigade.js`, loaded after `war-campaign-rules.js`, puts back on `TSI.bastion.rules` everything that was removed: `canFormMerc`, the Brigade's label and requirements, a saved Brigade loading as one, a Brigade's `fullWar`, the Trusted Clients amounts on `warRewards`, and the old single roll (`warCommit`, `queueWarAction`, `warPlan`, `resolveWar`, `removeBeasts`). The Trusted Clients changing after a battle also need three lines back in `war-campaign-rules.js`, listed in its header. The Brigade's screen parts are kept there in a comment. Its ten tests passed with it loaded.
+- **Data moved:** `identityRules.mercMinLevel` and `mercMinDefenders`, and `war.dc` (read only by the single roll), went from `bastion-data.js` into the archive.
+- **Saves:** `trustedClientsByClan` stays in the state and every save, unread. A days save with a Brigade (possible from Builds 1 and 2) loads as Unsworn; `R.formerBrigade` lets the screen log the Brigade's name and say so once.
+- **The live tests that used `R.queueWarAction`** only to make an old-style war order now build that order themselves (`oldWarOrder`), so the Military Action's old-order path is still tested.
+- **The hand-off:** `TSI.handoff` kind `crest` (`tsi.suite.handoff-crest`), `{ id, at, name, dataUrl, design }`. The Bastion checks it as it opens, on the browser's storage event, and every 2 seconds, and asks only when nothing else is going on (no day being passed, no War Table). Either answer clears it. `R.crestFromHandoff` accepts only a PNG of up to about 3 MB and keeps only the design's plain settings.
+- **The crest record** gains an optional `design` (`R.isCrest` checks it's a set of settings).
+- **Form Clan's crest box:** Keep this crest appears once another has been picked; a crest uploaded there is used only on Confirm Founding. Founding without picking one keeps the Bastion's crest (before, it removed it).
+- **The badge's label:** "Add a crest" with no crest; under a crest, the Clan's name or "Unsworn".
+- **Tests:** rules tests for the archive, the old Brigade save, Clan-only war, the crest record and the hand-off; `phase9.test.js`'s crest section rewritten ("The crest, at any time (Build 3)") with two windows; `phase2.test.js` gains "Use for the Bastion"; `bastion-screen.test.js`'s badge check.
+- **Not built (later):** re-editing the Bastion's crest in the Creator from its saved design.
+
 ## 8. Harry's answers (8 October 2026)
 
 1. **A clock in the Bastion too?** No (default): Make Camp in the Explorer is the only way a day passes.

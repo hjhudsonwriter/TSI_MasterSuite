@@ -824,9 +824,10 @@
         if (!c) { TSI.handoff.clear('crest', h.id); return; }
         crestOfferOpen = true;
         offerCrest(c).then(function (use) {
-          TSI.handoff.clear('crest', h.id);
           crestOfferOpen = false;
+          /* The Bastion closed while asking: ask again when it next opens. */
           if (!life.alive) return;
+          TSI.handoff.clear('crest', h.id);
           if (use) {
             saveCrest(c);
             renderAll();
@@ -868,7 +869,7 @@
         var note = muted('');
         note.setAttribute('data-test', 'crest-field-note');
         var keep = btn('Keep this crest', null, 'tsi-btn--ghost', 'crest-keep', { hidden: true });
-        var create = btn('Create a new one ↗', null, '', 'crest-create');
+        var create = btn('Create a new one ↗', null, '', 'crest-new');
         var upload = btn('Upload…', null, '', 'crest-upload');
         function show() {
           var c = chosen || crest;
@@ -933,7 +934,7 @@
         honourInput.value = String(state.clanHonor);
         done();
       });
-      var honourBox = el('div', { class: 'tsi-bas-box', hidden: true, 'data-test': 'honour-box' }, [
+      var honourBox = el('div', { class: 'tsi-bas-box tsi-bas-honour', hidden: true, 'data-test': 'honour-box' }, [
         label('Clan Honour (0–100)'),
         field('', honourInput)
       ]);
@@ -964,7 +965,7 @@
           ]);
         }
         orgDesc.textContent = clan ? 'You are a political entity. Clan Honour unlocks future war and territory systems.'
-          : 'Unsworn. You may found a Clan once enough of the Clans support you.';
+          : 'You may found a Clan once enough of the Clans support you.';
         showCrest(crestImg, crest);
         crestImg.alt = crest ? crestName() : '';
         crestEmpty.hidden = !!crest;

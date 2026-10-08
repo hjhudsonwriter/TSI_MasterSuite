@@ -2,11 +2,42 @@
 
 ## Where things stand
 
-**The rebuild is complete, the short how-to guide is written, and the first upgrades are done: the Clan Crest Creator has been reworked at Harry's request, its sigils redone from real heraldic artwork, and it now remembers your last design. The Bastion now takes a crest for your Clan or Brigade, counts beasts properly, and has phase 2 of the war mini-game: full battles on the War Table against an enemy that plays to its objective, with the result (losses, recovery and rewards) applied to the Bastion exactly once. The rules, as built, are in `docs/WAR-RULES.md`. On 6 October 2026 the Explorer's travel and campfire events were replaced with Harry's new ones, any tool can be opened in a new window from Switch tool, and the DM doc opens as a floating panel. On 7 October the Explorer's fights started setting themselves up in the Combat Tracker (monsters, Harry's own battle maps and the grid, with the tracker reporting back when every enemy is down), the ford only near rivers and the cove near the sea. The DM doc now shows where the campaign stands: the party's level and heroes, the day, the Bastion's orders and its next word, the Clan's and the god's standing where the party is, the party's gold, and the Explorer's Active Effects and Threads. On 8 October the Bastion overhaul began (plan: `docs/BASTION-OVERHAUL.md`): **Build 1** is done. The Bastion has no turns any more: it follows the Explorer's day, orders take days, "The Ironbow sends word…" brings its news to both tools, and the Explorer and the Bastion save as one campaign. **Build 2** followed the same day: the Bastion's new screen, with the map filling the window, a facility grid along the bottom and every panel opening over the map. Build 3 (identity and the crest) waits for Harry's go-ahead.** All eight tools open from their cards, and `guide.html` (linked at the foot of the home screen) explains them. What comes next is up to Harry: after trying the tools at the table, he can ask for more upgrades, fixes to kept behaviours, or the joined-up ideas in sections 12 to 15 of the handover.
+**The rebuild is complete, the short how-to guide is written, and the first upgrades are done: the Clan Crest Creator has been reworked at Harry's request, its sigils redone from real heraldic artwork, and it now remembers your last design. The Bastion now takes a crest (since Build 3, at any time and straight from the Crest Creator), counts beasts properly, and has phase 2 of the war mini-game: full battles on the War Table against an enemy that plays to its objective, with the result (losses, recovery and rewards) applied to the Bastion exactly once. The rules, as built, are in `docs/WAR-RULES.md`. On 6 October 2026 the Explorer's travel and campfire events were replaced with Harry's new ones, any tool can be opened in a new window from Switch tool, and the DM doc opens as a floating panel. On 7 October the Explorer's fights started setting themselves up in the Combat Tracker (monsters, Harry's own battle maps and the grid, with the tracker reporting back when every enemy is down), the ford only near rivers and the cove near the sea. The DM doc now shows where the campaign stands: the party's level and heroes, the day, the Bastion's orders and its next word, the Clan's and the god's standing where the party is, the party's gold, and the Explorer's Active Effects and Threads. On 8 October the Bastion overhaul began (plan: `docs/BASTION-OVERHAUL.md`): **Build 1** is done. The Bastion has no turns any more: it follows the Explorer's day, orders take days, "The Ironbow sends word…" brings its news to both tools, and the Explorer and the Bastion save as one campaign. **Build 2** followed the same day: the Bastion's new screen, with the map filling the window, a facility grid along the bottom and every panel opening over the map. **Build 3**, the last of the overhaul, came the same day too: the crest belongs to the Bastion and can come straight from the Crest Creator, Party Identity is reworked, and the Mercenary Brigade is archived.** All eight tools open from their cards, and `guide.html` (linked at the foot of the home screen) explains them. What comes next is up to Harry: after trying the tools at the table, he can ask for more upgrades, fixes to kept behaviours, or the joined-up ideas in sections 12 to 15 of the handover.
 
 Double-click `index.html` to open the suite. The plan is in `docs/PLAN.md`, the bug list in `docs/KNOWN_ISSUES.md`, and the notes for building each tool in `docs/BUILDING-A-TOOL.md`.
 
 ## Done
+
+### Identity and the crest: the overhaul's Build 3 (8 October 2026)
+Harry said go for Build 3 (plan: `docs/BASTION-OVERHAUL.md` sections 3 and 4), noting he'll likely change the Bastion's map painting later.
+- **The crest belongs to the Bastion** (KNOWN_ISSUES BAS-67). It can be set whether the party is Unsworn or a Clan, and founding a Clan keeps it. Party Identity has three buttons for it:
+  - **Create in the Clan Crest Creator ↗** opens the Creator in a new window (or says it's open already).
+  - **Upload a picture…**
+  - **Remove** (asks first).
+- **The Crest Creator's new button, Use for the Bastion** (CRS-16), sits beside Download PNG. It sends a 512 × 512 picture of the crest and its design to the Bastion through the suite's hand-off (SUI-26), with no downloading and uploading.
+  - The Bastion asks "Use this crest for the Bastion?", showing the crest: at once if it's open, or the next time it opens.
+  - The Creator's notice says which, with **Open the Bastion ↗** when the Bastion is shut.
+  - The Bastion keeps the Creator's design with the crest, so it can be re-edited one day.
+- **The badge** in the map's corner shows the crest, or a faint dashed shield and "Add a crest". Under the crest is the Clan's name, or "Unsworn". Its spoken name is "Crest of the Ironbow", then "Crest of <Clan>".
+- **Party Identity** is reworked:
+  - the crest, large, with its three buttons;
+  - Unsworn, or the Clan with its chief, motto and founding day;
+  - Found a Clan with its requirements (until there's a Clan);
+  - Clan Honour (only for a Clan).
+- **Form Clan's crest box** shows the Bastion's crest, with three choices:
+  - **Create a new one ↗**;
+  - **Upload…**, used only if you confirm the founding;
+  - **Keep this crest**, to go back to it.
+
+  Cancel changes nothing. Before, founding without choosing a crest removed it.
+- **The War Table** shows the crest on your tokens even when Unsworn; the army is "Your forces" until there's a Clan.
+- **The Mercenary Brigade is archived** (BAS-66):
+  - **What's gone:** Form Mercenary Brigade, the Brigade label, Trusted Clients and their War Report line, and "Clan or Brigade" wording. Only a Clan commits Lieutenants and regiments ("Clan only").
+  - **The old single-roll war goes too:** nothing had used it since the War Table.
+  - **Kept aside:** both are kept, as working code with their ten tests, in `tools/bastion/archive/mercenary-brigade.js` and `tests/archive/mercenary-brigade.test.js`, loaded by nothing. The note at the top says how to put them back.
+  - **Saves:** the Trusted Clients scores stay in every save, unread. A Brigade saved in Builds 1 or 2 opens as Unsworn, says so once, and the Day Log keeps its name.
+- **The guide**, `docs/WAR-RULES.md` and KNOWN_ISSUES are updated.
+- **Tests:** TESTS_PLACEHOLDER
 
 ### The Bastion's new screen: the overhaul's Build 2 (8 October 2026)
 Harry said go for Build 2 (plan: `docs/BASTION-OVERHAUL.md` section 5). Every rule is as it was; only the screen changed (KNOWN_ISSUES BAS-64).
@@ -655,7 +686,11 @@ Harry asked for a complete rework: the old tool's shields, colours and sigils we
   - The old-save import phase removed.
 
 ## Next
-**Harry tries the Bastion's new screen** (Build 2) on the laptop and the TV: the grid, building from a slot, a facility's panel, the panels along the bottom, and the War Council's lock. Then says what to change: the tile size, the panel buttons' names or order, what the top bar shows. **Build 3 (identity and the crest)** starts when Harry says go: the Brigade archived, a crest at any time from the Crest Creator, and the badge and Party Identity reworked.
+**Harry tries Build 3**: makes a crest in the Crest Creator and sends it with Use for the Bastion (with the Bastion open in another window, and with it shut), uploads and removes one, founds a Clan, and sees the crest on the War Table. Then says what to change: the badge, the Party Identity panel's layout, or the Form Clan crest box. That completes the overhaul's plan.
+
+**A new map painting (later, when Harry has one):** the Bastion's map is 1152 × 768 today, and the screen assumes that shape (`MAP_RATIO` in `fitMap`, `tools/bastion/tool.js`). A new painting, best about 3000 × 1250 (or 1920 × 1280 to keep 3:2), needs `fitMap` to read the picture's own size, and the facility overlays redone at the same size.
+
+**Harry tries the Bastion's new screen** (Build 2) on the laptop and the TV: the grid, building from a slot, a facility's panel, the panels along the bottom, and the War Council's lock. Then says what to change: the tile size, the panel buttons' names or order, what the top bar shows.
 
 **Harry tries the Bastion in days at the table** (Build 1), with the Explorer on the laptop and the Bastion on the TV: make camp, watch the days pass and the Ironbow's word arrive, and play an order, a trade agreement and a war through. Then say: which order lengths to change (each is one number in `tools/bastion/data/facilities-data.js`), and anything about the word pop-ups. **Build 2, the new map-centred screen,** starts when Harry says go; Build 3 (identity and the crest) follows.
 
@@ -725,10 +760,16 @@ Each tool's questions are needed before that tool's phase. The full wording and 
   - Kept behaviours you're likely to notice: the Fog of War button reads Off after reopening (EXP-19); the Region list doesn't follow the loaded map (EXP-20); and pressing Resolve with an empty roll box counts as a roll of 0 (EXP-28). Say if you'd like any changed.
 - **Bastion (phase 9):** answered (B2: the delegation's own two rolls set Political Capital; the defaults for the rest).
   - Kept behaviours you're likely to notice: Hall upgrades cost nothing (BAS-22); a consortium pays its income twice every 7 days, once as a contract and once as a route (BAS-24); "Cleared warehouse." appears twice in the Day Log (BAS-31); and a Host Delegation's result box has an empty line where its summary should be (BAS-34). Say if you'd like any changed.
+  - **Identity and the crest, Build 3 (8 October 2026): choices made for you, to change if you like:**
+    - **The badge's label** under a crest is the Clan's name, or "Unsworn" before there is one. With no crest it says "Add a crest".
+    - **Form Clan's crest box:** Keep this crest only appears once you've picked another, to go back to the Bastion's; an uploaded crest is used only if you confirm the founding. A crest sent from the Crest Creator while the box is open is asked about there and then, and becomes the Bastion's crest straight away if you say yes.
+    - **Either answer clears a crest sent from the Creator:** say No and it isn't asked again; press Use for the Bastion again to resend it.
+    - **A Brigade from Builds 1 or 2** becomes Unsworn (its name goes in the Day Log). If one is ever wanted back, the archive has it.
+    - **Crest changes** aren't written in the Day Log, as before.
   - **The new screen, Build 2 (8 October 2026): choices made for you, to change if you like:**
     - **An Orders panel:** the plan put pending orders in each facility's panel; they're there, and clicking the top bar's Orders count also opens them all together (War Actions too, which have no facility).
     - **Clicking the Facilities count** opens Construction, so Clear extra builds can be reached even when every slot is full.
-    - **The badge** shows "Party Identity", your Clan's or Brigade's name, and its crest. Build 3 changes what it shows.
+    - **The badge** showed "Party Identity", your Clan's or Brigade's name, and its crest. Build 3 changed it (see below).
     - **The panels** open one at a time. Esc or Close closes them, and the focus goes back to the tile or button that opened them.
     - **The tiles** are 92 pixels square on both screens; the painting gets the rest of the room.
     - **The War Council** stays unlocked while a war, a waiting War Action or an attack is going on, even if every soldier has gone, so an attack can always be fought.

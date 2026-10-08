@@ -1405,7 +1405,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
     });
 
     await check('sent again and used: it\'s the Bastion\'s crest, with the Creator\'s design, on the badge and in Party Identity', async () => {
-      await creator.fill('[data-test=clan-name]', 'Wardens of the Ironbow');
+      await creator.fill('#tsi-crest-field-clan-name', 'Wardens of the Ironbow');
       await creator.click('[data-test=use-for-bastion]');
       await page.waitForSelector('[data-test=crest-offer]', { timeout: 5000 });
       await clickModal(page, 'Use this crest');
@@ -1462,7 +1462,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await page.waitForSelector('[data-test=crest-field]');
       equal(await page.getAttribute('[data-test=crest-preview]', 'data-key'), key);
       equal([await text(page, 'crest-field-note'), await page.isVisible('[data-test=crest-keep]')], ['The Bastion\'s crest: the Clan keeps it.', false]);
-      equal([await page.textContent('[data-test=crest-create]'), await page.textContent('[data-test=crest-upload]')], ['Create a new one ↗', 'Upload…']);
+      equal([await page.textContent('[data-test=crest-new]'), await page.textContent('[data-test=crest-upload]')], ['Create a new one ↗', 'Upload…']);
       await H.chooseFile(page, '[data-test=crest-upload]', writeCrest('crest-pop.png', 900));
       await page.waitForFunction(k => document.querySelector('[data-test=crest-preview]').getAttribute('data-key') !== k, key);
       equal([await text(page, 'crest-field-note'), await page.isVisible('[data-test=crest-keep]')], ['A new crest: it replaces the Bastion\'s when you confirm the founding.', true]);
