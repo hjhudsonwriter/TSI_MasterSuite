@@ -2338,7 +2338,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
 
   /* The side-by-side run against the old Bastion (same dice, same campaign)
      is retired: since the days overhaul (8 October 2026) the rules
-     deliberately differ (docs/KNOWN_ISSUES.md, BAS-36). */
+     deliberately differ (docs/KNOWN_ISSUES.md, BAS-61). */
 
   await browser.close();
   process.exit(H.summary() ? 1 : 0);

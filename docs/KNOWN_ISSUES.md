@@ -21,11 +21,11 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 
 | Tool | Must fix | Fixed by design | Deliberate | Later (Harry's call) | Not relevant / not a bug |
 |---|---|---|---|---|---|
-| Suite-wide (SUI) | 5 | 11 | 5 | 1 | 0 |
+| Suite-wide (SUI) | 6 | 11 | 6 | 1 | 0 |
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
-| Scarlett Isles Explorer (EXP) | 12 | 5 | 5 | 13 | 0 |
-| The Ironbow Bastion Manager (BAS) | 20 | 2 | 19 | 17 | 1 |
+| Scarlett Isles Explorer (EXP) | 12 | 5 | 6 | 13 | 0 |
+| The Ironbow Bastion Manager (BAS) | 21 | 2 | 21 | 18 | 1 |
 | Clan Crest Creator (CRS) | 0 | 4 | 5 | 3 | 3 |
 | Arenas of The Scarlett Isles (ARN) | 8 | 2 | 0 | 17 | 0 |
 | The Heartwood Ritual (RIT) | 9 | 1 | 0 | 15 | 1 |
@@ -232,6 +232,24 @@ These come from checking the eight tools against each other: the collision audit
 - **One shared list of regions:** the seven regions' Clan, chief and god now live in one file, `shared/data/regions.js`, which the Explorer's events and the DM doc both read. The Explorer's wording of when an effect ends, when a thread's follow-up is due and what resolving a thread gives, and the days its Bastion reminder comes, moved to `shared/js/campaign-rules.js` so the DM doc and the Explorer can never disagree. Nothing the Explorer does changed.
 - **Its first size:** 440 × 800 (680 before the gold and Threads), so everything shows on the laptop until the lists get long; then it scrolls. Once it has been moved or resized, it keeps that place and size, so a DM doc already dragged aside stays 680 tall until its corner is dragged down.
 - **Evidence:** `shared/js/campaign-rules.js`, `shared/data/regions.js`, `shared/js/dmdoc.js`, `shared/js/dmdoc-rules.js` (first height 800), `shared/components.css`, `tools/explorer/journey.js`, `tools/explorer/rules.js`, `tools/explorer/data/journey-events.js`; tests in `tests/rules/campaign.test.js`, `tests/rules/dmdoc.test.js`, `tests/e2e/dmdoc.test.js` and `tests/e2e/phase1.test.js`.
+
+### SUI-23 · The Explorer and the Bastion save as one campaign; the DM doc counts days, not Bastion turns
+**Deliberate change** (Harry's answers, 8 October 2026; the Bastion's days overhaul, BAS-60) · other
+
+- **Before:** The Explorer and the Bastion each exported and imported their own file. The DM doc showed "Bastion turns" (how many were done) and "Next Bastion turn" (days until the Explorer's weekly reminder).
+- **After:**
+  - **One campaign file:** Export in either tool (the top bar's Export, or the Explorer's Export Save) downloads one file, named `tsi-campaign-` and the date, holding both the Explorer and the Bastion. Import in either tool checks both halves, asks first (offering a copy of what's there now), and replaces both together; if either half is damaged, nothing changes. It won't run while the other tool is open in another window, because that window would save over what was imported.
+  - **Older files:** an Explorer-only file from before imports into the Explorer alone, saying the Bastion is left as it is. A Bastion-only file from before is refused (BAS-61). Back up everything and Restore are unchanged.
+  - **Behind the scenes** it's still two records, one per tool, so the Explorer on the laptop and the Bastion on the TV each write only their own half and can't overwrite each other.
+  - **The DM doc:** the two turn tiles become **Orders pending** (how many, and the day the next completes) and **Next word from the Ironbow** (the next day the Bastion will have news, and what it will say). The rest of SUI-22 is unchanged.
+- **Evidence:** `shared/js/backup-rules.js` (`CAMPAIGN`, `makeCampaignBackup`, `checkForTool`), `shared/js/backup.js`, `shared/js/store.js` (`replace` with `tools`), `shared/js/campaign-rules.js` (`bastionComing`, `ironbowNews`), `shared/js/dmdoc.js`; tests in `tests/rules/backup-rules.test.js`, `tests/rules/campaign.test.js`, `tests/e2e/dmdoc.test.js`, `tests/e2e/phase8.test.js` and `tests/e2e/bastion-days.test.js`.
+
+### SUI-24 · Two saves set aside in the same second: the second replaced the first
+**Must fix** (found while building the days overhaul, 8 October 2026; fixed) · loses saved data
+
+- **Before:** A save that couldn't be read (or, now, a Bastion saved in turns) was set aside under a name made from the time to the second. A second save set aside within the same second got the same name and replaced the first, so the first was lost. It never reached Harry: it showed up in a test that sets aside two Bastions quickly.
+- **After:** each copy set aside gets its own name (`…-2`, `…-3` and so on when the second is already taken), so every one is kept.
+- **Evidence:** `shared/js/store.js` (`quarantine`); the check in `tests/e2e/phase9.test.js` ("a Bastion saved in Bastion turns is set aside").
 
 ## Combat Tracker & VTT Battlemap
 Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point there).
@@ -1073,8 +1091,23 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
   - **What was near** is saved with the event, so it doesn't change if the event is kept for later.
 - **Evidence:** `tools/explorer/journey.js` (`nearAt`, `partyPos`, `context`, `eligible`), `tools/explorer/fights.js` (`settingFor`), `data/fights-data.js` (`coast`), `data/journey-events.js` (T2's `near: 'river'`), `rules.js` (`finishMove`); tests in `tests/rules/fights.test.js`, `tests/rules/explorer-journey.test.js` and `tests/e2e/fights.test.js`.
 
+### EXP-36 · The Bastion's day follows the Explorer's: "The Ironbow sends word…" replaces the weekly reminder
+**Deliberate change** (Harry's answers, 8 October 2026; the Bastion's days overhaul, BAS-60) · other
+
+- **Before:** Make Camp ended with a Bastion reminder on Days 8, 15, 22 and so on, with "Open the Bastion Manager in a new window ↗". Export Save and Import Save carried only the journey.
+- **After:**
+  - **Make Camp passes the day at the Bastion,** even when it's open in another window: it notices within about 2 seconds. The Explorer only writes its own day; it never changes the Bastion's save.
+  - **"The Ironbow sends word…"** comes at Make Camp, after the campfire event and the weather, whenever the new day brings news from the Bastion: building finished, an order complete, an agreement ending, a roll needed, an army ready to march, a repair done or a wounded Lieutenant back. The Explorer reads the Bastion's save to know what's due; the results (how many defenders, which roll) come from the Bastion when it passes the day. Its buttons are **Open the Bastion ↗** and **Close**. The weekly reminder is gone.
+  - **Open the Bastion ↗** sits under Make Camp in the Travel panel. It opens the Bastion in a new window, or says it's already open in another window.
+  - **The Explorer saves as soon as it first opens,** so the Bastion can read Day 1 straight away (BAS-62).
+  - **Export Save and Import Save** carry the whole campaign: the Explorer and the Bastion together (SUI-23).
+  - Reset Travel moves the Bastion's days back with the Explorer's (BAS-60).
+- **Evidence:** `tools/explorer/rules.js` (`makeCamp` with the Bastion's save), `tools/explorer/tool.js` (`openBastion`, `openWord`), `shared/js/campaign-rules.js` (`ironbowNews`); tests in `tests/rules/explorer.test.js`, `tests/rules/campaign.test.js`, `tests/e2e/phase8.test.js` and `tests/e2e/bastion-days.test.js`.
+
 ## The Ironbow Bastion Manager
 Old repo: `_legacy/bastion_manager` (file:line references point there).
+
+**The days overhaul (8 October 2026):** the Bastion no longer has turns. It follows the Explorer's day, and every length below that was counted in Bastion turns now counts in days, at 7 days a turn unless BAS-60 says otherwise (for example BAS-56's 6 quiet turns are now 42 days, and BAS-57's 2 turns of repairs are now 14 days). See BAS-60 to BAS-63.
 
 ### BAS-01 · Reloading or importing wipes party identity, war log and all diplomacy
 **Must fix** · loses saved data
@@ -1650,6 +1683,53 @@ None of these reached Harry.
 - **The undefended attack's pop-up gave a false reason** → it says nobody is free to defend.
 - **Smaller things:** the Watchtower's Patrol was forgotten in a defence (now a reminder in the pop-up and the War Council); the At War tag flickered in the cost line; "Clan MOLTEN" in capitals had no tag; the rulebook's Defend Bastion rewards were out of date → all fixed.
 - **Evidence:** the files above; each fix has a test in `tests/rules/` or `tests/e2e/`.
+
+### BAS-60 · The Bastion counts in days, following the Explorer's day
+**Deliberate change** (Harry's brief and answers, 8 October 2026; plan in `docs/BASTION-OVERHAUL.md`) · other
+
+- **Before:** **Advance Bastion Turn (+7 days)** moved the Bastion on a week at a time. Every order completed the next turn, and everything else counted in turns.
+- **After:** there are no turns. The Explorer's day is the campaign's only clock. The Bastion reads it when it opens and every 2 seconds while open, passes each new day in turn, and never changes it. A day passes in this order, saved after each step so a closed window never loses or repeats anything: repairs and recoveries due end, and building due completes; contracts send their shipments and sea routes settle; orders due complete (asking for rolls where they need them); a Clan at war rolls to attack; every 28th day brings the Bastion event; then "The Ironbow sends word…" lists the day's news, which the **Day Log** (was the Turn Log) keeps. Each rule that changed:
+  - **Facility orders:** each takes its own number of days (shown on its card as "Takes N days"); the pending list says "Due Day N (in N days)".
+  - **Building a facility:** 21 / 28 / 35 / 35 days at required levels 5 / 9 / 13 / 17 (was 3 / 4 / 5 / 5 turns).
+  - **A cancelled roll** leaves the order "Due now: waiting for your roll", with a **Resolve** button; it was "waits until next turn".
+  - **Finish Day** (was Finish Bastion Turn) shows only when a day was left part-way, for example by closing Edge mid-roll; the Bastion also finishes it by itself when it next opens.
+  - **Trade Agreement:** its Duration choice (1, 3 or 6 weeks) now counts (it was ignored: BAS-21), ± the roll's tier in weeks (+2 to −2, at least 1 week). It sends a shipment every 7 days from the day it was signed, the last on its final day. The Hall shows "X days remaining (Y shipments)".
+  - **Delegations, summits, writs and consortiums:** 14 / 21 / 28 / 35 days ± 14 / 7 / 0 / −7 / −14 days (was 2–5 turns ± turns). Writs and consortiums pay every 7 days from their start.
+  - **Sea routes:** settle every 7 days from the day each opened (the Hall's **Resolve** settles those due), and last 35 days (was 5 turns).
+  - **Hall cooldown** after a bad failure: 14 days (was 2 turns). **Trade Network investments:** Stability and Yield 7 days, Routing Doctrine 1 day.
+  - **Watchtower Patrol:** Advantage for the 7 days after it completes (was "this turn").
+  - **A War Action** musters 3 days after it's queued (was next turn). Cancelling it **the same day** gives its cost back (was the same turn).
+  - **Wars:** a d6 for each Clan at war every 7 days of that war, counted from the day it was declared (was every turn for every war); a war ends after **42 days** without a battle (was 6 turns).
+  - **Repairs** after a lost defence: **14 days**, the day of the loss included (was 2 turns). **Wounded Lieutenants and beasts:** back after 7 / 7 / 14 / 21 days (was 1 / 1 / 2 / 3 turns), logged on the day.
+  - **The Bastion event:** every 28 days, on Days 29, 57, 85… (was every 4th turn). The last event stays on screen until the next.
+  - **Reset Travel** in the Explorer moves every Bastion day back with it, so an order due in 4 days is still due in 4 days.
+  - **Founding a Clan** saves the day it was founded instead of the turn (it isn't shown anywhere yet, as before).
+- **Evidence:** `tools/bastion/rules.js` (the day engine: `startDay`, `finishRoutes`, `finishDay`, `clockAction`, `shiftDays`, `anchor`, `upcoming`), `tools/bastion/war-campaign-rules.js` (`attackEvery`, `rollWarAttack`, repairs and recovery in days), `tools/bastion/data/bastion-data.js` (`time`), `data/facilities-data.js` (each order's `days`), `data/war-units-data.js` (`quietDays`, `attackEvery`, repairs), `tools/bastion/tool.js`; the rules in days are in `docs/WAR-RULES.md`; tests in `tests/rules/bastion.test.js`, `tests/rules/bastion-campaign.test.js`, `tests/e2e/phase9.test.js` and `tests/e2e/bastion-days.test.js`.
+
+### BAS-61 · A Bastion saved in turns is set aside, and the side-by-side check against the old Bastion is retired
+**Deliberate change** (Harry's answer 14, 8 October 2026) · other
+
+- **Before:** The rebuilt Bastion kept the old Bastion's save format, and its click-through test played the same 12-turn campaign in the old Bastion and the rebuild with the same dice, comparing the saves at every step.
+- **After:**
+  - **Harry's Bastion saved in turns** is set aside the first time the new version opens (kept in the browser, not deleted, and included in Back up everything), with a notice saying so. A new Bastion starts on the Explorer's day. There's no turn-to-day conversion.
+  - **A Bastion-only file exported before the change** is refused on import: "This file is from before the Bastion counted in days, so it can't be imported. Nothing was changed." A whole-suite backup from before restores as normal, and its old Bastion is set aside the same way when the Bastion next opens.
+  - **The side-by-side run** against the old Bastion is retired, because the rules now deliberately differ (as the war's already did). The two-window test (`tests/e2e/bastion-days.test.js`) and the day-by-day checks in `phase9.test.js` take its place.
+- **Evidence:** `tools/bastion/rules.js` (`isOldSave`, `saveProblem`, `importProblem`), `tools/bastion/tool.js`, `shared/js/store.js` (`quarantine`); tests in `tests/rules/bastion.test.js` and `tests/e2e/phase9.test.js`.
+
+### BAS-62 · Problems found while building the days overhaul, fixed before release
+**Must fix** (found while building, 8 October 2026; fixed) · breaks the tool
+
+None of these reached Harry.
+- **The first camp's day wasn't passed at the Bastion** when the Explorer had never saved (a brand-new Explorer saves only when something changes, so the Bastion first saw it on Day 2 and started counting from there) → the Explorer saves as soon as it first opens.
+- **Two Bastions set aside in the same second** kept only the second → SUI-24.
+- **Evidence:** `tools/explorer/tool.js`, `shared/js/store.js`; tests in `tests/e2e/bastion-days.test.js` and `tests/e2e/phase9.test.js`.
+
+### BAS-63 · Three Bastion events still say "your next Bastion turn"
+**Later, Harry's call** · other
+
+- **Before:** Three of the rulebook's Bastion events (a special facility shutting down, a hireling with a criminal past, and hirelings leaving) say the facility "can't be used on your next Bastion turn".
+- **After:** unchanged. They're the rulebook's text and don't change anything in the Bastion by themselves. Harry may want them reworded for days (for example "for the next 7 days"); that's a lore and rules question for him.
+- **Evidence:** `tools/bastion/data/events-data.js` lines 68, 71 and 90.
 
 ## Clan Crest Creator
 Old repo: `_legacy/clan-crest-creator` (file:line references point there).
