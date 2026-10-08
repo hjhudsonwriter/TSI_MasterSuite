@@ -1,7 +1,8 @@
 /* Clan Crest Creator — the screen.
    Name the clan (or roll a random name), design the crest in five tabs
    (Shield, Field, Sigil, Colours, Motto), roll a Random Crest or Reset, and
-   download a 2048 × 2048 PNG with a see-through background. The design is
+   download a 2048 × 2048 PNG with a see-through background, or send the
+   crest straight to the Bastion ("Use for the Bastion"). The design is
    saved as you go, so it's there next time (Harry's request, 1 October
    2026; the old tool saved nothing).
    The content is in data/*.js, the rules in rules.js, the shapes' geometry in
@@ -14,12 +15,14 @@
   var crest = TSI.crest = TSI.crest || {};
 
   var PNG_SIZE = 2048;
+  /* The picture sent to the Bastion: the size its crest is kept at. */
+  var BASTION_SIZE = 512;
 
-  /* SVG text → PNG Blob, drawn on a canvas with nothing behind the crest
-     (so the background is see-through). Only the crest's own SVG is drawn
-     here, never a bundled picture, so the browser allows the export from a
+  /* SVG text → a canvas with the crest drawn on it and nothing behind (so
+     the background is see-through). Only the crest's own SVG is drawn here,
+     never a bundled picture, so the browser allows the export from a
      double-clicked file. */
-  function svgToPng(svgText, size) {
+  function drawSvg(svgText, size) {
     return new Promise(function (resolve, reject) {
       var url = URL.createObjectURL(new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' }));
       var img = new Image();
@@ -33,10 +36,7 @@
           ctx.clearRect(0, 0, size, size);
           ctx.drawImage(img, 0, 0, size, size);
           URL.revokeObjectURL(url);
-          canvas.toBlob(function (blob) {
-            if (blob) resolve(blob);
-            else reject(new Error('The browser couldn\'t make the PNG.'));
-          }, 'image/png');
+          resolve(canvas);
         } catch (err) {
           URL.revokeObjectURL(url);
           reject(err);
@@ -50,7 +50,29 @@
     });
   }
 
+  /* SVG text → PNG Blob, for Download PNG. */
+  function svgToPng(svgText, size) {
+    return drawSvg(svgText, size).then(function (canvas) {
+      return new Promise(function (resolve, reject) {
+        canvas.toBlob(function (blob) {
+          if (blob) resolve(blob);
+          else reject(new Error('The browser couldn\'t make the PNG.'));
+        }, 'image/png');
+      });
+    });
+  }
+
+  /* SVG text → a PNG as a data: address, for sending to the Bastion. */
+  function svgToPngData(svgText, size) {
+    return drawSvg(svgText, size).then(function (canvas) {
+      var out = canvas.toDataURL('image/png');
+      if (out.indexOf('data:image/png') !== 0) throw new Error('The browser couldn\'t make the PNG.');
+      return out;
+    });
+  }
+
   crest.svgToPng = svgToPng;
+  crest.svgToPngData = svgToPngData;
 
   TSI.registerTool('crest', {
     start: function (ctx) {
@@ -390,6 +412,7 @@
       }, { class: 'tsi-btn tsi-btn--ghost' });
 
       var downloadBtn = button('⬇ Download PNG (transparent)', 'download', function () { download(); }, { class: 'tsi-btn tsi-btn--primary tsi-crest-download' });
+      var bastionBtn = button('Use for the Bastion', 'use-for-bastion', function () { sendToBastion(); }, { class: 'tsi-btn tsi-crest-download', title: 'Send this crest to the Ironbow Bastion Manager' });
 
       var fileHint = el('span', { class: 'tsi-crest-mono', 'data-test': 'file-name' });
       var preview = el('div', { class: 'tsi-crest-svg', 'aria-label': 'Crest preview', 'data-test': 'preview' });
@@ -416,7 +439,7 @@
             el('div', { class: 'tsi-crest-preview' }, [
               el('div', { class: 'tsi-crest-frame' }, preview),
               el('div', { class: 'tsi-crest-actions' }, [
-                downloadBtn,
+                el('div', { class: 'tsi-crest-actions__row' }, [downloadBtn, bastionBtn]),
                 el('div', { class: 'tsi-crest-hint' }, ['Saved as: ', fileHint])
               ])
             ])
@@ -448,6 +471,47 @@
           TSI.modal.alert({ title: 'Download failed', message: 'Download failed. Open console for details.', details: TSI.errorText(err) });
         });
       }
+
+      /* ---------- Use for the Bastion ----------
+         Sends a 512-pixel PNG of the crest, with this design, to the Ironbow
+         Bastion Manager through the suite's hand-off (TSI.handoff 'crest';
+         the Bastion overhaul, Build 3, Harry, 8 October 2026). A Bastion
+         window asks at once whether to use it; a Bastion opened later asks
+         as it opens. Only the latest crest sent is kept. */
+      var sendToBastion = TSI.oneAtATime(function () {
+        var font = window.TSI_DATA.crestMottoFont;
+        var svgText = D.svg(state, { size: BASTION_SIZE, fontDataUrl: font && font.dataUrl }).trim();
+        var design = Object.assign({}, state);
+        return svgToPngData(svgText, BASTION_SIZE).then(function (dataUrl) {
+          if (!life.alive) return null;
+          var sent = TSI.handoff.write('crest', {
+            id: 'crest-' + Date.now().toString(36) + '-' + Math.floor(Math.random() * 1e9).toString(36),
+            at: Date.now(),
+            name: String(design.clanName || '').trim(),
+            dataUrl: dataUrl,
+            design: design
+          });
+          if (!sent) {
+            return TSI.modal.alert({ title: 'Not sent', message: 'The browser wouldn\'t pass the crest to the Bastion (its small shared storage is full or switched off). Download the PNG instead, and upload it in the Bastion\'s Party Identity panel.' });
+          }
+          var open = !!(TSI.tabGuard && TSI.tabGuard.isOpenElsewhere('bastion'));
+          var canOpen = !!(TSI.shell && typeof TSI.shell.openWindow === 'function');
+          TSI.notify(open
+            ? 'The Bastion\'s window asks whether to use it.'
+            : 'The Bastion asks whether to use it when you next open it.', {
+            type: 'ok',
+            title: 'Crest sent to the Bastion.',
+            id: 'tsi-crest-sent',
+            timeout: 9000,
+            actions: !open && canOpen ? [{ label: 'Open the Bastion ↗', onClick: function () { TSI.shell.openWindow('bastion'); } }] : []
+          });
+          return null;
+        }).catch(function (err) {
+          if (window.console) console.error(err);
+          if (!life.alive) return null;
+          return TSI.modal.alert({ title: 'Not sent', message: 'The crest couldn\'t be made into a picture for the Bastion.', details: TSI.errorText(err) });
+        });
+      });
 
       life.onStop(function () { closePop(false); });
 

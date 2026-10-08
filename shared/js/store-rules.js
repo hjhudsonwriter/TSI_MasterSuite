@@ -42,12 +42,14 @@
          per window so it never pops up on the TV's window by itself)
        - handoff, handback: a fight passed from the Explorer to the Combat
          Tracker, and its result passed back (TSI.handoff)
+       - handoffCrest: a crest sent from the Clan Crest Creator to the
+         Bastion (TSI.handoff)
        - file: the start of backup file names */
     spaceNames: function (space) {
       if (space === 'test') {
-        return { space: 'test', db: 'tsi.test', local: 'tsi.test:', tabs: 'tsi.test:tabs', tabId: 'tsi.test:tab-id', flash: 'tsi.test:flash', dmdocOpen: 'tsi.test:dmdoc-open', handoff: 'tsi.test:handoff', handback: 'tsi.test:handback', file: 'tsi-test-' };
+        return { space: 'test', db: 'tsi.test', local: 'tsi.test:', tabs: 'tsi.test:tabs', tabId: 'tsi.test:tab-id', flash: 'tsi.test:flash', dmdocOpen: 'tsi.test:dmdoc-open', handoff: 'tsi.test:handoff', handback: 'tsi.test:handback', handoffCrest: 'tsi.test:handoff-crest', file: 'tsi-test-' };
       }
-      return { space: 'suite', db: 'tsi.suite', local: '', tabs: 'tsi.suite.tabs', tabId: 'tsi.suite.tab-id', flash: 'tsi.suite.flash', dmdocOpen: 'tsi.suite.dmdoc-open', handoff: 'tsi.suite.handoff', handback: 'tsi.suite.handback', file: 'tsi-' };
+      return { space: 'suite', db: 'tsi.suite', local: '', tabs: 'tsi.suite.tabs', tabId: 'tsi.suite.tab-id', flash: 'tsi.suite.flash', dmdocOpen: 'tsi.suite.dmdoc-open', handoff: 'tsi.suite.handoff', handback: 'tsi.suite.handback', handoffCrest: 'tsi.suite.handoff-crest', file: 'tsi-' };
     },
 
     /* The fallback-storage key for a save, and back again (null if it isn't one of this space's). */

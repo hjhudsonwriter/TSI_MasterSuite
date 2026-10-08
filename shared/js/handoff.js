@@ -1,23 +1,28 @@
-/* The Scarlett Isles: D&D Tool Suite — passing a fight between tools.
+/* The Scarlett Isles: D&D Tool Suite — passing things between tools.
    The Explorer hands a fight to the Combat Tracker ("Set up this fight"),
-   and the Combat Tracker reports back when every enemy is down. The two
+   and the Combat Tracker reports back when every enemy is down; the Clan
+   Crest Creator sends a crest to the Bastion ("Use for the Bastion"). The
    tools may be open in different windows, which share nothing but the
    browser's small shared storage (localStorage), so each message is
    written there:
    - 'fight' (tsi.suite.handoff): the fight to set up, from the Explorer
      (built by tools/explorer/fights.js);
    - 'result' (tsi.suite.handback): { id, result: 'won', at }, from the
-     Combat Tracker, id being the fight's.
+     Combat Tracker, id being the fight's;
+   - 'crest' (tsi.suite.handoff-crest): { id, at, name, dataUrl, design },
+     from the Crest Creator: a 512-pixel PNG of the crest and the Creator's
+     design (the Bastion overhaul, Build 3, Harry, 8 October 2026).
    A window with the other tool open hears at once (the browser's "storage"
    event); a tool opened later reads it as it starts. Only the latest of
    each is kept. They aren't saves, so they're not in backups. The test
-   page keeps its own (tsi.test:handoff and tsi.test:handback). */
+   page keeps its own (tsi.test:handoff, tsi.test:handback and
+   tsi.test:handoff-crest). */
 (function () {
   'use strict';
 
   var TSI = window.TSI;
   var NAMES = TSI.storeRules.spaceNames(TSI.space);
-  var KEYS = { fight: NAMES.handoff, result: NAMES.handback };
+  var KEYS = { fight: NAMES.handoff, result: NAMES.handback, crest: NAMES.handoffCrest };
 
   function key(kind) {
     if (!KEYS[kind]) throw new Error('There is no hand-off called ' + kind + '.');

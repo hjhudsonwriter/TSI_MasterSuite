@@ -357,6 +357,12 @@
   align-items: center;
   gap: 6px;
 }
+.tsi-tool--crest .tsi-crest-actions__row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
 .tsi-tool--crest .tsi-crest-download { padding: 12px 18px; }
 .tsi-tool--crest .tsi-crest-hint {
   font-size: var(--tsi-fs-body-sm);
