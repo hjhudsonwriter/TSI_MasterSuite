@@ -823,13 +823,18 @@
         if (!ok || !life.alive) return;
         saveCrest(null);
         renderAll();
+        /* Remove has gone: keep the focus in the panel. */
+        if (crestAddBtn.isConnected) crestAddBtn.focus();
       });
 
       /* A crest sent from the Clan Crest Creator: asked about at once, when
          nothing else is going on (no day being passed, no War Table), or as
-         the Bastion opens. Either answer clears it, so it's asked once; a
-         newer one sent meanwhile is asked about next. */
+         the Bastion opens. Either answer clears it, so it's asked once. A
+         newer one sent while it's asking takes its place (only the latest
+         crest sent is kept). */
       var crestOfferOpen = false;
+      var offerId = null;       /* the hand-off being asked about */
+      var closeOffer = null;    /* closes the question (as No) */
       function checkCrestOffer() {
         if (crestOfferOpen || !life.alive || turnRunning || militaryRunning || warTableOpen) return;
         var h = TSI.handoff.read('crest');
@@ -837,18 +842,36 @@
         var c = R.crestFromHandoff(h);
         if (!c) { TSI.handoff.clear('crest', h.id); return; }
         crestOfferOpen = true;
-        offerCrest(c).then(function (use) {
-          crestOfferOpen = false;
-          /* The Bastion closed while asking: ask again when it next opens. */
-          if (!life.alive) return;
-          TSI.handoff.clear('crest', h.id);
-          if (use) {
-            saveCrest(c);
-            renderAll();
+        offerId = h.id;
+        /* Only a crest that loads as a picture is offered; anything else is dropped. */
+        loadImage(c.dataUrl).then(function (img) {
+          if (!img.naturalWidth) throw new Error('Not a picture');
+          return true;
+        }, function () { return false; }).then(function (ok) {
+          if (!life.alive) return null;
+          if (!ok) {
+            crestOfferOpen = false;
+            TSI.handoff.clear('crest', h.id);
+            return null;
           }
-          checkCrestOffer();
-        }, function (err) {
+          return offerCrest(c).then(function (use) {
+            closeOffer = null;
+            /* The Bastion closed while asking: ask again when it next opens. */
+            if (!life.alive) return;
+            /* Answered, or replaced by a newer crest, in another window meanwhile? Then not here. */
+            var still = TSI.handoff.read('crest');
+            var mine = !!still && still.id === h.id;
+            TSI.handoff.clear('crest', h.id);
+            crestOfferOpen = false;
+            if (use && mine) {
+              saveCrest(c);
+              renderAll();
+            }
+            checkCrestOffer();
+          });
+        }).catch(function (err) {
           crestOfferOpen = false;
+          closeOffer = null;
           TSI.reportError(err, 'showing the crest from the Crest Creator');
         });
       }
@@ -867,10 +890,17 @@
             ])
           ],
           escValue: false,
-          actions: [{ label: 'No', value: false }, { label: 'Use this crest', value: true, primary: true }]
+          actions: [{ label: 'No', value: false }, { label: 'Use this crest', value: true, primary: true }],
+          onOpen: function (parts) { closeOffer = parts.close; }
         });
       }
-      TSI.handoff.listen(life, 'crest', function (v) { if (v) checkCrestOffer(); });
+      /* Another window wrote or cleared the hand-off. If it's no longer the
+         one being asked about (answered in a second Bastion window, or a
+         newer crest sent), this question closes; a newer one is asked next. */
+      TSI.handoff.listen(life, 'crest', function (v) {
+        if (crestOfferOpen && closeOffer && (!v || v.id !== offerId)) closeOffer(false);
+        if (v) checkCrestOffer();
+      });
 
       /* The crest part of the Form Clan pop-up: the Bastion's crest, kept
          unless you choose another (Create a new one ↗ sends one back through
@@ -896,7 +926,7 @@
             : crest ? 'The Bastion\'s crest: the Clan keeps it.'
             : 'The Clan can have a crest at any time. Create one in the Clan Crest Creator, or upload a picture.';
         }
-        keep.onclick = function () { chosen = null; show(); };
+        keep.onclick = function () { chosen = null; show(); upload.focus(); };
         create.onclick = function () { openCreator(status); };
         upload.onclick = TSI.oneAtATime(function () {
           return pickCrest().then(function (c) { if (c && life.alive) { chosen = c; show(); } });
@@ -1031,6 +1061,8 @@
         /* The crest stays unless another was chosen here. */
         if (crestPick.chosen()) saveCrest(crestPick.chosen());
         done();
+        /* Form Clan has gone from the panel: the focus goes to Clan Honour. */
+        if (honourInput.isConnected && honourInput.offsetParent !== null) honourInput.focus();
       });
 
       /* ================================================================
@@ -3617,7 +3649,7 @@
       if (!saved || formerBrigade) save();
       if (formerBrigade) {
         notice('The Mercenary Brigade, ' + formerBrigade.name + ', is no more: the Bastion no longer has Brigades, so the party is Unsworn again.' +
-          (formerBrigade.orders ? ' Only a Clan can send Lieutenants and regiments, so those in its waiting War Actions stay home.' : '') + ' The Day Log says so.', { type: 'info', title: 'Party Identity.', id: 'tsi-bas-brigade' });
+          (formerBrigade.orders ? ' Only a Clan can send Lieutenants and regiments, so those in its waiting War Actions stay home.' : '') + ' The Day Log says so.', { type: 'info', title: 'Party Identity.', id: 'tsi-bas-brigade', timeout: 20000 });
       }
       /* Read the Explorer's day straight away (then every 2 seconds), and
          any crest sent from the Clan Crest Creator while the Bastion was shut. */

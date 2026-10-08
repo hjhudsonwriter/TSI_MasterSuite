@@ -847,6 +847,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await pause(page);
       await page.click('[data-test=crest-delete]');
       await clickModal(page, 'Remove');
+      equal(await page.evaluate(() => document.activeElement.dataset.test), 'crest-add', 'Remove has gone, so the focus stays in the panel, on Upload');
       equal((await crestInfo(page)).shown, false);
       equal(await page.evaluate(() => TSI.store.has('tsi.bastion.crest')), false);
       await H.shot(page, 'p9-crest-none');
@@ -1449,6 +1450,33 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       equal(await crestKey(), key, 'kept');
       await page.waitForFunction(d => { const s = TSI.bastion.debug.state(); return s.day === d && !s.dayInProgress && !TSI.bastion.debug.busy(); }, day0 + 2, { timeout: 10000 });
       await arm(page);
+    });
+
+    await check('a crest that isn\'t a picture is never offered; with two Bastion windows, answering in one closes the question in the other', async () => {
+      const key = await crestKey();
+      await page.evaluate(() => TSI.handoff.write('crest', { id: 'crest-bad', at: 1, name: 'Bad', dataUrl: 'data:image/png;base64,SGVsbG8gd29ybGQ=' }));
+      await page.waitForFunction(() => TSI.handoff.read('crest') === null, null, { timeout: 6000 });
+      equal(await modalOpen(page), false, 'not offered');
+      equal(await crestKey(), key);
+      const second = await context.newPage();
+      await second.goto(H.fileUrl('index.html') + '?tool=bastion');
+      await second.waitForSelector('[data-test=day-status]');
+      const writer = await context.newPage();
+      await writer.goto(H.fileUrl('index.html'));
+      await writer.waitForSelector('[data-test=backup-everything]');
+      await writer.evaluate(() => {
+        const c = document.createElement('canvas'); c.width = c.height = 32;
+        const g = c.getContext('2d'); g.fillStyle = '#d6b25e'; g.fillRect(4, 4, 24, 24);
+        TSI.handoff.write('crest', { id: 'crest-two', at: 1, name: 'Two windows', dataUrl: c.toDataURL('image/png') });
+      });
+      await page.waitForSelector('[data-test=crest-offer]', { timeout: 6000 });
+      await second.waitForSelector('[data-test=crest-offer]', { timeout: 6000 });
+      await clickModal(page, 'No');
+      await second.waitForFunction(() => !document.querySelector('[data-test=crest-offer]'), null, { timeout: 5000 });
+      equal(await crestKey(), key, 'nothing taken in either window');
+      await writer.close();
+      await second.close();
+      await page.waitForTimeout(500);
     });
 
     await check('a refused file is explained; Unsworn, a picture can be uploaded from the panel, replacing the Creator\'s', async () => {

@@ -409,9 +409,11 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
   await check('the badge says "Add a crest" until there is one, and opens Party Identity; with a crest (even Unsworn) it shows it, then the Clan\'s name (Build 3)', async () => {
     equal(await bare(page, '[data-test=identity-badge]'), 'Add a crest');
     equal(await page.getAttribute('[data-test=identity-badge]', 'aria-label'), 'Crest of the Ironbow: no crest yet. Open Party Identity.');
-    await page.click('[data-test=identity-badge]');
+    await page.focus('[data-test=identity-badge]');
+    await page.keyboard.press('Enter');
     await page.waitForSelector('[data-test=panel-identity] [data-test=form-clan]');
     await page.waitForSelector('[data-test=panel-identity] [data-test=crest-create]');
+    equal(await page.evaluate(() => !!document.activeElement.closest('[data-test=panel-identity]')), true, 'from the keyboard, the focus goes into the panel (Clan Honour is hidden until there\'s a Clan)');
     await page.keyboard.press('Escape');
     const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
     await page.evaluate(p => TSI.store.set('tsi.bastion.crest', { dataUrl: p, key: 'k1', name: 'c.png' }), png);

@@ -112,8 +112,11 @@
       (document.fullscreenElement || document.body).appendChild(scrim);
       document.body.classList.add('tsi-modal-open');
 
-      /* Focus the first field if there is one, otherwise the safe (first) button. */
-      var field = body.querySelector('input, select, textarea');
+      /* Focus the first field that can be seen, if there is one, otherwise
+         the safe (first) button. (A hidden field, such as the Bastion's Clan
+         Honour for a party that isn't a Clan yet, would leave the focus
+         behind the pop-up.) */
+      var field = focusables(body).filter(function (el) { return /^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName); })[0];
       var target = field || foot.querySelector('button') || primaryButton;
       if (target) target.focus();
 
