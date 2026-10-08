@@ -37,7 +37,7 @@ Harry said go for Build 2 (plan: `docs/BASTION-OVERHAUL.md` section 5). Every ru
   - `tests/e2e/phase9.test.js` now reaches every control through its panel, by pressing that panel's own tile or button. Its checks of the old screen (the slot lists, the carousel, the side column) are rewritten for the grid and the panels.
   - The two-window test (`bastion-days.test.js`) gives its orders through the Barracks' panel.
   - Screenshots in every test pause animations: the test browser has no graphics card and draws the trade map's glowing routes very slowly.
-  - All passing: the Bastion (107), the new screen (35), the two windows (15), phase 1 (125), the Explorer (81), the DM doc (11), fights (15), the War Table (145) and the guide (20).
+  - All passing: the Bastion (107), the new screen (35), the two windows (15), phase 1 (125), the Explorer (81), the DM doc (11), fights (15), the War Table (145) and the guide (20); and, re-run because the shared tooltip is new, the Crest (68), Pelagosi (58), the Notice Board (64), the Ritual (53), the Arenas (79) and the Combat Tracker (78).
 
 ### The Bastion counts in days: the overhaul's Build 1 (8 October 2026)
 Harry asked for the Bastion to drop its turns and follow the Explorer's day (plan v2, with his answers, in `docs/BASTION-OVERHAUL.md`). Build 1 changes the rules and the saving, on the Bastion screen Harry already knows; the new screen is Build 2.
