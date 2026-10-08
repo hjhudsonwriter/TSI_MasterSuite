@@ -68,7 +68,7 @@ async function reveal(page, selector) {
   return page.evaluate(t => { const d = window.TSI && TSI.bastion && TSI.bastion.debug; return !!(d && d.reveal && d.reveal(t)); }, m[1]).catch(() => false);
 }
 function panels(page) {
-  ['click', 'dblclick', 'fill', 'selectOption', 'textContent', '$eval', 'check', 'uncheck', 'press', 'hover', 'focus', 'inputValue', 'getAttribute', 'isDisabled', 'isEnabled', 'innerText', 'waitForSelector', 'dispatchEvent', 'setInputFiles'].forEach(name => {
+  ['click', 'dblclick', 'fill', 'selectOption', '$$eval', 'textContent', '$eval', 'check', 'uncheck', 'press', 'hover', 'focus', 'inputValue', 'getAttribute', 'isDisabled', 'isEnabled', 'innerText', 'waitForSelector', 'dispatchEvent', 'setInputFiles'].forEach(name => {
     const own = page[name].bind(page);
     page[name] = async (selector, ...rest) => { await reveal(page, selector); return own(selector, ...rest); };
   });
@@ -225,10 +225,10 @@ function writeCrest(name, size) {
   fs.writeFileSync(p, crestPng(size));
   return p;
 }
-const crestInfo = page => page.evaluate(() => {
+const crestInfo = async page => (await reveal(page, '[data-test=crest]'), page.evaluate(() => {
   const i = document.querySelector('[data-test=crest]');
   return { shown: !!(i && i.offsetWidth), w: i ? i.naturalWidth : 0, h: i ? i.naturalHeight : 0, alt: i ? i.alt : '' };
-});
+}));
 
 async function reopen(page) {
   await page.evaluate(() => TSI.store.flush());
@@ -263,31 +263,24 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       equal(await page.$$eval('.tsi-card', cs => cs.filter(c => /Coming in phase/.test(c.textContent)).length), 0);
     });
 
-    await check('it opens from its card on Day 1 (until the Explorer sets the day), level 7, with the five starting facilities', async () => {
+    await check('it opens from its card on Day 1 (until the Explorer sets the day), level 7, with the five starting facilities in the grid', async () => {
       await page.click('.tsi-card[href*="bastion"]');
       await page.waitForSelector('[data-test=day-status]');
       equal(await text(page, 'day-status'), 'Day 1 · the Explorer sets the day');
-      equal(await text(page, 'day-status'), 'Day 1 · the Explorer sets the day');
       equal(await page.isHidden('[data-test=advance]'), true, 'no button to pass a day: the Explorer\'s Make Camp does that');
       equal(await page.inputValue('[data-test=level]'), '7');
-      equal(await page.$$eval('.tsi-bas-fac', cs => cs.map(c => c.dataset.fac)), ['workshop', 'barracks', 'watchtower', 'dock', 'armoury']);
-      equal(await text(page, 'slot-meta'), 'Level 7 → 2 slot(s). Used: 0/2');
+      equal(await page.$$eval('.tsi-bas-tile', ts => ts.slice(0, 5).map(t => t.dataset.fac)), ['workshop', 'barracks', 'watchtower', 'dock', 'armoury']);
+      equal(await page.$$eval('.tsi-bas-tile--slot', ts => ts.length), 2, 'two slots to build in at level 7');
     });
 
     for (const size of ['laptop', 'laptopFull', 'tv', 'smallWindow']) {
-      await check('fits ' + size + ' with no sideways scrolling, the main controls in view', async () => {
+      await check('fits ' + size + ' with no scrolling either way, the main controls in view', async () => {
         await page.setViewportSize(H.SIZES[size].viewport);
         await page.waitForTimeout(250);
-        await page.evaluate(() => window.scrollTo(0, 0));
-        const lc = await H.layoutCheck(page, ['[data-test=day-status]', '[data-test=level]', '[data-test=roll-event]', '[data-test=compendium]', '[data-test=download-save]', '[data-test=import-save]', '[data-test=map]']);
+        const lc = await H.layoutCheck(page, ['[data-test=day-status]', '[data-test=level]', '[data-test=treasury]', '[data-test=compendium]', '[data-test=download-save]', '[data-test=import-save]', '[data-test=map]', '[data-test=open-events]', '[data-test=open-war]', '.tsi-bas-tile']);
         equal(lc.scrollWidth, lc.clientWidth, 'no sideways scroll');
-        if (size !== 'smallWindow') equal(lc.outOfView, [], 'in view');
-        /* The tool's bar stays in view when the page scrolls down. */
-        await page.evaluate(() => window.scrollTo(0, 2500));
-        await page.waitForTimeout(100);
-        equal((await H.layoutCheck(page, ['[data-test=day-status]'])).outOfView, [], 'the day in view after scrolling');
-        if (size !== 'smallWindow') equal((await H.layoutCheck(page, ['.tsi-bas-side'])).outOfView, [], 'the Favour panel sticks in view');
-        await page.evaluate(() => window.scrollTo(0, 0));
+        equal(lc.outOfView, [], 'in view');
+        equal(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight + 1), true, 'the page itself never scrolls down');
       });
     }
     await page.setViewportSize(H.SIZES.laptop.viewport);
@@ -296,11 +289,12 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
     await check('every facility picture and all eight map overlays load with no internet', async () => {
       await setUp(page, (s) => { s.partyLevel = 17; s.builtExtras = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 'laboratory', 'war_room', 'gaming_hall', 'greenhouse', 'shrine_telluria', 'shrine_aurush', 'shrine_pelagos', 'hall_of_emissaries'].map(id => ({ facId: id, status: 'built' })); });
       await page.waitForFunction(() => Array.from(document.images).every(i => i.complete));
-      const imgs = await page.$$eval('.tsi-bas-fac__img, .tsi-bas-map__overlay, .tsi-bas-map__img, .tsi-bas-hall__img img', is => is.map(i => [i.getAttribute('src').split('/').pop(), i.naturalWidth]));
+      const imgs = await page.$$eval('.tsi-bas-tile__img, .tsi-bas-map__overlay, .tsi-bas-map__img', is => is.map(i => [i.getAttribute('src').split('/').pop(), i.naturalWidth]));
       equal(imgs.filter(i => !i[1]), [], 'all loaded');
-      equal(await page.$$eval('.tsi-bas-fac', cs => cs.length), 17, 'the Hall has its own panel');
+      equal(await page.$$eval('.tsi-bas-tile--built', ts => ts.length), 18, 'every facility has a tile, the Hall too');
       equal(await page.$$eval('.tsi-bas-map__overlay', os => os.map(o => o.dataset.fac).sort()), ['arcane_study', 'garden', 'greenhouse', 'hall_of_emissaries', 'laboratory', 'library', 'smithy', 'war_room']);
       equal(await page.$$eval('.tsi-bas-map__overlay', os => os.map(o => o.naturalWidth)), [1152, 1152, 1152, 1152, 1152, 1152, 1152, 1152]);
+      equal((await H.layoutCheck(page, ['.tsi-bas-tile'])).scrollWidth, H.SIZES.laptop.viewport.width, 'eighteen tiles still fit');
       await H.shot(page, 'p9-02-everything-built');
     });
 
@@ -311,11 +305,11 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       equal(context.log.consoleErrors, []);
     });
 
-    await check('the TV: the same page, wider, with the Favour panel beside it', async () => {
+    await check('the TV: the same screen, with a bigger painting', async () => {
       await page.setViewportSize(H.SIZES.tv.viewport);
       await page.waitForTimeout(250);
-      const box = await page.evaluate(() => { const r = document.querySelector('.tsi-bas-side').getBoundingClientRect(); const m = document.querySelector('.tsi-bas-card--map').getBoundingClientRect(); return { side: r.width, map: m.width }; });
-      assert(box.side === 300 && box.map > 700, JSON.stringify(box));
+      const w = await page.evaluate(() => document.querySelector('.tsi-bas-map').getBoundingClientRect().width);
+      assert(w > 1100, 'the painting is ' + w + ' wide');
       await H.shot(page, 'p9-03-tv');
       await page.setViewportSize(H.SIZES.laptop.viewport);
     });
@@ -327,58 +321,80 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
     section('Construction slots');
     const { context, page } = await newPage(browser, 'laptop');
     await openBastion(page);
+    const slotsOpen = () => page.$$eval('.tsi-bas-tile--slot', ts => ts.length);
+    /* Build through the grid: an empty slot, the facility, then Construct. */
+    async function construct(slot, facId) {
+      await pause(page);
+      await page.click('[data-test=slot-' + slot + ']');
+      await page.waitForSelector('[data-test=build-' + facId + ']');
+      await page.click('[data-test=build-' + facId + ']');
+      await clickModal(page, 'Construct');
+      await page.waitForFunction(() => !TSI.bastion.debug.panel());
+    }
 
-    await check('slots by party level: 0 / 2 / 4 / 5 / 6', async () => {
+    await check('slots open to build by party level: 0 / 2 / 4 / 5 / 6', async () => {
       const out = [];
       for (const lvl of ['4', '5', '9', '13', '17']) {
         await page.selectOption('[data-test=level]', lvl);
-        out.push(await text(page, 'slot-meta'));
+        await page.waitForTimeout(80);
+        out.push(await slotsOpen());
       }
-      equal(out, ['Level 4 → 0 slot(s). Used: 0/0', 'Level 5 → 2 slot(s). Used: 0/2', 'Level 9 → 4 slot(s). Used: 0/4', 'Level 13 → 5 slot(s). Used: 0/5', 'Level 17 → 6 slot(s). Used: 0/6']);
+      equal(out, [0, 2, 4, 5, 6]);
     });
 
     await check('locked facilities stay listed but can\'t be picked', async () => {
       await page.selectOption('[data-test=level]', '9');
-      const opts = await page.$$eval('[data-test=slot-select-0] option', os => os.map(o => [o.textContent, o.disabled]));
-      assert(opts.some(o => o[0] === 'Menagerie (Locked: Lvl 13)' && o[1]), JSON.stringify(opts));
-      assert(opts.some(o => o[0] === 'Library' && !o[1]));
+      await pause(page);
+      await page.click('[data-test=slot-0]');
+      await page.waitForSelector('[data-test=build-menagerie]');
+      equal(await page.getAttribute('[data-test=build-menagerie]', 'aria-disabled'), 'true');
+      assert(/Locked: level 13/.test(await text(page, 'build-menagerie')));
+      equal(await page.getAttribute('[data-test=build-library]', 'aria-disabled'), null);
+      assert(/Party level 9: 4 construction slots, 0 in use\./.test(await text(page, 'build-panel')));
     });
 
-    await check('the slot list shows what a facility does, and how long it takes to build, on hover', async () => {
-      await page.selectOption('[data-test=slot-select-0]', 'library');
-      await page.hover('[data-test=slot-select-0]');
-      await page.waitForSelector('[data-test=tooltip]:not([hidden])');
+    await check('the build panel shows what a facility does, and how long it takes to build, on hover', async () => {
+      await page.hover('[data-test=build-library]');
+      await page.waitForFunction(() => /Library/.test(document.querySelector('[data-test=tooltip]').textContent));
       const tip = await text(page, 'tooltip');
-      assert(/Library/.test(tip) && /What it does/.test(tip) && /Takes 21 days to build\./.test(tip), tip);
+      assert(/Library/.test(tip) && /What it does/.test(tip) && /Takes 21 days to build/.test(tip), tip);
+      await page.keyboard.press('Escape');
+      await page.mouse.move(5, 400);
     });
 
-    await check('building takes 21, 28 or 35 days, then the facility joins the carousel and the map', async () => {
-      await page.click('[data-test=build-0]');
-      await page.selectOption('[data-test=slot-select-1]', 'laboratory');
-      await page.click('[data-test=build-1]');
-      const slots = await text(page, 'slots');
-      assert(/LibraryUnder construction • 21 days left \(ready on Day 22\)/.test(slots) && /LaboratoryUnder construction • 28 days left \(ready on Day 29\)/.test(slots), slots);
-      assert(/Library \(Already chosen\)/.test(await page.textContent('[data-test=slot-select-2]')));
+    await check('building takes 21, 28 or 35 days, then the facility joins the grid and the map', async () => {
+      await construct(0, 'library');
+      await construct(1, 'laboratory');
+      equal(await page.$$eval('.tsi-bas-tile--building', ts => ts.map(t => [t.dataset.test, t.textContent])), [['tile-library', '21'], ['tile-laboratory', '28']]);
+      equal((await st(page)).builtExtras.slice(0, 2), [{ facId: 'library', status: 'building', startDay: 1, readyDay: 22 }, { facId: 'laboratory', status: 'building', startDay: 1, readyDay: 29 }]);
+      await pause(page);
+      await page.click('[data-test=slot-2]');
+      await page.waitForSelector('[data-test=build-panel]');
+      equal(await page.$('[data-test=build-library]'), null, 'no longer offered');
+      await page.keyboard.press('Escape');
       await days(page, 20, []);
-      assert(/LibraryUnder construction • 1 day left/.test(await text(page, 'slots')), 'Day 21: one day to go');
+      equal(await text(page, 'tile-library'), '1', 'Day 21: one day to go');
       await days(page, 1, []);
-      assert(/LibraryBuilt • Active/.test(await text(page, 'slots')));
-      equal(await page.$$eval('.tsi-bas-fac[data-fac=library]', c => c.length), 1);
+      equal(await page.$eval('[data-test=tile-library]', t => [t.tagName, t.classList.contains('tsi-bas-tile--built')]), ['BUTTON', true]);
       equal(await page.$$eval('.tsi-bas-map__overlay', os => os.map(o => o.dataset.fac)), ['library']);
       assert((await st(page)).log.some(l => l.title === 'Construction Complete' && l.body === 'Library is now built and active.'));
     });
 
     await check('lowering the level keeps every building, marked over capacity (BAS-04, B8)', async () => {
-      await page.selectOption('[data-test=slot-select-2]', 'smithy'); await page.click('[data-test=build-2]');
-      await page.selectOption('[data-test=slot-select-3]', 'garden'); await page.click('[data-test=build-3]');
+      await construct(2, 'smithy');
+      await construct(3, 'garden');
       await page.selectOption('[data-test=level]', '5');
-      equal(await text(page, 'slot-meta'), 'Level 5 → 2 slot(s). Used: 4/2 (2 over capacity)');
+      await page.waitForTimeout(100);
       equal(await page.$$eval('[data-test=over-capacity]', os => os.length), 2);
-      equal(await page.$$eval('[data-test^=build-]', b => b.length), 0, 'no room to build');
+      equal(await slotsOpen(), 0, 'no room to build');
+      await pause(page);
+      await page.click('[data-test=facilities-count]');
+      assert(/Party level 5: 2 construction slots, 4 in use \(2 over capacity\)\. There's no free slot/.test(await text(page, 'build-panel')), await text(page, 'build-panel'));
+      await page.keyboard.press('Escape');
       equal((await st(page)).builtExtras.filter(Boolean).length, 4);
       await reopen(page);
       await page.selectOption('[data-test=level]', '9');
-      equal(await text(page, 'slot-meta'), 'Level 9 → 4 slot(s). Used: 4/4');
+      await page.waitForTimeout(100);
       equal(await page.$$eval('[data-test=over-capacity]', os => os.length), 0);
       await H.shot(page, 'p9-04-slots');
     });
@@ -861,10 +877,10 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       equal(await page.isHidden('[data-test=tooltip]'), true, 'a click into a box shows nothing');
       const focusTip = () => page.evaluate(() => [document.activeElement.dataset.test, document.activeElement.getAttribute('aria-describedby'), !document.querySelector('[data-test=tooltip]').hidden]);
       await page.keyboard.press('Tab');
-      equal(await focusTip(), ['war-lieutenants', 'tsi-bas-tip', true]);
+      equal(await focusTip(), ['war-lieutenants', 'tsi-tip', true]);
       assert(/^Lieutenant/.test(await text(page, 'tooltip')), await text(page, 'tooltip'));
       await page.keyboard.press('Tab');
-      equal(await focusTip(), ['war-unit-line', 'tsi-bas-tip', true]);
+      equal(await focusTip(), ['war-unit-line', 'tsi-tip', true]);
       assert(/^Line Infantry/.test(await text(page, 'tooltip')) && /Cohesion5/.test(await text(page, 'tooltip')), await text(page, 'tooltip'));
       equal((await H.layoutCheck(page, ['[data-test=tooltip]'])).outOfView, [], 'beside the box, in view');
       await H.shot(page, 'p9-war-turn-keys');
@@ -873,7 +889,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await page.keyboard.press('Tab');
       assert(/^Archers/.test(await text(page, 'tooltip')) && (await focusTip())[2], await text(page, 'tooltip'));
       await page.keyboard.press('Tab');
-      equal(await focusTip(), ['war-beast-giant-vulture', 'tsi-bas-tip', true]);
+      equal(await focusTip(), ['war-beast-giant-vulture', 'tsi-tip', true]);
       assert(/^Giant Vulture/.test(await text(page, 'tooltip')) && /Flight/.test(await text(page, 'tooltip')), await text(page, 'tooltip'));
       await page.keyboard.press('Tab');
       equal(await page.isHidden('[data-test=tooltip]'), true, 'gone when the focus moves on');
@@ -933,8 +949,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       assert(await text(page, 'war-intel-estimate') !== est);
       await page.selectOption('[data-test=war-tier]', 'established');
       equal(await text(page, 'war-intel-estimate'), est, 'the same army as before');
-      await page.evaluate(() => document.querySelector('[data-card=war]').scrollIntoView({ block: 'start' }));
-      await page.evaluate(() => window.scrollBy(0, -130));
+      await reveal(page, '[data-test=queue-war]');
       await H.shot(page, 'p9-war-turn');
     });
 
@@ -1156,8 +1171,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await reopen(page);
       const again = await st(page);
       equal([again.warLog.length, again.log.filter(l => l.title === 'War Action Resolved').length, again.military, again.clanHonor], [1, 1, s.military, 36]);
-      await page.evaluate(() => document.querySelector('[data-card=management]').scrollIntoView({ block: 'start' }));
-      await page.evaluate(() => window.scrollBy(0, -130));
+      await reveal(page, '[data-test=military]');
       await page.hover('[data-test^=military-type-]:has-text("Depleted: 90/100")');
       await page.waitForSelector('[data-test=tooltip]:not([hidden])');
       assert(/Depleted: \d+ of 100 soldiers came home/.test(await text(page, 'tooltip')), await text(page, 'tooltip'));
@@ -1376,7 +1390,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       const c = await crestInfo(page);
       equal([c.w, c.h, c.alt], [512, 512, 'Crest of The Ironbow Freeblades']);
       equal(await text(page, 'org'), 'Brigade: The Ironbow Freeblades');
-      await page.evaluate(() => document.querySelector('[data-card=identity]').scrollIntoView({ block: 'center' }));
+      await reveal(page, '[data-test=org]');
       await H.shot(page, 'p9-crest-brigade');
     });
 
@@ -1429,9 +1443,13 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       s.builtExtras = [{ facId: 'war_room', status: 'built' }, { facId: 'menagerie', status: 'built' }, '', '', '', ''];
       s.defenderBeasts = [{ name: 'Owlbear', qty: 1, source: 'Menagerie' }];
     });
-    const showWarRoom = () => page.evaluate(() => {
-      document.querySelector('.tsi-bas-fac[data-fac=war_room]').scrollIntoView({ block: 'center', inline: 'center' });
-    }).then(() => page.waitForTimeout(500));
+    /* The War Room's panel, opened from its tile. */
+    const showWarRoom = async () => {
+      if ((await page.evaluate(() => TSI.bastion.debug.panel())) === 'fac-war_room') return;
+      await reveal(page, '[data-test=wr-recruit]');
+      await page.waitForSelector('[data-test=panel-fac-war_room] [data-test=wr-recruit]');
+      await page.waitForTimeout(300);
+    };
     /* What the stat block should say for a War Room choice, from the war's data. */
     const expected = label => page.evaluate(l => {
       const b = TSI.bastion.rules.unitStatBlock({}, l);
@@ -1525,8 +1543,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       equal(await text(page, 'military-type-0'), 'Line Infantry • 100 soldiers');
       await setUp(page, (st2) => { st2.military.push({ name: 'Line Infantry (100)', qty: 1, depleted: true, strength: 60, id: 'reg-x', source: 'War Room' }); });
       equal(await text(page, 'military-type-1'), 'Line Infantry • Depleted: 60/100');
-      await page.evaluate(() => document.querySelector('[data-card=management]').scrollIntoView({ block: 'start' }));
-      await page.evaluate(() => window.scrollBy(0, -130));
+      await reveal(page, '[data-test=military]');
       await page.hover('[data-test=military-row-1]');
       await page.waitForSelector('[data-test=tooltip]:not([hidden])');
       const tip = await text(page, 'tooltip');
@@ -1545,7 +1562,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await page.focus('[data-test=military-remove-0]');
       await page.keyboard.press('Tab');
       equal(await page.evaluate(() => { const a = document.activeElement; return [a.dataset.test, a.getAttribute('role'), a.getAttribute('aria-label'), a.getAttribute('aria-describedby')]; }),
-        ['military-row-1', 'group', 'Line Infantry (100): Line Infantry • Depleted: 60/100', 'tsi-bas-tip']);
+        ['military-row-1', 'group', 'Line Infantry (100): Line Infantry • Depleted: 60/100', 'tsi-tip']);
       assert(await page.isVisible('[data-test=tooltip]') && /Military unit • 60 of 100 soldiers/.test(await text(page, 'tooltip')), await text(page, 'tooltip'));
       equal((await H.layoutCheck(page, ['[data-test=tooltip]'])).outOfView, []);
       await page.keyboard.press('Tab');
@@ -1602,8 +1619,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       for (const size of ['laptop', 'laptopFull', 'tv']) {
         await page.setViewportSize(H.SIZES[size].viewport);
         await page.waitForTimeout(300);
-        await page.evaluate(() => document.querySelector('[data-card=war]').scrollIntoView({ block: 'start' }));
-        await page.evaluate(() => window.scrollBy(0, -130));
+        await reveal(page, '[data-test=queue-war]');
         const lc = await H.layoutCheck(page, ['[data-test=war-forces]']);
         equal(lc.scrollWidth, lc.clientWidth, size + ': no sideways scroll');
         const fit = await page.evaluate(() => {
@@ -1728,13 +1744,19 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
     });
 
     await check('At War tags: beside Bacca in the panels, the log, the War Council and its list, and its pop-ups; nowhere else', async () => {
-      await page.waitForSelector('[data-test=atwar-tag]');
-      const tags = await page.$$eval('[data-test=atwar-tag]', ts => ts.map(t => [t.dataset.clan, t.textContent, getComputedStyle(t).textTransform]));
-      assert(tags.length >= 6 && tags.every(t => t[0] === 'bacca' && t[1] === 'At War' && t[2] === 'uppercase'), JSON.stringify(tags));
-      assert(await tagsIn('.tsi-bas-side') === 1, 'Political Capital');
-      assert(await tagsIn('[data-card=identity]') >= 1, 'the Clan Influence Trackers');
-      assert(await tagsIn('[data-test=log]') >= 2, 'the Day Log');
+      /* Each panel in turn (one is open at a time, since the new screen). */
+      const allTags = [];
+      const tagsOf = async opener => {
+        await reveal(page, opener);
+        const ts = await page.$$eval('[data-test=atwar-tag]', ts => ts.map(t => [t.dataset.clan, t.textContent, getComputedStyle(t).textTransform]));
+        allTags.push(...ts);
+        return ts.length;
+      };
+      equal(await tagsOf('[data-test=pc-bacca]'), 1, 'Clan Influence: Bacca\'s row');
+      assert(await tagsOf('[data-test=log]') >= 2, 'the Day Log');
+      assert(await tagsOf('[data-test=wars-box]') >= 1, 'the War Council');
       assert(await tagsIn('[data-test=wars-box]') >= 1, 'the Wars box');
+      assert(allTags.length >= 5 && allTags.every(t => t[0] === 'bacca' && t[1] === 'At War' && t[2] === 'uppercase'), JSON.stringify(allTags));
       equal(await page.$eval('[data-test=war-target] option[value=bacca]', o => o.textContent), 'Bacca (At War)', 'in a list, the words');
       equal(await page.$eval('[data-test=war-target] option[value=karr]', o => o.textContent), 'Karr');
       equal(await tagsIn('.tsi-topbar'), 0, 'not in the suite\'s top bar');
@@ -1750,7 +1772,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
         for (const v of ['3', '4', '10']) { box.value = v; box.dispatchEvent(new Event('input', { bubbles: true })); out.push(tagged()); }
         const note = document.createElement('div');
         note.textContent = 'A rider from Bacca.';
-        document.querySelector('[data-test=log]').appendChild(note);
+        document.querySelector('[data-test=panel-war] .tsi-modal__body').appendChild(note);
         await Promise.resolve();
         out.push(note.querySelectorAll('[data-test=atwar-tag]').length);
         note.remove();
@@ -1772,11 +1794,8 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await clickModal(page, 'Cancel');
       equal((await st(page)).pendingOrders.length, 1);
       await setUp(page, (s) => { s.defenders.count = 10; });
-      await page.evaluate(() => document.querySelector('[data-card=war]').scrollIntoView({ block: 'start' }));
-      await page.evaluate(() => window.scrollBy(0, -130));
+      await reveal(page, '[data-test=wars-box]');
       await H.shot(page, 'p9-war4-at-war');
-      await page.evaluate(() => window.scrollTo(0, 0));
-      await H.shot(page, 'p9-war4-at-war-top');
     });
 
     await check('Make peace is refused while the War Action waits, and says why; Cancel the same day gives back the cost; peace takes the tags away', async () => {
@@ -1863,8 +1882,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       assert(/Clan Bacca attacked your Bastion on Day 2\. Defending it: 10 defenders/.test(await bare(page, '[data-test=ma-0]')));
       equal(await page.isDisabled('[data-test=make-peace-bacca]'), true);
       equal(await bare(page, '[data-test=wars-why-bacca]'), 'Clan Bacca\'s attack on your Bastion still has to be fought. Defend the Ironbow before making peace.');
-      await page.evaluate(() => document.querySelector('[data-card=war]').scrollIntoView({ block: 'start' }));
-      await page.evaluate(() => window.scrollBy(0, -130));
+      await reveal(page, '[data-test=queue-war]');
       await H.shot(page, 'p9-war4-attack-waiting');
     });
 
@@ -1991,16 +2009,20 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       lost = { ids, names };
     });
 
-    await check('Under Repair: labelled on its card, the map and the lists; its orders refused; orders already there wait', async () => {
+    await check('Under Repair: marked on its tile, its panel, the map and the lists; its orders refused; orders already there wait', async () => {
       const s = await st(page);
       equal([s.militaryActions.length, s.warLog[0].title], [0, 'Withdrawal: Defend Bastion vs Bacca']);
-      equal(await page.$$eval('.tsi-bas-fac--repair', cs => cs.map(c => c.dataset.fac).sort()), lost.ids.slice().sort());
+      equal(await page.$$eval('.tsi-bas-tile--repair', ts => ts.map(t => t.dataset.fac).sort()), lost.ids.slice().sort());
       for (const id of lost.ids) {
         const name = lost.names[lost.ids.indexOf(id)];
-        equal(await page.textContent('.tsi-bas-fac[data-fac=' + id + '] [data-test=repair-label]'), '(Under Repair)');
+        await pause(page);
+        await page.click('[data-test=tile-' + id + ']');
+        await page.waitForSelector('[data-test=panel-fac-' + id + ']');
+        equal(await page.textContent('[data-test=panel-fac-' + id + '] [data-test=repair-label]'), '(Under Repair)');
         equal(await text(page, 'repair-note-' + id), 'Under Repair until Day 15: no orders, and orders already here wait. Working again on Day 16.');
-        const issueBtns = await page.$$eval('.tsi-bas-fac[data-fac=' + id + '] .tsi-bas-fn__issue', bs => bs.map(b => [b.disabled, b.textContent, b.title]));
+        const issueBtns = await page.$$eval('[data-test=panel-fac-' + id + '] .tsi-bas-fn__issue', bs => bs.map(b => [b.disabled, b.textContent, b.title]));
         assert(issueBtns.length && issueBtns.every(b => b[0] && b[1] === 'Under Repair' && b[2] === 'The ' + name + ' is Under Repair until Day 15.'), JSON.stringify(issueBtns));
+        await page.keyboard.press('Escape');
         /* The rules refuse it too (with the same words). */
         const res = await page.evaluate(src => { eval(src.d); const st2 = JSON.parse(JSON.stringify(TSI.bastion.debug.state())); const f = data.facilities.find(x => x.id === src.id); return TSI.bastion.rules.issueOrder(st2, data, src.id, f.functions[0].id, 0, Math.random); }, { d: DATA, id });
         equal(res, { ok: false, message: 'The ' + name + ' is Under Repair until Day 15.' });
@@ -2008,18 +2030,18 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
         equal(o.dueDay, 16, name + '\'s order waits for the repairs');
       }
       const working = ['workshop', 'barracks', 'watchtower', 'dock', 'armoury'].filter(id => lost.ids.indexOf(id) === -1);
-      for (const id of working) equal(await page.$eval('.tsi-bas-fac[data-fac=' + id + '] .tsi-bas-fac__tag', t => t.textContent), 'Active');
+      for (const id of working) equal(await page.$eval('[data-test=tile-' + id + ']', t => t.classList.contains('tsi-bas-tile--repair')), false, id + ' works');
       const metas = await page.$$eval('[data-test^=pending-meta-]', ms => ms.map(m => m.textContent));
-      equal(metas.filter(m => /waiting: the .+ is Under Repair until Day 15$/.test(m)).length, lost.ids.length);
-      /* In the order the facilities' cards show. */
-      const order = await page.$$eval('.tsi-bas-fac', cs => cs.map(c => c.dataset.fac));
+      equal(metas.length, 0, 'the Orders panel is closed');
+      await reveal(page, '[data-test=pending]');
+      const metas2 = await page.$$eval('[data-test=pending] [data-test^=pending-meta-]', ms => ms.map(m => m.textContent));
+      equal(metas2.filter(m => /waiting: the .+ is Under Repair until Day 15$/.test(m)).length, lost.ids.length);
+      await page.keyboard.press('Escape');
+      /* In the order the grid shows them. */
+      const order = await page.$$eval('.tsi-bas-tile', ts => ts.map(t => t.dataset.fac));
       const inOrder = lost.ids.slice().sort((a, b) => order.indexOf(a) - order.indexOf(b)).map(id => lost.names[lost.ids.indexOf(id)]);
       equal(await text(page, 'map-repairs'), 'Under Repair: ' + inOrder.map(n => n + ' (working again on Day 16)').join(', '));
-      await page.evaluate(() => document.querySelector('[data-card=facilities]').scrollIntoView({ block: 'start' }));
-      await page.evaluate(() => window.scrollBy(0, -130));
       await H.shot(page, 'p9-war4-under-repair');
-      await page.evaluate(() => window.scrollTo(0, 0));
-      await H.shot(page, 'p9-war4-map-repairs');
     });
 
     await check('the repairs last 14 days (Harry\'s 2 Bastion turns: the day lost and 13 more); then the facilities work, and their orders complete', async () => {
@@ -2031,12 +2053,12 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await days(page, 13, []);
       let s = await st(page);
       equal([s.day, Object.keys(s.repairs).sort(), s.pendingOrders.map(o => o.facId).sort()], [15, lost.ids.slice().sort(), lost.ids.slice().sort()], 'Day 15: the others\' orders complete');
-      equal(await page.$$eval('.tsi-bas-fac--repair', c => c.length), lost.ids.length, 'Day 15: still Under Repair');
+      equal(await page.$$eval('.tsi-bas-tile--repair', c => c.length), lost.ids.length, 'Day 15: still Under Repair');
       await days(page, 1, []);
       s = await st(page);
       equal([s.day, s.repairs, s.pendingOrders], [16, {}, []], 'Day 16: working again, and the orders done');
       equal(s.log.filter(l => l.title === 'Repairs Complete').map(l => l.body).sort(), lost.names.map(n => 'Repairs: the ' + n + ' is working again.').sort());
-      equal(await page.$$eval('.tsi-bas-fac--repair, [data-test=repair-label]', c => c.length), 0);
+      equal(await page.$$eval('.tsi-bas-tile--repair', c => c.length), 0);
       equal(await page.isVisible('[data-test=map-repairs]'), false);
       equal(await page.isDisabled('[data-test=issue-barracks__recruit_defenders]'), false);
     });
@@ -2172,14 +2194,15 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       assert(opts.length > 5 && opts.indexOf('Battleaxe') !== -1, opts.join(','));
     });
 
-    await check('a closed panel stays closed after reopening (BAS-16)', async () => {
-      await page.click('[data-test=collapse-diplomacy]');
-      equal(await page.isVisible('[data-test=diplomacy-records]'), false);
+    await check('the facility grid, folded away, stays folded after reopening (BAS-16: the panels\' arrows are now the grid\'s)', async () => {
+      await page.keyboard.press('Escape');
+      await page.click('[data-test=grid-toggle]');
+      equal(await page.isVisible('[data-test=grid]'), false);
+      equal(await page.getAttribute('[data-test=grid-toggle]', 'aria-expanded'), 'false');
       await reopen(page);
-      equal(await page.isVisible('[data-test=diplomacy-records]'), false);
-      equal(await page.getAttribute('[data-test=collapse-diplomacy]', 'aria-expanded'), 'false');
-      await page.click('[data-test=collapse-diplomacy]');
-      equal(await page.isVisible('[data-test=diplomacy-records]'), true);
+      equal(await page.isVisible('[data-test=grid]'), false);
+      await page.click('[data-test=grid-toggle]');
+      equal(await page.isVisible('[data-test=grid]'), true);
     });
 
     await check('Favour of The Gods: a full bar shows Claim, which resets it', async () => {

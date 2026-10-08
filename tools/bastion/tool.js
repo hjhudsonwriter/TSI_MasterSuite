@@ -3480,13 +3480,19 @@
            Hall not built), or another pop-up is open over the panels. */
         reveal: function (test) {
           var sel = '[data-test="' + test + '"]';
-          if (document.querySelector(sel)) return true;
+          var modals = document.querySelectorAll('.tsi-modal');
+          var top = modals[modals.length - 1];
+          var panelOnTop = !!top && /^panel-/.test(top.getAttribute('data-test') || '');
+          var found = document.querySelector(sel);
+          if (found) {
+            /* On the page behind an open panel (the header's buttons, say): close the panel to reach it. */
+            if (panelOnTop && page.contains(found)) closePanel();
+            return true;
+          }
           var opener = openerFor(test, sel);
           var button = opener && page.querySelector('[data-test="' + opener + '"]');
           if (!button || button.tagName !== 'BUTTON') return false;
-          var modals = document.querySelectorAll('.tsi-modal');
-          var top = modals[modals.length - 1];
-          if (top && !/^panel-/.test(top.getAttribute('data-test') || '')) return false;
+          if (top && !panelOnTop) return false;
           closePanel();
           button.click();
           return !!document.querySelector(sel);
