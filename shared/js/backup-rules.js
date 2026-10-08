@@ -2,7 +2,7 @@
    A backup is a JSON file:
    {
      "format": "tsi-backup", "version": 1,
-     "kind": "suite" | "tool", "tool": "<id, for a tool backup>",
+     "kind": "suite" | "tool" | "campaign", "tool": "<id, for a tool backup>",
      "space": "suite" | "test",
      "suite": "The Scarlett Isles: D&D Tool Suite",
      "savedAt": "2026-09-25T13:03:00.000Z",
@@ -10,7 +10,10 @@
    }
    "space" says where it came from: the real suite, or the test page
    (tests/harness.html). Each only restores its own backups. Files made before
-   phase 2 have no "space" and count as the real suite's. */
+   phase 2 have no "space" and count as the real suite's.
+   A "campaign" file (Harry, 8 October 2026) holds the Explorer and the
+   Bastion together, "tools": ["explorer", "bastion"]: either tool's Export
+   makes one, and either tool's Import replaces both from it. */
 (function () {
   'use strict';
 
@@ -28,6 +31,25 @@
   var rules = {
     FORMAT: 'tsi-backup',
     VERSION: 1,
+    /* The tools that save as one campaign. */
+    CAMPAIGN: ['explorer', 'bastion'],
+    CAMPAIGN_NAME: 'the campaign (the Scarlett Isles Explorer and The Ironbow Bastion Manager)',
+
+    inCampaign: function (toolId) { return rules.CAMPAIGN.indexOf(toolId) !== -1; },
+
+    makeCampaignBackup: function (records, when, space) {
+      return {
+        format: rules.FORMAT,
+        version: rules.VERSION,
+        kind: 'campaign',
+        space: space === 'test' ? 'test' : 'suite',
+        tools: rules.CAMPAIGN.slice(),
+        toolName: 'Campaign (Explorer and Bastion)',
+        suite: SUITE_NAME,
+        savedAt: new Date(when || Date.now()).toISOString(),
+        records: records
+      };
+    },
 
     makeSuiteBackup: function (records, when, space) {
       return {
@@ -55,12 +77,14 @@
       };
     },
 
-    /* tsi-backup-everything-2026-09-25-1403.json  or  tsi-quests-2026-09-25-1403.json
-       (the test page's start tsi-test-). */
+    /* tsi-backup-everything-2026-09-25-1403.json, tsi-quests-2026-09-25-1403.json
+       or tsi-campaign-2026-09-25-1403.json (the test page's start tsi-test-). */
     fileName: function (kind, toolId, when, space) {
       var stamp = fileStamp(when instanceof Date ? when : new Date(when || Date.now()));
       var start = store().spaceNames(space).file;
-      return kind === 'suite' ? start + 'backup-everything-' + stamp + '.json' : start + toolId + '-' + stamp + '.json';
+      if (kind === 'suite') return start + 'backup-everything-' + stamp + '.json';
+      if (kind === 'campaign') return start + 'campaign-' + stamp + '.json';
+      return start + toolId + '-' + stamp + '.json';
     },
 
     /* Read a backup file's text. Returns { ok: true, backup } or { ok: false, reason } in plain English. */
@@ -80,7 +104,7 @@
       if (data.version > rules.VERSION) {
         return { ok: false, reason: 'This backup was made by a newer version of the suite, so this version can\'t read it.' };
       }
-      if (data.kind !== 'suite' && data.kind !== 'tool') {
+      if (data.kind !== 'suite' && data.kind !== 'tool' && data.kind !== 'campaign') {
         return { ok: false, reason: 'This backup file is damaged (it doesn\'t say what it holds).' };
       }
       if (data.space !== undefined && data.space !== 'suite' && data.space !== 'test') {
@@ -105,6 +129,9 @@
         seen.add(r.key);
         if (data.kind === 'tool' && store().toolOf(r.key) !== data.tool) {
           return { ok: false, reason: 'This backup file is damaged (it mixes in another tool\'s data).' };
+        }
+        if (data.kind === 'campaign' && !rules.inCampaign(store().toolOf(r.key))) {
+          return { ok: false, reason: 'This campaign file is damaged (it mixes in another tool\'s data).' };
         }
       }
       return { ok: true, backup: data };
@@ -133,6 +160,9 @@
 
     /* Can this backup be restored from the home screen? Returns a reason, or null if yes. */
     checkForSuite: function (backup, nameOf) {
+      if (backup.kind === 'campaign') {
+        return 'This is a campaign save: the Explorer and the Bastion together. To load it, open the Scarlett Isles Explorer or The Ironbow Bastion Manager and use Import.';
+      }
       if (backup.kind === 'tool') {
         var name = (nameOf && nameOf(backup.tool)) || backup.toolName || backup.tool;
         return 'This is a backup of just ' + the(name) + '. To load it, open ' + the(name) + ' and use Import.';
@@ -145,6 +175,10 @@
       var mine = (nameOf && nameOf(toolId)) || toolId;
       if (backup.kind === 'suite') {
         return 'This is a whole-suite backup, not a ' + mine + ' file. To restore it, use Restore on the home screen.';
+      }
+      if (backup.kind === 'campaign') {
+        return rules.inCampaign(toolId) ? null
+          : 'This is a campaign save (the Explorer and the Bastion), not ' + the(mine) + ' file. Nothing was changed.';
       }
       if (backup.tool !== toolId) {
         var theirs = (nameOf && nameOf(backup.tool)) || backup.toolName || backup.tool;

@@ -1,39 +1,42 @@
 /* ==========================================================================
    The Ironbow Bastion Manager.
-   The old layout in the suite's look: the Favour panel on the left (it
-   sticks while the page scrolls, like the old fixed panel), then the Turn
-   Log, Bastion Map and Bastion Event, then the old panels in their old
-   order. The tool's bar, with Advance Bastion Turn, sticks under the suite's
-   top bar. Everything fits the laptop (1707 wide) and the TV (1920 wide)
-   with no sideways scrolling; the page scrolls down, as the old one did.
+   The new screen (the overhaul's Build 2, 8 October 2026): a slim header,
+   then the Bastion Map filling the window, with a top bar (the day, the
+   treasury, the counts, the Party Identity badge) and a bottom bar (the
+   panel buttons either side of the facility grid). Everything else opens
+   as a pop-up over the map. The page never scrolls; it fits the laptop
+   (1707 × 930) and the TV (1920 × 1080).
    Kept as the Bastion's signature: the Uncial wordmark, the map and its
    building overlays, the facility paintings, the painted Hall behind the
    Hall's pop-ups, the glowing trade routes, and the faint panel pictures.
-   Every rule is scoped to the Bastion and every class starts "tsi-bas-".
+   Every rule is scoped to the Bastion's page (so it reaches its pop-ups
+   too) and every class starts "tsi-bas-".
    ========================================================================== */
 
-.tsi-tool--bastion [hidden],
-.tsi-page--bastion .tsi-bas-modal [hidden] { display: none !important; }
+.tsi-page--bastion [hidden] { display: none !important; }
 
-.tsi-tool--bastion .tsi-bas {
-  --tsi-bas-bar-h: 64px;
-  max-width: 2000px;
-  margin: 0 auto;
-  padding: 0 16px 24px;
+.tsi-page--bastion .tsi-bas {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  height: calc(100vh - var(--tsi-topbar-h));
+  min-height: 520px;
+  padding: 0 14px 12px;
   box-sizing: border-box;
+  overflow: hidden;
 }
-.tsi-tool--bastion .tsi-bas-muted { color: var(--tsi-text-soft); font-size: var(--tsi-fs-body-sm); line-height: 1.35; }
-.tsi-tool--bastion .tsi-bas-muted b { color: var(--tsi-text); }
-.tsi-tool--bastion .tsi-bas-label {
+.tsi-page--bastion .tsi-bas-muted { color: var(--tsi-text-soft); font-size: var(--tsi-fs-body-sm); line-height: 1.35; }
+.tsi-page--bastion .tsi-bas-muted b { color: var(--tsi-text); }
+.tsi-page--bastion .tsi-bas-label {
   font: 600 var(--tsi-fs-label)/1.3 var(--tsi-font-display);
   letter-spacing: var(--tsi-track-label);
   text-transform: uppercase;
   color: var(--tsi-gold-text);
 }
-.tsi-tool--bastion .tsi-bas-value { font: 700 26px/1.1 var(--tsi-font-display); margin: 4px 0 8px; }
-.tsi-tool--bastion .tsi-btn--small { font-size: 13px; }
-.tsi-tool--bastion .tsi-input { padding: 7px 10px; font-size: var(--tsi-fs-body-sm); min-width: 0; }
-.tsi-tool--bastion select.tsi-input,
+.tsi-page--bastion .tsi-bas-value { font: 700 26px/1.1 var(--tsi-font-display); margin: 4px 0 8px; }
+.tsi-page--bastion .tsi-btn--small { font-size: 13px; }
+.tsi-page--bastion .tsi-input { padding: 7px 10px; font-size: var(--tsi-fs-body-sm); min-width: 0; }
+.tsi-page--bastion select.tsi-input,
 .tsi-page--bastion .tsi-bas-modal select.tsi-input {
   padding-right: 28px;
   background-image: linear-gradient(45deg, transparent 50%, var(--tsi-gold) 50%), linear-gradient(135deg, var(--tsi-gold) 50%, transparent 50%);
@@ -41,8 +44,8 @@
   background-size: 5px 5px, 5px 5px;
   background-repeat: no-repeat;
 }
-.tsi-tool--bastion .tsi-bas-num { width: 100%; }
-.tsi-tool--bastion .tsi-bas-field,
+.tsi-page--bastion .tsi-bas-num { width: 100%; }
+.tsi-page--bastion .tsi-bas-field,
 .tsi-page--bastion .tsi-bas-field {
   display: flex;
   flex-direction: column;
@@ -52,63 +55,397 @@
   color: var(--tsi-text-muted);
   min-width: 0;
 }
-.tsi-tool--bastion .tsi-bas-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
-.tsi-tool--bastion .tsi-bas-actions--start { justify-content: flex-start; }
+.tsi-page--bastion .tsi-bas-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.tsi-page--bastion .tsi-bas-actions--start { justify-content: flex-start; }
 
-/* ---------- The tool's bar ---------- */
-.tsi-tool--bastion .tsi-bas-bar {
-  position: sticky;
-  top: var(--tsi-topbar-h);
-  z-index: 50;
+/* ---------- The slim header ---------- */
+.tsi-page--bastion .tsi-bas-head {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  flex-wrap: wrap;
-  margin: 0 -16px;
-  padding: 10px 16px;
-  background: rgba(5, 5, 6, .9);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--tsi-line-head);
-  box-shadow: 0 8px 18px rgba(0, 0, 0, .4);
+  min-height: 48px;
+  padding: 6px 2px;
+  box-sizing: border-box;
 }
-.tsi-tool--bastion .tsi-bas-brand__title {
-  font: 400 21px/1.15 var(--tsi-font-title);
+.tsi-page--bastion .tsi-bas-brand { display: flex; align-items: baseline; gap: 12px; min-width: 0; }
+.tsi-page--bastion .tsi-bas-brand__title {
+  font: 400 24px/1.1 var(--tsi-font-title);
   letter-spacing: .06em;
   color: var(--tsi-text);
   text-shadow: 0 2px 10px rgba(0, 0, 0, .65);
+  white-space: nowrap;
 }
-.tsi-tool--bastion .tsi-bas-brand__sub {
-  margin-top: 3px;
+.tsi-page--bastion .tsi-bas-brand__sub {
   font: 400 12px var(--tsi-font-display);
   letter-spacing: .06em;
   text-transform: uppercase;
   color: var(--tsi-gold-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.tsi-tool--bastion .tsi-bas-bar__controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
-.tsi-tool--bastion .tsi-bas-field--inline { flex-direction: row; align-items: center; gap: 8px; }
-.tsi-tool--bastion .tsi-bas-level { width: 74px; }
-.tsi-tool--bastion .tsi-bas-advance { padding: 9px 16px; }
+.tsi-page--bastion .tsi-bas-head__controls { display: flex; flex-wrap: nowrap; align-items: center; justify-content: flex-end; gap: 8px; }
+.tsi-page--bastion .tsi-bas-field--inline { flex-direction: row; align-items: center; gap: 8px; white-space: nowrap; }
+.tsi-page--bastion .tsi-bas-level { width: 74px; }
+.tsi-page--bastion .tsi-bas-advance { padding: 6px 14px; }
 
-/* ---------- Layout ---------- */
-.tsi-tool--bastion .tsi-bas-layout {
-  display: grid;
-  grid-template-columns: 300px minmax(0, 1fr);
-  gap: 16px;
-  align-items: start;
-  margin-top: 14px;
+/* ---------- The Bastion Map panel: fills the rest of the window ---------- */
+.tsi-page--bastion .tsi-bas-stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border: var(--tsi-border-feature);
+  border-radius: var(--tsi-radius-xl);
+  background: linear-gradient(180deg, rgba(0, 0, 0, .55), rgba(0, 0, 0, .35)), var(--tsi-panel-fill);
+  box-shadow: var(--tsi-shadow-panel);
+  overflow: hidden;
 }
-.tsi-tool--bastion .tsi-bas-main { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-.tsi-tool--bastion .tsi-bas-top {
+/* The top bar: the day, the treasury, the counts, Under Repair. */
+.tsi-page--bastion .tsi-bas-topbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 6px 12px;
+  box-sizing: border-box;
+  background: var(--tsi-head-fill);
+  border-bottom: 1px solid var(--tsi-line-head);
+  overflow: hidden;
+}
+.tsi-page--bastion .tsi-bas-topbar__day { display: flex; align-items: center; gap: 8px; }
+.tsi-page--bastion .tsi-bas-treasury {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px 2px 8px;
+  border: 1px solid var(--tsi-line);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .3);
+  cursor: text;
+}
+.tsi-page--bastion .tsi-bas-icon--coin { width: 22px; height: 22px; color: var(--tsi-gold); }
+.tsi-page--bastion .tsi-bas-treasury .tsi-bas-treasury__input {
+  width: 92px;
+  padding: 3px 4px;
+  border: 0;
+  background: transparent;
+  font: 700 16px var(--tsi-font-display);
+  color: var(--tsi-text);
+  text-align: right;
+}
+.tsi-page--bastion .tsi-bas-treasury .tsi-bas-treasury__input:focus { outline: 1px solid var(--tsi-gold); border-radius: 6px; }
+.tsi-page--bastion .tsi-bas-treasury__gp { font: 400 12px var(--tsi-font-display); letter-spacing: .06em; color: var(--tsi-gold-text); }
+.tsi-page--bastion .tsi-bas-count {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 5px 12px;
+  border: 1px solid var(--tsi-line);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .3);
+  color: var(--tsi-text);
+  cursor: pointer;
+}
+.tsi-page--bastion .tsi-bas-count:hover { border-color: var(--tsi-gold); }
+.tsi-page--bastion .tsi-bas-count.is-due { border-color: var(--tsi-gold); box-shadow: 0 0 10px rgba(214, 178, 94, .35); }
+.tsi-page--bastion .tsi-bas-count__label { font: 400 12px var(--tsi-font-display); letter-spacing: var(--tsi-track-label); text-transform: uppercase; color: var(--tsi-gold-text); }
+.tsi-page--bastion .tsi-bas-count__n { font: 700 16px var(--tsi-font-display); }
+.tsi-page--bastion .tsi-bas-topbar .tsi-bas-map__repairs {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 14px;
+  color: var(--tsi-warn);
+}
+
+/* The map: the painting fitted (fitMap sets its size), never cropped. */
+.tsi-page--bastion .tsi-bas-mapwrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+.tsi-page--bastion .tsi-bas-map { position: relative; flex: 0 0 auto; }
+.tsi-page--bastion .tsi-bas-map__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  border-radius: 12px;
+  border: 1px solid var(--tsi-line-head);
+}
+.tsi-page--bastion .tsi-bas-map__overlays { position: absolute; inset: 0; pointer-events: none; border-radius: 12px; overflow: hidden; }
+.tsi-page--bastion .tsi-bas-map__overlay { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; }
+
+/* The Party Identity badge, top right of the map. */
+.tsi-page--bastion .tsi-bas-badge {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 112px;
+  padding: 8px 6px 6px;
+  border: 1px solid rgba(214, 178, 94, .75);
+  border-radius: var(--tsi-radius-lg);
+  background: rgba(8, 5, 6, .72);
+  box-shadow: 0 0 18px rgba(214, 178, 94, .25), 0 8px 18px rgba(0, 0, 0, .5);
+  color: var(--tsi-text);
+  cursor: pointer;
+}
+.tsi-page--bastion .tsi-bas-badge:hover { box-shadow: 0 0 24px rgba(214, 178, 94, .45), 0 8px 18px rgba(0, 0, 0, .5); }
+/* No crest yet: a fainter frame, inviting one. */
+.tsi-page--bastion .tsi-bas-badge--empty { border-style: dashed; border-color: rgba(214, 178, 94, .5); background: rgba(8, 5, 6, .55); }
+.tsi-page--bastion .tsi-bas-badge__img { width: 76px; height: 76px; object-fit: contain; filter: drop-shadow(0 4px 8px rgba(0, 0, 0, .55)); }
+.tsi-page--bastion .tsi-bas-badge__empty .tsi-bas-icon { width: 60px; height: 60px; margin: 8px 0; color: rgba(214, 178, 94, .45); }
+.tsi-page--bastion .tsi-bas-badge__label {
+  max-width: 100%;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  text-align: center;
+  font: 600 11px/1.15 var(--tsi-font-display);
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--tsi-gold-text);
+}
+
+/* The suite's notices sit in the bottom-right corner, which on the Bastion
+   is the bottom bar's buttons (Clan Influence, Favour, War Council), and
+   where the DM doc and the crest badge open. Here they sit on the left,
+   just above the bar (128 pixels, and its 15-pixel frame). The War Table
+   places them itself (war-table.css). */
+.tsi-page--bastion:not(.tsi-bas-wt-open) .tsi-notices {
+  left: 16px;
+  right: auto;
+  bottom: 155px;
+  max-height: calc(100vh - var(--tsi-topbar-h) - 187px);
+}
+
+/* The bottom bar: the panel buttons either side of the facility grid. */
+.tsi-page--bastion .tsi-bas-bottom {
+  flex: 0 0 auto;
   display: grid;
-  grid-template-columns: minmax(250px, 300px) minmax(0, 1fr) minmax(250px, 300px);
-  gap: 16px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  height: 128px;
+  padding: 8px 12px;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, rgba(27, 10, 13, .92), rgba(10, 7, 8, .96));
+  border-top: 1px solid var(--tsi-line-head);
+}
+.tsi-page--bastion .tsi-bas-stage.is-grid-closed .tsi-bas-bottom { height: 64px; }
+.tsi-page--bastion .tsi-bas-pbtns { display: grid; grid-template-columns: repeat(2, 84px); grid-auto-rows: 52px; gap: 6px; }
+.tsi-page--bastion .tsi-bas-stage.is-grid-closed .tsi-bas-pbtns { grid-auto-flow: column; grid-template-columns: none; grid-auto-columns: 84px; grid-template-rows: 48px; grid-auto-rows: 48px; }
+.tsi-page--bastion .tsi-bas-pbtn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 4px 2px;
+  border: 1px solid var(--tsi-line);
+  border-radius: var(--tsi-radius-md);
+  background: rgba(0, 0, 0, .35);
+  color: var(--tsi-gold-text);
+  cursor: pointer;
+}
+.tsi-page--bastion .tsi-bas-pbtn:hover { border-color: var(--tsi-gold); background: rgba(58, 18, 25, .55); }
+.tsi-page--bastion .tsi-bas-pbtn .tsi-bas-icon { flex: 0 0 auto; width: 20px; height: 20px; }
+.tsi-page--bastion .tsi-bas-pbtn__label {
+  max-width: 100%;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  font: 600 10px/1.08 var(--tsi-font-display);
+  letter-spacing: .03em;
+  text-align: center;
+  text-transform: uppercase;
+}
+.tsi-page--bastion .tsi-bas-pbtn.is-locked { opacity: .6; cursor: help; }
+.tsi-page--bastion .tsi-bas-pbtn.is-alert { border-color: var(--tsi-crimson-bright, #b1122a); box-shadow: 0 0 12px rgba(177, 18, 42, .55); }
+.tsi-page--bastion .tsi-bas-pbtn__lock { position: absolute; top: 3px; right: 3px; }
+.tsi-page--bastion .tsi-bas-pbtn__lock .tsi-bas-icon { width: 14px; height: 14px; color: var(--tsi-text-soft); }
+.tsi-page--bastion .tsi-bas-icon { display: block; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+/* The facility grid: one row of square tiles, foldable. */
+.tsi-page--bastion .tsi-bas-gridwrap { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
+.tsi-page--bastion .tsi-bas-gridtoggle {
+  width: 44px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--tsi-line);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, .35);
+  color: var(--tsi-gold-text);
+  cursor: pointer;
+}
+.tsi-page--bastion .tsi-bas-gridtoggle .tsi-bas-icon { width: 16px; height: 16px; margin: 0 auto; }
+.tsi-page--bastion .tsi-bas-grid {
+  display: flex;
+  gap: 6px;
+  max-width: 100%;
+  overflow: hidden;
+}
+.tsi-page--bastion .tsi-bas-tile {
+  position: relative;
+  flex: 0 1 92px;
+  width: 92px;
+  min-width: 56px;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 1px solid rgba(214, 178, 94, .55);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, .45);
+  overflow: hidden;
+  color: var(--tsi-gold-text);
+  box-sizing: border-box;
+}
+.tsi-page--bastion button.tsi-bas-tile { cursor: pointer; }
+.tsi-page--bastion .tsi-bas-tile--built:hover,
+.tsi-page--bastion .tsi-bas-tile--built:focus-visible { border-color: var(--tsi-gold); box-shadow: 0 0 12px rgba(214, 178, 94, .45); }
+.tsi-page--bastion .tsi-bas-tile__img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.tsi-page--bastion .tsi-bas-tile__img--empty { background: rgba(0, 0, 0, .3); }
+.tsi-page--bastion .tsi-bas-tile--building .tsi-bas-tile__img,
+.tsi-page--bastion .tsi-bas-tile--repair .tsi-bas-tile__img { filter: grayscale(.6) brightness(.45) sepia(.3); }
+.tsi-page--bastion .tsi-bas-tile__mark {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  color: var(--tsi-gold-text);
+}
+.tsi-page--bastion .tsi-bas-tile__mark .tsi-bas-icon { width: 32px; height: 32px; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .8)); }
+.tsi-page--bastion .tsi-bas-tile__days { font: 700 14px var(--tsi-font-display); text-shadow: 0 1px 3px #000; }
+.tsi-page--bastion .tsi-bas-tile__count {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  box-sizing: border-box;
+  border-radius: 10px;
+  border: 1px solid rgba(214, 178, 94, .8);
+  background: rgba(58, 18, 25, .9);
+  font: 700 12px/18px var(--tsi-font-display);
+  text-align: center;
+  color: var(--tsi-text);
+}
+.tsi-page--bastion .tsi-bas-tile__over {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--tsi-warn);
+  font: 700 13px/20px var(--tsi-font-display);
+  text-align: center;
+  color: #1b0a0d;
+}
+.tsi-page--bastion .tsi-bas-tile--over { border-color: var(--tsi-warn); }
+.tsi-page--bastion .tsi-bas-tile__plus { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
+.tsi-page--bastion .tsi-bas-tile__plus .tsi-bas-icon { width: 30px; height: 30px; }
+.tsi-page--bastion .tsi-bas-tile--slot { border-style: dashed; background: rgba(0, 0, 0, .35); color: rgba(214, 178, 94, .55); transition: background var(--tsi-dur-fast) var(--tsi-ease), color var(--tsi-dur-fast) var(--tsi-ease); }
+.tsi-page--bastion .tsi-bas-tile--slot:hover,
+.tsi-page--bastion .tsi-bas-tile--slot:focus-visible { background: rgba(58, 18, 25, .7); color: var(--tsi-gold-text); border-color: var(--tsi-gold); box-shadow: 0 0 12px rgba(214, 178, 94, .45); }
+.tsi-page--bastion .tsi-bas-tile--locked { background: rgba(0, 0, 0, .55); border-color: rgba(214, 178, 94, .25); color: rgba(214, 178, 94, .35); }
+
+/* ---------- Panels: the pop-ups over the map ---------- */
+/* (.tsi-modal too, so a panel's width beats the Hall pop-ups' own.) */
+.tsi-page--bastion .tsi-modal.tsi-bas-panel { width: min(760px, 96vw); }
+.tsi-page--bastion .tsi-modal.tsi-bas-panel--wide { width: min(1180px, 96vw); }
+.tsi-page--bastion .tsi-bas-panel .tsi-modal__body { padding-top: 12px; }
+.tsi-page--bastion .tsi-bas-card.tsi-bas-card--panel { background: none; border: 0; border-radius: 0; box-shadow: none; overflow: visible; }
+.tsi-page--bastion .tsi-bas-card.tsi-bas-card--panel > .tsi-bas-card__body { padding: 0; }
+.tsi-page--bastion .tsi-bas-card__tools { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 8px; }
+.tsi-page--bastion .tsi-bas-card__tools:empty { display: none; }
+.tsi-page--bastion .tsi-bas-card--diplomacy > .tsi-bas-card__tools { display: block; }
+
+/* A facility's panel. */
+.tsi-page--bastion .tsi-bas-facpanel { display: flex; flex-direction: column; gap: 14px; }
+.tsi-page--bastion .tsi-bas-facpanel__hero { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 16px; align-items: start; }
+.tsi-page--bastion .tsi-bas-facpanel__img { display: block; width: 220px; height: 220px; object-fit: cover; border-radius: 12px; border: 1px solid rgba(214, 178, 94, .6); box-shadow: 0 0 18px rgba(214, 178, 94, .2); }
+.tsi-page--bastion .tsi-bas-facpanel__hero--repair .tsi-bas-facpanel__img { filter: grayscale(.55) brightness(.7) sepia(.25); }
+.tsi-page--bastion .tsi-bas-facpanel__info { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.tsi-page--bastion .tsi-bas-facpanel__level { font: 700 13px var(--tsi-font-display); letter-spacing: var(--tsi-track-label); text-transform: uppercase; color: var(--tsi-gold-text); }
+.tsi-page--bastion .tsi-bas-facpanel__status { font-size: var(--tsi-fs-body-sm); color: var(--tsi-text-muted); }
+.tsi-page--bastion .tsi-bas-facpanel__orders { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1px dashed rgba(255, 255, 255, .14); border-radius: var(--tsi-radius-md); background: rgba(0, 0, 0, .18); }
+.tsi-page--bastion .tsi-bas-facpanel__fns { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 10px; }
+.tsi-page--bastion .tsi-bas-facpanel__artisan { display: flex; flex-direction: column; gap: 8px; padding-top: 10px; border-top: 1px solid var(--tsi-line-faint); }
+
+/* The build panel. */
+.tsi-page--bastion .tsi-bas-buildpanel { display: flex; flex-direction: column; gap: 12px; }
+.tsi-page--bastion .tsi-bas-buildgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.tsi-page--bastion .tsi-bas-buildopt {
+  display: flex;
+  flex-direction: column;
   align-items: stretch;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid rgba(214, 178, 94, .5);
+  border-radius: var(--tsi-radius-md);
+  background: rgba(0, 0, 0, .35);
+  color: var(--tsi-text);
+  cursor: pointer;
+  text-align: center;
 }
+.tsi-page--bastion .tsi-bas-buildopt:hover,
+.tsi-page--bastion .tsi-bas-buildopt:focus-visible { border-color: var(--tsi-gold); box-shadow: 0 0 12px rgba(214, 178, 94, .4); }
+.tsi-page--bastion .tsi-bas-buildopt[aria-disabled="true"] { cursor: not-allowed; }
+.tsi-page--bastion .tsi-bas-buildopt__img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; }
+.tsi-page--bastion .tsi-bas-buildopt--locked .tsi-bas-buildopt__img { filter: grayscale(.8) brightness(.45); }
+.tsi-page--bastion .tsi-bas-buildopt__name { font: 700 12px/1.25 var(--tsi-font-display); letter-spacing: .05em; text-transform: uppercase; color: var(--tsi-gold-text); }
+.tsi-page--bastion .tsi-bas-buildopt__days { font-size: 14px; color: var(--tsi-text-soft); }
+.tsi-page--bastion .tsi-bas-buildopt__lock { display: inline-flex; align-items: center; justify-content: center; gap: 4px; font-size: 13px; color: var(--tsi-text-soft); }
+.tsi-page--bastion .tsi-bas-buildopt__lock .tsi-bas-icon { width: 14px; height: 14px; }
+.tsi-page--bastion .tsi-bas-buildpanel__foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 8px; border-top: 1px solid var(--tsi-line-faint); }
+
+/* Clan Influence: one row per Clan. */
+.tsi-page--bastion .tsi-bas-influence { display: flex; flex-direction: column; gap: 6px; }
+.tsi-page--bastion .tsi-bas-influence__row {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr) 210px 90px;
+  gap: 12px;
+  align-items: center;
+  padding: 6px 10px;
+  border: 1px solid var(--tsi-line-faint);
+  border-radius: var(--tsi-radius-md);
+  background: var(--tsi-inset-fill);
+}
+.tsi-page--bastion .tsi-bas-influence__name { font: 700 12px var(--tsi-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--tsi-gold-text); }
+.tsi-page--bastion .tsi-bas-influence__pc { display: grid; grid-template-columns: minmax(0, 1fr) 44px auto; gap: 8px; align-items: center; }
+.tsi-page--bastion .tsi-bas-influence .tsi-bas-influence__hr { flex-direction: row; align-items: center; justify-content: flex-end; gap: 8px; margin: 0; font-size: 11px; }
+.tsi-page--bastion .tsi-bas-influence .tsi-bas-influence__hr .tsi-input { flex: 0 0 64px; width: 64px; }
+.tsi-page--bastion .tsi-bas-influence__sup { display: flex; flex-direction: column; align-items: flex-end; }
+.tsi-page--bastion .tsi-bas-influence__sup-label { font: 400 10px var(--tsi-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--tsi-text-soft); }
+.tsi-page--bastion .tsi-bas-influence__support { font: 400 13px var(--tsi-font-mono); color: var(--tsi-text); }
+.tsi-page--bastion .tsi-bas-influence__support b { color: var(--tsi-gold-text); }
+.tsi-page--bastion .tsi-bas-favour { display: flex; flex-direction: column; gap: 2px; }
 
 /* ---------- Panels ---------- */
-.tsi-tool--bastion .tsi-bas-card {
+.tsi-page--bastion .tsi-bas-card {
   position: relative;
   min-width: 0;
   background: var(--tsi-panel-fill);
@@ -117,7 +454,7 @@
   box-shadow: var(--tsi-shadow-panel);
   overflow: hidden;
 }
-.tsi-tool--bastion .tsi-bas-card__head {
+.tsi-page--bastion .tsi-bas-card__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -126,17 +463,17 @@
   background: var(--tsi-head-fill);
   border-bottom: 1px solid var(--tsi-line-head);
 }
-.tsi-tool--bastion .tsi-bas-card__title {
+.tsi-page--bastion .tsi-bas-card__title {
   margin: 0;
   font: 600 15px/1.2 var(--tsi-font-display);
   letter-spacing: var(--tsi-track-heading);
   text-transform: uppercase;
   color: var(--tsi-gold-text);
 }
-.tsi-tool--bastion .tsi-bas-card__body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 12px; }
-.tsi-tool--bastion .tsi-bas-card.is-collapsed > .tsi-bas-card__body { display: none; }
-.tsi-tool--bastion .tsi-bas-card.is-collapsed > .tsi-bas-card__head { border-bottom: 0; }
-.tsi-tool--bastion .tsi-bas-collapse {
+.tsi-page--bastion .tsi-bas-card__body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 12px; }
+.tsi-page--bastion .tsi-bas-card.is-collapsed > .tsi-bas-card__body { display: none; }
+.tsi-page--bastion .tsi-bas-card.is-collapsed > .tsi-bas-card__head { border-bottom: 0; }
+.tsi-page--bastion .tsi-bas-collapse {
   flex-shrink: 0;
   width: 34px;
   height: 34px;
@@ -149,9 +486,9 @@
   line-height: 1;
   cursor: pointer;
 }
-.tsi-tool--bastion .tsi-bas-collapse:hover { background: rgba(0, 0, 0, .4); }
-.tsi-tool--bastion .tsi-bas-row,
-.tsi-tool--bastion .tsi-bas-box {
+.tsi-page--bastion .tsi-bas-collapse:hover { background: rgba(0, 0, 0, .4); }
+.tsi-page--bastion .tsi-bas-row,
+.tsi-page--bastion .tsi-bas-box {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -160,10 +497,10 @@
   border-radius: var(--tsi-radius-row);
   background: var(--tsi-inset-fill);
 }
-.tsi-tool--bastion .tsi-bas-row__top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-.tsi-tool--bastion .tsi-bas-split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.tsi-tool--bastion .tsi-bas-status-pill,
-.tsi-tool--bastion .tsi-bas-turn-pill {
+.tsi-page--bastion .tsi-bas-row__top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.tsi-page--bastion .tsi-bas-split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.tsi-page--bastion .tsi-bas-status-pill,
+.tsi-page--bastion .tsi-bas-turn-pill {
   flex-shrink: 0;
   padding: 6px 12px;
   border-radius: var(--tsi-radius-pill);
@@ -175,10 +512,16 @@
   color: var(--tsi-gold-text);
 }
 
-/* The Clan's or Brigade's crest, beside its name in Party Identity. */
-.tsi-tool--bastion .tsi-bas-identity { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
-.tsi-tool--bastion .tsi-bas-identity__name { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
-.tsi-tool--bastion .tsi-bas-crest {
+/* Party Identity: the Bastion's crest, large, with its three buttons
+   beside it, under the status pill (and the Clan's chief and motto). */
+.tsi-page--bastion .tsi-bas-identity { display: flex; align-items: flex-start; gap: 18px; margin-bottom: 14px; }
+.tsi-page--bastion .tsi-bas-identity__side { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0; }
+.tsi-page--bastion .tsi-bas-identity__name { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.tsi-page--bastion .tsi-bas-identity__meta { display: flex; flex-direction: column; gap: 2px; font-size: var(--tsi-fs-body-sm); }
+.tsi-page--bastion .tsi-bas-identity__meta:empty { display: none; }
+.tsi-page--bastion .tsi-bas-identity__motto { font-style: italic; color: var(--tsi-gold-text); }
+.tsi-page--bastion .tsi-bas-identity .tsi-bas-label { margin-top: 4px; }
+.tsi-page--bastion .tsi-bas-crest {
   width: 96px;
   height: 96px;
   flex-shrink: 0;
@@ -189,11 +532,20 @@
   background: radial-gradient(circle at 50% 40%, rgba(214, 178, 94, .14), rgba(0, 0, 0, .35) 70%);
   box-shadow: var(--tsi-glow-gold);
 }
-.tsi-tool--bastion .tsi-bas-crest__img { max-width: 88px; max-height: 88px; object-fit: contain; filter: drop-shadow(0 4px 8px rgba(0, 0, 0, .55)); }
-.tsi-tool--bastion .tsi-bas-crest-actions { display: flex; gap: 6px; }
-.tsi-tool--bastion .tsi-bas-crest-actions .tsi-btn { font-size: 12px; padding: 5px 10px; }
+.tsi-page--bastion .tsi-bas-crest--large { width: 168px; height: 168px; }
+.tsi-page--bastion .tsi-bas-crest__img { max-width: 88px; max-height: 88px; object-fit: contain; filter: drop-shadow(0 4px 8px rgba(0, 0, 0, .55)); }
+.tsi-page--bastion .tsi-bas-crest--large .tsi-bas-crest__img { max-width: 156px; max-height: 156px; }
+.tsi-page--bastion .tsi-bas-crest__empty { display: flex; flex-direction: column; align-items: center; gap: 4px; font: 400 var(--tsi-fs-label) var(--tsi-font-display); color: var(--tsi-text-faint); text-align: center; }
+.tsi-page--bastion .tsi-bas-crest__empty .tsi-bas-icon { width: 64px; height: 64px; color: rgba(214, 178, 94, .35); }
+.tsi-page--bastion .tsi-bas-crest-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.tsi-page--bastion .tsi-bas-crest-actions .tsi-btn { font-size: 12px; padding: 5px 10px; }
+/* Clan Honour is a number from 0 to 100: a short box. */
+.tsi-page--bastion .tsi-bas-honour input { max-width: 140px; }
+/* "Use this crest for the Bastion?" */
+.tsi-page--bastion .tsi-bas-crest-offer { display: flex; align-items: center; gap: 16px; }
+.tsi-page--bastion .tsi-bas-crest-offer p { margin: 0 0 6px; }
 
-/* The crest part of the Form Clan and Form Mercenary Brigade pop-ups. */
+/* The crest part of the Form Clan pop-up. */
 .tsi-page--bastion .tsi-bas-modal.tsi-bas-modal--found { width: min(640px, 96vw); }
 .tsi-page--bastion .tsi-bas-modal .tsi-bas-crest-pick {
   display: flex;
@@ -223,12 +575,10 @@
   letter-spacing: var(--tsi-track-label);
   color: var(--tsi-text-muted);
 }
-.tsi-page--bastion .tsi-bas-modal .tsi-bas-crest-pick__link { color: var(--tsi-gold); font: 600 13px var(--tsi-font-display); letter-spacing: var(--tsi-track-button); }
-.tsi-page--bastion .tsi-bas-modal .tsi-bas-crest-pick__link:hover { color: var(--tsi-text); }
 .tsi-page--bastion .tsi-bas-modal .tsi-bas-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 
 /* The old gold pill buttons (Upgrade, Routes, Resolve, Council Ledger, Invest…). */
-.tsi-tool--bastion .tsi-bas-pill,
+.tsi-page--bastion .tsi-bas-pill,
 .tsi-page--bastion .tsi-bas-modal .tsi-bas-pill {
   padding: 7px 14px;
   border-radius: var(--tsi-radius-pill);
@@ -241,14 +591,14 @@
   text-transform: uppercase;
   cursor: pointer;
 }
-.tsi-tool--bastion .tsi-bas-pill:hover,
+.tsi-page--bastion .tsi-bas-pill:hover,
 .tsi-page--bastion .tsi-bas-modal .tsi-bas-pill:hover { filter: brightness(1.12); }
-.tsi-tool--bastion .tsi-bas-pill:disabled { opacity: .45; cursor: not-allowed; filter: none; }
-.tsi-tool--bastion .tsi-bas-pill--alert { border-color: rgba(214, 178, 94, .8); box-shadow: 0 0 10px rgba(214, 178, 94, .55), 0 0 26px rgba(214, 178, 94, .25); }
+.tsi-page--bastion .tsi-bas-pill:disabled { opacity: .45; cursor: not-allowed; filter: none; }
+.tsi-page--bastion .tsi-bas-pill--alert { border-color: rgba(214, 178, 94, .8); box-shadow: 0 0 10px rgba(214, 178, 94, .55), 0 0 26px rgba(214, 178, 94, .25); }
 
 /* Lists (beasts, military, pending orders, war log). */
-.tsi-tool--bastion .tsi-bas-list { display: flex; flex-direction: column; gap: 8px; }
-.tsi-tool--bastion .tsi-bas-item {
+.tsi-page--bastion .tsi-bas-list { display: flex; flex-direction: column; gap: 8px; }
+.tsi-page--bastion .tsi-bas-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -258,37 +608,26 @@
   border-radius: var(--tsi-radius-md);
   background: rgba(255, 255, 255, .02);
 }
-.tsi-tool--bastion .tsi-bas-item--click { cursor: pointer; }
-.tsi-tool--bastion .tsi-bas-item__name { font-size: var(--tsi-fs-body-sm); line-height: 1.25; }
-.tsi-tool--bastion .tsi-bas-item__meta { font: 400 12px/1.3 var(--tsi-font-mono); color: var(--tsi-text-soft); }
+.tsi-page--bastion .tsi-bas-item--click { cursor: pointer; }
+.tsi-page--bastion .tsi-bas-item__name { font-size: var(--tsi-fs-body-sm); line-height: 1.25; }
+.tsi-page--bastion .tsi-bas-item__meta { font: 400 12px/1.3 var(--tsi-font-mono); color: var(--tsi-text-soft); }
 /* What a Military or Menagerie row is: its type and soldiers, depleted, who is away recovering. */
-.tsi-tool--bastion .tsi-bas-item__text { min-width: 0; }
-.tsi-tool--bastion .tsi-bas-item__type { font-size: 15px; line-height: 1.3; color: var(--tsi-text-muted); }
+.tsi-page--bastion .tsi-bas-item__text { min-width: 0; }
+.tsi-page--bastion .tsi-bas-item__type { font-size: 15px; line-height: 1.3; color: var(--tsi-text-muted); }
 /* Reached with the Tab key, which shows its stat block: the ring sits inside the row. */
-.tsi-tool--bastion .tsi-bas-item--tip:focus-visible { outline-offset: -2px; }
+.tsi-page--bastion .tsi-bas-item--tip:focus-visible { outline-offset: -2px; }
 
-/* ---------- Favour of The Gods (left) ---------- */
-.tsi-tool--bastion .tsi-bas-side {
-  position: sticky;
-  top: calc(var(--tsi-topbar-h) + var(--tsi-bas-bar-h) + 14px);
-  max-height: calc(100vh - var(--tsi-topbar-h) - var(--tsi-bas-bar-h) - 28px);
-  overflow: auto;
-  padding: 12px;
-  border-radius: var(--tsi-radius-lg);
-  border: var(--tsi-border-panel);
-  background: var(--tsi-panel-fill);
-  box-shadow: var(--tsi-shadow-panel);
-}
-.tsi-tool--bastion .tsi-bas-side__title {
+/* ---------- Favour of the Gods and Political Capital (their panels) ---------- */
+.tsi-page--bastion .tsi-bas-side__title {
   margin: 4px 0 8px;
   font: 700 12px/1.2 var(--tsi-font-display);
   letter-spacing: .08em;
   text-transform: uppercase;
   color: var(--tsi-gold-text);
 }
-.tsi-tool--bastion .tsi-bas-side__title + .tsi-bas-meter { margin-top: 0; }
-.tsi-tool--bastion .tsi-bas-side__hint { margin: 2px 0 12px; font-size: 14px; }
-.tsi-tool--bastion .tsi-bas-meter {
+.tsi-page--bastion .tsi-bas-side__title + .tsi-bas-meter { margin-top: 0; }
+.tsi-page--bastion .tsi-bas-side__hint { margin: 2px 0 12px; font-size: 14px; }
+.tsi-page--bastion .tsi-bas-meter {
   display: grid;
   grid-template-columns: 84px minmax(0, 1fr) 42px;
   gap: 8px;
@@ -299,10 +638,10 @@
   border-radius: var(--tsi-radius-md);
   background: var(--tsi-inset-fill);
 }
-.tsi-tool--bastion .tsi-bas-meter__name { display: flex; align-items: center; gap: 7px; font-size: 15px; }
-.tsi-tool--bastion .tsi-bas-meter__val { font: 400 12px var(--tsi-font-mono); text-align: right; color: var(--tsi-text-muted); }
-.tsi-tool--bastion .tsi-bas-meter__btn { grid-column: 1 / -1; justify-self: end; }
-.tsi-tool--bastion .tsi-bas-meter__bar {
+.tsi-page--bastion .tsi-bas-meter__name { display: flex; align-items: center; gap: 7px; font-size: 15px; }
+.tsi-page--bastion .tsi-bas-meter__val { font: 400 12px var(--tsi-font-mono); text-align: right; color: var(--tsi-text-muted); }
+.tsi-page--bastion .tsi-bas-meter__btn { grid-column: 1 / -1; justify-self: end; }
+.tsi-page--bastion .tsi-bas-meter__bar {
   position: relative;
   height: 10px;
   border-radius: var(--tsi-radius-pill);
@@ -310,15 +649,15 @@
   background: rgba(0, 0, 0, .35);
   overflow: hidden;
 }
-.tsi-tool--bastion .tsi-bas-bar-fill {
+.tsi-page--bastion .tsi-bas-bar-fill {
   height: 100%;
   width: 0;
   border-radius: var(--tsi-radius-pill);
   background: linear-gradient(90deg, rgba(214, 178, 94, .55), rgba(177, 18, 42, .65));
 }
-.tsi-tool--bastion .tsi-bas-bar-fill--pc { position: absolute; top: 0; left: 50%; background: linear-gradient(90deg, rgba(214, 178, 94, .45), rgba(177, 18, 42, .70)); }
+.tsi-page--bastion .tsi-bas-bar-fill--pc { position: absolute; top: 0; left: 50%; background: linear-gradient(90deg, rgba(214, 178, 94, .45), rgba(177, 18, 42, .70)); }
 /* The neutral mark in the middle of each Political Capital bar. */
-.tsi-tool--bastion .tsi-bas-meter__bar--pc::after {
+.tsi-page--bastion .tsi-bas-meter__bar--pc::after {
   content: "";
   position: absolute;
   left: 50%;
@@ -327,12 +666,12 @@
   width: 2px;
   background: rgba(214, 178, 94, .55);
 }
-.tsi-tool--bastion .tsi-bas-god-icon { width: 16px; height: 16px; flex-shrink: 0; }
-.tsi-tool--bastion .tsi-bas-god-icon path { fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
-.tsi-tool--bastion .tsi-bas-god-icon--telluria { color: var(--tsi-telluria); filter: drop-shadow(0 0 4px rgba(55, 200, 95, .6)); }
-.tsi-tool--bastion .tsi-bas-god-icon--aurush { color: var(--tsi-aurush); filter: drop-shadow(0 0 4px rgba(235, 55, 55, .6)); }
-.tsi-tool--bastion .tsi-bas-god-icon--pelagos { color: var(--tsi-pelagos); filter: drop-shadow(0 0 4px rgba(60, 145, 255, .6)); }
-.tsi-tool--bastion .tsi-bas-asset {
+.tsi-page--bastion .tsi-bas-god-icon { width: 16px; height: 16px; flex-shrink: 0; }
+.tsi-page--bastion .tsi-bas-god-icon path { fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.tsi-page--bastion .tsi-bas-god-icon--telluria { color: var(--tsi-telluria); filter: drop-shadow(0 0 4px rgba(55, 200, 95, .6)); }
+.tsi-page--bastion .tsi-bas-god-icon--aurush { color: var(--tsi-aurush); filter: drop-shadow(0 0 4px rgba(235, 55, 55, .6)); }
+.tsi-page--bastion .tsi-bas-god-icon--pelagos { color: var(--tsi-pelagos); filter: drop-shadow(0 0 4px rgba(60, 145, 255, .6)); }
+.tsi-page--bastion .tsi-bas-asset {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 4px 10px;
@@ -342,9 +681,9 @@
   border-radius: var(--tsi-radius-md);
   background: var(--tsi-inset-fill);
 }
-.tsi-tool--bastion .tsi-bas-asset__name { font-size: 15px; }
-.tsi-tool--bastion .tsi-bas-asset__desc { grid-column: 1; font-size: 14px; }
-.tsi-tool--bastion .tsi-bas-token-pill {
+.tsi-page--bastion .tsi-bas-asset__name { font-size: 15px; }
+.tsi-page--bastion .tsi-bas-asset__desc { grid-column: 1; font-size: 14px; }
+.tsi-page--bastion .tsi-bas-token-pill {
   grid-column: 2;
   grid-row: 1 / span 2;
   min-width: 44px;
@@ -357,53 +696,37 @@
   color: var(--tsi-gold-text);
 }
 
-/* ---------- Turn Log · Bastion Map · Bastion Event ---------- */
-.tsi-tool--bastion .tsi-bas-card--tall { display: flex; flex-direction: column; }
-.tsi-tool--bastion .tsi-bas-card--tall > .tsi-bas-card__body { flex: 1; min-height: 0; }
-.tsi-tool--bastion .tsi-bas-log {
+/* ---------- Day Log · Bastion Map · Bastion Event ---------- */
+.tsi-page--bastion .tsi-bas-card--tall { display: flex; flex-direction: column; }
+.tsi-page--bastion .tsi-bas-card--tall > .tsi-bas-card__body { flex: 1; min-height: 0; }
+.tsi-page--bastion .tsi-bas-log {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: min(560px, calc(100vh - var(--tsi-topbar-h) - var(--tsi-bas-bar-h) - 130px));
-  min-height: 200px;
+  max-height: 62vh;
+  min-height: 120px;
   overflow: auto;
   padding-right: 4px;
 }
-.tsi-tool--bastion .tsi-bas-log__entry { padding: 8px 10px; border: 1px solid var(--tsi-hairline); border-radius: var(--tsi-radius-md); background: rgba(255, 255, 255, .02); }
-.tsi-tool--bastion .tsi-bas-log__top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 10px; }
-.tsi-tool--bastion .tsi-bas-log__title { font: 600 13px/1.3 var(--tsi-font-display); letter-spacing: .03em; }
-.tsi-tool--bastion .tsi-bas-log__time { font: 400 12px var(--tsi-font-mono); color: var(--tsi-text-soft); }
-.tsi-tool--bastion .tsi-bas-log__body { margin-top: 4px; font-size: 15px; line-height: 1.3; color: var(--tsi-text-muted); }
+.tsi-page--bastion .tsi-bas-log__entry { padding: 8px 10px; border: 1px solid var(--tsi-hairline); border-radius: var(--tsi-radius-md); background: rgba(255, 255, 255, .02); }
+.tsi-page--bastion .tsi-bas-log__top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 10px; }
+.tsi-page--bastion .tsi-bas-log__title { font: 600 13px/1.3 var(--tsi-font-display); letter-spacing: .03em; }
+.tsi-page--bastion .tsi-bas-log__time { font: 400 12px var(--tsi-font-mono); color: var(--tsi-text-soft); }
+.tsi-page--bastion .tsi-bas-log__body { margin-top: 4px; font-size: 15px; line-height: 1.3; color: var(--tsi-text-muted); }
 
-.tsi-tool--bastion .tsi-bas-card--map { border: var(--tsi-border-feature); background: linear-gradient(180deg, rgba(0, 0, 0, .55), rgba(0, 0, 0, .35)), var(--tsi-panel-fill); }
-.tsi-tool--bastion .tsi-bas-card--map > .tsi-bas-card__body { padding: 12px; gap: 8px; }
-.tsi-tool--bastion .tsi-bas-map { position: relative; }
-.tsi-tool--bastion .tsi-bas-map__img {
-  display: block;
-  width: 100%;
-  height: auto;
-  max-height: calc(100vh - var(--tsi-topbar-h) - var(--tsi-bas-bar-h) - 150px);
-  object-fit: contain;
-  border-radius: 12px;
-  border: 1px solid var(--tsi-line-head);
-}
-.tsi-tool--bastion .tsi-bas-map__overlays { position: absolute; inset: 0; pointer-events: none; border-radius: 12px; overflow: hidden; }
-.tsi-tool--bastion .tsi-bas-map__overlay { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
-.tsi-tool--bastion .tsi-bas-map__hint { font-size: 14px; }
-
-.tsi-tool--bastion .tsi-bas-event { font-size: var(--tsi-fs-body); line-height: 1.35; }
-.tsi-tool--bastion .tsi-bas-event--empty { color: var(--tsi-text-soft); }
-.tsi-tool--bastion .tsi-bas-event b { color: var(--tsi-text); }
-.tsi-tool--bastion .tsi-bas-event__title { font: 700 17px/1.2 var(--tsi-font-display); margin-bottom: 4px; }
-.tsi-tool--bastion .tsi-bas-event__roll { font: 400 13px var(--tsi-font-mono); color: var(--tsi-text-soft); margin-bottom: 8px; }
-.tsi-tool--bastion .tsi-bas-event ul { margin: 6px 0 0 18px; padding: 0; }
-.tsi-tool--bastion .tsi-bas-event li { margin: 4px 0; font-size: var(--tsi-fs-body-sm); }
-.tsi-tool--bastion .tsi-bas-event__note { margin-top: 10px; font-size: 14px; }
+.tsi-page--bastion .tsi-bas-event { font-size: var(--tsi-fs-body); line-height: 1.35; }
+.tsi-page--bastion .tsi-bas-event--empty { color: var(--tsi-text-soft); }
+.tsi-page--bastion .tsi-bas-event b { color: var(--tsi-text); }
+.tsi-page--bastion .tsi-bas-event__title { font: 700 17px/1.2 var(--tsi-font-display); margin-bottom: 4px; }
+.tsi-page--bastion .tsi-bas-event__roll { font: 400 13px var(--tsi-font-mono); color: var(--tsi-text-soft); margin-bottom: 8px; }
+.tsi-page--bastion .tsi-bas-event ul { margin: 6px 0 0 18px; padding: 0; }
+.tsi-page--bastion .tsi-bas-event li { margin: 4px 0; font-size: var(--tsi-fs-body-sm); }
+.tsi-page--bastion .tsi-bas-event__note { margin-top: 10px; font-size: 14px; }
 
 /* ---------- Party Identity & Clan Influence ---------- */
-.tsi-tool--bastion .tsi-bas-req { font-size: 14px; }
-.tsi-tool--bastion .tsi-bas-clan-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 8px; }
-.tsi-tool--bastion .tsi-bas-clan-row {
+.tsi-page--bastion .tsi-bas-req { font-size: 14px; }
+.tsi-page--bastion .tsi-bas-clan-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 8px; }
+.tsi-page--bastion .tsi-bas-clan-row {
   display: grid;
   grid-template-columns: 110px 70px minmax(0, 1fr) 64px;
   gap: 10px;
@@ -413,21 +736,21 @@
   border-radius: var(--tsi-radius-md);
   background: var(--tsi-inset-fill);
 }
-.tsi-tool--bastion .tsi-bas-clan-row__name { font: 700 12px var(--tsi-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--tsi-gold-text); }
-.tsi-tool--bastion .tsi-bas-clan-row__pc { font-size: 15px; color: var(--tsi-text-soft); }
-.tsi-tool--bastion .tsi-bas-clan-row__pc b { color: var(--tsi-text); }
-.tsi-tool--bastion .tsi-bas-clan-row__field { font-size: 11px; }
-.tsi-tool--bastion .tsi-bas-clan-row__support { text-align: right; font: 400 12px var(--tsi-font-mono); color: var(--tsi-text); }
-.tsi-tool--bastion .tsi-bas-clan-row__support b { color: var(--tsi-gold-text); }
-.tsi-tool--bastion .tsi-bas-clan-grid--trust { grid-template-columns: 1fr; }
+.tsi-page--bastion .tsi-bas-clan-row__name { font: 700 12px var(--tsi-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--tsi-gold-text); }
+.tsi-page--bastion .tsi-bas-clan-row__pc { font-size: 15px; color: var(--tsi-text-soft); }
+.tsi-page--bastion .tsi-bas-clan-row__pc b { color: var(--tsi-text); }
+.tsi-page--bastion .tsi-bas-clan-row__field { font-size: 11px; }
+.tsi-page--bastion .tsi-bas-clan-row__support { text-align: right; font: 400 12px var(--tsi-font-mono); color: var(--tsi-text); }
+.tsi-page--bastion .tsi-bas-clan-row__support b { color: var(--tsi-gold-text); }
+.tsi-page--bastion .tsi-bas-clan-grid--trust { grid-template-columns: 1fr; }
 
 /* ---------- Management (faint pictures behind each box) ---------- */
-.tsi-tool--bastion .tsi-bas-mgmt { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
-.tsi-tool--bastion .tsi-bas-box--art,
-.tsi-tool--bastion .tsi-bas-card--art { position: relative; overflow: hidden; }
-.tsi-tool--bastion .tsi-bas-box--art { min-height: 170px; }
-.tsi-tool--bastion .tsi-bas-box--art::before,
-.tsi-tool--bastion .tsi-bas-card--art::before {
+.tsi-page--bastion .tsi-bas-mgmt { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.tsi-page--bastion .tsi-bas-box--art,
+.tsi-page--bastion .tsi-bas-card--art { position: relative; overflow: hidden; }
+.tsi-page--bastion .tsi-bas-box--art { min-height: 170px; }
+.tsi-page--bastion .tsi-bas-box--art::before,
+.tsi-page--bastion .tsi-bas-card--art::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -436,36 +759,36 @@
   opacity: .14;
   pointer-events: none;
 }
-.tsi-tool--bastion .tsi-bas-box--art > *,
-.tsi-tool--bastion .tsi-bas-card--art > * { position: relative; }
-.tsi-tool--bastion .tsi-bas-box--defenders::before { background-image: url("assets/panels/bastion_defenders.png"); }
-.tsi-tool--bastion .tsi-bas-box--treasury::before { background-image: url("assets/panels/treasury.png"); }
-.tsi-tool--bastion .tsi-bas-box--military::before { background-image: url("assets/panels/military.png"); }
-.tsi-tool--bastion .tsi-bas-card--warehouse::before { background-image: url("assets/panels/warehouse.png"); }
-.tsi-tool--bastion .tsi-bas-card--artisan::before { background-image: url("assets/panels/artisan_tools.png"); }
+.tsi-page--bastion .tsi-bas-box--art > *,
+.tsi-page--bastion .tsi-bas-card--art > * { position: relative; }
+.tsi-page--bastion .tsi-bas-box--defenders::before { background-image: url("assets/panels/bastion_defenders.png"); }
+.tsi-page--bastion .tsi-bas-box--treasury::before { background-image: url("assets/panels/treasury.png"); }
+.tsi-page--bastion .tsi-bas-box--military::before { background-image: url("assets/panels/military.png"); }
+.tsi-page--bastion .tsi-bas-card--warehouse::before { background-image: url("assets/panels/warehouse.png"); }
+.tsi-page--bastion .tsi-bas-card--artisan::before { background-image: url("assets/panels/artisan_tools.png"); }
 
 /* ---------- Banner & War Council ---------- */
-.tsi-tool--bastion .tsi-bas-war-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-.tsi-tool--bastion .tsi-bas-war-hint { font-size: 14px; }
+.tsi-page--bastion .tsi-bas-war-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.tsi-page--bastion .tsi-bas-war-hint { font-size: 14px; }
 /* Under each War Turn box: how many are available, or why it can't be used. */
-.tsi-tool--bastion .tsi-bas-war-avail { font: 400 14px/1.3 var(--tsi-font-body); letter-spacing: 0; color: var(--tsi-text-soft); }
-.tsi-tool--bastion .tsi-bas-war-avail.is-none { color: var(--tsi-text-faint); font-style: italic; }
+.tsi-page--bastion .tsi-bas-war-avail { font: 400 14px/1.3 var(--tsi-font-body); letter-spacing: 0; color: var(--tsi-text-soft); }
+.tsi-page--bastion .tsi-bas-war-avail.is-none { color: var(--tsi-text-faint); font-style: italic; }
 /* War phase 2: one box per kind of force (defenders, Lieutenants, each kind of regiment and beast). */
-.tsi-tool--bastion .tsi-bas-war-sub { display: flex; flex-direction: column; gap: 8px; }
-.tsi-tool--bastion .tsi-bas-war-sub__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; }
-.tsi-tool--bastion .tsi-bas-war-forces { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
-.tsi-tool--bastion .tsi-bas-war-field {
+.tsi-page--bastion .tsi-bas-war-sub { display: flex; flex-direction: column; gap: 8px; }
+.tsi-page--bastion .tsi-bas-war-sub__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; }
+.tsi-page--bastion .tsi-bas-war-forces { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.tsi-page--bastion .tsi-bas-war-field {
   padding: 8px 10px;
   border: 1px solid var(--tsi-line-faint);
   border-radius: var(--tsi-radius-md);
   background: rgba(0, 0, 0, .18);
 }
-.tsi-tool--bastion .tsi-bas-war-field--empty { justify-content: center; }
-.tsi-tool--bastion .tsi-bas-war-field__name { color: var(--tsi-text-muted); }
-.tsi-tool--bastion .tsi-bas-war-field__name--tip { align-self: flex-start; cursor: help; border-bottom: 1px dotted var(--tsi-line-control); }
+.tsi-page--bastion .tsi-bas-war-field--empty { justify-content: center; }
+.tsi-page--bastion .tsi-bas-war-field__name { color: var(--tsi-text-muted); }
+.tsi-page--bastion .tsi-bas-war-field__name--tip { align-self: flex-start; cursor: help; border-bottom: 1px dotted var(--tsi-line-control); }
 /* The scouts' estimate, and your army's Battle Value with Queue War Action beside it. */
-.tsi-tool--bastion .tsi-bas-war-plan { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: stretch; }
-.tsi-tool--bastion .tsi-bas-war-intel {
+.tsi-page--bastion .tsi-bas-war-plan { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: stretch; }
+.tsi-page--bastion .tsi-bas-war-intel {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -474,18 +797,18 @@
   border-radius: var(--tsi-radius-md);
   background: linear-gradient(180deg, rgba(58, 18, 25, .45), rgba(0, 0, 0, .3));
 }
-.tsi-tool--bastion .tsi-bas-war-intel__text { font-size: var(--tsi-fs-body-sm); line-height: 1.35; color: var(--tsi-text); }
-.tsi-tool--bastion .tsi-bas-war-intel__rule { font-size: 15px; }
-.tsi-tool--bastion .tsi-bas-war-plan__side { display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; gap: 10px; }
-.tsi-tool--bastion .tsi-bas-war-bv { font-size: var(--tsi-fs-body-sm); color: var(--tsi-text-muted); white-space: nowrap; }
-.tsi-tool--bastion .tsi-bas-war-bv b { font: 700 20px/1 var(--tsi-font-display); color: var(--tsi-gold-text); }
+.tsi-page--bastion .tsi-bas-war-intel__text { font-size: var(--tsi-fs-body-sm); line-height: 1.35; color: var(--tsi-text); }
+.tsi-page--bastion .tsi-bas-war-intel__rule { font-size: 15px; }
+.tsi-page--bastion .tsi-bas-war-plan__side { display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; gap: 10px; }
+.tsi-page--bastion .tsi-bas-war-bv { font-size: var(--tsi-fs-body-sm); color: var(--tsi-text-muted); white-space: nowrap; }
+.tsi-page--bastion .tsi-bas-war-bv b { font: 700 20px/1 var(--tsi-font-display); color: var(--tsi-gold-text); }
 /* A box that can't be used looks it (it looked just like a working one: Harry's report, 2 October 2026). */
-.tsi-tool--bastion .tsi-input:disabled { opacity: .45; cursor: not-allowed; }
-.tsi-tool--bastion .tsi-bas-war-log { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.tsi-page--bastion .tsi-input:disabled { opacity: .45; cursor: not-allowed; }
+.tsi-page--bastion .tsi-bas-war-log { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
 /* Military Actions waiting in the War Council (Harry's request, 2 October 2026). */
-.tsi-tool--bastion .tsi-bas-ma-box { border-color: var(--tsi-line-control); box-shadow: var(--tsi-glow-gold); margin-bottom: 12px; }
-.tsi-tool--bastion .tsi-bas-ma-list { display: flex; flex-direction: column; gap: 8px; }
-.tsi-tool--bastion .tsi-bas-ma {
+.tsi-page--bastion .tsi-bas-ma-box { border-color: var(--tsi-line-control); box-shadow: var(--tsi-glow-gold); margin-bottom: 12px; }
+.tsi-page--bastion .tsi-bas-ma-list { display: flex; flex-direction: column; gap: 8px; }
+.tsi-page--bastion .tsi-bas-ma {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -495,11 +818,11 @@
   border-radius: var(--tsi-radius-sm);
   background: rgba(0, 0, 0, .3);
 }
-.tsi-tool--bastion .tsi-bas-ma__main { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.tsi-tool--bastion .tsi-bas-ma__status { font-size: var(--tsi-fs-body-sm); color: var(--tsi-text); }
-.tsi-tool--bastion .tsi-bas-ma__chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
-.tsi-tool--bastion .tsi-bas-ma .tsi-bas-actions { flex-shrink: 0; }
-.tsi-tool--bastion .tsi-bas-ma-chip,
+.tsi-page--bastion .tsi-bas-ma__main { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.tsi-page--bastion .tsi-bas-ma__status { font-size: var(--tsi-fs-body-sm); color: var(--tsi-text); }
+.tsi-page--bastion .tsi-bas-ma__chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.tsi-page--bastion .tsi-bas-ma .tsi-bas-actions { flex-shrink: 0; }
+.tsi-page--bastion .tsi-bas-ma-chip,
 .tsi-page--bastion .tsi-bas-ma-chip {
   display: inline-flex;
   align-items: baseline;
@@ -510,27 +833,27 @@
   background: rgba(0, 0, 0, .35);
   font-size: 14px;
 }
-.tsi-tool--bastion .tsi-bas-ma-chip__label,
+.tsi-page--bastion .tsi-bas-ma-chip__label,
 .tsi-page--bastion .tsi-bas-ma-chip__label {
   font: 600 11px var(--tsi-font-display);
   letter-spacing: var(--tsi-track-label);
   text-transform: uppercase;
   color: var(--tsi-gold-text);
 }
-.tsi-tool--bastion .tsi-bas-ma-chip b,
+.tsi-page--bastion .tsi-bas-ma-chip b,
 .tsi-page--bastion .tsi-bas-ma-chip b { color: var(--tsi-text); font-weight: 600; }
 /* An attack on the Bastion waiting: a crimson edge. */
-.tsi-tool--bastion .tsi-bas-ma--defence { border-color: rgba(255, 122, 122, .55); box-shadow: inset 3px 0 0 var(--tsi-crimson); }
+.tsi-page--bastion .tsi-bas-ma--defence { border-color: rgba(255, 122, 122, .55); box-shadow: inset 3px 0 0 var(--tsi-crimson); }
 
 /* ---------- Wars (Harry, 4 October 2026) ---------- */
 /* What queueing a War Action costs: beside Queue War Action. */
-.tsi-tool--bastion .tsi-bas-war-cost { max-width: 440px; font-size: 15px; line-height: 1.35; color: var(--tsi-text-muted); text-align: right; }
-.tsi-tool--bastion .tsi-bas-war-cost b { color: var(--tsi-danger); font-weight: 700; }
+.tsi-page--bastion .tsi-bas-war-cost { max-width: 440px; font-size: 15px; line-height: 1.35; color: var(--tsi-text-muted); text-align: right; }
+.tsi-page--bastion .tsi-bas-war-cost b { color: var(--tsi-danger); font-weight: 700; }
 /* The Clans you're at war with, and Make peace. */
-.tsi-tool--bastion .tsi-bas-wars-box { border-color: rgba(255, 122, 122, .45); margin-bottom: 12px; }
-.tsi-tool--bastion .tsi-bas-war-row__why { font-size: 15px; line-height: 1.3; color: var(--tsi-warn); }
+.tsi-page--bastion .tsi-bas-wars-box { border-color: rgba(255, 122, 122, .45); margin-bottom: 12px; }
+.tsi-page--bastion .tsi-bas-war-row__why { font-size: 15px; line-height: 1.3; color: var(--tsi-warn); }
 /* "At War", after a Clan's name wherever it shows (the page, its pop-ups and notices). */
-.tsi-tool--bastion .tsi-bas-atwar,
+.tsi-page--bastion .tsi-bas-atwar,
 .tsi-page--bastion .tsi-bas-atwar {
   display: inline-block;
   margin: 0 .15em 0 .4em;
@@ -547,8 +870,8 @@
   text-shadow: none;
 }
 /* In the narrow Political Capital column, the tag goes under the name. */
-.tsi-tool--bastion .tsi-bas-meter__name { flex-wrap: wrap; row-gap: 3px; }
-.tsi-tool--bastion .tsi-bas-meter__name .tsi-bas-atwar { margin: 0; }
+.tsi-page--bastion .tsi-bas-meter__name { flex-wrap: wrap; row-gap: 3px; }
+.tsi-page--bastion .tsi-bas-meter__name .tsi-bas-atwar { margin: 0; }
 /* Declare war on a Clan? (Queue War Action asks first.) */
 .tsi-page--bastion .tsi-bas-modal--war { width: min(680px, 96vw); }
 .tsi-page--bastion .tsi-bas-declare p { margin: 0 0 10px; }
@@ -556,56 +879,56 @@
 .tsi-page--bastion .tsi-bas-declare .tsi-bas-res-list b { color: var(--tsi-danger); }
 
 /* ---------- Under Repair (after a lost Defend Bastion) ---------- */
-.tsi-tool--bastion .tsi-bas-repair-label { color: var(--tsi-danger); font-size: .85em; letter-spacing: var(--tsi-track-label); white-space: nowrap; }
-.tsi-tool--bastion .tsi-bas-repair-text { color: var(--tsi-danger); }
-.tsi-tool--bastion .tsi-bas-fac.tsi-bas-fac--repair { border-color: rgba(255, 122, 122, .5); }
-.tsi-tool--bastion .tsi-bas-fac--repair .tsi-bas-fac__img { filter: grayscale(.55) brightness(.7) sepia(.25); }
-.tsi-tool--bastion .tsi-bas-fac__repair { margin-top: 2px; font-size: 15px; line-height: 1.3; color: #ffd0c8; }
-.tsi-tool--bastion .tsi-bas-fac__tag.tsi-bas-fac__tag--repair { border-color: rgba(255, 122, 122, .6); color: var(--tsi-danger); }
-.tsi-tool--bastion .tsi-bas-map__overlay--repair { filter: grayscale(.7) brightness(.55) sepia(.35); }
-.tsi-tool--bastion .tsi-bas-map__repairs { margin: 8px 0 4px; font-size: 15px; line-height: 1.35; color: #ffd0c8; }
-.tsi-tool--bastion .tsi-bas-map__repairs b { color: var(--tsi-danger); font: 600 12px var(--tsi-font-display); letter-spacing: var(--tsi-track-label); text-transform: uppercase; }
+.tsi-page--bastion .tsi-bas-repair-label { color: var(--tsi-danger); font-size: .85em; letter-spacing: var(--tsi-track-label); white-space: nowrap; }
+.tsi-page--bastion .tsi-bas-repair-text { color: var(--tsi-danger); }
+.tsi-page--bastion .tsi-bas-fac.tsi-bas-fac--repair { border-color: rgba(255, 122, 122, .5); }
+.tsi-page--bastion .tsi-bas-fac--repair .tsi-bas-fac__img { filter: grayscale(.55) brightness(.7) sepia(.25); }
+.tsi-page--bastion .tsi-bas-fac__repair { margin-top: 2px; font-size: 15px; line-height: 1.3; color: #ffd0c8; }
+.tsi-page--bastion .tsi-bas-fac__tag.tsi-bas-fac__tag--repair { border-color: rgba(255, 122, 122, .6); color: var(--tsi-danger); }
+.tsi-page--bastion .tsi-bas-map__overlay--repair { filter: grayscale(.7) brightness(.55) sepia(.35); }
+.tsi-page--bastion .tsi-bas-map__repairs { margin: 8px 0 4px; font-size: 15px; line-height: 1.35; color: #ffd0c8; }
+.tsi-page--bastion .tsi-bas-map__repairs b { color: var(--tsi-danger); font: 600 12px var(--tsi-font-display); letter-spacing: var(--tsi-track-label); text-transform: uppercase; }
 
 
 /* ---------- Diplomacy & Trade (the Hall's painting, dimmed, behind) ---------- */
-.tsi-tool--bastion .tsi-bas-card--diplomacy::before,
-.tsi-tool--bastion .tsi-bas-card--diplomacy::after { content: ""; position: absolute; inset: 0; pointer-events: none; }
-.tsi-tool--bastion .tsi-bas-card--diplomacy::before {
+.tsi-page--bastion .tsi-bas-card--diplomacy::before,
+.tsi-page--bastion .tsi-bas-card--diplomacy::after { content: ""; position: absolute; inset: 0; pointer-events: none; }
+.tsi-page--bastion .tsi-bas-card--diplomacy::before {
   background: url("assets/facilities/hall_of_emissaries.png") center / cover;
   opacity: .16;
   transform: scale(1.02);
 }
-.tsi-tool--bastion .tsi-bas-card--diplomacy::after { background: rgba(10, 5, 6, .72); }
-.tsi-tool--bastion .tsi-bas-card--diplomacy > * { position: relative; z-index: 1; }
-.tsi-tool--bastion .tsi-bas-card--diplomacy > .tsi-bas-card__head { background: none; align-items: flex-start; }
-.tsi-tool--bastion .tsi-bas-dip-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: start; flex: 1; min-width: 0; }
-.tsi-tool--bastion .tsi-bas-dip-head__right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; text-align: right; }
-.tsi-tool--bastion .tsi-bas-hall-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
-.tsi-tool--bastion .tsi-bas-hall-head__title { font: 700 19px/1.1 var(--tsi-font-display); letter-spacing: .03em; margin-right: 2px; }
-.tsi-tool--bastion .tsi-bas-hall-level {
+.tsi-page--bastion .tsi-bas-card--diplomacy::after { background: rgba(10, 5, 6, .72); }
+.tsi-page--bastion .tsi-bas-card--diplomacy > * { position: relative; z-index: 1; }
+.tsi-page--bastion .tsi-bas-card--diplomacy > .tsi-bas-card__head { background: none; align-items: flex-start; }
+.tsi-page--bastion .tsi-bas-dip-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: start; flex: 1; min-width: 0; }
+.tsi-page--bastion .tsi-bas-dip-head__right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; text-align: right; }
+.tsi-page--bastion .tsi-bas-hall-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+.tsi-page--bastion .tsi-bas-hall-head__title { font: 700 19px/1.1 var(--tsi-font-display); letter-spacing: .03em; margin-right: 2px; }
+.tsi-page--bastion .tsi-bas-hall-level {
   padding: 4px 10px;
   border-radius: var(--tsi-radius-pill);
   background: linear-gradient(135deg, #3a2b0f, #6b4d18);
   border: 1px solid rgba(255, 215, 120, .4);
   font: 700 12px var(--tsi-font-display);
 }
-.tsi-tool--bastion .tsi-bas-dip-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
-.tsi-tool--bastion .tsi-bas-dip-right { border-left: 1px solid rgba(255, 255, 255, .12); padding-left: 16px; min-width: 0; }
-.tsi-tool--bastion .tsi-bas-dip-boxes { display: flex; flex-direction: column; gap: 10px; }
-.tsi-tool--bastion .tsi-bas-dip-box {
+.tsi-page--bastion .tsi-bas-dip-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.tsi-page--bastion .tsi-bas-dip-right { border-left: 1px solid rgba(255, 255, 255, .12); padding-left: 16px; min-width: 0; }
+.tsi-page--bastion .tsi-bas-dip-boxes { display: flex; flex-direction: column; gap: 10px; }
+.tsi-page--bastion .tsi-bas-dip-box {
   padding: 10px 12px;
   border: 1px solid rgba(255, 255, 255, .15);
   border-radius: 12px;
   background: rgba(0, 0, 0, .55);
   box-shadow: 0 6px 18px rgba(0, 0, 0, .25);
 }
-.tsi-tool--bastion .tsi-bas-dip-box__title { margin-bottom: 6px; font: 700 12px var(--tsi-font-display); letter-spacing: .06em; text-transform: uppercase; opacity: .8; }
-.tsi-tool--bastion .tsi-bas-dip-row { padding: 6px 0; border-top: 1px dashed rgba(255, 255, 255, .1); }
-.tsi-tool--bastion .tsi-bas-dip-row:first-of-type { border-top: 0; padding-top: 0; }
-.tsi-tool--bastion .tsi-bas-dip-row__name { font-weight: 700; font-size: var(--tsi-fs-body-sm); }
-.tsi-tool--bastion .tsi-bas-dip-row__meta { font-size: 14px; color: var(--tsi-text-soft); }
-.tsi-tool--bastion .tsi-bas-dip-foot { display: flex; }
-.tsi-tool--bastion .tsi-bas-hall {
+.tsi-page--bastion .tsi-bas-dip-box__title { margin-bottom: 6px; font: 700 12px var(--tsi-font-display); letter-spacing: .06em; text-transform: uppercase; opacity: .8; }
+.tsi-page--bastion .tsi-bas-dip-row { padding: 6px 0; border-top: 1px dashed rgba(255, 255, 255, .1); }
+.tsi-page--bastion .tsi-bas-dip-row:first-of-type { border-top: 0; padding-top: 0; }
+.tsi-page--bastion .tsi-bas-dip-row__name { font-weight: 700; font-size: var(--tsi-fs-body-sm); }
+.tsi-page--bastion .tsi-bas-dip-row__meta { font-size: 14px; color: var(--tsi-text-soft); }
+.tsi-page--bastion .tsi-bas-dip-foot { display: flex; }
+.tsi-page--bastion .tsi-bas-hall {
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -614,24 +937,24 @@
   border-radius: 16px;
   background: rgba(0, 0, 0, .2);
 }
-.tsi-tool--bastion .tsi-bas-hall__name { font: 700 17px/1.2 var(--tsi-font-display); letter-spacing: .02em; }
-.tsi-tool--bastion .tsi-bas-hall__img { height: 170px; overflow: hidden; border-radius: 14px; border: 1px solid rgba(255, 255, 255, .15); background: rgba(0, 0, 0, .25); }
-.tsi-tool--bastion .tsi-bas-hall__img img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center 38%; }
-.tsi-tool--bastion .tsi-bas-hall__fns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.tsi-tool--bastion .tsi-bas-tn { display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 1px solid var(--tsi-line-faint); }
-.tsi-tool--bastion .tsi-bas-tn-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.tsi-tool--bastion .tsi-bas-tn-stat { padding: 8px 12px; border: 1px solid var(--tsi-line-faint); border-radius: var(--tsi-radius-md); background: rgba(0, 0, 0, .18); }
-.tsi-tool--bastion .tsi-bas-tn-stat__label { font-size: 14px; color: var(--tsi-text-soft); }
-.tsi-tool--bastion .tsi-bas-tn-stat__val { margin-top: 2px; font: 400 14px var(--tsi-font-mono); color: var(--tsi-gold-text); }
-.tsi-tool--bastion .tsi-bas-tn-btns,
+.tsi-page--bastion .tsi-bas-hall__name { font: 700 17px/1.2 var(--tsi-font-display); letter-spacing: .02em; }
+.tsi-page--bastion .tsi-bas-hall__img { height: 170px; overflow: hidden; border-radius: 14px; border: 1px solid rgba(255, 255, 255, .15); background: rgba(0, 0, 0, .25); }
+.tsi-page--bastion .tsi-bas-hall__img img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center 38%; }
+.tsi-page--bastion .tsi-bas-hall__fns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.tsi-page--bastion .tsi-bas-tn { display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 1px solid var(--tsi-line-faint); }
+.tsi-page--bastion .tsi-bas-tn-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.tsi-page--bastion .tsi-bas-tn-stat { padding: 8px 12px; border: 1px solid var(--tsi-line-faint); border-radius: var(--tsi-radius-md); background: rgba(0, 0, 0, .18); }
+.tsi-page--bastion .tsi-bas-tn-stat__label { font-size: 14px; color: var(--tsi-text-soft); }
+.tsi-page--bastion .tsi-bas-tn-stat__val { margin-top: 2px; font: 400 14px var(--tsi-font-mono); color: var(--tsi-gold-text); }
+.tsi-page--bastion .tsi-bas-tn-btns,
 .tsi-page--bastion .tsi-bas-modal .tsi-bas-tn-btns { display: flex; flex-wrap: wrap; gap: 8px; }
-.tsi-tool--bastion .tsi-bas-tn-routes { display: flex; flex-direction: column; gap: 6px; }
-.tsi-tool--bastion .tsi-bas-tn-route { padding: 8px 12px; border: 1px solid var(--tsi-line-faint); border-radius: var(--tsi-radius-md); background: rgba(0, 0, 0, .14); }
-.tsi-tool--bastion .tsi-bas-tn-route__name { font-weight: 700; }
-.tsi-tool--bastion .tsi-bas-tn-route__meta { font-size: 14px; color: var(--tsi-text-soft); }
+.tsi-page--bastion .tsi-bas-tn-routes { display: flex; flex-direction: column; gap: 6px; }
+.tsi-page--bastion .tsi-bas-tn-route { padding: 8px 12px; border: 1px solid var(--tsi-line-faint); border-radius: var(--tsi-radius-md); background: rgba(0, 0, 0, .14); }
+.tsi-page--bastion .tsi-bas-tn-route__name { font-weight: 700; }
+.tsi-page--bastion .tsi-bas-tn-route__meta { font-size: 14px; color: var(--tsi-text-soft); }
 
 /* ---------- A facility function (also the Hall's actions) ---------- */
-.tsi-tool--bastion .tsi-bas-fn {
+.tsi-page--bastion .tsi-bas-fn {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -641,15 +964,15 @@
   background: rgba(0, 0, 0, .12);
   min-width: 0;
 }
-.tsi-tool--bastion .tsi-bas-fn__head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-.tsi-tool--bastion .tsi-bas-fn__name { font: 700 13px/1.25 var(--tsi-font-display); letter-spacing: .02em; }
-.tsi-tool--bastion .tsi-bas-fn__cost { flex-shrink: 0; font: 400 12px var(--tsi-font-mono); color: var(--tsi-text-soft); }
-.tsi-tool--bastion .tsi-bas-fn__select { width: 100%; }
-.tsi-tool--bastion .tsi-bas-fn__issue { width: 100%; }
-.tsi-tool--bastion .tsi-bas-fn__notes { font-size: 14px; line-height: 1.3; color: var(--tsi-text-soft); }
+.tsi-page--bastion .tsi-bas-fn__head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.tsi-page--bastion .tsi-bas-fn__name { font: 700 13px/1.25 var(--tsi-font-display); letter-spacing: .02em; }
+.tsi-page--bastion .tsi-bas-fn__cost { flex-shrink: 0; font: 400 12px var(--tsi-font-mono); color: var(--tsi-text-soft); }
+.tsi-page--bastion .tsi-bas-fn__select { width: 100%; }
+.tsi-page--bastion .tsi-bas-fn__issue { width: 100%; }
+.tsi-page--bastion .tsi-bas-fn__notes { font-size: 14px; line-height: 1.3; color: var(--tsi-text-soft); }
 /* The War Room's Recruit list (war phase 2): a button that opens a list of units. */
-.tsi-tool--bastion .tsi-bas-pick-wrap { position: relative; }
-.tsi-tool--bastion .tsi-bas-pick {
+.tsi-page--bastion .tsi-bas-pick-wrap { position: relative; }
+.tsi-page--bastion .tsi-bas-pick {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -658,9 +981,9 @@
   text-align: left;
   cursor: pointer;
 }
-.tsi-tool--bastion .tsi-bas-pick:disabled { cursor: not-allowed; }
-.tsi-tool--bastion .tsi-bas-pick__value { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tsi-tool--bastion .tsi-bas-pick__caret {
+.tsi-page--bastion .tsi-bas-pick:disabled { cursor: not-allowed; }
+.tsi-page--bastion .tsi-bas-pick__value { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tsi-page--bastion .tsi-bas-pick__caret {
   flex-shrink: 0;
   width: 0;
   height: 0;
@@ -668,9 +991,9 @@
   border-right: 5px solid transparent;
   border-top: 6px solid var(--tsi-gold);
 }
-.tsi-tool--bastion .tsi-bas-pick[aria-expanded="true"] .tsi-bas-pick__caret { transform: rotate(180deg); }
+.tsi-page--bastion .tsi-bas-pick[aria-expanded="true"] .tsi-bas-pick__caret { transform: rotate(180deg); }
 /* The native list it keeps in step: out of sight and out of reach. */
-.tsi-tool--bastion .tsi-bas-pick__native {
+.tsi-page--bastion .tsi-bas-pick__native {
   position: absolute;
   left: 0;
   top: 0;
@@ -682,7 +1005,7 @@
   opacity: 0;
   pointer-events: none;
 }
-.tsi-tool--bastion .tsi-bas-pick__list {
+.tsi-page--bastion .tsi-bas-pick__list {
   position: fixed;
   z-index: var(--tsi-z-menu);
   margin: 0;
@@ -696,7 +1019,7 @@
   background: linear-gradient(180deg, rgba(40, 14, 19, .98), rgba(12, 7, 9, .98));
   box-shadow: 0 18px 40px rgba(0, 0, 0, .6), var(--tsi-glow-gold);
 }
-.tsi-tool--bastion .tsi-bas-pick__opt {
+.tsi-page--bastion .tsi-bas-pick__opt {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -707,24 +1030,24 @@
   cursor: pointer;
   outline: none;
 }
-.tsi-tool--bastion .tsi-bas-pick__opt:hover { background: rgba(214, 178, 94, .08); }
-.tsi-tool--bastion .tsi-bas-pick__opt:focus { background: rgba(214, 178, 94, .16); border-color: var(--tsi-line-control); }
-.tsi-tool--bastion .tsi-bas-pick__opt:focus-visible { box-shadow: var(--tsi-focus-ring); }
-.tsi-tool--bastion .tsi-bas-pick__opt[aria-selected="true"] .tsi-bas-pick__name { color: var(--tsi-gold-text); }
-.tsi-tool--bastion .tsi-bas-pick__opt[aria-selected="true"] .tsi-bas-pick__name::before { content: "✓ "; }
-.tsi-tool--bastion .tsi-bas-pick__name { font: 600 14px/1.2 var(--tsi-font-display); letter-spacing: .02em; color: var(--tsi-text); }
-.tsi-tool--bastion .tsi-bas-pick__size { font-size: 15px; color: var(--tsi-text-soft); white-space: nowrap; }
+.tsi-page--bastion .tsi-bas-pick__opt:hover { background: rgba(214, 178, 94, .08); }
+.tsi-page--bastion .tsi-bas-pick__opt:focus { background: rgba(214, 178, 94, .16); border-color: var(--tsi-line-control); }
+.tsi-page--bastion .tsi-bas-pick__opt:focus-visible { box-shadow: var(--tsi-focus-ring); }
+.tsi-page--bastion .tsi-bas-pick__opt[aria-selected="true"] .tsi-bas-pick__name { color: var(--tsi-gold-text); }
+.tsi-page--bastion .tsi-bas-pick__opt[aria-selected="true"] .tsi-bas-pick__name::before { content: "✓ "; }
+.tsi-page--bastion .tsi-bas-pick__name { font: 600 14px/1.2 var(--tsi-font-display); letter-spacing: .02em; color: var(--tsi-text); }
+.tsi-page--bastion .tsi-bas-pick__size { font-size: 15px; color: var(--tsi-text-soft); white-space: nowrap; }
 
 /* ---------- Warehouse · Artisan Tools ---------- */
-.tsi-tool--bastion .tsi-bas-whrow { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 16px; align-items: stretch; }
-.tsi-tool--bastion .tsi-bas-wh__head,
-.tsi-tool--bastion .tsi-bas-wh__row {
+.tsi-page--bastion .tsi-bas-whrow { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 16px; align-items: stretch; }
+.tsi-page--bastion .tsi-bas-wh__head,
+.tsi-page--bastion .tsi-bas-wh__row {
   display: grid;
   grid-template-columns: minmax(0, 2.2fr) minmax(0, .6fr) minmax(0, .7fr) minmax(0, 2fr) auto;
   gap: 10px;
   align-items: center;
 }
-.tsi-tool--bastion .tsi-bas-wh__head {
+.tsi-page--bastion .tsi-bas-wh__head {
   padding: 4px 8px 8px;
   border-bottom: 1px solid var(--tsi-line);
   font: 700 12px var(--tsi-font-display);
@@ -732,117 +1055,31 @@
   text-transform: uppercase;
   color: var(--tsi-gold-text);
 }
-.tsi-tool--bastion .tsi-bas-wh__body { display: flex; flex-direction: column; gap: 8px; max-height: 360px; overflow-y: auto; padding-right: 4px; }
-.tsi-tool--bastion .tsi-bas-wh__row { padding: 8px; border: 1px solid var(--tsi-line-faint); border-radius: var(--tsi-radius-row); background: var(--tsi-inset-fill); }
-.tsi-tool--bastion .tsi-bas-tool-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.tsi-page--bastion .tsi-bas-wh__body { display: flex; flex-direction: column; gap: 8px; max-height: 360px; overflow-y: auto; padding-right: 4px; }
+.tsi-page--bastion .tsi-bas-wh__row { padding: 8px; border: 1px solid var(--tsi-line-faint); border-radius: var(--tsi-radius-row); background: var(--tsi-inset-fill); }
+.tsi-page--bastion .tsi-bas-tool-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 
-/* ---------- Facilities ---------- */
-.tsi-tool--bastion .tsi-bas-build { padding: 12px; border: 1px solid var(--tsi-hairline); border-radius: 18px; background: rgba(255, 255, 255, .02); }
-.tsi-tool--bastion .tsi-bas-build__top,
-.tsi-tool--bastion .tsi-bas-build__grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
-.tsi-tool--bastion .tsi-bas-build__grid { margin-top: 12px; }
-.tsi-tool--bastion .tsi-bas-build__right { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-.tsi-tool--bastion .tsi-bas-slots { display: flex; flex-direction: column; gap: 8px; }
-.tsi-tool--bastion .tsi-bas-slot { padding: 8px 12px; border: 1px solid var(--tsi-line-faint); border-radius: var(--tsi-radius-row); background: var(--tsi-inset-fill); }
-.tsi-tool--bastion .tsi-bas-slot--empty { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; }
-.tsi-tool--bastion .tsi-bas-slot__name { font: 700 14px/1.3 var(--tsi-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--tsi-gold-text); }
-.tsi-tool--bastion .tsi-bas-slot--over { border-color: rgba(232, 196, 106, .7); }
-.tsi-tool--bastion .tsi-bas-slot__over { margin-top: 4px; font-size: 14px; color: var(--tsi-warn); }
-.tsi-tool--bastion .tsi-bas-pending { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1px dashed rgba(255, 255, 255, .14); border-radius: var(--tsi-radius-md); background: rgba(0, 0, 0, .18); }
+/* ---------- Facilities (the old carousel's pieces still used by the panels) ---------- */
+.tsi-page--bastion .tsi-bas-fac__fns { display: flex; flex-direction: column; gap: 8px; }
+.tsi-page--bastion .tsi-bas-footer { margin: 4px 0 0; font-size: 14px; color: var(--tsi-text-soft); }
 
-.tsi-tool--bastion .tsi-bas-carousel-wrap { position: relative; }
-.tsi-tool--bastion .tsi-bas-carousel {
-  display: flex;
-  gap: 16px;
-  overflow-x: auto;
-  padding: 12px 52px;
-  scroll-snap-type: x mandatory;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(214, 178, 94, .3) transparent;
-}
-.tsi-tool--bastion .tsi-bas-carousel:focus-visible { outline: 2px solid var(--tsi-line-head); outline-offset: 2px; border-radius: 14px; }
-.tsi-tool--bastion .tsi-bas-carousel__nav {
-  position: absolute;
-  top: 50%;
-  z-index: 2;
-  width: 40px;
-  height: 78px;
-  transform: translateY(-50%);
-  border-radius: 16px;
-  border: 1px solid var(--tsi-line-head);
-  background: rgba(0, 0, 0, .45);
-  color: var(--tsi-gold-text);
-  font-size: 34px;
-  line-height: 1;
-  cursor: pointer;
-}
-.tsi-tool--bastion .tsi-bas-carousel__nav:hover { background: rgba(0, 0, 0, .6); }
-.tsi-tool--bastion .tsi-bas-carousel__nav:disabled { opacity: .35; cursor: default; }
-.tsi-tool--bastion .tsi-bas-carousel__nav--left { left: 6px; }
-.tsi-tool--bastion .tsi-bas-carousel__nav--right { right: 6px; }
-.tsi-tool--bastion .tsi-bas-fac {
-  flex: 0 0 400px;
-  display: flex;
-  flex-direction: column;
-  border: 1px solid var(--tsi-line);
-  border-radius: var(--tsi-radius-xl);
-  background: linear-gradient(180deg, rgba(0, 0, 0, .25), rgba(0, 0, 0, .07));
-  overflow: hidden;
-  scroll-snap-align: start;
-}
-.tsi-tool--bastion .tsi-bas-fac__hero { position: relative; flex: 0 0 240px; border-bottom: 1px solid var(--tsi-line-faint); }
-.tsi-tool--bastion .tsi-bas-fac__img { display: block; width: 100%; height: 100%; object-fit: cover; filter: saturate(1.06) contrast(1.06); }
-.tsi-tool--bastion .tsi-bas-fac__img--empty { display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, .25); }
-.tsi-tool--bastion .tsi-bas-fac__overlay { position: absolute; left: 0; right: 0; bottom: 0; padding: 10px 12px; background: linear-gradient(180deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, .8)); }
-.tsi-tool--bastion .tsi-bas-fac__title { font: 700 16px/1.2 var(--tsi-font-display); letter-spacing: .06em; text-transform: uppercase; }
-.tsi-tool--bastion .tsi-bas-fac__tag {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  padding: 3px 9px;
-  border-radius: var(--tsi-radius-pill);
-  border: 1px solid rgba(70, 230, 179, .35);
-  background: rgba(0, 0, 0, .5);
-  font: 400 12px var(--tsi-font-display);
-  color: var(--tsi-ok);
-}
-.tsi-tool--bastion .tsi-bas-fac__body { flex: 1; padding: 12px; }
-.tsi-tool--bastion .tsi-bas-fac__fns { display: flex; flex-direction: column; gap: 8px; }
-.tsi-tool--bastion .tsi-bas-footer { margin: 4px 0 0; font-size: 14px; color: var(--tsi-text-soft); }
-
-/* ---------- Tooltip ---------- */
-.tsi-tool--bastion .tsi-bas-tip {
-  position: fixed;
-  z-index: var(--tsi-z-tooltip);
-  max-width: 420px;
-  padding: 10px 12px;
-  border-radius: var(--tsi-radius-md);
-  border: 1px solid rgba(214, 178, 94, .55);
-  background: rgba(0, 0, 0, .92);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, .55);
-  font-size: 15px;
-  line-height: 1.3;
-  pointer-events: none;
-}
-.tsi-tool--bastion .tsi-bas-tip__title { margin-bottom: 6px; font: 700 12px var(--tsi-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--tsi-gold-text); }
-.tsi-tool--bastion .tsi-bas-tip ul { margin: 6px 0 0 18px; padding: 0; }
-.tsi-tool--bastion .tsi-bas-tip li { margin: 2px 0; }
+/* ---------- The tooltip's stat blocks (the card itself is shared/components.css .tsi-tip) ---------- */
 /* A stat block in the tooltip (war phase 2), laid out as the War Table's. */
-.tsi-tool--bastion .tsi-bas-stat-lead { margin: -2px 0 8px; font-size: 15px; color: var(--tsi-text-muted); }
-.tsi-tool--bastion .tsi-bas-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; margin: 0; }
-.tsi-tool--bastion .tsi-bas-stat {
+.tsi-page--bastion .tsi-bas-stat-lead { margin: -2px 0 8px; font-size: 15px; color: var(--tsi-text-muted); }
+.tsi-page--bastion .tsi-bas-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; margin: 0; }
+.tsi-page--bastion .tsi-bas-stat {
   padding: 4px 6px;
   border: 1px solid var(--tsi-line-faint);
   border-radius: 8px;
   background: rgba(255, 255, 255, .03);
 }
-.tsi-tool--bastion .tsi-bas-stat dt { font: 600 10px/1.15 var(--tsi-font-display); letter-spacing: .03em; text-transform: uppercase; color: var(--tsi-text-soft); white-space: nowrap; }
-.tsi-tool--bastion .tsi-bas-stat dd { margin: 1px 0 0; font: 700 16px/1.15 var(--tsi-font-body); color: var(--tsi-text); }
-.tsi-tool--bastion .tsi-bas-tip .tsi-bas-stat-traits,
-.tsi-tool--bastion .tsi-bas-tip .tsi-bas-stat-notes { margin: 8px 0 0; padding: 0 0 0 16px; font-size: 15px; color: var(--tsi-text-muted); }
-.tsi-tool--bastion .tsi-bas-stat-traits b { color: var(--tsi-gold-text); }
-.tsi-tool--bastion .tsi-bas-stat-flavour { margin: 8px 0 0; font-style: italic; font-size: 15px; color: var(--tsi-text-soft); }
-.tsi-tool--bastion .tsi-bas-stat-rule { margin: 8px 0 0; font-size: 15px; color: var(--tsi-text-muted); }
+.tsi-page--bastion .tsi-bas-stat dt { font: 600 10px/1.15 var(--tsi-font-display); letter-spacing: .03em; text-transform: uppercase; color: var(--tsi-text-soft); white-space: nowrap; }
+.tsi-page--bastion .tsi-bas-stat dd { margin: 1px 0 0; font: 700 16px/1.15 var(--tsi-font-body); color: var(--tsi-text); }
+.tsi-page--bastion .tsi-tip .tsi-bas-stat-traits,
+.tsi-page--bastion .tsi-tip .tsi-bas-stat-notes { margin: 8px 0 0; padding: 0 0 0 16px; font-size: 15px; color: var(--tsi-text-muted); }
+.tsi-page--bastion .tsi-bas-stat-traits b { color: var(--tsi-gold-text); }
+.tsi-page--bastion .tsi-bas-stat-flavour { margin: 8px 0 0; font-style: italic; font-size: 15px; color: var(--tsi-text-soft); }
+.tsi-page--bastion .tsi-bas-stat-rule { margin: 8px 0 0; font-size: 15px; color: var(--tsi-text-muted); }
 
 /* ==========================================================================
    Pop-ups (they sit outside the tool, so they're scoped by the page)
@@ -1034,39 +1271,49 @@
 .tsi-page--bastion .tsi-bas-comp__status { flex: 1; align-self: center; text-align: left; }
 
 /* ==========================================================================
-   Narrower windows (the laptop's window made small): fewer columns.
+   Narrower windows (the laptop's window made small): fewer columns, and a
+   smaller header and bottom bar.
    ========================================================================== */
 @media (max-width: 1400px) {
-  .tsi-tool--bastion .tsi-bas-top { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-  .tsi-tool--bastion .tsi-bas-top > .tsi-bas-card--map { grid-column: 1 / -1; order: -1; }
-  .tsi-tool--bastion .tsi-bas-log { max-height: 420px; }
-  .tsi-tool--bastion .tsi-bas-hall__fns { grid-template-columns: 1fr; }
+  .tsi-page--bastion .tsi-bas-brand__sub { display: none; }
+  .tsi-page--bastion .tsi-bas-pbtns { grid-template-columns: repeat(2, 74px); }
+  .tsi-page--bastion .tsi-bas-stage.is-grid-closed .tsi-bas-pbtns { grid-auto-columns: 74px; }
+  .tsi-page--bastion .tsi-bas-hall__fns { grid-template-columns: 1fr; }
 }
 @media (max-width: 1150px) {
-  .tsi-tool--bastion .tsi-bas-layout { grid-template-columns: minmax(0, 1fr); }
-  .tsi-tool--bastion .tsi-bas-side { position: static; max-height: none; }
-  .tsi-tool--bastion .tsi-bas-dip-grid,
-  .tsi-tool--bastion .tsi-bas-whrow,
-  .tsi-tool--bastion .tsi-bas-build__top,
-  .tsi-tool--bastion .tsi-bas-build__grid,
-  .tsi-tool--bastion .tsi-bas-split { grid-template-columns: minmax(0, 1fr); }
-  .tsi-tool--bastion .tsi-bas-dip-right { border-left: 0; padding-left: 0; }
-  .tsi-tool--bastion .tsi-bas-dip-head { grid-template-columns: minmax(0, 1fr); }
-  .tsi-tool--bastion .tsi-bas-dip-head__right { align-items: flex-start; text-align: left; }
-  .tsi-tool--bastion .tsi-bas-hall-head { justify-content: flex-start; }
+  .tsi-page--bastion .tsi-bas-dip-grid,
+  .tsi-page--bastion .tsi-bas-whrow,
+  .tsi-page--bastion .tsi-bas-split { grid-template-columns: minmax(0, 1fr); }
+  .tsi-page--bastion .tsi-bas-dip-right { border-left: 0; padding-left: 0; }
+  .tsi-page--bastion .tsi-bas-dip-head { grid-template-columns: minmax(0, 1fr); }
+  .tsi-page--bastion .tsi-bas-dip-head__right { align-items: flex-start; text-align: left; }
+  .tsi-page--bastion .tsi-bas-hall-head { justify-content: flex-start; }
   .tsi-page--bastion .tsi-bas-comp { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 900px) {
-  .tsi-tool--bastion .tsi-bas-top,
-  .tsi-tool--bastion .tsi-bas-mgmt,
-  .tsi-tool--bastion .tsi-bas-war-grid,
-  .tsi-tool--bastion .tsi-bas-war-plan,
-  .tsi-tool--bastion .tsi-bas-tool-grid { grid-template-columns: minmax(0, 1fr); }
-  .tsi-tool--bastion .tsi-bas-war-plan__side { align-items: flex-start; }
-  .tsi-tool--bastion .tsi-bas-war-cost { text-align: left; }
-  .tsi-tool--bastion .tsi-bas-clan-grid { grid-template-columns: minmax(0, 1fr); }
-  .tsi-tool--bastion .tsi-bas-clan-row { grid-template-columns: 1fr 1fr; }
-  .tsi-tool--bastion .tsi-bas-wh__head { display: none; }
-  .tsi-tool--bastion .tsi-bas-wh__row { grid-template-columns: minmax(0, 1fr); }
-  .tsi-tool--bastion .tsi-bas-fac { flex-basis: 86%; }
+  .tsi-page--bastion .tsi-bas-mgmt,
+  .tsi-page--bastion .tsi-bas-war-grid,
+  .tsi-page--bastion .tsi-bas-war-plan,
+  .tsi-page--bastion .tsi-bas-tool-grid { grid-template-columns: minmax(0, 1fr); }
+  .tsi-page--bastion .tsi-bas-war-plan__side { align-items: flex-start; }
+  .tsi-page--bastion .tsi-bas-war-cost { text-align: left; }
+  .tsi-page--bastion .tsi-bas-clan-grid { grid-template-columns: minmax(0, 1fr); }
+  .tsi-page--bastion .tsi-bas-clan-row { grid-template-columns: 1fr 1fr; }
+  .tsi-page--bastion .tsi-bas-wh__head { display: none; }
+  .tsi-page--bastion .tsi-bas-wh__row { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* ---------- Days (the days overhaul, 8 October 2026) ---------- */
+.tsi-page--bastion .tsi-bas-daystatus {
+  font-family: var(--tsi-font-display); font-size: 13px; letter-spacing: var(--tsi-track-label);
+  color: var(--tsi-gold-text); white-space: nowrap; padding: 6px 10px;
+  border: 1px solid var(--tsi-line); border-radius: 999px;
+}
+.tsi-page--bastion .tsi-bas-fn__days { font-size: 12px; color: var(--tsi-text-soft); margin: -2px 0 4px; }
+.tsi-page--bastion .tsi-bas-item--due { border-color: var(--tsi-gold); }
+.tsi-page--bastion .tsi-bas-event__next { margin-top: 8px; }
+.tsi-bas-modal--word .tsi-bas-word__day {
+  margin: 10px 0 4px; font-family: var(--tsi-font-display); font-size: var(--tsi-fs-label);
+  letter-spacing: var(--tsi-track-label); text-transform: uppercase; color: var(--tsi-gold-text);
+}
+.tsi-bas-modal--word .tsi-bas-word__day:first-child { margin-top: 0; }

@@ -165,6 +165,9 @@
         }))] : []
       ));
       var btnCamp = el('button', { type: 'button', class: 'tsi-btn tsi-btn--primary tsi-exp-camp', 'data-test': 'camp' }, 'Make Camp');
+      /* The Bastion follows the Explorer's day; this opens it in its own
+         window, ready for the TV (Harry, 8 October 2026). */
+      var btnBastion = btn('Open the Bastion ↗', function () { openBastion(); }, '', 'open-bastion');
 
       var travel = el('aside', { class: 'tsi-exp-side tsi-exp-travel', 'aria-label': 'Travel' }, [
         el('h2', { class: 'tsi-exp-section-title tsi-exp-travel-title', text: 'Travel' }),
@@ -179,6 +182,7 @@
         noticeEl,
         pills,
         btnCamp,
+        row([btnBastion]),
         row([btnFreeMove, btn('Reset Travel', resetTravel, '', 'reset-travel')]),
         row([btnRollNow]),
         section('Main campaign', [
@@ -750,12 +754,18 @@
           setNotice('Finish or end the event in progress before you make camp.');
           return showEvents([{ kind: 'journey' }]);
         }
-        var queue = R.makeCamp(state, DATA, JDEFS, rand);
-        saveNow();
-        setNotice('');
-        updateTravelUI();
-        applyWeather();
-        return showEvents(queue);
+        /* The Bastion's save, as last saved (it may be open in another
+           window), for "The Ironbow sends word…". It's only read. */
+        return TSI.store.fresh('tsi.bastion.state', null).then(function (bastion) {
+          if (!life.alive) return null;
+          if (state.journey.current) return showEvents([{ kind: 'journey' }]);
+          var queue = R.makeCamp(state, DATA, JDEFS, rand, bastion);
+          saveNow();
+          setNotice('');
+          updateTravelUI();
+          applyWeather();
+          return showEvents(queue);
+        });
       });
       life.on(btnCamp, 'click', function () { makeCamp(); });
 
@@ -780,6 +790,7 @@
           chain = chain.then(function () {
             if (!life.alive) return null;
             if (item.kind === 'journey') return openJourney();
+            if (item.kind === 'word') return openWord(item.news);
             return item.kind === 'weather' ? openWeather(item) : openEvent(item.kind, item.event);
           }).catch(function (err) {
             /* One broken pop-up mustn't stop the rest of the night's pop-ups. */
@@ -854,19 +865,6 @@
               api.close('close');
             }, shownAt);
           });
-          /* The weekly Bastion reminder can open the Bastion Manager in its
-             own window (Harry, 7 October 2026), and stays open itself. */
-          if (event === DATA.bastionPrompt && TSI.shell && typeof TSI.shell.openWindow === 'function') {
-            var opener = choiceButton('Open the Bastion Manager in a new window ↗', function () {
-              if (opener.disabled) return;
-              opener.disabled = true;
-              TSI.shell.openWindow('bastion');
-              setNotice('The Bastion Manager opened in a new window.');
-              life.setTimeout(function () { opener.disabled = false; }, 1500);
-            }, shownAt);
-            opener.setAttribute('data-test', 'open-bastion');
-            buttons.push(opener);
-          }
           setChoices(buttons);
         }
         return TSI.modal.open({
@@ -886,6 +884,41 @@
             }
           }
         });
+      }
+
+      /* Open the Bastion Manager in its own window, unless it's open already
+         (it follows the Explorer's day by itself). */
+      var bastionOpenedAt = 0;
+      function openBastion() {
+        if (TSI.tabGuard && TSI.tabGuard.isOpenElsewhere('bastion')) {
+          setNotice('The Bastion Manager is already open in another window. It follows the Explorer\'s day by itself.');
+          return false;
+        }
+        if (Date.now() - bastionOpenedAt < 1500) return false;
+        bastionOpenedAt = Date.now();
+        if (TSI.shell && typeof TSI.shell.openWindow === 'function') TSI.shell.openWindow('bastion');
+        setNotice('The Bastion Manager opened in a new window.');
+        return true;
+      }
+
+      /* "The Ironbow sends word…": what the Bastion has coming on the new
+         day, from its save (TSI.campaign.ironbowNews). The Bastion works
+         out the results, with their rolls, when it next sees the day. */
+      function openWord(news) {
+        var body = [];
+        news.forEach(function (w) {
+          if (news.length > 1) body.push(el('h4', { class: 'tsi-exp-word-day', text: 'Day ' + w.day }));
+          body.push(el('ul', { class: 'tsi-exp-word', 'data-test': 'word-lines' }, w.lines.map(function (l) { return el('li', { text: l }); })));
+        });
+        body.push(el('p', { class: 'tsi-exp-muted', text: 'The Bastion works these out, with any rolls, when it next sees the day.' }));
+        return TSI.modal.open({
+          title: 'The Ironbow sends word…',
+          className: 'tsi-exp-event tsi-exp-event--word',
+          body: body,
+          escValue: 'close',
+          actions: [{ label: 'Open the Bastion ↗', value: 'bastion' }, { label: 'Close', value: 'close', primary: true }],
+          onOpen: function (api) { if (api && api.dialog) api.dialog.setAttribute('data-test', 'ironbow-word'); }
+        }).then(function (v) { if (v === 'bastion') openBastion(); });
       }
 
       /* Weather: roll at the table and type the result (old 1034-1134). */
@@ -1524,6 +1557,9 @@
       life.onStop(function () { ns.debug = null; });
 
       renderAll();
+      /* The first open saves the starting journey (Day 1), so the Bastion,
+         which follows the Explorer's day, can start counting from it. */
+      if (!saved) saveNow();
       /* An event left part-way (a reload, a tool switch, Edge closed) picks up where it was. */
       if (state.journey.current) showEvents([{ kind: 'journey' }]);
     },

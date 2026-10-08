@@ -3,7 +3,12 @@
    loads from a double-clicked file. Edit it here.
    One change since: the War Room's Recruit list is the war mini-game's units (phase 2,
    Harry's decision of 2 October 2026), in the order and with the labels of
-   war-units-data.js (TSI_DATA.bastionWar.warRoom); keep the two the same. */
+   war-units-data.js (TSI_DATA.bastionWar.warRoom); keep the two the same.
+   And since the days overhaul (Harry, 8 October 2026): every order has "days", how
+   many in-game days after it's issued it completes (docs/BASTION-OVERHAUL.md
+   section 2), and the Hall's records last "durationDays" (they lasted
+   "durationTurns" Bastion turns, at 7 days a turn). The two notes that said "turn"
+   now say 7 days. Change any number here; nothing else needs to change. */
 window.TSI_DATA = window.TSI_DATA || {};
 window.TSI_DATA.bastionFacilities = [
   {
@@ -14,6 +19,7 @@ window.TSI_DATA.bastionFacilities = [
       {
         "id": "craft_common",
         "label": "Craft Common",
+        "days": 5,
         "options": [
           {
             "label": "Bead of Nourishment"
@@ -38,6 +44,7 @@ window.TSI_DATA.bastionFacilities = [
       {
         "id": "craft_uncommon",
         "label": "Craft Uncommon",
+        "days": 10,
         "options": [
           {
             "label": "Bag of Holding"
@@ -87,6 +94,7 @@ window.TSI_DATA.bastionFacilities = [
       {
         "id": "craft",
         "label": "Craft",
+        "days": 3,
         "options": [],
         "costGP": 0,
         "costText": "0",
@@ -95,6 +103,7 @@ window.TSI_DATA.bastionFacilities = [
       {
         "id": "craft_magic_item",
         "label": "Craft Magic Item",
+        "days": 10,
         "options": [
           {
             "label": "Bead of Nourishment"
@@ -177,6 +186,7 @@ window.TSI_DATA.bastionFacilities = [
       {
         "id": "recruit_defenders",
         "label": "Recruit Defenders",
+        "days": 5,
         "options": [],
         "costGP": 0,
         "costText": "0",
@@ -192,10 +202,11 @@ window.TSI_DATA.bastionFacilities = [
       {
         "id": "patrol",
         "label": "Patrol",
+        "days": 1,
         "options": [],
         "costGP": 0,
         "costText": "0",
-        "notes": "Gives Advantage on all rolls for Bastion Defenders if the Bastion is attacked during the next turn"
+        "notes": "Gives Advantage on all rolls for Bastion Defenders if the Bastion is attacked during the next 7 days"
       }
     ]
   },
@@ -207,6 +218,7 @@ window.TSI_DATA.bastionFacilities = [
       {
         "id": "charter_berth",
         "label": "Charter Berth",
+        "days": 7,
         "options": [
           {
             "label": "Keelboat",
@@ -263,6 +275,7 @@ window.TSI_DATA.bastionFacilities = [
       {
         "id": "arm_defenders",
         "label": "Arm Defenders",
+        "days": 3,
         "options": [],
         "costGP": null,
         "costText": "100GP + (current bastion defenders x 100GP)",
@@ -278,6 +291,7 @@ window.TSI_DATA.bastionFacilities = [
       {
         "id": "harvest",
         "label": "Harvest",
+        "days": 7,
         "options": [
           {
             "label": "Antitoxin (2 vials)"
@@ -309,6 +323,7 @@ window.TSI_DATA.bastionFacilities = [
       {
         "id": "trade",
         "label": "Trade",
+        "days": 7,
         "options": [],
         "costGP": 0,
         "costText": "0",
@@ -324,6 +339,7 @@ window.TSI_DATA.bastionFacilities = [
       {
         "id": "craft",
         "label": "Craft",
+        "days": 5,
         "options": [
           {
             "label": "Battleaxe"
@@ -427,6 +443,7 @@ window.TSI_DATA.bastionFacilities = [
       {
         "id": "research",
         "label": "Research",
+        "days": 5,
         "options": [
           {
             "label": "Geographical Scriptures"
@@ -455,6 +472,7 @@ window.TSI_DATA.bastionFacilities = [
       {
         "id": "craft",
         "label": "Craft",
+        "days": 5,
         "options": [
           {
             "label": "Burnt Othur Fumes (Poison)"
@@ -531,6 +549,7 @@ window.TSI_DATA.bastionFacilities = [
       {
         "id": "harvest",
         "label": "Harvest",
+        "days": 10,
         "options": [
           {
             "label": "Greater Potion of Healing"
@@ -562,6 +581,7 @@ window.TSI_DATA.bastionFacilities = [
       {
         "id": "recruit_beast",
         "label": "Recruit Beast",
+        "days": 10,
         "options": [
           {
             "label": "Ape",
@@ -643,6 +663,7 @@ window.TSI_DATA.bastionFacilities = [
       {
         "id": "recruit",
         "label": "Recruit",
+        "days": 7,
         "options": [
           {
             "label": "Lieutenant (1)"
@@ -668,7 +689,7 @@ window.TSI_DATA.bastionFacilities = [
         ],
         "costGP": 0,
         "costText": "0",
-        "notes": "No cost to recruit, but each soldier costs 1 gp per Bastion turn. Hover over a choice to see its stat block. Lieutenants and units join the Military panel when the order completes; a unit of a type that came home depleted brings that regiment back to full strength first."
+        "notes": "No cost to recruit, but each soldier costs 1 gp every 7 days. Hover over a choice to see its stat block. Lieutenants and units join the Military panel when the order completes; a unit of a type that came home depleted brings that regiment back to full strength first."
       }
     ]
   },
@@ -682,6 +703,7 @@ window.TSI_DATA.bastionFacilities = [
       {
         "id": "upgrade_hall",
         "label": "Upgrade Hall (Level Up)",
+        "days": 14,
         "costGP": 0,
         "special": {
           "type": "upgrade_facility",
@@ -695,6 +717,7 @@ window.TSI_DATA.bastionFacilities = [
       {
         "id": "secure_trade_agreement",
         "label": "Secure Trade Agreement",
+        "days": 7,
         "costGP": 250,
         "requiredFacilityLevel": 1,
         "options": [
@@ -730,7 +753,7 @@ window.TSI_DATA.bastionFacilities = [
         "special": {
           "type": "emissary_action",
           "kind": "trade_agreement",
-          "durationTurns": 4,
+          "durationDays": 21,
           "incomeMin": 60,
           "incomeMax": 140
         }
@@ -738,6 +761,7 @@ window.TSI_DATA.bastionFacilities = [
       {
         "id": "host_delegation",
         "label": "Host Delegation",
+        "days": 5,
         "costGP": 150,
         "requiredFacilityLevel": 1,
         "options": [
@@ -773,7 +797,7 @@ window.TSI_DATA.bastionFacilities = [
         "special": {
           "type": "emissary_action",
           "kind": "host_delegation",
-          "durationTurns": 2,
+          "durationDays": 14,
           "oneTimeTreasuryMin": 80,
           "oneTimeTreasuryMax": 220
         }
@@ -781,6 +805,7 @@ window.TSI_DATA.bastionFacilities = [
       {
         "id": "inter_clan_summit",
         "label": "Inter-Clan Summit",
+        "days": 14,
         "costGP": 450,
         "requiredFacilityLevel": 2,
         "options": [
@@ -808,19 +833,20 @@ window.TSI_DATA.bastionFacilities = [
         "special": {
           "type": "emissary_action",
           "kind": "summit",
-          "durationTurns": 3,
+          "durationDays": 21,
           "costReductionPct": 25
         }
       },
       {
         "id": "arbitration_authority",
         "label": "Secure Writ of Authority",
+        "days": 10,
         "costGP": 600,
         "requiredFacilityLevel": 3,
         "special": {
           "type": "emissary_action",
           "kind": "arbitration",
-          "durationTurns": 4,
+          "durationDays": 28,
           "incomeMin": 90,
           "incomeMax": 190
         }
@@ -828,12 +854,13 @@ window.TSI_DATA.bastionFacilities = [
       {
         "id": "trade_consortium",
         "label": "Trade Consortium",
+        "days": 14,
         "costGP": 900,
         "requiredFacilityLevel": 3,
         "special": {
           "type": "emissary_action",
           "kind": "consortium",
-          "durationTurns": 5,
+          "durationDays": 35,
           "incomeMin": 140,
           "incomeMax": 260
         }
@@ -848,6 +875,7 @@ window.TSI_DATA.bastionFacilities = [
       {
         "id": "craft",
         "label": "Craft",
+        "days": 5,
         "options": [
           {
             "label": "Tellurian Root Charm",
@@ -865,6 +893,7 @@ window.TSI_DATA.bastionFacilities = [
       {
         "id": "pray",
         "label": "Pray",
+        "days": 1,
         "options": [
           {
             "label": "Telluria's Guidance",
@@ -902,6 +931,7 @@ window.TSI_DATA.bastionFacilities = [
       {
         "id": "craft",
         "label": "Craft",
+        "days": 5,
         "options": [
           {
             "label": "Aurush Sun Charm",
@@ -919,6 +949,7 @@ window.TSI_DATA.bastionFacilities = [
       {
         "id": "pray",
         "label": "Pray",
+        "days": 1,
         "options": [
           {
             "label": "Aurush's Insight",
@@ -956,6 +987,7 @@ window.TSI_DATA.bastionFacilities = [
       {
         "id": "craft",
         "label": "Craft",
+        "days": 5,
         "options": [
           {
             "label": "Pelagos Tide Charm",
@@ -973,6 +1005,7 @@ window.TSI_DATA.bastionFacilities = [
       {
         "id": "pray",
         "label": "Pray",
+        "days": 1,
         "options": [
           {
             "label": "Pelagos's Tidings",

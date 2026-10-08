@@ -81,7 +81,9 @@
     var fake = R.spaceNames('test');
     t.equal(real.db, 'tsi.suite');
     t.equal(fake.db, 'tsi.test');
-    ['db', 'local', 'tabs', 'tabId', 'flash', 'file'].forEach(function (k) { t.ok(real[k] !== fake[k], k + ' differs'); });
+    ['db', 'local', 'tabs', 'tabId', 'flash', 'file', 'handoff', 'handback', 'handoffCrest'].forEach(function (k) { t.ok(real[k] !== fake[k], k + ' differs'); });
+    t.same([real.handoffCrest, fake.handoffCrest], ['tsi.suite.handoff-crest', 'tsi.test:handoff-crest'], 'a crest sent from the Crest Creator to the Bastion');
+    t.equal(R.fromLocalKey(real.handoffCrest, 'suite'), null, 'a hand-off isn\'t a save');
     t.equal(R.spaceNames('anything else').db, 'tsi.suite', 'anything unknown counts as the real suite');
   });
 

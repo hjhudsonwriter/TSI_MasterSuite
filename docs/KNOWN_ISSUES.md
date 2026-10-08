@@ -21,12 +21,12 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 
 | Tool | Must fix | Fixed by design | Deliberate | Later (Harry's call) | Not relevant / not a bug |
 |---|---|---|---|---|---|
-| Suite-wide (SUI) | 5 | 11 | 5 | 1 | 0 |
+| Suite-wide (SUI) | 8 | 11 | 8 | 1 | 0 |
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
-| Scarlett Isles Explorer (EXP) | 12 | 5 | 5 | 13 | 0 |
-| The Ironbow Bastion Manager (BAS) | 20 | 2 | 19 | 17 | 1 |
-| Clan Crest Creator (CRS) | 0 | 4 | 5 | 3 | 3 |
+| Scarlett Isles Explorer (EXP) | 12 | 5 | 6 | 13 | 0 |
+| The Ironbow Bastion Manager (BAS) | 23 | 2 | 24 | 18 | 1 |
+| Clan Crest Creator (CRS) | 0 | 4 | 6 | 3 | 3 |
 | Arenas of The Scarlett Isles (ARN) | 8 | 2 | 0 | 17 | 0 |
 | The Heartwood Ritual (RIT) | 9 | 1 | 0 | 15 | 1 |
 | Pelagosi Puzzle Trials (PEL) | 11 | 1 | 0 | 6 | 0 |
@@ -232,6 +232,53 @@ These come from checking the eight tools against each other: the collision audit
 - **One shared list of regions:** the seven regions' Clan, chief and god now live in one file, `shared/data/regions.js`, which the Explorer's events and the DM doc both read. The Explorer's wording of when an effect ends, when a thread's follow-up is due and what resolving a thread gives, and the days its Bastion reminder comes, moved to `shared/js/campaign-rules.js` so the DM doc and the Explorer can never disagree. Nothing the Explorer does changed.
 - **Its first size:** 440 × 800 (680 before the gold and Threads), so everything shows on the laptop until the lists get long; then it scrolls. Once it has been moved or resized, it keeps that place and size, so a DM doc already dragged aside stays 680 tall until its corner is dragged down.
 - **Evidence:** `shared/js/campaign-rules.js`, `shared/data/regions.js`, `shared/js/dmdoc.js`, `shared/js/dmdoc-rules.js` (first height 800), `shared/components.css`, `tools/explorer/journey.js`, `tools/explorer/rules.js`, `tools/explorer/data/journey-events.js`; tests in `tests/rules/campaign.test.js`, `tests/rules/dmdoc.test.js`, `tests/e2e/dmdoc.test.js` and `tests/e2e/phase1.test.js`.
+
+### SUI-23 · The Explorer and the Bastion save as one campaign; the DM doc counts days, not Bastion turns
+**Deliberate change** (Harry's answers, 8 October 2026; the Bastion's days overhaul, BAS-60) · other
+
+- **Before:** The Explorer and the Bastion each exported and imported their own file. The DM doc showed "Bastion turns" (how many were done) and "Next Bastion turn" (days until the Explorer's weekly reminder).
+- **After:**
+  - **One campaign file:** Export in either tool (the top bar's Export, or the Explorer's Export Save) downloads one file, named `tsi-campaign-` and the date, holding both the Explorer and the Bastion. Import in either tool checks both halves, asks first (offering a copy of what's there now), and replaces both together; if either half is damaged, nothing changes. It won't run while the other tool is open in another window, because that window would save over what was imported.
+  - **Older files:** an Explorer-only file from before imports into the Explorer alone, saying the Bastion is left as it is. A Bastion-only file from before is refused (BAS-61). Back up everything and Restore are unchanged.
+  - **Behind the scenes** it's still two records, one per tool, so the Explorer on the laptop and the Bastion on the TV each write only their own half and can't overwrite each other.
+  - **The DM doc:** the two turn tiles become **Orders pending** (how many, and the day the next completes) and **Next word from the Ironbow** (the next day the Bastion will have news, and what it will say). The rest of SUI-22 is unchanged.
+- **Evidence:** `shared/js/backup-rules.js` (`CAMPAIGN`, `makeCampaignBackup`, `checkForTool`), `shared/js/backup.js`, `shared/js/store.js` (`replace` with `tools`), `shared/js/campaign-rules.js` (`bastionComing`, `ironbowNews`), `shared/js/dmdoc.js`; tests in `tests/rules/backup-rules.test.js`, `tests/rules/campaign.test.js`, `tests/e2e/dmdoc.test.js`, `tests/e2e/phase8.test.js` and `tests/e2e/bastion-days.test.js`.
+
+### SUI-24 · Two saves set aside in the same second: the second replaced the first
+**Must fix** (found while building the days overhaul, 8 October 2026; fixed) · loses saved data
+
+- **Before:** A save that couldn't be read (or, now, a Bastion saved in turns) was set aside under a name made from the time to the second. A second save set aside within the same second got the same name and replaced the first, so the first was lost. It never reached Harry: it showed up in a test that sets aside two Bastions quickly.
+- **After:** each copy set aside gets its own name (`…-2`, `…-3` and so on when the second is already taken), so every one is kept.
+- **Evidence:** `shared/js/store.js` (`quarantine`); the check in `tests/e2e/phase9.test.js` ("a Bastion saved in Bastion turns is set aside").
+
+### SUI-25 · One tooltip card for the whole suite
+**Deliberate change** (the Bastion overhaul's Build 2, 8 October 2026) · other
+
+- **Before:** Each tool drew its own tooltips; the Bastion's followed the mouse and could sit over what it described.
+- **After:** `shared/js/tooltip.js` gives the suite one tooltip card: a dark card with a gold title line, the text, and a line at the foot (a cost, or how many days something takes). It shows on hover and on keyboard focus, sits beside what it describes (above it for things low on the screen) rather than over it, and shows above pop-ups, so it works inside panels. Esc hides a keyboard tooltip first; a second Esc then does what it usually does (closes a pop-up). The Bastion is the first tool to use it; the War Table keeps its own.
+- **Evidence:** `shared/js/tooltip.js`, `shared/components.css` (`.tsi-tip`), `shared/tokens.css` (`--tsi-z-tooltip`, now above pop-ups); tests in `tests/e2e/bastion-screen.test.js` and `tests/e2e/phase9.test.js`.
+
+### SUI-26 · The Crest Creator can pass a crest to the Bastion
+**Deliberate change** (the Bastion overhaul's Build 3, 8 October 2026) · other
+
+- **Before:** The suite's hand-off between tools (`TSI.handoff`) carried only the Explorer's fight to the Combat Tracker and its result back.
+- **After:** It has a third kind, `crest`: the Crest Creator's "Use for the Bastion" writes a 512-pixel PNG of the crest and the Creator's design to the browser's small shared storage (`tsi.suite.handoff-crest`; the test page keeps its own, `tsi.test:handoff-crest`). A Bastion window hears it at once; a Bastion opened later reads it as it starts. Only the latest is kept, it isn't a save (so it's not in backups), and it's cleared once the Bastion has asked about it. Nothing goes online.
+- **Evidence:** `shared/js/handoff.js`, `shared/js/store-rules.js` (`spaceNames`); tests in `tests/rules/store-rules.test.js`, `tests/e2e/phase2.test.js` and `tests/e2e/phase9.test.js`.
+
+### SUI-27 · A window hidden for 5 minutes could stop counting as open
+**Must fix** (found by the Build 3 review, 8 October 2026; fixed) · loses saved data
+
+- **Before:** Each open window writes a heartbeat every 2 seconds, and another window counted it as open only if the last one was under 7 seconds old. After 5 minutes hidden (minimised, or covered by another window, such as the Crest Creator opened over the Bastion), Edge runs a window's timers only about once a minute, so the hidden window soon looked closed. The "Already open" warning could then miss a second copy of the same tool (which can overwrite the first one's saves), and the Crest Creator could offer to open a second Bastion.
+- **After:** A hidden window says so in its heartbeat as soon as it's hidden, and counts as open for 90 seconds after its last one; shown again, it beats at once. A window that closes or reloads still says so at once and then stops beating (the browser reports it hidden just after it says it's going), so it never lingers and a reload keeps its id.
+- **The cost:** a hidden window that crashes (rather than closing) counts as open for up to 90 seconds, not 7: a heartbeat can't tell a crashed window from a slowed one. Reloaded, it keeps its id, so it never warns about itself; and the campaign Import's "close it first" now adds "If you've only just closed it, wait a minute and try again."
+- **Evidence:** `shared/js/tabguard.js` (`fresh`, `HIDDEN_STALE_MS`, the `visibilitychange` beat); tests in `tests/e2e/phase1.test.js` ("a hidden window's heartbeat counts for longer").
+
+### SUI-28 · A pop-up whose first box was hidden left the focus behind it
+**Must fix** (found by hands-on testing of Build 3, 8 October 2026; fixed) · other
+
+- **Before:** A pop-up put the focus in its first box, even a hidden one, where it can't go: the focus then stayed behind the pop-up, on whatever opened it. The Bastion's Party Identity for a party that isn't a Clan was one (Clan Honour is hidden until there's a Clan). One Tab got into the pop-up.
+- **After:** The focus goes to the first box that can be seen, else to the first button, as before.
+- **Evidence:** `shared/js/modal.js` (`open`); tests in `tests/e2e/bastion-screen.test.js`.
 
 ## Combat Tracker & VTT Battlemap
 Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point there).
@@ -1073,8 +1120,23 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
   - **What was near** is saved with the event, so it doesn't change if the event is kept for later.
 - **Evidence:** `tools/explorer/journey.js` (`nearAt`, `partyPos`, `context`, `eligible`), `tools/explorer/fights.js` (`settingFor`), `data/fights-data.js` (`coast`), `data/journey-events.js` (T2's `near: 'river'`), `rules.js` (`finishMove`); tests in `tests/rules/fights.test.js`, `tests/rules/explorer-journey.test.js` and `tests/e2e/fights.test.js`.
 
+### EXP-36 · The Bastion's day follows the Explorer's: "The Ironbow sends word…" replaces the weekly reminder
+**Deliberate change** (Harry's answers, 8 October 2026; the Bastion's days overhaul, BAS-60) · other
+
+- **Before:** Make Camp ended with a Bastion reminder on Days 8, 15, 22 and so on, with "Open the Bastion Manager in a new window ↗". Export Save and Import Save carried only the journey.
+- **After:**
+  - **Make Camp passes the day at the Bastion,** even when it's open in another window: it notices within about 2 seconds. The Explorer only writes its own day; it never changes the Bastion's save.
+  - **"The Ironbow sends word…"** comes at Make Camp, after the campfire event and the weather, whenever the new day brings news from the Bastion: building finished, an order complete, an agreement ending, a roll needed, an army ready to march, a Clan at war rolling to attack, the Bastion event, a repair done or a wounded Lieutenant back. The Explorer reads the Bastion's save to know what's due; the results (how many defenders, which roll) come from the Bastion when it passes the day. Its buttons are **Open the Bastion ↗** and **Close**. The weekly reminder is gone.
+  - **Open the Bastion ↗** sits under Make Camp in the Travel panel. It opens the Bastion in a new window, or says it's already open in another window.
+  - **The Explorer saves as soon as it first opens,** so the Bastion can read Day 1 straight away (BAS-62).
+  - **Export Save and Import Save** carry the whole campaign: the Explorer and the Bastion together (SUI-23).
+  - Reset Travel moves the Bastion's days back with the Explorer's (BAS-60).
+- **Evidence:** `tools/explorer/rules.js` (`makeCamp` with the Bastion's save), `tools/explorer/tool.js` (`openBastion`, `openWord`), `shared/js/campaign-rules.js` (`ironbowNews`); tests in `tests/rules/explorer.test.js`, `tests/rules/campaign.test.js`, `tests/e2e/phase8.test.js` and `tests/e2e/bastion-days.test.js`.
+
 ## The Ironbow Bastion Manager
 Old repo: `_legacy/bastion_manager` (file:line references point there).
+
+**The days overhaul (8 October 2026):** the Bastion no longer has turns. It follows the Explorer's day, and every length below that was counted in Bastion turns now counts in days, at 7 days a turn unless BAS-60 says otherwise (for example BAS-56's 6 quiet turns are now 42 days, and BAS-57's 2 turns of repairs are now 14 days). See BAS-60 to BAS-63.
 
 ### BAS-01 · Reloading or importing wipes party identity, war log and all diplomacy
 **Must fix** · loses saved data
@@ -1215,6 +1277,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **Decision note:** Panels use the shared collapse control, bound once.
 - **Evidence:** makeCardCollapsibleById runs twice for diplomacyPanel (app.js:158 and 2083) and binds two listeners. Runtime B6: collapsed false after one click.
 - **Phase 9:** Fixed. Each panel's ▾ button works, and a closed panel stays closed after reopening (saved in `tsi.bastion.ui`). Test.
+- **Build 2 (8 October 2026):** the panels now open as pop-ups over the map, so they have no ▾; the facility grid's ▼ folds it away, and that's remembered instead (BAS-64).
 
 ### BAS-17 · Unsaved Warehouse and Artisan Tools edits vanish
 **Deliberate change** · other
@@ -1300,6 +1363,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **Checker's note:** The casualty part is damage counted twice. The availability undercount is 'other'. The handover warns against counting rows.
 - **Evidence:** app.js:476 and 5211 use .length; 5359-5363 splices a row. Runtime B6: 'Owlbear x2', war hint '1 beasts'.
 - **Phase 9:** Kept at first (B10). **Fixed 2 October 2026** at Harry's request: `R.beastQty` and `R.removeBeasts` in `tools/bastion/rules.js`; tests in `tests/rules/bastion.test.js` ("five Giant Vultures are five beasts…") and `tests/e2e/phase9.test.js`. In the side-by-side run with the old Bastion, the only beast in that campaign is a single one, so nothing else changes.
+- **Since Build 3 (8 October 2026):** the single roll that lost one beast, and `R.removeBeasts`, are archived with it (BAS-66; their tests are in `tests/archive/mercenary-brigade.test.js`). `R.beastQty` is unchanged; battles on the War Table take their losses by name.
 
 ### BAS-26 · Library scripture notes never attach
 **Later, Harry's call** · other
@@ -1400,6 +1464,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **After:** The Favour panel sits in the layout (it still sticks while the page scrolls), and the columns fit the laptop and the TV.
 - **Evidence:** index.html:35 and 142; styles.css:46 and 158 (a 340 px panel plus 340 + 680 + 340 px columns). Phase 9 screenshot of the old tool at 1707 × 930: page width 1754.
 - **Phase 9:** Fixed. Test at the laptop, full screen, the TV and a small window.
+- **Build 2 (8 October 2026):** the page no longer scrolls at all; the map fills the window (BAS-64).
 
 ### BAS-37 · Code that could never run is left out
 **No longer relevant** · other · found in phase 9
@@ -1432,6 +1497,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **After:** The lists keep your choice, the carousel stays where it was, and a war report shows its lines as written.
 - **Evidence:** app.js:4444-4497 rebuild everything on each render; 5139 puts the report's line breaks in an ordinary box.
 - **Phase 9:** Changed.
+- **Build 2 (8 October 2026):** the carousel is gone; each facility opens in its own panel from its tile, and its lists still keep your choice (BAS-64).
 
 ### BAS-41 · A war action was settled by one roll
 **Deliberate change** (Harry's request, 2 October 2026) · other
@@ -1455,6 +1521,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **Before:** The Bastion had no crest. Form Clan asked for the Clan's name, Chief and motto; Form Mercenary Brigade for its name.
 - **After:** Both pop-ups have a **Crest (optional)** box: a link that opens the Clan Crest Creator in a new tab, and **Upload crest…** for the PNG it downloads. The crest shows beside the Clan's or Brigade's name in Party Identity, with **Change crest…** and **Remove crest** (which asks first); a Clan or Brigade founded earlier can **Add crest…** there. The picture is shrunk to 512 pixels a side and saved as `tsi.bastion.crest`, so it's in Download Save and "Back up everything"; Reset clears it with the rest of the Bastion.
 - **Evidence:** `tools/bastion/tool.js` (the crest section), `R.isCrest` in `tools/bastion/rules.js`; tests in `tests/rules/bastion.test.js` and `tests/e2e/phase9.test.js`.
+- **Since Build 3 (8 October 2026):** the crest belongs to the Bastion and can be set at any time, Unsworn or a Clan (BAS-67).
 
 ### BAS-43 · The Lieutenants and Regiments boxes won't take a number, with no sign why
 **Must fix** (Harry's report, 2 October 2026; fixed) · breaks the tool
@@ -1462,6 +1529,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **Before:** Harry had Lieutenants and Regiments available but the War Turn boxes wouldn't take any. The boxes are switched off for an Unsworn party (only a Clan or Mercenary Brigade can commit them, as in the old tool), but a switched-off box looked exactly like a working one, and the only clue was the end of the small line under the panel. The old tool looked the same. Each box also rewrote its number on every key press. That never failed in the test browser, but it could fight with your typing.
 - **After:** A switched-off box is greyed out, says "Clan or Brigade only" underneath, and explains why when you hover over it. Every box shows how many are available ("3 available", or "None yet: recruit in the War Room"). The arrows stop at that number, and a number is only checked once you've finished typing it (or when you press Queue War Action). The rule itself is unchanged.
 - **Evidence:** Could not be reproduced in the test browser: a Clan with Lieutenants and Regiments could commit them by typing, the arrow keys and Backspace, before, during and after a Military Action, on the laptop and the TV size. `tools/bastion/tool.js` (`showWarAvailable`), `tools/bastion/bastion.css`; tests in `tests/e2e/phase9.test.js`.
+- **Since Build 3 (8 October 2026):** the switched-off boxes say "Clan only", as only a Clan can commit them now (BAS-66).
 
 
 ### BAS-44 · The War Room recruited only Lieutenants and generic regiments
@@ -1651,6 +1719,139 @@ None of these reached Harry.
 - **Smaller things:** the Watchtower's Patrol was forgotten in a defence (now a reminder in the pop-up and the War Council); the At War tag flickered in the cost line; "Clan MOLTEN" in capitals had no tag; the rulebook's Defend Bastion rewards were out of date → all fixed.
 - **Evidence:** the files above; each fix has a test in `tests/rules/` or `tests/e2e/`.
 
+### BAS-60 · The Bastion counts in days, following the Explorer's day
+**Deliberate change** (Harry's brief and answers, 8 October 2026; plan in `docs/BASTION-OVERHAUL.md`) · other
+
+- **Before:** **Advance Bastion Turn (+7 days)** moved the Bastion on a week at a time. Every order completed the next turn, and everything else counted in turns.
+- **After:** there are no turns. The Explorer's day is the campaign's only clock. The Bastion reads it when it opens and every 2 seconds while open, passes each new day in turn, and never changes it. A day passes in this order, saved after each step so a closed window never loses or repeats anything: repairs and recoveries due end, and building due completes; contracts send their shipments and sea routes settle; orders due complete (asking for rolls where they need them); a Clan at war rolls to attack; every 28th day brings the Bastion event; then "The Ironbow sends word…" lists the day's news, which the **Day Log** (was the Turn Log) keeps. Each rule that changed:
+  - **Facility orders:** each takes its own number of days (shown on its card as "Takes N days"); the pending list says "Due Day N (in N days)".
+  - **Building a facility:** 21 / 28 / 35 / 35 days at required levels 5 / 9 / 13 / 17 (was 3 / 4 / 5 / 5 turns).
+  - **A cancelled roll** leaves the order "Due now: waiting for your roll", with a **Resolve** button; it was "waits until next turn".
+  - **Finish Day** (was Finish Bastion Turn) shows only when a day was left part-way, for example by closing Edge mid-roll; the Bastion also finishes it by itself when it next opens.
+  - **Trade Agreement:** its Duration choice (1, 3 or 6 weeks) now counts (it was ignored: BAS-21), ± the roll's tier in weeks (+2 to −2, at least 1 week). It sends a shipment every 7 days from the day it was signed, the last on its final day. The Hall shows "X days remaining (Y shipments)".
+  - **Delegations, summits, writs and consortiums:** 14 / 21 / 28 / 35 days ± 14 / 7 / 0 / −7 / −14 days (was 2–5 turns ± turns). Writs and consortiums pay every 7 days from their start.
+  - **Sea routes:** settle every 7 days from the day each opened (the Hall's **Resolve** settles those due), and last 35 days (was 5 turns).
+  - **Hall cooldown** after a bad failure: 14 days (was 2 turns). **Trade Network investments:** Stability and Yield 7 days, Routing Doctrine 1 day.
+  - **Watchtower Patrol:** Advantage for the 7 days after it completes (was "this turn").
+  - **A War Action** musters 3 days after it's queued (was next turn). Cancelling it **the same day** gives its cost back (was the same turn).
+  - **Wars:** a d6 for each Clan at war every 7 days of that war, counted from the day it was declared (was every turn for every war); a war ends after **42 days** without a battle (was 6 turns).
+  - **Repairs** after a lost defence: **14 days**, the day of the loss included (was 2 turns). **Wounded Lieutenants and beasts:** back after 7 / 7 / 14 / 21 days (was 1 / 1 / 2 / 3 turns), logged on the day.
+  - **The Bastion event:** every 28 days, on Days 29, 57, 85… (was every 4th turn). The last event stays on screen until the next.
+  - **Reset Travel** in the Explorer moves every Bastion day back with it, so an order due in 4 days is still due in 4 days.
+  - **Founding a Clan** saves the day it was founded instead of the turn (it isn't shown anywhere yet, as before).
+- **Evidence:** `tools/bastion/rules.js` (the day engine: `startDay`, `finishRoutes`, `finishDay`, `clockAction`, `shiftDays`, `anchor`, `upcoming`), `tools/bastion/war-campaign-rules.js` (`attackEvery`, `rollWarAttack`, repairs and recovery in days), `tools/bastion/data/bastion-data.js` (`time`), `data/facilities-data.js` (each order's `days`), `data/war-units-data.js` (`quietDays`, `attackEvery`, repairs), `tools/bastion/tool.js`; the rules in days are in `docs/WAR-RULES.md`; tests in `tests/rules/bastion.test.js`, `tests/rules/bastion-campaign.test.js`, `tests/e2e/phase9.test.js` and `tests/e2e/bastion-days.test.js`.
+
+### BAS-61 · A Bastion saved in turns is set aside, and the side-by-side check against the old Bastion is retired
+**Deliberate change** (Harry's answer 14, 8 October 2026) · other
+
+- **Before:** The rebuilt Bastion kept the old Bastion's save format, and its click-through test played the same 12-turn campaign in the old Bastion and the rebuild with the same dice, comparing the saves at every step.
+- **After:**
+  - **Harry's Bastion saved in turns** is set aside the first time the new version opens (kept in the browser, not deleted, and included in Back up everything), with a notice saying so. A new Bastion starts on the Explorer's day. There's no turn-to-day conversion.
+  - **A Bastion-only file exported before the change** is refused on import: "This file is from before the Bastion counted in days, so it can't be imported. Nothing was changed." A whole-suite backup from before restores as normal, and its old Bastion is set aside the same way when the Bastion next opens.
+  - **The side-by-side run** against the old Bastion is retired, because the rules now deliberately differ (as the war's already did). The two-window test (`tests/e2e/bastion-days.test.js`) and the day-by-day checks in `phase9.test.js` take its place.
+- **Evidence:** `tools/bastion/rules.js` (`isOldSave`, `saveProblem`, `importProblem`), `tools/bastion/tool.js`, `shared/js/store.js` (`quarantine`); tests in `tests/rules/bastion.test.js` and `tests/e2e/phase9.test.js`.
+
+### BAS-62 · Problems found while building the days overhaul, fixed before release
+**Must fix** (found while building, 8 October 2026; fixed) · breaks the tool
+
+None of these reached Harry.
+- **The first camp's day wasn't passed at the Bastion** when the Explorer had never saved (a brand-new Explorer saves only when something changes, so the Bastion first saw it on Day 2 and started counting from there) → the Explorer saves as soon as it first opens.
+- **Two Bastions set aside in the same second** kept only the second → SUI-24.
+- **Evidence:** `tools/explorer/tool.js`, `shared/js/store.js`; tests in `tests/e2e/bastion-days.test.js` and `tests/e2e/phase9.test.js`.
+
+### BAS-63 · Three Bastion events still say "your next Bastion turn"
+**Later, Harry's call** · other
+
+- **Before:** Three of the rulebook's Bastion events (a special facility shutting down, a hireling with a criminal past, and hirelings leaving) say the facility "can't be used on your next Bastion turn".
+- **After:** unchanged. They're the rulebook's text and don't change anything in the Bastion by themselves. Harry may want them reworded for days (for example "for the next 7 days"); that's a lore and rules question for him.
+- **Evidence:** `tools/bastion/data/events-data.js` lines 68, 71 and 90.
+
+### BAS-64 · The Bastion's new screen: the map fills the window, and everything else opens over it
+**Deliberate change** (Harry's brief, 8 October 2026; the overhaul's Build 2, `docs/BASTION-OVERHAUL.md` section 5) · other
+
+- **Before:** One long page that scrolled: the Favour of the Gods column on the left, then the Day Log, the map and the Bastion Event, then Party Identity, Management, the War Council, Diplomacy & Trade, the Warehouse and Artisan Tools, and the Facilities card with its construction slots, pending orders and a carousel of facility cards.
+- **After:**
+  - **A slim header:** the wordmark, Party Level, Compendium, Reset and the save buttons.
+  - **The map fills the rest of the window** and never scrolls: about 940 × 627 on the laptop and 1165 × 777 on the TV (it was about 700 × 470). It's fitted, never cropped, so the building overlays line up.
+  - **The top bar:** the day (with Finish Day for a day left part-way); the treasury with a coin, saved when you press Enter or leave the box (not on every key); Facilities and Orders counts, each with a hover list. Clicking Facilities opens Construction, and clicking Orders opens all the pending orders. Anything Under Repair is listed here too.
+  - **The Party Identity badge,** top right of the map: the crest once a Clan or Brigade has one, otherwise a faint shield. It opens the Party Identity panel. Build 3 reworks the crest itself.
+  - **The bottom bar:** the facility grid, between Warehouse, Management, Day Log and Events on the left and Clan Influence, Favour and the War Council on the right. The grid folds away with ▼ to show more of the map, and stays folded after reopening. This replaces the old panels' ▾ arrows (BAS-16).
+  - **The grid:** the five starting facilities (Workshop, Barracks, Watchtower, Dock, Armoury), then the six construction slots. Each kind of tile behaves differently:
+    - **Built:** opens its panel; hover shows its level and the orders pending there, and a small number counts them.
+    - **Being built:** an hourglass and the days left; not clickable.
+    - **Under Repair:** dimmed, with a hammer.
+    - **Free slot:** opens Construction.
+    - **Locked slot:** a padlock, with the level it opens at.
+    - **Over capacity:** marked with "!".
+  - **Construction:** every facility not built or being built, with its painting. Locked ones are dimmed. Hover shows what it does and how many days it takes. Choosing one asks "Construct the Smithy? It takes 21 days." Clear extra builds is at its foot.
+  - **A facility's panel:** its painting, level and status, the orders pending there (with Cancel and Resolve), then its orders with their days. The Workshop's panel holds the Artisan Tools. The Hall of Emissaries' tile opens Diplomacy & Trade.
+  - **The other panels:**
+    - **Warehouse.**
+    - **Management:** defenders, beasts and military; no treasury.
+    - **Day Log.**
+    - **Bastion Events:** Roll Bastion Event, the last event and when the next is due.
+    - **Clan Influence:** one row per Clan with its Political Capital bar (and Honour Change), its Honour/Respect and its support, then the Favour Tokens. These were split between the left column and Party Identity.
+    - **Favour of the Gods.**
+    - **Banner & War Council.**
+
+    Each opens as a pop-up over the map: one at a time, and Esc or Close closes it. Every panel's contents are as before.
+  - **The War Council is locked** until the Bastion has something that can fight: a defender, a beast or a War Room unit (Harry's answer 6). It stays open while any part of a war is going on, so an attack can always be fought. The padlock's tooltip says how to unlock it.
+  - **The War Table** still opens over everything; an open panel closes first.
+  - **What the screen remembers** (`tsi.bastion.ui`): whether the grid is folded, and the war pop-ups already seen. The old panels' open-or-closed settings are dropped.
+- **Evidence:** `tools/bastion/tool.js` (panels: `openPanel`, `openFacility`, `openBuild`, `renderGrid`, `renderCounts`, `fitMap`), `tools/bastion/bastion.css`, `tools/bastion/rules.js` (`cleanUi`), `tools/bastion/war-campaign-rules.js` (`warCouncilOpen`); tests in `tests/e2e/bastion-screen.test.js` (new), `tests/e2e/phase9.test.js`, `tests/rules/bastion.test.js` and `tests/rules/bastion-campaign.test.js`.
+
+### BAS-65 · Problems found while building the new screen, fixed before release
+**Must fix** (found while building, 8 October 2026; fixed) · breaks the tool
+
+None of these reached Harry.
+- **Esc in the War Room's unit list closed the whole War Room panel**, not just the list → Esc closes the list first.
+- **Esc on a box showing its stat block (a War Action's forces) closed the War Council** → Esc hides the tooltip first (SUI-25).
+- **A facility still being built that was over capacity** (after lowering the party level) had no "over capacity" mark → it has one.
+- **The Hall of Emissaries' panel opened narrower than intended** → full width.
+- **Evidence:** `tools/bastion/tool.js`, `shared/js/tooltip.js`, `tools/bastion/bastion.css`; tests in `tests/e2e/phase9.test.js`.
+
+### BAS-66 · The Mercenary Brigade and the old single-roll war are archived
+**Deliberate change** (Harry's brief, 8 October 2026; the overhaul's Build 3, `docs/BASTION-OVERHAUL.md` section 3) · other
+
+- **Before:** Party Identity offered Form Clan and Form Mercenary Brigade (level 7, 3 defenders). A Brigade had Trusted Clients (0 to 100 for each Clan), changed after every battle and listed in the War Report, and could commit Lieutenants and regiments like a Clan. The rules still held the war's old single roll (`R.warCommit`, `R.queueWarAction`, `R.warPlan`, `R.resolveWar`, `R.removeBeasts`), which nothing had used since the War Table came.
+- **After:**
+  - The party is Unsworn or a Clan. Only a Clan commits Lieutenants and regiments; the War Council's boxes say "Clan only" and "Only a Clan can commit Lieutenants and Regiments.". The requirements line is the Clan's alone. Battles no longer change Trusted Clients, and the War Report has no Trusted Clients line.
+  - **Kept aside, not deleted:** all of it, as working code, in `tools/bastion/archive/mercenary-brigade.js`, with its ten tests in `tests/archive/mercenary-brigade.test.js`. Both are loaded by nothing; the note at the top says how to put them back. They were run once with the archive loaded, and all ten passed.
+  - **Saves:** every save still carries the Trusted Clients scores (unread), so putting the Brigade back loses nothing. A Brigade saved in Builds 1 or 2 loads as Unsworn; the Bastion says so once as it opens, and the Day Log keeps the Brigade's name. A War Action it was still waiting on keeps its defenders and beasts; its Lieutenants and regiments stay home when it musters, and the log says only a Clan can send them (an order with nothing else lapses, saying so).
+  - **Data:** the Brigade's level 7 and 3 defenders, and the single roll's DCs, moved from `bastion-data.js` to the archive.
+- **Evidence:** `tools/bastion/rules.js` (`fromSave`, `R.formerBrigade`, `orgLabel`, `requirementsHint`), `tools/bastion/war-campaign-rules.js` (`warForces` fullWar, `warRewards`, `applyRewards`, `rewardLines`), `tools/bastion/data/bastion-data.js`, `tools/bastion/tool.js`; tests in `tests/rules/bastion.test.js`, `tests/rules/bastion-campaign.test.js`, `tests/e2e/phase9.test.js`.
+
+### BAS-67 · The crest belongs to the Bastion, at any time; Party Identity reworked
+**Deliberate change** (Harry's brief, 8 October 2026; the overhaul's Build 3, `docs/BASTION-OVERHAUL.md` section 4) · other
+
+- **Before:** Only a Clan or Brigade could have a crest, chosen in Form Clan or Form Mercenary Brigade (or added afterwards), by downloading the PNG from the Crest Creator and uploading it. Founding without choosing one removed any crest. The War Table showed the crest only for a Clan or Brigade. The badge showed "Party Identity" or the name.
+- **After:**
+  - **The crest is the Bastion's,** Unsworn or a Clan, and forming a Clan keeps it. Party Identity shows it large, with **Create in the Clan Crest Creator ↗** (opens the Creator in a new window, or says it's already open), **Upload a picture…** and **Remove** (which asks first).
+  - **From the Creator:** its new Use for the Bastion button sends the crest (SUI-26, CRS-16). The Bastion asks "Use this crest for the Bastion?", showing it: at once if it's open (once no day is being passed and the War Table is shut), or as it next opens. Either answer clears it, so it's asked once. A crest from the Creator keeps the Creator's design with it (as `design` inside the crest record, `tsi.bastion.crest`), so it can be re-edited later.
+  - **The badge:** the crest, or a faint dashed shield and "Add a crest". Under the crest: the Clan's name, or "Unsworn". Its spoken name is "Crest of the Ironbow", then "Crest of <Clan>".
+  - **Party Identity:** the status pill (Unsworn, or "Clan: name" with the chief, the motto and the day it was founded), Found a Clan with its requirements (until there's a Clan), and Clan Honour (only for a Clan).
+  - **Form Clan's crest box** shows the Bastion's crest: **Create a new one ↗**, **Upload…** (used only when the founding is confirmed), and **Keep this crest** to go back to it. Cancel changes nothing.
+  - **The War Table** has the crest on your tokens whether or not a Clan is formed; the army is "Your forces" until there's a Clan.
+- **Evidence:** `tools/bastion/tool.js` (the crest and Party Identity sections, `renderBadge`, the War Table's options), `tools/bastion/bastion.css`, `R.isCrest` and `R.crestFromHandoff` in `tools/bastion/rules.js`; tests in `tests/rules/bastion.test.js`, `tests/e2e/phase9.test.js` ("The crest, at any time"), `tests/e2e/bastion-screen.test.js` and `tests/e2e/phase2.test.js`.
+
+### BAS-68 · Problems found while building Build 3, fixed before release
+**Must fix** (found by the review and the tests, 8 October 2026; fixed) · breaks the tool
+
+None of these reached Harry.
+- **The Bastion closed while asking about a sent crest** threw the crest away → it's kept, and asked about next time.
+- **"Create in the Clan Crest Creator ↗" seemed to do nothing** when the Creator was already open: its message was a corner notice, hidden under the pop-up's dark backdrop → the message shows inside Party Identity, or the Form Clan box.
+- **In Form Clan, a picture uploaded first overrode a crest from the Creator accepted afterwards** → the crest just accepted replaces the upload.
+- **Days passed underneath the crest question** (opening the Bastion after several camps), so a roll or even the War Table could open under it → no day passes while it's open; they pass once it's answered.
+- **A former Brigade's waiting War Action** with Lieutenants or regiments lapsed, saying "nothing committed to it is still free to march", which wasn't why → the log and the muster say only a Clan can send them (and the Bastion says so as it opens).
+- **Form Clan's "Create a new one ↗"** shared its test name with Party Identity's button → its own name (`crest-new`).
+- **After Remove, Keep this crest or founding a Clan,** the button that had the focus disappeared and the focus dropped out of the panel → it stays in the panel (Upload, or Clan Honour).
+- **The one-time "Mercenary Brigade … is no more" notice** stayed until dismissed, over the Clan Influence, Favour and War Council buttons → it goes after 20 seconds (the Day Log keeps it).
+- **Every Bastion notice** (since Build 2's screen) sat in the bottom-right corner, over those same buttons (and, raised, over the DM doc's corner on the TV) → on the Bastion's screen they sit on the left, just above the bottom bar, clear of its buttons, the crest badge and the DM doc. The War Table places them as before.
+- **With two Bastion windows,** after one took a crest the other closed its question but kept showing the old crest → it reads the crest just saved.
+- **A crest sent that wasn't really a picture** (only possible by hand) would be offered and saved, showing as a broken picture → it's dropped unless it loads as a picture.
+- **With two Bastion windows** (which "Already open" warns about), answering the crest question in one left it open in the other, which could still take the crest → the other window's question closes. A newer crest sent while it's asking takes its place.
+- **Evidence:** `tools/bastion/tool.js` (`checkCrestOffer`, `openCreator`, `crestField`, `checkClock`, `onRemoveCrest`, `onFormClan`), `tools/bastion/war-campaign-rules.js` (`R.clanOnlyCut`, `beginMilitaryAction`, `musterShortfall`); tests in `tests/e2e/phase9.test.js`, `tests/e2e/bastion-screen.test.js` and `tests/rules/bastion-campaign.test.js`.
+
 ## Clan Crest Creator
 Old repo: `_legacy/clan-crest-creator` (file:line references point there).
 
@@ -1800,6 +2001,13 @@ Old repo: `_legacy/clan-crest-creator` (file:line references point there).
 - **Before:** The Crest saved nothing, as in the old tool. Going Home, switching tool or closing the window lost the design, without asking.
 - **After:** The design is saved as you go and comes back next time. The Crest now has Export and Import in the top bar and is included in "Back up everything", like the tools that always saved. It keeps one design: Random Crest and Reset replace it, without asking, as before. A saved design is checked when it loads: a choice that no longer exists (such as the old Kraken sigil) goes back to its default and the rest is kept, and a save that isn't a design at all is set aside, never deleted.
 - **Evidence:** `tools/crest/tool.js` (saving), `tools/crest/rules.js` `cleanDesign` and `importProblem`; tests in `tests/rules/crest.test.js` ("remembering your design") and `tests/e2e/phase2.test.js` ("Remembering your design").
+
+### CRS-16 · Use for the Bastion
+**Deliberate change** (the Bastion overhaul's Build 3, 8 October 2026) · other
+
+- **Before:** To use a crest in the Bastion, you downloaded the PNG, went to the Bastion and uploaded it.
+- **After:** **Use for the Bastion**, beside Download PNG, sends a 512 × 512 see-through PNG of the crest and its design straight to the Bastion (SUI-26), which asks whether to use it. A notice says whether the Bastion's window asks now or when it next opens, with an Open the Bastion ↗ button when it's shut. It's drawn from the crest's own drawing, never a bundled picture, so it works from a double-clicked file, as Download PNG does.
+- **Evidence:** `tools/crest/tool.js` (`sendToBastion`, `svgToPngData`), `tools/crest/crest.css`; tests in `tests/e2e/phase2.test.js` ("Use for the Bastion").
 
 ## Arenas of The Scarlett Isles
 Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point there).

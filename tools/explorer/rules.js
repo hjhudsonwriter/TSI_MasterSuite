@@ -666,12 +666,15 @@
 
   /* Make Camp (old 2352-2427). Returns the night's pop-ups in order: the
      night's event (a due main event, tonight's set-up event, a follow-up on
-     its last day, or a campfire event), then any weather, then the weekly
-     Bastion prompt (E4). Before, each one replaced the last (EXP-01).
+     its last day, or a campfire event), then any weather, then "The Ironbow
+     sends word…" when the Bastion has news for the new day (Harry, 8
+     October 2026: it replaced the weekly Bastion prompt, E4). bastion is
+     the Bastion's save, or null; it's only read. Before, each pop-up
+     replaced the last (EXP-01).
      Weather is exactly as before. A campfire event is rolled after the
      weather: 25%, skipped after a travel or weather event that day. A
      journey event is begun here (kind 'journey'), so a reload picks it up. */
-  R.makeCamp = function (state, data, defs, rand) {
+  R.makeCamp = function (state, data, defs, rand, bastion) {
     var J = journeyRules();
     var d = journeyDefs(defs);
     var queue = [];
@@ -717,11 +720,11 @@
       }
     }
 
-    /* The weekly Bastion prompt. The event gold is no longer cleared here:
-       it's a saved running total the DM clears (Harry, 6 October 2026). */
-    if (TSI.campaign.isBastionDay(Number(travel.day) || 1)) {
-      queue.push({ kind: 'camp', event: data.bastionPrompt });
-    }
+    /* Word from the Bastion for the new day. (The event gold is no longer
+       cleared here: it's a saved running total the DM clears, Harry, 6
+       October 2026.) */
+    var news = TSI.campaign.ironbowNews(bastion || null, dayBefore, Number(travel.day) || 1);
+    if (news.length) queue.push({ kind: 'word', news: news });
 
     travel.nextTravelEventAtMiles = 6 + Math.floor(rand() * 19);
     travel.travelEventDay = 0;
@@ -798,4 +801,9 @@
   };
 
   ns.rules = R;
+  /* The import check the campaign save uses from the other tool's page
+     (shared/js/backup.js): the Explorer and the Bastion export and import
+     together, so each page loads the other's rules to check its half. */
+  TSI.importChecks = TSI.importChecks || {};
+  TSI.importChecks.explorer = R.importProblem;
 }());

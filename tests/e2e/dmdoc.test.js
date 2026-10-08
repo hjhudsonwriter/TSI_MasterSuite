@@ -1,6 +1,7 @@
 /* The DM doc's contents (7 October 2026), clicked through from a
    double-clicked index.html with the internet off: the party's level and
-   heroes, the day, the Bastion turns and the next one, the Clan's and the
+   heroes, the day, the Bastion's orders pending and the next word from the
+   Ironbow (since the days overhaul, 8 October 2026), the Clan's and the
    god's standing for the Region, and the Explorer's Active Effects, read
    from the real Explorer and Bastion. An effect appears when an event gives
    it and goes on the day it ends; the party's gold and the Threads (added
@@ -38,7 +39,7 @@ function doc(page) {
     };
     const q = s => { const e = document.querySelector('[data-test=dmdoc-panel] [data-test="' + s + '"]'); return e ? t(e) : null; };
     return {
-      level: q('dmdoc-level'), day: q('dmdoc-day'), turns: q('dmdoc-turns'), next: q('dmdoc-next-bastion'),
+      level: q('dmdoc-level'), day: q('dmdoc-day'), orders: q('dmdoc-orders'), next: q('dmdoc-next-word'),
       heroes: Array.from(document.querySelectorAll('[data-test=dmdoc-panel] .tsi-dmdoc__hero')).map(e => e.textContent),
       region: q('dmdoc-region'), clan: q('dmdoc-clan'), god: q('dmdoc-god'), where: q('dmdoc-where'),
       effects: Array.from(document.querySelectorAll('[data-test=dmdoc-panel] [data-test=dmdoc-effect]')).map(t),
@@ -77,6 +78,7 @@ async function closePopups(page) {
   for (let n = 0; n < 8 && await page.$('.tsi-modal'); n++) {
     await page.waitForTimeout(400);
     if (await page.$('.tsi-modal [data-test=skip-event]:not([hidden])')) await page.click('.tsi-modal [data-test=skip-event]');
+    else if (await page.$('.tsi-modal__foot button:text-is("Close")')) await page.click('.tsi-modal__foot button:text-is("Close")');
     else await page.click('.tsi-modal__foot button');
     await page.waitForTimeout(200);
   }
@@ -125,8 +127,8 @@ async function jClick(page, test) {
       const d = await doc(page);
       equal(d.level, 'Party level 7 Bastion not saved yet');
       equal(d.day, 'Day — Explorer not started');
-      equal(d.turns, 'Bastion turns — Bastion not saved yet');
-      equal(d.next, 'Next Bastion turn —');
+      equal(d.orders, 'Orders pending — Bastion not saved yet');
+      equal(d.next, 'Next word from the Ironbow —');
       equal(d.where, 'Where the party is Open the Explorer to see where the party is.');
       equal(d.effectsText, 'Active effects None.');
       equal(d.gold, 'Party gold — Explorer not started');
@@ -135,18 +137,20 @@ async function jClick(page, test) {
       await H.shot(page, 'dmdoc-contents-empty');
     });
 
-    await check('the Bastion: the party level and the turns completed', async () => {
+    await check('the Bastion: the party level, the orders pending and the next word from the Ironbow', async () => {
       await go(page, 'bastion');
       await setBastion(page, s => {
-        s.partyLevel = 9; s.turn = 4;
+        s.partyLevel = 9; s.anchored = true; s.day = 1;
+        s.pendingOrders = [{ id: 'o1', facId: 'dock', fnId: 'charter_berth', label: 'Dock: Charter Berth (Longship)', costGP: 200, issuedDay: 1, dueDay: 8 }];
         s.politicalCapital.farmer = 12; s.honourRespectByClan.farmer = 2; s.favour.aurush = 35;
         s.politicalCapital.blackstone = -20; s.honourRespectByClan.blackstone = -1; s.favour.telluria = 60;
       });
       const d = await until(page, x => x.level === 'Party level 9 from the Bastion', 'level 9');
-      equal(d.turns, 'Bastion turns 3 completed');
+      equal(d.orders, 'Orders pending 1 next completes Day 8');
+      equal(d.next, 'Next word from the Ironbow Day 8 in 7 days: Dock: Charter Berth (Longship) is complete.');
     });
 
-    await check('the Explorer: the heroes, the day, the next Bastion turn, and the Region\'s Clan and god', async () => {
+    await check('the Explorer: the heroes, the day, the next word from the Ironbow, and the Region\'s Clan and god', async () => {
       await go(page, 'explorer');
       await page.evaluate(() => { TSI_DATA.journeyEvents.settings.travelChance = 0; TSI_DATA.journeyEvents.settings.campChance = 0; TSI_DATA.explorer.weatherRules.chance = 0; });
       await page.selectOption('[data-test=region]', 'western_province');
@@ -154,7 +158,7 @@ async function jClick(page, test) {
       const d = await until(page, x => x.region === 'Western Province', 'the Western Province');
       equal(d.heroes, ['Kaelen', 'Umbrys', 'Magnus', 'Elara', 'Charles']);
       equal(d.day, 'Day 1 0 days passed');
-      equal(d.next, 'Next Bastion turn in 7 days Day 8, at Make Camp');
+      equal(d.next, 'Next word from the Ironbow Day 8 in 7 days: Dock: Charter Berth (Longship) is complete.');
       equal(d.clan, 'Clan Farmer\'s territory · Logan Farmer Political Capital +12 Honour/Respect +2');
       equal(d.god, 'Aurush\'s lands Favour 35%');
       equal([d.gold, d.threadsCount, d.threadsText], ['Party gold 0 from events, until cleared', 'Threads 0 none open', 'Threads None.']);
@@ -187,11 +191,11 @@ async function jClick(page, test) {
         d = await until(page, x => x.day === 'Day ' + day + ' ' + (day - 1) + (day === 2 ? ' day passed' : ' days passed'), 'Day ' + day);
         equal(d.effects.length, 1, 'still there on Day ' + day);
       }
-      equal(d.next, 'Next Bastion turn in 1 day Day 8, at Make Camp');
+      equal(d.next, 'Next word from the Ironbow Day 8 tomorrow: Dock: Charter Berth (Longship) is complete.');
       await makeCamp(page);
       d = await until(page, x => x.day === 'Day 8 7 days passed', 'Day 8');
       equal(d.effectsText, 'Active effects None.', 'gone on Day 8, as the Explorer removes it');
-      equal(d.next, 'Next Bastion turn in 7 days Day 15, at Make Camp');
+      equal(d.next, 'Next word from the Ironbow Day 29 in 21 days: A Bastion event is due.', 'after today: the automatic event');
       equal(await page.$eval('[data-test=effects-list]', e => e.textContent), 'None.');
     });
 
@@ -248,10 +252,10 @@ async function jClick(page, test) {
     await check('a change made in another window shows up by itself', async () => {
       const other = await context.newPage();
       await go(other, 'bastion');
-      await setBastion(other, s => { s.politicalCapital.blackstone = 45; s.honourRespectByClan.blackstone = 3; s.turn = 5; s.partyLevel = 10; });
+      await setBastion(other, s => { s.politicalCapital.blackstone = 45; s.honourRespectByClan.blackstone = 3; s.partyLevel = 10; });
       await other.close();
       const d = await until(page, x => /Political Capital \+45 Honour\/Respect \+3/.test(x.clan || ''), 'the new standing');
-      equal([d.level, d.turns], ['Party level 10 from the Bastion', 'Bastion turns 4 completed']);
+      equal(d.level, 'Party level 10 from the Bastion');
     });
 
     await check('it fits the laptop: nothing runs off sideways', async () => {

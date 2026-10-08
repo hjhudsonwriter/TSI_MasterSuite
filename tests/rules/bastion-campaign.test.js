@@ -19,16 +19,22 @@
   function roll(d20) { return { d20: d20, total: d20 }; }
   function copy(v) { return JSON.parse(JSON.stringify(v)); }
   function fresh() { return R.defaultState(data); }
+  /* A war order as the old single-roll war queued it (R.queueWarAction,
+     archived in Build 3), as a save can still hold one. */
+  function oldWarOrder(s, meta) {
+    var days = R.time(data).musterDays;
+    s.pendingOrders.push({ id: R.uid(dice([0.3])), facId: 'war_council', fnId: 'war_action', optionIdx: 0, label: 'War Action', issuedDay: s.day, dueDay: s.day + days, meta: Object.assign({}, meta, { kind: 'war_action' }) });
+  }
 
-  /* A Clan on turn 3 with two Lieutenants, two Line Infantry, one Line
+  /* A Clan on Day 3 with two Lieutenants, two Line Infantry, one Line
      Infantry at 62, one Archers, 30 armed defenders, two Giant Vultures
      and an Ape. */
   function army() {
     var s = fresh();
-    s.organization = { type: 'clan', name: 'Clan Ironbow', chief: '', motto: '', foundedAtTurn: 1 };
-    s.turn = 3;
+    s.organization = { type: 'clan', name: 'Clan Ironbow', chief: '', motto: '', foundedAtDay: 1 };
+    s.day = 3;
     s.treasuryGP = 100;
-    s.defenders = { count: 30, armed: true, patrolAdvantage: false };
+    s.defenders = { count: 30, armed: true, patrolUntil: 0 };
     s.defenderBeasts = [{ name: 'Giant Vulture', qty: 2, source: 'Menagerie' }, { name: 'Ape', qty: 1, source: 'Menagerie' }];
     s.military = [
       { name: 'Lieutenant (1)', qty: 2, source: 'War Room' },
@@ -60,13 +66,13 @@
     return { s: s, ma: ma };
   }
 
-  /* Clan Bacca, at war with you since turn 2, attacks on turn 3: the Defend
+  /* Clan Bacca, at war with you since Day 2, attacks on Day 3: the Defend
      Bastion action (a small force unless opts.tier gives the d6), with its
      three rolls made (all passed) unless opts.rolls is false. */
   function defence(opts) {
     opts = opts || {};
     var s = opts.s || army();
-    s.wars = { bacca: { since: 2, last: 2 } };
+    s.wars = { bacca: { since: 2, last: 2, next: 9 } };
     var ma = R.beginDefence(s, data, 'bacca', dice([d6(opts.tier || 1)]), 0);
     if (opts.rolls !== false) {
       R.militaryRoll(s, data, ma.id, 'weather', roll(15), dice([0]));
@@ -230,8 +236,8 @@
   test('Lieutenants and beasts still recovering can\'t be committed', function (t) {
     var s = army();
     s.warRecovery = [
-      { id: 'r1', kind: 'lieutenant', name: 'Lieutenant 1', status: 'wounded', untilTurn: 5 },
-      { id: 'r2', kind: 'beast', name: 'Giant Vulture', status: 'recovered', untilTurn: 4 }
+      { id: 'r1', kind: 'lieutenant', name: 'Lieutenant 1', status: 'wounded', untilDay: 5 },
+      { id: 'r2', kind: 'beast', name: 'Giant Vulture', status: 'recovered', untilDay: 4 }
     ];
     var f = R.warForces(s, data);
     t.same([f.lieutenants, f.beasts], [1, { 'Giant Vulture': 1, Ape: 1 }]);
@@ -239,7 +245,7 @@
 
   test('a phase 1 war order still waiting is read as Line Infantry and the first beasts in the list', function (t) {
     var s = army();
-    R.queueWarAction(s, { objective: 'raid', targetKey: 'bacca', targetName: 'Bacca', commitDefenders: 4, commitBeasts: 2, commitLieutenants: 1, commitRegiments: 2 }, dice([0.3]));
+    oldWarOrder(s, { objective: 'raid', targetKey: 'bacca', targetName: 'Bacca', commitDefenders: 4, commitBeasts: 2, commitLieutenants: 1, commitRegiments: 2 });
     t.same(R.orderCommit(s, data, s.pendingOrders[0]), { defenders: 4, lieutenants: 1, units: { line: 2 }, beasts: { 'Giant Vulture': 2 } });
     var f = R.warForces(s, data);
     t.same([f.units.line.length, f.defenders.count, f.lieutenants, f.beasts], [1, 26, 1, { Ape: 1 }]);
@@ -247,11 +253,11 @@
 
   test('phase 1 beast counts are filled from beasts nobody else holds, in list order', function (t) {
     var save = R.toSave(fresh());
-    save.organization = { type: 'clan', name: 'Clan Ironbow', chief: '', motto: '', foundedAtTurn: 1 };
-    save.turn = 6;
+    save.organization = { type: 'clan', name: 'Clan Ironbow', chief: '', motto: '', foundedAtDay: 1 };
+    save.day = 6;
     save.defenderBeasts = [{ name: 'Giant Vulture', qty: 2, source: 'Menagerie' }, { name: 'Ape', qty: 1, source: 'Menagerie' }];
-    save.militaryActions = [{ id: 'ma-a', orderId: 'a', turn: 6, objective: 'raid', targetKey: 'bacca', targetName: 'Bacca', commit: { defenders: 0, beasts: 2, lieutenants: 0, regiments: 0 }, forces: [], step: 'weather', weather: null, morale: null, luck: null }];
-    save.pendingOrders = [{ id: 'b', facId: 'war_council', fnId: 'war_action', optionIdx: 0, label: 'War Action', completeTurn: 7,
+    save.militaryActions = [{ id: 'ma-a', orderId: 'a', day: 6, objective: 'raid', targetKey: 'bacca', targetName: 'Bacca', commit: { defenders: 0, beasts: 2, lieutenants: 0, regiments: 0 }, forces: [], step: 'weather', weather: null, morale: null, luck: null }];
+    save.pendingOrders = [{ id: 'b', facId: 'war_council', fnId: 'war_action', optionIdx: 0, label: 'War Action', dueDay: 7,
       meta: { kind: 'war_action', objective: 'skirmish', targetKey: 'karr', targetName: 'Karr', commitDefenders: 0, commitBeasts: 1, commitLieutenants: 0, commitRegiments: 0 } }];
     var d = R.fromSave(JSON.parse(JSON.stringify(save)), data);
     t.same(d.militaryActions[0].commit.beasts, { 'Giant Vulture': 2 });
@@ -274,7 +280,7 @@
     t.equal(R.armyBV(s, data, one), 1.5, 'and for the next order: the one at 30');
     var b = queue(s, 'skirmish', one, 'small', 'karr');
     t.same([R.armyBV(s, data, one, { except: a.id }), R.armyBV(s, data, one, { except: b.id })], [5, 1.5], 'each waiting order\'s own share');
-    s.turn = 4;
+    s.day = 4;
     var maA = R.beginMilitaryAction(s, data, a, dice([0.5]), 0);
     var maB = R.beginMilitaryAction(s, data, b, dice([0.5]), 0);
     t.same([maA.spec.player.units[0].personnel, maB.spec.player.units[0].personnel], [100, 30]);
@@ -289,12 +295,12 @@
     /* Phase 1 let two waiting orders commit the same defenders. */
     function setUp(beasts) {
       var save = R.toSave(fresh());
-      save.organization = { type: 'unsworn', name: 'The Unsworn', chief: '', motto: '', foundedAtTurn: 1 };
-      save.turn = 6;
-      save.defenders = { count: 6, armed: true, patrolAdvantage: false };
+      save.organization = { type: 'unsworn', name: 'The Unsworn', chief: '', motto: '', foundedAtDay: 1 };
+      save.day = 6;
+      save.defenders = { count: 6, armed: true, patrolUntil: 0 };
       save.defenderBeasts = [{ name: 'Ape', qty: 2, source: 'Menagerie' }];
       save.pendingOrders = [['w1', 'raid', 'bacca', 'Bacca'], ['w2', 'skirmish', 'karr', 'Karr']].map(function (x) {
-        return { id: x[0], facId: 'war_council', fnId: 'war_action', optionIdx: 0, label: 'War Action', completeTurn: 7,
+        return { id: x[0], facId: 'war_council', fnId: 'war_action', optionIdx: 0, label: 'War Action', dueDay: 7,
           meta: { kind: 'war_action', objective: x[1], targetKey: x[2], targetName: x[3], commitDefenders: 6, commitBeasts: beasts, commitLieutenants: 0, commitRegiments: 0 } };
       });
       return R.fromSave(JSON.parse(JSON.stringify(save)), data);
@@ -555,8 +561,8 @@
   test('a mission is drawn up once, from its own seeded dice, and saved', function (t) {
     var s = army();
     var m = R.ensureMission(s, data, 'bacca', 'raid', 'small');
-    t.same(Object.keys(m), ['key', 'targetKey', 'targetName', 'objective', 'tier', 'variation', 'budget', 'enemy', 'conditions', 'createdTurn', 'seenTurn']);
-    t.same([m.key, m.targetName, m.conditions, m.createdTurn, s.warMissionSeq], ['bacca|raid|small', 'Bacca', null, 3, 1]);
+    t.same(Object.keys(m), ['key', 'targetKey', 'targetName', 'objective', 'tier', 'variation', 'budget', 'enemy', 'conditions', 'createdDay', 'seenDay']);
+    t.same([m.key, m.targetName, m.conditions, m.createdDay, s.warMissionSeq], ['bacca|raid|small', 'Bacca', null, 3, 1]);
     var g = R.generateEnemy(data, 'bacca', 'raid', 'small', R.mulberry32(R.missionSeed('bacca|raid|small', 3, 0)));
     t.same(m.enemy, g.enemy);
     t.equal(m.budget, g.budget);
@@ -567,17 +573,17 @@
 
   test('a mission never depends on the party\'s level or the army it faces', function (t) {
     var weak = fresh(), strong = army();
-    weak.turn = 3;
+    weak.day = 3;
     strong.partyLevel = 20;
     for (var i = 0; i < 10; i++) strong.military.push({ name: 'Shock Cavalry (25)', qty: 5, source: 'War Room' });
     t.same(R.ensureMission(weak, data, 'molten', 'skirmish', 'major'), R.ensureMission(strong, data, 'molten', 'skirmish', 'major'));
   });
 
-  test('a mission seen on another turn, or after another one, is drawn afresh', function (t) {
+  test('a mission seen on another day, or after another one, is drawn afresh', function (t) {
     var differs = 0;
     ['bacca', 'karr', 'slade', 'molten'].forEach(function (k) {
       var a = fresh(), b = fresh();
-      b.turn = 9;
+      b.day = 9;
       if (JSON.stringify(R.ensureMission(a, data, k, 'skirmish', 'established').enemy) !== JSON.stringify(R.ensureMission(b, data, k, 'skirmish', 'established').enemy)) differs += 1;
     });
     t.ok(differs >= 2, differs + ' of 4 differ');
@@ -589,21 +595,21 @@
     first.conditions = { weather: {}, morale: {}, luck: {} };
     var second = R.ensureMission(s, data, 'bacca', 'raid', 'established');
     s.pendingOrders.push({ id: 'w', facId: 'war_council', meta: { kind: 'war_action', missionKey: second.key } });
-    s.turn = 2;
+    s.day = 2;
     var third = R.ensureMission(s, data, 'bacca', 'raid', 'major');
-    s.turn = 3;
+    s.day = 3;
     Object.keys(W.clans).filter(function (k) { return k !== 'bacca'; }).forEach(function (k) { R.ensureMission(s, data, k, 'skirmish', 'small'); });
     t.equal(Object.keys(s.warMissions).length, 9);
     ['blackstone', 'karr', 'molten'].forEach(function (k) { R.ensureMission(s, data, k, 'defend', 'small'); });
     t.equal(Object.keys(s.warMissions).length, 12);
     R.ensureMission(s, data, 'slade', 'defend', 'small');
     t.equal(Object.keys(s.warMissions).length, 12);
-    t.ok(s.warMissions[first.key] && s.warMissions[second.key], 'kept: one with rolls, one in use (both from turn 1)');
-    t.ok(!s.warMissions[third.key], 'the oldest of the rest (turn 2) went');
-    t.ok(s.warMissions['blackstone|skirmish|small'] && s.warMissions['slade|defend|small'], 'the turn 3 ones stay');
+    t.ok(s.warMissions[first.key] && s.warMissions[second.key], 'kept: one with rolls, one in use (both from Day 1)');
+    t.ok(!s.warMissions[third.key], 'the oldest of the rest (Day 2) went');
+    t.ok(s.warMissions['blackstone|skirmish|small'] && s.warMissions['slade|defend|small'], 'the Day 3 ones stay');
   });
 
-  test('a mission seen this turn keeps its army, however many others are looked at', function (t) {
+  test('a mission seen today keeps its army, however many others are looked at', function (t) {
     var s = army();
     var m = R.ensureMission(s, data, 'molten', 'skirmish', 'major');
     var enemy = copy(m.enemy), variation = copy(m.variation);
@@ -613,34 +619,34 @@
     t.equal(Object.keys(s.warMissions).length, 29, 'more than 12 for now');
     var again = R.ensureMission(s, data, 'molten', 'skirmish', 'major');
     t.same([again.enemy, again.variation], [enemy, variation], 'no new army, no new variation roll');
-    s.turn += 1;
+    s.day += 1;
     R.ensureMission(s, data, 'molten', 'raid', 'major');
-    t.equal(Object.keys(s.warMissions).length, 12, 'on the next turn the oldest are let go');
+    t.equal(Object.keys(s.warMissions).length, 12, 'on the next day the oldest are let go');
     t.ok(s.warMissions['molten|raid|major']);
   });
 
-  test('a mission drawn up on an earlier turn and shown again this turn keeps its army, however many others are looked at', function (t) {
+  test('a mission drawn up on an earlier day and shown again today keeps its army, however many others are looked at', function (t) {
     var s = army();
-    s.turn = 2;
+    s.day = 2;
     var m = R.ensureMission(s, data, 'karr', 'raid', 'established');
     var enemy = copy(m.enemy), variation = copy(m.variation), budget = m.budget;
-    s.turn = 5;
-    t.equal(R.ensureMission(s, data, 'karr', 'raid', 'established'), m, 'shown again on turn 5');
-    t.same([m.createdTurn, m.seenTurn], [2, 5]);
+    s.day = 5;
+    t.equal(R.ensureMission(s, data, 'karr', 'raid', 'established'), m, 'shown again on Day 5');
+    t.same([m.createdDay, m.seenDay], [2, 5]);
     ['skirmish', 'defend'].forEach(function (o) {
       Object.keys(W.clans).forEach(function (k) { R.ensureMission(s, data, k, o, 'established'); });
     });
     t.ok(Object.keys(s.warMissions).length > 12, 'more than 12 for now');
     var again = s.warMissions['karr|raid|established'];
     t.ok(again === m, 'not let go');
-    t.same([again.enemy, again.variation, again.budget, again.createdTurn], [enemy, variation, budget, 2], 'no new army, no new variation roll');
-    s.turn = 6;
+    t.same([again.enemy, again.variation, again.budget, again.createdDay], [enemy, variation, budget, 2], 'no new army, no new variation roll');
+    s.day = 6;
     R.ensureMission(s, data, 'bacca', 'raid', 'small');
-    t.equal(Object.keys(s.warMissions).length, 12, 'on the next turn the ones least recently shown are let go');
-    var old = { key: 'slade|raid|small', enemy: { units: [], leaders: [] }, conditions: null, createdTurn: 1 };
+    t.equal(Object.keys(s.warMissions).length, 12, 'on the next day the ones least recently shown are let go');
+    var old = { key: 'slade|raid|small', enemy: { units: [], leaders: [] }, conditions: null, createdDay: 1 };
     s.warMissions[old.key] = old;
     R.ensureMission(s, data, 'farmer', 'raid', 'small');
-    t.ok(!s.warMissions[old.key], 'a mission saved without seenTurn goes by when it was drawn up');
+    t.ok(!s.warMissions[old.key], 'a mission saved without seenDay goes by when it was drawn up');
   });
 
   test('the intelligence estimate always contains the real army\'s Battle Value', function (t) {
@@ -676,16 +682,16 @@
   test('a war order carries its force, mission and commitment, and the old fields for older readers', function (t) {
     var s = army();
     var o = queue(s, 'raid', ALL);
-    t.same([o.id, o.facId, o.fnId, o.completeTurn, o.label], ['war-3-1', 'war_council', 'war_action', 4, 'War Action']);
+    t.same([o.id, o.facId, o.fnId, o.issuedDay, o.dueDay, o.label], ['war-3-1', 'war_council', 'war_action', 3, 6, 'War Action'], 'it musters 3 days later');
     t.same(o.meta, {
       kind: 'war_action', objective: 'raid', targetKey: 'bacca', targetName: 'Bacca', tier: 'small', missionKey: 'bacca|raid|small',
       commit: { defenders: 30, lieutenants: 2, units: { line: 3, archers: 1 }, beasts: { 'Giant Vulture': 2, Ape: 1 } },
       commitDefenders: 30, commitBeasts: 3, commitLieutenants: 2, commitRegiments: 4,
-      /* What declaring war cost, so Cancel this turn can give it back. */
-      declared: { turn: 3, hr: -4, pc: -40, prev: null, quiet: true, rollDone: true }
+      /* What declaring war cost, so Cancel today can give it back. */
+      declared: { day: 3, hr: -4, pc: -40, prev: null, quiet: true, rollDone: true }
     });
     t.ok(s.warMissions['bacca|raid|small'], 'its mission is drawn up');
-    t.same(R.warOrderLine(o), ['War Action Queued', 'Raid vs Bacca (resolves next Bastion Turn).']);
+    t.same(R.warOrderLine(o), ['War Action Queued', 'Raid vs Bacca (musters on Day 6).']);
     t.equal(R.orderKind(data, o), 'war');
   });
 
@@ -705,7 +711,7 @@
     var s = army();
     var o = queue(s, 'raid', ALL);
     var ma = R.beginMilitaryAction(s, data, o, dice([0.5]), 0);
-    t.same(Object.keys(ma), ['id', 'orderId', 'turn', 'v', 'objective', 'targetKey', 'targetName', 'tier', 'missionKey', 'commit', 'step', 'weather', 'morale', 'luck', 'spec', 'battle']);
+    t.same(Object.keys(ma), ['id', 'orderId', 'day', 'v', 'objective', 'targetKey', 'targetName', 'tier', 'missionKey', 'commit', 'step', 'weather', 'morale', 'luck', 'spec', 'battle']);
     t.same([ma.id, ma.v, ma.tier, ma.missionKey, ma.step], ['ma-war-3-1', 2, 'small', 'bacca|raid|small', 'weather']);
     t.same(Object.keys(ma.spec), ['player', 'enemy', 'objective', 'conditions']);
     t.same([ma.spec.objective, ma.spec.conditions, ma.spec.player.units.length, ma.spec.player.leaders.length, ma.spec.player.defenders.count], ['raid', null, 7, 2, 30]);
@@ -886,7 +892,7 @@
       'Clan Honour: −4.',
       'Soldiers lost: 10 from Line Infantry 2, 16 from Line Infantry 3, 30 from Archers, 4 defenders.',
       'A d6 for each of Lieutenant 2 (with Archers), Giant Vulture 1: killed, captured, wounded or recovering.',
-      'Separated for 1 turn: Lieutenant 1 (with Line Infantry 3), Giant Vulture 2.'
+      'Separated for 7 days: Lieutenant 1 (with Line Infantry 3), Giant Vulture 2.'
     ]);
     battle.objective.extracted = 1;
     t.equal(R.withdrawPreview(b.s, data, b.ma, battle)[1], 'Treasury: +38 gp.', 'a raid keeps the supplies already carried off');
@@ -918,10 +924,10 @@
     var key = b.ma.missionKey;
     var res = R.finishBattle(b.s, data, b.ma.id, battleFrom(b.ma, 'victory', hurtOpts({ extracted: 2, round: 4, reason: 'Two supply markers were carried off.' })), dice([d6(3), d6(5)]), 7);
     t.same(b.s.warRecovery, [
-      { id: b.s.warRecovery[0].id, kind: 'lieutenant', name: 'Lieutenant 1', status: 'separated', untilTurn: 4 },
-      { id: b.s.warRecovery[1].id, kind: 'lieutenant', name: 'Lieutenant 2', status: 'wounded', untilTurn: 5 },
-      { id: b.s.warRecovery[2].id, kind: 'beast', name: 'Giant Vulture', status: 'recovered', untilTurn: 4 },
-      { id: b.s.warRecovery[3].id, kind: 'beast', name: 'Giant Vulture', status: 'separated', untilTurn: 4 }
+      { id: b.s.warRecovery[0].id, kind: 'lieutenant', name: 'Lieutenant 1', status: 'separated', untilDay: 10 },
+      { id: b.s.warRecovery[1].id, kind: 'lieutenant', name: 'Lieutenant 2', status: 'wounded', untilDay: 17 },
+      { id: b.s.warRecovery[2].id, kind: 'beast', name: 'Giant Vulture', status: 'recovered', untilDay: 10 },
+      { id: b.s.warRecovery[3].id, kind: 'beast', name: 'Giant Vulture', status: 'separated', untilDay: 10 }
     ]);
     t.same([b.s.treasuryGP, b.s.politicalCapital.bacca, b.s.clanHonor], [175, -10, 46]);
     t.same([b.s.militaryActions, b.s.warMissions[key]], [[], undefined]);
@@ -932,15 +938,15 @@
       'Clan Honour: +6 (now 46).',
       'Supplies carried off: 2 of 2 needed.',
       'Soldiers lost: 10 from Line Infantry 2, 16 from Line Infantry 3, 20 from Archers, 4 defenders.',
-      'Lieutenant 1 (with Line Infantry 3): separated from the army, back on turn 4.',
-      'Lieutenant 2 (with Archers): wounded (d6 3), back on turn 5.',
-      'Giant Vulture 1: recovering (d6 5), back on turn 4.',
-      'Giant Vulture 2: separated from the army, back on turn 4.'
+      'Lieutenant 1 (with Line Infantry 3): separated from the army, back on Day 10.',
+      'Lieutenant 2 (with Archers): wounded (d6 3), back on Day 17.',
+      'Giant Vulture 1: recovering (d6 5), back on Day 10.',
+      'Giant Vulture 2: separated from the army, back on Day 10.'
     ]);
     t.equal(b.s.warLog.length, 1);
     t.equal(b.s.warLog[0], res.report);
     t.same([res.report.title, res.report.subtitle, res.report.at], ['Victory: Raid vs Bacca', 'Committed: 30 defenders, 2 Lieutenants, Line Infantry ×3, Archers, Giant Vulture ×2, Ape', 7]);
-    t.same([b.s.log[0].title, b.s.log[0].body], ['War Turn Resolved', 'Victory: Raid vs Bacca']);
+    t.same([b.s.log[0].title, b.s.log[0].body], ['War Action Resolved', 'Victory: Raid vs Bacca']);
     var f = R.warForces(b.s, data);
     t.same([f.lieutenants, f.beasts], [0, { Ape: 1 }], 'the hurt can\'t be committed until they\'re back');
   });
@@ -959,9 +965,9 @@
       '- Line Infantry 2: 100 soldiers → Steady at half Cohesion or below, 10 lost, 90 remain.',
       '- Line Infantry 3: 62 soldiers → Routed, 16 lost, 46 remain.',
       '- Defenders supporting Line Infantry 3: 10 → Routed, 3 lost.',
-      '- Giant Vulture 1: Defeated, recovering (d6 5), back on turn 4.',
+      '- Giant Vulture 1: Defeated, recovering (d6 5), back on Day 10.',
       '- Ape: Steady.',
-      '- Lieutenant 2 (with Archers): Defeated, wounded (d6 3), back on turn 5.',
+      '- Lieutenant 2 (with Archers): Defeated, wounded (d6 3), back on Day 17.',
       'Enemy forces (start → end):',
       'Key moments:',
       '- Round 2: Archers is Defeated.',
@@ -1037,8 +1043,8 @@
     var res = R.finishBattle(b.s, data, b.ma.id, battleFrom(b.ma, 'draw', hurtOpts()), dice([d6(2), d6(4)]), 0);
     t.same([b.s.treasuryGP, b.s.politicalCapital.bacca, b.s.clanHonor], [100, 0, 40]);
     t.equal(b.s.military[4].strength, 30);
-    t.same(b.s.warRecovery.map(function (r) { return [r.name, r.status, r.untilTurn]; }), [
-      ['Lieutenant 1', 'separated', 4], ['Lieutenant 2', 'badly_wounded', 3 + W.badlyWoundedTurns], ['Giant Vulture', 'wounded', 5], ['Giant Vulture', 'separated', 4]
+    t.same(b.s.warRecovery.map(function (r) { return [r.name, r.status, r.untilDay]; }), [
+      ['Lieutenant 1', 'separated', 10], ['Lieutenant 2', 'badly_wounded', 3 + W.badlyWoundedDays], ['Giant Vulture', 'wounded', 17], ['Giant Vulture', 'separated', 10]
     ]);
     t.equal(b.s.military[0].qty, 2);
     t.same(res.lines.slice(1, 4), ['Treasury: no change.', 'Political Capital (Bacca): no change.', 'Clan Honour: no change (now 40).']);
@@ -1093,14 +1099,6 @@
       'Clan Honour: −3 (−8, but it can\'t go below 0; now 0).'
     ]);
     t.ok(res.report.details.indexOf('- Treasury: −20 gp (−60 gp, but the treasury can\'t go below 0; now 0 gp).') !== -1, res.report.details);
-    var m = army();
-    m.organization.type = 'merc';
-    m.trustedClientsByClan.bacca = 3;
-    m.trustedClientsByClan.karr = 100;
-    var k = ready('skirmish', { s: m, commit: { defenders: 30 } });
-    var lines = R.finishBattle(k.s, data, k.ma.id, battleFrom(k.ma, 'victory', {}), dice([0.5]), 0).lines;
-    t.ok(lines.indexOf('Trusted Clients: Bacca −3 (−8, but it can\'t go below 0), every other clan +1 except Karr (already at 100).') !== -1, lines.join(' | '));
-    t.same([k.s.trustedClientsByClan.bacca, k.s.trustedClientsByClan.karr, k.s.trustedClientsByClan.slade], [0, 100, 51]);
   });
 
   test('Key moments: chosen by the kind of each log entry, the most important kept, never Hold orders', function (t) {
@@ -1168,16 +1166,42 @@
     t.ok(a.every(function (id) { return /^reg-[0-9a-f]+$/.test(id) || id === 'reg-a'; }), a.join(', '));
   });
 
-  test('a Brigade\'s Trusted Clients change as before: the target down, everyone else up after a win', function (t) {
+  test('a former Brigade\'s waiting War Action: its Lieutenants and regiments stay home, and the log says only a Clan can send them (Build 3)', function (t) {
+    /* Queued in Build 1 or 2, when a Brigade could send them (as a Clan can now). */
+    function brigadeSave(commit) {
+      var s = army();
+      t.ok(queue(s, 'raid', commit), 'queued');
+      s.organization = { type: 'merc', name: 'The Ironbow Freeblades', chief: '', motto: '', foundedAtDay: 1 };
+      var back = R.fromSave(copy(R.toSave(s)), data);
+      t.equal(back.organization.type, 'unsworn');
+      return { s: back };
+    }
+    var a = brigadeSave({ lieutenants: 1, units: { line: 2 } });
+    var o = a.s.pendingOrders[0];
+    t.equal(R.clanOnlyCut(a.s, data, R.orderCommit(a.s, data, o)), true);
+    t.equal(R.beginMilitaryAction(a.s, data, o, dice([0.4]), 0), null, 'nothing else to send: it lapses');
+    t.equal(a.s.pendingOrders.length, 0);
+    t.equal(a.s.log[0].body, 'Raid vs Bacca: only a Clan can send Lieutenants and regiments, and nothing else committed to it is free to march, so the war order lapses.');
+    var b = brigadeSave({ defenders: 10, lieutenants: 1, units: { line: 1 } });
+    var ordered = R.orderCommit(b.s, data, b.s.pendingOrders[0]);
+    var ma = R.beginMilitaryAction(b.s, data, b.s.pendingOrders[0], dice([0.4]), 0);
+    t.same([ma.commit.defenders, ma.commit.lieutenants || 0, Object.keys(ma.commit.units || {}).length], [10, 0, 0], 'the defenders march, alone');
+    t.ok(b.s.log.some(function (l) { return /: only a Clan can send Lieutenants and regiments, so it musters with 10 defenders \(the order had /.test(l.body); }), b.s.log.map(function (l) { return l.body; }).join(' | '));
+    t.equal(/only a Clan/.test(R.musterShortfall(data, ordered, ma.commit, R.clanOnlyCut(b.s, data, ordered))), true, 'the screen\'s words too');
+    var c = army();
+    t.equal(R.clanOnlyCut(c, data, { lieutenants: 1, units: { line: 1 } }), false, 'a Clan sends them');
+    var u = fresh();
+    t.equal(R.clanOnlyCut(u, data, { defenders: 3, beasts: { Ape: 1 } }), false, 'nothing Clan-only was ordered');
+  });
+
+  test('no Trusted Clients after a battle: the Brigade is archived (Build 3), and its scores are left alone', function (t) {
     var s = army();
-    s.organization.type = 'merc';
     var b = ready('skirmish', { s: s, commit: { defenders: 30, beasts: { Ape: 1 } } });
-    R.finishBattle(b.s, data, b.ma.id, battleFrom(b.ma, 'victory', {}), dice([0.5]), 0);
-    t.same([b.s.trustedClientsByClan.bacca, b.s.trustedClientsByClan.karr, b.s.politicalCapital.bacca, b.s.clanHonor], [42, 51, -6, 40]);
-    var c = ready('skirmish', { s: (function () { var x = army(); x.organization.type = 'merc'; return x; }()), commit: { defenders: 30 } });
-    var res = R.finishBattle(c.s, data, c.ma.id, battleFrom(c.ma, 'withdrawal', {}), dice([0.5]), 0);
-    t.same([c.s.trustedClientsByClan.bacca, c.s.trustedClientsByClan.slade], [46, 49]);
-    t.ok(res.lines.indexOf('Trusted Clients: Bacca −4, every other clan −1.') !== -1, res.lines.join(' | '));
+    var before = JSON.stringify(b.s.trustedClientsByClan);
+    var res = R.finishBattle(b.s, data, b.ma.id, battleFrom(b.ma, 'victory', {}), dice([0.5]), 0);
+    t.equal(JSON.stringify(b.s.trustedClientsByClan), before);
+    t.ok(res.lines.every(function (l) { return !/Trusted Clients/.test(l); }), res.lines.join(' | '));
+    t.equal('trusted' in R.warRewards(b.s, data, b.ma, battleFrom(b.ma, 'victory', {}), 'victory'), false);
   });
 
   test('a Raid withdrawal: the gold follows the supplies already home (+38 for one, the defeat\'s −50 for none); Honour −4', function (t) {
@@ -1197,17 +1221,17 @@
 
   group('Bastion war campaign: recovery and saving');
 
-  test('each Bastion turn, anyone whose recovery is over is fit again', function (t) {
+  test('each day, anyone whose recovery is over is fit again', function (t) {
     var s = army();
-    s.turn = 4;
+    s.day = 4;
     s.warRecovery = [
-      { id: 'a', kind: 'lieutenant', name: 'Lieutenant 1', status: 'wounded', untilTurn: 5 },
-      { id: 'b', kind: 'beast', name: 'Giant Vulture', status: 'recovered', untilTurn: 5 },
-      { id: 'c', kind: 'lieutenant', name: 'Lieutenant 2', status: 'separated', untilTurn: 4 },
-      { id: 'd', kind: 'beast', name: 'Ape', status: 'badly_wounded', untilTurn: 7 }
+      { id: 'a', kind: 'lieutenant', name: 'Lieutenant 1', status: 'wounded', untilDay: 5 },
+      { id: 'b', kind: 'beast', name: 'Giant Vulture', status: 'recovered', untilDay: 5 },
+      { id: 'c', kind: 'lieutenant', name: 'Lieutenant 2', status: 'separated', untilDay: 4 },
+      { id: 'd', kind: 'beast', name: 'Ape', status: 'badly_wounded', untilDay: 7 }
     ];
     t.same(R.warForces(s, data).lieutenants, 0);
-    R.startTurn(s, 0);
+    R.startDay(s, data, 0);
     t.same(s.warRecovery.map(function (r) { return r.id; }), ['d']);
     t.same(s.log.slice(0, 3).map(function (l) { return [l.title, l.body]; }), [
       ['War Recovery', 'Lieutenant 2 has found the way back to the Bastion.'],
@@ -1215,8 +1239,8 @@
       ['War Recovery', 'Lieutenant 1 is fit for duty again.']
     ]);
     t.same([R.warForces(s, data).lieutenants, R.warForces(s, data).beasts], [2, { 'Giant Vulture': 2 }]);
-    t.same(R.tickRecovery(s, 0), [], 'nothing more this turn');
-    t.equal(R.recoveryText(s.warRecovery[0]), 'Ape: badly wounded, back on turn 7.');
+    t.same(R.tickRecovery(s, 0), [], 'nothing more today');
+    t.equal(R.recoveryText(s.warRecovery[0]), 'Ape: badly wounded, back on Day 7.');
   });
 
   test('a save and reload keeps the missions, recovery, the mission counter, depleted regiments and a battle under way', function (t) {
@@ -1227,7 +1251,7 @@
     battle.round = 2;
     R.militaryBattleSave(b.s, b.ma.id, battle);
     R.ensureMission(b.s, data, 'slade', 'defend', 'major');
-    b.s.warRecovery = [{ id: 'rec-1', kind: 'beast', name: 'Ape', status: 'wounded', untilTurn: 5 }];
+    b.s.warRecovery = [{ id: 'rec-1', kind: 'beast', name: 'Ape', status: 'wounded', untilDay: 5 }];
     queue(b.s, 'skirmish', { defenders: 0, units: { archers: 0 }, beasts: {}, lieutenants: 0 }, 'small', 'karr');
     var back = R.fromSave(JSON.parse(JSON.stringify(R.toSave(b.s))), data);
     t.same(back, b.s);
@@ -1244,7 +1268,7 @@
       { id: 'reg-a', name: 'Line Infantry (100)', strength: 50, depleted: true },
       { name: 'Ape', strength: 3, depleted: true }
     );
-    save.warRecovery = ['x', { kind: 'dragon', name: 'Smaug' }, { kind: 'beast', name: 'Ape', status: 'wounded', untilTurn: '6' }];
+    save.warRecovery = ['x', { kind: 'dragon', name: 'Smaug' }, { kind: 'beast', name: 'Ape', status: 'wounded', untilDay: '6' }];
     save.warMissions = { 'a|b|c': { key: 'zzz', enemy: { units: [] } }, 'k|raid|small': { key: 'k|raid|small', enemy: { units: [], leaders: [] } } };
     save.warMissionSeq = '4';
     var back = R.fromSave(save, data);
@@ -1255,7 +1279,7 @@
       [null, 'Ape', 1, null]
     ], 'full strength becomes an ordinary row (keeping its count), nobody left is removed, ids are added and kept apart');
     t.ok(/^reg-/.test(back.military[5].id));
-    t.same(back.warRecovery, [{ id: 'rec-0', kind: 'beast', name: 'Ape', status: 'wounded', untilTurn: 6 }]);
+    t.same(back.warRecovery, [{ id: 'rec-0', kind: 'beast', name: 'Ape', status: 'wounded', untilDay: 6 }]);
     t.same(Object.keys(back.warMissions), ['k|raid|small']);
     t.equal(back.warMissionSeq, 4);
     t.ok(R.saveProblem(Object.assign(R.toSave(army()), { warRecovery: 'x' })));
@@ -1286,10 +1310,10 @@
     var save = R.toSave(army());
     var clear = { d20: 15, total: 15, dc: 12, pass: true, id: 'clear' };
     save.militaryActions = [
-      { id: 'ma-1', orderId: '1', turn: 2, objective: 'skirmish', targetKey: 'karr', targetName: 'Karr', commit: { defenders: 10, beasts: 2, lieutenants: 1, regiments: 2 },
+      { id: 'ma-1', orderId: '1', day: 2, objective: 'skirmish', targetKey: 'karr', targetName: 'Karr', commit: { defenders: 10, beasts: 2, lieutenants: 1, regiments: 2 },
         forces: [{ id: 'reg-1', kind: 'regiment', label: 'Regiment 1' }], step: 'resolve', weather: clear, morale: { d20: 14, total: 14, dc: 12, pass: true }, luck: { d20: 3, total: 3, dc: 10, pass: false, mod: -1 },
         deployment: { started: true, locked: true, positions: { 'reg-1': { x: 0.5, y: 0.7 } } } },
-      { id: 'ma-2', orderId: '2', turn: 2, objective: 'raid', targetKey: 'slade', targetName: 'Slade', commit: { defenders: 30, beasts: 1, lieutenants: 2, regiments: 2 }, forces: [], step: 'weather', weather: null, morale: null, luck: null }
+      { id: 'ma-2', orderId: '2', day: 2, objective: 'raid', targetKey: 'slade', targetName: 'Slade', commit: { defenders: 30, beasts: 1, lieutenants: 2, regiments: 2 }, forces: [], step: 'weather', weather: null, morale: null, luck: null }
     ];
     var back = R.fromSave(save, data);
     var a = back.militaryActions[0], b = back.militaryActions[1];
@@ -1306,7 +1330,7 @@
 
   test('a phase 1 war order still waiting becomes a Military Action against an established local force', function (t) {
     var s = army();
-    R.queueWarAction(s, { objective: 'defend', targetKey: 'molten', targetName: 'Molten', commitDefenders: 5, commitBeasts: 1, commitLieutenants: 1, commitRegiments: 1 }, dice([0.3]));
+    oldWarOrder(s, { objective: 'defend', targetKey: 'molten', targetName: 'Molten', commitDefenders: 5, commitBeasts: 1, commitLieutenants: 1, commitRegiments: 1 });
     var ma = R.beginMilitaryAction(s, data, s.pendingOrders[0], dice([0.5]), 0);
     t.same([ma.tier, ma.missionKey, ma.commit], ['established', 'molten|defend|established', { defenders: 5, lieutenants: 1, units: { line: 1 }, beasts: { 'Giant Vulture': 1 } }]);
   });
@@ -1344,8 +1368,8 @@
   /* Beasts enough for any Battle Value, and 75 defenders (a detachment: 1½). */
   function menagerie() {
     var s = fresh();
-    s.turn = 3;
-    s.defenders = { count: 75, armed: false, patrolAdvantage: false };
+    s.day = 3;
+    s.defenders = { count: 75, armed: false, patrolUntil: 0 };
     s.defenderBeasts = [{ name: 'Owlbear', qty: 4 }, { name: 'Dire Wolf', qty: 1 }, { name: 'Giant Vulture', qty: 4 }, { name: 'Ape', qty: 1 }, { name: 'Jackal', qty: 1 }, { name: 'Hyena', qty: 2 }];
     return s;
   }
@@ -1385,7 +1409,7 @@
     t.ok(order);
     t.same([s.honourRespectByClan.bacca, s.politicalCapital.bacca], [-4, -40]);
     t.same([s.honourRespectByClan.karr, s.politicalCapital.karr], [0, 0], 'only the target Clan');
-    t.same(s.wars, { bacca: { since: 3, last: 3 } });
+    t.same(s.wars, { bacca: { since: 3, last: 3, next: 10 } }, 'its first attack roll a week on');
     t.ok(R.atWar(s, 'bacca') && !R.atWar(s, 'karr'));
     t.same([s.log[0].title, s.log[0].body, s.log[0].at], ['War Declared', 'War on Clan Bacca: Honour & Respect −4 (now −4), Political Capital −40 (now −40), for an army of 39 Battle Value.', 5]);
     t.equal(s.log.length, 1);
@@ -1423,15 +1447,15 @@
   test('a second War Action renews the war: charged again, the war\'s start kept, its last activity now', function (t) {
     var s = menagerie();
     R.queueWarAction2(s, data, { targetKey: 'bacca', objective: 'raid', tier: 'small', commit: { beasts: { Jackal: 1 } } });
-    s.turn = 5;
+    s.day = 5;
     R.queueWarAction2(s, data, { targetKey: 'bacca', objective: 'skirmish', tier: 'small', commit: { beasts: { 'Giant Vulture': 4 } } });
-    t.same(s.wars, { bacca: { since: 3, last: 5 } });
+    t.same(s.wars, { bacca: { since: 3, last: 5, next: 10 } }, 'its attack rolls keep their 7-day count');
     t.same([s.honourRespectByClan.bacca, s.politicalCapital.bacca], [-5, -70], '−3 and −30, then −4 (cut to −2) and −40');
     t.same(s.log.map(function (l) { return l.title; }), ['War Renewed', 'War Declared']);
     t.equal(R.declareWar(s, data, 'bacca', {}, 0).renewed, true);
   });
 
-  test('cancelling a War Action on the turn it was queued gives back what it cost, so correcting it (cancel, queue again) costs once, not twice', function (t) {
+  test('cancelling a War Action on the day it was queued gives back what it cost, so correcting it (cancel, queue again) costs once, not twice', function (t) {
     var s = army();
     s.honourRespectByClan.bacca = 0;
     s.politicalCapital.bacca = 0;
@@ -1439,25 +1463,25 @@
     var cost = [s.honourRespectByClan.bacca, s.politicalCapital.bacca];
     t.same(cost, [-3, -30]);
     var line = R.cancelOrder(s, first.id, data, 0);
-    t.same(line, ['War Called Off', 'Cancelled the War Action (Raid vs Bacca) on the turn it was queued, so what it cost is given back: Honour & Respect +3 (now 0), Political Capital +30 (now 0). The war on Clan Bacca is called off: you\'re no longer at war.']);
+    t.same(line, ['War Called Off', 'Cancelled the War Action (Raid vs Bacca) on the day it was queued, so what it cost is given back: Honour & Respect +3 (now 0), Political Capital +30 (now 0). The war on Clan Bacca is called off: you\'re no longer at war.']);
     t.same([s.pendingOrders, s.wars, s.honourRespectByClan.bacca, s.politicalCapital.bacca], [[], {}, 0, 0]);
     var again = queue(s, 'raid', { defenders: 10, units: { line: 2 } });
     t.ok(again);
-    t.same([s.honourRespectByClan.bacca, s.politicalCapital.bacca, s.wars.bacca], [-3, -30, { since: 3, last: 3 }], 'one War Action, one charge');
+    t.same([s.honourRespectByClan.bacca, s.politicalCapital.bacca, s.wars.bacca], [-3, -30, { since: 3, last: 3, next: 10 }], 'one War Action, one charge');
     t.equal(s.log[0].title, 'War Declared', 'declared afresh, not renewed');
   });
 
   test('a cancelled renewal puts the war back as it was; a cancel after the clamp gives back only what was taken; another War Action waiting keeps the war', function (t) {
     var s = army();
-    s.turn = 5;
-    s.wars = { bacca: { since: 2, last: 3 } };
+    s.day = 5;
+    s.wars = { bacca: { since: 2, last: 3, next: 9 } };
     s.honourRespectByClan.bacca = -4;
     s.politicalCapital.bacca = -90;
     var o = queue(s, 'raid', { defenders: 10 });
-    t.same([s.honourRespectByClan.bacca, s.politicalCapital.bacca, s.wars.bacca], [-5, -100, { since: 2, last: 5 }]);
-    t.same(o.meta.declared, { turn: 5, hr: -1, pc: -10, prev: { since: 2, last: 3 }, quiet: true, rollDone: true });
-    t.equal(R.cancelOrder(s, o.id, data, 0)[1], 'Cancelled the War Action (Raid vs Bacca) on the turn it was queued, so what it cost is given back: Honour & Respect +1 (now −4), Political Capital +10 (now −90). You\'re still at war with Clan Bacca, as you were before.');
-    t.same([s.honourRespectByClan.bacca, s.politicalCapital.bacca, s.wars.bacca], [-4, -90, { since: 2, last: 3 }]);
+    t.same([s.honourRespectByClan.bacca, s.politicalCapital.bacca, s.wars.bacca], [-5, -100, { since: 2, last: 5, next: 9 }]);
+    t.same(o.meta.declared, { day: 5, hr: -1, pc: -10, prev: { since: 2, last: 3, next: 9 }, quiet: true, rollDone: true });
+    t.equal(R.cancelOrder(s, o.id, data, 0)[1], 'Cancelled the War Action (Raid vs Bacca) on the day it was queued, so what it cost is given back: Honour & Respect +1 (now −4), Political Capital +10 (now −90). You\'re still at war with Clan Bacca, as you were before.');
+    t.same([s.honourRespectByClan.bacca, s.politicalCapital.bacca, s.wars.bacca], [-4, -90, { since: 2, last: 3, next: 9 }]);
     var p = army();
     var a = queue(p, 'raid', { defenders: 5 });
     var b = queue(p, 'skirmish', { defenders: 5 });
@@ -1468,54 +1492,56 @@
     t.same([p.honourRespectByClan.bacca, p.politicalCapital.bacca, R.makePeace(p, data, 'bacca', 0).ok], [0, 0, true]);
   });
 
-  test('a War Action cancelled on a later turn, or after the turn\'s attack roll, keeps what it cost', function (t) {
+  test('a War Action cancelled on a later day, or after the day\'s attack roll, keeps what it cost', function (t) {
     var s = army();
     var o = queue(s, 'raid', { defenders: 10 });
-    R.startTurn(s, 0);
-    t.same(R.cancelOrder(s, o.id, data, 0), ['Orders', 'Cancelled the War Action (Raid vs Bacca). What declaring war on Clan Bacca cost isn\'t given back: it was queued on an earlier Bastion turn.']);
+    R.startDay(s, data, 0);
+    t.same(R.cancelOrder(s, o.id, data, 0), ['Orders', 'Cancelled the War Action (Raid vs Bacca). What declaring war on Clan Bacca cost isn\'t given back: it was queued on an earlier day.']);
     t.same([s.honourRespectByClan.bacca, s.politicalCapital.bacca, R.atWar(s, 'bacca')], [-3, -30, true]);
-    /* Queued part-way through a turn, before its attack roll. */
+    /* Queued part-way through a day, before its attack roll. */
     var p = army();
-    R.startTurn(p, 0);
+    R.startDay(p, data, 0);
     var q = queue(p, 'raid', { defenders: 10 });
     t.equal(q.meta.declared.rollDone, false);
     var r = queue(p, 'skirmish', { defenders: 10 });
     t.equal(R.cancelOrder(p, r.id, data, 0)[0], 'War Called Off', 'no roll yet: given back');
     R.rollWarAttack(p, data, dice([d6(2)]), 0);
-    t.same(R.cancelOrder(p, q.id, data, 0), ['Orders', 'Cancelled the War Action (Raid vs Bacca). What declaring war on Clan Bacca cost isn\'t given back: this turn\'s roll for an attack has been made since it was queued.']);
+    t.same(R.cancelOrder(p, q.id, data, 0), ['Orders', 'Cancelled the War Action (Raid vs Bacca). What declaring war on Clan Bacca cost isn\'t given back: today\'s roll for an attack has been made since it was queued.']);
     t.same([p.honourRespectByClan.bacca, p.politicalCapital.bacca, R.atWar(p, 'bacca')], [-3, -30, true]);
     t.same(R.cancelOrder(p, 'nothing', data, 0), ['Orders', 'Cancelled an order.']);
   });
 
-  test('a war ends by itself after 6 quiet Bastion turns, not 5, and never while a War Action against that Clan waits', function (t) {
+  test('a war ends by itself after 42 quiet days (6 turns at 7 days), not 41, and never while a War Action against that Clan waits', function (t) {
     var s = fresh();
-    s.turn = 3;
-    s.wars = { bacca: { since: 3, last: 3 }, karr: { since: 3, last: 3 } };
-    s.pendingOrders = [{ id: 'w', facId: 'war_council', fnId: 'war_action', completeTurn: 99, meta: { kind: 'war_action', objective: 'raid', targetKey: 'karr', targetName: 'Karr' } }];
-    for (var turn = 4; turn <= 8; turn++) {
-      R.startTurn(s, 0);
-      t.ok(R.atWar(s, 'bacca'), 'still at war on turn ' + turn);
+    s.day = 3;
+    s.wars = { bacca: { since: 3, last: 3, next: 10 }, karr: { since: 3, last: 3, next: 10 } };
+    s.pendingOrders = [{ id: 'w', facId: 'war_council', fnId: 'war_action', dueDay: 99, meta: { kind: 'war_action', objective: 'raid', targetKey: 'karr', targetName: 'Karr' } }];
+    for (var day = 4; day <= 44; day++) {
+      R.startDay(s, data, 0);
+      if (!R.atWar(s, 'bacca')) t.ok(false, 'peace too soon, on Day ' + day);
+      s.dayInProgress = null;
     }
     t.same(R.warsList(s, data).map(function (w) { return [w.key, w.quietLeft]; }), [['bacca', 1], ['karr', 1]]);
-    R.startTurn(s, 0);
-    t.equal(s.turn, 9);
+    R.startDay(s, data, 0);
+    t.equal(s.day, 45);
     t.same(Object.keys(s.wars), ['karr'], 'Bacca at peace; Karr has a War Action waiting');
-    t.same(logged(s, 'Peace'), ['Peace with Clan Bacca: 6 Bastion turns without a battle between you.']);
+    t.same(logged(s, 'Peace'), ['Peace with Clan Bacca: 42 days without a battle between you.']);
+    t.ok(s.dayInProgress.news.indexOf('Peace with Clan Bacca: 42 days without a battle between you.') !== -1, 'and in the word from the Ironbow');
     var karr = R.warsList(s, data)[0];
     t.same([karr.quietLeft, karr.canMakePeace], [0, false]);
     R.cancelOrder(s, 'w');
-    R.startTurn(s, 0);
+    R.startDay(s, data, 0);
     t.same(s.wars, {});
-    t.equal(logged(s, 'Peace')[0], 'Peace with Clan Karr: 6 Bastion turns without a battle between you.');
+    t.equal(logged(s, 'Peace')[0], 'Peace with Clan Karr: 42 days without a battle between you.');
   });
 
-  test('the wars listed in the clans\' order, with their quiet turns left and whether peace can be made', function (t) {
+  test('the wars listed in the clans\' order, with their quiet days left, the next attack roll and whether peace can be made', function (t) {
     var s = army();
-    s.turn = 7;
-    s.wars = { karr: { since: 2, last: 6 }, bacca: { since: 1, last: 4 } };
+    s.day = 7;
+    s.wars = { karr: { since: 2, last: 6, next: 9 }, bacca: { since: 1, last: 4, next: 8 } };
     t.same(R.warsList(s, data), [
-      { key: 'bacca', name: 'Bacca', since: 1, last: 4, quietLeft: 3, canMakePeace: true, peaceWhy: '' },
-      { key: 'karr', name: 'Karr', since: 2, last: 6, quietLeft: 5, canMakePeace: true, peaceWhy: '' }
+      { key: 'bacca', name: 'Bacca', since: 1, last: 4, next: 8, quietLeft: 39, canMakePeace: true, peaceWhy: '' },
+      { key: 'karr', name: 'Karr', since: 2, last: 6, next: 9, quietLeft: 41, canMakePeace: true, peaceWhy: '' }
     ]);
     t.same(R.warsList(fresh(), data), []);
   });
@@ -1541,19 +1567,19 @@
   test('war activity: mustering, a finished battle and an attack all count, so the war stays loud', function (t) {
     var s = army();
     var order = queue(s, 'raid', { defenders: 5 });
-    t.same(s.wars.bacca, { since: 3, last: 3 });
-    s.turn = 4;
+    t.same(s.wars.bacca, { since: 3, last: 3, next: 10 });
+    s.day = 6;
     var ma = R.beginMilitaryAction(s, data, order, dice([0.5]), 0);
-    t.same(s.wars.bacca, { since: 3, last: 4 }, 'mustered');
-    s.turn = 6;
+    t.same(s.wars.bacca, { since: 3, last: 6, next: 10 }, 'mustered');
+    s.day = 7;
     R.militaryRoll(s, data, ma.id, 'weather', roll(15), dice([0]));
     R.militaryRoll(s, data, ma.id, 'morale', roll(15), dice([0]));
     R.militaryRoll(s, data, ma.id, 'luck', roll(15), dice([0]));
     R.finishBattle(s, data, ma.id, battleFrom(ma, 'draw', {}), dice([0.5]), 0);
-    t.same(s.wars.bacca, { since: 3, last: 6 }, 'the battle finished');
-    s.turn = 8;
+    t.same(s.wars.bacca, { since: 3, last: 7, next: 10 }, 'the battle finished');
+    s.day = 10;
     R.beginDefence(s, data, 'bacca', dice([d6(1)]), 0);
-    t.same(s.wars.bacca, { since: 3, last: 8 }, 'they attacked');
+    t.same(s.wars.bacca, { since: 3, last: 10, next: 10 }, 'they attacked');
     var p = fresh();
     p.defenders.count = 4;
     R.beginDefence(p, data, 'karr', dice([d6(1)]), 0);
@@ -1562,44 +1588,75 @@
 
   group('Bastion war campaign: the Defend Bastion event');
 
-  test('the attack roll: no wars, no turn under way, or already rolled this turn: no dice at all', function (t) {
+  test('the attack roll: no wars, no day being passed, not the war\'s 7-day mark, or already rolled today: no dice at all', function (t) {
     var s = army();
-    R.startTurn(s, 0);
+    R.startDay(s, data, 0);
     var r = counted([d6(1)]);
     t.equal(R.rollWarAttack(s, data, r, 0), null);
-    t.same([r.used, s.turnInProgress.attackRolled], [0, false], 'no wars: nothing rolled, so the old Bastion\'s dice stay in step');
-    s.wars = { bacca: { since: 1, last: 4 } };
-    s.turnInProgress = null;
+    t.same([r.used, s.dayInProgress.attackRolled], [0, true], 'no wars: nothing rolled');
+    s.wars = { bacca: { since: 1, last: 4, next: 5 } };
+    s.dayInProgress = null;
     t.equal(R.rollWarAttack(s, data, r, 0), null);
-    t.equal(r.used, 0, 'no turn under way');
-    R.startTurn(s, 0);
+    t.equal(r.used, 0, 'no day being passed');
+    R.startDay(s, data, 0);
+    t.equal(s.day, 5);
     t.equal(R.rollWarAttack(s, data, r, 0).targetKey, 'bacca');
     t.equal(r.used, 2, 'the d6, then the enemy\'s size');
+    t.equal(s.wars.bacca.next, 12, 'the next roll a week on');
     t.equal(R.rollWarAttack(s, data, r, 0), null);
-    t.equal(r.used, 2, 'once a turn');
+    t.equal(r.used, 2, 'once a day');
+    s.militaryActions = [];
+    for (var d = 6; d <= 11; d++) {
+      R.startDay(s, data, 0);
+      t.equal(R.rollWarAttack(s, data, r, 0), null);
+      s.dayInProgress = null;
+    }
+    t.equal(r.used, 2, 'no roll on Days 6 to 11');
+    R.startDay(s, data, 0);
+    R.rollWarAttack(s, data, counted([d6(3)]), 0);
+    t.same([s.day, s.wars.bacca.next], [12, 19], 'Day 12: rolled (a 3, no attack)');
   });
 
-  test('a d6 for each Clan at war, in the clans\' order; the first to roll a 1 attacks, and nobody after it rolls', function (t) {
+  test('each war rolls on its own 7-day count, from the day it was declared', function (t) {
+    var s = menagerie();
+    R.queueWarAction2(s, data, { targetKey: 'bacca', objective: 'raid', tier: 'small', commit: { beasts: { Jackal: 1 } } });
+    s.day = 5;
+    R.queueWarAction2(s, data, { targetKey: 'karr', objective: 'raid', tier: 'small', commit: { beasts: { Ape: 1 } } });
+    t.same([s.wars.bacca.next, s.wars.karr.next], [10, 12]);
+    var rolled = [];
+    for (var d = 6; d <= 26; d++) {
+      R.startDay(s, data, 0);
+      var r = counted([d6(4)]);
+      R.rollWarAttack(s, data, r, 0);
+      if (r.used) rolled.push(d + ':' + r.used);
+      R.finishRoutes(s);
+      R.finishDay(s, data, data.events, dice([0.5]), 0);
+    }
+    t.same(rolled, ['10:1', '12:1', '17:1', '19:1', '24:1', '26:1']);
+  });
+
+  test('a d6 for each Clan whose roll is due today, in the clans\' order; the first to roll a 1 attacks, and nobody after it rolls', function (t) {
     var s = army();
-    s.wars = { karr: { since: 1, last: 3 }, bacca: { since: 1, last: 3 }, slade: { since: 1, last: 3 } };
-    R.startTurn(s, 0);
+    s.wars = { karr: { since: 1, last: 3, next: 4 }, bacca: { since: 1, last: 3, next: 4 }, slade: { since: 1, last: 3, next: 4 } };
+    R.startDay(s, data, 0);
     var r = counted([d6(2), d6(1), d6(4)]);
     var ma = R.rollWarAttack(s, data, r, 0);
     t.same([ma.targetKey, ma.kind, r.used], ['slade', 'defence', 3], 'Bacca rolled 2, Slade 1 (and the d6 for its size); Karr never rolled');
-    t.equal(s.turnInProgress.attackRolled, true);
+    t.equal(s.dayInProgress.attackRolled, true);
+    t.same([s.wars.karr.next, s.wars.bacca.next, s.wars.slade.next], [11, 11, 11], 'Karr\'s roll day passes too');
     var q = army();
-    q.wars = { karr: { since: 1, last: 3 }, bacca: { since: 1, last: 3 } };
-    R.startTurn(q, 0);
+    q.wars = { karr: { since: 1, last: 3, next: 4 }, bacca: { since: 1, last: 3, next: 4 }, slade: { since: 1, last: 3, next: 9 } };
+    R.startDay(q, data, 0);
     var r2 = counted([d6(2), d6(6)]);
     t.equal(R.rollWarAttack(q, data, r2, 0), null);
-    t.same([r2.used, q.militaryActions.length, q.turnInProgress.attackRolled], [2, 0, true], 'no 1: no attack, and no second roll this turn');
+    t.same([r2.used, q.militaryActions.length, q.dayInProgress.attackRolled], [2, 0, true], 'no 1: no attack, Slade not due, and no second roll today');
   });
 
-  test('the same dice give the same attack, and a resumed turn can\'t roll it again', function (t) {
+  test('the same dice give the same attack, and a resumed day can\'t roll it again', function (t) {
     function run() {
       var s = army();
-      s.wars = { bacca: { since: 1, last: 3 } };
-      R.startTurn(s, 0);
+      s.wars = { bacca: { since: 1, last: 3, next: 4 } };
+      R.startDay(s, data, 0);
       R.rollWarAttack(s, data, dice([d6(1), d6(4)]), 0);
       return s;
     }
@@ -1607,13 +1664,14 @@
     t.same(a.militaryActions, b.militaryActions);
     t.same(a.warMissions, b.warMissions);
     var back = R.fromSave(JSON.parse(JSON.stringify(R.toSave(a))), data);
-    t.equal(back.turnInProgress.attackRolled, true);
+    t.equal(back.dayInProgress.attackRolled, true);
     var r = counted([d6(1)]);
     t.equal(R.rollWarAttack(back, data, r, 0), null);
     t.same([r.used, back.militaryActions.length], [0, 1]);
-    R.finishTurn(back, data.events, dice([0.5]), 0);
-    R.startTurn(back, 0);
-    t.equal(back.turnInProgress.attackRolled, false, 'a new turn rolls again');
+    R.finishDay(back, data, data.events, dice([0.5]), 0);
+    back.wars.bacca.next = 5;
+    R.startDay(back, data, 0);
+    t.equal(back.dayInProgress.attackRolled, false, 'a new day rolls again');
     var again = counted([d6(1)]);
     t.equal(R.rollWarAttack(back, data, again, 0), null, 'Bacca\'s attack is still to be fought, so Bacca doesn\'t roll');
     t.equal(again.used, 0);
@@ -1621,21 +1679,25 @@
 
   test('one attack at a time: while Karr\'s attack waits (Later), Bacca doesn\'t roll, so the army waiting at the Ironbow is never caught twice', function (t) {
     var s = army();
-    s.wars = { bacca: { since: 1, last: 3 }, karr: { since: 1, last: 3 } };
-    R.startTurn(s, 0);
+    s.wars = { bacca: { since: 1, last: 3, next: 4 }, karr: { since: 1, last: 3, next: 4 } };
+    R.startDay(s, data, 0);
     var first = R.rollWarAttack(s, data, dice([d6(6), d6(1), d6(4)]), 0);
     t.same([first.targetKey, first.undefended], ['karr', false]);
-    R.finishTurn(s, data.events, dice([0.5]), 0);
-    R.startTurn(s, 0);
+    R.finishDay(s, data, data.events, dice([0.5]), 0);
+    s.wars.bacca.next = 5;
+    s.wars.karr.next = 5;
+    R.startDay(s, data, 0);
     var r = counted([d6(1), d6(1), d6(1)]);
     t.equal(R.rollWarAttack(s, data, r, 0), null);
-    t.same([r.used, s.turnInProgress.attackRolled, s.militaryActions.map(function (m) { return m.targetKey; })], [0, true, ['karr']], 'no dice, and no second attack this turn');
-    t.equal(R.rollWarAttack(s, data, r, 0), null, 'nor later in the same turn');
-    /* Karr's attack fought (won): the next turn, the Clans roll again. */
+    t.same([r.used, s.dayInProgress.attackRolled, s.militaryActions.map(function (m) { return m.targetKey; })], [0, true, ['karr']], 'no dice, and no second attack today');
+    t.same([s.wars.bacca.next, s.wars.karr.next], [12, 12], 'their roll day passes');
+    t.equal(R.rollWarAttack(s, data, r, 0), null, 'nor later the same day');
+    /* Karr's attack fought (won): on the next roll day, the Clans roll again. */
     var won = R.finishBattle(s, data, first.id, battleFrom(first, 'victory', {}), counted([0.5]), 0);
     t.ok(won && won.report, 'Karr\'s attack fought');
-    R.finishTurn(s, data.events, dice([0.5]), 0);
-    R.startTurn(s, 0);
+    R.finishDay(s, data, data.events, dice([0.5]), 0);
+    s.day = 11;
+    R.startDay(s, data, 0);
     var next = R.rollWarAttack(s, data, dice([d6(1), d6(2)]), 0);
     t.same([next && next.targetKey, next && next.undefended], ['bacca', false], 'Bacca attacks once Karr\'s is over, and the army is free to meet it');
   });
@@ -1643,13 +1705,13 @@
   test('beginDefence: everything free defends, the enemy\'s size on a d6, the coast map, and the horns in the log', function (t) {
     [[1, 'small'], [2, 'small'], [3, 'established'], [5, 'established'], [6, 'major']].forEach(function (row) {
       var s = army();
-      s.wars = { bacca: { since: 1, last: 2 } };
+      s.wars = { bacca: { since: 1, last: 2, next: 9 } };
       t.equal(R.beginDefence(s, data, 'bacca', dice([d6(row[0])]), 0).tier, row[1], 'd6 ' + row[0]);
     });
     var s = army();
-    s.wars = { bacca: { since: 1, last: 2 } };
+    s.wars = { bacca: { since: 1, last: 2, next: 9 } };
     var ma = R.beginDefence(s, data, 'bacca', dice([d6(4)]), 11);
-    t.same([ma.id, ma.kind, ma.objective, ma.targetKey, ma.targetName, ma.tier, ma.map, ma.step, ma.undefended, ma.v, ma.orderId], ['ma-defence-bacca-3', 'defence', 'defend', 'bacca', 'Bacca', 'established', 'defend_coast', 'weather', false, 2, '']);
+    t.same([ma.id, ma.kind, ma.objective, ma.targetKey, ma.targetName, ma.tier, ma.map, ma.step, ma.undefended, ma.v, ma.orderId, ma.day], ['ma-defence-bacca-3', 'defence', 'defend', 'bacca', 'Bacca', 'established', 'defend_coast', 'weather', false, 2, '', 3]);
     t.same(ma.commit, { defenders: 30, lieutenants: 2, units: { line: 3, archers: 1 }, beasts: { 'Giant Vulture': 2, Ape: 1 } });
     t.equal(ma.missionKey, 'defence|bacca|3');
     var m = s.warMissions[ma.missionKey];
@@ -1657,7 +1719,7 @@
     t.same(ma.spec.enemy, m.enemy);
     t.same([ma.spec.objective, ma.spec.player.units.length, ma.spec.player.leaders.length, ma.spec.player.defenders.count], ['defend', 7, 2, 30]);
     t.same(s.militaryActions, [ma]);
-    t.same(s.wars.bacca, { since: 1, last: 3 });
+    t.same(s.wars.bacca, { since: 1, last: 3, next: 9 });
     t.same([s.log[0].title, s.log[0].body, s.log[0].at], ['Defend Bastion', 'Sound the horns! Clan Bacca warships are approaching! Defend the Ironbow! Defending it: 30 defenders, 2 Lieutenants, Line Infantry ×3, Archers, Giant Vulture ×2, Ape.', 11]);
     t.equal(R.militaryName(ma), 'Defend Bastion vs Bacca');
     t.ok(/^Estimated enemy: \d+–\d+ Battle Value; about \d+ to \d+ formations/.test(R.missionEstimateLine(m, data)));
@@ -1670,38 +1732,40 @@
   test('only what\'s free defends: forces held by a waiting War Action or still recovering stay out; the Unsworn have no regiments', function (t) {
     var s = army();
     queue(s, 'raid', { units: { line: 1 }, defenders: 10, beasts: { Ape: 1 } });
-    s.warRecovery = [{ id: 'r', kind: 'beast', name: 'Giant Vulture', status: 'wounded', untilTurn: 9 }];
+    s.warRecovery = [{ id: 'r', kind: 'beast', name: 'Giant Vulture', status: 'wounded', untilDay: 9 }];
     var ma = R.beginDefence(s, data, 'bacca', dice([d6(1)]), 0);
     t.same(ma.commit, { defenders: 20, lieutenants: 2, units: { line: 2, archers: 1 }, beasts: { 'Giant Vulture': 1 } });
     t.same(R.warForces(s, data).units.line, [], 'the defence now holds the rest');
     var u = army();
-    u.organization = { type: 'unsworn', name: '', chief: '', motto: '', foundedAtTurn: null };
+    u.organization = { type: 'unsworn', name: '', chief: '', motto: '', foundedAtDay: null };
     t.same(R.beginDefence(u, data, 'karr', dice([d6(1)]), 0).commit, { defenders: 30, lieutenants: 0, units: {}, beasts: { 'Giant Vulture': 2, Ape: 1 } });
   });
 
-  test('the Watchtower\'s Patrol: an attack on the turn it finished carries the defenders\' Advantage, kept through a reload; not with no defenders', function (t) {
+  test('the Watchtower\'s Patrol: an attack on the day it finished, or the 7 days after, carries the defenders\' Advantage, kept through a reload; not with no defenders', function (t) {
     var s = army();
-    s.wars = { bacca: { since: 1, last: 2 } };
+    s.wars = { bacca: { since: 1, last: 2, next: 8 } };
     var plain = R.beginDefence(s, data, 'bacca', dice([d6(1)]), 0);
     t.same([plain.patrol, R.patrolLine(plain)], [false, '']);
     var p = army();
-    p.wars = { bacca: { since: 1, last: 2 } };
-    p.pendingOrders = [{ id: 'w1', facId: 'watchtower', fnId: 'patrol', label: 'Watchtower: Patrol', completeTurn: 4 }];
-    R.startTurn(p, 0);
-    R.tickTurn(p, data, 0);
+    p.wars = { bacca: { since: 1, last: 2, next: 4 } };
+    p.pendingOrders = [{ id: 'w1', facId: 'watchtower', fnId: 'patrol', label: 'Watchtower: Patrol', dueDay: 4 }];
+    R.startDay(p, data, 0);
+    R.finishRoutes(p);
     R.dueOrders(p, []).forEach(function (o) { R.completeSimpleOrder(p, data, o, dice([0.5])); R.removeOrder(p, o.id); });
-    t.equal(p.defenders.patrolAdvantage, true, 'Patrol active this turn');
+    t.same([p.day, p.defenders.patrolUntil, R.patrolActive(p)], [4, 11, true], 'Patrol active today and the next 7 days');
     var ma = R.rollWarAttack(p, data, dice([d6(1), d6(1)]), 0);
     t.same([ma.kind, ma.patrol], ['defence', true]);
     t.equal(R.patrolLine(ma), 'The Watchtower\'s patrol saw them coming: your Bastion Defenders have Advantage on all their rolls in this battle (roll two d20s and keep the higher).');
     var back = R.fromSave(JSON.parse(JSON.stringify(R.toSave(p))), data);
-    t.equal(back.militaryActions[0].patrol, true, 'kept through a reload (the Patrol itself ends with the turn)');
-    R.startTurn(back, 0);
-    R.tickTurn(back, data, 0);
-    t.same([back.defenders.patrolAdvantage, back.militaryActions[0].patrol], [false, true], 'pressing Later doesn\'t lose it');
+    t.equal(back.militaryActions[0].patrol, true, 'kept through a reload');
+    back.dayInProgress = null;
+    back.day = 11;
+    R.startDay(back, data, 0);
+    t.same([R.patrolActive(back), back.militaryActions[0].patrol], [false, true], 'the Patrol is over by Day 12; pressing Later doesn\'t lose it');
     var u = fresh();
-    u.wars = { bacca: { since: 1, last: 1 } };
-    u.defenders.patrolAdvantage = true;
+    u.wars = { bacca: { since: 1, last: 1, next: 8 } };
+    u.defenders.patrolUntil = 5;
+    t.ok(R.patrolActive(u));
     t.equal(R.beginDefence(u, data, 'bacca', dice([d6(1)]), 0).patrol, false, 'no defenders to have it');
   });
 
@@ -1711,7 +1775,7 @@
     t.equal(R.callOffMilitaryAction(d.s, d.ma.id, 0), false);
     t.equal(d.s.militaryActions.length, 1);
     for (var i = 0; i < 15; i++) {
-      d.s.turn += 1;
+      d.s.day += 1;
       R.ensureMission(d.s, data, ['karr', 'slade', 'molten'][i % 3], 'raid', ['small', 'established', 'major'][i % 3]);
     }
     t.ok(d.s.warMissions[d.ma.missionKey], 'still there after ' + Object.keys(d.s.warMissions).length + ' missions');
@@ -1720,11 +1784,11 @@
 
   test('nobody free to defend: undefended, and lost at once with no battle', function (t) {
     var s = fresh();
-    s.organization = { type: 'clan', name: 'Clan Ironbow', chief: '', motto: '', foundedAtTurn: 1 };
-    s.turn = 4;
+    s.organization = { type: 'clan', name: 'Clan Ironbow', chief: '', motto: '', foundedAtDay: 1 };
+    s.day = 4;
     s.treasuryGP = 600;
-    s.wars = { bacca: { since: 2, last: 2 } };
-    s.pendingOrders = [{ id: 'o1', facId: 'barracks', fnId: 'recruit_defenders', label: 'Barracks: Recruit Defenders', completeTurn: 5 }];
+    s.wars = { bacca: { since: 2, last: 2, next: 9 } };
+    s.pendingOrders = [{ id: 'o1', facId: 'barracks', fnId: 'recruit_defenders', label: 'Barracks: Recruit Defenders', dueDay: 5 }];
     var ma = R.beginDefence(s, data, 'bacca', dice([d6(1)]), 0);
     t.same([ma.undefended, R.militaryCommitLine(ma.commit)], [true, 'no forces']);
     t.equal(s.log[0].body, 'Sound the horns! Clan Bacca warships are approaching! Defend the Ironbow! Nobody is free to defend the Bastion.');
@@ -1732,22 +1796,22 @@
     t.equal(R.finishUndefended(defended.s, data, defended.ma.id, dice([0.5]), 0), null, 'only an undefended one');
     var out = R.finishUndefended(s, data, ma.id, dice([d10(4), d4(2), 0, 0.99]), 8);
     t.same([s.treasuryGP, s.politicalCapital.bacca, s.clanHonor], [480, -8, 32]);
-    t.same(s.repairs, { barracks: 5, dock: 5 }, 'lost on turn 4: no orders on turns 4 and 5 (2 Bastion turns)');
-    t.equal(s.pendingOrders[0].completeTurn, 6, 'the Barracks\' order waits until the repairs are done');
-    t.same([s.militaryActions, s.warMissions[ma.missionKey], s.wars.bacca], [[], undefined, { since: 2, last: 4 }]);
+    t.same(s.repairs, { barracks: 17, dock: 17 }, 'lost on Day 4: no orders on Days 4 to 17 (14 days)');
+    t.equal(s.pendingOrders[0].dueDay, 18, 'the Barracks\' order waits until the repairs are done');
+    t.same([s.militaryActions, s.warMissions[ma.missionKey], s.wars.bacca], [[], undefined, { since: 2, last: 4, next: 9 }]);
     t.same([out.report.title, out.report.subtitle, out.report.at], ['Defeat: Defend Bastion vs Bacca', 'Defending the Bastion: nobody', 8]);
     t.equal(s.warLog[0], out.report);
-    t.same([s.log[0].title, s.log[0].body], ['War Turn Resolved', 'Defeat: Defend Bastion vs Bacca']);
+    t.same([s.log[0].title, s.log[0].body], ['War Action Resolved', 'Defeat: Defend Bastion vs Bacca']);
     t.same(out.lines, [
       'Defeat: Nobody was free to defend the Bastion, so Clan Bacca took what it came for unopposed.',
       'Treasury: −120 gp (d10 4: 20% of 600 gp; now 480 gp).',
       'Political Capital (Bacca): −8.',
       'Clan Honour: −8 (now 32).',
-      'Under Repair until Bastion turn 5 (d4 2): Barracks, Dock. They take no orders until turn 6, and 1 order already running there now completes on turn 6 at the earliest.'
+      'Under Repair until Day 17 (d4 2): Barracks, Dock. They take no orders until Day 18, and 1 order already running there now completes on Day 18 at the earliest.'
     ]);
     [
       'Objective: Defend Bastion. ' + W.objectives.defend.rule,
-      'Clan Bacca attacked your Bastion on Bastion turn 4.',
+      'Clan Bacca attacked your Bastion on Day 4.',
       'Result: Defeat. Nobody was free to defend the Bastion, so Clan Bacca took what it came for unopposed.',
       'Changes to the Bastion:',
       '- Treasury: −120 gp (d10 4: 20% of 600 gp; now 480 gp).'
@@ -1759,58 +1823,57 @@
 
   test('a defence won: the usual Defend Bastion rewards, no repairs, and the war\'s last activity now', function (t) {
     var d = defence();
-    d.s.turn = 5;
+    d.s.day = 5;
     var res = R.finishBattle(d.s, data, d.ma.id, battleFrom(d.ma, 'victory', {}), counted([0.5]), 0);
-    t.same([d.s.treasuryGP, d.s.politicalCapital.bacca, d.s.clanHonor, d.s.repairs, d.s.wars.bacca], [100, 6, 46, {}, { since: 2, last: 5 }]);
+    t.same([d.s.treasuryGP, d.s.politicalCapital.bacca, d.s.clanHonor, d.s.repairs, d.s.wars.bacca], [100, 6, 46, {}, { since: 2, last: 5, next: 9 }]);
     t.same(res.lines.slice(0, 4), ['Victory in round 6 of 6: The battle is decided.', 'Treasury: no change.', 'Political Capital (Bacca): +6.', 'Clan Honour: +6 (now 46).']);
     t.same([res.report.title, res.report.subtitle], ['Victory: Defend Bastion vs Bacca', 'Defending the Bastion: 30 defenders, 2 Lieutenants, Line Infantry ×3, Archers, Giant Vulture ×2, Ape']);
-    t.ok(res.report.details.indexOf('Clan Bacca attacked your Bastion on Bastion turn 3.') !== -1, res.report.details);
+    t.ok(res.report.details.indexOf('Clan Bacca attacked your Bastion on Day 3.') !== -1, res.report.details);
   });
 
   test('a defence lost: 1d10 × 5% of the treasury, 1d4 facilities Under Repair, orders put back; the hurt roll first', function (t) {
     var d = defence();
     var s = d.s;
-    s.builtExtras = [{ facId: 'library', status: 'built' }, { facId: 'smithy', status: 'building', remaining: 2 }];
-    s.repairs = { dock: 9 };
+    s.builtExtras = [{ facId: 'library', status: 'built' }, { facId: 'smithy', status: 'building', startDay: 1, readyDay: 22 }];
+    s.repairs = { dock: 30 };
     s.pendingOrders = [
-      { id: 'a', facId: 'barracks', fnId: 'recruit_defenders', completeTurn: 4 },
-      { id: 'b', facId: 'barracks', fnId: 'x', completeTurn: 8 },
-      { id: 'c', facId: 'library', fnId: 'research', completeTurn: 4 }
+      { id: 'a', facId: 'barracks', fnId: 'recruit_defenders', dueDay: 4 },
+      { id: 'b', facId: 'barracks', fnId: 'x', dueDay: 20 },
+      { id: 'c', facId: 'library', fnId: 'research', dueDay: 4 }
     ];
     /* d6 3 and 5 for the hurt; d10 10 (50%); d4 3; then the Barracks, the Dock and the Library. */
     var res = R.finishBattle(s, data, d.ma.id, battleFrom(d.ma, 'defeat', hurtOpts()), dice([d6(3), d6(5), d10(10), d4(3), 0, 0.99, 0.99]), 0);
     t.same(s.warRecovery.map(function (r) { return [r.name, r.status]; }), [['Lieutenant 1', 'separated'], ['Lieutenant 2', 'wounded'], ['Giant Vulture', 'recovered'], ['Giant Vulture', 'separated']]);
     t.same([s.treasuryGP, s.politicalCapital.bacca, s.clanHonor], [50, -8, 32]);
-    t.same(s.repairs, { dock: 9, barracks: 4, library: 4 }, 'the Dock\'s longer repairs are kept; the Smithy isn\'t built yet');
-    t.same(s.pendingOrders.map(function (o) { return [o.id, o.completeTurn]; }), [['a', 5], ['b', 8], ['c', 5]]);
+    t.same(s.repairs, { dock: 30, barracks: 16, library: 16 }, 'the Dock\'s longer repairs are kept; the Smithy isn\'t built yet');
+    t.same(s.pendingOrders.map(function (o) { return [o.id, o.dueDay]; }), [['a', 17], ['b', 20], ['c', 17]]);
     t.same(R.repairsList(s, data), [
-      { facId: 'barracks', name: 'Barracks', untilTurn: 4, backTurn: 5, turnsLeft: 2 },
-      { facId: 'dock', name: 'Dock', untilTurn: 9, backTurn: 10, turnsLeft: 7 },
-      { facId: 'library', name: 'Library', untilTurn: 4, backTurn: 5, turnsLeft: 2 }
-    ], 'lost on turn 3: 2 Bastion turns Under Repair (3 and 4), working again on turn 5');
+      { facId: 'barracks', name: 'Barracks', untilDay: 16, backDay: 17, daysLeft: 14 },
+      { facId: 'dock', name: 'Dock', untilDay: 30, backDay: 31, daysLeft: 28 },
+      { facId: 'library', name: 'Library', untilDay: 16, backDay: 17, daysLeft: 14 }
+    ], 'lost on Day 3: 14 days Under Repair (Days 3 to 16), working again on Day 17');
     t.ok(res.lines.indexOf('Treasury: −50 gp (d10 10: 50% of 100 gp; now 50 gp).') !== -1, res.lines.join(' | '));
-    t.ok(res.lines.indexOf('Under Repair until Bastion turn 4 (d4 3): Barracks, Dock, Library. They take no orders until turn 5, and 2 orders already running there now complete on turn 5 at the earliest.') !== -1, res.lines.join(' | '));
-    t.ok(res.lines.indexOf('Lieutenant 2 (with Archers): wounded (d6 3), back on turn 5.') !== -1);
+    t.ok(res.lines.indexOf('Under Repair until Day 16 (d4 3): Barracks, Dock, Library. They take no orders until Day 17, and 2 orders already running there now complete on Day 17 at the earliest.') !== -1, res.lines.join(' | '));
+    t.ok(res.lines.indexOf('Lieutenant 2 (with Archers): wounded (d6 3), back on Day 17.') !== -1);
     t.ok(res.report.details.indexOf('- Treasury: −50 gp (d10 10: 50% of 100 gp; now 50 gp).') !== -1, res.report.details);
-    t.ok(res.report.details.indexOf('- Under Repair until Bastion turn 4 (d4 3): Barracks, Dock, Library.') !== -1, res.report.details);
+    t.ok(res.report.details.indexOf('- Under Repair until Day 16 (d4 3): Barracks, Dock, Library.') !== -1, res.report.details);
     t.equal(res.report.title, 'Defeat: Defend Bastion vs Bacca');
-    t.same(s.wars.bacca, { since: 2, last: 3 });
+    t.same(s.wars.bacca, { since: 2, last: 3, next: 9 });
   });
 
-  test('a lost defence with few facilities, an empty treasury, or a Brigade\'s Trusted Clients', function (t) {
+  test('a lost defence with few facilities, or an empty treasury', function (t) {
     var d = defence();
     d.s.treasuryGP = 0;
-    d.s.organization.type = 'merc';
     var lines = R.finishBattle(d.s, data, d.ma.id, battleFrom(d.ma, 'defeat', {}), dice([d10(3), d4(4), 0]), 0).lines;
     t.ok(lines.indexOf('Treasury: no change (d10 3: 15% of 0 gp; now 0 gp).') !== -1, lines.join(' | '));
     t.equal(Object.keys(d.s.repairs).length, 4);
-    t.same([d.s.trustedClientsByClan.bacca, d.s.trustedClientsByClan.karr], [46, 49], 'as any lost battle');
+    t.ok(Object.keys(d.s.repairs).every(function (k) { return d.s.repairs[k] === 16; }));
     var e = defence();
     e.s.treasuryGP = 33;
     var bf = { bastion: Object.assign({}, data.bastion, { startingBuilt: ['barracks', 'dock'] }), facilities: data.facilities, tools: data.tools, events: data.events };
     lines = R.finishBattle(e.s, bf, e.ma.id, battleFrom(e.ma, 'defeat', {}), dice([d10(1), d4(4), 0.6, 0]), 0).lines;
-    t.same([e.s.treasuryGP, e.s.repairs], [32, { barracks: 4, dock: 4 }], '5% of 33 is 1.65: 1 gp, rounded down');
-    t.ok(lines.indexOf('Under Repair until Bastion turn 4 (d4 4, but only 2 facilities are built): Barracks, Dock. They take no orders until turn 5.') !== -1, lines.join(' | '));
+    t.same([e.s.treasuryGP, e.s.repairs], [32, { barracks: 16, dock: 16 }], '5% of 33 is 1.65: 1 gp, rounded down');
+    t.ok(lines.indexOf('Under Repair until Day 16 (d4 4, but only 2 facilities are built): Barracks, Dock. They take no orders until Day 17.') !== -1, lines.join(' | '));
   });
 
   test('withdrawing from a defence counts as losing it: the warning first, then the loss (and the defeat\'s Honour)', function (t) {
@@ -1823,11 +1886,11 @@
       'Treasury: you lose 1d10 × 5% of it, 5% to 50% (30 to 300 gp of your 600 gp).',
       'Political Capital (Bacca): −8.',
       'Clan Honour: −8.',
-      'Under Repair: 1d4 of your built facilities, chosen at random, for 2 Bastion turns, this one included (working again on turn 5): they take no orders, and orders already running there wait.'
+      'Under Repair: 1d4 of your built facilities, chosen at random, for 14 days, today included (working again on Day 17): they take no orders, and orders already running there wait.'
     ]);
     t.same([d.s.treasuryGP, d.s.repairs], [600, {}], 'the preview changes nothing');
     var res = R.finishBattle(d.s, data, d.ma.id, battle, dice([d10(2), d4(1), 0]), 0);
-    t.same([d.s.treasuryGP, d.s.repairs, d.s.clanHonor, d.s.politicalCapital.bacca], [540, { barracks: 4 }, 32, -8]);
+    t.same([d.s.treasuryGP, d.s.repairs, d.s.clanHonor, d.s.politicalCapital.bacca], [540, { barracks: 16 }, 32, -8]);
     t.equal(res.report.title, 'Withdrawal: Defend Bastion vs Bacca');
     var raid = ready('raid');
     t.equal(R.withdrawPreview(raid.s, data, raid.ma.id, battleFrom(raid.ma, 'withdrawal'))[0], 'Your army leaves the field and the enemy holds it: the battle counts as lost.', 'a War Action\'s is as before');
@@ -1835,54 +1898,56 @@
 
   group('Bastion war campaign: Under Repair');
 
-  test('a facility Under Repair takes no orders and its running orders wait; two turns on, it works again', function (t) {
+  test('a facility Under Repair takes no orders and its running orders wait; once its days are up, it works again', function (t) {
     var s = fresh();
-    s.turn = 3;
+    s.day = 3;
     s.treasuryGP = 1000;
     s.builtExtras = [{ facId: 'hall_of_emissaries', status: 'built' }];
     R.ensureLevels(s, data);
-    s.repairs = { barracks: 5, hall_of_emissaries: 5 };
-    s.pendingOrders = [{ id: 'a', facId: 'barracks', fnId: 'recruit_defenders', label: 'Barracks: Recruit Defenders', completeTurn: 4 }, { id: 'b', facId: 'dock', fnId: 'charter_berth', completeTurn: 4 }];
-    t.same([R.underRepair(s, 'barracks'), R.underRepair(s, 'dock')], [5, 0]);
-    t.same(R.issueOrder(s, data, 'barracks', 'recruit_defenders', 0, dice([0.3])), { ok: false, message: 'The Barracks is Under Repair until Bastion turn 5.' });
-    t.same(R.issueOrderWithMeta(s, data, 'hall_of_emissaries', 'host_delegation', 0, { targetClan: 'Clan Karr', tone: 'assertive' }, dice([0.3])), { ok: false, message: 'The Hall of Emissaries is Under Repair until Bastion turn 5.' });
+    s.repairs = { barracks: 16, hall_of_emissaries: 16 };
+    s.pendingOrders = [{ id: 'a', facId: 'barracks', fnId: 'recruit_defenders', label: 'Barracks: Recruit Defenders', dueDay: 4 }, { id: 'b', facId: 'dock', fnId: 'charter_berth', dueDay: 4 }];
+    t.same([R.underRepair(s, 'barracks'), R.underRepair(s, 'dock')], [16, 0]);
+    t.same(R.issueOrder(s, data, 'barracks', 'recruit_defenders', 0, dice([0.3])), { ok: false, message: 'The Barracks is Under Repair until Day 16.' });
+    t.same(R.issueOrderWithMeta(s, data, 'hall_of_emissaries', 'host_delegation', 0, { targetClan: 'Clan Karr', tone: 'assertive' }, dice([0.3])), { ok: false, message: 'The Hall of Emissaries is Under Repair until Day 16.' });
     t.same([s.treasuryGP, s.pendingOrders.length], [1000, 2], 'no gold spent, no order');
     t.ok(R.issueOrder(s, data, 'armoury', 'arm_defenders', 0, dice([0.3])).ok, 'another facility works');
     s.pendingOrders.pop();
-    R.startTurn(s, 0);
-    t.same(R.dueOrders(s, s.turnInProgress.skipped).map(function (o) { return o.id; }), ['b'], 'the Barracks\' order waits');
-    t.same(R.repairsList(s, data).map(function (r) { return [r.facId, r.turnsLeft, r.backTurn]; }), [['barracks', 2, 6], ['hall_of_emissaries', 2, 6]]);
-    R.startTurn(s, 0);
-    t.equal(s.turn, 5);
-    t.equal(R.underRepair(s, 'barracks'), 5, 'still Under Repair on its last turn');
+    R.startDay(s, data, 0);
+    t.same(R.dueOrders(s, s.dayInProgress.skipped).map(function (o) { return o.id; }), ['b'], 'the Barracks\' order waits');
+    t.same(R.repairsList(s, data).map(function (r) { return [r.facId, r.daysLeft, r.backDay]; }), [['barracks', 13, 17], ['hall_of_emissaries', 13, 17]]);
+    s.day = 15;
+    R.startDay(s, data, 0);
+    t.equal(s.day, 16);
+    t.equal(R.underRepair(s, 'barracks'), 16, 'still Under Repair on its last day');
     t.same(R.dueOrders(s, []).map(function (o) { return o.id; }), ['b']);
-    R.startTurn(s, 0);
-    t.same([s.turn, s.repairs, R.repairsList(s, data)], [6, {}, []]);
-    t.same(logged(s, 'Repairs Complete'), ['Hall of Emissaries is working again.', 'Barracks is working again.']);
+    R.startDay(s, data, 0);
+    t.same([s.day, s.repairs, R.repairsList(s, data)], [17, {}, []]);
+    t.same(logged(s, 'Repairs Complete'), ['Repairs: the Hall of Emissaries is working again.', 'Repairs: the Barracks is working again.']);
+    t.ok(s.dayInProgress.news.indexOf('Repairs: the Barracks is working again.') !== -1, 'and in the word from the Ironbow');
     t.same(R.dueOrders(s, []).map(function (o) { return o.id; }), ['a', 'b']);
     t.equal(R.issueOrder(s, data, 'barracks', 'recruit_defenders', 0, dice([0.3])).message, 'That order is already pending.', 'the Barracks takes orders again (that one is still running)');
     R.removeOrder(s, 'a');
     t.ok(R.issueOrder(s, data, 'barracks', 'recruit_defenders', 0, dice([0.3])).ok);
   });
 
-  test('a lost defence stops a facility\'s work for 2 Bastion turns, as Harry asked: lost on turn 5, no orders on turns 5 and 6, working again on turn 7', function (t) {
+  test('a lost defence stops a facility\'s work for 14 days (Harry\'s 2 Bastion turns): lost on Day 5, no orders on Days 5 to 18, working again on Day 19', function (t) {
     var s = fresh();
-    s.organization = { type: 'clan', name: 'Clan Ironbow', chief: '', motto: '', foundedAtTurn: 1 };
-    s.turn = 4;
+    s.organization = { type: 'clan', name: 'Clan Ironbow', chief: '', motto: '', foundedAtDay: 1 };
+    s.day = 4;
     s.treasuryGP = 100;
-    s.wars = { bacca: { since: 2, last: 2 } };
-    R.startTurn(s, 0);
+    s.wars = { bacca: { since: 2, last: 2, next: 9 } };
+    R.startDay(s, data, 0);
     var ma = R.beginDefence(s, data, 'bacca', dice([d6(1)]), 0);
     R.finishUndefended(s, data, ma.id, dice([d10(1), d4(1), 0]), 0);
-    t.same(s.repairs, { barracks: 6 });
+    t.same(s.repairs, { barracks: 18 });
     var refused = [];
-    for (var turn = 5; turn <= 8; turn++) {
-      t.equal(s.turn, turn);
+    for (var day = 5; day <= 21; day++) {
+      t.equal(s.day, day);
       var res = R.issueOrder(s, data, 'barracks', 'recruit_defenders', 0, dice([0.3]));
-      if (!res.ok) refused.push(turn); else R.removeOrder(s, s.pendingOrders[s.pendingOrders.length - 1].id);
-      R.startTurn(s, 0);
+      if (!res.ok) refused.push(day); else R.removeOrder(s, s.pendingOrders[s.pendingOrders.length - 1].id);
+      R.startDay(s, data, 0);
     }
-    t.same(refused, [5, 6], 'two Bastion turns without orders, not three');
+    t.same(refused, [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18], '14 days without orders, not 15');
   });
 
   group('Bastion war campaign: saving wars and repairs');
@@ -1891,10 +1956,10 @@
     t.same([fresh().wars, fresh().repairs], [{}, {}]);
     var d = defence();
     var s = d.s;
-    s.wars.karr = { since: 1, last: 3 };
-    s.repairs = { barracks: 5 };
-    R.startTurn(s, 0);
-    s.turnInProgress.attackRolled = true;
+    s.wars.karr = { since: 1, last: 3, next: 8 };
+    s.repairs = { barracks: 16 };
+    R.startDay(s, data, 0);
+    s.dayInProgress.attackRolled = true;
     t.ok(R.militaryBattleSave(s, d.ma.id, { v: 2, phase: 'deploy', round: 1, maxRounds: 6, started: false, units: [], leaders: [], log: [] }));
     var back = R.fromSave(JSON.parse(JSON.stringify(R.toSave(s))), data);
     t.same(back, s);
@@ -1902,26 +1967,26 @@
     t.equal(R.canCallOff(back.militaryActions[0]), false);
     t.equal(R.importProblem([{ key: 'tsi.bastion.state', value: JSON.parse(JSON.stringify(s)) }]), null);
     var u = fresh();
-    u.wars = { bacca: { since: 1, last: 1 } };
+    u.wars = { bacca: { since: 1, last: 1, next: 8 } };
     var und = R.beginDefence(u, data, 'bacca', dice([d6(1)]), 0);
     t.equal(R.fromSave(JSON.parse(JSON.stringify(u)), data).militaryActions[0].undefended, true);
     t.equal(und.undefended, true);
   });
 
-  test('damaged wars and repairs are dropped; a save from before wars has none, and its turn hasn\'t rolled', function (t) {
+  test('damaged wars and repairs are dropped; a save without them has none, and its day hasn\'t rolled', function (t) {
     var save = R.toSave(fresh());
-    save.turn = 5;
-    save.wars = { bacca: { since: 'x', last: 2 }, nowhere: { since: 1, last: 1 }, karr: 'yes', slade: { since: 2, last: 9 }, molten: { since: 4, last: 1 }, farmer: { since: 2.6, last: 3 } };
+    save.day = 5;
+    save.wars = { bacca: { since: 'x', last: 2 }, nowhere: { since: 1, last: 1 }, karr: 'yes', slade: { since: 2, last: 9, next: 9 }, molten: { since: 4, last: 1 }, farmer: { since: 2.6, last: 3, next: 'x' } };
     save.repairs = { barracks: 'soon', dragon_lair: 4, dock: 6, library: null };
     var back = R.fromSave(save, data);
-    t.same(back.wars, { farmer: { since: 2, last: 3 }, slade: { since: 2, last: 5 }, molten: { since: 4, last: 4 } });
+    t.same(back.wars, { farmer: { since: 2, last: 3, next: 12 }, slade: { since: 2, last: 5, next: 9 }, molten: { since: 4, last: 4, next: 12 } }, 'a missing next roll comes a week on from today');
     t.same(back.repairs, { dock: 6 });
     var old = R.toSave(fresh());
     delete old.wars;
     delete old.repairs;
-    old.turnInProgress = { turn: 2, stage: 'orders', skipped: [] };
+    old.dayInProgress = { day: 2, stage: 'orders', skipped: [] };
     var o = R.fromSave(old, data);
-    t.same([o.wars, o.repairs, o.turnInProgress.attackRolled], [{}, {}, false]);
+    t.same([o.wars, o.repairs, o.dayInProgress.attackRolled], [{}, {}, false]);
     t.ok(R.isSave(old));
     t.ok(R.isSave(Object.assign(R.toSave(fresh()), { wars: null, repairs: null })), 'missing is fine');
     t.equal(R.saveProblem(Object.assign(R.toSave(fresh()), { wars: 'x' })), 'Its wars record is damaged.');
@@ -1977,5 +2042,34 @@
     });
     t.equal(R.unitStatBlock(data, 'Archers (50)').rows.filter(function (r) { return r.key === 'attack'; })[0].value, '+4 ranged / +1 melee');
     t.equal(R.unitStatBlock(data, 'Dragon'), null);
+  });
+
+  /* The Banner & War Council's lock (the new screen, Harry's answer 6,
+     8 October 2026): open once there's anything that can fight, or while
+     any part of a war is going on. */
+  test('the War Council is locked until the Bastion has something that can fight, or a war is going on', function (t) {
+    var s = fresh();
+    s.defenders.count = 0;
+    t.equal(R.warCouncilOpen(s), false, 'nothing yet');
+    s.defenders.count = 1;
+    t.equal(R.warCouncilOpen(s), true, 'a defender');
+    s.defenders.count = 0;
+    s.defenderBeasts = [{ name: 'Owlbear', qty: 0 }];
+    t.equal(R.warCouncilOpen(s), false, 'a beast row with none left');
+    s.defenderBeasts = [{ name: 'Owlbear', qty: 1 }];
+    t.equal(R.warCouncilOpen(s), true, 'a beast');
+    s.defenderBeasts = [];
+    s.military = [{ name: 'Lieutenant (1)' }];
+    t.equal(R.warCouncilOpen(s), true, 'a War Room unit (a row with no qty counts as one)');
+    s.military = [];
+    s.wars = { bacca: { since: 1, last: 1, next: 8 } };
+    t.equal(R.warCouncilOpen(s), true, 'at war, even with nothing left to fight with');
+    s.wars = {};
+    s.militaryActions = [{ id: 'ma-1', kind: 'defence' }];
+    t.equal(R.warCouncilOpen(s), true, 'an attack waiting to be fought');
+    s.militaryActions = [];
+    s.pendingOrders = [{ id: 'o1', facId: 'war_council', fnId: 'war_action', dueDay: 4 }];
+    t.equal(R.warCouncilOpen(s), true, 'a War Action mustering');
+    t.equal(R.warCouncilOpen(null), false);
   });
 }());

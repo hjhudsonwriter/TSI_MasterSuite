@@ -1290,6 +1290,54 @@ async function waitSaved(page) {
       await waitClear(crest, 12000);
     });
 
+    await fresh('a hidden window\'s heartbeat counts for longer (Edge slows a hidden window\'s timers to about once a minute); it says when it\'s hidden', async context => {
+      const crest = await open(context, INDEX + '?tool=crest');
+      const seen = (age, hidden) => crest.evaluate(([a, h]) => {
+        const map = JSON.parse(localStorage.getItem('tsi.suite.tabs') || '{}');
+        map.tHiddenBastion = Object.assign({ at: Date.now() - a, tool: 'bastion' }, h ? { hidden: true } : {});
+        localStorage.setItem('tsi.suite.tabs', JSON.stringify(map));
+        return TSI.tabGuard.isOpenElsewhere('bastion');
+      }, [age, hidden]);
+      equal(await seen(30000, true), true, 'hidden, last heard 30 seconds ago: still open');
+      equal(await seen(80000, true), true, 'hidden, 80 seconds ago: still open');
+      equal(await seen(95000, true), false, 'hidden, 95 seconds ago: gone');
+      equal(await seen(30000, false), false, 'shown, 30 seconds ago: gone');
+      equal(await seen(3000, false), true, 'shown, 3 seconds ago: open');
+      equal(await crest.evaluate(() => {
+        const map = JSON.parse(localStorage.getItem('tsi.suite.tabs') || '{}');
+        map.tHiddenBastion = { at: Date.now() - 30000, tool: 'bastion', hidden: true, closing: true };
+        localStorage.setItem('tsi.suite.tabs', JSON.stringify(map));
+        return TSI.tabGuard.otherCount();
+      }), 0, 'closed (it was hidden as it closed), 30 seconds ago: gone');
+      /* Its own heartbeat says hidden while it's hidden. */
+      await crest.evaluate(() => {
+        Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+      equal((await heartbeats(crest))[await crest.evaluate(() => TSI.tabGuard.id)].hidden, true);
+      await crest.evaluate(() => {
+        Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' });
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+      equal((await heartbeats(crest))[await crest.evaluate(() => TSI.tabGuard.id)].hidden, undefined, 'and not once it\'s shown again');
+      /* It was hidden, then its window crashed (no goodbye): reloaded, it's
+         still the same tab, and doesn't warn about itself. */
+      const id = await crest.evaluate(() => TSI.tabGuard.id);
+      await crest.evaluate(myId => {
+        const map = JSON.parse(localStorage.getItem('tsi.suite.tabs') || '{}');
+        delete map.tHiddenBastion;
+        map[myId] = { at: Date.now() - 30000, tool: 'crest', hidden: true };
+        localStorage.setItem('tsi.suite.tabs', JSON.stringify(map));
+        const real = Storage.prototype.setItem;
+        Storage.prototype.setItem = function (k, v) { if (k === 'tsi.suite.tabs') return; return real.call(this, k, v); };
+      }, id);
+      await crest.reload();
+      await crest.waitForSelector('.tsi-topbar');
+      equal(await crest.evaluate(() => TSI.tabGuard.id), id, 'the same id after the reload');
+      await crest.waitForTimeout(2500);
+      assert(!(await warned(crest)), 'it warned about itself: ' + (await H.noticeTexts(crest)));
+    });
+
     await fresh('Dismiss hides it until the other tabs change', async context => {
       const a = await open(context, INDEX + '?tool=bastion');
       const b = await open(context, INDEX + '?tool=bastion');

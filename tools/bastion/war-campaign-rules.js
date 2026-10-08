@@ -14,16 +14,20 @@
      line-up (the "spec" the battle rules build the battle from);
    - after the battle: casualties, Lieutenants and beasts who were hurt,
      rewards and the War Report, all applied exactly once;
-   - recovery each Bastion turn, and loading saves from before phase 2;
+   - recovery day by day, and loading saves from before phase 2;
    - wars (Harry, 4 October 2026): queueing a War Action declares war on
      the Clan, at a cost to Honour & Respect and Political Capital; while
      at war the Clan may attack (the Defend Bastion event), and losing
      that costs part of the treasury and puts facilities Under Repair; a
-     war ends after 6 quiet Bastion turns, or when the DM makes peace.
+     war ends after 42 quiet days, or when the DM makes peace.
+   Since the days overhaul (Harry, 8 October 2026) every clock here is an
+   Explorer day (state.day), not a Bastion turn: a War Action musters 3
+   days after it's queued, a Clan at war rolls to attack every 7 days of the
+   war, and repairs and recovery last their old turns at 7 days a turn.
    Every number comes from data/war-units-data.js (TSI_DATA.bastionWar) or
    the Bastion's existing war amounts (data/bastion-data.js). Nothing here
    uses Math.random or the clock: dice come in as rand(), and a mission's
-   dice are seeded from its key, the turn and a counter. */
+   dice are seeded from its key, the day and a counter. */
 (function () {
   'use strict';
 
@@ -56,10 +60,6 @@
     maxMissions: 12      /* missions kept at once */
   };
   function setting(w, key) { return w && typeof w[key] === 'number' ? w[key] : DEFAULTS[key]; }
-  /* A Brigade's Trusted Clients after a war: the amounts R.resolveWar has
-     always used (target clan, and every other clan), unless the data file
-     gains rewards.trusted in the same shape. */
-  var TRUSTED = { success: { target: -8, others: 1 }, failure: { target: -4, others: -1 } };
 
   var OUTCOMES = ['victory', 'defeat', 'draw', 'withdrawal'];
   var STATUS_NAMES = { steady: 'Steady', shaken: 'Shaken', routed: 'Routed', defeated: 'Defeated' };
@@ -436,6 +436,21 @@
     return out;
   }
 
+  /* The Banner & War Council is locked until the Bastion has something
+     that can fight: a defender, a beast or a War Room unit (Harry's answer
+     6 to the overhaul's plan, 8 October 2026). It stays open while anything
+     of a war is going on, so a war, a waiting War Action or a Military
+     Action (an attack on the Bastion included) can always be reached. */
+  R.warCouncilOpen = function (s) {
+    if (!isObj(s)) return false;
+    if (clampInt(isObj(s.defenders) ? s.defenders.count : 0, 0) > 0) return true;
+    if (R.beastQty(s) > 0) return true;
+    if (R.militaryQty(s, /./) > 0) return true;
+    if (Array.isArray(s.militaryActions) && s.militaryActions.length) return true;
+    if (isObj(s.wars) && Object.keys(s.wars).length) return true;
+    return (Array.isArray(s.pendingOrders) ? s.pendingOrders : []).some(function (o) { return R.isWarOrder(o); });
+  };
+
   /* What can be committed now: { defenders: { count, armed }, lieutenants,
      units: { type: [{ key, label, personnel, size, depleted }] } (every
      archetype, healthiest first), beasts: { name: n }, fullWar }. Anything
@@ -487,11 +502,11 @@
       lieutenants: Math.max(0, R.militaryQty(s, /lieutenant/i) - held.lieutenants - rec.lieutenants),
       units: units,
       beasts: beasts,
-      fullWar: !!(isObj(s.organization) && s.organization.type !== 'unsworn')
+      fullWar: !!(isObj(s.organization) && s.organization.type === 'clan')
     };
   };
 
-  /* Phase 1's summary of the same thing (numbers only). */
+  /* The same thing as numbers only, for the War Council's "Available: …" hint. */
   R.warAvailable = function (s, data) {
     var f = R.warForces(s, data);
     var regiments = Object.keys(f.units).reduce(function (a, t) { return a + f.units[t].length; }, 0);
@@ -776,19 +791,19 @@
     (Array.isArray(s.militaryActions) ? s.militaryActions : []).forEach(function (ma) { if (isObj(ma) && ma.missionKey) used[ma.missionKey] = true; });
     return used;
   }
-  /* The turn a mission was last shown (or drawn up, for one saved before
+  /* The day a mission was last shown (or drawn up, for one saved before
      missions kept a note of that). */
-  function lastSeen(m) { return clampInt(m.seenTurn !== undefined ? m.seenTurn : m.createdTurn, 0); }
+  function lastSeen(m) { return R.dayNum(m.seenDay !== undefined ? m.seenDay : m.createdDay, -100000); }
   /* Keep at most maxMissions: drop the one least recently shown that has no
-     opening rolls, isn't waiting or under way, and wasn't shown this turn.
-     A mission seen this turn is never dropped (there may be more than
-     maxMissions until the next turn), so looking through the others can't
+     opening rolls, isn't waiting or under way, and wasn't shown today.
+     A mission seen today is never dropped (there may be more than
+     maxMissions until the next day), so looking through the others can't
      redraw an army the War Council has already shown. */
   function pruneMissions(s, data, keep) {
     var max = setting(wd(data), 'maxMissions');
     var used = missionsInUse(s);
     used[keep] = true;
-    var turn = clampInt(s.turn, 0);
+    var turn = R.dayNum(s.day, 0);
     var keys = Object.keys(s.warMissions);
     while (keys.length > max) {
       var drop = null;
@@ -805,22 +820,22 @@
 
   /* The mission for a target, objective and force: the saved one, or a new
      one drawn up now (and saved) with its own seeded dice, from the key, the
-     turn and s.warMissionSeq. Either way it's noted as seen this turn
-     (seenTurn), so it isn't let go while the War Council is showing it. */
+     day and s.warMissionSeq. Either way it's noted as seen today
+     (seenDay), so it isn't let go while the War Council is showing it. */
   R.ensureMission = function (s, data, targetKey, objective, tierId) {
     if (!isObj(s.warMissions)) s.warMissions = {};
     var key = R.missionKey(targetKey, objective, tierId);
     if (isObj(s.warMissions[key])) {
-      s.warMissions[key].seenTurn = s.turn;
+      s.warMissions[key].seenDay = s.day;
       return s.warMissions[key];
     }
     var seq = clampInt(s.warMissionSeq, 0);
-    var gen = R.generateEnemy(data, targetKey, objective, tierId, R.mulberry32(R.missionSeed(key, s.turn, seq)));
+    var gen = R.generateEnemy(data, targetKey, objective, tierId, R.mulberry32(R.missionSeed(key, s.day, seq)));
     if (!gen) return null;
     s.warMissionSeq = seq + 1;
     var mission = {
       key: key, targetKey: targetKey, targetName: R.clanName(data, targetKey), objective: objective, tier: tierId,
-      variation: gen.variation, budget: gen.budget, enemy: gen.enemy, conditions: null, createdTurn: s.turn, seenTurn: s.turn
+      variation: gen.variation, budget: gen.budget, enemy: gen.enemy, conditions: null, createdDay: s.day, seenDay: s.day
     };
     s.warMissions[key] = mission;
     pruneMissions(s, data, key);
@@ -836,7 +851,7 @@
     if (!isObj(ma.spec) || !isObj(ma.spec.enemy)) return R.ensureMission(s, data, ma.targetKey, ma.objective, ma.tier);
     m = {
       key: ma.missionKey, targetKey: ma.targetKey, targetName: ma.targetName, objective: ma.objective, tier: ma.tier,
-      variation: null, budget: R.enemyBV(data, ma.spec.enemy), enemy: clone(ma.spec.enemy), conditions: null, createdTurn: s.turn, seenTurn: s.turn
+      variation: null, budget: R.enemyBV(data, ma.spec.enemy), enemy: clone(ma.spec.enemy), conditions: null, createdDay: s.day, seenDay: s.day
     };
     s.warMissions[ma.missionKey] = m;
     return m;
@@ -890,7 +905,8 @@
   };
 
   /* ---------- Queueing a war ---------- */
-  /* The war order: it resolves next Bastion turn, as before. Returns the
+  /* The war order: it musters 3 days after it's queued (bastion-data.js
+     time.musterDays; it was the next Bastion turn). Returns the
      order, or null if the target, objective or force is unknown or nothing
      that takes the field is committed (Lieutenants alone can't fight). The
      commitment is clamped to what's free now.
@@ -909,20 +925,20 @@
     var used = {};
     s.pendingOrders.forEach(function (o) { if (isObj(o)) used[String(o.id)] = true; });
     (Array.isArray(s.militaryActions) ? s.militaryActions : []).forEach(function (ma) { if (isObj(ma)) used[String(ma.orderId)] = true; });
-    var n = 1, id = 'war-' + s.turn + '-' + n;
-    while (used[id]) id = 'war-' + s.turn + '-' + (++n);
+    var n = 1, id = 'war-' + s.day + '-' + n;
+    while (used[id]) id = 'war-' + s.day + '-' + (++n);
     var order = {
-      id: id, facId: 'war_council', fnId: 'war_action', optionIdx: 0, label: 'War Action', completeTurn: (s.turn || 1) + 1,
+      id: id, facId: 'war_council', fnId: 'war_action', optionIdx: 0, label: 'War Action', issuedDay: s.day, dueDay: s.day + R.time(data).musterDays,
       meta: {
         kind: 'war_action', objective: objective, targetKey: targetKey, targetName: R.clanName(data, targetKey), tier: tierId,
         missionKey: mission.key, commit: commit,
         commitDefenders: commit.defenders, commitBeasts: sum(commit.beasts), commitLieutenants: commit.lieutenants, commitRegiments: sum(commit.units)
       }
     };
-    /* What the war was before this order, so cancelling it this same
-       Bastion turn can undo the declaration (R.undoWarDeclaration). */
-    var tp = s.turnInProgress;
-    var prev = R.atWar(s, targetKey) ? { since: s.wars[targetKey].since, last: s.wars[targetKey].last } : null;
+    /* What the war was before this order, so cancelling it this same day
+       can undo the declaration (R.undoWarDeclaration). */
+    var tp = s.dayInProgress;
+    var prev = R.atWar(s, targetKey) ? { since: s.wars[targetKey].since, last: s.wars[targetKey].last, next: s.wars[targetKey].next } : null;
     var quiet = !warBusy(s, data, targetKey);
     s.pendingOrders.push(order);
     /* The Battle Value is the army's as queued: this order's forces are
@@ -930,17 +946,17 @@
     var res = R.declareWar(s, data, targetKey, commit, opts.now, { except: id });
     if (res) {
       order.meta.declared = {
-        turn: s.turn, hr: res.honourRespect.delta, pc: res.politicalCapital.delta, prev: prev, quiet: quiet,
-        /* No attack roll can come later this Bastion turn: no turn is
-           under way (the next roll comes with the next turn), or this
-           turn's roll is already made. */
+        day: s.day, hr: res.honourRespect.delta, pc: res.politicalCapital.delta, prev: prev, quiet: quiet,
+        /* No attack roll can come later today: no day is being passed
+           (the next roll comes on a later day), or today's roll is
+           already made. */
         rollDone: !isObj(tp) || tp.attackRolled === true
       };
     }
     return order;
   };
   /* Cancelling a War Action (R.cancelOrder, after the order is removed).
-     On the same Bastion turn it was queued, and with no attack roll since,
+     On the same day it was queued, and with no attack roll since,
      its declaration is undone: the Honour & Respect and Political Capital
      it cost are given back, and the war goes back to what it was (no war,
      if this order began it). If another War Action or a battle with that
@@ -956,11 +972,11 @@
     var action = R.militaryName({ objective: m.objective, targetName: m.targetName || R.clanName({ bastion: bastionOf(data) }, key) });
     var d = isObj(m.declared) ? m.declared : null;
     if (!d) return null;
-    var tp = s.turnInProgress;
-    var rolledSince = d.rollDone !== true && !(isObj(tp) && tp.turn === s.turn && tp.attackRolled !== true);
-    if (d.turn !== s.turn || rolledSince) {
+    var tp = s.dayInProgress;
+    var rolledSince = d.rollDone !== true && !(isObj(tp) && tp.day === s.day && tp.attackRolled !== true);
+    if (d.day !== s.day || rolledSince) {
       return ['Orders', 'Cancelled the War Action (' + action + '). What declaring war on ' + name + ' cost isn\'t given back: ' +
-        (d.turn !== s.turn ? 'it was queued on an earlier Bastion turn.' : 'this turn\'s roll for an attack has been made since it was queued.')];
+        (d.day !== s.day ? 'it was queued on an earlier day.' : 'today\'s roll for an attack has been made since it was queued.')];
     }
     if (!isObj(s.honourRespectByClan)) s.honourRespectByClan = {};
     var hr0 = clampInt(s.honourRespectByClan[key] || 0, -5, 5);
@@ -972,7 +988,8 @@
     var war;
     if (R.atWar(s, key) && d.quiet === true && !warBusy(s, data, key)) {
       if (isObj(d.prev)) {
-        s.wars[key] = { since: clampInt(d.prev.since, 1, s.turn), last: clampInt(d.prev.last, 1, s.turn) };
+        var since = Math.min(R.dayNum(d.prev.since, s.day), s.day);
+        s.wars[key] = { since: since, last: Math.max(since, Math.min(R.dayNum(d.prev.last, s.day), s.day)), next: R.dayNum(d.prev.next, s.day + R.attackEvery(data)) };
         war = 'You\'re still at war with ' + name + ', as you were before.';
       } else {
         delete s.wars[key];
@@ -982,28 +999,31 @@
       war = R.atWar(s, key) ? 'You\'re still at war with ' + name + (warBusy(s, data, key) ? ': something else between you is still waiting.' : '; Make peace in the War Council ends it.') : '';
     }
     var give = function (label, before, after) { return label + ' ' + (after !== before ? signed(after - before) : 'no change') + ' (now ' + num(after) + ')'; };
-    return ['War Called Off', 'Cancelled the War Action (' + action + ') on the turn it was queued, so what it cost is given back: ' +
+    return ['War Called Off', 'Cancelled the War Action (' + action + ') on the day it was queued, so what it cost is given back: ' +
       give('Honour & Respect', hr0, hr1) + ', ' + give('Political Capital', pc0, pc1) + '.' + (war ? ' ' + war : '')];
   };
-  /* The log line for a queued war: ['War Action Queued', 'Raid vs Bacca (resolves next Bastion Turn).']. */
+  /* The log line for a queued war: ['War Action Queued', 'Raid vs Bacca (musters on Day 15).']. */
   R.warOrderLine = function (order) {
     var m = (order && order.meta) || {};
-    return ['War Action Queued', R.militaryName({ objective: m.objective, targetName: m.targetName || 'Unknown' }) + ' (resolves next Bastion Turn).'];
+    return ['War Action Queued', R.militaryName({ objective: m.objective, targetName: m.targetName || 'Unknown' }) + ' (musters on Day ' + (order && order.dueDay) + ').'];
   };
 
   /* ---------- Wars (Harry, 4 October 2026) ----------
      Queueing a War Action against a Clan declares war on it (or renews
      the war), at once costing Honour & Respect and Political Capital with
      that Clan by the Battle Value of the army committed (W.wars.penalties).
-     s.wars = { clanKey: { since, last } }: the turn the war began, and the
-     turn of the latest war activity between you (a War Action queued, a
-     Military Action mustered, a battle finished, or an attack by them).
-     A war ends by itself after W.wars.quietTurns Bastion turns with no war
-     activity (R.tickWars), or when the DM makes peace (R.makePeace); never
-     while a War Action or Military Action involving that Clan is waiting.
-     While at war, each Advance Bastion Turn rolls for an attack
-     (R.rollWarAttack): the Defend Bastion event. */
+     s.wars = { clanKey: { since, last, next } }: the day the war began, the
+     day of the latest war activity between you (a War Action queued, a
+     Military Action mustered, a battle finished, or an attack by them),
+     and the day of its next attack roll.
+     A war ends by itself after W.wars.quietDays days with no war activity
+     (R.tickWars), or when the DM makes peace (R.makePeace); never while a
+     War Action or Military Action involving that Clan is waiting. While
+     at war, the Clan rolls for an attack every W.wars.attackEvery days of
+     the war, counted from the day it was declared (R.rollWarAttack): the
+     Defend Bastion event. */
   function warSettings(data) { return wd(data).wars; }
+  R.attackEvery = function (data) { var w = warSettings(data); return w && w.attackEvery > 0 ? w.attackEvery : 7; };
   function bastionOf(data) { return (data && data.bastion) || (window.TSI_DATA && window.TSI_DATA.bastion) || { clans: [] }; }
   /* "Clan Bacca". */
   function clanTitle(data, key) { return 'Clan ' + R.clanName({ bastion: bastionOf(data) }, key); }
@@ -1022,7 +1042,7 @@
   R.atWar = function (s, clanKey) { return !!s && isObj(s.wars) && isObj(s.wars[clanKey]); };
   /* War activity: the war (if there is one) is no longer quiet. */
   function stampWar(s, clanKey) {
-    if (R.atWar(s, clanKey)) s.wars[clanKey].last = s.turn;
+    if (R.atWar(s, clanKey)) s.wars[clanKey].last = s.day;
   }
 
   /* What declaring war costs for this army: { bv, honourRespect,
@@ -1067,7 +1087,9 @@
     var pc1 = clampInt(s.politicalCapital[clanKey] || 0, -100, 100);
     if (!isObj(s.wars)) s.wars = {};
     var renewed = isObj(s.wars[clanKey]);
-    s.wars[clanKey] = { since: renewed ? clampInt(s.wars[clanKey].since, 1) : s.turn, last: s.turn };
+    s.wars[clanKey] = renewed
+      ? { since: R.dayNum(s.wars[clanKey].since, s.day), last: s.day, next: R.dayNum(s.wars[clanKey].next, s.day + R.attackEvery(data)) }
+      : { since: s.day, last: s.day, next: s.day + R.attackEvery(data) };
     R.log(s, renewed ? 'War Renewed' : 'War Declared', 'War on ' + clanTitle(data, clanKey) + ': ' +
       costPart('Honour & Respect', pen.honourRespect, hr1 - hr0, hr1, -5) + ', ' +
       costPart('Political Capital', pen.politicalCapital, pc1 - pc0, pc1, -100) +
@@ -1090,15 +1112,15 @@
     return actionsOf(s).filter(function (m) { return m.kind === 'defence' && m.targetKey === clanKey; })[0] || null;
   }
 
-  /* The wars, in the clans' order: [{ key, name, since, last, quietLeft,
-     canMakePeace, peaceWhy }]. quietLeft: the quiet Bastion turns still
-     needed before it ends by itself. */
+  /* The wars, in the clans' order: [{ key, name, since, last, next,
+     quietLeft, canMakePeace, peaceWhy }]. quietLeft: the quiet days still
+     needed before it ends by itself; next: the day of its next attack roll. */
   R.warsList = function (s, data) {
-    var quiet = warSettings(data).quietTurns;
+    var quiet = warSettings(data).quietDays;
     return bastionOf(data).clans.filter(function (c) { return R.atWar(s, c.key); }).map(function (c) {
       var w = s.wars[c.key];
       var why = warBusy(s, data, c.key);
-      return { key: c.key, name: c.name, since: w.since, last: w.last, quietLeft: Math.max(0, quiet - (s.turn - w.last)), canMakePeace: !why, peaceWhy: why };
+      return { key: c.key, name: c.name, since: w.since, last: w.last, next: w.next, quietLeft: Math.max(0, quiet - (s.day - w.last)), canMakePeace: !why, peaceWhy: why };
     });
   };
 
@@ -1113,46 +1135,46 @@
     return { ok: true, why: '' };
   };
 
-  /* Called by R.startTurn after the turn number goes up: each war with
-     W.wars.quietTurns quiet turns, and nothing waiting that involves that
+  /* Called by R.startDay after the day moves on: each war with
+     W.wars.quietDays quiet days, and nothing waiting that involves that
      Clan, ends. Returns the Clans now at peace. (data is optional: the
      data files are used without it.) */
   R.tickWars = function (s, now, data) {
     if (!isObj(s.wars)) { s.wars = {}; return []; }
-    var quiet = warSettings(data).quietTurns;
+    var quiet = warSettings(data).quietDays;
     var ended = [];
     bastionOf(data).clans.forEach(function (c) {
       var w = s.wars[c.key];
-      if (!isObj(w) || s.turn - w.last < quiet || warBusy(s, data, c.key)) return;
+      if (!isObj(w) || s.day - w.last < quiet || warBusy(s, data, c.key)) return;
       delete s.wars[c.key];
       ended.push(c.key);
-      R.log(s, 'Peace', 'Peace with ' + clanTitle(data, c.key) + ': ' + plural(quiet, 'Bastion turn', 'Bastion turns') + ' without a battle between you.', now);
+      R.log(s, 'Peace', 'Peace with ' + clanTitle(data, c.key) + ': ' + plural(quiet, 'day', 'days') + ' without a battle between you.', now);
     });
     return ended;
   };
 
   /* ---------- Under Repair ----------
-     s.repairs = { facId: untilTurn } (R.underRepair is in rules.js). */
+     s.repairs = { facId: untilDay } (R.underRepair is in rules.js). */
   function facilityList(data) { return (data && data.facilities) || (window.TSI_DATA && window.TSI_DATA.bastionFacilities) || []; }
   function facilityName(data, id) {
     var list = facilityList(data);
     for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i].name;
     return String(id);
   }
-  /* Called by R.startTurn: facilities whose repairs are done (the turn is
-     past untilTurn) are working again. Returns their ids. */
+  /* Called by R.startDay: facilities whose repairs are done (the day is
+     past untilDay) are working again. Returns their ids. */
   R.tickRepairs = function (s, now, data) {
     if (!isObj(s.repairs)) { s.repairs = {}; return []; }
-    var done = Object.keys(s.repairs).filter(function (id) { return !(s.turn <= s.repairs[id]); });
+    var done = Object.keys(s.repairs).filter(function (id) { return !(s.day <= s.repairs[id]); });
     done.forEach(function (id) {
       delete s.repairs[id];
-      R.log(s, 'Repairs Complete', facilityName(data, id) + ' is working again.', now);
+      R.log(s, 'Repairs Complete', 'Repairs: the ' + facilityName(data, id) + ' is working again.', now);
     });
     return done;
   };
   /* The facilities Under Repair now, in the facilities' order: [{ facId,
-     name, untilTurn, backTurn, turnsLeft }]. backTurn: the turn it works
-     again; turnsLeft: Bastion turns still Under Repair, this one included. */
+     name, untilDay, backDay, daysLeft }]. backDay: the day it works again;
+     daysLeft: days still Under Repair, today included. */
   R.repairsList = function (s, data) {
     if (!isObj(s.repairs)) return [];
     var order = facilityList(data).map(function (f) { return f.id; });
@@ -1160,26 +1182,36 @@
       return order.indexOf(a) - order.indexOf(b);
     }).map(function (id) {
       var until = s.repairs[id];
-      return { facId: id, name: facilityName(data, id), untilTurn: until, backTurn: until + 1, turnsLeft: until - s.turn + 1 };
+      return { facId: id, name: facilityName(data, id), untilDay: until, backDay: until + 1, daysLeft: until - s.day + 1 };
     });
   };
 
   /* ---------- The Defend Bastion event ---------- */
-  /* After the turn's due orders: while at war, a d6 (W.wars.attackDie) for
-     each Clan at war, in the clans' order; the first to roll a 1 attacks
-     (R.beginDefence). At most once a turn (s.turnInProgress.attackRolled),
-     and no dice at all with no wars, so the comparison with the old
-     Bastion stays in step. One attack at a time: while an earlier attack
-     (by any Clan) is still to be fought, no Clan rolls, and no dice are
-     used. The whole army free at the Bastion stands in that waiting
-     defence, so a second attack would find nobody free and fall at once
-     without a battle. Returns the new Defend Bastion action, or null. */
+  /* After the day's due orders: each Clan at war whose attack roll is due
+     today (every W.wars.attackEvery days of the war) rolls a d6
+     (W.wars.attackDie), in the clans' order; the first to roll a 1 attacks
+     (R.beginDefence), and the rest due today don't roll. At most once a
+     day (s.dayInProgress.attackRolled). One attack at a time: while an
+     earlier attack (by any Clan) is still to be fought, no Clan rolls (its
+     roll day passes), and no dice are used. The whole army free at the
+     Bastion stands in that waiting defence, so a second attack would find
+     nobody free and fall at once without a battle. Returns the new Defend
+     Bastion action, or null. */
   R.rollWarAttack = function (s, data, rand, now) {
-    var tp = s.turnInProgress;
+    var tp = s.dayInProgress;
     if (!isObj(tp) || tp.attackRolled === true) return null;
-    var keys = bastionOf(data).clans.map(function (c) { return c.key; }).filter(function (k) { return R.atWar(s, k); });
-    if (!keys.length) return null;
     tp.attackRolled = true;
+    var every = R.attackEvery(data);
+    var keys = bastionOf(data).clans.map(function (c) { return c.key; }).filter(function (k) {
+      return R.atWar(s, k) && !(R.dayNum(s.wars[k].next, s.day) > s.day);
+    });
+    if (!keys.length) return null;
+    keys.forEach(function (k) {
+      var w = s.wars[k];
+      var next = R.dayNum(w.next, s.day);
+      while (next <= s.day) next += every;
+      w.next = next;
+    });
     if (actionsOf(s).some(function (m) { return m.kind === 'defence'; })) return null;
     var die = warSettings(data).attackDie;
     for (var i = 0; i < keys.length; i++) {
@@ -1191,8 +1223,8 @@
   /* A Clan attacks: the Defend Bastion Military Action. The enemy's size
      is rolled (a d6 on W.defence.tierDie) and its army drawn up for the
      objective 'defend' with the mission's own seeded dice (kept under
-     'defence|clan|turn'); everything free at the Bastion defends it (as
-     the War Turn form counts it: defenders, Lieutenants, every regiment
+     'defence|clan|day'); everything free at the Bastion defends it (as
+     the War Action form counts it: defenders, Lieutenants, every regiment
      and beast not committed or recovering). undefended: nothing is free.
      If that Clan's attack is already waiting, it's given back unchanged. */
   R.beginDefence = function (s, data, clanKey, rand, now) {
@@ -1204,15 +1236,15 @@
     var tier = D.tierDie[D.tierDie.length - 1].tier;
     for (var i = 0; i < D.tierDie.length; i++) if (tierRoll <= D.tierDie[i].upTo) { tier = D.tierDie[i].tier; break; }
     var name = R.clanName(data, clanKey);
-    var key = 'defence|' + clanKey + '|' + s.turn;
+    var key = 'defence|' + clanKey + '|' + s.day;
     if (!isObj(s.warMissions)) s.warMissions = {};
     var seq = clampInt(s.warMissionSeq, 0);
-    var gen = R.generateEnemy(data, clanKey, 'defend', tier, R.mulberry32(R.missionSeed(key, s.turn, seq)));
+    var gen = R.generateEnemy(data, clanKey, 'defend', tier, R.mulberry32(R.missionSeed(key, s.day, seq)));
     if (!gen) return null;
     s.warMissionSeq = seq + 1;
     s.warMissions[key] = {
       key: key, targetKey: clanKey, targetName: name, objective: 'defend', tier: tier,
-      variation: gen.variation, budget: gen.budget, enemy: gen.enemy, conditions: null, createdTurn: s.turn, seenTurn: s.turn
+      variation: gen.variation, budget: gen.budget, enemy: gen.enemy, conditions: null, createdDay: s.day, seenDay: s.day
     };
     var f = R.warForces(s, data);
     var all = { defenders: f.defenders.count, lieutenants: f.lieutenants, units: {}, beasts: f.beasts };
@@ -1220,15 +1252,15 @@
     var commit = R.warCommit2(s, data, all);
     /* The fields in the order a loaded action has them (cleanAction). */
     var ma = {
-      id: 'ma-defence-' + clanKey + '-' + s.turn, orderId: '', turn: s.turn, v: 2,
+      id: 'ma-defence-' + clanKey + '-' + s.day, orderId: '', day: s.day, v: 2,
       objective: 'defend', targetKey: clanKey, targetName: name, tier: tier, missionKey: key,
       commit: commit, step: 'weather', weather: null, morale: null, luck: null, spec: null, battle: null,
       kind: 'defence', map: D.map, undefended: fieldTotal(commit) <= 0,
-      /* The Watchtower's Patrol finished this turn ("Gives Advantage on all
-         rolls for Bastion Defenders if the Bastion is attacked during the
-         next turn"), and defenders stand to defend: the screen reminds the
-         DM. The War Table doesn't roll the Advantage itself. */
-      patrol: !!(isObj(s.defenders) && s.defenders.patrolAdvantage) && commit.defenders > 0
+      /* The Watchtower's Patrol is active ("Gives Advantage on all rolls
+         for Bastion Defenders if the Bastion is attacked during the next 7
+         days"), and defenders stand to defend: the screen reminds the DM.
+         The War Table doesn't roll the Advantage itself. */
+      patrol: R.patrolActive(s) && commit.defenders > 0
     };
     ma.spec = R.buildSpec(s, data, ma);
     if (!Array.isArray(s.militaryActions)) s.militaryActions = [];
@@ -1304,14 +1336,17 @@
     var tier = tierOf(w, meta.tier) ? String(meta.tier) : 'established';
     var ordered = R.orderCommit(s, data, order);
     var commit = R.warCommit2(s, data, ordered, { except: order.id });
+    var clanOnly = R.clanOnlyCut(s, data, ordered);
     var ma = {
-      id: 'ma-' + String(order.id), orderId: String(order.id), turn: s.turn, v: 2,
+      id: 'ma-' + String(order.id), orderId: String(order.id), day: s.day, v: 2,
       objective: objective, targetKey: targetKey, targetName: R.clanName(data, targetKey), tier: tier, missionKey: '',
       commit: commit, step: 'weather', weather: null, morale: null, luck: null, spec: null, battle: null
     };
     if (fieldTotal(commit) <= 0) {
       R.removeOrder(s, order.id);
-      R.log(s, 'War Turn', R.militaryName(ma) + ': nothing committed to it is still free to march, so the war order lapses.', now);
+      R.log(s, 'War Action', R.militaryName(ma) + (clanOnly
+        ? ': only a Clan can send Lieutenants and regiments, and nothing else committed to it is free to march, so the war order lapses.'
+        : ': nothing committed to it is still free to march, so the war order lapses.'), now);
       return null;
     }
     var mission = R.ensureMission(s, data, targetKey, objective, tier);
@@ -1321,9 +1356,9 @@
     if (!Array.isArray(s.militaryActions)) s.militaryActions = [];
     s.militaryActions.push(ma);
     stampWar(s, targetKey);
-    var cut = R.musterShortfall(data, ordered, commit);
-    if (cut) R.log(s, 'War Turn', R.militaryName(ma) + ': ' + cut, now);
-    R.log(s, 'War Turn', R.militaryName(ma) + ': your forces muster for battle. The Military Action is ready to begin.', now);
+    var cut = R.musterShortfall(data, ordered, commit, clanOnly);
+    if (cut) R.log(s, 'War Action', R.militaryName(ma) + ': ' + cut, now);
+    R.log(s, 'War Action', R.militaryName(ma) + ': your forces muster for battle. The Military Action is ready to begin.', now);
     var cond = isObj(mission.conditions) ? mission.conditions : {};
     if (isObj(cond.weather)) {
       ma.weather = clone(cond.weather);
@@ -1333,7 +1368,7 @@
       }
       ma.step = !ma.morale ? 'morale' : !ma.luck ? 'luck' : 'deploy';
       ma.spec.conditions = R.specConditions(data, ma);
-      R.log(s, 'War Turn', R.militaryName(ma) + (ma.luck
+      R.log(s, 'War Action', R.militaryName(ma) + (ma.luck
         ? ': the conditions are unchanged: ' + R.conditionsText(data, ma) + '.'
         : ': the rolls already made are unchanged: ' + R.conditionsText(data, ma) + '. Next: the ' + R.militaryRollTitle(ma.step) + ' roll.'), now);
     }
@@ -1411,7 +1446,7 @@
       if (m) keepRolls(m, ma);
     }
     s.militaryActions = s.militaryActions.filter(function (x) { return x.id !== ma.id; });
-    R.log(s, 'War Turn', R.militaryName(ma) + ': the Military Action was called off. Nothing was won or lost.', now);
+    R.log(s, 'War Action', R.militaryName(ma) + ': the Military Action was called off. Nothing was won or lost.', now);
     return true;
   };
   /* A Defend Bastion can't be called off: the enemy is at the gates. */
@@ -1449,15 +1484,23 @@
      longer free: a beast died, the defenders went down, or an earlier
      order holds it), the sentence that says so; '' when nothing changed.
      ordered and commit are in the phase 2 shape. */
-  R.musterShortfall = function (data, ordered, commit) {
+  /* Did a war order commit Lieutenants or regiments that stay home because
+     the party isn't a Clan (a Mercenary Brigade from before Build 3, now
+     Unsworn)? Then the muster says that's why, not that they aren't free. */
+  R.clanOnlyCut = function (s, data, ordered) {
+    if (!isObj(ordered) || R.warForces(s, data).fullWar) return false;
+    return clampInt(ordered.lieutenants, 0) > 0 ||
+      Object.keys(isObj(ordered.units) ? ordered.units : {}).some(function (t) { return clampInt(ordered.units[t], 0) > 0; });
+  };
+  R.musterShortfall = function (data, ordered, commit, clanOnly) {
     var a = R.cleanCommit(ordered, data), b = R.cleanCommit(commit, data);
     var same = a.defenders === b.defenders && a.lieutenants === b.lieutenants;
     [[a.units, b.units], [a.beasts, b.beasts]].forEach(function (k) {
       Object.keys(k[0]).concat(Object.keys(k[1])).forEach(function (n) { if ((k[0][n] || 0) !== (k[1][n] || 0)) same = false; });
     });
     if (same) return '';
-    return 'not everything the war order committed is still free to march, so it musters with ' + R.militaryCommitLine(b) +
-      ' (the order had ' + R.militaryCommitLine(a) + ').';
+    return (clanOnly ? 'only a Clan can send Lieutenants and regiments, so it musters with ' : 'not everything the war order committed is still free to march, so it musters with ') +
+      R.militaryCommitLine(b) + ' (the order had ' + R.militaryCommitLine(a) + ').';
   };
 
   /* Where a Military Action has got to, for the War Council panel. */
@@ -1546,8 +1589,7 @@
      - victory: success; defeat and withdrawal: failure; a draw: nothing;
      - a raid's gold follows the supplies carried off (half for one of two,
        all for two); with none, the failure's gold;
-     - a Clan's Honour: victory, defeat or withdrawal amount (W.rewards);
-     - a Brigade's Trusted Clients as R.resolveWar changes them.
+     - a Clan's Honour: victory, defeat or withdrawal amount (W.rewards).
      A lost Defend Bastion (kind 'defence'; withdrawing counts as losing it,
      Honour too) has no gold here: it costs part of the treasury and puts
      facilities Under Repair instead (defenceLoss: see finishBattle). */
@@ -1573,18 +1615,16 @@
     var honour = null;
     var as = lostDefence ? 'defeat' : outcome;
     if (type === 'clan') honour = as === 'victory' ? w.rewards.victoryHonour : as === 'defeat' ? w.rewards.defeatHonour : as === 'withdrawal' ? w.rewards.withdrawalHonour : 0;
-    var trustedTable = (w.rewards && isObj(w.rewards.trusted)) ? w.rewards.trusted : TRUSTED;
-    var trusted = type === 'merc' && res !== 'none' ? trustedTable[res] : null;
-    return { result: res, gp: gp, pc: pc, honour: honour, trusted: trusted, extracted: extracted, need: need, defenceLoss: lostDefence };
+    return { result: res, gp: gp, pc: pc, honour: honour, extracted: extracted, need: need, defenceLoss: lostDefence };
   };
 
   /* Apply the rewards to s, within the Bastion's limits (the treasury
      never goes below 0; Clan Honour stays 0 to 100; Political Capital −100
-     to 100; Trusted Clients 0 to 100). Returns what actually changed:
-     { gp, pc, honour, trusted: { target, others: { clanKey: n } } | null }.
-     Run on a copy of those numbers for a preview. */
+     to 100). Returns what actually changed: { gp, pc, honour }. Run on a
+     copy of those numbers for a preview. (The archived Mercenary Brigade's
+     Trusted Clients were changed here too: archive/mercenary-brigade.js.) */
   function applyRewards(s, data, ma, rw) {
-    var out = { gp: 0, pc: 0, honour: 0, trusted: null };
+    var out = { gp: 0, pc: 0, honour: 0 };
     var gp0 = Number(s.treasuryGP) || 0;
     s.treasuryGP = clampInt(gp0 + rw.gp, 0);
     out.gp = s.treasuryGP - gp0;
@@ -1599,23 +1639,13 @@
       s.clanHonor = clampInt(h0 + rw.honour, 0, 100);
       out.honour = s.clanHonor - h0;
     }
-    if (rw.trusted) {
-      out.trusted = { target: 0, others: {} };
-      var shift = function (key, by) {
-        var t0 = s.trustedClientsByClan[key] === undefined ? 50 : clampInt(s.trustedClientsByClan[key], 0, 100);
-        s.trustedClientsByClan[key] = clampInt(t0 + by, 0, 100);
-        return s.trustedClientsByClan[key] - t0;
-      };
-      out.trusted.target = shift(ma.targetKey, rw.trusted.target);
-      data.bastion.clans.forEach(function (cl) { if (cl.key !== ma.targetKey) out.trusted.others[cl.key] = shift(cl.key, rw.trusted.others); });
-    }
     return out;
   }
   /* What the rewards would change now, without changing anything. */
   function previewRewards(s, data, ma, rw) {
     return applyRewards({
       treasuryGP: s.treasuryGP, clanHonor: s.clanHonor,
-      politicalCapital: Object.assign({}, s.politicalCapital), trustedClientsByClan: Object.assign({}, s.trustedClientsByClan)
+      politicalCapital: Object.assign({}, s.politicalCapital)
     }, data, ma, rw);
   }
 
@@ -1636,17 +1666,6 @@
     else lines.push(line('Treasury', rw.gp, got.gp, ' gp', 'the treasury can\'t go below 0', now && rw.gp ? s.treasuryGP : null));
     lines.push(line('Political Capital (' + ma.targetName + ')', rw.pc, got.pc, '', 'it can\'t go ' + (rw.pc > 0 ? 'above 100' : 'below −100'), null));
     if (rw.honour !== null) lines.push(line('Clan Honour', rw.honour, got.honour, '', 'it can\'t go ' + (rw.honour > 0 ? 'above 100' : 'below 0'), now ? s.clanHonor : null));
-    if (rw.trusted && got.trusted) {
-      var short = [];
-      data.bastion.clans.forEach(function (cl) {
-        var n = got.trusted.others[cl.key];
-        if (n === undefined || n === rw.trusted.others) return;
-        short.push(cl.name + (n === 0 ? ' (already at ' + (rw.trusted.others > 0 ? 100 : 0) + ')' : ' ' + signed(n) + ' (at the limit)'));
-      });
-      var target = signed(got.trusted.target) + (got.trusted.target !== rw.trusted.target ? ' (' + signed(rw.trusted.target) + ', but it can\'t go ' + (rw.trusted.target > 0 ? 'above 100' : 'below 0') + ')' : '');
-      lines.push('Trusted Clients: ' + ma.targetName + ' ' + target + ', every other clan ' + signed(rw.trusted.others) +
-        (short.length ? ' except ' + short.join(', ') : '') + '.');
-    }
     return lines;
   }
   /* A lost Defend Bastion's treasury line: what was lost (loss, from
@@ -1666,24 +1685,24 @@
   function repairsLine(s, data, loss) {
     var P = wd(data).defence.repairs;
     if (!loss) {
-      return 'Under Repair: 1d' + P.die + ' of your built facilities, chosen at random, for ' + plural(P.turns, 'Bastion turn', 'Bastion turns') + ', this one included' +
-        ' (working again on turn ' + (s.turn + P.turns) + '): they take no orders, and orders already running there wait.';
+      return 'Under Repair: 1d' + P.die + ' of your built facilities, chosen at random, for ' + plural(P.days, 'day', 'days') + ', today included' +
+        ' (working again on Day ' + (s.day + P.days) + '): they take no orders, and orders already running there wait.';
     }
     var dice = 'd' + P.die + ' ' + loss.repairRoll;
     if (!loss.facilities.length) return 'Under Repair: none (' + dice + ', but no facilities are built).';
     var short = loss.facilities.length < loss.repairRoll ? ', but only ' + plural(loss.facilities.length, 'facility is', 'facilities are') + ' built' : '';
-    return 'Under Repair until Bastion turn ' + loss.untilTurn + ' (' + dice + short + '): ' + loss.names.join(', ') +
-      '. ' + (loss.facilities.length > 1 ? 'They take' : 'It takes') + ' no orders until turn ' + (loss.untilTurn + 1) +
-      (loss.delayed ? ', and ' + plural(loss.delayed, 'order', 'orders') + ' already running there now ' + (loss.delayed > 1 ? 'complete' : 'completes') + ' on turn ' + (loss.untilTurn + 1) + ' at the earliest' : '') + '.';
+    return 'Under Repair until Day ' + loss.untilDay + ' (' + dice + short + '): ' + loss.names.join(', ') +
+      '. ' + (loss.facilities.length > 1 ? 'They take' : 'It takes') + ' no orders until Day ' + (loss.untilDay + 1) +
+      (loss.delayed ? ', and ' + plural(loss.delayed, 'order', 'orders') + ' already running there now ' + (loss.delayed > 1 ? 'complete' : 'completes') + ' on Day ' + (loss.untilDay + 1) + ' at the earliest' : '') + '.';
   }
   /* A lost Defend Bastion: d10 × 5% of the treasury is lost (rounded
      down), then d4 built facilities, picked at random, are Under Repair
-     for W.defence.repairs.turns Bastion turns, this one included (longer
+     for W.defence.repairs.days days, the day of the loss included (longer
      repairs already under way are kept), and orders running there are
      put back until the repairs are done. Harry asked for "all their
-     actions suspended for 2 bastion turns": lost on turn 5, they take no
-     orders on turns 5 and 6, and work again on turn 7. The dice, in this
-     order: the d10, the d4, then one pick for each facility. */
+     actions suspended for 2 bastion turns", which is 14 days: lost on Day
+     5, they take no orders on Days 5 to 18, and work again on Day 19. The
+     dice, in this order: the d10, the d4, then one pick for each facility. */
   function applyDefenceLoss(s, data, rand) {
     var D = wd(data).defence;
     var roll = R.d(D.treasuryLoss.die, rand), pct = roll * D.treasuryLoss.pctPerPip;
@@ -1695,19 +1714,19 @@
     for (var i = 0; i < n; i++) picked.push(pool.splice(Math.min(pool.length - 1, Math.floor(rand() * pool.length)), 1)[0]);
     /* Named in the Bastion's own order, whatever order they were picked in. */
     picked.sort(function (a, b) { return built.indexOf(a) - built.indexOf(b); });
-    var until = s.turn + Math.max(1, D.repairs.turns) - 1, delayed = 0;
+    var until = s.day + Math.max(1, D.repairs.days) - 1, delayed = 0;
     if (!isObj(s.repairs)) s.repairs = {};
     picked.forEach(function (id) {
       s.repairs[id] = Math.max(R.underRepair(s, id), until);
       (Array.isArray(s.pendingOrders) ? s.pendingOrders : []).forEach(function (o) {
         if (!isObj(o) || o.facId !== id) return;
         var back = s.repairs[id] + 1;
-        if (!(Number(o.completeTurn) >= back)) { o.completeTurn = back; delayed += 1; }
+        if (!(Number(o.dueDay) >= back)) { o.dueDay = back; delayed += 1; }
       });
     });
     return {
       roll: roll, pct: pct, before: before, lost: lost, after: s.treasuryGP,
-      repairRoll: repairRoll, facilities: picked, names: picked.map(function (id) { return facilityName(data, id); }), untilTurn: until, delayed: delayed
+      repairRoll: repairRoll, facilities: picked, names: picked.map(function (id) { return facilityName(data, id); }), untilDay: until, delayed: delayed
     };
   }
 
@@ -1734,7 +1753,7 @@
     var fallen = c.hurt.filter(function (h) { return h.status === 'defeated'; });
     var separated = c.hurt.filter(function (h) { return h.status === 'routed'; });
     if (fallen.length) lines.push('A d6 for each of ' + fallen.map(function (h) { return h.label; }).join(', ') + ': killed, captured, wounded or recovering.');
-    if (separated.length) lines.push('Separated for ' + plural(wd(data).separatedTurns, 'turn', 'turns') + ': ' + separated.map(function (h) { return h.label; }).join(', ') + '.');
+    if (separated.length) lines.push('Separated for ' + plural(wd(data).separatedDays, 'day', 'days') + ': ' + separated.map(function (h) { return h.label; }).join(', ') + '.');
     return lines;
   };
 
@@ -1746,9 +1765,9 @@
     killed: 'killed', captured: 'captured by the enemy', badly_wounded: 'badly wounded', wounded: 'wounded',
     recovered: 'recovering', separated: 'separated from the army'
   };
-  /* "Lieutenant: wounded, back on turn 5." */
+  /* "Lieutenant: wounded, back on Day 19." */
   R.recoveryText = function (rec) {
-    return rec.name + ': ' + (RECOVERY_WORDS[rec.status] || rec.status) + ', back on turn ' + rec.untilTurn + '.';
+    return rec.name + ': ' + (RECOVERY_WORDS[rec.status] || rec.status) + ', back on Day ' + rec.untilDay + '.';
   };
 
   /* Take one Lieutenant or one beast of that name off its list. */
@@ -1857,21 +1876,21 @@
     c.hurt.forEach(function (h, i) {
       if (h.status === 'routed') {
         h.result = 'separated';
-        h.turns = w.separatedTurns;
+        h.days = w.separatedDays;
       } else {
         h.d6 = R.d(6, rand);
         var row = recoveryRow(w, h.d6);
         h.result = row.result;
-        h.turns = row.turns || 0;
-        if (row.result === 'captured' && !c.enemyHolds) { h.result = 'badly_wounded'; h.turns = w.badlyWoundedTurns; }
+        h.days = row.days || 0;
+        if (row.result === 'captured' && !c.enemyHolds) { h.result = 'badly_wounded'; h.days = w.badlyWoundedDays; }
       }
       if (h.result === 'killed' || h.result === 'captured') {
         removeOne(s, h);
       } else {
-        h.untilTurn = s.turn + h.turns;
+        h.untilDay = s.day + h.days;
         var recId = 'rec-' + R.hashText(ma.id + '|' + i + '|' + h.name);
         s.warRecovery.forEach(function (x) { if (x.id === recId) recId += '-' + i; });
-        s.warRecovery.push({ id: recId, kind: h.kind, name: h.name, status: h.result, untilTurn: h.untilTurn });
+        s.warRecovery.push({ id: recId, kind: h.kind, name: h.name, status: h.result, untilDay: h.untilDay });
       }
     });
 
@@ -1886,7 +1905,7 @@
     var report = warReport(s, data, ma, b, c, mission, defBefore, now);
     if (!Array.isArray(s.warLog)) s.warLog = [];
     s.warLog.unshift(report);
-    R.log(s, 'War Turn Resolved', report.title, now);
+    R.log(s, 'War Action Resolved', report.title, now);
 
     var lines = [headline(b, c)];
     rewardLines(s, data, ma, rw, c.applied, true).forEach(function (l) { lines.push(l); });
@@ -1901,8 +1920,8 @@
   };
 
   /* A Defend Bastion with nobody free to defend it (undefended): lost at
-     once, with no battle: the defeat's Political Capital, Clan Honour and
-     Trusted Clients, the treasury and the repairs. Returns { lines, report }
+     once, with no battle: the defeat's Political Capital and Clan Honour,
+     the treasury and the repairs. Returns { lines, report }
      as R.finishBattle does, or null if it isn't one. */
   R.finishUndefended = function (s, data, id, rand, now) {
     var ma = R.militaryById(s, id);
@@ -1920,7 +1939,7 @@
     changes.push(repairsLine(s, data, got.defence));
     var out = [
       'Objective: ' + (obj ? obj.name + '. ' + obj.rule : ma.objective),
-      clanTitle(data, ma.targetKey) + ' attacked your Bastion on Bastion turn ' + ma.turn + '.',
+      clanTitle(data, ma.targetKey) + ' attacked your Bastion on Day ' + ma.day + '.',
       'Enemy: ' + ma.targetName + ', ' + (tier ? tier.name.toLowerCase() : ma.tier) + (mission && isObj(mission.enemy) ? ', Battle Value ' + R.enemyBV(data, mission.enemy) : '') + '.',
       'Result: Defeat. ' + result,
       '',
@@ -1936,7 +1955,7 @@
     };
     if (!Array.isArray(s.warLog)) s.warLog = [];
     s.warLog.unshift(report);
-    R.log(s, 'War Turn Resolved', report.title, now);
+    R.log(s, 'War Action Resolved', report.title, now);
     s.militaryActions = s.militaryActions.filter(function (x) { return x.id !== ma.id; });
     closeMission(s, ma.missionKey);
     return { lines: ['Defeat: ' + result].concat(changes), report: report };
@@ -1959,12 +1978,12 @@
     if (reason && !/[.!?]$/.test(reason)) reason += '.';
     return outcomeWord(c.outcome) + ' in round ' + clampInt(r.round || b.round, 1) + ' of ' + clampInt(b.maxRounds || wd().rounds, 1) + (reason ? ': ' + reason : '.');
   }
-  /* What happened to a Lieutenant or beast: "wounded (d6 3), back on turn 5." */
+  /* What happened to a Lieutenant or beast: "wounded (d6 3), back on Day 19." */
   function hurtResult(h) {
     var what = RECOVERY_WORDS[h.result] || h.result;
     var dice = h.d6 ? ' (d6 ' + h.d6 + ')' : '';
     if (h.result === 'killed' || h.result === 'captured') return what + dice + '.';
-    return what + dice + ', back on turn ' + h.untilTurn + '.';
+    return what + dice + ', back on Day ' + h.untilDay + '.';
   }
   function hurtLine(h) { return h.label + ': ' + hurtResult(h); }
   function rollLine(label, rec, value) {
@@ -1985,7 +2004,7 @@
     var tier = tierOf(w, ma.tier);
     var out = [];
     out.push('Objective: ' + (obj ? obj.name + '. ' + obj.rule : ma.objective));
-    if (ma.kind === 'defence') out.push(clanTitle(data, ma.targetKey) + ' attacked your Bastion on Bastion turn ' + ma.turn + '.');
+    if (ma.kind === 'defence') out.push(clanTitle(data, ma.targetKey) + ' attacked your Bastion on Day ' + ma.day + '.');
     var variation = '';
     if (mission && isObj(mission.variation)) {
       w.variation.forEach(function (v) { if (v.mult === mission.variation.mult && !variation) variation = v.text; });
@@ -2063,14 +2082,14 @@
     };
   }
 
-  /* ---------- Recovery, each Bastion turn ---------- */
-  /* Called by R.startTurn after the turn number goes up: anyone whose time
-     is up is fit again (and can be committed). Returns those who came back. */
+  /* ---------- Recovery, day by day ---------- */
+  /* Called by R.startDay after the day moves on: anyone whose time is up
+     is fit again (and can be committed). Returns those who came back. */
   R.tickRecovery = function (s, now) {
     if (!Array.isArray(s.warRecovery)) { s.warRecovery = []; return []; }
-    var back = s.warRecovery.filter(function (r) { return s.turn >= r.untilTurn; });
+    var back = s.warRecovery.filter(function (r) { return s.day >= r.untilDay; });
     if (!back.length) return [];
-    s.warRecovery = s.warRecovery.filter(function (r) { return s.turn < r.untilTurn; });
+    s.warRecovery = s.warRecovery.filter(function (r) { return s.day < r.untilDay; });
     back.forEach(function (r) {
       var text = r.status === 'separated'
         ? r.name + ' has found the way back to the Bastion.'
@@ -2187,7 +2206,7 @@
   function cleanAction(d, data, v) {
     var w = wd(data);
     var ma = {
-      id: v.id, orderId: String(v.orderId || ''), turn: clampInt(v.turn, 1), v: 2,
+      id: v.id, orderId: String(v.orderId || ''), day: R.dayNum(v.day, d.day), v: 2,
       objective: w.objectives[v.objective] ? String(v.objective) : 'raid',
       targetKey: String(v.targetKey || ''), targetName: String(v.targetName || ''),
       tier: tierOf(w, v.tier) ? String(v.tier) : 'established', missionKey: String(v.missionKey || ''),
@@ -2202,7 +2221,7 @@
       ma.map = typeof v.map === 'string' && v.map ? v.map : w.defence.map;
       ma.undefended = v.undefended === true;
       ma.patrol = v.patrol === true;
-      if (!ma.missionKey) ma.missionKey = 'defence|' + ma.targetKey + '|' + ma.turn;
+      if (!ma.missionKey) ma.missionKey = 'defence|' + ma.targetKey + '|' + ma.day;
     }
     if (!ma.missionKey) ma.missionKey = R.missionKey(ma.targetKey, ma.objective, ma.tier);
     ma.step = fixStep(ma.step, ma);
@@ -2219,7 +2238,7 @@
     var objective = w.objectives[v.objective] ? String(v.objective) : 'raid';
     var targetKey = w.clans[v.targetKey] ? String(v.targetKey) : 'blackstone';
     var ma = {
-      id: v.id, orderId: String(v.orderId || ''), turn: clampInt(v.turn, 1), v: 2,
+      id: v.id, orderId: String(v.orderId || ''), day: R.dayNum(v.day, d.day), v: 2,
       objective: objective, targetKey: targetKey, targetName: String(v.targetName || R.clanName(data, targetKey)),
       tier: 'established', missionKey: '', commit: null, step: v.step === 'resolve' ? 'deploy' : v.step,
       weather: cleanRoll(v.weather, 'id'), morale: cleanRoll(v.morale), luck: cleanRoll(v.luck, 'mod', data),
@@ -2273,7 +2292,7 @@
     return (Array.isArray(list) ? list : []).filter(function (r) {
       return isObj(r) && (r.kind === 'lieutenant' || r.kind === 'beast') && typeof r.name === 'string' && r.name;
     }).map(function (r, i) {
-      return { id: typeof r.id === 'string' && r.id ? r.id : 'rec-' + i, kind: r.kind, name: r.name, status: String(r.status || 'wounded'), untilTurn: clampInt(r.untilTurn, 1) };
+      return { id: typeof r.id === 'string' && r.id ? r.id : 'rec-' + i, kind: r.kind, name: r.name, status: String(r.status || 'wounded'), untilDay: R.dayNum(r.untilDay, 1) };
     });
   }
 

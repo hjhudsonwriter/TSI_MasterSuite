@@ -42,26 +42,100 @@
     var s = sum(null, null);
     t.same([s.explorerSaved, s.bastionSaved], [false, false]);
     t.same(s.level, { value: 7, fromBastion: false });
-    t.same([s.heroes, s.day, s.daysPassed, s.nextBastion, s.bastionTurns], [[], null, null, null, null]);
+    t.same([s.heroes, s.day, s.daysPassed, s.orders, s.nextWord], [[], null, null, null, null]);
     t.same([s.region, s.clan, s.god, s.effects], [null, null, null, []]);
   });
 
-  test('a fresh Explorer and Bastion: Day 1, five heroes, no turns yet, the Northern Province', function (t) {
+  test('a fresh Explorer and Bastion: Day 1, five heroes, no orders yet, the Northern Province', function (t) {
     var s = sum(explorer(), bastion());
     t.same(s.heroes, ['Kaelen', 'Umbrys', 'Magnus', 'Elara', 'Charles']);
-    t.same([s.day, s.daysPassed, s.bastionTurns], [1, 0, 0]);
-    t.same(s.nextBastion, { day: 8, inDays: 7 });
+    t.same([s.day, s.daysPassed], [1, 0]);
+    t.same([s.orders, s.nextWord], [{ count: 0, next: null }, null], 'a Bastion that hasn\'t read the Explorer\'s day yet has no word to send');
     t.same(s.level, { value: 7, fromBastion: true });
     t.same(s.region, { id: 'northern_province', label: 'Northern Province' });
     t.same(s.clan, { name: 'Blackstone', chief: 'Boris Blackstone', politicalCapital: 0, honourRespect: 0 });
     t.same(s.god, { key: 'telluria', name: 'Telluria', favour: 0 });
   });
 
-  test('the Bastion\'s turn counter starts at 1, so turns completed is one less', function (t) {
+  /* A Bastion on Day 10 (following the Explorer) with a little of everything coming. */
+  function busy() {
     var b = bastion();
-    t.equal(b.turn, 1, 'a fresh Bastion is on turn 1');
-    b.turn = 6;
-    t.equal(sum(null, b).bastionTurns, 5);
+    b.day = 10;
+    b.anchored = true;
+    b.builtExtras = [{ facId: 'smithy', status: 'building', startDay: 1, readyDay: 22 }, { facId: 'shrine_aurush', status: 'built' }];
+    b.pendingOrders = [
+      { id: 'a', facId: 'barracks', fnId: 'recruit_defenders', label: 'Barracks: Recruit Defenders', issuedDay: 9, dueDay: 14 },
+      { id: 'h', facId: 'hall_of_emissaries', fnId: 'secure_trade_agreement', label: 'Hall of Emissaries: Secure Trade Agreement (Clan Karr)', issuedDay: 10, dueDay: 17 },
+      { id: 'w', facId: 'war_council', fnId: 'war_action', label: 'War Action', issuedDay: 10, dueDay: 13, meta: { kind: 'war_action', objective: 'raid', targetName: 'Bacca' } },
+      { id: 'd', facId: 'dock', fnId: 'charter_berth', label: 'Dock: Charter Berth (Longship)', issuedDay: 8, dueDay: 15 }
+    ];
+    b.repairs = { dock: 16 };
+    b.diplomacy.agreements = [{ title: 'Trade Agreement', clan: 'Clan Karr', startDay: 5, endDay: 26, income: 90, lastShipmentDay: 5 }];
+    b.diplomacy.delegations = [{ title: 'Hosted Delegation (assertive)', clan: 'Clan Slade', startDay: 9, endDay: 23 }];
+    b.tradeNetwork.active = true;
+    b.tradeNetwork.routes = [{ id: 'r', clan: 'Karr', risk: 'high', status: 'active', nextDay: 12, expiresDay: 40 }, { id: 's', clan: 'Farmer', risk: 'low', status: 'active', nextDay: 12, expiresDay: 40 }];
+    b.warRecovery = [{ id: 'x', kind: 'beast', name: 'Ape', status: 'wounded', untilDay: 11 }];
+    b.wars = { bacca: { since: 6, last: 10, next: 13 } };
+    return b;
+  }
+
+  test('orders pending and the next word from the Ironbow, after the Explorer\'s day', function (t) {
+    var e = explorer();
+    e.travel.day = 10;
+    var s = sum(e, busy());
+    t.same(s.orders, { count: 4, next: { day: 13, label: 'War Action', inDays: 3 } });
+    t.same(s.nextWord, { day: 11, inDays: 1, lines: ['The Ape is fit to fight again.'] });
+    e.travel.day = 11;
+    t.same(sum(e, busy()).nextWord.day, 12, 'the Bastion\'s day 11 is still to come, but the DM doc looks after the Explorer\'s day');
+    var old = { treasuryGP: 5, partyLevel: 9, turn: 4, builtExtras: [], pendingOrders: [{ completeTurn: 5 }], defenders: {}, warehouse: [] };
+    s = sum(e, old);
+    t.same([s.orders, s.nextWord, s.level.value], [null, null, 9], 'a Bastion saved in turns has neither (it\'s set aside when the Bastion opens)');
+  });
+
+  test('"The Ironbow sends word…": what the Bastion has coming, day by day, read from its save', function (t) {
+    var b = busy();
+    var before = JSON.stringify(b);
+    t.same(C.ironbowNews(b, 10, 17), [
+      { day: 11, lines: ['The Ape is fit to fight again.'] },
+      { day: 12, lines: ['The sea route to Karr needs a roll.'] },
+      { day: 13, lines: ['Your army is ready to march on Bacca (Raid).', 'Clan Bacca may attack: the Bastion rolls to see.'] },
+      { day: 14, lines: ['Barracks: Recruit Defenders is complete.'] },
+      { day: 17, lines: ['Hall of Emissaries: Secure Trade Agreement (Clan Karr) needs your roll.', 'Dock: Charter Berth (Longship) is complete.', 'Repairs: the Dock is working again.'] }
+    ], 'the Dock\'s order waits for its repairs; the low-risk route pays without a roll');
+    t.same(C.ironbowNews(b, 17, 29), [
+      { day: 22, lines: ['The Smithy is built.'] },
+      { day: 23, lines: ['Your delegation from Clan Slade has ended.'] },
+      { day: 26, lines: ['Your Trade Agreement with Clan Karr has ended (its last shipment arrived).'] },
+      { day: 29, lines: ['A Bastion event is due.'] }
+    ]);
+    t.same(C.ironbowNews(b, 13, 13), []);
+    t.equal(JSON.stringify(b), before, 'the save isn\'t changed');
+    var ahead = busy();
+    ahead.day = 20;
+    t.same(C.ironbowNews(ahead, 2, 3), [], 'Reset Travel: the Bastion is ahead, and will move its days rather than pass them');
+    var loose = busy();
+    loose.anchored = false;
+    t.same(C.ironbowNews(loose, 10, 30), [], 'not following the Explorer yet');
+    t.same(C.ironbowNews(null, 10, 11), []);
+  });
+
+  test('the word the Explorer sends at Make Camp comes on the days the Bastion itself has news', function (t) {
+    var b = busy();
+    b.wars = {};
+    b.tradeNetwork.routes = [];
+    b.pendingOrders = b.pendingOrders.filter(function (o) { return o.facId !== 'hall_of_emissaries' && o.facId !== 'war_council'; });
+    var predicted = C.ironbowNews(b, 10, 30).map(function (w) { return w.day; });
+    for (var d = 11; d <= 30; d++) {
+      BR.startDay(b, bdata, 0);
+      BR.finishRoutes(b);
+      BR.dueOrders(b, b.dayInProgress.skipped).forEach(function (o) {
+        BR.completeSimpleOrder(b, bdata, o, dice([0.5])).forEach(function (l) { BR.addWord(b, l[1]); });
+        BR.removeOrder(b, o.id);
+      });
+      BR.finishDay(b, bdata, bdata.events, dice([0.5]), 0);
+    }
+    t.same(b.word.map(function (w) { return w.day; }), predicted);
+    t.same(b.word.filter(function (w) { return w.day === 22; })[0].lines, ['The Smithy is built.']);
   });
 
   test('the party level is the Bastion\'s', function (t) {
@@ -92,28 +166,13 @@
   test('odd values are kept within the Bastion\'s own limits', function (t) {
     var b = bastion();
     b.politicalCapital.blackstone = 400; b.honourRespectByClan.blackstone = -9; b.favour.telluria = 'lots';
-    b.partyLevel = 99; b.turn = 0;
+    b.partyLevel = 99;
     var s = sum(explorer(), b);
     t.same([s.clan.politicalCapital, s.clan.honourRespect, s.god.favour], [100, -5, 0]);
-    t.same([s.level.value, s.bastionTurns], [20, 0]);
+    t.equal(s.level.value, 20);
     var e = explorer();
     e.travel.provinceId = 'atlantis';
     t.same([sum(e, b).region, sum(e, b).clan], [null, null], 'an unknown region shows nothing rather than the wrong Clan');
-  });
-
-  test('the next Bastion turn is the one the Explorer actually prompts at Make Camp', function (t) {
-    var s = explorer();
-    var prompted = [];
-    var predicted = [];
-    for (var i = 0; i < 24; i++) {
-      predicted.push(sum(s, null).nextBastion.day);
-      var q = ER.makeCamp(s, ED, EE, dice([0.99]));
-      if (q.some(function (x) { return x.event && x.event.title === 'Bastion Turn'; })) prompted.push(s.travel.day);
-    }
-    t.same(prompted, [8, 15, 22]);
-    t.same(predicted.slice(0, 8), [8, 8, 8, 8, 8, 8, 8, 15], 'from Day 1 to Day 7 it says Day 8; on Day 8 it moves on to Day 15');
-    t.same([C.isBastionDay(1), C.isBastionDay(7), C.isBastionDay(8), C.isBastionDay(15), C.isBastionDay(16)], [false, false, true, true, false]);
-    t.same([C.nextBastionDay(7), C.nextBastionDay(8), C.nextBastionDay(14)], [8, 15, 15]);
   });
 
   test('Active Effects show exactly as the Explorer\'s list shows them, and go when the Explorer removes them', function (t) {

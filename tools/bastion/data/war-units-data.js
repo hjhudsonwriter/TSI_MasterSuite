@@ -275,15 +275,16 @@
     casualties: { steady: 0, halfOrBelow: 10, routed: 25, defeatedHeld: 40, defeatedLost: 60 },
     /* Lieutenants and beasts aren't counted in percentages: one d6 when
        their formation (or the beast itself) is Defeated. A Routed one is
-       separated for a turn. */
+       separated for 7 days. (These were Bastion turns: 2, 1, 3 and 1; since
+       the days overhaul, 8 October 2026, they're the same at 7 days a turn.) */
     recovery: [
       { from: 1, to: 1, result: 'killed', text: 'Killed.' },
       { from: 2, to: 2, result: 'captured', text: 'Captured if the enemy holds the field; otherwise badly wounded.' },
-      { from: 3, to: 4, result: 'wounded', turns: 2, text: 'Wounded: unavailable for two Bastion turns.' },
-      { from: 5, to: 6, result: 'recovered', turns: 1, text: 'Recovered: unavailable for one Bastion turn.' }
+      { from: 3, to: 4, result: 'wounded', days: 14, text: 'Wounded: unavailable for 14 days.' },
+      { from: 5, to: 6, result: 'recovered', days: 7, text: 'Recovered: unavailable for 7 days.' }
     ],
-    badlyWoundedTurns: 3,
-    separatedTurns: 1,
+    badlyWoundedDays: 21,
+    separatedDays: 7,
 
     /* Rewards: the Bastion's existing amounts (bastion-data.js war.outcomes)
        stay the baseline. A raid's gold follows the supplies extracted, even
@@ -297,18 +298,22 @@
        war) and costs Honour & Respect and Political Capital with that Clan
        at once, by the Battle Value of the army committed: the first row
        whose maxBV the army is within (null: no limit). A war ends by itself
-       after quietTurns Bastion turns with no War Action or Defend Bastion
-       battle between you, or when the DM presses Make peace. While at war,
-       every Advance Bastion Turn rolls attackDie for each Clan at war: a 1
-       means it attacks your Bastion (one attack a turn at most). */
+       after quietDays days with no War Action or Defend Bastion battle
+       between you, or when the DM presses Make peace. While at war, each
+       Clan rolls attackDie every attackEvery days of the war, counted from
+       the day it was declared: a 1 means it attacks your Bastion (one
+       attack waiting at a time). (These were 6 quiet Bastion turns and a
+       roll each turn; since the days overhaul, 8 October 2026, the same at
+       7 days a turn.) */
     wars: {
       penalties: [
         { maxBV: 19, honourRespect: -3, politicalCapital: -30 },
         { maxBV: 39, honourRespect: -4, politicalCapital: -40 },
         { maxBV: null, honourRespect: -5, politicalCapital: -50 }
       ],
-      quietTurns: 6,
-      attackDie: 6
+      quietDays: 42,
+      attackDie: 6,
+      attackEvery: 7
     },
 
     /* ---------- The Defend Bastion event ----------
@@ -319,12 +324,13 @@
        tierDie (d6). Losing (or withdrawing) costs treasuryLoss (1d10 × 5%:
        5% to 50% of the treasury, rounded down, in place of the usual gold)
        and puts repairs.die (1d4) built facilities, chosen at random, Under
-       Repair for repairs.turns Bastion turns: no orders, and any already
-       running there wait. Winning uses the usual Defend Bastion rewards. */
+       Repair for repairs.days days, the day of the loss included (2 Bastion
+       turns before the days overhaul): no orders, and any already running
+       there wait. Winning uses the usual Defend Bastion rewards. */
     defence: {
       tierDie: [{ upTo: 2, tier: 'small' }, { upTo: 5, tier: 'established' }, { upTo: 6, tier: 'major' }],
       treasuryLoss: { die: 10, pctPerPip: 5 },
-      repairs: { die: 4, turns: 2 },
+      repairs: { die: 4, days: 14 },
       map: 'defend_coast',
       title: 'Sound the horns!',
       text: 'Sound the horns! Clan {clan} warships are approaching! Defend the Ironbow!'

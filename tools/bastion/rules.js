@@ -11,11 +11,21 @@
    - Loading restores every saved field (BAS-01).
    - A cancelled roll changes nothing and keeps the order (BAS-02): every roll
      an action needs is asked for first, then the result is applied at once.
-   - Orders complete on their turn or any later one (BAS-13).
+   - Orders complete on their day or any later one (BAS-13).
    - Lowering the party level keeps the buildings (BAS-04, B8).
-   - Each trade route pays at most once a turn (BAS-05, BAS-11).
+   - Each trade route pays at most once each time it sails (BAS-05, BAS-11).
    - Host Delegation changes Political Capital once, by its own two rolls (B2).
-   - The Treasure event (99–00) can come up (B11). */
+   - The Treasure event (99–00) can come up (B11).
+
+   Days, not turns (Harry, 8 October 2026; docs/BASTION-OVERHAUL.md). The
+   Bastion follows the Explorer's day: state.day is the last day it has
+   passed, and the screen passes each new day in turn (R.startDay, the
+   day's routes and orders, R.rollWarAttack, R.finishDay). Orders complete
+   on a due day; buildings on a ready day; contracts send a shipment, routes
+   sail and a Clan at war rolls to attack every 7 days from when each began.
+   Every day stored is an Explorer day number (it can be 0 or less after
+   R.shiftDays, for something that happened before a Reset Travel). A save
+   from before (in Bastion turns) is set aside, not converted (Harry). */
 (function () {
   'use strict';
 
@@ -41,8 +51,46 @@
     var pad = function (n) { return String(n).padStart(2, '0'); };
     return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
   };
+  /* Each log entry is stamped with the day it happened on. */
   R.log = function (state, title, body, now) {
-    state.log.unshift({ title: title, body: body, at: now === undefined ? Date.now() : now });
+    state.log.unshift({ title: title, body: body, at: now === undefined ? Date.now() : now, day: typeof state.day === 'number' ? state.day : null });
+  };
+  /* A day number as saved: a whole number, which can be 0 or less (before a
+     Reset Travel); anything else is the fallback. */
+  function dayNum(v, fallback) {
+    var n = typeof v === 'number' ? v : parseInt(String(v), 10);
+    return typeof n === 'number' && isFinite(n) ? Math.max(-100000, Math.min(100000, Math.trunc(n))) : fallback;
+  }
+  R.dayNum = dayNum;
+  /* "Day 12"; a day before Day 1 (after a Reset Travel) reads "before Day 1". */
+  R.dayLabel = function (n) { return n >= 1 ? 'Day ' + n : 'before Day 1'; };
+  /* "in 3 days", "tomorrow", "today", "3 days ago". */
+  R.inDays = function (from, to) {
+    var n = to - from;
+    if (n === 0) return 'today';
+    if (n === 1) return 'tomorrow';
+    if (n > 1) return 'in ' + n + ' days';
+    return n === -1 ? 'yesterday' : (-n) + ' days ago';
+  };
+  /* The Bastion's time settings (bastion-data.js time), with defaults. */
+  R.time = function (data) {
+    var t = (data && data.bastion && data.bastion.time) || {};
+    return {
+      buildDays: Array.isArray(t.buildDays) ? t.buildDays : [{ level: 17, days: 35 }, { level: 13, days: 35 }, { level: 9, days: 28 }, { level: 5, days: 21 }],
+      every: t.every > 0 ? t.every : 7,
+      patrolDays: t.patrolDays > 0 ? t.patrolDays : 7,
+      musterDays: t.musterDays > 0 ? t.musterDays : 3,
+      eventEvery: t.eventEvery > 0 ? t.eventEvery : 28
+    };
+  };
+  /* "The Ironbow sends word…": a short line for the day being passed, shown
+     in one pop-up when the days are done (state.word). Outside a day being
+     passed (the DM is there, pressing the button) nothing is added. */
+  R.addWord = function (s, line) {
+    var dip = s.dayInProgress;
+    if (!isObj(dip) || !line) return;
+    if (!Array.isArray(dip.news)) dip.news = [];
+    dip.news.push(String(line));
   };
 
   /* ---------- The starting Bastion (old loadState defaults, 4743-4833) ---------- */
@@ -53,7 +101,7 @@
     return { agreements: [], delegations: [], summits: [], arbitrations: [], consortiums: [], rep: 0, cooldowns: {}, tokens: 0 };
   };
   R.defaultTradeNetwork = function () {
-    return { active: false, strategy: 'balanced', stability: 75, routes: [], lastResolvedTurn: -1, recruitmentBoostTurns: 0 };
+    return { active: false, strategy: 'balanced', stability: 75, routes: [] };
   };
   R.defaultState = function (data) {
     var s = {
@@ -63,7 +111,8 @@
       builtExtras: [],
       facilityLevels: {},
       pendingOrders: [],
-      defenders: { count: 0, armed: false, patrolAdvantage: false },
+      /* patrolUntil: the last day the Watchtower's Patrol gives Advantage. */
+      defenders: { count: 0, armed: false, patrolUntil: 0 },
       defenderBeasts: [],
       military: [],
       warehouse: [],
@@ -71,19 +120,35 @@
       favour: { telluria: 0, aurush: 0, pelagos: 0 },
       politicalCapital: clanMap(0),
       tradeNetwork: R.defaultTradeNetwork(),
-      arbitration: { queue: [], lastSpawnTurn: -1 },
+      arbitration: { queue: [] },
       diplomacy: R.defaultDiplomacy(),
-      turn: 1,
+      /* The days overhaul (8 October 2026): v 2 marks a save in days. day is
+         the last day the Bastion has passed; anchored, whether it has read
+         the Explorer's day yet (until then any Explorer day moves the whole
+         Bastion to it, without passing days). */
+      v: 2,
+      day: 1,
+      anchored: false,
       lastEvent: null,
+      /* The day of the latest automatic Bastion event. */
+      lastEventDay: 0,
       log: [],
-      organization: { type: 'unsworn', name: '', chief: '', motto: '', foundedAtTurn: null },
+      /* 'unsworn' or 'clan' (the Mercenary Brigade was archived in the
+         Bastion overhaul, Build 3: tools/bastion/archive/mercenary-brigade.js). */
+      organization: { type: 'unsworn', name: '', chief: '', motto: '', foundedAtDay: null },
       clanHonor: 40,
       honourRespectByClan: clanMap(0),
+      /* The archived Brigade's Trusted Clients scores: nothing reads them
+         now, but they're kept in the save, so putting the Brigade back
+         (archive/mercenary-brigade.js) loses nothing. */
       trustedClientsByClan: clanMap(50),
       warLog: [],
-      /* New: where an Advance Bastion Turn has got to, so it can finish after
-         a cancelled roll or a closed window (BAS-02). */
-      turnInProgress: null,
+      /* Where passing a day has got to ({ day, stage, skipped, attackRolled,
+         news }), so it can finish after a cancelled roll or a closed window
+         (BAS-02); and "The Ironbow sends word…" not yet shown, [{ day,
+         lines }]. */
+      dayInProgress: null,
+      word: [],
       /* New: Military Actions under way, one per war action that has come
          due (rolls, deployment), so each step is kept as it happens
          (Harry's request, 2 October 2026). */
@@ -96,11 +161,12 @@
       warRecovery: [],
       warMissionSeq: 0,
       /* New in the war's round of 4 October 2026 (war-campaign-rules.js):
-         the Clans you're at war with, { clanKey: { since, last } } (the turn
-         the war began, and the turn of the latest War Action, muster,
-         battle or attack between you); and the facilities Under Repair
-         after a lost Defend Bastion, { facId: untilTurn } (Under Repair
-         while the turn is at or before untilTurn). */
+         the Clans you're at war with, { clanKey: { since, last, next } }
+         (the day the war began, the day of the latest War Action, muster,
+         battle or attack between you, and the day of its next attack roll);
+         and the facilities Under Repair after a lost Defend Bastion,
+         { facId: untilDay } (Under Repair while the day is at or before
+         untilDay). */
       wars: {},
       repairs: {}
     };
@@ -137,11 +203,13 @@
     if (arr(s.builtExtras)) d.builtExtras = s.builtExtras.slice();
     if (isObj(s.facilityLevels)) d.facilityLevels = Object.assign({}, s.facilityLevels);
     if (arr(s.pendingOrders)) d.pendingOrders = s.pendingOrders.filter(isObj);
+    d.day = Math.max(1, dayNum(s.day, 1));
+    d.anchored = s.anchored === true;
     if (isObj(s.defenders)) {
       d.defenders = {
         count: clampInt(s.defenders.count === undefined || s.defenders.count === null ? 0 : s.defenders.count, 0),
         armed: !!s.defenders.armed,
-        patrolAdvantage: !!s.defenders.patrolAdvantage
+        patrolUntil: dayNum(s.defenders.patrolUntil, 0)
       };
     }
     if (arr(s.defenderBeasts)) d.defenderBeasts = s.defenderBeasts.filter(isObj);
@@ -155,7 +223,7 @@
       d.tradeNetwork.routes = arr(s.tradeNetwork.routes) ? s.tradeNetwork.routes.filter(isObj) : [];
     }
     if (isObj(s.arbitration)) {
-      d.arbitration = Object.assign({ queue: [], lastSpawnTurn: -1 }, s.arbitration);
+      d.arbitration = Object.assign({ queue: [] }, s.arbitration);
       d.arbitration.queue = arr(s.arbitration.queue) ? s.arbitration.queue.filter(isObj) : [];
     }
     if (isObj(s.diplomacy)) {
@@ -168,34 +236,42 @@
       if (typeof s.diplomacy.tokens === 'number') dip.tokens = s.diplomacy.tokens;
       d.diplomacy = dip;
     }
-    d.turn = clampInt(s.turn === undefined || s.turn === null ? 1 : s.turn, 1);
     d.lastEvent = isObj(s.lastEvent) ? s.lastEvent : null;
+    d.lastEventDay = dayNum(s.lastEventDay, 0);
     if (arr(s.log)) d.log = s.log.filter(isObj);
-    if (isObj(s.organization)) {
+    /* A Mercenary Brigade (archived in Build 3) becomes Unsworn: the screen
+       says so once and the Day Log keeps its name (R.formerBrigade). */
+    if (isObj(s.organization) && s.organization.type !== 'merc') {
       var o = s.organization;
       d.organization = {
-        type: o.type === 'clan' || o.type === 'merc' ? o.type : 'unsworn',
+        type: o.type === 'clan' ? 'clan' : 'unsworn',
         name: typeof o.name === 'string' ? o.name : '',
         chief: typeof o.chief === 'string' ? o.chief : '',
         motto: typeof o.motto === 'string' ? o.motto : '',
-        foundedAtTurn: o.foundedAtTurn === undefined ? null : o.foundedAtTurn
+        foundedAtDay: dayNum(o.foundedAtDay, null)
       };
     }
     if (s.clanHonor !== undefined && s.clanHonor !== null) d.clanHonor = clampInt(s.clanHonor, 0, 100);
     d.honourRespectByClan = numMap(s.honourRespectByClan, CLAN_KEYS, -5, 5, 0);
     d.trustedClientsByClan = numMap(s.trustedClientsByClan, CLAN_KEYS, 0, 100, 50);
     if (arr(s.warLog)) d.warLog = s.warLog.filter(isObj);
-    if (isObj(s.turnInProgress) && typeof s.turnInProgress.stage === 'string') {
-      d.turnInProgress = {
-        turn: clampInt(s.turnInProgress.turn, 1),
-        stage: ['trade', 'tick', 'orders'].indexOf(s.turnInProgress.stage) === -1 ? 'orders' : s.turnInProgress.stage,
-        skipped: arr(s.turnInProgress.skipped) ? s.turnInProgress.skipped.slice() : [],
-        /* The attack roll for this turn has been made (a save from before
-           wars hasn't made one, and has no wars to roll for). */
-        attackRolled: s.turnInProgress.attackRolled === true
+    if (isObj(s.dayInProgress) && typeof s.dayInProgress.stage === 'string') {
+      var dip = s.dayInProgress;
+      d.dayInProgress = {
+        day: Math.max(1, dayNum(dip.day, d.day)),
+        stage: DAY_STAGES.indexOf(dip.stage) === -1 ? 'orders' : dip.stage,
+        skipped: arr(dip.skipped) ? dip.skipped.slice() : [],
+        /* The day's attack roll has been made, so it can't be made again. */
+        attackRolled: dip.attackRolled === true,
+        news: arr(dip.news) ? dip.news.filter(function (x) { return typeof x === 'string'; }) : []
       };
     }
-    d.wars = cleanWars(s.wars, d.turn);
+    if (arr(s.word)) {
+      d.word = s.word.filter(function (w) { return isObj(w) && Array.isArray(w.lines); }).map(function (w) {
+        return { day: dayNum(w.day, d.day), lines: w.lines.filter(function (x) { return typeof x === 'string'; }) };
+      });
+    }
+    d.wars = cleanWars(s.wars, d.day);
     d.repairs = cleanRepairs(s.repairs, data);
     if (arr(s.militaryActions)) d.militaryActions = s.militaryActions.filter(isObj);
     R.normalizeBuiltExtras(d);
@@ -208,31 +284,32 @@
   };
   R.toSave = function (state) { return TSI.clone(state); };
 
-  /* The wars, as saved: only known Clans, each with the turn it began and
-     the turn of the latest war activity, as whole numbers from 1 to the
-     current turn (the latest never before the first). Anything damaged is
-     dropped: that Clan is at peace. */
-  function okTurn(v) { return typeof v === 'number' && isFinite(v); }
-  function cleanWars(src, turn) {
+  /* The wars, as saved: only known Clans, each with the day it began, the
+     day of the latest war activity (never before the first, never after
+     today) and the day of its next attack roll (a week on from today if
+     it's missing). Anything damaged is dropped: that Clan is at peace. */
+  function okDay(v) { return typeof v === 'number' && isFinite(v); }
+  function cleanWars(src, day) {
     var out = {};
     if (!isObj(src)) return out;
     CLAN_KEYS.forEach(function (k) {
       var w = src[k];
-      if (!isObj(w) || !okTurn(w.since) || !okTurn(w.last)) return;
-      var since = clampInt(w.since, 1, turn);
-      out[k] = { since: since, last: clampInt(w.last, since, turn) };
+      if (!isObj(w) || !okDay(w.since) || !okDay(w.last)) return;
+      var since = Math.min(dayNum(w.since, day), day);
+      var last = Math.max(since, Math.min(dayNum(w.last, day), day));
+      out[k] = { since: since, last: last, next: okDay(w.next) ? dayNum(w.next, day + 7) : day + 7 };
     });
     return out;
   }
   /* The facilities Under Repair, as saved: only known facilities, each with
-     the last turn of its repairs as a whole number. Anything damaged is
+     the last day of its repairs as a whole number. Anything damaged is
      dropped: that facility is working. */
   function cleanRepairs(src, data) {
     var out = {};
     if (!isObj(src)) return out;
     Object.keys(src).forEach(function (id) {
-      if (!R.facility(data, id) || !okTurn(src[id])) return;
-      out[id] = clampInt(src[id], 1);
+      if (!R.facility(data, id) || !okDay(src[id])) return;
+      out[id] = dayNum(src[id], 0);
     });
     return out;
   }
@@ -242,7 +319,8 @@
      can't replace the Bastion (BAS-14). */
   R.saveProblem = function (s) {
     if (!isObj(s)) return 'It isn\'t a Bastion save.';
-    var marks = ['treasuryGP', 'partyLevel', 'turn', 'builtExtras', 'pendingOrders', 'defenders', 'warehouse'];
+    if (R.isOldSave(s)) return 'It was saved before the Bastion counted in days (in Bastion turns), so it can\'t be used.';
+    var marks = ['treasuryGP', 'partyLevel', 'day', 'builtExtras', 'pendingOrders', 'defenders', 'warehouse'];
     var found = marks.filter(function (k) { return k in s; }).length;
     if (found < 4) return 'It doesn\'t look like a Bastion save.';
     var lists = ['builtExtras', 'pendingOrders', 'defenderBeasts', 'military', 'warehouse', 'log', 'warLog', 'militaryActions', 'warRecovery'];
@@ -253,16 +331,60 @@
     for (var j = 0; j < maps.length; j++) {
       if (maps[j] in s && s[maps[j]] !== null && !isObj(s[maps[j]])) return 'Its ' + maps[j] + ' record is damaged.';
     }
-    if ('turn' in s && isNaN(parseInt(String(s.turn), 10))) return 'Its turn number is damaged.';
+    if ('day' in s && isNaN(parseInt(String(s.day), 10))) return 'Its day number is damaged.';
     return null;
   };
   R.isSave = function (s) { return R.saveProblem(s) === null; };
+  /* A Bastion saved in turns, before the days overhaul (it has no v: 2).
+     It's set aside, not converted (Harry, 8 October 2026). */
+  R.isOldSave = function (s) {
+    return isObj(s) && s.v !== 2 && ('turn' in s || 'turnInProgress' in s);
+  };
   R.isUi = function (v) { return isObj(v); };
+  /* What the screen remembers (tsi.bastion.ui), since the new screen
+     (Build 2, 8 October 2026): gridOpen, whether the facility grid is open
+     (open at first), and warNoticed, the war pop-ups already seen. Anything
+     else (the old panels' open or closed state) is dropped. */
+  R.cleanUi = function (v) {
+    var src = isObj(v) ? v : {};
+    var out = { gridOpen: src.gridOpen !== false };
+    if (isObj(src.warNoticed)) out.warNoticed = src.warNoticed;
+    return out;
+  };
 
-  /* The Clan's or Brigade's crest picture, saved apart from the Bastion as
-     tsi.bastion.crest (it's shrunk when uploaded): { dataUrl, key, name }. */
+  /* The Bastion's crest picture, saved apart from the Bastion as
+     tsi.bastion.crest: { dataUrl, key, name, design? }. An uploaded picture
+     is shrunk to 512 pixels a side; one from the Clan Crest Creator also
+     keeps the Creator's design (its settings), so it can be re-edited. */
   R.isCrest = function (v) {
-    return isObj(v) && typeof v.dataUrl === 'string' && /^data:image\//.test(v.dataUrl) && typeof v.key === 'string';
+    return isObj(v) && typeof v.dataUrl === 'string' && /^data:image\//.test(v.dataUrl) && typeof v.key === 'string' &&
+      (v.design === undefined || isObj(v.design));
+  };
+  /* A crest sent from the Clan Crest Creator (TSI.handoff 'crest': { id,
+     at, name, dataUrl, design }) as the Bastion keeps it, or null if it
+     isn't one: a PNG of at most about 3 MB, and a design that's a plain
+     set of settings. */
+  var CREST_HANDOFF_MAX = 3000000;
+  R.crestFromHandoff = function (h) {
+    if (!isObj(h) || typeof h.dataUrl !== 'string' || !/^data:image\/png;base64,/.test(h.dataUrl) || h.dataUrl.length > CREST_HANDOFF_MAX) return null;
+    var name = typeof h.name === 'string' ? h.name.trim().slice(0, 80) : '';
+    var c = { dataUrl: h.dataUrl, key: R.hashText(h.dataUrl), name: (name || 'Crest') + ' (Crest Creator).png' };
+    if (isObj(h.design)) {
+      var design = {};
+      Object.keys(h.design).forEach(function (k) {
+        var v = h.design[k];
+        if (typeof v === 'string' || typeof v === 'boolean' || (typeof v === 'number' && isFinite(v))) design[k] = v;
+      });
+      c.design = design;
+    }
+    return c;
+  };
+  /* The name of a Mercenary Brigade in a save from before Build 3 (Builds 1
+     and 2 still had Form Mercenary Brigade), or null: it loads as Unsworn. */
+  R.formerBrigade = function (saved) {
+    var o = isObj(saved) && isObj(saved.organization) ? saved.organization : null;
+    if (!o || o.type !== 'merc') return null;
+    return { name: typeof o.name === 'string' && o.name.trim() ? o.name.trim() : 'the Brigade' };
   };
   /* A short fingerprint of a picture, so a new one can be told from the old. */
   R.hashText = function (str) {
@@ -306,6 +428,7 @@
     for (var i = 0; i < records.length; i++) {
       var r = records[i];
       if (r.key === 'tsi.bastion.state') {
+        if (R.isOldSave(r.value)) return 'This file is from before the Bastion counted in days, so it can\'t be imported. Nothing was changed.';
         var p = R.saveProblem(r.value);
         if (p) return 'This file\'s Bastion isn\'t in the right form, so it wasn\'t imported. ' + p + ' Nothing was changed.';
       }
@@ -338,13 +461,12 @@
     if (lvl >= 5) return 2;
     return 0;
   };
-  /* Build time by the facility's required level (216-223). */
-  R.buildTurnsForRequiredLevel = function (requiredLevel) {
+  /* Build time in days by the facility's required level (216-223; it was
+     3 / 4 / 5 / 5 turns, now bastion-data.js time.buildDays). */
+  R.buildDaysForRequiredLevel = function (requiredLevel, data) {
     var rl = Number(requiredLevel || 0);
-    if (rl >= 17) return 5;
-    if (rl >= 13) return 5;
-    if (rl >= 9) return 4;
-    if (rl >= 5) return 3;
+    var rows = R.time(data).buildDays;
+    for (var i = 0; i < rows.length; i++) if (rl >= rows[i].level) return clampInt(rows[i].days, 0);
     return 0;
   };
   /* Old saves' plain names become { facId, status: "built" } (229-237). */
@@ -370,23 +492,24 @@
     var ids = data.bastion.startingBuilt.concat(extras(s).filter(function (x) { return x.status === 'built'; }).map(function (x) { return x.facId; }));
     return ids.filter(function (id, i) { return ids.indexOf(id) === i; });
   };
-  /* One turn of building work; returns the facilities finished (258-282). */
-  R.tickConstruction = function (s) {
+  /* Building work finished by today: each building whose ready day has
+     come is built. Returns the facilities finished (258-282). */
+  R.completeConstruction = function (s) {
     R.normalizeBuiltExtras(s);
     var completed = [];
     s.builtExtras = s.builtExtras.map(function (entry) {
       if (!entry || entry === '') return '';
-      if (entry.status === 'building') {
-        var next = Math.max(0, Number(entry.remaining || 0) - 1);
-        if (next === 0) {
-          completed.push(entry.facId);
-          return { facId: entry.facId, status: 'built' };
-        }
-        return Object.assign({}, entry, { remaining: next });
+      if (entry.status === 'building' && !(dayNum(entry.readyDay, s.day) > s.day)) {
+        completed.push(entry.facId);
+        return { facId: entry.facId, status: 'built' };
       }
       return entry;
     });
     return completed;
+  };
+  /* Days of building work left (0 once it's due). */
+  R.buildDaysLeft = function (s, entry) {
+    return entry && entry.status === 'building' ? Math.max(0, dayNum(entry.readyDay, s.day) - s.day) : 0;
   };
 
   /* The construction slots to show. Lowering the level no longer deletes
@@ -421,13 +544,13 @@
     var name = (fac && fac.name) || facId;
     if (s.partyLevel < req) return { ok: false, message: 'Locked. ' + name + ' requires party level ' + req + '.' };
     if (R.reservedFacilityIds(s, data).indexOf(facId) !== -1) return { ok: false, message: 'That facility is already built or under construction.' };
-    var turns = R.buildTurnsForRequiredLevel(req);
-    if (turns <= 0) {
+    var days = R.buildDaysForRequiredLevel(req, data);
+    if (days <= 0) {
       s.builtExtras[slotIndex] = { facId: facId, status: 'built' };
       return { ok: true, log: ['Construction', name + ' built instantly.'] };
     }
-    s.builtExtras[slotIndex] = { facId: facId, status: 'building', remaining: turns };
-    return { ok: true, log: ['Construction Started', name + ' is under construction (' + turns + ' turns).'] };
+    s.builtExtras[slotIndex] = { facId: facId, status: 'building', startDay: s.day, readyDay: s.day + days };
+    return { ok: true, log: ['Construction Started', name + ' is under construction (' + days + ' days: ready on Day ' + (s.day + days) + ').'] };
   };
   R.getFacilityLevel = function (s, facId) { return clampInt(s.facilityLevels && s.facilityLevels[facId] !== undefined && s.facilityLevels[facId] !== null ? s.facilityLevels[facId] : 1, 1, 3); };
 
@@ -489,18 +612,20 @@
 
   /* ---------- Under Repair (Harry, 4 October 2026) ----------
      A lost Defend Bastion leaves some facilities Under Repair
-     (war-campaign-rules.js): s.repairs = { facId: untilTurn }. While the
-     turn is at or before untilTurn, the facility takes no orders, and
-     orders already running there wait. */
+     (war-campaign-rules.js): s.repairs = { facId: untilDay }. While the
+     day is at or before untilDay, the facility takes no orders, and orders
+     already running there wait. Returns untilDay, or 0. */
   R.underRepair = function (s, facId) {
     var u = isObj(s.repairs) ? s.repairs[facId] : undefined;
-    return typeof u === 'number' && Number(s.turn) <= u ? u : 0;
+    return typeof u === 'number' && Number(s.day) <= u ? u : 0;
   };
   /* Why a facility can't take an order now, or null. */
   function repairRefusal(s, fac) {
     var until = R.underRepair(s, fac.id);
-    return until ? { ok: false, message: 'The ' + fac.name + ' is Under Repair until Bastion turn ' + until + '.' } : null;
+    return until ? { ok: false, message: 'The ' + fac.name + ' is Under Repair until Day ' + until + '.' } : null;
   }
+  /* How many days an order takes (facilities-data.js days; at least 1). */
+  R.orderDays = function (fn) { return clampInt(fn && fn.days !== undefined && fn.days !== null ? fn.days : 1, 1, 365); };
 
   /* Issue an order from a facility card (3247-3344). optionIdx is the list's choice. */
   R.issueOrder = function (s, data, facId, fnId, optionIdx, rand) {
@@ -526,8 +651,9 @@
     if (costGP > s.treasuryGP) return { ok: false, message: 'Not enough gp. Need ' + costGP + 'gp, you have ' + s.treasuryGP + 'gp.' };
     s.treasuryGP -= costGP;
     var label = orderLabel(fac, fn, optionLabel);
-    s.pendingOrders.push({ id: R.uid(rand), facId: facId, fnId: fnId, chosen: chosen, optionLabel: optionLabel, notes: notes, label: label, costGP: costGP, issuedTurn: s.turn, completeTurn: s.turn + 1 });
-    return { ok: true, log: ['Order Issued', label] };
+    var days = R.orderDays(fn);
+    s.pendingOrders.push({ id: R.uid(rand), facId: facId, fnId: fnId, chosen: chosen, optionLabel: optionLabel, notes: notes, label: label, costGP: costGP, issuedDay: s.day, dueDay: s.day + days });
+    return { ok: true, log: ['Order Issued', label + ' (' + days + (days === 1 ? ' day' : ' days') + ': due Day ' + (s.day + days) + ').'] };
   };
 
   /* Issue a Hall action after its planning box (3346-3417). */
@@ -552,8 +678,9 @@
     s.treasuryGP -= costGP;
     var label = orderLabel(fac, fn, optionLabel);
     var notes = isObj(meta) && meta.notes ? String(meta.notes) : '';
-    s.pendingOrders.push({ id: R.uid(rand), facId: facId, fnId: fnId, chosen: chosen, optionLabel: optionLabel, notes: notes, label: label, costGP: costGP, issuedTurn: s.turn, completeTurn: s.turn + 1, meta: isObj(meta) ? meta : null });
-    return { ok: true, log: ['Order Issued', label] };
+    var days = R.orderDays(fn);
+    s.pendingOrders.push({ id: R.uid(rand), facId: facId, fnId: fnId, chosen: chosen, optionLabel: optionLabel, notes: notes, label: label, costGP: costGP, issuedDay: s.day, dueDay: s.day + days, meta: isObj(meta) ? meta : null });
+    return { ok: true, log: ['Order Issued', label + ' (' + days + (days === 1 ? ' day' : ' days') + ': due Day ' + (s.day + days) + ').'] };
   };
 
   /* Trade Network investments (710-763). */
@@ -564,13 +691,14 @@
     if (!up) return { ok: false, message: 'Unknown upgrade type.' };
     if (up.costGP > s.treasuryGP) return { ok: false, message: 'Not enough gp. Need ' + up.costGP + 'gp, you have ' + s.treasuryGP + 'gp.' };
     s.treasuryGP -= up.costGP;
-    s.pendingOrders.push({ id: R.uid(rand), facId: 'trade_network', fnId: 'upgrade', chosen: null, optionLabel: null, label: up.label, costGP: up.costGP, issuedTurn: s.turn, completeTurn: s.turn + 1, meta: { kind: kind } });
-    return { ok: true, log: ['Order Issued', up.label] };
+    var days = clampInt(up.days === undefined ? 7 : up.days, 1, 365);
+    s.pendingOrders.push({ id: R.uid(rand), facId: 'trade_network', fnId: 'upgrade', chosen: null, optionLabel: null, label: up.label, costGP: up.costGP, issuedDay: s.day, dueDay: s.day + days, meta: { kind: kind } });
+    return { ok: true, log: ['Order Issued', up.label + ' (' + days + (days === 1 ? ' day' : ' days') + ': due Day ' + (s.day + days) + ').'] };
   };
 
   /* Cancelling an order keeps the gold spent (B9, kept). A War Action
-     cancelled on the turn it was queued gives back what declaring war
-     cost (R.undoWarDeclaration, war-campaign-rules.js), and says so. */
+     cancelled on the day it was queued gives back what declaring war cost
+     (R.undoWarDeclaration, war-campaign-rules.js), and says so. */
   R.cancelOrder = function (s, id, data, now) {
     var gone = s.pendingOrders.filter(function (x) { return String(x.id) === String(id); })[0];
     s.pendingOrders = s.pendingOrders.filter(function (x) { return String(x.id) !== String(id); });
@@ -676,11 +804,16 @@
     var rep = clampInt(s.diplomacy.rep || 0, -5, 5);
     return (lvl === 1 ? 2 : lvl === 2 ? 4 : 6) + rep;
   };
-  R.cooldownLeft = function (s, key) { return clampInt(s.diplomacy.cooldowns && s.diplomacy.cooldowns[key] !== undefined ? s.diplomacy.cooldowns[key] : 0, 0, 99); };
-  R.setCooldown = function (s, key, turns) {
-    var t = clampInt(turns, 0, 99);
+  /* A Hall action cooling down after a bad failure: cooldowns[kind] is the
+     day it's free again. The days left (0 when it's free). */
+  R.cooldownLeft = function (s, key) {
+    var until = s.diplomacy.cooldowns ? s.diplomacy.cooldowns[key] : undefined;
+    return typeof until === 'number' ? Math.max(0, until - s.day) : 0;
+  };
+  R.setCooldown = function (s, key, days) {
+    var t = clampInt(days, 0, 999);
     if (t <= 0) delete s.diplomacy.cooldowns[key];
-    else s.diplomacy.cooldowns[key] = t;
+    else s.diplomacy.cooldowns[key] = s.day + t;
   };
 
   /* What a Hall action needs before anything happens: the rolls to ask for,
@@ -705,8 +838,28 @@
     return { fac: fac, fn: fn, kind: kind, opt: opt, dc: dc, mod: mod, tone: tone, blocked: cd, rolls: rolls };
   };
 
+  /* How long a Hall action's record lasts before its roll tier: its
+     durationDays, or for a Trade Agreement the weeks chosen when it was
+     planned (1, 3 or 6; Harry, 8 October 2026). */
+  R.hallBaseDays = function (data, fn, order) {
+    var sp = fn.special || {};
+    if (sp.kind === 'trade_agreement') {
+      var choices = data.bastion.tradeAgreementWeeks || [1, 3, 6];
+      var w = order && order.meta ? Number(order.meta.weeks) : NaN;
+      if (choices.indexOf(w) === -1) w = data.bastion.tradeAgreementDefaultWeeks || 3;
+      return w * 7;
+    }
+    return clampInt(sp.durationDays === undefined || sp.durationDays === null ? 14 : sp.durationDays, 1, 365);
+  };
+  /* "21 days (3 shipments)". */
+  R.daysText = function (n) { return n + (n === 1 ? ' day' : ' days'); };
+  R.shipmentsText = function (n) { return n + (n === 1 ? ' shipment' : ' shipments'); };
+
   /* Apply a Hall action once all its rolls are in (899-1201). rolls holds
-     { main, r1, r2 } as { d20, total }. Returns the result box's lines. */
+     { main, r1, r2 } as { d20, total }. Returns the result box's lines.
+     Its record lasts its base days plus the roll tier's (at least a week);
+     a contract sends a shipment every 7 days from today, the last on its
+     final day. */
   R.applyEmissary = function (s, data, order, plan, rolls, rand) {
     var fn = plan.fn;
     var kind = plan.kind;
@@ -715,17 +868,18 @@
     var tier = R.tierFromRoll(roll.d20, roll.total, plan.dc);
     var changes = [];
     var summary = '';
-    var baseTurns = clampInt(fn.special.durationTurns === undefined || fn.special.durationTurns === null ? 2 : fn.special.durationTurns, 1, 20);
+    var every = R.time(data).every;
+    var baseDays = R.hallBaseDays(data, fn, order);
     var randBetween = function (a, b) {
       var min = clampInt(Math.min(a, b), -999999, 999999);
       var max = clampInt(Math.max(a, b), -999999, 999999);
       return min + Math.floor(rand() * (max - min + 1));
     };
-    var t = data.bastion.hallTiers[tier] || { turnsAdj: 0, incomeMult: 1, pcDelta: 0 };
-    var turnsAdj = t.turnsAdj;
+    var t = data.bastion.hallTiers[tier] || { daysAdj: 0, incomeMult: 1, pcDelta: 0 };
+    var daysAdj = t.daysAdj || 0;
     var incomeMult = t.incomeMult;
     var pcDelta = t.pcDelta;
-    if (t.cooldown) { R.setCooldown(s, kind, t.cooldown); changes.push('Cooldown: ' + t.cooldown + ' turns'); }
+    if (t.cooldownDays) { R.setCooldown(s, kind, t.cooldownDays); changes.push('Cooldown: ' + R.daysText(t.cooldownDays)); }
 
     /* The action roll's Political Capital. A delegation's comes from its own
        two rolls instead (B2), so it isn't changed here. */
@@ -737,7 +891,9 @@
       R.addPoliticalCapital(s, opt, pcDelta);
       changes.push('Political Capital: ' + (pcDelta >= 0 ? '+' : '') + pcDelta + ' (' + String(opt) + ')');
     }
-    var turns = clampInt(baseTurns + turnsAdj, 1, 30);
+    var days = clampInt(baseDays + daysAdj, every, 365);
+    var endDay = s.day + days;
+    var shipments = Math.ceil(days / every);
 
     if (kind === 'summit') {
       if (incomeMult === 0) {
@@ -748,9 +904,9 @@
           : tier === 'great_success' ? clampInt(basePct + 5, 0, 90)
           : tier === 'failure' ? clampInt(basePct - 5, 0, 90)
           : basePct;
-        s.diplomacy.summits.push({ id: R.uid(rand), title: 'Inter-Clan Summit', pair: String(opt), turnsLeft: turns, costReductionPct: pct });
+        s.diplomacy.summits.push({ id: R.uid(rand), title: 'Inter-Clan Summit', pair: String(opt), startDay: s.day, endDay: endDay, costReductionPct: pct });
         R.appendToWarehouse(s, 'Summit Charter', 1, '', 'Hall of Emissaries', rand);
-        changes.push('Trade action discount: ' + pct + '% (' + turns + ' turns)');
+        changes.push('Trade action discount: ' + pct + '% (' + R.daysText(days) + ', until Day ' + endDay + ')');
         summary = 'A charter is inked. Trade routes loosen. The room exhales.';
       }
     } else if (kind === 'host_delegation') {
@@ -787,8 +943,8 @@
         s.treasuryGP -= penalty;
         changes.push('Treasury: -' + penalty + ' gp');
       }
-      s.diplomacy.delegations.push({ id: R.uid(rand), title: 'Hosted Delegation (' + tone + ')', clan: String(opt), turnsLeft: turns });
-      changes.push('Delegation active: ' + turns + ' turns');
+      s.diplomacy.delegations.push({ id: R.uid(rand), title: 'Hosted Delegation (' + tone + ')', clan: String(opt), startDay: s.day, endDay: endDay });
+      changes.push('Delegation active: ' + R.daysText(days) + ', until Day ' + endDay);
     } else {
       var iMin = clampInt(fn.special.incomeMin || 0, 0);
       var iMax = clampInt(fn.special.incomeMax === undefined ? iMin : fn.special.incomeMax, iMin);
@@ -796,13 +952,15 @@
       if (incomeMult === 0) {
         summary = 'Negotiations sour. Ink never touches parchment.';
       } else {
-        var perTurn = clampInt(Math.floor(baseIncome * incomeMult), 0);
+        var perShipment = clampInt(Math.floor(baseIncome * incomeMult), 0);
         var title = kind === 'arbitration' ? 'Secure Writ of Authority' : kind === 'consortium' ? 'Form Trade Consortium' : 'Trade Agreement';
-        var rec = { id: R.uid(rand), title: title, clan: String(opt), turnsLeft: turns, incomePerTurn: perTurn };
+        /* income: the gold each shipment brings; lastShipmentDay: the day
+           of the latest shipment (today, to start the count). */
+        var rec = { id: R.uid(rand), title: title, clan: String(opt), startDay: s.day, endDay: endDay, income: perShipment, lastShipmentDay: s.day };
         var list = kind === 'arbitration' ? 'arbitrations' : kind === 'consortium' ? 'consortiums' : 'agreements';
         s.diplomacy[list].push(rec);
-        changes.push('New record: ' + rec.title + ' (' + rec.turnsLeft + ' turns)');
-        if (rec.incomePerTurn) changes.push('Income: +' + rec.incomePerTurn + ' gp/turn');
+        changes.push('New record: ' + rec.title + ' (' + R.daysText(days) + ', ' + R.shipmentsText(shipments) + ', until Day ' + endDay + ')');
+        if (rec.income) changes.push('Income: +' + rec.income + ' gp a shipment, every ' + every + ' days');
         if (kind === 'consortium') {
           s.tradeNetwork.active = true;
           if (!Array.isArray(s.tradeNetwork.routes)) s.tradeNetwork.routes = [];
@@ -812,10 +970,13 @@
             /* An expired route counts too, so a new consortium can't reopen it (B21, kept). */
             var exists = s.tradeNetwork.routes.some(function (r) { return String(r.clan).toLowerCase() === meta.name.toLowerCase(); });
             if (!exists) {
+              /* It sails every 7 days from today (nextDay), until its
+                 consortium's base days are up (the roll's tier doesn't
+                 change the route's life, as before). */
               s.tradeNetwork.routes.push({
                 id: R.uid(rand), clan: meta.name, commodity: meta.commodity, risk: meta.risk,
-                expiresTurn: s.turn + (fn.special.durationTurns === undefined ? 5 : fn.special.durationTurns),
-                yieldGP: perTurn, stabilityDC: 12, status: 'active'
+                openedDay: s.day, expiresDay: s.day + clampInt(fn.special.durationDays === undefined ? 35 : fn.special.durationDays, 1, 365),
+                nextDay: s.day + every, yieldGP: perShipment, stabilityDC: 12, status: 'active'
               });
               changes.push('Trade Network: Route opened (' + meta.name + ')');
             }
@@ -909,8 +1070,9 @@
       return [['Order Completed', label + ' → Recruited ' + r4 + ' defenders.']];
     }
     if (fac.id === 'watchtower' && fn.id === 'patrol') {
-      s.defenders.patrolAdvantage = true;
-      return [['Order Completed', label + ' → Patrol active this turn.']];
+      var until = s.day + R.time(data).patrolDays;
+      s.defenders.patrolUntil = Math.max(R.patrolActive(s) ? s.defenders.patrolUntil : 0, until);
+      return [['Order Completed', label + ' → Patrol active until Day ' + s.defenders.patrolUntil + '.']];
     }
     if (fac.id === 'armoury' && fn.id === 'arm_defenders') {
       s.defenders.armed = s.defenders.count > 0;
@@ -958,54 +1120,98 @@
     if (R.isEmissary(fac, fn)) return 'emissary';
     return 'simple';
   };
-  /* Orders due now: on their turn or any turn since (BAS-13). Orders at a
+  /* The Watchtower's Patrol: Advantage for the defenders, from the day it
+     completes until patrolUntil. */
+  R.patrolActive = function (s) {
+    return !!(isObj(s.defenders) && typeof s.defenders.patrolUntil === 'number' && s.defenders.patrolUntil >= s.day && s.defenders.patrolUntil > 0);
+  };
+  /* Is an order due (its day has come)? */
+  R.isDue = function (s, o) { return isObj(o) && !(dayNum(o.dueDay, s.day) > s.day); };
+  /* Orders due now: on their day or any day since (BAS-13). Orders at a
      facility Under Repair wait (they stay pending) until it's working. */
   R.dueOrders = function (s, skipped) {
     return s.pendingOrders.filter(function (o) {
-      return Number(o.completeTurn) <= s.turn && (skipped || []).indexOf(o.id) === -1 && !R.underRepair(s, o.facId);
+      return R.isDue(s, o) && (skipped || []).indexOf(o.id) === -1 && !R.underRepair(s, o.facId);
     });
   };
   R.removeOrder = function (s, id) {
     s.pendingOrders = s.pendingOrders.filter(function (o) { return o.id !== id; });
   };
 
-  /* ---------- Diplomacy each turn (2331-2385) ---------- */
-  R.tickDiplomacy = function (s) {
+  /* ---------- Diplomacy each day (2331-2385) ----------
+     Contracts (agreements, writs, consortiums) send a shipment every 7 days
+     from the day each was signed, the last one on its final day; then
+     every record whose final day has come ends (a delegation or summit
+     lasts until its final day). A sea route whose consortium has ended, or
+     whose own days are up, expires; a cooldown that's over is cleared.
+     Returns { logs, word }: the log lines, and the lines for "The Ironbow
+     sends word…" (records that ended). */
+  var CONTRACTS = ['agreements', 'arbitrations', 'consortiums'];
+  var RECORDS = ['agreements', 'delegations', 'summits', 'arbitrations', 'consortiums'];
+  /* The day a contract's next shipment comes, or null when it's had them all. */
+  R.nextShipmentDay = function (rec, every) {
+    var last = dayNum(rec.lastShipmentDay, dayNum(rec.startDay, 0));
+    var end = dayNum(rec.endDay, last);
+    if (last >= end) return null;
+    return Math.min(last + (every || 7), end);
+  };
+  /* Shipments still to come, and days left. */
+  R.shipmentsLeft = function (rec, every) {
+    var last = dayNum(rec.lastShipmentDay, dayNum(rec.startDay, 0));
+    var end = dayNum(rec.endDay, last);
+    return end > last ? Math.ceil((end - last) / (every || 7)) : 0;
+  };
+  R.daysLeft = function (s, rec) { return Math.max(0, dayNum(rec.endDay, s.day) - s.day); };
+  /* "Trade Agreement with Clan Karr". */
+  function recordName(list, rec) {
+    if (list === 'summits') return 'Inter-Clan Summit (' + (rec.pair || '—') + ')';
+    if (list === 'delegations') return 'delegation from ' + (rec.clan || '—');
+    return (rec.title || 'contract') + ' with ' + (rec.clan || '—');
+  }
+  R.tickDiplomacy = function (s, data) {
     var logs = [];
+    var word = [];
     var d = s.diplomacy;
-    var sources = (d.agreements || []).concat(d.arbitrations || [], d.consortiums || []);
-    var income = sources.reduce(function (a, x) { return a + (x.incomePerTurn || 0); }, 0);
+    var every = R.time(data).every;
+    var income = 0;
+    CONTRACTS.forEach(function (list) {
+      (Array.isArray(d[list]) ? d[list] : []).forEach(function (x) {
+        var next = R.nextShipmentDay(x, every);
+        if (next === null || next > s.day) return;
+        x.lastShipmentDay = next;
+        income += clampInt(x.income || 0, 0);
+      });
+    });
     if (income > 0) {
       s.treasuryGP += income;
-      logs.push(['Diplomacy', 'Contract income received: +' + income + ' gp.']);
+      logs.push(['Diplomacy', 'Contract shipments arrived: +' + income + ' gp.']);
     }
-    var dec = function (list) {
-      if (!Array.isArray(list)) return [];
-      list.forEach(function (x) { x.turnsLeft = clampInt(x.turnsLeft - 1, 0); });
-      return list.filter(function (x) { return x.turnsLeft > 0; });
-    };
-    d.agreements = dec(d.agreements);
-    d.delegations = dec(d.delegations);
-    d.summits = dec(d.summits);
-    d.arbitrations = dec(d.arbitrations);
-    d.consortiums = dec(d.consortiums);
+    RECORDS.forEach(function (list) {
+      if (!Array.isArray(d[list])) { d[list] = []; return; }
+      d[list] = d[list].filter(function (x) {
+        if (dayNum(x.endDay, s.day) > s.day) return true;
+        var contract = CONTRACTS.indexOf(list) !== -1;
+        var line = 'Your ' + recordName(list, x) + ' has ended' + (contract ? ' (its last shipment arrived)' : '') + '.';
+        logs.push(['Diplomacy', line]);
+        word.push(line);
+        return false;
+      });
+    });
     var clans = {};
     (d.consortiums || []).forEach(function (x) { clans[String(x.clan || '')] = true; });
     (s.tradeNetwork.routes || []).forEach(function (r) {
-      if (r && !clans[String(r.clan || '')]) r.status = 'expired';
+      if (!r || r.status === 'expired') return;
+      if (!clans[String(r.clan || '')] || (r.expiresDay !== undefined && r.expiresDay !== null && s.day > r.expiresDay)) r.status = 'expired';
     });
     Object.keys(d.cooldowns || {}).forEach(function (k) {
-      d.cooldowns[k] = clampInt(d.cooldowns[k] - 1, 0);
-      if (d.cooldowns[k] <= 0) delete d.cooldowns[k];
+      if (!(d.cooldowns[k] > s.day)) delete d.cooldowns[k];
     });
-    (s.tradeNetwork.routes || []).forEach(function (r) {
-      if (r.expiresTurn && s.turn > r.expiresTurn) r.status = 'expired';
-    });
-    return logs;
+    return { logs: logs, word: word };
   };
+  /* The gold contracts bring each week (a shipment each, every 7 days). */
   R.passiveIncome = function (s) {
     var d = s.diplomacy;
-    return (d.agreements || []).concat(d.arbitrations || [], d.consortiums || []).reduce(function (a, x) { return a + (x.incomePerTurn || 0); }, 0);
+    return (d.agreements || []).concat(d.arbitrations || [], d.consortiums || []).reduce(function (a, x) { return a + (x.income || 0); }, 0);
   };
 
   /* ---------- Trade routes (2390-2595) ---------- */
@@ -1034,23 +1240,20 @@
     if (tier === 'failure') return 'failure';
     return 'critical_failure';
   };
-  /* Routes still running this turn (2456-2463). */
+  /* Routes still running today (2456-2463). */
   R.liveRoutes = function (s) {
     return (s.tradeNetwork.routes || []).filter(function (r) {
       if (!r || r.status === 'removed') return false;
       if (String(r.status || '').toLowerCase() === 'expired') return false;
-      if (r.expiresTurn !== undefined && r.expiresTurn !== null && s.turn > r.expiresTurn) return false;
+      if (r.expiresDay !== undefined && r.expiresDay !== null && s.day > r.expiresDay) return false;
       return true;
     });
   };
-  /* Routes already settled this turn, so none can pay twice (BAS-05, BAS-11). */
-  R.settledThisTurn = function (s) {
-    var p = s.tradeNetwork.settled;
-    return p && p.turn === s.turn && Array.isArray(p.ids) ? p.ids : [];
-  };
-  R.markSettled = function (s, id) {
-    if (!s.tradeNetwork.settled || s.tradeNetwork.settled.turn !== s.turn) s.tradeNetwork.settled = { turn: s.turn, ids: [] };
-    if (s.tradeNetwork.settled.ids.indexOf(id) === -1) s.tradeNetwork.settled.ids.push(id);
+  /* A route has sailed: its next sailing is 7 days on from the one just
+     settled, so none can pay twice for the same sailing (BAS-05, BAS-11). */
+  R.markSettled = function (s, r, data) {
+    r.nextDay = dayNum(r.nextDay, s.day) + R.time(data).every;
+    r.lastSettledDay = s.day;
   };
   /* Does this route need a typed roll? High-risk routes do, and every route
      does with High-Risk Routing on (2492-2494). */
@@ -1092,14 +1295,14 @@
           s.tradeNetwork.stability = clampInt((s.tradeNetwork.stability === undefined ? 75 : s.tradeNetwork.stability) - drop, 0, 100);
           line = r.clan + ' suffers a catastrophic loss at sea. Status: Disrupted. Market Stability falls by ' + drop + '%.';
           R.enqueueDispute(s, data, r.clan, 'Trade disruption and disputed tariffs.', {
-            kind: 'trade', routeClan: r.clan, commodity: r.commodity || 'Goods', disruptedTurn: s.turn,
+            kind: 'trade', routeClan: r.clan, commodity: r.commodity || 'Goods', disruptedDay: s.day,
             stabilityAtFiling: clampInt(s.tradeNetwork.stability === undefined ? 75 : s.tradeNetwork.stability, 0, 100),
             risk: r.risk || 'medium', b: data.bastion.consortiumName
           }, rand);
         }
       }
     }
-    R.markSettled(s, r.id);
+    R.markSettled(s, r, data);
     return { line: line, gained: gained };
   };
 
@@ -1111,14 +1314,14 @@
       a: String(clanA || 'Unknown'),
       b: String(meta.b || data.bastion.consortiumName),
       reason: String(reason || 'A dispute over tariffs, delays, and cargo claims.'),
-      createdTurn: s.turn,
+      createdDay: s.day,
       meta: {
         kind: String(meta.kind || 'trade'),
         routeClan: String(meta.routeClan || clanA || ''),
         routeId: meta.routeId ? String(meta.routeId) : null,
         risk: meta.risk ? String(meta.risk) : null,
         commodity: meta.commodity ? String(meta.commodity) : null,
-        disruptedTurn: meta.disruptedTurn !== undefined && meta.disruptedTurn !== null ? clampInt(meta.disruptedTurn, 1) : null,
+        disruptedDay: meta.disruptedDay !== undefined && meta.disruptedDay !== null ? dayNum(meta.disruptedDay, null) : null,
         stabilityAtFiling: meta.stabilityAtFiling !== undefined && meta.stabilityAtFiling !== null ? clampInt(meta.stabilityAtFiling, 0, 100) : null
       }
     });
@@ -1197,25 +1400,16 @@
     var countOk = R.clansAtSupport(s, rules.clanSupportPerClanMin) >= rules.clanSupportClanCountMin;
     return { ok: lvlOk && totalOk && countOk, lvlOk: lvlOk, totalOk: totalOk, countOk: countOk };
   };
-  R.canFormMerc = function (s, data) {
-    var rules = data.bastion.identityRules;
-    var lvlOk = (s.partyLevel || 1) >= rules.mercMinLevel;
-    var defOk = (s.defenders.count || 0) >= rules.mercMinDefenders;
-    return { ok: lvlOk && defOk, lvlOk: lvlOk, defOk: defOk };
-  };
   R.orgLabel = function (s) {
     var o = s.organization;
     if (o.type === 'clan') return 'Clan: ' + (o.name || 'Unnamed');
-    if (o.type === 'merc') return 'Brigade: ' + (o.name || 'Unnamed');
     return 'Unsworn';
   };
   R.requirementsHint = function (s, data) {
     var r = data.bastion.identityRules;
     var c = R.canFormClan(s, data);
-    var m = R.canFormMerc(s, data);
     return 'Clan requirements: Level ' + r.clanMinLevel + '+ (' + (c.lvlOk ? 'OK' : 'NO') + '), Total Support ' + r.clanSupportTotalMin + '+ (' + (c.totalOk ? 'OK' : 'NO') + '), ' +
-      r.clanSupportClanCountMin + ' clans at ' + r.clanSupportPerClanMin + '+ (' + (c.countOk ? 'OK' : 'NO') + ').  ' +
-      'Merc requirements: Level ' + r.mercMinLevel + '+ (' + (m.lvlOk ? 'OK' : 'NO') + '), ' + r.mercMinDefenders + '+ defenders (' + (m.defOk ? 'OK' : 'NO') + ').';
+      r.clanSupportClanCountMin + ' clans at ' + r.clanSupportPerClanMin + '+ (' + (c.countOk ? 'OK' : 'NO') + ').';
   };
 
   /* ---------- War (5262-5404) ---------- */
@@ -1233,110 +1427,11 @@
       return sum + clampInt(it && it.qty !== undefined && it.qty !== null ? it.qty : 1, 0);
     }, 0);
   };
-  /* Lose n beasts one at a time, not whole rows. The beasts that march are
-     the first `committed` in list order (as the War Table names them), so
-     the losses come from those, the last-named first. With no `committed`,
-     from the end of the list. */
-  R.removeBeasts = function (s, n, committed) {
-    var list = s.defenderBeasts;
-    var total = R.beastQty(s);
-    var upto = committed === undefined || committed === null ? total : Math.min(total, clampInt(committed, 0));
-    var left = Math.min(clampInt(n, 0), upto);
-    for (; left > 0; left--, upto--) {
-      var idx = upto - 1, seen = 0;
-      for (var i = 0; i < list.length; i++) {
-        var row = list[i];
-        var q = clampInt(row && row.qty !== undefined && row.qty !== null ? row.qty : 1, 0);
-        if (idx < seen + q) {
-          if (q - 1 <= 0) list.splice(i, 1);
-          else row.qty = q - 1;
-          break;
-        }
-        seen += q;
-      }
-    }
-  };
-  /* What can be committed: R.warAvailable and the phase 2 R.warForces are
-     in war-campaign-rules.js (they leave out anything already committed or
-     recovering). */
-  R.warCommit = function (s, fields) {
-    var a = R.warAvailable(s);
-    return {
-      commitDefenders: clampInt(fields.defenders === undefined ? 0 : fields.defenders, 0, a.defenders),
-      commitBeasts: clampInt(fields.beasts === undefined ? 0 : fields.beasts, 0, a.beasts),
-      commitLieutenants: a.fullWar ? clampInt(fields.lieutenants === undefined ? 0 : fields.lieutenants, 0, a.lieutenants) : 0,
-      commitRegiments: a.fullWar ? clampInt(fields.regiments === undefined ? 0 : fields.regiments, 0, a.regiments) : 0
-    };
-  };
-  R.queueWarAction = function (s, meta, rand) {
-    var order = { id: R.uid(rand), facId: 'war_council', fnId: 'war_action', optionIdx: 0, label: 'War Action', completeTurn: (s.turn || 1) + 1, meta: Object.assign({}, meta, { kind: 'war_action' }) };
-    s.pendingOrders.push(order);
-    return ['War Action Queued', meta.objective.toUpperCase() + ' vs ' + meta.targetName + ' (resolves next Bastion Turn).'];
-  };
-  R.warPlan = function (s, data, order) {
-    var meta = order.meta || {};
-    var objective = String(meta.objective || 'raid');
-    var targetKey = String(meta.targetKey || 'blackstone');
-    var target = null;
-    data.bastion.clans.forEach(function (c) { if (c.key === targetKey) target = c; });
-    var targetName = target ? target.name : 'Unknown';
-    var dc = data.bastion.war.dc[objective] !== undefined ? data.bastion.war.dc[objective] : 13;
-    var defenders = clampInt(meta.commitDefenders || 0, 0);
-    var beasts = clampInt(meta.commitBeasts || 0, 0);
-    var lieutenants = clampInt(meta.commitLieutenants || 0, 0);
-    var regiments = clampInt(meta.commitRegiments || 0, 0);
-    var mod = Math.min(4, Math.floor(defenders / 2)) + Math.min(2, beasts) + Math.min(3, Math.floor((lieutenants + regiments) / 2));
-    return {
-      objective: objective, targetKey: targetKey, targetName: targetName, dc: dc, mod: mod,
-      defenders: defenders, beasts: beasts, lieutenants: lieutenants, regiments: regiments,
-      title: 'War Turn: ' + objective.toUpperCase() + ' vs ' + targetName
-    };
-  };
-  /* notes: extra lines for the war log (a Military Action's weather,
-     morale and luck). */
-  R.resolveWar = function (s, data, plan, roll, rand, now, notes) {
-    var success = roll.total >= plan.dc;
-    var o = data.bastion.war.outcomes[plan.objective] || { gp: [0, 0], pc: [0, 0] };
-    var gpDelta = success ? o.gp[0] : o.gp[1];
-    var pcDelta = success ? o.pc[0] : o.pc[1];
-    var clanHonorDelta = 0;
-    var isClan = s.organization.type === 'clan';
-    var isMerc = s.organization.type === 'merc';
-    s.treasuryGP = clampInt((s.treasuryGP || 0) + gpDelta, 0);
-    R.addPoliticalCapital(s, plan.targetName, pcDelta);
-    var defLoss = Math.min(plan.defenders, Math.max(1, Math.floor(plan.defenders / 3)));
-    if (!success) {
-      s.defenders.count = Math.max(0, (s.defenders.count || 0) - defLoss);
-      /* One beast is lost, not a whole row of them (BAS-25). */
-      var beastLoss = Math.min(plan.beasts, plan.beasts > 0 ? 1 : 0);
-      if (beastLoss > 0) R.removeBeasts(s, beastLoss, plan.beasts);
-    }
-    if (isClan) {
-      clanHonorDelta = success ? 6 : -8;
-      s.clanHonor = clampInt((s.clanHonor === undefined || s.clanHonor === null ? 40 : s.clanHonor) + clanHonorDelta, 0, 100);
-    }
-    if (isMerc) {
-      var tcDelta = success ? -8 : -4;
-      s.trustedClientsByClan[plan.targetKey] = clampInt((s.trustedClientsByClan[plan.targetKey] === undefined ? 50 : s.trustedClientsByClan[plan.targetKey]) + tcDelta, 0, 100);
-      data.bastion.clans.forEach(function (c) {
-        if (c.key === plan.targetKey) return;
-        s.trustedClientsByClan[c.key] = clampInt((s.trustedClientsByClan[c.key] === undefined ? 50 : s.trustedClientsByClan[c.key]) + (success ? 1 : -1), 0, 100);
-      });
-    }
-    var title = (success ? 'Success' : 'Failure') + ': ' + plan.objective.toUpperCase() + ' vs ' + plan.targetName;
-    var details = 'Roll: d20 ' + roll.d20 + ' + mod ' + plan.mod + ' = ' + roll.total + ' vs DC ' + plan.dc + '\n' +
-      'Treasury: ' + (gpDelta >= 0 ? '+' : '') + gpDelta + ' gp\n' +
-      'Political Capital (' + plan.targetName + '): ' + (pcDelta >= 0 ? '+' : '') + pcDelta + '\n' +
-      (isClan ? 'Clan Honour: ' + (clanHonorDelta >= 0 ? '+' : '') + clanHonorDelta + '\n' : '') +
-      (!success ? 'Casualties: defenders ' + defLoss + '; beasts ' + (plan.beasts > 0 ? 1 : 0) + '\n' : '') +
-      (notes && notes.length ? notes.join('\n') + '\n' : '');
-    s.warLog.unshift({
-      id: R.uid(rand), at: now === undefined ? Date.now() : now, title: title,
-      subtitle: 'Committed: ' + plan.defenders + ' defenders, ' + plan.beasts + ' beasts, ' + plan.lieutenants + ' lieutenants, ' + plan.regiments + ' regiments',
-      details: details
-    });
-    return ['War Turn Resolved', title];
-  };
+  /* The old single-roll war (R.warCommit, R.queueWarAction, R.warPlan,
+     R.resolveWar and R.removeBeasts) was archived in Build 3, with the
+     Mercenary Brigade: tools/bastion/archive/mercenary-brigade.js. What can
+     be committed is R.warForces, R.warAvailable and R.warCommit2, in
+     war-campaign-rules.js. */
 
   /* ---------- The Military Action (Harry's request, 2 October 2026) ----------
      When a war action comes due, it becomes a Military Action instead of a
@@ -1493,60 +1588,158 @@
     var roll = R.d(100, rand);
     var ev = R.resolveEvent(roll, events.eventTable);
     var lines = events.descriptions && events.descriptions[ev.name] ? events.descriptions[ev.name] : [];
-    s.lastEvent = { roll: roll, name: ev.name, lines: lines, at: now === undefined ? Date.now() : now };
+    s.lastEvent = { roll: roll, name: ev.name, lines: lines, at: now === undefined ? Date.now() : now, day: s.day };
     return { roll: roll, name: ev.name };
   };
+  /* The automatic event comes every 28 days, counted from Day 1: Days 29,
+     57, 85… (it was every 4th Bastion turn). */
+  R.isEventDay = function (data, day) {
+    var e = R.time(data).eventEvery;
+    return day > 1 && (day - 1) % e === 0;
+  };
+  R.nextEventDay = function (data, day) {
+    var e = R.time(data).eventEvery;
+    var n = day < 1 ? 1 + e : day + (e - ((day - 1) % e));
+    return n;
+  };
 
-  /* ---------- Advance Bastion Turn, as resumable steps (560-604; BAS-02) ----------
-     The old order is kept: the turn number and diplomacy, then the trade
-     routes, then construction and the one-turn resets, then the orders due,
-     then the automatic event every 4th turn. state.turnInProgress remembers
-     the step reached ('trade', 'tick', 'orders'), so a cancelled roll or a
-     closed window loses nothing and the turn can be finished later. */
-  R.startTurn = function (s, now) {
-    s.turn += 1;
+  /* ---------- Passing a day, as resumable steps (560-604; BAS-02) ----------
+     The screen passes each new day in turn, in this order:
+     1. R.startDay: the day number moves on; Lieutenants and beasts whose
+        recovery is over are fit again, quiet wars end, repairs that are
+        done finish, building work due today is built, contracts due a
+        shipment send it and records whose days are up end.
+     2. 'trade': the sea routes sailing today settle (a d20 for a high-risk
+        route, asked for by the screen; R.settleRoute), then R.finishRoutes.
+     3. 'orders': the orders due today complete one by one (the screen asks
+        for any rolls; a cancelled roll leaves the order due, R.skipOrder).
+     4. 'war' (R.rollWarAttack): each Clan at war whose 7-day mark is today
+        rolls to attack.
+     5. R.finishDay: the automatic event on its day, then what happened goes
+        into "The Ironbow sends word…" (state.word).
+     state.dayInProgress remembers the step reached, so a cancelled roll or
+     a closed window loses nothing and nothing is done twice. */
+  var DAY_STAGES = ['trade', 'orders'];
+  R.DAY_STAGES = DAY_STAGES;
+  R.startDay = function (s, data, now) {
+    s.day += 1;
+    s.dayInProgress = { day: s.day, stage: 'trade', skipped: [], attackRolled: false, news: [] };
     /* Lieutenants and beasts whose recovery is over are fit again; wars
-       with 6 quiet turns end; repairs that are done finish
-       (war-campaign-rules.js). */
+       with 42 quiet days end; repairs that are done finish
+       (war-campaign-rules.js). Each says so in the log and the word. */
+    var before = s.log.length;
     if (R.tickRecovery) R.tickRecovery(s, now);
-    if (R.tickWars) R.tickWars(s, now);
-    if (R.tickRepairs) R.tickRepairs(s, now);
-    R.tickDiplomacy(s).forEach(function (l) { R.log(s, l[0], l[1], now); });
-    /* attackRolled: this turn's roll for an attack by a Clan at war has
-       been made (R.rollWarAttack), so a resumed turn can't roll it again. */
-    s.turnInProgress = { turn: s.turn, stage: 'trade', skipped: [], attackRolled: false };
-  };
-  /* The turn's trade routes are resolved first, if the network has any running. */
-  R.routesDueThisTurn = function (s) {
-    return !!s.tradeNetwork.active && R.liveRoutes(s).length > 0 && s.tradeNetwork.lastResolvedTurn !== s.turn;
-  };
-  /* Routes still to settle this turn: running, and not already paid or disrupted this turn. */
-  R.routesToSettle = function (s) {
-    var done = R.settledThisTurn(s);
-    return R.liveRoutes(s).filter(function (r) { return done.indexOf(r.id) === -1; });
-  };
-  R.finishRoutes = function (s) { s.tradeNetwork.lastResolvedTurn = s.turn; };
-  R.tickTurn = function (s, data, now) {
-    R.tickConstruction(s).forEach(function (id) {
+    if (R.tickWars) R.tickWars(s, now, data);
+    if (R.tickRepairs) R.tickRepairs(s, now, data);
+    for (var i = s.log.length - before - 1; i >= 0; i--) R.addWord(s, s.log[i].body);
+    R.completeConstruction(s).forEach(function (id) {
       var fac = R.facility(data, id);
-      R.log(s, 'Construction Complete', (fac ? fac.name : id) + ' is now built and active.', now);
+      var name = fac ? fac.name : id;
+      R.log(s, 'Construction Complete', name + ' is now built and active.', now);
+      R.addWord(s, 'The ' + name + ' is built.');
     });
-    s.lastEvent = null;
-    s.defenders.patrolAdvantage = false;
-    if (s.turnInProgress) s.turnInProgress.stage = 'orders';
+    var dip = R.tickDiplomacy(s, data);
+    dip.logs.forEach(function (l) { R.log(s, l[0], l[1], now); });
+    dip.word.forEach(function (l) { R.addWord(s, l); });
   };
-  /* An order whose roll was cancelled stays pending; it's skipped for the
-     rest of this turn and comes up again next turn. */
+  /* Routes sailing today and still to settle (running, and their day has
+     come). A route whose roll was cancelled stays due. */
+  R.routesToSettle = function (s) {
+    if (!s.tradeNetwork.active) return [];
+    return R.liveRoutes(s).filter(function (r) { return !(dayNum(r.nextDay, s.day) > s.day); });
+  };
+  R.routesDueToday = function (s) { return R.routesToSettle(s).length > 0; };
+  /* The day's routes are done (or put off): on to the orders. */
+  R.finishRoutes = function (s) {
+    if (s.dayInProgress && s.dayInProgress.stage === 'trade') s.dayInProgress.stage = 'orders';
+  };
+  /* An order whose roll was cancelled stays due; it's skipped for the rest
+     of this day and comes up again the next day (or with Resolve). */
   R.skipOrder = function (s, id) {
-    if (s.turnInProgress && s.turnInProgress.skipped.indexOf(id) === -1) s.turnInProgress.skipped.push(id);
+    if (s.dayInProgress && s.dayInProgress.skipped.indexOf(id) === -1) s.dayInProgress.skipped.push(id);
   };
-  R.finishTurn = function (s, events, rand, now) {
-    if (s.turn % 4 === 0) {
+  /* The day's last step: the automatic event on its day (once), then the
+     day's news is kept for "The Ironbow sends word…". */
+  R.finishDay = function (s, data, events, rand, now) {
+    var dip = s.dayInProgress;
+    if (R.isEventDay(data, s.day) && s.lastEventDay !== s.day) {
       var ev = R.rollEvent(s, events, rand, now);
-      R.log(s, 'Bastion Event', 'Auto event (Turn ' + s.turn + ') → Rolled ' + ev.roll + ' → ' + ev.name, now);
+      s.lastEventDay = s.day;
+      R.log(s, 'Bastion Event', 'Auto event (Day ' + s.day + ') → Rolled ' + ev.roll + ' → ' + ev.name, now);
+      R.addWord(s, 'Bastion event: ' + ev.name + ' (rolled ' + ev.roll + ').');
     }
-    R.log(s, 'Turn Advanced', 'Bastion Turn is now ' + s.turn + '.', now);
-    s.turnInProgress = null;
+    if (isObj(dip) && Array.isArray(dip.news) && dip.news.length) {
+      if (!Array.isArray(s.word)) s.word = [];
+      s.word.push({ day: s.day, lines: dip.news.slice() });
+    }
+    s.dayInProgress = null;
+  };
+  /* The Explorer's day, read by the screen: what to do about it.
+     { kind: 'none' } nothing; { kind: 'anchor', to } the Bastion hasn't
+     read a day yet, so it moves to this one without passing days;
+     { kind: 'pass', days } days to pass; { kind: 'shift', by } the Explorer's
+     day went back (Reset Travel): everything moves by this many days. */
+  R.clockAction = function (s, explorerDay) {
+    var d = dayNum(explorerDay, null);
+    if (d === null || d < 1) return { kind: 'none' };
+    if (!s.anchored) return d === s.day ? { kind: 'anchor', to: d, by: 0 } : { kind: 'anchor', to: d, by: d - s.day };
+    if (s.dayInProgress) return { kind: 'pass', days: Math.max(0, d - s.day) };
+    if (d > s.day) return { kind: 'pass', days: d - s.day };
+    if (d < s.day) return { kind: 'shift', by: d - s.day };
+    return { kind: 'none' };
+  };
+  /* Move the whole Bastion by `by` days (Reset Travel put the Explorer's day
+     back, or the Bastion is reading the Explorer's day for the first time):
+     every due day, ready day, end day, cooldown, route, war, repair and
+     recovery moves with it, so what was due in 4 days is still due in 4
+     days. The log and "The Ironbow sends word…" are history and stay. */
+  R.shiftDays = function (s, by) {
+    var n = dayNum(by, 0);
+    if (!n) return;
+    var mv = function (obj, key) { if (obj && typeof obj[key] === 'number') obj[key] += n; };
+    s.day = Math.max(1, s.day + n);
+    if (isObj(s.dayInProgress)) s.dayInProgress.day = s.day;
+    mv(s, 'lastEventDay');
+    if (isObj(s.defenders)) mv(s.defenders, 'patrolUntil');
+    (s.pendingOrders || []).forEach(function (o) { mv(o, 'issuedDay'); mv(o, 'dueDay'); if (o.meta && isObj(o.meta.declared)) mv(o.meta.declared, 'day'); });
+    (s.builtExtras || []).forEach(function (e) { if (isObj(e)) { mv(e, 'startDay'); mv(e, 'readyDay'); } });
+    RECORDS.forEach(function (list) {
+      (s.diplomacy[list] || []).forEach(function (x) { mv(x, 'startDay'); mv(x, 'endDay'); mv(x, 'lastShipmentDay'); });
+    });
+    Object.keys(s.diplomacy.cooldowns || {}).forEach(function (k) { mv(s.diplomacy.cooldowns, k); });
+    (s.tradeNetwork.routes || []).forEach(function (r) { mv(r, 'openedDay'); mv(r, 'expiresDay'); mv(r, 'nextDay'); mv(r, 'lastSettledDay'); });
+    (s.arbitration.queue || []).forEach(function (q) { mv(q, 'createdDay'); if (q.meta) mv(q.meta, 'disruptedDay'); });
+    Object.keys(s.repairs || {}).forEach(function (k) { mv(s.repairs, k); });
+    Object.keys(s.wars || {}).forEach(function (k) { mv(s.wars[k], 'since'); mv(s.wars[k], 'last'); mv(s.wars[k], 'next'); });
+    (s.warRecovery || []).forEach(function (r) { mv(r, 'untilDay'); });
+    (s.militaryActions || []).forEach(function (ma) { mv(ma, 'day'); });
+    Object.keys(s.warMissions || {}).forEach(function (k) { mv(s.warMissions[k], 'createdDay'); mv(s.warMissions[k], 'seenDay'); });
+    if (isObj(s.organization)) mv(s.organization, 'foundedAtDay');
+  };
+  /* Read the Explorer's day for the first time (or before it has one): the
+     Bastion moves to it, nothing passes. */
+  R.anchor = function (s, day) {
+    var d = Math.max(1, dayNum(day, s.day));
+    R.shiftDays(s, d - s.day);
+    s.day = d;
+    s.anchored = true;
+  };
+
+  /* ---------- What's waiting and what's next (the screen and the DM doc) ---------- */
+  /* Orders and builds by when they finish: [{ kind: 'order'|'build', label,
+     day, due }] in day order, due ones first. */
+  R.upcoming = function (s, data) {
+    var out = [];
+    s.pendingOrders.forEach(function (o) {
+      if (!isObj(o)) return;
+      out.push({ kind: 'order', id: o.id, label: o.label || 'Order', day: dayNum(o.dueDay, s.day), due: R.isDue(s, o), repair: R.underRepair(s, o.facId) });
+    });
+    extras(s).forEach(function (e) {
+      if (e.status !== 'building') return;
+      var fac = R.facility(data, e.facId);
+      out.push({ kind: 'build', id: e.facId, label: (fac ? fac.name : e.facId), day: dayNum(e.readyDay, s.day), due: false, repair: 0 });
+    });
+    return out.sort(function (a, b) { return a.day - b.day; });
   };
 
   /* ---------- The Compendium (4098-4142) ---------- */
@@ -1600,4 +1793,9 @@
   };
 
   ns.rules = R;
+  /* The import check the campaign save uses from the other tool's page
+     (shared/js/backup.js): the Explorer and the Bastion export and import
+     together, so each page loads the other's rules to check its half. */
+  TSI.importChecks = TSI.importChecks || {};
+  TSI.importChecks.bastion = R.importProblem;
 }());

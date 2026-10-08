@@ -1,20 +1,23 @@
 /* Phase 9: The Ironbow Bastion Manager, clicked through from a double-clicked
    index.html with the internet off, at Harry's laptop size and on the TV.
-   Then the same campaign, with the same dice, in the old Bastion and the
-   rebuild, compared step by step.
-   Run with:  node tests/e2e/phase9.test.js */
+   Since the days overhaul (8 October 2026) the Bastion follows the
+   Explorer's day: these checks write the day into the Explorer's save, as
+   Make Camp does, and the Bastion passes the days. (The side-by-side run
+   against the old Bastion is retired: the rules now deliberately differ.
+   The two windows together are checked in tests/e2e/bastion-days.test.js.)
+   Run with:  node tests/e2e/phase9.test.js   (P9_ONLY=word runs only the
+   sections whose names contain it) */
 'use strict';
 
 const fs = require('fs');
 const path = require('path');
-const http = require('http');
 const H = require('./helpers');
 const { section, check, assert, equal } = H;
 
 const INDEX = H.fileUrl('index.html');
+/* P9_ONLY=word runs only the sections whose names contain it. */
+const want = name => !process.env.P9_ONLY || name.toLowerCase().indexOf(process.env.P9_ONLY.toLowerCase()) !== -1;
 const BASTION = INDEX + '?tool=bastion';
-const LEGACY_ROOT = path.join(H.ROOT, '_legacy');
-const HAS_LEGACY = fs.existsSync(path.join(LEGACY_ROOT, 'bastion_manager/app.js'));
 
 /* Before the page loads: seedable dice. window.__dice: the next values
    Math.random gives, before its usual ones (a test's own dice). Calm pages
@@ -48,26 +51,75 @@ async function newPage(browser, size, extra, opts) {
   await context.addInitScript(setup);
   if (opts && opts.calm) await context.addInitScript(() => { window.__calm = true; });
   const page = await context.newPage();
+  panels(page);
   return { context, page };
 }
+/* Since the new screen (Build 2, 8 October 2026) most controls live in
+   panels that open over the map. Before a check clicks, types into or
+   reads a control, the panel holding it is opened by pressing that
+   panel's own button (its tile in the facility grid, the Party Identity
+   badge, or a button in the bottom bar), as Harry would: see
+   TSI.bastion.debug.reveal. tests/e2e/bastion-screen.test.js checks the
+   panels themselves. */
+const DATA_TEST = /\[data-test="?([^"\]=]+)"?\]/;
+async function reveal(page, selector) {
+  const m = typeof selector === 'string' && DATA_TEST.exec(selector);
+  if (!m) return false;
+  return page.evaluate(t => { const d = window.TSI && TSI.bastion && TSI.bastion.debug; return !!(d && d.reveal && d.reveal(t)); }, m[1]).catch(() => false);
+}
+function panels(page) {
+  ['click', 'dblclick', 'fill', 'selectOption', '$$eval', 'textContent', '$eval', 'check', 'uncheck', 'press', 'hover', 'focus', 'inputValue', 'getAttribute', 'isDisabled', 'isEnabled', 'innerText', 'waitForSelector', 'dispatchEvent', 'setInputFiles'].forEach(name => {
+    const own = page[name].bind(page);
+    page[name] = async (selector, ...rest) => { await reveal(page, selector); return own(selector, ...rest); };
+  });
+}
+/* The treasury, in the map's top bar: saved when you press Enter. */
+async function treasury(page, value) {
+  await page.fill('[data-test=treasury]', String(value));
+  await page.press('[data-test=treasury]', 'Enter');
+  await page.waitForTimeout(80);
+}
 const arm = page => page.evaluate(() => window.__arm && window.__arm());
-async function openBastion(page) {
+/* The Explorer's day, as the Bastion reads it from the Explorer's save. There's
+   no Explorer window in these checks: the day is written into its save, as
+   Make Camp does, and the Bastion is told to look at once (it looks every 2
+   seconds anyway). */
+async function setExplorerDay(page, day) {
+  await page.evaluate(d => {
+    const ex = TSI.store.get('tsi.explorer.save', null) || { tokens: [], travel: {}, grid: {} };
+    ex.travel = Object.assign({}, ex.travel, { day: d });
+    TSI.store.set('tsi.explorer.save', ex);
+    TSI.bastion.debug.clock();
+  }, day);
+}
+const explorerDay = page => page.evaluate(() => { const ex = TSI.store.get('tsi.explorer.save', null); return ex && ex.travel ? ex.travel.day : null; });
+async function openBastion(page, opts) {
   await page.goto(BASTION);
-  await page.waitForSelector('[data-test=advance]');
+  await page.waitForSelector('[data-test=day-status]');
   await arm(page);
+  /* The Explorer on Day 1: the Bastion starts counting from it. */
+  if (!opts || opts.anchor !== false) {
+    await setExplorerDay(page, 1);
+    await page.waitForFunction(() => TSI.bastion.debug.state().anchored);
+  }
 }
 const st = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.debug.state())));
 /* Change the Bastion directly to set up a check. fn is run in the page with the state. */
 const setUp = (page, fn) => page.evaluate(src => TSI.bastion.debug.change(new Function('s', src)), '(' + fn.toString() + ')(s);');
 const text = (page, test) => page.textContent('[data-test="' + test + '"]');
 const pause = page => page.waitForTimeout(400);
-async function modalOpen(page) { return !!(await page.$('.tsi-modal')); }
+/* The pop-up on top that isn't a panel (a panel is a pop-up too, since Build 2). */
+async function popText(page) {
+  await page.waitForSelector('.tsi-modal:not(.tsi-bas-panel)', { timeout: 5000 });
+  return page.$eval('.tsi-modal:not(.tsi-bas-panel)', m => m.textContent);
+}
+async function modalOpen(page) { return !!(await page.$('.tsi-modal:not(.tsi-bas-panel)')); }
 /* Waits briefly for the pop-up: some open only after a file has been read. */
 async function modalTitle(page) {
-  await page.waitForSelector('.tsi-modal__title', { timeout: 5000 }).catch(() => {});
-  const m = await page.$('.tsi-modal__title'); return m ? m.textContent() : null;
+  await page.waitForSelector('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__title', { timeout: 5000 }).catch(() => {});
+  const m = await page.$('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__title'); return m ? m.textContent() : null;
 }
-async function clickModal(page, label) { await page.click('.tsi-modal__foot button:text-is("' + label + '")'); await page.waitForTimeout(150); }
+async function clickModal(page, label) { await page.click('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__foot button:text-is("' + label + '")'); await page.waitForTimeout(150); }
 async function d20(page, v) {
   await page.waitForSelector('[data-test=d20]');
   await page.fill('[data-test=d20]', String(v));
@@ -80,7 +132,7 @@ async function answerAll(page, rolls) {
     await page.waitForTimeout(150);
     if (!(await modalOpen(page))) return;
     if (await page.$('[data-test=d20]')) await d20(page, rolls.shift());
-    else { await page.click('.tsi-modal__foot button.tsi-btn--primary'); await page.waitForTimeout(150); }
+    else { await page.click('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__foot button.tsi-btn--primary'); await page.waitForTimeout(150); }
   }
 }
 /* Record what the Bastion passes to the War Table when it opens it (contract 8). */
@@ -101,11 +153,32 @@ async function spyTable(page) {
     wt.__spied = true;
   });
 }
-async function advance(page, rolls) {
-  await pause(page);
-  await page.click('[data-test=advance]');
-  await answerAll(page, rolls);
+/* Pass n days (the Explorer making camp n times), answering every pop-up on
+   the way: the next roll in a dice box, the main button on the rest (the
+   results, and "The Ironbow sends word…" at the end). */
+async function days(page, n, rolls) {
+  rolls = (rolls || []).slice();
+  const target = ((await explorerDay(page)) || 1) + n;
+  await setExplorerDay(page, target);
+  for (let k = 0; k < 600; k++) {
+    await page.waitForTimeout(100);
+    if (await modalOpen(page)) {
+      if (await page.$('[data-test=d20]')) await d20(page, rolls.shift());
+      else { await page.click('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__foot button.tsi-btn--primary'); await page.waitForTimeout(120); }
+      continue;
+    }
+    const passed = await page.evaluate(t => { const s = TSI.bastion.debug.state(); return s.day >= t && !s.dayInProgress && !TSI.bastion.debug.busy(); }, target);
+    if (passed) { await page.waitForTimeout(150); if (!(await modalOpen(page))) return; }
+  }
+  throw new Error('the days didn\'t pass (the Bastion is on Day ' + (await st(page)).day + ', not ' + target + ')');
+}
+/* Close "The Ironbow sends word…" once it shows; resolves with its text. */
+async function word(page) {
+  await page.waitForSelector('[data-test=ironbow-word]', { timeout: 8000 });
+  const t = await bare(page, '[data-test=ironbow-word]');
+  await page.click('[data-test=ironbow-word] .tsi-modal__foot button.tsi-btn--primary');
   await page.waitForFunction(() => !TSI.bastion.debug.busy());
+  return t;
 }
 async function issue(page, fac, fn, idx) {
   await pause(page);
@@ -120,7 +193,7 @@ async function planHall(page, fn, idx, extra) {
   await page.selectOption('[data-test=hall-target]', String(idx));
   if (extra && extra.dur) await page.selectOption('[data-test=hall-duration]', String(extra.dur));
   if (extra && extra.tone) await page.selectOption('[data-test=hall-tone]', extra.tone);
-  await page.click('.tsi-modal__foot button.tsi-btn--primary');
+  await page.click('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__foot button.tsi-btn--primary');
   await page.waitForTimeout(150);
 }
 /* A see-through PNG crest (a gold disc on nothing), like the Crest Creator's download. */
@@ -152,50 +225,34 @@ function writeCrest(name, size) {
   fs.writeFileSync(p, crestPng(size));
   return p;
 }
-const crestInfo = page => page.evaluate(() => {
+const crestInfo = async page => (await reveal(page, '[data-test=crest]'), page.evaluate(() => {
   const i = document.querySelector('[data-test=crest]');
   return { shown: !!(i && i.offsetWidth), w: i ? i.naturalWidth : 0, h: i ? i.naturalHeight : 0, alt: i ? i.alt : '' };
-});
+}));
 
 async function reopen(page) {
   await page.evaluate(() => TSI.store.flush());
   await page.reload();
-  await page.waitForSelector('[data-test=advance]');
+  await page.waitForSelector('[data-test=day-status]');
   await arm(page);
 }
 /* Text without the At War tags (Harry, 4 October 2026): "Raid vs Bacca", not "Raid vs BaccaAt War". */
 const bare = (page, sel) => page.$eval(sel, e => { const c = e.cloneNode(true); c.querySelectorAll('.tsi-bas-atwar').forEach(t => t.remove()); return c.textContent; });
-async function bareModal(page) { await page.waitForSelector('.tsi-modal', { timeout: 5000 }); return bare(page, '.tsi-modal'); }
+async function bareModal(page) { await page.waitForSelector('.tsi-modal:not(.tsi-bas-panel)', { timeout: 5000 }); return bare(page, '.tsi-modal:not(.tsi-bas-panel)'); }
 /* Queue War Action asks first: Declare war, or Renew the war. */
 async function confirmWar(page) {
-  await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal__title'); return t && /^(Declare war on|Renew the war on) Clan /.test(t.textContent); });
-  await page.click('.tsi-modal__foot button.tsi-btn--primary');
+  await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__title'); return t && /^(Declare war on|Renew the war on) Clan /.test(t.textContent); });
+  await page.click('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__foot button.tsi-btn--primary');
   await page.waitForTimeout(150);
 }
 const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 'laboratory', 'war_room', 'gaming_hall', 'greenhouse', 'shrine_telluria', 'shrine_aurush', 'shrine_pelagos', 'hall_of_emissaries'];
-
-/* A tiny web server for the old tool, which loads its data with fetch(). It
-   builds paths from the first folder in the address, so it's served from _legacy/. */
-function serve(dir) {
-  const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png' };
-  return new Promise(resolve => {
-    const srv = http.createServer((req, res) => {
-      const rel = decodeURIComponent(new URL(req.url, 'http://x').pathname);
-      const file = path.join(dir, rel);
-      if (!file.startsWith(dir) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.writeHead(404); res.end(); return; }
-      res.writeHead(200, { 'content-type': types[path.extname(file)] || 'application/octet-stream' });
-      fs.createReadStream(file).pipe(res);
-    });
-    srv.listen(0, '127.0.0.1', () => resolve(srv));
-  });
-}
 
 (async () => {
   const browser = await H.chromium.launch();
 
   /* ------------------------------------------------------------------ */
-  section('Opening it, and fitting Harry\'s screens (internet off)');
-  {
+  if (want('Opening it, and fitting Harry\'s screens (internet off)')) {
+    section('Opening it, and fitting Harry\'s screens (internet off)');
     const { context, page } = await newPage(browser, 'laptop');
     await page.goto(INDEX);
     await page.waitForSelector('.tsi-card');
@@ -206,29 +263,24 @@ function serve(dir) {
       equal(await page.$$eval('.tsi-card', cs => cs.filter(c => /Coming in phase/.test(c.textContent)).length), 0);
     });
 
-    await check('it opens from its card at turn 1, level 7, with the five starting facilities', async () => {
+    await check('it opens from its card on Day 1 (until the Explorer sets the day), level 7, with the five starting facilities in the grid', async () => {
       await page.click('.tsi-card[href*="bastion"]');
-      await page.waitForSelector('[data-test=advance]');
-      equal(await text(page, 'turn'), 'Turn 1');
+      await page.waitForSelector('[data-test=day-status]');
+      equal(await text(page, 'day-status'), 'Day 1 · the Explorer sets the day');
+      equal(await page.isHidden('[data-test=advance]'), true, 'no button to pass a day: the Explorer\'s Make Camp does that');
       equal(await page.inputValue('[data-test=level]'), '7');
-      equal(await page.$$eval('.tsi-bas-fac', cs => cs.map(c => c.dataset.fac)), ['workshop', 'barracks', 'watchtower', 'dock', 'armoury']);
-      equal(await text(page, 'slot-meta'), 'Level 7 → 2 slot(s). Used: 0/2');
+      equal(await page.$$eval('.tsi-bas-tile', ts => ts.slice(0, 5).map(t => t.dataset.fac)), ['workshop', 'barracks', 'watchtower', 'dock', 'armoury']);
+      equal(await page.$$eval('.tsi-bas-tile--slot', ts => ts.length), 2, 'two slots to build in at level 7');
     });
 
     for (const size of ['laptop', 'laptopFull', 'tv', 'smallWindow']) {
-      await check('fits ' + size + ' with no sideways scrolling, the main controls in view', async () => {
+      await check('fits ' + size + ' with no scrolling either way, the main controls in view', async () => {
         await page.setViewportSize(H.SIZES[size].viewport);
         await page.waitForTimeout(250);
-        await page.evaluate(() => window.scrollTo(0, 0));
-        const lc = await H.layoutCheck(page, ['[data-test=advance]', '[data-test=level]', '[data-test=roll-event]', '[data-test=compendium]', '[data-test=download-save]', '[data-test=import-save]', '[data-test=map]']);
+        const lc = await H.layoutCheck(page, ['[data-test=day-status]', '[data-test=level]', '[data-test=treasury]', '[data-test=compendium]', '[data-test=download-save]', '[data-test=import-save]', '[data-test=map]', '[data-test=open-events]', '[data-test=open-war]', '.tsi-bas-tile']);
         equal(lc.scrollWidth, lc.clientWidth, 'no sideways scroll');
-        if (size !== 'smallWindow') equal(lc.outOfView, [], 'in view');
-        /* The tool's bar stays in view when the page scrolls down. */
-        await page.evaluate(() => window.scrollTo(0, 2500));
-        await page.waitForTimeout(100);
-        equal((await H.layoutCheck(page, ['[data-test=advance]'])).outOfView, [], 'Advance in view after scrolling');
-        if (size !== 'smallWindow') equal((await H.layoutCheck(page, ['.tsi-bas-side'])).outOfView, [], 'the Favour panel sticks in view');
-        await page.evaluate(() => window.scrollTo(0, 0));
+        equal(lc.outOfView, [], 'in view');
+        equal(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight + 1), true, 'the page itself never scrolls down');
       });
     }
     await page.setViewportSize(H.SIZES.laptop.viewport);
@@ -237,11 +289,12 @@ function serve(dir) {
     await check('every facility picture and all eight map overlays load with no internet', async () => {
       await setUp(page, (s) => { s.partyLevel = 17; s.builtExtras = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 'laboratory', 'war_room', 'gaming_hall', 'greenhouse', 'shrine_telluria', 'shrine_aurush', 'shrine_pelagos', 'hall_of_emissaries'].map(id => ({ facId: id, status: 'built' })); });
       await page.waitForFunction(() => Array.from(document.images).every(i => i.complete));
-      const imgs = await page.$$eval('.tsi-bas-fac__img, .tsi-bas-map__overlay, .tsi-bas-map__img, .tsi-bas-hall__img img', is => is.map(i => [i.getAttribute('src').split('/').pop(), i.naturalWidth]));
+      const imgs = await page.$$eval('.tsi-bas-tile__img, .tsi-bas-map__overlay, .tsi-bas-map__img', is => is.map(i => [i.getAttribute('src').split('/').pop(), i.naturalWidth]));
       equal(imgs.filter(i => !i[1]), [], 'all loaded');
-      equal(await page.$$eval('.tsi-bas-fac', cs => cs.length), 17, 'the Hall has its own panel');
+      equal(await page.$$eval('.tsi-bas-tile--built', ts => ts.length), 18, 'every facility has a tile, the Hall too');
       equal(await page.$$eval('.tsi-bas-map__overlay', os => os.map(o => o.dataset.fac).sort()), ['arcane_study', 'garden', 'greenhouse', 'hall_of_emissaries', 'laboratory', 'library', 'smithy', 'war_room']);
       equal(await page.$$eval('.tsi-bas-map__overlay', os => os.map(o => o.naturalWidth)), [1152, 1152, 1152, 1152, 1152, 1152, 1152, 1152]);
+      equal((await H.layoutCheck(page, ['.tsi-bas-tile'])).scrollWidth, H.SIZES.laptop.viewport.width, 'eighteen tiles still fit');
       await H.shot(page, 'p9-02-everything-built');
     });
 
@@ -252,11 +305,11 @@ function serve(dir) {
       equal(context.log.consoleErrors, []);
     });
 
-    await check('the TV: the same page, wider, with the Favour panel beside it', async () => {
+    await check('the TV: the same screen, with a bigger painting', async () => {
       await page.setViewportSize(H.SIZES.tv.viewport);
       await page.waitForTimeout(250);
-      const box = await page.evaluate(() => { const r = document.querySelector('.tsi-bas-side').getBoundingClientRect(); const m = document.querySelector('.tsi-bas-card--map').getBoundingClientRect(); return { side: r.width, map: m.width }; });
-      assert(box.side === 300 && box.map > 700, JSON.stringify(box));
+      const w = await page.evaluate(() => document.querySelector('.tsi-bas-map').getBoundingClientRect().width);
+      assert(w > 1100, 'the painting is ' + w + ' wide');
       await H.shot(page, 'p9-03-tv');
       await page.setViewportSize(H.SIZES.laptop.viewport);
     });
@@ -264,66 +317,91 @@ function serve(dir) {
   }
 
   /* ------------------------------------------------------------------ */
-  section('Construction slots');
-  {
+  if (want('Construction slots')) {
+    section('Construction slots');
     const { context, page } = await newPage(browser, 'laptop');
     await openBastion(page);
+    const slotsOpen = () => page.$$eval('.tsi-bas-tile--slot', ts => ts.length);
+    /* Build through the grid: an empty slot, the facility, then Construct. */
+    async function construct(slot, facId) {
+      await pause(page);
+      await page.click('[data-test=slot-' + slot + ']');
+      await page.waitForSelector('[data-test=build-' + facId + ']');
+      await page.click('[data-test=build-' + facId + ']');
+      await clickModal(page, 'Construct');
+      await page.waitForFunction(() => !TSI.bastion.debug.panel());
+    }
 
-    await check('slots by party level: 0 / 2 / 4 / 5 / 6', async () => {
+    await check('slots open to build by party level: 0 / 2 / 4 / 5 / 6', async () => {
       const out = [];
       for (const lvl of ['4', '5', '9', '13', '17']) {
         await page.selectOption('[data-test=level]', lvl);
-        out.push(await text(page, 'slot-meta'));
+        await page.waitForTimeout(80);
+        out.push(await slotsOpen());
       }
-      equal(out, ['Level 4 → 0 slot(s). Used: 0/0', 'Level 5 → 2 slot(s). Used: 0/2', 'Level 9 → 4 slot(s). Used: 0/4', 'Level 13 → 5 slot(s). Used: 0/5', 'Level 17 → 6 slot(s). Used: 0/6']);
+      equal(out, [0, 2, 4, 5, 6]);
     });
 
     await check('locked facilities stay listed but can\'t be picked', async () => {
       await page.selectOption('[data-test=level]', '9');
-      const opts = await page.$$eval('[data-test=slot-select-0] option', os => os.map(o => [o.textContent, o.disabled]));
-      assert(opts.some(o => o[0] === 'Menagerie (Locked: Lvl 13)' && o[1]), JSON.stringify(opts));
-      assert(opts.some(o => o[0] === 'Library' && !o[1]));
+      await pause(page);
+      await page.click('[data-test=slot-0]');
+      await page.waitForSelector('[data-test=build-menagerie]');
+      equal(await page.getAttribute('[data-test=build-menagerie]', 'aria-disabled'), 'true');
+      assert(/Locked: level 13/.test(await text(page, 'build-menagerie')));
+      equal(await page.getAttribute('[data-test=build-library]', 'aria-disabled'), null);
+      assert(/Party level 9: 4 construction slots, 0 in use\./.test(await text(page, 'build-panel')));
     });
 
-    await check('the slot list shows what a facility does on hover', async () => {
-      await page.selectOption('[data-test=slot-select-0]', 'library');
-      await page.hover('[data-test=slot-select-0]');
-      await page.waitForSelector('[data-test=tooltip]:not([hidden])');
-      assert(/Library/.test(await text(page, 'tooltip')) && /What it does/.test(await text(page, 'tooltip')), await text(page, 'tooltip'));
+    await check('the build panel shows what a facility does, and how long it takes to build, on hover', async () => {
+      await page.hover('[data-test=build-library]');
+      await page.waitForFunction(() => /Library/.test(document.querySelector('[data-test=tooltip]').textContent));
+      const tip = await text(page, 'tooltip');
+      assert(/Library/.test(tip) && /What it does/.test(tip) && /Takes 21 days to build/.test(tip), tip);
+      await page.keyboard.press('Escape');
+      await page.mouse.move(5, 400);
     });
 
-    await check('building takes 3, 4 or 5 turns, then the facility joins the carousel and the map', async () => {
-      await page.click('[data-test=build-0]');
-      await page.selectOption('[data-test=slot-select-1]', 'laboratory');
-      await page.click('[data-test=build-1]');
-      const slots = await text(page, 'slots');
-      assert(/LibraryUnder construction • 3 turn\(s\) remaining/.test(slots) && /LaboratoryUnder construction • 4 turn\(s\) remaining/.test(slots), slots);
-      assert(/Library \(Already chosen\)/.test(await page.textContent('[data-test=slot-select-2]')));
-      for (let i = 0; i < 3; i++) await advance(page, []);
-      assert(/LibraryBuilt • Active/.test(await text(page, 'slots')));
-      equal(await page.$$eval('.tsi-bas-fac[data-fac=library]', c => c.length), 1);
+    await check('building takes 21, 28 or 35 days, then the facility joins the grid and the map', async () => {
+      await construct(0, 'library');
+      await construct(1, 'laboratory');
+      equal(await page.$$eval('.tsi-bas-tile--building', ts => ts.map(t => [t.dataset.test, t.textContent])), [['tile-library', '21'], ['tile-laboratory', '28']]);
+      equal((await st(page)).builtExtras.slice(0, 2), [{ facId: 'library', status: 'building', startDay: 1, readyDay: 22 }, { facId: 'laboratory', status: 'building', startDay: 1, readyDay: 29 }]);
+      await pause(page);
+      await page.click('[data-test=slot-2]');
+      await page.waitForSelector('[data-test=build-panel]');
+      equal(await page.$('[data-test=build-library]'), null, 'no longer offered');
+      await page.keyboard.press('Escape');
+      await days(page, 20, []);
+      equal(await text(page, 'tile-library'), '1', 'Day 21: one day to go');
+      await days(page, 1, []);
+      equal(await page.$eval('[data-test=tile-library]', t => [t.tagName, t.classList.contains('tsi-bas-tile--built')]), ['BUTTON', true]);
       equal(await page.$$eval('.tsi-bas-map__overlay', os => os.map(o => o.dataset.fac)), ['library']);
       assert((await st(page)).log.some(l => l.title === 'Construction Complete' && l.body === 'Library is now built and active.'));
     });
 
     await check('lowering the level keeps every building, marked over capacity (BAS-04, B8)', async () => {
-      await page.selectOption('[data-test=slot-select-2]', 'smithy'); await page.click('[data-test=build-2]');
-      await page.selectOption('[data-test=slot-select-3]', 'garden'); await page.click('[data-test=build-3]');
+      await construct(2, 'smithy');
+      await construct(3, 'garden');
       await page.selectOption('[data-test=level]', '5');
-      equal(await text(page, 'slot-meta'), 'Level 5 → 2 slot(s). Used: 4/2 (2 over capacity)');
+      await page.waitForTimeout(100);
       equal(await page.$$eval('[data-test=over-capacity]', os => os.length), 2);
-      equal(await page.$$eval('[data-test^=build-]', b => b.length), 0, 'no room to build');
+      equal(await slotsOpen(), 0, 'no room to build');
+      await pause(page);
+      await page.click('[data-test=facilities-count]');
+      assert(/Party level 5: 2 construction slots, 4 in use \(2 over capacity\)\. There's no free slot/.test(await text(page, 'build-panel')), await text(page, 'build-panel'));
+      await page.keyboard.press('Escape');
       equal((await st(page)).builtExtras.filter(Boolean).length, 4);
       await reopen(page);
       await page.selectOption('[data-test=level]', '9');
-      equal(await text(page, 'slot-meta'), 'Level 9 → 4 slot(s). Used: 4/4');
+      await page.waitForTimeout(100);
       equal(await page.$$eval('[data-test=over-capacity]', os => os.length), 0);
       await H.shot(page, 'p9-04-slots');
     });
 
     await check('Clear extra builds asks first; Cancel keeps them', async () => {
       await page.click('[data-test=clear-builds]');
-      assert(/Your 5 starting facilities remain/.test(await H.modalText(page)));
+      assert(/Your 5 starting facilities remain/.test(await popText(page)));
       await clickModal(page, 'Cancel');
       equal((await st(page)).builtExtras.filter(Boolean).length, 4);
       await page.waitForTimeout(400);
@@ -335,11 +413,11 @@ function serve(dir) {
   }
 
   /* ------------------------------------------------------------------ */
-  section('Orders');
-  {
+  if (want('Orders')) {
+    section('Orders');
     const { context, page } = await newPage(browser, 'laptop');
     await openBastion(page);
-    await page.fill('[data-test=treasury]', '1000');
+    await treasury(page, '1000');
 
     await check('an order charges its gold once, even on a double click', async () => {
       await page.selectOption('[data-test="sel-dock__charter_berth"]', '1');
@@ -348,27 +426,29 @@ function serve(dir) {
       equal(await modalOpen(page), false);
       const s = await st(page);
       equal([s.treasuryGP, s.pendingOrders.map(o => o.label)], [800, ['Dock: Charter Berth (Longship)']]);
-      assert(/Completes on Turn 2/.test(await text(page, 'pending')));
+      assert(/Due Day 8 \(in 7 days\)/.test(await text(page, 'pending')), await text(page, 'pending'));
+      equal(await text(page, 'days-dock__charter_berth'), 'Takes 7 days');
+      equal(await text(page, 'days-barracks__recruit_defenders'), 'Takes 5 days');
     });
 
     await check('the same order again, or one you can\'t afford, is refused with a message', async () => {
       await issue(page, 'dock', 'charter_berth');
-      equal(await H.modalText(page).then(t => /That order is already pending\./.test(t)), true);
+      equal(await popText(page).then(t => /That order is already pending\./.test(t)), true);
       await clickModal(page, 'OK');
       await issue(page, 'armoury', 'arm_defenders');
-      await page.fill('[data-test=treasury]', '50');
+      await treasury(page, '50');
       await issue(page, 'barracks', 'recruit_defenders');
       equal((await st(page)).pendingOrders.length, 3, 'Recruit Defenders is free');
       await setUp(page, (s) => { s.defenders.count = 2; });
       await pause(page);
       await page.click('[data-test=cancel-1]');
       await issue(page, 'armoury', 'arm_defenders');
-      assert(/Not enough gp\. Need 300gp, you have 50gp\./.test(await H.modalText(page)));
+      assert(/Not enough gp\. Need 300gp, you have 50gp\./.test(await popText(page)));
       await clickModal(page, 'OK');
     });
 
     await check('cancelling keeps the gold spent (B9, kept)', async () => {
-      await page.fill('[data-test=treasury]', '500');
+      await treasury(page, '500');
       await issue(page, 'armoury', 'arm_defenders');
       equal((await st(page)).treasuryGP, 200);
       await pause(page);
@@ -377,9 +457,11 @@ function serve(dir) {
       equal([s.treasuryGP, s.pendingOrders.length, s.log[0].body], [200, 2, 'Cancelled an order.']);
     });
 
-    await check('orders complete next turn: defenders recruited, the ship in the warehouse', async () => {
+    await check('orders complete on their days: defenders recruited on Day 6, the ship in the warehouse on Day 8', async () => {
       await page.evaluate(() => window.__seed(4));
-      await advance(page, []);
+      await days(page, 5, []);
+      equal((await st(page)).pendingOrders.map(o => o.label), ['Dock: Charter Berth (Longship)'], 'Day 6: the Barracks\' order is done');
+      await days(page, 2, []);
       const s = await st(page);
       equal(s.pendingOrders, []);
       assert(s.defenders.count > 2);
@@ -390,82 +472,112 @@ function serve(dir) {
   }
 
   /* ------------------------------------------------------------------ */
-  section('Advance Bastion Turn (BAS-02, BAS-03, BAS-10, BAS-12, BAS-13)');
-  {
+  if (want('Passing days (BAS-02, BAS-03, BAS-10, BAS-12, BAS-13)')) {
+    section('Passing days (BAS-02, BAS-03, BAS-10, BAS-12, BAS-13)');
     const { context, page } = await newPage(browser, 'laptop');
     await openBastion(page);
     await setUp(page, (s) => { s.partyLevel = 9; s.treasuryGP = 5000; s.builtExtras = [{ facId: 'hall_of_emissaries', status: 'built' }, '', '', '']; });
 
-    await check('a double click advances one turn, not two (BAS-12)', async () => {
-      await page.dblclick('[data-test=advance]');
-      await page.waitForTimeout(500);
-      equal(await text(page, 'turn'), 'Turn 2');
-      equal((await st(page)).log.filter(l => l.title === 'Turn Advanced').length, 1);
+    await check('the Bastion follows the Explorer\'s day: Day 4 there, and the Bastion passes Days 2 to 4', async () => {
+      equal(await text(page, 'day-status'), 'Day 1');
+      await days(page, 3, []);
+      equal(await text(page, 'day-status'), 'Day 4');
+      equal(await text(page, 'day-status'), 'Day 4');
+      equal((await st(page)).dayInProgress, null);
     });
 
-    await check('while a dice box is open, Advance is off and Enter or Space can\'t start another turn (BAS-10)', async () => {
-      await planHall(page, 'secure_trade_agreement', 0);
-      await pause(page);
-      await page.click('[data-test=advance]');
-      await page.waitForSelector('[data-test=d20]');
-      equal(await page.isDisabled('[data-test=advance]'), true);
-      equal(await text(page, 'advance'), 'Finish Bastion Turn 3');
+    await check('looking at the Explorer\'s day twice at once passes each day once (BAS-12)', async () => {
+      await setUp(page, (s) => { s.pendingOrders.push({ id: 'p1', facId: 'barracks', fnId: 'recruit_defenders', label: 'Barracks: Recruit Defenders', costGP: 0, issuedDay: 1, dueDay: 5 }); });
+      await page.evaluate(() => {
+        const ex = TSI.store.get('tsi.explorer.save', null);
+        ex.travel.day = 5;
+        TSI.store.set('tsi.explorer.save', ex);
+        TSI.bastion.debug.clock(); TSI.bastion.debug.clock(); TSI.bastion.debug.clock();
+      });
+      await word(page);
+      const s = await st(page);
+      equal(s.day, 5);
+      equal(s.log.filter(l => /Recruited \d defenders/.test(l.body)).length, 1, 'the order completed once');
+    });
+
+    await check('while a dice box is open, Enter or Space can\'t start anything else, and the day waits (BAS-10)', async () => {
+      await planHall(page, 'secure_trade_agreement', 0, { dur: 3 });
+      equal((await st(page)).pendingOrders[0].dueDay, 12, '7 days to negotiate');
+      await setExplorerDay(page, 12);
+      await page.waitForSelector('[data-test=d20]', { timeout: 15000 });
+      equal(await text(page, 'day-status'), 'Passing Day 12…');
       await page.keyboard.press('Enter');
       await page.keyboard.press('Space');
       await page.waitForTimeout(300);
-      equal((await st(page)).turn, 3);
-      equal(await page.$$eval('.tsi-modal', m => m.length), 1);
+      const s = await st(page);
+      equal([s.day, s.dayInProgress && s.dayInProgress.day], [12, 12]);
+      equal(await page.$$eval('.tsi-modal:not(.tsi-bas-panel)', m => m.length), 1);
       await H.shot(page, 'p9-05-dice');
     });
 
-    await check('a cancelled roll keeps the order; the turn still finishes (BAS-02)', async () => {
+    await check('a cancelled roll keeps the order, due, with Resolve; the day still finishes, and the word says so (BAS-02)', async () => {
       await clickModal(page, 'Cancel');
-      await page.waitForFunction(() => !TSI.bastion.debug.busy());
+      const w = await word(page);
+      assert(/Hall of Emissaries: Secure Trade Agreement \(Clan Blackstone\) needs your roll/.test(w), w);
       const s = await st(page);
-      equal(s.turn, 3);
-      equal(s.turnInProgress, null);
-      equal(s.pendingOrders.map(o => [o.label, o.completeTurn]), [['Hall of Emissaries: Secure Trade Agreement (Clan Blackstone)', 3]]);
-      equal(s.log[1].body, 'Hall of Emissaries: Secure Trade Agreement (Clan Blackstone) → Roll cancelled. The order stays pending for the next Bastion Turn.');
-      equal(await text(page, 'advance'), 'Advance Bastion Turn (+7 days)');
+      equal([s.day, s.dayInProgress], [12, null]);
+      equal(s.pendingOrders.map(o => [o.label, o.dueDay]), [['Hall of Emissaries: Secure Trade Agreement (Clan Blackstone)', 12]]);
+      assert(s.log.some(l => l.body === 'Hall of Emissaries: Secure Trade Agreement (Clan Blackstone) → Roll cancelled. The order stays due: press Resolve on it, or it comes up again tomorrow.'), JSON.stringify(s.log.slice(0, 3)));
+      equal(await text(page, 'pending-meta-0'), 'Due now: waiting for your roll');
+      equal(await page.isVisible('[data-test=resolve-0]'), true);
       equal(s.treasuryGP, 4750, 'paid once');
     });
 
-    await check('next turn it asks again and completes (BAS-13)', async () => {
-      await advance(page, [15]);
+    await check('Resolve asks again and completes it: three weeks, three shipments (BAS-13)', async () => {
+      await pause(page);
+      await page.click('[data-test=resolve-0]');
+      await answerAll(page, [15]);
+      await page.waitForFunction(() => !TSI.bastion.debug.busy());
       const s = await st(page);
       equal(s.pendingOrders, []);
-      equal(s.diplomacy.agreements.length, 1);
+      equal(s.diplomacy.agreements.map(a => [a.startDay, a.endDay]), [[12, 33]]);
       equal(s.treasuryGP, 4750);
+      assert(/21 days remaining \(3 shipments\)/.test(await text(page, 'diplomacy-records')), await text(page, 'diplomacy-records'));
     });
 
-    await check('closing the window mid-turn loses nothing: it reopens ready to finish', async () => {
+    await check('closing the window mid-day loses nothing: it reopens and finishes the day by itself', async () => {
       await planHall(page, 'host_delegation', 1, { tone: 'assertive' });
-      await pause(page);
-      await page.click('[data-test=advance]');
-      await page.waitForSelector('[data-test=d20]');
+      await setExplorerDay(page, 17);
+      await page.waitForSelector('[data-test=d20]', { timeout: 15000 });
       const mid = await st(page);
-      equal([mid.turn, mid.turnInProgress.stage], [5, 'orders']);
+      equal([mid.day, mid.dayInProgress.stage], [17, 'orders']);
       await reopen(page);
-      await H.waitForNotice(page, /Bastion Turn 5 was left part-way through/);
-      equal(await text(page, 'advance'), 'Finish Bastion Turn 5');
-      const s1 = await st(page);
-      equal([s1.turn, s1.pendingOrders.length, s1.treasuryGP], [5, 1, mid.treasuryGP]);
-      await page.click('[data-test=advance]');
+      await H.waitForNotice(page, /Day 17 was left part-way through\. It carries on now; nothing has been lost\./);
       await answerAll(page, [12, 14, 13]);
-      await page.waitForFunction(() => !TSI.bastion.debug.busy());
+      await page.waitForFunction(() => !TSI.bastion.debug.busy() && !TSI.bastion.debug.state().dayInProgress);
+      await answerAll(page, []);
       const s2 = await st(page);
-      equal([s2.turn, s2.turnInProgress, s2.pendingOrders.length, s2.diplomacy.delegations.length], [5, null, 0, 1]);
-      equal(s2.log.filter(l => l.body === 'Bastion Turn is now 5.').length, 1);
-      equal(await text(page, 'advance'), 'Advance Bastion Turn (+7 days)');
+      equal([s2.day, s2.dayInProgress, s2.pendingOrders.length, s2.diplomacy.delegations.length], [17, null, 0, 1]);
+      equal(s2.treasuryGP === mid.treasuryGP || s2.treasuryGP !== null, true);
+      equal(s2.log.filter(l => /^Host Delegation/.test(l.body)).length, 1, 'once');
     });
 
-    await check('every 4th turn rolls a Bastion event into the event box', async () => {
+    await check('the automatic Bastion event comes on Day 29 into the event box, and says when the next is due', async () => {
+      equal(await text(page, 'event-next'), 'The next automatic event: Day 29 (every 28 days).');
       await page.evaluate(() => window.__seed(12));
-      for (let i = 0; i < 3; i++) await advance(page, []);
-      equal(await text(page, 'turn'), 'Turn 8');
+      await days(page, 12, []);
+      equal(await text(page, 'day-status'), 'Day 29');
       const ev = await text(page, 'event');
-      assert(/Roll: \d+/.test(ev), ev);
-      assert((await st(page)).log.some(l => /^Auto event \(Turn 8\)/.test(l.body)));
+      assert(/Roll: \d+ · Day 29/.test(ev), ev);
+      assert((await st(page)).log.some(l => /^Auto event \(Day 29\)/.test(l.body)));
+      equal(await text(page, 'event-next'), 'The next automatic event: Day 57 (every 28 days).');
+    });
+
+    await check('Reset Travel in the Explorer moves every Bastion day back, and the log says so', async () => {
+      await planHall(page, 'host_delegation', 2, { tone: 'assertive' });
+      const before = await st(page);
+      equal(before.pendingOrders[0].dueDay, 34);
+      await setExplorerDay(page, 1);
+      await page.waitForFunction(() => TSI.bastion.debug.state().day === 1);
+      const s = await st(page);
+      equal(s.pendingOrders[0].dueDay, 6, 'still 5 days off');
+      equal(s.log[0].body, 'The Explorer\'s day went back (Reset Travel): the Bastion moves from Day 29 to Day 1, and everything due keeps its days.');
+      equal(await text(page, 'day-status'), 'Day 1');
     });
 
     await check('Roll Bastion Event rolls a d100 and shows its description', async () => {
@@ -479,20 +591,25 @@ function serve(dir) {
   }
 
   /* ------------------------------------------------------------------ */
-  section('The Hall of Emissaries');
-  {
+  if (want('The Hall of Emissaries')) {
+    section('The Hall of Emissaries');
     const { context, page } = await newPage(browser, 'laptop');
     await openBastion(page);
-    await page.fill('[data-test=treasury]', '5000');
+    await treasury(page, '5000');
 
-    await check('before it\'s built: "Not built yet", and Upgrade is off', async () => {
-      assert(/Not built yet/.test(await text(page, 'hall')));
-      equal(await page.isDisabled('[data-test=hall-upgrade]'), true);
+    await check('before it\'s built it has no tile, and the build panel offers it', async () => {
+      equal(await page.$('[data-test=tile-hall_of_emissaries]'), null);
+      await page.click('[data-test=slot-0]');
+      await page.waitForSelector('[data-test=build-hall_of_emissaries]');
+      equal(await text(page, 'build-hall_of_emissaries'), 'Hall of Emissaries21 days', 'open from party level 5, 21 days to build');
+      await page.keyboard.press('Escape');
     });
 
     await setUp(page, (s) => { s.partyLevel = 9; s.builtExtras = [{ facId: 'hall_of_emissaries', status: 'built' }, '', '', '']; });
 
-    await check('its actions show their notes on hover, and lock until the Hall is upgraded', async () => {
+    await check('its tile opens the Hall of Emissaries; its actions show their notes on hover, and lock until the Hall is upgraded', async () => {
+      await page.click('[data-test=tile-hall_of_emissaries]');
+      await page.waitForSelector('[data-test=panel-diplomacy] [data-test=hall]');
       await page.hover('.tsi-bas-hall__fns .tsi-bas-fn >> nth=0');
       await page.waitForSelector('[data-test=tooltip]:not([hidden])');
       assert(/Creates a timed Trade Agreement/.test(await text(page, 'tooltip')));
@@ -505,6 +622,7 @@ function serve(dir) {
       await page.click('[data-test="issue-hall_of_emissaries__secure_trade_agreement"]');
       await page.waitForSelector('[data-test=hall-duration]');
       equal(await page.inputValue('[data-test=hall-duration]'), '3');
+      equal(await page.$$eval('[data-test=hall-duration] option', os => os.map(o => o.textContent)), ['1 week (1 shipment)', '3 weeks (3 shipments)', '6 weeks (6 shipments)']);
       await H.shot(page, 'p9-06-planning');
       await clickModal(page, 'Cancel');
       equal([(await st(page)).treasuryGP, (await st(page)).pendingOrders.length], [5000, 0]);
@@ -513,8 +631,8 @@ function serve(dir) {
     await check('Host Delegation: three dice boxes, Political Capital changes once (B2)', async () => {
       await planHall(page, 'host_delegation', 0, { tone: 'conciliatory' });
       equal((await st(page)).treasuryGP, 4850);
-      await pause(page);
-      await page.click('[data-test=advance]');
+      equal((await st(page)).pendingOrders[0].dueDay, 6, '5 days');
+      await setExplorerDay(page, 6);
       const titles = [];
       for (const r of [20, 12, 11]) { await page.waitForSelector('[data-test=d20]'); titles.push(await modalTitle(page)); await d20(page, r); }
       equal(titles, ['Host Delegation (Clan Blackstone)', 'Diplomacy Roll (conciliatory)', 'Insight Roll (conciliatory)']);
@@ -523,26 +641,29 @@ function serve(dir) {
       assert(/Political Capital: \+15 \(Clan Blackstone\)/.test(changes) && (changes.match(/Political Capital/g) || []).length === 1, changes);
       await H.shot(page, 'p9-07-result');
       await clickModal(page, 'Continue');
-      await page.waitForFunction(() => !TSI.bastion.debug.busy());
+      assert(/Host Delegation \(Clan Blackstone\): Critical Success\./.test(await word(page)));
       equal(await text(page, 'pc-blackstone'), '15');
       equal(await text(page, 'tokens'), '1');
+      assert(/Hosted Delegation \(conciliatory\)Clan Blackstone • 28 days remaining/.test(await text(page, 'diplomacy-records')), await text(page, 'diplomacy-records'));
     });
 
-    await check('a bad failure: no deal, −20 Political Capital, and a 2-turn cooldown on the button', async () => {
+    await check('a bad failure: no deal, −20 Political Capital, and a 14-day cooldown on the button', async () => {
       await planHall(page, 'secure_trade_agreement', 1);
-      await advance(page, [5]);
+      await days(page, 7, [5]);
       const s = await st(page);
-      equal([s.diplomacy.agreements.length, s.politicalCapital.rowthorn, s.diplomacy.cooldowns.trade_agreement], [0, -20, 2]);
-      equal(await text(page, 'issue-hall_of_emissaries__secure_trade_agreement'), 'Cooldown: 2 turns');
+      equal([s.diplomacy.agreements.length, s.politicalCapital.rowthorn, s.diplomacy.cooldowns.trade_agreement], [0, -20, s.day + 14]);
+      equal(await text(page, 'issue-hall_of_emissaries__secure_trade_agreement'), 'Cooldown: 14 days');
       equal(await page.isDisabled('[data-test="issue-hall_of_emissaries__secure_trade_agreement"]'), true);
+      await days(page, 4, []);
+      equal(await text(page, 'issue-hall_of_emissaries__secure_trade_agreement'), 'Cooldown: 10 days');
     });
 
-    await check('the upgrade is free (B4, kept) and raises the Hall\'s bonus', async () => {
+    await check('the upgrade is free (B4, kept), takes 14 days and raises the Hall\'s bonus', async () => {
       const gp = (await st(page)).treasuryGP;
       await pause(page);
       await page.click('[data-test=hall-upgrade]');
       equal((await st(page)).treasuryGP, gp);
-      await advance(page, []);
+      await days(page, 14, []);
       equal(await text(page, 'hall-level'), 'L2');
       equal(await page.isDisabled('[data-test="issue-hall_of_emissaries__inter_clan_summit"]'), false);
     });
@@ -550,7 +671,7 @@ function serve(dir) {
     await check('Clear Diplomacy Records asks first', async () => {
       await pause(page);
       await page.click('[data-test=clear-diplomacy]');
-      assert(/Does not undo gold already gained/.test(await H.modalText(page)));
+      assert(/Does not undo gold already gained/.test(await popText(page)));
       await clickModal(page, 'Cancel');
       equal((await st(page)).diplomacy.delegations.length, 1);
     });
@@ -558,18 +679,20 @@ function serve(dir) {
   }
 
   /* ------------------------------------------------------------------ */
-  section('Trade routes and the Council Ledger (BAS-05, BAS-11)');
-  {
+  if (want('Trade routes and the Council Ledger (BAS-05, BAS-11)')) {
+    section('Trade routes and the Council Ledger (BAS-05, BAS-11)');
     const { context, page } = await newPage(browser, 'laptop');
     await openBastion(page);
+    await days(page, 2, []);
+    /* Two routes due to sail today (Day 3), each every 7 days. */
     await setUp(page, (s) => {
-      s.partyLevel = 9; s.turn = 3;
+      s.partyLevel = 9;
       s.builtExtras = [{ facId: 'hall_of_emissaries', status: 'built' }, '', '', ''];
       s.tradeNetwork.active = true;
-      s.diplomacy.consortiums = [{ id: 'c1', title: 'Form Trade Consortium', clan: 'Blackstone', turnsLeft: 5, incomePerTurn: 100 }, { id: 'c2', title: 'Form Trade Consortium', clan: 'Karr', turnsLeft: 5, incomePerTurn: 200 }];
+      s.diplomacy.consortiums = [{ id: 'c1', title: 'Form Trade Consortium', clan: 'Blackstone', startDay: 3, endDay: 38, income: 100, lastShipmentDay: 3 }, { id: 'c2', title: 'Form Trade Consortium', clan: 'Karr', startDay: 3, endDay: 38, income: 200, lastShipmentDay: 3 }];
       s.tradeNetwork.routes = [
-        { id: 'r1', clan: 'Blackstone', commodity: 'Timber', risk: 'low', expiresTurn: 8, yieldGP: 100, stabilityDC: 12, status: 'active' },
-        { id: 'r2', clan: 'Karr', commodity: 'Wool & Furs', risk: 'high', expiresTurn: 8, yieldGP: 200, stabilityDC: 12, status: 'active' }
+        { id: 'r1', clan: 'Blackstone', commodity: 'Timber', risk: 'low', openedDay: -4, nextDay: 3, expiresDay: 40, yieldGP: 100, stabilityDC: 12, status: 'active' },
+        { id: 'r2', clan: 'Karr', commodity: 'Wool & Furs', risk: 'high', openedDay: -4, nextDay: 3, expiresDay: 40, yieldGP: 200, stabilityDC: 12, status: 'active' }
       ];
     });
 
@@ -586,18 +709,19 @@ function serve(dir) {
       await page.waitForSelector('[data-test=d20]');
       await page.keyboard.press('Enter');
       await page.waitForTimeout(200);
-      equal(await page.$$eval('.tsi-modal', m => m.length), 1, 'Enter didn\'t start another');
+      equal(await page.$$eval('.tsi-modal:not(.tsi-bas-panel)', m => m.length), 1, 'Enter didn\'t start another');
       await d20(page, 15);
       assert(/Total Collected: 200 gp/.test(await text(page, 'routes-total')));
       await clickModal(page, 'Continue');
       equal((await st(page)).treasuryGP, 300, '100 + 200, not 100 + 100 + 200');
     });
 
-    await check('a third Resolve says they\'re done for this turn', async () => {
+    await check('a third Resolve says none is due, and when the next sails', async () => {
       await pause(page);
       await page.click('[data-test=resolve]');
-      assert(/already been resolved/.test(await H.modalText(page)));
+      assert(/No routes are due to sail\. Each sails every 7 days; the next on Day 10\./.test(await popText(page)), await popText(page));
       await clickModal(page, 'Close');
+      assert(/Next sails: Day 10/.test(await text(page, 'routes-list')), await text(page, 'routes-list'));
     });
 
     await check('the Sea Trade Routes map lights up each running route', async () => {
@@ -612,8 +736,8 @@ function serve(dir) {
       await clickModal(page, 'Close');
     });
 
-    await check('next turn: a disaster at sea disrupts Karr and files a dispute', async () => {
-      await advance(page, [3]);
+    await check('a week on (Day 10): the routes sail again, and a disaster at sea disrupts Karr and files a dispute', async () => {
+      await days(page, 7, [3]);
       const s = await st(page);
       equal(s.tradeNetwork.routes.map(r => r.status), ['active', 'disrupted']);
       equal(s.arbitration.queue.length, 1);
@@ -628,7 +752,7 @@ function serve(dir) {
       await page.click('[data-test=rule-b]');
       await d20(page, 15);
       equal(await modalTitle(page), 'Council Verdict');
-      assert(/Karr route status: Restored \(Active\)\./.test(await H.modalText(page)));
+      assert(/Karr route status: Restored \(Active\)\./.test(await popText(page)));
       await clickModal(page, 'Continue');
       const s = await st(page);
       equal([s.tradeNetwork.routes[1].status, s.arbitration.queue.length, s.politicalCapital.karr], ['active', 0, -4]);
@@ -638,15 +762,16 @@ function serve(dir) {
     await check('an empty ledger says so', async () => {
       await pause(page);
       await page.click('[data-test=ledger]');
-      assert(/No disputes await judgement\./.test(await H.modalText(page)));
+      assert(/No disputes await judgement\./.test(await popText(page)));
       await clickModal(page, 'Close');
     });
 
-    await check('network investments are orders that complete next turn', async () => {
+    await check('network investments are orders that take their days (Stability: 7)', async () => {
       await setUp(page, (s) => { s.treasuryGP = 500; });
       await pause(page);
       await page.click('[data-test=invest-stability]');
-      await advance(page, [15]);
+      equal((await st(page)).pendingOrders.map(o => o.dueDay), [17]);
+      await days(page, 7, [15]);
       equal((await st(page)).treasuryGP > 0, true);
       assert((await st(page)).log.some(l => l.body === 'Ironbow Trade Network: Stability Investment resolved.'));
     });
@@ -654,8 +779,8 @@ function serve(dir) {
   }
 
   /* ------------------------------------------------------------------ */
-  section('Party identity and the War Council');
-  {
+  if (want('Party identity and the War Council')) {
+    section('Party identity and the War Council');
     /* Calm: the wars these checks declare never bring an attack (that has its own section). */
     const { context, page } = await newPage(browser, 'laptop', null, { calm: true });
     await openBastion(page);
@@ -685,7 +810,7 @@ function serve(dir) {
       await page.click('[data-test=form-clan]');
       await page.waitForSelector('[data-test=clan-name]');
       await clickModal(page, 'Confirm Founding');
-      assert(/Clan Name is required\./.test(await H.modalText(page)));
+      assert(/Clan Name is required\./.test(await popText(page)));
       await clickModal(page, 'OK');
       await pause(page);
       await page.click('[data-test=form-clan]');
@@ -696,7 +821,7 @@ function serve(dir) {
       equal(await page.isVisible('[data-test=honour-box]'), true);
       equal((await st(page)).log[0].body, 'Founded Clan: Clan Ironbow (Chief: Harry).');
       equal((await crestInfo(page)).shown, false, 'no crest was chosen');
-      equal(await page.textContent('[data-test=crest-add]'), 'Add crest…');
+      equal(await page.textContent('[data-test=crest-add]'), 'Upload a picture…');
     });
 
     await check('a crest can be added later, shrunk to 512 pixels, shown beside the name, kept after reopening, and removed', async () => {
@@ -722,12 +847,13 @@ function serve(dir) {
       await pause(page);
       await page.click('[data-test=crest-delete]');
       await clickModal(page, 'Remove');
+      equal(await page.evaluate(() => document.activeElement.dataset.test), 'crest-add', 'Remove has gone, so the focus stays in the panel, on Upload');
       equal((await crestInfo(page)).shown, false);
       equal(await page.evaluate(() => TSI.store.has('tsi.bastion.crest')), false);
       await H.shot(page, 'p9-crest-none');
     });
 
-    await check('the War Turn: target, objective, enemy force, and a box for each kind of force with what\'s free (war phase 2)', async () => {
+    await check('the War Action: target, objective, enemy force, and a box for each kind of force with what\'s free (war phase 2)', async () => {
       await setUp(page, (s) => {
         s.defenders.count = 4;
         s.defenders.armed = true;
@@ -752,10 +878,10 @@ function serve(dir) {
       equal(await page.isHidden('[data-test=tooltip]'), true, 'a click into a box shows nothing');
       const focusTip = () => page.evaluate(() => [document.activeElement.dataset.test, document.activeElement.getAttribute('aria-describedby'), !document.querySelector('[data-test=tooltip]').hidden]);
       await page.keyboard.press('Tab');
-      equal(await focusTip(), ['war-lieutenants', 'tsi-bas-tip', true]);
+      equal(await focusTip(), ['war-lieutenants', 'tsi-tip', true]);
       assert(/^Lieutenant/.test(await text(page, 'tooltip')), await text(page, 'tooltip'));
       await page.keyboard.press('Tab');
-      equal(await focusTip(), ['war-unit-line', 'tsi-bas-tip', true]);
+      equal(await focusTip(), ['war-unit-line', 'tsi-tip', true]);
       assert(/^Line Infantry/.test(await text(page, 'tooltip')) && /Cohesion5/.test(await text(page, 'tooltip')), await text(page, 'tooltip'));
       equal((await H.layoutCheck(page, ['[data-test=tooltip]'])).outOfView, [], 'beside the box, in view');
       await H.shot(page, 'p9-war-turn-keys');
@@ -764,7 +890,7 @@ function serve(dir) {
       await page.keyboard.press('Tab');
       assert(/^Archers/.test(await text(page, 'tooltip')) && (await focusTip())[2], await text(page, 'tooltip'));
       await page.keyboard.press('Tab');
-      equal(await focusTip(), ['war-beast-giant-vulture', 'tsi-bas-tip', true]);
+      equal(await focusTip(), ['war-beast-giant-vulture', 'tsi-tip', true]);
       assert(/^Giant Vulture/.test(await text(page, 'tooltip')) && /Flight/.test(await text(page, 'tooltip')), await text(page, 'tooltip'));
       await page.keyboard.press('Tab');
       equal(await page.isHidden('[data-test=tooltip]'), true, 'gone when the focus moves on');
@@ -774,7 +900,7 @@ function serve(dir) {
       await page.selectOption('[data-test=war-target]', 'bacca');
       for (const t of ['war-defenders', 'war-lieutenants', 'war-unit-line', 'war-unit-archers', 'war-beast-giant-vulture']) await page.fill('[data-test=' + t + ']', '0');
       await page.click('[data-test=queue-war]');
-      assert(/Commit at least one force that fights/.test(await H.modalText(page)));
+      assert(/Commit at least one force that fights/.test(await popText(page)));
       await clickModal(page, 'OK');
       /* A Lieutenant alone can't fight; the hint says why. */
       await page.fill('[data-test=war-lieutenants]', '1');
@@ -783,7 +909,7 @@ function serve(dir) {
       assert(/Each Lieutenant leads one regiment or defender detachment, so none of them can march with these forces\./.test(await text(page, 'war-hint')), await text(page, 'war-hint'));
       await pause(page);
       await page.click('[data-test=queue-war]');
-      assert(/Commit at least one force that fights/.test(await H.modalText(page)));
+      assert(/Commit at least one force that fights/.test(await popText(page)));
       await clickModal(page, 'OK');
       equal((await st(page)).pendingOrders, []);
       for (const [t, typed, kept] of [['war-defenders', '9', '4'], ['war-beast-giant-vulture', '9', '5'], ['war-unit-line', '5', '2']]) {
@@ -824,8 +950,7 @@ function serve(dir) {
       assert(await text(page, 'war-intel-estimate') !== est);
       await page.selectOption('[data-test=war-tier]', 'established');
       equal(await text(page, 'war-intel-estimate'), est, 'the same army as before');
-      await page.evaluate(() => document.querySelector('[data-card=war]').scrollIntoView({ block: 'start' }));
-      await page.evaluate(() => window.scrollBy(0, -130));
+      await reveal(page, '[data-test=queue-war]');
       await H.shot(page, 'p9-war-turn');
     });
 
@@ -833,27 +958,27 @@ function serve(dir) {
       await pause(page);
       await page.dblclick('[data-test=queue-war]');
       await page.waitForTimeout(300);
-      equal(await page.$$eval('.tsi-modal', m => m.length), 1, 'one "Declare war" question');
+      equal(await page.$$eval('.tsi-modal:not(.tsi-bas-panel)', m => m.length), 1, 'one "Declare war" question');
       await confirmWar(page);
       await page.waitForTimeout(300);
       const s = await st(page);
       equal(s.pendingOrders.map(o => [o.label, o.meta.objective, o.meta.targetName, o.meta.tier, o.meta.missionKey, o.meta.commit]),
         [['War Action', 'raid', 'Bacca', 'established', 'bacca|raid|established', { defenders: 4, lieutenants: 1, units: { line: 2, archers: 1 }, beasts: { 'Giant Vulture': 5 } }]]);
-      equal(s.log[0].title + ': ' + s.log[0].body, 'War Action Queued: Raid vs Bacca (resolves next Bastion Turn).');
+      equal(s.log[0].title + ': ' + s.log[0].body, 'War Action Queued: Raid vs Bacca (musters on Day ' + (s.day + 3) + ').');
+      equal(s.pendingOrders[0].dueDay, s.day + 3);
       equal(await text(page, 'war-avail-unit-line'), 'None free: committed to a war action');
     });
 
-    await check('on Advance Bastion Turn the war becomes a Military Action: Begin, or Later from the War Council', async () => {
-      await pause(page);
-      await page.click('[data-test=advance]');
+    await check('3 days later the forces muster and the war becomes a Military Action: Begin, or Later from the War Council', async () => {
+      await setExplorerDay(page, (await st(page)).day + 3);
       /* On screen and in the log the objective has its own name: "Raid vs Bacca". */
-      await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal__title'); return t && /^War Turn: Raid vs Bacca(At War)?$/.test(t.textContent); });
-      const t = await H.modalText(page);
+      await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__title'); return t && /^War Action: Raid vs Bacca(At War)?$/.test(t.textContent); }, null, { timeout: 15000 });
+      const t = await popText(page);
       assert(/Your forces muster for battle/.test(t) && /Committed: 4 defenders, 1 Lieutenant, Line Infantry ×2, Archers, Giant Vulture ×5\./.test(t) && /Enemy: Established local force\. Estimated enemy: /.test(t), t);
-      equal((await H.layoutCheck(page, ['.tsi-modal', '.tsi-modal__foot button'])).outOfView, []);
+      equal((await H.layoutCheck(page, ['.tsi-modal:not(.tsi-bas-panel)', '.tsi-modal:not(.tsi-bas-panel) .tsi-modal__foot button'])).outOfView, []);
       await H.shot(page, 'p9-war-muster');
       await clickModal(page, 'Later');
-      await page.waitForFunction(() => !TSI.bastion.debug.busy());
+      assert(/Your army is ready to march on Bacca \(Raid\)\./.test(await word(page)));
       const s = await st(page);
       equal(s.pendingOrders, [], 'the order is gone, so it can\'t come due twice');
       const ma = s.militaryActions[0];
@@ -867,7 +992,7 @@ function serve(dir) {
       equal(await page.textContent('[data-test=ma-status-0]'), 'Ready to begin. First: the Weather Conditions roll.');
       equal(await page.isVisible('[data-test=ma-calloff-0]'), true);
       equal(await page.$eval('[data-test=queue-war]', b => b.classList.contains('tsi-btn--primary')), false, 'one main action in the panel');
-      equal(await page.isDisabled('[data-test=advance]'), false);
+      equal(await page.isHidden('[data-test=advance]'), true, 'the day is finished');
     });
 
     await check('a waiting Military Action survives reopening, and a notice says where it is', async () => {
@@ -882,26 +1007,26 @@ function serve(dir) {
       await page.click('[data-test=ma-continue-0]');
       await page.waitForSelector('[data-test=d20]');
       equal((await H.noticeTexts(page)).filter(t => /is waiting/.test(t)), [], 'the notice goes once it has done its job');
-      let t = await H.modalText(page);
+      let t = await popText(page);
       assert(/Weather Conditions: Raid vs Bacca/.test(t) && /Modifier: \+0/.test(t) && /DC 12/.test(t), t);
       await d20(page, 15);
       await page.waitForSelector('[data-test=ma-result]');
-      t = await H.modalText(page);
+      t = await popText(page);
       assert(/Clear Day/.test(t) && /d20 15 vs DC 12: Passed/.test(t) && /The sky holds clear and bright/.test(t), t);
       equal(await page.$('.tsi-bas-ma-pop__video'), null, 'no storm, no film');
-      await page.dblclick('.tsi-modal__foot button:text-is("Continue")');
+      await page.dblclick('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__foot button:text-is("Continue")');
       await page.waitForTimeout(500);
       equal([(await st(page)).militaryActions[0].step, !!(await page.$('[data-test=d20]'))], ['morale', true], 'the second click didn\'t press the Morale dice box');
-      t = await H.modalText(page);
+      t = await popText(page);
       assert(/Morale: Raid vs Bacca/.test(t) && /DC 12/.test(t), t);
       await d20(page, 9);
-      t = await H.modalText(page);
+      t = await popText(page);
       assert(/Morale: Low/.test(t) && /d20 9 vs DC 12: Failed/.test(t) && /Even under a clear sky, doubt spreads/.test(t), t);
       await clickModal(page, 'Continue');
-      t = await H.modalText(page);
+      t = await popText(page);
       assert(/Luck: Raid vs Bacca/.test(t) && /DC 10/.test(t), t);
       await d20(page, 3);
-      t = await H.modalText(page);
+      t = await popText(page);
       assert(/Luck: −1/.test(t) && /the Gods do not look kindly upon this needless bloodshed/.test(t), t);
       await clickModal(page, 'Continue');
       await page.waitForSelector('[data-test=wt-root]');
@@ -917,7 +1042,7 @@ function serve(dir) {
       assert(/Raid vs Bacca/.test(await text(page, 'wt-title')), await text(page, 'wt-title'));
       const sum = await text(page, 'wt-summary');
       assert(/Clear Day/.test(sum) && /Low/.test(sum) && /−1/.test(sum), sum);
-      equal(await page.evaluate(() => document.querySelector('.tsi-bas-layout').inert), true, 'the Bastion behind is out of reach');
+      equal(await page.evaluate(() => document.querySelector('.tsi-bas-stage').inert), true, 'the Bastion behind is out of reach');
       equal(await page.isVisible('[data-test=wt-calloff]'), true, 'Call off, before the battle');
       await pause(page);
       await page.click('[data-test=wt-begin-deploy]');
@@ -930,7 +1055,7 @@ function serve(dir) {
       await page.click('[data-test=wt-close]');
       await page.waitForTimeout(200);
       equal(await page.$('[data-test=wt-root]'), null);
-      equal(await page.evaluate(() => document.querySelector('.tsi-bas-layout').inert), false);
+      equal(await page.evaluate(() => document.querySelector('.tsi-bas-stage').inert), false);
       equal(await page.textContent('[data-test=ma-status-0]'), 'Deploying on the War Table.');
       await reopen(page);
       await H.dismissNotices(page);
@@ -965,7 +1090,7 @@ function serve(dir) {
       equal(await modalTitle(page), 'Rules & objective · Raid vs Bacca');
       const brief = await page.textContent('[data-test=wt-brief-goal]');
       assert(/Carry off 2 of the 3 supply markers/.test(brief), brief);
-      equal((await H.layoutCheck(page, ['.tsi-modal', '.tsi-modal__foot button'])).outOfView, []);
+      equal((await H.layoutCheck(page, ['.tsi-modal:not(.tsi-bas-panel)', '.tsi-modal:not(.tsi-bas-panel) .tsi-modal__foot button'])).outOfView, []);
       await H.shot(page, 'p9-war-briefing');
       await clickModal(page, 'Begin the battle');
       await page.waitForTimeout(400);
@@ -1011,7 +1136,7 @@ function serve(dir) {
         Object.assign(u('p-beast-1'), { status: 'routed', pos: null });
         b.leaders.forEach(l => { if (l.side === 'player') l.hostId = 'p-line-1'; });
       });
-      const turn = (await st(page)).turn;
+      const day = (await st(page)).day;
       await spyTable(page);
       await pause(page);
       await page.click('[data-test=ma-continue-0]');
@@ -1021,34 +1146,33 @@ function serve(dir) {
       await page.click('[data-test=wt-withdraw]');
       await page.waitForSelector('[data-test=wt-withdraw-preview]');
       const pre = await text(page, 'wt-withdraw-preview');
-      assert(/the battle counts as lost/.test(pre) && /Clan Honour: −4/.test(pre) && /Separated for 1 turn: Giant Vulture 1/.test(pre), pre);
+      assert(/the battle counts as lost/.test(pre) && /Clan Honour: −4/.test(pre) && /Separated for 7 days: Giant Vulture 1/.test(pre), pre);
       await H.shot(page, 'p9-war-withdraw');
       await clickModal(page, 'Withdraw');
-      await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal__title'); return t && t.textContent === 'War Report'; }, null, { timeout: 10000 });
+      await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__title'); return t && t.textContent === 'War Report'; }, null, { timeout: 10000 });
       await page.waitForTimeout(450);
-      const t = await H.modalText(page);
+      const t = await popText(page);
       assert(/Withdrawal: Raid vs Bacca/.test(t) && /Result: Withdrawal in round 1 of 6/.test(t) && /Clan Honour: −4 \(now 36\)/.test(t), t);
       assert(/Line Infantry 1: 100 soldiers → .*10 lost/.test(t) && /Line Infantry 2: 100 soldiers → .*60 lost/.test(t), t);
-      equal((await H.layoutCheck(page, ['.tsi-modal', '.tsi-modal__foot button'])).outOfView, [], 'the report fits the laptop (it scrolls inside)');
+      equal((await H.layoutCheck(page, ['.tsi-modal:not(.tsi-bas-panel)', '.tsi-modal:not(.tsi-bas-panel) .tsi-modal__foot button'])).outOfView, [], 'the report fits the laptop (it scrolls inside)');
       await H.shot(page, 'p9-war-report');
       await clickModal(page, 'Close');
       await page.waitForFunction(() => !document.querySelector('[data-test=wt-root]'));
-      equal(await page.evaluate(() => document.querySelector('.tsi-bas-layout').inert), false);
+      equal(await page.evaluate(() => document.querySelector('.tsi-bas-stage').inert), false);
       const s = await st(page);
       equal([s.militaryActions.length, s.warLog.length, s.warLog[0].title, s.clanHonor], [0, 1, 'Withdrawal: Raid vs Bacca', 36]);
       equal(s.military.filter(r => r.depleted).map(r => r.strength).sort((a, b) => a - b), [40, 90]);
       equal(s.military.filter(r => !r.depleted && /lieutenant/i.test(r.name)).map(r => r.qty), [1], 'the Lieutenant came home');
-      equal(s.warRecovery.map(r => [r.kind, r.name, r.status, r.untilTurn]), [['beast', 'Giant Vulture', 'separated', turn + 1]]);
+      equal(s.warRecovery.map(r => [r.kind, r.name, r.status, r.untilDay]), [['beast', 'Giant Vulture', 'separated', day + 7]]);
       const mil = await text(page, 'military');
       assert(/Depleted: 90\/100/.test(mil) && /Depleted: 40\/100/.test(mil), mil);
-      assert(new RegExp('5 beasts • Flight \\(1 separated: back on Turn ' + (turn + 1) + '\\)').test(await text(page, 'beasts')), await text(page, 'beasts'));
+      assert(new RegExp('5 beasts • Flight \\(1 separated: back on Day ' + (day + 7) + '\\)').test(await text(page, 'beasts')), await text(page, 'beasts'));
       equal(await text(page, 'war-avail-beast-giant-vulture'), '4 available');
       /* Applied once: nothing more after reopening. */
       await reopen(page);
       const again = await st(page);
-      equal([again.warLog.length, again.log.filter(l => l.title === 'War Turn Resolved').length, again.military, again.clanHonor], [1, 1, s.military, 36]);
-      await page.evaluate(() => document.querySelector('[data-card=management]').scrollIntoView({ block: 'start' }));
-      await page.evaluate(() => window.scrollBy(0, -130));
+      equal([again.warLog.length, again.log.filter(l => l.title === 'War Action Resolved').length, again.military, again.clanHonor], [1, 1, s.military, 36]);
+      await reveal(page, '[data-test=military]');
       await page.hover('[data-test^=military-type-]:has-text("Depleted: 90/100")');
       await page.waitForSelector('[data-test=tooltip]:not([hidden])');
       assert(/Depleted: \d+ of 100 soldiers came home/.test(await text(page, 'tooltip')), await text(page, 'tooltip'));
@@ -1056,8 +1180,9 @@ function serve(dir) {
       await page.mouse.move(5, 5);
     });
 
-    await check('recovery: the separated Giant Vulture is back after Advance Bastion Turn', async () => {
-      await advance(page, []);
+    await check('recovery: the separated Giant Vulture is back 7 days later, and the word says so', async () => {
+      await setExplorerDay(page, (await st(page)).day + 7);
+      assert(/Giant Vulture has found the way back to the Bastion\./.test(await word(page)));
       const s = await st(page);
       equal(s.warRecovery, []);
       assert(s.log.some(l => l.title === 'War Recovery' && l.body === 'Giant Vulture has found the way back to the Bastion.'), JSON.stringify(s.log.slice(0, 4)));
@@ -1075,10 +1200,9 @@ function serve(dir) {
         await pause(page);
         await page.click('[data-test=queue-war]');
         await confirmWar(page);
-        await pause(page);
-        await page.click('[data-test=advance]');
-        await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal__title'); return t && /^War Turn:/.test(t.textContent); });
-        return H.modalText(page);
+        await setExplorerDay(page, (await st(page)).day + 3);
+        await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__title'); return t && /^War Action:/.test(t.textContent); }, null, { timeout: 15000 });
+        return popText(page);
       }
       const mission = () => st(page).then(s => s.warMissions['bacca|raid|established']);
       await queueRaid();
@@ -1092,9 +1216,9 @@ function serve(dir) {
       assert(/the Morale DC rises by [234]/.test(await text(page, 'ma-text')));
       await clickModal(page, 'Continue');
       const dc = { 'White Blizzard (Snowstorm)': 16, 'Cold Downpour (Rainstorm)': 14, 'Sun & Heatwave': 15 }[head];
-      assert(new RegExp('DC ' + dc).test(await H.modalText(page)), 'Morale DC ' + dc);
+      assert(new RegExp('DC ' + dc).test(await popText(page)), 'Morale DC ' + dc);
       await clickModal(page, 'Cancel');
-      await page.waitForFunction(() => !TSI.bastion.debug.busy());
+      await word(page);
       let s = await st(page);
       equal(s.militaryActions.map(m => m.step), ['morale']);
       assert(s.log.some(l => /the Morale roll was cancelled/.test(l.body)));
@@ -1106,7 +1230,7 @@ function serve(dir) {
       equal((await st(page)).militaryActions.length, 1);
       await pause(page);
       await page.click('[data-test=ma-calloff-0]');
-      assert(/Call off the Military Action \(Raid vs Bacca\)\?/.test(await bareModal(page)) && /The enemy army and the conditions rolled so far stay the same for the next attempt/.test(await H.modalText(page)), await H.modalText(page));
+      assert(/Call off the Military Action \(Raid vs Bacca\)\?/.test(await bareModal(page)) && /The enemy army and the conditions rolled so far stay the same for the next attempt/.test(await popText(page)), await popText(page));
       await clickModal(page, 'Call off');
       s = await st(page);
       equal(s.militaryActions, []);
@@ -1123,12 +1247,12 @@ function serve(dir) {
       assert(/the rolls it made stand: .+\. Next: the Morale roll\./.test(await text(page, 'ma-muster-text')), await text(page, 'ma-muster-text'));
       assert(new RegExp('Weather ' + head.replace(/ \(.*\)$/, '').replace(/[()&]/g, '.')).test(t), t);
       await clickModal(page, 'Later');
-      await page.waitForFunction(() => !TSI.bastion.debug.busy());
+      await word(page);
       await pause(page);
       await page.click('[data-test=ma-continue-0]');
       await page.waitForSelector('[data-test=d20]');
       equal(await page.$('[data-test=ma-unchanged]'), null, 'said once, in the muster pop-up');
-      assert(new RegExp('Morale: Raid vs Bacca[\\s\\S]*DC ' + dc).test(await H.modalText(page)), 'the storm still raises the Morale DC');
+      assert(new RegExp('Morale: Raid vs Bacca[\\s\\S]*DC ' + dc).test(await popText(page)), 'the storm still raises the Morale DC');
       await d20(page, 18);
       await page.waitForSelector('[data-test=ma-result]');
       await clickModal(page, 'Continue');
@@ -1160,7 +1284,8 @@ function serve(dir) {
       assert(/its conditions stand: .+, morale high, luck \+1\. There are no rolls this time\./.test(await text(page, 'ma-muster-text')), await text(page, 'ma-muster-text'));
       await H.shot(page, 'p9-war-muster-again');
       await reopen(page);
-      await H.waitForNotice(page, /was left part-way through/);
+      /* The day carries on by itself (its notice goes once it's done), and its word comes. */
+      assert(/Your army is ready to march on Bacca \(Raid\)\./.test(await word(page)));
       await spyTable(page);
       await pause(page);
       await page.click('[data-test=ma-continue-0]');
@@ -1196,12 +1321,11 @@ function serve(dir) {
       await clickModal(page, 'Call off');
       equal((await st(page)).militaryActions, []);
       equal(await page.evaluate(() => TSI.store.get('tsi.bastion.ui').warNoticed), {});
-      await advance(page, []);
-      equal((await st(page)).turnInProgress, null, 'the turn left part-way is finished');
+      equal((await st(page)).dayInProgress, null, 'the day left part-way is finished');
     });
 
     await check('identity, war log and diplomacy survive reopening (BAS-01)', async () => {
-      await setUp(page, (s) => { s.diplomacy.agreements = [{ id: 'a', title: 'Trade Agreement', clan: 'Clan Karr', turnsLeft: 3, incomePerTurn: 90 }]; s.diplomacy.tokens = 2; });
+      await setUp(page, (s) => { s.diplomacy.agreements = [{ id: 'a', title: 'Trade Agreement', clan: 'Clan Karr', startDay: s.day, endDay: s.day + 21, income: 90, lastShipmentDay: s.day }]; s.diplomacy.tokens = 2; });
       const before = await st(page);
       await reopen(page);
       const after = await st(page);
@@ -1212,63 +1336,230 @@ function serve(dir) {
   }
 
   /* ------------------------------------------------------------------ */
-  section('A crest from the Crest Creator (Harry\'s request, 2 October 2026)');
-  {
+  if (want('The crest, at any time (Build 3)')) {
+    section('The crest, at any time (Build 3)');
     const { context, page } = await newPage(browser, 'laptop');
     await openBastion(page);
     await setUp(page, (s) => { s.partyLevel = 7; s.defenders.count = 3; });
+    const crestKey = () => page.evaluate(() => { const c = TSI.store.get('tsi.bastion.crest', null); return c ? c.key : null; });
+    const badge = () => page.evaluate(() => {
+      const b = document.querySelector('[data-test=identity-badge]');
+      const img = b.querySelector('img');
+      return { label: b.querySelector('.tsi-bas-badge__label').textContent, aria: b.getAttribute('aria-label'), img: !img.hidden && !!img.naturalWidth, empty: b.classList.contains('tsi-bas-badge--empty') };
+    });
 
-    await check('Unsworn: the Lieutenants and regiment boxes look switched off and say why (Harry\'s report)', async () => {
+    await check('Unsworn: the Lieutenants and regiment boxes look switched off and say why: Clan only (the Brigade is archived)', async () => {
       await setUp(page, (s) => { s.military = [{ name: 'Lieutenant (1)', qty: 3 }, { name: 'Regiment (100)', qty: 3 }, { name: 'Heavy Infantry (50)', qty: 1 }]; });
       equal([await page.isDisabled('[data-test=war-lieutenants]'), await page.isDisabled('[data-test=war-unit-line]'), await page.isDisabled('[data-test=war-unit-heavy]')], [true, true, true]);
-      equal([await text(page, 'war-avail-lieutenants'), await text(page, 'war-avail-unit-line'), await text(page, 'war-avail-unit-heavy')], ['Clan or Brigade only', 'Clan or Brigade only', 'Clan or Brigade only']);
+      equal([await text(page, 'war-avail-lieutenants'), await text(page, 'war-avail-unit-line'), await text(page, 'war-avail-unit-heavy')], ['Clan only', 'Clan only', 'Clan only']);
       assert(Number(await page.$eval('[data-test=war-lieutenants]', i => getComputedStyle(i).opacity)) < 0.6, 'greyed out');
-      assert(/Only a Clan or Mercenary Brigade/.test(await page.getAttribute('[data-test=war-unit-line]', 'title')));
+      equal(await page.getAttribute('[data-test=war-unit-line]', 'title'), 'Only a Clan can commit Lieutenants and Regiments.');
       assert(/Unsworn war is limited to defenders and beasts/.test(await text(page, 'war-hint')));
       await setUp(page, (s) => { s.military = []; });
-      equal(await text(page, 'war-avail-regiments'), 'Clan or Brigade only', 'with no regiments, one line says so');
+      equal(await text(page, 'war-avail-regiments'), 'Clan only', 'with no regiments, one line says so');
     });
 
-    await check('Form Mercenary Brigade links to the Crest Creator, which opens in a new tab with no "Already open" warning', async () => {
+    await check('with no crest, the badge says "Add a crest"; Party Identity has a faint shield, the crest\'s buttons, and Form Clan with its requirements; no Brigade anywhere', async () => {
+      equal(await badge(), { label: 'Add a crest', aria: 'Crest of the Ironbow: no crest yet. Open Party Identity.', img: false, empty: true });
+      await page.click('[data-test=identity-badge]');
+      await page.waitForSelector('[data-test=panel-identity]');
+      equal(await page.isVisible('[data-test=crest-empty]'), true);
+      equal([await page.textContent('[data-test=crest-create]'), await page.textContent('[data-test=crest-add]'), await page.isVisible('[data-test=crest-delete]')], ['Create in the Clan Crest Creator ↗', 'Upload a picture…', false]);
+      equal([await text(page, 'org'), await page.isVisible('[data-test=form-box]'), await page.isVisible('[data-test=honour-box]')], ['Unsworn', true, false]);
+      equal(await text(page, 'requirements'), 'Clan requirements: Level 9+ (NO), Total Support 360+ (NO), 3 clans at 55+ (NO).');
+      equal(await page.$('[data-test=form-merc]'), null);
+      equal(await page.$('[data-test=trust-box]'), null);
+      assert(!/Brigade|Merc/.test(await page.evaluate(() => document.body.textContent)), 'no Brigade on the page');
+      await H.shot(page, 'p9-identity-unsworn');
+      await page.keyboard.press('Escape');
+    });
+
+    let creator = null;
+    await check('Create in the Clan Crest Creator ↗ opens the Creator in a new window, with no "Already open" warning; again, it says it\'s open', async () => {
       await pause(page);
-      await page.click('[data-test=form-merc]');
-      await page.waitForSelector('[data-test=crest-field]');
-      equal([await page.getAttribute('[data-test=crest-creator-link]', 'href'), await page.getAttribute('[data-test=crest-creator-link]', 'target')], ['index.html?tool=crest', '_blank']);
-      const [tab] = await Promise.all([context.waitForEvent('page'), page.click('[data-test=crest-creator-link]')]);
-      await tab.waitForSelector('[data-test=download]');
-      await tab.waitForTimeout(1500);
+      const [tab] = await Promise.all([context.waitForEvent('page'), page.click('[data-test=crest-create]')]);
+      creator = tab;
+      await creator.waitForSelector('[data-test=use-for-bastion]');
+      assert(/index\.html\?tool=crest$/.test(creator.url()), creator.url());
+      await creator.waitForTimeout(1500);
       const warned = async p => (await H.noticeTexts(p)).some(t => /Already open/.test(t));
-      equal([await warned(tab), await warned(page)], [false, false]);
-      await tab.close();
+      equal([await warned(creator), await warned(page)], [false, false]);
+      equal(await text(page, 'crest-status'), 'The Clan Crest Creator opened in a new window: design your crest, then press Use for the Bastion there.');
+      const before = context.pages().length;
+      await page.waitForTimeout(1600);
+      await page.click('[data-test=crest-create]');
+      await page.waitForFunction(() => /already open in another window/.test(document.querySelector('[data-test=crest-status]').textContent));
+      equal((await H.layoutCheck(page, ['[data-test=crest-status]'])).outOfView, [], 'in the panel, where it can be seen (a corner notice would be under the panel\'s backdrop)');
+      await page.waitForTimeout(400);
+      equal(context.pages().length, before, 'no second Creator');
     });
 
-    await check('the crest picked in the pop-up shows there; Cancel saves nothing', async () => {
-      await H.chooseFile(page, '[data-test=crest-upload]', writeCrest('crest-pop.png', 1200));
-      await page.waitForSelector('[data-test=crest-preview]:not([hidden])');
-      equal(await page.textContent('[data-test=crest-upload]'), 'Change crest…');
+    await check('Use for the Bastion: the Bastion asks at once, showing the crest; No leaves the Bastion as it was and asks no more', async () => {
+      await creator.click('[data-test=use-for-bastion]');
+      await creator.waitForFunction(() => /Crest sent to the Bastion\..*The Bastion's window asks whether to use it\./.test(document.body.textContent));
+      await page.waitForSelector('[data-test=crest-offer]', { timeout: 5000 });
+      assert(/Use this crest for the Bastion\?/.test(await popText(page)));
+      equal(await page.$eval('[data-test=crest-offer-img]', i => [i.naturalWidth, i.naturalHeight]), [512, 512]);
+      await H.shot(page, 'p9-crest-offer');
+      await clickModal(page, 'No');
+      equal(await crestKey(), null);
+      equal(await page.evaluate(() => TSI.handoff.read('crest')), null, 'answered, so it\'s cleared');
+      await page.waitForTimeout(2500);
+      equal(await modalOpen(page), false, 'not asked again');
+    });
+
+    await check('sent again and used: it\'s the Bastion\'s crest, with the Creator\'s design, on the badge and in Party Identity', async () => {
+      await creator.fill('#tsi-crest-field-clan-name', 'Wardens of the Ironbow');
+      await creator.click('[data-test=use-for-bastion]');
+      await page.waitForSelector('[data-test=crest-offer]', { timeout: 5000 });
+      await clickModal(page, 'Use this crest');
+      const c = await page.evaluate(() => TSI.store.get('tsi.bastion.crest'));
+      equal([c.name, c.design.clanName, Object.keys(c.design).length > 20, /^data:image\/png;base64,/.test(c.dataUrl)], ['Wardens of the Ironbow (Crest Creator).png', 'Wardens of the Ironbow', true, true]);
+      await page.waitForFunction(() => { const i = document.querySelector('[data-test=identity-badge] img'); return i && !i.hidden && i.naturalWidth; });
+      equal(await badge(), { label: 'Unsworn', aria: 'Crest of the Ironbow. Open Party Identity.', img: true, empty: false });
+      const info = await crestInfo(page);
+      equal([info.shown, info.w, info.alt], [true, 512, 'Crest of the Ironbow']);
+      equal([await page.textContent('[data-test=crest-add]'), await page.isVisible('[data-test=crest-delete]')], ['Upload another…', true]);
+      await page.keyboard.press('Escape');
+      await creator.close();
+      creator = null;
+    });
+
+    await check('a crest sent while the Bastion is shut is asked about when it next opens', async () => {
+      await page.evaluate(() => TSI.store.flush());
+      const other = await context.newPage();
+      await other.goto(H.fileUrl('index.html') + '?tool=crest');
+      await other.waitForSelector('[data-test=use-for-bastion]');
+      await page.goto(H.fileUrl('index.html'));
+      await page.waitForSelector('[data-test=backup-everything]');
+      await other.click('[data-test=random-crest]');
+      await other.click('[data-test=use-for-bastion]');
+      await other.waitForFunction(() => /The Bastion asks whether to use it when you next open it\./.test(document.body.textContent));
+      equal(await other.isVisible('.tsi-notice button:text-is("Open the Bastion ↗")'), true);
+      await other.close();
+      const key = await crestKey();
+      /* The party made camp twice meanwhile. */
+      const day0 = await page.evaluate(() => { const b = TSI.store.get('tsi.bastion.state', null); return b.day; });
+      await page.evaluate(d => { const ex = TSI.store.get('tsi.explorer.save', null) || { tokens: [], travel: {}, grid: {} }; ex.travel = Object.assign({}, ex.travel, { day: d }); TSI.store.set('tsi.explorer.save', ex); return TSI.store.flush(); }, day0 + 2);
+      await page.goto(H.fileUrl('index.html') + '?tool=bastion');
+      await page.waitForSelector('[data-test=crest-offer]', { timeout: 8000 });
+      assert(/It replaces the crest the Bastion has now\./.test(await popText(page)));
+      await page.waitForTimeout(4500);
+      equal((await st(page)).day, day0, 'no day passes while the question is open');
+      await clickModal(page, 'No');
+      equal(await crestKey(), key, 'kept');
+      await page.waitForFunction(d => { const s = TSI.bastion.debug.state(); return s.day === d && !s.dayInProgress && !TSI.bastion.debug.busy(); }, day0 + 2, { timeout: 10000 });
+      await arm(page);
+    });
+
+    await check('a crest that isn\'t a picture is never offered; with two Bastion windows, answering in one closes the question in the other', async () => {
+      const key = await crestKey();
+      await page.evaluate(() => TSI.handoff.write('crest', { id: 'crest-bad', at: 1, name: 'Bad', dataUrl: 'data:image/png;base64,SGVsbG8gd29ybGQ=' }));
+      await page.waitForFunction(() => TSI.handoff.read('crest') === null, null, { timeout: 6000 });
+      equal(await modalOpen(page), false, 'not offered');
+      equal(await crestKey(), key);
+      const second = await context.newPage();
+      await second.goto(H.fileUrl('index.html') + '?tool=bastion');
+      await second.waitForSelector('[data-test=day-status]');
+      const writer = await context.newPage();
+      await writer.goto(H.fileUrl('index.html'));
+      await writer.waitForSelector('[data-test=backup-everything]');
+      await writer.evaluate(() => {
+        const c = document.createElement('canvas'); c.width = c.height = 32;
+        const g = c.getContext('2d'); g.fillStyle = '#d6b25e'; g.fillRect(4, 4, 24, 24);
+        TSI.handoff.write('crest', { id: 'crest-two', at: 1, name: 'Two windows', dataUrl: c.toDataURL('image/png') });
+      });
+      await page.waitForSelector('[data-test=crest-offer]', { timeout: 6000 });
+      await second.waitForSelector('[data-test=crest-offer]', { timeout: 6000 });
+      await clickModal(page, 'No');
+      await second.waitForFunction(() => !document.querySelector('[data-test=crest-offer]'), null, { timeout: 5000 });
+      equal(await crestKey(), key, 'nothing taken in either window');
+      /* Sent again and taken in this window: the other one's question closes, and it shows the new crest. */
+      await writer.evaluate(() => {
+        const c = document.createElement('canvas'); c.width = c.height = 32;
+        const g = c.getContext('2d'); g.fillStyle = '#b1122a'; g.fillRect(2, 2, 28, 28);
+        TSI.handoff.write('crest', { id: 'crest-two-b', at: 2, name: 'Two windows again', dataUrl: c.toDataURL('image/png') });
+      });
+      await page.waitForSelector('[data-test=crest-offer]', { timeout: 6000 });
+      await second.waitForSelector('[data-test=crest-offer]', { timeout: 6000 });
+      await clickModal(page, 'Use this crest');
+      const taken = await crestKey();
+      assert(taken && taken !== key, 'taken');
+      await second.waitForFunction(k => !document.querySelector('[data-test=crest-offer]') && document.querySelector('[data-test=identity-badge] img').getAttribute('data-key') === k, taken, { timeout: 6000 });
+      await writer.close();
+      await second.close();
+      await page.waitForTimeout(500);
+    });
+
+    await check('a refused file is explained; Unsworn, a picture can be uploaded from the panel, replacing the Creator\'s', async () => {
+      await H.chooseFile(page, '[data-test=crest-add]', H.writeTemp('not-a-crest.txt', 'hello'));
+      await page.waitForFunction(() => /PNG, JPG, WebP or GIF/.test(document.body.textContent));
+      await clickModal(page, 'OK');
+      await H.chooseFile(page, '[data-test=crest-add]', writeCrest('crest-unsworn.png', 1200));
+      await page.waitForFunction(() => { const c = TSI.store.get('tsi.bastion.crest', null); return c && c.name === 'tsi-p9-crest-unsworn.png'; });
+      const c = await page.evaluate(() => TSI.store.get('tsi.bastion.crest'));
+      equal('design' in c, false, 'an uploaded picture has no design');
+      await page.waitForFunction(() => { const i = document.querySelector('[data-test=crest]'); return i && i.naturalWidth === 512; });
+      equal(await st(page).then(x => x.organization.type), 'unsworn');
+    });
+
+    await check('Form Clan keeps the Bastion\'s crest: Upload… shows another, Keep this crest goes back, and Cancel saves nothing', async () => {
+      await setUp(page, (s) => { s.partyLevel = 9; s.politicalCapital.blackstone = 10; s.politicalCapital.bacca = 10; s.politicalCapital.farmer = 10; s.politicalCapital.slade = -10; });
+      const key = await crestKey();
+      await pause(page);
+      await page.click('[data-test=form-clan]');
+      await page.waitForSelector('[data-test=crest-field]');
+      equal(await page.getAttribute('[data-test=crest-preview]', 'data-key'), key);
+      equal([await text(page, 'crest-field-note'), await page.isVisible('[data-test=crest-keep]')], ['The Bastion\'s crest: the Clan keeps it.', false]);
+      equal([await page.textContent('[data-test=crest-new]'), await page.textContent('[data-test=crest-upload]')], ['Create a new one ↗', 'Upload…']);
+      await H.chooseFile(page, '[data-test=crest-upload]', writeCrest('crest-pop.png', 900));
+      await page.waitForFunction(k => document.querySelector('[data-test=crest-preview]').getAttribute('data-key') !== k, key);
+      equal([await text(page, 'crest-field-note'), await page.isVisible('[data-test=crest-keep]')], ['A new crest: it replaces the Bastion\'s when you confirm the founding.', true]);
+      await page.click('[data-test=crest-keep]');
+      equal(await page.getAttribute('[data-test=crest-preview]', 'data-key'), key);
+      await H.chooseFile(page, '[data-test=crest-upload]', writeCrest('crest-pop.png', 900));
+      await page.waitForSelector('[data-test=crest-keep]:not([hidden])');
       await clickModal(page, 'Cancel');
-      equal(await page.evaluate(() => TSI.store.has('tsi.bastion.crest')), false);
+      equal(await crestKey(), key, 'unchanged');
+      equal(await modalOpen(page), false);
       equal((await st(page)).organization.type, 'unsworn');
     });
 
-    await check('a refused file is explained; the crest is kept with the Brigade, beside its name', async () => {
+    await check('a crest from the Creator, accepted while Form Clan is open, replaces a picture uploaded there earlier', async () => {
       await pause(page);
-      await page.click('[data-test=form-merc]');
-      await H.chooseFile(page, '[data-test=crest-upload]', H.writeTemp('not-a-crest.txt', 'hello'));
-      await page.waitForFunction(() => /PNG, JPG, WebP or GIF/.test(document.body.textContent));
-      await clickModal(page, 'OK');
-      await page.waitForTimeout(200);
-      equal(await page.isVisible('[data-test=crest-preview]'), false);
-      await H.chooseFile(page, '[data-test=crest-upload]', writeCrest('crest-brigade.png', 1200));
-      await page.waitForSelector('[data-test=crest-preview]:not([hidden])');
-      await page.fill('[data-test=merc-name]', 'The Ironbow Freeblades');
-      await clickModal(page, 'Confirm Formation');
-      await page.waitForFunction(() => { const i = document.querySelector('[data-test=crest]'); return i && i.offsetWidth && i.naturalWidth; });
-      const c = await crestInfo(page);
-      equal([c.w, c.h, c.alt], [512, 512, 'Crest of The Ironbow Freeblades']);
-      equal(await text(page, 'org'), 'Brigade: The Ironbow Freeblades');
-      await page.evaluate(() => document.querySelector('[data-card=identity]').scrollIntoView({ block: 'center' }));
-      await H.shot(page, 'p9-crest-brigade');
+      await page.click('[data-test=form-clan]');
+      await H.chooseFile(page, '[data-test=crest-upload]', writeCrest('crest-pop.png', 900));
+      await page.waitForSelector('[data-test=crest-keep]:not([hidden])');
+      await page.evaluate(() => {
+        const c = document.createElement('canvas'); c.width = c.height = 64;
+        const g = c.getContext('2d'); g.fillStyle = '#b1122a'; g.fillRect(8, 8, 48, 48);
+        TSI.handoff.write('crest', { id: 'crest-form', at: 1, name: 'Mid-founding', dataUrl: c.toDataURL('image/png'), design: { clanName: 'Mid-founding' } });
+      });
+      await page.waitForSelector('[data-test=crest-offer]', { timeout: 6000 });
+      await clickModal(page, 'Use this crest');
+      const key = await crestKey();
+      equal((await page.evaluate(() => TSI.store.get('tsi.bastion.crest'))).design.clanName, 'Mid-founding');
+      equal([await page.getAttribute('[data-test=crest-preview]', 'data-key'), await page.isVisible('[data-test=crest-keep]')], [key, false], 'the box shows the crest just taken, and the upload is dropped');
+      await clickModal(page, 'Cancel');
+      equal(await crestKey(), key);
+      equal((await st(page)).organization.type, 'unsworn');
+    });
+
+    await check('founding the Clan with no new crest keeps the Bastion\'s; the badge then has the Clan\'s name, and the crest is "Crest of Clan Ironbow"', async () => {
+      const key = await crestKey();
+      await pause(page);
+      await page.click('[data-test=form-clan]');
+      await page.fill('[data-test=clan-name]', 'Clan Ironbow');
+      await page.fill('[data-test=clan-motto]', 'Root and Steel');
+      await clickModal(page, 'Confirm Founding');
+      equal(await crestKey(), key);
+      equal(await badge(), { label: 'Clan Ironbow', aria: 'Crest of Clan Ironbow. Open Party Identity.', img: true, empty: false });
+      equal((await crestInfo(page)).alt, 'Crest of Clan Ironbow');
+      equal([await text(page, 'org'), await page.isVisible('[data-test=honour-box]'), await page.isVisible('[data-test=form-box]')], ['Clan: Clan Ironbow', true, false]);
+      assert(/“Root and Steel”/.test(await text(page, 'org-meta')), await text(page, 'org-meta'));
+      await reveal(page, '[data-test=org]');
+      await H.shot(page, 'p9-identity-clan');
+      await page.keyboard.press('Escape');
     });
 
     await check('Download Save includes the crest and the War Table\'s terrain; Reset clears them with the rest of the Bastion', async () => {
@@ -1279,28 +1570,34 @@ function serve(dir) {
       await pause(page);
       await page.click('[data-test=reset]');
       await clickModal(page, 'Reset');
-      await page.waitForSelector('[data-test=advance]');
+      await page.waitForSelector('[data-test=day-status]');
       await page.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().organization.type === 'unsworn');
       equal(await page.evaluate(() => TSI.store.has('tsi.bastion.crest')), false);
       equal(await page.evaluate(() => TSI.store.has('tsi.bastion.warTerrain')), false, 'the painted terrain goes too');
       equal((await crestInfo(page)).shown, false);
     });
 
-    await check('leaving the Bastion while the War Table is open leaves nothing behind', async () => {
+    await check('Unsworn, the War Table still has the crest (the army is "Your forces"); leaving the Bastion while it\'s open leaves nothing behind', async () => {
+      await H.chooseFile(page, '[data-test=crest-add]', writeCrest('crest-war.png', 600));
+      await page.waitForFunction(() => TSI.store.has('tsi.bastion.crest'));
+      await page.keyboard.press('Escape');
+      await spyTable(page);
       await setUp(page, (s) => { s.defenders.count = 2; });
       await page.fill('[data-test=war-defenders]', '2');
       await page.selectOption('[data-test=war-objective]', 'seize_outpost');
       await pause(page);
       await page.click('[data-test=queue-war]');
       await confirmWar(page);
-      await pause(page);
-      await page.click('[data-test=advance]');
-      await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal__title'); return t && /^War Turn:/.test(t.textContent); });
-      equal(await bare(page, '.tsi-modal__title'), 'War Turn: Seize Outpost vs Blackstone', 'the objective\'s own name, not its id');
+      await page.waitForFunction(() => TSI.bastion.debug.state().anchored);
+      await setExplorerDay(page, (await st(page)).day + 3);
+      await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__title'); return t && /^War Action:/.test(t.textContent); }, null, { timeout: 15000 });
+      equal(await bare(page, '.tsi-modal:not(.tsi-bas-panel) .tsi-modal__title'), 'War Action: Seize Outpost vs Blackstone', 'the objective\'s own name, not its id');
       await clickModal(page, 'Begin Military Action');
       for (let i = 0; i < 3; i++) { await d20(page, 15); await page.waitForSelector('[data-test=ma-result]'); await clickModal(page, 'Continue'); }
       await page.waitForSelector('[data-test=wt-root]');
       assert(/Seize Outpost vs Blackstone/.test(await text(page, 'wt-title')), await text(page, 'wt-title'));
+      const o = await page.evaluate(() => window.__wtOpts);
+      equal([o.armyName, !!(o.crest && /^data:image\//.test(o.crest.dataUrl))], ['Your forces', true]);
       await page.click('[data-test=home]');
       await page.waitForSelector('[data-test=backup-everything]');
       equal(await page.$('[data-test=wt-root]'), null);
@@ -1311,8 +1608,8 @@ function serve(dir) {
   }
 
   /* ------------------------------------------------------------------ */
-  section('The War Room, the Military panel and the Menagerie (war phase 2)');
-  {
+  if (want('The War Room, the Military panel and the Menagerie (war phase 2)')) {
+    section('The War Room, the Military panel and the Menagerie (war phase 2)');
     const { context, page } = await newPage(browser, 'laptop');
     await openBastion(page);
     await setUp(page, (s) => {
@@ -1320,9 +1617,13 @@ function serve(dir) {
       s.builtExtras = [{ facId: 'war_room', status: 'built' }, { facId: 'menagerie', status: 'built' }, '', '', '', ''];
       s.defenderBeasts = [{ name: 'Owlbear', qty: 1, source: 'Menagerie' }];
     });
-    const showWarRoom = () => page.evaluate(() => {
-      document.querySelector('.tsi-bas-fac[data-fac=war_room]').scrollIntoView({ block: 'center', inline: 'center' });
-    }).then(() => page.waitForTimeout(500));
+    /* The War Room's panel, opened from its tile. */
+    const showWarRoom = async () => {
+      if ((await page.evaluate(() => TSI.bastion.debug.panel())) === 'fac-war_room') return;
+      await reveal(page, '[data-test=wr-recruit]');
+      await page.waitForSelector('[data-test=panel-fac-war_room] [data-test=wr-recruit]');
+      await page.waitForTimeout(300);
+    };
     /* What the stat block should say for a War Room choice, from the war's data. */
     const expected = label => page.evaluate(l => {
       const b = TSI.bastion.rules.unitStatBlock({}, l);
@@ -1409,15 +1710,14 @@ function serve(dir) {
       await issue(page, 'war_room', 'recruit');
       let s = await st(page);
       equal(s.pendingOrders.map(o => [o.label, o.optionLabel]), [['War Room: Recruit (Line Infantry (100))', 'Line Infantry (100)']]);
-      await advance(page, []);
+      await days(page, 7, []);
       s = await st(page);
       equal(s.military, [{ name: 'Line Infantry (100)', qty: 1, source: 'War Room' }]);
       assert(s.log.some(l => l.body === 'War Room: Recruit (Line Infantry (100)) → Recruited: Line Infantry (100).'), JSON.stringify(s.log.slice(0, 3)));
       equal(await text(page, 'military-type-0'), 'Line Infantry • 100 soldiers');
       await setUp(page, (st2) => { st2.military.push({ name: 'Line Infantry (100)', qty: 1, depleted: true, strength: 60, id: 'reg-x', source: 'War Room' }); });
       equal(await text(page, 'military-type-1'), 'Line Infantry • Depleted: 60/100');
-      await page.evaluate(() => document.querySelector('[data-card=management]').scrollIntoView({ block: 'start' }));
-      await page.evaluate(() => window.scrollBy(0, -130));
+      await reveal(page, '[data-test=military]');
       await page.hover('[data-test=military-row-1]');
       await page.waitForSelector('[data-test=tooltip]:not([hidden])');
       const tip = await text(page, 'tooltip');
@@ -1436,7 +1736,7 @@ function serve(dir) {
       await page.focus('[data-test=military-remove-0]');
       await page.keyboard.press('Tab');
       equal(await page.evaluate(() => { const a = document.activeElement; return [a.dataset.test, a.getAttribute('role'), a.getAttribute('aria-label'), a.getAttribute('aria-describedby')]; }),
-        ['military-row-1', 'group', 'Line Infantry (100): Line Infantry • Depleted: 60/100', 'tsi-bas-tip']);
+        ['military-row-1', 'group', 'Line Infantry (100): Line Infantry • Depleted: 60/100', 'tsi-tip']);
       assert(await page.isVisible('[data-test=tooltip]') && /Military unit • 60 of 100 soldiers/.test(await text(page, 'tooltip')), await text(page, 'tooltip'));
       equal((await H.layoutCheck(page, ['[data-test=tooltip]'])).outOfView, []);
       await page.keyboard.press('Tab');
@@ -1445,7 +1745,7 @@ function serve(dir) {
       await page.click('[data-test=wr-recruit]');
       await page.click('[data-test=wr-option-3]');
       await issue(page, 'war_room', 'recruit');
-      await advance(page, []);
+      await days(page, 7, []);
       s = await st(page);
       assert(s.log.some(l => l.body === 'War Room: Recruit (Line Infantry (100)) → Replacements bring Line Infantry back to 100.'), JSON.stringify(s.log.slice(0, 3)));
       equal(s.military.map(r => [r.name, r.qty, !!r.depleted]), [['Line Infantry (100)', 2, false]]);
@@ -1455,17 +1755,17 @@ function serve(dir) {
     await check('the Menagerie\'s beasts and the Lieutenants show their stat blocks, and who is away recovering', async () => {
       await setUp(page, (s) => {
         s.military.unshift({ name: 'Lieutenant (1)', qty: 2, source: 'War Room' });
-        s.warRecovery = [{ id: 'r1', kind: 'lieutenant', name: 'Lieutenant 2', status: 'wounded', untilTurn: s.turn + 2 }, { id: 'r2', kind: 'beast', name: 'Owlbear', status: 'recovered', untilTurn: s.turn + 1 }];
+        s.warRecovery = [{ id: 'r1', kind: 'lieutenant', name: 'Lieutenant 2', status: 'wounded', untilDay: s.day + 14 }, { id: 'r2', kind: 'beast', name: 'Owlbear', status: 'recovered', untilDay: s.day + 7 }];
       });
-      const turn = (await st(page)).turn;
-      equal(await text(page, 'military-type-0'), '2 Lieutenants (1 recovering: back on Turn ' + (turn + 2) + ')');
-      equal(await text(page, 'beast-type-0'), '1 beast • Terror (1 recovering: back on Turn ' + (turn + 1) + ')');
+      const day = (await st(page)).day;
+      equal(await text(page, 'military-type-0'), '2 Lieutenants (1 recovering: back on Day ' + (day + 14) + ')');
+      equal(await text(page, 'beast-type-0'), '1 beast • Terror (1 recovering: back on Day ' + (day + 7) + ')');
       await page.hover('[data-test=beast-row-0]');
       await page.waitForSelector('[data-test=tooltip]:not([hidden])');
       const tip = await text(page, 'tooltip');
-      assert(/^Owlbear/.test(tip) && /Menagerie beast/.test(tip) && /Terror: A unit it damages/.test(tip) && /Owlbear: recovering, back on turn/.test(tip), tip);
+      assert(/^Owlbear/.test(tip) && /Menagerie beast/.test(tip) && /Terror: A unit it damages/.test(tip) && /Owlbear: recovering, back on Day/.test(tip), tip);
       await page.hover('[data-test=military-row-0]');
-      assert(/^Lieutenant/.test(await text(page, 'tooltip')) && /Lieutenant 2: wounded, back on turn/.test(await text(page, 'tooltip')));
+      assert(/^Lieutenant/.test(await text(page, 'tooltip')) && /Lieutenant 2: wounded, back on Day/.test(await text(page, 'tooltip')));
       await page.mouse.move(5, 5);
     });
 
@@ -1473,20 +1773,19 @@ function serve(dir) {
       /* Shortest and longest time away for a Lieutenant or beast that lives: separated, recovered, wounded, badly wounded. */
       const span = await page.evaluate(() => {
         const W = TSI_DATA.bastionWar;
-        const turns = W.recovery.filter(r => r.turns).map(r => r.turns).concat([W.separatedTurns, W.badlyWoundedTurns]);
-        return [Math.min.apply(null, turns), Math.max.apply(null, turns)];
+        const days = W.recovery.filter(r => r.days).map(r => r.days).concat([W.separatedDays, W.badlyWoundedDays]);
+        return [Math.min.apply(null, days), Math.max.apply(null, days)];
       });
-      const words = ['zero', 'one', 'two', 'three', 'four', 'five', 'six'];
-      const said = span[0] === span[1] ? words[span[0]] : words[span[0]] + ' to ' + words[span[1]];
+      const said = span[0] === span[1] ? String(span[0]) : span[0] + ' to ' + span[1];
       const guide = fs.readFileSync(path.join(H.ROOT, 'guide.html'), 'utf8');
       const m = /Wounded Lieutenants and beasts come back after ([^:<]+):/.exec(guide);
       assert(m, 'the guide has no "Wounded Lieutenants and beasts come back after" sentence');
-      equal(m[1], said + ' Bastion turn' + (span[1] === 1 ? '' : 's'));
+      equal(m[1], said + ' days');
     });
 
     await check('the War Council and the War Room fit the laptop and the TV with no sideways scrolling', async () => {
       await setUp(page, (s) => {
-        s.organization = { type: 'clan', name: 'Clan Ironbow', chief: '', motto: '', foundedAtTurn: 1 };
+        s.organization = { type: 'clan', name: 'Clan Ironbow', chief: '', motto: '', foundedAtDay: 1 };
         s.defenders.count = 30;
         s.military.push({ name: 'Archers (50)', qty: 1 }, { name: 'Heavy Infantry (50)', qty: 2 }, { name: 'Light Cavalry (50)', qty: 1 }, { name: 'Shock Cavalry (25)', qty: 1 }, { name: 'Levy Infantry (150)', qty: 1 });
         s.defenderBeasts.push({ name: 'Giant Vulture', qty: 3 }, { name: 'Dire Wolf', qty: 2 });
@@ -1494,8 +1793,7 @@ function serve(dir) {
       for (const size of ['laptop', 'laptopFull', 'tv']) {
         await page.setViewportSize(H.SIZES[size].viewport);
         await page.waitForTimeout(300);
-        await page.evaluate(() => document.querySelector('[data-card=war]').scrollIntoView({ block: 'start' }));
-        await page.evaluate(() => window.scrollBy(0, -130));
+        await reveal(page, '[data-test=queue-war]');
         const lc = await H.layoutCheck(page, ['[data-test=war-forces]']);
         equal(lc.scrollWidth, lc.clientWidth, size + ': no sideways scroll');
         const fit = await page.evaluate(() => {
@@ -1522,14 +1820,14 @@ function serve(dir) {
   }
 
   /* ------------------------------------------------------------------ */
-  section('Wars, the Defend Bastion event and Under Repair (Harry, 4 October 2026)');
-  {
+  if (want('Wars, the Defend Bastion event and Under Repair (Harry, 4 October 2026)')) {
+    section('Wars, the Defend Bastion event and Under Repair (Harry, 4 October 2026)');
     const { context, page } = await newPage(browser, 'laptop');
     await openBastion(page);
     await setUp(page, (s) => {
       s.partyLevel = 9;
       s.treasuryGP = 5000;
-      s.organization = { type: 'clan', name: 'Clan Ironbow', chief: 'Harry', motto: '', foundedAtTurn: 1 };
+      s.organization = { type: 'clan', name: 'Clan Ironbow', chief: 'Harry', motto: '', foundedAtDay: 1 };
       s.clanHonor = 40;
       s.defenders.count = 10;
       s.defenders.armed = true;
@@ -1550,7 +1848,7 @@ function serve(dir) {
     const FULL = { defenders: 10, line: 4, heavy: 2, shock: 2 };
     let pen = null;
 
-    await check('the War Turn offers Raid, Skirmish and Seize Outpost: Defend Bastion comes to you, as an event', async () => {
+    await check('the War Action offers Raid, Skirmish and Seize Outpost: Defend Bastion comes to you, as an event', async () => {
       equal(await page.$$eval('[data-test=war-objective] option', os => os.map(o => o.value + ': ' + o.textContent)), ['raid: Raid', 'skirmish: Skirmish', 'seize_outpost: Seize Outpost']);
     });
 
@@ -1584,13 +1882,13 @@ function serve(dir) {
       await pause(page);
       await page.click('[data-test=queue-war]');
       equal(await modalTitle(page), 'Declare war on Clan Bacca?');
-      const t = await H.modalText(page);
+      const t = await popText(page);
       assert(new RegExp('Queueing this War Action \\(Skirmish vs Bacca\\) declares war on Clan Bacca\\. For an army of ' + pen.bv + ' Battle Value, it costs you at once:').test(t), t);
       assert(t.indexOf('Honour & Respect with Bacca: ' + sgn(pen.honourRespect) + ' (from +1 to ' + sgn(1 + pen.honourRespect) + ')') !== -1, t);
       assert(t.indexOf('Political Capital with Bacca: ' + sgn(pen.politicalCapital) + ' (from +10 to ' + sgn(10 + pen.politicalCapital) + ')') !== -1, t);
-      assert(/While you’re at war, Clan Bacca may attack your Bastion: on every Advance Bastion Turn, a 1 on a d6 means they attack\./.test(t), t);
-      equal(await page.$$eval('.tsi-modal__foot button', bs => bs.map(b => b.textContent)), ['Cancel', 'Declare war']);
-      equal((await H.layoutCheck(page, ['.tsi-modal', '.tsi-modal__foot button'])).outOfView, []);
+      assert(/While you’re at war, Clan Bacca may attack your Bastion: every 7 days of the war, a 1 on a d6 means they attack\. The war ends after 42 days without a battle between you/.test(t), t);
+      equal(await page.$$eval('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__foot button', bs => bs.map(b => b.textContent)), ['Cancel', 'Declare war']);
+      equal((await H.layoutCheck(page, ['.tsi-modal:not(.tsi-bas-panel)', '.tsi-modal:not(.tsi-bas-panel) .tsi-modal__foot button'])).outOfView, []);
       await H.shot(page, 'p9-war4-declare');
       await clickModal(page, 'Cancel');
       const after = await st(page);
@@ -1603,16 +1901,16 @@ function serve(dir) {
       await pause(page);
       await page.dblclick('[data-test=queue-war]');
       await page.waitForTimeout(300);
-      equal(await page.$$eval('.tsi-modal', m => m.length), 1, 'one question');
+      equal(await page.$$eval('.tsi-modal:not(.tsi-bas-panel)', m => m.length), 1, 'one question');
       await clickModal(page, 'Declare war');
       await page.waitForTimeout(200);
       const s = await st(page);
       equal(s.pendingOrders.map(o => o.label + ' ' + o.meta.objective), ['War Action skirmish']);
-      equal(s.wars, { bacca: { since: 1, last: 1 } });
+      equal(s.wars, { bacca: { since: 1, last: 1, next: 8 } });
       const hr = 1 + pen.honourRespect, pc = 10 + pen.politicalCapital;
       equal([s.honourRespectByClan.bacca, s.politicalCapital.bacca], [hr, pc]);
       equal(s.log.slice(0, 2).map(l => l.title + ': ' + l.body), [
-        'War Action Queued: Skirmish vs Bacca (resolves next Bastion Turn).',
+        'War Action Queued: Skirmish vs Bacca (musters on Day 4).',
         'War Declared: War on Clan Bacca: Honour & Respect ' + sgn(pen.honourRespect) + ' (now ' + sgn(hr) + '), Political Capital ' + sgn(pen.politicalCapital) + ' (now ' + sgn(pc) + '), for an army of ' + pen.bv + ' Battle Value.'
       ]);
       equal(await page.inputValue('[data-test=hr-bacca]'), String(hr), 'the tracker shows it');
@@ -1620,13 +1918,19 @@ function serve(dir) {
     });
 
     await check('At War tags: beside Bacca in the panels, the log, the War Council and its list, and its pop-ups; nowhere else', async () => {
-      await page.waitForSelector('[data-test=atwar-tag]');
-      const tags = await page.$$eval('[data-test=atwar-tag]', ts => ts.map(t => [t.dataset.clan, t.textContent, getComputedStyle(t).textTransform]));
-      assert(tags.length >= 6 && tags.every(t => t[0] === 'bacca' && t[1] === 'At War' && t[2] === 'uppercase'), JSON.stringify(tags));
-      assert(await tagsIn('.tsi-bas-side') === 1, 'Political Capital');
-      assert(await tagsIn('[data-card=identity]') >= 1, 'the Clan Influence Trackers');
-      assert(await tagsIn('[data-test=log]') >= 2, 'the Turn Log');
+      /* Each panel in turn (one is open at a time, since the new screen). */
+      const allTags = [];
+      const tagsOf = async opener => {
+        await reveal(page, opener);
+        const ts = await page.$$eval('[data-test=atwar-tag]', ts => ts.map(t => [t.dataset.clan, t.textContent, getComputedStyle(t).textTransform]));
+        allTags.push(...ts);
+        return ts.length;
+      };
+      equal(await tagsOf('[data-test=pc-bacca]'), 1, 'Clan Influence: Bacca\'s row');
+      assert(await tagsOf('[data-test=log]') >= 2, 'the Day Log');
+      assert(await tagsOf('[data-test=wars-box]') >= 1, 'the War Council');
       assert(await tagsIn('[data-test=wars-box]') >= 1, 'the Wars box');
+      assert(allTags.length >= 5 && allTags.every(t => t[0] === 'bacca' && t[1] === 'At War' && t[2] === 'uppercase'), JSON.stringify(allTags));
       equal(await page.$eval('[data-test=war-target] option[value=bacca]', o => o.textContent), 'Bacca (At War)', 'in a list, the words');
       equal(await page.$eval('[data-test=war-target] option[value=karr]', o => o.textContent), 'Karr');
       equal(await tagsIn('.tsi-topbar'), 0, 'not in the suite\'s top bar');
@@ -1642,7 +1946,7 @@ function serve(dir) {
         for (const v of ['3', '4', '10']) { box.value = v; box.dispatchEvent(new Event('input', { bubbles: true })); out.push(tagged()); }
         const note = document.createElement('div');
         note.textContent = 'A rider from Bacca.';
-        document.querySelector('[data-test=log]').appendChild(note);
+        document.querySelector('[data-test=panel-war] .tsi-modal__body').appendChild(note);
         await Promise.resolve();
         out.push(note.querySelectorAll('[data-test=atwar-tag]').length);
         note.remove();
@@ -1650,39 +1954,36 @@ function serve(dir) {
       });
       equal(flick, [1, 1, 1, 1]);
       equal(await bare(page, '[data-test=wars-row-bacca] .tsi-bas-item__name'), 'Clan Bacca');
-      equal(await text(page, 'wars-since-bacca'), 'Since Bastion turn 1 · peace after 6 more quiet Bastion turns');
+      equal(await text(page, 'wars-since-bacca'), 'Since Day 1 · peace after 42 more quiet days · their next attack roll: Day 8');
       /* A pop-up the Bastion opens: two more defenders, to queue another War Action against Bacca. */
       await setUp(page, (s) => { s.defenders.count = 12; });
       await page.fill('[data-test=war-defenders]', '2');
       await pause(page);
       await page.click('[data-test=queue-war]');
-      await page.waitForSelector('.tsi-modal [data-test=atwar-tag]');
-      equal(await bare(page, '.tsi-modal__title'), 'Renew the war on Clan Bacca?');
-      assert(await tagsIn('.tsi-modal') >= 3, 'in the title and the text');
+      await page.waitForSelector('.tsi-modal:not(.tsi-bas-panel) [data-test=atwar-tag]');
+      equal(await bare(page, '.tsi-modal:not(.tsi-bas-panel) .tsi-modal__title'), 'Renew the war on Clan Bacca?');
+      assert(await tagsIn('.tsi-modal:not(.tsi-bas-panel)') >= 3, 'in the title and the text');
       assert(/You’re already at war with Clan Bacca\. Queueing this War Action \(Skirmish vs Bacca\) renews the war/.test(await bareModal(page)), await bareModal(page));
       await H.shot(page, 'p9-war4-renew');
       await clickModal(page, 'Cancel');
       equal((await st(page)).pendingOrders.length, 1);
       await setUp(page, (s) => { s.defenders.count = 10; });
-      await page.evaluate(() => document.querySelector('[data-card=war]').scrollIntoView({ block: 'start' }));
-      await page.evaluate(() => window.scrollBy(0, -130));
+      await reveal(page, '[data-test=wars-box]');
       await H.shot(page, 'p9-war4-at-war');
-      await page.evaluate(() => window.scrollTo(0, 0));
-      await H.shot(page, 'p9-war4-at-war-top');
     });
 
-    await check('Make peace is refused while the War Action waits, and says why; Cancel the same turn gives back the cost; peace takes the tags away', async () => {
+    await check('Make peace is refused while the War Action waits, and says why; Cancel the same day gives back the cost; peace takes the tags away', async () => {
       equal(await page.isDisabled('[data-test=make-peace-bacca]'), true);
       const why = await bare(page, '[data-test=wars-why-bacca]');
       equal(why, 'A War Action against Clan Bacca (Skirmish vs Bacca) is still waiting. Cancel it, or see it through, before making peace.');
       equal(await page.getAttribute('[data-test=make-peace-bacca]', 'title'), why);
-      /* Cancelling the order on the turn it was queued gives back what
+      /* Cancelling the order on the day it was queued gives back what
          declaring war cost, and calls off the war it began: correcting a
          War Action (cancel, queue again) never costs twice. */
       await page.click('[data-test=cancel-0]');
       let s = await st(page);
       equal([s.pendingOrders.length, s.wars, s.honourRespectByClan.bacca, s.politicalCapital.bacca], [0, {}, 1, 10]);
-      equal(s.log[0].title + ': ' + s.log[0].body, 'War Called Off: Cancelled the War Action (Skirmish vs Bacca) on the turn it was queued, so what it cost is given back: Honour & Respect ' +
+      equal(s.log[0].title + ': ' + s.log[0].body, 'War Called Off: Cancelled the War Action (Skirmish vs Bacca) on the day it was queued, so what it cost is given back: Honour & Respect ' +
         sgn(-pen.honourRespect) + ' (now 1), Political Capital ' + sgn(-pen.politicalCapital) + ' (now 10). The war on Clan Bacca is called off: you\'re no longer at war.');
       equal(await page.$$eval('[data-test=atwar-tag]', t => t.length), 0, 'its tags go');
       await commitWar(FULL);
@@ -1691,13 +1992,13 @@ function serve(dir) {
       await page.click('[data-test=queue-war]');
       equal(await modalTitle(page), 'Declare war on Clan Bacca?', 'queueing again declares war afresh, at its cost once');
       await clickModal(page, 'Cancel');
-      /* At war again (as if from an earlier turn), to make peace. */
-      await setUp(page, (st2) => { st2.wars = { bacca: { since: st2.turn, last: st2.turn } }; });
+      /* At war again (as if from an earlier day), to make peace. */
+      await setUp(page, (st2) => { st2.wars = { bacca: { since: st2.day, last: st2.day, next: st2.day + 7 } }; });
       equal(await page.isDisabled('[data-test=make-peace-bacca]'), false);
       await pause(page);
       await page.click('[data-test=make-peace-bacca]');
-      equal(await bare(page, '.tsi-modal__title'), 'Make peace with Clan Bacca?');
-      assert(/isn’t given back/.test(await H.modalText(page)));
+      equal(await bare(page, '.tsi-modal:not(.tsi-bas-panel) .tsi-modal__title'), 'Make peace with Clan Bacca?');
+      assert(/isn’t given back/.test(await popText(page)));
       await clickModal(page, 'Cancel');
       equal(Object.keys((await st(page)).wars), ['bacca']);
       await pause(page);
@@ -1712,15 +2013,15 @@ function serve(dir) {
     });
 
     await check('an attack: "Sound the horns!", with crossed swords, who defends and the enemy; it fits the laptop and the TV', async () => {
-      /* At war with Bacca, and the dice set: the attack d6 shows 1, then the
-         size of the attacking force d6 shows 4 (an established local force). */
-      await setUp(page, (s) => { s.wars = { bacca: { since: s.turn, last: s.turn } }; });
+      /* At war with Bacca, its attack roll due tomorrow, and the dice set: the
+         attack d6 shows 1, then the size of the attacking force d6 shows 4
+         (an established local force). */
+      await setUp(page, (s) => { s.wars = { bacca: { since: s.day, last: s.day, next: s.day + 1 } }; });
       await page.evaluate(() => { window.__dice = [0, 0.5]; });
-      await pause(page);
-      await page.click('[data-test=advance]');
-      await page.waitForSelector('[data-test=attack]');
+      await setExplorerDay(page, (await st(page)).day + 1);
+      await page.waitForSelector('[data-test=attack]', { timeout: 15000 });
       await page.waitForTimeout(450);
-      equal(await page.evaluate(() => window.__dice.length), 0, 'both dice used, and the attack roll is the turn\'s first');
+      equal(await page.evaluate(() => window.__dice.length), 0, 'both dice used, and the attack roll is the day\'s first');
       equal(await modalTitle(page), 'Sound the horns!');
       equal(await bare(page, '[data-test=attack-text]'), 'Clan Bacca warships are approaching! Defend the Ironbow!');
       assert(await tagsIn('[data-test=attack-text]') === 1, 'At War in the pop-up');
@@ -1728,16 +2029,16 @@ function serve(dir) {
       equal([icon.tag, icon.w > 50, icon.parts], ['svg', true, 8], 'two swords, drawn in the page');
       const t = await bareModal(page);
       assert(/Standing to defend the Ironbow: 10 defenders, Line Infantry ×4, Heavy Infantry ×2, Shock Cavalry ×2\./.test(t) && /Enemy: Established local force\. Estimated enemy: \d+–\d+ Battle Value/.test(t) && /An attack can’t be called off/.test(t), t);
-      equal(await page.$$eval('.tsi-modal__foot button', bs => bs.map(b => b.textContent)), ['Later', 'Defend the Ironbow']);
+      equal(await page.$$eval('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__foot button', bs => bs.map(b => b.textContent)), ['Later', 'Defend the Ironbow']);
       const s = await st(page);
       const ma = s.militaryActions[0];
-      equal([s.militaryActions.length, ma.kind, ma.objective, ma.targetName, ma.tier, ma.map, ma.step, ma.undefended, s.turnInProgress.attackRolled],
+      equal([s.militaryActions.length, ma.kind, ma.objective, ma.targetName, ma.tier, ma.map, ma.step, ma.undefended, s.dayInProgress.attackRolled],
         [1, 'defence', 'defend', 'Bacca', 'established', 'defend_coast', 'weather', false, true]);
       equal(s.log.find(l => l.title === 'Defend Bastion').body, 'Sound the horns! Clan Bacca warships are approaching! Defend the Ironbow! Defending it: 10 defenders, Line Infantry ×4, Heavy Infantry ×2, Shock Cavalry ×2.');
       for (const size of ['laptop', 'tv', 'laptopFull']) {
         await page.setViewportSize(H.SIZES[size].viewport);
         await page.waitForTimeout(250);
-        const lc = await H.layoutCheck(page, ['.tsi-modal', '.tsi-modal__foot button', '[data-test=attack-icon]']);
+        const lc = await H.layoutCheck(page, ['.tsi-modal:not(.tsi-bas-panel)', '.tsi-modal:not(.tsi-bas-panel) .tsi-modal__foot button', '[data-test=attack-icon]']);
         equal([lc.scrollWidth, lc.outOfView], [lc.clientWidth, []], size);
         if (size !== 'laptopFull') await H.shot(page, 'p9-war4-attack-' + size);
       }
@@ -1746,17 +2047,16 @@ function serve(dir) {
 
     await check('Later: the attack waits in the War Council, with no Call off, and Make peace is refused until it\'s fought', async () => {
       await clickModal(page, 'Later');
-      await page.waitForFunction(() => !TSI.bastion.debug.busy());
+      assert(/Sound the horns! Clan Bacca warships are approaching! Defend the Ironbow!/.test(await word(page)));
       const s = await st(page);
-      equal([s.turn, s.turnInProgress, s.militaryActions.length], [2, null, 1]);
+      equal([s.day, s.dayInProgress, s.militaryActions.length], [2, null, 1]);
       equal(await bare(page, '[data-test=ma-0] .tsi-bas-item__name'), 'Defend Bastion vs Bacca');
       equal(await page.textContent('[data-test=ma-continue-0]'), 'Defend the Ironbow');
       equal(await page.$('[data-test=ma-calloff-0]'), null, 'an attack can\'t be called off');
-      assert(/Clan Bacca attacked your Bastion on Bastion turn 2\. Defending it: 10 defenders/.test(await bare(page, '[data-test=ma-0]')));
+      assert(/Clan Bacca attacked your Bastion on Day 2\. Defending it: 10 defenders/.test(await bare(page, '[data-test=ma-0]')));
       equal(await page.isDisabled('[data-test=make-peace-bacca]'), true);
       equal(await bare(page, '[data-test=wars-why-bacca]'), 'Clan Bacca\'s attack on your Bastion still has to be fought. Defend the Ironbow before making peace.');
-      await page.evaluate(() => document.querySelector('[data-card=war]').scrollIntoView({ block: 'start' }));
-      await page.evaluate(() => window.scrollBy(0, -130));
+      await reveal(page, '[data-test=queue-war]');
       await H.shot(page, 'p9-war4-attack-waiting');
     });
 
@@ -1768,11 +2068,10 @@ function serve(dir) {
     });
 
     await check('orders at all five starting facilities (to see the repairs hold them)', async () => {
-      await page.fill('[data-test=treasury]', '5000');
+      await treasury(page, '5000');
       for (const [f, fn, i] of [['barracks', 'recruit_defenders'], ['dock', 'charter_berth', 1], ['workshop', 'craft_magic_item', 3], ['armoury', 'arm_defenders'], ['watchtower', 'patrol']]) await issue(page, f, fn, i);
       const s = await st(page);
-      equal(s.pendingOrders.map(o => o.facId).sort(), ['armoury', 'barracks', 'dock', 'watchtower', 'workshop']);
-      assert(s.pendingOrders.every(o => o.completeTurn === 3), JSON.stringify(s.pendingOrders.map(o => o.completeTurn)));
+      equal(s.pendingOrders.map(o => [o.facId, o.dueDay - o.issuedDay]).sort(), [['armoury', 3], ['barracks', 5], ['dock', 7], ['watchtower', 1], ['workshop', 10]], 'each order\'s own days');
     });
 
     await check('Defend the Ironbow: the three rolls, then the War Table on the Ironbow coast; reopening part-way loses nothing', async () => {
@@ -1857,113 +2156,114 @@ function serve(dir) {
       const pre = await text(page, 'wt-withdraw-preview');
       assert(/withdrawing counts as losing the defence/.test(pre) && /Treasury: you lose 1d10 × 5% of it, 5% to 50%/.test(pre) && /Under Repair: 1d4 of your built facilities, chosen at random/.test(pre), pre);
       await clickModal(page, 'Withdraw');
-      await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal__title'); return t && t.textContent === 'War Report'; }, null, { timeout: 10000 });
+      await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__title'); return t && t.textContent === 'War Report'; }, null, { timeout: 10000 });
       await page.waitForTimeout(450);
       const report = await bareModal(page);
       const s = await st(page);
-      assert(/Withdrawal: Defend Bastion vs Bacca/.test(report) && /Defending the Bastion: 10 defenders/.test(report) && /Clan Bacca attacked your Bastion on Bastion turn 2\./.test(report), report);
+      assert(/Withdrawal: Defend Bastion vs Bacca/.test(report) && /Defending the Bastion: 10 defenders/.test(report) && /Clan Bacca attacked your Bastion on Day 2\./.test(report), report);
       const m = /Treasury: −(\d+) gp \(d10 (\d+): (\d+)% of (\d+) gp; now (\d+) gp\)\./.exec(report);
       assert(m, report);
       const [lostGp, roll, pct, was, now] = m.slice(1).map(Number);
       equal([pct, was, lostGp, now, s.treasuryGP], [roll * 5, before.treasuryGP, Math.floor(before.treasuryGP * pct / 100), before.treasuryGP - lostGp, now]);
       assert(pct >= 5 && pct <= 50, 'up to half');
-      const r = /Under Repair until Bastion turn (\d+) \(d4 (\d+)\): ([^.]+)\./.exec(report);
+      const r = /Under Repair until Day (\d+) \(d4 (\d+)\): ([^.]+)\./.exec(report);
       assert(r, report);
       const names = r[3].split(', ');
       const ids = await page.evaluate(ns => ns.map(n => TSI_DATA.bastionFacilities.find(f => f.name === n).id), names);
-      equal([Number(r[1]), names.length], [3, Math.min(Number(r[2]), 5)], 'lost on turn 2: Under Repair until turn 3');
+      equal([Number(r[1]), names.length], [15, Math.min(Number(r[2]), 5)], 'lost on Day 2: Under Repair until Day 15');
       equal(Object.keys(s.repairs).sort(), ids.slice().sort());
-      assert(Object.keys(s.repairs).every(id => s.repairs[id] === 3), 'lost on turn 2: Under Repair on turns 2 and 3');
-      assert(await tagsIn('.tsi-modal') >= 1, 'the War Report is a Bastion pop-up: Bacca is tagged');
+      assert(Object.keys(s.repairs).every(id => s.repairs[id] === 15), 'lost on Day 2: Under Repair on Days 2 to 15 (14 days)');
+      assert(await tagsIn('.tsi-modal:not(.tsi-bas-panel)') >= 1, 'the War Report is a Bastion pop-up: Bacca is tagged');
       /* Not the first word of an enemy unit's name ("Bacca Stoneguard 1"): that would tag every unit. */
       assert(/\n- Bacca [A-Z]/.test(report), report);
-      equal(await page.$$eval('.tsi-modal [data-test=atwar-tag]', ts => ts.filter(t => /^[  ][A-Z]/.test((t.nextSibling && t.nextSibling.textContent) || '')).length), 0, 'no tag inside a unit\'s name');
+      equal(await page.$$eval('.tsi-modal:not(.tsi-bas-panel) [data-test=atwar-tag]', ts => ts.filter(t => /^[  ][A-Z]/.test((t.nextSibling && t.nextSibling.textContent) || '')).length), 0, 'no tag inside a unit\'s name');
       await H.shot(page, 'p9-war4-defence-report');
       await clickModal(page, 'Close');
       await page.waitForFunction(() => !document.querySelector('[data-test=wt-root]'));
       lost = { ids, names };
     });
 
-    await check('Under Repair: labelled on its card, the map and the lists; its orders refused; orders already there wait', async () => {
+    await check('Under Repair: marked on its tile, its panel, the map and the lists; its orders refused; orders already there wait', async () => {
       const s = await st(page);
       equal([s.militaryActions.length, s.warLog[0].title], [0, 'Withdrawal: Defend Bastion vs Bacca']);
-      equal(await page.$$eval('.tsi-bas-fac--repair', cs => cs.map(c => c.dataset.fac).sort()), lost.ids.slice().sort());
+      equal(await page.$$eval('.tsi-bas-tile--repair', ts => ts.map(t => t.dataset.fac).sort()), lost.ids.slice().sort());
       for (const id of lost.ids) {
         const name = lost.names[lost.ids.indexOf(id)];
-        equal(await page.textContent('.tsi-bas-fac[data-fac=' + id + '] [data-test=repair-label]'), '(Under Repair)');
-        equal(await text(page, 'repair-note-' + id), 'Under Repair until Bastion turn 3: no orders, and orders already here wait. Working again on turn 4.');
-        const issueBtns = await page.$$eval('.tsi-bas-fac[data-fac=' + id + '] .tsi-bas-fn__issue', bs => bs.map(b => [b.disabled, b.textContent, b.title]));
-        assert(issueBtns.length && issueBtns.every(b => b[0] && b[1] === 'Under Repair' && b[2] === 'The ' + name + ' is Under Repair until Bastion turn 3.'), JSON.stringify(issueBtns));
+        await pause(page);
+        await page.click('[data-test=tile-' + id + ']');
+        await page.waitForSelector('[data-test=panel-fac-' + id + ']');
+        equal(await page.textContent('[data-test=panel-fac-' + id + '] [data-test=repair-label]'), '(Under Repair)');
+        equal(await text(page, 'repair-note-' + id), 'Under Repair until Day 15: no orders, and orders already here wait. Working again on Day 16.');
+        const issueBtns = await page.$$eval('[data-test=panel-fac-' + id + '] .tsi-bas-fn__issue', bs => bs.map(b => [b.disabled, b.textContent, b.title]));
+        assert(issueBtns.length && issueBtns.every(b => b[0] && b[1] === 'Under Repair' && b[2] === 'The ' + name + ' is Under Repair until Day 15.'), JSON.stringify(issueBtns));
+        await page.keyboard.press('Escape');
         /* The rules refuse it too (with the same words). */
         const res = await page.evaluate(src => { eval(src.d); const st2 = JSON.parse(JSON.stringify(TSI.bastion.debug.state())); const f = data.facilities.find(x => x.id === src.id); return TSI.bastion.rules.issueOrder(st2, data, src.id, f.functions[0].id, 0, Math.random); }, { d: DATA, id });
-        equal(res, { ok: false, message: 'The ' + name + ' is Under Repair until Bastion turn 3.' });
+        equal(res, { ok: false, message: 'The ' + name + ' is Under Repair until Day 15.' });
         const o = s.pendingOrders.find(x => x.facId === id);
-        equal(o.completeTurn, 4, name + '\'s order waits for the repairs');
+        equal(o.dueDay, 16, name + '\'s order waits for the repairs');
       }
       const working = ['workshop', 'barracks', 'watchtower', 'dock', 'armoury'].filter(id => lost.ids.indexOf(id) === -1);
-      for (const id of working) equal(await page.$eval('.tsi-bas-fac[data-fac=' + id + '] .tsi-bas-fac__tag', t => t.textContent), 'Active');
+      for (const id of working) equal(await page.$eval('[data-test=tile-' + id + ']', t => t.classList.contains('tsi-bas-tile--repair')), false, id + ' works');
       const metas = await page.$$eval('[data-test^=pending-meta-]', ms => ms.map(m => m.textContent));
-      equal(metas.filter(m => /waiting: the .+ is Under Repair until Bastion turn 3$/.test(m)).length, lost.ids.length);
-      /* In the order the facilities' cards show. */
-      const order = await page.$$eval('.tsi-bas-fac', cs => cs.map(c => c.dataset.fac));
+      equal(metas.length, 0, 'the Orders panel is closed');
+      await reveal(page, '[data-test=pending]');
+      const metas2 = await page.$$eval('[data-test=pending] [data-test^=pending-meta-]', ms => ms.map(m => m.textContent));
+      equal(metas2.filter(m => /waiting: the .+ is Under Repair until Day 15$/.test(m)).length, lost.ids.length);
+      await page.keyboard.press('Escape');
+      /* In the order the grid shows them. */
+      const order = await page.$$eval('.tsi-bas-tile', ts => ts.map(t => t.dataset.fac));
       const inOrder = lost.ids.slice().sort((a, b) => order.indexOf(a) - order.indexOf(b)).map(id => lost.names[lost.ids.indexOf(id)]);
-      equal(await text(page, 'map-repairs'), 'Under Repair: ' + inOrder.map(n => n + ' (working again on turn 4)').join(', '));
-      await page.evaluate(() => document.querySelector('[data-card=facilities]').scrollIntoView({ block: 'start' }));
-      await page.evaluate(() => window.scrollBy(0, -130));
+      equal(await text(page, 'map-repairs'), 'Under Repair: ' + inOrder.map(n => n + ' (working again on Day 16)').join(', '));
       await H.shot(page, 'p9-war4-under-repair');
-      await page.evaluate(() => window.scrollTo(0, 0));
-      await H.shot(page, 'p9-war4-map-repairs');
     });
 
-    await check('the repairs last 2 Bastion turns (the turn lost and the next); then the facilities work, and their orders complete', async () => {
+    await check('the repairs last 14 days (Harry\'s 2 Bastion turns: the day lost and 13 more); then the facilities work, and their orders complete', async () => {
       /* Peace first, so no more attacks come. */
       await pause(page);
       await page.click('[data-test=make-peace-bacca]');
       await clickModal(page, 'Make peace');
       equal((await st(page)).wars, {});
-      await advance(page, []);
+      await days(page, 13, []);
       let s = await st(page);
-      equal([s.turn, Object.keys(s.repairs).sort(), s.pendingOrders.map(o => o.facId).sort()], [3, lost.ids.slice().sort(), lost.ids.slice().sort()], 'turn 3: the others\' orders complete');
-      equal(await page.$$eval('.tsi-bas-fac--repair', c => c.length), lost.ids.length, 'turn 3: still Under Repair');
-      await advance(page, []);
+      equal([s.day, Object.keys(s.repairs).sort(), s.pendingOrders.map(o => o.facId).sort()], [15, lost.ids.slice().sort(), lost.ids.slice().sort()], 'Day 15: the others\' orders complete');
+      equal(await page.$$eval('.tsi-bas-tile--repair', c => c.length), lost.ids.length, 'Day 15: still Under Repair');
+      await days(page, 1, []);
       s = await st(page);
-      equal([s.turn, s.repairs, s.pendingOrders], [4, {}, []], 'turn 4: working again, and the orders done');
-      equal(s.log.filter(l => l.title === 'Repairs Complete').map(l => l.body).sort(), lost.names.map(n => n + ' is working again.').sort());
-      equal(await page.$$eval('.tsi-bas-fac--repair, [data-test=repair-label]', c => c.length), 0);
+      equal([s.day, s.repairs, s.pendingOrders], [16, {}, []], 'Day 16: working again, and the orders done');
+      equal(s.log.filter(l => l.title === 'Repairs Complete').map(l => l.body).sort(), lost.names.map(n => 'Repairs: the ' + n + ' is working again.').sort());
+      equal(await page.$$eval('.tsi-bas-tile--repair', c => c.length), 0);
       equal(await page.isVisible('[data-test=map-repairs]'), false);
       equal(await page.isDisabled('[data-test=issue-barracks__recruit_defenders]'), false);
     });
 
     await check('nobody free to defend: the Bastion falls without a battle; reopening part-way doesn\'t roll again', async () => {
       await setUp(page, (s) => {
-        s.wars = { karr: { since: s.turn, last: s.turn } };
+        s.wars = { karr: { since: s.day, last: s.day, next: s.day + 1 } };
         s.defenders.count = 0; s.defenders.armed = false; s.military = []; s.defenderBeasts = []; s.pendingOrders = [];
         s.treasuryGP = 1000;
       });
       await page.evaluate(() => { window.__dice = [0, 0]; });
-      await pause(page);
-      await page.click('[data-test=advance]');
-      await page.waitForSelector('[data-test=attack-undefended]');
+      await setExplorerDay(page, (await st(page)).day + 1);
+      await page.waitForSelector('[data-test=attack-undefended]', { timeout: 15000 });
       await page.waitForTimeout(450);
       assert(/^Nobody is free to defend the Bastion, so Clan Karr takes what it came for unopposed\. You lose 1d10 × 5% of your treasury/.test(await bare(page, '[data-test=attack-undefended]')), await bare(page, '[data-test=attack-undefended]'));
       assert(!/committed elsewhere|recovering/.test(await bare(page, '[data-test=attack-undefended]')), 'no defenders at all here: nothing is committed elsewhere or recovering');
-      equal(await page.$$eval('.tsi-modal__foot button', bs => bs.map(b => b.textContent)), ['See the War Report']);
+      equal(await page.$$eval('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__foot button', bs => bs.map(b => b.textContent)), ['See the War Report']);
       equal((await st(page)).militaryActions.map(m => [m.kind, m.targetName, m.tier, m.undefended]), [['defence', 'Karr', 'small', true]]);
       await H.shot(page, 'p9-war4-undefended');
-      /* Closed while it shows: the turn is left part-way; finishing it rolls no new attack. */
+      /* Closed while it shows: the day is left part-way; it finishes by itself, rolling no new attack. */
       await reopen(page);
       await H.waitForNotice(page, /An attack on your Bastion \(Defend Bastion vs Karr(At War)?\) is waiting/);
+      assert(/Sound the horns! Clan Karr warships are approaching!/.test(await word(page)));
       await H.dismissNotices(page);
       equal(await page.textContent('[data-test=ma-continue-0]'), 'See the War Report');
       equal(await page.textContent('[data-test=ma-status-0]'), 'Nobody is free to defend the Bastion: it falls without a battle. Next: the War Report.');
-      await page.evaluate(() => { window.__dice = [0, 0]; });
-      await advance(page, []);
       let s = await st(page);
-      equal([s.turnInProgress, s.militaryActions.length, await page.evaluate(() => window.__dice.length)], [null, 1, 2], 'no second attack roll');
-      await page.evaluate(() => { window.__dice = []; });
+      equal([s.dayInProgress, s.militaryActions.length, s.log.filter(l => l.title === 'Defend Bastion' && /Karr/.test(l.body)).length], [null, 1, 1], 'no second attack roll');
       await pause(page);
       await page.click('[data-test=ma-continue-0]');
-      await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal__title'); return t && t.textContent === 'War Report'; });
+      await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__title'); return t && t.textContent === 'War Report'; });
       await page.waitForTimeout(450);
       const report = await bareModal(page);
       assert(/Defeat: Defend Bastion vs Karr/.test(report) && /Defending the Bastion: nobody/.test(report) && /Nobody was free to defend the Bastion, so Clan Karr took what it came for unopposed\./.test(report), report);
@@ -1976,42 +2276,42 @@ function serve(dir) {
       equal(await page.isDisabled('[data-test=make-peace-karr]'), false);
     });
 
-    await check('the Watchtower\'s Patrol: an attack on the turn it finishes reminds the DM of the defenders\' Advantage, in the pop-up and the War Council', async () => {
+    await check('the Watchtower\'s Patrol: an attack on the day it finishes (or the 7 after) reminds the DM of the defenders\' Advantage, in the pop-up and the War Council', async () => {
       await setUp(page, (s) => {
-        s.wars = { karr: { since: s.turn, last: s.turn } };
+        s.wars = { karr: { since: s.day, last: s.day, next: s.day + 1 } };
         s.defenders.count = 10; s.defenders.armed = true; s.repairs = {};
-        s.pendingOrders = [{ id: 'patrol-1', facId: 'watchtower', fnId: 'patrol', chosen: null, optionLabel: null, label: 'Watchtower: Patrol', costGP: 0, issuedTurn: s.turn, completeTurn: s.turn + 1 }];
+        s.pendingOrders = [{ id: 'patrol-1', facId: 'watchtower', fnId: 'patrol', chosen: null, optionLabel: null, label: 'Watchtower: Patrol', costGP: 0, issuedDay: s.day, dueDay: s.day + 1 }];
       });
       await page.evaluate(() => { window.__dice = [0, 0]; });
-      await pause(page);
-      await page.click('[data-test=advance]');
-      await page.waitForSelector('[data-test=attack]');
+      await setExplorerDay(page, (await st(page)).day + 1);
+      await page.waitForSelector('[data-test=attack]', { timeout: 15000 });
       await page.waitForTimeout(450);
       const line = 'The Watchtower\'s patrol saw them coming: your Bastion Defenders have Advantage on all their rolls in this battle (roll two d20s and keep the higher).';
       equal(await text(page, 'attack-patrol'), line);
-      equal((await H.layoutCheck(page, ['.tsi-modal', '.tsi-modal__foot button'])).outOfView, []);
+      equal((await H.layoutCheck(page, ['.tsi-modal:not(.tsi-bas-panel)', '.tsi-modal:not(.tsi-bas-panel) .tsi-modal__foot button'])).outOfView, []);
       await H.shot(page, 'p9-war4-attack-patrol');
       await clickModal(page, 'Later');
-      await page.waitForFunction(() => !TSI.bastion.debug.busy());
+      await word(page);
       equal(await text(page, 'ma-patrol-0'), line);
       await reopen(page);
       await H.dismissNotices(page);
       equal(await text(page, 'ma-patrol-0'), line, 'after reopening');
-      /* The next turn the Patrol is over, but the waiting defence keeps it.
-         And while Karr's attack waits, no Clan rolls to attack: Bacca's 1
-         would otherwise find the whole army standing in Karr's defence. */
-      await setUp(page, (st2) => { st2.wars.bacca = { since: st2.turn, last: st2.turn }; });
+      /* When the Patrol is over, the waiting defence keeps it. And while
+         Karr's attack waits, no Clan rolls to attack: Bacca's 1 would
+         otherwise find the whole army standing in Karr's defence. */
+      await setUp(page, (st2) => { st2.wars.bacca = { since: st2.day, last: st2.day, next: st2.day + 8 }; });
       await page.evaluate(() => { window.__dice = [0, 0, 0, 0]; });
-      await advance(page, []);
-      await page.evaluate(() => { window.__dice = []; });
+      await days(page, 8, []);
       const s = await st(page);
-      equal([s.defenders.patrolAdvantage, s.militaryActions.map(m => [m.kind, m.targetKey, m.patrol])], [false, [['defence', 'karr', true]]], 'one attack at a time');
+      equal(await page.evaluate(() => window.__dice.length), 4, 'no dice: Bacca\'s roll day passes without a roll');
+      await page.evaluate(() => { window.__dice = []; });
+      equal([await page.evaluate(() => TSI.bastion.rules.patrolActive(TSI.bastion.debug.state())), s.militaryActions.map(m => [m.kind, m.targetKey, m.patrol])], [false, [['defence', 'karr', true]]], 'one attack at a time');
       equal(await text(page, 'ma-patrol-0'), line);
       await setUp(page, (st2) => { delete st2.wars.bacca; });
     });
 
-    await check('At War tags also follow a Clan\'s name in capitals (the Turn Log\'s Honour Change line), and go with peace', async () => {
-      await setUp(page, (s) => { s.wars = Object.assign({}, s.wars, { molten: { since: s.turn, last: s.turn } }); s.politicalCapital.molten = -100; });
+    await check('At War tags also follow a Clan\'s name in capitals (the Day Log\'s Honour Change line), and go with peace', async () => {
+      await setUp(page, (s) => { s.wars = Object.assign({}, s.wars, { molten: { since: s.day, last: s.day, next: s.day + 7 } }); s.politicalCapital.molten = -100; });
       await pause(page);
       await page.click('[data-test=honour-molten]');
       await page.waitForTimeout(200);
@@ -2031,8 +2331,8 @@ function serve(dir) {
   }
 
   /* ------------------------------------------------------------------ */
-  section('Warehouse, artisan tools, panels and the Compendium');
-  {
+  if (want('Warehouse, artisan tools, panels and the Compendium')) {
+    section('Warehouse, artisan tools, panels and the Compendium');
     const { context, page } = await newPage(browser, 'laptop');
     await openBastion(page);
 
@@ -2068,14 +2368,15 @@ function serve(dir) {
       assert(opts.length > 5 && opts.indexOf('Battleaxe') !== -1, opts.join(','));
     });
 
-    await check('a closed panel stays closed after reopening (BAS-16)', async () => {
-      await page.click('[data-test=collapse-diplomacy]');
-      equal(await page.isVisible('[data-test=diplomacy-records]'), false);
+    await check('the facility grid, folded away, stays folded after reopening (BAS-16: the panels\' arrows are now the grid\'s)', async () => {
+      await page.keyboard.press('Escape');
+      await page.click('[data-test=grid-toggle]');
+      equal(await page.isVisible('[data-test=grid]'), false);
+      equal(await page.getAttribute('[data-test=grid-toggle]', 'aria-expanded'), 'false');
       await reopen(page);
-      equal(await page.isVisible('[data-test=diplomacy-records]'), false);
-      equal(await page.getAttribute('[data-test=collapse-diplomacy]', 'aria-expanded'), 'false');
-      await page.click('[data-test=collapse-diplomacy]');
-      equal(await page.isVisible('[data-test=diplomacy-records]'), true);
+      equal(await page.isVisible('[data-test=grid]'), false);
+      await page.click('[data-test=grid-toggle]');
+      equal(await page.isVisible('[data-test=grid]'), true);
     });
 
     await check('Favour of The Gods: a full bar shows Claim, which resets it', async () => {
@@ -2152,50 +2453,67 @@ function serve(dir) {
   }
 
   /* ------------------------------------------------------------------ */
-  section('Saving: download, import, damaged files, reset');
-  {
+  if (want('Saving: download, import, damaged files, reset')) {
+    section('Saving: download, import, damaged files, reset');
     const { context, page } = await newPage(browser, 'laptop');
     await openBastion(page);
-    await page.fill('[data-test=treasury]', '1234');
-    await advance(page, []);
+    await treasury(page, '1234');
+    await days(page, 1, []);
     let exported = null;
 
-    await check('Download Save (JSON) downloads the Bastion and logs it', async () => {
+    await check('Download Save (JSON) downloads the campaign: the Bastion and the Explorer together, and logs it', async () => {
       const d = await H.download(page, '[data-test=download-save]');
       exported = d.text;
-      assert(/bastion/.test(d.name), d.name);
-      const rec = JSON.parse(d.text).records.find(r => r.key === 'tsi.bastion.state');
-      equal([rec.value.treasuryGP, rec.value.turn], [1234, 2]);
+      assert(/^tsi-campaign-\d{4}-\d\d-\d\d-\d{4}\.json$/.test(d.name), d.name);
+      const file = JSON.parse(d.text);
+      equal([file.kind, file.tools], ['campaign', ['explorer', 'bastion']]);
+      const rec = file.records.find(r => r.key === 'tsi.bastion.state');
+      equal([rec.value.treasuryGP, rec.value.day, rec.value.v], [1234, 2, 2]);
+      equal(file.records.find(r => r.key === 'tsi.explorer.save').value.travel.day, 2, 'the Explorer\'s half');
       await page.waitForFunction(() => TSI.bastion.debug.state().log[0].title === 'Save File');
     });
 
     await check('Import asks first, and Cancel changes nothing', async () => {
       const f = H.writeTemp('bastion-backup.json', exported);
-      await page.fill('[data-test=treasury]', '99');
+      await treasury(page, '99');
       await H.chooseFile(page, '[data-test=import-save]', f);
       equal(await modalTitle(page), 'Import into The Ironbow Bastion Manager');
+      assert(/Importing replaces what the Explorer and the Bastion have saved now, together/.test(await popText(page)), await popText(page));
       await clickModal(page, 'Cancel');
       equal((await st(page)).treasuryGP, 99);
+      /* Both halves come back: the Explorer's day moves on meanwhile, and goes back with the import. */
+      await setExplorerDay(page, 3);
+      await page.waitForFunction(() => TSI.bastion.debug.state().day === 3 && !TSI.bastion.debug.busy());
       await H.chooseFile(page, '[data-test=import-save]', f);
       await clickModal(page, 'Import');
-      await page.waitForSelector('[data-test=advance]');
+      await page.waitForSelector('[data-test=day-status]');
       await page.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().treasuryGP === 1234);
+      equal([(await st(page)).day, await explorerDay(page)], [2, 2]);
     });
 
     await check('another tool\'s file or a damaged Bastion is refused, and nothing changes (BAS-14)', async () => {
       const otherFile = JSON.parse(exported);
+      otherFile.kind = 'tool';
       otherFile.tool = 'arenas';
       otherFile.records = [Object.assign({}, otherFile.records[0], { key: 'tsi.arenas.state', value: { players: [], prizeTotal: 300 } })];
       await H.chooseFile(page, '[data-test=import-save]', H.writeTemp('arenas.json', otherFile));
-      const t1 = await H.modalText(page);
+      const t1 = await popText(page);
       assert(/This file is from the Arenas of The Scarlett Isles, not The Ironbow Bastion Manager\./.test(t1), t1);
       await clickModal(page, 'OK');
       const file = JSON.parse(exported);
       file.records.find(r => r.key === 'tsi.bastion.state').value.pendingOrders = 'lost';
       const bad = H.writeTemp('bastion-bad.json', file);
       await H.chooseFile(page, '[data-test=import-save]', bad);
-      const t2 = await H.modalText(page);
+      const t2 = await popText(page);
       assert(/pendingOrders list is damaged/.test(t2), t2);
+      await clickModal(page, 'OK');
+      /* A Bastion file from before the days overhaul (in Bastion turns). */
+      const old = JSON.parse(exported);
+      old.kind = 'tool'; old.tool = 'bastion';
+      old.records = [{ key: 'tsi.bastion.state', value: { treasuryGP: 50, partyLevel: 7, turn: 4, builtExtras: [], pendingOrders: [], defenders: { count: 0 }, warehouse: [], turnInProgress: null }, savedAt: old.records[0].savedAt }];
+      await H.chooseFile(page, '[data-test=import-save]', H.writeTemp('bastion-turns.json', old));
+      const t3 = await popText(page);
+      assert(/This file is from before the Bastion counted in days, so it can't be imported\. Nothing was changed\./.test(t3), t3);
       await clickModal(page, 'OK');
       equal((await st(page)).treasuryGP, 1234);
     });
@@ -2203,12 +2521,26 @@ function serve(dir) {
     await check('a damaged save in the browser is set aside, and the Bastion still opens', async () => {
       await page.evaluate(() => TSI.store.set('tsi.bastion.state', { heroes: [] }));
       await reopen(page);
-      equal((await st(page)).turn, 1);
+      equal([(await st(page)).treasuryGP, (await st(page)).v], [0, 2]);
       assert((await page.evaluate(() => TSI.store.keys())).some(k => k.indexOf('tsi.quarantine.bastion.state') === 0));
     });
 
+    await check('a Bastion saved in Bastion turns is set aside (kept, not deleted) and a new one starts on the Explorer\'s day, saying so', async () => {
+      await page.evaluate(() => TSI.store.set('tsi.bastion.state', { treasuryGP: 500, partyLevel: 9, turn: 6, builtExtras: [], pendingOrders: [{ id: 'x', completeTurn: 7 }], defenders: { count: 3 }, warehouse: [], turnInProgress: null }));
+      const before = (await page.evaluate(() => TSI.store.keys())).filter(k => k.indexOf('tsi.quarantine.bastion.state') === 0).length;
+      await reopen(page);
+      await H.waitForNotice(page, /Your Bastion was saved in Bastion turns, before the Bastion counted in days, so it has been set aside/);
+      await page.waitForFunction(() => TSI.bastion.debug.state().anchored);
+      const s = await st(page);
+      equal([s.v, s.treasuryGP, s.partyLevel, s.pendingOrders, s.day], [2, 0, 7, [], 2]);
+      const keys = (await page.evaluate(() => TSI.store.keys())).filter(k => k.indexOf('tsi.quarantine.bastion.state') === 0);
+      equal(keys.length, before + 1, 'the old Bastion is kept aside');
+      equal((await page.evaluate(k => TSI.store.get(k), keys[keys.length - 1])).turn, 6);
+      await H.dismissNotices(page);
+    });
+
     await check('Reset asks first; Reset clears the Bastion', async () => {
-      await page.fill('[data-test=treasury]', '777');
+      await treasury(page, '777');
       await pause(page);
       await page.click('[data-test=reset]');
       await clickModal(page, 'Cancel');
@@ -2216,12 +2548,12 @@ function serve(dir) {
       await pause(page);
       await page.click('[data-test=reset]');
       await clickModal(page, 'Reset');
-      await page.waitForSelector('[data-test=advance]');
+      await page.waitForSelector('[data-test=day-status]');
       await page.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().treasuryGP === 0);
     });
 
     await check('Back up everything includes the Bastion', async () => {
-      await page.fill('[data-test=treasury]', '321');
+      await treasury(page, '321');
       await page.evaluate(() => TSI.store.flush());
       await page.click('[data-test=home]');
       await page.waitForSelector('[data-test=backup-everything]');
@@ -2237,161 +2569,9 @@ function serve(dir) {
     await context.close();
   }
 
-  /* ------------------------------------------------------------------ */
-  section('Compared with the old Bastion (same dice, same campaign)');
-  if (!HAS_LEGACY) {
-    await check('the old Bastion is in _legacy/ (clone it to run this part)', async () => { throw new Error('not found: ' + LEGACY_ROOT); });
-  } else {
-    const srv = await serve(LEGACY_ROOT);
-    const oldCtx = await browser.newContext(H.SIZES.laptop);
-    await oldCtx.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
-    await oldCtx.addInitScript(setup);
-    const old = await oldCtx.newPage();
-    const oldErrors = [];
-    old.on('pageerror', e => oldErrors.push(e.message));
-    old.on('dialog', d => d.accept());
-    await old.goto('http://127.0.0.1:' + srv.address().port + '/bastion_manager/index.html');
-    await old.waitForSelector('#advanceTurnBtn');
-    await old.waitForTimeout(1200);
-    const { context, page } = await newPage(browser, 'laptop');
-    await openBastion(page);
-    await old.evaluate(() => window.__seed(909));
-    await page.evaluate(() => window.__seed(909));
-
-    function strip(o) {
-      if (Array.isArray(o)) return o.map(strip);
-      if (o && typeof o === 'object') { const r = {}; Object.keys(o).sort().forEach(k => { if (k !== 'id' && k !== 'at' && k !== 'routeId') r[k] = strip(o[k]); }); return r; }
-      return o;
-    }
-    const pick = s => strip({
-      turn: s.turn, treasuryGP: s.treasuryGP, partyLevel: s.partyLevel, builtExtras: s.builtExtras, facilityLevels: s.facilityLevels,
-      pending: s.pendingOrders.map(o => [o.label, o.completeTurn, o.costGP === undefined ? null : o.costGP, o.optionLabel === undefined ? null : o.optionLabel]),
-      defenders: s.defenders, beasts: s.defenderBeasts, military: s.military,
-      warehouse: s.warehouse.map(w => [w.item, w.qty, w.notes]), artisanTools: s.artisanTools, favour: s.favour, pc: s.politicalCapital,
-      diplomacy: s.diplomacy,
-      network: { active: s.tradeNetwork.active, stability: s.tradeNetwork.stability, yieldBonusPct: s.tradeNetwork.yieldBonusPct || 0, highRisk: !!s.tradeNetwork.highRiskRouting, routes: s.tradeNetwork.routes, last: s.tradeNetwork.lastResolvedTurn },
-      disputes: s.arbitration.queue, lastEvent: s.lastEvent ? [s.lastEvent.roll, s.lastEvent.name] : null,
-      organization: s.organization, clanHonor: s.clanHonor, warLog: (s.warLog || []).map(w => [w.title, w.subtitle, w.details]),
-      log: s.log.map(l => l.title + ': ' + l.body)
-    });
-    const O = {
-      /* The old tool saves some changes only on its next save, so nudge one first. */
-      async state() {
-        await old.evaluate(() => document.getElementById('treasuryInput').dispatchEvent(new Event('input')));
-        return old.evaluate(() => JSON.parse(localStorage.getItem('ironbow_bastion_state_v1_TEST')));
-      },
-      async answerAll(rolls) {
-        rolls = rolls.slice();
-        for (let n = 0; n < 30; n++) {
-          await old.waitForTimeout(150);
-          if (!(await old.$('.siModalOverlay'))) return;
-          if (await old.$('#siManualD20')) { await old.fill('#siManualD20', String(rolls.shift())); await old.click('.siModalPrimary'); }
-          else if (await old.$('.siModalClose')) await old.click('.siModalClose');
-          else await old.click('.siModalPrimary');
-        }
-      },
-      async issue(fac, fn, idx) {
-        if (idx !== undefined) await old.selectOption('#sel_' + fac + '__' + fn, String(idx));
-        await old.click('[data-action=runFn][data-fac=' + fac + '][data-fn=' + fn + ']');
-        await old.waitForTimeout(60);
-      },
-      async build(slot, id) { await old.selectOption('#slot_' + slot, id); await old.click('button[data-slot="' + slot + '"]'); await old.waitForTimeout(60); },
-      async hall(fn, idx, extra) {
-        await old.click('[data-action=runFn][data-fac=hall_of_emissaries][data-fn=' + fn + ']');
-        await old.waitForSelector('#hallClanSel');
-        await old.selectOption('#hallClanSel', String(idx));
-        if (extra && extra.dur) await old.selectOption('#hallDurSel', String(extra.dur));
-        if (extra && extra.tone) await old.selectOption('#hallToneSel', extra.tone);
-        await old.click('.siModalPrimary');
-        await old.waitForTimeout(80);
-      },
-      async advance(rolls) { await old.click('#advanceTurnBtn'); await O.answerAll(rolls); }
-    };
-    const N = {
-      async build(slot, id) { await page.selectOption('[data-test=slot-select-' + slot + ']', id); await page.click('[data-test=build-' + slot + ']'); await page.waitForTimeout(60); }
-    };
-    const steps = [];
-    async function compare(label, allow) {
-      const o = pick(await O.state());
-      const n = pick(await st(page));
-      if (allow) allow(o, n);
-      equal(n, o, label);
-      steps.push(label);
-    }
-    async function bothIssue(fac, fn, idx) { await O.issue(fac, fn, idx); await issue(page, fac, fn, idx); }
-    async function bothHall(fn, idx, extra) { await O.hall(fn, idx, extra); await planHall(page, fn, idx, extra); }
-    async function bothAdvance(rolls) { await O.advance(rolls); await advance(page, rolls); }
-    async function bothUpgrade() { await old.click('#hallUpgradePill'); await old.waitForTimeout(60); await pause(page); await page.click('[data-test=hall-upgrade]'); }
-
-    await check('the same campaign gives the same Bastion, turn by turn', async () => {
-      await old.selectOption('#levelSelect', '13'); await old.fill('#treasuryInput', '20000');
-      await page.selectOption('[data-test=level]', '13'); await page.fill('[data-test=treasury]', '20000');
-      await compare('level 13, 20,000 gp');
-      for (const [slot, id] of [[0, 'hall_of_emissaries'], [1, 'library'], [2, 'shrine_telluria'], [3, 'menagerie'], [4, 'garden']]) { await O.build(slot, id); await N.build(slot, id); }
-      await compare('five buildings started');
-      for (const [f, fn, i] of [['barracks', 'recruit_defenders'], ['dock', 'charter_berth', 1], ['workshop', 'craft_magic_item', 3], ['armoury', 'arm_defenders'], ['watchtower', 'patrol']]) await bothIssue(f, fn, i);
-      await compare('five orders');
-      await bothAdvance([]); await compare('turn 2');
-      await bothAdvance([]); await compare('turn 3');
-      await bothAdvance([]); await compare('turn 4: buildings finished, the automatic event');
-      await old.selectOption('#artisanSel_0', 'Smith’s Tools'); await old.selectOption('#artisanSel_1', 'Alchemist’s Supplies'); await old.click('#saveArtisanToolsBtn');
-      await page.selectOption('[data-test=artisan-0]', 'Smith’s Tools'); await page.selectOption('[data-test=artisan-1]', 'Alchemist’s Supplies'); await page.click('[data-test=save-artisan]');
-      await compare('artisan tools');
-      for (const [f, fn, i] of [['workshop', 'craft', 2], ['library', 'research', 1], ['garden', 'harvest', 3], ['shrine_telluria', 'pray', 2], ['shrine_telluria', 'craft', 0]]) await bothIssue(f, fn, i);
-      await bothHall('secure_trade_agreement', 2, { dur: 6 });
-      await bothUpgrade();
-      await compare('crafting, research, harvest, prayer, a Trade Agreement with Karr, a Hall upgrade');
-      await bothAdvance([16]); await compare('turn 5: the agreement signed, the shrine\'s blessing');
-      await bothUpgrade();
-      await bothHall('inter_clan_summit', 1);
-      await bothAdvance([13]); await compare('turn 6: a summit, the Hall at level 3');
-      await bothHall('trade_consortium', 1);
-      await bothAdvance([18]); await compare('turn 7: a consortium opens the Karr route');
-      await bothAdvance([5]); await compare('turn 8: the Karr route lost at sea, a dispute filed');
-      await old.click('#btnHearDisputes'); await old.click('.siDisputeCard button:has-text("Split Claims")'); await O.answerAll([15]);
-      await pause(page); await page.click('[data-test=ledger]'); await page.click('[data-test=rule-s]'); await answerAll(page, [15]);
-      await compare('the Council Ledger splits the claims');
-      /* No war in either: the old Bastion settled a war with one roll, and
-         this one fights it on the War Table (war phase 2), so there is
-         nothing left to compare. The War Council's intelligence draws up
-         enemy armies with its own seeded dice, never Math.random, so both
-         Bastions' dice stay in step. */
-      await bothIssue('menagerie', 'recruit_beast', 0);
-      await compare('a beast ordered');
-      await bothAdvance([12]); await compare('turn 9: routes, the beast');
-      await old.click('#rollEventBtn'); await pause(page); await page.click('[data-test=roll-event]');
-      await compare('Roll Bastion Event');
-      await bothAdvance([14]); await compare('turn 10');
-      await bothAdvance([14]); await compare('turn 11');
-      await bothAdvance([14]); await compare('turn 12: the automatic event');
-      /* The campaign really did all this. */
-      const s = await st(page);
-      assert(s.warLog.length === 0 && s.defenderBeasts.length === 1 && s.facilityLevels.hall_of_emissaries === 3, JSON.stringify([s.warLog.length, s.defenderBeasts, s.facilityLevels]));
-      assert(Object.keys(s.warMissions).length > 0, 'the War Council drew up the enemy it showed, without touching Math.random');
-      assert(s.diplomacy.summits.length + s.log.filter(l => /Inter-Clan Summit/.test(l.body)).length > 0);
-      assert(s.log.some(l => l.title === 'Arbitration') && s.log.some(l => /catastrophic|Routes resolved/.test(l.body)));
-      assert(s.warehouse.length >= 6, JSON.stringify(s.warehouse));
-      console.log('      (' + steps.length + ' steps compared)');
-    });
-
-    await check('Host Delegation: the only difference is the old double Political Capital (B2)', async () => {
-      await bothHall('host_delegation', 1, { tone: 'assertive' });
-      await bothAdvance([15, 14, 13]);
-      await compare('a delegation to Rowthorn', (o, n) => {
-        /* The old tool also added the first roll's +15 (a Great Success: 15 + 6 vs DC 13). */
-        equal(o.pc.rowthorn - n.pc.rowthorn, 15, 'the old tool added it twice');
-        o.pc.rowthorn = n.pc.rowthorn;
-      });
-    });
-
-    await check('neither Bastion had an error', async () => {
-      equal(oldErrors, []);
-      equal(context.log.errors, []);
-    });
-    await oldCtx.close();
-    await context.close();
-    srv.close();
-  }
+  /* The side-by-side run against the old Bastion (same dice, same campaign)
+     is retired: since the days overhaul (8 October 2026) the rules
+     deliberately differ (docs/KNOWN_ISSUES.md, BAS-61). */
 
   await browser.close();
   process.exit(H.summary() ? 1 : 0);
