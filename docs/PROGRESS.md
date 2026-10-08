@@ -36,6 +36,13 @@ Harry said go for Build 3 (plan: `docs/BASTION-OVERHAUL.md` sections 3 and 4), n
   - **The old single-roll war goes too:** nothing had used it since the War Table.
   - **Kept aside:** both are kept, as working code with their ten tests, in `tools/bastion/archive/mercenary-brigade.js` and `tests/archive/mercenary-brigade.test.js`, loaded by nothing. The note at the top says how to put them back.
   - **Saves:** the Trusted Clients scores stay in every save, unread. A Brigade saved in Builds 1 or 2 opens as Unsworn, says so once, and the Day Log keeps its name.
+- **Fixed while building** (found by an independent review and by testing; none reached Harry). Details are in BAS-68 and SUI-27:
+  - **Leaving the Bastion mid-question:** a crest sent from the Creator was lost if you left the Bastion while it was asking. Now it asks again next time.
+  - **Hidden messages:** "Create in the Clan Crest Creator ↗" seemed to do nothing when the Creator was already open, because its message was hidden behind the pop-up. It now shows inside the panel.
+  - **Form Clan:** a picture uploaded first overrode a crest from the Creator accepted afterwards. Now the crest you accepted wins.
+  - **Days passing under the question:** days could pass underneath the crest question. Now they wait for your answer.
+  - **A former Brigade's war order** lapsed giving the wrong reason. It now says only a Clan can send Lieutenants and regiments.
+  - **"Already open" (all tools):** a window hidden for 5 minutes or more (minimised, or covered by another window) could stop counting as open. Edge slows its timers then. Now it counts for 90 seconds after its last heartbeat, and a closing window still stops counting straight away.
 - **The guide**, `docs/WAR-RULES.md` and KNOWN_ISSUES are updated.
 - **Tests:**
   - `tests/rules.html`: 813 rules tests, all passing. Five Brigade and old-war tests moved to the archive, and seven new ones cover the archive, an old Brigade save and its waiting war orders, Clan-only war, the crest record and the hand-off.
