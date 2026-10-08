@@ -25,7 +25,7 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
 | Scarlett Isles Explorer (EXP) | 12 | 5 | 6 | 13 | 0 |
-| The Ironbow Bastion Manager (BAS) | 22 | 2 | 24 | 18 | 1 |
+| The Ironbow Bastion Manager (BAS) | 23 | 2 | 24 | 18 | 1 |
 | Clan Crest Creator (CRS) | 0 | 4 | 6 | 3 | 3 |
 | Arenas of The Scarlett Isles (ARN) | 8 | 2 | 0 | 17 | 0 |
 | The Heartwood Ritual (RIT) | 9 | 1 | 0 | 15 | 1 |
@@ -1801,7 +1801,7 @@ None of these reached Harry.
 - **After:**
   - The party is Unsworn or a Clan. Only a Clan commits Lieutenants and regiments; the War Council's boxes say "Clan only" and "Only a Clan can commit Lieutenants and Regiments.". The requirements line is the Clan's alone. Battles no longer change Trusted Clients, and the War Report has no Trusted Clients line.
   - **Kept aside, not deleted:** all of it, as working code, in `tools/bastion/archive/mercenary-brigade.js`, with its ten tests in `tests/archive/mercenary-brigade.test.js`. Both are loaded by nothing; the note at the top says how to put them back. They were run once with the archive loaded, and all ten passed.
-  - **Saves:** every save still carries the Trusted Clients scores (unread), so putting the Brigade back loses nothing. A Brigade saved in Builds 1 or 2 loads as Unsworn; the Bastion says so once as it opens, and the Day Log keeps the Brigade's name. A war order waiting with Lieutenants or regiments from such a Brigade sends only what an Unsworn party can when it musters (the muster's log says what stayed home).
+  - **Saves:** every save still carries the Trusted Clients scores (unread), so putting the Brigade back loses nothing. A Brigade saved in Builds 1 or 2 loads as Unsworn; the Bastion says so once as it opens, and the Day Log keeps the Brigade's name. A War Action it was still waiting on keeps its defenders and beasts; its Lieutenants and regiments stay home when it musters, and the log says only a Clan can send them (an order with nothing else lapses, saying so).
   - **Data:** the Brigade's level 7 and 3 defenders, and the single roll's DCs, moved from `bastion-data.js` to the archive.
 - **Evidence:** `tools/bastion/rules.js` (`fromSave`, `R.formerBrigade`, `orgLabel`, `requirementsHint`), `tools/bastion/war-campaign-rules.js` (`warForces` fullWar, `warRewards`, `applyRewards`, `rewardLines`), `tools/bastion/data/bastion-data.js`, `tools/bastion/tool.js`; tests in `tests/rules/bastion.test.js`, `tests/rules/bastion-campaign.test.js`, `tests/e2e/phase9.test.js`.
 
@@ -1817,6 +1817,18 @@ None of these reached Harry.
   - **Form Clan's crest box** shows the Bastion's crest: **Create a new one ↗**, **Upload…** (used only when the founding is confirmed), and **Keep this crest** to go back to it. Cancel changes nothing.
   - **The War Table** has the crest on your tokens whether or not a Clan is formed; the army is "Your forces" until there's a Clan.
 - **Evidence:** `tools/bastion/tool.js` (the crest and Party Identity sections, `renderBadge`, the War Table's options), `tools/bastion/bastion.css`, `R.isCrest` and `R.crestFromHandoff` in `tools/bastion/rules.js`; tests in `tests/rules/bastion.test.js`, `tests/e2e/phase9.test.js` ("The crest, at any time"), `tests/e2e/bastion-screen.test.js` and `tests/e2e/phase2.test.js`.
+
+### BAS-68 · Problems found while building Build 3, fixed before release
+**Must fix** (found by the review and the tests, 8 October 2026; fixed) · breaks the tool
+
+None of these reached Harry.
+- **The Bastion closed while asking about a sent crest** threw the crest away → it's kept, and asked about next time.
+- **"Create in the Clan Crest Creator ↗" seemed to do nothing** when the Creator was already open: its message was a corner notice, hidden under the pop-up's dark backdrop → the message shows inside Party Identity, or the Form Clan box.
+- **In Form Clan, a picture uploaded first overrode a crest from the Creator accepted afterwards** → the crest just accepted replaces the upload.
+- **Days passed underneath the crest question** (opening the Bastion after several camps), so a roll or even the War Table could open under it → no day passes while it's open; they pass once it's answered.
+- **A former Brigade's waiting War Action** with Lieutenants or regiments lapsed, saying "nothing committed to it is still free to march", which wasn't why → the log and the muster say only a Clan can send them (and the Bastion says so as it opens).
+- **Form Clan's "Create a new one ↗"** shared its test name with Party Identity's button → its own name (`crest-new`).
+- **Evidence:** `tools/bastion/tool.js` (`checkCrestOffer`, `openCreator`, `crestField`, `checkClock`), `tools/bastion/war-campaign-rules.js` (`R.clanOnlyCut`, `beginMilitaryAction`, `musterShortfall`); tests in `tests/e2e/phase9.test.js` and `tests/rules/bastion-campaign.test.js`.
 
 ## Clan Crest Creator
 Old repo: `_legacy/clan-crest-creator` (file:line references point there).
