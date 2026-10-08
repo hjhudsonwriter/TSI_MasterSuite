@@ -13,7 +13,13 @@
 
    A tab keeps the same id when it reloads (it's kept in sessionStorage),
    so switching tools never sets off a false warning, and the new page's
-   first heartbeat says which tool it has open now. */
+   first heartbeat says which tool it has open now.
+
+   A hidden window (minimised, or covered by another one, such as the Crest
+   Creator opened over the Bastion) says so in its heartbeat, and counts as
+   open for longer: after 5 minutes hidden, Edge runs its timers only about
+   once a minute, so its heartbeat comes that seldom (the Bastion overhaul,
+   Build 3, 8 October 2026). A window that closes says so at once. */
 (function () {
   'use strict';
 
@@ -24,6 +30,7 @@
   var ID_KEY = NAMES.tabId;
   var BEAT_MS = 2000;
   var STALE_MS = 7000;
+  var HIDDEN_STALE_MS = 90000;
   var notice = null;
   var shownText = '';
   var dismissedFor = '';
@@ -41,6 +48,11 @@
     try { localStorage.setItem(KEY, JSON.stringify(map)); } catch (e) { /* can't warn without storage */ }
   }
 
+  /* Is a heartbeat recent enough to count? A hidden window's beats can be a minute apart. */
+  function fresh(e, now, times) {
+    return !!e && now - e.at < (e.hidden ? HIDDEN_STALE_MS : STALE_MS) * (times || 1);
+  }
+
   function newId() { return 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
 
   /* Keep this tab's id across reloads, but not when a tab is duplicated
@@ -49,7 +61,7 @@
     var id = null;
     try { id = sessionStorage.getItem(ID_KEY); } catch (e) { /* no session storage */ }
     var entry = id ? read()[id] : null;
-    if (!id || (entry && !entry.closing && Date.now() - entry.at < STALE_MS)) id = newId();
+    if (!id || (entry && !entry.closing && fresh(entry, Date.now()))) id = newId();
     try { sessionStorage.setItem(ID_KEY, id); } catch (e) { /* ignore */ }
     return id;
   }
@@ -61,6 +73,7 @@
   function entry(extra) {
     var e = { at: Date.now() };
     if (myTool !== null) e.tool = myTool;
+    if (document.visibilityState === 'hidden') e.hidden = true;
     if (extra) Object.keys(extra).forEach(function (k) { e[k] = extra[k]; });
     return e;
   }
@@ -69,7 +82,7 @@
   function others(map, now) {
     return Object.keys(map).filter(function (id) {
       /* A tab that's just reloading is still counted, so its warning doesn't flicker. */
-      return id !== myId && map[id] && now - map[id].at < STALE_MS;
+      return id !== myId && fresh(map[id], now);
     }).sort().map(function (id) {
       return { id: id, tool: rules.tabTool(map[id].tool) };
     });
@@ -84,7 +97,7 @@
     var map = read();
     var now = Date.now();
     Object.keys(map).forEach(function (id) {
-      if (!map[id] || now - map[id].at > STALE_MS * 3) delete map[id];
+      if (!fresh(map[id], now, 3)) delete map[id];
     });
     map[myId] = entry();
     write(map);
@@ -164,6 +177,8 @@
       myTool = rules.tabTool(toolId);
       beat();
       setInterval(beat, BEAT_MS);
+      /* Hidden or shown again: say so at once. */
+      document.addEventListener('visibilitychange', beat);
       window.addEventListener('storage', function (event) {
         if (event.key === KEY) check();
       });

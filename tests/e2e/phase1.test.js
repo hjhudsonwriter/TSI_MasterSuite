@@ -1290,6 +1290,32 @@ async function waitSaved(page) {
       await waitClear(crest, 12000);
     });
 
+    await fresh('a hidden window\'s heartbeat counts for longer (Edge slows a hidden window\'s timers to about once a minute); it says when it\'s hidden', async context => {
+      const crest = await open(context, INDEX + '?tool=crest');
+      const seen = (age, hidden) => crest.evaluate(([a, h]) => {
+        const map = JSON.parse(localStorage.getItem('tsi.suite.tabs') || '{}');
+        map.tHiddenBastion = Object.assign({ at: Date.now() - a, tool: 'bastion' }, h ? { hidden: true } : {});
+        localStorage.setItem('tsi.suite.tabs', JSON.stringify(map));
+        return TSI.tabGuard.isOpenElsewhere('bastion');
+      }, [age, hidden]);
+      equal(await seen(30000, true), true, 'hidden, last heard 30 seconds ago: still open');
+      equal(await seen(80000, true), true, 'hidden, 80 seconds ago: still open');
+      equal(await seen(95000, true), false, 'hidden, 95 seconds ago: gone');
+      equal(await seen(30000, false), false, 'shown, 30 seconds ago: gone');
+      equal(await seen(3000, false), true, 'shown, 3 seconds ago: open');
+      /* Its own heartbeat says hidden while it's hidden. */
+      await crest.evaluate(() => {
+        Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+      equal((await heartbeats(crest))[await crest.evaluate(() => TSI.tabGuard.id)].hidden, true);
+      await crest.evaluate(() => {
+        Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' });
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+      equal((await heartbeats(crest))[await crest.evaluate(() => TSI.tabGuard.id)].hidden, undefined, 'and not once it\'s shown again');
+    });
+
     await fresh('Dismiss hides it until the other tabs change', async context => {
       const a = await open(context, INDEX + '?tool=bastion');
       const b = await open(context, INDEX + '?tool=bastion');
