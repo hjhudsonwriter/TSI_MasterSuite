@@ -2432,19 +2432,22 @@
         return tile;
       }
       /* A facility being built: an hourglass and the days left; not clickable. */
-      function buildingTile(entry, index) {
+      function buildingTile(entry, index, over) {
         var fac = R.facility(data, entry.facId);
         var name = fac ? fac.name : entry.facId;
         var left = R.buildDaysLeft(state, entry);
         var tile = el('div', {
-          class: 'tsi-bas-tile tsi-bas-tile--building', role: 'img', tabindex: '0', 'data-test': 'tile-' + entry.facId, 'data-slot': String(index),
-          'aria-label': name + ': under construction, ' + R.daysText(left) + ' left (ready on Day ' + entry.readyDay + ').'
+          class: 'tsi-bas-tile tsi-bas-tile--building' + (over ? ' tsi-bas-tile--over' : ''), role: 'img', tabindex: '0', 'data-test': 'tile-' + entry.facId, 'data-fac': entry.facId, 'data-slot': String(index),
+          'aria-label': name + ': under construction, ' + R.daysText(left) + ' left (ready on Day ' + entry.readyDay + ').' + (over ? ' Over capacity.' : '')
         }, [
           facArt(entry.facId, 'tsi-bas-tile__img'),
-          el('span', { class: 'tsi-bas-tile__mark tsi-bas-tile__mark--build', 'aria-hidden': 'true' }, [icon('hourglass'), el('span', { class: 'tsi-bas-tile__days', text: String(left) })])
+          el('span', { class: 'tsi-bas-tile__mark tsi-bas-tile__mark--build', 'aria-hidden': 'true' }, [icon('hourglass'), el('span', { class: 'tsi-bas-tile__days', text: String(left) })]),
+          over ? el('span', { class: 'tsi-bas-tile__over', 'data-test': 'over-capacity', 'aria-hidden': 'true', text: '!' }) : null
         ]);
         var build = function () {
-          return { title: name, parts: [muted('Under construction: ' + R.daysText(left) + ' left.')], foot: 'Ready on Day ' + entry.readyDay };
+          var parts = [muted('Under construction: ' + R.daysText(left) + ' left.')];
+          if (over) parts.push(muted('Over capacity: kept, but above the ' + R.constructionSlotsForLevel(state.partyLevel) + ' construction slot(s) for party level ' + state.partyLevel + '.'));
+          return { title: name, parts: parts, foot: 'Ready on Day ' + entry.readyDay };
         };
         bindTip(tile, build, { noChange: true });
         bindFocusTip(tile, tile, build);
@@ -2478,7 +2481,7 @@
         for (var i = 0; i < Math.max(SLOT_COUNT, slots.rows.length); i++) {
           var row = slots.rows[i];
           if (row && row.entry) {
-            tiles.push(row.entry.status === 'building' ? buildingTile(row.entry, i) : builtTile(row.entry.facId, row));
+            tiles.push(row.entry.status === 'building' ? buildingTile(row.entry, i, row.overCapacity) : builtTile(row.entry.facId, row));
           } else {
             tiles.push(slotTile(row, i));
           }

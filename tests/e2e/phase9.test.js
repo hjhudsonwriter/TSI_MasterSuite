@@ -1041,7 +1041,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       assert(/Raid vs Bacca/.test(await text(page, 'wt-title')), await text(page, 'wt-title'));
       const sum = await text(page, 'wt-summary');
       assert(/Clear Day/.test(sum) && /Low/.test(sum) && /−1/.test(sum), sum);
-      equal(await page.evaluate(() => document.querySelector('.tsi-bas-layout').inert), true, 'the Bastion behind is out of reach');
+      equal(await page.evaluate(() => document.querySelector('.tsi-bas-stage').inert), true, 'the Bastion behind is out of reach');
       equal(await page.isVisible('[data-test=wt-calloff]'), true, 'Call off, before the battle');
       await pause(page);
       await page.click('[data-test=wt-begin-deploy]');
@@ -1054,7 +1054,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await page.click('[data-test=wt-close]');
       await page.waitForTimeout(200);
       equal(await page.$('[data-test=wt-root]'), null);
-      equal(await page.evaluate(() => document.querySelector('.tsi-bas-layout').inert), false);
+      equal(await page.evaluate(() => document.querySelector('.tsi-bas-stage').inert), false);
       equal(await page.textContent('[data-test=ma-status-0]'), 'Deploying on the War Table.');
       await reopen(page);
       await H.dismissNotices(page);
@@ -1157,7 +1157,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await H.shot(page, 'p9-war-report');
       await clickModal(page, 'Close');
       await page.waitForFunction(() => !document.querySelector('[data-test=wt-root]'));
-      equal(await page.evaluate(() => document.querySelector('.tsi-bas-layout').inert), false);
+      equal(await page.evaluate(() => document.querySelector('.tsi-bas-stage').inert), false);
       const s = await st(page);
       equal([s.militaryActions.length, s.warLog.length, s.warLog[0].title, s.clanHonor], [0, 1, 'Withdrawal: Raid vs Bacca', 36]);
       equal(s.military.filter(r => r.depleted).map(r => r.strength).sort((a, b) => a - b), [40, 90]);

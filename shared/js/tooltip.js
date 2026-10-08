@@ -127,6 +127,18 @@
     return target;
   }
 
+  /* Escape hides a tooltip shown for the focused control first, before it
+     reaches anything else (a pop-up would close on it): a second Escape
+     then does what it usually does. Capture on the window runs first. */
+  window.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape' || !node || node.hidden) return;
+    var f = document.activeElement;
+    if (!f || f.getAttribute('aria-describedby') !== node.id) return;
+    f.removeAttribute('aria-describedby');
+    hide();
+    e.preventDefault();
+    e.stopPropagation();
+  }, true);
   /* Was the last thing done with the keyboard? (A click doesn't show focus tooltips.) */
   document.addEventListener('keydown', function () { keyboard = true; }, true);
   document.addEventListener('pointerdown', function () { keyboard = false; }, true);
