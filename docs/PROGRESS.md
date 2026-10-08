@@ -805,7 +805,7 @@ Each tool's questions are needed before that tool's phase. The full wording and 
   - **The days overhaul, Build 1 (8 October 2026): choices made for you, to change if you like:**
     - **Order lengths** are the plan's first proposal (section 2 of `docs/BASTION-OVERHAUL.md`), as you said; change any after playing.
     - **Trade Agreement weeks:** the roll's tier still adds or takes off weeks (+2 to −2, at least 1 week), as it did with turns. Say if the weeks chosen should be exact.
-    - **Three rulebook events** still say "can't be used on your next Bastion turn" (BAS-63). Say if they should read "for the next 7 days", and whether the Bastion should then block that facility's orders.
+    - **Three rulebook events** now say a facility "can't be used for the next 7 days" (BAS-63, Harry's answer, 8 October 2026). Still open: should the Bastion then block that facility's orders for those 7 days, or leave it to the DM as now?
     - **Finish Day** only shows when a day was left part-way; the Bastion otherwise passes days by itself.
     - **An Explorer-only file** saved before the change still imports, into the Explorer alone; a Bastion-only one is refused.
     - **The Watchtower's Patrol** covers an attack on the day it completes and the 7 days after.

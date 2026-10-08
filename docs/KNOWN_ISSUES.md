@@ -25,7 +25,7 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
 | Scarlett Isles Explorer (EXP) | 12 | 5 | 6 | 13 | 0 |
-| The Ironbow Bastion Manager (BAS) | 23 | 2 | 24 | 18 | 1 |
+| The Ironbow Bastion Manager (BAS) | 23 | 2 | 25 | 17 | 1 |
 | Clan Crest Creator (CRS) | 0 | 4 | 6 | 3 | 3 |
 | Arenas of The Scarlett Isles (ARN) | 8 | 2 | 0 | 17 | 0 |
 | The Heartwood Ritual (RIT) | 9 | 1 | 0 | 15 | 1 |
@@ -1759,11 +1759,11 @@ None of these reached Harry.
 - **Two Bastions set aside in the same second** kept only the second → SUI-24.
 - **Evidence:** `tools/explorer/tool.js`, `shared/js/store.js`; tests in `tests/e2e/bastion-days.test.js` and `tests/e2e/phase9.test.js`.
 
-### BAS-63 · Three Bastion events still say "your next Bastion turn"
-**Later, Harry's call** · other
+### BAS-63 · Three Bastion events still said "your next Bastion turn"
+**Deliberate change** (Harry's answer, 8 October 2026; was *Later, Harry's call*) · other
 
-- **Before:** Three of the rulebook's Bastion events (a special facility shutting down, a hireling with a criminal past, and hirelings leaving) say the facility "can't be used on your next Bastion turn".
-- **After:** unchanged. They're the rulebook's text and don't change anything in the Bastion by themselves. Harry may want them reworded for days (for example "for the next 7 days"); that's a lore and rules question for him.
+- **Before:** Three of the rulebook's Bastion events (a special facility shutting down, a hireling with a criminal past, and hirelings leaving) said the facility "can't be used on your next Bastion turn", though the Bastion counts in days since the overhaul.
+- **After:** they say the facility "can't be used for the next 7 days". It's the events' text only: the Bastion still doesn't stop that facility's orders by itself (still Harry's call, if he wants it to).
 - **Evidence:** `tools/bastion/data/events-data.js` lines 68, 71 and 90.
 
 ### BAS-64 · The Bastion's new screen: the map fills the window, and everything else opens over it
