@@ -2021,4 +2021,33 @@
     t.equal(R.unitStatBlock(data, 'Archers (50)').rows.filter(function (r) { return r.key === 'attack'; })[0].value, '+4 ranged / +1 melee');
     t.equal(R.unitStatBlock(data, 'Dragon'), null);
   });
+
+  /* The Banner & War Council's lock (the new screen, Harry's answer 6,
+     8 October 2026): open once there's anything that can fight, or while
+     any part of a war is going on. */
+  test('the War Council is locked until the Bastion has something that can fight, or a war is going on', function (t) {
+    var s = fresh();
+    s.defenders.count = 0;
+    t.equal(R.warCouncilOpen(s), false, 'nothing yet');
+    s.defenders.count = 1;
+    t.equal(R.warCouncilOpen(s), true, 'a defender');
+    s.defenders.count = 0;
+    s.defenderBeasts = [{ name: 'Owlbear', qty: 0 }];
+    t.equal(R.warCouncilOpen(s), false, 'a beast row with none left');
+    s.defenderBeasts = [{ name: 'Owlbear', qty: 1 }];
+    t.equal(R.warCouncilOpen(s), true, 'a beast');
+    s.defenderBeasts = [];
+    s.military = [{ name: 'Lieutenant (1)' }];
+    t.equal(R.warCouncilOpen(s), true, 'a War Room unit (a row with no qty counts as one)');
+    s.military = [];
+    s.wars = { bacca: { since: 1, last: 1, next: 8 } };
+    t.equal(R.warCouncilOpen(s), true, 'at war, even with nothing left to fight with');
+    s.wars = {};
+    s.militaryActions = [{ id: 'ma-1', kind: 'defence' }];
+    t.equal(R.warCouncilOpen(s), true, 'an attack waiting to be fought');
+    s.militaryActions = [];
+    s.pendingOrders = [{ id: 'o1', facId: 'war_council', fnId: 'war_action', dueDay: 4 }];
+    t.equal(R.warCouncilOpen(s), true, 'a War Action mustering');
+    t.equal(R.warCouncilOpen(null), false);
+  });
 }());

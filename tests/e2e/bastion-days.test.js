@@ -40,6 +40,23 @@ async function bastionReaches(ba, day) {
     return s.day === d && !s.dayInProgress && !TSI.bastion.debug.busy();
   }, day, { timeout: 8000 });
 }
+/* Since the new screen (Build 2), orders are given in a facility's panel,
+   opened from its tile, and the Orders and Day Log panels open from the
+   top bar and the bottom bar. */
+async function recruit(ba) {
+  await ba.click('[data-test=tile-barracks]');
+  await ba.waitForSelector('[data-test="issue-barracks__recruit_defenders"]');
+  await ba.click('[data-test="issue-barracks__recruit_defenders"]');
+  await ba.waitForTimeout(300);
+  await ba.keyboard.press('Escape');
+}
+async function panelText(ba, button, test) {
+  await ba.click('[data-test=' + button + ']');
+  await ba.waitForSelector('[data-test=' + test + ']');
+  const t = await bare(ba, '[data-test=' + test + ']');
+  await ba.keyboard.press('Escape');
+  return t;
+}
 async function closeWord(ba) {
   await ba.waitForSelector('[data-test=ironbow-word]', { timeout: 8000 });
   const t = await bare(ba, '[data-test=ironbow-word]');
@@ -87,11 +104,11 @@ async function closeWord(ba) {
 
   await check('an order issued at the Bastion says the day it\'s due', async () => {
     await ba.waitForTimeout(400);
-    await ba.click('[data-test="issue-barracks__recruit_defenders"]');
-    await ba.waitForTimeout(300);
+    await recruit(ba);
     const o = (await bas(ba)).pendingOrders.find(p => p.fnId === 'recruit_defenders');
     equal([o.issuedDay, o.dueDay], [1, 6], 'Recruit Defenders takes 5 days');
-    assert(/Due Day 6 \(in 5 days\)/.test(await bare(ba, '[data-test=pending]')), await bare(ba, '[data-test=pending]'));
+    const pending = await panelText(ba, 'orders-count', 'pending');
+    assert(/Due Day 6 \(in 5 days\)/.test(pending), pending);
   });
 
   await check('each Make Camp in the Explorer passes that day at the Bastion, in the other window', async () => {
@@ -121,7 +138,7 @@ async function closeWord(ba) {
     equal(s.pendingOrders.length, 0);
     equal(s.defenders.count, 4, 'one 1d4 of defenders (the dice roll 4), counted once');
     assert(s.log.some(l => l.day === 6 && /Recruit Defenders/.test(l.title + ' ' + l.body)), 'the Day Log has it');
-    assert(/Day 6/.test(await bare(ba, '[data-test=log]')), 'the Day Log shows Day 6');
+    assert(/Day 6/.test(await panelText(ba, 'open-log', 'log')), 'the Day Log shows Day 6');
   });
 
   await check('a day with nothing to report brings no word in either window', async () => {
@@ -184,8 +201,7 @@ async function closeWord(ba) {
     await ba.waitForSelector('[data-test=day-status]');
     await bastionReaches(ba, 7);
     await ba.waitForTimeout(400);
-    await ba.click('[data-test="issue-barracks__recruit_defenders"]');
-    await ba.waitForTimeout(300);
+    await recruit(ba);
     equal((await bas(ba)).pendingOrders.map(o => o.dueDay), [12]);
   });
 
@@ -200,7 +216,8 @@ async function closeWord(ba) {
     const s = await bas(ba);
     equal(s.pendingOrders.map(o => [o.issuedDay, o.dueDay]), [[1, 6]]);
     equal(await ba.textContent('[data-test=day-status]'), 'Day 1');
-    assert(/Due Day 6 \(in 5 days\)/.test(await bare(ba, '[data-test=pending]')), await bare(ba, '[data-test=pending]'));
+    const pending = await panelText(ba, 'orders-count', 'pending');
+    assert(/Due Day 6 \(in 5 days\)/.test(pending), pending);
   });
 
   await check('camping on from there passes the days as before', async () => {
