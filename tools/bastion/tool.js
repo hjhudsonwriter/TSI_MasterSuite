@@ -3471,8 +3471,42 @@
         /* Change the Bastion directly (to set up a test), then save and redraw. */
         change: function (fn) { fn(state); done(); },
         /* Read the Explorer's day now, rather than in up to 2 seconds. */
-        clock: function () { checkClock(); }
+        clock: function () { checkClock(); },
+        /* The panel open now ('war', 'fac-barracks'…), or null. */
+        panel: function () { return shown ? shown.id : null; },
+        /* Open the panel that holds [data-test=test] by pressing its button
+           (a tile, the badge, a bottom-bar button), as Harry would. False if
+           it's in no panel, its button isn't there (a locked War Council, a
+           Hall not built), or another pop-up is open over the panels. */
+        reveal: function (test) {
+          var sel = '[data-test="' + test + '"]';
+          if (document.querySelector(sel)) return true;
+          var opener = openerFor(test, sel);
+          var button = opener && page.querySelector('[data-test="' + opener + '"]');
+          if (!button || button.tagName !== 'BUTTON') return false;
+          var modals = document.querySelectorAll('.tsi-modal');
+          var top = modals[modals.length - 1];
+          if (top && !/^panel-/.test(top.getAttribute('data-test') || '')) return false;
+          closePanel();
+          button.click();
+          return !!document.querySelector(sel);
+        }
       };
+      /* For reveal: the data-test of what opens the panel holding sel. */
+      function openerFor(test, sel) {
+        var fixed = [[whCard, 'open-warehouse'], [mgmtCard, 'open-management'], [logCard, 'open-log'], [eventCard, 'open-events'],
+          [influenceCard, 'open-influence'], [favourCard, 'open-favour'], [warCard, 'open-war'], [idCard, 'identity-badge'],
+          [dipCard, 'tile-hall_of_emissaries'], [ordersCard, 'orders-count'], [artCard, 'tile-workshop']];
+        for (var i = 0; i < fixed.length; i++) if (fixed[i][0].root.querySelector(sel)) return fixed[i][1];
+        var m = /^(?:issue|sel|days)-([a-z_]+)__/.exec(test) || /^repair-note-([a-z_]+)$/.exec(test);
+        if (m) return 'tile-' + m[1];
+        if (/^wr-/.test(test)) return 'tile-war_room';
+        if (test === 'clear-builds' || (/^build-[a-z_]+$/.test(test) && test !== 'build-panel')) {
+          var slot = freeSlot();
+          return slot === null ? 'facilities-count' : 'slot-' + slot;
+        }
+        return null;
+      }
       life.onStop(function () { ns.debug = null; });
 
       renderAll();

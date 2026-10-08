@@ -51,7 +51,33 @@ async function newPage(browser, size, extra, opts) {
   await context.addInitScript(setup);
   if (opts && opts.calm) await context.addInitScript(() => { window.__calm = true; });
   const page = await context.newPage();
+  panels(page);
   return { context, page };
+}
+/* Since the new screen (Build 2, 8 October 2026) most controls live in
+   panels that open over the map. Before a check clicks, types into or
+   reads a control, the panel holding it is opened by pressing that
+   panel's own button (its tile in the facility grid, the Party Identity
+   badge, or a button in the bottom bar), as Harry would: see
+   TSI.bastion.debug.reveal. tests/e2e/bastion-screen.test.js checks the
+   panels themselves. */
+const DATA_TEST = /\[data-test="?([^"\]=]+)"?\]/;
+async function reveal(page, selector) {
+  const m = typeof selector === 'string' && DATA_TEST.exec(selector);
+  if (!m) return false;
+  return page.evaluate(t => { const d = window.TSI && TSI.bastion && TSI.bastion.debug; return !!(d && d.reveal && d.reveal(t)); }, m[1]).catch(() => false);
+}
+function panels(page) {
+  ['click', 'dblclick', 'fill', 'selectOption', 'textContent', '$eval', 'check', 'uncheck', 'press', 'hover', 'focus', 'inputValue', 'getAttribute', 'isDisabled', 'isEnabled', 'innerText', 'waitForSelector', 'dispatchEvent', 'setInputFiles'].forEach(name => {
+    const own = page[name].bind(page);
+    page[name] = async (selector, ...rest) => { await reveal(page, selector); return own(selector, ...rest); };
+  });
+}
+/* The treasury, in the map's top bar: saved when you press Enter. */
+async function treasury(page, value) {
+  await page.fill('[data-test=treasury]', String(value));
+  await page.press('[data-test=treasury]', 'Enter');
+  await page.waitForTimeout(80);
 }
 const arm = page => page.evaluate(() => window.__arm && window.__arm());
 /* The Explorer's day, as the Bastion reads it from the Explorer's save. There's
@@ -82,13 +108,18 @@ const st = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.deb
 const setUp = (page, fn) => page.evaluate(src => TSI.bastion.debug.change(new Function('s', src)), '(' + fn.toString() + ')(s);');
 const text = (page, test) => page.textContent('[data-test="' + test + '"]');
 const pause = page => page.waitForTimeout(400);
-async function modalOpen(page) { return !!(await page.$('.tsi-modal')); }
+/* The pop-up on top that isn't a panel (a panel is a pop-up too, since Build 2). */
+async function popText(page) {
+  await page.waitForSelector('.tsi-modal:not(.tsi-bas-panel)', { timeout: 5000 });
+  return page.$eval('.tsi-modal:not(.tsi-bas-panel)', m => m.textContent);
+}
+async function modalOpen(page) { return !!(await page.$('.tsi-modal:not(.tsi-bas-panel)')); }
 /* Waits briefly for the pop-up: some open only after a file has been read. */
 async function modalTitle(page) {
-  await page.waitForSelector('.tsi-modal__title', { timeout: 5000 }).catch(() => {});
-  const m = await page.$('.tsi-modal__title'); return m ? m.textContent() : null;
+  await page.waitForSelector('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__title', { timeout: 5000 }).catch(() => {});
+  const m = await page.$('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__title'); return m ? m.textContent() : null;
 }
-async function clickModal(page, label) { await page.click('.tsi-modal__foot button:text-is("' + label + '")'); await page.waitForTimeout(150); }
+async function clickModal(page, label) { await page.click('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__foot button:text-is("' + label + '")'); await page.waitForTimeout(150); }
 async function d20(page, v) {
   await page.waitForSelector('[data-test=d20]');
   await page.fill('[data-test=d20]', String(v));
@@ -101,7 +132,7 @@ async function answerAll(page, rolls) {
     await page.waitForTimeout(150);
     if (!(await modalOpen(page))) return;
     if (await page.$('[data-test=d20]')) await d20(page, rolls.shift());
-    else { await page.click('.tsi-modal__foot button.tsi-btn--primary'); await page.waitForTimeout(150); }
+    else { await page.click('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__foot button.tsi-btn--primary'); await page.waitForTimeout(150); }
   }
 }
 /* Record what the Bastion passes to the War Table when it opens it (contract 8). */
@@ -133,7 +164,7 @@ async function days(page, n, rolls) {
     await page.waitForTimeout(100);
     if (await modalOpen(page)) {
       if (await page.$('[data-test=d20]')) await d20(page, rolls.shift());
-      else { await page.click('.tsi-modal__foot button.tsi-btn--primary'); await page.waitForTimeout(120); }
+      else { await page.click('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__foot button.tsi-btn--primary'); await page.waitForTimeout(120); }
       continue;
     }
     const passed = await page.evaluate(t => { const s = TSI.bastion.debug.state(); return s.day >= t && !s.dayInProgress && !TSI.bastion.debug.busy(); }, target);
@@ -162,7 +193,7 @@ async function planHall(page, fn, idx, extra) {
   await page.selectOption('[data-test=hall-target]', String(idx));
   if (extra && extra.dur) await page.selectOption('[data-test=hall-duration]', String(extra.dur));
   if (extra && extra.tone) await page.selectOption('[data-test=hall-tone]', extra.tone);
-  await page.click('.tsi-modal__foot button.tsi-btn--primary');
+  await page.click('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__foot button.tsi-btn--primary');
   await page.waitForTimeout(150);
 }
 /* A see-through PNG crest (a gold disc on nothing), like the Crest Creator's download. */
@@ -207,11 +238,11 @@ async function reopen(page) {
 }
 /* Text without the At War tags (Harry, 4 October 2026): "Raid vs Bacca", not "Raid vs BaccaAt War". */
 const bare = (page, sel) => page.$eval(sel, e => { const c = e.cloneNode(true); c.querySelectorAll('.tsi-bas-atwar').forEach(t => t.remove()); return c.textContent; });
-async function bareModal(page) { await page.waitForSelector('.tsi-modal', { timeout: 5000 }); return bare(page, '.tsi-modal'); }
+async function bareModal(page) { await page.waitForSelector('.tsi-modal:not(.tsi-bas-panel)', { timeout: 5000 }); return bare(page, '.tsi-modal:not(.tsi-bas-panel)'); }
 /* Queue War Action asks first: Declare war, or Renew the war. */
 async function confirmWar(page) {
-  await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal__title'); return t && /^(Declare war on|Renew the war on) Clan /.test(t.textContent); });
-  await page.click('.tsi-modal__foot button.tsi-btn--primary');
+  await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__title'); return t && /^(Declare war on|Renew the war on) Clan /.test(t.textContent); });
+  await page.click('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__foot button.tsi-btn--primary');
   await page.waitForTimeout(150);
 }
 const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 'laboratory', 'war_room', 'gaming_hall', 'greenhouse', 'shrine_telluria', 'shrine_aurush', 'shrine_pelagos', 'hall_of_emissaries'];
@@ -235,7 +266,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
     await check('it opens from its card on Day 1 (until the Explorer sets the day), level 7, with the five starting facilities', async () => {
       await page.click('.tsi-card[href*="bastion"]');
       await page.waitForSelector('[data-test=day-status]');
-      equal(await text(page, 'turn'), 'Day 1 · the Explorer sets the day');
+      equal(await text(page, 'day-status'), 'Day 1 · the Explorer sets the day');
       equal(await text(page, 'day-status'), 'Day 1 · the Explorer sets the day');
       equal(await page.isHidden('[data-test=advance]'), true, 'no button to pass a day: the Explorer\'s Make Camp does that');
       equal(await page.inputValue('[data-test=level]'), '7');
@@ -354,7 +385,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
 
     await check('Clear extra builds asks first; Cancel keeps them', async () => {
       await page.click('[data-test=clear-builds]');
-      assert(/Your 5 starting facilities remain/.test(await H.modalText(page)));
+      assert(/Your 5 starting facilities remain/.test(await popText(page)));
       await clickModal(page, 'Cancel');
       equal((await st(page)).builtExtras.filter(Boolean).length, 4);
       await page.waitForTimeout(400);
@@ -370,7 +401,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
     section('Orders');
     const { context, page } = await newPage(browser, 'laptop');
     await openBastion(page);
-    await page.fill('[data-test=treasury]', '1000');
+    await treasury(page, '1000');
 
     await check('an order charges its gold once, even on a double click', async () => {
       await page.selectOption('[data-test="sel-dock__charter_berth"]', '1');
@@ -386,22 +417,22 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
 
     await check('the same order again, or one you can\'t afford, is refused with a message', async () => {
       await issue(page, 'dock', 'charter_berth');
-      equal(await H.modalText(page).then(t => /That order is already pending\./.test(t)), true);
+      equal(await popText(page).then(t => /That order is already pending\./.test(t)), true);
       await clickModal(page, 'OK');
       await issue(page, 'armoury', 'arm_defenders');
-      await page.fill('[data-test=treasury]', '50');
+      await treasury(page, '50');
       await issue(page, 'barracks', 'recruit_defenders');
       equal((await st(page)).pendingOrders.length, 3, 'Recruit Defenders is free');
       await setUp(page, (s) => { s.defenders.count = 2; });
       await pause(page);
       await page.click('[data-test=cancel-1]');
       await issue(page, 'armoury', 'arm_defenders');
-      assert(/Not enough gp\. Need 300gp, you have 50gp\./.test(await H.modalText(page)));
+      assert(/Not enough gp\. Need 300gp, you have 50gp\./.test(await popText(page)));
       await clickModal(page, 'OK');
     });
 
     await check('cancelling keeps the gold spent (B9, kept)', async () => {
-      await page.fill('[data-test=treasury]', '500');
+      await treasury(page, '500');
       await issue(page, 'armoury', 'arm_defenders');
       equal((await st(page)).treasuryGP, 200);
       await pause(page);
@@ -434,7 +465,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
     await check('the Bastion follows the Explorer\'s day: Day 4 there, and the Bastion passes Days 2 to 4', async () => {
       equal(await text(page, 'day-status'), 'Day 1');
       await days(page, 3, []);
-      equal(await text(page, 'turn'), 'Day 4');
+      equal(await text(page, 'day-status'), 'Day 4');
       equal(await text(page, 'day-status'), 'Day 4');
       equal((await st(page)).dayInProgress, null);
     });
@@ -464,7 +495,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await page.waitForTimeout(300);
       const s = await st(page);
       equal([s.day, s.dayInProgress && s.dayInProgress.day], [12, 12]);
-      equal(await page.$$eval('.tsi-modal', m => m.length), 1);
+      equal(await page.$$eval('.tsi-modal:not(.tsi-bas-panel)', m => m.length), 1);
       await H.shot(page, 'p9-05-dice');
     });
 
@@ -514,7 +545,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       equal(await text(page, 'event-next'), 'The next automatic event: Day 29 (every 28 days).');
       await page.evaluate(() => window.__seed(12));
       await days(page, 12, []);
-      equal(await text(page, 'turn'), 'Day 29');
+      equal(await text(page, 'day-status'), 'Day 29');
       const ev = await text(page, 'event');
       assert(/Roll: \d+ · Day 29/.test(ev), ev);
       assert((await st(page)).log.some(l => /^Auto event \(Day 29\)/.test(l.body)));
@@ -548,16 +579,21 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
     section('The Hall of Emissaries');
     const { context, page } = await newPage(browser, 'laptop');
     await openBastion(page);
-    await page.fill('[data-test=treasury]', '5000');
+    await treasury(page, '5000');
 
-    await check('before it\'s built: "Not built yet", and Upgrade is off', async () => {
-      assert(/Not built yet/.test(await text(page, 'hall')));
-      equal(await page.isDisabled('[data-test=hall-upgrade]'), true);
+    await check('before it\'s built it has no tile, and the build panel offers it', async () => {
+      equal(await page.$('[data-test=tile-hall_of_emissaries]'), null);
+      await page.click('[data-test=slot-0]');
+      await page.waitForSelector('[data-test=build-hall_of_emissaries]');
+      equal(await text(page, 'build-hall_of_emissaries'), 'Hall of Emissaries21 days', 'open from party level 5, 21 days to build');
+      await page.keyboard.press('Escape');
     });
 
     await setUp(page, (s) => { s.partyLevel = 9; s.builtExtras = [{ facId: 'hall_of_emissaries', status: 'built' }, '', '', '']; });
 
-    await check('its actions show their notes on hover, and lock until the Hall is upgraded', async () => {
+    await check('its tile opens the Hall of Emissaries; its actions show their notes on hover, and lock until the Hall is upgraded', async () => {
+      await page.click('[data-test=tile-hall_of_emissaries]');
+      await page.waitForSelector('[data-test=panel-diplomacy] [data-test=hall]');
       await page.hover('.tsi-bas-hall__fns .tsi-bas-fn >> nth=0');
       await page.waitForSelector('[data-test=tooltip]:not([hidden])');
       assert(/Creates a timed Trade Agreement/.test(await text(page, 'tooltip')));
@@ -619,7 +655,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
     await check('Clear Diplomacy Records asks first', async () => {
       await pause(page);
       await page.click('[data-test=clear-diplomacy]');
-      assert(/Does not undo gold already gained/.test(await H.modalText(page)));
+      assert(/Does not undo gold already gained/.test(await popText(page)));
       await clickModal(page, 'Cancel');
       equal((await st(page)).diplomacy.delegations.length, 1);
     });
@@ -657,7 +693,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await page.waitForSelector('[data-test=d20]');
       await page.keyboard.press('Enter');
       await page.waitForTimeout(200);
-      equal(await page.$$eval('.tsi-modal', m => m.length), 1, 'Enter didn\'t start another');
+      equal(await page.$$eval('.tsi-modal:not(.tsi-bas-panel)', m => m.length), 1, 'Enter didn\'t start another');
       await d20(page, 15);
       assert(/Total Collected: 200 gp/.test(await text(page, 'routes-total')));
       await clickModal(page, 'Continue');
@@ -667,7 +703,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
     await check('a third Resolve says none is due, and when the next sails', async () => {
       await pause(page);
       await page.click('[data-test=resolve]');
-      assert(/No routes are due to sail\. Each sails every 7 days; the next on Day 10\./.test(await H.modalText(page)), await H.modalText(page));
+      assert(/No routes are due to sail\. Each sails every 7 days; the next on Day 10\./.test(await popText(page)), await popText(page));
       await clickModal(page, 'Close');
       assert(/Next sails: Day 10/.test(await text(page, 'routes-list')), await text(page, 'routes-list'));
     });
@@ -700,7 +736,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await page.click('[data-test=rule-b]');
       await d20(page, 15);
       equal(await modalTitle(page), 'Council Verdict');
-      assert(/Karr route status: Restored \(Active\)\./.test(await H.modalText(page)));
+      assert(/Karr route status: Restored \(Active\)\./.test(await popText(page)));
       await clickModal(page, 'Continue');
       const s = await st(page);
       equal([s.tradeNetwork.routes[1].status, s.arbitration.queue.length, s.politicalCapital.karr], ['active', 0, -4]);
@@ -710,7 +746,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
     await check('an empty ledger says so', async () => {
       await pause(page);
       await page.click('[data-test=ledger]');
-      assert(/No disputes await judgement\./.test(await H.modalText(page)));
+      assert(/No disputes await judgement\./.test(await popText(page)));
       await clickModal(page, 'Close');
     });
 
@@ -758,7 +794,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await page.click('[data-test=form-clan]');
       await page.waitForSelector('[data-test=clan-name]');
       await clickModal(page, 'Confirm Founding');
-      assert(/Clan Name is required\./.test(await H.modalText(page)));
+      assert(/Clan Name is required\./.test(await popText(page)));
       await clickModal(page, 'OK');
       await pause(page);
       await page.click('[data-test=form-clan]');
@@ -847,7 +883,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await page.selectOption('[data-test=war-target]', 'bacca');
       for (const t of ['war-defenders', 'war-lieutenants', 'war-unit-line', 'war-unit-archers', 'war-beast-giant-vulture']) await page.fill('[data-test=' + t + ']', '0');
       await page.click('[data-test=queue-war]');
-      assert(/Commit at least one force that fights/.test(await H.modalText(page)));
+      assert(/Commit at least one force that fights/.test(await popText(page)));
       await clickModal(page, 'OK');
       /* A Lieutenant alone can't fight; the hint says why. */
       await page.fill('[data-test=war-lieutenants]', '1');
@@ -856,7 +892,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       assert(/Each Lieutenant leads one regiment or defender detachment, so none of them can march with these forces\./.test(await text(page, 'war-hint')), await text(page, 'war-hint'));
       await pause(page);
       await page.click('[data-test=queue-war]');
-      assert(/Commit at least one force that fights/.test(await H.modalText(page)));
+      assert(/Commit at least one force that fights/.test(await popText(page)));
       await clickModal(page, 'OK');
       equal((await st(page)).pendingOrders, []);
       for (const [t, typed, kept] of [['war-defenders', '9', '4'], ['war-beast-giant-vulture', '9', '5'], ['war-unit-line', '5', '2']]) {
@@ -906,7 +942,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await pause(page);
       await page.dblclick('[data-test=queue-war]');
       await page.waitForTimeout(300);
-      equal(await page.$$eval('.tsi-modal', m => m.length), 1, 'one "Declare war" question');
+      equal(await page.$$eval('.tsi-modal:not(.tsi-bas-panel)', m => m.length), 1, 'one "Declare war" question');
       await confirmWar(page);
       await page.waitForTimeout(300);
       const s = await st(page);
@@ -920,10 +956,10 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
     await check('3 days later the forces muster and the war becomes a Military Action: Begin, or Later from the War Council', async () => {
       await setExplorerDay(page, (await st(page)).day + 3);
       /* On screen and in the log the objective has its own name: "Raid vs Bacca". */
-      await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal__title'); return t && /^War Action: Raid vs Bacca(At War)?$/.test(t.textContent); }, null, { timeout: 15000 });
-      const t = await H.modalText(page);
+      await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__title'); return t && /^War Action: Raid vs Bacca(At War)?$/.test(t.textContent); }, null, { timeout: 15000 });
+      const t = await popText(page);
       assert(/Your forces muster for battle/.test(t) && /Committed: 4 defenders, 1 Lieutenant, Line Infantry ×2, Archers, Giant Vulture ×5\./.test(t) && /Enemy: Established local force\. Estimated enemy: /.test(t), t);
-      equal((await H.layoutCheck(page, ['.tsi-modal', '.tsi-modal__foot button'])).outOfView, []);
+      equal((await H.layoutCheck(page, ['.tsi-modal:not(.tsi-bas-panel)', '.tsi-modal:not(.tsi-bas-panel) .tsi-modal__foot button'])).outOfView, []);
       await H.shot(page, 'p9-war-muster');
       await clickModal(page, 'Later');
       assert(/Your army is ready to march on Bacca \(Raid\)\./.test(await word(page)));
@@ -955,26 +991,26 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await page.click('[data-test=ma-continue-0]');
       await page.waitForSelector('[data-test=d20]');
       equal((await H.noticeTexts(page)).filter(t => /is waiting/.test(t)), [], 'the notice goes once it has done its job');
-      let t = await H.modalText(page);
+      let t = await popText(page);
       assert(/Weather Conditions: Raid vs Bacca/.test(t) && /Modifier: \+0/.test(t) && /DC 12/.test(t), t);
       await d20(page, 15);
       await page.waitForSelector('[data-test=ma-result]');
-      t = await H.modalText(page);
+      t = await popText(page);
       assert(/Clear Day/.test(t) && /d20 15 vs DC 12: Passed/.test(t) && /The sky holds clear and bright/.test(t), t);
       equal(await page.$('.tsi-bas-ma-pop__video'), null, 'no storm, no film');
-      await page.dblclick('.tsi-modal__foot button:text-is("Continue")');
+      await page.dblclick('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__foot button:text-is("Continue")');
       await page.waitForTimeout(500);
       equal([(await st(page)).militaryActions[0].step, !!(await page.$('[data-test=d20]'))], ['morale', true], 'the second click didn\'t press the Morale dice box');
-      t = await H.modalText(page);
+      t = await popText(page);
       assert(/Morale: Raid vs Bacca/.test(t) && /DC 12/.test(t), t);
       await d20(page, 9);
-      t = await H.modalText(page);
+      t = await popText(page);
       assert(/Morale: Low/.test(t) && /d20 9 vs DC 12: Failed/.test(t) && /Even under a clear sky, doubt spreads/.test(t), t);
       await clickModal(page, 'Continue');
-      t = await H.modalText(page);
+      t = await popText(page);
       assert(/Luck: Raid vs Bacca/.test(t) && /DC 10/.test(t), t);
       await d20(page, 3);
-      t = await H.modalText(page);
+      t = await popText(page);
       assert(/Luck: −1/.test(t) && /the Gods do not look kindly upon this needless bloodshed/.test(t), t);
       await clickModal(page, 'Continue');
       await page.waitForSelector('[data-test=wt-root]');
@@ -1038,7 +1074,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       equal(await modalTitle(page), 'Rules & objective · Raid vs Bacca');
       const brief = await page.textContent('[data-test=wt-brief-goal]');
       assert(/Carry off 2 of the 3 supply markers/.test(brief), brief);
-      equal((await H.layoutCheck(page, ['.tsi-modal', '.tsi-modal__foot button'])).outOfView, []);
+      equal((await H.layoutCheck(page, ['.tsi-modal:not(.tsi-bas-panel)', '.tsi-modal:not(.tsi-bas-panel) .tsi-modal__foot button'])).outOfView, []);
       await H.shot(page, 'p9-war-briefing');
       await clickModal(page, 'Begin the battle');
       await page.waitForTimeout(400);
@@ -1097,12 +1133,12 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       assert(/the battle counts as lost/.test(pre) && /Clan Honour: −4/.test(pre) && /Separated for 7 days: Giant Vulture 1/.test(pre), pre);
       await H.shot(page, 'p9-war-withdraw');
       await clickModal(page, 'Withdraw');
-      await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal__title'); return t && t.textContent === 'War Report'; }, null, { timeout: 10000 });
+      await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__title'); return t && t.textContent === 'War Report'; }, null, { timeout: 10000 });
       await page.waitForTimeout(450);
-      const t = await H.modalText(page);
+      const t = await popText(page);
       assert(/Withdrawal: Raid vs Bacca/.test(t) && /Result: Withdrawal in round 1 of 6/.test(t) && /Clan Honour: −4 \(now 36\)/.test(t), t);
       assert(/Line Infantry 1: 100 soldiers → .*10 lost/.test(t) && /Line Infantry 2: 100 soldiers → .*60 lost/.test(t), t);
-      equal((await H.layoutCheck(page, ['.tsi-modal', '.tsi-modal__foot button'])).outOfView, [], 'the report fits the laptop (it scrolls inside)');
+      equal((await H.layoutCheck(page, ['.tsi-modal:not(.tsi-bas-panel)', '.tsi-modal:not(.tsi-bas-panel) .tsi-modal__foot button'])).outOfView, [], 'the report fits the laptop (it scrolls inside)');
       await H.shot(page, 'p9-war-report');
       await clickModal(page, 'Close');
       await page.waitForFunction(() => !document.querySelector('[data-test=wt-root]'));
@@ -1150,8 +1186,8 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
         await page.click('[data-test=queue-war]');
         await confirmWar(page);
         await setExplorerDay(page, (await st(page)).day + 3);
-        await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal__title'); return t && /^War Action:/.test(t.textContent); }, null, { timeout: 15000 });
-        return H.modalText(page);
+        await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__title'); return t && /^War Action:/.test(t.textContent); }, null, { timeout: 15000 });
+        return popText(page);
       }
       const mission = () => st(page).then(s => s.warMissions['bacca|raid|established']);
       await queueRaid();
@@ -1165,7 +1201,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       assert(/the Morale DC rises by [234]/.test(await text(page, 'ma-text')));
       await clickModal(page, 'Continue');
       const dc = { 'White Blizzard (Snowstorm)': 16, 'Cold Downpour (Rainstorm)': 14, 'Sun & Heatwave': 15 }[head];
-      assert(new RegExp('DC ' + dc).test(await H.modalText(page)), 'Morale DC ' + dc);
+      assert(new RegExp('DC ' + dc).test(await popText(page)), 'Morale DC ' + dc);
       await clickModal(page, 'Cancel');
       await word(page);
       let s = await st(page);
@@ -1179,7 +1215,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       equal((await st(page)).militaryActions.length, 1);
       await pause(page);
       await page.click('[data-test=ma-calloff-0]');
-      assert(/Call off the Military Action \(Raid vs Bacca\)\?/.test(await bareModal(page)) && /The enemy army and the conditions rolled so far stay the same for the next attempt/.test(await H.modalText(page)), await H.modalText(page));
+      assert(/Call off the Military Action \(Raid vs Bacca\)\?/.test(await bareModal(page)) && /The enemy army and the conditions rolled so far stay the same for the next attempt/.test(await popText(page)), await popText(page));
       await clickModal(page, 'Call off');
       s = await st(page);
       equal(s.militaryActions, []);
@@ -1201,7 +1237,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await page.click('[data-test=ma-continue-0]');
       await page.waitForSelector('[data-test=d20]');
       equal(await page.$('[data-test=ma-unchanged]'), null, 'said once, in the muster pop-up');
-      assert(new RegExp('Morale: Raid vs Bacca[\\s\\S]*DC ' + dc).test(await H.modalText(page)), 'the storm still raises the Morale DC');
+      assert(new RegExp('Morale: Raid vs Bacca[\\s\\S]*DC ' + dc).test(await popText(page)), 'the storm still raises the Morale DC');
       await d20(page, 18);
       await page.waitForSelector('[data-test=ma-result]');
       await clickModal(page, 'Continue');
@@ -1368,8 +1404,8 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await confirmWar(page);
       await page.waitForFunction(() => TSI.bastion.debug.state().anchored);
       await setExplorerDay(page, (await st(page)).day + 3);
-      await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal__title'); return t && /^War Action:/.test(t.textContent); }, null, { timeout: 15000 });
-      equal(await bare(page, '.tsi-modal__title'), 'War Action: Seize Outpost vs Blackstone', 'the objective\'s own name, not its id');
+      await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__title'); return t && /^War Action:/.test(t.textContent); }, null, { timeout: 15000 });
+      equal(await bare(page, '.tsi-modal:not(.tsi-bas-panel) .tsi-modal__title'), 'War Action: Seize Outpost vs Blackstone', 'the objective\'s own name, not its id');
       await clickModal(page, 'Begin Military Action');
       for (let i = 0; i < 3; i++) { await d20(page, 15); await page.waitForSelector('[data-test=ma-result]'); await clickModal(page, 'Continue'); }
       await page.waitForSelector('[data-test=wt-root]');
@@ -1656,13 +1692,13 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await pause(page);
       await page.click('[data-test=queue-war]');
       equal(await modalTitle(page), 'Declare war on Clan Bacca?');
-      const t = await H.modalText(page);
+      const t = await popText(page);
       assert(new RegExp('Queueing this War Action \\(Skirmish vs Bacca\\) declares war on Clan Bacca\\. For an army of ' + pen.bv + ' Battle Value, it costs you at once:').test(t), t);
       assert(t.indexOf('Honour & Respect with Bacca: ' + sgn(pen.honourRespect) + ' (from +1 to ' + sgn(1 + pen.honourRespect) + ')') !== -1, t);
       assert(t.indexOf('Political Capital with Bacca: ' + sgn(pen.politicalCapital) + ' (from +10 to ' + sgn(10 + pen.politicalCapital) + ')') !== -1, t);
       assert(/While you’re at war, Clan Bacca may attack your Bastion: every 7 days of the war, a 1 on a d6 means they attack\. The war ends after 42 days without a battle between you/.test(t), t);
-      equal(await page.$$eval('.tsi-modal__foot button', bs => bs.map(b => b.textContent)), ['Cancel', 'Declare war']);
-      equal((await H.layoutCheck(page, ['.tsi-modal', '.tsi-modal__foot button'])).outOfView, []);
+      equal(await page.$$eval('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__foot button', bs => bs.map(b => b.textContent)), ['Cancel', 'Declare war']);
+      equal((await H.layoutCheck(page, ['.tsi-modal:not(.tsi-bas-panel)', '.tsi-modal:not(.tsi-bas-panel) .tsi-modal__foot button'])).outOfView, []);
       await H.shot(page, 'p9-war4-declare');
       await clickModal(page, 'Cancel');
       const after = await st(page);
@@ -1675,7 +1711,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await pause(page);
       await page.dblclick('[data-test=queue-war]');
       await page.waitForTimeout(300);
-      equal(await page.$$eval('.tsi-modal', m => m.length), 1, 'one question');
+      equal(await page.$$eval('.tsi-modal:not(.tsi-bas-panel)', m => m.length), 1, 'one question');
       await clickModal(page, 'Declare war');
       await page.waitForTimeout(200);
       const s = await st(page);
@@ -1728,9 +1764,9 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await page.fill('[data-test=war-defenders]', '2');
       await pause(page);
       await page.click('[data-test=queue-war]');
-      await page.waitForSelector('.tsi-modal [data-test=atwar-tag]');
-      equal(await bare(page, '.tsi-modal__title'), 'Renew the war on Clan Bacca?');
-      assert(await tagsIn('.tsi-modal') >= 3, 'in the title and the text');
+      await page.waitForSelector('.tsi-modal:not(.tsi-bas-panel) [data-test=atwar-tag]');
+      equal(await bare(page, '.tsi-modal:not(.tsi-bas-panel) .tsi-modal__title'), 'Renew the war on Clan Bacca?');
+      assert(await tagsIn('.tsi-modal:not(.tsi-bas-panel)') >= 3, 'in the title and the text');
       assert(/You’re already at war with Clan Bacca\. Queueing this War Action \(Skirmish vs Bacca\) renews the war/.test(await bareModal(page)), await bareModal(page));
       await H.shot(page, 'p9-war4-renew');
       await clickModal(page, 'Cancel');
@@ -1768,8 +1804,8 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       equal(await page.isDisabled('[data-test=make-peace-bacca]'), false);
       await pause(page);
       await page.click('[data-test=make-peace-bacca]');
-      equal(await bare(page, '.tsi-modal__title'), 'Make peace with Clan Bacca?');
-      assert(/isn’t given back/.test(await H.modalText(page)));
+      equal(await bare(page, '.tsi-modal:not(.tsi-bas-panel) .tsi-modal__title'), 'Make peace with Clan Bacca?');
+      assert(/isn’t given back/.test(await popText(page)));
       await clickModal(page, 'Cancel');
       equal(Object.keys((await st(page)).wars), ['bacca']);
       await pause(page);
@@ -1800,7 +1836,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       equal([icon.tag, icon.w > 50, icon.parts], ['svg', true, 8], 'two swords, drawn in the page');
       const t = await bareModal(page);
       assert(/Standing to defend the Ironbow: 10 defenders, Line Infantry ×4, Heavy Infantry ×2, Shock Cavalry ×2\./.test(t) && /Enemy: Established local force\. Estimated enemy: \d+–\d+ Battle Value/.test(t) && /An attack can’t be called off/.test(t), t);
-      equal(await page.$$eval('.tsi-modal__foot button', bs => bs.map(b => b.textContent)), ['Later', 'Defend the Ironbow']);
+      equal(await page.$$eval('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__foot button', bs => bs.map(b => b.textContent)), ['Later', 'Defend the Ironbow']);
       const s = await st(page);
       const ma = s.militaryActions[0];
       equal([s.militaryActions.length, ma.kind, ma.objective, ma.targetName, ma.tier, ma.map, ma.step, ma.undefended, s.dayInProgress.attackRolled],
@@ -1809,7 +1845,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       for (const size of ['laptop', 'tv', 'laptopFull']) {
         await page.setViewportSize(H.SIZES[size].viewport);
         await page.waitForTimeout(250);
-        const lc = await H.layoutCheck(page, ['.tsi-modal', '.tsi-modal__foot button', '[data-test=attack-icon]']);
+        const lc = await H.layoutCheck(page, ['.tsi-modal:not(.tsi-bas-panel)', '.tsi-modal:not(.tsi-bas-panel) .tsi-modal__foot button', '[data-test=attack-icon]']);
         equal([lc.scrollWidth, lc.outOfView], [lc.clientWidth, []], size);
         if (size !== 'laptopFull') await H.shot(page, 'p9-war4-attack-' + size);
       }
@@ -1840,7 +1876,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
     });
 
     await check('orders at all five starting facilities (to see the repairs hold them)', async () => {
-      await page.fill('[data-test=treasury]', '5000');
+      await treasury(page, '5000');
       for (const [f, fn, i] of [['barracks', 'recruit_defenders'], ['dock', 'charter_berth', 1], ['workshop', 'craft_magic_item', 3], ['armoury', 'arm_defenders'], ['watchtower', 'patrol']]) await issue(page, f, fn, i);
       const s = await st(page);
       equal(s.pendingOrders.map(o => [o.facId, o.dueDay - o.issuedDay]).sort(), [['armoury', 3], ['barracks', 5], ['dock', 7], ['watchtower', 1], ['workshop', 10]], 'each order\'s own days');
@@ -1928,7 +1964,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       const pre = await text(page, 'wt-withdraw-preview');
       assert(/withdrawing counts as losing the defence/.test(pre) && /Treasury: you lose 1d10 × 5% of it, 5% to 50%/.test(pre) && /Under Repair: 1d4 of your built facilities, chosen at random/.test(pre), pre);
       await clickModal(page, 'Withdraw');
-      await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal__title'); return t && t.textContent === 'War Report'; }, null, { timeout: 10000 });
+      await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__title'); return t && t.textContent === 'War Report'; }, null, { timeout: 10000 });
       await page.waitForTimeout(450);
       const report = await bareModal(page);
       const s = await st(page);
@@ -1945,10 +1981,10 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       equal([Number(r[1]), names.length], [15, Math.min(Number(r[2]), 5)], 'lost on Day 2: Under Repair until Day 15');
       equal(Object.keys(s.repairs).sort(), ids.slice().sort());
       assert(Object.keys(s.repairs).every(id => s.repairs[id] === 15), 'lost on Day 2: Under Repair on Days 2 to 15 (14 days)');
-      assert(await tagsIn('.tsi-modal') >= 1, 'the War Report is a Bastion pop-up: Bacca is tagged');
+      assert(await tagsIn('.tsi-modal:not(.tsi-bas-panel)') >= 1, 'the War Report is a Bastion pop-up: Bacca is tagged');
       /* Not the first word of an enemy unit's name ("Bacca Stoneguard 1"): that would tag every unit. */
       assert(/\n- Bacca [A-Z]/.test(report), report);
-      equal(await page.$$eval('.tsi-modal [data-test=atwar-tag]', ts => ts.filter(t => /^[  ][A-Z]/.test((t.nextSibling && t.nextSibling.textContent) || '')).length), 0, 'no tag inside a unit\'s name');
+      equal(await page.$$eval('.tsi-modal:not(.tsi-bas-panel) [data-test=atwar-tag]', ts => ts.filter(t => /^[  ][A-Z]/.test((t.nextSibling && t.nextSibling.textContent) || '')).length), 0, 'no tag inside a unit\'s name');
       await H.shot(page, 'p9-war4-defence-report');
       await clickModal(page, 'Close');
       await page.waitForFunction(() => !document.querySelector('[data-test=wt-root]'));
@@ -2017,7 +2053,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await page.waitForTimeout(450);
       assert(/^Nobody is free to defend the Bastion, so Clan Karr takes what it came for unopposed\. You lose 1d10 × 5% of your treasury/.test(await bare(page, '[data-test=attack-undefended]')), await bare(page, '[data-test=attack-undefended]'));
       assert(!/committed elsewhere|recovering/.test(await bare(page, '[data-test=attack-undefended]')), 'no defenders at all here: nothing is committed elsewhere or recovering');
-      equal(await page.$$eval('.tsi-modal__foot button', bs => bs.map(b => b.textContent)), ['See the War Report']);
+      equal(await page.$$eval('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__foot button', bs => bs.map(b => b.textContent)), ['See the War Report']);
       equal((await st(page)).militaryActions.map(m => [m.kind, m.targetName, m.tier, m.undefended]), [['defence', 'Karr', 'small', true]]);
       await H.shot(page, 'p9-war4-undefended');
       /* Closed while it shows: the day is left part-way; it finishes by itself, rolling no new attack. */
@@ -2031,7 +2067,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       equal([s.dayInProgress, s.militaryActions.length, s.log.filter(l => l.title === 'Defend Bastion' && /Karr/.test(l.body)).length], [null, 1, 1], 'no second attack roll');
       await pause(page);
       await page.click('[data-test=ma-continue-0]');
-      await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal__title'); return t && t.textContent === 'War Report'; });
+      await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__title'); return t && t.textContent === 'War Report'; });
       await page.waitForTimeout(450);
       const report = await bareModal(page);
       assert(/Defeat: Defend Bastion vs Karr/.test(report) && /Defending the Bastion: nobody/.test(report) && /Nobody was free to defend the Bastion, so Clan Karr took what it came for unopposed\./.test(report), report);
@@ -2056,7 +2092,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await page.waitForTimeout(450);
       const line = 'The Watchtower\'s patrol saw them coming: your Bastion Defenders have Advantage on all their rolls in this battle (roll two d20s and keep the higher).';
       equal(await text(page, 'attack-patrol'), line);
-      equal((await H.layoutCheck(page, ['.tsi-modal', '.tsi-modal__foot button'])).outOfView, []);
+      equal((await H.layoutCheck(page, ['.tsi-modal:not(.tsi-bas-panel)', '.tsi-modal:not(.tsi-bas-panel) .tsi-modal__foot button'])).outOfView, []);
       await H.shot(page, 'p9-war4-attack-patrol');
       await clickModal(page, 'Later');
       await word(page);
@@ -2224,7 +2260,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
     section('Saving: download, import, damaged files, reset');
     const { context, page } = await newPage(browser, 'laptop');
     await openBastion(page);
-    await page.fill('[data-test=treasury]', '1234');
+    await treasury(page, '1234');
     await days(page, 1, []);
     let exported = null;
 
@@ -2242,10 +2278,10 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
 
     await check('Import asks first, and Cancel changes nothing', async () => {
       const f = H.writeTemp('bastion-backup.json', exported);
-      await page.fill('[data-test=treasury]', '99');
+      await treasury(page, '99');
       await H.chooseFile(page, '[data-test=import-save]', f);
       equal(await modalTitle(page), 'Import into The Ironbow Bastion Manager');
-      assert(/Importing replaces what the Explorer and the Bastion have saved now, together/.test(await H.modalText(page)), await H.modalText(page));
+      assert(/Importing replaces what the Explorer and the Bastion have saved now, together/.test(await popText(page)), await popText(page));
       await clickModal(page, 'Cancel');
       equal((await st(page)).treasuryGP, 99);
       /* Both halves come back: the Explorer's day moves on meanwhile, and goes back with the import. */
@@ -2264,14 +2300,14 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       otherFile.tool = 'arenas';
       otherFile.records = [Object.assign({}, otherFile.records[0], { key: 'tsi.arenas.state', value: { players: [], prizeTotal: 300 } })];
       await H.chooseFile(page, '[data-test=import-save]', H.writeTemp('arenas.json', otherFile));
-      const t1 = await H.modalText(page);
+      const t1 = await popText(page);
       assert(/This file is from the Arenas of The Scarlett Isles, not The Ironbow Bastion Manager\./.test(t1), t1);
       await clickModal(page, 'OK');
       const file = JSON.parse(exported);
       file.records.find(r => r.key === 'tsi.bastion.state').value.pendingOrders = 'lost';
       const bad = H.writeTemp('bastion-bad.json', file);
       await H.chooseFile(page, '[data-test=import-save]', bad);
-      const t2 = await H.modalText(page);
+      const t2 = await popText(page);
       assert(/pendingOrders list is damaged/.test(t2), t2);
       await clickModal(page, 'OK');
       /* A Bastion file from before the days overhaul (in Bastion turns). */
@@ -2279,7 +2315,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       old.kind = 'tool'; old.tool = 'bastion';
       old.records = [{ key: 'tsi.bastion.state', value: { treasuryGP: 50, partyLevel: 7, turn: 4, builtExtras: [], pendingOrders: [], defenders: { count: 0 }, warehouse: [], turnInProgress: null }, savedAt: old.records[0].savedAt }];
       await H.chooseFile(page, '[data-test=import-save]', H.writeTemp('bastion-turns.json', old));
-      const t3 = await H.modalText(page);
+      const t3 = await popText(page);
       assert(/This file is from before the Bastion counted in days, so it can't be imported\. Nothing was changed\./.test(t3), t3);
       await clickModal(page, 'OK');
       equal((await st(page)).treasuryGP, 1234);
@@ -2307,7 +2343,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
     });
 
     await check('Reset asks first; Reset clears the Bastion', async () => {
-      await page.fill('[data-test=treasury]', '777');
+      await treasury(page, '777');
       await pause(page);
       await page.click('[data-test=reset]');
       await clickModal(page, 'Cancel');
@@ -2320,7 +2356,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
     });
 
     await check('Back up everything includes the Bastion', async () => {
-      await page.fill('[data-test=treasury]', '321');
+      await treasury(page, '321');
       await page.evaluate(() => TSI.store.flush());
       await page.click('[data-test=home]');
       await page.waitForSelector('[data-test=backup-everything]');

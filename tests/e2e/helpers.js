@@ -81,8 +81,11 @@ function watch(page, log) {
   page.on('console', m => { if (m.type() === 'error') log.consoleErrors.push(m.text()); });
 }
 
+/* Animations are paused for the picture: the test browser has no graphics
+   card, so a glowing animation (the Bastion's trade routes) can take it
+   many seconds a frame. The pictures are for people to look at, never compared. */
 async function shot(page, name) {
-  await page.screenshot({ path: path.join(SHOTS, name + '.png') });
+  await page.screenshot({ path: path.join(SHOTS, name + '.png'), animations: 'disabled' });
 }
 
 function writeTemp(name, content) {
