@@ -506,7 +506,7 @@
     };
   };
 
-  /* Phase 1's summary of the same thing (numbers only). */
+  /* The same thing as numbers only, for the War Council's "Available: …" hint. */
   R.warAvailable = function (s, data) {
     var f = R.warForces(s, data);
     var regiments = Object.keys(f.units).reduce(function (a, t) { return a + f.units[t].length; }, 0);

@@ -21,12 +21,12 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 
 | Tool | Must fix | Fixed by design | Deliberate | Later (Harry's call) | Not relevant / not a bug |
 |---|---|---|---|---|---|
-| Suite-wide (SUI) | 6 | 11 | 7 | 1 | 0 |
+| Suite-wide (SUI) | 6 | 11 | 8 | 1 | 0 |
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
 | Scarlett Isles Explorer (EXP) | 12 | 5 | 6 | 13 | 0 |
-| The Ironbow Bastion Manager (BAS) | 22 | 2 | 22 | 18 | 1 |
-| Clan Crest Creator (CRS) | 0 | 4 | 5 | 3 | 3 |
+| The Ironbow Bastion Manager (BAS) | 22 | 2 | 24 | 18 | 1 |
+| Clan Crest Creator (CRS) | 0 | 4 | 6 | 3 | 3 |
 | Arenas of The Scarlett Isles (ARN) | 8 | 2 | 0 | 17 | 0 |
 | The Heartwood Ritual (RIT) | 9 | 1 | 0 | 15 | 1 |
 | Pelagosi Puzzle Trials (PEL) | 11 | 1 | 0 | 6 | 0 |
@@ -257,6 +257,13 @@ These come from checking the eight tools against each other: the collision audit
 - **Before:** Each tool drew its own tooltips; the Bastion's followed the mouse and could sit over what it described.
 - **After:** `shared/js/tooltip.js` gives the suite one tooltip card: a dark card with a gold title line, the text, and a line at the foot (a cost, or how many days something takes). It shows on hover and on keyboard focus, sits beside what it describes (above it for things low on the screen) rather than over it, and shows above pop-ups, so it works inside panels. Esc hides a keyboard tooltip first; a second Esc then does what it usually does (closes a pop-up). The Bastion is the first tool to use it; the War Table keeps its own.
 - **Evidence:** `shared/js/tooltip.js`, `shared/components.css` (`.tsi-tip`), `shared/tokens.css` (`--tsi-z-tooltip`, now above pop-ups); tests in `tests/e2e/bastion-screen.test.js` and `tests/e2e/phase9.test.js`.
+
+### SUI-26 · The Crest Creator can pass a crest to the Bastion
+**Deliberate change** (the Bastion overhaul's Build 3, 8 October 2026) · other
+
+- **Before:** The suite's hand-off between tools (`TSI.handoff`) carried only the Explorer's fight to the Combat Tracker and its result back.
+- **After:** It has a third kind, `crest`: the Crest Creator's "Use for the Bastion" writes a 512-pixel PNG of the crest and the Creator's design to the browser's small shared storage (`tsi.suite.handoff-crest`; the test page keeps its own, `tsi.test:handoff-crest`). A Bastion window hears it at once; a Bastion opened later reads it as it starts. Only the latest is kept, it isn't a save (so it's not in backups), and it's cleared once the Bastion has asked about it. Nothing goes online.
+- **Evidence:** `shared/js/handoff.js`, `shared/js/store-rules.js` (`spaceNames`); tests in `tests/rules/store-rules.test.js`, `tests/e2e/phase2.test.js` and `tests/e2e/phase9.test.js`.
 
 ## Combat Tracker & VTT Battlemap
 Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point there).
@@ -1341,6 +1348,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **Checker's note:** The casualty part is damage counted twice. The availability undercount is 'other'. The handover warns against counting rows.
 - **Evidence:** app.js:476 and 5211 use .length; 5359-5363 splices a row. Runtime B6: 'Owlbear x2', war hint '1 beasts'.
 - **Phase 9:** Kept at first (B10). **Fixed 2 October 2026** at Harry's request: `R.beastQty` and `R.removeBeasts` in `tools/bastion/rules.js`; tests in `tests/rules/bastion.test.js` ("five Giant Vultures are five beasts…") and `tests/e2e/phase9.test.js`. In the side-by-side run with the old Bastion, the only beast in that campaign is a single one, so nothing else changes.
+- **Since Build 3 (8 October 2026):** the single roll that lost one beast, and `R.removeBeasts`, are archived with it (BAS-66; their tests are in `tests/archive/mercenary-brigade.test.js`). `R.beastQty` is unchanged; battles on the War Table take their losses by name.
 
 ### BAS-26 · Library scripture notes never attach
 **Later, Harry's call** · other
@@ -1498,6 +1506,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **Before:** The Bastion had no crest. Form Clan asked for the Clan's name, Chief and motto; Form Mercenary Brigade for its name.
 - **After:** Both pop-ups have a **Crest (optional)** box: a link that opens the Clan Crest Creator in a new tab, and **Upload crest…** for the PNG it downloads. The crest shows beside the Clan's or Brigade's name in Party Identity, with **Change crest…** and **Remove crest** (which asks first); a Clan or Brigade founded earlier can **Add crest…** there. The picture is shrunk to 512 pixels a side and saved as `tsi.bastion.crest`, so it's in Download Save and "Back up everything"; Reset clears it with the rest of the Bastion.
 - **Evidence:** `tools/bastion/tool.js` (the crest section), `R.isCrest` in `tools/bastion/rules.js`; tests in `tests/rules/bastion.test.js` and `tests/e2e/phase9.test.js`.
+- **Since Build 3 (8 October 2026):** the crest belongs to the Bastion and can be set at any time, Unsworn or a Clan (BAS-67).
 
 ### BAS-43 · The Lieutenants and Regiments boxes won't take a number, with no sign why
 **Must fix** (Harry's report, 2 October 2026; fixed) · breaks the tool
@@ -1785,6 +1794,30 @@ None of these reached Harry.
 - **The Hall of Emissaries' panel opened narrower than intended** → full width.
 - **Evidence:** `tools/bastion/tool.js`, `shared/js/tooltip.js`, `tools/bastion/bastion.css`; tests in `tests/e2e/phase9.test.js`.
 
+### BAS-66 · The Mercenary Brigade and the old single-roll war are archived
+**Deliberate change** (Harry's brief, 8 October 2026; the overhaul's Build 3, `docs/BASTION-OVERHAUL.md` section 3) · other
+
+- **Before:** Party Identity offered Form Clan and Form Mercenary Brigade (level 7, 3 defenders). A Brigade had Trusted Clients (0 to 100 for each Clan), changed after every battle and listed in the War Report, and could commit Lieutenants and regiments like a Clan. The rules still held the war's old single roll (`R.warCommit`, `R.queueWarAction`, `R.warPlan`, `R.resolveWar`, `R.removeBeasts`), which nothing had used since the War Table came.
+- **After:**
+  - The party is Unsworn or a Clan. Only a Clan commits Lieutenants and regiments; the War Council's boxes say "Clan only" and "Only a Clan can commit Lieutenants and Regiments.". The requirements line is the Clan's alone. Battles no longer change Trusted Clients, and the War Report has no Trusted Clients line.
+  - **Kept aside, not deleted:** all of it, as working code, in `tools/bastion/archive/mercenary-brigade.js`, with its ten tests in `tests/archive/mercenary-brigade.test.js`. Both are loaded by nothing; the note at the top says how to put them back. They were run once with the archive loaded, and all ten passed.
+  - **Saves:** every save still carries the Trusted Clients scores (unread), so putting the Brigade back loses nothing. A Brigade saved in Builds 1 or 2 loads as Unsworn; the Bastion says so once as it opens, and the Day Log keeps the Brigade's name. A war order waiting with Lieutenants or regiments from such a Brigade sends only what an Unsworn party can when it musters (the muster's log says what stayed home).
+  - **Data:** the Brigade's level 7 and 3 defenders, and the single roll's DCs, moved from `bastion-data.js` to the archive.
+- **Evidence:** `tools/bastion/rules.js` (`fromSave`, `R.formerBrigade`, `orgLabel`, `requirementsHint`), `tools/bastion/war-campaign-rules.js` (`warForces` fullWar, `warRewards`, `applyRewards`, `rewardLines`), `tools/bastion/data/bastion-data.js`, `tools/bastion/tool.js`; tests in `tests/rules/bastion.test.js`, `tests/rules/bastion-campaign.test.js`, `tests/e2e/phase9.test.js`.
+
+### BAS-67 · The crest belongs to the Bastion, at any time; Party Identity reworked
+**Deliberate change** (Harry's brief, 8 October 2026; the overhaul's Build 3, `docs/BASTION-OVERHAUL.md` section 4) · other
+
+- **Before:** Only a Clan or Brigade could have a crest, chosen in Form Clan or Form Mercenary Brigade (or added afterwards), by downloading the PNG from the Crest Creator and uploading it. Founding without choosing one removed any crest. The War Table showed the crest only for a Clan or Brigade. The badge showed "Party Identity" or the name.
+- **After:**
+  - **The crest is the Bastion's,** Unsworn or a Clan, and forming a Clan keeps it. Party Identity shows it large, with **Create in the Clan Crest Creator ↗** (opens the Creator in a new window, or says it's already open), **Upload a picture…** and **Remove** (which asks first).
+  - **From the Creator:** its new Use for the Bastion button sends the crest (SUI-26, CRS-16). The Bastion asks "Use this crest for the Bastion?", showing it: at once if it's open (once no day is being passed and the War Table is shut), or as it next opens. Either answer clears it, so it's asked once. A crest from the Creator keeps the Creator's design with it (`tsi.bastion.crest.design`), so it can be re-edited later.
+  - **The badge:** the crest, or a faint dashed shield and "Add a crest". Under the crest: the Clan's name, or "Unsworn". Its spoken name is "Crest of the Ironbow", then "Crest of <Clan>".
+  - **Party Identity:** the status pill (Unsworn, or "Clan: name" with the chief, the motto and the day it was founded), Found a Clan with its requirements (until there's a Clan), and Clan Honour (only for a Clan).
+  - **Form Clan's crest box** shows the Bastion's crest: **Create a new one ↗**, **Upload…** (used only when the founding is confirmed), and **Keep this crest** to go back to it. Cancel changes nothing.
+  - **The War Table** has the crest on your tokens whether or not a Clan is formed; the army is "Your forces" until there's a Clan.
+- **Evidence:** `tools/bastion/tool.js` (the crest and Party Identity sections, `renderBadge`, the War Table's options), `tools/bastion/bastion.css`, `R.isCrest` and `R.crestFromHandoff` in `tools/bastion/rules.js`; tests in `tests/rules/bastion.test.js`, `tests/e2e/phase9.test.js` ("The crest, at any time"), `tests/e2e/bastion-screen.test.js` and `tests/e2e/phase2.test.js`.
+
 ## Clan Crest Creator
 Old repo: `_legacy/clan-crest-creator` (file:line references point there).
 
@@ -1934,6 +1967,13 @@ Old repo: `_legacy/clan-crest-creator` (file:line references point there).
 - **Before:** The Crest saved nothing, as in the old tool. Going Home, switching tool or closing the window lost the design, without asking.
 - **After:** The design is saved as you go and comes back next time. The Crest now has Export and Import in the top bar and is included in "Back up everything", like the tools that always saved. It keeps one design: Random Crest and Reset replace it, without asking, as before. A saved design is checked when it loads: a choice that no longer exists (such as the old Kraken sigil) goes back to its default and the rest is kept, and a save that isn't a design at all is set aside, never deleted.
 - **Evidence:** `tools/crest/tool.js` (saving), `tools/crest/rules.js` `cleanDesign` and `importProblem`; tests in `tests/rules/crest.test.js` ("remembering your design") and `tests/e2e/phase2.test.js` ("Remembering your design").
+
+### CRS-16 · Use for the Bastion
+**Deliberate change** (the Bastion overhaul's Build 3, 8 October 2026) · other
+
+- **Before:** To use a crest in the Bastion, you downloaded the PNG, went to the Bastion and uploaded it.
+- **After:** **Use for the Bastion**, beside Download PNG, sends a 512 × 512 see-through PNG of the crest and its design straight to the Bastion (SUI-26), which asks whether to use it. A notice says whether the Bastion's window asks now or when it next opens, with an Open the Bastion ↗ button when it's shut. It's drawn from the crest's own drawing, never a bundled picture, so it works from a double-clicked file, as Download PNG does.
+- **Evidence:** `tools/crest/tool.js` (`sendToBastion`, `svgToPngData`), `tools/crest/crest.css`; tests in `tests/e2e/phase2.test.js` ("Use for the Bastion").
 
 ## Arenas of The Scarlett Isles
 Old repo: `_legacy/arenas-of-the-scarlett-isles` (file:line references point there).

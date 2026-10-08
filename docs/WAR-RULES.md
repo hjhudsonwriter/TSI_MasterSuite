@@ -332,7 +332,7 @@ The rewards follow the objective, the losses follow the battle, and the Bastion'
 | Defend Bastion | +0 gp, +6 | 1d10 × 5% of the treasury (in place of gold; see The Defend Bastion event), −8 |
 | Seize Outpost | +60 gp, −12 | −60 gp, +10 |
 
-- **Who's affected:** Political Capital changes with the target clan. A Clan's Honour goes +6 on a victory and −8 on a defeat. A Brigade's Trusted Clients change as before.
+- **Who's affected:** Political Capital changes with the target clan. A Clan's Honour goes +6 on a victory and −8 on a defeat. (A Mercenary Brigade's Trusted Clients used to change too; the Brigade was archived in the Bastion overhaul's Build 3, 8 October 2026.)
 - **A raid's gold:** a won raid pays in full, whether the supplies came home or the enemy broke and fled. Otherwise the gold follows the supplies actually carried off: half for one; with none, it's the defeat's −50.
 - **A draw** changes nothing.
 - **A withdrawal** counts as a defeat for gold and Political Capital, but costs only −4 Clan Honour. Withdrawing from a Defend Bastion is different: it counts as losing it in full, with the treasury loss and the repairs, and the defeat's −8 Clan Honour, not −4. In a Raid, the gold still follows the supplies already carried off: with one home, a withdrawal pays +38 gp (half the victory's gold), and the −50 gp applies only if none were. (Two home wins the raid at once, so there's nothing to withdraw from.)
