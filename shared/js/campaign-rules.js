@@ -1,13 +1,15 @@
 /* The Scarlett Isles: D&D Tool Suite — the campaign at a glance (7 October 2026).
    Plain functions (no screen code, tested in tests/rules.html) that read the
    Explorer's and the Bastion's saves and say where the campaign stands. The
-   DM doc shows them (shared/js/dmdoc.js). The Explorer uses two of them
+   DM doc shows them (shared/js/dmdoc.js). The Explorer uses some of them
    too, so the DM doc and the Explorer can never disagree:
    - untilText: when an Active Effect ends ("ends Day 9", "until Make Camp");
-   - isBastionDay: the weekly Bastion reminder, at the Make Camp that starts
-     Day 8, 15, 22 and so on;
    - threadDueText and rewardLines: when a Thread's follow-up is due, and what
-     resolving it gives.
+     resolving it gives;
+   - ironbowNews: "The Ironbow sends word…", what the Bastion has coming on
+     the days just reached (Harry, 8 October 2026: it replaced the weekly
+     Bastion reminder). It only reads the Bastion's save: the Bastion
+     itself works the days out, with their dice, when it next sees them.
 
    TSI.campaign.summary(explorerSave, bastionSave, regions) → everything the
    DM doc shows. Either save may be null (that tool hasn't saved yet).
@@ -27,18 +29,103 @@
     return Math.max(min, Math.min(max, Math.round(n)));
   }
 
-  var C = TSI.campaign = {
-    /* The Explorer's Bastion reminder comes every 7 days. */
-    BASTION_EVERY: 7,
+  /* "hall_of_emissaries" → "Hall of Emissaries"; "shrine_aurush" → "Shrine of
+     Aurush". The Bastion's facility names follow this rule, so the Explorer
+     can name them without loading the Bastion's data. */
+  function facilityName(id) {
+    var words = str(id).split('_').filter(Boolean);
+    if (words[0] === 'shrine' && words.length === 2) words = ['shrine', 'of', words[1]];
+    return words.map(function (w) { return w === 'of' ? w : w.charAt(0).toUpperCase() + w.slice(1); }).join(' ');
+  }
+  var OBJECTIVES = { raid: 'Raid', skirmish: 'Skirmish', seize_outpost: 'Seize Outpost' };
+  function clanTitle(name) { var n = str(name).trim(); return /^clan /i.test(n) ? n : 'Clan ' + n; }
 
-    /* Does the Make Camp that starts this day bring the Bastion reminder? (Days 8, 15, 22…) */
-    isBastionDay: function (day) {
-      return isNum(day) && day > 1 && (Math.floor(day) - 1) % C.BASTION_EVERY === 0;
+  var C = TSI.campaign = {
+    /* The automatic Bastion event comes every this many days from Day 1
+       (keep it the same as tools/bastion/data/bastion-data.js time.eventEvery). */
+    BASTION_EVENT_EVERY: 28,
+
+    /* What the Bastion has coming, from its save: [{ day, kind, line }], in day
+       order (only what can be known before the day: building finished,
+       orders due, contracts and records ending, repairs and recovery over,
+       sea routes needing a roll, a Clan at war's attack roll, the automatic
+       event). Nothing for a Bastion that hasn't read the Explorer's day yet. */
+    bastionComing: function (bastion) {
+      var ba = isObj(bastion) ? bastion : null;
+      if (!ba || ba.v !== 2 || ba.anchored !== true || !isNum(ba.day)) return [];
+      var out = [];
+      function add(day, kind, line) { if (isNum(day)) out.push({ day: Math.trunc(day), kind: kind, line: line }); }
+      var repairs = isObj(ba.repairs) ? ba.repairs : {};
+      (Array.isArray(ba.builtExtras) ? ba.builtExtras : []).forEach(function (e) {
+        if (isObj(e) && e.status === 'building') add(e.readyDay, 'built', 'The ' + facilityName(e.facId) + ' is built.');
+      });
+      (Array.isArray(ba.pendingOrders) ? ba.pendingOrders : []).forEach(function (o) {
+        if (!isObj(o) || !isNum(o.dueDay)) return;
+        var label = str(o.label) || 'An order';
+        var m = isObj(o.meta) ? o.meta : {};
+        var fix = isNum(repairs[o.facId]) ? repairs[o.facId] : null;
+        var day = fix !== null && o.dueDay <= fix ? fix + 1 : o.dueDay;
+        if (o.facId === 'war_council' || m.kind === 'war_action') {
+          add(day, 'war', 'Your army is ready to march on ' + (str(m.targetName) || 'the enemy') + ' (' + (OBJECTIVES[m.objective] || 'War Action') + ').');
+        } else if (o.facId === 'hall_of_emissaries' && o.fnId !== 'upgrade_hall') {
+          add(day, 'roll', label + ' needs your roll.');
+        } else {
+          add(day, 'order', label + ' is complete.');
+        }
+      });
+      var dip = isObj(ba.diplomacy) ? ba.diplomacy : {};
+      [['agreements', true], ['arbitrations', true], ['consortiums', true], ['delegations', false], ['summits', false]].forEach(function (pair) {
+        (Array.isArray(dip[pair[0]]) ? dip[pair[0]] : []).forEach(function (r) {
+          if (!isObj(r)) return;
+          var name = pair[0] === 'summits' ? 'Inter-Clan Summit (' + (str(r.pair) || '—') + ')'
+            : pair[0] === 'delegations' ? 'delegation from ' + (str(r.clan) || '—')
+            : (str(r.title) || 'contract') + ' with ' + (str(r.clan) || '—');
+          add(r.endDay, 'ended', 'Your ' + name + ' has ended' + (pair[1] ? ' (its last shipment arrived)' : '') + '.');
+        });
+      });
+      Object.keys(repairs).forEach(function (id) {
+        if (isNum(repairs[id])) add(repairs[id] + 1, 'repairs', 'Repairs: the ' + facilityName(id) + ' is working again.');
+      });
+      (Array.isArray(ba.warRecovery) ? ba.warRecovery : []).forEach(function (r) {
+        if (!isObj(r)) return;
+        add(r.untilDay, 'recovery', r.status === 'separated' ? str(r.name) + ' has found the way back to the Bastion.'
+          : r.kind === 'beast' ? 'The ' + str(r.name) + ' is fit to fight again.' : str(r.name) + ' is fit for duty again.');
+      });
+      var tn = isObj(ba.tradeNetwork) ? ba.tradeNetwork : {};
+      if (tn.active) {
+        (Array.isArray(tn.routes) ? tn.routes : []).forEach(function (r) {
+          if (!isObj(r) || r.status !== 'active' || !isNum(r.nextDay)) return;
+          if (isNum(r.expiresDay) && r.nextDay > r.expiresDay) return;
+          if (r.risk === 'high' || tn.highRiskRouting) add(r.nextDay, 'route', 'The sea route to ' + str(r.clan) + ' needs a roll.');
+        });
+      }
+      var wars = isObj(ba.wars) ? ba.wars : {};
+      Object.keys(wars).forEach(function (k) {
+        var w = wars[k];
+        if (isObj(w) && isNum(w.next)) add(w.next, 'attack', clanTitle(k.charAt(0).toUpperCase() + k.slice(1)) + ' may attack: the Bastion rolls to see.');
+      });
+      var e = C.BASTION_EVENT_EVERY;
+      var today = Math.trunc(ba.day);
+      var ev = today < 1 ? 1 + e : today + (e - ((today - 1) % e));
+      add(ev, 'event', 'A Bastion event is due.');
+      return out.sort(function (a, b) { return a.day - b.day; });
     },
-    /* The next day after this one that brings the reminder. */
-    nextBastionDay: function (day) {
-      var d = isNum(day) ? Math.max(1, Math.floor(day)) : 1;
-      return d + (C.BASTION_EVERY - ((d - 1) % C.BASTION_EVERY));
+
+    /* "The Ironbow sends word…": what the Bastion has coming on the days
+       after `fromDay`, up to and including `toDay`, grouped by day:
+       [{ day, lines }]. Empty if the Bastion is ahead of fromDay (Reset
+       Travel: it will move its days, not pass them) or has nothing. */
+    ironbowNews: function (bastion, fromDay, toDay) {
+      var ba = isObj(bastion) ? bastion : null;
+      if (!ba || !isNum(fromDay) || !isNum(toDay) || toDay <= fromDay || (isNum(ba.day) && ba.day > fromDay)) return [];
+      var by = {};
+      var days = [];
+      C.bastionComing(ba).forEach(function (x) {
+        if (x.day <= fromDay || x.day > toDay) return;
+        if (!by[x.day]) { by[x.day] = []; days.push(x.day); }
+        by[x.day].push(x.line);
+      });
+      return days.sort(function (a, b) { return a - b; }).map(function (d) { return { day: d, lines: by[d] }; });
     },
 
     /* When an Explorer Active Effect ends, as the Explorer's Active Effects list says it. */
@@ -79,18 +166,31 @@
         ? ex.tokens.map(function (t) { return isObj(t) ? str(t.name).trim() : ''; }).filter(Boolean)
         : [];
 
-      /* Time: the Explorer's day; the Bastion's turns (its turn counter starts at 1, so turns done = turn − 1). */
+      /* Time: the Explorer's day (the campaign's only clock). The Bastion's
+         orders: how many are pending, and which completes next; and the
+         next day the Ironbow sends word, after today. A Bastion saved in
+         turns (before the days overhaul) has neither to show. */
       var day = ex ? clampInt(travel.day, 1, 100000, 1) : null;
       out.day = day;
       out.daysPassed = day === null ? null : day - 1;
-      if (day !== null) {
-        var next = C.nextBastionDay(day);
-        out.nextBastion = { day: next, inDays: next - day };
+      var inDays = ba && ba.v === 2 ? ba : null;
+      if (inDays) {
+        var today = day === null ? clampInt(inDays.day, 1, 100000, 1) : day;
+        var orders = (Array.isArray(inDays.pendingOrders) ? inDays.pendingOrders : []).filter(function (o) { return isObj(o) && isNum(o.dueDay); })
+          .slice().sort(function (a, b) { return a.dueDay - b.dueDay; });
+        out.orders = {
+          count: orders.length,
+          next: orders.length ? { day: orders[0].dueDay, label: str(orders[0].label) || 'An order', inDays: orders[0].dueDay - today } : null
+        };
+        var coming = C.bastionComing(inDays).filter(function (x) { return x.day > today; });
+        out.nextWord = coming.length ? {
+          day: coming[0].day, inDays: coming[0].day - today,
+          lines: coming.filter(function (x) { return x.day === coming[0].day; }).map(function (x) { return x.line; })
+        } : null;
       } else {
-        out.nextBastion = null;
+        out.orders = null;
+        out.nextWord = null;
       }
-      var turn = ba ? clampInt(ba.turn, 1, 100000, 1) : null;
-      out.bastionTurns = turn === null ? null : turn - 1;
 
       /* Where the party is: the Explorer's Region, its Clan and god, and their standing in the Bastion. */
       var rid = ex ? (str(travel.provinceId) || 'northern_province') : null;

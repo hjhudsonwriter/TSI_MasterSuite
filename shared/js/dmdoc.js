@@ -199,15 +199,19 @@
     return n ? 'open · next follow-up due ' + (n.from === n.to ? 'Day ' + n.from : 'Days ' + n.from + '–' + n.to) : 'open';
   }
 
+  /* "in 3 days", "tomorrow". */
+  function inDaysText(n) { return n === 1 ? 'tomorrow' : n <= 0 ? 'today' : 'in ' + n + ' days'; }
+
   function render(sum) {
     var parts = [];
     var level = sum.level;
-    var nextB = sum.nextBastion;
+    var orders = sum.orders;
+    var word = sum.nextWord;
     parts.push(el('div', { class: 'tsi-dmdoc__tiles' }, [
       tile('Party level', String(level.value), level.fromBastion ? 'from the Bastion' : 'Bastion not saved yet', 'dmdoc-level'),
       tile('Day', sum.day === null ? '—' : String(sum.day), sum.day === null ? 'Explorer not started' : sum.daysPassed + (sum.daysPassed === 1 ? ' day passed' : ' days passed'), 'dmdoc-day'),
-      tile('Bastion turns', sum.bastionTurns === null ? '—' : String(sum.bastionTurns), sum.bastionTurns === null ? 'Bastion not saved yet' : 'completed', 'dmdoc-turns'),
-      tile('Next Bastion turn', nextB ? (nextB.inDays === 1 ? 'in 1 day' : 'in ' + nextB.inDays + ' days') : '—', nextB ? 'Day ' + nextB.day + ', at Make Camp' : '', 'dmdoc-next-bastion'),
+      tile('Orders pending', orders ? String(orders.count) : '—', !orders ? 'Bastion not saved yet' : orders.next ? 'next completes Day ' + orders.next.day : 'none at the Bastion', 'dmdoc-orders'),
+      tile('Next word from the Ironbow', word ? 'Day ' + word.day : '—', word ? inDaysText(word.inDays) + ': ' + word.lines[0] + (word.lines.length > 1 ? ' (and ' + (word.lines.length - 1) + ' more)' : '') : orders ? 'nothing due' : '', 'dmdoc-next-word'),
       tile('Party gold', sum.gold === null ? '—' : String(sum.gold), sum.gold === null ? 'Explorer not started' : 'from events, until cleared', 'dmdoc-gold'),
       tile('Threads', sum.gold === null ? '—' : String(sum.threads.length), threadsNote(sum), 'dmdoc-threads-count')
     ]));

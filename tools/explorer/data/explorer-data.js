@@ -281,19 +281,6 @@ window.TSI_DATA.explorer = {
     sun_heat: 'tools/explorer/assets/overlays/sun_heat_overlay.mp4'
   },
 
-  /* The weekly Bastion prompt (days 8, 15, 22…). */
-  bastionPrompt: {
-    title: 'Bastion Turn',
-    steps: [{
-      id: 'start',
-      text: 'The Ironbow awaits your orders.',
-      choices: [{
-        label: 'Close',
-        outcome: { gold: 0, note: 'Bastion turn prompt (weekly).', text: 'The Ironbow awaits your orders.' }
-      }]
-    }]
-  },
-
   /* The party (old HEROES). */
   heroes: [
     { id: 'kaelen', title: 'Kaelen' },

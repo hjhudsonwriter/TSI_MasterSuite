@@ -369,9 +369,8 @@
     s.travel.milesAdjust = -6;
     s.journey.gold = 40;
     var q = R.makeCamp(s, D, E, dice([0.1, 0.5, 0.5]));
-    t.same(q.map(function (i) { return i.kind; }), ['weather', 'camp']);
+    t.same(q.map(function (i) { return i.kind; }), ['weather'], 'no weekly Bastion reminder any more (Harry, 8 October 2026)');
     t.equal(q[0].weather.id, 'cold_rain');
-    t.equal(q[1].event.title, 'Bastion Turn');
     t.equal(s.travel.day, 8);
     t.same([s.travel.lastWeatherDay, s.travel.weatherEventDay], [8, 8]);
     t.equal(s.tokens[0].milesUsed, 0, 'miles reset');
@@ -387,7 +386,7 @@
     s.travel.day = 7;
     s.travel.provinceId = 'the_east_isle';
     var q = R.makeCamp(s, D, E, dice([0.9, 0.1, 0, 0.5]));
-    t.same(q.map(function (i) { return i.kind; }), ['journey', 'camp']);
+    t.same(q.map(function (i) { return i.kind; }), ['journey']);
     t.equal(s.journey.current.id, 'c1');
     t.equal(s.journey.current.kind, 'camp');
     var s2 = fresh();
@@ -395,14 +394,25 @@
     t.equal(q2.length, 0, '0.25 is not under 25%');
   });
 
-  test('the Bastion prompt comes on days 8, 15, 22 and never between', function (t) {
+  test('"The Ironbow sends word…" comes last, only on a day the Bastion has news for', function (t) {
+    var B = TSI.bastion.rules;
+    var T = window.TSI_DATA;
+    var b = B.defaultState({ bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, events: T.bastionEvents });
+    b.day = 7;
+    b.anchored = true;
+    b.pendingOrders = [{ id: 'a', facId: 'barracks', fnId: 'recruit_defenders', label: 'Barracks: Recruit Defenders', issuedDay: 3, dueDay: 8 }];
     var days = [];
     var s = fresh();
+    s.travel.day = 7;
+    var q = R.makeCamp(s, D, E, dice([0.1, 0.5, 0.5]), b);
+    t.same(q.map(function (i) { return i.kind; }), ['weather', 'word']);
+    t.same(q[1].news, [{ day: 8, lines: ['Barracks: Recruit Defenders is complete.'] }]);
     for (var i = 0; i < 25; i++) {
-      var q = R.makeCamp(s, D, E, dice([0.99]));
-      if (q.some(function (x) { return x.event && x.event.title === 'Bastion Turn'; })) days.push(s.travel.day);
+      var q2 = R.makeCamp(s, D, E, dice([0.99]), b);
+      if (q2.some(function (x) { return x.kind === 'word'; })) days.push(s.travel.day);
     }
-    t.same(days, [8, 15, 22]);
+    t.same(days, [29], 'after Day 8, only the Bastion event on Day 29');
+    t.same(R.makeCamp(fresh(), D, E, dice([0.99])).filter(function (x) { return x.kind === 'word'; }), [], 'no Bastion save: no word');
   });
 
   test('weather: a 45% chance, then a 3-day wait (unchanged)', function (t) {
