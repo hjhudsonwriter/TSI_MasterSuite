@@ -1,10 +1,10 @@
 /* ==========================================================================
    The Ironbow Bastion Manager.
    The old layout in the suite's look: the Favour panel on the left (it
-   sticks while the page scrolls, like the old fixed panel), then the Turn
+   sticks while the page scrolls, like the old fixed panel), then the Day
    Log, Bastion Map and Bastion Event, then the old panels in their old
-   order. The tool's bar, with Advance Bastion Turn, sticks under the suite's
-   top bar. Everything fits the laptop (1707 wide) and the TV (1920 wide)
+   order. The tool's bar, with the day (and Finish Day, for a day left
+   part-way), sticks under the suite's top bar. Everything fits the laptop (1707 wide) and the TV (1920 wide)
    with no sideways scrolling; the page scrolls down, as the old one did.
    Kept as the Bastion's signature: the Uncial wordmark, the map and its
    building overlays, the facility paintings, the painted Hall behind the
@@ -357,7 +357,7 @@
   color: var(--tsi-gold-text);
 }
 
-/* ---------- Turn Log · Bastion Map · Bastion Event ---------- */
+/* ---------- Day Log · Bastion Map · Bastion Event ---------- */
 .tsi-tool--bastion .tsi-bas-card--tall { display: flex; flex-direction: column; }
 .tsi-tool--bastion .tsi-bas-card--tall > .tsi-bas-card__body { flex: 1; min-height: 0; }
 .tsi-tool--bastion .tsi-bas-log {
