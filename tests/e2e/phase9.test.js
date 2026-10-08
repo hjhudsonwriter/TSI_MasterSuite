@@ -1352,7 +1352,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await pause(page);
       await page.click('[data-test=reset]');
       await clickModal(page, 'Reset');
-      await page.waitForSelector('[data-test=advance]');
+      await page.waitForSelector('[data-test=day-status]');
       await page.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().organization.type === 'unsworn');
       equal(await page.evaluate(() => TSI.store.has('tsi.bastion.crest')), false);
       equal(await page.evaluate(() => TSI.store.has('tsi.bastion.warTerrain')), false, 'the painted terrain goes too');
@@ -1366,10 +1366,10 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await pause(page);
       await page.click('[data-test=queue-war]');
       await confirmWar(page);
-      await pause(page);
-      await page.click('[data-test=advance]');
-      await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal__title'); return t && /^War Turn:/.test(t.textContent); });
-      equal(await bare(page, '.tsi-modal__title'), 'War Turn: Seize Outpost vs Blackstone', 'the objective\'s own name, not its id');
+      await page.waitForFunction(() => TSI.bastion.debug.state().anchored);
+      await setExplorerDay(page, (await st(page)).day + 3);
+      await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal__title'); return t && /^War Action:/.test(t.textContent); }, null, { timeout: 15000 });
+      equal(await bare(page, '.tsi-modal__title'), 'War Action: Seize Outpost vs Blackstone', 'the objective\'s own name, not its id');
       await clickModal(page, 'Begin Military Action');
       for (let i = 0; i < 3; i++) { await d20(page, 15); await page.waitForSelector('[data-test=ma-result]'); await clickModal(page, 'Continue'); }
       await page.waitForSelector('[data-test=wt-root]');
@@ -1482,7 +1482,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await issue(page, 'war_room', 'recruit');
       let s = await st(page);
       equal(s.pendingOrders.map(o => [o.label, o.optionLabel]), [['War Room: Recruit (Line Infantry (100))', 'Line Infantry (100)']]);
-      await advance(page, []);
+      await days(page, 7, []);
       s = await st(page);
       equal(s.military, [{ name: 'Line Infantry (100)', qty: 1, source: 'War Room' }]);
       assert(s.log.some(l => l.body === 'War Room: Recruit (Line Infantry (100)) → Recruited: Line Infantry (100).'), JSON.stringify(s.log.slice(0, 3)));
@@ -1518,7 +1518,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await page.click('[data-test=wr-recruit]');
       await page.click('[data-test=wr-option-3]');
       await issue(page, 'war_room', 'recruit');
-      await advance(page, []);
+      await days(page, 7, []);
       s = await st(page);
       assert(s.log.some(l => l.body === 'War Room: Recruit (Line Infantry (100)) → Replacements bring Line Infantry back to 100.'), JSON.stringify(s.log.slice(0, 3)));
       equal(s.military.map(r => [r.name, r.qty, !!r.depleted]), [['Line Infantry (100)', 2, false]]);
@@ -1528,17 +1528,17 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
     await check('the Menagerie\'s beasts and the Lieutenants show their stat blocks, and who is away recovering', async () => {
       await setUp(page, (s) => {
         s.military.unshift({ name: 'Lieutenant (1)', qty: 2, source: 'War Room' });
-        s.warRecovery = [{ id: 'r1', kind: 'lieutenant', name: 'Lieutenant 2', status: 'wounded', untilTurn: s.turn + 2 }, { id: 'r2', kind: 'beast', name: 'Owlbear', status: 'recovered', untilTurn: s.turn + 1 }];
+        s.warRecovery = [{ id: 'r1', kind: 'lieutenant', name: 'Lieutenant 2', status: 'wounded', untilDay: s.day + 14 }, { id: 'r2', kind: 'beast', name: 'Owlbear', status: 'recovered', untilDay: s.day + 7 }];
       });
-      const turn = (await st(page)).turn;
-      equal(await text(page, 'military-type-0'), '2 Lieutenants (1 recovering: back on Turn ' + (turn + 2) + ')');
-      equal(await text(page, 'beast-type-0'), '1 beast • Terror (1 recovering: back on Turn ' + (turn + 1) + ')');
+      const day = (await st(page)).day;
+      equal(await text(page, 'military-type-0'), '2 Lieutenants (1 recovering: back on Day ' + (day + 14) + ')');
+      equal(await text(page, 'beast-type-0'), '1 beast • Terror (1 recovering: back on Day ' + (day + 7) + ')');
       await page.hover('[data-test=beast-row-0]');
       await page.waitForSelector('[data-test=tooltip]:not([hidden])');
       const tip = await text(page, 'tooltip');
-      assert(/^Owlbear/.test(tip) && /Menagerie beast/.test(tip) && /Terror: A unit it damages/.test(tip) && /Owlbear: recovering, back on turn/.test(tip), tip);
+      assert(/^Owlbear/.test(tip) && /Menagerie beast/.test(tip) && /Terror: A unit it damages/.test(tip) && /Owlbear: recovering, back on Day/.test(tip), tip);
       await page.hover('[data-test=military-row-0]');
-      assert(/^Lieutenant/.test(await text(page, 'tooltip')) && /Lieutenant 2: wounded, back on turn/.test(await text(page, 'tooltip')));
+      assert(/^Lieutenant/.test(await text(page, 'tooltip')) && /Lieutenant 2: wounded, back on Day/.test(await text(page, 'tooltip')));
       await page.mouse.move(5, 5);
     });
 
@@ -1546,20 +1546,19 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       /* Shortest and longest time away for a Lieutenant or beast that lives: separated, recovered, wounded, badly wounded. */
       const span = await page.evaluate(() => {
         const W = TSI_DATA.bastionWar;
-        const turns = W.recovery.filter(r => r.turns).map(r => r.turns).concat([W.separatedTurns, W.badlyWoundedTurns]);
-        return [Math.min.apply(null, turns), Math.max.apply(null, turns)];
+        const days = W.recovery.filter(r => r.days).map(r => r.days).concat([W.separatedDays, W.badlyWoundedDays]);
+        return [Math.min.apply(null, days), Math.max.apply(null, days)];
       });
-      const words = ['zero', 'one', 'two', 'three', 'four', 'five', 'six'];
-      const said = span[0] === span[1] ? words[span[0]] : words[span[0]] + ' to ' + words[span[1]];
+      const said = span[0] === span[1] ? String(span[0]) : span[0] + ' to ' + span[1];
       const guide = fs.readFileSync(path.join(H.ROOT, 'guide.html'), 'utf8');
       const m = /Wounded Lieutenants and beasts come back after ([^:<]+):/.exec(guide);
       assert(m, 'the guide has no "Wounded Lieutenants and beasts come back after" sentence');
-      equal(m[1], said + ' Bastion turn' + (span[1] === 1 ? '' : 's'));
+      equal(m[1], said + ' days');
     });
 
     await check('the War Council and the War Room fit the laptop and the TV with no sideways scrolling', async () => {
       await setUp(page, (s) => {
-        s.organization = { type: 'clan', name: 'Clan Ironbow', chief: '', motto: '', foundedAtTurn: 1 };
+        s.organization = { type: 'clan', name: 'Clan Ironbow', chief: '', motto: '', foundedAtDay: 1 };
         s.defenders.count = 30;
         s.military.push({ name: 'Archers (50)', qty: 1 }, { name: 'Heavy Infantry (50)', qty: 2 }, { name: 'Light Cavalry (50)', qty: 1 }, { name: 'Shock Cavalry (25)', qty: 1 }, { name: 'Levy Infantry (150)', qty: 1 });
         s.defenderBeasts.push({ name: 'Giant Vulture', qty: 3 }, { name: 'Dire Wolf', qty: 2 });
@@ -1602,7 +1601,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
     await setUp(page, (s) => {
       s.partyLevel = 9;
       s.treasuryGP = 5000;
-      s.organization = { type: 'clan', name: 'Clan Ironbow', chief: 'Harry', motto: '', foundedAtTurn: 1 };
+      s.organization = { type: 'clan', name: 'Clan Ironbow', chief: 'Harry', motto: '', foundedAtDay: 1 };
       s.clanHonor = 40;
       s.defenders.count = 10;
       s.defenders.armed = true;
@@ -2289,7 +2288,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await pause(page);
       await page.click('[data-test=reset]');
       await clickModal(page, 'Reset');
-      await page.waitForSelector('[data-test=advance]');
+      await page.waitForSelector('[data-test=day-status]');
       await page.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().treasuryGP === 0);
     });
 
