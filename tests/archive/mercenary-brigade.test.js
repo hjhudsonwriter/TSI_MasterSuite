@@ -6,12 +6,14 @@
    and tests:
      <script src="../tools/bastion/archive/mercenary-brigade.js"></script>
      <script src="archive/mercenary-brigade.test.js"></script>
-   All ten pass (checked when archived, 8 October 2026). Five live tests
+   All ten pass (checked when archived, 8 October 2026). Six live tests
    check that the Brigade is gone, so they fail while the archive is loaded,
-   and come out when it's put back: "the requirements line is the Clan's
-   alone", "a Brigade in a save from Builds 1 and 2 loads as Unsworn", "what
-   can be committed; the unsworn only send defenders and beasts", "the old
-   single-roll war is archived" and "no Trusted Clients after a battle".
+   and come out when it's put back: in bastion.test.js, "the requirements
+   line is the Clan's alone", "a Brigade in a save from Builds 1 and 2 loads
+   as Unsworn", "what can be committed; the unsworn only send defenders and
+   beasts" and "the old single-roll war is archived"; in
+   bastion-campaign.test.js, "a former Brigade's waiting War Action" and "no
+   Trusted Clients after a battle".
    The Trusted Clients after a battle are checked here directly, as
    war-campaign-rules.js needs its three put-back lines to use them. */
 (function () {

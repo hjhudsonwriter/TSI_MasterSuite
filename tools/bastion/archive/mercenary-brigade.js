@@ -43,7 +43,13 @@
      "Clan or Brigade only" / "Only a Clan or Mercenary Brigade can commit
      Lieutenants and Regiments." back into the War Council (showWar).
    - The tests are tests/archive/mercenary-brigade.test.js: add it to
-     tests/rules.html after the Bastion's tests, with this file loaded. */
+     tests/rules.html after the Bastion's tests, with this file loaded.
+     Take out the six live tests that check the Brigade is gone (its header
+     names them).
+   - In tools/bastion/tool.js, take out the start-up notice and Day Log line
+     for a former Brigade (R.formerBrigade, which this file makes return
+     null). R.clanOnlyCut in war-campaign-rules.js can stay: with a Brigade
+     back, its fullWar is true, so it never applies to one. */
 (function () {
   'use strict';
 

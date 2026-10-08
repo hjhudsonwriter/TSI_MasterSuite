@@ -38,9 +38,9 @@ Harry said go for Build 3 (plan: `docs/BASTION-OVERHAUL.md` sections 3 and 4), n
   - **Saves:** the Trusted Clients scores stay in every save, unread. A Brigade saved in Builds 1 or 2 opens as Unsworn, says so once, and the Day Log keeps its name.
 - **The guide**, `docs/WAR-RULES.md` and KNOWN_ISSUES are updated.
 - **Tests:**
-  - `tests/rules.html`: 812 rules tests, all passing. Five Brigade and old-war tests moved to the archive, and six new ones cover the archive, an old Brigade save, Clan-only war, the crest record and the hand-off.
+  - `tests/rules.html`: 813 rules tests, all passing. Five Brigade and old-war tests moved to the archive, and seven new ones cover the archive, an old Brigade save and its waiting war orders, Clan-only war, the crest record and the hand-off.
   - The archived tests (ten) pass with the archive loaded.
-  - `phase9.test.js`'s crest section, rewritten as "The crest, at any time (Build 3)", has 11 checks, all passing. It uses two windows: the Creator sends a crest, and the Bastion asks about it now, or when next opened.
+  - `phase9.test.js`'s crest section, rewritten as "The crest, at any time (Build 3)", has 12 checks, all passing. It uses two windows: the Creator sends a crest, and the Bastion asks about it now, or when next opened.
   - `phase2.test.js`: 71 checks, all passing, with a new "Use for the Bastion" section.
   - `bastion-screen.test.js`: the badge check is rewritten.
   - Every tool's click-through is being re-run because shared code changed (the hand-off).
@@ -775,7 +775,7 @@ Each tool's questions are needed before that tool's phase. The full wording and 
   - **The new screen, Build 2 (8 October 2026): choices made for you, to change if you like:**
     - **An Orders panel:** the plan put pending orders in each facility's panel; they're there, and clicking the top bar's Orders count also opens them all together (War Actions too, which have no facility).
     - **Clicking the Facilities count** opens Construction, so Clear extra builds can be reached even when every slot is full.
-    - **The badge** showed "Party Identity", your Clan's or Brigade's name, and its crest. Build 3 changed it (see below).
+    - **The badge** showed "Party Identity", your Clan's or Brigade's name, and its crest. Build 3 changed it (see above).
     - **The panels** open one at a time. Esc or Close closes them, and the focus goes back to the tile or button that opened them.
     - **The tiles** are 92 pixels square on both screens; the painting gets the rest of the room.
     - **The War Council** stays unlocked while a war, a waiting War Action or an attack is going on, even if every soldier has gone, so an attack can always be fought.
