@@ -375,6 +375,37 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     await page.keyboard.press('Escape');
   });
 
+  await check('Party Identity, Form Clan\'s pop-up and the question about a crest sent from the Creator fit the laptop, full screen, the TV and a small window (Build 3)', async () => {
+    const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    const keep = await page.evaluate(() => { const s = TSI.bastion.debug.state(); return { level: s.partyLevel, pc: Object.assign({}, s.politicalCapital) }; });
+    await setUp(page, (s) => { s.partyLevel = 9; s.politicalCapital.blackstone = 10; s.politicalCapital.bacca = 10; s.politicalCapital.farmer = 10; s.politicalCapital.slade = -10; });
+    for (const size of ['laptop', 'laptopFull', 'tv', 'smallWindow']) {
+      await page.setViewportSize(H.SIZES[size].viewport);
+      await page.waitForTimeout(250);
+      await pause(page);
+      await page.click('[data-test=identity-badge]');
+      await page.waitForSelector('[data-test=panel-identity] [data-test=crest-create]');
+      equal((await H.layoutCheck(page, ['[data-test=panel-identity]', '[data-test=crest-create]', '[data-test=crest-add]', '[data-test=form-clan]', '[data-test=panel-identity] .tsi-modal__foot button'])).outOfView, [], size + ': Party Identity');
+      await page.click('[data-test=form-clan]');
+      await page.waitForSelector('[data-test=crest-field]');
+      equal((await H.layoutCheck(page, ['[data-test=clan-name]', '[data-test=crest-field]', '[data-test=crest-new]', '[data-test=crest-upload]', POP + ' .tsi-modal__foot button'])).outOfView, [], size + ': Form Clan');
+      if (size === 'laptop') await H.shot(page, 'bs-06-form-clan');
+      await page.click(POP + ' .tsi-modal__foot button:text-is("Cancel")');
+      await page.waitForTimeout(200);
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(200);
+      await page.evaluate(p => TSI.handoff.write('crest', { id: 'crest-fit', at: 1, name: 'Fit', dataUrl: p, design: { clanName: 'Fit' } }), png);
+      await page.waitForSelector('[data-test=crest-offer]', { timeout: 6000 });
+      equal((await H.layoutCheck(page, ['[data-test=crest-offer]', POP + ' .tsi-modal__foot button'])).outOfView, [], size + ': the crest question');
+      await page.click(POP + ' .tsi-modal__foot button:text-is("No")');
+      await page.waitForTimeout(200);
+    }
+    await page.setViewportSize(H.SIZES.laptop.viewport);
+    await page.evaluate(k => TSI.bastion.debug.change(s => { s.partyLevel = k.level; s.politicalCapital = k.pc; }), keep);
+    equal(await page.evaluate(() => TSI.store.has('tsi.bastion.crest')), false, 'No each time: no crest');
+    equal((await st(page)).organization.type, 'unsworn');
+  });
+
   await check('the badge says "Add a crest" until there is one, and opens Party Identity; with a crest (even Unsworn) it shows it, then the Clan\'s name (Build 3)', async () => {
     equal(await bare(page, '[data-test=identity-badge]'), 'Add a crest');
     equal(await page.getAttribute('[data-test=identity-badge]', 'aria-label'), 'Crest of the Ironbow: no crest yet. Open Party Identity.');
