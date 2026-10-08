@@ -21,9 +21,14 @@
    event), then shows "The Ironbow sends word…". It never changes the
    Explorer's save. Reset Travel moves every Bastion day back with it.
 
-   Layout: the old fixed Favour panel stays on the left (it sticks while the
-   page scrolls), with the old panels in their old order beside it. The
-   tool's own bar, with the day, sticks to the top.
+   Layout (the overhaul's Build 2, 8 October 2026): a slim header, then the
+   Bastion Map filling the window. The map panel has a top bar (the day,
+   the treasury, the facility and order counts, and the Party Identity
+   badge) and a bottom bar: the facility grid in the middle, the panel
+   buttons either side. Everything else opens as a pop-up over the map
+   (panels, below): each panel's contents are built once and kept up to
+   date by renderAll, whether or not the panel is open. The page itself
+   never scrolls.
 
    Passing a day runs as saved steps (rules.js), so a cancelled roll or a
    closed window loses nothing, and it can't run twice at once.
@@ -73,8 +78,7 @@
       if (setAside) TSI.store.quarantine(TSI.storeRules.keyFor('bastion', 'state'), 'It was saved in Bastion turns, before the Bastion counted in days (8 October 2026).');
       var saved = setAside ? null : load('state', R.isSave);
       var state = saved ? R.fromSave(TSI.clone(saved), data) : R.defaultState(data);
-      var ui = load('ui', R.isUi, 'the panels opened in their usual way (everything else is as it was)') || {};
-      if (!ui.collapsed || typeof ui.collapsed !== 'object') ui.collapsed = {};
+      var ui = R.cleanUi(load('ui', R.isUi, 'the facility grid opened in its usual way (everything else is as it was)'));
       function save() { ctx.store.set('state', R.toSave(state)); }
       function saveUi() { ctx.store.set('ui', TSI.clone(ui)); }
       function log(title, body) { R.log(state, title, body); }
@@ -304,106 +308,105 @@
       }
       function setValue(input, value) { if (document.activeElement !== input) input.value = String(value); }
 
-      /* A panel. Collapsible ones remember whether they're open (the old
-         ▾ / ▸ buttons, saved in tsi.bastion.ui). */
+      /* A panel's contents: a row for its tools (Clear log, say), then its
+         body. Built once; panel() shows it in a pop-up over the map. */
       function card(id, title, opts) {
         opts = opts || {};
         var body = el('div', { class: 'tsi-bas-card__body' });
-        var head = el('div', { class: 'tsi-bas-card__head' }, opts.head || el('h2', { class: 'tsi-bas-card__title', text: title }));
-        var root = el('section', { class: 'tsi-bas-card' + (opts.cls ? ' ' + opts.cls : ''), 'data-card': id, 'aria-label': title }, [head, body]);
-        if (opts.collapsible) {
-          var toggle = el('button', { type: 'button', class: 'tsi-bas-collapse', 'aria-label': 'Open or close ' + title, 'data-test': 'collapse-' + id });
-          var apply = function (collapsed) {
-            root.classList.toggle('is-collapsed', collapsed);
-            toggle.textContent = collapsed ? '▸' : '▾';
-            toggle.setAttribute('aria-expanded', String(!collapsed));
-          };
-          life.on(toggle, 'click', function () {
-            var next = !root.classList.contains('is-collapsed');
-            apply(next);
-            ui.collapsed[id] = next;
-            saveUi();
-          });
-          apply(!!ui.collapsed[id]);
-          head.appendChild(toggle);
-        }
-        return { root: root, head: head, body: body };
+        var head = el('div', { class: 'tsi-bas-card__tools' }, opts.head || null);
+        var root = el('div', { class: 'tsi-bas-card tsi-bas-card--panel' + (opts.cls ? ' ' + opts.cls : ''), 'data-card': id }, [head, body]);
+        return { id: id, title: title, root: root, head: head, body: body };
       }
 
-      /* One tooltip for the artisan tools, the construction slots, the Hall's
-         actions, and the war's stat blocks (the War Room's Recruit list, the
-         Military and Menagerie lists, the War Action's forces). */
-      var tip = el('div', { class: 'tsi-bas-tip', hidden: true, role: 'tooltip', id: 'tsi-bas-tip', 'data-test': 'tooltip' });
-      function moveTip(e) {
-        var pad = 14;
-        var x = (e.clientX || 0) + pad;
-        var y = (e.clientY || 0) + pad;
-        var maxX = window.innerWidth - (tip.offsetWidth || 420) - 18;
-        var maxY = window.innerHeight - (tip.offsetHeight || 200) - 18;
-        tip.style.left = Math.max(18, Math.min(x, maxX)) + 'px';
-        tip.style.top = Math.max(18, Math.min(y, maxY)) + 'px';
-      }
-      /* Beside a box (the War Room's open list), level with one of its rows:
-         to its right, or to its left where there's no room. */
-      function placeTipBeside(box, row) {
-        var gap = 10;
-        var w = tip.offsetWidth || 420;
-        var h = tip.offsetHeight || 200;
-        var x = box.right + gap;
-        if (x + w > window.innerWidth - 18) x = Math.max(18, box.left - gap - w);
-        tip.style.left = x + 'px';
-        tip.style.top = Math.max(18, Math.min(row.top - 8, window.innerHeight - h - 18)) + 'px';
-      }
-      function hideTip() { tip.hidden = true; }
-      function fillTip(c) {
-        TSI.clear(tip);
-        tip.appendChild(el('div', { class: 'tsi-bas-tip__title', text: c.title }));
-        TSI.append(tip, c.parts);
-        tip.hidden = false;
-      }
-      /* opts.noChange: not on 'change' (for number boxes, which change as they're typed in). */
-      function bindTip(node, build, opts) {
-        function show(e) {
-          var c = build();
-          if (!c) { hideTip(); return; }
-          fillTip(c);
-          if (e.type !== 'change') moveTip(e);
-        }
-        node.addEventListener('mouseenter', show);
-        node.addEventListener('mousemove', function (e) { if (!tip.hidden) moveTip(e); });
-        node.addEventListener('mouseleave', hideTip);
-        if (!(opts && opts.noChange)) node.addEventListener('change', show);
-      }
-      /* The same tooltip from the keyboard (the war's stat blocks): shown
-         beside anchor while target has the focus, if the focus came by the
-         keyboard (so a click into a box doesn't cover the next one), and
-         hidden again by Escape or when the focus moves on. */
-      var keyboardFocus = false;
-      life.on(document, 'keydown', function () { keyboardFocus = true; }, { capture: true });
-      life.on(document, 'pointerdown', function () { keyboardFocus = false; }, { capture: true });
-      function bindFocusTip(target, anchor, build) {
-        target.addEventListener('focus', function () {
-          if (!keyboardFocus) return;
-          var c = build();
-          if (!c) return;
-          fillTip(c);
-          var box = anchor.getBoundingClientRect();
-          placeTipBeside(box, box);
-          target.setAttribute('aria-describedby', tip.id);
-        });
-        target.addEventListener('blur', function () {
-          if (target.getAttribute('aria-describedby') !== tip.id) return;
-          target.removeAttribute('aria-describedby');
-          hideTip();
-        });
-        target.addEventListener('keydown', function (e) {
-          if (e.key === 'Escape' && target.getAttribute('aria-describedby') === tip.id) {
-            target.removeAttribute('aria-describedby');
-            hideTip();
+      /* ---------- Panels (pop-ups over the map) ----------
+         openPanel(id, spec): spec { title, node, render, cls, back }. node
+         is the panel's contents (built once, kept up to date by renderAll
+         whether or not it's open); render, if given, fills it first and
+         again on every redraw while it's open (the facility, build and
+         orders panels). One panel at a time: opening another closes it.
+         back: the data-test of what to put the focus back on when it
+         closes (a tile, which a redraw may have made again). The War Table
+         closes it first (it opens over everything). */
+      var shown = null;
+      function openPanel(id, spec) {
+        if (shown && shown.id === id) return shown.promise;
+        if (shown) closePanel();
+        hideTip();
+        var entry = { id: id, render: spec.render || null, close: null };
+        if (entry.render) entry.render();
+        entry.promise = openPop({
+          title: spec.title,
+          body: spec.node,
+          className: 'tsi-bas-modal tsi-bas-panel tsi-bas-panel--' + id + (spec.cls ? ' ' + spec.cls : ''),
+          escValue: 'close',
+          actions: [{ label: 'Close', value: 'close' }],
+          onOpen: function (parts) {
+            entry.close = parts.close;
+            parts.dialog.setAttribute('data-test', 'panel-' + id);
           }
+        }).then(function (v) {
+          if (shown === entry) shown = null;
+          hideTip();
+          closePicker(false);
+          if (life.alive && spec.back && (!document.activeElement || document.activeElement === document.body)) {
+            var again = page.querySelector('[data-test="' + spec.back + '"]');
+            if (again) again.focus({ preventScroll: true });
+          }
+          return v;
         });
+        shown = entry;
+        return entry.promise;
       }
-      function tipList(lines) { return el('ul', null, lines.map(function (x) { return el('li', { text: String(x) }); })); }
+      function closePanel() {
+        var s = shown;
+        shown = null;
+        if (s && s.close) s.close('close');
+      }
+      function renderPanel() { if (shown && shown.render) shown.render(); }
+
+      /* ---------- Small icons (drawn here, so nothing loads from outside) ---------- */
+      var ICONS = {
+        coin: 'M12 4c4.4 0 8 1.3 8 3s-3.6 3-8 3-8-1.3-8-3 3.6-3 8-3z M4 7v4c0 1.7 3.6 3 8 3s8-1.3 8-3V7 M4 11v4c0 1.7 3.6 3 8 3s8-1.3 8-3v-4',
+        hourglass: 'M7 3h10 M7 21h10 M8 3c0 5 8 5 8 9s-8 4-8 9 M16 3c0 5-8 5-8 9s8 4 8 9',
+        lock: 'M6 11h12v9H6z M8 11V8a4 4 0 018 0v3 M12 14.5v2',
+        hammer: 'M13.5 5.5l5 5 M11 8l4.5-4.5 5 5L16 13 M13 11l-8 8a1.6 1.6 0 01-2.2-2.2l8-8',
+        plus: 'M12 5v14 M5 12h14',
+        warehouse: 'M4 8l8-4 8 4v9l-8 4-8-4z M4 8l8 4 8-4 M12 12v9',
+        management: 'M9 11a3 3 0 100-6 3 3 0 000 6z M3 20c0-3.3 2.7-5 6-5s6 1.7 6 5 M16.5 11a2.5 2.5 0 100-5 M16 15c2.8 0 5 1.6 5 4.5',
+        log: 'M6 4h12v16H6z M9 8h6 M9 12h6 M9 16h4',
+        events: 'M12 3l8 4.5v9L12 21l-8-4.5v-9z M12 3L7 12h10z M7 12l5 9 5-9',
+        influence: 'M12 4v16 M8 20h8 M5 7h14 M5 7l-3 6a3 3 0 006 0z M19 7l-3 6a3 3 0 006 0z',
+        favour: 'M12 3v3 M12 18v3 M3 12h3 M18 12h3 M5.6 5.6l2.1 2.1 M16.3 16.3l2.1 2.1 M5.6 18.4l2.1-2.1 M16.3 7.7l2.1-2.1 M12 8a4 4 0 110 8 4 4 0 010-8z',
+        war: 'M4 4l11 11 M4 4h3l10 10 M20 4L9 15 M20 4h-3L7 14 M6.5 16.5l-2.5 2.5 M17.5 16.5l2.5 2.5 M5 14l5 5 M19 14l-5 5',
+        shield: 'M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z',
+        up: 'M6 15l6-6 6 6',
+        down: 'M6 9l6 6 6-6'
+      };
+      function icon(name, cls) {
+        var NS = 'http://www.w3.org/2000/svg';
+        var svg = document.createElementNS(NS, 'svg');
+        svg.setAttribute('viewBox', '0 0 24 24');
+        svg.setAttribute('class', 'tsi-bas-icon' + (cls ? ' ' + cls : ''));
+        svg.setAttribute('aria-hidden', 'true');
+        var path = document.createElementNS(NS, 'path');
+        path.setAttribute('d', ICONS[name] || '');
+        svg.appendChild(path);
+        return svg;
+      }
+
+      /* The suite's tooltip card (shared/js/tooltip.js), for the grid's
+         tiles, the top bar's counts, the artisan tools, the Hall's actions
+         and the war's stat blocks (the War Room's Recruit list, the Military
+         and Menagerie lists, the War Action's forces). It sits beside what it
+         describes, and above the panels. */
+      var TIP = TSI.tooltip;
+      function hideTip() { TIP.hide(); }
+      /* opts.noChange: not on 'change' (for number boxes, which change as they're typed in). */
+      function bindTip(node, build, opts) { TIP.bind(node, build, opts); }
+      /* The same from the keyboard: beside anchor while target has the focus. */
+      function bindFocusTip(target, anchor, build) { TIP.bindFocus(target, anchor, build); }
+      function tipList(lines) { return TIP.list(lines); }
+      life.onStop(hideTip);
 
       /* ---------- Stat blocks (the war mini-game, phase 2) ----------
          A War Room unit, a Lieutenant or a Menagerie beast, as the War Table
@@ -460,7 +463,9 @@
       }
 
       /* ================================================================
-         The tool's bar (sticks to the top)
+         The slim header: the wordmark, Party Level, the Compendium, Reset
+         and the save buttons (the day and the treasury are in the map's
+         top bar)
          ================================================================ */
       var levelSelect = el('select', { class: 'tsi-input tsi-bas-level', 'aria-label': 'Party Level', 'data-test': 'level' },
         Array.apply(null, { length: 20 }).map(function (_, i) { return el('option', { value: String(i + 1), text: String(i + 1) }); }));
@@ -469,17 +474,14 @@
          to finish it; days pass by themselves as the Explorer makes camp. */
       var dayStatus = el('div', { class: 'tsi-bas-daystatus', 'data-test': 'day-status', role: 'status' });
       var advanceBtn = el('button', { type: 'button', class: 'tsi-btn tsi-btn--primary tsi-bas-advance', 'data-test': 'advance', hidden: true }, 'Finish Day');
-      var bar = el('div', { class: 'tsi-bas-bar' }, [
+      var bar = el('header', { class: 'tsi-bas-head' }, [
         el('div', { class: 'tsi-bas-brand' }, [
-          el('div', { class: 'tsi-bas-brand__title', text: 'The Ironbow: Bastion Manager' }),
-          el('div', { class: 'tsi-bas-brand__sub', text: 'Scarlett Isles • Day by day with the Explorer' })
+          el('div', { class: 'tsi-bas-brand__title', text: 'The Ironbow' }),
+          el('div', { class: 'tsi-bas-brand__sub', text: 'Bastion Manager • day by day with the Explorer' })
         ]),
-        el('div', { class: 'tsi-bas-bar__controls' }, [
-          dayStatus,
+        el('div', { class: 'tsi-bas-head__controls' }, [
           el('label', { class: 'tsi-bas-field tsi-bas-field--inline' }, [el('span', { text: 'Party Level' }), levelSelect]),
           btn('Compendium', function () { onCompendium(); }, '', 'compendium'),
-          btn('Roll Bastion Event', function () { onRollEvent(); }, '', 'roll-event'),
-          advanceBtn,
           btn('Reset', function () { onReset(); }, 'tsi-btn--ghost', 'reset', { title: 'Clears the Bastion\'s saved data in this browser.' }),
           btn('Download Save (JSON)', function () { onDownload(); }, '', 'download-save'),
           btn('Import Save (JSON)', function () { onImport(); }, '', 'import-save')
@@ -516,8 +518,21 @@
           pct, claim
         ]);
       });
+      /* The Favour of the Gods panel: the three bars and Claim. */
+      var favourCard = card('favour', 'Favour of the Gods');
+      TSI.append(favourCard.body, [
+        el('div', { class: 'tsi-bas-favour' }, favourList),
+        muted('Shrine blessings add 1d20% to their god. At 100%, Claim it and the bar starts again from 0%.', 'tsi-bas-side__hint')
+      ]);
+
+      /* The Clan Influence panel: one row per Clan, with its Political
+         Capital bar (and Honour Change at ±100), its Honour/Respect (the
+         DM's to set, −5 to +5) and the support they add up to; then the
+         Favour Tokens. (Before the new screen the bars sat in the left
+         column and the rest in Party Identity & Clan Influence.) */
       var pcRows = {};
-      var pcList = B.clans.map(function (c) {
+      var trackerRows = {};
+      var influenceList = el('div', { class: 'tsi-bas-influence', 'data-test': 'influence' }, B.clans.map(function (c) {
         var fill = el('div', { class: 'tsi-bas-bar-fill tsi-bas-bar-fill--pc' });
         var val = el('div', { class: 'tsi-bas-meter__val', 'data-test': 'pc-' + c.key, text: '0' });
         var change = btn('Honour Change', function () {
@@ -526,21 +541,29 @@
           done();
         }, 'tsi-btn--ghost tsi-bas-meter__btn', 'honour-' + c.key, { hidden: true });
         pcRows[c.key] = { fill: fill, val: val, change: change };
-        return el('div', { class: 'tsi-bas-meter tsi-bas-meter--pc' }, [
-          el('div', { class: 'tsi-bas-meter__name', text: c.name }),
-          el('div', { class: 'tsi-bas-meter__bar tsi-bas-meter__bar--pc' }, fill),
-          val, change
+        var input = numberInput('hr-' + c.key, { min: '-5', max: '5', 'aria-label': c.name + ' Honour/Respect (-5 to +5)' });
+        var support = el('div', { class: 'tsi-bas-influence__support', 'data-test': 'support-' + c.key });
+        life.on(input, 'change', function () {
+          state.honourRespectByClan[c.key] = R.clampInt(input.value, -5, 5);
+          input.value = String(state.honourRespectByClan[c.key]);
+          done();
+        });
+        trackerRows[c.key] = { input: input, support: support };
+        return el('div', { class: 'tsi-bas-influence__row' }, [
+          el('div', { class: 'tsi-bas-influence__name', text: c.name }),
+          el('div', { class: 'tsi-bas-influence__pc' }, [
+            el('div', { class: 'tsi-bas-meter__bar tsi-bas-meter__bar--pc' }, fill),
+            val, change
+          ]),
+          field('Honour/Respect', input, 'tsi-bas-influence__hr'),
+          el('div', { class: 'tsi-bas-influence__sup' }, [el('span', { class: 'tsi-bas-influence__sup-label', text: 'Support' }), support])
         ]);
-      });
+      }));
       var tokensPill = el('div', { class: 'tsi-bas-token-pill', 'data-test': 'tokens', text: '0' });
-      var side = el('aside', { class: 'tsi-bas-side', 'aria-label': 'Favour of The Gods and Political Capital' }, [
-        el('h2', { class: 'tsi-bas-side__title', text: 'Favour of The Gods' }),
-        favourList,
-        muted('Shrine blessings add 1d20% to their god.', 'tsi-bas-side__hint'),
-        el('h2', { class: 'tsi-bas-side__title', text: 'Political Capital' }),
-        pcList,
-        muted('Starts neutral. Diplomacy outcomes raise/lower clan capital. When it hits ±100, click “Honour Change” and the bar resets to neutral.', 'tsi-bas-side__hint'),
-        el('h2', { class: 'tsi-bas-side__title', text: 'Diplomatic Assets' }),
+      var influenceCard = card('influence', 'Clan Influence');
+      TSI.append(influenceCard.body, [
+        muted('Political Capital starts neutral; diplomacy raises or lowers it (−100 to +100). When it reaches ±100, press Honour Change and the bar returns to neutral. Honour/Respect is yours to set (−5 to +5); support adds the two together (0 to 100).'),
+        influenceList,
         el('div', { class: 'tsi-bas-asset' }, [
           el('div', { class: 'tsi-bas-asset__name', text: 'Favour Tokens' }),
           muted('Earned from strong delegations. Spend later to influence negotiations.', 'tsi-bas-asset__desc'),
@@ -564,44 +587,48 @@
           r.fill.style.width = side + '%';
           r.val.textContent = String(v);
           r.change.hidden = Math.abs(v) < 100;
+          var t = trackerRows[c.key];
+          setValue(t.input, R.clampInt(state.honourRespectByClan[c.key] || 0, -5, 5));
+          TSI.clear(t.support);
+          TSI.append(t.support, [el('b', { text: String(R.supportForClanKey(state, c.key)) }), '/100']);
         });
         tokensPill.textContent = String(R.clampInt(state.diplomacy.tokens || 0, 0, 999));
       }
 
       /* ================================================================
-         Day Log · Bastion Map · Bastion Event
+         The Day Log and Bastion Events panels, and the Bastion Map
          ================================================================ */
       var logList = el('div', { class: 'tsi-bas-log', 'data-test': 'log' });
-      var logCard = card('log', 'Day Log', { cls: 'tsi-bas-card--tall' });
-      logCard.head.appendChild(btn('Clear log', function () { state.log = []; done(); }, '', 'clear-log'));
+      var logCard = card('log', 'Day Log');
+      logCard.head.appendChild(btn('Clear log', function () { state.log = []; done(); }, 'tsi-btn--ghost', 'clear-log'));
       logCard.body.appendChild(logList);
 
-      var turnPill = el('div', { class: 'tsi-bas-turn-pill', 'data-test': 'turn', text: 'Day 1' });
+      /* The painting, with the building overlays (full-frame pictures the
+         same size as it), fitted into the map panel and never cropped, so
+         they always line up (fitMap, below). */
       var overlayLayer = el('div', { class: 'tsi-bas-map__overlays', 'data-test': 'map-overlays' });
-      var mapCard = card('map', 'Bastion Map', { cls: 'tsi-bas-card--map' });
-      mapCard.head.appendChild(turnPill);
       var mapRepairs = el('div', { class: 'tsi-bas-map__repairs', hidden: true, 'data-test': 'map-repairs' });
-      TSI.append(mapCard.body, [
-        el('div', { class: 'tsi-bas-map' }, [
-          el('img', { class: 'tsi-bas-map__img', src: asset('bastion_artwork.png'), alt: 'Bastion Map', 'data-test': 'map' }),
-          overlayLayer
-        ]),
-        mapRepairs,
-        muted('Tip: This tool saves automatically in your browser.', 'tsi-bas-map__hint')
+      var mapFrame = el('div', { class: 'tsi-bas-map' }, [
+        el('img', { class: 'tsi-bas-map__img', src: asset('bastion_artwork.png'), alt: 'The Ironbow Bastion', 'data-test': 'map' }),
+        overlayLayer
       ]);
 
+      /* The Bastion Events panel: Roll Bastion Event (its main action), the
+         last event, and when the next automatic one comes. */
       var eventBox = el('div', { class: 'tsi-bas-event', 'data-test': 'event' });
       var eventNext = el('p', { class: 'tsi-bas-muted tsi-bas-event__next', 'data-test': 'event-next' });
-      var eventCard = card('event', 'Bastion Event', { cls: 'tsi-bas-card--tall' });
-      eventCard.body.appendChild(eventBox);
-      eventCard.body.appendChild(eventNext);
+      var eventCard = card('events', 'Bastion Events');
+      TSI.append(eventCard.body, [
+        el('div', { class: 'tsi-bas-actions tsi-bas-actions--start' }, [btn('Roll Bastion Event', function () { onRollEvent(); }, 'tsi-btn--primary', 'roll-event')]),
+        eventNext,
+        eventBox
+      ]);
 
       /* "Day 12", or "Day 1 · the Explorer sets the day" until the Bastion has read it. */
       function dayText() {
         return 'Day ' + state.day + (state.anchored ? '' : ' · the Explorer sets the day');
       }
       function renderTop() {
-        turnPill.textContent = dayText();
         TSI.clear(logList);
         if (!state.log.length) logList.appendChild(muted('No log entries yet.'));
         state.log.slice(0, 80).forEach(function (e) {
@@ -770,9 +797,12 @@
       });
 
       /* ================================================================
-         Party Identity & Clan Influence
+         Party Identity (the panel the badge in the map's top-right corner
+         opens): Unsworn, Clan or Brigade, the crest, Form Clan and Form
+         Mercenary Brigade, Clan Honour and Trusted Clients. The Clans'
+         trackers are in the Clan Influence panel.
          ================================================================ */
-      var idCard = card('identity', 'Party Identity & Clan Influence', { collapsible: true });
+      var idCard = card('identity', 'Party Identity');
       var orgDesc = muted('');
       var orgPill = el('div', { class: 'tsi-bas-status-pill', 'data-test': 'org', text: 'Unsworn' });
       var crestImg = el('img', { class: 'tsi-bas-crest__img', alt: '', 'data-test': 'crest' });
@@ -784,24 +814,6 @@
       var formMercBtn = btn('Form Mercenary Brigade', function () { onFormMerc(); }, '', 'form-merc');
       var reqHint = muted('', 'tsi-bas-req');
       reqHint.setAttribute('data-test', 'requirements');
-      var trackerRows = {};
-      var trackerGrid = el('div', { class: 'tsi-bas-clan-grid' }, B.clans.map(function (c) {
-        var pcText = el('span', { class: 'tsi-bas-muted' });
-        var input = numberInput('hr-' + c.key, { min: '-5', max: '5', 'aria-label': c.name + ' Honour/Respect (-5 to +5)' });
-        var support = el('div', { class: 'tsi-bas-clan-row__support', 'data-test': 'support-' + c.key });
-        life.on(input, 'change', function () {
-          state.honourRespectByClan[c.key] = R.clampInt(input.value, -5, 5);
-          input.value = String(state.honourRespectByClan[c.key]);
-          done();
-        });
-        trackerRows[c.key] = { pc: pcText, input: input, support: support };
-        return el('div', { class: 'tsi-bas-clan-row' }, [
-          el('div', { class: 'tsi-bas-clan-row__name', text: c.name }),
-          el('div', { class: 'tsi-bas-clan-row__pc' }, ['PC: ', pcText]),
-          field('Honour/Respect (-5..+5)', input, 'tsi-bas-clan-row__field'),
-          support
-        ]);
-      }));
       var honourInput = numberInput('clan-honour', { min: '0', max: '100', 'aria-label': 'Clan Honour (0 to 100)' });
       life.on(honourInput, 'change', function () {
         state.clanHonor = R.clampInt(honourInput.value, 0, 100);
@@ -844,12 +856,7 @@
           el('div', { class: 'tsi-bas-actions' }, [formClanBtn, formMercBtn]),
           reqHint
         ]),
-        el('div', { class: 'tsi-bas-row' }, [
-          label('Clan Influence Trackers'),
-          muted('Honour/Respect is DM-editable (-5 to +5). Support is derived from Political Capital + Honour/Respect.'),
-          trackerGrid,
-          el('div', { class: 'tsi-bas-split' }, [honourBox, trustBox])
-        ])
+        el('div', { class: 'tsi-bas-split' }, [honourBox, trustBox])
       ]);
 
       function renderIdentity() {
@@ -878,12 +885,6 @@
         trustBox.hidden = o.type !== 'merc';
         setValue(honourInput, R.clampInt(state.clanHonor === undefined || state.clanHonor === null ? 40 : state.clanHonor, 0, 100));
         B.clans.forEach(function (c) {
-          var pc = R.clampInt(state.politicalCapital[c.key] || 0, -100, 100);
-          var r = trackerRows[c.key];
-          TSI.clear(r.pc).appendChild(el('b', { text: (pc >= 0 ? '+' : '') + pc }));
-          setValue(r.input, R.clampInt(state.honourRespectByClan[c.key] || 0, -5, 5));
-          TSI.clear(r.support);
-          TSI.append(r.support, [el('b', { text: String(R.supportForClanKey(state, c.key)) }), '/100']);
           var tc = R.clampInt(state.trustedClientsByClan[c.key] === undefined ? 50 : state.trustedClientsByClan[c.key], 0, 100);
           setValue(trustRows[c.key].input, tc);
           TSI.clear(trustRows[c.key].shown);
@@ -938,19 +939,23 @@
       });
 
       /* ================================================================
-         Management: Defenders · Treasury · Military
+         Management: Defenders and Menagerie Beasts · Military (the
+         treasury is in the map's top bar)
          ================================================================ */
       var mgmtCard = card('management', 'Management');
       var defValue = el('div', { class: 'tsi-bas-value', 'data-test': 'defenders', text: '0' });
       var defMeta = muted('None recruited');
       defMeta.setAttribute('data-test', 'defenders-meta');
       var beastList = el('div', { class: 'tsi-bas-list', 'data-test': 'beasts' });
-      var treasuryInput = numberInput('treasury', { min: '0', 'aria-label': 'Treasury (gp)' });
-      life.on(treasuryInput, 'input', function () {
+      /* The treasury, in the map's top bar: saved when you finish typing
+         (Enter, or leaving the box), not on every key. */
+      var treasuryInput = numberInput('treasury', { min: '0', 'aria-label': 'Treasury (gp)', class: 'tsi-input tsi-bas-num tsi-bas-treasury__input' });
+      life.on(treasuryInput, 'change', function () {
         state.treasuryGP = R.clampInt(treasuryInput.value, 0);
+        treasuryInput.value = String(state.treasuryGP);
         done();
       });
-      life.on(treasuryInput, 'change', function () { treasuryInput.value = String(state.treasuryGP); });
+      life.on(treasuryInput, 'keydown', function (e) { if (e.key === 'Enter') treasuryInput.blur(); });
       var militaryList = el('div', { class: 'tsi-bas-list', 'data-test': 'military' });
       TSI.append(mgmtCard.body, el('div', { class: 'tsi-bas-mgmt' }, [
         el('div', { class: 'tsi-bas-box tsi-bas-box--art tsi-bas-box--defenders' }, [
@@ -973,11 +978,6 @@
           defValue,
           label('Menagerie Beasts'),
           beastList
-        ]),
-        el('div', { class: 'tsi-bas-box tsi-bas-box--art tsi-bas-box--treasury' }, [
-          label('Treasury (gp)'),
-          muted('Shared Bastion funds'),
-          treasuryInput
         ]),
         el('div', { class: 'tsi-bas-box tsi-bas-box--art tsi-bas-box--military' }, [
           el('div', { class: 'tsi-bas-row__top' }, [
@@ -1107,7 +1107,7 @@
          saved, so changing what you commit never redraws it) and your army's
          Battle Value follow as you type. Rules: war-campaign-rules.js.
          ================================================================ */
-      var warCard = card('war', 'Banner & War Council', { collapsible: true });
+      var warCard = card('war', 'Banner & War Council');
       var warTarget = el('select', { class: 'tsi-input', 'data-test': 'war-target' }, B.clans.map(function (c) { return el('option', { value: c.key, text: c.name }); }));
       /* Raid, Skirmish and Seize Outpost: Defend Bastion isn't one you
          choose, it comes to you when a Clan at war attacks (Harry, 4 October 2026). */
@@ -1748,6 +1748,8 @@
            buttons or your own ground on the board. */
         if (maNotice) { maNotice.close(); maNotice = null; }
         if (turnNotice) { turnNotice.close(); turnNotice = null; }
+        /* The War Table opens over everything: the panel it was begun from closes. */
+        closePanel();
         militaryRunning = true;
         renderTurnButton();
         renderMilitary();
@@ -1812,7 +1814,7 @@
             host: page,
             life: life,
             store: ctx.store,
-            inert: [bar, layout],
+            inert: [bar, stage],
             title: maName(ma),
             summary: R.militarySummary(data, ma),
             crest: sworn && crest ? { dataUrl: crest.dataUrl } : null,
@@ -1910,11 +1912,12 @@
       var ledgerPill = pill('Council Ledger', function () { onLedger(); }, 'ledger', 'Hear the next dispute before the Arbitration Authority');
       var HALL_DAYS_TEXT = 'Each diplomatic action takes its own days, shown beside it.';
       var hallSub = muted(HALL_DAYS_TEXT);
-      var dipCard = card('diplomacy', 'Diplomacy & Trade', {
-        collapsible: true,
+      /* The Hall of Emissaries' panel, opened from the Hall's tile in the
+         facility grid (as the Diplomacy & Trade panel was before). */
+      var dipCard = card('diplomacy', 'Hall of Emissaries · Diplomacy & Trade', {
         cls: 'tsi-bas-card--diplomacy',
         head: el('div', { class: 'tsi-bas-dip-head' }, [
-          el('div', null, [el('h2', { class: 'tsi-bas-card__title', text: 'Diplomacy & Trade' }), dipMeta]),
+          el('div', null, [label('Diplomacy & Trade'), dipMeta]),
           el('div', { class: 'tsi-bas-dip-head__right' }, [
             el('div', { class: 'tsi-bas-hall-head' }, [
               el('div', { class: 'tsi-bas-hall-head__title', text: 'Hall of Emissaries' }),
@@ -2145,53 +2148,31 @@
       }
 
       /* ================================================================
-         Facilities: construction slots, pending orders, the carousel
+         Facilities: the grid in the map's bottom bar, the build panel,
+         each facility's panel, and the Orders panel
+         The grid: the five starting facilities, then the six construction
+         slots. A built facility's tile opens its panel (the Hall's opens the
+         Hall of Emissaries); one being built shows an hourglass; an empty
+         slot the party's level allows opens the build panel; a locked one
+         says the level it opens at.
          ================================================================ */
-      var facCard = card('facilities', 'Facilities', { collapsible: true });
-      var slotMeta = muted('—');
-      slotMeta.setAttribute('data-test', 'slot-meta');
-      var slotList = el('div', { class: 'tsi-bas-slots', 'data-test': 'slots' });
+      var GRID_START = ['workshop', 'barracks', 'watchtower', 'dock', 'armoury'].filter(function (id) { return B.startingBuilt.indexOf(id) !== -1; })
+        .concat(B.startingBuilt.filter(function (id) { return ['workshop', 'barracks', 'watchtower', 'dock', 'armoury'].indexOf(id) === -1; }));
+      var SLOT_COUNT = R.constructionSlotsForLevel(20);
+      /* The party level a slot (0 to 5) opens at: 5, 5, 9, 9, 13, 17. */
+      function slotOpensAt(i) {
+        for (var lvl = 1; lvl <= 20; lvl++) if (R.constructionSlotsForLevel(lvl) > i) return lvl;
+        return null;
+      }
+      var grid = el('div', { class: 'tsi-bas-grid', id: 'tsi-bas-grid', role: 'group', 'aria-label': 'Facilities', 'data-test': 'grid' });
       var pendingList = el('div', { class: 'tsi-bas-list', 'data-test': 'pending' });
-      var carousel = el('div', { class: 'tsi-bas-carousel', tabindex: '0', 'aria-label': 'Facilities', 'data-test': 'carousel' });
-      var prevBtn = el('button', { type: 'button', class: 'tsi-bas-carousel__nav tsi-bas-carousel__nav--left', 'aria-label': 'Previous facilities', 'data-test': 'fac-prev' }, '‹');
-      var nextBtn = el('button', { type: 'button', class: 'tsi-bas-carousel__nav tsi-bas-carousel__nav--right', 'aria-label': 'Next facilities', 'data-test': 'fac-next' }, '›');
-      TSI.append(facCard.body, [
-        el('div', { class: 'tsi-bas-build' }, [
-          el('div', { class: 'tsi-bas-build__top' }, [
-            el('div', null, [label('Construction Slots'), slotMeta]),
-            el('div', { class: 'tsi-bas-build__right' }, [
-              muted('Facilities unlock at levels 5 / 9 / 13 / 17. Locked facilities stay visible but disabled.'),
-              btn('Clear extra builds', function () { onClearBuilds(); }, '', 'clear-builds')
-            ])
-          ]),
-          el('div', { class: 'tsi-bas-build__grid' }, [
-            slotList,
-            el('div', { class: 'tsi-bas-pending' }, [
-              label('Pending Orders'),
-              muted('Each order completes on its day, as the Explorer\'s days pass. One waiting for a roll you cancelled shows Resolve.'),
-              pendingList
-            ])
-          ])
-        ]),
-        el('div', { class: 'tsi-bas-carousel-wrap' }, [prevBtn, carousel, nextBtn])
+      var ordersCard = card('orders', 'Pending Orders');
+      TSI.append(ordersCard.body, [
+        muted('Each order completes on its day, as the Explorer\'s days pass. One waiting for a roll you cancelled shows Resolve.'),
+        pendingList
       ]);
-      function step() {
-        var first = carousel.querySelector('.tsi-bas-fac');
-        return (first ? first.getBoundingClientRect().width : 400) + 16;
-      }
-      function updateNav() {
-        var max = carousel.scrollWidth - carousel.clientWidth;
-        prevBtn.disabled = carousel.scrollLeft <= 2;
-        nextBtn.disabled = carousel.scrollLeft >= max - 2;
-      }
-      life.on(prevBtn, 'click', function () { carousel.scrollBy({ left: -step(), behavior: 'smooth' }); });
-      life.on(nextBtn, 'click', function () { carousel.scrollBy({ left: step(), behavior: 'smooth' }); });
-      life.on(carousel, 'keydown', function (e) {
-        if (e.key === 'ArrowLeft') { e.preventDefault(); carousel.scrollBy({ left: -step(), behavior: 'smooth' }); }
-        if (e.key === 'ArrowRight') { e.preventDefault(); carousel.scrollBy({ left: step(), behavior: 'smooth' }); }
-      });
-      life.on(carousel, 'scroll', function () { life.raf(updateNav); }, { passive: true });
-      life.on(window, 'resize', function () { life.raf(updateNav); });
+      var facPanelBody = el('div', { class: 'tsi-bas-facpanel', 'data-test': 'fac-panel' });
+      var buildBody = el('div', { class: 'tsi-bas-buildpanel', 'data-test': 'build-panel' });
 
       /* "The Barracks is Under Repair until Day 19." (as R.issueOrder says it) */
       function repairText(fac, until) { return 'The ' + fac.name + ' is Under Repair until Day ' + until + '.'; }
@@ -2258,6 +2239,10 @@
         if (refocus && p.button.isConnected) p.button.focus({ preventScroll: true });
       }
       life.on(window, 'resize', function () { closePicker(false); });
+      /* Escape closes the open list, not the panel it's in: this runs before the pop-up's own Escape. */
+      life.on(window, 'keydown', function (e) {
+        if (picker && e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closePicker(true); }
+      }, { capture: true });
       life.on(window, 'scroll', function (e) { if (picker && !picker.list.contains(e.target)) closePicker(false); }, { capture: true, passive: true });
       life.on(document, 'pointerdown', function (e) {
         if (picker && !picker.list.contains(e.target) && !picker.button.contains(e.target)) closePicker(false);
@@ -2290,8 +2275,7 @@
         function tipFor(li) {
           var c = statTip(labelOf(Number(li.getAttribute('data-index'))));
           if (!c || !picker) { hideTip(); return; }
-          fillTip(c);
-          placeTipBeside(picker.list.getBoundingClientRect(), li.getBoundingClientRect());
+          TIP.show(c, picker.list, { beside: true, row: li.getBoundingClientRect() });
         }
         function choose(idx) {
           select.value = String(idx);
@@ -2305,14 +2289,15 @@
             var arch = type && W.archetypes[type];
             return el('li', {
               role: 'option', id: listId + '-' + idx, class: 'tsi-bas-pick__opt', tabindex: '-1',
-              'aria-selected': String(idx === current()), 'aria-describedby': 'tsi-bas-tip', 'data-index': String(idx), 'data-test': 'wr-option-' + idx
+              'aria-selected': String(idx === current()), 'aria-describedby': TIP.node.id, 'data-index': String(idx), 'data-test': 'wr-option-' + idx
             }, [
               el('span', { class: 'tsi-bas-pick__name', text: arch ? arch.name : type === 'lieutenant' ? W.lieutenant.name : labelOf(idx) }),
               el('span', { class: 'tsi-bas-pick__size', text: arch ? plural(arch.size, 'soldier') : type === 'lieutenant' ? 'One officer' : '' })
             ]);
           });
           var list = el('ul', { class: 'tsi-bas-pick__list', role: 'listbox', id: listId, tabindex: '-1', 'aria-label': fnLabel, 'data-test': 'wr-list' }, items);
-          page.appendChild(list);
+          /* In the War Room's panel (so the pop-up keeps the keyboard inside it). */
+          (button.closest('.tsi-modal') || page).appendChild(list);
           picker = { list: list, button: button };
           button.setAttribute('aria-expanded', 'true');
           /* Under the button, or above it if there's no room below. */
@@ -2371,110 +2356,278 @@
         return el('div', { class: 'tsi-bas-pick-wrap' }, [button, select]);
       }
 
-      function renderFacilities() {
+      /* ---------- Pending orders ---------- */
+      /* "Due Day 6 (in 5 days)", or "Due now: waiting for your roll" (a roll
+         was cancelled, so it waits for Resolve or comes up the next day). */
+      function orderWhen(o) {
+        var fixing = R.underRepair(state, o.facId);
+        var at = fixing ? R.facility(data, o.facId) : null;
+        var waiting = R.isDue(state, o) && !fixing;
+        var when = waiting ? 'Due now: waiting for your roll' : 'Due Day ' + o.dueDay + ' (' + R.inDays(state.day, o.dueDay) + ')';
+        return { waiting: waiting, text: when + (fixing ? ' • waiting: the ' + (at ? at.name : o.facId) + ' is Under Repair until Day ' + fixing : '') };
+      }
+      /* One pending order, with Resolve (when it's waiting for a roll) and
+         Cancel. i is its place in all the pending orders. */
+      function pendingRow(o, i) {
+        var w = orderWhen(o);
+        return el('div', { class: 'tsi-bas-item' + (w.waiting ? ' tsi-bas-item--due' : '') }, [
+          el('div', null, [
+            el('div', { class: 'tsi-bas-item__name', text: o.label }),
+            el('div', { class: 'tsi-bas-item__meta', 'data-test': 'pending-meta-' + i, text: w.text })
+          ]),
+          el('div', { class: 'tsi-bas-actions' }, [
+            w.waiting ? btn('Resolve', function () { onResolveOrder(o.id); }, 'tsi-btn--primary', 'resolve-' + i, { disabled: turnRunning || militaryRunning }) : null,
+            btn('Cancel', function () {
+              logAll([R.cancelOrder(state, o.id, data)]);
+              done();
+            }, 'tsi-btn--ghost', 'cancel-' + i)
+          ])
+        ]);
+      }
+      function renderPending() {
+        TSI.clear(pendingList);
+        if (!state.pendingOrders.length) pendingList.appendChild(muted('No pending orders.'));
+        state.pendingOrders.forEach(function (o, i) { pendingList.appendChild(pendingRow(o, i)); });
+      }
+      /* "Recruit Defenders: due Day 6 (in 5 days)" for a tooltip. */
+      function orderTipLine(o) {
+        var w = orderWhen(o);
+        return o.label + ': ' + (w.waiting ? 'due now, roll needed' : 'due Day ' + o.dueDay + ' (' + R.inDays(state.day, o.dueDay) + ')');
+      }
+      function ordersAt(id) { return state.pendingOrders.filter(function (o) { return o.facId === id; }); }
+
+      /* ---------- The grid ---------- */
+      function facArt(id, cls) {
+        var f = B.facilityImages[id];
+        return f ? el('img', { class: cls, src: asset('facilities/' + f), alt: '', draggable: 'false' }) : el('div', { class: cls + ' ' + cls + '--empty' });
+      }
+      function facLevelText(id) { return 'Level ' + R.getFacilityLevel(state, id); }
+      /* A built facility's tile: its art, and a count of its pending orders. */
+      function builtTile(id, extra) {
+        var fac = R.facility(data, id);
+        var name = fac ? fac.name : id;
+        var repair = R.underRepair(state, id);
+        var mine = ordersAt(id);
+        var over = extra && extra.overCapacity;
+        var tile = el('button', {
+          type: 'button', class: 'tsi-bas-tile tsi-bas-tile--built' + (repair ? ' tsi-bas-tile--repair' : '') + (over ? ' tsi-bas-tile--over' : ''),
+          'data-test': 'tile-' + id, 'data-fac': id,
+          'aria-label': name + (repair ? ', Under Repair until Day ' + repair : '') + (mine.length ? ', ' + plural(mine.length, 'order') + ' pending' : '') + '. Open its panel.',
+          onclick: function () { openFacility(id); }
+        }, [
+          facArt(id, 'tsi-bas-tile__img'),
+          repair ? el('span', { class: 'tsi-bas-tile__mark', 'aria-hidden': 'true' }, icon('hammer')) : null,
+          mine.length ? el('span', { class: 'tsi-bas-tile__count', 'data-test': 'tile-orders-' + id, 'aria-hidden': 'true', text: String(mine.length) }) : null,
+          over ? el('span', { class: 'tsi-bas-tile__over', 'data-test': 'over-capacity', 'aria-hidden': 'true', text: '!' }) : null
+        ]);
+        var build = function () {
+          var parts = [muted(facLevelText(id) + (repair ? ' • Under Repair until Day ' + repair + ' (working again on Day ' + (repair + 1) + ')' : ' • Active'))];
+          if (over) parts.push(muted('Over capacity: kept, but above the ' + R.constructionSlotsForLevel(state.partyLevel) + ' construction slot(s) for party level ' + state.partyLevel + '.'));
+          if (mine.length) parts.push(tipList(mine.map(orderTipLine)));
+          else parts.push(muted('No orders pending here.'));
+          return { title: name, parts: parts, foot: 'Click to open its orders' };
+        };
+        bindTip(tile, build, { noChange: true });
+        bindFocusTip(tile, tile, build);
+        return tile;
+      }
+      /* A facility being built: an hourglass and the days left; not clickable. */
+      function buildingTile(entry, index) {
+        var fac = R.facility(data, entry.facId);
+        var name = fac ? fac.name : entry.facId;
+        var left = R.buildDaysLeft(state, entry);
+        var tile = el('div', {
+          class: 'tsi-bas-tile tsi-bas-tile--building', role: 'img', tabindex: '0', 'data-test': 'tile-' + entry.facId, 'data-slot': String(index),
+          'aria-label': name + ': under construction, ' + R.daysText(left) + ' left (ready on Day ' + entry.readyDay + ').'
+        }, [
+          facArt(entry.facId, 'tsi-bas-tile__img'),
+          el('span', { class: 'tsi-bas-tile__mark tsi-bas-tile__mark--build', 'aria-hidden': 'true' }, [icon('hourglass'), el('span', { class: 'tsi-bas-tile__days', text: String(left) })])
+        ]);
+        var build = function () {
+          return { title: name, parts: [muted('Under construction: ' + R.daysText(left) + ' left.')], foot: 'Ready on Day ' + entry.readyDay };
+        };
+        bindTip(tile, build, { noChange: true });
+        bindFocusTip(tile, tile, build);
+        return tile;
+      }
+      function slotTile(row, i) {
+        var opens = slotOpensAt(i);
+        var free = state.partyLevel >= (opens || 99);
+        if (free && row && row.canBuild) {
+          var tile = el('button', {
+            type: 'button', class: 'tsi-bas-tile tsi-bas-tile--slot', 'data-test': 'slot-' + i, 'aria-label': 'Empty construction slot. Click to build a new facility.',
+            onclick: function () { openBuild(i); }
+          }, el('span', { class: 'tsi-bas-tile__plus', 'aria-hidden': 'true' }, icon('plus')));
+          var b = function () { return { title: 'Empty construction slot', parts: [muted('Click to build a new facility.')], foot: 'Party level ' + state.partyLevel + ': ' + plural(R.constructionSlotsForLevel(state.partyLevel), 'slot') }; };
+          bindTip(tile, b, { noChange: true });
+          bindFocusTip(tile, tile, b);
+          return tile;
+        }
+        var why = free ? 'No free slot: every construction slot for party level ' + state.partyLevel + ' is in use.' : 'Unlocks at party level ' + opens + '.';
+        var lockTile = el('div', {
+          class: 'tsi-bas-tile tsi-bas-tile--locked', role: 'img', tabindex: '0', 'data-test': 'slot-' + i, 'aria-label': 'Locked construction slot. ' + why
+        }, el('span', { class: 'tsi-bas-tile__plus', 'aria-hidden': 'true' }, icon('lock')));
+        var lb = function () { return { title: 'Construction slot', parts: [muted(why)] }; };
+        bindTip(lockTile, lb, { noChange: true });
+        bindFocusTip(lockTile, lockTile, lb);
+        return lockTile;
+      }
+      function renderGrid() {
         var slots = R.slotRows(state, state.partyLevel);
-        slotMeta.textContent = 'Level ' + state.partyLevel + ' → ' + slots.max + ' slot(s). Used: ' + slots.used + '/' + slots.max + (slots.over ? ' (' + slots.over + ' over capacity)' : '');
-        TSI.clear(slotList);
-        var reserved = R.reservedFacilityIds(state, data);
-        var buildable = data.facilities.filter(function (f) { return B.startingBuilt.indexOf(f.id) === -1; });
-        slots.rows.forEach(function (row) {
-          if (row.entry) {
-            var fac = R.facility(data, row.entry.facId);
-            var fixing = row.entry.status === 'building' ? 0 : R.underRepair(state, row.entry.facId);
-            var left = R.buildDaysLeft(state, row.entry);
-            var status = row.entry.status === 'building' ? 'Under construction • ' + R.daysText(left) + ' left (ready on Day ' + row.entry.readyDay + ')'
-              : fixing ? 'Built • Under Repair until Day ' + fixing : 'Built • Active';
-            slotList.appendChild(el('div', { class: 'tsi-bas-slot' + (row.overCapacity ? ' tsi-bas-slot--over' : ''), 'data-test': 'slot-' + row.index }, [
-              el('div', { class: 'tsi-bas-slot__name', text: fac ? fac.name : row.entry.facId }),
-              muted(status),
-              row.overCapacity ? el('div', { class: 'tsi-bas-slot__over', 'data-test': 'over-capacity', text: 'Over capacity: kept, but above the ' + slots.max + ' slot(s) for level ' + state.partyLevel + '.' }) : null
-            ]));
-            return;
+        var tiles = GRID_START.map(function (id) { return builtTile(id); });
+        for (var i = 0; i < Math.max(SLOT_COUNT, slots.rows.length); i++) {
+          var row = slots.rows[i];
+          if (row && row.entry) {
+            tiles.push(row.entry.status === 'building' ? buildingTile(row.entry, i) : builtTile(row.entry.facId, row));
+          } else {
+            tiles.push(slotTile(row, i));
           }
-          if (!row.canBuild) return;
-          var sel = el('select', { class: 'tsi-input', 'aria-label': 'Slot ' + (row.index + 1), 'data-test': 'slot-select-' + row.index },
-            [el('option', { value: '', text: '(Empty slot)' })].concat(buildable.map(function (f) {
-              var req = Number(f.requiredLevel || 0);
-              var taken = reserved.indexOf(f.id) !== -1;
-              var lockedByLevel = state.partyLevel < req;
-              return el('option', { value: f.id, disabled: taken || lockedByLevel, text: f.name + (lockedByLevel ? ' (Locked: Lvl ' + req + ')' : '') + (taken ? ' (Already chosen)' : '') });
-            })));
-          bindTip(sel, function () {
-            var f = R.facility(data, sel.value);
-            if (!f) return null;
-            var req = Number(f.requiredLevel || 0);
+        }
+        /* Keep the focus on the same tile through a redraw. */
+        var focused = document.activeElement && grid.contains(document.activeElement) ? document.activeElement.getAttribute('data-test') : null;
+        TSI.clear(grid);
+        TSI.append(grid, tiles);
+        if (focused) {
+          var again = grid.querySelector('[data-test="' + focused + '"]');
+          if (again) again.focus({ preventScroll: true });
+        }
+      }
+
+      /* ---------- A facility's panel ----------
+         Its painting, level and status, the orders pending there (with
+         Cancel, and Resolve for one waiting for a roll), then its orders as
+         before, each with the days it takes. The Workshop's also holds the
+         Artisan Tools, which its Craft list uses. */
+      function openFacility(id) {
+        if (id === 'hall_of_emissaries') {
+          return openPanel('diplomacy', { title: dipCard.title, node: dipCard.root, cls: 'tsi-bas-panel--wide tsi-bas-modal--hall', back: 'tile-' + id });
+        }
+        var fac = R.facility(data, id);
+        if (!fac) return null;
+        return openPanel('fac-' + id, { title: fac.name, node: facPanelBody, render: function () { renderFacPanel(id); }, cls: 'tsi-bas-panel--wide', back: 'tile-' + id });
+      }
+      function renderFacPanel(id) {
+        var fac = R.facility(data, id);
+        TSI.clear(facPanelBody);
+        facPanelBody.setAttribute('data-fac', id);
+        if (R.builtFacilityIds(state, data).indexOf(id) === -1) {
+          facPanelBody.appendChild(muted('The ' + fac.name + ' isn\'t built any more.'));
+          return;
+        }
+        var lvl = R.getFacilityLevel(state, id);
+        var repair = R.underRepair(state, id);
+        var mine = [];
+        state.pendingOrders.forEach(function (o, i) { if (o.facId === id) mine.push(pendingRow(o, i)); });
+        var fns = (fac.functions || []).map(function (fn) {
+          var req = R.clampInt(fn.requiredFacilityLevel === undefined || fn.requiredFacilityLevel === null ? 1 : fn.requiredFacilityLevel, 1, 3);
+          return fnRow(fac, fn, lvl < req);
+        });
+        TSI.append(facPanelBody, [
+          el('div', { class: 'tsi-bas-facpanel__hero' + (repair ? ' tsi-bas-facpanel__hero--repair' : '') }, [
+            facArt(id, 'tsi-bas-facpanel__img'),
+            el('div', { class: 'tsi-bas-facpanel__info' }, [
+              el('div', { class: 'tsi-bas-facpanel__level', text: 'Level ' + lvl }),
+              el('div', { class: 'tsi-bas-facpanel__status', 'data-test': 'fac-status' }, repair ? repairLabel(repair) : 'Active • each order shows the days it takes'),
+              repair ? el('div', { class: 'tsi-bas-fac__repair', 'data-test': 'repair-note-' + id, text: 'Under Repair until Day ' + repair + ': no orders, and orders already here wait. Working again on Day ' + (repair + 1) + '.' }) : null,
+              el('div', { class: 'tsi-bas-facpanel__orders' }, [label('Orders pending here')].concat(mine.length ? mine : [muted('None.')]))
+            ])
+          ]),
+          el('div', { class: 'tsi-bas-fac__fns tsi-bas-facpanel__fns' }, fns.length ? fns : [muted('No functions listed.')]),
+          id === 'workshop' ? el('div', { class: 'tsi-bas-facpanel__artisan' }, [label('Artisan Tools'), artCard.root]) : null
+        ]);
+      }
+
+      /* ---------- The build panel ----------
+         Every facility not built or being built, with its painting: locked
+         ones (the party's level is too low) dimmed. Hover for what it does
+         and how long it takes; click to construct it, after a check. It
+         fills the slot clicked (or the first free one). Clear extra builds
+         is in its footer. Also opened from the top bar's Facilities count. */
+      var buildSlot = null;
+      function freeSlot() {
+        var rows = R.slotRows(state, state.partyLevel).rows;
+        for (var i = 0; i < rows.length; i++) if (rows[i].canBuild) return i;
+        return null;
+      }
+      function openBuild(slotIndex) {
+        buildSlot = slotIndex === undefined ? null : slotIndex;
+        return openPanel('build', { title: 'Construction', node: buildBody, render: renderBuild, cls: 'tsi-bas-panel--wide', back: slotIndex === undefined || slotIndex === null ? 'facilities-count' : 'slot-' + slotIndex });
+      }
+      function renderBuild() {
+        TSI.clear(buildBody);
+        var slots = R.slotRows(state, state.partyLevel);
+        var rows = slots.rows;
+        var at = buildSlot !== null && rows[buildSlot] && rows[buildSlot].canBuild ? buildSlot : freeSlot();
+        var reserved = R.reservedFacilityIds(state, data);
+        var options = data.facilities.filter(function (f) { return B.startingBuilt.indexOf(f.id) === -1 && reserved.indexOf(f.id) === -1; });
+        var head = 'Party level ' + state.partyLevel + ': ' + plural(slots.max, 'construction slot') + ', ' + slots.used + ' in use' + (slots.over ? ' (' + slots.over + ' over capacity)' : '') + '.';
+        var tiles = options.map(function (f) {
+          var req = Number(f.requiredLevel || 0);
+          var locked = state.partyLevel < req;
+          var days = R.buildDaysForRequiredLevel(req, data);
+          var b = el('button', {
+            type: 'button', class: 'tsi-bas-buildopt' + (locked ? ' tsi-bas-buildopt--locked' : ''), 'data-test': 'build-' + f.id,
+            'aria-disabled': locked || at === null ? 'true' : null,
+            'aria-label': f.name + (locked ? ', locked until party level ' + req : ', takes ' + R.daysText(days) + ' to build'),
+            onclick: function () { if (!locked && at !== null) onConstruct(at, f.id); }
+          }, [
+            facArt(f.id, 'tsi-bas-buildopt__img'),
+            el('span', { class: 'tsi-bas-buildopt__name', text: f.name }),
+            locked ? el('span', { class: 'tsi-bas-buildopt__lock' }, [icon('lock'), 'Locked: level ' + req]) : el('span', { class: 'tsi-bas-buildopt__days', text: R.daysText(days) })
+          ]);
+          var tipBuild = function () {
             var fns = (f.functions || []).slice(0, 8).map(function (fn) { return fn.label || fn.id || 'Action'; });
             return {
               title: f.name || f.id,
-              parts: [req ? muted('Unlocks at Party Level ' + req) : null, muted('Takes ' + R.daysText(R.buildDaysForRequiredLevel(req, data)) + ' to build.')].concat(fns.length ? [muted('What it does:'), tipList(fns)] : [muted('No actions listed.')])
+              parts: [locked ? muted('Unlocks at party level ' + req + '.') : null].concat(fns.length ? [muted('What it does:'), tipList(fns)] : [muted('No actions listed.')]),
+              foot: 'Takes ' + R.daysText(days) + ' to build'
             };
-          });
-          slotList.appendChild(el('div', { class: 'tsi-bas-slot tsi-bas-slot--empty', 'data-test': 'slot-' + row.index }, [
-            sel,
-            btn('Build', function () { onBuild(row.index, sel.value); }, '', 'build-' + row.index)
-          ]));
+          };
+          bindTip(b, tipBuild, { noChange: true });
+          bindFocusTip(b, b, tipBuild);
+          return b;
         });
+        TSI.append(buildBody, [
+          muted(head + (at === null ? ' There\'s no free slot, so nothing can be built now.' : ' Choose a facility to build.'), 'tsi-bas-buildpanel__head'),
+          el('div', { class: 'tsi-bas-buildgrid' }, tiles.length ? tiles : [muted('Every facility is built or being built.')]),
+          el('div', { class: 'tsi-bas-buildpanel__foot' }, [
+            muted('Facilities unlock at party levels 5 / 9 / 13 / 17.'),
+            btn('Clear extra builds', function () { onClearBuilds(); }, 'tsi-btn--ghost', 'clear-builds')
+          ])
+        ]);
+      }
+      var onConstruct = TSI.oneAtATime(async function (slotIndex, facId) {
+        var f = R.facility(data, facId);
+        var days = R.buildDaysForRequiredLevel(Number(f.requiredLevel || 0), data);
+        var ok = await ask('Construct the ' + f.name + '? It takes ' + R.daysText(days) + '.', 'Construct', 'Construction');
+        if (!ok || !life.alive) return;
+        if (onBuild(slotIndex, facId)) closePanel();
+      });
 
-        TSI.clear(pendingList);
-        if (!state.pendingOrders.length) pendingList.appendChild(muted('No pending orders.'));
-        state.pendingOrders.forEach(function (o, i) {
-          /* An order at a facility Under Repair waits until it's working again. */
-          var fixing = R.underRepair(state, o.facId);
-          var at = fixing ? R.facility(data, o.facId) : null;
-          /* Due (its day has come) but not done: a roll was cancelled, so it
-             waits for Resolve (or comes up again the next day). */
-          var waiting = R.isDue(state, o) && !fixing;
-          var when = waiting ? 'Due now: waiting for your roll' : 'Due Day ' + o.dueDay + ' (' + R.inDays(state.day, o.dueDay) + ')';
-          pendingList.appendChild(el('div', { class: 'tsi-bas-item' + (waiting ? ' tsi-bas-item--due' : '') }, [
-            el('div', null, [
-              el('div', { class: 'tsi-bas-item__name', text: o.label }),
-              el('div', { class: 'tsi-bas-item__meta', 'data-test': 'pending-meta-' + i, text: when + (fixing ? ' • waiting: the ' + (at ? at.name : o.facId) + ' is Under Repair until Day ' + fixing : '') })
-            ]),
-            el('div', { class: 'tsi-bas-actions' }, [
-              waiting ? btn('Resolve', function () { onResolveOrder(o.id); }, 'tsi-btn--primary', 'resolve-' + i, { disabled: turnRunning || militaryRunning }) : null,
-              btn('Cancel', function () {
-                logAll([R.cancelOrder(state, o.id, data)]);
-                done();
-              }, 'tsi-btn--ghost', 'cancel-' + i)
-            ])
-          ]));
-        });
-
-        /* The carousel: built facilities, apart from the Hall (it has its own panel). */
-        var keep = carousel.scrollLeft;
-        TSI.clear(carousel);
+      /* ---------- The top bar's counts ---------- */
+      function renderCounts() {
         var built = R.builtFacilityIds(state, data);
-        data.facilities.filter(function (f) { return built.indexOf(f.id) !== -1 && f.id !== 'hall_of_emissaries'; }).forEach(function (fac) {
-          var lvl = R.getFacilityLevel(state, fac.id);
-          var fns = (fac.functions || []).map(function (fn) {
-            var req = R.clampInt(fn.requiredFacilityLevel === undefined || fn.requiredFacilityLevel === null ? 1 : fn.requiredFacilityLevel, 1, 3);
-            return fnRow(fac, fn, lvl < req);
-          });
-          var imgFile = B.facilityImages[fac.id];
-          var repair = R.underRepair(state, fac.id);
-          carousel.appendChild(el('div', { class: 'tsi-bas-fac' + (repair ? ' tsi-bas-fac--repair' : ''), 'data-fac': fac.id }, [
-            el('div', { class: 'tsi-bas-fac__hero' }, [
-              imgFile ? el('img', { class: 'tsi-bas-fac__img', src: asset('facilities/' + imgFile), alt: fac.name }) : el('div', { class: 'tsi-bas-fac__img tsi-bas-fac__img--empty' }, muted('No image')),
-              el('div', { class: 'tsi-bas-fac__overlay' }, [
-                el('div', { class: 'tsi-bas-fac__title' }, repair ? [fac.name, ' ', repairLabel(repair)] : fac.name),
-                repair ? el('div', { class: 'tsi-bas-fac__repair', 'data-test': 'repair-note-' + fac.id, text: 'Under Repair until Day ' + repair + ': no orders, and orders already here wait. Working again on Day ' + (repair + 1) + '.' })
-                  : muted('Built • Each order shows the days it takes')
-              ]),
-              el('span', { class: 'tsi-bas-fac__tag' + (repair ? ' tsi-bas-fac__tag--repair' : ''), text: repair ? 'Under Repair' : 'Active' })
-            ]),
-            el('div', { class: 'tsi-bas-fac__body' }, fns.length ? el('div', { class: 'tsi-bas-fac__fns' }, fns) : muted('No functions listed.'))
-          ]));
-        });
-        carousel.scrollLeft = keep;
-        life.raf(updateNav);
+        var building = (state.builtExtras || []).filter(function (x) { return x && typeof x === 'object' && x.status === 'building'; });
+        facCount.textContent = String(built.length);
+        orderCount.textContent = String(state.pendingOrders.length);
+        orderCountBtn.classList.toggle('is-due', state.pendingOrders.some(function (o) { return orderWhen(o).waiting; }));
+        facCountBtn.setAttribute('aria-label', 'Facilities: ' + built.length + ' built' + (building.length ? ', ' + building.length + ' being built' : '') + '. Open Construction.');
+        orderCountBtn.setAttribute('aria-label', 'Orders: ' + state.pendingOrders.length + ' pending. Open the list.');
+      }
+
+      function renderFacilities() {
+        renderGrid();
+        renderPending();
+        renderCounts();
       }
 
       function onBuild(slotIndex, facId) {
-        if (!facId) return;
+        if (!facId) return false;
         var res = R.startBuild(state, data, slotIndex, facId);
-        if (!res.ok) { if (res.message) say(res.message); return; }
+        if (!res.ok) { if (res.message) say(res.message); return false; }
         log(res.log[0], res.log[1]);
         done();
+        return true;
       }
       async function onClearBuilds() {
         if (!(await ask('Clear all extra built facilities (slots) only? Your 5 starting facilities remain.', 'Clear'))) return;
@@ -3112,25 +3265,158 @@
       });
 
       /* ================================================================
-         Putting it together
+         Putting it together: the slim header, then the Bastion Map panel
+         filling the window, with its top bar (the day, the treasury, the
+         counts, the Party Identity badge) and its bottom bar (the panel
+         buttons either side of the facility grid)
          ================================================================ */
-      var main = el('div', { class: 'tsi-bas-main' }, [
-        el('div', { class: 'tsi-bas-top' }, [logCard.root, mapCard.root, eventCard.root]),
-        idCard.root,
-        mgmtCard.root,
-        warCard.root,
-        dipCard.root,
-        el('div', { class: 'tsi-bas-whrow' }, [whCard.root, artCard.root]),
-        facCard.root,
-        el('p', { class: 'tsi-bas-footer', text: 'Built for D&D Beyond campaigns. Data comes from your spreadsheet and is editable.' })
+      /* The top bar's counts open their panels; hover lists what's in them. */
+      var facCount = el('b', { class: 'tsi-bas-count__n', 'data-test': 'facilities-n', text: '5' });
+      var facCountBtn = el('button', { type: 'button', class: 'tsi-bas-count', 'data-test': 'facilities-count', onclick: function () { openBuild(); } }, [el('span', { class: 'tsi-bas-count__label', text: 'Facilities' }), facCount]);
+      var orderCount = el('b', { class: 'tsi-bas-count__n', 'data-test': 'orders-n', text: '0' });
+      var orderCountBtn = el('button', { type: 'button', class: 'tsi-bas-count', 'data-test': 'orders-count', onclick: function () { openOrders(); } }, [el('span', { class: 'tsi-bas-count__label', text: 'Orders' }), orderCount]);
+      function facCountTip() {
+        var lines = R.builtFacilityIds(state, data).map(function (id) {
+          var f = R.facility(data, id);
+          var fix = R.underRepair(state, id);
+          return (f ? f.name : id) + (fix ? ' (Under Repair until Day ' + fix + ')' : '');
+        });
+        (state.builtExtras || []).forEach(function (x) {
+          if (x && typeof x === 'object' && x.status === 'building') {
+            var f = R.facility(data, x.facId);
+            lines.push((f ? f.name : x.facId) + ': building, ' + R.daysText(R.buildDaysLeft(state, x)) + ' left');
+          }
+        });
+        return { title: 'Facilities', parts: [tipList(lines)], foot: 'Click for Construction' };
+      }
+      function orderCountTip() {
+        var lines = state.pendingOrders.map(orderTipLine);
+        return { title: 'Pending orders', parts: [lines.length ? tipList(lines) : muted('No pending orders.')], foot: 'Click for the list' };
+      }
+      bindTip(facCountBtn, facCountTip, { noChange: true });
+      bindFocusTip(facCountBtn, facCountBtn, facCountTip);
+      bindTip(orderCountBtn, orderCountTip, { noChange: true });
+      bindFocusTip(orderCountBtn, orderCountBtn, orderCountTip);
+      function openOrders() { return openPanel('orders', { title: ordersCard.title, node: ordersCard.root, cls: 'tsi-bas-panel--wide', back: 'orders-count' }); }
+
+      /* The Party Identity badge, in the map's top-right corner: the crest,
+         once a Clan or Brigade has one, or a faint shield. It opens the Party
+         Identity panel. */
+      var badgeImg = el('img', { class: 'tsi-bas-badge__img', alt: '', hidden: true });
+      var badgeShield = el('span', { class: 'tsi-bas-badge__empty', 'aria-hidden': 'true' }, icon('shield'));
+      var badgeLabel = el('span', { class: 'tsi-bas-badge__label', text: 'Party Identity' });
+      var badge = el('button', { type: 'button', class: 'tsi-bas-badge', 'data-test': 'identity-badge', onclick: function () { openIdentity(); } }, [badgeImg, badgeShield, badgeLabel]);
+      function openIdentity() { return openPanel('identity', { title: idCard.title, node: idCard.root, cls: 'tsi-bas-modal--hall', back: 'identity-badge' }); }
+      function renderBadge() {
+        var o = state.organization;
+        var sworn = o.type !== 'unsworn';
+        var show = !!(sworn && crest);
+        badgeImg.hidden = !show;
+        badgeShield.hidden = show;
+        if (show && badgeImg.getAttribute('data-key') !== crest.key) {
+          badgeImg.src = crest.dataUrl;
+          badgeImg.setAttribute('data-key', crest.key);
+        }
+        badgeLabel.textContent = sworn && o.name ? o.name : R.orgLabel(state);
+        badge.setAttribute('aria-label', (show ? 'Crest of ' + (o.name || 'your ' + (o.type === 'clan' ? 'Clan' : 'Brigade')) : 'Party Identity: ' + R.orgLabel(state)) + '. Open Party Identity.');
+      }
+
+      var treasuryBox = el('label', { class: 'tsi-bas-treasury', title: 'Treasury (gp): saved when you press Enter or leave the box' }, [
+        icon('coin', 'tsi-bas-icon--coin'), treasuryInput, el('span', { class: 'tsi-bas-treasury__gp', text: 'gp' })
       ]);
-      var layout = el('div', { class: 'tsi-bas-layout' }, [side, main]);
-      var page = el('div', { class: 'tsi-bas' }, [bar, layout, tip]);
+      var topBar = el('div', { class: 'tsi-bas-topbar' }, [
+        el('div', { class: 'tsi-bas-topbar__day' }, [dayStatus, advanceBtn]),
+        treasuryBox,
+        facCountBtn,
+        orderCountBtn,
+        mapRepairs
+      ]);
+
+      /* The bottom bar's buttons: a small picture and a short name. */
+      function panelButton(id, text, iconName, open, extra) {
+        return el('button', Object.assign({ type: 'button', class: 'tsi-bas-pbtn', 'data-test': 'open-' + id, onclick: open }, extra || {}), [
+          icon(iconName), el('span', { class: 'tsi-bas-pbtn__label', text: text })
+        ]);
+      }
+      function simplePanel(c, cls) { return function () { return openPanel(c.id, { title: c.title, node: c.root, cls: cls || '', back: 'open-' + c.id }); }; }
+      var openWarehouse = simplePanel(whCard, 'tsi-bas-panel--wide');
+      var openManagement = simplePanel(mgmtCard, 'tsi-bas-panel--wide');
+      var openLog = simplePanel(logCard);
+      var openEvents = simplePanel(eventCard);
+      var openInfluence = simplePanel(influenceCard, 'tsi-bas-panel--wide');
+      var openFavour = simplePanel(favourCard);
+      var openWarPanel = simplePanel(warCard, 'tsi-bas-panel--wide');
+      /* Banner & War Council: locked until the Bastion has something that
+         can fight (Harry's answer 6). The padlock's tooltip says how. */
+      var WAR_LOCKED = 'Recruit defenders at the Barracks to raise your banner (or take in a beast at the Menagerie, or a unit at the War Room).';
+      var warLock = el('span', { class: 'tsi-bas-pbtn__lock', 'aria-hidden': 'true' }, icon('lock'));
+      var warBtn = panelButton('war', 'War Council', 'war', function () {
+        if (!R.warCouncilOpen(state)) { TIP.show({ title: 'Banner & War Council', parts: [muted(WAR_LOCKED)] }, warBtn); return; }
+        openWarPanel();
+      });
+      warBtn.appendChild(warLock);
+      bindTip(warBtn, function () {
+        return R.warCouncilOpen(state) ? null : { title: 'Banner & War Council', parts: [muted(WAR_LOCKED)] };
+      }, { noChange: true });
+      function renderWarLock() {
+        var open = R.warCouncilOpen(state);
+        warBtn.classList.toggle('is-locked', !open);
+        warLock.hidden = open;
+        warBtn.setAttribute('aria-label', open ? 'Banner & War Council' : 'Banner & War Council (locked). ' + WAR_LOCKED);
+        /* Something to do there: an attack or a Military Action waiting. */
+        warBtn.classList.toggle('is-alert', open && (state.militaryActions || []).length > 0);
+      }
+      var leftButtons = el('div', { class: 'tsi-bas-pbtns tsi-bas-pbtns--left' }, [
+        panelButton('warehouse', 'Warehouse', 'warehouse', openWarehouse),
+        panelButton('management', 'Management', 'management', openManagement),
+        panelButton('log', 'Day Log', 'log', openLog),
+        panelButton('events', 'Events', 'events', openEvents)
+      ]);
+      var rightButtons = el('div', { class: 'tsi-bas-pbtns tsi-bas-pbtns--right' }, [
+        panelButton('influence', 'Clan Influence', 'influence', openInfluence),
+        panelButton('favour', 'Favour', 'favour', openFavour, { 'aria-label': 'Favour of the Gods' }),
+        warBtn
+      ]);
+
+      /* The grid folds away with ▼ (and back with ▲), remembered. */
+      var gridToggle = el('button', { type: 'button', class: 'tsi-bas-gridtoggle', 'aria-controls': 'tsi-bas-grid', 'data-test': 'grid-toggle' });
+      life.on(gridToggle, 'click', function () {
+        ui.gridOpen = !ui.gridOpen;
+        saveUi();
+        renderGridState();
+      });
+      var gridWrap = el('div', { class: 'tsi-bas-gridwrap' }, [gridToggle, grid]);
+      var bottomBar = el('div', { class: 'tsi-bas-bottom' }, [leftButtons, gridWrap, rightButtons]);
+      function renderGridState() {
+        stage.classList.toggle('is-grid-closed', !ui.gridOpen);
+        grid.hidden = !ui.gridOpen;
+        TSI.clear(gridToggle).appendChild(icon(ui.gridOpen ? 'down' : 'up'));
+        gridToggle.setAttribute('aria-expanded', String(!!ui.gridOpen));
+        gridToggle.setAttribute('aria-label', ui.gridOpen ? 'Fold away the facilities' : 'Show the facilities');
+        gridToggle.title = ui.gridOpen ? 'Fold away the facilities' : 'Show the facilities';
+        life.raf(fitMap);
+      }
+
+      var mapArea = el('div', { class: 'tsi-bas-mapwrap' }, [mapFrame, badge]);
+      var stage = el('section', { class: 'tsi-bas-stage', 'aria-label': 'Bastion Map' }, [topBar, mapArea, bottomBar]);
+      var page = el('div', { class: 'tsi-bas' }, [bar, stage]);
       ctx.root.appendChild(page);
-      /* The Favour panel sticks just under the tool's bar, whatever its height. */
-      var barWatch = new ResizeObserver(function () { if (life.alive) page.style.setProperty('--tsi-bas-bar-h', bar.offsetHeight + 'px'); });
-      barWatch.observe(bar);
-      life.onStop(function () { barWatch.disconnect(); });
+      /* The painting fitted into the space left, never cropped, so the
+         building overlays (the same size as it) line up. */
+      var MAP_RATIO = 1152 / 768;
+      function fitMap() {
+        if (!life.alive) return;
+        var w = mapArea.clientWidth;
+        var h = mapArea.clientHeight;
+        if (!w || !h) return;
+        var fw = Math.min(w, h * MAP_RATIO);
+        mapFrame.style.width = Math.floor(fw) + 'px';
+        mapFrame.style.height = Math.floor(fw / MAP_RATIO) + 'px';
+      }
+      var mapWatch = new ResizeObserver(function () { fitMap(); });
+      mapWatch.observe(mapArea);
+      life.onStop(function () { mapWatch.disconnect(); });
+      renderGridState();
 
       function renderAll() {
         hideTip();
@@ -3142,12 +3428,15 @@
         renderSide();
         renderTop();
         renderIdentity();
+        renderBadge();
         renderManagement();
         renderWar();
+        renderWarLock();
         renderDiplomacy();
         renderWarehouse();
         renderArtisan();
         renderFacilities();
+        renderPanel();
         /* The At War tags, straight away (the watcher would add them a moment later). */
         tagAll();
       }

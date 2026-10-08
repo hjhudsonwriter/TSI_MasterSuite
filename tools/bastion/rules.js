@@ -334,6 +334,16 @@
     return isObj(s) && s.v !== 2 && ('turn' in s || 'turnInProgress' in s);
   };
   R.isUi = function (v) { return isObj(v); };
+  /* What the screen remembers (tsi.bastion.ui), since the new screen
+     (Build 2, 8 October 2026): gridOpen, whether the facility grid is open
+     (open at first), and warNoticed, the war pop-ups already seen. Anything
+     else (the old panels' open or closed state) is dropped. */
+  R.cleanUi = function (v) {
+    var src = isObj(v) ? v : {};
+    var out = { gridOpen: src.gridOpen !== false };
+    if (isObj(src.warNoticed)) out.warNoticed = src.warNoticed;
+    return out;
+  };
 
   /* The Clan's or Brigade's crest picture, saved apart from the Bastion as
      tsi.bastion.crest (it's shrunk when uploaded): { dataUrl, key, name }. */

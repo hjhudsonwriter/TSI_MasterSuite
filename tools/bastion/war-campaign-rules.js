@@ -440,6 +440,21 @@
     return out;
   }
 
+  /* The Banner & War Council is locked until the Bastion has something
+     that can fight: a defender, a beast or a War Room unit (Harry's answer
+     6 to the overhaul's plan, 8 October 2026). It stays open while anything
+     of a war is going on, so a war, a waiting War Action or a Military
+     Action (an attack on the Bastion included) can always be reached. */
+  R.warCouncilOpen = function (s) {
+    if (!isObj(s)) return false;
+    if (clampInt(isObj(s.defenders) ? s.defenders.count : 0, 0) > 0) return true;
+    if (R.beastQty(s) > 0) return true;
+    if (R.militaryQty(s, /./) > 0) return true;
+    if (Array.isArray(s.militaryActions) && s.militaryActions.length) return true;
+    if (isObj(s.wars) && Object.keys(s.wars).length) return true;
+    return (Array.isArray(s.pendingOrders) ? s.pendingOrders : []).some(function (o) { return R.isWarOrder(o); });
+  };
+
   /* What can be committed now: { defenders: { count, armed }, lieutenants,
      units: { type: [{ key, label, personnel, size, depleted }] } (every
      archetype, healthiest first), beasts: { name: n }, fullWar }. Anything
