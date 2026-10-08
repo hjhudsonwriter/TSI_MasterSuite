@@ -27,7 +27,8 @@ Harry asked for the Bastion to drop its turns and follow the Explorer's day (pla
   - `tests/rules.html` runs 810 rules tests, all passing: the Bastion's and the war's tests rewritten for days, plus the day engine, shipments and attack rolls every 7 days, catching up several days, Reset Travel, an old save set aside, the campaign file and "The Ironbow sends word…".
   - `tests/e2e/phase9.test.js` (107 checks), reworked for days; its side-by-side run against the old Bastion is retired, because the rules now deliberately differ.
   - New: `tests/e2e/bastion-days.test.js` (15 checks): the Explorer and the Bastion in two windows, making camp, the word in both, the campaign file both ways, and Reset Travel.
-  - Also passing: phase 1 (125), phase 8 (81), the DM doc (11), fights (15), the War Table (145) and the guide (20).
+  - Also passing, re-run because shared saving code changed: phase 1 (125), the Crest (68), Pelagosi (58), the Notice Board (64), the Ritual (53), the Arenas (79), the Combat Tracker (78), the Explorer (81), the DM doc (11), fights (15), the War Table (145) and the guide (20).
+  - **A test fix, not a tool fix:** one Pelagosi check failed here and on main. The Surge locks the pillars for 1.9 seconds, and the screenshot taken just after it now takes about 2.5 seconds, so the check found the lock already lifted. The check now reads the lock before the screenshot; Pelagosi itself is unchanged.
 
 ### The party's gold and the Threads in the DM doc (7 October 2026)
 Harry asked for the Explorer's Threads and gold to be added to the DM doc (KNOWN_ISSUES SUI-22).
