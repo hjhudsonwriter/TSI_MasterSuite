@@ -427,6 +427,9 @@ async function setBasin(page, rune) {
       equal(await page.$$eval('.tsi-pel-pillar-rune', bs => bs.some(b => b.disabled)), false);
     });
 
+    /* Whether the pillars locked the moment the Surge hit. Read before the
+       screenshot, which can take longer than the lock's 1.9 seconds. */
+    let surgeLocked = null;
     await check('wrong checks raise the pressure Calm → Stirring → Rising → Reversing (DC 13 STR) → Surge (DC 14 DEX or 2d6)', async () => {
       equal(await text(page, 'pressure'), 'Calm');
       const steps = [
@@ -442,11 +445,12 @@ async function setBasin(page, rune) {
         assert((await page.textContent('[data-test=event] span')).startsWith(hint), 'hint: ' + await page.textContent('[data-test=event] span'));
         assert(effect.test(await text(page, 'pressure-effect')), label + ' effect');
       }
+      surgeLocked = (await tid(page)).locked;
       await H.shot(page, 'pelagosi-tidal-surge');
     });
 
     await check('the Surge locks the pillars, then resets them after about 2 seconds (attempts kept)', async () => {
-      equal((await tid(page)).locked, true);
+      equal(surgeLocked, true, 'locked as the Surge hit');
       await page.waitForFunction(() => document.querySelector('[data-test=stage]').textContent === 'The chamber resets', null, { timeout: 3000 });
       const t = await tid(page);
       equal([t.pressure, t.attempts, t.locked, t.phase], [0, 4, false, 'outer']);
