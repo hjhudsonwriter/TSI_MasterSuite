@@ -115,10 +115,21 @@ async function closePopup(page) {
     await page.click('.tsi-modal.tsi-exp-journey .tsi-modal__foot button:text-is("Close")');
     await page.waitForTimeout(450);
     await H.clickModal(page, 'End it now');
+  } else if (await page.$('.tsi-modal__foot button:text-is("Close")')) {
+    await page.click('.tsi-modal__foot button:text-is("Close")');
   } else {
     await page.click('.tsi-modal__foot button');
   }
   await page.waitForTimeout(150);
+}
+/* A Bastion save (in days, following the Explorer) with one order due on
+   the given day, for "The Ironbow sends word…" at Make Camp. The Explorer
+   only reads it. */
+async function seedBastion(page, dueDay, today) {
+  await page.evaluate(([due, d]) => TSI.store.set('tsi.bastion.state', {
+    v: 2, day: d, anchored: true, treasuryGP: 0, partyLevel: 7, builtExtras: [], warehouse: [], defenders: { count: 0, armed: false, patrolUntil: 0 },
+    pendingOrders: [{ id: 'o1', facId: 'barracks', fnId: 'recruit_defenders', label: 'Barracks: Recruit Defenders', costGP: 0, issuedDay: d, dueDay: due }]
+  }), [dueDay, today]);
 }
 /* Force the event dice: travelChance and campChance (0 to 1). */
 async function chances(page, travel, camp) {
@@ -494,14 +505,16 @@ function serve(dir) {
         const st = JSON.parse(JSON.stringify(TSI.explorer.debug.state()));
         st.travel.day = 7;
         const q = TSI.explorer.rules.makeCamp(st, TSI_DATA.explorer, TSI_DATA.journeyEvents, Math.random);
-        if (q.map(i => i.kind).join() === 'weather,camp') return s;
+        if (q.map(i => i.kind).join() === 'weather') return s;
       }
       return null;
     });
 
-    await check('day 8: the weather, then the Bastion prompt, none lost (EXP-01)', async () => {
+    await check('day 8: the weather, then "The Ironbow sends word…" (the Bastion has an order due), none lost (EXP-01)', async () => {
       await page.evaluate(s => { TSI.explorer.debug.state().travel.day = 7; window.__seed(s); }, seed);
+      await seedBastion(page, 8, 7);
       await page.click('[data-test=camp]');
+      await page.waitForSelector('.tsi-modal');
       const shown = [];
       let v = await eventView(page);
       shown.push(v.meta.split(' • ')[0] + ': ' + v.title);
@@ -520,16 +533,14 @@ function serve(dir) {
       assert(/tools\/explorer\/assets\/overlays\/\w+_overlay\.mp4$/.test(src), src);
       equal(await page.isVisible('.tsi-exp-weather'), true);
       await firstChoice(page);
+      await page.waitForSelector('[data-test=ironbow-word]');
       v = await eventView(page);
-      shown.push(v.meta.split(' • ')[0] + ': ' + v.title);
-      equal(v.desc, 'The Ironbow awaits your orders.');
-      await firstChoice(page);
-      v = await eventView(page);
-      equal([v.meta, v.title, v.desc], ['Outcome', 'Result', 'The Ironbow awaits your orders.']);
+      shown.push(v.meta);
+      equal(await page.$$eval('[data-test=ironbow-word] [data-test=word-lines] li', ls => ls.map(l => l.textContent)), ['Barracks: Recruit Defenders is complete.']);
       await closePopup(page);
       equal(await modalOpen(page), false);
-      equal(await text(page, 'notice'), 'Outcome: Bastion turn prompt (weekly).');
-      equal(shown.map(x => x.split(':')[0]), ['Weather', 'Campfire Event']);
+      equal(shown.map(x => x.split(':')[0]), ['Weather', 'The Ironbow sends word…']);
+      await page.evaluate(() => TSI.store.remove('tsi.bastion.state'));
     });
 
     await check('Enter or Space after Make Camp doesn\'t camp again (EXP-02)', async () => {
@@ -564,20 +575,20 @@ function serve(dir) {
       await closeAll(page);
     });
 
-    await check('the Bastion prompt comes on day 15 and not before', async () => {
+    await check('no weekly Bastion reminder any more (Harry, 8 October 2026): Days 11 to 15 bring none, with no Bastion saved', async () => {
       const days = [];
       for (let d = 11; d <= 15; d++) {
         await pause(page);
         await page.click('[data-test=camp]');
-        await page.waitForSelector('.tsi-modal');
+        await page.waitForTimeout(600);
         let n = 0;
         while (await modalOpen(page) && n++ < 6) {
           const v = await eventView(page);
-          if (v.title === 'Bastion Turn') days.push(d);
+          if (v.title === 'Bastion Turn' || /The Ironbow sends word/.test(v.meta)) days.push(d);
           await closePopup(page);
         }
       }
-      equal(days, [15]);
+      equal(days, []);
     });
 
     await check('Enter can\'t resolve the weather by accident; an empty box counts as 0, as before', async () => {
@@ -601,17 +612,22 @@ function serve(dir) {
       await closeAll(page);
     });
 
-    await check('a campfire event comes before the Bastion prompt, none lost (EXP-01)', async () => {
+    await check('a campfire event comes before "The Ironbow sends word…", none lost (EXP-01)', async () => {
       await page.evaluate(() => { const s = TSI.explorer.debug.state(); s.travel.day = 21; s.travel.lastWeatherDay = 21; });
+      await seedBastion(page, 22, 21);
       await pause(page);
       await page.click('[data-test=camp]');
       await page.waitForSelector('.tsi-modal.tsi-exp-journey');
       const j = await journeyView(page);
       assert(/^Campfire event • The East Isle • C\d+$/.test(j.meta), j.meta);
       await closePopup(page);
-      const v = await eventView(page);
-      equal(v.title, 'Bastion Turn');
+      await page.waitForSelector('[data-test=ironbow-word]');
+      equal(await page.textContent('[data-test=ironbow-word] .tsi-modal__title'), 'The Ironbow sends word…');
+      equal(await page.$$eval('[data-test=ironbow-word] [data-test=word-lines] li', ls => ls.map(l => l.textContent)), ['Barracks: Recruit Defenders is complete.']);
+      equal(await page.$$eval('[data-test=ironbow-word] .tsi-modal__foot button', bs => bs.map(b => b.textContent)), ['Open the Bastion ↗', 'Close']);
       await closeAll(page);
+      equal(await page.evaluate(() => TSI.store.get('tsi.bastion.state').pendingOrders.length), 1, 'the Explorer never changes the Bastion');
+      await page.evaluate(() => TSI.store.remove('tsi.bastion.state'));
       await chances(page, 0.3, 0.25);
     });
 
@@ -942,23 +958,39 @@ function serve(dir) {
       await closeAll(page);
     });
 
-    await check('the Bastion reminder opens the Bastion Manager in a new window, and stays up', async () => {
+    await check('Open the Bastion ↗ (the Travel panel, and "The Ironbow sends word…") opens the Bastion Manager in a new window, once', async () => {
       await chances(page, 0, 0);
       await page.evaluate(() => { const s = TSI.explorer.debug.state(); s.travel.day = 7; s.travel.lastWeatherDay = 7; });
+      equal(await page.textContent('[data-test=open-bastion]'), 'Open the Bastion ↗');
       await pause(page);
-      await page.click('[data-test=camp]');
-      await page.waitForSelector('.tsi-modal [data-test=open-bastion]');
-      equal((await eventView(page)).title, 'Bastion Turn');
-      await page.waitForTimeout(400);
-      const [win] = await Promise.all([context.waitForEvent('page'), page.click('.tsi-modal [data-test=open-bastion]')]);
+      const [win] = await Promise.all([context.waitForEvent('page'), page.click('[data-test=open-bastion]')]);
       await win.waitForLoadState();
       assert(/\?tool=bastion$/.test(win.url()), win.url());
-      await win.close();
       equal(await text(page, 'notice'), 'The Bastion Manager opened in a new window.');
-      equal((await eventView(page)).title, 'Bastion Turn', 'the reminder is still up');
-      await firstChoice(page);
-      equal((await eventView(page)).title, 'Result');
+      /* While it's open, a second press says so instead of opening another. */
+      await win.waitForSelector('[data-test=day-status]');
+      await page.waitForTimeout(1700);
+      let opened = 0;
+      const count = () => { opened += 1; };
+      context.on('page', count);
+      await page.click('[data-test=open-bastion]');
+      await page.waitForTimeout(800);
+      context.off('page', count);
+      equal(opened, 0, 'no second Bastion window');
+      equal(await text(page, 'notice'), 'The Bastion Manager is already open in another window. It follows the Explorer\'s day by itself.');
+      await win.close();
+      /* From the word at Make Camp. */
+      await seedBastion(page, 8, 7);
+      await page.waitForTimeout(1700);
+      await pause(page);
+      await page.click('[data-test=camp]');
+      await page.waitForSelector('[data-test=ironbow-word]');
+      const [win2] = await Promise.all([context.waitForEvent('page'), page.click('[data-test=ironbow-word] .tsi-modal__foot button:text-is("Open the Bastion ↗")')]);
+      await win2.waitForLoadState();
+      assert(/\?tool=bastion$/.test(win2.url()), win2.url());
+      await win2.close();
       await closeAll(page);
+      await page.evaluate(() => TSI.store.remove('tsi.bastion.state'));
       await chances(page, 0.3, 0.25);
     });
     await H.shot(page, 'p8-new-panel');
@@ -1096,13 +1128,14 @@ function serve(dir) {
     });
 
     let exported = null;
-    await check('Export Save downloads the journey', async () => {
+    await check('Export Save downloads the journey, as the campaign file', async () => {
       await loadMap(page, 'the_north_isle');
       const d = await H.download(page, '[data-test=export-save]');
       exported = d.text;
       await page.waitForFunction(() => document.querySelector('[data-test=notice]').textContent === 'Save exported.');
       const file = JSON.parse(d.text);
-      assert(/explorer/.test(d.name), d.name);
+      assert(/^tsi-campaign-\d{4}-\d\d-\d\d-\d{4}\.json$/.test(d.name), d.name);
+      equal([file.kind, file.tools], ['campaign', ['explorer', 'bastion']], 'one campaign save: the Explorer and the Bastion together (Harry, 8 October 2026)');
       assert(JSON.stringify(file).indexOf('the_north_isle') > 0);
       equal(await text(page, 'notice'), 'Save exported.');
     });
@@ -1267,6 +1300,12 @@ function serve(dir) {
     /* Both show an event: compare, pick the first choice until the result, compare, close. */
     async function bothEvent(label) {
       let ov = await O.modal();
+      /* The old weekly Bastion reminder: gone from the rebuild (Harry, 8 October 2026). */
+      if (ov && ov.title === 'Bastion Turn') {
+        met['Bastion prompt (old only)'] = (met['Bastion prompt (old only)'] || 0) + 1;
+        await O.close();
+        ov = await O.modal();
+      }
       /* The old travel events: closed unanswered (the rebuild's new events are kept off here). */
       if (ov && / Event • /.test(ov.meta) && ov.meta.indexOf('Main Campaign') !== 0) {
         met[ov.meta.split(' • ')[0] + ' (old only)'] = (met[ov.meta.split(' • ')[0] + ' (old only)'] || 0) + 1;
@@ -1292,8 +1331,9 @@ function serve(dir) {
       }
       if (await O.modal()) { await O.close(); await closePopup(page); }
     }
-    /* The night's pop-ups (campfire, weather, Bastion prompt) are closed
-       unanswered in both, so both end the night in the same state. */
+    /* The night's pop-ups (campfire, weather, and the old tool's Bastion
+       prompt) are closed unanswered in both, so both end the night in the
+       same state. */
     async function bothCamp(label) {
       await old.click('#explorerMakeCamp');
       await pause(page);
@@ -1369,8 +1409,8 @@ function serve(dir) {
         (await bothCamp('camp after day ' + day)).forEach(k => { kinds[k] = (kinds[k] || 0) + 1; });
         await compare('camp after day ' + day);
       }
-      /* The run met the old travel events (closed unanswered), weather and
-         the Bastion prompt in the rebuild, and a refused move. */
+      /* The run met the old travel events (closed unanswered), weather, and
+         a refused move. */
       assert(kinds.Weather >= 1, JSON.stringify(kinds));
       assert(met['Travel Event (old only)'] >= 1, JSON.stringify(met));
       assert(steps.some(s => /day 3: elara moves 3,0/.test(s)), 'the too-far move was compared');
