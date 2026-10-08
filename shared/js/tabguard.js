@@ -48,9 +48,11 @@
     try { localStorage.setItem(KEY, JSON.stringify(map)); } catch (e) { /* can't warn without storage */ }
   }
 
-  /* Is a heartbeat recent enough to count? A hidden window's beats can be a minute apart. */
+  /* Is a heartbeat recent enough to count? A hidden window's beats can be a
+     minute apart. A closing window's last one (it's hidden as it goes) only
+     covers a reload, as before. */
   function fresh(e, now, times) {
-    return !!e && now - e.at < (e.hidden ? HIDDEN_STALE_MS : STALE_MS) * (times || 1);
+    return !!e && now - e.at < (e.hidden && !e.closing ? HIDDEN_STALE_MS : STALE_MS) * (times || 1);
   }
 
   function newId() { return 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }

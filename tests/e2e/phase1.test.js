@@ -1303,6 +1303,12 @@ async function waitSaved(page) {
       equal(await seen(95000, true), false, 'hidden, 95 seconds ago: gone');
       equal(await seen(30000, false), false, 'shown, 30 seconds ago: gone');
       equal(await seen(3000, false), true, 'shown, 3 seconds ago: open');
+      equal(await crest.evaluate(() => {
+        const map = JSON.parse(localStorage.getItem('tsi.suite.tabs') || '{}');
+        map.tHiddenBastion = { at: Date.now() - 30000, tool: 'bastion', hidden: true, closing: true };
+        localStorage.setItem('tsi.suite.tabs', JSON.stringify(map));
+        return TSI.tabGuard.otherCount();
+      }), 0, 'closed (it was hidden as it closed), 30 seconds ago: gone');
       /* Its own heartbeat says hidden while it's hidden. */
       await crest.evaluate(() => {
         Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });

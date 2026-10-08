@@ -21,7 +21,7 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 
 | Tool | Must fix | Fixed by design | Deliberate | Later (Harry's call) | Not relevant / not a bug |
 |---|---|---|---|---|---|
-| Suite-wide (SUI) | 6 | 11 | 8 | 1 | 0 |
+| Suite-wide (SUI) | 7 | 11 | 8 | 1 | 0 |
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
 | Scarlett Isles Explorer (EXP) | 12 | 5 | 6 | 13 | 0 |
@@ -264,6 +264,13 @@ These come from checking the eight tools against each other: the collision audit
 - **Before:** The suite's hand-off between tools (`TSI.handoff`) carried only the Explorer's fight to the Combat Tracker and its result back.
 - **After:** It has a third kind, `crest`: the Crest Creator's "Use for the Bastion" writes a 512-pixel PNG of the crest and the Creator's design to the browser's small shared storage (`tsi.suite.handoff-crest`; the test page keeps its own, `tsi.test:handoff-crest`). A Bastion window hears it at once; a Bastion opened later reads it as it starts. Only the latest is kept, it isn't a save (so it's not in backups), and it's cleared once the Bastion has asked about it. Nothing goes online.
 - **Evidence:** `shared/js/handoff.js`, `shared/js/store-rules.js` (`spaceNames`); tests in `tests/rules/store-rules.test.js`, `tests/e2e/phase2.test.js` and `tests/e2e/phase9.test.js`.
+
+### SUI-27 · A window hidden for 5 minutes could stop counting as open
+**Must fix** (found by the Build 3 review, 8 October 2026; fixed) · loses saved data
+
+- **Before:** Each open window writes a heartbeat every 2 seconds, and another window counted it as open only if the last one was under 7 seconds old. After 5 minutes hidden (minimised, or covered by another window, such as the Crest Creator opened over the Bastion), Edge runs a window's timers only about once a minute, so the hidden window soon looked closed. The "Already open" warning could then miss a second copy of the same tool (which can overwrite the first one's saves), and the Crest Creator could offer to open a second Bastion.
+- **After:** A hidden window says so in its heartbeat as soon as it's hidden, and counts as open for 90 seconds after its last one; shown again, it beats at once. A window that closes still says so at once, so it never lingers.
+- **Evidence:** `shared/js/tabguard.js` (`fresh`, `HIDDEN_STALE_MS`, the `visibilitychange` beat); tests in `tests/e2e/phase1.test.js` ("a hidden window's heartbeat counts for longer").
 
 ## Combat Tracker & VTT Battlemap
 Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point there).
