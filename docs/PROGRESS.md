@@ -48,7 +48,8 @@ Harry said go for Build 3 (plan: `docs/BASTION-OVERHAUL.md` sections 3 and 4), n
     - Remove, Keep this crest and founding a Clan dropped the focus out of the panel. Now it stays in the panel.
   - **Notices:**
     - The former-Brigade notice stayed over the bottom-right buttons until dismissed. Now it goes after 20 seconds.
-    - Every Bastion notice now sits above the bottom bar, so it never covers Clan Influence, Favour or the War Council.
+    - Every Bastion notice now sits on the left, above the bottom bar, so it never covers Clan Influence, Favour, the War Council, the crest badge or the DM doc.
+  - **Two Bastion windows:** after one takes a crest, the other shows it too.
   - **Two Bastion windows:** with two open, answering the crest question in one now closes it in the other.
   - **A damaged crest:** a crest that isn't really a picture is never offered.
 - **The guide**, `docs/WAR-RULES.md` and KNOWN_ISSUES are updated.

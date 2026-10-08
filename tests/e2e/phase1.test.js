@@ -1320,6 +1320,22 @@ async function waitSaved(page) {
         document.dispatchEvent(new Event('visibilitychange'));
       });
       equal((await heartbeats(crest))[await crest.evaluate(() => TSI.tabGuard.id)].hidden, undefined, 'and not once it\'s shown again');
+      /* It was hidden, then its window crashed (no goodbye): reloaded, it's
+         still the same tab, and doesn't warn about itself. */
+      const id = await crest.evaluate(() => TSI.tabGuard.id);
+      await crest.evaluate(myId => {
+        const map = JSON.parse(localStorage.getItem('tsi.suite.tabs') || '{}');
+        delete map.tHiddenBastion;
+        map[myId] = { at: Date.now() - 30000, tool: 'crest', hidden: true };
+        localStorage.setItem('tsi.suite.tabs', JSON.stringify(map));
+        const real = Storage.prototype.setItem;
+        Storage.prototype.setItem = function (k, v) { if (k === 'tsi.suite.tabs') return; return real.call(this, k, v); };
+      }, id);
+      await crest.reload();
+      await crest.waitForSelector('.tsi-topbar');
+      equal(await crest.evaluate(() => TSI.tabGuard.id), id, 'the same id after the reload');
+      await crest.waitForTimeout(2500);
+      assert(!(await warned(crest)), 'it warned about itself: ' + (await H.noticeTexts(crest)));
     });
 
     await fresh('Dismiss hides it until the other tabs change', async context => {

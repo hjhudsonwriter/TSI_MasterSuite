@@ -861,13 +861,20 @@
             /* Answered, or replaced by a newer crest, in another window meanwhile? Then not here. */
             var still = TSI.handoff.read('crest');
             var mine = !!still && still.id === h.id;
-            TSI.handoff.clear('crest', h.id);
-            crestOfferOpen = false;
+            function finish() {
+              TSI.handoff.clear('crest', h.id);
+              crestOfferOpen = false;
+              checkCrestOffer();
+            }
             if (use && mine) {
               saveCrest(c);
               renderAll();
+              /* Saved before the hand-off is cleared, so another Bastion
+                 window that sees it cleared reads the new crest. */
+              Promise.resolve(TSI.store.flush ? TSI.store.flush() : null).then(finish, finish);
+            } else {
+              finish();
             }
-            checkCrestOffer();
           });
         }).catch(function (err) {
           crestOfferOpen = false;
@@ -900,7 +907,20 @@
       TSI.handoff.listen(life, 'crest', function (v) {
         if (crestOfferOpen && closeOffer && (!v || v.id !== offerId)) closeOffer(false);
         if (v) checkCrestOffer();
+        else refreshCrest();
       });
+      /* Another Bastion window answered: take the crest it may have saved
+         (shown here, not saved again). */
+      function refreshCrest() {
+        return TSI.store.fresh('tsi.bastion.crest', null).then(function (c) {
+          if (!life.alive) return;
+          var now = c && R.isCrest(c) ? c : null;
+          if ((now && now.key) === (crest && crest.key)) return;
+          crest = now;
+          crestWatchers.slice().forEach(function (fn) { fn(); });
+          renderAll();
+        }).catch(function (err) { TSI.reportError(err, 'reading the crest saved in another window'); });
+      }
 
       /* The crest part of the Form Clan pop-up: the Bastion's crest, kept
          unless you choose another (Create a new one ↗ sends one back through

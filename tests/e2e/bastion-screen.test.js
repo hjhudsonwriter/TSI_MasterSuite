@@ -82,8 +82,8 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
       await H.shot(page, 'bs-01-' + size);
     });
   }
-  await check('a notice sits above the bottom bar, never over its buttons, on the laptop and the TV', async () => {
-    for (const size of ['laptop', 'tv']) {
+  await check('a notice sits on the left above the bottom bar: never over its buttons, the badge or the DM doc, on the laptop, in full screen and on the TV', async () => {
+    for (const size of ['laptop', 'laptopFull', 'tv']) {
       await page.setViewportSize(H.SIZES[size].viewport);
       await page.waitForTimeout(200);
       await page.evaluate(() => TSI.notify('A long notice, to see where it sits: it has two lines of words in it, at least, on both screens.', { type: 'info', title: 'Test.', id: 'tsi-bs-test' }));
@@ -96,6 +96,15 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
       const n = await rect(page, '.tsi-notices');
       const bar = await rect(page, '.tsi-bas-bottom');
       assert(n.bottom <= bar.y, size + ': the notices end above the bar: ' + JSON.stringify([n, bar]));
+      const badge = await rect(page, '[data-test=identity-badge]');
+      assert(n.right <= badge.x, size + ': clear of the badge');
+      /* The DM doc opens on the right: its own edges and grip stay clear. */
+      await page.click('[data-test=dm-doc]');
+      await page.waitForSelector('[data-test=dmdoc-panel]:not([hidden])');
+      const doc = await rect(page, '[data-test=dmdoc-panel]');
+      assert(n.right <= doc.x, size + ': clear of the DM doc: ' + JSON.stringify([n, doc]));
+      await page.click('[data-test=dm-doc]');
+      await page.waitForSelector('[data-test=dmdoc-panel]', { state: 'hidden' });
       await page.evaluate(() => document.querySelectorAll('.tsi-notice').forEach(x => x.remove()));
     }
     await page.setViewportSize(H.SIZES.laptop.viewport);

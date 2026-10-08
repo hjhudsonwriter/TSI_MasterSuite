@@ -225,10 +225,13 @@
 }
 
 /* The suite's notices sit in the bottom-right corner, which on the Bastion
-   is the bottom bar's buttons (Clan Influence, Favour, War Council): here
-   they sit just above the bar (128 pixels, and its 15-pixel frame), over
-   the corner of the map. The War Table places them itself (war-table.css). */
+   is the bottom bar's buttons (Clan Influence, Favour, War Council), and
+   where the DM doc and the crest badge open. Here they sit on the left,
+   just above the bar (128 pixels, and its 15-pixel frame). The War Table
+   places them itself (war-table.css). */
 .tsi-page--bastion:not(.tsi-bas-wt-open) .tsi-notices {
+  left: 16px;
+  right: auto;
   bottom: 155px;
   max-height: calc(100vh - var(--tsi-topbar-h) - 187px);
 }

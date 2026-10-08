@@ -64,7 +64,11 @@
     var id = null;
     try { id = sessionStorage.getItem(ID_KEY); } catch (e) { /* no session storage */ }
     var entry = id ? read()[id] : null;
-    if (!id || (entry && !entry.closing && fresh(entry, Date.now()))) id = newId();
+    /* The short limit here, even for a hidden entry: one that stopped beating
+       without saying it was closing (its window crashed) is this tab's own,
+       reloaded, not a duplicate still running. A real duplicate's original
+       beats at once as it's hidden behind the copy. */
+    if (!id || (entry && !entry.closing && Date.now() - entry.at < STALE_MS)) id = newId();
     try { sessionStorage.setItem(ID_KEY, id); } catch (e) { /* ignore */ }
     return id;
   }

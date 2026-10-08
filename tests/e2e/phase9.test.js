@@ -1474,6 +1474,18 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await clickModal(page, 'No');
       await second.waitForFunction(() => !document.querySelector('[data-test=crest-offer]'), null, { timeout: 5000 });
       equal(await crestKey(), key, 'nothing taken in either window');
+      /* Sent again and taken in this window: the other one's question closes, and it shows the new crest. */
+      await writer.evaluate(() => {
+        const c = document.createElement('canvas'); c.width = c.height = 32;
+        const g = c.getContext('2d'); g.fillStyle = '#b1122a'; g.fillRect(2, 2, 28, 28);
+        TSI.handoff.write('crest', { id: 'crest-two-b', at: 2, name: 'Two windows again', dataUrl: c.toDataURL('image/png') });
+      });
+      await page.waitForSelector('[data-test=crest-offer]', { timeout: 6000 });
+      await second.waitForSelector('[data-test=crest-offer]', { timeout: 6000 });
+      await clickModal(page, 'Use this crest');
+      const taken = await crestKey();
+      assert(taken && taken !== key, 'taken');
+      await second.waitForFunction(k => !document.querySelector('[data-test=crest-offer]') && document.querySelector('[data-test=identity-badge] img').getAttribute('data-key') === k, taken, { timeout: 6000 });
       await writer.close();
       await second.close();
       await page.waitForTimeout(500);

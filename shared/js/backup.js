@@ -181,7 +181,7 @@
         if (campaign) {
           /* The other tool open in another window would save over what's imported. */
           var open = rules.CAMPAIGN.filter(function (t) { return t !== toolId && TSI.tabGuard && TSI.tabGuard.isOpenElsewhere(t); })[0];
-          if (open) refusal = TSI.the(nameOf(open) || open, true) + ' is open in another window. Close it first: a campaign file replaces the Explorer and the Bastion together. Nothing was changed.';
+          if (open) refusal = TSI.the(nameOf(open) || open, true) + ' is open in another window. Close it first: a campaign file replaces the Explorer and the Bastion together. Nothing was changed. (If you\'ve only just closed it, wait a minute and try again.)';
         }
         for (var i = 0; !refusal && i < scopeTools.length; i++) {
           var t = scopeTools[i];
