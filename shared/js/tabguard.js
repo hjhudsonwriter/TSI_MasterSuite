@@ -35,6 +35,7 @@
   var shownText = '';
   var dismissedFor = '';
   var started = false;
+  var leaving = false;        /* after pagehide: no more heartbeats (the browser fires visibilitychange after it) */
   var myTool = null;          /* a tool id, '' for the home screen, null until start() says */
 
   function read() {
@@ -96,6 +97,7 @@
   }
 
   function beat() {
+    if (leaving) return;
     var map = read();
     var now = Date.now();
     Object.keys(map).forEach(function (id) {
@@ -186,11 +188,17 @@
       });
       /* On reload or close, mark this tab as closing so the next page (or other tabs) knows. */
       window.addEventListener('pagehide', function () {
+        leaving = true;
         var map = read();
         map[myId] = entry({ closing: true });
         write(map);
       });
-      window.addEventListener('pageshow', function (event) { if (event.persisted) beat(); });
+      /* Back from the browser's back-forward cache: beating again. */
+      window.addEventListener('pageshow', function (event) {
+        if (!event.persisted) return;
+        leaving = false;
+        beat();
+      });
     }
   };
 }());

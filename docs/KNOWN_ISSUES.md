@@ -269,7 +269,7 @@ These come from checking the eight tools against each other: the collision audit
 **Must fix** (found by the Build 3 review, 8 October 2026; fixed) · loses saved data
 
 - **Before:** Each open window writes a heartbeat every 2 seconds, and another window counted it as open only if the last one was under 7 seconds old. After 5 minutes hidden (minimised, or covered by another window, such as the Crest Creator opened over the Bastion), Edge runs a window's timers only about once a minute, so the hidden window soon looked closed. The "Already open" warning could then miss a second copy of the same tool (which can overwrite the first one's saves), and the Crest Creator could offer to open a second Bastion.
-- **After:** A hidden window says so in its heartbeat as soon as it's hidden, and counts as open for 90 seconds after its last one; shown again, it beats at once. A window that closes still says so at once, so it never lingers.
+- **After:** A hidden window says so in its heartbeat as soon as it's hidden, and counts as open for 90 seconds after its last one; shown again, it beats at once. A window that closes or reloads still says so at once and then stops beating (the browser reports it hidden just after it says it's going), so it never lingers and a reload keeps its id.
 - **Evidence:** `shared/js/tabguard.js` (`fresh`, `HIDDEN_STALE_MS`, the `visibilitychange` beat); tests in `tests/e2e/phase1.test.js` ("a hidden window's heartbeat counts for longer").
 
 ## Combat Tracker & VTT Battlemap
