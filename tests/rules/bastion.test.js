@@ -46,17 +46,21 @@
     t.equal(T.bastion.overlays.length, 8);
   });
 
-  test('the starting Bastion: five facilities, turn 1, level 7, 0 gp, unsworn', function (t) {
+  test('the starting Bastion: five facilities, Day 1 (not yet set by the Explorer), level 7, 0 gp, unsworn', function (t) {
     var s = fresh();
     t.same(R.builtFacilityIds(s, data), ['barracks', 'armoury', 'watchtower', 'workshop', 'dock']);
-    t.equal(s.turn, 1);
+    t.equal(s.v, 2, 'a save in days');
+    t.equal(s.day, 1);
+    t.equal(s.anchored, false);
+    t.equal('turn' in s, false, 'no Bastion turn');
     t.equal(s.partyLevel, 7);
     t.equal(s.treasuryGP, 0);
     t.equal(s.organization.type, 'unsworn');
     t.equal(s.clanHonor, 40);
     t.equal(s.trustedClientsByClan.karr, 50);
     t.equal(s.artisanTools.length, 6);
-    t.equal(s.turnInProgress, null);
+    t.equal(s.dayInProgress, null);
+    t.same(s.word, []);
   });
 
   group('Bastion: construction');
@@ -65,23 +69,28 @@
     t.same([1, 4, 5, 8, 9, 12, 13, 16, 17, 20].map(R.constructionSlotsForLevel), [0, 0, 2, 2, 4, 4, 5, 5, 6, 6]);
   });
 
-  test('build times by the facility\'s level: 3 / 4 / 5 turns', function (t) {
-    t.same([0, 5, 8, 9, 13, 17].map(R.buildTurnsForRequiredLevel), [0, 3, 3, 4, 5, 5]);
+  test('build times by the facility\'s level: 21 / 28 / 35 days (3 / 4 / 5 turns at 7 days a turn)', function (t) {
+    t.same([0, 5, 8, 9, 13, 17].map(function (l) { return R.buildDaysForRequiredLevel(l, data); }), [0, 21, 21, 28, 35, 35]);
   });
 
-  test('building: locked by level, no duplicates, then ticks down to built', function (t) {
+  test('building: locked by level, no duplicates, then built on its ready day', function (t) {
     var s = fresh();
+    s.day = 10;
     s.partyLevel = 9;
     R.slotRows(s, 9);
     t.equal(R.startBuild(s, data, 0, 'menagerie').message, 'Locked. Menagerie requires party level 13.');
     var res = R.startBuild(s, data, 0, 'library');
     t.ok(res.ok);
-    t.same(res.log, ['Construction Started', 'Library is under construction (3 turns).']);
+    t.same(res.log, ['Construction Started', 'Library is under construction (21 days: ready on Day 31).']);
+    t.same(s.builtExtras[0], { facId: 'library', status: 'building', startDay: 10, readyDay: 31 });
     t.equal(R.startBuild(s, data, 1, 'library').message, 'That facility is already built or under construction.');
     t.equal(R.startBuild(s, data, 1, 'barracks').message, 'That facility is already built or under construction.');
-    t.same(R.tickConstruction(s), []);
-    t.same(R.tickConstruction(s), []);
-    t.same(R.tickConstruction(s), ['library']);
+    t.equal(R.buildDaysLeft(s, s.builtExtras[0]), 21);
+    s.day = 30;
+    t.same(R.completeConstruction(s), [], 'Day 30: not yet');
+    t.equal(R.buildDaysLeft(s, s.builtExtras[0]), 1);
+    s.day = 31;
+    t.same(R.completeConstruction(s), ['library']);
     t.same(s.builtExtras[0], { facId: 'library', status: 'built' });
     t.ok(R.builtFacilityIds(s, data).indexOf('library') !== -1);
   });
@@ -122,13 +131,15 @@
 
   group('Bastion: orders');
 
-  test('an order charges its gold once and completes next turn', function (t) {
+  test('an order charges its gold once and is due its days later (Dock: 7 days)', function (t) {
     var s = fresh();
+    s.day = 4;
     s.treasuryGP = 500;
     var o = order(s, 'dock', 'charter_berth', 1);
     t.equal(s.treasuryGP, 300, 'Longship 200gp');
     t.equal(o.label, 'Dock: Charter Berth (Longship)');
-    t.equal(o.completeTurn, 2);
+    t.same([o.issuedDay, o.dueDay], [4, 11]);
+    t.equal(s.pendingOrders.length, 1);
     var again = R.issueOrder(s, data, 'dock', 'charter_berth', 0, dice([0.3]));
     t.equal(again.message, 'That order is already pending.');
     t.equal(s.treasuryGP, 300);
@@ -175,17 +186,32 @@
   test('an active summit cuts the price of Hall actions', function (t) {
     var s = built(fresh(), ['hall_of_emissaries']);
     s.treasuryGP = 1000;
-    s.diplomacy.summits.push({ title: 'Inter-Clan Summit', turnsLeft: 2, costReductionPct: 25 });
+    s.diplomacy.summits.push({ title: 'Inter-Clan Summit', startDay: 1, endDay: 15, costReductionPct: 25 });
     order(s, 'hall_of_emissaries', 'secure_trade_agreement', 0, { targetClan: '' });
     t.equal(s.treasuryGP, 1000 - 187);
   });
 
-  test('orders complete on their turn or any later one (BAS-13)', function (t) {
+  test('orders complete on their day or any later one (BAS-13)', function (t) {
     var s = fresh();
-    s.pendingOrders = [{ id: 'a', completeTurn: 2 }, { id: 'b', completeTurn: 4 }, { id: 'c', completeTurn: 3 }];
-    s.turn = 3;
+    s.pendingOrders = [{ id: 'a', dueDay: 2 }, { id: 'b', dueDay: 4 }, { id: 'c', dueDay: 3 }];
+    s.day = 3;
     t.same(R.dueOrders(s).map(function (o) { return o.id; }), ['a', 'c']);
-    t.same(R.dueOrders(s, ['a']).map(function (o) { return o.id; }), ['c'], 'skipped this turn');
+    t.same(R.dueOrders(s, ['a']).map(function (o) { return o.id; }), ['c'], 'skipped today');
+  });
+
+  test('every order has its days: the five starting facilities, the Hall, the network and the war', function (t) {
+    var days = function (facId, fnId) { return R.fn(R.facility(data, facId), fnId).days; };
+    t.same([days('workshop', 'craft'), days('workshop', 'craft_magic_item'), days('barracks', 'recruit_defenders'), days('watchtower', 'patrol'), days('dock', 'charter_berth'), days('armoury', 'arm_defenders')], [3, 10, 5, 1, 7, 3]);
+    t.same(['upgrade_hall', 'secure_trade_agreement', 'host_delegation', 'inter_clan_summit', 'arbitration_authority', 'trade_consortium'].map(function (f) { return days('hall_of_emissaries', f); }), [14, 7, 5, 14, 10, 14]);
+    data.facilities.forEach(function (f) { f.functions.forEach(function (fn) { t.ok(fn.days >= 1, f.id + ' ' + fn.id + ' has days'); }); });
+    t.same(['stability', 'yield', 'toggle_high_risk'].map(function (k) { return T.bastion.networkUpgrades[k].days; }), [7, 7, 1]);
+    t.equal(R.time(data).musterDays, 3);
+    var s = fresh();
+    s.day = 9;
+    s.treasuryGP = 500;
+    s.tradeNetwork.active = true;
+    R.issueNetworkUpgrade(s, data, 'toggle_high_risk', dice([0.3]));
+    t.equal(s.pendingOrders[0].dueDay, 10);
   });
 
   group('Bastion: completing orders');
@@ -195,8 +221,13 @@
     var o = { facId: 'barracks', fnId: 'recruit_defenders', label: 'Barracks: Recruit Defenders' };
     t.same(R.completeSimpleOrder(s, data, o, dice([0.99])), [['Order Completed', 'Barracks: Recruit Defenders → Recruited 4 defenders.']]);
     t.equal(s.defenders.count, 4);
-    R.completeSimpleOrder(s, data, { facId: 'watchtower', fnId: 'patrol', label: 'x' }, dice([0.1]));
-    t.ok(s.defenders.patrolAdvantage);
+    s.day = 12;
+    t.same(R.completeSimpleOrder(s, data, { facId: 'watchtower', fnId: 'patrol', label: 'x' }, dice([0.1])), [['Order Completed', 'x → Patrol active until Day 19.']]);
+    t.ok(R.patrolActive(s));
+    s.day = 19;
+    t.ok(R.patrolActive(s), 'the 7th day after');
+    s.day = 20;
+    t.equal(R.patrolActive(s), false, 'over');
     R.completeSimpleOrder(s, data, { facId: 'armoury', fnId: 'arm_defenders', label: 'x' }, dice([0.1]));
     t.ok(s.defenders.armed);
   });
@@ -297,26 +328,63 @@
     t.same(p.rolls.map(function (r) { return [r.title, r.mod, r.dc]; }), [
       ['Host Delegation (Clan Blackstone)', 2, 13], ['Diplomacy Roll (conciliatory)', 4, 13], ['Insight Roll (conciliatory)', 2, 12]
     ]);
-    R.setCooldown(s, 'host_delegation', 2);
-    t.equal(R.emissaryPlan(s, data, hd).blocked, 2);
+    R.setCooldown(s, 'host_delegation', 14);
+    t.equal(R.emissaryPlan(s, data, hd).blocked, 14);
+    s.day += 10;
+    t.equal(R.emissaryPlan(s, data, hd).blocked, 4, 'days left');
   });
 
-  test('a Trade Agreement: income, duration and Political Capital by tier', function (t) {
+  test('a Trade Agreement: income per shipment, the weeks chosen and Political Capital by tier', function (t) {
     var s = built(fresh(), ['hall_of_emissaries']);
+    s.day = 5;
     s.treasuryGP = 5000;
-    var o = order(s, 'hall_of_emissaries', 'secure_trade_agreement', 0, { targetClan: 'Clan Blackstone' });
+    var o = order(s, 'hall_of_emissaries', 'secure_trade_agreement', 0, { targetClan: 'Clan Blackstone', weeks: 6 });
+    t.equal(o.dueDay, 12, '7 days to negotiate');
+    s.day = 12;
     var p = R.emissaryPlan(s, data, o);
     var res = R.applyEmissary(s, data, o, p, { main: roll(12, 14) }, dice([0.5, 0, 0]));
     t.equal(res.tier, 'success');
-    t.same(s.diplomacy.agreements.map(function (a) { return [a.title, a.clan, a.turnsLeft, a.incomePerTurn]; }), [['Trade Agreement', 'Clan Blackstone', 4, 100]]);
+    t.same(s.diplomacy.agreements.map(function (a) { return [a.title, a.clan, a.startDay, a.endDay, a.income, a.lastShipmentDay]; }), [['Trade Agreement', 'Clan Blackstone', 12, 54, 100, 12]]);
+    t.equal(R.shipmentsLeft(s.diplomacy.agreements[0], 7), 6, 'six weeks, six shipments');
+    t.equal(R.daysLeft(s, s.diplomacy.agreements[0]), 42);
     t.equal(s.politicalCapital.blackstone, 8);
     t.equal(s.warehouse[0].item, 'Trade Agreement Contract');
     t.equal(res.summary, 'Terms are acceptable. The contract is sealed.');
-    t.same(res.changes, ['Political Capital: +8 (Clan Blackstone)', 'New record: Trade Agreement (4 turns)', 'Income: +100 gp/turn']);
+    t.same(res.changes, ['Political Capital: +8 (Clan Blackstone)', 'New record: Trade Agreement (42 days, 6 shipments, until Day 54)', 'Income: +100 gp a shipment, every 7 days']);
     t.equal(res.log[0], 'Order Resolved');
   });
 
-  test('a bad failure: no deal, −20 Political Capital, 2-turn cooldown', function (t) {
+  test('a Trade Agreement\'s weeks: 1, 3 or 6 as chosen (3 if not), the tier adds or takes a week or two, never under a week', function (t) {
+    function weeksFor(weeks, d20, total) {
+      var s = built(fresh(), ['hall_of_emissaries']);
+      s.treasuryGP = 5000;
+      var o = order(s, 'hall_of_emissaries', 'secure_trade_agreement', 0, { targetClan: 'Clan Karr', weeks: weeks });
+      R.applyEmissary(s, data, o, R.emissaryPlan(s, data, o), { main: roll(d20, total) }, dice([0.5]));
+      var a = s.diplomacy.agreements[0];
+      return a ? (a.endDay - a.startDay) / 7 : 0;
+    }
+    t.same([weeksFor(1, 12, 14), weeksFor(3, 12, 14), weeksFor(6, 12, 14), weeksFor(undefined, 12, 14), weeksFor(4, 12, 14)], [1, 3, 6, 3, 3]);
+    t.same([weeksFor(3, 20, 22), weeksFor(3, 15, 19), weeksFor(3, 10, 12), weeksFor(1, 10, 12)], [5, 4, 2, 1]);
+  });
+
+  test('contracts send a shipment every 7 days from the day signed, the last on the final day, then end with a word', function (t) {
+    var s = fresh();
+    s.day = 12;
+    s.diplomacy.agreements = [{ id: 'a', title: 'Trade Agreement', clan: 'Clan Karr', startDay: 12, endDay: 33, income: 100, lastShipmentDay: 12 }];
+    var paid = [];
+    for (var d = 13; d <= 34; d++) {
+      s.day = d;
+      var before = s.treasuryGP;
+      var out = R.tickDiplomacy(s, data);
+      if (s.treasuryGP > before) paid.push(d);
+      if (out.word.length) t.same([d, out.word], [33, ['Your Trade Agreement with Clan Karr has ended (its last shipment arrived).']]);
+    }
+    t.same(paid, [19, 26, 33]);
+    t.equal(s.treasuryGP, 300);
+    t.equal(s.diplomacy.agreements.length, 0);
+  });
+
+  test('a bad failure: no deal, −20 Political Capital, a 14-day cooldown', function (t) {
     var s = built(fresh(), ['hall_of_emissaries']);
     s.treasuryGP = 5000;
     var o = order(s, 'hall_of_emissaries', 'secure_trade_agreement', 0, { targetClan: 'Clan Blackstone' });
@@ -324,8 +392,13 @@
     t.equal(res.tier, 'bad_failure');
     t.equal(s.diplomacy.agreements.length, 0);
     t.equal(s.politicalCapital.blackstone, -20);
-    t.equal(R.cooldownLeft(s, 'trade_agreement'), 2);
+    t.equal(R.cooldownLeft(s, 'trade_agreement'), 14);
+    t.ok(res.changes.indexOf('Cooldown: 14 days') !== -1);
     t.equal(res.summary, 'Negotiations sour. Ink never touches parchment.');
+    s.day += 14;
+    R.tickDiplomacy(s, data);
+    t.equal(R.cooldownLeft(s, 'trade_agreement'), 0, 'free again 14 days later');
+    t.same(s.diplomacy.cooldowns, {});
   });
 
   test('a natural 1 still signs the deal with no Political Capital change (B20, kept)', function (t) {
@@ -349,7 +422,8 @@
     t.equal(s.politicalCapital.blackstone, 15, 'not 15 + 25');
     t.equal(s.diplomacy.tokens, 1);
     t.equal(s.treasuryGP, before + 68, '80 gp × 0.85 (conciliatory)');
-    t.equal(s.diplomacy.delegations[0].turnsLeft, 4, 'the first roll still sets the length (2 + 2)');
+    var dl = s.diplomacy.delegations[0];
+    t.equal(dl.endDay - dl.startDay, 28, 'the first roll still sets the length (14 + 14 days)');
     t.same(res.changes.filter(function (c) { return /Political Capital/.test(c); }), ['Political Capital: +15 (Clan Blackstone)']);
     t.equal(res.summary, '', 'its summary line stays empty (BAS-34, kept)');
   });
@@ -378,7 +452,7 @@
     t.equal(res.tier, 'great_success');
     t.equal(s.politicalCapital.blackstone, 15);
     t.equal(s.politicalCapital.rowthorn, 15);
-    t.same([s.diplomacy.summits[0].costReductionPct, s.diplomacy.summits[0].turnsLeft], [30, 4]);
+    t.same([s.diplomacy.summits[0].costReductionPct, s.diplomacy.summits[0].endDay - s.diplomacy.summits[0].startDay], [30, 28]);
     t.equal(s.warehouse[0].item, 'Summit Charter');
   });
 
@@ -388,11 +462,12 @@
     s.treasuryGP = 1000;
     var o = order(s, 'hall_of_emissaries', 'trade_consortium', 1, { targetClan: 'Karr' });
     t.equal(o.label, 'Hall of Emissaries: Trade Consortium (Karr)');
+    s.day = 15;
     R.applyEmissary(s, data, o, R.emissaryPlan(s, data, o), { main: roll(15, 21) }, dice([0.5]));
     t.ok(s.tradeNetwork.active);
     var r = s.tradeNetwork.routes[0];
-    t.same([r.clan, r.commodity, r.risk, r.expiresTurn, r.status], ['Karr', 'Wool & Furs', 'high', 6, 'active']);
-    t.equal(r.yieldGP, s.diplomacy.consortiums[0].incomePerTurn);
+    t.same([r.clan, r.commodity, r.risk, r.openedDay, r.nextDay, r.expiresDay, r.status], ['Karr', 'Wool & Furs', 'high', 15, 22, 50, 'active']);
+    t.equal(r.yieldGP, s.diplomacy.consortiums[0].income);
   });
 
   test('a new consortium doesn\'t reopen an expired route (B21, kept)', function (t) {
@@ -406,50 +481,109 @@
     t.equal(s.diplomacy.consortiums.length, 1);
   });
 
-  group('Bastion: Advance Bastion Turn');
+  group('Bastion: passing a day');
 
-  test('the steps in the old order: turn and income, construction and resets, then the finish', function (t) {
+  test('a day\'s steps: the day moves on, building and shipments, then the routes, the orders and the finish, with word from the Ironbow', function (t) {
     var s = built(fresh(), []);
-    s.builtExtras = [{ facId: 'library', status: 'building', remaining: 1 }];
-    s.diplomacy.agreements = [{ title: 'Trade Agreement', clan: 'Clan Karr', turnsLeft: 1, incomePerTurn: 100 }];
+    s.day = 20;
+    s.builtExtras = [{ facId: 'library', status: 'building', startDay: 0, readyDay: 21 }];
+    s.diplomacy.agreements = [{ title: 'Trade Agreement', clan: 'Clan Karr', startDay: 14, endDay: 21, income: 100, lastShipmentDay: 14 }];
     s.lastEvent = { name: 'Guest' };
-    s.defenders.patrolAdvantage = true;
-    R.startTurn(s, 1);
-    t.equal(s.turn, 2);
-    t.equal(s.treasuryGP, 100);
+    R.startDay(s, data, 1);
+    t.equal(s.day, 21);
+    t.equal(s.treasuryGP, 100, 'the last shipment');
     t.equal(s.diplomacy.agreements.length, 0, 'the agreement ran out');
-    t.same(s.turnInProgress, { turn: 2, stage: 'trade', skipped: [], attackRolled: false });
-    R.tickTurn(s, data, 1);
-    t.equal(s.turnInProgress.stage, 'orders');
-    t.equal(s.lastEvent, null);
-    t.equal(s.defenders.patrolAdvantage, false);
-    t.equal(s.log[0].body, 'Library is now built and active.');
-    R.finishTurn(s, data.events, dice([0.5]), 1);
-    t.equal(s.turnInProgress, null);
-    t.same(titles(s), ['Turn Advanced', 'Construction Complete', 'Diplomacy']);
-    t.equal(s.lastEvent, null, 'no event on turn 2');
+    t.same([s.dayInProgress.day, s.dayInProgress.stage, s.dayInProgress.skipped, s.dayInProgress.attackRolled], [21, 'trade', [], false]);
+    t.same(s.builtExtras[0], { facId: 'library', status: 'built' });
+    R.finishRoutes(s);
+    t.equal(s.dayInProgress.stage, 'orders');
+    t.same(s.lastEvent, { name: 'Guest' }, 'the last event stays until the next');
+    R.finishDay(s, data, data.events, dice([0.5]), 1);
+    t.equal(s.dayInProgress, null);
+    t.same(titles(s), ['Diplomacy', 'Diplomacy', 'Construction Complete']);
+    t.ok(s.log.every(function (l) { return l.day === 21; }), 'each log line has its day');
+    t.same(s.word, [{ day: 21, lines: ['The Library is built.', 'Your Trade Agreement with Clan Karr has ended (its last shipment arrived).'] }]);
   });
 
-  test('every 4th turn rolls a Bastion event', function (t) {
+  test('a quiet day adds no word', function (t) {
     var s = fresh();
-    s.turn = 3;
-    R.startTurn(s);
-    R.tickTurn(s, data);
-    R.finishTurn(s, data.events, dice([0.995]));
+    s.day = 3;
+    R.startDay(s, data);
+    R.finishRoutes(s);
+    R.finishDay(s, data, data.events, dice([0.5]));
+    t.equal(s.day, 4);
+    t.same(s.word, []);
+    t.same(s.log, []);
+  });
+
+  test('the automatic Bastion event comes every 28 days from Day 1 (Days 29, 57…), once', function (t) {
+    t.same([1, 2, 28, 29, 30, 57, 85].map(function (d) { return R.isEventDay(data, d); }), [false, false, false, true, false, true, true]);
+    t.same([1, 5, 29, 30, -3].map(function (d) { return R.nextEventDay(data, d); }), [29, 29, 57, 57, 29]);
+    var s = fresh();
+    s.day = 28;
+    R.startDay(s, data);
+    R.finishRoutes(s);
+    R.finishDay(s, data, data.events, dice([0.995]));
     t.equal(s.lastEvent.name, 'Treasure');
-    t.equal(s.log[1].body, 'Auto event (Turn 4) → Rolled 100 → Treasure');
+    t.equal(s.lastEvent.day, 29);
+    t.equal(s.lastEventDay, 29);
+    t.equal(s.log[0].body, 'Auto event (Day 29) → Rolled 100 → Treasure');
+    t.same(s.word[0].lines, ['Bastion event: Treasure (rolled 100).']);
+    /* Finishing the same day again (a resumed day) can't roll it twice. */
+    s.dayInProgress = { day: 29, stage: 'orders', skipped: [], attackRolled: true, news: [] };
+    R.finishDay(s, data, data.events, dice([0.1]));
+    t.equal(s.lastEvent.name, 'Treasure');
   });
 
-  test('a skipped order stays pending and comes up next turn', function (t) {
+  test('a skipped order stays due and comes up the next day', function (t) {
     var s = fresh();
-    s.pendingOrders = [{ id: 'w', facId: 'war_council', completeTurn: 2, meta: { kind: 'war_action' } }];
-    R.startTurn(s);
-    t.equal(R.dueOrders(s, s.turnInProgress.skipped).length, 1);
+    s.pendingOrders = [{ id: 'w', facId: 'war_council', dueDay: 2, meta: { kind: 'war_action' } }];
+    R.startDay(s, data);
+    t.equal(R.dueOrders(s, s.dayInProgress.skipped).length, 1);
     R.skipOrder(s, 'w');
-    t.equal(R.dueOrders(s, s.turnInProgress.skipped).length, 0);
-    R.finishTurn(s, data.events, dice([0.1]));
-    R.startTurn(s);
-    t.equal(R.dueOrders(s, s.turnInProgress.skipped).length, 1);
+    t.equal(R.dueOrders(s, s.dayInProgress.skipped).length, 0);
+    t.equal(R.dueOrders(s).length, 1, 'still due (Resolve)');
+    R.finishDay(s, data, data.events, dice([0.1]));
+    R.startDay(s, data);
+    t.equal(R.dueOrders(s, s.dayInProgress.skipped).length, 1);
+  });
+
+  test('the Explorer\'s day: first read moves the Bastion to it; ahead passes days; behind moves everything back', function (t) {
+    var s = fresh();
+    t.same(R.clockAction(s, null), { kind: 'none' });
+    t.same(R.clockAction(s, 0), { kind: 'none' });
+    t.equal(R.clockAction(s, 9).kind, 'anchor');
+    s.pendingOrders = [{ id: 'o', issuedDay: 1, dueDay: 5 }];
+    R.anchor(s, 9);
+    t.same([s.day, s.anchored, s.pendingOrders[0].dueDay], [9, true, 13], 'nothing passed; the order still 4 days off');
+    t.same(R.clockAction(s, 9), { kind: 'none' });
+    t.same(R.clockAction(s, 12), { kind: 'pass', days: 3 });
+    t.same(R.clockAction(s, 4), { kind: 'shift', by: -5 });
+    s.dayInProgress = { day: 9, stage: 'orders', skipped: [], attackRolled: false, news: [] };
+    t.same(R.clockAction(s, 4), { kind: 'pass', days: 0 }, 'a day part-way through is finished first');
+  });
+
+  test('moving the Bastion by days (Reset Travel): everything due keeps its distance; history stays', function (t) {
+    var s = fresh();
+    s.day = 30;
+    s.anchored = true;
+    s.pendingOrders = [{ id: 'o', issuedDay: 28, dueDay: 33 }];
+    s.builtExtras = [{ facId: 'library', status: 'building', startDay: 20, readyDay: 41 }];
+    s.diplomacy.agreements = [{ startDay: 26, endDay: 47, lastShipmentDay: 26, income: 10 }];
+    s.diplomacy.cooldowns = { summit: 40 };
+    s.tradeNetwork.routes = [{ id: 'r', openedDay: 25, nextDay: 32, expiresDay: 60, status: 'active' }];
+    s.repairs = { barracks: 35 };
+    s.wars = { bacca: { since: 20, last: 27, next: 34 } };
+    s.warRecovery = [{ id: 'x', untilDay: 37 }];
+    s.defenders.patrolUntil = 31;
+    s.log = [{ title: 'x', body: 'y', day: 29 }];
+    R.shiftDays(s, -29);
+    t.equal(s.day, 1);
+    t.same([s.pendingOrders[0].dueDay, s.builtExtras[0].readyDay, s.diplomacy.agreements[0].endDay, s.diplomacy.cooldowns.summit, s.tradeNetwork.routes[0].nextDay, s.repairs.barracks, s.wars.bacca.next, s.wars.bacca.since, s.warRecovery[0].untilDay, s.defenders.patrolUntil], [4, 12, 18, 11, 3, 6, 5, -9, 8, 2]);
+    t.equal(R.cooldownLeft(s, 'summit'), 10);
+    t.equal(s.log[0].day, 29, 'the log is history');
+    t.equal(R.dayLabel(-9), 'before Day 1');
+    t.equal(R.dayLabel(4), 'Day 4');
   });
 
   test('which way each order completes', function (t) {
@@ -460,22 +594,24 @@
     t.equal(R.orderKind(data, { facId: 'nowhere', fnId: 'x' }), 'none');
   });
 
-  test('diplomacy each turn: contracts count down, routes expire with their consortium, cooldowns tick', function (t) {
+  test('diplomacy each day: shipments, records ending, routes expiring with their consortium, cooldowns ending', function (t) {
     var s = fresh();
-    s.diplomacy.consortiums = [{ clan: 'Karr', turnsLeft: 1, incomePerTurn: 50 }];
-    s.tradeNetwork.routes = [{ id: 'r', clan: 'Karr', status: 'active', expiresTurn: 9 }];
-    s.diplomacy.cooldowns = { summit: 2 };
-    var logs = R.tickDiplomacy(s);
-    t.same(logs, [['Diplomacy', 'Contract income received: +50 gp.']]);
+    s.day = 15;
+    s.diplomacy.consortiums = [{ clan: 'Karr', title: 'Form Trade Consortium', startDay: 8, endDay: 15, income: 50, lastShipmentDay: 8 }];
+    s.tradeNetwork.routes = [{ id: 'r', clan: 'Karr', status: 'active', expiresDay: 43 }];
+    s.diplomacy.cooldowns = { summit: 17, consortium: 15 };
+    var out = R.tickDiplomacy(s, data);
+    t.same(out.logs, [['Diplomacy', 'Contract shipments arrived: +50 gp.'], ['Diplomacy', 'Your Form Trade Consortium with Karr has ended (its last shipment arrived).']]);
     t.equal(s.tradeNetwork.routes[0].status, 'expired');
-    t.same(s.diplomacy.cooldowns, { summit: 1 });
+    t.same(s.diplomacy.cooldowns, { summit: 17 });
+    t.equal(R.passiveIncome(s), 0);
   });
 
   group('Bastion: trade routes');
 
   function network(routes) {
     var s = fresh();
-    s.turn = 5;
+    s.day = 5;
     s.tradeNetwork.active = true;
     s.tradeNetwork.routes = routes;
     return s;
@@ -494,9 +630,9 @@
     t.equal(R.routePayout(s, { yieldGP: 100, status: 'expired' }, 'success'), 0);
   });
 
-  test('each route pays at most once a turn, even after a cancelled roll (BAS-05, BAS-11)', function (t) {
-    var s = network([{ id: 'a', clan: 'Blackstone', risk: 'low', yieldGP: 100, status: 'active' }, { id: 'b', clan: 'Karr', risk: 'high', yieldGP: 200, status: 'active' }]);
-    t.ok(R.routesDueThisTurn(s));
+  test('each route pays at most once each time it sails (every 7 days), even after a cancelled roll (BAS-05, BAS-11)', function (t) {
+    var s = network([{ id: 'a', clan: 'Blackstone', risk: 'low', yieldGP: 100, status: 'active', nextDay: 5 }, { id: 'b', clan: 'Karr', risk: 'high', yieldGP: 200, status: 'active', nextDay: 5 }, { id: 'c', clan: 'Bacca', risk: 'low', yieldGP: 50, status: 'active', nextDay: 7 }]);
+    t.ok(R.routesDueToday(s));
     t.equal(R.routeNeedsRoll(s, s.tradeNetwork.routes[0]), false);
     t.equal(R.routeNeedsRoll(s, s.tradeNetwork.routes[1]), true);
     var out = R.settleRoute(s, data, s.tradeNetwork.routes[0], null, dice([0.1]));
@@ -506,10 +642,12 @@
     R.settleRoute(s, data, s.tradeNetwork.routes[1], roll(15, 15), dice([0.1]));
     t.equal(s.treasuryGP, 300);
     t.same(R.routesToSettle(s), []);
-    R.finishRoutes(s);
-    t.equal(R.routesDueThisTurn(s), false);
-    s.turn = 6;
-    t.equal(R.routesToSettle(s).length, 2, 'next turn they pay again');
+    t.equal(R.routesDueToday(s), false);
+    t.same(s.tradeNetwork.routes.map(function (r) { return r.nextDay; }), [12, 12, 7]);
+    s.day = 7;
+    t.same(R.routesToSettle(s).map(function (r) { return r.id; }), ['c'], 'each on its own 7-day count');
+    s.day = 12;
+    t.equal(R.routesToSettle(s).length, 3, 'a week on, they sail again');
   });
 
   test('a failed roll disrupts the route; a disaster also drops stability and files a dispute', function (t) {
@@ -523,7 +661,7 @@
     t.equal(out.line, 'Karr suffers a catastrophic loss at sea. Status: Disrupted. Market Stability falls by 10%.');
     t.equal(s.tradeNetwork.stability, 65);
     var d = s.arbitration.queue[0];
-    t.same([d.a, d.b, d.meta.routeClan, d.meta.commodity, d.meta.disruptedTurn, d.meta.stabilityAtFiling], ['Karr', 'Ironbow Trade Consortium', 'Karr', 'Wool & Furs', 5, 65]);
+    t.same([d.a, d.b, d.meta.routeClan, d.meta.commodity, d.meta.disruptedDay, d.meta.stabilityAtFiling, d.createdDay], ['Karr', 'Ironbow Trade Consortium', 'Karr', 'Wool & Furs', 5, 65, 5]);
   });
 
   group('Bastion: the Council Ledger');
@@ -620,9 +758,9 @@
     s.defenderBeasts = [{ name: 'Ape', qty: 1 }];
     R.queueWarAction(s, { objective: 'raid', targetKey: 'bacca', targetName: 'Bacca', commitDefenders: 4, commitBeasts: 1, commitLieutenants: 2, commitRegiments: 1 }, dice([0.3]));
     var o = s.pendingOrders[0];
-    t.equal(o.completeTurn, 2);
+    t.equal(o.dueDay, 4, 'musters 3 days later');
     var plan = R.warPlan(s, data, o);
-    t.same([plan.dc, plan.mod, plan.title], [14, 4, 'War Turn: RAID vs Bacca']);
+    t.same([plan.dc, plan.mod, plan.title], [14, 4, 'War Action: RAID vs Bacca']);
     R.resolveWar(s, data, plan, roll(5, 9), dice([0.3]), 0);
     t.same([s.treasuryGP, s.politicalCapital.bacca, s.defenders.count, s.defenderBeasts.length, s.clanHonor], [0, 8, 3, 0, 32]);
     t.equal(s.warLog[0].title, 'Failure: RAID vs Bacca');
@@ -680,7 +818,7 @@
   /* A Clan at war: 2 Regiments, 6 defenders, 1 Lieutenant and 3 of its 5 Giant Vultures. */
   function atWar(extra) {
     var s = fresh();
-    s.organization = { type: 'clan', name: 'Clan Ironbow', chief: '', motto: '', foundedAtTurn: 1 };
+    s.organization = { type: 'clan', name: 'Clan Ironbow', chief: '', motto: '', foundedAtDay: 1 };
     s.treasuryGP = 100;
     s.defenders.count = 6;
     s.defenderBeasts = [{ name: 'Giant Vulture', qty: 5 }, { name: 'Ape', qty: 1 }];
@@ -705,7 +843,7 @@
     var b = begun();
     t.same(b.s.pendingOrders, []);
     t.equal(b.s.militaryActions.length, 1);
-    t.same([b.ma.step, b.ma.objective, b.ma.targetName, b.ma.turn, b.ma.v, b.ma.tier], ['weather', 'raid', 'Bacca', 1, 2, 'established'], 'a phase 1 order: an established local force');
+    t.same([b.ma.step, b.ma.objective, b.ma.targetName, b.ma.day, b.ma.v, b.ma.tier], ['weather', 'raid', 'Bacca', 1, 2, 'established'], 'a phase 1 order: an established local force');
     t.same(b.ma.commit, { defenders: 6, lieutenants: 1, units: { line: 2 }, beasts: { 'Giant Vulture': 3 } }, 'its Regiments are Line Infantry; its beasts the first in the list');
     t.equal(b.ma.battle, null);
     t.same(b.ma.spec.player.units.map(function (u) { return u.label; }), ['Line Infantry 1', 'Line Infantry 2', 'Giant Vulture 1', 'Giant Vulture 2', 'Giant Vulture 3']);
@@ -840,20 +978,33 @@
 
   group('Bastion: saving');
 
-  test('a save and reload keeps identity, war log, diplomacy and a turn in progress (BAS-01)', function (t) {
+  test('a save and reload keeps identity, war log, diplomacy, the day, a day in progress and word not yet shown (BAS-01)', function (t) {
     var s = built(fresh(), ['hall_of_emissaries']);
-    s.organization = { type: 'clan', name: 'Clan Ironbow', chief: 'Harry', motto: 'Root and Steel', foundedAtTurn: 3 };
+    s.day = 12;
+    s.anchored = true;
+    s.organization = { type: 'clan', name: 'Clan Ironbow', chief: 'Harry', motto: 'Root and Steel', foundedAtDay: 3 };
     s.clanHonor = 70;
     s.honourRespectByClan.karr = -3;
     s.trustedClientsByClan.slade = 20;
     s.warLog = [{ id: 'w', title: 'Success: Raid vs Bacca' }];
-    s.diplomacy.agreements = [{ title: 'Trade Agreement', clan: 'Clan Karr', turnsLeft: 3, incomePerTurn: 90 }];
+    s.diplomacy.agreements = [{ title: 'Trade Agreement', clan: 'Clan Karr', startDay: 5, endDay: 26, income: 90, lastShipmentDay: 12 }];
     s.diplomacy.tokens = 2;
-    s.diplomacy.cooldowns = { summit: 1 };
-    s.tradeNetwork.settled = { turn: 1, ids: ['r'] };
-    s.turnInProgress = { turn: 1, stage: 'orders', skipped: ['x'], attackRolled: true };
+    s.diplomacy.cooldowns = { summit: 15 };
+    s.defenders.patrolUntil = 14;
+    s.lastEventDay = -3;
+    s.dayInProgress = { day: 12, stage: 'orders', skipped: ['x'], attackRolled: true, news: ['The Smithy is built.'] };
+    s.word = [{ day: 11, lines: ['Barracks: Recruit Defenders → Recruited 2 defenders.'] }];
     var back = R.fromSave(JSON.parse(JSON.stringify(R.toSave(s))), data);
     t.same(back, s);
+  });
+
+  test('a Bastion saved in turns (before the days overhaul) is recognised, refused on import and never loaded', function (t) {
+    var old = { treasuryGP: 100, partyLevel: 7, turn: 5, builtExtras: [], pendingOrders: [], defenders: { count: 0 }, warehouse: [], turnInProgress: null };
+    t.ok(R.isOldSave(old));
+    t.equal(R.isSave(old), false);
+    t.equal(R.saveProblem(old), 'It was saved before the Bastion counted in days (in Bastion turns), so it can\'t be used.');
+    t.equal(R.importProblem([{ key: 'tsi.bastion.state', value: old }]), 'This file is from before the Bastion counted in days, so it can\'t be imported. Nothing was changed.');
+    t.equal(R.isOldSave(R.toSave(fresh())), false);
   });
 
   test('a Military Action part-way through survives a save and reload', function (t) {
@@ -883,7 +1034,7 @@
       { id: 'b', step: 'deploy', commit: { defenders: 2 }, forces: [{ id: 'def', kind: 'defenders', label: 'Bastion Defenders', count: 2 }, { id: 'x', kind: 'dragon' }], weather: { d20: 14, total: 14, dc: 12, pass: true, id: 'clear' } },
       { id: 'c', step: 'resolve', commit: {}, forces: [], weather: { d20: 1, total: 1, dc: 12, pass: false, id: 'cold_rain' }, morale: { d20: 1, total: 1, dc: 14, pass: false }, luck: { d20: 1, total: 1, dc: 10, pass: false, mod: -1 }, deployment: { started: true, locked: false, positions: {} } }
     ];
-    save.defenders = { count: 2, armed: false, patrolAdvantage: false };
+    save.defenders = { count: 2, armed: false, patrolUntil: 0 };
     var back = R.fromSave(save, data);
     t.same(back.militaryActions.map(function (m) { return [m.id, m.step, m.v]; }), [['b', 'morale', 2], ['c', 'deploy', 2]], 'phase 1 actions are upgraded; one waiting for the single roll goes back to deployment');
     t.equal(back.militaryActions[0].forces, undefined, 'the old tokens and deployment are dropped');
@@ -894,18 +1045,19 @@
   test('another tool\'s file or a damaged one is refused (BAS-14)', function (t) {
     t.ok(R.isSave(R.toSave(fresh())));
     t.ok(R.saveProblem({ players: [], prizeTotal: 300 }));
-    t.ok(R.saveProblem({ treasuryGP: 1, partyLevel: 1, turn: 1, builtExtras: 'x', pendingOrders: [] }));
+    t.ok(R.saveProblem({ v: 2, treasuryGP: 1, partyLevel: 1, day: 1, builtExtras: 'x', pendingOrders: [] }));
+    t.ok(R.saveProblem({ v: 2, treasuryGP: 1, partyLevel: 1, day: 'x', builtExtras: [], pendingOrders: [] }));
     t.ok(R.importProblem([{ key: 'tsi.bastion.state', value: { heroes: [] } }]));
     t.ok(R.importProblem([{ key: 'tsi.bastion.ui', value: 'x' }]));
     t.equal(R.importProblem([{ key: 'tsi.bastion.state', value: R.toSave(fresh()) }, { key: 'tsi.bastion.ui', value: { collapsed: {} } }]), null);
   });
 
-  test('a negative treasury comes back as 0 (B17, kept); an unknown turn step resumes at the orders', function (t) {
+  test('a negative treasury comes back as 0 (B17, kept); an unknown day step resumes at the orders', function (t) {
     var s = fresh();
     s.treasuryGP = -40;
-    s.turnInProgress = { turn: 2, stage: 'nonsense' };
+    s.dayInProgress = { day: 2, stage: 'nonsense' };
     var back = R.fromSave(R.toSave(s), data);
     t.equal(back.treasuryGP, 0);
-    t.same(back.turnInProgress, { turn: 2, stage: 'orders', skipped: [], attackRolled: false }, 'a save from before wars has made no attack roll');
+    t.same(back.dayInProgress, { day: 2, stage: 'orders', skipped: [], attackRolled: false, news: [] });
   });
 }());

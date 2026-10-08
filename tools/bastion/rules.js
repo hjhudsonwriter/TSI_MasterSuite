@@ -59,7 +59,7 @@
      Reset Travel); anything else is the fallback. */
   function dayNum(v, fallback) {
     var n = typeof v === 'number' ? v : parseInt(String(v), 10);
-    return typeof n === 'number' && isFinite(n) ? Math.max(-100000, Math.min(100000, Math.round(n))) : fallback;
+    return typeof n === 'number' && isFinite(n) ? Math.max(-100000, Math.min(100000, Math.trunc(n))) : fallback;
   }
   R.dayNum = dayNum;
   /* "Day 12"; a day before Day 1 (after a Reset Travel) reads "before Day 1". */
