@@ -83,7 +83,7 @@
       function done() { save(); if (life.alive) renderAll(); }
 
       /* Not saved: the choice showing in each facility list, and whether a
-         turn (or another run of dice boxes) is going on. */
+         day being passed (or another run of dice boxes) is going on. */
       var selections = {};
       var turnRunning = false;
 
@@ -1393,7 +1393,7 @@
         return hallModal(settle ? settling(report) : report);
       }
       /* A double click queues one war action, not two (BAS-15). More than one
-         a turn is still allowed (B22). What's queued is kept within what's
+         a day is still allowed (B22). What's queued is kept within what's
          free (R.queueWarAction2), and the mission is the one the
          intelligence box shows. */
       var NOTHING_FIGHTS = 'Commit at least one force that fights: defenders, beasts or, for a Clan or Brigade, regiments. Lieutenants only lead them.';
@@ -2811,7 +2811,7 @@
       /* ================================================================
          Trade routes: resolve, and the Sea Trade Routes map
          ================================================================ */
-      /* Each route is saved as it's settled, so none can pay twice in a turn,
+      /* Each route is saved as it's settled, so none can pay twice for a sailing,
          even after a cancelled roll or a press of Enter (BAS-05, BAS-11). */
       /* Each route sails every 7 days from the day it opened; the ones due
          settle here, as a day passes (inDay) or from the Hall's Resolve. */

@@ -3,8 +3,9 @@
    in the top bar on every screen (home and every tool). It shows where the
    campaign stands (Harry, 7 October 2026), read from the Explorer's and the
    Bastion's saves (shared/js/campaign-rules.js works it out): the party's
-   level and heroes; the day, the Bastion turns done and the days to the next
-   one; the party's event gold; the Region, its Clan's Political Capital and
+   level and heroes; the day, the Bastion's orders pending and the next word
+   from the Ironbow (since the days overhaul, 8 October 2026); the party's
+   event gold; the Region, its Clan's Political Capital and
    Honour/Respect and its god's favour; and the Explorer's Active Effects and
    Threads (the Threads added at Harry's request, 7 October 2026). While it's
    open it reads the saves again every two seconds (and straight after this
