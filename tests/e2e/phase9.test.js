@@ -2225,15 +2225,18 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
     const { context, page } = await newPage(browser, 'laptop');
     await openBastion(page);
     await page.fill('[data-test=treasury]', '1234');
-    await advance(page, []);
+    await days(page, 1, []);
     let exported = null;
 
-    await check('Download Save (JSON) downloads the Bastion and logs it', async () => {
+    await check('Download Save (JSON) downloads the campaign: the Bastion and the Explorer together, and logs it', async () => {
       const d = await H.download(page, '[data-test=download-save]');
       exported = d.text;
-      assert(/bastion/.test(d.name), d.name);
-      const rec = JSON.parse(d.text).records.find(r => r.key === 'tsi.bastion.state');
-      equal([rec.value.treasuryGP, rec.value.turn], [1234, 2]);
+      assert(/^tsi-campaign-\d{4}-\d\d-\d\d-\d{4}\.json$/.test(d.name), d.name);
+      const file = JSON.parse(d.text);
+      equal([file.kind, file.tools], ['campaign', ['explorer', 'bastion']]);
+      const rec = file.records.find(r => r.key === 'tsi.bastion.state');
+      equal([rec.value.treasuryGP, rec.value.day, rec.value.v], [1234, 2, 2]);
+      equal(file.records.find(r => r.key === 'tsi.explorer.save').value.travel.day, 2, 'the Explorer\'s half');
       await page.waitForFunction(() => TSI.bastion.debug.state().log[0].title === 'Save File');
     });
 
@@ -2242,16 +2245,22 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await page.fill('[data-test=treasury]', '99');
       await H.chooseFile(page, '[data-test=import-save]', f);
       equal(await modalTitle(page), 'Import into The Ironbow Bastion Manager');
+      assert(/Importing replaces what the Explorer and the Bastion have saved now, together/.test(await H.modalText(page)), await H.modalText(page));
       await clickModal(page, 'Cancel');
       equal((await st(page)).treasuryGP, 99);
+      /* Both halves come back: the Explorer's day moves on meanwhile, and goes back with the import. */
+      await setExplorerDay(page, 3);
+      await page.waitForFunction(() => TSI.bastion.debug.state().day === 3 && !TSI.bastion.debug.busy());
       await H.chooseFile(page, '[data-test=import-save]', f);
       await clickModal(page, 'Import');
-      await page.waitForSelector('[data-test=advance]');
+      await page.waitForSelector('[data-test=day-status]');
       await page.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().treasuryGP === 1234);
+      equal([(await st(page)).day, await explorerDay(page)], [2, 2]);
     });
 
     await check('another tool\'s file or a damaged Bastion is refused, and nothing changes (BAS-14)', async () => {
       const otherFile = JSON.parse(exported);
+      otherFile.kind = 'tool';
       otherFile.tool = 'arenas';
       otherFile.records = [Object.assign({}, otherFile.records[0], { key: 'tsi.arenas.state', value: { players: [], prizeTotal: 300 } })];
       await H.chooseFile(page, '[data-test=import-save]', H.writeTemp('arenas.json', otherFile));
@@ -2265,14 +2274,36 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       const t2 = await H.modalText(page);
       assert(/pendingOrders list is damaged/.test(t2), t2);
       await clickModal(page, 'OK');
+      /* A Bastion file from before the days overhaul (in Bastion turns). */
+      const old = JSON.parse(exported);
+      old.kind = 'tool'; old.tool = 'bastion';
+      old.records = [{ key: 'tsi.bastion.state', value: { treasuryGP: 50, partyLevel: 7, turn: 4, builtExtras: [], pendingOrders: [], defenders: { count: 0 }, warehouse: [], turnInProgress: null }, savedAt: old.records[0].savedAt }];
+      await H.chooseFile(page, '[data-test=import-save]', H.writeTemp('bastion-turns.json', old));
+      const t3 = await H.modalText(page);
+      assert(/This file is from before the Bastion counted in days, so it can't be imported\. Nothing was changed\./.test(t3), t3);
+      await clickModal(page, 'OK');
       equal((await st(page)).treasuryGP, 1234);
     });
 
     await check('a damaged save in the browser is set aside, and the Bastion still opens', async () => {
       await page.evaluate(() => TSI.store.set('tsi.bastion.state', { heroes: [] }));
       await reopen(page);
-      equal((await st(page)).turn, 1);
+      equal([(await st(page)).treasuryGP, (await st(page)).v], [0, 2]);
       assert((await page.evaluate(() => TSI.store.keys())).some(k => k.indexOf('tsi.quarantine.bastion.state') === 0));
+    });
+
+    await check('a Bastion saved in Bastion turns is set aside (kept, not deleted) and a new one starts on the Explorer\'s day, saying so', async () => {
+      await page.evaluate(() => TSI.store.set('tsi.bastion.state', { treasuryGP: 500, partyLevel: 9, turn: 6, builtExtras: [], pendingOrders: [{ id: 'x', completeTurn: 7 }], defenders: { count: 3 }, warehouse: [], turnInProgress: null }));
+      const before = (await page.evaluate(() => TSI.store.keys())).filter(k => k.indexOf('tsi.quarantine.bastion.state') === 0).length;
+      await reopen(page);
+      await H.waitForNotice(page, /Your Bastion was saved in Bastion turns, before the Bastion counted in days, so it has been set aside/);
+      await page.waitForFunction(() => TSI.bastion.debug.state().anchored);
+      const s = await st(page);
+      equal([s.v, s.treasuryGP, s.partyLevel, s.pendingOrders, s.day], [2, 0, 7, [], 2]);
+      const keys = (await page.evaluate(() => TSI.store.keys())).filter(k => k.indexOf('tsi.quarantine.bastion.state') === 0);
+      equal(keys.length, before + 1, 'the old Bastion is kept aside');
+      equal((await page.evaluate(k => TSI.store.get(k), keys[keys.length - 1])).turn, 6);
+      await H.dismissNotices(page);
     });
 
     await check('Reset asks first; Reset clears the Bastion', async () => {

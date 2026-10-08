@@ -417,7 +417,11 @@
       var record = cache.get(key);
       if (!record) return Promise.resolve(null);
       var now = new Date();
-      var newKey = rules.quarantineKey(key, now);
+      /* Two set aside in the same second get different names, so the first
+         isn't overwritten by the second. */
+      var base = rules.quarantineKey(key, now);
+      var newKey = base;
+      for (var n = 2; cache.has(newKey) || pending.has(newKey); n++) newKey = base + '-' + n;
       var moved = rules.makeRecord(newKey, record.value, now, { from: key, reason: reason || 'It couldn\'t be read.', at: now.toISOString() });
       cache.set(newKey, moved);
       cache.delete(key);
