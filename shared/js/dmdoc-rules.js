@@ -21,7 +21,7 @@
     MIN_W: 280,
     MIN_H: 200,
     DEFAULT_W: 440,
-    DEFAULT_H: 680,
+    DEFAULT_H: 800,   /* everything shows on the laptop until the lists get long; then it scrolls (7 October 2026) */
     /* The gap from the window's right edge and the top bar when it first opens. */
     GAP: 24,
     /* Arrow keys on the title bar move it this far (Shift: further). */

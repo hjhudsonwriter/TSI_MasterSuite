@@ -2,11 +2,28 @@
 
 ## Where things stand
 
-**The rebuild is complete, the short how-to guide is written, and the first upgrades are done: the Clan Crest Creator has been reworked at Harry's request, its sigils redone from real heraldic artwork, and it now remembers your last design. The Bastion now takes a crest for your Clan or Brigade, counts beasts properly, and has phase 2 of the war mini-game: full battles on the War Table against an enemy that plays to its objective, with the result (losses, recovery and rewards) applied to the Bastion exactly once. The rules, as built, are in `docs/WAR-RULES.md`. On 6 October 2026 the Explorer's travel and campfire events were replaced with Harry's new ones, any tool can be opened in a new window from Switch tool, and the DM doc opens as a floating panel. On 7 October the Explorer's fights started setting themselves up in the Combat Tracker (monsters, Harry's own battle maps and the grid, with the tracker reporting back when every enemy is down), the ford only near rivers and the cove near the sea. The DM doc now shows where the campaign stands: the party's level and heroes, the day, the Bastion turns, the Clan's and the god's standing where the party is, and the Explorer's Active Effects.** All eight tools open from their cards, and `guide.html` (linked at the foot of the home screen) explains them. What comes next is up to Harry: after trying the tools at the table, he can ask for more upgrades, fixes to kept behaviours, or the joined-up ideas in sections 12 to 15 of the handover.
+**The rebuild is complete, the short how-to guide is written, and the first upgrades are done: the Clan Crest Creator has been reworked at Harry's request, its sigils redone from real heraldic artwork, and it now remembers your last design. The Bastion now takes a crest for your Clan or Brigade, counts beasts properly, and has phase 2 of the war mini-game: full battles on the War Table against an enemy that plays to its objective, with the result (losses, recovery and rewards) applied to the Bastion exactly once. The rules, as built, are in `docs/WAR-RULES.md`. On 6 October 2026 the Explorer's travel and campfire events were replaced with Harry's new ones, any tool can be opened in a new window from Switch tool, and the DM doc opens as a floating panel. On 7 October the Explorer's fights started setting themselves up in the Combat Tracker (monsters, Harry's own battle maps and the grid, with the tracker reporting back when every enemy is down), the ford only near rivers and the cove near the sea. The DM doc now shows where the campaign stands: the party's level and heroes, the day, the Bastion turns, the Clan's and the god's standing where the party is, the party's gold, and the Explorer's Active Effects and Threads.** All eight tools open from their cards, and `guide.html` (linked at the foot of the home screen) explains them. What comes next is up to Harry: after trying the tools at the table, he can ask for more upgrades, fixes to kept behaviours, or the joined-up ideas in sections 12 to 15 of the handover.
 
 Double-click `index.html` to open the suite. The plan is in `docs/PLAN.md`, the bug list in `docs/KNOWN_ISSUES.md`, and the notes for building each tool in `docs/BUILDING-A-TOOL.md`.
 
 ## Done
+
+### The party's gold and the Threads in the DM doc (7 October 2026)
+Harry asked for the Explorer's Threads and gold to be added to the DM doc (KNOWN_ISSUES SUI-22).
+- **Two more tiles**, making six:
+  - **Party gold:** the Explorer's event gold, the same number as its Gold: line. It can go below 0 (T14's −100), and shows 0 once you clear it in the Explorer.
+  - **Threads:** how many are open, and the next follow-up due (for example "open · next follow-up due Day 15").
+- **A Threads list**, under Active effects:
+  - each thread's name and note, the day it opened, the event it came from and any follow-up due, worded as in the Explorer's own list;
+  - what resolving it gives, for example "When resolved: +250 gold · DM note: Notice Board: consider +1 clan honour with Clan Blackstone.", as the Explorer's "are you sure?" says.
+
+  A thread goes when you resolve it in the Explorer. A follow-up that didn't come (the party had moved on) stops counting as due, as in the Explorer.
+- **Taller:** it first opens 800 pixels tall (was 680), so everything shows on the laptop until the lists get long; then it scrolls. Once moved or resized it keeps your size, so if you'd already dragged it aside, drag its corner down to see more.
+- **Shared wording:** when a follow-up is due, and what resolving a thread gives, now come from `shared/js/campaign-rules.js`, which the Explorer and the DM doc both use.
+- **Tests:**
+  - `tests/rules.html` runs 798 rules tests, all passing (3 new, and the damaged-save test extended): the gold, every thread's wording against the Explorer's, the next follow-up, resolving, a follow-up that didn't come, and odd saves.
+  - `tests/e2e/dmdoc.test.js` (11 checks, all passing; 1 new) plays C6, T6 (deliver the letter sealed) and T14 (buy the share), then resolves the Sealed Dispatch and clears the gold in the Explorer, checking the DM doc follows every step.
+  - The earlier click-throughs still pass: phase 1 (125), phase 8 (81) and fights (15).
 
 ### The DM doc's contents (7 October 2026)
 Harry asked for the DM doc to show, neatly and easy to read: the party's level, the heroes' names, the days passed, the Bastion turns completed, the days until the next Bastion turn, the Explorer's Active Effects (appearing and going exactly as the Explorer's do), and the Clan's and the god's territory the party is in, with the Clan's Honour/Respect and Political Capital and the god's Favour from the Bastion (KNOWN_ISSUES SUI-22).
@@ -585,7 +602,7 @@ Harry asked for a complete rework: the old tool's shields, colours and sigils we
   - The old-save import phase removed.
 
 ## Next
-**Harry tries the DM doc at the table**, with the Explorer and the Bastion open (in one window or two), then says what to change: what it shows, the order, the wording, or anything to add (for example the Explorer's Threads, the gold total, or the treasury).
+**Harry tries the DM doc at the table**, with the Explorer and the Bastion open (in one window or two), then says what to change: what it shows, the order, the wording, or anything to add (for example the Bastion's treasury).
 
 **Harry tries an Explorer fight at the table**, with the tracker's Battlemap on the TV, then says what to change. The likely things are the enemy groups or their names (in `tools/explorer/data/fights-data.js`), the starting places, and the choices listed under Open questions. **Battle maps:** Harry's 16 are in. Say if a region should use a different look (one word each in `looks`), or if a starting place sits badly on a map; more maps per place, or a rocks map for Bleakharbour, can be fitted the same way.
 
@@ -646,6 +663,7 @@ Each tool's questions are needed before that tool's phase. The full wording and 
     - **Where the party is** follows the Explorer's Region list, as the events do, not the loaded map.
     - **Where it first opens:** near the top right, where in the Explorer it covers Make Camp until it's dragged aside (it remembers where you put it). Say if it should first open somewhere else, such as the bottom left.
     - It only reads the two tools' saves and never writes them, so no guard against two windows saving over each other is needed.
+    - **Gold and Threads (added the same day):** the gold is the Explorer's event gold only (not the Bastion's treasury). "Next follow-up" is the one whose window ends soonest, the order the Explorer brings them in. Each thread also shows what resolving it gives, which the Explorer's own list keeps for its "are you sure?".
 - **Explorer (phase 8):** answered (E1–E16: all the defaults).
   - E16: the pins turned out to have been placed in the Explorer's full-screen view, not a maximised window, and were converted that way. Please double-click `tests/pin-check.html` and check all 33 sit on their towns; tell the next session about any that don't.
   - Kept behaviours you're likely to notice: the Fog of War button reads Off after reopening (EXP-19); the Region list doesn't follow the loaded map (EXP-20); and pressing Resolve with an empty roll box counts as a roll of 0 (EXP-28). Say if you'd like any changed.

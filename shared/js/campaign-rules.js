@@ -5,7 +5,9 @@
    too, so the DM doc and the Explorer can never disagree:
    - untilText: when an Active Effect ends ("ends Day 9", "until Make Camp");
    - isBastionDay: the weekly Bastion reminder, at the Make Camp that starts
-     Day 8, 15, 22 and so on.
+     Day 8, 15, 22 and so on;
+   - threadDueText and rewardLines: when a Thread's follow-up is due, and what
+     resolving it gives.
 
    TSI.campaign.summary(explorerSave, bastionSave, regions) → everything the
    DM doc shows. Either save may be null (that tool hasn't saved yet).
@@ -16,6 +18,7 @@
   var TSI = window.TSI = window.TSI || {};
 
   function isObj(v) { return !!v && typeof v === 'object' && !Array.isArray(v); }
+  function signed(n) { return (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(n); }
   function isNum(v) { return typeof v === 'number' && isFinite(v); }
   function str(v) { return typeof v === 'string' ? v : ''; }
   function clampInt(v, min, max, fallback) {
@@ -46,6 +49,21 @@
         return e.untilDay - today <= 1 ? 'until Make Camp' : 'until Make Camp on Day ' + (e.untilDay - 1);
       }
       return 'ends Day ' + e.untilDay;
+    },
+
+    /* When a Thread's follow-up is due, as the Explorer's Threads list says it ('' if it has none). */
+    threadDueText: function (t) {
+      if (!t || !t.follow) return '';
+      return t.follow.from === t.follow.to ? 'Follow-up due Day ' + t.follow.from : 'Follow-up due Days ' + t.follow.from + '–' + t.follow.to;
+    },
+    /* What resolving a Thread gives: its gold and its note for the DM. */
+    rewardLines: function (t) {
+      var lines = [];
+      if (t && isObj(t.resolve)) {
+        if (isNum(t.resolve.gold) && t.resolve.gold) lines.push(signed(Math.round(t.resolve.gold)) + ' gold');
+        if (str(t.resolve.dm)) lines.push('DM note: ' + t.resolve.dm);
+      }
+      return lines;
     },
 
     summary: function (explorer, bastion, regions) {
@@ -94,8 +112,30 @@
         out.god = null;
       }
 
+      /* The party's event gold: a running total in the Explorer until the DM clears it. */
+      var journey = ex && isObj(ex.journey) ? ex.journey : {};
+      out.gold = ex ? (isNum(journey.gold) ? Math.round(journey.gold) : 0) : null;
+
+      /* The Explorer's Threads, as its own list shows them, with what resolving each gives;
+         and the soonest follow-up still to come. */
+      var threads = Array.isArray(journey.threads) ? journey.threads : [];
+      out.threads = [];
+      out.nextFollowUp = null;
+      threads.forEach(function (t) {
+        if (!isObj(t) || !str(t.name)) return;
+        var follow = isObj(t.follow) && isNum(t.follow.from) && isNum(t.follow.to) ? { from: t.follow.from, to: t.follow.to } : null;
+        var due = follow ? C.threadDueText({ follow: follow }) : '';
+        out.threads.push({
+          id: str(t.id), name: t.name, note: str(t.note), day: isNum(t.day) ? t.day : null, from: str(t.from),
+          due: due, reward: C.rewardLines(t)
+        });
+        if (follow && (!out.nextFollowUp || follow.to < out.nextFollowUp.to || (follow.to === out.nextFollowUp.to && follow.from < out.nextFollowUp.from))) {
+          out.nextFollowUp = { name: t.name, from: follow.from, to: follow.to, text: due };
+        }
+      });
+
       /* The Explorer's Active Effects, exactly as its own list shows them. */
-      var effects = ex && isObj(ex.journey) && Array.isArray(ex.journey.effects) ? ex.journey.effects : [];
+      var effects = Array.isArray(journey.effects) ? journey.effects : [];
       out.effects = effects.filter(function (e) { return isObj(e) && str(e.name); }).map(function (e) {
         return {
           id: str(e.id), name: e.name, who: str(e.whoName) || 'The party', text: str(e.text),
