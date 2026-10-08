@@ -1,6 +1,6 @@
 # The Ironbow Bastion Manager: the days-and-map overhaul (plan, version 1)
 
-*8 October 2026. Version 2: Harry's answers built in (8 October). Nothing in this plan is built yet.*
+*8 October 2026. Version 2: Harry's answers built in (8 October). **Build 1 is built** (8 October; see "Build 1 as built" in section 7). Builds 2 and 3 wait for Harry's go-ahead.*
 
 ## Harry's brief, in short
 
@@ -124,7 +124,7 @@ The Explorer and the Bastion share **one save**, as far as Harry is concerned:
 ### 1.7 Two windows, and the rules that stop double-counting
 
 - With the Explorer on the laptop and the Bastion on the TV, the Bastion notices a new day within about 2 seconds and runs the day's pop-ups in its own window.
-- Every guard that stopped a route paying twice or an attack rolling twice within a turn is re-keyed on the **day**: each contract and route records the last day it paid (`lastShipmentDay`), each war the last day it rolled (`lastAttackDay`), the Bastion the last automatic-event day, and `dayInProgress {day, stage, skipped}` replaces `turnInProgress`.
+- Every guard that stopped a route paying twice or an attack rolling twice within a turn is re-keyed on the **day**: each contract and route records the last day it paid (`lastShipmentDay`), each war the next day it rolls (`next`; the plan said `lastAttackDay`), the Bastion the last automatic-event day, and `dayInProgress {day, stage, skipped}` replaces `turnInProgress`.
 - All of this lives in plain rules functions (`R.passDay`, `R.catchUp`, `R.shiftDays`, `R.shipmentsLeft`, and a shared `TSI.campaign.ironbowNews(bastionSave, fromDay, toDay)` that both tools use to write "The Ironbow sends word…"), tested on `tests/rules.html` with fixed dice.
 
 ## 2. Days for every order (my first proposal; Harry revises)
@@ -291,6 +291,19 @@ Each is one session and one pull request, tested from a double-clicked `index.ht
 - The campaign save: export and import of the Explorer and the Bastion together from either tool; the old turn-based Bastion set aside on first open.
 - Tests: about 71 of the Bastion's 420 rules tests set or assert turn numbers (25 in `bastion.test.js`, 46 in `bastion-campaign.test.js`; the three war-table, battle and AI files have none) and are rewritten for days; about 39 of `phase9.test.js`'s 105 click-through checks, 5 shared tests (`campaign.test.js`, `explorer.test.js`) and 4 DM doc checks likewise. New tests cover the day engine, shipments and attack rolls every 7 days, catching up several days at once, Reset Travel, an old save set aside, the campaign file both ways, "The Ironbow sends word…" in both tools, and the two-window link (the Explorer makes camp, the Bastion's day moves within 2 seconds). The side-by-side 12-turn run against the old Bastion is **retired**: the rules now deliberately differ, as the war's already do (recorded in KNOWN_ISSUES).
 - Docs: KNOWN_ISSUES (a new BAS entry for the day clock with every changed rule, and the retired comparison), PROGRESS, `docs/WAR-RULES.md` re-issued in days (peace, repairs, recovery, the attack roll, the cancel window), and `guide.html` in the same pull request (its click-through test fails if the guide names a button that no longer exists).
+
+### Build 1 as built (8 October 2026)
+
+Built as planned above, with these differences (the code wins; each is also in KNOWN_ISSUES BAS-60 to BAS-63, SUI-23, SUI-24 and EXP-36):
+
+- **The function names:** the day engine is `R.startDay` → sea routes (`R.routesDueToday`, settled by the screen with their rolls) → `R.finishRoutes` → due orders (`R.dueOrders`) → `R.rollWarAttack` → `R.finishDay`, with `R.clockAction` (`anchor`, `pass`, `shift` or `none`), `R.anchor`, `R.shiftDays` and `R.upcoming`. There's no single `R.passDay` or `R.catchUp`: the screen (`passDays`, `runDay` in `tool.js`) runs each step and saves after it, so a step that needs a roll can wait for the DM.
+- **Within a day,** the start of the day (`R.startDay`) does the repairs, recovery, wars ending, building, contract shipments and records ending (each record's last shipment comes on its final day, then it ends); sea routes settle next, and a route still sails on its own last day (it lasts through its `expiresDay`); then orders complete. `R.finishRoutes` only moves the day on to its orders.
+- **Wars** keep the next day they roll (`wars[clan].next`, 7 days on from the last roll) rather than the last day they rolled; the effect is the same.
+- **No "Days passed" review and no day pill as a button:** the bar shows the day as plain text ("Day N", or "Passing Day N…"), and "The Ironbow sends word…" is the review. The old Advance button stays only as **Finish Day N**, shown when a day was left part-way; the Bastion also finishes that day by itself when it next sees the Explorer's day.
+- **The Explorer saves as soon as it first opens** (it used to save only after the first change), so a Bastion opened beside a brand-new Explorer reads Day 1 rather than Day 2.
+- **Setting aside two saves in the same second** used to keep only the second; each now gets its own name (SUI-24).
+- **A campaign Import** refuses while the other tool is open in another window, since that window would save over what was imported.
+- **Tests:** 810 rules tests; `phase9.test.js` 107 checks; the new two-window test is `tests/e2e/bastion-days.test.js` (15 checks).
 
 ### Build 2: the screen
 
