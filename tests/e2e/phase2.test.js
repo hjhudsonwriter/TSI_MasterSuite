@@ -630,6 +630,51 @@ async function downloadPng(page) {
   }
 
   /* ------------------------------------------------------------------ */
+  section('Use for the Bastion (the Bastion overhaul, Build 3; internet off)');
+  {
+    const context = await H.newContext(browser, 'laptop');
+    await context.setOffline(true);
+    const page = await context.newPage();
+    await openCrest(page);
+    const sent = () => page.evaluate(() => JSON.parse(localStorage.getItem('tsi.suite.handoff-crest') || 'null'));
+
+    await check('it sends the Bastion a 512 × 512 see-through PNG of the crest and its design, through the suite\'s hand-off', async () => {
+      equal(await sent(), null);
+      await page.fill('#tsi-crest-field-clan-name', 'Wardens of the Ironbow');
+      await page.click('[data-test=use-for-bastion]');
+      await page.waitForFunction(() => !!localStorage.getItem('tsi.suite.handoff-crest'));
+      const h = await sent();
+      equal(Object.keys(h).sort(), ['at', 'dataUrl', 'design', 'id', 'name']);
+      equal([h.name, typeof h.at, /^crest-/.test(h.id)], ['Wardens of the Ironbow', 'number', true]);
+      equal(h.design, await state(page), 'the design, as it is now');
+      assert(/^data:image\/png;base64,/.test(h.dataUrl), h.dataUrl.slice(0, 30));
+      const info = await pngInfo(page, Buffer.from(h.dataUrl.split(',')[1], 'base64'));
+      equal([info.w, info.h, info.corner[3], info.centre[3]], [512, 512, 0, 255]);
+      equal(await page.evaluate(() => TSI.bastion && TSI.bastion.rules ? 'loaded' : 'not loaded'), 'not loaded', 'the Creator doesn\'t load the Bastion');
+    });
+
+    await check('with the Bastion shut, it says the Bastion asks when it next opens, and offers to open it', async () => {
+      const t = (await H.noticeTexts(page)).join(' | ');
+      assert(/Crest sent to the Bastion\. The Bastion asks whether to use it when you next open it\./.test(t), t);
+      const [ba] = await Promise.all([context.waitForEvent('page'), page.click('.tsi-notice button:text-is("Open the Bastion ↗")')]);
+      await ba.waitForSelector('[data-test=crest-offer]', { timeout: 10000 });
+      assert(/Use this crest for the Bastion\?/.test(await ba.textContent('.tsi-modal')));
+      await ba.click('.tsi-modal__foot button:text-is("Use this crest")');
+      await ba.waitForFunction(() => { const c = TSI.store.get('tsi.bastion.crest', null); return c && c.design && c.design.clanName === 'Wardens of the Ironbow'; });
+      equal(await sent(), null, 'used, so it\'s cleared');
+      await ba.close();
+    });
+
+    await check('nothing from the internet, nothing missing, no errors', async () => {
+      equal(context.log.net, []);
+      equal(context.log.failed, []);
+      equal(context.log.errors, []);
+      equal(context.log.consoleErrors, []);
+    });
+    await context.close();
+  }
+
+  /* ------------------------------------------------------------------ */
   section('Fits the laptop and the TV');
   for (const size of ['laptop', 'laptopFull', 'tv', 'smallWindow']) {
     const context = await H.newContext(browser, size);
@@ -640,9 +685,9 @@ async function downloadPng(page) {
     await page.evaluate(() => document.fonts.ready);
     const full = size !== 'smallWindow';
     for (const t of ['shield', 'field', 'sigil', 'colours', 'motto']) {
-      await check(size + ', ' + t + ' tab: no sideways scroll' + (full ? '; the tab, the preview, Random Crest, Reset and Download in view' : ''), async () => {
+      await check(size + ', ' + t + ' tab: no sideways scroll' + (full ? '; the tab, the preview, Random Crest, Reset, Download and Use for the Bastion in view' : ''), async () => {
         await tab(page, t);
-        const inView = full ? ['[data-panel=' + t + '] .tsi-crest-section:last-child', '[data-test=random-name]', '[data-test=random-crest]', '[data-test=reset]', '[data-test=download]', '.tsi-crest-hint', '.tsi-crest-svg'] : [];
+        const inView = full ? ['[data-panel=' + t + '] .tsi-crest-section:last-child', '[data-test=random-name]', '[data-test=random-crest]', '[data-test=reset]', '[data-test=download]', '[data-test=use-for-bastion]', '.tsi-crest-hint', '.tsi-crest-svg'] : [];
         const l = await H.layoutCheck(page, inView);
         assert(l.scrollWidth <= l.clientWidth, 'sideways scroll: ' + l.scrollWidth + ' > ' + l.clientWidth);
         equal(l.outOfView, [], 'out of view');

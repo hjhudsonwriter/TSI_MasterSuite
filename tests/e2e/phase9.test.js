@@ -821,7 +821,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       equal(await page.isVisible('[data-test=honour-box]'), true);
       equal((await st(page)).log[0].body, 'Founded Clan: Clan Ironbow (Chief: Harry).');
       equal((await crestInfo(page)).shown, false, 'no crest was chosen');
-      equal(await page.textContent('[data-test=crest-add]'), 'Add crest…');
+      equal(await page.textContent('[data-test=crest-add]'), 'Upload a picture…');
     });
 
     await check('a crest can be added later, shrunk to 512 pixels, shown beside the name, kept after reopening, and removed', async () => {
@@ -1335,63 +1335,161 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
   }
 
   /* ------------------------------------------------------------------ */
-  if (want('A crest from the Crest Creator (Harry\'s request, 2 October 2026)')) {
-    section('A crest from the Crest Creator (Harry\'s request, 2 October 2026)');
+  if (want('The crest, at any time (Build 3)')) {
+    section('The crest, at any time (Build 3)');
     const { context, page } = await newPage(browser, 'laptop');
     await openBastion(page);
     await setUp(page, (s) => { s.partyLevel = 7; s.defenders.count = 3; });
+    const crestKey = () => page.evaluate(() => { const c = TSI.store.get('tsi.bastion.crest', null); return c ? c.key : null; });
+    const badge = () => page.evaluate(() => {
+      const b = document.querySelector('[data-test=identity-badge]');
+      const img = b.querySelector('img');
+      return { label: b.querySelector('.tsi-bas-badge__label').textContent, aria: b.getAttribute('aria-label'), img: !img.hidden && !!img.naturalWidth, empty: b.classList.contains('tsi-bas-badge--empty') };
+    });
 
-    await check('Unsworn: the Lieutenants and regiment boxes look switched off and say why (Harry\'s report)', async () => {
+    await check('Unsworn: the Lieutenants and regiment boxes look switched off and say why: Clan only (the Brigade is archived)', async () => {
       await setUp(page, (s) => { s.military = [{ name: 'Lieutenant (1)', qty: 3 }, { name: 'Regiment (100)', qty: 3 }, { name: 'Heavy Infantry (50)', qty: 1 }]; });
       equal([await page.isDisabled('[data-test=war-lieutenants]'), await page.isDisabled('[data-test=war-unit-line]'), await page.isDisabled('[data-test=war-unit-heavy]')], [true, true, true]);
-      equal([await text(page, 'war-avail-lieutenants'), await text(page, 'war-avail-unit-line'), await text(page, 'war-avail-unit-heavy')], ['Clan or Brigade only', 'Clan or Brigade only', 'Clan or Brigade only']);
+      equal([await text(page, 'war-avail-lieutenants'), await text(page, 'war-avail-unit-line'), await text(page, 'war-avail-unit-heavy')], ['Clan only', 'Clan only', 'Clan only']);
       assert(Number(await page.$eval('[data-test=war-lieutenants]', i => getComputedStyle(i).opacity)) < 0.6, 'greyed out');
-      assert(/Only a Clan or Mercenary Brigade/.test(await page.getAttribute('[data-test=war-unit-line]', 'title')));
+      equal(await page.getAttribute('[data-test=war-unit-line]', 'title'), 'Only a Clan can commit Lieutenants and Regiments.');
       assert(/Unsworn war is limited to defenders and beasts/.test(await text(page, 'war-hint')));
       await setUp(page, (s) => { s.military = []; });
-      equal(await text(page, 'war-avail-regiments'), 'Clan or Brigade only', 'with no regiments, one line says so');
+      equal(await text(page, 'war-avail-regiments'), 'Clan only', 'with no regiments, one line says so');
     });
 
-    await check('Form Mercenary Brigade links to the Crest Creator, which opens in a new tab with no "Already open" warning', async () => {
+    await check('with no crest, the badge says "Add a crest"; Party Identity has a faint shield, the crest\'s buttons, and Form Clan with its requirements; no Brigade anywhere', async () => {
+      equal(await badge(), { label: 'Add a crest', aria: 'Crest of the Ironbow: no crest yet. Open Party Identity.', img: false, empty: true });
+      await page.click('[data-test=identity-badge]');
+      await page.waitForSelector('[data-test=panel-identity]');
+      equal(await page.isVisible('[data-test=crest-empty]'), true);
+      equal([await page.textContent('[data-test=crest-create]'), await page.textContent('[data-test=crest-add]'), await page.isVisible('[data-test=crest-delete]')], ['Create in the Clan Crest Creator ↗', 'Upload a picture…', false]);
+      equal([await text(page, 'org'), await page.isVisible('[data-test=form-box]'), await page.isVisible('[data-test=honour-box]')], ['Unsworn', true, false]);
+      equal(await text(page, 'requirements'), 'Clan requirements: Level 9+ (NO), Total Support 360+ (NO), 3 clans at 55+ (NO).');
+      equal(await page.$('[data-test=form-merc]'), null);
+      equal(await page.$('[data-test=trust-box]'), null);
+      assert(!/Brigade|Merc/.test(await page.evaluate(() => document.body.textContent)), 'no Brigade on the page');
+      await H.shot(page, 'p9-identity-unsworn');
+      await page.keyboard.press('Escape');
+    });
+
+    let creator = null;
+    await check('Create in the Clan Crest Creator ↗ opens the Creator in a new window, with no "Already open" warning; again, it says it\'s open', async () => {
       await pause(page);
-      await page.click('[data-test=form-merc]');
-      await page.waitForSelector('[data-test=crest-field]');
-      equal([await page.getAttribute('[data-test=crest-creator-link]', 'href'), await page.getAttribute('[data-test=crest-creator-link]', 'target')], ['index.html?tool=crest', '_blank']);
-      const [tab] = await Promise.all([context.waitForEvent('page'), page.click('[data-test=crest-creator-link]')]);
-      await tab.waitForSelector('[data-test=download]');
-      await tab.waitForTimeout(1500);
+      const [tab] = await Promise.all([context.waitForEvent('page'), page.click('[data-test=crest-create]')]);
+      creator = tab;
+      await creator.waitForSelector('[data-test=use-for-bastion]');
+      assert(/index\.html\?tool=crest$/.test(creator.url()), creator.url());
+      await creator.waitForTimeout(1500);
       const warned = async p => (await H.noticeTexts(p)).some(t => /Already open/.test(t));
-      equal([await warned(tab), await warned(page)], [false, false]);
-      await tab.close();
+      equal([await warned(creator), await warned(page)], [false, false]);
+      const before = context.pages().length;
+      await page.click('[data-test=crest-create]');
+      await page.waitForFunction(() => /already open in another window/.test(document.body.textContent));
+      await page.waitForTimeout(400);
+      equal(context.pages().length, before, 'no second Creator');
     });
 
-    await check('the crest picked in the pop-up shows there; Cancel saves nothing', async () => {
-      await H.chooseFile(page, '[data-test=crest-upload]', writeCrest('crest-pop.png', 1200));
-      await page.waitForSelector('[data-test=crest-preview]:not([hidden])');
-      equal(await page.textContent('[data-test=crest-upload]'), 'Change crest…');
+    await check('Use for the Bastion: the Bastion asks at once, showing the crest; No leaves the Bastion as it was and asks no more', async () => {
+      await creator.click('[data-test=use-for-bastion]');
+      await creator.waitForFunction(() => /Crest sent to the Bastion\..*The Bastion's window asks whether to use it\./.test(document.body.textContent));
+      await page.waitForSelector('[data-test=crest-offer]', { timeout: 5000 });
+      assert(/Use this crest for the Bastion\?/.test(await popText(page)));
+      equal(await page.$eval('[data-test=crest-offer-img]', i => [i.naturalWidth, i.naturalHeight]), [512, 512]);
+      await H.shot(page, 'p9-crest-offer');
+      await clickModal(page, 'No');
+      equal(await crestKey(), null);
+      equal(await page.evaluate(() => TSI.handoff.read('crest')), null, 'answered, so it\'s cleared');
+      await page.waitForTimeout(2500);
+      equal(await modalOpen(page), false, 'not asked again');
+    });
+
+    await check('sent again and used: it\'s the Bastion\'s crest, with the Creator\'s design, on the badge and in Party Identity', async () => {
+      await creator.fill('[data-test=clan-name]', 'Wardens of the Ironbow');
+      await creator.click('[data-test=use-for-bastion]');
+      await page.waitForSelector('[data-test=crest-offer]', { timeout: 5000 });
+      await clickModal(page, 'Use this crest');
+      const c = await page.evaluate(() => TSI.store.get('tsi.bastion.crest'));
+      equal([c.name, c.design.clanName, Object.keys(c.design).length > 20, /^data:image\/png;base64,/.test(c.dataUrl)], ['Wardens of the Ironbow (Crest Creator).png', 'Wardens of the Ironbow', true, true]);
+      await page.waitForFunction(() => { const i = document.querySelector('[data-test=identity-badge] img'); return i && !i.hidden && i.naturalWidth; });
+      equal(await badge(), { label: 'Unsworn', aria: 'Crest of the Ironbow. Open Party Identity.', img: true, empty: false });
+      const info = await crestInfo(page);
+      equal([info.shown, info.w, info.alt], [true, 512, 'Crest of the Ironbow']);
+      equal([await page.textContent('[data-test=crest-add]'), await page.isVisible('[data-test=crest-delete]')], ['Upload another…', true]);
+      await page.keyboard.press('Escape');
+      await creator.close();
+      creator = null;
+    });
+
+    await check('a crest sent while the Bastion is shut is asked about when it next opens', async () => {
+      await page.evaluate(() => TSI.store.flush());
+      const other = await context.newPage();
+      await other.goto(H.fileUrl('index.html') + '?tool=crest');
+      await other.waitForSelector('[data-test=use-for-bastion]');
+      await page.goto(H.fileUrl('index.html'));
+      await page.waitForSelector('[data-test=backup-everything]');
+      await other.click('[data-test=random-crest]');
+      await other.click('[data-test=use-for-bastion]');
+      await other.waitForFunction(() => /The Bastion asks whether to use it when you next open it\./.test(document.body.textContent));
+      equal(await other.isVisible('.tsi-notice button:text-is("Open the Bastion ↗")'), true);
+      await other.close();
+      const key = await crestKey();
+      await page.goto(H.fileUrl('index.html') + '?tool=bastion');
+      await page.waitForSelector('[data-test=crest-offer]', { timeout: 8000 });
+      assert(/It replaces the crest the Bastion has now\./.test(await popText(page)));
+      await clickModal(page, 'No');
+      equal(await crestKey(), key, 'kept');
+      await arm(page);
+    });
+
+    await check('a refused file is explained; Unsworn, a picture can be uploaded from the panel, replacing the Creator\'s', async () => {
+      await H.chooseFile(page, '[data-test=crest-add]', H.writeTemp('not-a-crest.txt', 'hello'));
+      await page.waitForFunction(() => /PNG, JPG, WebP or GIF/.test(document.body.textContent));
+      await clickModal(page, 'OK');
+      await H.chooseFile(page, '[data-test=crest-add]', writeCrest('crest-unsworn.png', 1200));
+      await page.waitForFunction(() => { const c = TSI.store.get('tsi.bastion.crest', null); return c && c.name === 'tsi-p9-crest-unsworn.png'; });
+      const c = await page.evaluate(() => TSI.store.get('tsi.bastion.crest'));
+      equal('design' in c, false, 'an uploaded picture has no design');
+      await page.waitForFunction(() => { const i = document.querySelector('[data-test=crest]'); return i && i.naturalWidth === 512; });
+      equal(await st(page).then(x => x.organization.type), 'unsworn');
+    });
+
+    await check('Form Clan keeps the Bastion\'s crest: Upload… shows another, Keep this crest goes back, and Cancel saves nothing', async () => {
+      await setUp(page, (s) => { s.partyLevel = 9; s.politicalCapital.blackstone = 10; s.politicalCapital.bacca = 10; s.politicalCapital.farmer = 10; s.politicalCapital.slade = -10; });
+      const key = await crestKey();
+      await pause(page);
+      await page.click('[data-test=form-clan]');
+      await page.waitForSelector('[data-test=crest-field]');
+      equal(await page.getAttribute('[data-test=crest-preview]', 'data-key'), key);
+      equal([await text(page, 'crest-field-note'), await page.isVisible('[data-test=crest-keep]')], ['The Bastion\'s crest: the Clan keeps it.', false]);
+      equal([await page.textContent('[data-test=crest-create]'), await page.textContent('[data-test=crest-upload]')], ['Create a new one ↗', 'Upload…']);
+      await H.chooseFile(page, '[data-test=crest-upload]', writeCrest('crest-pop.png', 900));
+      await page.waitForFunction(k => document.querySelector('[data-test=crest-preview]').getAttribute('data-key') !== k, key);
+      equal([await text(page, 'crest-field-note'), await page.isVisible('[data-test=crest-keep]')], ['A new crest: it replaces the Bastion\'s when you confirm the founding.', true]);
+      await page.click('[data-test=crest-keep]');
+      equal(await page.getAttribute('[data-test=crest-preview]', 'data-key'), key);
+      await H.chooseFile(page, '[data-test=crest-upload]', writeCrest('crest-pop.png', 900));
+      await page.waitForSelector('[data-test=crest-keep]:not([hidden])');
       await clickModal(page, 'Cancel');
-      equal(await page.evaluate(() => TSI.store.has('tsi.bastion.crest')), false);
+      equal(await crestKey(), key, 'unchanged');
       equal((await st(page)).organization.type, 'unsworn');
     });
 
-    await check('a refused file is explained; the crest is kept with the Brigade, beside its name', async () => {
+    await check('founding the Clan with no new crest keeps the Bastion\'s; the badge then has the Clan\'s name, and the crest is "Crest of Clan Ironbow"', async () => {
+      const key = await crestKey();
       await pause(page);
-      await page.click('[data-test=form-merc]');
-      await H.chooseFile(page, '[data-test=crest-upload]', H.writeTemp('not-a-crest.txt', 'hello'));
-      await page.waitForFunction(() => /PNG, JPG, WebP or GIF/.test(document.body.textContent));
-      await clickModal(page, 'OK');
-      await page.waitForTimeout(200);
-      equal(await page.isVisible('[data-test=crest-preview]'), false);
-      await H.chooseFile(page, '[data-test=crest-upload]', writeCrest('crest-brigade.png', 1200));
-      await page.waitForSelector('[data-test=crest-preview]:not([hidden])');
-      await page.fill('[data-test=merc-name]', 'The Ironbow Freeblades');
-      await clickModal(page, 'Confirm Formation');
-      await page.waitForFunction(() => { const i = document.querySelector('[data-test=crest]'); return i && i.offsetWidth && i.naturalWidth; });
-      const c = await crestInfo(page);
-      equal([c.w, c.h, c.alt], [512, 512, 'Crest of The Ironbow Freeblades']);
-      equal(await text(page, 'org'), 'Brigade: The Ironbow Freeblades');
+      await page.click('[data-test=form-clan]');
+      await page.fill('[data-test=clan-name]', 'Clan Ironbow');
+      await page.fill('[data-test=clan-motto]', 'Root and Steel');
+      await clickModal(page, 'Confirm Founding');
+      equal(await crestKey(), key);
+      equal(await badge(), { label: 'Clan Ironbow', aria: 'Crest of Clan Ironbow. Open Party Identity.', img: true, empty: false });
+      equal((await crestInfo(page)).alt, 'Crest of Clan Ironbow');
+      equal([await text(page, 'org'), await page.isVisible('[data-test=honour-box]'), await page.isVisible('[data-test=form-box]')], ['Clan: Clan Ironbow', true, false]);
+      assert(/“Root and Steel”/.test(await text(page, 'org-meta')), await text(page, 'org-meta'));
       await reveal(page, '[data-test=org]');
-      await H.shot(page, 'p9-crest-brigade');
+      await H.shot(page, 'p9-identity-clan');
+      await page.keyboard.press('Escape');
     });
 
     await check('Download Save includes the crest and the War Table\'s terrain; Reset clears them with the rest of the Bastion', async () => {
@@ -1409,7 +1507,11 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       equal((await crestInfo(page)).shown, false);
     });
 
-    await check('leaving the Bastion while the War Table is open leaves nothing behind', async () => {
+    await check('Unsworn, the War Table still has the crest (the army is "Your forces"); leaving the Bastion while it\'s open leaves nothing behind', async () => {
+      await H.chooseFile(page, '[data-test=crest-add]', writeCrest('crest-war.png', 600));
+      await page.waitForFunction(() => TSI.store.has('tsi.bastion.crest'));
+      await page.keyboard.press('Escape');
+      await spyTable(page);
       await setUp(page, (s) => { s.defenders.count = 2; });
       await page.fill('[data-test=war-defenders]', '2');
       await page.selectOption('[data-test=war-objective]', 'seize_outpost');
@@ -1424,6 +1526,8 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       for (let i = 0; i < 3; i++) { await d20(page, 15); await page.waitForSelector('[data-test=ma-result]'); await clickModal(page, 'Continue'); }
       await page.waitForSelector('[data-test=wt-root]');
       assert(/Seize Outpost vs Blackstone/.test(await text(page, 'wt-title')), await text(page, 'wt-title'));
+      const o = await page.evaluate(() => window.__wtOpts);
+      equal([o.armyName, !!(o.crest && /^data:image\//.test(o.crest.dataUrl))], ['Your forces', true]);
       await page.click('[data-test=home]');
       await page.waitForSelector('[data-test=backup-everything]');
       equal(await page.$('[data-test=wt-root]'), null);

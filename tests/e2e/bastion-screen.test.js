@@ -352,7 +352,7 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
   });
 
   /* ------------------------------------------------------------------ */
-  section('The Banner & War Council lock, and the Party Identity badge');
+  section('The Banner & War Council lock, and the crest badge');
 
   await check('locked while the Bastion has nothing that can fight: the padlock\'s tooltip says how to raise a banner', async () => {
     await setUp(page, (s) => { s.defenders.count = 0; s.defenderBeasts = []; s.military = []; s.pendingOrders = []; });
@@ -375,20 +375,28 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     await page.keyboard.press('Escape');
   });
 
-  await check('the badge opens Party Identity; a Clan\'s crest shows in it', async () => {
-    equal(await bare(page, '[data-test=identity-badge]'), 'Unsworn');
+  await check('the badge says "Add a crest" until there is one, and opens Party Identity; with a crest (even Unsworn) it shows it, then the Clan\'s name (Build 3)', async () => {
+    equal(await bare(page, '[data-test=identity-badge]'), 'Add a crest');
+    equal(await page.getAttribute('[data-test=identity-badge]', 'aria-label'), 'Crest of the Ironbow: no crest yet. Open Party Identity.');
     await page.click('[data-test=identity-badge]');
     await page.waitForSelector('[data-test=panel-identity] [data-test=form-clan]');
+    await page.waitForSelector('[data-test=panel-identity] [data-test=crest-create]');
     await page.keyboard.press('Escape');
     const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
     await page.evaluate(p => TSI.store.set('tsi.bastion.crest', { dataUrl: p, key: 'k1', name: 'c.png' }), png);
+    await page.evaluate(() => TSI.store.flush());
+    await page.reload();
+    await page.waitForSelector('[data-test=day-status]');
+    equal(await bare(page, '[data-test=identity-badge]'), 'Unsworn');
+    equal(await page.$eval('.tsi-bas-badge__img', i => !i.hidden && i.getAttribute('src').indexOf('data:image/png') === 0), true);
+    equal(await page.getAttribute('[data-test=identity-badge]', 'aria-label'), 'Crest of the Ironbow. Open Party Identity.');
     await setUp(page, (s) => { s.organization = { type: 'clan', name: 'Clan Ironbow', chief: 'Harry', motto: '', foundedAtDay: 22 }; });
     await page.evaluate(() => TSI.store.flush());
     await page.reload();
     await page.waitForSelector('[data-test=day-status]');
     equal(await bare(page, '[data-test=identity-badge]'), 'Clan Ironbow');
     equal(await page.$eval('.tsi-bas-badge__img', i => !i.hidden && i.getAttribute('src').indexOf('data:image/png') === 0), true);
-    assert(/Crest of Clan Ironbow/.test(await page.getAttribute('[data-test=identity-badge]', 'aria-label')));
+    equal(await page.getAttribute('[data-test=identity-badge]', 'aria-label'), 'Crest of Clan Ironbow. Open Party Identity.');
   });
 
   /* ------------------------------------------------------------------ */
