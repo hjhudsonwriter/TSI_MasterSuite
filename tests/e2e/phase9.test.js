@@ -1622,7 +1622,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
     const FULL = { defenders: 10, line: 4, heavy: 2, shock: 2 };
     let pen = null;
 
-    await check('the War Turn offers Raid, Skirmish and Seize Outpost: Defend Bastion comes to you, as an event', async () => {
+    await check('the War Action offers Raid, Skirmish and Seize Outpost: Defend Bastion comes to you, as an event', async () => {
       equal(await page.$$eval('[data-test=war-objective] option', os => os.map(o => o.value + ': ' + o.textContent)), ['raid: Raid', 'skirmish: Skirmish', 'seize_outpost: Seize Outpost']);
     });
 
@@ -1660,7 +1660,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       assert(new RegExp('Queueing this War Action \\(Skirmish vs Bacca\\) declares war on Clan Bacca\\. For an army of ' + pen.bv + ' Battle Value, it costs you at once:').test(t), t);
       assert(t.indexOf('Honour & Respect with Bacca: ' + sgn(pen.honourRespect) + ' (from +1 to ' + sgn(1 + pen.honourRespect) + ')') !== -1, t);
       assert(t.indexOf('Political Capital with Bacca: ' + sgn(pen.politicalCapital) + ' (from +10 to ' + sgn(10 + pen.politicalCapital) + ')') !== -1, t);
-      assert(/While you’re at war, Clan Bacca may attack your Bastion: on every Advance Bastion Turn, a 1 on a d6 means they attack\./.test(t), t);
+      assert(/While you’re at war, Clan Bacca may attack your Bastion: every 7 days of the war, a 1 on a d6 means they attack\. The war ends after 42 days without a battle between you/.test(t), t);
       equal(await page.$$eval('.tsi-modal__foot button', bs => bs.map(b => b.textContent)), ['Cancel', 'Declare war']);
       equal((await H.layoutCheck(page, ['.tsi-modal', '.tsi-modal__foot button'])).outOfView, []);
       await H.shot(page, 'p9-war4-declare');
@@ -1680,11 +1680,11 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await page.waitForTimeout(200);
       const s = await st(page);
       equal(s.pendingOrders.map(o => o.label + ' ' + o.meta.objective), ['War Action skirmish']);
-      equal(s.wars, { bacca: { since: 1, last: 1 } });
+      equal(s.wars, { bacca: { since: 1, last: 1, next: 8 } });
       const hr = 1 + pen.honourRespect, pc = 10 + pen.politicalCapital;
       equal([s.honourRespectByClan.bacca, s.politicalCapital.bacca], [hr, pc]);
       equal(s.log.slice(0, 2).map(l => l.title + ': ' + l.body), [
-        'War Action Queued: Skirmish vs Bacca (resolves next Bastion Turn).',
+        'War Action Queued: Skirmish vs Bacca (musters on Day 4).',
         'War Declared: War on Clan Bacca: Honour & Respect ' + sgn(pen.honourRespect) + ' (now ' + sgn(hr) + '), Political Capital ' + sgn(pen.politicalCapital) + ' (now ' + sgn(pc) + '), for an army of ' + pen.bv + ' Battle Value.'
       ]);
       equal(await page.inputValue('[data-test=hr-bacca]'), String(hr), 'the tracker shows it');
@@ -1697,7 +1697,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       assert(tags.length >= 6 && tags.every(t => t[0] === 'bacca' && t[1] === 'At War' && t[2] === 'uppercase'), JSON.stringify(tags));
       assert(await tagsIn('.tsi-bas-side') === 1, 'Political Capital');
       assert(await tagsIn('[data-card=identity]') >= 1, 'the Clan Influence Trackers');
-      assert(await tagsIn('[data-test=log]') >= 2, 'the Turn Log');
+      assert(await tagsIn('[data-test=log]') >= 2, 'the Day Log');
       assert(await tagsIn('[data-test=wars-box]') >= 1, 'the Wars box');
       equal(await page.$eval('[data-test=war-target] option[value=bacca]', o => o.textContent), 'Bacca (At War)', 'in a list, the words');
       equal(await page.$eval('[data-test=war-target] option[value=karr]', o => o.textContent), 'Karr');
@@ -1722,7 +1722,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       });
       equal(flick, [1, 1, 1, 1]);
       equal(await bare(page, '[data-test=wars-row-bacca] .tsi-bas-item__name'), 'Clan Bacca');
-      equal(await text(page, 'wars-since-bacca'), 'Since Bastion turn 1 · peace after 6 more quiet Bastion turns');
+      equal(await text(page, 'wars-since-bacca'), 'Since Day 1 · peace after 42 more quiet days · their next attack roll: Day 8');
       /* A pop-up the Bastion opens: two more defenders, to queue another War Action against Bacca. */
       await setUp(page, (s) => { s.defenders.count = 12; });
       await page.fill('[data-test=war-defenders]', '2');
@@ -1743,18 +1743,18 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await H.shot(page, 'p9-war4-at-war-top');
     });
 
-    await check('Make peace is refused while the War Action waits, and says why; Cancel the same turn gives back the cost; peace takes the tags away', async () => {
+    await check('Make peace is refused while the War Action waits, and says why; Cancel the same day gives back the cost; peace takes the tags away', async () => {
       equal(await page.isDisabled('[data-test=make-peace-bacca]'), true);
       const why = await bare(page, '[data-test=wars-why-bacca]');
       equal(why, 'A War Action against Clan Bacca (Skirmish vs Bacca) is still waiting. Cancel it, or see it through, before making peace.');
       equal(await page.getAttribute('[data-test=make-peace-bacca]', 'title'), why);
-      /* Cancelling the order on the turn it was queued gives back what
+      /* Cancelling the order on the day it was queued gives back what
          declaring war cost, and calls off the war it began: correcting a
          War Action (cancel, queue again) never costs twice. */
       await page.click('[data-test=cancel-0]');
       let s = await st(page);
       equal([s.pendingOrders.length, s.wars, s.honourRespectByClan.bacca, s.politicalCapital.bacca], [0, {}, 1, 10]);
-      equal(s.log[0].title + ': ' + s.log[0].body, 'War Called Off: Cancelled the War Action (Skirmish vs Bacca) on the turn it was queued, so what it cost is given back: Honour & Respect ' +
+      equal(s.log[0].title + ': ' + s.log[0].body, 'War Called Off: Cancelled the War Action (Skirmish vs Bacca) on the day it was queued, so what it cost is given back: Honour & Respect ' +
         sgn(-pen.honourRespect) + ' (now 1), Political Capital ' + sgn(-pen.politicalCapital) + ' (now 10). The war on Clan Bacca is called off: you\'re no longer at war.');
       equal(await page.$$eval('[data-test=atwar-tag]', t => t.length), 0, 'its tags go');
       await commitWar(FULL);
@@ -1763,8 +1763,8 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await page.click('[data-test=queue-war]');
       equal(await modalTitle(page), 'Declare war on Clan Bacca?', 'queueing again declares war afresh, at its cost once');
       await clickModal(page, 'Cancel');
-      /* At war again (as if from an earlier turn), to make peace. */
-      await setUp(page, (st2) => { st2.wars = { bacca: { since: st2.turn, last: st2.turn } }; });
+      /* At war again (as if from an earlier day), to make peace. */
+      await setUp(page, (st2) => { st2.wars = { bacca: { since: st2.day, last: st2.day, next: st2.day + 7 } }; });
       equal(await page.isDisabled('[data-test=make-peace-bacca]'), false);
       await pause(page);
       await page.click('[data-test=make-peace-bacca]');
@@ -1784,15 +1784,15 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
     });
 
     await check('an attack: "Sound the horns!", with crossed swords, who defends and the enemy; it fits the laptop and the TV', async () => {
-      /* At war with Bacca, and the dice set: the attack d6 shows 1, then the
-         size of the attacking force d6 shows 4 (an established local force). */
-      await setUp(page, (s) => { s.wars = { bacca: { since: s.turn, last: s.turn } }; });
+      /* At war with Bacca, its attack roll due tomorrow, and the dice set: the
+         attack d6 shows 1, then the size of the attacking force d6 shows 4
+         (an established local force). */
+      await setUp(page, (s) => { s.wars = { bacca: { since: s.day, last: s.day, next: s.day + 1 } }; });
       await page.evaluate(() => { window.__dice = [0, 0.5]; });
-      await pause(page);
-      await page.click('[data-test=advance]');
-      await page.waitForSelector('[data-test=attack]');
+      await setExplorerDay(page, (await st(page)).day + 1);
+      await page.waitForSelector('[data-test=attack]', { timeout: 15000 });
       await page.waitForTimeout(450);
-      equal(await page.evaluate(() => window.__dice.length), 0, 'both dice used, and the attack roll is the turn\'s first');
+      equal(await page.evaluate(() => window.__dice.length), 0, 'both dice used, and the attack roll is the day\'s first');
       equal(await modalTitle(page), 'Sound the horns!');
       equal(await bare(page, '[data-test=attack-text]'), 'Clan Bacca warships are approaching! Defend the Ironbow!');
       assert(await tagsIn('[data-test=attack-text]') === 1, 'At War in the pop-up');
@@ -1803,7 +1803,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       equal(await page.$$eval('.tsi-modal__foot button', bs => bs.map(b => b.textContent)), ['Later', 'Defend the Ironbow']);
       const s = await st(page);
       const ma = s.militaryActions[0];
-      equal([s.militaryActions.length, ma.kind, ma.objective, ma.targetName, ma.tier, ma.map, ma.step, ma.undefended, s.turnInProgress.attackRolled],
+      equal([s.militaryActions.length, ma.kind, ma.objective, ma.targetName, ma.tier, ma.map, ma.step, ma.undefended, s.dayInProgress.attackRolled],
         [1, 'defence', 'defend', 'Bacca', 'established', 'defend_coast', 'weather', false, true]);
       equal(s.log.find(l => l.title === 'Defend Bastion').body, 'Sound the horns! Clan Bacca warships are approaching! Defend the Ironbow! Defending it: 10 defenders, Line Infantry ×4, Heavy Infantry ×2, Shock Cavalry ×2.');
       for (const size of ['laptop', 'tv', 'laptopFull']) {
@@ -1818,13 +1818,13 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
 
     await check('Later: the attack waits in the War Council, with no Call off, and Make peace is refused until it\'s fought', async () => {
       await clickModal(page, 'Later');
-      await page.waitForFunction(() => !TSI.bastion.debug.busy());
+      assert(/Sound the horns! Clan Bacca warships are approaching! Defend the Ironbow!/.test(await word(page)));
       const s = await st(page);
-      equal([s.turn, s.turnInProgress, s.militaryActions.length], [2, null, 1]);
+      equal([s.day, s.dayInProgress, s.militaryActions.length], [2, null, 1]);
       equal(await bare(page, '[data-test=ma-0] .tsi-bas-item__name'), 'Defend Bastion vs Bacca');
       equal(await page.textContent('[data-test=ma-continue-0]'), 'Defend the Ironbow');
       equal(await page.$('[data-test=ma-calloff-0]'), null, 'an attack can\'t be called off');
-      assert(/Clan Bacca attacked your Bastion on Bastion turn 2\. Defending it: 10 defenders/.test(await bare(page, '[data-test=ma-0]')));
+      assert(/Clan Bacca attacked your Bastion on Day 2\. Defending it: 10 defenders/.test(await bare(page, '[data-test=ma-0]')));
       equal(await page.isDisabled('[data-test=make-peace-bacca]'), true);
       equal(await bare(page, '[data-test=wars-why-bacca]'), 'Clan Bacca\'s attack on your Bastion still has to be fought. Defend the Ironbow before making peace.');
       await page.evaluate(() => document.querySelector('[data-card=war]').scrollIntoView({ block: 'start' }));
@@ -1843,8 +1843,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await page.fill('[data-test=treasury]', '5000');
       for (const [f, fn, i] of [['barracks', 'recruit_defenders'], ['dock', 'charter_berth', 1], ['workshop', 'craft_magic_item', 3], ['armoury', 'arm_defenders'], ['watchtower', 'patrol']]) await issue(page, f, fn, i);
       const s = await st(page);
-      equal(s.pendingOrders.map(o => o.facId).sort(), ['armoury', 'barracks', 'dock', 'watchtower', 'workshop']);
-      assert(s.pendingOrders.every(o => o.completeTurn === 3), JSON.stringify(s.pendingOrders.map(o => o.completeTurn)));
+      equal(s.pendingOrders.map(o => [o.facId, o.dueDay - o.issuedDay]).sort(), [['armoury', 3], ['barracks', 5], ['dock', 7], ['watchtower', 1], ['workshop', 10]], 'each order\'s own days');
     });
 
     await check('Defend the Ironbow: the three rolls, then the War Table on the Ironbow coast; reopening part-way loses nothing', async () => {
@@ -1933,19 +1932,19 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await page.waitForTimeout(450);
       const report = await bareModal(page);
       const s = await st(page);
-      assert(/Withdrawal: Defend Bastion vs Bacca/.test(report) && /Defending the Bastion: 10 defenders/.test(report) && /Clan Bacca attacked your Bastion on Bastion turn 2\./.test(report), report);
+      assert(/Withdrawal: Defend Bastion vs Bacca/.test(report) && /Defending the Bastion: 10 defenders/.test(report) && /Clan Bacca attacked your Bastion on Day 2\./.test(report), report);
       const m = /Treasury: −(\d+) gp \(d10 (\d+): (\d+)% of (\d+) gp; now (\d+) gp\)\./.exec(report);
       assert(m, report);
       const [lostGp, roll, pct, was, now] = m.slice(1).map(Number);
       equal([pct, was, lostGp, now, s.treasuryGP], [roll * 5, before.treasuryGP, Math.floor(before.treasuryGP * pct / 100), before.treasuryGP - lostGp, now]);
       assert(pct >= 5 && pct <= 50, 'up to half');
-      const r = /Under Repair until Bastion turn (\d+) \(d4 (\d+)\): ([^.]+)\./.exec(report);
+      const r = /Under Repair until Day (\d+) \(d4 (\d+)\): ([^.]+)\./.exec(report);
       assert(r, report);
       const names = r[3].split(', ');
       const ids = await page.evaluate(ns => ns.map(n => TSI_DATA.bastionFacilities.find(f => f.name === n).id), names);
-      equal([Number(r[1]), names.length], [3, Math.min(Number(r[2]), 5)], 'lost on turn 2: Under Repair until turn 3');
+      equal([Number(r[1]), names.length], [15, Math.min(Number(r[2]), 5)], 'lost on Day 2: Under Repair until Day 15');
       equal(Object.keys(s.repairs).sort(), ids.slice().sort());
-      assert(Object.keys(s.repairs).every(id => s.repairs[id] === 3), 'lost on turn 2: Under Repair on turns 2 and 3');
+      assert(Object.keys(s.repairs).every(id => s.repairs[id] === 15), 'lost on Day 2: Under Repair on Days 2 to 15 (14 days)');
       assert(await tagsIn('.tsi-modal') >= 1, 'the War Report is a Bastion pop-up: Bacca is tagged');
       /* Not the first word of an enemy unit's name ("Bacca Stoneguard 1"): that would tag every unit. */
       assert(/\n- Bacca [A-Z]/.test(report), report);
@@ -1963,23 +1962,23 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       for (const id of lost.ids) {
         const name = lost.names[lost.ids.indexOf(id)];
         equal(await page.textContent('.tsi-bas-fac[data-fac=' + id + '] [data-test=repair-label]'), '(Under Repair)');
-        equal(await text(page, 'repair-note-' + id), 'Under Repair until Bastion turn 3: no orders, and orders already here wait. Working again on turn 4.');
+        equal(await text(page, 'repair-note-' + id), 'Under Repair until Day 15: no orders, and orders already here wait. Working again on Day 16.');
         const issueBtns = await page.$$eval('.tsi-bas-fac[data-fac=' + id + '] .tsi-bas-fn__issue', bs => bs.map(b => [b.disabled, b.textContent, b.title]));
-        assert(issueBtns.length && issueBtns.every(b => b[0] && b[1] === 'Under Repair' && b[2] === 'The ' + name + ' is Under Repair until Bastion turn 3.'), JSON.stringify(issueBtns));
+        assert(issueBtns.length && issueBtns.every(b => b[0] && b[1] === 'Under Repair' && b[2] === 'The ' + name + ' is Under Repair until Day 15.'), JSON.stringify(issueBtns));
         /* The rules refuse it too (with the same words). */
         const res = await page.evaluate(src => { eval(src.d); const st2 = JSON.parse(JSON.stringify(TSI.bastion.debug.state())); const f = data.facilities.find(x => x.id === src.id); return TSI.bastion.rules.issueOrder(st2, data, src.id, f.functions[0].id, 0, Math.random); }, { d: DATA, id });
-        equal(res, { ok: false, message: 'The ' + name + ' is Under Repair until Bastion turn 3.' });
+        equal(res, { ok: false, message: 'The ' + name + ' is Under Repair until Day 15.' });
         const o = s.pendingOrders.find(x => x.facId === id);
-        equal(o.completeTurn, 4, name + '\'s order waits for the repairs');
+        equal(o.dueDay, 16, name + '\'s order waits for the repairs');
       }
       const working = ['workshop', 'barracks', 'watchtower', 'dock', 'armoury'].filter(id => lost.ids.indexOf(id) === -1);
       for (const id of working) equal(await page.$eval('.tsi-bas-fac[data-fac=' + id + '] .tsi-bas-fac__tag', t => t.textContent), 'Active');
       const metas = await page.$$eval('[data-test^=pending-meta-]', ms => ms.map(m => m.textContent));
-      equal(metas.filter(m => /waiting: the .+ is Under Repair until Bastion turn 3$/.test(m)).length, lost.ids.length);
+      equal(metas.filter(m => /waiting: the .+ is Under Repair until Day 15$/.test(m)).length, lost.ids.length);
       /* In the order the facilities' cards show. */
       const order = await page.$$eval('.tsi-bas-fac', cs => cs.map(c => c.dataset.fac));
       const inOrder = lost.ids.slice().sort((a, b) => order.indexOf(a) - order.indexOf(b)).map(id => lost.names[lost.ids.indexOf(id)]);
-      equal(await text(page, 'map-repairs'), 'Under Repair: ' + inOrder.map(n => n + ' (working again on turn 4)').join(', '));
+      equal(await text(page, 'map-repairs'), 'Under Repair: ' + inOrder.map(n => n + ' (working again on Day 16)').join(', '));
       await page.evaluate(() => document.querySelector('[data-card=facilities]').scrollIntoView({ block: 'start' }));
       await page.evaluate(() => window.scrollBy(0, -130));
       await H.shot(page, 'p9-war4-under-repair');
@@ -1987,20 +1986,20 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await H.shot(page, 'p9-war4-map-repairs');
     });
 
-    await check('the repairs last 2 Bastion turns (the turn lost and the next); then the facilities work, and their orders complete', async () => {
+    await check('the repairs last 14 days (Harry\'s 2 Bastion turns: the day lost and 13 more); then the facilities work, and their orders complete', async () => {
       /* Peace first, so no more attacks come. */
       await pause(page);
       await page.click('[data-test=make-peace-bacca]');
       await clickModal(page, 'Make peace');
       equal((await st(page)).wars, {});
-      await advance(page, []);
+      await days(page, 13, []);
       let s = await st(page);
-      equal([s.turn, Object.keys(s.repairs).sort(), s.pendingOrders.map(o => o.facId).sort()], [3, lost.ids.slice().sort(), lost.ids.slice().sort()], 'turn 3: the others\' orders complete');
-      equal(await page.$$eval('.tsi-bas-fac--repair', c => c.length), lost.ids.length, 'turn 3: still Under Repair');
-      await advance(page, []);
+      equal([s.day, Object.keys(s.repairs).sort(), s.pendingOrders.map(o => o.facId).sort()], [15, lost.ids.slice().sort(), lost.ids.slice().sort()], 'Day 15: the others\' orders complete');
+      equal(await page.$$eval('.tsi-bas-fac--repair', c => c.length), lost.ids.length, 'Day 15: still Under Repair');
+      await days(page, 1, []);
       s = await st(page);
-      equal([s.turn, s.repairs, s.pendingOrders], [4, {}, []], 'turn 4: working again, and the orders done');
-      equal(s.log.filter(l => l.title === 'Repairs Complete').map(l => l.body).sort(), lost.names.map(n => n + ' is working again.').sort());
+      equal([s.day, s.repairs, s.pendingOrders], [16, {}, []], 'Day 16: working again, and the orders done');
+      equal(s.log.filter(l => l.title === 'Repairs Complete').map(l => l.body).sort(), lost.names.map(n => 'Repairs: the ' + n + ' is working again.').sort());
       equal(await page.$$eval('.tsi-bas-fac--repair, [data-test=repair-label]', c => c.length), 0);
       equal(await page.isVisible('[data-test=map-repairs]'), false);
       equal(await page.isDisabled('[data-test=issue-barracks__recruit_defenders]'), false);
@@ -2008,31 +2007,28 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
 
     await check('nobody free to defend: the Bastion falls without a battle; reopening part-way doesn\'t roll again', async () => {
       await setUp(page, (s) => {
-        s.wars = { karr: { since: s.turn, last: s.turn } };
+        s.wars = { karr: { since: s.day, last: s.day, next: s.day + 1 } };
         s.defenders.count = 0; s.defenders.armed = false; s.military = []; s.defenderBeasts = []; s.pendingOrders = [];
         s.treasuryGP = 1000;
       });
       await page.evaluate(() => { window.__dice = [0, 0]; });
-      await pause(page);
-      await page.click('[data-test=advance]');
-      await page.waitForSelector('[data-test=attack-undefended]');
+      await setExplorerDay(page, (await st(page)).day + 1);
+      await page.waitForSelector('[data-test=attack-undefended]', { timeout: 15000 });
       await page.waitForTimeout(450);
       assert(/^Nobody is free to defend the Bastion, so Clan Karr takes what it came for unopposed\. You lose 1d10 × 5% of your treasury/.test(await bare(page, '[data-test=attack-undefended]')), await bare(page, '[data-test=attack-undefended]'));
       assert(!/committed elsewhere|recovering/.test(await bare(page, '[data-test=attack-undefended]')), 'no defenders at all here: nothing is committed elsewhere or recovering');
       equal(await page.$$eval('.tsi-modal__foot button', bs => bs.map(b => b.textContent)), ['See the War Report']);
       equal((await st(page)).militaryActions.map(m => [m.kind, m.targetName, m.tier, m.undefended]), [['defence', 'Karr', 'small', true]]);
       await H.shot(page, 'p9-war4-undefended');
-      /* Closed while it shows: the turn is left part-way; finishing it rolls no new attack. */
+      /* Closed while it shows: the day is left part-way; it finishes by itself, rolling no new attack. */
       await reopen(page);
       await H.waitForNotice(page, /An attack on your Bastion \(Defend Bastion vs Karr(At War)?\) is waiting/);
+      assert(/Sound the horns! Clan Karr warships are approaching!/.test(await word(page)));
       await H.dismissNotices(page);
       equal(await page.textContent('[data-test=ma-continue-0]'), 'See the War Report');
       equal(await page.textContent('[data-test=ma-status-0]'), 'Nobody is free to defend the Bastion: it falls without a battle. Next: the War Report.');
-      await page.evaluate(() => { window.__dice = [0, 0]; });
-      await advance(page, []);
       let s = await st(page);
-      equal([s.turnInProgress, s.militaryActions.length, await page.evaluate(() => window.__dice.length)], [null, 1, 2], 'no second attack roll');
-      await page.evaluate(() => { window.__dice = []; });
+      equal([s.dayInProgress, s.militaryActions.length, s.log.filter(l => l.title === 'Defend Bastion' && /Karr/.test(l.body)).length], [null, 1, 1], 'no second attack roll');
       await pause(page);
       await page.click('[data-test=ma-continue-0]');
       await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal__title'); return t && t.textContent === 'War Report'; });
@@ -2048,42 +2044,42 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       equal(await page.isDisabled('[data-test=make-peace-karr]'), false);
     });
 
-    await check('the Watchtower\'s Patrol: an attack on the turn it finishes reminds the DM of the defenders\' Advantage, in the pop-up and the War Council', async () => {
+    await check('the Watchtower\'s Patrol: an attack on the day it finishes (or the 7 after) reminds the DM of the defenders\' Advantage, in the pop-up and the War Council', async () => {
       await setUp(page, (s) => {
-        s.wars = { karr: { since: s.turn, last: s.turn } };
+        s.wars = { karr: { since: s.day, last: s.day, next: s.day + 1 } };
         s.defenders.count = 10; s.defenders.armed = true; s.repairs = {};
-        s.pendingOrders = [{ id: 'patrol-1', facId: 'watchtower', fnId: 'patrol', chosen: null, optionLabel: null, label: 'Watchtower: Patrol', costGP: 0, issuedTurn: s.turn, completeTurn: s.turn + 1 }];
+        s.pendingOrders = [{ id: 'patrol-1', facId: 'watchtower', fnId: 'patrol', chosen: null, optionLabel: null, label: 'Watchtower: Patrol', costGP: 0, issuedDay: s.day, dueDay: s.day + 1 }];
       });
       await page.evaluate(() => { window.__dice = [0, 0]; });
-      await pause(page);
-      await page.click('[data-test=advance]');
-      await page.waitForSelector('[data-test=attack]');
+      await setExplorerDay(page, (await st(page)).day + 1);
+      await page.waitForSelector('[data-test=attack]', { timeout: 15000 });
       await page.waitForTimeout(450);
       const line = 'The Watchtower\'s patrol saw them coming: your Bastion Defenders have Advantage on all their rolls in this battle (roll two d20s and keep the higher).';
       equal(await text(page, 'attack-patrol'), line);
       equal((await H.layoutCheck(page, ['.tsi-modal', '.tsi-modal__foot button'])).outOfView, []);
       await H.shot(page, 'p9-war4-attack-patrol');
       await clickModal(page, 'Later');
-      await page.waitForFunction(() => !TSI.bastion.debug.busy());
+      await word(page);
       equal(await text(page, 'ma-patrol-0'), line);
       await reopen(page);
       await H.dismissNotices(page);
       equal(await text(page, 'ma-patrol-0'), line, 'after reopening');
-      /* The next turn the Patrol is over, but the waiting defence keeps it.
-         And while Karr's attack waits, no Clan rolls to attack: Bacca's 1
-         would otherwise find the whole army standing in Karr's defence. */
-      await setUp(page, (st2) => { st2.wars.bacca = { since: st2.turn, last: st2.turn }; });
+      /* When the Patrol is over, the waiting defence keeps it. And while
+         Karr's attack waits, no Clan rolls to attack: Bacca's 1 would
+         otherwise find the whole army standing in Karr's defence. */
+      await setUp(page, (st2) => { st2.wars.bacca = { since: st2.day, last: st2.day, next: st2.day + 8 }; });
       await page.evaluate(() => { window.__dice = [0, 0, 0, 0]; });
-      await advance(page, []);
-      await page.evaluate(() => { window.__dice = []; });
+      await days(page, 8, []);
       const s = await st(page);
-      equal([s.defenders.patrolAdvantage, s.militaryActions.map(m => [m.kind, m.targetKey, m.patrol])], [false, [['defence', 'karr', true]]], 'one attack at a time');
+      equal(await page.evaluate(() => window.__dice.length), 4, 'no dice: Bacca\'s roll day passes without a roll');
+      await page.evaluate(() => { window.__dice = []; });
+      equal([await page.evaluate(() => TSI.bastion.rules.patrolActive(TSI.bastion.debug.state())), s.militaryActions.map(m => [m.kind, m.targetKey, m.patrol])], [false, [['defence', 'karr', true]]], 'one attack at a time');
       equal(await text(page, 'ma-patrol-0'), line);
       await setUp(page, (st2) => { delete st2.wars.bacca; });
     });
 
-    await check('At War tags also follow a Clan\'s name in capitals (the Turn Log\'s Honour Change line), and go with peace', async () => {
-      await setUp(page, (s) => { s.wars = Object.assign({}, s.wars, { molten: { since: s.turn, last: s.turn } }); s.politicalCapital.molten = -100; });
+    await check('At War tags also follow a Clan\'s name in capitals (the Day Log\'s Honour Change line), and go with peace', async () => {
+      await setUp(page, (s) => { s.wars = Object.assign({}, s.wars, { molten: { since: s.day, last: s.day, next: s.day + 7 } }); s.politicalCapital.molten = -100; });
       await pause(page);
       await page.click('[data-test=honour-molten]');
       await page.waitForTimeout(200);
