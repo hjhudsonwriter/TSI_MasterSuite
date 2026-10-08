@@ -3180,7 +3180,9 @@
         military: function () { return militaryRunning; },
         warTable: function () { return warTableOpen; },
         /* Change the Bastion directly (to set up a test), then save and redraw. */
-        change: function (fn) { fn(state); done(); }
+        change: function (fn) { fn(state); done(); },
+        /* Read the Explorer's day now, rather than in up to 2 seconds. */
+        clock: function () { checkClock(); }
       };
       life.onStop(function () { ns.debug = null; });
 
