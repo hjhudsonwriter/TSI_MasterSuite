@@ -22,6 +22,13 @@
   }
   function roll(d20, total) { return { d20: d20, total: total }; }
   function titles(s) { return s.log.map(function (l) { return l.title; }); }
+  /* A war order as the old single-roll war queued it (R.queueWarAction,
+     archived in Build 3: tools/bastion/archive/mercenary-brigade.js), as a
+     save can still hold one. */
+  function oldWarOrder(s, meta) {
+    var days = R.time(data).musterDays;
+    s.pendingOrders.push({ id: R.uid(dice([0.3])), facId: 'war_council', fnId: 'war_action', optionIdx: 0, label: 'War Action', issuedDay: s.day, dueDay: s.day + days, meta: Object.assign({}, meta, { kind: 'war_action' }) });
+  }
 
   group('Bastion: content');
 
@@ -725,16 +732,32 @@
     t.equal(clanState(9, { blackstone: 10, bacca: 10, farmer: 8 }).countOk, false, 'only 2 clans at 55');
   });
 
-  test('forming a Mercenary Brigade: level 7 and 3 defenders', function (t) {
+  test('the requirements line is the Clan\'s alone: the Mercenary Brigade is archived (Build 3)', function (t) {
     var s = fresh();
     s.defenders.count = 3;
-    t.ok(R.canFormMerc(s, data).ok);
-    s.partyLevel = 6;
-    t.equal(R.canFormMerc(s, data).lvlOk, false);
-    s.partyLevel = 7;
-    s.defenders.count = 2;
-    t.equal(R.canFormMerc(s, data).defOk, false);
-    t.equal(R.requirementsHint(s, data), 'Clan requirements: Level 9+ (NO), Total Support 360+ (NO), 3 clans at 55+ (NO).  Merc requirements: Level 7+ (OK), 3+ defenders (NO).');
+    t.equal(R.requirementsHint(s, data), 'Clan requirements: Level 9+ (NO), Total Support 360+ (NO), 3 clans at 55+ (NO).');
+    t.equal(R.canFormMerc, undefined, 'no Form Mercenary Brigade');
+    t.same(Object.keys(data.bastion.identityRules), ['clanMinLevel', 'clanSupportTotalMin', 'clanSupportPerClanMin', 'clanSupportClanCountMin']);
+    s.organization = { type: 'clan', name: 'Clan Ironbow', chief: '', motto: '', foundedAtDay: 1 };
+    t.equal(R.orgLabel(s), 'Clan: Clan Ironbow');
+    t.equal(R.orgLabel(fresh()), 'Unsworn');
+  });
+
+  test('a Brigade in a save from Builds 1 and 2 loads as Unsworn, its name known for the Day Log; its Trusted Clients are kept', function (t) {
+    var save = R.toSave(fresh());
+    save.day = 9;
+    save.organization = { type: 'merc', name: 'The Ironbow Freeblades', chief: '', motto: '', foundedAtDay: 4 };
+    save.trustedClientsByClan.bacca = 12;
+    t.equal(R.saveProblem(save), null, 'still a good save');
+    t.same(R.formerBrigade(save), { name: 'The Ironbow Freeblades' });
+    var back = R.fromSave(JSON.parse(JSON.stringify(save)), data);
+    t.same(back.organization, { type: 'unsworn', name: '', chief: '', motto: '', foundedAtDay: null });
+    t.equal(back.trustedClientsByClan.bacca, 12, 'kept, unread, so the archived Brigade could come back');
+    t.equal(R.formerBrigade(R.toSave(back)), null, 'only once');
+    save.organization.name = '  ';
+    t.same(R.formerBrigade(save), { name: 'the Brigade' });
+    t.equal(R.formerBrigade(R.toSave(fresh())), null);
+    t.equal(R.formerBrigade(null), null);
   });
 
   group('Bastion: war');
@@ -745,72 +768,23 @@
     s.defenderBeasts = [{ name: 'Ape', qty: 2 }];
     s.military = [{ name: 'Lieutenant (1)', qty: 2 }, { name: 'Regiment (100)', qty: 1 }];
     t.same(R.warAvailable(s), { defenders: 5, beasts: 2, lieutenants: 2, regiments: 1, fullWar: false }, 'beasts counted by number, not by row (BAS-25 fixed)');
-    t.same(R.warCommit(s, { defenders: '9', beasts: '3', lieutenants: '2', regiments: '1' }), { commitDefenders: 5, commitBeasts: 2, commitLieutenants: 0, commitRegiments: 0 });
     s.organization.type = 'clan';
-    t.same(R.warCommit(s, { defenders: '', beasts: '0', lieutenants: '2', regiments: '5' }), { commitDefenders: 0, commitBeasts: 0, commitLieutenants: 2, commitRegiments: 1 });
-  });
-
-  test('a raid: DC 14, the modifier from what\'s committed, and the results', function (t) {
-    var s = fresh();
-    s.organization.type = 'clan';
-    s.treasuryGP = 20;
-    s.defenders.count = 4;
-    s.defenderBeasts = [{ name: 'Ape', qty: 1 }];
-    R.queueWarAction(s, { objective: 'raid', targetKey: 'bacca', targetName: 'Bacca', commitDefenders: 4, commitBeasts: 1, commitLieutenants: 2, commitRegiments: 1 }, dice([0.3]));
-    var o = s.pendingOrders[0];
-    t.equal(o.dueDay, 4, 'musters 3 days later');
-    var plan = R.warPlan(s, data, o);
-    t.same([plan.dc, plan.mod, plan.title], [14, 4, 'War Action: RAID vs Bacca']);
-    R.resolveWar(s, data, plan, roll(5, 9), dice([0.3]), 0);
-    t.same([s.treasuryGP, s.politicalCapital.bacca, s.defenders.count, s.defenderBeasts.length, s.clanHonor], [0, 8, 3, 0, 32]);
-    t.equal(s.warLog[0].title, 'Failure: RAID vs Bacca');
-    t.ok(/Casualties: defenders 1; beasts 1/.test(s.warLog[0].details));
-  });
-
-  test('a Brigade\'s war changes its clients\' trust', function (t) {
-    var s = fresh();
+    t.equal(R.warAvailable(s).fullWar, true, 'a Clan sends everything');
     s.organization.type = 'merc';
-    var plan = R.warPlan(s, data, { meta: { objective: 'defend', targetKey: 'karr', commitDefenders: 2 } });
-    t.equal(plan.dc, 12);
-    R.resolveWar(s, data, plan, roll(15, 16), dice([0.3]), 0);
-    t.same([s.trustedClientsByClan.karr, s.trustedClientsByClan.bacca, s.politicalCapital.karr], [42, 51, 6]);
+    t.equal(R.warAvailable(s).fullWar, false, 'only a Clan (the Brigade is archived)');
   });
 
-  test('five Giant Vultures are five beasts, and a lost battle costs one of them, not all five (BAS-25)', function (t) {
+  test('the old single-roll war is archived: nothing on the rules calls it', function (t) {
+    ['warCommit', 'queueWarAction', 'warPlan', 'resolveWar', 'removeBeasts'].forEach(function (k) { t.equal(R[k], undefined, k); });
+    t.equal(data.bastion.war.dc, undefined, 'its DCs went with it');
+  });
+
+  test('five Giant Vultures are five beasts (BAS-25)', function (t) {
     var s = fresh();
     s.defenders.count = 3;
     s.defenderBeasts = [{ name: 'Ape', qty: 1 }, { name: 'Giant Vulture', qty: 5 }];
     t.equal(R.beastQty(s), 6);
     t.equal(R.warAvailable(s).beasts, 6);
-    t.equal(R.warCommit(s, { defenders: '0', beasts: '5' }).commitBeasts, 5);
-    var plan = R.warPlan(s, data, { meta: { objective: 'raid', targetKey: 'bacca', commitDefenders: 3, commitBeasts: 5 } });
-    t.equal(plan.mod, 1 + 2, 'the modifier still counts at most 2 beasts');
-    R.resolveWar(s, data, plan, roll(2, 5), dice([0.3]), 0);
-    t.same(s.defenderBeasts, [{ name: 'Ape', qty: 1 }, { name: 'Giant Vulture', qty: 4 }]);
-    t.ok(/Casualties: defenders 1; beasts 1/.test(s.warLog[0].details));
-  });
-
-  test('losing beasts takes them one at a time from the end of the list', function (t) {
-    var s = fresh();
-    s.defenderBeasts = [{ name: 'Ape', qty: 2 }, { name: 'Giant Vulture', qty: 1 }, { name: 'Wolf' }];
-    R.removeBeasts(s, 3);
-    t.same(s.defenderBeasts, [{ name: 'Ape', qty: 1 }]);
-    R.removeBeasts(s, 5);
-    t.same(s.defenderBeasts, []);
-  });
-
-  test('the beast lost in a war roll is one that marched (the first in the list), never one left at home', function (t) {
-    var s = fresh();
-    s.defenders.count = 3;
-    s.defenderBeasts = [{ name: 'Giant Vulture', qty: 5 }, { name: 'Ape', qty: 2 }];
-    var plan = R.warPlan(s, data, { meta: { objective: 'raid', targetKey: 'bacca', commitDefenders: 3, commitBeasts: 5 } });
-    R.resolveWar(s, data, plan, roll(1, 4), dice([0.3]), 0);
-    t.same(s.defenderBeasts, [{ name: 'Giant Vulture', qty: 4 }, { name: 'Ape', qty: 2 }], 'the Apes stayed at home');
-    s.defenderBeasts = [{ name: 'Giant Vulture', qty: 1 }, { name: 'Ape', qty: 2 }];
-    R.removeBeasts(s, 1, 2);
-    t.same(s.defenderBeasts, [{ name: 'Giant Vulture', qty: 1 }, { name: 'Ape', qty: 1 }]);
-    R.removeBeasts(s, 1, 9);
-    t.same(s.defenderBeasts, [{ name: 'Giant Vulture', qty: 1 }], 'more committed than are left: the last one goes');
   });
 
   group('Bastion: the Military Action');
@@ -823,7 +797,7 @@
     s.defenders.count = 6;
     s.defenderBeasts = [{ name: 'Giant Vulture', qty: 5 }, { name: 'Ape', qty: 1 }];
     s.military = [{ name: 'Lieutenant (1)', qty: 1 }, { name: 'Regiment (100)', qty: 2 }];
-    R.queueWarAction(s, Object.assign({ objective: 'raid', targetKey: 'bacca', targetName: 'Bacca', commitDefenders: 6, commitBeasts: 3, commitLieutenants: 1, commitRegiments: 2 }, extra || {}), dice([0.3]));
+    oldWarOrder(s, Object.assign({ objective: 'raid', targetKey: 'bacca', targetName: 'Bacca', commitDefenders: 6, commitBeasts: 3, commitLieutenants: 1, commitRegiments: 2 }, extra || {}));
     return s;
   }
   function begun(extra) {
@@ -950,6 +924,28 @@
     t.ok(R.hashText('abc') !== R.hashText('abd'));
   });
 
+  test('a crest may keep the Crest Creator\'s design with it (Build 3)', function (t) {
+    var c = { dataUrl: 'data:image/png;base64,AAAA', key: 'k', name: 'x.png', design: { clanName: 'Ironbow', shield: 'heater' } };
+    t.ok(R.isCrest(c));
+    t.equal(R.importProblem([{ key: 'tsi.bastion.crest', value: c }]), null);
+    c.design = 'heater';
+    t.ok(!R.isCrest(c), 'a design is a set of settings');
+  });
+
+  test('a crest sent from the Crest Creator: a PNG and its design, kept as the Bastion\'s crest; anything else is refused', function (t) {
+    var png = 'data:image/png;base64,iVBORw0KGgo=';
+    var c = R.crestFromHandoff({ id: 'crest-1', at: 5, name: '  Clan Ironbow ', dataUrl: png, design: { clanName: 'Clan Ironbow', shield: 'heater', mottoOn: true, size: 3, bad: { x: 1 }, worse: [1], nan: NaN } });
+    t.same(c, { dataUrl: png, key: R.hashText(png), name: 'Clan Ironbow (Crest Creator).png', design: { clanName: 'Clan Ironbow', shield: 'heater', mottoOn: true, size: 3 } });
+    t.ok(R.isCrest(c));
+    t.equal(R.crestFromHandoff({ dataUrl: png }).name, 'Crest (Crest Creator).png', 'no name');
+    t.equal('design' in R.crestFromHandoff({ dataUrl: png }), false, 'no design: none kept');
+    t.equal(R.crestFromHandoff({ dataUrl: 'data:image/jpeg;base64,AAAA' }), null, 'only the Creator\'s PNG');
+    t.equal(R.crestFromHandoff({ dataUrl: 'data:image/png;base64,' + new Array(3000001).join('A') }), null, 'too big');
+    t.equal(R.crestFromHandoff({ dataUrl: 'http://example.com/x.png' }), null);
+    t.equal(R.crestFromHandoff(null), null);
+    t.equal(R.crestFromHandoff('x'), null);
+  });
+
   group('Bastion: events and the Compendium');
 
   test('the d100 table, with 99–00 now reaching Treasure (B11)', function (t) {
@@ -1011,7 +1007,7 @@
     var s = fresh();
     s.defenders.count = 4;
     s.defenderBeasts = [{ name: 'Giant Vulture', qty: 5 }];
-    R.queueWarAction(s, { objective: 'defend', targetKey: 'karr', targetName: 'Karr', commitDefenders: 4, commitBeasts: 5, commitLieutenants: 0, commitRegiments: 0 }, dice([0.3]));
+    oldWarOrder(s, { objective: 'defend', targetKey: 'karr', targetName: 'Karr', commitDefenders: 4, commitBeasts: 5, commitLieutenants: 0, commitRegiments: 0 });
     var ma = R.beginMilitaryAction(s, data, s.pendingOrders[0], dice([0.6]), 0);
     R.militaryRoll(s, data, ma.id, 'weather', roll(3, 3), dice([0.1]));
     R.militaryRoll(s, data, ma.id, 'morale', roll(17, 17), dice([0]));

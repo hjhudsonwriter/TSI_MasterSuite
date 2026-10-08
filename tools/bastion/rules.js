@@ -133,9 +133,14 @@
       /* The day of the latest automatic Bastion event. */
       lastEventDay: 0,
       log: [],
+      /* 'unsworn' or 'clan' (the Mercenary Brigade was archived in the
+         Bastion overhaul, Build 3: tools/bastion/archive/mercenary-brigade.js). */
       organization: { type: 'unsworn', name: '', chief: '', motto: '', foundedAtDay: null },
       clanHonor: 40,
       honourRespectByClan: clanMap(0),
+      /* The archived Brigade's Trusted Clients scores: nothing reads them
+         now, but they're kept in the save, so putting the Brigade back
+         (archive/mercenary-brigade.js) loses nothing. */
       trustedClientsByClan: clanMap(50),
       warLog: [],
       /* Where passing a day has got to ({ day, stage, skipped, attackRolled,
@@ -234,10 +239,12 @@
     d.lastEvent = isObj(s.lastEvent) ? s.lastEvent : null;
     d.lastEventDay = dayNum(s.lastEventDay, 0);
     if (arr(s.log)) d.log = s.log.filter(isObj);
-    if (isObj(s.organization)) {
+    /* A Mercenary Brigade (archived in Build 3) becomes Unsworn: the screen
+       says so once and the Day Log keeps its name (R.formerBrigade). */
+    if (isObj(s.organization) && s.organization.type !== 'merc') {
       var o = s.organization;
       d.organization = {
-        type: o.type === 'clan' || o.type === 'merc' ? o.type : 'unsworn',
+        type: o.type === 'clan' ? 'clan' : 'unsworn',
         name: typeof o.name === 'string' ? o.name : '',
         chief: typeof o.chief === 'string' ? o.chief : '',
         motto: typeof o.motto === 'string' ? o.motto : '',
@@ -345,10 +352,39 @@
     return out;
   };
 
-  /* The Clan's or Brigade's crest picture, saved apart from the Bastion as
-     tsi.bastion.crest (it's shrunk when uploaded): { dataUrl, key, name }. */
+  /* The Bastion's crest picture, saved apart from the Bastion as
+     tsi.bastion.crest: { dataUrl, key, name, design? }. An uploaded picture
+     is shrunk to 512 pixels a side; one from the Clan Crest Creator also
+     keeps the Creator's design (its settings), so it can be re-edited. */
   R.isCrest = function (v) {
-    return isObj(v) && typeof v.dataUrl === 'string' && /^data:image\//.test(v.dataUrl) && typeof v.key === 'string';
+    return isObj(v) && typeof v.dataUrl === 'string' && /^data:image\//.test(v.dataUrl) && typeof v.key === 'string' &&
+      (v.design === undefined || isObj(v.design));
+  };
+  /* A crest sent from the Clan Crest Creator (TSI.handoff 'crest': { id,
+     at, name, dataUrl, design }) as the Bastion keeps it, or null if it
+     isn't one: a PNG of at most about 3 MB, and a design that's a plain
+     set of settings. */
+  var CREST_HANDOFF_MAX = 3000000;
+  R.crestFromHandoff = function (h) {
+    if (!isObj(h) || typeof h.dataUrl !== 'string' || !/^data:image\/png;base64,/.test(h.dataUrl) || h.dataUrl.length > CREST_HANDOFF_MAX) return null;
+    var name = typeof h.name === 'string' ? h.name.trim().slice(0, 80) : '';
+    var c = { dataUrl: h.dataUrl, key: R.hashText(h.dataUrl), name: (name || 'Crest') + ' (Crest Creator).png' };
+    if (isObj(h.design)) {
+      var design = {};
+      Object.keys(h.design).forEach(function (k) {
+        var v = h.design[k];
+        if (typeof v === 'string' || typeof v === 'boolean' || (typeof v === 'number' && isFinite(v))) design[k] = v;
+      });
+      c.design = design;
+    }
+    return c;
+  };
+  /* The name of a Mercenary Brigade in a save from before Build 3 (Builds 1
+     and 2 still had Form Mercenary Brigade), or null: it loads as Unsworn. */
+  R.formerBrigade = function (saved) {
+    var o = isObj(saved) && isObj(saved.organization) ? saved.organization : null;
+    if (!o || o.type !== 'merc') return null;
+    return { name: typeof o.name === 'string' && o.name.trim() ? o.name.trim() : 'the Brigade' };
   };
   /* A short fingerprint of a picture, so a new one can be told from the old. */
   R.hashText = function (str) {
@@ -1364,25 +1400,16 @@
     var countOk = R.clansAtSupport(s, rules.clanSupportPerClanMin) >= rules.clanSupportClanCountMin;
     return { ok: lvlOk && totalOk && countOk, lvlOk: lvlOk, totalOk: totalOk, countOk: countOk };
   };
-  R.canFormMerc = function (s, data) {
-    var rules = data.bastion.identityRules;
-    var lvlOk = (s.partyLevel || 1) >= rules.mercMinLevel;
-    var defOk = (s.defenders.count || 0) >= rules.mercMinDefenders;
-    return { ok: lvlOk && defOk, lvlOk: lvlOk, defOk: defOk };
-  };
   R.orgLabel = function (s) {
     var o = s.organization;
     if (o.type === 'clan') return 'Clan: ' + (o.name || 'Unnamed');
-    if (o.type === 'merc') return 'Brigade: ' + (o.name || 'Unnamed');
     return 'Unsworn';
   };
   R.requirementsHint = function (s, data) {
     var r = data.bastion.identityRules;
     var c = R.canFormClan(s, data);
-    var m = R.canFormMerc(s, data);
     return 'Clan requirements: Level ' + r.clanMinLevel + '+ (' + (c.lvlOk ? 'OK' : 'NO') + '), Total Support ' + r.clanSupportTotalMin + '+ (' + (c.totalOk ? 'OK' : 'NO') + '), ' +
-      r.clanSupportClanCountMin + ' clans at ' + r.clanSupportPerClanMin + '+ (' + (c.countOk ? 'OK' : 'NO') + ').  ' +
-      'Merc requirements: Level ' + r.mercMinLevel + '+ (' + (m.lvlOk ? 'OK' : 'NO') + '), ' + r.mercMinDefenders + '+ defenders (' + (m.defOk ? 'OK' : 'NO') + ').';
+      r.clanSupportClanCountMin + ' clans at ' + r.clanSupportPerClanMin + '+ (' + (c.countOk ? 'OK' : 'NO') + ').';
   };
 
   /* ---------- War (5262-5404) ---------- */
@@ -1400,113 +1427,11 @@
       return sum + clampInt(it && it.qty !== undefined && it.qty !== null ? it.qty : 1, 0);
     }, 0);
   };
-  /* Lose n beasts one at a time, not whole rows. The beasts that march are
-     the first `committed` in list order (as the War Table names them), so
-     the losses come from those, the last-named first. With no `committed`,
-     from the end of the list. */
-  R.removeBeasts = function (s, n, committed) {
-    var list = s.defenderBeasts;
-    var total = R.beastQty(s);
-    var upto = committed === undefined || committed === null ? total : Math.min(total, clampInt(committed, 0));
-    var left = Math.min(clampInt(n, 0), upto);
-    for (; left > 0; left--, upto--) {
-      var idx = upto - 1, seen = 0;
-      for (var i = 0; i < list.length; i++) {
-        var row = list[i];
-        var q = clampInt(row && row.qty !== undefined && row.qty !== null ? row.qty : 1, 0);
-        if (idx < seen + q) {
-          if (q - 1 <= 0) list.splice(i, 1);
-          else row.qty = q - 1;
-          break;
-        }
-        seen += q;
-      }
-    }
-  };
-  /* What can be committed: R.warAvailable and the phase 2 R.warForces are
-     in war-campaign-rules.js (they leave out anything already committed or
-     recovering). */
-  R.warCommit = function (s, fields) {
-    var a = R.warAvailable(s);
-    return {
-      commitDefenders: clampInt(fields.defenders === undefined ? 0 : fields.defenders, 0, a.defenders),
-      commitBeasts: clampInt(fields.beasts === undefined ? 0 : fields.beasts, 0, a.beasts),
-      commitLieutenants: a.fullWar ? clampInt(fields.lieutenants === undefined ? 0 : fields.lieutenants, 0, a.lieutenants) : 0,
-      commitRegiments: a.fullWar ? clampInt(fields.regiments === undefined ? 0 : fields.regiments, 0, a.regiments) : 0
-    };
-  };
-  /* The old single-roll war, kept until it's archived (the screen uses
-     R.queueWarAction2). */
-  R.queueWarAction = function (s, meta, rand, data) {
-    var days = R.time(data).musterDays;
-    var order = { id: R.uid(rand), facId: 'war_council', fnId: 'war_action', optionIdx: 0, label: 'War Action', issuedDay: s.day, dueDay: s.day + days, meta: Object.assign({}, meta, { kind: 'war_action' }) };
-    s.pendingOrders.push(order);
-    return ['War Action Queued', meta.objective.toUpperCase() + ' vs ' + meta.targetName + ' (musters on Day ' + (s.day + days) + ').'];
-  };
-  R.warPlan = function (s, data, order) {
-    var meta = order.meta || {};
-    var objective = String(meta.objective || 'raid');
-    var targetKey = String(meta.targetKey || 'blackstone');
-    var target = null;
-    data.bastion.clans.forEach(function (c) { if (c.key === targetKey) target = c; });
-    var targetName = target ? target.name : 'Unknown';
-    var dc = data.bastion.war.dc[objective] !== undefined ? data.bastion.war.dc[objective] : 13;
-    var defenders = clampInt(meta.commitDefenders || 0, 0);
-    var beasts = clampInt(meta.commitBeasts || 0, 0);
-    var lieutenants = clampInt(meta.commitLieutenants || 0, 0);
-    var regiments = clampInt(meta.commitRegiments || 0, 0);
-    var mod = Math.min(4, Math.floor(defenders / 2)) + Math.min(2, beasts) + Math.min(3, Math.floor((lieutenants + regiments) / 2));
-    return {
-      objective: objective, targetKey: targetKey, targetName: targetName, dc: dc, mod: mod,
-      defenders: defenders, beasts: beasts, lieutenants: lieutenants, regiments: regiments,
-      title: 'War Action: ' + objective.toUpperCase() + ' vs ' + targetName
-    };
-  };
-  /* notes: extra lines for the war log (a Military Action's weather,
-     morale and luck). */
-  R.resolveWar = function (s, data, plan, roll, rand, now, notes) {
-    var success = roll.total >= plan.dc;
-    var o = data.bastion.war.outcomes[plan.objective] || { gp: [0, 0], pc: [0, 0] };
-    var gpDelta = success ? o.gp[0] : o.gp[1];
-    var pcDelta = success ? o.pc[0] : o.pc[1];
-    var clanHonorDelta = 0;
-    var isClan = s.organization.type === 'clan';
-    var isMerc = s.organization.type === 'merc';
-    s.treasuryGP = clampInt((s.treasuryGP || 0) + gpDelta, 0);
-    R.addPoliticalCapital(s, plan.targetName, pcDelta);
-    var defLoss = Math.min(plan.defenders, Math.max(1, Math.floor(plan.defenders / 3)));
-    if (!success) {
-      s.defenders.count = Math.max(0, (s.defenders.count || 0) - defLoss);
-      /* One beast is lost, not a whole row of them (BAS-25). */
-      var beastLoss = Math.min(plan.beasts, plan.beasts > 0 ? 1 : 0);
-      if (beastLoss > 0) R.removeBeasts(s, beastLoss, plan.beasts);
-    }
-    if (isClan) {
-      clanHonorDelta = success ? 6 : -8;
-      s.clanHonor = clampInt((s.clanHonor === undefined || s.clanHonor === null ? 40 : s.clanHonor) + clanHonorDelta, 0, 100);
-    }
-    if (isMerc) {
-      var tcDelta = success ? -8 : -4;
-      s.trustedClientsByClan[plan.targetKey] = clampInt((s.trustedClientsByClan[plan.targetKey] === undefined ? 50 : s.trustedClientsByClan[plan.targetKey]) + tcDelta, 0, 100);
-      data.bastion.clans.forEach(function (c) {
-        if (c.key === plan.targetKey) return;
-        s.trustedClientsByClan[c.key] = clampInt((s.trustedClientsByClan[c.key] === undefined ? 50 : s.trustedClientsByClan[c.key]) + (success ? 1 : -1), 0, 100);
-      });
-    }
-    var title = (success ? 'Success' : 'Failure') + ': ' + plan.objective.toUpperCase() + ' vs ' + plan.targetName;
-    var details = 'Roll: d20 ' + roll.d20 + ' + mod ' + plan.mod + ' = ' + roll.total + ' vs DC ' + plan.dc + '\n' +
-      'Treasury: ' + (gpDelta >= 0 ? '+' : '') + gpDelta + ' gp\n' +
-      'Political Capital (' + plan.targetName + '): ' + (pcDelta >= 0 ? '+' : '') + pcDelta + '\n' +
-      (isClan ? 'Clan Honour: ' + (clanHonorDelta >= 0 ? '+' : '') + clanHonorDelta + '\n' : '') +
-      (!success ? 'Casualties: defenders ' + defLoss + '; beasts ' + (plan.beasts > 0 ? 1 : 0) + '\n' : '') +
-      (notes && notes.length ? notes.join('\n') + '\n' : '');
-    s.warLog.unshift({
-      id: R.uid(rand), at: now === undefined ? Date.now() : now, title: title,
-      subtitle: 'Committed: ' + plan.defenders + ' defenders, ' + plan.beasts + ' beasts, ' + plan.lieutenants + ' lieutenants, ' + plan.regiments + ' regiments',
-      details: details
-    });
-    return ['War Action Resolved', title];
-  };
+  /* The old single-roll war (R.warCommit, R.queueWarAction, R.warPlan,
+     R.resolveWar and R.removeBeasts) was archived in Build 3, with the
+     Mercenary Brigade: tools/bastion/archive/mercenary-brigade.js. What can
+     be committed is R.warForces, R.warAvailable and R.warCommit2, in
+     war-campaign-rules.js. */
 
   /* ---------- The Military Action (Harry's request, 2 October 2026) ----------
      When a war action comes due, it becomes a Military Action instead of a

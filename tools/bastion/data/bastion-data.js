@@ -70,14 +70,13 @@ window.TSI_DATA.bastion = {
   },
   consortiumName: 'Ironbow Trade Consortium',
 
-  /* Party identity (4947-4954). */
+  /* Party identity (4947-4954): founding a Clan. (The Mercenary Brigade's
+     level 7 and 3 defenders are in tools/bastion/archive/mercenary-brigade.js.) */
   identityRules: {
     clanMinLevel: 9,
-    mercMinLevel: 7,
     clanSupportTotalMin: 360,
     clanSupportPerClanMin: 55,
-    clanSupportClanCountMin: 3,
-    mercMinDefenders: 3
+    clanSupportClanCountMin: 3
   },
 
   /* Hall of Emissaries: the DC for each action (908-915). */
@@ -132,9 +131,9 @@ window.TSI_DATA.bastion = {
     eventEvery: 28
   },
 
-  /* War (5285-5339): DC, and gold and target Political Capital on success / failure. */
+  /* War (5285-5339): gold and target Political Capital on success / failure.
+     (The old single roll's DCs are in tools/bastion/archive/mercenary-brigade.js.) */
   war: {
-    dc: { raid: 14, skirmish: 13, defend: 12, seize_outpost: 15 },
     outcomes: {
       defend: { gp: [0, -25], pc: [6, -8] },
       raid: { gp: [75, -50], pc: [-10, 8] },

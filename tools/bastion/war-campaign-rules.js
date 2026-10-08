@@ -60,10 +60,6 @@
     maxMissions: 12      /* missions kept at once */
   };
   function setting(w, key) { return w && typeof w[key] === 'number' ? w[key] : DEFAULTS[key]; }
-  /* A Brigade's Trusted Clients after a war: the amounts R.resolveWar has
-     always used (target clan, and every other clan), unless the data file
-     gains rewards.trusted in the same shape. */
-  var TRUSTED = { success: { target: -8, others: 1 }, failure: { target: -4, others: -1 } };
 
   var OUTCOMES = ['victory', 'defeat', 'draw', 'withdrawal'];
   var STATUS_NAMES = { steady: 'Steady', shaken: 'Shaken', routed: 'Routed', defeated: 'Defeated' };
@@ -506,7 +502,7 @@
       lieutenants: Math.max(0, R.militaryQty(s, /lieutenant/i) - held.lieutenants - rec.lieutenants),
       units: units,
       beasts: beasts,
-      fullWar: !!(isObj(s.organization) && s.organization.type !== 'unsworn')
+      fullWar: !!(isObj(s.organization) && s.organization.type === 'clan')
     };
   };
 
@@ -1582,8 +1578,7 @@
      - victory: success; defeat and withdrawal: failure; a draw: nothing;
      - a raid's gold follows the supplies carried off (half for one of two,
        all for two); with none, the failure's gold;
-     - a Clan's Honour: victory, defeat or withdrawal amount (W.rewards);
-     - a Brigade's Trusted Clients as R.resolveWar changes them.
+     - a Clan's Honour: victory, defeat or withdrawal amount (W.rewards).
      A lost Defend Bastion (kind 'defence'; withdrawing counts as losing it,
      Honour too) has no gold here: it costs part of the treasury and puts
      facilities Under Repair instead (defenceLoss: see finishBattle). */
@@ -1609,18 +1604,16 @@
     var honour = null;
     var as = lostDefence ? 'defeat' : outcome;
     if (type === 'clan') honour = as === 'victory' ? w.rewards.victoryHonour : as === 'defeat' ? w.rewards.defeatHonour : as === 'withdrawal' ? w.rewards.withdrawalHonour : 0;
-    var trustedTable = (w.rewards && isObj(w.rewards.trusted)) ? w.rewards.trusted : TRUSTED;
-    var trusted = type === 'merc' && res !== 'none' ? trustedTable[res] : null;
-    return { result: res, gp: gp, pc: pc, honour: honour, trusted: trusted, extracted: extracted, need: need, defenceLoss: lostDefence };
+    return { result: res, gp: gp, pc: pc, honour: honour, extracted: extracted, need: need, defenceLoss: lostDefence };
   };
 
   /* Apply the rewards to s, within the Bastion's limits (the treasury
      never goes below 0; Clan Honour stays 0 to 100; Political Capital −100
-     to 100; Trusted Clients 0 to 100). Returns what actually changed:
-     { gp, pc, honour, trusted: { target, others: { clanKey: n } } | null }.
-     Run on a copy of those numbers for a preview. */
+     to 100). Returns what actually changed: { gp, pc, honour }. Run on a
+     copy of those numbers for a preview. (The archived Mercenary Brigade's
+     Trusted Clients were changed here too: archive/mercenary-brigade.js.) */
   function applyRewards(s, data, ma, rw) {
-    var out = { gp: 0, pc: 0, honour: 0, trusted: null };
+    var out = { gp: 0, pc: 0, honour: 0 };
     var gp0 = Number(s.treasuryGP) || 0;
     s.treasuryGP = clampInt(gp0 + rw.gp, 0);
     out.gp = s.treasuryGP - gp0;
@@ -1635,23 +1628,13 @@
       s.clanHonor = clampInt(h0 + rw.honour, 0, 100);
       out.honour = s.clanHonor - h0;
     }
-    if (rw.trusted) {
-      out.trusted = { target: 0, others: {} };
-      var shift = function (key, by) {
-        var t0 = s.trustedClientsByClan[key] === undefined ? 50 : clampInt(s.trustedClientsByClan[key], 0, 100);
-        s.trustedClientsByClan[key] = clampInt(t0 + by, 0, 100);
-        return s.trustedClientsByClan[key] - t0;
-      };
-      out.trusted.target = shift(ma.targetKey, rw.trusted.target);
-      data.bastion.clans.forEach(function (cl) { if (cl.key !== ma.targetKey) out.trusted.others[cl.key] = shift(cl.key, rw.trusted.others); });
-    }
     return out;
   }
   /* What the rewards would change now, without changing anything. */
   function previewRewards(s, data, ma, rw) {
     return applyRewards({
       treasuryGP: s.treasuryGP, clanHonor: s.clanHonor,
-      politicalCapital: Object.assign({}, s.politicalCapital), trustedClientsByClan: Object.assign({}, s.trustedClientsByClan)
+      politicalCapital: Object.assign({}, s.politicalCapital)
     }, data, ma, rw);
   }
 
@@ -1672,17 +1655,6 @@
     else lines.push(line('Treasury', rw.gp, got.gp, ' gp', 'the treasury can\'t go below 0', now && rw.gp ? s.treasuryGP : null));
     lines.push(line('Political Capital (' + ma.targetName + ')', rw.pc, got.pc, '', 'it can\'t go ' + (rw.pc > 0 ? 'above 100' : 'below −100'), null));
     if (rw.honour !== null) lines.push(line('Clan Honour', rw.honour, got.honour, '', 'it can\'t go ' + (rw.honour > 0 ? 'above 100' : 'below 0'), now ? s.clanHonor : null));
-    if (rw.trusted && got.trusted) {
-      var short = [];
-      data.bastion.clans.forEach(function (cl) {
-        var n = got.trusted.others[cl.key];
-        if (n === undefined || n === rw.trusted.others) return;
-        short.push(cl.name + (n === 0 ? ' (already at ' + (rw.trusted.others > 0 ? 100 : 0) + ')' : ' ' + signed(n) + ' (at the limit)'));
-      });
-      var target = signed(got.trusted.target) + (got.trusted.target !== rw.trusted.target ? ' (' + signed(rw.trusted.target) + ', but it can\'t go ' + (rw.trusted.target > 0 ? 'above 100' : 'below 0') + ')' : '');
-      lines.push('Trusted Clients: ' + ma.targetName + ' ' + target + ', every other clan ' + signed(rw.trusted.others) +
-        (short.length ? ' except ' + short.join(', ') : '') + '.');
-    }
     return lines;
   }
   /* A lost Defend Bastion's treasury line: what was lost (loss, from
@@ -1937,8 +1909,8 @@
   };
 
   /* A Defend Bastion with nobody free to defend it (undefended): lost at
-     once, with no battle: the defeat's Political Capital, Clan Honour and
-     Trusted Clients, the treasury and the repairs. Returns { lines, report }
+     once, with no battle: the defeat's Political Capital and Clan Honour,
+     the treasury and the repairs. Returns { lines, report }
      as R.finishBattle does, or null if it isn't one. */
   R.finishUndefended = function (s, data, id, rand, now) {
     var ma = R.militaryById(s, id);

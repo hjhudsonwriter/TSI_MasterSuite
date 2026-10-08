@@ -19,6 +19,12 @@
   function roll(d20) { return { d20: d20, total: d20 }; }
   function copy(v) { return JSON.parse(JSON.stringify(v)); }
   function fresh() { return R.defaultState(data); }
+  /* A war order as the old single-roll war queued it (R.queueWarAction,
+     archived in Build 3), as a save can still hold one. */
+  function oldWarOrder(s, meta) {
+    var days = R.time(data).musterDays;
+    s.pendingOrders.push({ id: R.uid(dice([0.3])), facId: 'war_council', fnId: 'war_action', optionIdx: 0, label: 'War Action', issuedDay: s.day, dueDay: s.day + days, meta: Object.assign({}, meta, { kind: 'war_action' }) });
+  }
 
   /* A Clan on Day 3 with two Lieutenants, two Line Infantry, one Line
      Infantry at 62, one Archers, 30 armed defenders, two Giant Vultures
@@ -239,7 +245,7 @@
 
   test('a phase 1 war order still waiting is read as Line Infantry and the first beasts in the list', function (t) {
     var s = army();
-    R.queueWarAction(s, { objective: 'raid', targetKey: 'bacca', targetName: 'Bacca', commitDefenders: 4, commitBeasts: 2, commitLieutenants: 1, commitRegiments: 2 }, dice([0.3]));
+    oldWarOrder(s, { objective: 'raid', targetKey: 'bacca', targetName: 'Bacca', commitDefenders: 4, commitBeasts: 2, commitLieutenants: 1, commitRegiments: 2 });
     t.same(R.orderCommit(s, data, s.pendingOrders[0]), { defenders: 4, lieutenants: 1, units: { line: 2 }, beasts: { 'Giant Vulture': 2 } });
     var f = R.warForces(s, data);
     t.same([f.units.line.length, f.defenders.count, f.lieutenants, f.beasts], [1, 26, 1, { Ape: 1 }]);
@@ -1093,14 +1099,6 @@
       'Clan Honour: −3 (−8, but it can\'t go below 0; now 0).'
     ]);
     t.ok(res.report.details.indexOf('- Treasury: −20 gp (−60 gp, but the treasury can\'t go below 0; now 0 gp).') !== -1, res.report.details);
-    var m = army();
-    m.organization.type = 'merc';
-    m.trustedClientsByClan.bacca = 3;
-    m.trustedClientsByClan.karr = 100;
-    var k = ready('skirmish', { s: m, commit: { defenders: 30 } });
-    var lines = R.finishBattle(k.s, data, k.ma.id, battleFrom(k.ma, 'victory', {}), dice([0.5]), 0).lines;
-    t.ok(lines.indexOf('Trusted Clients: Bacca −3 (−8, but it can\'t go below 0), every other clan +1 except Karr (already at 100).') !== -1, lines.join(' | '));
-    t.same([k.s.trustedClientsByClan.bacca, k.s.trustedClientsByClan.karr, k.s.trustedClientsByClan.slade], [0, 100, 51]);
   });
 
   test('Key moments: chosen by the kind of each log entry, the most important kept, never Hold orders', function (t) {
@@ -1168,16 +1166,14 @@
     t.ok(a.every(function (id) { return /^reg-[0-9a-f]+$/.test(id) || id === 'reg-a'; }), a.join(', '));
   });
 
-  test('a Brigade\'s Trusted Clients change as before: the target down, everyone else up after a win', function (t) {
+  test('no Trusted Clients after a battle: the Brigade is archived (Build 3), and its scores are left alone', function (t) {
     var s = army();
-    s.organization.type = 'merc';
     var b = ready('skirmish', { s: s, commit: { defenders: 30, beasts: { Ape: 1 } } });
-    R.finishBattle(b.s, data, b.ma.id, battleFrom(b.ma, 'victory', {}), dice([0.5]), 0);
-    t.same([b.s.trustedClientsByClan.bacca, b.s.trustedClientsByClan.karr, b.s.politicalCapital.bacca, b.s.clanHonor], [42, 51, -6, 40]);
-    var c = ready('skirmish', { s: (function () { var x = army(); x.organization.type = 'merc'; return x; }()), commit: { defenders: 30 } });
-    var res = R.finishBattle(c.s, data, c.ma.id, battleFrom(c.ma, 'withdrawal', {}), dice([0.5]), 0);
-    t.same([c.s.trustedClientsByClan.bacca, c.s.trustedClientsByClan.slade], [46, 49]);
-    t.ok(res.lines.indexOf('Trusted Clients: Bacca −4, every other clan −1.') !== -1, res.lines.join(' | '));
+    var before = JSON.stringify(b.s.trustedClientsByClan);
+    var res = R.finishBattle(b.s, data, b.ma.id, battleFrom(b.ma, 'victory', {}), dice([0.5]), 0);
+    t.equal(JSON.stringify(b.s.trustedClientsByClan), before);
+    t.ok(res.lines.every(function (l) { return !/Trusted Clients/.test(l); }), res.lines.join(' | '));
+    t.equal('trusted' in R.warRewards(b.s, data, b.ma, battleFrom(b.ma, 'victory', {}), 'victory'), false);
   });
 
   test('a Raid withdrawal: the gold follows the supplies already home (+38 for one, the defeat\'s −50 for none); Honour −4', function (t) {
@@ -1306,7 +1302,7 @@
 
   test('a phase 1 war order still waiting becomes a Military Action against an established local force', function (t) {
     var s = army();
-    R.queueWarAction(s, { objective: 'defend', targetKey: 'molten', targetName: 'Molten', commitDefenders: 5, commitBeasts: 1, commitLieutenants: 1, commitRegiments: 1 }, dice([0.3]));
+    oldWarOrder(s, { objective: 'defend', targetKey: 'molten', targetName: 'Molten', commitDefenders: 5, commitBeasts: 1, commitLieutenants: 1, commitRegiments: 1 });
     var ma = R.beginMilitaryAction(s, data, s.pendingOrders[0], dice([0.5]), 0);
     t.same([ma.tier, ma.missionKey, ma.commit], ['established', 'molten|defend|established', { defenders: 5, lieutenants: 1, units: { line: 1 }, beasts: { 'Giant Vulture': 1 } }]);
   });
@@ -1837,15 +1833,13 @@
     t.same(s.wars.bacca, { since: 2, last: 3, next: 9 });
   });
 
-  test('a lost defence with few facilities, an empty treasury, or a Brigade\'s Trusted Clients', function (t) {
+  test('a lost defence with few facilities, or an empty treasury', function (t) {
     var d = defence();
     d.s.treasuryGP = 0;
-    d.s.organization.type = 'merc';
     var lines = R.finishBattle(d.s, data, d.ma.id, battleFrom(d.ma, 'defeat', {}), dice([d10(3), d4(4), 0]), 0).lines;
     t.ok(lines.indexOf('Treasury: no change (d10 3: 15% of 0 gp; now 0 gp).') !== -1, lines.join(' | '));
     t.equal(Object.keys(d.s.repairs).length, 4);
     t.ok(Object.keys(d.s.repairs).every(function (k) { return d.s.repairs[k] === 16; }));
-    t.same([d.s.trustedClientsByClan.bacca, d.s.trustedClientsByClan.karr], [46, 49], 'as any lost battle');
     var e = defence();
     e.s.treasuryGP = 33;
     var bf = { bastion: Object.assign({}, data.bastion, { startingBuilt: ['barracks', 'dock'] }), facilities: data.facilities, tools: data.tools, events: data.events };
