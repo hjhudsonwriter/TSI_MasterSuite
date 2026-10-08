@@ -13,6 +13,8 @@
 
 The code mapping behind this plan (ten readers over the Bastion's 15,000 lines, the Explorer's clock, the Crest Creator and the tests) is summarised in the appendix.
 
+**This is a rules change, asked for by Harry.** CLAUDE.md's "faithful rebuild" rule and the handover's "preserve implemented behaviour" are set aside for the Bastion by this brief; every rule that changes is recorded in `docs/KNOWN_ISSUES.md` with a before-and-after line, as always. The handover itself proposed this design for later (section 12): *"Use one in-game day service for travel and acknowledged Bastion turns… Do not auto-run a Bastion turn again when reloading that day"*, and (section 14) *"Link Explorer's weekly prompt to an acknowledged Bastion advancement with an idempotency key."* The plan keeps both safeguards: each day is processed exactly once, and a reload never re-runs it.
+
 ## At a glance
 
 - **One clock.** The Explorer's day is the campaign's only clock. The Bastion reads it (every two seconds while open, and the moment it opens), passes the days that have gone by, and never changes it. Its old "Advance Bastion Turn" button goes.
@@ -91,7 +93,8 @@ On the first open after the update:
 - `state.day` becomes the Explorer's current day (or 1 if the Explorer has never saved).
 - Everything in progress keeps the time it had left, at **7 days per turn**: an order with 1 turn left is due in 7 days; building with 2 turns left needs 14 days; an agreement with 3 turns left ends in 21 days; a cooldown of 2 turns ends in 14 days; repairs and recovery likewise; a war's "since" and "last" days are counted back from today at 7 days per turn.
 - The Turn Log's old entries stay as they are (they're history); new entries say "Day N".
-- Old backup files import the same way. The save's shape gets a version number so this conversion runs once.
+- Old backup files import the same way, and so does an old Bastion inside a whole-suite backup (Restore skips the per-tool check, so the conversion lives in the loader, `R.fromSave`, not in Import). The save gets a marker (`v: 2`, the way Military Actions already carry `v: 2`) so the conversion runs once and a day-based save is never converted twice. The "is this a Bastion save?" check accepts `day` or `turn` as its marker, so no real save is ever set aside as damaged.
+- A turn-based save that is already open in another window when the update lands is converted by whichever window opens it first; the other window, on its next load, sees a `v: 2` save and leaves it alone.
 - An old save that had formed a **Mercenary Brigade** becomes Unsworn, its name kept in the save (`organization.formerBrigade`) and its crest kept, with a log line explaining (question 5 offers the alternative: treat it as a Clan).
 
 ### 1.7 Two windows, and the rules that stop double-counting
@@ -152,7 +155,7 @@ Each number is one field (`days`) on the order in `tools/bastion/data/facilities
 ## 3. The Mercenary Brigade goes (archived)
 
 - **Removed from the screen and rules:** Form Mercenary Brigade, its requirements line ("Merc requirements: Level 7+, 3+ defenders"), the "Brigade: name" label, the Trusted Clients box and its 0–100 scores, the Trusted Clients shifts after a battle and their War Report line, and the words "Clan or Brigade" wherever they appear ("Only a Clan can commit Lieutenants and Regiments."; "Clan only").
-- **Kept aside:** all of it moves, as working code with its tests, to `tools/bastion/archive/mercenary-brigade.js` and `tests/archive/mercenary-brigade.test.js`, loaded by nothing, with a note at the top saying how to put it back. The old single-roll war that the screen no longer uses (`R.warCommit`, `R.queueWarAction`, `R.warPlan`, `R.resolveWar`) goes into the archive with it.
+- **Kept aside:** all of it moves, as working code with its tests, to `tools/bastion/archive/mercenary-brigade.js` and `tests/archive/mercenary-brigade.test.js`, loaded by nothing, with a note at the top saying how to put it back. The old single-roll war that the screen no longer uses (`R.warCommit`, `R.queueWarAction`, `R.warPlan`, `R.resolveWar`) goes into the archive with it. A save's `trustedClientsByClan` scores still load harmlessly (ignored), so putting the Brigade back later loses nothing.
 - **Unchanged:** an Unsworn party can still send defenders and beasts to war, as now; Form Clan's requirements (level 9, total support 360, three Clans at 55) are as they are.
 - **Saves:** section 1.6.
 
@@ -163,7 +166,7 @@ Each number is one field (`days`) on the order in `tools/bastion/data/facilities
   1. **Create in the Clan Crest Creator ↗** opens the Creator in a new window. The Creator gets a new button beside Download PNG: **Use for the Bastion**. It sends the crest to the Bastion through the suite's hand-off (a new `crest` kind of `TSI.handoff`, like the fight hand-off: a 512-pixel picture plus the design). A Bastion window hears it within a moment and asks "Use this crest for the Bastion?"; if the Bastion isn't open it asks when next opened. No downloading and uploading. This is allowed from a double-clicked file because the Creator draws only its own path data, never a bundled picture (its Download PNG already proves it offline).
   2. **Upload a picture** (PNG, JPG, WebP or GIF, as now).
   3. **Remove**.
-- **The badge:** top-right corner of the Bastion map, about 112 pixels, in the gold frame with its soft glow, above the facility overlays. With no crest it shows a faint empty shield and "Add a crest". Clicking it (or pressing Enter on it) opens the Party Identity panel.
+- **The badge:** top-right corner of the Bastion map, about 112 pixels, in the gold frame with its soft glow, above the facility overlays. With no crest it shows a faint empty shield and "Add a crest". Clicking it (or pressing Enter on it) opens the Party Identity panel. Its spoken name is "Crest of the Ironbow" until a Clan is formed, then "Crest of <Clan name>".
 - **The Party Identity panel** (a pop-up over the map): the crest with its three buttons; the status pill (Unsworn, or "Clan: name" with chief and motto); **Form Clan** with the requirements line; Clan Honour (only once a Clan). Form Clan's pop-up keeps a crest box, pre-filled: "Keep this crest / Create a new one ↗ / Upload…".
 - **The War Table** gets the crest on your tokens whether or not a Clan is formed (army name "Your forces" until then).
 
@@ -259,13 +262,14 @@ Each is one session and one pull request, tested from a double-clicked `index.ht
 - `tools/bastion/data/facilities-data.js` and `bastion-data.js`: `days` on every order; durations in days; the data comments reworded.
 - `tools/bastion/tool.js`: reads the Explorer's day live; the Advance button becomes the day pill and a "Days passed" review; every "turn" string reworded; "Resolve" on a due order; the log stamped with days.
 - The Explorer: the Open the Bastion ↗ button, the reworded weekly reminder, the "orders complete today" notice line. The DM doc's two tiles.
-- Tests: the Bastion's rules tests rewritten for days (about 130 turn references across the rules and click-through tests); new tests for the day engine, the week's end, catching up several days, Reset Travel, migration and the two-window link; `tests/e2e/phase9.test.js` updated. The side-by-side run against the old Bastion is **retired** (the new Bastion deliberately differs; recorded in KNOWN_ISSUES).
-- Docs: KNOWN_ISSUES (a new BAS entry for the day clock, and the retired comparison), PROGRESS, WAR-RULES.md's turn wording, the guide.
+- Tests: about 71 of the Bastion's 420 rules tests set or assert turn numbers (25 in `bastion.test.js`, 46 in `bastion-campaign.test.js`; the three war-table, battle and AI files have none) and are rewritten for days; about 39 of `phase9.test.js`'s 105 click-through checks, 5 shared tests (`campaign.test.js`, `explorer.test.js`) and 4 DM doc checks likewise. New tests cover the day engine, the week's end, catching up several days at once, Reset Travel, the conversion of an old save, and the two-window link (the Explorer makes camp, the Bastion's day moves within 2 seconds). The side-by-side 12-turn run against the old Bastion is **retired**: the rules now deliberately differ, as the war's already do (recorded in KNOWN_ISSUES).
+- Docs: KNOWN_ISSUES (a new BAS entry for the day clock with every changed rule, and the retired comparison), PROGRESS, `docs/WAR-RULES.md` re-issued in days (peace, repairs, recovery, the attack roll, the cancel window), and `guide.html` in the same pull request (its click-through test fails if the guide names a button that no longer exists).
 
 ### Build 2: the screen
 
 - The map-centred layout, the top bar, the bottom bar, the facility grid, the build panel, the facility panels, the panel buttons and pop-ups, the War Council lock, the shared tooltip, the laptop and TV fit.
-- `tests/e2e/phase9.test.js` reworked around the new screen (keeping the data-test names where the thing is the same), plus a new `bastion-screen.test.js` for the grid, build flow, tooltips and bars.
+- `tests/e2e/phase9.test.js` reworked around the new screen (keeping the data-test names where the thing is the same; nearly every layout check changes), plus a new `bastion-screen.test.js` for the grid, build flow, tooltips and bars.
+- `tsi.bastion.ui` (remembered panel states) gets new ids; stale ones are discarded on load, and `ui.warNoticed` is kept so the war's "conditions stand" pop-up doesn't repeat. The War Table is still opened with the page's new bars made inert beneath it.
 
 ### Build 3: identity and the crest
 
@@ -290,6 +294,7 @@ Each has a default so the build can start on "use the defaults".
 11. **Artisan Tools** move into the Workshop's panel (they only feed Workshop Craft). Default: **yes**.
 12. **The treasury** is edited in the top bar only; the Management panel keeps defenders, beasts and military. Default: **yes**.
 13. **The log's name:** "Day Log" (the brief says "turn log"). Default: **Day Log**.
+14. **Your table save.** The conversion in section 1.6 means your current Bastion carries on. If you'd rather start the Bastion afresh when this lands (Reset, then rebuild), say so and nothing changes in the plan; the conversion is built either way, for backups.
 
 ## 9. Decided for you (easy to change later)
 
