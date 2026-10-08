@@ -78,6 +78,11 @@
       if (setAside) TSI.store.quarantine(TSI.storeRules.keyFor('bastion', 'state'), 'It was saved in Bastion turns, before the Bastion counted in days (8 October 2026).');
       var saved = setAside ? null : load('state', R.isSave);
       var state = saved ? R.fromSave(TSI.clone(saved), data) : R.defaultState(data);
+      /* A Mercenary Brigade (archived in Build 3; Builds 1 and 2 still had
+         Form Mercenary Brigade) loads as Unsworn: the Day Log keeps its
+         name, and the screen says so once, as it opens. */
+      var formerBrigade = saved ? R.formerBrigade(saved) : null;
+      if (formerBrigade) R.log(state, 'Identity', 'The Mercenary Brigade, ' + formerBrigade.name + ', is no more: the Bastion no longer has Brigades, so the party is Unsworn again. Its Trusted Clients scores are kept in the save. A Clan can be founded in Party Identity.');
       var ui = R.cleanUi(load('ui', R.isUi, 'the facility grid opened in its usual way (everything else is as it was)'));
       function save() { ctx.store.set('state', R.toSave(state)); }
       function saveUi() { ctx.store.set('ui', TSI.clone(ui)); }
@@ -674,19 +679,25 @@
       }
 
       /* ================================================================
-         The crest (Harry's request, 2 October 2026)
-         A Clan or Brigade can upload a crest picture, such as the PNG the
-         Clan Crest Creator downloads. It's shrunk to at most 512 pixels a
-         side and saved apart from the Bastion, as tsi.bastion.crest. Only
-         the picture the user chose is drawn on the canvas, so the browser
-         allows this from a double-clicked file.
+         The crest (Harry's request, 2 October 2026; at any time since the
+         Bastion overhaul, Build 3, 8 October 2026)
+         The crest belongs to the Bastion, not the Clan: it can be set
+         whether the party is Unsworn or a Clan, and forming a Clan keeps it.
+         Three ways, from the Party Identity panel:
+         - Create in the Clan Crest Creator ↗: the Creator opens in a new
+           window, and its "Use for the Bastion" sends the crest here
+           (TSI.handoff 'crest': a 512-pixel PNG and the Creator's design,
+           kept with the crest so it can be re-edited later). The Bastion
+           asks "Use this crest for the Bastion?" at once, or as it opens.
+         - Upload a picture: shrunk to at most 512 pixels a side. Only the
+           picture the user chose is drawn on the canvas, so the browser
+           allows this from a double-clicked file.
+         - Remove.
+         Saved apart from the Bastion, as tsi.bastion.crest.
          ================================================================ */
       var CREST_MAX = 512;
       var CREST_FILE_LIMIT = 25 * 1024 * 1024;
       var crest = load('crest', R.isCrest, 'the Bastion opened without its crest picture (everything else is as it was)');
-      function crestCreatorUrl() {
-        return TSI.shell && TSI.shell.pageUrl ? TSI.shell.pageUrl('crest') : 'index.html?tool=crest';
-      }
       function readDataUrl(file) {
         return new Promise(function (resolve, reject) {
           var reader = new FileReader();
@@ -745,75 +756,177 @@
           });
         });
       }
+      /* Every place the crest shows is redrawn when it changes; an open Form
+         Clan pop-up's crest box too. */
+      var crestWatchers = [];
       function saveCrest(value) {
         crest = value || null;
         if (crest) ctx.store.set('crest', crest);
         else if (ctx.store.has('crest')) ctx.store.remove('crest');
+        crestWatchers.forEach(function (fn) { fn(); });
       }
-      /* The crest part of the Form Clan and Form Mercenary Brigade pop-ups. */
-      function crestField(kindName) {
-        var chosen = null;
-        var img = el('img', { class: 'tsi-bas-crest-pick__img', alt: 'Your crest', hidden: true, 'data-test': 'crest-preview' });
-        var empty = el('div', { class: 'tsi-bas-crest-pick__empty', text: 'No crest yet' });
-        var upload = btn('Upload crest…', null, '', 'crest-upload');
-        var remove = btn('Remove', null, 'tsi-btn--ghost', 'crest-remove', { hidden: true });
-        function show() {
-          img.hidden = !chosen;
-          if (chosen) img.src = chosen.dataUrl; else img.removeAttribute('src');
-          empty.hidden = !!chosen;
-          remove.hidden = !chosen;
-          upload.textContent = chosen ? 'Change crest…' : 'Upload crest…';
+      /* Show a crest in an <img> (only reloading it when it's a new one). */
+      function showCrest(img, c) {
+        img.hidden = !c;
+        if (!c) { img.removeAttribute('src'); img.removeAttribute('data-key'); return; }
+        if (img.getAttribute('data-key') !== c.key) {
+          img.src = c.dataUrl;
+          img.setAttribute('data-key', c.key);
         }
-        upload.onclick = TSI.oneAtATime(function () {
-          return pickCrest().then(function (c) { if (c) { chosen = c; show(); } });
-        });
-        remove.onclick = function () { chosen = null; show(); };
-        var node = el('div', { class: 'tsi-bas-crest-pick', 'data-test': 'crest-field' }, [
-          el('div', { class: 'tsi-bas-crest-pick__frame' }, [img, empty]),
-          el('div', { class: 'tsi-bas-crest-pick__side' }, [
-            el('span', { class: 'tsi-bas-crest-pick__title', text: 'Crest (optional)' }),
-            muted('Design your ' + kindName + '’s crest in the Clan Crest Creator. It opens in a new tab: press Download PNG there, then come back and upload the PNG here.'),
-            el('a', { class: 'tsi-bas-crest-pick__link', href: crestCreatorUrl(), target: '_blank', rel: 'noopener', 'data-test': 'crest-creator-link' }, 'Open the Clan Crest Creator ↗'),
-            el('div', { class: 'tsi-bas-actions' }, [upload, remove])
-          ])
-        ]);
-        return { node: node, value: function () { return chosen; } };
       }
-      /* Add, change or remove the crest after founding. */
-      var onChangeCrest = TSI.oneAtATime(function () {
-        if (state.organization.type === 'unsworn') return null;
+      /* "Crest of the Ironbow" until a Clan is formed, then "Crest of <Clan>". */
+      function crestName() {
+        var o = state.organization;
+        return 'Crest of ' + (o.type === 'clan' && o.name ? o.name : 'the Ironbow');
+      }
+
+      /* Open the Clan Crest Creator in its own window, unless it's open
+         already: its "Use for the Bastion" sends the crest back here. */
+      var creatorOpenedAt = 0;
+      function openCreator() {
+        if (TSI.tabGuard && TSI.tabGuard.isOpenElsewhere('crest')) {
+          notice('The Clan Crest Creator is already open in another window. Press Use for the Bastion there to send your crest here.', { type: 'info', title: 'Crest Creator open.', id: 'tsi-bas-creator', timeout: 9000 });
+          return false;
+        }
+        if (Date.now() - creatorOpenedAt < 1500) return false;
+        creatorOpenedAt = Date.now();
+        if (TSI.shell && typeof TSI.shell.openWindow === 'function') TSI.shell.openWindow('crest');
+        notice('The Clan Crest Creator opened in a new window. Design your crest, then press Use for the Bastion there.', { type: 'ok', title: 'Crest Creator open.', id: 'tsi-bas-creator', timeout: 9000 });
+        return true;
+      }
+
+      /* Upload or remove the Bastion's crest, at any time. */
+      var onUploadCrest = TSI.oneAtATime(function () {
         return pickCrest().then(function (c) {
           if (!c || !life.alive) return;
           saveCrest(c);
-          renderIdentity();
+          renderAll();
         });
       });
       var onRemoveCrest = TSI.oneAtATime(async function () {
         if (!crest) return;
-        var ok = await ask('Remove the crest from ' + (state.organization.name || 'your ' + (state.organization.type === 'clan' ? 'Clan' : 'Brigade')) + '? You can upload it again later.', 'Remove');
+        var ok = await ask('Remove the Bastion\'s crest? You can add it again later.', 'Remove');
         if (!ok || !life.alive) return;
         saveCrest(null);
-        renderIdentity();
+        renderAll();
       });
+
+      /* A crest sent from the Clan Crest Creator: asked about at once, when
+         nothing else is going on (no day being passed, no War Table), or as
+         the Bastion opens. Either answer clears it, so it's asked once; a
+         newer one sent meanwhile is asked about next. */
+      var crestOfferOpen = false;
+      function checkCrestOffer() {
+        if (crestOfferOpen || !life.alive || turnRunning || militaryRunning || warTableOpen) return;
+        var h = TSI.handoff.read('crest');
+        if (!h) return;
+        var c = R.crestFromHandoff(h);
+        if (!c) { TSI.handoff.clear('crest', h.id); return; }
+        crestOfferOpen = true;
+        offerCrest(c).then(function (use) {
+          TSI.handoff.clear('crest', h.id);
+          crestOfferOpen = false;
+          if (!life.alive) return;
+          if (use) {
+            saveCrest(c);
+            renderAll();
+          }
+          checkCrestOffer();
+        }, function (err) {
+          crestOfferOpen = false;
+          TSI.reportError(err, 'showing the crest from the Crest Creator');
+        });
+      }
+      function offerCrest(c) {
+        var img = el('img', { class: 'tsi-bas-crest__img', alt: 'The crest from the Crest Creator', src: c.dataUrl, 'data-test': 'crest-offer-img' });
+        return openPop({
+          title: 'A crest from the Crest Creator',
+          className: 'tsi-bas-modal tsi-bas-modal--hall',
+          body: [
+            el('div', { class: 'tsi-bas-crest-offer', 'data-test': 'crest-offer' }, [
+              el('div', { class: 'tsi-bas-crest' }, img),
+              el('div', null, [
+                el('p', { text: 'Use this crest for the Bastion?' }),
+                crest ? muted('It replaces the crest the Bastion has now.') : muted('It shows on the map\'s badge, in Party Identity, and on your tokens on the War Table.')
+              ])
+            ])
+          ],
+          escValue: false,
+          actions: [{ label: 'No', value: false }, { label: 'Use this crest', value: true, primary: true }]
+        });
+      }
+      TSI.handoff.listen(life, 'crest', function (v) { if (v) checkCrestOffer(); });
+
+      /* The crest part of the Form Clan pop-up: the Bastion's crest, kept
+         unless you choose another (Create a new one ↗ sends one back through
+         the Crest Creator; Upload… takes a picture, used once the founding
+         is confirmed). */
+      function crestField() {
+        var chosen = null;
+        var img = el('img', { class: 'tsi-bas-crest-pick__img', alt: 'Your crest', hidden: true, 'data-test': 'crest-preview' });
+        var empty = el('div', { class: 'tsi-bas-crest-pick__empty', text: 'No crest yet' });
+        var note = muted('');
+        note.setAttribute('data-test', 'crest-field-note');
+        var keep = btn('Keep this crest', null, 'tsi-btn--ghost', 'crest-keep', { hidden: true });
+        var create = btn('Create a new one ↗', null, '', 'crest-create');
+        var upload = btn('Upload…', null, '', 'crest-upload');
+        function show() {
+          var c = chosen || crest;
+          showCrest(img, c);
+          empty.hidden = !!c;
+          keep.hidden = !chosen;
+          keep.textContent = crest ? 'Keep this crest' : 'No crest';
+          note.textContent = chosen ? (crest ? 'A new crest: it replaces the Bastion\'s when you confirm the founding.' : 'Used when you confirm the founding.')
+            : crest ? 'The Bastion\'s crest: the Clan keeps it.'
+            : 'The Clan can have a crest at any time. Create one in the Clan Crest Creator, or upload a picture.';
+        }
+        keep.onclick = function () { chosen = null; show(); };
+        create.onclick = function () { openCreator(); };
+        upload.onclick = TSI.oneAtATime(function () {
+          return pickCrest().then(function (c) { if (c && life.alive) { chosen = c; show(); } });
+        });
+        var node = el('div', { class: 'tsi-bas-crest-pick', 'data-test': 'crest-field' }, [
+          el('div', { class: 'tsi-bas-crest-pick__frame' }, [img, empty]),
+          el('div', { class: 'tsi-bas-crest-pick__side' }, [
+            el('span', { class: 'tsi-bas-crest-pick__title', text: 'Crest' }),
+            note,
+            el('div', { class: 'tsi-bas-actions' }, [keep, create, upload])
+          ])
+        ]);
+        show();
+        crestWatchers.push(show);
+        return {
+          node: node,
+          chosen: function () { return chosen; },
+          stop: function () { var i = crestWatchers.indexOf(show); if (i !== -1) crestWatchers.splice(i, 1); }
+        };
+      }
 
       /* ================================================================
          Party Identity (the panel the badge in the map's top-right corner
-         opens): Unsworn, Clan or Brigade, the crest, Form Clan and Form
-         Mercenary Brigade, Clan Honour and Trusted Clients. The Clans'
-         trackers are in the Clan Influence panel.
+         opens): the crest and its three buttons; Unsworn, or the Clan with
+         its chief and motto; Form Clan and its requirements; Clan Honour
+         (once a Clan). The Clans' trackers are in the Clan Influence panel.
          ================================================================ */
       var idCard = card('identity', 'Party Identity');
       var orgDesc = muted('');
       var orgPill = el('div', { class: 'tsi-bas-status-pill', 'data-test': 'org', text: 'Unsworn' });
-      var crestImg = el('img', { class: 'tsi-bas-crest__img', alt: '', 'data-test': 'crest' });
-      var crestFrame = el('div', { class: 'tsi-bas-crest', hidden: true }, crestImg);
-      var crestAddBtn = btn('Add crest…', function () { onChangeCrest(); }, 'tsi-btn--ghost', 'crest-add');
-      var crestRemoveBtn = btn('Remove crest', function () { onRemoveCrest(); }, 'tsi-btn--ghost', 'crest-delete');
-      var crestActions = el('div', { class: 'tsi-bas-crest-actions', hidden: true }, [crestAddBtn, crestRemoveBtn]);
+      var orgMeta = el('div', { class: 'tsi-bas-identity__meta', 'data-test': 'org-meta' });
+      var crestImg = el('img', { class: 'tsi-bas-crest__img', alt: '', hidden: true, 'data-test': 'crest' });
+      var crestEmpty = el('div', { class: 'tsi-bas-crest__empty', 'data-test': 'crest-empty' }, [icon('shield'), el('span', { text: 'No crest yet' })]);
+      var crestFrame = el('div', { class: 'tsi-bas-crest tsi-bas-crest--large' }, [crestImg, crestEmpty]);
+      var crestCreateBtn = btn('Create in the Clan Crest Creator ↗', function () { openCreator(); }, '', 'crest-create');
+      var crestAddBtn = btn('Upload a picture…', function () { onUploadCrest(); }, 'tsi-btn--ghost', 'crest-add');
+      var crestRemoveBtn = btn('Remove', function () { onRemoveCrest(); }, 'tsi-btn--ghost', 'crest-delete');
+      var crestActions = el('div', { class: 'tsi-bas-crest-actions' }, [crestCreateBtn, crestAddBtn, crestRemoveBtn]);
       var formClanBtn = btn('Form Clan', function () { onFormClan(); }, 'tsi-btn--primary', 'form-clan');
-      var formMercBtn = btn('Form Mercenary Brigade', function () { onFormMerc(); }, '', 'form-merc');
       var reqHint = muted('', 'tsi-bas-req');
       reqHint.setAttribute('data-test', 'requirements');
+      var formBox = el('div', { class: 'tsi-bas-box', 'data-test': 'form-box' }, [
+        label('Found a Clan'),
+        reqHint,
+        el('div', { class: 'tsi-bas-actions' }, [formClanBtn])
+      ]);
       var honourInput = numberInput('clan-honour', { min: '0', max: '100', 'aria-label': 'Clan Honour (0 to 100)' });
       life.on(honourInput, 'change', function () {
         state.clanHonor = R.clampInt(honourInput.value, 0, 100);
@@ -822,74 +935,46 @@
       });
       var honourBox = el('div', { class: 'tsi-bas-box', hidden: true, 'data-test': 'honour-box' }, [
         label('Clan Honour (0–100)'),
-        muted('Only applies if you’ve formed a Clan.'),
         field('', honourInput)
       ]);
-      var trustRows = {};
-      var trustGrid = el('div', { class: 'tsi-bas-clan-grid tsi-bas-clan-grid--trust' }, B.clans.map(function (c) {
-        var input = numberInput('trust-' + c.key, { min: '0', max: '100', 'aria-label': c.name + ' Trusted (0 to 100)' });
-        var shown = el('div', { class: 'tsi-bas-clan-row__support' });
-        life.on(input, 'change', function () {
-          state.trustedClientsByClan[c.key] = R.clampInt(input.value, 0, 100);
-          input.value = String(state.trustedClientsByClan[c.key]);
-          done();
-        });
-        trustRows[c.key] = { input: input, shown: shown };
-        return el('div', { class: 'tsi-bas-clan-row' }, [
-          el('div', { class: 'tsi-bas-clan-row__name', text: c.name }),
-          muted('Client Trust', 'tsi-bas-clan-row__pc'),
-          field('Trusted (0..100)', input, 'tsi-bas-clan-row__field'),
-          shown
-        ]);
-      }));
-      var trustBox = el('div', { class: 'tsi-bas-box', hidden: true, 'data-test': 'trust-box' }, [
-        label('Trusted Clients (0–100)'),
-        muted('Only applies if you’ve formed a Mercenary Brigade.'),
-        trustGrid
-      ]);
       TSI.append(idCard.body, [
-        el('div', { class: 'tsi-bas-row' }, [
-          el('div', { class: 'tsi-bas-row__top' }, [
-            el('div', null, [label('Party Identity'), orgDesc]),
-            el('div', { class: 'tsi-bas-identity' }, [crestFrame, el('div', { class: 'tsi-bas-identity__name' }, [orgPill, crestActions])])
-          ]),
-          el('div', { class: 'tsi-bas-actions' }, [formClanBtn, formMercBtn]),
-          reqHint
+        el('div', { class: 'tsi-bas-identity' }, [
+          crestFrame,
+          el('div', { class: 'tsi-bas-identity__side' }, [
+            el('div', { class: 'tsi-bas-identity__name' }, [orgPill, orgMeta]),
+            orgDesc,
+            label('The crest'),
+            crestActions
+          ])
         ]),
-        el('div', { class: 'tsi-bas-split' }, [honourBox, trustBox])
+        formBox,
+        honourBox
       ]);
 
       function renderIdentity() {
         var o = state.organization;
+        var clan = o.type === 'clan';
         orgPill.textContent = R.orgLabel(state);
-        orgDesc.textContent = o.type === 'clan' ? 'You are a political entity. Clan Honour unlocks future war and territory systems.'
-          : o.type === 'merc' ? 'You are contract-driven. Trusted Clients affects future contract access and payment tiers.'
-          : 'Unsworn. You may found a Clan (support-based) or form a Mercenary Brigade (defenders + level).';
-        reqHint.textContent = R.requirementsHint(state, data);
-        /* The crest sits beside the Clan's or Brigade's name. */
-        var sworn = o.type !== 'unsworn';
-        crestFrame.hidden = !(sworn && crest);
-        if (sworn && crest) {
-          if (crestImg.getAttribute('data-key') !== crest.key) {
-            crestImg.src = crest.dataUrl;
-            crestImg.setAttribute('data-key', crest.key);
-          }
-          crestImg.alt = 'Crest of ' + (o.name || (o.type === 'clan' ? 'the Clan' : 'the Brigade'));
+        TSI.clear(orgMeta);
+        if (clan) {
+          TSI.append(orgMeta, [
+            o.chief ? el('div', null, [el('span', { class: 'tsi-bas-muted', text: 'Chief: ' }), o.chief]) : null,
+            o.motto ? el('div', { class: 'tsi-bas-identity__motto', text: '“' + o.motto + '”' }) : null,
+            typeof o.foundedAtDay === 'number' ? muted('Founded on Day ' + o.foundedAtDay) : null
+          ]);
         }
-        crestActions.hidden = !sworn;
-        crestAddBtn.textContent = crest ? 'Change crest…' : 'Add crest…';
+        orgDesc.textContent = clan ? 'You are a political entity. Clan Honour unlocks future war and territory systems.'
+          : 'Unsworn. You may found a Clan once enough of the Clans support you.';
+        showCrest(crestImg, crest);
+        crestImg.alt = crest ? crestName() : '';
+        crestEmpty.hidden = !!crest;
+        crestAddBtn.textContent = crest ? 'Upload another…' : 'Upload a picture…';
         crestRemoveBtn.hidden = !crest;
+        formBox.hidden = clan;
+        reqHint.textContent = R.requirementsHint(state, data);
         formClanBtn.disabled = !(o.type === 'unsworn' && R.canFormClan(state, data).ok);
-        formMercBtn.disabled = !(o.type === 'unsworn' && R.canFormMerc(state, data).ok);
-        honourBox.hidden = o.type !== 'clan';
-        trustBox.hidden = o.type !== 'merc';
+        honourBox.hidden = !clan;
         setValue(honourInput, R.clampInt(state.clanHonor === undefined || state.clanHonor === null ? 40 : state.clanHonor, 0, 100));
-        B.clans.forEach(function (c) {
-          var tc = R.clampInt(state.trustedClientsByClan[c.key] === undefined ? 50 : state.trustedClientsByClan[c.key], 0, 100);
-          setValue(trustRows[c.key].input, tc);
-          TSI.clear(trustRows[c.key].shown);
-          TSI.append(trustRows[c.key].shown, [el('b', { text: String(tc) }), '/100']);
-        });
       }
 
       /* One founding pop-up at a time, however many clicks. */
@@ -899,14 +984,19 @@
         var name = el('input', { type: 'text', class: 'tsi-input', placeholder: 'e.g. Clan Ironbow', 'data-test': 'clan-name' });
         var chief = el('input', { type: 'text', class: 'tsi-input', placeholder: 'Elected Chief name', 'data-test': 'clan-chief' });
         var motto = el('input', { type: 'text', class: 'tsi-input', placeholder: 'e.g. Root and Steel', 'data-test': 'clan-motto' });
-        var crestPick = crestField('Clan');
-        var ok = await hallModal({
-          title: 'Form Clan',
-          className: 'tsi-bas-modal tsi-bas-modal--hall tsi-bas-modal--found',
-          body: [field('Clan Name', name), field('Clan Chief', chief), field('Motto (optional)', motto), crestPick.node, muted('This is persistent.')],
-          escValue: false,
-          actions: [{ label: 'Cancel', value: false }, { label: 'Confirm Founding', value: true, primary: true }]
-        });
+        var crestPick = crestField();
+        var ok;
+        try {
+          ok = await hallModal({
+            title: 'Form Clan',
+            className: 'tsi-bas-modal tsi-bas-modal--hall tsi-bas-modal--found',
+            body: [field('Clan Name', name), field('Clan Chief', chief), field('Motto (optional)', motto), crestPick.node, muted('This is persistent.')],
+            escValue: false,
+            actions: [{ label: 'Cancel', value: false }, { label: 'Confirm Founding', value: true, primary: true }]
+          });
+        } finally {
+          crestPick.stop();
+        }
         if (!ok || !life.alive) return;
         var n = name.value.trim();
         var ch = chief.value.trim();
@@ -914,27 +1004,8 @@
         state.organization = { type: 'clan', name: n, chief: ch, motto: motto.value.trim(), foundedAtDay: state.day };
         state.clanHonor = R.clampInt(state.clanHonor === undefined || state.clanHonor === null ? 40 : state.clanHonor, 0, 100);
         log('Identity', 'Founded Clan: ' + n + (ch ? ' (Chief: ' + ch + ')' : '') + '.');
-        saveCrest(crestPick.value());
-        done();
-      });
-      var onFormMerc = TSI.oneAtATime(async function () {
-        if (state.organization.type !== 'unsworn') return;
-        if (!R.canFormMerc(state, data).ok) { await say('Not eligible to form a Mercenary Brigade yet. See the requirements hint in the panel.'); return; }
-        var name = el('input', { type: 'text', class: 'tsi-input', placeholder: 'e.g. The Ironbow Freeblades', 'data-test': 'merc-name' });
-        var crestPick = crestField('Brigade');
-        var ok = await hallModal({
-          title: 'Form Mercenary Brigade',
-          className: 'tsi-bas-modal tsi-bas-modal--hall tsi-bas-modal--found',
-          body: [field('Brigade Name', name), crestPick.node, muted('This is persistent.')],
-          escValue: false,
-          actions: [{ label: 'Cancel', value: false }, { label: 'Confirm Formation', value: true, primary: true }]
-        });
-        if (!ok || !life.alive) return;
-        var n = name.value.trim();
-        if (!n) { await say('Brigade Name is required.'); return; }
-        state.organization = { type: 'merc', name: n, chief: '', motto: '', foundedAtDay: state.day };
-        log('Identity', 'Formed Mercenary Brigade: ' + n + '.');
-        saveCrest(crestPick.value());
+        /* The crest stays unless another was chosen here. */
+        if (crestPick.chosen()) saveCrest(crestPick.chosen());
         done();
       });
 
@@ -1273,7 +1344,7 @@
          hint, and the army's Battle Value. */
       function showWar(f) {
         f = f || R.warForces(state, data);
-        var sworn = 'Only a Clan or Mercenary Brigade can commit Lieutenants and Regiments.';
+        var sworn = 'Only a Clan can commit Lieutenants and Regiments.';
         var ltOwned = R.militaryQty(state, /lieutenant/i);
         Object.keys(warRows).forEach(function (k) {
           var r = warRows[k];
@@ -1284,17 +1355,17 @@
             text = n > 0 ? n + ' available' : R.clampInt(state.defenders.count, 0) > 0 ? 'None free: committed to a war action' : 'None yet';
           } else if (k === 'lieutenants') {
             n = f.lieutenants;
-            text = !f.fullWar ? 'Clan or Brigade only' : n > 0 ? n + ' available' : ltOwned > 0 ? 'None free: committed or recovering' : 'None yet: recruit in the War Room';
+            text = !f.fullWar ? 'Clan only' : n > 0 ? n + ' available' : ltOwned > 0 ? 'None free: committed or recovering' : 'None yet: recruit in the War Room';
           } else if (r.type) {
             var list = f.units[r.type] || [];
             var dep = list.filter(function (d) { return d.depleted; });
             n = list.length;
-            text = !f.fullWar ? 'Clan or Brigade only' : n > 0 ? n + ' available' + (dep.length ? ' (' + dep.map(function (d) { return 'one at ' + d.personnel + '/' + d.size; }).join(', ') + ')' : '') : 'None free: committed to a war action';
+            text = !f.fullWar ? 'Clan only' : n > 0 ? n + ' available' + (dep.length ? ' (' + dep.map(function (d) { return 'one at ' + d.personnel + '/' + d.size; }).join(', ') + ')' : '') : 'None free: committed to a war action';
           } else if (r.beast) {
             n = f.beasts[r.beast] || 0;
             text = n > 0 ? n + ' available' : 'None free: committed or recovering';
           } else if (k === 'units-none') {
-            text = f.fullWar ? 'None yet: recruit in the War Room' : 'Clan or Brigade only';
+            text = f.fullWar ? 'None yet: recruit in the War Room' : 'Clan only';
           } else {
             text = 'None in the Menagerie yet';
           }
@@ -1396,7 +1467,7 @@
          a day is still allowed (B22). What's queued is kept within what's
          free (R.queueWarAction2), and the mission is the one the
          intelligence box shows. */
-      var NOTHING_FIGHTS = 'Commit at least one force that fights: defenders, beasts or, for a Clan or Brigade, regiments. Lieutenants only lead them.';
+      var NOTHING_FIGHTS = 'Commit at least one force that fights: defenders, beasts or, for a Clan, regiments. Lieutenants only lead them.';
       function sumOf(o) { return Object.keys(o || {}).reduce(function (a, k) { return a + (Number(o[k]) || 0); }, 0); }
       /* Queueing it declares war on the Clan (or renews the war), so it asks
          first, with what it costs (Harry, 4 October 2026). Cancel changes nothing. */
@@ -1808,8 +1879,9 @@
             if (life.alive) renderAll();
             resolve(v);
           }
+          /* The crest is on your tokens whether or not a Clan is formed; the
+             army has the Clan's name once there is one. */
           var o = state.organization;
-          var sworn = o.type !== 'unsworn';
           var options = {
             host: page,
             life: life,
@@ -1817,8 +1889,8 @@
             inert: [bar, stage],
             title: maName(ma),
             summary: R.militarySummary(data, ma),
-            crest: sworn && crest ? { dataUrl: crest.dataUrl } : null,
-            armyName: sworn && o.name ? o.name : 'Your forces',
+            crest: crest ? { dataUrl: crest.dataUrl } : null,
+            armyName: o.type === 'clan' && o.name ? o.name : 'Your forces',
             enemy: { clanKey: ma.targetKey, clanName: ma.targetName },
             spec: TSI.clone(ma.spec),
             battle: ma.battle ? TSI.clone(ma.battle) : null,
@@ -2760,7 +2832,7 @@
           TSI.reportError(err, 'reading the Explorer\'s day');
         }).then(function () { clockBusy = false; });
       }
-      life.setInterval(function () { checkClock(); }, 2000);
+      life.setInterval(function () { checkClock(); checkCrestOffer(); }, 2000);
       life.on(document, 'visibilitychange', function () { if (document.visibilityState === 'visible') checkClock(); });
 
       /* Pass every day up to the Explorer's, one at a time, each saved step
@@ -3302,26 +3374,22 @@
       bindFocusTip(orderCountBtn, orderCountBtn, orderCountTip);
       function openOrders() { return openPanel('orders', { title: ordersCard.title, node: ordersCard.root, cls: 'tsi-bas-panel--wide', back: 'orders-count' }); }
 
-      /* The Party Identity badge, in the map's top-right corner: the crest,
-         once a Clan or Brigade has one, or a faint shield. It opens the Party
-         Identity panel. */
+      /* The crest badge, in the map's top-right corner: the Bastion's crest,
+         or a faint shield and "Add a crest". It opens the Party Identity
+         panel; its spoken name is "Crest of the Ironbow" until a Clan is
+         formed, then "Crest of <Clan>". */
       var badgeImg = el('img', { class: 'tsi-bas-badge__img', alt: '', hidden: true });
       var badgeShield = el('span', { class: 'tsi-bas-badge__empty', 'aria-hidden': 'true' }, icon('shield'));
-      var badgeLabel = el('span', { class: 'tsi-bas-badge__label', text: 'Party Identity' });
+      var badgeLabel = el('span', { class: 'tsi-bas-badge__label', 'aria-hidden': 'true', text: 'Add a crest' });
       var badge = el('button', { type: 'button', class: 'tsi-bas-badge', 'data-test': 'identity-badge', onclick: function () { openIdentity(); } }, [badgeImg, badgeShield, badgeLabel]);
       function openIdentity() { return openPanel('identity', { title: idCard.title, node: idCard.root, cls: 'tsi-bas-modal--hall', back: 'identity-badge' }); }
       function renderBadge() {
         var o = state.organization;
-        var sworn = o.type !== 'unsworn';
-        var show = !!(sworn && crest);
-        badgeImg.hidden = !show;
-        badgeShield.hidden = show;
-        if (show && badgeImg.getAttribute('data-key') !== crest.key) {
-          badgeImg.src = crest.dataUrl;
-          badgeImg.setAttribute('data-key', crest.key);
-        }
-        badgeLabel.textContent = sworn && o.name ? o.name : R.orgLabel(state);
-        badge.setAttribute('aria-label', (show ? 'Crest of ' + (o.name || 'your ' + (o.type === 'clan' ? 'Clan' : 'Brigade')) : 'Party Identity: ' + R.orgLabel(state)) + '. Open Party Identity.');
+        showCrest(badgeImg, crest);
+        badgeShield.hidden = !!crest;
+        badge.classList.toggle('tsi-bas-badge--empty', !crest);
+        badgeLabel.textContent = !crest ? 'Add a crest' : o.type === 'clan' && o.name ? o.name : 'Unsworn';
+        badge.setAttribute('aria-label', crestName() + (crest ? '' : ': no crest yet') + '. Open Party Identity.');
       }
 
       var treasuryBox = el('label', { class: 'tsi-bas-treasury', title: 'Treasury (gp): saved when you press Enter or leave the box' }, [
@@ -3520,9 +3588,14 @@
 
       renderAll();
       /* The first open saves the starting Bastion, as the old tool did. */
-      if (!saved) save();
-      /* Read the Explorer's day straight away (then every 2 seconds). */
+      if (!saved || formerBrigade) save();
+      if (formerBrigade) {
+        notice('The Mercenary Brigade, ' + formerBrigade.name + ', is no more: the Bastion no longer has Brigades, so the party is Unsworn again. The Day Log says so.', { type: 'info', title: 'Party Identity.', id: 'tsi-bas-brigade' });
+      }
+      /* Read the Explorer's day straight away (then every 2 seconds), and
+         any crest sent from the Clan Crest Creator while the Bastion was shut. */
       checkClock();
+      checkCrestOffer();
     },
 
     validateImport: function (records) {

@@ -207,6 +207,8 @@
   cursor: pointer;
 }
 .tsi-page--bastion .tsi-bas-badge:hover { box-shadow: 0 0 24px rgba(214, 178, 94, .45), 0 8px 18px rgba(0, 0, 0, .5); }
+/* No crest yet: a fainter frame, inviting one. */
+.tsi-page--bastion .tsi-bas-badge--empty { border-style: dashed; border-color: rgba(214, 178, 94, .5); background: rgba(8, 5, 6, .55); }
 .tsi-page--bastion .tsi-bas-badge__img { width: 76px; height: 76px; object-fit: contain; filter: drop-shadow(0 4px 8px rgba(0, 0, 0, .55)); }
 .tsi-page--bastion .tsi-bas-badge__empty .tsi-bas-icon { width: 60px; height: 60px; margin: 8px 0; color: rgba(214, 178, 94, .45); }
 .tsi-page--bastion .tsi-bas-badge__label {
@@ -498,9 +500,15 @@
   color: var(--tsi-gold-text);
 }
 
-/* The Clan's or Brigade's crest, beside its name in Party Identity. */
-.tsi-page--bastion .tsi-bas-identity { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
-.tsi-page--bastion .tsi-bas-identity__name { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+/* Party Identity: the Bastion's crest, large, with its three buttons
+   beside it, under the status pill (and the Clan's chief and motto). */
+.tsi-page--bastion .tsi-bas-identity { display: flex; align-items: flex-start; gap: 18px; margin-bottom: 14px; }
+.tsi-page--bastion .tsi-bas-identity__side { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0; }
+.tsi-page--bastion .tsi-bas-identity__name { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.tsi-page--bastion .tsi-bas-identity__meta { display: flex; flex-direction: column; gap: 2px; font-size: var(--tsi-fs-body-sm); }
+.tsi-page--bastion .tsi-bas-identity__meta:empty { display: none; }
+.tsi-page--bastion .tsi-bas-identity__motto { font-style: italic; color: var(--tsi-gold-text); }
+.tsi-page--bastion .tsi-bas-identity .tsi-bas-label { margin-top: 4px; }
 .tsi-page--bastion .tsi-bas-crest {
   width: 96px;
   height: 96px;
@@ -512,11 +520,18 @@
   background: radial-gradient(circle at 50% 40%, rgba(214, 178, 94, .14), rgba(0, 0, 0, .35) 70%);
   box-shadow: var(--tsi-glow-gold);
 }
+.tsi-page--bastion .tsi-bas-crest--large { width: 168px; height: 168px; }
 .tsi-page--bastion .tsi-bas-crest__img { max-width: 88px; max-height: 88px; object-fit: contain; filter: drop-shadow(0 4px 8px rgba(0, 0, 0, .55)); }
-.tsi-page--bastion .tsi-bas-crest-actions { display: flex; gap: 6px; }
+.tsi-page--bastion .tsi-bas-crest--large .tsi-bas-crest__img { max-width: 156px; max-height: 156px; }
+.tsi-page--bastion .tsi-bas-crest__empty { display: flex; flex-direction: column; align-items: center; gap: 4px; font: 400 var(--tsi-fs-label) var(--tsi-font-display); color: var(--tsi-text-faint); text-align: center; }
+.tsi-page--bastion .tsi-bas-crest__empty .tsi-bas-icon { width: 64px; height: 64px; color: rgba(214, 178, 94, .35); }
+.tsi-page--bastion .tsi-bas-crest-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .tsi-page--bastion .tsi-bas-crest-actions .tsi-btn { font-size: 12px; padding: 5px 10px; }
+/* "Use this crest for the Bastion?" */
+.tsi-page--bastion .tsi-bas-crest-offer { display: flex; align-items: center; gap: 16px; }
+.tsi-page--bastion .tsi-bas-crest-offer p { margin: 0 0 6px; }
 
-/* The crest part of the Form Clan and Form Mercenary Brigade pop-ups. */
+/* The crest part of the Form Clan pop-up. */
 .tsi-page--bastion .tsi-bas-modal.tsi-bas-modal--found { width: min(640px, 96vw); }
 .tsi-page--bastion .tsi-bas-modal .tsi-bas-crest-pick {
   display: flex;
@@ -546,8 +561,6 @@
   letter-spacing: var(--tsi-track-label);
   color: var(--tsi-text-muted);
 }
-.tsi-page--bastion .tsi-bas-modal .tsi-bas-crest-pick__link { color: var(--tsi-gold); font: 600 13px var(--tsi-font-display); letter-spacing: var(--tsi-track-button); }
-.tsi-page--bastion .tsi-bas-modal .tsi-bas-crest-pick__link:hover { color: var(--tsi-text); }
 .tsi-page--bastion .tsi-bas-modal .tsi-bas-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 
 /* The old gold pill buttons (Upgrade, Routes, Resolve, Council Ledger, Invest…). */
