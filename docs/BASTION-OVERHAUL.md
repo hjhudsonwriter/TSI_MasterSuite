@@ -1,6 +1,6 @@
 # The Ironbow Bastion Manager: the days-and-map overhaul (plan, version 1)
 
-*8 October 2026. Written for Harry to review before anything is built. Nothing in this plan is built yet.*
+*8 October 2026. Version 2: Harry's answers built in (8 October). Nothing in this plan is built yet.*
 
 ## Harry's brief, in short
 
@@ -18,12 +18,14 @@ The code mapping behind this plan (ten readers over the Bastion's 15,000 lines, 
 ## At a glance
 
 - **One clock.** The Explorer's day is the campaign's only clock. The Bastion reads it (every two seconds while open, and the moment it opens), passes the days that have gone by, and never changes it. Its old "Advance Bastion Turn" button goes.
-- **Days for orders; a week's end for the economy and the war.** Facility orders and building work count in days and complete on their day. Everything that used to happen "each turn" (contract income, trade routes, the attack roll while at war, the automatic Bastion event every fourth turn) happens at **the week's end: the Make Camp that starts Day 8, 15, 22…**, the same rhythm the Explorer already reminds you about. Every old length that isn't an order stays what it was, counted as **7 days per turn**, so the balance of agreements, wars, repairs and recovery doesn't change.
+- **Days for orders; every 7 days for income and war.** Facility orders and building work count in days and complete on their day. Things that used to happen "each turn" now happen **every 7 days, counted from when each one started**: a trade agreement sends a shipment every 7 days from the day it was signed; a Clan at war rolls to attack every 7 days of the war. Every old length that isn't an order stays what it was at **7 days per turn**, so the balance of agreements, wars, repairs and recovery doesn't change.
+- **"The Ironbow sends word…"** A pop-up whenever a day brings news from the Bastion: building finished, orders complete, a trade agreement ending, or something that needs the DM (a roll, an army ready to march, an attack). It appears in the Explorer at Make Camp and in the Bastion when it's open.
+- **One campaign save.** The Explorer and the Bastion export and import together, as one file, from either tool.
 - **Nothing is applied twice, nothing is lost.** A day is processed step by step and saved after each step, as a turn is now. If a roll is cancelled or Edge is closed mid-way, the Bastion picks up where it was.
-- **Existing saves carry on.** On first open, the Bastion takes the Explorer's current day as its own and converts everything in progress at 7 days per turn, so an order with one turn left is due in 7 days. Old backup files still import.
+- **A fresh Bastion to start.** Harry is happy for his current test Bastion to be replaced, so the first open of the new version sets the old one aside (kept, not deleted) and starts a new Bastion on the Explorer's day.
 - **The Brigade is archived**, not deleted: its code and tests move to `tools/bastion/archive/`, loaded by nothing.
 - **The crest** can be made at any time, in the Clan Crest Creator (sent straight to the Bastion from there, no download-and-upload) or uploaded, and shows over the map.
-- **Three builds, three pull requests:** time first (so Harry can playtest the day counts on the screen he knows), then the new screen, then the identity and crest work.
+- **Three builds, three pull requests:** time and the campaign save first (so Harry can playtest the day counts on the screen he knows), then the new screen, then the identity and crest work.
 
 ## 1. Time: days instead of turns
 
@@ -37,71 +39,93 @@ The code mapping behind this plan (ten readers over the Bastion's 15,000 lines, 
 - The Bastion only ever **reads** the Explorer's save. It never writes it, so two windows can't overwrite each other.
 - The Bastion's own top bar shows the day. The Bastion has **no button of its own to pass a day** (question 1 asks whether Harry wants one for sessions without the Explorer).
 
-### 1.2 What's daily and what's weekly
+### 1.2 What changes length, and what runs every 7 days
 
 | | Was | Becomes |
 |---|---|---|
 | Facility orders | 1 turn, all of them | **days per order** (section 2) |
 | Building a facility | 3 / 4 / 5 / 5 turns by required level 5 / 9 / 13 / 17 | **21 / 28 / 35 / 35 days** |
 | Hall of Emissaries actions | 1 turn | days per action (section 2) |
-| Agreements, delegations, summits, writs, consortiums | 4 / 2 / 3 / 4 / 5 turns, ± the roll tier's 2 / 1 / 0 / −1 / −2 | **28 / 14 / 21 / 28 / 35 days**, ± 14 / 7 / 0 / −7 / −14 |
-| Contract income | paid each turn | **paid at each week's end** (the same amount) |
-| Trade routes | settled once a turn, high-risk ones with a d20 | **settled at each week's end** (same rolls) |
-| A consortium's sea route | lasts 5 turns | **35 days** |
+| Trade Agreement | 4 turns ± the roll tier (the 1 / 3 / 6 turn choice was offered but ignored, B5) | **the weeks chosen when planning it: 1, 3 or 6 weeks** (shown in weeks), ± the roll tier's 2 / 1 / 0 / −1 / −2 weeks, at least 1 week. The choice now counts. |
+| Delegations, summits, writs, consortiums | 2 / 3 / 4 / 5 turns, ± the roll tier | **14 / 21 / 28 / 35 days**, ± 14 / 7 / 0 / −7 / −14 days |
+| Contract income (agreements, writs, consortiums) | paid each turn | **a shipment every 7 days from the day it was signed**, the same amount; the last shipment comes on its final day. The Hall shows "X days remaining (Y shipments)". |
+| A consortium's sea route | settled once a turn, high-risk ones with a d20 | **every 7 days from the day it opened** (same rolls) |
+| A consortium's sea route's life | 5 turns | **35 days** |
 | Hall cooldown after a bad failure | 2 turns | **14 days** |
 | Trade Network investments | 1 turn | Stability 7 days, Yield 7 days, Routing Doctrine 1 day |
 | Watchtower Patrol | Advantage "this turn" | the order takes 1 day; the Advantage then **covers the next 7 days** |
 | A queued War Action | musters next turn | **musters 3 days after it's queued** |
-| The attack roll while at war | a d6 per Clan, each turn | a d6 per Clan **at each week's end** (so the odds per week are unchanged) |
+| The attack roll while at war | a d6 per Clan, each turn | a d6 **every 7 days of the war**, counted from the day it was declared (so the odds per week are unchanged); at most one attack waiting at a time |
 | Peace after quiet | 6 turns without a battle | **42 days** without a battle |
-| Cancelling a War Action refunds its cost | if cancelled the same turn, before that turn's attack roll | if cancelled **the same day it was queued**, and before the next week's end |
+| Cancelling a War Action refunds its cost | if cancelled the same turn, before that turn's attack roll | if cancelled **the same day it was queued**, before any attack roll since |
 | Under Repair after a lost defence | 2 turns, the turn of the loss included | **14 days**, the day of the loss included |
 | Wounded Lieutenants and beasts | separated 1 turn, recovered 1, wounded 2, badly wounded 3 | **7 / 7 / 14 / 21 days** |
-| Automatic Bastion event | every 4th turn | at the end of **every 4th week** (Days 29, 57, 85…) |
+| Automatic Bastion event | every 4th turn | **every 28 days** (Days 29, 57, 85…) |
 | The last event on screen | cleared each turn | stays until the next event is rolled |
-| The Bastion's week | "Advance Bastion Turn (+7 days)" | the Make Camp that starts Day 8, 15, 22… (the Explorer's existing `TSI.campaign.isBastionDay`) |
+| The Bastion's turn | "Advance Bastion Turn (+7 days)" | gone: no turns, no weeks; each thing keeps its own 7-day count |
 
-The principle: **only facility orders get new, hand-picked lengths** (Harry's instruction). Everything else keeps its old length at 7 days per turn, so nothing Harry has already agreed about the war, trade or diplomacy changes its balance. He can shorten any of these afterwards; each is one number in a data file.
+The principle: **only facility orders get new, hand-picked lengths** (Harry's instruction), and the Trade Agreement takes the weeks chosen for it. Everything else keeps its old length at 7 days per turn, so nothing Harry has already agreed about the war, trade or diplomacy changes its balance. He can shorten any of these afterwards; each is one number in a data file.
 
 ### 1.3 What happens when a day passes
 
 For each day, in this order (saved after every step, so a closed window never loses or repeats anything):
 
-1. **Start of day:** repairs that end today end; wounded Lieutenants and beasts due back today come back; building work due today completes ("The Smithy is now built and active."); diplomacy records that end today end (and a sea route whose consortium has ended expires).
-2. **Week's end** (only on Days 8, 15, 22…): contract income is paid; trade routes settle (a d20 for each high-risk route, as now); the attack roll (a d6 per Clan at war; a 1 brings "Sound the horns!", at most one attack per week, none while a defence is still waiting); every 4th week the automatic Bastion event.
+1. **Start of day:** repairs that end today end; wounded Lieutenants and beasts due back today come back; building work due today completes ("The Smithy is now built and active.").
+2. **Shipments and routes due today:** each contract whose 7-day mark falls today sends its shipment (its gold into the treasury); each sea route whose 7-day mark falls today settles (a d20 for a high-risk route, as now). Then records whose last day is today end (a sea route whose consortium has ended expires).
 3. **Orders due today** complete, one by one, each asking for its roll where it needs one (Hall actions, War Actions that become Military Actions), with the same pop-ups as today.
-4. **Done:** the log gets one line per day only when something happened ("Day 12: the Barracks recruited 3 defenders.").
+4. **War:** each Clan whose war reaches a 7-day mark today rolls its d6 (a 1 brings "Sound the horns!"; none while an attack is still waiting).
+5. **Every 28th day** (Days 29, 57…): the automatic Bastion event.
+6. **Word from the Ironbow:** everything that happened, and anything waiting for the DM, goes into one "The Ironbow sends word…" pop-up (section 1.4), and into the log ("Day 12: the Barracks recruited 3 defenders.") only on days when something happened.
 
 When several days pass at once (the Explorer made camp four times while the Bastion was closed), they are processed in sequence in one sitting, with one pop-up per thing that needs the DM. A cancelled roll leaves that order **due** (it shows a "Resolve" button in its facility panel and in the pending-orders list, and comes up again the next time a day passes). The old "Finish Bastion Turn N" resume survives as "Finish Day N" if Edge is closed mid-way.
 
-Patrol's Advantage, the attack roll and the Military Action keep their current order within a day, so a Patrol that completes on a week's end still counts for that week's attack.
+Patrol's Advantage, the attack roll and the Military Action keep their current order within a day, so a Patrol that completes on the day of an attack roll still counts for it.
 
-### 1.4 The Explorer's side
+### 1.4 "The Ironbow sends word…" (Harry's answer 9)
 
-- A new **Open the Bastion ↗** button in the Explorer's Travel panel, under Make Camp. It opens the Bastion in a new window (ready for the TV); if the Bastion is already open in another window it says so instead of opening a second one (the "Already open" guard).
-- The weekly reminder at Make Camp on Days 8, 15, 22… stays, reworded: **"Week's end at the Ironbow"**, "Contract income, trade routes and any war settle at the Ironbow this week. Open the Bastion to see what happened.", with its Open button.
-- After any Make Camp, if the Bastion's save shows an order or a building finishing on the new day, the Travel panel's notice line says so ("The Ironbow: 2 orders complete today.") without a pop-up. The Explorer only reads the Bastion's save for this.
+There's **no weekly reminder** any more. Instead, a pop-up arrives whenever a day brings news from the Bastion, titled **"The Ironbow sends word…"**, with one short line per item:
+
+- **Finished:** "The Smithy is built." · "Barracks: Recruit Defenders is complete." · "Dock: Charter Berth (Longship) is complete."
+- **Ended:** "Your Trade Agreement with Clan Karr has ended (its last shipment arrived)." · the same for writs, consortiums, delegations and summits.
+- **Waiting for you:** "Hall of Emissaries: Secure Trade Agreement (Clan Karr) needs your roll." · "The sea route to Karr needs a roll." · "Your army is ready to march on Bacca (Raid)." · "Clan Bacca is attacking the Ironbow!" · "Repairs: the Barracks is working again."
+
+Where it appears:
+
+- **In the Explorer, at Make Camp**, after the campfire event and the weather, whenever the new day brings anything. The Explorer reads the Bastion's save to know what's due (it never changes it), so it can say *what* finished; the results (how many defenders, which roll) come from the Bastion when it processes the day. Its buttons: **Open the Bastion ↗** and **Close**.
+- **In the Bastion, when it's open** (or the next time it opens), as it processes the day, with the results filled in: "Barracks: 3 defenders recruited." Anything needing a roll then follows as its own pop-up, as now.
+- Several days at once (camp made four times with the Bastion closed): one pop-up, the lines grouped under "Day 9", "Day 10"…
+
+The Explorer also gets an **Open the Bastion ↗** button in its Travel panel, under Make Camp. It opens the Bastion in a new window (ready for the TV); if the Bastion is already open in another window it says so instead of opening a second one.
 
 ### 1.5 The DM doc
 
-The two turn tiles become: **Orders pending** (how many; "next completes Day N") and **Week's end** ("in N days, Day N, at Make Camp"). The Bastion's day is the Explorer's, so no extra day tile. "Party level", "Where the party is" and the standings are unchanged.
+The two turn tiles become **Orders pending** (how many, and "next completes Day N") and **Next word from the Ironbow** (the next day something finishes or ends, "Day N, in N days"). "Party level", "Where the party is" and the standings are unchanged.
 
-### 1.6 Existing saves (Harry's table save included)
+### 1.6 Existing saves: a fresh Bastion (Harry's answer)
 
-On the first open after the update:
+Harry's current Bastion is the one saved in Edge on his laptop (the browser keeps one set of saves for every copy of the suite opened from that computer). He's happy for it to be replaced so he can play the new system through from the start. So there's **no turn-to-day conversion**:
 
-- `state.day` becomes the Explorer's current day (or 1 if the Explorer has never saved).
-- Everything in progress keeps the time it had left, at **7 days per turn**: an order with 1 turn left is due in 7 days; building with 2 turns left needs 14 days; an agreement with 3 turns left ends in 21 days; a cooldown of 2 turns ends in 14 days; repairs and recovery likewise; a war's "since" and "last" days are counted back from today at 7 days per turn.
-- The Turn Log's old entries stay as they are (they're history); new entries say "Day N".
-- Old backup files import the same way, and so does an old Bastion inside a whole-suite backup (Restore skips the per-tool check, so the conversion lives in the loader, `R.fromSave`, not in Import). The save gets a marker (`v: 2`, the way Military Actions already carry `v: 2`) so the conversion runs once and a day-based save is never converted twice. The "is this a Bastion save?" check accepts `day` or `turn` as its marker, so no real save is ever set aside as damaged.
-- A turn-based save that is already open in another window when the update lands is converted by whichever window opens it first; the other window, on its next load, sees a `v: 2` save and leaves it alone.
-- An old save that had formed a **Mercenary Brigade** becomes Unsworn, its name kept in the save (`organization.formerBrigade`) and its crest kept, with a log line explaining (question 5 offers the alternative: treat it as a Clan).
+- The first time the new version opens, a Bastion saved in turns is **set aside, not deleted** (kept in the browser as a "damaged saves set aside" copy, which Back up everything includes), with a notice saying so, and a **new Bastion** starts on the Explorer's current day.
+- The Explorer's save is kept as it is (it already counts in days). Reset Travel gives a clean Day 1 if wanted.
+- A Bastion-only file exported before the change is refused on import with a plain message ("This file is from before the Bastion counted in days, so it can't be imported. Nothing was changed."). A whole-suite backup from before is restored as normal, and its old Bastion is set aside the same way when the Bastion next opens.
+- An old save that had formed a **Mercenary Brigade** goes the same way (set aside), so there's nothing to convert.
+
+### 1.6a One campaign save (Harry's answer)
+
+The Explorer and the Bastion share **one save**, as far as Harry is concerned:
+
+- **Export** in either tool (the top bar's Export, the Explorer's Export Save, the Bastion's Download Save) downloads **one campaign file** holding both: the Explorer (heroes, map, day, journey, gold, effects, threads, its uploaded map) and the Bastion (everything, its crest and its War Table settings).
+- **Import** in either tool replaces **both together**, after checking both halves and asking first (with the usual offer to download a copy of what's there now). If either half is damaged, nothing is changed.
+- An Explorer-only file from before the change imports into the Explorer alone, saying the Bastion is left as it is.
+- Back up everything and Restore already include both, unchanged.
+- Each tool's own Reset stays its own: Reset (Bastion) clears the Bastion; Reset Travel puts the Explorer's day back to 1.
+- **Behind the scenes it stays two records**, one per tool, on purpose: with the Explorer on the laptop and the Bastion on the TV, each window writes only its own half, so neither can overwrite the other's changes. The "one save" is the file and the import, which always carry both. (The shared backup code gets a "campaign" group: the Explorer and the Bastion export and import as one.)
 
 ### 1.7 Two windows, and the rules that stop double-counting
 
 - With the Explorer on the laptop and the Bastion on the TV, the Bastion notices a new day within about 2 seconds and runs the day's pop-ups in its own window.
-- Every guard that stopped a route paying twice or an attack rolling twice within a turn is re-keyed on the **day** (and, for weekly things, on the **week number** = floor((day − 1) / 7)): `tradeNetwork.lastSettledWeek`, `state.lastAttackWeek`, `state.lastAutoEventWeek`, `dayInProgress {day, stage, skipped, attackRolled}` in place of `turnInProgress`.
-- All of this lives in plain rules functions (`R.passDay`, `R.weekEnd`, `R.catchUp`, `R.shiftDays`, `R.migrateTurnsToDays`), tested on `tests/rules.html` with fixed dice.
+- Every guard that stopped a route paying twice or an attack rolling twice within a turn is re-keyed on the **day**: each contract and route records the last day it paid (`lastShipmentDay`), each war the last day it rolled (`lastAttackDay`), the Bastion the last automatic-event day, and `dayInProgress {day, stage, skipped}` replaces `turnInProgress`.
+- All of this lives in plain rules functions (`R.passDay`, `R.catchUp`, `R.shiftDays`, `R.shipmentsLeft`, and a shared `TSI.campaign.ironbowNews(bastionSave, fromDay, toDay)` that both tools use to write "The Ironbow sends word…"), tested on `tests/rules.html` with fixed dice.
 
 ## 2. Days for every order (my first proposal; Harry revises)
 
@@ -127,7 +151,7 @@ The number is how many days after you issue the order it completes (the gold is 
 | Garden (5) | Harvest | **7** |
 | Smithy (5) | Craft (weapons and armour) | **5** |
 | Library (5) | Research | **5** |
-| Hall of Emissaries (5) | Secure Trade Agreement | **7** |
+| Hall of Emissaries (5) | Secure Trade Agreement | **7** to negotiate; the agreement then runs the 1, 3 or 6 weeks chosen |
 | Hall of Emissaries (5) | Host Delegation | **5** |
 | Hall of Emissaries (5) | Inter-Clan Summit | **14** (two Clans must travel) |
 | Hall of Emissaries (5) | Secure Writ of Authority | **10** |
@@ -255,14 +279,17 @@ One shared tooltip card for the whole suite (`shared/js/tooltip.js`), styled lik
 
 Each is one session and one pull request, tested from a double-clicked `index.html` on the laptop and TV sizes, with Harry's tickbox list.
 
-### Build 1: days (the rules change, on the screen Harry knows)
+### Build 1: days and the campaign save (the rules change, on the screen Harry knows)
 
-- `shared/js/campaign-rules.js`: `weekOf(day)`, `isWeekEnd(day)` (the existing `isBastionDay`), `nextWeekEnd(day)`.
-- `tools/bastion/rules.js` and `war-campaign-rules.js`: `state.day`, the day engine (`passDay`, `weekEnd`, `catchUp` with `dayInProgress`), due days everywhere a turn number was, `shiftDays`, `migrateTurnsToDays`, the save version.
+- `shared/js/campaign-rules.js`: `ironbowNews(bastionSave, fromDay, toDay)` (the lines for "The Ironbow sends word…", read-only, used by both tools) and the DM doc's new tiles; the weekly `isBastionDay` reminder retired.
+- `shared/js/backup-rules.js`, `backup.js`, `shared/data/tools.js`: the "campaign" save group (the Explorer and the Bastion export and import together).
+- `tools/bastion/rules.js` and `war-campaign-rules.js`: `state.day`, the day engine (`passDay`, `catchUp` with `dayInProgress`), due days everywhere a turn number was, shipments every 7 days, `shiftDays`, the save marker (`v: 2`) and setting an old turn-based save aside.
 - `tools/bastion/data/facilities-data.js` and `bastion-data.js`: `days` on every order; durations in days; the data comments reworded.
 - `tools/bastion/tool.js`: reads the Explorer's day live; the Advance button becomes the day pill and a "Days passed" review; every "turn" string reworded; "Resolve" on a due order; the log stamped with days.
-- The Explorer: the Open the Bastion ↗ button, the reworded weekly reminder, the "orders complete today" notice line. The DM doc's two tiles.
-- Tests: about 71 of the Bastion's 420 rules tests set or assert turn numbers (25 in `bastion.test.js`, 46 in `bastion-campaign.test.js`; the three war-table, battle and AI files have none) and are rewritten for days; about 39 of `phase9.test.js`'s 105 click-through checks, 5 shared tests (`campaign.test.js`, `explorer.test.js`) and 4 DM doc checks likewise. New tests cover the day engine, the week's end, catching up several days at once, Reset Travel, the conversion of an old save, and the two-window link (the Explorer makes camp, the Bastion's day moves within 2 seconds). The side-by-side 12-turn run against the old Bastion is **retired**: the rules now deliberately differ, as the war's already do (recorded in KNOWN_ISSUES).
+- The Explorer: the Open the Bastion ↗ button; the weekly reminder removed; "The Ironbow sends word…" at Make Camp. The Bastion: the same pop-up as it processes days. The DM doc's two tiles.
+- The Trade Agreement's Duration choice in weeks (1 / 3 / 6), honoured; "X days remaining (Y shipments)" in the Hall.
+- The campaign save: export and import of the Explorer and the Bastion together from either tool; the old turn-based Bastion set aside on first open.
+- Tests: about 71 of the Bastion's 420 rules tests set or assert turn numbers (25 in `bastion.test.js`, 46 in `bastion-campaign.test.js`; the three war-table, battle and AI files have none) and are rewritten for days; about 39 of `phase9.test.js`'s 105 click-through checks, 5 shared tests (`campaign.test.js`, `explorer.test.js`) and 4 DM doc checks likewise. New tests cover the day engine, shipments and attack rolls every 7 days, catching up several days at once, Reset Travel, an old save set aside, the campaign file both ways, "The Ironbow sends word…" in both tools, and the two-window link (the Explorer makes camp, the Bastion's day moves within 2 seconds). The side-by-side 12-turn run against the old Bastion is **retired**: the rules now deliberately differ, as the war's already do (recorded in KNOWN_ISSUES).
 - Docs: KNOWN_ISSUES (a new BAS entry for the day clock with every changed rule, and the retired comparison), PROGRESS, `docs/WAR-RULES.md` re-issued in days (peace, repairs, recovery, the attack roll, the cancel window), and `guide.html` in the same pull request (its click-through test fails if the guide names a button that no longer exists).
 
 ### Build 2: the screen
@@ -277,24 +304,23 @@ Each is one session and one pull request, tested from a double-clicked `index.ht
 
 (Build 2 and 3 could swap if Harry would rather see the crest first; the crest badge needs the new map panel, so they're ordered this way.)
 
-## 8. Questions for Harry
+## 8. Harry's answers (8 October 2026)
 
-Each has a default so the build can start on "use the defaults".
-
-1. **A clock in the Bastion too?** Default: **no**; Make Camp in the Explorer is the only way a day passes. (Alternative: a "Pass a day" button in the Bastion for sessions with no travel; it would then move the Explorer's day too, which breaks the one-tool-writes-its-own-save rule, so I'd rather not.)
-2. **The week's end on Days 8, 15, 22…** for income, routes, the attack roll and the automatic event. Default: **yes**. (Alternative: pay income daily at a seventh; I'd advise against: seven times the dice for high-risk routes.)
-3. **The order days in section 2.** Default: as proposed; tell me which to change.
-4. **Everything else at 7 days per old turn** (building 21–35 days, agreements 14–35, cooldown 14, repairs 14, recovery 7–21, peace 42, the muster 3). Default: **yes**. Say if building should be quicker.
-5. **An old save that formed a Mercenary Brigade** becomes Unsworn (name and crest kept). Default: **yes**. (Alternative: it becomes a Clan of the same name.)
-6. **When does the Banner & War Council unlock?** Default: **(a) once you have anything that can fight** (a defender, beast or regiment), which is when war is possible today. Alternatives: (b) once a Clan is formed (level 9; this would end Unsworn wars), (c) once the War Room is built (level 17).
-7. **A bigger map painting?** On the TV the painting will show slightly larger than it is. If Harry can export `bastion_artwork.png` and the eight overlays at 2304 × 1536 they'd stay crisp. Default: use what we have.
-8. **The crest and the Creator's remembered design.** The Bastion keeps its own copy (so experimenting in the Creator later doesn't change the Bastion's crest until you press Use for the Bastion again). Default: **yes**.
-9. **The Explorer's reminder** becomes "Week's end at the Ironbow" on Days 8, 15, 22…, plus a one-line notice after any Make Camp when orders complete that day. Default: **yes**.
-10. **Small kept quirks worth deciding now,** since the code they sit in is being rewritten: drop the Trade Agreement duration choice that has never done anything (B5)? Default: **drop it**. Everything else in B2–B24 stays.
-11. **Artisan Tools** move into the Workshop's panel (they only feed Workshop Craft). Default: **yes**.
-12. **The treasury** is edited in the top bar only; the Management panel keeps defenders, beasts and military. Default: **yes**.
-13. **The log's name:** "Day Log" (the brief says "turn log"). Default: **Day Log**.
-14. **Your table save.** The conversion in section 1.6 means your current Bastion carries on. If you'd rather start the Bastion afresh when this lands (Reset, then rebuild), say so and nothing changes in the plan; the conversion is built either way, for backups.
+1. **A clock in the Bastion too?** No (default): Make Camp in the Explorer is the only way a day passes.
+2. **A week's end?** Superseded by answer 9: there's no shared week's end; each thing runs every 7 days from its own start.
+3. **The order days in section 2:** as proposed, for now; Harry will revise after playing.
+4. **Everything else at 7 days per old turn:** yes (default).
+5. **An old Brigade save:** moot; the old Bastion is set aside (section 1.6).
+6. **When does Banner & War Council unlock?** Default: once you have anything that can fight (a defender, beast or regiment).
+7. **A bigger map painting?** Default: use what we have.
+8. **The Bastion keeps its own copy of the crest's design:** yes (default).
+9. **The weekly reminder is dropped.** Instead: "The Ironbow sends word…" pop-ups for building and orders complete, agreements ending, and anything needing the DM (section 1.4).
+10. **The Trade Agreement's duration choice stays**, shown in weeks (1, 3 or 6), and now counts; shipments arrive every 7 days; the Hall shows "X days remaining (Y shipments)"; an agreement's end is in the notifications. My reading, for Harry to correct: the roll's tier still adds or takes off weeks (+2 to −2, at least 1 week), as it did with turns.
+11. **Artisan Tools into the Workshop's panel:** yes (default).
+12. **The treasury in the top bar only:** yes (default).
+13. **"Day Log":** yes (default).
+14. **Harry's save:** a fresh Bastion; the old one is set aside, not deleted.
+15. **New: one campaign save** across the Explorer and the Bastion (section 1.6a).
 
 ## 9. Decided for you (easy to change later)
 
