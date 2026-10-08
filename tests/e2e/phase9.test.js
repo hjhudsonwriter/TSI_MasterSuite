@@ -144,7 +144,7 @@ async function days(page, n, rolls) {
 /* Close "The Ironbow sends word…" once it shows; resolves with its text. */
 async function word(page) {
   await page.waitForSelector('[data-test=ironbow-word]', { timeout: 8000 });
-  const t = await page.textContent('[data-test=ironbow-word]');
+  const t = await bare(page, '[data-test=ironbow-word]');
   await page.click('[data-test=ironbow-word] .tsi-modal__foot button.tsi-btn--primary');
   await page.waitForFunction(() => !TSI.bastion.debug.busy());
   return t;
@@ -570,6 +570,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await page.click('[data-test="issue-hall_of_emissaries__secure_trade_agreement"]');
       await page.waitForSelector('[data-test=hall-duration]');
       equal(await page.inputValue('[data-test=hall-duration]'), '3');
+      equal(await page.$$eval('[data-test=hall-duration] option', os => os.map(o => o.textContent)), ['1 week (1 shipment)', '3 weeks (3 shipments)', '6 weeks (6 shipments)']);
       await H.shot(page, 'p9-06-planning');
       await clickModal(page, 'Cancel');
       equal([(await st(page)).treasuryGP, (await st(page)).pendingOrders.length], [5000, 0]);
@@ -578,8 +579,8 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
     await check('Host Delegation: three dice boxes, Political Capital changes once (B2)', async () => {
       await planHall(page, 'host_delegation', 0, { tone: 'conciliatory' });
       equal((await st(page)).treasuryGP, 4850);
-      await pause(page);
-      await page.click('[data-test=advance]');
+      equal((await st(page)).pendingOrders[0].dueDay, 6, '5 days');
+      await setExplorerDay(page, 6);
       const titles = [];
       for (const r of [20, 12, 11]) { await page.waitForSelector('[data-test=d20]'); titles.push(await modalTitle(page)); await d20(page, r); }
       equal(titles, ['Host Delegation (Clan Blackstone)', 'Diplomacy Roll (conciliatory)', 'Insight Roll (conciliatory)']);
@@ -588,26 +589,29 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       assert(/Political Capital: \+15 \(Clan Blackstone\)/.test(changes) && (changes.match(/Political Capital/g) || []).length === 1, changes);
       await H.shot(page, 'p9-07-result');
       await clickModal(page, 'Continue');
-      await page.waitForFunction(() => !TSI.bastion.debug.busy());
+      assert(/Host Delegation \(Clan Blackstone\): Critical Success\./.test(await word(page)));
       equal(await text(page, 'pc-blackstone'), '15');
       equal(await text(page, 'tokens'), '1');
+      assert(/Hosted Delegation \(conciliatory\)Clan Blackstone • 28 days remaining/.test(await text(page, 'diplomacy-records')), await text(page, 'diplomacy-records'));
     });
 
-    await check('a bad failure: no deal, −20 Political Capital, and a 2-turn cooldown on the button', async () => {
+    await check('a bad failure: no deal, −20 Political Capital, and a 14-day cooldown on the button', async () => {
       await planHall(page, 'secure_trade_agreement', 1);
-      await advance(page, [5]);
+      await days(page, 7, [5]);
       const s = await st(page);
-      equal([s.diplomacy.agreements.length, s.politicalCapital.rowthorn, s.diplomacy.cooldowns.trade_agreement], [0, -20, 2]);
-      equal(await text(page, 'issue-hall_of_emissaries__secure_trade_agreement'), 'Cooldown: 2 turns');
+      equal([s.diplomacy.agreements.length, s.politicalCapital.rowthorn, s.diplomacy.cooldowns.trade_agreement], [0, -20, s.day + 14]);
+      equal(await text(page, 'issue-hall_of_emissaries__secure_trade_agreement'), 'Cooldown: 14 days');
       equal(await page.isDisabled('[data-test="issue-hall_of_emissaries__secure_trade_agreement"]'), true);
+      await days(page, 4, []);
+      equal(await text(page, 'issue-hall_of_emissaries__secure_trade_agreement'), 'Cooldown: 10 days');
     });
 
-    await check('the upgrade is free (B4, kept) and raises the Hall\'s bonus', async () => {
+    await check('the upgrade is free (B4, kept), takes 14 days and raises the Hall\'s bonus', async () => {
       const gp = (await st(page)).treasuryGP;
       await pause(page);
       await page.click('[data-test=hall-upgrade]');
       equal((await st(page)).treasuryGP, gp);
-      await advance(page, []);
+      await days(page, 14, []);
       equal(await text(page, 'hall-level'), 'L2');
       equal(await page.isDisabled('[data-test="issue-hall_of_emissaries__inter_clan_summit"]'), false);
     });
@@ -627,14 +631,16 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
     section('Trade routes and the Council Ledger (BAS-05, BAS-11)');
     const { context, page } = await newPage(browser, 'laptop');
     await openBastion(page);
+    await days(page, 2, []);
+    /* Two routes due to sail today (Day 3), each every 7 days. */
     await setUp(page, (s) => {
-      s.partyLevel = 9; s.turn = 3;
+      s.partyLevel = 9;
       s.builtExtras = [{ facId: 'hall_of_emissaries', status: 'built' }, '', '', ''];
       s.tradeNetwork.active = true;
-      s.diplomacy.consortiums = [{ id: 'c1', title: 'Form Trade Consortium', clan: 'Blackstone', turnsLeft: 5, incomePerTurn: 100 }, { id: 'c2', title: 'Form Trade Consortium', clan: 'Karr', turnsLeft: 5, incomePerTurn: 200 }];
+      s.diplomacy.consortiums = [{ id: 'c1', title: 'Form Trade Consortium', clan: 'Blackstone', startDay: 3, endDay: 38, income: 100, lastShipmentDay: 3 }, { id: 'c2', title: 'Form Trade Consortium', clan: 'Karr', startDay: 3, endDay: 38, income: 200, lastShipmentDay: 3 }];
       s.tradeNetwork.routes = [
-        { id: 'r1', clan: 'Blackstone', commodity: 'Timber', risk: 'low', expiresTurn: 8, yieldGP: 100, stabilityDC: 12, status: 'active' },
-        { id: 'r2', clan: 'Karr', commodity: 'Wool & Furs', risk: 'high', expiresTurn: 8, yieldGP: 200, stabilityDC: 12, status: 'active' }
+        { id: 'r1', clan: 'Blackstone', commodity: 'Timber', risk: 'low', openedDay: -4, nextDay: 3, expiresDay: 40, yieldGP: 100, stabilityDC: 12, status: 'active' },
+        { id: 'r2', clan: 'Karr', commodity: 'Wool & Furs', risk: 'high', openedDay: -4, nextDay: 3, expiresDay: 40, yieldGP: 200, stabilityDC: 12, status: 'active' }
       ];
     });
 
@@ -658,11 +664,12 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       equal((await st(page)).treasuryGP, 300, '100 + 200, not 100 + 100 + 200');
     });
 
-    await check('a third Resolve says they\'re done for this turn', async () => {
+    await check('a third Resolve says none is due, and when the next sails', async () => {
       await pause(page);
       await page.click('[data-test=resolve]');
-      assert(/already been resolved/.test(await H.modalText(page)));
+      assert(/No routes are due to sail\. Each sails every 7 days; the next on Day 10\./.test(await H.modalText(page)), await H.modalText(page));
       await clickModal(page, 'Close');
+      assert(/Next sails: Day 10/.test(await text(page, 'routes-list')), await text(page, 'routes-list'));
     });
 
     await check('the Sea Trade Routes map lights up each running route', async () => {
@@ -677,8 +684,8 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await clickModal(page, 'Close');
     });
 
-    await check('next turn: a disaster at sea disrupts Karr and files a dispute', async () => {
-      await advance(page, [3]);
+    await check('a week on (Day 10): the routes sail again, and a disaster at sea disrupts Karr and files a dispute', async () => {
+      await days(page, 7, [3]);
       const s = await st(page);
       equal(s.tradeNetwork.routes.map(r => r.status), ['active', 'disrupted']);
       equal(s.arbitration.queue.length, 1);
@@ -707,11 +714,12 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await clickModal(page, 'Close');
     });
 
-    await check('network investments are orders that complete next turn', async () => {
+    await check('network investments are orders that take their days (Stability: 7)', async () => {
       await setUp(page, (s) => { s.treasuryGP = 500; });
       await pause(page);
       await page.click('[data-test=invest-stability]');
-      await advance(page, [15]);
+      equal((await st(page)).pendingOrders.map(o => o.dueDay), [17]);
+      await days(page, 7, [15]);
       equal((await st(page)).treasuryGP > 0, true);
       assert((await st(page)).log.some(l => l.body === 'Ironbow Trade Network: Stability Investment resolved.'));
     });
@@ -792,7 +800,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await H.shot(page, 'p9-crest-none');
     });
 
-    await check('the War Turn: target, objective, enemy force, and a box for each kind of force with what\'s free (war phase 2)', async () => {
+    await check('the War Action: target, objective, enemy force, and a box for each kind of force with what\'s free (war phase 2)', async () => {
       await setUp(page, (s) => {
         s.defenders.count = 4;
         s.defenders.armed = true;
@@ -904,21 +912,21 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       const s = await st(page);
       equal(s.pendingOrders.map(o => [o.label, o.meta.objective, o.meta.targetName, o.meta.tier, o.meta.missionKey, o.meta.commit]),
         [['War Action', 'raid', 'Bacca', 'established', 'bacca|raid|established', { defenders: 4, lieutenants: 1, units: { line: 2, archers: 1 }, beasts: { 'Giant Vulture': 5 } }]]);
-      equal(s.log[0].title + ': ' + s.log[0].body, 'War Action Queued: Raid vs Bacca (resolves next Bastion Turn).');
+      equal(s.log[0].title + ': ' + s.log[0].body, 'War Action Queued: Raid vs Bacca (musters on Day ' + (s.day + 3) + ').');
+      equal(s.pendingOrders[0].dueDay, s.day + 3);
       equal(await text(page, 'war-avail-unit-line'), 'None free: committed to a war action');
     });
 
-    await check('on Advance Bastion Turn the war becomes a Military Action: Begin, or Later from the War Council', async () => {
-      await pause(page);
-      await page.click('[data-test=advance]');
+    await check('3 days later the forces muster and the war becomes a Military Action: Begin, or Later from the War Council', async () => {
+      await setExplorerDay(page, (await st(page)).day + 3);
       /* On screen and in the log the objective has its own name: "Raid vs Bacca". */
-      await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal__title'); return t && /^War Turn: Raid vs Bacca(At War)?$/.test(t.textContent); });
+      await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal__title'); return t && /^War Action: Raid vs Bacca(At War)?$/.test(t.textContent); }, null, { timeout: 15000 });
       const t = await H.modalText(page);
       assert(/Your forces muster for battle/.test(t) && /Committed: 4 defenders, 1 Lieutenant, Line Infantry ×2, Archers, Giant Vulture ×5\./.test(t) && /Enemy: Established local force\. Estimated enemy: /.test(t), t);
       equal((await H.layoutCheck(page, ['.tsi-modal', '.tsi-modal__foot button'])).outOfView, []);
       await H.shot(page, 'p9-war-muster');
       await clickModal(page, 'Later');
-      await page.waitForFunction(() => !TSI.bastion.debug.busy());
+      assert(/Your army is ready to march on Bacca \(Raid\)\./.test(await word(page)));
       const s = await st(page);
       equal(s.pendingOrders, [], 'the order is gone, so it can\'t come due twice');
       const ma = s.militaryActions[0];
@@ -932,7 +940,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       equal(await page.textContent('[data-test=ma-status-0]'), 'Ready to begin. First: the Weather Conditions roll.');
       equal(await page.isVisible('[data-test=ma-calloff-0]'), true);
       equal(await page.$eval('[data-test=queue-war]', b => b.classList.contains('tsi-btn--primary')), false, 'one main action in the panel');
-      equal(await page.isDisabled('[data-test=advance]'), false);
+      equal(await page.isHidden('[data-test=advance]'), true, 'the day is finished');
     });
 
     await check('a waiting Military Action survives reopening, and a notice says where it is', async () => {
@@ -1076,7 +1084,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
         Object.assign(u('p-beast-1'), { status: 'routed', pos: null });
         b.leaders.forEach(l => { if (l.side === 'player') l.hostId = 'p-line-1'; });
       });
-      const turn = (await st(page)).turn;
+      const day = (await st(page)).day;
       await spyTable(page);
       await pause(page);
       await page.click('[data-test=ma-continue-0]');
@@ -1086,7 +1094,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await page.click('[data-test=wt-withdraw]');
       await page.waitForSelector('[data-test=wt-withdraw-preview]');
       const pre = await text(page, 'wt-withdraw-preview');
-      assert(/the battle counts as lost/.test(pre) && /Clan Honour: −4/.test(pre) && /Separated for 1 turn: Giant Vulture 1/.test(pre), pre);
+      assert(/the battle counts as lost/.test(pre) && /Clan Honour: −4/.test(pre) && /Separated for 7 days: Giant Vulture 1/.test(pre), pre);
       await H.shot(page, 'p9-war-withdraw');
       await clickModal(page, 'Withdraw');
       await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal__title'); return t && t.textContent === 'War Report'; }, null, { timeout: 10000 });
@@ -1103,15 +1111,15 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       equal([s.militaryActions.length, s.warLog.length, s.warLog[0].title, s.clanHonor], [0, 1, 'Withdrawal: Raid vs Bacca', 36]);
       equal(s.military.filter(r => r.depleted).map(r => r.strength).sort((a, b) => a - b), [40, 90]);
       equal(s.military.filter(r => !r.depleted && /lieutenant/i.test(r.name)).map(r => r.qty), [1], 'the Lieutenant came home');
-      equal(s.warRecovery.map(r => [r.kind, r.name, r.status, r.untilTurn]), [['beast', 'Giant Vulture', 'separated', turn + 1]]);
+      equal(s.warRecovery.map(r => [r.kind, r.name, r.status, r.untilDay]), [['beast', 'Giant Vulture', 'separated', day + 7]]);
       const mil = await text(page, 'military');
       assert(/Depleted: 90\/100/.test(mil) && /Depleted: 40\/100/.test(mil), mil);
-      assert(new RegExp('5 beasts • Flight \\(1 separated: back on Turn ' + (turn + 1) + '\\)').test(await text(page, 'beasts')), await text(page, 'beasts'));
+      assert(new RegExp('5 beasts • Flight \\(1 separated: back on Day ' + (day + 7) + '\\)').test(await text(page, 'beasts')), await text(page, 'beasts'));
       equal(await text(page, 'war-avail-beast-giant-vulture'), '4 available');
       /* Applied once: nothing more after reopening. */
       await reopen(page);
       const again = await st(page);
-      equal([again.warLog.length, again.log.filter(l => l.title === 'War Turn Resolved').length, again.military, again.clanHonor], [1, 1, s.military, 36]);
+      equal([again.warLog.length, again.log.filter(l => l.title === 'War Action Resolved').length, again.military, again.clanHonor], [1, 1, s.military, 36]);
       await page.evaluate(() => document.querySelector('[data-card=management]').scrollIntoView({ block: 'start' }));
       await page.evaluate(() => window.scrollBy(0, -130));
       await page.hover('[data-test^=military-type-]:has-text("Depleted: 90/100")');
@@ -1121,8 +1129,9 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await page.mouse.move(5, 5);
     });
 
-    await check('recovery: the separated Giant Vulture is back after Advance Bastion Turn', async () => {
-      await advance(page, []);
+    await check('recovery: the separated Giant Vulture is back 7 days later, and the word says so', async () => {
+      await setExplorerDay(page, (await st(page)).day + 7);
+      assert(/Giant Vulture has found the way back to the Bastion\./.test(await word(page)));
       const s = await st(page);
       equal(s.warRecovery, []);
       assert(s.log.some(l => l.title === 'War Recovery' && l.body === 'Giant Vulture has found the way back to the Bastion.'), JSON.stringify(s.log.slice(0, 4)));
@@ -1140,9 +1149,8 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
         await pause(page);
         await page.click('[data-test=queue-war]');
         await confirmWar(page);
-        await pause(page);
-        await page.click('[data-test=advance]');
-        await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal__title'); return t && /^War Turn:/.test(t.textContent); });
+        await setExplorerDay(page, (await st(page)).day + 3);
+        await page.waitForFunction(() => { const t = document.querySelector('.tsi-modal__title'); return t && /^War Action:/.test(t.textContent); }, null, { timeout: 15000 });
         return H.modalText(page);
       }
       const mission = () => st(page).then(s => s.warMissions['bacca|raid|established']);
@@ -1159,7 +1167,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       const dc = { 'White Blizzard (Snowstorm)': 16, 'Cold Downpour (Rainstorm)': 14, 'Sun & Heatwave': 15 }[head];
       assert(new RegExp('DC ' + dc).test(await H.modalText(page)), 'Morale DC ' + dc);
       await clickModal(page, 'Cancel');
-      await page.waitForFunction(() => !TSI.bastion.debug.busy());
+      await word(page);
       let s = await st(page);
       equal(s.militaryActions.map(m => m.step), ['morale']);
       assert(s.log.some(l => /the Morale roll was cancelled/.test(l.body)));
@@ -1188,7 +1196,7 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       assert(/the rolls it made stand: .+\. Next: the Morale roll\./.test(await text(page, 'ma-muster-text')), await text(page, 'ma-muster-text'));
       assert(new RegExp('Weather ' + head.replace(/ \(.*\)$/, '').replace(/[()&]/g, '.')).test(t), t);
       await clickModal(page, 'Later');
-      await page.waitForFunction(() => !TSI.bastion.debug.busy());
+      await word(page);
       await pause(page);
       await page.click('[data-test=ma-continue-0]');
       await page.waitForSelector('[data-test=d20]');
@@ -1225,7 +1233,8 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       assert(/its conditions stand: .+, morale high, luck \+1\. There are no rolls this time\./.test(await text(page, 'ma-muster-text')), await text(page, 'ma-muster-text'));
       await H.shot(page, 'p9-war-muster-again');
       await reopen(page);
-      await H.waitForNotice(page, /was left part-way through/);
+      /* The day carries on by itself (its notice goes once it's done), and its word comes. */
+      assert(/Your army is ready to march on Bacca \(Raid\)\./.test(await word(page)));
       await spyTable(page);
       await pause(page);
       await page.click('[data-test=ma-continue-0]');
@@ -1261,12 +1270,11 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await clickModal(page, 'Call off');
       equal((await st(page)).militaryActions, []);
       equal(await page.evaluate(() => TSI.store.get('tsi.bastion.ui').warNoticed), {});
-      await advance(page, []);
-      equal((await st(page)).turnInProgress, null, 'the turn left part-way is finished');
+      equal((await st(page)).dayInProgress, null, 'the day left part-way is finished');
     });
 
     await check('identity, war log and diplomacy survive reopening (BAS-01)', async () => {
-      await setUp(page, (s) => { s.diplomacy.agreements = [{ id: 'a', title: 'Trade Agreement', clan: 'Clan Karr', turnsLeft: 3, incomePerTurn: 90 }]; s.diplomacy.tokens = 2; });
+      await setUp(page, (s) => { s.diplomacy.agreements = [{ id: 'a', title: 'Trade Agreement', clan: 'Clan Karr', startDay: s.day, endDay: s.day + 21, income: 90, lastShipmentDay: s.day }]; s.diplomacy.tokens = 2; });
       const before = await st(page);
       await reopen(page);
       const after = await st(page);
