@@ -37,7 +37,13 @@ Harry said go for Build 3 (plan: `docs/BASTION-OVERHAUL.md` sections 3 and 4), n
   - **Kept aside:** both are kept, as working code with their ten tests, in `tools/bastion/archive/mercenary-brigade.js` and `tests/archive/mercenary-brigade.test.js`, loaded by nothing. The note at the top says how to put them back.
   - **Saves:** the Trusted Clients scores stay in every save, unread. A Brigade saved in Builds 1 or 2 opens as Unsworn, says so once, and the Day Log keeps its name.
 - **The guide**, `docs/WAR-RULES.md` and KNOWN_ISSUES are updated.
-- **Tests:** TESTS_PLACEHOLDER
+- **Tests:**
+  - `tests/rules.html`: 812 rules tests, all passing. Five Brigade and old-war tests moved to the archive, and six new ones cover the archive, an old Brigade save, Clan-only war, the crest record and the hand-off.
+  - The archived tests (ten) pass with the archive loaded.
+  - `phase9.test.js`'s crest section, rewritten as "The crest, at any time (Build 3)", has 11 checks, all passing. It uses two windows: the Creator sends a crest, and the Bastion asks about it now, or when next opened.
+  - `phase2.test.js`: 71 checks, all passing, with a new "Use for the Bastion" section.
+  - `bastion-screen.test.js`: the badge check is rewritten.
+  - Every tool's click-through is being re-run because shared code changed (the hand-off).
 
 ### The Bastion's new screen: the overhaul's Build 2 (8 October 2026)
 Harry said go for Build 2 (plan: `docs/BASTION-OVERHAUL.md` section 5). Every rule is as it was; only the screen changed (KNOWN_ISSUES BAS-64).
