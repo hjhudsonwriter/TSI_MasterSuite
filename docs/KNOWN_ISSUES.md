@@ -21,11 +21,11 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 
 | Tool | Must fix | Fixed by design | Deliberate | Later (Harry's call) | Not relevant / not a bug |
 |---|---|---|---|---|---|
-| Suite-wide (SUI) | 6 | 11 | 6 | 1 | 0 |
+| Suite-wide (SUI) | 6 | 11 | 7 | 1 | 0 |
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
 | Scarlett Isles Explorer (EXP) | 12 | 5 | 6 | 13 | 0 |
-| The Ironbow Bastion Manager (BAS) | 21 | 2 | 21 | 18 | 1 |
+| The Ironbow Bastion Manager (BAS) | 22 | 2 | 22 | 18 | 1 |
 | Clan Crest Creator (CRS) | 0 | 4 | 5 | 3 | 3 |
 | Arenas of The Scarlett Isles (ARN) | 8 | 2 | 0 | 17 | 0 |
 | The Heartwood Ritual (RIT) | 9 | 1 | 0 | 15 | 1 |
@@ -250,6 +250,13 @@ These come from checking the eight tools against each other: the collision audit
 - **Before:** A save that couldn't be read (or, now, a Bastion saved in turns) was set aside under a name made from the time to the second. A second save set aside within the same second got the same name and replaced the first, so the first was lost. It never reached Harry: it showed up in a test that sets aside two Bastions quickly.
 - **After:** each copy set aside gets its own name (`…-2`, `…-3` and so on when the second is already taken), so every one is kept.
 - **Evidence:** `shared/js/store.js` (`quarantine`); the check in `tests/e2e/phase9.test.js` ("a Bastion saved in Bastion turns is set aside").
+
+### SUI-25 · One tooltip card for the whole suite
+**Deliberate change** (the Bastion overhaul's Build 2, 8 October 2026) · other
+
+- **Before:** Each tool drew its own tooltips; the Bastion's followed the mouse and could sit over what it described.
+- **After:** `shared/js/tooltip.js` gives the suite one tooltip card: a dark card with a gold title line, the text, and a line at the foot (a cost, or how many days something takes). It shows on hover and on keyboard focus, sits beside what it describes (above it for things low on the screen) rather than over it, and shows above pop-ups, so it works inside panels. Esc hides a keyboard tooltip first; a second Esc then does what it usually does (closes a pop-up). The Bastion is the first tool to use it; the War Table keeps its own.
+- **Evidence:** `shared/js/tooltip.js`, `shared/components.css` (`.tsi-tip`), `shared/tokens.css` (`--tsi-z-tooltip`, now above pop-ups); tests in `tests/e2e/bastion-screen.test.js` and `tests/e2e/phase9.test.js`.
 
 ## Combat Tracker & VTT Battlemap
 Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point there).
@@ -1248,6 +1255,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **Decision note:** Panels use the shared collapse control, bound once.
 - **Evidence:** makeCardCollapsibleById runs twice for diplomacyPanel (app.js:158 and 2083) and binds two listeners. Runtime B6: collapsed false after one click.
 - **Phase 9:** Fixed. Each panel's ▾ button works, and a closed panel stays closed after reopening (saved in `tsi.bastion.ui`). Test.
+- **Build 2 (8 October 2026):** the panels now open as pop-ups over the map, so they have no ▾; the facility grid's ▼ folds it away, and that's remembered instead (BAS-64).
 
 ### BAS-17 · Unsaved Warehouse and Artisan Tools edits vanish
 **Deliberate change** · other
@@ -1433,6 +1441,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **After:** The Favour panel sits in the layout (it still sticks while the page scrolls), and the columns fit the laptop and the TV.
 - **Evidence:** index.html:35 and 142; styles.css:46 and 158 (a 340 px panel plus 340 + 680 + 340 px columns). Phase 9 screenshot of the old tool at 1707 × 930: page width 1754.
 - **Phase 9:** Fixed. Test at the laptop, full screen, the TV and a small window.
+- **Build 2 (8 October 2026):** the page no longer scrolls at all; the map fills the window (BAS-64).
 
 ### BAS-37 · Code that could never run is left out
 **No longer relevant** · other · found in phase 9
@@ -1465,6 +1474,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **After:** The lists keep your choice, the carousel stays where it was, and a war report shows its lines as written.
 - **Evidence:** app.js:4444-4497 rebuild everything on each render; 5139 puts the report's line breaks in an ordinary box.
 - **Phase 9:** Changed.
+- **Build 2 (8 October 2026):** the carousel is gone; each facility opens in its own panel from its tile, and its lists still keep your choice (BAS-64).
 
 ### BAS-41 · A war action was settled by one roll
 **Deliberate change** (Harry's request, 2 October 2026) · other
@@ -1730,6 +1740,50 @@ None of these reached Harry.
 - **Before:** Three of the rulebook's Bastion events (a special facility shutting down, a hireling with a criminal past, and hirelings leaving) say the facility "can't be used on your next Bastion turn".
 - **After:** unchanged. They're the rulebook's text and don't change anything in the Bastion by themselves. Harry may want them reworded for days (for example "for the next 7 days"); that's a lore and rules question for him.
 - **Evidence:** `tools/bastion/data/events-data.js` lines 68, 71 and 90.
+
+### BAS-64 · The Bastion's new screen: the map fills the window, and everything else opens over it
+**Deliberate change** (Harry's brief, 8 October 2026; the overhaul's Build 2, `docs/BASTION-OVERHAUL.md` section 5) · other
+
+- **Before:** One long page that scrolled: the Favour of the Gods column on the left, then the Day Log, the map and the Bastion Event, then Party Identity, Management, the War Council, Diplomacy & Trade, the Warehouse and Artisan Tools, and the Facilities card with its construction slots, pending orders and a carousel of facility cards.
+- **After:**
+  - **A slim header:** the wordmark, Party Level, Compendium, Reset and the save buttons.
+  - **The map fills the rest of the window** and never scrolls: about 940 × 627 on the laptop and 1165 × 777 on the TV (it was about 700 × 470). It's fitted, never cropped, so the building overlays line up.
+  - **The top bar:** the day (with Finish Day for a day left part-way); the treasury with a coin, saved when you press Enter or leave the box (not on every key); Facilities and Orders counts, each with a hover list. Clicking Facilities opens Construction, and clicking Orders opens all the pending orders. Anything Under Repair is listed here too.
+  - **The Party Identity badge,** top right of the map: the crest once a Clan or Brigade has one, otherwise a faint shield. It opens the Party Identity panel. Build 3 reworks the crest itself.
+  - **The bottom bar:** the facility grid, between Warehouse, Management, Day Log and Events on the left and Clan Influence, Favour and the War Council on the right. The grid folds away with ▼ to show more of the map, and stays folded after reopening. This replaces the old panels' ▾ arrows (BAS-16).
+  - **The grid:** the five starting facilities (Workshop, Barracks, Watchtower, Dock, Armoury), then the six construction slots. Each kind of tile behaves differently:
+    - **Built:** opens its panel; hover shows its level and the orders pending there, and a small number counts them.
+    - **Being built:** an hourglass and the days left; not clickable.
+    - **Under Repair:** dimmed, with a hammer.
+    - **Free slot:** opens Construction.
+    - **Locked slot:** a padlock, with the level it opens at.
+    - **Over capacity:** marked with "!".
+  - **Construction:** every facility not built or being built, with its painting. Locked ones are dimmed. Hover shows what it does and how many days it takes. Choosing one asks "Construct the Smithy? It takes 21 days." Clear extra builds is at its foot.
+  - **A facility's panel:** its painting, level and status, the orders pending there (with Cancel and Resolve), then its orders with their days. The Workshop's panel holds the Artisan Tools. The Hall of Emissaries' tile opens Diplomacy & Trade.
+  - **The other panels:**
+    - **Warehouse.**
+    - **Management:** defenders, beasts and military; no treasury.
+    - **Day Log.**
+    - **Bastion Events:** Roll Bastion Event, the last event and when the next is due.
+    - **Clan Influence:** one row per Clan with its Political Capital bar (and Honour Change), its Honour/Respect and its support, then the Favour Tokens. These were split between the left column and Party Identity.
+    - **Favour of the Gods.**
+    - **Banner & War Council.**
+
+    Each opens as a pop-up over the map: one at a time, and Esc or Close closes it. Every panel's contents are as before.
+  - **The War Council is locked** until the Bastion has something that can fight: a defender, a beast or a War Room unit (Harry's answer 6). It stays open while any part of a war is going on, so an attack can always be fought. The padlock's tooltip says how to unlock it.
+  - **The War Table** still opens over everything; an open panel closes first.
+  - **What the screen remembers** (`tsi.bastion.ui`): whether the grid is folded, and the war pop-ups already seen. The old panels' open-or-closed settings are dropped.
+- **Evidence:** `tools/bastion/tool.js` (panels: `openPanel`, `openFacility`, `openBuild`, `renderGrid`, `renderCounts`, `fitMap`), `tools/bastion/bastion.css`, `tools/bastion/rules.js` (`cleanUi`), `tools/bastion/war-campaign-rules.js` (`warCouncilOpen`); tests in `tests/e2e/bastion-screen.test.js` (new), `tests/e2e/phase9.test.js`, `tests/rules/bastion.test.js` and `tests/rules/bastion-campaign.test.js`.
+
+### BAS-65 · Problems found while building the new screen, fixed before release
+**Must fix** (found while building, 8 October 2026; fixed) · breaks the tool
+
+None of these reached Harry.
+- **Esc in the War Room's unit list closed the whole War Room panel**, not just the list → Esc closes the list first.
+- **Esc on a box showing its stat block (a War Action's forces) closed the War Council** → Esc hides the tooltip first (SUI-25).
+- **A facility still being built that was over capacity** (after lowering the party level) had no "over capacity" mark → it has one.
+- **The Hall of Emissaries' panel opened narrower than intended** → full width.
+- **Evidence:** `tools/bastion/tool.js`, `shared/js/tooltip.js`, `tools/bastion/bastion.css`; tests in `tests/e2e/phase9.test.js`.
 
 ## Clan Crest Creator
 Old repo: `_legacy/clan-crest-creator` (file:line references point there).

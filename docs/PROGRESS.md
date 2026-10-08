@@ -2,11 +2,42 @@
 
 ## Where things stand
 
-**The rebuild is complete, the short how-to guide is written, and the first upgrades are done: the Clan Crest Creator has been reworked at Harry's request, its sigils redone from real heraldic artwork, and it now remembers your last design. The Bastion now takes a crest for your Clan or Brigade, counts beasts properly, and has phase 2 of the war mini-game: full battles on the War Table against an enemy that plays to its objective, with the result (losses, recovery and rewards) applied to the Bastion exactly once. The rules, as built, are in `docs/WAR-RULES.md`. On 6 October 2026 the Explorer's travel and campfire events were replaced with Harry's new ones, any tool can be opened in a new window from Switch tool, and the DM doc opens as a floating panel. On 7 October the Explorer's fights started setting themselves up in the Combat Tracker (monsters, Harry's own battle maps and the grid, with the tracker reporting back when every enemy is down), the ford only near rivers and the cove near the sea. The DM doc now shows where the campaign stands: the party's level and heroes, the day, the Bastion's orders and its next word, the Clan's and the god's standing where the party is, the party's gold, and the Explorer's Active Effects and Threads. On 8 October the Bastion overhaul began (plan: `docs/BASTION-OVERHAUL.md`): **Build 1** is done. The Bastion has no turns any more: it follows the Explorer's day, orders take days, "The Ironbow sends word…" brings its news to both tools, and the Explorer and the Bastion save as one campaign. Build 2 (the new screen) and Build 3 (identity and the crest) wait for Harry's go-ahead.** All eight tools open from their cards, and `guide.html` (linked at the foot of the home screen) explains them. What comes next is up to Harry: after trying the tools at the table, he can ask for more upgrades, fixes to kept behaviours, or the joined-up ideas in sections 12 to 15 of the handover.
+**The rebuild is complete, the short how-to guide is written, and the first upgrades are done: the Clan Crest Creator has been reworked at Harry's request, its sigils redone from real heraldic artwork, and it now remembers your last design. The Bastion now takes a crest for your Clan or Brigade, counts beasts properly, and has phase 2 of the war mini-game: full battles on the War Table against an enemy that plays to its objective, with the result (losses, recovery and rewards) applied to the Bastion exactly once. The rules, as built, are in `docs/WAR-RULES.md`. On 6 October 2026 the Explorer's travel and campfire events were replaced with Harry's new ones, any tool can be opened in a new window from Switch tool, and the DM doc opens as a floating panel. On 7 October the Explorer's fights started setting themselves up in the Combat Tracker (monsters, Harry's own battle maps and the grid, with the tracker reporting back when every enemy is down), the ford only near rivers and the cove near the sea. The DM doc now shows where the campaign stands: the party's level and heroes, the day, the Bastion's orders and its next word, the Clan's and the god's standing where the party is, the party's gold, and the Explorer's Active Effects and Threads. On 8 October the Bastion overhaul began (plan: `docs/BASTION-OVERHAUL.md`): **Build 1** is done. The Bastion has no turns any more: it follows the Explorer's day, orders take days, "The Ironbow sends word…" brings its news to both tools, and the Explorer and the Bastion save as one campaign. **Build 2** followed the same day: the Bastion's new screen, with the map filling the window, a facility grid along the bottom and every panel opening over the map. Build 3 (identity and the crest) waits for Harry's go-ahead.** All eight tools open from their cards, and `guide.html` (linked at the foot of the home screen) explains them. What comes next is up to Harry: after trying the tools at the table, he can ask for more upgrades, fixes to kept behaviours, or the joined-up ideas in sections 12 to 15 of the handover.
 
 Double-click `index.html` to open the suite. The plan is in `docs/PLAN.md`, the bug list in `docs/KNOWN_ISSUES.md`, and the notes for building each tool in `docs/BUILDING-A-TOOL.md`.
 
 ## Done
+
+### The Bastion's new screen: the overhaul's Build 2 (8 October 2026)
+Harry said go for Build 2 (plan: `docs/BASTION-OVERHAUL.md` section 5). Every rule is as it was; only the screen changed (KNOWN_ISSUES BAS-64).
+- **The map fills the window,** under a slim header (Party Level, Compendium, Reset, the saves). It never scrolls, and shows the painting at about 940 × 627 on the laptop and 1165 × 777 on the TV (about 700 × 470 before).
+- **The top bar:**
+  - the day, with Finish Day for a day left part-way;
+  - the treasury with a coin (type, then Enter);
+  - the Facilities and Orders counts, each with a hover list. Clicking one opens Construction or all the pending orders.
+- **The Party Identity badge** sits in the map's top-right corner (the crest, or a faint shield) and opens Party Identity. Build 3 reworks the crest itself.
+- **The facility grid,** along the bottom: the five starting facilities, then six construction slots.
+  - **Built:** hover shows its level and orders; click opens its panel.
+  - **Being built:** an hourglass and the days left.
+  - **Under Repair:** a hammer.
+  - **Free slot:** opens Construction.
+  - **Locked slot:** a padlock and the level it opens at.
+  - **Folding:** ▼ folds the grid away to show more of the map, and it stays folded after reopening.
+- **Construction:** every facility not yet built, with its painting. Locked ones are dimmed. Hover shows what it does and its days. It asks "Construct the Smithy? It takes 21 days." first.
+- **Each facility's panel:** its painting, level and status, the orders pending there (Cancel, Resolve), then its orders with their days. The Workshop's holds the Artisan Tools, and the Hall's tile opens Diplomacy & Trade.
+- **The bottom bar's buttons:** Warehouse, Management, Day Log and Events on the left; Clan Influence, Favour and the War Council on the right. Each opens its panel over the map; Esc or Close closes it.
+- **Clan Influence** puts each Clan on one row: Political Capital, Honour/Respect, support. The Favour Tokens sit below.
+- **The War Council** is locked until the Bastion has something that can fight (Harry's answer 6), and stays open while a war is going on.
+- **One tooltip card for the suite** (`shared/js/tooltip.js`): beside what it describes, never over it, and above the panels (SUI-25).
+- **Fixed while building** (none reached Harry): Esc in the War Room's unit list or on a stat-block tooltip closed the whole panel; an over-capacity facility still being built had no mark; the Hall's panel was too narrow (BAS-65).
+- **The guide** is rewritten for the new screen.
+- **Tests:**
+  - `tests/rules.html` runs 812 rules tests, all passing (2 new: the War Council lock, and what the screen remembers).
+  - New: `tests/e2e/bastion-screen.test.js` (35 checks) clicks through the new screen on the laptop, in full screen, on the TV and in a small window.
+  - `tests/e2e/phase9.test.js` now reaches every control through its panel, by pressing that panel's own tile or button. Its checks of the old screen (the slot lists, the carousel, the side column) are rewritten for the grid and the panels.
+  - The two-window test (`bastion-days.test.js`) gives its orders through the Barracks' panel.
+  - Screenshots in every test pause animations: the test browser has no graphics card and draws the trade map's glowing routes very slowly.
+  - All passing: the Bastion (107), the new screen (35), the two windows (15), phase 1 (125), the Explorer (81), the DM doc (11), fights (15), the War Table (145) and the guide (20).
 
 ### The Bastion counts in days: the overhaul's Build 1 (8 October 2026)
 Harry asked for the Bastion to drop its turns and follow the Explorer's day (plan v2, with his answers, in `docs/BASTION-OVERHAUL.md`). Build 1 changes the rules and the saving, on the Bastion screen Harry already knows; the new screen is Build 2.
@@ -624,6 +655,8 @@ Harry asked for a complete rework: the old tool's shields, colours and sigils we
   - The old-save import phase removed.
 
 ## Next
+**Harry tries the Bastion's new screen** (Build 2) on the laptop and the TV: the grid, building from a slot, a facility's panel, the panels along the bottom, and the War Council's lock. Then says what to change: the tile size, the panel buttons' names or order, what the top bar shows. **Build 3 (identity and the crest)** starts when Harry says go: the Brigade archived, a crest at any time from the Crest Creator, and the badge and Party Identity reworked.
+
 **Harry tries the Bastion in days at the table** (Build 1), with the Explorer on the laptop and the Bastion on the TV: make camp, watch the days pass and the Ironbow's word arrive, and play an order, a trade agreement and a war through. Then say: which order lengths to change (each is one number in `tools/bastion/data/facilities-data.js`), and anything about the word pop-ups. **Build 2, the new map-centred screen,** starts when Harry says go; Build 3 (identity and the crest) follows.
 
 **Harry tries the DM doc at the table**, with the Explorer and the Bastion open (in one window or two), then says what to change: what it shows, the order, the wording, or anything to add (for example the Bastion's treasury).
@@ -692,6 +725,13 @@ Each tool's questions are needed before that tool's phase. The full wording and 
   - Kept behaviours you're likely to notice: the Fog of War button reads Off after reopening (EXP-19); the Region list doesn't follow the loaded map (EXP-20); and pressing Resolve with an empty roll box counts as a roll of 0 (EXP-28). Say if you'd like any changed.
 - **Bastion (phase 9):** answered (B2: the delegation's own two rolls set Political Capital; the defaults for the rest).
   - Kept behaviours you're likely to notice: Hall upgrades cost nothing (BAS-22); a consortium pays its income twice every 7 days, once as a contract and once as a route (BAS-24); "Cleared warehouse." appears twice in the Day Log (BAS-31); and a Host Delegation's result box has an empty line where its summary should be (BAS-34). Say if you'd like any changed.
+  - **The new screen, Build 2 (8 October 2026): choices made for you, to change if you like:**
+    - **An Orders panel:** the plan put pending orders in each facility's panel; they're there, and clicking the top bar's Orders count also opens them all together (War Actions too, which have no facility).
+    - **Clicking the Facilities count** opens Construction, so Clear extra builds can be reached even when every slot is full.
+    - **The badge** shows "Party Identity", your Clan's or Brigade's name, and its crest. Build 3 changes what it shows.
+    - **The panels** open one at a time. Esc or Close closes them, and the focus goes back to the tile or button that opened them.
+    - **The tiles** are 92 pixels square on both screens; the painting gets the rest of the room.
+    - **The War Council** stays unlocked while a war, a waiting War Action or an attack is going on, even if every soldier has gone, so an attack can always be fought.
   - **The days overhaul, Build 1 (8 October 2026): choices made for you, to change if you like:**
     - **Order lengths** are the plan's first proposal (section 2 of `docs/BASTION-OVERHAUL.md`), as you said; change any after playing.
     - **Trade Agreement weeks:** the roll's tier still adds or takes off weeks (+2 to −2, at least 1 week), as it did with turns. Say if the weeks chosen should be exact.
@@ -751,6 +791,7 @@ Each tool's questions are needed before that tool's phase. The full wording and 
   - `war-table-rules.js` and `war-table.js` (`TSI.bastion.warTable.open(options)`; the header comment lists its options): the War Table screen. It owns the saves `tsi.bastion.warMap`, `tsi.bastion.warTable` and `tsi.bastion.warTerrain`; the battle itself is saved in its Military Action through `onChange`, and carries its own ground (`battle.ground`) so other battles' maps and terrain can't change it.
   - `tests/e2e/war-table.test.js` clicks through the War Table on its own (`tests/war-table.html`); `phase9.test.js` plays whole wars through the Bastion, and its `answerAll` answers the War Table too.
 - **The Bastion's day engine (8 October 2026).** `state.day` is the last day the Bastion passed; `anchored` says it has read the Explorer's day. `R.clockAction(state, explorerDay)` says what to do (`anchor`, `pass`, `shift` after Reset Travel, or `none`); a day runs `R.startDay` → sea routes → `R.finishRoutes` → due orders → `R.rollWarAttack` → `R.finishDay`, saved after each step in `state.dayInProgress`, so a closed window resumes rather than repeats. Every clocked thing stores a day (`dueDay`, `readyDay`, `endDay`, `nextDay`, `untilDay`…); `R.shiftDays` moves them all. The lengths are in `tools/bastion/data/bastion-data.js` `time`, each order's `days` in `facilities-data.js`, and the war's in `war-units-data.js`. `TSI.campaign.ironbowNews` (`shared/js/campaign-rules.js`) writes "The Ironbow sends word…" for the Explorer from the Bastion's save, read-only. In tests, `TSI.bastion.debug.clock()` makes the Bastion read the Explorer's day at once, and `phase9.test.js`'s `days(page, n)` passes days by writing the Explorer's save. The side-by-side comparison with the old Bastion is retired (BAS-61). `TSI.bastion.debug.change(fn)` sets up a check by changing the Bastion directly.
+- **The Bastion's screen (Build 2).** Every panel's contents are built once and kept up to date by `renderAll`, open or not; `openPanel(id, spec)` shows one in a pop-up (spec `render` for those built on opening: a facility's, Construction, Orders). Tests reach a control through its panel with `TSI.bastion.debug.reveal(dataTest)`, which presses that panel's own button (phase9's `panels(page)` does this before every click or read). Pop-up helpers in tests look for `.tsi-modal:not(.tsi-bas-panel)`, since a panel is a pop-up too. The shared tooltip is `TSI.tooltip` (`bind`, `bindFocus`, `show`, `hide`).
 - **The campaign save:** `shared/js/backup-rules.js` `CAMPAIGN` lists the Explorer and the Bastion; their Export and Import go through `TSI.backup` as one file, and each tool's rules register their import check in `TSI.importChecks`. They stay two records in the browser, one per tool, so two windows never save over each other.
 - **Keep the guide up to date:** when a tool's buttons or labels change, update `guide.html` too. `tests/e2e/guide.test.js` fails if the guide names a button that no longer exists.
 - **Harry's saves and test copies:** every copy of the suite on Harry's laptop shares one set of saves in Edge. A branch he downloads to test opens his real saves, so each pull request's checklist should start with "Back up everything first".

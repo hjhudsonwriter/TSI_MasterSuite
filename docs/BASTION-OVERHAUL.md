@@ -1,6 +1,6 @@
 # The Ironbow Bastion Manager: the days-and-map overhaul (plan, version 1)
 
-*8 October 2026. Version 2: Harry's answers built in (8 October). **Build 1 is built** (8 October; see "Build 1 as built" in section 7). Builds 2 and 3 wait for Harry's go-ahead.*
+*8 October 2026. Version 2: Harry's answers built in (8 October). **Builds 1 and 2 are built** (8 October; see "Build 1 as built" and "Build 2 as built" in section 7). Build 3 waits for Harry's go-ahead.*
 
 ## Harry's brief, in short
 
@@ -310,6 +310,19 @@ Built as planned above, with these differences (the code wins; each is also in K
 - The map-centred layout, the top bar, the bottom bar, the facility grid, the build panel, the facility panels, the panel buttons and pop-ups, the War Council lock, the shared tooltip, the laptop and TV fit.
 - `tests/e2e/phase9.test.js` reworked around the new screen (keeping the data-test names where the thing is the same; nearly every layout check changes), plus a new `bastion-screen.test.js` for the grid, build flow, tooltips and bars.
 - `tsi.bastion.ui` (remembered panel states) gets new ids; stale ones are discarded on load, and `ui.warNoticed` is kept so the war's "conditions stand" pop-up doesn't repeat. The War Table is still opened with the page's new bars made inert beneath it.
+
+### Build 2 as built (8 October 2026)
+
+Built as planned in section 5, with these differences (the code wins; also in KNOWN_ISSUES BAS-64, BAS-65 and SUI-25):
+
+- **Panels are the suite's pop-ups,** one at a time. Each panel's contents are built once (the old cards' contents, unchanged) and kept up to date whether or not they're showing, so no rule or data-test name changed inside them.
+- **An Orders panel,** from the top bar's Orders count: all the pending orders together (War Actions have no facility panel of their own). Each facility's panel also lists its own.
+- **The Facilities count opens Construction,** so Clear extra builds can be reached when every slot is full. Construction fills the slot clicked, or the first free one.
+- **The badge** (section 4's corner) opens Party Identity as it is today: it shows the crest once a Clan or Brigade has one, else a faint shield, with the name or "Unsworn". Build 3 brings the crest at any time and the reworked panel.
+- **Tiles are 92 pixels** (they shrink if there are more than eleven, as an over-capacity import could give); the bottom bar is 128 pixels tall, 64 folded. The painting fits the space left (`fitMap`).
+- **The War Council lock** (`R.warCouncilOpen`): open with a defender, beast or War Room unit, or while a war, a waiting War Action or a Military Action exists.
+- **The shared tooltip** sits above or below what it describes (beside it when neither fits); its layer moved above pop-ups. Esc hides a keyboard tooltip before it closes a panel; Esc in the War Room's list closes the list, not the panel.
+- **Tests:** `tests/e2e/bastion-screen.test.js` (35 checks) is new; `phase9.test.js` reaches every control through its panel (`TSI.bastion.debug.reveal`); 812 rules tests.
 
 ### Build 3: identity and the crest
 
