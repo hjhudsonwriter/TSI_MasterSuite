@@ -1383,9 +1383,12 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await creator.waitForTimeout(1500);
       const warned = async p => (await H.noticeTexts(p)).some(t => /Already open/.test(t));
       equal([await warned(creator), await warned(page)], [false, false]);
+      equal(await text(page, 'crest-status'), 'The Clan Crest Creator opened in a new window: design your crest, then press Use for the Bastion there.');
       const before = context.pages().length;
+      await page.waitForTimeout(1600);
       await page.click('[data-test=crest-create]');
-      await page.waitForFunction(() => /already open in another window/.test(document.body.textContent));
+      await page.waitForFunction(() => /already open in another window/.test(document.querySelector('[data-test=crest-status]').textContent));
+      equal((await H.layoutCheck(page, ['[data-test=crest-status]'])).outOfView, [], 'in the panel, where it can be seen (a corner notice would be under the panel\'s backdrop)');
       await page.waitForTimeout(400);
       equal(context.pages().length, before, 'no second Creator');
     });
@@ -1434,11 +1437,17 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       equal(await other.isVisible('.tsi-notice button:text-is("Open the Bastion ↗")'), true);
       await other.close();
       const key = await crestKey();
+      /* The party made camp twice meanwhile. */
+      const day0 = await page.evaluate(() => { const b = TSI.store.get('tsi.bastion.state', null); return b.day; });
+      await page.evaluate(d => { const ex = TSI.store.get('tsi.explorer.save', null) || { tokens: [], travel: {}, grid: {} }; ex.travel = Object.assign({}, ex.travel, { day: d }); TSI.store.set('tsi.explorer.save', ex); return TSI.store.flush(); }, day0 + 2);
       await page.goto(H.fileUrl('index.html') + '?tool=bastion');
       await page.waitForSelector('[data-test=crest-offer]', { timeout: 8000 });
       assert(/It replaces the crest the Bastion has now\./.test(await popText(page)));
+      await page.waitForTimeout(4500);
+      equal((await st(page)).day, day0, 'no day passes while the question is open');
       await clickModal(page, 'No');
       equal(await crestKey(), key, 'kept');
+      await page.waitForFunction(d => { const s = TSI.bastion.debug.state(); return s.day === d && !s.dayInProgress && !TSI.bastion.debug.busy(); }, day0 + 2, { timeout: 10000 });
       await arm(page);
     });
 
@@ -1472,6 +1481,27 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
       await page.waitForSelector('[data-test=crest-keep]:not([hidden])');
       await clickModal(page, 'Cancel');
       equal(await crestKey(), key, 'unchanged');
+      equal(await modalOpen(page), false);
+      equal((await st(page)).organization.type, 'unsworn');
+    });
+
+    await check('a crest from the Creator, accepted while Form Clan is open, replaces a picture uploaded there earlier', async () => {
+      await pause(page);
+      await page.click('[data-test=form-clan]');
+      await H.chooseFile(page, '[data-test=crest-upload]', writeCrest('crest-pop.png', 900));
+      await page.waitForSelector('[data-test=crest-keep]:not([hidden])');
+      await page.evaluate(() => {
+        const c = document.createElement('canvas'); c.width = c.height = 64;
+        const g = c.getContext('2d'); g.fillStyle = '#b1122a'; g.fillRect(8, 8, 48, 48);
+        TSI.handoff.write('crest', { id: 'crest-form', at: 1, name: 'Mid-founding', dataUrl: c.toDataURL('image/png'), design: { clanName: 'Mid-founding' } });
+      });
+      await page.waitForSelector('[data-test=crest-offer]', { timeout: 6000 });
+      await clickModal(page, 'Use this crest');
+      const key = await crestKey();
+      equal((await page.evaluate(() => TSI.store.get('tsi.bastion.crest'))).design.clanName, 'Mid-founding');
+      equal([await page.getAttribute('[data-test=crest-preview]', 'data-key'), await page.isVisible('[data-test=crest-keep]')], [key, false], 'the box shows the crest just taken, and the upload is dropped');
+      await clickModal(page, 'Cancel');
+      equal(await crestKey(), key);
       equal((await st(page)).organization.type, 'unsworn');
     });
 

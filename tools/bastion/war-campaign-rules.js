@@ -1336,6 +1336,7 @@
     var tier = tierOf(w, meta.tier) ? String(meta.tier) : 'established';
     var ordered = R.orderCommit(s, data, order);
     var commit = R.warCommit2(s, data, ordered, { except: order.id });
+    var clanOnly = R.clanOnlyCut(s, data, ordered);
     var ma = {
       id: 'ma-' + String(order.id), orderId: String(order.id), day: s.day, v: 2,
       objective: objective, targetKey: targetKey, targetName: R.clanName(data, targetKey), tier: tier, missionKey: '',
@@ -1343,7 +1344,9 @@
     };
     if (fieldTotal(commit) <= 0) {
       R.removeOrder(s, order.id);
-      R.log(s, 'War Action', R.militaryName(ma) + ': nothing committed to it is still free to march, so the war order lapses.', now);
+      R.log(s, 'War Action', R.militaryName(ma) + (clanOnly
+        ? ': only a Clan can send Lieutenants and regiments, and nothing else committed to it is free to march, so the war order lapses.'
+        : ': nothing committed to it is still free to march, so the war order lapses.'), now);
       return null;
     }
     var mission = R.ensureMission(s, data, targetKey, objective, tier);
@@ -1353,7 +1356,7 @@
     if (!Array.isArray(s.militaryActions)) s.militaryActions = [];
     s.militaryActions.push(ma);
     stampWar(s, targetKey);
-    var cut = R.musterShortfall(data, ordered, commit);
+    var cut = R.musterShortfall(data, ordered, commit, clanOnly);
     if (cut) R.log(s, 'War Action', R.militaryName(ma) + ': ' + cut, now);
     R.log(s, 'War Action', R.militaryName(ma) + ': your forces muster for battle. The Military Action is ready to begin.', now);
     var cond = isObj(mission.conditions) ? mission.conditions : {};
@@ -1481,15 +1484,23 @@
      longer free: a beast died, the defenders went down, or an earlier
      order holds it), the sentence that says so; '' when nothing changed.
      ordered and commit are in the phase 2 shape. */
-  R.musterShortfall = function (data, ordered, commit) {
+  /* Did a war order commit Lieutenants or regiments that stay home because
+     the party isn't a Clan (a Mercenary Brigade from before Build 3, now
+     Unsworn)? Then the muster says that's why, not that they aren't free. */
+  R.clanOnlyCut = function (s, data, ordered) {
+    if (!isObj(ordered) || R.warForces(s, data).fullWar) return false;
+    return clampInt(ordered.lieutenants, 0) > 0 ||
+      Object.keys(isObj(ordered.units) ? ordered.units : {}).some(function (t) { return clampInt(ordered.units[t], 0) > 0; });
+  };
+  R.musterShortfall = function (data, ordered, commit, clanOnly) {
     var a = R.cleanCommit(ordered, data), b = R.cleanCommit(commit, data);
     var same = a.defenders === b.defenders && a.lieutenants === b.lieutenants;
     [[a.units, b.units], [a.beasts, b.beasts]].forEach(function (k) {
       Object.keys(k[0]).concat(Object.keys(k[1])).forEach(function (n) { if ((k[0][n] || 0) !== (k[1][n] || 0)) same = false; });
     });
     if (same) return '';
-    return 'not everything the war order committed is still free to march, so it musters with ' + R.militaryCommitLine(b) +
-      ' (the order had ' + R.militaryCommitLine(a) + ').';
+    return (clanOnly ? 'only a Clan can send Lieutenants and regiments, so it musters with ' : 'not everything the war order committed is still free to march, so it musters with ') +
+      R.militaryCommitLine(b) + ' (the order had ' + R.militaryCommitLine(a) + ').';
   };
 
   /* Where a Military Action has got to, for the War Council panel. */

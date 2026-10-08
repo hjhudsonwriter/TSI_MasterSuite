@@ -82,7 +82,14 @@
          Form Mercenary Brigade) loads as Unsworn: the Day Log keeps its
          name, and the screen says so once, as it opens. */
       var formerBrigade = saved ? R.formerBrigade(saved) : null;
-      if (formerBrigade) R.log(state, 'Identity', 'The Mercenary Brigade, ' + formerBrigade.name + ', is no more: the Bastion no longer has Brigades, so the party is Unsworn again. Its Trusted Clients scores are kept in the save. A Clan can be founded in Party Identity.');
+      if (formerBrigade) {
+        /* Its waiting War Actions with Lieutenants or regiments: only a Clan
+           can send those, so they'll stay home when the order musters. */
+        var cutOrders = state.pendingOrders.filter(function (o) { return R.isWarOrder(o) && R.clanOnlyCut(state, data, R.orderCommit(state, data, o)); }).length;
+        formerBrigade.orders = cutOrders;
+        R.log(state, 'Identity', 'The Mercenary Brigade, ' + formerBrigade.name + ', is no more: the Bastion no longer has Brigades, so the party is Unsworn again. Its Trusted Clients scores are kept in the save. A Clan can be founded in Party Identity.' +
+          (cutOrders ? ' ' + (cutOrders === 1 ? 'Its waiting War Action committed' : 'Its ' + cutOrders + ' waiting War Actions committed') + ' Lieutenants or regiments: only a Clan can send them, so they stay home when it musters, and an order with nothing else lapses.' : ''));
+      }
       var ui = R.cleanUi(load('ui', R.isUi, 'the facility grid opened in its usual way (everything else is as it was)'));
       function save() { ctx.store.set('state', R.toSave(state)); }
       function saveUi() { ctx.store.set('ui', TSI.clone(ui)); }
@@ -763,7 +770,7 @@
         crest = value || null;
         if (crest) ctx.store.set('crest', crest);
         else if (ctx.store.has('crest')) ctx.store.remove('crest');
-        crestWatchers.forEach(function (fn) { fn(); });
+        crestWatchers.slice().forEach(function (fn) { fn(); });
       }
       /* Show a crest in an <img> (only reloading it when it's a new one). */
       function showCrest(img, c) {
@@ -781,18 +788,25 @@
       }
 
       /* Open the Clan Crest Creator in its own window, unless it's open
-         already: its "Use for the Bastion" sends the crest back here. */
+         already: its "Use for the Bastion" sends the crest back here. It's
+         only opened from a pop-up (Party Identity, Form Clan), so what
+         happened is written in that pop-up's status line (status): a corner
+         notice would sit under the pop-up's dark backdrop. */
       var creatorOpenedAt = 0;
-      function openCreator() {
+      function openCreator(status) {
+        function tell(text) { if (status) status.textContent = text; }
         if (TSI.tabGuard && TSI.tabGuard.isOpenElsewhere('crest')) {
-          notice('The Clan Crest Creator is already open in another window. Press Use for the Bastion there to send your crest here.', { type: 'info', title: 'Crest Creator open.', id: 'tsi-bas-creator', timeout: 9000 });
+          tell('The Clan Crest Creator is already open in another window: press Use for the Bastion there to send your crest here.');
           return false;
         }
         if (Date.now() - creatorOpenedAt < 1500) return false;
         creatorOpenedAt = Date.now();
         if (TSI.shell && typeof TSI.shell.openWindow === 'function') TSI.shell.openWindow('crest');
-        notice('The Clan Crest Creator opened in a new window. Design your crest, then press Use for the Bastion there.', { type: 'ok', title: 'Crest Creator open.', id: 'tsi-bas-creator', timeout: 9000 });
+        tell('The Clan Crest Creator opened in a new window: design your crest, then press Use for the Bastion there.');
         return true;
+      }
+      function statusLine(test) {
+        return el('div', { class: 'tsi-bas-muted tsi-bas-crest-status', role: 'status', 'aria-live': 'polite', 'data-test': test });
       }
 
       /* Upload or remove the Bastion's crest, at any time. */
@@ -871,6 +885,7 @@
         var keep = btn('Keep this crest', null, 'tsi-btn--ghost', 'crest-keep', { hidden: true });
         var create = btn('Create a new one ↗', null, '', 'crest-new');
         var upload = btn('Upload…', null, '', 'crest-upload');
+        var status = statusLine('crest-field-status');
         function show() {
           var c = chosen || crest;
           showCrest(img, c);
@@ -882,7 +897,7 @@
             : 'The Clan can have a crest at any time. Create one in the Clan Crest Creator, or upload a picture.';
         }
         keep.onclick = function () { chosen = null; show(); };
-        create.onclick = function () { openCreator(); };
+        create.onclick = function () { openCreator(status); };
         upload.onclick = TSI.oneAtATime(function () {
           return pickCrest().then(function (c) { if (c && life.alive) { chosen = c; show(); } });
         });
@@ -891,15 +906,20 @@
           el('div', { class: 'tsi-bas-crest-pick__side' }, [
             el('span', { class: 'tsi-bas-crest-pick__title', text: 'Crest' }),
             note,
-            el('div', { class: 'tsi-bas-actions' }, [keep, create, upload])
+            el('div', { class: 'tsi-bas-actions' }, [keep, create, upload]),
+            status
           ])
         ]);
         show();
-        crestWatchers.push(show);
+        /* A crest taken for the Bastion while this is open (one sent from
+           the Crest Creator and accepted) is the latest choice: it replaces
+           a picture uploaded here earlier. */
+        function changed() { chosen = null; status.textContent = ''; show(); }
+        crestWatchers.push(changed);
         return {
           node: node,
           chosen: function () { return chosen; },
-          stop: function () { var i = crestWatchers.indexOf(show); if (i !== -1) crestWatchers.splice(i, 1); }
+          stop: function () { var i = crestWatchers.indexOf(changed); if (i !== -1) crestWatchers.splice(i, 1); }
         };
       }
 
@@ -916,7 +936,9 @@
       var crestImg = el('img', { class: 'tsi-bas-crest__img', alt: '', hidden: true, 'data-test': 'crest' });
       var crestEmpty = el('div', { class: 'tsi-bas-crest__empty', 'data-test': 'crest-empty' }, [icon('shield'), el('span', { text: 'No crest yet' })]);
       var crestFrame = el('div', { class: 'tsi-bas-crest tsi-bas-crest--large' }, [crestImg, crestEmpty]);
-      var crestCreateBtn = btn('Create in the Clan Crest Creator ↗', function () { openCreator(); }, '', 'crest-create');
+      var crestStatus = statusLine('crest-status');
+      crestWatchers.push(function () { crestStatus.textContent = ''; });
+      var crestCreateBtn = btn('Create in the Clan Crest Creator ↗', function () { openCreator(crestStatus); }, '', 'crest-create');
       var crestAddBtn = btn('Upload a picture…', function () { onUploadCrest(); }, 'tsi-btn--ghost', 'crest-add');
       var crestRemoveBtn = btn('Remove', function () { onRemoveCrest(); }, 'tsi-btn--ghost', 'crest-delete');
       var crestActions = el('div', { class: 'tsi-bas-crest-actions' }, [crestCreateBtn, crestAddBtn, crestRemoveBtn]);
@@ -945,7 +967,8 @@
             el('div', { class: 'tsi-bas-identity__name' }, [orgPill, orgMeta]),
             orgDesc,
             label('The crest'),
-            crestActions
+            crestActions,
+            crestStatus
           ])
         ]),
         formBox,
@@ -2813,7 +2836,9 @@
         return TSI.store.fresh('tsi.explorer.save', null).then(function (ex) {
           var d = ex && ex.travel ? Number(ex.travel.day) : NaN;
           explorerDay = isFinite(d) && d >= 1 ? Math.floor(d) : null;
-          if (!life.alive || turnRunning || militaryRunning) return null;
+          /* Nothing moves on while the crest question is open: the next
+             look (2 seconds on) passes the day once it's answered. */
+          if (!life.alive || turnRunning || militaryRunning || crestOfferOpen) return null;
           var act = R.clockAction(state, explorerDay);
           if (act.kind === 'anchor') {
             R.anchor(state, act.to);
@@ -2962,7 +2987,7 @@
           done();
           /* Nothing committed to it was still free (the log says so): the order lapsed. */
           if (!ma) return life.alive ? null : 'stopped';
-          var go = await militaryPrompt(ma, R.musterShortfall(data, ordered, ma.commit));
+          var go = await militaryPrompt(ma, R.musterShortfall(data, ordered, ma.commit, R.clanOnlyCut(state, data, ordered)));
           if (!life.alive) return 'stopped';
           if (go && (await runMilitary(ma.id)) === 'stopped') return 'stopped';
           return life.alive ? null : 'stopped';
@@ -3591,7 +3616,8 @@
       /* The first open saves the starting Bastion, as the old tool did. */
       if (!saved || formerBrigade) save();
       if (formerBrigade) {
-        notice('The Mercenary Brigade, ' + formerBrigade.name + ', is no more: the Bastion no longer has Brigades, so the party is Unsworn again. The Day Log says so.', { type: 'info', title: 'Party Identity.', id: 'tsi-bas-brigade' });
+        notice('The Mercenary Brigade, ' + formerBrigade.name + ', is no more: the Bastion no longer has Brigades, so the party is Unsworn again.' +
+          (formerBrigade.orders ? ' Only a Clan can send Lieutenants and regiments, so those in its waiting War Actions stay home.' : '') + ' The Day Log says so.', { type: 'info', title: 'Party Identity.', id: 'tsi-bas-brigade' });
       }
       /* Read the Explorer's day straight away (then every 2 seconds), and
          any crest sent from the Clan Crest Creator while the Bastion was shut. */

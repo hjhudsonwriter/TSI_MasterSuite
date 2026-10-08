@@ -1166,6 +1166,34 @@
     t.ok(a.every(function (id) { return /^reg-[0-9a-f]+$/.test(id) || id === 'reg-a'; }), a.join(', '));
   });
 
+  test('a former Brigade\'s waiting War Action: its Lieutenants and regiments stay home, and the log says only a Clan can send them (Build 3)', function (t) {
+    /* Queued in Build 1 or 2, when a Brigade could send them (as a Clan can now). */
+    function brigadeSave(commit) {
+      var s = army();
+      t.ok(queue(s, 'raid', commit), 'queued');
+      s.organization = { type: 'merc', name: 'The Ironbow Freeblades', chief: '', motto: '', foundedAtDay: 1 };
+      var back = R.fromSave(copy(R.toSave(s)), data);
+      t.equal(back.organization.type, 'unsworn');
+      return { s: back };
+    }
+    var a = brigadeSave({ lieutenants: 1, units: { line: 2 } });
+    var o = a.s.pendingOrders[0];
+    t.equal(R.clanOnlyCut(a.s, data, R.orderCommit(a.s, data, o)), true);
+    t.equal(R.beginMilitaryAction(a.s, data, o, dice([0.4]), 0), null, 'nothing else to send: it lapses');
+    t.equal(a.s.pendingOrders.length, 0);
+    t.equal(a.s.log[0].body, 'Raid vs Bacca: only a Clan can send Lieutenants and regiments, and nothing else committed to it is free to march, so the war order lapses.');
+    var b = brigadeSave({ defenders: 10, lieutenants: 1, units: { line: 1 } });
+    var ordered = R.orderCommit(b.s, data, b.s.pendingOrders[0]);
+    var ma = R.beginMilitaryAction(b.s, data, b.s.pendingOrders[0], dice([0.4]), 0);
+    t.same([ma.commit.defenders, ma.commit.lieutenants || 0, Object.keys(ma.commit.units || {}).length], [10, 0, 0], 'the defenders march, alone');
+    t.ok(b.s.log.some(function (l) { return /: only a Clan can send Lieutenants and regiments, so it musters with 10 defenders \(the order had /.test(l.body); }), b.s.log.map(function (l) { return l.body; }).join(' | '));
+    t.equal(/only a Clan/.test(R.musterShortfall(data, ordered, ma.commit, R.clanOnlyCut(b.s, data, ordered))), true, 'the screen\'s words too');
+    var c = army();
+    t.equal(R.clanOnlyCut(c, data, { lieutenants: 1, units: { line: 1 } }), false, 'a Clan sends them');
+    var u = fresh();
+    t.equal(R.clanOnlyCut(u, data, { defenders: 3, beasts: { Ape: 1 } }), false, 'nothing Clan-only was ordered');
+  });
+
   test('no Trusted Clients after a battle: the Brigade is archived (Build 3), and its scores are left alone', function (t) {
     var s = army();
     var b = ready('skirmish', { s: s, commit: { defenders: 30, beasts: { Ape: 1 } } });
