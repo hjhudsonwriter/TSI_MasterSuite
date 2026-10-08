@@ -1,25 +1,32 @@
 /* The Ironbow Bastion Manager — the screen.
    The old tool rebuilt as it was: party level, treasury and defenders;
-   building in construction slots; facility orders; Advance Bastion Turn;
-   Bastion events; the Hall of Emissaries, trade routes and the Council
+   building in construction slots; facility orders; Bastion events; the Hall of Emissaries, trade routes and the Council
    Ledger; party identity and the War Council; the warehouse and artisan
    tools; Favour of The Gods and Political Capital; the Compendium.
    The war mini-game (Harry's requests of 2 October 2026) adds the War
-   Room's units and their stat blocks, the War Turn's missions, and the
+   Room's units and their stat blocks, the War Action's missions, and the
    Military Action, fought on the War Table (war-table.js); its rules are
    in war-campaign-rules.js and war-battle-rules.js.
    Wars (Harry, 4 October 2026): Queue War Action declares war on the Clan
    (asking first, with its cost); an At War tag follows that Clan's name
    wherever it shows; the War Council's Wars box has Make peace; while at
-   war, Advance Bastion Turn may bring an attack ("Sound the horns!"), fought
-   on the Ironbow coast; losing it puts facilities Under Repair.
+   war, a Clan may attack every 7 days of the war ("Sound the horns!"),
+   fought on the Ironbow coast; losing it puts facilities Under Repair.
+
+   Days, not turns (Harry, 8 October 2026; docs/BASTION-OVERHAUL.md): the
+   Bastion follows the Explorer's day. It reads the Explorer's save when
+   it opens, every 2 seconds while open and whenever this window comes back
+   into view, and passes each new day in turn (orders due, building, the
+   week's shipments and sea routes, a Clan's attack roll, the automatic
+   event), then shows "The Ironbow sends word…". It never changes the
+   Explorer's save. Reset Travel moves every Bastion day back with it.
 
    Layout: the old fixed Favour panel stays on the left (it sticks while the
    page scrolls), with the old panels in their old order beside it. The
-   tool's own bar, with Advance Bastion Turn, sticks to the top.
+   tool's own bar, with the day, sticks to the top.
 
-   Advance Bastion Turn runs as saved steps (rules.js), so a cancelled roll
-   or a closed window loses nothing, and it can't run twice at once.
+   Passing a day runs as saved steps (rules.js), so a cancelled roll or a
+   closed window loses nothing, and it can't run twice at once.
    Rules are in rules.js; content is in data/. */
 (function () {
   'use strict';
@@ -58,7 +65,13 @@
         }
         return v;
       }
-      var saved = load('state', R.isSave);
+      /* A Bastion saved in turns, before the days overhaul, is set aside
+         (kept, not deleted) and a new one starts on the Explorer's day
+         (Harry, 8 October 2026: no turn-to-day conversion). */
+      var oldSave = ctx.store.get('state', null);
+      var setAside = oldSave !== null && R.isOldSave(oldSave);
+      if (setAside) TSI.store.quarantine(TSI.storeRules.keyFor('bastion', 'state'), 'It was saved in Bastion turns, before the Bastion counted in days (8 October 2026).');
+      var saved = setAside ? null : load('state', R.isSave);
       var state = saved ? R.fromSave(TSI.clone(saved), data) : R.defaultState(data);
       var ui = load('ui', R.isUi, 'the panels opened in their usual way (everything else is as it was)') || {};
       if (!ui.collapsed || typeof ui.collapsed !== 'object') ui.collapsed = {};
@@ -319,7 +332,7 @@
 
       /* One tooltip for the artisan tools, the construction slots, the Hall's
          actions, and the war's stat blocks (the War Room's Recruit list, the
-         Military and Menagerie lists, the War Turn's forces). */
+         Military and Menagerie lists, the War Action's forces). */
       var tip = el('div', { class: 'tsi-bas-tip', hidden: true, role: 'tooltip', id: 'tsi-bas-tip', 'data-test': 'tooltip' });
       function moveTip(e) {
         var pad = 14;
@@ -431,14 +444,14 @@
           ]
         };
       }
-      /* Lieutenants and beasts away after a battle (state.warRecovery): "(1 recovering: back on Turn 7)". */
+      /* Lieutenants and beasts away after a battle (state.warRecovery): "(1 recovering: back on Day 17)". */
       function awayNote(recs) {
         if (!recs.length) return '';
-        var turns = [];
-        recs.forEach(function (r) { if (turns.indexOf(r.untilTurn) === -1) turns.push(r.untilTurn); });
-        turns.sort(function (a, b) { return a - b; });
+        var days = [];
+        recs.forEach(function (r) { if (days.indexOf(r.untilDay) === -1) days.push(r.untilDay); });
+        days.sort(function (a, b) { return a - b; });
         var word = recs.every(function (r) { return r.status === 'separated'; }) ? 'separated' : 'recovering';
-        return '(' + recs.length + ' ' + word + ': back on Turn' + (turns.length > 1 ? 's ' + turns.slice(0, -1).join(', ') + ' and ' + turns[turns.length - 1] : ' ' + turns[0]) + ')';
+        return '(' + recs.length + ' ' + word + ': back on Day' + (days.length > 1 ? 's ' + days.slice(0, -1).join(', ') + ' and ' + days[days.length - 1] : ' ' + days[0]) + ')';
       }
       function awayList(kind, name) {
         return (Array.isArray(state.warRecovery) ? state.warRecovery : []).filter(function (r) {
@@ -451,13 +464,18 @@
          ================================================================ */
       var levelSelect = el('select', { class: 'tsi-input tsi-bas-level', 'aria-label': 'Party Level', 'data-test': 'level' },
         Array.apply(null, { length: 20 }).map(function (_, i) { return el('option', { value: String(i + 1), text: String(i + 1) }); }));
-      var advanceBtn = el('button', { type: 'button', class: 'tsi-btn tsi-btn--primary tsi-bas-advance', 'data-test': 'advance' }, 'Advance Bastion Turn (+7 days)');
+      /* The day: the Explorer's, which the Bastion follows. The button only
+         shows while a day is part-way through (after a closed window, say),
+         to finish it; days pass by themselves as the Explorer makes camp. */
+      var dayStatus = el('div', { class: 'tsi-bas-daystatus', 'data-test': 'day-status', role: 'status' });
+      var advanceBtn = el('button', { type: 'button', class: 'tsi-btn tsi-btn--primary tsi-bas-advance', 'data-test': 'advance', hidden: true }, 'Finish Day');
       var bar = el('div', { class: 'tsi-bas-bar' }, [
         el('div', { class: 'tsi-bas-brand' }, [
           el('div', { class: 'tsi-bas-brand__title', text: 'The Ironbow: Bastion Manager' }),
-          el('div', { class: 'tsi-bas-brand__sub', text: 'Scarlett Isles • Bastion Turn Tools' })
+          el('div', { class: 'tsi-bas-brand__sub', text: 'Scarlett Isles • Day by day with the Explorer' })
         ]),
         el('div', { class: 'tsi-bas-bar__controls' }, [
+          dayStatus,
           el('label', { class: 'tsi-bas-field tsi-bas-field--inline' }, [el('span', { text: 'Party Level' }), levelSelect]),
           btn('Compendium', function () { onCompendium(); }, '', 'compendium'),
           btn('Roll Bastion Event', function () { onRollEvent(); }, '', 'roll-event'),
@@ -551,14 +569,14 @@
       }
 
       /* ================================================================
-         Turn Log · Bastion Map · Bastion Event
+         Day Log · Bastion Map · Bastion Event
          ================================================================ */
       var logList = el('div', { class: 'tsi-bas-log', 'data-test': 'log' });
-      var logCard = card('log', 'Turn Log', { cls: 'tsi-bas-card--tall' });
+      var logCard = card('log', 'Day Log', { cls: 'tsi-bas-card--tall' });
       logCard.head.appendChild(btn('Clear log', function () { state.log = []; done(); }, '', 'clear-log'));
       logCard.body.appendChild(logList);
 
-      var turnPill = el('div', { class: 'tsi-bas-turn-pill', 'data-test': 'turn', text: 'Turn 1' });
+      var turnPill = el('div', { class: 'tsi-bas-turn-pill', 'data-test': 'turn', text: 'Day 1' });
       var overlayLayer = el('div', { class: 'tsi-bas-map__overlays', 'data-test': 'map-overlays' });
       var mapCard = card('map', 'Bastion Map', { cls: 'tsi-bas-card--map' });
       mapCard.head.appendChild(turnPill);
@@ -573,18 +591,24 @@
       ]);
 
       var eventBox = el('div', { class: 'tsi-bas-event', 'data-test': 'event' });
+      var eventNext = el('p', { class: 'tsi-bas-muted tsi-bas-event__next', 'data-test': 'event-next' });
       var eventCard = card('event', 'Bastion Event', { cls: 'tsi-bas-card--tall' });
       eventCard.body.appendChild(eventBox);
+      eventCard.body.appendChild(eventNext);
 
+      /* "Day 12", or "Day 1 · the Explorer sets the day" until the Bastion has read it. */
+      function dayText() {
+        return 'Day ' + state.day + (state.anchored ? '' : ' · the Explorer sets the day');
+      }
       function renderTop() {
-        turnPill.textContent = 'Turn ' + state.turn;
+        turnPill.textContent = dayText();
         TSI.clear(logList);
         if (!state.log.length) logList.appendChild(muted('No log entries yet.'));
         state.log.slice(0, 80).forEach(function (e) {
           logList.appendChild(el('div', { class: 'tsi-bas-log__entry' }, [
             el('div', { class: 'tsi-bas-log__top' }, [
               el('div', { class: 'tsi-bas-log__title', text: e.title }),
-              el('div', { class: 'tsi-bas-log__time', text: R.formatTime(e.at) })
+              el('div', { class: 'tsi-bas-log__time', text: (typeof e.day === 'number' ? R.dayLabel(e.day) + ' · ' : '') + R.formatTime(e.at) })
             ]),
             el('div', { class: 'tsi-bas-log__body', text: e.body || '' })
           ]));
@@ -602,9 +626,10 @@
         TSI.clear(mapRepairs);
         if (fixing.length) {
           TSI.append(mapRepairs, [el('b', { text: 'Under Repair: ' })].concat(fixing.map(function (r, i) {
-            return (i ? ', ' : '') + r.name + ' (working again on turn ' + r.backTurn + ')';
+            return (i ? ', ' : '') + r.name + ' (working again on Day ' + r.backDay + ')';
           })));
         }
+        eventNext.textContent = 'The next automatic event: Day ' + R.nextEventDay(data, state.day) + ' (every ' + R.time(data).eventEvery + ' days).';
         TSI.clear(eventBox);
         var le = state.lastEvent;
         eventBox.classList.toggle('tsi-bas-event--empty', !le);
@@ -615,7 +640,7 @@
         var lines = (le.lines || []).slice(0, 12);
         TSI.append(eventBox, [
           el('div', { class: 'tsi-bas-event__title', text: le.name }),
-          el('div', { class: 'tsi-bas-event__roll', text: 'Roll: ' + le.roll }),
+          el('div', { class: 'tsi-bas-event__roll', text: 'Roll: ' + le.roll + (typeof le.day === 'number' ? ' · ' + R.dayLabel(le.day) : '') }),
           lines.length ? el('ul', null, lines.map(function (l) { return el('li', { text: String(l) }); })) : muted('No description text found in data.'),
           muted('DM note: Some events reference tables from the DMG / Bastion rules. Add your own roll results into the warehouse or log.', 'tsi-bas-event__note')
         ]);
@@ -885,7 +910,7 @@
         var n = name.value.trim();
         var ch = chief.value.trim();
         if (!n) { await say('Clan Name is required.'); return; }
-        state.organization = { type: 'clan', name: n, chief: ch, motto: motto.value.trim(), foundedAtTurn: state.turn || 1 };
+        state.organization = { type: 'clan', name: n, chief: ch, motto: motto.value.trim(), foundedAtDay: state.day };
         state.clanHonor = R.clampInt(state.clanHonor === undefined || state.clanHonor === null ? 40 : state.clanHonor, 0, 100);
         log('Identity', 'Founded Clan: ' + n + (ch ? ' (Chief: ' + ch + ')' : '') + '.');
         saveCrest(crestPick.value());
@@ -906,7 +931,7 @@
         if (!ok || !life.alive) return;
         var n = name.value.trim();
         if (!n) { await say('Brigade Name is required.'); return; }
-        state.organization = { type: 'merc', name: n, chief: '', motto: '', foundedAtTurn: state.turn || 1 };
+        state.organization = { type: 'merc', name: n, chief: '', motto: '', foundedAtDay: state.day };
         log('Identity', 'Formed Mercenary Brigade: ' + n + '.');
         saveCrest(crestPick.value());
         done();
@@ -1075,7 +1100,7 @@
 
       /* ================================================================
          Banner & War Council (the war mini-game, phase 2)
-         The War Turn: the target clan, the objective and the size of the
+         The War Action: the target clan, the objective and the size of the
          enemy force, then what to commit: defenders, Lieutenants, each kind
          of regiment you have and each kind of beast. The scouts' estimate of
          the enemy (its army is drawn up as soon as the choice is shown, and
@@ -1107,7 +1132,7 @@
       var maList = el('div', { class: 'tsi-bas-ma-list', 'data-test': 'military-actions' });
       var maBox = el('div', { class: 'tsi-bas-row tsi-bas-ma-box', hidden: true }, [
         label('Military Actions'),
-        muted('Each war action becomes a Military Action when its Bastion Turn comes: roll for the weather, morale and luck, then fight the battle on the War Table. An attack on your Bastion waits here too.'),
+        muted('Each war action becomes a Military Action when your forces muster, ' + plural(R.time(data).musterDays, 'day') + ' after it\'s queued: roll for the weather, morale and luck, then fight the battle on the War Table. An attack on your Bastion waits here too.'),
         maList
       ]);
       warCard.body.appendChild(maBox);
@@ -1115,14 +1140,14 @@
       var warsList = el('div', { class: 'tsi-bas-ma-list', 'data-test': 'wars' });
       var warsBox = el('div', { class: 'tsi-bas-row tsi-bas-wars-box', hidden: true, 'data-test': 'wars-box' }, [
         label('Wars'),
-        muted('While you’re at war with a Clan, it may attack your Bastion on any Advance Bastion Turn. A war ends by itself after ' +
-          plural(W.wars.quietTurns, 'Bastion turn') + ' without a battle between you.'),
+        muted('While you’re at war with a Clan, it may attack your Bastion: every ' + R.attackEvery(data) + ' days of the war it rolls a d' + W.wars.attackDie + ', and a 1 means it attacks. A war ends by itself after ' +
+          plural(W.wars.quietDays, 'day') + ' without a battle between you.'),
         warsList
       ]);
       warCard.body.appendChild(warsBox);
       TSI.append(warCard.body, el('div', { class: 'tsi-bas-row' }, [
-        label('War Turn'),
-        muted('Queue a war action. It resolves on the next Bastion Turn.'),
+        label('War Action'),
+        muted('Queue a war action. Your forces muster ' + plural(R.time(data).musterDays, 'day') + ' later.'),
         el('div', { class: 'tsi-bas-war-grid' }, [
           field('Target Clan', warTarget),
           field('Objective', warObjective),
@@ -1324,11 +1349,11 @@
         var tier = String(warTier.value);
         var key = R.missionKey(t, o, tier);
         var had = !!(state.warMissions && state.warMissions[key]);
-        var seen = had ? state.warMissions[key].seenTurn : undefined;
+        var seen = had ? state.warMissions[key].seenDay : undefined;
         var m = R.ensureMission(state, data, t, o, tier);
-        /* Saved when new, or when first shown this turn: the stamp keeps it
+        /* Saved when new, or when first shown today: the stamp keeps it
            from being pruned while Harry browses other missions. */
-        if (m && (!had || m.seenTurn !== seen)) save();
+        if (m && (!had || m.seenDay !== seen)) save();
         intelText.textContent = m ? R.missionEstimateLine(m, data) : 'No word from the scouts.';
         var wo = W.objectives[o];
         intelRule.textContent = wo ? wo.name + ': ' + wo.rule : '';
@@ -1422,7 +1447,7 @@
               cost('Political Capital', pc, pen.politicalCapital, -100, 100)
             ]),
             el('p', { 'data-test': 'declare-risk', text: (renew ? name + ' may still attack your Bastion' : 'While you’re at war, ' + name + ' may attack your Bastion') +
-              ': on every Advance Bastion Turn, a 1 on a d' + W.wars.attackDie + ' means they attack. The war ends after ' + plural(W.wars.quietTurns, 'Bastion turn') +
+              ': every ' + R.attackEvery(data) + ' days of the war, a 1 on a d' + W.wars.attackDie + ' means they attack. The war ends after ' + plural(W.wars.quietDays, 'day') +
               ' without a battle between you' + (renew ? ' (counted again from now)' : '') + ', or when you make peace in the War Council.' })
           ]),
           escValue: false,
@@ -1432,7 +1457,7 @@
 
       /* ================================================================
          The Military Action (Harry's request, 2 October 2026; phase 2)
-         When a war action comes due on Advance Bastion Turn, it becomes a
+         When a war action's forces muster (its due day), it becomes a
          Military Action: Begin Military Action (or Later, from this panel),
          roll Weather Conditions, Morale and Luck, then the War Table:
          deploy, Start Battle, and fight it activation by activation. The
@@ -1507,7 +1532,7 @@
             el('div', { class: 'tsi-bas-ma__main' }, [
               el('div', { class: 'tsi-bas-item__name', text: maName(ma) }),
               el('div', { class: 'tsi-bas-item__meta', text: isDefence(ma)
-                ? clanTitle(ma.targetKey) + ' attacked your Bastion on Bastion turn ' + ma.turn + '. Defending it: ' + (ma.undefended ? 'nobody' : R.militaryCommitLine(ma.commit))
+                ? clanTitle(ma.targetKey) + ' attacked your Bastion on ' + R.dayLabel(ma.day) + '. Defending it: ' + (ma.undefended ? 'nobody' : R.militaryCommitLine(ma.commit))
                 : 'Committed: ' + R.militaryCommitLine(ma.commit) }),
               el('div', { class: 'tsi-bas-ma__status', 'data-test': 'ma-status-' + i, text: R.militaryStatus(ma) }),
               R.patrolLine(ma) ? el('div', { class: 'tsi-bas-item__meta', 'data-test': 'ma-patrol-' + i, text: R.patrolLine(ma) }) : null,
@@ -1527,8 +1552,8 @@
          peace (refused, and saying why, while a war order or a battle with
          that Clan still waits). */
       function quietText(w) {
-        return w.quietLeft > 0 ? 'peace after ' + plural(w.quietLeft, 'more quiet Bastion turn', 'more quiet Bastion turns')
-          : 'peace on the next Bastion turn, once nothing between you is waiting';
+        return (w.quietLeft > 0 ? 'peace after ' + plural(w.quietLeft, 'more quiet day', 'more quiet days')
+          : 'peace on the next day, once nothing between you is waiting') + ' · their next attack roll: ' + R.dayLabel(w.next);
       }
       function renderWars() {
         var wars = R.warsList(state, data);
@@ -1539,7 +1564,7 @@
           warsList.appendChild(el('div', { class: 'tsi-bas-ma tsi-bas-war-row', 'data-test': 'wars-row-' + w.key }, [
             el('div', { class: 'tsi-bas-ma__main' }, [
               el('div', { class: 'tsi-bas-item__name', text: 'Clan ' + w.name }),
-              el('div', { class: 'tsi-bas-item__meta', 'data-test': 'wars-since-' + w.key, text: 'Since Bastion turn ' + w.since + ' · ' + quietText(w) }),
+              el('div', { class: 'tsi-bas-item__meta', 'data-test': 'wars-since-' + w.key, text: 'Since ' + R.dayLabel(w.since) + ' · ' + quietText(w) }),
               w.canMakePeace ? null : el('div', { class: 'tsi-bas-war-row__why', 'data-test': 'wars-why-' + w.key, text: w.peaceWhy })
             ]),
             el('div', { class: 'tsi-bas-actions' }, [
@@ -1558,7 +1583,7 @@
         done();
       });
 
-      /* The pop-up when the war comes due during Advance Bastion Turn. When
+      /* The pop-up when the war's forces muster (its due day). When
          an earlier attempt was called off, it says which rolls stand (so the
          "conditions are unchanged" pop-up isn't needed as well). */
       /* cut: a line when an older war order musters with less than it
@@ -1574,7 +1599,7 @@
             : 'An earlier attempt at this mission was called off, so the rolls it made stand: ' + R.conditionsText(data, ma) + '. Next: the ' + R.militaryRollTitle(ma.step) + ' roll. ' + later;
         var chips = again ? R.militarySummary(data, ma) : [];
         var p = hallModal(settling({
-          title: 'War Turn: ' + maName(ma),
+          title: 'War Action: ' + maName(ma),
           className: 'tsi-bas-modal tsi-bas-modal--hall tsi-bas-modal--military',
           body: [
             el('div', { class: 'tsi-bas-ma-pop' }, [
@@ -1630,7 +1655,7 @@
         var T = W.defence.treasuryLoss;
         var P = W.defence.repairs;
         var loss = 'You lose 1d' + T.die + ' × ' + T.pctPerPip + '% of your treasury (' + T.pctPerPip + '% to ' + (T.die * T.pctPerPip) + '%), and 1d' + P.die +
-          ' of your facilities, chosen at random, are Under Repair for ' + plural(P.turns, 'Bastion turn', 'Bastion turns') + ', this one included.';
+          ' of your facilities, chosen at random, are Under Repair for ' + plural(P.days, 'day') + ', today included.';
         var body = el('div', { class: 'tsi-bas-ma-pop tsi-bas-attack', 'data-test': 'attack' }, [
           el('div', { class: 'tsi-bas-attack__icon' }, swordsIcon()),
           el('div', { class: 'tsi-bas-ma-pop__headline tsi-bas-attack__headline', 'data-test': 'attack-text', text: headline }),
@@ -1667,7 +1692,7 @@
           : 'The rolls already made are unchanged: ' + R.conditionsText(data, ma) + '. Next: the ' + R.militaryRollTitle(ma.step) + ' roll.';
         var chips = R.militarySummary(data, ma);
         return hallModal(settling({
-          title: 'War Turn: ' + maName(ma),
+          title: 'War Action: ' + maName(ma),
           className: 'tsi-bas-modal tsi-bas-modal--hall tsi-bas-modal--military',
           body: [
             el('div', { class: 'tsi-bas-ma-pop', 'data-test': 'ma-unchanged' }, [
@@ -1718,9 +1743,9 @@
       /* Run a Military Action from wherever it has got to. Resolves when its
          rolls are done and the War Table is closed. */
       async function runMilitary(id) {
-        /* The "waiting" and "turn left part-way" notices have done their job
-           (the button says Finish Bastion Turn), and mustn't cover the War
-           Table's buttons or your own ground on the board. */
+        /* The "waiting" and "day left part-way" notices have done their job
+           (the button says Finish Day), and mustn't cover the War Table's
+           buttons or your own ground on the board. */
         if (maNotice) { maNotice.close(); maNotice = null; }
         if (turnNotice) { turnNotice.close(); turnNotice = null; }
         militaryRunning = true;
@@ -1745,7 +1770,7 @@
               var roll = await rollD20({ title: R.militaryRollTitle(step) + ': ' + maName(ma), mod: 0, dc: dc, settle: true });
               if (!life.alive) return 'stopped';
               if (!roll) {
-                log('War Turn', R.militaryName(ma) + ': the ' + R.militaryRollTitle(step) + ' roll was cancelled. The Military Action waits in the War Council.');
+                log('War Action', R.militaryName(ma) + ': the ' + R.militaryRollTitle(step) + ' roll was cancelled. The Military Action waits in the War Council.');
                 done();
                 return null;
               }
@@ -1883,7 +1908,8 @@
       var hallLevelBadge = el('div', { class: 'tsi-bas-hall-level', 'data-test': 'hall-level', text: 'L1' });
       var hallUpgradePill = pill('Upgrade', function () { onIssue('hall_of_emissaries', 'upgrade_hall', null); }, 'hall-upgrade', 'Upgrade Hall');
       var ledgerPill = pill('Council Ledger', function () { onLedger(); }, 'ledger', 'Hear the next dispute before the Arbitration Authority');
-      var hallSub = muted('Diplomatic actions take 1 Bastion Turn.');
+      var HALL_DAYS_TEXT = 'Each diplomatic action takes its own days, shown beside it.';
+      var hallSub = muted(HALL_DAYS_TEXT);
       var dipCard = card('diplomacy', 'Diplomacy & Trade', {
         collapsible: true,
         cls: 'tsi-bas-card--diplomacy',
@@ -1895,7 +1921,7 @@
               hallLevelBadge,
               hallUpgradePill,
               pill('Routes', function () { onRoutesMap(); }, 'routes', 'View active sea trade routes'),
-              pill('Resolve', function () { onResolveRoutes(); }, 'resolve', 'Resolve this turn\'s trade routes'),
+              pill('Resolve', function () { onResolveRoutes(); }, 'resolve', 'Settle the trade routes due to sail (each sails every 7 days)'),
               ledgerPill
             ]),
             hallSub
@@ -1909,12 +1935,17 @@
         el('div', { class: 'tsi-bas-dip-foot' }, [btn('Clear Diplomacy Records', function () { onClearDiplomacy(); }, 'tsi-btn--ghost', 'clear-diplomacy')])
       ]);
 
-      function recordBox(title, list) {
+      /* "Clan Karr • 21 days remaining (3 shipments) • +90 gp a shipment" (Harry,
+         8 October 2026); a delegation or summit has just its days. */
+      function recordBox(title, list, contracts) {
+        var every = R.time(data).every;
         var rows = (list || []).map(function (x) {
-          var extra = x.incomePerTurn ? ' • +' + x.incomePerTurn + ' gp/turn' : '';
+          var days = R.daysLeft(state, x);
+          var left = R.daysText(days) + ' remaining' + (contracts ? ' (' + R.shipmentsText(R.shipmentsLeft(x, every)) + ')' : '');
+          var extra = contracts && x.income ? ' • +' + x.income + ' gp a shipment' : '';
           return el('div', { class: 'tsi-bas-dip-row' }, [
             el('div', { class: 'tsi-bas-dip-row__name', text: x.title || 'Record' }),
-            el('div', { class: 'tsi-bas-dip-row__meta', text: (x.clan || x.pair || '—') + ' • ' + x.turnsLeft + ' turns remaining' + extra })
+            el('div', { class: 'tsi-bas-dip-row__meta', 'data-test': 'dip-left', text: (x.clan || x.pair || '—') + ' • ' + left + extra })
           ]);
         });
         return el('div', { class: 'tsi-bas-dip-box' }, [el('div', { class: 'tsi-bas-dip-box__title', text: title })].concat(rows.length ? rows : [muted('None.')]));
@@ -1923,14 +1954,14 @@
       function renderDiplomacy() {
         var d = state.diplomacy;
         var income = R.passiveIncome(state);
-        dipMeta.textContent = income > 0 ? 'Active passive income: +' + income + ' gp per Bastion Turn.' : 'No active contracts. Use the Hall of Emissaries to create agreements, summits and charters.';
+        dipMeta.textContent = income > 0 ? 'Active passive income: +' + income + ' gp a week (each contract sends a shipment every ' + R.time(data).every + ' days).' : 'No active contracts. Use the Hall of Emissaries to create agreements, summits and charters.';
         TSI.clear(dipBoxes);
         TSI.append(dipBoxes, [
-          recordBox('Trade Agreements', d.agreements),
-          recordBox('Delegations', d.delegations),
-          recordBox('Summits', d.summits),
-          recordBox('Arbitration', d.arbitrations),
-          recordBox('Consortiums', d.consortiums)
+          recordBox('Trade Agreements', d.agreements, true),
+          recordBox('Delegations', d.delegations, false),
+          recordBox('Summits', d.summits, false),
+          recordBox('Arbitration', d.arbitrations, true),
+          recordBox('Consortiums', d.consortiums, true)
         ]);
         var count = state.arbitration.queue.length;
         ledgerPill.textContent = count > 0 ? 'Council Ledger (' + count + ')' : 'Council Ledger';
@@ -1944,8 +1975,8 @@
         hallUpgradePill.disabled = !built || hallRepair > 0;
         hallUpgradePill.title = hallRepair ? repairText(hall, hallRepair) : 'Upgrade Hall';
         hallSub.textContent = !built ? 'Not built yet. Build it in Construction to unlock diplomacy actions.'
-          : hallRepair ? 'Under Repair until Bastion turn ' + hallRepair + ': no diplomatic actions until turn ' + (hallRepair + 1) + '.'
-          : 'Diplomatic actions take 1 Bastion Turn.';
+          : hallRepair ? 'Under Repair until Day ' + hallRepair + ': no diplomatic actions until Day ' + (hallRepair + 1) + '.'
+          : HALL_DAYS_TEXT;
         hallSub.classList.toggle('tsi-bas-repair-text', hallRepair > 0);
         TSI.clear(hallCard);
         var img = el('div', { class: 'tsi-bas-hall__img' }, el('img', { src: asset('facilities/' + B.facilityImages.hall_of_emissaries), alt: 'Hall of Emissaries' }));
@@ -1985,7 +2016,8 @@
           var est = status === 'disrupted' ? 0 : R.routePayout(state, r, 'success');
           return el('div', { class: 'tsi-bas-tn-route' }, [
             el('div', { class: 'tsi-bas-tn-route__name' }, [r.clan + ' ', el('span', { class: 'tsi-bas-muted', text: '(' + (r.commodity || 'goods') + ')' })]),
-            el('div', { class: 'tsi-bas-tn-route__meta' }, ['Risk: ', el('b', { text: cap(String(r.risk || 'low')) }), ' • Status: ', el('b', { text: cap(status) }), ' • Est. yield: ', el('b', { text: est + ' gp' })])
+            el('div', { class: 'tsi-bas-tn-route__meta' }, ['Risk: ', el('b', { text: cap(String(r.risk || 'low')) }), ' • Status: ', el('b', { text: cap(status) }), ' • Est. yield: ', el('b', { text: est + ' gp' }),
+              status === 'expired' ? null : [' • Next sails: ', el('b', { 'data-test': 'route-next', text: R.dayLabel(r.nextDay) })]])
           ]);
         }) : [muted('No routes recorded yet.')];
         return el('div', { class: 'tsi-bas-tn', 'data-test': 'trade-network' }, [
@@ -1997,7 +2029,7 @@
           ]),
           el('div', { class: 'tsi-bas-tn-grid' }, [
             stat('Market Stability', (tn.stability === undefined ? 75 : tn.stability) + '%', 'stability'),
-            stat('Expected Income / Turn', income + ' gp', 'expected-income'),
+            stat('Expected Income / Week', income + ' gp', 'expected-income'),
             stat('Yield Upgrades', '+' + (tn.yieldBonusPct || 0) + '%', 'yield'),
             stat('High-Risk Routing', tn.highRiskRouting ? 'Enabled' : 'Disabled', 'high-risk')
           ]),
@@ -2136,7 +2168,7 @@
             slotList,
             el('div', { class: 'tsi-bas-pending' }, [
               label('Pending Orders'),
-              el('div', { class: 'tsi-bas-muted' }, ['Orders complete when you click ', el('b', { text: 'Advance Bastion Turn' }), '.']),
+              muted('Each order completes on its day, as the Explorer\'s days pass. One waiting for a roll you cancelled shows Resolve.'),
               pendingList
             ])
           ])
@@ -2161,11 +2193,11 @@
       life.on(carousel, 'scroll', function () { life.raf(updateNav); }, { passive: true });
       life.on(window, 'resize', function () { life.raf(updateNav); });
 
-      /* "The Barracks is Under Repair until Bastion turn 7." (as R.issueOrder says it) */
-      function repairText(fac, until) { return 'The ' + fac.name + ' is Under Repair until Bastion turn ' + until + '.'; }
+      /* "The Barracks is Under Repair until Day 19." (as R.issueOrder says it) */
+      function repairText(fac, until) { return 'The ' + fac.name + ' is Under Repair until Day ' + until + '.'; }
       /* "(Under Repair)" beside a facility's name. */
       function repairLabel(until) {
-        return el('span', { class: 'tsi-bas-repair-label', 'data-test': 'repair-label', title: 'Working again on Bastion turn ' + (until + 1) }, '(Under Repair)');
+        return el('span', { class: 'tsi-bas-repair-label', 'data-test': 'repair-label', title: 'Working again on Day ' + (until + 1) }, '(Under Repair)');
       }
 
       /* One of a facility's functions (4499-4558). */
@@ -2194,9 +2226,11 @@
           type: 'button', class: 'tsi-btn tsi-btn--small tsi-bas-fn__issue', 'data-test': 'issue-' + key, disabled: locked || cd > 0 || repair > 0,
           title: repair ? repairText(fac, repair) : null,
           onclick: function () { onIssue(fac.id, fn.id, select); }
-        }, repair ? 'Under Repair' : cd > 0 ? 'Cooldown: ' + cd + ' turn' + (cd === 1 ? '' : 's') : 'Issue Order');
+        }, repair ? 'Under Repair' : cd > 0 ? 'Cooldown: ' + R.daysText(cd) : 'Issue Order');
+        var days = R.orderDays(fn);
         return el('div', { class: 'tsi-bas-fn' }, [
           el('div', { class: 'tsi-bas-fn__head' }, [el('div', { class: 'tsi-bas-fn__name', text: fn.label }), el('div', { class: 'tsi-bas-fn__cost', text: R.computeFnCost(state, fac, fn, null).costText || '0gp' })]),
+          el('div', { class: 'tsi-bas-fn__days', 'data-test': 'days-' + key, text: 'Takes ' + R.daysText(days) }),
           chooser,
           issue,
           !isCraft && fn.notes ? el('div', { class: 'tsi-bas-fn__notes', text: fn.notes }) : null
@@ -2347,8 +2381,9 @@
           if (row.entry) {
             var fac = R.facility(data, row.entry.facId);
             var fixing = row.entry.status === 'building' ? 0 : R.underRepair(state, row.entry.facId);
-            var status = row.entry.status === 'building' ? 'Under construction • ' + Number(row.entry.remaining || 0) + ' turn(s) remaining'
-              : fixing ? 'Built • Under Repair until Bastion turn ' + fixing : 'Built • Active';
+            var left = R.buildDaysLeft(state, row.entry);
+            var status = row.entry.status === 'building' ? 'Under construction • ' + R.daysText(left) + ' left (ready on Day ' + row.entry.readyDay + ')'
+              : fixing ? 'Built • Under Repair until Day ' + fixing : 'Built • Active';
             slotList.appendChild(el('div', { class: 'tsi-bas-slot' + (row.overCapacity ? ' tsi-bas-slot--over' : ''), 'data-test': 'slot-' + row.index }, [
               el('div', { class: 'tsi-bas-slot__name', text: fac ? fac.name : row.entry.facId }),
               muted(status),
@@ -2371,7 +2406,7 @@
             var fns = (f.functions || []).slice(0, 8).map(function (fn) { return fn.label || fn.id || 'Action'; });
             return {
               title: f.name || f.id,
-              parts: [req ? muted('Unlocks at Party Level ' + req) : null].concat(fns.length ? [muted('What it does:'), tipList(fns)] : [muted('No actions listed.')])
+              parts: [req ? muted('Unlocks at Party Level ' + req) : null, muted('Takes ' + R.daysText(R.buildDaysForRequiredLevel(req, data)) + ' to build.')].concat(fns.length ? [muted('What it does:'), tipList(fns)] : [muted('No actions listed.')])
             };
           });
           slotList.appendChild(el('div', { class: 'tsi-bas-slot tsi-bas-slot--empty', 'data-test': 'slot-' + row.index }, [
@@ -2386,15 +2421,22 @@
           /* An order at a facility Under Repair waits until it's working again. */
           var fixing = R.underRepair(state, o.facId);
           var at = fixing ? R.facility(data, o.facId) : null;
-          pendingList.appendChild(el('div', { class: 'tsi-bas-item' }, [
+          /* Due (its day has come) but not done: a roll was cancelled, so it
+             waits for Resolve (or comes up again the next day). */
+          var waiting = R.isDue(state, o) && !fixing;
+          var when = waiting ? 'Due now: waiting for your roll' : 'Due Day ' + o.dueDay + ' (' + R.inDays(state.day, o.dueDay) + ')';
+          pendingList.appendChild(el('div', { class: 'tsi-bas-item' + (waiting ? ' tsi-bas-item--due' : '') }, [
             el('div', null, [
               el('div', { class: 'tsi-bas-item__name', text: o.label }),
-              el('div', { class: 'tsi-bas-item__meta', 'data-test': 'pending-meta-' + i, text: 'Completes on Turn ' + o.completeTurn + (fixing ? ' • waiting: the ' + (at ? at.name : o.facId) + ' is Under Repair until Bastion turn ' + fixing : '') })
+              el('div', { class: 'tsi-bas-item__meta', 'data-test': 'pending-meta-' + i, text: when + (fixing ? ' • waiting: the ' + (at ? at.name : o.facId) + ' is Under Repair until Day ' + fixing : '') })
             ]),
-            btn('Cancel', function () {
-              logAll([R.cancelOrder(state, o.id, data)]);
-              done();
-            }, 'tsi-btn--ghost', 'cancel-' + i)
+            el('div', { class: 'tsi-bas-actions' }, [
+              waiting ? btn('Resolve', function () { onResolveOrder(o.id); }, 'tsi-btn--primary', 'resolve-' + i, { disabled: turnRunning || militaryRunning }) : null,
+              btn('Cancel', function () {
+                logAll([R.cancelOrder(state, o.id, data)]);
+                done();
+              }, 'tsi-btn--ghost', 'cancel-' + i)
+            ])
           ]));
         });
 
@@ -2415,8 +2457,8 @@
               imgFile ? el('img', { class: 'tsi-bas-fac__img', src: asset('facilities/' + imgFile), alt: fac.name }) : el('div', { class: 'tsi-bas-fac__img tsi-bas-fac__img--empty' }, muted('No image')),
               el('div', { class: 'tsi-bas-fac__overlay' }, [
                 el('div', { class: 'tsi-bas-fac__title' }, repair ? [fac.name, ' ', repairLabel(repair)] : fac.name),
-                repair ? el('div', { class: 'tsi-bas-fac__repair', 'data-test': 'repair-note-' + fac.id, text: 'Under Repair until Bastion turn ' + repair + ': no orders, and orders already here wait. Working again on turn ' + (repair + 1) + '.' })
-                  : muted('Built • Functions take 1 Bastion Turn')
+                repair ? el('div', { class: 'tsi-bas-fac__repair', 'data-test': 'repair-note-' + fac.id, text: 'Under Repair until Day ' + repair + ': no orders, and orders already here wait. Working again on Day ' + (repair + 1) + '.' })
+                  : muted('Built • Each order shows the days it takes')
               ]),
               el('span', { class: 'tsi-bas-fac__tag' + (repair ? ' tsi-bas-fac__tag--repair' : ''), text: repair ? 'Under Repair' : 'Active' })
             ]),
@@ -2478,10 +2520,11 @@
         var extra;
         function projected(text) { return el('div', { class: 'tsi-bas-res-summary' }, [el('b', { text: 'Projected:' }), ' ' + text]); }
         if (kind === 'trade_agreement') {
-          var defaultDur = [1, 3, 6].indexOf(fn.special.durationTurns) !== -1 ? fn.special.durationTurns : 3;
-          durSel = el('select', { class: 'tsi-input', 'data-test': 'hall-duration' }, [1, 3, 6].map(function (t) { return el('option', { value: String(t), text: t + ' turn' + (t === 1 ? '' : 's') }); }));
-          durSel.value = String(defaultDur);
-          extra = [field('Duration', durSel), projected('A negotiation roll will determine income/turn, duration stability, and Political Capital change.')];
+          /* The agreement runs the weeks chosen, a shipment each week (Harry, 8 October 2026). */
+          var weeks = B.tradeAgreementWeeks || [1, 3, 6];
+          durSel = el('select', { class: 'tsi-input', 'data-test': 'hall-duration' }, weeks.map(function (w) { return el('option', { value: String(w), text: w + (w === 1 ? ' week' : ' weeks') + ' (' + w + (w === 1 ? ' shipment' : ' shipments') + ')' }); }));
+          durSel.value = String(B.tradeAgreementDefaultWeeks || 3);
+          extra = [field('Duration', durSel), projected('A negotiation roll will determine the income per shipment, a week or two more or less, and the Political Capital change.')];
         } else if (kind === 'host_delegation') {
           toneSel = el('select', { class: 'tsi-input', 'data-test': 'hall-tone' }, [
             el('option', { value: 'conciliatory', text: 'Conciliatory (safer)' }),
@@ -2502,66 +2545,155 @@
         if (!ok) return null;
         var idx = R.clampInt(clanSel.value, 0);
         var meta = {};
-        if (durSel) meta.durationTurns = R.clampInt(durSel.value, 1, 30);
+        if (durSel) meta.weeks = R.clampInt(durSel.value, 1, 52);
         if (toneSel) meta.tone = String(toneSel.value || 'assertive');
         meta.targetClan = options[idx] ? String(options[idx].label) : '';
         return { optionIdx: idx, meta: meta };
       }
 
       /* ================================================================
-         Advance Bastion Turn (resumable; BAS-02, BAS-03, BAS-10, BAS-12, BAS-13)
+         Passing days, following the Explorer (resumable; BAS-02, BAS-03,
+         BAS-10, BAS-12, BAS-13; the days overhaul, 8 October 2026)
          ================================================================ */
       var turnNotice = null;
+      var explorerDay = null;   /* the Explorer's day, as last read */
       function renderTurnButton() {
-        var tp = state.turnInProgress;
-        advanceBtn.textContent = tp ? 'Finish Bastion Turn ' + tp.turn : 'Advance Bastion Turn (+7 days)';
+        var dip = state.dayInProgress;
+        var behind = state.anchored && explorerDay !== null && explorerDay > state.day;
+        advanceBtn.hidden = !dip || turnRunning;
+        advanceBtn.textContent = dip ? 'Finish Day ' + dip.day : 'Finish Day';
         advanceBtn.disabled = turnRunning || militaryRunning;
+        dayStatus.textContent = turnRunning && dip ? 'Passing Day ' + dip.day + '…'
+          : dayText() + (behind ? ' · Day ' + explorerDay + ' in the Explorer' : '');
       }
+      /* Days pass by themselves; the button only finishes a day left part-way. */
       var onAdvance = TSI.oneAtATime(function () {
         if (turnRunning || militaryRunning) return false;
+        return passDays();
+      });
+      life.on(advanceBtn, 'click', function () { onAdvance(); });
+
+      /* Read the Explorer's day (its save, as last saved, even from another
+         window) and act on it: the first time, the Bastion moves to it;
+         after that, each new day is passed in turn, and a day that went back
+         (Reset Travel) moves every Bastion day back with it. */
+      var clockBusy = false;
+      function checkClock() {
+        if (clockBusy || !life.alive) return Promise.resolve();
+        clockBusy = true;
+        return TSI.store.fresh('tsi.explorer.save', null).then(function (ex) {
+          var d = ex && ex.travel ? Number(ex.travel.day) : NaN;
+          explorerDay = isFinite(d) && d >= 1 ? Math.floor(d) : null;
+          if (!life.alive || turnRunning || militaryRunning) return null;
+          var act = R.clockAction(state, explorerDay);
+          if (act.kind === 'anchor') {
+            R.anchor(state, act.to);
+            done();
+          } else if (act.kind === 'shift') {
+            var from = state.day;
+            R.shiftDays(state, act.by);
+            log('Days', 'The Explorer\'s day went back (Reset Travel): the Bastion moves from Day ' + from + ' to Day ' + state.day + ', and everything due keeps its days.');
+            done();
+          } else if (act.kind === 'pass' && (act.days > 0 || state.dayInProgress)) {
+            return onAdvance();
+          } else {
+            renderTurnButton();
+          }
+          return null;
+        }).catch(function (err) {
+          TSI.reportError(err, 'reading the Explorer\'s day');
+        }).then(function () { clockBusy = false; });
+      }
+      life.setInterval(function () { checkClock(); }, 2000);
+      life.on(document, 'visibilitychange', function () { if (document.visibilityState === 'visible') checkClock(); });
+
+      /* Pass every day up to the Explorer's, one at a time, each saved step
+         by step; then "The Ironbow sends word…". */
+      function passDays() {
         turnRunning = true;
         renderTurnButton();
         var finish = function () {
           turnRunning = false;
           if (life.alive) renderAll();
         };
-        return runTurn().then(finish, function (err) { finish(); throw err; });
-      });
-      life.on(advanceBtn, 'click', function () { onAdvance(); });
-
-      async function runTurn() {
-        if (!state.turnInProgress) {
-          R.startTurn(state);
-          done();
-        }
-        var tp = state.turnInProgress;
-        if (tp.stage === 'trade') {
-          if (R.routesDueThisTurn(state)) {
-            if ((await resolveRoutes()) === 'stopped') return;
+        return (async function () {
+          for (;;) {
+            if (!life.alive) return 'stopped';
+            if (!state.dayInProgress) {
+              if (explorerDay === null || explorerDay <= state.day || !state.anchored) break;
+              R.startDay(state, data);
+              done();
+            }
+            if ((await runDay()) === 'stopped') return 'stopped';
           }
-          tp.stage = 'tick';
+          if (state.word && state.word.length) await showWord();
+          return null;
+        }()).then(function (r) { finish(); return r; }, function (err) { finish(); throw err; });
+      }
+
+      /* One day, from wherever it had got to. */
+      async function runDay() {
+        var dp = state.dayInProgress;
+        if (dp.stage === 'trade') {
+          if (R.routesDueToday(state)) {
+            if ((await resolveRoutes(true)) === 'stopped') return 'stopped';
+          }
+          R.finishRoutes(state);
           save();
         }
-        if (tp.stage === 'tick') {
-          R.tickTurn(state, data);
-          done();
-        }
         for (;;) {
-          if (!life.alive) return;
-          var due = R.dueOrders(state, tp.skipped);
+          if (!life.alive) return 'stopped';
+          var due = R.dueOrders(state, dp.skipped);
           if (!due.length) break;
-          if ((await completeOrder(due[0])) === 'stopped') return;
+          if ((await completeOrder(due[0], true)) === 'stopped') return 'stopped';
         }
-        /* While at war: does a Clan attack? Rolled once a turn, and saved at
-           once, so a turn left part-way can't roll it again (the attack waits
+        /* While at war: does a Clan attack? Rolled once a day, and saved at
+           once, so a day left part-way can't roll it again (the attack waits
            in the War Council). */
         var attack = R.rollWarAttack(state, data, rand);
-        if (attack) done(); else save();
-        if (attack && (await defendBastion(attack)) === 'stopped') return;
-        R.finishTurn(state, data.events, rand);
+        if (attack) {
+          R.addWord(state, R.defenceText(data, attack.targetKey));
+          done();
+        } else save();
+        if (attack && (await defendBastion(attack)) === 'stopped') return 'stopped';
+        R.finishDay(state, data, data.events, rand);
         if (turnNotice) { turnNotice.close(); turnNotice = null; }
         done();
+        return null;
       }
+
+      /* "The Ironbow sends word…": everything the days just passed brought,
+         one line each, grouped by day. Closing it clears it. */
+      function showWord() {
+        var word = state.word.slice();
+        var body = [];
+        word.forEach(function (w) {
+          if (word.length > 1) body.push(el('div', { class: 'tsi-bas-word__day', text: R.dayLabel(w.day) }));
+          body.push(el('ul', { class: 'tsi-bas-res-list tsi-bas-word', 'data-test': 'word-lines' }, w.lines.map(function (l) { return el('li', { text: l }); })));
+        });
+        return plainModal({
+          title: 'The Ironbow sends word…',
+          className: 'tsi-bas-modal tsi-bas-modal--word',
+          body: body,
+          actions: [{ label: 'Close', value: true, primary: true }],
+          onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'ironbow-word'); }
+        }).then(function () {
+          if (!life.alive) return;
+          state.word = state.word.filter(function (w) { return word.indexOf(w) === -1; });
+          save();
+        });
+      }
+
+      /* Resolve an order that's due but waiting (its roll was cancelled). */
+      var onResolveOrder = TSI.oneAtATime(function (id) {
+        if (turnRunning || militaryRunning) return false;
+        var o = state.pendingOrders.filter(function (x) { return x.id === id; })[0];
+        if (!o || !R.isDue(state, o) || R.underRepair(state, o.facId)) return false;
+        turnRunning = true;
+        renderTurnButton();
+        var finish = function () { turnRunning = false; if (life.alive) renderAll(); };
+        return completeOrder(o, false).then(finish, function (err) { finish(); throw err; });
+      });
 
       /* The attack pop-up, then (Defend the Ironbow) the Military Action. */
       async function defendBastion(ma) {
@@ -2571,13 +2703,16 @@
         return life.alive ? null : 'stopped';
       }
 
-      /* One due order (819-1254). Each is saved as soon as it's done. */
-      async function completeOrder(o) {
+      /* One due order (819-1254). Each is saved as soon as it's done. inDay:
+         it's being completed as a day passes (so it goes into the day's word,
+         and a cancelled roll skips it for the rest of the day). */
+      async function completeOrder(o, inDay) {
         var kind = R.orderKind(data, o);
         if (kind === 'network') {
           var net = R.completeNetworkUpgrade(state, o);
           R.removeOrder(state, o.id);
           log(net.log[0], net.log[1]);
+          if (inDay) R.addWord(state, (o.label || 'Trade Network') + ' is complete.');
           done();
           await hallModal({
             title: net.title,
@@ -2594,6 +2729,7 @@
              come due twice; then Begin Military Action, or Later. */
           var ordered = R.orderCommit(state, data, o);
           var ma = R.beginMilitaryAction(state, data, o, rand);
+          if (inDay && ma) R.addWord(state, 'Your army is ready to march on ' + ma.targetName + ' (' + R.militaryName(ma).split(' vs ')[0] + ').');
           done();
           /* Nothing committed to it was still free (the log says so): the order lapsed. */
           if (!ma) return life.alive ? null : 'stopped';
@@ -2607,7 +2743,8 @@
           var lab = o.label || (p.fac.name + ': ' + p.fn.label);
           if (p.blocked > 0) {
             R.removeOrder(state, o.id);
-            log('Order Completed', lab + ' → Blocked (cooldown ' + p.blocked + ' turns remaining).');
+            log('Order Completed', lab + ' → Blocked (cooldown: ' + R.daysText(p.blocked) + ' left).');
+            if (inDay) R.addWord(state, lab + ': blocked (the Hall is cooling down).');
             done();
             return null;
           }
@@ -2617,8 +2754,11 @@
             var got = await rollD20({ title: q.title, mod: q.mod, dc: q.dc });
             if (!life.alive) return 'stopped';
             if (!got) {
-              R.skipOrder(state, o.id);
-              log('Orders', lab + ' → Roll cancelled. The order stays pending for the next Bastion Turn.');
+              if (inDay) {
+                R.skipOrder(state, o.id);
+                R.addWord(state, lab + ' needs your roll (press Resolve on it).');
+              }
+              log('Orders', lab + ' → Roll cancelled. The order stays due: press Resolve on it, or it comes up again tomorrow.');
               done();
               return null;
             }
@@ -2627,6 +2767,7 @@
           var res = R.applyEmissary(state, data, o, p, rolls, rand);
           R.removeOrder(state, o.id);
           log(res.log[0], res.log[1]);
+          if (inDay) R.addWord(state, lab + ': ' + R.formatTier(res.tier) + '.');
           done();
           await emissaryResult(p, res);
           return life.alive ? null : 'stopped';
@@ -2635,6 +2776,7 @@
           var lines = R.completeSimpleOrder(state, data, o, rand);
           R.removeOrder(state, o.id);
           logAll(lines);
+          if (inDay) (lines || []).forEach(function (l) { R.addWord(state, l[1]); });
           done();
           return null;
         }
@@ -2671,16 +2813,17 @@
          ================================================================ */
       /* Each route is saved as it's settled, so none can pay twice in a turn,
          even after a cancelled roll or a press of Enter (BAS-05, BAS-11). */
-      async function resolveRoutes() {
+      /* Each route sails every 7 days from the day it opened; the ones due
+         settle here, as a day passes (inDay) or from the Hall's Resolve. */
+      async function resolveRoutes(inDay) {
         var title = 'Ironbow Trade Network';
         if (!state.tradeNetwork.active) { await hallNote(title, 'No active Trade Consortium. Establish a Trade Consortium to open routes.'); return null; }
-        if (state.tradeNetwork.lastResolvedTurn === state.turn) { await hallNote(title, 'Routes have already been resolved for this Bastion Turn.'); return null; }
-        if (!R.liveRoutes(state).length) { await hallNote(title, 'No routes exist yet. Activate Trade Consortium targeting a clan to open a route.'); return null; }
+        var live = R.liveRoutes(state);
+        if (!live.length) { await hallNote(title, 'No routes exist yet. Activate Trade Consortium targeting a clan to open a route.'); return null; }
         var routes = R.routesToSettle(state);
         if (!routes.length) {
-          R.finishRoutes(state);
-          done();
-          await hallNote(title, 'Routes have already been resolved for this Bastion Turn.');
+          var next = live.reduce(function (m, r) { return m === null || r.nextDay < m ? r.nextDay : m; }, null);
+          await hallNote(title, 'No routes are due to sail. Each sails every ' + R.time(data).every + ' days' + (next !== null ? '; the next on Day ' + next + '.' : '.'));
           return null;
         }
         var total = 0;
@@ -2692,7 +2835,8 @@
             roll = await rollD20({ title: 'Resolve Route: ' + r.clan + ' (' + r.commodity + ')', mod: 0, dc: R.routeDC(state, r) });
             if (!life.alive) return 'stopped';
             if (!roll) {
-              log('Trade Network', 'Route resolution cancelled.');
+              log('Trade Network', 'Route resolution cancelled. The routes still due wait: press Resolve in the Hall.');
+              if (inDay) routes.slice(i).forEach(function (x) { R.addWord(state, 'The sea route to ' + x.clan + ' needs a roll (press Resolve in the Hall).'); });
               done();
               return 'cancelled';
             }
@@ -2702,9 +2846,9 @@
           lines.push(out.line);
           save();
         }
-        R.finishRoutes(state);
         var stab = state.tradeNetwork.stability === undefined ? 75 : state.tradeNetwork.stability;
         log('Trade Network', 'Routes resolved. +' + total + ' gp. Market Stability ' + stab + '%.');
+        if (inDay) R.addWord(state, 'Trade routes sailed: +' + total + ' gp.');
         done();
         await hallModal({
           title: 'Trade Routes Resolved',
@@ -2723,11 +2867,11 @@
         return life.alive ? null : 'stopped';
       }
       var onResolveRoutes = TSI.oneAtATime(function () {
-        if (turnRunning) return false;
+        if (turnRunning || militaryRunning) return false;
         turnRunning = true;
         renderTurnButton();
         var finish = function () { turnRunning = false; if (life.alive) renderAll(); };
-        return resolveRoutes().then(finish, function (err) { finish(); throw err; });
+        return resolveRoutes(false).then(finish, function (err) { finish(); throw err; });
       });
 
       /* The Sea Trade Routes map (2631-2716). Each clan with a running route
@@ -2735,14 +2879,14 @@
       var onRoutesMap = TSI.oneAtATime(function () {
         var routes = state.tradeNetwork.routes.filter(function (r) {
           if (!r || r.status === 'removed') return false;
-          if (r.expiresTurn !== undefined && r.expiresTurn !== null && state.turn > r.expiresTurn) return false;
+          if (r.expiresDay !== undefined && r.expiresDay !== null && state.day > r.expiresDay) return false;
           return String(r.status || '').toLowerCase() !== 'expired';
         });
         var clans = [];
         routes.forEach(function (r) { var c = String(r.clan || '').trim(); if (c && clans.indexOf(c) === -1) clans.push(c); });
         /* Trade Agreements are listed too, but as "Clan Blackstone" they find no route art (BAS-27, kept). */
         state.diplomacy.agreements.forEach(function (a) {
-          if (!a || a.turnsLeft <= 0) return;
+          if (!a || !(a.endDay > state.day)) return;
           var c = String(a.clan || '').trim();
           if (c && clans.indexOf(c) === -1) clans.push(c);
         });
@@ -2751,7 +2895,7 @@
           return el('img', { class: 'tsi-bas-trademap__route', src: asset(B.routeOverlays[c.toLowerCase()]), alt: c + ' trade route', 'data-clan': c });
         });
         var list = routes.length ? el('ul', { class: 'tsi-bas-res-list' }, routes.map(function (r) {
-          var meta = (r.commodity || 'Goods') + ' • ' + (r.risk || 'medium') + ' risk • ' + R.clampInt(r.yieldGP || 0, 0, 999999) + ' gp/turn';
+          var meta = (r.commodity || 'Goods') + ' • ' + (r.risk || 'medium') + ' risk • ' + R.clampInt(r.yieldGP || 0, 0, 999999) + ' gp a sailing, every ' + R.time(data).every + ' days';
           return el('li', null, [el('b', { text: String(r.clan || 'Unknown') }), ' — ' + (r.status === 'disrupted' ? 'DISRUPTED' : 'ACTIVE') + ' ', el('span', { class: 'tsi-bas-muted', text: '(' + meta + ')' })]);
         })) : muted('No active routes yet. Create a Trade Consortium to open at least one route.');
         return hallModal({
@@ -2784,19 +2928,20 @@
           var b = String(d.b || B.consortiumName);
           var rc = d.meta && d.meta.routeClan ? String(d.meta.routeClan) : '';
           var commodity = d.meta && d.meta.commodity ? String(d.meta.commodity) : '';
-          var disruptedTurn = d.meta && d.meta.disruptedTurn !== undefined && d.meta.disruptedTurn !== null ? String(d.meta.disruptedTurn) : String(d.createdTurn === undefined ? '?' : d.createdTurn);
+          var dayOf = function (n) { return typeof n === 'number' ? R.dayLabel(n) : '?'; };
+          var disruptedOn = d.meta && typeof d.meta.disruptedDay === 'number' ? dayOf(d.meta.disruptedDay) : dayOf(d.createdDay);
           var stabAt = d.meta && d.meta.stabilityAtFiling !== undefined && d.meta.stabilityAtFiling !== null ? String(d.meta.stabilityAtFiling) : String(R.clampInt(state.tradeNetwork.stability === undefined ? 75 : state.tradeNetwork.stability, 0, 100));
           function choose(choice) { return function () { if (closeLedger) closeLedger({ id: d.id, choice: choice }); }; }
           return el('div', { class: 'tsi-bas-dispute' }, [
             el('div', { class: 'tsi-bas-dispute__top' }, [
               el('div', null, [el('b', { text: a }), ' vs ', el('b', { text: b })]),
-              muted('Filed Turn ' + (d.createdTurn === undefined ? '?' : d.createdTurn))
+              muted('Filed ' + dayOf(d.createdDay))
             ]),
             el('div', { class: 'tsi-bas-dispute__reason', text: String(d.reason || '') }),
             el('div', { class: 'tsi-bas-muted' }, [
               'Route: ', el('b', { text: rc || a }), commodity ? [' • Commodity: ', el('b', { text: commodity })] : null,
               el('br'),
-              'Disrupted on Turn ', el('b', { text: disruptedTurn }), ' • Stability at filing: ', el('b', { text: stabAt + '%' })
+              'Disrupted on ', el('b', { text: disruptedOn }), ' • Stability at filing: ', el('b', { text: stabAt + '%' })
             ]),
             muted('Choose a ruling:', 'tsi-bas-dispute__choose'),
             el('div', { class: 'tsi-bas-tn-btns' }, [
@@ -2948,7 +3093,7 @@
       var onDownload = TSI.oneAtATime(function () {
         return TSI.backup.exportTool('bastion').then(function () {
           if (!life.alive) return;
-          log('Save File', 'Downloaded JSON save file.');
+          log('Save File', 'Downloaded the campaign save (the Explorer and the Bastion together).');
           done();
         });
       });
@@ -3007,9 +3152,14 @@
         tagAll();
       }
 
-      /* A turn left part-way (the window closed during a roll): finish it with the same button. */
-      if (state.turnInProgress) {
-        turnNotice = notice('Bastion Turn ' + state.turnInProgress.turn + ' was left part-way through. Press Finish Bastion Turn to complete it; nothing has been lost.', { type: 'warn', id: 'tsi-bas-turn' });
+      /* The old Bastion set aside: say so. */
+      if (setAside) {
+        notice('Your Bastion was saved in Bastion turns, before the Bastion counted in days, so it has been set aside (kept, not deleted: "Back up everything" includes it). A new Bastion starts on the Explorer\'s day.', { type: 'warn', title: 'A new Bastion, in days.', id: 'tsi-bas-old-save' });
+      }
+      /* A day left part-way (the window closed during a roll): it carries on
+         by itself in a moment, or with Finish Day. */
+      if (state.dayInProgress) {
+        turnNotice = notice('Day ' + state.dayInProgress.day + ' was left part-way through. It carries on now; nothing has been lost.', { type: 'warn', id: 'tsi-bas-turn' });
         life.onStop(function () { if (turnNotice) turnNotice.close(); });
       }
 
@@ -3037,6 +3187,8 @@
       renderAll();
       /* The first open saves the starting Bastion, as the old tool did. */
       if (!saved) save();
+      /* Read the Explorer's day straight away (then every 2 seconds). */
+      checkClock();
     },
 
     validateImport: function (records) {

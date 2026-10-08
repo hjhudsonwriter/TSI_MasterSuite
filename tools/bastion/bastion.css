@@ -1070,3 +1070,18 @@
   .tsi-tool--bastion .tsi-bas-wh__row { grid-template-columns: minmax(0, 1fr); }
   .tsi-tool--bastion .tsi-bas-fac { flex-basis: 86%; }
 }
+
+/* ---------- Days (the days overhaul, 8 October 2026) ---------- */
+.tsi-tool--bastion .tsi-bas-daystatus {
+  font-family: var(--tsi-font-display); font-size: 13px; letter-spacing: var(--tsi-track-label);
+  color: var(--tsi-gold-text); white-space: nowrap; padding: 6px 10px;
+  border: 1px solid var(--tsi-line); border-radius: 999px;
+}
+.tsi-tool--bastion .tsi-bas-fn__days { font-size: 12px; color: var(--tsi-text-soft); margin: -2px 0 4px; }
+.tsi-tool--bastion .tsi-bas-item--due { border-color: var(--tsi-gold); }
+.tsi-tool--bastion .tsi-bas-event__next { margin-top: 8px; }
+.tsi-bas-modal--word .tsi-bas-word__day {
+  margin: 10px 0 4px; font-family: var(--tsi-font-display); font-size: var(--tsi-fs-label);
+  letter-spacing: var(--tsi-track-label); text-transform: uppercase; color: var(--tsi-gold-text);
+}
+.tsi-bas-modal--word .tsi-bas-word__day:first-child { margin-top: 0; }

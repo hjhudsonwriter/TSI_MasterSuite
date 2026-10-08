@@ -1557,6 +1557,9 @@
       life.onStop(function () { ns.debug = null; });
 
       renderAll();
+      /* The first open saves the starting journey (Day 1), so the Bastion,
+         which follows the Explorer's day, can start counting from it. */
+      if (!saved) saveNow();
       /* An event left part-way (a reload, a tool switch, Edge closed) picks up where it was. */
       if (state.journey.current) showEvents([{ kind: 'journey' }]);
     },
