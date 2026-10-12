@@ -1,14 +1,15 @@
-BASTION FACILITY OVERLAYS
+BASTION EXPANSION: SEVEN FACILITIES
 
-Eight separate transparent PNG assets: Library, Laboratory, Greenhouse, War Room, Hall of Emissaries, Shrine of Aurush, Shrine of Telluria, Shrine of Pelagos.
+Wyvern Roost; Griffin Tower; Dire Wolf Den; Weavers and Sailmakers Hall; Stone Quarry and Masonworks; Fishery and Smokehouse; Timber Yard and Sawmill.
 
-EASIEST USE
-Use Bastion_Base_3000x1250.jpg as the background. Put each image in Overlays_3000x1250 at x=0, y=0, with exactly the same displayed width and height as the background. Each facility is already sized and positioned. Show or hide each overlay independently. All eight can be displayed together.
+Use the SAME 3000 x 1250 base and the previous eight facility overlays. Existing overlay positions are unchanged.
 
-COMPACT ASSETS
-Cropped/ contains the same transparent facilities with empty margins removed. placements.json supplies their exact x, y, width and height on a 3000 x 1250 board. Do not stretch these cropped images across the entire board. Scale positions and sizes proportionally if displaying a smaller board.
+Overlays_3000x1250: place every PNG at x=0, y=0 over the existing base, displayed at identical width and height. Show/hide each independently. These are transparent PNGs, with placement and size already applied.
 
-Bastion_All_Facilities_Preview.jpg shows all eight together over the supplied base. Original base facilities are retained. PNG files have genuine alpha transparency. JPEG preview and background have no transparency.
+Cropped: compact versions at their intended board size. placements.json gives x/y/width/height on a 3000 x 1250 board. Scale all coordinates and dimensions together if displaying the board smaller.
 
-DESIGN
-Built-in image generation was used to reimagine the labelled facilities in the new bastion perspective and painted style. Designs are adaptations, not literal cutouts of the old map. Scale and placement were checked together on the provided scene.
+Bastion_All_Facilities_Preview.jpg shows all fifteen optional facilities together with the starting facilities. The previous eight PNGs are not duplicated in this pack.
+
+These are compact initial facilities, not illustrations of every level 1-5 upgrade. The roost contains a generic resting brown wyvern representing the occupied facility; no specific appearance for Elara's wyvern was supplied. Griffin Tower and Dire Wolf Den are unoccupied.
+
+All seven were created with the built-in image-generation tool from the supplied descriptions and existing bastion scene, with matching painted materials, lighting and low elevated perspective. Export sizes/positions were checked on the full scene. Full-size source artwork is provided in High_Resolution if you need larger asset displays.

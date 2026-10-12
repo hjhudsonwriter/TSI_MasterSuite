@@ -5,68 +5,60 @@
   },
   "placements": [
     {
-      "name": "01_Library",
-      "file": "Cropped/01_Library.png",
-      "x": 54,
-      "y": 261,
-      "width": 324,
-      "height": 187
+      "name": "09_Wyvern_Roost",
+      "file": "Cropped/09_Wyvern_Roost.png",
+      "x": 1954,
+      "y": 326,
+      "width": 255,
+      "height": 144
     },
     {
-      "name": "02_Laboratory",
-      "file": "Cropped/02_Laboratory.png",
-      "x": 502,
-      "y": 264,
-      "width": 263,
-      "height": 210
+      "name": "10_Griffin_Tower",
+      "file": "Cropped/10_Griffin_Tower.png",
+      "x": 1214,
+      "y": 306,
+      "width": 130,
+      "height": 175
     },
     {
-      "name": "03_Greenhouse",
-      "file": "Cropped/03_Greenhouse.png",
+      "name": "11_Dire_Wolf_Den",
+      "file": "Cropped/11_Dire_Wolf_Den.png",
+      "x": 2348,
+      "y": 701,
+      "width": 224,
+      "height": 121
+    },
+    {
+      "name": "12_Weavers_Sailmakers_Hall",
+      "file": "Cropped/12_Weavers_Sailmakers_Hall.png",
+      "x": 2688,
+      "y": 690,
+      "width": 301,
+      "height": 130
+    },
+    {
+      "name": "13_Stone_Quarry_Masonworks",
+      "file": "Cropped/13_Stone_Quarry_Masonworks.png",
+      "x": 2024,
+      "y": 829,
+      "width": 340,
+      "height": 166
+    },
+    {
+      "name": "14_Fishery_Smokehouse",
+      "file": "Cropped/14_Fishery_Smokehouse.png",
       "x": 31,
-      "y": 511,
-      "width": 394,
-      "height": 209
+      "y": 734,
+      "width": 309,
+      "height": 212
     },
     {
-      "name": "04_War_Room",
-      "file": "Cropped/04_War_Room.png",
-      "x": 1560,
-      "y": 585,
-      "width": 440,
-      "height": 246
-    },
-    {
-      "name": "05_Hall_of_Emissaries",
-      "file": "Cropped/05_Hall_of_Emissaries.png",
-      "x": 2595,
-      "y": 376,
-      "width": 348,
-      "height": 273
-    },
-    {
-      "name": "06_Shrine_of_Aurush",
-      "file": "Cropped/06_Shrine_of_Aurush.png",
-      "x": 1213,
-      "y": 532,
-      "width": 124,
-      "height": 83
-    },
-    {
-      "name": "07_Shrine_of_Telluria",
-      "file": "Cropped/07_Shrine_of_Telluria.png",
-      "x": 2163,
-      "y": 722,
-      "width": 178,
-      "height": 112
-    },
-    {
-      "name": "08_Shrine_of_Pelagos",
-      "file": "Cropped/08_Shrine_of_Pelagos.png",
-      "x": 2549,
-      "y": 840,
-      "width": 239,
-      "height": 146
+      "name": "15_Timber_Yard_Sawmill",
+      "file": "Cropped/15_Timber_Yard_Sawmill.png",
+      "x": 1668,
+      "y": 847,
+      "width": 340,
+      "height": 148
     }
   ]
 }
