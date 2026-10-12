@@ -8,10 +8,10 @@ You remembered rightly: it's **one base painting with see-through overlay pictur
 
 - **The base painting** is `tools/bastion/assets/bastion_artwork.png`: 1152 × 768 pixels (a 3:2 shape), 2.2 MB. It's always shown.
 - **Each overlay** is a PNG the **exact same size as the base painting (1152 × 768)**. Most of it is fully see-through; only the one building is painted in, already in its right place. So the overlays never need positioning: each is laid over the whole painting, corner to corner, and the building lands where it was painted.
-- **When an overlay shows:** as soon as that facility is **built** (not while it's still being built). If it's knocked out by a Bastion event and is **Under Repair**, the same overlay is shown **darkened** (greyed, dimmed and browned by the browser, as if smoke-blackened). No separate "damaged" picture is used. A line under the map says which facilities are Under Repair and on which day each is working again.
-- **Stacking order:** overlays are stacked in the order of the build slots they sit in. A facility in a later slot is drawn on top of one in an earlier slot. Today's buildings don't overlap, so this has never mattered.
+- **When an overlay shows:** as soon as that facility is **built** (not while it's still being built). If a lost Defend the Bastion battle puts it **Under Repair**, the same overlay is shown **darkened** (greyed, dimmed and browned by the browser, as if smoke-blackened). No separate "damaged" picture is used. A line under the map says which facilities are Under Repair and on which day each is working again.
+- **Stacking order:** overlays are stacked in the order of the build slots they sit in. A facility in a later slot is drawn on top of one in an earlier slot. Of today's overlays only the Garden and the Library touch (a sliver of about 450 pixels), so this has hardly mattered.
 - **Fitting the map on screen:** the painting is shrunk or grown to fit the space in the middle of the Bastion screen, keeping its 3:2 shape and never cropped. The code that does this (`fitMap`) has the shape written in: `MAP_RATIO = 1152 / 768`.
-- **The Party Identity badge** (your crest) sits over the **top-right corner** of the map, about 112 pixels wide on screen, 16 pixels in from the top and right edges. It's not part of the painting, but anything painted in that corner is covered by it.
+- **The Party Identity badge** (your crest) sits in the **top-right corner** of the space the map is shown in, about 112 pixels wide on screen, 16 pixels in from the top and right edges. Today's 3:2 painting is narrower than that space on the laptop and the TV, so the badge sits beside it, not over it. A wider painting reaches that corner, and the badge then covers it.
 
 ## 2. Every picture the map uses today
 
@@ -82,7 +82,7 @@ These aren't affected by a new map unless you want them redone too:
 - **Size:** bigger is fine and will look sharper on the TV, for example 2304 × 1536 or 3072 × 2048. Keep the base painting under about 5 MB if you can, so it loads instantly. Overlays stay small because they're mostly empty.
 - **Shape:** if the new painting keeps the **3:2 shape** (width ÷ height = 1.5), no code changes are needed beyond swapping the files. If it's a different shape (for example 16:9), one number in the code (`MAP_RATIO`) needs changing to match. That's a one-line change I can make; tell me the new size.
 - **Overlapping buildings:** from a lower, more side-on angle, a building in front may hide part of one behind it. Today overlays stack in build-slot order, not front-to-back, so a building behind could end up drawn over one in front. Either keep the overlay buildings from overlapping, or tell me and I'll make the map draw them back-to-front (a small change).
-- **Keep the top-right corner quiet:** the crest badge covers it.
+- **Keep the top-right corner quiet:** with a wider painting, the crest badge sits over it.
 - **Under Repair** needs no extra art: the tool darkens the normal overlay. If you'd like painted damaged versions instead, that's a new feature to ask for.
 
 ## 4. The new art (uploaded 12 October 2026)
@@ -114,7 +114,7 @@ The old map showed Arcane Study, Garden and Smithy overlays; the new set has non
 ### Notes for the facilities build
 
 - `MAP_RATIO` in `fitMap` becomes `3000 / 1250`. The wider shape changes how the map fills the middle of the screen, so the Bastion layout needs checking at 1707 × 930 and 1920 × 1080, with the facility grid open and closed.
-- The Hall of Emissaries now sits at the top right (x 2595–2943, y 376–649), near the Party Identity badge. On a small map the badge could cover the top of the dome; check, and move the badge if it does.
+- On the laptop and the TV the Party Identity badge will sit over the sky in the new painting's top-right corner (about x 2780–3000, y 30–250 on the painting), clear of the Hall of Emissaries (x 2595–2943, from y 376). In a smaller window it could reach the dome; check, and move the badge if it does.
 - The overlay files get code-friendly names (for example `library_overlay.png`) when they're copied into `tools/bastion/assets/overlays/`; the old set moves to `assets/extras/`; `docs/ASSETS.md` lists every file, including the README, placements and previews (kept as reference in extras).
 - The three Shrines will have overlays at last. Showing them reverses decision B12 ("keep hidden"), which only covered the old, misnamed art; confirm with Harry when the overlay list is set.
 - The seven new facilities need rules, data and a square tile picture each (today's tile pictures in `assets/facilities/` are 1024 × 1024), and they can use a stand-in tile until Harry paints them.
