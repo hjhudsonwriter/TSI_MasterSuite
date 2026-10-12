@@ -85,15 +85,36 @@ These aren't affected by a new map unless you want them redone too:
 - **Keep the top-right corner quiet:** the crest badge covers it.
 - **Under Repair** needs no extra art: the tool darkens the normal overlay. If you'd like painted damaged versions instead, that's a new feature to ask for.
 
-### Handing the new art over
+## 4. The new art (uploaded 12 October 2026)
 
-Harry finished a new base painting and overlays on 12 October 2026. The facility list is changing in the next build (some facilities merged, some new, some removed), so the art is named by the facilities **as they will be**, not by today's code names.
+Harry uploaded a new base painting and 15 overlays in two batches on 12 October 2026. They're kept, exactly as uploaded, in `bastion-new-art/` at the top of the repo, waiting for the facilities build. **Nothing in the Bastion uses them yet.**
 
-- **Where:** a folder called `bastion-new-art` at the top of the repo, uploaded on the GitHub website to the branch the current session works on. It's a drop-off point only: don't edit it or wire it in from there.
-- **Names:**
-  - the base painting: `bastion_base.png`;
-  - each overlay: the facility's new name in lower case, with underscores for spaces, then `_overlay.png` (for example `war_room_overlay.png`; for a merged or new facility, its new name);
-  - an overlay for a facility that's being removed is still welcome, under its old name: it goes to `assets/extras/`;
-  - anything extra (for example a damaged version) adds a word before `_overlay` (for example `smithy_damaged_overlay.png`);
-  - a short `notes.txt` saying which overlay is which facility, especially for merged ones, if the names alone don't make it obvious.
-- **Then:** check every file is a PNG, the same size as the base painting, see-through outside its building, and lines up (by making a labelled preview like the one in section 2). The art is wired in during the facilities build, when the overlay list in `bastion-data.js` changes anyway; the old set moves to `assets/extras/`, nothing is thrown away, `docs/ASSETS.md` gets every file, `MAP_RATIO` is set to the new shape if it changed, and the map is tested at both screen sizes. New or merged facilities will also need a square tile picture for `assets/facilities/` (1024 × 1024 today); until they have one, they can use a stand-in.
+### What's there
+
+| Where | What |
+|---|---|
+| `bastion-new-art/Bastion_Base_3000x1250.jpg` | The new base painting: a wide, low-angle view of the Bastion from the sea. 3000 × 1250 pixels (a 2.4 : 1 shape), JPG. It includes the starting buildings: the watchtower and manor, the dock and ship, and three other buildings. |
+| `bastion-new-art/1-first-upload/` | Overlays 01–08, the new art for facilities the Bastion has today: Library, Laboratory, Greenhouse, War Room, Hall of Emissaries, Shrine of Aurush, Shrine of Telluria, Shrine of Pelagos. Plus that upload's `README.txt`, `placements.json` and a preview of those 8 on the base. |
+| `bastion-new-art/2-second-upload/` | Overlays 09–15, for **new facilities** that the Bastion doesn't have yet: Wyvern Roost, Griffin Tower, Dire Wolf Den, Weavers and Sailmakers Hall, Stone Quarry and Masonworks, Fishery and Smokehouse, Timber Yard and Sawmill. Plus that upload's `README.txt`, `placements.json` and a preview of all 15 on the base. |
+
+The files arrived at the top of the repo (GitHub's upload page drops loose files there) and were moved into this folder unchanged; every one was checked byte for byte against the upload. The second upload had replaced the first upload's README, placements file and preview, so those three were brought back from the first upload's commit into `1-first-upload/`.
+
+### Checks (12 October 2026)
+
+- **Every overlay is a full-size, see-through PNG:** 3000 × 1250, the same as the base painting, with genuine transparency. So the map's current method (lay each overlay over the whole painting) works unchanged; the `Cropped/` versions and `placements.json` the READMEs mention aren't needed.
+- **Positions match `placements.json` exactly:** each overlay's painted area is exactly the x, y, width and height that file gives.
+- **They line up:** the base with all 15 overlays laid on matches Harry's own preview (`2-second-upload/Bastion_All_Facilities_Preview.jpg`) to within JPG noise.
+- **No two overlays overlap anywhere,** so the order they're stacked in doesn't matter.
+- **The buildings are about 99% solid** (their see-through value is about 252 out of 255, the usual result of this kind of export). The base can't be seen through them.
+
+### Today's facilities with no new overlay yet
+
+The old map showed Arcane Study, Garden and Smithy overlays; the new set has none for them. Menagerie and Gaming Hall had none before and still have none. Harry will say which facilities are merged or removed when the facilities build starts, so this isn't a gap yet.
+
+### Notes for the facilities build
+
+- `MAP_RATIO` in `fitMap` becomes `3000 / 1250`. The wider shape changes how the map fills the middle of the screen, so the Bastion layout needs checking at 1707 × 930 and 1920 × 1080, with the facility grid open and closed.
+- The Hall of Emissaries now sits at the top right (x 2595–2943, y 376–649), near the Party Identity badge. On a small map the badge could cover the top of the dome; check, and move the badge if it does.
+- The overlay files get code-friendly names (for example `library_overlay.png`) when they're copied into `tools/bastion/assets/overlays/`; the old set moves to `assets/extras/`; `docs/ASSETS.md` lists every file, including the README, placements and previews (kept as reference in extras).
+- The three Shrines will have overlays at last. Showing them reverses decision B12 ("keep hidden"), which only covered the old, misnamed art; confirm with Harry when the overlay list is set.
+- The seven new facilities need rules, data and a square tile picture each (today's tile pictures in `assets/facilities/` are 1024 × 1024), and they can use a stand-in tile until Harry paints them.
