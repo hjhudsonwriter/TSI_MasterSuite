@@ -21,7 +21,7 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 
 | Tool | Must fix | Fixed by design | Deliberate | Later (Harry's call) | Not relevant / not a bug |
 |---|---|---|---|---|---|
-| Suite-wide (SUI) | 8 | 11 | 8 | 1 | 0 |
+| Suite-wide (SUI) | 9 | 11 | 8 | 1 | 0 |
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
 | Scarlett Isles Explorer (EXP) | 12 | 5 | 6 | 13 | 0 |
@@ -279,6 +279,13 @@ These come from checking the eight tools against each other: the collision audit
 - **Before:** A pop-up put the focus in its first box, even a hidden one, where it can't go: the focus then stayed behind the pop-up, on whatever opened it. The Bastion's Party Identity for a party that isn't a Clan was one (Clan Honour is hidden until there's a Clan). One Tab got into the pop-up.
 - **After:** The focus goes to the first box that can be seen, else to the first button, as before.
 - **Evidence:** `shared/js/modal.js` (`open`); tests in `tests/e2e/bastion-screen.test.js`.
+
+### SUI-29 · The Bastion could take its own save for a Reset Travel and pass days twice
+**Must fix** (found while fact-checking the Bastion and Explorer reference, 12 October 2026; fixed) · applies something twice
+
+- **Before:** A tool reading another tool's save "as saved right now" (`TSI.store.fresh`) was given its own copy from when the page opened whenever it was writing *any* save of its own. The Bastion saves after almost every change, and it reads the Explorer's day every 2 seconds, so now and then the two met. It then saw the day it opened on (say Day 1, while the Explorer was on Day 7), took that for a Reset Travel, moved every day back, wrote "The Explorer's day went back (Reset Travel)…" in the Day Log, and passed the days again 2 seconds later. Orders, building, shipments and sea routes then fell due early by the size of that false step, and an automatic Bastion event in those days was rolled a second time. The Explorer's "The Ironbow sends word…" forecast and the DM doc read the same way, so they could show an old copy too.
+- **After:** Only a change of that same save, still being written by this page (or made while it was being read), means the page's own copy is used (it's newer than the saved one). Any other save being written makes no difference. And if the browser ever can't be read, the value last read is used, not the one from when the page opened. What's read is kept apart from the page's own copies, so a "Back up everything" from the home screen still holds one moment's copies (an independent review found that letting reads replace them could pair the Explorer's newest save with an older uploaded map).
+- **Evidence:** `shared/js/store.js` (`fresh`, `inflightKeys`, `lastRead`); the Bastion's clock is `checkClock` in `tools/bastion/tool.js`. Test: `tests/e2e/bastion-days.test.js` ("the Bastion saving a change of its own never makes it misread the Explorer's day"), which fails on the old code (the Bastion read Day 1 while on Day 7) and passes now.
 
 ## Combat Tracker & VTT Battlemap
 Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point there).

@@ -30,6 +30,8 @@
   var cache = new Map();       /* key → record */
   var pending = new Map();     /* key → { op: 'put' | 'delete', key, record } */
   var inflight = null;
+  var inflightKeys = new Set(); /* the keys in the write under way */
+  var lastRead = new Map();     /* key → record, as fresh() last read it */
   var timer = null;
   var backend = null;
   var statusListeners = [];
@@ -257,15 +259,18 @@
 
     var batch = Array.from(pending.values());
     pending.clear();
+    inflightKeys = new Set(batch.map(function (op) { return op.key; }));
     if (backend.mode === 'idb') setStatus('saving', null);
 
     inflight = backend.write(batch).then(function () {
       inflight = null;
+      inflightKeys = new Set();
       if (backend.mode === 'idb') setStatus('saved', null);
       else setStatus(backend.mode === 'local' ? 'limited' : 'unavailable', null);
       return true;
     }, function (err) {
       inflight = null;
+      inflightKeys = new Set();
       /* Keep the unsaved changes queued (unless something newer replaced them),
          so the next change tries again. */
       batch.forEach(function (op) { if (!pending.has(op.key)) pending.set(op.key, op); });
@@ -314,16 +319,32 @@
     /* The value as saved right now, read again from the browser: for another
        tool's save, which a window open on a different tool may have changed
        since this page opened (the Explorer reads the Bastion's party level
-       this way). Resolves with a copy, or fallback. A change this page is
-       still saving wins, and if the browser can't be read the copy read when
-       the page opened is used. */
+       this way). Resolves with a copy, or fallback. A change of that key this
+       page is still saving (or made while reading) wins. If the browser can't
+       be read, the value this function last read is used, else the copy read
+       when the page opened. (What it reads is kept apart from that copy, so
+       a backup of this page's copies stays as one moment's.)
+       Only this page's own change of the same key counts: while it was any
+       change (the Bastion saving its own state, say), the Bastion's clock
+       read the Explorer's day as it was when the page opened, took that for
+       a Reset Travel, and passed the days again (SUI-29). */
     fresh: function (key, fallback) {
       requireReady();
       var cached = function () { return TSI.store.get(key, fallback); };
-      if (pending.has(key) || inflight || !backend.read) return Promise.resolve(cached());
+      var mine = function () { return pending.has(key) || inflightKeys.has(key); };
+      var last = function () {
+        var row = !mine() && lastRead.get(key);
+        return row ? TSI.clone(row.value) : cached();
+      };
+      if (mine() || !backend.read) return Promise.resolve(cached());
       return backend.read(key).then(function (row) {
-        return rules.isRecord(row) && row.key === key ? TSI.clone(row.value) : (row ? cached() : fallback);
-      }, cached);
+        if (mine()) return cached();
+        if (rules.isRecord(row) && row.key === key) {
+          lastRead.set(key, row);
+          return TSI.clone(row.value);
+        }
+        return row ? last() : fallback;
+      }, last);
     },
 
     /* One tool's records as saved right now, read again from the browser
