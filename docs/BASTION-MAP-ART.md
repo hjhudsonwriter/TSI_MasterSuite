@@ -85,6 +85,15 @@ These aren't affected by a new map unless you want them redone too:
 - **Keep the top-right corner quiet:** the crest badge covers it.
 - **Under Repair** needs no extra art: the tool darkens the normal overlay. If you'd like painted damaged versions instead, that's a new feature to ask for.
 
-### Swapping them in
+### Handing the new art over
 
-When the new pictures are ready, give me the files (or put them in a folder in the repo) and say whether the shape has changed. I'll put them in `tools/bastion/assets/` and `assets/overlays/`, move the current set to `assets/extras/` (nothing is thrown away), update `docs/ASSETS.md`, adjust `MAP_RATIO` if needed, and test on both screen sizes.
+Harry finished a new base painting and overlays on 12 October 2026. The facility list is changing in the next build (some facilities merged, some new, some removed), so the art is named by the facilities **as they will be**, not by today's code names.
+
+- **Where:** a folder called `bastion-new-art` at the top of the repo, uploaded on the GitHub website to the branch the current session works on. It's a drop-off point only: don't edit it or wire it in from there.
+- **Names:**
+  - the base painting: `bastion_base.png`;
+  - each overlay: the facility's new name in lower case, with underscores for spaces, then `_overlay.png` (for example `war_room_overlay.png`; for a merged or new facility, its new name);
+  - an overlay for a facility that's being removed is still welcome, under its old name: it goes to `assets/extras/`;
+  - anything extra (for example a damaged version) adds a word before `_overlay` (for example `smithy_damaged_overlay.png`);
+  - a short `notes.txt` saying which overlay is which facility, especially for merged ones, if the names alone don't make it obvious.
+- **Then:** check every file is a PNG, the same size as the base painting, see-through outside its building, and lines up (by making a labelled preview like the one in section 2). The art is wired in during the facilities build, when the overlay list in `bastion-data.js` changes anyway; the old set moves to `assets/extras/`, nothing is thrown away, `docs/ASSETS.md` gets every file, `MAP_RATIO` is set to the new shape if it changed, and the map is tested at both screen sizes. New or merged facilities will also need a square tile picture for `assets/facilities/` (1024 × 1024 today); until they have one, they can use a stand-in.
