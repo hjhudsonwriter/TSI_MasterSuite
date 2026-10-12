@@ -54,7 +54,7 @@ There's also an **unused second version of the base painting**, `assets/extras/i
 
 These aren't affected by a new map unless you want them redone too:
 
-- **Facility pictures** in `assets/facilities/`: one square painting per facility (1024 × 1024; the three shrines and `hall_inner.png` are 1536 × 1024). They're shown in the facility tiles and panels, not on the map.
+- **Facility pictures** in `assets/facilities/`: one painting per facility, square (1024 × 1024) except the three shrines (1536 × 1024). They're shown in the facility tiles and panels, not on the map. `hall_inner.png` (1536 × 1024), in the same folder, is the painted hall behind the Hall of Emissaries' pop-ups.
 - **The Sea Trade Routes map** in the Hall of Emissaries: `assets/ui/clan_trading_locations.png` with one overlay per clan's route (`<clan>_trade_route.png`, for Blackstone, Bacca, Farmer, Slade, Molten, Rowthorn and Karr). It works the same way as the Bastion map: every route overlay is the same size as its base (1494 × 1996).
 - **The War Table's coastal battle map**, `assets/war/defend-bastion-coast.jpg`, used for the Defend the Bastion battle.
 - Panel pictures in `assets/panels/` and the Hall's pictures in `assets/ui/` (signing, disputes, wax stamp).
