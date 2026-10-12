@@ -81,14 +81,14 @@ The Explorer owns the campaign's only clock: its day counter, which **Make Camp*
 | The clock | **Owns** the day. Make Camp adds 1; Reset Travel sets it back to 1. | **Follows** the Explorer's day. It has no button that moves time on. |
 | Main button | **Make Camp** (crimson) | None in normal play. **Finish Day N** (crimson) appears only when a day was left part-way. |
 | What it saves | `tsi.explorer.save`, `tsi.explorer.mapImage` | `tsi.bastion.state`, `.ui`, `.crest`, `.warMap`, `.warTable`, `.warTerrain` |
-| What it reads from the other | At Make Camp: the Bastion's whole state, for the forecast. In fights: the party level. | The Explorer's `travel.day`, and nothing else |
+| What it reads from the other | At Make Camp: the Bastion's whole state, for the forecast. In fights: the party level. | The Explorer's `travel.day`; nothing else in play (its Export reads the Explorer's whole save, for the campaign file) |
 | Does it write the other's save? | Never, except a campaign Import | Never, except a campaign Import |
 | Usual screen | The laptop (1707 × 930 CSS px inside maximised Edge) | The TV (1920 × 1080) |
 
 ### The play loop at the table
 
 1. **Open the Explorer.** The DM opens it on the laptop, from the home screen. The first time it opens, it saves Day 1 so the Bastion can read it.
-2. **Open the Bastion.** The DM presses **Open the Bastion ↗** in the Explorer's Travel panel. The Bastion opens in its own window, sized to the screen the Explorer is on, and the DM drags it to the TV. The Bastion reads the Explorer's day and **anchors** to it.
+2. **Open the Bastion.** The DM presses **Open the Bastion ↗** in the Explorer's Travel panel. The Bastion opens in its own window, sized to the screen the Explorer is on, and the DM drags it to the TV. The Bastion reads the Explorer's day. The very first time, it **anchors** to it; after that, it passes in turn any days the Explorer moved on while the Bastion was shut (§3.5).
 3. **Travel.** During the day, the DM drags the heroes:
    - each hex costs 6 miles, and the daily limit is 30;
    - once a day, after enough miles, there may be a travel event;
@@ -98,8 +98,8 @@ The Explorer owns the campaign's only clock: its day counter, which **Make Camp*
 5. **Make Camp.** On the laptop, Make Camp moves the day on by 1. The Explorer then shows, one after another:
    - the night's event, if any;
    - the weather, if any;
-   - its forecast, "The Ironbow sends word…".
-6. **The Bastion catches up.** Within about 2 seconds, the Bastion on the TV notices the new day and passes it. On the TV it asks for any rolls: sea routes, Hall actions, a muster, an attack. It then shows its own "The Ironbow sends word…" with the results.
+   - its forecast, "The Ironbow sends word…", only if the Bastion's save has something due on the new day.
+6. **The Bastion catches up.** Within about 2 seconds, the Bastion on the TV notices the new day and passes it. On the TV it asks for any rolls: sea routes, Hall actions, a muster, an attack. It then shows its own "The Ironbow sends word…" with the results, if anything happened.
 7. **Repeat.** There is one in-game clock: the Explorer's day.
 
 ---
@@ -204,7 +204,7 @@ The Day Log and `state.word` are history, so they are not moved. Stored days can
    - The day's news moves into `state.word`.
    - `dayInProgress` is cleared and the Bastion saves.
 
-After the last day, **one** pop-up titled "The Ironbow sends word…" lists every line from every day passed, under day headings if more than one day passed.
+After the last day, **one** pop-up titled "The Ironbow sends word…" lists every line from every day passed, if any day brought news. Days with no news are left out, and the day headings show only when more than one day had news.
 
 ### 3.4 What counts from its own start
 
@@ -264,7 +264,7 @@ Everything else rolls by itself with no prompt: simple orders' dice (1d4, 1d10, 
 - It sets the day to 1, every hero's miles to 0 and `milesAdjust` to 0.
 - It moves the days of effects, threads, follow-up windows, the last travel-event day, the rolled day and the event in progress by the same amount (`J.shiftDays`).
 - It does **not** move:
-  - `lastWeatherDay` (so there is no weather until the old day + 3; EXP-21, kept);
+  - `lastWeatherDay` (so there is no weather until the new count reaches the day of the last weather + 3; EXP-21, kept);
   - `travelEventDay` or `nextTravelEventAtMiles`;
   - gold, the lists of events already used, or tonight's set-up event.
 
@@ -457,7 +457,7 @@ During an event's checks, pace adds reminders: "Slow pace: advantage on Stealth 
 
 **The weather pop-up:**
 - Title "Weather • <Region> • —".
-- The DM types the final roll into "Roll (d20):" and presses **Resolve**. The result is saved as `travel.activeWeather`.
+- The DM types the final roll into "Roll (d20):" and presses **Resolve**. Resolving saves which weather it is, as `travel.activeWeather` (`{kind, day}`), so its film can play; the roll and its result are not saved.
 - A muted, looping film then plays over the map for the rest of that day.
 - An empty box counts as 0, which fails (EXP-28).
 - Closing without rolling skips the weather, but the 3-day wait is still used up (EXP-22).
@@ -513,7 +513,7 @@ T2 also needs a river nearby (within 2 hexes, 12 miles). T9 is switched off.
 | T1 | The Wardens' Toll | any | Toll-Wise (7 days); +120 / −50 gold; −6 or −12 miles; threads The Captive Warden, The Toll-Men's Grudge (→ F1) |
 | T2 | The Ambush Sign | any, near a river | +150; Inspiration; −6 miles; fight t2 (ford) |
 | T3 | The Overturned Wagon | any | −12 miles; +200 or +75; thread Who Wrecked the Wagon? |
-| T4 | The Knight-Errant's Challenge | any | contest; +200, Inspiration, DM note +1 clan honour; or −100, Humbled (7 days), DM note −1 honour |
+| T4 | The Knight-Errant's Challenge | any | contest (won: +200, Inspiration, DM note +1 clan honour; lost: −100, Humbled (7 days)); or decline, where a failed Persuasion gives DM note −1 honour |
 | T5 | The Ferry Puzzle | Midland, Northern (East/West), Southern (West) maps | +6 or −6 miles; Inspiration |
 | T6 | The Dying Messenger | any | thread The Sealed Dispatch (resolving gives +250 and +1 honour, or 0 and −1) |
 | T7 | Rootfall | Telluria's lands | −6 miles; −50 and Telluria's Footing (3 days); or +150 and Root-Cursed (7 days) |
@@ -544,7 +544,7 @@ T2 also needs a river nearby (within 2 hexes, 12 miles). T9 is switched off.
 | F3 | The Captain's Thanks | C12; days +2 to +5; isles only | +250; Insight 14, then the thread continues or closes |
 
 **Check kinds:**
-- **one:** the DM picks who rolls, and another hero can Help for advantage.
+- **one:** the DM picks who rolls, and another hero can Help for advantage (except T18's lift, which allows no Help).
 - **group:** every hero rolls, and the party succeeds if half or more succeed.
 - **each:** the DM ticks who failed.
 - **same:** the hero chosen earlier rolls.
@@ -672,7 +672,7 @@ T2 also needs a river nearby (within 2 hexes, 12 miles). T9 is switched off.
 - c12: Bandit Captain, 8 Bandit.
 - f1: 2 Toll-man (a Thug), 6 Bandit.
 
-The 11–16 band adds stronger units.
+The 11–16 band adds stronger units (for c9 it swaps the 2 Ogres for 2 Hill Giants instead).
 
 **Setting up the fight.** **Set up this fight in the Combat Tracker ↗** (it reads **Send it again ↗** once sent):
 1. It writes the fight to `localStorage` key `tsi.suite.handoff`: the monsters, the map, starting corners, areas to avoid, the surprised heroes, the level and the band.
@@ -879,7 +879,7 @@ The five **starting facilities** are always built and can't be cleared: **Barrac
 - **Embrace / Radiance / Deep Rest:** 1d6. On a 5 or 6: "Long Rest effects granted."
 - **Blessing:** 1d20, added as that many per cent to the god's favour bar, up to 100.
 
-**The Armed flag stays on.** Arm Defenders sets `defenders.armed` only if there are defenders at that moment (`rules.js` 1077–1079). After that, defenders added later (Recruit Defenders or **+1 Defender**) count as Armed with no new Arm Defenders order, and the flag also stays on after war casualties take the count to 0 (`war-campaign-rules.js` 1871). Only the **-1** button taking the count to 0 clears it (`tool.js` 1117–1119). This is BAS-31's checker's note, kept.
+**The Armed flag stays on.** Arm Defenders sets `defenders.armed` only if there are defenders at that moment (`rules.js` 1077–1079). After that, defenders added later (Recruit Defenders or **+1 Defender**) count as Armed with no new Arm Defenders order, and the flag also stays on after war casualties take the count to 0 (`war-campaign-rules.js` 1871). The flag is cleared only when the **-1** button takes the count to 0 (`tool.js` 1117–1119), or when an Arm Defenders order completes while there are no defenders, which sets it to off (`rules.js` 1078). This is BAS-31's checker's note, kept.
 
 **Facility levels.** Every built facility is level 1; levels run from 1 to 3. **Only the Hall of Emissaries levels up.**
 
@@ -958,7 +958,7 @@ An active Inter-Clan Summit discounts Hall actions.
 - **Roll 1d20** fills it in. Then **Cancel** or **Continue**.
 
 **Roll tiers** (`R.tierFromRoll`):
-- a natural 20 is a Critical Success, and a natural 1 a Critical Failure;
+- a natural 20 is a Critical Success, and a natural 1 a Critical Failure (no screen ever says "Critical Failure": it is shown as "Bad Failure", and for Hall actions it has its own effect, §5.8);
 - DC + 5 or more is a Great Success;
 - the DC or more is a Success;
 - DC − 5 or less is a Bad Failure;
@@ -979,7 +979,7 @@ See §3.2 to §3.6. The order within each day is:
 **Warehouse:**
 - Its columns are Item / Qty / GP / Notes / Action. Each is editable and saves as you type.
 - Buttons: **Add Item** (crimson), **Save Warehouse**, **Clear**.
-- When an order adds an item, a row with the same name (ignoring capitals) goes up by 1, and the note is appended after " \| ". Otherwise a new row is added.
+- When an order adds an item, a row with the same name (ignoring capitals) goes up by 1, and the order's note is added after " \| " unless that row's notes already contain it. Otherwise a new row is added.
 
 **Artisan Tools** (inside the Workshop):
 - Six lists, "Set 1" to "Set 6", each choosing one of 9 tables:
@@ -990,7 +990,7 @@ See §3.2 to §3.6. The order within each day is:
 - **Bastion Defenders:** the count, the status ("None recruited", "Armed" or "Unarmed"), and **+1 Defender** / **-1**. The Armed flag stays on as described in §5.3.
 - **Menagerie Beasts:** rows with **Remove**, and a stat block on hover.
 - **Military:** War Room units, including "Depleted: X/Y" rows, with **Remove** and **Clear**.
-- The Watchtower's Patrol has no status here or anywhere else on screen, apart from the order's log line "Patrol active until Day N." (§5.10).
+- The Watchtower's Patrol has no status here or anywhere else on screen. Only the order's own line, "Patrol active until Day N." (in the Day Log and "The Ironbow sends word…"), says when it ends. If a Clan attacks while it is active and defenders stand, the attack pop-up and the Military Actions list say so (§5.10).
 
 **Favour of the Gods:**
 - Three bars from 0 to 100%: Telluria, Aurush, Pelagos.
@@ -1041,7 +1041,7 @@ See §3.2 to §3.6. The order within each day is:
 - **Honour/Respect** (−5 to +5, starting at 0).
 - **Support** = clamp(round((PC + 100) / 2 + HR × 4), 0, 100). Neutral is 50 per Clan, 350 in total.
 - Also kept but with no use today:
-  - `diplomacy.rep` (always 0);
+  - `diplomacy.rep` (always 0, since nothing changes it; it is, however, already added to the Hall's Diplomacy modifier, kept between −5 and +5);
   - `trustedClientsByClan` (from the archived Brigade; never read).
 
 **What changes Political Capital:**
@@ -1182,7 +1182,7 @@ Its buttons are **Cancel**, plus **Negotiate**, **Receive Delegation** or **Proc
 - **Fail (deadlock):** PC −2 and Stability −2, and the dispute stays.
 - A ruling costs no gold and no days.
 
-**Clear Diplomacy Records** resets the diplomacy records, cooldowns and tokens. It does not touch routes, the Ledger or PC.
+**Clear Diplomacy Records** (after a confirmation) resets the diplomacy records, cooldowns and tokens. It does not change routes, the Ledger or PC directly, but with every Consortium record gone, every sea route expires at the next day's start (and, because of B21, those Clans' routes can't be reopened).
 
 ### 5.9 Identity and the crest
 
@@ -1264,7 +1264,7 @@ There are 13 beast profiles (for example Owlbear: Cohesion 7, Attack +6, Defence
 
 While any Military Action waits, **Queue War Action** stops being crimson: the waiting action is the panel's main action.
 
-**The Wars box** (`renderWars`, tool.js 1700–1720). Each war reads "Clan X", then "Since Day N · peace after N more quiet days · their next attack roll: Day N" (or "peace on the next day, once nothing between you is waiting"). When **Make peace** is refused, the reason is shown under it.
+**The Wars box** (`renderWars`, tool.js 1700–1720). Each war reads "Clan X", then "Since Day N · peace after N more quiet days · their next attack roll: Day N" (or "peace on the next day, once nothing between you is waiting"). While **Make peace** isn't allowed (something involving that Clan is still waiting), its button is greyed out and the reason is shown under the war's line.
 
 **The War Action form:**
 - **Target Clan** (any of the seven);
@@ -1345,7 +1345,7 @@ The confirmation is "Declare war on Clan X?" (**Cancel / Declare war**) or, when
   - The DM can rearrange their own side, and adjust the enemy and the objectives.
   - **Start Battle** locks it in.
 - **6 rounds.** Units act one at a time, the sides alternating. The player starts round 1 if Luck passed.
-- **Playing it** (`war-table.js` 481–491): the DM sets each of their own unit's orders and presses **Confirm** (or **Cancel**), and presses **Enemy acts** for each enemy activation. At the end, **Continue to the War Report**.
+- **Playing it** (`war-table.js` 481–491): the DM sets each of their own unit's orders and presses **Confirm** (or **Cancel**), and presses **Enemy acts** for each enemy activation. At the end, the War Report opens by itself after a moment (**Continue to the War Report** opens it straight away).
 - **Orders:** Advance & Attack, March, Hold, Rally, Disengage, Interact (Raid).
 - **Attack:** d20 + Attack + modifiers against Defence. It removes 0 to 3 Cohesion. The situational modifiers together stay within −4 to +4:
   - Luck +1 / −1;
@@ -1403,7 +1403,7 @@ The confirmation is "Declare war on Clan X?" (**Cancel / Declare war**) or, when
   - the word line and pop-up read "Sound the horns! Clan X warships are approaching! Defend the Ironbow!", with **Later / Defend the Ironbow**;
   - the battle uses the preset map "The Ironbow coast".
 - **If nobody is free to defend,** the battle is lost without being fought.
-- **The Watchtower's Patrol** has no status in Management or anywhere else on screen. It is active while today is on or before `patrolUntil`. If a Clan attacks on such a day and defenders stand, the attack pop-up and the Military Actions list say "The Watchtower's patrol saw them coming: your Bastion Defenders have Advantage on all their rolls in this battle (roll two d20s and keep the higher)." (`R.patrolLine`, war-campaign-rules.js 1275–1279). The War Table doesn't roll it.
+- **The Watchtower's Patrol** has no status in Management or anywhere else on screen, apart from the order's completion line "… → Patrol active until Day N." in the Day Log (and in that day's word). It is active while today is on or before `patrolUntil`. If a Clan attacks on such a day and defenders stand, the attack pop-up and the Military Actions list say "The Watchtower's patrol saw them coming: your Bastion Defenders have Advantage on all their rolls in this battle (roll two d20s and keep the higher)." (`R.patrolLine`, war-campaign-rules.js 1275–1279). The War Table doesn't roll it.
 - **Losing a Defend Bastion** (or withdrawing from one; `applyDefenceLoss`, war-campaign-rules.js 1706–1730):
   - the treasury loses d10 × 5%;
   - **d4 random built facilities go Under Repair** until day + 13 (14 days, the day of the loss included);
