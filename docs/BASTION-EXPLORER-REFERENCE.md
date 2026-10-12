@@ -2,7 +2,7 @@
 
 > **What this document is.** A reference for an AI helping Harry Hudson plan future features and better links between these two tools. Harry is the campaign's author and designer, not a developer.
 >
-> **How current it is.** It describes the code as it stands on **12 October 2026** (branch `claude/gallant-ramanujan-klwz70`, commit `0e5abc6`). No code has changed since `224261d` of 8 October: the later commits change only `docs/BASTION-MAP-ART.md` (`35cba22`, `1103dd0`, `0e5abc6`) and add Harry's new Bastion map art (`c09712c`, `0adbe8b`, now filed in `bastion-new-art/`), which nothing in the code uses yet. That is after Builds 1–3 of the Bastion overhaul:
+> **How current it is.** It describes the code as it stands on **12 October 2026** (branch `claude/gallant-ramanujan-klwz70`). Since Build 3 (8 October) the code has changed in one place: the fix SUI-29 to `shared/js/store.js` (§3.2). Harry's new Bastion map art is in the repo too (`bastion-new-art/`), but nothing in the code uses it yet (§11). This is after Builds 1–3 of the Bastion overhaul:
 > - the Bastion counts in **days**, not turns, and follows the Explorer's day;
 > - its screen is centred on the map;
 > - it has a crest and a Party Identity panel;
@@ -130,7 +130,7 @@ The Explorer owns the campaign's only clock: its day counter, which **Make Camp*
 `checkClock`, in `tools/bastion/tool.js` 2884–2914.
 
 - **What it reads.** It reads `tsi.explorer.save` → `travel.day` with `TSI.store.fresh`, normally straight from the browser database, so it sees what another window has saved. If the value is 1 or more, that whole number is the Explorer's day; otherwise there is no Explorer day.
-- **The exception: a stale read** (`shared/js/store.js` 320–327). While one of the Bastion page's own saves is being written (or if the browser database can't be read), `fresh` returns the copy read when the page opened. A clock check at that moment can see an old, lower day. It then shifts every Bastion day back, writing the Day Log line "The Explorer's day went back (Reset Travel)…", and passes the days again about 2 seconds later, when the next check reads the real day. The Bastion ends on the right day, but because every stored day was moved back first, what it holds has moved on by the size of that false step: orders, builds, shipments, sailings, attack rolls, repairs and recovery fall due that many days early. Event days are fixed (29, 57…; `R.isEventDay`, rules.js 1596–1599) while `lastEventDay` was moved back, so an automatic event already rolled inside that span is rolled again. (Reproduced with Playwright from `file://`.) The same exception applies to every other `fresh` read: the Explorer's Make Camp read of the Bastion's save (explorer `tool.js` 759), so the forecast is built from the copy the Explorer page opened with; its party-level re-read (1126); and the DM doc (`shared/js/dmdoc.js` 273).
+- **The page's own saves don't get in the way** (`shared/js/store.js` `fresh`). `fresh` falls back to the page's own copy only while that page is itself still saving a change to the same key, or makes one while it reads (its own copy is then the newer one). The Bastion never saves the Explorer's key, so it always gets the Explorer's day as last saved. If the browser database can't be read, `fresh` uses the value it last read. *History:* until 12 October 2026, **any** save of the page's own made `fresh` return the copy read when the page opened. The Bastion could then take an old day for a Reset Travel, shift every day back and pass them all again, so things fell due early and an automatic event could be rolled twice (SUI-29 in `docs/KNOWN_ISSUES.md`, fixed). The same function serves every cross-window read: the Explorer's Make Camp read of the Bastion's save (explorer `tool.js` 759), its party-level re-read (1126), the DM doc (`shared/js/dmdoc.js` 273), and the Bastion's re-read of its own crest when another Bastion window has answered the crest question (`tools/bastion/tool.js` 915).
 - **When it reads:**
   - when the Bastion opens;
   - **every 2 seconds** while it is open;
@@ -236,7 +236,7 @@ After the last day, **one** pop-up titled "The Ironbow sends word…" lists ever
   - each route's next sailing day moves on as it settles;
   - each order is removed once done;
   - `attackRolled` stops a second attack roll on the same day;
-  - `lastEventDay` stops a second automatic event (except after a stale read, §3.2).
+  - `lastEventDay` stops a second automatic event.
 - **No button moves time on.** The Bastion has no "advance" button.
 - **Roll Bastion Event.** The **Roll Bastion Event** button in the Events panel rolls an event on the spot. It changes neither the day nor `lastEventDay`.
 
@@ -737,7 +737,7 @@ It is written after every change (about 120 ms later), and once as soon as the E
 7. **Make Camp.** The exact sequence (`tools/explorer/tool.js` `makeCamp` 751–770, `rules.js` `R.makeCamp` 677–732):
    1. **Double-press guard.** A second click, Enter or Space within 350 ms, or while camping is still running, is ignored.
    2. **Event in progress?** If one is waiting, it stops here, says "Finish or end the event in progress before you make camp." and reopens the event. The day does not move.
-   3. **It reads the Bastion's save** as last saved (`TSI.store.fresh('tsi.bastion.state')`), even if the Bastion is open in another window. It only reads it. (If one of the Explorer page's own saves is being written at that moment, it gets the copy read when the Explorer page opened: §3.2.)
+   3. **It reads the Bastion's save** as last saved (`TSI.store.fresh('tsi.bastion.state')`), even if the Bastion is open in another window. It only reads it.
    4. **`R.makeCamp`:**
       1. Works out the event context: the Region, the loaded map, and what is near the middle of the party.
       2. Fixes the night's event, if there is one:
@@ -1498,7 +1498,7 @@ The confirmation is "Declare war on Clan X?" (**Cancel / Declare war**) or, when
 
 | What flows | How | When |
 |---|---|---|
-| **The day** (`travel.day`) | The Bastion reads `tsi.explorer.save` with `TSI.store.fresh`, normally straight from the browser database (for the stale-read exception, see §3.2). It is the **only** thing the Bastion reads from the Explorer. | When the Bastion opens, every 2 s, and when its window is shown again. Make Camp saves (to the browser database about 120 ms later), so a Bastion open in another window passes the new day within about 2 s. |
+| **The day** (`travel.day`) | The Bastion reads `tsi.explorer.save` with `TSI.store.fresh`, straight from the browser database (§3.2). It is the **only** part of the Explorer's save the Bastion uses. (Its **Download Save (JSON)** also reads every `tsi.explorer.*` record, as last saved, to copy it into the campaign file, and its Import checks the Explorer's half of a campaign file with the Explorer's rules. Neither changes the Bastion.) | When the Bastion opens, every 2 s, and when its window is shown again. Make Camp saves (to the browser database about 120 ms later), so a Bastion open in another window passes the new day within about 2 s. |
 | **Reset Travel** (the day goes back) | The same read. `R.clockAction` returns `shift`, and `R.shiftDays` moves every stored Bastion day back by the same amount. | The next read after the reset |
 | **Opening the Bastion** | **Open the Bastion ↗** in the Travel panel, and in the Explorer's word pop-up, calls `TSI.shell.openWindow('bastion')`. If the Bastion is already open elsewhere (tab guard): "The Bastion Manager is already open in another window. It follows the Explorer's day by itself." A second press within 1.5 s is ignored. | When the DM presses it |
 | **A campaign Import made from the Explorer** | Replaces both tools' saves (§6.3) | When the DM imports |
@@ -1508,7 +1508,7 @@ The confirmation is "Declare war on Clan X?" (**Cancel / Declare war**) or, when
 
 | What flows | How | When |
 |---|---|---|
-| **The forecast, "The Ironbow sends word…"** | At Make Camp the Explorer reads `tsi.bastion.state` (read only; for when it gets an older copy, see §3.2) and runs `TSI.campaign.ironbowNews(bastion, dayBefore, newDay)` → `bastionComing` (`shared/js/campaign-rules.js` 53–131). It lists only items falling on the new day. | Once per Make Camp, as the last pop-up |
+| **The forecast, "The Ironbow sends word…"** | At Make Camp the Explorer reads `tsi.bastion.state` (read only, as last saved) and runs `TSI.campaign.ironbowNews(bastion, dayBefore, newDay)` → `bastionComing` (`shared/js/campaign-rules.js` 53–131). It lists only items falling on the new day. | Once per Make Camp, as the last pop-up |
 | **Party level** | `F.partyLevel` reads `partyLevel` from the Bastion's save, kept between 1 and 20, or 7 with "(the Bastion hasn't saved a level yet)". It sets the fight band and goes to the Combat Tracker in the hand-off. | When the Explorer opens, and whenever a fight step is drawn (at most every 3 s) |
 | **"Is the Bastion open?"** | The tab guard's regular signal in `localStorage` key `tsi.suite.tabs` | When **Open the Bastion ↗** is pressed, or on a campaign Import |
 | **A campaign Import made from the Bastion** | Replaces both tools' saves | When the DM imports |
@@ -1547,7 +1547,7 @@ The confirmation is "Declare war on Clan X?" (**Cancel / Declare war**) or, when
 - **Saves are shared through the browser database:**
   - all windows use the IndexedDB database `tsi.suite`;
   - each page keeps a copy in memory, and writes about 120 ms after a change, or at once when hidden or closed;
-  - to see another window's changes, a page calls `TSI.store.fresh(key)`. While any of that page's own saves is being written, or if the browser database can't be read, `fresh` returns the copy read when the page opened instead (§3.2);
+  - to see another window's changes, a page calls `TSI.store.fresh(key)`. Only while that page is itself still saving a change to the same key does `fresh` return the page's own (newer) copy; if the database can't be read, it returns the value it last read (§3.2);
   - if IndexedDB fails, `localStorage` is used instead; if that fails too, saves are kept in memory only, and windows can't see each other's changes.
 - **Hand-offs between tools use `localStorage`.** A window that is already open hears them through the browser's `storage` event. The Explorer and the Bastion exchange **no** hand-offs or messages with each other: only saves.
 - The `postMessage` channel is used only by player-view windows (the battlemap and the notice board), not between these two tools.
@@ -1567,7 +1567,7 @@ The confirmation is "Declare war on Clan X?" (**Cancel / Declare war**) or, when
   - Import replaces both tools' keys (any key the file lacks is cleared), then reloads.
   - An older Explorer-only file replaces only the Explorer; a Bastion-only file replaces only the Bastion.
 - **The home screen:**
-  - **Back up everything** and **Restore** cover every `tsi.*` key.
+  - **Back up everything** and **Restore** cover every save in the suite's store: every tool's `tsi.*` records, the DM doc's layout and any saves set aside. The hand-offs and the tab guard's signals in `localStorage`, and the DM doc's open flag in `sessionStorage`, are not saves and are not included.
   - A campaign file can't be restored there: "…open the Scarlett Isles Explorer or The Ironbow Bastion Manager and use Import."
 
 **The DM doc** (`shared/js/dmdoc.js`, `TSI.campaign.summary`):
@@ -1612,7 +1612,7 @@ The confirmation is "Declare war on Clan X?" (**Cancel / Declare war**) or, when
 The Explorer is on the laptop, the Bastion on the TV. Both are anchored on Day 12.
 
 1. **On the laptop, the DM presses Make Camp.**
-2. The Explorer checks for an open event, then reads `tsi.bastion.state` as the Bastion last saved it (or, if one of the Explorer page's own saves is being written, the copy the Explorer page opened with: §3.2).
+2. The Explorer checks for an open event, then reads `tsi.bastion.state` as the Bastion last saved it.
 3. `R.makeCamp` runs:
    - it fixes the night's event, if any;
    - the day becomes **13**, and the weather may be rolled;
@@ -1627,7 +1627,7 @@ The Explorer is on the laptop, the Bastion on the TV. Both are anchored on Day 1
    - recovery, quiet wars, repairs, building;
    - contract shipments and records ending.
    The Bastion saves.
-8. **Stage `trade`:** routes due on Day 13 sail. d20 boxes appear on the TV for high-risk routes, then "Trade Routes Resolved".
+8. **Stage `trade`:** routes due on Day 13 sail. d20 boxes appear on the TV for high-risk routes (for every route while High-Risk Routing is on; a disrupted route asks nothing), then "Trade Routes Resolved".
 9. **Stage `orders`:** each due order completes, in turn:
    - simple orders silently;
    - Hall actions with d20 boxes and "Order Resolved";
@@ -1650,7 +1650,7 @@ The Explorer is on the laptop, the Bastion on the TV. Both are anchored on Day 1
    - then one "The Ironbow sends word…" covers them all, under day headings;
    - if it was never anchored, it anchors and passes nothing.
 4. **A day left part-way** carries on, with the notice "Day N was left part-way through…".
-5. **If the Explorer reset in the meantime,** the Bastion shifts its days back instead (§3.7).
+5. **If the Explorer reset in the meantime and its day is still below the Bastion's,** the Bastion shifts its days back to it instead (§3.7). If the Explorer has since gone past the Bastion's old day, nothing is shifted: the Bastion passes the days from its old day, as in step 3.
 
 ### 6.6 The two "word" pop-ups compared
 
@@ -1660,7 +1660,7 @@ The Explorer is on the laptop, the Bastion on the TV. Both are anchored on Day 1
 | When | At Make Camp, as the last pop-up | After the Bastion has passed every new day |
 | Simple orders | "X is complete." | The result, for example "… → Recruited 3 defenders." |
 | Hall actions | "X needs your roll." | "X: Great Success." (or blocked, or still needs a roll) |
-| Leaves out | Shipment gold; normal-risk route income; roll results; the event's name; wars ending after 42 quiet days; Patrol ending | Contract shipment gold (it is in the Day Log) |
+| Leaves out | Shipment gold; normal-risk route income; roll results; the event's name; wars ending after 42 quiet days; Patrol ending | Contract shipment gold; the results of any battle fought while the day was being passed (a Military Action begun from its muster pop-up, or a Defend Bastion); each route's own result (only the total gold); Patrol ending. All but Patrol ending are in the Day Log, and battle results are also in the War Log. |
 | Buttons | **Open the Bastion ↗**, **Close** | **Close** |
 
 The forecast can also disagree with the result. For example, a high-risk route on a Consortium signed on a plain Success is forecast to "need a roll" on day +35, but the Bastion expires that route on that day and asks nothing.
@@ -1698,7 +1698,7 @@ These are facts about the current code:
 |---|---|---|
 | Sync | The Bastion reads the Explorer's day | On opening, every 2000 ms, and when its window is shown (not during a run the clock check started) |
 | Sync | Store write delay | 120 ms after a change, or at once when hidden or closed |
-| Sync | `TSI.store.fresh` returns the page's opening copy | While any of that page's own saves is being written, or the database can't be read |
+| Sync | `TSI.store.fresh` returns the page's own copy | Only while that page is still saving a change to the same key (if the database can't be read, the value last read) |
 | Sync | Tab guard | Heartbeat every 2 s; counts 7 s (visible) or 90 s (hidden) |
 | Sync | DM doc refresh | Every 2 s while open and visible |
 | Sync | Explorer re-reads the party level | At most every 3 s, when a fight step is drawn |
@@ -1744,7 +1744,7 @@ These are facts about the current code:
 | Trade | Shipments, sailings | Every 7 days from each one's start |
 | Trade | Route life | 35 days |
 | Trade | Route DC | 12 + modifiers, kept to 6–20; High-Risk Routing +2 DC and +20% payout |
-| Trade | Market Stability | Starts at 75; +8 per investment; −10 / −6 on a catastrophe |
+| Trade | Market Stability | Starts at 75; +8 per Stability Investment; −10 (high-risk route) / −6 (any other route) on a catastrophe |
 | Trade | Investments | Stability 75 gp / 7 days; Yield 90 gp / 7 days (+5%); Routing 0 gp / 1 day |
 | Trade | Council Verdict | DC 13, modifier 0 |
 | Politics | Political Capital, Honour/Respect, Support | −100…+100; −5…+5; 0…100 (neutral 50) |
@@ -1842,7 +1842,7 @@ From the project's `CLAUDE.md`, which overrides the original handover (except it
 | `index.html` | The home screen, and the page every tool loads into (`?tool=<id>`) |
 | `shared/data/tools.js` | The tool list, groups and each tool's script files. The Bastion page also loads `tools/explorer/rules.js` and `journey.js`, and the Explorer page loads `tools/bastion/rules.js` (not the Bastion's data files), only for checking campaign imports (93–96, 123–125). |
 | `shared/data/regions.js` | Regions → Clan, chief, god, temple |
-| `shared/js/store.js`, `store-rules.js` | Saving (IndexedDB `tsi.suite`, `TSI.store.fresh` at 320–327) and the suite's key names (`spaceNames`) |
+| `shared/js/store.js`, `store-rules.js` | Saving (IndexedDB `tsi.suite`, `TSI.store.fresh` at 319–348) and the suite's key names (`spaceNames`) |
 | `shared/js/backup.js`, `backup-rules.js` | Export, Import and the campaign file |
 | `shared/js/campaign-rules.js` | `bastionComing`, `ironbowNews`, `summary` (the DM doc), `untilText` |
 | `shared/js/dmdoc.js` | The DM doc panel. Its layout is saved as `tsi.dmdoc.layout` (in Back up everything); whether it is open is kept per window in `sessionStorage` `tsi.suite.dmdoc-open`. |
@@ -1865,6 +1865,36 @@ From the project's `CLAUDE.md`, which overrides the original handover (except it
 | `docs/` | `PROGRESS.md`, `PLAN.md` (decisions C1–C12, E1–E16, B1–B24; B1, B14 and C12 settled by answers 9 and 10), `BASTION-OVERHAUL.md`, `WAR-RULES.md`, `KNOWN_ISSUES.md`, `ASSETS.md`, `BASTION-MAP-ART.md`, `BUILDING-A-TOOL.md`, and `dev/make-terrain.py` (makes `terrain-data.js`) |
 | `guide.html` | Harry's how-to guide |
 | `tests/rules.html`, `tests/e2e/` | Rules tests (`explorer*.test.js`, `bastion.test.js`, `campaign.test.js`) and click-throughs (`bastion-days.test.js`, `phase8.test.js`, `dmdoc.test.js`) |
+
+---
+
+## 11. Coming next: decided by Harry, not built yet
+
+These are Harry's stated plans as of 12 October 2026. **Nothing here is in the code yet.** Ask Harry for the details before planning around them.
+
+**The Bastion's facilities will change in the next build.** Harry has said that some of today's 18 facilities will be merged into others, some will be removed, and some new ones added. He has not yet said which are merged or removed, or what the new ones do (their orders, days, costs and levels).
+
+**The seven new facilities** (named by Harry's new map art):
+- Wyvern Roost
+- Griffin Tower
+- Dire Wolf Den
+- Weavers and Sailmakers Hall
+- Stone Quarry and Masonworks
+- Fishery and Smokehouse
+- Timber Yard and Sawmill
+
+The art's notes say the Wyvern Roost shows a resting brown wyvern standing for the occupied roost ("no specific appearance for Elara's wyvern was supplied"; Elara is one of the Explorer's five heroes), and that the Griffin Tower and Dire Wolf Den are shown unoccupied.
+
+**Harry's new Bastion map art** (`bastion-new-art/`, details in `docs/BASTION-MAP-ART.md` §4):
+- A new base painting: a wide, low-angle view of the Bastion from the sea, **3000 × 1250** (a 2.4 : 1 shape, against today's 3:2). It includes the starting buildings.
+- **15 overlays**, each a see-through PNG the same size as the painting, so they work the way today's overlays do (§5.1):
+  - 8 for facilities the Bastion has today: Library, Laboratory, Greenhouse, War Room, Hall of Emissaries, and the Shrines of Aurush, Telluria and Pelagos (today the Shrines never show on the map: B12);
+  - 7 for the new facilities above.
+- No two overlays overlap, so the order they're drawn in doesn't matter.
+- There are no new overlays for the Arcane Study, Garden or Smithy (which show on today's map), nor for the Menagerie or Gaming Hall (which never did). Harry will say whether those are merged, removed or painted later.
+- When the art goes in, the map's fitting (`MAP_RATIO` in `fitMap`, `tools/bastion/tool.js`) changes to the new shape, and the crest badge will sit over the sky in the painting's top-right corner.
+
+**Facility tile pictures.** Each facility also has a square painting in `tools/bastion/assets/facilities/` (1024 × 1024), shown in the facility grid and panels. The new facilities don't have one yet.
 
 ---
 
@@ -1910,4 +1940,3 @@ From the project's `CLAUDE.md`, which overrides the original handover (except it
 9. `WAR-RULES.md` says every free force defends the Bastion. In the code, an Unsworn party defends with defenders and beasts only, and only a Clan's Clan Honour changes.
 10. `WAR-RULES.md` says a unit checks morale "when it first falls to half". In the code it checks after every hit that leaves it at or below half.
 11. `R.upcoming` (`rules.js` 1731) is defined but unused.
-12. `BASTION-MAP-ART.md` §1 says a Bastion event can put a facility Under Repair, that today's overlay buildings don't overlap, and that the crest badge covers the map's top-right corner. In the code, only a lost Defend Bastion puts facilities Under Repair; the Garden and Library overlays overlap a little; and today's 3:2 painting never reaches the badge on the laptop or the TV.
