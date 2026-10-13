@@ -2679,6 +2679,19 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       await H.dismissNotices(page);
     });
 
+    await check('the pull request 3 sample for Harry (tests/fixtures/bastion-pr3-sample.json) imports: three production facilities on plots, goods in the Warehouse, one plot free', async () => {
+      await H.chooseFile(page, '[data-test=import-save]', require('path').join(__dirname, '..', 'fixtures', 'bastion-pr3-sample.json'));
+      await clickModal(page, 'Import');
+      await page.waitForSelector('[data-test=day-status]');
+      await page.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().anchored && !TSI.bastion.debug.busy());
+      const s = await st(page);
+      equal([s.partyLevel, s.treasuryGP, s.builtPlots.filter(Boolean).map(e => e.facId)], [13, 3000, ['herbal_gardens', 'timber_sawmill', 'fishery_smokehouse']]);
+      equal(s.warehouse.map(w => [w.goodId || w.item, w.qty]), [['Rope (50 ft)', 2], ['raw_timber', 2], ['fresh_fish', 1], ['preserved_fish', 1], ['restorative_herbs', 20], ['antivenom_roots', 5], ['alchemical_flowers', 20]]);
+      equal(await page.$$eval('[data-test=grid-plots] .tsi-bas-tile--plot', ts => ts.map(t => t.dataset.test)), ['plot-3']);
+      equal(await page.$$eval('.tsi-bas-maplabel', ls => ls.length), 12, 'the starting five, four in slots and three on plots, each labelled');
+      await H.dismissNotices(page);
+    });
+
     await check('Reset asks first; Reset clears the Bastion', async () => {
       await treasury(page, '777');
       await pause(page);
