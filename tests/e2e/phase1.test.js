@@ -1181,6 +1181,10 @@ async function waitSaved(page) {
     const ALREADY = /Already open\./;
     const TAIL = ' is also open in another tab or window\\. If both stay open, one can overwrite the other\'s saves\\. Close one of them\\.';
     const BASTION_TOO = new RegExp('Already open\\. The Ironbow Bastion Manager' + TAIL);
+    /* The Explorer and the Bastion run in one window at a time (pull request
+       4 of the facilities overhaul), so the same tool twice is shown with the
+       Combat Tracker. */
+    const TRACKER_TOO = new RegExp('Already open\\. The Combat Tracker & VTT Battlemap' + TAIL);
     const DEMO_TOO = new RegExp('Already open\\. The Demo tool' + TAIL);
     const HOME_TOO = new RegExp('Already open\\. The suite\'s home screen' + TAIL);
     const SUITE_TOO = new RegExp('Already open\\. The suite' + TAIL);
@@ -1226,15 +1230,30 @@ async function waitSaved(page) {
       await H.shot(bastion, 'tabs-bastion-and-crest');
     });
 
-    await fresh('the Bastion in two tabs warns in both, naming it; closing one clears the other', async context => {
-      const a = await open(context, INDEX + '?tool=bastion');
-      const b = await open(context, INDEX + '?tool=bastion');
-      await H.waitForNotice(a, BASTION_TOO, 4000);
-      await H.waitForNotice(b, BASTION_TOO, 4000);
-      await H.shot(b, 'tabs-bastion-twice');
+    await fresh('the Combat Tracker in two tabs warns in both, naming it; closing one clears the other', async context => {
+      const a = await open(context, INDEX + '?tool=encounter');
+      const b = await open(context, INDEX + '?tool=encounter');
+      await H.waitForNotice(a, TRACKER_TOO, 4000);
+      await H.waitForNotice(b, TRACKER_TOO, 4000);
+      await H.shot(b, 'tabs-tracker-twice');
       await b.close();
       await waitClear(a);
       equal(await counts(a), [0, 0]);
+    });
+
+    await fresh('the Bastion in two tabs: the second waits instead, nobody warns, and it opens once the first closes', async context => {
+      const a = await open(context, INDEX + '?tool=bastion');
+      await a.waitForFunction(() => TSI.bastion.debug, null, { timeout: 8000 });
+      const b = await open(context, INDEX + '?tool=bastion');
+      await b.waitForSelector('[data-test=tool-waiting]');
+      await b.waitForTimeout(4500); /* two heartbeats */
+      assert(!(await warned(a)) && !(await warned(b)), 'false warning');
+      equal(await counts(a), [1, 0], 'it sees the waiting tab, but they don\'t clash');
+      equal(await b.evaluate(() => TSI.tabGuard.waiting()), true);
+      await H.shot(b, 'tabs-bastion-waiting');
+      await a.close();
+      await b.waitForFunction(() => TSI.bastion && TSI.bastion.debug, null, { timeout: 8000 });
+      equal(await b.$('[data-test=tool-waiting]'), null);
     });
 
     await fresh('home plus the Bastion warns in both, each naming the other; closing home clears it', async context => {
@@ -1251,18 +1270,18 @@ async function waitSaved(page) {
     });
 
     await fresh('switching tool updates the heartbeat at once', async context => {
-      const a = await open(context, INDEX + '?tool=bastion');
+      const a = await open(context, INDEX + '?tool=encounter');
       const b = await open(context, INDEX + '?tool=crest');
       await b.waitForTimeout(2600);
       assert(!(await warned(a)) && !(await warned(b)), 'false warning');
       const id = await b.evaluate(() => TSI.tabGuard.id);
 
-      await switchTo(b, 'bastion');
+      await switchTo(b, 'encounter');
       const t0 = Date.now();
-      await H.waitForNotice(a, BASTION_TOO, 1500);
-      await H.waitForNotice(b, BASTION_TOO, 1500);
+      await H.waitForNotice(a, TRACKER_TOO, 1500);
+      await H.waitForNotice(b, TRACKER_TOO, 1500);
       equal(await b.evaluate(() => TSI.tabGuard.id), id, 'the tab keeps its id');
-      equal((await heartbeats(a))[id].tool, 'bastion');
+      equal((await heartbeats(a))[id].tool, 'encounter');
       assert(Date.now() - t0 < 1500);
 
       await switchTo(b, 'crest');
@@ -1274,7 +1293,7 @@ async function waitSaved(page) {
 
       await switchTo(b, 'home');
       await H.waitForNotice(a, HOME_TOO, 1500);
-      await H.waitForNotice(b, BASTION_TOO, 1500);
+      await H.waitForNotice(b, TRACKER_TOO, 1500);
       equal((await heartbeats(a))[id].tool, '');
     });
 
@@ -1339,20 +1358,20 @@ async function waitSaved(page) {
     });
 
     await fresh('Dismiss hides it until the other tabs change', async context => {
-      const a = await open(context, INDEX + '?tool=bastion');
-      const b = await open(context, INDEX + '?tool=bastion');
-      await H.waitForNotice(a, BASTION_TOO, 4000);
-      await H.waitForNotice(b, BASTION_TOO, 4000);
+      const a = await open(context, INDEX + '?tool=encounter');
+      const b = await open(context, INDEX + '?tool=encounter');
+      await H.waitForNotice(a, TRACKER_TOO, 4000);
+      await H.waitForNotice(b, TRACKER_TOO, 4000);
       await a.click('.tsi-notice button:text-is("Dismiss")');
       await a.waitForTimeout(4500); /* two heartbeats */
       assert(!(await warned(a)), 'came back after Dismiss');
       assert(await warned(b), 'the other tab\'s warning went too');
       /* A home tab opens: the dismissed tab warns again, and the other tab's
-         wording changes, as each now clashes with a Bastion and a home screen. */
+         wording changes, as each now clashes with a Combat Tracker and a home screen. */
       const c = await open(context, INDEX);
       await H.waitForNotice(a, SUITE_TOO, 4000);
       await H.waitForNotice(b, SUITE_TOO, 4000);
-      await H.waitForNotice(c, BASTION_TOO, 4000);
+      await H.waitForNotice(c, TRACKER_TOO, 4000);
       equal((await H.noticeTexts(b)).filter(t => ALREADY.test(t)).length, 1, 'one warning, not two');
     });
 
