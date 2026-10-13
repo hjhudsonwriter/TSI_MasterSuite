@@ -303,7 +303,7 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       equal(await page.$eval('.tsi-bas-map__img', i => [i.naturalWidth, i.naturalHeight]), [3000, 1250], 'Harry\'s new painting');
       equal(await page.$$eval('.tsi-bas-map__overlay', os => os.map(o => o.dataset.fac)), ['library_scriptorium', 'arcane_laboratory', 'herbal_gardens', 'war_room', 'hall_of_emissaries', 'shrine_aurush', 'shrine_telluria', 'shrine_pelagos', 'fishery_smokehouse', 'timber_sawmill'], 'the Shrines shown; nothing for the Menagerie');
       equal(await page.$$eval('.tsi-bas-map__overlay', os => os.map(o => o.naturalWidth + 'x' + o.naturalHeight)), Array(10).fill('3000x1250'));
-      equal((await H.layoutCheck(page, ['.tsi-bas-tile'])).scrollWidth, H.SIZES.laptop.viewport.width, 'all seventeen tiles fit');
+      equal((await H.layoutCheck(page, ['.tsi-bas-tile'])).scrollWidth, H.SIZES.laptop.viewport.width, 'no sideways scroll');
       for (const size of ['laptop', 'laptopFull', 'tv', 'smallWindow']) {
         await page.setViewportSize(H.SIZES[size].viewport);
         await page.waitForTimeout(250);
@@ -316,14 +316,19 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
           const hit = (a, b) => a.x < b.right - 1 && b.x < a.right - 1 && a.y < b.bottom - 1 && b.y < a.bottom - 1;
           const clash = [];
           ls.forEach((a, i) => ls.slice(i + 1).forEach(b => { if (hit(a, b)) clash.push(a.fac + '/' + b.fac); }));
+          /* All nineteen tiles (eight in six slots, two of them over capacity, and three on plots, beside the empty ones) whole and square inside the grid. */
+          const grid = box(document.querySelector('[data-test=grid]'));
+          const tiles = Array.from(document.querySelectorAll('[data-test=grid] .tsi-bas-tile')).map(t => Object.assign({ t: t.dataset.test }, box(t)));
+          const cut = tiles.filter(t => t.x < grid.x - 0.5 || t.right > grid.right + 0.5 || t.y < grid.y - 0.5 || t.bottom > grid.bottom + 0.5 || Math.abs((t.right - t.x) - (t.bottom - t.y)) > 1 || t.right - t.x < 40).map(t => t.t);
           return {
+            tiles: tiles.length, cut,
             n: ls.length, clash,
             off: ls.filter(l => l.x < map.x - 1 || l.right > map.right + 1 || l.y < map.y - 1 || l.bottom > map.bottom + 1).map(l => l.fac),
             onBadge: ls.filter(l => hit(l, badge)).map(l => l.fac),
             onTray: ls.filter(l => hit(l, tray)).map(l => l.fac)
           };
         });
-        equal(m, { n: 15, clash: [], off: [], onBadge: [], onTray: [] }, size + ': fifteen labels (none for the Menagerie), each clear of the others, the badge and the tray');
+        equal(m, { tiles: 19, cut: [], n: 15, clash: [], off: [], onBadge: [], onTray: [] }, size + ': nineteen whole, square tiles; fifteen labels (none for the Menagerie), each clear of the others, the badge and the tray');
         await H.shot(page, 'p9-02-everything-built-' + size);
       }
       await page.setViewportSize(H.SIZES.laptop.viewport);
@@ -2646,9 +2651,10 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       const was = await st(page);
       await reopen(page);
       await page.waitForTimeout(600);
-      equal(await page.evaluate(() => Array.from(document.querySelectorAll('.tsi-notice')).filter(n => /facilities have changed/.test(n.textContent)).length), 0);
+      equal(await page.evaluate(() => Array.from(document.querySelectorAll('.tsi-notice')).filter(n => /facilities have changed|moved to a Development Plot/.test(n.textContent)).length), 0);
       const s = await st(page);
-      equal([s.builtExtras, s.pendingOrders.map(o => o.fnId), s.log.filter(l => l.title === 'Facilities').length], [was.builtExtras, was.pendingOrders.map(o => o.fnId), 1]);
+      equal([s.builtExtras, s.builtPlots, s.pendingOrders.map(o => o.fnId), s.log.filter(l => l.title === 'Facilities').length, s.log.filter(l => l.title === 'Development Plots').length],
+        [was.builtExtras, was.builtPlots, was.pendingOrders.map(o => o.fnId), 1, 1]);
       equal((await page.evaluate(() => TSI.store.keys())).filter(k => k.indexOf('tsi.quarantine.bastion.state') === 0).length, keysBefore);
     });
 
@@ -2677,6 +2683,35 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       equal([s.builtExtras[0].facId, s.legacyFacilities, s.pendingOrders.map(o => o.fnId).sort(), s.treasuryGP, s.facilityLevels.arcane_laboratory], ['arcane_laboratory', ['smithy'], ['alchemy', 'smithing'], 400, 2]);
       equal([s.day, await explorerDay(page)], [exDay, exDay]);
       await H.dismissNotices(page);
+    });
+
+    await check('a Bastion saved by pull request 2 (v 3) with its Herbal Gardens in a slot, at party level 13: on opening it moves to a plot, is saved there, and is announced once', async () => {
+      await H.dismissNotices(page);
+      const saved = await page.evaluate(() => {
+        const v = JSON.parse(JSON.stringify(TSI.bastion.rules.toSave(TSI.bastion.debug.state())));
+        v.partyLevel = 13;
+        v.builtExtras = [{ facId: 'war_room', status: 'built' }, { facId: 'herbal_gardens', status: 'built' }];
+        delete v.builtPlots;
+        v.facilityLevels = Object.assign({}, v.facilityLevels, { herbal_gardens: 3 });
+        v.log = [];
+        TSI.store.set('tsi.bastion.state', v);
+        return v;
+      });
+      equal(saved.v, 3);
+      await reopen(page);
+      await H.waitForNotice(page, /The Herbal Gardens moved to a Development Plot; its construction slot is free\./);
+      let s = await st(page);
+      equal([s.builtExtras.filter(Boolean).map(e => e.facId), s.builtPlots[0], s.facilityLevels.herbal_gardens], [['war_room'], { facId: 'herbal_gardens', status: 'built' }, 3]);
+      await page.evaluate(() => TSI.store.flush());
+      const stored = await page.evaluate(() => TSI.store.get('tsi.bastion.state'));
+      equal(stored.builtPlots[0], { facId: 'herbal_gardens', status: 'built' }, 'saved there at once');
+      equal(s.log.filter(l => l.title === 'Development Plots').length, 1);
+      await H.dismissNotices(page);
+      await reopen(page);
+      await page.waitForTimeout(600);
+      s = await st(page);
+      equal(s.log.filter(l => l.title === 'Development Plots').length, 1, 'opened again: no second entry');
+      equal(await page.evaluate(() => Array.from(document.querySelectorAll('.tsi-notice')).filter(n => /moved to a Development Plot/.test(n.textContent)).length), 0, 'and no second notice');
     });
 
     await check('the pull request 3 sample for Harry (tests/fixtures/bastion-pr3-sample.json) imports: three production facilities on plots, goods in the Warehouse, one plot free', async () => {

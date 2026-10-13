@@ -15,8 +15,20 @@
    Laboratory (the Laboratory's Craft is "alchemy"); the Garden and Greenhouse are Herbal
    Gardens (the Greenhouse's Harvest is "cultivate"); the Library is the Library &
    Scriptorium. An order's "requiredPartyLevel" keeps its old building's party level.
-   The Gaming Hall is gone. The eight new facilities are "inDevelopment": listed, not yet
-   buildable, until each gets its orders. Old saves are converted once (R.migrateToV3). */
+   The Gaming Hall is gone. The new facilities still "inDevelopment" are listed, not yet
+   buildable, until each gets its orders: six since pull request 3 (13 October 2026) made
+   the Fishery & Smokehouse and Timber Yard & Sawmill buildable. Old saves are converted
+   once (R.migrateToV3).
+   Pull request 3 (Harry's facility guide) added, all safe to change:
+   - "plot": true: built on a Development Plot, not in a construction slot;
+   - "productionLimit": 1: one production order at a time at that facility;
+   - an order's "production": true, and "requiredFacilityLevel" (the facility's level it
+     needs, 1 to 5);
+   - a production order's options, each a recipe: "inputs" and "outputs" list goods by
+     their id in goods-data.js with a "qty" ({ "good": "raw_timber", "qty": 1 }), or an
+     ordinary item by name ({ "item": "Healer's Kit", "qty": 2 }); a recipe can have its
+     own "days"; "needsResearch" is the id of the research choice it waits for
+     (research-data.js); "key" lets research find it. */
 window.TSI_DATA = window.TSI_DATA || {};
 window.TSI_DATA.bastionFacilities = [
   {

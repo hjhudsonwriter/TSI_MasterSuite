@@ -121,10 +121,10 @@ window.TSI_DATA.bastion = {
      uses the old Laboratory's picture and the Herbal Gardens the
      Greenhouse's. The Shrines are shown (D10, reversing B12). The Workshop
      and the other starting buildings are in the base painting; the
-     Menagerie and Courier Exchange have no picture. The seven new
-     facilities still in development have theirs listed already, so they
-     appear as soon as they can be built. The originals are in
-     bastion-new-art/. */
+     Menagerie and Courier Exchange have no picture. The new facilities
+     still in development (six since pull request 3 made the Fishery and
+     Timber Yard buildable) have theirs listed already, so they appear as
+     soon as they can be built. The originals are in bastion-new-art/. */
   map: {
     base: 'map/bastion_base.jpg',
     width: 3000,

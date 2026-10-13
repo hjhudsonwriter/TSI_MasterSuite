@@ -1698,9 +1698,9 @@
   });
 
   test('research on the new orders: +5 portions, +50% (the bigger applies), Specialist Seedbeds on top; Crop Rotation and the Perpetual Growing Cycle by their wording', function (t) {
-    function made(s, key) {
+    function made(s, key, base) {
       var fac = R.facility(data, 'herbal_gardens');
-      return R.goodsOutputQty(s, data, fac, R.fn(fac, 'cultivate_specialist'), key, 10);
+      return R.goodsOutputQty(s, data, fac, R.fn(fac, 'cultivate_specialist'), key, base || 10);
     }
     var s = gardens(5);
     t.equal(made(s, 'restorative_herbs'), 10);
@@ -1708,8 +1708,14 @@
     t.equal(made(s, 'toxic_blossoms'), 15, 'Intensive Cultivation: +5 portions');
     s.research = { herbal_gardens: { agricultural: ['fertile_soil', 'intensive_cultivation', 'bountiful_harvests'] } };
     t.equal(made(s, 'toxic_blossoms'), 15, 'Bountiful Harvests: +50%, not added to the +5');
+    /* At a base where they differ, the bigger wins: +50% of 30 beats +5 (and +5 beats +50% of 4). */
+    t.same([made(s, 'toxic_blossoms', 30), made(s, 'toxic_blossoms', 4)], [45, 9]);
+    s.research = { herbal_gardens: { agricultural: ['fertile_soil', 'intensive_cultivation'] } };
+    t.same([made(s, 'toxic_blossoms', 30), made(s, 'toxic_blossoms', 4)], [35, 9], 'Intensive Cultivation alone: +5');
+    s.research = { herbal_gardens: { agricultural: ['fertile_soil', 'intensive_cultivation', 'bountiful_harvests'] } };
     s.research.herbal_gardens.botanical = ['specialist_seedbeds'];
     t.equal(made(s, 'toxic_blossoms'), 20, 'Specialist Seedbeds: +5 more');
+    t.equal(made(s, 'toxic_blossoms', 30), 50, 'on top of the bigger yield');
     var fac = R.facility(data, 'herbal_gardens');
     var fms = R.fn(fac, 'field_medical_supplies');
     var cs = R.fn(fac, 'cultivate_specialist');
