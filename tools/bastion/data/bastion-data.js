@@ -25,13 +25,15 @@ window.TSI_DATA.bastion = {
     shrine_telluria: 'shrine_of_telluria.png',
     shrine_aurush: 'shrine_of_aurush.png',
     shrine_pelagos: 'shrine_of_pelagos.png',
-    hall_of_emissaries: 'hall_of_emissaries.png'
+    hall_of_emissaries: 'hall_of_emissaries.png',
+    /* Harry's own picture (13 October 2026; bastion-new-art/3-courier-exchange). */
+    courier_exchange: 'courier_exchange.png'
   },
   /* The new facilities have no tile painting yet: their tile shows their
      building from Harry's map overlay, cut to this box of the 3000 x 1250
      painting (from bastion-new-art/2-second-upload/placements.json, with a
-     little room round it). The Courier Exchange has no art at all, so its
-     tile shows its name on a plain frame. */
+     little room round it). The Courier Exchange has its own picture
+     (facilityImages, above). */
   facilityTileCrops: {
     wyvern_roost: { pic: 'map/overlays/wyvern_roost.png', x: 1934, y: 296, w: 295, h: 194 },
     griffin_tower: { pic: 'map/overlays/griffin_tower.png', x: 1164, y: 296, w: 230, h: 195 },
@@ -57,9 +59,10 @@ window.TSI_DATA.bastion = {
   ],
   /* Where each facility's name and level label sits on the Bastion map,
      while the facility grid is open (Harry, 13 October 2026), in pixels on
-     the 3000 x 1250 painting: the label's bottom centre. The fifteen
+     the 3000 x 1250 painting: the label's bottom centre. The sixteen
      overlays' points are the top centres of their painted areas
-     (the placements.json files in bastion-new-art). The five starting facilities are
+     (the placements.json files in bastion-new-art; the Courier Exchange's
+     measured from its overlay). The five starting facilities are
      painted into the base: which building is which is our reading of the
      painting (the round tower is the Watchtower, the timber-framed hall
      beside it the Barracks, the open-sided shed the Workshop, the forge the
@@ -84,7 +87,8 @@ window.TSI_DATA.bastion = {
     weavers_hall: { x: 2838, y: 690 },
     stone_masonworks: { x: 2194, y: 829 },
     fishery_smokehouse: { x: 185, y: 734 },
-    timber_sawmill: { x: 1838, y: 847 }
+    timber_sawmill: { x: 1838, y: 847 },
+    courier_exchange: { x: 1454, y: 547 }
   },
   /* Facility levels (the facilities overhaul's step 1b, 13 October 2026;
      Harry's decisions D6 to D8): every facility goes from Level 1 to 5. An
@@ -121,7 +125,8 @@ window.TSI_DATA.bastion = {
      uses the old Laboratory's picture and the Herbal Gardens the
      Greenhouse's. The Shrines are shown (D10, reversing B12). The Workshop
      and the other starting buildings are in the base painting; the
-     Menagerie and Courier Exchange have no picture. The new facilities
+     Menagerie has no picture. The Courier Exchange's (Harry, 13 October
+     2026) stands in the open square, where the cart is. The new facilities
      still in development (six since pull request 3 made the Fishery and
      Timber Yard buildable) have theirs listed already, so they appear as
      soon as they can be built. The originals are in bastion-new-art/. */
@@ -144,7 +149,8 @@ window.TSI_DATA.bastion = {
       { fac: 'weavers_hall', pic: 'map/overlays/weavers_sailmakers_hall.png' },
       { fac: 'stone_masonworks', pic: 'map/overlays/stone_quarry_masonworks.png' },
       { fac: 'fishery_smokehouse', pic: 'map/overlays/fishery_smokehouse.png' },
-      { fac: 'timber_sawmill', pic: 'map/overlays/timber_yard_sawmill.png' }
+      { fac: 'timber_sawmill', pic: 'map/overlays/timber_yard_sawmill.png' },
+      { fac: 'courier_exchange', pic: 'map/overlays/courier_exchange.png' }
     ]
   },
 

@@ -312,7 +312,7 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
       equal(await page.$eval('[data-test=build-' + id + ']', e => e.tagName), 'DIV', id + ': not a button');
     }
     equal(await page.$eval('[data-test=build-wyvern_roost] [data-art]', e => [e.dataset.art, /wyvern_roost\.png/.test(e.style.backgroundImage)]), ['crop', true], 'its building cut from the map painting');
-    assert(/Courier Exchange/.test(await page.$eval('[data-test=build-courier_exchange]', e => e.textContent)), 'no art yet: its name');
+    equal(await page.$eval('[data-test=build-courier_exchange] img', e => [e.getAttribute('src').split('/').pop(), e.naturalWidth > 0]), ['courier_exchange.png', true], 'Harry\'s picture (13 October 2026)');
     await page.click('[data-test=build-wyvern_roost]', { force: true });
     await page.waitForTimeout(250);
     equal(await page.$(POP), null, 'no question');
