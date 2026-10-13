@@ -2,7 +2,7 @@
 (function () {
   var R = TSI.bastion.rules;
   var T = window.TSI_DATA;
-  var data = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, events: T.bastionEvents, research: T.bastionResearch };
+  var data = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, events: T.bastionEvents, research: T.bastionResearch, goods: T.bastionGoods };
 
   /* Dice that come up in the given order (numbers from 0 up to 1). */
   function dice(list) {
@@ -32,10 +32,10 @@
 
   group('Bastion: content');
 
-  test('22 facilities (the overhaul, 13 October 2026: 8 of them still in development), 12 tool tables (9 can be artisan tools), 11 events, 7 clans, 270 compendium items (271 entries)', function (t) {
+  test('22 facilities (the overhaul, 13 October 2026: 6 of them still in development once pull request 3 opened the Fishery and Timber Yard), 12 tool tables (9 can be artisan tools), 11 events, 7 clans, 270 compendium items (271 entries)', function (t) {
     t.equal(data.facilities.length, 22);
     t.same(data.facilities.filter(function (f) { return f.inDevelopment; }).map(function (f) { return f.id; }),
-      ['fishery_smokehouse', 'timber_sawmill', 'stone_masonworks', 'weavers_hall', 'courier_exchange', 'wyvern_roost', 'griffin_tower', 'dire_wolf_den']);
+      ['stone_masonworks', 'weavers_hall', 'courier_exchange', 'wyvern_roost', 'griffin_tower', 'dire_wolf_den']);
     t.same(['smithy', 'arcane_study', 'laboratory', 'library', 'garden', 'greenhouse', 'gaming_hall'].filter(function (id) { return R.facility(data, id); }), [], 'the old ones are gone');
     t.equal(Object.keys(data.tools).length, 12);
     t.equal(R.toolTableNames(data.tools).length, 9);
@@ -50,9 +50,9 @@
     t.same(warRoom, T.bastionWar.warRoom.map(function (e) { return e.label; }));
   });
 
-  test('every facility has a picture (one still in development: its map picture, or its name until Harry paints one), and the map overlays belong to real facilities', function (t) {
+  test('every facility has a picture (a painted tile, or a crop of its map picture until Harry paints one; a facility still in development may show its name), and the map overlays belong to real facilities', function (t) {
     data.facilities.forEach(function (f) {
-      if (!f.inDevelopment) t.ok(T.bastion.facilityImages[f.id], f.id + ' picture');
+      if (!f.inDevelopment) t.ok(T.bastion.facilityImages[f.id] || T.bastion.facilityTileCrops[f.id], f.id + ' picture');
       else if (f.id !== 'courier_exchange') t.ok(T.bastion.facilityImages[f.id] || T.bastion.facilityTileCrops[f.id], f.id + ' picture');
     });
     Object.keys(T.bastion.facilityTileCrops).forEach(function (id) {
@@ -1132,14 +1132,15 @@
     R.removeOrder(s, o.id);
   }
 
-  test('the Herbal Gardens tree: 4 branches of 3 stages of 2 choices; 9 can be researched now, 15 are "coming"; the document\'s gold', function (t) {
+  test('the Herbal Gardens tree: 4 branches of 3 stages of 2 choices; 12 can be researched now (pull request 3 added Specialist Seedbeds, Botanical Extraction and Exotic Flora Conservatory), 12 are "coming"; the document\'s gold', function (t) {
     var tree = R.researchTree(data, 'herbal_gardens');
     t.same(tree.branches.map(function (b) { return [b.name, b.stages.length, b.costs]; }), [
       ['Agricultural Development', 3, [150, 350, 750]], ['Herbal Medicine', 3, [200, 450, 950]], ['Botanical Research', 3, [200, 500, 1100]], ['Commercial Cultivation', 3, [250, 600, 1300]]]);
     var all = [];
     tree.branches.forEach(function (b) { b.stages.forEach(function (st) { t.equal(st.choices.length, 2); st.choices.forEach(function (c) { all.push(c); }); }); });
     t.equal(all.length, 24);
-    t.same(all.filter(function (c) { return !c.needs; }).map(function (c) { return c.id; }), ['fertile_soil', 'efficient_planting', 'intensive_cultivation', 'crop_rotation', 'bountiful_harvests', 'perpetual_growing_cycle', 'healing_herb_refinement', 'improved_antitoxins', 'concentrated_restoratives']);
+    t.same(all.filter(function (c) { return !c.needs; }).map(function (c) { return c.id; }), ['fertile_soil', 'efficient_planting', 'intensive_cultivation', 'crop_rotation', 'bountiful_harvests', 'perpetual_growing_cycle', 'healing_herb_refinement', 'improved_antitoxins', 'concentrated_restoratives',
+      'specialist_seedbeds', 'botanical_extraction', 'exotic_flora_conservatory']);
     all.forEach(function (c) {
       if (c.needs) t.ok(T.bastionResearch.needs[c.needs], c.id + ' says what it waits for');
       else t.ok(c.effects && c.effects.length, c.id + ' has effects');
@@ -1429,7 +1430,7 @@
     t.same(slots(plain), ['shrine_aurush']);
   });
 
-  test('new orders: Alchemy and Greenhouse Harvest need party level 9; a facility still in development can\'t be built', function (t) {
+  test('new orders: Alchemy and Greenhouse Harvest need party level 9; a facility still in development can\'t be built; a plot facility can\'t go in a special slot', function (t) {
     var s = built(fresh(), ['arcane_laboratory', 'herbal_gardens']);
     s.treasuryGP = 1000;
     s.partyLevel = 8;
@@ -1445,10 +1446,303 @@
     t.equal(R.issueOrder(s, data, 'workshop', 'smithing', 0, dice([0.3])).ok, false, 'no Smithing without the old Smithy');
     s.partyLevel = 20;
     R.slotRows(s, 20);
-    ['fishery_smokehouse', 'timber_sawmill', 'stone_masonworks', 'weavers_hall', 'courier_exchange', 'wyvern_roost', 'griffin_tower', 'dire_wolf_den'].forEach(function (id) {
-      var r = R.startBuild(s, data, 2, id);
+    ['stone_masonworks', 'weavers_hall', 'courier_exchange', 'wyvern_roost', 'griffin_tower', 'dire_wolf_den'].forEach(function (id) {
+      var r = R.startBuild(s, data, 2, id, R.isPlotFacility(data, id) ? 'plot' : 'slot');
       t.equal(r.ok, false, id);
       t.ok(/still in development/.test(r.message), id + ': ' + r.message);
+    });
+    ['fishery_smokehouse', 'timber_sawmill'].forEach(function (id) {
+      var r = R.startBuild(s, data, 2, id, 'slot');
+      t.equal(r.ok, false, id + ' refused in a special slot');
+      t.ok(R.startBuild(s, data, 0, id, 'plot').ok || R.startBuild(s, data, 1, id, 'plot').ok, id + ' builds on a Development Plot');
+    });
+  });
+
+  group('Bastion: Development Plots (pull request 3, 13 October 2026)');
+
+  /* A Bastion at a party level, with these facilities on plots (built). */
+  function plots(level, ids, slots) {
+    var s = built(fresh(), slots || []);
+    s.day = 10;
+    s.partyLevel = level;
+    s.builtPlots = (ids || []).map(function (id) { return id ? { facId: id, status: 'built' } : ''; });
+    R.ensureLevels(s, data);
+    return s;
+  }
+
+  test('plots open at party level 9 (2), 13 (4) and 17 (6); the six economic facilities go on them', function (t) {
+    t.same([1, 8, 9, 12, 13, 16, 17, 20].map(function (l) { return R.plotsForLevel(l, data); }), [0, 0, 2, 2, 4, 4, 6, 6]);
+    t.same(data.facilities.filter(function (f) { return f.plot; }).map(function (f) { return f.id; }).sort(),
+      ['courier_exchange', 'fishery_smokehouse', 'herbal_gardens', 'stone_masonworks', 'timber_sawmill', 'weavers_hall']);
+    var rows = R.plotRows(plots(9), 9, data);
+    t.same([rows.max, rows.used, rows.rows.length, rows.rows[0].kind, rows.rows[0].canBuild], [2, 0, 2, 'plot', true]);
+    t.equal(R.plotRows(plots(8), 8, data).rows.length, 0, 'none before level 9');
+  });
+
+  test('a plot facility builds on a plot in 21 days, never in a special slot; a special facility never on a plot', function (t) {
+    var s = plots(8);
+    t.ok(/needs a free Development Plot: plots open at party level 9/.test(R.startBuild(s, data, 0, 'herbal_gardens', 'plot').message));
+    s.partyLevel = 9;
+    t.equal(R.startBuild(s, data, 0, 'herbal_gardens', 'slot').message, 'The Herbal Gardens is built on a Development Plot.');
+    t.equal(R.startBuild(s, data, 0, 'war_room', 'plot').message, 'The War Room is built in a construction slot, not on a Development Plot.');
+    var r = R.startBuild(s, data, 0, 'herbal_gardens', 'plot');
+    t.same(r, { ok: true, log: ['Construction Started', 'Herbal Gardens is under construction (21 days: ready on Day 31).'] });
+    t.same(s.builtPlots[0], { facId: 'herbal_gardens', status: 'building', startDay: 10, readyDay: 31 });
+    t.same(s.builtExtras.filter(Boolean), [], 'no special slot used');
+    t.ok(R.reservedFacilityIds(s, data).indexOf('herbal_gardens') !== -1);
+    t.equal(R.startBuild(s, data, 1, 'herbal_gardens', 'plot').ok, false, 'only one');
+    t.ok(R.startBuild(s, data, 1, 'timber_sawmill', 'plot').ok);
+    t.equal(R.startBuild(s, data, 2, 'fishery_smokehouse', 'plot').ok, false, 'two plots at level 9');
+    t.same(R.upcoming(s, data).map(function (u) { return [u.kind, u.id, u.day]; }), [['build', 'herbal_gardens', 31], ['build', 'timber_sawmill', 31]]);
+    R.shiftDays(s, 5);
+    t.equal(s.builtPlots[0].readyDay, 36, 'a plot\'s building moves with the day');
+    s.day = 36;
+    t.same(R.completeConstruction(s), ['herbal_gardens', 'timber_sawmill']);
+    t.ok(R.builtFacilityIds(s, data).indexOf('timber_sawmill') !== -1);
+  });
+
+  test('an Herbal Gardens in a special slot moves to the first free plot, keeping its level, orders and research; with no plot free it stays', function (t) {
+    var s = built(fresh(), ['war_room', 'herbal_gardens']);
+    s.partyLevel = 8;
+    s.facilityLevels.herbal_gardens = 3;
+    s.research = { herbal_gardens: { agricultural: ['fertile_soil'] } };
+    order(s, 'herbal_gardens', 'harvest', 0);
+    t.same(R.settlePlots(s, data), [], 'no plots at level 8');
+    t.equal(s.builtExtras[1].facId, 'herbal_gardens');
+    s.partyLevel = 9;
+    var moved = R.settlePlots(s, data);
+    t.same(moved, [{ facId: 'herbal_gardens', fromSlot: 1, toPlot: 0 }]);
+    t.equal(R.settleLine(data, moved), 'The Herbal Gardens moved to a Development Plot; its construction slot is free.');
+    t.same([s.builtExtras[1], s.builtPlots[0]], ['', { facId: 'herbal_gardens', status: 'built' }]);
+    t.equal(R.getFacilityLevel(s, 'herbal_gardens'), 3);
+    t.same(s.research, { herbal_gardens: { agricultural: ['fertile_soil'] } });
+    t.equal(s.pendingOrders.length, 1);
+    t.ok(R.builtFacilityIds(s, data).indexOf('herbal_gardens') !== -1);
+    t.same(R.settlePlots(s, data), [], 'only once');
+    /* Plots full: it waits in its slot, and moves when one is freed. */
+    var full = plots(9, ['timber_sawmill', 'fishery_smokehouse'], ['herbal_gardens']);
+    t.same(R.settlePlots(full, data), []);
+    var d = R.demolishFacility(full, data, 'timber_sawmill');
+    t.equal(d.ok, true);
+    t.same(d.moved, [{ facId: 'herbal_gardens', fromSlot: 0, toPlot: 0 }]);
+    t.equal(d.log[1], 'The Timber Yard & Sawmill was demolished; its plot is free. The Herbal Gardens moved to a Development Plot; its construction slot is free.');
+  });
+
+  test('lowering the party level keeps the plots\' facilities (marked over capacity); a save puts a non-plot facility back in a slot', function (t) {
+    var s = plots(13, ['herbal_gardens', 'timber_sawmill', 'fishery_smokehouse']);
+    var rows = R.plotRows(s, 9, data);
+    t.same([rows.max, rows.used, rows.over], [2, 3, 1]);
+    t.same(rows.rows.map(function (r) { return r.overCapacity; }), [false, false, true]);
+    t.ok(R.builtFacilityIds(s, data).indexOf('fishery_smokehouse') !== -1, 'still working');
+    var save = R.toSave(plots(9, ['war_room', 'herbal_gardens']));
+    var back = R.fromSave(JSON.parse(JSON.stringify(save)), data);
+    t.same(back.builtPlots, ['', { facId: 'herbal_gardens', status: 'built' }]);
+    t.ok(back.builtExtras.some(function (x) { return x && x.facId === 'war_room'; }), 'the War Room is kept, in a slot');
+    var plain = plots(9, ['herbal_gardens']);
+    t.same(R.fromSave(JSON.parse(JSON.stringify(R.toSave(plain))), data), plain, 'a save and reload keeps the plots');
+  });
+
+  test('the campaign summary sees a facility being built on a plot', function (t) {
+    var s = plots(9);
+    s.anchored = true;
+    R.startBuild(s, data, 0, 'fishery_smokehouse', 'plot');
+    var coming = TSI.campaign.bastionComing(JSON.parse(JSON.stringify(R.toSave(s))));
+    t.ok(coming.some(function (c) { return c.kind === 'built' && c.day === 31 && /Fishery & Smokehouse is built/.test(c.line); }), JSON.stringify(coming));
+  });
+
+  group('Bastion: goods and production (pull request 3, 13 October 2026)');
+
+  /* Every good named in the facilities' orders. */
+  function goodsNamed() {
+    var ids = [];
+    data.facilities.forEach(function (f) {
+      (f.functions || []).forEach(function (fn) {
+        if (!fn.production) return;
+        (fn.options || []).forEach(function (o) {
+          (o.inputs || []).concat(o.outputs || []).forEach(function (x) { if (x.good && ids.indexOf(x.good) === -1) ids.push(x.good); });
+        });
+      });
+    });
+    return ids;
+  }
+  function stock(s, list) { list.forEach(function (x) { R.addGoods(s, data, x[0], x[1], '', dice([0.3])); }); return s; }
+  /* An order runs to its day and completes. */
+  function finish(s, o) {
+    var out = R.completeSimpleOrder(s, data, o, dice([0.3]));
+    R.removeOrder(s, o.id);
+    return out;
+  }
+
+  test('the goods catalogue: 17 trade goods in lots, 4 ingredients in portions, 1 supply in packs; every good an order names is in it', function (t) {
+    var g = R.goodsList(data);
+    var kinds = {};
+    g.forEach(function (x) { kinds[x.kind] = (kinds[x.kind] || 0) + 1; });
+    t.same(kinds, { cargo: 17, ingredient: 4, supply: 1 });
+    t.equal(g.map(function (x) { return x.id; }).filter(function (id, i, a) { return a.indexOf(id) !== i; }).length, 0, 'ids are unique');
+    g.filter(function (x) { return x.kind === 'cargo'; }).forEach(function (x) { t.ok(typeof x.gp === 'number' && x.gp > 0 && x.lot, x.id); });
+    goodsNamed().forEach(function (id) { t.ok(R.good(data, id), id + ' is in the catalogue'); });
+    t.same([R.goodsAmountText(data, 'raw_timber', 1), R.goodsAmountText(data, 'raw_timber', 3), R.goodsAmountText(data, 'restorative_herbs', 10), R.goodsAmountText(data, 'expedition_provision_pack', 1), R.goodsAmountText(data, 'expedition_provision_pack', 5)],
+      ['1 lot of Raw Timber', '3 lots of Raw Timber', '10 portions of Restorative Herbs', '1 Expedition Provision Pack', '5 Expedition Provision Packs']);
+    t.same([R.goodsValue(data, 'raw_timber', 3), R.goodsValue(data, 'restorative_herbs', 10)], [300, null], 'the base value per lot; ingredients have none');
+  });
+
+  test('goods in the Warehouse: merged by id only (never with a typed row of the same name); taken all or nothing', function (t) {
+    var s = fresh();
+    s.warehouse = [{ id: 'free', item: 'Raw Timber', qty: 7, gp: '5', notes: 'typed by hand' }];
+    R.addGoods(s, data, 'raw_timber', 1, 'Timber Yard', dice([0.3]));
+    R.addGoods(s, data, 'raw_timber', 2, 'Timber Yard', dice([0.3]));
+    t.equal(s.warehouse.length, 2);
+    t.same([s.warehouse[1].goodId, s.warehouse[1].item, s.warehouse[1].qty, s.warehouse[1].gp], ['raw_timber', 'Raw Timber', 3, '']);
+    t.equal(R.goodsQty(s, 'raw_timber'), 3, 'the typed row isn\'t counted');
+    R.appendToWarehouse(s, 'Raw Timber', 1, '', 'x', dice([0.3]));
+    t.same([s.warehouse[0].qty, s.warehouse[1].qty], [8, 3], 'a named item merges into the typed row, never the goods row');
+    t.equal(R.takeGoods(s, data, [{ good: 'raw_timber', qty: 3 }, { good: 'sawn_lumber', qty: 1 }]), null, 'short of Sawn Lumber: nothing taken');
+    t.equal(R.goodsQty(s, 'raw_timber'), 3);
+    t.ok(R.inputsShort(s, data, [{ good: 'raw_timber', qty: 2 }, { good: 'raw_timber', qty: 2 }]), 'a good named twice is counted together');
+    t.same(R.takeGoods(s, data, [{ good: 'raw_timber', qty: 3 }]), [{ goodId: 'raw_timber', name: 'Raw Timber', qty: 3 }]);
+    t.same(s.warehouse.map(function (w) { return w.id; }), ['free'], 'the emptied goods row goes');
+    t.equal(R.returnGoods(s, data, [{ goodId: 'raw_timber', name: 'Raw Timber', qty: 3 }]), '3 lots of Raw Timber went back to the Warehouse.');
+    t.equal(R.goodsQty(s, 'raw_timber'), 3);
+  });
+
+  test('a saved Warehouse: typed rows exactly as they were; goods rows tidied; an order\'s held goods kept', function (t) {
+    var s = fresh();
+    var typed = { id: 'a', item: 'Rope', qty: 2, gp: '1 gp', notes: '' };
+    var save = R.toSave(s);
+    save.warehouse = [typed, { id: 'b', goodId: 'raw_timber', item: 'Logs', qty: 2.6, gp: '9999', notes: 'x' }, 'nonsense'];
+    save.pendingOrders = [{ id: 'o', facId: 'timber_sawmill', fnId: 'saw_lumber', label: 'Saw', issuedDay: 1, dueDay: 5, inputs: [{ goodId: 'raw_timber', name: 'Raw Timber', qty: 1 }, { goodId: '', qty: 3 }, 'x'] }];
+    var back = R.fromSave(save, data);
+    t.same(back.warehouse[0], typed);
+    t.same(back.warehouse[1], { id: 'b', goodId: 'raw_timber', item: 'Raw Timber', qty: 2, gp: '', notes: 'x' });
+    t.equal(back.warehouse.length, 2);
+    t.same(back.pendingOrders[0].inputs, [{ goodId: 'raw_timber', name: 'Raw Timber', qty: 1 }]);
+    t.same(R.readGoodsRow({ qty: '-4', notes: ' kept ' }), { qty: 0, notes: 'kept' });
+  });
+
+  test('the Timber Yard: orders open by its level; one production order at a time; inputs taken when it begins', function (t) {
+    var s = plots(9, ['timber_sawmill']);
+    t.equal(R.issueOrder(s, data, 'timber_sawmill', 'saw_lumber', 0, dice([0.3])).message, 'Needs Level 2.');
+    s.facilityLevels.timber_sawmill = 2;
+    t.equal(R.issueOrder(s, data, 'timber_sawmill', 'saw_lumber', 0, dice([0.3])).message, 'Needs 1 lot of Raw Timber in the Warehouse; it has 0 lots.');
+    var r = R.issueOrder(s, data, 'timber_sawmill', 'harvest_timber', 0, dice([0.3]));
+    t.same(r.log, ['Order Issued', 'Timber Yard & Sawmill: Harvest Timber (4 days: due Day 14).']);
+    stock(s, [['raw_timber', 1]]);
+    t.equal(R.issueOrder(s, data, 'timber_sawmill', 'saw_lumber', 0, dice([0.3])).message, 'The Timber Yard & Sawmill is busy: one production order at a time (Timber Yard & Sawmill: Harvest Timber, due on Day 14).');
+    t.equal(R.issueUpgrade(s, data, 'timber_sawmill', dice([0.3])).ok, true, 'an upgrade isn\'t a production order');
+    var o = s.pendingOrders.filter(function (x) { return x.fnId === 'harvest_timber'; })[0];
+    t.same(finish(s, o), [['Order Completed', 'Timber Yard & Sawmill: Harvest Timber → Added to Warehouse: 1 lot of Raw Timber.']]);
+    t.equal(R.goodsQty(s, 'raw_timber'), 2);
+    r = R.issueOrder(s, data, 'timber_sawmill', 'saw_lumber', 0, dice([0.3]));
+    t.same(r.log, ['Order Issued', 'Timber Yard & Sawmill: Saw Lumber (4 days: due Day 14). Taken from the Warehouse: 1 lot of Raw Timber.']);
+    t.equal(R.goodsQty(s, 'raw_timber'), 1);
+    o = s.pendingOrders.filter(function (x) { return x.fnId === 'saw_lumber'; })[0];
+    t.same(o.inputs, [{ goodId: 'raw_timber', name: 'Raw Timber', qty: 1 }]);
+    finish(s, o);
+    t.same([R.goodsQty(s, 'raw_timber'), R.goodsQty(s, 'sawn_lumber')], [1, 1], 'used up, never given back on completion');
+  });
+
+  test('cancelling gives held goods back once; demolishing gives them back; an order whose facility is gone gives them back', function (t) {
+    var s = stock(plots(9, ['timber_sawmill']), [['raw_timber', 1]]);
+    s.facilityLevels.timber_sawmill = 2;
+    R.issueOrder(s, data, 'timber_sawmill', 'saw_lumber', 0, dice([0.3]));
+    var id = s.pendingOrders[0].id;
+    t.same(R.cancelOrder(s, id, data, 10), ['Orders', 'Cancelled Timber Yard & Sawmill: Saw Lumber. 1 lot of Raw Timber went back to the Warehouse.']);
+    t.same(R.cancelOrder(s, id, data, 10), ['Orders', 'Cancelled an order.'], 'a second Cancel gives nothing');
+    t.equal(R.goodsQty(s, 'raw_timber'), 1);
+    R.issueOrder(s, data, 'timber_sawmill', 'saw_lumber', 0, dice([0.3]));
+    var d = R.demolishFacility(s, data, 'timber_sawmill');
+    t.equal(d.log[1], 'The Timber Yard & Sawmill was demolished; its plot is free. Cancelled: Timber Yard & Sawmill: Saw Lumber. 1 lot of Raw Timber went back to the Warehouse.');
+    t.equal(R.goodsQty(s, 'raw_timber'), 1);
+    var lost = { id: 'x', facId: 'old_mill', fnId: 'grind', label: 'Old Mill: Grind', inputs: [{ goodId: 'raw_timber', name: 'Raw Timber', qty: 2 }], dueDay: 10 };
+    t.equal(R.orderKind(data, lost), 'none');
+    t.same(R.dropOrderGoods(s, data, lost), [['Orders', 'Old Mill: Grind couldn\'t be completed (its facility or order no longer exists). 2 lots of Raw Timber went back to the Warehouse.']]);
+    t.equal(R.goodsQty(s, 'raw_timber'), 3);
+    t.equal(R.dropOrderGoods(s, data, { id: 'y', facId: 'old_mill' }), null, 'nothing held, nothing said');
+  });
+
+  test('the Fishery: fish, smoked fish, provision packs; Level 5\'s bulk orders make three', function (t) {
+    var s = plots(9, ['fishery_smokehouse']);
+    s.facilityLevels.fishery_smokehouse = 5;
+    finish(s, order(s, 'fishery_smokehouse', 'commercial_fishing_fleet', 0));
+    t.equal(R.goodsQty(s, 'fresh_fish'), 3);
+    var o = order(s, 'fishery_smokehouse', 'bulk_smokehouse_production', 0);
+    t.equal(o.dueDay, 17, '7 days');
+    finish(s, o);
+    t.same([R.goodsQty(s, 'fresh_fish'), R.goodsQty(s, 'preserved_fish')], [0, 3]);
+    finish(s, order(s, 'fishery_smokehouse', 'prepare_expedition_provisions', 0));
+    t.same([R.goodsQty(s, 'preserved_fish'), R.goodsQty(s, 'expedition_provision_pack')], [2, 5]);
+  });
+
+  test('the Herbal Gardens\' new orders: Level 2 ingredients, Level 3 medical supplies with their own days, research yields and recipes', function (t) {
+    var s = gardens(2);
+    t.equal(R.issueOrder(s, data, 'herbal_gardens', 'field_medical_supplies', 0, dice([0.3])).message, 'Needs Level 3.');
+    var o = order(s, 'herbal_gardens', 'cultivate_specialist', 0);
+    t.same([o.dueDay, o.label], [14, 'Herbal Gardens: Cultivate Specialist Plants → Restorative Herbs (10 portions)']);
+    t.same(finish(s, o), [['Order Completed', 'Herbal Gardens: Cultivate Specialist Plants → Restorative Herbs (10 portions) → Added to Warehouse: 10 portions of Restorative Herbs.']]);
+    s.facilityLevels.herbal_gardens = 3;
+    stock(s, [['antivenom_roots', 5]]);
+    o = order(s, 'herbal_gardens', 'field_medical_supplies', 0);
+    t.equal(o.dueDay, 16, 'Healer\'s Kits and Antitoxin: 6 days');
+    t.same([R.goodsQty(s, 'restorative_herbs'), R.goodsQty(s, 'antivenom_roots')], [5, 0]);
+    finish(s, o);
+    t.same(s.warehouse.filter(function (w) { return !w.goodId; }).map(function (w) { return [w.item, w.qty]; }), [['Healer\'s Kit', 2], ['Antitoxin (2 vials)', 2]]);
+    t.equal(R.issueOrder(s, data, 'herbal_gardens', 'field_medical_supplies', 1, dice([0.3])).message, 'Needs 10 portions of Restorative Herbs in the Warehouse; it has 5 portions.');
+    stock(s, [['restorative_herbs', 5]]);
+    t.equal(order(s, 'herbal_gardens', 'field_medical_supplies', 1).dueDay, 17, 'Potions of Healing: 7 days');
+  });
+
+  test('research on the new orders: +5 portions, +50% (the bigger applies), Specialist Seedbeds on top; Crop Rotation and the Perpetual Growing Cycle by their wording', function (t) {
+    function made(s, key) {
+      var fac = R.facility(data, 'herbal_gardens');
+      return R.goodsOutputQty(s, data, fac, R.fn(fac, 'cultivate_specialist'), key, 10);
+    }
+    var s = gardens(5);
+    t.equal(made(s, 'restorative_herbs'), 10);
+    s.research = { herbal_gardens: { agricultural: ['fertile_soil', 'intensive_cultivation'] } };
+    t.equal(made(s, 'toxic_blossoms'), 15, 'Intensive Cultivation: +5 portions');
+    s.research = { herbal_gardens: { agricultural: ['fertile_soil', 'intensive_cultivation', 'bountiful_harvests'] } };
+    t.equal(made(s, 'toxic_blossoms'), 15, 'Bountiful Harvests: +50%, not added to the +5');
+    s.research.herbal_gardens.botanical = ['specialist_seedbeds'];
+    t.equal(made(s, 'toxic_blossoms'), 20, 'Specialist Seedbeds: +5 more');
+    var fac = R.facility(data, 'herbal_gardens');
+    var fms = R.fn(fac, 'field_medical_supplies');
+    var cs = R.fn(fac, 'cultivate_specialist');
+    s.research = { herbal_gardens: { agricultural: ['efficient_planting'] } };
+    t.equal(R.orderDaysAt(s, data, fac, cs, cs.options[0]), 4, 'Efficient Planting: the Harvest only');
+    s.research = { herbal_gardens: { agricultural: ['efficient_planting', 'crop_rotation'] } };
+    t.same([R.orderDaysAt(s, data, fac, cs, cs.options[0]), R.orderDaysAt(s, data, fac, fms, fms.options[0])], [2, 6], 'Crop Rotation: cultivating, not medical supplies');
+    s.research = { herbal_gardens: { agricultural: ['efficient_planting', 'crop_rotation', 'perpetual_growing_cycle'] } };
+    t.same([R.orderDaysAt(s, data, fac, fms, fms.options[0]), R.orderDaysAt(s, data, fac, fms, fms.options[1]), R.orderDaysAt(s, data, fac, R.fn(fac, 'major_botanical_production'), null)], [3, 4, 5], 'the Perpetual Growing Cycle: all six, from each recipe\'s own days');
+  });
+
+  test('a recipe that needs research waits for it (Botanical Extraction, Exotic Flora Conservatory)', function (t) {
+    var s = gardens(5);
+    stock(s, [['alchemical_flowers', 20]]);
+    t.equal(R.issueOrder(s, data, 'herbal_gardens', 'commercial_medicinal_crops', 1, dice([0.3])).message, 'Needs the research Botanical Extraction.');
+    t.equal(R.issueOrder(s, data, 'herbal_gardens', 'major_botanical_production', 5, dice([0.3])).message, 'Needs the research Exotic Flora Conservatory.');
+    s.research = { herbal_gardens: { botanical: ['botanical_extraction'] } };
+    var o = order(s, 'herbal_gardens', 'commercial_medicinal_crops', 1);
+    t.same([o.dueDay, R.goodsQty(s, 'alchemical_flowers')], [17, 10]);
+    finish(s, o);
+    t.equal(R.goodsQty(s, 'refined_botanical_reagents'), 1);
+    t.equal(R.researchChoiceState(s, data, 'herbal_gardens', 'botanical', 'exotic_flora_conservatory'), 'locked', 'Stage III waits for a Stage II choice (both still "coming"): a question for Harry');
+  });
+
+  test('the map labels: one per built facility with a position, with its level; a plot facility is labelled; positions are on the painting', function (t) {
+    var s = fresh();
+    t.same(R.mapLabels(s, data).map(function (l) { return [l.fac, l.level]; }), [['workshop', 1], ['barracks', 1], ['watchtower', 1], ['dock', 1], ['armoury', 1]].sort(function (a, b) { return data.bastion.startingBuilt.indexOf(a[0]) - data.bastion.startingBuilt.indexOf(b[0]); }));
+    s = plots(9, ['herbal_gardens'], ['menagerie', 'war_room']);
+    s.builtExtras.push({ facId: 'library_scriptorium', status: 'building', startDay: 1, readyDay: 30 });
+    s.facilityLevels.barracks = 3;
+    var ids = R.mapLabels(s, data).map(function (l) { return l.fac; });
+    t.ok(ids.indexOf('herbal_gardens') !== -1 && ids.indexOf('war_room') !== -1);
+    t.equal(ids.indexOf('menagerie'), -1, 'no position for the Menagerie');
+    t.equal(ids.indexOf('library_scriptorium'), -1, 'not while being built');
+    t.equal(R.mapLabels(s, data).filter(function (l) { return l.fac === 'barracks'; })[0].level, 3);
+    var at = data.bastion.mapLabels;
+    Object.keys(at).forEach(function (id) {
+      t.ok(R.facility(data, id), id);
+      t.ok(at[id].x >= 0 && at[id].x <= data.bastion.map.width && at[id].y >= 0 && at[id].y <= data.bastion.map.height, id + ' on the painting');
     });
   });
 

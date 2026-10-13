@@ -799,12 +799,13 @@
     list[slotIndex] = { facId: facId, status: 'building', startDay: s.day, readyDay: s.day + days };
     return { ok: true, log: ['Construction Started', name + ' is under construction (' + days + ' days: ready on Day ' + (s.day + days) + ').'] };
   };
-  /* Demolish a facility in a construction slot, built or still being built
-     (Harry, 13 October 2026). The five starting facilities can't be
-     demolished. Its slot is freed; orders pending there are cancelled (their
-     gold isn't given back, as with Cancel: B9); its level and any repairs go.
+  /* Demolish a facility in a construction slot or on a Development Plot,
+     built or still being built (Harry, 13 October 2026). The five starting
+     facilities can't be demolished. Its slot or plot is freed; orders pending
+     there are cancelled (their gold isn't given back, as with Cancel: B9, but
+     goods they hold go back to the Warehouse); its level and any repairs go.
      What it already made stays (the Warehouse, defenders, beasts, units),
-     and the Hall's records and routes carry on. Returns { ok, log, cancelled }
+     and the Hall's records and routes carry on. Returns { ok, log, cancelled, moved }
      or { ok: false, message }. */
   R.demolishFacility = function (s, data, facId) {
     R.normalizeBuiltExtras(s);
