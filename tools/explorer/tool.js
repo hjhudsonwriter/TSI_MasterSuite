@@ -1232,10 +1232,14 @@
         if (TSI.store.mode === 'memory') {
           sentList.appendChild(el('p', { class: 'tsi-exp-tip', text: 'This browser isn\'t saving, so the Bastion can\'t see these.' }));
         }
+        /* The first change sent: look at the Bastion now, not in 2 seconds. */
+        if (bastionSeen === undefined && list.length) readBastion();
       }
       var readingBastion = false;
       function readBastion() {
         if (readingBastion || !life.alive || document.visibilityState === 'hidden') return;
+        /* Only the list's states need it: nothing sent, nothing to read. */
+        if (!(state.journey.outbox || []).length) return;
         readingBastion = true;
         TSI.store.fresh('tsi.bastion.state', null).then(function (b) {
           if (!life.alive) return;
