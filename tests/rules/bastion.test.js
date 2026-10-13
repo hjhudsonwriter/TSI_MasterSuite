@@ -76,6 +76,36 @@
     t.equal(R.mapOverlays(s, data).filter(function (o) { return o.repair; }).length, 1);
   });
 
+  test('demolishing a facility (Harry, 13 October 2026): slot freed, its orders cancelled with no refund, level and repairs gone; starting facilities refused', function (t) {
+    var s = fresh();
+    s.partyLevel = 9;
+    s.treasuryGP = 100;
+    s.builtExtras = [{ facId: 'library', status: 'built' }, { facId: 'garden', status: 'building', startDay: 1, readyDay: 22 }, ''];
+    s.facilityLevels.library = 1;
+    s.repairs = { library: 5 };
+    s.pendingOrders = [
+      { id: 'a', facId: 'library', fnId: 'research', label: 'Library: Research (Combat Scriptures)', costGP: 0, issuedDay: 1, dueDay: 6 },
+      { id: 'b', facId: 'barracks', fnId: 'recruit_defenders', label: 'Barracks: Recruit Defenders', costGP: 0, issuedDay: 1, dueDay: 6 }
+    ];
+    s.warehouse = [{ name: 'Religious Scriptures', qty: 1, gp: '', notes: 'Library' }];
+    var r = R.demolishFacility(s, data, 'library');
+    t.equal(r.ok, true);
+    t.same(r.log, ['Facility Demolished', 'The Library was demolished; its slot is free. Cancelled: Library: Research (Combat Scriptures).']);
+    t.same(s.builtExtras, ['', { facId: 'garden', status: 'building', startDay: 1, readyDay: 22 }, '']);
+    t.same(s.pendingOrders.map(function (o) { return o.id; }), ['b'], 'only the Library\'s order goes');
+    t.equal(s.treasuryGP, 100, 'no refund (B9)');
+    t.equal(s.facilityLevels.library, undefined);
+    t.same(s.repairs, {});
+    t.equal(s.warehouse.length, 1, 'what it made stays');
+    var g = R.demolishFacility(s, data, 'garden');
+    t.same(g.log, ['Construction Stopped', 'Building work on the Garden stopped; its slot is free.']);
+    t.same(s.builtExtras, ['', '', '']);
+    var b = R.demolishFacility(s, data, 'barracks');
+    t.equal(b.ok, false);
+    t.ok(/starting facilities/.test(b.message));
+    t.equal(R.demolishFacility(s, data, 'library').ok, false, 'not built any more');
+  });
+
   test('the starting Bastion: five facilities, Day 1 (not yet set by the Explorer), level 7, 0 gp, unsworn', function (t) {
     var s = fresh();
     t.same(R.builtFacilityIds(s, data), ['barracks', 'armoury', 'watchtower', 'workshop', 'dock']);

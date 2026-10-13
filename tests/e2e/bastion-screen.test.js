@@ -82,6 +82,8 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
       const k = map.w / 3000;
       const hall = { x: map.x + 2595 * k, y: map.y + 376 * k, right: map.x + 2943 * k, bottom: map.y + 649 * k };
       assert(badge.bottom <= hall.y || badge.right <= hall.x || badge.x >= hall.right, size + ': the badge is clear of the Hall: ' + JSON.stringify([badge, hall]));
+      /* ...and sits inside the painting, so it never meets the panel's edge (Harry, 13 October 2026). */
+      assert(badge.x >= map.x && badge.right <= map.right - 8 && badge.y >= map.y && badge.bottom <= map.bottom, size + ': the badge is inside the painting: ' + JSON.stringify([badge, map]));
       const over = await rect(page, '.tsi-bas-map__overlays');
       equal([Math.round(over.x), Math.round(over.y), Math.round(over.w), Math.round(over.h)], [Math.round(map.x), Math.round(map.y), Math.round(map.w), Math.round(map.h)], 'the building overlays sit exactly on the painting');
       const want = { laptop: 900, laptopFull: 1100, tv: 1150, smallWindow: 600 }[size];
@@ -270,7 +272,7 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     await page.click(POP + ' .tsi-modal__foot button:text-is("Construct")');
     await page.waitForFunction(() => !TSI.bastion.debug.panel());
     equal((await st(page)).builtExtras[0], { facId: 'smithy', status: 'building', startDay: 1, readyDay: 22 });
-    equal(await page.$$eval('[data-test=tile-smithy]', ts => ts.map(t => [t.tagName, t.className.includes('building'), t.textContent])), [['DIV', true, '21']]);
+    equal(await page.$$eval('[data-test=tile-smithy]', ts => ts.map(t => [t.tagName, t.className.includes('building'), t.textContent])), [['BUTTON', true, '21']]);
     await page.hover('[data-test=tile-smithy]');
     await page.waitForFunction(() => /Smithy/.test(document.querySelector('[data-test=tooltip]').textContent));
     assert(/Under construction: 21 days left/.test(await bare(page, '[data-test=tooltip]')) && /Ready on Day 22/.test(await bare(page, '[data-test=tooltip]')));
@@ -279,10 +281,14 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     await page.mouse.move(5, 500);
   });
 
-  await check('a building can\'t be clicked; 21 days later it\'s built, and its tile opens the Smithy', async () => {
+  await check('clicking a building asks whether to stop building it (Cancel keeps it); 21 days later it\'s built, and its tile opens the Smithy', async () => {
     await page.click('[data-test=tile-smithy]');
+    await page.waitForSelector(POP);
+    equal(await bare(page, POP + ' .tsi-modal__body'), 'Stop building the Smithy? Its slot is freed, and the days of work so far are lost.');
+    await page.click(POP + ' .tsi-modal__foot button:text-is("Cancel")');
     await page.waitForTimeout(200);
     equal(await panelOpen(page), null);
+    equal((await st(page)).builtExtras[0].status, 'building', 'still being built');
     await days(page, 21);
     equal(await page.$eval('[data-test=tile-smithy]', t => t.tagName), 'BUTTON');
     equal(await text(page, 'facilities-n'), '6');
@@ -292,6 +298,51 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     await page.keyboard.press('Escape');
   });
 
+  await check('Demolish (Harry, 13 October 2026): it asks first, saying an order here is cancelled; then the slot is free, the order gone, and the Day Log says so', async () => {
+    await pause(page);
+    await setUp(page, (s) => { s.pendingOrders.push({ id: 'dm1', facId: 'smithy', fnId: 'craft', chosen: { label: 'Dagger' }, optionLabel: 'Dagger', notes: '', label: 'Smithy: Craft (Dagger)', costGP: 0, issuedDay: s.day, dueDay: s.day + 5 }); });
+    await page.click('[data-test=tile-smithy]');
+    await page.waitForSelector('[data-test=demolish-smithy]');
+    await pause(page);
+    await page.click('[data-test=demolish-smithy]');
+    await page.waitForSelector(POP);
+    const msg = await bare(page, POP + ' .tsi-modal__body');
+    assert(/^Demolish the Smithy\? It goes from the Bastion and its slot is freed\. 1 order pending here is cancelled, and the gold spent isn't given back\./.test(msg), msg);
+    await page.click(POP + ' .tsi-modal__foot button:text-is("Cancel")');
+    await page.waitForTimeout(200);
+    equal((await st(page)).builtExtras[0].facId, 'smithy', 'Cancel keeps it');
+    await pause(page);
+    await page.click('[data-test=demolish-smithy]');
+    await page.waitForSelector(POP);
+    await page.click(POP + ' .tsi-modal__foot button:text-is("Demolish")');
+    await page.waitForFunction(() => !TSI.bastion.debug.panel());
+    const s = await st(page);
+    equal(s.builtExtras.filter(Boolean), [], 'the slot is free');
+    equal(s.pendingOrders.filter(o => o.facId === 'smithy'), [], 'its order is cancelled');
+    equal([s.log[0].title, s.log[0].body], ['Facility Demolished', 'The Smithy was demolished; its slot is free. Cancelled: Smithy: Craft (Dagger).']);
+    equal(await text(page, 'facilities-n'), '5');
+    equal(await page.$('[data-test=tile-smithy]'), null);
+  });
+
+  await check('stopping a building: its slot is free again, and the Day Log says so', async () => {
+    await pause(page);
+    await page.click('[data-test=slot-0]');
+    await page.waitForSelector('[data-test=build-library]');
+    await pause(page);
+    await page.click('[data-test=build-library]');
+    await page.waitForSelector(POP);
+    await page.click(POP + ' .tsi-modal__foot button:text-is("Construct")');
+    await page.waitForFunction(() => !TSI.bastion.debug.panel());
+    await pause(page);
+    await page.click('[data-test=tile-library]');
+    await page.waitForSelector(POP);
+    await page.click(POP + ' .tsi-modal__foot button:text-is("Stop building")');
+    await page.waitForTimeout(300);
+    const s = await st(page);
+    equal(s.builtExtras.filter(Boolean), []);
+    equal([s.log[0].title, s.log[0].body], ['Construction Stopped', 'Building work on the Library stopped; its slot is free.']);
+  });
+
   /* ------------------------------------------------------------------ */
   section('A facility\'s panel');
 
@@ -299,6 +350,7 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     await pause(page);
     await page.click('[data-test=tile-barracks]');
     await page.waitForSelector('[data-test=panel-fac-barracks]');
+    equal(await page.$('[data-test=demolish-barracks]'), null, 'a starting facility can\'t be demolished');
     assert(/Level 1/.test(await text(page, 'fac-panel')));
     equal(await text(page, 'days-barracks__recruit_defenders'), 'Takes 5 days');
     await page.click('[data-test="issue-barracks__recruit_defenders"]');

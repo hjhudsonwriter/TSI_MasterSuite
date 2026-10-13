@@ -568,6 +568,32 @@
     s.builtExtras[slotIndex] = { facId: facId, status: 'building', startDay: s.day, readyDay: s.day + days };
     return { ok: true, log: ['Construction Started', name + ' is under construction (' + days + ' days: ready on Day ' + (s.day + days) + ').'] };
   };
+  /* Demolish a facility in a construction slot, built or still being built
+     (Harry, 13 October 2026). The five starting facilities can't be
+     demolished. Its slot is freed; orders pending there are cancelled (their
+     gold isn't given back, as with Cancel: B9); its level and any repairs go.
+     What it already made stays (the Warehouse, defenders, beasts, units),
+     and the Hall's records and routes carry on. Returns { ok, log, cancelled }
+     or { ok: false, message }. */
+  R.demolishFacility = function (s, data, facId) {
+    R.normalizeBuiltExtras(s);
+    var fac = R.facility(data, facId);
+    var name = (fac && fac.name) || facId;
+    if (data.bastion.startingBuilt.indexOf(facId) !== -1) return { ok: false, message: 'The ' + name + ' is one of the five starting facilities: it can\'t be demolished.' };
+    var at = -1;
+    s.builtExtras.forEach(function (x, i) { if (at === -1 && x && typeof x === 'object' && x.facId === facId) at = i; });
+    if (at === -1) return { ok: false, message: 'The ' + name + ' isn\'t built or being built.' };
+    var building = s.builtExtras[at].status === 'building';
+    s.builtExtras[at] = '';
+    var cancelled = s.pendingOrders.filter(function (o) { return o && o.facId === facId; });
+    s.pendingOrders = s.pendingOrders.filter(function (o) { return !(o && o.facId === facId); });
+    if (isObj(s.facilityLevels)) delete s.facilityLevels[facId];
+    if (isObj(s.repairs)) delete s.repairs[facId];
+    var body = building
+      ? 'Building work on the ' + name + ' stopped; its slot is free.'
+      : 'The ' + name + ' was demolished; its slot is free.' + (cancelled.length ? ' Cancelled: ' + cancelled.map(function (o) { return o.label; }).join('; ') + '.' : '');
+    return { ok: true, log: [building ? 'Construction Stopped' : 'Facility Demolished', body], cancelled: cancelled };
+  };
   R.getFacilityLevel = function (s, facId) { return clampInt(s.facilityLevels && s.facilityLevels[facId] !== undefined && s.facilityLevels[facId] !== null ? s.facilityLevels[facId] : 1, 1, 3); };
 
   /* ---------- Orders ---------- */

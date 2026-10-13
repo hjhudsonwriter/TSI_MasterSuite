@@ -2082,7 +2082,10 @@
       var hallCard = el('div', { class: 'tsi-bas-hall', 'data-test': 'hall' });
       TSI.append(dipCard.body, [
         el('div', { class: 'tsi-bas-dip-grid' }, [el('div', { class: 'tsi-bas-dip-left' }, dipBoxes), el('div', { class: 'tsi-bas-dip-right' }, hallCard)]),
-        el('div', { class: 'tsi-bas-dip-foot' }, [btn('Clear Diplomacy Records', function () { onClearDiplomacy(); }, 'tsi-btn--ghost', 'clear-diplomacy')])
+        el('div', { class: 'tsi-bas-dip-foot' }, [
+          btn('Clear Diplomacy Records', function () { onClearDiplomacy(); }, 'tsi-btn--ghost', 'clear-diplomacy'),
+          btn('Demolish…', function () { onDemolish('hall_of_emissaries'); }, 'tsi-btn--ghost tsi-bas-demolish', 'demolish-hall_of_emissaries')
+        ])
       ]);
 
       /* "Clan Karr • 21 days remaining (3 shipments) • +90 gp a shipment" (Harry,
@@ -2578,14 +2581,16 @@
         bindFocusTip(tile, tile, build);
         return tile;
       }
-      /* A facility being built: an hourglass and the days left; not clickable. */
+      /* A facility being built: an hourglass and the days left. Clicking it
+         offers to stop building it (Harry, 13 October 2026). */
       function buildingTile(entry, index, over) {
         var fac = R.facility(data, entry.facId);
         var name = fac ? fac.name : entry.facId;
         var left = R.buildDaysLeft(state, entry);
-        var tile = el('div', {
-          class: 'tsi-bas-tile tsi-bas-tile--building' + (over ? ' tsi-bas-tile--over' : ''), role: 'img', tabindex: '0', 'data-test': 'tile-' + entry.facId, 'data-fac': entry.facId, 'data-slot': String(index),
-          'aria-label': name + ': under construction, ' + R.daysText(left) + ' left (ready on Day ' + entry.readyDay + ').' + (over ? ' Over capacity.' : '')
+        var tile = el('button', {
+          type: 'button', class: 'tsi-bas-tile tsi-bas-tile--building' + (over ? ' tsi-bas-tile--over' : ''), 'data-test': 'tile-' + entry.facId, 'data-fac': entry.facId, 'data-slot': String(index),
+          'aria-label': name + ': under construction, ' + R.daysText(left) + ' left (ready on Day ' + entry.readyDay + ').' + (over ? ' Over capacity.' : '') + ' Click to stop building it.',
+          onclick: function () { onDemolish(entry.facId); }
         }, [
           facArt(entry.facId, 'tsi-bas-tile__img'),
           el('span', { class: 'tsi-bas-tile__mark tsi-bas-tile__mark--build', 'aria-hidden': 'true' }, [icon('hourglass'), el('span', { class: 'tsi-bas-tile__days', text: String(left) })]),
@@ -2594,7 +2599,7 @@
         var build = function () {
           var parts = [muted('Under construction: ' + R.daysText(left) + ' left.')];
           if (over) parts.push(muted('Over capacity: kept, but above the ' + R.constructionSlotsForLevel(state.partyLevel) + ' construction slot(s) for party level ' + state.partyLevel + '.'));
-          return { title: name, parts: parts, foot: 'Ready on Day ' + entry.readyDay };
+          return { title: name, parts: parts, foot: 'Ready on Day ' + entry.readyDay + ' • click to stop building it' };
         };
         bindTip(tile, build, { noChange: true });
         bindFocusTip(tile, tile, build);
@@ -2683,7 +2688,12 @@
             ])
           ]),
           el('div', { class: 'tsi-bas-fac__fns tsi-bas-facpanel__fns' }, fns.length ? fns : [muted('No functions listed.')]),
-          id === 'workshop' ? el('div', { class: 'tsi-bas-facpanel__artisan' }, [label('Artisan Tools'), artCard.root]) : null
+          id === 'workshop' ? el('div', { class: 'tsi-bas-facpanel__artisan' }, [label('Artisan Tools'), artCard.root]) : null,
+          /* A facility in a construction slot can be demolished (Harry, 13
+             October 2026); the five starting facilities can't. */
+          B.startingBuilt.indexOf(id) === -1 ? el('div', { class: 'tsi-bas-facpanel__demolish' }, [
+            btn('Demolish…', function () { onDemolish(id); }, 'tsi-btn--ghost tsi-bas-demolish', 'demolish-' + id)
+          ]) : null
         ]);
       }
 
@@ -2779,6 +2789,28 @@
         done();
         return true;
       }
+      /* Demolishing a facility, or stopping one being built: asks first,
+         saying what happens to its orders (R.demolishFacility). */
+      var onDemolish = TSI.oneAtATime(async function (facId) {
+        var fac = R.facility(data, facId);
+        var name = fac ? fac.name : facId;
+        var entry = (state.builtExtras || []).filter(function (x) { return x && typeof x === 'object' && x.facId === facId; })[0];
+        if (!entry) return;
+        var building = entry.status === 'building';
+        var orders = state.pendingOrders.filter(function (o) { return o && o.facId === facId; }).length;
+        var msg = building
+          ? 'Stop building the ' + name + '? Its slot is freed, and the days of work so far are lost.'
+          : 'Demolish the ' + name + '? It goes from the Bastion and its slot is freed. ' +
+            (orders ? plural(orders, 'order') + ' pending here ' + (orders === 1 ? 'is' : 'are') + ' cancelled, and the gold spent isn\'t given back. ' : '') +
+            'Anything it has already made stays' + (facId === 'hall_of_emissaries' ? ', and your agreements, contracts and sea routes carry on' : '') + '. It can be built again later from an empty slot.';
+        var ok = await ask(msg, building ? 'Stop building' : 'Demolish', building ? 'Stop building' : 'Demolish');
+        if (!ok || !life.alive) return;
+        var res = R.demolishFacility(state, data, facId);
+        if (!res.ok) { if (res.message) await say(res.message); return; }
+        log(res.log[0], res.log[1]);
+        closePanel();
+        done();
+      });
       async function onClearBuilds() {
         if (!(await ask('Clear all extra built facilities (slots) only? Your 5 starting facilities remain.', 'Clear'))) return;
         state.builtExtras = [];
@@ -3545,7 +3577,10 @@
         life.raf(fitMap);
       }
 
-      var mapArea = el('div', { class: 'tsi-bas-mapwrap' }, [mapFrame, badge]);
+      /* The badge sits inside the painting's frame, at its top-right corner,
+         so it never meets the edge of the map panel (Harry, 13 October 2026). */
+      mapFrame.appendChild(badge);
+      var mapArea = el('div', { class: 'tsi-bas-mapwrap' }, [mapFrame]);
       var stage = el('section', { class: 'tsi-bas-stage', 'aria-label': 'Bastion Map' }, [topBar, mapArea, bottomBar]);
       var page = el('div', { class: 'tsi-bas' }, [bar, stage]);
       ctx.root.appendChild(page);

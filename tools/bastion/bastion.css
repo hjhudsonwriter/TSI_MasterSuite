@@ -187,11 +187,11 @@
 .tsi-page--bastion .tsi-bas-map__overlays { position: absolute; inset: 0; pointer-events: none; border-radius: 12px; overflow: hidden; }
 .tsi-page--bastion .tsi-bas-map__overlay { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; }
 
-/* The Party Identity badge, top right of the map. */
+/* The Party Identity badge, inside the painting's top-right corner. */
 .tsi-page--bastion .tsi-bas-badge {
   position: absolute;
-  top: 16px;
-  right: 16px;
+  top: 12px;
+  right: 12px;
   z-index: 2;
   display: flex;
   flex-direction: column;
@@ -1317,3 +1317,10 @@
   letter-spacing: var(--tsi-track-label); text-transform: uppercase; color: var(--tsi-gold-text);
 }
 .tsi-bas-modal--word .tsi-bas-word__day:first-child { margin-top: 0; }
+
+/* Demolish (Harry, 13 October 2026): at the foot of a facility's panel,
+   and beside Clear Diplomacy Records in the Hall's. */
+.tsi-page--bastion .tsi-bas-facpanel__demolish { display: flex; justify-content: flex-end; margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--tsi-line); }
+.tsi-page--bastion .tsi-bas-dip-foot { display: flex; gap: 10px; flex-wrap: wrap; }
+.tsi-page--bastion .tsi-btn.tsi-bas-demolish { color: #ffb4a8; border-color: rgba(255, 140, 120, .55); }
+.tsi-page--bastion .tsi-btn.tsi-bas-demolish:hover { background: rgba(177, 18, 42, .25); }

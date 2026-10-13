@@ -8,6 +8,11 @@ Double-click `index.html` to open the suite. The plan is in `docs/PLAN.md`, the 
 
 ## Done
 
+### Demolish, and the crest badge inside the painting (13 October 2026)
+After Harry's check of the new map (pull request #19, merged):
+- **Demolish:** each facility in a slot has **Demolish…** at the foot of its panel (the Hall's beside Clear Diplomacy Records). It asks first; the slot is freed, its pending orders are cancelled with no gold back, and what it made stays. Clicking a facility still being built offers to stop building it. The starting five can't be demolished (BAS-70).
+- **The crest badge** now sits inside the painting's top-right corner, so it no longer meets the edge of the map panel.
+
 ### The facilities overhaul begins: Phase 0, and the new Bastion map (13 October 2026)
 - **Phase 0** (no code changed): Harry's V4 handover and the reference were checked against the live code (`main`, `d8f6566`). The audit, the save-migration plan, the order of pull requests and Harry's decisions are in `docs/FACILITIES-OVERHAUL-PLAN.md`. Its main findings: new saved fields must be taught to both tools' loaders or they vanish on reload; the merges need a one-time migration that runs before the Bastion's loader cleans unknown facilities away; two merges clash on order names (`craft`, `harvest`); building and upgrading cost no gold today; Elara's wyvern isn't in the data yet; the Explorer's "clan honour" notes point to the Notice Board; and two Bastion windows must not both process deliveries.
 - **The new map**, first at Harry's request (decisions D9–D11):

@@ -25,7 +25,7 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
 | Scarlett Isles Explorer (EXP) | 12 | 5 | 6 | 13 | 0 |
-| The Ironbow Bastion Manager (BAS) | 23 | 2 | 26 | 17 | 1 |
+| The Ironbow Bastion Manager (BAS) | 23 | 2 | 27 | 17 | 1 |
 | Clan Crest Creator (CRS) | 0 | 4 | 6 | 3 | 3 |
 | Arenas of The Scarlett Isles (ARN) | 8 | 2 | 0 | 17 | 0 |
 | The Heartwood Ritual (RIT) | 9 | 1 | 0 | 15 | 1 |
@@ -1869,8 +1869,15 @@ None of these reached Harry.
   - the Laboratory and the Arcane Study share the Laboratory painting, and the Garden and the Greenhouse share the Greenhouse painting, since each pair will merge (each shared picture is drawn once, darkened if either is Under Repair);
   - the Smithy, Gaming Hall and Menagerie have no picture.
 
-  The seven pictures for the new facilities are in place for when those facilities exist. Overlays are now drawn in the table's order, not build-slot order (no two overlap). The crest badge sits over the painting's sky, clear of the Hall of Emissaries, on every screen size. The old map and overlays are in `tools/bastion/assets/extras/old-map/`.
+  The seven pictures for the new facilities are in place for when those facilities exist. Overlays are now drawn in the table's order, not build-slot order (no two overlap). The crest badge sits over the painting's sky, clear of the Hall of Emissaries, on every screen size; since 13 October (Harry's check in Edge) it sits inside the painting's own frame, so it never meets the edge of the map panel. The old map and overlays are in `tools/bastion/assets/extras/old-map/`.
 - **Evidence:** `tools/bastion/data/bastion-data.js` (`map`), `tools/bastion/rules.js` (`R.mapOverlays`), `tools/bastion/tool.js` (the map and `fitMap`); tests in `tests/rules/bastion.test.js`, `tests/e2e/bastion-screen.test.js` and `tests/e2e/phase9.test.js`.
+
+### BAS-70 · Facilities can be demolished, and building stopped
+**Deliberate change** (Harry, 13 October 2026) · other
+
+- **Before:** A built facility could only be removed with **Clear extra builds**, which emptied every slot at once (and left their pending orders running). A facility being built couldn't be stopped.
+- **After:** Each facility in a construction slot has **Demolish…** at the foot of its panel (the Hall's is beside **Clear Diplomacy Records**). It asks first, then frees the slot, cancels the orders pending there (no gold back, as with Cancel: B9), and drops its level and any repairs. What it already made stays (the Warehouse, defenders, beasts, War Room units), and the Hall's agreements, contracts and routes carry on. Clicking a facility still being built offers to stop building it. The five starting facilities can't be demolished. **Clear extra builds** is unchanged.
+- **Evidence:** `tools/bastion/rules.js` (`R.demolishFacility`), `tools/bastion/tool.js` (`onDemolish`, the facility panel, the Hall's footer, the building tile); tests in `tests/rules/bastion.test.js` and `tests/e2e/bastion-screen.test.js`.
 
 ## Clan Crest Creator
 Old repo: `_legacy/clan-crest-creator` (file:line references point there).
