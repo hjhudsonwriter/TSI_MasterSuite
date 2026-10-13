@@ -621,6 +621,20 @@
     t.equal(BR.bridgeHistory(kept, 10)[0].id, later.id, 'newest first');
   });
 
+  test('a new Bastion that finds no Explorer save yet stops being new, so later changes apply (review fix)', function (t) {
+    var b = BR.defaultState(bdata);
+    var r = BR.applyInbox(b, bdata, null, 1000);
+    t.equal(r.changed, true, 'saved as no longer new');
+    t.equal(b.bridge.fresh, false);
+    b = reload(b);
+    BR.anchor(b, 1);
+    BR.applyInbox(b, bdata, exWith([msg({ day: 1 })]), 2000);
+    t.equal(b.honourRespectByClan.slade, 1, 'sent after it started: applied');
+    var b2 = BR.defaultState(bdata);
+    BR.applyInbox(b2, bdata, { travel: { day: 1 }, journey: { outbox: [] } }, 1000);
+    t.equal(b2.bridge.fresh, true, 'an Explorer save with nothing sent yet: still new until it reads the day');
+  });
+
   test('a Bastion saved before the link applies the Explorer\'s new changes', function (t) {
     var s = copy(BR.toSave(bastion(3)));
     delete s.bridge;

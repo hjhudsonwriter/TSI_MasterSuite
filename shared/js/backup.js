@@ -198,7 +198,13 @@
 
   /* Restore: show what's in the backup, ask, then replace everything. */
   function confirmRestore(title, backup, watch) {
-    var hasCurrent = TSI.store.keys().length > 0;
+    /* What's saved now, read again: tools in other windows may have saved
+       since this page opened. */
+    return TSI.store.freshAll().then(function (now) {
+      return askRestore(title, backup, watch, now.length > 0);
+    });
+  }
+  function askRestore(title, backup, watch, hasCurrent) {
     var body = summaryBody(
       backup,
       'This backup (' + backup.fileName + ') was saved on ' + TSI.dates.human(backup.savedAt) + '. It holds:',
@@ -246,8 +252,13 @@
       refusal = checkRecords(t, backup.records.filter(function (r) { return TSI.storeRules.toolOf(r.key) === t; }));
     }
     if (refusal) return TSI.modal.alert({ title: title, message: refusal }).then(function () { return false; });
-
-    var hasCurrent = scopeTools.some(function (t) { return TSI.store.keys(t).length > 0; });
+    /* What's saved now, read again: the other campaign tool may have saved since this page opened. */
+    return TSI.store.freshAll().then(function (now) {
+      var hasCurrent = now.some(function (r) { return scopeTools.indexOf(TSI.storeRules.toolOf(r.key)) !== -1; });
+      return askImport(toolId, toolName, title, backup, campaign, watch, scopeTools, hasCurrent);
+    });
+  }
+  function askImport(toolId, toolName, title, backup, campaign, watch, scopeTools, hasCurrent) {
     var others = rules.inCampaign(toolId) && !campaign ? rules.CAMPAIGN.filter(function (t) { return t !== toolId; }).map(function (t) { return TSI.the(nameOf(t) || t); }).join(' and ') : '';
     var body = summaryBody(
       backup,

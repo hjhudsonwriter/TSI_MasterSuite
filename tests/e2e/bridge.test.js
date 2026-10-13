@@ -41,7 +41,7 @@ async function openExplorer(ctx) {
 }
 async function openBastion(ctx) {
   const p = await open(ctx, 'bastion');
-  await p.waitForFunction(() => TSI.bastion.debug && TSI.bastion.debug.state().anchored, null, { timeout: 8000 });
+  await p.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().anchored, null, { timeout: 8000 });
   return p;
 }
 async function setRegion(ex, region) {
@@ -218,7 +218,7 @@ async function influenceRows(ba) {
 
   await check('reloading both changes nothing: still +1, once', async () => {
     await ba.reload();
-    await ba.waitForFunction(() => TSI.bastion.debug && TSI.bastion.debug.state().anchored, null, { timeout: 8000 });
+    await ba.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().anchored, null, { timeout: 8000 });
     await ex.reload();
     await ex.waitForSelector('[data-test=camp]');
     await ba.waitForTimeout(4500);
@@ -291,7 +291,7 @@ async function influenceRows(ba) {
     await ba3.click('[data-test=reset]');
     await H.modalText(ba3);
     await Promise.all([ba3.waitForNavigation(), H.clickModal(ba3, 'Reset')]);
-    await ba3.waitForFunction(() => TSI.bastion.debug && TSI.bastion.debug.state().anchored && !TSI.bastion.debug.state().bridge.fresh, null, { timeout: 10000 });
+    await ba3.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().anchored && !TSI.bastion.debug.state().bridge.fresh, null, { timeout: 10000 });
     const s = await bas(ba3);
     equal(s.honourRespectByClan.slade, 0);
     equal(Object.values(s.bridge.done).map(r => r.r), ['skipped', 'skipped']);

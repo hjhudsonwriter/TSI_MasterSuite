@@ -486,13 +486,22 @@
      read). Only once the Bastion has read the Explorer's day (anchored), and
      only changes dated on or before the Bastion's day. Each gets its receipt
      in the same state, so one save() keeps both. A Bastion starting from
-     nothing (fresh) instead marks every change already sent as skipped, once.
+     nothing (fresh) instead marks every change already sent as skipped, once
+     (or, if there's no Explorer save yet, simply stops being fresh).
      Returns { changed, applied: [lines], skipped: n, refused: n }. */
   R.applyInbox = function (s, data, explorerSave, now) {
     var out = { changed: false, applied: [], skipped: 0, refused: 0 };
     var B = TSI.bridge;
-    if (!B || !s.anchored) return out;
+    if (!B) return out;
     if (!isObj(s.bridge) || !isObj(s.bridge.done)) s.bridge = R.cleanBridge(s.bridge);
+    /* No Explorer save at all: nothing can have been sent before this
+       Bastion, so whatever comes later applies as normal. */
+    if (s.bridge.fresh && !isObj(explorerSave)) {
+      s.bridge.fresh = false;
+      out.changed = true;
+      return out;
+    }
+    if (!s.anchored) return out;
     var done = s.bridge.done;
     var at = now === undefined ? Date.now() : now;
     var day = s.day;
