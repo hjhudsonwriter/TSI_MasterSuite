@@ -564,6 +564,12 @@
     return TSI.toolLock.hold(info.id).then(function (got) {
       if (got !== 'busy') return true;
       showWaiting(main, info);
+      /* The tool's Export, Import and save status belong to the window
+         running it: here they'd export an old copy, or import under it. */
+      ['save-status', 'export', 'import'].forEach(function (t) {
+        var b = document.querySelector('.tsi-topbar [data-test="' + t + '"]');
+        if (b) b.remove();
+      });
       if (TSI.tabGuard && TSI.tabGuard.markWaiting) TSI.tabGuard.markWaiting();
       TSI.toolLock.waitThenReload(info.id, function () {
         var line = main.querySelector('[data-test="tool-waiting-note"]');

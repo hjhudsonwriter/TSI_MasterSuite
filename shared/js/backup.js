@@ -134,7 +134,7 @@
         /* An open Explorer or Bastion would save over what's restored. */
         return openElsewhere(rules.CAMPAIGN).then(function (open) {
           if (open) {
-            return TSI.modal.alert({ title: title, message: TSI.the(nameOf(open) || open, true) + ' is open in another window. Close it first: restoring replaces everything the suite has saved, and an open tool would save over it. Nothing was changed.' }).then(function () { return false; });
+            return TSI.modal.alert({ title: title, message: TSI.the(nameOf(open) || open, true) + ' is open in another window. Close it first: restoring replaces everything the suite has saved, and an open tool would save over it. Nothing was changed. (If you\'ve only just closed it, wait a minute and try again.)' }).then(function () { return false; });
           }
           return confirmRestore(title, backup);
         });
@@ -168,10 +168,13 @@
         if (!backup) return false;
         var refusal = rules.checkForTool(backup, toolId, nameOf);
         var campaign = !refusal && backup.kind === 'campaign';
-        /* The other campaign tool, open in another window, would save over what's imported. */
-        var others = campaign ? rules.CAMPAIGN.filter(function (t) { return t !== toolId; }) : [];
+        /* A campaign tool open in another window would save over what's
+           imported: the other one, for a campaign file, and this one too
+           (from a window waiting for it, the tool runs in another window). */
+        var others = campaign ? rules.CAMPAIGN.slice() : rules.inCampaign(toolId) ? [toolId] : [];
         return openElsewhere(others).then(function (open) {
-          if (open) refusal = TSI.the(nameOf(open) || open, true) + ' is open in another window. Close it first: a campaign file replaces the Explorer and the Bastion together. Nothing was changed. (If you\'ve only just closed it, wait a minute and try again.)';
+          if (open === toolId) refusal = TSI.the(nameOf(open) || open, true) + ' is open in another window. Import there, or close it first: it would save over what\'s imported. Nothing was changed.';
+          else if (open) refusal = TSI.the(nameOf(open) || open, true) + ' is open in another window. Close it first: a campaign file replaces the Explorer and the Bastion together. Nothing was changed. (If you\'ve only just closed it, wait a minute and try again.)';
           return confirmImport(toolId, toolName, title, backup, refusal, campaign);
         });
       });

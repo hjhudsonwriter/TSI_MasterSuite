@@ -127,6 +127,7 @@ async function influenceRows(ba) {
     assert(/opens here by itself/.test(t), t);
     equal(await ba2.evaluate(() => !!(TSI.bastion && TSI.bastion.debug)), false, 'the Bastion never started here');
     assert(/^Waiting · /.test(await ba2.title()), await ba2.title());
+    equal(await ba2.$$eval('.tsi-topbar [data-test=export], .tsi-topbar [data-test=import], .tsi-topbar [data-test=save-status]', n => n.length), 0, 'no Export or Import: they belong to the window running it');
   });
 
   await check('a second Explorer window waits too', async () => {
