@@ -65,7 +65,7 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     '[data-test=day-status]', '[data-test=treasury]', '[data-test=facilities-count]', '[data-test=orders-count]', '[data-test=identity-badge]',
     '[data-test=map]', '[data-test=grid-toggle]', '.tsi-bas-tile', '[data-test^=open-]'];
   for (const size of ['laptop', 'laptopFull', 'tv', 'smallWindow']) {
-    await check(size + ': no scrolling either way, every tile and button in view, the painting fitted at 3 : 2', async () => {
+    await check(size + ': no scrolling either way, every tile and button in view, the painting fitted at 2.4 : 1, the crest badge clear of the Hall', async () => {
       await page.setViewportSize(H.SIZES[size].viewport);
       await page.waitForTimeout(300);
       const lc = await H.layoutCheck(page, MAIN);
@@ -74,7 +74,14 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
       equal(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight + 1), true, 'the page doesn\'t scroll down');
       equal(await page.$$eval('.tsi-bas-tile', ts => ts.length), 11, 'five facilities and six slots');
       const map = await rect(page, '.tsi-bas-map');
-      assert(Math.abs(map.w / map.h - 1.5) < 0.01, 'fitted, not stretched: ' + JSON.stringify(map));
+      assert(Math.abs(map.w / map.h - 3000 / 1250) < 0.01, 'fitted, not stretched: ' + JSON.stringify(map));
+      /* The badge may sit over the painting's top-right sky, but never over
+         the Hall of Emissaries (x 2595-2943, y 376-649 on the 3000 x 1250
+         painting: docs/BASTION-MAP-ART.md section 4). */
+      const badge = await rect(page, '[data-test=identity-badge]');
+      const k = map.w / 3000;
+      const hall = { x: map.x + 2595 * k, y: map.y + 376 * k, right: map.x + 2943 * k, bottom: map.y + 649 * k };
+      assert(badge.bottom <= hall.y || badge.right <= hall.x || badge.x >= hall.right, size + ': the badge is clear of the Hall: ' + JSON.stringify([badge, hall]));
       const over = await rect(page, '.tsi-bas-map__overlays');
       equal([Math.round(over.x), Math.round(over.y), Math.round(over.w), Math.round(over.h)], [Math.round(map.x), Math.round(map.y), Math.round(map.w), Math.round(map.h)], 'the building overlays sit exactly on the painting');
       const want = { laptop: 900, laptopFull: 1100, tv: 1150, smallWindow: 600 }[size];

@@ -2,6 +2,8 @@
 
 Written 8 October 2026 for Harry, who is painting a new Bastion map from a different angle and at a different scale. Everything here was checked against the code (`tools/bastion/tool.js`, `tools/bastion/bastion.css`, `tools/bastion/data/bastion-data.js`) and the image files themselves.
 
+> **Since 13 October 2026 the Bastion uses Harry's new map** (section 5). Sections 1 to 3 describe the old map, which is kept in `tools/bastion/assets/extras/old-map/`; how overlays work is the same, apart from what section 5 says.
+
 ## 1. How the map works now
 
 You remembered rightly: it's **one base painting with see-through overlay pictures stacked on top**, one for each special facility that's been built.
@@ -87,7 +89,7 @@ These aren't affected by a new map unless you want them redone too:
 
 ## 4. The new art (uploaded 12 October 2026)
 
-Harry uploaded a new base painting and 15 overlays in two batches on 12 October 2026. They're kept, exactly as uploaded, in `bastion-new-art/` at the top of the repo, waiting for the facilities build. **Nothing in the Bastion uses them yet.**
+Harry uploaded a new base painting and 15 overlays in two batches on 12 October 2026. They're kept, exactly as uploaded, in `bastion-new-art/` at the top of the repo, and copied into the Bastion on 13 October 2026 (section 5).
 
 ### What's there
 
@@ -118,3 +120,28 @@ The old map showed Arcane Study, Garden and Smithy overlays; the new set has non
 - The overlay files get code-friendly names (for example `library_overlay.png`) when they're copied into `tools/bastion/assets/overlays/`; the old set moves to `assets/extras/`; `docs/ASSETS.md` lists every file, including the README, placements and previews (kept as reference in extras).
 - The three Shrines will have overlays at last. Showing them reverses decision B12 ("keep hidden"), which only covered the old, misnamed art; confirm with Harry when the overlay list is set.
 - The seven new facilities need rules, data and a square tile picture each (today's tile pictures in `assets/facilities/` are 1024 × 1024), and they can use a stand-in tile until Harry paints them.
+
+## 5. The new map in use (13 October 2026)
+
+Harry asked for the new art first, ahead of the facilities overhaul (decisions D9–D11).
+
+- **The painting:** `tools/bastion/assets/map/bastion_base.jpg`, a copy of `bastion-new-art/Bastion_Base_3000x1250.jpg`. It's fitted whole into the map area at 2.4 : 1 (`MAP_RATIO` in `fitMap` now reads the size from `bastion-data.js`).
+- **The overlays:** copies in `tools/bastion/assets/map/overlays/`, renamed plainly (for example `library.png`). Which facility shows which overlay is the `map` table in `tools/bastion/data/bastion-data.js`. The art's names and the facilities' names are kept apart, so a picture can serve a renamed or merged facility.
+
+| Facility | Overlay |
+|---|---|
+| Library | `library.png` |
+| Laboratory, Arcane Study (one Arcane Laboratory after the merge) | `laboratory.png` |
+| Greenhouse, Garden (one Herbal Gardens after the merge) | `greenhouse.png` |
+| War Room | `war_room.png` |
+| Hall of Emissaries | `hall_of_emissaries.png` |
+| Shrine of Aurush, Shrine of Telluria, Shrine of Pelagos | `shrine_of_aurush.png`, `shrine_of_telluria.png`, `shrine_of_pelagos.png` (shown now: D10, reversing B12) |
+| Smithy, Gaming Hall, Menagerie (and the Courier Exchange, to come) | none |
+| The seven new facilities | `wyvern_roost.png`, `griffin_tower.png`, `dire_wolf_den.png`, `weavers_sailmakers_hall.png`, `stone_quarry_masonworks.png`, `fishery_smokehouse.png`, `timber_yard_sawmill.png`: added to the table as each facility is built into the Bastion |
+
+- **Rules:**
+  - two facilities sharing a picture draw it once;
+  - it's darkened if either is Under Repair;
+  - overlays are drawn in the table's order.
+- **The crest badge** sits over the painting's top-right sky. A test checks it never covers the Hall of Emissaries on the laptop, in full screen, on the TV or in a 1280 × 720 window.
+

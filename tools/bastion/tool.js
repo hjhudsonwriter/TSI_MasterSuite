@@ -621,7 +621,7 @@
       var overlayLayer = el('div', { class: 'tsi-bas-map__overlays', 'data-test': 'map-overlays' });
       var mapRepairs = el('div', { class: 'tsi-bas-map__repairs', hidden: true, 'data-test': 'map-repairs' });
       var mapFrame = el('div', { class: 'tsi-bas-map' }, [
-        el('img', { class: 'tsi-bas-map__img', src: asset('bastion_artwork.png'), alt: 'The Ironbow Bastion', 'data-test': 'map' }),
+        el('img', { class: 'tsi-bas-map__img', src: asset(B.map.base), alt: 'The Ironbow Bastion', 'data-test': 'map' }),
         overlayLayer
       ]);
 
@@ -652,12 +652,11 @@
             el('div', { class: 'tsi-bas-log__body', text: e.body || '' })
           ]));
         });
-        /* A built facility with overlay art shows on the map (1256-1277). */
+        /* A built facility with overlay art shows on the map (bastion-data.js map). */
         TSI.clear(overlayLayer);
-        R.builtFacilityIds(state, data).forEach(function (id) {
-          if (B.overlays.indexOf(id) === -1) return;
+        R.mapOverlays(state, data).forEach(function (o) {
           /* One Under Repair shows darkened, as if smoke-blackened. */
-          overlayLayer.appendChild(el('img', { class: 'tsi-bas-map__overlay' + (R.underRepair(state, id) ? ' tsi-bas-map__overlay--repair' : ''), src: asset('overlays/' + id + '_overlay.png'), alt: '', 'data-fac': id }));
+          overlayLayer.appendChild(el('img', { class: 'tsi-bas-map__overlay' + (o.repair ? ' tsi-bas-map__overlay--repair' : ''), src: asset(o.pic), alt: '', 'data-fac': o.facs.join(' ') }));
         });
         /* Under the map: which facilities are Under Repair, and when each is back. */
         var fixing = R.repairsList(state, data);
@@ -3552,7 +3551,7 @@
       ctx.root.appendChild(page);
       /* The painting fitted into the space left, never cropped, so the
          building overlays (the same size as it) line up. */
-      var MAP_RATIO = 1152 / 768;
+      var MAP_RATIO = B.map.width / B.map.height;
       function fitMap() {
         if (!life.alive) return;
         var w = mapArea.clientWidth;

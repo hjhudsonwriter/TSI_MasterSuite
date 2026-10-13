@@ -266,7 +266,7 @@ All 139 media files from the old Bastion (131 PNGs and 8 SVGs). 121 distinct fil
 
 | Old path (`bastion_manager/…`) | New path | Size | Used |
 |---|---|---|---|
-| `assets/bastion_artwork.png` | `tools/bastion/assets/bastion_artwork.png` | 2.21 MB, 1152 × 768 | Yes: the Bastion Map |
+| `assets/bastion_artwork.png` | `tools/bastion/assets/extras/old-map/bastion_artwork.png` | 2.21 MB, 1152 × 768 | No longer: the Bastion Map until 13 October 2026, when Harry's new painting replaced it (see "Harry's new Bastion map" below) |
 | `data/compendium_cards/Antitoxin.png` | `tools/bastion/assets/compendium_cards/Antitoxin.png` | 22 KB, 444 × 175 | Yes: the Compendium card for Antitoxin |
 | `data/compendium_cards/Assassin's Blood.png` | `tools/bastion/assets/compendium_cards/Assassin's Blood.png` | 28 KB, 444 × 193 | Yes: the Compendium card for Assassin's Blood |
 | `data/compendium_cards/Bag of Holding.png` | `tools/bastion/assets/compendium_cards/Bag of Holding.png` | 72 KB, 436 × 478 | Yes: the Compendium card for Bag of Holding |
@@ -322,14 +322,14 @@ All 139 media files from the old Bastion (131 PNGs and 8 SVGs). 121 distinct fil
 | `assets/facilities/war_room.png` | `tools/bastion/assets/facilities/war_room.png` | 1.93 MB, 1024 × 1024 | Yes: the War Room card's picture |
 | `assets/facilities/watchtower.png` | `tools/bastion/assets/facilities/watchtower.png` | 2.10 MB, 1024 × 1024 | Yes: the Watchtower card's picture |
 | `assets/facilities/workshop.png` | `tools/bastion/assets/facilities/workshop.png` | 1.90 MB, 1024 × 1024 | Yes: the Workshop card's picture |
-| `assets/arcane_study_overlay.png` | `tools/bastion/assets/overlays/arcane_study_overlay.png` | 67 KB, 1152 × 768 | Yes: shows the Arcane Study on the map once built |
-| `assets/garden_overlay.png` | `tools/bastion/assets/overlays/garden_overlay.png` | 76 KB, 1152 × 768 | Yes: shows the Garden on the map once built |
-| `assets/greenhouse_overlay.png` | `tools/bastion/assets/overlays/greenhouse_overlay.png` | 92 KB, 1152 × 768 | Yes: shows the Greenhouse on the map once built |
-| `assets/hall_of_emissaries_overlay.png` | `tools/bastion/assets/overlays/hall_of_emissaries_overlay.png` | 139 KB, 1152 × 768 | Yes: shows the Hall of Emissaries on the map once built |
-| `assets/laboratory_overlay.png` | `tools/bastion/assets/overlays/laboratory_overlay.png` | 70 KB, 1152 × 768 | Yes: shows the Laboratory on the map once built |
-| `assets/library_overlay.png` | `tools/bastion/assets/overlays/library_overlay.png` | 73 KB, 1152 × 768 | Yes: shows the Library on the map once built |
-| `assets/smithy_overlay.png` | `tools/bastion/assets/overlays/smithy_overlay.png` | 66 KB, 1152 × 768 | Yes: shows the Smithy on the map once built |
-| `assets/war_room_overlay.png` | `tools/bastion/assets/overlays/war_room_overlay.png` | 191 KB, 1152 × 768 | Yes: shows the War Room on the map once built |
+| `assets/arcane_study_overlay.png` | `tools/bastion/assets/extras/old-map/overlays/arcane_study_overlay.png` | 67 KB, 1152 × 768 | No longer: showed the Arcane Study on the old map, until 13 October 2026 |
+| `assets/garden_overlay.png` | `tools/bastion/assets/extras/old-map/overlays/garden_overlay.png` | 76 KB, 1152 × 768 | No longer: showed the Garden on the old map, until 13 October 2026 |
+| `assets/greenhouse_overlay.png` | `tools/bastion/assets/extras/old-map/overlays/greenhouse_overlay.png` | 92 KB, 1152 × 768 | No longer: showed the Greenhouse on the old map, until 13 October 2026 |
+| `assets/hall_of_emissaries_overlay.png` | `tools/bastion/assets/extras/old-map/overlays/hall_of_emissaries_overlay.png` | 139 KB, 1152 × 768 | No longer: showed the Hall of Emissaries on the old map, until 13 October 2026 |
+| `assets/laboratory_overlay.png` | `tools/bastion/assets/extras/old-map/overlays/laboratory_overlay.png` | 70 KB, 1152 × 768 | No longer: showed the Laboratory on the old map, until 13 October 2026 |
+| `assets/library_overlay.png` | `tools/bastion/assets/extras/old-map/overlays/library_overlay.png` | 73 KB, 1152 × 768 | No longer: showed the Library on the old map, until 13 October 2026 |
+| `assets/smithy_overlay.png` | `tools/bastion/assets/extras/old-map/overlays/smithy_overlay.png` | 66 KB, 1152 × 768 | No longer: showed the Smithy on the old map, until 13 October 2026 |
+| `assets/war_room_overlay.png` | `tools/bastion/assets/extras/old-map/overlays/war_room_overlay.png` | 191 KB, 1152 × 768 | No longer: showed the War Room on the old map, until 13 October 2026 |
 | `assets/artisan_tools.png` | `tools/bastion/assets/panels/artisan_tools.png` | 1.88 MB, 1024 × 1024 | Yes: faint behind the Artisan Tools panel |
 | `assets/bastion_defenders.png` | `tools/bastion/assets/panels/bastion_defenders.png` | 1.82 MB, 1024 × 1024 | Yes: faint behind the Bastion Defenders box |
 | `assets/military.png` | `tools/bastion/assets/panels/military.png` | 1.84 MB, 1024 × 1024 | Yes: faint behind the Military box |
@@ -420,3 +420,28 @@ Not from an old repo: Harry supplied this picture himself for the Bastion's Defe
 | New path | Size | Used |
 |---|---|---|
 | `tools/bastion/assets/war/defend-bastion-coast.jpg` | 371 KB, 1254 × 1254 | Yes: the War Table's battle map for the Defend Bastion event (the Ironbow coast with its pier). Its painted terrain is in `tools/bastion/data/war-units-data.js` (`presetMaps.defend_coast`). |
+
+### Harry's new Bastion map (12 October 2026; in use from 13 October)
+
+Harry's own art, uploaded to `bastion-new-art/` (kept there untouched, with its READMEs, `placements.json` files and previews). The Bastion uses copies with code-friendly names; the copies are byte for byte the same as the originals. Which facility shows which picture is in `tools/bastion/data/bastion-data.js` (`map`); see `docs/BASTION-MAP-ART.md`.
+
+| Original | In the suite | Size | Used? |
+|---|---|---|---|
+| `bastion-new-art/Bastion_Base_3000x1250.jpg` | `tools/bastion/assets/map/bastion_base.jpg` | 1.53 MB, 3000 × 1250 | Yes: the Bastion Map |
+| `bastion-new-art/1-first-upload/01_Library_Overlay.png` | `tools/bastion/assets/map/overlays/library.png` | 3000 × 1250 | Yes: the Library, once built |
+| `bastion-new-art/1-first-upload/02_Laboratory_Overlay.png` | `tools/bastion/assets/map/overlays/laboratory.png` | 3000 × 1250 | Yes: the Laboratory or the Arcane Study (soon one Arcane Laboratory) |
+| `bastion-new-art/1-first-upload/03_Greenhouse_Overlay.png` | `tools/bastion/assets/map/overlays/greenhouse.png` | 3000 × 1250 | Yes: the Greenhouse or the Garden (soon one Herbal Gardens) |
+| `bastion-new-art/1-first-upload/04_War_Room_Overlay.png` | `tools/bastion/assets/map/overlays/war_room.png` | 3000 × 1250 | Yes: the War Room |
+| `bastion-new-art/1-first-upload/05_Hall_of_Emissaries_Overlay.png` | `tools/bastion/assets/map/overlays/hall_of_emissaries.png` | 3000 × 1250 | Yes: the Hall of Emissaries |
+| `bastion-new-art/1-first-upload/06_Shrine_of_Aurush_Overlay.png` | `tools/bastion/assets/map/overlays/shrine_of_aurush.png` | 3000 × 1250 | Yes: the Shrine of Aurush |
+| `bastion-new-art/1-first-upload/07_Shrine_of_Telluria_Overlay.png` | `tools/bastion/assets/map/overlays/shrine_of_telluria.png` | 3000 × 1250 | Yes: the Shrine of Telluria |
+| `bastion-new-art/1-first-upload/08_Shrine_of_Pelagos_Overlay.png` | `tools/bastion/assets/map/overlays/shrine_of_pelagos.png` | 3000 × 1250 | Yes: the Shrine of Pelagos |
+| `bastion-new-art/2-second-upload/09_Wyvern_Roost_Overlay.png` | `tools/bastion/assets/map/overlays/wyvern_roost.png` | 3000 × 1250 | Not yet: the Wyvern Roost, once it's in the Bastion |
+| `bastion-new-art/2-second-upload/10_Griffin_Tower_Overlay.png` | `tools/bastion/assets/map/overlays/griffin_tower.png` | 3000 × 1250 | Not yet: the Griffin Tower |
+| `bastion-new-art/2-second-upload/11_Dire_Wolf_Den_Overlay.png` | `tools/bastion/assets/map/overlays/dire_wolf_den.png` | 3000 × 1250 | Not yet: the Dire Wolf Den |
+| `bastion-new-art/2-second-upload/12_Weavers_Sailmakers_Hall_Overlay.png` | `tools/bastion/assets/map/overlays/weavers_sailmakers_hall.png` | 3000 × 1250 | Not yet: the Weavers' Hall |
+| `bastion-new-art/2-second-upload/13_Stone_Quarry_Masonworks_Overlay.png` | `tools/bastion/assets/map/overlays/stone_quarry_masonworks.png` | 3000 × 1250 | Not yet: the Stone Quarry & Masonworks |
+| `bastion-new-art/2-second-upload/14_Fishery_Smokehouse_Overlay.png` | `tools/bastion/assets/map/overlays/fishery_smokehouse.png` | 3000 × 1250 | Not yet: the Fishery & Smokehouse |
+| `bastion-new-art/2-second-upload/15_Timber_Yard_Sawmill_Overlay.png` | `tools/bastion/assets/map/overlays/timber_yard_sawmill.png` | 3000 × 1250 | Not yet: the Timber Yard & Sawmill |
+
+The old map (1152 × 768) and its eight overlays moved to `tools/bastion/assets/extras/old-map/`, so nothing is thrown away.
