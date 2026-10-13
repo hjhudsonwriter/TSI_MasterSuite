@@ -583,6 +583,12 @@
           input.value = String(row.shown);
           done();
         });
+        /* Left without typing (the pop-up puts the focus in the first box):
+           catch up with any change that landed meanwhile. */
+        life.on(input, 'blur', function () {
+          row.shown = R.clampInt(state.honourRespectByClan[c.key] || 0, -5, 5);
+          input.value = String(row.shown);
+        });
         trackerRows[c.key] = row;
         return el('div', { class: 'tsi-bas-influence__row' }, [
           el('div', { class: 'tsi-bas-influence__name', text: c.name }),
@@ -629,7 +635,8 @@
           r.val.textContent = String(v);
           r.change.hidden = Math.abs(v) < 100;
           var t = trackerRows[c.key];
-          if (document.activeElement !== t.input) {
+          /* A box being typed in keeps what's typed; one only focused follows the save. */
+          if (document.activeElement !== t.input || t.input.value === String(t.shown)) {
             t.shown = R.clampInt(state.honourRespectByClan[c.key] || 0, -5, 5);
             t.input.value = String(t.shown);
           }
@@ -3280,7 +3287,7 @@
       function tellSettled(res) {
         if (!res || !life.alive) return;
         if (res.applied.length) {
-          notice('From the Explorer: ' + res.applied.join(' ') + ' Clan Influence lists it.', { type: 'info', title: 'Honour/Respect.', id: 'tsi-bas-bridge', timeout: 12000 });
+          notice('From the Explorer: ' + res.applied.join(' ') + (res.applied.length === 1 ? ' Clan Influence lists it.' : ' Clan Influence lists them.'), { type: 'info', title: 'Honour/Respect.', id: 'tsi-bas-bridge', timeout: 12000 });
         } else if (res.refused) {
           notice('A change from the Explorer couldn\'t be used, so nothing changed. Clan Influence says why.', { type: 'warn', title: 'Honour/Respect.', id: 'tsi-bas-bridge', timeout: 12000 });
         }

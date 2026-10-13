@@ -466,6 +466,12 @@
     t.same([b2.travel.extraMiles, b2.travel.dayLost], [6, false]);
     bad.travel.extraMiles = -3;
     t.equal(ER.fromSave(bad, ED, E).travel.extraMiles, 0);
+    /* A day an event cut short stays cut short after two reloads. */
+    s.travel.dayLost = true;
+    var twice = ER.fromSave(saved(ER.fromSave(saved(s), ED, E)), ED, E);
+    t.equal(twice.travel.dayLost, true);
+    t.ok(/miles are lost|already in use/.test(ER.chartProblem(twice)));
+    t.equal(ER.dayLimit(twice), 30, 'the chart is ignored');
   });
 
   /* ---------------------------------------------------------------- */

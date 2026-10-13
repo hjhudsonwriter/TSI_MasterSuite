@@ -269,6 +269,25 @@ async function influenceRows(ba) {
     await waitStatus(ex3, ['applied']);
   });
 
+  await check('a change from a later day is applied as the Bastion passes that day, before its orders, and goes in "The Ironbow sends word…"', async () => {
+    await ba3.close();
+    await camp(ex3);
+    await playT4Won(ex3);
+    await camp(ex3);
+    equal((await exs(ex3)).travel.day, 5);
+    ba3 = await open(B, 'bastion');
+    await ba3.waitForSelector('[data-test=ironbow-word]', { timeout: 15000 });
+    const word = await ba3.textContent('[data-test=ironbow-word]');
+    assert(/From the Explorer: Honour\/Respect \+1 with Clan Slade \(T4, Day 4\)/.test(word), word);
+    await ba3.click('[data-test=ironbow-word] .tsi-modal__foot button.tsi-btn--primary');
+    await ba3.waitForFunction(() => TSI.bastion.debug.state().day === 5 && !TSI.bastion.debug.busy(), null, { timeout: 10000 });
+    const s = await bas(ba3);
+    equal(s.honourRespectByClan.slade, 2);
+    const lines = s.log.filter(l => l.title === 'From the Explorer');
+    equal(lines.map(l => l.day), [4, 1], 'logged on Day 4, the day it happened');
+    equal(Object.values(s.bridge.done).map(r => r.day).sort(), [1, 4]);
+  });
+
   await check('Reset Travel with a change waiting: the Bastion moves back with it and applies the change once', async () => {
     await ba3.close();
     await playT4Won(ex3);
@@ -278,12 +297,12 @@ async function influenceRows(ba) {
     await H.clickModal(ex3, 'OK');
     await ex3.waitForTimeout(200);
     const out = (await exs(ex3)).journey.outbox;
-    equal(out.map(m => m.day), [-2, 0], 'both messages move back with the day');
+    equal(out.map(m => m.day), [-4, -1, 0], 'every message moves back with the day');
     ba3 = await openBastion(B);
-    await ba3.waitForFunction(() => TSI.bastion.debug.state().day === 1 && TSI.bastion.debug.state().honourRespectByClan.slade === 2, null, { timeout: 10000 });
+    await ba3.waitForFunction(() => TSI.bastion.debug.state().day === 1 && TSI.bastion.debug.state().honourRespectByClan.slade === 3, null, { timeout: 10000 });
     await ba3.waitForTimeout(4500);
-    equal((await bas(ba3)).honourRespectByClan.slade, 2, 'each change once');
-    await waitStatus(ex3, ['applied', 'applied']);
+    equal((await bas(ba3)).honourRespectByClan.slade, 3, 'each change once');
+    await waitStatus(ex3, ['applied', 'applied', 'applied']);
   });
 
   await check('a Bastion Reset skips the changes sent before it, lists them, and the Explorer says Skipped', async () => {
@@ -294,11 +313,11 @@ async function influenceRows(ba) {
     await ba3.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().anchored && !TSI.bastion.debug.state().bridge.fresh, null, { timeout: 10000 });
     const s = await bas(ba3);
     equal(s.honourRespectByClan.slade, 0);
-    equal(Object.values(s.bridge.done).map(r => r.r), ['skipped', 'skipped']);
+    equal(Object.values(s.bridge.done).map(r => r.r), ['skipped', 'skipped', 'skipped']);
     const rows = await influenceRows(ba3);
-    equal(rows.map(r => r.r), ['skipped', 'skipped']);
+    equal(rows.map(r => r.r), ['skipped', 'skipped', 'skipped']);
     assert(/Type it in above if it should count/.test(rows[0].text), rows[0].text);
-    await waitStatus(ex3, ['skipped', 'skipped']);
+    await waitStatus(ex3, ['skipped', 'skipped', 'skipped']);
   });
 
   await B.close();
@@ -325,6 +344,12 @@ async function influenceRows(ba) {
     const [d] = await Promise.all([home.waitForEvent('download'), H.clickModal(home, 'Restore')]);
     const safety = JSON.parse(require('fs').readFileSync(await d.path(), 'utf8'));
     equal(safety.records.find(r => r.key === 'tsi.explorer.save').value.travel.day, 2, 'the copy taken first');
+    /* The backup restored was taken before the Explorer had saved anything:
+       Restore clears the Explorer's newer save too, though this home screen
+       opened before it existed. */
+    await home.waitForSelector('[data-test=restore]');
+    await home.waitForTimeout(800);
+    equal(await home.evaluate(() => TSI.store.fresh('tsi.explorer.save', null)), null, 'cleared by Restore');
   });
   await D.close();
 

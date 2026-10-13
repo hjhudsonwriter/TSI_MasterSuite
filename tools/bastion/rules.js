@@ -521,7 +521,7 @@
       s.bridge.fresh = false;
       out.changed = true;
       if (out.skipped) {
-        R.log(s, 'From the Explorer', out.skipped + (out.skipped === 1 ? ' change' : ' changes') + ' to Honour/Respect, sent before this Bastion started, ' + (out.skipped === 1 ? 'was' : 'were') + ' skipped, so nothing counts twice. Clan Influence lists them, to type in by hand if they should count.', at);
+        R.log(s, 'From the Explorer', out.skipped + (out.skipped === 1 ? ' change' : ' changes') + ' to Honour/Respect, sent before this Bastion started, ' + (out.skipped === 1 ? 'was' : 'were') + ' skipped, so nothing counts twice. Clan Influence lists ' + (out.skipped === 1 ? 'it, to type in by hand if it should count.' : 'them, to type in by hand if they should count.'), at);
       }
       return out;
     }

@@ -758,6 +758,8 @@
         state.freeMove = !state.freeMove;
         saveNow();
         updateButtons();
+        /* The chart button follows Free Move. */
+        updateTravelUI();
         setNotice(state.freeMove ? 'Free Move enabled: miles/events paused.' : 'Free Move disabled.');
       }
       function resetTravel() {

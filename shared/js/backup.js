@@ -97,8 +97,9 @@
   }
 
   /* The first of these campaign tools open in another window, or null. It
-     asks the browser's locks (shared/js/toollock.js), then the "Already
-     open" heartbeats for a browser without them. */
+     asks the browser's locks (shared/js/toollock.js), and also checks the
+     "Already open" heartbeats, which are the only sign in a browser
+     without locks. */
   function openElsewhere(tools) {
     var lock = TSI.toolLock;
     return Promise.all(tools.map(function (t) {
