@@ -726,7 +726,68 @@
       : 'The ' + name + ' was demolished; its slot is free.' + (cancelled.length ? ' Cancelled: ' + cancelled.map(function (o) { return o.label; }).join('; ') + '.' : '');
     return { ok: true, log: [building ? 'Construction Stopped' : 'Facility Demolished', body], cancelled: cancelled };
   };
-  R.getFacilityLevel = function (s, facId) { return clampInt(s.facilityLevels && s.facilityLevels[facId] !== undefined && s.facilityLevels[facId] !== null ? s.facilityLevels[facId] : 1, 1, 3); };
+  /* A facility's level, 1 to 5 (1 to 3 before the facilities overhaul's
+     step 1b; only the Hall had levels then). */
+  R.MAX_LEVEL = 5;
+  R.getFacilityLevel = function (s, facId) { return clampInt(s.facilityLevels && s.facilityLevels[facId] !== undefined && s.facilityLevels[facId] !== null ? s.facilityLevels[facId] : 1, 1, R.MAX_LEVEL); };
+
+  /* ---------- Upgrading a facility (step 1b, 13 October 2026) ----------
+     One Upgrade order for every facility, the Hall included: a pending
+     order (fnId "upgrade", meta.kind "upgrade") that raises the facility one
+     level when it completes. Days to reach each level and the cost are one
+     table (bastion-data.js levels: 7 / 14 / 21 / 28 days, no gold: D8). Not
+     while Under Repair (D6); one at a time; it doesn't stop the facility's
+     other orders. A Hall upgrade ordered before step 1b ("upgrade_hall")
+     still completes, the same way. */
+  function levelsTable(data) {
+    var t = data.bastion && data.bastion.levels;
+    return isObj(t) ? t : { max: R.MAX_LEVEL, upgradeDays: { 2: 7, 3: 14, 4: 21, 5: 28 }, upgradeCostGP: 0 };
+  }
+  R.upgradeDays = function (data, toLevel) {
+    var d = levelsTable(data).upgradeDays || {};
+    return clampInt(d[toLevel] === undefined || d[toLevel] === null ? 7 : d[toLevel], 1, 365);
+  };
+  function isUpgradeOrder(o) { return isObj(o) && ((isObj(o.meta) && o.meta.kind === 'upgrade') || o.fnId === 'upgrade_hall'); }
+  R.isUpgradeOrder = isUpgradeOrder;
+  /* The upgrade pending at a facility, or null. */
+  R.upgradePending = function (s, facId) {
+    return (s.pendingOrders || []).filter(function (o) { return isUpgradeOrder(o) && o.facId === facId; })[0] || null;
+  };
+  /* Can the facility be upgraded now? { ok, toLevel, days, costGP } or { ok: false, message, top? }. */
+  R.upgradeCheck = function (s, data, facId) {
+    var fac = R.facility(data, facId);
+    if (!fac) return { ok: false, message: 'There\'s no such facility.' };
+    if (R.builtFacilityIds(s, data).indexOf(facId) === -1) return { ok: false, message: 'The ' + fac.name + ' isn\'t built yet.' };
+    var max = clampInt(levelsTable(data).max || R.MAX_LEVEL, 1, R.MAX_LEVEL);
+    var cur = R.getFacilityLevel(s, facId);
+    if (cur >= max) return { ok: false, top: true, message: 'The ' + fac.name + ' is at its highest level (' + max + ').' };
+    var pend = R.upgradePending(s, facId);
+    if (pend) return { ok: false, pending: pend, message: 'The ' + fac.name + ' is already being upgraded: ready on Day ' + pend.dueDay + '.' };
+    var broken = repairRefusal(s, fac);
+    if (broken) return broken;
+    var to = cur + 1;
+    return { ok: true, toLevel: to, days: R.upgradeDays(data, to), costGP: clampInt(levelsTable(data).upgradeCostGP || 0, 0) };
+  };
+  R.issueUpgrade = function (s, data, facId, rand) {
+    var c = R.upgradeCheck(s, data, facId);
+    if (!c.ok) return c;
+    if (c.costGP > s.treasuryGP) return { ok: false, message: 'Not enough gp. Need ' + c.costGP + 'gp, you have ' + s.treasuryGP + 'gp.' };
+    var fac = R.facility(data, facId);
+    s.treasuryGP -= c.costGP;
+    var label = fac.name + ': Upgrade to Level ' + c.toLevel;
+    s.pendingOrders.push({ id: R.uid(rand), facId: facId, fnId: 'upgrade', chosen: null, optionLabel: null, notes: '', label: label, costGP: c.costGP, issuedDay: s.day, dueDay: s.day + c.days, meta: { kind: 'upgrade', toLevel: c.toLevel } });
+    return { ok: true, log: ['Order Issued', label + ' (' + R.daysText(c.days) + ': due Day ' + (s.day + c.days) + ').'] };
+  };
+  /* An upgrade completing: the facility goes up one level (at most 5). */
+  R.completeUpgrade = function (s, data, order) {
+    var fac = R.facility(data, order.facId);
+    var name = (fac && fac.name) || order.facId;
+    var cur = R.getFacilityLevel(s, order.facId);
+    if (cur >= R.MAX_LEVEL) return ['Upgrade', 'The ' + name + ' is already at its highest level.'];
+    if (!isObj(s.facilityLevels)) s.facilityLevels = {};
+    s.facilityLevels[order.facId] = cur + 1;
+    return ['Order Completed', (order.label || name + ': Upgrade') + ' → The ' + name + ' is now Level ' + (cur + 1) + '.'];
+  };
 
   /* ---------- Orders ---------- */
   /* What a function costs (4692-4725). */
@@ -806,6 +867,9 @@
      Smithy's order only for a Bastion that had a Smithy ("onlyIfLegacy";
      hidden otherwise). Returns { ok } or { ok: false, hidden?, message }. */
   R.fnAvailable = function (s, fac, fn) {
+    /* The Hall's own Upgrade, replaced by every facility's Upgrade in step 1b
+       ("retired": one already ordered still completes). */
+    if (fn && fn.retired) return { ok: false, hidden: true, message: 'That order has been replaced by Upgrade.' };
     if (fn && fn.onlyIfLegacy && (s.legacyFacilities || []).indexOf(fn.onlyIfLegacy) === -1) return { ok: false, hidden: true, message: 'That order isn\'t available here.' };
     var lvl = Number(fn && fn.requiredPartyLevel || 0);
     if (lvl && s.partyLevel < lvl) return { ok: false, message: 'Needs party level ' + lvl + '.' };
@@ -1187,9 +1251,9 @@
   /* Hall upgrade: one level, free (1204-1226; B4, kept). */
   R.upgradeHall = function (s, fn) {
     var cur = R.getFacilityLevel(s, 'hall_of_emissaries');
-    var max = clampInt(fn.special.maxLevel === undefined ? 3 : fn.special.maxLevel, 1, 3);
-    if (cur >= max) return ['Upgrade', 'Hall of Emissaries is already max level.'];
-    s.facilityLevels.hall_of_emissaries = clampInt(cur + 1, 1, 3);
+    /* Up to Level 5 since step 1b (the data's maxLevel 3 is the old limit). */
+    if (cur >= R.MAX_LEVEL) return ['Upgrade', 'Hall of Emissaries is already max level.'];
+    s.facilityLevels.hall_of_emissaries = clampInt(cur + 1, 1, R.MAX_LEVEL);
     return ['Upgrade', 'Hall of Emissaries upgraded to Level ' + (cur + 1) + '.'];
   };
 
@@ -1228,6 +1292,7 @@
   R.completeSimpleOrder = function (s, data, order, rand) {
     var fac = R.facility(data, order.facId);
     if (!fac) return null;
+    if (isObj(order.meta) && order.meta.kind === 'upgrade') return [R.completeUpgrade(s, data, order)];
     var fn = R.fn(fac, order.fnId);
     if (!fn) return null;
     var label = order.label || (fac.name + ': ' + fn.label);
@@ -1302,6 +1367,7 @@
     if (order.facId === 'trade_network') return 'network';
     if (order.facId === 'war_council' || (order.meta && order.meta.kind === 'war_action')) return 'war';
     var fac = R.facility(data, order.facId);
+    if (fac && order.meta && order.meta.kind === 'upgrade') return 'simple';
     var fn = R.fn(fac, order.fnId);
     if (!fac || !fn) return 'none';
     if (R.isEmissary(fac, fn)) return 'emissary';

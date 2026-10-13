@@ -662,12 +662,15 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       equal(await text(page, 'issue-hall_of_emissaries__secure_trade_agreement'), 'Cooldown: 10 days');
     });
 
-    await check('the upgrade is free (B4, kept), takes 14 days and raises the Hall\'s bonus', async () => {
+    await check('the upgrade is free, takes 7 days to Level 2 (step 1b, D8: it was 14) and raises the Hall\'s bonus', async () => {
       const gp = (await st(page)).treasuryGP;
       await pause(page);
       await page.click('[data-test=hall-upgrade]');
       equal((await st(page)).treasuryGP, gp);
-      await days(page, 14, []);
+      const up = (await st(page)).pendingOrders.find(o => o.meta && o.meta.kind === 'upgrade');
+      equal([up.label, up.dueDay - up.issuedDay], ['Hall of Emissaries: Upgrade to Level 2', 7]);
+      equal(await page.isDisabled('[data-test=hall-upgrade]'), true, 'one upgrade at a time');
+      await days(page, 7, []);
       equal(await text(page, 'hall-level'), 'L2');
       equal(await page.isDisabled('[data-test="issue-hall_of_emissaries__inter_clan_summit"]'), false);
     });
@@ -2608,6 +2611,20 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       await H.waitForNotice(page, /The Bastion's facilities have changed/);
       const s = await st(page);
       equal([s.builtExtras[0].facId, s.legacyFacilities, s.pendingOrders.length], ['arcane_laboratory', ['smithy'], 2]);
+      await H.dismissNotices(page);
+    });
+
+    await check('the sample file for Harry (tests/fixtures/bastion-before-overhaul.json) imports, converts and moves to the Explorer\'s day; the Explorer is untouched', async () => {
+      const exDay = await explorerDay(page);
+      await H.chooseFile(page, '[data-test=import-save]', require('path').join(__dirname, '..', 'fixtures', 'bastion-before-overhaul.json'));
+      await clickModal(page, 'Import');
+      await page.waitForSelector('[data-test=day-status]');
+      await page.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().v === 3);
+      await H.waitForNotice(page, /The Bastion's facilities have changed: The Smithy joined the Workshop/);
+      await page.waitForFunction(() => TSI.bastion.debug.state().anchored && !TSI.bastion.debug.busy());
+      const s = await st(page);
+      equal([s.builtExtras[0].facId, s.legacyFacilities, s.pendingOrders.map(o => o.fnId).sort(), s.treasuryGP, s.facilityLevels.arcane_laboratory], ['arcane_laboratory', ['smithy'], ['alchemy', 'smithing'], 400, 2]);
+      equal([s.day, await explorerDay(page)], [exDay, exDay]);
       await H.dismissNotices(page);
     });
 

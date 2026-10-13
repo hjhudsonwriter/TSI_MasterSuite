@@ -41,6 +41,17 @@ window.TSI_DATA.bastion = {
     fishery_smokehouse: { pic: 'map/overlays/fishery_smokehouse.png', x: 11, y: 714, w: 349, h: 252 },
     timber_sawmill: { pic: 'map/overlays/timber_yard_sawmill.png', x: 1648, y: 827, w: 380, h: 188 }
   },
+  /* Facility levels (the facilities overhaul's step 1b, 13 October 2026;
+     Harry's decisions D6 to D8): every facility goes from Level 1 to 5. An
+     upgrade is an order at that facility (a pending order, like any other)
+     taking these days to reach each level, and costing no gold for now. It
+     can't be ordered while the facility is Under Repair (D6). The Hall's
+     roll bonus stays +6 at Levels 4 and 5 (D7). */
+  levels: {
+    max: 5,
+    upgradeDays: { 2: 7, 3: 14, 4: 21, 5: 28 },
+    upgradeCostGP: 0
+  },
   /* The facilities overhaul (13 October 2026): what each retired facility
      id became. A Bastion saved before it (v 2) is converted once
      (R.migrateToV3): built facilities, buildings under way, pending orders

@@ -392,6 +392,52 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     await page.keyboard.press('Escape');
   });
 
+  await check('levels (step 1b): a facility\'s panel shows its level and an Upgrade, first among its orders, which takes 7 days and no gold; then it\'s Level 2', async () => {
+    await pause(page);
+    await page.click('[data-test=tile-watchtower]');
+    await page.waitForSelector('[data-test=panel-fac-watchtower]');
+    equal(await text(page, 'fac-level'), 'Level 1 of 5');
+    equal(await page.$eval('.tsi-bas-facpanel__fns > .tsi-bas-fn', e => e.dataset.test), 'upgrade-row-watchtower', 'Upgrade comes first');
+    equal(await text(page, 'upgrade-text-watchtower'), 'To Level 2: takes 7 days, no gold.');
+    const gp = (await st(page)).treasuryGP;
+    await page.click('[data-test=upgrade-watchtower]');
+    await page.waitForTimeout(250);
+    const s = await st(page);
+    const up = s.pendingOrders.find(o => o.facId === 'watchtower');
+    equal([up.label, up.dueDay - s.day, s.treasuryGP], ['Watchtower: Upgrade to Level 2', 7, gp]);
+    equal([await text(page, 'upgrade-watchtower'), await page.isDisabled('[data-test=upgrade-watchtower]')], ['Upgrading', true]);
+    equal(await text(page, 'upgrade-text-watchtower'), 'Upgrading to Level 2: ready on Day ' + up.dueDay + '.');
+    assert(/Upgrade to Level 2/.test(await bare(page, '.tsi-bas-facpanel__orders')), 'it\'s pending here, with Cancel');
+    equal(await page.isDisabled('[data-test="issue-watchtower__patrol"]'), false, 'its other orders carry on');
+    await page.keyboard.press('Escape');
+    await days(page, 7);
+    await pause(page);
+    await page.click('[data-test=tile-watchtower]');
+    await page.waitForSelector('[data-test=panel-fac-watchtower]');
+    equal(await text(page, 'fac-level'), 'Level 2 of 5');
+    equal(await text(page, 'upgrade-text-watchtower'), 'To Level 3: takes 14 days, no gold.');
+    assert((await st(page)).log.some(l => l.body === 'Watchtower: Upgrade to Level 2 → The Watchtower is now Level 2.'));
+    await H.shot(page, 'bs-04-upgrade');
+    await page.keyboard.press('Escape');
+  });
+
+  await check('no upgrading while Under Repair (D6); at Level 5, no Upgrade button', async () => {
+    await setUp(page, (s) => { s.repairs = { watchtower: s.day + 3 }; s.facilityLevels.armoury = 5; });
+    await pause(page);
+    await page.click('[data-test=tile-watchtower]');
+    await page.waitForSelector('[data-test=panel-fac-watchtower]');
+    equal([await text(page, 'upgrade-watchtower'), await page.isDisabled('[data-test=upgrade-watchtower]')], ['Under Repair', true]);
+    await page.keyboard.press('Escape');
+    await pause(page);
+    await page.click('[data-test=tile-armoury]');
+    await page.waitForSelector('[data-test=panel-fac-armoury]');
+    equal(await text(page, 'fac-level'), 'Level 5 of 5');
+    equal(await text(page, 'upgrade-text-armoury'), 'Level 5 is the highest.');
+    equal(await page.$('[data-test=upgrade-armoury]'), null);
+    await page.keyboard.press('Escape');
+    await setUp(page, (s) => { s.repairs = {}; s.facilityLevels.armoury = 1; });
+  });
+
   await check('the Workshop\'s panel holds the Artisan Tools its Craft list uses', async () => {
     await pause(page);
     await page.click('[data-test=tile-workshop]');

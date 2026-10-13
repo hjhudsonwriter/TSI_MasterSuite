@@ -355,16 +355,20 @@
     t.equal(s.warehouse[0].notes, 'Library & Scriptorium');
   });
 
-  test('Hall upgrades are free and stop at level 3 (B4, kept)', function (t) {
+  test('the Hall\'s old Upgrade Hall: can\'t be ordered since step 1b, but one already ordered completes, up to Level 5 (the bonus stays +6: D7)', function (t) {
     var s = built(fresh(), ['hall_of_emissaries']);
     s.treasuryGP = 100;
-    order(s, 'hall_of_emissaries', 'upgrade_hall', 0);
-    t.equal(s.treasuryGP, 100);
+    t.same(R.issueOrder(s, data, 'hall_of_emissaries', 'upgrade_hall', 0, dice([0.3])), { ok: false, message: 'That order has been replaced by Upgrade.' });
     var fn = R.fn(R.facility(data, 'hall_of_emissaries'), 'upgrade_hall');
     t.same(R.upgradeHall(s, fn), ['Upgrade', 'Hall of Emissaries upgraded to Level 2.']);
     t.same(R.upgradeHall(s, fn), ['Upgrade', 'Hall of Emissaries upgraded to Level 3.']);
-    t.same(R.upgradeHall(s, fn), ['Upgrade', 'Hall of Emissaries is already max level.']);
     t.equal(R.diplomacyModForHall(s), 6);
+    t.same(R.upgradeHall(s, fn), ['Upgrade', 'Hall of Emissaries upgraded to Level 4.']);
+    t.equal(R.diplomacyModForHall(s), 6, 'still +6 at Level 4 (D7)');
+    t.same(R.upgradeHall(s, fn), ['Upgrade', 'Hall of Emissaries upgraded to Level 5.']);
+    t.equal(R.diplomacyModForHall(s), 6, 'and at Level 5');
+    t.same(R.upgradeHall(s, fn), ['Upgrade', 'Hall of Emissaries is already max level.']);
+    t.equal(s.treasuryGP, 100);
   });
 
   test('warehouse rows: typed values tidied as before', function (t) {
@@ -1039,6 +1043,73 @@
     t.equal(T.bastion.compendiumCards.length, 36);
     t.same(T.bastion.compendiumCards.filter(function (n) { return idx.items.indexOf(n) === -1; }), [], 'every card belongs to an item');
     t.ok(out.file.items['Bag of Holding'].summary);
+  });
+
+  group('Bastion: facility levels (step 1b, 13 October 2026)');
+
+  test('every facility goes from Level 1 to 5; an upgrade takes 7 / 14 / 21 / 28 days to reach Level 2 / 3 / 4 / 5, and no gold (D8)', function (t) {
+    t.same(T.bastion.levels, { max: 5, upgradeDays: { 2: 7, 3: 14, 4: 21, 5: 28 }, upgradeCostGP: 0 });
+    t.same([2, 3, 4, 5].map(function (l) { return R.upgradeDays(data, l); }), [7, 14, 21, 28]);
+    var s = fresh();
+    s.day = 10;
+    s.treasuryGP = 50;
+    t.equal(R.getFacilityLevel(s, 'barracks'), 1);
+    t.same(R.upgradeCheck(s, data, 'barracks'), { ok: true, toLevel: 2, days: 7, costGP: 0 });
+    var r = R.issueUpgrade(s, data, 'barracks', dice([0.3]));
+    t.equal(r.ok, true);
+    t.same(r.log, ['Order Issued', 'Barracks: Upgrade to Level 2 (7 days: due Day 17).']);
+    var o = s.pendingOrders[0];
+    t.same([o.facId, o.fnId, o.label, o.costGP, o.issuedDay, o.dueDay, o.meta], ['barracks', 'upgrade', 'Barracks: Upgrade to Level 2', 0, 10, 17, { kind: 'upgrade', toLevel: 2 }]);
+    t.equal(s.treasuryGP, 50, 'no gold');
+    t.equal(R.orderKind(data, o), 'simple');
+    t.ok(/already being upgraded: ready on Day 17/.test(R.issueUpgrade(s, data, 'barracks', dice([0.3])).message), 'one at a time');
+    t.ok(R.issueOrder(s, data, 'barracks', 'recruit_defenders', 0, dice([0.3])).ok, 'its other orders carry on');
+    t.same(R.completeSimpleOrder(s, data, o, dice([0.3])), [['Order Completed', 'Barracks: Upgrade to Level 2 → The Barracks is now Level 2.']]);
+    t.equal(R.getFacilityLevel(s, 'barracks'), 2);
+    R.removeOrder(s, o.id);
+    s.facilityLevels.barracks = 4;
+    t.same(R.upgradeCheck(s, data, 'barracks'), { ok: true, toLevel: 5, days: 28, costGP: 0 });
+    s.facilityLevels.barracks = 5;
+    t.same(R.upgradeCheck(s, data, 'barracks'), { ok: false, top: true, message: 'The Barracks is at its highest level (5).' });
+    s.facilityLevels.barracks = 9;
+    t.equal(R.getFacilityLevel(s, 'barracks'), 5, 'never above 5');
+  });
+
+  test('no upgrading while Under Repair (D6); an upgrade already running waits for the repairs, like any order; not for a facility that isn\'t built', function (t) {
+    var s = fresh();
+    s.day = 10;
+    R.issueUpgrade(s, data, 'dock', dice([0.3]));
+    s.repairs = { dock: 20, armoury: 12 };
+    t.same(R.issueUpgrade(s, data, 'armoury', dice([0.3])), { ok: false, message: 'The Armoury is Under Repair until Day 12.' });
+    s.day = 17;
+    t.same(R.dueOrders(s).map(function (x) { return x.facId; }), [], 'the Dock\'s upgrade waits for its repairs');
+    s.day = 21;
+    t.same(R.dueOrders(s).map(function (x) { return x.facId; }), ['dock']);
+    t.equal(R.upgradeCheck(s, data, 'library_scriptorium').message, 'The Library & Scriptorium isn\'t built yet.');
+    s.builtExtras = [{ facId: 'library_scriptorium', status: 'building', startDay: 1, readyDay: 22 }];
+    t.equal(R.upgradeCheck(s, data, 'library_scriptorium').ok, false, 'not while it\'s being built');
+  });
+
+  test('the Hall\'s Upgrade is the same order: Level 4 and 5 keep the +6 (D7); its Level 2 and 3 actions unlock as before', function (t) {
+    var s = built(fresh(), ['hall_of_emissaries']);
+    t.equal(R.diplomacyModForHall(s), 2);
+    t.equal(R.issueUpgrade(s, data, 'hall_of_emissaries', dice([0.3])).ok, true);
+    t.equal(s.pendingOrders[0].label, 'Hall of Emissaries: Upgrade to Level 2');
+    R.completeSimpleOrder(s, data, s.pendingOrders[0], dice([0.3]));
+    t.equal(R.diplomacyModForHall(s), 4);
+    [3, 4, 5].forEach(function (l) { s.facilityLevels.hall_of_emissaries = l; t.equal(R.diplomacyModForHall(s), 6, 'Level ' + l); });
+  });
+
+  test('levels survive saving, demolishing drops one, and an upgrade order is an ordinary pending order (cancel, demolish, defence lost)', function (t) {
+    var s = built(fresh(), ['library_scriptorium']);
+    s.facilityLevels.library_scriptorium = 3;
+    s.facilityLevels.watchtower = 5;
+    R.issueUpgrade(s, data, 'library_scriptorium', dice([0.3]));
+    var back = R.fromSave(JSON.parse(JSON.stringify(R.toSave(s))), data);
+    t.same([back.facilityLevels.library_scriptorium, back.facilityLevels.watchtower, back.pendingOrders[0].meta], [3, 5, { kind: 'upgrade', toLevel: 4 }]);
+    var d = R.demolishFacility(back, data, 'library_scriptorium');
+    t.same(d.cancelled.map(function (o) { return o.label; }), ['Library & Scriptorium: Upgrade to Level 4']);
+    t.equal(back.facilityLevels.library_scriptorium, undefined);
   });
 
   group('Bastion: the facilities overhaul (v 2 to v 3, 13 October 2026)');

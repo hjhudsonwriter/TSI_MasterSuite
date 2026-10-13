@@ -970,6 +970,8 @@
 .tsi-page--bastion .tsi-bas-fn__select { width: 100%; }
 .tsi-page--bastion .tsi-bas-fn__issue { width: 100%; }
 .tsi-page--bastion .tsi-bas-fn__notes { font-size: 14px; line-height: 1.3; color: var(--tsi-text-soft); }
+/* A facility's Upgrade (step 1b): first among its orders, with a solid gold edge. */
+.tsi-page--bastion .tsi-bas-upgrade { border: 1px solid rgba(214, 178, 94, .45); background: rgba(214, 178, 94, .06); }
 /* The War Room's Recruit list (war phase 2): a button that opens a list of units. */
 .tsi-page--bastion .tsi-bas-pick-wrap { position: relative; }
 .tsi-page--bastion .tsi-bas-pick {
