@@ -124,6 +124,8 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
       const n = await rect(page, '.tsi-notices');
       const bar = await rect(page, '.tsi-bas-bottom');
       assert(n.bottom <= bar.y, size + ': the notices end above the bar: ' + JSON.stringify([n, bar]));
+      const tray = await rect(page, '[data-test=grid-tray]');
+      assert(!overlaps(n, tray), size + ': and clear of the open tray of tiles: ' + JSON.stringify([n, tray]));
       const badge = await rect(page, '[data-test=identity-badge]');
       assert(n.right <= badge.x, size + ': clear of the badge');
       /* The DM doc opens on the right: its own edges and grip stay clear. */
