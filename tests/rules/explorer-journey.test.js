@@ -275,7 +275,10 @@
     act(s, { type: 'round', winner: 'hero', hero: 'magnus' }, dice([0.5]));
     t.equal(s.journey.gold, 200);
     t.equal(effect(s, 'Inspiration')[0].whoName, 'Magnus');
-    t.ok(s.journey.current.changes.some(function (l) { return l === 'DM note: Notice Board: consider +1 clan honour with Clan Slade.'; }));
+    /* Pull request 4: the reminder became a real change, sent to the Bastion once. */
+    t.ok(s.journey.current.changes.some(function (l) { return l === 'Sent to the Bastion: Honour/Respect +1 with Clan Slade.'; }));
+    t.ok(!s.journey.current.changes.some(function (l) { return /Notice Board/.test(l); }), 'no Notice Board reminder');
+    t.same(s.journey.outbox.map(function (m) { return [m.clan, m.hr, m.id.split(':').slice(1).join(':')]; }), [['slade', 1, 'won:2']]);
     var s2 = fresh('eastern_province');
     begin(s2, 't4');
     act(s2, { type: 'choose', index: 0 });
