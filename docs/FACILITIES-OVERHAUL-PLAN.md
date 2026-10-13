@@ -216,7 +216,7 @@ Each fixture is loaded twice and must come out identical. Each is also exported 
 | 8 | Military and diplomacy research | War Room training per formation, Hall level 4–5 orders, shrine extras. | Balance approved |
 | 9 | Final polish | Remaining tiles, guide, full campaign dry-run. | — |
 
-**Progress (13 October 2026):** the art pull request (#19), 1a (#20, with Demolish) and 1b are done. 1a lists the eight new facilities as "In development" rather than hiding them (D4). 1b gives the Hall the same Upgrade as every facility, so its Level 2 now takes 7 days instead of 14 (D8's table applies to all); its bonus and actions at Levels 1 to 3 are unchanged.
+**Progress (13 October 2026):** the art pull request (#19), 1a (#20, with Demolish) and 1b are done. 1a lists the eight new facilities as "In development" rather than hiding them (D4). 1b gives the Hall the same Upgrade as every facility, so its Level 2 now takes 7 days instead of 14 (D8's table applies to all); its bonus and actions at Levels 1 to 3 are unchanged. **Harry confirmed (13 October 2026): keep the new times for the Hall.** 1b merged as #21.
 
 **Every pull request will:**
 - leave every existing test passing;
