@@ -25,7 +25,7 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
 | Scarlett Isles Explorer (EXP) | 12 | 5 | 6 | 13 | 0 |
-| The Ironbow Bastion Manager (BAS) | 23 | 2 | 30 | 17 | 1 |
+| The Ironbow Bastion Manager (BAS) | 23 | 2 | 31 | 17 | 1 |
 | Clan Crest Creator (CRS) | 0 | 4 | 6 | 3 | 3 |
 | Arenas of The Scarlett Isles (ARN) | 8 | 2 | 0 | 17 | 0 |
 | The Heartwood Ritual (RIT) | 9 | 1 | 0 | 15 | 1 |
@@ -1919,6 +1919,31 @@ None of these reached Harry.
   - **What a level does:** nothing yet, apart from the Hall's existing bonus and actions. New orders unlocked by levels come with each facility's own later step.
   - "The Ironbow sends word…" says when an upgrade is complete, the Hall's included (no roll needed).
 - **Evidence:** `tools/bastion/data/bastion-data.js` (`levels`), `tools/bastion/rules.js` (`R.getFacilityLevel`, `R.upgradeCheck`, `R.issueUpgrade`, `R.completeUpgrade`, `R.upgradeHall`, `R.fnAvailable`, `R.orderKind`, `R.completeSimpleOrder`), `tools/bastion/tool.js` (`upgradeRow`, `onUpgrade`, the Hall's Upgrade button), `shared/js/campaign-rules.js`; tests in `tests/rules/bastion.test.js`, `tests/rules/campaign.test.js`, `tests/e2e/bastion-screen.test.js` and `tests/e2e/phase9.test.js`.
+
+### BAS-74 · The facilities overhaul, pull request 2: research, with the Herbal Gardens tree first
+**Deliberate change** (Harry, 13 October 2026: his research rules, and the Herbal Gardens document as a first attempt) · other
+
+- **Before:** Facilities had no research.
+- **After:**
+  - **The rules (Harry's):**
+    - research opens at Level 2;
+    - a facility earns one research token for each level from 2 to 5 (four in all);
+    - a tree has four branches of three stages, with two choices at each stage, and only one can be taken;
+    - a stage opens once the stage before it on its branch is done;
+    - Stage I takes 7 days, Stage II 14 and Stage III 21, and each costs that branch's gold (the document's prices: Agricultural 150 / 350 / 750 gp, Herbal Medicine 200 / 450 / 950, Botanical 200 / 500 / 1,100, Commercial 250 / 600 / 1,300);
+    - one project runs at a time at a facility, and only tokens gate the stages (no level gates).
+  - **A project is an ordinary pending order:** it takes a token while it runs, waits under repair, and Cancel or Demolish stops it.
+  - **Undo:** undoing a researched stage frees its token, and the stages above it on that branch go too. Neither Cancel nor Undo gives the gold back (B9).
+  - **The Herbal Gardens tree** holds all 24 choices from the document. The 9 that work with today's orders can be researched:
+    - faster orders: the biggest saving applies, never under 2 days;
+    - bigger Rations and Antitoxin batches: the biggest yield applies, rounded up;
+    - 4 antitoxin vials;
+    - Potions of Healing and Greater Potions of Healing two at a time.
+  - **The other 15 say "Coming later"** and what they wait for: the goods catalogue (PR 3), the Explorer link's hero conditions (PR 4), or trade in goods (PRs 3 and 5).
+  - **Combining bonuses:** Agricultural yields and Improved Antitoxins combine. Antitoxin starts at 4 vials, then grows by the biggest yield, so it's 8 vials with Bountiful Harvests.
+  - **On screen:** the facility panel has a **Research** box after **Upgrade**, showing its tokens and any project running. **Open Research** shows the four branches side by side; hover over a choice for its full text, example and what it works on now.
+  - **What waits:** the Herbal Gardens' five level orders (Harvest Common Herbs & Provisions … Advanced Botanical Production) come with the goods catalogue (PR 3), as Harry chose. Today's Harvest and Greenhouse Harvest are unchanged until then.
+- **Evidence:** `tools/bastion/data/research-data.js`, `tools/bastion/data/facilities-data.js` (the Herbal Gardens items' `key` and `batch`), `tools/bastion/rules.js` (Research: `R.researchTokens`, `R.researchCheck`, `R.startResearch`, `R.completeResearch`, `R.undoResearch`, `R.orderDaysAt`, `R.researchOutput`, `R.cleanResearch`), `tools/bastion/tool.js` (`researchRow`, `renderResearch`, `onResearch`, `onUndoResearch`); tests in `tests/rules/bastion.test.js` and `tests/e2e/bastion-screen.test.js`.
 
 ## Clan Crest Creator
 Old repo: `_legacy/clan-crest-creator` (file:line references point there).

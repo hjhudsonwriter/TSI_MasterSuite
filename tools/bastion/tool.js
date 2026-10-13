@@ -53,7 +53,7 @@
       var R = ns.rules;
       var D = window.TSI_DATA;
       var B = D.bastion;
-      var data = { bastion: B, facilities: D.bastionFacilities, tools: D.bastionTools, events: D.bastionEvents };
+      var data = { bastion: B, facilities: D.bastionFacilities, tools: D.bastionTools, events: D.bastionEvents, research: D.bastionResearch };
       /* The war mini-game's numbers (war-units-data.js): units, stat blocks, missions. */
       var W = D.bastionWar;
       var COMPENDIUM = (D.bastionCompendium && D.bastionCompendium.items) || {};
@@ -2361,6 +2361,116 @@
         ]);
       }
 
+      /* ---------- Research (the facilities overhaul's pull request 2) ----------
+         A facility with a research tree (research-data.js) has a Research
+         box after Upgrade: its tokens and any project running, and a button
+         to open its tree. The tree's panel shows the four branches side by
+         side, each with its three stages and the two choices at each. */
+      var researchBody = el('div', { class: 'tsi-bas-research', 'data-test': 'research-panel' });
+      function researchRow(fac) {
+        if (!R.researchTree(data, fac.id)) return null;
+        var tok = R.researchTokens(state, data, fac.id);
+        var run = R.researchRunning(state, fac.id);
+        var lvl = R.getFacilityLevel(state, fac.id);
+        var text = lvl < 2 ? 'Research opens at Level 2: upgrade the ' + fac.name + ' to earn its first token.'
+          : run ? 'Researching ' + run.meta.name + ': ready on Day ' + run.dueDay + '.'
+          : tok.free ? plural(tok.free, 'token') + ' free: choose what to research.'
+          : 'No token free: the ' + fac.name + ' earns one at each level from 2 to 5.';
+        return el('div', { class: 'tsi-bas-fn tsi-bas-upgrade', 'data-test': 'research-row-' + fac.id }, [
+          el('div', { class: 'tsi-bas-fn__head' }, [el('div', { class: 'tsi-bas-fn__name', text: 'Research' }), el('div', { class: 'tsi-bas-fn__cost', 'data-test': 'research-tokens-' + fac.id, text: 'Tokens: ' + tok.free + ' of ' + tok.total + ' free' })]),
+          el('div', { class: 'tsi-bas-fn__days', 'data-test': 'research-text-' + fac.id, text: text }),
+          btn('Open Research', function () { openResearch(fac.id); }, 'tsi-bas-fn__issue', 'open-research-' + fac.id)
+        ]);
+      }
+      function openResearch(facId) {
+        var fac = R.facility(data, facId);
+        return openPanel('research-' + facId, { title: fac.name + ': Research', node: researchBody, render: function () { renderResearch(facId); }, cls: 'tsi-bas-panel--wide tsi-bas-panel--research', back: 'tile-' + facId });
+      }
+      var ROMAN = ['I', 'II', 'III'];
+      function renderResearch(facId) {
+        var fac = R.facility(data, facId);
+        var tree = R.researchTree(data, facId);
+        TSI.clear(researchBody);
+        if (!fac || !tree) return;
+        if (R.builtFacilityIds(state, data).indexOf(facId) === -1) { researchBody.appendChild(muted('The ' + fac.name + ' isn\'t built any more.')); return; }
+        var tok = R.researchTokens(state, data, facId);
+        var run = R.researchRunning(state, facId);
+        var lvl = R.getFacilityLevel(state, facId);
+        var head = el('div', { class: 'tsi-bas-research__head' }, [
+          el('div', { class: 'tsi-bas-research__tokens', 'data-test': 'research-head' }, [
+            el('b', { text: 'Level ' + lvl + ' of ' + R.MAX_LEVEL }), ' · research tokens: ', el('b', { text: tok.free + ' of ' + tok.total + ' free' }),
+            lvl < 2 ? ' · research opens at Level 2' : run ? ' · researching ' + run.meta.name + ', ready on Day ' + run.dueDay : ' · one project at a time'
+          ]),
+          muted('One token per level from 2 to 5. Each stage offers two choices: take one. A stage opens once the one before it on its branch is done (Stage I 7 days, II 14, III 21). Undo gives the token back, not the gold. ' + (tree.intro || ''))
+        ]);
+        var cols = tree.branches.map(function (b) {
+          return el('div', { class: 'tsi-bas-research__branch', 'data-test': 'branch-' + b.id }, [
+            el('div', { class: 'tsi-bas-research__bname', text: b.name }),
+            el('div', { class: 'tsi-bas-research__focus', text: b.focus || '' })
+          ].concat(b.stages.map(function (st, i) {
+            return el('div', { class: 'tsi-bas-research__stage' }, [
+              el('div', { class: 'tsi-bas-research__sname', text: 'Stage ' + ROMAN[i] + (st.name ? ' · ' + st.name : '') + ' · ' + R.daysText(R.researchDays(data, i)) + ' · ' + ((b.costs || [])[i] || 0) + ' gp' })
+            ].concat(st.choices.map(function (c) { return researchCard(fac, b, i, c); })));
+          })));
+        });
+        TSI.append(researchBody, [head, el('div', { class: 'tsi-bas-research__tree' }, cols)]);
+      }
+      function researchCard(fac, b, stageIdx, c) {
+        var st = R.researchChoiceState(state, data, fac.id, b.id, c.id);
+        var check = st === 'open' ? R.researchCheck(state, data, fac.id, b.id, c.id) : null;
+        var run = st === 'running' ? R.researchRunning(state, fac.id) : null;
+        var status = st === 'done' ? 'Researched'
+          : st === 'running' ? 'Researching: ready on Day ' + run.dueDay
+          : st === 'other' ? 'Not chosen at this stage'
+          : st === 'coming' ? 'Coming later'
+          : st === 'locked' ? 'After Stage ' + ROMAN[stageIdx - 1]
+          : '';
+        var action = st === 'done' ? btn('Undo', function () { onUndoResearch(fac.id, b.id, stageIdx); }, 'tsi-btn--ghost', 'undo-' + c.id)
+          : st === 'open' ? btn('Research', function () { onResearch(fac.id, b.id, c.id); }, '', 'research-' + c.id, { disabled: !check.ok, title: check.ok ? null : check.message })
+          : null;
+        var card = el('div', { class: 'tsi-bas-research__choice tsi-bas-research__choice--' + st, 'data-test': 'choice-' + c.id, 'data-state': st, tabindex: '0' }, [
+          el('div', { class: 'tsi-bas-research__cname', text: c.name }),
+          el('div', { class: 'tsi-bas-research__ctext', text: c.text }),
+          el('div', { class: 'tsi-bas-research__foot' }, [status ? el('span', { class: 'tsi-bas-research__status', text: status }) : null, action])
+        ]);
+        var tip = function () {
+          var parts = [muted(c.text)];
+          if (c.example) parts.push(muted('Example: ' + c.example));
+          if (c.needs) parts.push(muted('Coming with ' + R.researchNeedsText(data, c.needs) + '.'));
+          else if (c.now) parts.push(muted('Works now on: ' + c.now));
+          if (check && !check.ok) parts.push(muted(check.message));
+          return { title: c.name, parts: parts, foot: b.name + ' · Stage ' + ROMAN[stageIdx] + ' · ' + R.daysText(R.researchDays(data, stageIdx)) + ' · ' + ((b.costs || [])[stageIdx] || 0) + ' gp' };
+        };
+        bindTip(card, tip, { noChange: true });
+        bindFocusTip(card, card, tip);
+        return card;
+      }
+      var onResearch = TSI.oneAtATime(async function (facId, branchId, choiceId) {
+        var c = R.researchCheck(state, data, facId, branchId, choiceId);
+        if (!c.ok) { if (c.message) await say(c.message); return; }
+        var tree = R.researchTree(data, facId);
+        var b = tree.branches.filter(function (x) { return x.id === branchId; })[0];
+        var choice = b.stages[c.stageIdx].choices.filter(function (x) { return x.id === choiceId; })[0];
+        var ok = await ask('Research ' + choice.name + '? It costs ' + c.costGP + ' gp and a research token, and takes ' + R.daysText(c.days) + ' (ready on Day ' + (state.day + c.days) + '). The other choice at this stage can\'t be taken as well.', 'Research', 'Research');
+        if (!ok || !life.alive) return;
+        var res = R.startResearch(state, data, facId, branchId, choiceId, rand);
+        if (!res.ok) { if (res.message) await say(res.message); return; }
+        log(res.log[0], res.log[1]);
+        done();
+      });
+      var onUndoResearch = TSI.oneAtATime(async function (facId, branchId, stageIdx) {
+        var tree = R.researchTree(data, facId);
+        var b = tree.branches.filter(function (x) { return x.id === branchId; })[0];
+        var list = ((state.research || {})[facId] || {})[branchId] || [];
+        var names = list.slice(stageIdx).map(function (id, k) { return b.stages[stageIdx + k].choices.filter(function (x) { return x.id === id; })[0].name; });
+        var ok = await ask('Undo ' + names.join(' and ') + '? ' + (names.length === 1 ? 'Its token is' : 'Their tokens are') + ' free again; the gold and days spent aren\'t given back.' + (names.length > 1 ? ' The stages above it on this branch are undone with it.' : ''), 'Undo', 'Undo research');
+        if (!ok || !life.alive) return;
+        var res = R.undoResearch(state, data, facId, branchId, stageIdx);
+        if (!res.ok) { if (res.message) await say(res.message); return; }
+        log(res.log[0], res.log[1]);
+        done();
+      });
+
       function fnRow(fac, fn, locked) {
         var key = fac.id + '__' + fn.id;
         var cd = R.isEmissary(fac, fn) ? R.cooldownLeft(state, String(fn.special.kind || '')) : 0;
@@ -2389,7 +2499,7 @@
           title: repair ? repairText(fac, repair) : !avail.ok ? avail.message : null,
           onclick: function () { onIssue(fac.id, fn.id, select); }
         }, repair ? 'Under Repair' : !avail.ok ? avail.message : cd > 0 ? 'Cooldown: ' + R.daysText(cd) : 'Issue Order');
-        var days = R.orderDays(fn);
+        var days = R.orderDaysAt(state, data, fac, fn);
         return el('div', { class: 'tsi-bas-fn' }, [
           el('div', { class: 'tsi-bas-fn__head' }, [el('div', { class: 'tsi-bas-fn__name', text: fn.label }), el('div', { class: 'tsi-bas-fn__cost', text: R.computeFnCost(state, fac, fn, null).costText || '0gp' })]),
           el('div', { class: 'tsi-bas-fn__days', 'data-test': 'days-' + key, text: 'Takes ' + R.daysText(days) }),
@@ -2718,7 +2828,7 @@
         var repair = R.underRepair(state, id);
         var mine = [];
         state.pendingOrders.forEach(function (o, i) { if (o.facId === id) mine.push(pendingRow(o, i)); });
-        var fns = [upgradeRow(fac)].concat((fac.functions || []).filter(function (fn) { return !R.fnAvailable(state, fac, fn).hidden; }).map(function (fn) {
+        var fns = [upgradeRow(fac), researchRow(fac)].filter(Boolean).concat((fac.functions || []).filter(function (fn) { return !R.fnAvailable(state, fac, fn).hidden; }).map(function (fn) {
           var req = R.clampInt(fn.requiredFacilityLevel === undefined || fn.requiredFacilityLevel === null ? 1 : fn.requiredFacilityLevel, 1, R.MAX_LEVEL);
           return fnRow(fac, fn, lvl < req);
         }));

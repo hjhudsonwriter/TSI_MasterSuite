@@ -438,6 +438,89 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     await setUp(page, (s) => { s.repairs = {}; s.facilityLevels.armoury = 1; });
   });
 
+  /* ------------------------------------------------------------------ */
+  await check('research (pull request 2): the Herbal Gardens\' Research box; at Level 1 it says research opens at Level 2, and nothing can be researched', async () => {
+    await setUp(page, (s) => { s.builtExtras = [{ facId: 'herbal_gardens', status: 'built' }]; s.facilityLevels.herbal_gardens = 1; s.treasuryGP = 500; s.research = {}; });
+    await pause(page);
+    await page.click('[data-test=tile-herbal_gardens]');
+    await page.waitForSelector('[data-test=panel-fac-herbal_gardens]');
+    equal(await page.$$eval('.tsi-bas-facpanel__fns > .tsi-bas-fn', es => es.slice(0, 2).map(e => e.dataset.test)), ['upgrade-row-herbal_gardens', 'research-row-herbal_gardens'], 'after Upgrade');
+    equal(await text(page, 'research-tokens-herbal_gardens'), 'Tokens: 0 of 0 free');
+    equal(await text(page, 'research-text-herbal_gardens'), 'Research opens at Level 2: upgrade the Herbal Gardens to earn its first token.');
+    equal(await page.$('[data-test=research-row-watchtower]'), null);
+    await page.click('[data-test=open-research-herbal_gardens]');
+    await page.waitForSelector('[data-test=panel-research-herbal_gardens]');
+    equal(await page.$$eval('[data-test^=branch-]', bs => bs.map(b => b.querySelector('.tsi-bas-research__bname').textContent)), ['Agricultural Development', 'Herbal Medicine', 'Botanical Research', 'Commercial Cultivation']);
+    equal(await page.$$eval('[data-test^=choice-]', cs => cs.length), 24);
+    equal(await page.isDisabled('[data-test=research-fertile_soil]'), true);
+    await page.keyboard.press('Escape');
+  });
+
+  await check('at Level 2: Research asks first (gold, a token, 7 days), then it runs as an order; 7 days later it\'s researched; the Harvest takes a day less with Efficient Planting', async () => {
+    await setUp(page, (s) => { s.facilityLevels.herbal_gardens = 2; });
+    await pause(page);
+    await page.click('[data-test=tile-herbal_gardens]');
+    await page.waitForSelector('[data-test=panel-fac-herbal_gardens]');
+    equal(await text(page, 'research-tokens-herbal_gardens'), 'Tokens: 1 of 1 free');
+    equal(await text(page, 'days-herbal_gardens__harvest'), 'Takes 7 days');
+    await page.click('[data-test=open-research-herbal_gardens]');
+    await page.waitForSelector('[data-test=panel-research-herbal_gardens]');
+    for (const size of ['laptop', 'tv']) {
+      await page.setViewportSize(H.SIZES[size].viewport);
+      await page.waitForTimeout(250);
+      const lc = await H.layoutCheck(page, ['[data-test=research-head]', '[data-test=branch-agricultural] .tsi-bas-research__bname', '[data-test=branch-commercial] .tsi-bas-research__bname', '[data-test=research-fertile_soil]']);
+      equal(lc.scrollWidth, lc.clientWidth, size + ': no sideways scroll');
+      equal(lc.outOfView, [], size + ': the four branches\' names and the first choices in view (the rest scroll inside the panel)');
+    }
+    await page.setViewportSize(H.SIZES.laptop.viewport);
+    await H.shot(page, 'bs-05-research');
+    await page.click('[data-test=research-efficient_planting]');
+    await page.waitForSelector(POP);
+    const day = (await st(page)).day;
+    equal(await bare(page, POP + ' .tsi-modal__body'), 'Research Efficient Planting? It costs 150 gp and a research token, and takes 7 days (ready on Day ' + (day + 7) + '). The other choice at this stage can\'t be taken as well.');
+    await page.click(POP + ' .tsi-modal__foot button:text-is("Cancel")');
+    await page.waitForTimeout(200);
+    equal((await st(page)).treasuryGP, 500, 'Cancel spends nothing');
+    await pause(page);
+    await page.click('[data-test=research-efficient_planting]');
+    await page.waitForSelector(POP);
+    await page.click(POP + ' .tsi-modal__foot button:text-is("Research")');
+    await page.waitForTimeout(300);
+    const s = await st(page);
+    equal([s.treasuryGP, s.pendingOrders.filter(o => o.meta && o.meta.kind === 'research').map(o => o.label)], [350, ['Herbal Gardens: Research Efficient Planting (Agricultural Development, Stage I)']]);
+    equal(await page.getAttribute('[data-test=choice-efficient_planting]', 'data-state'), 'running');
+    equal(await page.getAttribute('[data-test=choice-fertile_soil]', 'data-state'), 'other');
+    assert(/research tokens: 0 of 1 free/.test(await text(page, 'research-head')));
+    equal(await page.getAttribute('[data-test=choice-fortifying_draughts]', 'data-state'), 'coming');
+    equal(await page.$('[data-test=research-fortifying_draughts]'), null, 'nothing to press on a "coming" choice');
+    await page.keyboard.press('Escape');
+    await days(page, 7);
+    await pause(page);
+    await page.click('[data-test=tile-herbal_gardens]');
+    await page.waitForSelector('[data-test=panel-fac-herbal_gardens]');
+    equal(await text(page, 'days-herbal_gardens__harvest'), 'Takes 6 days', 'Efficient Planting');
+    await page.click('[data-test=open-research-herbal_gardens]');
+    await page.waitForSelector('[data-test=panel-research-herbal_gardens]');
+    equal(await page.getAttribute('[data-test=choice-efficient_planting]', 'data-state'), 'done');
+    equal(await page.getAttribute('[data-test=choice-crop_rotation]', 'data-state'), 'open', 'Stage II opens');
+    equal(await page.isDisabled('[data-test=research-crop_rotation]'), true, 'but no token is free');
+    assert((await st(page)).log.some(l => l.title === 'Research Complete'));
+  });
+
+  await check('Undo asks first; then the token is free again, the gold isn\'t given back, and the Harvest is back to 7 days', async () => {
+    await page.click('[data-test=undo-efficient_planting]');
+    await page.waitForSelector(POP);
+    equal(await bare(page, POP + ' .tsi-modal__body'), 'Undo Efficient Planting? Its token is free again; the gold and days spent aren\'t given back.');
+    await page.click(POP + ' .tsi-modal__foot button:text-is("Undo")');
+    await page.waitForTimeout(300);
+    const s = await st(page);
+    equal([s.research, s.treasuryGP], [{}, 350]);
+    equal(await page.getAttribute('[data-test=choice-efficient_planting]', 'data-state'), 'open');
+    assert(/research tokens: 1 of 1 free/.test(await text(page, 'research-head')));
+    await page.keyboard.press('Escape');
+    await setUp(page, (s) => { s.builtExtras = []; s.research = {}; s.treasuryGP = 0; });
+  });
+
   await check('the Workshop\'s panel holds the Artisan Tools its Craft list uses', async () => {
     await pause(page);
     await page.click('[data-test=tile-workshop]');
