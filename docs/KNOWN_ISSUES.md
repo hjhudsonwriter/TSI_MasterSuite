@@ -21,7 +21,7 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 
 | Tool | Must fix | Fixed by design | Deliberate | Later (Harry's call) | Not relevant / not a bug |
 |---|---|---|---|---|---|
-| Suite-wide (SUI) | 9 | 11 | 9 | 1 | 0 |
+| Suite-wide (SUI) | 10 | 11 | 9 | 1 | 0 |
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
 | Scarlett Isles Explorer (EXP) | 12 | 5 | 8 | 13 | 0 |
@@ -294,11 +294,19 @@ These come from checking the eight tools against each other: the collision audit
 - **After:**
   - **One window each.** The Explorer and the Bastion (marked `single: true` in `shared/data/tools.js`) now each run in one window at a time, using the browser's own locks (Web Locks), which work from a double-clicked file. The first window to open the tool holds it until that page closes, reloads or switches tool. A second window (a second double-click, Switch tool's ↗, a duplicated tab) runs none of the tool: it says "… is open in another window", may sit behind the TV's window, and opens the tool by itself about a second after the first window lets go, from the newest save.
   - **No false warning.** A waiting window can't save, so neither it nor any other tab shows "Already open" about it. The warning still works for every other tool, and for the home screen.
-  - **Import and Restore wait.** A campaign Import, and the home screen's Restore, are refused while the Explorer or the Bastion is open in another window, which would save over them ("Close it first").
+  - **Import and Restore wait.** A campaign Import, and the home screen's Restore, are refused while the Explorer or the Bastion is open in another window, which would save over them ("Close it first"). They check again after you press Import or Restore, in case one opened meanwhile. A waiting window has no Export or Import of its own (its copy would be out of date).
+  - **No gaps** (review fixes): a window asking for the tool, in the second its files take to load, neither shows nor sets off "Already open"; and a waiting window keeps the tool from the moment the first one lets go until it reloads, so nothing can slip in between.
 - **Not checked here:**
   - **Firefox** isn't installed in the test sandbox. A browser without Web Locks works as before (both windows open, with the "Already open" warning).
   - Whether **Edge's sleeping tabs** keep the lock isn't verified. Chromium doesn't put a tab holding a lock to sleep, so a minimised Bastion should keep it. Harry's checklist tries it.
 - **Evidence:** `shared/js/toollock.js`, `shared/js/shell.js` (`takeLock`, `showWaiting`, `openTool`), `shared/js/tabguard.js` (`markWaiting`), `shared/js/backup.js` (`openElsewhere`), `shared/js/store-rules.js` (`spaceNames().lock`: the test page has its own lock names); tests in `tests/rules/store-rules.test.js`, `tests/e2e/bridge.test.js`, `tests/e2e/phase1.test.js` and `tests/e2e/phase9.test.js`.
+
+### SUI-31 · Back up everything and Restore from a home screen opened earlier missed newer saves
+**Must fix** (found by the review of pull request 4, 13 October 2026; fixed) · loses saved data
+
+- **Before:** A page keeps its own copy of the saves from when it opened. A home screen left open while you played in a tool window then backed up that old copy: "Back up everything", and Restore's "First, download a backup of what's saved now", missed everything saved since. Restore also thought "nothing is saved yet" if nothing had been when the home screen opened (so it offered no copy first), and cleared only the saves it knew about, so one made since could survive a Restore. Pull request 4 makes this flow likelier: Restore now asks you to close the Explorer and the Bastion first.
+- **After:** Back up everything reads every save fresh from the browser, in one go, so the file holds one moment's copies, the newest. Restore and Import decide what's saved now from a fresh read, and clear every save in scope that the file doesn't hold, including ones made in other windows.
+- **Evidence:** `shared/js/store.js` (`freshAll`, `replace`), `shared/js/backup.js` (`backupEverything`, `confirmRestore`, `confirmImport`); tests in `tests/e2e/bridge.test.js` ("Back up everything from a home screen opened earlier").
 
 ## Combat Tracker & VTT Battlemap
 Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point there).
@@ -2069,10 +2077,10 @@ None of these reached Harry.
 - **Before:** Nothing passed from the Explorer to the Bastion except the day.
 - **After:**
   - **Applied once.** The Bastion reads the Explorer's save every 2 seconds, as it does for the day. It applies each change from an Explorer event (EXP-37) once, and keeps a receipt in its own save, written together with the change itself. So a saved Bastion has both or neither, and no reload, Import, Restore, Reset Travel or second window can count it twice (SUI-30).
-  - **When.** A change waits until the Bastion has reached the day it happened. With the Bastion open, that's within a few seconds, with a notice. Shut, it's applied when the Bastion passes that day, before that day's orders, and goes in "The Ironbow sends word…". Reset Travel moves waiting changes back with the days. Honour/Respect stays within −5 to +5; at the limit, the change is recorded with no effect.
-  - **A Bastion that starts from nothing** (a first open, or after Reset) skips every change sent before it, and lists them as skipped, rather than adding them on top of values typed in by hand. Changes after that apply as normal.
+  - **When.** A change waits until the Bastion has reached the day it happened. With the Bastion open, that's within a few seconds, with a notice. If the Bastion was shut, a change from the day it was shut on applies as soon as it opens again, with a notice; one from a later day applies as the Bastion passes that day, before that day's orders, and goes in "The Ironbow sends word…". Reset Travel moves waiting changes back with the days. Honour/Respect stays within −5 to +5; at the limit, the change is recorded with no effect.
+  - **A Bastion that starts from nothing** (a first open, or after Reset) skips every change sent before it, and lists them as skipped, rather than adding them on top of values typed in by hand. Changes after that apply as normal. (A Bastion opened before the Explorer has ever saved has nothing to skip, so it simply applies everything that comes later: a review fix.)
   - **Clan Influence** has **Changes from the Explorer**, the latest ten: applied (with before and after), skipped or refused (with why). The Day Log keeps every one too, and clearing the Day Log doesn't clear this list.
-  - **The Honour/Respect box** now adds what's typed as a difference from what it showed, rather than writing over the value, so a change arriving while the DM types isn't lost (the Warehouse's goods counts work the same way).
+  - **The Honour/Respect box** now adds what's typed as a difference from what it showed, rather than writing over the value, so a change arriving while the DM types isn't lost (the Warehouse's goods counts work the same way). A box that only has the focus (Clan Influence puts it in the first box when it opens) follows the save as usual.
 - **Evidence:** `tools/bastion/rules.js` (`R.applyInbox`, `R.adjustStanding`, `R.cleanBridge`, `R.bridgeHistory`, `bridge` in `R.defaultState` and `R.fromSave`), `tools/bastion/tool.js` (`settleInbox` in `checkClock` and `passDays`, `renderBridge`, the Honour/Respect box); tests in `tests/rules/bridge.test.js` and `tests/e2e/bridge.test.js`.
 
 ### BAS-82 · The Explorer link's limits
