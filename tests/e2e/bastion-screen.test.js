@@ -548,21 +548,24 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     await pause(page);
     await page.click('[data-test=tile-herbal_gardens]');
     await page.waitForSelector('[data-test=panel-fac-herbal_gardens]');
-    equal(await page.$$eval('[data-test^="goods-herbal_gardens__"]', gs => gs.map(g => g.dataset.test.slice(21))),
-      ['cultivate_specialist', 'field_medical_supplies', 'commercial_medicinal_crops', 'major_botanical_production']);
-    equal(await page.$$eval('[data-test="sel-herbal_gardens__commercial_medicinal_crops"] option', os => os.map(o => o.textContent)),
-      ['Medicinal Herbs (1 lot)', 'Refined Botanical Reagents (1 lot) (needs Botanical Extraction)']);
-    await page.selectOption('[data-test="sel-herbal_gardens__commercial_medicinal_crops"]', '1');
-    await page.waitForTimeout(100);
-    equal(await text(page, 'why-herbal_gardens__commercial_medicinal_crops'), 'Needs the research Botanical Extraction.');
-    equal(await page.isDisabled('[data-test=issue-herbal_gardens__commercial_medicinal_crops]'), true);
-    equal(await text(page, 'days-herbal_gardens__field_medical_supplies'), 'Takes 6 days');
-    await page.selectOption('[data-test="sel-herbal_gardens__field_medical_supplies"]', '1');
-    await page.waitForTimeout(100);
-    equal(await text(page, 'days-herbal_gardens__field_medical_supplies'), 'Takes 7 days');
-    equal(await page.$eval('[data-test=goods-herbal_gardens__cultivate_specialist]', e => e.textContent), 'Makes: 10 portions of Restorative Herbs');
-    await page.keyboard.press('Escape');
-    await page.waitForTimeout(150);
+    try {
+      equal(await page.$$eval('[data-test^="goods-herbal_gardens__"]', gs => gs.map(g => g.dataset.test.replace('goods-herbal_gardens__', ''))),
+        ['cultivate_specialist', 'field_medical_supplies', 'commercial_medicinal_crops', 'major_botanical_production']);
+      equal(await page.$$eval('[data-test="sel-herbal_gardens__commercial_medicinal_crops"] option', os => os.map(o => o.textContent)),
+        ['Medicinal Herbs (1 lot)', 'Refined Botanical Reagents (1 lot) (needs Botanical Extraction)']);
+      await page.selectOption('[data-test="sel-herbal_gardens__commercial_medicinal_crops"]', '1');
+      await page.waitForTimeout(100);
+      equal(await text(page, 'why-herbal_gardens__commercial_medicinal_crops'), 'Needs the research Botanical Extraction.');
+      equal(await page.isDisabled('[data-test=issue-herbal_gardens__commercial_medicinal_crops]'), true);
+      equal(await text(page, 'days-herbal_gardens__field_medical_supplies'), 'Takes 6 days');
+      await page.selectOption('[data-test="sel-herbal_gardens__field_medical_supplies"]', '1');
+      await page.waitForTimeout(100);
+      equal(await text(page, 'days-herbal_gardens__field_medical_supplies'), 'Takes 7 days');
+      equal(await page.$eval('[data-test=goods-herbal_gardens__cultivate_specialist]', e => e.textContent), 'Makes: 10 portions of Restorative Herbs');
+    } finally {
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(150);
+    }
     /* Back to the start for what follows. */
     await setUp(page, (s) => { s.builtPlots = []; s.builtExtras = []; s.warehouse = []; s.pendingOrders = []; s.research = {}; });
     await page.selectOption('[data-test=level]', '7');
