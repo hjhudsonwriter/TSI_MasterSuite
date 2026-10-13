@@ -1600,9 +1600,15 @@
     t.equal(R.goodsQty(s, 'raw_timber'), 3);
     t.ok(R.inputsShort(s, data, [{ good: 'raw_timber', qty: 2 }, { good: 'raw_timber', qty: 2 }]), 'a good named twice is counted together');
     t.same(R.takeGoods(s, data, [{ good: 'raw_timber', qty: 3 }]), [{ goodId: 'raw_timber', name: 'Raw Timber', qty: 3 }]);
-    t.same(s.warehouse.map(function (w) { return w.id; }), ['free'], 'the emptied goods row goes');
+    t.same(s.warehouse.map(function (w) { return [w.goodId || w.id, w.qty]; }), [['free', 8], ['raw_timber', 0]], 'a used-up goods row stays, at 0');
+    var only = fresh();
+    R.addGoods(only, data, 'raw_timber', 1, '', dice([0.3]));
+    R.takeGoods(only, data, [{ good: 'raw_timber', qty: 1 }]);
+    R.ensureWarehouseRow(only, dice([0.3]));
+    t.same(only.warehouse.map(function (w) { return [w.item, w.qty]; }), [['Raw Timber', 0]], 'an order never empties the Warehouse, so no "New Item" row appears');
     t.equal(R.returnGoods(s, data, [{ goodId: 'raw_timber', name: 'Raw Timber', qty: 3 }]), '3 lots of Raw Timber went back to the Warehouse.');
     t.equal(R.goodsQty(s, 'raw_timber'), 3);
+    t.equal(s.warehouse.filter(function (w) { return w.goodId === 'raw_timber'; }).length, 1, 'into the same row');
   });
 
   test('a saved Warehouse: typed rows exactly as they were; goods rows tidied; an order\'s held goods kept', function (t) {

@@ -1416,7 +1416,9 @@
     return null;
   };
   /* Take an order's inputs out of the Warehouse, all or nothing: what was
-     taken, or null if anything is short. Emptied goods rows go. */
+     taken, or null if anything is short. A goods row used up stays, at 0
+     (the DM's Remove takes it away), so an order never leaves the Warehouse
+     empty, which would bring back the "New Item" row an empty one shows. */
   R.takeGoods = function (s, data, inputs) {
     inputs = mergeInputs(inputs);
     if (R.inputsShort(s, data, inputs)) return null;
@@ -1433,7 +1435,6 @@
       });
       taken.push({ goodId: x.good, name: R.goodName(data, x.good), qty: clampInt(x.qty, 1) });
     });
-    s.warehouse = s.warehouse.filter(function (w) { return !(isObj(w) && w.goodId && clampInt(w.qty, 0) === 0); });
     return taken;
   };
   /* Give held goods back to the Warehouse; says what went back. */
