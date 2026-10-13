@@ -25,7 +25,7 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
 | Scarlett Isles Explorer (EXP) | 12 | 5 | 6 | 13 | 0 |
-| The Ironbow Bastion Manager (BAS) | 23 | 2 | 29 | 17 | 1 |
+| The Ironbow Bastion Manager (BAS) | 23 | 2 | 30 | 17 | 1 |
 | Clan Crest Creator (CRS) | 0 | 4 | 6 | 3 | 3 |
 | Arenas of The Scarlett Isles (ARN) | 8 | 2 | 0 | 17 | 0 |
 | The Heartwood Ritual (RIT) | 9 | 1 | 0 | 15 | 1 |
@@ -1343,6 +1343,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **Checker's note:** An upgrade can still be ordered at L3, for nothing.
 - **Evidence:** upgrade_hall costGP 0 and costByNextLevel unused (app.js:1215-1220, 3306). Runtime B3: 20000 to 20000.
 - **Phase 9:** Kept (B4): upgrades are free. Test.
+- **Facilities overhaul 1b (13 October 2026):** still free (D8: no gold for now), but the Hall now uses every facility's **Upgrade** order, which can't be ordered at the top level or twice at once (BAS-73).
 
 ### BAS-23 · Writ of Authority bonus never granted
 **Later, Harry's call** · other
@@ -1905,6 +1906,19 @@ None of these reached Harry.
   - says what changed, once, in a notice and a **Facilities** entry in the Day Log, and saves it as v 3.
   Opening it again changes nothing. A Smithy or Laboratory under repair doesn't pass its repairs to the Workshop (a starting facility). The Explorer's DM doc and "The Ironbow sends word…" read both v 2 and v 3 saves.
 - **Evidence:** `tools/bastion/rules.js` (`R.migrateToV3`, `R.fromSave`, `R.isOldSave`), `tools/bastion/tool.js` (opening the Bastion: the set-aside copy and the notice), `shared/js/campaign-rules.js` (`inDaysSave`); tests in `tests/rules/bastion.test.js` and `tests/e2e/phase9.test.js`.
+
+### BAS-73 · The facilities overhaul, step 1b: every facility has Levels 1 to 5
+**Deliberate change** (Harry, 13 October 2026: decisions D6 to D8) · other
+
+- **Before:** Only the Hall of Emissaries had levels (1 to 3), raised by its own **Upgrade Hall** order (14 days each, free). Every other facility sat at Level 1.
+- **After:**
+  - **Levels:** every facility goes from Level 1 to 5. Its panel shows "Level N of 5", and an **Upgrade** box comes first among its orders.
+  - **The Upgrade order:** an ordinary pending order (it shows under "Orders pending here", can be cancelled, and is cancelled if the facility is demolished). It takes **7 / 14 / 21 / 28 days** to reach Level 2 / 3 / 4 / 5, and **no gold** for now (D8); both are one table in `bastion-data.js` (`levels`).
+  - **Limits:** one upgrade at a time per facility, none at Level 5, none while Under Repair (D6), and an upgrade already running waits for repairs like any order. It doesn't stop the facility's other orders.
+  - **The Hall** uses the same Upgrade (its **Upgrade** button beside the level badge). So reaching Level 2 now takes 7 days, not 14, and Level 3 takes 14. Its roll bonus stays +2 / +4 / +6, and +6 at Levels 4 and 5 (D7); its Level 2 and 3 actions unlock as before. An **Upgrade Hall** already ordered in a save still completes. The old order can't be given again.
+  - **What a level does:** nothing yet, apart from the Hall's existing bonus and actions. New orders unlocked by levels come with each facility's own later step.
+  - "The Ironbow sends word…" says when an upgrade is complete, the Hall's included (no roll needed).
+- **Evidence:** `tools/bastion/data/bastion-data.js` (`levels`), `tools/bastion/rules.js` (`R.getFacilityLevel`, `R.upgradeCheck`, `R.issueUpgrade`, `R.completeUpgrade`, `R.upgradeHall`, `R.fnAvailable`, `R.orderKind`, `R.completeSimpleOrder`), `tools/bastion/tool.js` (`upgradeRow`, `onUpgrade`, the Hall's Upgrade button), `shared/js/campaign-rules.js`; tests in `tests/rules/bastion.test.js`, `tests/rules/campaign.test.js`, `tests/e2e/bastion-screen.test.js` and `tests/e2e/phase9.test.js`.
 
 ## Clan Crest Creator
 Old repo: `_legacy/clan-crest-creator` (file:line references point there).
