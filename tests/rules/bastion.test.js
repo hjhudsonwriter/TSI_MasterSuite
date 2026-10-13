@@ -1100,11 +1100,12 @@
       b.builtExtras = [{ facId: 'greenhouse', status: 'building', startDay: 5, readyDay: 33 }, { facId: 'garden', status: 'built' }];
     }), data).save;
     t.same(slots(s), ['', 'herbal_gardens']);
+    t.equal(s.migration.v3.lines[0], 'The Greenhouse and the Garden are now one Herbal Gardens: the other slot is free, and building work on the Greenhouse stopped (building costs no gold).');
     s = R.migrateToV3(v2(function (b) {
       b.builtExtras = [{ facId: 'laboratory', status: 'building', startDay: 6, readyDay: 34 }, { facId: 'arcane_study', status: 'building', startDay: 8, readyDay: 29 }];
     }), data).save;
     t.same(s.builtExtras, ['', { facId: 'arcane_laboratory', status: 'building', startDay: 8, readyDay: 29 }]);
-    t.equal(s.migration.v3.lines[0], 'The Laboratory and the Arcane Study are now one Arcane Laboratory (still being built): the other slot is free.');
+    t.equal(s.migration.v3.lines[0], 'The Laboratory and the Arcane Study are now one Arcane Laboratory (still being built): the other slot is free, and building work on the Laboratory stopped (building costs no gold).');
   });
 
   test('a Greenhouse order is now Herbal Gardens: Greenhouse Harvest; repairs on both halves: the later one', function (t) {
@@ -1160,6 +1161,32 @@
     var b2 = R.migrateToV3(v2(function (b) { b.builtExtras = [{ facId: 'gaming_hall', status: 'building', startDay: 3, readyDay: 31 }]; }), data);
     t.equal(b2.lines[0], 'Building work on the Gaming Hall stopped, as it is no longer part of the Bastion; its slot is free.');
     t.equal(b2.save.archivedFacilities[0].status, 'building');
+  });
+
+  test('never touched: the treasury, the Warehouse, the Hall at level 3 mid-upgrade and its records, routes, the War Room roster, wars, identity, a day left part-way, history', function (t) {
+    var raw = v2(function (b) {
+      b.treasuryGP = 777;
+      b.builtExtras = [{ facId: 'hall_of_emissaries', status: 'built' }, { facId: 'war_room', status: 'built' }, { facId: 'library', status: 'built' }];
+      b.facilityLevels = Object.assign(b.facilityLevels, { hall_of_emissaries: 3, war_room: 1, library: 1 });
+      b.pendingOrders = [{ id: 'u', facId: 'hall_of_emissaries', fnId: 'upgrade_hall', label: 'Hall of Emissaries: Upgrade Hall', costGP: 0, issuedDay: 10, dueDay: 17 }];
+      b.warehouse = [{ item: 'Religious Scriptures', qty: 1, gp: '', notes: 'Library' }, { item: 'Dagger', qty: 2, gp: '', notes: 'Smithy' }];
+      b.military = [{ name: 'Line Infantry', qty: 3, source: 'War Room' }, { name: 'Archers', qty: 2, source: 'War Room' }];
+      b.diplomacy.agreements = [{ title: 'Trade Agreement', clan: 'Clan Karr', startDay: 5, endDay: 26, income: 90, lastShipmentDay: 12 }];
+      b.tradeNetwork.routes = [{ id: 'r', clan: 'Karr', risk: 'low', status: 'active', nextDay: 14, expiresDay: 40 }];
+      b.wars = { bacca: { since: 6, last: 10, next: 13 } };
+      b.organization = { type: 'clan', name: 'Clan Ironbow', chief: 'Harry', motto: 'Root and Steel', foundedAtDay: 3 };
+      b.dayInProgress = { day: 12, stage: 'orders', skipped: ['x'], attackRolled: true, news: ['The Smithy is built.'] };
+      b.word = [{ day: 11, lines: ['Smithy: Craft (Dagger) is complete.'] }];
+      b.log = [{ title: 'Order Completed', body: 'Smithy: Craft (Dagger)', day: 11 }];
+    });
+    var s = R.migrateToV3(raw, data).save;
+    ['treasuryGP', 'warehouse', 'military', 'diplomacy', 'tradeNetwork', 'wars', 'organization', 'dayInProgress', 'word', 'warLog', 'militaryActions', 'warRecovery', 'defenders', 'defenderBeasts', 'favour', 'politicalCapital', 'crest'].forEach(function (k) {
+      t.same(s[k], raw[k], k);
+    });
+    t.same([s.facilityLevels.hall_of_emissaries, s.facilityLevels.war_room], [3, 1]);
+    t.same(s.pendingOrders, raw.pendingOrders, 'the Hall\'s upgrade carries on');
+    t.same(s.log.slice(1), raw.log, 'the Day Log keeps its old names (history); the overhaul\'s entry goes on top');
+    t.same(slots(s), ['hall_of_emissaries', 'war_room', 'library_scriptorium']);
   });
 
   test('converted once: loading again changes nothing, and a Bastion with nothing to convert has no notice', function (t) {

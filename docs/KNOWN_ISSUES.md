@@ -25,7 +25,7 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
 | Scarlett Isles Explorer (EXP) | 12 | 5 | 6 | 13 | 0 |
-| The Ironbow Bastion Manager (BAS) | 23 | 2 | 27 | 17 | 1 |
+| The Ironbow Bastion Manager (BAS) | 23 | 2 | 29 | 17 | 1 |
 | Clan Crest Creator (CRS) | 0 | 4 | 6 | 3 | 3 |
 | Arenas of The Scarlett Isles (ARN) | 8 | 2 | 0 | 17 | 0 |
 | The Heartwood Ritual (RIT) | 9 | 1 | 0 | 15 | 1 |
@@ -1315,6 +1315,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **Evidence:** app.js:1269 builds '<facId>_overlay.png'; the files are gambling_hall_overlay.png and shrine_of_{telluria,aurush,pelagos}_overlay.png. media.py shows exists=False; runtime 404s.
 - **Phase 9:** Kept (B12). The four overlays are in `tools/bastion/assets/extras/`.
 - **13 October 2026 (Harry's new map, decision D10):** the three Shrines now show on the map once built, with Harry's new Shrine paintings. The Gaming Hall still has none (it is being retired). See BAS-69.
+- **Facilities overhaul 1a (13 October 2026):** the Gaming Hall has left the Bastion (BAS-71), so nothing is left of this.
 
 ### BAS-20 · Clicking a compendium card picture throws an error
 **Later, Harry's call** · other
@@ -1869,7 +1870,7 @@ None of these reached Harry.
   - the Laboratory and the Arcane Study share the Laboratory painting, and the Garden and the Greenhouse share the Greenhouse painting, since each pair will merge (each shared picture is drawn once, darkened if either is Under Repair);
   - the Smithy, Gaming Hall and Menagerie have no picture.
 
-  The seven pictures for the new facilities are in place for when those facilities exist. Overlays are now drawn in the table's order, not build-slot order (no two overlap). The crest badge sits over the painting's sky, clear of the Hall of Emissaries, on every screen size; since 13 October (Harry's check in Edge) it sits inside the painting's own frame, so it never meets the edge of the map panel. The old map and overlays are in `tools/bastion/assets/extras/old-map/`.
+  The seven pictures for the new facilities are in place for when those facilities exist. *Since the facilities overhaul's first step (BAS-71), each merged facility has its own picture (the Arcane Laboratory the Laboratory's, the Herbal Gardens the Greenhouse's), so nothing shares one.* Overlays are now drawn in the table's order, not build-slot order (no two overlap). The crest badge sits over the painting's sky, clear of the Hall of Emissaries, on every screen size; since 13 October (Harry's check in Edge) it sits inside the painting's own frame, so it never meets the edge of the map panel. The old map and overlays are in `tools/bastion/assets/extras/old-map/`.
 - **Evidence:** `tools/bastion/data/bastion-data.js` (`map`), `tools/bastion/rules.js` (`R.mapOverlays`), `tools/bastion/tool.js` (the map and `fitMap`); tests in `tests/rules/bastion.test.js`, `tests/e2e/bastion-screen.test.js` and `tests/e2e/phase9.test.js`.
 
 ### BAS-70 · Facilities can be demolished, and building stopped
@@ -1878,6 +1879,32 @@ None of these reached Harry.
 - **Before:** A built facility could only be removed with **Clear extra builds**, which emptied every slot at once (and left their pending orders running). A facility being built couldn't be stopped.
 - **After:** Each facility in a construction slot has **Demolish…** at the foot of its panel (the Hall's is beside **Clear Diplomacy Records**). It asks first, then frees the slot, cancels the orders pending there (no gold back, as with Cancel: B9), and drops its level and any repairs. What it already made stays (the Warehouse, defenders, beasts, War Room units), and the Hall's agreements, contracts and routes carry on. Clicking a facility still being built offers to stop building it. The five starting facilities can't be demolished. **Clear extra builds** is unchanged.
 - **Evidence:** `tools/bastion/rules.js` (`R.demolishFacility`), `tools/bastion/tool.js` (`onDemolish`, the facility panel, the Hall's footer, the building tile); tests in `tests/rules/bastion.test.js` and `tests/e2e/bastion-screen.test.js`.
+
+### BAS-71 · The facilities overhaul, step 1: 22 facilities, three merges, the Gaming Hall gone
+**Deliberate change** (Harry, 13 October 2026: the facilities overhaul handover V4, decisions D1 to D4) · other
+
+- **Before:** 18 facilities. The Arcane Study and Laboratory, the Garden and Greenhouse, and the Library were separate; the Smithy and Gaming Hall could be built.
+- **After:** 22 facilities.
+  - **Merged:** the Arcane Study and Laboratory are the **Arcane Laboratory** (level 5; the Laboratory's Craft is now its **Alchemy**, which needs party level 9). The Garden and Greenhouse are the **Herbal Gardens** (level 5; the Greenhouse's Harvest is now **Greenhouse Harvest**, which needs party level 9). The Library is the **Library & Scriptorium**. Their orders, options and days are unchanged.
+  - **The Smithy joined the Workshop:** a Bastion that had a Smithy built keeps its Craft list as the Workshop's **Smithing**; a new Bastion doesn't have it.
+  - **The Gaming Hall is gone** (D2).
+  - **Eight new facilities** are listed in Construction as **In development** and can't be built yet: Fishery & Smokehouse, Timber Yard & Sawmill, Stone Quarry & Masonworks, Weavers' Hall, Courier Exchange, Wyvern Roost, Griffin Tower and Dire Wolf Den (D4: listed, not hidden). Each becomes buildable in its own later step. Their tiles show their building cut from Harry's map painting; the Courier Exchange has no art yet, so its tile shows its name.
+  - **No facility takes 28 days to build now:** build time still follows the facility's level (21 / 28 / 35 days), and the two level-9 facilities (Laboratory, Greenhouse) merged into level-5 ones. Their level-9 orders still need party level 9.
+  - The old pictures of the Arcane Study, Garden, Smithy and Gaming Hall moved to `tools/bastion/assets/extras/facilities/`.
+- **Evidence:** `tools/bastion/data/facilities-data.js`, `tools/bastion/data/bastion-data.js` (`facilityImages`, `facilityTileCrops`, `retiredFacilities`, `map`), `tools/bastion/rules.js` (`R.startBuild`, `R.fnAvailable`, `R.issueOrder`), `tools/bastion/tool.js` (`facArt`, the Construction panel, the facility panel), `shared/js/campaign-rules.js` (`FACILITY_NAMES`); tests in `tests/rules/bastion.test.js`, `tests/e2e/bastion-screen.test.js` and `tests/e2e/phase9.test.js`.
+
+### BAS-72 · A Bastion saved before the overhaul is converted once, with a copy kept
+**Deliberate change** (Harry, 13 October 2026: D5, and the planning review's "strict migration") · saving
+
+- **Before:** A Bastion save (v 2) names the old facilities. Loaded as it was, a facility the Bastion no longer knows would vanish, and so would its repairs and its pending orders, silently.
+- **After:** The first time the Bastion opens a v 2 save (from the browser, or from an imported file), it:
+  - sets an untouched copy aside first (in **Back up everything**, under "set aside");
+  - converts it, before anything tidies it: each old facility moves to its new one, keeping its slot, building work and days, pending orders (their costs and due days kept; a Laboratory Craft becomes Alchemy, a Greenhouse Harvest becomes Greenhouse Harvest, a Smithy Craft becomes the Workshop's Smithing), level (the higher of a merged pair) and repairs (the later of a pair);
+  - if both halves of a merge were built, keeps one (the built one, else the first to be ready) and frees the other slot;
+  - frees the Smithy's slot (its order joins the Workshop) and the Gaming Hall's (its pending Trade order, which cost nothing, is cancelled; the Gaming Hall is recorded in the save's `archivedFacilities`);
+  - says what changed, once, in a notice and a **Facilities** entry in the Day Log, and saves it as v 3.
+  Opening it again changes nothing. A Smithy or Laboratory under repair doesn't pass its repairs to the Workshop (a starting facility). The Explorer's DM doc and "The Ironbow sends word…" read both v 2 and v 3 saves.
+- **Evidence:** `tools/bastion/rules.js` (`R.migrateToV3`, `R.fromSave`, `R.isOldSave`), `tools/bastion/tool.js` (opening the Bastion: the set-aside copy and the notice), `shared/js/campaign-rules.js` (`inDaysSave`); tests in `tests/rules/bastion.test.js` and `tests/e2e/phase9.test.js`.
 
 ## Clan Crest Creator
 Old repo: `_legacy/clan-crest-creator` (file:line references point there).

@@ -240,7 +240,9 @@
         return a - b;
       })[0];
       var names = idx.map(function (i) { return map[slots[i].from].name; });
-      if (idx.length > 1) lines.push('The ' + names.join(' and the ') + ' are now one ' + nameOf(to) + (slots[keep].status === 'building' ? ' (still being built)' : '') + ': the other slot is free.');
+      var stopped = idx.filter(function (i) { return i !== keep && slots[i].status === 'building'; }).map(function (i) { return map[slots[i].from].name; });
+      if (idx.length > 1) lines.push('The ' + names.join(' and the ') + ' are now one ' + nameOf(to) + (slots[keep].status === 'building' ? ' (still being built)' : '') + ': the other slot is free' +
+        (stopped.length ? ', and building work on the ' + stopped.join(' and the ') + ' stopped (building costs no gold).' : '.'));
       else lines.push('The ' + names[0] + ' is now the ' + nameOf(to) + (slots[keep].status === 'building' ? ' (still being built)' : '') + '.');
       idx.forEach(function (i) { if (i !== keep) slots[i] = ''; });
     });
