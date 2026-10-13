@@ -2233,7 +2233,7 @@
       var whCard = card('warehouse', 'Warehouse', { cls: 'tsi-bas-card--art tsi-bas-card--warehouse' });
       var whBody = el('div', { class: 'tsi-bas-wh__body', 'data-test': 'warehouse' });
       TSI.append(whCard.body, [
-        muted('DM editable. Function outputs append here automatically when completed. Goods from the Bastion\'s production orders (pull request 3) are counted in lots, portions or packs: only their count and notes can be changed here, and their value is the base value per lot, before any trade.'),
+        muted('DM editable. Function outputs append here automatically when completed. Goods made by the production orders are counted in lots, portions or packs: only their count and notes can be changed here, and the value shown is the base value per lot, before any trade.'),
         el('div', { class: 'tsi-bas-wh__head' }, ['Item', 'Qty', 'GP', 'Notes', 'Action'].map(function (t) { return el('div', { text: t }); })),
         whBody,
         el('div', { class: 'tsi-bas-actions tsi-bas-actions--start' }, [
@@ -2361,9 +2361,10 @@
       /* ================================================================
          Facilities: the grid in the map's bottom bar, the build panel,
          each facility's panel, and the Orders panel
-         The grid: the five starting facilities, then the six construction
-         slots, then the six Development Plots (pull request 3: only for the
-         economic facilities; they open at party levels 9, 9, 13, 13, 17, 17). A built facility's tile opens its panel (the Hall's opens the
+         The grid, in two rows: the five starting facilities and the six
+         construction slots, and below them the six Development Plots (pull
+         request 3: only for the economic facilities; they open at party
+         levels 9, 9, 13, 13, 17, 17). A built facility's tile opens its panel (the Hall's opens the
          Hall of Emissaries); one being built shows an hourglass; an empty
          slot the party's level allows opens the build panel; a locked one
          says the level it opens at.
@@ -2902,7 +2903,10 @@
       function renderGrid() {
         var slots = R.slotRows(state, state.partyLevel);
         var plots = R.plotRows(state, state.partyLevel, data);
+        /* Two rows (Harry, 13 October 2026): the starting facilities and the
+           construction slots above, the Development Plots below. */
         var tiles = GRID_START.map(function (id) { return builtTile(id); });
+        var plotTiles = [];
         for (var i = 0; i < Math.max(SLOT_COUNT, slots.rows.length); i++) {
           var row = slots.rows[i];
           if (row && row.entry) {
@@ -2911,19 +2915,21 @@
             tiles.push(slotTile(row, i));
           }
         }
-        tiles.push(el('span', { class: 'tsi-bas-grid__sep', 'aria-hidden': 'true' }));
         for (var k = 0; k < Math.max(PLOT_COUNT, plots.rows.length); k++) {
           var prow = plots.rows[k];
           if (prow && prow.entry) {
-            tiles.push(prow.entry.status === 'building' ? buildingTile(prow.entry, k, prow.overCapacity, 'plot') : builtTile(prow.entry.facId, prow));
+            plotTiles.push(prow.entry.status === 'building' ? buildingTile(prow.entry, k, prow.overCapacity, 'plot') : builtTile(prow.entry.facId, prow));
           } else {
-            tiles.push(plotTile(prow, k));
+            plotTiles.push(plotTile(prow, k));
           }
         }
         /* Keep the focus on the same tile through a redraw. */
         var focused = document.activeElement && grid.contains(document.activeElement) ? document.activeElement.getAttribute('data-test') : null;
         TSI.clear(grid);
-        TSI.append(grid, tiles);
+        TSI.append(grid, [
+          el('div', { class: 'tsi-bas-grid__row', role: 'group', 'aria-label': 'Facilities and construction slots', 'data-test': 'grid-slots' }, tiles),
+          el('div', { class: 'tsi-bas-grid__row tsi-bas-grid__row--plots', role: 'group', 'aria-label': 'Development Plots', 'data-test': 'grid-plots' }, plotTiles)
+        ]);
         if (focused) {
           var again = grid.querySelector('[data-test="' + focused + '"]');
           if (again) again.focus({ preventScroll: true });
@@ -3779,7 +3785,7 @@
         state.partyLevel = R.clampInt(levelSelect.value, 1);
         /* A Herbal Gardens still in a construction slot moves to a plot once one opens. */
         var moved = R.settlePlots(state, data);
-        if (moved.length) log('Facilities', R.settleLine(data, moved));
+        if (moved.length) log('Development Plots', R.settleLine(data, moved));
         done();
       });
 
@@ -3900,7 +3906,9 @@
         saveUi();
         renderGridState();
       });
-      var gridWrap = el('div', { class: 'tsi-bas-gridwrap' }, [gridToggle, grid]);
+      /* The tiles sit in a tray that rises a little over the sea at the
+         foot of the painting while it's open (Harry, 13 October 2026). */
+      var gridWrap = el('div', { class: 'tsi-bas-gridwrap' }, [el('div', { class: 'tsi-bas-tray', 'data-test': 'grid-tray' }, [gridToggle, grid])]);
       var bottomBar = el('div', { class: 'tsi-bas-bottom' }, [leftButtons, gridWrap, rightButtons]);
       function renderGridState() {
         stage.classList.toggle('is-grid-closed', !ui.gridOpen);
@@ -4083,7 +4091,7 @@
       /* A Herbal Gardens built in a construction slot before Development Plots
          existed moves to a free plot (Harry's facility guide, 13 October 2026). */
       var settled = R.settlePlots(state, data);
-      if (settled.length) log('Facilities', R.settleLine(data, settled));
+      if (settled.length) log('Development Plots', R.settleLine(data, settled));
       renderAll();
       /* The first open saves the starting Bastion, as the old tool did. */
       if (!saved || formerBrigade || migrating || settled.length) save();
