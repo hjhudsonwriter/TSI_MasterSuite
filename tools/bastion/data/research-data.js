@@ -17,17 +17,28 @@
    - yield: the batches "keys" of order "fn" produce "pct"% more, rounded
      up (the biggest applies);
    - batch: the batch "key" of order "fn" starts at "qty" instead;
-   - output: the item "key" of order "fn" comes "count" at a time.
+   - output: the item "key" of order "fn" comes "count" at a time;
+   - yield with "add" instead of "pct": the goods "keys" of order "fn" come
+     "add" more (compared with the other yields: the biggest applies);
+   - bonus: the goods "keys" of order "fn" come "add" more, on top of any
+     yield (Specialist Seedbeds);
+   - unlock: the choice of order "fn" marked with this choice's id
+     ("needsResearch" in facilities-data.js) can be ordered.
    A choice with "needs" can't be researched yet: what it does needs a part
    of the Bastion still to be built (the "needs" table says which).
 
    The Herbal Gardens tree is Harry's first attempt, from the planning AI's
-   document (13 October 2026; not canon), costs included. */
+   document (13 October 2026; not canon), costs included. With the goods
+   (pull request 3, Harry's answers of 13 October 2026): Botanical
+   Extraction and Exotic Flora Conservatory unlock the two Herbal Gardens
+   recipes that need research; "+1 ingredient" is +5 portions a batch; the
+   faster-order choices also speed up the new orders, by their wording. */
 window.TSI_DATA = window.TSI_DATA || {};
 window.TSI_DATA.bastionResearch = {
   stageDays: [7, 14, 21],
   needs: {
     goods: 'the goods catalogue (pull request 3)',
+    lab: 'the Arcane Laboratory\'s own recipes (a later pull request)',
     explorer: 'the Explorer link, which tracks each hero\'s conditions (pull request 4)',
     trade: 'trade in goods (pull requests 3 and 5)'
   },
@@ -67,15 +78,15 @@ window.TSI_DATA.bastionResearch = {
                   id: 'intensive_cultivation', name: 'Intensive Cultivation',
                   text: 'Common harvests produce 50% more goods, and specialist plant cultivation produces one additional botanical ingredient per order.',
                   example: '100 rations become 150, or 2 units of a specialist plant become 3.',
-                  now: 'Harvest\'s Rations and Antitoxin; the specialist plants come with the goods catalogue (pull request 3).',
-                  effects: [{ type: 'yield', fn: 'harvest', keys: ['rations', 'antitoxin'], pct: 50 }]
+                  now: 'Harvest\'s Rations and Antitoxin (+50%), and Cultivate Specialist Plants (+5 portions a batch: Harry, 13 October 2026).',
+                  effects: [{ type: 'yield', fn: 'harvest', keys: ['rations', 'antitoxin'], pct: 50 }, { type: 'yield', fn: 'cultivate_specialist', keys: ['restorative_herbs', 'antivenom_roots', 'toxic_blossoms', 'alchemical_flowers'], add: 5 }]
                 },
                 {
                   id: 'crop_rotation', name: 'Crop Rotation',
                   text: 'All Herbal Gardens harvesting and cultivation orders complete 2 days sooner, to a minimum of 2 days.',
                   example: 'A 10-day cultivation order takes 8 days.',
-                  now: 'Harvest and Greenhouse Harvest.',
-                  effects: [{ type: 'faster', fns: ['harvest', 'cultivate'], days: 2, min: 2 }]
+                  now: 'Harvest, Greenhouse Harvest, Cultivate Specialist Plants and Harvest Commercial Medicinal Crops.',
+                  effects: [{ type: 'faster', fns: ['harvest', 'cultivate', 'cultivate_specialist', 'commercial_medicinal_crops'], days: 2, min: 2 }]
                 }
               ]
             },
@@ -86,15 +97,15 @@ window.TSI_DATA.bastionResearch = {
                   id: 'bountiful_harvests', name: 'Bountiful Harvests',
                   text: 'Common harvests produce 100% more goods, and specialist plant cultivation produces 50% more ingredients, rounded up.',
                   example: 'A 100-ration harvest becomes 200, while 2 uncommon botanical ingredients become 3.',
-                  now: 'Harvest\'s Rations and Antitoxin; the specialist plants come with the goods catalogue (pull request 3).',
-                  effects: [{ type: 'yield', fn: 'harvest', keys: ['rations', 'antitoxin'], pct: 100 }]
+                  now: 'Harvest\'s Rations and Antitoxin (+100%), and Cultivate Specialist Plants (+50%).',
+                  effects: [{ type: 'yield', fn: 'harvest', keys: ['rations', 'antitoxin'], pct: 100 }, { type: 'yield', fn: 'cultivate_specialist', keys: ['restorative_herbs', 'antivenom_roots', 'toxic_blossoms', 'alchemical_flowers'], pct: 50 }]
                 },
                 {
                   id: 'perpetual_growing_cycle', name: 'Perpetual Growing Cycle',
                   text: 'All standard Herbal Gardens production orders complete 3 days sooner, to a minimum of 2 days.',
                   example: 'A 7-day order takes 4 days; a 10-day order takes 7.',
-                  now: 'Harvest and Greenhouse Harvest.',
-                  effects: [{ type: 'faster', fns: ['harvest', 'cultivate'], days: 3, min: 2 }]
+                  now: 'All six Herbal Gardens orders.',
+                  effects: [{ type: 'faster', fns: ['harvest', 'cultivate', 'cultivate_specialist', 'field_medical_supplies', 'commercial_medicinal_crops', 'major_botanical_production'], days: 3, min: 2 }]
                 }
               ]
             }
@@ -168,12 +179,14 @@ window.TSI_DATA.bastionResearch = {
                 {
                   id: 'specialist_seedbeds', name: 'Specialist Seedbeds',
                   text: 'Every Cultivate Specialist Plants order produces 1 additional uncommon botanical ingredient.',
-                  needs: 'goods'
+                  now: 'Cultivate Specialist Plants: +5 portions a batch (Harry, 13 October 2026), on top of any Agricultural Development yield.',
+                  effects: [{ type: 'bonus', fn: 'cultivate_specialist', keys: ['restorative_herbs', 'antivenom_roots', 'toxic_blossoms', 'alchemical_flowers'], add: 5 }]
                 },
                 {
                   id: 'botanical_extraction', name: 'Botanical Extraction',
-                  text: 'Unlocks Prepare Botanical Extracts: turn 1 uncommon botanical ingredient into 2 Herbal Reagents, usable in place of standard herbal reagents in eligible Arcane Laboratory recipes.',
-                  needs: 'goods'
+                  text: 'Unlocks Refined Botanical Reagents in Harvest Commercial Medicinal Crops (Level 4): a batch of Alchemical Flowers becomes a cargo lot of reagents (Harry, 13 October 2026). Turning ingredients into Herbal Reagents for the Arcane Laboratory comes with its own recipes.',
+                  now: 'Harvest Commercial Medicinal Crops: Refined Botanical Reagents.',
+                  effects: [{ type: 'unlock', fn: 'commercial_medicinal_crops', key: 'refined_botanical_reagents' }]
                 }
               ]
             },
@@ -183,7 +196,7 @@ window.TSI_DATA.bastionResearch = {
                 {
                   id: 'rare_cultivar_development', name: 'Rare Cultivar Development',
                   text: 'Every second specialist cultivation order also produces 1 Rare Cultivar, a higher-grade ingredient for advanced restorative or alchemical recipes.',
-                  needs: 'goods'
+                  needs: 'lab'
                 },
                 {
                   id: 'environmental_adaptation_extracts', name: 'Environmental Adaptation Extracts',
@@ -197,8 +210,9 @@ window.TSI_DATA.bastionResearch = {
               choices: [
                 {
                   id: 'exotic_flora_conservatory', name: 'Exotic Flora Conservatory',
-                  text: 'Unlocks Cultivate Exotic Flora: 2 Exotic Botanical Catalysts per order, needed by high-tier alchemical recipes, or sold as premium trade goods.',
-                  needs: 'goods'
+                  text: 'Unlocks Rare Botanical Extraction in Major Botanical Production (Level 5): 20 Alchemical Flowers become a cargo lot of Rare Botanical Extracts (Harry, 13 October 2026). Exotic Botanical Catalysts come with the Arcane Laboratory\'s recipes.',
+                  now: 'Major Botanical Production: Rare Botanical Extraction.',
+                  effects: [{ type: 'unlock', fn: 'major_botanical_production', key: 'rare_botanical_extraction' }]
                 },
                 {
                   id: 'universal_purifier', name: 'Universal Purifier',
