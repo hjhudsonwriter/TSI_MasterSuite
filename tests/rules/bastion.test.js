@@ -50,11 +50,11 @@
     t.same(warRoom, T.bastionWar.warRoom.map(function (e) { return e.label; }));
   });
 
-  test('every facility has a picture (a painted tile, or a crop of its map picture until Harry paints one; a facility still in development may show its name), and the map overlays belong to real facilities', function (t) {
+  test('every facility has a picture (a painted tile, or a crop of its map picture until Harry paints one), and the map overlays belong to real facilities', function (t) {
     data.facilities.forEach(function (f) {
-      if (!f.inDevelopment) t.ok(T.bastion.facilityImages[f.id] || T.bastion.facilityTileCrops[f.id], f.id + ' picture');
-      else if (f.id !== 'courier_exchange') t.ok(T.bastion.facilityImages[f.id] || T.bastion.facilityTileCrops[f.id], f.id + ' picture');
+      t.ok(T.bastion.facilityImages[f.id] || T.bastion.facilityTileCrops[f.id], f.id + ' picture');
     });
+    t.equal(T.bastion.facilityImages.courier_exchange, 'courier_exchange.png', 'the Courier Exchange\'s own picture (Harry, 13 October 2026)');
     Object.keys(T.bastion.facilityTileCrops).forEach(function (id) {
       var c = T.bastion.facilityTileCrops[id];
       t.ok(R.facility(data, id), id);
@@ -65,8 +65,9 @@
     t.same([m.width, m.height], [3000, 1250], 'Harry\'s new painting, 12 October 2026');
     m.overlays.forEach(function (o) { t.ok(R.facility(data, o.fac), o.fac); t.ok(/^map\/overlays\/[a-z_]+\.png$/.test(o.pic), o.pic); });
     t.same(m.overlays.map(function (o) { return o.fac; }), ['library_scriptorium', 'arcane_laboratory', 'herbal_gardens', 'war_room', 'hall_of_emissaries', 'shrine_aurush', 'shrine_telluria', 'shrine_pelagos',
-      'wyvern_roost', 'griffin_tower', 'dire_wolf_den', 'weavers_hall', 'stone_masonworks', 'fishery_smokehouse', 'timber_sawmill']);
-    t.equal(m.overlays.filter(function (o) { return ['menagerie', 'courier_exchange'].indexOf(o.fac) !== -1; }).length, 0, 'no map picture for the Menagerie or Courier Exchange');
+      'wyvern_roost', 'griffin_tower', 'dire_wolf_den', 'weavers_hall', 'stone_masonworks', 'fishery_smokehouse', 'timber_sawmill', 'courier_exchange']);
+    t.equal(m.overlays.filter(function (o) { return o.fac === 'menagerie'; }).length, 0, 'no map picture for the Menagerie');
+    t.ok(T.bastion.mapLabels.courier_exchange, 'the Courier Exchange has a place for its label');
   });
 
   test('the map overlays: one per built facility with a picture, a shared picture drawn once, darkened while Under Repair', function (t) {

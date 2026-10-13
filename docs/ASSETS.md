@@ -446,4 +446,13 @@ Harry's own art, uploaded to `bastion-new-art/` (kept there untouched, with its 
 
 The old map (1152 × 768) and its eight overlays moved to `tools/bastion/assets/extras/old-map/`, so nothing is thrown away.
 
-The facilities overhaul (13 October 2026): the Arcane Study, Garden, Smithy and Gaming Hall pictures moved to `tools/bastion/assets/extras/facilities/`, as those facilities merged or left. The seven new facilities have no tile painting yet: their tiles show their building cut from Harry's map overlay above (the boxes are `facilityTileCrops` in `tools/bastion/data/bastion-data.js`), in Construction and, for the Fishery & Smokehouse and Timber Yard & Sawmill (buildable since pull request 3), on their grid tiles once built. The Courier Exchange has no art at all, so its tile shows its name.
+The facilities overhaul (13 October 2026): the Arcane Study, Garden, Smithy and Gaming Hall pictures moved to `tools/bastion/assets/extras/facilities/`, as those facilities merged or left. The seven new facilities have no tile painting yet: their tiles show their building cut from Harry's map overlay above (the boxes are `facilityTileCrops` in `tools/bastion/data/bastion-data.js`), in Construction and, for the Fishery & Smokehouse and Timber Yard & Sawmill (buildable since pull request 3), on their grid tiles once built.
+
+### The Courier Exchange: Harry's art (13 October 2026)
+
+Sent in the chat after pull request 3 merged, and kept exactly as received in `bastion-new-art/3-courier-exchange/` (with a README). The chat delivered both as WebP pictures, and the map overlay at two-thirds size, so the Bastion uses PNG copies; the overlay is scaled back up to the painting's size, which makes the building a little softer than the other overlays. A full-size original added to that folder can replace it.
+
+| Original | In the suite | Size | Used? |
+|---|---|---|---|
+| `bastion-new-art/3-courier-exchange/courier_exchange_overlay_2000x833.webp` | `tools/bastion/assets/map/overlays/courier_exchange.png` | 2000 × 833, scaled to 3000 × 1250 | Yes: on the map once the Courier Exchange can be built and is built, in the open square where the cart stands. It overlaps no other overlay |
+| `bastion-new-art/3-courier-exchange/courier_exchange_panel_1024.webp` | `tools/bastion/assets/facilities/courier_exchange.png` | 1024 × 1024, see-through ground | Yes: its picture in Construction now (In development), and its tile and panel once built |

@@ -8,6 +8,12 @@ Double-click `index.html` to open the suite. The plan is in `docs/PLAN.md`, the 
 
 ## Done
 
+### The Courier Exchange's art (13 October 2026)
+After Harry's check of pull request 3 (all passed; merged as #23), he sent the Courier Exchange's map overlay and facility picture:
+- **Its picture** shows in Construction now (it's still "In development") and on its tile and panel once it can be built.
+- **Its map overlay** stands in the open square, where the cart is, overlapping no other building. It shows on the map, with a name-and-level label above it, once the Courier Exchange can be built and is built. (With the Shrine of Aurush built too, their labels would meet, so the Courier Exchange's sits on its own roof instead.)
+- The chat delivered both as WebP pictures, the overlay at two-thirds size. The originals are kept unchanged in `bastion-new-art/3-courier-exchange/`, and the Bastion uses PNG copies, the overlay scaled up to the painting's 3000 × 1250. A full-size original would make the building a little sharper.
+
 ### The facilities overhaul, pull request 3: plots, goods, the Timber Yard and Fishery, and the map labels (13 October 2026)
 From Harry's facility guide ("Ironbow Facilities: Recommended Decisions") and his four answers:
 - **Development Plots** (BAS-75): a second set of building spaces for the six production facilities, 0 / 2 / 4 / 6 at party levels 1 / 9 / 13 / 17. The Herbal Gardens, Timber Yard and Fishery build there (21 days); everything else still uses the construction slots. An Herbal Gardens already in a slot moves to the first free plot, keeping its level, orders and research.
@@ -772,7 +778,7 @@ Harry asked for a complete rework: the old tool's shields, colours and sigils we
 ## Next
 **Harry tries Build 3**: makes a crest in the Crest Creator and sends it with Use for the Bastion (with the Bastion open in another window, and with it shut), uploads and removes one, founds a Clan, and sees the crest on the War Table. Then says what to change: the badge, the Party Identity panel's layout, or the Form Clan crest box. That completes the overhaul's plan.
 
-**Pull requests 1b, 2 merged** (#21, #22). **Harry tries pull request 3** (its checklist): plots, goods, the Timber Yard and Fishery, the Herbal Gardens' new orders, the map labels and the two rows of tiles, then answers the questions below. **Next in the facilities overhaul (when Harry says go):** pull request 4, the Explorer link (deliveries and receipts, the party's inventory, one or two benefits). The order and decisions are in `docs/FACILITIES-OVERHAUL-PLAN.md` section 6.
+**Pull requests 1b, 2 and 3 merged** (#21, #22, #23); the Courier Exchange's art is in. **Harry checks the Courier Exchange's picture** in Construction, and answers the pull request 3 questions below. **Next in the facilities overhaul (when Harry says go):** pull request 4, the Explorer link (deliveries and receipts, the party's inventory, one or two benefits). The order and decisions are in `docs/FACILITIES-OVERHAUL-PLAN.md` section 6.
 
 **The facilities build (earlier note, now superseded by the plan above):** Harry says which facilities are merged, which are removed and what the seven new ones do (Wyvern Roost, Griffin Tower, Dire Wolf Den, Weavers and Sailmakers Hall, Stone Quarry and Masonworks, Fishery and Smokehouse, Timber Yard and Sawmill). Then the new map art goes in with them: the painting is 3000 × 1250, so `MAP_RATIO` in `fitMap` (`tools/bastion/tool.js`) changes to match, and the screen is checked on the laptop and the TV. The notes for it are in `docs/BASTION-MAP-ART.md` §4.
 
@@ -797,7 +803,7 @@ Each tool's questions are needed before that tool's phase. The full wording and 
 - **The facilities overhaul:** decisions D1–D11 answered on 13 October 2026 (`docs/FACILITIES-OVERHAUL-PLAN.md` section 0); the research model in pull request 2; construction slots (Development Plots) and the goods and their base values by the facility guide in pull request 3. Still open, needed later (section 7 of that plan): Clan demand for goods, which Explorer "clan honour" notes become real changes (a table will come for approval), ports for Port Charters, Elara's wyvern's profile and bond, and military training balance.
   - **From pull request 3 (13 October 2026):**
     - **Exotic Flora Conservatory can't be reached yet** (BAS-79): it's Stage III of the Botanical branch, and both Stage II choices there are still "coming". Should Stage III open anyway for now, or wait?
-    - **Map labels:** which painted building is which of the five starting facilities was a best guess (the stone barn by the jetty has no label). Are they right? Should the Menagerie and Courier Exchange have a spot on the painting? (Positions are one table, `mapLabels` in `bastion-data.js`.)
+    - **Map labels:** which painted building is which of the five starting facilities was a best guess (the stone barn by the jetty has no label). Are they right? Should the Menagerie have a spot on the painting? (Positions are one table, `mapLabels` in `bastion-data.js`.) The Courier Exchange now has Harry's overlay and a label place.
     - **The Herbal Gardens can only be built from party level 9 now** (there are no plots before then). One already built stays in its slot until a plot opens. OK?
     - **Clear extra builds** in Construction now clears the Development Plots too. OK?
 - **Clan Crest Creator (phase 2, reworked 29 September 2026):** answered (K1–K4).

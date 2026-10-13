@@ -270,7 +270,7 @@ Only what's needed to start the first two or three pull requests. My recommendat
     - Arcane Laboratory uses the Laboratory;
     - Library & Scriptorium uses the Library;
     - the three Shrines shown once built, reversing B12, which only covered the old, misnamed art;
-    - no map overlay for the Workshop's merged Smithy, the Courier Exchange or the Menagerie.
+    - no map overlay for the Workshop's merged Smithy, the Courier Exchange or the Menagerie. *(Since 13 October 2026 Harry has supplied the Courier Exchange's overlay and picture: `bastion-new-art/3-courier-exchange`.)*
 - **D11. Tile pictures for facilities with no painting.**
   - *Recommendation:* a neutral, clearly marked placeholder tile (the facility's name on a dark painted frame) until you paint one. It's never another facility's picture.
 

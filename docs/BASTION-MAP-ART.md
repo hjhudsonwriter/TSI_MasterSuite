@@ -136,7 +136,8 @@ Harry asked for the new art first, ahead of the facilities overhaul (decisions D
 | War Room | `war_room.png` |
 | Hall of Emissaries | `hall_of_emissaries.png` |
 | Shrine of Aurush, Shrine of Telluria, Shrine of Pelagos | `shrine_of_aurush.png`, `shrine_of_telluria.png`, `shrine_of_pelagos.png` (shown now: D10, reversing B12) |
-| Menagerie, Courier Exchange | none (the Smithy joined the Workshop, in the base painting, and the Gaming Hall is gone) |
+| Menagerie | none (the Smithy joined the Workshop, in the base painting, and the Gaming Hall is gone) |
+| Courier Exchange | `courier_exchange.png` (Harry, 13 October 2026: in the open square, where the cart stands; `bastion-new-art/3-courier-exchange/`). Shown once it can be built and is built; its own facility picture shows in Construction now |
 | The seven new facilities | `wyvern_roost.png`, `griffin_tower.png`, `dire_wolf_den.png`, `weavers_sailmakers_hall.png`, `stone_quarry_masonworks.png`, `fishery_smokehouse.png`, `timber_yard_sawmill.png`: in the table already, so each shows once its facility can be built and is built. Until then, the Construction panel shows each facility's building cut from its overlay (`facilityTileCrops`) |
 
 - **Rules:**

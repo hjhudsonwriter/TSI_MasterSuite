@@ -287,22 +287,23 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
     await page.setViewportSize(H.SIZES.laptop.viewport);
     await H.shot(page, 'p9-01-laptop');
 
-    await check('every facility picture, the new map and its ten overlays load with no internet; every label fits on the painting, none over another', async () => {
+    await check('every facility picture, the new map and its eleven overlays load with no internet; every label fits on the painting, none over another', async () => {
+      /* (The Courier Exchange is put on a plot by hand, as it can't be built yet, to check its overlay and label beside the Shrine of Aurush's.) */
       await setUp(page, (s) => {
         s.partyLevel = 17;
         s.builtExtras = ['arcane_laboratory', 'library_scriptorium', 'menagerie', 'war_room', 'shrine_telluria', 'shrine_aurush', 'shrine_pelagos', 'hall_of_emissaries'].map(id => ({ facId: id, status: 'built' }));
-        s.builtPlots = ['herbal_gardens', 'fishery_smokehouse', 'timber_sawmill'].map(id => ({ facId: id, status: 'built' }));
+        s.builtPlots = ['herbal_gardens', 'fishery_smokehouse', 'timber_sawmill', 'courier_exchange'].map(id => ({ facId: id, status: 'built' }));
       });
       await page.waitForFunction(() => Array.from(document.images).every(i => i.complete));
       /* (The Fishery's and Timber Yard's tiles are cut from their map pictures, as backgrounds, until Harry paints tiles for them.) */
       const imgs = await page.$$eval('img.tsi-bas-tile__img, .tsi-bas-map__overlay, .tsi-bas-map__img', is => is.map(i => [i.getAttribute('src').split('/').pop(), i.naturalWidth]));
       equal(imgs.filter(i => !i[1]), [], 'all loaded');
       equal(await page.$$eval('[data-test=tile-fishery_smokehouse] [data-art=crop], [data-test=tile-timber_sawmill] [data-art=crop]', cs => cs.length), 2, 'the two crops');
-      equal(await page.$$eval('.tsi-bas-tile--built', ts => ts.length), 16, 'every facility that can be built has a tile, the Hall too');
-      equal(await page.$$eval('[data-test=grid-plots] .tsi-bas-tile--built', ts => ts.map(t => t.dataset.fac)), ['herbal_gardens', 'fishery_smokehouse', 'timber_sawmill'], 'the production facilities on the plots, in the row below');
+      equal(await page.$$eval('.tsi-bas-tile--built', ts => ts.length), 17, 'every facility that can be built has a tile, the Hall too');
+      equal(await page.$$eval('[data-test=grid-plots] .tsi-bas-tile--built', ts => ts.map(t => t.dataset.fac)), ['herbal_gardens', 'fishery_smokehouse', 'timber_sawmill', 'courier_exchange'], 'the production facilities on the plots, in the row below');
       equal(await page.$eval('.tsi-bas-map__img', i => [i.naturalWidth, i.naturalHeight]), [3000, 1250], 'Harry\'s new painting');
-      equal(await page.$$eval('.tsi-bas-map__overlay', os => os.map(o => o.dataset.fac)), ['library_scriptorium', 'arcane_laboratory', 'herbal_gardens', 'war_room', 'hall_of_emissaries', 'shrine_aurush', 'shrine_telluria', 'shrine_pelagos', 'fishery_smokehouse', 'timber_sawmill'], 'the Shrines shown; nothing for the Menagerie');
-      equal(await page.$$eval('.tsi-bas-map__overlay', os => os.map(o => o.naturalWidth + 'x' + o.naturalHeight)), Array(10).fill('3000x1250'));
+      equal(await page.$$eval('.tsi-bas-map__overlay', os => os.map(o => o.dataset.fac)), ['library_scriptorium', 'arcane_laboratory', 'herbal_gardens', 'war_room', 'hall_of_emissaries', 'shrine_aurush', 'shrine_telluria', 'shrine_pelagos', 'fishery_smokehouse', 'timber_sawmill', 'courier_exchange'], 'the Shrines shown; nothing for the Menagerie');
+      equal(await page.$$eval('.tsi-bas-map__overlay', os => os.map(o => o.naturalWidth + 'x' + o.naturalHeight)), Array(11).fill('3000x1250'));
       equal((await H.layoutCheck(page, ['.tsi-bas-tile'])).scrollWidth, H.SIZES.laptop.viewport.width, 'no sideways scroll');
       for (const size of ['laptop', 'laptopFull', 'tv', 'smallWindow']) {
         await page.setViewportSize(H.SIZES[size].viewport);
@@ -328,7 +329,7 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
             onTray: ls.filter(l => hit(l, tray)).map(l => l.fac)
           };
         });
-        equal(m, { tiles: 19, cut: [], n: 15, clash: [], off: [], onBadge: [], onTray: [] }, size + ': nineteen whole, square tiles; fifteen labels (none for the Menagerie), each clear of the others, the badge and the tray');
+        equal(m, { tiles: 19, cut: [], n: 16, clash: [], off: [], onBadge: [], onTray: [] }, size + ': nineteen whole, square tiles; sixteen labels (none for the Menagerie), each clear of the others, the badge and the tray');
         await H.shot(page, 'p9-02-everything-built-' + size);
       }
       await page.setViewportSize(H.SIZES.laptop.viewport);
