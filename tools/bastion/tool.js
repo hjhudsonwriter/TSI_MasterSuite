@@ -3041,25 +3041,26 @@
           var locked = state.partyLevel < req;
           var days = R.buildDaysForRequiredLevel(req, data);
           var where = f.plot ? atPlot : atSlot;
-          /* A production facility needs a Development Plot (pull request 3). */
-          var noPlot = !locked && f.plot && where === null ? (plots.max === 0 ? 'Plots open at party level 9' : 'No free plot') : '';
+          /* A production facility needs a Development Plot (pull request 3);
+             any other, a construction slot. */
+          var noRoom = !locked && where === null ? (f.plot ? (plots.max === 0 ? 'Plots open at party level 9' : 'No free plot') : 'No free slot') : '';
           var b = el('button', {
-            type: 'button', class: 'tsi-bas-buildopt' + (locked || noPlot ? ' tsi-bas-buildopt--locked' : '') + (f.plot ? ' tsi-bas-buildopt--plot' : ''), 'data-test': 'build-' + f.id,
+            type: 'button', class: 'tsi-bas-buildopt' + (locked || noRoom ? ' tsi-bas-buildopt--locked' : '') + (f.plot ? ' tsi-bas-buildopt--plot' : ''), 'data-test': 'build-' + f.id,
             'aria-disabled': locked || where === null ? 'true' : null,
-            'aria-label': f.name + (locked ? ', locked until party level ' + req : noPlot ? ': ' + noPlot : ', takes ' + R.daysText(days) + ' to build') + (f.plot ? ', on a Development Plot' : ''),
+            'aria-label': f.name + (locked ? ', locked until party level ' + req : noRoom ? ': ' + noRoom : ', takes ' + R.daysText(days) + ' to build') + (f.plot ? ', on a Development Plot' : ''),
             onclick: function () { if (!locked && where !== null) onConstruct(where, f.id); }
           }, [
             facArt(f.id, 'tsi-bas-buildopt__img'),
             el('span', { class: 'tsi-bas-buildopt__name', text: f.name }),
             locked ? el('span', { class: 'tsi-bas-buildopt__lock' }, [icon('lock'), 'Locked: level ' + req])
-              : noPlot ? el('span', { class: 'tsi-bas-buildopt__lock' }, [icon('sprout'), noPlot])
+              : noRoom ? el('span', { class: 'tsi-bas-buildopt__lock' }, [icon(f.plot ? 'sprout' : 'lock'), noRoom])
               : el('span', { class: 'tsi-bas-buildopt__days' }, [f.plot ? icon('sprout') : null, R.daysText(days)])
           ]);
           var tipBuild = function () {
             var fns = (f.functions || []).slice(0, 8).map(function (fn) { return (fn.label || fn.id || 'Action') + (fn.requiredFacilityLevel > 1 ? ' (Level ' + fn.requiredFacilityLevel + ')' : ''); });
             return {
               title: f.name || f.id,
-              parts: [locked ? muted('Unlocks at party level ' + req + '.') : null, f.plot ? muted('Built on a Development Plot (' + (noPlot || 'plots open at party levels 9, 13 and 17') + ').') : null]
+              parts: [locked ? muted('Unlocks at party level ' + req + '.') : null, f.plot ? muted('Built on a Development Plot (' + (noRoom || 'plots open at party levels 9, 13 and 17') + ').') : noRoom ? muted(noRoom + ': every construction slot is in use.') : null]
                 .concat(fns.length ? [muted('What it does:'), tipList(fns)] : [muted('No actions listed.')]),
               foot: 'Takes ' + R.daysText(days) + ' to build'
             };
@@ -3069,7 +3070,8 @@
           return b;
         });
         TSI.append(buildBody, [
-          muted(head + (at === null ? ' There\'s no free slot, so nothing can be built now.' : ' Choose a facility to build. The production facilities (marked with a sprout) go on Development Plots.'), 'tsi-bas-buildpanel__head'),
+          muted(head + (at === null ? ' There\'s no free slot, so nothing can be built now.'
+            : ' Choose a facility to build. The production facilities (marked with a sprout) go on Development Plots' + (atSlot === null ? '; every construction slot is in use' : atPlot === null && plots.max ? '; every Development Plot is in use' : '') + '.'), 'tsi-bas-buildpanel__head'),
           el('div', { class: 'tsi-bas-buildgrid' }, tiles.length ? tiles : [muted('Every facility is built or being built.')]),
           el('div', { class: 'tsi-bas-buildpanel__foot' }, [
             muted('Facilities unlock at party levels 5 / 9 / 13 / 17.'),
@@ -3126,7 +3128,7 @@
           ? 'Stop building the ' + name + '? Its ' + where + ' is freed, and the days of work so far are lost.'
           : 'Demolish the ' + name + '? It goes from the Bastion and its ' + where + ' is freed. ' +
             (orders.length ? plural(orders.length, 'order') + ' pending here ' + (orders.length === 1 ? 'is' : 'are') + ' cancelled, and the gold spent isn\'t given back' + (held ? ' (goods they hold go back to the Warehouse)' : '') + '. ' : '') +
-            'Anything it has already made stays' + (facId === 'hall_of_emissaries' ? ', and your agreements, contracts and sea routes carry on' : '') + '. It can be built again later from an empty ' + (place.kind === 'plot' ? 'Development Plot' : 'slot') + '.';
+            'Anything it has already made stays' + (facId === 'hall_of_emissaries' ? ', and your agreements, contracts and sea routes carry on' : '') + '. It can be built again later ' + (R.isPlotFacility(data, facId) ? 'on a free Development Plot' + (R.plotsForLevel(state.partyLevel, data) ? '' : ' (plots open at party level 9)') : 'from an empty slot') + '.';
         var ok = await ask(msg, building ? 'Stop building' : 'Demolish', building ? 'Stop building' : 'Demolish');
         if (!ok || !life.alive) return;
         var res = R.demolishFacility(state, data, facId);

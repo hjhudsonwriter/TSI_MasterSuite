@@ -467,6 +467,25 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     assert(s.log.some(l => /The Herbal Gardens moved to a Development Plot; its construction slot is free\./.test(l.body)), 'the Day Log says so');
   });
 
+  await check('with every construction slot in use but a plot free, the other facilities say "No free slot" and can\'t be chosen', async () => {
+    await setUp(page, (s) => { s.builtExtras = ['library_scriptorium', 'arcane_laboratory', 'shrine_aurush', 'hall_of_emissaries'].map(id => ({ facId: id, status: 'built' })); });
+    await pause(page);
+    await page.click('[data-test=plot-1]');
+    await page.waitForSelector('[data-test=build-panel]');
+    try {
+      assert(/; every construction slot is in use\./.test(await text(page, 'build-panel')), await text(page, 'build-panel'));
+      equal([await page.getAttribute('[data-test=build-shrine_telluria]', 'aria-disabled'), await text(page, 'build-shrine_telluria')], ['true', 'Shrine of TelluriaNo free slot']);
+      equal(await page.getAttribute('[data-test=build-timber_sawmill]', 'aria-disabled'), null, 'a plot facility still can');
+      await page.click('[data-test=build-shrine_telluria]', { force: true });
+      await page.waitForTimeout(250);
+      equal(await page.$(POP), null, 'no question');
+    } finally {
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(150);
+    }
+    await setUp(page, (s) => { s.builtExtras = []; });
+  });
+
   await check('the Timber Yard: each order says what it uses and makes; Saw Lumber waits for Raw Timber; one production order at a time', async () => {
     await setUp(page, (s) => { s.builtPlots[1] = { facId: 'timber_sawmill', status: 'built' }; s.facilityLevels.timber_sawmill = 2; s.warehouse = []; s.pendingOrders = []; });
     await pause(page);
