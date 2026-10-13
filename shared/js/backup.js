@@ -115,8 +115,10 @@
   TSI.backup = {
     /* Download every saved item in the suite as one dated file. */
     backupEverything: function (options) {
-      return TSI.store.flush().then(function () {
-        var backup = rules.makeSuiteBackup(TSI.store.records(), new Date(), TSI.space);
+      /* Read again from the browser, so a home screen opened a while ago
+         still backs up what the tools in other windows have saved since. */
+      return TSI.store.freshAll().then(function (records) {
+        var backup = rules.makeSuiteBackup(records, new Date(), TSI.space);
         var name = downloadBackup(backup, 'suite');
         if (!options || !options.quiet) {
           TSI.notify('Saved to your Downloads folder as ' + name + '.', { type: 'ok', title: 'Backup downloaded.', timeout: 8000, id: 'tsi-backup' });
@@ -136,7 +138,7 @@
           if (open) {
             return TSI.modal.alert({ title: title, message: TSI.the(nameOf(open) || open, true) + ' is open in another window. Close it first: restoring replaces everything the suite has saved, and an open tool would save over it. Nothing was changed. (If you\'ve only just closed it, wait a minute and try again.)' }).then(function () { return false; });
           }
-          return confirmRestore(title, backup);
+          return confirmRestore(title, backup, rules.CAMPAIGN);
         });
       });
     },
@@ -175,7 +177,7 @@
         return openElsewhere(others).then(function (open) {
           if (open === toolId) refusal = TSI.the(nameOf(open) || open, true) + ' is open in another window. Import there, or close it first: it would save over what\'s imported. Nothing was changed.';
           else if (open) refusal = TSI.the(nameOf(open) || open, true) + ' is open in another window. Close it first: a campaign file replaces the Explorer and the Bastion together. Nothing was changed. (If you\'ve only just closed it, wait a minute and try again.)';
-          return confirmImport(toolId, toolName, title, backup, refusal, campaign);
+          return confirmImport(toolId, toolName, title, backup, refusal, campaign, others);
         });
       });
     },
@@ -184,8 +186,18 @@
     describe: function (backup) { return rules.summarise(backup, nameOf); }
   };
 
+  /* After the "are you sure?": a campaign tool that opened in another
+     window while it was showing would save over what's replaced. Resolves
+     true to go ahead; otherwise says so and resolves false. */
+  function stillClear(title, tools) {
+    return openElsewhere(tools || []).then(function (open) {
+      if (!open) return true;
+      return TSI.modal.alert({ title: title, message: TSI.the(nameOf(open) || open, true) + ' opened in another window just now. Close it first, then try again. Nothing was changed.' }).then(function () { return false; });
+    });
+  }
+
   /* Restore: show what's in the backup, ask, then replace everything. */
-  function confirmRestore(title, backup) {
+  function confirmRestore(title, backup, watch) {
     var hasCurrent = TSI.store.keys().length > 0;
     var body = summaryBody(
       backup,
@@ -203,6 +215,8 @@
         { label: 'Cancel', value: false },
         { label: 'Restore', value: true, primary: true }
       ]
+    }).then(function (go) {
+      return go ? stillClear(title, watch) : false;
     }).then(function (go) {
       if (!go) return false;
       var first = body.box && body.box.checked ? TSI.backup.backupEverything({ quiet: true }) : Promise.resolve();
@@ -222,7 +236,7 @@
   /* Import: check each tool's half, show what's in the file, ask, then
      replace. refusal is a reason found already (the wrong kind of file, or
      the other campaign tool open in another window), or null. */
-  function confirmImport(toolId, toolName, title, backup, refusal, campaign) {
+  function confirmImport(toolId, toolName, title, backup, refusal, campaign, watch) {
     /* The tools this file replaces: both campaign tools for a campaign
        file, otherwise just this one (an Explorer file from before the
        campaign save leaves the Bastion as it is). */
@@ -253,6 +267,8 @@
         { label: 'Cancel', value: false },
         { label: 'Import', value: true, primary: true }
       ]
+    }).then(function (go) {
+      return go ? stillClear(title, watch) : false;
     }).then(function (go) {
       if (!go) return false;
       var stop = TSI.shell && TSI.shell.stopTool ? TSI.shell.stopTool() : Promise.resolve();

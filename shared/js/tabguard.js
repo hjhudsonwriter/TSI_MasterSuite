@@ -24,7 +24,10 @@
    A second window of the Explorer or the Bastion waits instead of opening
    the tool (shared/js/toollock.js), so it can't save anything: its
    heartbeat says it's waiting (markWaiting), and neither it nor any other
-   tab warns about it. */
+   tab warns about it. While such a window is still asking for the tool
+   (markAsking, for the second or so its files take to load), it doesn't
+   warn and isn't warned about either; markHolding ends that once it has
+   the tool. */
 (function () {
   'use strict';
 
@@ -43,6 +46,7 @@
   var leaving = false;        /* after pagehide: no more heartbeats (the browser fires visibilitychange after it) */
   var myTool = null;          /* a tool id, '' for the home screen, null until start() says */
   var waiting = false;        /* this window is waiting for another to close its tool (markWaiting) */
+  var asking = false;         /* this window is still asking whether it can open its tool (markAsking) */
 
   function read() {
     try {
@@ -88,6 +92,7 @@
     if (myTool !== null) e.tool = myTool;
     if (document.visibilityState === 'hidden') e.hidden = true;
     if (waiting) e.waiting = true;
+    else if (asking) e.asking = true;
     if (extra) Object.keys(extra).forEach(function (k) { e[k] = extra[k]; });
     return e;
   }
@@ -98,15 +103,15 @@
       /* A tab that's just reloading is still counted, so its warning doesn't flicker. */
       return id !== myId && fresh(map[id], now);
     }).sort().map(function (id) {
-      return { id: id, tool: rules.tabTool(map[id].tool), waiting: map[id].waiting === true };
+      return { id: id, tool: rules.tabTool(map[id].tool), waiting: map[id].waiting === true, asking: map[id].asking === true };
     });
   }
 
   /* The other live tabs that could overwrite this tab's saves, or the other
      way round. A window waiting for its tool saves nothing, so it never clashes. */
   function clashing(map, now) {
-    if (waiting) return [];
-    return others(map, now).filter(function (o) { return !o.waiting && rules.tabsClash(myTool, o.tool); });
+    if (waiting || asking) return [];
+    return others(map, now).filter(function (o) { return !o.waiting && !o.asking && rules.tabsClash(myTool, o.tool); });
   }
 
   function beat() {
@@ -189,6 +194,19 @@
     markWaiting: function () {
       if (waiting) return;
       waiting = true;
+      asking = false;
+      if (started) beat();
+    },
+    /* Called by the shell before start(), for a tool kept to one window,
+       until the browser says whether this window can open it. */
+    markAsking: function () {
+      asking = true;
+      if (started) beat();
+    },
+    /* This window has its tool after all (or couldn't open it): warn as usual. */
+    markHolding: function () {
+      if (!asking) return;
+      asking = false;
       if (started) beat();
     },
     waiting: function () { return waiting; },

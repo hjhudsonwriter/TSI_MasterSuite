@@ -562,7 +562,10 @@
   function takeLock(info, main) {
     if (!info.single || !TSI.toolLock) return Promise.resolve(true);
     return TSI.toolLock.hold(info.id).then(function (got) {
-      if (got !== 'busy') return true;
+      if (got !== 'busy') {
+        if (TSI.tabGuard && TSI.tabGuard.markHolding) TSI.tabGuard.markHolding();
+        return true;
+      }
       showWaiting(main, info);
       /* The tool's Export, Import and save status belong to the window
          running it: here they'd export an old copy, or import under it. */
@@ -596,12 +599,15 @@
     main.appendChild(loading);
 
     var waitingHere = false;
-    return TSI.loadFiles(info.files).then(function () {
-      return TSI.store.ready;
-    }).then(function () {
-      return takeLock(info, main);
+    /* A tool kept to one window asks first, so a second window loads none
+       of it, and a window reloading holds the tool again as soon as it can. */
+    return takeLock(info, main).then(function (mine) {
+      if (!mine) { waitingHere = true; return false; }
+      return TSI.loadFiles(info.files).then(function () {
+        return TSI.store.ready;
+      }).then(function () { return true; });
     }).then(function (mine) {
-      if (!mine) { waitingHere = true; return null; }
+      if (!mine) return null;
       var def = TSI.tools[info.id];
       if (!def) throw new Error(TSI.the(info.name, true) + '\'s files loaded, but the tool didn\'t register itself.');
       var life = TSI.createLife(info.name);
@@ -621,6 +627,7 @@
          the lock is kept until this page closes, so a window waiting can't
          open the tool while an Import is still replacing its save.) */
       if (TSI.toolLock) TSI.toolLock.release();
+      if (TSI.tabGuard && TSI.tabGuard.markHolding) TSI.tabGuard.markHolding();
       showToolError(main, info, err);
     });
   }
@@ -641,7 +648,10 @@
 
     buildTopbar(info);
     if (TSI.dmDoc) TSI.dmDoc.start();
-    /* The "Already open" warning only minds another tab with the same tool, or the home screen. */
+    /* The "Already open" warning only minds another tab with the same tool,
+       or the home screen. A tool kept to one window doesn't warn (and isn't
+       warned about) until it knows whether it can open here (takeLock). */
+    if (info && info.single && TSI.toolLock && TSI.toolLock.supported() && TSI.tabGuard.markAsking) TSI.tabGuard.markAsking();
     TSI.tabGuard.start(info ? info.id : '');
 
     TSI.store.onStatus(showSaveStatus);

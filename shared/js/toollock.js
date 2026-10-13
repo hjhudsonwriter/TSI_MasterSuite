@@ -81,14 +81,17 @@
     holds: function (toolId) { return !!held && held.name === lockName(toolId); },
 
     /* A second window: wait in line for the lock. Once the first window has
-       let go, give it straight back, wait a moment for the first window's
-       last save to land, then reload, which opens the tool from the newest
-       save. onTurn (optional) is called when it's this window's turn. */
+       let go, keep it (so no Import or Restore can slip in meanwhile), wait
+       a moment for the first window's last save to land, then reload, which
+       opens the tool from the newest save. Reloading lets the lock go, and
+       the new page takes it straight back. onTurn (optional) is called when
+       it's this window's turn. */
     waitThenReload: function (toolId, onTurn) {
       var l = locks();
       if (!l || waiting) return;
       waiting = true;
-      l.request(lockName(toolId), function () {
+      var name = lockName(toolId);
+      l.request(name, function () {
         if (typeof onTurn === 'function') {
           try { onTurn(); } catch (e) { /* the reload still happens */ }
         }
@@ -96,7 +99,7 @@
           if (TSI.shell && TSI.shell.reload) TSI.shell.reload();
           else location.reload();
         }, RELOAD_WAIT_MS);
-        return null;
+        return new Promise(function (release) { held = { name: name, release: release }; });
       }).catch(function () { waiting = false; });
     },
 

@@ -118,9 +118,21 @@ async function influenceRows(ba) {
   let ba = await openBastion(A);
   let ba2 = null;
   let ex2 = null;
+  let campaignFile = null;
+  /* Watch for an "Already open" warning in a window, from the moment it's set up. */
+  const WATCH = () => {
+    window.__alreadyOpen = 0;
+    const look = () => new MutationObserver(() => {
+      if (Array.from(document.querySelectorAll('.tsi-notice')).some(n => /Already open/.test(n.textContent))) window.__alreadyOpen++;
+    }).observe(document.body, { subtree: true, childList: true, characterData: true });
+    if (document.body) look(); else document.addEventListener('DOMContentLoaded', look);
+  };
 
   await check('a second Bastion window waits: it says the Bastion is open in another window and runs none of it', async () => {
-    ba2 = await open(A, 'bastion');
+    await ba.evaluate(WATCH);
+    ba2 = await A.newPage();
+    await ba2.addInitScript(WATCH);
+    await ba2.goto(INDEX + '?tool=bastion');
     await ba2.waitForSelector('[data-test=tool-waiting]');
     const t = await ba2.textContent('[data-test=tool-waiting]');
     assert(/The Ironbow Bastion Manager is open in another window/.test(t), t);
@@ -137,14 +149,17 @@ async function influenceRows(ba) {
     equal(await ex2.evaluate(() => !!(TSI.explorer && TSI.explorer.debug)), false);
   });
 
-  await check('nobody shows the "Already open" warning: a waiting window can\'t save', async () => {
+  await check('nobody shows the "Already open" warning, not even for a moment while the second window asks: a waiting window can\'t save', async () => {
     await ex.waitForTimeout(4500);
     for (const p of [ex, ba, ba2, ex2]) equal(await alreadyOpenShown(p), false, p.url());
+    equal(await ba.evaluate(() => window.__alreadyOpen), 0, 'the Bastion\'s window never flashed it');
+    equal(await ba2.evaluate(() => window.__alreadyOpen), 0, 'nor did the waiting window');
   });
 
   await check('a campaign Import in the Explorer is refused while the Bastion is open in another window', async () => {
     const file = await H.download(ex, '[data-test=export]');
-    await H.chooseFile(ex, '[data-test=import]', H.writeTemp('campaign.json', file.text));
+    campaignFile = H.writeTemp('campaign.json', file.text);
+    await H.chooseFile(ex, '[data-test=import]', campaignFile);
     const t = await H.modalText(ex);
     assert(/The Ironbow Bastion Manager is open in another window\. Close it first/.test(t), t);
     await H.clickModal(ex, 'OK');
@@ -161,8 +176,13 @@ async function influenceRows(ba) {
     await home.close();
   });
 
-  await check('closing the first Bastion window opens the waiting one by itself', async () => {
+  await check('closing the first Bastion window opens the waiting one by itself; an Import tried in the moment it wakes is still refused', async () => {
     await ba.close();
+    await ex.waitForTimeout(300);
+    await H.chooseFile(ex, '[data-test=import]', campaignFile);
+    const t = await H.modalText(ex);
+    assert(/The Ironbow Bastion Manager is open in another window/.test(t), t);
+    await H.clickModal(ex, 'OK');
     await ba2.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().anchored, null, { timeout: 10000 });
     equal(await ba2.$('[data-test=tool-waiting]'), null);
     ba = ba2;
@@ -282,6 +302,31 @@ async function influenceRows(ba) {
   });
 
   await B.close();
+
+  /* ------------------------------------------------------------------ */
+  section('Back up everything from a home screen opened earlier');
+  const D = await context(browser, 'laptop');
+
+  await check('it holds what the Explorer saved in another window since, and so does Restore\'s "download first" copy', async () => {
+    const home = await open(D, null);
+    await home.waitForSelector('[data-test=restore]');
+    const old = await H.download(home, '[data-test=backup-everything]');
+    const ex5 = await openExplorer(D);
+    await camp(ex5);
+    equal((await exs(ex5)).travel.day, 2);
+    await ex5.waitForTimeout(800);
+    await ex5.close();
+    await home.waitForTimeout(500);
+    const now = JSON.parse((await H.download(home, '[data-test=backup-everything]')).text);
+    equal(now.records.find(r => r.key === 'tsi.explorer.save').value.travel.day, 2, 'Back up everything');
+    await H.chooseFile(home, '[data-test=restore]', H.writeTemp('old-suite.json', old.text));
+    await home.waitForSelector('.tsi-modal input[type=checkbox]');
+    await home.check('.tsi-modal input[type=checkbox]');
+    const [d] = await Promise.all([home.waitForEvent('download'), H.clickModal(home, 'Restore')]);
+    const safety = JSON.parse(require('fs').readFileSync(await d.path(), 'utf8'));
+    equal(safety.records.find(r => r.key === 'tsi.explorer.save').value.travel.day, 2, 'the copy taken first');
+  });
+  await D.close();
 
   /* ------------------------------------------------------------------ */
   for (const size of ['laptop', 'tv']) {
