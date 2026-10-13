@@ -1456,3 +1456,20 @@
 .tsi-page--bastion .tsi-bas-buildopt--dev .tsi-bas-buildopt__lock { color: var(--tsi-gold, #d6b25e); }
 
 .tsi-page--bastion .tsi-bas-buildopt--dev .tsi-bas-buildopt__img { filter: saturate(.85) brightness(.8); }
+
+/* ---------- Clan Influence: changes from the Explorer (pull request 4) ---------- */
+.tsi-page--bastion .tsi-bas-influence__log { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.tsi-page--bastion .tsi-bas-influence__logrow {
+  padding: 6px 8px;
+  border-radius: var(--tsi-radius-md);
+  border: 1px solid var(--tsi-line-faint);
+  background: rgba(0, 0, 0, .22);
+  font-size: 15px;
+  line-height: 1.3;
+}
+.tsi-page--bastion .tsi-bas-influence__loghead strong { color: var(--tsi-gold-text); }
+.tsi-page--bastion .tsi-bas-influence__logrow--skipped .tsi-bas-influence__loghead strong { color: var(--tsi-warn); }
+.tsi-page--bastion .tsi-bas-influence__logrow--refused .tsi-bas-influence__loghead strong { color: var(--tsi-danger); }
+.tsi-page--bastion .tsi-bas-influence__logtext { color: var(--tsi-text); overflow-wrap: anywhere; }
+.tsi-page--bastion .tsi-bas-influence__logwhy { color: var(--tsi-text-muted); font-size: 14px; }
+.tsi-page--bastion .tsi-bas-asset.tsi-bas-bridge { grid-template-columns: minmax(0, 1fr); }
