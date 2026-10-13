@@ -92,6 +92,21 @@
     t.same([s.orders, s.nextWord, s.level.value], [null, null, 9], 'a Bastion saved in turns has neither (it\'s set aside when the Bastion opens)');
   });
 
+  test('"The Ironbow sends word…": an upgrade (step 1b) is complete on its day, the Hall\'s too (no roll)', function (t) {
+    var b = bastion();
+    b.day = 10;
+    b.anchored = true;
+    b.builtExtras = [{ facId: 'hall_of_emissaries', status: 'built' }];
+    b.pendingOrders = [
+      { id: 'u', facId: 'hall_of_emissaries', fnId: 'upgrade', label: 'Hall of Emissaries: Upgrade to Level 2', costGP: 0, issuedDay: 10, dueDay: 17, meta: { kind: 'upgrade', toLevel: 2 } },
+      { id: 'v', facId: 'barracks', fnId: 'upgrade', label: 'Barracks: Upgrade to Level 3', costGP: 0, issuedDay: 10, dueDay: 24, meta: { kind: 'upgrade', toLevel: 3 } }
+    ];
+    t.same(C.ironbowNews(b, 10, 24).filter(function (w) { return w.day === 17 || w.day === 24; }), [
+      { day: 17, lines: ['Hall of Emissaries: Upgrade to Level 2 is complete.'] },
+      { day: 24, lines: ['Barracks: Upgrade to Level 3 is complete.'] }
+    ]);
+  });
+
   test('"The Ironbow sends word…": what the Bastion has coming, day by day, read from its save', function (t) {
     var b = busy();
     var before = JSON.stringify(b);

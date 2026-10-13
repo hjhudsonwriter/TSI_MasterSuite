@@ -80,7 +80,7 @@
         var day = fix !== null && o.dueDay <= fix ? fix + 1 : o.dueDay;
         if (o.facId === 'war_council' || m.kind === 'war_action') {
           add(day, 'war', 'Your army is ready to march on ' + (str(m.targetName) || 'the enemy') + ' (' + (OBJECTIVES[m.objective] || 'War Action') + ').');
-        } else if (o.facId === 'hall_of_emissaries' && o.fnId !== 'upgrade_hall') {
+        } else if (o.facId === 'hall_of_emissaries' && o.fnId !== 'upgrade_hall' && !(isObj(m) && m.kind === 'upgrade')) {
           add(day, 'roll', label + ' needs your roll.');
         } else {
           add(day, 'order', label + ' is complete.');

@@ -640,6 +640,7 @@ window.TSI_DATA.bastionFacilities = [
     "functions": [
       {
         "id": "upgrade_hall",
+        "retired": true,
         "label": "Upgrade Hall (Level Up)",
         "days": 14,
         "costGP": 0,

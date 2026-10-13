@@ -2060,7 +2060,8 @@
       var dipMeta = muted('');
       dipMeta.setAttribute('data-test', 'diplomacy-meta');
       var hallLevelBadge = el('div', { class: 'tsi-bas-hall-level', 'data-test': 'hall-level', text: 'L1' });
-      var hallUpgradePill = pill('Upgrade', function () { onIssue('hall_of_emissaries', 'upgrade_hall', null); }, 'hall-upgrade', 'Upgrade Hall');
+      /* The Hall's Upgrade is the same Upgrade order as every facility's (step 1b). */
+      var hallUpgradePill = pill('Upgrade', function () { onUpgrade('hall_of_emissaries'); }, 'hall-upgrade', 'Upgrade Hall');
       var ledgerPill = pill('Council Ledger', function () { onLedger(); }, 'ledger', 'Hear the next dispute before the Arbitration Authority');
       var HALL_DAYS_TEXT = 'Each diplomatic action takes its own days, shown beside it.';
       var hallSub = muted(HALL_DAYS_TEXT);
@@ -2130,8 +2131,9 @@
         var lvl = R.getFacilityLevel(state, 'hall_of_emissaries');
         hallLevelBadge.textContent = 'L' + lvl;
         var hallRepair = built ? R.underRepair(state, 'hall_of_emissaries') : 0;
-        hallUpgradePill.disabled = !built || hallRepair > 0;
-        hallUpgradePill.title = hallRepair ? repairText(hall, hallRepair) : 'Upgrade Hall';
+        var hallUp = R.upgradeCheck(state, data, 'hall_of_emissaries');
+        hallUpgradePill.disabled = !hallUp.ok;
+        hallUpgradePill.title = hallRepair ? repairText(hall, hallRepair) : hallUp.ok ? 'Upgrade to Level ' + hallUp.toLevel + ' (' + R.daysText(hallUp.days) + ')' : hallUp.message;
         hallSub.textContent = !built ? 'Not built yet. Build it in Construction to unlock diplomacy actions.'
           : hallRepair ? 'Under Repair until Day ' + hallRepair + ': no diplomatic actions until Day ' + (hallRepair + 1) + '.'
           : HALL_DAYS_TEXT;
@@ -2146,7 +2148,7 @@
           return;
         }
         var fns = (hall.functions || []).filter(function (fn) { return fn.id !== 'upgrade_hall'; }).map(function (fn) {
-          var req = R.clampInt(fn.requiredFacilityLevel === undefined || fn.requiredFacilityLevel === null ? 1 : fn.requiredFacilityLevel, 1, 3);
+          var req = R.clampInt(fn.requiredFacilityLevel === undefined || fn.requiredFacilityLevel === null ? 1 : fn.requiredFacilityLevel, 1, R.MAX_LEVEL);
           var row = fnRow(hall, fn, lvl < req);
           var kind = String((fn.special && fn.special.kind) || '');
           bindTip(row, function () { return { title: fn.label || 'Hall Action', parts: tipList(B.hallTips[kind] || B.hallTips.other) }; });
@@ -2337,6 +2339,28 @@
       }
 
       /* One of a facility's functions (4499-4558). */
+      /* A facility's Upgrade (the facilities overhaul's step 1b): to the next
+         level, its days, and why it can't be ordered now (at Level 5, already
+         upgrading, or Under Repair). It shows first among the orders. */
+      function upgradeRow(fac) {
+        var lvl = R.getFacilityLevel(state, fac.id);
+        var c = R.upgradeCheck(state, data, fac.id);
+        var repair = R.underRepair(state, fac.id);
+        var text = c.ok ? 'To Level ' + c.toLevel + ': takes ' + R.daysText(c.days) + (c.costGP ? ', ' + c.costGP + 'gp.' : ', no gold.')
+          : c.top ? 'Level ' + lvl + ' is the highest.'
+          : c.pending ? 'Upgrading to Level ' + (lvl + 1) + ': ready on Day ' + c.pending.dueDay + '.'
+          : c.message;
+        return el('div', { class: 'tsi-bas-fn tsi-bas-upgrade', 'data-test': 'upgrade-row-' + fac.id }, [
+          el('div', { class: 'tsi-bas-fn__head' }, [el('div', { class: 'tsi-bas-fn__name', text: 'Upgrade' }), el('div', { class: 'tsi-bas-fn__cost', text: 'Level ' + lvl + ' of ' + R.MAX_LEVEL })]),
+          el('div', { class: 'tsi-bas-fn__days', 'data-test': 'upgrade-text-' + fac.id, text: text }),
+          c.top ? null : el('button', {
+            type: 'button', class: 'tsi-btn tsi-btn--small tsi-bas-fn__issue', 'data-test': 'upgrade-' + fac.id, disabled: !c.ok,
+            title: c.ok ? null : repair ? repairText(fac, repair) : c.message,
+            onclick: function () { onUpgrade(fac.id); }
+          }, c.ok ? 'Upgrade to Level ' + c.toLevel : c.pending ? 'Upgrading' : repair ? 'Under Repair' : 'Upgrade')
+        ]);
+      }
+
       function fnRow(fac, fn, locked) {
         var key = fac.id + '__' + fn.id;
         var cd = R.isEmissary(fac, fn) ? R.cooldownLeft(state, String(fn.special.kind || '')) : 0;
@@ -2694,15 +2718,15 @@
         var repair = R.underRepair(state, id);
         var mine = [];
         state.pendingOrders.forEach(function (o, i) { if (o.facId === id) mine.push(pendingRow(o, i)); });
-        var fns = (fac.functions || []).filter(function (fn) { return !R.fnAvailable(state, fac, fn).hidden; }).map(function (fn) {
-          var req = R.clampInt(fn.requiredFacilityLevel === undefined || fn.requiredFacilityLevel === null ? 1 : fn.requiredFacilityLevel, 1, 3);
+        var fns = [upgradeRow(fac)].concat((fac.functions || []).filter(function (fn) { return !R.fnAvailable(state, fac, fn).hidden; }).map(function (fn) {
+          var req = R.clampInt(fn.requiredFacilityLevel === undefined || fn.requiredFacilityLevel === null ? 1 : fn.requiredFacilityLevel, 1, R.MAX_LEVEL);
           return fnRow(fac, fn, lvl < req);
-        });
+        }));
         TSI.append(facPanelBody, [
           el('div', { class: 'tsi-bas-facpanel__hero' + (repair ? ' tsi-bas-facpanel__hero--repair' : '') }, [
             facArt(id, 'tsi-bas-facpanel__img'),
             el('div', { class: 'tsi-bas-facpanel__info' }, [
-              el('div', { class: 'tsi-bas-facpanel__level', text: 'Level ' + lvl }),
+              el('div', { class: 'tsi-bas-facpanel__level', 'data-test': 'fac-level', text: 'Level ' + lvl + ' of ' + R.MAX_LEVEL }),
               el('div', { class: 'tsi-bas-facpanel__status', 'data-test': 'fac-status' }, repair ? repairLabel(repair) : 'Active • each order shows the days it takes'),
               repair ? el('div', { class: 'tsi-bas-fac__repair', 'data-test': 'repair-note-' + id, text: 'Under Repair until Day ' + repair + ': no orders, and orders already here wait. Working again on Day ' + (repair + 1) + '.' }) : null,
               el('div', { class: 'tsi-bas-facpanel__orders' }, [label('Orders pending here')].concat(mine.length ? mine : [muted('None.')]))
@@ -2866,6 +2890,12 @@
         } else {
           res = R.issueOrder(state, data, facId, fnId, select ? select.value : 0, rand);
         }
+        if (!res.ok) { if (res.message) await say(res.message); return; }
+        log(res.log[0], res.log[1]);
+        done();
+      });
+      var onUpgrade = TSI.oneAtATime(async function (facId) {
+        var res = R.issueUpgrade(state, data, facId, rand);
         if (!res.ok) { if (res.message) await say(res.message); return; }
         log(res.log[0], res.log[1]);
         done();
