@@ -389,3 +389,39 @@
 .tsi-page--explorer .tsi-exp-word-day:first-child { margin-top: 0; }
 .tsi-page--explorer .tsi-exp-word { margin: 0 0 8px; padding-left: 20px; }
 .tsi-page--explorer .tsi-exp-word li { margin: 4px 0; }
+
+/* ---------- The Explorer link (pull request 4 of the facilities overhaul) ----------
+   The Party bags, the chart line, the pack offer at an exhaustion save, and
+   "Sent to the Bastion". */
+.tsi-tool--explorer .tsi-exp-section-head { display: flex; align-items: center; gap: 6px; }
+.tsi-tool--explorer .tsi-exp-section-head .tsi-exp-mini { margin-left: auto; }
+.tsi-tool--explorer .tsi-exp-chartline { margin: 0; font-size: 15px; color: var(--tsi-cream); }
+.tsi-tool--explorer .tsi-exp-chartwhy { margin: 0; font-size: 14px; color: var(--tsi-text-muted); }
+.tsi-tool--explorer .tsi-btn.tsi-exp-chartbtn:disabled { opacity: .55; cursor: not-allowed; }
+.tsi-tool--explorer .tsi-exp-status {
+  display: inline-block;
+  padding: 0 7px;
+  border-radius: var(--tsi-radius-pill);
+  border: 1px solid var(--tsi-line);
+  font: 600 11px/1.6 var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-heading);
+  text-transform: uppercase;
+  color: var(--tsi-text-muted);
+  vertical-align: 1px;
+}
+.tsi-tool--explorer .tsi-exp-status--applied { color: var(--tsi-ok); border-color: rgba(70, 230, 179, .45); }
+.tsi-tool--explorer .tsi-exp-status--refused { color: var(--tsi-danger); border-color: rgba(255, 122, 122, .5); }
+.tsi-tool--explorer .tsi-exp-status--skipped { color: var(--tsi-warn); border-color: rgba(232, 196, 106, .5); }
+.tsi-page--explorer .tsi-exp-pack {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 8px 10px;
+  border-radius: var(--tsi-radius-md);
+  border: 1px solid var(--tsi-line);
+  background: rgba(0, 0, 0, .25);
+  font-size: 17px;
+}
+.tsi-page--explorer .tsi-exp-pack .tsi-exp-tip { margin: 0; }
+.tsi-page--explorer .tsi-exp-count { width: 90px; font-size: 17px; }

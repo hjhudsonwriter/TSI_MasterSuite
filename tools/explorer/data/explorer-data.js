@@ -217,7 +217,10 @@ window.TSI_DATA.explorer = {
       title: 'White Blizzard',
       kind: 'blizzard',
       intro: 'Snow comes suddenly, swallowing colour and distance. The world becomes a white corridor, and every breath feels borrowed.',
-      mechanic: { label: 'Group DC 13 Constitution Save', dc: 13, options: null },
+      /* tags: an exhaustion save: the DM can spend an Expedition Provision
+         Pack from the Party bags for advantage (pull request 4 of the
+         facilities overhaul, 13 October 2026). */
+      mechanic: { label: 'Group DC 13 Constitution Save', dc: 13, options: null, tags: ['exhaustion'] },
       results: [
         { min: 13, headline: 'Success', text: 'You keep blood moving and breath steady. The blizzard bites, but takes nothing.', effect: 'No effect.' },
         { headline: 'Failure', text: 'Cold seeps into joints and resolve. The day costs more than it should.', effect: 'Each character gains 1 level of Exhaustion.' }

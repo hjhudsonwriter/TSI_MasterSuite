@@ -35,8 +35,15 @@
      surprised there.
    - Outcomes (apply): gold (a number, or { stake: n } for n × the stake),
      miles (6-mile steps, today), loseDay, effect, inspiration, thread,
-     threadRename, threadClose, dm (a note for another tool, never applied
-     automatically), note, tonight.
+     threadRename, threadClose, dm (a note for the DM, never applied
+     automatically), note, tonight, and standing.
+   - standing: { clan, hr, why } sends a change of 1 in a Clan's
+     Honour/Respect to the Bastion, which applies it once (pull request 4
+     of the facilities overhaul; Harry chose these 8 moments, 13 October
+     2026). clan is 'region' (the Clan of the Region the event began in)
+     or a Clan's key ('slade'); hr is 1 or -1; why says what for.
+   - A check with tags: ['exhaustion'] is an exhaustion save: the DM can
+     spend an Expedition Provision Pack from the Party bags for advantage.
    - Effects last: days: N, camp (until the next Make Camp), night (no long
      rest: until the Make Camp after tonight's), used, or dm (until removed).
    - Text can use {clan}, {chief}, {temple}, {hero}, {failed}, {succeeded}
@@ -218,7 +225,7 @@ window.TSI_DATA.journeyEvents = {
         },
         won: {
           text: 'First blood is yours. She hands over her purse with a bow.',
-          apply: [{ gold: 200 }, { inspiration: 'hero' }, { dm: 'Notice Board: consider +1 clan honour with Clan {clan}.' }],
+          apply: [{ gold: 200 }, { inspiration: 'hero' }, { standing: { clan: 'region', hr: 1, why: 'won the knight\'s bout' } }],
           end: true
         },
         lost: {
@@ -231,7 +238,7 @@ window.TSI_DATA.journeyEvents = {
           check: { skill: 'Charisma (Persuasion)', dc: 15, who: 'one', success: 'nod', failure: 'sneer' }
         },
         nod: { text: 'She lets you pass with a nod.', end: true },
-        sneer: { text: 'She lets you pass with a sneer.', apply: [{ dm: 'Notice Board: consider −1 clan honour with Clan {clan}.' }], end: true }
+        sneer: { text: 'She lets you pass with a sneer.', apply: [{ standing: { clan: 'region', hr: -1, why: 'declined the knight\'s bout without grace' } }], end: true }
       }
     },
 
@@ -477,7 +484,7 @@ window.TSI_DATA.journeyEvents = {
         fine: { text: 'You pay, and they wave you on.', apply: [{ gold: -100 }], end: true },
         caught: {
           text: 'Caught in a lie. You\'re held overnight, with no long rest.',
-          apply: [{ effect: { name: 'No long rest', text: 'no benefit from tonight\'s long rest', who: 'party', night: true } }, { loseDay: true }, { dm: 'Notice Board: consider −1 clan honour with Clan Slade.' }],
+          apply: [{ effect: { name: 'No long rest', text: 'no benefit from tonight\'s long rest', who: 'party', night: true } }, { loseDay: true }, { standing: { clan: 'slade', hr: -1, why: 'caught lying at the muster checkpoint' } }],
           end: true
         }
       }
@@ -928,10 +935,10 @@ window.TSI_DATA.journeyEvents = {
           apply: [{ thread: { name: 'The Deserter\'s Debt', note: 'A Clan {clan} deserter owes you his life.' } }],
           end: true
         },
-        dragged: { text: 'They drag him out.', apply: [{ dm: 'Notice Board: consider −1 clan honour with Clan {clan}.' }], end: true },
+        dragged: { text: 'They drag him out.', apply: [{ standing: { clan: 'region', hr: -1, why: 'sheltered a deserter, and his hunters dragged him out' } }], end: true },
         hand: {
           text: 'The hunters pay his bounty.',
-          apply: [{ gold: 100 }, { dm: 'Notice Board: consider +1 clan honour with Clan {clan}.' }],
+          apply: [{ gold: 100 }, { standing: { clan: 'region', hr: 1, why: 'handed a deserter over to his hunters' } }],
           end: true
         },
         send: { text: 'He goes before dawn. Nothing gained, nothing lost.', end: true }
@@ -1075,7 +1082,7 @@ window.TSI_DATA.journeyEvents = {
         awake: {
           text: '{hero} stays awake all night.',
           apply: [{ effect: { name: 'No long rest', text: 'no benefit from tonight\'s long rest', who: 'hero', night: true } }],
-          check: { skill: 'Constitution saving throw', dc: 13, who: 'same', success: 'dawn', failure: 'worn' }
+          check: { skill: 'Constitution saving throw', dc: 13, who: 'same', tags: ['exhaustion'], success: 'dawn', failure: 'worn' }
         },
         dawn: {
           text: 'At dawn the sunburst fades, and its warmth stays with you.',
@@ -1177,7 +1184,7 @@ window.TSI_DATA.journeyEvents = {
         },
         rideWon: {
           text: 'The raiders are beaten.',
-          apply: [{ gold: 300 }, { dm: 'Notice Board: consider +1 clan honour with Clan Farmer.' }],
+          apply: [{ gold: 300 }, { standing: { clan: 'farmer', hr: 1, why: 'beat the raiders at dawn' } }],
           end: true
         },
         watch: {
@@ -1278,7 +1285,7 @@ window.TSI_DATA.journeyEvents = {
           text: 'They surrender. The ship is saved.',
           apply: [
             { thread: { name: 'The Captain\'s Thanks', note: 'You saved a ship from the wreckers at Bleakharbour. Her captain may come looking for you in 2 to 5 days.', follow: { event: 'f3', scope: 'isles', from: 2, to: 5 } } },
-            { dm: 'Notice Board: consider +1 clan honour with Clan Karr.' }
+            { standing: { clan: 'karr', hr: 1, why: 'made the wreckers surrender' } }
           ],
           end: true
         },
@@ -1290,7 +1297,7 @@ window.TSI_DATA.journeyEvents = {
           text: 'The wreckers are beaten. The ship is saved.',
           apply: [
             { thread: { name: 'The Captain\'s Thanks', note: 'You saved a ship from the wreckers at Bleakharbour. Her captain may come looking for you in 2 to 5 days.', follow: { event: 'f3', scope: 'isles', from: 2, to: 5 } } },
-            { dm: 'Notice Board: consider +1 clan honour with Clan Karr.' }
+            { standing: { clan: 'karr', hr: 1, why: 'beat the wreckers' } }
           ],
           end: true
         },

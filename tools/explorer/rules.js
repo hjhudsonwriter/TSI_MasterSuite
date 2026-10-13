@@ -58,7 +58,12 @@
       activeWeather: null,
       weatherEventDay: 0,
       /* Miles events added to (or took from) today's 30. */
-      milesAdjust: 0
+      milesAdjust: 0,
+      /* An Overland chart in use today: 6 more miles (0 or 6), and whether
+         an event cut today short (the chart can't help then). Pull request
+         4 of the facilities overhaul, 13 October 2026. */
+      extraMiles: 0,
+      dayLost: false
     };
   };
   function journeyRules() { return ns.journey; }
@@ -162,9 +167,12 @@
     if (isObj(saved.travel)) {
       var t = saved.travel;
       var d = state.travel;
-      ['day', 'milesUsed', 'travelEventDay', 'nextTravelEventAtMiles', 'lastWeatherDay', 'weatherEventDay', 'milesAdjust'].forEach(function (k) {
+      ['day', 'milesUsed', 'travelEventDay', 'nextTravelEventAtMiles', 'lastWeatherDay', 'weatherEventDay', 'milesAdjust', 'extraMiles'].forEach(function (k) {
         if (typeof t[k] === 'number' && Number.isFinite(t[k])) d[k] = t[k];
       });
+      /* A chart gives one hex: 6 miles, or nothing. */
+      d.extraMiles = d.extraMiles > 0 ? R.MILES_PER_HEX : 0;
+      if (typeof t.dayLost === 'boolean') d.dayLost = t.dayLost;
       if (typeof t.provinceId === 'string' && R.province(data, t.provinceId)) d.provinceId = t.provinceId;
       if (typeof t.forcedMainEventFired === 'boolean') d.forcedMainEventFired = t.forcedMainEventFired;
       if (isObj(t.forcedMainEvent) && typeof t.forcedMainEvent.id === 'string') d.forcedMainEvent = { id: t.forcedMainEvent.id, dueDay: num(t.forcedMainEvent.dueDay, 0) };
@@ -397,8 +405,35 @@
     if (m <= 24) return { mode: 'Normal (≤24 miles)', effects: 'No effects', key: 'normal' };
     return { mode: 'Fast (≤30 miles)', effects: '−5 Passive Perception', key: 'fast' };
   };
-  /* Today's limit: 30 miles, plus or minus what events changed. */
+  /* Today's limit: 30 miles, plus or minus what events changed, plus 6 with
+     an Overland chart in use. */
   R.dayLimit = function (state) { return journeyRules().dayLimit(state); };
+
+  /* ---------- Overland charts (pull request 4 of the facilities overhaul) ----------
+     "Use a chart today" in the Party bags: one more 6-mile hex until Make
+     Camp, at most one chart a day, never on a day an event cut short. Each
+     chart lasts 3 days of use (Harry, 13 October 2026). Pace is unchanged,
+     and a chart never makes the day's travel event more likely. */
+  /* Why a chart can't be used now, or ''. */
+  R.chartProblem = function (state) {
+    var J = journeyRules();
+    if (state.freeMove) return 'Free Move is on, so miles aren\'t being counted.';
+    if (state.travel.extraMiles > 0) return 'A chart is already in use today.';
+    if (state.travel.dayLost) return 'Today\'s miles are lost: a chart can\'t bring them back.';
+    if (J.itemQty(state, J.CHART) < 1) return 'There\'s no Overland chart in the Party bags.';
+    return '';
+  };
+  /* Use one day of a chart. Returns the line it logs, or null. */
+  R.useChart = function (state) {
+    var J = journeyRules();
+    if (R.chartProblem(state)) return null;
+    if (!J.takeItem(state, J.CHART, 1)) return null;
+    state.travel.extraMiles = R.MILES_PER_HEX;
+    var line = 'Used an Overland chart: +' + R.MILES_PER_HEX + ' miles today, a limit of ' + R.dayLimit(state) + ' (' + J.itemCount(J.CHART, J.itemQty(state, J.CHART)) + ' left).';
+    state.journey.log.unshift('Day ' + (Number(state.travel.day) || 1) + ' · ' + line);
+    if (state.journey.log.length > 100) state.journey.log.length = 100;
+    return line;
+  };
   R.milesShown = function (t, limit) {
     return R.clamp(Number(t && t.milesUsed) || 0, 0, Math.max(R.DAY_MILES, Number(limit) || 0));
   };
@@ -551,6 +586,9 @@
     if (state.freeMove) return { result: 'free', miles: miles, open: null };
 
     var limit = R.dayLimit(state);
+    /* Where the grabbed hero started: the day's road roll only counts a
+       move that began inside the day's limit without a chart. */
+    var startMiles = Number(anchor.milesUsed) || 0;
     var moved = drag.ids.length ? drag.ids : [anchor.id];
     for (var i = 0; i < moved.length; i++) {
       var t = R.token(state, moved[i]);
@@ -573,7 +611,10 @@
     var busy = !!(state.journey && state.journey.current);
     if (travel.travelEventDay !== dayNow && miles > 0 && !busy) {
       var milesNow = Number(anchor.milesUsed) || 0;
-      if (milesNow >= travel.nextTravelEventAtMiles) {
+      /* Counted against the limit without a chart, so a chart's extra hex
+         can never set the roll off, or unlock one an open event held back. */
+      var base = journeyRules().baseLimit(state);
+      if (startMiles < base && Math.min(milesNow, base) >= travel.nextTravelEventAtMiles) {
         travel.travelEventDay = dayNow;
         var main = R.takeForcedMainEvent(state, data);
         if (main) {
@@ -707,9 +748,11 @@
       }
     }
 
-    /* A new day: miles back to 30, effects that have run out go. */
+    /* A new day: miles back to 30 (no chart in use yet), effects that have run out go. */
     state.tokens.forEach(function (t) { t.milesUsed = 0; });
     travel.milesAdjust = 0;
+    travel.extraMiles = 0;
+    travel.dayLost = false;
     J.newDay(state);
 
     if (!main && !busy) {
@@ -738,6 +781,8 @@
     var delta = 1 - (Number(state.travel.day) || 1);
     state.travel.day = 1;
     state.travel.milesAdjust = 0;
+    state.travel.extraMiles = 0;
+    state.travel.dayLost = false;
     state.tokens.forEach(function (t) { t.milesUsed = 0; });
     if (isObj(state.journey)) journeyRules().shiftDays(state, delta);
   };
