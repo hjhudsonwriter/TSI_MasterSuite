@@ -25,7 +25,7 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
 | Scarlett Isles Explorer (EXP) | 12 | 5 | 6 | 13 | 0 |
-| The Ironbow Bastion Manager (BAS) | 23 | 2 | 31 | 17 | 1 |
+| The Ironbow Bastion Manager (BAS) | 23 | 2 | 35 | 19 | 1 |
 | Clan Crest Creator (CRS) | 0 | 4 | 6 | 3 | 3 |
 | Arenas of The Scarlett Isles (ARN) | 8 | 2 | 0 | 17 | 0 |
 | The Heartwood Ritual (RIT) | 9 | 1 | 0 | 15 | 1 |
@@ -1942,8 +1942,78 @@ None of these reached Harry.
   - **The other 15 say "Coming later"** and what they wait for: the goods catalogue (PR 3), the Explorer link's hero conditions (PR 4), or trade in goods (PRs 3 and 5).
   - **Combining bonuses:** Agricultural yields and Improved Antitoxins combine. Antitoxin starts at 4 vials, then grows by the biggest yield, so it's 8 vials with Bountiful Harvests.
   - **On screen:** the facility panel has a **Research** box after **Upgrade**, showing its tokens and any project running. **Open Research** shows the four branches side by side; hover over a choice for its full text, example and what it works on now.
-  - **What waits:** the Herbal Gardens' five level orders (Harvest Common Herbs & Provisions … Advanced Botanical Production) come with the goods catalogue (PR 3), as Harry chose. Today's Harvest and Greenhouse Harvest are unchanged until then.
+  - **What waits:** the Herbal Gardens' five level orders (Harvest Common Herbs & Provisions … Advanced Botanical Production) come with the goods catalogue (PR 3), as Harry chose. Today's Harvest and Greenhouse Harvest are unchanged until then. *Since pull request 3: the level orders are in, and 12 choices can be researched (BAS-77).*
 - **Evidence:** `tools/bastion/data/research-data.js`, `tools/bastion/data/facilities-data.js` (the Herbal Gardens items' `key` and `batch`), `tools/bastion/rules.js` (Research: `R.researchTokens`, `R.researchCheck`, `R.startResearch`, `R.completeResearch`, `R.undoResearch`, `R.orderDaysAt`, `R.researchOutput`, `R.cleanResearch`), `tools/bastion/tool.js` (`researchRow`, `renderResearch`, `onResearch`, `onUndoResearch`); tests in `tests/rules/bastion.test.js` and `tests/e2e/bastion-screen.test.js`.
+
+### BAS-75 · The facilities overhaul, pull request 3: Development Plots
+**Deliberate change** (Harry's facility guide, "Ironbow Facilities: Recommended Decisions", 13 October 2026) · other
+
+- **Before:** Every facility the party built went in one of the six construction slots (2 / 4 / 5 / 6 at party levels 5 / 9 / 13 / 17).
+- **After:**
+  - **Development Plots,** a second set of building spaces only for the six production facilities: the Herbal Gardens, Fishery & Smokehouse, Timber Yard & Sawmill, Stone Quarry & Masonworks, Weavers' Hall and Courier Exchange. There are **none at party levels 1 to 8, 2 at 9 to 12, 4 at 13 to 16 and 6 at 17 to 20** (one table in `bastion-data.js`, `developmentPlots`). The other facilities still use the construction slots, which are unchanged.
+  - **The grid** shows the plots in their own row, below the starting facilities and the slots (see BAS-78). An empty plot has a sprout; a locked one says the party level it opens at. Opening Construction from a plot lists the production facilities first; each is marked with a sprout and says "Plots open at party level 9" or "No free plot" when it can't be built.
+  - **A production facility can only be built on a plot,** and any other facility only in a slot. Each takes 21 days to build, like the Herbal Gardens.
+  - **An Herbal Gardens already in a construction slot** (built before plots existed) moves to the first free plot as soon as there is one: when the Bastion opens, when the party level rises, or when a plot is freed. It keeps its level, its orders, its research and any building work. It is never removed for lack of room. A notice and a **Development Plots** entry in the Day Log say so. Harry's sample file (party level 13) shows this.
+  - **Lowering the party level** keeps every facility on a plot working, marked over capacity, as slots already do (BAS-04).
+  - **Demolish** and **Stop building** say "its plot is freed". **Clear extra builds** in Construction now clears the plots too.
+  - The Explorer's DM doc and "The Ironbow sends word…" see buildings on plots finishing.
+- **Note for Harry:** the Herbal Gardens can no longer be built below party level 9, because there are no plots before then. One already built stays where it is until a plot opens.
+- **Evidence:** `tools/bastion/data/bastion-data.js` (`developmentPlots`), `tools/bastion/data/facilities-data.js` (`plot: true`), `tools/bastion/rules.js` (`R.plotsForLevel`, `R.plotRows`, `R.startBuild`, `R.settlePlots`, `R.facilityPlace`, `R.demolishFacility`, `tidyPlots`), `tools/bastion/tool.js` (`plotTile`, `renderGrid`, `renderBuild`), `shared/js/campaign-rules.js` (`bastionComing`); tests in `tests/rules/bastion.test.js`, `tests/e2e/bastion-screen.test.js` and `tests/e2e/phase9.test.js`.
+
+### BAS-76 · Pull request 3: goods in the Warehouse, and the Timber Yard and Fishery working
+**Deliberate change** (Harry's facility guide, 13 October 2026) · other
+
+- **Before:** The Warehouse only held rows typed by hand or added by name. The Timber Yard & Sawmill and the Fishery & Smokehouse were listed "In development".
+- **After:**
+  - **A goods catalogue** (`tools/bastion/data/goods-data.js`): the guide's 17 trade goods, counted in **lots** with a base value per lot (for example Raw Timber, 1 lot = 20 logs, 100 gp); four crafting ingredients counted in **portions**; and the Expedition Provision Pack, counted in **packs** (10 character-days of rations, a party of five for two days). Edit the numbers there to rebalance.
+  - **Goods in the Warehouse:** a good has its own row, which shows its name, what one lot holds, its count, its value (the base value; it isn't gold until trade comes in a later pull request) and notes. Only the count and the notes can be changed by hand. Rows typed by hand work exactly as before and are never merged with goods.
+  - **The Timber Yard & Sawmill and the Fishery & Smokehouse can be built,** and each has the guide's six orders, opened by its level (Level 1 to 5): for example Harvest Timber (4 days, 1 lot of Raw Timber), Saw Lumber (Level 2: 1 lot of Raw Timber becomes 1 lot of Sawn Lumber), up to the Level 5 bulk orders that make three lots; and Catch Fresh Fish (3 days) through Prepare Expedition Provisions (Level 3: 1 lot of Preserved Fish becomes 5 packs). Every number is in `facilities-data.js`.
+  - **One production order at a time** at each of these two facilities (an Upgrade or research project can still run beside it). The order's button says "Can't order yet" with the reason underneath.
+  - **What an order uses is taken from the Warehouse when the order begins** and held by the order, so it can't be used twice. Each order shows "Uses" (with what the Warehouse has) and "Makes". The Orders panel shows what a pending order is holding. **Cancel or Demolish gives the goods back,** once; a finished order uses them up. If an order's facility or order no longer exists when it falls due, its goods go back and the Day Log says so.
+  - The Compendium still lists 270 items: goods and recipes aren't Compendium items.
+- **Evidence:** `tools/bastion/data/goods-data.js`, `tools/bastion/data/facilities-data.js`, `tools/bastion/rules.js` (Goods: `R.addGoods`, `R.takeGoods`, `R.returnGoods`, `R.inputsShort`, `R.recipeBlocker`, `R.completeProduction`, `R.cleanWarehouse`, `R.cancelOrder`, `R.issueOrder`), `tools/bastion/tool.js` (`fnRow`, `goodsRow`, `pendingRow`); tests in `tests/rules/bastion.test.js` and `tests/e2e/bastion-screen.test.js`.
+
+### BAS-77 · Pull request 3: the Herbal Gardens' Level 2 to 5 orders, and the research they open
+**Deliberate change** (Harry's facility guide and his answers, 13 October 2026) · other
+
+- **Before:** The Herbal Gardens had only Harvest and Greenhouse Harvest. 9 of its 24 research choices could be researched.
+- **After:**
+  - **Harvest and Greenhouse Harvest are unchanged** (their ten products, days and party level 9 gate).
+  - **Four new orders, opened by the Gardens' level:**
+    - Level 2, **Cultivate Specialist Plants** (4 days): 10 portions of Restorative Herbs, Antivenom Roots, Toxic Blossoms or Alchemical Flowers.
+    - Level 3, **Prepare Field Medical Supplies:** 2 Healer's Kits and 2 Antitoxins (2 vials each) from 5 portions each of Restorative Herbs and Antivenom Roots (6 days); 2 Potions of Healing from 10 Restorative Herbs (7 days); or 2 doses of Basic Poison from 10 Toxic Blossoms (7 days). Each recipe has its own days.
+    - Level 4, **Harvest Commercial Medicinal Crops** (6 days): 1 lot of Medicinal Herbs, or (7 days, with **Botanical Extraction** researched) 1 lot of Refined Botanical Reagents from 10 Alchemical Flowers.
+    - Level 5, **Major Botanical Production** (8 days): 3 lots of Medicinal Herbs, 30 portions of one ingredient, or (10 days, with **Exotic Flora Conservatory** researched) 1 lot of Rare Botanical Extracts from 20 Alchemical Flowers.
+  - **Research, by Harry's answers:**
+    - Intensive Cultivation adds 5 portions to Cultivate Specialist Plants; Bountiful Harvests adds 50%. Only the bigger applies, and **Specialist Seedbeds** adds 5 more on top.
+    - The faster-order choices apply to the new orders as their wording says: Efficient Planting to the Harvest only; Crop Rotation to the cultivating and crop orders; the Perpetual Growing Cycle to all six. Each is taken from a recipe's own days, never below 2.
+    - **Specialist Seedbeds, Botanical Extraction and Exotic Flora Conservatory can now be researched,** so 12 of the 24 can be, and 12 still say "Coming later".
+  - A recipe that waits for research says "(needs …)" in its list and why it can't be ordered.
+- **Evidence:** `tools/bastion/data/facilities-data.js` (Herbal Gardens), `tools/bastion/data/research-data.js`, `tools/bastion/rules.js` (`R.orderDaysAt`, `R.goodsOutputQty`, `R.recipeBlocker`, `R.researched`); tests in `tests/rules/bastion.test.js` and `tests/e2e/bastion-screen.test.js`.
+
+### BAS-78 · Pull request 3: the map's haze and labels, and the facilities in two rows
+**Deliberate change** (Harry, 13 October 2026, with his reference screenshot) · other
+
+- **Before:** The painting always looked the same, with no names on it. The facility tiles sat in one row of large squares.
+- **After:**
+  - **While the facilities grid is open,** the painting takes on a soft, warm haze, and each built facility (the starting five included) has a small label above it with its name and level. Labels stay inside the painting, clear of the crest badge and of each other, on the laptop, in full screen, on the TV and in a small window. A facility being built has no label until it's finished. **Folding the grid away (▼) removes the haze and labels,** so the painting looks exactly as before. The haze is drawn with styles only, and its fade is instant with reduced motion.
+  - **The tiles are smaller, in two rows** (Harry's request during this pull request): the five starting facilities and the six construction slots above, the six Development Plots below, so all 17 fit without scrolling. They sit in a tray that rises a little over the sea at the foot of the painting (never above about 1150 of the painting's 1250 pixels, well below the dock and its boat). Folding the grid works as before.
+- **Questions for Harry:** which painted building is which starting facility was a best guess (and the stone barn by the jetty has no label); the Menagerie and the Courier Exchange have no place on the painting, so they have no label. Both are one table in `bastion-data.js` (`mapLabels`).
+- **Evidence:** `tools/bastion/data/bastion-data.js` (`mapLabels`), `tools/bastion/rules.js` (`R.mapLabels`), `tools/bastion/tool.js` (`renderTop`, `placeLabels`, `fitMap`, `renderGrid`, the tray), `tools/bastion/bastion.css` (the haze, labels and tray); tests in `tests/rules/bastion.test.js`, `tests/e2e/bastion-screen.test.js` and `tests/e2e/phase9.test.js`.
+
+### BAS-79 · Exotic Flora Conservatory can't be reached yet
+**Later, Harry's call** · other
+
+- **Before (since pull request 3):** Exotic Flora Conservatory is Stage III of the Botanical Research branch. A stage opens only once the stage before it on the branch is done, and both Stage II choices there (Rare Cultivar Development and Environmental Adaptation Extracts) still say "Coming later" (they wait for the Arcane Laboratory's recipes and the Explorer link). So Exotic Flora Conservatory shows as locked, and Rare Botanical Extraction can't be ordered yet.
+- **After:** Unchanged until Harry decides: open Stage III anyway while Stage II is "coming", or wait for those pull requests.
+- **Evidence:** `tools/bastion/data/research-data.js` (the Botanical branch), `tools/bastion/rules.js` (`R.researchChoiceState`); the rules test "a recipe that needs research waits for it".
+
+### BAS-80 · Folded grid: two bottom-bar button names are slightly cut off
+**Later, Harry's call** · other
+
+- **Before:** With the grid folded, the bottom bar is one row of 46-pixel-high buttons, and "Clan Influence" and "War Council" wrap to two lines, so the bottom of their second line is slightly cut off on the laptop.
+- **After:** Unchanged (it was already like this before pull request 3, and the buttons work). It can be tidied in the final polish.
+- **Evidence:** `tools/bastion/bastion.css` (`.tsi-bas-stage.is-grid-closed .tsi-bas-pbtns`); checked against the merged #22 at 1707 × 930.
 
 ## Clan Crest Creator
 Old repo: `_legacy/clan-crest-creator` (file:line references point there).
