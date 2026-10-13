@@ -47,10 +47,33 @@
     t.same(warRoom, T.bastionWar.warRoom.map(function (e) { return e.label; }));
   });
 
-  test('every facility has a picture, and the eight overlays belong to real facilities', function (t) {
+  test('every facility has a picture, and the map overlays belong to real facilities', function (t) {
     data.facilities.forEach(function (f) { t.ok(T.bastion.facilityImages[f.id], f.id + ' picture'); });
-    T.bastion.overlays.forEach(function (id) { t.ok(R.facility(data, id), id); });
-    t.equal(T.bastion.overlays.length, 8);
+    var m = T.bastion.map;
+    t.equal(m.base, 'map/bastion_base.jpg');
+    t.same([m.width, m.height], [3000, 1250], 'Harry\'s new painting, 12 October 2026');
+    m.overlays.forEach(function (o) { t.ok(R.facility(data, o.fac), o.fac); t.ok(/^map\/overlays\/[a-z_]+\.png$/.test(o.pic), o.pic); });
+    t.same(m.overlays.map(function (o) { return o.fac; }), ['library', 'laboratory', 'arcane_study', 'greenhouse', 'garden', 'war_room', 'hall_of_emissaries', 'shrine_aurush', 'shrine_telluria', 'shrine_pelagos']);
+    t.equal(m.overlays.filter(function (o) { return ['smithy', 'gaming_hall', 'menagerie'].indexOf(o.fac) !== -1; }).length, 0, 'no picture for the Smithy, Gaming Hall or Menagerie');
+  });
+
+  test('the map overlays: one per built facility with a picture, a shared picture drawn once, darkened while Under Repair', function (t) {
+    var s = fresh();
+    t.same(R.mapOverlays(s, data), [], 'the starting five are in the base painting');
+    s.builtExtras = ['shrine_pelagos', 'garden', 'smithy', 'library'].map(function (id) { return { facId: id, status: 'built' }; });
+    s.builtExtras.push({ facId: 'war_room', status: 'building', startDay: 1, readyDay: 36 });
+    t.same(R.mapOverlays(s, data).map(function (o) { return [o.pic, o.facs]; }), [
+      ['map/overlays/library.png', ['library']],
+      ['map/overlays/greenhouse.png', ['garden']],
+      ['map/overlays/shrine_of_pelagos.png', ['shrine_pelagos']]
+    ], 'in the data\'s order; nothing for the Smithy or a building still being built');
+    s.builtExtras.push({ facId: 'greenhouse', status: 'built' });
+    s.repairs = { greenhouse: s.day + 3 };
+    var shared = R.mapOverlays(s, data).filter(function (o) { return o.pic === 'map/overlays/greenhouse.png'; });
+    t.equal(shared.length, 1, 'the Garden and Greenhouse share one picture, drawn once');
+    t.same(shared[0].facs, ['greenhouse', 'garden']);
+    t.equal(shared[0].repair, true, 'darkened while either is Under Repair');
+    t.equal(R.mapOverlays(s, data).filter(function (o) { return o.repair; }).length, 1);
   });
 
   test('the starting Bastion: five facilities, Day 1 (not yet set by the Explorer), level 7, 0 gp, unsworn', function (t) {

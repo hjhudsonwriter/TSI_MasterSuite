@@ -286,14 +286,15 @@ const ALL_EXTRAS = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 
     await page.setViewportSize(H.SIZES.laptop.viewport);
     await H.shot(page, 'p9-01-laptop');
 
-    await check('every facility picture and all eight map overlays load with no internet', async () => {
+    await check('every facility picture, the new map and its ten overlays load with no internet', async () => {
       await setUp(page, (s) => { s.partyLevel = 17; s.builtExtras = ['arcane_study', 'library', 'smithy', 'garden', 'menagerie', 'laboratory', 'war_room', 'gaming_hall', 'greenhouse', 'shrine_telluria', 'shrine_aurush', 'shrine_pelagos', 'hall_of_emissaries'].map(id => ({ facId: id, status: 'built' })); });
       await page.waitForFunction(() => Array.from(document.images).every(i => i.complete));
       const imgs = await page.$$eval('.tsi-bas-tile__img, .tsi-bas-map__overlay, .tsi-bas-map__img', is => is.map(i => [i.getAttribute('src').split('/').pop(), i.naturalWidth]));
       equal(imgs.filter(i => !i[1]), [], 'all loaded');
       equal(await page.$$eval('.tsi-bas-tile--built', ts => ts.length), 18, 'every facility has a tile, the Hall too');
-      equal(await page.$$eval('.tsi-bas-map__overlay', os => os.map(o => o.dataset.fac).sort()), ['arcane_study', 'garden', 'greenhouse', 'hall_of_emissaries', 'laboratory', 'library', 'smithy', 'war_room']);
-      equal(await page.$$eval('.tsi-bas-map__overlay', os => os.map(o => o.naturalWidth)), [1152, 1152, 1152, 1152, 1152, 1152, 1152, 1152]);
+      equal(await page.$eval('.tsi-bas-map__img', i => [i.naturalWidth, i.naturalHeight]), [3000, 1250], 'Harry\'s new painting');
+      equal(await page.$$eval('.tsi-bas-map__overlay', os => os.map(o => o.dataset.fac)), ['library', 'laboratory arcane_study', 'greenhouse garden', 'war_room', 'hall_of_emissaries', 'shrine_aurush', 'shrine_telluria', 'shrine_pelagos'], 'shared pictures drawn once; the Shrines shown; nothing for the Smithy, Gaming Hall or Menagerie');
+      equal(await page.$$eval('.tsi-bas-map__overlay', os => os.map(o => o.naturalWidth + 'x' + o.naturalHeight)), Array(8).fill('3000x1250'));
       equal((await H.layoutCheck(page, ['.tsi-bas-tile'])).scrollWidth, H.SIZES.laptop.viewport.width, 'eighteen tiles still fit');
       await H.shot(page, 'p9-02-everything-built');
     });

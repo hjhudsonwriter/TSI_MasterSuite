@@ -486,6 +486,22 @@
     var ids = data.bastion.startingBuilt.concat(extras(s).map(function (x) { return x.facId; }));
     return ids.filter(function (id, i) { return ids.indexOf(id) === i; });
   };
+  /* The overlays to draw on the Bastion map: one per picture (two
+     facilities sharing one are drawn once), in the data's order, each with
+     the facilities it stands for and whether any of them is Under Repair. */
+  R.mapOverlays = function (s, data) {
+    var built = R.builtFacilityIds(s, data);
+    var out = [];
+    var byPic = {};
+    ((data.bastion.map && data.bastion.map.overlays) || []).forEach(function (o) {
+      if (!o || built.indexOf(o.fac) === -1) return;
+      var e = byPic[o.pic];
+      if (!e) { e = byPic[o.pic] = { pic: o.pic, facs: [], repair: false }; out.push(e); }
+      e.facs.push(o.fac);
+      if (R.underRepair(s, o.fac)) e.repair = true;
+    });
+    return out;
+  };
   /* Built and working (249-255). */
   R.builtFacilityIds = function (s, data) {
     R.normalizeBuiltExtras(s);

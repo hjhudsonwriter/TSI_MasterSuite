@@ -29,11 +29,34 @@ window.TSI_DATA.bastion = {
     hall_of_emissaries: 'hall_of_emissaries.png'
   },
 
-  /* A built facility shows on the Bastion map if assets/overlays/<id>_overlay.png
-     exists (1256-1277). These eight do. The Gaming Hall and the three shrines
-     have overlay art under other names, so they stay hidden, as before (B12);
-     that art is in assets/extras/. */
-  overlays: ['arcane_study', 'garden', 'greenhouse', 'hall_of_emissaries', 'laboratory', 'library', 'smithy', 'war_room'],
+  /* The Bastion map (Harry's new painting, 12 October 2026; in use since
+     13 October): one base painting, and a see-through overlay the same size
+     for each built facility that has one, drawn in this order. Two
+     facilities can share a picture (they're drawn once): the Arcane Study
+     uses the Laboratory's and the Garden the Greenhouse's, as they'll merge
+     into the Arcane Laboratory and Herbal Gardens (Harry's decision D10).
+     The Shrines are shown now (D10, reversing B12). The Workshop and the
+     other starting buildings are in the base painting; the Smithy, Gaming
+     Hall and Menagerie have no picture. The seven pictures for the new
+     facilities (assets/map/overlays/) are listed when those facilities are
+     built into the Bastion. The originals are in bastion-new-art/. */
+  map: {
+    base: 'map/bastion_base.jpg',
+    width: 3000,
+    height: 1250,
+    overlays: [
+      { fac: 'library', pic: 'map/overlays/library.png' },
+      { fac: 'laboratory', pic: 'map/overlays/laboratory.png' },
+      { fac: 'arcane_study', pic: 'map/overlays/laboratory.png' },
+      { fac: 'greenhouse', pic: 'map/overlays/greenhouse.png' },
+      { fac: 'garden', pic: 'map/overlays/greenhouse.png' },
+      { fac: 'war_room', pic: 'map/overlays/war_room.png' },
+      { fac: 'hall_of_emissaries', pic: 'map/overlays/hall_of_emissaries.png' },
+      { fac: 'shrine_aurush', pic: 'map/overlays/shrine_of_aurush.png' },
+      { fac: 'shrine_telluria', pic: 'map/overlays/shrine_of_telluria.png' },
+      { fac: 'shrine_pelagos', pic: 'map/overlays/shrine_of_pelagos.png' }
+    ]
+  },
 
   /* The seven clans (4937-4945). */
   clans: [
