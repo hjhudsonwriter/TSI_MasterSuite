@@ -174,6 +174,7 @@
          buildings retired from this Bastion (an audit record), and the
          one-time conversion's report. */
       legacyFacilities: [],
+      research: {},
       archivedFacilities: [],
       migration: null
     };
@@ -403,6 +404,7 @@
     d.legacyFacilities = arr(s.legacyFacilities) ? s.legacyFacilities.filter(function (x) { return typeof x === 'string'; }) : [];
     d.archivedFacilities = arr(s.archivedFacilities) ? s.archivedFacilities.filter(isObj) : [];
     d.migration = isObj(s.migration) ? s.migration : null;
+    d.research = R.cleanResearch(s.research, data);
     if (arr(s.militaryActions)) d.militaryActions = s.militaryActions.filter(isObj);
     R.normalizeBuiltExtras(d);
     R.ensureLevels(d, data);
@@ -721,6 +723,7 @@
     s.pendingOrders = s.pendingOrders.filter(function (o) { return !(o && o.facId === facId); });
     if (isObj(s.facilityLevels)) delete s.facilityLevels[facId];
     if (isObj(s.repairs)) delete s.repairs[facId];
+    if (isObj(s.research)) delete s.research[facId];
     var body = building
       ? 'Building work on the ' + name + ' stopped; its slot is free.'
       : 'The ' + name + ' was demolished; its slot is free.' + (cancelled.length ? ' Cancelled: ' + cancelled.map(function (o) { return o.label; }).join('; ') + '.' : '');
@@ -778,6 +781,201 @@
     s.pendingOrders.push({ id: R.uid(rand), facId: facId, fnId: 'upgrade', chosen: null, optionLabel: null, notes: '', label: label, costGP: c.costGP, issuedDay: s.day, dueDay: s.day + c.days, meta: { kind: 'upgrade', toLevel: c.toLevel } });
     return { ok: true, log: ['Order Issued', label + ' (' + R.daysText(c.days) + ': due Day ' + (s.day + c.days) + ').'] };
   };
+  /* ---------- Research (the facilities overhaul's pull request 2, 13 October 2026) ----------
+     A facility with a tree (research-data.js) earns a research token at each
+     level from 2 (Levels 2 to 5: four in all). A project is a pending order
+     (fnId "research", meta.kind "research") costing the branch's gold for
+     that stage and taking 7 / 14 / 21 days; it takes a token while it runs.
+     One at a time at a facility. When it completes, the choice is recorded
+     in s.research[facId][branchId] (the chosen ids, Stage I first). Undoing
+     a stage frees its token and those of the stages above it; the gold and
+     days spent aren't given back (as with Cancel: B9). Effects come only
+     from the fixed list below, read from the data, never from the save. */
+  function researchData(data) { return isObj(data.research) ? data.research : { trees: {}, stageDays: [7, 14, 21], needs: {} }; }
+  R.researchTree = function (data, facId) {
+    var t = researchData(data).trees;
+    return isObj(t) && isObj(t[facId]) ? t[facId] : null;
+  };
+  function findBranch(tree, branchId) { return tree ? (tree.branches || []).filter(function (b) { return b.id === branchId; })[0] || null : null; }
+  /* Where a choice sits: { branch, stageIdx, choice } or null. */
+  function findChoice(tree, branchId, choiceId) {
+    var b = findBranch(tree, branchId);
+    if (!b) return null;
+    for (var i = 0; i < (b.stages || []).length; i++) {
+      var c = (b.stages[i].choices || []).filter(function (x) { return x.id === choiceId; })[0];
+      if (c) return { branch: b, stageIdx: i, choice: c };
+    }
+    return null;
+  }
+  /* A save's research, kept only where the tree knows it, stage by stage. */
+  R.cleanResearch = function (src, data) {
+    var out = {};
+    if (!isObj(src)) return out;
+    Object.keys(src).forEach(function (facId) {
+      var tree = R.researchTree(data, facId);
+      if (!tree || !isObj(src[facId])) return;
+      var fac = {};
+      Object.keys(src[facId]).forEach(function (bid) {
+        var b = findBranch(tree, bid);
+        var list = arr(src[facId][bid]);
+        if (!b || !list) return;
+        var kept = [];
+        for (var i = 0; i < list.length && i < (b.stages || []).length; i++) {
+          var ok = (b.stages[i].choices || []).some(function (c) { return c.id === list[i]; });
+          if (!ok) break;
+          kept.push(list[i]);
+        }
+        if (kept.length) fac[bid] = kept;
+      });
+      if (Object.keys(fac).length) out[facId] = fac;
+    });
+    return out;
+  };
+  function picks(s, facId) { return isObj(s.research) && isObj(s.research[facId]) ? s.research[facId] : {}; }
+  R.researchRunning = function (s, facId) {
+    return (s.pendingOrders || []).filter(function (o) { return isObj(o) && o.facId === facId && isObj(o.meta) && o.meta.kind === 'research'; })[0] || null;
+  };
+  /* Tokens: one per level from Level 2; used by choices made and a project running. */
+  R.researchTokens = function (s, data, facId) {
+    var total = R.researchTree(data, facId) && R.builtFacilityIds(s, data).indexOf(facId) !== -1 ? Math.max(0, R.getFacilityLevel(s, facId) - 1) : 0;
+    var p = picks(s, facId);
+    var used = Object.keys(p).reduce(function (n, k) { return n + p[k].length; }, 0) + (R.researchRunning(s, facId) ? 1 : 0);
+    return { total: total, used: used, free: Math.max(0, total - used) };
+  };
+  R.researchDays = function (data, stageIdx) {
+    var d = researchData(data).stageDays || [7, 14, 21];
+    return clampInt(d[stageIdx] === undefined ? 7 * (stageIdx + 1) : d[stageIdx], 1, 365);
+  };
+  R.researchNeedsText = function (data, key) {
+    var n = researchData(data).needs || {};
+    return n[key] || 'a part of the Bastion still to be built';
+  };
+  /* Each choice's state: 'done', 'running', 'other' (the other choice at
+     that stage was taken), 'coming' (needs a part still to be built),
+     'locked' (the stage before isn't done), or 'open'. */
+  R.researchChoiceState = function (s, data, facId, branchId, choiceId) {
+    var tree = R.researchTree(data, facId);
+    var at = findChoice(tree, branchId, choiceId);
+    if (!at) return 'none';
+    var done = picks(s, facId)[branchId] || [];
+    if (done[at.stageIdx] === choiceId) return 'done';
+    var run = R.researchRunning(s, facId);
+    if (run && run.meta.branch === branchId && run.meta.choice === choiceId) return 'running';
+    if (done[at.stageIdx] || (run && run.meta.branch === branchId && run.meta.stage === at.stageIdx)) return 'other';
+    if (at.choice.needs) return 'coming';
+    if (done.length < at.stageIdx) return 'locked';
+    return 'open';
+  };
+  /* Can this choice be researched now? { ok, stageIdx, days, costGP } or { ok: false, message }. */
+  R.researchCheck = function (s, data, facId, branchId, choiceId) {
+    var tree = R.researchTree(data, facId);
+    var fac = R.facility(data, facId);
+    var at = findChoice(tree, branchId, choiceId);
+    if (!fac || !at) return { ok: false, message: 'There\'s no such research.' };
+    if (R.builtFacilityIds(s, data).indexOf(facId) === -1) return { ok: false, message: 'The ' + fac.name + ' isn\'t built yet.' };
+    if (R.getFacilityLevel(s, facId) < 2) return { ok: false, message: 'Research opens at Level 2.' };
+    var state = R.researchChoiceState(s, data, facId, branchId, choiceId);
+    if (state === 'done') return { ok: false, message: at.choice.name + ' is already researched.' };
+    if (state === 'running') return { ok: false, message: at.choice.name + ' is being researched now.' };
+    if (state === 'other') return { ok: false, message: 'The other choice at this stage was taken: only one can be.' };
+    if (state === 'coming') return { ok: false, message: 'Coming with ' + R.researchNeedsText(data, at.choice.needs) + '.' };
+    if (state === 'locked') return { ok: false, message: 'Research the stage before it on this branch first.' };
+    var run = R.researchRunning(s, facId);
+    if (run) return { ok: false, message: 'The ' + fac.name + ' is already researching ' + (run.meta.name || 'something') + ': ready on Day ' + run.dueDay + '.' };
+    var broken = repairRefusal(s, fac);
+    if (broken) return broken;
+    if (R.researchTokens(s, data, facId).free < 1) return { ok: false, message: 'No research token free: the ' + fac.name + ' earns one at each level from 2 to 5.' };
+    var cost = clampInt((at.branch.costs || [])[at.stageIdx] || 0, 0);
+    if (cost > s.treasuryGP) return { ok: false, message: 'Not enough gp. Need ' + cost + 'gp, you have ' + s.treasuryGP + 'gp.' };
+    return { ok: true, stageIdx: at.stageIdx, days: R.researchDays(data, at.stageIdx), costGP: cost };
+  };
+  R.startResearch = function (s, data, facId, branchId, choiceId, rand) {
+    var c = R.researchCheck(s, data, facId, branchId, choiceId);
+    if (!c.ok) return c;
+    var fac = R.facility(data, facId);
+    var at = findChoice(R.researchTree(data, facId), branchId, choiceId);
+    s.treasuryGP -= c.costGP;
+    var label = fac.name + ': Research ' + at.choice.name + ' (' + at.branch.name + ', Stage ' + ['I', 'II', 'III'][c.stageIdx] + ')';
+    s.pendingOrders.push({ id: R.uid(rand), facId: facId, fnId: 'research', chosen: null, optionLabel: null, notes: '', label: label, costGP: c.costGP, issuedDay: s.day, dueDay: s.day + c.days,
+      meta: { kind: 'research', branch: branchId, stage: c.stageIdx, choice: choiceId, name: at.choice.name } });
+    return { ok: true, log: ['Research Started', label + ' (' + c.costGP + 'gp, ' + R.daysText(c.days) + ': ready on Day ' + (s.day + c.days) + ').'] };
+  };
+  R.completeResearch = function (s, data, order) {
+    var m = order.meta || {};
+    var at = findChoice(R.researchTree(data, order.facId), m.branch, m.choice);
+    var label = order.label || 'Research';
+    if (!at) return ['Research', label + ' → That research no longer exists; nothing changes.'];
+    if (!isObj(s.research)) s.research = {};
+    if (!isObj(s.research[order.facId])) s.research[order.facId] = {};
+    var list = arr(s.research[order.facId][m.branch]) || [];
+    if (list.length !== at.stageIdx) return ['Research', label + ' → The stage before it is no longer researched, so it can\'t be finished; nothing changes.'];
+    list.push(at.choice.id);
+    s.research[order.facId][m.branch] = list;
+    return ['Research Complete', label + ' → ' + at.choice.name + ' is researched.'];
+  };
+  /* Undo a researched stage and any above it on that branch: their tokens come back. */
+  R.undoResearch = function (s, data, facId, branchId, stageIdx) {
+    var tree = R.researchTree(data, facId);
+    var b = findBranch(tree, branchId);
+    var list = b ? (picks(s, facId)[branchId] || []) : [];
+    var i = clampInt(stageIdx, 0, 2);
+    if (!b || !list[i]) return { ok: false, message: 'That stage isn\'t researched.' };
+    var run = R.researchRunning(s, facId);
+    if (run && run.meta.branch === branchId && run.meta.stage > i) return { ok: false, message: 'A later stage on this branch is being researched: cancel it first.' };
+    var gone = list.slice(i).map(function (id) { return (findChoice(tree, branchId, id) || { choice: { name: id } }).choice.name; });
+    s.research[facId][branchId] = list.slice(0, i);
+    if (!s.research[facId][branchId].length) delete s.research[facId][branchId];
+    if (!Object.keys(s.research[facId]).length) delete s.research[facId];
+    var fac = R.facility(data, facId);
+    return { ok: true, undone: gone, log: ['Research Undone', fac.name + ': ' + gone.join(', ') + (gone.length === 1 ? ' is' : ' are') + ' no longer researched; ' + (gone.length === 1 ? 'its token is' : 'their tokens are') + ' free again.'] };
+  };
+  /* The effects of everything researched at a facility (from the data). */
+  R.researchEffects = function (s, data, facId) {
+    var tree = R.researchTree(data, facId);
+    var out = [];
+    var p = picks(s, facId);
+    Object.keys(p).forEach(function (bid) {
+      p[bid].forEach(function (id) {
+        var at = findChoice(tree, bid, id);
+        if (at && !at.choice.needs) (at.choice.effects || []).forEach(function (e) { if (isObj(e)) out.push(e); });
+      });
+    });
+    return out;
+  };
+  /* An order's days at a facility, with research: the biggest saving, never below its minimum. */
+  R.orderDaysAt = function (s, data, fac, fn) {
+    var days = R.orderDays(fn);
+    if (!fac || !fn) return days;
+    var best = null;
+    R.researchEffects(s, data, fac.id).forEach(function (e) {
+      if (e.type !== 'faster' || (e.fns || []).indexOf(fn.id) === -1) return;
+      var min = clampInt(e.min === undefined ? 1 : e.min, 1, 365);
+      var d = Math.max(Math.min(days, min), days - clampInt(e.days || 0, 0, 365));
+      if (best === null || d < best) best = d;
+    });
+    return best === null ? days : best;
+  };
+  /* What an order's choice puts in the Warehouse, with research: { name, count }.
+     A batch ("Rations (100)") can start bigger (batch) and grow by the
+     biggest yield, rounded up; an item can come several at a time (output). */
+  R.researchOutput = function (s, data, fac, fn, chosen, optionLabel) {
+    var out = { name: optionLabel, count: 1 };
+    var key = chosen && chosen.key ? chosen.key : null;
+    if (!key || !fac || !fn) return out;
+    var effects = R.researchEffects(s, data, fac.id).filter(function (e) { return e.fn === fn.id; });
+    var batch = isObj(chosen.batch) ? chosen.batch : null;
+    if (batch) {
+      var qty = clampInt(batch.qty || 1, 1);
+      effects.forEach(function (e) { if (e.type === 'batch' && e.key === key) qty = Math.max(qty, clampInt(e.qty || 1, 1)); });
+      var pct = 0;
+      effects.forEach(function (e) { if (e.type === 'yield' && (e.keys || []).indexOf(key) !== -1) pct = Math.max(pct, clampInt(e.pct || 0, 0, 1000)); });
+      qty = Math.ceil(qty * (100 + pct) / 100);
+      out.name = batch.name + ' (' + qty + (batch.unit ? ' ' + batch.unit : '') + ')';
+    }
+    effects.forEach(function (e) { if (e.type === 'output' && e.key === key) out.count = Math.max(out.count, clampInt(e.count || 1, 1, 100)); });
+    return out;
+  };
+
   /* An upgrade completing: the facility goes up one level (at most 5). */
   R.completeUpgrade = function (s, data, order) {
     var fac = R.facility(data, order.facId);
@@ -902,7 +1100,7 @@
     if (costGP > s.treasuryGP) return { ok: false, message: 'Not enough gp. Need ' + costGP + 'gp, you have ' + s.treasuryGP + 'gp.' };
     s.treasuryGP -= costGP;
     var label = orderLabel(fac, fn, optionLabel);
-    var days = R.orderDays(fn);
+    var days = R.orderDaysAt(s, data, fac, fn);
     s.pendingOrders.push({ id: R.uid(rand), facId: facId, fnId: fnId, chosen: chosen, optionLabel: optionLabel, notes: notes, label: label, costGP: costGP, issuedDay: s.day, dueDay: s.day + days });
     return { ok: true, log: ['Order Issued', label + ' (' + days + (days === 1 ? ' day' : ' days') + ': due Day ' + (s.day + days) + ').'] };
   };
@@ -1293,6 +1491,7 @@
     var fac = R.facility(data, order.facId);
     if (!fac) return null;
     if (isObj(order.meta) && order.meta.kind === 'upgrade') return [R.completeUpgrade(s, data, order)];
+    if (isObj(order.meta) && order.meta.kind === 'research') return [R.completeResearch(s, data, order)];
     var fn = R.fn(fac, order.fnId);
     if (!fn) return null;
     var label = order.label || (fac.name + ': ' + fn.label);
@@ -1356,8 +1555,10 @@
     }
     if (optionLabel) {
       var notes = order.notes ? fac.name + ' • ' + String(order.notes) : fac.name;
-      R.appendToWarehouse(s, optionLabel, 1, '', notes, rand);
-      return [['Order Completed', label + ' → Added to Warehouse.']];
+      /* Research can make a batch bigger or bring items two at a time. */
+      var made = R.researchOutput(s, data, fac, fn, chosen, optionLabel);
+      R.appendToWarehouse(s, made.name, made.count, '', notes, rand);
+      return [['Order Completed', label + ' → Added to Warehouse' + (made.count > 1 ? ': ' + made.count + ' × ' + made.name : made.name !== optionLabel ? ': ' + made.name : '') + '.']];
     }
     return [['Order Completed', label + ' → Completed.']];
   };
@@ -1367,7 +1568,7 @@
     if (order.facId === 'trade_network') return 'network';
     if (order.facId === 'war_council' || (order.meta && order.meta.kind === 'war_action')) return 'war';
     var fac = R.facility(data, order.facId);
-    if (fac && order.meta && order.meta.kind === 'upgrade') return 'simple';
+    if (fac && order.meta && (order.meta.kind === 'upgrade' || order.meta.kind === 'research')) return 'simple';
     var fn = R.fn(fac, order.fnId);
     if (!fac || !fn) return 'none';
     if (R.isEmissary(fac, fn)) return 'emissary';

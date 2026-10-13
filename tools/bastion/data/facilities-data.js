@@ -549,16 +549,21 @@ window.TSI_DATA.bastionFacilities = [
         "days": 7,
         "options": [
           {
-            "label": "Antitoxin (2 vials)"
+            "label": "Antitoxin (2 vials)",
+            "key": "antitoxin",
+            "batch": { "name": "Antitoxin", "qty": 2, "unit": "vials" }
           },
           {
-            "label": "Rations (100)"
+            "label": "Rations (100)",
+            "key": "rations",
+            "batch": { "name": "Rations", "qty": 100, "unit": "" }
           },
           {
             "label": "Healer's Kit"
           },
           {
-            "label": "Potion of Healing"
+            "label": "Potion of Healing",
+            "key": "potion_of_healing"
           },
           {
             "label": "Basic Poison"
@@ -574,7 +579,8 @@ window.TSI_DATA.bastionFacilities = [
         "days": 10,
         "options": [
           {
-            "label": "Greater Potion of Healing"
+            "label": "Greater Potion of Healing",
+            "key": "greater_potion_of_healing"
           },
           {
             "label": "Truth Serum"

@@ -2,7 +2,7 @@
 (function () {
   var R = TSI.bastion.rules;
   var T = window.TSI_DATA;
-  var data = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, events: T.bastionEvents };
+  var data = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, events: T.bastionEvents, research: T.bastionResearch };
 
   /* Dice that come up in the given order (numbers from 0 up to 1). */
   function dice(list) {
@@ -1110,6 +1110,161 @@
     var d = R.demolishFacility(back, data, 'library_scriptorium');
     t.same(d.cancelled.map(function (o) { return o.label; }), ['Library & Scriptorium: Upgrade to Level 4']);
     t.equal(back.facilityLevels.library_scriptorium, undefined);
+  });
+
+  group('Bastion: research (pull request 2, 13 October 2026)');
+
+  /* Herbal Gardens built, at a level, with gold. */
+  function gardens(level, gp) {
+    var s = built(fresh(), ['herbal_gardens']);
+    s.day = 10;
+    s.partyLevel = 9;
+    s.facilityLevels.herbal_gardens = level;
+    s.treasuryGP = gp === undefined ? 5000 : gp;
+    return s;
+  }
+  /* Research a choice and let it complete. */
+  function research(s, branch, choice) {
+    var r = R.startResearch(s, data, 'herbal_gardens', branch, choice, dice([0.3]));
+    if (!r.ok) throw new Error('research refused: ' + r.message);
+    var o = R.researchRunning(s, 'herbal_gardens');
+    R.completeSimpleOrder(s, data, o, dice([0.3]));
+    R.removeOrder(s, o.id);
+  }
+
+  test('the Herbal Gardens tree: 4 branches of 3 stages of 2 choices; 9 can be researched now, 15 are "coming"; the document\'s gold', function (t) {
+    var tree = R.researchTree(data, 'herbal_gardens');
+    t.same(tree.branches.map(function (b) { return [b.name, b.stages.length, b.costs]; }), [
+      ['Agricultural Development', 3, [150, 350, 750]], ['Herbal Medicine', 3, [200, 450, 950]], ['Botanical Research', 3, [200, 500, 1100]], ['Commercial Cultivation', 3, [250, 600, 1300]]]);
+    var all = [];
+    tree.branches.forEach(function (b) { b.stages.forEach(function (st) { t.equal(st.choices.length, 2); st.choices.forEach(function (c) { all.push(c); }); }); });
+    t.equal(all.length, 24);
+    t.same(all.filter(function (c) { return !c.needs; }).map(function (c) { return c.id; }), ['fertile_soil', 'efficient_planting', 'intensive_cultivation', 'crop_rotation', 'bountiful_harvests', 'perpetual_growing_cycle', 'healing_herb_refinement', 'improved_antitoxins', 'concentrated_restoratives']);
+    all.forEach(function (c) {
+      if (c.needs) t.ok(T.bastionResearch.needs[c.needs], c.id + ' says what it waits for');
+      else t.ok(c.effects && c.effects.length, c.id + ' has effects');
+    });
+    t.equal(R.researchTree(data, 'barracks'), null, 'only the Herbal Gardens has a tree so far');
+  });
+
+  test('tokens: none at Level 1; one per level from 2 (four at Level 5); a project running takes one', function (t) {
+    t.same([1, 2, 3, 4, 5].map(function (l) { return R.researchTokens(gardens(l), data, 'herbal_gardens').total; }), [0, 1, 2, 3, 4]);
+    var s = gardens(1);
+    t.equal(R.researchCheck(s, data, 'herbal_gardens', 'agricultural', 'fertile_soil').message, 'Research opens at Level 2.');
+    s = gardens(2);
+    var r = R.startResearch(s, data, 'herbal_gardens', 'agricultural', 'fertile_soil', dice([0.3]));
+    t.equal(r.ok, true);
+    t.same(r.log, ['Research Started', 'Herbal Gardens: Research Fertile Soil (Agricultural Development, Stage I) (150gp, 7 days: ready on Day 17).']);
+    t.equal(s.treasuryGP, 4850, '150 gp');
+    var o = R.researchRunning(s, 'herbal_gardens');
+    t.same([o.fnId, o.costGP, o.dueDay, o.meta], ['research', 150, 17, { kind: 'research', branch: 'agricultural', stage: 0, choice: 'fertile_soil', name: 'Fertile Soil' }]);
+    t.same(R.researchTokens(s, data, 'herbal_gardens'), { total: 1, used: 1, free: 0 });
+    t.equal(R.orderKind(data, o), 'simple');
+    t.same(R.completeSimpleOrder(s, data, o, dice([0.3])), [['Research Complete', 'Herbal Gardens: Research Fertile Soil (Agricultural Development, Stage I) → Fertile Soil is researched.']]);
+    R.removeOrder(s, o.id);
+    t.same(s.research, { herbal_gardens: { agricultural: ['fertile_soil'] } });
+    t.same(R.researchTokens(s, data, 'herbal_gardens'), { total: 1, used: 1, free: 0 });
+    t.ok(/No research token free/.test(R.researchCheck(s, data, 'herbal_gardens', 'medicine', 'healing_herb_refinement').message));
+  });
+
+  test('one choice per stage; a stage opens once the one before is done; 7 / 14 / 21 days; one project at a time; not while Under Repair; the gold is needed', function (t) {
+    var s = gardens(5);
+    t.equal(R.researchChoiceState(s, data, 'herbal_gardens', 'agricultural', 'intensive_cultivation'), 'locked');
+    t.ok(/stage before it/.test(R.researchCheck(s, data, 'herbal_gardens', 'agricultural', 'intensive_cultivation').message));
+    R.startResearch(s, data, 'herbal_gardens', 'agricultural', 'efficient_planting', dice([0.3]));
+    t.equal(R.researchChoiceState(s, data, 'herbal_gardens', 'agricultural', 'fertile_soil'), 'other', 'the other choice at a stage being researched');
+    t.ok(/already researching Efficient Planting: ready on Day 17/.test(R.researchCheck(s, data, 'herbal_gardens', 'medicine', 'healing_herb_refinement').message), 'one at a time');
+    var o = R.researchRunning(s, 'herbal_gardens');
+    R.completeSimpleOrder(s, data, o, dice([0.3]));
+    R.removeOrder(s, o.id);
+    t.equal(R.researchChoiceState(s, data, 'herbal_gardens', 'agricultural', 'fertile_soil'), 'other');
+    t.equal(R.researchChoiceState(s, data, 'herbal_gardens', 'agricultural', 'crop_rotation'), 'open');
+    t.same(R.researchCheck(s, data, 'herbal_gardens', 'agricultural', 'crop_rotation'), { ok: true, stageIdx: 1, days: 14, costGP: 350 });
+    research(s, 'agricultural', 'crop_rotation');
+    t.same(R.researchCheck(s, data, 'herbal_gardens', 'agricultural', 'perpetual_growing_cycle'), { ok: true, stageIdx: 2, days: 21, costGP: 750 });
+    t.equal(R.researchChoiceState(s, data, 'herbal_gardens', 'medicine', 'fortifying_draughts'), 'coming', '"coming" says more than "locked"');
+    research(s, 'medicine', 'healing_herb_refinement');
+    t.equal(R.researchChoiceState(s, data, 'herbal_gardens', 'medicine', 'fortifying_draughts'), 'coming');
+    t.equal(R.researchCheck(s, data, 'herbal_gardens', 'medicine', 'fortifying_draughts').message, 'Coming with the Explorer link, which tracks each hero\'s conditions (pull request 4).');
+    s.repairs = { herbal_gardens: 12 };
+    t.equal(R.researchCheck(s, data, 'herbal_gardens', 'agricultural', 'perpetual_growing_cycle').message, 'The Herbal Gardens is Under Repair until Day 12.');
+    s.repairs = {};
+    s.treasuryGP = 100;
+    t.equal(R.researchCheck(s, data, 'herbal_gardens', 'agricultural', 'perpetual_growing_cycle').message, 'Not enough gp. Need 750gp, you have 100gp.');
+  });
+
+  test('undo: a stage and those above it on its branch, their tokens free again, no gold back; not while a later stage is running', function (t) {
+    var s = gardens(5);
+    research(s, 'agricultural', 'fertile_soil');
+    research(s, 'agricultural', 'crop_rotation');
+    research(s, 'medicine', 'improved_antitoxins');
+    var gp = s.treasuryGP;
+    R.startResearch(s, data, 'herbal_gardens', 'agricultural', 'bountiful_harvests', dice([0.3]));
+    t.equal(R.undoResearch(s, data, 'herbal_gardens', 'agricultural', 1).message, 'A later stage on this branch is being researched: cancel it first.');
+    R.cancelOrder(s, R.researchRunning(s, 'herbal_gardens').id, data, 0);
+    t.equal(s.treasuryGP, gp - 750, 'Cancel gives no gold back (B9)');
+    t.same(R.researchTokens(s, data, 'herbal_gardens'), { total: 4, used: 3, free: 1 }, 'but its token is free');
+    var u = R.undoResearch(s, data, 'herbal_gardens', 'agricultural', 0);
+    t.same(u.log, ['Research Undone', 'Herbal Gardens: Fertile Soil, Crop Rotation are no longer researched; their tokens are free again.']);
+    t.same(s.research.herbal_gardens, { medicine: ['improved_antitoxins'] });
+    t.same(R.researchTokens(s, data, 'herbal_gardens'), { total: 4, used: 1, free: 3 });
+    t.equal(R.undoResearch(s, data, 'herbal_gardens', 'agricultural', 0).ok, false, 'nothing left to undo there');
+  });
+
+  test('effects: faster orders (the biggest saving, never under 2 days); bigger batches (the biggest yield, rounded up); two potions at a time', function (t) {
+    var s = gardens(5);
+    var hg = R.facility(data, 'herbal_gardens');
+    var harvest = R.fn(hg, 'harvest');
+    var cultivate = R.fn(hg, 'cultivate');
+    t.same([R.orderDaysAt(s, data, hg, harvest), R.orderDaysAt(s, data, hg, cultivate)], [7, 10]);
+    research(s, 'agricultural', 'efficient_planting');
+    t.same([R.orderDaysAt(s, data, hg, harvest), R.orderDaysAt(s, data, hg, cultivate)], [6, 10], 'Efficient Planting: Harvest only');
+    research(s, 'agricultural', 'crop_rotation');
+    t.same([R.orderDaysAt(s, data, hg, harvest), R.orderDaysAt(s, data, hg, cultivate)], [5, 8], 'Crop Rotation replaces it (2, not 3)');
+    research(s, 'agricultural', 'perpetual_growing_cycle');
+    t.same([R.orderDaysAt(s, data, hg, harvest), R.orderDaysAt(s, data, hg, cultivate)], [4, 7]);
+    t.equal(R.orderDaysAt(s, data, hg, { id: 'harvest', days: 3 }), 2, 'never below 2 days');
+    t.equal(R.orderDaysAt(s, data, hg, { id: 'harvest', days: 1 }), 1, 'an order already shorter stays as it is');
+    var r = R.issueOrder(s, data, 'herbal_gardens', 'harvest', 1, dice([0.3]));
+    t.equal(r.log[1], 'Herbal Gardens: Harvest (Rations (100)) (4 days: due Day 14).', 'a new order uses the shorter time');
+
+    var y = gardens(5);
+    function make(st, fnId, idx) {
+      var f = R.fn(hg, fnId);
+      var o = { facId: 'herbal_gardens', fnId: fnId, chosen: f.options[idx], optionLabel: f.options[idx].label, label: 'X' };
+      return R.completeSimpleOrder(st, data, o, dice([0.3]))[0][1];
+    }
+    t.equal(make(y, 'harvest', 1), 'X → Added to Warehouse.', 'unchanged without research');
+    t.same([y.warehouse[0].item, y.warehouse[0].qty], ['Rations (100)', 1]);
+    research(y, 'agricultural', 'fertile_soil');
+    t.equal(make(y, 'harvest', 1), 'X → Added to Warehouse: Rations (125).');
+    research(y, 'agricultural', 'intensive_cultivation');
+    t.equal(make(y, 'harvest', 1), 'X → Added to Warehouse: Rations (150).', 'the biggest yield, not 175%');
+    t.equal(make(y, 'harvest', 0), 'X → Added to Warehouse: Antitoxin (3 vials).', '2 vials + 50%');
+    research(y, 'medicine', 'improved_antitoxins');
+    t.equal(make(y, 'harvest', 0), 'X → Added to Warehouse: Antitoxin (6 vials).', '4 vials + 50%');
+    t.equal(make(y, 'harvest', 3), 'X → Added to Warehouse.', 'one Potion of Healing without Healing Herb Refinement');
+    var z = gardens(5);
+    research(z, 'medicine', 'healing_herb_refinement');
+    t.equal(make(z, 'harvest', 3), 'X → Added to Warehouse: 2 × Potion of Healing.');
+    t.same([z.warehouse[0].item, z.warehouse[0].qty], ['Potion of Healing', 2]);
+    t.equal(make(z, 'cultivate', 0), 'X → Added to Warehouse.', 'Greater Potions are not affected');
+    research(z, 'medicine', 'concentrated_restoratives');
+    t.equal(make(z, 'cultivate', 0), 'X → Added to Warehouse: 2 × Greater Potion of Healing.');
+    t.equal(make(z, 'harvest', 2), 'X → Added to Warehouse.', 'Healer\'s Kit unchanged');
+  });
+
+  test('research survives saving (only what the tree knows, stage by stage); demolishing the Herbal Gardens loses it', function (t) {
+    var s = gardens(3);
+    research(s, 'agricultural', 'fertile_soil');
+    research(s, 'agricultural', 'crop_rotation');
+    var back = R.fromSave(JSON.parse(JSON.stringify(R.toSave(s))), data);
+    t.same(back.research, { herbal_gardens: { agricultural: ['fertile_soil', 'crop_rotation'] } });
+    t.same(R.cleanResearch({ herbal_gardens: { agricultural: ['fertile_soil', 'nonsense', 'bountiful_harvests'], medicine: 'x', made_up: ['a'] }, barracks: { a: ['b'] } }, data),
+      { herbal_gardens: { agricultural: ['fertile_soil'] } }, 'a damaged stage drops the stages above it');
+    t.same(R.fromSave(Object.assign(JSON.parse(JSON.stringify(R.toSave(s))), { research: undefined }), data).research, {});
+    R.demolishFacility(back, data, 'herbal_gardens');
+    t.same(back.research, {});
   });
 
   group('Bastion: the facilities overhaul (v 2 to v 3, 13 October 2026)');
