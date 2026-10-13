@@ -1,4 +1,4 @@
-/* The Ironbow Bastion Manager: the 18 facilities, their functions, options, costs and specials.
+/* The Ironbow Bastion Manager: the 22 facilities, their functions, options, costs and specials.
    A word-for-word copy of the old tool's data/facilities.json, stored as a script so it
    loads from a double-clicked file. Edit it here.
    One change since: the War Room's Recruit list is the war mini-game's units (phase 2,
@@ -8,84 +8,17 @@
    many in-game days after it's issued it completes (docs/BASTION-OVERHAUL.md
    section 2), and the Hall's records last "durationDays" (they lasted
    "durationTurns" Bastion turns, at 7 days a turn). The two notes that said "turn"
-   now say 7 days. Change any number here; nothing else needs to change. */
+   now say 7 days. Change any number here; nothing else needs to change.
+   And since the facilities overhaul (Harry, 13 October 2026; docs/FACILITIES-OVERHAUL-PLAN.md):
+   22 facilities. The Smithy joined the Workshop (its order kept, as "smithing", only for
+   Bastions that had one: "onlyIfLegacy"); the Arcane Study and Laboratory are the Arcane
+   Laboratory (the Laboratory's Craft is "alchemy"); the Garden and Greenhouse are Herbal
+   Gardens (the Greenhouse's Harvest is "cultivate"); the Library is the Library &
+   Scriptorium. An order's "requiredPartyLevel" keeps its old building's party level.
+   The Gaming Hall is gone. The eight new facilities are "inDevelopment": listed, not yet
+   buildable, until each gets its orders. Old saves are converted once (R.migrateToV3). */
 window.TSI_DATA = window.TSI_DATA || {};
 window.TSI_DATA.bastionFacilities = [
-  {
-    "name": "Arcane Study",
-    "id": "arcane_study",
-    "requiredLevel": 5,
-    "functions": [
-      {
-        "id": "craft_common",
-        "label": "Craft Common",
-        "days": 5,
-        "options": [
-          {
-            "label": "Bead of Nourishment"
-          },
-          {
-            "label": "Bead of Refreshment"
-          },
-          {
-            "label": "Lock of Trickery"
-          },
-          {
-            "label": "Mystery Key"
-          },
-          {
-            "label": "Potion of Climbing"
-          }
-        ],
-        "costGP": 0,
-        "costText": "0",
-        "notes": null
-      },
-      {
-        "id": "craft_uncommon",
-        "label": "Craft Uncommon",
-        "days": 10,
-        "options": [
-          {
-            "label": "Bag of Holding"
-          },
-          {
-            "label": "Cap of Water Breathing"
-          },
-          {
-            "label": "Circlet of Blasting"
-          },
-          {
-            "label": "Cloak of Protection"
-          },
-          {
-            "label": "Gem of Brightness"
-          },
-          {
-            "label": "Hat of Disguise"
-          },
-          {
-            "label": "Potion of Poison"
-          },
-          {
-            "label": "Potion of Resistance"
-          },
-          {
-            "label": "Potion of Water Breathing"
-          },
-          {
-            "label": "Saddle of the Cavalier"
-          },
-          {
-            "label": "Sending Stones"
-          }
-        ],
-        "costGP": 0,
-        "costText": "0",
-        "notes": null
-      }
-    ]
-  },
   {
     "name": "Workshop",
     "id": "workshop",
@@ -175,6 +108,104 @@ window.TSI_DATA.bastionFacilities = [
         "costGP": 0,
         "costText": "0",
         "notes": "This function (Craft Magic Item) is not available until the players reach Level 9."
+      },
+      {
+        "id": "smithing",
+        "label": "Smithing",
+        "days": 5,
+        "options": [
+          {
+            "label": "Battleaxe"
+          },
+          {
+            "label": "Handaxe"
+          },
+          {
+            "label": "Greataxe"
+          },
+          {
+            "label": "Warhammer"
+          },
+          {
+            "label": "War pick"
+          },
+          {
+            "label": "Longsword"
+          },
+          {
+            "label": "Shortsword"
+          },
+          {
+            "label": "Greatsword"
+          },
+          {
+            "label": "Scimitar"
+          },
+          {
+            "label": "Rapier"
+          },
+          {
+            "label": "Dagger"
+          },
+          {
+            "label": "Spear"
+          },
+          {
+            "label": "Trident"
+          },
+          {
+            "label": "Mace"
+          },
+          {
+            "label": "Morningstar"
+          },
+          {
+            "label": "Flail"
+          },
+          {
+            "label": "Halberd"
+          },
+          {
+            "label": "Glaive"
+          },
+          {
+            "label": "Pike"
+          },
+          {
+            "label": "Lance"
+          },
+          {
+            "label": "Chain shirt"
+          },
+          {
+            "label": "Scale mail"
+          },
+          {
+            "label": "Chain mail"
+          },
+          {
+            "label": "Plate armor"
+          },
+          {
+            "label": "Ring mail"
+          },
+          {
+            "label": "Half plate"
+          },
+          {
+            "label": "Manacles"
+          },
+          {
+            "label": "Caltrops"
+          },
+          {
+            "label": "Grappling hook"
+          }
+        ],
+        "costGP": null,
+        "costText": null,
+        "notes": "The old Smithy's order, kept for Bastions that had a Smithy before it joined the Workshop (13 October 2026). Craft with Smith's Tools makes the same items in 3 days.",
+        "onlyIfLegacy": "smithy"
       }
     ]
   },
@@ -284,194 +315,123 @@ window.TSI_DATA.bastionFacilities = [
     ]
   },
   {
-    "name": "Garden",
-    "id": "garden",
-    "requiredLevel": 5,
+    "name": "War Room",
+    "id": "war_room",
+    "requiredLevel": 17,
     "functions": [
       {
-        "id": "harvest",
-        "label": "Harvest",
+        "id": "recruit",
+        "label": "Recruit",
         "days": 7,
         "options": [
           {
-            "label": "Antitoxin (2 vials)"
+            "label": "Lieutenant (1)"
           },
           {
-            "label": "Rations (100)"
+            "label": "Archers (50)"
           },
           {
-            "label": "Healer's Kit"
+            "label": "Levy Infantry (150)"
           },
           {
-            "label": "Potion of Healing"
+            "label": "Line Infantry (100)"
           },
           {
-            "label": "Basic Poison"
+            "label": "Heavy Infantry (50)"
+          },
+          {
+            "label": "Light Cavalry (50)"
+          },
+          {
+            "label": "Shock Cavalry (25)"
           }
         ],
         "costGP": 0,
         "costText": "0",
-        "notes": null
+        "notes": "No cost to recruit, but each soldier costs 1 gp every 7 days. Hover over a choice to see its stat block. Lieutenants and units join the Military panel when the order completes; a unit of a type that came home depleted brings that regiment back to full strength first."
       }
     ]
   },
   {
-    "name": "Gaming Hall",
-    "id": "gaming_hall",
-    "requiredLevel": 9,
-    "functions": [
-      {
-        "id": "trade",
-        "label": "Trade",
-        "days": 7,
-        "options": [],
-        "costGP": 0,
-        "costText": "0",
-        "notes": "AUTO ROLL - 1d100 and based on the roll, add the corresponding GP to the treasury (using AUTO ROLL functions again):\n01-50\n1d6 × 10 GP\n51-85\n2d6 × 10 GP\n86-95\n4d6 × 10 GP\n96-00\n10d6 × 10 GP"
-      }
-    ]
-  },
-  {
-    "name": "Smithy",
-    "id": "smithy",
+    "name": "Arcane Laboratory",
+    "id": "arcane_laboratory",
     "requiredLevel": 5,
+    "mergedFrom": [
+      "arcane_study",
+      "laboratory"
+    ],
     "functions": [
       {
-        "id": "craft",
-        "label": "Craft",
+        "id": "craft_common",
+        "label": "Craft Common",
         "days": 5,
         "options": [
           {
-            "label": "Battleaxe"
+            "label": "Bead of Nourishment"
           },
           {
-            "label": "Handaxe"
+            "label": "Bead of Refreshment"
           },
           {
-            "label": "Greataxe"
+            "label": "Lock of Trickery"
           },
           {
-            "label": "Warhammer"
+            "label": "Mystery Key"
           },
           {
-            "label": "War pick"
-          },
-          {
-            "label": "Longsword"
-          },
-          {
-            "label": "Shortsword"
-          },
-          {
-            "label": "Greatsword"
-          },
-          {
-            "label": "Scimitar"
-          },
-          {
-            "label": "Rapier"
-          },
-          {
-            "label": "Dagger"
-          },
-          {
-            "label": "Spear"
-          },
-          {
-            "label": "Trident"
-          },
-          {
-            "label": "Mace"
-          },
-          {
-            "label": "Morningstar"
-          },
-          {
-            "label": "Flail"
-          },
-          {
-            "label": "Halberd"
-          },
-          {
-            "label": "Glaive"
-          },
-          {
-            "label": "Pike"
-          },
-          {
-            "label": "Lance"
-          },
-          {
-            "label": "Chain shirt"
-          },
-          {
-            "label": "Scale mail"
-          },
-          {
-            "label": "Chain mail"
-          },
-          {
-            "label": "Plate armor"
-          },
-          {
-            "label": "Ring mail"
-          },
-          {
-            "label": "Half plate"
-          },
-          {
-            "label": "Manacles"
-          },
-          {
-            "label": "Caltrops"
-          },
-          {
-            "label": "Grappling hook"
-          }
-        ],
-        "costGP": null,
-        "costText": null,
-        "notes": null
-      }
-    ]
-  },
-  {
-    "name": "Library",
-    "id": "library",
-    "requiredLevel": 5,
-    "functions": [
-      {
-        "id": "research",
-        "label": "Research",
-        "days": 5,
-        "options": [
-          {
-            "label": "Geographical Scriptures"
-          },
-          {
-            "label": "Religious Scriptures"
-          },
-          {
-            "label": "Combat Scriptures"
-          },
-          {
-            "label": "Political scriptures"
+            "label": "Potion of Climbing"
           }
         ],
         "costGP": 0,
         "costText": "0",
         "notes": null
-      }
-    ]
-  },
-  {
-    "name": "Laboratory",
-    "id": "laboratory",
-    "requiredLevel": 9,
-    "functions": [
+      },
       {
-        "id": "craft",
-        "label": "Craft",
+        "id": "craft_uncommon",
+        "label": "Craft Uncommon",
+        "days": 10,
+        "options": [
+          {
+            "label": "Bag of Holding"
+          },
+          {
+            "label": "Cap of Water Breathing"
+          },
+          {
+            "label": "Circlet of Blasting"
+          },
+          {
+            "label": "Cloak of Protection"
+          },
+          {
+            "label": "Gem of Brightness"
+          },
+          {
+            "label": "Hat of Disguise"
+          },
+          {
+            "label": "Potion of Poison"
+          },
+          {
+            "label": "Potion of Resistance"
+          },
+          {
+            "label": "Potion of Water Breathing"
+          },
+          {
+            "label": "Saddle of the Cavalier"
+          },
+          {
+            "label": "Sending Stones"
+          }
+        ],
+        "costGP": 0,
+        "costText": "0",
+        "notes": null
+      },
+      {
+        "id": "alchemy",
+        "label": "Alchemy",
         "days": 5,
         "options": [
           {
@@ -537,18 +497,80 @@ window.TSI_DATA.bastionFacilities = [
         ],
         "costGP": 0,
         "costText": "0",
-        "notes": null
+        "notes": null,
+        "requiredPartyLevel": 9
       }
     ]
   },
   {
-    "name": "Greenhouse",
-    "id": "greenhouse",
-    "requiredLevel": 9,
+    "name": "Library & Scriptorium",
+    "id": "library_scriptorium",
+    "requiredLevel": 5,
+    "functions": [
+      {
+        "id": "research",
+        "label": "Research",
+        "days": 5,
+        "options": [
+          {
+            "label": "Geographical Scriptures"
+          },
+          {
+            "label": "Religious Scriptures"
+          },
+          {
+            "label": "Combat Scriptures"
+          },
+          {
+            "label": "Political scriptures"
+          }
+        ],
+        "costGP": 0,
+        "costText": "0",
+        "notes": null
+      }
+    ],
+    "mergedFrom": [
+      "library"
+    ]
+  },
+  {
+    "name": "Herbal Gardens",
+    "id": "herbal_gardens",
+    "requiredLevel": 5,
+    "mergedFrom": [
+      "garden",
+      "greenhouse"
+    ],
     "functions": [
       {
         "id": "harvest",
         "label": "Harvest",
+        "days": 7,
+        "options": [
+          {
+            "label": "Antitoxin (2 vials)"
+          },
+          {
+            "label": "Rations (100)"
+          },
+          {
+            "label": "Healer's Kit"
+          },
+          {
+            "label": "Potion of Healing"
+          },
+          {
+            "label": "Basic Poison"
+          }
+        ],
+        "costGP": 0,
+        "costText": "0",
+        "notes": null
+      },
+      {
+        "id": "cultivate",
+        "label": "Greenhouse Harvest",
         "days": 10,
         "options": [
           {
@@ -569,129 +591,45 @@ window.TSI_DATA.bastionFacilities = [
         ],
         "costGP": 0,
         "costText": "0",
-        "notes": null
+        "notes": null,
+        "requiredPartyLevel": 9
       }
     ]
   },
   {
-    "name": "Menagerie",
-    "id": "menagerie",
-    "requiredLevel": 13,
-    "functions": [
-      {
-        "id": "recruit_beast",
-        "label": "Recruit Beast",
-        "days": 10,
-        "options": [
-          {
-            "label": "Ape",
-            "costGP": 500,
-            "costText": "500 GP"
-          },
-          {
-            "label": "Black Bear",
-            "costGP": 500,
-            "costText": "500 GP"
-          },
-          {
-            "label": "Brown Bear",
-            "costGP": 1000,
-            "costText": "1,000 GP"
-          },
-          {
-            "label": "Constrictor Snake",
-            "costGP": 250,
-            "costText": "250 GP"
-          },
-          {
-            "label": "Crocodile",
-            "costGP": 500,
-            "costText": "500 GP"
-          },
-          {
-            "label": "Dire Wolf",
-            "costGP": 1000,
-            "costText": "1,000 GP"
-          },
-          {
-            "label": "Giant Vulture",
-            "costGP": 1000,
-            "costText": "1,000 GP"
-          },
-          {
-            "label": "Hyena",
-            "costGP": 50,
-            "costText": "50 GP"
-          },
-          {
-            "label": "Jackal",
-            "costGP": 50,
-            "costText": "50 GP"
-          },
-          {
-            "label": "Lion",
-            "costGP": 1000,
-            "costText": "1,000 GP"
-          },
-          {
-            "label": "Owlbear",
-            "costGP": 3500,
-            "costText": "3,500 GP"
-          },
-          {
-            "label": "Panther",
-            "costGP": 250,
-            "costText": "250 GP"
-          },
-          {
-            "label": "Tiger",
-            "costGP": 1000,
-            "costText": "1,000 GP"
-          }
-        ],
-        "costGP": null,
-        "costText": "500 GP\n500 GP\n1,000 GP\n250 GP\n500 GP\n1,000 GP\n1,000 GP\n50 GP\n50 GP\n1,000 GP\n3,500 GP\n250 GP\n1,000 GP",
-        "notes": "Recruited Beasts are listed in the Bastion Defenders Panel"
-      }
-    ]
+    "name": "Fishery & Smokehouse",
+    "id": "fishery_smokehouse",
+    "requiredLevel": null,
+    "inDevelopment": true,
+    "functions": []
   },
   {
-    "name": "War Room",
-    "id": "war_room",
-    "requiredLevel": 17,
-    "functions": [
-      {
-        "id": "recruit",
-        "label": "Recruit",
-        "days": 7,
-        "options": [
-          {
-            "label": "Lieutenant (1)"
-          },
-          {
-            "label": "Archers (50)"
-          },
-          {
-            "label": "Levy Infantry (150)"
-          },
-          {
-            "label": "Line Infantry (100)"
-          },
-          {
-            "label": "Heavy Infantry (50)"
-          },
-          {
-            "label": "Light Cavalry (50)"
-          },
-          {
-            "label": "Shock Cavalry (25)"
-          }
-        ],
-        "costGP": 0,
-        "costText": "0",
-        "notes": "No cost to recruit, but each soldier costs 1 gp every 7 days. Hover over a choice to see its stat block. Lieutenants and units join the Military panel when the order completes; a unit of a type that came home depleted brings that regiment back to full strength first."
-      }
-    ]
+    "name": "Timber Yard & Sawmill",
+    "id": "timber_sawmill",
+    "requiredLevel": null,
+    "inDevelopment": true,
+    "functions": []
+  },
+  {
+    "name": "Stone Quarry & Masonworks",
+    "id": "stone_masonworks",
+    "requiredLevel": null,
+    "inDevelopment": true,
+    "functions": []
+  },
+  {
+    "name": "Weavers' Hall",
+    "id": "weavers_hall",
+    "requiredLevel": null,
+    "inDevelopment": true,
+    "functions": []
+  },
+  {
+    "name": "Courier Exchange",
+    "id": "courier_exchange",
+    "requiredLevel": null,
+    "inDevelopment": true,
+    "functions": []
   },
   {
     "name": "Hall of Emissaries",
@@ -866,6 +804,109 @@ window.TSI_DATA.bastionFacilities = [
         }
       }
     ]
+  },
+  {
+    "name": "Menagerie",
+    "id": "menagerie",
+    "requiredLevel": 13,
+    "functions": [
+      {
+        "id": "recruit_beast",
+        "label": "Recruit Beast",
+        "days": 10,
+        "options": [
+          {
+            "label": "Ape",
+            "costGP": 500,
+            "costText": "500 GP"
+          },
+          {
+            "label": "Black Bear",
+            "costGP": 500,
+            "costText": "500 GP"
+          },
+          {
+            "label": "Brown Bear",
+            "costGP": 1000,
+            "costText": "1,000 GP"
+          },
+          {
+            "label": "Constrictor Snake",
+            "costGP": 250,
+            "costText": "250 GP"
+          },
+          {
+            "label": "Crocodile",
+            "costGP": 500,
+            "costText": "500 GP"
+          },
+          {
+            "label": "Dire Wolf",
+            "costGP": 1000,
+            "costText": "1,000 GP"
+          },
+          {
+            "label": "Giant Vulture",
+            "costGP": 1000,
+            "costText": "1,000 GP"
+          },
+          {
+            "label": "Hyena",
+            "costGP": 50,
+            "costText": "50 GP"
+          },
+          {
+            "label": "Jackal",
+            "costGP": 50,
+            "costText": "50 GP"
+          },
+          {
+            "label": "Lion",
+            "costGP": 1000,
+            "costText": "1,000 GP"
+          },
+          {
+            "label": "Owlbear",
+            "costGP": 3500,
+            "costText": "3,500 GP"
+          },
+          {
+            "label": "Panther",
+            "costGP": 250,
+            "costText": "250 GP"
+          },
+          {
+            "label": "Tiger",
+            "costGP": 1000,
+            "costText": "1,000 GP"
+          }
+        ],
+        "costGP": null,
+        "costText": "500 GP\n500 GP\n1,000 GP\n250 GP\n500 GP\n1,000 GP\n1,000 GP\n50 GP\n50 GP\n1,000 GP\n3,500 GP\n250 GP\n1,000 GP",
+        "notes": "Recruited Beasts are listed in the Bastion Defenders Panel"
+      }
+    ]
+  },
+  {
+    "name": "Wyvern Roost",
+    "id": "wyvern_roost",
+    "requiredLevel": null,
+    "inDevelopment": true,
+    "functions": []
+  },
+  {
+    "name": "Griffin Tower",
+    "id": "griffin_tower",
+    "requiredLevel": null,
+    "inDevelopment": true,
+    "functions": []
+  },
+  {
+    "name": "Dire Wolf Den",
+    "id": "dire_wolf_den",
+    "requiredLevel": null,
+    "inDevelopment": true,
+    "functions": []
   },
   {
     "name": "Shrine of Telluria",

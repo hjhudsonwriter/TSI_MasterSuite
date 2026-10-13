@@ -77,6 +77,11 @@
       var setAside = oldSave !== null && R.isOldSave(oldSave);
       if (setAside) TSI.store.quarantine(TSI.storeRules.keyFor('bastion', 'state'), 'It was saved in Bastion turns, before the Bastion counted in days (8 October 2026).');
       var saved = setAside ? null : load('state', R.isSave);
+      /* A Bastion from before the facilities overhaul (v 2) is converted once
+         (R.migrateToV3, inside R.fromSave). An untouched copy is set aside
+         first, so it's in Back up everything, and the converted one saved. */
+      var migrating = !!(saved && saved.v === 2);
+      if (migrating) TSI.store.quarantine(TSI.storeRules.keyFor('bastion', 'state'), 'A copy of the Bastion from before the facilities overhaul (13 October 2026), kept in case it\'s needed.');
       var state = saved ? R.fromSave(TSI.clone(saved), data) : R.defaultState(data);
       /* A Mercenary Brigade (archived in Build 3; Builds 1 and 2 still had
          Form Mercenary Brigade) loads as Unsworn: the Day Log keeps its
@@ -2353,11 +2358,13 @@
         }
         /* Under Repair after a lost Defend Bastion: no orders until it's working again. */
         var repair = R.underRepair(state, fac.id);
+        /* A merged order keeps its old building's party level (the facilities overhaul). */
+        var avail = R.fnAvailable(state, fac, fn);
         var issue = el('button', {
-          type: 'button', class: 'tsi-btn tsi-btn--small tsi-bas-fn__issue', 'data-test': 'issue-' + key, disabled: locked || cd > 0 || repair > 0,
-          title: repair ? repairText(fac, repair) : null,
+          type: 'button', class: 'tsi-btn tsi-btn--small tsi-bas-fn__issue', 'data-test': 'issue-' + key, disabled: locked || cd > 0 || repair > 0 || !avail.ok,
+          title: repair ? repairText(fac, repair) : !avail.ok ? avail.message : null,
           onclick: function () { onIssue(fac.id, fn.id, select); }
-        }, repair ? 'Under Repair' : cd > 0 ? 'Cooldown: ' + R.daysText(cd) : 'Issue Order');
+        }, repair ? 'Under Repair' : !avail.ok ? avail.message : cd > 0 ? 'Cooldown: ' + R.daysText(cd) : 'Issue Order');
         var days = R.orderDays(fn);
         return el('div', { class: 'tsi-bas-fn' }, [
           el('div', { class: 'tsi-bas-fn__head' }, [el('div', { class: 'tsi-bas-fn__name', text: fn.label }), el('div', { class: 'tsi-bas-fn__cost', text: R.computeFnCost(state, fac, fn, null).costText || '0gp' })]),
@@ -2549,7 +2556,21 @@
       /* ---------- The grid ---------- */
       function facArt(id, cls) {
         var f = B.facilityImages[id];
-        return f ? el('img', { class: cls, src: asset('facilities/' + f), alt: '', draggable: 'false' }) : el('div', { class: cls + ' ' + cls + '--empty' });
+        if (f) return el('img', { class: cls, src: asset('facilities/' + f), alt: '', draggable: 'false' });
+        /* A new facility with no tile painting yet: its building, cut from
+           Harry's map overlay (facilityTileCrops), on a dark ground; with no
+           art at all, its name on a plain frame. */
+        var c = B.facilityTileCrops && B.facilityTileCrops[id];
+        if (c) {
+          var W = B.map.width, Hh = B.map.height;
+          var crop = el('div', { class: cls + ' tsi-bas-artcrop', 'data-art': 'crop' });
+          crop.style.backgroundImage = 'url("' + asset(c.pic) + '")';
+          crop.style.backgroundSize = (W / c.w * 100) + '% ' + (Hh / c.h * 100) + '%';
+          crop.style.backgroundPosition = (c.x / (W - c.w) * 100) + '% ' + (c.y / (Hh - c.h) * 100) + '%';
+          return crop;
+        }
+        var fac = R.facility(data, id);
+        return el('div', { class: cls + ' ' + cls + '--empty tsi-bas-artnone', 'data-art': 'none' }, [el('span', { text: (fac && fac.name) || id })]);
       }
       function facLevelText(id) { return 'Level ' + R.getFacilityLevel(state, id); }
       /* A built facility's tile: its art, and a count of its pending orders. */
@@ -2673,7 +2694,7 @@
         var repair = R.underRepair(state, id);
         var mine = [];
         state.pendingOrders.forEach(function (o, i) { if (o.facId === id) mine.push(pendingRow(o, i)); });
-        var fns = (fac.functions || []).map(function (fn) {
+        var fns = (fac.functions || []).filter(function (fn) { return !R.fnAvailable(state, fac, fn).hidden; }).map(function (fn) {
           var req = R.clampInt(fn.requiredFacilityLevel === undefined || fn.requiredFacilityLevel === null ? 1 : fn.requiredFacilityLevel, 1, 3);
           return fnRow(fac, fn, lvl < req);
         });
@@ -2722,6 +2743,20 @@
         var options = data.facilities.filter(function (f) { return B.startingBuilt.indexOf(f.id) === -1 && reserved.indexOf(f.id) === -1; });
         var head = 'Party level ' + state.partyLevel + ': ' + plural(slots.max, 'construction slot') + ', ' + slots.used + ' in use' + (slots.over ? ' (' + slots.over + ' over capacity)' : '') + '.';
         var tiles = options.map(function (f) {
+          /* The new facilities are listed from the start, marked in
+             development, and become buildable as each gets its orders
+             (Harry's decision D4, 13 October 2026). */
+          if (f.inDevelopment) {
+            var dv = el('div', { class: 'tsi-bas-buildopt tsi-bas-buildopt--locked tsi-bas-buildopt--dev', 'data-test': 'build-' + f.id, role: 'img', tabindex: '0', 'aria-label': f.name + ': in development, not yet buildable' }, [
+              facArt(f.id, 'tsi-bas-buildopt__img'),
+              el('span', { class: 'tsi-bas-buildopt__name', text: f.name }),
+              el('span', { class: 'tsi-bas-buildopt__lock' }, [icon('hourglass'), 'In development'])
+            ]);
+            var tipDev = function () { return { title: f.name, parts: [muted('In development: its orders are being built into the Bastion. It can be built once they\'re ready.')], foot: 'Coming in the facilities overhaul' }; };
+            bindTip(dv, tipDev, { noChange: true });
+            bindFocusTip(dv, dv, tipDev);
+            return dv;
+          }
           var req = Number(f.requiredLevel || 0);
           var locked = state.partyLevel < req;
           var days = R.buildDaysForRequiredLevel(req, data);
@@ -3700,7 +3735,14 @@
 
       renderAll();
       /* The first open saves the starting Bastion, as the old tool did. */
-      if (!saved || formerBrigade) save();
+      if (!saved || formerBrigade || migrating) save();
+      /* The facilities overhaul's report, once. */
+      var mig = state.migration && state.migration.v3;
+      if (mig && !mig.shown) {
+        mig.shown = true;
+        save();
+        notice('The Bastion\'s facilities have changed: ' + mig.lines.join(' ') + ' The Day Log says so too, and the Bastion as it was is kept as a set-aside copy.', { type: 'info', title: 'Facilities.', id: 'tsi-bas-migration', timeout: 30000 });
+      }
       if (formerBrigade) {
         notice('The Mercenary Brigade, ' + formerBrigade.name + ', is no more: the Bastion no longer has Brigades, so the party is Unsworn again.' +
           (formerBrigade.orders ? ' Only a Clan can send Lieutenants and regiments, so those in its waiting War Actions stay home.' : '') + ' The Day Log says so.', { type: 'info', title: 'Party Identity.', id: 'tsi-bas-brigade', timeout: 20000 });

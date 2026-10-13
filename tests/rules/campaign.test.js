@@ -62,7 +62,7 @@
     var b = bastion();
     b.day = 10;
     b.anchored = true;
-    b.builtExtras = [{ facId: 'smithy', status: 'building', startDay: 1, readyDay: 22 }, { facId: 'shrine_aurush', status: 'built' }];
+    b.builtExtras = [{ facId: 'arcane_laboratory', status: 'building', startDay: 1, readyDay: 22 }, { facId: 'shrine_aurush', status: 'built' }];
     b.pendingOrders = [
       { id: 'a', facId: 'barracks', fnId: 'recruit_defenders', label: 'Barracks: Recruit Defenders', issuedDay: 9, dueDay: 14 },
       { id: 'h', facId: 'hall_of_emissaries', fnId: 'secure_trade_agreement', label: 'Hall of Emissaries: Secure Trade Agreement (Clan Karr)', issuedDay: 10, dueDay: 17 },
@@ -103,7 +103,7 @@
       { day: 17, lines: ['Hall of Emissaries: Secure Trade Agreement (Clan Karr) needs your roll.', 'Dock: Charter Berth (Longship) is complete.', 'Repairs: the Dock is working again.'] }
     ], 'the Dock\'s order waits for its repairs; the low-risk route pays without a roll');
     t.same(C.ironbowNews(b, 17, 29), [
-      { day: 22, lines: ['The Smithy is built.'] },
+      { day: 22, lines: ['The Arcane Laboratory is built.'] },
       { day: 23, lines: ['Your delegation from Clan Slade has ended.'] },
       { day: 26, lines: ['Your Trade Agreement with Clan Karr has ended (its last shipment arrived).'] },
       { day: 29, lines: ['A Bastion event is due.'] }
@@ -135,7 +135,7 @@
       BR.finishDay(b, bdata, bdata.events, dice([0.5]), 0);
     }
     t.same(b.word.map(function (w) { return w.day; }), predicted);
-    t.same(b.word.filter(function (w) { return w.day === 22; })[0].lines, ['The Smithy is built.']);
+    t.same(b.word.filter(function (w) { return w.day === 22; })[0].lines, ['The Arcane Laboratory is built.']);
   });
 
   test('the party level is the Bastion\'s', function (t) {
