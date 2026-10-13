@@ -85,6 +85,7 @@ window.TSI_DATA.tools = [
         'tools/bastion/data/compendium-data.js',
         'tools/bastion/data/war-units-data.js',
         'tools/bastion/data/research-data.js',
+        'tools/bastion/data/goods-data.js',
         'tools/bastion/rules.js',
         'tools/bastion/war-table-rules.js',
         'tools/bastion/war-battle-rules.js',

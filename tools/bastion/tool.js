@@ -53,7 +53,7 @@
       var R = ns.rules;
       var D = window.TSI_DATA;
       var B = D.bastion;
-      var data = { bastion: B, facilities: D.bastionFacilities, tools: D.bastionTools, events: D.bastionEvents, research: D.bastionResearch };
+      var data = { bastion: B, facilities: D.bastionFacilities, tools: D.bastionTools, events: D.bastionEvents, research: D.bastionResearch, goods: D.bastionGoods };
       /* The war mini-game's numbers (war-units-data.js): units, stat blocks, missions. */
       var W = D.bastionWar;
       var COMPENDIUM = (D.bastionCompendium && D.bastionCompendium.items) || {};
@@ -387,6 +387,7 @@
         hourglass: 'M7 3h10 M7 21h10 M8 3c0 5 8 5 8 9s-8 4-8 9 M16 3c0 5-8 5-8 9s8 4 8 9',
         lock: 'M6 11h12v9H6z M8 11V8a4 4 0 018 0v3 M12 14.5v2',
         hammer: 'M13.5 5.5l5 5 M11 8l4.5-4.5 5 5L16 13 M13 11l-8 8a1.6 1.6 0 01-2.2-2.2l8-8',
+        sprout: 'M12 21v-9 M12 12c0-4 3-6 7-6 0 4-3 6-7 6z M12 14c0-3-2.5-5-6-5 0 3 2.5 5 6 5z M5 21h14',
         plus: 'M12 5v14 M5 12h14',
         warehouse: 'M4 8l8-4 8 4v9l-8 4-8-4z M4 8l8 4 8-4 M12 12v9',
         management: 'M9 11a3 3 0 100-6 3 3 0 000 6z M3 20c0-3.3 2.7-5 6-5s6 1.7 6 5 M16.5 11a2.5 2.5 0 100-5 M16 15c2.8 0 5 1.6 5 4.5',
@@ -625,9 +626,17 @@
          they always line up (fitMap, below). */
       var overlayLayer = el('div', { class: 'tsi-bas-map__overlays', 'data-test': 'map-overlays' });
       var mapRepairs = el('div', { class: 'tsi-bas-map__repairs', hidden: true, 'data-test': 'map-repairs' });
+      /* While the facility grid is open (Harry, 13 October 2026): a warm haze
+         over the painting, and each built facility's name and level above it.
+         Both follow the stage's is-grid-closed class (bastion.css), so
+         folding the grid away brings back the painting as it was. */
+      var mapHaze = el('div', { class: 'tsi-bas-map__haze', 'aria-hidden': 'true', 'data-test': 'map-haze' });
+      var labelLayer = el('div', { class: 'tsi-bas-map__labels', 'aria-hidden': 'true', 'data-test': 'map-labels' });
       var mapFrame = el('div', { class: 'tsi-bas-map' }, [
         el('img', { class: 'tsi-bas-map__img', src: asset(B.map.base), alt: 'The Ironbow Bastion', 'data-test': 'map' }),
-        overlayLayer
+        overlayLayer,
+        mapHaze,
+        labelLayer
       ]);
 
       /* The Bastion Events panel: Roll Bastion Event (its main action), the
@@ -663,6 +672,15 @@
           /* One Under Repair shows darkened, as if smoke-blackened. */
           overlayLayer.appendChild(el('img', { class: 'tsi-bas-map__overlay' + (o.repair ? ' tsi-bas-map__overlay--repair' : ''), src: asset(o.pic), alt: '', 'data-fac': o.facs.join(' ') }));
         });
+        /* The labels: placed in the painting's own pixels, as a share of its size. */
+        TSI.clear(labelLayer);
+        R.mapLabels(state, data).forEach(function (l) {
+          labelLayer.appendChild(el('div', {
+            class: 'tsi-bas-maplabel' + (l.repair ? ' tsi-bas-maplabel--repair' : ''), 'data-test': 'map-label-' + l.fac, 'data-fac': l.fac, 'data-level': String(l.level),
+            style: 'left:' + (l.x / B.map.width * 100) + '%;top:' + (l.y / B.map.height * 100) + '%'
+          }, [el('span', { class: 'tsi-bas-maplabel__name', text: l.name }), el('span', { class: 'tsi-bas-maplabel__level', text: 'Level ' + l.level })]));
+        });
+        placeLabels();
         /* Under the map: which facilities are Under Repair, and when each is back. */
         var fixing = R.repairsList(state, data);
         mapRepairs.hidden = !fixing.length;
@@ -2215,7 +2233,7 @@
       var whCard = card('warehouse', 'Warehouse', { cls: 'tsi-bas-card--art tsi-bas-card--warehouse' });
       var whBody = el('div', { class: 'tsi-bas-wh__body', 'data-test': 'warehouse' });
       TSI.append(whCard.body, [
-        muted('DM editable. Function outputs append here automatically when completed.'),
+        muted('DM editable. Function outputs append here automatically when completed. Goods from the Bastion\'s production orders (pull request 3) are counted in lots, portions or packs: only their count and notes can be changed here, and their value is the base value per lot, before any trade.'),
         el('div', { class: 'tsi-bas-wh__head' }, ['Item', 'Qty', 'GP', 'Notes', 'Action'].map(function (t) { return el('div', { text: t }); })),
         whBody,
         el('div', { class: 'tsi-bas-actions tsi-bas-actions--start' }, [
@@ -2244,6 +2262,7 @@
         if (active && active.tagName === 'INPUT' && whBody.contains(active)) return;
         TSI.clear(whBody);
         state.warehouse.forEach(function (row, i) {
+          if (row.goodId) { whBody.appendChild(goodsRow(row, i)); return; }
           var item = el('input', { type: 'text', class: 'tsi-input', value: String(row.item === undefined || row.item === null ? '' : row.item), 'aria-label': 'Item', 'data-test': 'wh-item-' + i });
           var qty = el('input', { type: 'number', min: '0', step: '1', class: 'tsi-input', value: String(R.clampInt(row.qty === undefined || row.qty === null ? 0 : row.qty, 0)), 'aria-label': 'Quantity', 'data-test': 'wh-qty-' + i });
           var gp = el('input', { type: 'text', class: 'tsi-input', value: String(row.gp === undefined || row.gp === null ? '' : row.gp), placeholder: '-', 'aria-label': 'GP', 'data-test': 'wh-gp-' + i });
@@ -2260,6 +2279,41 @@
             }, '', 'wh-remove-' + i)
           ]));
         });
+      }
+
+      /* A goods row (pull request 3): the good's name and what one counts as,
+         its count, its value, and notes. A day can pass while the count is
+         being typed (completing an order that adds or takes this good), so
+         the typed change is added to the count rather than written over it. */
+      function goodsRow(row, i) {
+        var g = R.good(data, row.goodId);
+        var unit = g ? (g.kind === 'cargo' ? '1 lot = ' + g.lot : g.kind === 'ingredient' ? 'portions' : g.kind === 'supply' ? 'packs (' + g.pack + ')' : '') : '';
+        var shown = R.clampInt(row.qty, 0);
+        var qty = el('input', { type: 'number', min: '0', step: '1', class: 'tsi-input', value: String(shown), 'aria-label': 'Quantity of ' + (row.item || row.goodId), 'data-test': 'wh-qty-' + i });
+        var value = el('div', { class: 'tsi-bas-wh__value', 'data-test': 'wh-value-' + i });
+        var notes = el('input', { type: 'text', class: 'tsi-input', value: String(row.notes || ''), placeholder: 'notes...', 'aria-label': 'Notes', 'data-test': 'wh-notes-' + i });
+        function showValue() {
+          var v = R.goodsValue(data, row.goodId, row.qty);
+          value.textContent = v === null ? '—' : v + ' gp' + (g && g.gp ? ' (' + g.gp + ' a lot)' : '');
+        }
+        showValue();
+        var sync = function () {
+          var typed = R.readGoodsRow({ qty: qty.value, notes: notes.value });
+          row.qty = Math.max(0, R.clampInt(row.qty, 0) + typed.qty - shown);
+          shown = typed.qty;
+          row.notes = typed.notes;
+          showValue();
+          save();
+        };
+        [qty, notes].forEach(function (input) { input.addEventListener('input', sync); });
+        return el('div', { class: 'tsi-bas-wh__row tsi-bas-wh__row--goods', 'data-good': row.goodId }, [
+          el('div', { class: 'tsi-bas-wh__good', 'data-test': 'wh-item-' + i }, [el('span', { class: 'tsi-bas-wh__goodname', text: row.item || R.goodName(data, row.goodId) }), unit ? el('span', { class: 'tsi-bas-wh__unit', text: unit }) : null]),
+          qty, value, notes,
+          btn('Remove', function () {
+            state.warehouse = state.warehouse.filter(function (x) { return x !== row; });
+            done();
+          }, '', 'wh-remove-' + i)
+        ]);
       }
 
       var artCard = card('artisan', 'Artisan Tools', { cls: 'tsi-bas-card--art tsi-bas-card--artisan' });
@@ -2308,7 +2362,8 @@
          Facilities: the grid in the map's bottom bar, the build panel,
          each facility's panel, and the Orders panel
          The grid: the five starting facilities, then the six construction
-         slots. A built facility's tile opens its panel (the Hall's opens the
+         slots, then the six Development Plots (pull request 3: only for the
+         economic facilities; they open at party levels 9, 9, 13, 13, 17, 17). A built facility's tile opens its panel (the Hall's opens the
          Hall of Emissaries); one being built shows an hourglass; an empty
          slot the party's level allows opens the build panel; a locked one
          says the level it opens at.
@@ -2316,10 +2371,21 @@
       var GRID_START = ['workshop', 'barracks', 'watchtower', 'dock', 'armoury'].filter(function (id) { return B.startingBuilt.indexOf(id) !== -1; })
         .concat(B.startingBuilt.filter(function (id) { return ['workshop', 'barracks', 'watchtower', 'dock', 'armoury'].indexOf(id) === -1; }));
       var SLOT_COUNT = R.constructionSlotsForLevel(20);
+      var PLOT_COUNT = R.plotsForLevel(20, data);
       /* The party level a slot (0 to 5) opens at: 5, 5, 9, 9, 13, 17. */
       function slotOpensAt(i) {
         for (var lvl = 1; lvl <= 20; lvl++) if (R.constructionSlotsForLevel(lvl) > i) return lvl;
         return null;
+      }
+      /* The party level a plot (0 to 5) opens at: 9, 9, 13, 13, 17, 17. */
+      function plotOpensAt(i) {
+        for (var lvl = 1; lvl <= 20; lvl++) if (R.plotsForLevel(lvl, data) > i) return lvl;
+        return null;
+      }
+      function overText(kind) {
+        return kind === 'plot'
+          ? 'Over capacity: kept, but above the ' + R.plotsForLevel(state.partyLevel, data) + ' Development Plot(s) for party level ' + state.partyLevel + '.'
+          : 'Over capacity: kept, but above the ' + R.constructionSlotsForLevel(state.partyLevel) + ' construction slot(s) for party level ' + state.partyLevel + '.';
       }
       var grid = el('div', { class: 'tsi-bas-grid', id: 'tsi-bas-grid', role: 'group', 'aria-label': 'Facilities', 'data-test': 'grid' });
       var pendingList = el('div', { class: 'tsi-bas-list', 'data-test': 'pending' });
@@ -2482,10 +2548,11 @@
           select = el('select', { class: 'tsi-input tsi-bas-fn__select', 'aria-label': fn.label, 'data-test': 'sel-' + key }, options.map(function (o, idx) {
             var lab = o && typeof o === 'object' && 'label' in o ? o.label : String(o);
             var cost = o && o.costGP !== undefined && o.costGP !== null ? ' (' + o.costGP + 'gp)' : '';
-            return el('option', { value: String(idx), text: lab + cost });
+            var needs = o && o.needsResearch && !R.researched(state, fac.id, o.needsResearch) ? ' (needs ' + R.researchChoiceName(data, fac.id, o.needsResearch) + ')' : '';
+            return el('option', { value: String(idx), text: lab + cost + needs });
           }));
           if (selections[key] !== undefined && Number(selections[key]) < options.length) select.value = String(selections[key]);
-          select.addEventListener('change', function () { selections[key] = select.value; });
+          select.addEventListener('change', function () { selections[key] = select.value; refresh(); });
           chooser = select;
           /* The War Room's Recruit: a list that shows each unit's stat block (war phase 2). */
           if (fac.id === 'war_room' && fn.id === 'recruit') chooser = recruitPicker(select, options, fn.label, locked);
@@ -2495,15 +2562,39 @@
         /* A merged order keeps its old building's party level (the facilities overhaul). */
         var avail = R.fnAvailable(state, fac, fn);
         var issue = el('button', {
-          type: 'button', class: 'tsi-btn tsi-btn--small tsi-bas-fn__issue', 'data-test': 'issue-' + key, disabled: locked || cd > 0 || repair > 0 || !avail.ok,
-          title: repair ? repairText(fac, repair) : !avail.ok ? avail.message : null,
+          type: 'button', class: 'tsi-btn tsi-btn--small tsi-bas-fn__issue', 'data-test': 'issue-' + key,
           onclick: function () { onIssue(fac.id, fn.id, select); }
-        }, repair ? 'Under Repair' : !avail.ok ? avail.message : cd > 0 ? 'Cooldown: ' + R.daysText(cd) : 'Issue Order');
-        var days = R.orderDaysAt(state, data, fac, fn);
-        return el('div', { class: 'tsi-bas-fn' }, [
+        }, 'Issue Order');
+        var daysLine = el('div', { class: 'tsi-bas-fn__days', 'data-test': 'days-' + key });
+        /* A production order (pull request 3): what the chosen recipe uses and makes. */
+        var goodsLine = fn.production ? el('div', { class: 'tsi-bas-fn__goods', 'data-test': 'goods-' + key }) : null;
+        function chosenNow() { return fn.production && fn.options && fn.options.length ? fn.options[select ? R.clampInt(select.value, 0) : 0] || null : null; }
+        function refresh() {
+          var chosen = chosenNow();
+          var why = repair ? null : !avail.ok ? avail.message : fn.production ? (R.productionBusy(state, data, fac, fn) || R.recipeBlocker(state, data, fac, fn, chosen)) : null;
+          issue.disabled = !!(locked || cd > 0 || repair > 0 || why);
+          issue.title = repair ? repairText(fac, repair) : why || null;
+          issue.textContent = repair ? 'Under Repair' : !avail.ok ? avail.message : why && fn.production ? 'Can\'t order yet' : cd > 0 ? 'Cooldown: ' + R.daysText(cd) : 'Issue Order';
+          daysLine.textContent = 'Takes ' + R.daysText(R.orderDaysAt(state, data, fac, fn, chosen));
+          if (goodsLine) {
+            var uses = (chosen && chosen.inputs || []).map(function (x) { return R.goodsAmountText(data, x.good, x.qty) + ' (the Warehouse has ' + R.goodsCountText(data, x.good, R.goodsQty(state, x.good)) + ')'; });
+            var makes = (chosen && chosen.outputs || []).map(function (x) {
+              return x.good ? R.goodsAmountText(data, x.good, R.goodsOutputQty(state, data, fac, fn, x.good, x.qty)) : x.qty + ' × ' + x.item;
+            });
+            TSI.clear(goodsLine);
+            TSI.append(goodsLine, [
+              uses.length ? el('div', null, [el('b', { text: 'Uses: ' }), uses.join(', ')]) : null,
+              makes.length ? el('div', null, [el('b', { text: 'Makes: ' }), makes.join(', ')]) : null,
+              why && !repair && avail.ok ? el('div', { class: 'tsi-bas-fn__why', 'data-test': 'why-' + key, text: why }) : null
+            ]);
+          }
+        }
+        refresh();
+        return el('div', { class: 'tsi-bas-fn' + (fn.production ? ' tsi-bas-fn--production' : '') }, [
           el('div', { class: 'tsi-bas-fn__head' }, [el('div', { class: 'tsi-bas-fn__name', text: fn.label }), el('div', { class: 'tsi-bas-fn__cost', text: R.computeFnCost(state, fac, fn, null).costText || '0gp' })]),
-          el('div', { class: 'tsi-bas-fn__days', 'data-test': 'days-' + key, text: 'Takes ' + R.daysText(days) }),
+          daysLine,
           chooser,
+          goodsLine,
           issue,
           !isCraft && fn.notes ? el('div', { class: 'tsi-bas-fn__notes', text: fn.notes }) : null
         ]);
@@ -2664,7 +2755,9 @@
         return el('div', { class: 'tsi-bas-item' + (w.waiting ? ' tsi-bas-item--due' : '') }, [
           el('div', null, [
             el('div', { class: 'tsi-bas-item__name', text: o.label }),
-            el('div', { class: 'tsi-bas-item__meta', 'data-test': 'pending-meta-' + i, text: w.text })
+            el('div', { class: 'tsi-bas-item__meta', 'data-test': 'pending-meta-' + i, text: w.text }),
+            /* Goods a production order holds until it completes (Cancel gives them back). */
+            o.inputs && o.inputs.length ? el('div', { class: 'tsi-bas-item__meta', 'data-test': 'pending-held-' + i, text: 'Holding ' + R.goodsListText(data, o.inputs) + ' (Cancel gives them back)' }) : null
           ]),
           el('div', { class: 'tsi-bas-actions' }, [
             w.waiting ? btn('Resolve', function () { onResolveOrder(o.id); }, 'tsi-btn--primary', 'resolve-' + i, { disabled: turnRunning || militaryRunning }) : null,
@@ -2715,7 +2808,7 @@
         var mine = ordersAt(id);
         var over = extra && extra.overCapacity;
         var tile = el('button', {
-          type: 'button', class: 'tsi-bas-tile tsi-bas-tile--built' + (repair ? ' tsi-bas-tile--repair' : '') + (over ? ' tsi-bas-tile--over' : ''),
+          type: 'button', class: 'tsi-bas-tile tsi-bas-tile--built' + (extra && extra.kind === 'plot' ? ' tsi-bas-tile--onplot' : '') + (repair ? ' tsi-bas-tile--repair' : '') + (over ? ' tsi-bas-tile--over' : ''),
           'data-test': 'tile-' + id, 'data-fac': id,
           'aria-label': name + (repair ? ', Under Repair until Day ' + repair : '') + (mine.length ? ', ' + plural(mine.length, 'order') + ' pending' : '') + '. Open its panel.',
           onclick: function () { openFacility(id); }
@@ -2727,7 +2820,7 @@
         ]);
         var build = function () {
           var parts = [muted(facLevelText(id) + (repair ? ' • Under Repair until Day ' + repair + ' (working again on Day ' + (repair + 1) + ')' : ' • Active'))];
-          if (over) parts.push(muted('Over capacity: kept, but above the ' + R.constructionSlotsForLevel(state.partyLevel) + ' construction slot(s) for party level ' + state.partyLevel + '.'));
+          if (over) parts.push(muted(overText(extra.kind)));
           if (mine.length) parts.push(tipList(mine.map(orderTipLine)));
           else parts.push(muted('No orders pending here.'));
           return { title: name, parts: parts, foot: 'Click to open its orders' };
@@ -2738,12 +2831,13 @@
       }
       /* A facility being built: an hourglass and the days left. Clicking it
          offers to stop building it (Harry, 13 October 2026). */
-      function buildingTile(entry, index, over) {
+      function buildingTile(entry, index, over, kind) {
         var fac = R.facility(data, entry.facId);
         var name = fac ? fac.name : entry.facId;
         var left = R.buildDaysLeft(state, entry);
         var tile = el('button', {
-          type: 'button', class: 'tsi-bas-tile tsi-bas-tile--building' + (over ? ' tsi-bas-tile--over' : ''), 'data-test': 'tile-' + entry.facId, 'data-fac': entry.facId, 'data-slot': String(index),
+          type: 'button', class: 'tsi-bas-tile tsi-bas-tile--building' + (kind === 'plot' ? ' tsi-bas-tile--onplot' : '') + (over ? ' tsi-bas-tile--over' : ''), 'data-test': 'tile-' + entry.facId, 'data-fac': entry.facId,
+          'data-slot': kind === 'plot' ? null : String(index), 'data-plot': kind === 'plot' ? String(index) : null,
           'aria-label': name + ': under construction, ' + R.daysText(left) + ' left (ready on Day ' + entry.readyDay + ').' + (over ? ' Over capacity.' : '') + ' Click to stop building it.',
           onclick: function () { onDemolish(entry.facId); }
         }, [
@@ -2753,7 +2847,7 @@
         ]);
         var build = function () {
           var parts = [muted('Under construction: ' + R.daysText(left) + ' left.')];
-          if (over) parts.push(muted('Over capacity: kept, but above the ' + R.constructionSlotsForLevel(state.partyLevel) + ' construction slot(s) for party level ' + state.partyLevel + '.'));
+          if (over) parts.push(muted(overText(kind)));
           return { title: name, parts: parts, foot: 'Ready on Day ' + entry.readyDay + ' • click to stop building it' };
         };
         bindTip(tile, build, { noChange: true });
@@ -2782,15 +2876,48 @@
         bindFocusTip(lockTile, lockTile, lb);
         return lockTile;
       }
+      /* An empty Development Plot, or a locked one (pull request 3). */
+      function plotTile(row, i) {
+        var opens = plotOpensAt(i);
+        var free = state.partyLevel >= (opens || 99);
+        if (free && row && row.canBuild) {
+          var tile = el('button', {
+            type: 'button', class: 'tsi-bas-tile tsi-bas-tile--plot', 'data-test': 'plot-' + i, 'aria-label': 'Empty Development Plot. Click to build a production facility.',
+            onclick: function () { openBuild(i, 'plot'); }
+          }, el('span', { class: 'tsi-bas-tile__plus', 'aria-hidden': 'true' }, icon('sprout')));
+          var b = function () { return { title: 'Empty Development Plot', parts: [muted('For the Herbal Gardens, the Fishery & Smokehouse, the Timber Yard & Sawmill and the other production facilities. Click to build one.')], foot: 'Party level ' + state.partyLevel + ': ' + plural(R.plotsForLevel(state.partyLevel, data), 'plot') }; };
+          bindTip(tile, b, { noChange: true });
+          bindFocusTip(tile, tile, b);
+          return tile;
+        }
+        var why = free ? 'No free plot: every Development Plot for party level ' + state.partyLevel + ' is in use.' : 'Unlocks at party level ' + opens + '.';
+        var lockTile = el('div', {
+          class: 'tsi-bas-tile tsi-bas-tile--locked tsi-bas-tile--plotlocked', role: 'img', tabindex: '0', 'data-test': 'plot-' + i, 'aria-label': 'Locked Development Plot. ' + why
+        }, el('span', { class: 'tsi-bas-tile__plus', 'aria-hidden': 'true' }, icon('sprout')));
+        var lb = function () { return { title: 'Development Plot', parts: [muted(why), muted('Plots are only for the production facilities.')] }; };
+        bindTip(lockTile, lb, { noChange: true });
+        bindFocusTip(lockTile, lockTile, lb);
+        return lockTile;
+      }
       function renderGrid() {
         var slots = R.slotRows(state, state.partyLevel);
+        var plots = R.plotRows(state, state.partyLevel, data);
         var tiles = GRID_START.map(function (id) { return builtTile(id); });
         for (var i = 0; i < Math.max(SLOT_COUNT, slots.rows.length); i++) {
           var row = slots.rows[i];
           if (row && row.entry) {
-            tiles.push(row.entry.status === 'building' ? buildingTile(row.entry, i, row.overCapacity) : builtTile(row.entry.facId, row));
+            tiles.push(row.entry.status === 'building' ? buildingTile(row.entry, i, row.overCapacity, 'slot') : builtTile(row.entry.facId, row));
           } else {
             tiles.push(slotTile(row, i));
+          }
+        }
+        tiles.push(el('span', { class: 'tsi-bas-grid__sep', 'aria-hidden': 'true' }));
+        for (var k = 0; k < Math.max(PLOT_COUNT, plots.rows.length); k++) {
+          var prow = plots.rows[k];
+          if (prow && prow.entry) {
+            tiles.push(prow.entry.status === 'building' ? buildingTile(prow.entry, k, prow.overCapacity, 'plot') : builtTile(prow.entry.facId, prow));
+          } else {
+            tiles.push(plotTile(prow, k));
           }
         }
         /* Keep the focus on the same tile through a redraw. */
@@ -2858,24 +2985,37 @@
          and how long it takes; click to construct it, after a check. It
          fills the slot clicked (or the first free one). Clear extra builds
          is in its footer. Also opened from the top bar's Facilities count. */
+      /* Which slot or plot was clicked ({ kind, index }), or null. */
       var buildSlot = null;
-      function freeSlot() {
-        var rows = R.slotRows(state, state.partyLevel).rows;
+      function freeSlot(kind) {
+        var rows = kind === 'plot' ? R.plotRows(state, state.partyLevel, data).rows : R.slotRows(state, state.partyLevel).rows;
         for (var i = 0; i < rows.length; i++) if (rows[i].canBuild) return i;
         return null;
       }
-      function openBuild(slotIndex) {
-        buildSlot = slotIndex === undefined ? null : slotIndex;
-        return openPanel('build', { title: 'Construction', node: buildBody, render: renderBuild, cls: 'tsi-bas-panel--wide', back: slotIndex === undefined || slotIndex === null ? 'facilities-count' : 'slot-' + slotIndex });
+      function openBuild(slotIndex, kind) {
+        var k = kind === 'plot' ? 'plot' : 'slot';
+        buildSlot = slotIndex === undefined || slotIndex === null ? null : { kind: k, index: slotIndex };
+        return openPanel('build', { title: 'Construction', node: buildBody, render: renderBuild, cls: 'tsi-bas-panel--wide', back: buildSlot ? k + '-' + slotIndex : 'facilities-count' });
       }
       function renderBuild() {
         TSI.clear(buildBody);
         var slots = R.slotRows(state, state.partyLevel);
-        var rows = slots.rows;
-        var at = buildSlot !== null && rows[buildSlot] && rows[buildSlot].canBuild ? buildSlot : freeSlot();
+        var plots = R.plotRows(state, state.partyLevel, data);
+        /* A facility is built in the slot or plot clicked, or the first free one of its kind. */
+        function target(kind) {
+          var rows = kind === 'plot' ? plots.rows : slots.rows;
+          if (buildSlot && buildSlot.kind === kind && rows[buildSlot.index] && rows[buildSlot.index].canBuild) return buildSlot.index;
+          return freeSlot(kind);
+        }
+        var atSlot = target('slot');
+        var atPlot = target('plot');
         var reserved = R.reservedFacilityIds(state, data);
         var options = data.facilities.filter(function (f) { return B.startingBuilt.indexOf(f.id) === -1 && reserved.indexOf(f.id) === -1; });
-        var head = 'Party level ' + state.partyLevel + ': ' + plural(slots.max, 'construction slot') + ', ' + slots.used + ' in use' + (slots.over ? ' (' + slots.over + ' over capacity)' : '') + '.';
+        /* Opened from a plot, the production facilities come first. */
+        if (buildSlot && buildSlot.kind === 'plot') options = options.filter(function (f) { return f.plot; }).concat(options.filter(function (f) { return !f.plot; }));
+        var head = 'Party level ' + state.partyLevel + ': ' + plural(slots.max, 'construction slot') + ', ' + slots.used + ' in use' + (slots.over ? ' (' + slots.over + ' over capacity)' : '') + '. ' +
+          plural(plots.max, 'Development Plot') + ', ' + plots.used + ' in use' + (plots.over ? ' (' + plots.over + ' over capacity)' : '') + '.';
+        var at = atSlot !== null ? atSlot : atPlot;
         var tiles = options.map(function (f) {
           /* The new facilities are listed from the start, marked in
              development, and become buildable as each gets its orders
@@ -2894,21 +3034,27 @@
           var req = Number(f.requiredLevel || 0);
           var locked = state.partyLevel < req;
           var days = R.buildDaysForRequiredLevel(req, data);
+          var where = f.plot ? atPlot : atSlot;
+          /* A production facility needs a Development Plot (pull request 3). */
+          var noPlot = !locked && f.plot && where === null ? (plots.max === 0 ? 'Plots open at party level 9' : 'No free plot') : '';
           var b = el('button', {
-            type: 'button', class: 'tsi-bas-buildopt' + (locked ? ' tsi-bas-buildopt--locked' : ''), 'data-test': 'build-' + f.id,
-            'aria-disabled': locked || at === null ? 'true' : null,
-            'aria-label': f.name + (locked ? ', locked until party level ' + req : ', takes ' + R.daysText(days) + ' to build'),
-            onclick: function () { if (!locked && at !== null) onConstruct(at, f.id); }
+            type: 'button', class: 'tsi-bas-buildopt' + (locked || noPlot ? ' tsi-bas-buildopt--locked' : '') + (f.plot ? ' tsi-bas-buildopt--plot' : ''), 'data-test': 'build-' + f.id,
+            'aria-disabled': locked || where === null ? 'true' : null,
+            'aria-label': f.name + (locked ? ', locked until party level ' + req : noPlot ? ': ' + noPlot : ', takes ' + R.daysText(days) + ' to build') + (f.plot ? ', on a Development Plot' : ''),
+            onclick: function () { if (!locked && where !== null) onConstruct(where, f.id); }
           }, [
             facArt(f.id, 'tsi-bas-buildopt__img'),
             el('span', { class: 'tsi-bas-buildopt__name', text: f.name }),
-            locked ? el('span', { class: 'tsi-bas-buildopt__lock' }, [icon('lock'), 'Locked: level ' + req]) : el('span', { class: 'tsi-bas-buildopt__days', text: R.daysText(days) })
+            locked ? el('span', { class: 'tsi-bas-buildopt__lock' }, [icon('lock'), 'Locked: level ' + req])
+              : noPlot ? el('span', { class: 'tsi-bas-buildopt__lock' }, [icon('sprout'), noPlot])
+              : el('span', { class: 'tsi-bas-buildopt__days' }, [f.plot ? icon('sprout') : null, R.daysText(days)])
           ]);
           var tipBuild = function () {
-            var fns = (f.functions || []).slice(0, 8).map(function (fn) { return fn.label || fn.id || 'Action'; });
+            var fns = (f.functions || []).slice(0, 8).map(function (fn) { return (fn.label || fn.id || 'Action') + (fn.requiredFacilityLevel > 1 ? ' (Level ' + fn.requiredFacilityLevel + ')' : ''); });
             return {
               title: f.name || f.id,
-              parts: [locked ? muted('Unlocks at party level ' + req + '.') : null].concat(fns.length ? [muted('What it does:'), tipList(fns)] : [muted('No actions listed.')]),
+              parts: [locked ? muted('Unlocks at party level ' + req + '.') : null, f.plot ? muted('Built on a Development Plot (' + (noPlot || 'plots open at party levels 9, 13 and 17') + ').') : null]
+                .concat(fns.length ? [muted('What it does:'), tipList(fns)] : [muted('No actions listed.')]),
               foot: 'Takes ' + R.daysText(days) + ' to build'
             };
           };
@@ -2917,7 +3063,7 @@
           return b;
         });
         TSI.append(buildBody, [
-          muted(head + (at === null ? ' There\'s no free slot, so nothing can be built now.' : ' Choose a facility to build.'), 'tsi-bas-buildpanel__head'),
+          muted(head + (at === null ? ' There\'s no free slot, so nothing can be built now.' : ' Choose a facility to build. The production facilities (marked with a sprout) go on Development Plots.'), 'tsi-bas-buildpanel__head'),
           el('div', { class: 'tsi-bas-buildgrid' }, tiles.length ? tiles : [muted('Every facility is built or being built.')]),
           el('div', { class: 'tsi-bas-buildpanel__foot' }, [
             muted('Facilities unlock at party levels 5 / 9 / 13 / 17.'),
@@ -2936,7 +3082,7 @@
       /* ---------- The top bar's counts ---------- */
       function renderCounts() {
         var built = R.builtFacilityIds(state, data);
-        var building = (state.builtExtras || []).filter(function (x) { return x && typeof x === 'object' && x.status === 'building'; });
+        var building = (state.builtExtras || []).concat(state.builtPlots || []).filter(function (x) { return x && typeof x === 'object' && x.status === 'building'; });
         facCount.textContent = String(built.length);
         orderCount.textContent = String(state.pendingOrders.length);
         orderCountBtn.classList.toggle('is-due', state.pendingOrders.some(function (o) { return orderWhen(o).waiting; }));
@@ -2963,15 +3109,18 @@
       var onDemolish = TSI.oneAtATime(async function (facId) {
         var fac = R.facility(data, facId);
         var name = fac ? fac.name : facId;
-        var entry = (state.builtExtras || []).filter(function (x) { return x && typeof x === 'object' && x.facId === facId; })[0];
-        if (!entry) return;
+        var place = R.facilityPlace(state, facId);
+        if (!place) return;
+        var entry = place.entry;
+        var where = place.kind === 'plot' ? 'plot' : 'slot';
         var building = entry.status === 'building';
-        var orders = state.pendingOrders.filter(function (o) { return o && o.facId === facId; }).length;
+        var orders = state.pendingOrders.filter(function (o) { return o && o.facId === facId; });
+        var held = orders.some(function (o) { return o.inputs && o.inputs.length; });
         var msg = building
-          ? 'Stop building the ' + name + '? Its slot is freed, and the days of work so far are lost.'
-          : 'Demolish the ' + name + '? It goes from the Bastion and its slot is freed. ' +
-            (orders ? plural(orders, 'order') + ' pending here ' + (orders === 1 ? 'is' : 'are') + ' cancelled, and the gold spent isn\'t given back. ' : '') +
-            'Anything it has already made stays' + (facId === 'hall_of_emissaries' ? ', and your agreements, contracts and sea routes carry on' : '') + '. It can be built again later from an empty slot.';
+          ? 'Stop building the ' + name + '? Its ' + where + ' is freed, and the days of work so far are lost.'
+          : 'Demolish the ' + name + '? It goes from the Bastion and its ' + where + ' is freed. ' +
+            (orders.length ? plural(orders.length, 'order') + ' pending here ' + (orders.length === 1 ? 'is' : 'are') + ' cancelled, and the gold spent isn\'t given back' + (held ? ' (goods they hold go back to the Warehouse)' : '') + '. ' : '') +
+            'Anything it has already made stays' + (facId === 'hall_of_emissaries' ? ', and your agreements, contracts and sea routes carry on' : '') + '. It can be built again later from an empty ' + (place.kind === 'plot' ? 'Development Plot' : 'slot') + '.';
         var ok = await ask(msg, building ? 'Stop building' : 'Demolish', building ? 'Stop building' : 'Demolish');
         if (!ok || !life.alive) return;
         var res = R.demolishFacility(state, data, facId);
@@ -2981,8 +3130,9 @@
         done();
       });
       async function onClearBuilds() {
-        if (!(await ask('Clear all extra built facilities (slots) only? Your 5 starting facilities remain.', 'Clear'))) return;
+        if (!(await ask('Clear all extra built facilities (slots and Development Plots) only? Your 5 starting facilities remain.', 'Clear'))) return;
         state.builtExtras = [];
+        state.builtPlots = [];
         log('Facilities', 'Cleared extra built facilities.');
         done();
       }
@@ -3292,7 +3442,14 @@
           done();
           return null;
         }
+        /* Its facility or order is no longer in the data: nothing is made,
+           and any goods it held go back to the Warehouse. */
+        var dropped = R.dropOrderGoods(state, data, o);
         R.removeOrder(state, o.id);
+        if (dropped) {
+          logAll(dropped);
+          if (inDay) dropped.forEach(function (l) { R.addWord(state, l[1]); });
+        }
         done();
         return null;
       }
@@ -3620,6 +3777,9 @@
 
       life.on(levelSelect, 'change', function () {
         state.partyLevel = R.clampInt(levelSelect.value, 1);
+        /* A Herbal Gardens still in a construction slot moves to a plot once one opens. */
+        var moved = R.settlePlots(state, data);
+        if (moved.length) log('Facilities', R.settleLine(data, moved));
         done();
       });
 
@@ -3640,7 +3800,7 @@
           var fix = R.underRepair(state, id);
           return (f ? f.name : id) + (fix ? ' (Under Repair until Day ' + fix + ')' : '');
         });
-        (state.builtExtras || []).forEach(function (x) {
+        (state.builtExtras || []).concat(state.builtPlots || []).forEach(function (x) {
           if (x && typeof x === 'object' && x.status === 'building') {
             var f = R.facility(data, x.facId);
             lines.push((f ? f.name : x.facId) + ': building, ' + R.daysText(R.buildDaysLeft(state, x)) + ' left');
@@ -3770,6 +3930,51 @@
         var fw = Math.min(w, h * MAP_RATIO);
         mapFrame.style.width = Math.floor(fw) + 'px';
         mapFrame.style.height = Math.floor(fw / MAP_RATIO) + 'px';
+        /* The labels' text grows and shrinks a little with the painting. */
+        mapFrame.style.setProperty('--tsi-bas-map-k', String(fw / B.map.width));
+        placeLabels();
+      }
+      /* Keep each label inside the painting, clear of the crest badge, and
+         clear of the labels before it (moved with CSS variables only, so the
+         map's size never changes while it's being fitted). */
+      function placeLabels() {
+        var labels = Array.prototype.slice.call(labelLayer.children);
+        if (!labels.length || !mapFrame.offsetWidth) return;
+        var W = mapFrame.offsetWidth;
+        var H = mapFrame.offsetHeight;
+        var pad = 4;
+        var b = badge.offsetWidth ? { x: badge.offsetLeft, y: badge.offsetTop, r: badge.offsetLeft + badge.offsetWidth, btm: badge.offsetTop + badge.offsetHeight } : null;
+        var placed = [];
+        labels.forEach(function (n) {
+          n.style.setProperty('--dx', '0px');
+          n.style.setProperty('--dy', '0px');
+          n.removeAttribute('data-nudged');
+        });
+        labels.forEach(function (n) {
+          var w = n.offsetWidth;
+          var h = n.offsetHeight;
+          var cx = parseFloat(n.style.left) / 100 * W;
+          var by = parseFloat(n.style.top) / 100 * H;
+          var box = { x: cx - w / 2, y: by - h, w: w, h: h };
+          var dx = 0;
+          var dy = 0;
+          function hit(o) { return box.x + dx < o.r && o.x < box.x + dx + w && box.y + dy < o.btm && o.y < box.y + dy + h; }
+          /* Inside the painting. */
+          if (box.x < pad) dx = pad - box.x;
+          if (box.x + w > W - pad) dx = W - pad - w - box.x;
+          if (box.y < pad) dy = pad - box.y;
+          if (box.y + h > H - pad) dy = H - pad - h - box.y;
+          /* Clear of the badge: to its left. */
+          if (b && hit(b)) dx = b.x - pad - w - box.x;
+          /* Clear of the labels already placed: down a little at a time. */
+          for (var tries = 0; tries < 8 && placed.some(hit); tries++) dy += h * 0.6;
+          if (dx || dy) {
+            n.style.setProperty('--dx', Math.round(dx) + 'px');
+            n.style.setProperty('--dy', Math.round(dy) + 'px');
+            n.setAttribute('data-nudged', 'true');
+          }
+          placed.push({ x: box.x + dx, y: box.y + dy, r: box.x + dx + w, btm: box.y + dy + h });
+        });
       }
       var mapWatch = new ResizeObserver(function () { fitMap(); });
       mapWatch.observe(mapArea);
@@ -3866,16 +4071,23 @@
         if (m) return 'tile-' + m[1];
         if (/^wr-/.test(test)) return 'tile-war_room';
         if (test === 'clear-builds' || (/^build-[a-z_]+$/.test(test) && test !== 'build-panel')) {
-          var slot = freeSlot();
-          return slot === null ? 'facilities-count' : 'slot-' + slot;
+          var kind = R.isPlotFacility(data, test.slice(6)) ? 'plot' : 'slot';
+          var slot = freeSlot(kind);
+          if (slot === null && test === 'clear-builds') { kind = 'plot'; slot = freeSlot('plot'); }
+          return slot === null ? 'facilities-count' : kind + '-' + slot;
         }
         return null;
       }
       life.onStop(function () { ns.debug = null; });
 
+      /* A Herbal Gardens built in a construction slot before Development Plots
+         existed moves to a free plot (Harry's facility guide, 13 October 2026). */
+      var settled = R.settlePlots(state, data);
+      if (settled.length) log('Facilities', R.settleLine(data, settled));
       renderAll();
       /* The first open saves the starting Bastion, as the old tool did. */
-      if (!saved || formerBrigade || migrating) save();
+      if (!saved || formerBrigade || migrating || settled.length) save();
+      if (settled.length) notice(R.settleLine(data, settled) + ' The Day Log says so too.', { type: 'info', title: 'Development Plots.', id: 'tsi-bas-plots', timeout: 20000 });
       /* The facilities overhaul's report, once. */
       var mig = state.migration && state.migration.v3;
       if (mig && !mig.shown) {
