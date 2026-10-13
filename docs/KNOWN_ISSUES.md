@@ -25,7 +25,7 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
 | Scarlett Isles Explorer (EXP) | 12 | 5 | 6 | 13 | 0 |
-| The Ironbow Bastion Manager (BAS) | 23 | 2 | 25 | 17 | 1 |
+| The Ironbow Bastion Manager (BAS) | 23 | 2 | 26 | 17 | 1 |
 | Clan Crest Creator (CRS) | 0 | 4 | 6 | 3 | 3 |
 | Arenas of The Scarlett Isles (ARN) | 8 | 2 | 0 | 17 | 0 |
 | The Heartwood Ritual (RIT) | 9 | 1 | 0 | 15 | 1 |
@@ -1314,6 +1314,7 @@ Old repo: `_legacy/bastion_manager` (file:line references point there).
 - **Decision note:** B12
 - **Evidence:** app.js:1269 builds '<facId>_overlay.png'; the files are gambling_hall_overlay.png and shrine_of_{telluria,aurush,pelagos}_overlay.png. media.py shows exists=False; runtime 404s.
 - **Phase 9:** Kept (B12). The four overlays are in `tools/bastion/assets/extras/`.
+- **13 October 2026 (Harry's new map, decision D10):** the three Shrines now show on the map once built, with Harry's new Shrine paintings. The Gaming Hall still has none (it is being retired). See BAS-69.
 
 ### BAS-20 · Clicking a compendium card picture throws an error
 **Later, Harry's call** · other
@@ -1858,6 +1859,18 @@ None of these reached Harry.
 - **A crest sent that wasn't really a picture** (only possible by hand) would be offered and saved, showing as a broken picture → it's dropped unless it loads as a picture.
 - **With two Bastion windows** (which "Already open" warns about), answering the crest question in one left it open in the other, which could still take the crest → the other window's question closes. A newer crest sent while it's asking takes its place.
 - **Evidence:** `tools/bastion/tool.js` (`checkCrestOffer`, `openCreator`, `crestField`, `checkClock`, `onRemoveCrest`, `onFormClan`), `tools/bastion/war-campaign-rules.js` (`R.clanOnlyCut`, `beginMilitaryAction`, `musterShortfall`); tests in `tests/e2e/phase9.test.js`, `tests/e2e/bastion-screen.test.js` and `tests/rules/bastion-campaign.test.js`.
+
+### BAS-69 · The Bastion map is Harry's new painting
+**Deliberate change** (Harry, 13 October 2026: the first step of the facilities overhaul, decisions D9 and D10) · other
+
+- **Before:** The map was the old 1152 × 768 painting (3:2) with eight overlays, matched to facilities by file name. The Shrines never showed (BAS-19).
+- **After:** Harry's new 3000 × 1250 painting (2.4 : 1), fitted whole into the map area on every screen. Which facility shows which overlay is a table in `bastion-data.js` (`map`):
+  - the Library, War Room, Hall of Emissaries and three Shrines show their own;
+  - the Laboratory and the Arcane Study share the Laboratory painting, and the Garden and the Greenhouse share the Greenhouse painting, since each pair will merge (each shared picture is drawn once, darkened if either is Under Repair);
+  - the Smithy, Gaming Hall and Menagerie have no picture.
+
+  The seven pictures for the new facilities are in place for when those facilities exist. Overlays are now drawn in the table's order, not build-slot order (no two overlap). The crest badge sits over the painting's sky, clear of the Hall of Emissaries, on every screen size. The old map and overlays are in `tools/bastion/assets/extras/old-map/`.
+- **Evidence:** `tools/bastion/data/bastion-data.js` (`map`), `tools/bastion/rules.js` (`R.mapOverlays`), `tools/bastion/tool.js` (the map and `fitMap`); tests in `tests/rules/bastion.test.js`, `tests/e2e/bastion-screen.test.js` and `tests/e2e/phase9.test.js`.
 
 ## Clan Crest Creator
 Old repo: `_legacy/clan-crest-creator` (file:line references point there).
