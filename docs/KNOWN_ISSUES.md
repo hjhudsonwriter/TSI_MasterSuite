@@ -21,11 +21,11 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 
 | Tool | Must fix | Fixed by design | Deliberate | Later (Harry's call) | Not relevant / not a bug |
 |---|---|---|---|---|---|
-| Suite-wide (SUI) | 8 | 11 | 8 | 1 | 0 |
+| Suite-wide (SUI) | 9 | 11 | 8 | 1 | 0 |
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
 | Scarlett Isles Explorer (EXP) | 12 | 5 | 6 | 13 | 0 |
-| The Ironbow Bastion Manager (BAS) | 23 | 2 | 24 | 18 | 1 |
+| The Ironbow Bastion Manager (BAS) | 23 | 2 | 25 | 17 | 1 |
 | Clan Crest Creator (CRS) | 0 | 4 | 6 | 3 | 3 |
 | Arenas of The Scarlett Isles (ARN) | 8 | 2 | 0 | 17 | 0 |
 | The Heartwood Ritual (RIT) | 9 | 1 | 0 | 15 | 1 |
@@ -279,6 +279,13 @@ These come from checking the eight tools against each other: the collision audit
 - **Before:** A pop-up put the focus in its first box, even a hidden one, where it can't go: the focus then stayed behind the pop-up, on whatever opened it. The Bastion's Party Identity for a party that isn't a Clan was one (Clan Honour is hidden until there's a Clan). One Tab got into the pop-up.
 - **After:** The focus goes to the first box that can be seen, else to the first button, as before.
 - **Evidence:** `shared/js/modal.js` (`open`); tests in `tests/e2e/bastion-screen.test.js`.
+
+### SUI-29 · The Bastion could take its own save for a Reset Travel and pass days twice
+**Must fix** (found while fact-checking the Bastion and Explorer reference, 12 October 2026; fixed) · applies something twice
+
+- **Before:** A tool reading another tool's save "as saved right now" (`TSI.store.fresh`) was given its own copy from when the page opened whenever it was writing *any* save of its own. The Bastion saves after almost every change, and it reads the Explorer's day every 2 seconds, so now and then the two met. It then saw the day it opened on (say Day 1, while the Explorer was on Day 7), took that for a Reset Travel, moved every day back, wrote "The Explorer's day went back (Reset Travel)…" in the Day Log, and passed the days again 2 seconds later. Orders, building, shipments and sea routes then fell due early by the size of that false step, and an automatic Bastion event in those days was rolled a second time. The Explorer's "The Ironbow sends word…" forecast and the DM doc read the same way, so they could show an old copy too.
+- **After:** Only a change of that same save, still being written by this page (or made while it was being read), means the page's own copy is used (it's newer than the saved one). Any other save being written makes no difference. And if the browser ever can't be read, the value last read is used, not the one from when the page opened. What's read is kept apart from the page's own copies, so a "Back up everything" from the home screen still holds one moment's copies (an independent review found that letting reads replace them could pair the Explorer's newest save with an older uploaded map).
+- **Evidence:** `shared/js/store.js` (`fresh`, `inflightKeys`, `lastRead`); the Bastion's clock is `checkClock` in `tools/bastion/tool.js`. Test: `tests/e2e/bastion-days.test.js` ("the Bastion saving a change of its own never makes it misread the Explorer's day"), which fails on the old code (the Bastion read Day 1 while on Day 7) and passes now.
 
 ## Combat Tracker & VTT Battlemap
 Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point there).
@@ -1759,11 +1766,11 @@ None of these reached Harry.
 - **Two Bastions set aside in the same second** kept only the second → SUI-24.
 - **Evidence:** `tools/explorer/tool.js`, `shared/js/store.js`; tests in `tests/e2e/bastion-days.test.js` and `tests/e2e/phase9.test.js`.
 
-### BAS-63 · Three Bastion events still say "your next Bastion turn"
-**Later, Harry's call** · other
+### BAS-63 · Three Bastion events still said "your next Bastion turn"
+**Deliberate change** (Harry's answer, 8 October 2026; was *Later, Harry's call*) · other
 
-- **Before:** Three of the rulebook's Bastion events (a special facility shutting down, a hireling with a criminal past, and hirelings leaving) say the facility "can't be used on your next Bastion turn".
-- **After:** unchanged. They're the rulebook's text and don't change anything in the Bastion by themselves. Harry may want them reworded for days (for example "for the next 7 days"); that's a lore and rules question for him.
+- **Before:** Three of the rulebook's Bastion events (a special facility shutting down, a hireling with a criminal past, and hirelings leaving) said the facility "can't be used on your next Bastion turn", though the Bastion counts in days since the overhaul.
+- **After:** they say the facility "can't be used for the next 7 days". It's the events' text only: the Bastion still doesn't stop that facility's orders by itself (still Harry's call, if he wants it to).
 - **Evidence:** `tools/bastion/data/events-data.js` lines 68, 71 and 90.
 
 ### BAS-64 · The Bastion's new screen: the map fills the window, and everything else opens over it

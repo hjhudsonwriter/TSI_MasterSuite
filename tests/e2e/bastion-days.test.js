@@ -149,6 +149,41 @@ async function closeWord(ba) {
     equal(await ba.$('[data-test=ironbow-word]'), null);
   });
 
+  await check('the Bastion saving a change of its own never makes it misread the Explorer\'s day (SUI-29)', async () => {
+    /* The Bastion opened on Day 1, so that's its own copy of the Explorer's
+       save. Before the fix, a read while any save of its own was being
+       written gave that copy: the Bastion took it for a Reset Travel, moved
+       every day back to Day 1 and passed them all again. */
+    const r = await ba.evaluate(async () => {
+      const ui = () => Object.assign({}, TSI.store.get('tsi.bastion.ui', {}));
+      TSI.store.set('tsi.bastion.ui', Object.assign(ui(), { sui29: 1 }));
+      TSI.store.flush();
+      const during = await TSI.store.fresh('tsi.explorer.save', null);
+      /* A change this page makes while its read is under way wins over
+         the older value the read brings back. */
+      await TSI.store.flush();
+      const reading = TSI.store.fresh('tsi.bastion.ui', null);
+      TSI.store.set('tsi.bastion.ui', Object.assign(ui(), { sui29: 2 }));
+      const own = await reading;
+      TSI.store.set('tsi.bastion.ui', Object.assign(ui(), { sui29: 3 }));
+      TSI.store.flush();
+      TSI.bastion.debug.clock();
+      await new Promise(res => setTimeout(res, 400));
+      return {
+        during: during && during.travel.day,
+        own: own && own.sui29,
+        day: TSI.bastion.debug.state().day
+      };
+    });
+    equal(r.during, 7, 'read while a Bastion save was being written: the Explorer\'s day as saved now');
+    equal(r.own, 2, 'a change of the same key made while reading it wins');
+    equal(r.day, 7, 'the clock read then left the Bastion on Day 7');
+    await ba.waitForTimeout(2500);
+    const s = await bas(ba);
+    equal(s.day, 7);
+    assert(!s.log.some(l => /went back/.test(l.body)), 'no false Reset Travel in the Day Log');
+  });
+
   /* ------------------------------------------------------------------ */
   section('One campaign file, from the Explorer');
   let exported = null;

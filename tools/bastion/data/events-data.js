@@ -65,10 +65,10 @@ window.TSI_DATA.bastionEvents = {
     "Attack": [
       "A hostile force attacks your Bastion but is defeated.",
       "Roll 6d6; for each die that rolls a 1, one Bastion Defender dies. Remove these Bastion Defenders from your Bastion's roster. If the Bastion has zero Bastion Defenders, one of the Bastion's special facilities (determined randomly) is damaged and forced to shut down.",
-      "A special facility that shuts down can't be used on your next Bastion turn, after which it is repaired and made operational again at no cost to you."
+      "A special facility that shuts down can't be used for the next 7 days, after which it is repaired and made operational again at no cost to you."
     ],
     "Criminal Hireling": [
-      "One of your Bastion's hirelings has a criminal past that comes to light when officials or bounty hunters visit your Bastion with a warrant for the hireling's arrest. You can retain the hireling by paying a bribe of 1d6 \u00d7 100 GP. Otherwise, the hireling is arrested and taken away. If this loss leaves one of your facilities without any hirelings, that facility can't be used on your next Bastion turn. The hireling is then replaced at no cost to you."
+      "One of your Bastion's hirelings has a criminal past that comes to light when officials or bounty hunters visit your Bastion with a warrant for the hireling's arrest. You can retain the hireling by paying a bribe of 1d6 \u00d7 100 GP. Otherwise, the hireling is arrested and taken away. If this loss leaves one of your facilities without any hirelings, that facility can't be used for the next 7 days. The hireling is then replaced at no cost to you."
     ],
     "Extraordinary Opportunity": [
       "Your Bastion is given the opportunity to host an important festival or celebration, fund the research of a powerful spellcaster, or appease a domineering noble. Work with the DM to determine the details.",
@@ -87,7 +87,7 @@ window.TSI_DATA.bastionEvents = {
       "4: The guest is a Friendly monster, such as a brass dragon or a treant. If your Bastion is attacked while this monster is your guest, it defends your Bastion, and you lose no Bastion Defenders. The monster leaves after it defends your Bastion once or when you send it away."
     ],
     "Lost Hirelings": [
-      "One of your Bastion's special facilities (determined randomly) loses its hirelings. The cause of their departure is up to you. The facility can't be used on your next Bastion turn, but the hirelings are replaced at no cost to you at that point."
+      "One of your Bastion's special facilities (determined randomly) loses its hirelings. The cause of their departure is up to you. The facility can't be used for the next 7 days, but the hirelings are replaced at no cost to you at that point."
     ],
     "Magical Discovery": [
       "Your hirelings discover or accidentally create an Uncommon magic item of your choice at no cost to you. The magic item must be a Potion or Scroll."
