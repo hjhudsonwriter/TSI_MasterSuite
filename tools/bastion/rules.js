@@ -109,6 +109,7 @@
       partyLevel: 7,
       builtFacilities: data.bastion.startingBuilt.slice(),
       builtExtras: [],
+      builtPlots: [],
       facilityLevels: {},
       pendingOrders: [],
       /* patrolUntil: the last day the Watchtower's Patrol gives Advantage. */
@@ -329,8 +330,9 @@
     d.partyLevel = clampInt(s.partyLevel === undefined || s.partyLevel === null ? 7 : s.partyLevel, 1, 20);
     if (arr(s.builtFacilities)) d.builtFacilities = s.builtFacilities.slice();
     if (arr(s.builtExtras)) d.builtExtras = s.builtExtras.slice();
+    if (arr(s.builtPlots)) d.builtPlots = s.builtPlots.slice();
     if (isObj(s.facilityLevels)) d.facilityLevels = Object.assign({}, s.facilityLevels);
-    if (arr(s.pendingOrders)) d.pendingOrders = s.pendingOrders.filter(isObj);
+    if (arr(s.pendingOrders)) d.pendingOrders = s.pendingOrders.filter(isObj).map(function (o) { return cleanOrderInputs(o); });
     d.day = Math.max(1, dayNum(s.day, 1));
     d.anchored = s.anchored === true;
     if (isObj(s.defenders)) {
@@ -342,7 +344,7 @@
     }
     if (arr(s.defenderBeasts)) d.defenderBeasts = s.defenderBeasts.filter(isObj);
     if (arr(s.military)) d.military = s.military.filter(isObj);
-    if (arr(s.warehouse)) d.warehouse = s.warehouse.filter(isObj);
+    if (arr(s.warehouse)) d.warehouse = R.cleanWarehouse(s.warehouse, data);
     if (arr(s.artisanTools)) d.artisanTools = s.artisanTools.map(function (x) { return typeof x === 'string' ? x : ''; });
     d.favour = numMap(s.favour, ['telluria', 'aurush', 'pelagos'], 0, 100, 0);
     d.politicalCapital = numMap(s.politicalCapital, CLAN_KEYS, -100, 100, 0);
@@ -407,6 +409,7 @@
     d.research = R.cleanResearch(s.research, data);
     if (arr(s.militaryActions)) d.militaryActions = s.militaryActions.filter(isObj);
     R.normalizeBuiltExtras(d);
+    tidyPlots(d, data);
     R.ensureLevels(d, data);
     /* The war's records (missions, recovery, depleted regiments, Military
        Actions, including upgrading phase 1 ones) are tidied last, by
@@ -455,7 +458,7 @@
     var marks = ['treasuryGP', 'partyLevel', 'day', 'builtExtras', 'pendingOrders', 'defenders', 'warehouse'];
     var found = marks.filter(function (k) { return k in s; }).length;
     if (found < 4) return 'It doesn\'t look like a Bastion save.';
-    var lists = ['builtExtras', 'pendingOrders', 'defenderBeasts', 'military', 'warehouse', 'log', 'warLog', 'militaryActions', 'warRecovery'];
+    var lists = ['builtExtras', 'builtPlots', 'pendingOrders', 'defenderBeasts', 'military', 'warehouse', 'log', 'warLog', 'militaryActions', 'warRecovery'];
     for (var i = 0; i < lists.length; i++) {
       if (lists[i] in s && !Array.isArray(s[lists[i]])) return 'Its ' + lists[i] + ' list is damaged.';
     }
@@ -601,21 +604,83 @@
     for (var i = 0; i < rows.length; i++) if (rl >= rows[i].level) return clampInt(rows[i].days, 0);
     return 0;
   };
-  /* Old saves' plain names become { facId, status: "built" } (229-237). */
+  /* Old saves' plain names become { facId, status: "built" } (229-237).
+     The Development Plots (s.builtPlots, pull request 3) are the same. */
+  /* In place, so a list held elsewhere stays the same list. */
+  function normalList(list) {
+    var out = Array.isArray(list) ? list : [];
+    for (var i = 0; i < out.length; i++) {
+      var x = out[i];
+      if (!x) out[i] = '';
+      else if (typeof x === 'string') out[i] = { facId: x, status: 'built' };
+      else if (!(typeof x === 'object' && x.facId)) out[i] = '';
+    }
+    return out;
+  }
   R.normalizeBuiltExtras = function (s) {
-    if (!Array.isArray(s.builtExtras)) s.builtExtras = [];
-    s.builtExtras = s.builtExtras.map(function (x) {
-      if (!x) return '';
-      if (typeof x === 'string') return { facId: x, status: 'built' };
-      if (typeof x === 'object' && x.facId) return x;
-      return '';
-    });
+    s.builtExtras = normalList(s.builtExtras);
+    s.builtPlots = normalList(s.builtPlots);
   };
   function extras(s) { return s.builtExtras.filter(function (x) { return x && typeof x === 'object' && x.facId; }); }
+  function plotsOf(s) { return (s.builtPlots || []).filter(function (x) { return x && typeof x === 'object' && x.facId; }); }
+  function allEntries(s) { return extras(s).concat(plotsOf(s)); }
+  /* ---------- Development Plots (pull request 3; Harry's facility guide, 13 October 2026) ----------
+     A second kind of construction slot, only for the facilities marked
+     "plot" (the six economic ones). Plots open by party level
+     (bastion-data.js developmentPlots: 0 / 2 / 4 / 6 from levels 1 / 9 / 13
+     / 17). A plot facility in a construction slot (a Herbal Gardens built
+     before plots existed) moves to the first free plot when there is one
+     (R.settlePlots); it is never removed for lack of room. */
+  R.plotsForLevel = function (level, data) {
+    var lvl = clampInt(level, 1, 20);
+    var rows = (data && data.bastion && arr(data.bastion.developmentPlots)) || [{ from: 1, plots: 0 }, { from: 9, plots: 2 }, { from: 13, plots: 4 }, { from: 17, plots: 6 }];
+    var n = 0;
+    rows.forEach(function (r) { if (lvl >= clampInt(r.from, 1, 20)) n = clampInt(r.plots, 0, 20); });
+    return n;
+  };
+  R.isPlotFacility = function (data, facId) { var f = R.facility(data, facId); return !!(f && f.plot); };
+  /* Where a facility sits: { kind: 'slot' | 'plot', index, entry }, or null. */
+  R.facilityPlace = function (s, facId) {
+    R.normalizeBuiltExtras(s);
+    for (var i = 0; i < s.builtExtras.length; i++) if (s.builtExtras[i] && s.builtExtras[i].facId === facId) return { kind: 'slot', index: i, entry: s.builtExtras[i] };
+    for (var j = 0; j < s.builtPlots.length; j++) if (s.builtPlots[j] && s.builtPlots[j].facId === facId) return { kind: 'plot', index: j, entry: s.builtPlots[j] };
+    return null;
+  };
+  /* A save's plots as loaded: a facility that doesn't belong on a plot goes
+     back to a construction slot (never dropped). */
+  function tidyPlots(s, data) {
+    s.builtPlots = s.builtPlots.map(function (x) {
+      if (!x || R.isPlotFacility(data, x.facId) || !R.facility(data, x.facId)) return x;
+      var free = s.builtExtras.indexOf('');
+      if (free === -1) s.builtExtras.push(x); else s.builtExtras[free] = x;
+      return '';
+    });
+  }
+  /* Move plot facilities from construction slots to free plots, in slot
+     order, keeping everything about them (it's all kept by facility).
+     Returns [{ facId, fromSlot, toPlot }]. */
+  R.settlePlots = function (s, data) {
+    R.normalizeBuiltExtras(s);
+    var moved = [];
+    s.builtExtras.forEach(function (x, i) {
+      if (!x || !R.isPlotFacility(data, x.facId)) return;
+      var rows = R.plotRows(s, s.partyLevel, data).rows;
+      var to = -1;
+      for (var k = 0; k < rows.length; k++) if (rows[k].canBuild) { to = rows[k].index; break; }
+      if (to === -1) return;
+      s.builtPlots[to] = x;
+      s.builtExtras[i] = '';
+      moved.push({ facId: x.facId, fromSlot: i, toPlot: to });
+    });
+    return moved;
+  };
+  R.settleLine = function (data, moved) {
+    return moved.map(function (m) { var f = R.facility(data, m.facId); return 'The ' + ((f && f.name) || m.facId) + ' moved to a Development Plot; its construction slot is free.'; }).join(' ');
+  };
   /* Built or being built: can't be chosen again (240-246). */
   R.reservedFacilityIds = function (s, data) {
     R.normalizeBuiltExtras(s);
-    var ids = data.bastion.startingBuilt.concat(extras(s).map(function (x) { return x.facId; }));
+    var ids = data.bastion.startingBuilt.concat(allEntries(s).map(function (x) { return x.facId; }));
     return ids.filter(function (id, i) { return ids.indexOf(id) === i; });
   };
   /* The overlays to draw on the Bastion map: one per picture (two
@@ -634,10 +699,22 @@
     });
     return out;
   };
+  /* The map's name-and-level labels, shown while the facility grid is open
+     (Harry, 13 October 2026): one per built facility with a position in
+     bastion-data.js mapLabels (in pixels on the painting), in built order. */
+  R.mapLabels = function (s, data) {
+    var at = (data.bastion && data.bastion.mapLabels) || {};
+    return R.builtFacilityIds(s, data).map(function (id) {
+      var p = at[id];
+      if (!isObj(p) || !okDay(p.x) || !okDay(p.y)) return null;
+      var f = R.facility(data, id);
+      return { fac: id, name: (f && f.name) || id, level: R.getFacilityLevel(s, id), x: p.x, y: p.y, repair: !!R.underRepair(s, id) };
+    }).filter(Boolean);
+  };
   /* Built and working (249-255). */
   R.builtFacilityIds = function (s, data) {
     R.normalizeBuiltExtras(s);
-    var ids = data.bastion.startingBuilt.concat(extras(s).filter(function (x) { return x.status === 'built'; }).map(function (x) { return x.facId; }));
+    var ids = data.bastion.startingBuilt.concat(allEntries(s).filter(function (x) { return x.status === 'built'; }).map(function (x) { return x.facId; }));
     return ids.filter(function (id, i) { return ids.indexOf(id) === i; });
   };
   /* Building work finished by today: each building whose ready day has
@@ -645,14 +722,16 @@
   R.completeConstruction = function (s) {
     R.normalizeBuiltExtras(s);
     var completed = [];
-    s.builtExtras = s.builtExtras.map(function (entry) {
+    function finish(entry) {
       if (!entry || entry === '') return '';
       if (entry.status === 'building' && !(dayNum(entry.readyDay, s.day) > s.day)) {
         completed.push(entry.facId);
         return { facId: entry.facId, status: 'built' };
       }
       return entry;
-    });
+    }
+    s.builtExtras = s.builtExtras.map(finish);
+    s.builtPlots = s.builtPlots.map(finish);
     return completed;
   };
   /* Days of building work left (0 once it's due). */
@@ -665,41 +744,59 @@
      the new limit (counting in slot order) are marked over capacity. Empty
      slots can only be built in while there's room; the screen hides the ones
      that can't. Only empty slots past the limit are dropped. */
-  R.slotRows = function (s, level) {
-    R.normalizeBuiltExtras(s);
-    var max = R.constructionSlotsForLevel(level);
-    while (s.builtExtras.length < max) s.builtExtras.push('');
-    while (s.builtExtras.length > max && !s.builtExtras[s.builtExtras.length - 1]) s.builtExtras.pop();
-    var used = extras(s).length;
+  function rowsFor(list, max, kind) {
+    while (list.length < max) list.push('');
+    while (list.length > max && !list[list.length - 1]) list.pop();
+    var used = list.filter(function (x) { return x && x.facId; }).length;
     var seen = 0;
     return {
       max: max,
       used: used,
       over: Math.max(0, used - max),
-      rows: s.builtExtras.map(function (entry, i) {
+      rows: list.map(function (entry, i) {
         var occupied = !!(entry && entry.facId);
         var over = false;
         if (occupied) { over = seen >= max; seen += 1; }
-        return { index: i, entry: occupied ? entry : null, overCapacity: over, canBuild: !occupied && used < max };
+        return { index: i, kind: kind, entry: occupied ? entry : null, overCapacity: over, canBuild: !occupied && used < max };
       })
     };
+  }
+  R.slotRows = function (s, level) {
+    R.normalizeBuiltExtras(s);
+    return rowsFor(s.builtExtras, R.constructionSlotsForLevel(level), 'slot');
   };
-  R.startBuild = function (s, data, slotIndex, facId) {
+  /* The Development Plots to show, the same way (pull request 3). */
+  R.plotRows = function (s, level, data) {
+    R.normalizeBuiltExtras(s);
+    return rowsFor(s.builtPlots, R.plotsForLevel(level, data), 'plot');
+  };
+  /* Build in a construction slot, or (a plot facility) in a Development
+     Plot: slotIndex is the index in that list. kind ('slot' or 'plot'), if
+     given, must match the facility. */
+  R.startBuild = function (s, data, slotIndex, facId, kind) {
     if (!facId) return { ok: false };
-    if (s.builtExtras[slotIndex]) return { ok: false };
+    R.normalizeBuiltExtras(s);
     var fac = R.facility(data, facId);
     var req = Number(fac && fac.requiredLevel || 0);
     var name = (fac && fac.name) || facId;
     if (!fac) return { ok: false };
+    var onPlot = !!fac.plot;
+    if (kind && (kind === 'plot') !== onPlot) return { ok: false, message: onPlot ? 'The ' + name + ' is built on a Development Plot.' : 'The ' + name + ' is built in a construction slot, not on a Development Plot.' };
+    var list = onPlot ? s.builtPlots : s.builtExtras;
+    if (list[slotIndex]) return { ok: false };
     if (fac.inDevelopment) return { ok: false, message: 'The ' + name + ' is still in development: it can\'t be built yet.' };
     if (s.partyLevel < req) return { ok: false, message: 'Locked. ' + name + ' requires party level ' + req + '.' };
     if (R.reservedFacilityIds(s, data).indexOf(facId) !== -1) return { ok: false, message: 'That facility is already built or under construction.' };
+    if (onPlot) {
+      var pr = R.plotRows(s, s.partyLevel, data);
+      if (!pr.rows[slotIndex] || !pr.rows[slotIndex].canBuild) return { ok: false, message: 'The ' + name + ' needs a free Development Plot: plots open at party level 9 (2), 13 (4) and 17 (6).' };
+    }
     var days = R.buildDaysForRequiredLevel(req, data);
     if (days <= 0) {
-      s.builtExtras[slotIndex] = { facId: facId, status: 'built' };
+      list[slotIndex] = { facId: facId, status: 'built' };
       return { ok: true, log: ['Construction', name + ' built instantly.'] };
     }
-    s.builtExtras[slotIndex] = { facId: facId, status: 'building', startDay: s.day, readyDay: s.day + days };
+    list[slotIndex] = { facId: facId, status: 'building', startDay: s.day, readyDay: s.day + days };
     return { ok: true, log: ['Construction Started', name + ' is under construction (' + days + ' days: ready on Day ' + (s.day + days) + ').'] };
   };
   /* Demolish a facility in a construction slot, built or still being built
@@ -714,20 +811,26 @@
     var fac = R.facility(data, facId);
     var name = (fac && fac.name) || facId;
     if (data.bastion.startingBuilt.indexOf(facId) !== -1) return { ok: false, message: 'The ' + name + ' is one of the five starting facilities: it can\'t be demolished.' };
-    var at = -1;
-    s.builtExtras.forEach(function (x, i) { if (at === -1 && x && typeof x === 'object' && x.facId === facId) at = i; });
-    if (at === -1) return { ok: false, message: 'The ' + name + ' isn\'t built or being built.' };
-    var building = s.builtExtras[at].status === 'building';
-    s.builtExtras[at] = '';
+    var place = R.facilityPlace(s, facId);
+    if (!place) return { ok: false, message: 'The ' + name + ' isn\'t built or being built.' };
+    var building = place.entry.status === 'building';
+    (place.kind === 'plot' ? s.builtPlots : s.builtExtras)[place.index] = '';
+    var where = place.kind === 'plot' ? 'plot' : 'slot';
     var cancelled = s.pendingOrders.filter(function (o) { return o && o.facId === facId; });
     s.pendingOrders = s.pendingOrders.filter(function (o) { return !(o && o.facId === facId); });
+    var held = [];
+    cancelled.forEach(function (o) { if (arr(o.inputs)) held = held.concat(o.inputs); });
+    var back = held.length ? R.returnGoods(s, data, held) : '';
     if (isObj(s.facilityLevels)) delete s.facilityLevels[facId];
     if (isObj(s.repairs)) delete s.repairs[facId];
     if (isObj(s.research)) delete s.research[facId];
-    var body = building
-      ? 'Building work on the ' + name + ' stopped; its slot is free.'
-      : 'The ' + name + ' was demolished; its slot is free.' + (cancelled.length ? ' Cancelled: ' + cancelled.map(function (o) { return o.label; }).join('; ') + '.' : '');
-    return { ok: true, log: [building ? 'Construction Stopped' : 'Facility Demolished', body], cancelled: cancelled };
+    /* A freed plot takes a plot facility still waiting in a construction slot. */
+    var moved = place.kind === 'plot' ? R.settlePlots(s, data) : [];
+    var body = (building
+      ? 'Building work on the ' + name + ' stopped; its ' + where + ' is free.'
+      : 'The ' + name + ' was demolished; its ' + where + ' is free.' + (cancelled.length ? ' Cancelled: ' + cancelled.map(function (o) { return o.label; }).join('; ') + '.' : '') + (back ? ' ' + back : '')) +
+      (moved.length ? ' ' + R.settleLine(data, moved) : '');
+    return { ok: true, log: [building ? 'Construction Stopped' : 'Facility Demolished', body], cancelled: cancelled, moved: moved };
   };
   /* A facility's level, 1 to 5 (1 to 3 before the facilities overhaul's
      step 1b; only the Hall had levels then). */
@@ -929,6 +1032,17 @@
     var fac = R.facility(data, facId);
     return { ok: true, undone: gone, log: ['Research Undone', fac.name + ': ' + gone.join(', ') + (gone.length === 1 ? ' is' : ' are') + ' no longer researched; ' + (gone.length === 1 ? 'its token is' : 'their tokens are') + ' free again.'] };
   };
+  /* Is a choice researched at a facility? And its name, for messages. */
+  R.researched = function (s, facId, choiceId) {
+    var p = picks(s, facId);
+    return Object.keys(p).some(function (b) { return p[b].indexOf(choiceId) !== -1; });
+  };
+  R.researchChoiceName = function (data, facId, choiceId) {
+    var tree = R.researchTree(data, facId);
+    var found = null;
+    (tree ? tree.branches : []).forEach(function (b) { if (!found) found = findChoice(tree, b.id, choiceId); });
+    return found ? found.choice.name : choiceId;
+  };
   /* The effects of everything researched at a facility (from the data). */
   R.researchEffects = function (s, data, facId) {
     var tree = R.researchTree(data, facId);
@@ -943,8 +1057,9 @@
     return out;
   };
   /* An order's days at a facility, with research: the biggest saving, never below its minimum. */
-  R.orderDaysAt = function (s, data, fac, fn) {
-    var days = R.orderDays(fn);
+  R.orderDaysAt = function (s, data, fac, fn, chosen) {
+    /* A choice can take its own days (the Herbal Gardens' Level 3-5 recipes). */
+    var days = chosen && chosen.days ? R.orderDays(chosen) : R.orderDays(fn);
     if (!fac || !fn) return days;
     var best = null;
     R.researchEffects(s, data, fac.id).forEach(function (e) {
@@ -1037,6 +1152,9 @@
     return fn.options || [];
   };
   function orderLabel(fac, fn, optionLabel) {
+    /* A production order with only one choice doesn't repeat it ("Timber Yard & Sawmill: Harvest Timber"). */
+    if (fn.production && (fn.options || []).length === 1) return fac.name + ': ' + fn.label;
+    if (fn.production && optionLabel) return fac.name + ': ' + fn.label + ' → ' + optionLabel;
     return fac.name + ': ' + fn.label + (optionLabel ? ' (' + optionLabel + ')' : '');
   }
   function pendingSame(s, facId, fnId) {
@@ -1068,6 +1186,9 @@
     /* The Hall's own Upgrade, replaced by every facility's Upgrade in step 1b
        ("retired": one already ordered still completes). */
     if (fn && fn.retired) return { ok: false, hidden: true, message: 'That order has been replaced by Upgrade.' };
+    /* An order a facility level unlocks (the Hall's, and the production orders: pull request 3). */
+    var need = clampInt(fn && fn.requiredFacilityLevel ? fn.requiredFacilityLevel : 1, 1, R.MAX_LEVEL);
+    if (fac && need > 1 && R.getFacilityLevel(s, fac.id) < need) return { ok: false, message: 'Needs Level ' + need + '.' };
     if (fn && fn.onlyIfLegacy && (s.legacyFacilities || []).indexOf(fn.onlyIfLegacy) === -1) return { ok: false, hidden: true, message: 'That order isn\'t available here.' };
     var lvl = Number(fn && fn.requiredPartyLevel || 0);
     if (lvl && s.partyLevel < lvl) return { ok: false, message: 'Needs party level ' + lvl + '.' };
@@ -1084,6 +1205,10 @@
     var avail = R.fnAvailable(s, fac, fn);
     if (!avail.ok) return { ok: false, message: avail.message };
     if (pendingSame(s, facId, fnId)) return { ok: false, message: 'That order is already pending.' };
+    var busy = productionBusy(s, data, fac, fn);
+    if (busy) return { ok: false, message: busy };
+    var blocked = R.recipeBlocker(s, data, fac, fn, fn.options && fn.options.length ? fn.options[clampInt(optionIdx, 0)] || null : null);
+    if (blocked) return { ok: false, message: blocked };
     var chosen = null;
     var optionLabel = null;
     if (fn.options && fn.options.length) {
@@ -1096,13 +1221,19 @@
     }
     var notes = '';
     if (facId === 'library_scriptorium' && fnId === 'research') notes = data.bastion.scriptureNotes[String(optionLabel || '').trim()] || '';
+    var inputs = chosen && Array.isArray(chosen.inputs) ? chosen.inputs : [];
     var costGP = R.withSummitDiscount(s, fac, fn, R.computeFnCost(s, fac, fn, chosen).costGP);
     if (costGP > s.treasuryGP) return { ok: false, message: 'Not enough gp. Need ' + costGP + 'gp, you have ' + s.treasuryGP + 'gp.' };
     s.treasuryGP -= costGP;
+    /* Its goods leave the Warehouse now and are held by the order (Harry's
+       guide: an order's inputs are set aside when it begins). */
+    var taken = inputs.length ? (R.takeGoods(s, data, inputs) || []) : [];
     var label = orderLabel(fac, fn, optionLabel);
-    var days = R.orderDaysAt(s, data, fac, fn);
-    s.pendingOrders.push({ id: R.uid(rand), facId: facId, fnId: fnId, chosen: chosen, optionLabel: optionLabel, notes: notes, label: label, costGP: costGP, issuedDay: s.day, dueDay: s.day + days });
-    return { ok: true, log: ['Order Issued', label + ' (' + days + (days === 1 ? ' day' : ' days') + ': due Day ' + (s.day + days) + ').'] };
+    var days = R.orderDaysAt(s, data, fac, fn, chosen);
+    var o = { id: R.uid(rand), facId: facId, fnId: fnId, chosen: chosen, optionLabel: optionLabel, notes: notes, label: label, costGP: costGP, issuedDay: s.day, dueDay: s.day + days };
+    if (taken.length) o.inputs = taken;
+    s.pendingOrders.push(o);
+    return { ok: true, log: ['Order Issued', label + ' (' + days + (days === 1 ? ' day' : ' days') + ': due Day ' + (s.day + days) + ')' + (taken.length ? '. Taken from the Warehouse: ' + R.goodsListText(data, taken) : '') + '.'] };
   };
 
   /* Issue a Hall action after its planning box (3346-3417). */
@@ -1152,6 +1283,10 @@
     var gone = s.pendingOrders.filter(function (x) { return String(x.id) === String(id); })[0];
     s.pendingOrders = s.pendingOrders.filter(function (x) { return String(x.id) !== String(id); });
     var war = gone && R.undoWarDeclaration ? R.undoWarDeclaration(s, data, gone, now) : null;
+    /* Goods it held go back to the Warehouse (only an order actually found and
+       removed here, so a second Cancel gives nothing back). */
+    var back = gone && arr(gone.inputs) && gone.inputs.length ? R.returnGoods(s, data, gone.inputs) : '';
+    if (back) return ['Orders', 'Cancelled ' + (gone.label || 'an order') + '. ' + back];
     return war || ['Orders', 'Cancelled an order.'];
   };
 
@@ -1181,6 +1316,7 @@
     var q = clampInt(qty === undefined ? 1 : qty, 1);
     var found = null;
     for (var i = 0; i < s.warehouse.length; i++) {
+      if (s.warehouse[i].goodId) continue; /* a goods row only takes its own good (R.addGoods) */
       if (String(s.warehouse[i].item || '').toLowerCase() === name.toLowerCase()) { found = s.warehouse[i]; break; }
     }
     if (found) {
@@ -1203,6 +1339,192 @@
       notes: String(fields.notes || '').trim()
     };
   };
+  /* ---------- Goods (the facilities overhaul's pull request 3, 13 October 2026) ----------
+     The goods catalogue (data/goods-data.js) gives each good a stable id.
+     In the Warehouse a good is a row with a "goodId" (its count in its own
+     unit: lots, portions or packs), beside the free rows typed by hand:
+     { id, goodId, item (the catalogue name), qty, gp: '', notes }. Its value
+     is worked out, never stored. A production order's inputs leave the
+     Warehouse when it begins and are held on the order (order.inputs:
+     [{ goodId, name, qty }]); Cancel, Demolish, or an order that can't
+     complete, give them back. Nothing here needs the catalogue to load a
+     save (the Explorer checks a campaign file with no Bastion data). */
+  function goodsList(data) { return data && isObj(data.goods) && arr(data.goods.goods) ? data.goods.goods : []; }
+  R.goodsList = goodsList;
+  R.good = function (data, id) { return goodsList(data).filter(function (g) { return g.id === id; })[0] || null; };
+  R.goodName = function (data, id) { var g = R.good(data, id); return g ? g.name : String(id || '').replace(/_/g, ' '); };
+  /* "1 lot of Raw Timber", "10 portions of Restorative Herbs", "5 Expedition Provision Packs". */
+  R.goodsAmountText = function (data, id, qty) {
+    var g = R.good(data, id);
+    var n = clampInt(qty, 0);
+    var name = g ? g.name : R.goodName(data, id);
+    if (g && g.kind === 'supply') return n + ' ' + name + (n === 1 ? '' : 's');
+    return R.goodsCountText(data, id, n) + ' of ' + name;
+  };
+  /* Just the count in the good's unit: "3 lots", "10 portions", "5 packs". */
+  R.goodsCountText = function (data, id, qty) {
+    var g = R.good(data, id);
+    var n = clampInt(qty, 0);
+    var unit = g && g.kind === 'ingredient' ? 'portion' : g && g.kind === 'supply' ? 'pack' : 'lot';
+    return n + ' ' + unit + (n === 1 ? '' : 's');
+  };
+  R.goodsListText = function (data, list) {
+    return (list || []).map(function (x) { return R.goodsAmountText(data, x.goodId || x.good, x.qty); }).join(', ');
+  };
+  /* A good's value in the Warehouse (base value per lot × lots), or null if it has none. */
+  R.goodsValue = function (data, id, qty) {
+    var g = R.good(data, id);
+    return g && typeof g.gp === 'number' ? g.gp * clampInt(qty, 0) : null;
+  };
+  R.goodsQty = function (s, id) {
+    return (s.warehouse || []).reduce(function (n, w) { return n + (isObj(w) && w.goodId === id ? clampInt(w.qty, 0) : 0); }, 0);
+  };
+  /* Add goods: merged into that good's row (by id, never by name), or a new row. */
+  R.addGoods = function (s, data, id, qty, notes, rand) {
+    var q = clampInt(qty, 0);
+    if (!id || !q) return;
+    var row = (s.warehouse || []).filter(function (w) { return isObj(w) && w.goodId === id; })[0];
+    if (row) {
+      row.qty = clampInt(row.qty, 0) + q;
+      if (notes && String(row.notes || '').indexOf(notes) === -1) row.notes = (row.notes ? row.notes + ' | ' : '') + notes;
+      return;
+    }
+    s.warehouse.push({ id: R.uid(rand || Math.random), goodId: id, item: R.goodName(data, id), qty: q, gp: '', notes: notes || '' });
+  };
+  /* The first good an order lacks: { good, need, have, message }, or null. */
+  /* An order's inputs with each good once (so a recipe naming a good twice
+     can't pass the check for each line alone). */
+  function mergeInputs(inputs) {
+    var out = [];
+    (inputs || []).forEach(function (x) {
+      if (!isObj(x) || !x.good) return;
+      var have = out.filter(function (y) { return y.good === x.good; })[0];
+      if (have) have.qty += clampInt(x.qty, 1); else out.push({ good: x.good, qty: clampInt(x.qty, 1) });
+    });
+    return out;
+  }
+  R.inputsShort = function (s, data, inputs) {
+    inputs = mergeInputs(inputs);
+    for (var i = 0; i < inputs.length; i++) {
+      var x = inputs[i];
+      if (!isObj(x) || !x.good) continue;
+      var need = clampInt(x.qty, 1);
+      var have = R.goodsQty(s, x.good);
+      if (have < need) return { good: x.good, need: need, have: have, message: 'Needs ' + R.goodsAmountText(data, x.good, need) + ' in the Warehouse; it has ' + R.goodsCountText(data, x.good, have) + '.' };
+    }
+    return null;
+  };
+  /* Take an order's inputs out of the Warehouse, all or nothing: what was
+     taken, or null if anything is short. Emptied goods rows go. */
+  R.takeGoods = function (s, data, inputs) {
+    inputs = mergeInputs(inputs);
+    if (R.inputsShort(s, data, inputs)) return null;
+    var taken = [];
+    (inputs || []).forEach(function (x) {
+      if (!isObj(x) || !x.good) return;
+      var left = clampInt(x.qty, 1);
+      s.warehouse.forEach(function (w) {
+        if (!left || !isObj(w) || w.goodId !== x.good) return;
+        var have = clampInt(w.qty, 0);
+        var use = Math.min(have, left);
+        w.qty = have - use;
+        left -= use;
+      });
+      taken.push({ goodId: x.good, name: R.goodName(data, x.good), qty: clampInt(x.qty, 1) });
+    });
+    s.warehouse = s.warehouse.filter(function (w) { return !(isObj(w) && w.goodId && clampInt(w.qty, 0) === 0); });
+    return taken;
+  };
+  /* Give held goods back to the Warehouse; says what went back. */
+  R.returnGoods = function (s, data, held) {
+    var list = (held || []).filter(function (x) { return isObj(x) && x.goodId && clampInt(x.qty, 0) > 0; });
+    list.forEach(function (x) { R.addGoods(s, data, x.goodId, x.qty, 'Returned'); });
+    return list.length ? R.goodsListText(data, list) + ' went back to the Warehouse.' : '';
+  };
+  /* An order whose facility or order no longer exists: nothing is made,
+     and the goods it held go back. */
+  R.dropOrderGoods = function (s, data, order) {
+    var back = order && arr(order.inputs) && order.inputs.length ? R.returnGoods(s, data, order.inputs) : '';
+    return back ? [['Orders', (order.label || 'An order') + ' couldn\'t be completed (its facility or order no longer exists). ' + back]] : null;
+  };
+  /* How many of a good an order makes, with research: the biggest yield
+     (a percentage, rounded up, or a number added), then any bonus on top. */
+  R.goodsOutputQty = function (s, data, fac, fn, goodId, qty) {
+    var base = clampInt(qty, 0);
+    var effects = R.researchEffects(s, data, fac.id).filter(function (e) { return e.fn === fn.id && (e.keys || []).indexOf(goodId) !== -1; });
+    var best = 0;
+    var bonus = 0;
+    effects.forEach(function (e) {
+      if (e.type === 'yield') best = Math.max(best, e.pct ? Math.ceil(base * clampInt(e.pct, 0, 1000) / 100) : clampInt(e.add || 0, 0, 1000));
+      if (e.type === 'bonus') bonus += clampInt(e.add || 0, 0, 1000);
+    });
+    return base + best + bonus;
+  };
+  /* A production order completing: its outputs into the Warehouse. */
+  R.completeProduction = function (s, data, fac, fn, order, rand) {
+    /* Work out everything first, then add it, so nothing is half done. */
+    var plan = (order.chosen.outputs || []).filter(isObj).map(function (x) {
+      if (x.good) return { good: x.good, qty: R.goodsOutputQty(s, data, fac, fn, x.good, x.qty) };
+      if (x.item) return { item: String(x.item), qty: clampInt(x.qty, 1) };
+      return null;
+    }).filter(Boolean);
+    var made = plan.map(function (x) {
+      if (x.good) { R.addGoods(s, data, x.good, x.qty, fac.name, rand); return R.goodsAmountText(data, x.good, x.qty); }
+      R.appendToWarehouse(s, x.item, x.qty, '', fac.name, rand);
+      return x.qty + ' × ' + x.item;
+    });
+    return ['Order Completed', (order.label || fac.name + ': ' + fn.label) + ' → Added to Warehouse: ' + made.join(', ') + '.'];
+  };
+  /* A goods row as typed: only its count and notes can change by hand. */
+  R.readGoodsRow = function (fields) {
+    return { qty: clampInt(fields.qty === undefined ? 0 : fields.qty, 0, 100000), notes: String(fields.notes || '').trim() };
+  };
+  /* The Warehouse as saved: free rows exactly as they were; goods rows tidied
+     (a whole count, the catalogue's name when it's known, no typed gp). */
+  R.cleanWarehouse = function (list, data) {
+    return (list || []).filter(isObj).map(function (w) {
+      if (typeof w.goodId !== 'string' || !w.goodId) return w;
+      var g = R.good(data, w.goodId);
+      return { id: w.id || R.uid(Math.random), goodId: w.goodId, item: g ? g.name : String(w.item || w.goodId), qty: clampInt(w.qty, 0, 100000), gp: '', notes: String(w.notes || '') };
+    });
+  };
+  /* An order's held goods, as saved: well-formed entries only. */
+  function cleanOrderInputs(o) {
+    /* An order with no id would be removed with every other such order. */
+    if (o.id === undefined || o.id === null || o.id === '') o = Object.assign({}, o, { id: R.uid(Math.random) });
+    if (!('inputs' in o)) return o;
+    var list = arr(o.inputs) ? o.inputs.filter(function (x) { return isObj(x) && typeof x.goodId === 'string' && x.goodId && clampInt(x.qty, 0) > 0; })
+      .map(function (x) { return { goodId: x.goodId, name: String(x.name || x.goodId), qty: clampInt(x.qty, 1) }; }) : [];
+    var c = Object.assign({}, o);
+    if (list.length) c.inputs = list; else delete c.inputs;
+    return c;
+  }
+  /* A facility that makes goods one order at a time (the Timber Yard and the
+     Fishery: "productionLimit"): the message if it's busy, or null. */
+  function productionBusy(s, data, fac, fn) {
+    var limit = fac.productionLimit ? clampInt(fac.productionLimit, 1, 20) : 0;
+    if (!limit || !fn.production) return null;
+    var running = (s.pendingOrders || []).filter(function (o) {
+      if (!isObj(o) || o.facId !== fac.id) return false;
+      if (isObj(o.meta) && (o.meta.kind === 'upgrade' || o.meta.kind === 'research')) return false;
+      var f = R.fn(fac, o.fnId);
+      return !!(f && f.production);
+    });
+    if (running.length < limit) return null;
+    return 'The ' + fac.name + ' is busy: one production order at a time (' + (running[0].label || 'an order') + ', due on Day ' + running[0].dueDay + ').';
+  }
+  R.productionBusy = productionBusy;
+  /* Why a production recipe can't be ordered now (a valid choice, its
+     research, its goods in the Warehouse), or null. */
+  R.recipeBlocker = function (s, data, fac, fn, chosen) {
+    if (!fn || !fn.production) return null;
+    if (!(chosen && Array.isArray(chosen.outputs))) return 'Choose what to make.';
+    /* A recipe that needs research (Harry, 13 October 2026). */
+    if (chosen.needsResearch && !R.researched(s, fac.id, chosen.needsResearch)) return 'Needs the research ' + R.researchChoiceName(data, fac.id, chosen.needsResearch) + '.';
+    var short = R.inputsShort(s, data, chosen.inputs || []);
+    return short ? short.message : null;
+  };
+
   R.addFavourPercent = function (s, god, amount) {
     var g = String(god || '').toLowerCase();
     if (['telluria', 'aurush', 'pelagos'].indexOf(g) === -1) return;
@@ -1489,11 +1811,14 @@
      nothing happens then). */
   R.completeSimpleOrder = function (s, data, order, rand) {
     var fac = R.facility(data, order.facId);
-    if (!fac) return null;
+    if (!fac) return R.dropOrderGoods(s, data, order, rand);
     if (isObj(order.meta) && order.meta.kind === 'upgrade') return [R.completeUpgrade(s, data, order)];
     if (isObj(order.meta) && order.meta.kind === 'research') return [R.completeResearch(s, data, order)];
     var fn = R.fn(fac, order.fnId);
-    if (!fn) return null;
+    if (!fn) return R.dropOrderGoods(s, data, order, rand);
+    /* A production order (pull request 3): its outputs go into the
+       Warehouse; its inputs were used up when it began. */
+    if (order.chosen && Array.isArray(order.chosen.outputs)) return [R.completeProduction(s, data, fac, fn, order, rand)];
     var label = order.label || (fac.name + ': ' + fn.label);
     var optionLabel = order.optionLabel || null;
     var chosen = order.chosen || null;
@@ -2156,7 +2481,7 @@
     mv(s, 'lastEventDay');
     if (isObj(s.defenders)) mv(s.defenders, 'patrolUntil');
     (s.pendingOrders || []).forEach(function (o) { mv(o, 'issuedDay'); mv(o, 'dueDay'); if (o.meta && isObj(o.meta.declared)) mv(o.meta.declared, 'day'); });
-    (s.builtExtras || []).forEach(function (e) { if (isObj(e)) { mv(e, 'startDay'); mv(e, 'readyDay'); } });
+    (s.builtExtras || []).concat(s.builtPlots || []).forEach(function (e) { if (isObj(e)) { mv(e, 'startDay'); mv(e, 'readyDay'); } });
     RECORDS.forEach(function (list) {
       (s.diplomacy[list] || []).forEach(function (x) { mv(x, 'startDay'); mv(x, 'endDay'); mv(x, 'lastShipmentDay'); });
     });
@@ -2188,7 +2513,8 @@
       if (!isObj(o)) return;
       out.push({ kind: 'order', id: o.id, label: o.label || 'Order', day: dayNum(o.dueDay, s.day), due: R.isDue(s, o), repair: R.underRepair(s, o.facId) });
     });
-    extras(s).forEach(function (e) {
+    R.normalizeBuiltExtras(s);
+    allEntries(s).forEach(function (e) {
       if (e.status !== 'building') return;
       var fac = R.facility(data, e.facId);
       out.push({ kind: 'build', id: e.facId, label: (fac ? fac.name : e.facId), day: dayNum(e.readyDay, s.day), due: false, repair: 0 });
@@ -2210,6 +2536,7 @@
     facilities.forEach(function (fac) {
       var facName = fac.name || fac.id || 'Unknown Facility';
       (fac.functions || []).forEach(function (fn) {
+        if (fn.production) return; /* goods and recipes aren't Compendium items */
         var fnLabel = fn.label || fn.id || '';
         (Array.isArray(fn.options) ? fn.options : []).forEach(function (o) {
           if (o && typeof o === 'object' && 'label' in o) add(o.label, facName, fnLabel);
