@@ -5,7 +5,10 @@
    before anything is replaced.
    The Explorer and the Bastion save as one campaign (Harry, 8 October
    2026): Export in either downloads one campaign file holding both, and
-   Import in either replaces both from it, after checking both halves. */
+   Import in either replaces both from it, after checking both halves.
+   A campaign Import, and Restore, are refused while the Explorer or the
+   Bastion is open in another window, which would save over them (its lock,
+   shared/js/toollock.js, or its "Already open" heartbeat says so). */
 (function () {
   'use strict';
 
@@ -93,6 +96,22 @@
     else location.reload();
   }
 
+  /* The first of these campaign tools open in another window, or null. It
+     asks the browser's locks (shared/js/toollock.js), then the "Already
+     open" heartbeats for a browser without them. */
+  function openElsewhere(tools) {
+    var lock = TSI.toolLock;
+    return Promise.all(tools.map(function (t) {
+      var byLock = lock ? lock.heldElsewhere(t) : Promise.resolve(false);
+      return byLock.then(function (yes) {
+        return yes || !!(TSI.tabGuard && TSI.tabGuard.isOpenElsewhere(t));
+      });
+    })).then(function (open) {
+      for (var i = 0; i < tools.length; i++) if (open[i]) return tools[i];
+      return null;
+    });
+  }
+
   TSI.backup = {
     /* Download every saved item in the suite as one dated file. */
     backupEverything: function (options) {
@@ -112,37 +131,12 @@
         if (!backup) return false;
         var refusal = rules.checkForSuite(backup, nameOf);
         if (refusal) return TSI.modal.alert({ title: title, message: refusal + '\n\nNothing was changed.' }).then(function () { return false; });
-
-        var hasCurrent = TSI.store.keys().length > 0;
-        var body = summaryBody(
-          backup,
-          'This backup (' + backup.fileName + ') was saved on ' + TSI.dates.human(backup.savedAt) + '. It holds:',
-          hasCurrent
-            ? 'Restoring replaces everything the suite has saved in this browser with what\'s in the backup.'
-            : 'Nothing is saved in the suite yet, so nothing will be lost.',
-          hasCurrent ? 'First, download a backup of what\'s saved now' : null
-        );
-        return TSI.modal.open({
-          title: title,
-          body: body.nodes,
-          escValue: false,
-          actions: [
-            { label: 'Cancel', value: false },
-            { label: 'Restore', value: true, primary: true }
-          ]
-        }).then(function (go) {
-          if (!go) return false;
-          var first = body.box && body.box.checked ? TSI.backup.backupEverything({ quiet: true }) : Promise.resolve();
-          return first.then(function () {
-            return TSI.store.replace(backup.records, { all: true });
-          }).then(function (ok) {
-            if (!ok) {
-              return TSI.modal.alert({ title: title, message: 'The browser refused to save the restored data. ' + TSI.store.status().reason + '\n\nWhat you had before may be partly replaced. If you downloaded a backup first, you can restore that.' }).then(function () { return false; });
-            }
-            flash('Restored the backup saved on ' + TSI.dates.human(backup.savedAt) + '.');
-            reload();
-            return true;
-          });
+        /* An open Explorer or Bastion would save over what's restored. */
+        return openElsewhere(rules.CAMPAIGN).then(function (open) {
+          if (open) {
+            return TSI.modal.alert({ title: title, message: TSI.the(nameOf(open) || open, true) + ' is open in another window. Close it first: restoring replaces everything the suite has saved, and an open tool would save over it. Nothing was changed.' }).then(function () { return false; });
+          }
+          return confirmRestore(title, backup);
         });
       });
     },
@@ -174,58 +168,11 @@
         if (!backup) return false;
         var refusal = rules.checkForTool(backup, toolId, nameOf);
         var campaign = !refusal && backup.kind === 'campaign';
-        /* The tools this file replaces: both campaign tools for a campaign
-           file, otherwise just this one (an Explorer file from before the
-           campaign save leaves the Bastion as it is). */
-        var scopeTools = campaign ? rules.CAMPAIGN.slice() : [toolId];
-        if (campaign) {
-          /* The other tool open in another window would save over what's imported. */
-          var open = rules.CAMPAIGN.filter(function (t) { return t !== toolId && TSI.tabGuard && TSI.tabGuard.isOpenElsewhere(t); })[0];
+        /* The other campaign tool, open in another window, would save over what's imported. */
+        var others = campaign ? rules.CAMPAIGN.filter(function (t) { return t !== toolId; }) : [];
+        return openElsewhere(others).then(function (open) {
           if (open) refusal = TSI.the(nameOf(open) || open, true) + ' is open in another window. Close it first: a campaign file replaces the Explorer and the Bastion together. Nothing was changed. (If you\'ve only just closed it, wait a minute and try again.)';
-        }
-        for (var i = 0; !refusal && i < scopeTools.length; i++) {
-          var t = scopeTools[i];
-          refusal = checkRecords(t, backup.records.filter(function (r) { return TSI.storeRules.toolOf(r.key) === t; }));
-        }
-        if (refusal) return TSI.modal.alert({ title: title, message: refusal }).then(function () { return false; });
-
-        var hasCurrent = scopeTools.some(function (t) { return TSI.store.keys(t).length > 0; });
-        var others = rules.inCampaign(toolId) && !campaign ? rules.CAMPAIGN.filter(function (t) { return t !== toolId; }).map(function (t) { return TSI.the(nameOf(t) || t); }).join(' and ') : '';
-        var body = summaryBody(
-          backup,
-          'This file (' + backup.fileName + ') was exported on ' + TSI.dates.human(backup.savedAt) + '. It holds:',
-          campaign
-            ? (hasCurrent ? 'Importing replaces what the Explorer and the Bastion have saved now, together (anything the file doesn\'t hold is cleared). The rest of the suite isn\'t touched.' : 'Neither the Explorer nor the Bastion has anything saved yet, so nothing will be lost.')
-            : hasCurrent
-              ? 'Importing replaces what ' + TSI.the(toolName) + ' has saved now. ' + (others ? others.charAt(0).toUpperCase() + others.slice(1) + ' is left as it is.' : 'The rest of the suite isn\'t touched.')
-              : TSI.the(toolName, true) + ' has nothing saved yet, so nothing will be lost.',
-          hasCurrent ? (campaign || others ? 'First, download a copy of the campaign as it is now' : 'First, download a copy of ' + TSI.the(toolName) + '\'s current data') : null
-        );
-        return TSI.modal.open({
-          title: title,
-          body: body.nodes,
-          escValue: false,
-          actions: [
-            { label: 'Cancel', value: false },
-            { label: 'Import', value: true, primary: true }
-          ]
-        }).then(function (go) {
-          if (!go) return false;
-          var stop = TSI.shell && TSI.shell.stopTool ? TSI.shell.stopTool() : Promise.resolve();
-          /* Stop the tool first (it saves as it closes), then take the copy, then replace. */
-          return stop.then(function () {
-            return body.box && body.box.checked ? TSI.backup.exportTool(toolId, { quiet: true }) : null;
-          }).then(function () {
-            return TSI.store.replace(backup.records, campaign ? { tools: scopeTools } : { tool: toolId });
-          }).then(function (ok) {
-            if (!ok) {
-              flash('The import couldn\'t be saved. ' + TSI.store.status().reason, 'error');
-            } else {
-              flash('Imported the file exported on ' + TSI.dates.human(backup.savedAt) + '.');
-            }
-            reload();
-            return ok;
-          });
+          return confirmImport(toolId, toolName, title, backup, refusal, campaign);
         });
       });
     },
@@ -233,4 +180,93 @@
     /* For tests and the shell: turn a suite or tool backup into its summary. */
     describe: function (backup) { return rules.summarise(backup, nameOf); }
   };
+
+  /* Restore: show what's in the backup, ask, then replace everything. */
+  function confirmRestore(title, backup) {
+    var hasCurrent = TSI.store.keys().length > 0;
+    var body = summaryBody(
+      backup,
+      'This backup (' + backup.fileName + ') was saved on ' + TSI.dates.human(backup.savedAt) + '. It holds:',
+      hasCurrent
+        ? 'Restoring replaces everything the suite has saved in this browser with what\'s in the backup.'
+        : 'Nothing is saved in the suite yet, so nothing will be lost.',
+      hasCurrent ? 'First, download a backup of what\'s saved now' : null
+    );
+    return TSI.modal.open({
+      title: title,
+      body: body.nodes,
+      escValue: false,
+      actions: [
+        { label: 'Cancel', value: false },
+        { label: 'Restore', value: true, primary: true }
+      ]
+    }).then(function (go) {
+      if (!go) return false;
+      var first = body.box && body.box.checked ? TSI.backup.backupEverything({ quiet: true }) : Promise.resolve();
+      return first.then(function () {
+        return TSI.store.replace(backup.records, { all: true });
+      }).then(function (ok) {
+        if (!ok) {
+          return TSI.modal.alert({ title: title, message: 'The browser refused to save the restored data. ' + TSI.store.status().reason + '\n\nWhat you had before may be partly replaced. If you downloaded a backup first, you can restore that.' }).then(function () { return false; });
+        }
+        flash('Restored the backup saved on ' + TSI.dates.human(backup.savedAt) + '.');
+        reload();
+        return true;
+      });
+    });
+  }
+
+  /* Import: check each tool's half, show what's in the file, ask, then
+     replace. refusal is a reason found already (the wrong kind of file, or
+     the other campaign tool open in another window), or null. */
+  function confirmImport(toolId, toolName, title, backup, refusal, campaign) {
+    /* The tools this file replaces: both campaign tools for a campaign
+       file, otherwise just this one (an Explorer file from before the
+       campaign save leaves the Bastion as it is). */
+    var scopeTools = campaign ? rules.CAMPAIGN.slice() : [toolId];
+    for (var i = 0; !refusal && i < scopeTools.length; i++) {
+      var t = scopeTools[i];
+      refusal = checkRecords(t, backup.records.filter(function (r) { return TSI.storeRules.toolOf(r.key) === t; }));
+    }
+    if (refusal) return TSI.modal.alert({ title: title, message: refusal }).then(function () { return false; });
+
+    var hasCurrent = scopeTools.some(function (t) { return TSI.store.keys(t).length > 0; });
+    var others = rules.inCampaign(toolId) && !campaign ? rules.CAMPAIGN.filter(function (t) { return t !== toolId; }).map(function (t) { return TSI.the(nameOf(t) || t); }).join(' and ') : '';
+    var body = summaryBody(
+      backup,
+      'This file (' + backup.fileName + ') was exported on ' + TSI.dates.human(backup.savedAt) + '. It holds:',
+      campaign
+        ? (hasCurrent ? 'Importing replaces what the Explorer and the Bastion have saved now, together (anything the file doesn\'t hold is cleared). The rest of the suite isn\'t touched.' : 'Neither the Explorer nor the Bastion has anything saved yet, so nothing will be lost.')
+        : hasCurrent
+          ? 'Importing replaces what ' + TSI.the(toolName) + ' has saved now. ' + (others ? others.charAt(0).toUpperCase() + others.slice(1) + ' is left as it is.' : 'The rest of the suite isn\'t touched.')
+          : TSI.the(toolName, true) + ' has nothing saved yet, so nothing will be lost.',
+      hasCurrent ? (campaign || others ? 'First, download a copy of the campaign as it is now' : 'First, download a copy of ' + TSI.the(toolName) + '\'s current data') : null
+    );
+    return TSI.modal.open({
+      title: title,
+      body: body.nodes,
+      escValue: false,
+      actions: [
+        { label: 'Cancel', value: false },
+        { label: 'Import', value: true, primary: true }
+      ]
+    }).then(function (go) {
+      if (!go) return false;
+      var stop = TSI.shell && TSI.shell.stopTool ? TSI.shell.stopTool() : Promise.resolve();
+      /* Stop the tool first (it saves as it closes), then take the copy, then replace. */
+      return stop.then(function () {
+        return body.box && body.box.checked ? TSI.backup.exportTool(toolId, { quiet: true }) : null;
+      }).then(function () {
+        return TSI.store.replace(backup.records, campaign ? { tools: scopeTools } : { tool: toolId });
+      }).then(function (ok) {
+        if (!ok) {
+          flash('The import couldn\'t be saved. ' + TSI.store.status().reason, 'error');
+        } else {
+          flash('Imported the file exported on ' + TSI.dates.human(backup.savedAt) + '.');
+        }
+        reload();
+        return ok;
+      });
+    });
+  }
 }());

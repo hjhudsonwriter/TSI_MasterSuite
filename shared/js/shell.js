@@ -22,7 +22,14 @@
    and does nothing for an id that isn't a built tool. The new window is
    opened with "noopener", so it starts with its own sessionStorage and gets
    its own tab id from the "Already open" warning (tabguard.js); two different
-   tools in two windows don't warn, but the same tool twice still does. */
+   tools in two windows don't warn, but the same tool twice still does.
+
+   One window per campaign tool (pull request 4 of the facilities overhaul,
+   13 October 2026): a tool listed with single: true (the Explorer and the
+   Bastion, which send each other changes) runs in one window only. A
+   second window shows a panel instead, runs none of the tool's code, and
+   opens the tool by itself once the first window closes it
+   (shared/js/toollock.js). */
 (function () {
   'use strict';
 
@@ -535,6 +542,37 @@
     if (window.console) console.error('[TSI] ' + info.name + ' failed to open:', err);
   }
 
+  /* A second window of a one-window tool: say where it is, and wait. */
+  function showWaiting(main, info) {
+    TSI.clear(main);
+    main.appendChild(TSI.el('div', { class: 'tsi-shell-message tsi-panel', 'data-test': 'tool-waiting' }, [
+      TSI.el('div', { class: 'tsi-panel__head' }, TSI.el('h2', { class: 'tsi-panel__title', text: TSI.the(info.name, true) + ' is open in another window' })),
+      TSI.el('div', { class: 'tsi-panel__body' }, [
+        TSI.el('p', { text: 'It may be on the TV. It runs in one window at a time, so two copies can never save over each other or count a change from ' + (info.id === 'bastion' ? 'the Explorer' : 'the Bastion') + ' twice.' }),
+        TSI.el('p', { 'data-test': 'tool-waiting-note', text: 'Close it in the other window and it opens here by itself.' }),
+        TSI.el('div', { class: 'tsi-shell-message__actions' }, [
+          TSI.el('button', { type: 'button', class: 'tsi-btn', 'data-test': 'tool-waiting-home', onclick: function () { go(null); } }, 'Back to the home screen')
+        ])
+      ])
+    ]));
+  }
+
+  /* For a one-window tool, take its lock before any of its code runs.
+     Resolves true to open the tool here, false if another window has it. */
+  function takeLock(info, main) {
+    if (!info.single || !TSI.toolLock) return Promise.resolve(true);
+    return TSI.toolLock.hold(info.id).then(function (got) {
+      if (got !== 'busy') return true;
+      showWaiting(main, info);
+      if (TSI.tabGuard && TSI.tabGuard.markWaiting) TSI.tabGuard.markWaiting();
+      TSI.toolLock.waitThenReload(info.id, function () {
+        var line = main.querySelector('[data-test="tool-waiting-note"]');
+        if (line) line.textContent = 'It\'s closed there. Opening it here…';
+      });
+      return false;
+    });
+  }
+
   function openTool(info, main) {
     document.body.classList.add('tsi-page--tool', 'tsi-page--' + info.id);
     if (info.art) {
@@ -551,9 +589,13 @@
     var loading = TSI.el('p', { class: 'tsi-shell-loading', text: 'Opening ' + TSI.the(info.name) + '…' });
     main.appendChild(loading);
 
+    var waitingHere = false;
     return TSI.loadFiles(info.files).then(function () {
       return TSI.store.ready;
     }).then(function () {
+      return takeLock(info, main);
+    }).then(function (mine) {
+      if (!mine) { waitingHere = true; return null; }
       var def = TSI.tools[info.id];
       if (!def) throw new Error(TSI.the(info.name, true) + '\'s files loaded, but the tool didn\'t register itself.');
       var life = TSI.createLife(info.name);
@@ -563,11 +605,16 @@
       return def.start(ctx);
     }).then(function () {
       main.removeAttribute('aria-busy');
+      if (waitingHere) setTitle('Waiting · ' + info.name + ' · The Scarlett Isles');
     }).catch(function (err) {
       main.removeAttribute('aria-busy');
       if (current) {
         try { current.life.stop(); } catch (e) { /* ignore */ }
       }
+      /* A tool that couldn't open lets another window have it. (Otherwise
+         the lock is kept until this page closes, so a window waiting can't
+         open the tool while an Import is still replacing its save.) */
+      if (TSI.toolLock) TSI.toolLock.release();
       showToolError(main, info, err);
     });
   }

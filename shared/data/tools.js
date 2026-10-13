@@ -2,7 +2,8 @@
    This is content, so it lives in a data file. When a tool is rebuilt in its
    phase, set built: true and list the files the shell must load for it
    (paths relative to the suite's top folder). art (optional) is a painted
-   picture shown behind the tool, as on the home screen.
+   picture shown behind the tool, as on the home screen. single: true keeps
+   the tool to one window at a time (shared/js/toollock.js).
 
    Card descriptions: the four the old hub page had are copied word for word
    (scarlett-isles-dnd/index.html). The others use each tool's own wording. */
@@ -74,6 +75,8 @@ window.TSI_DATA.tools = [
     phase: '9',
     built: true,
     saves: true,
+    /* One window at a time (shared/js/toollock.js): it applies the Explorer's changes. */
+    single: true,
     desc: 'Manage facilities, orders, events, treasury and staff for your bastion, day by day with the Explorer.',
     files: {
       css: ['tools/bastion/bastion.css', 'tools/bastion/war-table.css'],
@@ -107,6 +110,8 @@ window.TSI_DATA.tools = [
     phase: '8',
     built: true,
     saves: true,
+    /* One window at a time (shared/js/toollock.js): it sends changes to the Bastion. */
+    single: true,
     desc: 'Explore the Isles. Maps, regions, and the world’s moving parts.',
     /* The painted hero art behind the Explorer, as in the old tool. */
     art: 'shared/art/hero.png',

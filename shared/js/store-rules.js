@@ -44,12 +44,16 @@
          Tracker, and its result passed back (TSI.handoff)
        - handoffCrest: a crest sent from the Clan Crest Creator to the
          Bastion (TSI.handoff)
+       - lock: the start of the browser's lock names that keep the Explorer
+         and the Bastion to one window each (shared/js/toollock.js). Every
+         page opened from a file shares one set of locks, so the test page
+         needs its own names
        - file: the start of backup file names */
     spaceNames: function (space) {
       if (space === 'test') {
-        return { space: 'test', db: 'tsi.test', local: 'tsi.test:', tabs: 'tsi.test:tabs', tabId: 'tsi.test:tab-id', flash: 'tsi.test:flash', dmdocOpen: 'tsi.test:dmdoc-open', handoff: 'tsi.test:handoff', handback: 'tsi.test:handback', handoffCrest: 'tsi.test:handoff-crest', file: 'tsi-test-' };
+        return { space: 'test', db: 'tsi.test', local: 'tsi.test:', tabs: 'tsi.test:tabs', tabId: 'tsi.test:tab-id', flash: 'tsi.test:flash', dmdocOpen: 'tsi.test:dmdoc-open', handoff: 'tsi.test:handoff', handback: 'tsi.test:handback', handoffCrest: 'tsi.test:handoff-crest', lock: 'tsi.test:lock.', file: 'tsi-test-' };
       }
-      return { space: 'suite', db: 'tsi.suite', local: '', tabs: 'tsi.suite.tabs', tabId: 'tsi.suite.tab-id', flash: 'tsi.suite.flash', dmdocOpen: 'tsi.suite.dmdoc-open', handoff: 'tsi.suite.handoff', handback: 'tsi.suite.handback', handoffCrest: 'tsi.suite.handoff-crest', file: 'tsi-' };
+      return { space: 'suite', db: 'tsi.suite', local: '', tabs: 'tsi.suite.tabs', tabId: 'tsi.suite.tab-id', flash: 'tsi.suite.flash', dmdocOpen: 'tsi.suite.dmdoc-open', handoff: 'tsi.suite.handoff', handback: 'tsi.suite.handback', handoffCrest: 'tsi.suite.handoff-crest', lock: 'tsi.suite.lock.', file: 'tsi-' };
     },
 
     /* The fallback-storage key for a save, and back again (null if it isn't one of this space's). */
