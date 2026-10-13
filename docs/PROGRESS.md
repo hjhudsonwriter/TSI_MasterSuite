@@ -8,6 +8,13 @@ Double-click `index.html` to open the suite. The plan is in `docs/PLAN.md`, the 
 
 ## Done
 
+### The facilities overhaul, pull request 2: research, with the Herbal Gardens tree (13 October 2026)
+From Harry's research rules and the Herbal Gardens document (BAS-74):
+- **Research** opens at a facility's Level 2, with one token per level from 2 to 5. There are four branches of three stages, and one of two choices at each stage. A stage takes 7, 14 or 21 days and the branch's gold. One project runs at a time, and Undo gives the token back.
+- **The Herbal Gardens tree** holds all 24 choices. The 9 that work with today's orders can be researched: faster harvests, bigger Rations and Antitoxin batches, and potions two at a time. The other 15 show as "Coming later", each with what it waits for.
+- **The Herbal Gardens' level orders** wait for the goods catalogue (PR 3), as Harry chose.
+- **Tests:** 834 rules checks; click-throughs for the Research box and panel, researching, finishing, Undo, and the shorter Harvest.
+
 ### The facilities overhaul, step 1b: Levels 1 to 5 (13 October 2026)
 After Harry's check of step 1a (all passed; there was no old save to import):
 - **Every facility has Levels 1 to 5** (BAS-73). Its panel shows "Level N of 5" and an **Upgrade** box first among its orders. An upgrade is an ordinary pending order: **7 / 14 / 21 / 28 days** to reach Level 2 / 3 / 4 / 5, **no gold** (D8), one at a time, not while Under Repair (D6). The Hall uses the same Upgrade; its bonus stays +6 at Levels 4 and 5 (D7). A level doesn't unlock anything new yet.
@@ -755,7 +762,7 @@ Harry asked for a complete rework: the old tool's shields, colours and sigils we
 ## Next
 **Harry tries Build 3**: makes a crest in the Crest Creator and sends it with Use for the Bastion (with the Bastion open in another window, and with it shut), uploads and removes one, founds a Clan, and sees the crest on the War Table. Then says what to change: the badge, the Party Identity panel's layout, or the Form Clan crest box. That completes the overhaul's plan.
 
-**Step 1b merged** (#21); Harry keeps the new upgrade times for the Hall too. **Next in the facilities overhaul (when Harry says go):** pull request 2, the research engine with one pilot tree, which needs the research model and the pilot tree approved first; then 3, the Warehouse lots and the first two industries, which needs the slots decision, the commodity list and prices. The order and decisions are in `docs/FACILITIES-OVERHAUL-PLAN.md` section 6.
+**Step 1b merged** (#21); Harry keeps the new upgrade times for the Hall too. **Harry tries research** (the checklist in pull request 2). **Next in the facilities overhaul (when Harry says go):** pull request 2, the research engine with one pilot tree, which needs the research model and the pilot tree approved first; then 3, the Warehouse lots and the first two industries, which needs the slots decision, the commodity list and prices. The order and decisions are in `docs/FACILITIES-OVERHAUL-PLAN.md` section 6.
 
 **The facilities build (earlier note, now superseded by the plan above):** Harry says which facilities are merged, which are removed and what the seven new ones do (Wyvern Roost, Griffin Tower, Dire Wolf Den, Weavers and Sailmakers Hall, Stone Quarry and Masonworks, Fishery and Smokehouse, Timber Yard and Sawmill). Then the new map art goes in with them: the painting is 3000 × 1250, so `MAP_RATIO` in `fitMap` (`tools/bastion/tool.js`) changes to match, and the screen is checked on the laptop and the TV. The notes for it are in `docs/BASTION-MAP-ART.md` §4.
 
