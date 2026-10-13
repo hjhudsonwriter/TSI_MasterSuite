@@ -41,6 +41,51 @@ window.TSI_DATA.bastion = {
     fishery_smokehouse: { pic: 'map/overlays/fishery_smokehouse.png', x: 11, y: 714, w: 349, h: 252 },
     timber_sawmill: { pic: 'map/overlays/timber_yard_sawmill.png', x: 1648, y: 827, w: 380, h: 188 }
   },
+  /* Development Plots (the facilities overhaul's pull request 3; Harry's
+     facility guide, 13 October 2026): a second kind of construction slot,
+     only for the six economic facilities marked "plot" in
+     facilities-data.js (Herbal Gardens, Fishery & Smokehouse, Timber Yard &
+     Sawmill, Stone Quarry & Masonworks, Weavers' Hall, Courier Exchange).
+     The other optional facilities keep the construction slots (0 / 2 / 4 /
+     5 / 6 by party level). Plots open by party level: "from" the level,
+     "plots" in all. The five starting facilities use neither. */
+  developmentPlots: [
+    { from: 1, plots: 0 },
+    { from: 9, plots: 2 },
+    { from: 13, plots: 4 },
+    { from: 17, plots: 6 }
+  ],
+  /* Where each facility's name and level label sits on the Bastion map,
+     while the facility grid is open (Harry, 13 October 2026), in pixels on
+     the 3000 x 1250 painting: the label's bottom centre. The fifteen
+     overlays' points are the top centres of their painted areas
+     (the placements.json files in bastion-new-art). The five starting facilities are
+     painted into the base: which building is which is our reading of the
+     painting (the round tower is the Watchtower, the timber-framed hall
+     beside it the Barracks, the open-sided shed the Workshop, the forge the
+     Armoury, the jetty the Dock); move any of them here. */
+  mapLabels: {
+    watchtower: { x: 1760, y: 112 },
+    barracks: { x: 1530, y: 250 },
+    workshop: { x: 1030, y: 350 },
+    armoury: { x: 2240, y: 470 },
+    dock: { x: 1260, y: 760 },
+    library_scriptorium: { x: 216, y: 261 },
+    arcane_laboratory: { x: 633, y: 264 },
+    herbal_gardens: { x: 228, y: 511 },
+    war_room: { x: 1780, y: 585 },
+    hall_of_emissaries: { x: 2769, y: 376 },
+    shrine_aurush: { x: 1275, y: 532 },
+    shrine_telluria: { x: 2252, y: 722 },
+    shrine_pelagos: { x: 2668, y: 840 },
+    wyvern_roost: { x: 2081, y: 326 },
+    griffin_tower: { x: 1279, y: 306 },
+    dire_wolf_den: { x: 2460, y: 701 },
+    weavers_hall: { x: 2838, y: 690 },
+    stone_masonworks: { x: 2194, y: 829 },
+    fishery_smokehouse: { x: 185, y: 734 },
+    timber_sawmill: { x: 1838, y: 847 }
+  },
   /* Facility levels (the facilities overhaul's step 1b, 13 October 2026;
      Harry's decisions D6 to D8): every facility goes from Level 1 to 5. An
      upgrade is an order at that facility (a pending order, like any other)
@@ -76,10 +121,10 @@ window.TSI_DATA.bastion = {
      uses the old Laboratory's picture and the Herbal Gardens the
      Greenhouse's. The Shrines are shown (D10, reversing B12). The Workshop
      and the other starting buildings are in the base painting; the
-     Menagerie and Courier Exchange have no picture. The seven new
-     facilities still in development have theirs listed already, so they
-     appear as soon as they can be built. The originals are in
-     bastion-new-art/. */
+     Menagerie and Courier Exchange have no picture. The new facilities
+     still in development (six since pull request 3 made the Fishery and
+     Timber Yard buildable) have theirs listed already, so they appear as
+     soon as they can be built. The originals are in bastion-new-art/. */
   map: {
     base: 'map/bastion_base.jpg',
     width: 3000,

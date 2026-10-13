@@ -15,8 +15,20 @@
    Laboratory (the Laboratory's Craft is "alchemy"); the Garden and Greenhouse are Herbal
    Gardens (the Greenhouse's Harvest is "cultivate"); the Library is the Library &
    Scriptorium. An order's "requiredPartyLevel" keeps its old building's party level.
-   The Gaming Hall is gone. The eight new facilities are "inDevelopment": listed, not yet
-   buildable, until each gets its orders. Old saves are converted once (R.migrateToV3). */
+   The Gaming Hall is gone. The new facilities still "inDevelopment" are listed, not yet
+   buildable, until each gets its orders: six since pull request 3 (13 October 2026) made
+   the Fishery & Smokehouse and Timber Yard & Sawmill buildable. Old saves are converted
+   once (R.migrateToV3).
+   Pull request 3 (Harry's facility guide) added, all safe to change:
+   - "plot": true: built on a Development Plot, not in a construction slot;
+   - "productionLimit": 1: one production order at a time at that facility;
+   - an order's "production": true, and "requiredFacilityLevel" (the facility's level it
+     needs, 1 to 5);
+   - a production order's options, each a recipe: "inputs" and "outputs" list goods by
+     their id in goods-data.js with a "qty" ({ "good": "raw_timber", "qty": 1 }), or an
+     ordinary item by name ({ "item": "Healer's Kit", "qty": 2 }); a recipe can have its
+     own "days"; "needsResearch" is the id of the research choice it waits for
+     (research-data.js); "key" lets research find it. */
 window.TSI_DATA = window.TSI_DATA || {};
 window.TSI_DATA.bastionFacilities = [
   {
@@ -538,6 +550,7 @@ window.TSI_DATA.bastionFacilities = [
     "name": "Herbal Gardens",
     "id": "herbal_gardens",
     "requiredLevel": 5,
+    "plot": true,
     "mergedFrom": [
       "garden",
       "greenhouse"
@@ -551,12 +564,20 @@ window.TSI_DATA.bastionFacilities = [
           {
             "label": "Antitoxin (2 vials)",
             "key": "antitoxin",
-            "batch": { "name": "Antitoxin", "qty": 2, "unit": "vials" }
+            "batch": {
+              "name": "Antitoxin",
+              "qty": 2,
+              "unit": "vials"
+            }
           },
           {
             "label": "Rations (100)",
             "key": "rations",
-            "batch": { "name": "Rations", "qty": 100, "unit": "" }
+            "batch": {
+              "name": "Rations",
+              "qty": 100,
+              "unit": ""
+            }
           },
           {
             "label": "Healer's Kit"
@@ -599,27 +620,569 @@ window.TSI_DATA.bastionFacilities = [
         "costText": "0",
         "notes": null,
         "requiredPartyLevel": 9
+      },
+      {
+        "id": "cultivate_specialist",
+        "label": "Cultivate Specialist Plants",
+        "days": 4,
+        "costGP": 0,
+        "costText": "0",
+        "notes": "Crafting ingredients for the Herbal Gardens' own recipes (and, later, the Arcane Laboratory's).",
+        "requiredFacilityLevel": 2,
+        "production": true,
+        "options": [
+          {
+            "label": "Restorative Herbs (10 portions)",
+            "key": "restorative_herbs",
+            "outputs": [
+              {
+                "good": "restorative_herbs",
+                "qty": 10
+              }
+            ]
+          },
+          {
+            "label": "Antivenom Roots (10 portions)",
+            "key": "antivenom_roots",
+            "outputs": [
+              {
+                "good": "antivenom_roots",
+                "qty": 10
+              }
+            ]
+          },
+          {
+            "label": "Toxic Blossoms (10 portions)",
+            "key": "toxic_blossoms",
+            "outputs": [
+              {
+                "good": "toxic_blossoms",
+                "qty": 10
+              }
+            ]
+          },
+          {
+            "label": "Alchemical Flowers (10 portions)",
+            "key": "alchemical_flowers",
+            "outputs": [
+              {
+                "good": "alchemical_flowers",
+                "qty": 10
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "field_medical_supplies",
+        "label": "Prepare Field Medical Supplies",
+        "days": 7,
+        "costGP": 0,
+        "costText": "0",
+        "notes": null,
+        "requiredFacilityLevel": 3,
+        "production": true,
+        "options": [
+          {
+            "label": "2 Healer's Kits + 4 Antitoxin vials",
+            "key": "kits_and_antitoxin",
+            "days": 6,
+            "inputs": [
+              {
+                "good": "restorative_herbs",
+                "qty": 5
+              },
+              {
+                "good": "antivenom_roots",
+                "qty": 5
+              }
+            ],
+            "outputs": [
+              {
+                "item": "Healer's Kit",
+                "qty": 2
+              },
+              {
+                "item": "Antitoxin (2 vials)",
+                "qty": 2
+              }
+            ]
+          },
+          {
+            "label": "2 Potions of Healing",
+            "key": "field_potions",
+            "days": 7,
+            "inputs": [
+              {
+                "good": "restorative_herbs",
+                "qty": 10
+              }
+            ],
+            "outputs": [
+              {
+                "item": "Potion of Healing",
+                "qty": 2
+              }
+            ]
+          },
+          {
+            "label": "2 doses of Basic Poison",
+            "key": "field_poison",
+            "days": 7,
+            "inputs": [
+              {
+                "good": "toxic_blossoms",
+                "qty": 10
+              }
+            ],
+            "outputs": [
+              {
+                "item": "Basic Poison",
+                "qty": 2
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "commercial_medicinal_crops",
+        "label": "Harvest Commercial Medicinal Crops",
+        "days": 6,
+        "costGP": 0,
+        "costText": "0",
+        "notes": null,
+        "requiredFacilityLevel": 4,
+        "production": true,
+        "options": [
+          {
+            "label": "Medicinal Herbs (1 lot)",
+            "key": "medicinal_herbs",
+            "days": 6,
+            "outputs": [
+              {
+                "good": "medicinal_herbs",
+                "qty": 1
+              }
+            ]
+          },
+          {
+            "label": "Refined Botanical Reagents (1 lot)",
+            "key": "refined_botanical_reagents",
+            "days": 7,
+            "inputs": [
+              {
+                "good": "alchemical_flowers",
+                "qty": 10
+              }
+            ],
+            "outputs": [
+              {
+                "good": "refined_botanical_reagents",
+                "qty": 1
+              }
+            ],
+            "needsResearch": "botanical_extraction"
+          }
+        ]
+      },
+      {
+        "id": "major_botanical_production",
+        "label": "Major Botanical Production",
+        "days": 8,
+        "costGP": 0,
+        "costText": "0",
+        "notes": null,
+        "requiredFacilityLevel": 5,
+        "production": true,
+        "options": [
+          {
+            "label": "Major Medicinal Harvest: Medicinal Herbs (3 lots)",
+            "key": "major_medicinal_harvest",
+            "days": 8,
+            "outputs": [
+              {
+                "good": "medicinal_herbs",
+                "qty": 3
+              }
+            ]
+          },
+          {
+            "label": "Advanced Ingredient Cultivation: Restorative Herbs (30 portions)",
+            "key": "advanced_restorative_herbs",
+            "days": 8,
+            "outputs": [
+              {
+                "good": "restorative_herbs",
+                "qty": 30
+              }
+            ]
+          },
+          {
+            "label": "Advanced Ingredient Cultivation: Antivenom Roots (30 portions)",
+            "key": "advanced_antivenom_roots",
+            "days": 8,
+            "outputs": [
+              {
+                "good": "antivenom_roots",
+                "qty": 30
+              }
+            ]
+          },
+          {
+            "label": "Advanced Ingredient Cultivation: Toxic Blossoms (30 portions)",
+            "key": "advanced_toxic_blossoms",
+            "days": 8,
+            "outputs": [
+              {
+                "good": "toxic_blossoms",
+                "qty": 30
+              }
+            ]
+          },
+          {
+            "label": "Advanced Ingredient Cultivation: Alchemical Flowers (30 portions)",
+            "key": "advanced_alchemical_flowers",
+            "days": 8,
+            "outputs": [
+              {
+                "good": "alchemical_flowers",
+                "qty": 30
+              }
+            ]
+          },
+          {
+            "label": "Rare Botanical Extraction: Rare Botanical Extracts (1 lot)",
+            "key": "rare_botanical_extraction",
+            "days": 10,
+            "inputs": [
+              {
+                "good": "alchemical_flowers",
+                "qty": 20
+              }
+            ],
+            "outputs": [
+              {
+                "good": "rare_botanical_extracts",
+                "qty": 1
+              }
+            ],
+            "needsResearch": "exotic_flora_conservatory"
+          }
+        ]
       }
     ]
   },
   {
     "name": "Fishery & Smokehouse",
     "id": "fishery_smokehouse",
-    "requiredLevel": null,
-    "inDevelopment": true,
-    "functions": []
+    "requiredLevel": 5,
+    "plot": true,
+    "productionLimit": 1,
+    "functions": [
+      {
+        "id": "catch_fresh_fish",
+        "label": "Catch Fresh Fish",
+        "days": 3,
+        "costGP": 0,
+        "costText": "0",
+        "notes": null,
+        "requiredFacilityLevel": 1,
+        "production": true,
+        "options": [
+          {
+            "label": "Fresh Fish (1 lot)",
+            "outputs": [
+              {
+                "good": "fresh_fish",
+                "qty": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "smoke_salt_catch",
+        "label": "Smoke / Salt Catch",
+        "days": 3,
+        "costGP": 0,
+        "costText": "0",
+        "notes": null,
+        "requiredFacilityLevel": 2,
+        "production": true,
+        "options": [
+          {
+            "label": "Preserved Fish (1 lot)",
+            "inputs": [
+              {
+                "good": "fresh_fish",
+                "qty": 1
+              }
+            ],
+            "outputs": [
+              {
+                "good": "preserved_fish",
+                "qty": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "prepare_expedition_provisions",
+        "label": "Prepare Expedition Provisions",
+        "days": 4,
+        "costGP": 0,
+        "costText": "0",
+        "notes": "One pack is 10 character-days of rations: a party of five for two days.",
+        "requiredFacilityLevel": 3,
+        "production": true,
+        "options": [
+          {
+            "label": "5 Expedition Provision Packs",
+            "inputs": [
+              {
+                "good": "preserved_fish",
+                "qty": 1
+              }
+            ],
+            "outputs": [
+              {
+                "good": "expedition_provision_pack",
+                "qty": 5
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "catch_premium_seafood",
+        "label": "Catch Premium Seafood",
+        "days": 6,
+        "costGP": 0,
+        "costText": "0",
+        "notes": null,
+        "requiredFacilityLevel": 4,
+        "production": true,
+        "options": [
+          {
+            "label": "Premium Seafood (1 lot)",
+            "outputs": [
+              {
+                "good": "premium_seafood",
+                "qty": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "commercial_fishing_fleet",
+        "label": "Organise Commercial Fishing Fleet",
+        "days": 8,
+        "costGP": 0,
+        "costText": "0",
+        "notes": null,
+        "requiredFacilityLevel": 5,
+        "production": true,
+        "options": [
+          {
+            "label": "Fresh Fish (3 lots)",
+            "outputs": [
+              {
+                "good": "fresh_fish",
+                "qty": 3
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "bulk_smokehouse_production",
+        "label": "Bulk Smokehouse Production",
+        "days": 7,
+        "costGP": 0,
+        "costText": "0",
+        "notes": null,
+        "requiredFacilityLevel": 5,
+        "production": true,
+        "options": [
+          {
+            "label": "Preserved Fish (3 lots)",
+            "inputs": [
+              {
+                "good": "fresh_fish",
+                "qty": 3
+              }
+            ],
+            "outputs": [
+              {
+                "good": "preserved_fish",
+                "qty": 3
+              }
+            ]
+          }
+        ]
+      }
+    ]
   },
   {
     "name": "Timber Yard & Sawmill",
     "id": "timber_sawmill",
-    "requiredLevel": null,
-    "inDevelopment": true,
-    "functions": []
+    "requiredLevel": 5,
+    "plot": true,
+    "productionLimit": 1,
+    "functions": [
+      {
+        "id": "harvest_timber",
+        "label": "Harvest Timber",
+        "days": 4,
+        "costGP": 0,
+        "costText": "0",
+        "notes": null,
+        "requiredFacilityLevel": 1,
+        "production": true,
+        "options": [
+          {
+            "label": "Raw Timber (1 lot)",
+            "outputs": [
+              {
+                "good": "raw_timber",
+                "qty": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "saw_lumber",
+        "label": "Saw Lumber",
+        "days": 4,
+        "costGP": 0,
+        "costText": "0",
+        "notes": null,
+        "requiredFacilityLevel": 2,
+        "production": true,
+        "options": [
+          {
+            "label": "Sawn Lumber (1 lot)",
+            "inputs": [
+              {
+                "good": "raw_timber",
+                "qty": 1
+              }
+            ],
+            "outputs": [
+              {
+                "good": "sawn_lumber",
+                "qty": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "prepare_construction_timber",
+        "label": "Prepare Construction Timber",
+        "days": 5,
+        "costGP": 0,
+        "costText": "0",
+        "notes": null,
+        "requiredFacilityLevel": 3,
+        "production": true,
+        "options": [
+          {
+            "label": "Construction Timber (1 lot)",
+            "inputs": [
+              {
+                "good": "sawn_lumber",
+                "qty": 1
+              }
+            ],
+            "outputs": [
+              {
+                "good": "construction_timber",
+                "qty": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "harvest_premium_hardwood",
+        "label": "Harvest Premium Hardwood",
+        "days": 7,
+        "costGP": 0,
+        "costText": "0",
+        "notes": null,
+        "requiredFacilityLevel": 4,
+        "production": true,
+        "options": [
+          {
+            "label": "Premium Hardwood (1 lot)",
+            "outputs": [
+              {
+                "good": "premium_hardwood",
+                "qty": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "major_timber_harvest",
+        "label": "Major Timber Harvest",
+        "days": 9,
+        "costGP": 0,
+        "costText": "0",
+        "notes": null,
+        "requiredFacilityLevel": 5,
+        "production": true,
+        "options": [
+          {
+            "label": "Raw Timber (3 lots)",
+            "outputs": [
+              {
+                "good": "raw_timber",
+                "qty": 3
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "bulk_lumber_processing",
+        "label": "Bulk Lumber Processing",
+        "days": 8,
+        "costGP": 0,
+        "costText": "0",
+        "notes": null,
+        "requiredFacilityLevel": 5,
+        "production": true,
+        "options": [
+          {
+            "label": "Sawn Lumber (3 lots)",
+            "inputs": [
+              {
+                "good": "raw_timber",
+                "qty": 3
+              }
+            ],
+            "outputs": [
+              {
+                "good": "sawn_lumber",
+                "qty": 3
+              }
+            ]
+          }
+        ]
+      }
+    ]
   },
   {
     "name": "Stone Quarry & Masonworks",
     "id": "stone_masonworks",
     "requiredLevel": null,
+    "plot": true,
     "inDevelopment": true,
     "functions": []
   },
@@ -627,6 +1190,7 @@ window.TSI_DATA.bastionFacilities = [
     "name": "Weavers' Hall",
     "id": "weavers_hall",
     "requiredLevel": null,
+    "plot": true,
     "inDevelopment": true,
     "functions": []
   },
@@ -634,6 +1198,7 @@ window.TSI_DATA.bastionFacilities = [
     "name": "Courier Exchange",
     "id": "courier_exchange",
     "requiredLevel": null,
+    "plot": true,
     "inDevelopment": true,
     "functions": []
   },

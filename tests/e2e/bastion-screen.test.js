@@ -72,7 +72,9 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
       equal(lc.scrollWidth, lc.clientWidth, 'no sideways scroll');
       equal(lc.outOfView, [], 'in view');
       equal(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight + 1), true, 'the page doesn\'t scroll down');
-      equal(await page.$$eval('.tsi-bas-tile', ts => ts.length), 11, 'five facilities and six slots');
+      equal(await page.$$eval('.tsi-bas-tile', ts => ts.length), 17, 'five facilities, six slots and six Development Plots');
+      equal(await page.$$eval('[data-test=grid-slots] .tsi-bas-tile', ts => ts.length), 11, 'the top row: the facilities and slots');
+      equal(await page.$$eval('[data-test=grid-plots] .tsi-bas-tile', ts => ts.length), 6, 'the row below: the plots');
       const map = await rect(page, '.tsi-bas-map');
       assert(Math.abs(map.w / map.h - 3000 / 1250) < 0.01, 'fitted, not stretched: ' + JSON.stringify(map));
       /* The badge may sit over the painting's top-right sky, but never over
@@ -86,6 +88,23 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
       assert(badge.x >= map.x && badge.right <= map.right - 8 && badge.y >= map.y && badge.bottom <= map.bottom, size + ': the badge is inside the painting: ' + JSON.stringify([badge, map]));
       const over = await rect(page, '.tsi-bas-map__overlays');
       equal([Math.round(over.x), Math.round(over.y), Math.round(over.w), Math.round(over.h)], [Math.round(map.x), Math.round(map.y), Math.round(map.w), Math.round(map.h)], 'the building overlays sit exactly on the painting');
+      /* The haze covers the painting while the grid is open; the tiles sit in
+         a tray that rises a little over the sea at the painting's foot
+         (Harry, 13 October 2026): never above y 1150 on the painting (the
+         dock's boat ends about y 1010), and never over a label. */
+      const haze = await rect(page, '[data-test=map-haze]');
+      equal([Math.round(haze.x), Math.round(haze.y), Math.round(haze.w), Math.round(haze.h)], [Math.round(map.x), Math.round(map.y), Math.round(map.w), Math.round(map.h)], 'the haze sits exactly on the painting');
+      const tray = await rect(page, '[data-test=grid-tray]');
+      const bar = await rect(page, '.tsi-bas-bottom');
+      assert(tray.y >= map.y + 1150 * k && tray.y >= map.bottom - 45, size + ': the tray rises only a little over the painting: ' + JSON.stringify([tray, map]));
+      assert(tray.bottom <= bar.bottom, size + ': the tray ends inside the bar');
+      const labels = await page.$$eval('.tsi-bas-maplabel', ls => ls.map(l => { const r = l.getBoundingClientRect(); return { fac: l.dataset.fac, x: r.x, y: r.y, right: r.right, bottom: r.bottom }; }));
+      equal(labels.map(l => l.fac).sort(), ['armoury', 'barracks', 'dock', 'watchtower', 'workshop'], 'a label for each built facility');
+      for (const l of labels) {
+        assert(!overlaps(l, tray), size + ': the tray is clear of the ' + l.fac + '\'s label');
+        assert(l.x >= map.x - 1 && l.right <= map.right + 1 && l.y >= map.y - 1 && l.bottom <= map.bottom + 1, size + ': the ' + l.fac + '\'s label is on the painting');
+        assert(!overlaps(l, badge), size + ': the ' + l.fac + '\'s label is clear of the badge');
+      }
       const want = { laptop: 900, laptopFull: 1100, tv: 1150, smallWindow: 600 }[size];
       assert(map.w >= want, size + ': the painting is ' + Math.round(map.w) + ' wide');
       await H.shot(page, 'bs-01-' + size);
@@ -105,6 +124,8 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
       const n = await rect(page, '.tsi-notices');
       const bar = await rect(page, '.tsi-bas-bottom');
       assert(n.bottom <= bar.y, size + ': the notices end above the bar: ' + JSON.stringify([n, bar]));
+      const tray = await rect(page, '[data-test=grid-tray]');
+      assert(!overlaps(n, tray), size + ': and clear of the open tray of tiles: ' + JSON.stringify([n, tray]));
       const badge = await rect(page, '[data-test=identity-badge]');
       assert(n.right <= badge.x, size + ': clear of the badge');
       /* The DM doc opens on the right: its own edges and grip stay clear. */
@@ -172,9 +193,25 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
   /* ------------------------------------------------------------------ */
   section('The facility grid');
 
-  await check('the five starting facilities first (Workshop, Barracks, Watchtower, Dock, Armoury), then the six slots', async () => {
-    equal(await page.$$eval('.tsi-bas-tile', ts => ts.slice(0, 5).map(t => t.dataset.fac)), ['workshop', 'barracks', 'watchtower', 'dock', 'armoury']);
-    equal(await page.$$eval('.tsi-bas-tile', ts => ts.slice(5).map(t => t.dataset.test)), ['slot-0', 'slot-1', 'slot-2', 'slot-3', 'slot-4', 'slot-5']);
+  await check('the five starting facilities first (Workshop, Barracks, Watchtower, Dock, Armoury), then the six slots; the six Development Plots in the row below', async () => {
+    equal(await page.$$eval('[data-test=grid-slots] .tsi-bas-tile', ts => ts.slice(0, 5).map(t => t.dataset.fac)), ['workshop', 'barracks', 'watchtower', 'dock', 'armoury']);
+    equal(await page.$$eval('[data-test=grid-slots] .tsi-bas-tile', ts => ts.slice(5).map(t => t.dataset.test)), ['slot-0', 'slot-1', 'slot-2', 'slot-3', 'slot-4', 'slot-5']);
+    equal(await page.$$eval('[data-test=grid-plots] .tsi-bas-tile', ts => ts.map(t => t.dataset.test)), ['plot-0', 'plot-1', 'plot-2', 'plot-3', 'plot-4', 'plot-5']);
+    const a = await rect(page, '[data-test=tile-workshop]');
+    const b = await rect(page, '[data-test=plot-0]');
+    assert(b.y >= a.bottom, 'the plots sit below');
+    assert(Math.abs(a.w - a.h) < 1 && a.w >= 48 && a.w <= 66, 'square tiles, smaller than before: ' + JSON.stringify(a));
+  });
+
+  await check('at level 7 the plots are locked until party levels 9, 9, 13, 13, 17 and 17', async () => {
+    const locked = [];
+    for (const i of [0, 1, 2, 3, 4, 5]) {
+      await page.hover('[data-test=plot-' + i + ']');
+      await page.waitForFunction(() => /Development Plot/.test(document.querySelector('[data-test=tooltip]').textContent) && !document.querySelector('[data-test=tooltip]').hidden);
+      locked.push((/Unlocks at party level (\d+)/.exec(await bare(page, '[data-test=tooltip]')) || [])[1]);
+    }
+    equal(locked, ['9', '9', '13', '13', '17', '17']);
+    await page.mouse.move(5, 500);
   });
 
   await check('at level 7: two slots open to build, four locked until levels 9, 9, 13 and 17', async () => {
@@ -213,11 +250,16 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     await page.mouse.move(5, 500);
   });
 
-  await check('▼ folds the grid away (the painting grows), ▲ brings it back, and it\'s remembered', async () => {
+  await check('▼ folds the grid away (the painting grows, and the haze and labels go), ▲ brings it back, and it\'s remembered', async () => {
     const before = await rect(page, '.tsi-bas-map');
+    equal(await page.isVisible('[data-test=map-labels]'), true, 'the labels show while the grid is open');
+    equal(await text(page, 'map-label-barracks'), 'BarracksLevel 1');
+    assert(await page.$eval('[data-test=map]', e => getComputedStyle(e).filter !== 'none'), 'the painting is hazed');
     await page.click('[data-test=grid-toggle]');
     await page.waitForTimeout(200);
     equal(await page.isHidden('[data-test=grid]'), true);
+    await page.waitForFunction(() => getComputedStyle(document.querySelector('[data-test=map-labels]')).visibility === 'hidden' && getComputedStyle(document.querySelector('[data-test=map]')).filter === 'none');
+    equal([await page.isHidden('[data-test=map-labels]'), await page.isHidden('[data-test=map-haze]')], [true, true], 'the painting as it was: no haze, no labels');
     const after = await rect(page, '.tsi-bas-map');
     assert(after.h > before.h + 40, JSON.stringify([before, after]));
     equal((await H.layoutCheck(page, ['[data-test^=open-]', '[data-test=grid-toggle]'])).outOfView, [], 'the buttons stay in view');
@@ -225,9 +267,11 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     await page.reload();
     await page.waitForSelector('[data-test=day-status]');
     equal(await page.isHidden('[data-test=grid]'), true, 'still folded after reopening');
+    equal(await page.$eval('[data-test=map-labels]', e => getComputedStyle(e).visibility), 'hidden', 'no labels after reopening either');
     await page.click('[data-test=grid-toggle]');
     await page.waitForTimeout(150);
     equal(await page.isVisible('[data-test=grid]'), true);
+    await page.waitForFunction(() => getComputedStyle(document.querySelector('[data-test=map-labels]')).visibility === 'visible');
   });
 
   /* ------------------------------------------------------------------ */
@@ -241,10 +285,13 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     assert(/Party level 7: 2 construction slots, 0 in use/.test(await text(page, 'build-panel')));
     equal(await page.getAttribute('[data-test=build-war_room]', 'aria-disabled'), 'true', 'the War Room needs level 17');
     assert(/Locked: level 17/.test(await text(page, 'build-war_room')));
-    equal(await page.getAttribute('[data-test=build-herbal_gardens]', 'aria-disabled'), null);
-    await page.hover('[data-test=build-herbal_gardens]');
-    await page.waitForFunction(() => /Herbal Gardens/.test(document.querySelector('[data-test=tooltip]').textContent));
+    equal(await page.getAttribute('[data-test=build-library_scriptorium]', 'aria-disabled'), null);
+    await page.hover('[data-test=build-library_scriptorium]');
+    await page.waitForFunction(() => /Library & Scriptorium/.test(document.querySelector('[data-test=tooltip]').textContent));
     assert(/Takes 21 days to build/.test(await bare(page, '[data-test=tooltip]')));
+    /* The production facilities go on Development Plots, which open at party level 9 (pull request 3). */
+    equal(await page.getAttribute('[data-test=build-herbal_gardens]', 'aria-disabled'), 'true');
+    assert(/Plots open at party level 9/.test(await text(page, 'build-herbal_gardens')));
     await H.shot(page, 'bs-02-build');
   });
 
@@ -258,7 +305,7 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
   await check('the overhaul (13 October 2026): the new facilities are listed "In development" and can\'t be chosen; the old ones are gone', async () => {
     const ids = await page.$$eval('[data-test^=build-]', bs => bs.map(b => b.dataset.test.slice(6)));
     equal(ids.filter(id => ['smithy', 'library', 'garden', 'greenhouse', 'laboratory', 'arcane_study', 'gaming_hall'].includes(id)), [], 'the old facilities are gone');
-    const dev = ['fishery_smokehouse', 'timber_sawmill', 'stone_masonworks', 'weavers_hall', 'courier_exchange', 'wyvern_roost', 'griffin_tower', 'dire_wolf_den'];
+    const dev = ['stone_masonworks', 'weavers_hall', 'courier_exchange', 'wyvern_roost', 'griffin_tower', 'dire_wolf_den'];
     equal(ids.filter(id => dev.includes(id)).sort(), dev.slice().sort());
     for (const id of dev) {
       assert(/In development/.test(await text(page, 'build-' + id)), id);
@@ -272,73 +319,76 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     equal((await st(page)).builtExtras.filter(Boolean), []);
   });
 
-  await check('Construct asks first ("Construct the Herbal Gardens? It takes 21 days."); Cancel builds nothing', async () => {
-    await page.click('[data-test=build-herbal_gardens]');
+  await check('Construct asks first ("Construct the Library & Scriptorium? It takes 21 days."); Cancel builds nothing', async () => {
+    await page.click('[data-test=build-library_scriptorium]');
     await page.waitForSelector(POP);
-    equal(await bare(page, POP + ' .tsi-modal__body'), 'Construct the Herbal Gardens? It takes 21 days.');
+    equal(await bare(page, POP + ' .tsi-modal__body'), 'Construct the Library & Scriptorium? It takes 21 days.');
     await page.click(POP + ' .tsi-modal__foot button:text-is("Cancel")');
     await page.waitForTimeout(200);
     equal((await st(page)).builtExtras.filter(Boolean), []);
     equal(await panelOpen(page), 'build', 'the panel is still open');
   });
 
-  await check('Construct: the panel closes, and the slot shows the Herbal Gardens with an hourglass and 21 days', async () => {
+  await check('Construct: the panel closes, and the slot shows the Library & Scriptorium with an hourglass and 21 days', async () => {
     await pause(page);
-    await page.click('[data-test=build-herbal_gardens]');
+    await page.click('[data-test=build-library_scriptorium]');
     await page.waitForSelector(POP);
     await page.click(POP + ' .tsi-modal__foot button:text-is("Construct")');
     await page.waitForFunction(() => !TSI.bastion.debug.panel());
-    equal((await st(page)).builtExtras[0], { facId: 'herbal_gardens', status: 'building', startDay: 1, readyDay: 22 });
-    equal(await page.$$eval('[data-test=tile-herbal_gardens]', ts => ts.map(t => [t.tagName, t.className.includes('building'), t.textContent])), [['BUTTON', true, '21']]);
-    await page.hover('[data-test=tile-herbal_gardens]');
-    await page.waitForFunction(() => /Herbal Gardens/.test(document.querySelector('[data-test=tooltip]').textContent));
+    equal((await st(page)).builtExtras[0], { facId: 'library_scriptorium', status: 'building', startDay: 1, readyDay: 22 });
+    equal(await page.$$eval('[data-test=tile-library_scriptorium]', ts => ts.map(t => [t.tagName, t.className.includes('building'), t.textContent])), [['BUTTON', true, '21']]);
+    await page.hover('[data-test=tile-library_scriptorium]');
+    await page.waitForFunction(() => /Library & Scriptorium/.test(document.querySelector('[data-test=tooltip]').textContent));
     assert(/Under construction: 21 days left/.test(await bare(page, '[data-test=tooltip]')) && /Ready on Day 22/.test(await bare(page, '[data-test=tooltip]')));
     await page.hover('[data-test=facilities-count]');
-    await page.waitForFunction(() => /Herbal Gardens: building, 21 days left/.test(document.querySelector('[data-test=tooltip]').textContent));
+    await page.waitForFunction(() => /Library & Scriptorium: building, 21 days left/.test(document.querySelector('[data-test=tooltip]').textContent));
     await page.mouse.move(5, 500);
+    equal(await page.$('[data-test=map-label-library_scriptorium]'), null, 'no label until it\'s built');
   });
 
-  await check('clicking a building asks whether to stop building it (Cancel keeps it); 21 days later it\'s built, and its tile opens the Herbal Gardens', async () => {
-    await page.click('[data-test=tile-herbal_gardens]');
+  await check('clicking a building asks whether to stop building it (Cancel keeps it); 21 days later it\'s built, its tile opens it, and its label shows on the map', async () => {
+    await page.click('[data-test=tile-library_scriptorium]');
     await page.waitForSelector(POP);
-    equal(await bare(page, POP + ' .tsi-modal__body'), 'Stop building the Herbal Gardens? Its slot is freed, and the days of work so far are lost.');
+    equal(await bare(page, POP + ' .tsi-modal__body'), 'Stop building the Library & Scriptorium? Its slot is freed, and the days of work so far are lost.');
     await page.click(POP + ' .tsi-modal__foot button:text-is("Cancel")');
     await page.waitForTimeout(200);
     equal(await panelOpen(page), null);
     equal((await st(page)).builtExtras[0].status, 'building', 'still being built');
     await days(page, 21);
-    equal(await page.$eval('[data-test=tile-herbal_gardens]', t => t.tagName), 'BUTTON');
+    equal(await page.$eval('[data-test=tile-library_scriptorium]', t => t.tagName), 'BUTTON');
     equal(await text(page, 'facilities-n'), '6');
-    await page.click('[data-test=tile-herbal_gardens]');
-    await page.waitForSelector('[data-test=panel-fac-herbal_gardens]');
-    equal(await bare(page, '[data-test=panel-fac-herbal_gardens] .tsi-modal__title'), 'Herbal Gardens');
+    equal(await text(page, 'map-label-library_scriptorium'), 'Library & ScriptoriumLevel 1');
+    await page.click('[data-test=tile-library_scriptorium]');
+    await page.waitForSelector('[data-test=panel-fac-library_scriptorium]');
+    equal(await bare(page, '[data-test=panel-fac-library_scriptorium] .tsi-modal__title'), 'Library & Scriptorium');
     await page.keyboard.press('Escape');
   });
 
   await check('Demolish (Harry, 13 October 2026): it asks first, saying an order here is cancelled; then the slot is free, the order gone, and the Day Log says so', async () => {
     await pause(page);
-    await setUp(page, (s) => { s.pendingOrders.push({ id: 'dm1', facId: 'herbal_gardens', fnId: 'harvest', chosen: { label: 'Potion of Healing' }, optionLabel: 'Potion of Healing', notes: '', label: 'Herbal Gardens: Harvest (Potion of Healing)', costGP: 0, issuedDay: s.day, dueDay: s.day + 5 }); });
-    await page.click('[data-test=tile-herbal_gardens]');
-    await page.waitForSelector('[data-test=demolish-herbal_gardens]');
+    await setUp(page, (s) => { s.pendingOrders.push({ id: 'dm1', facId: 'library_scriptorium', fnId: 'research', chosen: { label: 'Arcana' }, optionLabel: 'Arcana', notes: '', label: 'Library & Scriptorium: Research (Arcana)', costGP: 0, issuedDay: s.day, dueDay: s.day + 5 }); });
+    await page.click('[data-test=tile-library_scriptorium]');
+    await page.waitForSelector('[data-test=demolish-library_scriptorium]');
     await pause(page);
-    await page.click('[data-test=demolish-herbal_gardens]');
+    await page.click('[data-test=demolish-library_scriptorium]');
     await page.waitForSelector(POP);
     const msg = await bare(page, POP + ' .tsi-modal__body');
-    assert(/^Demolish the Herbal Gardens\? It goes from the Bastion and its slot is freed\. 1 order pending here is cancelled, and the gold spent isn't given back\./.test(msg), msg);
+    assert(/^Demolish the Library & Scriptorium\? It goes from the Bastion and its slot is freed\. 1 order pending here is cancelled, and the gold spent isn't given back\./.test(msg), msg);
     await page.click(POP + ' .tsi-modal__foot button:text-is("Cancel")');
     await page.waitForTimeout(200);
-    equal((await st(page)).builtExtras[0].facId, 'herbal_gardens', 'Cancel keeps it');
+    equal((await st(page)).builtExtras[0].facId, 'library_scriptorium', 'Cancel keeps it');
     await pause(page);
-    await page.click('[data-test=demolish-herbal_gardens]');
+    await page.click('[data-test=demolish-library_scriptorium]');
     await page.waitForSelector(POP);
     await page.click(POP + ' .tsi-modal__foot button:text-is("Demolish")');
     await page.waitForFunction(() => !TSI.bastion.debug.panel());
     const s = await st(page);
     equal(s.builtExtras.filter(Boolean), [], 'the slot is free');
-    equal(s.pendingOrders.filter(o => o.facId === 'herbal_gardens'), [], 'its order is cancelled');
-    equal([s.log[0].title, s.log[0].body], ['Facility Demolished', 'The Herbal Gardens was demolished; its slot is free. Cancelled: Herbal Gardens: Harvest (Potion of Healing).']);
+    equal(s.pendingOrders.filter(o => o.facId === 'library_scriptorium'), [], 'its order is cancelled');
+    equal([s.log[0].title, s.log[0].body], ['Facility Demolished', 'The Library & Scriptorium was demolished; its slot is free. Cancelled: Library & Scriptorium: Research (Arcana).']);
     equal(await text(page, 'facilities-n'), '5');
-    equal(await page.$('[data-test=tile-herbal_gardens]'), null);
+    equal(await page.$('[data-test=tile-library_scriptorium]'), null);
+    equal(await page.$('[data-test=map-label-library_scriptorium]'), null, 'its label goes too');
   });
 
   await check('stopping a building: its slot is free again, and the Day Log says so', async () => {
@@ -358,6 +408,190 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     const s = await st(page);
     equal(s.builtExtras.filter(Boolean), []);
     equal([s.log[0].title, s.log[0].body], ['Construction Stopped', 'Building work on the Library & Scriptorium stopped; its slot is free.']);
+  });
+
+  /* ------------------------------------------------------------------ */
+  section('Development Plots, goods and production (pull request 3)');
+
+  await check('at level 9 a Development Plot opens Construction with the production facilities first; the Herbal Gardens builds there in 21 days, in the row below', async () => {
+    await page.selectOption('[data-test=level]', '9');
+    await page.waitForTimeout(200);
+    equal(await page.$$eval('[data-test=grid-plots] .tsi-bas-tile--plot', ts => ts.map(t => t.dataset.test)), ['plot-0', 'plot-1']);
+    await pause(page);
+    await page.click('[data-test=plot-0]');
+    await page.waitForSelector('[data-test=panel-build]');
+    const head = await text(page, 'build-panel');
+    assert(/Party level 9: 4 construction slots, 0 in use\. 2 Development Plots, 0 in use\./.test(head), head);
+    const ids = await page.$$eval('.tsi-bas-buildopt', bs => bs.map(b => b.dataset.test.slice(6)));
+    equal(ids.slice(0, 6), ['herbal_gardens', 'fishery_smokehouse', 'timber_sawmill', 'stone_masonworks', 'weavers_hall', 'courier_exchange'], 'the production facilities first');
+    equal(await page.getAttribute('[data-test=build-timber_sawmill]', 'aria-disabled'), null);
+    await pause(page);
+    await page.click('[data-test=build-herbal_gardens]');
+    await page.waitForSelector(POP);
+    equal(await bare(page, POP + ' .tsi-modal__body'), 'Construct the Herbal Gardens? It takes 21 days.');
+    await page.click(POP + ' .tsi-modal__foot button:text-is("Construct")');
+    await page.waitForFunction(() => !TSI.bastion.debug.panel());
+    const s = await st(page);
+    equal(s.builtPlots[0], { facId: 'herbal_gardens', status: 'building', startDay: s.day, readyDay: s.day + 21 });
+    equal(s.builtExtras.filter(Boolean), [], 'no construction slot used');
+    equal(await page.$eval('[data-test=grid-plots] [data-test=tile-herbal_gardens]', t => [t.dataset.plot, t.textContent]), ['0', '21']);
+    await days(page, 21);
+    equal(await page.$eval('[data-test=tile-herbal_gardens]', t => t.className.includes('tsi-bas-tile--onplot')), true);
+    equal(await text(page, 'map-label-herbal_gardens'), 'Herbal GardensLevel 1');
+  });
+
+  await check('Demolish on a plot says its plot is freed (Cancel keeps it)', async () => {
+    await pause(page);
+    await page.click('[data-test=tile-herbal_gardens]');
+    await page.waitForSelector('[data-test=demolish-herbal_gardens]');
+    await pause(page);
+    await page.click('[data-test=demolish-herbal_gardens]');
+    await page.waitForSelector(POP);
+    const msg = await bare(page, POP + ' .tsi-modal__body');
+    assert(/^Demolish the Herbal Gardens\? It goes from the Bastion and its plot is freed\./.test(msg), msg);
+    await page.click(POP + ' .tsi-modal__foot button:text-is("Cancel")');
+    await page.waitForTimeout(200);
+    equal((await st(page)).builtPlots[0].facId, 'herbal_gardens');
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(150);
+  });
+
+  await check('an Herbal Gardens built in a construction slot moves to a free plot when the party reaches level 9, keeping its level', async () => {
+    await setUp(page, (s) => { s.builtPlots = []; s.builtExtras = [{ facId: 'herbal_gardens', status: 'built' }]; s.facilityLevels.herbal_gardens = 2; s.partyLevel = 7; });
+    await page.waitForTimeout(200);
+    equal(await page.$eval('[data-test=tile-herbal_gardens]', t => !!t.closest('[data-test=grid-slots]')), true, 'in a slot at level 7');
+    await page.selectOption('[data-test=level]', '9');
+    await page.waitForTimeout(250);
+    const s = await st(page);
+    equal([s.builtExtras.filter(Boolean), s.builtPlots[0], s.facilityLevels.herbal_gardens], [[], { facId: 'herbal_gardens', status: 'built' }, 2]);
+    equal(await page.$eval('[data-test=tile-herbal_gardens]', t => !!t.closest('[data-test=grid-plots]')), true, 'now in the plots row');
+    equal(await text(page, 'map-label-herbal_gardens'), 'Herbal GardensLevel 2');
+    assert(s.log.some(l => /The Herbal Gardens moved to a Development Plot; its construction slot is free\./.test(l.body)), 'the Day Log says so');
+  });
+
+  await check('with every construction slot in use but a plot free, the other facilities say "No free slot" and can\'t be chosen', async () => {
+    await setUp(page, (s) => { s.builtExtras = ['library_scriptorium', 'arcane_laboratory', 'shrine_aurush', 'hall_of_emissaries'].map(id => ({ facId: id, status: 'built' })); });
+    await pause(page);
+    await page.click('[data-test=plot-1]');
+    await page.waitForSelector('[data-test=build-panel]');
+    try {
+      assert(/; every construction slot is in use\./.test(await text(page, 'build-panel')), await text(page, 'build-panel'));
+      equal([await page.getAttribute('[data-test=build-shrine_telluria]', 'aria-disabled'), await text(page, 'build-shrine_telluria')], ['true', 'Shrine of TelluriaNo free slot']);
+      equal(await page.getAttribute('[data-test=build-timber_sawmill]', 'aria-disabled'), null, 'a plot facility still can');
+      await page.click('[data-test=build-shrine_telluria]', { force: true });
+      await page.waitForTimeout(250);
+      equal(await page.$(POP), null, 'no question');
+    } finally {
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(150);
+    }
+    await setUp(page, (s) => { s.builtExtras = []; });
+  });
+
+  await check('the Timber Yard: each order says what it uses and makes; Saw Lumber waits for Raw Timber; one production order at a time', async () => {
+    await setUp(page, (s) => { s.builtPlots[1] = { facId: 'timber_sawmill', status: 'built' }; s.facilityLevels.timber_sawmill = 2; s.warehouse = []; s.pendingOrders = []; });
+    await pause(page);
+    await page.click('[data-test=tile-timber_sawmill]');
+    await page.waitForSelector('[data-test=panel-fac-timber_sawmill]');
+    const lines = sel => page.$eval(sel, e => Array.from(e.children).map(c => c.textContent));
+    equal(await lines('[data-test=goods-timber_sawmill__harvest_timber]'), ['Makes: 1 lot of Raw Timber']);
+    equal(await lines('[data-test=goods-timber_sawmill__saw_lumber]'), ['Uses: 1 lot of Raw Timber (the Warehouse has 0 lots)', 'Makes: 1 lot of Sawn Lumber', 'Needs 1 lot of Raw Timber in the Warehouse; it has 0 lots.']);
+    equal([await page.isDisabled('[data-test=issue-timber_sawmill__saw_lumber]'), await text(page, 'issue-timber_sawmill__saw_lumber')], [true, 'Can\'t order yet']);
+    equal(await text(page, 'issue-timber_sawmill__prepare_construction_timber'), 'Needs Level 3.');
+    equal(await text(page, 'days-timber_sawmill__harvest_timber'), 'Takes 4 days');
+    equal((await H.layoutCheck(page, ['[data-test=panel-fac-timber_sawmill]', '[data-test=panel-fac-timber_sawmill] .tsi-modal__foot button'])).outOfView, [], 'the panel fits');
+    await H.shot(page, 'bs-06-timber');
+    await pause(page);
+    await page.click('[data-test=issue-timber_sawmill__harvest_timber]');
+    await page.waitForFunction(() => TSI.bastion.debug.state().pendingOrders.some(o => o.fnId === 'harvest_timber'));
+    const due = (await st(page)).pendingOrders[0].dueDay;
+    await setUp(page, (s) => { s.warehouse.push({ id: 'g1', goodId: 'raw_timber', item: 'Raw Timber', qty: 1, gp: '', notes: '' }); });
+    await page.waitForTimeout(200);
+    equal(await text(page, 'why-timber_sawmill__saw_lumber'), 'The Timber Yard & Sawmill is busy: one production order at a time (Timber Yard & Sawmill: Harvest Timber, due on Day ' + due + ').');
+    equal(await page.isDisabled('[data-test=issue-timber_sawmill__saw_lumber]'), true);
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(150);
+    await days(page, 4);
+    const s = await st(page);
+    equal(s.warehouse.filter(w => w.goodId).map(w => [w.goodId, w.qty]), [['raw_timber', 2]], 'Harvest Timber made a lot, added to the same row');
+  });
+
+  await check('Saw Lumber takes its Raw Timber when it begins; the order shows what it holds; Cancel gives it back', async () => {
+    await pause(page);
+    await page.click('[data-test=tile-timber_sawmill]');
+    await page.waitForSelector('[data-test=panel-fac-timber_sawmill]');
+    equal(await page.isDisabled('[data-test=issue-timber_sawmill__saw_lumber]'), false);
+    await pause(page);
+    await page.click('[data-test=issue-timber_sawmill__saw_lumber]');
+    await page.waitForFunction(() => TSI.bastion.debug.state().pendingOrders.some(o => o.fnId === 'saw_lumber'));
+    let s = await st(page);
+    equal(s.warehouse.filter(w => w.goodId).map(w => [w.goodId, w.qty]), [['raw_timber', 1]]);
+    assert(/Taken from the Warehouse: 1 lot of Raw Timber\./.test(s.log[0].body), s.log[0].body);
+    const i = s.pendingOrders.findIndex(o => o.fnId === 'saw_lumber');
+    assert(/Holding 1 lot of Raw Timber \(Cancel gives them back\)/.test(await bare(page, '[data-test=panel-fac-timber_sawmill]')), 'the panel\'s pending list says what it holds');
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(150);
+    await pause(page);
+    await page.click('[data-test=orders-count]');
+    await page.waitForSelector('[data-test=pending-held-' + i + ']');
+    equal(await text(page, 'pending-held-' + i), 'Holding 1 lot of Raw Timber (Cancel gives them back)');
+    await pause(page);
+    await page.click('[data-test=cancel-' + i + ']');
+    await page.waitForTimeout(250);
+    s = await st(page);
+    equal(s.warehouse.filter(w => w.goodId).map(w => [w.goodId, w.qty]), [['raw_timber', 2]]);
+    equal([s.log[0].title, s.log[0].body], ['Orders', 'Cancelled Timber Yard & Sawmill: Saw Lumber. 1 lot of Raw Timber went back to the Warehouse.']);
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(150);
+  });
+
+  await check('the Warehouse shows goods with what a lot holds and their value; only the count and notes can be changed', async () => {
+    await pause(page);
+    await page.click('[data-test=open-warehouse]');
+    await page.waitForSelector('[data-test=panel-warehouse] [data-test=warehouse]');
+    const i = (await st(page)).warehouse.findIndex(w => w.goodId === 'raw_timber');
+    equal(await page.$eval('[data-test=wh-item-' + i + ']', e => Array.from(e.children).map(c => c.textContent)), ['Raw Timber', '1 lot = 20 logs']);
+    equal(await text(page, 'wh-value-' + i), '200 gp (100 a lot)');
+    equal(await page.$$eval('[data-test=wh-item-' + i + '] input', is => is.length), 0, 'its name can\'t be typed over');
+    equal(await page.$('[data-test=wh-gp-' + i + ']'), null, 'nor its value');
+    await page.fill('[data-test=wh-qty-' + i + ']', '5');
+    await page.waitForTimeout(200);
+    equal((await st(page)).warehouse[i].qty, 5);
+    equal(await text(page, 'wh-value-' + i), '500 gp (100 a lot)');
+    equal((await H.layoutCheck(page, ['[data-test=panel-warehouse]', '[data-test=panel-warehouse] .tsi-modal__foot button'])).outOfView, []);
+    await H.shot(page, 'bs-07-warehouse-goods');
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(150);
+  });
+
+  await check('the Herbal Gardens at Level 5: its four new orders say what they use and make; a recipe waiting for research says so; each recipe has its own days', async () => {
+    await setUp(page, (s) => { s.facilityLevels.herbal_gardens = 5; s.research = {}; });
+    await pause(page);
+    await page.click('[data-test=tile-herbal_gardens]');
+    await page.waitForSelector('[data-test=panel-fac-herbal_gardens]');
+    try {
+      equal(await page.$$eval('[data-test^="goods-herbal_gardens__"]', gs => gs.map(g => g.dataset.test.replace('goods-herbal_gardens__', ''))),
+        ['cultivate_specialist', 'field_medical_supplies', 'commercial_medicinal_crops', 'major_botanical_production']);
+      equal(await page.$$eval('[data-test="sel-herbal_gardens__commercial_medicinal_crops"] option', os => os.map(o => o.textContent)),
+        ['Medicinal Herbs (1 lot)', 'Refined Botanical Reagents (1 lot) (needs Botanical Extraction)']);
+      await page.selectOption('[data-test="sel-herbal_gardens__commercial_medicinal_crops"]', '1');
+      await page.waitForTimeout(100);
+      equal(await text(page, 'why-herbal_gardens__commercial_medicinal_crops'), 'Needs the research Botanical Extraction.');
+      equal(await page.isDisabled('[data-test=issue-herbal_gardens__commercial_medicinal_crops]'), true);
+      equal(await text(page, 'days-herbal_gardens__field_medical_supplies'), 'Takes 6 days');
+      await page.selectOption('[data-test="sel-herbal_gardens__field_medical_supplies"]', '1');
+      await page.waitForTimeout(100);
+      equal(await text(page, 'days-herbal_gardens__field_medical_supplies'), 'Takes 7 days');
+      equal(await page.$eval('[data-test=goods-herbal_gardens__cultivate_specialist]', e => e.textContent), 'Makes: 10 portions of Restorative Herbs');
+    } finally {
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(150);
+    }
+    /* Back to the start for what follows. */
+    await setUp(page, (s) => { s.builtPlots = []; s.builtExtras = []; s.warehouse = []; s.pendingOrders = []; s.research = {}; });
+    await page.selectOption('[data-test=level]', '7');
+    await page.waitForTimeout(200);
+    equal((await st(page)).partyLevel, 7);
   });
 
   /* ------------------------------------------------------------------ */

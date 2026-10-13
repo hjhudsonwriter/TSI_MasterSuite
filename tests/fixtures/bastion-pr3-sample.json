@@ -1,0 +1,224 @@
+{
+  "format": "tsi-backup",
+  "version": 1,
+  "kind": "tool",
+  "space": "suite",
+  "tool": "bastion",
+  "toolName": "The Ironbow Bastion Manager",
+  "suite": "The Scarlett Isles: D&D Tool Suite",
+  "savedAt": "2026-10-13T12:00:00.000Z",
+  "records": [
+    {
+      "key": "tsi.bastion.state",
+      "value": {
+        "treasuryGP": 3000,
+        "partyLevel": 13,
+        "builtFacilities": [
+          "barracks",
+          "armoury",
+          "watchtower",
+          "workshop",
+          "dock"
+        ],
+        "builtExtras": [
+          {
+            "facId": "library_scriptorium",
+            "status": "built"
+          },
+          {
+            "facId": "arcane_laboratory",
+            "status": "built"
+          },
+          {
+            "facId": "shrine_aurush",
+            "status": "built"
+          },
+          {
+            "facId": "hall_of_emissaries",
+            "status": "built"
+          }
+        ],
+        "builtPlots": [
+          {
+            "facId": "herbal_gardens",
+            "status": "built"
+          },
+          {
+            "facId": "timber_sawmill",
+            "status": "built"
+          },
+          {
+            "facId": "fishery_smokehouse",
+            "status": "built"
+          }
+        ],
+        "facilityLevels": {
+          "barracks": 1,
+          "armoury": 1,
+          "watchtower": 1,
+          "workshop": 1,
+          "dock": 1,
+          "library_scriptorium": 1,
+          "arcane_laboratory": 1,
+          "shrine_aurush": 1,
+          "hall_of_emissaries": 1,
+          "herbal_gardens": 5,
+          "timber_sawmill": 2,
+          "fishery_smokehouse": 3
+        },
+        "pendingOrders": [],
+        "defenders": {
+          "count": 0,
+          "armed": false,
+          "patrolUntil": 0
+        },
+        "defenderBeasts": [],
+        "military": [],
+        "warehouse": [
+          {
+            "id": "sample-rope",
+            "item": "Rope (50 ft)",
+            "qty": 2,
+            "gp": "1",
+            "notes": "typed by hand"
+          },
+          {
+            "id": "4xjve415gzrmv71ib2c",
+            "goodId": "raw_timber",
+            "item": "Raw Timber",
+            "qty": 2,
+            "gp": "",
+            "notes": "Sample for pull request 3"
+          },
+          {
+            "id": "9v3qs82axzimv71ib2c",
+            "goodId": "fresh_fish",
+            "item": "Fresh Fish",
+            "qty": 1,
+            "gp": "",
+            "notes": "Sample for pull request 3"
+          },
+          {
+            "id": "esnm6c3gez9mv71ib2c",
+            "goodId": "preserved_fish",
+            "item": "Preserved Fish",
+            "qty": 1,
+            "gp": "",
+            "notes": "Sample for pull request 3"
+          },
+          {
+            "id": "jq7hkg4lvzmv71ib2c",
+            "goodId": "restorative_herbs",
+            "item": "Restorative Herbs",
+            "qty": 20,
+            "gp": "",
+            "notes": "Sample for pull request 3"
+          },
+          {
+            "id": "onrcyk5rczmv71ib2c",
+            "goodId": "antivenom_roots",
+            "item": "Antivenom Roots",
+            "qty": 5,
+            "gp": "",
+            "notes": "Sample for pull request 3"
+          },
+          {
+            "id": "tlb8co6wtyimv71ib2c",
+            "goodId": "alchemical_flowers",
+            "item": "Alchemical Flowers",
+            "qty": 20,
+            "gp": "",
+            "notes": "Sample for pull request 3"
+          }
+        ],
+        "artisanTools": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        "favour": {
+          "telluria": 0,
+          "aurush": 0,
+          "pelagos": 0
+        },
+        "politicalCapital": {
+          "blackstone": 0,
+          "bacca": 0,
+          "farmer": 0,
+          "slade": 0,
+          "molten": 0,
+          "rowthorn": 0,
+          "karr": 0
+        },
+        "tradeNetwork": {
+          "active": false,
+          "strategy": "balanced",
+          "stability": 75,
+          "routes": []
+        },
+        "arbitration": {
+          "queue": []
+        },
+        "diplomacy": {
+          "agreements": [],
+          "delegations": [],
+          "summits": [],
+          "arbitrations": [],
+          "consortiums": [],
+          "rep": 0,
+          "cooldowns": {},
+          "tokens": 0
+        },
+        "v": 3,
+        "day": 1,
+        "anchored": false,
+        "lastEvent": null,
+        "lastEventDay": 0,
+        "log": [],
+        "organization": {
+          "type": "unsworn",
+          "name": "",
+          "chief": "",
+          "motto": "",
+          "foundedAtDay": null
+        },
+        "clanHonor": 40,
+        "honourRespectByClan": {
+          "blackstone": 0,
+          "bacca": 0,
+          "farmer": 0,
+          "slade": 0,
+          "molten": 0,
+          "rowthorn": 0,
+          "karr": 0
+        },
+        "trustedClientsByClan": {
+          "blackstone": 50,
+          "bacca": 50,
+          "farmer": 50,
+          "slade": 50,
+          "molten": 50,
+          "rowthorn": 50,
+          "karr": 50
+        },
+        "warLog": [],
+        "dayInProgress": null,
+        "word": [],
+        "militaryActions": [],
+        "warMissions": {},
+        "warRecovery": [],
+        "warMissionSeq": 0,
+        "wars": {},
+        "repairs": {},
+        "legacyFacilities": [],
+        "research": {},
+        "archivedFacilities": [],
+        "migration": null
+      },
+      "savedAt": "2026-10-13T12:00:00.000Z"
+    }
+  ]
+}

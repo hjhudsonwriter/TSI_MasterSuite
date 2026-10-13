@@ -69,7 +69,8 @@
       var out = [];
       function add(day, kind, line) { if (isNum(day)) out.push({ day: Math.trunc(day), kind: kind, line: line }); }
       var repairs = isObj(ba.repairs) ? ba.repairs : {};
-      (Array.isArray(ba.builtExtras) ? ba.builtExtras : []).forEach(function (e) {
+      /* Construction slots, then Development Plots (the Bastion's pull request 3). */
+      (Array.isArray(ba.builtExtras) ? ba.builtExtras : []).concat(Array.isArray(ba.builtPlots) ? ba.builtPlots : []).forEach(function (e) {
         if (isObj(e) && e.status === 'building') add(e.readyDay, 'built', 'The ' + facilityName(e.facId) + ' is built.');
       });
       (Array.isArray(ba.pendingOrders) ? ba.pendingOrders : []).forEach(function (o) {
