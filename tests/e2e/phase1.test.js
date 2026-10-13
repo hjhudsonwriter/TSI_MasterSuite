@@ -1243,7 +1243,7 @@ async function waitSaved(page) {
 
     await fresh('the Bastion in two tabs: the second waits instead, nobody warns, and it opens once the first closes', async context => {
       const a = await open(context, INDEX + '?tool=bastion');
-      await a.waitForFunction(() => TSI.bastion.debug, null, { timeout: 8000 });
+      await a.waitForFunction(() => TSI.bastion && TSI.bastion.debug, null, { timeout: 8000 });
       const b = await open(context, INDEX + '?tool=bastion');
       await b.waitForSelector('[data-test=tool-waiting]');
       await b.waitForTimeout(4500); /* two heartbeats */
