@@ -11,7 +11,7 @@ Double-click `index.html` to open the suite. The plan is in `docs/PLAN.md`, the 
 ### The Courier Exchange's art (13 October 2026)
 After Harry's check of pull request 3 (all passed; merged as #23), he sent the Courier Exchange's map overlay and facility picture:
 - **Its picture** shows in Construction now (it's still "In development") and on its tile and panel once it can be built.
-- **Its map overlay** stands in the open square, where the cart is, overlapping no other building. It shows on the map, with a name-and-level label above it, once the Courier Exchange can be built and is built.
+- **Its map overlay** stands in the open square, where the cart is, overlapping no other building. It shows on the map, with a name-and-level label above it, once the Courier Exchange can be built and is built. (With the Shrine of Aurush built too, their labels would meet, so the Courier Exchange's sits on its own roof instead.)
 - The chat delivered both as WebP pictures, the overlay at two-thirds size. The originals are kept unchanged in `bastion-new-art/3-courier-exchange/`, and the Bastion uses PNG copies, the overlay scaled up to the painting's 3000 × 1250. A full-size original would make the building a little sharper.
 
 ### The facilities overhaul, pull request 3: plots, goods, the Timber Yard and Fishery, and the map labels (13 October 2026)
