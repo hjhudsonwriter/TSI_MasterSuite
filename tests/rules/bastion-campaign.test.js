@@ -1834,29 +1834,29 @@
   test('a defence lost: 1d10 × 5% of the treasury, 1d4 facilities Under Repair, orders put back; the hurt roll first', function (t) {
     var d = defence();
     var s = d.s;
-    s.builtExtras = [{ facId: 'library', status: 'built' }, { facId: 'smithy', status: 'building', startDay: 1, readyDay: 22 }];
+    s.builtExtras = [{ facId: 'library_scriptorium', status: 'built' }, { facId: 'arcane_laboratory', status: 'building', startDay: 1, readyDay: 22 }];
     s.repairs = { dock: 30 };
     s.pendingOrders = [
       { id: 'a', facId: 'barracks', fnId: 'recruit_defenders', dueDay: 4 },
       { id: 'b', facId: 'barracks', fnId: 'x', dueDay: 20 },
-      { id: 'c', facId: 'library', fnId: 'research', dueDay: 4 }
+      { id: 'c', facId: 'library_scriptorium', fnId: 'research', dueDay: 4 }
     ];
-    /* d6 3 and 5 for the hurt; d10 10 (50%); d4 3; then the Barracks, the Dock and the Library. */
+    /* d6 3 and 5 for the hurt; d10 10 (50%); d4 3; then the Barracks, the Dock and the Library & Scriptorium. */
     var res = R.finishBattle(s, data, d.ma.id, battleFrom(d.ma, 'defeat', hurtOpts()), dice([d6(3), d6(5), d10(10), d4(3), 0, 0.99, 0.99]), 0);
     t.same(s.warRecovery.map(function (r) { return [r.name, r.status]; }), [['Lieutenant 1', 'separated'], ['Lieutenant 2', 'wounded'], ['Giant Vulture', 'recovered'], ['Giant Vulture', 'separated']]);
     t.same([s.treasuryGP, s.politicalCapital.bacca, s.clanHonor], [50, -8, 32]);
-    t.same(s.repairs, { dock: 30, barracks: 16, library: 16 }, 'the Dock\'s longer repairs are kept; the Smithy isn\'t built yet');
+    t.same(s.repairs, { dock: 30, barracks: 16, library_scriptorium: 16 }, 'the Dock\'s longer repairs are kept; the Arcane Laboratory isn\'t built yet');
     t.same(s.pendingOrders.map(function (o) { return [o.id, o.dueDay]; }), [['a', 17], ['b', 20], ['c', 17]]);
     t.same(R.repairsList(s, data), [
       { facId: 'barracks', name: 'Barracks', untilDay: 16, backDay: 17, daysLeft: 14 },
       { facId: 'dock', name: 'Dock', untilDay: 30, backDay: 31, daysLeft: 28 },
-      { facId: 'library', name: 'Library', untilDay: 16, backDay: 17, daysLeft: 14 }
+      { facId: 'library_scriptorium', name: 'Library & Scriptorium', untilDay: 16, backDay: 17, daysLeft: 14 }
     ], 'lost on Day 3: 14 days Under Repair (Days 3 to 16), working again on Day 17');
     t.ok(res.lines.indexOf('Treasury: −50 gp (d10 10: 50% of 100 gp; now 50 gp).') !== -1, res.lines.join(' | '));
-    t.ok(res.lines.indexOf('Under Repair until Day 16 (d4 3): Barracks, Dock, Library. They take no orders until Day 17, and 2 orders already running there now complete on Day 17 at the earliest.') !== -1, res.lines.join(' | '));
+    t.ok(res.lines.indexOf('Under Repair until Day 16 (d4 3): Barracks, Dock, Library & Scriptorium. They take no orders until Day 17, and 2 orders already running there now complete on Day 17 at the earliest.') !== -1, res.lines.join(' | '));
     t.ok(res.lines.indexOf('Lieutenant 2 (with Archers): wounded (d6 3), back on Day 17.') !== -1);
     t.ok(res.report.details.indexOf('- Treasury: −50 gp (d10 10: 50% of 100 gp; now 50 gp).') !== -1, res.report.details);
-    t.ok(res.report.details.indexOf('- Under Repair until Day 16 (d4 3): Barracks, Dock, Library.') !== -1, res.report.details);
+    t.ok(res.report.details.indexOf('- Under Repair until Day 16 (d4 3): Barracks, Dock, Library & Scriptorium.') !== -1, res.report.details);
     t.equal(res.report.title, 'Defeat: Defend Bastion vs Bacca');
     t.same(s.wars.bacca, { since: 2, last: 3, next: 9 });
   });

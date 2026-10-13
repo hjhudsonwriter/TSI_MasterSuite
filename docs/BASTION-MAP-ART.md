@@ -130,17 +130,17 @@ Harry asked for the new art first, ahead of the facilities overhaul (decisions D
 
 | Facility | Overlay |
 |---|---|
-| Library | `library.png` |
-| Laboratory, Arcane Study (one Arcane Laboratory after the merge) | `laboratory.png` |
-| Greenhouse, Garden (one Herbal Gardens after the merge) | `greenhouse.png` |
+| Library & Scriptorium (the Library until the overhaul) | `library.png` |
+| Arcane Laboratory (the Laboratory and Arcane Study, merged) | `laboratory.png` |
+| Herbal Gardens (the Greenhouse and Garden, merged) | `greenhouse.png` |
 | War Room | `war_room.png` |
 | Hall of Emissaries | `hall_of_emissaries.png` |
 | Shrine of Aurush, Shrine of Telluria, Shrine of Pelagos | `shrine_of_aurush.png`, `shrine_of_telluria.png`, `shrine_of_pelagos.png` (shown now: D10, reversing B12) |
-| Smithy, Gaming Hall, Menagerie (and the Courier Exchange, to come) | none |
-| The seven new facilities | `wyvern_roost.png`, `griffin_tower.png`, `dire_wolf_den.png`, `weavers_sailmakers_hall.png`, `stone_quarry_masonworks.png`, `fishery_smokehouse.png`, `timber_yard_sawmill.png`: added to the table as each facility is built into the Bastion |
+| Menagerie, Courier Exchange | none (the Smithy joined the Workshop, in the base painting, and the Gaming Hall is gone) |
+| The seven new facilities | `wyvern_roost.png`, `griffin_tower.png`, `dire_wolf_den.png`, `weavers_sailmakers_hall.png`, `stone_quarry_masonworks.png`, `fishery_smokehouse.png`, `timber_yard_sawmill.png`: in the table already, so each shows once its facility can be built and is built. Until then, the Construction panel shows each facility's building cut from its overlay (`facilityTileCrops`) |
 
 - **Rules:**
-  - two facilities sharing a picture draw it once;
+  - two facilities sharing a picture draw it once (none share one since the overhaul's first step, 13 October 2026);
   - it's darkened if either is Under Repair;
   - overlays are drawn in the table's order.
 - **The crest badge** sits over the painting's top-right sky. A test checks it never covers the Hall of Emissaries on the laptop, in full screen, on the TV or in a 1280 × 720 window.

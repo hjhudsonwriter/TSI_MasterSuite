@@ -32,11 +32,24 @@
   /* "hall_of_emissaries" → "Hall of Emissaries"; "shrine_aurush" → "Shrine of
      Aurush". The Bastion's facility names follow this rule, so the Explorer
      can name them without loading the Bastion's data. */
+  /* Names the rule above can't make (the facilities overhaul, 13 October
+     2026); keep them the same as tools/bastion/data/facilities-data.js. */
+  var FACILITY_NAMES = {
+    library_scriptorium: 'Library & Scriptorium',
+    weavers_hall: 'Weavers\' Hall',
+    stone_masonworks: 'Stone Quarry & Masonworks',
+    timber_sawmill: 'Timber Yard & Sawmill',
+    fishery_smokehouse: 'Fishery & Smokehouse'
+  };
   function facilityName(id) {
+    if (FACILITY_NAMES[str(id)]) return FACILITY_NAMES[str(id)];
     var words = str(id).split('_').filter(Boolean);
     if (words[0] === 'shrine' && words.length === 2) words = ['shrine', 'of', words[1]];
     return words.map(function (w) { return w === 'of' ? w : w.charAt(0).toUpperCase() + w.slice(1); }).join(' ');
   }
+  /* A Bastion saved in days: v 2, or v 3 after the facilities overhaul (13
+     October 2026). The Bastion converts a v 2 save the next time it opens. */
+  function inDaysSave(ba) { return !!ba && (ba.v === 2 || ba.v === 3); }
   var OBJECTIVES = { raid: 'Raid', skirmish: 'Skirmish', seize_outpost: 'Seize Outpost' };
   function clanTitle(name) { var n = str(name).trim(); return /^clan /i.test(n) ? n : 'Clan ' + n; }
 
@@ -52,7 +65,7 @@
        event). Nothing for a Bastion that hasn't read the Explorer's day yet. */
     bastionComing: function (bastion) {
       var ba = isObj(bastion) ? bastion : null;
-      if (!ba || ba.v !== 2 || ba.anchored !== true || !isNum(ba.day)) return [];
+      if (!inDaysSave(ba) || ba.anchored !== true || !isNum(ba.day)) return [];
       var out = [];
       function add(day, kind, line) { if (isNum(day)) out.push({ day: Math.trunc(day), kind: kind, line: line }); }
       var repairs = isObj(ba.repairs) ? ba.repairs : {};
@@ -173,7 +186,7 @@
       var day = ex ? clampInt(travel.day, 1, 100000, 1) : null;
       out.day = day;
       out.daysPassed = day === null ? null : day - 1;
-      var inDays = ba && ba.v === 2 ? ba : null;
+      var inDays = inDaysSave(ba) ? ba : null;
       if (inDays) {
         var today = day === null ? clampInt(inDays.day, 1, 100000, 1) : day;
         var orders = (Array.isArray(inDays.pendingOrders) ? inDays.pendingOrders : []).filter(function (o) { return isObj(o) && isNum(o.dueDay); })

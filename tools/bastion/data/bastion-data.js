@@ -7,54 +7,88 @@ window.TSI_DATA.bastion = {
   /* The five facilities every Bastion starts with (226). */
   startingBuilt: ['barracks', 'armoury', 'watchtower', 'workshop', 'dock'],
 
-  /* Each facility's picture in assets/facilities/ (284-311). */
+  /* Each facility's picture in assets/facilities/ (284-311). Since the
+     facilities overhaul (13 October 2026) the merged facilities use the
+     painting of the building whose map overlay they show; the Arcane Study's,
+     Smithy's, Garden's and Gaming Hall's paintings are in assets/extras/. */
   facilityImages: {
     barracks: 'barracks.png',
     armoury: 'armoury.png',
     watchtower: 'watchtower.png',
     workshop: 'workshop.png',
     dock: 'docks.png',
-    arcane_study: 'arcane_study.png',
-    library: 'library.png',
-    smithy: 'smithy.png',
-    garden: 'garden.png',
+    arcane_laboratory: 'laboratory.png',
+    library_scriptorium: 'library.png',
+    herbal_gardens: 'greenhouse.png',
     menagerie: 'menagerie.png',
-    laboratory: 'laboratory.png',
     war_room: 'war_room.png',
-    gaming_hall: 'gambling_hall.png',
-    greenhouse: 'greenhouse.png',
     shrine_telluria: 'shrine_of_telluria.png',
     shrine_aurush: 'shrine_of_aurush.png',
     shrine_pelagos: 'shrine_of_pelagos.png',
     hall_of_emissaries: 'hall_of_emissaries.png'
   },
+  /* The new facilities have no tile painting yet: their tile shows their
+     building from Harry's map overlay, cut to this box of the 3000 x 1250
+     painting (from bastion-new-art/2-second-upload/placements.json, with a
+     little room round it). The Courier Exchange has no art at all, so its
+     tile shows its name on a plain frame. */
+  facilityTileCrops: {
+    wyvern_roost: { pic: 'map/overlays/wyvern_roost.png', x: 1934, y: 296, w: 295, h: 194 },
+    griffin_tower: { pic: 'map/overlays/griffin_tower.png', x: 1164, y: 296, w: 230, h: 195 },
+    dire_wolf_den: { pic: 'map/overlays/dire_wolf_den.png', x: 2328, y: 681, w: 264, h: 161 },
+    weavers_hall: { pic: 'map/overlays/weavers_sailmakers_hall.png', x: 2668, y: 670, w: 331, h: 170 },
+    stone_masonworks: { pic: 'map/overlays/stone_quarry_masonworks.png', x: 2004, y: 809, w: 380, h: 206 },
+    fishery_smokehouse: { pic: 'map/overlays/fishery_smokehouse.png', x: 11, y: 714, w: 349, h: 252 },
+    timber_sawmill: { pic: 'map/overlays/timber_yard_sawmill.png', x: 1648, y: 827, w: 380, h: 188 }
+  },
+  /* The facilities overhaul (13 October 2026): what each retired facility
+     id became. A Bastion saved before it (v 2) is converted once
+     (R.migrateToV3): built facilities, buildings under way, pending orders
+     (their order ids by "fns"), levels and repairs move to the new id; a
+     facility with "to" null is gone (the Gaming Hall). "legacy" keeps an old
+     order for Bastions that had that building (the Smithy's, as "smithing"). */
+  retiredFacilities: {
+    smithy: { to: 'workshop', name: 'Smithy', fns: { craft: 'smithing' }, legacy: 'smithy' },
+    arcane_study: { to: 'arcane_laboratory', name: 'Arcane Study', fns: {} },
+    laboratory: { to: 'arcane_laboratory', name: 'Laboratory', fns: { craft: 'alchemy' } },
+    library: { to: 'library_scriptorium', name: 'Library', fns: {} },
+    garden: { to: 'herbal_gardens', name: 'Garden', fns: {} },
+    greenhouse: { to: 'herbal_gardens', name: 'Greenhouse', fns: { harvest: 'cultivate' } },
+    gaming_hall: { to: null, name: 'Gaming Hall', fns: {} }
+  },
 
   /* The Bastion map (Harry's new painting, 12 October 2026; in use since
      13 October): one base painting, and a see-through overlay the same size
      for each built facility that has one, drawn in this order. Two
-     facilities can share a picture (they're drawn once): the Arcane Study
-     uses the Laboratory's and the Garden the Greenhouse's, as they'll merge
-     into the Arcane Laboratory and Herbal Gardens (Harry's decision D10).
-     The Shrines are shown now (D10, reversing B12). The Workshop and the
-     other starting buildings are in the base painting; the Smithy, Gaming
-     Hall and Menagerie have no picture. The seven pictures for the new
-     facilities (assets/map/overlays/) are listed when those facilities are
-     built into the Bastion. The originals are in bastion-new-art/. */
+     facilities could share a picture (it's drawn once); since the
+     facilities overhaul (13 October 2026) none do: the Arcane Laboratory
+     uses the old Laboratory's picture and the Herbal Gardens the
+     Greenhouse's. The Shrines are shown (D10, reversing B12). The Workshop
+     and the other starting buildings are in the base painting; the
+     Menagerie and Courier Exchange have no picture. The seven new
+     facilities still in development have theirs listed already, so they
+     appear as soon as they can be built. The originals are in
+     bastion-new-art/. */
   map: {
     base: 'map/bastion_base.jpg',
     width: 3000,
     height: 1250,
     overlays: [
-      { fac: 'library', pic: 'map/overlays/library.png' },
-      { fac: 'laboratory', pic: 'map/overlays/laboratory.png' },
-      { fac: 'arcane_study', pic: 'map/overlays/laboratory.png' },
-      { fac: 'greenhouse', pic: 'map/overlays/greenhouse.png' },
-      { fac: 'garden', pic: 'map/overlays/greenhouse.png' },
+      { fac: 'library_scriptorium', pic: 'map/overlays/library.png' },
+      { fac: 'arcane_laboratory', pic: 'map/overlays/laboratory.png' },
+      { fac: 'herbal_gardens', pic: 'map/overlays/greenhouse.png' },
       { fac: 'war_room', pic: 'map/overlays/war_room.png' },
       { fac: 'hall_of_emissaries', pic: 'map/overlays/hall_of_emissaries.png' },
       { fac: 'shrine_aurush', pic: 'map/overlays/shrine_of_aurush.png' },
       { fac: 'shrine_telluria', pic: 'map/overlays/shrine_of_telluria.png' },
-      { fac: 'shrine_pelagos', pic: 'map/overlays/shrine_of_pelagos.png' }
+      { fac: 'shrine_pelagos', pic: 'map/overlays/shrine_of_pelagos.png' },
+      { fac: 'wyvern_roost', pic: 'map/overlays/wyvern_roost.png' },
+      { fac: 'griffin_tower', pic: 'map/overlays/griffin_tower.png' },
+      { fac: 'dire_wolf_den', pic: 'map/overlays/dire_wolf_den.png' },
+      { fac: 'weavers_hall', pic: 'map/overlays/weavers_sailmakers_hall.png' },
+      { fac: 'stone_masonworks', pic: 'map/overlays/stone_quarry_masonworks.png' },
+      { fac: 'fishery_smokehouse', pic: 'map/overlays/fishery_smokehouse.png' },
+      { fac: 'timber_sawmill', pic: 'map/overlays/timber_yard_sawmill.png' }
     ]
   },
 

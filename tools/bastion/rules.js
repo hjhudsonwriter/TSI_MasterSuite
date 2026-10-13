@@ -168,10 +168,136 @@
          { facId: untilDay } (Under Repair while the day is at or before
          untilDay). */
       wars: {},
-      repairs: {}
+      repairs: {},
+      /* The facilities overhaul (13 October 2026): v 3. Retired buildings
+         whose old order is kept ("smithy": the Workshop's Smithing), the
+         buildings retired from this Bastion (an audit record), and the
+         one-time conversion's report. */
+      legacyFacilities: [],
+      archivedFacilities: [],
+      migration: null
     };
+    s.v = 3;
     R.ensureLevels(s, data);
     return s;
+  };
+
+  /* ---------- The facilities overhaul: converting a v 2 save, once ----------
+     (Harry, 13 October 2026; docs/FACILITIES-OVERHAUL-PLAN.md section 4.)
+     Works on the raw save, before R.fromSave tidies it (which drops repairs
+     and orders of facilities it doesn't know). Each retired facility moves
+     to its new one (bastion-data.js retiredFacilities): its slot, building
+     work, pending orders (ids, due days and costs kept; a Craft order from
+     the Smithy or Laboratory, or a Greenhouse Harvest, takes its new
+     order's name, so two never clash), level (the highest) and repairs (the latest).
+     If both halves of a merge were there, the built one (or the first) is
+     kept and the other slot freed. The Smithy joins the Workshop, a
+     starting facility: its slot is freed, and a Bastion that had it keeps
+     its order (legacyFacilities). The Gaming Hall goes, with its pending
+     Trade order (which cost nothing), and is recorded in archivedFacilities.
+     A save already converted (v 3) comes back as it is.
+     Returns { save, lines } (lines: the report, in plain English). */
+  R.migrateToV3 = function (raw, data) {
+    var s = TSI.clone(raw);
+    if (isObj(s) && s.v === 3) return { save: s, lines: [] };
+    var map = (data.bastion && data.bastion.retiredFacilities) || {};
+    var day = Math.max(1, dayNum(s.day, 1));
+    var lines = [];
+    var legacy = arr(s.legacyFacilities) ? s.legacyFacilities.slice() : [];
+    var archived = arr(s.archivedFacilities) ? s.archivedFacilities.slice() : [];
+    function nameOf(id) { var f = R.facility(data, id); return (f && f.name) || id; }
+    var extrasIn = arr(s.builtExtras) ? s.builtExtras : [];
+    var slots = extrasIn.map(function (x, i) {
+      if (!x) return '';
+      if (typeof x === 'string') x = { facId: x, status: 'built' };
+      if (!isObj(x) || !x.facId) return '';
+      var m = map[x.facId];
+      if (!m) return x;
+      var building = x.status === 'building';
+      if (m.to === null) {
+        archived.push({ facId: x.facId, name: m.name, status: building ? 'building' : 'built', slot: i, day: day });
+        lines.push(building ? 'Building work on the ' + m.name + ' stopped, as it is no longer part of the Bastion; its slot is free.' : 'The ' + m.name + ' is no longer part of the Bastion; its slot is free.');
+        return '';
+      }
+      if (data.bastion.startingBuilt.indexOf(m.to) !== -1) {
+        if (!building && m.legacy && legacy.indexOf(m.legacy) === -1) legacy.push(m.legacy);
+        lines.push(building ? 'Building work on the ' + m.name + ' stopped: it has joined the ' + nameOf(m.to) + '. Its slot is free.' : 'The ' + m.name + ' joined the ' + nameOf(m.to) + ': its slot is free, and the ' + nameOf(m.to) + ' keeps the ' + m.name + '\'s order.');
+        return '';
+      }
+      return { facId: m.to, status: x.status, startDay: x.startDay, readyDay: x.readyDay, from: x.facId };
+    });
+    /* Two halves of one merge: keep the built one (else the first to be
+       ready), free the other. */
+    var groups = {};
+    slots.forEach(function (x, i) { if (x && x.from) (groups[x.facId] = groups[x.facId] || []).push(i); });
+    Object.keys(groups).forEach(function (to) {
+      var idx = groups[to];
+      var keep = idx.slice().sort(function (a, b) {
+        var A = slots[a], Bx = slots[b];
+        var ab = A.status === 'built' ? 0 : 1, bb = Bx.status === 'built' ? 0 : 1;
+        if (ab !== bb) return ab - bb;
+        if (ab === 1) return dayNum(A.readyDay, 0) - dayNum(Bx.readyDay, 0) || a - b;
+        return a - b;
+      })[0];
+      var names = idx.map(function (i) { return map[slots[i].from].name; });
+      var stopped = idx.filter(function (i) { return i !== keep && slots[i].status === 'building'; }).map(function (i) { return map[slots[i].from].name; });
+      if (idx.length > 1) lines.push('The ' + names.join(' and the ') + ' are now one ' + nameOf(to) + (slots[keep].status === 'building' ? ' (still being built)' : '') + ': the other slot is free' +
+        (stopped.length ? ', and building work on the ' + stopped.join(' and the ') + ' stopped (building costs no gold).' : '.'));
+      else lines.push('The ' + names[0] + ' is now the ' + nameOf(to) + (slots[keep].status === 'building' ? ' (still being built)' : '') + '.');
+      idx.forEach(function (i) { if (i !== keep) slots[i] = ''; });
+    });
+    s.builtExtras = slots.map(function (x) {
+      if (!x || !x.from) return x;
+      var out = { facId: x.facId, status: x.status };
+      if (x.status === 'building') { out.startDay = x.startDay; out.readyDay = x.readyDay; }
+      return out;
+    });
+    /* Pending orders follow their facility. */
+    var moved = 0;
+    var dropped = [];
+    if (arr(s.pendingOrders)) {
+      s.pendingOrders = s.pendingOrders.filter(function (o) {
+        if (!isObj(o)) return true;
+        var m = map[o.facId];
+        if (!m) return true;
+        if (m.to === null) { dropped.push(o); return false; }
+        if (m.fns && m.fns[o.fnId]) o.fnId = m.fns[o.fnId];
+        o.facId = m.to;
+        moved += 1;
+        return true;
+      });
+    }
+    if (moved) lines.push(moved === 1 ? '1 pending order moved with its facility, keeping its due day.' : moved + ' pending orders moved with their facilities, keeping their due days.');
+    if (dropped.length) lines.push('Cancelled, with the Gaming Hall: ' + dropped.map(function (o) { return o.label || 'an order'; }).join('; ') + ' (it cost nothing).');
+    /* Levels: the highest of a merge's halves. Repairs: the latest. A retired
+       building's repairs don't pass to a starting facility. */
+    if (isObj(s.facilityLevels)) {
+      Object.keys(map).forEach(function (old) {
+        if (!(old in s.facilityLevels)) return;
+        var m = map[old];
+        var lv = Number(s.facilityLevels[old]) || 1;
+        delete s.facilityLevels[old];
+        if (m.to && data.bastion.startingBuilt.indexOf(m.to) === -1) s.facilityLevels[m.to] = Math.max(Number(s.facilityLevels[m.to]) || 0, lv);
+      });
+    }
+    if (isObj(s.repairs)) {
+      Object.keys(map).forEach(function (old) {
+        if (!(old in s.repairs)) return;
+        var m = map[old];
+        var until = s.repairs[old];
+        delete s.repairs[old];
+        if (m.to && data.bastion.startingBuilt.indexOf(m.to) === -1 && okDay(until)) s.repairs[m.to] = Math.max(okDay(s.repairs[m.to]) ? s.repairs[m.to] : 0, until);
+      });
+    }
+    s.legacyFacilities = legacy;
+    s.archivedFacilities = archived;
+    s.v = 3;
+    s.migration = { v3: { day: day, lines: lines, shown: !lines.length } };
+    if (lines.length) {
+      if (!arr(s.log)) s.log = [];
+      s.log.unshift({ title: 'Facilities', body: 'The facilities overhaul (13 October 2026): ' + lines.join(' '), at: Date.now(), day: day });
+    }
+    return { save: s, lines: lines };
   };
 
   /* Built facilities default to level 1 (old ensureDiplomacyState 1543-1547). */
@@ -196,7 +322,8 @@
      The treasury is floored at 0 when loaded, as before (B17). */
   R.fromSave = function (saved, data) {
     var d = R.defaultState(data);
-    var s = saved;
+    /* A save from before the facilities overhaul is converted first, once. */
+    var s = isObj(saved) && saved.v === 2 ? R.migrateToV3(saved, data).save : saved;
     d.treasuryGP = clampInt(s.treasuryGP === undefined || s.treasuryGP === null ? 0 : s.treasuryGP, 0);
     d.partyLevel = clampInt(s.partyLevel === undefined || s.partyLevel === null ? 7 : s.partyLevel, 1, 20);
     if (arr(s.builtFacilities)) d.builtFacilities = s.builtFacilities.slice();
@@ -273,6 +400,9 @@
     }
     d.wars = cleanWars(s.wars, d.day);
     d.repairs = cleanRepairs(s.repairs, data);
+    d.legacyFacilities = arr(s.legacyFacilities) ? s.legacyFacilities.filter(function (x) { return typeof x === 'string'; }) : [];
+    d.archivedFacilities = arr(s.archivedFacilities) ? s.archivedFacilities.filter(isObj) : [];
+    d.migration = isObj(s.migration) ? s.migration : null;
     if (arr(s.militaryActions)) d.militaryActions = s.militaryActions.filter(isObj);
     R.normalizeBuiltExtras(d);
     R.ensureLevels(d, data);
@@ -338,7 +468,7 @@
   /* A Bastion saved in turns, before the days overhaul (it has no v: 2).
      It's set aside, not converted (Harry, 8 October 2026). */
   R.isOldSave = function (s) {
-    return isObj(s) && s.v !== 2 && ('turn' in s || 'turnInProgress' in s);
+    return isObj(s) && s.v !== 2 && s.v !== 3 && ('turn' in s || 'turnInProgress' in s);
   };
   R.isUi = function (v) { return isObj(v); };
   /* What the screen remembers (tsi.bastion.ui), since the new screen
@@ -558,6 +688,8 @@
     var fac = R.facility(data, facId);
     var req = Number(fac && fac.requiredLevel || 0);
     var name = (fac && fac.name) || facId;
+    if (!fac) return { ok: false };
+    if (fac.inDevelopment) return { ok: false, message: 'The ' + name + ' is still in development: it can\'t be built yet.' };
     if (s.partyLevel < req) return { ok: false, message: 'Locked. ' + name + ' requires party level ' + req + '.' };
     if (R.reservedFacilityIds(s, data).indexOf(facId) !== -1) return { ok: false, message: 'That facility is already built or under construction.' };
     var days = R.buildDaysForRequiredLevel(req, data);
@@ -567,6 +699,32 @@
     }
     s.builtExtras[slotIndex] = { facId: facId, status: 'building', startDay: s.day, readyDay: s.day + days };
     return { ok: true, log: ['Construction Started', name + ' is under construction (' + days + ' days: ready on Day ' + (s.day + days) + ').'] };
+  };
+  /* Demolish a facility in a construction slot, built or still being built
+     (Harry, 13 October 2026). The five starting facilities can't be
+     demolished. Its slot is freed; orders pending there are cancelled (their
+     gold isn't given back, as with Cancel: B9); its level and any repairs go.
+     What it already made stays (the Warehouse, defenders, beasts, units),
+     and the Hall's records and routes carry on. Returns { ok, log, cancelled }
+     or { ok: false, message }. */
+  R.demolishFacility = function (s, data, facId) {
+    R.normalizeBuiltExtras(s);
+    var fac = R.facility(data, facId);
+    var name = (fac && fac.name) || facId;
+    if (data.bastion.startingBuilt.indexOf(facId) !== -1) return { ok: false, message: 'The ' + name + ' is one of the five starting facilities: it can\'t be demolished.' };
+    var at = -1;
+    s.builtExtras.forEach(function (x, i) { if (at === -1 && x && typeof x === 'object' && x.facId === facId) at = i; });
+    if (at === -1) return { ok: false, message: 'The ' + name + ' isn\'t built or being built.' };
+    var building = s.builtExtras[at].status === 'building';
+    s.builtExtras[at] = '';
+    var cancelled = s.pendingOrders.filter(function (o) { return o && o.facId === facId; });
+    s.pendingOrders = s.pendingOrders.filter(function (o) { return !(o && o.facId === facId); });
+    if (isObj(s.facilityLevels)) delete s.facilityLevels[facId];
+    if (isObj(s.repairs)) delete s.repairs[facId];
+    var body = building
+      ? 'Building work on the ' + name + ' stopped; its slot is free.'
+      : 'The ' + name + ' was demolished; its slot is free.' + (cancelled.length ? ' Cancelled: ' + cancelled.map(function (o) { return o.label; }).join('; ') + '.' : '');
+    return { ok: true, log: [building ? 'Construction Stopped' : 'Facility Demolished', body], cancelled: cancelled };
   };
   R.getFacilityLevel = function (s, facId) { return clampInt(s.facilityLevels && s.facilityLevels[facId] !== undefined && s.facilityLevels[facId] !== null ? s.facilityLevels[facId] : 1, 1, 3); };
 
@@ -643,6 +801,17 @@
   /* How many days an order takes (facilities-data.js days; at least 1). */
   R.orderDays = function (fn) { return clampInt(fn && fn.days !== undefined && fn.days !== null ? fn.days : 1, 1, 365); };
 
+  /* Can this order be given here? The facilities overhaul keeps each
+     merged order's old party level ("requiredPartyLevel") and keeps the
+     Smithy's order only for a Bastion that had a Smithy ("onlyIfLegacy";
+     hidden otherwise). Returns { ok } or { ok: false, hidden?, message }. */
+  R.fnAvailable = function (s, fac, fn) {
+    if (fn && fn.onlyIfLegacy && (s.legacyFacilities || []).indexOf(fn.onlyIfLegacy) === -1) return { ok: false, hidden: true, message: 'That order isn\'t available here.' };
+    var lvl = Number(fn && fn.requiredPartyLevel || 0);
+    if (lvl && s.partyLevel < lvl) return { ok: false, message: 'Needs party level ' + lvl + '.' };
+    return { ok: true };
+  };
+
   /* Issue an order from a facility card (3247-3344). optionIdx is the list's choice. */
   R.issueOrder = function (s, data, facId, fnId, optionIdx, rand) {
     var fac = R.facility(data, facId);
@@ -650,6 +819,8 @@
     if (!fac || !fn) return { ok: false };
     var broken = repairRefusal(s, fac);
     if (broken) return broken;
+    var avail = R.fnAvailable(s, fac, fn);
+    if (!avail.ok) return { ok: false, message: avail.message };
     if (pendingSame(s, facId, fnId)) return { ok: false, message: 'That order is already pending.' };
     var chosen = null;
     var optionLabel = null;
@@ -662,7 +833,7 @@
       optionLabel = picked;
     }
     var notes = '';
-    if (facId === 'library' && fnId === 'research') notes = data.bastion.scriptureNotes[String(optionLabel || '').trim()] || '';
+    if (facId === 'library_scriptorium' && fnId === 'research') notes = data.bastion.scriptureNotes[String(optionLabel || '').trim()] || '';
     var costGP = R.withSummitDiscount(s, fac, fn, R.computeFnCost(s, fac, fn, chosen).costGP);
     if (costGP > s.treasuryGP) return { ok: false, message: 'Not enough gp. Need ' + costGP + 'gp, you have ' + s.treasuryGP + 'gp.' };
     s.treasuryGP -= costGP;

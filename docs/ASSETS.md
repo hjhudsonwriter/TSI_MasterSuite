@@ -303,22 +303,22 @@ All 139 media files from the old Bastion (131 PNGs and 8 SVGs). 121 distinct fil
 | `data/compendium_cards/Sword of Vengeance.png` | `tools/bastion/assets/compendium_cards/Sword of Vengeance.png` | 83 KB, 436 × 590 | Yes: the Compendium card for Sword of Vengeance |
 | `data/compendium_cards/Truth Serum.png` | `tools/bastion/assets/compendium_cards/Truth Serum.png` | 23 KB, 444 × 175 | Yes: the Compendium card for Truth Serum |
 | `data/compendium_cards/Walloping Ammunition.png` | `tools/bastion/assets/compendium_cards/Walloping Ammunition.png` | 40 KB, 436 × 341 | Yes: the Compendium card for Walloping Ammunition |
-| `assets/facilities/arcane_study.png` | `tools/bastion/assets/facilities/arcane_study.png` | 1.73 MB, 1024 × 1024 | Yes: the Arcane Study card's picture |
+| `assets/facilities/arcane_study.png` | `tools/bastion/assets/extras/facilities/arcane_study.png` | 1.73 MB, 1024 × 1024 | No longer: the Arcane Study's picture, until it merged into the Arcane Laboratory (13 October 2026) |
 | `assets/facilities/armoury.png` | `tools/bastion/assets/facilities/armoury.png` | 1.99 MB, 1024 × 1024 | Yes: the Armoury card's picture |
 | `assets/facilities/barracks.png` | `tools/bastion/assets/facilities/barracks.png` | 1.95 MB, 1024 × 1024 | Yes: the Barracks card's picture |
 | `assets/facilities/docks.png` | `tools/bastion/assets/facilities/docks.png` | 1.83 MB, 1024 × 1024 | Yes: the Dock card's picture |
-| `assets/facilities/gambling_hall.png` | `tools/bastion/assets/facilities/gambling_hall.png` | 1.90 MB, 1024 × 1024 | Yes: the Gaming Hall card's picture |
-| `assets/facilities/garden.png` | `tools/bastion/assets/facilities/garden.png` | 2.06 MB, 1024 × 1024 | Yes: the Garden card's picture |
-| `assets/facilities/greenhouse.png` | `tools/bastion/assets/facilities/greenhouse.png` | 2.09 MB, 1024 × 1024 | Yes: the Greenhouse card's picture |
+| `assets/facilities/gambling_hall.png` | `tools/bastion/assets/extras/facilities/gambling_hall.png` | 1.90 MB, 1024 × 1024 | No longer: the Gaming Hall's picture, until it left the Bastion (13 October 2026) |
+| `assets/facilities/garden.png` | `tools/bastion/assets/extras/facilities/garden.png` | 2.06 MB, 1024 × 1024 | No longer: the Garden's picture, until it merged into the Herbal Gardens (13 October 2026) |
+| `assets/facilities/greenhouse.png` | `tools/bastion/assets/facilities/greenhouse.png` | 2.09 MB, 1024 × 1024 | Yes: the Herbal Gardens' picture (the Greenhouse's until 13 October 2026) |
 | `assets/facilities/hall_inner.png` | `tools/bastion/assets/facilities/hall_inner.png` | 2.61 MB, 1536 × 1024 | Yes: the painted hall behind the Hall's pop-ups |
 | `assets/facilities/hall_of_emissaries.png` | `tools/bastion/assets/facilities/hall_of_emissaries.png` | 1.65 MB, 1024 × 1024 | Yes: the Hall's picture, and faint behind the Diplomacy & Trade panel |
-| `assets/facilities/laboratory.png` | `tools/bastion/assets/facilities/laboratory.png` | 2.06 MB, 1024 × 1024 | Yes: the Laboratory card's picture |
-| `assets/facilities/library.png` | `tools/bastion/assets/facilities/library.png` | 1.77 MB, 1024 × 1024 | Yes: the Library card's picture |
+| `assets/facilities/laboratory.png` | `tools/bastion/assets/facilities/laboratory.png` | 2.06 MB, 1024 × 1024 | Yes: the Arcane Laboratory's picture (the Laboratory's until 13 October 2026) |
+| `assets/facilities/library.png` | `tools/bastion/assets/facilities/library.png` | 1.77 MB, 1024 × 1024 | Yes: the Library & Scriptorium's picture (the Library's until 13 October 2026) |
 | `assets/facilities/menagerie.png` | `tools/bastion/assets/facilities/menagerie.png` | 1.95 MB, 1024 × 1024 | Yes: the Menagerie card's picture |
 | `assets/facilities/shrine_of_aurush.png` | `tools/bastion/assets/facilities/shrine_of_aurush.png` | 2.54 MB, 1536 × 1024 | Yes: the Shrine of Aurush card's picture |
 | `assets/facilities/shrine_of_pelagos.png` | `tools/bastion/assets/facilities/shrine_of_pelagos.png` | 2.51 MB, 1536 × 1024 | Yes: the Shrine of Pelagos card's picture |
 | `assets/facilities/shrine_of_telluria.png` | `tools/bastion/assets/facilities/shrine_of_telluria.png` | 2.57 MB, 1536 × 1024 | Yes: the Shrine of Telluria card's picture |
-| `assets/facilities/smithy.png` | `tools/bastion/assets/facilities/smithy.png` | 1.93 MB, 1024 × 1024 | Yes: the Smithy card's picture |
+| `assets/facilities/smithy.png` | `tools/bastion/assets/extras/facilities/smithy.png` | 1.93 MB, 1024 × 1024 | No longer: the Smithy's picture, until it joined the Workshop (13 October 2026) |
 | `assets/facilities/war_room.png` | `tools/bastion/assets/facilities/war_room.png` | 1.93 MB, 1024 × 1024 | Yes: the War Room card's picture |
 | `assets/facilities/watchtower.png` | `tools/bastion/assets/facilities/watchtower.png` | 2.10 MB, 1024 × 1024 | Yes: the Watchtower card's picture |
 | `assets/facilities/workshop.png` | `tools/bastion/assets/facilities/workshop.png` | 1.90 MB, 1024 × 1024 | Yes: the Workshop card's picture |
@@ -392,13 +392,13 @@ Byte-for-byte copies, stored once:
 
 | Old path (`bastion_manager/…`) | The same file as | Stored at |
 |---|---|---|
-| `assets/arcane_study.png` | `assets/facilities/arcane_study.png` | `tools/bastion/assets/facilities/arcane_study.png` |
+| `assets/arcane_study.png` | `assets/facilities/arcane_study.png` | `tools/bastion/assets/extras/facilities/arcane_study.png` |
 | `assets/armoury.png` | `assets/facilities/armoury.png` | `tools/bastion/assets/facilities/armoury.png` |
 | `assets/barracks.png` | `assets/facilities/barracks.png` | `tools/bastion/assets/facilities/barracks.png` |
 | `assets/docks.png` | `assets/facilities/docks.png` | `tools/bastion/assets/facilities/docks.png` |
 | `assets/facilities/menageri.png` | `assets/facilities/menagerie.png` | `tools/bastion/assets/facilities/menagerie.png` |
-| `assets/gambling_hall.png` | `assets/facilities/gambling_hall.png` | `tools/bastion/assets/facilities/gambling_hall.png` |
-| `assets/garden.png` | `assets/facilities/garden.png` | `tools/bastion/assets/facilities/garden.png` |
+| `assets/gambling_hall.png` | `assets/facilities/gambling_hall.png` | `tools/bastion/assets/extras/facilities/gambling_hall.png` |
+| `assets/garden.png` | `assets/facilities/garden.png` | `tools/bastion/assets/extras/facilities/garden.png` |
 | `assets/greenhouse.png` | `assets/facilities/greenhouse.png` | `tools/bastion/assets/facilities/greenhouse.png` |
 | `assets/guildhall.png` | `assets/facilities/guildhall.png` | `tools/bastion/assets/extras/facilities/guildhall.png` |
 | `assets/images/delegation_summit.png` | `assets/ui/wax_stamp.png` | `tools/bastion/assets/ui/wax_stamp.png` |
@@ -406,7 +406,7 @@ Byte-for-byte copies, stored once:
 | `assets/library.png` | `assets/facilities/library.png` | `tools/bastion/assets/facilities/library.png` |
 | `assets/menageri.png` | `assets/facilities/menagerie.png` | `tools/bastion/assets/facilities/menagerie.png` |
 | `assets/scriptorium.png` | `assets/facilities/scriptorium.png` | `tools/bastion/assets/extras/facilities/scriptorium.png` |
-| `assets/smithy.png` | `assets/facilities/smithy.png` | `tools/bastion/assets/facilities/smithy.png` |
+| `assets/smithy.png` | `assets/facilities/smithy.png` | `tools/bastion/assets/extras/facilities/smithy.png` |
 | `assets/storehouse.png` | `assets/facilities/storehouse.png` | `tools/bastion/assets/extras/facilities/storehouse.png` |
 | `assets/watchtower.png` | `assets/facilities/watchtower.png` | `tools/bastion/assets/facilities/watchtower.png` |
 | `assets/workshop.png` | `assets/facilities/workshop.png` | `tools/bastion/assets/facilities/workshop.png` |
@@ -428,20 +428,22 @@ Harry's own art, uploaded to `bastion-new-art/` (kept there untouched, with its 
 | Original | In the suite | Size | Used? |
 |---|---|---|---|
 | `bastion-new-art/Bastion_Base_3000x1250.jpg` | `tools/bastion/assets/map/bastion_base.jpg` | 1.53 MB, 3000 × 1250 | Yes: the Bastion Map |
-| `bastion-new-art/1-first-upload/01_Library_Overlay.png` | `tools/bastion/assets/map/overlays/library.png` | 3000 × 1250 | Yes: the Library, once built |
-| `bastion-new-art/1-first-upload/02_Laboratory_Overlay.png` | `tools/bastion/assets/map/overlays/laboratory.png` | 3000 × 1250 | Yes: the Laboratory or the Arcane Study (soon one Arcane Laboratory) |
-| `bastion-new-art/1-first-upload/03_Greenhouse_Overlay.png` | `tools/bastion/assets/map/overlays/greenhouse.png` | 3000 × 1250 | Yes: the Greenhouse or the Garden (soon one Herbal Gardens) |
+| `bastion-new-art/1-first-upload/01_Library_Overlay.png` | `tools/bastion/assets/map/overlays/library.png` | 3000 × 1250 | Yes: the Library & Scriptorium, once built |
+| `bastion-new-art/1-first-upload/02_Laboratory_Overlay.png` | `tools/bastion/assets/map/overlays/laboratory.png` | 3000 × 1250 | Yes: the Arcane Laboratory, once built |
+| `bastion-new-art/1-first-upload/03_Greenhouse_Overlay.png` | `tools/bastion/assets/map/overlays/greenhouse.png` | 3000 × 1250 | Yes: the Herbal Gardens, once built |
 | `bastion-new-art/1-first-upload/04_War_Room_Overlay.png` | `tools/bastion/assets/map/overlays/war_room.png` | 3000 × 1250 | Yes: the War Room |
 | `bastion-new-art/1-first-upload/05_Hall_of_Emissaries_Overlay.png` | `tools/bastion/assets/map/overlays/hall_of_emissaries.png` | 3000 × 1250 | Yes: the Hall of Emissaries |
 | `bastion-new-art/1-first-upload/06_Shrine_of_Aurush_Overlay.png` | `tools/bastion/assets/map/overlays/shrine_of_aurush.png` | 3000 × 1250 | Yes: the Shrine of Aurush |
 | `bastion-new-art/1-first-upload/07_Shrine_of_Telluria_Overlay.png` | `tools/bastion/assets/map/overlays/shrine_of_telluria.png` | 3000 × 1250 | Yes: the Shrine of Telluria |
 | `bastion-new-art/1-first-upload/08_Shrine_of_Pelagos_Overlay.png` | `tools/bastion/assets/map/overlays/shrine_of_pelagos.png` | 3000 × 1250 | Yes: the Shrine of Pelagos |
-| `bastion-new-art/2-second-upload/09_Wyvern_Roost_Overlay.png` | `tools/bastion/assets/map/overlays/wyvern_roost.png` | 3000 × 1250 | Not yet: the Wyvern Roost, once it's in the Bastion |
-| `bastion-new-art/2-second-upload/10_Griffin_Tower_Overlay.png` | `tools/bastion/assets/map/overlays/griffin_tower.png` | 3000 × 1250 | Not yet: the Griffin Tower |
-| `bastion-new-art/2-second-upload/11_Dire_Wolf_Den_Overlay.png` | `tools/bastion/assets/map/overlays/dire_wolf_den.png` | 3000 × 1250 | Not yet: the Dire Wolf Den |
-| `bastion-new-art/2-second-upload/12_Weavers_Sailmakers_Hall_Overlay.png` | `tools/bastion/assets/map/overlays/weavers_sailmakers_hall.png` | 3000 × 1250 | Not yet: the Weavers' Hall |
-| `bastion-new-art/2-second-upload/13_Stone_Quarry_Masonworks_Overlay.png` | `tools/bastion/assets/map/overlays/stone_quarry_masonworks.png` | 3000 × 1250 | Not yet: the Stone Quarry & Masonworks |
-| `bastion-new-art/2-second-upload/14_Fishery_Smokehouse_Overlay.png` | `tools/bastion/assets/map/overlays/fishery_smokehouse.png` | 3000 × 1250 | Not yet: the Fishery & Smokehouse |
-| `bastion-new-art/2-second-upload/15_Timber_Yard_Sawmill_Overlay.png` | `tools/bastion/assets/map/overlays/timber_yard_sawmill.png` | 3000 × 1250 | Not yet: the Timber Yard & Sawmill |
+| `bastion-new-art/2-second-upload/09_Wyvern_Roost_Overlay.png` | `tools/bastion/assets/map/overlays/wyvern_roost.png` | 3000 × 1250 | Yes: in Construction, the Wyvern Roost's tile shows its building cut from this picture while it's in development; on the map once it can be built and is built |
+| `bastion-new-art/2-second-upload/10_Griffin_Tower_Overlay.png` | `tools/bastion/assets/map/overlays/griffin_tower.png` | 3000 × 1250 | Yes: in Construction, the Griffin Tower's tile shows its building cut from this picture while it's in development; on the map once it can be built and is built |
+| `bastion-new-art/2-second-upload/11_Dire_Wolf_Den_Overlay.png` | `tools/bastion/assets/map/overlays/dire_wolf_den.png` | 3000 × 1250 | Yes: in Construction, the Dire Wolf Den's tile shows its building cut from this picture while it's in development; on the map once it can be built and is built |
+| `bastion-new-art/2-second-upload/12_Weavers_Sailmakers_Hall_Overlay.png` | `tools/bastion/assets/map/overlays/weavers_sailmakers_hall.png` | 3000 × 1250 | Yes: in Construction, the Weavers' Hall's tile shows its building cut from this picture while it's in development; on the map once it can be built and is built |
+| `bastion-new-art/2-second-upload/13_Stone_Quarry_Masonworks_Overlay.png` | `tools/bastion/assets/map/overlays/stone_quarry_masonworks.png` | 3000 × 1250 | Yes: in Construction, the Stone Quarry & Masonworks's tile shows its building cut from this picture while it's in development; on the map once it can be built and is built |
+| `bastion-new-art/2-second-upload/14_Fishery_Smokehouse_Overlay.png` | `tools/bastion/assets/map/overlays/fishery_smokehouse.png` | 3000 × 1250 | Yes: in Construction, the Fishery & Smokehouse's tile shows its building cut from this picture while it's in development; on the map once it can be built and is built |
+| `bastion-new-art/2-second-upload/15_Timber_Yard_Sawmill_Overlay.png` | `tools/bastion/assets/map/overlays/timber_yard_sawmill.png` | 3000 × 1250 | Yes: in Construction, the Timber Yard & Sawmill's tile shows its building cut from this picture while it's in development; on the map once it can be built and is built |
 
 The old map (1152 × 768) and its eight overlays moved to `tools/bastion/assets/extras/old-map/`, so nothing is thrown away.
+
+The facilities overhaul (13 October 2026): the Arcane Study, Garden, Smithy and Gaming Hall pictures moved to `tools/bastion/assets/extras/facilities/`, as those facilities merged or left. The seven new facilities still in development have no tile painting yet: their tiles show their building cut from Harry's map overlay above (the boxes are `facilityTileCrops` in `tools/bastion/data/bastion-data.js`). The Courier Exchange has no art at all, so its tile shows its name.
