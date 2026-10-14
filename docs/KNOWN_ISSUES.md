@@ -21,11 +21,11 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 
 | Tool | Must fix | Fixed by design | Deliberate | Later (Harry's call) | Not relevant / not a bug |
 |---|---|---|---|---|---|
-| Suite-wide (SUI) | 10 | 11 | 9 | 1 | 0 |
+| Suite-wide (SUI) | 10 | 11 | 10 | 1 | 0 |
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
-| Scarlett Isles Explorer (EXP) | 12 | 5 | 8 | 13 | 0 |
-| The Ironbow Bastion Manager (BAS) | 23 | 2 | 36 | 20 | 1 |
+| Scarlett Isles Explorer (EXP) | 12 | 5 | 10 | 13 | 0 |
+| The Ironbow Bastion Manager (BAS) | 23 | 2 | 38 | 21 | 1 |
 | Clan Crest Creator (CRS) | 0 | 4 | 6 | 3 | 3 |
 | Arenas of The Scarlett Isles (ARN) | 8 | 2 | 0 | 17 | 0 |
 | The Heartwood Ritual (RIT) | 9 | 1 | 0 | 15 | 1 |
@@ -307,6 +307,17 @@ These come from checking the eight tools against each other: the collision audit
 - **Before:** A page keeps its own copy of the saves from when it opened. A home screen left open while you played in a tool window then backed up that old copy: "Back up everything", and Restore's "First, download a backup of what's saved now", missed everything saved since. Restore also thought "nothing is saved yet" if nothing had been when the home screen opened (so it offered no copy first), and cleared only the saves it knew about, so one made since could survive a Restore. Pull request 4 makes this flow likelier: Restore now asks you to close the Explorer and the Bastion first.
 - **After:** Back up everything reads every save fresh from the browser, in one go, so the file holds one moment's copies, the newest. Restore and Import decide what's saved now from a fresh read, and clear every save in scope that the file doesn't hold, including ones made in other windows.
 - **Evidence:** `shared/js/store.js` (`freshAll`, `replace`), `shared/js/backup.js` (`backupEverything`, `confirmRestore`, `confirmImport`); tests in `tests/e2e/bridge.test.js` ("Back up everything from a home screen opened earlier").
+
+### SUI-32 · The Explorer link carries Port Charters, and waits for kinds of message it doesn't know
+**Deliberate change** (the facilities overhaul, pull request 5; Harry's answers, 14 October 2026) · applies something twice
+
+- **Before (pull request 4):** the link carried one kind of message, a change of 1 in a Clan's Honour/Respect. A message of any other kind was refused for good, with a receipt.
+- **After:**
+  - **A second kind: the Port Charter** the DM grants in the Explorer (EXP-39), with its port and that port's Clan. The Bastion holds it once, with its receipt in the same save (BAS-84). The ports are in one shared list, `shared/data/ports.js`, which the Explorer, the link and the Bastion all read.
+  - **A kind this copy doesn't know** (say, from a newer copy of the suite) waits, with no receipt, instead of being refused for good; the Explorer keeps it as it is when it saves. So trying a newer copy and going back never loses anything or counts it twice. A damaged message is still refused.
+  - **Unchanged:** Honour/Respect messages and their receipts are exactly as in pull request 4, byte for byte.
+- **Older copies (SUI-19):** a pull request 4 copy opening these saves refuses a waiting Port Charter (the DM grants it again from the newer copy), keeps the Bastion's Charters, ships and sales as they are without using them, and pays nothing. Back up before trying another copy.
+- **Evidence:** `shared/js/bridge-rules.js` (`charterMessage`, `check`, `clean`, `waitsForNewer`, `statusOf`, `portStatus`), `shared/data/ports.js`; tests in `tests/rules/commerce.test.js`.
 
 ## Combat Tracker & VTT Battlemap
 Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point there).
@@ -1195,6 +1206,25 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
   - The day's travel roll: it counts against the day's limit without a chart, and only for a move that began inside it, so a chart never makes a travel event more likely.
   - On a shortcut day (+12 miles), a chart makes 48.
 - **Evidence:** `shared/data/party-items.js`; `tools/explorer/journey.js` (`addItem`, `removeItem`, `takeItem`, `usePack`, `usePackAtWeather`, `dayLimit`, `baseLimit`); `tools/explorer/rules.js` (`chartProblem`, `useChart`, `finishMove`, `makeCamp`, `resetTravel`); the `exhaustion` tags in `data/journey-events.js` (C8) and `data/explorer-data.js` (the White Blizzard). Tests in `tests/rules/bridge.test.js` and `tests/e2e/bridge.test.js`.
+
+### EXP-39 · The DM grants a Port Charter
+**Deliberate change** (Harry's answers, 14 October 2026: "Timberport and Goldport"; "DM grants; 3-day Hall order registers") · other
+
+- **Before:** nothing in the Explorer could give the Bastion a right to trade at a port.
+- **After:**
+  - **Port Charter…** beside Sent to the Bastion opens a list of the ports (Timberport, Clan Blackstone; Goldport, Clan Molten), each with the Ironbow's Charter there: not held, on its way, held, being registered or registered. Choose a port, add what it's for if you like, and press **Grant**.
+  - **The harbour box:** Timberport's and Goldport's town pictures (their pins) show the same, with **Grant the Port Charter…**.
+  - A port can't be granted while its Charter is on its way or held (the Bastion's save is read fresh first, and again after you press Grant). After a refusal or a skip it can be granted again.
+  - The message's id is a new random id from the browser's crypto, never the dice, so the seeded tests replay exactly. **Sent to the Bastion** lists it as "Port Charter: Goldport", Waiting then Applied.
+- **Not in this pull request:** a harbourmaster's roll or negotiation, events that grant a Charter, and the hidden port pins (Steelport, Moltenport, Redport, Port Brawdlyn).
+- **Evidence:** `tools/explorer/journey.js` (`grantCharter`), `tools/explorer/tool.js` (`charterDialog`, `harbourBox`, `openPlace`, `renderSent`); tests in `tests/rules/commerce.test.js` and `tests/e2e/commerce.test.js`.
+
+### EXP-40 · A two-line notice in the Travel panel ran over the hero pills
+**Deliberate change** (found while building pull request 5; fixed) · other
+
+- **Before:** the notice under Gold had a fixed smallest height inside the scrolling Travel panel, so a notice long enough to need two lines (such as "Sent to the Bastion: Port Charter for Timberport (Clan Blackstone).", or "Map loaded: … • Events: …") was squeezed to one line and its second line ran over the heroes' miles pills.
+- **After:** the notice keeps its full height and pushes the pills down.
+- **Evidence:** `tools/explorer/explorer.css` (`.tsi-exp-notice`, `flex-shrink: 0`).
 
 ## The Ironbow Bastion Manager
 Old repo: `_legacy/bastion_manager` (file:line references point there).
@@ -2090,6 +2120,44 @@ None of these reached Harry.
 - **No undo:** a change from the Explorer can't be taken back with a button. The DM edits the Clan's Honour/Respect box instead.
 - **Different storage:** if one tool can save only in the small fallback storage and the other in the main one, they can't see each other, and changes stay **Waiting** (never applied twice). This only happens if Edge refuses the main save space.
 - **Evidence:** `shared/js/backup.js` (an Explorer-only file), `shared/js/bridge-rules.js` (`statusOf`).
+
+### BAS-83 · Cargo: the Dock ships real goods, which sell once on arrival
+**Deliberate change** (the facilities overhaul, pull request 5; Harry's answers, 14 October 2026) · applies something twice
+
+- **Before:** goods in the Warehouse had a base value but never became gold. The only trade was the Hall's (Trade Agreements and the Consortium's sea routes), which pays a fixed income.
+- **After:**
+  - **The Dock's Cargo and Port Charters** section (its panel): at Level 2 one ship carries 2 lots, at 3 three, at 4 four, and at 5 two ships carry 5 lots each; Level 1 can't send cargo. The Charter Berth order is unchanged.
+  - **Ship cargo…** sends real Warehouse lots to a port with a registered Port Charter (BAS-84). It shows a quote first. The lots leave the Warehouse when the ship sails, all or nothing, and a refused sailing changes nothing. Fresh Fish is for the local market and doesn't sail. Not while the Dock is Under Repair.
+  - **At sea:** 7 days to the port and 7 home (per port, in data). The ship can't sail again until it's back.
+  - **On arrival** the Bastion rolls the voyage's risk itself (1 to 100 against Low 5, Medium 10 or High 20; Timberport Low, Goldport High). Above the chance, the cargo sells: each lot's base value × the buying Clan's demand × the Charter's price factor, less the shipping fee and tariff, rounded down and never below 0, paid into the treasury once, with an itemised receipt. At or below it, nothing sells, and the cargo comes home with the ship and goes back into the Warehouse when it docks. Nothing is lost.
+  - **Once only:** the ships are settled in each day's trade step, after the old sea routes and before the orders, and saved in the same write as that step moving on; each voyage moves on in the same change as its gold or goods, and a voyage with a receipt is never paid again. So a closed window, a reload, a cancelled route roll or a campaign file can't pay twice or return goods twice.
+  - **Standing shipments** (Dock Level 4): the same cargo every 7 days, starting the next day, whenever a ship, the goods and the room are there; otherwise it waits (said once for each reason) and sails the first day it can.
+  - **Where it shows:** the Day Log, "The Ironbow sends word…", the Dock's Recent sales (the last 5; the save keeps 30) and the Hall's Port Charters box. The Explorer's word and the DM doc say when a ship arrives or is home, never what it sells for.
+  - **Kept apart from the old trade:** the Hall's agreements, sea routes, Market Stability, investments, Expected Income / Week and the Council Ledger are unchanged; cargo never enters the old route list (`legacy_abstract`), and the new risk applies only to cargo voyages (`commodity_backed`).
+  - **Every number** is in `tools/bastion/data/commerce-data.js`.
+- **Evidence:** `tools/bastion/commerce-rules.js` (`dispatchCargo`, `settleVoyages`, `cargoQuote`, `setSchedule`, the cleaners and `shiftCommerce`), `tools/bastion/tool.js` (`runDay`'s trade step, `cargoSection`, `cargoPicker`), `shared/js/campaign-rules.js` (`bastionComing`); tests in `tests/rules/commerce.test.js` and `tests/e2e/commerce.test.js`.
+
+### BAS-84 · Port Charters at the Bastion and the Hall's Register Port Charter
+**Deliberate change** (pull request 5; Harry's answer: "DM grants; 3-day Hall order registers") · applies something twice
+
+- **Before:** there were no Port Charters.
+- **After:**
+  - **Held once.** A Port Charter from the Explorer (EXP-39, SUI-32) is applied once, like a change of Honour/Respect: it becomes **earned**, with its receipt saved in the same write. One per port: a second for a port already held changes nothing and says so. A notice says so, the Day Log keeps it, and **Changes from the Explorer** in Clan Influence lists it. A Bastion that starts from nothing skips Charters sent before it, as it does other changes (pull request 4's rule, kept), and lists them; the DM can grant again.
+  - **Registered once.** The Hall of Emissaries' **Register Port Charter** (Level 2; 3 days; no gold; no roll) picks from the earned Charters. One runs at a time. When it completes, the Charter is **registered** and the Dock can ship there; a second registration changes nothing. Cancel, or demolishing the Hall, leaves it earned. Nothing goes into the Warehouse.
+  - The Hall's trade area has a **Port Charters** box with each Charter's state and its ships at sea. It says cargo isn't in Expected Income / Week, which still counts the old sea routes only.
+  - The forecast says "Register Port Charter (…) is complete", never "needs your roll".
+- **Evidence:** `tools/bastion/rules.js` (`R.applyInbox`, `R.cleanBridge`, `R.fnOptions`, `R.issueOrder`, `R.completeSimpleOrder`), `tools/bastion/commerce-rules.js` (`addCharter`, `completeCharterRegistration`, `cleanPortCharters`), `tools/bastion/data/facilities-data.js` (`register_port_charter`), `tools/bastion/tool.js` (`portChartersBox`, `renderBridge`, `tellSettled`); tests as BAS-83.
+
+### BAS-85 · Commodity trade's limits and open choices
+**Later, Harry's call** (pull request 5, 14 October 2026) · other
+
+- **Clan demand:** every Clan is Normal (×1.00) for everything until Harry approves a Clan-by-commodity table. It goes in `commerce-data.js` (`demand`), by kind of goods (fish, timber, stone, cloth, herbal) or by one good.
+- **Fresh Fish** never sails until Harry says how many days at sea it keeps (`maxDaysAtSea`), or preservation comes.
+- **No call-back:** a ship at sea can't be called back; an Import of a backup undoes a mistake.
+- **Protections** (the Barracks' convoy, the Watchtower's approaches, the Shrine of Pelagos' blessing) are built in but not available until their orders exist.
+- **Concessions:** a Charter can carry a negotiated price factor, fee or tariff, but nothing sets one yet (negotiation comes later).
+- **Not yet:** political benefits from sales, more ports, cargo routes on the Sea Trade Routes map, and the Stone Quarry's and Weavers' Hall's goods (seven goods have no facility making them yet).
+- **Evidence:** `tools/bastion/data/commerce-data.js`.
 
 ## Clan Crest Creator
 Old repo: `_legacy/clan-crest-creator` (file:line references point there).
