@@ -12,8 +12,9 @@
 
    kind:
    - cargo: a trade good, counted in lots ("lot" says what one lot holds),
-     with its kind (cat: fish, timber, stone, cloth or herbal), which a
-     Clan's demand for it follows (commerce-data.js);
+     with its kind (cat: fish, timber, stone, cloth or herbal), for
+     grouping on screen (a Clan's demand is set good by good, by id, in
+     commerce-data.js);
    - ingredient: a crafting ingredient, counted in portions (one batch from
      the Herbal Gardens is "batch" portions);
    - supply: a supply for the party, counted in packs.

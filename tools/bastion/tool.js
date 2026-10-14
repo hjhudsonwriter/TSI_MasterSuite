@@ -3077,15 +3077,15 @@
         return R.goodsList(data).filter(function (g) { return g.kind === 'cargo' && R.goodsQty(state, g.id) > 0; });
       }
       /* Goods in stock that can sail to at least one registered port (Fresh
-         Fish can't: it's for the local market). */
+         Fish only ships on a voyage of 2 days or less). */
       function shippableInStock() {
         var charters = R.registeredCharters(state);
         return cargoGoodsInStock().filter(function (g) {
           return charters.some(function (c) { var rt = R.portRoute(data, c.port); return rt && !R.goodShipBlocker(data, g.id, rt); });
         });
       }
-      /* Why the goods in stock can't sail (Fresh Fish keeps for 2 days, and
-         every port with a Charter is further away). */
+      /* Why the goods in stock can't sail (Fresh Fish only ships on a voyage
+         of 2 days or less, and every port with a Charter is further away). */
       function stuckReason() {
         var keep = R.commerce(data).maxDaysAtSea || {};
         var names = cargoGoodsInStock().map(function (g) {
@@ -3285,7 +3285,9 @@
         var why = R.recallBlocker(state, v);
         if (why) { await say(why); return; }
         var back = Math.max(1, state.day - v.departDay);
-        if (!(await ask('Recall the ship bound for ' + R.portName(v.port) + '? It turns for home now and is back on ' + R.dayLabel(state.day + back) + ' (' + plural(back, 'day') + ' away). Nothing is sold, and its cargo (' + R.cargoText(data, v.cargo) + ') goes back into the Warehouse when it docks.' + (v.scheduleId ? ' Its standing shipment carries on.' : ''), 'Recall ship', 'Recall ship'))) return;
+        /* Only if its standing shipment hasn't been stopped since it sailed. */
+        var standing = !!v.scheduleId && R.schedules(state).some(function (sc) { return sc.id === v.scheduleId; });
+        if (!(await ask('Recall the ship bound for ' + R.portName(v.port) + '? It turns for home now and is back on ' + R.dayLabel(state.day + back) + ' (' + plural(back, 'day') + ' away). Nothing is sold, and its cargo (' + R.cargoText(data, v.cargo) + ') goes back into the Warehouse when it docks.' + (standing ? ' Its standing shipment carries on.' : ''), 'Recall ship', 'Recall ship'))) return;
         if (!life.alive || turnRunning || militaryRunning) return;
         var res = R.recallVoyage(state, data, id);
         if (!res.ok) { await say(res.message); return; }

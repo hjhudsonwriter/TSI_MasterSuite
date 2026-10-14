@@ -685,6 +685,39 @@
     t.same(BR.marketLedger(tb), [], 'nothing sold, nothing recorded');
   });
 
+  test('saturation isn\'t on: a port with 20 lots of a good sold this month still pays the Clan\'s full demand', function (t) {
+    var b = bastion(4, 2);
+    var c = registered(b);
+    b.tradeNetwork.marketLedger = [{ day: 2, port: 'goldport', goodId: 'medicinal_herbs', qty: 20, saleId: 'earlier' }];
+    stock(b, 'medicinal_herbs', 2);
+    BR.dispatchCargo(b, bdata, c.id, [{ goodId: 'medicinal_herbs', qty: 2 }], dice([0.3]));
+    b.day = 11;
+    BR.settleVoyages(b, bdata, dice([0.5]));
+    t.equal(b.treasuryGP, 350, '2 lots × 140 gp × Highly sought-after 1.25');
+    t.equal(BR.lotsSold(b, 'goldport', 'medicinal_herbs', 11 - 28, 11), 22, 'both recorded');
+  });
+
+  test('Fresh Fish on a 2-day route sails, sells at 80 gp a lot with demand, and is recorded', function (t) {
+    var routes = copy(C.routes);
+    routes.timberport.outDays = 2;
+    routes.timberport.backDays = 2;
+    var d = withCommerce({ routes: routes });
+    var b = bastion(4, 2);
+    var c = registered(b, 'timberport');
+    BR.addGoods(b, d, 'fresh_fish', 2, 'Test');
+    var res = BR.dispatchCargo(b, d, c.id, [{ goodId: 'fresh_fish', qty: 2 }], dice([0.3]));
+    t.same([res.ok, res.voyage && res.voyage.arriveDay], [true, 6]);
+    b.day = 6;
+    BR.settleVoyages(b, d, dice([0.5]));
+    t.equal(b.treasuryGP, 160, 'Clan Blackstone is Normal for Fresh Fish: 2 × 80 gp');
+    t.same(BR.marketLedger(b).map(function (x) { return [x.port, x.goodId, x.qty, x.day]; }), [['timberport', 'fresh_fish', 2, 6]]);
+    var b7 = bastion(4, 2);
+    var c7 = registered(b7, 'timberport');
+    stock(b7, 'fresh_fish', 2);
+    var no = BR.dispatchCargo(b7, bdata, c7.id, [{ goodId: 'fresh_fish', qty: 2 }], dice([0.3]));
+    t.same([no.ok, BR.goodsQty(b7, 'fresh_fish')], [false, 2], 'on the real 7-day route it stays in the Warehouse');
+  });
+
   test('the record is kept for 56 days, moves with Reset Travel, and loads the same twice', function (t) {
     var b = sailed();
     b.tradeNetwork.marketLedger = [{ day: -60, port: 'goldport', goodId: 'raw_stone', qty: 3, saleId: 'old' }, { day: 2, port: 'timberport', goodId: 'sailcloth', qty: 1, saleId: 'x' }];
@@ -708,6 +741,8 @@
     t.equal(res.ok, true);
     t.same([v.stage, v.outcome, v.recalledDay, v.returnDay], ['returning', 'recalled', 8, 12]);
     t.ok(/recalled and turned for home; nothing was sold\. It is back on Day 12, and its cargo \(2 lots of Sawn Lumber\) goes back into the Warehouse then\./.test(res.log[1]));
+    stock(b, 'raw_stone', 1);
+    t.ok(/The ship is at sea: the first one home is back on Day 12/.test(BR.dispatchBlocker(b, bdata)), 'the Dock\'s one ship is busy until it\'s home');
     var calls = 0;
     var spy = function () { calls += 1; return 0.01; };
     for (var d = 9; d <= 12; d++) { b.day = d; BR.settleVoyages(b, bdata, spy); }

@@ -5,8 +5,8 @@
      (a notice, Clan Influence, the Hall's Port Charters box) and the
      Explorer says Applied;
    - the Hall's Register Port Charter order (Level 2, 3 days) registers it;
-   - the Dock's Ship cargo… sends real Warehouse lots (Fresh Fish keeps for
-     2 days, so it can't go on today's 7-day voyages); the ship sells on
+   - the Dock's Ship cargo… sends real Warehouse lots (Fresh Fish only
+     ships on a voyage of 2 days or less, so not on today's 7-day ones); the ship sells on
      arrival, once, even after a reload, and is home a week later; trouble
      at sea brings the cargo home;
    - standing shipments at Dock Level 4;
@@ -375,6 +375,26 @@ async function closePanel(ba) {
     equal(await ba.$eval('[data-test=ship-cargo]', b => b.disabled), true);
     equal(await bare(ba, '[data-test=ship-why]'), 'None of the trade goods in the Warehouse can go to sea: Fresh Fish only ships on a voyage of 2 days or less, and every port with a Charter is further away.');
     await closePanel(ba);
+  });
+
+  await check('Recall ship… on a ship whose standing shipment was stopped doesn\'t say the shipment carries on', async () => {
+    await ba.evaluate(() => TSI.bastion.debug.change(s => {
+      const c = s.tradeNetwork.portCharters.filter(x => x.status === 'registered')[0];
+      s.tradeNetwork.schedules = [];
+      s.tradeNetwork.voyages = [{ id: 'v-stopped', port: c.port, clan: c.clan, charterId: c.id, mode: 'commodity_backed', cargo: [{ goodId: 'raw_stone', qty: 1 }],
+        departDay: s.day - 1, arriveDay: s.day + 6, returnDay: s.day + 13, stage: 'outbound', risk: 'high', basePct: 20, protections: [], chance: 20,
+        scheduleId: 'stopped-one', outcome: null, recalledDay: null, roll: null }];
+    }));
+    await openDock(ba);
+    await ba.click('[data-test=recall-ship]');
+    await ba.waitForSelector('.tsi-modal__foot button:text-is("Recall ship")');
+    const text = await ba.$$eval('.tsi-modal', ms => ms[ms.length - 1].textContent.replace(/\s+/g, ' ').trim());
+    assert(/goes back into the Warehouse when it docks\./.test(text), text);
+    assert(!/standing shipment/.test(text), text);
+    await H.clickModal(ba, 'Cancel');
+    await ba.waitForTimeout(300);
+    await closePanel(ba);
+    await ba.evaluate(() => TSI.bastion.debug.change(s => { s.tradeNetwork.voyages = []; }));
   });
 
   await check('the Ship cargo dialog: Send is off for cargo the Warehouse hasn\'t got, and it follows the Warehouse while open', async () => {

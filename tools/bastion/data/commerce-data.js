@@ -156,10 +156,10 @@ window.TSI_DATA.bastionCommerce = {
   /* ---------- Goods that don't travel ----------
      The most days at sea a good can take on the way to the port (the
      voyage's actual one-way days; 0 would mean never shipped). Fresh Fish
-     keeps for 2 days (Harry, 14 October 2026): it sails only on a voyage of
-     2 days or less, so with today's 7-day routes it stays for the local
-     market until a closer port is added. Preserved Fish and Premium Seafood
-     sail on any route. */
+     (Harry, 14 October 2026) sails only on a voyage of 2 days or less, so
+     with today's 7-day routes it stays at home until a closer port is
+     added. There's no spoiling in the Warehouse. Preserved Fish and Premium
+     Seafood sail on any route. */
   maxDaysAtSea: {
     fresh_fish: 2
   },
