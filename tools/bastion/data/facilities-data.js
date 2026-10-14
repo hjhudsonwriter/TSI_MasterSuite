@@ -17,8 +17,9 @@
    Scriptorium. An order's "requiredPartyLevel" keeps its old building's party level.
    The Gaming Hall is gone. The new facilities still "inDevelopment" are listed, not yet
    buildable, until each gets its orders: six since pull request 3 (13 October 2026) made
-   the Fishery & Smokehouse and Timber Yard & Sawmill buildable, and five since pull
-   request 6 (14 October 2026) made the Courier Exchange buildable. Old saves are
+   the Fishery & Smokehouse and Timber Yard & Sawmill buildable, five since pull
+   request 6 (14 October 2026) made the Courier Exchange buildable, and two since pull
+   request 7 (14 October 2026) opened the three creature buildings. Old saves are
    converted once (R.migrateToV3).
    Pull request 3 (Harry's facility guide) added, all safe to change:
    - "plot": true: built on a Development Plot, not in a construction slot;
@@ -39,7 +40,21 @@
    Overland Travel Charts makes 1 Overland chart in 4 days, with no gold and no
    ingredients, into the Warehouse as the Fishery's packs go. "productionLimit": 1
    keeps it to one chart order at a time; the scripture Research order beside it is
-   unchanged and isn't a production order, so it runs alongside. */
+   unchanged and isn't a production order, so it runs alongside.
+   Pull request 7 (Harry, 14 October 2026) opens the Wyvern Roost, the Griffin
+   Tower and the Dire Wolf Den, leaving two facilities in development (the Stone
+   Quarry & Masonworks and the Weavers' Hall). Each takes a construction slot,
+   needs party level 5 and takes 21 days to build ("requiredLevel": 5). Each has
+   one Level 1 order, 3 days and no gold, that houses a creature
+   (creatures-data.js; the rules are in creature-rules.js):
+   - "housesCreature": the id of a creature that already exists in the story
+     (creatures-data.js unique): the Roost's House Elara's Wyvern records her
+     wyvern, once ever;
+   - "housesSpecies": a kind of creature the DM grants in the Explorer: the
+     order's list is built when it's shown, from the creatures of that kind
+     waiting for a home (as Register Port Charter lists the Charters held), and
+     the order keeps the chosen creature's id. Each level of the building
+     houses one. Upgrade works as everywhere, and its levels only add room. */
 window.TSI_DATA = window.TSI_DATA || {};
 window.TSI_DATA.bastionFacilities = [
   {
@@ -1506,23 +1521,56 @@ window.TSI_DATA.bastionFacilities = [
   {
     "name": "Wyvern Roost",
     "id": "wyvern_roost",
-    "requiredLevel": null,
-    "inDevelopment": true,
-    "functions": []
+    "requiredLevel": 5,
+    "description": "Home to Elara's wyvern, who guards the Ironbow when it is attacked.",
+    "functions": [
+      {
+        "id": "house_elara_wyvern",
+        "label": "House Elara's Wyvern",
+        "days": 3,
+        "costGP": 0,
+        "costText": "0",
+        "housesCreature": "elara_wyvern",
+        "options": [],
+        "notes": "Records Elara's own wyvern at the Ironbow, once: it is never a new animal. It guards the Ironbow when it is attacked (Defend Bastion battles only). No gold and no roll."
+      }
+    ]
   },
   {
     "name": "Griffin Tower",
     "id": "griffin_tower",
-    "requiredLevel": null,
-    "inDevelopment": true,
-    "functions": []
+    "requiredLevel": 5,
+    "description": "Houses the griffins the DM grants, one for each level of the Tower; they guard the Ironbow when it is attacked.",
+    "functions": [
+      {
+        "id": "house_griffin",
+        "label": "House a Griffin",
+        "days": 3,
+        "costGP": 0,
+        "costText": "0",
+        "housesSpecies": "griffin",
+        "options": [],
+        "notes": "Gives a home to a griffin the DM granted in the Explorer. Each level of the Tower houses one griffin. Housed griffins guard the Ironbow when it is attacked (Defend Bastion battles only). No gold and no roll."
+      }
+    ]
   },
   {
     "name": "Dire Wolf Den",
     "id": "dire_wolf_den",
-    "requiredLevel": null,
-    "inDevelopment": true,
-    "functions": []
+    "requiredLevel": 5,
+    "description": "Houses the dire wolves the DM grants, one for each level of the Den; they guard the Ironbow when it is attacked.",
+    "functions": [
+      {
+        "id": "house_dire_wolf",
+        "label": "House a Dire Wolf",
+        "days": 3,
+        "costGP": 0,
+        "costText": "0",
+        "housesSpecies": "dire_wolf",
+        "options": [],
+        "notes": "Gives a home to a dire wolf the DM granted in the Explorer. Each level of the Den houses one dire wolf. Housed dire wolves guard the Ironbow when it is attacked (Defend Bastion battles only). No gold and no roll."
+      }
+    ]
   },
   {
     "name": "Shrine of Telluria",

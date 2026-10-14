@@ -245,7 +245,9 @@ async function confirmWar(page) {
   await page.click('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__foot button.tsi-btn--primary');
   await page.waitForTimeout(150);
 }
-/* Every facility that can be built (the facilities overhaul, 13 October 2026; the eight new ones are still in development). */
+/* The facilities that could be built when this phase was written (the facilities overhaul, 13 October 2026, when the
+   eight new ones were still in development; the Fishery, Timber Yard, Courier Exchange and, in pull request 7, the
+   three creature buildings have opened since). */
 const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens', 'menagerie', 'war_room', 'shrine_telluria', 'shrine_aurush', 'shrine_pelagos', 'hall_of_emissaries'];
 
 (async () => {

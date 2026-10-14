@@ -305,18 +305,23 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
   await check('the overhaul (13 October 2026): the new facilities are listed "In development" and can\'t be chosen; the old ones are gone', async () => {
     const ids = await page.$$eval('[data-test^=build-]', bs => bs.map(b => b.dataset.test.slice(6)));
     equal(ids.filter(id => ['smithy', 'library', 'garden', 'greenhouse', 'laboratory', 'arcane_study', 'gaming_hall'].includes(id)), [], 'the old facilities are gone');
-    /* The Courier Exchange left this list in pull request 6 (14 October 2026): it's built on a Development Plot. */
-    const dev = ['stone_masonworks', 'weavers_hall', 'wyvern_roost', 'griffin_tower', 'dire_wolf_den'];
+    /* The Courier Exchange left this list in pull request 6 (14 October 2026): it's built on a Development Plot.
+       The Wyvern Roost, Griffin Tower and Dire Wolf Den left it in pull request 7 (14 October 2026): they can be built now. */
+    const dev = ['stone_masonworks', 'weavers_hall'];
     equal(ids.filter(id => dev.includes(id)).sort(), dev.slice().sort());
     for (const id of dev) {
       assert(/In development/.test(await text(page, 'build-' + id)), id);
       equal(await page.$eval('[data-test=build-' + id + ']', e => e.tagName), 'DIV', id + ': not a button');
     }
+    for (const id of ['wyvern_roost', 'griffin_tower', 'dire_wolf_den']) {
+      equal(await page.$eval('[data-test=build-' + id + ']', e => e.tagName), 'BUTTON', id + ': can be built (pull request 7)');
+      assert(!/In development/.test(await text(page, 'build-' + id)), id);
+    }
     equal(await page.$eval('[data-test=build-wyvern_roost] [data-art]', e => [e.dataset.art, /wyvern_roost\.png/.test(e.style.backgroundImage)]), ['crop', true], 'its building cut from the map painting');
     equal(await page.$eval('[data-test=build-courier_exchange] img', e => [e.getAttribute('src').split('/').pop(), e.naturalWidth > 0]), ['courier_exchange.png', true], 'Harry\'s picture (13 October 2026)');
     equal(await page.$eval('[data-test=build-courier_exchange]', e => e.tagName), 'BUTTON', 'the Courier Exchange can be built (pull request 6)');
     assert(/Plots open at party level 9/.test(await text(page, 'build-courier_exchange')), 'on a Development Plot');
-    await page.click('[data-test=build-wyvern_roost]', { force: true });
+    await page.click('[data-test=build-weavers_hall]', { force: true });
     await page.waitForTimeout(250);
     equal(await page.$(POP), null, 'no question');
     equal((await st(page)).builtExtras.filter(Boolean), []);

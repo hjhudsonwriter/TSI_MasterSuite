@@ -32,10 +32,12 @@
 
   group('Bastion: content');
 
-  test('22 facilities (the overhaul, 13 October 2026: 5 of them still in development once pull request 3 opened the Fishery and Timber Yard and pull request 6 the Courier Exchange), 12 tool tables (9 can be artisan tools), 11 events, 7 clans, 270 compendium items (271 entries)', function (t) {
+  test('22 facilities (the overhaul, 13 October 2026: 2 of them still in development once pull request 3 opened the Fishery and Timber Yard, pull request 6 the Courier Exchange and pull request 7 the three creature buildings), 12 tool tables (9 can be artisan tools), 11 events, 7 clans, 270 compendium items (271 entries)', function (t) {
     t.equal(data.facilities.length, 22);
+    /* Pull request 7 (Harry, 14 October 2026) opened the Wyvern Roost, Griffin
+       Tower and Dire Wolf Den, so only these two are still in development. */
     t.same(data.facilities.filter(function (f) { return f.inDevelopment; }).map(function (f) { return f.id; }),
-      ['stone_masonworks', 'weavers_hall', 'wyvern_roost', 'griffin_tower', 'dire_wolf_den']);
+      ['stone_masonworks', 'weavers_hall']);
     t.same(['smithy', 'arcane_study', 'laboratory', 'library', 'garden', 'greenhouse', 'gaming_hall'].filter(function (id) { return R.facility(data, id); }), [], 'the old ones are gone');
     t.equal(Object.keys(data.tools).length, 12);
     t.equal(R.toolTableNames(data.tools).length, 9);
@@ -159,7 +161,8 @@
     t.same(res.log, ['Construction Started', 'Library & Scriptorium is under construction (21 days: ready on Day 31).']);
     t.same(s.builtExtras[0], { facId: 'library_scriptorium', status: 'building', startDay: 10, readyDay: 31 });
     t.equal(R.startBuild(s, data, 1, 'library_scriptorium').message, 'That facility is already built or under construction.');
-    t.equal(R.startBuild(s, data, 1, 'wyvern_roost').message, 'The Wyvern Roost is still in development: it can\'t be built yet.');
+    /* The Wyvern Roost was the example until pull request 7 made it buildable. */
+    t.equal(R.startBuild(s, data, 1, 'stone_masonworks').message, 'The Stone Quarry & Masonworks is still in development: it can\'t be built yet.');
     t.equal(R.startBuild(s, data, 1, 'smithy').ok, false, 'the Smithy is gone');
     t.equal(R.startBuild(s, data, 1, 'barracks').message, 'That facility is already built or under construction.');
     t.equal(R.buildDaysLeft(s, s.builtExtras[0]), 21);
@@ -1447,7 +1450,8 @@
     t.equal(R.issueOrder(s, data, 'workshop', 'smithing', 0, dice([0.3])).ok, false, 'no Smithing without the old Smithy');
     s.partyLevel = 20;
     R.slotRows(s, 20);
-    ['stone_masonworks', 'weavers_hall', 'wyvern_roost', 'griffin_tower', 'dire_wolf_den'].forEach(function (id) {
+    /* The three creature buildings left this list in pull request 7 (creatures.test.js builds them). */
+    ['stone_masonworks', 'weavers_hall'].forEach(function (id) {
       var r = R.startBuild(s, data, 2, id, R.isPlotFacility(data, id) ? 'plot' : 'slot');
       t.equal(r.ok, false, id);
       t.ok(/still in development/.test(r.message), id + ': ' + r.message);
