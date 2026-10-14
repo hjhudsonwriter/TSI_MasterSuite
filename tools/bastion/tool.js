@@ -21,6 +21,14 @@
    event), then shows "The Ironbow sends word…". It never changes the
    Explorer's save. Reset Travel moves every Bastion day back with it.
 
+   The Explorer link (pull request 4 of the facilities overhaul, 13 October
+   2026): 8 Explorer event moments send a change of 1 in a Clan's
+   Honour/Respect. The Bastion applies each once, with a receipt in its own
+   save (R.applyInbox): when it's idle, after it reads the Explorer's day,
+   and at the start of each day it passes. Clan Influence lists them. It
+   runs in one window at a time (shared/js/toollock.js), so two copies can
+   never apply one twice.
+
    Layout (the overhaul's Build 2, 8 October 2026): a slim header, then the
    Bastion Map filling the window. The map panel has a top bar (the day,
    the treasury, the facility and order counts, and the Party Identity
@@ -546,8 +554,13 @@
       /* The Clan Influence panel: one row per Clan, with its Political
          Capital bar (and Honour Change at ±100), its Honour/Respect (the
          DM's to set, −5 to +5) and the support they add up to; then the
-         Favour Tokens. (Before the new screen the bars sat in the left
-         column and the rest in Party Identity & Clan Influence.) */
+         changes from the Explorer and the Favour Tokens. (Before the new
+         screen the bars sat in the left column and the rest in Party
+         Identity & Clan Influence.)
+         The Honour/Respect box adds what the DM typed, as a difference from
+         what it showed, rather than writing over the value: a change from
+         the Explorer can land while it's being typed (as the Warehouse's
+         goods counts do). */
       var pcRows = {};
       var trackerRows = {};
       var influenceList = el('div', { class: 'tsi-bas-influence', 'data-test': 'influence' }, B.clans.map(function (c) {
@@ -561,12 +574,22 @@
         pcRows[c.key] = { fill: fill, val: val, change: change };
         var input = numberInput('hr-' + c.key, { min: '-5', max: '5', 'aria-label': c.name + ' Honour/Respect (-5 to +5)' });
         var support = el('div', { class: 'tsi-bas-influence__support', 'data-test': 'support-' + c.key });
+        var row = { input: input, support: support, shown: 0 };
         life.on(input, 'change', function () {
-          state.honourRespectByClan[c.key] = R.clampInt(input.value, -5, 5);
-          input.value = String(state.honourRespectByClan[c.key]);
+          var typed = R.clampInt(input.value, -5, 5);
+          var now = R.clampInt(state.honourRespectByClan[c.key] || 0, -5, 5);
+          state.honourRespectByClan[c.key] = R.clampInt(now + typed - row.shown, -5, 5);
+          row.shown = state.honourRespectByClan[c.key];
+          input.value = String(row.shown);
           done();
         });
-        trackerRows[c.key] = { input: input, support: support };
+        /* Left without typing (the pop-up puts the focus in the first box):
+           catch up with any change that landed meanwhile. */
+        life.on(input, 'blur', function () {
+          row.shown = R.clampInt(state.honourRespectByClan[c.key] || 0, -5, 5);
+          input.value = String(row.shown);
+        });
+        trackerRows[c.key] = row;
         return el('div', { class: 'tsi-bas-influence__row' }, [
           el('div', { class: 'tsi-bas-influence__name', text: c.name }),
           el('div', { class: 'tsi-bas-influence__pc' }, [
@@ -578,10 +601,16 @@
         ]);
       }));
       var tokensPill = el('div', { class: 'tsi-bas-token-pill', 'data-test': 'tokens', text: '0' });
+      var bridgeList = el('div', { class: 'tsi-bas-influence__log', 'data-test': 'bridge-log' });
       var influenceCard = card('influence', 'Clan Influence');
       TSI.append(influenceCard.body, [
-        muted('Political Capital starts neutral; diplomacy raises or lowers it (−100 to +100). When it reaches ±100, press Honour Change and the bar returns to neutral. Honour/Respect is yours to set (−5 to +5); support adds the two together (0 to 100).'),
+        muted('Political Capital starts neutral; diplomacy raises or lowers it (−100 to +100). When it reaches ±100, press Honour Change and the bar returns to neutral. Honour/Respect is yours to set (−5 to +5), and some Explorer events change it by 1 by themselves; support adds the two together (0 to 100).'),
         influenceList,
+        el('div', { class: 'tsi-bas-asset tsi-bas-bridge' }, [
+          el('div', { class: 'tsi-bas-asset__name', text: 'Changes from the Explorer' }),
+          muted('Each Explorer event that changes a Clan\'s Honour/Respect does so once, here. The newest 10:', 'tsi-bas-asset__desc'),
+          bridgeList
+        ]),
         el('div', { class: 'tsi-bas-asset' }, [
           el('div', { class: 'tsi-bas-asset__name', text: 'Favour Tokens' }),
           muted('Earned from strong delegations. Spend later to influence negotiations.', 'tsi-bas-asset__desc'),
@@ -606,11 +635,34 @@
           r.val.textContent = String(v);
           r.change.hidden = Math.abs(v) < 100;
           var t = trackerRows[c.key];
-          setValue(t.input, R.clampInt(state.honourRespectByClan[c.key] || 0, -5, 5));
+          /* A box being typed in keeps what's typed; one only focused follows the save. */
+          if (document.activeElement !== t.input || t.input.value === String(t.shown)) {
+            t.shown = R.clampInt(state.honourRespectByClan[c.key] || 0, -5, 5);
+            t.input.value = String(t.shown);
+          }
           TSI.clear(t.support);
           TSI.append(t.support, [el('b', { text: String(R.supportForClanKey(state, c.key)) }), '/100']);
         });
         tokensPill.textContent = String(R.clampInt(state.diplomacy.tokens || 0, 0, 999));
+        renderBridge();
+      }
+
+      /* Clan Influence's "Changes from the Explorer": the newest receipts. */
+      function renderBridge() {
+        TSI.clear(bridgeList);
+        var list = R.bridgeHistory(state, 10);
+        if (!list.length) { bridgeList.appendChild(muted('None yet.', 'tsi-bas-influence__lognone')); return; }
+        list.forEach(function (r) {
+          var clan = clanTitle(r.clan);
+          var head = r.r === 'applied'
+            ? (r.hr ? clan + ' ' + signedNum(r.hr) + ' (' + signedNum(r.was) + ' → ' + signedNum(r.now) + ')' : clan + ': no change, already at ' + signedNum(r.now))
+            : (r.r === 'skipped' ? 'Skipped: ' : 'Refused: ') + clan;
+          bridgeList.appendChild(el('div', { class: 'tsi-bas-influence__logrow tsi-bas-influence__logrow--' + r.r, 'data-test': 'bridge-row', 'data-result': r.r }, [
+            el('div', { class: 'tsi-bas-influence__loghead' }, [el('strong', { text: head }), typeof r.day === 'number' ? ' · ' + R.dayLabel(r.day) : '']),
+            r.text ? el('div', { class: 'tsi-bas-influence__logtext', text: r.text }) : null,
+            r.why ? el('div', { class: 'tsi-bas-influence__logwhy', text: r.why + (r.r === 'skipped' ? ' Type it in above if it should count.' : '') }) : null
+          ]));
+        });
       }
 
       /* ================================================================
@@ -3225,6 +3277,21 @@
          ================================================================ */
       var turnNotice = null;
       var explorerDay = null;   /* the Explorer's day, as last read */
+      var lastExplorer = null;  /* the Explorer's save, as last read (for its changes to Honour/Respect) */
+
+      /* Apply the Explorer's waiting changes (pull request 4): each once,
+         with its receipt, in the state the caller then saves. */
+      function settleInbox() {
+        return R.applyInbox(state, data, lastExplorer);
+      }
+      function tellSettled(res) {
+        if (!res || !life.alive) return;
+        if (res.applied.length) {
+          notice('From the Explorer: ' + res.applied.join(' ') + (res.applied.length === 1 ? ' Clan Influence lists it.' : ' Clan Influence lists them.'), { type: 'info', title: 'Honour/Respect.', id: 'tsi-bas-bridge', timeout: 12000 });
+        } else if (res.refused) {
+          notice('A change from the Explorer couldn\'t be used, so nothing changed. Clan Influence says why.', { type: 'warn', title: 'Honour/Respect.', id: 'tsi-bas-bridge', timeout: 12000 });
+        }
+      }
       function renderTurnButton() {
         var dip = state.dayInProgress;
         var behind = state.anchored && explorerDay !== null && explorerDay > state.day;
@@ -3252,23 +3319,31 @@
         return TSI.store.fresh('tsi.explorer.save', null).then(function (ex) {
           var d = ex && ex.travel ? Number(ex.travel.day) : NaN;
           explorerDay = isFinite(d) && d >= 1 ? Math.floor(d) : null;
+          lastExplorer = ex;
           /* Nothing moves on while the crest question is open: the next
              look (2 seconds on) passes the day once it's answered. */
           if (!life.alive || turnRunning || militaryRunning || crestOfferOpen) return null;
           var act = R.clockAction(state, explorerDay);
+          var settled = null;
           if (act.kind === 'anchor') {
             R.anchor(state, act.to);
+            settled = settleInbox();
             done();
           } else if (act.kind === 'shift') {
             var from = state.day;
             R.shiftDays(state, act.by);
             log('Days', 'The Explorer\'s day went back (Reset Travel): the Bastion moves from Day ' + from + ' to Day ' + state.day + ', and everything due keeps its days.');
+            settled = settleInbox();
             done();
           } else if (act.kind === 'pass' && (act.days > 0 || state.dayInProgress)) {
             return onAdvance();
           } else {
-            renderTurnButton();
+            /* Idle: any change from the Explorer dated today or before. */
+            settled = settleInbox();
+            if (settled.changed) done();
+            else renderTurnButton();
           }
+          tellSettled(settled);
           return null;
         }).catch(function (err) {
           TSI.reportError(err, 'reading the Explorer\'s day');
@@ -3287,11 +3362,20 @@
           if (life.alive) renderAll();
         };
         return (async function () {
+          /* Changes from the Explorer dated today first; then each day's
+             at its start, before its orders and rolls (and a day left
+             part-way picks up any that came in meanwhile). */
+          var settled = state.dayInProgress ? null : settleInbox();
+          if (settled && settled.changed) done();
+          tellSettled(settled);
           for (;;) {
             if (!life.alive) return 'stopped';
             if (!state.dayInProgress) {
               if (explorerDay === null || explorerDay <= state.day || !state.anchored) break;
               R.startDay(state, data);
+              settleInbox();
+              done();
+            } else if (settleInbox().changed) {
               done();
             }
             if ((await runDay()) === 'stopped') return 'stopped';

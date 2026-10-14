@@ -19,7 +19,15 @@
    Creator opened over the Bastion) says so in its heartbeat, and counts as
    open for longer: after 5 minutes hidden, Edge runs its timers only about
    once a minute, so its heartbeat comes that seldom (the Bastion overhaul,
-   Build 3, 8 October 2026). A window that closes says so at once. */
+   Build 3, 8 October 2026). A window that closes says so at once.
+
+   A second window of the Explorer or the Bastion waits instead of opening
+   the tool (shared/js/toollock.js), so it can't save anything: its
+   heartbeat says it's waiting (markWaiting), and neither it nor any other
+   tab warns about it. While such a window is still asking for the tool
+   (markAsking, for the second or so its files take to load), it doesn't
+   warn and isn't warned about either; markHolding ends that once it has
+   the tool. */
 (function () {
   'use strict';
 
@@ -37,6 +45,8 @@
   var started = false;
   var leaving = false;        /* after pagehide: no more heartbeats (the browser fires visibilitychange after it) */
   var myTool = null;          /* a tool id, '' for the home screen, null until start() says */
+  var waiting = false;        /* this window is waiting for another to close its tool (markWaiting) */
+  var asking = false;         /* this window is still asking whether it can open its tool (markAsking) */
 
   function read() {
     try {
@@ -81,23 +91,27 @@
     var e = { at: Date.now() };
     if (myTool !== null) e.tool = myTool;
     if (document.visibilityState === 'hidden') e.hidden = true;
+    if (waiting) e.waiting = true;
+    else if (asking) e.asking = true;
     if (extra) Object.keys(extra).forEach(function (k) { e[k] = extra[k]; });
     return e;
   }
 
-  /* Every other live tab: [{ id, tool }], tool as TSI.storeRules.tabTool reads it. */
+  /* Every other live tab: [{ id, tool, waiting }], tool as TSI.storeRules.tabTool reads it. */
   function others(map, now) {
     return Object.keys(map).filter(function (id) {
       /* A tab that's just reloading is still counted, so its warning doesn't flicker. */
       return id !== myId && fresh(map[id], now);
     }).sort().map(function (id) {
-      return { id: id, tool: rules.tabTool(map[id].tool) };
+      return { id: id, tool: rules.tabTool(map[id].tool), waiting: map[id].waiting === true, asking: map[id].asking === true };
     });
   }
 
-  /* The other live tabs that could overwrite this tab's saves, or the other way round. */
+  /* The other live tabs that could overwrite this tab's saves, or the other
+     way round. A window waiting for its tool saves nothing, so it never clashes. */
   function clashing(map, now) {
-    return others(map, now).filter(function (o) { return rules.tabsClash(myTool, o.tool); });
+    if (waiting || asking) return [];
+    return others(map, now).filter(function (o) { return !o.waiting && !o.asking && rules.tabsClash(myTool, o.tool); });
   }
 
   function beat() {
@@ -173,8 +187,29 @@
     isOpenElsewhere: function (toolId) {
       var map = read();
       var now = Date.now();
-      return others(map, now).some(function (o) { return o.tool === toolId && !map[o.id].closing; });
+      return others(map, now).some(function (o) { return o.tool === toolId && !o.waiting && !map[o.id].closing; });
     },
+    /* This window is waiting for its tool to close in another window
+       (shared/js/toollock.js): it saves nothing, so no tab warns about it. */
+    markWaiting: function () {
+      if (waiting) return;
+      waiting = true;
+      asking = false;
+      if (started) beat();
+    },
+    /* Called by the shell before start(), for a tool kept to one window,
+       until the browser says whether this window can open it. */
+    markAsking: function () {
+      asking = true;
+      if (started) beat();
+    },
+    /* This window has its tool after all (or couldn't open it): warn as usual. */
+    markHolding: function () {
+      if (!asking) return;
+      asking = false;
+      if (started) beat();
+    },
+    waiting: function () { return waiting; },
     /* The other live tabs that set off the warning. */
     clashCount: function () { return clashing(read(), Date.now()).length; },
     /* Called once by the shell, with the open tool's id ('' or null for the home screen).

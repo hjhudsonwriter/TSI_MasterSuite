@@ -364,6 +364,24 @@
       }, cached);
     },
 
+    /* Every record as saved right now, read again from the browser in one
+       go, after this page's own changes are saved: one moment's copies,
+       including what tools in other windows have saved since this page
+       opened (for Back up everything on the home screen). If the browser
+       can't be read, the copies in memory are used. */
+    freshAll: function () {
+      requireReady();
+      var cached = function () { return TSI.store.records(); };
+      return writeNow().then(function () {
+        if (pending.size || !backend.readAll) return cached();
+        return backend.readAll().then(function (rows) {
+          return rows.filter(function (r) {
+            return rules.isRecord(r) && rules.toolOf(r.key) !== 'suite' && !(SPACE === 'suite' && rules.isTestOnly(r.key));
+          }).sort(function (a, b) { return a.key < b.key ? -1 : a.key > b.key ? 1 : 0; }).map(function (r) { return TSI.clone(r); });
+        }, cached);
+      });
+    },
+
     /* When the value was last saved (ISO text), or null. */
     savedAt: function (key) {
       var record = cache.get(key);
@@ -417,19 +435,31 @@
         if (!inScope(rules.toolOf(r.key))) throw new Error('The file holds another tool\'s data (' + r.key + ').');
       });
       var incoming = new Set(records.map(function (r) { return r.key; }));
-      TSI.store.keys(null).filter(function (key) { return inScope(rules.toolOf(key)); }).forEach(function (key) {
-        if (!incoming.has(key)) {
-          cache.delete(key);
-          pending.set(key, { op: 'delete', key: key });
-        }
-      });
-      records.forEach(function (r) {
+      var copies = records.map(function (r) {
         var record = { key: r.key, value: rules.toJsonValue(r.value), savedAt: r.savedAt };
         if (r.note) record.note = r.note;
-        cache.set(r.key, record);
-        pending.set(r.key, { op: 'put', key: r.key, record: record });
+        return record;
       });
-      return writeNow();
+      /* What's cleared: every save in scope the file doesn't hold, including
+         any another window has made since this page opened (read again). */
+      var saved = backend.readAll ? backend.readAll().then(null, function () { return []; }) : Promise.resolve([]);
+      return saved.then(function (rows) {
+        var keys = new Set(TSI.store.keys(null));
+        (rows || []).forEach(function (r) {
+          if (r && rules.isValidKey(r.key) && rules.toolOf(r.key) !== 'suite') keys.add(r.key);
+        });
+        keys.forEach(function (key) {
+          if (inScope(rules.toolOf(key)) && !incoming.has(key)) {
+            cache.delete(key);
+            pending.set(key, { op: 'delete', key: key });
+          }
+        });
+        copies.forEach(function (record) {
+          cache.set(record.key, record);
+          pending.set(record.key, { op: 'put', key: record.key, record: record });
+        });
+        return writeNow();
+      });
     },
 
     /* Set a damaged save aside instead of deleting it. Resolves with its new key. */

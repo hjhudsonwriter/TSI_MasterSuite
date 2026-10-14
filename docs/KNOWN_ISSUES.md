@@ -21,11 +21,11 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 
 | Tool | Must fix | Fixed by design | Deliberate | Later (Harry's call) | Not relevant / not a bug |
 |---|---|---|---|---|---|
-| Suite-wide (SUI) | 9 | 11 | 8 | 1 | 0 |
+| Suite-wide (SUI) | 10 | 11 | 9 | 1 | 0 |
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
-| Scarlett Isles Explorer (EXP) | 12 | 5 | 6 | 13 | 0 |
-| The Ironbow Bastion Manager (BAS) | 23 | 2 | 35 | 19 | 1 |
+| Scarlett Isles Explorer (EXP) | 12 | 5 | 8 | 13 | 0 |
+| The Ironbow Bastion Manager (BAS) | 23 | 2 | 36 | 20 | 1 |
 | Clan Crest Creator (CRS) | 0 | 4 | 6 | 3 | 3 |
 | Arenas of The Scarlett Isles (ARN) | 8 | 2 | 0 | 17 | 0 |
 | The Heartwood Ritual (RIT) | 9 | 1 | 0 | 15 | 1 |
@@ -286,6 +286,27 @@ These come from checking the eight tools against each other: the collision audit
 - **Before:** A tool reading another tool's save "as saved right now" (`TSI.store.fresh`) was given its own copy from when the page opened whenever it was writing *any* save of its own. The Bastion saves after almost every change, and it reads the Explorer's day every 2 seconds, so now and then the two met. It then saw the day it opened on (say Day 1, while the Explorer was on Day 7), took that for a Reset Travel, moved every day back, wrote "The Explorer's day went back (Reset Travel)…" in the Day Log, and passed the days again 2 seconds later. Orders, building, shipments and sea routes then fell due early by the size of that false step, and an automatic Bastion event in those days was rolled a second time. The Explorer's "The Ironbow sends word…" forecast and the DM doc read the same way, so they could show an old copy too.
 - **After:** Only a change of that same save, still being written by this page (or made while it was being read), means the page's own copy is used (it's newer than the saved one). Any other save being written makes no difference. And if the browser ever can't be read, the value last read is used, not the one from when the page opened. What's read is kept apart from the page's own copies, so a "Back up everything" from the home screen still holds one moment's copies (an independent review found that letting reads replace them could pair the Explorer's newest save with an older uploaded map).
 - **Evidence:** `shared/js/store.js` (`fresh`, `inflightKeys`, `lastRead`); the Bastion's clock is `checkClock` in `tools/bastion/tool.js`. Test: `tests/e2e/bastion-days.test.js` ("the Bastion saving a change of its own never makes it misread the Explorer's day"), which fails on the old code (the Bastion read Day 1 while on Day 7) and passes now.
+
+### SUI-30 · The Explorer and the Bastion run in one window each
+**Deliberate change** (the facilities overhaul, pull request 4: the formal acceptance test in `docs/FACILITIES-OVERHAUL-PLAN.md` section 0; 13 October 2026) · applies something twice
+
+- **Before:** The same tool could run in two windows. The "Already open" warning said so, but both kept running and saving. Once the Explorer sends Honour/Respect changes to the Bastion (BAS-81), two Bastion windows could each apply one, or one could save over the other's receipt.
+- **After:**
+  - **One window each.** The Explorer and the Bastion (marked `single: true` in `shared/data/tools.js`) now each run in one window at a time, using the browser's own locks (Web Locks), which work from a double-clicked file. The first window to open the tool holds it until that page closes, reloads or switches tool. A second window (a second double-click, Switch tool's ↗, a duplicated tab) runs none of the tool: it says "… is open in another window", may sit behind the TV's window, and opens the tool by itself about a second after the first window lets go, from the newest save.
+  - **No false warning.** A waiting window can't save, so neither it nor any other tab shows "Already open" about it. The warning still works for every other tool, and for the home screen.
+  - **Import and Restore wait.** A campaign Import, and the home screen's Restore, are refused while the Explorer or the Bastion is open in another window, which would save over them ("Close it first"). They check again after you press Import or Restore, in case one opened meanwhile. A waiting window has no Export or Import of its own (its copy would be out of date).
+  - **No gaps** (review fixes): a window asking for the tool, in the second its files take to load, neither shows nor sets off "Already open"; and a waiting window keeps the tool from the moment the first one lets go until it reloads, so nothing can slip in between.
+- **Not checked here:**
+  - **Firefox** isn't installed in the test sandbox. A browser without Web Locks works as before (both windows open, with the "Already open" warning).
+  - Whether **Edge's sleeping tabs** keep the lock isn't verified. Chromium doesn't put a tab holding a lock to sleep, so a minimised Bastion should keep it. Harry's checklist tries it.
+- **Evidence:** `shared/js/toollock.js`, `shared/js/shell.js` (`takeLock`, `showWaiting`, `openTool`), `shared/js/tabguard.js` (`markWaiting`), `shared/js/backup.js` (`openElsewhere`), `shared/js/store-rules.js` (`spaceNames().lock`: the test page has its own lock names); tests in `tests/rules/store-rules.test.js`, `tests/e2e/bridge.test.js`, `tests/e2e/phase1.test.js` and `tests/e2e/phase9.test.js`.
+
+### SUI-31 · Back up everything and Restore from a home screen opened earlier missed newer saves
+**Must fix** (found by the review of pull request 4, 13 October 2026; fixed) · loses saved data
+
+- **Before:** A page keeps its own copy of the saves from when it opened. A home screen left open while you played in a tool window then backed up that old copy: "Back up everything", and Restore's "First, download a backup of what's saved now", missed everything saved since. Restore also thought "nothing is saved yet" if nothing had been when the home screen opened (so it offered no copy first), and cleared only the saves it knew about, so one made since could survive a Restore. Pull request 4 makes this flow likelier: Restore now asks you to close the Explorer and the Bastion first.
+- **After:** Back up everything reads every save fresh from the browser, in one go, so the file holds one moment's copies, the newest. Restore and Import decide what's saved now from a fresh read, and clear every save in scope that the file doesn't hold, including ones made in other windows.
+- **Evidence:** `shared/js/store.js` (`freshAll`, `replace`), `shared/js/backup.js` (`backupEverything`, `confirmRestore`, `confirmImport`); tests in `tests/e2e/bridge.test.js` ("Back up everything from a home screen opened earlier").
 
 ## Combat Tracker & VTT Battlemap
 Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point there).
@@ -1139,6 +1160,41 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
   - **Export Save and Import Save** carry the whole campaign: the Explorer and the Bastion together (SUI-23).
   - Reset Travel moves the Bastion's days back with the Explorer's (BAS-60).
 - **Evidence:** `tools/explorer/rules.js` (`makeCamp` with the Bastion's save), `tools/explorer/tool.js` (`openBastion`, `openWord`), `shared/js/campaign-rules.js` (`ironbowNews`); tests in `tests/rules/explorer.test.js`, `tests/rules/campaign.test.js`, `tests/e2e/phase8.test.js` and `tests/e2e/bastion-days.test.js`.
+
+### EXP-37 · Eight event moments change a Clan's Honour/Respect in the Bastion
+**Deliberate change** (Harry's answer, 13 October 2026: "the 8 on-the-spot ones") · other
+
+- **Before:** Eight event steps only showed a reminder: "DM note: Notice Board: consider ±1 clan honour with Clan …". Nothing changed by itself.
+- **After:** Each of the eight sends a change of 1 in that Clan's Honour/Respect to the Bastion, which applies it once (BAS-81). The reminder is gone, so the change can't also be made by hand, and the event's list says "Sent to the Bastion: Honour/Respect +1 with Clan …" instead. The eight:
+
+  | Event | Step | Change | Clan |
+  |---|---|---|---|
+  | T4 The Knight-Errant's Challenge | won the bout | +1 | the Region's |
+  | T4 | declined, with a sneer | −1 | the Region's |
+  | T10 The Muster Checkpoint | caught lying | −1 | Slade |
+  | C4 The Deserter | dragged out | −1 | the Region's |
+  | C4 | handed over | +1 | the Region's |
+  | C10 The Beacons | the raiders beaten at dawn | +1 | Farmer |
+  | C12 False Lights at Bleakharbour | the wreckers surrender | +1 | Karr |
+  | C12 | the wreckers beaten | +1 | Karr |
+
+  "The Region's" Clan is the one for the Region chosen when the event began. Story text is unchanged. T6's three and T13's two Thread rewards, and T13's "If this ever comes out" note, stay reminders, as Harry chose.
+- **What a change does today:** it moves that Clan's support by 4 (which counts towards Form Clan), and the DM doc shows it. Hall rolls don't read Honour/Respect yet.
+- **Evidence:** `tools/explorer/data/journey-events.js` (`standing` outcomes), `tools/explorer/journey.js` (`sendStanding`, `outbox`), `shared/js/bridge-rules.js`; tests in `tests/rules/bridge.test.js`, `tests/rules/explorer-journey.test.js` and `tests/e2e/bridge.test.js`.
+
+### EXP-38 · Party bags: Overland charts and Expedition Provision Packs
+**Deliberate change** (Harry's answers, 13 October 2026) · other
+
+- **Before:** The party carried nothing the Explorer knew about. Every day was 30 miles, less or more only by events.
+- **After:**
+  - **Party bags** in the Travel panel. The DM adds charts and packs with **+ Add**; ✕ takes a row out (it asks first). Sending them from the Bastion's Warehouse waits for the Courier Exchange (pull request 6).
+  - **Overland charts:** each gives 3 days of use, and the bags show the days left. **Use a chart today** adds one 6-mile hex (36 miles) until Make Camp. It works at most once a day, and is refused on a day an event has said the rest of the day's miles are lost, and with Free Move on.
+  - **Expedition Provision Packs:** at C8's vigil save and the White Blizzard's group save, **Use a pack** uses one for advantage on that save, once per save (one covers the whole party in the Blizzard). The DM still rolls and decides the result.
+- **Kept as it is:**
+  - Pace: over 24 miles still reads **Fast (≤30 miles)**, even at 36.
+  - The day's travel roll: it counts against the day's limit without a chart, and only for a move that began inside it, so a chart never makes a travel event more likely.
+  - On a shortcut day (+12 miles), a chart makes 48.
+- **Evidence:** `shared/data/party-items.js`; `tools/explorer/journey.js` (`addItem`, `removeItem`, `takeItem`, `usePack`, `usePackAtWeather`, `dayLimit`, `baseLimit`); `tools/explorer/rules.js` (`chartProblem`, `useChart`, `finishMove`, `makeCamp`, `resetTravel`); the `exhaustion` tags in `data/journey-events.js` (C8) and `data/explorer-data.js` (the White Blizzard). Tests in `tests/rules/bridge.test.js` and `tests/e2e/bridge.test.js`.
 
 ## The Ironbow Bastion Manager
 Old repo: `_legacy/bastion_manager` (file:line references point there).
@@ -2014,6 +2070,26 @@ None of these reached Harry.
 - **Before:** With the grid folded, the bottom bar is one row of 46-pixel-high buttons, and "Clan Influence" and "War Council" wrap to two lines, so the bottom of their second line is slightly cut off on the laptop.
 - **After:** Unchanged (it was already like this before pull request 3, and the buttons work). It can be tidied in the final polish.
 - **Evidence:** `tools/bastion/bastion.css` (`.tsi-bas-stage.is-grid-closed .tsi-bas-pbtns`); checked against the merged #22 at 1707 × 930.
+
+### BAS-81 · The Bastion applies each change from the Explorer once, and lists them
+**Deliberate change** (the facilities overhaul, pull request 4; Harry's answers, 13 October 2026) · applies something twice
+
+- **Before:** Nothing passed from the Explorer to the Bastion except the day.
+- **After:**
+  - **Applied once.** The Bastion reads the Explorer's save every 2 seconds, as it does for the day. It applies each change from an Explorer event (EXP-37) once, and keeps a receipt in its own save, written together with the change itself. So a saved Bastion has both or neither, and no reload, Import, Restore, Reset Travel or second window can count it twice (SUI-30).
+  - **When.** A change waits until the Bastion has reached the day it happened. With the Bastion open, that's within a few seconds, with a notice. If the Bastion was shut, a change from the day it was shut on applies as soon as it opens again, with a notice; one from a later day applies as the Bastion passes that day, before that day's orders, and goes in "The Ironbow sends word…". Reset Travel moves waiting changes back with the days. Honour/Respect stays within −5 to +5; at the limit, the change is recorded with no effect.
+  - **A Bastion that starts from nothing** (a first open, or after Reset) skips every change sent before it, and lists them as skipped, rather than adding them on top of values typed in by hand. Changes after that apply as normal. (A Bastion opened before the Explorer has ever saved has nothing to skip, so it simply applies everything that comes later: a review fix.)
+  - **Clan Influence** has **Changes from the Explorer**, the latest ten: applied (with before and after), skipped or refused (with why). The Day Log keeps every one too, and clearing the Day Log doesn't clear this list.
+  - **The Honour/Respect box** now adds what's typed as a difference from what it showed, rather than writing over the value, so a change arriving while the DM types isn't lost (the Warehouse's goods counts work the same way). A box that only has the focus (Clan Influence puts it in the first box when it opens) follows the save as usual.
+- **Evidence:** `tools/bastion/rules.js` (`R.applyInbox`, `R.adjustStanding`, `R.cleanBridge`, `R.bridgeHistory`, `bridge` in `R.defaultState` and `R.fromSave`), `tools/bastion/tool.js` (`settleInbox` in `checkClock` and `passDays`, `renderBridge`, the Honour/Respect box); tests in `tests/rules/bridge.test.js` and `tests/e2e/bridge.test.js`.
+
+### BAS-82 · The Explorer link's limits
+**Later, Harry's call** (pull request 4, 13 October 2026) · other
+
+- **An old Explorer-only file:** importing an Explorer file from before the campaign save (October 2026) replaces only the Explorer. Its changes already applied stay in the Bastion, and replaying an event from it sends a new one. Campaign files carry both tools, so they're safe.
+- **No undo:** a change from the Explorer can't be taken back with a button. The DM edits the Clan's Honour/Respect box instead.
+- **Different storage:** if one tool can save only in the small fallback storage and the other in the main one, they can't see each other, and changes stay **Waiting** (never applied twice). This only happens if Edge refuses the main save space.
+- **Evidence:** `shared/js/backup.js` (an Explorer-only file), `shared/js/bridge-rules.js` (`statusOf`).
 
 ## Clan Crest Creator
 Old repo: `_legacy/clan-crest-creator` (file:line references point there).

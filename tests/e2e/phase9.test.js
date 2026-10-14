@@ -1513,7 +1513,9 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       await arm(page);
     });
 
-    await check('a crest that isn\'t a picture is never offered; with two Bastion windows, answering in one closes the question in the other', async () => {
+    /* Since pull request 4 of the facilities overhaul, a second Bastion
+       window waits (one window per campaign tool), so it's never asked. */
+    await check('a crest that isn\'t a picture is never offered; a second Bastion window waits, and is never asked', async () => {
       const key = await crestKey();
       await page.evaluate(() => TSI.handoff.write('crest', { id: 'crest-bad', at: 1, name: 'Bad', dataUrl: 'data:image/png;base64,SGVsbG8gd29ybGQ=' }));
       await page.waitForFunction(() => TSI.handoff.read('crest') === null, null, { timeout: 6000 });
@@ -1521,7 +1523,7 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       equal(await crestKey(), key);
       const second = await context.newPage();
       await second.goto(H.fileUrl('index.html') + '?tool=bastion');
-      await second.waitForSelector('[data-test=day-status]');
+      await second.waitForSelector('[data-test=tool-waiting]');
       const writer = await context.newPage();
       await writer.goto(H.fileUrl('index.html'));
       await writer.waitForSelector('[data-test=backup-everything]');
@@ -1531,10 +1533,9 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
         TSI.handoff.write('crest', { id: 'crest-two', at: 1, name: 'Two windows', dataUrl: c.toDataURL('image/png') });
       });
       await page.waitForSelector('[data-test=crest-offer]', { timeout: 6000 });
-      await second.waitForSelector('[data-test=crest-offer]', { timeout: 6000 });
+      equal(await second.$('[data-test=crest-offer]'), null, 'the waiting window isn\'t asked');
       await clickModal(page, 'No');
-      await second.waitForFunction(() => !document.querySelector('[data-test=crest-offer]'), null, { timeout: 5000 });
-      equal(await crestKey(), key, 'nothing taken in either window');
+      equal(await crestKey(), key, 'nothing taken');
       /* Sent again and taken in this window: the other one's question closes, and it shows the new crest. */
       await writer.evaluate(() => {
         const c = document.createElement('canvas'); c.width = c.height = 32;
@@ -1542,11 +1543,11 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
         TSI.handoff.write('crest', { id: 'crest-two-b', at: 2, name: 'Two windows again', dataUrl: c.toDataURL('image/png') });
       });
       await page.waitForSelector('[data-test=crest-offer]', { timeout: 6000 });
-      await second.waitForSelector('[data-test=crest-offer]', { timeout: 6000 });
       await clickModal(page, 'Use this crest');
       const taken = await crestKey();
       assert(taken && taken !== key, 'taken');
-      await second.waitForFunction(k => !document.querySelector('[data-test=crest-offer]') && document.querySelector('[data-test=identity-badge] img').getAttribute('data-key') === k, taken, { timeout: 6000 });
+      equal(await second.$('[data-test=crest-offer]'), null);
+      equal(await second.evaluate(() => !!(TSI.bastion && TSI.bastion.debug)), false, 'still waiting: none of the Bastion runs there');
       await writer.close();
       await second.close();
       await page.waitForTimeout(500);

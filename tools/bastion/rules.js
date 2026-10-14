@@ -177,7 +177,14 @@
       legacyFacilities: [],
       research: {},
       archivedFacilities: [],
-      migration: null
+      migration: null,
+      /* The Explorer link (pull request 4, 13 October 2026): a receipt for
+         each change from the Explorer, { messageId: { r, day, at, clan, hr,
+         was, now, text, why } }, saved with the change itself, so nothing
+         counts twice. fresh: a Bastion starting from nothing, which skips
+         (and lists) the Explorer's earlier changes rather than applying
+         them on top of values typed in by hand. */
+      bridge: { fresh: true, done: {} }
     };
     s.v = 3;
     R.ensureLevels(s, data);
@@ -407,6 +414,7 @@
     d.archivedFacilities = arr(s.archivedFacilities) ? s.archivedFacilities.filter(isObj) : [];
     d.migration = isObj(s.migration) ? s.migration : null;
     d.research = R.cleanResearch(s.research, data);
+    d.bridge = R.cleanBridge(s.bridge);
     if (arr(s.militaryActions)) d.militaryActions = s.militaryActions.filter(isObj);
     R.normalizeBuiltExtras(d);
     tidyPlots(d, data);
@@ -418,6 +426,134 @@
     return d;
   };
   R.toSave = function (state) { return TSI.clone(state); };
+
+  /* ---------- The Explorer link (pull request 4 of the facilities overhaul) ----------
+     8 Explorer event moments send a change of 1 in a Clan's Honour/Respect
+     (Harry, 13 October 2026). The Bastion applies each once, at a safe
+     moment (when it's idle, after it reads the Explorer's day, and at the
+     start of each day it passes), and keeps a receipt (shared/js/bridge-rules.js). */
+
+  /* The receipts, as saved. Every entry is kept, tidied but never dropped:
+     a lost receipt is the one way a change could count twice. fresh is
+     kept only if it was saved as true (a Bastion that hasn't yet read the
+     Explorer's day since it started from nothing); a save from before the
+     link has none, so it applies the Explorer's new changes. */
+  function txt(v, max) { return typeof v === 'string' ? v.slice(0, max) : ''; }
+  function numOr(v, fallback) { return typeof v === 'number' && isFinite(v) ? v : fallback; }
+  R.cleanBridge = function (src) {
+    var out = { fresh: false, done: {} };
+    if (!isObj(src)) return out;
+    out.fresh = src.fresh === true;
+    if (isObj(src.done)) {
+      Object.keys(src.done).forEach(function (id) {
+        var r = isObj(src.done[id]) ? src.done[id] : {};
+        out.done[id] = {
+          r: ['applied', 'refused', 'skipped'].indexOf(r.r) !== -1 ? r.r : 'refused',
+          day: dayNum(r.day, null),
+          at: numOr(r.at, 0),
+          clan: txt(r.clan, 40),
+          hr: numOr(r.hr, 0),
+          was: numOr(r.was, 0),
+          now: numOr(r.now, 0),
+          text: txt(r.text, 200),
+          why: txt(r.why, 200)
+        };
+      });
+    }
+    return out;
+  };
+
+  /* Change a Clan's Honour/Respect by hr, kept within −5..+5. Returns
+     { was, now, delta } (delta 0 when it was already at the limit), or
+     null for a Clan the Bastion doesn't know. */
+  R.adjustStanding = function (s, key, hr) {
+    if (CLAN_KEYS.indexOf(key) === -1) return null;
+    if (!isObj(s.honourRespectByClan)) s.honourRespectByClan = clanMap(0);
+    var was = clampInt(s.honourRespectByClan[key] || 0, -5, 5);
+    var now = clampInt(was + (Number(hr) || 0), -5, 5);
+    s.honourRespectByClan[key] = now;
+    return { was: was, now: now, delta: now - was };
+  };
+
+  function signedNum(n) { return (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(n); }
+  function clanLabel(data, key) {
+    var list = (data && data.bastion && data.bastion.clans) || [];
+    for (var i = 0; i < list.length; i++) if (list[i].key === key) return 'Clan ' + list[i].name;
+    return 'Clan ' + (TSI.bridge ? TSI.bridge.clanName(key) : key);
+  }
+
+  /* Apply the Explorer's waiting changes (explorerSave: its save, as last
+     read). Only once the Bastion has read the Explorer's day (anchored), and
+     only changes dated on or before the Bastion's day. Each gets its receipt
+     in the same state, so one save() keeps both. A Bastion starting from
+     nothing (fresh) instead marks every change already sent as skipped, once
+     (or, if there's no Explorer save yet, simply stops being fresh).
+     Returns { changed, applied: [lines], skipped: n, refused: n }. */
+  R.applyInbox = function (s, data, explorerSave, now) {
+    var out = { changed: false, applied: [], skipped: 0, refused: 0 };
+    var B = TSI.bridge;
+    if (!B) return out;
+    if (!isObj(s.bridge) || !isObj(s.bridge.done)) s.bridge = R.cleanBridge(s.bridge);
+    /* No Explorer save at all: nothing can have been sent before this
+       Bastion, so whatever comes later applies as normal. */
+    if (s.bridge.fresh && !isObj(explorerSave)) {
+      s.bridge.fresh = false;
+      out.changed = true;
+      return out;
+    }
+    if (!s.anchored) return out;
+    var done = s.bridge.done;
+    var at = now === undefined ? Date.now() : now;
+    var day = s.day;
+    function receipt(m, r, extra) {
+      done[m.id] = Object.assign({
+        r: r, day: day, at: at, clan: txt(m.clan, 40), hr: 0, was: 0, now: 0,
+        text: txt(m.text, 200), why: ''
+      }, extra || {});
+      out.changed = true;
+    }
+    if (s.bridge.fresh) {
+      B.outbox(explorerSave).forEach(function (m) {
+        if (Object.prototype.hasOwnProperty.call(done, m.id)) return;
+        receipt(m, 'skipped', { why: 'Sent before this Bastion started.' });
+        out.skipped += 1;
+      });
+      s.bridge.fresh = false;
+      out.changed = true;
+      if (out.skipped) {
+        R.log(s, 'From the Explorer', out.skipped + (out.skipped === 1 ? ' change' : ' changes') + ' to Honour/Respect, sent before this Bastion started, ' + (out.skipped === 1 ? 'was' : 'were') + ' skipped, so nothing counts twice. Clan Influence lists ' + (out.skipped === 1 ? 'it, to type in by hand if it should count.' : 'them, to type in by hand if they should count.'), at);
+      }
+      return out;
+    }
+    B.pending(explorerSave, done, day).forEach(function (m) {
+      var why = B.check(m);
+      var res = why ? null : R.adjustStanding(s, m.clan, m.hr);
+      if (!res) {
+        why = why || 'It names a Clan the Bastion doesn\'t know.';
+        receipt(m, 'refused', { why: why });
+        out.refused += 1;
+        R.log(s, 'From the Explorer', 'A change from the Explorer couldn\'t be used, so nothing changed: ' + why + (m.text ? ' (' + txt(m.text, 200) + ')' : ''), at);
+        return;
+      }
+      receipt(m, 'applied', { hr: res.delta, was: res.was, now: res.now });
+      var from = m.from && m.from.code ? m.from.code + (typeof m.day === 'number' ? ', ' + R.dayLabel(m.day) : '') : (typeof m.day === 'number' ? R.dayLabel(m.day) : 'the Explorer');
+      var line = 'Honour/Respect ' + signedNum(m.hr) + ' with ' + clanLabel(data, m.clan) + ' (' + from + ')' +
+        (res.delta ? ': ' + signedNum(res.was) + ' → ' + signedNum(res.now) + '.' : ': already at ' + signedNum(res.now) + ', so it stays there.');
+      R.log(s, 'From the Explorer', line + (m.text ? ' ' + txt(m.text, 200) : ''), at);
+      R.addWord(s, 'From the Explorer: ' + line);
+      out.applied.push(line);
+    });
+    return out;
+  };
+
+  /* The newest receipts first, for Clan Influence's "Changes from the
+     Explorer" list: [{ id, r, day, clan, hr, was, now, text, why }]. */
+  R.bridgeHistory = function (s, max) {
+    var done = isObj(s.bridge) && isObj(s.bridge.done) ? s.bridge.done : {};
+    var list = Object.keys(done).map(function (id) { return Object.assign({ id: id }, done[id]); });
+    list.sort(function (a, b) { return (b.at || 0) - (a.at || 0) || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0); });
+    return typeof max === 'number' ? list.slice(0, max) : list;
+  };
 
   /* The wars, as saved: only known Clans, each with the day it began, the
      day of the latest war activity (never before the first, never after
@@ -462,7 +598,7 @@
     for (var i = 0; i < lists.length; i++) {
       if (lists[i] in s && !Array.isArray(s[lists[i]])) return 'Its ' + lists[i] + ' list is damaged.';
     }
-    var maps = ['defenders', 'favour', 'politicalCapital', 'tradeNetwork', 'arbitration', 'diplomacy', 'organization', 'facilityLevels', 'warMissions', 'wars', 'repairs'];
+    var maps = ['defenders', 'favour', 'politicalCapital', 'tradeNetwork', 'arbitration', 'diplomacy', 'organization', 'facilityLevels', 'warMissions', 'wars', 'repairs', 'bridge'];
     for (var j = 0; j < maps.length; j++) {
       if (maps[j] in s && s[maps[j]] !== null && !isObj(s[maps[j]])) return 'Its ' + maps[j] + ' record is damaged.';
     }

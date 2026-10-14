@@ -87,6 +87,11 @@
     t.equal(R.spaceNames('anything else').db, 'tsi.suite', 'anything unknown counts as the real suite');
   });
 
+  test('the one-window locks have their own names on the test page (pull request 4)', function (t) {
+    t.same([R.spaceNames('suite').lock, R.spaceNames('test').lock], ['tsi.suite.lock.', 'tsi.test:lock.']);
+    t.equal(R.fromLocalKey(R.spaceNames('suite').lock + 'bastion', 'suite'), null, 'a lock name isn\'t a save');
+  });
+
   test('the test page\'s small-storage names can never be read as real saves', function (t) {
     var stored = R.localKey('tsi.demo.state', 'test');
     t.equal(stored, 'tsi.test:tsi.demo.state');

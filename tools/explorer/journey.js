@@ -13,8 +13,17 @@
      the daily travel roll was last made;
    - tonight: an event set up for tonight's camp (T17's guard);
    - current: the event in progress, step by step, so a reload, a tool switch
-     or a closed window picks it up where it was, and nothing applies twice;
-   - log: a short history of what events changed.
+     or a closed window picks it up where it was, and nothing applies twice.
+     Its uid, a random id made when it begins, names the changes it sends
+     to the Bastion; packUsed lists the steps where a pack was used;
+   - log: a short history of what events changed;
+   - outbox: the Honour/Respect changes sent to the Bastion (pull request 4
+     of the facilities overhaul, 13 October 2026): only ever added to. The
+     Bastion applies each once and keeps a receipt in its own save
+     (shared/js/bridge-rules.js);
+   - inventory: the Party bags, [{ id, kind, qty }]: Overland charts
+     (counted in days of use) and Expedition Provision Packs
+     (shared/data/party-items.js).
 
    How often (Harry's draft): once a day on the road, a 30% chance of a travel
    event, never two days running; at Make Camp, a 25% chance of a campfire
@@ -42,8 +51,17 @@
 
   /* ---------- The journey record ---------- */
   J.empty = function () {
-    return { gold: 0, effects: [], threads: [], used: { travel: [], camp: [] }, lastTravelDay: 0, rolledDay: 0, tonight: null, current: null, log: [], seq: 0 };
+    return { gold: 0, effects: [], threads: [], used: { travel: [], camp: [] }, lastTravelDay: 0, rolledDay: 0, tonight: null, current: null, log: [], seq: 0, outbox: [], inventory: [] };
   };
+
+  /* The link's shared rules (shared/js/bridge-rules.js) and the party's
+     items (shared/data/party-items.js). */
+  function bridge() { return TSI.bridge; }
+  function items() { return (window.TSI_DATA && window.TSI_DATA.partyItems) || {}; }
+  /* An event's random id: never from the dice (bridge-rules.js newId). */
+  function newUid() {
+    return bridge() ? bridge().newId() : Date.now().toString(36) + '-' + ('00000000' + (Date.now() % 0xffffffff).toString(16)).slice(-8);
+  }
 
   J.def = function (defs, id) {
     var list = (defs && defs.events) || [];
@@ -120,10 +138,28 @@
     if (isObj(c.puzzle)) {
       out.puzzle = { wrong: int(c.puzzle.wrong, 0), hint: ['success', 'failure'].indexOf(c.puzzle.hint) !== -1 ? c.puzzle.hint : null, reveal: c.puzzle.reveal === true };
     }
+    /* The event's random id (an event left open in an older save gets a new
+       one: it hasn't sent anything yet), and the steps where a pack was used. */
+    out.uid = typeof c.uid === 'string' && /^[a-z0-9-]{6,40}$/.test(c.uid) ? c.uid : newUid();
+    out.packUsed = strList(c.packUsed);
     var step = ev.steps[c.step];
     if (step.contest && !out.round) out.round = { n: 1, hero: 0, opp: 0, d20: 10, history: [] };
     if (step.puzzle && !out.puzzle) out.puzzle = { wrong: 0, hint: null, reveal: false };
     return out;
+  }
+
+  /* A saved message to the Bastion: tidied, never refused (the Bastion
+     checks it). Messages are never dropped while they have an id, so one
+     the Bastion has applied can never come back under a new name. */
+  function cleanMessage(m) {
+    return bridge() ? bridge().clean(m) : (isObj(m) && str(m.id) ? m : null);
+  }
+  /* A row of the Party bags: a known kind and a whole count above 0. */
+  function cleanItem(it) {
+    if (!isObj(it) || !str(it.kind) || !items()[it.kind]) return null;
+    var qty = int(it.qty, 0);
+    if (qty <= 0) return null;
+    return { id: str(it.id) || 'i-' + newUid(), kind: it.kind, qty: Math.min(qty, 9999) };
   }
 
   /* Tidy a saved journey: anything damaged is left out, never crashes. */
@@ -142,6 +178,14 @@
     if (isObj(saved.tonight) && J.def(defs, saved.tonight.event)) j.tonight = { event: saved.tonight.event };
     j.current = cleanCurrent(saved.current, defs);
     j.log = strList(saved.log).slice(0, LOG_MAX);
+    j.outbox = (Array.isArray(saved.outbox) ? saved.outbox : []).map(cleanMessage).filter(Boolean);
+    /* The same kind twice (a hand-edited file) is added together. */
+    (Array.isArray(saved.inventory) ? saved.inventory : []).map(cleanItem).filter(Boolean).forEach(function (it) {
+      var same = null;
+      j.inventory.forEach(function (x) { if (x.kind === it.kind) same = x; });
+      if (same) same.qty = Math.min(9999, same.qty + it.qty);
+      else j.inventory.push(it);
+    });
     /* New ids carry on above every id in use, even if seq was lost. */
     var top = 0;
     j.effects.concat(j.threads).forEach(function (x) {
@@ -345,7 +389,9 @@
       id: ev.id, kind: it.kind, step: null, vars: {}, changes: [], day: day(state),
       phase: atCamp ? 'camp' : 'travel',
       ctx: { region: ctx.region, mapId: ctx.mapId, mapKey: ctx.mapKey, near: cleanNear(ctx.near) },
-      thread: it.thread || null, prevLastTravelDay: j.lastTravelDay, opened: {}, round: null, puzzle: null
+      thread: it.thread || null, prevLastTravelDay: j.lastTravelDay, opened: {}, round: null, puzzle: null,
+      /* The random id that names this event's messages to the Bastion. */
+      uid: newUid(), packUsed: []
     };
     if (ev.secret) cur.vars[ev.secret.key] = rand() < ev.secret.chance ? ev.secret.yes : ev.secret.no;
     if (it.thread) {
@@ -426,14 +472,25 @@
     return [null];
   }
 
-  /* The miles a hero may walk today: 30, plus or minus what events changed. */
+  /* The miles a hero may walk today: 30, plus or minus what events
+     changed, plus 6 on a day an Overland chart is in use (never on a day an
+     event cut short: dayLost). */
   J.dayLimit = function (state) {
+    var t = state.travel || {};
+    var extra = t.dayLost ? 0 : (Number(t.extraMiles) || 0);
+    return Math.max(0, J.baseLimit(state) + extra);
+  };
+  /* Today's limit without a chart: what the day's road roll counts against,
+     so a chart never makes a travel event more likely. */
+  J.baseLimit = function (state) {
     var adj = Number(state.travel && state.travel.milesAdjust) || 0;
     return Math.max(0, DAY_MILES + adj);
   };
 
-  /* Apply one outcome. Returns nothing; the lines go on the event's list. */
-  J.applyOutcome = function (state, defs, o) {
+  /* Apply one outcome (index: its place in the step's apply list, which
+     names a message to the Bastion). Returns nothing; the lines go on the
+     event's list. */
+  J.applyOutcome = function (state, defs, o, index) {
     var j = journey(state);
     var cur = j.current;
     var ev = J.def(defs, cur.id);
@@ -457,6 +514,8 @@
       var most = 0;
       (state.tokens || []).forEach(function (t) { most = Math.max(most, Number(t.milesUsed) || 0); });
       state.travel.milesAdjust = most - DAY_MILES;
+      /* A chart in use today can't bring them back. */
+      state.travel.dayLost = true;
       record(state, cur, 'The rest of today\'s miles are lost.');
     }
     if (o.effect || o.inspiration) {
@@ -509,6 +568,7 @@
         record(state, cur, 'Thread closed: ' + tc.name + '.');
       }
     }
+    if (o.standing) sendStanding(state, defs, cur, ev, o.standing, index);
     if (o.dm) record(state, cur, 'DM note: ' + fill(o.dm));
     if (o.note) {
       var text = isObj(o.note) ? (strList(cur.vars.failed).length ? o.note.any : o.note.none) : o.note;
@@ -519,6 +579,32 @@
       record(state, cur, 'Tonight\'s camp: ' + J.def(defs, o.tonight).title + ' (instead of a campfire event).');
     }
   };
+
+  /* A change of 1 in a Clan's Honour/Respect, sent to the Bastion: a new
+     message in the outbox, saved with the step in the same write. Its id is
+     the event's uid, the step and the outcome's place in it, so the same
+     moment can't send it twice. */
+  function sendStanding(state, defs, cur, ev, spec, index) {
+    var j = journey(state);
+    var B = bridge();
+    var regionInfo = (defs.regions && defs.regions[cur.ctx.region]) || {};
+    var key = spec.clan === 'region' ? regionInfo.clanKey : spec.clan;
+    if (!B || !key || B.CLANS.indexOf(key) === -1) {
+      record(state, cur, 'No Clan for this Region: nothing sent to the Bastion.');
+      return;
+    }
+    var hr = spec.hr > 0 ? 1 : -1;
+    var name = B.clanName(key);
+    var id = cur.uid + ':' + cur.step + ':' + (isNum(index) ? index : 0);
+    if (j.outbox.some(function (m) { return m.id === id; })) return;
+    j.outbox.push(B.message({
+      id: id, day: day(state), at: new Date().toISOString(),
+      from: { code: ev.code, title: ev.title, step: cur.step },
+      clan: key, hr: hr,
+      text: 'Honour/Respect ' + signed(hr) + ' with Clan ' + name + (spec.why ? ': ' + spec.why : '') + ' (' + ev.code + ' ' + ev.title + ').'
+    }));
+    record(state, cur, 'Sent to the Bastion: Honour/Respect ' + signed(hr) + ' with Clan ' + name + '.');
+  }
 
   /* Go to a step: its outcomes apply once, here and only here. */
   function enter(state, defs, stepId, rand) {
@@ -535,7 +621,7 @@
     cur.round = null;
     cur.puzzle = null;
     if (step.set) Object.keys(step.set).forEach(function (k) { cur.vars[k] = step.set[k]; });
-    (step.apply || []).forEach(function (o) { J.applyOutcome(state, defs, o); });
+    (step.apply || []).forEach(function (o, i) { J.applyOutcome(state, defs, o, i); });
     if (step.contest) cur.round = { n: 1, hero: 0, opp: 0, d20: J.d20(rand), history: [] };
     if (step.puzzle) cur.puzzle = { wrong: 0, hint: null, reveal: false };
     return cur;
@@ -725,7 +811,9 @@
         pace: J.paceNote(c, cur, paceKey),
         adv: c.advIf && cur.vars[c.advIf] ? (c.advText || 'With advantage.') : null,
         failBy5: !!c.failBy5,
-        among: c.who === 'each' ? (c.among === 'failed' ? strList(cur.vars.failed) : heroIds(state)) : null
+        among: c.who === 'each' ? (c.among === 'failed' ? strList(cur.vars.failed) : heroIds(state)) : null,
+        /* An exhaustion save: a pack from the bags gives advantage, once. */
+        pack: J.packOffer(state, c, cur)
       };
     } else if (step.choices) {
       v.type = 'choices';
@@ -766,6 +854,109 @@
       v.type = 'next';
     }
     return v;
+  };
+
+  /* ---------- The Party bags (pull request 4 of the facilities overhaul) ----------
+     Overland charts are counted in days of use (3 a chart), Expedition
+     Provision Packs one by one. A row at 0 goes. */
+  J.PACK = 'expedition_provision_pack';
+  J.CHART = 'overland_chart';
+  J.itemInfo = function (kind) { return items()[kind] || null; };
+  J.itemQty = function (state, kind) {
+    var n = 0;
+    (journey(state).inventory || []).forEach(function (it) { if (it.kind === kind) n += int(it.qty, 0); });
+    return n;
+  };
+  /* "5 days of use", "1 pack". */
+  J.itemCount = function (kind, qty) {
+    var info = J.itemInfo(kind) || { unit: 'item', units: 'items' };
+    return qty + ' ' + (qty === 1 ? info.unit : info.units);
+  };
+  function logLine(state, text) {
+    var j = journey(state);
+    j.log.unshift('Day ' + day(state) + ' · ' + text);
+    if (j.log.length > LOG_MAX) j.log.length = LOG_MAX;
+  }
+  /* The DM adds n charts or packs. Returns the line it logs, or null. */
+  J.addItem = function (state, kind, n) {
+    var info = J.itemInfo(kind);
+    var count = int(n, 0);
+    if (!info || count < 1 || count > 99) return null;
+    var j = journey(state);
+    if (!Array.isArray(j.inventory)) j.inventory = [];
+    var uses = count * (int(info.usesEach, 1) || 1);
+    var row = null;
+    j.inventory.forEach(function (it) { if (it.kind === kind) row = it; });
+    if (row) row.qty = Math.min(9999, int(row.qty, 0) + uses);
+    else j.inventory.push({ id: 'i-' + newUid(), kind: kind, qty: Math.min(9999, uses) });
+    var line = 'Added ' + count + ' ' + (count === 1 ? info.name : info.plural) + ' to the Party bags' +
+      (info.usesEach > 1 ? ' (' + J.itemCount(kind, uses) + ')' : '') + '. Now ' + J.itemCount(kind, J.itemQty(state, kind)) + '.';
+    logLine(state, line);
+    return line;
+  };
+  /* The DM takes a whole row out of the bags. */
+  J.removeItem = function (state, id) {
+    var j = journey(state);
+    var row = null;
+    (j.inventory || []).forEach(function (it) { if (it.id === id) row = it; });
+    if (!row) return null;
+    j.inventory = j.inventory.filter(function (it) { return it !== row; });
+    var info = J.itemInfo(row.kind) || { plural: row.kind };
+    var line = 'Removed ' + info.plural + ' (' + J.itemCount(row.kind, row.qty) + ') from the Party bags.';
+    logLine(state, line);
+    return line;
+  };
+  /* Use some up: true if there were enough. */
+  J.takeItem = function (state, kind, uses) {
+    var n = int(uses, 1);
+    if (n < 1 || J.itemQty(state, kind) < n) return false;
+    var j = journey(state);
+    j.inventory.forEach(function (it) {
+      if (it.kind !== kind || n <= 0) return;
+      var take = Math.min(n, int(it.qty, 0));
+      it.qty = int(it.qty, 0) - take;
+      n -= take;
+    });
+    j.inventory = j.inventory.filter(function (it) { return int(it.qty, 0) > 0; });
+    return true;
+  };
+
+  function isExhaustion(check) { return !!check && Array.isArray(check.tags) && check.tags.indexOf('exhaustion') !== -1; }
+  J.isExhaustion = isExhaustion;
+  /* At an exhaustion save, what the check screen offers: { have, used },
+     or null (not an exhaustion save, or no pack and none used). */
+  J.packOffer = function (state, check, cur) {
+    if (!isExhaustion(check) || !cur) return null;
+    var used = strList(cur.packUsed).indexOf(cur.step) !== -1;
+    var have = J.itemQty(state, J.PACK);
+    if (!used && have < 1) return null;
+    return { have: have, used: used };
+  };
+  /* Use a pack at the exhaustion save on screen (stepId must be the step
+     shown, so a late click can't use one at the next): once a save. The DM
+     still rolls. Returns the line it records, or null. */
+  J.usePack = function (state, defs, stepId) {
+    var cur = journey(state).current;
+    if (!cur || stepId !== cur.step) return null;
+    var ev = J.def(defs, cur.id);
+    var step = ev && ev.steps[cur.step];
+    if (!step || !isExhaustion(step.check)) return null;
+    if (!Array.isArray(cur.packUsed)) cur.packUsed = [];
+    if (cur.packUsed.indexOf(cur.step) !== -1) return null;
+    if (!J.takeItem(state, J.PACK, 1)) return null;
+    cur.packUsed.push(cur.step);
+    var line = 'Used 1 Expedition Provision Pack: advantage on this save (' + J.itemCount(J.PACK, J.itemQty(state, J.PACK)) + ' left).';
+    record(state, cur, line);
+    return line;
+  };
+  /* A pack at a weather save (the White Blizzard): one covers the whole
+     party. The weather pop-up isn't saved, so it keeps its own once-only
+     flag. Returns the line it logs, or null. */
+  J.usePackAtWeather = function (state, title) {
+    if (!J.takeItem(state, J.PACK, 1)) return null;
+    var line = 'Used 1 Expedition Provision Pack at the ' + (title || 'weather') + ': advantage on the party\'s save (' + J.itemCount(J.PACK, J.itemQty(state, J.PACK)) + ' left).';
+    logLine(state, line);
+    return line;
   };
 
   /* ---------- The DM's lists ---------- */
@@ -821,6 +1012,9 @@
     });
     if (j.lastTravelDay) j.lastTravelDay += delta;
     if (j.rolledDay) j.rolledDay += delta;
+    /* Messages waiting for the Bastion keep their place in its days: it
+       moves back with the Explorer (a message can end up on Day 0 or before). */
+    (j.outbox || []).forEach(function (m) { if (isNum(m.day)) m.day += delta; });
     if (j.current) {
       j.current.day += delta;
       if (j.current.prevLastTravelDay) j.current.prevLastTravelDay += delta;

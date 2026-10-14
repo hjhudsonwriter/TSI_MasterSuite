@@ -10,6 +10,15 @@
    Clear), Active Effects and Threads, and the DM's Roll an event now and
    Skip this event. Rations are gone.
 
+   The Explorer link (pull request 4 of the facilities overhaul, Harry's
+   answers of 13 October 2026): 8 event moments send a change of 1 in a
+   Clan's Honour/Respect to the Bastion, which applies it once. The travel
+   panel's "Sent to the Bastion" list shows each one's state, read from the
+   Bastion's save every 2 seconds (shared/js/bridge-rules.js). The Party
+   bags hold Overland charts ("Use a chart today": one more 6-mile hex) and
+   Expedition Provision Packs (advantage on an exhaustion save), which the
+   DM adds with "+ Add".
+
    Layout: the map in the middle, the map controls on the left and the travel
    panel on the right, so a 4:3 map gets the whole height of the laptop.
    Fullscreen takes all three to the screen (for the TV); Hide UI (or H)
@@ -73,6 +82,12 @@
         return el('div', { class: 'tsi-exp-section' }, [el('h3', { class: 'tsi-exp-section-title', text: title })].concat(children));
       }
       function row(children, cls) { return el('div', { class: 'tsi-exp-row' + (cls ? ' ' + cls : '') }, children); }
+      /* A section whose heading has a small button beside it (the Party bags' + Add). */
+      function sectionWith(title, button, children) {
+        return el('div', { class: 'tsi-exp-section' }, [
+          el('div', { class: 'tsi-exp-section-head' }, [el('h3', { class: 'tsi-exp-section-title', text: title }), button])
+        ].concat(children));
+      }
 
       var mapSelect = el('select', { class: 'tsi-input tsi-exp-select', 'aria-label': 'Map', 'data-test': 'map-select' }, [el('option', { value: '', text: '(choose)' })].concat(
         DATA.maps.map(function (m) { return el('option', { value: m.id, text: m.label }); })
@@ -152,6 +167,12 @@
       var goldEl = el('strong', { text: '0', 'data-test': 'gold' });
       var effectsList = el('div', { class: 'tsi-exp-list', 'data-test': 'effects-list' });
       var threadsList = el('div', { class: 'tsi-exp-list', 'data-test': 'threads-list' });
+      /* The Party bags and the changes sent to the Bastion (pull request 4). */
+      var bagsList = el('div', { class: 'tsi-exp-list', 'data-test': 'bags-list' });
+      var btnChart = btn('Use a chart today', useChart, 'tsi-exp-chartbtn', 'use-chart');
+      var chartWhy = el('p', { class: 'tsi-exp-tip tsi-exp-chartwhy', 'data-test': 'chart-why', hidden: true });
+      var chartLine = el('p', { class: 'tsi-exp-line tsi-exp-chartline', 'data-test': 'chart-line', hidden: true });
+      var sentList = el('div', { class: 'tsi-exp-list', 'data-test': 'sent-list' });
       var btnRollNow = btn('Roll an event now', rollEventNow, '', 'roll-now');
       var noticeEl = el('p', { class: 'tsi-exp-notice', role: 'status', 'data-test': 'notice' });
       var pills = el('div', { class: 'tsi-exp-pills' });
@@ -173,6 +194,7 @@
         el('h2', { class: 'tsi-exp-section-title tsi-exp-travel-title', text: 'Travel' }),
         el('p', { class: 'tsi-exp-line' }, [dayLabel]),
         el('p', { class: 'tsi-exp-line' }, ['Miles (selected): ', milesUsedEl, '/', milesLimitEl, ' • Remaining: ', milesLeftEl]),
+        chartLine,
         el('p', { class: 'tsi-exp-line' }, [el('span', { class: 'tsi-exp-muted', text: 'Mode: ' }), modeEl]),
         el('p', { class: 'tsi-exp-line' }, [el('span', { class: 'tsi-exp-muted', text: 'Pace effects: ' }), effectsEl]),
         el('p', { class: 'tsi-exp-line tsi-exp-goldline' }, [
@@ -188,8 +210,10 @@
         section('Main campaign', [
           row([mainSelect, btn('Queue', queueMainEvent, '', 'queue')], 'tsi-exp-row--select')
         ]),
+        sectionWith('Party bags', btn('+ Add', addToBags, 'tsi-exp-mini', 'bags-add'), [bagsList, row([btnChart]), chartWhy]),
         section('Active Effects', [effectsList]),
-        section('Threads', [threadsList])
+        section('Threads', [threadsList]),
+        section('Sent to the Bastion', [sentList])
       ]);
 
       var wrap = el('div', { class: 'tsi-exp-wrap' }, [controls, stage, travel]);
@@ -334,6 +358,9 @@
         dayLabel.textContent = 'Day ' + (state.travel.day || 1);
         milesUsedEl.textContent = String(used);
         milesLimitEl.textContent = String(limit);
+        var chartOn = state.travel.extraMiles > 0 && !state.travel.dayLost;
+        chartLine.hidden = !chartOn;
+        chartLine.textContent = chartOn ? 'Overland chart in use: +' + state.travel.extraMiles + ' miles today, until Make Camp.' : '';
         milesLeftEl.textContent = String(Math.max(0, limit - used));
         var mode = R.travelMode(used);
         modeEl.textContent = mode.mode;
@@ -355,6 +382,8 @@
         btnRollNow.classList.toggle('tsi-exp-on', !!state.journey.current);
         renderEffects();
         renderThreads();
+        renderBags();
+        renderSent();
       }
 
       function setOn(button, on) {
@@ -729,6 +758,8 @@
         state.freeMove = !state.freeMove;
         saveNow();
         updateButtons();
+        /* The chart button follows Free Move. */
+        updateTravelUI();
         setNotice(state.freeMove ? 'Free Move enabled: miles/events paused.' : 'Free Move disabled.');
       }
       function resetTravel() {
@@ -936,6 +967,29 @@
         var input = el('input', { type: 'number', inputmode: 'numeric', class: 'tsi-input tsi-exp-roll', id: 'tsi-exp-roll', 'data-test': 'roll' });
         var resolveBtn = el('button', { type: 'button', class: 'tsi-btn tsi-btn--primary', 'data-test': 'resolve' }, 'Resolve');
         var resolved = false;
+        /* An exhaustion save (the White Blizzard): one pack from the bags
+           gives the whole party advantage. This pop-up isn't saved, so it
+           keeps its own once-only flag; the pack is taken and saved at once. */
+        var packUsed = false;
+        var packBox = null;
+        if (Array.isArray(mech.tags) && mech.tags.indexOf('exhaustion') !== -1 && J.itemQty(state, J.PACK) > 0) {
+          packBox = el('div', { class: 'tsi-exp-pack', 'data-test': 'pack-offer' }, [
+            el('span', { text: 'Expedition Provision Pack (' + J.itemQty(state, J.PACK) + ' left): advantage on this save for the whole party.' }),
+            el('button', {
+              type: 'button', class: 'tsi-btn tsi-btn--small', 'data-test': 'use-pack',
+              onclick: function () {
+                if (packUsed || resolved) return;
+                var line = J.usePackAtWeather(state, w.title);
+                if (!line) return;
+                packUsed = true;
+                saveNow();
+                updateTravelUI();
+                TSI.clear(packBox);
+                packBox.appendChild(el('p', { class: 'tsi-exp-tip tsi-exp-tip--note tsi-exp-pack-used', text: 'A pack was used: the party rolls this save with advantage.' }));
+              }
+            }, 'Use a pack')
+          ]);
+        }
         function closeBtn() { return choiceButton('Close', function () { api.close('close'); }, shownAt); }
         function resolveRoll() {
           if (resolved) return;
@@ -959,6 +1013,7 @@
         resolveBtn.addEventListener('click', resolveRoll);
         input.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); resolveRoll(); } });
         TSI.append(parts.prompt, [
+          packBox,
           el('div', { class: 'tsi-exp-rollrow' }, [
             typeSelect,
             el('label', { class: 'tsi-exp-muted', for: 'tsi-exp-roll', text: 'Roll (d20):' }),
@@ -1059,6 +1114,145 @@
           setNotice('Party gold cleared (was ' + g + ').');
         });
       }
+
+      /* ---------- The Party bags (pull request 4 of the facilities overhaul) ---------- */
+      function renderBags() {
+        TSI.clear(bagsList);
+        var list = state.journey.inventory || [];
+        if (!list.length) bagsList.appendChild(el('p', { class: 'tsi-exp-empty', text: 'Empty.' }));
+        list.forEach(function (it) {
+          var info = J.itemInfo(it.kind) || { name: it.kind, plural: it.kind };
+          var isChart = it.kind === J.CHART;
+          bagsList.appendChild(el('div', { class: 'tsi-exp-item', 'data-test': 'bag', 'data-kind': it.kind }, [
+            el('div', { class: 'tsi-exp-item__body' }, [
+              el('div', { class: 'tsi-exp-item__name' }, [el('strong', { text: info.plural }), ' · ', el('span', { 'data-test': 'bag-qty', text: J.itemCount(it.kind, it.qty) + (isChart ? ' left' : '') })]),
+              el('div', { class: 'tsi-exp-item__meta', text: isChart ? 'Use a chart today: one more 6-mile hex until Make Camp.' : 'Offered at an exhaustion save: advantage on it.' })
+            ]),
+            el('button', {
+              type: 'button', class: 'tsi-btn tsi-btn--small tsi-exp-mini', title: 'Take ' + info.plural + ' out of the Party bags',
+              'aria-label': 'Remove ' + info.plural, 'data-test': 'bag-remove',
+              onclick: function () { removeFromBags(it); }
+            }, '✕')
+          ]));
+        });
+        var why = R.chartProblem(state);
+        var hasChart = J.itemQty(state, J.CHART) > 0 || state.travel.extraMiles > 0;
+        btnChart.hidden = !hasChart;
+        btnChart.disabled = !!why;
+        btnChart.title = why || 'One more 6-mile hex until Make Camp (uses 1 day of a chart)';
+        chartWhy.hidden = !hasChart || !why;
+        chartWhy.textContent = why;
+      }
+      function addToBags() {
+        var kinds = Object.keys(window.TSI_DATA.partyItems || {});
+        var kindSel = el('select', { class: 'tsi-input tsi-exp-select', 'aria-label': 'What to add', 'data-test': 'bags-kind' }, kinds.map(function (k) {
+          return el('option', { value: k, text: J.itemInfo(k).plural });
+        }));
+        var count = el('input', { type: 'number', min: '1', max: '99', step: '1', value: '1', class: 'tsi-input tsi-exp-count', 'aria-label': 'How many', 'data-test': 'bags-count' });
+        var help = el('p', { class: 'tsi-exp-tip', 'data-test': 'bags-help' });
+        function showHelp() { var info = J.itemInfo(kindSel.value); help.textContent = info ? info.text : ''; }
+        kindSel.addEventListener('change', showHelp);
+        showHelp();
+        TSI.modal.open({
+          title: 'Add to the Party bags',
+          body: [
+            el('p', { text: 'When the party gets a chart or a pack (from the story, or from the Bastion\'s Warehouse, where you take it off by hand), add it here.' }),
+            el('div', { class: 'tsi-exp-rollrow' }, [kindSel, el('label', { class: 'tsi-exp-muted', text: 'How many:' }), count]),
+            help
+          ],
+          escValue: false,
+          actions: [{ label: 'Cancel', value: false }, { label: 'Add', value: true, primary: true }],
+          onOpen: function (api) { if (api && api.dialog) api.dialog.setAttribute('data-test', 'bags-add-dialog'); }
+        }).then(function (ok) {
+          if (!ok || !life.alive) return;
+          var n = Math.round(Number(count.value));
+          if (!Number.isFinite(n) || n < 1 || n > 99) { note('Choose how many to add, from 1 to 99.'); return; }
+          var line = J.addItem(state, kindSel.value, n);
+          if (!line) return;
+          saveNow();
+          updateTravelUI();
+          setNotice(line);
+        });
+      }
+      function removeFromBags(it) {
+        var info = J.itemInfo(it.kind) || { plural: it.kind };
+        ask('Take the ' + info.plural + ' (' + J.itemCount(it.kind, it.qty) + ') out of the Party bags?', 'Remove').then(function (ok) {
+          if (!ok) return;
+          var line = J.removeItem(state, it.id);
+          if (!line) return;
+          saveNow();
+          updateTravelUI();
+          setNotice(line);
+        });
+      }
+      function useChart() {
+        var why = R.chartProblem(state);
+        if (why) { note(why); return; }
+        var left = J.itemQty(state, J.CHART);
+        ask('Use an Overland chart today? The party can travel one more 6-mile hex (' + (R.dayLimit(state) + R.MILES_PER_HEX) + ' miles) until Make Camp. It uses 1 day of a chart (' + J.itemCount(J.CHART, left) + ' left).', 'Use a chart').then(function (ok) {
+          if (!ok || !life.alive) return;
+          var line = R.useChart(state);
+          if (!line) { note(R.chartProblem(state) || 'The chart couldn\'t be used.'); return; }
+          saveNow();
+          updateTravelUI();
+          setNotice(line);
+        });
+      }
+
+      /* ---------- Sent to the Bastion (pull request 4 of the facilities overhaul) ----------
+         Each change sent to the Bastion, newest first, with its state from
+         the Bastion's save as last read (it's only ever read). */
+      var bastionSeen;            /* the Bastion's save as last read; undefined until the first read */
+      var sentShown = '';
+      function sentKey() {
+        var B = TSI.bridge;
+        return (state.journey.outbox || []).map(function (m) {
+          return m.id + '=' + (bastionSeen === undefined ? '?' : B.statusOf(m, bastionSeen).line);
+        }).join('|') + '|' + TSI.store.mode;
+      }
+      function renderSent() {
+        var B = TSI.bridge;
+        sentShown = sentKey();
+        TSI.clear(sentList);
+        var list = (state.journey.outbox || []).slice(-10).reverse();
+        if (!list.length) { sentList.appendChild(el('p', { class: 'tsi-exp-empty', text: 'Nothing yet.' })); }
+        var LABEL = { waiting: 'Waiting', applied: 'Applied', refused: 'Refused', skipped: 'Skipped' };
+        list.forEach(function (m) {
+          var st = bastionSeen === undefined ? { kind: 'waiting', line: 'Checking the Bastion…' } : B.statusOf(m, bastionSeen);
+          var dayText = typeof m.day === 'number' && m.day >= 1 ? 'Day ' + m.day : 'before Day 1';
+          sentList.appendChild(el('div', { class: 'tsi-exp-item tsi-exp-sent', 'data-test': 'sent', 'data-status': st.kind }, [
+            el('div', { class: 'tsi-exp-item__body' }, [
+              el('div', { class: 'tsi-exp-item__name' }, [
+                el('span', { class: 'tsi-exp-status tsi-exp-status--' + st.kind, 'data-test': 'sent-status', text: LABEL[st.kind] || st.kind }),
+                ' ', el('strong', { text: 'Clan ' + B.clanName(m.clan) + ' ' + B.signed(m.hr) }), ' · ' + dayText + (m.from && m.from.code ? ' · ' + m.from.code : '')
+              ]),
+              el('div', { class: 'tsi-exp-item__text', text: m.text }),
+              el('div', { class: 'tsi-exp-item__meta', 'data-test': 'sent-line', text: st.line })
+            ])
+          ]));
+        });
+        if (TSI.store.mode === 'memory') {
+          sentList.appendChild(el('p', { class: 'tsi-exp-tip', text: 'This browser isn\'t saving, so the Bastion can\'t see these.' }));
+        }
+        /* The first change sent: look at the Bastion now, not in 2 seconds. */
+        if (bastionSeen === undefined && list.length) readBastion();
+      }
+      var readingBastion = false;
+      function readBastion() {
+        if (readingBastion || !life.alive || document.visibilityState === 'hidden') return;
+        /* Only the list's states need it: nothing sent, nothing to read. */
+        if (!(state.journey.outbox || []).length) return;
+        readingBastion = true;
+        TSI.store.fresh('tsi.bastion.state', null).then(function (b) {
+          if (!life.alive) return;
+          bastionSeen = b;
+          if (sentKey() !== sentShown) renderSent();
+        }).catch(function (err) {
+          TSI.reportError(err, 'reading the Bastion');
+        }).then(function () { readingBastion = false; });
+      }
+      life.setInterval(readBastion, 2000);
+      life.on(document, 'visibilitychange', function () { if (document.visibilityState === 'visible') readBastion(); });
 
       /* ---------- Harry's new events: starting one by hand ---------- */
       function rollEventNow() {
@@ -1199,6 +1393,21 @@
           if (onChange) sel.addEventListener('change', onChange);
           return { node: el('label', { class: 'tsi-exp-field tsi-exp-field--inline' }, [el('span', { text: label }), sel]), sel: sel };
         }
+        /* An exhaustion save: an Expedition Provision Pack from the bags gives
+           advantage, once (the DM still rolls and clicks Success or Failure). */
+        function packOffer(v, pack) {
+          if (pack.used) return tip('A pack was used: roll this save with advantage.', 'tsi-exp-tip--note tsi-exp-pack-used');
+          return el('div', { class: 'tsi-exp-pack', 'data-test': 'pack-offer' }, [
+            el('span', { text: 'Expedition Provision Pack (' + pack.have + ' left): advantage on this save.' }),
+            button('Use a pack', function () {
+              if (!ready()) return;
+              if (!J.usePack(state, JDEFS, v.step)) return;
+              saveNow();
+              updateTravelUI();
+              safeRender();
+            }, 'tsi-btn--small', 'use-pack')
+          ]);
+        }
         function checkLine(label) {
           return el('p', { class: 'tsi-exp-check', 'data-test': 'check-line' }, [el('span', { class: 'tsi-exp-check__tag', text: 'Check' }), el('strong', { text: label })]);
         }
@@ -1272,6 +1481,7 @@
             if (c.who === 'same' && v.heroName) parts.push(tip(v.heroName + ' rolls.'));
             if (c.adv) parts.push(tip(c.adv, 'tsi-exp-tip--note'));
             if (c.pace) parts.push(tip(c.pace, 'tsi-exp-tip--note'));
+            if (c.pack) parts.push(packOffer(v, c.pack));
             var result = function (r) { return function () { doAct({ type: 'check', step: v.step, result: r, hero: hs ? hs.sel.value : null }); }; };
             parts.push(buttons([
               button('Success', result('success'), '', 'check-success'),
@@ -1526,6 +1736,9 @@
       /* For the tests. */
       ns.debug = {
         state: function () { return state; },
+        outbox: function () { return TSI.clone(state.journey.outbox || []); },
+        bastionSeen: function () { return bastionSeen; },
+        readBastion: readBastion,
         /* Start a chosen event (travel, camp, follow, dm), as if it had come up. */
         startEvent: function (id, kind) {
           var ev = J.def(JDEFS, id);
@@ -1557,6 +1770,7 @@
       life.onStop(function () { ns.debug = null; });
 
       renderAll();
+      readBastion();
       /* The first open saves the starting journey (Day 1), so the Bastion,
          which follows the Explorer's day, can start counting from it. */
       if (!saved) saveNow();
