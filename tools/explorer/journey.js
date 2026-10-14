@@ -672,20 +672,21 @@
     if (p.status !== 'ready') return { ok: false, message: 'The Bastion hasn\'t recorded this parcel\'s arrival yet' + (isNum(p.readyDay) ? ' (it\'s due at ' + town + ' on Day ' + p.readyDay + ')' : '') + '.' };
     if (p.point !== pointId) return { ok: false, message: 'This parcel waits at ' + town + ', not at ' + B.pointLabel(pointId) + '.' };
     if (!p.goods.length) return { ok: false, message: 'The Bastion\'s record of this parcel lists nothing in it.' };
-    /* Every item first: a kind the bags hold, 1 to 99 at a time, and room
-       under 9999 uses for each kind (J.addItem's limits). */
+    /* Every item first: a kind the bags hold, a whole count of 1 or more,
+       and room under 9999 uses for each kind. (A parcel isn't held to + Add's
+       1 to 99 at a time: its size is the Bastion's data, which may grow.) */
     var room = {};
     for (var i = 0; i < p.goods.length; i++) {
       var g = p.goods[i];
       var info = J.itemInfo(g.goodId);
       if (!info) return { ok: false, message: 'This copy of the Explorer can\'t carry ' + g.goodId.replace(/_/g, ' ') + ', so the parcel waits at ' + town + '.' };
-      if (!isNum(g.qty) || Math.floor(g.qty) !== g.qty || g.qty < 1 || g.qty > 99) return { ok: false, message: 'The parcel holds ' + g.qty + ' ' + info.plural + ': the Party bags take 1 to 99 at a time, so the parcel waits at ' + town + '.' };
+      if (!isNum(g.qty) || Math.floor(g.qty) !== g.qty || g.qty < 1) return { ok: false, message: 'The Bastion\'s record of this parcel has a count the Party bags can\'t take (' + g.qty + ' ' + info.plural + '), so the parcel waits at ' + town + '.' };
       var each = int(info.usesEach, 1) || 1;
       room[g.goodId] = (room[g.goodId] === undefined ? J.itemQty(state, g.goodId) : room[g.goodId]) + g.qty * each;
       if (room[g.goodId] > 9999) return { ok: false, message: 'The Party bags can\'t hold that many ' + info.plural + ', so the parcel waits at ' + town + '.' };
     }
     /* Then change everything, together. */
-    p.goods.forEach(function (x) { J.addItem(state, x.goodId, x.qty); });
+    p.goods.forEach(function (x) { addUses(state, x.goodId, x.qty); });
     var what = B.parcelGoodsText(p.goods);
     if (!Array.isArray(j.outbox)) j.outbox = [];
     j.outbox.push(B.parcelMessage({
@@ -971,10 +972,10 @@
     if (j.log.length > LOG_MAX) j.log.length = LOG_MAX;
   }
   /* The DM adds n charts or packs. Returns the line it logs, or null. */
-  J.addItem = function (state, kind, n) {
+  /* Put a count of a kind into the bags, as uses (a chart is 3 days of
+     use). + Add and a parcel's pickup both come through here. */
+  function addUses(state, kind, count) {
     var info = J.itemInfo(kind);
-    var count = int(n, 0);
-    if (!info || count < 1 || count > 99) return null;
     var j = journey(state);
     if (!Array.isArray(j.inventory)) j.inventory = [];
     var uses = count * (int(info.usesEach, 1) || 1);
@@ -982,6 +983,13 @@
     j.inventory.forEach(function (it) { if (it.kind === kind) row = it; });
     if (row) row.qty = Math.min(9999, int(row.qty, 0) + uses);
     else j.inventory.push({ id: 'i-' + newUid(), kind: kind, qty: Math.min(9999, uses) });
+    return uses;
+  }
+  J.addItem = function (state, kind, n) {
+    var info = J.itemInfo(kind);
+    var count = int(n, 0);
+    if (!info || count < 1 || count > 99) return null;
+    var uses = addUses(state, kind, count);
     var line = 'Added ' + count + ' ' + (count === 1 ? info.name : info.plural) + ' to the Party bags' +
       (info.usesEach > 1 ? ' (' + J.itemCount(kind, uses) + ')' : '') + '. Now ' + J.itemCount(kind, J.itemQty(state, kind)) + '.';
     logLine(state, line);

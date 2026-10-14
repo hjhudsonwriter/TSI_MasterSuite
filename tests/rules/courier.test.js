@@ -538,14 +538,16 @@
     t.same([c.status, qty(b, PACK)], ['returned', 3]);
   });
 
-  test('Demolish: parcels already sent still arrive, can be collected, and recalled ones come home; the question says so', function (t) {
+  test('Demolish: parcels already sent still arrive, can be collected, and recalled ones come home, but none can be recalled after; the question says so', function (t) {
     var b = bastion(10, 2);
     var a = send(b, 'bretan').parcel;
     var c = send(b, 'moorcastle').parcel;
     b.day = 11;
     BR.recallParcel(b, bdata, c.id);
-    t.equal(BR.courierDemolishNote(b), 'The 2 parcels already sent carry on: they still arrive and can be collected, and recalled ones still come home.');
+    t.equal(BR.courierDemolishNote(b), 'The 2 parcels already sent carry on: they still arrive and can be collected (and recalled ones still come home), but they can no longer be recalled.');
     t.equal(BR.demolishFacility(b, bdata, 'courier_exchange').ok, true);
+    var no = BR.recallParcel(b, bdata, a.id);
+    t.same([no.ok, no.message, a.status], [false, 'The Courier Exchange has been demolished, so the parcel can\'t be recalled; it still reaches Bretan and can be collected there.', 'in_transit']);
     t.equal(BR.courierSpec(b, bdata).built, false);
     t.equal(BR.parcelBlocker(b, bdata), 'The Courier Exchange isn\'t built.');
     b.day = 12;
@@ -562,7 +564,7 @@
     t.equal(a.status, 'collected');
     t.equal(BR.courierDemolishNote(b), '');
     var one = waiting();
-    t.equal(BR.courierDemolishNote(one.b), 'The parcel already sent carries on: it still arrives and can be collected, or, if recalled, still comes home.');
+    t.equal(BR.courierDemolishNote(one.b), 'The parcel already sent carries on: it still arrives and can be collected (or, if it was recalled, still comes home), but it can no longer be recalled.');
   });
 
   /* ---------------------------------------------------------------- */
@@ -830,15 +832,32 @@
     var odd = copy(r.save);
     odd.tradeNetwork.parcels[0].goods = [{ goodId: PACK, qty: 2 }, { goodId: 'potion_of_healing', qty: 1 }];
     refused(odd, r.p.id, 'slades_muster', {}, /^This copy of the Explorer can't carry potion of healing, so the parcel waits at Slade’s Muster\.$/, 'an unknown kind: nothing added, not even the packs');
-    var big = copy(r.save);
-    big.tradeNetwork.parcels[0].goods = [{ goodId: PACK, qty: 100 }];
-    refused(big, r.p.id, 'slades_muster', {}, /take 1 to 99 at a time/, 'more than 99');
+    var none = copy(r.save);
+    none.tradeNetwork.parcels[0].goods = [{ goodId: PACK, qty: 0 }];
+    refused(none, r.p.id, 'slades_muster', {}, /^The Bastion's record of this parcel lists nothing in it\.$/, 'a count of 0 (the link drops it, so the parcel holds nothing)');
     refused(r.save, r.p.id, 'slades_muster', {}, /can't hold that many Overland charts/, 'the bags are full', function (s) {
       s.journey.inventory = [{ id: 'i-x', kind: CHART, qty: 9998 }];
     });
     var bad = copy(r.save);
     bad.tradeNetwork.parcels[0].id = 'Bad Id!';
     refused(bad, 'Bad Id!', 'slades_muster', {}, /record is damaged/, 'a damaged id');
+  });
+
+  test('room raised in the data (a review fix): a parcel of 120 packs is sent and collected in full, never stuck at its town', function (t) {
+    var levels = copy(CD.levels);
+    levels['2'].maxItems = 150;
+    var d = withCourier({ levels: levels });
+    var b = bastion(10, 2);
+    BR.addGoods(b, d, PACK, 114, 'Test');
+    var res = BR.sendParcel(b, d, 'slades_muster', packs(120), dice([0.37]));
+    t.equal(res.ok, true, res.message);
+    b.day = 12;
+    BR.settleParcels(b, d);
+    var s = explorer(12);
+    var got = J.collectParcel(s, res.parcel.id, 'slades_muster', copy(BR.toSave(b)), {});
+    t.equal(got.ok, true, got.message);
+    t.equal(J.itemQty(s, PACK), 120, 'all 120 in the Party bags');
+    t.equal(ER.toSave(s).journey.outbox.length, 1, 'one pickup message');
   });
 
   test('the whole way: sent, arrived, collected, recorded; the goods are only ever in one place, whatever is reloaded', function (t) {

@@ -33,8 +33,9 @@
 
    Under Repair stops new parcels only; parcels already sent carry on, and
    a recall is still allowed. After Demolish, parcels already sent still
-   arrive, can be collected, and recalled ones still come home: nothing here
-   asks whether the Courier Exchange still stands, except sending. */
+   arrive and can be collected, and recalled ones still come home; only
+   sending and recalling need the Courier Exchange standing (Recall parcel…
+   is in its panel). */
 (function () {
   'use strict';
 
@@ -330,9 +331,11 @@
      home, after as many days as it had travelled (at least 1), when they go
      back into the Warehouse. The fee isn't refunded, and the way back costs
      nothing. Allowed while the Courier Exchange is Under Repair (it starts
-     nothing new), and after it's demolished. */
-  R.parcelRecallBlocker = function (s, p) {
+     nothing new), but not once it's demolished: the parcel then simply
+     arrives and waits, as Harry decided parcels on the road carry on. */
+  R.parcelRecallBlocker = function (s, p, data) {
     if (!p) return 'That parcel isn\'t on the road any more.';
+    if (data && R.builtFacilityIds(s, data).indexOf(FAC) === -1 && p.status === 'in_transit') return 'The Courier Exchange has been demolished, so the parcel can\'t be recalled; it still reaches ' + R.courierPointName(p.point) + ' and can be collected there.';
     var town = R.courierPointName(p.point);
     if (p.status === 'returning') return 'That parcel has already been recalled: it\'s on its way back to the Ironbow.';
     if (p.status === 'returned') return 'That parcel has already been recalled and is back at the Ironbow.';
@@ -347,7 +350,7 @@
   /* Returns { ok, parcel, log } or { ok: false, message }. */
   R.recallParcel = function (s, data, id) {
     var p = R.parcelById(s, id);
-    var why = R.parcelRecallBlocker(s, p);
+    var why = R.parcelRecallBlocker(s, p, data);
     if (why) return { ok: false, message: why };
     p.status = 'returning';
     p.recalledDay = s.day;
@@ -555,8 +558,8 @@
   R.courierDemolishNote = function (s) {
     var n = R.openParcels(s).length;
     if (!n) return '';
-    return (n === 1 ? 'The parcel already sent carries on: it still arrives and can be collected, or, if recalled, still comes home.'
-      : 'The ' + n + ' parcels already sent carry on: they still arrive and can be collected, and recalled ones still come home.');
+    return (n === 1 ? 'The parcel already sent carries on: it still arrives and can be collected (or, if it was recalled, still comes home), but it can no longer be recalled.'
+      : 'The ' + n + ' parcels already sent carry on: they still arrive and can be collected (and recalled ones still come home), but they can no longer be recalled.');
   };
   /* The panel's first line: "Level 1: 1 parcel travelling at a time, up to
      5 items each. Reaches: Slade’s Muster." */

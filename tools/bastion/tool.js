@@ -2394,7 +2394,7 @@
         };
         [qty, notes].forEach(function (input) { input.addEventListener('input', sync); });
         return el('div', { class: 'tsi-bas-wh__row tsi-bas-wh__row--goods', 'data-good': row.goodId }, [
-          el('div', { class: 'tsi-bas-wh__good', 'data-test': 'wh-item-' + i }, [el('span', { class: 'tsi-bas-wh__goodname', text: row.item || R.goodName(data, row.goodId) }), unit ? el('span', { class: 'tsi-bas-wh__unit', text: unit }) : null]),
+          el('div', { class: 'tsi-bas-wh__good', 'data-test': 'wh-item-' + i }, [el('span', { class: 'tsi-bas-wh__goodname', text: row.item || R.goodName(data, row.goodId) }), unit ? el('span', { class: 'tsi-bas-wh__unit', text: unit, title: unit }) : null]),
           qty, value, notes,
           btn('Remove', function () {
             state.warehouse = state.warehouse.filter(function (x) { return x !== row; });
@@ -3375,7 +3375,7 @@
         };
         var travelling = R.parcelsWith(state, 'in_transit').map(function (p) {
           /* Recall parcel… while it's on its way (Harry, 14 October 2026). */
-          var canRecall = !R.parcelRecallBlocker(state, p);
+          var canRecall = !R.parcelRecallBlocker(state, p, data);
           return row(p, [' · fee ' + R.clampInt(p.feeGP, 0) + ' gp ', canRecall ? btn('Recall parcel…', function () { onRecallParcel(p.id); }, 'tsi-btn--ghost', 'recall-parcel', { disabled: busy ? true : null }) : null]);
         });
         var returning = R.parcelsWith(state, 'returning').map(function (p) { return row(p); });
@@ -3510,7 +3510,7 @@
       var onRecallParcel = TSI.oneAtATime(async function (id) {
         if (turnRunning || militaryRunning) return;
         var p = R.parcelById(state, id);
-        var why = R.parcelRecallBlocker(state, p);
+        var why = R.parcelRecallBlocker(state, p, data);
         if (why) { await say(why); return; }
         var home = R.parcelRecallDay(state, p);
         var town = R.courierPointName(p.point);

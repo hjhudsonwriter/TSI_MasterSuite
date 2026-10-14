@@ -52,6 +52,6 @@ window.TSI_DATA.bastionGoods = {
     /* Pull request 6 (Harry, 14 October 2026): named as the Explorer's
        Party bags name it (shared/data/party-items.js). The DM adds charts
        by hand for now ("+ Add supplies"). */
-    { id: 'overland_chart', name: 'Overland chart', kind: 'supply', unit: 'chart', what: '3 days of use in the Party bags: one more 6-mile hex on each day it\'s used' }
+    { id: 'overland_chart', name: 'Overland chart', kind: 'supply', unit: 'chart', what: '3 days of use each in the Party bags' }
   ]
 };

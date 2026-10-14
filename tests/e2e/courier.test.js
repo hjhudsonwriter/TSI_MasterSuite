@@ -543,7 +543,7 @@ async function panelFits(ba) {
     await ba.click('[data-test=demolish-courier_exchange]');
     await ba.waitForSelector('.tsi-modal__foot button:text-is("Cancel")');
     const t = await lastModal(ba);
-    assert(/The parcel already sent carries on: it still arrives and can be collected, or, if recalled, still comes home\./.test(t), t);
+    assert(/The parcel already sent carries on: it still arrives and can be collected \(or, if it was recalled, still comes home\), but it can no longer be recalled\./.test(t), t);
     await H.clickModal(ba, 'Cancel');
     await ba.waitForTimeout(300);
     equal((await bas(ba)).builtPlots[0], { facId: 'courier_exchange', status: 'built' });
