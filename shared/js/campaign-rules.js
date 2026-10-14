@@ -57,6 +57,11 @@
     var p = window.TSI_DATA && window.TSI_DATA.ports && window.TSI_DATA.ports[id];
     return p && str(p.label) ? p.label : str(id) || 'port';
   }
+  /* 'slades_muster' → 'Slade’s Muster' (shared/data/courier-points.js). */
+  function pointName(id) {
+    var p = window.TSI_DATA && window.TSI_DATA.courierPoints && window.TSI_DATA.courierPoints[id];
+    return p && str(p.label) ? p.label : str(id).replace(/_/g, ' ') || 'its town';
+  }
 
   var C = TSI.campaign = {
     /* The automatic Bastion event comes every this many days from Day 1
@@ -66,8 +71,9 @@
     /* What the Bastion has coming, from its save: [{ day, kind, line }], in day
        order (only what can be known before the day: building finished,
        orders due, contracts and records ending, repairs and recovery over,
-       sea routes needing a roll, a Clan at war's attack roll, the automatic
-       event). Nothing for a Bastion that hasn't read the Explorer's day yet. */
+       sea routes needing a roll, cargo ships and Courier Exchange parcels
+       due, a Clan at war's attack roll, the automatic event). Nothing for a
+       Bastion that hasn't read the Explorer's day yet. */
     bastionComing: function (bastion) {
       var ba = isObj(bastion) ? bastion : null;
       if (!inDaysSave(ba) || ba.anchored !== true || !isNum(ba.day)) return [];
@@ -129,6 +135,14 @@
       });
       (Array.isArray(tn.schedules) ? tn.schedules : []).forEach(function (sc) {
         if (isObj(sc)) add(sc.nextDay, 'cargo', 'A standing shipment to ' + portName(sc.port) + ' is due to sail, if a ship and the goods are ready.');
+      });
+      /* Courier Exchange parcels (pull request 6): when each is due at its
+         town, and when a recalled one is due home. Only ever "due": the
+         Bastion records the arrival itself when it passes the day. */
+      (Array.isArray(tn.parcels) ? tn.parcels : []).forEach(function (p) {
+        if (!isObj(p)) return;
+        if (p.status === 'in_transit') add(p.readyDay, 'parcel', 'A parcel from the Ironbow is due at ' + pointName(p.point) + '.');
+        else if (p.status === 'returning') add(p.returnDay, 'parcel', 'A recalled parcel is due back at the Ironbow.');
       });
       var wars = isObj(ba.wars) ? ba.wars : {};
       Object.keys(wars).forEach(function (k) {

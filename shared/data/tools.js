@@ -93,6 +93,7 @@ window.TSI_DATA.tools = [
         'tools/bastion/data/courier-data.js',
         'tools/bastion/rules.js',
         'tools/bastion/commerce-rules.js',
+        'tools/bastion/courier-rules.js',
         'tools/bastion/war-table-rules.js',
         'tools/bastion/war-battle-rules.js',
         'tools/bastion/war-ai.js',
