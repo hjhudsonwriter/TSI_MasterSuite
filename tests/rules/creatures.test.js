@@ -639,7 +639,7 @@
       ['p-creature-1', 'beast', 'beast', 'Elara\'s wyvern', 'Elara\'s wyvern', ['flight'], { cohesion: 7, attack: 6, defence: 13, move: 6, resolve: 2, bv: 11 }],
       ['p-creature-2', 'beast', 'beast', 'Swiftwing', 'Swiftwing', ['flight'], { cohesion: 5, attack: 5, defence: 12, move: 6, resolve: 1, bv: 8 }]
     ]);
-    t.same(units[0].source, { key: 'creature-elara_wyvern', creature: 'elara_wyvern', beast: 'Elara\'s wyvern' });
+    t.same(units[0].source, { key: 'creature-elara_wyvern', creature: 'elara_wyvern', species: 'wyvern', beast: 'Elara\'s wyvern' });
     t.equal(BR.sideBV(bdata, { units: units }), 19);
     t.equal(b.log[0].body.indexOf('Defending it: 20 defenders, Elara\'s wyvern, Swiftwing.') !== -1, true, b.log[0].body);
     t.same(BR.warForces(b, bdata).creatures, [], 'the waiting defence holds them');

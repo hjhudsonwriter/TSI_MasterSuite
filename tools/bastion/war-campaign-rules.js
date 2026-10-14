@@ -615,7 +615,8 @@
     /* The creatures defending the Ironbow (pull request 7): one unit each,
        under its own name, with its own profile and trait from
        creatures-data.js (never the default beast's). Only one still free
-       takes the field. */
+       takes the field. Its source names the creature and its kind, so the
+       War Table can show its own line. */
     var ci = 0;
     creatureIds(c).forEach(function (id) {
       if (f.creatures.indexOf(id) === -1 || !R.creatureById) return;
@@ -628,7 +629,7 @@
       units.push({
         id: 'p-creature-' + ci, kind: 'beast', type: 'beast', name: name, label: '', short: '',
         personnel: 1, size: 1, profile: profileOf(war, traits, w), traits: traits, variant: null,
-        source: { key: 'creature-' + id, creature: id, beast: name }
+        source: { key: 'creature-' + id, creature: id, species: String(cr.species || ''), beast: name }
       });
     });
     nameUnits(units, w);
