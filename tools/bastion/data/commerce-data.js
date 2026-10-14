@@ -23,7 +23,8 @@ window.TSI_DATA.bastionCommerce = {
      fee and the tariff come off. Rounded down to whole gold pieces, never
      below 0, and paid into the treasury once, when the ship arrives. */
 
-  /* The kinds of goods (each cargo good in goods-data.js has one, its cat). */
+  /* The kinds of goods (each cargo good in goods-data.js has one, its cat),
+     for grouping on screen. Demand is set good by good, not by kind. */
   categories: {
     fish: 'Fish and seafood',
     timber: 'Timber',
@@ -40,23 +41,56 @@ window.TSI_DATA.bastionCommerce = {
     oversupplied: { label: 'Oversupplied', mult: 0.75 }
   },
 
-  /* The buying Clan's demand: the Clan's key, then a kind of goods (from
-     categories above) or one good's id (from goods-data.js), then a level
-     (high, moderate, normal or oversupplied). A good's own entry wins over
-     its kind's. Anything not listed is Normal (×1.00).
-     Every Clan is Normal for everything until Harry approves a Clan-by-
-     commodity table (14 October 2026). A Clan isn't assumed to want what
-     it traditionally produces. For example, to make timber highly
-     sought-after in Clan Molten, and Fresh Fish oversupplied there:
-       molten: { timber: 'high', fresh_fish: 'oversupplied' } */
+  /* The buying Clan's demand, good by good: the Clan's key, then a good's id
+     (from goods-data.js), then a level (high, moderate, normal or
+     oversupplied). Anything not listed is Normal (×1.00). Every Clan buys
+     every good, once the Ironbow holds a Port Charter at its port.
+     Harry's approved matrix (14 October 2026): each Clan has three highly
+     sought-after goods and three moderate ones. Nothing starts
+     oversupplied: that will come from market saturation (below). */
   demand: {
-    blackstone: {},
-    bacca: {},
-    slade: {},
-    molten: {},
-    farmer: {},
-    karr: {},
-    rowthorn: {}
+    blackstone: {
+      sawn_lumber: 'high', construction_timber: 'high', premium_hardwood: 'high',
+      dressed_stone: 'moderate', structural_masonry: 'moderate', medicinal_herbs: 'moderate'
+    },
+    rowthorn: {
+      preserved_fish: 'high', premium_seafood: 'high', sailcloth: 'high',
+      ordinary_textiles: 'moderate', specialist_garments: 'moderate', medicinal_herbs: 'moderate'
+    },
+    farmer: {
+      medicinal_herbs: 'high', refined_botanical_reagents: 'high', rare_botanical_extracts: 'high',
+      preserved_fish: 'moderate', sawn_lumber: 'moderate', ordinary_textiles: 'moderate'
+    },
+    karr: {
+      premium_seafood: 'high', sailcloth: 'high', medicinal_herbs: 'high',
+      preserved_fish: 'moderate', construction_timber: 'moderate', dressed_stone: 'moderate'
+    },
+    slade: {
+      ordinary_textiles: 'high', sailcloth: 'high', construction_timber: 'high',
+      sawn_lumber: 'moderate', dressed_stone: 'moderate', specialist_garments: 'moderate'
+    },
+    bacca: {
+      dressed_stone: 'high', structural_masonry: 'high', decorative_stonework: 'high',
+      raw_stone: 'moderate', construction_timber: 'moderate', premium_hardwood: 'moderate'
+    },
+    molten: {
+      medicinal_herbs: 'high', specialist_garments: 'high', rare_botanical_extracts: 'high',
+      premium_seafood: 'moderate', decorative_stonework: 'moderate', refined_botanical_reagents: 'moderate'
+    }
+  },
+
+  /* Market saturation (Harry, 14 October 2026), planned for a later pull
+     request and NOT active yet: within a rolling 28 days, at each port and
+     for each good, lots 1-4 sell at the Clan's demand, lots 5-8 one tier
+     lower, 9-12 two tiers lower, and lot 13 onwards Oversupplied (tiers:
+     ×1.25, ×1.10, ×1.00, ×0.75). Each sale is already recorded (the Bastion
+     save's tradeNetwork.marketLedger: port, good, lots and day) so it can
+     be switched on later. keepDays: how long the record is kept. */
+  saturation: {
+    active: false,
+    windowDays: 28,
+    lotsPerTier: 4,
+    keepDays: 56
   },
 
   /* Shipping fee, in gold pieces per lot carried (0 for now). */
@@ -120,12 +154,14 @@ window.TSI_DATA.bastionCommerce = {
   scheduleEvery: 7,
 
   /* ---------- Goods that don't travel ----------
-     The most days at sea a good can take. Fresh Fish is for the local
-     market (0: never shipped), unless preservation or a short enough route
-     makes export practical: then raise this to the longest outDays it
-     keeps for (Harry, 14 October 2026). */
+     The most days at sea a good can take on the way to the port (the
+     voyage's actual one-way days; 0 would mean never shipped). Fresh Fish
+     keeps for 2 days (Harry, 14 October 2026): it sails only on a voyage of
+     2 days or less, so with today's 7-day routes it stays for the local
+     market until a closer port is added. Preserved Fish and Premium Seafood
+     sail on any route. */
   maxDaysAtSea: {
-    fresh_fish: 0
+    fresh_fish: 2
   },
 
   /* How many past sales the Dock's history keeps. */

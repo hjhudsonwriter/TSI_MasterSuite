@@ -73,15 +73,37 @@
     T.bastionGoods.goods.filter(function (g) { return g.kind !== 'cargo'; }).forEach(function (g) { t.equal(g.cat, undefined, g.id); });
   });
 
-  test('demand: four levels; every Clan is Normal for everything until Harry approves a table', function (t) {
+  test('demand: four levels, and Harry\'s approved matrix good by good (14 October 2026); nothing starts oversupplied', function (t) {
     t.same(Object.keys(C.demandLevels).map(function (k) { return [k, C.demandLevels[k].label, C.demandLevels[k].mult]; }),
       [['high', 'Highly sought-after', 1.25], ['moderate', 'Moderate', 1.1], ['normal', 'Normal', 1], ['oversupplied', 'Oversupplied', 0.75]]);
-    T.bastion.clans.forEach(function (c) {
-      t.same(C.demand[c.key], {}, c.key + ' has no demand set');
+    var want = {
+      blackstone: [['sawn_lumber', 'construction_timber', 'premium_hardwood'], ['dressed_stone', 'structural_masonry', 'medicinal_herbs']],
+      rowthorn: [['preserved_fish', 'premium_seafood', 'sailcloth'], ['ordinary_textiles', 'specialist_garments', 'medicinal_herbs']],
+      farmer: [['medicinal_herbs', 'refined_botanical_reagents', 'rare_botanical_extracts'], ['preserved_fish', 'sawn_lumber', 'ordinary_textiles']],
+      karr: [['premium_seafood', 'sailcloth', 'medicinal_herbs'], ['preserved_fish', 'construction_timber', 'dressed_stone']],
+      slade: [['ordinary_textiles', 'sailcloth', 'construction_timber'], ['sawn_lumber', 'dressed_stone', 'specialist_garments']],
+      bacca: [['dressed_stone', 'structural_masonry', 'decorative_stonework'], ['raw_stone', 'construction_timber', 'premium_hardwood']],
+      molten: [['medicinal_herbs', 'specialist_garments', 'rare_botanical_extracts'], ['premium_seafood', 'decorative_stonework', 'refined_botanical_reagents']]
+    };
+    t.same(Object.keys(want).sort(), T.bastion.clans.map(function (c) { return c.key; }).sort(), 'all seven Clans');
+    Object.keys(want).forEach(function (clan) {
       T.bastionGoods.goods.forEach(function (g) {
-        if (g.kind === 'cargo') t.equal(BR.demandFor(bdata, c.key, g.id).mult, 1);
+        if (g.kind !== 'cargo') return;
+        var mult = want[clan][0].indexOf(g.id) !== -1 ? 1.25 : want[clan][1].indexOf(g.id) !== -1 ? 1.1 : 1;
+        t.equal(BR.demandFor(bdata, clan, g.id).mult, mult, clan + ' ' + g.id);
       });
+      Object.keys(C.demand[clan]).forEach(function (id) { t.ok(BR.good(bdata, id) && BR.good(bdata, id).kind === 'cargo', clan + ': ' + id + ' is a trade good'); });
     });
+    t.ok(!Object.keys(C.demand).some(function (k) { return Object.keys(C.demand[k]).some(function (id) { return C.demand[k][id] === 'oversupplied'; }); }), 'nothing oversupplied');
+  });
+
+  test('demand is set good by good: a kind of goods in the table doesn\'t count', function (t) {
+    var d = withCommerce({ demand: { molten: { timber: 'high', sawn_lumber: 'moderate' } } });
+    t.same([BR.demandFor(d, 'molten', 'raw_timber').mult, BR.demandFor(d, 'molten', 'sawn_lumber').mult], [1, 1.1]);
+  });
+
+  test('market saturation is planned but not active: the numbers are in the data, and prices don\'t use them yet', function (t) {
+    t.same(C.saturation, { active: false, windowDays: 28, lotsPerTier: 4, keepDays: 56 });
   });
 
   test('no fees or tariffs; 7 days out and 7 back; risks 5, 10 and 20 in 100', function (t) {
@@ -106,11 +128,15 @@
     t.same(BR.fn(BR.facility(bdata, 'dock'), 'charter_berth').options.length, 8, 'the Charter Berth is unchanged');
   });
 
-  test('protections are built in but none is available; Fresh Fish stays on the local market', function (t) {
+  test('protections are built in but none is available; Fresh Fish sails only on voyages of 2 days or less', function (t) {
     t.same(C.protections.map(function (p) { return [p.facId, p.cut, p.consumes === true, p.available]; }),
       [['barracks', 5, false, false], ['watchtower', 5, false, false], ['shrine_pelagos', 10, true, false]]);
     t.same(BR.voyageProtections(bastion(1), bdata), []);
-    t.ok(/local market/.test(BR.goodShipBlocker(bdata, 'fresh_fish', BR.portRoute(bdata, 'timberport'))));
+    t.equal(BR.goodShipBlocker(bdata, 'fresh_fish', BR.portRoute(bdata, 'timberport')), 'Fresh Fish only ships on a voyage of 2 days or less (it doesn\'t keep longer), and this one takes 7 days.');
+    t.equal(BR.goodShipBlocker(bdata, 'fresh_fish', { outDays: 2 }), '', '2 days: it sails');
+    t.equal(BR.goodShipBlocker(bdata, 'fresh_fish', { outDays: 1 }), '');
+    t.ok(/2 days or less/.test(BR.goodShipBlocker(bdata, 'fresh_fish', { outDays: 3 })), '3 days: it doesn\'t');
+    t.equal(BR.goodShipBlocker(bdata, 'premium_seafood', BR.portRoute(bdata, 'goldport')), '', 'Premium Seafood sails on a 7-day route');
     t.equal(BR.goodShipBlocker(bdata, 'preserved_fish', BR.portRoute(bdata, 'timberport')), '');
     t.ok(/isn't a trade good/.test(BR.goodShipBlocker(bdata, 'restorative_herbs', null)));
   });
@@ -446,7 +472,7 @@
       [[{ goodId: 'sawn_lumber', qty: 1 }, { goodId: 'preserved_fish', qty: 2 }], /a Level 2 Dock carries 2 lots/],
       [[], /at least 1 lot/],
       [[{ goodId: 'sawn_lumber', qty: 0 }], /at least 1 lot/],
-      [[{ goodId: 'fresh_fish', qty: 1 }], /local market/],
+      [[{ goodId: 'fresh_fish', qty: 1 }], /only ships on a voyage of 2 days or less/],
       [[{ goodId: 'restorative_herbs', qty: 1 }], /isn't a trade good/]
     ];
     tries.forEach(function (x) {
@@ -604,8 +630,8 @@
     t.same([b.treasuryGP, BR.cargoSales(b).length], [360, 2]);
   });
 
-  test('the price: demand by kind or by good, the Charter\'s price factor, fees and tariffs, rounded down', function (t) {
-    var d = withCommerce({ demand: { molten: { timber: 'high', sawn_lumber: 'moderate', fish: 'oversupplied' } } });
+  test('the price: the Clan\'s demand for each good, the Charter\'s price factor, fees and tariffs, rounded down', function (t) {
+    var d = withCommerce({ demand: { molten: { raw_timber: 'high', sawn_lumber: 'moderate', premium_seafood: 'oversupplied' } } });
     t.same([BR.demandFor(d, 'molten', 'raw_timber').mult, BR.demandFor(d, 'molten', 'sawn_lumber').mult, BR.demandFor(d, 'molten', 'premium_seafood').label, BR.demandFor(d, 'slade', 'raw_timber').mult], [1.25, 1.1, 'Oversupplied', 1]);
     var cargo = [{ goodId: 'raw_timber', qty: 3 }, { goodId: 'sawn_lumber', qty: 1 }];
     var q = BR.cargoQuote(d, { terms: {} }, 'goldport', 'molten', cargo);
@@ -625,8 +651,112 @@
   test('the price is worked out when the cargo arrives, not when it sails', function (t) {
     var b = sailed();
     b.day = 11;
-    BR.settleVoyages(b, withCommerce({ demand: { molten: { timber: 'high' } } }), dice([0.5]));
+    BR.settleVoyages(b, withCommerce({ demand: { molten: { sawn_lumber: 'high' } } }), dice([0.5]));
     t.equal(b.treasuryGP, 400);
+  });
+
+  test('with Harry\'s matrix: Medicinal Herbs sell at Goldport at ×1.25 (Molten), Dressed Stone at Timberport at ×1.10 (Blackstone)', function (t) {
+    t.same(BR.cargoQuote(bdata, null, 'goldport', 'molten', [{ goodId: 'medicinal_herbs', qty: 2 }]).lines[0], { goodId: 'medicinal_herbs', name: 'Medicinal Herbs', qty: 2, base: 140, cat: 'herbal', demand: 'high', demandLabel: 'Highly sought-after', mult: 1.25, gp: 350 });
+    t.equal(BR.cargoQuote(bdata, null, 'timberport', 'blackstone', [{ goodId: 'dressed_stone', qty: 3 }]).net, 495);
+    t.equal(BR.cargoQuote(bdata, null, 'timberport', 'blackstone', [{ goodId: 'raw_stone', qty: 1 }]).net, 90, 'not listed: Normal');
+  });
+
+  /* ---------------------------------------------------------------- */
+  group('Commodity trade: each sale recorded for market saturation (Harry, 14 October 2026)');
+
+  test('a sale records each good\'s port, lots and day, once; a ship that turns back records nothing', function (t) {
+    var b = bastion(4, 3);
+    var c = registered(b);
+    stock(b, 'sawn_lumber', 2);
+    stock(b, 'raw_stone', 1);
+    BR.dispatchCargo(b, bdata, c.id, [{ goodId: 'sawn_lumber', qty: 2 }, { goodId: 'raw_stone', qty: 1 }], dice([0.3]));
+    var id = BR.voyages(b)[0].id;
+    b.day = 11;
+    BR.settleVoyages(b, bdata, dice([0.5]));
+    t.same(BR.marketLedger(b), [{ day: 11, port: 'goldport', goodId: 'sawn_lumber', qty: 2, saleId: id }, { day: 11, port: 'goldport', goodId: 'raw_stone', qty: 1, saleId: id }]);
+    BR.settleVoyages(b, bdata, dice([0.5]));
+    var r = reload(b);
+    BR.settleVoyages(r, bdata, dice([0.5]));
+    t.equal(BR.marketLedger(r).length, 2, 'once, through a reload');
+    t.equal(BR.lotsSold(r, 'goldport', 'sawn_lumber', 11 - 28, 11), 2);
+    var tb = sailed();
+    tb.day = 11;
+    BR.settleVoyages(tb, bdata, dice([0.05]));
+    t.same(BR.marketLedger(tb), [], 'nothing sold, nothing recorded');
+  });
+
+  test('the record is kept for 56 days, moves with Reset Travel, and loads the same twice', function (t) {
+    var b = sailed();
+    b.tradeNetwork.marketLedger = [{ day: -60, port: 'goldport', goodId: 'raw_stone', qty: 3, saleId: 'old' }, { day: 2, port: 'timberport', goodId: 'sailcloth', qty: 1, saleId: 'x' }];
+    b.day = 11;
+    BR.settleVoyages(b, bdata, dice([0.5]));
+    t.same(BR.marketLedger(b).map(function (x) { return x.saleId === 'old' ? 'old' : x.goodId; }), ['sailcloth', 'sawn_lumber'], 'the 56-day-old entry goes');
+    BR.shiftDays(b, -5);
+    t.same(BR.marketLedger(b).map(function (x) { return x.day; }), [-3, 6]);
+    var once = reload(b);
+    t.same(BR.toSave(reload(once)).tradeNetwork.marketLedger, BR.toSave(once).tradeNetwork.marketLedger);
+  });
+
+  /* ---------------------------------------------------------------- */
+  group('Commodity trade: recalling a ship (Harry, 14 October 2026)');
+
+  test('recalled 4 days out: it turns for home, nothing is sold, no roll, back 4 days later with its cargo, once', function (t) {
+    var b = sailed();
+    b.day = 8;
+    var v = BR.voyages(b)[0];
+    var res = BR.recallVoyage(b, bdata, v.id);
+    t.equal(res.ok, true);
+    t.same([v.stage, v.outcome, v.recalledDay, v.returnDay], ['returning', 'recalled', 8, 12]);
+    t.ok(/recalled and turned for home; nothing was sold\. It is back on Day 12, and its cargo \(2 lots of Sawn Lumber\) goes back into the Warehouse then\./.test(res.log[1]));
+    var calls = 0;
+    var spy = function () { calls += 1; return 0.01; };
+    for (var d = 9; d <= 12; d++) { b.day = d; BR.settleVoyages(b, bdata, spy); }
+    t.equal(calls, 0, 'no risk roll');
+    t.same([b.treasuryGP, BR.cargoSales(b).length, BR.marketLedger(b).length, BR.goodsQty(b, 'sawn_lumber'), BR.voyages(b).length], [0, 0, 0, 2, 0]);
+    b.day = 13;
+    BR.settleVoyages(b, bdata, spy);
+    t.equal(BR.goodsQty(b, 'sawn_lumber'), 2, 'only once');
+    t.equal(BR.dispatchBlocker(b, bdata), '', 'the ship can sail again');
+  });
+
+  test('recalled on its first day out it takes 1 day home; it can\'t be recalled twice, on its arrival day, or after it sold', function (t) {
+    var b = sailed();
+    var v = BR.voyages(b)[0];
+    t.equal(BR.recallVoyage(b, bdata, v.id).voyage.returnDay, 5, 'at least 1 day');
+    t.ok(/already been recalled/.test(BR.recallVoyage(b, bdata, v.id).message));
+    var b2 = sailed();
+    b2.day = 11;
+    t.ok(/reaches Goldport today/.test(BR.recallVoyage(b2, bdata, BR.voyages(b2)[0].id).message));
+    BR.settleVoyages(b2, bdata, dice([0.5]));
+    t.ok(/already reached Goldport/.test(BR.recallVoyage(b2, bdata, BR.voyages(b2)[0].id).message));
+    t.ok(/isn't at sea/.test(BR.recallVoyage(b2, bdata, 'nope').message));
+  });
+
+  test('a recall survives a reload and Reset Travel; its standing shipment carries on', function (t) {
+    var b = bastion(4, 4);
+    var c = registered(b);
+    stock(b, 'raw_stone', 5);
+    BR.setSchedule(b, bdata, c.id, [{ goodId: 'raw_stone', qty: 1 }], dice([0.3]));
+    b.day = 5;
+    BR.settleVoyages(b, bdata, dice([0.5]));
+    var v = BR.voyages(b)[0];
+    b.day = 8;
+    BR.recallVoyage(b, bdata, v.id);
+    var r = reload(b);
+    var rv = r.tradeNetwork.voyages[0];
+    t.same([rv.stage, rv.outcome, rv.recalledDay, rv.returnDay, BR.schedules(r).length], ['returning', 'recalled', 8, 11, 1]);
+    BR.shiftDays(r, -2);
+    t.same([rv.recalledDay, rv.returnDay], [6, 9]);
+    r.day = 9;
+    BR.settleVoyages(r, bdata, dice([0.5]));
+    t.equal(BR.goodsQty(r, 'raw_stone'), 5, 'its 1 lot is back in the Warehouse');
+    t.same([BR.voyages(r).length, BR.schedules(r)[0].nextDay], [0, 10], 'the ship is home; the standing shipment still sails next on Day 10');
+    r.day = 10;
+    BR.settleVoyages(r, bdata, dice([0.5]));
+    t.same([BR.voyages(r).length, BR.goodsQty(r, 'raw_stone')], [1, 4], 'and on Day 10 it sails again');
+    var news = TSI.campaign.ironbowNews(copy(BR.toSave(reload(b))), 8, 12).map(function (w) { return w.day + ' ' + w.lines.join(' / '); });
+    t.ok(news.some(function (l) { return /^11 Your cargo ship is home from Goldport\./.test(l); }), news.join(' | '));
+    t.ok(!news.some(function (l) { return /reaches Goldport/.test(l); }), 'a recalled ship never reaches the port');
   });
 
   test('protections: each cut comes off, never below 0; a blessing is used up by its voyage', function (t) {

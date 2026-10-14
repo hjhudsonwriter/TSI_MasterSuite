@@ -57,7 +57,10 @@
   R.ROUTE_MODES = { legacy: 'legacy_abstract', cargo: 'commodity_backed' };
   var STATUSES = ['earned', 'registered'];
   var STAGES = ['outbound', 'returning'];
+  /* How a sale receipt ended; a ship on its way home can also have been
+     recalled by the DM (no receipt: nothing reached the port). */
   var OUTCOMES = ['sold', 'turned_back'];
+  var VOYAGE_OUTCOMES = ['sold', 'turned_back', 'recalled'];
   var DEFAULT_LEVELS = {
     high: { label: 'Highly sought-after', mult: 1.25 },
     moderate: { label: 'Moderate', mult: 1.10 },
@@ -128,21 +131,23 @@
     return key ? (B ? B.clanName(key) : key) : '';
   };
 
-  /* How much the buying Clan wants a good: { level, label, mult }. A good's
-     own entry wins over its kind's; anything not listed is Normal. */
+  /* How much the buying Clan wants a good: { level, label, mult }, set good
+     by good (Harry's approved matrix, 14 October 2026); anything not listed
+     is Normal. */
   R.demandFor = function (data, clan, goodId) {
     var lv = levels(data);
     var table = isObj(commerce(data).demand) ? commerce(data).demand : {};
     var row = isObj(table[clan]) ? table[clan] : {};
-    var g = R.good(data, goodId);
     var key = 'normal';
     if (typeof row[goodId] === 'string' && isObj(lv[row[goodId]])) key = row[goodId];
-    else if (g && g.cat && typeof row[g.cat] === 'string' && isObj(lv[row[g.cat]])) key = row[g.cat];
     var l = isObj(lv[key]) ? lv[key] : { label: 'Normal', mult: 1 };
     return { level: key, label: typeof l.label === 'string' ? l.label : key, mult: num(l.mult, 0, 10, 1) };
   };
 
-  /* Can this good go to sea on this route? '' or the reason it can't. */
+  /* Can this good go to sea on this route? '' or the reason it can't.
+     route.outDays is the voyage's actual one-way days as it sails, so a
+     faster ship (if research ever gives one) only lets Fresh Fish sail when
+     the voyage really is short enough. */
   R.goodShipBlocker = function (data, goodId, route) {
     var g = R.good(data, goodId);
     if (!g) return 'That isn\'t a good the Bastion knows.';
@@ -151,7 +156,7 @@
     if (isNum(keep[goodId])) {
       var max = Math.max(0, Math.floor(keep[goodId]));
       if (max === 0) return g.name + ' is for the local market: it isn\'t shipped.';
-      if (route && route.outDays > max) return g.name + ' only keeps for ' + plural(max, 'day') + ' at sea, and this voyage takes ' + plural(route.outDays, 'day') + '.';
+      if (route && route.outDays > max) return g.name + ' only ships on a voyage of ' + plural(max, 'day') + ' or less (it doesn\'t keep longer), and this one takes ' + plural(route.outDays, 'day') + '.';
     }
     return '';
   };
@@ -309,6 +314,7 @@
     var port = R.portName(v.port);
     if (v.stage === 'outbound') return 'Sailing to ' + port + ': arrives ' + R.dayLabel(v.arriveDay) + ', home ' + R.dayLabel(v.returnDay);
     if (v.outcome === 'turned_back') return 'Turned back from ' + port + ' with its cargo: home ' + R.dayLabel(v.returnDay);
+    if (v.outcome === 'recalled') return 'Recalled on the way to ' + port + ', bringing its cargo home: back ' + R.dayLabel(v.returnDay);
     return 'Sold at ' + port + ', sailing home: back ' + R.dayLabel(v.returnDay);
   };
 
@@ -414,6 +420,7 @@
       chance: R.voyageChance(route.pct, prot),
       scheduleId: opts && typeof opts.scheduleId === 'string' ? opts.scheduleId : null,
       outcome: null,
+      recalledDay: null,
       roll: null
     };
     R.voyages(s).push(v);
@@ -454,6 +461,51 @@
     return { ok: true, log: ['Cargo', 'Standing shipment to ' + R.portName(sc.port) + ' stopped. Ships already at sea carry on.'] };
   };
 
+  /* ---------- Recalling a ship (Harry, 14 October 2026) ----------
+     Only on its way out, before it reaches the port. It turns for home at
+     once: nothing is sold, there's no risk roll, and its cargo stays aboard
+     until it docks, then goes back into the Warehouse. The way home takes as
+     many days as it has sailed so far (at least 1). Its standing shipment,
+     if any, carries on. Returns { ok, voyage, log } or { ok: false, message }. */
+  R.recallBlocker = function (s, v) {
+    if (!v) return 'That ship isn\'t at sea any more.';
+    if (v.stage !== 'outbound') return 'That ship has already ' + (v.outcome === 'recalled' ? 'been recalled' : 'reached ' + R.portName(v.port)) + ': it\'s on its way home.';
+    if (v.arriveDay <= s.day) return 'That ship reaches ' + R.portName(v.port) + ' today: it can\'t be recalled now.';
+    return '';
+  };
+  R.recallVoyage = function (s, data, id) {
+    var v = R.voyages(s).filter(function (x) { return x.id === id; })[0] || null;
+    var why = R.recallBlocker(s, v);
+    if (why) return { ok: false, message: why };
+    var back = Math.max(1, s.day - v.departDay);
+    v.stage = 'returning';
+    v.outcome = 'recalled';
+    v.recalledDay = s.day;
+    v.returnDay = s.day + back;
+    return {
+      ok: true, voyage: v,
+      log: ['Cargo', 'The ship bound for ' + R.portWithClan(data, v.port, v.clan) + ' was recalled and turned for home; nothing was sold. It is back on ' + R.dayLabel(v.returnDay) + ', and its cargo (' + R.cargoText(data, v.cargo) + ') goes back into the Warehouse then.']
+    };
+  };
+
+  /* ---------- The market ledger (for saturation, later) ----------
+     Every good sold: { day, port, goodId, qty, saleId }, written in the same
+     change as the sale, so once only. Kept for saturation.keepDays. */
+  R.marketLedger = function (s) { return list(s, 'marketLedger'); };
+  R.trimLedger = function (s, data) {
+    var keep = Math.floor(num((commerce(data).saturation || {}).keepDays, 1, 3650, 56));
+    var from = s.day - keep;
+    var all = R.marketLedger(s);
+    if (all.some(function (x) { return x.day <= from; })) tn(s).marketLedger = all.filter(function (x) { return x.day > from; });
+  };
+  /* Lots of a good sold at a port in the days after `fromDay`, up to and
+     including `toDay` (for the saturation pull request, and the tests). */
+  R.lotsSold = function (s, port, goodId, fromDay, toDay) {
+    return R.marketLedger(s).reduce(function (n, x) {
+      return x.port === port && x.goodId === goodId && x.day > fromDay && x.day <= toDay ? n + x.qty : n;
+    }, 0);
+  };
+
   /* ---------- The day's settlement (the 'trade' stage) ----------
      In order: ships reaching their port (sell, or turn back), ships coming
      home (any turned-back cargo back into the Warehouse), then standing
@@ -487,6 +539,8 @@
         s.treasuryGP += q.net;
         v.outcome = 'sold';
         rec = receipt('sold', q);
+        /* Each good sold, for market saturation (recorded now, used later). */
+        q.lines.forEach(function (l) { if (l.qty > 0) R.marketLedger(s).push({ day: s.day, port: v.port, goodId: l.goodId, qty: l.qty, saleId: v.id }); });
         out.log.push(['Cargo Sold', 'Cargo sold at ' + where + ': ' + q.lines.map(R.quoteLineText).join('; ') + '. ' + R.quoteCostsText(q) + '. Treasury +' + q.net + ' gp. (Voyage risk ' + chance + '%: rolled ' + roll + ', safe.) The ship is home on ' + R.dayLabel(v.returnDay) + '.']);
         out.word.push('Cargo sold at ' + R.portName(v.port) + ': +' + q.net + ' gp.');
       } else {
@@ -499,10 +553,11 @@
       out.sold.push(rec);
     });
     if (sales.length > kept) tn(s).cargoSales = sales.slice(sales.length - kept);
+    R.trimLedger(s, data);
     /* Ships home: the Dock can send them again. */
     var home = R.voyages(s).filter(function (v) { return v.stage === 'returning' && v.returnDay <= s.day; });
     home.forEach(function (v) {
-      var back = v.outcome === 'turned_back' ? R.returnGoods(s, data, v.cargo) : '';
+      var back = v.outcome === 'turned_back' || v.outcome === 'recalled' ? R.returnGoods(s, data, v.cargo) : '';
       out.log.push(['Cargo', 'The cargo ship is home from ' + R.portName(v.port) + '.' + (back ? ' ' + back : '')]);
       out.word.push('The cargo ship is home from ' + R.portName(v.port) + (back ? ', and its cargo is back in the Warehouse.' : '.'));
     });
@@ -574,10 +629,16 @@
       var depart = dayNum(v.departDay, today);
       var arrive = dayNum(v.arriveDay, depart);
       var stage = STAGES.indexOf(v.stage) !== -1 ? v.stage : 'returning';
+      var outcome = stage === 'outbound' ? null : VOYAGE_OUTCOMES.indexOf(v.outcome) !== -1 ? v.outcome : 'turned_back';
+      /* A recalled ship turned back before reaching the port, so it can be
+         home before its arrival day would have been (at least a day after it
+         turned). */
+      var recalled = outcome === 'recalled' ? Math.max(depart, dayNum(v.recalledDay, depart)) : null;
+      var home = recalled !== null ? Math.max(recalled + 1, dayNum(v.returnDay, recalled + 1)) : Math.max(arrive, dayNum(v.returnDay, arrive));
       return {
         id: txt(v.id, 80), port: txt(v.port, 40), clan: txt(v.clan, 40), charterId: txt(v.charterId, 80), mode: R.ROUTE_MODES.cargo,
         cargo: cleanCargo(v.cargo),
-        departDay: depart, arriveDay: arrive, returnDay: Math.max(arrive, dayNum(v.returnDay, arrive)),
+        departDay: depart, arriveDay: arrive, returnDay: home,
         stage: stage,
         risk: txt(v.risk, 20),
         basePct: clampInt(v.basePct, 0, 100),
@@ -587,10 +648,15 @@
         scheduleId: typeof v.scheduleId === 'string' && v.scheduleId ? txt(v.scheduleId, 80) : null,
         /* A ship on its way home always says how it went (a damaged one
            counts as turned back, so its cargo comes home and nothing is paid). */
-        outcome: stage === 'outbound' ? null : OUTCOMES.indexOf(v.outcome) !== -1 ? v.outcome : 'turned_back',
+        outcome: outcome,
+        recalledDay: recalled,
         roll: isNum(v.roll) ? clampInt(v.roll, 1, 100) : null
       };
     });
+  };
+  R.cleanLedger = function (src) {
+    return (arr(src) || []).filter(function (x) { return isObj(x) && typeof x.port === 'string' && typeof x.goodId === 'string' && clampInt(x.qty, 0) > 0; })
+      .map(function (x) { return { day: dayNum(x.day, 1), port: txt(x.port, 40), goodId: txt(x.goodId, 60), qty: clampInt(x.qty, 1, 1000), saleId: txt(x.saleId, 80) }; });
   };
   R.cleanSchedules = function (src, today) {
     var seen = {};
@@ -645,6 +711,7 @@
     t.schedules = R.cleanSchedules(t.schedules, d.day);
     t.cargoSales = R.cleanCargoSales(t.cargoSales, num(commerce(data).salesKept, 1, 500, 30));
     t.protections = R.cleanProtections(t.protections);
+    t.marketLedger = R.cleanLedger(t.marketLedger);
     /* A ship on its way home that has a sale receipt sold its cargo, so
        never brings it home as well. */
     t.voyages.forEach(function (v) {
@@ -653,12 +720,14 @@
     });
   };
   /* Reset Travel moves every commerce day with the rest of the Bastion
-     (R.shiftDays calls this). Sales are history and stay. */
+     (R.shiftDays calls this). Sale receipts are history and stay; the
+     market ledger is a rolling window, so it moves with the days. */
   R.shiftCommerce = function (s, n) {
     var t = tn(s);
     var mv = function (obj, key) { if (obj && typeof obj[key] === 'number') obj[key] += n; };
     (arr(t.portCharters) || []).forEach(function (c) { mv(c, 'earnedDay'); mv(c, 'registeredDay'); });
-    (arr(t.voyages) || []).forEach(function (v) { mv(v, 'departDay'); mv(v, 'arriveDay'); mv(v, 'returnDay'); });
+    (arr(t.voyages) || []).forEach(function (v) { mv(v, 'departDay'); mv(v, 'arriveDay'); mv(v, 'returnDay'); mv(v, 'recalledDay'); });
+    (arr(t.marketLedger) || []).forEach(function (x) { mv(x, 'day'); });
     (arr(t.schedules) || []).forEach(function (sc) { mv(sc, 'nextDay'); });
     if (isObj(t.protections)) Object.keys(t.protections).forEach(function (k) { mv(t.protections[k], 'untilDay'); });
   };
