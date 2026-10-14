@@ -176,7 +176,7 @@
         "archivedFacilities": [],
         "migration": null,
         "bridge": {
-          "fresh": false,
+          "fresh": true,
           "done": {}
         }
       },

@@ -391,8 +391,21 @@ async function closePanel(ba) {
   /* ------------------------------------------------------------------ */
   section('Harry\'s sample file (tests/fixtures/bastion-pr5-sample.json)');
 
-  await check('with only the Bastion open, the sample imports: the Hall and the Dock at Level 2, goods in the Warehouse; then the Explorer opens beside it', async () => {
+  await check('with only the Bastion open, the sample imports: the Hall and the Dock at Level 2, goods in the Warehouse; then the Explorer opens beside it, and a change it sent earlier (say, while testing pull request 4) is skipped, not applied', async () => {
     const c2 = await context(browser, 'laptop');
+    /* An Explorer that sent an Honour/Respect change before: T4 won. */
+    const e0 = await openExplorer(c2);
+    await e0.selectOption('[data-test=region]', 'eastern_province');
+    await e0.waitForTimeout(150);
+    assert(await e0.evaluate(() => TSI.explorer.debug.startEvent('t4', 'travel')), 'T4 starts');
+    await e0.waitForSelector('.tsi-modal.tsi-exp-journey');
+    for (const t of ['choice-0', 'round-hero', 'round-hero', 'event-done']) {
+      await e0.waitForTimeout(380);
+      await e0.click('.tsi-modal.tsi-exp-journey [data-test="' + t + '"]');
+    }
+    await e0.waitForTimeout(500);
+    equal((await e0.evaluate(() => TSI.explorer.debug.outbox())).length, 1, 'one change sent');
+    await e0.close();
     const b3 = await c2.newPage();
     await b3.goto(INDEX + '?tool=bastion');
     await b3.waitForFunction(() => TSI.bastion && TSI.bastion.debug, null, { timeout: 8000 });
@@ -405,6 +418,7 @@ async function closePanel(ba) {
     const s = await bas(b3);
     equal([s.day, s.treasuryGP, s.facilityLevels.dock, s.facilityLevels.hall_of_emissaries, qty(s, 'sawn_lumber'), qty(s, 'raw_stone'), qty(s, 'preserved_fish'), qty(s, 'fresh_fish'), s.bridge.fresh],
       [1, 500, 2, 2, 4, 6, 2, 4, false]);
+    equal([Object.values(s.bridge.done).map(r => r.r), s.honourRespectByClan.slade], [['skipped'], 0], 'the earlier change is skipped');
     await e3.click('[data-test=charter-open]');
     await e3.waitForSelector('[data-test=charter-dialog]');
     await e3.click('[data-test=charter-dialog] .tsi-btn--primary');
