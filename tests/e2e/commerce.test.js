@@ -17,6 +17,8 @@ const H = require('./helpers');
 const { section, check, assert, equal } = H;
 
 const INDEX = H.fileUrl('index.html');
+/* The test page, where Harry tries the sample file (it only takes test-page files). */
+const HARNESS = H.fileUrl('tests/harness.html');
 const bare = (page, sel) => page.$eval(sel, n => n.textContent.replace(/\s+/g, ' ').trim());
 const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.debug.state())));
 const qty = (s, id) => s.warehouse.filter(w => w.goodId === id).reduce((n, w) => n + w.qty, 0);
@@ -29,9 +31,9 @@ async function context(browser, size) {
   await ctx.addInitScript(() => { Math.random = () => 0.99; });
   return ctx;
 }
-async function openExplorer(ctx) {
+async function openExplorer(ctx, page) {
   const p = await ctx.newPage();
-  await p.goto(INDEX + '?tool=explorer');
+  await p.goto((page || INDEX) + '?tool=explorer');
   await p.waitForSelector('[data-test=camp]');
   return p;
 }
@@ -389,12 +391,12 @@ async function closePanel(ba) {
   });
 
   /* ------------------------------------------------------------------ */
-  section('Harry\'s sample file (tests/fixtures/bastion-pr5-sample.json)');
+  section('Harry\'s sample file (tests/fixtures/bastion-pr5-sample.json), on the test page');
 
-  await check('with only the Bastion open, the sample imports: the Hall and the Dock at Level 2, goods in the Warehouse; then the Explorer opens beside it, and a change it sent earlier (say, while testing pull request 4) is skipped, not applied', async () => {
+  await check('on the test page (tests/harness.html), with only the Bastion open, the sample imports: the Hall and the Dock at Level 2, goods in the Warehouse; then the Explorer opens beside it, and a change it sent earlier (say, while testing pull request 4) is skipped, not applied', async () => {
     const c2 = await context(browser, 'laptop');
     /* An Explorer that sent an Honour/Respect change before: T4 won. */
-    const e0 = await openExplorer(c2);
+    const e0 = await openExplorer(c2, HARNESS);
     await e0.selectOption('[data-test=region]', 'eastern_province');
     await e0.waitForTimeout(150);
     assert(await e0.evaluate(() => TSI.explorer.debug.startEvent('t4', 'travel')), 'T4 starts');
@@ -407,12 +409,12 @@ async function closePanel(ba) {
     equal((await e0.evaluate(() => TSI.explorer.debug.outbox())).length, 1, 'one change sent');
     await e0.close();
     const b3 = await c2.newPage();
-    await b3.goto(INDEX + '?tool=bastion');
+    await b3.goto(HARNESS + '?tool=bastion');
     await b3.waitForFunction(() => TSI.bastion && TSI.bastion.debug, null, { timeout: 8000 });
     await H.chooseFile(b3, '[data-test=import-save]', require('path').join(__dirname, '..', 'fixtures', 'bastion-pr5-sample.json'));
     await H.clickModal(b3, 'Import');
     await b3.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().facilityLevels.hall_of_emissaries === 2, null, { timeout: 8000 });
-    const e3 = await openExplorer(c2);
+    const e3 = await openExplorer(c2, HARNESS);
     await e3.waitForTimeout(500);
     await b3.waitForFunction(() => TSI.bastion.debug.state().anchored, null, { timeout: 8000 });
     const s = await bas(b3);
@@ -425,6 +427,19 @@ async function closePanel(ba) {
     await b3.waitForFunction(() => TSI.bastion.debug.state().tradeNetwork.portCharters.length === 1, null, { timeout: 8000 });
     equal(c2.log.errors, [], 'no page errors');
     await c2.close();
+  });
+
+  await check('the real suite (index.html) refuses the sample, which is a test-page file, and changes nothing', async () => {
+    const c3 = await context(browser, 'laptop');
+    const b4 = await c3.newPage();
+    await b4.goto(INDEX + '?tool=bastion');
+    await b4.waitForFunction(() => TSI.bastion && TSI.bastion.debug, null, { timeout: 8000 });
+    const before = await bas(b4);
+    await H.chooseFile(b4, '[data-test=import-save]', require('path').join(__dirname, '..', 'fixtures', 'bastion-pr5-sample.json'));
+    assert(/came from the suite's test page/.test(await H.modalText(b4)), await H.modalText(b4));
+    await H.clickModal(b4, 'OK');
+    equal((await bas(b4)).treasuryGP, before.treasuryGP);
+    await c3.close();
   });
 
   /* ------------------------------------------------------------------ */

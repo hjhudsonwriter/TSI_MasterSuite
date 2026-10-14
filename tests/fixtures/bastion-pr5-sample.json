@@ -2,7 +2,7 @@
   "format": "tsi-backup",
   "version": 1,
   "kind": "tool",
-  "space": "suite",
+  "space": "test",
   "tool": "bastion",
   "toolName": "The Ironbow Bastion Manager",
   "suite": "The Scarlett Isles: D&D Tool Suite",
