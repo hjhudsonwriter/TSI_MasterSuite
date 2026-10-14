@@ -389,6 +389,31 @@ async function closePanel(ba) {
   });
 
   /* ------------------------------------------------------------------ */
+  section('Harry\'s sample file (tests/fixtures/bastion-pr5-sample.json)');
+
+  await check('with only the Bastion open, the sample imports: the Hall and the Dock at Level 2, goods in the Warehouse; then the Explorer opens beside it', async () => {
+    const c2 = await context(browser, 'laptop');
+    const b3 = await c2.newPage();
+    await b3.goto(INDEX + '?tool=bastion');
+    await b3.waitForFunction(() => TSI.bastion && TSI.bastion.debug, null, { timeout: 8000 });
+    await H.chooseFile(b3, '[data-test=import-save]', require('path').join(__dirname, '..', 'fixtures', 'bastion-pr5-sample.json'));
+    await H.clickModal(b3, 'Import');
+    await b3.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().facilityLevels.hall_of_emissaries === 2, null, { timeout: 8000 });
+    const e3 = await openExplorer(c2);
+    await e3.waitForTimeout(500);
+    await b3.waitForFunction(() => TSI.bastion.debug.state().anchored, null, { timeout: 8000 });
+    const s = await bas(b3);
+    equal([s.day, s.treasuryGP, s.facilityLevels.dock, s.facilityLevels.hall_of_emissaries, qty(s, 'sawn_lumber'), qty(s, 'raw_stone'), qty(s, 'preserved_fish'), qty(s, 'fresh_fish'), s.bridge.fresh],
+      [1, 500, 2, 2, 4, 6, 2, 4, false]);
+    await e3.click('[data-test=charter-open]');
+    await e3.waitForSelector('[data-test=charter-dialog]');
+    await e3.click('[data-test=charter-dialog] .tsi-btn--primary');
+    await b3.waitForFunction(() => TSI.bastion.debug.state().tradeNetwork.portCharters.length === 1, null, { timeout: 8000 });
+    equal(c2.log.errors, [], 'no page errors');
+    await c2.close();
+  });
+
+  /* ------------------------------------------------------------------ */
   section('The TV (1920 × 1080)');
 
   await check('the Dock panel and the Ship cargo dialog fit the TV', async () => {
