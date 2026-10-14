@@ -2327,6 +2327,7 @@
             state.warehouse.push({ id: R.uid(rand), item: 'New Item', qty: 1, gp: '', notes: '' });
             done();
           }, 'tsi-btn--primary', 'add-item'),
+          btn('+ Add supplies', function () { onAddSupplies(); }, '', 'add-supplies'),
           btn('Save Warehouse', function () {
             log('Warehouse', 'Saved warehouse.');
             done();
@@ -2401,6 +2402,44 @@
           }, '', 'wh-remove-' + i)
         ]);
       }
+
+      /* + Add supplies (pull request 6, Harry, 14 October 2026): the DM adds
+         supplies to the Warehouse by hand, for now. Only the goods listed in
+         courier-data.js manualAdd (never a trade good, so no gold comes of
+         it), 1 to 99 at a time, merged into the good's row and logged. A
+         double click adds once; it's a saved change, so a reload adds
+         nothing. */
+      var onAddSupplies = TSI.oneAtATime(async function () {
+        if (turnRunning || militaryRunning) { await say('Wait for the day to finish.'); return; }
+        var list = R.manualAddGoods(data);
+        if (!list.length) { await say('There are no supplies to add by hand (courier-data.js).'); return; }
+        var goodSel = el('select', { class: 'tsi-input', 'aria-label': 'Supply', 'data-test': 'supplies-good' }, list.map(function (g) {
+          return el('option', { value: g.goodId, text: g.name });
+        }));
+        var qty = numberInput('supplies-qty', { min: '1', max: '99', value: '1', 'aria-label': 'How many (1 to 99)' });
+        var have = el('div', { class: 'tsi-bas-muted', 'data-test': 'supplies-have' });
+        var showHave = function () { have.textContent = 'The Warehouse has ' + R.goodsCountText(data, goodSel.value, R.goodsQty(state, goodSel.value)) + '.'; };
+        goodSel.addEventListener('change', showHave);
+        showHave();
+        var ok = await plainModal({
+          title: 'Add supplies',
+          className: 'tsi-bas-modal tsi-bas-modal--supplies',
+          body: [
+            muted('A temporary provision until the Ironbow makes these itself: they go into the Warehouse as if made here, the Day Log records it, and it makes no gold.', 'tsi-bas-courier__intro'),
+            el('div', { class: 'tsi-bas-supplies' }, [field('Supply', goodSel), field('How many', qty)]),
+            have
+          ],
+          escValue: false,
+          actions: [{ label: 'Cancel', value: false }, { label: 'Add to the Warehouse', value: true, primary: true }],
+          onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'supplies-dialog'); }
+        });
+        if (!ok || !life.alive) return;
+        if (turnRunning || militaryRunning) { await say('A day was passing, so nothing was added. Try again once it has finished.'); return; }
+        var res = R.addSupplies(state, data, goodSel.value, qty.value);
+        if (!res.ok) { await say(res.message); return; }
+        log(res.log[0], res.log[1]);
+        done();
+      });
 
       var artCard = card('artisan', 'Artisan Tools', { cls: 'tsi-bas-card--art tsi-bas-card--artisan' });
       var toolTables = R.toolTableNames(data.tools);

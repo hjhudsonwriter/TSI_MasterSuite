@@ -505,6 +505,8 @@
 .tsi-page--bastion .tsi-bas-modal .tsi-bas-courier__intro { margin-bottom: 12px; }
 .tsi-page--bastion .tsi-bas-facpanel__courier li .tsi-btn { margin-left: 4px; vertical-align: baseline; }
 .tsi-page--bastion .tsi-bas-modal--parcel .tsi-bas-cargo__row { grid-template-columns: minmax(180px, 1fr) 80px minmax(200px, 1.4fr); }
+.tsi-page--bastion .tsi-bas-modal--supplies { width: min(560px, 96vw); }
+.tsi-page--bastion .tsi-bas-supplies { display: grid; grid-template-columns: minmax(0, 1fr) 120px; gap: 0 12px; }
 .tsi-page--bastion .tsi-bas-tn-charters { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
 
 /* The build panel. */
