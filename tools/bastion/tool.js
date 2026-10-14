@@ -658,8 +658,17 @@
              strip a receipt's kind; the Charter it made still names it. */
           var made = r.type === 'charter' ? null : R.charterById(state, r.id);
           var charter = r.type === 'charter' || !!made;
+          /* A parcel collected in the Explorer (pull request 6), known by its
+             receipt's kind or, if an older copy stripped that, by its
+             pickup id naming a parcel the Bastion has. */
+          var pid = TSI.bridge ? TSI.bridge.parcelIdOf(r.id) : '';
+          var sent = pid ? R.parcelById(state, pid) : null;
+          var parcel = !charter && (r.type === 'parcel_collected' || !!sent);
+          var town = parcel ? R.courierPointName(r.point || (sent ? sent.point : '')) : '';
           var what = charter ? 'Port Charter: ' + R.portWithClan(data, made ? made.port : r.port, made ? made.clan : r.clan) : clan;
-          var head = charter
+          var head = parcel
+            ? (r.r === 'applied' ? 'Parcel collected: ' + town + (r.held ? ' (already recorded)' : '') : (r.r === 'skipped' ? 'Skipped: ' : 'Refused: ') + 'parcel collected at ' + town)
+            : charter
             ? (r.r === 'applied' ? what + (r.held ? ' (already held)' : '') : (r.r === 'skipped' ? 'Skipped: ' : 'Refused: ') + what)
             : r.r === 'applied'
             ? (r.hr ? clan + ' ' + signedNum(r.hr) + ' (' + signedNum(r.was) + ' → ' + signedNum(r.now) + ')' : clan + ': no change, already at ' + signedNum(r.now))
@@ -667,7 +676,7 @@
           bridgeList.appendChild(el('div', { class: 'tsi-bas-influence__logrow tsi-bas-influence__logrow--' + r.r, 'data-test': 'bridge-row', 'data-result': r.r }, [
             el('div', { class: 'tsi-bas-influence__loghead' }, [el('strong', { text: head }), typeof r.day === 'number' ? ' · ' + R.dayLabel(r.day) : '']),
             r.text ? el('div', { class: 'tsi-bas-influence__logtext', text: r.text }) : null,
-            r.why ? el('div', { class: 'tsi-bas-influence__logwhy', text: r.why + (r.r === 'skipped' ? (charter ? ' Grant it again in the Explorer if it should count.' : ' Type it in above if it should count.') : '') }) : null
+            r.why ? el('div', { class: 'tsi-bas-influence__logwhy', text: r.why + (r.r === 'skipped' ? (parcel ? ' The items stay in the Party bags.' : charter ? ' Grant it again in the Explorer if it should count.' : ' Type it in above if it should count.') : '') }) : null
           ]));
         });
       }
@@ -3556,6 +3565,10 @@
         if (res.charters && res.charters.length) {
           notice('From the Explorer: ' + res.charters.join(' '), { type: 'info', title: 'Port Charter.', id: 'tsi-bas-charter', timeout: 14000 });
         }
+        /* So does a parcel collected in the Explorer (pull request 6). */
+        if (res.parcels && res.parcels.length) {
+          notice(res.parcels.join(' '), { type: 'info', title: 'Courier Exchange.', id: 'tsi-bas-courier', timeout: 14000 });
+        }
         if (res.applied.length) {
           notice('From the Explorer: ' + res.applied.join(' ') + (res.applied.length === 1 ? ' Clan Influence lists it.' : ' Clan Influence lists them.'), { type: 'info', title: 'Honour/Respect.', id: 'tsi-bas-bridge', timeout: 12000 });
         } else if (res.refused) {
@@ -3668,6 +3681,12 @@
           var sea = R.settleVoyages(state, data, rand);
           logAll(sea.log);
           sea.word.forEach(function (w) { R.addWord(state, w); });
+          /* The Courier Exchange's parcels (pull request 6): one reaching its
+             town waits there for the party; a recalled one coming home puts
+             its contents back into the Warehouse. Same write, so once. */
+          var post = R.settleParcels(state, data);
+          logAll(post.log);
+          post.word.forEach(function (w) { R.addWord(state, w); });
           R.finishRoutes(state);
           save();
         }
