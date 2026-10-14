@@ -660,10 +660,10 @@
           var charter = r.type === 'charter' || !!made;
           /* A parcel collected in the Explorer (pull request 6), known by its
              receipt's kind or, if an older copy stripped that, by its
-             pickup id naming a parcel the Bastion has. */
+             pickup id (which only a parcel pickup has). */
           var pid = TSI.bridge ? TSI.bridge.parcelIdOf(r.id) : '';
           var sent = pid ? R.parcelById(state, pid) : null;
-          var parcel = !charter && (r.type === 'parcel_collected' || !!sent);
+          var parcel = !charter && (r.type === 'parcel_collected' || !!pid);
           var town = parcel ? R.courierPointName(r.point || (sent ? sent.point : '')) : '';
           var what = charter ? 'Port Charter: ' + R.portWithClan(data, made ? made.port : r.port, made ? made.clan : r.clan) : clan;
           var head = parcel

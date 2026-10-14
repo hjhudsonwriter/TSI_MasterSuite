@@ -354,7 +354,7 @@
     var m = pickup(p, { day: 11 });
     var r = BR.applyInbox(b, bdata, exWith([m], 11), 1000);
     t.equal(r.refused, 1);
-    t.equal(b.bridge.done[m.id].why, 'That parcel was recalled; the items were already on their way back to the Warehouse. Take them out of the Party bags with ✕.');
+    t.equal(b.bridge.done[m.id].why, 'That parcel was recalled; its items were already on their way back to the Warehouse.');
     t.equal(BR.parcels(b)[0].status, 'returning');
     b.day = 12;
     BR.settleParcels(b, bdata);

@@ -1,9 +1,11 @@
 /* The Scarlett Isles: D&D Tool Suite — what the party can carry in the
    Explorer's Party bags (pull request 4 of the facilities overhaul, Harry's
-   answers of 13 October 2026). The DM adds them with "+ Add" in the
-   Explorer for now; sending them from the Bastion's Warehouse comes with the
-   Courier Exchange (pull request 6). The ids match the Bastion's goods
-   (tools/bastion/data/goods-data.js) so that pull request can use them.
+   answers of 13 October 2026). They reach the bags two ways: the Bastion's
+   Courier Exchange sends them from the Warehouse to a town, where the DM
+   collects them (pull request 6), and the DM adds what the party gets from
+   the story with "+ Add" in the Explorer. The ids match the Bastion's goods
+   (tools/bastion/data/goods-data.js), which is how a parcel's goods become
+   bag items.
 
    - name, plural: as the bags show them;
    - use: what the item does, one of a fixed list the Explorer knows:

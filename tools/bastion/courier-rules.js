@@ -434,7 +434,7 @@
       return res;
     }
     if (p.status === 'returning' || p.status === 'returned') {
-      return { r: 'refused', held: false, parcel: p.id, point: p.point, why: 'That parcel was recalled; the items were already on their way back to the Warehouse. Take them out of the Party bags with ✕.' };
+      return { r: 'refused', held: false, parcel: p.id, point: p.point, why: 'That parcel was recalled; its items were already on their way back to the Warehouse.' };
     }
     var early = p.status === 'in_transit';
     p.status = 'collected';
