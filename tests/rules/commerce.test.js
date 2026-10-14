@@ -683,6 +683,22 @@
     t.same(BR.cargoSales(b), sale);
   });
 
+  test('the forecast says when a ship arrives and is home, and when a standing shipment sails; never gold', function (t) {
+    var b = sailed();
+    b.facilityLevels.dock = 4;
+    BR.setSchedule(b, bdata, BR.portCharters(b)[0].id, [{ goodId: 'raw_stone', qty: 1 }], dice([0.3]));
+    withHall(b, 2);
+    BR.applyInbox(b, bdata, exWith([charterMsg({ id: 'chartr-timb0000:dm:0', port: 'timberport', clan: 'blackstone' })]), 1000);
+    BR.issueOrder(b, bdata, 'hall_of_emissaries', 'register_port_charter', 0, dice([0.4]));
+    var news = TSI.campaign.ironbowNews(copy(BR.toSave(b)), 4, 18);
+    var lines = [].concat.apply([], news.map(function (w) { return w.lines.map(function (l) { return w.day + ' ' + l; }); }));
+    t.ok(lines.indexOf('11 Your cargo ship reaches Goldport.') !== -1, lines.join(' | '));
+    t.ok(lines.indexOf('18 Your cargo ship is home from Goldport.') !== -1);
+    t.ok(lines.indexOf('5 A standing shipment to Goldport is due to sail, if a ship and the goods are ready.') !== -1);
+    t.ok(lines.indexOf('7 Hall of Emissaries: Register Port Charter (Timberport) is complete.') !== -1, 'no roll for the Register order');
+    t.ok(!lines.some(function (l) { return /gp|sold|turned back/.test(l); }), 'never what it sells for');
+  });
+
   test('the old trade is untouched: routes, their income and Expected Income / Week', function (t) {
     var b = sailed();
     b.tradeNetwork.active = true;

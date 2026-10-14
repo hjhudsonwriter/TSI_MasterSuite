@@ -486,6 +486,19 @@
 .tsi-page--bastion .tsi-bas-facpanel__orders { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1px dashed rgba(255, 255, 255, .14); border-radius: var(--tsi-radius-md); background: rgba(0, 0, 0, .18); }
 .tsi-page--bastion .tsi-bas-facpanel__fns { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 10px; }
 .tsi-page--bastion .tsi-bas-facpanel__artisan { display: flex; flex-direction: column; gap: 8px; padding-top: 10px; border-top: 1px solid var(--tsi-line-faint); }
+/* The Dock's Cargo and Port Charters (pull request 5). */
+.tsi-page--bastion .tsi-bas-facpanel__cargo { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--tsi-line-faint); }
+.tsi-page--bastion .tsi-bas-cargo__group { display: flex; flex-direction: column; gap: 4px; }
+.tsi-page--bastion .tsi-bas-cargo__group > b { font-family: var(--tsi-font-display); font-size: 13px; letter-spacing: var(--tsi-track-heading); text-transform: uppercase; color: var(--tsi-gold-text); font-weight: 600; }
+.tsi-page--bastion .tsi-bas-cargo__group .tsi-btn { align-self: flex-start; }
+.tsi-page--bastion .tsi-bas-cargo__go { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.tsi-page--bastion .tsi-bas-cargo__go .tsi-btn:disabled { opacity: .55; cursor: not-allowed; }
+.tsi-page--bastion .tsi-bas-cargo__rows { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; max-height: 46vh; overflow-y: auto; }
+.tsi-page--bastion .tsi-bas-cargo__row { display: grid; grid-template-columns: minmax(150px, 1fr) 80px minmax(180px, 1.4fr); align-items: center; gap: 10px; }
+.tsi-page--bastion .tsi-bas-cargo__row .tsi-bas-num:disabled { opacity: .5; }
+.tsi-page--bastion .tsi-bas-cargo__quote { display: flex; flex-direction: column; gap: 6px; padding-top: 8px; border-top: 1px solid var(--tsi-line-faint); }
+.tsi-page--bastion .tsi-bas-modal--cargo { width: min(760px, 96vw); }
+.tsi-page--bastion .tsi-bas-tn-charters { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
 
 /* The build panel. */
 .tsi-page--bastion .tsi-bas-buildpanel { display: flex; flex-direction: column; gap: 12px; }

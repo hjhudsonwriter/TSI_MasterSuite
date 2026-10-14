@@ -361,6 +361,7 @@ window.TSI_DATA.bastion = {
     summit: ['Convene an inter-clan summit to reduce costs on Hall actions.', 'On resolution: sets a % discount for future Hall actions for a limited time.', 'Also shifts Political Capital for both clans.'],
     arbitration: ['Secures a Writ of Authority from the capital.', 'Effect: +2 to Council Verdict rolls for the next 3 rulings.', 'Use Council Ledger to judge disputes created by disrupted routes.'],
     consortium: ['Creates a Trade Consortium contract and activates the Ironbow Trade Network.', 'On resolution: opens a route for the chosen clan (with risk + yield).', 'Each route sails every 7 days for income, disruption, and disputes.'],
+    port_charter: ['Registers a Port Charter the DM granted in the Explorer (pull request 5).', 'Takes 3 days: no gold and no roll.', 'Once registered, the Dock (Level 2 or higher) can ship cargo to that port.'],
     other: ['A diplomatic action issued from the Hall.', 'Resolves when its days are up.', 'Outcome is determined by your roll and applies Political Capital changes.']
   },
 
