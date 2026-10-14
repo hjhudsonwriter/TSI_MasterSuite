@@ -498,6 +498,13 @@
 .tsi-page--bastion .tsi-bas-cargo__row .tsi-bas-num:disabled { opacity: .5; }
 .tsi-page--bastion .tsi-bas-cargo__quote { display: flex; flex-direction: column; gap: 6px; padding-top: 8px; border-top: 1px solid var(--tsi-line-faint); }
 .tsi-page--bastion .tsi-bas-modal--cargo { width: min(760px, 96vw); }
+/* The Courier Exchange's parcels (pull request 6): laid out like the Dock's cargo above. */
+.tsi-page--bastion .tsi-bas-courier__lists { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px 18px; }
+.tsi-page--bastion .tsi-bas-courier__later .tsi-bas-res-list { color: var(--tsi-text-muted); font-size: var(--tsi-fs-body-sm); }
+.tsi-page--bastion .tsi-bas-courier__later .tsi-bas-res-list li { margin: 2px 0; }
+.tsi-page--bastion .tsi-bas-modal .tsi-bas-courier__intro { margin-bottom: 12px; }
+.tsi-page--bastion .tsi-bas-facpanel__courier li .tsi-btn { margin-left: 4px; vertical-align: baseline; }
+.tsi-page--bastion .tsi-bas-modal--parcel .tsi-bas-cargo__row { grid-template-columns: minmax(180px, 1fr) 80px minmax(200px, 1.4fr); }
 .tsi-page--bastion .tsi-bas-tn-charters { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
 
 /* The build panel. */

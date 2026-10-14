@@ -460,7 +460,7 @@
     t.equal(r.ok, true, r.message);
     t.same([p.status, p.recalledDay, p.returnDay], ['returning', 12, 14]);
     t.same(r.log, ['Courier', 'The parcel bound for Bretan was recalled and turned back for the Ironbow. It is home on Day 14, and its contents (3 Expedition Provision Packs) go back into the Warehouse then. The 10 gp fee isn\'t refunded.']);
-    t.equal(BR.parcelState(p), 'Recalled on the way to Bretan: back at the Ironbow Day 14');
+    t.equal(BR.parcelState(p), 'Recalled on the way to Bretan: back at the Ironbow on Day 14');
     b.day = 13;
     t.equal(BR.settleParcels(b, bdata).changed, false);
     b.day = 15;

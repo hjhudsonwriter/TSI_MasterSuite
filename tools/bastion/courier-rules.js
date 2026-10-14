@@ -182,7 +182,7 @@
     var town = R.courierPointName(p.point);
     if (p.status === 'in_transit') return 'On the road to ' + town + ': arrives ' + R.dayLabel(p.readyDay);
     if (p.status === 'ready') return 'Waiting at ' + town + ' since ' + R.dayLabel(isNum(p.arrivedDay) ? p.arrivedDay : p.readyDay) + ', for the party to collect';
-    if (p.status === 'returning') return 'Recalled on the way to ' + town + ': back at the Ironbow ' + R.dayLabel(p.returnDay);
+    if (p.status === 'returning') return 'Recalled on the way to ' + town + ': back at the Ironbow on ' + R.dayLabel(p.returnDay);
     if (p.status === 'returned') return 'Recalled on the way to ' + town + ': back at the Ironbow on ' + R.dayLabel(p.returnDay) + ', its contents in the Warehouse';
     return 'Collected at ' + town + (isNum(p.collectedDay) ? ' on ' + R.dayLabel(p.collectedDay) : '');
   };
