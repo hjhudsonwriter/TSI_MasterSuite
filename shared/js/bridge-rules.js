@@ -38,6 +38,15 @@
    receipt. The Explorer reads the Bastion's parcels from its save (B.parcels,
    B.parcelView) but never changes them.
 
+   Pull request 7 (Harry, 14 October 2026) adds a fourth kind: a griffin or
+   a dire wolf the DM grants in the Explorer, { id, type: 'creature', day,
+   at, from, species, name, text } (species: one the DM can grant, from
+   tools/bastion/data/creatures-data.js grantable; name: as typed, at most
+   40 letters, or ''). It has no Clan. Its id is a new random id with
+   ':dm:0', as the Port Charter button's. The Bastion holds the creature
+   once, waiting for a home, and the Griffin Tower's or Dire Wolf Den's
+   House order houses it.
+
    A message of a kind this copy doesn't know yet (from a newer copy of the
    suite) waits, with no receipt, rather than being refused for good (only
    a Bastion starting from nothing skips it, as it skips everything sent
@@ -119,6 +128,39 @@
     return '';
   };
 
+  /* The creatures the DM can grant (pull request 7): from the Bastion's
+     creatures-data.js when the page has it, otherwise these (keep them the
+     same as that file). */
+  var FALLBACK_CREATURES = { griffin: { name: 'Griffin', home: 'griffin_tower' }, dire_wolf: { name: 'Dire Wolf', home: 'dire_wolf_den' } };
+  function creatures() { var c = window.TSI_DATA && window.TSI_DATA.bastionCreatures; return isObj(c) && isObj(c.species) ? c : null; }
+  B.grantable = function () {
+    var c = creatures();
+    if (!c) return Object.keys(FALLBACK_CREATURES);
+    return (Array.isArray(c.grantable) ? c.grantable : []).filter(function (k) { return typeof k === 'string' && isObj(c.species[k]); });
+  };
+  B.isGrantable = function (species) { return typeof species === 'string' && B.grantable().indexOf(species) !== -1; };
+  function speciesInfo(species) {
+    var c = creatures();
+    var sp = c ? c.species[species] : FALLBACK_CREATURES[species];
+    return typeof species === 'string' && isObj(sp) ? sp : null;
+  }
+  /* 'dire_wolf' → 'Dire Wolf'. */
+  B.speciesName = function (species) {
+    var sp = speciesInfo(species);
+    return sp && typeof sp.name === 'string' && sp.name ? sp.name : 'Unknown creature';
+  };
+  /* The building that houses it: 'griffin' → 'Griffin Tower'. */
+  B.speciesHomeName = function (species) {
+    var sp = speciesInfo(species);
+    var home = sp && typeof sp.home === 'string' ? sp.home : '';
+    return home ? home.split('_').map(function (w) { return w.charAt(0).toUpperCase() + w.slice(1); }).join(' ') : 'its home';
+  };
+  /* "Creature: Griffin (Swiftwing)", as the Explorer's Sent to the Bastion lists it. */
+  B.creatureTitle = function (m) {
+    var name = isObj(m) && typeof m.name === 'string' && m.name ? ' (' + m.name + ')' : '';
+    return 'Creature: ' + B.speciesName(isObj(m) ? m.species : '') + name;
+  };
+
   /* A change from one moment is at most 1 either way. */
   B.STANDING_CAP = 1;
   B.FIELDS = ['id', 'type', 'day', 'at', 'from', 'clan', 'hr', 'text'];
@@ -126,13 +168,17 @@
   B.CHARTER_FIELDS = ['id', 'type', 'day', 'at', 'from', 'clan', 'port', 'text'];
   /* A parcel collected in the Explorer (pull request 6). */
   B.PARCEL_FIELDS = ['id', 'type', 'day', 'at', 'from', 'clan', 'point', 'parcel', 'goods', 'text'];
+  /* A creature the DM granted (pull request 7): no Clan. */
+  B.CREATURE_FIELDS = ['id', 'type', 'day', 'at', 'from', 'species', 'name', 'text'];
   /* The kinds of message this copy knows; a well-formed kind name not on the
      list is a newer copy's, and waits. */
-  B.TYPES = ['standing', 'charter', 'parcel_collected'];
+  B.TYPES = ['standing', 'charter', 'parcel_collected', 'creature'];
   B.TYPE_PATTERN = /^[a-z][a-z_]{0,29}$/;
   B.ID_PATTERN = /^[a-z0-9-]{6,40}:[A-Za-z0-9_]{1,40}:\d{1,2}$/;
   B.UID_PATTERN = /^[a-z0-9-]{6,40}$/;
   B.TEXT_MAX = 200;
+  /* A granted creature's name: at most this many letters (pull request 7). */
+  B.NAME_MAX = 40;
   /* A parcel's pickup id is '<parcel id>' + this. */
   B.COLLECT_SUFFIX = ':collect:0';
 
@@ -203,7 +249,7 @@
   B.isParcelMessage = function (m) {
     if (!isObj(m)) return false;
     if (m.type === 'parcel_collected') return true;
-    return m.type !== 'standing' && m.type !== 'charter' && B.parcelIdOf(m.id) !== '';
+    return m.type !== 'standing' && m.type !== 'charter' && m.type !== 'creature' && B.parcelIdOf(m.id) !== '';
   };
   /* A parcel's goods as a message or the Explorer shows them: [{ goodId, qty }]. */
   function cleanGoods(list) {
@@ -229,6 +275,21 @@
     };
   };
 
+  /* A new creature message (the Explorer makes these, J.grantCreature): no
+     Clan; the name as typed, cut to B.NAME_MAX. */
+  B.creatureMessage = function (f) {
+    return {
+      id: str(f.id),
+      type: 'creature',
+      day: isWhole(f.day) ? f.day : 1,
+      at: str(f.at) || new Date().toISOString(),
+      from: { code: str(f.from && f.from.code, 20), title: str(f.from && f.from.title, 80), step: str(f.from && f.from.step, 40) },
+      species: str(f.species, 40),
+      name: str(f.name, B.NAME_MAX),
+      text: str(f.text, B.TEXT_MAX)
+    };
+  };
+
   /* A kind of message from a newer copy of the suite: a well-formed kind
      this copy doesn't know, on a message with a good id. It waits (no
      receipt), so the newer copy can still apply it later. */
@@ -248,6 +309,9 @@
     }
     if (m.type === 'parcel_collected') {
       return { id: m.id, type: 'parcel_collected', day: day, at: str(m.at), from: from, clan: str(m.clan), point: str(m.point, 40), parcel: str(m.parcel, 40), goods: cleanGoods(m.goods), text: str(m.text, B.TEXT_MAX) };
+    }
+    if (m.type === 'creature') {
+      return { id: m.id, type: 'creature', day: day, at: str(m.at), from: from, species: str(m.species, 40), name: str(m.name, B.NAME_MAX), text: str(m.text, B.TEXT_MAX) };
     }
     /* A newer copy's kind: every plain field kept as it is (text cut to
        length), so saving here doesn't strip it. */
@@ -292,6 +356,15 @@
       var pid = B.parcelIdOf(m.id);
       if (!pid || !B.UID_PATTERN.test(pid)) return 'Its id isn\'t a parcel pickup\'s.';
       if (typeof m.parcel === 'string' && m.parcel && m.parcel !== pid) return 'It names a different parcel from its id.';
+      return '';
+    }
+    /* A creature the DM granted (pull request 7): its kind, its id, a kind
+       of creature the DM can grant, and its name. It has no Clan, so none
+       is asked for; its text and other fields are only for showing. */
+    if (m.type === 'creature') {
+      if (typeof m.id !== 'string' || !B.ID_PATTERN.test(m.id)) return 'Its id is damaged.';
+      if (!B.isGrantable(m.species)) return 'It names a creature the DM can\'t grant (' + (typeof m.species === 'string' ? str(m.species, 40) : 'none') + ').';
+      if (typeof m.name !== 'string' || m.name.length > B.NAME_MAX) return 'Its name is damaged.';
       return '';
     }
     var fields = m.type === 'charter' ? B.CHARTER_FIELDS : B.FIELDS;
@@ -357,6 +430,19 @@
       var why = str(r.why) || 'the Bastion couldn\'t use it.';
       if (!/[.!?]$/.test(why)) why += '.';
       return { kind: 'refused', line: 'Refused: ' + why + ' The items stay in the Party bags; take them out with ✕ if they shouldn\'t be there.' };
+    }
+    /* A creature the DM granted (pull request 7): read from the message's
+       kind, never the receipt's. */
+    if (isObj(m) && m.type === 'creature' && r) {
+      var what = 'the ' + B.speciesName(m.species).toLowerCase() + (typeof m.name === 'string' && m.name ? ' (' + m.name + ')' : '');
+      var cday = isWhole(r.day) ? ' on ' + (r.day >= 1 ? 'Day ' + r.day : 'a day before Day 1') : '';
+      if (r.r === 'applied') return { kind: 'applied', line: r.held === true
+        ? 'Applied' + cday + ': the Bastion already held ' + what + ', so nothing changed.'
+        : 'Applied' + cday + ': the Bastion holds ' + what + '; house it at the ' + B.speciesHomeName(m.species) + '.' };
+      if (r.r === 'skipped') return { kind: 'skipped', line: 'Skipped: sent before this Bastion started. Grant it again if it should count.' };
+      var cwhy = str(r.why) || 'the Bastion couldn\'t use it.';
+      if (!/[.!?]$/.test(cwhy)) cwhy += '.';
+      return { kind: 'refused', line: 'Refused: ' + cwhy + ' Nothing changed.' };
     }
     /* A newer copy's kind of message: plain words, whatever it does. */
     if (B.waitsForNewer(m)) {
