@@ -52,6 +52,11 @@
   function inDaysSave(ba) { return !!ba && (ba.v === 2 || ba.v === 3); }
   var OBJECTIVES = { raid: 'Raid', skirmish: 'Skirmish', seize_outpost: 'Seize Outpost' };
   function clanTitle(name) { var n = str(name).trim(); return /^clan /i.test(n) ? n : 'Clan ' + n; }
+  /* 'goldport' → 'Goldport' (shared/data/ports.js). */
+  function portName(id) {
+    var p = window.TSI_DATA && window.TSI_DATA.ports && window.TSI_DATA.ports[id];
+    return p && str(p.label) ? p.label : str(id) || 'port';
+  }
 
   var C = TSI.campaign = {
     /* The automatic Bastion event comes every this many days from Day 1
@@ -81,7 +86,7 @@
         var day = fix !== null && o.dueDay <= fix ? fix + 1 : o.dueDay;
         if (o.facId === 'war_council' || m.kind === 'war_action') {
           add(day, 'war', 'Your army is ready to march on ' + (str(m.targetName) || 'the enemy') + ' (' + (OBJECTIVES[m.objective] || 'War Action') + ').');
-        } else if (o.facId === 'hall_of_emissaries' && o.fnId !== 'upgrade_hall' && !(isObj(m) && m.kind === 'upgrade')) {
+        } else if (o.facId === 'hall_of_emissaries' && o.fnId !== 'upgrade_hall' && o.fnId !== 'register_port_charter' && !(isObj(m) && m.kind === 'upgrade')) {
           add(day, 'roll', label + ' needs your roll.');
         } else {
           add(day, 'order', label + ' is complete.');
@@ -113,6 +118,18 @@
           if (r.risk === 'high' || tn.highRiskRouting) add(r.nextDay, 'route', 'The sea route to ' + str(r.clan) + ' needs a roll.');
         });
       }
+      /* Cargo ships (pull request 5): when each reaches its port and comes
+         home, and when a standing shipment is due to sail. Never what it
+         sells for: the Bastion rolls the voyage when the day comes. */
+      (Array.isArray(tn.voyages) ? tn.voyages : []).forEach(function (v) {
+        if (!isObj(v)) return;
+        var port = portName(v.port);
+        if (v.stage === 'outbound') add(v.arriveDay, 'cargo', 'Your cargo ship reaches ' + port + '.');
+        add(v.returnDay, 'cargo', 'Your cargo ship is home from ' + port + '.');
+      });
+      (Array.isArray(tn.schedules) ? tn.schedules : []).forEach(function (sc) {
+        if (isObj(sc)) add(sc.nextDay, 'cargo', 'A standing shipment to ' + portName(sc.port) + ' is due to sail, if a ship and the goods are ready.');
+      });
       var wars = isObj(ba.wars) ? ba.wars : {};
       Object.keys(wars).forEach(function (k) {
         var w = wars[k];

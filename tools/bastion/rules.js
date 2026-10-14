@@ -100,8 +100,12 @@
   R.defaultDiplomacy = function () {
     return { agreements: [], delegations: [], summits: [], arbitrations: [], consortiums: [], rep: 0, cooldowns: {}, tokens: 0 };
   };
+  /* routes: the Hall's old sea routes (legacy_abstract). The rest is
+     commodity trade (pull request 5, commerce-rules.js): Port Charters,
+     cargo ships at sea, standing shipments, sale receipts and voyage
+     protections ready to use. */
   R.defaultTradeNetwork = function () {
-    return { active: false, strategy: 'balanced', stability: 75, routes: [] };
+    return { active: false, strategy: 'balanced', stability: 75, routes: [], portCharters: [], voyages: [], schedules: [], cargoSales: [], protections: {} };
   };
   R.defaultState = function (data) {
     var s = {
@@ -416,6 +420,9 @@
     d.research = R.cleanResearch(s.research, data);
     d.bridge = R.cleanBridge(s.bridge);
     if (arr(s.militaryActions)) d.militaryActions = s.militaryActions.filter(isObj);
+    /* Port Charters, ships at sea, standing shipments and sales (pull
+       request 5, commerce-rules.js). */
+    if (R.cleanCommerce) R.cleanCommerce(d, data);
     R.normalizeBuiltExtras(d);
     tidyPlots(d, data);
     R.ensureLevels(d, data);
@@ -458,6 +465,13 @@
           text: txt(r.text, 200),
           why: txt(r.why, 200)
         };
+        /* A Port Charter's receipt (pull request 5) also says which port, and
+           whether the Bastion already held it. Other receipts are as before. */
+        if (r.type === 'charter') {
+          out.done[id].type = 'charter';
+          out.done[id].port = txt(r.port, 40);
+          out.done[id].held = r.held === true;
+        }
       });
     }
     return out;
@@ -488,9 +502,12 @@
      in the same state, so one save() keeps both. A Bastion starting from
      nothing (fresh) instead marks every change already sent as skipped, once
      (or, if there's no Explorer save yet, simply stops being fresh).
-     Returns { changed, applied: [lines], skipped: n, refused: n }. */
+     Pull request 5 adds Port Charters (R.addCharter, commerce-rules.js):
+     each is held once, and its receipt names the port. A kind of message
+     from a newer copy of the suite waits, with no receipt.
+     Returns { changed, applied: [lines], charters: [lines], skipped: n, refused: n }. */
   R.applyInbox = function (s, data, explorerSave, now) {
-    var out = { changed: false, applied: [], skipped: 0, refused: 0 };
+    var out = { changed: false, applied: [], charters: [], skipped: 0, refused: 0 };
     var B = TSI.bridge;
     if (!B) return out;
     if (!isObj(s.bridge) || !isObj(s.bridge.done)) s.bridge = R.cleanBridge(s.bridge);
@@ -512,32 +529,65 @@
       }, extra || {});
       out.changed = true;
     }
+    /* A Port Charter's receipt also names its port. */
+    function charterExtra(m) { return m.type === 'charter' ? { type: 'charter', port: txt(m.port, 40), held: false } : {}; }
+    function fromText(m) {
+      return m.from && m.from.code ? m.from.code + (typeof m.day === 'number' ? ', ' + R.dayLabel(m.day) : '') : (typeof m.day === 'number' ? R.dayLabel(m.day) : 'the Explorer');
+    }
     if (s.bridge.fresh) {
+      var charters = 0;
+      var newer = 0;
       B.outbox(explorerSave).forEach(function (m) {
         if (Object.prototype.hasOwnProperty.call(done, m.id)) return;
-        receipt(m, 'skipped', { why: 'Sent before this Bastion started.' });
+        receipt(m, 'skipped', Object.assign(charterExtra(m), { why: 'Sent before this Bastion started.' }));
+        if (m.type === 'charter') charters += 1;
+        else if (B.waitsForNewer && B.waitsForNewer(m)) newer += 1;
         out.skipped += 1;
       });
       s.bridge.fresh = false;
       out.changed = true;
-      if (out.skipped) {
-        R.log(s, 'From the Explorer', out.skipped + (out.skipped === 1 ? ' change' : ' changes') + ' to Honour/Respect, sent before this Bastion started, ' + (out.skipped === 1 ? 'was' : 'were') + ' skipped, so nothing counts twice. Clan Influence lists ' + (out.skipped === 1 ? 'it, to type in by hand if it should count.' : 'them, to type in by hand if they should count.'), at);
+      var standing = out.skipped - charters - newer;
+      if (newer) {
+        R.log(s, 'From the Explorer', newer + (newer === 1 ? ' message' : ' messages') + ' from a newer copy of the suite, sent before this Bastion started, ' + (newer === 1 ? 'was' : 'were') + ' skipped, so nothing counts twice.', at);
+      }
+      if (standing) {
+        R.log(s, 'From the Explorer', standing + (standing === 1 ? ' change' : ' changes') + ' to Honour/Respect, sent before this Bastion started, ' + (standing === 1 ? 'was' : 'were') + ' skipped, so nothing counts twice. Clan Influence lists ' + (standing === 1 ? 'it, to type in by hand if it should count.' : 'them, to type in by hand if they should count.'), at);
+      }
+      if (charters) {
+        R.log(s, 'From the Explorer', charters + (charters === 1 ? ' Port Charter' : ' Port Charters') + ', sent before this Bastion started, ' + (charters === 1 ? 'was' : 'were') + ' skipped, so nothing counts twice. Clan Influence lists ' + (charters === 1 ? 'it: grant it again in the Explorer if it should count.' : 'them: grant them again in the Explorer if they should count.'), at);
       }
       return out;
     }
     B.pending(explorerSave, done, day).forEach(function (m) {
+      /* A kind of change from a newer copy of the suite: it waits, with no
+         receipt, so that copy can still use it. */
+      if (B.waitsForNewer && B.waitsForNewer(m)) return;
       var why = B.check(m);
+      if (!why && m.type === 'charter') {
+        if (!R.addCharter) return;
+        var got = R.addCharter(s, m, day);
+        receipt(m, 'applied', { type: 'charter', port: txt(m.port, 40), held: !got.added });
+        var where = R.portWithClan(data, m.port, m.clan);
+        var regFn = R.fn(R.facility(data, 'hall_of_emissaries'), 'register_port_charter');
+        var regLevel = regFn && regFn.requiredFacilityLevel > 1 ? ' (Level ' + regFn.requiredFacilityLevel + ')' : '';
+        var cline = 'Port Charter for ' + where + ' (' + fromText(m) + '): ' + (got.added
+          ? 'the Bastion now holds it. Register it at the Hall of Emissaries' + regLevel + ' before the Dock ships cargo there.'
+          : 'the Bastion already holds it, so nothing changed.');
+        R.log(s, 'From the Explorer', cline + (m.text ? ' ' + txt(m.text, 200) : ''), at);
+        R.addWord(s, 'From the Explorer: Port Charter for ' + where + (got.added ? '.' : ' (already held).'));
+        out.charters.push(cline);
+        return;
+      }
       var res = why ? null : R.adjustStanding(s, m.clan, m.hr);
       if (!res) {
         why = why || 'It names a Clan the Bastion doesn\'t know.';
-        receipt(m, 'refused', { why: why });
+        receipt(m, 'refused', Object.assign(charterExtra(m), { why: why }));
         out.refused += 1;
         R.log(s, 'From the Explorer', 'A change from the Explorer couldn\'t be used, so nothing changed: ' + why + (m.text ? ' (' + txt(m.text, 200) + ')' : ''), at);
         return;
       }
       receipt(m, 'applied', { hr: res.delta, was: res.was, now: res.now });
-      var from = m.from && m.from.code ? m.from.code + (typeof m.day === 'number' ? ', ' + R.dayLabel(m.day) : '') : (typeof m.day === 'number' ? R.dayLabel(m.day) : 'the Explorer');
-      var line = 'Honour/Respect ' + signedNum(m.hr) + ' with ' + clanLabel(data, m.clan) + ' (' + from + ')' +
+      var line = 'Honour/Respect ' + signedNum(m.hr) + ' with ' + clanLabel(data, m.clan) + ' (' + fromText(m) + ')' +
         (res.delta ? ': ' + signedNum(res.was) + ' → ' + signedNum(res.now) + '.' : ': already at ' + signedNum(res.now) + ', so it stays there.');
       R.log(s, 'From the Explorer', line + (m.text ? ' ' + txt(m.text, 200) : ''), at);
       R.addWord(s, 'From the Explorer: ' + line);
@@ -1286,6 +1336,11 @@
     if (fac.id === 'workshop' && fn.id === 'craft') {
       return R.craftItems(s, data.tools).map(function (name) { return { label: name, craftItem: name }; });
     }
+    /* The Hall's Register Port Charter: the Charters held and not yet
+       registered or being registered (pull request 5). */
+    if (fn.portCharter) {
+      return (R.registrableCharters ? R.registrableCharters(s) : []).map(function (c) { return { label: 'Port Charter: ' + R.charterLabel(data, c), charterId: c.id }; });
+    }
     return fn.options || [];
   };
   function orderLabel(fac, fn, optionLabel) {
@@ -1341,6 +1396,8 @@
     if (broken) return broken;
     var avail = R.fnAvailable(s, fac, fn);
     if (!avail.ok) return { ok: false, message: avail.message };
+    /* Register Port Charter: one at a time, and it says whose is running. */
+    if (fn.portCharter && R.registerBusy && R.registerBusy(s, data)) return { ok: false, message: R.registerBusy(s, data) };
     if (pendingSame(s, facId, fnId)) return { ok: false, message: 'That order is already pending.' };
     var busy = productionBusy(s, data, fac, fn);
     if (busy) return { ok: false, message: busy };
@@ -1355,6 +1412,10 @@
       var picked = R.craftItems(s, data.tools)[clampInt(optionIdx, 0)] || '';
       chosen = { label: picked, craftItem: picked };
       optionLabel = picked;
+    } else if (fn.portCharter) {
+      chosen = R.fnOptions(s, data, fac, fn)[clampInt(optionIdx, 0)] || null;
+      if (!chosen) return { ok: false, message: 'There\'s no Port Charter to register: the DM grants one in the Explorer.' };
+      optionLabel = R.portName(R.charterById(s, chosen.charterId).port);
     }
     var notes = '';
     if (facId === 'library_scriptorium' && fnId === 'research') notes = data.bastion.scriptureNotes[String(optionLabel || '').trim()] || '';
@@ -1954,6 +2015,9 @@
     if (isObj(order.meta) && order.meta.kind === 'research') return [R.completeResearch(s, data, order)];
     var fn = R.fn(fac, order.fnId);
     if (!fn) return R.dropOrderGoods(s, data, order, rand);
+    /* The Hall's Register Port Charter (pull request 5): the Charter becomes
+       registered, once; nothing goes into the Warehouse. */
+    if (fn.portCharter && R.completeCharterRegistration) return [R.completeCharterRegistration(s, data, order)];
     /* A production order (pull request 3): its outputs go into the
        Warehouse; its inputs were used up when it began. */
     if (order.chosen && Array.isArray(order.chosen.outputs)) return [R.completeProduction(s, data, fac, fn, order, rand)];
@@ -2632,6 +2696,8 @@
     (s.militaryActions || []).forEach(function (ma) { mv(ma, 'day'); });
     Object.keys(s.warMissions || {}).forEach(function (k) { mv(s.warMissions[k], 'createdDay'); mv(s.warMissions[k], 'seenDay'); });
     if (isObj(s.organization)) mv(s.organization, 'foundedAtDay');
+    /* Port Charters, ships at sea and standing shipments (pull request 5). */
+    if (R.shiftCommerce) R.shiftCommerce(s, n);
   };
   /* Read the Explorer's day for the first time (or before it has one): the
      Bastion moves to it, nothing passes. */

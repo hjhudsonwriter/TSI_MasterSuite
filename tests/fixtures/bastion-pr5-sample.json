@@ -1,0 +1,186 @@
+{
+  "format": "tsi-backup",
+  "version": 1,
+  "kind": "tool",
+  "space": "test",
+  "tool": "bastion",
+  "toolName": "The Ironbow Bastion Manager",
+  "suite": "The Scarlett Isles: D&D Tool Suite",
+  "savedAt": "2026-10-14T12:00:00.000Z",
+  "records": [
+    {
+      "key": "tsi.bastion.state",
+      "value": {
+        "treasuryGP": 500,
+        "partyLevel": 9,
+        "builtFacilities": [
+          "barracks",
+          "armoury",
+          "watchtower",
+          "workshop",
+          "dock"
+        ],
+        "builtExtras": [
+          {
+            "facId": "hall_of_emissaries",
+            "status": "built"
+          }
+        ],
+        "builtPlots": [],
+        "facilityLevels": {
+          "barracks": 1,
+          "armoury": 1,
+          "watchtower": 1,
+          "workshop": 1,
+          "dock": 2,
+          "hall_of_emissaries": 2
+        },
+        "pendingOrders": [],
+        "defenders": {
+          "count": 0,
+          "armed": false,
+          "patrolUntil": 0
+        },
+        "defenderBeasts": [],
+        "military": [],
+        "warehouse": [
+          {
+            "id": "sample-1",
+            "goodId": "sawn_lumber",
+            "item": "Sawn Lumber",
+            "qty": 4,
+            "gp": "",
+            "notes": "Sample for pull request 5"
+          },
+          {
+            "id": "sample-2",
+            "goodId": "raw_stone",
+            "item": "Raw Stone",
+            "qty": 6,
+            "gp": "",
+            "notes": "Sample for pull request 5"
+          },
+          {
+            "id": "sample-3",
+            "goodId": "preserved_fish",
+            "item": "Preserved Fish",
+            "qty": 2,
+            "gp": "",
+            "notes": "Sample for pull request 5"
+          },
+          {
+            "id": "sample-4",
+            "goodId": "fresh_fish",
+            "item": "Fresh Fish",
+            "qty": 4,
+            "gp": "",
+            "notes": "Sample for pull request 5"
+          }
+        ],
+        "artisanTools": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        "favour": {
+          "telluria": 0,
+          "aurush": 0,
+          "pelagos": 0
+        },
+        "politicalCapital": {
+          "blackstone": 0,
+          "bacca": 0,
+          "farmer": 0,
+          "slade": 0,
+          "molten": 0,
+          "rowthorn": 0,
+          "karr": 0
+        },
+        "tradeNetwork": {
+          "active": false,
+          "strategy": "balanced",
+          "stability": 75,
+          "routes": [],
+          "portCharters": [],
+          "voyages": [],
+          "schedules": [],
+          "cargoSales": [],
+          "protections": {}
+        },
+        "arbitration": {
+          "queue": []
+        },
+        "diplomacy": {
+          "agreements": [],
+          "delegations": [],
+          "summits": [],
+          "arbitrations": [],
+          "consortiums": [],
+          "rep": 0,
+          "cooldowns": {},
+          "tokens": 0
+        },
+        "v": 3,
+        "day": 1,
+        "anchored": false,
+        "lastEvent": null,
+        "lastEventDay": 0,
+        "log": [
+          {
+            "title": "Sample",
+            "body": "A sample Bastion for trying commodity trade (pull request 5): the Hall of Emissaries at Level 2, the Dock at Level 2, and some trade goods in the Warehouse.",
+            "at": 0,
+            "day": 1
+          }
+        ],
+        "organization": {
+          "type": "unsworn",
+          "name": "",
+          "chief": "",
+          "motto": "",
+          "foundedAtDay": null
+        },
+        "clanHonor": 40,
+        "honourRespectByClan": {
+          "blackstone": 0,
+          "bacca": 0,
+          "farmer": 0,
+          "slade": 0,
+          "molten": 0,
+          "rowthorn": 0,
+          "karr": 0
+        },
+        "trustedClientsByClan": {
+          "blackstone": 50,
+          "bacca": 50,
+          "farmer": 50,
+          "slade": 50,
+          "molten": 50,
+          "rowthorn": 50,
+          "karr": 50
+        },
+        "warLog": [],
+        "dayInProgress": null,
+        "word": [],
+        "militaryActions": [],
+        "warMissions": {},
+        "warRecovery": [],
+        "warMissionSeq": 0,
+        "wars": {},
+        "repairs": {},
+        "legacyFacilities": [],
+        "research": {},
+        "archivedFacilities": [],
+        "migration": null,
+        "bridge": {
+          "fresh": true,
+          "done": {}
+        }
+      },
+      "savedAt": "2026-10-14T12:00:00.000Z"
+    }
+  ]
+}
