@@ -17,8 +17,9 @@
    Scriptorium. An order's "requiredPartyLevel" keeps its old building's party level.
    The Gaming Hall is gone. The new facilities still "inDevelopment" are listed, not yet
    buildable, until each gets its orders: six since pull request 3 (13 October 2026) made
-   the Fishery & Smokehouse and Timber Yard & Sawmill buildable. Old saves are converted
-   once (R.migrateToV3).
+   the Fishery & Smokehouse and Timber Yard & Sawmill buildable, and five since pull
+   request 6 (14 October 2026) made the Courier Exchange buildable. Old saves are
+   converted once (R.migrateToV3).
    Pull request 3 (Harry's facility guide) added, all safe to change:
    - "plot": true: built on a Development Plot, not in a construction slot;
    - "productionLimit": 1: one production order at a time at that facility;
@@ -28,7 +29,12 @@
      their id in goods-data.js with a "qty" ({ "good": "raw_timber", "qty": 1 }), or an
      ordinary item by name ({ "item": "Healer's Kit", "qty": 2 }); a recipe can have its
      own "days"; "needsResearch" is the id of the research choice it waits for
-     (research-data.js); "key" lets research find it. */
+     (research-data.js); "key" lets research find it.
+   Pull request 6 (Harry, 14 October 2026): the Courier Exchange has no orders
+   ("functions": []): its parcels are sent from its own section of the panel, as the
+   Dock's cargo is, with the numbers in courier-data.js and the rules in
+   courier-rules.js. "requiredLevel": 5 makes it take 21 days to build, as the
+   Fishery & Smokehouse and Timber Yard & Sawmill do. */
 window.TSI_DATA = window.TSI_DATA || {};
 window.TSI_DATA.bastionFacilities = [
   {
@@ -1197,9 +1203,9 @@ window.TSI_DATA.bastionFacilities = [
   {
     "name": "Courier Exchange",
     "id": "courier_exchange",
-    "requiredLevel": null,
+    "requiredLevel": 5,
     "plot": true,
-    "inDevelopment": true,
+    "description": "Sends parcels of supplies from the Warehouse to a town, where they wait until the party collects them.",
     "functions": []
   },
   {

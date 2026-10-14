@@ -1559,11 +1559,12 @@
     if (g && g.kind === 'supply') return n + ' ' + name + (n === 1 ? '' : 's');
     return R.goodsCountText(data, id, n) + ' of ' + name;
   };
-  /* Just the count in the good's unit: "3 lots", "10 portions", "5 packs". */
+  /* Just the count in the good's unit: "3 lots", "10 portions", "5 packs",
+     "2 charts" (a supply with its own unit, pull request 6). */
   R.goodsCountText = function (data, id, qty) {
     var g = R.good(data, id);
     var n = clampInt(qty, 0);
-    var unit = g && g.kind === 'ingredient' ? 'portion' : g && g.kind === 'supply' ? 'pack' : 'lot';
+    var unit = g && g.kind === 'ingredient' ? 'portion' : g && g.kind === 'supply' ? (typeof g.unit === 'string' && g.unit ? g.unit : 'pack') : 'lot';
     return n + ' ' + unit + (n === 1 ? '' : 's');
   };
   R.goodsListText = function (data, list) {

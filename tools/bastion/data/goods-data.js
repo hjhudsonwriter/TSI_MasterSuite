@@ -17,7 +17,10 @@
      commerce-data.js);
    - ingredient: a crafting ingredient, counted in portions (one batch from
      the Herbal Gardens is "batch" portions);
-   - supply: a supply for the party, counted in packs.
+   - supply: a supply for the party, counted in packs (or in its own
+     "unit", such as charts), with a line on what one is. Supplies never
+     sail with the Dock; the Courier Exchange can send them to the party
+     (courier-data.js says which).
    Edit the numbers here to rebalance: nothing else needs changing. */
 window.TSI_DATA = window.TSI_DATA || {};
 window.TSI_DATA.bastionGoods = {
@@ -45,6 +48,10 @@ window.TSI_DATA.bastionGoods = {
     { id: 'toxic_blossoms', name: 'Toxic Blossoms', kind: 'ingredient', batch: 10, use: 'Poison preparation and alchemical crafting.' },
     { id: 'alchemical_flowers', name: 'Alchemical Flowers', kind: 'ingredient', batch: 10, use: 'Advanced Arcane Laboratory ingredients and botanical extracts.' },
 
-    { id: 'expedition_provision_pack', name: 'Expedition Provision Pack', kind: 'supply', pack: '10 character-days of rations (a party of five for two days)' }
+    { id: 'expedition_provision_pack', name: 'Expedition Provision Pack', kind: 'supply', pack: '10 character-days of rations (a party of five for two days)' },
+    /* Pull request 6 (Harry, 14 October 2026): named as the Explorer's
+       Party bags name it (shared/data/party-items.js). The DM adds charts
+       by hand for now ("+ Add supplies"). */
+    { id: 'overland_chart', name: 'Overland chart', kind: 'supply', unit: 'chart', what: '3 days of use in the Party bags: one more 6-mile hex on each day it\'s used' }
   ]
 };

@@ -61,7 +61,7 @@
       var R = ns.rules;
       var D = window.TSI_DATA;
       var B = D.bastion;
-      var data = { bastion: B, facilities: D.bastionFacilities, tools: D.bastionTools, events: D.bastionEvents, research: D.bastionResearch, goods: D.bastionGoods, commerce: D.bastionCommerce };
+      var data = { bastion: B, facilities: D.bastionFacilities, tools: D.bastionTools, events: D.bastionEvents, research: D.bastionResearch, goods: D.bastionGoods, commerce: D.bastionCommerce, courier: D.bastionCourier };
       /* The war mini-game's numbers (war-units-data.js): units, stat blocks, missions. */
       var W = D.bastionWar;
       var COMPENDIUM = (D.bastionCompendium && D.bastionCompendium.items) || {};
@@ -2364,7 +2364,7 @@
          the typed change is added to the count rather than written over it. */
       function goodsRow(row, i) {
         var g = R.good(data, row.goodId);
-        var unit = g ? (g.kind === 'cargo' ? '1 lot = ' + g.lot : g.kind === 'ingredient' ? 'portions' : g.kind === 'supply' ? 'packs (' + g.pack + ')' : '') : '';
+        var unit = g ? (g.kind === 'cargo' ? '1 lot = ' + g.lot : g.kind === 'ingredient' ? 'portions' : g.kind === 'supply' ? (g.unit ? g.unit + 's' : 'packs') + ' (' + (g.pack || g.what || '') + ')' : '') : '';
         var shown = R.clampInt(row.qty, 0);
         var qty = el('input', { type: 'number', min: '0', step: '1', class: 'tsi-input', value: String(shown), 'aria-label': 'Quantity of ' + (row.item || row.goodId), 'data-test': 'wh-qty-' + i });
         var value = el('div', { class: 'tsi-bas-wh__value', 'data-test': 'wh-value-' + i });
