@@ -1682,6 +1682,22 @@
     t.same([R.goodsQty(s, 'preserved_fish'), R.goodsQty(s, 'expedition_provision_pack')], [2, 5]);
   });
 
+  test('the Library & Scriptorium (Harry, 14 October 2026): Prepare Overland Travel Charts at Level 2 makes 1 Overland chart in 4 days, no gold; one at a time, beside scripture Research', function (t) {
+    var s = plots(9, [], ['library_scriptorium']);
+    t.equal(R.issueOrder(s, data, 'library_scriptorium', 'prepare_overland_travel_charts', 0, dice([0.3])).message, 'Needs Level 2.');
+    s.facilityLevels.library_scriptorium = 2;
+    var gp = s.treasuryGP;
+    var o = order(s, 'library_scriptorium', 'prepare_overland_travel_charts', 0);
+    t.same([o.dueDay, s.treasuryGP, o.label], [14, gp, 'Library & Scriptorium: Prepare Overland Travel Charts']);
+    t.equal(R.issueOrder(s, data, 'library_scriptorium', 'prepare_overland_travel_charts', 0, dice([0.3])).ok, false, 'one chart order at a time');
+    var res = order(s, 'library_scriptorium', 'research', 0);
+    t.equal(res.fnId, 'research', 'scripture Research still runs beside it');
+    t.same(finish(s, o), [['Order Completed', 'Library & Scriptorium: Prepare Overland Travel Charts → Added to Warehouse: 1 Overland chart.']]);
+    t.same([R.goodsQty(s, 'overland_chart'), s.treasuryGP], [1, gp], 'one chart, no gold');
+    t.same(R.fn(R.facility(data, 'library_scriptorium'), 'research').options.map(function (x) { return x.label; }),
+      ['Geographical Scriptures', 'Religious Scriptures', 'Combat Scriptures', 'Political scriptures'], 'the scripture choices are unchanged');
+  });
+
   test('the Herbal Gardens\' new orders: Level 2 ingredients, Level 3 medical supplies with their own days, research yields and recipes', function (t) {
     var s = gardens(2);
     t.equal(R.issueOrder(s, data, 'herbal_gardens', 'field_medical_supplies', 0, dice([0.3])).message, 'Needs Level 3.');

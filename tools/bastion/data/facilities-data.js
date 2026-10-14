@@ -34,7 +34,12 @@
    ("functions": []): its parcels are sent from its own section of the panel, as the
    Dock's cargo is, with the numbers in courier-data.js and the rules in
    courier-rules.js. "requiredLevel": 5 makes it take 21 days to build, as the
-   Fishery & Smokehouse and Timber Yard & Sawmill do. */
+   Fishery & Smokehouse and Timber Yard & Sawmill do.
+   Harry, 14 October 2026: the Library & Scriptorium's Level 2 order Prepare
+   Overland Travel Charts makes 1 Overland chart in 4 days, with no gold and no
+   ingredients, into the Warehouse as the Fishery's packs go. "productionLimit": 1
+   keeps it to one chart order at a time; the scripture Research order beside it is
+   unchanged and isn't a production order, so it runs alongside. */
 window.TSI_DATA = window.TSI_DATA || {};
 window.TSI_DATA.bastionFacilities = [
   {
@@ -524,6 +529,7 @@ window.TSI_DATA.bastionFacilities = [
     "name": "Library & Scriptorium",
     "id": "library_scriptorium",
     "requiredLevel": 5,
+    "productionLimit": 1,
     "functions": [
       {
         "id": "research",
@@ -546,6 +552,27 @@ window.TSI_DATA.bastionFacilities = [
         "costGP": 0,
         "costText": "0",
         "notes": null
+      },
+      {
+        "id": "prepare_overland_travel_charts",
+        "label": "Prepare Overland Travel Charts",
+        "days": 4,
+        "costGP": 0,
+        "costText": "0",
+        "notes": "Each Overland chart gives 3 days of use in the Party bags: one more 6-mile hex on a day it's used. The Courier Exchange can send it to the party.",
+        "requiredFacilityLevel": 2,
+        "production": true,
+        "options": [
+          {
+            "label": "1 Overland chart",
+            "outputs": [
+              {
+                "good": "overland_chart",
+                "qty": 1
+              }
+            ]
+          }
+        ]
       }
     ],
     "mergedFrom": [
