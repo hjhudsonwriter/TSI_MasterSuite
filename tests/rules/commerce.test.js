@@ -298,6 +298,20 @@
     t.equal(Bg.statusOf(newer, copy(BR.toSave(b))).kind, 'waiting');
   });
 
+  test('a newer copy\'s message reads plainly in the Explorer, and a fresh Bastion skips it without calling it Honour/Respect', function (t) {
+    var newer = { id: 'newer1-0a0b0c0d:dm:0', type: 'courier', day: 2, at: 'x', from: { code: 'DM', title: 'Courier', step: 'dm' }, gold: 50 };
+    var b = bastion(4);
+    t.same(Bg.statusOf(newer, copy(BR.toSave(b))), { kind: 'waiting', line: 'Waiting for a newer copy of the Bastion (this copy doesn\'t know this kind of change).' });
+    b.bridge.done[newer.id] = { r: 'applied', day: 3 };
+    t.equal(Bg.statusOf(newer, copy(BR.toSave(b))).line, 'Applied by a newer copy of the Bastion.');
+    var f = BR.defaultState(bdata);
+    BR.anchor(f, 5);
+    BR.applyInbox(f, bdata, exWith([newer]), 1000);
+    t.equal(f.bridge.done[newer.id].r, 'skipped');
+    t.equal(f.log.length, 1);
+    t.equal(f.log[0].body, '1 message from a newer copy of the suite, sent before this Bastion started, was skipped, so nothing counts twice.');
+  });
+
   test('a Bastion starting from nothing skips a Port Charter sent before it, and lists it', function (t) {
     var b = BR.defaultState(bdata);
     BR.anchor(b, 5);
@@ -356,7 +370,7 @@
     t.same([o.label, o.dueDay, o.costGP, o.chosen.charterId, b.treasuryGP], ['Hall of Emissaries: Register Port Charter (Goldport)', 7, 0, charterMsg().id, gp]);
     t.equal(BR.orderKind(bdata, o), 'simple');
     t.same(BR.fnOptions(b, bdata, hall, fn), [], 'not offered again while it\'s being registered');
-    t.ok(/already pending/.test(BR.issueOrder(b, bdata, 'hall_of_emissaries', 'register_port_charter', 0, dice([0.4])).message));
+    t.ok(/one Port Charter at a time: Goldport's is ready on Day 7/.test(BR.issueOrder(b, bdata, 'hall_of_emissaries', 'register_port_charter', 0, dice([0.4])).message));
   });
 
   test('on its day the Charter is registered, once, and nothing goes into the Warehouse', function (t) {
@@ -375,6 +389,20 @@
     var again = BR.completeSimpleOrder(b, bdata, stale, dice([0.5]));
     t.ok(/already registered on Day 7, so nothing changed/.test(again[0][1]), 'a second registration is refused');
     t.equal(BR.charterFor(b, 'goldport').registeredDay, 7);
+  });
+
+  test('two Charters: the Hall registers one at a time, and says so', function (t) {
+    var b = withHall(bastion(4), 2);
+    BR.applyInbox(b, bdata, exWith([charterMsg(), charterMsg({ id: 'chartr-timb0000:dm:0', port: 'timberport', clan: 'blackstone' })]), 1000);
+    t.equal(BR.issueOrder(b, bdata, 'hall_of_emissaries', 'register_port_charter', 0, dice([0.4])).ok, true);
+    t.equal(BR.issueOrder(b, bdata, 'hall_of_emissaries', 'register_port_charter', 0, dice([0.4])).message, 'The Hall registers one Port Charter at a time: Goldport\'s is ready on Day 7.');
+    var o = b.pendingOrders[0];
+    b.day = 7;
+    BR.completeSimpleOrder(b, bdata, o, dice([0.5]));
+    BR.removeOrder(b, o.id);
+    t.equal(BR.registerBusy(b, bdata), '');
+    t.equal(BR.issueOrder(b, bdata, 'hall_of_emissaries', 'register_port_charter', 0, dice([0.4])).ok, true, 'then Timberport');
+    t.equal(b.pendingOrders[0].chosen.charterId, 'chartr-timb0000:dm:0');
   });
 
   test('Cancel, or the Hall Under Repair, leaves the Charter earned', function (t) {
@@ -545,11 +573,35 @@
     BR.settleVoyages(r2, bdata, dice([0.5]));
     t.equal(BR.goodsQty(r2, 'sawn_lumber'), 0);
     var v = sailed();
-    v.cargoSales = null;
     v.tradeNetwork.cargoSales.push({ id: v.tradeNetwork.voyages[0].id, outcome: 'sold', net: 320 });
     v.day = 11;
     BR.settleVoyages(v, bdata, dice([0.5]));
     t.equal(v.treasuryGP, 0, 'a voyage with a receipt already is never paid again');
+    var tb = sailed();
+    tb.day = 11;
+    BR.settleVoyages(tb, bdata, dice([0.05]));
+    var tr = reload(tb);
+    BR.settleVoyages(tr, bdata, dice([0.5]));
+    t.same([tr.treasuryGP, tr.tradeNetwork.voyages[0].outcome], [0, 'turned_back'], 'turned back: a reload sells nothing');
+    tr.day = 18;
+    BR.settleVoyages(tr, bdata, dice([0.5]));
+    var tr2 = reload(tr);
+    BR.settleVoyages(tr2, bdata, dice([0.5]));
+    t.same([tr2.treasuryGP, BR.goodsQty(tr2, 'sawn_lumber')], [0, 2], 'the cargo comes home once');
+  });
+
+  test('two ships sailing in the same moment never share an id, and both sell (Level 5)', function (t) {
+    var b = bastion(4, 5);
+    var g = registered(b, 'goldport');
+    var tb = registered(b, 'timberport');
+    stock(b, 'raw_stone', 4);
+    BR.dispatchCargo(b, bdata, g.id, [{ goodId: 'raw_stone', qty: 2 }], dice([0.3]));
+    BR.dispatchCargo(b, bdata, tb.id, [{ goodId: 'raw_stone', qty: 2 }], dice([0.3]));
+    var ids = BR.voyages(b).map(function (v) { return v.id; });
+    t.ok(ids[0] !== ids[1], ids.join(' / '));
+    b.day = 11;
+    BR.settleVoyages(b, bdata, dice([0.5]));
+    t.same([b.treasuryGP, BR.cargoSales(b).length], [360, 2]);
   });
 
   test('the price: demand by kind or by good, the Charter\'s price factor, fees and tariffs, rounded down', function (t) {
@@ -593,7 +645,10 @@
     var v = BR.voyages(b)[0];
     t.same([v.chance, v.protections.map(function (p) { return p.id; })], [5, ['maritime_approaches', 'pelagos_blessing']]);
     t.equal(b.tradeNetwork.protections.pelagos_blessing.charges, 0, 'the blessing is used');
-    t.same(BR.voyageProtections(bastion(7), d), [], 'the Watchtower\'s has run out by Day 7');
+    b.day = 6;
+    t.same(BR.voyageProtections(b, d).map(function (p) { return p.id; }), ['maritime_approaches'], 'the Watchtower\'s still holds on Day 6; the blessing is gone');
+    b.day = 7;
+    t.same(BR.voyageProtections(b, d), [], 'the Watchtower\'s has run out by Day 7');
   });
 
   /* ---------------------------------------------------------------- */
@@ -634,6 +689,23 @@
     var home = BR.settleVoyages(b, bdata, dice([0.5]));
     t.same(home.word.slice(0, 2), ['The cargo ship is home from Goldport.', 'Standing shipment: cargo sailed for Goldport (arrives Day 28).'], 'home and away the same day');
     t.equal(BR.goodsQty(b, 'raw_stone'), 1);
+  });
+
+  test('two standing shipments sharing one ship take turns (a review fix)', function (t) {
+    var b = bastion(4, 4);
+    var tbr = registered(b, 'timberport');
+    var gld = registered(b, 'goldport');
+    stock(b, 'raw_stone', 50);
+    BR.setSchedule(b, bdata, tbr.id, [{ goodId: 'raw_stone', qty: 1 }], dice([0.3]));
+    BR.setSchedule(b, bdata, gld.id, [{ goodId: 'raw_stone', qty: 1 }], dice([0.7]));
+    var sailed2 = [];
+    for (var d = 5; d <= 61; d++) {
+      b.day = d;
+      var before = BR.voyages(b).map(function (v) { return v.id; });
+      BR.settleVoyages(b, bdata, dice([0.5]));
+      BR.voyages(b).forEach(function (v) { if (before.indexOf(v.id) === -1) sailed2.push(d + ' ' + v.port); });
+    }
+    t.same(sailed2, ['5 timberport', '19 goldport', '33 timberport', '47 goldport', '61 timberport']);
   });
 
   test('a Dock lowered below Level 4 makes it wait; Stop ends it', function (t) {

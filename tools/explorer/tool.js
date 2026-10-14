@@ -1225,7 +1225,8 @@
             el('div', { class: 'tsi-exp-item__body' }, [
               el('div', { class: 'tsi-exp-item__name' }, [
                 el('span', { class: 'tsi-exp-status tsi-exp-status--' + st.kind, 'data-test': 'sent-status', text: LABEL[st.kind] || st.kind }),
-                ' ', el('strong', { text: m.type === 'charter' ? 'Port Charter: ' + B.portLabel(m.port) : 'Clan ' + B.clanName(m.clan) + ' ' + B.signed(m.hr) }),
+                ' ', el('strong', { text: m.type === 'charter' ? 'Port Charter: ' + B.portLabel(m.port)
+                  : B.waitsForNewer(m) ? 'A change from a newer copy of the suite' : 'Clan ' + B.clanName(m.clan) + ' ' + B.signed(m.hr) }),
                 ' · ' + dayText + (m.from && m.from.code ? ' · ' + m.from.code : '')
               ]),
               el('div', { class: 'tsi-exp-item__text', text: m.text }),
@@ -1249,6 +1250,9 @@
           if (!life.alive) return;
           bastionSeen = b;
           if (sentKey() !== sentShown) renderSent();
+          /* An open harbour box follows the Bastion too (a review fix). */
+          if (openHarbour && openHarbour.node.isConnected) openHarbour.show(b);
+          else openHarbour = null;
         }).catch(function (err) {
           TSI.reportError(err, 'reading the Bastion');
         }).then(function () { readingBastion = false; });
@@ -1312,26 +1316,31 @@
       }
       /* The harbour box in a port's town picture: Ironbow's Port Charter
          there, and the Grant button. */
+      var openHarbour = null;   /* the harbour box showing now, kept up to date by readBastion */
       function harbourBox(port) {
         var line = el('p', { class: 'tsi-exp-harbour__line', 'data-test': 'harbour-line', text: 'Checking the Bastion…' });
+        /* A second click while the dialog is opening is ignored (oneAtATime
+           gives back false then, not a promise: a review fix). */
         var grant = btn('Grant the Port Charter…', function () {
-          onCharter(port, 'pin').then(function () { if (life.alive) fill(); });
+          Promise.resolve(onCharter(port, 'pin')).then(function () { if (life.alive) fill(); });
         }, 'tsi-exp-mini', 'harbour-grant');
         grant.disabled = true;
+        function show(bastion) {
+          var st = TSI.bridge.portStatus(port, { journey: state.journey }, bastion);
+          line.textContent = 'The Ironbow\'s Port Charter: ' + st.line;
+          grant.disabled = st.kind !== 'none';
+        }
         function fill() {
-          TSI.store.fresh('tsi.bastion.state', null).then(function (bastion) {
-            if (!life.alive) return;
-            var st = TSI.bridge.portStatus(port, { journey: state.journey }, bastion);
-            line.textContent = 'The Ironbow\'s Port Charter: ' + st.line;
-            grant.disabled = st.kind !== 'none';
-          });
+          TSI.store.fresh('tsi.bastion.state', null).then(function (bastion) { if (life.alive) show(bastion); });
         }
         fill();
-        return el('div', { class: 'tsi-exp-harbour', 'data-test': 'harbour' }, [
+        var box = el('div', { class: 'tsi-exp-harbour', 'data-test': 'harbour' }, [
           el('h4', { class: 'tsi-exp-harbour__title', text: 'The harbour of ' + portTitle(port) }),
           line,
           grant
         ]);
+        openHarbour = { node: box, show: show };
+        return box;
       }
 
       /* ---------- Harry's new events: starting one by hand ---------- */

@@ -26,8 +26,11 @@
    the Hall of Emissaries registers it.
 
    A message of a kind this copy doesn't know yet (from a newer copy of the
-   suite) waits, with no receipt, rather than being refused for good; and
-   the Explorer keeps it as it is when it saves. */
+   suite) waits, with no receipt, rather than being refused for good (only
+   a Bastion starting from nothing skips it, as it skips everything sent
+   before it started). The Explorer keeps its plain fields when it saves
+   (text, numbers, true/false and who sent it), but not lists or records
+   inside it. */
 (function () {
   'use strict';
 
@@ -241,6 +244,11 @@
     if (!isObj(bastionSave)) return { kind: 'waiting', line: 'Waiting: the Bastion hasn\'t saved anything yet.' };
     var r = B.receipt(bastionSave, m && m.id);
     var charter = isObj(m) && m.type === 'charter';
+    /* A newer copy's kind of message: plain words, whatever it does. */
+    if (B.waitsForNewer(m)) {
+      if (r && r.r === 'applied') return { kind: 'applied', line: 'Applied by a newer copy of the Bastion.' };
+      if (!r) return { kind: 'waiting', line: 'Waiting for a newer copy of the Bastion (this copy doesn\'t know this kind of change).' };
+    }
     if (charter && r && r.r === 'applied') {
       var name = B.portLabel(m.port);
       var on = isWhole(r.day) ? ' on ' + (r.day >= 1 ? 'Day ' + r.day : 'a day before Day 1') : '';

@@ -493,7 +493,7 @@
 .tsi-page--bastion .tsi-bas-cargo__group .tsi-btn { align-self: flex-start; }
 .tsi-page--bastion .tsi-bas-cargo__go { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
 .tsi-page--bastion .tsi-bas-cargo__go .tsi-btn:disabled { opacity: .55; cursor: not-allowed; }
-.tsi-page--bastion .tsi-bas-cargo__rows { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; max-height: 46vh; overflow-y: auto; }
+.tsi-page--bastion .tsi-bas-cargo__rows { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; max-height: 34vh; overflow-y: auto; }
 .tsi-page--bastion .tsi-bas-cargo__row { display: grid; grid-template-columns: minmax(150px, 1fr) 80px minmax(180px, 1.4fr); align-items: center; gap: 10px; }
 .tsi-page--bastion .tsi-bas-cargo__row .tsi-bas-num:disabled { opacity: .5; }
 .tsi-page--bastion .tsi-bas-cargo__quote { display: flex; flex-direction: column; gap: 6px; padding-top: 8px; border-top: 1px solid var(--tsi-line-faint); }

@@ -293,15 +293,99 @@ async function closePanel(ba) {
     await closePanel(ba);
   });
 
-  await check('the Dock panel fits the laptop with no sideways scroll', async () => {
+  await check('the Dock panel fits the laptop with no sideways scroll, and Ship cargo… is in view as it opens', async () => {
     await openDock(ba);
-    const lay = await H.layoutCheck(ba, []);
+    const lay = await H.layoutCheck(ba, ['[data-test=ship-cargo]']);
     assert(lay.scrollWidth <= lay.clientWidth, 'sideways scroll: ' + lay.scrollWidth + ' > ' + lay.clientWidth);
-    await ba.$eval('[data-test=ship-cargo]', b => b.scrollIntoView({ block: 'nearest' }));
-    const inView = await H.layoutCheck(ba, ['[data-test=ship-cargo]']);
-    equal(inView.outOfView, [], 'Ship cargo… can be scrolled into view');
+    equal(lay.outOfView, [], 'Ship cargo… in view without scrolling');
+    const box = await ba.$eval('[data-test=ship-cargo]', b => { const r = b.getBoundingClientRect(); const f = document.querySelector('.tsi-modal__foot'); const fr = f ? f.getBoundingClientRect() : null; return { bottom: r.bottom, footTop: fr ? fr.top : 99999 }; });
+    assert(box.bottom <= box.footTop, 'not under the panel\'s footer: ' + JSON.stringify(box));
     await H.shot(ba, 'commerce-dock-laptop');
     await closePanel(ba);
+  });
+
+  /* ------------------------------------------------------------------ */
+  section('Review fixes');
+
+  await check('only Fresh Fish in the Warehouse: Ship cargo… is off, and says why', async () => {
+    await ba.evaluate(() => TSI.bastion.debug.change(s => {
+      s.tradeNetwork.voyages = [];
+      s.facilityLevels.dock = 2;
+      s.warehouse = [{ id: 'f1', goodId: 'fresh_fish', item: 'Fresh Fish', qty: 4, gp: '', notes: '' }];
+    }));
+    await openDock(ba);
+    equal(await ba.$eval('[data-test=ship-cargo]', b => b.disabled), true);
+    equal(await bare(ba, '[data-test=ship-why]'), 'None of the trade goods in the Warehouse can go to sea: Fresh Fish is for the local market.');
+    await closePanel(ba);
+  });
+
+  await check('the Ship cargo dialog: Send is off for cargo the Warehouse hasn\'t got, and it follows the Warehouse while open', async () => {
+    await ba.evaluate(() => TSI.bastion.debug.change(s => {
+      s.warehouse = [{ id: 's1', goodId: 'sawn_lumber', item: 'Sawn Lumber', qty: 1, gp: '', notes: '' }];
+    }));
+    await openDock(ba);
+    await ba.click('[data-test=ship-cargo]');
+    await ba.waitForSelector('[data-test=cargo-dialog]');
+    const send = '[data-test=cargo-dialog] .tsi-modal__foot .tsi-btn--primary';
+    equal(await ba.$eval(send, b => b.disabled), true, 'nothing chosen yet');
+    await ba.fill('[data-test=cargo-qty-sawn_lumber]', '2');
+    await ba.waitForTimeout(150);
+    equal(await bare(ba, '[data-test=cargo-problem]'), 'Needs 2 lots of Sawn Lumber in the Warehouse; it has 1 lot.');
+    equal(await ba.$eval(send, b => b.disabled), true, 'Send is off');
+    await ba.evaluate(() => TSI.bastion.debug.change(s => { s.warehouse[0].qty = 3; }));
+    await ba.waitForTimeout(200);
+    assert(/in the Warehouse: 3 lots/.test(await bare(ba, '[data-test=cargo-note-sawn_lumber]')), await bare(ba, '[data-test=cargo-note-sawn_lumber]'));
+    equal(await ba.$('[data-test=cargo-problem]'), null, 'no problem now');
+    equal(await ba.$eval(send, b => b.disabled), false, 'Send is on');
+    await ba.click('[data-test=cargo-dialog] .tsi-modal__foot button:text-is("Cancel")');
+    await ba.waitForTimeout(200);
+    await closePanel(ba);
+  });
+
+  await check('many goods on a Level 5 ship: the lot count and its problem stay in view on the laptop', async () => {
+    await ba.evaluate(() => TSI.bastion.debug.change(s => {
+      s.facilityLevels.dock = 5;
+      s.warehouse = ['preserved_fish', 'premium_seafood', 'raw_timber', 'sawn_lumber', 'construction_timber', 'premium_hardwood', 'raw_stone', 'dressed_stone', 'medicinal_herbs', 'sailcloth', 'fresh_fish']
+        .map((g, i) => ({ id: 'm' + i, goodId: g, item: g, qty: 3, gp: '', notes: '' }));
+    }));
+    await openDock(ba);
+    await ba.click('[data-test=ship-cargo]');
+    await ba.waitForSelector('[data-test=cargo-dialog]');
+    for (const g of ['preserved_fish', 'raw_timber', 'sawn_lumber', 'raw_stone', 'sailcloth']) await ba.fill('[data-test=cargo-qty-' + g + ']', '2');
+    await ba.waitForTimeout(200);
+    equal(await bare(ba, '[data-test=cargo-problem]'), 'That\'s 10 lots: a ship from a Level 5 Dock carries 5 lots.');
+    equal((await H.layoutCheck(ba, ['[data-test=cargo-room]', '[data-test=cargo-problem]', '[data-test=cargo-dialog] .tsi-modal__foot'])).outOfView, [], 'in view');
+    await H.shot(ba, 'commerce-many-goods-laptop');
+    await ba.click('[data-test=cargo-dialog] .tsi-modal__foot button:text-is("Cancel")');
+    await ba.waitForTimeout(200);
+    await closePanel(ba);
+  });
+
+  await check('the harbour box: a double-click on Grant opens one dialog with no error, and the box follows the Bastion', async () => {
+    await ex.selectOption('[data-test=map-select]', 'northern_province_west');
+    await ex.click('[data-test=load]');
+    await ex.waitForTimeout(400);
+    if (await ex.$('.tsi-modal .tsi-btn--primary')) await ex.click('.tsi-modal .tsi-btn--primary');
+    await ex.waitForTimeout(400);
+    assert(await ex.evaluate(() => TSI.explorer.debug.openPin('timberport')), 'Timberport\'s pin');
+    await ex.waitForSelector('[data-test=harbour]');
+    await ex.waitForFunction(() => !document.querySelector('[data-test=harbour-grant]').disabled, null, { timeout: 5000 });
+    assert(/Not held/.test(await bare(ex, '[data-test=harbour-line]')));
+    const before = ctx.log.errors.length;
+    await ex.dblclick('[data-test=harbour-grant]');
+    await ex.waitForSelector('[data-test=charter-dialog]');
+    await ex.waitForTimeout(400);
+    equal(ctx.log.errors.slice(before), [], 'no page error');
+    equal(await ex.$$eval('[data-test=charter-dialog]', d => d.length), 1, 'one dialog');
+    equal(await ex.$eval('[data-test=charter-port]', s => s.value), 'timberport');
+    await ex.click('[data-test=charter-dialog] .tsi-btn--primary');
+    await ex.waitForFunction(() => /waiting for the Bastion/.test(document.querySelector('[data-test=harbour-line]').textContent), null, { timeout: 5000 });
+    await ex.waitForFunction(() => /Held: register it at the Hall/.test(document.querySelector('[data-test=harbour-line]').textContent), null, { timeout: 10000 });
+    equal(await ex.$eval('[data-test=harbour-grant]', b => b.disabled), true);
+    await H.shot(ex, 'commerce-harbour-laptop');
+    await ex.click('.tsi-modal__foot button:text-is("Close")');
+    const s = await bas(ba);
+    equal(s.tradeNetwork.portCharters.map(c => c.port + ' ' + c.status), ['goldport registered', 'timberport earned']);
   });
 
   /* ------------------------------------------------------------------ */

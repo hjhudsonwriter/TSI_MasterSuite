@@ -654,9 +654,11 @@
         if (!list.length) { bridgeList.appendChild(muted('None yet.', 'tsi-bas-influence__lognone')); return; }
         list.forEach(function (r) {
           var clan = clanTitle(r.clan);
-          /* A Port Charter (pull request 5). */
-          var charter = r.type === 'charter';
-          var what = charter ? 'Port Charter: ' + R.portWithClan(data, r.port, r.clan) : clan;
+          /* A Port Charter (pull request 5). An older copy of the suite can
+             strip a receipt's kind; the Charter it made still names it. */
+          var made = r.type === 'charter' ? null : R.charterById(state, r.id);
+          var charter = r.type === 'charter' || !!made;
+          var what = charter ? 'Port Charter: ' + R.portWithClan(data, made ? made.port : r.port, made ? made.clan : r.clan) : clan;
           var head = charter
             ? (r.r === 'applied' ? what + (r.held ? ' (already held)' : '') : (r.r === 'skipped' ? 'Skipped: ' : 'Refused: ') + what)
             : r.r === 'applied'
@@ -2650,10 +2652,11 @@
         function refresh() {
           var chosen = chosenNow();
           var why = repair ? null : !avail.ok ? avail.message : fn.production ? (R.productionBusy(state, data, fac, fn) || R.recipeBlocker(state, data, fac, fn, chosen))
+            : isCharter && R.registerBusy(state, data) ? R.registerBusy(state, data)
             : isCharter && !options.length ? 'No Port Charter to register: the DM grants one in the Explorer, and each is registered once.' : null;
           issue.disabled = !!(locked || cd > 0 || repair > 0 || why);
           issue.title = repair ? repairText(fac, repair) : why || null;
-          issue.textContent = repair ? 'Under Repair' : !avail.ok ? avail.message : why && fn.production ? 'Can\'t order yet' : why && isCharter ? 'No Port Charter to register' : cd > 0 ? 'Cooldown: ' + R.daysText(cd) : 'Issue Order';
+          issue.textContent = repair ? 'Under Repair' : !avail.ok ? avail.message : why && fn.production ? 'Can\'t order yet' : why && isCharter ? (options.length ? 'One at a time' : 'No Port Charter to register') : cd > 0 ? 'Cooldown: ' + R.daysText(cd) : 'Issue Order';
           daysLine.textContent = 'Takes ' + R.daysText(R.orderDaysAt(state, data, fac, fn, chosen));
           if (goodsLine) {
             var uses = (chosen && chosen.inputs || []).map(function (x) { return R.goodsAmountText(data, x.good, x.qty) + ' (the Warehouse has ' + R.goodsCountText(data, x.good, R.goodsQty(state, x.good)) + ')'; });
@@ -3073,11 +3076,21 @@
       function cargoGoodsInStock() {
         return R.goodsList(data).filter(function (g) { return g.kind === 'cargo' && R.goodsQty(state, g.id) > 0; });
       }
+      /* Goods in stock that can sail to at least one registered port (Fresh
+         Fish can't: it's for the local market). */
+      function shippableInStock() {
+        var charters = R.registeredCharters(state);
+        return cargoGoodsInStock().filter(function (g) {
+          return charters.some(function (c) { var rt = R.portRoute(data, c.port); return rt && !R.goodShipBlocker(data, g.id, rt); });
+        });
+      }
       function cargoSection() {
         var spec = R.dockSpec(state, data);
         var needShip = R.dockLevelFor(data, 'ship');
         var needSchedule = R.dockLevelFor(data, 'schedule');
-        var why = R.dispatchBlocker(state, data) || (!cargoGoodsInStock().length ? 'There are no trade goods in the Warehouse: the Timber Yard, the Fishery and the Herbal Gardens make them.' : '');
+        var why = R.dispatchBlocker(state, data) ||
+          (!cargoGoodsInStock().length ? 'There are no trade goods in the Warehouse: the Timber Yard, the Fishery and the Herbal Gardens make them.'
+            : !shippableInStock().length ? 'None of the trade goods in the Warehouse can go to sea: Fresh Fish is for the local market.' : '');
         if (turnRunning || militaryRunning) why = why || 'Wait for the day to finish.';
         var shipBtn = btn('Ship cargo…', function () { onShipCargo(); }, 'tsi-btn--primary', 'ship-cargo', { disabled: why ? true : null, title: why || null });
         var charters = R.portCharters(state).map(function (c) {
@@ -3097,11 +3110,14 @@
             ? 'sold ' + R.cargoText(data, x.cargo) + ' for ' + x.net + ' gp'
             : 'turned back with ' + R.cargoText(data, x.cargo) + ' (rolled ' + x.roll + ' against ' + x.chance + ' in 100); nothing sold'));
         });
+        var every = R.clampInt(R.commerce(data).scheduleEvery, 1, 365);
         var canSchedule = spec.schedule && R.registeredCharters(state).length > 0 && !turnRunning && !militaryRunning;
+        /* Ship cargo… first, so it's in view on the laptop however long the lists get (a review fix). */
         return el('div', { class: 'tsi-bas-facpanel__cargo', 'data-test': 'dock-cargo' }, [
           label('Cargo and Port Charters'),
-          muted(spec.lots ? 'Level ' + spec.level + ': each ship carries up to ' + plural(spec.lots, 'lot') + ', ' + plural(spec.ships, 'ship') + ' at sea at once' + (spec.schedule ? ', and standing shipments can sail every ' + plural(R.clampInt(R.commerce(data).scheduleEvery, 1, 365), 'day') : '') + '. Cargo is paid when it sells at the port; if there\'s trouble at sea, nothing sells and the cargo comes home.'
+          muted(spec.lots ? 'Level ' + spec.level + ': each ship carries up to ' + plural(spec.lots, 'lot') + ', ' + plural(spec.ships, 'ship') + ' at sea at once' + (spec.schedule ? ', and a standing shipment can be set to sail every ' + plural(every, 'day') + ' (each sailing waits until a ship is home)' : '') + '. Cargo is paid when it sells at the port; if there\'s trouble at sea, nothing sells and the cargo comes home.'
             : 'The Dock sends cargo from Level ' + (needShip || '?') + ' (it\'s Level ' + spec.level + ').'),
+          el('div', { class: 'tsi-bas-cargo__go' }, [shipBtn, why ? el('span', { class: 'tsi-bas-muted', 'data-test': 'ship-why', text: why }) : null]),
           el('div', { class: 'tsi-bas-cargo__group' }, [el('b', { text: 'Port Charters' }), charters.length ? el('ul', { class: 'tsi-bas-res-list' }, charters) : muted('None held yet: the DM grants one in the Explorer.')]),
           el('div', { class: 'tsi-bas-cargo__group' }, [el('b', { text: 'Ships at sea' }), ships.length ? el('ul', { class: 'tsi-bas-res-list', 'data-test': 'voyages' }, ships) : muted('None.')]),
           spec.schedule || standing.length ? el('div', { class: 'tsi-bas-cargo__group' }, [
@@ -3109,14 +3125,17 @@
             standing.length ? el('ul', { class: 'tsi-bas-res-list', 'data-test': 'schedules' }, standing) : muted('None.'),
             spec.schedule ? btn('Set up a standing shipment…', function () { onSchedule(); }, '', 'set-schedule', { disabled: canSchedule ? null : true }) : muted('Standing shipments need the Dock at Level ' + needSchedule + '.')
           ]) : null,
-          el('div', { class: 'tsi-bas-cargo__go' }, [shipBtn, why ? el('span', { class: 'tsi-bas-muted', 'data-test': 'ship-why', text: why }) : null]),
           sales.length ? el('div', { class: 'tsi-bas-cargo__group' }, [el('b', { text: 'Recent sales' }), el('ul', { class: 'tsi-bas-res-list', 'data-test': 'sales' }, sales)]) : null
         ]);
       }
       /* The cargo picker, for Ship cargo… (only what's in the Warehouse) and a
-         standing shipment (any trade good: each sailing waits for its goods). */
+         standing shipment (any trade good: each sailing waits for its goods).
+         It follows the Bastion as it is now: a day passing underneath it
+         updates the counts, the days and whether a ship is free (livePicker,
+         from renderAll). Its main button is off while the rules would refuse
+         the cargo, with the reason next to the lot count (review fixes). */
+      var livePicker = null;
       function cargoPicker(mode) {
-        var spec = R.dockSpec(state, data);
         var charters = R.registeredCharters(state);
         var portSel = el('select', { class: 'tsi-input', 'aria-label': 'Port', 'data-test': 'cargo-port' }, charters.map(function (c) {
           return el('option', { value: c.id, text: R.charterLabel(data, c) });
@@ -3125,74 +3144,101 @@
         var counts = {};
         var notes = {};
         var rows = goods.map(function (g) {
-          var have = R.goodsQty(state, g.id);
-          var max = mode === 'ship' ? Math.min(have, spec.lots) : spec.lots;
-          var input = numberInput('cargo-qty-' + g.id, { min: '0', max: String(max), value: '0', 'aria-label': g.name + ' (lots)' });
+          var input = numberInput('cargo-qty-' + g.id, { min: '0', value: '0', 'aria-label': g.name + ' (lots)' });
           counts[g.id] = input;
-          notes[g.id] = { el: el('span', { class: 'tsi-bas-muted', 'data-test': 'cargo-note-' + g.id }), text: (mode === 'ship' ? 'in the Warehouse: ' + R.goodsCountText(data, g.id, have) + ' · ' : '') + g.gp + ' gp a lot' };
+          notes[g.id] = el('span', { class: 'tsi-bas-muted', 'data-test': 'cargo-note-' + g.id });
           return el('div', { class: 'tsi-bas-cargo__row', 'data-test': 'cargo-row-' + g.id }, [
             el('span', { class: 'tsi-bas-cargo__name', text: g.name }),
             input,
-            notes[g.id].el
+            notes[g.id]
           ]);
         });
+        var already = el('div', { class: 'tsi-bas-muted', 'data-test': 'schedule-already', hidden: true });
         var quote = el('div', { class: 'tsi-bas-cargo__quote', 'data-test': 'cargo-quote' });
+        var mainBtn = null;
         function read() {
           return {
             charterId: portSel.value,
             picks: goods.map(function (g) { return { goodId: g.id, qty: R.clampInt(counts[g.id].value, 0, 1000) }; }).filter(function (x) { return x.qty > 0; })
           };
         }
+        /* A standing shipment to a port that has one already starts from its cargo. */
+        function prefill() {
+          if (mode !== 'schedule') return;
+          var sc = R.schedules(state).filter(function (x) { return x.charterId === portSel.value; })[0];
+          goods.forEach(function (g) {
+            var lot = sc ? sc.lots.filter(function (x) { return x.goodId === g.id; })[0] : null;
+            counts[g.id].value = String(lot ? lot.qty : 0);
+          });
+          already.hidden = !sc;
+          already.textContent = sc ? R.portName(sc.port) + ' already has a standing shipment (' + R.cargoText(data, sc.lots) + '): setting this one up changes it.' : '';
+        }
         function update() {
+          var spec = R.dockSpec(state, data);
           var r = read();
           var c = R.charterById(state, r.charterId);
           var route = c ? R.portRoute(data, c.port) : null;
           TSI.clear(quote);
-          /* A good that can't go on this route (Fresh Fish) says why. */
+          /* Each good's note, from the Warehouse as it is now; a good that
+             can't go on this route (Fresh Fish) says why. */
           goods.forEach(function (g) {
+            var have = R.goodsQty(state, g.id);
             var bad = route ? R.goodShipBlocker(data, g.id, route) : '';
             counts[g.id].disabled = !!bad;
+            counts[g.id].max = String(mode === 'ship' ? Math.min(have, spec.lots) : spec.lots);
             if (bad) counts[g.id].value = '0';
-            notes[g.id].el.textContent = bad || notes[g.id].text;
+            notes[g.id].textContent = bad || (mode === 'ship' ? 'in the Warehouse: ' + R.goodsCountText(data, g.id, have) + ' · ' : '') + g.gp + ' gp a lot';
           });
           r = read();
           var total = r.picks.reduce(function (n, x) { return n + x.qty; }, 0);
-          var problem = c ? R.cargoBlocker(state, data, c, r.picks) : 'Choose a port.';
+          var lots = r.picks.map(function (x) { return { good: x.goodId, qty: x.qty }; });
+          var problem = !c ? 'Choose a port.'
+            : mode === 'ship' ? (R.dispatchBlocker(state, data) || R.cargoBlocker(state, data, c, r.picks) || (R.inputsShort(state, data, lots) || {}).message || '')
+            : (!spec.schedule ? 'Standing shipments need the Dock at Level ' + (R.dockLevelFor(data, 'schedule') || '?') + '.' : R.cargoBlocker(state, data, c, r.picks));
           var lines = [el('div', { 'data-test': 'cargo-room' }, 'Chosen: ' + plural(total, 'lot') + ' of ' + spec.lots + ' (a Level ' + spec.level + ' ship).')];
+          if (problem) lines.push(el('div', { class: 'tsi-bas-repair-text', 'data-test': 'cargo-problem', text: problem }));
           if (c && route && r.picks.length) {
             var q = R.cargoQuote(data, c, c.port, c.clan, r.picks);
             lines.push(el('ul', { class: 'tsi-bas-res-list' }, q.lines.map(function (l) { return el('li', { text: R.quoteLineText(l) }); })));
             lines.push(el('div', { 'data-test': 'cargo-net' }, R.quoteCostsText(q) + '.'));
             lines.push(muted(mode === 'ship'
               ? 'At today\'s prices: the price is worked out when it arrives (' + R.dayLabel(state.day + route.outDays) + '). The ship is home ' + R.dayLabel(state.day + route.outDays + route.backDays) + '. Voyage risk: ' + route.riskLabel + ' (' + R.voyageChance(route.pct, R.voyageProtections(state, data)) + ' in 100): if there\'s trouble, nothing sells and the cargo comes home with the ship.'
-              : 'Each sailing takes these lots from the Warehouse, and waits if they aren\'t all there. Voyage risk: ' + route.riskLabel + ' (' + route.pct + ' in 100).'));
+              : 'Each sailing takes these lots from the Warehouse, and waits if they aren\'t all there or the ship isn\'t home. Voyage risk: ' + route.riskLabel + ' (' + route.pct + ' in 100).'));
           }
-          if (problem && r.picks.length) lines.push(el('div', { class: 'tsi-bas-repair-text', 'data-test': 'cargo-problem', text: problem }));
           TSI.append(quote, lines);
+          if (mainBtn) { mainBtn.disabled = !!problem; mainBtn.title = problem || ''; }
         }
-        portSel.addEventListener('change', update);
+        portSel.addEventListener('change', function () { prefill(); update(); });
         goods.forEach(function (g) { counts[g.id].addEventListener('input', update); });
+        prefill();
         update();
         var body = [
           field('Port', portSel),
+          already,
           goods.length ? el('div', { class: 'tsi-bas-cargo__rows' }, rows) : muted('There are no trade goods in the Warehouse.'),
           quote
         ];
-        return { body: body, read: read };
+        return {
+          body: body, read: read, update: update,
+          /* The pop-up's main button, once it shows. */
+          hold: function (dialog) { mainBtn = dialog.querySelector('.tsi-modal__foot .tsi-btn--primary'); update(); }
+        };
       }
       var onShipCargo = TSI.oneAtATime(async function () {
         if (turnRunning || militaryRunning) return;
         var why = R.dispatchBlocker(state, data);
         if (why) { await say(why); return; }
         var picker = cargoPicker('ship');
+        livePicker = picker;
         var ok = await plainModal({
           title: 'Ship cargo',
           className: 'tsi-bas-modal tsi-bas-modal--cargo',
           body: picker.body,
           escValue: false,
           actions: [{ label: 'Cancel', value: false }, { label: 'Send the ship', value: true, primary: true }],
-          onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'cargo-dialog'); }
+          onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'cargo-dialog'); picker.hold(parts.dialog); }
         });
+        livePicker = null;
         if (!ok || !life.alive || turnRunning || militaryRunning) return;
         var pick = picker.read();
         var res = R.dispatchCargo(state, data, pick.charterId, pick.picks, rand);
@@ -3203,14 +3249,16 @@
       var onSchedule = TSI.oneAtATime(async function () {
         if (turnRunning || militaryRunning) return;
         var picker = cargoPicker('schedule');
+        livePicker = picker;
         var ok = await plainModal({
           title: 'Standing shipment',
           className: 'tsi-bas-modal tsi-bas-modal--cargo',
-          body: [muted('The same cargo sails every ' + plural(R.clampInt(R.commerce(data).scheduleEvery, 1, 365), 'day') + ', starting tomorrow, whenever a ship, the goods and the room are there. One standing shipment for each port: setting one up again changes it.')].concat(picker.body),
+          body: [muted('The same cargo sails every ' + plural(R.clampInt(R.commerce(data).scheduleEvery, 1, 365), 'day') + ', starting tomorrow, whenever a ship is home and the goods and the room are there. With one ship, that\'s every ' + plural(R.clampInt(R.commerce(data).scheduleEvery, 1, 365), 'day') + ' at most, and less often when the voyage takes longer. One standing shipment for each port.')].concat(picker.body),
           escValue: false,
           actions: [{ label: 'Cancel', value: false }, { label: 'Set up', value: true, primary: true }],
-          onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'schedule-dialog'); }
+          onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'schedule-dialog'); picker.hold(parts.dialog); }
         });
+        livePicker = null;
         if (!ok || !life.alive || turnRunning || militaryRunning) return;
         var pick = picker.read();
         var res = R.setSchedule(state, data, pick.charterId, pick.picks, rand);
@@ -3483,7 +3531,7 @@
         if (res.applied.length) {
           notice('From the Explorer: ' + res.applied.join(' ') + (res.applied.length === 1 ? ' Clan Influence lists it.' : ' Clan Influence lists them.'), { type: 'info', title: 'Honour/Respect.', id: 'tsi-bas-bridge', timeout: 12000 });
         } else if (res.refused) {
-          notice('A change from the Explorer couldn\'t be used, so nothing changed. Clan Influence says why.', { type: 'warn', title: 'Honour/Respect.', id: 'tsi-bas-bridge', timeout: 12000 });
+          notice('A change from the Explorer couldn\'t be used, so nothing changed. Clan Influence says why.', { type: 'warn', title: 'From the Explorer.', id: 'tsi-bas-bridge', timeout: 12000 });
         }
       }
       function renderTurnButton() {
@@ -4294,6 +4342,8 @@
         renderArtisan();
         renderFacilities();
         renderPanel();
+        /* An open Ship cargo or Standing shipment pop-up follows the Bastion. */
+        if (livePicker) livePicker.update();
         /* The At War tags, straight away (the watcher would add them a moment later). */
         tagAll();
       }

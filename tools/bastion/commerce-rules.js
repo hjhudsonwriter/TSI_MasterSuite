@@ -180,6 +180,14 @@
   R.registrableCharters = function (s) {
     return R.portCharters(s).filter(function (c) { return c.status === 'earned' && !R.registerOrderFor(s, c.id); });
   };
+  /* The Hall registers one Charter at a time: why another can't start now,
+     or ''. */
+  R.registerBusy = function (s, data) {
+    var o = (s.pendingOrders || []).filter(function (x) { return isObj(x) && x.fnId === 'register_port_charter'; })[0];
+    if (!o) return '';
+    var c = isObj(o.chosen) ? R.charterById(s, o.chosen.charterId) : null;
+    return 'The Hall registers one Port Charter at a time: ' + (c ? R.portName(c.port) + '\'s' : 'one') + ' is ready on ' + R.dayLabel(o.dueDay) + '.';
+  };
   R.registeredCharters = function (s) { return R.portCharters(s).filter(function (c) { return c.status === 'registered'; }); };
   /* A Charter's state in plain words: "Registered on Day 12", "Being
      registered at the Hall (ready Day 12)", "Earned on Day 9: register it
@@ -356,6 +364,17 @@
     return '';
   };
 
+  /* A voyage's id: never one a ship at sea or a sale receipt already has
+     (a receipt with its id means "already settled"). */
+  function uniqueId(s, rand) {
+    var taken = {};
+    R.voyages(s).forEach(function (v) { taken[v.id] = true; });
+    R.cargoSales(s).forEach(function (x) { taken[x.id] = true; });
+    var id = R.uid(rand);
+    for (var n = 2; taken[id]; n++) id = R.uid(rand) + '-' + n;
+    return id;
+  }
+
   /* Send a ship (the DM's Ship cargo, or a standing shipment). Everything is
      checked against the Bastion as it is now; a refusal changes nothing.
      The lots leave the Warehouse, all or nothing, and the voyage holds them.
@@ -379,7 +398,7 @@
       if (p.consumes && isObj(ready[p.id]) && isNum(ready[p.id].charges)) ready[p.id].charges = Math.max(0, ready[p.id].charges - 1);
     });
     var v = {
-      id: R.uid(rand),
+      id: uniqueId(s, rand),
       port: charter.port,
       clan: charter.clan,
       charterId: charter.id,
@@ -492,8 +511,9 @@
       out.changed = true;
     }
     /* Standing shipments due: sail if they can, otherwise wait (said once
-     for each new reason). */
-    R.schedules(s).forEach(function (sc) {
+     for each new reason). The one that has waited longest goes first, so
+     two sharing one ship take turns (a review fix). */
+    R.schedules(s).slice().sort(function (a, b) { return a.nextDay - b.nextDay; }).forEach(function (sc) {
       if (sc.nextDay > s.day) return;
       var spec = R.dockSpec(s, data);
       var res = spec.schedule ? R.dispatchCargo(s, data, sc.charterId, sc.lots, rand, { scheduleId: sc.id })

@@ -314,9 +314,15 @@ These come from checking the eight tools against each other: the collision audit
 - **Before (pull request 4):** the link carried one kind of message, a change of 1 in a Clan's Honour/Respect. A message of any other kind was refused for good, with a receipt.
 - **After:**
   - **A second kind: the Port Charter** the DM grants in the Explorer (EXP-39), with its port and that port's Clan. The Bastion holds it once, with its receipt in the same save (BAS-84). The ports are in one shared list, `shared/data/ports.js`, which the Explorer, the link and the Bastion all read.
-  - **A kind this copy doesn't know** (say, from a newer copy of the suite) waits, with no receipt, instead of being refused for good; the Explorer keeps it as it is when it saves. So trying a newer copy and going back never loses anything or counts it twice. A damaged message is still refused.
+  - **A kind this copy doesn't know** (say, from a newer copy of the suite) waits, with no receipt, instead of being refused for good, so it is never counted twice. The Explorer's Sent to the Bastion calls it "A change from a newer copy of the suite" and says it's waiting for a newer copy of the Bastion. When the Explorer saves, it keeps the message's plain fields (text, numbers, true/false and who sent it), but not lists or records inside it. A Bastion starting from nothing skips it like everything else sent before it started, and the Day Log says "a message from a newer copy of the suite" (not Honour/Respect). A damaged message is still refused.
   - **Unchanged:** Honour/Respect messages and their receipts are exactly as in pull request 4, byte for byte.
-- **Older copies (SUI-19):** a pull request 4 copy opening these saves refuses a waiting Port Charter (the DM grants it again from the newer copy), keeps the Bastion's Charters, ships and sales as they are without using them, and pays nothing. Back up before trying another copy.
+- **Older copies (SUI-19):** a pull request 4 copy opening these saves pays nothing and counts nothing twice, but (checked by the review, 14 October 2026):
+  - it refuses a waiting Port Charter (grant it again from this copy);
+  - it keeps the Bastion's Charters, ships at sea and sales as they are, without using them;
+  - a **Register Port Charter order** falling due while it's open is dropped with no message: the Charter is still held, so issue the order again (it's free);
+  - it strips the port from Charter messages and receipts: the Explorer's Sent list may then say "Unknown port". Clan Influence still names the port, from the Charter itself.
+
+  Back up before trying another copy.
 - **Evidence:** `shared/js/bridge-rules.js` (`charterMessage`, `check`, `clean`, `waitsForNewer`, `statusOf`, `portStatus`), `shared/data/ports.js`; tests in `tests/rules/commerce.test.js`.
 
 ## Combat Tracker & VTT Battlemap
@@ -1217,6 +1223,7 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
   - A port can't be granted while its Charter is on its way or held (the Bastion's save is read fresh first, and again after you press Grant). After a refusal or a skip it can be granted again.
   - The message's id is a new random id from the browser's crypto, never the dice, so the seeded tests replay exactly. **Sent to the Bastion** lists it as "Port Charter: Goldport", Waiting then Applied.
 - **Not in this pull request:** a harbourmaster's roll or negotiation, events that grant a Charter, and the hidden port pins (Steelport, Moltenport, Redport, Port Brawdlyn).
+- **The review's fixes (14 October 2026):** a double-click on the harbour box's Grant no longer brings up the red "Something went wrong" bar, and an open harbour box follows the Bastion (it changes from "waiting" to "Held" by itself).
 - **Evidence:** `tools/explorer/journey.js` (`grantCharter`), `tools/explorer/tool.js` (`charterDialog`, `harbourBox`, `openPlace`, `renderSent`); tests in `tests/rules/commerce.test.js` and `tests/e2e/commerce.test.js`.
 
 ### EXP-40 · A two-line notice in the Travel panel ran over the hero pills
@@ -2135,6 +2142,13 @@ None of these reached Harry.
   - **Where it shows:** the Day Log, "The Ironbow sends word…", the Dock's Recent sales (the last 5; the save keeps 30) and the Hall's Port Charters box. The Explorer's word and the DM doc say when a ship arrives or is home, never what it sells for.
   - **Kept apart from the old trade:** the Hall's agreements, sea routes, Market Stability, investments, Expected Income / Week and the Council Ledger are unchanged; cargo never enters the old route list (`legacy_abstract`), and the new risk applies only to cargo voyages (`commodity_backed`).
   - **Every number** is in `tools/bastion/data/commerce-data.js`.
+- **The review's fixes (14 October 2026):**
+  - two standing shipments sharing one ship take turns (before, the second never sailed);
+  - two ships sailing in the same moment can never share an id (a receipt with the same id would have counted the second as already sold);
+  - Ship cargo… sits at the top of the section, in view as the panel opens on the laptop;
+  - Ship cargo… is off, saying why, when the only trade goods are Fresh Fish;
+  - in the Ship cargo and Standing shipment pop-ups, the main button is off while the rules would refuse the cargo (none chosen, too many for the ship, or more than the Warehouse holds), with the reason beside the lot count, and the pop-up follows the Bastion if a day passes underneath it;
+  - setting up a standing shipment for a port that has one starts from its cargo.
 - **Evidence:** `tools/bastion/commerce-rules.js` (`dispatchCargo`, `settleVoyages`, `cargoQuote`, `setSchedule`, the cleaners and `shiftCommerce`), `tools/bastion/tool.js` (`runDay`'s trade step, `cargoSection`, `cargoPicker`), `shared/js/campaign-rules.js` (`bastionComing`); tests in `tests/rules/commerce.test.js` and `tests/e2e/commerce.test.js`.
 
 ### BAS-84 · Port Charters at the Bastion and the Hall's Register Port Charter
@@ -2143,9 +2157,10 @@ None of these reached Harry.
 - **Before:** there were no Port Charters.
 - **After:**
   - **Held once.** A Port Charter from the Explorer (EXP-39, SUI-32) is applied once, like a change of Honour/Respect: it becomes **earned**, with its receipt saved in the same write. One per port: a second for a port already held changes nothing and says so. A notice says so, the Day Log keeps it, and **Changes from the Explorer** in Clan Influence lists it. A Bastion that starts from nothing skips Charters sent before it, as it does other changes (pull request 4's rule, kept), and lists them; the DM can grant again.
-  - **Registered once.** The Hall of Emissaries' **Register Port Charter** (Level 2; 3 days; no gold; no roll) picks from the earned Charters. One runs at a time. When it completes, the Charter is **registered** and the Dock can ship there; a second registration changes nothing. Cancel, or demolishing the Hall, leaves it earned. Nothing goes into the Warehouse.
+  - **Registered once.** The Hall of Emissaries' **Register Port Charter** (Level 2; 3 days; no gold; no roll) picks from the earned Charters. One runs at a time: with a second Charter waiting, its button says "One at a time" and why (whose is being registered, and when it's ready). When it completes, the Charter is **registered** and the Dock can ship there; a second registration changes nothing. Cancel, or demolishing the Hall, leaves it earned. Nothing goes into the Warehouse.
   - The Hall's trade area has a **Port Charters** box with each Charter's state and its ships at sea. It says cargo isn't in Expected Income / Week, which still counts the old sea routes only.
   - The forecast says "Register Port Charter (…) is complete", never "needs your roll".
+  - A Port Charter the Bastion refuses gives a notice titled "From the Explorer." (not "Honour/Respect.").
 - **Evidence:** `tools/bastion/rules.js` (`R.applyInbox`, `R.cleanBridge`, `R.fnOptions`, `R.issueOrder`, `R.completeSimpleOrder`), `tools/bastion/commerce-rules.js` (`addCharter`, `completeCharterRegistration`, `cleanPortCharters`), `tools/bastion/data/facilities-data.js` (`register_port_charter`), `tools/bastion/tool.js` (`portChartersBox`, `renderBridge`, `tellSettled`); tests as BAS-83.
 
 ### BAS-85 · Commodity trade's limits and open choices

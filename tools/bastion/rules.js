@@ -536,15 +536,20 @@
     }
     if (s.bridge.fresh) {
       var charters = 0;
+      var newer = 0;
       B.outbox(explorerSave).forEach(function (m) {
         if (Object.prototype.hasOwnProperty.call(done, m.id)) return;
         receipt(m, 'skipped', Object.assign(charterExtra(m), { why: 'Sent before this Bastion started.' }));
         if (m.type === 'charter') charters += 1;
+        else if (B.waitsForNewer && B.waitsForNewer(m)) newer += 1;
         out.skipped += 1;
       });
       s.bridge.fresh = false;
       out.changed = true;
-      var standing = out.skipped - charters;
+      var standing = out.skipped - charters - newer;
+      if (newer) {
+        R.log(s, 'From the Explorer', newer + (newer === 1 ? ' message' : ' messages') + ' from a newer copy of the suite, sent before this Bastion started, ' + (newer === 1 ? 'was' : 'were') + ' skipped, so nothing counts twice.', at);
+      }
       if (standing) {
         R.log(s, 'From the Explorer', standing + (standing === 1 ? ' change' : ' changes') + ' to Honour/Respect, sent before this Bastion started, ' + (standing === 1 ? 'was' : 'were') + ' skipped, so nothing counts twice. Clan Influence lists ' + (standing === 1 ? 'it, to type in by hand if it should count.' : 'them, to type in by hand if they should count.'), at);
       }
@@ -1391,6 +1396,8 @@
     if (broken) return broken;
     var avail = R.fnAvailable(s, fac, fn);
     if (!avail.ok) return { ok: false, message: avail.message };
+    /* Register Port Charter: one at a time, and it says whose is running. */
+    if (fn.portCharter && R.registerBusy && R.registerBusy(s, data)) return { ok: false, message: R.registerBusy(s, data) };
     if (pendingSame(s, facId, fnId)) return { ok: false, message: 'That order is already pending.' };
     var busy = productionBusy(s, data, fac, fn);
     if (busy) return { ok: false, message: busy };
