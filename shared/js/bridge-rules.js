@@ -469,6 +469,34 @@
     if (isWhole(p.readyDay) && today !== null && p.readyDay <= today) return view('due', 'Due at ' + town + ': the Bastion records its arrival when it reaches ' + dayText(p.readyDay) + '.');
     return view('on_road', 'On the road: due at ' + town + (isWhole(p.readyDay) ? ' on ' + dayText(p.readyDay) : '') + '.');
   };
+  /* The parcels the Explorer lists: its From the Ironbow list (every town),
+     or a town's courier post (point given). [{ parcel, view }]: every
+     parcel still open (on the road, due, waiting, or coming home), and one
+     closed on the Explorer's day or the day before (collected, or back at
+     the Ironbow), so the party sees what has just happened. Waiting ones
+     first, then due, on the road, coming home and closed, each by its day. */
+  B.SHOWN_ORDER = ['waiting', 'due', 'on_road', 'returning', 'collected', 'returned'];
+  B.parcelsShown = function (bastionSave, explorerSave, point) {
+    var tr = isObj(explorerSave) && isObj(explorerSave.travel) ? explorerSave.travel : {};
+    var today = isWhole(tr.day) ? tr.day : 1;
+    var sent = {};
+    B.outbox(explorerSave).forEach(function (m) { sent[m.id] = m; });
+    return B.parcels(bastionSave).filter(function (p) {
+      return !point || p.point === point;
+    }).map(function (p, i) {
+      var view = B.parcelView(p, explorerSave);
+      var m = sent[B.collectId(p.id)];
+      var closed = view.kind === 'collected' ? (m && isWhole(m.day) ? m.day : p.collectedDay)
+        : view.kind === 'returned' ? p.returnDay : null;
+      var when = view.kind === 'returning' ? p.returnDay : closed !== null ? closed : p.readyDay;
+      return { parcel: p, view: view, closed: closed, when: isWhole(when) ? when : 0, i: i };
+    }).filter(function (x) {
+      if (x.view.kind !== 'collected' && x.view.kind !== 'returned') return true;
+      return isWhole(x.closed) && x.closed >= today - 1;
+    }).sort(function (a, b) {
+      return (B.SHOWN_ORDER.indexOf(a.view.kind) - B.SHOWN_ORDER.indexOf(b.view.kind)) || (a.when - b.when) || (a.i - b.i);
+    }).map(function (x) { return { parcel: x.parcel, view: x.view }; });
+  };
 
   TSI.bridge = B;
 }());

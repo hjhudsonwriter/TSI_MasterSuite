@@ -740,6 +740,27 @@
     t.same(Bg.parcels({ tradeNetwork: { parcels: [{ id: 'x' }, 'junk', { id: 'abcdefg', point: 'bretan', status: 'ready', goods: 'bad' }] } }).map(function (p) { return [p.id, p.goods]; }), [['abcdefg', []]]);
   });
 
+  test('parcelsShown(): what the Explorer lists: every open parcel, waiting ones first, and closed ones only on their day or the day after', function (t) {
+    var x = everyState();
+    var save = copy(BR.toSave(x.b));
+    function ids(list) { return list.map(function (r) { return r.parcel.id; }); }
+    function kinds(list) { return list.map(function (r) { return r.view.kind; }); }
+    var day14 = Bg.parcelsShown(save, ER.toSave(explorer(14)));
+    t.same(ids(day14), [x.rdy.id, x.road.id, x.back.id], 'collected on Day 12 and home on Day 11: gone by Day 14');
+    t.same(kinds(day14), ['waiting', 'on_road', 'returning']);
+    t.same(day14[0].view, Bg.parcelView(Bg.parcels(save)[2], ER.toSave(explorer(14))), 'the same words as parcelView');
+    t.same(ids(Bg.parcelsShown(save, ER.toSave(explorer(13)))), [x.rdy.id, x.road.id, x.back.id, x.col.id], 'collected yesterday: still shown');
+    t.same(ids(Bg.parcelsShown(save, ER.toSave(explorer(12)))), [x.rdy.id, x.road.id, x.back.id, x.col.id, x.ret.id]);
+    t.same(ids(Bg.parcelsShown(save, ER.toSave(explorer(13)), 'slades_muster')), [x.rdy.id, x.col.id], 'one town\'s courier post');
+    t.same(Bg.parcelsShown(save, ER.toSave(explorer(13)), 'bleakharbour'), []);
+    t.same(kinds(Bg.parcelsShown(save, ER.toSave(explorer(24)))), ['waiting', 'due', 'returning'], 'due once the Explorer reaches the day');
+    var e = explorer(14);
+    t.equal(J.collectParcel(e, x.rdy.id, 'slades_muster', save, {}).ok, true);
+    var after = Bg.parcelsShown(save, ER.toSave(e));
+    t.same([ids(after), kinds(after)], [[x.road.id, x.back.id, x.rdy.id], ['on_road', 'returning', 'collected']], 'collected in the Explorer: shown as collected before the Bastion knows');
+    t.same([Bg.parcelsShown(null, ER.toSave(e)), Bg.parcelsShown(undefined, null)], [[], []]);
+  });
+
   /* ---------------------------------------------------------------- */
   group('Courier Exchange: the Explorer collects a parcel (journey.js)');
 
