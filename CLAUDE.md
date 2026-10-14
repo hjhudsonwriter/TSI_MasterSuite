@@ -15,7 +15,7 @@ About Harry (the owner)
 Harry is the author and designer, not a developer.
 
 Explain things in plain English. If a technical term is unavoidable, say what it means in a few words.
-End every session with a tickbox checklist Harry can follow to test the work himself by clicking through it.
+End every session with a tickbox checklist Harry can follow to test the work himself by clicking through it. Put a direct download link to the branch's ZIP at the top of every checklist: https://github.com/hjhudsonwriter/TSI_MasterSuite/archive/refs/heads/<branch>.zip (with the real branch name), so he can download it in one click.
 Ask rather than guess on game rules, lore or what a tool should do.
 UK English throughout. Spell every Scarlett Isles name (gods, clans, provinces, places, NPCs, items) exactly as it appears in the source.
 Current phase: faithful rebuild
@@ -118,5 +118,5 @@ Before finishing:
 Update docs/PROGRESS.md with what's done, what's next, and open questions for Harry.
 Update docs/KNOWN_ISSUES.md.
 Open a pull request.
-Give Harry his tickbox test checklist.
+Give Harry his tickbox test checklist, with the branch's direct ZIP download link at the top.
 Never call a tool finished if it's only a link or a placeholder, is missing content, or doesn't save what the original saved.
