@@ -91,9 +91,11 @@ window.TSI_DATA.tools = [
         'tools/bastion/data/goods-data.js',
         'tools/bastion/data/commerce-data.js',
         'tools/bastion/data/courier-data.js',
+        'tools/bastion/data/creatures-data.js',
         'tools/bastion/rules.js',
         'tools/bastion/commerce-rules.js',
         'tools/bastion/courier-rules.js',
+        'tools/bastion/creature-rules.js',
         'tools/bastion/war-table-rules.js',
         'tools/bastion/war-battle-rules.js',
         'tools/bastion/war-ai.js',
@@ -128,6 +130,9 @@ window.TSI_DATA.tools = [
         'tools/explorer/data/journey-events.js',
         'tools/explorer/data/fights-data.js',
         'tools/explorer/data/terrain-data.js',
+        /* The Bastion's creatures (pull request 7): the kinds the DM can
+           grant in the Explorer, and their names. */
+        'tools/bastion/data/creatures-data.js',
         'tools/explorer/rules.js',
         'tools/explorer/journey.js',
         'tools/explorer/fights.js',

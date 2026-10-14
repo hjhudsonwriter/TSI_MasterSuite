@@ -189,7 +189,12 @@
          counts twice. fresh: a Bastion starting from nothing, which skips
          (and lists) the Explorer's earlier changes rather than applying
          them on top of values typed in by hand. */
-      bridge: { fresh: true, done: {} }
+      bridge: { fresh: true, done: {} },
+      /* The creatures (pull request 7, 14 October 2026): each real, named
+         animal the Ironbow keeps (Elara's wyvern, and the griffins and dire
+         wolves the DM grants in the Explorer), as R.cleanCreatures keeps
+         them. The Menagerie's beasts stay in defenderBeasts. */
+      creatures: []
     };
     s.v = 3;
     R.ensureLevels(s, data);
@@ -420,6 +425,8 @@
     d.migration = isObj(s.migration) ? s.migration : null;
     d.research = R.cleanResearch(s.research, data);
     d.bridge = R.cleanBridge(s.bridge);
+    /* The creatures (pull request 7), before the war's records, which read them. */
+    d.creatures = R.cleanCreatures(s.creatures, d.day);
     if (arr(s.militaryActions)) d.militaryActions = s.militaryActions.filter(isObj);
     /* Port Charters, ships at sea, standing shipments and sales (pull
        request 5, commerce-rules.js). */
@@ -485,6 +492,55 @@
         }
       });
     }
+    return out;
+  };
+
+  /* ---------- The creatures (pull request 7, Harry's answers of 14 October 2026) ----------
+     s.creatures: each real, named animal the Ironbow keeps, { id, species,
+     owner, name, status, home, grantedDay, housedDay, msgId }, always in this
+     order, so loading a save twice gives the same save:
+     - id: 'elara_wyvern' for Elara's wyvern (creatures-data.js unique); for a
+       griffin or dire wolf the DM granted, made from the Explorer message's
+       id (R.creatureIdFor), so it is the same every time and never shared;
+     - species: 'wyvern', 'griffin' or 'dire_wolf' (one this copy doesn't
+       know is kept, never dropped, and shown as unknown);
+     - owner: 'elara' (the Explorer's hero) for her wyvern, '' for the
+       Ironbow's own;
+     - name: as the DM typed it (at most 40 letters), or '' (then the data's
+       name, or "Griffin (granted Day 5)");
+     - status: 'waiting' (granted, with no home yet) or 'housed';
+     - home: the facility that houses it ('' while waiting). A creature
+       stays housed, and keeps its home, if that building is demolished;
+     - grantedDay, housedDay: Explorer days (housedDay null while waiting);
+     - msgId: the Explorer message that granted it ('' for Elara's wyvern).
+     The cleaner lives here, not in creature-rules.js, because a top-level
+     field R.fromSave doesn't know is dropped, and this file is always
+     loaded (the Explorer loads it to check a campaign file). */
+  R.CREATURE_KEYS = ['id', 'species', 'owner', 'name', 'status', 'home', 'grantedDay', 'housedDay', 'msgId'];
+  R.cleanCreatures = function (src, today) {
+    var out = [];
+    var seen = {};
+    var day = dayNum(today, 1);
+    (arr(src) || []).forEach(function (c) {
+      if (!isObj(c) || typeof c.id !== 'string' || !c.id) return;
+      var id = c.id.slice(0, 80);
+      if (Object.prototype.hasOwnProperty.call(seen, id)) return;
+      seen[id] = true;
+      var home = txt(c.home, 40);
+      var status = c.status === 'housed' || c.status === 'waiting' ? c.status : (home ? 'housed' : 'waiting');
+      var granted = dayNum(c.grantedDay, dayNum(c.housedDay, day));
+      out.push({
+        id: id,
+        species: txt(c.species, 40),
+        owner: txt(c.owner, 40),
+        name: txt(c.name, 40),
+        status: status,
+        home: status === 'housed' ? home : '',
+        grantedDay: granted,
+        housedDay: status === 'housed' ? dayNum(c.housedDay, granted) : null,
+        msgId: txt(c.msgId, 80)
+      });
+    });
     return out;
   };
 
@@ -694,7 +750,7 @@
     var marks = ['treasuryGP', 'partyLevel', 'day', 'builtExtras', 'pendingOrders', 'defenders', 'warehouse'];
     var found = marks.filter(function (k) { return k in s; }).length;
     if (found < 4) return 'It doesn\'t look like a Bastion save.';
-    var lists = ['builtExtras', 'builtPlots', 'pendingOrders', 'defenderBeasts', 'military', 'warehouse', 'log', 'warLog', 'militaryActions', 'warRecovery'];
+    var lists = ['builtExtras', 'builtPlots', 'pendingOrders', 'defenderBeasts', 'military', 'warehouse', 'log', 'warLog', 'militaryActions', 'warRecovery', 'creatures'];
     for (var i = 0; i < lists.length; i++) {
       if (lists[i] in s && !Array.isArray(s[lists[i]])) return 'Its ' + lists[i] + ' list is damaged.';
     }
@@ -1391,6 +1447,10 @@
     if (fn.portCharter) {
       return (R.registrableCharters ? R.registrableCharters(s) : []).map(function (c) { return { label: 'Port Charter: ' + R.charterLabel(data, c), charterId: c.id }; });
     }
+    /* The Griffin Tower's and Dire Wolf Den's House order: the creatures of
+       its kind waiting for a home, and not being housed already (pull
+       request 7, creature-rules.js). */
+    if (fn.housesSpecies) return R.housingOptions ? R.housingOptions(s, data, fn.housesSpecies) : [];
     return fn.options || [];
   };
   function orderLabel(fac, fn, optionLabel) {
@@ -1448,6 +1508,12 @@
     if (!avail.ok) return { ok: false, message: avail.message };
     /* Register Port Charter: one at a time, and it says whose is running. */
     if (fn.portCharter && R.registerBusy && R.registerBusy(s, data)) return { ok: false, message: R.registerBusy(s, data) };
+    /* A House order (pull request 7): its creature, its room, one at a time
+       (creature-rules.js); refused in a copy without the creature rules. */
+    if (fn.housesCreature || fn.housesSpecies) {
+      var homeless = R.housingBlocker ? R.housingBlocker(s, data, fac, fn) : 'This copy of the Bastion can\'t house creatures.';
+      if (homeless) return { ok: false, message: homeless };
+    }
     if (pendingSame(s, facId, fnId)) return { ok: false, message: 'That order is already pending.' };
     var busy = productionBusy(s, data, fac, fn);
     if (busy) return { ok: false, message: busy };
@@ -1466,6 +1532,14 @@
       chosen = R.fnOptions(s, data, fac, fn)[clampInt(optionIdx, 0)] || null;
       if (!chosen) return { ok: false, message: 'There\'s no Port Charter to register: the DM grants one in the Explorer.' };
       optionLabel = R.portName(R.charterById(s, chosen.charterId).port);
+    } else if (fn.housesSpecies) {
+      /* The order keeps the creature it houses, as Register Port Charter
+         keeps its Charter: "Griffin Tower: House a Griffin (Swiftwing)". */
+      chosen = R.fnOptions(s, data, fac, fn)[clampInt(optionIdx, 0)] || null;
+      if (!chosen) return { ok: false, message: R.housingBlocker(s, data, fac, fn) || 'Choose a creature to house.' };
+      optionLabel = R.creatureOrderName(R.creatureById(s, chosen.creatureId));
+    } else if (fn.housesCreature) {
+      chosen = { creatureId: String(fn.housesCreature) };
     }
     var notes = '';
     if (facId === 'library_scriptorium' && fnId === 'research') notes = data.bastion.scriptureNotes[String(optionLabel || '').trim()] || '';
@@ -2069,6 +2143,12 @@
     /* The Hall's Register Port Charter (pull request 5): the Charter becomes
        registered, once; nothing goes into the Warehouse. */
     if (fn.portCharter && R.completeCharterRegistration) return [R.completeCharterRegistration(s, data, order)];
+    /* A House order (pull request 7): its creature is housed, once; nothing
+       goes into the Warehouse. (A copy without the creature rules changes
+       nothing: a granted creature stays waiting, to be housed again.) */
+    if (fn.housesCreature || fn.housesSpecies) {
+      return [R.completeHousing ? R.completeHousing(s, data, order) : ['Orders', (order.label || fac.name + ': ' + fn.label) + ' couldn\'t be completed: this copy of the Bastion can\'t house creatures. Nothing changed.']];
+    }
     /* A production order (pull request 3): its outputs go into the
        Warehouse; its inputs were used up when it began. */
     if (order.chosen && Array.isArray(order.chosen.outputs)) return [R.completeProduction(s, data, fac, fn, order, rand)];
@@ -2751,6 +2831,8 @@
     if (R.shiftCommerce) R.shiftCommerce(s, n);
     /* The Courier Exchange's parcels (pull request 6). */
     if (R.shiftCourier) R.shiftCourier(s, n);
+    /* The creatures (pull request 7): when each was granted and housed. */
+    (Array.isArray(s.creatures) ? s.creatures : []).forEach(function (c) { mv(c, 'grantedDay'); mv(c, 'housedDay'); });
   };
   /* Read the Explorer's day for the first time (or before it has one): the
      Bastion moves to it, nothing passes. */
