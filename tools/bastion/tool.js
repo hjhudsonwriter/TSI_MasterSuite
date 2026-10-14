@@ -3084,20 +3084,33 @@
           return charters.some(function (c) { var rt = R.portRoute(data, c.port); return rt && !R.goodShipBlocker(data, g.id, rt); });
         });
       }
+      /* Why the goods in stock can't sail (Fresh Fish keeps for 2 days, and
+         every port with a Charter is further away). */
+      function stuckReason() {
+        var keep = R.commerce(data).maxDaysAtSea || {};
+        var names = cargoGoodsInStock().map(function (g) {
+          var max = typeof keep[g.id] === 'number' ? Math.max(0, Math.floor(keep[g.id])) : null;
+          return g.name + (max ? ' only ships on a voyage of ' + plural(max, 'day') + ' or less, and every port with a Charter is further away' : max === 0 ? ' is for the local market' : ' can\'t sail');
+        });
+        return 'None of the trade goods in the Warehouse can go to sea: ' + names.join('; ') + '.';
+      }
       function cargoSection() {
         var spec = R.dockSpec(state, data);
         var needShip = R.dockLevelFor(data, 'ship');
         var needSchedule = R.dockLevelFor(data, 'schedule');
         var why = R.dispatchBlocker(state, data) ||
           (!cargoGoodsInStock().length ? 'There are no trade goods in the Warehouse: the Timber Yard, the Fishery and the Herbal Gardens make them.'
-            : !shippableInStock().length ? 'None of the trade goods in the Warehouse can go to sea: Fresh Fish is for the local market.' : '');
+            : !shippableInStock().length ? stuckReason() : '');
         if (turnRunning || militaryRunning) why = why || 'Wait for the day to finish.';
         var shipBtn = btn('Ship cargo…', function () { onShipCargo(); }, 'tsi-btn--primary', 'ship-cargo', { disabled: why ? true : null, title: why || null });
         var charters = R.portCharters(state).map(function (c) {
           return el('li', { 'data-test': 'dock-charter-' + c.port }, [el('b', { text: R.charterLabel(data, c) }), ': ' + R.charterState(state, c) + '.']);
         });
         var ships = R.voyages(state).map(function (v) {
-          return el('li', { 'data-test': 'voyage' }, [el('b', { text: R.voyageState(v) }), ' · ' + R.cargoText(data, v.cargo) + ' · risk ' + v.chance + ' in 100' + (v.protections.length ? ' (with ' + v.protections.map(function (p) { return p.label; }).join(', ') + ')' : '') + (v.scheduleId ? ' · standing shipment' : '')]);
+          /* Recall ship… while it's on its way out (Harry, 14 October 2026). */
+          var canRecall = !R.recallBlocker(state, v);
+          return el('li', { 'data-test': 'voyage' }, [el('b', { text: R.voyageState(v) }), ' · ' + R.cargoText(data, v.cargo) + (v.stage === 'outbound' ? ' · risk ' + v.chance + ' in 100' : '') + (v.protections.length ? ' (with ' + v.protections.map(function (p) { return p.label; }).join(', ') + ')' : '') + (v.scheduleId ? ' · standing shipment' : '') + ' ',
+            canRecall ? btn('Recall ship…', function () { onRecall(v.id); }, 'tsi-btn--ghost', 'recall-ship', { disabled: turnRunning || militaryRunning ? true : null }) : null]);
         });
         var standing = R.schedules(state).map(function (sc) {
           return el('li', { 'data-test': 'schedule' }, [
@@ -3262,6 +3275,19 @@
         if (!ok || !life.alive || turnRunning || militaryRunning) return;
         var pick = picker.read();
         var res = R.setSchedule(state, data, pick.charterId, pick.picks, rand);
+        if (!res.ok) { await say(res.message); return; }
+        log(res.log[0], res.log[1]);
+        done();
+      });
+      var onRecall = TSI.oneAtATime(async function (id) {
+        if (turnRunning || militaryRunning) return;
+        var v = R.voyages(state).filter(function (x) { return x.id === id; })[0];
+        var why = R.recallBlocker(state, v);
+        if (why) { await say(why); return; }
+        var back = Math.max(1, state.day - v.departDay);
+        if (!(await ask('Recall the ship bound for ' + R.portName(v.port) + '? It turns for home now and is back on ' + R.dayLabel(state.day + back) + ' (' + plural(back, 'day') + ' away). Nothing is sold, and its cargo (' + R.cargoText(data, v.cargo) + ') goes back into the Warehouse when it docks.' + (v.scheduleId ? ' Its standing shipment carries on.' : ''), 'Recall ship', 'Recall ship'))) return;
+        if (!life.alive || turnRunning || militaryRunning) return;
+        var res = R.recallVoyage(state, data, id);
         if (!res.ok) { await say(res.message); return; }
         log(res.log[0], res.log[1]);
         done();

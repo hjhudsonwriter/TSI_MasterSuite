@@ -5,10 +5,14 @@
      (a notice, Clan Influence, the Hall's Port Charters box) and the
      Explorer says Applied;
    - the Hall's Register Port Charter order (Level 2, 3 days) registers it;
-   - the Dock's Ship cargo… sends real Warehouse lots (Fresh Fish stays on
-     the local market); the ship sells on arrival, once, even after a reload,
-     and is home a week later; trouble at sea brings the cargo home;
+   - the Dock's Ship cargo… sends real Warehouse lots (Fresh Fish keeps for
+     2 days, so it can't go on today's 7-day voyages); the ship sells on
+     arrival, once, even after a reload, and is home a week later; trouble
+     at sea brings the cargo home;
    - standing shipments at Dock Level 4;
+   - Recall ship…: it turns for home, sells nothing, and its cargo is back
+     in the Warehouse when it docks; its standing shipment carries on;
+   - the price uses Harry's demand table (Clan Molten wants Medicinal Herbs);
    - the Dock panel and the Ship cargo dialog fit the laptop and the TV.
    Run with:  node tests/e2e/commerce.test.js */
 'use strict';
@@ -195,11 +199,11 @@ async function closePanel(ba) {
     assert(box, 'the Charter Berth is still there');
   });
 
-  await check('the dialog: Fresh Fish stays on the local market; 2 lots of Sawn Lumber quote 320 gp; it sails', async () => {
+  await check('the dialog: Fresh Fish can\'t go on a 7-day voyage; 2 lots of Sawn Lumber quote 320 gp; it sails', async () => {
     await ba.click('[data-test=ship-cargo]');
     await ba.waitForSelector('[data-test=cargo-dialog]');
     equal(await ba.$eval('[data-test=cargo-qty-fresh_fish]', i => i.disabled), true);
-    assert(/local market/.test(await bare(ba, '[data-test=cargo-note-fresh_fish]')));
+    equal(await bare(ba, '[data-test=cargo-note-fresh_fish]'), 'Fresh Fish only ships on a voyage of 2 days or less (it doesn\'t keep longer), and this one takes 7 days.');
     await ba.fill('[data-test=cargo-qty-sawn_lumber]', '2');
     await ba.waitForTimeout(150);
     assert(/2 lots of Sawn Lumber × 160 gp × Normal ×1\.00 = 320 gp/.test(await bare(ba, '[data-test=cargo-quote]')));
@@ -284,6 +288,45 @@ async function closePanel(ba) {
     equal([s.tradeNetwork.voyages.length, s.tradeNetwork.voyages[0].scheduleId === s.tradeNetwork.schedules[0].id, qty(s, 'raw_stone')], [1, true, 5]);
   });
 
+  /* ------------------------------------------------------------------ */
+  section('Recalling a ship (Harry, 14 October 2026)');
+
+  await check('two days out, Recall ship… asks first, saying when it\'s back; Cancel changes nothing', async () => {
+    await passDays(ex, ba, 2);
+    const s = await bas(ba);
+    const v = s.tradeNetwork.voyages[0];
+    equal([v.stage, s.day - v.departDay], ['outbound', 2]);
+    await openDock(ba);
+    await ba.$eval('[data-test=recall-ship]', b => b.scrollIntoView({ block: 'center' }));
+    await H.shot(ba, 'commerce-recall-laptop');
+    await ba.click('[data-test=recall-ship]');
+    await ba.waitForSelector('.tsi-modal__foot button:text-is("Recall ship")');
+    const text = await ba.$$eval('.tsi-modal', ms => ms[ms.length - 1].textContent.replace(/\s+/g, ' ').trim());
+    assert(new RegExp('back on Day ' + (s.day + 2) + ' \\(2 days away\\)\\. Nothing is sold, and its cargo \\(1 lot of Raw Stone\\) goes back into the Warehouse when it docks\\. Its standing shipment carries on\\.').test(text), text);
+    await H.clickModal(ba, 'Cancel');
+    await ba.waitForTimeout(300);
+    equal((await bas(ba)).tradeNetwork.voyages[0].stage, 'outbound', 'still on its way');
+    await closePanel(ba);
+  });
+
+  await check('Recall ship: it turns for home with no sale and no roll; the standing shipment stays', async () => {
+    const before = await bas(ba);
+    await openDock(ba);
+    await ba.click('[data-test=recall-ship]');
+    await ba.waitForSelector('.tsi-modal__foot button:text-is("Recall ship")');
+    await H.clickModal(ba, 'Recall ship');
+    await ba.waitForTimeout(400);
+    const s = await bas(ba);
+    const v = s.tradeNetwork.voyages[0];
+    equal([v.stage, v.outcome, v.recalledDay, v.returnDay, v.roll], ['returning', 'recalled', s.day, s.day + 2, null]);
+    equal([s.treasuryGP, s.tradeNetwork.cargoSales.length, s.tradeNetwork.schedules.length, qty(s, 'raw_stone')],
+      [before.treasuryGP, before.tradeNetwork.cargoSales.length, 1, 5], 'nothing sold or paid; the standing shipment is still set up');
+    assert(new RegExp('Recalled on the way to Goldport, bringing its cargo home: back Day ' + (s.day + 2)).test(await bare(ba, '[data-test=voyage]')), await bare(ba, '[data-test=voyage]'));
+    equal(await ba.$('[data-test=recall-ship]'), null, 'it can\'t be recalled twice');
+    assert(/was recalled and turned for home; nothing was sold/.test(s.log.map(l => l.body).join(' ')));
+    await closePanel(ba);
+  });
+
   await check('Stop ends it; the ship at sea carries on', async () => {
     await openDock(ba);
     await ba.click('[data-test=stop-schedule]');
@@ -293,6 +336,19 @@ async function closePanel(ba) {
     const s = await bas(ba);
     equal([s.tradeNetwork.schedules.length, s.tradeNetwork.voyages.length], [0, 1]);
     await closePanel(ba);
+  });
+
+  await check('two days later the recalled ship is home: its 1 lot is back in the Warehouse once, and a reload adds nothing', async () => {
+    const before = await bas(ba);
+    const w = await passDays(ex, ba, 2);
+    assert(/The cargo ship is home from Goldport, and its cargo is back in the Warehouse/.test(w.baWord), w.baWord);
+    let s = await bas(ba);
+    equal([s.tradeNetwork.voyages.length, qty(s, 'raw_stone'), s.treasuryGP, s.tradeNetwork.cargoSales.length], [0, 6, before.treasuryGP, before.tradeNetwork.cargoSales.length]);
+    await ba.reload();
+    await ba.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().anchored, null, { timeout: 8000 });
+    await ba.waitForTimeout(1500);
+    s = await bas(ba);
+    equal([s.tradeNetwork.voyages.length, qty(s, 'raw_stone')], [0, 6]);
   });
 
   await check('the Dock panel fits the laptop with no sideways scroll, and Ship cargo… is in view as it opens', async () => {
@@ -317,7 +373,7 @@ async function closePanel(ba) {
     }));
     await openDock(ba);
     equal(await ba.$eval('[data-test=ship-cargo]', b => b.disabled), true);
-    equal(await bare(ba, '[data-test=ship-why]'), 'None of the trade goods in the Warehouse can go to sea: Fresh Fish is for the local market.');
+    equal(await bare(ba, '[data-test=ship-why]'), 'None of the trade goods in the Warehouse can go to sea: Fresh Fish only ships on a voyage of 2 days or less, and every port with a Charter is further away.');
     await closePanel(ba);
   });
 
@@ -358,6 +414,26 @@ async function closePanel(ba) {
     equal(await bare(ba, '[data-test=cargo-problem]'), 'That\'s 10 lots: a ship from a Level 5 Dock carries 5 lots.');
     equal((await H.layoutCheck(ba, ['[data-test=cargo-room]', '[data-test=cargo-problem]', '[data-test=cargo-dialog] .tsi-modal__foot'])).outOfView, [], 'in view');
     await H.shot(ba, 'commerce-many-goods-laptop');
+    await ba.click('[data-test=cargo-dialog] .tsi-modal__foot button:text-is("Cancel")');
+    await ba.waitForTimeout(200);
+    await closePanel(ba);
+  });
+
+  await check('Harry\'s demand table: Clan Molten wants Medicinal Herbs (Highly sought-after ×1.25); Raw Stone is Normal', async () => {
+    await ba.evaluate(() => TSI.bastion.debug.change(s => {
+      s.facilityLevels.dock = 3;
+      s.warehouse = [{ id: 'h1', goodId: 'medicinal_herbs', item: 'Medicinal Herbs', qty: 2, gp: '', notes: '' }, { id: 'h2', goodId: 'raw_stone', item: 'Raw Stone', qty: 1, gp: '', notes: '' }];
+    }));
+    await openDock(ba);
+    await ba.click('[data-test=ship-cargo]');
+    await ba.waitForSelector('[data-test=cargo-dialog]');
+    await ba.fill('[data-test=cargo-qty-medicinal_herbs]', '2');
+    await ba.fill('[data-test=cargo-qty-raw_stone]', '1');
+    await ba.waitForTimeout(150);
+    const q = await bare(ba, '[data-test=cargo-quote]');
+    assert(/2 lots of Medicinal Herbs × 140 gp × Highly sought-after ×1\.25 = 350 gp/.test(q), q);
+    assert(/1 lot of Raw Stone × 90 gp × Normal ×1\.00 = 90 gp/.test(q), q);
+    equal(await bare(ba, '[data-test=cargo-net]'), 'Shipping 0 gp · tariff 0 gp (0%) · 440 gp to the treasury.');
     await ba.click('[data-test=cargo-dialog] .tsi-modal__foot button:text-is("Cancel")');
     await ba.waitForTimeout(200);
     await closePanel(ba);
