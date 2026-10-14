@@ -793,7 +793,7 @@ Harry asked for a complete rework: the old tool's shields, colours and sigils we
 ## Next
 **Harry tries Build 3**: makes a crest in the Crest Creator and sends it with Use for the Bastion (with the Bastion open in another window, and with it shut), uploads and removes one, founds a Clan, and sees the crest on the War Table. Then says what to change: the badge, the Party Identity panel's layout, or the Form Clan crest box. That completes the overhaul's plan.
 
-**Pull requests 1b, 2 and 3 merged** (#21, #22, #23), and the Courier Exchange's art (#24). **Harry tries pull request 4, the Explorer link** (his checklist is in the pull request; best on an Exported copy of the campaign, or on the test page), and answers its questions below. **Next in the facilities overhaul (when Harry says go):** pull request 5, commodity trade and Port Charters. The order and decisions are in `docs/FACILITIES-OVERHAUL-PLAN.md` section 6.
+**Pull requests 1b, 2, 3 and 4 merged** (#21, #22, #23, #25), and the Courier Exchange's art (#24). Harry checked pull request 4 (all passed) and kept all five of its choices (14 October 2026). **Now: pull request 5, commodity trade and Port Charters** (Harry said go, 14 October 2026): the brief, the facility guide and the code are being studied, and the trade decisions go to Harry before building. The order and decisions are in `docs/FACILITIES-OVERHAUL-PLAN.md` section 6.
 
 **The facilities build (earlier note, now superseded by the plan above):** Harry says which facilities are merged, which are removed and what the seven new ones do (Wyvern Roost, Griffin Tower, Dire Wolf Den, Weavers and Sailmakers Hall, Stone Quarry and Masonworks, Fishery and Smokehouse, Timber Yard and Sawmill). Then the new map art goes in with them: the painting is 3000 × 1250, so `MAP_RATIO` in `fitMap` (`tools/bastion/tool.js`) changes to match, and the screen is checked on the laptop and the TV. The notes for it are in `docs/BASTION-MAP-ART.md` §4.
 
@@ -821,7 +821,7 @@ Each tool's questions are needed before that tool's phase. The full wording and 
     - **Map labels:** which painted building is which of the five starting facilities was a best guess (the stone barn by the jetty has no label). Are they right? Should the Menagerie have a spot on the painting? (Positions are one table, `mapLabels` in `bastion-data.js`.) The Courier Exchange now has Harry's overlay and a label place.
     - **The Herbal Gardens can only be built from party level 9 now** (there are no plots before then). One already built stays in its slot until a plot opens. OK?
     - **Clear extra builds** in Construction now clears the Development Plots too. OK?
-  - **From pull request 4 (13 October 2026): choices made for you, to change if you like:**
+  - **From pull request 4 (13 October 2026): choices made for you. Harry kept all five "for now" (14 October 2026):**
     - **A second Explorer or Bastion window waits** and opens by itself once the first closes. A "Use it here instead" button could come later.
     - **A Bastion that starts from nothing** (a first open, or after Reset) skips the Explorer's earlier Honour/Respect changes and lists them, so a Bastion rebuilt by hand from session notes doesn't count them twice. Say if they should be applied instead.
     - **No undo** for a change from the Explorer: edit the Clan's box in Clan Influence.

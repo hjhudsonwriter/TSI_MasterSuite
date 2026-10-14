@@ -23,7 +23,7 @@
 | PR 4, Q2 | **The DM adds charts and packs by hand** in the Explorer ("+ Add"). Sending them from the Warehouse waits for the Courier Exchange (pull request 6). |
 | PR 4, Q3 | **A button, three days per chart:** "Use a chart today" gives one more 6-mile hex until Make Camp, at most one a day, never on a lost day; each chart has 3 days of use, and the bags show the days left. |
 | PR 4, Q4 | **Advantage on an exhaustion save:** at C8's vigil and the White Blizzard, "Use a pack" uses one for advantage on that save, once per save; the DM still rolls. |
-| PR 4, defaults told to Harry | A second window of the same tool waits, then opens by itself. A Bastion that starts from nothing skips the Explorer's earlier changes but lists them. |
+| PR 4, defaults told to Harry | A second window of the same tool waits, then opens by itself. A Bastion that starts from nothing skips the Explorer's earlier changes but lists them. **Harry kept these and the other three pull request 4 choices "for now" (14 October 2026):** no undo for a change from the Explorer, the pace label unchanged on a chart day, and every pack giving advantage until the Fishery has research. |
 
 **Clarifications from Harry's planning AI (13 October), agreed:**
 - Elara owns the wyvern and it lives at Ironbow as a defender: that's settled story. The data is what's missing, and the Wyvern Roost pull request asks Harry for its profile and starting bond rather than inventing them.
