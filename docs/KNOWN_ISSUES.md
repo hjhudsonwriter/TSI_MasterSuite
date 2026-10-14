@@ -25,7 +25,7 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
 | Scarlett Isles Explorer (EXP) | 12 | 5 | 10 | 13 | 0 |
-| The Ironbow Bastion Manager (BAS) | 23 | 2 | 38 | 21 | 1 |
+| The Ironbow Bastion Manager (BAS) | 23 | 2 | 39 | 21 | 1 |
 | Clan Crest Creator (CRS) | 0 | 4 | 6 | 3 | 3 |
 | Arenas of The Scarlett Isles (ARN) | 8 | 2 | 0 | 17 | 0 |
 | The Heartwood Ritual (RIT) | 9 | 1 | 0 | 15 | 1 |
@@ -2134,7 +2134,7 @@ None of these reached Harry.
 - **Before:** goods in the Warehouse had a base value but never became gold. The only trade was the Hall's (Trade Agreements and the Consortium's sea routes), which pays a fixed income.
 - **After:**
   - **The Dock's Cargo and Port Charters** section (its panel): at Level 2 one ship carries 2 lots, at 3 three, at 4 four, and at 5 two ships carry 5 lots each; Level 1 can't send cargo. The Charter Berth order is unchanged.
-  - **Ship cargo…** sends real Warehouse lots to a port with a registered Port Charter (BAS-84). It shows a quote first. The lots leave the Warehouse when the ship sails, all or nothing, and a refused sailing changes nothing. Fresh Fish is for the local market and doesn't sail. Not while the Dock is Under Repair.
+  - **Ship cargo…** sends real Warehouse lots to a port with a registered Port Charter (BAS-84). It shows a quote first. The lots leave the Warehouse when the ship sails, all or nothing, and a refused sailing changes nothing. Fresh Fish sails only on a voyage of 2 days or less (BAS-86). Not while the Dock is Under Repair.
   - **At sea:** 7 days to the port and 7 home (per port, in data). The ship can't sail again until it's back.
   - **On arrival** the Bastion rolls the voyage's risk itself (1 to 100 against Low 5, Medium 10 or High 20; Timberport Low, Goldport High). Above the chance, the cargo sells: each lot's base value × the buying Clan's demand × the Charter's price factor, less the shipping fee and tariff, rounded down and never below 0, paid into the treasury once, with an itemised receipt. At or below it, nothing sells, and the cargo comes home with the ship and goes back into the Warehouse when it docks. Nothing is lost.
   - **Once only:** the ships are settled in each day's trade step, after the old sea routes and before the orders, and saved in the same write as that step moving on; each voyage moves on in the same change as its gold or goods, and a voyage with a receipt is never paid again. So a closed window, a reload, a cancelled route roll or a campaign file can't pay twice or return goods twice.
@@ -2166,13 +2166,30 @@ None of these reached Harry.
 ### BAS-85 · Commodity trade's limits and open choices
 **Later, Harry's call** (pull request 5, 14 October 2026) · other
 
-- **Clan demand:** every Clan is Normal (×1.00) for everything until Harry approves a Clan-by-commodity table. It goes in `commerce-data.js` (`demand`), by kind of goods (fish, timber, stone, cloth, herbal) or by one good.
-- **Fresh Fish** never sails until Harry says how many days at sea it keeps (`maxDaysAtSea`), or preservation comes.
-- **No call-back:** a ship at sea can't be called back; an Import of a backup undoes a mistake.
+- **Clan demand:** Harry's table is in (BAS-86). **Market saturation** (a good selling for less after many lots at one port in 28 days) isn't on yet: the sales are recorded for it, but no price uses them.
+- **Fresh Fish** sails only on a voyage of 2 days or less (BAS-86), so with today's two 7-day routes it never sails. There's no spoiling at sea.
+- **Recall ship…** (BAS-86) can call a ship back on its way out; once it has reached the port, it can't. An Import of a backup still undoes other mistakes.
 - **Protections** (the Barracks' convoy, the Watchtower's approaches, the Shrine of Pelagos' blessing) are built in but not available until their orders exist.
 - **Concessions:** a Charter can carry a negotiated price factor, fee or tariff, but nothing sets one yet (negotiation comes later).
 - **Not yet:** political benefits from sales, more ports, cargo routes on the Sea Trade Routes map, and the Stone Quarry's and Weavers' Hall's goods (seven goods have no facility making them yet).
 - **Evidence:** `tools/bastion/data/commerce-data.js`.
+
+### BAS-86 · Harry's follow-up: the demand table, Fresh Fish on short voyages, a record of every sale, and Recall ship
+**Deliberate change** (Harry's answers to pull request 5's open choices, 14 October 2026) · applies something twice
+
+- **Before:** every Clan paid Normal (×1.00) for everything; Fresh Fish never sailed; nothing recorded sales by port and good; a ship at sea couldn't be called back.
+- **After:**
+  - **Demand, good by good:** each Clan has three goods it highly seeks (×1.25) and three it wants moderately (×1.10), exactly as Harry's approved table, in `commerce-data.js` (`demand`). Everything else is Normal; nothing starts Oversupplied. Kinds of goods no longer count: only a good's own entry does.
+  - **Fresh Fish** sails only on a voyage of 2 days or less (`maxDaysAtSea`), judged on the voyage's actual days to the port. Today's routes are 7 days, so it stays at home, and both the Dock and the Ship cargo dialog say why. Preserved Fish and Premium Seafood sail as before.
+  - **A record of every sale** (`tradeNetwork.marketLedger`: day, port, good, lots and the sale it came from), written in the same change as the sale, so once only, and kept 56 days. It's for market saturation later (rolling 28 days; lots 1–4 at the Clan's demand, 5–8 one tier lower, 9–12 two lower, 13 on Oversupplied); `saturation.active` is false and no price uses it yet.
+  - **Recall ship…** under the Dock's Ships at sea, on a ship still on its way out (asks first). It turns for home at once: the way back takes as many days as it has sailed (at least 1). Nothing is sold, there's no risk roll and no gold; its cargo goes back into the Warehouse when it docks, once, and the ship can sail again then. On or after its arrival day it can't be recalled. A standing shipment carries on, and still first sails the day after it's set up. A recalled ship survives reloads, Reset Travel and campaign files, and the Explorer's word never says it reaches the port.
+  - **Unchanged:** the risks (Timberport Low 5 in 100, Goldport High 20 in 100, per route in data), one roll per voyage, the protections (none available yet), and the old trade.
+- **The review's fixes (14 October 2026):** four reviewers (once-only, the rules against Harry's answers, the screens, the tests), each checked by a skeptic; nothing was found that sells, pays or returns cargo twice. Fixed:
+  - the Recall ship question said "Its standing shipment carries on" even after that shipment had been stopped;
+  - a note in `goods-data.js` still said a Clan's demand follows a good's kind;
+  - the guide's Fresh Fish sentence hinted it spoils and pointed to the dialog when the reason shows beside Ship cargo….
+- **Left alone (minor):** if the party makes camp in the Explorer while the Recall ship question is open in the Bastion, the ship's way home is worked out from the day you confirm, not the day the question showed; the Dock and the Day Log then show the right day. Research's question works the same way.
+- **Evidence:** `tools/bastion/data/commerce-data.js` (`demand`, `saturation`, `maxDaysAtSea`), `tools/bastion/commerce-rules.js` (`demandFor`, `goodShipBlocker`, `recallBlocker`, `recallVoyage`, `marketLedger`, `trimLedger`, `lotsSold`, `cleanLedger`, `cleanVoyages`, `settleVoyages`), `tools/bastion/tool.js` (`cargoSection`, `onRecall`, `stuckReason`); tests in `tests/rules/commerce.test.js` and `tests/e2e/commerce.test.js`.
 
 ## Clan Crest Creator
 Old repo: `_legacy/clan-crest-creator` (file:line references point there).

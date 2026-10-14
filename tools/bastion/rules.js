@@ -102,10 +102,10 @@
   };
   /* routes: the Hall's old sea routes (legacy_abstract). The rest is
      commodity trade (pull request 5, commerce-rules.js): Port Charters,
-     cargo ships at sea, standing shipments, sale receipts and voyage
-     protections ready to use. */
+     cargo ships at sea, standing shipments, sale receipts, voyage
+     protections ready to use, and each good sold (for market saturation). */
   R.defaultTradeNetwork = function () {
-    return { active: false, strategy: 'balanced', stability: 75, routes: [], portCharters: [], voyages: [], schedules: [], cargoSales: [], protections: {} };
+    return { active: false, strategy: 'balanced', stability: 75, routes: [], portCharters: [], voyages: [], schedules: [], cargoSales: [], protections: {}, marketLedger: [] };
   };
   R.defaultState = function (data) {
     var s = {
