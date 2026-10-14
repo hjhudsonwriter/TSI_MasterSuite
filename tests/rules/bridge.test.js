@@ -1,7 +1,8 @@
 /* The Explorer link (pull request 4 of the facilities overhaul, Harry's
    answers of 13 October 2026): shared/js/bridge-rules.js, the Explorer's
    messages, Party bags, charts and packs (journey.js, rules.js), and the
-   Bastion applying each change once (tools/bastion/rules.js). */
+   Bastion applying each change once (tools/bastion/rules.js). The parcel
+   pickups of pull request 6 are tested in courier.test.js. */
 (function () {
   var Bg = TSI.bridge;
   var ER = TSI.explorer.rules;
@@ -106,6 +107,19 @@
     t.ok(/day is damaged/.test(Bg.check(msg({ day: 2.5 }))), 'a part day');
     t.ok(/text is damaged/.test(Bg.check(msg({ text: new Array(202).join('x') }))), 'over-long text');
     t.ok(Bg.check(null) !== '');
+  });
+
+  test('pull request 6: a parcel pickup is the third kind; its town and Clan are never checked, while the other two kinds\' Clans still are', function (t) {
+    t.same(Bg.TYPES, ['standing', 'charter', 'parcel_collected']);
+    var pick = { id: 'abcdef123:collect:0', type: 'parcel_collected', day: 4, clan: 'nobody', point: 'nowhere', parcel: 'abcdef123', hr: 0, text: 'x' };
+    t.equal(Bg.check(pick), '', 'only its kind and id');
+    t.ok(/Clan the Bastion doesn't know/.test(Bg.check(msg({ clan: 'nobody' }))), 'Honour/Respect still names a known Clan');
+    t.ok(/Clan the Bastion doesn't know/.test(Bg.check({ id: 'chartr-0a0b0c0d:dm:0', type: 'charter', day: 3, from: {}, clan: 'nobody', port: 'goldport', text: '' })), 'so does a Port Charter');
+    t.equal(Bg.isParcelMessage(pick), true);
+    t.equal(Bg.isParcelMessage(msg({ id: 'abcdef-12345678:collect:0' })), false, 'a standing message is never read as a pickup');
+    var b = bastion(4);
+    b.bridge.done[msg().id] = { r: 'applied', day: 3, hr: 1, was: 0, now: 1 };
+    t.equal(Bg.statusOf(msg(), b).line, 'Applied on Day 3: 0 → +1.', 'Honour/Respect reads as before');
   });
 
   test('every id an event can make fits the pattern', function (t) {

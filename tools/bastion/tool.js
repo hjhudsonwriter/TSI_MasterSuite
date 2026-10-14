@@ -61,7 +61,7 @@
       var R = ns.rules;
       var D = window.TSI_DATA;
       var B = D.bastion;
-      var data = { bastion: B, facilities: D.bastionFacilities, tools: D.bastionTools, events: D.bastionEvents, research: D.bastionResearch, goods: D.bastionGoods, commerce: D.bastionCommerce };
+      var data = { bastion: B, facilities: D.bastionFacilities, tools: D.bastionTools, events: D.bastionEvents, research: D.bastionResearch, goods: D.bastionGoods, commerce: D.bastionCommerce, courier: D.bastionCourier };
       /* The war mini-game's numbers (war-units-data.js): units, stat blocks, missions. */
       var W = D.bastionWar;
       var COMPENDIUM = (D.bastionCompendium && D.bastionCompendium.items) || {};
@@ -658,8 +658,17 @@
              strip a receipt's kind; the Charter it made still names it. */
           var made = r.type === 'charter' ? null : R.charterById(state, r.id);
           var charter = r.type === 'charter' || !!made;
+          /* A parcel collected in the Explorer (pull request 6), known by its
+             receipt's kind or, if an older copy stripped that, by its
+             pickup id (which only a parcel pickup has). */
+          var pid = TSI.bridge ? TSI.bridge.parcelIdOf(r.id) : '';
+          var sent = pid ? R.parcelById(state, pid) : null;
+          var parcel = !charter && (r.type === 'parcel_collected' || !!pid);
+          var town = parcel ? R.courierPointName(r.point || (sent ? sent.point : '')) : '';
           var what = charter ? 'Port Charter: ' + R.portWithClan(data, made ? made.port : r.port, made ? made.clan : r.clan) : clan;
-          var head = charter
+          var head = parcel
+            ? (r.r === 'applied' ? 'Parcel collected: ' + town + (r.held ? ' (already recorded)' : '') : (r.r === 'skipped' ? 'Skipped: ' : 'Refused: ') + 'parcel collected at ' + town)
+            : charter
             ? (r.r === 'applied' ? what + (r.held ? ' (already held)' : '') : (r.r === 'skipped' ? 'Skipped: ' : 'Refused: ') + what)
             : r.r === 'applied'
             ? (r.hr ? clan + ' ' + signedNum(r.hr) + ' (' + signedNum(r.was) + ' → ' + signedNum(r.now) + ')' : clan + ': no change, already at ' + signedNum(r.now))
@@ -667,7 +676,7 @@
           bridgeList.appendChild(el('div', { class: 'tsi-bas-influence__logrow tsi-bas-influence__logrow--' + r.r, 'data-test': 'bridge-row', 'data-result': r.r }, [
             el('div', { class: 'tsi-bas-influence__loghead' }, [el('strong', { text: head }), typeof r.day === 'number' ? ' · ' + R.dayLabel(r.day) : '']),
             r.text ? el('div', { class: 'tsi-bas-influence__logtext', text: r.text }) : null,
-            r.why ? el('div', { class: 'tsi-bas-influence__logwhy', text: r.why + (r.r === 'skipped' ? (charter ? ' Grant it again in the Explorer if it should count.' : ' Type it in above if it should count.') : '') }) : null
+            r.why ? el('div', { class: 'tsi-bas-influence__logwhy', text: r.why + (r.r === 'skipped' ? (parcel ? ' The items stay in the Party bags.' : charter ? ' Grant it again in the Explorer if it should count.' : ' Type it in above if it should count.') : '') }) : null
           ]));
         });
       }
@@ -2318,6 +2327,7 @@
             state.warehouse.push({ id: R.uid(rand), item: 'New Item', qty: 1, gp: '', notes: '' });
             done();
           }, 'tsi-btn--primary', 'add-item'),
+          btn('+ Add supplies', function () { onAddSupplies(); }, '', 'add-supplies'),
           btn('Save Warehouse', function () {
             log('Warehouse', 'Saved warehouse.');
             done();
@@ -2364,7 +2374,7 @@
          the typed change is added to the count rather than written over it. */
       function goodsRow(row, i) {
         var g = R.good(data, row.goodId);
-        var unit = g ? (g.kind === 'cargo' ? '1 lot = ' + g.lot : g.kind === 'ingredient' ? 'portions' : g.kind === 'supply' ? 'packs (' + g.pack + ')' : '') : '';
+        var unit = g ? (g.kind === 'cargo' ? '1 lot = ' + g.lot : g.kind === 'ingredient' ? 'portions' : g.kind === 'supply' ? (g.unit ? g.unit + 's' : 'packs') + ' (' + (g.pack || g.what || '') + ')' : '') : '';
         var shown = R.clampInt(row.qty, 0);
         var qty = el('input', { type: 'number', min: '0', step: '1', class: 'tsi-input', value: String(shown), 'aria-label': 'Quantity of ' + (row.item || row.goodId), 'data-test': 'wh-qty-' + i });
         var value = el('div', { class: 'tsi-bas-wh__value', 'data-test': 'wh-value-' + i });
@@ -2384,7 +2394,7 @@
         };
         [qty, notes].forEach(function (input) { input.addEventListener('input', sync); });
         return el('div', { class: 'tsi-bas-wh__row tsi-bas-wh__row--goods', 'data-good': row.goodId }, [
-          el('div', { class: 'tsi-bas-wh__good', 'data-test': 'wh-item-' + i }, [el('span', { class: 'tsi-bas-wh__goodname', text: row.item || R.goodName(data, row.goodId) }), unit ? el('span', { class: 'tsi-bas-wh__unit', text: unit }) : null]),
+          el('div', { class: 'tsi-bas-wh__good', 'data-test': 'wh-item-' + i }, [el('span', { class: 'tsi-bas-wh__goodname', text: row.item || R.goodName(data, row.goodId) }), unit ? el('span', { class: 'tsi-bas-wh__unit', text: unit, title: unit }) : null]),
           qty, value, notes,
           btn('Remove', function () {
             state.warehouse = state.warehouse.filter(function (x) { return x !== row; });
@@ -2392,6 +2402,44 @@
           }, '', 'wh-remove-' + i)
         ]);
       }
+
+      /* + Add supplies (pull request 6, Harry, 14 October 2026): the DM adds
+         supplies to the Warehouse by hand, for now. Only the goods listed in
+         courier-data.js manualAdd (never a trade good, so no gold comes of
+         it), 1 to 99 at a time, merged into the good's row and logged. A
+         double click adds once; it's a saved change, so a reload adds
+         nothing. */
+      var onAddSupplies = TSI.oneAtATime(async function () {
+        if (turnRunning || militaryRunning) { await say('Wait for the day to finish.'); return; }
+        var list = R.manualAddGoods(data);
+        if (!list.length) { await say('There are no supplies to add by hand (courier-data.js).'); return; }
+        var goodSel = el('select', { class: 'tsi-input', 'aria-label': 'Supply', 'data-test': 'supplies-good' }, list.map(function (g) {
+          return el('option', { value: g.goodId, text: g.name });
+        }));
+        var qty = numberInput('supplies-qty', { min: '1', max: '99', value: '1', 'aria-label': 'How many (1 to 99)' });
+        var have = el('div', { class: 'tsi-bas-muted', 'data-test': 'supplies-have' });
+        var showHave = function () { have.textContent = 'The Warehouse has ' + R.goodsCountText(data, goodSel.value, R.goodsQty(state, goodSel.value)) + '.'; };
+        goodSel.addEventListener('change', showHave);
+        showHave();
+        var ok = await plainModal({
+          title: 'Add supplies',
+          className: 'tsi-bas-modal tsi-bas-modal--supplies',
+          body: [
+            muted('A temporary provision until the Ironbow makes these itself: they go into the Warehouse as if made here, the Day Log records it, and it makes no gold.', 'tsi-bas-courier__intro'),
+            el('div', { class: 'tsi-bas-supplies' }, [field('Supply', goodSel), field('How many', qty)]),
+            have
+          ],
+          escValue: false,
+          actions: [{ label: 'Cancel', value: false }, { label: 'Add to the Warehouse', value: true, primary: true }],
+          onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'supplies-dialog'); }
+        });
+        if (!ok || !life.alive) return;
+        if (turnRunning || militaryRunning) { await say('A day was passing, so nothing was added. Try again once it has finished.'); return; }
+        var res = R.addSupplies(state, data, goodSel.value, qty.value);
+        if (!res.ok) { await say(res.message); return; }
+        log(res.log[0], res.log[1]);
+        done();
+      });
 
       var artCard = card('artisan', 'Artisan Tools', { cls: 'tsi-bas-card--art tsi-bas-card--artisan' });
       var toolTables = R.toolTableNames(data.tools);
@@ -3059,6 +3107,7 @@
           el('div', { class: 'tsi-bas-fac__fns tsi-bas-facpanel__fns' }, fns.length ? fns : [muted('No functions listed.')]),
           id === 'workshop' ? el('div', { class: 'tsi-bas-facpanel__artisan' }, [label('Artisan Tools'), artCard.root]) : null,
           id === 'dock' ? cargoSection() : null,
+          id === R.COURIER_FAC ? courierSection() : null,
           /* A facility in a construction slot can be demolished (Harry, 13
              October 2026); the five starting facilities can't. */
           B.startingBuilt.indexOf(id) === -1 ? el('div', { class: 'tsi-bas-facpanel__demolish' }, [
@@ -3303,6 +3352,180 @@
         done();
       });
 
+      /* ---------- The Courier Exchange's parcels (pull request 6, Harry, 14 October 2026) ----------
+         A parcel of supplies from the Warehouse goes to a town the level
+         reaches, waits there until the party collects it in the Explorer,
+         and can be recalled while it's still on its way. Send a parcel… is
+         the panel's one main button, first, so it's in view on the laptop
+         however long the lists get. The rules are in courier-rules.js. */
+      function courierSection() {
+        var spec = R.courierSpec(state, data);
+        var busy = turnRunning || militaryRunning;
+        var why = R.parcelBlocker(state, data) || (busy ? 'Wait for the day to finish.' : '');
+        var sendBtn = btn('Send a parcel…', function () { onSendParcel(); }, 'tsi-btn--primary', 'send-parcel', { disabled: why ? true : null, title: why || null });
+        var goodsText = function (p) { return R.parcelGoodsText(data, p.goods) || 'nothing the Bastion knows'; };
+        /* A pickup the Explorer has sent but the Bastion hasn't reached its day yet. */
+        var pickupFor = function (p) {
+          var Bg = TSI.bridge;
+          if (!Bg || !lastExplorer) return null;
+          return Bg.outbox(lastExplorer).filter(function (m) { return m.id === Bg.collectId(p.id); })[0] || null;
+        };
+        var row = function (p, extra, plain) {
+          return el('li', { 'data-test': 'parcel', 'data-parcel': p.id, 'data-status': p.status }, [el(plain ? 'span' : 'b', { text: R.parcelState(p) }), ' · ' + goodsText(p)].concat(extra || []));
+        };
+        var travelling = R.parcelsWith(state, 'in_transit').map(function (p) {
+          /* Recall parcel… while it's on its way (Harry, 14 October 2026). */
+          var canRecall = !R.parcelRecallBlocker(state, p, data);
+          return row(p, [' · fee ' + R.clampInt(p.feeGP, 0) + ' gp ', canRecall ? btn('Recall parcel…', function () { onRecallParcel(p.id); }, 'tsi-btn--ghost', 'recall-parcel', { disabled: busy ? true : null }) : null]);
+        });
+        var returning = R.parcelsWith(state, 'returning').map(function (p) { return row(p); });
+        var waiting = R.parcelsWith(state, 'ready').map(function (p) {
+          var m = pickupFor(p);
+          return row(p, m ? [' · collected in the Explorer: the Bastion records it on ' + R.dayLabel(m.day) + '.'] : []);
+        });
+        /* The newest five closed: collected, or recalled and home. */
+        var closed = R.parcels(state).map(function (p, i) { return { p: p, i: i }; }).filter(function (x) { return x.p.status === 'collected' || x.p.status === 'returned'; });
+        closed.sort(function (a, b) {
+          var da = a.p.status === 'collected' ? a.p.collectedDay : a.p.returnDay;
+          var db = b.p.status === 'collected' ? b.p.collectedDay : b.p.returnDay;
+          return (db || 0) - (da || 0) || b.i - a.i;
+        });
+        var recent = closed.slice(0, 5).map(function (x) { return row(x.p, null, true); });
+        var later = (Array.isArray(R.courier(data).later) ? R.courier(data).later : []).filter(function (l) { return l && typeof l.name === 'string'; }).map(function (l) {
+          return el('li', { text: 'Level ' + l.level + ': ' + l.name + (l.text ? ' (' + l.text + ')' : '') + '.' });
+        });
+        var group = function (title, test, items, none) {
+          return el('div', { class: 'tsi-bas-cargo__group' }, [el('b', { text: title }), items.length ? el('ul', { class: 'tsi-bas-res-list', 'data-test': test }, items) : muted(none)]);
+        };
+        return el('div', { class: 'tsi-bas-facpanel__cargo tsi-bas-facpanel__courier', 'data-test': 'courier' }, [
+          label('Parcels' + (spec.name ? ' · ' + spec.name : '')),
+          el('div', { class: 'tsi-bas-muted', 'data-test': 'courier-status', text: R.courierStatusLine(state, data) + ' Each parcel\'s fee comes from the treasury when it\'s sent; nothing goes wrong on the road.' }),
+          el('div', { class: 'tsi-bas-cargo__go' }, [sendBtn, why ? el('span', { class: 'tsi-bas-muted', 'data-test': 'parcel-why', text: why }) : null]),
+          el('div', { class: 'tsi-bas-courier__lists' }, [
+            group('Travelling (' + R.travellingParcels(state).length + ' of ' + spec.onRoad + ' places)', 'parcels-travelling', travelling, 'None on the way out.'),
+            returning.length ? group('Returning to Ironbow', 'parcels-returning', returning, '') : null,
+            group('Waiting for collection', 'parcels-waiting', waiting, 'None.'),
+            recent.length ? group('Recently closed', 'parcels-closed', recent, '') : null
+          ]),
+          later.length ? el('div', { class: 'tsi-bas-cargo__group tsi-bas-courier__later', 'data-test': 'courier-later' }, [el('b', { text: 'Coming later' }), el('ul', { class: 'tsi-bas-res-list' }, later)]) : null
+        ]);
+      }
+      /* The Send dialog. It follows the Bastion as it is now (livePicker,
+         from renderAll), like the cargo picker: a day passing underneath
+         updates the towns, the Warehouse's counts and the room. Its main
+         button is off while the rules would refuse the parcel, with the
+         reason under the summary. Every good the courier carries has a row;
+         one the Warehouse has none of can't be chosen. */
+      function parcelPicker() {
+        var pointSel = el('select', { class: 'tsi-input', 'aria-label': 'Town', 'data-test': 'parcel-point' });
+        var shownTowns = '';
+        var counts = {};
+        var notes = {};
+        var goods = R.courierGoods(data);
+        var rows = goods.map(function (g) {
+          var input = numberInput('parcel-qty-' + g.goodId, { min: '0', value: '0', 'aria-label': g.name + ' (how many)' });
+          counts[g.goodId] = input;
+          notes[g.goodId] = el('span', { class: 'tsi-bas-muted', 'data-test': 'parcel-note-' + g.goodId });
+          return el('div', { class: 'tsi-bas-cargo__row', 'data-test': 'parcel-row-' + g.goodId }, [el('span', { class: 'tsi-bas-cargo__name', text: g.name }), input, notes[g.goodId]]);
+        });
+        var summary = el('div', { 'data-test': 'parcel-summary' });
+        var problem = el('div', { class: 'tsi-bas-repair-text', 'data-test': 'parcel-problem', hidden: true });
+        var mainBtn = null;
+        function read() {
+          return {
+            pointId: pointSel.value,
+            picks: goods.map(function (g) { return { goodId: g.goodId, qty: R.clampInt(counts[g.goodId].value, 0, 1000) }; }).filter(function (x) { return x.qty > 0; })
+          };
+        }
+        /* The towns this level reaches, each with its days and fee; the
+           choice is kept when the list is made again. */
+        function towns() {
+          var list = R.courierPoints(state, data);
+          var key = list.map(function (p) { return p.id + ':' + p.days + ':' + p.feeGP; }).join('|');
+          if (key === shownTowns) return;
+          shownTowns = key;
+          var was = pointSel.value;
+          TSI.clear(pointSel);
+          list.forEach(function (p) {
+            pointSel.appendChild(el('option', { value: p.id, text: p.label + ' · ' + plural(p.days, 'day') + ' · ' + p.feeGP + ' gp' }));
+          });
+          if (list.some(function (p) { return p.id === was; })) pointSel.value = was;
+        }
+        function update() {
+          var spec = R.courierSpec(state, data);
+          towns();
+          goods.forEach(function (g) {
+            var have = R.goodsQty(state, g.goodId);
+            var input = counts[g.goodId];
+            input.disabled = have < 1;
+            input.max = String(Math.max(0, Math.min(have, spec.maxItems)));
+            if (have < 1) input.value = '0';
+            notes[g.goodId].textContent = 'in the Warehouse: ' + R.goodsCountText(data, g.goodId, have) + (g.size !== 1 ? ' · each counts as ' + plural(g.size, 'item') : '');
+          });
+          var r = read();
+          var why = R.parcelProblem(state, data, r.pointId, r.picks) || (turnRunning || militaryRunning ? 'Wait for the day to finish.' : '');
+          summary.textContent = R.parcelSummary(state, data, r.pointId, r.picks);
+          problem.textContent = why;
+          problem.hidden = !why;
+          if (mainBtn) { mainBtn.disabled = !!why; mainBtn.title = why || ''; }
+        }
+        pointSel.addEventListener('change', update);
+        goods.forEach(function (g) { counts[g.goodId].addEventListener('input', update); });
+        update();
+        return {
+          body: [
+            field('Town', pointSel),
+            goods.length ? el('div', { class: 'tsi-bas-cargo__rows' }, rows) : muted('The courier carries nothing yet (courier-data.js).'),
+            el('div', { class: 'tsi-bas-cargo__quote' }, [summary, problem])
+          ],
+          read: read, update: update,
+          hold: function (dialog) { mainBtn = dialog.querySelector('.tsi-modal__foot .tsi-btn--primary'); update(); }
+        };
+      }
+      var onSendParcel = TSI.oneAtATime(async function () {
+        if (turnRunning || militaryRunning) return;
+        var why = R.parcelBlocker(state, data);
+        if (why) { await say(why); return; }
+        var spec = R.courierSpec(state, data);
+        var picker = parcelPicker();
+        livePicker = picker;
+        var ok = await plainModal({
+          title: 'Send a parcel',
+          className: 'tsi-bas-modal tsi-bas-modal--cargo tsi-bas-modal--parcel',
+          body: [muted((spec.name ? spec.name + '. ' : '') + 'The supplies leave the Warehouse now and the fee leaves the treasury; the parcel waits at its town until the party collects it there in the Explorer.', 'tsi-bas-courier__intro')].concat(picker.body),
+          escValue: false,
+          actions: [{ label: 'Cancel', value: false }, { label: 'Send the parcel', value: true, primary: true }],
+          onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'parcel-dialog'); picker.hold(parts.dialog); }
+        });
+        livePicker = null;
+        if (!ok || !life.alive) return;
+        if (turnRunning || militaryRunning) { await say('A day was passing, so the parcel wasn\'t sent. Try again once it has finished.'); return; }
+        /* Checked again: a day may have passed while the pop-up was open. */
+        var pick = picker.read();
+        var res = R.sendParcel(state, data, pick.pointId, pick.picks, rand, lastExplorer);
+        if (!res.ok) { await say(res.message); return; }
+        log(res.log[0], res.log[1]);
+        done();
+      });
+      var onRecallParcel = TSI.oneAtATime(async function (id) {
+        if (turnRunning || militaryRunning) return;
+        var p = R.parcelById(state, id);
+        var why = R.parcelRecallBlocker(state, p, data);
+        if (why) { await say(why); return; }
+        var home = R.parcelRecallDay(state, p);
+        var town = R.courierPointName(p.point);
+        var asked = state.day;
+        if (!(await ask('Recall the parcel bound for ' + town + '? It turns back now and is home on ' + R.dayLabel(home) + ' (' + plural(home - state.day, 'day') + ' away). Its contents (' + R.parcelGoodsText(data, p.goods) + ') go back into the Warehouse then. The ' + R.clampInt(p.feeGP, 0) + ' gp fee isn\'t refunded.', 'Recall parcel', 'Recall parcel'))) return;
+        if (!life.alive) return;
+        if (turnRunning || militaryRunning) { await say('A day was passing, so the parcel wasn\'t recalled. Try again once it has finished.'); return; }
+        /* A day passed while the question was open: its return day has moved, so ask again. */
+        if (state.day !== asked) { await say('A day passed while the question was open, so the parcel wasn\'t recalled: its way home is longer now. Try again to see the new day.'); return; }
+        var res = R.recallParcel(state, data, id);
+        if (!res.ok) { await say(res.message); return; }
+        log(res.log[0], res.log[1]);
+        done();
+      });
+
       /* ---------- The build panel ----------
          Every facility not built or being built, with its painting: locked
          ones (the party's level is too low) dimmed. Hover for what it does
@@ -3379,7 +3602,7 @@
             return {
               title: f.name || f.id,
               parts: [locked ? muted('Unlocks at party level ' + req + '.') : null, f.plot ? muted('Built on a Development Plot (' + (noRoom || 'plots open at party levels 9, 13 and 17') + ').') : noRoom ? muted(noRoom + ': every construction slot is in use.') : null]
-                .concat(fns.length ? [muted('What it does:'), tipList(fns)] : [muted('No actions listed.')]),
+                .concat(fns.length ? [muted('What it does:'), tipList(fns)] : [muted(f.description || 'No actions listed.')]),
               foot: 'Takes ' + R.daysText(days) + ' to build'
             };
           };
@@ -3446,7 +3669,10 @@
           ? 'Stop building the ' + name + '? Its ' + where + ' is freed, and the days of work so far are lost.'
           : 'Demolish the ' + name + '? It goes from the Bastion and its ' + where + ' is freed. ' +
             (orders.length ? plural(orders.length, 'order') + ' pending here ' + (orders.length === 1 ? 'is' : 'are') + ' cancelled, and the gold spent isn\'t given back' + (held ? ' (goods they hold go back to the Warehouse)' : '') + '. ' : '') +
-            'Anything it has already made stays' + (facId === 'hall_of_emissaries' ? ', and your agreements, contracts and sea routes carry on' : '') + '. It can be built again later ' + (R.isPlotFacility(data, facId) ? 'on a free Development Plot' + (R.plotsForLevel(state.partyLevel, data) ? '' : ' (plots open at party level 9)') : 'from an empty slot') + '.';
+            'Anything it has already made stays' + (facId === 'hall_of_emissaries' ? ', and your agreements, contracts and sea routes carry on' : '') + '. ' +
+            /* The Courier Exchange's parcels already sent carry on (pull request 6). */
+            (facId === R.COURIER_FAC && R.courierDemolishNote(state) ? R.courierDemolishNote(state) + ' ' : '') +
+            'It can be built again later ' + (R.isPlotFacility(data, facId) ? 'on a free Development Plot' + (R.plotsForLevel(state.partyLevel, data) ? '' : ' (plots open at party level 9)') : 'from an empty slot') + '.';
         var ok = await ask(msg, building ? 'Stop building' : 'Demolish', building ? 'Stop building' : 'Demolish');
         if (!ok || !life.alive) return;
         var res = R.demolishFacility(state, data, facId);
@@ -3555,6 +3781,10 @@
         /* A Port Charter (pull request 5) has its own notice. */
         if (res.charters && res.charters.length) {
           notice('From the Explorer: ' + res.charters.join(' '), { type: 'info', title: 'Port Charter.', id: 'tsi-bas-charter', timeout: 14000 });
+        }
+        /* So does a parcel collected in the Explorer (pull request 6). */
+        if (res.parcels && res.parcels.length) {
+          notice(res.parcels.join(' '), { type: 'info', title: 'Courier Exchange.', id: 'tsi-bas-courier', timeout: 14000 });
         }
         if (res.applied.length) {
           notice('From the Explorer: ' + res.applied.join(' ') + (res.applied.length === 1 ? ' Clan Influence lists it.' : ' Clan Influence lists them.'), { type: 'info', title: 'Honour/Respect.', id: 'tsi-bas-bridge', timeout: 12000 });
@@ -3668,6 +3898,12 @@
           var sea = R.settleVoyages(state, data, rand);
           logAll(sea.log);
           sea.word.forEach(function (w) { R.addWord(state, w); });
+          /* The Courier Exchange's parcels (pull request 6): one reaching its
+             town waits there for the party; a recalled one coming home puts
+             its contents back into the Warehouse. Same write, so once. */
+          var post = R.settleParcels(state, data);
+          logAll(post.log);
+          post.word.forEach(function (w) { R.addWord(state, w); });
           R.finishRoutes(state);
           save();
         }

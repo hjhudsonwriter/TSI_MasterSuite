@@ -265,15 +265,20 @@ async function jClick(page, test) {
     });
 
     await check('closed, it stops reading; opened again, it\'s up to date', async () => {
-      await page.click('[data-test=dmdoc-close]');
-      const reads = await page.evaluate(async () => {
+      /* Only the DM doc's own reads count: the Explorer under it reads the
+         Bastion's save every 2 seconds for its From the Ironbow list and
+         Sent to the Bastion (pull request 6). */
+      const docReads = ms => page.evaluate(async wait => {
         let n = 0;
         const real = TSI.store.fresh;
-        TSI.store.fresh = function () { n++; return real.apply(this, arguments); };
-        await new Promise(r => setTimeout(r, 4500));
+        TSI.store.fresh = function () { if (/dmdoc\.js/.test(new Error().stack || '')) n++; return real.apply(this, arguments); };
+        await new Promise(r => setTimeout(r, wait));
         TSI.store.fresh = real;
         return n;
-      });
+      }, ms);
+      assert((await docReads(2500)) > 0, 'open, it reads (so the count below means something)');
+      await page.click('[data-test=dmdoc-close]');
+      const reads = await docReads(4500);
       equal(reads, 0, 'no reading while it\'s closed');
       await openDoc(page);
       await until(page, x => x.level === 'Party level 10 from the Bastion', 'level 10');

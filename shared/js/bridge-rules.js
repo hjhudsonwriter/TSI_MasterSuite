@@ -25,6 +25,19 @@
    button) or ':pin:0' (a port's harbour box). The Bastion holds it once, and
    the Hall of Emissaries registers it.
 
+   Pull request 6 (Harry, 14 October 2026) adds a third kind: a parcel from
+   the Bastion's Courier Exchange collected in the Explorer, { id, type:
+   'parcel_collected', day, at, from, clan, point, parcel, goods, text }
+   (parcel: the Bastion's parcel id; point: a key of
+   shared/data/courier-points.js; clan: that town's Clan; goods: what went
+   into the Party bags, [{ goodId, qty }]). Point, Clan and goods are only
+   for showing: the Bastion's own parcel record decides. Its id is always
+   '<parcel id>:collect:0' (B.collectId), so the same parcel can never be
+   collected twice. The goods go into the Party bags in the same Explorer
+   save as the message; the Bastion then closes the parcel once, keeping a
+   receipt. The Explorer reads the Bastion's parcels from its save (B.parcels,
+   B.parcelView) but never changes them.
+
    A message of a kind this copy doesn't know yet (from a newer copy of the
    suite) waits, with no receipt, rather than being refused for good (only
    a Bastion starting from nothing skips it, as it skips everything sent
@@ -77,18 +90,51 @@
     return r && typeof r.clanKey === 'string' ? r.clanKey : '';
   };
 
+  /* The towns where the party can collect a parcel from the Courier
+     Exchange (shared/data/courier-points.js, pull request 6). */
+  function points() { return (window.TSI_DATA && window.TSI_DATA.courierPoints) || {}; }
+  B.points = function () {
+    var p = points();
+    return Object.keys(p).filter(function (k) { return p[k] && typeof p[k] === 'object'; });
+  };
+  B.isPoint = function (id) { return typeof id === 'string' && B.points().indexOf(id) !== -1; };
+  /* 'slades_muster' → 'Slade’s Muster' (as the Explorer's pin spells it). */
+  B.pointLabel = function (id) {
+    var p = points()[id];
+    if (p && typeof p.label === 'string' && p.label) return p.label;
+    return typeof id === 'string' && id ? id.split('_').map(function (w) { return w.charAt(0).toUpperCase() + w.slice(1); }).join(' ') : 'Unknown town';
+  };
+  /* The Clan whose region the town is in: 'slades_muster' → 'slade', or ''. */
+  B.pointClan = function (id) {
+    var p = points()[id];
+    var r = p && regions()[p.region];
+    return r && typeof r.clanKey === 'string' ? r.clanKey : '';
+  };
+  /* The collection point at an Explorer pin, or '' (a town's id is its
+     pin's, but the pin is checked, so the two can never disagree). */
+  B.pointAtPin = function (pin) {
+    var p = points();
+    var ids = B.points();
+    for (var i = 0; i < ids.length; i++) if (p[ids[i]].pin === pin) return ids[i];
+    return '';
+  };
+
   /* A change from one moment is at most 1 either way. */
   B.STANDING_CAP = 1;
   B.FIELDS = ['id', 'type', 'day', 'at', 'from', 'clan', 'hr', 'text'];
   /* A Port Charter's fields (pull request 5). */
   B.CHARTER_FIELDS = ['id', 'type', 'day', 'at', 'from', 'clan', 'port', 'text'];
+  /* A parcel collected in the Explorer (pull request 6). */
+  B.PARCEL_FIELDS = ['id', 'type', 'day', 'at', 'from', 'clan', 'point', 'parcel', 'goods', 'text'];
   /* The kinds of message this copy knows; a well-formed kind name not on the
      list is a newer copy's, and waits. */
-  B.TYPES = ['standing', 'charter'];
+  B.TYPES = ['standing', 'charter', 'parcel_collected'];
   B.TYPE_PATTERN = /^[a-z][a-z_]{0,29}$/;
   B.ID_PATTERN = /^[a-z0-9-]{6,40}:[A-Za-z0-9_]{1,40}:\d{1,2}$/;
   B.UID_PATTERN = /^[a-z0-9-]{6,40}$/;
   B.TEXT_MAX = 200;
+  /* A parcel's pickup id is '<parcel id>' + this. */
+  B.COLLECT_SUFFIX = ':collect:0';
 
   /* A new random id for an event: the time and 8 random hex digits from
      the browser's crypto, never Math.random, so it can't shift the
@@ -144,6 +190,45 @@
     };
   };
 
+  /* A parcel's pickup message id: fixed for each parcel, so the Explorer can
+     only ever collect it once. */
+  B.collectId = function (parcelId) { return String(parcelId) + B.COLLECT_SUFFIX; };
+  /* The parcel id in a pickup message's id, or '' if it isn't one. */
+  B.parcelIdOf = function (id) {
+    if (typeof id !== 'string' || id.length <= B.COLLECT_SUFFIX.length || id.slice(-B.COLLECT_SUFFIX.length) !== B.COLLECT_SUFFIX) return '';
+    return id.slice(0, -B.COLLECT_SUFFIX.length);
+  };
+  /* Is this message a parcel pickup? Read from the message itself (its kind,
+     or for anything but the two older kinds its id), never from a receipt. */
+  B.isParcelMessage = function (m) {
+    if (!isObj(m)) return false;
+    if (m.type === 'parcel_collected') return true;
+    return m.type !== 'standing' && m.type !== 'charter' && B.parcelIdOf(m.id) !== '';
+  };
+  /* A parcel's goods as a message or the Explorer shows them: [{ goodId, qty }]. */
+  function cleanGoods(list) {
+    return (Array.isArray(list) ? list : []).filter(function (x) {
+      return isObj(x) && typeof x.goodId === 'string' && x.goodId && isWhole(x.qty) && x.qty > 0;
+    }).map(function (x) { return { goodId: x.goodId.slice(0, 60), qty: Math.min(x.qty, 9999) }; });
+  }
+  B.cleanGoods = cleanGoods;
+  /* A new pickup message (the Explorer makes these, J.collectParcel): its
+     id comes from the parcel, its Clan from the town. */
+  B.parcelMessage = function (f) {
+    return {
+      id: B.collectId(str(f.parcel)),
+      type: 'parcel_collected',
+      day: isWhole(f.day) ? f.day : 1,
+      at: str(f.at) || new Date().toISOString(),
+      from: { code: str(f.from && f.from.code, 20), title: str(f.from && f.from.title, 80), step: str(f.from && f.from.step, 40) },
+      clan: B.pointClan(f.point),
+      point: str(f.point, 40),
+      parcel: str(f.parcel, 40),
+      goods: cleanGoods(f.goods),
+      text: str(f.text, B.TEXT_MAX)
+    };
+  };
+
   /* A kind of message from a newer copy of the suite: a well-formed kind
      this copy doesn't know, on a message with a good id. It waits (no
      receipt), so the newer copy can still apply it later. */
@@ -160,6 +245,9 @@
     var day = typeof m.day === 'number' && isFinite(m.day) ? Math.round(m.day) : 1;
     if (m.type === 'charter') {
       return { id: m.id, type: 'charter', day: day, at: str(m.at), from: from, clan: str(m.clan), port: str(m.port, 40), text: str(m.text, B.TEXT_MAX) };
+    }
+    if (m.type === 'parcel_collected') {
+      return { id: m.id, type: 'parcel_collected', day: day, at: str(m.at), from: from, clan: str(m.clan), point: str(m.point, 40), parcel: str(m.parcel, 40), goods: cleanGoods(m.goods), text: str(m.text, B.TEXT_MAX) };
     }
     /* A newer copy's kind: every plain field kept as it is (text cut to
        length), so saving here doesn't strip it. */
@@ -193,6 +281,19 @@
   B.check = function (m) {
     if (!isObj(m)) return 'It isn\'t a message.';
     if (B.TYPES.indexOf(m.type) === -1) return 'It isn\'t a kind of change the Bastion knows.';
+    /* A parcel pickup: only its kind and its id are checked, and that the
+       parcel it names is the one in its id. Its town, Clan, goods and any
+       other fields are only for showing, never a reason to refuse it: the
+       party already has the goods, so the Bastion must close its parcel
+       (an older copy of the Explorer may have reshaped the message, adding
+       hr and dropping the town and the parcel). */
+    if (m.type === 'parcel_collected') {
+      if (typeof m.id !== 'string' || !B.ID_PATTERN.test(m.id)) return 'Its id is damaged.';
+      var pid = B.parcelIdOf(m.id);
+      if (!pid || !B.UID_PATTERN.test(pid)) return 'Its id isn\'t a parcel pickup\'s.';
+      if (typeof m.parcel === 'string' && m.parcel && m.parcel !== pid) return 'It names a different parcel from its id.';
+      return '';
+    }
     var fields = m.type === 'charter' ? B.CHARTER_FIELDS : B.FIELDS;
     var extra = Object.keys(m).filter(function (k) { return fields.indexOf(k) === -1; });
     if (extra.length) return 'It has something the Bastion doesn\'t know (' + extra.join(', ') + ').';
@@ -244,6 +345,19 @@
     if (!isObj(bastionSave)) return { kind: 'waiting', line: 'Waiting: the Bastion hasn\'t saved anything yet.' };
     var r = B.receipt(bastionSave, m && m.id);
     var charter = isObj(m) && m.type === 'charter';
+    /* A parcel pickup (pull request 6): read from the message, never from
+       the receipt's kind (an older Bastion's receipt has none). */
+    if (B.isParcelMessage(m) && r) {
+      var town = B.pointLabel(str(r.point) || str(m.point));
+      var when = isWhole(r.day) ? ' on ' + (r.day >= 1 ? 'Day ' + r.day : 'a day before Day 1') : '';
+      if (r.r === 'applied') return { kind: 'applied', line: r.held === true
+        ? 'Applied' + when + ': the Bastion had already recorded the parcel at ' + town + ' as collected, so nothing changed.'
+        : 'Applied' + when + ': the Bastion recorded the parcel at ' + town + ' as collected.' };
+      if (r.r === 'skipped') return { kind: 'skipped', line: 'Skipped: collected before this Bastion started.' };
+      var why = str(r.why) || 'the Bastion couldn\'t use it.';
+      if (!/[.!?]$/.test(why)) why += '.';
+      return { kind: 'refused', line: 'Refused: ' + why + ' The items stay in the Party bags; take them out with ✕ if they shouldn\'t be there.' };
+    }
     /* A newer copy's kind of message: plain words, whatever it does. */
     if (B.waitsForNewer(m)) {
       if (r && r.r === 'applied') return { kind: 'applied', line: 'Applied by a newer copy of the Bastion.' };
@@ -298,6 +412,90 @@
     });
     if (waiting) return { kind: 'waiting', day: waiting.day, line: 'Sent on ' + (waiting.day >= 1 ? 'Day ' + waiting.day : 'a day before Day 1') + ': waiting for the Bastion.' };
     return { kind: 'none', line: 'Not held.' };
+  };
+
+  /* ---------- Parcels from the Courier Exchange (pull request 6) ----------
+     The Explorer reads them from the Bastion's save, as last saved, and
+     never changes them. */
+  B.PARCEL_STATUSES = ['in_transit', 'ready', 'collected', 'returning', 'returned'];
+  function dayOrNull(v) { return isWhole(v) ? v : null; }
+  function dayText(d) { return d >= 1 ? 'Day ' + d : 'a day before Day 1'; }
+  /* The Bastion's parcels, lightly tidied: [{ id, point, goods, status,
+     departDay, readyDay, arrivedDay, collectedDay, recalledDay, returnDay }]. */
+  B.parcels = function (bastionSave) {
+    var tn = isObj(bastionSave) && isObj(bastionSave.tradeNetwork) ? bastionSave.tradeNetwork : {};
+    return (Array.isArray(tn.parcels) ? tn.parcels : []).filter(function (p) {
+      return isObj(p) && typeof p.id === 'string' && p.id && typeof p.point === 'string' && B.PARCEL_STATUSES.indexOf(p.status) !== -1;
+    }).map(function (p) {
+      return {
+        id: p.id, point: p.point, goods: cleanGoods(p.goods), status: p.status,
+        departDay: dayOrNull(p.departDay), readyDay: dayOrNull(p.readyDay), arrivedDay: dayOrNull(p.arrivedDay),
+        collectedDay: dayOrNull(p.collectedDay), recalledDay: dayOrNull(p.recalledDay), returnDay: dayOrNull(p.returnDay)
+      };
+    });
+  };
+  /* A parcel's goods as the Party bags name them: "3 Expedition Provision
+     Packs, 1 Overland chart (3 days of use)". */
+  B.parcelGoodsText = function (goods) {
+    var known = (window.TSI_DATA && window.TSI_DATA.partyItems) || {};
+    return cleanGoods(goods).map(function (x) {
+      var info = isObj(known[x.goodId]) ? known[x.goodId] : null;
+      if (!info) return x.qty + ' × ' + x.goodId.replace(/_/g, ' ');
+      var each = isWhole(info.usesEach) && info.usesEach > 1 ? info.usesEach : 1;
+      var uses = each > 1 ? ' (' + x.qty * each + ' ' + (x.qty * each === 1 ? info.unit : info.units) + ')' : '';
+      return x.qty + ' ' + (x.qty === 1 ? info.name : info.plural) + uses;
+    }).join(', ');
+  };
+  /* What the Explorer shows for one parcel: { kind, line, goods }, kind
+     'on_road' | 'due' | 'waiting' | 'returning' | 'collected' | 'returned'.
+     Collected whenever the Explorer has already sent its pickup, whatever
+     the Bastion has saved; due when the Explorer's day has reached its
+     arrival day but the Bastion hasn't recorded the arrival yet (it's shut,
+     or behind). */
+  B.parcelView = function (p, explorerSave) {
+    var town = B.pointLabel(p && p.point);
+    var goods = B.parcelGoodsText(p && p.goods);
+    function view(kind, line) { return { kind: kind, line: line, goods: goods }; }
+    if (!isObj(p)) return view('on_road', 'On the road.');
+    var cid = B.collectId(p.id);
+    var sent = B.outbox(explorerSave).filter(function (m) { return m.id === cid; })[0];
+    if (sent) return view('collected', 'Collected at ' + town + (isWhole(sent.day) ? ' on ' + dayText(sent.day) : '') + '.');
+    if (p.status === 'collected') return view('collected', 'Collected at ' + town + (isWhole(p.collectedDay) ? ' on ' + dayText(p.collectedDay) : '') + '.');
+    if (p.status === 'returned') return view('returned', 'Recalled: back at the Ironbow' + (isWhole(p.returnDay) ? ' on ' + dayText(p.returnDay) : '') + '.');
+    if (p.status === 'returning') return view('returning', 'Recalled: on its way back to the Ironbow' + (isWhole(p.returnDay) ? ' (home on ' + dayText(p.returnDay) + ')' : '') + '. It can\'t be collected.');
+    if (p.status === 'ready') return view('waiting', 'Waiting at ' + town + (isWhole(p.arrivedDay) ? ' since ' + dayText(p.arrivedDay) : '') + ': collect it from the town picture at ' + town + '.');
+    var j = isObj(explorerSave) && isObj(explorerSave.travel) ? explorerSave.travel : {};
+    var today = isWhole(j.day) ? j.day : null;
+    if (isWhole(p.readyDay) && today !== null && p.readyDay <= today) return view('due', 'Due at ' + town + ': the Bastion records its arrival when it reaches ' + dayText(p.readyDay) + '.');
+    return view('on_road', 'On the road: due at ' + town + (isWhole(p.readyDay) ? ' on ' + dayText(p.readyDay) : '') + '.');
+  };
+  /* The parcels the Explorer lists: its From the Ironbow list (every town),
+     or a town's courier post (point given). [{ parcel, view }]: every
+     parcel still open (on the road, due, waiting, or coming home), and one
+     closed on the Explorer's day or the day before (collected, or back at
+     the Ironbow), so the party sees what has just happened. Waiting ones
+     first, then due, on the road, coming home and closed, each by its day. */
+  B.SHOWN_ORDER = ['waiting', 'due', 'on_road', 'returning', 'collected', 'returned'];
+  B.parcelsShown = function (bastionSave, explorerSave, point) {
+    var tr = isObj(explorerSave) && isObj(explorerSave.travel) ? explorerSave.travel : {};
+    var today = isWhole(tr.day) ? tr.day : 1;
+    var sent = {};
+    B.outbox(explorerSave).forEach(function (m) { sent[m.id] = m; });
+    return B.parcels(bastionSave).filter(function (p) {
+      return !point || p.point === point;
+    }).map(function (p, i) {
+      var view = B.parcelView(p, explorerSave);
+      var m = sent[B.collectId(p.id)];
+      var closed = view.kind === 'collected' ? (m && isWhole(m.day) ? m.day : p.collectedDay)
+        : view.kind === 'returned' ? p.returnDay : null;
+      var when = view.kind === 'returning' ? p.returnDay : closed !== null ? closed : p.readyDay;
+      return { parcel: p, view: view, closed: closed, when: isWhole(when) ? when : 0, i: i };
+    }).filter(function (x) {
+      if (x.view.kind !== 'collected' && x.view.kind !== 'returned') return true;
+      return isWhole(x.closed) && x.closed >= today - 1;
+    }).sort(function (a, b) {
+      return (B.SHOWN_ORDER.indexOf(a.view.kind) - B.SHOWN_ORDER.indexOf(b.view.kind)) || (a.when - b.when) || (a.i - b.i);
+    }).map(function (x) { return { parcel: x.parcel, view: x.view }; });
   };
 
   TSI.bridge = B;

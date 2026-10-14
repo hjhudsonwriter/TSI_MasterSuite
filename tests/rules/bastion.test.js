@@ -32,10 +32,10 @@
 
   group('Bastion: content');
 
-  test('22 facilities (the overhaul, 13 October 2026: 6 of them still in development once pull request 3 opened the Fishery and Timber Yard), 12 tool tables (9 can be artisan tools), 11 events, 7 clans, 270 compendium items (271 entries)', function (t) {
+  test('22 facilities (the overhaul, 13 October 2026: 5 of them still in development once pull request 3 opened the Fishery and Timber Yard and pull request 6 the Courier Exchange), 12 tool tables (9 can be artisan tools), 11 events, 7 clans, 270 compendium items (271 entries)', function (t) {
     t.equal(data.facilities.length, 22);
     t.same(data.facilities.filter(function (f) { return f.inDevelopment; }).map(function (f) { return f.id; }),
-      ['stone_masonworks', 'weavers_hall', 'courier_exchange', 'wyvern_roost', 'griffin_tower', 'dire_wolf_den']);
+      ['stone_masonworks', 'weavers_hall', 'wyvern_roost', 'griffin_tower', 'dire_wolf_den']);
     t.same(['smithy', 'arcane_study', 'laboratory', 'library', 'garden', 'greenhouse', 'gaming_hall'].filter(function (id) { return R.facility(data, id); }), [], 'the old ones are gone');
     t.equal(Object.keys(data.tools).length, 12);
     t.equal(R.toolTableNames(data.tools).length, 9);
@@ -1447,15 +1447,15 @@
     t.equal(R.issueOrder(s, data, 'workshop', 'smithing', 0, dice([0.3])).ok, false, 'no Smithing without the old Smithy');
     s.partyLevel = 20;
     R.slotRows(s, 20);
-    ['stone_masonworks', 'weavers_hall', 'courier_exchange', 'wyvern_roost', 'griffin_tower', 'dire_wolf_den'].forEach(function (id) {
+    ['stone_masonworks', 'weavers_hall', 'wyvern_roost', 'griffin_tower', 'dire_wolf_den'].forEach(function (id) {
       var r = R.startBuild(s, data, 2, id, R.isPlotFacility(data, id) ? 'plot' : 'slot');
       t.equal(r.ok, false, id);
       t.ok(/still in development/.test(r.message), id + ': ' + r.message);
     });
-    ['fishery_smokehouse', 'timber_sawmill'].forEach(function (id) {
+    ['fishery_smokehouse', 'timber_sawmill', 'courier_exchange'].forEach(function (id) {
       var r = R.startBuild(s, data, 2, id, 'slot');
       t.equal(r.ok, false, id + ' refused in a special slot');
-      t.ok(R.startBuild(s, data, 0, id, 'plot').ok || R.startBuild(s, data, 1, id, 'plot').ok, id + ' builds on a Development Plot');
+      t.ok([0, 1, 2].some(function (i) { return R.startBuild(s, data, i, id, 'plot').ok; }), id + ' builds on a Development Plot');
     });
   });
 
@@ -1574,11 +1574,13 @@
     return out;
   }
 
-  test('the goods catalogue: 17 trade goods in lots, 4 ingredients in portions, 1 supply in packs; every good an order names is in it', function (t) {
+  test('the goods catalogue: 17 trade goods in lots, 4 ingredients in portions, 2 supplies (packs, and since pull request 6 Overland charts); every good an order names is in it', function (t) {
     var g = R.goodsList(data);
     var kinds = {};
     g.forEach(function (x) { kinds[x.kind] = (kinds[x.kind] || 0) + 1; });
-    t.same(kinds, { cargo: 17, ingredient: 4, supply: 1 });
+    t.same(kinds, { cargo: 17, ingredient: 4, supply: 2 });
+    t.same([R.goodsAmountText(data, 'overland_chart', 1), R.goodsAmountText(data, 'overland_chart', 3), R.goodsCountText(data, 'overland_chart', 2), R.goodsCountText(data, 'expedition_provision_pack', 2)],
+      ['1 Overland chart', '3 Overland charts', '2 charts', '2 packs'], 'a chart is counted in charts');
     t.equal(g.map(function (x) { return x.id; }).filter(function (id, i, a) { return a.indexOf(id) !== i; }).length, 0, 'ids are unique');
     g.filter(function (x) { return x.kind === 'cargo'; }).forEach(function (x) { t.ok(typeof x.gp === 'number' && x.gp > 0 && x.lot, x.id); });
     goodsNamed().forEach(function (id) { t.ok(R.good(data, id), id + ' is in the catalogue'); });

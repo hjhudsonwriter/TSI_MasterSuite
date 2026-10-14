@@ -449,3 +449,46 @@
 }
 .tsi-page--explorer .tsi-exp-pack .tsi-exp-tip { margin: 0; }
 .tsi-page--explorer .tsi-exp-count { width: 90px; font-size: 17px; }
+
+/* ---------- The Courier Exchange (pull request 6 of the facilities overhaul) ----------
+   The Party bags' From the Ironbow list, and the courier post in a
+   collection town's picture. At Timberport and Goldport it sits beside the
+   harbour box, and every town picture with a box is a little shorter, so
+   the picture, the box and Close all fit the laptop. */
+.tsi-tool--explorer .tsi-exp-ironbow { display: flex; flex-direction: column; gap: 6px; margin-top: 2px; }
+.tsi-tool--explorer .tsi-exp-ironbow__title {
+  margin: 0;
+  font: 600 12px/1.3 var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-heading);
+  text-transform: uppercase;
+  color: var(--tsi-gold-text);
+}
+.tsi-page--explorer .tsi-exp-place--post .tsi-exp-place-media img { max-height: 52vh; }
+.tsi-page--explorer .tsi-exp-place-boxes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+.tsi-page--explorer .tsi-exp-place-boxes > .tsi-exp-harbour,
+.tsi-page--explorer .tsi-exp-place-boxes > .tsi-exp-post { margin-top: 0; }
+.tsi-page--explorer .tsi-exp-post {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 10px 14px;
+  border: 1px solid rgba(214, 178, 94, .35);
+  border-radius: var(--tsi-radius-md);
+  background: rgba(27, 10, 13, .6);
+}
+.tsi-page--explorer .tsi-exp-post__title { margin: 0; font: 600 14px/1.3 var(--tsi-font-display); letter-spacing: var(--tsi-track-heading); text-transform: uppercase; color: var(--tsi-gold-text); }
+.tsi-page--explorer .tsi-exp-post__line { margin: 0; font-size: 16px; }
+.tsi-page--explorer .tsi-exp-post__list { display: flex; flex-direction: column; gap: 6px; max-height: 22vh; overflow-y: auto; }
+.tsi-page--explorer .tsi-exp-post__list:empty { display: none; }
+.tsi-page--explorer .tsi-exp-post__row { display: flex; align-items: center; gap: 10px; }
+.tsi-page--explorer .tsi-exp-post__what { flex: 1 1 auto; min-width: 0; font-size: 16px; line-height: 1.3; overflow-wrap: anywhere; }
+.tsi-page--explorer .tsi-exp-post__what strong { color: var(--tsi-cream); font-weight: 700; }
+.tsi-page--explorer .tsi-exp-post__row .tsi-btn { flex: 0 0 auto; }
+.tsi-page--explorer .tsi-exp-post .tsi-btn:disabled { opacity: .55; cursor: not-allowed; }
+.tsi-page--explorer .tsi-exp-post__done { margin: 0; font-size: 15px; color: var(--tsi-ok); }

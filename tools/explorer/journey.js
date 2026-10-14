@@ -18,8 +18,9 @@
      to the Bastion; packUsed lists the steps where a pack was used;
    - log: a short history of what events changed;
    - outbox: the Honour/Respect changes sent to the Bastion (pull request 4
-     of the facilities overhaul, 13 October 2026), and the Port Charters the
-     DM grants (pull request 5, 14 October 2026): only ever added to. The
+     of the facilities overhaul, 13 October 2026), the Port Charters the
+     DM grants (pull request 5, 14 October 2026) and the Courier Exchange
+     parcels the DM collects (pull request 6): only ever added to. The
      Bastion applies each once and keeps a receipt in its own save
      (shared/js/bridge-rules.js);
    - inventory: the Party bags, [{ id, kind, qty }]: Overland charts
@@ -639,6 +640,66 @@
     return { ok: true, line: line, id: id };
   };
 
+  /* The DM collects a parcel from the Bastion's Courier Exchange at a town's
+     courier post (pull request 6, Harry, 14 October 2026). bastionSave: the
+     Bastion's save, read fresh just now. Everything is checked first, and
+     nothing changes if anything is wrong: the browser is saving (opts.memory
+     is true when it only keeps things in memory, so the Bastion could never
+     see the pickup); the Bastion has read the Explorer's day; it has recorded
+     this parcel as waiting at this town; it hasn't been collected already
+     (its pickup id is fixed, so this can only happen once); and every item
+     is something the Party bags hold, in counts they can take. Then, in one
+     change for the one save that follows: each item goes into the Party
+     bags, and the pickup message goes into the outbox for the Bastion.
+     Returns { ok, line, id } or { ok: false, message }. */
+  J.collectParcel = function (state, parcelId, pointId, bastionSave, opts) {
+    var B = bridge();
+    var o = isObj(opts) ? opts : {};
+    if (!B || !B.parcels) return { ok: false, message: 'This copy of the Explorer can\'t collect parcels.' };
+    if (o.memory === true) return { ok: false, message: 'This browser isn\'t saving, so the Bastion can\'t see the pickup. Nothing was collected.' };
+    if (!isObj(bastionSave)) return { ok: false, message: 'Waiting for the Bastion: it hasn\'t saved anything yet.' };
+    if (bastionSave.anchored !== true) return { ok: false, message: 'Waiting for the Bastion: open it once so it reads the Explorer\'s day.' };
+    var p = B.parcels(bastionSave).filter(function (x) { return x.id === parcelId; })[0];
+    if (!p) return { ok: false, message: 'The Bastion has no record of this parcel.' };
+    var id = B.collectId(p.id);
+    if (!B.ID_PATTERN.test(id) || !B.UID_PATTERN.test(p.id)) return { ok: false, message: 'This parcel\'s record is damaged, so it can\'t be collected safely.' };
+    var j = journey(state);
+    var sent = (j.outbox || []).filter(function (m) { return isObj(m) && m.id === id; })[0];
+    if (sent) return { ok: false, message: 'This parcel has already been collected' + (isNum(sent.day) ? ' (Day ' + sent.day + ')' : '') + '.' };
+    var town = B.pointLabel(p.point);
+    if (p.status === 'collected') return { ok: false, message: 'The Bastion has already recorded this parcel as collected.' };
+    if (p.status === 'returning' || p.status === 'returned') return { ok: false, message: 'That parcel was recalled to the Ironbow: it can\'t be collected.' };
+    if (p.status !== 'ready') return { ok: false, message: 'The Bastion hasn\'t recorded this parcel\'s arrival yet' + (isNum(p.readyDay) ? ' (it\'s due at ' + town + ' on Day ' + p.readyDay + ')' : '') + '.' };
+    if (p.point !== pointId) return { ok: false, message: 'This parcel waits at ' + town + ', not at ' + B.pointLabel(pointId) + '.' };
+    if (!p.goods.length) return { ok: false, message: 'The Bastion\'s record of this parcel lists nothing in it.' };
+    /* Every item first: a kind the bags hold, a whole count of 1 or more,
+       and room under 9999 uses for each kind. (A parcel isn't held to + Add's
+       1 to 99 at a time: its size is the Bastion's data, which may grow.) */
+    var room = {};
+    for (var i = 0; i < p.goods.length; i++) {
+      var g = p.goods[i];
+      var info = J.itemInfo(g.goodId);
+      if (!info) return { ok: false, message: 'This copy of the Explorer can\'t carry ' + g.goodId.replace(/_/g, ' ') + ', so the parcel waits at ' + town + '.' };
+      if (!isNum(g.qty) || Math.floor(g.qty) !== g.qty || g.qty < 1) return { ok: false, message: 'The Bastion\'s record of this parcel has a count the Party bags can\'t take (' + g.qty + ' ' + info.plural + '), so the parcel waits at ' + town + '.' };
+      var each = int(info.usesEach, 1) || 1;
+      room[g.goodId] = (room[g.goodId] === undefined ? J.itemQty(state, g.goodId) : room[g.goodId]) + g.qty * each;
+      if (room[g.goodId] > 9999) return { ok: false, message: 'The Party bags can\'t hold that many ' + info.plural + ', so the parcel waits at ' + town + '.' };
+    }
+    /* Then change everything, together. */
+    p.goods.forEach(function (x) { addUses(state, x.goodId, x.qty); });
+    var what = B.parcelGoodsText(p.goods);
+    if (!Array.isArray(j.outbox)) j.outbox = [];
+    j.outbox.push(B.parcelMessage({
+      parcel: p.id, point: p.point, day: day(state), at: new Date().toISOString(),
+      from: { code: 'DM', title: 'Courier post', step: 'pin' },
+      goods: p.goods,
+      text: ('Parcel collected at ' + town + ': ' + what + '.').slice(0, B.TEXT_MAX)
+    }));
+    var line = 'Collected the parcel at ' + town + ': ' + what + '. Sent to the Bastion.';
+    logLine(state, line);
+    return { ok: true, line: line, id: id };
+  };
+
   /* Go to a step: its outcomes apply once, here and only here. */
   function enter(state, defs, stepId, rand) {
     var j = journey(state);
@@ -911,10 +972,10 @@
     if (j.log.length > LOG_MAX) j.log.length = LOG_MAX;
   }
   /* The DM adds n charts or packs. Returns the line it logs, or null. */
-  J.addItem = function (state, kind, n) {
+  /* Put a count of a kind into the bags, as uses (a chart is 3 days of
+     use). + Add and a parcel's pickup both come through here. */
+  function addUses(state, kind, count) {
     var info = J.itemInfo(kind);
-    var count = int(n, 0);
-    if (!info || count < 1 || count > 99) return null;
     var j = journey(state);
     if (!Array.isArray(j.inventory)) j.inventory = [];
     var uses = count * (int(info.usesEach, 1) || 1);
@@ -922,6 +983,13 @@
     j.inventory.forEach(function (it) { if (it.kind === kind) row = it; });
     if (row) row.qty = Math.min(9999, int(row.qty, 0) + uses);
     else j.inventory.push({ id: 'i-' + newUid(), kind: kind, qty: Math.min(9999, uses) });
+    return uses;
+  }
+  J.addItem = function (state, kind, n) {
+    var info = J.itemInfo(kind);
+    var count = int(n, 0);
+    if (!info || count < 1 || count > 99) return null;
+    var uses = addUses(state, kind, count);
     var line = 'Added ' + count + ' ' + (count === 1 ? info.name : info.plural) + ' to the Party bags' +
       (info.usesEach > 1 ? ' (' + J.itemCount(kind, uses) + ')' : '') + '. Now ' + J.itemCount(kind, J.itemQty(state, kind)) + '.';
     logLine(state, line);

@@ -100,12 +100,13 @@
   R.defaultDiplomacy = function () {
     return { agreements: [], delegations: [], summits: [], arbitrations: [], consortiums: [], rep: 0, cooldowns: {}, tokens: 0 };
   };
-  /* routes: the Hall's old sea routes (legacy_abstract). The rest is
-     commodity trade (pull request 5, commerce-rules.js): Port Charters,
-     cargo ships at sea, standing shipments, sale receipts, voyage
-     protections ready to use, and each good sold (for market saturation). */
+  /* routes: the Hall's old sea routes (legacy_abstract). Then commodity
+     trade (pull request 5, commerce-rules.js): Port Charters, cargo ships at
+     sea, standing shipments, sale receipts, voyage protections ready to use,
+     and each good sold (for market saturation). parcels: the Courier
+     Exchange's parcels (pull request 6, courier-rules.js). */
   R.defaultTradeNetwork = function () {
-    return { active: false, strategy: 'balanced', stability: 75, routes: [], portCharters: [], voyages: [], schedules: [], cargoSales: [], protections: {}, marketLedger: [] };
+    return { active: false, strategy: 'balanced', stability: 75, routes: [], portCharters: [], voyages: [], schedules: [], cargoSales: [], protections: {}, marketLedger: [], parcels: [] };
   };
   R.defaultState = function (data) {
     var s = {
@@ -423,6 +424,8 @@
     /* Port Charters, ships at sea, standing shipments and sales (pull
        request 5, commerce-rules.js). */
     if (R.cleanCommerce) R.cleanCommerce(d, data);
+    /* The Courier Exchange's parcels (pull request 6, courier-rules.js). */
+    if (R.cleanCourier) R.cleanCourier(d, data);
     R.normalizeBuiltExtras(d);
     tidyPlots(d, data);
     R.ensureLevels(d, data);
@@ -472,6 +475,14 @@
           out.done[id].port = txt(r.port, 40);
           out.done[id].held = r.held === true;
         }
+        /* A parcel pickup's receipt (pull request 6) says which parcel and
+           town, and whether it was already recorded as collected. */
+        if (r.type === 'parcel_collected') {
+          out.done[id].type = 'parcel_collected';
+          out.done[id].parcel = txt(r.parcel, 40);
+          out.done[id].point = txt(r.point, 40);
+          out.done[id].held = r.held === true;
+        }
       });
     }
     return out;
@@ -503,11 +514,15 @@
      nothing (fresh) instead marks every change already sent as skipped, once
      (or, if there's no Explorer save yet, simply stops being fresh).
      Pull request 5 adds Port Charters (R.addCharter, commerce-rules.js):
-     each is held once, and its receipt names the port. A kind of message
+     each is held once, and its receipt names the port. Pull request 6 adds
+     parcels collected in the Explorer (R.collectParcel, courier-rules.js):
+     the parcel is closed once, never touching Honour/Respect; a copy
+     without the courier rules leaves the pickup waiting. A kind of message
      from a newer copy of the suite waits, with no receipt.
-     Returns { changed, applied: [lines], charters: [lines], skipped: n, refused: n }. */
+     Returns { changed, applied: [lines], charters: [lines], parcels:
+     [notices], skipped: n, refused: n }. */
   R.applyInbox = function (s, data, explorerSave, now) {
-    var out = { changed: false, applied: [], charters: [], skipped: 0, refused: 0 };
+    var out = { changed: false, applied: [], charters: [], parcels: [], skipped: 0, refused: 0 };
     var B = TSI.bridge;
     if (!B) return out;
     if (!isObj(s.bridge) || !isObj(s.bridge.done)) s.bridge = R.cleanBridge(s.bridge);
@@ -529,24 +544,35 @@
       }, extra || {});
       out.changed = true;
     }
-    /* A Port Charter's receipt also names its port. */
-    function charterExtra(m) { return m.type === 'charter' ? { type: 'charter', port: txt(m.port, 40), held: false } : {}; }
+    /* A Port Charter's receipt also names its port; a parcel pickup's names
+       its parcel and town (in the order R.cleanBridge keeps them). */
+    function charterExtra(m) {
+      if (m.type === 'charter') return { type: 'charter', port: txt(m.port, 40), held: false };
+      if (m.type === 'parcel_collected') return parcelExtra(m, null);
+      return {};
+    }
+    function parcelExtra(m, res) {
+      var pid = res ? res.parcel : (B.parcelIdOf ? B.parcelIdOf(m.id) : '') || txt(m.parcel, 40);
+      return { type: 'parcel_collected', parcel: txt(pid, 40), point: txt(res ? res.point : m.point, 40), held: !!(res && res.held) };
+    }
     function fromText(m) {
       return m.from && m.from.code ? m.from.code + (typeof m.day === 'number' ? ', ' + R.dayLabel(m.day) : '') : (typeof m.day === 'number' ? R.dayLabel(m.day) : 'the Explorer');
     }
     if (s.bridge.fresh) {
       var charters = 0;
       var newer = 0;
+      var pickups = 0;
       B.outbox(explorerSave).forEach(function (m) {
         if (Object.prototype.hasOwnProperty.call(done, m.id)) return;
         receipt(m, 'skipped', Object.assign(charterExtra(m), { why: 'Sent before this Bastion started.' }));
         if (m.type === 'charter') charters += 1;
+        else if (m.type === 'parcel_collected') pickups += 1;
         else if (B.waitsForNewer && B.waitsForNewer(m)) newer += 1;
         out.skipped += 1;
       });
       s.bridge.fresh = false;
       out.changed = true;
-      var standing = out.skipped - charters - newer;
+      var standing = out.skipped - charters - newer - pickups;
       if (newer) {
         R.log(s, 'From the Explorer', newer + (newer === 1 ? ' message' : ' messages') + ' from a newer copy of the suite, sent before this Bastion started, ' + (newer === 1 ? 'was' : 'were') + ' skipped, so nothing counts twice.', at);
       }
@@ -555,6 +581,11 @@
       }
       if (charters) {
         R.log(s, 'From the Explorer', charters + (charters === 1 ? ' Port Charter' : ' Port Charters') + ', sent before this Bastion started, ' + (charters === 1 ? 'was' : 'were') + ' skipped, so nothing counts twice. Clan Influence lists ' + (charters === 1 ? 'it: grant it again in the Explorer if it should count.' : 'them: grant them again in the Explorer if they should count.'), at);
+      }
+      /* A Bastion starting from nothing has no parcels, so a pickup sent
+         before it changes nothing here: the items stay in the Party bags. */
+      if (pickups) {
+        R.log(s, 'From the Explorer', pickups + (pickups === 1 ? ' parcel pickup' : ' parcel pickups') + ', collected before this Bastion started, ' + (pickups === 1 ? 'was' : 'were') + ' skipped, so nothing counts twice. Clan Influence lists ' + (pickups === 1 ? 'it' : 'them') + '; the items stay in the Party bags.', at);
       }
       return out;
     }
@@ -576,6 +607,25 @@
         R.log(s, 'From the Explorer', cline + (m.text ? ' ' + txt(m.text, 200) : ''), at);
         R.addWord(s, 'From the Explorer: Port Charter for ' + where + (got.added ? '.' : ' (already held).'));
         out.charters.push(cline);
+        return;
+      }
+      /* A parcel collected in the Explorer (pull request 6): the Bastion's
+         own parcel record decides, and Honour/Respect never changes. A copy
+         without the courier rules leaves it waiting, with no receipt. */
+      if (!why && m.type === 'parcel_collected') {
+        if (!R.collectParcel) return;
+        var pr = R.collectParcel(s, data, m, fromText(m));
+        receipt(m, pr.r, Object.assign(parcelExtra(m, pr), { why: pr.r === 'refused' ? pr.why : '' }));
+        if (pr.r === 'refused') {
+          out.refused += 1;
+          R.log(s, 'From the Explorer', 'A parcel pickup from the Explorer (' + fromText(m) + ') couldn\'t be used, so nothing changed: ' + pr.why, at);
+          return;
+        }
+        R.log(s, 'From the Explorer', pr.line, at);
+        if (!pr.held) {
+          R.addWord(s, 'From the Explorer: ' + pr.word);
+          out.parcels.push(pr.notice);
+        }
         return;
       }
       var res = why ? null : R.adjustStanding(s, m.clan, m.hr);
@@ -1559,11 +1609,12 @@
     if (g && g.kind === 'supply') return n + ' ' + name + (n === 1 ? '' : 's');
     return R.goodsCountText(data, id, n) + ' of ' + name;
   };
-  /* Just the count in the good's unit: "3 lots", "10 portions", "5 packs". */
+  /* Just the count in the good's unit: "3 lots", "10 portions", "5 packs",
+     "2 charts" (a supply with its own unit, pull request 6). */
   R.goodsCountText = function (data, id, qty) {
     var g = R.good(data, id);
     var n = clampInt(qty, 0);
-    var unit = g && g.kind === 'ingredient' ? 'portion' : g && g.kind === 'supply' ? 'pack' : 'lot';
+    var unit = g && g.kind === 'ingredient' ? 'portion' : g && g.kind === 'supply' ? (typeof g.unit === 'string' && g.unit ? g.unit : 'pack') : 'lot';
     return n + ' ' + unit + (n === 1 ? '' : 's');
   };
   R.goodsListText = function (data, list) {
@@ -2698,6 +2749,8 @@
     if (isObj(s.organization)) mv(s.organization, 'foundedAtDay');
     /* Port Charters, ships at sea and standing shipments (pull request 5). */
     if (R.shiftCommerce) R.shiftCommerce(s, n);
+    /* The Courier Exchange's parcels (pull request 6). */
+    if (R.shiftCourier) R.shiftCourier(s, n);
   };
   /* Read the Explorer's day for the first time (or before it has one): the
      Bastion moves to it, nothing passes. */

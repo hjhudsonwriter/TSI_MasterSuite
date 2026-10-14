@@ -19,6 +19,14 @@
    Expedition Provision Packs (advantage on an exhaustion save), which the
    DM adds with "+ Add".
 
+   The Courier Exchange (pull request 6, Harry's answers of 14 October
+   2026): the Bastion sends a parcel of supplies to a town, where it waits.
+   The Party bags' "From the Ironbow" list shows each parcel, read from the
+   Bastion's save; the town's picture has a courier post, whose Collect…
+   asks the DM to confirm the party is there (opening the picture doesn't
+   prove it), then puts the contents in the Party bags and tells the Bastion
+   (the rules are in journey.js, J.collectParcel).
+
    Layout: the map in the middle, the map controls on the left and the travel
    panel on the right, so a 4:3 map gets the whole height of the laptop.
    Fullscreen takes all three to the screen (for the TV); Hide UI (or H)
@@ -172,6 +180,12 @@
       var btnChart = btn('Use a chart today', useChart, 'tsi-exp-chartbtn', 'use-chart');
       var chartWhy = el('p', { class: 'tsi-exp-tip tsi-exp-chartwhy', 'data-test': 'chart-why', hidden: true });
       var chartLine = el('p', { class: 'tsi-exp-line tsi-exp-chartline', 'data-test': 'chart-line', hidden: true });
+      /* From the Ironbow (pull request 6): the Courier Exchange's parcels. */
+      var ironbowList = el('div', { class: 'tsi-exp-list' });
+      var ironbowBox = el('div', { class: 'tsi-exp-ironbow', 'data-test': 'from-ironbow', hidden: true }, [
+        el('h4', { class: 'tsi-exp-ironbow__title', text: 'From the Ironbow' }),
+        ironbowList
+      ]);
       var sentList = el('div', { class: 'tsi-exp-list', 'data-test': 'sent-list' });
       var btnRollNow = btn('Roll an event now', rollEventNow, '', 'roll-now');
       var noticeEl = el('p', { class: 'tsi-exp-notice', role: 'status', 'data-test': 'notice' });
@@ -210,7 +224,7 @@
         section('Main campaign', [
           row([mainSelect, btn('Queue', queueMainEvent, '', 'queue')], 'tsi-exp-row--select')
         ]),
-        sectionWith('Party bags', btn('+ Add', addToBags, 'tsi-exp-mini', 'bags-add'), [bagsList, row([btnChart]), chartWhy]),
+        sectionWith('Party bags', btn('+ Add', addToBags, 'tsi-exp-mini', 'bags-add'), [bagsList, row([btnChart]), chartWhy, ironbowBox]),
         section('Active Effects', [effectsList]),
         section('Threads', [threadsList]),
         /* Port Charter…: the DM grants one (pull request 5, 14 October 2026). */
@@ -1143,6 +1157,33 @@
         btnChart.title = why || 'One more 6-mile hex until Make Camp (uses 1 day of a chart)';
         chartWhy.hidden = !hasChart || !why;
         chartWhy.textContent = why;
+        renderIronbow();
+      }
+      /* From the Ironbow (pull request 6): the Courier Exchange's parcels as
+         the Bastion last saved them (readBastion reads it every 2 seconds),
+         each in plain words (shared/js/bridge-rules.js). Hidden when there
+         are none to show. */
+      var ironbowShown = '';
+      function exView() { return { travel: state.travel, journey: state.journey }; }
+      function ironbowRows() {
+        return bastionSeen === undefined || !TSI.bridge.parcelsShown ? [] : TSI.bridge.parcelsShown(bastionSeen, exView());
+      }
+      function parcelsKey(rows) {
+        return rows.map(function (r) { return r.parcel.id + '=' + r.view.kind + ':' + r.view.line + ':' + r.view.goods; }).join('|');
+      }
+      function renderIronbow() {
+        var rows = ironbowRows();
+        ironbowShown = parcelsKey(rows);
+        TSI.clear(ironbowList);
+        ironbowBox.hidden = !rows.length;
+        rows.forEach(function (r) {
+          ironbowList.appendChild(el('div', { class: 'tsi-exp-item tsi-exp-parcel', 'data-test': 'parcel-line', 'data-kind': r.view.kind, 'data-parcel': r.parcel.id }, [
+            el('div', { class: 'tsi-exp-item__body' }, [
+              el('div', { class: 'tsi-exp-item__name' }, [el('strong', { text: r.view.goods || 'A parcel' })]),
+              el('div', { class: 'tsi-exp-item__text', 'data-test': 'parcel-text', text: r.view.line })
+            ])
+          ]));
+        });
       }
       function addToBags() {
         var kinds = Object.keys(window.TSI_DATA.partyItems || {});
@@ -1157,7 +1198,7 @@
         TSI.modal.open({
           title: 'Add to the Party bags',
           body: [
-            el('p', { text: 'When the party gets a chart or a pack (from the story, or from the Bastion\'s Warehouse, where you take it off by hand), add it here.' }),
+            el('p', { 'data-test': 'bags-intro', text: 'When the party gets a chart or a pack, add it here. Parcels from the Ironbow\'s Courier Exchange are collected at a town; use + Add for what the party gets another way.' }),
             el('div', { class: 'tsi-exp-rollrow' }, [kindSel, el('label', { class: 'tsi-exp-muted', text: 'How many:' }), count]),
             help
           ],
@@ -1211,6 +1252,17 @@
           return m.id + '=' + (bastionSeen === undefined ? '?' : B.statusOf(m, bastionSeen).line);
         }).join('|') + '|' + TSI.store.mode;
       }
+      /* The town a parcel was collected at, for its line: the message's own,
+         or (a message an older copy has reshaped) the Bastion's record of
+         the parcel. */
+      function pickupTown(m) {
+        var B = TSI.bridge;
+        if (B.isPoint(m.point)) return B.pointLabel(m.point);
+        var pid = B.parcelIdOf(m.id);
+        var p = bastionSeen ? B.parcels(bastionSeen).filter(function (x) { return x.id === pid; })[0] : null;
+        if (p) return B.pointLabel(p.point);
+        return typeof m.point === 'string' && m.point ? B.pointLabel(m.point) : 'a town';
+      }
       function renderSent() {
         var B = TSI.bridge;
         sentShown = sentKey();
@@ -1226,6 +1278,7 @@
               el('div', { class: 'tsi-exp-item__name' }, [
                 el('span', { class: 'tsi-exp-status tsi-exp-status--' + st.kind, 'data-test': 'sent-status', text: LABEL[st.kind] || st.kind }),
                 ' ', el('strong', { text: m.type === 'charter' ? 'Port Charter: ' + B.portLabel(m.port)
+                  : B.isParcelMessage && B.isParcelMessage(m) ? 'Parcel collected: ' + pickupTown(m)
                   : B.waitsForNewer(m) ? 'A change from a newer copy of the suite' : 'Clan ' + B.clanName(m.clan) + ' ' + B.signed(m.hr) }),
                 ' · ' + dayText + (m.from && m.from.code ? ' · ' + m.from.code : '')
               ]),
@@ -1240,19 +1293,26 @@
         /* The first change sent: look at the Bastion now, not in 2 seconds. */
         if (bastionSeen === undefined && list.length) readBastion();
       }
+      /* The Bastion's save as just read: everything showing it follows. */
+      function seeBastion(b) {
+        bastionSeen = b;
+        if (sentKey() !== sentShown) renderSent();
+        if (parcelsKey(ironbowRows()) !== ironbowShown) renderIronbow();
+        /* An open harbour box or courier post follows the Bastion too. */
+        if (openHarbour && openHarbour.node.isConnected) openHarbour.show(b);
+        else openHarbour = null;
+        if (openCourier && openCourier.node.isConnected) openCourier.show(b);
+        else openCourier = null;
+      }
       var readingBastion = false;
       function readBastion() {
         if (readingBastion || !life.alive || document.visibilityState === 'hidden') return;
-        /* Only the list's states need it: nothing sent, nothing to read. */
-        if (!(state.journey.outbox || []).length) return;
+        /* Read even when nothing has been sent (pull request 6): the Party
+           bags' From the Ironbow list and a town's courier post show the
+           Courier Exchange's parcels from it. */
         readingBastion = true;
         TSI.store.fresh('tsi.bastion.state', null).then(function (b) {
-          if (!life.alive) return;
-          bastionSeen = b;
-          if (sentKey() !== sentShown) renderSent();
-          /* An open harbour box follows the Bastion too (a review fix). */
-          if (openHarbour && openHarbour.node.isConnected) openHarbour.show(b);
-          else openHarbour = null;
+          if (life.alive) seeBastion(b);
         }).catch(function (err) {
           TSI.reportError(err, 'reading the Bastion');
         }).then(function () { readingBastion = false; });
@@ -1341,6 +1401,119 @@
         ]);
         openHarbour = { node: box, show: show };
         return box;
+      }
+
+      /* ---------- The courier post (pull request 6 of the facilities overhaul) ----------
+         In a collection town's picture: the parcels the Ironbow's Courier
+         Exchange has sent there, read from the Bastion's save, and Collect…
+         for one waiting there. Opening a town's picture doesn't prove the
+         party is there (Harry, 14 October 2026), so Collect… asks first. */
+      function dayWords(d) { return d >= 1 ? 'Day ' + d : 'a day before Day 1'; }
+      var MEMORY_PICKUP = 'This browser isn\'t saving, so the Bastion can\'t see the pickup.';
+      var onCollect = TSI.oneAtATime(function (parcelId, point) { return collectDialog(parcelId, point); });
+      var openCourier = null;   /* the courier post showing now, kept up to date by readBastion */
+      function courierBox(point) {
+        var B = TSI.bridge;
+        var list = el('div', { class: 'tsi-exp-post__list', 'data-test': 'post-list' });
+        var line = el('p', { class: 'tsi-exp-post__line', 'data-test': 'post-line', text: 'Checking the Bastion…' });
+        var done = el('p', { class: 'tsi-exp-post__done', 'data-test': 'post-done', role: 'status', hidden: true });
+        var shown = null;
+        /* The line for a parcel, as seen from this town. */
+        function words(r) {
+          var p = r.parcel;
+          if (r.view.kind === 'waiting') return 'Waiting here' + (typeof p.arrivedDay === 'number' ? ' since ' + dayWords(p.arrivedDay) : '') + '.';
+          if (r.view.kind === 'on_road') return 'On the road: due here' + (typeof p.readyDay === 'number' ? ' on ' + dayWords(p.readyDay) : '') + '.';
+          return r.view.line;
+        }
+        function show(bastion) {
+          var memory = TSI.store.mode === 'memory';
+          var rows = bastion ? B.parcelsShown(bastion, exView(), point) : [];
+          var key = (bastion === undefined ? '?' : bastion === null ? 'none' : parcelsKey(rows)) + '|' + memory;
+          if (key === shown) return;
+          shown = key;
+          TSI.clear(list);
+          if (bastion === undefined) line.textContent = 'Checking the Bastion…';
+          else if (!bastion) line.textContent = 'Waiting for the Bastion: it hasn\'t saved anything yet.';
+          else if (!rows.length) line.textContent = 'No parcels from the Ironbow here.';
+          else line.textContent = memory ? MEMORY_PICKUP : '';
+          line.hidden = !line.textContent;
+          rows.forEach(function (r) {
+            var parts = [el('div', { class: 'tsi-exp-post__what' }, [
+              el('strong', { text: r.view.goods || 'A parcel' }), ' · ',
+              el('span', { class: 'tsi-exp-post__when', 'data-test': 'post-parcel-line', text: words(r) })
+            ])];
+            if (r.view.kind === 'waiting') {
+              var collect = btn('Collect…', function () {
+                Promise.resolve(onCollect(r.parcel.id, point)).then(function () { if (life.alive) fill(); });
+              }, 'tsi-exp-mini', 'collect-parcel');
+              collect.disabled = memory;
+              if (memory) collect.title = MEMORY_PICKUP;
+              parts.push(collect);
+            }
+            list.appendChild(el('div', { class: 'tsi-exp-post__row', 'data-test': 'post-parcel', 'data-kind': r.view.kind, 'data-parcel': r.parcel.id }, parts));
+          });
+        }
+        function fill() {
+          TSI.store.fresh('tsi.bastion.state', null).then(function (bastion) {
+            if (!life.alive) return;
+            show(bastion);
+            seeBastion(bastion);
+          });
+        }
+        show(bastionSeen);
+        fill();
+        var box = el('div', { class: 'tsi-exp-post', 'data-test': 'courier-post' }, [
+          el('h4', { class: 'tsi-exp-post__title', text: 'Courier post: ' + B.pointLabel(point) }),
+          line,
+          list,
+          done
+        ]);
+        openCourier = {
+          node: box,
+          show: show,
+          done: function (text) { done.textContent = text; done.hidden = !text; }
+        };
+        return box;
+      }
+      /* Collect…: check the parcel with the Bastion's save as it is now, ask
+         the DM, read the save again (it may have changed while the question
+         was open), then put everything in the Party bags and send the pickup
+         to the Bastion, all in one save (journey.js makes every check before
+         it changes anything). */
+      function collectDialog(parcelId, point) {
+        var B = TSI.bridge;
+        var town = B.pointLabel(point);
+        var memory = function () { return { memory: TSI.store.mode === 'memory' }; };
+        return TSI.store.fresh('tsi.bastion.state', null).then(function (bastion) {
+          if (!life.alive) return false;
+          /* A trial on a copy, so a parcel that can't be collected is
+             explained before the question, not after. */
+          var trial = J.collectParcel({ travel: TSI.clone(state.travel), journey: TSI.clone(state.journey) }, parcelId, point, bastion, memory());
+          if (!trial.ok) return note(trial.message, 'Courier post').then(function () { return false; });
+          var p = B.parcels(bastion).filter(function (x) { return x.id === parcelId; })[0];
+          return TSI.modal.open({
+            title: 'Collect the parcel at ' + town + '?',
+            message: 'Only collect it when the party is at ' + town + '. Its contents go into the Party bags: ' + B.parcelGoodsText(p.goods) + '.',
+            escValue: false,
+            actions: [{ label: 'Cancel', value: false }, { label: 'The party is here: collect', value: true, primary: true }],
+            onOpen: function (api) { if (api && api.dialog) api.dialog.setAttribute('data-test', 'collect-dialog'); }
+          });
+        }).then(function (ok) {
+          if (ok !== true || !life.alive) return false;
+          return TSI.store.fresh('tsi.bastion.state', null).then(function (bastion) {
+            if (!life.alive) return false;
+            var res = J.collectParcel(state, parcelId, point, bastion, memory());
+            if (!res.ok) return note(res.message, 'Courier post').then(function () { return false; });
+            saveNow();
+            bastionSeen = bastion;
+            updateTravelUI();
+            var m = (state.journey.outbox || []).filter(function (x) { return x.id === res.id; })[0];
+            var text = 'Collected at ' + town + ': ' + B.parcelGoodsText(m ? m.goods : []);
+            setNotice(text + '.');
+            if (openCourier && openCourier.node.isConnected) { openCourier.show(bastion); openCourier.done(text + ', now in the Party bags. Sent to the Bastion.'); }
+            return true;
+          });
+        });
       }
 
       /* ---------- Harry's new events: starting one by hand ---------- */
@@ -1784,13 +1957,21 @@
         var body = [el('h3', { class: 'tsi-exp-event-title', text: m.label || 'Location' })];
         if (m.submapImage) body.push(el('div', { class: 'tsi-exp-place-media' }, el('img', { src: TSI.path(m.submapImage), alt: m.label || '' })));
         if (m.description) body.push(el('p', { class: 'tsi-exp-event-desc', text: String(m.description) }));
-        /* A port where the Ironbow can hold a Port Charter (pull request 5). */
+        /* A port where the Ironbow can hold a Port Charter (pull request 5),
+           and a town where the party collects the Courier Exchange's parcels
+           (pull request 6). Timberport and Goldport are both: the two boxes
+           sit side by side, so the picture still fits the laptop. */
         var ports = (window.TSI_DATA && window.TSI_DATA.ports) || {};
         var port = Object.keys(ports).filter(function (k) { return ports[k] && ports[k].pin === m.id; })[0];
-        if (port && TSI.bridge) body.push(harbourBox(port));
+        var point = TSI.bridge && TSI.bridge.pointAtPin ? TSI.bridge.pointAtPin(m.id) : '';
+        var boxes = [];
+        if (port && TSI.bridge) boxes.push(harbourBox(port));
+        if (point) boxes.push(courierBox(point));
+        if (boxes.length > 1) body.push(el('div', { class: 'tsi-exp-place-boxes' }, boxes));
+        else if (boxes.length) body.push(boxes[0]);
         return TSI.modal.open({
           title: 'Location',
-          className: 'tsi-exp-place' + (port ? ' tsi-exp-place--port' : ''),
+          className: 'tsi-exp-place' + (port ? ' tsi-exp-place--port' : '') + (point ? ' tsi-exp-place--post' : ''),
           body: body,
           actions: [{ label: 'Close', value: true }]
         });
