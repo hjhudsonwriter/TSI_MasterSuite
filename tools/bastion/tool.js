@@ -61,7 +61,7 @@
       var R = ns.rules;
       var D = window.TSI_DATA;
       var B = D.bastion;
-      var data = { bastion: B, facilities: D.bastionFacilities, tools: D.bastionTools, events: D.bastionEvents, research: D.bastionResearch, goods: D.bastionGoods };
+      var data = { bastion: B, facilities: D.bastionFacilities, tools: D.bastionTools, events: D.bastionEvents, research: D.bastionResearch, goods: D.bastionGoods, commerce: D.bastionCommerce };
       /* The war mini-game's numbers (war-units-data.js): units, stat blocks, missions. */
       var W = D.bastionWar;
       var COMPENDIUM = (D.bastionCompendium && D.bastionCompendium.items) || {};

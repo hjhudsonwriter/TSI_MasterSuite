@@ -2,7 +2,7 @@
 (function () {
   var R = TSI.bastion.rules;
   var T = window.TSI_DATA;
-  var data = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, events: T.bastionEvents, research: T.bastionResearch, goods: T.bastionGoods };
+  var data = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, events: T.bastionEvents, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce };
 
   /* Dice that come up in the given order (numbers from 0 up to 1). */
   function dice(list) {

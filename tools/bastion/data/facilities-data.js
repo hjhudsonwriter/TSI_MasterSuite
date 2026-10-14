@@ -1374,6 +1374,17 @@ window.TSI_DATA.bastionFacilities = [
           "incomeMin": 140,
           "incomeMax": 260
         }
+      },
+      {
+        "id": "register_port_charter",
+        "label": "Register Port Charter",
+        "days": 3,
+        "costGP": 0,
+        "costText": "0",
+        "requiredFacilityLevel": 2,
+        "portCharter": true,
+        "options": [],
+        "notes": "Registers a Port Charter the DM granted in the Explorer, so the Dock can ship cargo to that port. No gold and no roll."
       }
     ]
   },
