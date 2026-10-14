@@ -200,6 +200,62 @@
   });
 
   /* ---------------------------------------------------------------- */
+  group('Commodity trade: the DM grants a Port Charter in the Explorer');
+
+  var ER = TSI.explorer.rules;
+  var J = TSI.explorer.journey;
+  var ED = T.explorer;
+  var E = T.journeyEvents;
+  function explorer(day) {
+    var s = ER.defaultState(ED);
+    s.travel.day = day || 3;
+    return s;
+  }
+
+  test('Grant: one message for the port, its Clan from the port, a random id (never the dice), and a log line', function (t) {
+    var s = explorer(3);
+    var real = Math.random;
+    Math.random = function () { throw new Error('Math.random was used'); };
+    var res;
+    try { res = J.grantCharter(s, 'goldport', { text: '  Cleared   the wreckers ', where: 'dm' }, null); } finally { Math.random = real; }
+    t.equal(res.ok, true);
+    var m = s.journey.outbox[0];
+    t.ok(Bg.ID_PATTERN.test(m.id) && /:dm:0$/.test(m.id), m.id);
+    t.same([m.type, m.day, m.clan, m.port, m.from.code, m.from.title, m.from.step, m.text],
+      ['charter', 3, 'molten', 'goldport', 'DM', 'DM award', 'dm', 'Port Charter for Goldport (Clan Molten): Cleared the wreckers']);
+    t.equal(Bg.check(m), '');
+    t.equal(s.journey.log[0], 'Day 3 · Sent to the Bastion: Port Charter for Goldport (Clan Molten).');
+    var pin = J.grantCharter(s, 'timberport', { where: 'pin' }, null);
+    t.ok(/:pin:0$/.test(pin.id));
+    t.same([s.journey.outbox[1].from.title, s.journey.outbox[1].text], ['At the harbour', 'Port Charter for Timberport (Clan Blackstone).']);
+  });
+
+  test('Grant is refused while one is on its way or held; allowed again after a refusal or a skip', function (t) {
+    var s = explorer(3);
+    J.grantCharter(s, 'goldport', {}, null);
+    t.ok(/waiting for the Bastion/.test(J.grantCharter(s, 'goldport', {}, null).message));
+    t.equal(s.journey.outbox.length, 1);
+    var b = bastion(4);
+    BR.applyInbox(b, bdata, ER.toSave(s), 1000);
+    var saved = copy(BR.toSave(b));
+    t.ok(/Held: register it/.test(J.grantCharter(s, 'goldport', {}, saved).message));
+    t.ok(/isn't a port/.test(J.grantCharter(s, 'leatherport', {}, saved).message));
+    var b2 = BR.defaultState(bdata);
+    BR.anchor(b2, 4);
+    BR.applyInbox(b2, bdata, ER.toSave(s), 1000);
+    t.equal(J.grantCharter(s, 'goldport', {}, copy(BR.toSave(b2))).ok, true, 'skipped by a Bastion started afresh: grant again');
+  });
+
+  test('a Port Charter message survives the Explorer\'s reload and Reset Travel', function (t) {
+    var s = explorer(6);
+    J.grantCharter(s, 'goldport', { text: 'x' }, null);
+    var back = ER.fromSave(copy(ER.toSave(s)), ED, E);
+    t.same(back.journey.outbox, s.journey.outbox);
+    J.shiftDays(back, -4);
+    t.equal(back.journey.outbox[0].day, 2);
+  });
+
+  /* ---------------------------------------------------------------- */
   group('Commodity trade: the Bastion holds a Port Charter once');
 
   test('a Port Charter from the Explorer is held once, earned, with its receipt in the same state', function (t) {

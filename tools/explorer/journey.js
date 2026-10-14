@@ -18,7 +18,8 @@
      to the Bastion; packUsed lists the steps where a pack was used;
    - log: a short history of what events changed;
    - outbox: the Honour/Respect changes sent to the Bastion (pull request 4
-     of the facilities overhaul, 13 October 2026): only ever added to. The
+     of the facilities overhaul, 13 October 2026), and the Port Charters the
+     DM grants (pull request 5, 14 October 2026): only ever added to. The
      Bastion applies each once and keeps a receipt in its own save
      (shared/js/bridge-rules.js);
    - inventory: the Party bags, [{ id, kind, qty }]: Overland charts
@@ -605,6 +606,38 @@
     }));
     record(state, cur, 'Sent to the Bastion: Honour/Respect ' + signed(hr) + ' with Clan ' + name + '.');
   }
+
+  /* The DM grants a Port Charter (pull request 5, Harry, 14 October 2026):
+     a new message in the outbox, for the Bastion to hold once. Only for a
+     port on the list, and only while the Bastion doesn't hold one for that
+     port and none is on its way (bastionSave: the Bastion's save, read
+     fresh). Granting again is fine after a refusal or a skip. Its id is a
+     new random id (never the dice), with ':dm:0' from the Port Charter
+     button or ':pin:0' from a port's harbour box.
+     opts: { text (what for, optional), where: 'dm' | 'pin' }.
+     Returns { ok, line, id } or { ok: false, message }. */
+  J.grantCharter = function (state, port, opts, bastionSave) {
+    var B = bridge();
+    if (!B || !B.isPort(port)) return { ok: false, message: 'That isn\'t a port where the Ironbow can hold a Port Charter.' };
+    var j = journey(state);
+    var st = B.portStatus(port, { journey: j }, bastionSave);
+    var name = B.portLabel(port);
+    if (st.kind !== 'none') return { ok: false, message: 'Port Charter for ' + name + ': ' + st.line };
+    var o = isObj(opts) ? opts : {};
+    var where = o.where === 'pin' ? 'pin' : 'dm';
+    var clan = B.clanName(B.portClan(port));
+    var why = str(o.text).replace(/\s+/g, ' ').trim();
+    var id = newUid() + ':' + where + ':0';
+    j.outbox.push(B.charterMessage({
+      id: id, day: day(state), at: new Date().toISOString(),
+      from: { code: 'DM', title: where === 'pin' ? 'At the harbour' : 'DM award', step: where },
+      port: port,
+      text: (why ? 'Port Charter for ' + name + ' (Clan ' + clan + '): ' + why : 'Port Charter for ' + name + ' (Clan ' + clan + ').').slice(0, B.TEXT_MAX)
+    }));
+    var line = 'Sent to the Bastion: Port Charter for ' + name + ' (Clan ' + clan + ').';
+    logLine(state, line);
+    return { ok: true, line: line, id: id };
+  };
 
   /* Go to a step: its outcomes apply once, here and only here. */
   function enter(state, defs, stepId, rand) {

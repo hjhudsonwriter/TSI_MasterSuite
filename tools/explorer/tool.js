@@ -213,7 +213,8 @@
         sectionWith('Party bags', btn('+ Add', addToBags, 'tsi-exp-mini', 'bags-add'), [bagsList, row([btnChart]), chartWhy]),
         section('Active Effects', [effectsList]),
         section('Threads', [threadsList]),
-        section('Sent to the Bastion', [sentList])
+        /* Port Charter…: the DM grants one (pull request 5, 14 October 2026). */
+        sectionWith('Sent to the Bastion', btn('Port Charter…', function () { onCharter(null, 'dm'); }, 'tsi-exp-mini', 'charter-open'), [sentList])
       ]);
 
       var wrap = el('div', { class: 'tsi-exp-wrap' }, [controls, stage, travel]);
@@ -1224,7 +1225,8 @@
             el('div', { class: 'tsi-exp-item__body' }, [
               el('div', { class: 'tsi-exp-item__name' }, [
                 el('span', { class: 'tsi-exp-status tsi-exp-status--' + st.kind, 'data-test': 'sent-status', text: LABEL[st.kind] || st.kind }),
-                ' ', el('strong', { text: 'Clan ' + B.clanName(m.clan) + ' ' + B.signed(m.hr) }), ' · ' + dayText + (m.from && m.from.code ? ' · ' + m.from.code : '')
+                ' ', el('strong', { text: m.type === 'charter' ? 'Port Charter: ' + B.portLabel(m.port) : 'Clan ' + B.clanName(m.clan) + ' ' + B.signed(m.hr) }),
+                ' · ' + dayText + (m.from && m.from.code ? ' · ' + m.from.code : '')
               ]),
               el('div', { class: 'tsi-exp-item__text', text: m.text }),
               el('div', { class: 'tsi-exp-item__meta', 'data-test': 'sent-line', text: st.line })
@@ -1253,6 +1255,84 @@
       }
       life.setInterval(readBastion, 2000);
       life.on(document, 'visibilitychange', function () { if (document.visibilityState === 'visible') readBastion(); });
+
+      /* ---------- Port Charters (pull request 5 of the facilities overhaul) ----------
+         The DM grants one when the party wins it at the table: from the
+         Port Charter… button, or the harbour box in a port's town picture.
+         The Bastion's save is read fresh first, so a port it already holds,
+         or one with a Charter on its way, can't be granted twice. */
+      var onCharter = TSI.oneAtATime(function (preset, where) { return charterDialog(preset, where); });
+      function portTitle(port) {
+        var B = TSI.bridge;
+        return B.portLabel(port) + ' (Clan ' + B.clanName(B.portClan(port)) + ')';
+      }
+      function charterDialog(preset, where) {
+        var B = TSI.bridge;
+        var picked = null;
+        var whyBox = null;
+        return TSI.store.fresh('tsi.bastion.state', null).then(function (bastion) {
+          if (!life.alive) return false;
+          var ex = { journey: state.journey };
+          var rows = B.ports().map(function (port) { return { port: port, st: B.portStatus(port, ex, bastion) }; });
+          var free = rows.filter(function (r) { return r.st.kind === 'none'; });
+          picked = el('select', { class: 'tsi-input tsi-exp-select', 'aria-label': 'Port', 'data-test': 'charter-port' }, free.map(function (r) {
+            return el('option', { value: r.port, text: portTitle(r.port) });
+          }));
+          if (preset && free.some(function (r) { return r.port === preset; })) picked.value = preset;
+          whyBox = el('input', { type: 'text', maxlength: '120', class: 'tsi-input tsi-exp-charter-why', placeholder: 'What for (optional)', 'aria-label': 'What for (optional)', 'data-test': 'charter-why' });
+          var body = [
+            el('p', { text: 'A Port Charter lets the Bastion\'s Dock ship cargo to a port and sell it there. Grant one when the party has won it. The Bastion holds it, then a Register Port Charter order at the Hall of Emissaries (Level 2, 3 days) registers it.' }),
+            el('ul', { class: 'tsi-exp-charters', 'data-test': 'charter-ports' }, rows.map(function (r) {
+              return el('li', { 'data-test': 'charter-row-' + r.port, 'data-status': r.st.kind }, [el('strong', { text: portTitle(r.port) }), ': ' + r.st.line]);
+            }))
+          ];
+          if (free.length) body.push(el('div', { class: 'tsi-exp-rollrow' }, [el('label', { class: 'tsi-exp-muted', text: 'Grant at:' }), picked]), whyBox);
+          else body.push(el('p', { class: 'tsi-exp-tip', text: 'Every port on the list is already held, or has a Port Charter on its way.' }));
+          return TSI.modal.open({
+            title: 'Port Charter',
+            body: body,
+            escValue: false,
+            actions: free.length ? [{ label: 'Cancel', value: false }, { label: 'Grant', value: true, primary: true }] : [{ label: 'Close', value: false, primary: true }],
+            onOpen: function (api) { if (api && api.dialog) api.dialog.setAttribute('data-test', 'charter-dialog'); }
+          });
+        }).then(function (ok) {
+          if (!ok || !life.alive) return false;
+          /* Read again: the Bastion may have saved while the dialog was open. */
+          return TSI.store.fresh('tsi.bastion.state', null).then(function (bastion) {
+            if (!life.alive) return false;
+            var res = J.grantCharter(state, picked.value, { text: whyBox.value, where: where }, bastion);
+            if (!res.ok) { note(res.message); return false; }
+            saveNow();
+            bastionSeen = bastion;
+            renderSent();
+            setNotice(res.line);
+            return true;
+          });
+        });
+      }
+      /* The harbour box in a port's town picture: Ironbow's Port Charter
+         there, and the Grant button. */
+      function harbourBox(port) {
+        var line = el('p', { class: 'tsi-exp-harbour__line', 'data-test': 'harbour-line', text: 'Checking the Bastion…' });
+        var grant = btn('Grant the Port Charter…', function () {
+          onCharter(port, 'pin').then(function () { if (life.alive) fill(); });
+        }, 'tsi-exp-mini', 'harbour-grant');
+        grant.disabled = true;
+        function fill() {
+          TSI.store.fresh('tsi.bastion.state', null).then(function (bastion) {
+            if (!life.alive) return;
+            var st = TSI.bridge.portStatus(port, { journey: state.journey }, bastion);
+            line.textContent = 'The Ironbow\'s Port Charter: ' + st.line;
+            grant.disabled = st.kind !== 'none';
+          });
+        }
+        fill();
+        return el('div', { class: 'tsi-exp-harbour', 'data-test': 'harbour' }, [
+          el('h4', { class: 'tsi-exp-harbour__title', text: 'The harbour of ' + portTitle(port) }),
+          line,
+          grant
+        ]);
+      }
 
       /* ---------- Harry's new events: starting one by hand ---------- */
       function rollEventNow() {
@@ -1695,9 +1775,13 @@
         var body = [el('h3', { class: 'tsi-exp-event-title', text: m.label || 'Location' })];
         if (m.submapImage) body.push(el('div', { class: 'tsi-exp-place-media' }, el('img', { src: TSI.path(m.submapImage), alt: m.label || '' })));
         if (m.description) body.push(el('p', { class: 'tsi-exp-event-desc', text: String(m.description) }));
+        /* A port where the Ironbow can hold a Port Charter (pull request 5). */
+        var ports = (window.TSI_DATA && window.TSI_DATA.ports) || {};
+        var port = Object.keys(ports).filter(function (k) { return ports[k] && ports[k].pin === m.id; })[0];
+        if (port && TSI.bridge) body.push(harbourBox(port));
         return TSI.modal.open({
           title: 'Location',
-          className: 'tsi-exp-place',
+          className: 'tsi-exp-place' + (port ? ' tsi-exp-place--port' : ''),
           body: body,
           actions: [{ label: 'Close', value: true }]
         });
@@ -1748,6 +1832,12 @@
           updateTravelUI();
           showEvents([{ kind: 'journey' }]);
           return true;
+        },
+        /* Open a pin's town picture on the map shown, fog or not (the tests). */
+        openPin: function (id) {
+          var m = (DATA.markersByMapId[state.mapPresetId] || []).filter(function (x) { return x.id === id; })[0];
+          if (m) openPlace(m);
+          return !!m;
         },
         board: function () { return board; },
         view: function () { return view; },
