@@ -1582,7 +1582,7 @@
     var g = R.goodsList(data);
     var kinds = {};
     g.forEach(function (x) { kinds[x.kind] = (kinds[x.kind] || 0) + 1; });
-    t.same(kinds, { cargo: 17, ingredient: 4, supply: 2 });
+    t.same(kinds, { cargo: 17, ingredient: 4, supply: 9 }, 'since pull request 8b, the Shrines\' seven items too');
     t.same([R.goodsAmountText(data, 'overland_chart', 1), R.goodsAmountText(data, 'overland_chart', 3), R.goodsCountText(data, 'overland_chart', 2), R.goodsCountText(data, 'expedition_provision_pack', 2)],
       ['1 Overland chart', '3 Overland charts', '2 charts', '2 packs'], 'a chart is counted in charts');
     t.equal(g.map(function (x) { return x.id; }).filter(function (id, i, a) { return a.indexOf(id) !== i; }).length, 0, 'ids are unique');

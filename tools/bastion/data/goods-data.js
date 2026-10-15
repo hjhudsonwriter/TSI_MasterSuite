@@ -52,6 +52,17 @@ window.TSI_DATA.bastionGoods = {
     /* Pull request 6 (Harry, 14 October 2026): named as the Explorer's
        Travel bags name it (shared/data/party-items.js). The DM adds charts
        by hand for now ("+ Add supplies"). */
-    { id: 'overland_chart', name: 'Overland chart', kind: 'supply', unit: 'chart', what: '3 days of use each in the Travel bags' }
+    { id: 'overland_chart', name: 'Overland chart', kind: 'supply', unit: 'chart', what: '3 days of use each in the Travel bags' },
+    /* Pull request 8b (Harry's Shrine specification, 15 October 2026): what
+       the three Shrines make at Levels 2 to 4, for the party. The Courier
+       Exchange can send them (courier-data.js), and the Travel bags hold
+       them (shared/data/party-items.js, the same ids). */
+    { id: 'earthward_talisman', name: 'Earthward Talisman', kind: 'supply', unit: 'talisman', what: '+2 to one saving throw against a nonmagical natural-terrain hazard' },
+    { id: 'rootguard_salve', name: 'Rootguard Salve', plural: 'doses of Rootguard Salve', kind: 'supply', unit: 'dose', what: 'advantage on one saving throw against being Restrained by nonmagical vegetation' },
+    { id: 'blessed_lantern', name: 'Blessed Lantern', kind: 'supply', unit: 'lantern', what: 'fuel-free light: 20 ft bright, 20 ft dim, for three days' },
+    { id: 'purification_incense', name: 'Purification Incense', plural: 'portions of Purification Incense', kind: 'supply', unit: 'portion', what: 'advantage on one saving throw against nonmagical poison or disease' },
+    { id: 'cleansing_portion', name: 'Cleansing Portion', kind: 'supply', unit: 'portion', what: 'removes the ordinary Poisoned condition from one creature' },
+    { id: 'voyage_blessing', name: 'Voyage Blessing', kind: 'supply', unit: 'blessing', what: '+2 to one navigation or maritime hazard check' },
+    { id: 'aquatic_protection_charm', name: 'Aquatic Protection Charm', kind: 'supply', unit: 'charm', what: 'advantage on one Athletics check (swimming, currents or a nonmagical water hazard)' }
   ]
 };

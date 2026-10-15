@@ -210,7 +210,7 @@
     if (!R.courierPoints(s, data).length) return 'The Courier Exchange reaches no town yet (courier-data.js).';
     var stock = R.courierStock(s, data);
     if (!stock.some(function (g) { return g.have > 0; })) {
-      var names = stock.map(function (g) { var x = R.good(data, g.goodId); return x && x.kind === 'supply' ? g.name + 's' : g.name; });
+      var names = stock.map(function (g) { var x = R.good(data, g.goodId); return x && x.kind === 'supply' ? (typeof x.plural === 'string' && x.plural ? x.plural.charAt(0).toUpperCase() + x.plural.slice(1) : g.name + 's') : g.name; });
       return 'The Warehouse has nothing the courier carries' + (names.length ? ' (' + names.join(', ') + ')' : '') + '.';
     }
     return '';

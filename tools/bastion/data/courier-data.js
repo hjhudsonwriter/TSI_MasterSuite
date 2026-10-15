@@ -36,7 +36,15 @@ window.TSI_DATA.bastionCourier = {
      hold them. */
   items: {
     expedition_provision_pack: { size: 1 },
-    overland_chart: { size: 1 }
+    overland_chart: { size: 1 },
+    /* The Shrines' items (pull request 8b; Harry, S10: the courier may carry them). */
+    earthward_talisman: { size: 1 },
+    rootguard_salve: { size: 1 },
+    blessed_lantern: { size: 1 },
+    purification_incense: { size: 1 },
+    cleansing_portion: { size: 1 },
+    voyage_blessing: { size: 1 },
+    aquatic_protection_charm: { size: 1 }
   },
 
   /* "+ Add supplies" in the Warehouse: the goods the DM can add by hand, for

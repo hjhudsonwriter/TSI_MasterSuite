@@ -1148,7 +1148,7 @@
           bagsList.appendChild(el('div', { class: 'tsi-exp-item', 'data-test': 'bag', 'data-kind': it.kind }, [
             el('div', { class: 'tsi-exp-item__body' }, [
               el('div', { class: 'tsi-exp-item__name' }, [el('strong', { text: info.plural }), ' · ', el('span', { 'data-test': 'bag-qty', text: J.itemCount(it.kind, it.qty) + (isChart ? ' left' : '') })]),
-              el('div', { class: 'tsi-exp-item__meta', text: isChart ? 'Use a chart today: one more 6-mile hex until Make Camp.' : 'Offered at an exhaustion save: advantage on it.' })
+              el('div', { class: 'tsi-exp-item__meta', text: isChart ? 'Use a chart today: one more 6-mile hex until Make Camp.' : info.use === 'shrine' ? info.text : 'Offered at an exhaustion save: advantage on it.' })
             ]),
             el('button', {
               type: 'button', class: 'tsi-btn tsi-btn--small tsi-exp-mini', title: 'Take ' + info.plural + ' out of the Travel bags',

@@ -133,7 +133,7 @@ window.TSI_DATA.bastionCommerce = {
   protections: [
     { id: 'commercial_convoy', label: 'Commercial Convoy', facId: 'barracks', order: 'Guard Commercial Convoy', cut: 5, available: false },
     { id: 'maritime_approaches', label: 'Protected Maritime Approaches', facId: 'watchtower', order: 'Protect Maritime Approaches', cut: 5, available: false },
-    { id: 'pelagos_blessing', label: 'Blessing of Pelagos', facId: 'shrine_pelagos', order: 'Bless Commercial Shipment', cut: 10, consumes: true, available: false }
+    { id: 'pelagos_blessing', label: 'Blessing of Pelagos', facId: 'shrine_pelagos', order: 'Bless Commercial Shipment', cut: 10, consumes: true, available: true }
   ],
 
   /* ---------- The Dock ----------
