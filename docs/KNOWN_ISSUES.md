@@ -2265,7 +2265,7 @@ None of these reached Harry.
 ### BAS-88 · The Courier Exchange's limits and choices made for Harry
 **Later, Harry's call** (pull request 6, 14 October 2026) · other
 
-- **Choice made for Harry:** once the Courier Exchange is demolished, a parcel still on its way **can't be recalled** (Recall parcel… is in its panel). It carries on, arrives and can be collected, as he decided. Say if recall should still work then (it would need a place to show parcels without the building).
+- **Choice made for Harry:** once the Courier Exchange is demolished, a parcel still on its way **can't be recalled** (Recall parcel… is in its panel). It carries on, arrives and can be collected, as he decided. **Harry (15 October 2026): keep it so.**
 - **Not yet (Harry's later steps):** Level 3 (return trips from the party), Level 4 (Priority Courier), Level 5 (Express Cargo Exchange), research (room, fees, days, more towns), more goods (potions, equipment, herbs), the Library's Prepare Overland Travel Charts order, and moving gold between the party's purse and the treasury.
 - **The Bastion must catch up:** the Explorer only lets the DM collect a parcel once the Bastion has recorded its arrival. If the Bastion is shut, the Explorer shows the parcel as "due" and waits.
 - **Saves from different moments** (an old single-tool file, or a hand edit): a pickup the Bastion has no record of is refused with a plain reason; check both the Warehouse and the Party bags. A campaign file or Back up everything always pairs both tools from one moment.
@@ -2300,7 +2300,7 @@ None of these reached Harry.
 ### BAS-91 · The creatures' limits and choices made for Harry
 **Later, Harry's call** (pull request 7, 15 October 2026) · other
 
-- **A grant sent by mistake can't be undone:** the creature waits for good, and once housed it guards for good (there's no Release button). Undo it only with an Import of a backup. Say if a waiting creature should have a Release button, or Grant should ask first.
+- **A grant sent by mistake can't be undone:** the creature waits for good, and once housed it guards for good (there's no Release button). Undo it only with an Import of a backup. **Harry (15 October 2026): both.** Grant will ask first, and a waiting creature will get a Release button; not built yet (the next Bastion pull request).
 - **An older copy of the Bastion deletes the creatures** (SUI-34): back up before trying another copy.
 - **Not yet (Harry's later steps):** the wyvern's name; care, training, bonding, riding, mounted flight, a companion on the Explorer, breeding; Roost upgrades (they unlock nothing yet; the Tower's and Den's add room); research; moving a Menagerie Dire Wolf into the Den.
 - **A creature can't be made to lose on purpose** at the table: the d6 after a defeat only matters if one is Defeated in a battle.

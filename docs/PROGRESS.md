@@ -9,6 +9,7 @@ Double-click `index.html` to open the suite. The plan is in `docs/PLAN.md`, the 
 ## Done
 
 ### The facilities overhaul, pull request 7: the Library's chart order and the creatures (15 October 2026)
+Harry's check all passed; merged as #29 (15 October 2026).
 From Harry's six answers (one chart per order; the wyvern recorded when the Roost is built, its name to follow; it defends with the suggested numbers; the Griffin Tower and Dire Wolf Den open, with the DM granting the animals; they fight like the wyvern; one creature per level). At Harry's request the chart order and the creatures are one pull request.
 - **The Library & Scriptorium's Prepare Overland Travel Charts** (BAS-89): Level 2, 4 days, 1 Overland chart, no gold, into the Warehouse; one at a time, beside the unchanged scripture Research.
 - **The creatures** (BAS-90): the Wyvern Roost, Griffin Tower and Dire Wolf Den can be built (construction slots, party level 5, 21 days). A register of creatures in the Bastion's save, kept apart from the unchanged Menagerie. **House Elara's Wyvern** (3 days, once ever) records her wyvern ("Elara's wyvern" until it has a name). Griffins and dire wolves come only when the DM grants one in the Explorer (**Grant a creature…**, EXP-42, the link's fourth kind, SUI-34); the Bastion holds it until **House a Griffin** or **House a Dire Wolf** (3 days) houses it, one per level of the building. Each building's panel lists its creatures and room; Management lists them all.
@@ -881,12 +882,12 @@ Each tool's questions are needed before that tool's phase. The full wording and 
     - **Answered (14 October 2026):** the Clan demand table, Fresh Fish (2 days or less), the risks (kept) and Recall ship, all built in the follow-up. Still a choice made for you: the Dock's Recent sales shows the last 5 (the save keeps 30).
     - **Market saturation:** sales are recorded now; say when to switch it on (a later pull request builds the price change).
   - **From pull request 6 (14 October 2026):**
-    - **Recall after Demolish (a choice made for you):** once the Courier Exchange is demolished, a parcel still on its way can't be recalled; it carries on, arrives and can be collected. Say if recall should still work then.
-    - **From pull request 7 (15 October 2026):**
-      - **Elara's wyvern's name:** you said you'd give it later; it goes in `tools/bastion/data/creatures-data.js`.
-      - **A grant made by mistake** can't be undone. Should a waiting creature have a Release button, or Grant ask first?
+    - **Recall after Demolish: answered (15 October 2026).** No: once the Courier Exchange is demolished, a parcel on its way can't be recalled. It still arrives and can be collected. Kept as built.
+    - **From pull request 7 (15 October 2026), merged as #29 after Harry's check:**
+      - **Elara's wyvern's name: answered (15 October 2026).** Keep "Elara's wyvern" for now; Harry will give the name soon. It goes in `tools/bastion/data/creatures-data.js` (`unique.elara_wyvern.name`).
+      - **A grant made by mistake: answered (15 October 2026), "both".** Grant a creature… asks "Are you sure?" before sending, and a creature still waiting for a home gets a Release button (asking first). Not built yet: it goes in the next Bastion pull request.
       - **Older copies:** an older copy of the Bastion deletes the creatures; back up before trying one.
-    - **Next for the courier, when you say go:** the Library's Prepare Overland Travel Charts order (Level 2, about 4 days), then Levels 3 to 5 (return trips, priority, express), research, and more goods.
+    - **Next for the courier, when you say go:** Levels 3 to 5 (return trips, priority, express), research, and more goods.
 - **Clan Crest Creator (phase 2, reworked 29 September 2026):** answered (K1–K4).
   - **Sigils: answered (29 September 2026).** Harry reviewed the traced sigils and wants all twenty kept exactly as they are: the same sigils, the Dolphin in place of the Kraken, the Tower in place of the Castle, and the same accent parts. Don't swap, add or recolour any without his say-so.
   - **Remembering the design: answered (1 October 2026).** Harry asked for it to remember his last design; done (see Done).
