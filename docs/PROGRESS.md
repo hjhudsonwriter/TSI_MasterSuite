@@ -9,6 +9,7 @@ Double-click `index.html` to open the suite. The plan is in `docs/PLAN.md`, the 
 ## Done
 
 ### The facilities overhaul, pull request 8a: the War Room's training, and the creature guards (15 October 2026)
+Harry's check all passed; merged as #30 (15 October 2026).
 From Harry's War Room proposal (`docs/specs/war-room-training.txt`, approved as written) and his answers in `docs/MILITARY-DIPLOMACY-PLAN.md`.
 - **Regiments** (SUI-35, BAS-92):
   - each regiment is its own record, numbered by kind ("Line Infantry II"), and Rename… gives it a name;
