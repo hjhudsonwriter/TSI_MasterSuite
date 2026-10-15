@@ -231,7 +231,7 @@ async function grantWithAsk(ex, species, name, answer) {
 
   await check('its panel lists each regiment with its grade and Recouping, and one drill place; Drill a Regiment lists those at full strength', async () => {
     await openTile(ba, 'war_room');
-    equal(await regText(ba), 'Regiments Drill places: 0 of 1 in use. Trained: +1 Resolve, +0.5 Battle Value; Veteran: +1 Cohesion, +0.5 Battle Value more. Line Infantry I Regular · 100 soldiers Rename… Line Infantry II Regular · 100 soldiers Rename… Archers I Regular · 50 soldiers Rename… Heavy Infantry I Recouping Regular · Recouping: 30 of 50, full on Day 8 Rename…');
+    equal(await regText(ba), 'REGIMENTS Drill places: 0 of 1 in use. Trained: +1 Resolve, +0.5 Battle Value; Veteran: +1 Cohesion, +0.5 Battle Value more. Line Infantry I Regular · 100 soldiers Rename… Line Infantry II Regular · 100 soldiers Rename… Archers I Regular · 50 soldiers Rename… Heavy Infantry I RECOUPING Regular · Recouping: 30 of 50, full on Day 8 Rename…');
     equal(await ba.$eval('[data-test=sel-war_room__drill]', n => [...n.options].map(o => o.text)), ['Line Infantry I → Trained (7 days) (125gp)', 'Line Infantry II → Trained (7 days) (125gp)', 'Archers I → Trained (7 days) (125gp)']);
     equal((await orderState(ba, 'war_room__coordinated_muster')).button, 'Needs Level 3.');
     const fit = await H.layoutCheck(ba, ['[data-test=issue-war_room__drill]']);
