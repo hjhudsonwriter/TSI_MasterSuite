@@ -1,5 +1,5 @@
 /* The Scarlett Isles: D&D Tool Suite — what the party can carry in the
-   Explorer's Party bags (pull request 4 of the facilities overhaul, Harry's
+   Explorer's Travel bags (pull request 4 of the facilities overhaul, Harry's
    answers of 13 October 2026). They reach the bags two ways: the Bastion's
    Courier Exchange sends them from the Warehouse to a town, where the DM
    collects them (pull request 6), and the DM adds what the party gets from

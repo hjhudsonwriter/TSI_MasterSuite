@@ -8,7 +8,7 @@
    - Send a parcel… to Slade’s Muster takes the fee and the goods; two camps
      later it waits there; the Explorer's From the Ironbow list and the
      town's courier post show it; Collect… asks first, and puts its contents
-     in the Party bags once; the Bastion closes the parcel once;
+     in the Travel bags once; the Bastion closes the parcel once;
    - Level 2 reaches eight towns, two parcels on the road at once, up to 10
      items each;
    - Recall parcel…: it turns back, and its contents are back in the
@@ -37,7 +37,7 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
 const exs = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.explorer.debug.state())));
 const qty = (s, id) => s.warehouse.filter(w => w.goodId === id).reduce((n, w) => n + w.qty, 0);
 const rows = (s, id) => s.warehouse.filter(w => w.goodId === id).length;
-/* The Party bags: packs count one each; an Overland chart counts its days of use. */
+/* The Travel bags: packs count one each; an Overland chart counts its days of use. */
 const bag = (s, kind) => (s.journey.inventory || []).filter(i => i.kind === kind).reduce((n, i) => n + i.qty, 0);
 const parcel = (s, point) => s.tradeNetwork.parcels.filter(p => p.point === point).slice(-1)[0];
 const lastModal = page => page.$$eval('.tsi-modal', ms => ms[ms.length - 1].textContent.replace(/\s+/g, ' ').trim());
@@ -343,17 +343,17 @@ async function panelFits(ba) {
     await ex.click('[data-test=collect-parcel]');
     await ex.waitForSelector('[data-test=collect-dialog]');
     equal(await bare(ex, '[data-test=collect-dialog] .tsi-modal__title'), 'Collect the parcel at ' + SLADE + '?');
-    equal(await bare(ex, '[data-test=collect-dialog] .tsi-modal__body'), 'Only collect it when the party is at ' + SLADE + '. Its contents go into the Party bags: 3 Expedition Provision Packs, 1 Overland chart (3 days of use).');
+    equal(await bare(ex, '[data-test=collect-dialog] .tsi-modal__body'), 'Only collect it when the party is at ' + SLADE + '. Its contents go into the Travel bags: 3 Expedition Provision Packs, 1 Overland chart (3 days of use).');
     equal(await ex.$$eval('[data-test=collect-dialog] .tsi-modal__foot button', l => l.map(b => b.textContent)), ['Cancel', 'The party is here: collect']);
     equal((await H.layoutCheck(ex, ['[data-test=collect-dialog]'])).outOfView, [], 'the question fits the laptop');
     await ex.click('[data-test=collect-dialog] .tsi-modal__foot button:text-is("Cancel")');
     await ex.waitForTimeout(500);
     const after = await exs(ex);
-    equal([after.journey.inventory, after.journey.outbox], [before.journey.inventory, before.journey.outbox], 'the Party bags and Sent to the Bastion');
+    equal([after.journey.inventory, after.journey.outbox], [before.journey.inventory, before.journey.outbox], 'the Travel bags and Sent to the Bastion');
     equal((await bas(ba)).tradeNetwork.parcels[0].status, 'ready', 'still waiting');
   });
 
-  await check('The party is here: collect puts 3 packs and 1 chart (3 days of use) in the Party bags, once, and sends the pickup', async () => {
+  await check('The party is here: collect puts 3 packs and 1 chart (3 days of use) in the Travel bags, once, and sends the pickup', async () => {
     const before = await exs(ex);
     await ex.waitForTimeout(400);
     await ex.dblclick('[data-test=collect-parcel]');
@@ -367,7 +367,7 @@ async function panelFits(ba) {
     equal([bag(s, PACK) - bag(before, PACK), bag(s, CHART) - bag(before, CHART)], [3, 3]);
     equal(s.journey.outbox.map(m => [m.type, m.point, m.id === s.journey.outbox[0].parcel + ':collect:0']), [['parcel_collected', 'slades_muster', true]], 'one pickup');
     equal(await bare(ex, '[data-test=notice]'), 'Collected at ' + SLADE + ': 3 Expedition Provision Packs, 1 Overland chart (3 days of use).');
-    equal(await bare(ex, '[data-test=post-done]'), 'Collected at ' + SLADE + ': 3 Expedition Provision Packs, 1 Overland chart (3 days of use), now in the Party bags. Sent to the Bastion.');
+    equal(await bare(ex, '[data-test=post-done]'), 'Collected at ' + SLADE + ': 3 Expedition Provision Packs, 1 Overland chart (3 days of use), now in the Travel bags. Sent to the Bastion.');
     equal(await ex.$$eval('[data-test=collect-parcel]', l => l.length), 0, 'no Collect… any more');
     await closeAll(ex);
   });
@@ -392,7 +392,7 @@ async function panelFits(ba) {
     equal(await ex.$$eval('[data-test=parcel-line]', l => l.map(x => x.getAttribute('data-kind') + ' | ' + x.querySelector('[data-test=parcel-text]').textContent)), ['collected | Collected at ' + SLADE + ' on Day 24.']);
   });
 
-  await check('a reload of both windows adds nothing: the Party bags, the Warehouse and the treasury stay the same, and there\'s no Collect…', async () => {
+  await check('a reload of both windows adds nothing: the Travel bags, the Warehouse and the treasury stay the same, and there\'s no Collect…', async () => {
     const e0 = await exs(ex);
     const b0 = await bas(ba);
     await ex.reload();

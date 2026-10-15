@@ -218,7 +218,7 @@ window.TSI_DATA.explorer = {
       kind: 'blizzard',
       intro: 'Snow comes suddenly, swallowing colour and distance. The world becomes a white corridor, and every breath feels borrowed.',
       /* tags: an exhaustion save: the DM can spend an Expedition Provision
-         Pack from the Party bags for advantage (pull request 4 of the
+         Pack from the Travel bags for advantage (pull request 4 of the
          facilities overhaul, 13 October 2026). */
       mechanic: { label: 'Group DC 13 Constitution Save', dc: 13, options: null, tags: ['exhaustion'] },
       results: [

@@ -20,7 +20,7 @@
    Care, training, bonding, riding, mounted flight, a companion on the
    Explorer and breeding all wait until Harry has set their rules. There is
    no upkeep. The courier never carries a creature, and none appears in the
-   Party bags.
+   Travel bags.
 
    Every number here is provisional: edit it here, and nothing else needs to
    change, except the two marked below (houseDays and nameMax), which must

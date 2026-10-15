@@ -5,7 +5,7 @@
    The Bastion's Courier Exchange sends a parcel of supplies from its
    Warehouse to one of these towns. It waits there until the DM collects it
    in the Explorer, from that town's picture (its pin), and its contents go
-   into the Party bags. The Explorer link carries the pickup back to the
+   into the Travel bags. The Explorer link carries the pickup back to the
    Bastion (shared/js/bridge-rules.js, tools/bastion/courier-rules.js).
 
    Each town is keyed by its Explorer pin's id, and its label is spelt

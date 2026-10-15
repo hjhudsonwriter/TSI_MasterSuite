@@ -21,10 +21,10 @@
 
    The Courier Exchange (pull request 6, Harry's answers of 14 October
    2026): the Bastion sends a parcel of supplies to a town, where it waits.
-   The Party bags' "From the Ironbow" list shows each parcel, read from the
+   The Travel bags' "From the Ironbow" list shows each parcel, read from the
    Bastion's save; the town's picture has a courier post, whose Collect…
    asks the DM to confirm the party is there (opening the picture doesn't
-   prove it), then puts the contents in the Party bags and tells the Bastion
+   prove it), then puts the contents in the Travel bags and tells the Bastion
    (the rules are in journey.js, J.collectParcel).
 
    Layout: the map in the middle, the map controls on the left and the travel
@@ -90,7 +90,7 @@
         return el('div', { class: 'tsi-exp-section' }, [el('h3', { class: 'tsi-exp-section-title', text: title })].concat(children));
       }
       function row(children, cls) { return el('div', { class: 'tsi-exp-row' + (cls ? ' ' + cls : '') }, children); }
-      /* A section whose heading has a small button beside it (the Party bags' + Add). */
+      /* A section whose heading has a small button beside it (the Travel bags' + Add). */
       function sectionWith(title, button, children) {
         return el('div', { class: 'tsi-exp-section' }, [
           el('div', { class: 'tsi-exp-section-head' }, [el('h3', { class: 'tsi-exp-section-title', text: title }), button])
@@ -175,7 +175,7 @@
       var goldEl = el('strong', { text: '0', 'data-test': 'gold' });
       var effectsList = el('div', { class: 'tsi-exp-list', 'data-test': 'effects-list' });
       var threadsList = el('div', { class: 'tsi-exp-list', 'data-test': 'threads-list' });
-      /* The Party bags and the changes sent to the Bastion (pull request 4). */
+      /* The Travel bags and the changes sent to the Bastion (pull request 4). */
       var bagsList = el('div', { class: 'tsi-exp-list', 'data-test': 'bags-list' });
       var btnChart = btn('Use a chart today', useChart, 'tsi-exp-chartbtn', 'use-chart');
       var chartWhy = el('p', { class: 'tsi-exp-tip tsi-exp-chartwhy', 'data-test': 'chart-why', hidden: true });
@@ -224,7 +224,7 @@
         section('Main campaign', [
           row([mainSelect, btn('Queue', queueMainEvent, '', 'queue')], 'tsi-exp-row--select')
         ]),
-        sectionWith('Party bags', btn('+ Add', addToBags, 'tsi-exp-mini', 'bags-add'), [bagsList, row([btnChart]), chartWhy, ironbowBox]),
+        sectionWith('Travel bags', btn('+ Add', addToBags, 'tsi-exp-mini', 'bags-add'), [bagsList, row([btnChart]), chartWhy, ironbowBox]),
         section('Active Effects', [effectsList]),
         section('Threads', [threadsList]),
         /* Port Charter…: the DM grants one (pull request 5, 14 October 2026).
@@ -1137,7 +1137,7 @@
         });
       }
 
-      /* ---------- The Party bags (pull request 4 of the facilities overhaul) ---------- */
+      /* ---------- The Travel bags (pull request 4 of the facilities overhaul) ---------- */
       function renderBags() {
         TSI.clear(bagsList);
         var list = state.journey.inventory || [];
@@ -1151,7 +1151,7 @@
               el('div', { class: 'tsi-exp-item__meta', text: isChart ? 'Use a chart today: one more 6-mile hex until Make Camp.' : 'Offered at an exhaustion save: advantage on it.' })
             ]),
             el('button', {
-              type: 'button', class: 'tsi-btn tsi-btn--small tsi-exp-mini', title: 'Take ' + info.plural + ' out of the Party bags',
+              type: 'button', class: 'tsi-btn tsi-btn--small tsi-exp-mini', title: 'Take ' + info.plural + ' out of the Travel bags',
               'aria-label': 'Remove ' + info.plural, 'data-test': 'bag-remove',
               onclick: function () { removeFromBags(it); }
             }, '✕')
@@ -1203,7 +1203,7 @@
         kindSel.addEventListener('change', showHelp);
         showHelp();
         TSI.modal.open({
-          title: 'Add to the Party bags',
+          title: 'Add to the Travel bags',
           body: [
             el('p', { 'data-test': 'bags-intro', text: 'When the party gets a chart or a pack, add it here. Parcels from the Ironbow\'s Courier Exchange are collected at a town; use + Add for what the party gets another way.' }),
             el('div', { class: 'tsi-exp-rollrow' }, [kindSel, el('label', { class: 'tsi-exp-muted', text: 'How many:' }), count]),
@@ -1225,7 +1225,7 @@
       }
       function removeFromBags(it) {
         var info = J.itemInfo(it.kind) || { plural: it.kind };
-        ask('Take the ' + info.plural + ' (' + J.itemCount(it.kind, it.qty) + ') out of the Party bags?', 'Remove').then(function (ok) {
+        ask('Take the ' + info.plural + ' (' + J.itemCount(it.kind, it.qty) + ') out of the Travel bags?', 'Remove').then(function (ok) {
           if (!ok) return;
           var line = J.removeItem(state, it.id);
           if (!line) return;
@@ -1388,7 +1388,7 @@
          won one: its kind, a name (optional) and what it's for (optional).
          The Bastion holds it, waiting for a home, until the Griffin Tower's
          or the Dire Wolf Den's House order gives it one. Nothing else
-         changes in the Explorer (no companion, nothing in the Party bags).
+         changes in the Explorer (no companion, nothing in the Travel bags).
          The rule is J.grantCreature (journey.js). */
       var onCreature = TSI.oneAtATime(function () { return creatureDialog(); });
       function creatureDialog() {
@@ -1545,7 +1545,7 @@
       }
       /* Collect…: check the parcel with the Bastion's save as it is now, ask
          the DM, read the save again (it may have changed while the question
-         was open), then put everything in the Party bags and send the pickup
+         was open), then put everything in the Travel bags and send the pickup
          to the Bastion, all in one save (journey.js makes every check before
          it changes anything). */
       function collectDialog(parcelId, point) {
@@ -1561,7 +1561,7 @@
           var p = B.parcels(bastion).filter(function (x) { return x.id === parcelId; })[0];
           return TSI.modal.open({
             title: 'Collect the parcel at ' + town + '?',
-            message: 'Only collect it when the party is at ' + town + '. Its contents go into the Party bags: ' + B.parcelGoodsText(p.goods) + '.',
+            message: 'Only collect it when the party is at ' + town + '. Its contents go into the Travel bags: ' + B.parcelGoodsText(p.goods) + '.',
             escValue: false,
             actions: [{ label: 'Cancel', value: false }, { label: 'The party is here: collect', value: true, primary: true }],
             onOpen: function (api) { if (api && api.dialog) api.dialog.setAttribute('data-test', 'collect-dialog'); }
@@ -1578,7 +1578,7 @@
             var m = (state.journey.outbox || []).filter(function (x) { return x.id === res.id; })[0];
             var text = 'Collected at ' + town + ': ' + B.parcelGoodsText(m ? m.goods : []);
             setNotice(text + '.');
-            if (openCourier && openCourier.node.isConnected) { openCourier.show(bastion); openCourier.done(text + ', now in the Party bags. Sent to the Bastion.'); }
+            if (openCourier && openCourier.node.isConnected) { openCourier.show(bastion); openCourier.done(text + ', now in the Travel bags. Sent to the Bastion.'); }
             return true;
           });
         });

@@ -327,7 +327,7 @@
     t.equal(r2.line, 'Sent to the Bastion: a dire wolf for the Ironbow, to be housed at the Dire Wolf Den.');
     var out = s.journey.outbox;
     t.equal(out.length, 2);
-    t.equal(JSON.stringify(s.journey.inventory || []), bags, 'nothing goes into the Party bags');
+    t.equal(JSON.stringify(s.journey.inventory || []), bags, 'nothing goes into the Travel bags');
     t.ok(r1.id !== r2.id, 'two grants never share an id');
     t.ok(/^[a-z0-9]+-[0-9a-f]{8}:dm:0$/.test(r1.id), r1.id);
     t.same(Object.keys(out[0]), Bg.CREATURE_FIELDS);

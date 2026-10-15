@@ -24,7 +24,7 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 | Suite-wide (SUI) | 10 | 11 | 13 | 1 | 0 |
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
-| Scarlett Isles Explorer (EXP) | 12 | 5 | 13 | 13 | 0 |
+| Scarlett Isles Explorer (EXP) | 12 | 5 | 14 | 13 | 0 |
 | The Ironbow Bastion Manager (BAS) | 23 | 2 | 44 | 24 | 1 |
 | Clan Crest Creator (CRS) | 0 | 4 | 6 | 3 | 3 |
 | Arenas of The Scarlett Isles (ARN) | 8 | 2 | 0 | 17 | 0 |
@@ -330,13 +330,13 @@ These come from checking the eight tools against each other: the collision audit
 
 - **Before:** the link carried Honour/Respect changes and Port Charters, both from the Explorer to the Bastion. Nothing travelled the other way.
 - **After:**
-  - **Parcels go the other way without either tool writing the other's save.** The Bastion keeps its parcels in its own save; the Explorer reads them (it already read the Bastion's save every 2 seconds, and now does so even when it has sent nothing). When the DM collects a parcel, the Explorer puts the items in the Party bags **and** adds a "parcel collected" message to its list, in one save. The Bastion reads that message, closes the parcel once and keeps a receipt in the same save.
+  - **Parcels go the other way without either tool writing the other's save.** The Bastion keeps its parcels in its own save; the Explorer reads them (it already read the Bastion's save every 2 seconds, and now does so even when it has sent nothing). When the DM collects a parcel, the Explorer puts the items in the Travel bags **and** adds a "parcel collected" message to its list, in one save. The Bastion reads that message, closes the parcel once and keeps a receipt in the same save.
   - **Once only, whatever is reloaded:** the message's id is fixed for each parcel (its id followed by `:collect:0`), so a second Collect (a double click, a reload, a second window, a replay) is refused, and the Bastion's receipt means it closes the parcel once.
   - **The Bastion's own record decides.** The message's town and Clan are only shown; a pickup is refused only if the Bastion has no record of that parcel, or it was recalled. A Bastion starting from nothing skips pickups sent before it started, with their own line in the Day Log.
   - The towns are in one shared list, `shared/data/courier-points.js`, which both tools read.
 - **Older copies (SUI-19):** nothing is paid, sent or counted twice, but:
   - a pull request 5 copy of the Bastion keeps the parcels without settling them: they don't arrive or come home while it's open, and its Reset Travel doesn't move their days. It holds a pickup as "from a newer copy" and waits;
-  - a pull request 4 copy refuses a pickup for good, so the parcel stays "waiting" in the Bastion while its items are in the Party bags;
+  - a pull request 4 copy refuses a pickup for good, so the parcel stays "waiting" in the Bastion while its items are in the Travel bags;
   - a pull request 5 copy of the Explorer keeps a pickup message but drops its list of goods (only the wording on screen changes).
 
   Back up before trying another copy.
@@ -1242,12 +1242,12 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 - **What a change does today:** it moves that Clan's support by 4 (which counts towards Form Clan), and the DM doc shows it. Hall rolls don't read Honour/Respect yet.
 - **Evidence:** `tools/explorer/data/journey-events.js` (`standing` outcomes), `tools/explorer/journey.js` (`sendStanding`, `outbox`), `shared/js/bridge-rules.js`; tests in `tests/rules/bridge.test.js`, `tests/rules/explorer-journey.test.js` and `tests/e2e/bridge.test.js`.
 
-### EXP-38 · Party bags: Overland charts and Expedition Provision Packs
+### EXP-38 · Travel bags: Overland charts and Expedition Provision Packs
 **Deliberate change** (Harry's answers, 13 October 2026) · other
 
 - **Before:** The party carried nothing the Explorer knew about. Every day was 30 miles, less or more only by events.
 - **After:**
-  - **Party bags** in the Travel panel. The DM adds charts and packs with **+ Add**; ✕ takes a row out (it asks first). Sending them from the Bastion's Warehouse waits for the Courier Exchange (pull request 6).
+  - **Travel bags** in the Travel panel. The DM adds charts and packs with **+ Add**; ✕ takes a row out (it asks first). Sending them from the Bastion's Warehouse waits for the Courier Exchange (pull request 6).
   - **Overland charts:** each gives 3 days of use, and the bags show the days left. **Use a chart today** adds one 6-mile hex (36 miles) until Make Camp. It works at most once a day, and is refused on a day an event has said the rest of the day's miles are lost, and with Free Move on.
   - **Expedition Provision Packs:** at C8's vigil save and the White Blizzard's group save, **Use a pack** uses one for advantage on that save, once per save (one covers the whole party in the Blizzard). The DM still rolls and decides the result.
 - **Kept as it is:**
@@ -1279,11 +1279,11 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 ### EXP-41 · Parcels from the Ironbow: From the Ironbow and the courier post
 **Deliberate change** (pull request 6, the Courier Exchange; Harry's answers, 14 October 2026) · applies something twice
 
-- **Before:** the Party bags only filled with + Add.
+- **Before:** the Travel bags only filled with + Add.
 - **After:**
-  - **From the Ironbow**, under the Party bags, lists each parcel the Bastion's Courier Exchange has sent: on the road and due at its town, due (the Bastion hasn't caught up to its arrival day yet, so the Explorer waits for it rather than guessing), waiting, recalled and coming home, or collected.
+  - **From the Ironbow**, under the Travel bags, lists each parcel the Bastion's Courier Exchange has sent: on the road and due at its town, due (the Bastion hasn't caught up to its arrival day yet, so the Explorer waits for it rather than guessing), waiting, recalled and coming home, or collected.
   - **The courier post** under each of the eight collection towns' pictures (Slade’s Muster, Moorcastle, Bretan, Middlemount, Timberport, Goldport, Swyth and Bleakharbour; beside the harbour box at Timberport and Goldport) lists the parcels for that town.
-  - **Collect…** asks first: "Only collect it when the party is at Slade’s Muster." Opening a town's picture never counts as the party being there (Harry). **The party is here: collect** reads the Bastion's save again, checks everything (the Bastion recorded the arrival, the parcel is at this town, not already collected, every item is something the bags hold, and there's room), and only then puts every item into the Party bags and sends the pickup, in one save. A chart is 3 days of use, as before.
+  - **Collect…** asks first: "Only collect it when the party is at Slade’s Muster." Opening a town's picture never counts as the party being there (Harry). **The party is here: collect** reads the Bastion's save again, checks everything (the Bastion recorded the arrival, the parcel is at this town, not already collected, every item is something the bags hold, and there's room), and only then puts every item into the Travel bags and sends the pickup, in one save. A chart is 3 days of use, as before.
   - Collect is refused, changing nothing, when the browser isn't saving (it would be lost), when the Bastion hasn't saved or recorded the arrival, or when the parcel was recalled.
   - **Sent to the Bastion** lists it as "Parcel collected: Slade’s Muster". **+ Add** stays, for what the party gets from the story.
 - **Known limits:** saves from different moments (an old single-tool file) can leave a pickup the Bastion has no record of: it's refused with a plain reason, and the DM takes the items out with ✕. With three or more parcels waiting at Timberport or Goldport, the town picture scrolls a little on the laptop.
@@ -1294,7 +1294,7 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 **Deliberate change** (pull request 7; Harry's answer, 14 October 2026: "the DM grants a griffin or a dire wolf in the Explorer, like a Port Charter") · applies something twice
 
 - **Before:** nothing in the Explorer could give the Ironbow a creature.
-- **After:** **Grant a creature…**, beside Port Charter… under Sent to the Bastion, asks which (Griffin or Dire Wolf), its name (optional, up to 40 letters) and what it's for, then **Grant** sends it once (a double click opens one pop-up; a browser that isn't saving refuses, so nothing is lost). Sent to the Bastion lists it as "Creature: Griffin (its name)", Waiting then Applied; once the Bastion has housed it, the line says it lives at the Ironbow now. Nothing goes into the Party bags, and the Explorer shows no companion.
+- **After:** **Grant a creature…**, beside Port Charter… under Sent to the Bastion, asks which (Griffin or Dire Wolf), its name (optional, up to 40 letters) and what it's for, then **Grant** sends it once (a double click opens one pop-up; a browser that isn't saving refuses, so nothing is lost). Sent to the Bastion lists it as "Creature: Griffin (its name)", Waiting then Applied; once the Bastion has housed it, the line says it lives at the Ironbow now. Nothing goes into the Travel bags, and the Explorer shows no companion.
 - **Not undoable:** a grant sent by mistake can't be taken back; the creature waits at the Bastion for good (BAS-91).
 - **Evidence:** `tools/explorer/journey.js` (`grantCreature`), `tools/explorer/tool.js` (`creatureDialog`, `renderSent`); tests in `tests/rules/creatures.test.js` and `tests/e2e/creatures.test.js`.
 
@@ -1307,6 +1307,14 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
   - Grant asks "Grant a griffin (its name) to the Ironbow? …" first. Cancel sends nothing, and a double click sends it once.
   - Once the Bastion has released a creature (BAS-93), its line in Sent to the Bastion says so.
 - **Evidence:** `tools/explorer/tool.js` (`creatureDialog`), `shared/js/bridge-rules.js` (`statusOf`); tests in `tests/e2e/creatures.test.js` and `tests/e2e/war-room.test.js`.
+
+
+### EXP-44 · "Party bags" renamed "Travel bags"
+**Deliberate change** (Harry, 15 October 2026) · other
+
+- **Before:** the Explorer's bag of supplies, and every line about it (the Courier Exchange, the Fishery's packs, the guide), said "Party bags".
+- **After:** it says "Travel bags" everywhere. Nothing in the save changes.
+- **Evidence:** the words only (`tools/explorer/tool.js`, `shared/data/party-items.js`, `shared/js/bridge-rules.js`, the Bastion's data and screens, `guide.html`).
 
 ## The Ironbow Bastion Manager
 Old repo: `_legacy/bastion_manager` (file:line references point there).
@@ -2291,7 +2299,7 @@ None of these reached Harry.
 - **Choice made for Harry:** once the Courier Exchange is demolished, a parcel still on its way **can't be recalled** (Recall parcel… is in its panel). It carries on, arrives and can be collected, as he decided. **Harry (15 October 2026): keep it so.**
 - **Not yet (Harry's later steps):** Level 3 (return trips from the party), Level 4 (Priority Courier), Level 5 (Express Cargo Exchange), research (room, fees, days, more towns), more goods (potions, equipment, herbs), the Library's Prepare Overland Travel Charts order, and moving gold between the party's purse and the treasury.
 - **The Bastion must catch up:** the Explorer only lets the DM collect a parcel once the Bastion has recorded its arrival. If the Bastion is shut, the Explorer shows the parcel as "due" and waits.
-- **Saves from different moments** (an old single-tool file, or a hand edit): a pickup the Bastion has no record of is refused with a plain reason; check both the Warehouse and the Party bags. A campaign file or Back up everything always pairs both tools from one moment.
+- **Saves from different moments** (an old single-tool file, or a hand edit): a pickup the Bastion has no record of is refused with a plain reason; check both the Warehouse and the Travel bags. A campaign file or Back up everything always pairs both tools from one moment.
 - **Different storage:** if one tool can save only in the small fallback storage and the other in the main one, the Explorer can't see the parcels, so they wait and are never doubled (as BAS-82).
 - **Damaged records:** a parcel record with no id or town is dropped only if it's closed or holds nothing; otherwise it's kept, so its items are never lost.
 - **A day passing while a question is open:** if the party makes camp in the Explorer while Recall parcel…'s question is open, the parcel's way home is worked out from the day you confirm (the Dock's Recall ship and Research's question work the same way).

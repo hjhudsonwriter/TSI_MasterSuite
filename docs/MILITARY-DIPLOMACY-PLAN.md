@@ -158,7 +158,7 @@ For now:
   - A finished Great Rite waits at the Ironbow until the DM assigns it.
 - **Physical items** go into the Warehouse, and travel by courier only if the Courier Exchange carries that kind of item.
 - **Charges and uses:**
-  - Charges have a Use action in the Party bags where possible.
+  - Charges have a Use action in the Travel bags where possible.
   - Inside the Explorer, an effect applies when the DM selects it.
   - Outside it, the screen shows short instructions and the DM marks the item used.
   - Using a charge counts once, whatever is reloaded or imported.

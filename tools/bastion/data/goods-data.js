@@ -50,8 +50,8 @@ window.TSI_DATA.bastionGoods = {
 
     { id: 'expedition_provision_pack', name: 'Expedition Provision Pack', kind: 'supply', pack: '10 character-days of rations (a party of five for two days)' },
     /* Pull request 6 (Harry, 14 October 2026): named as the Explorer's
-       Party bags name it (shared/data/party-items.js). The DM adds charts
+       Travel bags name it (shared/data/party-items.js). The DM adds charts
        by hand for now ("+ Add supplies"). */
-    { id: 'overland_chart', name: 'Overland chart', kind: 'supply', unit: 'chart', what: '3 days of use each in the Party bags' }
+    { id: 'overland_chart', name: 'Overland chart', kind: 'supply', unit: 'chart', what: '3 days of use each in the Travel bags' }
   ]
 };

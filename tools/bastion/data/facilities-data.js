@@ -604,7 +604,7 @@ window.TSI_DATA.bastionFacilities = [
         "days": 4,
         "costGP": 0,
         "costText": "0",
-        "notes": "Each Overland chart gives 3 days of use in the Party bags: one more 6-mile hex on a day it's used. The Courier Exchange can send it to the party.",
+        "notes": "Each Overland chart gives 3 days of use in the Travel bags: one more 6-mile hex on a day it's used. The Courier Exchange can send it to the party.",
         "requiredFacilityLevel": 2,
         "production": true,
         "options": [
