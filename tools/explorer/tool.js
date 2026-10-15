@@ -1196,11 +1196,10 @@
         expedShown = expedKey();
         TSI.clear(expedBox);
         var e = J.expedition(state), b = state.journey.blessing;
-        expedBox.appendChild(el('h4', { class: 'tsi-exp-ironbow__title', text: 'Expedition and Great Rites' }));
-        expedBox.appendChild(el('p', { class: 'tsi-exp-line', 'data-test': 'expedition-status',
-          text: e.active ? 'Expedition ' + e.n + ' under way since Day ' + e.startedDay + '.' : (e.n ? 'No expedition under way (' + e.n + ' so far).' : 'No expedition under way.') }));
-        expedBox.appendChild(row([
-          e.active ? btn('End expedition', endExpedition, '', 'expedition-end') : btn('Start expedition', startExpedition, '', 'expedition-start')
+        expedBox.appendChild(el('div', { class: 'tsi-exp-item', title: 'Expeditions and Great Rites' }, [
+          el('div', { class: 'tsi-exp-item__body' }, [el('span', { 'data-test': 'expedition-status',
+            text: e.active ? 'Expedition ' + e.n + ': since Day ' + e.startedDay : (e.n ? 'No expedition (' + e.n + ' so far)' : 'No expedition') })]),
+          e.active ? btn('End expedition', endExpedition, 'tsi-exp-mini', 'expedition-end') : btn('Start expedition', startExpedition, 'tsi-exp-mini', 'expedition-start')
         ]));
         if (b) {
           var info = J.riteInfo(b.rite) || { name: b.rite, reminder: '' };
