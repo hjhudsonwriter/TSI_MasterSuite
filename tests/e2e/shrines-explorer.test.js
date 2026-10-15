@@ -210,6 +210,7 @@ const RITE = 'rite-ab12cd34';
 
   await check('before an expedition starts, giving the rite is refused and nothing is sent', async () => {
     assert(/No expedition under way/.test(await text(ex, 'expedition-status')));
+    console.log('PROBE', JSON.stringify(await ex.evaluate(() => { const b = TSI.explorer.debug.bastionSeen(); return b && { keys: Object.keys(b).slice(0, 12), anchored: b.anchored, rites: b.greatRites }; })));
     await ex.click('[data-test=rite-give]');
     await H.clickModal(ex, 'Give');
     await ex.waitForTimeout(400);
