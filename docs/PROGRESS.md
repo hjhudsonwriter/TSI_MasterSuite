@@ -8,6 +8,15 @@ Double-click `index.html` to open the suite. The plan is in `docs/PLAN.md`, the 
 
 ## Done
 
+### The facilities overhaul, pull request 8b part 1: the Shrines, the Bastion's half (15 October 2026)
+From Harry's Shrine specification and his answers S2, S9 and S10 (`docs/MILITARY-DIPLOMACY-PLAN.md`). Split at his request: the Explorer's half comes next.
+- **Orders:** each Shrine gains one at each level from 2 to 5 (BAS-95). They take 0%, 5%, 10% or 25% of the god's Favour when they start.
+- **Items:** they go to the Warehouse and the Courier Exchange carries them.
+- **Bless Commercial Shipment** switches on the Dock's Blessing of Pelagos (10 points off the next cargo ship's risk).
+- **Great Rites** wait at the Ironbow.
+- **Bless Bastion Foundations** is listed but not yet available: no environmental damage event exists (BAS-96).
+- **Tests:** 3 new rules tests, a new click-through (`tests/e2e/shrines.test.js`, Harry's sample `tests/fixtures/bastion-pr8b-sample.json`), and every other suite.
+
 ### The facilities overhaul, pull request 8a: the War Room's training, and the creature guards (15 October 2026)
 Harry's check all passed; merged as #30 (15 October 2026).
 From Harry's War Room proposal (`docs/specs/war-room-training.txt`, approved as written) and his answers in `docs/MILITARY-DIPLOMACY-PLAN.md`.
@@ -909,7 +918,8 @@ Each tool's questions are needed before that tool's phase. The full wording and 
       - **A grant made by mistake: answered (15 October 2026), "both".** Grant a creature… asks "Are you sure?" before sending, and a creature still waiting for a home gets a Release button (asking first). Not built yet: it goes in the next Bastion pull request.
       - **Older copies:** an older copy of the Bastion deletes the creatures; back up before trying one.
     - **Pull request 8 (military and diplomacy):** 8a (the War Room and the creature guards) is built; see Done. Still open:
-      - **8b, the Shrines:** S2 (which Explorer events count for each charm), S9 (Start/End expedition, and conditions the DM marks used) and S10 (may the courier carry Shrine items?), in `docs/MILITARY-DIPLOMACY-PLAN.md`.
+      - **8b part 2, the Shrines in the Explorer:** Use… in the Travel bags, the event tags (S2), Start/End expedition and giving a Great Rite to the party (S9). All answered; to build next.
+      - **Bless Bastion Foundations** waits for an environmental damage event (BAS-96): say if you'd like one added.
       - **Later:** the research trees (War Room, Hall and Shrines) and the Hall's redesign.
       - **Choices made for Harry in 8a** (BAS-94): War Actions take regiments by number, best trained first; drill gold isn't refunded.
     - **Next for the courier, when you say go:** Levels 3 to 5 (return trips, priority, express), research, and more goods.

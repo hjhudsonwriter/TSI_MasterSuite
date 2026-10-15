@@ -25,7 +25,7 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
 | Scarlett Isles Explorer (EXP) | 12 | 5 | 14 | 13 | 0 |
-| The Ironbow Bastion Manager (BAS) | 23 | 2 | 44 | 24 | 1 |
+| The Ironbow Bastion Manager (BAS) | 23 | 2 | 45 | 25 | 1 |
 | Clan Crest Creator (CRS) | 0 | 4 | 6 | 3 | 3 |
 | Arenas of The Scarlett Isles (ARN) | 8 | 2 | 0 | 17 | 0 |
 | The Heartwood Ritual (RIT) | 9 | 1 | 0 | 15 | 1 |
@@ -2383,6 +2383,43 @@ None of these reached Harry.
   - Grand War Exercises (kept for the Command & Logistics research);
   - upkeep (stays uncharged, B7).
 - **Evidence:** `tools/bastion/regiment-rules.js`, `tools/bastion/war-campaign-rules.js` (`warForces`).
+
+
+### BAS-95 · The Shrines at Levels 2 to 5 (the Bastion's half)
+**Deliberate change** (pull request 8b, part 1; Harry's Shrine specification and his answers S2, S9 and S10, 15 October 2026) · applies something twice
+
+- **Before:** each Shrine had only Craft and Pray, and its upgrades unlocked nothing.
+- **After:**
+  - **Orders,** with Craft and Pray unchanged:
+
+    | Level (days) | Telluria | Aurush | Pelagos |
+    |---|---|---|---|
+    | 2 (3) | Earthward Talisman | Blessed Lantern | Bless Voyage |
+    | 3 (4) | Rootguard Salve, 2 doses | Purification Incense, 2 portions | Aquatic Protection Charm |
+    | 4 (5) | Bless Bastion Foundations (not yet available) | Consecrate Expedition Supplies, 3 Cleansing Portions | Bless Commercial Shipment |
+    | 5 (7) | Great Rite: Earth's Endurance | Great Rite: Cleansing Radiance | Great Rite: Tide's Passage |
+
+  - **Favour:** Level 2 orders cost none; Level 3 costs 5%, Level 4 10% and Level 5 25% of that Shrine's god's Favour. It is taken once, when the order starts, and is refused, with the reason, if there isn't enough. Cancel gives none back, as with gold.
+  - **Items** go into the Warehouse. The Courier Exchange carries them (S10), each counting as 1 item, and they reach the Travel bags with their description.
+  - **Bless Commercial Shipment** switches on the Dock's Blessing of Pelagos: one is held for each order, and the next ship sent with cargo takes it, so its chance of trouble at sea is 10 points lower.
+  - **A Great Rite** waits at the Ironbow, once (`greatRites` in the save), until the DM gives it to the party (part 2).
+- **Evidence:** `tools/bastion/data/facilities-data.js` (the Shrines), `tools/bastion/data/goods-data.js`, `tools/bastion/data/courier-data.js`, `tools/bastion/data/commerce-data.js` (`pelagos_blessing`), `shared/data/party-items.js`, `tools/bastion/rules.js` (`favourBlocker`, `issueOrder`, `completeSimpleOrder`, `cleanGreatRites`), `tools/bastion/tool.js` (`shrineSection`); tests in `tests/rules/bastion.test.js`, `tests/rules/commerce.test.js` and `tests/e2e/shrines.test.js`.
+
+### BAS-96 · The Shrines: what waits, and choices made for Harry
+**Later, Harry's call** (pull request 8b, part 1, 15 October 2026) · other
+
+- **Bless Bastion Foundations isn't available yet.**
+  - No Bastion event sends a facility Under Repair from a natural cause: only an attack does, and that never counts.
+  - The order is listed and says why. It opens once Harry adds such an event.
+- **Comes in part 2 (the Explorer):**
+  - Use… in the Travel bags;
+  - the event tags that offer a charm on a check;
+  - Start and End expedition;
+  - giving a Great Rite to the party.
+- **Choices made for Harry:**
+  - The Blessing of Pelagos goes to the very next cargo ship, with no choosing.
+  - Favour is never given back on Cancel.
+- **Evidence:** `tools/bastion/data/facilities-data.js` (`bless_bastion_foundations`: `waiting`), `tools/bastion/commerce-rules.js` (`voyageProtections`, `dispatchCargo`).
 
 ## Clan Crest Creator
 Old repo: `_legacy/clan-crest-creator` (file:line references point there).
