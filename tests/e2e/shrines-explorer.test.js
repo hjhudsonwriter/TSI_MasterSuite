@@ -267,22 +267,27 @@ const RITE = 'rite-ab12cd34';
     assert(await ex.evaluate(() => TSI.explorer.debug.startEvent('t7')), 'Rootfall started');
     await ex.waitForSelector('[data-test=charm-offer]');
     assert(/Earthward Talisman \(2 left\)/.test(await bare(ex, '[data-test=charm-offer]')), await bare(ex, '[data-test=charm-offer]'));
+    await ex.waitForTimeout(500);
     await ex.dblclick('[data-test=use-charm]');
     await ex.waitForTimeout(400);
     equal((await exs(ex)).journey.inventory.filter(i => i.kind === 'earthward_talisman').map(i => i.qty), [1]);
     assert(!(await ex.$('[data-test=use-charm]')), 'no second Use button at this step');
+    await ex.click('.tsi-modal [data-test=skip-event]');
+    await ex.waitForTimeout(300);
+    await closeAll(ex);
   });
 
   await check('Earth\'s Endurance is offered at the exhaustion save of The Ember That Won\'t Die and used once', async () => {
-    await ex.evaluate(() => { const st = TSI.explorer.debug.state(); st.journey.current = null; });
     assert(await ex.evaluate(() => TSI.explorer.debug.startEvent('c8')), 'C8 started');
     await ex.waitForTimeout(300);
-    if (await ex.$('[data-test=check-success]')) {
-      assert(await ex.$('[data-test=rite-offer]'), 'the rite is offered');
-      await ex.click('[data-test=use-rite]');
-      await ex.waitForTimeout(400);
-      equal((await exs(ex)).journey.blessing.used, true);
-    }
+    await ex.waitForTimeout(500);
+    assert(await ex.$('[data-test=rite-offer]'), 'the rite is offered');
+    await ex.click('[data-test=use-rite]');
+    await ex.waitForTimeout(400);
+    equal((await exs(ex)).journey.blessing.used, true);
+    await ex.click('.tsi-modal [data-test=skip-event]');
+    await ex.waitForTimeout(300);
+    await closeAll(ex);
   });
 
   await check('Use… in the Travel bags asks first and counts one use; Cancel changes nothing', async () => {
