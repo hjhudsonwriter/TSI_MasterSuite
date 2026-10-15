@@ -23,7 +23,8 @@
    Party bags.
 
    Every number here is provisional: edit it here, and nothing else needs to
-   change. The rules are in tools/bastion/creature-rules.js (housing) and
+   change, except the two marked below (houseDays and nameMax), which must
+   match a number kept elsewhere. The rules are in tools/bastion/creature-rules.js (housing) and
    tools/bastion/war-campaign-rules.js (the War Table). */
 window.TSI_DATA = window.TSI_DATA || {};
 window.TSI_DATA.bastionCreatures = {
@@ -104,11 +105,15 @@ window.TSI_DATA.bastionCreatures = {
      Elara's wyvern. */
   room: { griffin_tower: 1, dire_wolf_den: 1 },
 
-  /* The House orders' days (keep these the same as the orders in
-     facilities-data.js: house_elara_wyvern, house_griffin, house_dire_wolf). */
+  /* The House orders' days, only for the Explorer's Grant a creature
+     pop-up to say. The orders themselves take their "days" from
+     facilities-data.js (house_elara_wyvern, house_griffin, house_dire_wolf):
+     change those, and keep this the same. */
   houseDays: 3,
 
-  /* A name typed for a granted creature: at most this many letters. */
+  /* A name typed for a granted creature: at most this many letters. Keep
+     this the same as NAME_MAX in shared/js/bridge-rules.js, which the
+     Explorer's Grant box and the link use. */
   nameMax: 40,
 
   /* The panels' "Coming later" line. */
