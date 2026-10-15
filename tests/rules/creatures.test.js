@@ -313,6 +313,7 @@
     t.same(J.grantCreature(s, 'phoenix', {}), { ok: false, message: 'The DM can grant a griffin or a dire wolf.' });
     t.same(J.grantCreature(s, 'griffin', { name: new Array(42).join('x') }), { ok: false, message: 'A name is at most 40 letters.' });
     t.equal(JSON.stringify(ER.toSave(s)), before, 'nothing changed');
+    var bags = JSON.stringify(s.journey.inventory || []);
     var real = Math.random;
     var calls = 0;
     Math.random = function () { calls++; return real(); };
@@ -326,6 +327,7 @@
     t.equal(r2.line, 'Sent to the Bastion: a dire wolf for the Ironbow, to be housed at the Dire Wolf Den.');
     var out = s.journey.outbox;
     t.equal(out.length, 2);
+    t.equal(JSON.stringify(s.journey.inventory || []), bags, 'nothing goes into the Party bags');
     t.ok(r1.id !== r2.id, 'two grants never share an id');
     t.ok(/^[a-z0-9]+-[0-9a-f]{8}:dm:0$/.test(r1.id), r1.id);
     t.same(Object.keys(out[0]), Bg.CREATURE_FIELDS);
@@ -367,6 +369,10 @@
     t.same(b.honourRespectByClan, hr, 'never Honour/Respect');
     t.equal(BR.applyInbox(b, bdata, exWith([m]), 2000).changed, false, 'a second look changes nothing');
     t.equal(Bg.statusOf(m, copy(BR.toSave(b))).line, 'Applied on Day 10: the Bastion holds the griffin (Swiftwing); house it at the Griffin Tower.');
+    var housedSave = copy(BR.toSave(b));
+    housedSave.creatures[0].status = 'housed';
+    housedSave.creatures[0].home = 'griffin_tower';
+    t.equal(Bg.statusOf(m, housedSave).line, 'Applied on Day 10: the Bastion holds the griffin (Swiftwing); it lives at the Ironbow now.', 'once housed, the Explorer stops saying "house it"');
     var back = reload(b);
     t.same(back.bridge.done[m.id], b.bridge.done[m.id], 'the receipt reloads, kind and all');
     t.same(Object.keys(back.bridge.done[m.id]).slice(9), ['type', 'species', 'name', 'creatureId', 'held']);

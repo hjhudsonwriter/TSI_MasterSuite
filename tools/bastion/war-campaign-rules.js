@@ -633,6 +633,19 @@
       });
     });
     nameUnits(units, w);
+    /* A creature with no name (a granted griffin or dire wolf) gets its
+       kind's short token, numbered (Gr1, Gr2, Wo1), never initials taken
+       from "Griffin (granted Day 11)". */
+    var unnamed = {};
+    units.forEach(function (u) {
+      if (!u.source || !u.source.creature || !R.creatureById) return;
+      var cr = R.creatureById(s, u.source.creature);
+      if (!cr || (typeof cr.name === 'string' && cr.name) || (R.creatureUnique && R.creatureUnique(data, cr.id))) return;
+      var sp = R.creatureSpecies ? R.creatureSpecies(data, cr.species) : null;
+      var base = sp && typeof sp.short === 'string' && sp.short ? sp.short.slice(0, 3) : 'Cr';
+      unnamed[base] = (unnamed[base] || 0) + 1;
+      u.short = base + unnamed[base];
+    });
     var def = Math.min(c.defenders, f.defenders.count);
     var regs = units.filter(function (u) { return u.kind === 'formation'; }).length;
     /* Only as many Lieutenants as there are formations for them to lead. */

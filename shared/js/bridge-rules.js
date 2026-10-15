@@ -436,9 +436,14 @@
     if (isObj(m) && m.type === 'creature' && r) {
       var what = 'the ' + B.speciesName(m.species).toLowerCase() + (typeof m.name === 'string' && m.name ? ' (' + m.name + ')' : '');
       var cday = isWhole(r.day) ? ' on ' + (r.day >= 1 ? 'Day ' + r.day : 'a day before Day 1') : '';
+      /* Once the Bastion has housed it, say so rather than "house it". */
+      var cid = typeof r.creatureId === 'string' ? r.creatureId : '';
+      var housed = cid && isObj(bastionSave) && Array.isArray(bastionSave.creatures) && bastionSave.creatures.some(function (c) {
+        return isObj(c) && c.id === cid && c.status === 'housed';
+      });
       if (r.r === 'applied') return { kind: 'applied', line: r.held === true
         ? 'Applied' + cday + ': the Bastion already held ' + what + ', so nothing changed.'
-        : 'Applied' + cday + ': the Bastion holds ' + what + '; house it at the ' + B.speciesHomeName(m.species) + '.' };
+        : 'Applied' + cday + ': the Bastion holds ' + what + (housed ? '; it lives at the Ironbow now.' : '; house it at the ' + B.speciesHomeName(m.species) + '.') };
       if (r.r === 'skipped') return { kind: 'skipped', line: 'Skipped: sent before this Bastion started. Grant it again if it should count.' };
       var cwhy = str(r.why) || 'the Bastion couldn\'t use it.';
       if (!/[.!?]$/.test(cwhy)) cwhy += '.';

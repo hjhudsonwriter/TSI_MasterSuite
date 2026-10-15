@@ -34,6 +34,8 @@ window.TSI_DATA.bastionCreatures = {
   /* ---------- The kinds of creature ----------
      name / plural: as the panels show them ("the griffin", "2 griffins" in
      a sentence);
+     short: the War Table token for one with no name, numbered (Gr1, Gr2);
+     a named creature's token comes from its name's initials;
      home: the facility that houses this kind (its id in facilities-data.js);
      war: how it fights on the War Table, in the same shape as a beast in
      war-units-data.js (Cohesion, Attack, Defence, Move, Resolve, Battle
@@ -49,6 +51,7 @@ window.TSI_DATA.bastionCreatures = {
        10, plus 1 for flying at Move 6). */
     wyvern: {
       name: 'Wyvern',
+      short: 'Wy',
       plural: 'Wyverns',
       home: 'wyvern_roost',
       war: { cohesion: 7, attack: 6, defence: 13, move: 6, resolve: 2, bv: 11, trait: 'flight', distinction: 'A winged hunter that strikes from above wherever the line is weakest.' },
@@ -60,6 +63,7 @@ window.TSI_DATA.bastionCreatures = {
        Flight, Battle Value 8. */
     griffin: {
       name: 'Griffin',
+      short: 'Gr',
       plural: 'Griffins',
       home: 'griffin_tower',
       war: { cohesion: 5, attack: 5, defence: 12, move: 6, resolve: 1, bv: 8, trait: 'flight', distinction: 'A proud flier that dives on the enemy\'s flanks.' },
@@ -71,6 +75,7 @@ window.TSI_DATA.bastionCreatures = {
        so the War Table's own file stays as it is. */
     dire_wolf: {
       name: 'Dire Wolf',
+      short: 'Wo',
       plural: 'Dire Wolves',
       home: 'dire_wolf_den',
       war: { cohesion: 5, attack: 5, defence: 12, move: 5, resolve: 1, bv: 7, trait: 'pack', distinction: 'A hunter that brings down the isolated.' },

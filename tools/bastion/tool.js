@@ -3458,10 +3458,11 @@
         var roomLine = null;
         if (room) {
           var used = room.housed + room.pending;
-          var text = 'Room: ' + used + ' of ' + room.capacity + (room.pending ? ' (1 being housed)' : '') + '. ';
+          var free = Math.max(0, room.capacity - used);
+          var text = 'Room: ' + used + ' of ' + room.capacity + ' taken' + (room.pending ? ' (1 being housed)' : '') + ', ' + free + ' free. ';
           text += room.over
             ? 'More live here than a Level ' + room.level + ' ' + fac.name + ' houses (it was rebuilt): they all stay, and housing another waits for room.'
-            : 'Each level of the ' + fac.name + ' houses one ' + noun + (room.level < R.MAX_LEVEL ? '; upgrade it to house more.' : '.');
+            : 'Each level of the ' + fac.name + ' houses one ' + noun + (!free && room.level < R.MAX_LEVEL ? '; upgrade it to house more.' : '.');
           roomLine = el('div', { class: 'tsi-bas-creatures__room' + (room.over ? ' tsi-bas-creatures__room--over' : ''), 'data-test': 'creature-room-' + facId, text: text });
         }
         var group = function (title, test, list, none) {

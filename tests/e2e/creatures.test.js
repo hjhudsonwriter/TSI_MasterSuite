@@ -378,7 +378,7 @@ async function clickPop(page, label) {
   await check('the Griffin Tower\'s panel: Swiftwing waits for a home, Room 0 of 1, and House a Griffin offers Swiftwing; the panel fits the laptop', async () => {
     await openTile(ba, 'griffin_tower');
     equal(await panelCreatures(ba, 'griffin_tower'), {
-      room: 'Room: 0 of 1. Each level of the Griffin Tower houses one griffin; upgrade it to house more.',
+      room: 'Room: 0 of 1 taken, 1 free. Each level of the Griffin Tower houses one griffin.',
       housed: [],
       waiting: [['Swiftwing', 'Waiting for a home at the Griffin Tower.']]
     });
@@ -398,7 +398,7 @@ async function clickPop(page, label) {
     equal([o.length, o[0].label, o[0].dueDay, o[0].chosen.creatureId, s.treasuryGP], [1, 'Griffin Tower: House a Griffin (Swiftwing)', 25, swift, gp]);
     await openTile(ba, 'griffin_tower');
     const p = await panelCreatures(ba, 'griffin_tower');
-    equal([p.room, p.waiting], ['Room: 1 of 1 (1 being housed). Each level of the Griffin Tower houses one griffin; upgrade it to house more.', [['Swiftwing', 'Being housed at the Griffin Tower: ready on Day 25.']]]);
+    equal([p.room, p.waiting], ['Room: 1 of 1 taken (1 being housed), 0 free. Each level of the Griffin Tower houses one griffin; upgrade it to house more.', [['Swiftwing', 'Being housed at the Griffin Tower: ready on Day 25.']]]);
     equal(await orderState(ba, TOWER), { button: 'One at a time', off: true, why: 'The Griffin Tower houses one griffin at a time: Swiftwing is ready on Day 25.' });
     await closeAll(ba);
   });
@@ -487,7 +487,7 @@ async function clickPop(page, label) {
     storm = byName(await bas(ba), 'Stormfeather').id;
     await openTile(ba, 'griffin_tower');
     equal(await panelCreatures(ba, 'griffin_tower'), {
-      room: 'Room: 1 of 1. Each level of the Griffin Tower houses one griffin; upgrade it to house more.',
+      room: 'Room: 1 of 1 taken, 0 free. Each level of the Griffin Tower houses one griffin; upgrade it to house more.',
       housed: [['Swiftwing', 'Guarding the Ironbow.']],
       waiting: [['Stormfeather', 'Waiting for a home at the Griffin Tower.']]
     });
@@ -512,7 +512,7 @@ async function clickPop(page, label) {
     const s = await bas(ba);
     equal([s.day, s.facilityLevels.griffin_tower], [32, 2]);
     await openTile(ba, 'griffin_tower');
-    equal((await panelCreatures(ba, 'griffin_tower')).room, 'Room: 1 of 2. Each level of the Griffin Tower houses one griffin; upgrade it to house more.');
+    equal((await panelCreatures(ba, 'griffin_tower')).room, 'Room: 1 of 2 taken, 1 free. Each level of the Griffin Tower houses one griffin.');
     equal(await ba.$$eval('[data-test=sel-' + TOWER + '] option', o => o.map(x => x.textContent)), ['Stormfeather']);
     equal(await orderState(ba, TOWER), { button: 'Issue Order', off: false, why: '' });
     await ba.click('[data-test=issue-' + TOWER + ']');
@@ -528,7 +528,7 @@ async function clickPop(page, label) {
     equal([s.day, byName(s, 'Stormfeather').status, byName(s, 'Stormfeather').home, byName(s, 'Stormfeather').housedDay, s.creatures.length], [35, 'housed', 'griffin_tower', 35, 4]);
     await openTile(ba, 'griffin_tower');
     const p = await panelCreatures(ba, 'griffin_tower');
-    equal([p.room, p.housed, p.waiting], ['Room: 2 of 2. Each level of the Griffin Tower houses one griffin; upgrade it to house more.',
+    equal([p.room, p.housed, p.waiting], ['Room: 2 of 2 taken, 0 free. Each level of the Griffin Tower houses one griffin; upgrade it to house more.',
       [['Swiftwing', 'Guarding the Ironbow.'], ['Stormfeather', 'Guarding the Ironbow.']], []]);
     equal(await panelFits(ba, TOWER), { sideways: false, outOfView: [], underFooter: false });
     await H.shot(ba, 'creatures-tower-two-laptop');
@@ -581,6 +581,8 @@ async function clickPop(page, label) {
     await ba.waitForTimeout(800);
     const units = await ba.evaluate(() => TSI.bastion.debug.warTable().battle().units.filter(u => u.source && u.source.creature).map(u => [u.id, u.name, u.source.creature, u.source.species]));
     equal(units, [['p-creature-1', 'Swiftwing', swift, 'griffin'], ['p-creature-2', 'Dire Wolf (granted Day 22)', wolf, 'dire_wolf'], ['p-creature-3', 'Elara\'s wyvern', WYVERN, 'wyvern'], ['p-creature-4', 'Stormfeather', storm, 'griffin']]);
+    const wolfToken = await ba.evaluate(() => TSI.bastion.debug.warTable().battle().units.find(u => u.id === 'p-creature-2').short);
+    equal(wolfToken, 'Wo1', 'an unnamed creature\'s token is its kind\'s, numbered (no day number in it)');
     const r = await ba.evaluate(() => TSI.bastion.debug.warTable().tokenScreenRect('p-creature-3'));
     await ba.mouse.move(r.x + r.w / 2, r.y + r.h / 2);
     await ba.waitForFunction(() => { const t = document.querySelector('[data-test=wt-tip]'); return t && !t.hidden && /Elara's wyvern/.test(t.textContent); }, null, { timeout: 4000 });
