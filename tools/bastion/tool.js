@@ -61,7 +61,7 @@
       var R = ns.rules;
       var D = window.TSI_DATA;
       var B = D.bastion;
-      var data = { bastion: B, facilities: D.bastionFacilities, tools: D.bastionTools, events: D.bastionEvents, research: D.bastionResearch, goods: D.bastionGoods, commerce: D.bastionCommerce, courier: D.bastionCourier, creatures: D.bastionCreatures };
+      var data = { bastion: B, facilities: D.bastionFacilities, tools: D.bastionTools, events: D.bastionEvents, research: D.bastionResearch, goods: D.bastionGoods, commerce: D.bastionCommerce, courier: D.bastionCourier, creatures: D.bastionCreatures, warRoom: D.bastionWarRoom };
       /* The war mini-game's numbers (war-units-data.js): units, stat blocks, missions. */
       var W = D.bastionWar;
       var COMPENDIUM = (D.bastionCompendium && D.bastionCompendium.items) || {};
@@ -4046,6 +4046,14 @@
           var post = R.settleParcels(state, data);
           logAll(post.log);
           post.word.forEach(function (w) { R.addWord(state, w); });
+          /* The War Room's regiments (pull request 8a): Recouping refills a
+             day's worth, and a drill waits while its regiment is Recouping
+             or away. Same write, so once. */
+          if (R.settleRegiments) {
+            var regs = R.settleRegiments(state, data);
+            logAll(regs.log);
+            regs.word.forEach(function (w) { R.addWord(state, w); });
+          }
           R.finishRoutes(state);
           save();
         }

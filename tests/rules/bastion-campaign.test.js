@@ -1254,7 +1254,10 @@
     b.s.warRecovery = [{ id: 'rec-1', kind: 'beast', name: 'Ape', status: 'wounded', untilDay: 5 }];
     queue(b.s, 'skirmish', { defenders: 0, units: { archers: 0 }, beasts: {}, lieutenants: 0 }, 'small', 'karr');
     var back = R.fromSave(JSON.parse(JSON.stringify(R.toSave(b.s))), data);
-    t.same(back, b.s);
+    /* Pull request 8a: loading tidies the counted regiments into one record each. */
+    t.same(back, Object.assign({}, b.s, { military: R.cleanRegiments(b.s.military, data) }));
+    t.same(back.military.filter(function (r) { return r.num; }).map(function (r) { return [R.regimentName(r, data), r.strength || null]; }),
+      [['Line Infantry I', null], ['Line Infantry II', null], ['Line Infantry III', 62], ['Archers I', null]]);
     t.same([back.warMissionSeq, Object.keys(back.warMissions).length, back.militaryActions[0].step, back.militaryActions[0].battle.round], [2, 2, 'battle', 2]);
     t.same(R.fromSave(JSON.parse(JSON.stringify(back)), data), back, 'loading twice changes nothing');
   });
@@ -1272,13 +1275,16 @@
     save.warMissions = { 'a|b|c': { key: 'zzz', enemy: { units: [] } }, 'k|raid|small': { key: 'k|raid|small', enemy: { units: [], leaders: [] } } };
     save.warMissionSeq = '4';
     var back = R.fromSave(save, data);
-    t.same(back.military.slice(4).map(function (r) { return [r.id || null, r.name, r.qty, r.strength || null]; }), [
-      [null, 'Line Infantry (100)', 3, null],
-      [back.military[5].id, 'Heavy Infantry (50)', 1, 20],
-      ['reg-a-2', 'Line Infantry (100)', 1, 50],
-      [null, 'Ape', 1, null]
-    ], 'full strength becomes an ordinary row (keeping its count), nobody left is removed, ids are added and kept apart');
-    t.ok(/^reg-/.test(back.military[5].id));
+    /* Pull request 8a: one record per regiment, each with its own id and number. */
+    t.same(back.military.slice(5).map(function (r) { return [R.regimentName(r, data) || r.name, r.qty, r.strength || null, !!r.recoup]; }), [
+      ['Line Infantry IV', 1, null, false], ['Line Infantry V', 1, null, false], ['Line Infantry VI', 1, null, false],
+      ['Heavy Infantry I', 1, 20, true],
+      ['Line Infantry VII', 1, 50, true],
+      ['Ape', 1, null, false]
+    ], 'full strength becomes full records (keeping the count), nobody left is removed, ids are added and kept apart; under strength is Recouping');
+    var ids = back.military.map(function (r) { return r.id; }).filter(Boolean);
+    t.equal(ids.length, new Set(ids).size, 'every id is different');
+    t.ok(ids.every(function (id) { return /^reg-/.test(id); }));
     t.same(back.warRecovery, [{ id: 'rec-0', kind: 'beast', name: 'Ape', status: 'wounded', untilDay: 6 }]);
     t.same(Object.keys(back.warMissions), ['k|raid|small']);
     t.equal(back.warMissionSeq, 4);
@@ -1295,13 +1301,14 @@
       { name: 'Levy Infantry (150)', qty: 1, strength: null, source: 'War Room' }
     ];
     var back = R.fromSave(JSON.parse(JSON.stringify(save)), data);
-    t.same(back.military, [
-      { name: 'Line Infantry (100)', qty: 3, source: 'War Room' },
-      { name: 'Archers (50)', qty: 2, source: 'War Room' },
-      { id: 'reg-x', name: 'Heavy Infantry (50)', qty: 1, strength: 30, source: 'War Room', depleted: true },
-      { id: 'reg-x-2', name: 'Heavy Infantry (50)', qty: 1, strength: 30, source: 'War Room', depleted: true },
-      { name: 'Levy Infantry (150)', qty: 1, strength: null, source: 'War Room' }
+    /* Pull request 8a: one record per regiment. */
+    t.same(back.military.map(function (r) { return [R.regimentName(r, data), r.qty, r.strength || null, r.recoup || null]; }), [
+      ['Line Infantry I', 1, null, null], ['Line Infantry II', 1, null, null], ['Line Infantry III', 1, null, null],
+      ['Archers I', 1, null, null], ['Archers II', 1, null, null],
+      ['Heavy Infantry I', 1, 30, { days: 7, left: 7, from: 30 }], ['Heavy Infantry II', 1, 30, { days: 7, left: 7, from: 30 }],
+      ['Levy Infantry I', 1, null, null]
     ]);
+    t.equal(back.military[5].id, 'reg-x', 'an id is kept');
     t.equal(R.warAvailable(back, data).regiments, 3 + 2 + 2 + 1, 'nobody lost');
     t.same(R.fromSave(JSON.parse(JSON.stringify(R.toSave(back))), data).military, back.military, 'loading again changes nothing');
   });
@@ -1962,7 +1969,7 @@
     s.dayInProgress.attackRolled = true;
     t.ok(R.militaryBattleSave(s, d.ma.id, { v: 2, phase: 'deploy', round: 1, maxRounds: 6, started: false, units: [], leaders: [], log: [] }));
     var back = R.fromSave(JSON.parse(JSON.stringify(R.toSave(s))), data);
-    t.same(back, s);
+    t.same(back, Object.assign({}, s, { military: R.cleanRegiments(s.military, data) }));
     t.same([back.militaryActions[0].kind, back.militaryActions[0].map, back.militaryActions[0].undefended], ['defence', 'defend_coast', false]);
     t.equal(R.canCallOff(back.militaryActions[0]), false);
     t.equal(R.importProblem([{ key: 'tsi.bastion.state', value: JSON.parse(JSON.stringify(s)) }]), null);

@@ -208,20 +208,26 @@
   function rowQty(row) { return clampInt(row && row.qty !== undefined && row.qty !== null ? row.qty : 1, 0); }
   function isDepleted(row) { return isObj(row) && row.depleted === true; }
 
-  /* Every regiment on the list by type: how many at full strength, and the
-     depleted rows. */
+  /* Every regiment on the list by type: those at full strength (each its
+     own record since pull request 8a: { row }; a counted row without an
+     id, from a caller that didn't tidy its list, is that many { row: null }),
+     and the depleted rows. */
   function regimentsOf(s, data) {
     var w = wd(data), out = {};
-    Object.keys(w.archetypes).forEach(function (t) { out[t] = { full: 0, depleted: [] }; });
+    Object.keys(w.archetypes).forEach(function (t) { out[t] = { full: [], depleted: [] }; });
     (Array.isArray(s.military) ? s.military : []).forEach(function (row) {
       if (!isObj(row)) return;
       var type = R.unitTypeOf(row.name, data);
       if (!type || !out[type]) return;
       if (isDepleted(row)) out[type].depleted.push(row);
-      else out[type].full += rowQty(row);
+      else if (typeof row.id === 'string' && row.id) out[type].full.push({ row: row });
+      else for (var k = 0; k < rowQty(row); k++) out[type].full.push({ row: null });
     });
     return out;
   }
+  function gradeRank(data, row) { return row && R.gradeIndex ? R.gradeIndex(data, row.grade) : 0; }
+  function isRecord(row) { return isObj(row) && typeof row.num === 'number'; }
+  function regName(row, data, a) { return isRecord(row) && R.regimentName ? R.regimentName(row, data) : a.name; }
   function beastCounts(s) {
     var out = {};
     (Array.isArray(s.defenderBeasts) ? s.defenderBeasts : []).forEach(function (row) {
@@ -295,6 +301,12 @@
         if (!isDepleted(row) || busy[row.id] || R.unitTypeOf(row.name, data) !== type) return;
         if (!target || clampInt(row.strength, 0) < clampInt(target.strength, 0)) target = row;
       });
+      if (target && R.makeRegimentFull && typeof target.num === 'number') {
+        /* Pull request 8a: the same regiment, refilled where it stands; it
+           keeps its name, number and training, and stops Recouping. */
+        R.makeRegimentFull(target);
+        return 'Replacements bring ' + regName(target, data, a) + ' back to ' + a.size + '.';
+      }
       if (target) {
         s.military = s.military.filter(function (row) { return row !== target; });
         var same = s.military.some(function (row) { return isObj(row) && !isDepleted(row) && row.name === target.name; });
@@ -302,6 +314,13 @@
         if (!home) s.military.forEach(function (row) { if (!home && isObj(row) && !isDepleted(row) && R.unitTypeOf(row.name, data) === type) home = row.name; });
         addFull(s.military, home || target.name, target.source || 'War Room');
         return 'Replacements bring ' + a.name + ' back to ' + a.size + '.';
+      }
+      /* A list already tidied into records (every save, once loaded) gets a
+         new record; an untidied list of counts keeps counting, as before. */
+      var counted = s.military.some(function (row) { return isObj(row) && !isRecord(row) && R.unitTypeOf(row.name, data) in w.archetypes; });
+      if (R.addRegiment && !counted) {
+        var row = R.addRegiment(s, data, name, 'War Room');
+        return 'Recruited: ' + R.regimentName(row, data) + '.';
       }
     }
     addFull(s.military, name, 'War Room');
@@ -488,18 +507,30 @@
     var held = commitments(s, data, opts);
     var rec = recovering(s);
     var regs = regimentsOf(s, data);
+    /* Pull request 8a: a regiment drilling stays at the Ironbow. It can't
+       go on a War Action, but it defends the Ironbow when it's attacked. */
+    var defence = !!opts.defence || actionsOf(s).some(function (ma) { return ma.kind === 'defence' && opts.except !== undefined && (ma.id === opts.except || ma.orderId === opts.except); });
+    var drilling = {};
+    if (!defence && R.drillOrders) R.drillOrders(s).forEach(function (o) { drilling[o.chosen.regimentId] = true; });
     var units = {};
     Object.keys(w.archetypes).forEach(function (type) {
       var a = w.archetypes[type], r = regs[type];
-      var full = Math.max(0, r.full - (held.maFull[type] || 0));
-      var dep = r.depleted.filter(function (row) { return !held.maRows[row.id]; }).map(function (row) {
-        return { key: String(row.id), strength: clampInt(row.strength, 1, a.size) };
+      /* Full regiments, the best trained first (then by number); those in a
+         Military Action go, and an older Military Action's count without
+         ids takes the first ones. */
+      var fullRows = r.full.filter(function (e) { return !(e.row && (held.maRows[e.row.id] || drilling[e.row.id])); });
+      fullRows.sort(function (x, y) {
+        return gradeRank(data, y.row) - gradeRank(data, x.row) || ((x.row && x.row.num) || 0) - ((y.row && y.row.num) || 0);
+      });
+      fullRows = fullRows.slice(Math.min(fullRows.length, held.maFull[type] || 0));
+      var dep = r.depleted.filter(function (row) { return !held.maRows[row.id] && !drilling[row.id]; }).map(function (row) {
+        return { key: String(row.id), strength: clampInt(row.strength, 1, a.size), row: row };
       });
       dep.sort(function (x, y) { return y.strength - x.strength || (x.key < y.key ? -1 : x.key > y.key ? 1 : 0); });
       /* Every regiment of the type, healthiest first, then each waiting
          order's share in queue order. Those held by another order go. */
       var pool = [];
-      for (var f = 0; f < full; f++) pool.push(null);
+      fullRows.forEach(function (e) { pool.push(e.row ? { full: true, row: e.row } : null); });
       dep.forEach(function (d) { pool.push(d); });
       var other = [], at = 0;
       held.queue.forEach(function (q) {
@@ -509,6 +540,8 @@
       pool.forEach(function (d, i) {
         if (other[i]) return;
         if (!d) list.push({ key: type + '-' + (++n), label: a.name, personnel: a.size, size: a.size, depleted: false });
+        else if (d.full) list.push({ key: d.row.id, rowId: d.row.id, label: regName(d.row, data, a), personnel: a.size, size: a.size, depleted: false, grade: d.row.grade || 'regular' });
+        else if (isRecord(d.row)) list.push({ key: d.key, rowId: d.key, label: regName(d.row, data, a) + ' (' + d.strength + ' of ' + a.size + ')', personnel: d.strength, size: a.size, depleted: true, grade: d.row.grade || 'regular' });
         else list.push({ key: d.key, label: a.name + ' (' + d.strength + ' of ' + a.size + ')', personnel: d.strength, size: a.size, depleted: true });
       });
       units[type] = list;
@@ -589,13 +622,19 @@
       var a = w.archetypes[type];
       f.units[type].slice(0, n).forEach(function (reg, i) {
         var traits = a.traits.slice();
-        units.push({
+        /* A trained regiment's bonus goes on its own stat block (pull
+           request 8a), before an under-strength one is scaled down. */
+        var base = profileOf(a, traits, w);
+        if (reg.grade && R.gradedProfile) base = R.gradedProfile(data, base, reg.grade);
+        var u = {
           id: 'p-' + type + '-' + (i + 1), kind: 'formation', type: type, name: a.name, label: '', short: '',
           personnel: reg.personnel, size: a.size,
-          profile: scaleProfile(profileOf(a, traits, w), reg.personnel, a.size),
+          profile: scaleProfile(base, reg.personnel, a.size),
           traits: traits, variant: null,
-          source: reg.depleted ? { key: reg.key, type: type, rowId: reg.key } : { key: reg.key, type: type }
-        });
+          source: reg.rowId || reg.depleted ? { key: reg.key, type: type, rowId: reg.rowId || reg.key } : { key: reg.key, type: type }
+        };
+        if (reg.rowId) { u.regiment = reg.label.replace(/\s*\(\d+ of \d+\)$/, ''); u.grade = reg.grade || 'regular'; }
+        units.push(u);
       });
     });
     var bi = 0;
@@ -1308,10 +1347,11 @@
       key: key, targetKey: clanKey, targetName: name, objective: 'defend', tier: tier,
       variation: gen.variation, budget: gen.budget, enemy: gen.enemy, conditions: null, createdDay: s.day, seenDay: s.day
     };
-    var f = R.warForces(s, data);
+    /* Every regiment at home defends, those drilling too (pull request 8a). */
+    var f = R.warForces(s, data, { defence: true });
     var all = { defenders: f.defenders.count, lieutenants: f.lieutenants, units: {}, beasts: f.beasts };
     Object.keys(f.units).forEach(function (t) { if (f.units[t].length) all.units[t] = f.units[t].length; });
-    var commit = R.warCommit2(s, data, all);
+    var commit = R.warCommit2(s, data, all, { defence: true });
     if (f.creatures.length) commit.creatures = f.creatures.slice();
     /* The fields in the order a loaded action has them (cleanAction). */
     var ma = {
@@ -1360,6 +1400,8 @@
      side from the commitment, the mission's enemy, the objective and the
      opening rolls. */
   R.buildSpec = function (s, data, ma, opts) {
+    /* A Defend Bastion takes the regiments drilling too (pull request 8a). */
+    if (isObj(ma) && ma.kind === 'defence') opts = Object.assign({}, opts || {}, { defence: true });
     var mission = missionFor(s, data, ma);
     var enemy = clone(mission ? mission.enemy : { units: [], leaders: [] });
     /* A mission drawn up before the enemy's labels had the clan's name. */
@@ -1881,9 +1923,11 @@
     if (!Array.isArray(s.military)) s.military = [];
     if (r.rowId) {
       var row = null;
-      s.military.forEach(function (x) { if (isDepleted(x) && x.id === r.rowId) row = x; });
+      s.military.forEach(function (x) { if (isObj(x) && x.id === r.rowId && (isDepleted(x) || typeof x.num === 'number')) row = x; });
       if (!row) return 'no longer on the Military list';
       if (r.after <= 0) s.military = s.military.filter(function (x) { return x !== row; });
+      /* Pull request 8a: it starts (or starts again) Recouping from here. */
+      else if (R.setRegimentStrength && typeof row.num === 'number') R.setRegimentStrength(row, data, r.after);
       else row.strength = r.after;
       return null;
     }
@@ -1891,6 +1935,13 @@
     s.military.forEach(function (x, i) { if (idx === -1 && isObj(x) && !isDepleted(x) && R.unitTypeOf(x.name, data) === r.type && rowQty(x) > 0) idx = i; });
     if (idx === -1) return 'no longer on the Military list';
     var full = s.military[idx];
+    /* An older Military Action's regiment without an id: the first full
+       regiment of its type takes the losses, keeping its name and training. */
+    if (typeof full.num === 'number' && R.setRegimentStrength) {
+      if (r.after <= 0) s.military.splice(idx, 1);
+      else R.setRegimentStrength(full, data, r.after);
+      return null;
+    }
     var q = rowQty(full);
     var name = full.name, source = full.source || '';
     if (q <= 1) s.military.splice(idx, 1);
@@ -2376,6 +2427,8 @@
      lost); one with nobody left is removed; one without an id gets one
      from a hash. Rows with no strength are kept as they are. */
   function cleanMilitary(list, data) {
+    /* Pull request 8a: every regiment its own record (regiment-rules.js). */
+    if (R.cleanRegiments) return R.cleanRegiments(list, data);
     var w = wd(data), out = [];
     (Array.isArray(list) ? list : []).forEach(function (row, i) {
       if (!isObj(row)) return;

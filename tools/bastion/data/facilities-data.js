@@ -387,6 +387,36 @@ window.TSI_DATA.bastionFacilities = [
         "costGP": 0,
         "costText": "0",
         "notes": "No cost to recruit, but each soldier costs 1 gp every 7 days. Hover over a choice to see its stat block. Lieutenants and units join the Military panel when the order completes; a unit of a type that came home depleted brings that regiment back to full strength first."
+      },
+      {
+        "id": "drill",
+        "label": "Drill a Regiment",
+        "days": 7,
+        "costGP": 0,
+        "costText": "25 gp × Battle Value (Trained), 50 gp × (Veteran)",
+        "requiredFacilityLevel": 2,
+        "drill": true,
+        "notes": "Choose one regiment at full strength. Trained (7 days): +1 Resolve and +0.5 Battle Value. Veteran (14 more days): +1 Cohesion and +0.5 Battle Value more. The gold is paid when the drill starts. A regiment drilling stays at the Ironbow: it can't go on a War Action, but it defends the Ironbow if it's attacked."
+      },
+      {
+        "id": "coordinated_muster",
+        "label": "Coordinated Muster",
+        "days": 7,
+        "costGP": 0,
+        "costText": "0",
+        "requiredFacilityLevel": 3,
+        "muster": 2,
+        "notes": "Raises two formations in one order, in any mix (a regiment of a kind that came home depleted is refilled first, as Recruit does)."
+      },
+      {
+        "id": "grand_muster",
+        "label": "Grand Muster",
+        "days": 7,
+        "costGP": 0,
+        "costText": "0",
+        "requiredFacilityLevel": 5,
+        "muster": 3,
+        "notes": "Raises three formations in one order, in any mix (a regiment of a kind that came home depleted is refilled first, as Recruit does)."
       }
     ]
   },
