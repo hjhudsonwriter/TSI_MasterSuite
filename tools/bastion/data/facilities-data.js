@@ -1655,6 +1655,72 @@ window.TSI_DATA.bastionFacilities = [
         "costGP": 0,
         "costText": "0",
         "notes": null
+      },
+      {
+        "id": "prepare_earthward_talisman",
+        "label": "Prepare Earthward Talisman",
+        "days": 3,
+        "costGP": 0,
+        "costText": "0",
+        "requiredFacilityLevel": 2,
+        "favourCost": 0,
+        "production": true,
+        "options": [
+          {
+            "label": "1 Earthward Talisman",
+            "outputs": [
+              {
+                "good": "earthward_talisman",
+                "qty": 1
+              }
+            ]
+          }
+        ],
+        "notes": "One talisman, into the Warehouse: +2 to one saving throw against a nonmagical natural-terrain hazard. The Courier Exchange can send it to the party."
+      },
+      {
+        "id": "prepare_rootguard_salve",
+        "label": "Prepare Rootguard Salve",
+        "days": 4,
+        "costGP": 0,
+        "costText": "5% Favour",
+        "requiredFacilityLevel": 3,
+        "favourCost": 5,
+        "production": true,
+        "options": [
+          {
+            "label": "2 doses of Rootguard Salve",
+            "outputs": [
+              {
+                "good": "rootguard_salve",
+                "qty": 2
+              }
+            ]
+          }
+        ],
+        "notes": "Two doses, into the Warehouse: each gives advantage on one saving throw against being Restrained by nonmagical vegetation. Takes 5% of Telluria's Favour when it starts."
+      },
+      {
+        "id": "bless_bastion_foundations",
+        "label": "Bless Bastion Foundations",
+        "days": 5,
+        "costGP": 0,
+        "costText": "10% Favour",
+        "requiredFacilityLevel": 4,
+        "favourCost": 10,
+        "waiting": "Not available yet: no Bastion event damages a facility by natural causes yet (an attack's damage never counts). This order opens once one exists.",
+        "notes": "One charge, kept at the Ironbow: it prevents one facility going Under Repair from an environmental cause. It never prevents damage from a military defeat."
+      },
+      {
+        "id": "great_rite_telluria",
+        "label": "Great Rite of Telluria",
+        "days": 7,
+        "costGP": 0,
+        "costText": "25% Favour",
+        "requiredFacilityLevel": 5,
+        "favourCost": 25,
+        "greatRite": "earths_endurance",
+        "notes": "Earth's Endurance: one Major Expedition Blessing. It waits at the Ironbow until the DM gives it to the party on an expedition; then it prevents one level of Exhaustion from a failed travel or environmental saving throw, once."
       }
     ]
   },
@@ -1711,6 +1777,83 @@ window.TSI_DATA.bastionFacilities = [
         "costGP": 0,
         "costText": "0",
         "notes": null
+      },
+      {
+        "id": "prepare_blessed_lantern",
+        "label": "Prepare Blessed Lantern",
+        "days": 3,
+        "costGP": 0,
+        "costText": "0",
+        "requiredFacilityLevel": 2,
+        "favourCost": 0,
+        "production": true,
+        "options": [
+          {
+            "label": "1 Blessed Lantern",
+            "outputs": [
+              {
+                "good": "blessed_lantern",
+                "qty": 1
+              }
+            ]
+          }
+        ],
+        "notes": "One lantern, into the Warehouse: fuel-free light, 20 ft bright and 20 ft dim, for three days. The Courier Exchange can send it to the party."
+      },
+      {
+        "id": "prepare_purification_incense",
+        "label": "Prepare Purification Incense",
+        "days": 4,
+        "costGP": 0,
+        "costText": "5% Favour",
+        "requiredFacilityLevel": 3,
+        "favourCost": 5,
+        "production": true,
+        "options": [
+          {
+            "label": "2 portions of Purification Incense",
+            "outputs": [
+              {
+                "good": "purification_incense",
+                "qty": 2
+              }
+            ]
+          }
+        ],
+        "notes": "Two portions, into the Warehouse: each gives advantage on one saving throw against nonmagical poison or disease. Takes 5% of Aurush's Favour when it starts."
+      },
+      {
+        "id": "consecrate_expedition_supplies",
+        "label": "Consecrate Expedition Supplies",
+        "days": 5,
+        "costGP": 0,
+        "costText": "10% Favour",
+        "requiredFacilityLevel": 4,
+        "favourCost": 10,
+        "production": true,
+        "options": [
+          {
+            "label": "3 Cleansing Portions",
+            "outputs": [
+              {
+                "good": "cleansing_portion",
+                "qty": 3
+              }
+            ]
+          }
+        ],
+        "notes": "Three Cleansing Portions, into the Warehouse: each removes the ordinary Poisoned condition from one creature (no hit points, and no disease or curse cured). Takes 10% of Aurush's Favour when it starts."
+      },
+      {
+        "id": "great_rite_aurush",
+        "label": "Great Rite of Aurush",
+        "days": 7,
+        "costGP": 0,
+        "costText": "25% Favour",
+        "requiredFacilityLevel": 5,
+        "favourCost": 25,
+        "greatRite": "cleansing_radiance",
+        "notes": "Cleansing Radiance: one Major Expedition Blessing. It waits at the Ironbow until the DM gives it to the party on an expedition; then it removes Poisoned or Frightened from up to two party members present, once."
       }
     ]
   },
@@ -1767,6 +1910,72 @@ window.TSI_DATA.bastionFacilities = [
         "costGP": 0,
         "costText": "0",
         "notes": null
+      },
+      {
+        "id": "bless_voyage",
+        "label": "Bless Voyage",
+        "days": 3,
+        "costGP": 0,
+        "costText": "0",
+        "requiredFacilityLevel": 2,
+        "favourCost": 0,
+        "production": true,
+        "options": [
+          {
+            "label": "1 Voyage Blessing",
+            "outputs": [
+              {
+                "good": "voyage_blessing",
+                "qty": 1
+              }
+            ]
+          }
+        ],
+        "notes": "One blessing, into the Warehouse: +2 to one navigation or maritime hazard check during an expedition. The Courier Exchange can send it to the party."
+      },
+      {
+        "id": "prepare_aquatic_protection_charm",
+        "label": "Prepare Aquatic Protection Charm",
+        "days": 4,
+        "costGP": 0,
+        "costText": "5% Favour",
+        "requiredFacilityLevel": 3,
+        "favourCost": 5,
+        "production": true,
+        "options": [
+          {
+            "label": "1 Aquatic Protection Charm",
+            "outputs": [
+              {
+                "good": "aquatic_protection_charm",
+                "qty": 1
+              }
+            ]
+          }
+        ],
+        "notes": "One charm, into the Warehouse: advantage on one Athletics check involving swimming, currents or a nonmagical water hazard. Takes 5% of Pelagos' Favour when it starts."
+      },
+      {
+        "id": "bless_commercial_shipment",
+        "label": "Bless Commercial Shipment",
+        "days": 5,
+        "costGP": 0,
+        "costText": "10% Favour",
+        "requiredFacilityLevel": 4,
+        "favourCost": 10,
+        "protectionCharge": "pelagos_blessing",
+        "notes": "One Blessing of Pelagos, kept at the Ironbow: the next ship the Dock sends with cargo takes it, and its chance of trouble at sea is 10 points lower. Takes 10% of Pelagos' Favour when it starts."
+      },
+      {
+        "id": "great_rite_pelagos",
+        "label": "Great Rite of Pelagos",
+        "days": 7,
+        "costGP": 0,
+        "costText": "25% Favour",
+        "requiredFacilityLevel": 5,
+        "favourCost": 25,
+        "greatRite": "tides_passage",
+        "notes": "Tide's Passage: one Major Expedition Blessing. It waits at the Ironbow until the DM gives it to the party on an expedition; then it turns one failed water-related navigation or environmental check into a success, once."
       }
     ]
   }

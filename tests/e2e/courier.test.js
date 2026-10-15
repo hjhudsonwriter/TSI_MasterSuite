@@ -224,7 +224,7 @@ async function panelFits(ba) {
     await openCourier(ba);
     equal(await bare(ba, '[data-test=courier-status]'), 'Level 1: 1 parcel travelling at a time, up to 5 items each. Reaches: ' + SLADE + '. Each parcel\'s fee comes from the treasury when it\'s sent; nothing goes wrong on the road.');
     equal(await ba.$eval('[data-test=send-parcel]', b => b.disabled), true);
-    equal(await bare(ba, '[data-test=parcel-why]'), 'The Warehouse has nothing the courier carries (Expedition Provision Packs, Overland charts).');
+    equal(await bare(ba, '[data-test=parcel-why]'), 'The Warehouse has nothing the courier carries (Expedition Provision Packs, Overland charts and the Shrines\' items).');
     equal(await ba.$$eval('[data-test=courier-later] li', l => l.map(x => x.textContent)), [
       'Level 3: Collect Expedition Cargo (return trips, from the party to the Ironbow).',
       'Level 4: Priority Courier (faster parcels).',

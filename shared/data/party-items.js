@@ -38,5 +38,70 @@ window.TSI_DATA.partyItems = {
     unit: 'pack',
     units: 'packs',
     text: 'Advantage on one exhaustion save: C8\'s vigil, or the White Blizzard (one pack covers the whole party). You still roll at the table.'
+  },
+  /* The Shrines' items (pull request 8b, Harry's Shrine specification of 15
+     October 2026). use 'shrine': the DM applies it at the table. */
+  earthward_talisman: {
+    name: "Earthward Talisman",
+    plural: "Earthward Talismans",
+    use: 'shrine',
+    usesEach: 1,
+    unit: "talisman",
+    units: "talismans",
+    text: "+2 to one saving throw against a nonmagical natural-terrain hazard (from the Shrine of Telluria)."
+  },
+  rootguard_salve: {
+    name: "Rootguard Salve",
+    plural: "doses of Rootguard Salve",
+    use: 'shrine',
+    usesEach: 1,
+    unit: "dose",
+    units: "doses",
+    text: "Advantage on one saving throw against being Restrained by nonmagical vegetation (from the Shrine of Telluria)."
+  },
+  blessed_lantern: {
+    name: "Blessed Lantern",
+    plural: "Blessed Lanterns",
+    use: 'shrine',
+    usesEach: 3,
+    unit: "day of light",
+    units: "days of light",
+    text: "Fuel-free light: bright light 20 ft and dim light another 20 ft. Each lantern gives three days of light (from the Shrine of Aurush)."
+  },
+  purification_incense: {
+    name: "Purification Incense",
+    plural: "portions of Purification Incense",
+    use: 'shrine',
+    usesEach: 1,
+    unit: "portion",
+    units: "portions",
+    text: "Advantage on one saving throw against nonmagical poison or disease (from the Shrine of Aurush)."
+  },
+  cleansing_portion: {
+    name: "Cleansing Portion",
+    plural: "Cleansing Portions",
+    use: 'shrine',
+    usesEach: 1,
+    unit: "portion",
+    units: "portions",
+    text: "Removes the ordinary Poisoned condition from one creature. It heals no hit points and cures no disease or curse (from the Shrine of Aurush)."
+  },
+  voyage_blessing: {
+    name: "Voyage Blessing",
+    plural: "Voyage Blessings",
+    use: 'shrine',
+    usesEach: 1,
+    unit: "blessing",
+    units: "blessings",
+    text: "+2 to one navigation or maritime hazard check during an expedition (from the Shrine of Pelagos)."
+  },
+  aquatic_protection_charm: {
+    name: "Aquatic Protection Charm",
+    plural: "Aquatic Protection Charms",
+    use: 'shrine',
+    usesEach: 1,
+    unit: "charm",
+    units: "charms",
+    text: "Advantage on one Athletics check involving swimming, currents or a nonmagical water hazard (from the Shrine of Pelagos)."
   }
 };

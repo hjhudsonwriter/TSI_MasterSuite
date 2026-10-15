@@ -2808,7 +2808,7 @@
         /* A production order (pull request 3): what the chosen recipe uses and makes. */
         var goodsLine = fn.production ? el('div', { class: 'tsi-bas-fn__goods', 'data-test': 'goods-' + key }) : null;
         /* Why a House order can't be given now, in a sentence (pull request 7). */
-        var whyLine = isHousing || isDrill ? el('div', { class: 'tsi-bas-fn__why', 'data-test': 'why-' + key, hidden: true }) : null;
+        var whyLine = (isHousing || isDrill || (fn.favourCost && !fn.production) || fn.waiting) ? el('div', { class: 'tsi-bas-fn__why', 'data-test': 'why-' + key, hidden: true }) : null;
         function chosenNow() {
           if (isDrill) return options[select ? R.clampInt(select.value, 0) : 0] || null;
           return fn.production && fn.options && fn.options.length ? fn.options[select ? R.clampInt(select.value, 0) : 0] || null : null;
@@ -2820,13 +2820,17 @@
             : isCharter && !options.length ? 'No Port Charter to register: the DM grants one in the Explorer, and each is registered once.'
             : isHousing ? R.housingBlocker(state, data, fac, fn) || null
             : isDrill ? (R.drillRoomBlocker(state, data) || (!options.length ? 'No regiment can drill now: a regiment drills at full strength, one drill at a time, up to Veteran.' : null)) : null;
+          /* A Shrine order's Favour (pull request 8b). */
+          var noFavour = !why && !repair && avail.ok && R.favourBlocker ? R.favourBlocker(state, fac, fn) : '';
+          if (noFavour) why = noFavour;
           issue.disabled = !!(locked || cd > 0 || repair > 0 || why);
           issue.title = repair ? repairText(fac, repair) : why || null;
           issue.textContent = repair ? 'Under Repair' : !avail.ok ? avail.message : why && fn.production ? 'Can\'t order yet' : why && isCharter ? (options.length ? 'One at a time' : 'No Port Charter to register')
-            : why && isHousing ? housingShort(fac, fn) : why && isDrill ? 'Can\'t drill now' : cd > 0 ? 'Cooldown: ' + R.daysText(cd) : 'Issue Order';
+            : why && isHousing ? housingShort(fac, fn) : why && isDrill ? 'Can\'t drill now' : noFavour ? 'Not enough Favour' : cd > 0 ? 'Cooldown: ' + R.daysText(cd) : 'Issue Order';
           if (whyLine) {
-            whyLine.hidden = !(why && !repair && avail.ok);
-            whyLine.textContent = whyLine.hidden ? '' : why;
+            var wtext = !avail.ok && avail.why ? avail.why : why && !repair && avail.ok ? why : '';
+            whyLine.hidden = !wtext;
+            whyLine.textContent = wtext;
           }
           daysLine.textContent = 'Takes ' + R.daysText(R.orderDaysAt(state, data, fac, fn, chosen));
           if (goodsLine) {
@@ -2844,7 +2848,7 @@
         }
         refresh();
         return el('div', { class: 'tsi-bas-fn' + (fn.production ? ' tsi-bas-fn--production' : '') }, [
-          el('div', { class: 'tsi-bas-fn__head' }, [el('div', { class: 'tsi-bas-fn__name', text: fn.label }), el('div', { class: 'tsi-bas-fn__cost', text: isDrill ? fn.costText : R.computeFnCost(state, fac, fn, null).costText || '0gp' })]),
+          el('div', { class: 'tsi-bas-fn__head' }, [el('div', { class: 'tsi-bas-fn__name', text: fn.label }), el('div', { class: 'tsi-bas-fn__cost', text: isDrill ? fn.costText : (R.computeFnCost(state, fac, fn, null).costText || '0gp') + (fn.favourCost ? ' · ' + fn.favourCost + '% Favour' : '') })]),
           daysLine,
           chooser,
           goodsLine,
@@ -3244,6 +3248,7 @@
           id === R.COURIER_FAC ? courierSection() : null,
           creatureSection(id),
           id === 'war_room' ? regimentSection() : null,
+          R.shrineGod(id) ? shrineSection(id) : null,
           /* A facility in a construction slot can be demolished (Harry, 13
              October 2026); the five starting facilities can't. */
           B.startingBuilt.indexOf(id) === -1 ? el('div', { class: 'tsi-bas-facpanel__demolish' }, [
@@ -3493,6 +3498,22 @@
          waiting for a home and the room it has (one per level). The House
          order above is the panel's action; this only shows. null for a
          building no kind of creature lives in. */
+      /* ---------- A Shrine's Favour, Great Rites and blessings (pull request 8b) ---------- */
+      function shrineSection(facId) {
+        var god = R.shrineGod(facId);
+        var rites = (state.greatRites || []).filter(function (g) { return g.god === god; });
+        var prot = state.tradeNetwork && state.tradeNetwork.protections && state.tradeNetwork.protections.pelagos_blessing;
+        var held = god === 'pelagos' && prot ? R.clampInt(prot.charges || 0, 0) : 0;
+        return el('div', { class: 'tsi-bas-facpanel__cargo tsi-bas-facpanel__shrine', 'data-test': 'shrine-' + god }, [
+          label('Favour and blessings'),
+          el('div', { class: 'tsi-bas-creatures__room', 'data-test': 'shrine-favour-' + god, text: R.GOD_NAMES[god] + '\'s Favour: ' + R.clampInt(state.favour[god] || 0, 0, 100) + '%. Orders from Level 3 spend it when they start (5%, 10%, then 25% for the Great Rite).' }),
+          god === 'pelagos' ? muted('Blessings of Pelagos held for the Dock: ' + held + (held ? '. The next ship sent with cargo takes one: 10 points off its chance of trouble at sea.' : '.')) : null,
+          rites.length
+            ? el('ul', { class: 'tsi-bas-res-list', 'data-test': 'great-rites-' + god }, rites.map(function (g) { return el('li', { text: R.RITE_NAMES[g.rite] + ': waiting at the Ironbow since ' + R.dayLabel(g.madeDay) + '. The DM gives it to the party on an expedition (coming in the Explorer next).' }); }))
+            : null
+        ]);
+      }
+
       /* ---------- The War Room's regiments (pull request 8a) ----------
          Every regiment, with its grade, Recouping and drill, and Rename…;
          the drill places in use. The rules are in regiment-rules.js. */

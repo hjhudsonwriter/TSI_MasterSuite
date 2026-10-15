@@ -194,7 +194,11 @@
          animal the Ironbow keeps (Elara's wyvern, and the griffins and dire
          wolves the DM grants in the Explorer), as R.cleanCreatures keeps
          them. The Menagerie's beasts stay in defenderBeasts. */
-      creatures: []
+      creatures: [],
+      /* The Shrines' Great Rites (pull request 8b): each made at the Ironbow
+         and waiting there until the DM gives it to the party on an
+         expedition (the Explorer's half comes next). */
+      greatRites: []
     };
     s.v = 3;
     R.ensureLevels(s, data);
@@ -427,6 +431,7 @@
     d.bridge = R.cleanBridge(s.bridge);
     /* The creatures (pull request 7), before the war's records, which read them. */
     d.creatures = R.cleanCreatures(s.creatures, d.day);
+    d.greatRites = R.cleanGreatRites(s.greatRites);
     if (arr(s.militaryActions)) d.militaryActions = s.militaryActions.filter(isObj);
     /* Port Charters, ships at sea, standing shipments and sales (pull
        request 5, commerce-rules.js). */
@@ -502,6 +507,35 @@
       });
     }
     return out;
+  };
+
+  /* ---------- The Shrines' Great Rites (pull request 8b) ----------
+     s.greatRites: { id, rite, god, madeDay, status } in the order made.
+     rite: 'earths_endurance', 'cleansing_radiance' or 'tides_passage';
+     status 'waiting' (at the Ironbow). The Explorer's half (giving one to
+     the party on an expedition) comes with pull request 8b's second part. */
+  var RITES = { earths_endurance: 'telluria', cleansing_radiance: 'aurush', tides_passage: 'pelagos' };
+  R.RITE_NAMES = { earths_endurance: 'Earth\'s Endurance', cleansing_radiance: 'Cleansing Radiance', tides_passage: 'Tide\'s Passage' };
+  R.cleanGreatRites = function (list) {
+    var seen = {};
+    return (Array.isArray(list) ? list : []).filter(function (g) {
+      if (!isObj(g) || typeof g.id !== 'string' || !g.id || seen[g.id] || !RITES[g.rite]) return false;
+      seen[g.id] = true;
+      return true;
+    }).map(function (g) {
+      return { id: g.id, rite: g.rite, god: RITES[g.rite], madeDay: dayNum(g.madeDay, 1), status: 'waiting' };
+    });
+  };
+  /* The god whose Favour a Shrine's order spends ('shrine_aurush' → 'aurush'). */
+  R.shrineGod = function (facId) { var m = /^shrine_(telluria|aurush|pelagos)$/.exec(String(facId || '')); return m ? m[1] : ''; };
+  R.GOD_NAMES = { telluria: 'Telluria', aurush: 'Aurush', pelagos: 'Pelagos' };
+  /* Why an order's Favour can't be paid now ('' if it can, or it costs none). */
+  R.favourBlocker = function (s, fac, fn) {
+    var cost = fn && fn.favourCost ? clampInt(fn.favourCost, 0, 100) : 0;
+    var god = R.shrineGod(fac && fac.id);
+    if (!cost || !god) return '';
+    var have = clampInt(isObj(s.favour) ? s.favour[god] : 0, 0, 100);
+    return have < cost ? 'Needs ' + cost + '% of ' + R.GOD_NAMES[god] + '\'s Favour; the Ironbow has ' + have + '%.' : '';
   };
 
   /* ---------- The creatures (pull request 7, Harry's answers of 14 October 2026) ----------
@@ -789,7 +823,7 @@
     var marks = ['treasuryGP', 'partyLevel', 'day', 'builtExtras', 'pendingOrders', 'defenders', 'warehouse'];
     var found = marks.filter(function (k) { return k in s; }).length;
     if (found < 4) return 'It doesn\'t look like a Bastion save.';
-    var lists = ['builtExtras', 'builtPlots', 'pendingOrders', 'defenderBeasts', 'military', 'warehouse', 'log', 'warLog', 'militaryActions', 'warRecovery', 'creatures'];
+    var lists = ['builtExtras', 'builtPlots', 'pendingOrders', 'defenderBeasts', 'military', 'warehouse', 'log', 'warLog', 'militaryActions', 'warRecovery', 'creatures', 'greatRites'];
     for (var i = 0; i < lists.length; i++) {
       if (lists[i] in s && !Array.isArray(s[lists[i]])) return 'Its ' + lists[i] + ' list is damaged.';
     }
@@ -1532,6 +1566,9 @@
     /* The Hall's own Upgrade, replaced by every facility's Upgrade in step 1b
        ("retired": one already ordered still completes). */
     if (fn && fn.retired) return { ok: false, hidden: true, message: 'That order has been replaced by Upgrade.' };
+    /* An order whose effect has nothing to work on yet (pull request 8b:
+       Bless Bastion Foundations): listed, never given. */
+    if (fn && fn.waiting) return { ok: false, message: 'Not available yet', why: String(fn.waiting) };
     /* An order a facility level unlocks (the Hall's, and the production orders: pull request 3). */
     var need = clampInt(fn && fn.requiredFacilityLevel ? fn.requiredFacilityLevel : 1, 1, R.MAX_LEVEL);
     if (fac && need > 1 && R.getFacilityLevel(s, fac.id) < need) return { ok: false, message: 'Needs Level ' + need + '.' };
@@ -1613,6 +1650,11 @@
     var inputs = chosen && Array.isArray(chosen.inputs) ? chosen.inputs : [];
     var costGP = R.withSummitDiscount(s, fac, fn, R.computeFnCost(s, fac, fn, chosen).costGP);
     if (costGP > s.treasuryGP) return { ok: false, message: 'Not enough gp. Need ' + costGP + 'gp, you have ' + s.treasuryGP + 'gp.' };
+    /* A Shrine order's Favour (pull request 8b): taken once, when it starts. */
+    var noFavour = R.favourBlocker ? R.favourBlocker(s, fac, fn) : '';
+    if (noFavour) return { ok: false, message: noFavour };
+    var favour = fn.favourCost ? clampInt(fn.favourCost, 0, 100) : 0;
+    if (favour) s.favour[R.shrineGod(fac.id)] -= favour;
     s.treasuryGP -= costGP;
     /* Its goods leave the Warehouse now and are held by the order (Harry's
        guide: an order's inputs are set aside when it begins). */
@@ -1621,8 +1663,10 @@
     var days = R.orderDaysAt(s, data, fac, fn, chosen);
     var o = { id: R.uid(rand), facId: facId, fnId: fnId, chosen: chosen, optionLabel: optionLabel, notes: notes, label: label, costGP: costGP, issuedDay: s.day, dueDay: s.day + days };
     if (taken.length) o.inputs = taken;
+    if (favour) o.favourCost = favour;
     s.pendingOrders.push(o);
-    return { ok: true, log: ['Order Issued', label + ' (' + days + (days === 1 ? ' day' : ' days') + ': due Day ' + (s.day + days) + ')' + (taken.length ? '. Taken from the Warehouse: ' + R.goodsListText(data, taken) : '') + '.'] };
+    return { ok: true, log: ['Order Issued', label + ' (' + days + (days === 1 ? ' day' : ' days') + ': due Day ' + (s.day + days) + ')' + (taken.length ? '. Taken from the Warehouse: ' + R.goodsListText(data, taken) : '') +
+      (favour ? '. ' + favour + '% of ' + R.GOD_NAMES[R.shrineGod(fac.id)] + '\'s Favour spent (now ' + s.favour[R.shrineGod(fac.id)] + '%)' : '') + '.'] };
   };
 
   /* Issue a Hall action after its planning box (3346-3417). */
@@ -1747,7 +1791,7 @@
     var g = R.good(data, id);
     var n = clampInt(qty, 0);
     var name = g ? g.name : R.goodName(data, id);
-    if (g && g.kind === 'supply') return n + ' ' + name + (n === 1 ? '' : 's');
+    if (g && g.kind === 'supply') return n + ' ' + (n === 1 ? name : typeof g.plural === 'string' && g.plural ? g.plural : name + 's');
     return R.goodsCountText(data, id, n) + ' of ' + name;
   };
   /* Just the count in the good's unit: "3 lots", "10 portions", "5 packs",
@@ -2253,6 +2297,22 @@
     if (fac.id === 'armoury' && fn.id === 'arm_defenders') {
       s.defenders.armed = s.defenders.count > 0;
       return [['Order Completed', label + ' → Defenders armed.']];
+    }
+    /* The Shrines (pull request 8b): a Blessing of Pelagos for the next
+       ship, or a Great Rite waiting at the Ironbow; each once. */
+    if (fn.protectionCharge) {
+      var t8 = s.tradeNetwork;
+      if (!isObj(t8.protections)) t8.protections = {};
+      var pr = isObj(t8.protections[fn.protectionCharge]) ? t8.protections[fn.protectionCharge] : {};
+      pr.charges = clampInt(pr.charges || 0, 0, 999) + 1;
+      t8.protections[fn.protectionCharge] = pr;
+      return [['Order Completed', (order.label || fac.name + ': ' + fn.label) + ' → A Blessing of Pelagos waits for the next ship the Dock sends with cargo (' + pr.charges + ' held).']];
+    }
+    if (fn.greatRite) {
+      if (!Array.isArray(s.greatRites)) s.greatRites = [];
+      var rid = 'rite-' + String(order.id);
+      if (!s.greatRites.some(function (g) { return g.id === rid; })) s.greatRites.push({ id: rid, rite: fn.greatRite, god: R.shrineGod(fac.id), madeDay: s.day, status: 'waiting' });
+      return [['Order Completed', (order.label || fac.name + ': ' + fn.label) + ' → ' + R.RITE_NAMES[fn.greatRite] + ' waits at the Ironbow until the DM gives it to the party on an expedition.']];
     }
     /* Pull request 8a (regiment-rules.js). */
     if (fac.id === 'war_room' && fn.drill && R.completeDrill) return [['Order Completed', R.completeDrill(s, data, order)]];
@@ -2903,6 +2963,8 @@
     if (R.shiftCourier) R.shiftCourier(s, n);
     /* The creatures (pull request 7): when each was granted and housed. */
     (Array.isArray(s.creatures) ? s.creatures : []).forEach(function (c) { mv(c, 'grantedDay'); mv(c, 'housedDay'); });
+    /* The Great Rites (pull request 8b): the day each was made. */
+    (Array.isArray(s.greatRites) ? s.greatRites : []).forEach(function (g) { mv(g, 'madeDay'); });
   };
   /* Read the Explorer's day for the first time (or before it has one): the
      Bastion moves to it, nothing passes. */
