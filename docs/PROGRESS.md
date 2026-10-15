@@ -887,6 +887,7 @@ Each tool's questions are needed before that tool's phase. The full wording and 
       - **Elara's wyvern's name: answered (15 October 2026).** Keep "Elara's wyvern" for now; Harry will give the name soon. It goes in `tools/bastion/data/creatures-data.js` (`unique.elara_wyvern.name`).
       - **A grant made by mistake: answered (15 October 2026), "both".** Grant a creature… asks "Are you sure?" before sending, and a creature still waiting for a home gets a Release button (asking first). Not built yet: it goes in the next Bastion pull request.
       - **Older copies:** an older copy of the Bastion deletes the creatures; back up before trying one.
+    - **Pull request 8 (military and diplomacy):** questions W1–W12, H1–H6, S1–S8 and G1 are in `docs/MILITARY-DIPLOMACY-PLAN.md`. 8a can start once W1–W3 (and G1) are answered.
     - **Next for the courier, when you say go:** Levels 3 to 5 (return trips, priority, express), research, and more goods.
 - **Clan Crest Creator (phase 2, reworked 29 September 2026):** answered (K1–K4).
   - **Sigils: answered (29 September 2026).** Harry reviewed the traced sigils and wants all twenty kept exactly as they are: the same sigils, the Dolphin in place of the Kraken, the Tower in place of the Castle, and the same accent parts. Don't swap, add or recolour any without his say-so.
