@@ -8,7 +8,7 @@ This file is for Harry and his planning assistant. It records Harry's answers of
 
 Nothing marked Proposed or To decide gets built until Harry approves the details. When a question is answered, write the answer under it and say "go".
 
-**Split, at Harry's request:**
+**Split, at Harry's request** (decisions of 15 October 2026 below):
 - **8a:** the two creature guards, plus the War Room.
 - **8b:** the Hall of Emissaries and the three Shrines.
 - The research trees for the War Room, Hall and Shrines come later, once Harry approves each complete tree.
@@ -22,8 +22,7 @@ Nothing marked Proposed or To decide gets built until Harry approves the details
 - A creature still waiting for a home gets a **Release** button. It asks first, then removes the creature from the register. Its receipt stays, so it never comes back by itself.
 - A creature already housed has no Release button. This matches the rule "once housed, it guards for good".
 
-**To decide:**
-- **G1.** Should a housed creature also be releasable? The suggestion is no, because nothing in the brief asks for it.
+**Decided (Harry, 15 October 2026):** G1, no. A housed creature has no Release button.
 
 ---
 
@@ -65,57 +64,53 @@ Example of a specialist variant: Veteran Line Infantry, +1 Resolve, for one regi
 - Identical regiments are stored together as **one row with a count**, for example "Line Infantry ×2". Only a depleted regiment gets its own row.
 - So per-regiment training first needs **each regiment stored as its own record**. That change alters no stats and no battle results. It only changes how regiments are listed.
 
-### To decide
+### Decided (Harry, 15 October 2026): this is what 8a builds
+The full proposal is in `docs/specs/war-room-training.txt`. Harry approved its numbers as written.
+- **W1, names:** each regiment is numbered automatically ("Line Infantry I", "Line Infantry II"), and the DM can rename it.
+- **W2:** Lieutenants have no training record.
+- **W3:** a regiment destroyed in battle loses its training with it.
+- **Training (War Room Level 2):** Regular → **Trained** → **Veteran**. The steps go in order, and each applies to one chosen regiment.
 
-**Regiment records (needed even for a framework-only 8a):**
-- **W1.** How is each regiment named? (a) Numbered automatically: "Line Infantry I", "Line Infantry II". (b) The DM can rename one, for example "The Ironbow Guard". (c) Both (suggested).
-- **W2.** Do Lieutenants get training records? The suggestion is no: they are officers, not formations.
-- **W3.** If a regiment is destroyed in battle, its training is lost with it. Confirm?
+  | Step | Days | Gold | Effect on the War Table |
+  |---|---|---|---|
+  | Trained | 7 | 25 gp × the unit's base Battle Value | +1 Resolve, +0.5 Battle Value |
+  | Veteran | 14 more | 50 gp × base Battle Value | keeps Trained's, plus +1 Cohesion and +0.5 Battle Value |
 
-**Training (Level 2):**
-- **W4.** What are the training steps (tiers) and their names? For example, Untrained → Drilled → Veteran.
-- **W5.** For each step, per regiment type:
-  - the days and gold it takes;
-  - its exact effect on the War Table (which stats change);
-  - the Battle Value change.
-- **W6.** Can two regiments train at once? Or one at a time per War Room, or per level?
-- **W7.** Can a depleted regiment train? Does a regiment in training still fight if the Ironbow is attacked?
-- **W8.** If a regiment has lost more than half its soldiers, does it keep its training when it's replenished? (Your rule says casualties must not erase it. Confirm this holds even for heavy losses.)
+  - Training never changes Attack, Defence, Move, range or Charge.
+  - The base profiles in `war-units-data.js` stay unchanged; the bonus is added to each trained regiment only.
+- **Drill slots:**
+  - Level 2: 1; Levels 3–4: 2; Level 5: 3.
+  - One regiment takes one drill at a time.
+  - The gold is paid once, when the drill starts.
+  - A regiment that is drilling stays at the Ironbow. It can't go on a War Action, but it still defends the Ironbow if it's attacked.
+- **Recouping:** a surviving regiment that has lost soldiers gets a **Recouping** tag and refills gradually. How long depends on the share it has lost:
 
-**Levels 3 and 5:**
-- **W9.** Level 3, "better coordinated recruitment and replenishment": exactly what changes? For example, a shorter Recruit order, recruiting two regiments in one order, or a cheaper or faster refill.
-- **W10.** Level 5, "larger coordinated musters": exactly what? For example, one order raising several regiments at once. How many, and how many days?
+  | Soldiers lost | Time to refill |
+  |---|---|
+  | Up to 20% | 3 days |
+  | Up to 40% | 7 days |
+  | Up to 60% | 10 days |
+  | More than 60% | 14 days |
 
-**Research (Level 4), later:**
-- **W11.** The complete War Room tree in the Herbal Gardens shape: 4 branches × 3 stages, 2 choices per stage, with days, gold and exact effects.
-- **W12.** How does a researched doctrine reach a regiment? Is it its own Drill order (days and gold?), or part of the Level 2 training?
-
-**Suggestion for 8a, to keep it small:** build the creature guards and separate regiment records (W1–W3) now. That changes no battle results. Training goes live once W4–W8 are answered.
+  - It can't train until it's back to full strength.
+  - Training survives casualties and refilling.
+  - A Recruit order of the same type still refills it at once, clearing Recouping.
+- **Coordinated Muster** (Level 3) raises or refills 2 formations in 7 days, and **Grand Muster** (Level 5) raises or refills 3 in 7 days. Recruitment costs are unchanged.
+- **Not in 8a:**
+  - Grand War Exercises waits for the Command & Logistics research.
+  - Upkeep stays uncharged, as today (B7).
+  - The research tree and specialist doctrines (Level 4) wait for Harry's approved tree (W11, W12).
 
 ---
 
-## 2. Hall of Emissaries (8b)
+## 2. Hall of Emissaries: redesign later, nothing new in pull request 8
 
-### Keep
-- All the Level 1–3 orders and diplomacy: Secure Trade Agreement, Host Delegation, Register Port Charter, Secure Writ of Authority, Trade Consortium, plus summits, arbitration, Political Capital and Clan relations.
-- The diplomacy modifier stays capped at **+6**, including at Levels 4 and 5.
+**Harry (15 October 2026):** the Level 4 Preferred Supplier Contract and the Level 5 Major Commercial Accord are **withdrawn**. The Hall will be redesigned in its own future phase, as a diplomatic and political facility. The plan is in `docs/specs/hall-of-emissaries-redesign.txt`.
 
-### Agreed
-- Levels unlock ordinary orders. Research unlocks extra abilities.
-- Contract improvements are stored with each agreement and applied automatically.
-
-### Proposed (not approved)
-- **Level 4, Negotiate Preferred Supplier Contract (7 days):** improve the terms of an existing agreement, such as the sale price, tariff, cargo allowance or contract length.
-- **Level 5, Negotiate Major Commercial Accord (10 days):** a major agreement with a Clan.
-- Research directions: Trade Policy, Diplomatic Influence, Negotiation Efficiency, Contract Management and Political Leverage.
-
-### To decide
-- **H1.** Which agreements can Level 4 improve? Trade Agreements, Trade Consortium shares, the Dock's trade with a Clan, or Port Charter voyages?
-- **H2.** How is the negotiation settled? For example, a d20 plus the existing diplomacy modifier against a DC. Which DC? Does it need Honour/Respect or Political Capital?
-- **H3.** What does it cost (gold or Political Capital), and what happens on a failure?
-- **H4.** Which single term improves, and by how much? Can the same agreement be improved more than once?
-- **H5.** Level 5, Major Commercial Accord: who can sign it, what it gives, what it costs, how it's settled, and how long it lasts.
-- **H6.** The complete Hall research tree (later).
+For now:
+- **No new Hall orders.** The Hall can still be upgraded to Level 5; Levels 4 and 5 add no orders yet.
+- **Keep everything that works:** every Level 1–3 order, Port Charter registration, the old Trade Agreements, the Trade Consortium and the Trade Network. These are only retired later, through a separately planned change that keeps saves safe.
+- **No Commercial Treaties panel.**
 
 ---
 
@@ -132,30 +127,46 @@ Example of a specialist variant: Veteran Line Infantry, +1 Resolve, for one regi
 - Pelagos' shipment blessing uses the existing voyage risk. It doesn't get a separate calculation.
 - Suggested: one major Shrine blessing active per expedition.
 
-### Proposed (not approved)
+### Harry's specification (15 October 2026), for 8b
+- **Divine Favour costs:**
 
-| | Telluria | Aurush | Pelagos |
-|---|---|---|---|
-| Level 2 (3 days) | Earthward Talisman: −1 DC on the next natural-terrain hazard save | Blessed Lanterns (light sources) | Bless Voyage: −1 DC on the next maritime hazard check |
-| Level 3 (4 days) | Rootguard Salve (2 doses): against plant restraints and hazards | Purification Incense (2): against poison and disease | Aquatic Protection Charm: a water-travel or swimming benefit |
-| Level 4 (5 days) | Bless Bastion Foundations: one charge against a Bastion environmental-damage event | Consecrate Expedition Supplies (3 improved consumables) | Bless Commercial Shipment: spends Favour to cut a voyage's failure chance by **10 percentage points** |
-| Level 5 (7 days) | Great Rite of Telluria | Great Rite of Aurush | Great Rite of Pelagos |
+  | Level | Favour from that Shrine's god |
+  |---|---|
+  | 1 (existing actions) | unchanged |
+  | 2 | 0 |
+  | 3 | 5 |
+  | 4 | 10 |
+  | 5 (Great Rites) | 25 |
 
-### What the code can hook into today
-- **The Explorer's events** have skill checks with DCs, for example Wisdom (Survival) DC 14. They are **not tagged** as "natural-terrain hazard", "maritime hazard", "plant restraint" or "poison/disease". A charm can only apply automatically once each event says which kind it is.
-- **The Bastion's events:** the Bastion has a d100 event table. "Environmental-damage event" needs a list of which of those events count.
-- **Voyage risk** (Port Charter voyages, pull request 5) can take a percentage cut directly. This is the one Level 4 effect that is ready to build, once its Favour cost is set.
+  - The Favour is taken once, when the order starts.
+  - Every cost and quantity is kept in a data file.
+- **The orders:**
 
-### To decide
-- **S1.** The Divine Favour cost of each order that spends Favour (Level 4 Pelagos, all three Level 5 Rites, and any others).
-- **S2.** Which Explorer events count as "natural-terrain hazard", "maritime hazard", "plant restraint" and "poison/disease"? (Suggestion: I list the events and you tick them.)
-- **S3.** The exact rule for each Level 2–3 item: what it does, how many uses, how long it lasts, and its gold cost if any. Examples:
-  - Blessed Lanterns: what do they do in play?
-  - Aquatic Protection Charm: what is its benefit?
-- **S4.** Which Bastion events count as "environmental damage" for Bless Bastion Foundations, and what the charge does: prevents the event, or halves its damage?
-- **S5.** What Consecrate Expedition Supplies makes, exactly. Is it improved Incense?
-- **S6.** What each Great Rite does, for how long, and how many uses.
-- **S7.** Is "one major blessing per expedition" a rule? Which items count as major? What counts as an expedition: from leaving the Ironbow to coming back?
-- **S8.** The complete Shrine research trees (later).
+  | | Telluria | Aurush | Pelagos |
+  |---|---|---|---|
+  | **Level 2** (3 days) | **Earthward Talisman:** +2 to one saving throw against a nonmagical natural-terrain hazard | **Blessed Lantern:** fuel-free light, 20 ft bright plus 20 ft dim, three days of use | **Bless Voyage:** +2 to one navigation or maritime hazard check |
+  | **Level 3** (4 days) | **Rootguard Salve**, 2 doses: advantage on one save against being Restrained by nonmagical vegetation | **Purification Incense**, 2 portions: advantage on one save against nonmagical poison or disease | **Aquatic Protection Charm:** advantage on one Athletics check (swimming, currents, nonmagical water hazard) |
+  | **Level 4** (5 days) | **Bless Bastion Foundations:** 1 charge that prevents one eligible environmental Under Repair event (not damage from a military defeat) | **Consecrate Expedition Supplies:** 3 portions, each removing Poisoned from one creature | **Bless Commercial Shipment:** 1 charge, −10 percentage points on one commodity voyage's failure chance, used when the ship sets out |
+  | **Level 5** (7 days) | **Great Rite: Earth's Endurance:** prevents one level of Exhaustion from a failed travel or environmental save | **Great Rite: Cleansing Radiance:** removes Poisoned or Frightened from up to two party members | **Great Rite: Tide's Passage:** turns one failed water-related navigation or environmental check into a success |
 
-**Suggestion for 8b:** once S1 is answered, Pelagos' Level 4 Bless Commercial Shipment is ready to build. Everything else in 8b waits for H1–H5 and S2–S7.
+- **Major Expedition Blessing:**
+  - Only the three Great Rites count, and the party may hold one at a time.
+  - Its charge is used once.
+  - The DM starts and ends an expedition; unused charges expire at the end.
+  - A finished Great Rite waits at the Ironbow until the DM assigns it.
+- **Physical items** go into the Warehouse, and travel by courier only if the Courier Exchange carries that kind of item.
+- **Charges and uses:**
+  - Charges have a Use action in the Party bags where possible.
+  - Inside the Explorer, an effect applies when the DM selects it.
+  - Outside it, the screen shows short instructions and the DM marks the item used.
+  - Using a charge counts once, whatever is reloaded or imported.
+  - Nothing is added to character sheets.
+
+### What the code can hook into today, and the gaps to settle before 8b
+- **Voyage risk** (pull request 5) can take the −10 percentage points directly, so Bless Commercial Shipment is ready to build.
+- **The Bastion's d100 events:** Bless Bastion Foundations needs a list of which events are "environmental Under Repair" events.
+- **The Explorer's events** have skill checks with DCs, but none are labelled as a natural-terrain hazard, a maritime hazard, vegetation, or poison/disease. Several also aren't saving throws. Each event needs a label before a charm can apply to it. **S2:** I list the events and Harry ticks them.
+- **The Explorer has no conditions** (Poisoned, Frightened, Exhaustion) **and no expeditions**: there's no "start" or "end". These parts would be "the DM marks it used", plus a new Start/End expedition button. **S9:** confirm.
+- **The Courier Exchange carries only packs and charts.** **S10:** may it carry the Shrine items too?
+- The Shrine implementation document Harry mentioned wasn't attached. The specification above comes from his message.
+- **S8:** the Shrine research trees, later.

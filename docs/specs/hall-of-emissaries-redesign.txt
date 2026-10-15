@@ -1,0 +1,357 @@
+Harry's Hall of Emissaries redesign handover (Hall_of_Emissaries_developer_handover.pdf), text copy made 15 October 2026. Future work only: nothing in it is built in pull request 8.
+
+SCARLETT ISLES MASTER SUITE | 
+HALL OF EMISSARIES: 
+DIPLOMATIC REDESIGN & FUTURE 
+IMPLEMENTATION HANDOVER
+Approved design direction | 15 October 2026 | Not an 
+instruction to implement immediately
+STATUS LEGEND
+Status Meaning in this handover
+CONFIRMED / APPROVED DIRECTION Approved direction or existing behaviour to 
+preserve as stated.
+PROPOSED / SUBJECT TO DESIGN Future direction under design; not an 
+implementation commitment.
+DRAFT EXAMPLE Illustrative only; not approved lore, values, 
+thresholds, schedules, or mechanics.
+UNDECIDED Requires owner or design approval before 
+implementation.
+NON-GOAL Explicitly out of scope.
+1. EXECUTIVE DECISION
+The existing Level 4 “Negotiate Preferred Supplier Contract” and Level 5 “Negotiate Major 
+Commercial Accord” proposals are WITHDRAWN; do not code them.
+A separate Hall redesign will be commissioned in a future phase.
+Until then preserve existing working Hall orders and legacy data, all original Port 
+Charter/commodity/shipping functionality, and upgradeability to L5 without new orders.
+No new Commercial Treaties panel.
+2. WHY THIS DIRECTION
+The Scarlett Isles suite serves D&D exploration, roleplay and campaign story, not a second 
+standalone commerce management game.
+The new physical commodity Port Charter network, earned by visiting ports and negotiating 
+with NPC officials, is preferred over generic roll-and-generate-income trade orders.
+Economic development facilities make real goods, Warehouse stocks them, Dock physically 
+ships and sells them.
+Diplomatic conduct shapes permission, opportunity, sanctions, standing, and future quests.
+CORE PRINCIPLE
+THE ADVENTURE CREATES THE OPPORTUNITY; THE BASTION MAKES IT 
+CONSEQUENTIAL.
+3. APPROVED RESPONSIBILITY SPLIT
+Responsibility Approved role Boundary
+HALL Clan diplomacy, visiting 
+envoys, writs, arbitration, 
+summits, privileges, 
+decisions, narratives and 
+diplomatic consequences.
+Owns diplomatic decisions 
+and their recorded 
+consequences.
+DOCK / PORT CHARTERS Chartered trade rights, ship 
+slots, cargo, risk, sale and 
+standing routes.
+Owns physical-goods 
+movement and settlement.
+DEVELOPMENT FACILITIES Physical production, 
+processing and R&D.
+Owns creation and 
+transformation of real 
+goods.
+EXPLORER / DM Ports visited, encounters, 
+charter rights conferred, 
+story outcomes.
+Owns campaign context and 
+story authority.
+BOUNDARY AND STATE-TRANSFER RULE
+The same working existing Explorer/Bastion cross-tool bridge is used for state transfer 
+and exactly-once receipts; never let tools rewrite each other’s saves.
+4. APPROVED RETIREMENTS (FUTURE ONLY)
+Phase out legacy generic “Secure Trade Agreement” with abstract money shipments and old 
+automatic noncommodity Trade Network sea-route payouts.
+Do not erase historical contracts or income; migration policy must be approved before code.
+Illustrative draft material Status
+Grandfather active legacy agreements to 
+natural expiry, then prevent renewals and 
+archive expired records.
+DRAFT EXAMPLE — possibility pending 
+approval, not a decision.
+Convert selected legacy records under a 
+separately approved migration policy with 
+backups and chronology preserved.
+DRAFT EXAMPLE — possibility pending 
+approval, not a decision.
+Former generic weekly payout must never be duplicated with commodity sales.
+DM-awarded Port Charters become the ordinary and exclusive trade mechanism.
+POSSIBLE, NOT APPROVED
+Consider later simplifying the separate Hall Register Port Charter 3-day order to 
+immediate DM activation, BUT this is only a possibility, not approved, and existing 
+behaviour must remain unchanged until separately speciﬁed.
+5. APPROVED TRADE CONSORTIUM DIRECTION
+KEEP the consortium’s narrative and political concept, and move its eventual functionality 
+from abstract income to a negotiated physical-goods partnership fulﬁlled using existing Port 
+Charter, Warehouse and Dock.
+A Consortium must identify:
+Required Consortium detail
+Clan and chartered destination
+Speciﬁc commodity IDs
+Quantities/lots
+Number or frequency of shipments
+Fulﬁlment deadline
+Negotiated prices/beneﬁts
+Penalties
+Relationship impacts
+Successful payments occur only on actual delivered/sold cargo using the existing shipping 
+engine, not passive synthetic gold.
+A missed shipment may create a new diplomatic dilemma, grace period or negotiation 
+request instead of instantly punishing random maritime misfortune.
+ILLUSTRATIVE DRAFT MATERIAL — NOT APPROVED
+Risks, rewards, the sample 14-day schedule, prices and thresholds are examples only, 
+NOT approved.
+Consortium is likely a ﬂagship Hall L5 capability, not an extra duplicate trade engine or panel. 
+This is PROPOSED / SUBJECT TO DESIGN, not conﬁrmed.
+6. APPROVED HYBRID DIPLOMATIC EVENT SYSTEM
+Two supported modes are speciﬁed:
+Mode Supported direction
+(a) DM-AUTHORED Events based on campaign story, with the 
+DM editing participants, situation, 
+choice/outcome and tracked consequences.
+(b) Optional PROCEDURALLY OFFERED Event templates with scene, clan(s), 2–4 
+decision choices, speciﬁc possible results 
+and optional checks.
+The user can approve, edit, defer or dismiss an optional procedurally offered event BEFORE 
+the event affects canon/state.
+Never autonomously change major political facts.
+The event library of approximately 20 separately drafted prototypes will be reviewed by the 
+user and provided LATER; do not invent event lore or make these events canon now.
+Existing 28-day Bastion event cadence is a proposed low-interruption integration, NOT an 
+approved schedule; ideally let the DM adjust it, and do not add a second spammy popup 
+system.
+7. APPROVED CONSEQUENCE PRINCIPLE
+Use concise, trackable gameplay effects such as:
+Effect Use
+Clan Honour & Respect (+/-1 usual small 
+diplomatic incident)
+Small, trackable change to clan standing.
+Political Capital (+/- appropriate points) Trackable political leverage adjustment.
+Temporary embargo or refusal to 
+negotiate/launch new trade
+Time-bounded restriction on diplomatic or 
+trade action.
+Time-bounded privileges Recorded access or permission with an 
+expiry.
+Contingent favours Recorded future obligation or opportunity.
+Expedition or political quest leads Story-facing consequence requiring DM 
+authority.
+For severe disputes, e.g. a Karr envoy storms out, the proposed outcome “-1 Karr Honour & 
+Respect and refuses NEW diplomatic/trade actions for 28 days” is a DRAFT EXAMPLE, not 
+established lore or a universal rule.
+Already shipped cargo must still settle under its recorded terms; do not destroy property or 
+duplicate goods.
+The DM may repair relations early through story resolution.
+Existing score Bounds
+Honour & Respect -5..+5
+Political Capital -100..+100
+DM CONFIRMATION REQUIRED
+No world consequences without explicit DM conﬁrmation.
+8. DRAFT LEVEL PROGRESSION (SUBJECT TO DESIGN)
+Level Draft title and capability Status notes
+L1 “Diplomatic Reception”: 
+Host Delegations, receive 
+envoys, record DM story 
+outcomes.
+DRAFT / SUBJECT TO 
+DESIGN.
+L2 “Political Recognition”: 
+diplomatic requests, formal 
+privilege, record Port 
+Charters.
+DRAFT / SUBJECT TO 
+DESIGN; existing registration 
+retained pending decision.
+L3 “Arbitration Chamber”: 
+mediation, summit, writs.
+DRAFT / SUBJECT TO 
+DESIGN.
+L4 “Regional Diplomatic 
+Authority”: missions, 
+relationship repair, political 
+interventions.
+DRAFT / SUBJECT TO 
+DESIGN.
+L5 “High Council of Ironbow”: 
+major political settlements 
+and physical-goods 
+Consortium.
+DRAFT / SUBJECT TO 
+DESIGN.
+Clearly label all of this DRAFT / SUBJECT TO DESIGN.
+Titles, precise order distribution and mechanics require later approval.
+Existing Hall Level 1–3 orders currently are Secure Trade Agreement, Host Delegation, Inter-
+Clan Summit, Secure Writ of Authority, Trade Consortium, Register Port Charter; the 
+migration will repurpose/reorder some, not erase them today.
+The Hall diplomacy facility bonus remains capped at +6, as already agreed.
+9. UI GUARDRAILS
+Re-use the existing Hall surface.
+Use three compact zones:
+UI zone Contents Boundary
+Diplomatic Affairs Orders and optional incident 
+offers.
+Keep offers optional and 
+reviewable before 
+canon/state changes.
+Clan Relations Score summary/restrictions. Show concise, trackable 
+standing and current 
+restrictions.
+Diplomatic Records Decisions, privileges, 
+consortium obligations.
+Keep recorded 
+commitments and 
+consequences easy to audit.
+Dock remains home for full cargo/route editing; Hall can show a compact charter summary, 
+not a new trading dashboard.
+Favour readability, low click burden, logs and prominent expedition consequences.
+10. DATA / TECHNICAL REQUIREMENTS
+These are implementation requirements for the approved direction and boundaries above; 
+they are not new unapproved product claims.
+Area Requirement
+Event identity and lifecycle Deterministic event IDs and lifecycle: 
+offered -> approved -> resolved/dismissed.
+Scenario record Save the exact scenario and choices.
+Auditability Audit outcomes and optional DM-approved 
+adjustments.
+Idempotence Prevent multiple application on 
+reload/reset/import/two browser windows.
+Time Scheduled embargo expiry uses the shared 
+Explorer campaign day.
+Player property Events cannot block return of ships or 
+collection of already owned items.
+Consortium compliance Read from existing cargo-sale 
+receipts/market ledger with exact 
+commodity, port and quantity and delivery 
+date, with no double counting.
+Shipment failure Failure if a shipment turns back does not 
+automatically equal breach without a 
+separately approved policy; allow DM-led 
+narrative resolution.
+Legacy saves Legacy save migration must grandfather or 
+convert with backups and tests; preserve 
+chronology and diplomatic history.
+References Keep stable Clan IDs and references and use 
+data-driven consequences.
+Cross-app boundary DO NOT rewrite the cross-app engine.
+TEST COVERAGE
+Tests must cover:
+Narrative acceptance/discard
+Choice application
+Expiry
+War/embargo
+Voyages already departed
+Active contracts preserved
+Real-goods settlement only
+Migration
+Idempotence
+No duplicate treasure
+11. R&D
+Separate future Hall research tree, likely diplomatic inﬂuence, mediation, political favours, 
+negotiation efficiency and other specialisms.
+Not yet deﬁned and not part of this implementation.
+STATUS
+FUTURE / OUT OF CURRENT SCOPE.
+12. PHASED ROADMAP (PROPOSED, NOT APPROVED)
+Phase Proposed focus Approval gate
+Phase A Preserve current code and 
+design Hall speciﬁcation.
+User signoff and tests 
+required.
+Phase B Add DM-led outcome ledger 
+and optional incident offers.
+User signoff and tests 
+required.
+Phase C Migrate away from generic 
+passive legacy income 
+safely.
+User signoff and migration 
+tests required.
+Phase D Repurpose Consortium 
+around Port Charters and 
+actual shipments.
+User signoff and settlement 
+tests required.
+Phase E Add R&D and quality-of-life. User signoff and tests 
+required.
+Every stage requires user signoff and tests; do not automatically implement after this 
+document is uploaded.
+13. NON-GOALS
+No Level 4 Preferred Supplier and Level 5 Major Commercial Accord.
+No commercial-treaties standalone panel.
+No autogenerated political canon.
+No parallel shipping engine or automatic currency.
+No additional unnecessary rolls or timers.
+No destructive resets.
+14. DESIGN STATUS SHEET
+Status Conﬁrmed or undecided 
+item
+Implementation implication
+CONFIRMED Remove future generic 
+income.
+Do not add new generic 
+passive income; preserve 
+historical records.
+CONFIRMED Hall diplomacy-ﬁrst. Keep diplomatic decisions, 
+records and consequences 
+at the Hall.
+CONFIRMED Hybrid DM + optional 
+generated dilemmas.
+Support DM-authored 
+events and optional 
+reviewable offers.
+CONFIRMED Consortium physical-goods-
+based.
+Use existing Port Charter, 
+Warehouse, Dock and actual 
+shipment settlement.
+CONFIRMED Ordinary trade Port 
+Charters.
+Do not introduce a parallel 
+ordinary trade mechanism.
+CONFIRMED No treaty panel. Do not create a commercial-
+treaties standalone panel.
+CONFIRMED Maintain existing 
+functionality until migration.
+Preserve current behaviour, 
+saves, contracts, cargo and 
+history.
+UNDECIDED Exact future Hall order list. Do not ﬁnalize order 
+distribution before approval.
+UNDECIDED Costs. Do not implement values 
+before approval.
+UNDECIDED Dice/DCs. Do not implement checks 
+before approval.
+UNDECIDED Expiry. Do not implement durations 
+before approval.
+UNDECIDED Library text and option 
+choices.
+Await the separately 
+supplied event drafts.
+UNDECIDED Initial diplomatic incident 
+frequency.
+Do not set a frequency 
+before approval.
+UNDECIDED Consortium 
+pricing/obligations/penalties
+.
+Do not implement 
+illustrative values as 
+approved rules.
+UNDECIDED Migration policy. Preserve legacy data until 
+the policy is approved and 
+tested.
+UNDECIDED Charter registration 
+removal.
+Retain existing registration 
+behaviour pending a 
+separate decision.
+OWNER GATE
+Ask owner to approve before implementing.
+FINAL IMPLEMENTATION GUARDRAIL
+This document records approved direction and future design boundaries. It is not an 
+instruction to implement immediately. Preserve current behaviour and data until each 
+migration or new mechanic receives separate approval, speciﬁcation, and tests.
