@@ -1280,9 +1280,24 @@
         return el('div', { class: 'tsi-bas-wt-stat', title: row.text }, [el('dt', { text: row.name }), el('dd', { text: row.value })]);
       }));
     }
+    /* A unit's stat block. A creature defending the Ironbow (pull request 7:
+       its source names it and its kind) has its own line from
+       creatures-data.js: the battle rules know beasts only by their
+       Menagerie name, and would call it "a war beast". */
+    function blockOf(u) {
+      var block = BR.statBlock(u, W);
+      var src = u && u.source;
+      if (block && src && typeof src.creature === 'string' && src.creature) {
+        var C = window.TSI_DATA && window.TSI_DATA.bastionCreatures;
+        var sp = C && C.species && typeof src.species === 'string' ? C.species[src.species] : null;
+        var line = sp && sp.war && typeof sp.war.distinction === 'string' ? sp.war.distinction : '';
+        block.distinction = line;
+      }
+      return block;
+    }
     /* The tooltip's contents for a unit (stat block and state now). */
     function unitTip(u) {
-      var block = BR.statBlock(u, W);
+      var block = blockOf(u);
       var l = leaderOf(u);
       var states = statesOf(u);
       var lines = [];
@@ -1690,7 +1705,7 @@
           el('p', { class: 'tsi-bas-wt-note', text: battle.turnSide === 'player' && inBattle() ? 'Click one of your lit units to give it orders, or any unit to see its details.' : 'Click any unit to see its details.' })
         ]);
       }
-      var block = BR.statBlock(u, W);
+      var block = blockOf(u);
       var l = leaderOf(u);
       var pips = [];
       for (var i = 0; i < u.cohesionMax; i++) pips.push(el('span', { class: 'tsi-bas-wt-pip' + (i < u.cohesion ? ' tsi-bas-wt-pip--on' : '') }));
