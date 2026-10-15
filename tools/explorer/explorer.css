@@ -398,6 +398,10 @@
    "Sent to the Bastion". */
 .tsi-tool--explorer .tsi-exp-section-head { display: flex; align-items: center; gap: 6px; }
 .tsi-tool--explorer .tsi-exp-section-head .tsi-exp-mini { margin-left: auto; }
+/* Sent to the Bastion's two small buttons, Port Charter… and Grant a creature… (pull request 7):
+   side by side on one line under the heading, so the travel column still
+   needs no scrolling on the laptop. */
+.tsi-tool--explorer .tsi-exp-row--grants > .tsi-btn.tsi-exp-mini { flex: 1 1 auto; padding-left: 6px; padding-right: 6px; letter-spacing: .03em; white-space: nowrap; }
 .tsi-tool--explorer .tsi-exp-chartline { margin: 0; font-size: 15px; color: var(--tsi-cream); }
 .tsi-tool--explorer .tsi-exp-chartwhy { margin: 0; font-size: 14px; color: var(--tsi-text-muted); }
 .tsi-tool--explorer .tsi-btn.tsi-exp-chartbtn:disabled { opacity: .55; cursor: not-allowed; }
@@ -421,6 +425,9 @@
 .tsi-page--explorer .tsi-exp-charters { margin: 10px 0 12px; padding-left: 20px; }
 .tsi-page--explorer .tsi-exp-charters li { margin: 4px 0; }
 .tsi-page--explorer .tsi-exp-charter-why { display: block; width: 100%; margin-top: 10px; font-size: 16px; }
+/* The Grant a creature dialog's three boxes, each with its label (pull request 7). */
+.tsi-page--explorer .tsi-exp-creature-form { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px 12px; align-items: center; margin-top: 12px; }
+.tsi-page--explorer .tsi-exp-creature-form .tsi-input { width: 100%; font-size: 16px; }
 .tsi-page--explorer .tsi-exp-place--port .tsi-exp-place-media img { max-height: 52vh; }
 .tsi-page--explorer .tsi-exp-harbour {
   display: flex;
