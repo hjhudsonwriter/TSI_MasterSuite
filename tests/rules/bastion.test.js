@@ -1702,6 +1702,65 @@
       ['Geographical Scriptures', 'Religious Scriptures', 'Combat Scriptures', 'Political scriptures'], 'the scripture choices are unchanged');
   });
 
+  /* Pull request 8b (Harry's Shrine specification, 15 October 2026). */
+  test('the Shrines at Levels 2 to 5: Favour 0 / 5 / 10 / 25, taken once when the order starts; items into the Warehouse; Craft and Pray unchanged', function (t) {
+    var s = plots(9, [], ['shrine_telluria', 'shrine_aurush', 'shrine_pelagos']);
+    t.same(['shrine_telluria', 'shrine_aurush', 'shrine_pelagos'].map(function (id) { return R.facility(data, id).functions.map(function (f) { return [f.id, f.requiredFacilityLevel || 1, f.days, f.favourCost || 0]; }); }), [
+      [['craft', 1, 5, 0], ['pray', 1, 1, 0], ['prepare_earthward_talisman', 2, 3, 0], ['prepare_rootguard_salve', 3, 4, 5], ['bless_bastion_foundations', 4, 5, 10], ['great_rite_telluria', 5, 7, 25]],
+      [['craft', 1, 5, 0], ['pray', 1, 1, 0], ['prepare_blessed_lantern', 2, 3, 0], ['prepare_purification_incense', 3, 4, 5], ['consecrate_expedition_supplies', 4, 5, 10], ['great_rite_aurush', 5, 7, 25]],
+      [['craft', 1, 5, 0], ['pray', 1, 1, 0], ['bless_voyage', 2, 3, 0], ['prepare_aquatic_protection_charm', 3, 4, 5], ['bless_commercial_shipment', 4, 5, 10], ['great_rite_pelagos', 5, 7, 25]]
+    ]);
+    t.equal(R.issueOrder(s, data, 'shrine_telluria', 'prepare_earthward_talisman', 0, dice([0.3])).message, 'Needs Level 2.');
+    s.facilityLevels.shrine_telluria = 3;
+    s.facilityLevels.shrine_aurush = 4;
+    s.favour = { telluria: 4, aurush: 30, pelagos: 0 };
+    var o = order(s, 'shrine_telluria', 'prepare_earthward_talisman', 0);
+    t.same([o.dueDay, s.favour.telluria], [13, 4], 'Level 2: no Favour');
+    t.same(finish(s, o), [['Order Completed', 'Shrine of Telluria: Prepare Earthward Talisman → Added to Warehouse: 1 Earthward Talisman.']]);
+    var gold = s.treasuryGP;
+    var res = R.issueOrder(s, data, 'shrine_telluria', 'prepare_rootguard_salve', 0, dice([0.3]));
+    t.same([res.ok, res.message, s.favour.telluria, s.pendingOrders.length], [false, 'Needs 5% of Telluria\'s Favour; the Ironbow has 4%.', 4, 0], 'refused: nothing taken');
+    s.favour.telluria = 7;
+    var r2 = R.issueOrder(s, data, 'shrine_telluria', 'prepare_rootguard_salve', 0, dice([0.3]));
+    o = s.pendingOrders[s.pendingOrders.length - 1];
+    t.same([s.favour.telluria, o.favourCost, o.dueDay, s.treasuryGP], [2, 5, 14, gold]);
+    t.ok(/5% of Telluria's Favour spent \(now 2%\)\.$/.test(r2.log[1]), r2.log[1]);
+    var r3 = R.issueOrder(s, data, 'shrine_aurush', 'consecrate_expedition_supplies', 0, dice([0.7]));
+    t.ok(r3.ok, r3.message);
+    var cons = s.pendingOrders[s.pendingOrders.length - 1];
+    t.equal(s.favour.aurush, 20, 'Level 4: 10%');
+    finish(s, o);
+    t.same([R.goodsQty(s, 'rootguard_salve'), R.goodsAmountText(data, 'rootguard_salve', 2), R.goodsAmountText(data, 'purification_incense', 1)], [2, '2 doses of Rootguard Salve', '1 Purification Incense']);
+    t.equal(s.pendingOrders.length, 1, 'the Aurush order is still waiting');
+    R.cancelOrder(s, cons.id, data);
+    t.equal(s.pendingOrders.length, 0);
+    t.equal(s.favour.aurush, 20, 'Cancel gives no Favour back (as gold)');
+    s.facilityLevels.shrine_telluria = 4;
+    var w = R.issueOrder(s, data, 'shrine_telluria', 'bless_bastion_foundations', 0, dice([0.3]));
+    t.same([w.ok, w.message, s.favour.telluria], [false, 'Not available yet', 2], 'Bless Bastion Foundations: no environmental event yet');
+    t.ok(/no Bastion event damages a facility by natural causes yet/.test(R.fnAvailable(s, R.facility(data, 'shrine_telluria'), R.fn(R.facility(data, 'shrine_telluria'), 'bless_bastion_foundations')).why));
+  });
+
+  test('a Great Rite waits at the Ironbow, once; a Blessing of Pelagos is held for the Dock; both survive a reload', function (t) {
+    var s = plots(17, [], ['shrine_aurush', 'shrine_pelagos']);
+    s.facilityLevels.shrine_aurush = 5;
+    s.facilityLevels.shrine_pelagos = 4;
+    s.favour = { telluria: 0, aurush: 30, pelagos: 25 };
+    var o = order(s, 'shrine_aurush', 'great_rite_aurush', 0);
+    t.same([o.dueDay, s.favour.aurush], [17, 5]);
+    t.same(R.completeSimpleOrder(s, data, o, dice([0.3])), [['Order Completed', 'Shrine of Aurush: Great Rite of Aurush → Cleansing Radiance waits at the Ironbow until the DM gives it to the party on an expedition.']]);
+    R.completeSimpleOrder(s, data, o, dice([0.3]));
+    t.same(s.greatRites, [{ id: 'rite-' + o.id, rite: 'cleansing_radiance', god: 'aurush', madeDay: 10, status: 'waiting' }], 'once, however often it completes');
+    R.removeOrder(s, o.id);
+    var b = order(s, 'shrine_pelagos', 'bless_commercial_shipment', 0);
+    t.same(finish(s, b), [['Order Completed', 'Shrine of Pelagos: Bless Commercial Shipment → A Blessing of Pelagos waits for the next ship the Dock sends with cargo (1 held).']]);
+    t.same(s.tradeNetwork.protections, { pelagos_blessing: { charges: 1 } });
+    var back = R.fromSave(JSON.parse(JSON.stringify(R.toSave(s))), data);
+    t.same([back.greatRites, back.tradeNetwork.protections], [s.greatRites, s.tradeNetwork.protections]);
+    t.same(R.fromSave(JSON.parse(JSON.stringify(R.toSave(back))), data).greatRites, back.greatRites, 'loading twice changes nothing');
+    t.same(R.cleanGreatRites([{ id: 'x', rite: 'dragons_breath' }, 'y', { id: 'rite-1', rite: 'tides_passage', madeDay: 3 }, { id: 'rite-1', rite: 'tides_passage' }]), [{ id: 'rite-1', rite: 'tides_passage', god: 'pelagos', madeDay: 3, status: 'waiting' }]);
+  });
+
   test('the Herbal Gardens\' new orders: Level 2 ingredients, Level 3 medical supplies with their own days, research yields and recipes', function (t) {
     var s = gardens(2);
     t.equal(R.issueOrder(s, data, 'herbal_gardens', 'field_medical_supplies', 0, dice([0.3])).message, 'Needs Level 3.');

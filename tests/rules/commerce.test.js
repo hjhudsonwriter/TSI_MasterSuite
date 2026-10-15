@@ -460,6 +460,19 @@
     t.equal(BR.dispatchBlocker(b, bdata), 'The ship is at sea: the first one home is back on Day 18.');
   });
 
+  /* Pull request 8b: Bless Commercial Shipment. */
+  test('a Blessing of Pelagos held: the next cargo ship takes it, 10 points off its risk; the one after sails without', function (t) {
+    var b = bastion(10, 5);
+    var c = registered(b);
+    b.tradeNetwork.protections = { pelagos_blessing: { charges: 1 } };
+    stock(b, 'sawn_lumber', 4);
+    var pct = BR.portRoute(bdata, BR.charterById(b, c.id).port).pct;
+    var v = BR.dispatchCargo(b, bdata, c.id, [{ goodId: 'sawn_lumber', qty: 2 }], dice([0.3])).voyage;
+    t.same([v.chance, v.protections.map(function (p) { return p.label; }), b.tradeNetwork.protections.pelagos_blessing.charges], [Math.max(0, pct - 10), ['Blessing of Pelagos'], 0]);
+    var w = BR.dispatchCargo(b, bdata, c.id, [{ goodId: 'sawn_lumber', qty: 2 }], dice([0.3])).voyage;
+    t.same([w.chance, w.protections], [pct, []], 'used once');
+  });
+
   test('a refused sailing changes nothing at all', function (t) {
     var b = bastion(4, 2);
     var c = registered(b);
