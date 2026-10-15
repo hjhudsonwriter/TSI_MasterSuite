@@ -213,7 +213,9 @@ const RITE = 'rite-ab12cd34';
     await ex.click('[data-test=rite-give]');
     await H.clickModal(ex, 'Give');
     await ex.waitForTimeout(400);
-    assert(/Start an expedition first/.test(await text(ex, 'notice')), await text(ex, 'notice'));
+    const m1 = await lastModal(ex);
+    assert(/Start an expedition first/.test(m1), m1);
+    await closeAll(ex);
     equal((await exs(ex)).journey.outbox.length, 0);
   });
 
@@ -246,7 +248,9 @@ const RITE = 'rite-ab12cd34';
     await ex.click('[data-test=rite-give]');
     await H.clickModal(ex, 'Give');
     await ex.waitForTimeout(400);
-    assert(/already holds/.test(await text(ex, 'notice')), await text(ex, 'notice'));
+    const m2 = await lastModal(ex);
+    assert(/already holds/.test(m2), m2);
+    await closeAll(ex);
     equal((await exs(ex)).journey.outbox.length, 1);
   });
 
