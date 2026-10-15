@@ -710,17 +710,20 @@
           var clan = clanTitle(r.clan);
           /* A Port Charter (pull request 5). An older copy of the suite can
              strip a receipt's kind; the Charter it made still names it. */
-          var made = r.type === 'charter' ? null : R.charterById(state, r.id);
+          /* A griffin or dire wolf the DM granted (pull request 7). */
+          var creature = r.type === 'creature';
+          var made = r.type === 'charter' || creature ? null : R.charterById(state, r.id);
           var charter = r.type === 'charter' || !!made;
           /* A parcel collected in the Explorer (pull request 6), known by its
              receipt's kind or, if an older copy stripped that, by its
              pickup id (which only a parcel pickup has). */
-          var pid = TSI.bridge ? TSI.bridge.parcelIdOf(r.id) : '';
+          var pid = TSI.bridge && !creature ? TSI.bridge.parcelIdOf(r.id) : '';
           var sent = pid ? R.parcelById(state, pid) : null;
-          var parcel = !charter && (r.type === 'parcel_collected' || !!pid);
+          var parcel = !charter && !creature && (r.type === 'parcel_collected' || !!pid);
           var town = parcel ? R.courierPointName(r.point || (sent ? sent.point : '')) : '';
           var what = charter ? 'Port Charter: ' + R.portWithClan(data, made ? made.port : r.port, made ? made.clan : r.clan) : clan;
-          var head = parcel
+          var head = creature ? R.creatureReceiptHead(data, r)
+            : parcel
             ? (r.r === 'applied' ? 'Parcel collected: ' + town + (r.held ? ' (already recorded)' : '') : (r.r === 'skipped' ? 'Skipped: ' : 'Refused: ') + 'parcel collected at ' + town)
             : charter
             ? (r.r === 'applied' ? what + (r.held ? ' (already held)' : '') : (r.r === 'skipped' ? 'Skipped: ' : 'Refused: ') + what)
@@ -730,7 +733,7 @@
           bridgeList.appendChild(el('div', { class: 'tsi-bas-influence__logrow tsi-bas-influence__logrow--' + r.r, 'data-test': 'bridge-row', 'data-result': r.r }, [
             el('div', { class: 'tsi-bas-influence__loghead' }, [el('strong', { text: head }), typeof r.day === 'number' ? ' · ' + R.dayLabel(r.day) : '']),
             r.text ? el('div', { class: 'tsi-bas-influence__logtext', text: r.text }) : null,
-            r.why ? el('div', { class: 'tsi-bas-influence__logwhy', text: r.why + (r.r === 'skipped' ? (parcel ? ' The items stay in the Party bags.' : charter ? ' Grant it again in the Explorer if it should count.' : ' Type it in above if it should count.') : '') }) : null
+            r.why ? el('div', { class: 'tsi-bas-influence__logwhy', text: r.why + (r.r === 'skipped' ? (parcel ? ' The items stay in the Party bags.' : charter || creature ? ' Grant it again in the Explorer if it should count.' : ' Type it in above if it should count.') : '') }) : null
           ]));
         });
       }
@@ -1238,6 +1241,10 @@
       var defMeta = muted('None recruited');
       defMeta.setAttribute('data-test', 'defenders-meta');
       var beastList = el('div', { class: 'tsi-bas-list', 'data-test': 'beasts' });
+      /* The creatures (pull request 7): every one the Ironbow holds. They
+         come and go only through their buildings' House orders and the
+         Explorer, so there's no Remove button. */
+      var creatureList = el('div', { class: 'tsi-bas-list', 'data-test': 'creatures' });
       /* The treasury, in the map's top bar: saved when you finish typing
          (Enter, or leaving the box), not on every key. */
       var treasuryInput = numberInput('treasury', { min: '0', 'aria-label': 'Treasury (gp)', class: 'tsi-input tsi-bas-num tsi-bas-treasury__input' });
@@ -1268,7 +1275,9 @@
           ]),
           defValue,
           label('Menagerie Beasts'),
-          beastList
+          beastList,
+          label('Creatures'),
+          creatureList
         ]),
         el('div', { class: 'tsi-bas-box tsi-bas-box--art tsi-bas-box--military' }, [
           el('div', { class: 'tsi-bas-row__top' }, [
@@ -1385,6 +1394,10 @@
         defValue.textContent = String(state.defenders.count);
         defMeta.textContent = state.defenders.count === 0 ? 'None recruited' : state.defenders.armed ? 'Armed' : 'Unarmed';
         renderForceList(beastList, state.defenderBeasts, 'No beasts recruited yet.', 'beast', 'beast');
+        TSI.clear(creatureList);
+        var crs = R.creatures(state);
+        if (!crs.length) creatureList.appendChild(muted('None yet. The Wyvern Roost, Griffin Tower and Dire Wolf Den house them.'));
+        crs.forEach(function (c) { creatureList.appendChild(creatureRow(c, 'mgmt-creature', true)); });
         renderForceList(militaryList, state.military, 'No military recruited yet.', 'military', 'military');
         setValue(treasuryInput, state.treasuryGP);
       }
@@ -1823,8 +1836,8 @@
             el('div', { class: 'tsi-bas-ma__main' }, [
               el('div', { class: 'tsi-bas-item__name', text: maName(ma) }),
               el('div', { class: 'tsi-bas-item__meta', text: isDefence(ma)
-                ? clanTitle(ma.targetKey) + ' attacked your Bastion on ' + R.dayLabel(ma.day) + '. Defending it: ' + (ma.undefended ? 'nobody' : R.militaryCommitLine(ma.commit))
-                : 'Committed: ' + R.militaryCommitLine(ma.commit) }),
+                ? clanTitle(ma.targetKey) + ' attacked your Bastion on ' + R.dayLabel(ma.day) + '. Defending it: ' + (ma.undefended ? 'nobody' : R.militaryCommitLine(ma.commit, state, data))
+                : 'Committed: ' + R.militaryCommitLine(ma.commit, state, data) }),
               el('div', { class: 'tsi-bas-ma__status', 'data-test': 'ma-status-' + i, text: R.militaryStatus(ma) }),
               R.patrolLine(ma) ? el('div', { class: 'tsi-bas-item__meta', 'data-test': 'ma-patrol-' + i, text: R.patrolLine(ma) }) : null,
               summary.length ? el('div', { class: 'tsi-bas-ma__chips' }, summary.map(chip)) : null
@@ -1895,7 +1908,7 @@
           body: [
             el('div', { class: 'tsi-bas-ma-pop' }, [
               el('div', { class: 'tsi-bas-ma-pop__headline', text: 'Your forces muster for battle' }),
-              muted('Committed: ' + R.militaryCommitLine(ma.commit) + '.'),
+              muted('Committed: ' + R.militaryCommitLine(ma.commit, state, data) + '.'),
               cut ? muted(cut.charAt(0).toUpperCase() + cut.slice(1)) : null,
               m ? muted('Enemy: ' + tierName(ma.tier) + '. ' + R.missionEstimateLine(m, data)) : null,
               chips.length ? el('div', { class: 'tsi-bas-ma__chips' }, chips.map(chip)) : null,
@@ -1953,7 +1966,7 @@
           ma.undefended
             ? el('p', { class: 'tsi-bas-ma-pop__text', 'data-test': 'attack-undefended', text: 'Nobody is free to defend the Bastion, so ' + clanTitle(ma.targetKey) + ' takes what it came for unopposed. ' + loss })
             : [
-              muted('Standing to defend the Ironbow: ' + R.militaryCommitLine(ma.commit) + '.', 'tsi-bas-attack__line'),
+              muted('Standing to defend the Ironbow: ' + R.militaryCommitLine(ma.commit, state, data) + '.', 'tsi-bas-attack__line'),
               m ? muted('Enemy: ' + tierName(ma.tier) + '. ' + R.missionEstimateLine(m, data), 'tsi-bas-attack__line') : null,
               R.patrolLine(ma) ? el('div', { class: 'tsi-bas-muted tsi-bas-attack__line tsi-bas-attack__patrol', 'data-test': 'attack-patrol', text: R.patrolLine(ma) }) : null,
               el('p', { class: 'tsi-bas-ma-pop__text', 'data-test': 'attack-more', text: 'Defend the Ironbow now: roll for the Weather Conditions, your forces’ Morale and their Luck, then fight the battle on the Ironbow coast. Or choose Later and defend it from the Banner & War Council panel. An attack can’t be called off. If the Bastion falls: ' + loss.charAt(0).toLowerCase() + loss.slice(1) })
@@ -3793,6 +3806,8 @@
             'Anything it has already made stays' + (facId === 'hall_of_emissaries' ? ', and your agreements, contracts and sea routes carry on' : '') + '. ' +
             /* The Courier Exchange's parcels already sent carry on (pull request 6). */
             (facId === R.COURIER_FAC && R.courierDemolishNote(state) ? R.courierDemolishNote(state) + ' ' : '') +
+            /* Creatures living here stay at the Ironbow (pull request 7). */
+            (R.creatureDemolishNote(state, data, facId) ? R.creatureDemolishNote(state, data, facId) + ' ' : '') +
             'It can be built again later ' + (R.isPlotFacility(data, facId) ? 'on a free Development Plot' + (R.plotsForLevel(state.partyLevel, data) ? '' : ' (plots open at party level 9)') : 'from an empty slot') + '.';
         var ok = await ask(msg, building ? 'Stop building' : 'Demolish', building ? 'Stop building' : 'Demolish');
         if (!ok || !life.alive) return;
@@ -3906,6 +3921,11 @@
         /* So does a parcel collected in the Explorer (pull request 6). */
         if (res.parcels && res.parcels.length) {
           notice(res.parcels.join(' '), { type: 'info', title: 'Courier Exchange.', id: 'tsi-bas-courier', timeout: 14000 });
+        }
+        /* And a griffin or dire wolf the DM granted (pull request 7): each
+           line is a sentence starting "From the Explorer: …". */
+        if (res.creatures && res.creatures.length) {
+          notice(res.creatures.join(' '), { type: 'info', title: 'Creatures.', id: 'tsi-bas-creature', timeout: 14000 });
         }
         if (res.applied.length) {
           notice('From the Explorer: ' + res.applied.join(' ') + (res.applied.length === 1 ? ' Clan Influence lists it.' : ' Clan Influence lists them.'), { type: 'info', title: 'Honour/Respect.', id: 'tsi-bas-bridge', timeout: 12000 });
