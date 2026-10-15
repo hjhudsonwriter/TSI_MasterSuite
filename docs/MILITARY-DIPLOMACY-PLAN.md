@@ -8,7 +8,7 @@ This file is for Harry and his planning assistant. It records Harry's answers of
 
 Nothing marked Proposed or To decide gets built until Harry approves the details. When a question is answered, write the answer under it and say "go".
 
-**Status (15 October 2026):** 8a is built and merged (#30) (the creature guards and the War Room's regiments, training, Recouping and Musters). 8b, the Shrines, waits for S2, S9 and S10.
+**Status (15 October 2026):** 8a is built and merged (#30) (the creature guards and the War Room's regiments, training, Recouping and Musters). 8b, the Shrines: S2, S9 and S10 answered (below); ready to build on Harry's go-ahead.
 
 **Split, at Harry's request** (decisions of 15 October 2026 below):
 - **8a:** the two creature guards, plus the War Room.
@@ -170,5 +170,19 @@ For now:
 - **The Explorer's events** have skill checks with DCs, but none are labelled as a natural-terrain hazard, a maritime hazard, vegetation, or poison/disease. Several also aren't saving throws. Each event needs a label before a charm can apply to it. **S2:** I list the events and Harry ticks them.
 - **The Explorer has no conditions** (Poisoned, Frightened, Exhaustion) **and no expeditions**: there's no "start" or "end". These parts would be "the DM marks it used", plus a new Start/End expedition button. **S9:** confirm.
 - **The Courier Exchange carries only packs and charts.** **S10:** may it carry the Shrine items too?
-- The Shrine implementation document Harry mentioned wasn't attached. The specification above comes from his message.
+- The specification above is Harry's Shrine implementation document, pasted into his message of 15 October 2026.
 - **S8:** the Shrine research trees, later.
+
+### Decided (Harry, 15 October 2026), for 8b
+- **S2, tags:** the events' data says which kind of hazard each check is:
+  - **natural-terrain saving throws** (Earthward Talisman, Earth's Endurance): Rootfall, The Drowned Bell and The Ember That Won't Die;
+  - **being Restrained by vegetation** (Rootguard Salve): Rootfall;
+  - **water and navigation** (Bless Voyage, Aquatic Protection Charm, Tide's Passage): The Tide Causeway, The Drowned Bell and False Lights at Bleakharbour;
+  - **poison or disease** (Purification Incense): no event yet.
+
+  A tagged check offers the matching charm. Every other check, and checks outside the Explorer, use "the DM marks it used". The tags are data, so they're easy to change.
+- **S9, expeditions:** the Explorer gets **Start expedition** and **End expedition**.
+  - A Great Rite waits at the Ironbow until the DM assigns it during an expedition.
+  - The party holds one Major Expedition Blessing at a time; it is used once and expires when the expedition ends.
+  - Conditions stay the DM's to apply: Use… records the charge once and shows a short reminder of what it does.
+- **S10, the courier:** the Courier Exchange carries the Shrine's physical items (talismans, salves, lanterns, incense, charms and cleansing portions), each counting as 1 item, and they arrive in the Travel bags with their charges. Bless Bastion Foundations and Bless Commercial Shipment stay at the Ironbow, and Great Rites are assigned, not posted.
