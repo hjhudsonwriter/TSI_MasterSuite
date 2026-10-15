@@ -211,7 +211,7 @@
     refused(bastion(10, 1), 'slades_muster', packs(0), /^Choose at least 1 item to send\.$/, 'zero items');
     var empty = bastion(10, 1);
     empty.warehouse = [];
-    refused(empty, 'slades_muster', packs(1), /^The Warehouse has nothing the courier carries \(Expedition Provision Packs, Overland charts, Earthward Talismans, Doses of Rootguard Salve, Blessed Lanterns, Portions of Purification Incense, Cleansing Portions, Voyage Blessings, Aquatic Protection Charms\)\.$/, 'nothing to send');
+    refused(empty, 'slades_muster', packs(1), /^The Warehouse has nothing the courier carries \(Expedition Provision Packs, Overland charts and the Shrines' items\)\.$/, 'nothing to send');
   });
 
   test('Level 1 reaches only Slade’s Muster; Level 2 reaches all eight, two travelling at once, up to 10 items each', function (t) {
