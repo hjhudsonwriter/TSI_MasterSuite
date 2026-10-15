@@ -19,8 +19,10 @@
    - log: a short history of what events changed;
    - outbox: the Honour/Respect changes sent to the Bastion (pull request 4
      of the facilities overhaul, 13 October 2026), the Port Charters the
-     DM grants (pull request 5, 14 October 2026) and the Courier Exchange
-     parcels the DM collects (pull request 6): only ever added to. The
+     DM grants (pull request 5, 14 October 2026), the Courier Exchange
+     parcels the DM collects (pull request 6) and the griffins and dire
+     wolves the DM grants to the Ironbow (pull request 7): only ever added
+     to. The
      Bastion applies each once and keeps a receipt in its own save
      (shared/js/bridge-rules.js);
    - inventory: the Party bags, [{ id, kind, qty }]: Overland charts
@@ -636,6 +638,44 @@
       text: (why ? 'Port Charter for ' + name + ' (Clan ' + clan + '): ' + why : 'Port Charter for ' + name + ' (Clan ' + clan + ').').slice(0, B.TEXT_MAX)
     }));
     var line = 'Sent to the Bastion: Port Charter for ' + name + ' (Clan ' + clan + ').';
+    logLine(state, line);
+    return { ok: true, line: line, id: id };
+  };
+
+  /* The DM grants a griffin or a dire wolf to the Ironbow (pull request 7,
+     Harry, 14 October 2026): a new message in the outbox, for the Bastion to
+     hold once, waiting for a home at the Griffin Tower or the Dire Wolf Den.
+     Everything is checked first, and nothing changes if anything is wrong:
+     the browser is saving (opts.memory is true when it only keeps things in
+     memory, so the Bastion could never see the grant); it's a kind the DM
+     can grant; the name (optional) is at most 40 letters. Granting again
+     grants another: each is a different animal. Its id is a new random id
+     (never the dice) with ':dm:0', as the Port Charter button's.
+     opts: { name, text (what for, optional), memory }.
+     Returns { ok, line, id } or { ok: false, message }. */
+  J.grantCreature = function (state, species, opts) {
+    var B = bridge();
+    var o = isObj(opts) ? opts : {};
+    if (!B || !B.creatureMessage) return { ok: false, message: 'This copy of the Explorer can\'t grant creatures.' };
+    if (o.memory === true) return { ok: false, message: 'This browser isn\'t saving, so the Bastion can\'t see the grant. Nothing was sent.' };
+    if (!B.isGrantable(species)) return { ok: false, message: 'The DM can grant ' + B.grantable().map(function (k) { return 'a ' + B.speciesName(k).toLowerCase(); }).join(' or ') + '.' };
+    var name = str(o.name).replace(/\s+/g, ' ').trim();
+    if (name.length > B.NAME_MAX) return { ok: false, message: 'A name is at most ' + B.NAME_MAX + ' letters.' };
+    var why = str(o.text).replace(/\s+/g, ' ').trim();
+    var id = newUid() + ':dm:0';
+    if (!B.ID_PATTERN.test(id)) return { ok: false, message: 'The grant couldn\'t be given an id, so nothing was sent.' };
+    var kind = B.speciesName(species);
+    var noun = kind.toLowerCase();
+    var what = 'a ' + noun + (name ? ' (' + name + ')' : '');
+    var j = journey(state);
+    if (!Array.isArray(j.outbox)) j.outbox = [];
+    j.outbox.push(B.creatureMessage({
+      id: id, day: day(state), at: new Date().toISOString(),
+      from: { code: 'DM', title: 'DM award', step: 'dm' },
+      species: species, name: name,
+      text: (kind + ' for the Ironbow' + (name ? ' (' + name + ')' : '') + (why ? ': ' + why : '') + '.').slice(0, B.TEXT_MAX)
+    }));
+    var line = 'Sent to the Bastion: ' + what + ' for the Ironbow, to be housed at the ' + B.speciesHomeName(species) + '.';
     logLine(state, line);
     return { ok: true, line: line, id: id };
   };

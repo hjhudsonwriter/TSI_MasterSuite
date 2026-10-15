@@ -19,7 +19,13 @@
      the Clan, at a cost to Honour & Respect and Political Capital; while
      at war the Clan may attack (the Defend Bastion event), and losing
      that costs part of the treasury and puts facilities Under Repair; a
-     war ends after 42 quiet days, or when the DM makes peace.
+     war ends after 42 quiet days, or when the DM makes peace;
+   - the creatures (pull request 7, creature-rules.js): every creature
+     housed at the Ironbow defends it in a Defend Bastion, one unit each
+     with its own profile (creatures-data.js); it is never sent on a War
+     Action, and never killed or captured (at worst badly wounded for 21
+     days). The Menagerie's beasts, R.beastQty and the War Council's lock
+     are unchanged.
    Since the days overhaul (Harry, 8 October 2026) every clock here is an
    Explorer day (state.day), not a Bastion turn: a War Action musters 3
    days after it's queued, a Clan at war rolls to attack every 7 days of the
@@ -225,15 +231,21 @@
     });
     return out;
   }
+  /* Who is recovering: Lieutenants by number, Menagerie beasts by name, and
+     the creatures (pull request 7) by their own id, never under a beast's
+     name, so a Menagerie Dire Wolf and a granted dire wolf never share one. */
   function recovering(s) {
-    var out = { lieutenants: 0, beasts: {} };
+    var out = { lieutenants: 0, beasts: {}, creatures: {} };
     (Array.isArray(s.warRecovery) ? s.warRecovery : []).forEach(function (r) {
       if (!isObj(r)) return;
       if (r.kind === 'lieutenant') out.lieutenants += 1;
       else if (r.kind === 'beast') out.beasts[r.name] = (out.beasts[r.name] || 0) + 1;
+      else if (r.kind === 'creature' && typeof r.creatureId === 'string') out.creatures[r.creatureId] = true;
     });
     return out;
   }
+  /* The creatures in a commitment (only a Defend Bastion has any). */
+  function creatureIds(c) { return isObj(c) && Array.isArray(c.creatures) ? c.creatures : []; }
   /* Add one full-strength unit to its counted row (never to a depleted row). */
   function addFull(list, name, source) {
     for (var i = 0; i < list.length; i++) {
@@ -301,7 +313,10 @@
 
   /* A commitment in the phase 2 shape: { defenders, lieutenants,
      units: { type: n }, beasts: { name: n } }, tidied (whole numbers, only
-     the ones above 0, units in the War Room's archetype order). */
+     the ones above 0, units in the War Room's archetype order). A Defend
+     Bastion's also lists the creatures defending the Ironbow (pull request
+     7), creatures: [creature ids], each once; it's left out when there are
+     none, so every other commitment keeps its shape. */
   R.cleanCommit = function (c, data) {
     var w = wd(data);
     c = isObj(c) ? c : {};
@@ -316,7 +331,10 @@
       var n = clampInt(cb[name], 0);
       if (name && n > 0) beasts[name] = n;
     });
-    return { defenders: clampInt(c.defenders, 0), lieutenants: clampInt(c.lieutenants, 0), units: units, beasts: beasts };
+    var out = { defenders: clampInt(c.defenders, 0), lieutenants: clampInt(c.lieutenants, 0), units: units, beasts: beasts };
+    var cc = (Array.isArray(c.creatures) ? c.creatures : []).filter(function (id, i, list) { return typeof id === 'string' && id && list.indexOf(id) === i; });
+    if (cc.length) out.creatures = cc;
+    return out;
   };
   /* The first n beasts in the Menagerie's list order that nobody else
      holds (taken: { name: n } already held), as phase 1 would have sent
@@ -380,10 +398,10 @@
     var listed = warOrders(s).some(function (o) { return o.id === order.id; });
     return listed ? read.orders[order.id] : phase1Commit(s, data, phase1OrderFields(order), read.taken);
   };
-  R.commitTotal = function (c) { return c.defenders + c.lieutenants + sum(c.units) + sum(c.beasts); };
-  /* What takes the field: regiments, beasts and defenders (Lieutenants only
-     lead them). */
-  function fieldTotal(c) { return c.defenders + sum(c.units) + sum(c.beasts); }
+  R.commitTotal = function (c) { return c.defenders + c.lieutenants + sum(c.units) + sum(c.beasts) + creatureIds(c).length; };
+  /* What takes the field: regiments, beasts, creatures and defenders
+     (Lieutenants only lead them). */
+  function fieldTotal(c) { return c.defenders + sum(c.units) + sum(c.beasts) + creatureIds(c).length; }
   /* How many formations a Lieutenant could lead: the regiments, and the
      defenders' detachments (never beasts, never defenders who only support
      a regiment). */
@@ -404,11 +422,12 @@
      let two orders commit the same defenders.) */
   function commitments(s, data, opts) {
     var read = readCommits(s, data);
-    var out = { defenders: 0, lieutenants: 0, beasts: {}, maFull: {}, maRows: {}, queue: [] };
+    var out = { defenders: 0, lieutenants: 0, beasts: {}, creatures: {}, maFull: {}, maRows: {}, queue: [] };
     function addCommon(c) {
       out.defenders += c.defenders;
       out.lieutenants += c.lieutenants;
       Object.keys(c.beasts).forEach(function (n) { out.beasts[n] = (out.beasts[n] || 0) + c.beasts[n]; });
+      creatureIds(c).forEach(function (id) { out.creatures[id] = true; });
     }
     actionsOf(s).forEach(function (ma) {
       if (ma.id === opts.except || ma.orderId === opts.except) return;
@@ -453,9 +472,12 @@
 
   /* What can be committed now: { defenders: { count, armed }, lieutenants,
      units: { type: [{ key, label, personnel, size, depleted }] } (every
-     archetype, healthiest first), beasts: { name: n }, fullWar }. Anything
-     committed to a waiting order or a Military Action, and any Lieutenant
-     or beast still recovering, is left out.
+     archetype, healthiest first), beasts: { name: n }, creatures: [ids],
+     fullWar }. Anything committed to a waiting order or a Military Action,
+     and any Lieutenant, beast or creature still recovering, is left out.
+     creatures (pull request 7): the housed creatures free to defend the
+     Ironbow. Only a Defend Bastion takes them (R.beginDefence): the War
+     Action form (R.warCommit2) never does.
      Waiting orders share the regiments in the order they were queued: the
      first takes the healthiest of its type, the next the healthiest left,
      and so on, which is what each was estimated with and what each marches
@@ -496,12 +518,16 @@
       var n = all[name] - (held.beasts[name] || 0) - (rec.beasts[name] || 0);
       if (n > 0) beasts[name] = n;
     });
+    var creatures = (R.fightingCreatures ? R.fightingCreatures(s, data) : []).filter(function (c) {
+      return !held.creatures[c.id] && !rec.creatures[c.id];
+    }).map(function (c) { return c.id; });
     var d = isObj(s.defenders) ? s.defenders : {};
     return {
       defenders: { count: Math.max(0, clampInt(d.count, 0) - held.defenders), armed: !!d.armed },
       lieutenants: Math.max(0, R.militaryQty(s, /lieutenant/i) - held.lieutenants - rec.lieutenants),
       units: units,
       beasts: beasts,
+      creatures: creatures,
       fullWar: !!(isObj(s.organization) && s.organization.type === 'clan')
     };
   };
@@ -518,7 +544,8 @@
      Each Lieutenant leads one formation (a regiment or a defenders'
      detachment), so there are never more Lieutenants than formations for
      them to lead. Read every box before clamping: Lieutenants typed before
-     any regiment would otherwise come out as 0. */
+     any regiment would otherwise come out as 0. Creatures are never taken
+     from the form (pull request 7: they only defend the Ironbow). */
   R.warCommit2 = function (s, data, fields, opts) {
     var w = wd(data);
     var f = R.warForces(s, data, opts);
@@ -585,7 +612,40 @@
         });
       }
     });
+    /* The creatures defending the Ironbow (pull request 7): one unit each,
+       under its own name, with its own profile and trait from
+       creatures-data.js (never the default beast's). Only one still free
+       takes the field. Its source names the creature and its kind, so the
+       War Table can show its own line. */
+    var ci = 0;
+    creatureIds(c).forEach(function (id) {
+      if (f.creatures.indexOf(id) === -1 || !R.creatureById) return;
+      var cr = R.creatureById(s, id);
+      var war = cr ? R.creatureWar(data, cr) : null;
+      if (!war) return;
+      ci += 1;
+      var traits = war.trait ? [war.trait] : [];
+      var name = R.creatureName(data, cr);
+      units.push({
+        id: 'p-creature-' + ci, kind: 'beast', type: 'beast', name: name, label: '', short: '',
+        personnel: 1, size: 1, profile: profileOf(war, traits, w), traits: traits, variant: null,
+        source: { key: 'creature-' + id, creature: id, species: String(cr.species || ''), beast: name }
+      });
+    });
     nameUnits(units, w);
+    /* A creature with no name (a granted griffin or dire wolf) gets its
+       kind's short token, numbered (Gr1, Gr2, Wo1), never initials taken
+       from "Griffin (granted Day 11)". */
+    var unnamed = {};
+    units.forEach(function (u) {
+      if (!u.source || !u.source.creature || !R.creatureById) return;
+      var cr = R.creatureById(s, u.source.creature);
+      if (!cr || (typeof cr.name === 'string' && cr.name) || (R.creatureUnique && R.creatureUnique(data, cr.id))) return;
+      var sp = R.creatureSpecies ? R.creatureSpecies(data, cr.species) : null;
+      var base = sp && typeof sp.short === 'string' && sp.short ? sp.short.slice(0, 3) : 'Cr';
+      unnamed[base] = (unnamed[base] || 0) + 1;
+      u.short = base + unnamed[base];
+    });
     var def = Math.min(c.defenders, f.defenders.count);
     var regs = units.filter(function (u) { return u.kind === 'formation'; }).length;
     /* Only as many Lieutenants as there are formations for them to lead. */
@@ -1225,7 +1285,9 @@
      objective 'defend' with the mission's own seeded dice (kept under
      'defence|clan|day'); everything free at the Bastion defends it (as
      the War Action form counts it: defenders, Lieutenants, every regiment
-     and beast not committed or recovering). undefended: nothing is free.
+     and beast not committed or recovering), and so does every creature
+     housed at the Ironbow and free (pull request 7: they defend it, and
+     only it). undefended: nothing is free.
      If that Clan's attack is already waiting, it's given back unchanged. */
   R.beginDefence = function (s, data, clanKey, rand, now) {
     var w = wd(data), D = w.defence;
@@ -1250,6 +1312,7 @@
     var all = { defenders: f.defenders.count, lieutenants: f.lieutenants, units: {}, beasts: f.beasts };
     Object.keys(f.units).forEach(function (t) { if (f.units[t].length) all.units[t] = f.units[t].length; });
     var commit = R.warCommit2(s, data, all);
+    if (f.creatures.length) commit.creatures = f.creatures.slice();
     /* The fields in the order a loaded action has them (cleanAction). */
     var ma = {
       id: 'ma-defence-' + clanKey + '-' + s.day, orderId: '', day: s.day, v: 2,
@@ -1268,7 +1331,7 @@
     pruneMissions(s, data, key);
     stampWar(s, clanKey);
     R.log(s, 'Defend Bastion', R.defenceText(data, clanKey) + ' ' +
-      (ma.undefended ? 'Nobody is free to defend the Bastion.' : 'Defending it: ' + R.militaryCommitLine(commit) + '.'), now);
+      (ma.undefended ? 'Nobody is free to defend the Bastion.' : 'Defending it: ' + R.militaryCommitLine(commit, s, data) + '.'), now);
     return ma;
   };
   /* The Watchtower's Patrol, for a defence it applies to ('' if none). */
@@ -1457,8 +1520,11 @@
   };
 
   /* "6 defenders, 1 Lieutenant, Line Infantry ×2, Archers, Giant Vulture ×3"
-     (what's committed). Phase 1's shape (regiments as a number) still reads. */
-  R.militaryCommitLine = function (commit) {
+     (what's committed). Phase 1's shape (regiments as a number) still reads.
+     A Defend Bastion's creatures (pull request 7) are named when the
+     Bastion (s) and its data are given ("…, Elara's wyvern"), and counted
+     otherwise ("…, 1 creature"). */
+  R.militaryCommitLine = function (commit, s, data) {
     var w = wd();
     var c = isObj(commit) ? commit : {};
     var parts = [];
@@ -1474,6 +1540,10 @@
         var n = clampInt(c.beasts[name], 0);
         if (n > 0) parts.push(name + (n > 1 ? ' ×' + n : ''));
       });
+      var cr = creatureIds(c);
+      if (cr.length && isObj(s) && R.creatureById) {
+        cr.forEach(function (id) { var x = R.creatureById(s, id); parts.push(x ? R.creatureName(data, x) : 'a creature'); });
+      } else add(cr.length, 'creature', 'creatures');
     } else {
       add(c.beasts, 'beast', 'beasts');
       add(c.regiments, 'Regiment', 'Regiments');
@@ -1548,7 +1618,15 @@
       var label = unitLabel(u);
       if (isBeastUnit(u)) {
         var b = { unitId: u.id, label: label, name: beastName(u), status: u.status, hurt: null };
-        if (u.status === 'defeated' || u.status === 'routed') { b.hurt = { kind: 'beast', name: b.name, label: label, unitId: u.id, status: u.status }; hurt.push(b.hurt); }
+        /* A creature (pull request 7) is hurt by its own id, never by a
+           beast's name. */
+        var crId = isObj(u.source) && typeof u.source.creature === 'string' && u.source.creature ? u.source.creature : '';
+        if (crId) b.creature = crId;
+        if (u.status === 'defeated' || u.status === 'routed') {
+          b.hurt = crId ? { kind: 'creature', creatureId: crId, name: b.name, label: label, unitId: u.id, status: u.status }
+            : { kind: 'beast', name: b.name, label: label, unitId: u.id, status: u.status };
+          hurt.push(b.hurt);
+        }
         beasts.push(b);
       } else {
         var before = clampInt(u.personnel, 0), lost = Math.round(before * pct / 100);
@@ -1750,9 +1828,11 @@
     if (c.rewards.defenceLoss) lines.push(repairsLine(s, data, null));
     if (ma.objective === 'raid' && c.rewards.extracted > 0) lines.push('The supplies already carried off (' + c.rewards.extracted + ') are kept.');
     lines.push(lossesLine(c));
-    var fallen = c.hurt.filter(function (h) { return h.status === 'defeated'; });
+    var fallen = c.hurt.filter(function (h) { return h.status === 'defeated' && h.kind !== 'creature'; });
+    var spared = c.hurt.filter(function (h) { return h.status === 'defeated' && h.kind === 'creature'; });
     var separated = c.hurt.filter(function (h) { return h.status === 'routed'; });
     if (fallen.length) lines.push('A d6 for each of ' + fallen.map(function (h) { return h.label; }).join(', ') + ': killed, captured, wounded or recovering.');
+    if (spared.length) lines.push('A d6 for ' + spared.map(function (h) { return h.label; }).join(', ') + ': badly wounded, wounded or recovering (a creature is never killed or captured).');
     if (separated.length) lines.push('Separated for ' + plural(wd(data).separatedDays, 'day', 'days') + ': ' + separated.map(function (h) { return h.label; }).join(', ') + '.');
     return lines;
   };
@@ -1770,7 +1850,15 @@
     return rec.name + ': ' + (RECOVERY_WORDS[rec.status] || rec.status) + ', back on Day ' + rec.untilDay + '.';
   };
 
-  /* Take one Lieutenant or one beast of that name off its list. */
+  /* How long a creature is badly wounded at worst: its kind's woundedDays
+     (creatures-data.js), or the War Table's badly wounded days. */
+  function creatureWoundedDays(s, data, id, w) {
+    var c = R.creatureById ? R.creatureById(s, id) : null;
+    var sp = c && R.creatureSpecies ? R.creatureSpecies(data, c.species) : null;
+    return sp && typeof sp.woundedDays === 'number' && sp.woundedDays > 0 ? clampInt(sp.woundedDays, 1, 365) : w.badlyWoundedDays;
+  }
+  /* Take one Lieutenant or one beast of that name off its list (never a
+     creature: finishBattle never asks for one). */
   function removeOne(s, h) {
     var list = h.kind === 'lieutenant' ? s.military : s.defenderBeasts;
     if (!Array.isArray(list)) return;
@@ -1871,7 +1959,7 @@
     var defBefore = clampInt(s.defenders.count, 0);
     s.defenders.count = Math.max(0, defBefore - c.defendersLost);
 
-    /* Lieutenants and beasts. */
+    /* Lieutenants, beasts and creatures. */
     if (!Array.isArray(s.warRecovery)) s.warRecovery = [];
     c.hurt.forEach(function (h, i) {
       if (h.status === 'routed') {
@@ -1884,13 +1972,23 @@
         h.days = row.days || 0;
         if (row.result === 'captured' && !c.enemyHolds) { h.result = 'badly_wounded'; h.days = w.badlyWoundedDays; }
       }
+      /* A creature (pull request 7) is never killed or captured: at worst
+         it is badly wounded, for its kind's days (21). It is never taken
+         off any list. */
+      if (h.kind === 'creature' && (h.result === 'killed' || h.result === 'captured')) {
+        h.spared = h.result;
+        h.result = 'badly_wounded';
+        h.days = creatureWoundedDays(s, data, h.creatureId, w);
+      }
       if (h.result === 'killed' || h.result === 'captured') {
         removeOne(s, h);
       } else {
         h.untilDay = s.day + h.days;
         var recId = 'rec-' + R.hashText(ma.id + '|' + i + '|' + h.name);
         s.warRecovery.forEach(function (x) { if (x.id === recId) recId += '-' + i; });
-        s.warRecovery.push({ id: recId, kind: h.kind, name: h.name, status: h.result, untilDay: h.untilDay });
+        var rec = { id: recId, kind: h.kind, name: h.name, status: h.result, untilDay: h.untilDay };
+        if (h.kind === 'creature') rec.creatureId = h.creatureId;
+        s.warRecovery.push(rec);
       }
     });
 
@@ -1981,7 +2079,7 @@
   /* What happened to a Lieutenant or beast: "wounded (d6 3), back on Day 19." */
   function hurtResult(h) {
     var what = RECOVERY_WORDS[h.result] || h.result;
-    var dice = h.d6 ? ' (d6 ' + h.d6 + ')' : '';
+    var dice = h.d6 ? ' (d6 ' + h.d6 + (h.spared ? ': a creature is never ' + h.spared : '') + ')' : '';
     if (h.result === 'killed' || h.result === 'captured') return what + dice + '.';
     return what + dice + ', back on Day ' + h.untilDay + '.';
   }
@@ -2077,7 +2175,7 @@
       id: 'wl-' + ma.id + '-' + (Array.isArray(s.warLog) ? s.warLog.length : 0),
       at: now === undefined ? Date.now() : now,
       title: title,
-      subtitle: (ma.kind === 'defence' ? 'Defending the Bastion: ' : 'Committed: ') + R.militaryCommitLine(ma.commit),
+      subtitle: (ma.kind === 'defence' ? 'Defending the Bastion: ' : 'Committed: ') + R.militaryCommitLine(ma.commit, s, data),
       details: out.join('\n')
     };
   }
@@ -2093,7 +2191,8 @@
     back.forEach(function (r) {
       var text = r.status === 'separated'
         ? r.name + ' has found the way back to the Bastion.'
-        : r.kind === 'beast' ? 'The ' + r.name + ' is fit to fight again.' : r.name + ' is fit for duty again.';
+        : r.kind === 'beast' ? 'The ' + r.name + ' is fit to fight again.'
+        : r.kind === 'creature' ? r.name + ' is fit to fight again.' : r.name + ' is fit for duty again.';
       R.log(s, 'War Recovery', text, now);
     });
     return back;
@@ -2170,6 +2269,23 @@
     var br = ns.battleRules;
     if (br && typeof br.statBlock === 'function') {
       var block = br.statBlock(p.kind === 'lieutenant' ? 'lieutenant' : p, w);
+      if (block) return block;
+    }
+    return R.formatStatBlock(p, data);
+  };
+  /* A creature's stat block (pull request 7), as the War Table shows it:
+     its own name, its kind's profile and trait (creatures-data.js) and
+     line. null if it isn't held or doesn't fight. */
+  R.creatureStatBlock = function (s, data, id) {
+    var w = wd(data);
+    var c = R.creatureById ? R.creatureById(s, id) : null;
+    var war = c ? R.creatureWar(data, c) : null;
+    if (!war) return null;
+    var traits = war.trait ? [war.trait] : [];
+    var p = Object.assign({ id: c.id, name: R.creatureName(data, c), type: 'beast', kind: 'beast' }, profileOf(war, traits, w), { traits: traits, distinction: String(war.distinction || '') });
+    var br = ns.battleRules;
+    if (br && typeof br.statBlock === 'function') {
+      var block = br.statBlock(p, w);
       if (block) return block;
     }
     return R.formatStatBlock(p, data);
@@ -2288,11 +2404,17 @@
     });
     return out;
   }
+  /* Recovery records: Lieutenants and beasts by name; a creature (pull
+     request 7) by its own id (creatureId), kept even if its name is lost. */
   function cleanRecovery(list) {
     return (Array.isArray(list) ? list : []).filter(function (r) {
-      return isObj(r) && (r.kind === 'lieutenant' || r.kind === 'beast') && typeof r.name === 'string' && r.name;
+      if (!isObj(r)) return false;
+      if (r.kind === 'creature') return typeof r.creatureId === 'string' && !!r.creatureId;
+      return (r.kind === 'lieutenant' || r.kind === 'beast') && typeof r.name === 'string' && r.name;
     }).map(function (r, i) {
-      return { id: typeof r.id === 'string' && r.id ? r.id : 'rec-' + i, kind: r.kind, name: r.name, status: String(r.status || 'wounded'), untilDay: R.dayNum(r.untilDay, 1) };
+      var out = { id: typeof r.id === 'string' && r.id ? r.id : 'rec-' + i, kind: r.kind, name: typeof r.name === 'string' && r.name ? r.name : 'A creature', status: String(r.status || 'wounded'), untilDay: R.dayNum(r.untilDay, 1) };
+      if (r.kind === 'creature') out.creatureId = r.creatureId;
+      return out;
     });
   }
 

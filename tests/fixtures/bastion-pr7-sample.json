@@ -1,0 +1,171 @@
+{
+  "format": "tsi-backup",
+  "version": 1,
+  "kind": "tool",
+  "space": "test",
+  "tool": "bastion",
+  "toolName": "The Ironbow Bastion Manager",
+  "suite": "The Scarlett Isles: D&D Tool Suite",
+  "savedAt": "2026-10-15T12:00:00.000Z",
+  "records": [
+    {
+      "key": "tsi.bastion.state",
+      "value": {
+        "treasuryGP": 300,
+        "partyLevel": 9,
+        "builtFacilities": [
+          "barracks",
+          "armoury",
+          "watchtower",
+          "workshop",
+          "dock"
+        ],
+        "builtExtras": [
+          {
+            "facId": "library_scriptorium",
+            "status": "built"
+          },
+          {
+            "facId": "wyvern_roost",
+            "status": "built"
+          },
+          {
+            "facId": "griffin_tower",
+            "status": "built"
+          },
+          {
+            "facId": "dire_wolf_den",
+            "status": "built"
+          }
+        ],
+        "builtPlots": [],
+        "facilityLevels": {
+          "barracks": 1,
+          "armoury": 1,
+          "watchtower": 1,
+          "workshop": 1,
+          "dock": 1,
+          "library_scriptorium": 2,
+          "wyvern_roost": 1,
+          "griffin_tower": 1,
+          "dire_wolf_den": 1
+        },
+        "pendingOrders": [],
+        "defenders": {
+          "count": 0,
+          "armed": false,
+          "patrolUntil": 0
+        },
+        "defenderBeasts": [],
+        "military": [],
+        "warehouse": [],
+        "artisanTools": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        "favour": {
+          "telluria": 0,
+          "aurush": 0,
+          "pelagos": 0
+        },
+        "politicalCapital": {
+          "blackstone": 0,
+          "bacca": 0,
+          "farmer": 0,
+          "slade": 0,
+          "molten": 0,
+          "rowthorn": 0,
+          "karr": 0
+        },
+        "tradeNetwork": {
+          "active": false,
+          "strategy": "balanced",
+          "stability": 75,
+          "routes": [],
+          "portCharters": [],
+          "voyages": [],
+          "schedules": [],
+          "cargoSales": [],
+          "protections": {},
+          "marketLedger": [],
+          "parcels": []
+        },
+        "arbitration": {
+          "queue": []
+        },
+        "diplomacy": {
+          "agreements": [],
+          "delegations": [],
+          "summits": [],
+          "arbitrations": [],
+          "consortiums": [],
+          "rep": 0,
+          "cooldowns": {},
+          "tokens": 0
+        },
+        "v": 3,
+        "day": 1,
+        "anchored": false,
+        "lastEvent": null,
+        "lastEventDay": 0,
+        "log": [
+          {
+            "title": "Sample",
+            "body": "A sample Bastion for trying the creatures and the Library's chart order (pull request 7): the Library & Scriptorium at Level 2, and the Wyvern Roost, Griffin Tower and Dire Wolf Den at Level 1, in the four construction slots of party level 9; 300 gp in the treasury; no creatures yet (House Elara's Wyvern at the Roost, and Grant a creature… in the Explorer).",
+            "at": 0,
+            "day": 1
+          }
+        ],
+        "organization": {
+          "type": "unsworn",
+          "name": "",
+          "chief": "",
+          "motto": "",
+          "foundedAtDay": null
+        },
+        "clanHonor": 40,
+        "honourRespectByClan": {
+          "blackstone": 0,
+          "bacca": 0,
+          "farmer": 0,
+          "slade": 0,
+          "molten": 0,
+          "rowthorn": 0,
+          "karr": 0
+        },
+        "trustedClientsByClan": {
+          "blackstone": 50,
+          "bacca": 50,
+          "farmer": 50,
+          "slade": 50,
+          "molten": 50,
+          "rowthorn": 50,
+          "karr": 50
+        },
+        "warLog": [],
+        "dayInProgress": null,
+        "word": [],
+        "militaryActions": [],
+        "warMissions": {},
+        "warRecovery": [],
+        "warMissionSeq": 0,
+        "wars": {},
+        "repairs": {},
+        "legacyFacilities": [],
+        "research": {},
+        "archivedFacilities": [],
+        "migration": null,
+        "bridge": {
+          "fresh": true,
+          "done": {}
+        },
+        "creatures": []
+      },
+      "savedAt": "2026-10-15T12:00:00.000Z"
+    }
+  ]
+}

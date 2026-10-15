@@ -61,7 +61,7 @@
       var R = ns.rules;
       var D = window.TSI_DATA;
       var B = D.bastion;
-      var data = { bastion: B, facilities: D.bastionFacilities, tools: D.bastionTools, events: D.bastionEvents, research: D.bastionResearch, goods: D.bastionGoods, commerce: D.bastionCommerce, courier: D.bastionCourier };
+      var data = { bastion: B, facilities: D.bastionFacilities, tools: D.bastionTools, events: D.bastionEvents, research: D.bastionResearch, goods: D.bastionGoods, commerce: D.bastionCommerce, courier: D.bastionCourier, creatures: D.bastionCreatures };
       /* The war mini-game's numbers (war-units-data.js): units, stat blocks, missions. */
       var W = D.bastionWar;
       var COMPENDIUM = (D.bastionCompendium && D.bastionCompendium.items) || {};
@@ -442,7 +442,8 @@
          a line under the title; opts.notes: lines after the traits;
          opts.unit: a unit as it will fight (a depleted regiment, from
          fieldUnit), whose own profile is shown instead of the full-strength
-         one. */
+         one; opts.block: a stat block already made (a creature's, pull
+         request 7: R.creatureStatBlock). */
       function plural(n, one, many) { return n + ' ' + (n === 1 ? one : (many || one + 's')); }
       function unitBlock(u) {
         var a = W.archetypes[u.type] || {};
@@ -452,9 +453,9 @@
       }
       function statTip(name, opts) {
         opts = opts || {};
-        var block = opts.unit ? unitBlock(opts.unit) : R.unitStatBlock(data, name, opts.beast ? { beast: true } : undefined);
+        var block = opts.block || (opts.unit ? unitBlock(opts.unit) : R.unitStatBlock(data, name, opts.beast ? { beast: true } : undefined));
         if (!block) return null;
-        var type = opts.beast ? null : R.unitTypeOf(name, data);
+        var type = opts.beast || opts.block ? null : R.unitTypeOf(name, data);
         var arch = type && W.archetypes[type];
         var leader = type === 'lieutenant';
         var lead = opts.lead || (arch ? 'Military unit • ' + plural(arch.size, 'soldier') : leader ? 'One officer' : opts.beast ? 'Menagerie beast' : '');
@@ -486,6 +487,59 @@
         return (Array.isArray(state.warRecovery) ? state.warRecovery : []).filter(function (r) {
           return r && r.kind === kind && (name === undefined || r.name === name);
         });
+      }
+
+      /* ---------- The creatures (pull request 7, Harry, 14 October 2026) ----------
+         Elara's wyvern, and the griffins and dire wolves the DM grants in the
+         Explorer. Each shows its name, its kind, how it is doing and its War
+         Table line; hovering over it (or moving to it with the Tab key) shows
+         its stat block. The rules are in creature-rules.js. */
+      function creatureKindLine(c) {
+        var owner = R.creatureOwnerName(data, c);
+        var bits = [R.speciesName(data, c.species)];
+        if (owner) bits.push(owner + '\'s own');
+        /* One with no name already says when it was granted ("Griffin (granted Day 5)"). */
+        else if (c.name && typeof c.grantedDay === 'number') bits.push('granted ' + R.dayLabel(c.grantedDay));
+        if (c.status === 'housed' && c.home) bits.push(R.creatureFacilityName(data, c.home));
+        return bits.join(' • ');
+      }
+      function creatureTip(c) {
+        var block = R.creatureStatBlock(state, data, c.id);
+        if (!block) return null;
+        var sp = R.creatureSpecies(data, c.species) || {};
+        var days = R.clampInt(sp.woundedDays === undefined ? 21 : sp.woundedDays, 1, 365);
+        var st = R.creatureStatus(state, data, c);
+        var notes = [];
+        if (st.kind !== 'guarding' && st.line) notes.push(st.line);
+        if (c.status !== 'housed') notes.push('It defends the Ironbow once it has a home.');
+        notes.push('Fights only when the Ironbow is attacked (Defend Bastion), never on a War Action. Never killed or captured: at worst badly wounded for ' + R.daysText(days) + '.');
+        return statTip(null, { block: block, lead: creatureKindLine(c), notes: notes });
+      }
+      /* One creature's row: data-test <prefix>-<id>, and its status and War
+         Table lines <prefix>-status-<id> and <prefix>-war-<id> (the panels
+         use 'creature', Management 'mgmt-creature'). compact (Management):
+         two lines, its War Table line only on hover. */
+      function creatureRow(c, prefix, compact) {
+        var test = prefix + '-' + c.id;
+        var name = R.creatureName(data, c);
+        var st = R.creatureStatus(state, data, c);
+        var war = R.creatureWarLine(data, c);
+        var row = el('div', {
+          class: 'tsi-bas-item tsi-bas-item--tip tsi-bas-creature tsi-bas-creature--' + st.kind, 'data-test': test, 'data-creature': c.id, 'data-status': st.kind,
+          tabindex: '0', role: 'group', 'aria-label': name + ': ' + creatureKindLine(c) + '. ' + st.line
+        }, [
+          el('div', { class: 'tsi-bas-item__text' }, [
+            el('div', { class: 'tsi-bas-item__name tsi-bas-creature__name', text: name }),
+            compact ? el('div', { class: 'tsi-bas-item__type' }, [creatureKindLine(c) + ' • ', el('span', { class: 'tsi-bas-creature__status', 'data-test': prefix + '-status-' + c.id, text: st.line })]) : null,
+            compact ? null : el('div', { class: 'tsi-bas-item__type', text: creatureKindLine(c) }),
+            compact ? null : el('div', { class: 'tsi-bas-creature__status', 'data-test': prefix + '-status-' + c.id, text: st.line }),
+            war && c.status === 'housed' && !compact ? el('div', { class: 'tsi-bas-item__meta', 'data-test': prefix + '-war-' + c.id, text: war }) : null
+          ])
+        ]);
+        var tip = function () { return creatureTip(c); };
+        bindTip(row, tip, { noChange: true });
+        bindFocusTip(row, row, tip);
+        return row;
       }
 
       /* ================================================================
@@ -656,17 +710,20 @@
           var clan = clanTitle(r.clan);
           /* A Port Charter (pull request 5). An older copy of the suite can
              strip a receipt's kind; the Charter it made still names it. */
-          var made = r.type === 'charter' ? null : R.charterById(state, r.id);
+          /* A griffin or dire wolf the DM granted (pull request 7). */
+          var creature = r.type === 'creature';
+          var made = r.type === 'charter' || creature ? null : R.charterById(state, r.id);
           var charter = r.type === 'charter' || !!made;
           /* A parcel collected in the Explorer (pull request 6), known by its
              receipt's kind or, if an older copy stripped that, by its
              pickup id (which only a parcel pickup has). */
-          var pid = TSI.bridge ? TSI.bridge.parcelIdOf(r.id) : '';
+          var pid = TSI.bridge && !creature ? TSI.bridge.parcelIdOf(r.id) : '';
           var sent = pid ? R.parcelById(state, pid) : null;
-          var parcel = !charter && (r.type === 'parcel_collected' || !!pid);
+          var parcel = !charter && !creature && (r.type === 'parcel_collected' || !!pid);
           var town = parcel ? R.courierPointName(r.point || (sent ? sent.point : '')) : '';
           var what = charter ? 'Port Charter: ' + R.portWithClan(data, made ? made.port : r.port, made ? made.clan : r.clan) : clan;
-          var head = parcel
+          var head = creature ? R.creatureReceiptHead(data, r)
+            : parcel
             ? (r.r === 'applied' ? 'Parcel collected: ' + town + (r.held ? ' (already recorded)' : '') : (r.r === 'skipped' ? 'Skipped: ' : 'Refused: ') + 'parcel collected at ' + town)
             : charter
             ? (r.r === 'applied' ? what + (r.held ? ' (already held)' : '') : (r.r === 'skipped' ? 'Skipped: ' : 'Refused: ') + what)
@@ -676,7 +733,7 @@
           bridgeList.appendChild(el('div', { class: 'tsi-bas-influence__logrow tsi-bas-influence__logrow--' + r.r, 'data-test': 'bridge-row', 'data-result': r.r }, [
             el('div', { class: 'tsi-bas-influence__loghead' }, [el('strong', { text: head }), typeof r.day === 'number' ? ' · ' + R.dayLabel(r.day) : '']),
             r.text ? el('div', { class: 'tsi-bas-influence__logtext', text: r.text }) : null,
-            r.why ? el('div', { class: 'tsi-bas-influence__logwhy', text: r.why + (r.r === 'skipped' ? (parcel ? ' The items stay in the Party bags.' : charter ? ' Grant it again in the Explorer if it should count.' : ' Type it in above if it should count.') : '') }) : null
+            r.why ? el('div', { class: 'tsi-bas-influence__logwhy', text: r.why + (r.r === 'skipped' ? (parcel ? ' The items stay in the Party bags.' : charter || creature ? ' Grant it again in the Explorer if it should count.' : ' Type it in above if it should count.') : '') }) : null
           ]));
         });
       }
@@ -1184,6 +1241,10 @@
       var defMeta = muted('None recruited');
       defMeta.setAttribute('data-test', 'defenders-meta');
       var beastList = el('div', { class: 'tsi-bas-list', 'data-test': 'beasts' });
+      /* The creatures (pull request 7): every one the Ironbow holds. They
+         come and go only through their buildings' House orders and the
+         Explorer, so there's no Remove button. */
+      var creatureList = el('div', { class: 'tsi-bas-list', 'data-test': 'creatures' });
       /* The treasury, in the map's top bar: saved when you finish typing
          (Enter, or leaving the box), not on every key. */
       var treasuryInput = numberInput('treasury', { min: '0', 'aria-label': 'Treasury (gp)', class: 'tsi-input tsi-bas-num tsi-bas-treasury__input' });
@@ -1214,7 +1275,9 @@
           ]),
           defValue,
           label('Menagerie Beasts'),
-          beastList
+          beastList,
+          label('Creatures'),
+          creatureList
         ]),
         el('div', { class: 'tsi-bas-box tsi-bas-box--art tsi-bas-box--military' }, [
           el('div', { class: 'tsi-bas-row__top' }, [
@@ -1331,6 +1394,10 @@
         defValue.textContent = String(state.defenders.count);
         defMeta.textContent = state.defenders.count === 0 ? 'None recruited' : state.defenders.armed ? 'Armed' : 'Unarmed';
         renderForceList(beastList, state.defenderBeasts, 'No beasts recruited yet.', 'beast', 'beast');
+        TSI.clear(creatureList);
+        var crs = R.creatures(state);
+        if (!crs.length) creatureList.appendChild(muted('None yet. The Wyvern Roost, Griffin Tower and Dire Wolf Den house them.'));
+        crs.forEach(function (c) { creatureList.appendChild(creatureRow(c, 'mgmt-creature', true)); });
         renderForceList(militaryList, state.military, 'No military recruited yet.', 'military', 'military');
         setValue(treasuryInput, state.treasuryGP);
       }
@@ -1769,8 +1836,8 @@
             el('div', { class: 'tsi-bas-ma__main' }, [
               el('div', { class: 'tsi-bas-item__name', text: maName(ma) }),
               el('div', { class: 'tsi-bas-item__meta', text: isDefence(ma)
-                ? clanTitle(ma.targetKey) + ' attacked your Bastion on ' + R.dayLabel(ma.day) + '. Defending it: ' + (ma.undefended ? 'nobody' : R.militaryCommitLine(ma.commit))
-                : 'Committed: ' + R.militaryCommitLine(ma.commit) }),
+                ? clanTitle(ma.targetKey) + ' attacked your Bastion on ' + R.dayLabel(ma.day) + '. Defending it: ' + (ma.undefended ? 'nobody' : R.militaryCommitLine(ma.commit, state, data))
+                : 'Committed: ' + R.militaryCommitLine(ma.commit, state, data) }),
               el('div', { class: 'tsi-bas-ma__status', 'data-test': 'ma-status-' + i, text: R.militaryStatus(ma) }),
               R.patrolLine(ma) ? el('div', { class: 'tsi-bas-item__meta', 'data-test': 'ma-patrol-' + i, text: R.patrolLine(ma) }) : null,
               summary.length ? el('div', { class: 'tsi-bas-ma__chips' }, summary.map(chip)) : null
@@ -1841,7 +1908,7 @@
           body: [
             el('div', { class: 'tsi-bas-ma-pop' }, [
               el('div', { class: 'tsi-bas-ma-pop__headline', text: 'Your forces muster for battle' }),
-              muted('Committed: ' + R.militaryCommitLine(ma.commit) + '.'),
+              muted('Committed: ' + R.militaryCommitLine(ma.commit, state, data) + '.'),
               cut ? muted(cut.charAt(0).toUpperCase() + cut.slice(1)) : null,
               m ? muted('Enemy: ' + tierName(ma.tier) + '. ' + R.missionEstimateLine(m, data)) : null,
               chips.length ? el('div', { class: 'tsi-bas-ma__chips' }, chips.map(chip)) : null,
@@ -1899,7 +1966,7 @@
           ma.undefended
             ? el('p', { class: 'tsi-bas-ma-pop__text', 'data-test': 'attack-undefended', text: 'Nobody is free to defend the Bastion, so ' + clanTitle(ma.targetKey) + ' takes what it came for unopposed. ' + loss })
             : [
-              muted('Standing to defend the Ironbow: ' + R.militaryCommitLine(ma.commit) + '.', 'tsi-bas-attack__line'),
+              muted('Standing to defend the Ironbow: ' + R.militaryCommitLine(ma.commit, state, data) + '.', 'tsi-bas-attack__line'),
               m ? muted('Enemy: ' + tierName(ma.tier) + '. ' + R.missionEstimateLine(m, data), 'tsi-bas-attack__line') : null,
               R.patrolLine(ma) ? el('div', { class: 'tsi-bas-muted tsi-bas-attack__line tsi-bas-attack__patrol', 'data-test': 'attack-patrol', text: R.patrolLine(ma) }) : null,
               el('p', { class: 'tsi-bas-ma-pop__text', 'data-test': 'attack-more', text: 'Defend the Ironbow now: roll for the Weather Conditions, your forces’ Morale and their Luck, then fight the battle on the Ironbow coast. Or choose Later and defend it from the Banner & War Council panel. An attack can’t be called off. If the Bastion falls: ' + loss.charAt(0).toLowerCase() + loss.slice(1) })
@@ -2669,10 +2736,13 @@
         var isCraft = fac.id === 'workshop' && fn.id === 'craft';
         /* The Hall's Register Port Charter: a list of the Charters to register (pull request 5). */
         var isCharter = !!fn.portCharter;
+        /* A House order (pull request 7): the Roost's houses Elara's wyvern;
+           the Tower's and the Den's list the creatures waiting for a home. */
+        var isHousing = !!(fn.housesSpecies || fn.housesCreature);
         var options = R.fnOptions(state, data, fac, fn);
         var select = null;
         var chooser = null;
-        if ((fn.options && fn.options.length) || isCraft || (isCharter && options.length)) {
+        if ((fn.options && fn.options.length) || isCraft || (isCharter && options.length) || (fn.housesSpecies && options.length)) {
           select = el('select', { class: 'tsi-input tsi-bas-fn__select', 'aria-label': fn.label, 'data-test': 'sel-' + key }, options.map(function (o, idx) {
             var lab = o && typeof o === 'object' && 'label' in o ? o.label : String(o);
             var cost = o && o.costGP !== undefined && o.costGP !== null ? ' (' + o.costGP + 'gp)' : '';
@@ -2696,15 +2766,23 @@
         var daysLine = el('div', { class: 'tsi-bas-fn__days', 'data-test': 'days-' + key });
         /* A production order (pull request 3): what the chosen recipe uses and makes. */
         var goodsLine = fn.production ? el('div', { class: 'tsi-bas-fn__goods', 'data-test': 'goods-' + key }) : null;
+        /* Why a House order can't be given now, in a sentence (pull request 7). */
+        var whyLine = isHousing ? el('div', { class: 'tsi-bas-fn__why', 'data-test': 'why-' + key, hidden: true }) : null;
         function chosenNow() { return fn.production && fn.options && fn.options.length ? fn.options[select ? R.clampInt(select.value, 0) : 0] || null : null; }
         function refresh() {
           var chosen = chosenNow();
           var why = repair ? null : !avail.ok ? avail.message : fn.production ? (R.productionBusy(state, data, fac, fn) || R.recipeBlocker(state, data, fac, fn, chosen))
             : isCharter && R.registerBusy(state, data) ? R.registerBusy(state, data)
-            : isCharter && !options.length ? 'No Port Charter to register: the DM grants one in the Explorer, and each is registered once.' : null;
+            : isCharter && !options.length ? 'No Port Charter to register: the DM grants one in the Explorer, and each is registered once.'
+            : isHousing ? R.housingBlocker(state, data, fac, fn) || null : null;
           issue.disabled = !!(locked || cd > 0 || repair > 0 || why);
           issue.title = repair ? repairText(fac, repair) : why || null;
-          issue.textContent = repair ? 'Under Repair' : !avail.ok ? avail.message : why && fn.production ? 'Can\'t order yet' : why && isCharter ? (options.length ? 'One at a time' : 'No Port Charter to register') : cd > 0 ? 'Cooldown: ' + R.daysText(cd) : 'Issue Order';
+          issue.textContent = repair ? 'Under Repair' : !avail.ok ? avail.message : why && fn.production ? 'Can\'t order yet' : why && isCharter ? (options.length ? 'One at a time' : 'No Port Charter to register')
+            : why && isHousing ? housingShort(fac, fn) : cd > 0 ? 'Cooldown: ' + R.daysText(cd) : 'Issue Order';
+          if (whyLine) {
+            whyLine.hidden = !(why && !repair && avail.ok);
+            whyLine.textContent = whyLine.hidden ? '' : why;
+          }
           daysLine.textContent = 'Takes ' + R.daysText(R.orderDaysAt(state, data, fac, fn, chosen));
           if (goodsLine) {
             var uses = (chosen && chosen.inputs || []).map(function (x) { return R.goodsAmountText(data, x.good, x.qty) + ' (the Warehouse has ' + R.goodsCountText(data, x.good, R.goodsQty(state, x.good)) + ')'; });
@@ -2725,9 +2803,20 @@
           daysLine,
           chooser,
           goodsLine,
+          whyLine,
           issue,
           !isCraft && fn.notes ? el('div', { class: 'tsi-bas-fn__notes', text: fn.notes }) : null
         ]);
+      }
+      /* A House order's button when it can't be given (the sentence is under it). */
+      function housingShort(fac, fn) {
+        if (fn.housesCreature) {
+          if (R.creatureById(state, String(fn.housesCreature))) return 'Already at the Ironbow';
+          return R.houseOrderFor(state, String(fn.housesCreature)) ? 'Being housed' : 'Can\'t order yet';
+        }
+        if (R.houseOrderAt(state, fac.id)) return 'One at a time';
+        if (!R.waitingCreatures(state, data, fn.housesSpecies).length) return 'None waiting';
+        return R.creatureRoom(state, data, fac.id).free <= 0 ? 'No room' : 'Can\'t order yet';
       }
 
       /* ---------- The War Room's Recruit list (war phase 2) ----------
@@ -3108,6 +3197,7 @@
           id === 'workshop' ? el('div', { class: 'tsi-bas-facpanel__artisan' }, [label('Artisan Tools'), artCard.root]) : null,
           id === 'dock' ? cargoSection() : null,
           id === R.COURIER_FAC ? courierSection() : null,
+          creatureSection(id),
           /* A facility in a construction slot can be demolished (Harry, 13
              October 2026); the five starting facilities can't. */
           B.startingBuilt.indexOf(id) === -1 ? el('div', { class: 'tsi-bas-facpanel__demolish' }, [
@@ -3351,6 +3441,51 @@
         log(res.log[0], res.log[1]);
         done();
       });
+
+      /* ---------- The creatures at the Wyvern Roost, Griffin Tower and Dire Wolf Den (pull request 7) ----------
+         Those living here, and at the Tower and the Den those of its kind
+         waiting for a home and the room it has (one per level). The House
+         order above is the panel's action; this only shows. null for a
+         building no kind of creature lives in. */
+      function creatureSection(facId) {
+        var sp = R.creaturesData(data).species || {};
+        var kinds = Object.keys(sp).filter(function (k) { return R.speciesHome(data, k) === facId; });
+        if (!kinds.length) return null;
+        var fac = R.facility(data, facId);
+        var at = R.creaturesAt(state, data, facId);
+        var noun = R.speciesNoun(data, kinds[0]);
+        var room = at.room;
+        var roomLine = null;
+        if (room) {
+          var used = room.housed + room.pending;
+          var free = Math.max(0, room.capacity - used);
+          var text = 'Room: ' + used + ' of ' + room.capacity + ' taken' + (room.pending ? ' (1 being housed)' : '') + ', ' + free + ' free. ';
+          text += room.over
+            ? 'More live here than a Level ' + room.level + ' ' + fac.name + ' houses (it was rebuilt): they all stay, and housing another waits for room.'
+            : 'Each level of the ' + fac.name + ' houses one ' + noun + (!free && room.level < R.MAX_LEVEL ? '; upgrade it to house more.' : '.');
+          roomLine = el('div', { class: 'tsi-bas-creatures__room' + (room.over ? ' tsi-bas-creatures__room--over' : ''), 'data-test': 'creature-room-' + facId, text: text });
+        }
+        var group = function (title, test, list, none) {
+          return el('div', { class: 'tsi-bas-cargo__group' }, [
+            el('b', { text: title }),
+            list.length ? el('div', { class: 'tsi-bas-list', 'data-test': test }, list.map(function (c) { return creatureRow(c, 'creature'); })) : muted(none)
+          ]);
+        };
+        var fn = (fac.functions || [])[0];
+        var houseName = fn ? fn.label : 'its House order';
+        var later = R.creaturesComingLater(data);
+        return el('div', { class: 'tsi-bas-facpanel__cargo tsi-bas-facpanel__creatures', 'data-test': 'creatures-' + facId }, [
+          label('Creatures'),
+          roomLine,
+          el('div', { class: 'tsi-bas-creatures__lists' }, [
+            group('Living here', 'creatures-housed-' + facId, at.housed,
+              room ? 'None yet. ' + houseName + ', above, gives a home to one the DM granted in the Explorer.' : 'None yet. Give the order ' + houseName + ', above, to record ' + (fn && fn.housesCreature ? R.creatureName(data, { id: String(fn.housesCreature) }) : 'it') + ' here.'),
+            room ? group('Waiting for a home', 'creatures-waiting-' + facId, at.waiting,
+              'None. The DM grants a ' + noun + ' in the Explorer (Grant a creature…, under Sent to the Bastion).') : null
+          ]),
+          later ? el('div', { class: 'tsi-bas-cargo__group tsi-bas-courier__later', 'data-test': 'creatures-later-' + facId }, [el('b', { text: 'Coming later' }), muted(later)]) : null
+        ]);
+      }
 
       /* ---------- The Courier Exchange's parcels (pull request 6, Harry, 14 October 2026) ----------
          A parcel of supplies from the Warehouse goes to a town the level
@@ -3672,6 +3807,8 @@
             'Anything it has already made stays' + (facId === 'hall_of_emissaries' ? ', and your agreements, contracts and sea routes carry on' : '') + '. ' +
             /* The Courier Exchange's parcels already sent carry on (pull request 6). */
             (facId === R.COURIER_FAC && R.courierDemolishNote(state) ? R.courierDemolishNote(state) + ' ' : '') +
+            /* Creatures living here stay at the Ironbow (pull request 7). */
+            (R.creatureDemolishNote(state, data, facId) ? R.creatureDemolishNote(state, data, facId) + ' ' : '') +
             'It can be built again later ' + (R.isPlotFacility(data, facId) ? 'on a free Development Plot' + (R.plotsForLevel(state.partyLevel, data) ? '' : ' (plots open at party level 9)') : 'from an empty slot') + '.';
         var ok = await ask(msg, building ? 'Stop building' : 'Demolish', building ? 'Stop building' : 'Demolish');
         if (!ok || !life.alive) return;
@@ -3785,6 +3922,11 @@
         /* So does a parcel collected in the Explorer (pull request 6). */
         if (res.parcels && res.parcels.length) {
           notice(res.parcels.join(' '), { type: 'info', title: 'Courier Exchange.', id: 'tsi-bas-courier', timeout: 14000 });
+        }
+        /* And a griffin or dire wolf the DM granted (pull request 7): each
+           line is a sentence starting "From the Explorer: …". */
+        if (res.creatures && res.creatures.length) {
+          notice(res.creatures.join(' '), { type: 'info', title: 'Creatures.', id: 'tsi-bas-creature', timeout: 14000 });
         }
         if (res.applied.length) {
           notice('From the Explorer: ' + res.applied.join(' ') + (res.applied.length === 1 ? ' Clan Influence lists it.' : ' Clan Influence lists them.'), { type: 'info', title: 'Honour/Respect.', id: 'tsi-bas-bridge', timeout: 12000 });
@@ -4675,8 +4817,14 @@
           [influenceCard, 'open-influence'], [favourCard, 'open-favour'], [warCard, 'open-war'], [idCard, 'identity-badge'],
           [dipCard, 'tile-hall_of_emissaries'], [ordersCard, 'orders-count'], [artCard, 'tile-workshop']];
         for (var i = 0; i < fixed.length; i++) if (fixed[i][0].root.querySelector(sel)) return fixed[i][1];
-        var m = /^(?:issue|sel|days)-([a-z_]+)__/.exec(test) || /^repair-note-([a-z_]+)$/.exec(test);
+        var m = /^(?:issue|sel|days|why|goods)-([a-z_]+)__/.exec(test) || /^repair-note-([a-z_]+)$/.exec(test) ||
+          /^(?:creatures|creature-room|creatures-housed|creatures-waiting|creatures-later)-([a-z_]+)$/.exec(test);
         if (m) return 'tile-' + m[1];
+        /* A creature's row in its building's panel (pull request 7): where it
+           lives, or the building its kind waits for. */
+        var cm = /^creature(?:-status|-war)?-(.+)$/.exec(test);
+        var cr = cm ? R.creatureById(state, cm[1]) : null;
+        if (cr) return 'tile-' + (cr.status === 'housed' && cr.home ? cr.home : R.speciesHome(data, cr.species));
         if (/^wr-/.test(test)) return 'tile-war_room';
         if (test === 'clear-builds' || (/^build-[a-z_]+$/.test(test) && test !== 'build-panel')) {
           var kind = R.isPlotFacility(data, test.slice(6)) ? 'plot' : 'slot';

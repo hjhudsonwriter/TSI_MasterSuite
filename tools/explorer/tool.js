@@ -227,8 +227,15 @@
         sectionWith('Party bags', btn('+ Add', addToBags, 'tsi-exp-mini', 'bags-add'), [bagsList, row([btnChart]), chartWhy, ironbowBox]),
         section('Active Effects', [effectsList]),
         section('Threads', [threadsList]),
-        /* Port Charter…: the DM grants one (pull request 5, 14 October 2026). */
-        sectionWith('Sent to the Bastion', btn('Port Charter…', function () { onCharter(null, 'dm'); }, 'tsi-exp-mini', 'charter-open'), [sentList])
+        /* Port Charter…: the DM grants one (pull request 5, 14 October 2026).
+           Grant a creature…: a griffin or a dire wolf (pull request 7). */
+        section('Sent to the Bastion', [
+          row([
+            btn('Port Charter…', function () { onCharter(null, 'dm'); }, 'tsi-exp-mini', 'charter-open'),
+            btn('Grant a creature…', function () { onCreature(); }, 'tsi-exp-mini', 'creature-open')
+          ], 'tsi-exp-row--grants'),
+          sentList
+        ])
       ]);
 
       var wrap = el('div', { class: 'tsi-exp-wrap' }, [controls, stage, travel]);
@@ -1278,6 +1285,7 @@
               el('div', { class: 'tsi-exp-item__name' }, [
                 el('span', { class: 'tsi-exp-status tsi-exp-status--' + st.kind, 'data-test': 'sent-status', text: LABEL[st.kind] || st.kind }),
                 ' ', el('strong', { text: m.type === 'charter' ? 'Port Charter: ' + B.portLabel(m.port)
+                  : m.type === 'creature' && B.creatureTitle ? B.creatureTitle(m)
                   : B.isParcelMessage && B.isParcelMessage(m) ? 'Parcel collected: ' + pickupTown(m)
                   : B.waitsForNewer(m) ? 'A change from a newer copy of the suite' : 'Clan ' + B.clanName(m.clan) + ' ' + B.signed(m.hr) }),
                 ' · ' + dayText + (m.from && m.from.code ? ' · ' + m.from.code : '')
@@ -1374,6 +1382,56 @@
           });
         });
       }
+
+      /* ---------- Grant a creature (pull request 7, Harry, 14 October 2026) ----------
+         The DM grants the Ironbow a griffin or a dire wolf when the party has
+         won one: its kind, a name (optional) and what it's for (optional).
+         The Bastion holds it, waiting for a home, until the Griffin Tower's
+         or the Dire Wolf Den's House order gives it one. Nothing else
+         changes in the Explorer (no companion, nothing in the Party bags).
+         The rule is J.grantCreature (journey.js). */
+      var onCreature = TSI.oneAtATime(function () { return creatureDialog(); });
+      function creatureDialog() {
+        var B = TSI.bridge;
+        var kinds = B.grantable();
+        var kindSel = el('select', { class: 'tsi-input tsi-exp-select', 'aria-label': 'Creature', 'data-test': 'creature-species' }, kinds.map(function (k) {
+          return el('option', { value: k, text: B.speciesName(k) });
+        }));
+        var or = function (list) { return list.length < 2 ? list.join('') : list.slice(0, -1).join(', ') + ' or ' + list[list.length - 1]; };
+        var kindsText = or(kinds.map(function (k) { var n = B.speciesName(k).toLowerCase(); return (/^[aeiou]/.test(n) ? 'an ' : 'a ') + n; }));
+        var homesText = or(kinds.map(function (k) { return 'the ' + B.speciesHomeName(k); }));
+        var cd = window.TSI_DATA && window.TSI_DATA.bastionCreatures;
+        var houseDays = cd && typeof cd.houseDays === 'number' ? cd.houseDays : 3;
+        var nameMax = B.NAME_MAX || 40;
+        var nameBox = el('input', { type: 'text', id: 'tsi-exp-creature-name', maxlength: String(nameMax), class: 'tsi-input', placeholder: 'Optional, at most ' + nameMax + ' letters', 'data-test': 'creature-name' });
+        var whyBox = el('input', { type: 'text', id: 'tsi-exp-creature-why', maxlength: '120', class: 'tsi-input', placeholder: 'Optional', 'data-test': 'creature-why' });
+        kindSel.id = 'tsi-exp-creature-kind';
+        var body = [
+          el('p', { text: 'Grant the Ironbow ' + kindsText + ' when the party has won one. The Bastion holds it, waiting for a home, until ' + homesText + ' houses it (that building\'s House order: ' + houseDays + ' days, and one creature for each level of the building). Once housed, it defends the Ironbow whenever the Ironbow is attacked.' }),
+          el('div', { class: 'tsi-exp-creature-form' }, [
+            el('label', { class: 'tsi-exp-muted', for: 'tsi-exp-creature-kind', text: 'Creature:' }), kindSel,
+            el('label', { class: 'tsi-exp-muted', for: 'tsi-exp-creature-name', text: 'Its name:' }), nameBox,
+            el('label', { class: 'tsi-exp-muted', for: 'tsi-exp-creature-why', text: 'What for:' }), whyBox
+          ])
+        ];
+        if (TSI.store.mode === 'memory') body.push(el('p', { class: 'tsi-exp-tip', text: 'This browser isn\'t saving, so the Bastion can\'t see a grant.' }));
+        return TSI.modal.open({
+          title: 'Grant a creature',
+          body: body,
+          escValue: false,
+          actions: [{ label: 'Cancel', value: false }, { label: 'Grant', value: true, primary: true }],
+          onOpen: function (api) { if (api && api.dialog) api.dialog.setAttribute('data-test', 'creature-dialog'); }
+        }).then(function (ok) {
+          if (!ok || !life.alive) return false;
+          var res = J.grantCreature(state, kindSel.value, { name: nameBox.value, text: whyBox.value, memory: TSI.store.mode === 'memory' });
+          if (!res.ok) { note(res.message); return false; }
+          saveNow();
+          renderSent();
+          setNotice(res.line);
+          return true;
+        });
+      }
+
       /* The harbour box in a port's town picture: Ironbow's Port Charter
          there, and the Grant button. */
       var openHarbour = null;   /* the harbour box showing now, kept up to date by readBastion */

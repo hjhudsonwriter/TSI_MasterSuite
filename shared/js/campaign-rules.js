@@ -95,6 +95,9 @@
         } else if (o.facId === 'hall_of_emissaries' && o.fnId !== 'upgrade_hall' && o.fnId !== 'register_port_charter' && !(isObj(m) && m.kind === 'upgrade')) {
           add(day, 'roll', label + ' needs your roll.');
         } else {
+          /* Every other order, the creature buildings' House orders (pull
+             request 7) among them: "Griffin Tower: House a Griffin
+             (Swiftwing) is complete." No roll is ever asked for. */
           add(day, 'order', label + ' is complete.');
         }
       });
@@ -113,8 +116,11 @@
       });
       (Array.isArray(ba.warRecovery) ? ba.warRecovery : []).forEach(function (r) {
         if (!isObj(r)) return;
+        /* A creature (the Bastion's pull request 7) goes by its own name:
+           "Elara's wyvern is fit to fight again." */
         add(r.untilDay, 'recovery', r.status === 'separated' ? str(r.name) + ' has found the way back to the Bastion.'
-          : r.kind === 'beast' ? 'The ' + str(r.name) + ' is fit to fight again.' : str(r.name) + ' is fit for duty again.');
+          : r.kind === 'beast' ? 'The ' + str(r.name) + ' is fit to fight again.'
+          : r.kind === 'creature' ? (str(r.name) || 'A creature') + ' is fit to fight again.' : str(r.name) + ' is fit for duty again.');
       });
       var tn = isObj(ba.tradeNetwork) ? ba.tradeNetwork : {};
       if (tn.active) {

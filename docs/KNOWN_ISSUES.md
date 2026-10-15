@@ -21,11 +21,11 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 
 | Tool | Must fix | Fixed by design | Deliberate | Later (Harry's call) | Not relevant / not a bug |
 |---|---|---|---|---|---|
-| Suite-wide (SUI) | 10 | 11 | 11 | 1 | 0 |
+| Suite-wide (SUI) | 10 | 11 | 12 | 1 | 0 |
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
-| Scarlett Isles Explorer (EXP) | 12 | 5 | 11 | 13 | 0 |
-| The Ironbow Bastion Manager (BAS) | 23 | 2 | 40 | 22 | 1 |
+| Scarlett Isles Explorer (EXP) | 12 | 5 | 12 | 13 | 0 |
+| The Ironbow Bastion Manager (BAS) | 23 | 2 | 42 | 23 | 1 |
 | Clan Crest Creator (CRS) | 0 | 4 | 6 | 3 | 3 |
 | Arenas of The Scarlett Isles (ARN) | 8 | 2 | 0 | 17 | 0 |
 | The Heartwood Ritual (RIT) | 9 | 1 | 0 | 15 | 1 |
@@ -341,6 +341,19 @@ These come from checking the eight tools against each other: the collision audit
 
   Back up before trying another copy.
 - **Evidence:** `shared/js/bridge-rules.js` (`parcelMessage`, `collectId`, `parcelIdOf`, `check`, `clean`, `statusOf`, `parcels`, `parcelView`), `shared/data/courier-points.js`, `tools/bastion/rules.js` (`applyInbox`, `cleanBridge`); tests in `tests/rules/courier.test.js`.
+
+### SUI-34 · The Explorer link's fourth kind: a creature the DM grants
+**Deliberate change** (the facilities overhaul, pull request 7, the creatures; Harry's answers, 14 October 2026) · applies something twice
+
+- **Before:** the link carried Honour/Respect changes, Port Charters and parcel pickups.
+- **After:**
+  - **A griffin or a dire wolf the DM grants** in the Explorer (EXP-42) travels to the Bastion as a new kind of message, with its kind and its name. The Bastion holds it once, waiting for a home, with its receipt in the same save (BAS-90). It needs no Clan.
+  - A copy of either tool that doesn't know this kind waits for it, with no receipt, as before; a Bastion starting from nothing skips grants sent before it started, with their own line in the Day Log.
+- **Older copies (SUI-19): back up before trying another copy.**
+  - **A pull request 6 (or older) copy of the Bastion deletes the creatures** the next time it saves (the list of creatures is new, so it doesn't know to keep it), but keeps the grants' receipts, so they never come back: grant the griffins and dire wolves again, and give House Elara's Wyvern again. It also drops House orders and the Library's chart order when they fall due, making nothing.
+  - A pull request 4 copy refuses creature grants for good.
+  - A pull request 6 copy of the Explorer keeps creature grants as they are and waits.
+- **Evidence:** `shared/js/bridge-rules.js` (`creatureMessage`, `check`, `clean`, `statusOf`, `creatureTitle`), `tools/bastion/rules.js` (`applyInbox`, `cleanBridge`, `cleanCreatures`); tests in `tests/rules/creatures.test.js`.
 
 ## Combat Tracker & VTT Battlemap
 Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point there).
@@ -1263,6 +1276,14 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 - **Known limits:** saves from different moments (an old single-tool file) can leave a pickup the Bastion has no record of: it's refused with a plain reason, and the DM takes the items out with ✕. With three or more parcels waiting at Timberport or Goldport, the town picture scrolls a little on the laptop.
 - **The review's fix (14 October 2026):** a parcel holding more than 99 of one supply (only possible if the room in `courier-data.js` is raised) is now collected in full; before, it would have waited at its town for good.
 - **Evidence:** `tools/explorer/journey.js` (`collectParcel`), `tools/explorer/tool.js` (`readBastion`, `renderBags`, `courierBox`, `openPlace`, `renderSent`); tests in `tests/rules/courier.test.js` and `tests/e2e/courier.test.js`.
+
+### EXP-42 · Grant a creature
+**Deliberate change** (pull request 7; Harry's answer, 14 October 2026: "the DM grants a griffin or a dire wolf in the Explorer, like a Port Charter") · applies something twice
+
+- **Before:** nothing in the Explorer could give the Ironbow a creature.
+- **After:** **Grant a creature…**, beside Port Charter… under Sent to the Bastion, asks which (Griffin or Dire Wolf), its name (optional, up to 40 letters) and what it's for, then **Grant** sends it once (a double click opens one pop-up; a browser that isn't saving refuses, so nothing is lost). Sent to the Bastion lists it as "Creature: Griffin (its name)", Waiting then Applied; once the Bastion has housed it, the line says it lives at the Ironbow now. Nothing goes into the Party bags, and the Explorer shows no companion.
+- **Not undoable:** a grant sent by mistake can't be taken back; the creature waits at the Bastion for good (BAS-91).
+- **Evidence:** `tools/explorer/journey.js` (`grantCreature`), `tools/explorer/tool.js` (`creatureDialog`, `renderSent`); tests in `tests/rules/creatures.test.js` and `tests/e2e/creatures.test.js`.
 
 ## The Ironbow Bastion Manager
 Old repo: `_legacy/bastion_manager` (file:line references point there).
@@ -2252,6 +2273,38 @@ None of these reached Harry.
 - **Damaged records:** a parcel record with no id or town is dropped only if it's closed or holds nothing; otherwise it's kept, so its items are never lost.
 - **A day passing while a question is open:** if the party makes camp in the Explorer while Recall parcel…'s question is open, the parcel's way home is worked out from the day you confirm (the Dock's Recall ship and Research's question work the same way).
 - **Evidence:** `tools/bastion/courier-rules.js` (`parcelRecallBlocker`, `cleanParcels`, `courierDemolishNote`), `tools/explorer/journey.js` (`collectParcel`).
+
+### BAS-89 · The Library & Scriptorium's Prepare Overland Travel Charts
+**Deliberate change** (Harry's answer, 14 October 2026) · other
+
+- **Before:** nothing at the Ironbow made Overland charts; they could only be added by hand (+ Add supplies, BAS-87).
+- **After:** the Library & Scriptorium's order **Prepare Overland Travel Charts** needs the Library at Level 2 and makes **1 Overland chart in 4 days**, with no gold and no ingredients, straight into the Warehouse, as the Fishery's packs go. One chart order runs at a time; the scripture **Research** order is unchanged (its four choices, 5 days, no gold) and can run beside it. + Add supplies stays for charts.
+- **Evidence:** `tools/bastion/data/facilities-data.js` (`library_scriptorium`: `prepare_overland_travel_charts`, `productionLimit: 1`); tests in `tests/rules/bastion.test.js` and `tests/e2e/creatures.test.js`.
+
+### BAS-90 · The creatures: Elara's wyvern, griffins and dire wolves
+**Deliberate change** (the facilities overhaul, pull request 7; Harry's answers, 14 October 2026) · applies something twice
+
+- **Before:** the Wyvern Roost, Griffin Tower and Dire Wolf Den were "In development", and Elara's wyvern lived at the Ironbow in the story only.
+- **After:**
+  - **The buildings** can be built, each in a construction slot (from party level 5, 21 days, no gold), with Harry's art. Building one never creates an animal.
+  - **A register of creatures** in the Bastion's save, each recorded once, never copied, and kept apart from the Menagerie (which is unchanged).
+  - **The Wyvern Roost's House Elara's Wyvern** (3 days, no gold, once ever) records Elara's own wyvern. It's shown as "Elara's wyvern" until Harry gives its name (`creatures-data.js`).
+  - **Griffins and dire wolves** come only when the DM grants one in the Explorer (EXP-42, SUI-34). The Bastion holds it, waiting for a home (a notice says so, and Clan Influence's Changes from the Explorer lists it), until the **Griffin Tower's House a Griffin** or the **Dire Wolf Den's House a Dire Wolf** (choose which; 3 days, no gold, one at a time) houses it. **One creature per level** of the building; one that has no room waits.
+  - **Panels:** each building's **Creatures** section shows the room (taken and free), those living there, those waiting, and what's coming later; hover over a creature for its stats. **Management** lists every creature, with no Remove.
+  - **On the War Table** (WAR-RULES): creatures defend the Ironbow only (Defend Bastion), each as its own unit under its own name: Elara's wyvern Cohesion 7, Attack +6, Defence 13, Move 6, Resolve +2, Flight, Battle Value 11; a griffin 5, +5, 12, 6, +1, Flight, 8; a dire wolf the War Table's Dire Wolf (7, Pack). They're never sent on a War Action, never open the War Council lock by themselves, and are **never killed or captured**: at worst badly wounded for 21 days. An unnamed one's token is its kind's, numbered (Gr1, Wo1).
+  - **Demolish** leaves creatures already housed at the Ironbow, still guarding it; a House order waiting there is cancelled and its creature waits again. Rebuilding gives them a home again (never twice).
+  - **Once only:** each grant has a receipt saved with the creature; House orders hold their creature; loading a save twice gives the same save; Reset Travel, the campaign file and Back up everything carry it all.
+- **The review's fixes (15 October 2026):** the room line says what's taken and free and suggests upgrading only when full; unnamed creatures' War Table tokens no longer carry the day number; the Explorer stops saying "house it" once a creature is housed; the data file says which two numbers must match a number kept elsewhere.
+- **Evidence:** `tools/bastion/data/creatures-data.js`, `tools/bastion/creature-rules.js`, `tools/bastion/data/facilities-data.js` (`wyvern_roost`, `griffin_tower`, `dire_wolf_den`), `tools/bastion/rules.js` (`defaultState`, `cleanCreatures`, `applyInbox`, `fnOptions`, `issueOrder`, `completeSimpleOrder`, `shiftDays`), `tools/bastion/war-campaign-rules.js` (`warForces`, `beginDefence`, `playerSide`, recovery), `tools/bastion/tool.js` (the creature panels, Management, notices, Clan Influence, Demolish), `tools/bastion/war-table.js`, `shared/js/campaign-rules.js`; tests in `tests/rules/creatures.test.js` and `tests/e2e/creatures.test.js`.
+
+### BAS-91 · The creatures' limits and choices made for Harry
+**Later, Harry's call** (pull request 7, 15 October 2026) · other
+
+- **A grant sent by mistake can't be undone:** the creature waits for good, and once housed it guards for good (there's no Release button). Undo it only with an Import of a backup. Say if a waiting creature should have a Release button, or Grant should ask first.
+- **An older copy of the Bastion deletes the creatures** (SUI-34): back up before trying another copy.
+- **Not yet (Harry's later steps):** the wyvern's name; care, training, bonding, riding, mounted flight, a companion on the Explorer, breeding; Roost upgrades (they unlock nothing yet; the Tower's and Den's add room); research; moving a Menagerie Dire Wolf into the Den.
+- **A creature can't be made to lose on purpose** at the table: the d6 after a defeat only matters if one is Defeated in a battle.
+- **Evidence:** `tools/bastion/creature-rules.js`, `tools/explorer/journey.js` (`grantCreature`).
 
 ## Clan Crest Creator
 Old repo: `_legacy/clan-crest-creator` (file:line references point there).
