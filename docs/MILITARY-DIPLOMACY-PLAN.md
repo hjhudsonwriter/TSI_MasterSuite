@@ -8,7 +8,7 @@ This file is for Harry and his planning assistant. It records Harry's answers of
 
 Nothing marked Proposed or To decide gets built until Harry approves the details. When a question is answered, write the answer under it and say "go".
 
-**Status (15 October 2026):** 8a is built and merged (#30) (the creature guards and the War Room's regiments, training, Recouping and Musters). 8b, the Shrines: S2, S9 and S10 answered (below); ready to build on Harry's go-ahead.
+**Status (15 October 2026):** 8a is built and merged (#30) (the creature guards and the War Room's regiments, training, Recouping and Musters). 8b part 1, the Shrines' Bastion half, is built and merged (#31); part 2, the Explorer's half (S2, S9, S10 answered below), is next.
 
 **Split, at Harry's request** (decisions of 15 October 2026 below):
 - **8a:** the two creature guards, plus the War Room.

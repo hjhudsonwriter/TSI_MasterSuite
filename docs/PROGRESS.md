@@ -9,6 +9,7 @@ Double-click `index.html` to open the suite. The plan is in `docs/PLAN.md`, the 
 ## Done
 
 ### The facilities overhaul, pull request 8b part 1: the Shrines, the Bastion's half (15 October 2026)
+Harry's check all passed; merged as #31 (15 October 2026).
 From Harry's Shrine specification and his answers S2, S9 and S10 (`docs/MILITARY-DIPLOMACY-PLAN.md`). Split at his request: the Explorer's half comes next.
 - **Orders:** each Shrine gains one at each level from 2 to 5 (BAS-95). They take 0%, 5%, 10% or 25% of the god's Favour when they start.
 - **Items:** they go to the Warehouse and the Courier Exchange carries them.
