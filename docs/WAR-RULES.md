@@ -67,6 +67,19 @@ The traits:
 - **Climber:** woods, rubble and dense woods cost it no extra movement.
 - **Swimmer:** can cross and stand in deep water.
 
+### Creatures (Harry, 14 October 2026)
+The Bastion's named creatures, housed at the Wyvern Roost, the Griffin Tower and the Dire Wolf Den (`tools/bastion/data/creatures-data.js`), are separate from the Menagerie's beasts:
+
+| Creature | Cohesion | Attack | Defence | Move | Resolve | Battle Value | Trait |
+|---|---|---|---|---|---|---|---|
+| Elara's wyvern | 7 | +6 | 13 | 6 | +2 | 11 | Flight |
+| Griffin | 5 | +5 | 12 | 6 | +1 | 8 | Flight |
+| Dire Wolf | 5 | +5 | 12 | 5 | +1 | 7 | Pack |
+
+- They fight **only when the Ironbow is attacked** (Defend Bastion), each as its own unit under its own name. They're never sent on a War Action, so they never open the War Council by themselves.
+- They're **never killed or captured**: if the d6 after a defeat would kill or capture one, it is badly wounded instead (unavailable for 21 days). Other results are as for beasts.
+- A creature recovering, or held by an attack still waiting to be fought, can't defend in a second one.
+
 ### The Bastion Defenders
 Defenders are individual people, while a Levy Infantry regiment is 150 soldiers. So defenders are counted by headcount and never become as strong as a regiment just because their counter looks the same.
 - **Armed defenders fight with the Levy Infantry profile.** A detachment of 150 has full strength: Cohesion 4 and Battle Value 3. A smaller detachment has 4 × (headcount ÷ 150) Cohesion, rounded, and at least 1.
@@ -135,7 +148,7 @@ While you're at war, an **At War** tag appears beside that Clan's name wherever 
 
 ### The Defend Bastion event
 While you're at war, the Bastion rolls a d6 for each Clan you're at war with **every 7 days of that war**, counted from the day it was declared (so a war declared on Day 3 rolls on Days 10, 17, 24…). On a 1, that Clan attacks, at most once a day, and never while an earlier attack is still waiting to be fought: your army is standing at the Ironbow for that one. "Sound the horns! Clan Bacca warships are approaching! Defend the Ironbow!"
-- **Your defenders:** every force free at the Bastion stands to defend it: defenders, Lieutenants, regiments and beasts not committed elsewhere or recovering.
+- **Your defenders:** every force free at the Bastion stands to defend it: defenders, Lieutenants, regiments, beasts and housed creatures not committed elsewhere or recovering.
 - **The attackers:** an army from that Clan's roster, its size rolled on a d6: 1–2 a small local force, 3–5 an established local force, 6 a major force.
 - **The rolls and the battle:** the Weather, Morale and Luck rolls, then the War Table, on the Ironbow coast map with its terrain already painted. The objective is Defend Bastion: keep them off your supply depot, or break their army.
 - **The Watchtower's Patrol:** if a Patrol completed on the day of the attack or in the 7 days before it, the attack pop-up and the War Council remind the DM that the Bastion Defenders have Advantage on all their rolls in this battle, as the Patrol's card says. The War Table doesn't roll it for you: roll two d20s at the table and type in the higher.
