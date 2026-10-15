@@ -111,7 +111,7 @@
 
   test('pull request 6: a parcel pickup is the third kind; its town and Clan are never checked, while the other two kinds\' Clans still are', function (t) {
     /* Pull request 7 added a fourth kind, 'creature' (creatures.test.js). */
-    t.same(Bg.TYPES, ['standing', 'charter', 'parcel_collected', 'creature']);
+    t.same(Bg.TYPES, ['standing', 'charter', 'parcel_collected', 'creature', 'rite']);
     var pick = { id: 'abcdef123:collect:0', type: 'parcel_collected', day: 4, clan: 'nobody', point: 'nowhere', parcel: 'abcdef123', hr: 0, text: 'x' };
     t.equal(Bg.check(pick), '', 'only its kind and id');
     t.ok(/Clan the Bastion doesn't know/.test(Bg.check(msg({ clan: 'nobody' }))), 'Honour/Respect still names a known Clan');

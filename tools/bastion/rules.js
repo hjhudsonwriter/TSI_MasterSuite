@@ -504,6 +504,14 @@
           out.done[id].creatureId = txt(r.creatureId, 80);
           out.done[id].held = r.held === true;
         }
+        /* A Great Rite given to the party (pull request 8b) says which rite
+           and whether it was already with the party. */
+        if (r.type === 'rite') {
+          out.done[id].type = 'rite';
+          out.done[id].rite = txt(r.rite, 40);
+          out.done[id].riteId = txt(r.riteId, 80);
+          out.done[id].held = r.held === true;
+        }
       });
     }
     return out;
@@ -523,8 +531,22 @@
       seen[g.id] = true;
       return true;
     }).map(function (g) {
-      return { id: g.id, rite: g.rite, god: RITES[g.rite], madeDay: dayNum(g.madeDay, 1), status: 'waiting' };
+      var out = { id: g.id, rite: g.rite, god: RITES[g.rite], madeDay: dayNum(g.madeDay, 1), status: g.status === 'assigned' ? 'assigned' : 'waiting' };
+      if (out.status === 'assigned') out.assignedDay = dayNum(g.assignedDay, out.madeDay);
+      return out;
     });
+  };
+  /* The Explorer's message says the DM gave this rite to the party: it is
+     marked, once (a second time changes nothing and says so). */
+  R.assignGreatRite = function (s, m) {
+    var rid = TSI.bridge && TSI.bridge.riteIdOf ? TSI.bridge.riteIdOf(m.id) : '';
+    var g = (Array.isArray(s.greatRites) ? s.greatRites : []).filter(function (x) { return isObj(x) && x.id === rid; })[0];
+    if (!g) return { r: 'refused', why: 'The Ironbow has no Great Rite waiting under that name.' };
+    if (g.rite !== m.rite) return { r: 'refused', why: 'It names ' + R.RITE_NAMES[m.rite] + ', but that rite is ' + R.RITE_NAMES[g.rite] + '.' };
+    if (g.status === 'assigned') return { r: 'applied', held: true, rite: g.rite, riteId: g.id };
+    g.status = 'assigned';
+    g.assignedDay = s.day;
+    return { r: 'applied', held: false, rite: g.rite, riteId: g.id };
   };
   /* The god whose Favour a Shrine's order spends ('shrine_aurush' → 'aurush'). */
   R.shrineGod = function (facId) { var m = /^shrine_(telluria|aurush|pelagos)$/.exec(String(facId || '')); return m ? m[1] : ''; };
@@ -653,7 +675,11 @@
       if (m.type === 'charter') return { type: 'charter', port: txt(m.port, 40), held: false };
       if (m.type === 'parcel_collected') return parcelExtra(m, null);
       if (m.type === 'creature') return creatureExtra(m, null);
+      if (m.type === 'rite') return riteExtra(m, null);
       return {};
+    }
+    function riteExtra(m, res) {
+      return { type: 'rite', rite: txt(m.rite, 40), riteId: txt(res ? res.riteId : (B.riteIdOf ? B.riteIdOf(m.id) : ''), 80), held: !!(res && res.held) };
     }
     function creatureExtra(m, res) {
       return { type: 'creature', species: txt(m.species, 40), name: txt(m.name, 40), creatureId: res ? txt(res.creature.id, 80) : '', held: !!(res && !res.added) };
@@ -670,18 +696,20 @@
       var newer = 0;
       var pickups = 0;
       var grants = 0;
+      var rites = 0;
       B.outbox(explorerSave).forEach(function (m) {
         if (Object.prototype.hasOwnProperty.call(done, m.id)) return;
         receipt(m, 'skipped', Object.assign(charterExtra(m), { why: 'Sent before this Bastion started.' }));
         if (m.type === 'charter') charters += 1;
         else if (m.type === 'parcel_collected') pickups += 1;
         else if (m.type === 'creature') grants += 1;
+        else if (m.type === 'rite') rites += 1;
         else if (B.waitsForNewer && B.waitsForNewer(m)) newer += 1;
         out.skipped += 1;
       });
       s.bridge.fresh = false;
       out.changed = true;
-      var standing = out.skipped - charters - newer - pickups - grants;
+      var standing = out.skipped - charters - newer - pickups - grants - rites;
       if (newer) {
         R.log(s, 'From the Explorer', newer + (newer === 1 ? ' message' : ' messages') + ' from a newer copy of the suite, sent before this Bastion started, ' + (newer === 1 ? 'was' : 'were') + ' skipped, so nothing counts twice.', at);
       }
@@ -700,6 +728,11 @@
          request 7): none is held, so none can count twice. */
       if (grants) {
         R.log(s, 'From the Explorer', grants + (grants === 1 ? ' creature grant' : ' creature grants') + ', sent before this Bastion started, ' + (grants === 1 ? 'was' : 'were') + ' skipped, so nothing counts twice. Clan Influence lists ' + (grants === 1 ? 'it: grant it again in the Explorer if it should count.' : 'them: grant them again in the Explorer if they should count.'), at);
+      }
+      /* A Great Rite given to the party before this Bastion started (pull
+         request 8b): the Bastion holds none, so nothing counts twice. */
+      if (rites) {
+        R.log(s, 'From the Explorer', rites + (rites === 1 ? ' Great Rite handover' : ' Great Rite handovers') + ', sent before this Bastion started, ' + (rites === 1 ? 'was' : 'were') + ' skipped, so nothing counts twice.', at);
       }
       return out;
     }
@@ -755,6 +788,20 @@
           R.addWord(s, notice);
           out.creatures.push(notice);
         }
+        return;
+      }
+      /* A Great Rite given to the party (pull request 8b): marked once, and
+         Honour/Respect never changes. */
+      if (!why && m.type === 'rite') {
+        var rr = R.assignGreatRite(s, m);
+        receipt(m, rr.r, Object.assign(riteExtra(m, rr), { why: rr.r === 'refused' ? rr.why : '' }));
+        if (rr.r === 'refused') {
+          out.refused += 1;
+          R.log(s, 'From the Explorer', 'A Great Rite handover from the Explorer (' + fromText(m) + ') couldn\'t be used, so nothing changed: ' + rr.why, at);
+          return;
+        }
+        R.log(s, 'From the Explorer', R.RITE_NAMES[rr.rite] + (rr.held ? ' was already marked as with the party, so nothing changed' : ' went with the party (' + fromText(m) + ')') + '.', at);
+        if (!rr.held) R.addWord(s, 'From the Explorer: ' + R.RITE_NAMES[rr.rite] + ' went with the party.');
         return;
       }
       var res = why ? null : R.adjustStanding(s, m.clan, m.hr);
@@ -2964,7 +3011,7 @@
     /* The creatures (pull request 7): when each was granted and housed. */
     (Array.isArray(s.creatures) ? s.creatures : []).forEach(function (c) { mv(c, 'grantedDay'); mv(c, 'housedDay'); });
     /* The Great Rites (pull request 8b): the day each was made. */
-    (Array.isArray(s.greatRites) ? s.greatRites : []).forEach(function (g) { mv(g, 'madeDay'); });
+    (Array.isArray(s.greatRites) ? s.greatRites : []).forEach(function (g) { mv(g, 'madeDay'); if (g && g.assignedDay !== undefined) mv(g, 'assignedDay'); });
   };
   /* Read the Explorer's day for the first time (or before it has one): the
      Bastion moves to it, nothing passes. */
