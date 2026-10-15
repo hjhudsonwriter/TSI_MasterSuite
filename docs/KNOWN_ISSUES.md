@@ -21,11 +21,11 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 
 | Tool | Must fix | Fixed by design | Deliberate | Later (Harry's call) | Not relevant / not a bug |
 |---|---|---|---|---|---|
-| Suite-wide (SUI) | 10 | 11 | 12 | 1 | 0 |
+| Suite-wide (SUI) | 10 | 11 | 13 | 1 | 0 |
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
-| Scarlett Isles Explorer (EXP) | 12 | 5 | 12 | 13 | 0 |
-| The Ironbow Bastion Manager (BAS) | 23 | 2 | 42 | 23 | 1 |
+| Scarlett Isles Explorer (EXP) | 12 | 5 | 13 | 13 | 0 |
+| The Ironbow Bastion Manager (BAS) | 23 | 2 | 44 | 24 | 1 |
 | Clan Crest Creator (CRS) | 0 | 4 | 6 | 3 | 3 |
 | Arenas of The Scarlett Isles (ARN) | 8 | 2 | 0 | 17 | 0 |
 | The Heartwood Ritual (RIT) | 9 | 1 | 0 | 15 | 1 |
@@ -354,6 +354,19 @@ These come from checking the eight tools against each other: the collision audit
   - A pull request 4 copy refuses creature grants for good.
   - A pull request 6 copy of the Explorer keeps creature grants as they are and waits.
 - **Evidence:** `shared/js/bridge-rules.js` (`creatureMessage`, `check`, `clean`, `statusOf`, `creatureTitle`), `tools/bastion/rules.js` (`applyInbox`, `cleanBridge`, `cleanCreatures`); tests in `tests/rules/creatures.test.js`.
+
+
+### SUI-35 · Every War Room regiment saved as its own record
+**Deliberate change** (pull request 8a; Harry's War Room proposal, approved 15 October 2026) · loses saved data
+
+- **Before:** identical regiments were saved together as one row with a count ("Line Infantry ×2"); only a depleted one had its own row.
+- **After:**
+  - On loading, each regiment becomes its own record, with an id, a number ("Line Infantry II"), an optional name, a grade (Regular, Trained, Veteran) and, if under strength, its Recouping.
+  - Lieutenants stay a count, as Harry asked (W2).
+  - Loading twice gives the same save, and nobody is lost.
+  - A Military Action already under way from an older save still works: its regiments without an id take the first full ones of their kind.
+- **Older copies (SUI-19): back up before trying another copy.** A pull request 7 (or older) copy of the Bastion reads the records as separate rows. It keeps every soldier, but it loses the grades, names and Recouping, and it drops drill and Muster orders when they fall due.
+- **Evidence:** `tools/bastion/regiment-rules.js` (`cleanRegiments`), `tools/bastion/war-campaign-rules.js` (`cleanMilitary`, `regimentsOf`, `warForces`); tests in `tests/rules/bastion-campaign.test.js`.
 
 ## Combat Tracker & VTT Battlemap
 Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point there).
@@ -1284,6 +1297,16 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 - **After:** **Grant a creature…**, beside Port Charter… under Sent to the Bastion, asks which (Griffin or Dire Wolf), its name (optional, up to 40 letters) and what it's for, then **Grant** sends it once (a double click opens one pop-up; a browser that isn't saving refuses, so nothing is lost). Sent to the Bastion lists it as "Creature: Griffin (its name)", Waiting then Applied; once the Bastion has housed it, the line says it lives at the Ironbow now. Nothing goes into the Party bags, and the Explorer shows no companion.
 - **Not undoable:** a grant sent by mistake can't be taken back; the creature waits at the Bastion for good (BAS-91).
 - **Evidence:** `tools/explorer/journey.js` (`grantCreature`), `tools/explorer/tool.js` (`creatureDialog`, `renderSent`); tests in `tests/rules/creatures.test.js` and `tests/e2e/creatures.test.js`.
+
+
+### EXP-43 · Grant a creature asks first
+**Deliberate change** (Harry, 15 October 2026: "both") · applies something twice
+
+- **Before:** pressing Grant sent the creature straight away.
+- **After:**
+  - Grant asks "Grant a griffin (its name) to the Ironbow? …" first. Cancel sends nothing, and a double click sends it once.
+  - Once the Bastion has released a creature (BAS-93), its line in Sent to the Bastion says so.
+- **Evidence:** `tools/explorer/tool.js` (`creatureDialog`), `shared/js/bridge-rules.js` (`statusOf`); tests in `tests/e2e/creatures.test.js` and `tests/e2e/war-room.test.js`.
 
 ## The Ironbow Bastion Manager
 Old repo: `_legacy/bastion_manager` (file:line references point there).
@@ -2300,11 +2323,58 @@ None of these reached Harry.
 ### BAS-91 · The creatures' limits and choices made for Harry
 **Later, Harry's call** (pull request 7, 15 October 2026) · other
 
-- **A grant sent by mistake can't be undone:** the creature waits for good, and once housed it guards for good (there's no Release button). Undo it only with an Import of a backup. **Harry (15 October 2026): both.** Grant will ask first, and a waiting creature will get a Release button; not built yet (the next Bastion pull request).
+- **A grant sent by mistake:** this was the case until pull request 8a (see BAS-93 and EXP-43). The creature waited for good, and once housed it guards for good; only an Import of a backup undid it. **Harry (15 October 2026): both.** Grant will ask first, and a waiting creature will get a Release button; not built yet (the next Bastion pull request).
 - **An older copy of the Bastion deletes the creatures** (SUI-34): back up before trying another copy.
 - **Not yet (Harry's later steps):** the wyvern's name; care, training, bonding, riding, mounted flight, a companion on the Explorer, breeding; Roost upgrades (they unlock nothing yet; the Tower's and Den's add room); research; moving a Menagerie Dire Wolf into the Den.
 - **A creature can't be made to lose on purpose** at the table: the d6 after a defeat only matters if one is Defeated in a battle.
 - **Evidence:** `tools/bastion/creature-rules.js`, `tools/explorer/journey.js` (`grantCreature`).
+
+
+### BAS-92 · The War Room: regiments, training, Recouping and Musters
+**Deliberate change** (pull request 8a; Harry's proposal, `docs/specs/war-room-training.txt`, approved as written on 15 October 2026, plus his Recouping rule) · applies something twice
+
+- **Before:** the War Room only recruited; identical regiments were one counted row; a regiment that came home under strength stayed "Depleted" until a Recruit of its kind refilled it.
+- **After:**
+  - **Regiments:** each is its own record (SUI-35), numbered by kind. **Rename…** (in the War Room's Regiments list and in Management) gives it a name, up to 40 letters; an empty name gives its number back.
+  - **Drill a Regiment** (War Room Level 2): one regiment at full strength steps up a grade.
+
+    | Grade | Days | Gold | War Table effect |
+    |---|---|---|---|
+    | Trained | 7 | 25 gp × base Battle Value | +1 Resolve, +0.5 Battle Value |
+    | Veteran | 14 more | 50 gp × base Battle Value | adds +1 Cohesion, +0.5 Battle Value |
+
+    - The gold is paid once, when the drill starts. A double click drills once.
+    - Drill places: 1 at Level 2, 2 at Levels 3–4, 3 at Level 5. One drill per regiment.
+    - The bonus goes on that regiment's own stat block only. `war-units-data.js` and the battle rules are unchanged.
+  - **A regiment drilling** stays home from War Actions, but defends the Ironbow if it's attacked. Its drill waits a day for each day it's Recouping or away at a battle. If it's lost, the drill ends with no gold back.
+  - **Recouping** (Harry): a regiment that comes home under strength refills by itself, a share each day. It takes 3 days if up to 20% were lost, 7 days up to 40%, 10 days up to 60%, and 14 days for more. It doesn't refill while away at a battle, and can't drill until full. Training survives casualties. A Recruit of its kind still refills it at once, keeping its name and grade.
+  - **Coordinated Muster** (Level 3) raises two formations in one 7-day order; **Grand Muster** (Level 5) raises three. Each formation is raised as Recruit raises one, at no cost.
+  - The War Table shows a regiment's own name and grade on its stat block; its line-up puts the best trained first.
+- **Evidence:** `tools/bastion/data/war-room-data.js`, `tools/bastion/regiment-rules.js`, `tools/bastion/data/facilities-data.js` (`war_room`: `drill`, `coordinated_muster`, `grand_muster`), `tools/bastion/war-campaign-rules.js` (`warForces`, `playerSide`, `applyRegimentLoss`, `recruitUnit`, `buildSpec`), `tools/bastion/rules.js` (`fnOptions`, `issueOrder`, `completeSimpleOrder`), `tools/bastion/tool.js` (the Regiments list, Rename…, the day's step), `tools/bastion/war-table.js`; tests in `tests/rules/bastion-campaign.test.js` and `tests/e2e/war-room.test.js`.
+
+### BAS-93 · Release a creature still waiting for a home
+**Deliberate change** (Harry, 15 October 2026: "both"; G1: a housed creature can't be released) · loses saved data
+
+- **Before:** a creature granted by mistake waited at the Ironbow for good (BAS-91).
+- **After:**
+  - A griffin or dire wolf still waiting, with no House order for it, has **Release…** in its building's panel and in Management. It asks first, then leaves the register, with a line in the Day Log.
+  - Its grant's receipt stays, so it never comes back by itself.
+  - A creature being housed, or housed, or Elara's wyvern, can't be released.
+- **Evidence:** `tools/bastion/creature-rules.js` (`releaseBlocker`, `releaseCreature`), `tools/bastion/tool.js` (`creatureRow`, `onRelease`); tests in `tests/e2e/war-room.test.js`.
+
+### BAS-94 · The War Room: choices made for Harry, and what waits
+**Later, Harry's call** (pull request 8a, 15 October 2026) · other
+
+- **Choices made for Harry:**
+  - **A War Action still takes regiments by number per kind,** not by name. The best trained go first, then the healthiest. Say if the DM should pick particular regiments.
+  - **Drill gold is never given back:** not on Cancel (as every order) and not if the regiment is lost.
+  - **Defeated regiments come home under strength,** as before: they Recoup rather than vanish. Only a regiment with nobody left is removed (W3).
+  - **A released creature** shows in the Explorer as "released" once the Bastion is read. An older copy that deleted creatures (SUI-34) would show the same line.
+- **Not yet (Harry's later steps):**
+  - specialist doctrines and the War Room research tree (Level 4);
+  - Grand War Exercises (kept for the Command & Logistics research);
+  - upkeep (stays uncharged, B7).
+- **Evidence:** `tools/bastion/regiment-rules.js`, `tools/bastion/war-campaign-rules.js` (`warForces`).
 
 ## Clan Crest Creator
 Old repo: `_legacy/clan-crest-creator` (file:line references point there).

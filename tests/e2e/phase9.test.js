@@ -1228,7 +1228,8 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       equal(s.military.filter(r => !r.depleted && /lieutenant/i.test(r.name)).map(r => r.qty), [1], 'the Lieutenant came home');
       equal(s.warRecovery.map(r => [r.kind, r.name, r.status, r.untilDay]), [['beast', 'Giant Vulture', 'separated', day + 7]]);
       const mil = await text(page, 'military');
-      assert(/Depleted: 90\/100/.test(mil) && /Depleted: 40\/100/.test(mil), mil);
+      /* Pull request 8a: each regiment its own record, Recouping. */
+      assert(/Line Infantry I.*Recouping: 90 of 100/.test(mil) && /Line Infantry II.*Recouping: 40 of 100/.test(mil), mil);
       assert(new RegExp('5 beasts • Flight \\(1 separated: back on Day ' + (day + 7) + '\\)').test(await text(page, 'beasts')), await text(page, 'beasts'));
       equal(await text(page, 'war-avail-beast-giant-vulture'), '4 available');
       /* Applied once: nothing more after reopening. */
@@ -1236,9 +1237,9 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       const again = await st(page);
       equal([again.warLog.length, again.log.filter(l => l.title === 'War Action Resolved').length, again.military, again.clanHonor], [1, 1, s.military, 36]);
       await reveal(page, '[data-test=military]');
-      await page.hover('[data-test^=military-type-]:has-text("Depleted: 90/100")');
+      await page.hover('[data-test^=military-type-]:has-text("Recouping: 90 of 100")');
       await page.waitForSelector('[data-test=tooltip]:not([hidden])');
-      assert(/Depleted: \d+ of 100 soldiers came home/.test(await text(page, 'tooltip')), await text(page, 'tooltip'));
+      assert(/Recouping: \d+ of 100 soldiers came home/.test(await text(page, 'tooltip')), await text(page, 'tooltip'));
       await H.shot(page, 'p9-war-depleted');
       await page.mouse.move(5, 5);
     });
@@ -1776,11 +1777,13 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       equal(s.pendingOrders.map(o => [o.label, o.optionLabel]), [['War Room: Recruit (Line Infantry (100))', 'Line Infantry (100)']]);
       await days(page, 7, []);
       s = await st(page);
-      equal(s.military, [{ name: 'Line Infantry (100)', qty: 1, source: 'War Room' }]);
-      assert(s.log.some(l => l.body === 'War Room: Recruit (Line Infantry (100)) → Recruited: Line Infantry (100).'), JSON.stringify(s.log.slice(0, 3)));
-      equal(await text(page, 'military-type-0'), 'Line Infantry • 100 soldiers');
-      await setUp(page, (st2) => { st2.military.push({ name: 'Line Infantry (100)', qty: 1, depleted: true, strength: 60, id: 'reg-x', source: 'War Room' }); });
-      equal(await text(page, 'military-type-1'), 'Line Infantry • Depleted: 60/100');
+      /* Pull request 8a: each regiment its own record, numbered. */
+      equal(s.military.map(r => [r.name, r.qty, r.source, r.num, r.label, r.grade]), [['Line Infantry (100)', 1, 'War Room', 1, '', 'regular']]);
+      assert(s.log.some(l => l.body === 'War Room: Recruit (Line Infantry (100)) → Recruited: Line Infantry I.'), JSON.stringify(s.log.slice(0, 3)));
+      equal(await text(page, 'military-type-0'), 'Line Infantry • Regular · 100 soldiers');
+      await setUp(page, (st2) => { st2.military.push({ id: 'reg-x', name: 'Line Infantry (100)', qty: 1, source: 'War Room', num: 2, label: '', grade: 'regular', strength: 60, depleted: true, recoup: { days: 14, left: 14, from: 60 } }); });
+      const full = (await st(page)).day + 14;
+      equal(await text(page, 'military-type-1'), 'Line Infantry • Regular · Recouping: 60 of 100, full on Day ' + full);
       await reveal(page, '[data-test=military]');
       await page.hover('[data-test=military-row-1]');
       await page.waitForSelector('[data-test=tooltip]:not([hidden])');
@@ -1792,28 +1795,28 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
         return R.playerSide(s, {}, { defenders: 0, lieutenants: 0, units: { line: 2 }, beasts: {} }).units.find(u => u.personnel === 60).profile;
       });
       equal([fights.cohesion, fights.bv], [3, 3]);
-      assert(/^Line Infantry/.test(tip) && /Military unit • 60 of 100 soldiers/.test(tip) && tip.indexOf('Cohesion' + fights.cohesion + 'Attack') !== -1 && tip.indexOf('Battle Value' + fights.bv + 'Depleted') !== -1 &&
-        /Depleted: 60 of 100 soldiers came home, so it fights at Cohesion 3 \(not 5\) and Battle Value 3 \(not 5\) until the War Room recruits Line Infantry again/.test(tip), tip);
+      assert(/^Line Infantry/.test(tip) && /Military unit • 60 of 100 soldiers/.test(tip) && tip.indexOf('Cohesion' + fights.cohesion + 'Attack') !== -1 && tip.indexOf('Battle Value' + fights.bv + 'Recouping') !== -1 &&
+        new RegExp('Recouping: 60 of 100 soldiers came home, so it fights at Cohesion 3 \\(not 5\\) and Battle Value 3 \\(not 5\\) until it refills by itself \\(full on Day ' + full + '\\), or at once when the War Room recruits Line Infantry again').test(tip), tip);
       await H.shot(page, 'p9-war-military');
       await page.mouse.move(5, 5);
       /* From the keyboard: Tab reaches each row, which shows its stat block. */
       await page.focus('[data-test=military-remove-0]');
       await page.keyboard.press('Tab');
       equal(await page.evaluate(() => { const a = document.activeElement; return [a.dataset.test, a.getAttribute('role'), a.getAttribute('aria-label'), a.getAttribute('aria-describedby')]; }),
-        ['military-row-1', 'group', 'Line Infantry (100): Line Infantry • Depleted: 60/100', 'tsi-tip']);
+        ['military-row-1', 'group', 'Line Infantry II: Line Infantry • Regular · Recouping: 60 of 100, full on Day ' + full, 'tsi-tip']);
       assert(await page.isVisible('[data-test=tooltip]') && /Military unit • 60 of 100 soldiers/.test(await text(page, 'tooltip')), await text(page, 'tooltip'));
       equal((await H.layoutCheck(page, ['[data-test=tooltip]'])).outOfView, []);
       await page.keyboard.press('Tab');
-      equal([await page.evaluate(() => document.activeElement.dataset.test), await page.isHidden('[data-test=tooltip]')], ['military-remove-1', true]);
+      equal([await page.evaluate(() => document.activeElement.dataset.test), await page.isHidden('[data-test=tooltip]')], ['military-rename-1', true]);
       await showWarRoom();
       await page.click('[data-test=wr-recruit]');
       await page.click('[data-test=wr-option-3]');
       await issue(page, 'war_room', 'recruit');
       await days(page, 7, []);
       s = await st(page);
-      assert(s.log.some(l => l.body === 'War Room: Recruit (Line Infantry (100)) → Replacements bring Line Infantry back to 100.'), JSON.stringify(s.log.slice(0, 3)));
-      equal(s.military.map(r => [r.name, r.qty, !!r.depleted]), [['Line Infantry (100)', 2, false]]);
-      equal(await text(page, 'military-type-0'), 'Line Infantry • 2 × 100 soldiers');
+      assert(s.log.some(l => l.body === 'War Room: Recruit (Line Infantry (100)) → Replacements bring Line Infantry II back to 100.'), JSON.stringify(s.log.slice(0, 3)));
+      equal(s.military.map(r => [r.name, r.qty, !!r.depleted, r.id]), [['Line Infantry (100)', 1, false, s.military[0].id], ['Line Infantry (100)', 1, false, 'reg-x']]);
+      equal(await text(page, 'military-type-1'), 'Line Infantry • Regular · 100 soldiers');
     });
 
     await check('the Menagerie\'s beasts and the Lieutenants show their stat blocks, and who is away recovering', async () => {

@@ -8,6 +8,25 @@ Double-click `index.html` to open the suite. The plan is in `docs/PLAN.md`, the 
 
 ## Done
 
+### The facilities overhaul, pull request 8a: the War Room's training, and the creature guards (15 October 2026)
+From Harry's War Room proposal (`docs/specs/war-room-training.txt`, approved as written) and his answers in `docs/MILITARY-DIPLOMACY-PLAN.md`.
+- **Regiments** (SUI-35, BAS-92):
+  - each regiment is its own record, numbered by kind ("Line Infantry II"), and Rename… gives it a name;
+  - Lieutenants stay a count.
+- **Drill a Regiment** (War Room Level 2):
+  - Trained: 7 days, 25 gp × Battle Value, +1 Resolve and +0.5 Battle Value.
+  - Veteran: 14 more days, 50 gp × Battle Value, +1 Cohesion and +0.5 Battle Value more.
+  - Drill places: 1 at Level 2, 2 at Levels 3–4, 3 at Level 5.
+  - A regiment drilling stays home from War Actions but defends the Ironbow.
+- **Recouping** (Harry's rule): an under-strength regiment refills by itself over 3, 7, 10 or 14 days, and can't drill until full. Training survives casualties.
+- **Coordinated Muster** (Level 3, two formations) and **Grand Muster** (Level 5, three).
+- **Creature guards** (EXP-43, BAS-93): Grant a creature… asks first, and a creature still waiting for a home has Release….
+- **Not built:** the Hall's Levels 4–5 (redesign later, Harry's handover in `docs/specs/hall-of-emissaries-redesign.txt`), the Shrines (8b), the research trees, Grand War Exercises and upkeep.
+- **Tests:**
+  - 9 new rules tests, in `tests/rules/bastion-campaign.test.js`;
+  - a new click-through, `tests/e2e/war-room.test.js`, using Harry's sample `tests/fixtures/bastion-pr8a-sample.json`;
+  - every other suite passes.
+
 ### The facilities overhaul, pull request 7: the Library's chart order and the creatures (15 October 2026)
 Harry's check all passed; merged as #29 (15 October 2026).
 From Harry's six answers (one chart per order; the wyvern recorded when the Roost is built, its name to follow; it defends with the suggested numbers; the Griffin Tower and Dire Wolf Den open, with the DM granting the animals; they fight like the wyvern; one creature per level). At Harry's request the chart order and the creatures are one pull request.
@@ -887,7 +906,10 @@ Each tool's questions are needed before that tool's phase. The full wording and 
       - **Elara's wyvern's name: answered (15 October 2026).** Keep "Elara's wyvern" for now; Harry will give the name soon. It goes in `tools/bastion/data/creatures-data.js` (`unique.elara_wyvern.name`).
       - **A grant made by mistake: answered (15 October 2026), "both".** Grant a creature… asks "Are you sure?" before sending, and a creature still waiting for a home gets a Release button (asking first). Not built yet: it goes in the next Bastion pull request.
       - **Older copies:** an older copy of the Bastion deletes the creatures; back up before trying one.
-    - **Pull request 8 (military and diplomacy):** questions W1–W12, H1–H6, S1–S8 and G1 are in `docs/MILITARY-DIPLOMACY-PLAN.md`. 8a can start once W1–W3 (and G1) are answered.
+    - **Pull request 8 (military and diplomacy):** 8a (the War Room and the creature guards) is built; see Done. Still open:
+      - **8b, the Shrines:** S2 (which Explorer events count for each charm), S9 (Start/End expedition, and conditions the DM marks used) and S10 (may the courier carry Shrine items?), in `docs/MILITARY-DIPLOMACY-PLAN.md`.
+      - **Later:** the research trees (War Room, Hall and Shrines) and the Hall's redesign.
+      - **Choices made for Harry in 8a** (BAS-94): War Actions take regiments by number, best trained first; drill gold isn't refunded.
     - **Next for the courier, when you say go:** Levels 3 to 5 (return trips, priority, express), research, and more goods.
 - **Clan Crest Creator (phase 2, reworked 29 September 2026):** answered (K1–K4).
   - **Sigils: answered (29 September 2026).** Harry reviewed the traced sigils and wants all twenty kept exactly as they are: the same sigils, the Dolphin in place of the Kraken, the Tower in place of the Castle, and the same accent parts. Don't swap, add or recolour any without his say-so.

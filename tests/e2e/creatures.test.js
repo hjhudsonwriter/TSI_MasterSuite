@@ -187,6 +187,9 @@ async function grant(ex, species, name, why) {
   await ex.fill('[data-test=creature-name]', name || '');
   await ex.fill('[data-test=creature-why]', why || '');
   await ex.click('[data-test=creature-dialog] .tsi-modal__foot .tsi-btn--primary');
+  /* Pull request 8a: Grant asks first. */
+  await ex.waitForTimeout(300);
+  await ex.locator('.tsi-modal').last().locator('.tsi-modal__foot .tsi-btn--primary').click();
   await ex.waitForTimeout(400);
 }
 /* The panel opens with its House order in view, above the footer, and nothing scrolls sideways. */
@@ -337,6 +340,10 @@ async function clickPop(page, label) {
     await ex.fill('[data-test=creature-why]', 'Won at the Ember Fair');
     await H.shot(ex, 'creatures-grant-dialog-laptop');
     await ex.dblclick('[data-test=creature-dialog] .tsi-modal__foot .tsi-btn--primary');
+    /* Pull request 8a: Grant asks first ("Grant a griffin (Swiftwing) to the Ironbow?"); a double click there sends it once too. */
+    await ex.waitForTimeout(300);
+    equal((await lastModal(ex)).replace(/^Scarlett Isles Explorer/, ''), 'Grant a griffin (Swiftwing) to the Ironbow? Once the Bastion has it, it can only be released while it waits for a home.CancelGrant');
+    await ex.locator('.tsi-modal').last().locator('.tsi-modal__foot .tsi-btn--primary').dblclick();
     await ex.waitForTimeout(500);
     const s = await exs(ex);
     const sent = s.journey.outbox.filter(m => m.type === 'creature');

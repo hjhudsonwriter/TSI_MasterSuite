@@ -30,6 +30,22 @@ What the stats mean:
 
 Regiments recruited before phase 2 ("Regiment (100)") fight as **Line Infantry**.
 
+### Regiments and their training (pull request 8a, 15 October 2026)
+- Each regiment is its own record, numbered by kind ("Line Infantry II"), and the DM can rename it.
+- At War Room Level 2, **Drill a Regiment** trains one regiment at full strength:
+
+  | Grade | Days | Gold | Added to its own stat block |
+  |---|---|---|---|
+  | Regular | – | – | nothing (the profile above) |
+  | Trained | 7 | 25 gp × base Battle Value | +1 Resolve, +0.5 Battle Value |
+  | Veteran | 14 more | 50 gp × base Battle Value | +1 Resolve, +1 Cohesion, +1 Battle Value in all |
+
+- Attack, Defence, Move, range and Charge never change. An under-strength trained regiment is scaled down as before, from its trained numbers.
+- Drill places: 1 at Level 2, 2 at Levels 3–4, 3 at Level 5.
+- A regiment drilling stays home from War Actions but defends the Ironbow.
+- A War Action takes the best trained regiments of each kind first, then the healthiest.
+- **Coordinated Muster** (Level 3) raises two formations in 7 days; **Grand Muster** (Level 5) raises three.
+
 ### Lieutenants
 Each Lieutenant leads one formation: a regiment or a Bastion Defender detachment, never a beast. It's attached during deployment and stays with that formation all battle; its red disc sits beside the formation.
 - The formation gains **+2 Resolve**.
@@ -321,7 +337,19 @@ Permanent losses, as a share of the soldiers present at the start (rounded to th
 | Defeated, and your army holds the field (victory or draw) | 40% |
 | Defeated, and your army loses or withdraws | 60% |
 
-A regiment that loses soldiers stays in the Military panel as **Depleted**, fighting at reduced strength until replacements arrive. Recruiting the same unit type in the War Room brings a Depleted regiment back to full strength first. A regiment is removed only when no soldiers are left.
+A regiment that loses soldiers stays in the Military panel, **Recouping** (pull request 8a, Harry's rule): it fights at reduced strength and refills by itself, a share each day, over a time set by the share it lost:
+
+| Share lost | Time to refill |
+|---|---:|
+| Up to 20% | 3 days |
+| Up to 40% | 7 days |
+| Up to 60% | 10 days |
+| More than 60% | 14 days |
+
+- It doesn't refill while away at a battle, and can't drill until full.
+- It keeps its name and training.
+- Recruiting the same unit type in the War Room refills it at once.
+- A regiment is removed only when no soldiers are left, and its training goes with it.
 
 ### Lieutenants and beasts
 They aren't counted in percentages. When a beast, or a Lieutenant's formation, is Defeated, roll a d6:

@@ -1326,10 +1326,17 @@
         var legacy = a.name.toLowerCase() !== String(it.name).replace(/\s*\(\s*\d+\s*\)\s*$/, '').trim().toLowerCase();
         var strength = R.clampInt(it.strength, 0, a.size);
         var depleted = it.depleted === true;
-        var line = (legacy ? 'Fights as ' : '') + a.name + ' • ' + (depleted ? 'Depleted: ' + strength + '/' + a.size : (qtyOf(it) > 1 ? qtyOf(it) + ' × ' : '') + plural(a.size, 'soldier'));
+        /* A regiment record (pull request 8a): its grade, Recouping and drill. */
+        var record = typeof it.num === 'number' && !!R.regimentStatus;
+        var line = record
+          ? (legacy ? 'Fights as ' : '') + a.name + ' • ' + R.regimentStatus(state, data, it)
+          : (legacy ? 'Fights as ' : '') + a.name + ' • ' + (depleted ? 'Depleted: ' + strength + '/' + a.size : (qtyOf(it) > 1 ? qtyOf(it) + ' × ' : '') + plural(a.size, 'soldier'));
         var notes = [];
         if (legacy) notes.push('Recruited before the war rules came in: it fights as ' + a.name + '.');
-        if (!depleted) return { line: line, tip: function () { return statTip(type, { notes: notes }); } };
+        if (!depleted) {
+          if (record) return { line: line, tip: function () { var fu = fieldUnit(it, type); return fu ? statTip(type, { unit: fu, notes: notes }) : statTip(type, { notes: notes }); } };
+          return { line: line, tip: function () { return statTip(type, { notes: notes }); } };
+        }
         /* A depleted regiment's stat block is the one it fights with. */
         return {
           line: line,
@@ -1342,10 +1349,13 @@
             var weaker = unitBlock(u).rows.filter(function (r) { return full[r.key] !== undefined && full[r.key] !== r.value; }).map(function (r) {
               return r.name + ' ' + r.value + ' (not ' + full[r.key] + ')';
             });
-            var came = 'Depleted: ' + u.personnel + ' of ' + a.size + ' soldiers came home';
+            var came = (record ? 'Recouping: ' : 'Depleted: ') + u.personnel + ' of ' + a.size + ' soldiers came home';
+            var back = record
+              ? 'it refills by itself (full on ' + R.dayLabel(R.recoupFullDay(state, it)) + '), or at once when the War Room recruits ' + a.name + ' again'
+              : 'the War Room recruits ' + a.name + ' again, which brings it back to full strength';
             var why = weaker.length
-              ? came + ', so it fights at ' + andList(weaker) + ' until the War Room recruits ' + a.name + ' again, which brings it back to full strength.'
-              : came + '. Too few were lost to weaken it in battle; recruiting ' + a.name + ' in the War Room brings it back to full strength.';
+              ? came + ', so it fights at ' + andList(weaker) + ' until ' + back + '.'
+              : came + '. Too few were lost to weaken it in battle; ' + (record ? back.charAt(0).toUpperCase() + back.slice(1) + '.' : 'recruiting ' + a.name + ' in the War Room brings it back to full strength.');
             return statTip(type, { unit: u, lead: 'Military unit • ' + u.personnel + ' of ' + plural(a.size, 'soldier'), notes: notes.concat([why]) });
           }
         };
@@ -1380,17 +1390,6 @@
         var ltAway = kind === 'military' ? awayList('lieutenant') : [];
         var ltShown = false;
         list.forEach(function (it, idx) {
-          /* A regiment record (pull request 8a): its name, grade, Recouping and Rename…. */
-          if (kind === 'military' && it && typeof it.num === 'number' && R.regimentName) {
-            var rrow = regimentRow(it, 'military-reg');
-            rrow.setAttribute('data-test', test + '-row-' + idx);
-            rrow.appendChild(btn('Remove', function () { list.splice(idx, 1); done(); }, 'tsi-btn--ghost', test + '-remove-' + idx));
-            var rtype = R.unitTypeOf(it.name, data);
-            var rtip = function () { var u = fieldUnit(it, rtype); return u ? statTip(rtype, { unit: u, lead: 'Military unit • ' + u.personnel + ' of ' + plural(W.archetypes[rtype].size, 'soldier') }) : statTip(rtype); };
-            bindTip(rrow, rtip, { noChange: true });
-            node.appendChild(rrow);
-            return;
-          }
           var info;
           if (kind === 'beast') info = beastInfo(it);
           else {
@@ -1400,15 +1399,18 @@
           }
           /* A row with a stat block can be reached with the Tab key, which shows it too. */
           var keyed = !!info.line;
+          var isReg = kind === 'military' && it && typeof it.num === 'number' && !!R.regimentName;
+          var shownName = isReg ? R.regimentName(it, data) : it.name;
           var row = el('div', {
-            class: 'tsi-bas-item' + (keyed ? ' tsi-bas-item--tip' : ''), 'data-test': test + '-row-' + idx,
-            tabindex: keyed ? '0' : null, role: keyed ? 'group' : null, 'aria-label': keyed ? it.name + ': ' + info.line : null
+            class: 'tsi-bas-item' + (keyed ? ' tsi-bas-item--tip' : '') + (isReg && it.depleted ? ' tsi-bas-regiment--recouping' : ''), 'data-test': test + '-row-' + idx,
+            tabindex: keyed ? '0' : null, role: keyed ? 'group' : null, 'aria-label': keyed ? shownName + ': ' + info.line : null
           }, [
             el('div', { class: 'tsi-bas-item__text' }, [
-              el('div', { class: 'tsi-bas-item__name', text: it.name }),
+              el('div', { class: 'tsi-bas-item__name', text: shownName }),
               info.line ? el('div', { class: 'tsi-bas-item__type', 'data-test': test + '-type-' + idx, text: info.line }) : null,
               el('div', { class: 'tsi-bas-item__meta', text: R.metaLine(it) })
             ]),
+            isReg ? btn('Rename…', function () { onRename(it.id); }, 'tsi-btn--ghost', test + '-rename-' + idx) : null,
             btn('Remove', function () { list.splice(idx, 1); done(); }, 'tsi-btn--ghost', test + '-remove-' + idx)
           ]);
           bindTip(row, info.tip, { noChange: true });
