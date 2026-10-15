@@ -287,14 +287,11 @@ const RITE = 'rite-ab12cd34';
     await endEvent(ex);
   });
 
-  await check('Earth\'s Endurance is offered at the exhaustion save of The Ember That Won\'t Die and used once', async () => {
+  await check('The Ember That Won\'t Die: Earth\'s Endurance is held back for its exhaustion save, not offered at the first check', async () => {
     assert(await ex.evaluate(() => TSI.explorer.debug.startEvent('c8')), 'C8 started');
-    await ex.waitForTimeout(300);
     await ex.waitForTimeout(500);
-    assert(await ex.$('[data-test=rite-offer]'), 'the rite is offered');
-    await ex.click('[data-test=use-rite]');
-    await ex.waitForTimeout(400);
-    equal((await exs(ex)).journey.blessing.used, true);
+    assert(!(await ex.$('[data-test=rite-offer]')), 'not offered at the Religion check');
+    equal((await exs(ex)).journey.blessing.used, false);
     await endEvent(ex);
   });
 

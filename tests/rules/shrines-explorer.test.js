@@ -135,6 +135,20 @@
     t.equal(J.useRiteByHand(s2), null, 'only once');
   });
 
+  test('Earth\'s Endurance is offered at The Ember That Won\'t Die\'s exhaustion save, and used once', function (t) {
+    var s = started();
+    t.ok(J.assignRite(s, UID, (function () { var b = bastion(); b.greatRites[0].rite = 'earths_endurance'; b.greatRites[0].god = 'telluria'; return b; }()), {}).ok);
+    begin(s, 'c8');
+    t.equal(J.view(s, E).check.rite, null, 'not at the first check');
+    s.journey.current.step = 'awake';
+    s.journey.current.vars.hero = 'kaelen';
+    var v = J.view(s, E);
+    t.equal(v.check.rite.name, 'Earth\'s Endurance');
+    t.ok(J.useRite(s, E, v.step));
+    t.equal(s.journey.blessing.used, true);
+    t.equal(J.useRite(s, E, v.step), null, 'once');
+  });
+
   test('Shrine items are used from the bags, once each', function (t) {
     var s = explorer();
     J.addItem(s, 'purification_incense', 2);
