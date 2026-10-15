@@ -182,6 +182,18 @@ async function clickPop(page, label) {
 const text = (page, test) => page.$eval('[data-test=' + test + ']', n => n.textContent.replace(/\s+/g, ' ').trim());
 
 
+/* Close the event window, ending the event (Skip is only there before anything has happened). */
+async function endEvent(page) {
+  if (await page.$('.tsi-modal [data-test=skip-event]:not([hidden])')) {
+    await page.click('.tsi-modal [data-test=skip-event]');
+  } else if (await page.$('.tsi-modal.tsi-exp-journey')) {
+    await page.click('.tsi-modal.tsi-exp-journey .tsi-modal__foot button:text-is("Close")');
+    await page.waitForTimeout(450);
+    await H.clickModal(page, 'End it now');
+  }
+  await page.waitForTimeout(300);
+  await closeAll(page);
+}
 const RITE = 'rite-ab12cd34';
 (async () => {
   const browser = await H.chromium.launch();
@@ -272,9 +284,7 @@ const RITE = 'rite-ab12cd34';
     await ex.waitForTimeout(400);
     equal((await exs(ex)).journey.inventory.filter(i => i.kind === 'earthward_talisman').map(i => i.qty), [1]);
     assert(!(await ex.$('[data-test=use-charm]')), 'no second Use button at this step');
-    await ex.click('.tsi-modal [data-test=skip-event]');
-    await ex.waitForTimeout(300);
-    await closeAll(ex);
+    await endEvent(ex);
   });
 
   await check('Earth\'s Endurance is offered at the exhaustion save of The Ember That Won\'t Die and used once', async () => {
@@ -285,9 +295,7 @@ const RITE = 'rite-ab12cd34';
     await ex.click('[data-test=use-rite]');
     await ex.waitForTimeout(400);
     equal((await exs(ex)).journey.blessing.used, true);
-    await ex.click('.tsi-modal [data-test=skip-event]');
-    await ex.waitForTimeout(300);
-    await closeAll(ex);
+    await endEvent(ex);
   });
 
   await check('Use… in the Travel bags asks first and counts one use; Cancel changes nothing', async () => {
