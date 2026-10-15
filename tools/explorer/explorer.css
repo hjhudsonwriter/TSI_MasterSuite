@@ -500,3 +500,5 @@
 .tsi-page--explorer .tsi-exp-post .tsi-btn:disabled { opacity: .55; cursor: not-allowed; }
 .tsi-page--explorer .tsi-exp-post__done { margin: 0; font-size: 15px; color: var(--tsi-ok); }
 .tsi-tool--explorer .tsi-exp-hdrbtns { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.tsi-tool--explorer .tsi-exp-hdrbtns { flex-wrap: nowrap; margin-left: auto; }
+.tsi-tool--explorer .tsi-exp-hdrbtns .tsi-btn.tsi-exp-mini { margin-left: 0; padding: 2px 6px; font-size: 12px; letter-spacing: 0; white-space: nowrap; }
