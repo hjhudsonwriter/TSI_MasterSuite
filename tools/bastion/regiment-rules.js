@@ -360,6 +360,9 @@
   R.settleRegiments = function (s, data) {
     var out = { log: [], word: [] };
     var away = R.regimentsAway(s);
+    /* Recouping today (before today's refill), so a drill waits every day of it. */
+    var recouping = {};
+    R.regiments(s, data).forEach(function (row) { if (row.depleted === true) recouping[row.id] = true; });
     R.regiments(s, data).forEach(function (row) {
       if (!isObj(row.recoup) || away[row.id]) return;
       var size = archetypeOf(row, data).a.size;
@@ -381,7 +384,7 @@
         out.log.push(['Military', o.label + ': the regiment is no longer on the Military list, so the drill ends (its gold isn\'t given back).']);
         return;
       }
-      if (row.depleted === true || away[row.id]) o.dueDay = Number(o.dueDay) + 1;
+      if (recouping[row.id] || away[row.id]) o.dueDay = Number(o.dueDay) + 1;
       keep.push(o);
     });
     s.pendingOrders = keep;

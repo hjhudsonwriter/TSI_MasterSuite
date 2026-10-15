@@ -2079,4 +2079,181 @@
     t.equal(R.warCouncilOpen(s), true, 'a War Action mustering');
     t.equal(R.warCouncilOpen(null), false);
   });
+
+  /* ---------- Pull request 8a: every regiment its own record (regiment-rules.js) ---------- */
+  group('War Room (pull request 8a): regiments, training, Recouping and Musters');
+
+  /* The army above, as a loaded save holds it: one record per regiment. */
+  function tidy(s) { s.military = R.cleanRegiments(s.military, data); return s; }
+  function regs(s) { return R.regiments(s, data); }
+  function byName(s, name) { return regs(s).filter(function (r) { return R.regimentName(r, data) === name; })[0]; }
+  function room(s, level, gp) {
+    s.facilityLevels = Object.assign({}, s.facilityLevels, { war_room: level });
+    s.treasuryGP = gp === undefined ? 1000 : gp;
+    return s;
+  }
+  function drill(s, name) {
+    var opts = R.fnOptions(s, data, R.facility(data, 'war_room'), R.fn(R.facility(data, 'war_room'), 'drill'));
+    var idx = opts.map(function (o) { return o.regimentId; }).indexOf((byName(s, name) || {}).id);
+    return R.issueOrder(s, data, 'war_room', 'drill', idx < 0 ? 99 : idx, dice([0.3]));
+  }
+
+  test('a loaded list: one record each, numbered by kind; Lieutenants stay a count; under strength is Recouping', function (t) {
+    var s = tidy(army());
+    t.same(s.military.map(function (r) { return [R.regimentName(r, data), r.qty, r.grade || null, r.strength || null]; }), [
+      ['Lieutenant (1)', 2, null, null], ['Line Infantry I', 1, 'regular', null], ['Line Infantry II', 1, 'regular', null],
+      ['Line Infantry III', 1, 'regular', 62], ['Archers I', 1, 'regular', null]
+    ]);
+    t.same(byName(s, 'Line Infantry III').recoup, { days: 7, left: 7, from: 62 }, '38 of 100 lost: 7 days');
+    t.equal(byName(s, 'Line Infantry III').id, 'reg-a', 'an id is kept');
+    t.same(R.cleanRegiments(copy(s.military), data), s.military, 'tidying twice changes nothing');
+    t.same([R.recoupDays(data, 80, 100), R.recoupDays(data, 79, 100), R.recoupDays(data, 60, 100), R.recoupDays(data, 40, 100), R.recoupDays(data, 39, 100), R.recoupDays(data, 1, 100)],
+      [3, 7, 7, 10, 14, 14], 'exactly 20% is 3 days, 40% 7, 60% 10');
+  });
+
+  test('a trained regiment fights first, with its own bonus on its own stat block', function (t) {
+    var s = tidy(army());
+    byName(s, 'Line Infantry II').grade = 'veteran';
+    byName(s, 'Line Infantry I').grade = 'trained';
+    var f = R.warForces(s, data);
+    t.same(f.units.line.map(function (u) { return [u.label, u.grade]; }), [['Line Infantry II', 'veteran'], ['Line Infantry I', 'trained'], ['Line Infantry III (62 of 100)', 'regular']]);
+    var side = R.playerSide(s, data, { defenders: 0, lieutenants: 0, units: { line: 3 }, beasts: {} });
+    var line = W.archetypes.line;
+    t.same(side.units.map(function (u) { return [u.regiment, u.grade, u.profile.cohesion, u.profile.resolve, u.profile.bv, u.profile.attack, u.profile.defence, u.profile.move]; }), [
+      ['Line Infantry II', 'veteran', line.cohesion + 1, line.resolve + 1, line.bv + 1, line.attack, line.defence, line.move],
+      ['Line Infantry I', 'trained', line.cohesion, line.resolve + 1, line.bv + 0.5, line.attack, line.defence, line.move],
+      ['Line Infantry III', 'regular', 3, line.resolve, 3, line.attack, line.defence, line.move]
+    ], 'Attack, Defence and Move never change; an under-strength one is scaled as before');
+    t.same(side.units.map(function (u) { return u.source.rowId; }), [byName(s, 'Line Infantry II').id, byName(s, 'Line Infantry I').id, 'reg-a']);
+    t.same(W.archetypes.line.bv, 5, 'the base stat block is untouched');
+  });
+
+  test('Drill a Regiment: Level 2, full strength only, gold once, one per drill place', function (t) {
+    var s = room(tidy(army()), 1);
+    t.equal(R.issueOrder(s, data, 'war_room', 'drill', 0, dice([0.3])).message, 'Needs Level 2.');
+    room(s, 2, 100);
+    var opts = R.fnOptions(s, data, R.facility(data, 'war_room'), R.fn(R.facility(data, 'war_room'), 'drill'));
+    t.same(opts.map(function (o) { return [o.label, o.costGP]; }), [['Line Infantry I → Trained (7 days)', 125], ['Line Infantry II → Trained (7 days)', 125], ['Archers I → Trained (7 days)', 125]], 'the one Recouping isn\'t listed');
+    t.equal(drill(s, 'Line Infantry I').message, 'Not enough gp. Need 125gp, you have 100gp.');
+    t.equal(s.pendingOrders.length, 0);
+    room(s, 2, 1000);
+    var res = drill(s, 'Line Infantry I');
+    t.ok(res.ok, res.message);
+    t.equal(s.treasuryGP, 875);
+    var o = s.pendingOrders[0];
+    t.same([o.label, o.dueDay, o.costGP, o.chosen.toGrade], ['War Room: Drill a Regiment (Line Infantry I → Trained)', 10, 125, 'trained']);
+    t.equal(drill(s, 'Line Infantry II').message, 'Every drill place is taken (1 of 1). Upgrading the War Room adds more.');
+    room(s, 3, 875);
+    t.ok(drill(s, 'Line Infantry II').ok, 'Level 3 has two places');
+    t.equal(R.drillBlocker(s, data, byName(s, 'Line Infantry I')), 'Line Infantry I is already drilling: ready on Day 10.');
+    t.equal(R.drillBlocker(s, data, byName(s, 'Line Infantry III')), 'Line Infantry III is Recouping (62 of 100). It can drill once it\'s back to full strength.');
+    t.equal(s.treasuryGP, 750);
+    t.same(R.drillSlots(room(s, 5, 750), data), 3);
+  });
+
+  test('a regiment drilling stays home from War Actions but defends the Ironbow; the drill gives its grade once', function (t) {
+    var s = room(tidy(army()), 2);
+    drill(s, 'Line Infantry I');
+    t.same(R.warForces(s, data).units.line.map(function (u) { return u.label; }), ['Line Infantry II', 'Line Infantry III (62 of 100)']);
+    t.same(R.warForces(s, data, { defence: true }).units.line.map(function (u) { return u.label; }), ['Line Infantry I', 'Line Infantry II', 'Line Infantry III (62 of 100)']);
+    var d = defence({ s: s });
+    t.ok(d.ma.spec.player.units.some(function (u) { return u.source.rowId === byName(s, 'Line Infantry I').id; }), 'it stands in the defence');
+    var o = s.pendingOrders.filter(function (x) { return x.fnId === 'drill'; })[0];
+    t.same(R.completeSimpleOrder(s, data, o, dice([0.5])), [['Order Completed', 'War Room: Drill a Regiment (Line Infantry I → Trained) → Line Infantry I is now Trained (+1 Resolve, +0.5 Battle Value in all).']]);
+    t.equal(byName(s, 'Line Infantry I').grade, 'trained');
+    t.same(R.completeSimpleOrder(s, data, o, dice([0.5]))[0][1], 'War Room: Drill a Regiment (Line Infantry I → Trained) → Line Infantry I is already Trained.', 'twice changes nothing');
+    R.removeOrder(s, o.id);
+    var v = R.drillPlan(s, data, byName(s, 'Line Infantry I'));
+    t.same([v.gradeName, v.days, v.costGP], ['Veteran', 14, 250]);
+    byName(s, 'Line Infantry I').grade = 'veteran';
+    t.equal(R.drillBlocker(s, data, byName(s, 'Line Infantry I')), 'Line Infantry I is already Veteran, the highest grade.');
+  });
+
+  test('Recouping: a day\'s worth each day, full on the last day; a drill waits while its regiment Recoups', function (t) {
+    var s = room(tidy(army()), 2);
+    var three = byName(s, 'Line Infantry III');
+    var seen = [];
+    for (var i = 0; i < 7; i++) { var r = R.settleRegiments(s, data); seen.push(three.strength || 100); if (i < 6) t.equal(r.word.length, 0); else t.same(r.word, ['Line Infantry III is back to full strength.']); }
+    t.same(seen, [67, 72, 78, 83, 89, 94, 100]);
+    t.same([three.depleted, three.recoup, three.strength], [undefined, undefined, undefined], 'full again');
+    drill(s, 'Line Infantry III');
+    var o = s.pendingOrders[0];
+    var due = o.dueDay;
+    R.setRegimentStrength(three, data, 90);
+    t.same(three.recoup, { days: 3, left: 3, from: 90 });
+    R.settleRegiments(s, data);
+    t.equal(o.dueDay, due + 1, 'the drill waits a day');
+    R.settleRegiments(s, data); R.settleRegiments(s, data);
+    t.equal(o.dueDay, due + 3, 'three days Recouping, three days waiting');
+    t.equal(three.depleted, undefined);
+    R.settleRegiments(s, data);
+    t.equal(o.dueDay, due + 3, 'full again: the drill carries on');
+    s.military = s.military.filter(function (r) { return r !== three; });
+    var gone = R.settleRegiments(s, data);
+    t.equal(s.pendingOrders.length, 0, 'a regiment that\'s gone ends its drill');
+    t.ok(/no longer on the Military list/.test(gone.log[0][1]));
+  });
+
+  test('after a battle: the same records lose soldiers, keep their training and start Recouping; nobody left is removed', function (t) {
+    var s = tidy(army());
+    byName(s, 'Line Infantry I').grade = 'trained';
+    var ids = regs(s).map(function (r) { return r.id; });
+    var b = ready('raid', { s: s });
+    R.finishBattle(b.s, data, b.ma.id, battleFrom(b.ma, 'victory', hurtOpts()), dice([d6(3), d6(5)]), 0);
+    regs(b.s).forEach(function (r) {
+      t.ok(ids.indexOf(r.id) !== -1, R.regimentName(r, data) + ' is the same record');
+      if (r.depleted) t.same(r.recoup && [r.recoup.from, r.recoup.left === r.recoup.days], [r.strength, true], R.regimentName(r, data) + ' Recouping from its new strength');
+    });
+    t.equal(byName(b.s, 'Line Infantry I').grade, 'trained', 'training survives casualties');
+    t.same(byName(b.s, 'Archers I').recoup, { days: 7, left: 7, from: 30 }, 'the Defeated Archers came home at 30 of 50: 7 days');
+  });
+
+  test('a Recruit refills the same regiment; a new one gets the next number; the DM can rename one', function (t) {
+    var s = tidy(army());
+    t.equal(R.recruitUnit(s, data, 'Line Infantry (100)'), 'Replacements bring Line Infantry III back to 100.');
+    var three = byName(s, 'Line Infantry III');
+    t.same([three.id, three.strength, three.recoup], ['reg-a', undefined, undefined]);
+    t.equal(R.recruitUnit(s, data, 'Line Infantry (100)'), 'Recruited: Line Infantry IV.');
+    t.equal(R.recruitUnit(s, data, 'Lieutenant (1)'), 'Recruited: Lieutenant (1).');
+    t.equal(s.military[0].qty, 3, 'Lieutenants stay a count');
+    var res = R.renameRegiment(s, data, three.id, '  The   Ironbow Guard ');
+    t.same([res.ok, res.log[1], R.regimentName(three, data)], [true, 'Line Infantry III is now called The Ironbow Guard.', 'The Ironbow Guard']);
+    R.renameRegiment(s, data, three.id, 'x'.repeat(60));
+    t.equal(three.label.length, 40);
+    R.renameRegiment(s, data, three.id, '');
+    t.equal(R.regimentName(three, data), 'Line Infantry III', 'no name gives its number back');
+    t.equal(R.renameRegiment(s, data, 'nope', 'A').ok, false);
+  });
+
+  test('Musters: Level 3 raises two in one order, Level 5 three; each is raised as Recruit raises one', function (t) {
+    var s = room(tidy(army()), 2);
+    t.equal(R.issueOrder(s, data, 'war_room', 'coordinated_muster', [3, 1], dice([0.3])).message, 'Needs Level 3.');
+    room(s, 3);
+    var res = R.issueOrder(s, data, 'war_room', 'coordinated_muster', [3, 1], dice([0.3]));
+    t.ok(res.ok, res.message);
+    var o = s.pendingOrders[0];
+    t.same([o.label, o.dueDay, o.costGP, o.chosen.units], ['War Room: Coordinated Muster (Line Infantry (100), Archers (50))', 10, 0, ['Line Infantry (100)', 'Archers (50)']]);
+    t.equal(R.issueOrder(s, data, 'war_room', 'coordinated_muster', [3, 1], dice([0.3])).message, 'That order is already pending.');
+    t.equal(R.issueOrder(s, data, 'war_room', 'grand_muster', [3, 1, 2], dice([0.3])).message, 'Needs Level 5.');
+    t.same(R.completeSimpleOrder(s, data, o, dice([0.5])), [['Order Completed', 'War Room: Coordinated Muster (Line Infantry (100), Archers (50)) → Replacements bring Line Infantry III back to 100. Recruited: Archers II.']]);
+    room(s, 5);
+    R.removeOrder(s, o.id);
+    t.ok(R.issueOrder(s, data, 'war_room', 'grand_muster', [5, 5, 0], dice([0.3])).ok);
+    R.completeSimpleOrder(s, data, s.pendingOrders[0], dice([0.5]));
+    t.same(regs(s).filter(function (r) { return /Light/.test(r.name); }).map(function (r) { return R.regimentName(r, data); }), ['Light Cavalry I', 'Light Cavalry II']);
+    t.equal(s.military[0].qty, 3, 'and a Lieutenant');
+  });
+
+  test('a save with drills, grades, names and Recouping reloads exactly, twice', function (t) {
+    var s = room(tidy(army()), 3);
+    drill(s, 'Line Infantry I');
+    byName(s, 'Line Infantry II').grade = 'trained';
+    R.renameRegiment(s, data, byName(s, 'Archers I').id, 'Hawkeyes');
+    R.settleRegiments(s, data);
+    var back = R.fromSave(copy(R.toSave(s)), data);
+    t.same(back.military, s.military);
+    t.same(back.pendingOrders, s.pendingOrders);
+    t.same(R.fromSave(copy(R.toSave(back)), data), back, 'loading twice changes nothing');
+  });
+
 }());
