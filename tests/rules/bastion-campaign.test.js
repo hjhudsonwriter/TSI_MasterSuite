@@ -2119,7 +2119,7 @@
     t.same(f.units.line.map(function (u) { return [u.label, u.grade]; }), [['Line Infantry II', 'veteran'], ['Line Infantry I', 'trained'], ['Line Infantry III (62 of 100)', 'regular']]);
     var side = R.playerSide(s, data, { defenders: 0, lieutenants: 0, units: { line: 3 }, beasts: {} });
     var line = W.archetypes.line;
-    t.same(side.units.map(function (u) { return [u.regiment, u.grade, u.profile.cohesion, u.profile.resolve, u.profile.bv, u.profile.attack, u.profile.defence, u.profile.move]; }), [
+    t.same(side.units.map(function (u) { return [u.source.regiment, u.source.grade, u.profile.cohesion, u.profile.resolve, u.profile.bv, u.profile.attack, u.profile.defence, u.profile.move]; }), [
       ['Line Infantry II', 'veteran', line.cohesion + 1, line.resolve + 1, line.bv + 1, line.attack, line.defence, line.move],
       ['Line Infantry I', 'trained', line.cohesion, line.resolve + 1, line.bv + 0.5, line.attack, line.defence, line.move],
       ['Line Infantry III', 'regular', 3, line.resolve, 3, line.attack, line.defence, line.move]

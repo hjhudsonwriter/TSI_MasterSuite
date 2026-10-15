@@ -633,7 +633,12 @@
           traits: traits, variant: null,
           source: reg.rowId || reg.depleted ? { key: reg.key, type: type, rowId: reg.rowId || reg.key } : { key: reg.key, type: type }
         };
-        if (reg.rowId) { u.regiment = reg.label.replace(/\s*\(\d+ of \d+\)$/, ''); u.grade = reg.grade || 'regular'; }
+        /* Its own name and grade travel in its source, which the battle keeps,
+           so the War Table can show them. */
+        if (reg.rowId && isRecord(R.regimentById ? R.regimentById(s, reg.rowId) : null)) {
+          u.source.regiment = reg.label.replace(/\s*\(\d+ of \d+\)$/, '');
+          u.source.grade = reg.grade || 'regular';
+        }
         units.push(u);
       });
     });

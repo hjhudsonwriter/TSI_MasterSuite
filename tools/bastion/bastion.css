@@ -1506,3 +1506,13 @@
 .tsi-page--bastion .tsi-bas-influence__logtext { color: var(--tsi-text); overflow-wrap: anywhere; }
 .tsi-page--bastion .tsi-bas-influence__logwhy { color: var(--tsi-text-muted); font-size: 14px; }
 .tsi-page--bastion .tsi-bas-asset.tsi-bas-bridge { grid-template-columns: minmax(0, 1fr); }
+
+/* ---------- The War Room's regiments (pull request 8a) ---------- */
+.tsi-page--bastion .tsi-bas-tag {
+  display: inline-block; padding: 0 0.5em; border: 1px solid var(--tsi-gold-deep); border-radius: 999px;
+  font-family: var(--tsi-font-display); font-size: 0.72em; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--tsi-gold); vertical-align: 0.1em;
+}
+.tsi-page--bastion .tsi-bas-regiment--recouping .tsi-bas-item__name { color: #e7b9a4; }
+.tsi-page--bastion .tsi-bas-fn__muster { display: flex; flex-wrap: wrap; gap: 0.4em; }
+.tsi-page--bastion .tsi-bas-fn__muster .tsi-bas-fn__select { flex: 1 1 10em; min-width: 0; }

@@ -441,6 +441,9 @@
       var housed = cid && isObj(bastionSave) && Array.isArray(bastionSave.creatures) && bastionSave.creatures.some(function (c) {
         return isObj(c) && c.id === cid && c.status === 'housed';
       });
+      /* Released at the Bastion (pull request 8a): no longer in its register. */
+      var released = cid && isObj(bastionSave) && Array.isArray(bastionSave.creatures) && !bastionSave.creatures.some(function (c) { return isObj(c) && c.id === cid; });
+      if (r.r === 'applied' && released) return { kind: 'applied', line: 'Applied' + cday + ': the Bastion held ' + what + ', and has since released it.' };
       if (r.r === 'applied') return { kind: 'applied', line: r.held === true
         ? 'Applied' + cday + ': the Bastion already held ' + what + ', so nothing changed.'
         : 'Applied' + cday + ': the Bastion holds ' + what + (housed ? '; it lives at the Ironbow now.' : '; house it at the ' + B.speciesHomeName(m.species) + '.') };

@@ -165,6 +165,26 @@
       return isObj(c) && c.status === 'waiting' && (!species || c.species === species) && !R.houseOrderFor(s, c.id);
     });
   };
+  /* Release a granted creature still waiting for a home (Harry, 15 October
+     2026: a grant made by mistake can be undone this way). It leaves the
+     register; its grant's receipt stays, so it never comes back by itself.
+     A creature being housed, or housed, or Elara's wyvern, can't be. */
+  R.releaseBlocker = function (s, data, c) {
+    if (!isObj(c) || !R.creatureById(s, c.id)) return 'That creature isn\'t at the Ironbow any more.';
+    var name = R.creatureName(data, c);
+    if (c.status !== 'waiting') return name + ' lives at the Ironbow now, and stays.';
+    if (R.houseOrderFor(s, c.id)) return name + ' is being housed. Cancel that order first.';
+    return '';
+  };
+  R.releaseCreature = function (s, data, id, now) {
+    var c = R.creatureById(s, id);
+    var why = R.releaseBlocker(s, data, c);
+    if (why) return { ok: false, message: why };
+    var name = R.creatureName(data, c);
+    s.creatures = R.creatures(s).filter(function (x) { return x !== c; });
+    R.log(s, 'Creatures', name + ' was released: it no longer waits at the Ironbow.', now);
+    return { ok: true, name: name };
+  };
   R.housingOptions = function (s, data, species) {
     return R.waitingCreatures(s, data, species).map(function (c) { return { label: R.creatureName(data, c), creatureId: c.id }; });
   };

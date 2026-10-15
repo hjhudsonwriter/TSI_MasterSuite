@@ -1423,13 +1423,23 @@
           onOpen: function (api) { if (api && api.dialog) api.dialog.setAttribute('data-test', 'creature-dialog'); }
         }).then(function (ok) {
           if (!ok || !life.alive) return false;
+          /* Harry (15 October 2026): Grant asks first. Once the Bastion has
+             it, only Release (while it waits for a home) takes it back. */
+          var named = nameBox.value.replace(/\s+/g, ' ').trim();
+          var kindName = kindSel.options[kindSel.selectedIndex] ? kindSel.options[kindSel.selectedIndex].text : kindSel.value;
+          return ask('Grant ' + (/^[aeiou]/i.test(kindName) ? 'an ' : 'a ') + kindName.toLowerCase() + (named ? ' (' + named + ')' : '') + ' to the Ironbow? Once the Bastion has it, it can only be released while it waits for a home.', 'Grant').then(function (sure) {
+            if (!sure || !life.alive) return false;
+            return grantNow();
+          });
+        });
+        function grantNow() {
           var res = J.grantCreature(state, kindSel.value, { name: nameBox.value, text: whyBox.value, memory: TSI.store.mode === 'memory' });
           if (!res.ok) { note(res.message); return false; }
           saveNow();
           renderSent();
           setNotice(res.line);
           return true;
-        });
+        }
       }
 
       /* The harbour box in a port's town picture: Ironbow's Port Charter
