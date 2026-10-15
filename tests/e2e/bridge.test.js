@@ -7,7 +7,7 @@
    - an Explorer event changes a Clan's Honour/Respect in the Bastion once,
      with both open, with the Bastion shut for days, after Reset Travel, and
      never after a Bastion Reset (skipped and listed instead);
-   - the Party bags: charts (one more hex a day, 3 days of use each) and
+   - the Travel bags: charts (one more hex a day, 3 days of use each) and
      packs (advantage at C8's vigil, once, kept after a reload);
    - typing in an Honour/Respect box while a change lands keeps both.
    Run with:  node tests/e2e/bridge.test.js */
@@ -355,7 +355,7 @@ async function influenceRows(ba) {
 
   /* ------------------------------------------------------------------ */
   for (const size of ['laptop', 'tv']) {
-    section('Party bags, charts and packs (' + size + ')');
+    section('Travel bags, charts and packs (' + size + ')');
     const C = await context(browser, size);
     const ex4 = await openExplorer(C);
 

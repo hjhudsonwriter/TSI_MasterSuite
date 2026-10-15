@@ -394,7 +394,7 @@
 .tsi-page--explorer .tsi-exp-word li { margin: 4px 0; }
 
 /* ---------- The Explorer link (pull request 4 of the facilities overhaul) ----------
-   The Party bags, the chart line, the pack offer at an exhaustion save, and
+   The Travel bags, the chart line, the pack offer at an exhaustion save, and
    "Sent to the Bastion". */
 .tsi-tool--explorer .tsi-exp-section-head { display: flex; align-items: center; gap: 6px; }
 .tsi-tool--explorer .tsi-exp-section-head .tsi-exp-mini { margin-left: auto; }
@@ -458,7 +458,7 @@
 .tsi-page--explorer .tsi-exp-count { width: 90px; font-size: 17px; }
 
 /* ---------- The Courier Exchange (pull request 6 of the facilities overhaul) ----------
-   The Party bags' From the Ironbow list, and the courier post in a
+   The Travel bags' From the Ironbow list, and the courier post in a
    collection town's picture. At Timberport and Goldport it sits beside the
    harbour box, and every town picture with a box is a little shorter, so
    the picture, the box and Close all fit the laptop. */

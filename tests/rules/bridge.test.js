@@ -1,6 +1,6 @@
 /* The Explorer link (pull request 4 of the facilities overhaul, Harry's
    answers of 13 October 2026): shared/js/bridge-rules.js, the Explorer's
-   messages, Party bags, charts and packs (journey.js, rules.js), and the
+   messages, Travel bags, charts and packs (journey.js, rules.js), and the
    Bastion applying each change once (tools/bastion/rules.js). The parcel
    pickups of pull request 6 are tested in courier.test.js. */
 (function () {
@@ -370,7 +370,7 @@
   });
 
   /* ---------------------------------------------------------------- */
-  group('Explorer link: Party bags and Overland charts (3 days of use each)');
+  group('Explorer link: Travel bags and Overland charts (3 days of use each)');
 
   function board43() { return ER.board(4 / 3); }
   function putOnHex(s, board, id, q, r) {
@@ -388,7 +388,7 @@
 
   test('Add, Use and Remove', function (t) {
     var s = explorer();
-    t.ok(/Added 2 Overland charts to the Party bags \(6 days of use\)\. Now 6 days of use\./.test(J.addItem(s, J.CHART, 2)));
+    t.ok(/Added 2 Overland charts to the Travel bags \(6 days of use\)\. Now 6 days of use\./.test(J.addItem(s, J.CHART, 2)));
     t.equal(J.itemQty(s, J.CHART), 6);
     J.addItem(s, J.CHART, 1);
     t.equal(s.journey.inventory.length, 1, 'the same kind is one row');

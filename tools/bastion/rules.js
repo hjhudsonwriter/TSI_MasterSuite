@@ -658,9 +658,9 @@
         R.log(s, 'From the Explorer', charters + (charters === 1 ? ' Port Charter' : ' Port Charters') + ', sent before this Bastion started, ' + (charters === 1 ? 'was' : 'were') + ' skipped, so nothing counts twice. Clan Influence lists ' + (charters === 1 ? 'it: grant it again in the Explorer if it should count.' : 'them: grant them again in the Explorer if they should count.'), at);
       }
       /* A Bastion starting from nothing has no parcels, so a pickup sent
-         before it changes nothing here: the items stay in the Party bags. */
+         before it changes nothing here: the items stay in the Travel bags. */
       if (pickups) {
-        R.log(s, 'From the Explorer', pickups + (pickups === 1 ? ' parcel pickup' : ' parcel pickups') + ', collected before this Bastion started, ' + (pickups === 1 ? 'was' : 'were') + ' skipped, so nothing counts twice. Clan Influence lists ' + (pickups === 1 ? 'it' : 'them') + '; the items stay in the Party bags.', at);
+        R.log(s, 'From the Explorer', pickups + (pickups === 1 ? ' parcel pickup' : ' parcel pickups') + ', collected before this Bastion started, ' + (pickups === 1 ? 'was' : 'were') + ' skipped, so nothing counts twice. Clan Influence lists ' + (pickups === 1 ? 'it' : 'them') + '; the items stay in the Travel bags.', at);
       }
       /* Griffins and dire wolves granted before this Bastion started (pull
          request 7): none is held, so none can count twice. */
@@ -1490,6 +1490,11 @@
        its kind waiting for a home, and not being housed already (pull
        request 7, creature-rules.js). */
     if (fn.housesSpecies) return R.housingOptions ? R.housingOptions(s, data, fn.housesSpecies) : [];
+    /* The War Room's Drill a Regiment: every regiment that can drill now;
+       a Muster: the Recruit order's own list (pull request 8a,
+       regiment-rules.js). */
+    if (fn.drill) return R.drillOptions ? R.drillOptions(s, data) : [];
+    if (fn.muster) return R.musterChoices ? R.musterChoices(data) : [];
     return fn.options || [];
   };
   function orderLabel(fac, fn, optionLabel) {
@@ -1553,7 +1558,30 @@
       var homeless = R.housingBlocker ? R.housingBlocker(s, data, fac, fn) : 'This copy of the Bastion can\'t house creatures.';
       if (homeless) return { ok: false, message: homeless };
     }
+    /* Drill a Regiment (pull request 8a): one order per regiment, as many
+       at once as the War Room has drill places (regiment-rules.js). */
+    if (fn.drill) {
+      if (!R.issueDrill) return { ok: false, message: 'This copy of the Bastion can\'t drill regiments.' };
+      var pick = R.fnOptions(s, data, fac, fn)[clampInt(optionIdx, 0)] || null;
+      if (!pick) return { ok: false, message: R.drillRoomBlocker(s, data) || 'No regiment can drill now: each must be at full strength and not drilling already.' };
+      return R.issueDrill(s, data, pick.regimentId, rand);
+    }
     if (pendingSame(s, facId, fnId)) return { ok: false, message: 'That order is already pending.' };
+    /* A Muster (pull request 8a): one formation for each of its lists. */
+    if (fn.muster) {
+      var choices = R.fnOptions(s, data, fac, fn);
+      var idxs = Array.isArray(optionIdx) ? optionIdx : [optionIdx];
+      var picks = [];
+      for (var mi = 0; mi < R.musterSize(fn); mi++) {
+        var ch = choices[clampInt(idxs[mi] === undefined ? 0 : idxs[mi], 0)];
+        if (!ch) return { ok: false, message: 'Choose what to raise.' };
+        picks.push(String(ch.label));
+      }
+      var mLabel = fac.name + ': ' + fn.label + ' (' + picks.join(', ') + ')';
+      var mDays = R.orderDays(fn);
+      s.pendingOrders.push({ id: R.uid(rand), facId: facId, fnId: fnId, chosen: { label: picks.join(', '), units: picks }, optionLabel: picks.join(', '), notes: '', label: mLabel, costGP: 0, issuedDay: s.day, dueDay: s.day + mDays });
+      return { ok: true, log: ['Order Issued', mLabel + ' (' + R.daysText(mDays) + ': due Day ' + (s.day + mDays) + ').'] };
+    }
     var busy = productionBusy(s, data, fac, fn);
     if (busy) return { ok: false, message: busy };
     var blocked = R.recipeBlocker(s, data, fac, fn, fn.options && fn.options.length ? fn.options[clampInt(optionIdx, 0)] || null : null);
@@ -2226,6 +2254,9 @@
       s.defenders.armed = s.defenders.count > 0;
       return [['Order Completed', label + ' → Defenders armed.']];
     }
+    /* Pull request 8a (regiment-rules.js). */
+    if (fac.id === 'war_room' && fn.drill && R.completeDrill) return [['Order Completed', R.completeDrill(s, data, order)]];
+    if (fac.id === 'war_room' && fn.muster && R.completeMuster) return [['Order Completed', R.completeMuster(s, data, order)]];
     if (fac.id === 'war_room' && fn.id === 'recruit') {
       var unit = optionLabel || 'Unit';
       /* A depleted regiment of that type is brought back to full strength

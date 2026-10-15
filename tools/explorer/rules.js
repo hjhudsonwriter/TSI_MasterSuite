@@ -410,7 +410,7 @@
   R.dayLimit = function (state) { return journeyRules().dayLimit(state); };
 
   /* ---------- Overland charts (pull request 4 of the facilities overhaul) ----------
-     "Use a chart today" in the Party bags: one more 6-mile hex until Make
+     "Use a chart today" in the Travel bags: one more 6-mile hex until Make
      Camp, at most one chart a day, never on a day an event cut short. Each
      chart lasts 3 days of use (Harry, 13 October 2026). Pace is unchanged,
      and a chart never makes the day's travel event more likely. */
@@ -420,7 +420,7 @@
     if (state.freeMove) return 'Free Move is on, so miles aren\'t being counted.';
     if (state.travel.extraMiles > 0) return 'A chart is already in use today.';
     if (state.travel.dayLost) return 'Today\'s miles are lost: a chart can\'t bring them back.';
-    if (J.itemQty(state, J.CHART) < 1) return 'There\'s no Overland chart in the Party bags.';
+    if (J.itemQty(state, J.CHART) < 1) return 'There\'s no Overland chart in the Travel bags.';
     return '';
   };
   /* Use one day of a chart. Returns the line it logs, or null. */

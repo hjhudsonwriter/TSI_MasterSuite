@@ -30,10 +30,10 @@
    'parcel_collected', day, at, from, clan, point, parcel, goods, text }
    (parcel: the Bastion's parcel id; point: a key of
    shared/data/courier-points.js; clan: that town's Clan; goods: what went
-   into the Party bags, [{ goodId, qty }]). Point, Clan and goods are only
+   into the Travel bags, [{ goodId, qty }]). Point, Clan and goods are only
    for showing: the Bastion's own parcel record decides. Its id is always
    '<parcel id>:collect:0' (B.collectId), so the same parcel can never be
-   collected twice. The goods go into the Party bags in the same Explorer
+   collected twice. The goods go into the Travel bags in the same Explorer
    save as the message; the Bastion then closes the parcel once, keeping a
    receipt. The Explorer reads the Bastion's parcels from its save (B.parcels,
    B.parcelView) but never changes them.
@@ -429,7 +429,7 @@
       if (r.r === 'skipped') return { kind: 'skipped', line: 'Skipped: collected before this Bastion started.' };
       var why = str(r.why) || 'the Bastion couldn\'t use it.';
       if (!/[.!?]$/.test(why)) why += '.';
-      return { kind: 'refused', line: 'Refused: ' + why + ' The items stay in the Party bags; take them out with ✕ if they shouldn\'t be there.' };
+      return { kind: 'refused', line: 'Refused: ' + why + ' The items stay in the Travel bags; take them out with ✕ if they shouldn\'t be there.' };
     }
     /* A creature the DM granted (pull request 7): read from the message's
        kind, never the receipt's. */
@@ -441,6 +441,9 @@
       var housed = cid && isObj(bastionSave) && Array.isArray(bastionSave.creatures) && bastionSave.creatures.some(function (c) {
         return isObj(c) && c.id === cid && c.status === 'housed';
       });
+      /* Released at the Bastion (pull request 8a): no longer in its register. */
+      var released = cid && isObj(bastionSave) && Array.isArray(bastionSave.creatures) && !bastionSave.creatures.some(function (c) { return isObj(c) && c.id === cid; });
+      if (r.r === 'applied' && released) return { kind: 'applied', line: 'Applied' + cday + ': the Bastion held ' + what + ', and has since released it.' };
       if (r.r === 'applied') return { kind: 'applied', line: r.held === true
         ? 'Applied' + cday + ': the Bastion already held ' + what + ', so nothing changed.'
         : 'Applied' + cday + ': the Bastion holds ' + what + (housed ? '; it lives at the Ironbow now.' : '; house it at the ' + B.speciesHomeName(m.species) + '.') };
@@ -525,7 +528,7 @@
       };
     });
   };
-  /* A parcel's goods as the Party bags name them: "3 Expedition Provision
+  /* A parcel's goods as the Travel bags name them: "3 Expedition Provision
      Packs, 1 Overland chart (3 days of use)". */
   B.parcelGoodsText = function (goods) {
     var known = (window.TSI_DATA && window.TSI_DATA.partyItems) || {};

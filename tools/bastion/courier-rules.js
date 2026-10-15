@@ -12,7 +12,7 @@
    - Arrive. In the day's 'trade' stage, a parcel whose readyDay has come
      becomes 'ready': it waits at its town, for as long as it takes.
    - Collect. The DM collects it in the Explorer, at that town's picture; the
-     goods go into the Party bags with a pickup message
+     goods go into the Travel bags with a pickup message
      (shared/js/bridge-rules.js). The Bastion closes the parcel once,
      'collected', from R.applyInbox, with its receipt in the same change. The
      only way out of 'ready' is the pickup, so a waiting parcel's goods are
@@ -76,7 +76,7 @@
   /* What a parcel can carry: [{ goodId, name, size }], in the data's order.
      A good is only carried if courier-data.js lists it, the Bastion knows
      it, it isn't a trade good (bulk cargo never goes by courier), and the
-     Party bags can hold it (shared/data/party-items.js). */
+     Travel bags can hold it (shared/data/party-items.js). */
   R.courierGoodBlocker = function (data, goodId) {
     var items = isObj(courier(data).items) ? courier(data).items : {};
     var g = R.good(data, goodId);
@@ -85,7 +85,7 @@
     if (!isObj(items[goodId])) return name + ' doesn\'t go by courier (courier-data.js).';
     if (g.kind === 'cargo') return name + ' is bulk cargo: it goes by the Dock, never by courier.';
     var bags = (window.TSI_DATA && window.TSI_DATA.partyItems) || null;
-    if (bags && !isObj(bags[goodId])) return name + ' can\'t go in the Party bags, so the party couldn\'t collect it.';
+    if (bags && !isObj(bags[goodId])) return name + ' can\'t go in the Travel bags, so the party couldn\'t collect it.';
     return '';
   };
   R.courierGoods = function (data) {
@@ -427,7 +427,7 @@
     if (!pid && m && typeof m.parcel === 'string') pid = m.parcel;
     var p = pid ? R.parcelById(s, pid) : null;
     var said = m && typeof m.point === 'string' ? m.point : '';
-    if (!p) return { r: 'refused', held: false, parcel: pid, point: said, why: 'The Bastion has no record of this parcel (a save from another moment?). Nothing changed. Check both the Warehouse and the Party bags.' };
+    if (!p) return { r: 'refused', held: false, parcel: pid, point: said, why: 'The Bastion has no record of this parcel (a save from another moment?). Nothing changed. Check both the Warehouse and the Travel bags.' };
     var town = R.courierPointName(p.point);
     var by = from ? ' (' + from + ')' : '';
     var res = { r: 'applied', held: false, parcel: p.id, point: p.point, why: '', line: '', notice: '', word: '' };

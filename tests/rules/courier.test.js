@@ -124,13 +124,13 @@
     t.equal(BR.courierPoint(withCourier({ points: { slades_muster: { level: 1, days: 0, feeGP: 5 } } }), 'slades_muster').days, 1, 'never an instant delivery');
   });
 
-  test('what a parcel carries: packs and charts, 1 item each, each a Bastion good and a Party bags kind; never a trade good', function (t) {
+  test('what a parcel carries: packs and charts, 1 item each, each a Bastion good and a Travel bags kind; never a trade good', function (t) {
     t.same(CD.items, { expedition_provision_pack: { size: 1 }, overland_chart: { size: 1 } });
     t.same(CD.manualAdd, [PACK, CHART]);
     Object.keys(CD.items).forEach(function (id) {
       var g = BR.good(bdata, id);
       t.ok(g && g.kind !== 'cargo', id + ' is a Warehouse good, not a trade good');
-      t.ok(T.partyItems[id], id + ' is a Party bags kind');
+      t.ok(T.partyItems[id], id + ' is a Travel bags kind');
       t.equal(g.name, T.partyItems[id].name, id + ': the same name in both tools');
     });
     t.same(BR.courierGoods(bdata).map(function (g) { return [g.goodId, g.name, g.size]; }), [[PACK, 'Expedition Provision Pack', 1], [CHART, 'Overland chart', 1]]);
@@ -139,7 +139,7 @@
     });
     var listed = withCourier({ items: { raw_timber: { size: 1 }, restorative_herbs: { size: 1 }, expedition_provision_pack: { size: 2 } } });
     t.ok(/bulk cargo/.test(BR.courierGoodBlocker(listed, 'raw_timber')), 'a trade good is refused even if listed');
-    t.ok(/can't go in the Party bags/.test(BR.courierGoodBlocker(listed, 'restorative_herbs')), 'so is a good the bags can\'t hold');
+    t.ok(/can't go in the Travel bags/.test(BR.courierGoodBlocker(listed, 'restorative_herbs')), 'so is a good the bags can\'t hold');
     t.ok(/doesn't go by courier/.test(BR.courierGoodBlocker(bdata, 'restorative_herbs')));
     t.equal(BR.parcelItems(listed, packs(3)), 6, 'size counts');
     t.equal(BR.goodShipBlocker(bdata, CHART, null), 'Overland chart isn\'t a trade good (ingredients and supplies don\'t sail).', 'a chart never sails with the Dock');
@@ -329,8 +329,8 @@
     t.equal(r.refused, 1);
     t.same(BR.toSave(w.b).tradeNetwork, before);
     var rec = w.b.bridge.done[m.id];
-    t.same([rec.r, rec.type, rec.parcel, rec.why], ['refused', 'parcel_collected', 'zzzzzz00000', 'The Bastion has no record of this parcel (a save from another moment?). Nothing changed. Check both the Warehouse and the Party bags.']);
-    t.equal(Bg.statusOf(m, copy(BR.toSave(w.b))).line, 'Refused: The Bastion has no record of this parcel (a save from another moment?). Nothing changed. Check both the Warehouse and the Party bags. The items stay in the Party bags; take them out with ✕ if they shouldn\'t be there.');
+    t.same([rec.r, rec.type, rec.parcel, rec.why], ['refused', 'parcel_collected', 'zzzzzz00000', 'The Bastion has no record of this parcel (a save from another moment?). Nothing changed. Check both the Warehouse and the Travel bags.']);
+    t.equal(Bg.statusOf(m, copy(BR.toSave(w.b))).line, 'Refused: The Bastion has no record of this parcel (a save from another moment?). Nothing changed. Check both the Warehouse and the Travel bags. The items stay in the Travel bags; take them out with ✕ if they shouldn\'t be there.');
   });
 
   test('already recorded as collected: applied, nothing changes, and the Explorer says so', function (t) {
@@ -435,7 +435,7 @@
     var r = BR.applyInbox(b, bdata, exWith([m, standingMsg(), charterMsg()]), 1000);
     t.equal(r.skipped, 3);
     t.same(b.log.map(function (l) { return l.body; }), [
-      '1 parcel pickup, collected before this Bastion started, was skipped, so nothing counts twice. Clan Influence lists it; the items stay in the Party bags.',
+      '1 parcel pickup, collected before this Bastion started, was skipped, so nothing counts twice. Clan Influence lists it; the items stay in the Travel bags.',
       '1 Port Charter, sent before this Bastion started, was skipped, so nothing counts twice. Clan Influence lists it: grant it again in the Explorer if it should count.',
       '1 change to Honour/Respect, sent before this Bastion started, was skipped, so nothing counts twice. Clan Influence lists it, to type in by hand if it should count.'
     ]);
@@ -444,7 +444,7 @@
     var two = BR.defaultState(bdata);
     BR.anchor(two, 12);
     BR.applyInbox(two, bdata, exWith([m, pickup({ id: 'qqqqqq22222', point: 'goldport', goods: [] })]), 1000);
-    t.same(two.log.map(function (l) { return l.body; }), ['2 parcel pickups, collected before this Bastion started, were skipped, so nothing counts twice. Clan Influence lists them; the items stay in the Party bags.']);
+    t.same(two.log.map(function (l) { return l.body; }), ['2 parcel pickups, collected before this Bastion started, were skipped, so nothing counts twice. Clan Influence lists them; the items stay in the Travel bags.']);
   });
 
   /* ---------------------------------------------------------------- */
@@ -714,7 +714,7 @@
     b.bridge.done[m.id] = { r: 'skipped' };
     t.equal(Bg.statusOf(m, b).line, 'Skipped: collected before this Bastion started.');
     b.bridge.done[m.id] = { r: 'refused', why: 'Its id is damaged' };
-    t.equal(Bg.statusOf(m, b).line, 'Refused: Its id is damaged. The items stay in the Party bags; take them out with ✕ if they shouldn\'t be there.');
+    t.equal(Bg.statusOf(m, b).line, 'Refused: Its id is damaged. The items stay in the Travel bags; take them out with ✕ if they shouldn\'t be there.');
     var old = { id: m.id, type: 'parcel_collected', day: 12, clan: 'slade', hr: 0 };
     b.bridge.done[m.id] = { r: 'applied', day: 13, hr: 0, was: 0, now: 0 };
     t.equal(Bg.statusOf(old, b).line, 'Applied on Day 13: the Bastion recorded the parcel at Unknown town as collected.', 'never "Honour/Respect was already at +0"');
@@ -775,7 +775,7 @@
     return { b: b, p: p, save: copy(BR.toSave(b)) };
   }
 
-  test('Collect: every item into the Party bags and one pickup message with the parcel\'s fixed id, together', function (t) {
+  test('Collect: every item into the Travel bags and one pickup message with the parcel\'s fixed id, together', function (t) {
     var r = readySave();
     var s = explorer(12);
     J.addItem(s, PACK, 1);
@@ -856,7 +856,7 @@
     var s = explorer(12);
     var got = J.collectParcel(s, res.parcel.id, 'slades_muster', copy(BR.toSave(b)), {});
     t.equal(got.ok, true, got.message);
-    t.equal(J.itemQty(s, PACK), 120, 'all 120 in the Party bags');
+    t.equal(J.itemQty(s, PACK), 120, 'all 120 in the Travel bags');
     t.equal(ER.toSave(s).journey.outbox.length, 1, 'one pickup message');
   });
 

@@ -61,7 +61,7 @@
       var R = ns.rules;
       var D = window.TSI_DATA;
       var B = D.bastion;
-      var data = { bastion: B, facilities: D.bastionFacilities, tools: D.bastionTools, events: D.bastionEvents, research: D.bastionResearch, goods: D.bastionGoods, commerce: D.bastionCommerce, courier: D.bastionCourier, creatures: D.bastionCreatures };
+      var data = { bastion: B, facilities: D.bastionFacilities, tools: D.bastionTools, events: D.bastionEvents, research: D.bastionResearch, goods: D.bastionGoods, commerce: D.bastionCommerce, courier: D.bastionCourier, creatures: D.bastionCreatures, warRoom: D.bastionWarRoom };
       /* The war mini-game's numbers (war-units-data.js): units, stat blocks, missions. */
       var W = D.bastionWar;
       var COMPENDIUM = (D.bastionCompendium && D.bastionCompendium.items) || {};
@@ -519,6 +519,16 @@
          Table lines <prefix>-status-<id> and <prefix>-war-<id> (the panels
          use 'creature', Management 'mgmt-creature'). compact (Management):
          two lines, its War Table line only on hover. */
+      var onRelease = TSI.oneAtATime(async function (id) {
+        var c = R.creatureById(state, id);
+        var why = R.releaseBlocker(state, data, c);
+        if (why) { await say(why); return; }
+        var ok = await ask('Release ' + R.creatureName(data, c) + '? It leaves the Ironbow for good: the grant isn\'t sent again, so to have it back the DM grants a new one in the Explorer.', 'Release', 'Release a creature');
+        if (!ok || !life.alive) return;
+        var res = R.releaseCreature(state, data, id);
+        if (!res.ok) { await say(res.message); return; }
+        done();
+      });
       function creatureRow(c, prefix, compact) {
         var test = prefix + '-' + c.id;
         var name = R.creatureName(data, c);
@@ -534,7 +544,12 @@
             compact ? null : el('div', { class: 'tsi-bas-item__type', text: creatureKindLine(c) }),
             compact ? null : el('div', { class: 'tsi-bas-creature__status', 'data-test': prefix + '-status-' + c.id, text: st.line }),
             war && c.status === 'housed' && !compact ? el('div', { class: 'tsi-bas-item__meta', 'data-test': prefix + '-war-' + c.id, text: war }) : null
-          ])
+          ]),
+          /* Harry (15 October 2026): a granted creature still waiting for a
+             home can be released (asks first); once housed, it stays. */
+          c.status === 'waiting' && !R.houseOrderFor(state, c.id)
+            ? btn('Release…', function () { onRelease(c.id); }, 'tsi-btn--ghost', prefix + '-release-' + c.id)
+            : null
         ]);
         var tip = function () { return creatureTip(c); };
         bindTip(row, tip, { noChange: true });
@@ -733,7 +748,7 @@
           bridgeList.appendChild(el('div', { class: 'tsi-bas-influence__logrow tsi-bas-influence__logrow--' + r.r, 'data-test': 'bridge-row', 'data-result': r.r }, [
             el('div', { class: 'tsi-bas-influence__loghead' }, [el('strong', { text: head }), typeof r.day === 'number' ? ' · ' + R.dayLabel(r.day) : '']),
             r.text ? el('div', { class: 'tsi-bas-influence__logtext', text: r.text }) : null,
-            r.why ? el('div', { class: 'tsi-bas-influence__logwhy', text: r.why + (r.r === 'skipped' ? (parcel ? ' The items stay in the Party bags.' : charter || creature ? ' Grant it again in the Explorer if it should count.' : ' Type it in above if it should count.') : '') }) : null
+            r.why ? el('div', { class: 'tsi-bas-influence__logwhy', text: r.why + (r.r === 'skipped' ? (parcel ? ' The items stay in the Travel bags.' : charter || creature ? ' Grant it again in the Explorer if it should count.' : ' Type it in above if it should count.') : '') }) : null
           ]));
         });
       }
@@ -1311,10 +1326,17 @@
         var legacy = a.name.toLowerCase() !== String(it.name).replace(/\s*\(\s*\d+\s*\)\s*$/, '').trim().toLowerCase();
         var strength = R.clampInt(it.strength, 0, a.size);
         var depleted = it.depleted === true;
-        var line = (legacy ? 'Fights as ' : '') + a.name + ' • ' + (depleted ? 'Depleted: ' + strength + '/' + a.size : (qtyOf(it) > 1 ? qtyOf(it) + ' × ' : '') + plural(a.size, 'soldier'));
+        /* A regiment record (pull request 8a): its grade, Recouping and drill. */
+        var record = typeof it.num === 'number' && !!R.regimentStatus;
+        var line = record
+          ? (legacy ? 'Fights as ' : '') + a.name + ' • ' + R.regimentStatus(state, data, it)
+          : (legacy ? 'Fights as ' : '') + a.name + ' • ' + (depleted ? 'Depleted: ' + strength + '/' + a.size : (qtyOf(it) > 1 ? qtyOf(it) + ' × ' : '') + plural(a.size, 'soldier'));
         var notes = [];
         if (legacy) notes.push('Recruited before the war rules came in: it fights as ' + a.name + '.');
-        if (!depleted) return { line: line, tip: function () { return statTip(type, { notes: notes }); } };
+        if (!depleted) {
+          if (record) return { line: line, tip: function () { var fu = fieldUnit(it, type); return fu ? statTip(type, { unit: fu, notes: notes }) : statTip(type, { notes: notes }); } };
+          return { line: line, tip: function () { return statTip(type, { notes: notes }); } };
+        }
         /* A depleted regiment's stat block is the one it fights with. */
         return {
           line: line,
@@ -1327,10 +1349,13 @@
             var weaker = unitBlock(u).rows.filter(function (r) { return full[r.key] !== undefined && full[r.key] !== r.value; }).map(function (r) {
               return r.name + ' ' + r.value + ' (not ' + full[r.key] + ')';
             });
-            var came = 'Depleted: ' + u.personnel + ' of ' + a.size + ' soldiers came home';
+            var came = (record ? 'Recouping: ' : 'Depleted: ') + u.personnel + ' of ' + a.size + ' soldiers came home';
+            var back = record
+              ? 'it refills by itself (full on ' + R.dayLabel(R.recoupFullDay(state, it)) + '), or at once when the War Room recruits ' + a.name + ' again'
+              : 'the War Room recruits ' + a.name + ' again, which brings it back to full strength';
             var why = weaker.length
-              ? came + ', so it fights at ' + andList(weaker) + ' until the War Room recruits ' + a.name + ' again, which brings it back to full strength.'
-              : came + '. Too few were lost to weaken it in battle; recruiting ' + a.name + ' in the War Room brings it back to full strength.';
+              ? came + ', so it fights at ' + andList(weaker) + ' until ' + back + '.'
+              : came + '. Too few were lost to weaken it in battle; ' + (record ? back.charAt(0).toUpperCase() + back.slice(1) + '.' : 'recruiting ' + a.name + ' in the War Room brings it back to full strength.');
             return statTip(type, { unit: u, lead: 'Military unit • ' + u.personnel + ' of ' + plural(a.size, 'soldier'), notes: notes.concat([why]) });
           }
         };
@@ -1374,15 +1399,18 @@
           }
           /* A row with a stat block can be reached with the Tab key, which shows it too. */
           var keyed = !!info.line;
+          var isReg = kind === 'military' && it && typeof it.num === 'number' && !!R.regimentName;
+          var shownName = isReg ? R.regimentName(it, data) : it.name;
           var row = el('div', {
-            class: 'tsi-bas-item' + (keyed ? ' tsi-bas-item--tip' : ''), 'data-test': test + '-row-' + idx,
-            tabindex: keyed ? '0' : null, role: keyed ? 'group' : null, 'aria-label': keyed ? it.name + ': ' + info.line : null
+            class: 'tsi-bas-item' + (keyed ? ' tsi-bas-item--tip' : '') + (isReg && it.depleted ? ' tsi-bas-regiment--recouping' : ''), 'data-test': test + '-row-' + idx,
+            tabindex: keyed ? '0' : null, role: keyed ? 'group' : null, 'aria-label': keyed ? shownName + ': ' + info.line : null
           }, [
             el('div', { class: 'tsi-bas-item__text' }, [
-              el('div', { class: 'tsi-bas-item__name', text: it.name }),
+              el('div', { class: 'tsi-bas-item__name', text: shownName }),
               info.line ? el('div', { class: 'tsi-bas-item__type', 'data-test': test + '-type-' + idx, text: info.line }) : null,
               el('div', { class: 'tsi-bas-item__meta', text: R.metaLine(it) })
             ]),
+            isReg ? btn('Rename…', function () { onRename(it.id); }, 'tsi-btn--ghost', test + '-rename-' + idx) : null,
             btn('Remove', function () { list.splice(idx, 1); done(); }, 'tsi-btn--ghost', test + '-remove-' + idx)
           ]);
           bindTip(row, info.tip, { noChange: true });
@@ -2742,7 +2770,20 @@
         var options = R.fnOptions(state, data, fac, fn);
         var select = null;
         var chooser = null;
-        if ((fn.options && fn.options.length) || isCraft || (isCharter && options.length) || (fn.housesSpecies && options.length)) {
+        /* The War Room (pull request 8a): Drill a Regiment lists the
+           regiments that can drill; a Muster has one list per formation. */
+        var isDrill = !!fn.drill;
+        var musterN = R.musterSize ? R.musterSize(fn) : 0;
+        if (musterN) {
+          var msels = [];
+          for (var mi = 0; mi < musterN; mi++) {
+            msels.push(el('select', { class: 'tsi-input tsi-bas-fn__select', 'aria-label': fn.label + ': formation ' + (mi + 1), 'data-test': 'sel-' + key + '-' + mi }, options.map(function (o, idx) {
+              return el('option', { value: String(idx), text: o && o.label ? o.label : String(o) });
+            })));
+          }
+          select = { get value() { return msels.map(function (x) { return R.clampInt(x.value, 0); }); } };
+          chooser = el('div', { class: 'tsi-bas-fn__muster', 'data-test': 'muster-' + key }, msels);
+        } else if ((fn.options && fn.options.length) || isCraft || (isCharter && options.length) || (fn.housesSpecies && options.length) || (isDrill && options.length)) {
           select = el('select', { class: 'tsi-input tsi-bas-fn__select', 'aria-label': fn.label, 'data-test': 'sel-' + key }, options.map(function (o, idx) {
             var lab = o && typeof o === 'object' && 'label' in o ? o.label : String(o);
             var cost = o && o.costGP !== undefined && o.costGP !== null ? ' (' + o.costGP + 'gp)' : '';
@@ -2767,18 +2808,22 @@
         /* A production order (pull request 3): what the chosen recipe uses and makes. */
         var goodsLine = fn.production ? el('div', { class: 'tsi-bas-fn__goods', 'data-test': 'goods-' + key }) : null;
         /* Why a House order can't be given now, in a sentence (pull request 7). */
-        var whyLine = isHousing ? el('div', { class: 'tsi-bas-fn__why', 'data-test': 'why-' + key, hidden: true }) : null;
-        function chosenNow() { return fn.production && fn.options && fn.options.length ? fn.options[select ? R.clampInt(select.value, 0) : 0] || null : null; }
+        var whyLine = isHousing || isDrill ? el('div', { class: 'tsi-bas-fn__why', 'data-test': 'why-' + key, hidden: true }) : null;
+        function chosenNow() {
+          if (isDrill) return options[select ? R.clampInt(select.value, 0) : 0] || null;
+          return fn.production && fn.options && fn.options.length ? fn.options[select ? R.clampInt(select.value, 0) : 0] || null : null;
+        }
         function refresh() {
           var chosen = chosenNow();
           var why = repair ? null : !avail.ok ? avail.message : fn.production ? (R.productionBusy(state, data, fac, fn) || R.recipeBlocker(state, data, fac, fn, chosen))
             : isCharter && R.registerBusy(state, data) ? R.registerBusy(state, data)
             : isCharter && !options.length ? 'No Port Charter to register: the DM grants one in the Explorer, and each is registered once.'
-            : isHousing ? R.housingBlocker(state, data, fac, fn) || null : null;
+            : isHousing ? R.housingBlocker(state, data, fac, fn) || null
+            : isDrill ? (R.drillRoomBlocker(state, data) || (!options.length ? 'No regiment can drill now: a regiment drills at full strength, one drill at a time, up to Veteran.' : null)) : null;
           issue.disabled = !!(locked || cd > 0 || repair > 0 || why);
           issue.title = repair ? repairText(fac, repair) : why || null;
           issue.textContent = repair ? 'Under Repair' : !avail.ok ? avail.message : why && fn.production ? 'Can\'t order yet' : why && isCharter ? (options.length ? 'One at a time' : 'No Port Charter to register')
-            : why && isHousing ? housingShort(fac, fn) : cd > 0 ? 'Cooldown: ' + R.daysText(cd) : 'Issue Order';
+            : why && isHousing ? housingShort(fac, fn) : why && isDrill ? 'Can\'t drill now' : cd > 0 ? 'Cooldown: ' + R.daysText(cd) : 'Issue Order';
           if (whyLine) {
             whyLine.hidden = !(why && !repair && avail.ok);
             whyLine.textContent = whyLine.hidden ? '' : why;
@@ -2799,7 +2844,7 @@
         }
         refresh();
         return el('div', { class: 'tsi-bas-fn' + (fn.production ? ' tsi-bas-fn--production' : '') }, [
-          el('div', { class: 'tsi-bas-fn__head' }, [el('div', { class: 'tsi-bas-fn__name', text: fn.label }), el('div', { class: 'tsi-bas-fn__cost', text: R.computeFnCost(state, fac, fn, null).costText || '0gp' })]),
+          el('div', { class: 'tsi-bas-fn__head' }, [el('div', { class: 'tsi-bas-fn__name', text: fn.label }), el('div', { class: 'tsi-bas-fn__cost', text: isDrill ? fn.costText : R.computeFnCost(state, fac, fn, null).costText || '0gp' })]),
           daysLine,
           chooser,
           goodsLine,
@@ -3198,6 +3243,7 @@
           id === 'dock' ? cargoSection() : null,
           id === R.COURIER_FAC ? courierSection() : null,
           creatureSection(id),
+          id === 'war_room' ? regimentSection() : null,
           /* A facility in a construction slot can be demolished (Harry, 13
              October 2026); the five starting facilities can't. */
           B.startingBuilt.indexOf(id) === -1 ? el('div', { class: 'tsi-bas-facpanel__demolish' }, [
@@ -3447,6 +3493,56 @@
          waiting for a home and the room it has (one per level). The House
          order above is the panel's action; this only shows. null for a
          building no kind of creature lives in. */
+      /* ---------- The War Room's regiments (pull request 8a) ----------
+         Every regiment, with its grade, Recouping and drill, and Rename…;
+         the drill places in use. The rules are in regiment-rules.js. */
+      function regimentSection() {
+        var list = R.regiments ? R.regiments(state, data) : [];
+        var slots = R.drillSlots(state, data), busy = R.drillOrders(state).length;
+        return el('div', { class: 'tsi-bas-facpanel__cargo tsi-bas-facpanel__regiments', 'data-test': 'regiments' }, [
+          label('Regiments'),
+          el('div', { class: 'tsi-bas-creatures__room', 'data-test': 'drill-places', text: slots
+            ? 'Drill places: ' + busy + ' of ' + slots + ' in use. Trained: +1 Resolve, +0.5 Battle Value; Veteran: +1 Cohesion, +0.5 Battle Value more.'
+            : 'Drilling starts at War Room Level 2.' }),
+          list.length
+            ? el('div', { class: 'tsi-bas-list', 'data-test': 'regiment-list' }, list.map(function (r) { return regimentRow(r, 'regiment'); }))
+            : muted('None yet. Recruit raises one.')
+        ]);
+      }
+      function regimentRow(r, prefix) {
+        var name = R.regimentName(r, data);
+        var renamed = !!(r.label && r.label.trim());
+        return el('div', { class: 'tsi-bas-item tsi-bas-regiment' + (r.depleted ? ' tsi-bas-regiment--recouping' : ''), 'data-test': prefix + '-' + r.id, 'data-regiment': r.id }, [
+          el('div', { class: 'tsi-bas-item__text' }, [
+            el('div', { class: 'tsi-bas-item__name', text: name }),
+            el('div', { class: 'tsi-bas-item__type', 'data-test': prefix + '-status-' + r.id }, [
+              renamed ? R.regimentKindName(r, data) + ' • ' : '',
+              r.depleted ? el('span', { class: 'tsi-bas-tag', text: 'Recouping' }) : null,
+              r.depleted ? ' ' : '',
+              R.regimentStatus(state, data, r)
+            ])
+          ]),
+          btn('Rename…', function () { onRename(r.id); }, 'tsi-btn--ghost', prefix + '-rename-' + r.id)
+        ]);
+      }
+      var onRename = TSI.oneAtATime(async function (id) {
+        var r = R.regimentById(state, id);
+        if (!r) return;
+        var box = el('input', { type: 'text', class: 'tsi-input', value: r.label || '', maxlength: String(R.warRoomData(data).nameMax || 40), placeholder: R.regimentKindName(r, data) + ' ' + R.roman(r.num || 1), 'data-test': 'regiment-name' });
+        var ok = await plainModal({
+          title: 'Rename ' + R.regimentName(r, data),
+          className: 'tsi-bas-modal',
+          body: [field('Name (leave empty for its number)', box)],
+          actions: [{ label: 'Cancel', value: false }, { label: 'Rename', value: true, primary: true }],
+          onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'rename-dialog'); setTimeout(function () { box.focus(); box.select(); }, 0); }
+        });
+        if (!ok || !life.alive) return;
+        var res = R.renameRegiment(state, data, id, box.value);
+        if (!res.ok) { await say(res.message); return; }
+        if (res.changed) log(res.log[0], res.log[1]);
+        done();
+      });
+
       function creatureSection(facId) {
         var sp = R.creaturesData(data).species || {};
         var kinds = Object.keys(sp).filter(function (k) { return R.speciesHome(data, k) === facId; });
@@ -4046,6 +4142,14 @@
           var post = R.settleParcels(state, data);
           logAll(post.log);
           post.word.forEach(function (w) { R.addWord(state, w); });
+          /* The War Room's regiments (pull request 8a): Recouping refills a
+             day's worth, and a drill waits while its regiment is Recouping
+             or away. Same write, so once. */
+          if (R.settleRegiments) {
+            var regs = R.settleRegiments(state, data);
+            logAll(regs.log);
+            regs.word.forEach(function (w) { R.addWord(state, w); });
+          }
           R.finishRoutes(state);
           save();
         }

@@ -6,7 +6,7 @@
    Warehouse when the parcel is sent, the fee comes out of the treasury
    then, and the parcel reaches its town after that town's days. The DM
    collects it in the Explorer, from the town's picture, and its contents go
-   into the Party bags. Nothing goes wrong on the road. A parcel still on the
+   into the Travel bags. Nothing goes wrong on the road. A parcel still on the
    road can be recalled: it turns back, and its contents go back into the
    Warehouse when it's home.
 
@@ -25,14 +25,14 @@ window.TSI_DATA.bastionCourier = {
 
   /* ---------- What a parcel can carry ----------
      Each good here (by its id in goods-data.js) can go in a parcel. It must
-     also be something the Explorer's Party bags can hold
+     also be something the Explorer's Travel bags can hold
      (shared/data/party-items.js), or the party couldn't take it out of the
      parcel. size: how many items one counts as towards a parcel's room (a
      pack or a chart is 1 item, so 5 packs are 5 items).
      Bulk cargo (the Dock's trade goods), ships, coin and living creatures
      never go by courier: the rules refuse anything not listed here, and any
      trade good even if it is listed. More supplies (potions, antitoxin,
-     equipment, herbs) can be added here later, once the Party bags can
+     equipment, herbs) can be added here later, once the Travel bags can
      hold them. */
   items: {
     expedition_provision_pack: { size: 1 },

@@ -25,7 +25,7 @@
      to. The
      Bastion applies each once and keeps a receipt in its own save
      (shared/js/bridge-rules.js);
-   - inventory: the Party bags, [{ id, kind, qty }]: Overland charts
+   - inventory: the Travel bags, [{ id, kind, qty }]: Overland charts
      (counted in days of use) and Expedition Provision Packs
      (shared/data/party-items.js).
 
@@ -158,7 +158,7 @@
   function cleanMessage(m) {
     return bridge() ? bridge().clean(m) : (isObj(m) && str(m.id) ? m : null);
   }
-  /* A row of the Party bags: a known kind and a whole count above 0. */
+  /* A row of the Travel bags: a known kind and a whole count above 0. */
   function cleanItem(it) {
     if (!isObj(it) || !str(it.kind) || !items()[it.kind]) return null;
     var qty = int(it.qty, 0);
@@ -688,7 +688,7 @@
      see the pickup); the Bastion has read the Explorer's day; it has recorded
      this parcel as waiting at this town; it hasn't been collected already
      (its pickup id is fixed, so this can only happen once); and every item
-     is something the Party bags hold, in counts they can take. Then, in one
+     is something the Travel bags hold, in counts they can take. Then, in one
      change for the one save that follows: each item goes into the Party
      bags, and the pickup message goes into the outbox for the Bastion.
      Returns { ok, line, id } or { ok: false, message }. */
@@ -720,10 +720,10 @@
       var g = p.goods[i];
       var info = J.itemInfo(g.goodId);
       if (!info) return { ok: false, message: 'This copy of the Explorer can\'t carry ' + g.goodId.replace(/_/g, ' ') + ', so the parcel waits at ' + town + '.' };
-      if (!isNum(g.qty) || Math.floor(g.qty) !== g.qty || g.qty < 1) return { ok: false, message: 'The Bastion\'s record of this parcel has a count the Party bags can\'t take (' + g.qty + ' ' + info.plural + '), so the parcel waits at ' + town + '.' };
+      if (!isNum(g.qty) || Math.floor(g.qty) !== g.qty || g.qty < 1) return { ok: false, message: 'The Bastion\'s record of this parcel has a count the Travel bags can\'t take (' + g.qty + ' ' + info.plural + '), so the parcel waits at ' + town + '.' };
       var each = int(info.usesEach, 1) || 1;
       room[g.goodId] = (room[g.goodId] === undefined ? J.itemQty(state, g.goodId) : room[g.goodId]) + g.qty * each;
-      if (room[g.goodId] > 9999) return { ok: false, message: 'The Party bags can\'t hold that many ' + info.plural + ', so the parcel waits at ' + town + '.' };
+      if (room[g.goodId] > 9999) return { ok: false, message: 'The Travel bags can\'t hold that many ' + info.plural + ', so the parcel waits at ' + town + '.' };
     }
     /* Then change everything, together. */
     p.goods.forEach(function (x) { addUses(state, x.goodId, x.qty); });
@@ -990,7 +990,7 @@
     return v;
   };
 
-  /* ---------- The Party bags (pull request 4 of the facilities overhaul) ----------
+  /* ---------- The Travel bags (pull request 4 of the facilities overhaul) ----------
      Overland charts are counted in days of use (3 a chart), Expedition
      Provision Packs one by one. A row at 0 goes. */
   J.PACK = 'expedition_provision_pack';
@@ -1030,7 +1030,7 @@
     var count = int(n, 0);
     if (!info || count < 1 || count > 99) return null;
     var uses = addUses(state, kind, count);
-    var line = 'Added ' + count + ' ' + (count === 1 ? info.name : info.plural) + ' to the Party bags' +
+    var line = 'Added ' + count + ' ' + (count === 1 ? info.name : info.plural) + ' to the Travel bags' +
       (info.usesEach > 1 ? ' (' + J.itemCount(kind, uses) + ')' : '') + '. Now ' + J.itemCount(kind, J.itemQty(state, kind)) + '.';
     logLine(state, line);
     return line;
@@ -1043,7 +1043,7 @@
     if (!row) return null;
     j.inventory = j.inventory.filter(function (it) { return it !== row; });
     var info = J.itemInfo(row.kind) || { plural: row.kind };
-    var line = 'Removed ' + info.plural + ' (' + J.itemCount(row.kind, row.qty) + ') from the Party bags.';
+    var line = 'Removed ' + info.plural + ' (' + J.itemCount(row.kind, row.qty) + ') from the Travel bags.';
     logLine(state, line);
     return line;
   };

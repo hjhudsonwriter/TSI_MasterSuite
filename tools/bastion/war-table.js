@@ -1293,6 +1293,12 @@
         var line = sp && sp.war && typeof sp.war.distinction === 'string' ? sp.war.distinction : '';
         block.distinction = line;
       }
+      /* A War Room regiment (pull request 8a): its own name, and its training. */
+      if (block && src && typeof src.regiment === 'string' && src.regiment) {
+        var RR = window.TSI && TSI.bastion && TSI.bastion.rules;
+        var g = RR && RR.gradeBonus && src.grade && src.grade !== 'regular' ? RR.gradeBonus(null, src.grade) : null;
+        block.distinction = src.regiment + (g ? ' • ' + RR.gradeName(null, src.grade) + ': +' + g.resolve + ' Resolve' + (g.cohesion ? ', +' + g.cohesion + ' Cohesion' : '') + ', +' + g.bv + ' Battle Value, already in its numbers.' : '');
+      }
       return block;
     }
     /* The tooltip's contents for a unit (stat block and state now). */

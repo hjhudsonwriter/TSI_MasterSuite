@@ -43,7 +43,7 @@
      2026). clan is 'region' (the Clan of the Region the event began in)
      or a Clan's key ('slade'); hr is 1 or -1; why says what for.
    - A check with tags: ['exhaustion'] is an exhaustion save: the DM can
-     spend an Expedition Provision Pack from the Party bags for advantage.
+     spend an Expedition Provision Pack from the Travel bags for advantage.
    - Effects last: days: N, camp (until the next Make Camp), night (no long
      rest: until the Make Camp after tonight's), used, or dm (until removed).
    - Text can use {clan}, {chief}, {temple}, {hero}, {failed}, {succeeded}
