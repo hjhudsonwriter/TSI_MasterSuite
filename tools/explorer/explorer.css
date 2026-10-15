@@ -499,3 +499,4 @@
 .tsi-page--explorer .tsi-exp-post__row .tsi-btn { flex: 0 0 auto; }
 .tsi-page--explorer .tsi-exp-post .tsi-btn:disabled { opacity: .55; cursor: not-allowed; }
 .tsi-page--explorer .tsi-exp-post__done { margin: 0; font-size: 15px; color: var(--tsi-ok); }
+.tsi-tool--explorer .tsi-exp-hdrbtns { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }

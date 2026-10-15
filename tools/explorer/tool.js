@@ -187,6 +187,7 @@
         ironbowList
       ]);
       /* The Shrines (pull request 8b): the expedition and the Great Rites. */
+      var expedBtn = el('button', { type: 'button', class: 'tsi-btn tsi-btn--small tsi-exp-mini', 'data-test': 'expedition-btn' }, 'Start expedition');
       var expedBox = el('div', { class: 'tsi-exp-ironbow tsi-exp-exped', 'data-test': 'expedition-box' });
       var sentList = el('div', { class: 'tsi-exp-list', 'data-test': 'sent-list' });
       var btnRollNow = btn('Roll an event now', rollEventNow, '', 'roll-now');
@@ -226,7 +227,7 @@
         section('Main campaign', [
           row([mainSelect, btn('Queue', queueMainEvent, '', 'queue')], 'tsi-exp-row--select')
         ]),
-        sectionWith('Travel bags', btn('+ Add', addToBags, 'tsi-exp-mini', 'bags-add'), [bagsList, row([btnChart]), chartWhy, ironbowBox, expedBox]),
+        sectionWith('Travel bags', el('span', { class: 'tsi-exp-hdrbtns' }, [expedBtn, btn('+ Add', addToBags, 'tsi-exp-mini', 'bags-add')]), [bagsList, row([btnChart]), chartWhy, ironbowBox, expedBox]),
         section('Active Effects', [effectsList]),
         section('Threads', [threadsList]),
         /* Port Charter…: the DM grants one (pull request 5, 14 October 2026).
@@ -1196,11 +1197,11 @@
         expedShown = expedKey();
         TSI.clear(expedBox);
         var e = J.expedition(state), b = state.journey.blessing;
-        expedBox.appendChild(el('div', { class: 'tsi-exp-item', title: 'Expeditions and Great Rites' }, [
-          el('div', { class: 'tsi-exp-item__body' }, [el('span', { 'data-test': 'expedition-status',
-            text: e.active ? 'Expedition ' + e.n + ': since Day ' + e.startedDay : (e.n ? 'No expedition (' + e.n + ' so far)' : 'No expedition') })]),
-          e.active ? btn('End expedition', endExpedition, 'tsi-exp-mini', 'expedition-end') : btn('Start expedition', startExpedition, 'tsi-exp-mini', 'expedition-start')
-        ]));
+        expedBtn.textContent = e.active ? 'End expedition' : 'Start expedition';
+        expedBtn.onclick = e.active ? endExpedition : startExpedition;
+        expedBtn.setAttribute('data-test', e.active ? 'expedition-end' : 'expedition-start');
+        expedBtn.title = e.active ? 'Expedition ' + e.n + ': since Day ' + e.startedDay : (e.n ? 'No expedition (' + e.n + ' so far)' : 'No expedition');
+        expedBox.hidden = !b && !J.waitingRites(state, bastionSeen).length;
         if (b) {
           var info = J.riteInfo(b.rite) || { name: b.rite, reminder: '' };
           expedBox.appendChild(el('div', { class: 'tsi-exp-item', 'data-test': 'blessing', 'data-used': b.used ? 'yes' : 'no' }, [

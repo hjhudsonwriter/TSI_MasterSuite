@@ -222,7 +222,7 @@ const RITE = 'rite-ab12cd34';
   section('Expeditions and the Great Rite');
 
   await check('before an expedition starts, giving the rite is refused and nothing is sent', async () => {
-    assert(/No expedition/.test(await text(ex, 'expedition-status')));
+    assert(/No expedition/.test(await ex.$eval('[data-test=expedition-start]', n => n.title)));
     await ex.click('[data-test=rite-give]');
     await H.clickModal(ex, 'Give');
     await ex.waitForTimeout(400);
@@ -235,7 +235,7 @@ const RITE = 'rite-ab12cd34';
   await check('Start expedition, then Give to the party: the party holds it and the Bastion is told once', async () => {
     await ex.click('[data-test=expedition-start]');
     await ex.waitForTimeout(300);
-    assert(/Expedition 1: since Day/.test(await text(ex, 'expedition-status')));
+    assert(/Expedition 1: since Day/.test(await ex.$eval('[data-test=expedition-end]', n => n.title)));
     await ex.click('[data-test=rite-give]');
     await H.clickModal(ex, 'Give');
     await ex.waitForSelector('[data-test=blessing]');
@@ -317,7 +317,7 @@ const RITE = 'rite-ab12cd34';
     await ex.waitForTimeout(400);
     const s = await exs(ex);
     equal([s.journey.expedition.active, s.journey.blessing], [false, null]);
-    assert(/No expedition \(1 so far\)/.test(await text(ex, 'expedition-status')));
+    assert(/No expedition \(1 so far\)/.test(await ex.$eval('[data-test=expedition-start]', n => n.title)));
     assert(s.journey.log.some(l => /Expedition 1 ended/.test(l.body || l.text || l)) || true);
   });
 
