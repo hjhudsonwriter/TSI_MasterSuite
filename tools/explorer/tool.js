@@ -1943,6 +1943,8 @@
             parts.push(checkLine(ec.label));
             parts.push(tip(ec.whoText));
             if (ec.pace) parts.push(tip(ec.pace, 'tsi-exp-tip--note'));
+            (ec.charms || []).forEach(function (ch) { parts.push(charmOffer(v, ch)); });
+            if (ec.rite) parts.push(riteOffer(v, ec.rite));
             var boxes = ec.among.map(function (id) {
               var t = R.token(state, id);
               var box = el('input', { type: 'checkbox', value: id, 'data-test': 'failed-' + id });
