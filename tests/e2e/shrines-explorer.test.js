@@ -198,9 +198,10 @@ const RITE = 'rite-ab12cd34';
     await H.chooseFile(ba, '[data-test=import-save]', SAMPLE);
     await H.clickModal(ba, 'Import');
     await ba.waitForFunction(() => window.TSI && TSI.bastion && TSI.bastion.debug && (TSI.bastion.debug.state().builtExtras || []).filter(Boolean).length === 3, null, { timeout: 8000 });
-    await ba.evaluate(id => TSI.bastion.debug.change(s => { s.greatRites = [{ id: id, rite: 'earths_endurance', god: 'telluria', madeDay: 8, status: 'waiting' }]; }), RITE);
     ex = await openExplorer(ctx, HARNESS);
     await ba.waitForFunction(() => TSI.bastion.debug.state().anchored, null, { timeout: 8000 });
+    /* Changed after it has read the Explorer's day, so the saved copy is anchored. */
+    await ba.evaluate(id => TSI.bastion.debug.change(s => { s.greatRites = [{ id: id, rite: 'earths_endurance', god: 'telluria', madeDay: 8, status: 'waiting' }]; }), RITE);
     await ex.evaluate(() => TSI.explorer.debug.readBastion());
     await ex.waitForSelector('[data-test=rite-waiting]');
     assert(/Earth's Endurance · waiting at the Ironbow since Day 8/.test(await bare(ex, '[data-test=rite-waiting]')), await bare(ex, '[data-test=rite-waiting]'));
@@ -210,7 +211,6 @@ const RITE = 'rite-ab12cd34';
 
   await check('before an expedition starts, giving the rite is refused and nothing is sent', async () => {
     assert(/No expedition under way/.test(await text(ex, 'expedition-status')));
-    console.log('PROBE', JSON.stringify(await ex.evaluate(() => { const b = TSI.explorer.debug.bastionSeen(); return b && { keys: Object.keys(b).slice(0, 12), anchored: b.anchored, rites: b.greatRites }; })));
     await ex.click('[data-test=rite-give]');
     await H.clickModal(ex, 'Give');
     await ex.waitForTimeout(400);
