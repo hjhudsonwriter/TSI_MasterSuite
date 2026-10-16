@@ -9,7 +9,8 @@ Double-click `index.html` to open the suite. The plan is in `docs/PLAN.md`, the 
 ## Done
 
 ### The facilities overhaul, pull request 8b part 2: the Shrines in the Explorer (15 October 2026)
-From Harry's answers S2, S9 and S10 (`docs/MILITARY-DIPLOMACY-PLAN.md`). Awaiting Harry's check.
+Harry's check passed; merged as #32 (16 October 2026).
+From Harry's answers S2, S9 and S10 (`docs/MILITARY-DIPLOMACY-PLAN.md`).
 - **Expeditions:** Start and End expedition in the Travel bags box (EXP-45).
 - **Great Rites:** wait at the Ironbow; the DM gives one to the party in an expedition; the Bastion is told once (SUI-36); it expires when the expedition ends.
 - **Charms:** offered at the five tagged checks, once a step. **Use…** on any Shrine item in the Travel bags counts one use.
