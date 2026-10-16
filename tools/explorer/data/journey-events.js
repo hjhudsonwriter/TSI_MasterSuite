@@ -44,6 +44,16 @@
      or a Clan's key ('slade'); hr is 1 or -1; why says what for.
    - A check with tags: ['exhaustion'] is an exhaustion save: the DM can
      spend an Expedition Provision Pack from the Travel bags for advantage.
+     Other tags (pull request 8b, Harry's Shrine specification of 15 October
+     2026) say what kind of hazard a check is, so the Travel bags can offer
+     the Shrines' charms there: 'terrain' (a nonmagical natural-terrain
+     hazard: the Earthward Talisman on a saving throw), 'vegetation' (being
+     Restrained by nonmagical vegetation: the Rootguard Salve on a saving
+     throw), 'water' (a navigation or maritime hazard: the Voyage Blessing,
+     the Aquatic Protection Charm on an Athletics check, and Tide's Passage),
+     and 'exhaustion' (Earth's Endurance too). The charm's own rule is in
+     shared/data/party-items.js (offer). Nothing else is tagged: a check
+     without a tag offers no charm, and the DM uses it by hand.
    - Effects last: days: N, camp (until the next Make Camp), night (no long
      rest: until the Make Camp after tonight's), used, or dm (until removed).
    - Text can use {clan}, {chief}, {temple}, {hero}, {failed}, {succeeded}
@@ -316,7 +326,7 @@ window.TSI_DATA.journeyEvents = {
       steps: {
         start: {
           text: 'The road gives way. Earth and stones pour into a hollow below, held up by roots as thick as a man.',
-          check: { skill: 'Dexterity saving throw', dc: 14, who: 'each', whoText: 'Every hero makes the save. Tick who failed: they fall 20 feet into the hollow (2d6 bludgeoning).', anyFail: 'climb', noneFail: 'below' }
+          check: { skill: 'Dexterity saving throw', dc: 14, who: 'each', tags: ['terrain', 'vegetation'], whoText: 'Every hero makes the save. Tick who failed: they fall 20 feet into the hollow (2d6 bludgeoning).', anyFail: 'climb', noneFail: 'below' }
         },
         climb: {
           text: '{failed} fell 20 feet into the hollow (2d6 bludgeoning) and must climb out.',
@@ -687,7 +697,7 @@ window.TSI_DATA.journeyEvents = {
         },
         cross: {
           text: 'You start across the causeway.',
-          check: { skill: 'Strength (Athletics)', dc: 15, who: 'group', advIf: 'adv', advText: 'With advantage: the notches show the safe hours.', success: 'across', failure: 'caught' }
+          check: { skill: 'Strength (Athletics)', dc: 15, who: 'group', tags: ['water'], advIf: 'adv', advText: 'With advantage: the notches show the safe hours.', success: 'across', failure: 'caught' }
         },
         across: { text: 'Across in time, saving the long way round.', apply: [{ miles: 12 }], end: true },
         caught: {
@@ -717,11 +727,11 @@ window.TSI_DATA.journeyEvents = {
         },
         dive: {
           text: 'One hero dives for the wreck.',
-          check: { skill: 'Strength (Athletics)', dc: 15, who: 'one', success: 'reach', failure: 'driven' }
+          check: { skill: 'Strength (Athletics)', dc: 15, who: 'one', tags: ['water'], success: 'reach', failure: 'driven' }
         },
         reach: {
           text: '{hero} reaches the wreck. The cold bites.',
-          check: { skill: 'Constitution saving throw', dc: 14, who: 'same', success: 'strongbox', failure: 'chilled' }
+          check: { skill: 'Constitution saving throw', dc: 14, who: 'same', tags: ['terrain', 'water'], success: 'strongbox', failure: 'chilled' }
         },
         strongbox: {
           text: 'The captain\'s strongbox, and the ship\'s log.',
@@ -1082,7 +1092,7 @@ window.TSI_DATA.journeyEvents = {
         awake: {
           text: '{hero} stays awake all night.',
           apply: [{ effect: { name: 'No long rest', text: 'no benefit from tonight\'s long rest', who: 'hero', night: true } }],
-          check: { skill: 'Constitution saving throw', dc: 13, who: 'same', tags: ['exhaustion'], success: 'dawn', failure: 'worn' }
+          check: { skill: 'Constitution saving throw', dc: 13, who: 'same', tags: ['exhaustion', 'terrain'], success: 'dawn', failure: 'worn' }
         },
         dawn: {
           text: 'At dawn the sunburst fades, and its warmth stays with you.',
@@ -1269,7 +1279,7 @@ window.TSI_DATA.journeyEvents = {
         },
         warn: {
           text: 'One hero races to the headland with a torch.',
-          check: { skill: 'Strength (Athletics)', dc: 15, who: 'one', success: 'turned', failure: 'late' }
+          check: { skill: 'Strength (Athletics)', dc: 15, who: 'one', tags: ['water'], success: 'turned', failure: 'late' }
         },
         turned: {
           text: 'The ship turns in time.',

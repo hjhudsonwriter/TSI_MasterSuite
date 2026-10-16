@@ -47,6 +47,15 @@
    once, waiting for a home, and the Griffin Tower's or Dire Wolf Den's
    House order houses it.
 
+   Pull request 8b (Harry, 15 October 2026) adds a fifth kind: a Shrine's
+   Great Rite the DM gives the party in the Explorer, { id, type: 'rite',
+   day, at, from, rite, riteId, text } (rite: 'earths_endurance',
+   'cleansing_radiance' or 'tides_passage'; riteId: the Bastion's id for it).
+   It has no Clan. Its id is always '<rite id>:rite:0' (B.riteMessageId), so
+   the same rite can never be given twice. The party holds the blessing in
+   the same Explorer save as the message; the Bastion then marks the rite as
+   with the party, once, keeping a receipt.
+
    A message of a kind this copy doesn't know yet (from a newer copy of the
    suite) waits, with no receipt, rather than being refused for good (only
    a Bastion starting from nothing skips it, as it skips everything sent
@@ -172,7 +181,25 @@
   B.CREATURE_FIELDS = ['id', 'type', 'day', 'at', 'from', 'species', 'name', 'text'];
   /* The kinds of message this copy knows; a well-formed kind name not on the
      list is a newer copy's, and waits. */
-  B.TYPES = ['standing', 'charter', 'parcel_collected', 'creature'];
+  B.TYPES = ['standing', 'charter', 'parcel_collected', 'creature', 'rite'];
+  /* A Great Rite given to the party (pull request 8b): no Clan. */
+  B.RITE_FIELDS = ['id', 'type', 'day', 'at', 'from', 'rite', 'riteId', 'text'];
+  B.RITE_SUFFIX = ':rite:0';
+  B.RITES = ['earths_endurance', 'cleansing_radiance', 'tides_passage'];
+  /* The Great Rites' names, from shared/data/party-items.js when the page
+     has it (the Explorer does), otherwise these. */
+  var RITE_NAMES = { earths_endurance: 'Earth\'s Endurance', cleansing_radiance: 'Cleansing Radiance', tides_passage: 'Tide\'s Passage' };
+  B.riteName = function (rite) {
+    var d = window.TSI_DATA && window.TSI_DATA.shrineRites;
+    if (isObj(d) && isObj(d[rite]) && typeof d[rite].name === 'string') return d[rite].name;
+    return RITE_NAMES[rite] || 'Unknown Great Rite';
+  };
+  B.riteMessageId = function (riteId) { return String(riteId) + B.RITE_SUFFIX; };
+  B.riteIdOf = function (id) {
+    if (typeof id !== 'string' || id.length <= B.RITE_SUFFIX.length || id.slice(-B.RITE_SUFFIX.length) !== B.RITE_SUFFIX) return '';
+    return id.slice(0, -B.RITE_SUFFIX.length);
+  };
+  B.riteTitle = function (m) { return 'Great Rite: ' + B.riteName(isObj(m) ? m.rite : ''); };
   B.TYPE_PATTERN = /^[a-z][a-z_]{0,29}$/;
   B.ID_PATTERN = /^[a-z0-9-]{6,40}:[A-Za-z0-9_]{1,40}:\d{1,2}$/;
   B.UID_PATTERN = /^[a-z0-9-]{6,40}$/;
@@ -249,7 +276,7 @@
   B.isParcelMessage = function (m) {
     if (!isObj(m)) return false;
     if (m.type === 'parcel_collected') return true;
-    return m.type !== 'standing' && m.type !== 'charter' && m.type !== 'creature' && B.parcelIdOf(m.id) !== '';
+    return m.type !== 'standing' && m.type !== 'charter' && m.type !== 'creature' && m.type !== 'rite' && B.parcelIdOf(m.id) !== '';
   };
   /* A parcel's goods as a message or the Explorer shows them: [{ goodId, qty }]. */
   function cleanGoods(list) {
@@ -290,6 +317,20 @@
     };
   };
 
+  /* A new Great Rite message (the Explorer makes these, J.assignRite). */
+  B.riteMessage = function (f) {
+    return {
+      id: B.riteMessageId(str(f.riteId)),
+      type: 'rite',
+      day: isWhole(f.day) ? f.day : 1,
+      at: str(f.at) || new Date().toISOString(),
+      from: { code: str(f.from && f.from.code, 20), title: str(f.from && f.from.title, 80), step: str(f.from && f.from.step, 40) },
+      rite: str(f.rite, 40),
+      riteId: str(f.riteId, 40),
+      text: str(f.text, B.TEXT_MAX)
+    };
+  };
+
   /* A kind of message from a newer copy of the suite: a well-formed kind
      this copy doesn't know, on a message with a good id. It waits (no
      receipt), so the newer copy can still apply it later. */
@@ -309,6 +350,9 @@
     }
     if (m.type === 'parcel_collected') {
       return { id: m.id, type: 'parcel_collected', day: day, at: str(m.at), from: from, clan: str(m.clan), point: str(m.point, 40), parcel: str(m.parcel, 40), goods: cleanGoods(m.goods), text: str(m.text, B.TEXT_MAX) };
+    }
+    if (m.type === 'rite') {
+      return { id: m.id, type: 'rite', day: day, at: str(m.at), from: from, rite: str(m.rite, 40), riteId: str(m.riteId, 40), text: str(m.text, B.TEXT_MAX) };
     }
     if (m.type === 'creature') {
       return { id: m.id, type: 'creature', day: day, at: str(m.at), from: from, species: str(m.species, 40), name: str(m.name, B.NAME_MAX), text: str(m.text, B.TEXT_MAX) };
@@ -356,6 +400,17 @@
       var pid = B.parcelIdOf(m.id);
       if (!pid || !B.UID_PATTERN.test(pid)) return 'Its id isn\'t a parcel pickup\'s.';
       if (typeof m.parcel === 'string' && m.parcel && m.parcel !== pid) return 'It names a different parcel from its id.';
+      return '';
+    }
+    /* A Great Rite given to the party (pull request 8b): its kind, its id
+       (which names the rite) and a Great Rite the Shrines make. Its text and
+       other fields are only for showing. */
+    if (m.type === 'rite') {
+      if (typeof m.id !== 'string' || !B.ID_PATTERN.test(m.id)) return 'Its id is damaged.';
+      var rid = B.riteIdOf(m.id);
+      if (!rid || !B.UID_PATTERN.test(rid)) return 'Its id isn\'t a Great Rite\'s.';
+      if (B.RITES.indexOf(m.rite) === -1) return 'It names a Great Rite the Shrines don\'t make (' + (typeof m.rite === 'string' ? str(m.rite, 40) : 'none') + ').';
+      if (typeof m.riteId === 'string' && m.riteId && m.riteId !== rid) return 'It names a different rite from its id.';
       return '';
     }
     /* A creature the DM granted (pull request 7): its kind, its id, a kind
@@ -451,6 +506,18 @@
       var cwhy = str(r.why) || 'the Bastion couldn\'t use it.';
       if (!/[.!?]$/.test(cwhy)) cwhy += '.';
       return { kind: 'refused', line: 'Refused: ' + cwhy + ' Nothing changed.' };
+    }
+    /* A Great Rite given to the party (pull request 8b). */
+    if (isObj(m) && m.type === 'rite' && r) {
+      var rwhat = B.riteName(m.rite);
+      var rday = isWhole(r.day) ? ' on ' + (r.day >= 1 ? 'Day ' + r.day : 'a day before Day 1') : '';
+      if (r.r === 'applied') return { kind: 'applied', line: r.held === true
+        ? 'Applied' + rday + ': the Bastion had already marked ' + rwhat + ' as with the party, so nothing changed.'
+        : 'Applied' + rday + ': the Bastion marked ' + rwhat + ' as with the party.' };
+      if (r.r === 'skipped') return { kind: 'skipped', line: 'Skipped: sent before this Bastion started.' };
+      var rwhy = str(r.why) || 'the Bastion couldn\'t use it.';
+      if (!/[.!?]$/.test(rwhy)) rwhy += '.';
+      return { kind: 'refused', line: 'Refused: ' + rwhy + ' The party still holds the blessing; End expedition clears it.' };
     }
     /* A newer copy's kind of message: plain words, whatever it does. */
     if (B.waitsForNewer(m)) {

@@ -186,6 +186,9 @@
         el('h4', { class: 'tsi-exp-ironbow__title', text: 'From the Ironbow' }),
         ironbowList
       ]);
+      /* The Shrines (pull request 8b): the expedition and the Great Rites. */
+      var expedBtn = el('button', { type: 'button', class: 'tsi-btn tsi-btn--small tsi-exp-mini', 'data-test': 'expedition-btn' }, 'Start expedition');
+      var expedBox = el('div', { class: 'tsi-exp-ironbow tsi-exp-exped', 'data-test': 'expedition-box' });
       var sentList = el('div', { class: 'tsi-exp-list', 'data-test': 'sent-list' });
       var btnRollNow = btn('Roll an event now', rollEventNow, '', 'roll-now');
       var noticeEl = el('p', { class: 'tsi-exp-notice', role: 'status', 'data-test': 'notice' });
@@ -224,7 +227,7 @@
         section('Main campaign', [
           row([mainSelect, btn('Queue', queueMainEvent, '', 'queue')], 'tsi-exp-row--select')
         ]),
-        sectionWith('Travel bags', btn('+ Add', addToBags, 'tsi-exp-mini', 'bags-add'), [bagsList, row([btnChart]), chartWhy, ironbowBox]),
+        sectionWith('Travel bags', el('span', { class: 'tsi-exp-hdrbtns' }, [expedBtn, btn('+ Add', addToBags, 'tsi-exp-mini', 'bags-add')]), [bagsList, row([btnChart]), chartWhy, ironbowBox, expedBox]),
         section('Active Effects', [effectsList]),
         section('Threads', [threadsList]),
         /* Port Charter…: the DM grants one (pull request 5, 14 October 2026).
@@ -1150,6 +1153,10 @@
               el('div', { class: 'tsi-exp-item__name' }, [el('strong', { text: info.plural }), ' · ', el('span', { 'data-test': 'bag-qty', text: J.itemCount(it.kind, it.qty) + (isChart ? ' left' : '') })]),
               el('div', { class: 'tsi-exp-item__meta', text: isChart ? 'Use a chart today: one more 6-mile hex until Make Camp.' : info.use === 'shrine' ? info.text : 'Offered at an exhaustion save: advantage on it.' })
             ]),
+            info.use === 'shrine' ? el('button', {
+              type: 'button', class: 'tsi-btn tsi-btn--small tsi-exp-mini', title: 'Use one of these now',
+              'data-test': 'bag-use', onclick: function () { useShrineItem(it.kind); }
+            }, 'Use…') : null,
             el('button', {
               type: 'button', class: 'tsi-btn tsi-btn--small tsi-exp-mini', title: 'Take ' + info.plural + ' out of the Travel bags',
               'aria-label': 'Remove ' + info.plural, 'data-test': 'bag-remove',
@@ -1165,6 +1172,89 @@
         chartWhy.hidden = !hasChart || !why;
         chartWhy.textContent = why;
         renderIronbow();
+        renderExpedition();
+      }
+      function useShrineItem(kind) {
+        var info = J.itemInfo(kind);
+        if (!info) return;
+        ask('Use one ' + info.name + '? ' + info.text + ' The DM applies the effect; this only counts the use.', 'Use').then(function (ok) {
+          if (!ok || !life.alive) return;
+          var line = J.useItem(state, kind);
+          if (!line) { note('There is none left to use.'); return; }
+          saveNow();
+          updateTravelUI();
+          setNotice(line);
+        });
+      }
+      /* The expedition and the Great Rites (pull request 8b). */
+      var expedShown = '';
+      function expedKey() {
+        var e = J.expedition(state), b = state.journey.blessing;
+        var w = J.waitingRites(state, bastionSeen).map(function (r) { return r.id + r.rite; }).join(',');
+        return [e.n, e.active, e.startedDay, b ? b.rite + b.used : '', w, bastionSeen === undefined ? 'x' : bastionSeen && bastionSeen.anchored].join('|');
+      }
+      function renderExpedition() {
+        expedShown = expedKey();
+        TSI.clear(expedBox);
+        var e = J.expedition(state), b = state.journey.blessing;
+        expedBtn.textContent = e.active ? 'End expedition' : 'Start expedition';
+        expedBtn.onclick = e.active ? endExpedition : startExpedition;
+        expedBtn.setAttribute('data-test', e.active ? 'expedition-end' : 'expedition-start');
+        expedBtn.title = e.active ? 'Expedition ' + e.n + ': since Day ' + e.startedDay : (e.n ? 'No expedition (' + e.n + ' so far)' : 'No expedition');
+        expedBox.hidden = !b && !J.waitingRites(state, bastionSeen).length;
+        if (b) {
+          var info = J.riteInfo(b.rite) || { name: b.rite, reminder: '' };
+          expedBox.appendChild(el('div', { class: 'tsi-exp-item', 'data-test': 'blessing', 'data-used': b.used ? 'yes' : 'no' }, [
+            el('div', { class: 'tsi-exp-item__body' }, [
+              el('div', { class: 'tsi-exp-item__name' }, [el('strong', { text: info.name }), ' · ' + (b.used ? 'used' : 'ready')]),
+              el('div', { class: 'tsi-exp-item__meta', text: info.reminder })
+            ]),
+            b.used ? null : el('button', { type: 'button', class: 'tsi-btn tsi-btn--small tsi-exp-mini', 'data-test': 'blessing-use', onclick: useRiteByHand }, 'Use…')
+          ]));
+        }
+        J.waitingRites(state, bastionSeen).forEach(function (r) {
+          var info = J.riteInfo(r.rite) || { name: r.rite };
+          expedBox.appendChild(el('div', { class: 'tsi-exp-item', 'data-test': 'rite-waiting', 'data-rite': r.rite }, [
+            el('div', { class: 'tsi-exp-item__body' }, [
+              el('div', { class: 'tsi-exp-item__name' }, [el('strong', { text: info.name }), ' · waiting at the Ironbow since Day ' + r.madeDay])
+            ]),
+            el('button', { type: 'button', class: 'tsi-btn tsi-btn--small tsi-exp-mini', 'data-test': 'rite-give', onclick: function () { giveRite(r); } }, 'Give to the party')
+          ]));
+        });
+      }
+      function startExpedition() {
+        var r = J.startExpedition(state);
+        if (!r.ok) { note(r.message); return; }
+        saveNow(); updateTravelUI(); setNotice(r.line);
+      }
+      function endExpedition() {
+        var b = state.journey.blessing;
+        ask('End the expedition?' + (b && !b.used ? ' The party\'s ' + (J.riteInfo(b.rite) || { name: 'Great Rite' }).name + ' has not been used and will expire.' : (b ? ' The party\'s Great Rite ends with it.' : '')), 'End expedition').then(function (ok) {
+          if (!ok || !life.alive) return;
+          var r = J.endExpedition(state);
+          if (!r.ok) { note(r.message); return; }
+          saveNow(); updateTravelUI(); setNotice(r.line);
+        });
+      }
+      function giveRite(r) {
+        var info = J.riteInfo(r.rite) || { name: r.rite, reminder: '' };
+        ask('Give ' + info.name + ' to the party? ' + info.reminder + ' They hold one Great Rite at a time, and it ends with the expedition.', 'Give').then(function (ok) {
+          if (!ok || !life.alive) return;
+          var res = J.assignRite(state, r.id, bastionSeen, { memory: TSI.store.mode === 'memory' });
+          if (!res.ok) { note(res.message); return; }
+          saveNow(); updateTravelUI(); renderSent(); setNotice(res.line);
+        });
+      }
+      function useRiteByHand() {
+        var b = state.journey.blessing;
+        if (!b || b.used) return;
+        var info = J.riteInfo(b.rite) || { name: b.rite, reminder: '' };
+        ask('Use ' + info.name + ' now? ' + info.reminder + ' The DM applies the effect; this only counts the use.', 'Use').then(function (ok) {
+          if (!ok || !life.alive) return;
+          var line = J.useRiteByHand(state);
+          if (!line) return;
+          saveNow(); updateTravelUI(); setNotice(line);
+        });
       }
       /* From the Ironbow (pull request 6): the Courier Exchange's parcels as
          the Bastion last saved them (readBastion reads it every 2 seconds),
@@ -1286,6 +1376,7 @@
                 el('span', { class: 'tsi-exp-status tsi-exp-status--' + st.kind, 'data-test': 'sent-status', text: LABEL[st.kind] || st.kind }),
                 ' ', el('strong', { text: m.type === 'charter' ? 'Port Charter: ' + B.portLabel(m.port)
                   : m.type === 'creature' && B.creatureTitle ? B.creatureTitle(m)
+                  : m.type === 'rite' && B.riteTitle ? B.riteTitle(m)
                   : B.isParcelMessage && B.isParcelMessage(m) ? 'Parcel collected: ' + pickupTown(m)
                   : B.waitsForNewer(m) ? 'A change from a newer copy of the suite' : 'Clan ' + B.clanName(m.clan) + ' ' + B.signed(m.hr) }),
                 ' · ' + dayText + (m.from && m.from.code ? ' · ' + m.from.code : '')
@@ -1306,6 +1397,7 @@
         bastionSeen = b;
         if (sentKey() !== sentShown) renderSent();
         if (parcelsKey(ironbowRows()) !== ironbowShown) renderIronbow();
+        if (expedKey() !== expedShown) renderExpedition();
         /* An open harbour box or courier post follows the Bastion too. */
         if (openHarbour && openHarbour.node.isConnected) openHarbour.show(b);
         else openHarbour = null;
@@ -1738,6 +1830,32 @@
             }, 'tsi-btn--small', 'use-pack')
           ]);
         }
+        /* A Shrine charm at a tagged check: it names the effect; the DM still rolls. */
+        function charmOffer(v, ch) {
+          if (ch.used) return tip(ch.name + ' was used: ' + ch.effect + '.', 'tsi-exp-tip--note tsi-exp-pack-used');
+          return el('div', { class: 'tsi-exp-pack', 'data-test': 'charm-offer', 'data-kind': ch.kind }, [
+            el('span', { text: ch.name + ' (' + ch.have + ' left): ' + ch.effect + '.' }),
+            button('Use it', function () {
+              if (!ready()) return;
+              if (!J.useCharm(state, JDEFS, v.step, ch.kind)) return;
+              saveNow(); updateTravelUI(); safeRender();
+            }, 'tsi-btn--small', 'use-charm')
+          ]);
+        }
+        function riteOffer(v, r) {
+          if (r.used) return tip(r.name + ' was used here: ' + r.effect + '.', 'tsi-exp-tip--note tsi-exp-pack-used');
+          return el('div', { class: 'tsi-exp-pack', 'data-test': 'rite-offer', 'data-rite': r.rite }, [
+            el('span', { text: r.name + ': ' + r.effect + '.' }),
+            button(r.success ? 'Use it (counts as a success)' : 'Use it', function () {
+              if (!ready()) return;
+              var res = J.useRite(state, JDEFS, v.step);
+              if (!res) return;
+              saveNow(); updateTravelUI();
+              if (res.success) doAct({ type: 'check', step: v.step, result: 'success', hero: null });
+              else safeRender();
+            }, 'tsi-btn--small', 'use-rite')
+          ]);
+        }
         function checkLine(label) {
           return el('p', { class: 'tsi-exp-check', 'data-test': 'check-line' }, [el('span', { class: 'tsi-exp-check__tag', text: 'Check' }), el('strong', { text: label })]);
         }
@@ -1812,6 +1930,8 @@
             if (c.adv) parts.push(tip(c.adv, 'tsi-exp-tip--note'));
             if (c.pace) parts.push(tip(c.pace, 'tsi-exp-tip--note'));
             if (c.pack) parts.push(packOffer(v, c.pack));
+            (c.charms || []).forEach(function (ch) { parts.push(charmOffer(v, ch)); });
+            if (c.rite) parts.push(riteOffer(v, c.rite));
             var result = function (r) { return function () { doAct({ type: 'check', step: v.step, result: r, hero: hs ? hs.sel.value : null }); }; };
             parts.push(buttons([
               button('Success', result('success'), '', 'check-success'),
@@ -1823,6 +1943,8 @@
             parts.push(checkLine(ec.label));
             parts.push(tip(ec.whoText));
             if (ec.pace) parts.push(tip(ec.pace, 'tsi-exp-tip--note'));
+            (ec.charms || []).forEach(function (ch) { parts.push(charmOffer(v, ch)); });
+            if (ec.rite) parts.push(riteOffer(v, ec.rite));
             var boxes = ec.among.map(function (id) {
               var t = R.token(state, id);
               var box = el('input', { type: 'checkbox', value: id, 'data-test': 'failed-' + id });

@@ -727,17 +727,20 @@
              strip a receipt's kind; the Charter it made still names it. */
           /* A griffin or dire wolf the DM granted (pull request 7). */
           var creature = r.type === 'creature';
-          var made = r.type === 'charter' || creature ? null : R.charterById(state, r.id);
+          /* A Great Rite given to the party (pull request 8b). */
+          var rite = r.type === 'rite';
+          var made = r.type === 'charter' || creature || rite ? null : R.charterById(state, r.id);
           var charter = r.type === 'charter' || !!made;
           /* A parcel collected in the Explorer (pull request 6), known by its
              receipt's kind or, if an older copy stripped that, by its
              pickup id (which only a parcel pickup has). */
-          var pid = TSI.bridge && !creature ? TSI.bridge.parcelIdOf(r.id) : '';
+          var pid = TSI.bridge && !creature && !rite ? TSI.bridge.parcelIdOf(r.id) : '';
           var sent = pid ? R.parcelById(state, pid) : null;
-          var parcel = !charter && !creature && (r.type === 'parcel_collected' || !!pid);
+          var parcel = !charter && !creature && !rite && (r.type === 'parcel_collected' || !!pid);
           var town = parcel ? R.courierPointName(r.point || (sent ? sent.point : '')) : '';
           var what = charter ? 'Port Charter: ' + R.portWithClan(data, made ? made.port : r.port, made ? made.clan : r.clan) : clan;
-          var head = creature ? R.creatureReceiptHead(data, r)
+          var head = rite ? (r.r === 'applied' ? 'Great Rite: ' + R.RITE_NAMES[r.rite] + ' went with the party' + (r.held ? ' (already marked)' : '') : (r.r === 'skipped' ? 'Skipped: ' : 'Refused: ') + 'Great Rite handover')
+            : creature ? R.creatureReceiptHead(data, r)
             : parcel
             ? (r.r === 'applied' ? 'Parcel collected: ' + town + (r.held ? ' (already recorded)' : '') : (r.r === 'skipped' ? 'Skipped: ' : 'Refused: ') + 'parcel collected at ' + town)
             : charter
@@ -748,7 +751,7 @@
           bridgeList.appendChild(el('div', { class: 'tsi-bas-influence__logrow tsi-bas-influence__logrow--' + r.r, 'data-test': 'bridge-row', 'data-result': r.r }, [
             el('div', { class: 'tsi-bas-influence__loghead' }, [el('strong', { text: head }), typeof r.day === 'number' ? ' · ' + R.dayLabel(r.day) : '']),
             r.text ? el('div', { class: 'tsi-bas-influence__logtext', text: r.text }) : null,
-            r.why ? el('div', { class: 'tsi-bas-influence__logwhy', text: r.why + (r.r === 'skipped' ? (parcel ? ' The items stay in the Travel bags.' : charter || creature ? ' Grant it again in the Explorer if it should count.' : ' Type it in above if it should count.') : '') }) : null
+            r.why ? el('div', { class: 'tsi-bas-influence__logwhy', text: r.why + (r.r === 'skipped' ? (parcel ? ' The items stay in the Travel bags.' : charter || creature ? ' Grant it again in the Explorer if it should count.' : rite ? '' : ' Type it in above if it should count.') : '') }) : null
           ]));
         });
       }
@@ -3509,7 +3512,11 @@
           el('div', { class: 'tsi-bas-creatures__room', 'data-test': 'shrine-favour-' + god, text: R.GOD_NAMES[god] + '\'s Favour: ' + R.clampInt(state.favour[god] || 0, 0, 100) + '%. Orders from Level 3 spend it when they start (5%, 10%, then 25% for the Great Rite).' }),
           god === 'pelagos' ? muted('Blessings of Pelagos held for the Dock: ' + held + (held ? '. The next ship sent with cargo takes one: 10 points off its chance of trouble at sea.' : '.')) : null,
           rites.length
-            ? el('ul', { class: 'tsi-bas-res-list', 'data-test': 'great-rites-' + god }, rites.map(function (g) { return el('li', { text: R.RITE_NAMES[g.rite] + ': waiting at the Ironbow since ' + R.dayLabel(g.madeDay) + '. The DM gives it to the party on an expedition (coming in the Explorer next).' }); }))
+            ? el('ul', { class: 'tsi-bas-res-list', 'data-test': 'great-rites-' + god }, rites.map(function (g) {
+              return el('li', { 'data-test': 'great-rite-' + g.status, text: R.RITE_NAMES[g.rite] + (g.status === 'assigned'
+                ? ': with the party since ' + R.dayLabel(g.assignedDay) + ' (in the Explorer\'s Great Rites).'
+                : ': waiting at the Ironbow since ' + R.dayLabel(g.madeDay) + '. The DM gives it to the party on an expedition, in the Explorer.') });
+            }))
             : null
         ]);
       }

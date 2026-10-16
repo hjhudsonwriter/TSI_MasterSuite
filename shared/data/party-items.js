@@ -48,7 +48,8 @@ window.TSI_DATA.partyItems = {
     usesEach: 1,
     unit: "talisman",
     units: "talismans",
-    text: "+2 to one saving throw against a nonmagical natural-terrain hazard (from the Shrine of Telluria)."
+    text: "+2 to one saving throw against a nonmagical natural-terrain hazard (from the Shrine of Telluria).",
+    offer: { tag: 'terrain', skill: 'saving throw', effect: '+2 to this saving throw' }
   },
   rootguard_salve: {
     name: "Rootguard Salve",
@@ -57,7 +58,8 @@ window.TSI_DATA.partyItems = {
     usesEach: 1,
     unit: "dose",
     units: "doses",
-    text: "Advantage on one saving throw against being Restrained by nonmagical vegetation (from the Shrine of Telluria)."
+    text: "Advantage on one saving throw against being Restrained by nonmagical vegetation (from the Shrine of Telluria).",
+    offer: { tag: 'vegetation', skill: 'saving throw', effect: 'advantage on this saving throw' }
   },
   blessed_lantern: {
     name: "Blessed Lantern",
@@ -93,7 +95,8 @@ window.TSI_DATA.partyItems = {
     usesEach: 1,
     unit: "blessing",
     units: "blessings",
-    text: "+2 to one navigation or maritime hazard check during an expedition (from the Shrine of Pelagos)."
+    text: "+2 to one navigation or maritime hazard check during an expedition (from the Shrine of Pelagos).",
+    offer: { tag: 'water', skill: '', effect: '+2 to this check' }
   },
   aquatic_protection_charm: {
     name: "Aquatic Protection Charm",
@@ -102,6 +105,19 @@ window.TSI_DATA.partyItems = {
     usesEach: 1,
     unit: "charm",
     units: "charms",
-    text: "Advantage on one Athletics check involving swimming, currents or a nonmagical water hazard (from the Shrine of Pelagos)."
+    text: "Advantage on one Athletics check involving swimming, currents or a nonmagical water hazard (from the Shrine of Pelagos).",
+    offer: { tag: 'water', skill: 'Athletics', effect: 'advantage on this check' }
   }
+};
+
+/* The Shrines' Great Rites (pull request 8b, Harry's Shrine specification of
+   15 October 2026): each is one Major Expedition Blessing, made at the
+   Bastion, given to the party by the DM during an expedition, and used
+   once. tag: the kind of check it can be used at (the events' check tags in
+   tools/explorer/data/journey-events.js); null: no event check, so the DM
+   uses it by hand. */
+window.TSI_DATA.shrineRites = {
+  earths_endurance: { name: 'Earth\'s Endurance', god: 'telluria', tag: 'exhaustion', effect: 'prevents one level of Exhaustion from this failed saving throw', reminder: 'Prevents one level of Exhaustion caused by a failed travel or environmental saving throw.' },
+  cleansing_radiance: { name: 'Cleansing Radiance', god: 'aurush', tag: null, effect: 'removes Poisoned or Frightened from up to two party members present', reminder: 'Removes Poisoned or Frightened from up to two party members present.' },
+  tides_passage: { name: 'Tide\'s Passage', god: 'pelagos', tag: 'water', effect: 'turns this failed check into a success', reminder: 'Turns one failed water-related navigation or environmental check into a success.' }
 };

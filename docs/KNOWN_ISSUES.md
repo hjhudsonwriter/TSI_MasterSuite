@@ -21,10 +21,10 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 
 | Tool | Must fix | Fixed by design | Deliberate | Later (Harry's call) | Not relevant / not a bug |
 |---|---|---|---|---|---|
-| Suite-wide (SUI) | 10 | 11 | 13 | 1 | 0 |
+| Suite-wide (SUI) | 10 | 11 | 14 | 1 | 0 |
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
-| Scarlett Isles Explorer (EXP) | 12 | 5 | 14 | 13 | 0 |
+| Scarlett Isles Explorer (EXP) | 12 | 5 | 15 | 13 | 0 |
 | The Ironbow Bastion Manager (BAS) | 23 | 2 | 45 | 25 | 1 |
 | Clan Crest Creator (CRS) | 0 | 4 | 6 | 3 | 3 |
 | Arenas of The Scarlett Isles (ARN) | 8 | 2 | 0 | 17 | 0 |
@@ -367,6 +367,17 @@ These come from checking the eight tools against each other: the collision audit
   - A Military Action already under way from an older save still works: its regiments without an id take the first full ones of their kind.
 - **Older copies (SUI-19): back up before trying another copy.** A pull request 7 (or older) copy of the Bastion reads the records as separate rows. It keeps every soldier, but it loses the grades, names and Recouping, and it drops drill and Muster orders when they fall due.
 - **Evidence:** `tools/bastion/regiment-rules.js` (`cleanRegiments`), `tools/bastion/war-campaign-rules.js` (`cleanMilitary`, `regimentsOf`, `warForces`); tests in `tests/rules/bastion-campaign.test.js`.
+
+### SUI-36 · The Explorer link's fifth kind: a Great Rite given to the party
+**Deliberate change** (pull request 8b part 2; Harry's Shrine specification, 15 October 2026) · other
+
+- **Before:** the link carried four kinds of change (standing, Port Charter, parcel collected, creature).
+- **After:** a fifth, `rite`: the Explorer tells the Bastion that a waiting Great Rite went with the party.
+  - Its id is fixed by the rite (`<rite id>:rite:0`), so it can only be sent, and applied, once.
+  - The Bastion marks that Great Rite "assigned" and writes a receipt. A rite it doesn't hold is refused; a repeat changes nothing.
+  - Loading twice gives the same save.
+- **Older copies (SUI-19): back up before trying another copy.** An older Bastion waits for kinds it doesn't know and keeps them, but it drops `greatRites` from its save. An older Explorer drops Shrine items from the Travel bags and its expedition record.
+- **Evidence:** `shared/js/bridge-rules.js` (`riteMessage`, `check`, `statusOf`), `tools/bastion/rules.js` (`assignGreatRite`, `applyInbox`); `tests/rules/shrines-explorer.test.js`.
 
 ## Combat Tracker & VTT Battlemap
 Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point there).
@@ -1315,6 +1326,21 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 - **Before:** the Explorer's bag of supplies, and every line about it (the Courier Exchange, the Fishery's packs, the guide), said "Party bags".
 - **After:** it says "Travel bags" everywhere. Nothing in the save changes.
 - **Evidence:** the words only (`tools/explorer/tool.js`, `shared/data/party-items.js`, `shared/js/bridge-rules.js`, the Bastion's data and screens, `guide.html`).
+
+### EXP-45 · The Shrines in the Explorer: expeditions, Great Rites, charms and Use…
+**Deliberate change** (pull request 8b part 2; Harry's answers S2, S9, S10, 15 October 2026) · other
+
+- **Before:** the Explorer had no expeditions, and the Shrines' items weren't in the game.
+- **After:**
+  - **Start expedition / End expedition** (Travel bags box). Make Camp and resting don't start one. Ending one takes back the party's Great Rite, used or not.
+  - **Great Rites** that the Bastion holds show as "waiting at the Ironbow". **Give to the party** (during an expedition) asks first, tells the Bastion once, and the party holds that one Great Rite. They can't hold a second, nor be given another in the same expedition.
+  - **Charms at tagged checks.** The tagged checks are Rootfall, The Tide Causeway, The Drowned Bell, The Ember That Won't Die and False Lights at Bleakharbour. A matching charm in the bags is offered there, once a step. The DM still rolls. Earth's Endurance is offered at an exhaustion save; Tide's Passage at a water check, where it counts as a success.
+  - **Use…** on a Shrine item in the Travel bags asks first, then counts one use and shows what to do. Conditions (Poisoned, Frightened, Exhaustion) stay the DM's to apply.
+  - Nothing is added to a hero's sheet.
+- **Choices made for Harry:**
+  - One Great Rite per expedition, even after it's used.
+  - Cleansing Radiance has no check to attach to, so it's used by hand.
+- **Evidence:** `tools/explorer/journey.js` ("The Shrines' items, expeditions and Great Rites"), `tools/explorer/tool.js`, `tools/explorer/data/journey-events.js` (`tags`), `shared/data/party-items.js` (`offer`, `shrineRites`); `tests/rules/shrines-explorer.test.js`, `tests/e2e/shrines-explorer.test.js`.
 
 ## The Ironbow Bastion Manager
 Old repo: `_legacy/bastion_manager` (file:line references point there).
@@ -2411,11 +2437,7 @@ None of these reached Harry.
 - **Bless Bastion Foundations isn't available yet.**
   - No Bastion event sends a facility Under Repair from a natural cause: only an attack does, and that never counts.
   - The order is listed and says why. It opens once Harry adds such an event.
-- **Comes in part 2 (the Explorer):**
-  - Use… in the Travel bags;
-  - the event tags that offer a charm on a check;
-  - Start and End expedition;
-  - giving a Great Rite to the party.
+- **The Explorer's half is built (part 2):** see EXP-45 and SUI-36.
 - **Choices made for Harry:**
   - The Blessing of Pelagos goes to the very next cargo ship, with no choosing.
   - Favour is never given back on Cancel.

@@ -55,7 +55,7 @@
 
   /* ---------- The journey record ---------- */
   J.empty = function () {
-    return { gold: 0, effects: [], threads: [], used: { travel: [], camp: [] }, lastTravelDay: 0, rolledDay: 0, tonight: null, current: null, log: [], seq: 0, outbox: [], inventory: [] };
+    return { gold: 0, effects: [], threads: [], used: { travel: [], camp: [] }, lastTravelDay: 0, rolledDay: 0, tonight: null, current: null, log: [], seq: 0, outbox: [], inventory: [], expedition: { n: 0, active: false, startedDay: 0 }, blessing: null, ritesTaken: [] };
   };
 
   /* The link's shared rules (shared/js/bridge-rules.js) and the party's
@@ -146,6 +146,8 @@
        one: it hasn't sent anything yet), and the steps where a pack was used. */
     out.uid = typeof c.uid === 'string' && /^[a-z0-9-]{6,40}$/.test(c.uid) ? c.uid : newUid();
     out.packUsed = strList(c.packUsed);
+    /* The charms used at a step ('step:kind', pull request 8b). */
+    out.charmUsed = strList(c.charmUsed);
     var step = ev.steps[c.step];
     if (step.contest && !out.round) out.round = { n: 1, hero: 0, opp: 0, d20: 10, history: [] };
     if (step.puzzle && !out.puzzle) out.puzzle = { wrong: 0, hint: null, reveal: false };
@@ -183,6 +185,13 @@
     j.current = cleanCurrent(saved.current, defs);
     j.log = strList(saved.log).slice(0, LOG_MAX);
     j.outbox = (Array.isArray(saved.outbox) ? saved.outbox : []).map(cleanMessage).filter(Boolean);
+    /* The expedition, the Great Rite the party holds, and the rites already
+       taken from the Ironbow (pull request 8b). */
+    if (isObj(saved.expedition)) j.expedition = { n: Math.max(0, int(saved.expedition.n, 0)), active: saved.expedition.active === true, startedDay: Math.max(0, int(saved.expedition.startedDay, 0)) };
+    if (isObj(saved.blessing) && str(saved.blessing.id) && rites()[saved.blessing.rite]) {
+      j.blessing = { id: saved.blessing.id, rite: saved.blessing.rite, expedition: Math.max(0, int(saved.blessing.expedition, 0)), used: saved.blessing.used === true };
+    }
+    j.ritesTaken = strList(saved.ritesTaken);
     /* The same kind twice (a hand-edited file) is added together. */
     (Array.isArray(saved.inventory) ? saved.inventory : []).map(cleanItem).filter(Boolean).forEach(function (it) {
       var same = null;
@@ -395,7 +404,7 @@
       ctx: { region: ctx.region, mapId: ctx.mapId, mapKey: ctx.mapKey, near: cleanNear(ctx.near) },
       thread: it.thread || null, prevLastTravelDay: j.lastTravelDay, opened: {}, round: null, puzzle: null,
       /* The random id that names this event's messages to the Bastion. */
-      uid: newUid(), packUsed: []
+      uid: newUid(), packUsed: [], charmUsed: []
     };
     if (ev.secret) cur.vars[ev.secret.key] = rand() < ev.secret.chance ? ev.secret.yes : ev.secret.no;
     if (it.thread) {
@@ -947,7 +956,10 @@
         failBy5: !!c.failBy5,
         among: c.who === 'each' ? (c.among === 'failed' ? strList(cur.vars.failed) : heroIds(state)) : null,
         /* An exhaustion save: a pack from the bags gives advantage, once. */
-        pack: J.packOffer(state, c, cur)
+        pack: J.packOffer(state, c, cur),
+        /* The Shrines' charms and a Great Rite the party holds (pull request 8b). */
+        charms: J.charmOffers(state, c, cur),
+        rite: J.riteOffer(state, c, cur)
       };
     } else if (step.choices) {
       v.type = 'choices';
@@ -1096,6 +1108,179 @@
   J.usePackAtWeather = function (state, title) {
     if (!J.takeItem(state, J.PACK, 1)) return null;
     var line = 'Used 1 Expedition Provision Pack at the ' + (title || 'weather') + ': advantage on the party\'s save (' + J.itemCount(J.PACK, J.itemQty(state, J.PACK)) + ' left).';
+    logLine(state, line);
+    return line;
+  };
+
+  /* ---------- The Shrines' items, expeditions and Great Rites (pull request 8b) ----------
+     Harry's Shrine specification, 15 October 2026. The items are in the
+     Travel bags; each charm's rule is in shared/data/party-items.js (offer).
+     A tagged check (journey-events.js) offers the charms that fit it, once
+     a step, and the DM still rolls. Nothing changes a hero's sheet. */
+  function rites() { return (window.TSI_DATA && window.TSI_DATA.shrineRites) || {}; }
+  J.riteInfo = function (rite) { return rites()[rite] || null; };
+  function exped(state) {
+    var j = journey(state);
+    if (!isObj(j.expedition)) j.expedition = { n: 0, active: false, startedDay: 0 };
+    return j.expedition;
+  }
+  J.expedition = function (state) { var e = exped(state); return { n: e.n, active: e.active === true, startedDay: e.startedDay }; };
+  /* The DM starts and ends expeditions; Make Camp and resting don't. */
+  J.startExpedition = function (state) {
+    var e = exped(state);
+    if (e.active) return { ok: false, message: 'An expedition is already under way (since Day ' + e.startedDay + ').' };
+    e.n += 1;
+    e.active = true;
+    e.startedDay = day(state);
+    var line = 'Expedition ' + e.n + ' began on Day ' + e.startedDay + '.';
+    logLine(state, line);
+    return { ok: true, line: line };
+  };
+  /* Ending it takes back a Great Rite the party still holds: used or not, it
+     doesn't last past the expedition. */
+  J.endExpedition = function (state) {
+    var e = exped(state);
+    var j = journey(state);
+    if (!e.active) return { ok: false, message: 'No expedition is under way.' };
+    e.active = false;
+    var line = 'Expedition ' + e.n + ' ended on Day ' + day(state) + '.';
+    if (isObj(j.blessing)) {
+      var info = J.riteInfo(j.blessing.rite);
+      line += ' ' + (info ? info.name : 'The Great Rite') + (j.blessing.used ? ' had been used.' : ' expired unused.');
+      j.blessing = null;
+    }
+    logLine(state, line);
+    return { ok: true, line: line };
+  };
+  /* The Great Rites the Bastion holds that nobody has taken yet:
+     [{ id, rite, madeDay }]. */
+  J.waitingRites = function (state, bastionSave) {
+    var B = bridge();
+    var j = journey(state);
+    var list = isObj(bastionSave) && Array.isArray(bastionSave.greatRites) ? bastionSave.greatRites : [];
+    return list.filter(function (g) {
+      return isObj(g) && g.status === 'waiting' && typeof g.id === 'string' && B && B.RITES && B.RITES.indexOf(g.rite) !== -1 && strList(j.ritesTaken).indexOf(g.id) === -1;
+    }).map(function (g) { return { id: g.id, rite: g.rite, madeDay: isNum(g.madeDay) ? g.madeDay : 1 }; });
+  };
+  /* The DM gives a Great Rite to the party, during an expedition: the party
+     holds one at a time, and none again in the same expedition (even after it
+     is used). Everything is checked first; then the blessing and the message
+     to the Bastion come together, once (the message's id is fixed by the
+     rite's). */
+  J.assignRite = function (state, riteId, bastionSave, opts) {
+    var B = bridge();
+    var o = isObj(opts) ? opts : {};
+    var j = journey(state);
+    if (!B || !B.riteMessage) return { ok: false, message: 'This copy of the Explorer can\'t give a Great Rite.' };
+    if (o.memory === true) return { ok: false, message: 'This browser isn\'t saving, so the Bastion can\'t see it. Nothing was given.' };
+    if (!isObj(bastionSave)) return { ok: false, message: 'Waiting for the Bastion: it hasn\'t saved anything yet.' };
+    if (bastionSave.anchored !== true) return { ok: false, message: 'Waiting for the Bastion: open it once so it reads the Explorer\'s day.' };
+    var rite = J.waitingRites(state, bastionSave).filter(function (x) { return x.id === riteId; })[0];
+    if (!rite) return { ok: false, message: 'The Bastion has no such Great Rite waiting.' };
+    var e = exped(state);
+    if (!e.active) return { ok: false, message: 'Start an expedition first: a Great Rite lasts for one expedition.' };
+    if (isObj(j.blessing)) return { ok: false, message: 'The party already holds ' + J.riteInfo(j.blessing.rite).name + '. One at a time, and none again in the same expedition.' };
+    var id = B.riteMessageId(rite.id);
+    if (!B.ID_PATTERN.test(id) || !B.UID_PATTERN.test(rite.id)) return { ok: false, message: 'This Great Rite\'s record is damaged, so it can\'t be given safely.' };
+    if ((j.outbox || []).some(function (m) { return isObj(m) && m.id === id; })) return { ok: false, message: 'This Great Rite has already been given.' };
+    var info = J.riteInfo(rite.rite);
+    if (!info) return { ok: false, message: 'This copy of the Explorer doesn\'t know that Great Rite.' };
+    j.blessing = { id: rite.id, rite: rite.rite, expedition: e.n, used: false };
+    if (strList(j.ritesTaken).indexOf(rite.id) === -1) j.ritesTaken.push(rite.id);
+    if (!Array.isArray(j.outbox)) j.outbox = [];
+    j.outbox.push(B.riteMessage({
+      riteId: rite.id, rite: rite.rite, day: day(state), at: new Date().toISOString(),
+      from: { code: 'DM', title: 'Shrine blessing', step: 'dm' },
+      text: (info.name + ' given to the party for expedition ' + e.n + '.').slice(0, B.TEXT_MAX)
+    }));
+    var line = info.name + ' is with the party for expedition ' + e.n + ': ' + info.reminder + ' Sent to the Bastion.';
+    logLine(state, line);
+    return { ok: true, line: line, id: id };
+  };
+  /* A charm the check on screen offers: the tag fits, and (if it names one)
+     the skill. { kind, name, have, used, effect } for each that is held or
+     was used here. */
+  J.charmOffers = function (state, check, cur) {
+    if (!check || !cur || !Array.isArray(check.tags)) return [];
+    var used = strList(cur.charmUsed);
+    var out = [];
+    var all = items();
+    Object.keys(all).forEach(function (kind) {
+      var info = all[kind];
+      if (!info || !isObj(info.offer) || check.tags.indexOf(info.offer.tag) === -1) return;
+      if (info.offer.skill && String(check.skill || '').toLowerCase().indexOf(String(info.offer.skill).toLowerCase()) === -1) return;
+      var here = used.indexOf(cur.step + ':' + kind) !== -1;
+      var have = J.itemQty(state, kind);
+      if (!here && have < 1) return;
+      out.push({ kind: kind, name: info.name, have: have, used: here, effect: info.offer.effect });
+    });
+    return out;
+  };
+  /* Use a charm at the check on screen (stepId must be the step shown):
+     once a step for each kind. The DM still rolls. Returns the line it
+     records, or null. */
+  J.useCharm = function (state, defs, stepId, kind) {
+    var cur = journey(state).current;
+    if (!cur || stepId !== cur.step) return null;
+    var ev = J.def(defs, cur.id);
+    var step = ev && ev.steps[cur.step];
+    if (!step || !step.check) return null;
+    var offer = J.charmOffers(state, step.check, cur).filter(function (x) { return x.kind === kind; })[0];
+    if (!offer || offer.used) return null;
+    if (!J.takeItem(state, kind, 1)) return null;
+    if (!Array.isArray(cur.charmUsed)) cur.charmUsed = [];
+    cur.charmUsed.push(cur.step + ':' + kind);
+    var line = 'Used ' + offer.name + ': ' + offer.effect + ' (' + J.itemCount(kind, J.itemQty(state, kind)) + ' left).';
+    record(state, cur, line);
+    return line;
+  };
+  /* The Great Rite the party holds, offered at a check it fits (an
+     exhaustion save for Earth\'s Endurance, a water check for Tide\'s
+     Passage): { rite, name, effect, used } or null. Once used it is spent. */
+  J.riteOffer = function (state, check, cur) {
+    var b = journey(state).blessing;
+    if (!isObj(b) || !check || !cur || !Array.isArray(check.tags)) return null;
+    var info = J.riteInfo(b.rite);
+    if (!info || !info.tag || check.tags.indexOf(info.tag) === -1) return null;
+    if (b.used && strList(cur.charmUsed).indexOf(cur.step + ':rite') === -1) return null;
+    return { rite: b.rite, name: info.name, effect: info.effect, used: b.used === true, success: b.rite === 'tides_passage' };
+  };
+  /* Use the Great Rite at the check on screen. Returns { line, success } or
+     null; for Tide\'s Passage the screen then records the check as a success. */
+  J.useRite = function (state, defs, stepId) {
+    var cur = journey(state).current;
+    if (!cur || stepId !== cur.step) return null;
+    var ev = J.def(defs, cur.id);
+    var step = ev && ev.steps[cur.step];
+    if (!step || !step.check) return null;
+    var offer = J.riteOffer(state, step.check, cur);
+    if (!offer || offer.used) return null;
+    journey(state).blessing.used = true;
+    if (!Array.isArray(cur.charmUsed)) cur.charmUsed = [];
+    cur.charmUsed.push(cur.step + ':rite');
+    var line = 'Used ' + offer.name + ': ' + offer.effect + '.';
+    record(state, cur, line);
+    return { line: line, success: offer.success };
+  };
+  /* The DM uses the Great Rite away from a check (Cleansing Radiance has
+     none, and any rite can be used by hand). */
+  J.useRiteByHand = function (state) {
+    var b = journey(state).blessing;
+    if (!isObj(b) || b.used) return null;
+    var info = J.riteInfo(b.rite);
+    if (!info) return null;
+    b.used = true;
+    var line = 'Used ' + info.name + ': ' + info.reminder;
+    logLine(state, line);
+    return line;
+  };
+  /* The DM uses a Shrine item away from a check: one use, with its
+     reminder. Only the Shrines' items (use 'shrine') are used this way. */
+  J.useItem = function (state, kind) {
+    var info = J.itemInfo(kind);
+    if (!info || info.use !== 'shrine') return null;
+    if (!J.takeItem(state, kind, 1)) return null;
+    var line = 'Used ' + info.name + ': ' + info.text + ' (' + J.itemCount(kind, J.itemQty(state, kind)) + ' left).';
     logLine(state, line);
     return line;
   };
