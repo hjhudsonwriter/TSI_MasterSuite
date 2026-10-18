@@ -250,7 +250,8 @@ Migration
 Idempotence
 No duplicate treasure
 11. R&D
-Separate future Hall research tree, likely diplomatic inﬂuence, mediation, political favours, 
+WITHDRAWN (Harry, 18 October 2026): the Hall will have no R&D tree. Its diplomacy-first redesign is its progression.
+Former note: separate future Hall research tree, likely diplomatic inﬂuence, mediation, political favours, 
 negotiation efficiency and other specialisms.
 Not yet deﬁned and not part of this implementation.
 STATUS

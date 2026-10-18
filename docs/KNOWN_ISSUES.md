@@ -2436,7 +2436,8 @@ None of these reached Harry.
 
 - **Bless Bastion Foundations isn't available yet.**
   - No Bastion event sends a facility Under Repair from a natural cause: only an attack does, and that never counts.
-  - The order is listed and says why. It opens once Harry adds such an event.
+  - The order is listed and says why.
+  - **Decided (Harry, 18 October 2026):** no natural-damage events are added to make it useful, and no frequencies, damage or targets are invented. It stays unavailable. It may later be replaced by an effect that works with existing Bastion, Explorer or campaign play.
 - **The Explorer's half is built (part 2):** see EXP-45 and SUI-36.
 - **Choices made for Harry:**
   - The Blessing of Pelagos goes to the very next cargo ship, with no choosing.
