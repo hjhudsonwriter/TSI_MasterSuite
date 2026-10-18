@@ -1190,7 +1190,7 @@
     t.equal(R.researchChoiceState(s, data, 'herbal_gardens', 'medicine', 'fortifying_draughts'), 'coming', '"coming" says more than "locked"');
     research(s, 'medicine', 'healing_herb_refinement');
     t.equal(R.researchChoiceState(s, data, 'herbal_gardens', 'medicine', 'fortifying_draughts'), 'coming');
-    t.equal(R.researchCheck(s, data, 'herbal_gardens', 'medicine', 'fortifying_draughts').message, 'Coming with the Explorer link, which tracks each hero\'s conditions (pull request 4).');
+    t.equal(R.researchCheck(s, data, 'herbal_gardens', 'medicine', 'fortifying_draughts').message, 'Not available yet: it needs the Explorer tracking each hero\'s conditions, which it does not do. Nothing was spent.');
     s.repairs = { herbal_gardens: 12 };
     t.equal(R.researchCheck(s, data, 'herbal_gardens', 'agricultural', 'perpetual_growing_cycle').message, 'The Herbal Gardens is Under Repair until Day 12.');
     s.repairs = {};
@@ -1819,7 +1819,7 @@
     t.same([o.dueDay, R.goodsQty(s, 'alchemical_flowers')], [17, 10]);
     finish(s, o);
     t.equal(R.goodsQty(s, 'refined_botanical_reagents'), 1);
-    t.equal(R.researchChoiceState(s, data, 'herbal_gardens', 'botanical', 'exotic_flora_conservatory'), 'locked', 'Stage III waits for a Stage II choice (both still "coming"): a question for Harry');
+    t.equal(R.researchChoiceState(s, data, 'herbal_gardens', 'botanical', 'exotic_flora_conservatory'), 'unreachable', 'Stage III waits for a Stage II choice (both still "coming"): a question for Harry');
   });
 
   test('the map labels: one per built facility with a position, with its level; a plot facility is labelled; positions are on the painting', function (t) {

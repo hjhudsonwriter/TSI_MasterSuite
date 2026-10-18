@@ -778,7 +778,12 @@
          ================================================================ */
       var logList = el('div', { class: 'tsi-bas-log', 'data-test': 'log' });
       var logCard = card('log', 'Day Log');
-      logCard.head.appendChild(btn('Clear log', function () { state.log = []; done(); }, 'tsi-btn--ghost', 'clear-log'));
+      logCard.head.appendChild(btn('Clear log', async function () {
+        if (state.log.length && !(await ask('Clear the Day Log (' + state.log.length + (state.log.length === 1 ? ' entry' : ' entries') + ')? It is the Bastion\'s history of what happened, and it cannot be undone.', 'Clear', 'Clear the Day Log'))) return;
+        if (!life.alive) return;
+        state.log = [];
+        done();
+      }, 'tsi-btn--ghost', 'clear-log'));
       logCard.body.appendChild(logList);
 
       /* The painting, with the building overlays (full-frame pictures the
@@ -1317,7 +1322,10 @@
         el('div', { class: 'tsi-bas-box tsi-bas-box--art tsi-bas-box--military' }, [
           el('div', { class: 'tsi-bas-row__top' }, [
             el('div', null, [label('Military'), muted('Units recruited from the War Room.')]),
-            btn('Clear', function () {
+            btn('Clear', async function () {
+              var n = (state.military || []).reduce(function (a, u) { return a + (R.clampInt(u && u.qty, 0) || 1); }, 0);
+              if (n && !(await ask('Clear the whole Military list (' + n + (n === 1 ? ' unit' : ' units') + ')? This removes every regiment recruited at the War Room, with its name, training and Recouping. It cannot be undone, and the gold already spent is not given back.', 'Clear', 'Clear the Military list'))) return;
+              if (!life.alive) return;
               state.military = [];
               log('Military', 'Cleared military list.');
               done();
@@ -2679,7 +2687,10 @@
             log('Warehouse', 'Saved warehouse.');
             done();
           }, '', 'save-warehouse'),
-          btn('Clear', function () {
+          btn('Clear', async function () {
+            var real = (state.warehouse || []).filter(function (w) { return w && (w.goodId || (String(w.item || '').trim() && String(w.item).trim() !== 'New Item') || w.qty > 1 || String(w.notes || '').trim() || String(w.gp || '').trim()); });
+            if (real.length && !(await ask('Clear the whole Warehouse (' + real.length + (real.length === 1 ? ' row' : ' rows') + ')? Everything in it is lost: goods, courier stock, Dock cargo and anything you typed. It cannot be undone.', 'Clear', 'Clear the Warehouse'))) return;
+            if (!life.alive) return;
             state.warehouse = [];
             /* Logged twice, as before (BAS-31, kept). */
             log('Warehouse', 'Cleared warehouse.');
@@ -2743,7 +2754,10 @@
         return el('div', { class: 'tsi-bas-wh__row tsi-bas-wh__row--goods', 'data-good': row.goodId }, [
           el('div', { class: 'tsi-bas-wh__good', 'data-test': 'wh-item-' + i }, [el('span', { class: 'tsi-bas-wh__goodname', text: row.item || R.goodName(data, row.goodId) }), unit ? el('span', { class: 'tsi-bas-wh__unit', text: unit, title: unit }) : null]),
           qty, value, notes,
-          btn('Remove', function () {
+          btn('Remove', async function () {
+            var name = row.item || R.goodName(data, row.goodId);
+            if (!(await ask('Remove ' + name + (row.qty ? ' (' + row.qty + ')' : '') + ' from the Warehouse? Goods you remove are lost, not sent anywhere.', 'Remove', 'Remove from the Warehouse'))) return;
+            if (!life.alive) return;
             state.warehouse = state.warehouse.filter(function (x) { return x !== row; });
             done();
           }, '', 'wh-remove-' + i)
@@ -2818,7 +2832,9 @@
             log('Artisan Tools', 'Saved artisan tool selections.');
             done();
           }, '', 'save-artisan'),
-          btn('Clear', function () {
+          btn('Clear', async function () {
+            if (state.artisanTools.some(Boolean) && !(await ask('Clear the artisan tool selections? Workshop Craft will need them picked again.', 'Clear', 'Clear artisan tools'))) return;
+            if (!life.alive) return;
             state.artisanTools = ['', '', '', '', '', ''];
             log('Artisan Tools', 'Cleared artisan tool selections.');
             done();
@@ -2881,6 +2897,16 @@
       /* A facility's Upgrade (the facilities overhaul's step 1b): to the next
          level, its days, and why it can't be ordered now (at Level 5, already
          upgrading, or Under Repair). It shows first among the orders. */
+      /* What the next level gives (Harry, 18 October 2026). An upgrade is never
+         disabled for giving nothing: a later level may open something. */
+      function unlockLine(fac, lvl) {
+        var u = R.levelUnlockSummary(data, fac.id, lvl);
+        if (!u) return null;
+        var text = u.unlocks.length
+          ? 'Level ' + u.toLevel + ' unlocks: ' + u.unlocks.join('; ') + '.'
+          : 'Level ' + u.toLevel + ' unlocks nothing new yet.' + (u.later ? ' It is needed to reach Level ' + u.later.level + ', which unlocks: ' + u.later.unlocks.join('; ') + '.' : '');
+        return el('div', { class: 'tsi-bas-fn__days tsi-bas-fn__unlocks', 'data-test': 'upgrade-unlocks-' + fac.id, text: text });
+      }
       function upgradeRow(fac) {
         var lvl = R.getFacilityLevel(state, fac.id);
         var c = R.upgradeCheck(state, data, fac.id);
@@ -2892,6 +2918,7 @@
         return el('div', { class: 'tsi-bas-fn tsi-bas-upgrade', 'data-test': 'upgrade-row-' + fac.id }, [
           el('div', { class: 'tsi-bas-fn__head' }, [el('div', { class: 'tsi-bas-fn__name', text: 'Upgrade' }), el('div', { class: 'tsi-bas-fn__cost', text: 'Level ' + lvl + ' of ' + R.MAX_LEVEL })]),
           el('div', { class: 'tsi-bas-fn__days', 'data-test': 'upgrade-text-' + fac.id, text: text }),
+          unlockLine(fac, lvl),
           c.top ? null : el('button', {
             type: 'button', class: 'tsi-btn tsi-btn--small tsi-bas-fn__issue', 'data-test': 'upgrade-' + fac.id, disabled: !c.ok,
             title: c.ok ? null : repair ? repairText(fac, repair) : c.message,
@@ -2961,7 +2988,8 @@
         var status = st === 'done' ? 'Researched'
           : st === 'running' ? 'Researching: ready on Day ' + run.dueDay
           : st === 'other' ? 'Not chosen at this stage'
-          : st === 'coming' ? 'Coming later'
+          : st === 'coming' ? 'Not available yet'
+          : st === 'unreachable' ? 'Not reachable yet'
           : st === 'locked' ? 'After Stage ' + ROMAN[stageIdx - 1]
           : '';
         var action = st === 'done' ? btn('Undo', function () { onUndoResearch(fac.id, b.id, stageIdx); }, 'tsi-btn--ghost', 'undo-' + c.id)
@@ -2975,7 +3003,8 @@
         var tip = function () {
           var parts = [muted(c.text)];
           if (c.example) parts.push(muted('Example: ' + c.example));
-          if (c.needs) parts.push(muted('Coming with ' + R.researchNeedsText(data, c.needs) + '.'));
+          if (c.needs) parts.push(muted('Not available yet: it needs ' + R.researchNeedsText(data, c.needs) + '. It cannot be chosen, so it costs no research token and no gold.'));
+          else if (st === 'unreachable') parts.push(muted('Not reachable yet: no choice at the stage before it can be researched, so this stage cannot be opened. It costs nothing.'));
           else if (c.now) parts.push(muted('Works now on: ' + c.now));
           if (check && !check.ok) parts.push(muted(check.message));
           return { title: c.name, parts: parts, foot: b.name + ' · Stage ' + ROMAN[stageIdx] + ' · ' + R.daysText(R.researchDays(data, stageIdx)) + ' · ' + ((b.costs || [])[stageIdx] || 0) + ' gp' };
@@ -4895,7 +4924,7 @@
       });
       var onImport = TSI.oneAtATime(function () { return TSI.backup.importTool('bastion'); });
       var onReset = TSI.oneAtATime(async function () {
-        var ok = await ask('Reset the Bastion? This clears its saved data in this browser only. Download a save first if you might want it back.', 'Reset');
+        var ok = await TSI.backup.askReset({ toolId: 'bastion', title: 'Reset the Bastion', okLabel: 'Reset', message: 'Reset the Bastion? This clears its saved data in this browser only: facilities, orders, regiments, diplomacy records, the crest and the War Table\'s map. The Explorer is left as it is.' });
         if (!ok || !life.alive) return;
         /* The crest and the War Table's map, settings and painted terrain go too; the panels' open or closed state stays. */
         ['state', 'crest', 'warMap', 'warTable', 'warTerrain'].forEach(function (k) { if (ctx.store.has(k)) ctx.store.remove(k); });

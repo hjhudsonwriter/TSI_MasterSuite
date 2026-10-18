@@ -1266,6 +1266,39 @@
     var t = data.bastion && data.bastion.levels;
     return isObj(t) ? t : { max: R.MAX_LEVEL, upgradeDays: { 2: 7, 3: 14, 4: 21, 5: 28 }, upgradeCostGP: 0 };
   }
+  /* What reaching a level gives (Harry, 18 October 2026): the orders that
+     open at it, then the lines in data.bastion.levels.effects. An empty list
+     means the level unlocks nothing yet. */
+  R.levelUnlocks = function (data, facId, level) {
+    var fac = R.facility(data, facId);
+    var out = [];
+    if (!fac) return out;
+    (fac.functions || []).forEach(function (fn) {
+      if (!fn || fn.id === 'upgrade' || fn.id === 'upgrade_hall') return;
+      var req = clampInt(fn.requiredFacilityLevel === undefined || fn.requiredFacilityLevel === null ? 1 : fn.requiredFacilityLevel, 1, R.MAX_LEVEL);
+      if (req === level && level > 1) out.push(fn.label || fn.id);
+    });
+    var fx = data && data.bastion && data.bastion.levelEffects;
+    var lines = isObj(fx) && isObj(fx[facId]) ? fx[facId][level] : null;
+    if (Array.isArray(lines)) lines.forEach(function (t) { if (typeof t === 'string' && t) out.push(t); });
+    return out;
+  };
+  /* The Upgrade row's words: { next, nextText, later } for a facility at fromLevel.
+     later: the nearest higher level that unlocks something, when the next unlocks nothing. */
+  R.levelUnlockSummary = function (data, facId, fromLevel) {
+    var max = clampInt(levelsTable(data).max || R.MAX_LEVEL, 1, R.MAX_LEVEL);
+    var to = fromLevel + 1;
+    if (to > max) return null;
+    var list = R.levelUnlocks(data, facId, to);
+    var out = { toLevel: to, unlocks: list, later: null };
+    if (!list.length) {
+      for (var l = to + 1; l <= max; l++) {
+        var more = R.levelUnlocks(data, facId, l);
+        if (more.length) { out.later = { level: l, unlocks: more }; break; }
+      }
+    }
+    return out;
+  };
   R.upgradeDays = function (data, toLevel) {
     var d = levelsTable(data).upgradeDays || {};
     return clampInt(d[toLevel] === undefined || d[toLevel] === null ? 7 : d[toLevel], 1, 365);
@@ -1371,7 +1404,9 @@
     return n[key] || 'a part of the Bastion still to be built';
   };
   /* Each choice's state: 'done', 'running', 'other' (the other choice at
-     that stage was taken), 'coming' (needs a part still to be built),
+     that stage was taken), 'coming' (needs a part still to be built, so it
+     can't be chosen and costs nothing), 'unreachable' (no choice before it
+     can be researched),
      'locked' (the stage before isn't done), or 'open'. */
   R.researchChoiceState = function (s, data, facId, branchId, choiceId) {
     var tree = R.researchTree(data, facId);
@@ -1383,8 +1418,22 @@
     if (run && run.meta.branch === branchId && run.meta.choice === choiceId) return 'running';
     if (done[at.stageIdx] || (run && run.meta.branch === branchId && run.meta.stage === at.stageIdx)) return 'other';
     if (at.choice.needs) return 'coming';
-    if (done.length < at.stageIdx) return 'locked';
+    if (done.length < at.stageIdx) return R.researchStageReachable(tree, branchId, at.stageIdx, done) ? 'locked' : 'unreachable';
     return 'open';
+  };
+  /* Can a stage be reached at all? Every stage before it needs a choice taken
+     or at least one choice that can really be researched (none "coming").
+     Otherwise it is 'unreachable' (Harry, 18 October 2026): shown as not
+     available rather than "after Stage II", which would never come. */
+  R.researchStageReachable = function (tree, branchId, stageIdx, done) {
+    var b = findBranch(tree, branchId);
+    if (!b) return false;
+    for (var i = 0; i < stageIdx; i++) {
+      if (done && done[i]) continue;
+      var ok = ((b.stages[i] && b.stages[i].choices) || []).some(function (c) { return !c.needs; });
+      if (!ok) return false;
+    }
+    return true;
   };
   /* Can this choice be researched now? { ok, stageIdx, days, costGP } or { ok: false, message }. */
   R.researchCheck = function (s, data, facId, branchId, choiceId) {
@@ -1398,7 +1447,8 @@
     if (state === 'done') return { ok: false, message: at.choice.name + ' is already researched.' };
     if (state === 'running') return { ok: false, message: at.choice.name + ' is being researched now.' };
     if (state === 'other') return { ok: false, message: 'The other choice at this stage was taken: only one can be.' };
-    if (state === 'coming') return { ok: false, message: 'Coming with ' + R.researchNeedsText(data, at.choice.needs) + '.' };
+    if (state === 'coming') return { ok: false, message: 'Not available yet: it needs ' + R.researchNeedsText(data, at.choice.needs) + '. Nothing was spent.' };
+    if (state === 'unreachable') return { ok: false, message: 'Not reachable yet: no choice at the stage before it can be researched. Nothing was spent.' };
     if (state === 'locked') return { ok: false, message: 'Research the stage before it on this branch first.' };
     var run = R.researchRunning(s, facId);
     if (run) return { ok: false, message: 'The ' + fac.name + ' is already researching ' + (run.meta.name || 'something') + ': ready on Day ' + run.dueDay + '.' };

@@ -63,6 +63,26 @@
       };
     },
 
+    /* How long ago the campaign was last backed up (Harry, 18 October 2026:
+       the suite should remind him). stamp is a time in milliseconds, or null. */
+    REMIND_AFTER_DAYS: 7,
+    backupAgeDays: function (stamp, now) {
+      if (typeof stamp !== 'number' || !isFinite(stamp) || stamp <= 0) return null;
+      return Math.max(0, Math.floor(((now === undefined ? Date.now() : now) - stamp) / 86400000));
+    },
+    backupAgeText: function (stamp, now) {
+      var d = rules.backupAgeDays(stamp, now);
+      if (d === null) return 'never';
+      return d === 0 ? 'today' : d === 1 ? 'yesterday' : d + ' days ago';
+    },
+    /* Remind only when there is a campaign to lose, and it has never been
+       backed up or the last backup is more than a week old. */
+    backupDue: function (stamp, now, hasCampaignData) {
+      if (!hasCampaignData) return false;
+      var d = rules.backupAgeDays(stamp, now);
+      return d === null || d > rules.REMIND_AFTER_DAYS;
+    },
+
     makeToolBackup: function (toolId, toolName, records, when, space) {
       return {
         format: rules.FORMAT,

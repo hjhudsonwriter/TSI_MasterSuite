@@ -455,7 +455,7 @@ function serve(dir) {
       equal(await page.$$eval('.tsi-exp-pin', ps => ps.map(p => p.title)), ['Middlemount']);
     });
 
-    await check('fog is kept per map, and after reopening (the button reads Off, EXP-19 kept)', async () => {
+    await check('fog is kept per map, and after reopening the button says what the saved fog really is (EXP-19 fixed)', async () => {
       const cells = Object.keys((await st(page)).fog.revealedByMapKey['preset:midland_province']).length;
       assert(cells > 19, String(cells));
       await loadMap(page, 'the_east_isle');
@@ -464,7 +464,8 @@ function serve(dir) {
       await page.reload();
       await page.waitForSelector('[data-test=camp]');
       equal(Object.keys((await st(page)).fog.revealedByMapKey['preset:midland_province']).length, cells);
-      equal(await text(page, 'fog'), 'Fog of War: Off');
+      const fogOn = (await st(page)).fog.enabled;
+      equal(await text(page, 'fog'), 'Fog of War: ' + (fogOn ? 'On' : 'Off'), 'the button follows the saved fog');
       equal(await page.$$('.tsi-exp-pin').then(p => p.length), 1);
     });
 

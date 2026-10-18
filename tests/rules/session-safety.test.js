@@ -1,0 +1,119 @@
+/* Session Safety and Clarity (Harry, 18 October 2026): the backup reminder's
+   rules (shared/js/backup-rules.js), what each upgrade unlocks and the
+   research stages that cannot be reached (tools/bastion/rules.js). */
+(function () {
+  var B = TSI.backupRules;
+  var BR = TSI.bastion.rules;
+  var T = window.TSI_DATA;
+  var bdata = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, events: T.bastionEvents, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier, creatures: T.bastionCreatures };
+  var DAY = 86400000;
+  var now = Date.UTC(2026, 9, 18, 12, 0, 0);
+
+  group('Session safety: the backup reminder');
+
+  test('how long ago the last backup was, in words', function (t) {
+    t.equal(B.backupAgeText(null, now), 'never');
+    t.equal(B.backupAgeText(0, now), 'never');
+    t.equal(B.backupAgeText(now - 3600000, now), 'today');
+    t.equal(B.backupAgeText(now - DAY, now), 'yesterday');
+    t.equal(B.backupAgeText(now - 5 * DAY - 1000, now), '5 days ago');
+    t.equal(B.backupAgeDays(now + DAY, now), 0, 'a clock set back never gives a negative age');
+  });
+
+  test('the reminder is due only when there is a campaign and no backup in the last week', function (t) {
+    t.equal(B.backupDue(null, now, false), false, 'nothing saved, nothing to lose');
+    t.equal(B.backupDue(null, now, true), true, 'saved but never backed up');
+    t.equal(B.backupDue(now - 7 * DAY, now, true), false, 'seven days is still fine');
+    t.equal(B.backupDue(now - 8 * DAY, now, true), true);
+    t.equal(B.backupDue(now - DAY, now, true), false);
+  });
+
+  test('the stamp is kept apart from the saves, so a backup never holds it', function (t) {
+    var S = TSI.storeRules;
+    var names = S.spaceNames('suite');
+    t.equal(names.lastBackup, 'tsi.suite.last-backup');
+    t.equal(S.spaceNames('test').lastBackup, 'tsi.test:last-backup');
+    t.equal(S.fromLocalKey(names.lastBackup, 'suite'), null, 'not a saved record');
+    t.equal(S.fromLocalKey(S.spaceNames('test').lastBackup, 'test'), null);
+  });
+
+  group('Session safety: what each upgrade unlocks');
+
+  test('orders and effects are listed by level; a level with neither unlocks nothing yet', function (t) {
+    t.same(BR.levelUnlocks(bdata, 'library_scriptorium', 2), ['Prepare Overland Travel Charts']);
+    t.same(BR.levelUnlocks(bdata, 'library_scriptorium', 3), []);
+    t.same(BR.levelUnlocks(bdata, 'workshop', 2), []);
+    t.same(BR.levelUnlocks(bdata, 'dock', 2), ['Cargo ships: 2 lots on 1 ship']);
+    t.same(BR.levelUnlocks(bdata, 'dock', 5), ['Cargo ships: 5 lots a ship, 2 ships at sea at once']);
+    t.same(BR.levelUnlocks(bdata, 'war_room', 3), ['Coordinated Muster', '2 drill places']);
+    t.same(BR.levelUnlocks(bdata, 'hall_of_emissaries', 2), ['Inter-Clan Summit', 'Register Port Charter', 'Diplomacy rolls +4 (from +2)']);
+    t.same(BR.levelUnlocks(bdata, 'hall_of_emissaries', 4), []);
+    t.same(BR.levelUnlocks(bdata, 'griffin_tower', 3), ['Room for one more griffin']);
+    t.same(BR.levelUnlocks(bdata, 'shrine_pelagos', 5), ['Great Rite of Pelagos']);
+    t.same(BR.levelUnlocks(bdata, 'herbal_gardens', 2), ['Cultivate Specialist Plants', 'One more research token']);
+    t.same(BR.levelUnlocks(bdata, 'nothing_here', 2), []);
+    t.same(BR.levelUnlocks(bdata, 'dock', 1), [], 'Level 1 is where it starts');
+  });
+
+  test('the Upgrade row: the next level, and when it unlocks nothing, which later level it is needed for', function (t) {
+    var w = BR.levelUnlockSummary(bdata, 'workshop', 1);
+    t.same([w.toLevel, w.unlocks, w.later], [2, [], null], 'the Workshop gives nothing at any level');
+    var lib = BR.levelUnlockSummary(bdata, 'library_scriptorium', 2);
+    t.same([lib.toLevel, lib.unlocks, lib.later], [3, [], null]);
+    var courier = BR.levelUnlockSummary(bdata, 'courier_exchange', 2);
+    t.same([courier.unlocks, courier.later], [[], null], 'Courier Levels 3 to 5 are still to come');
+    t.equal(BR.levelUnlockSummary(bdata, 'dock', 5), null, 'nothing above the top');
+    var hallTop = BR.levelUnlockSummary(bdata, 'hall_of_emissaries', 3);
+    t.same(hallTop.unlocks, [], 'Hall Level 4 unlocks nothing yet');
+  });
+
+  test('an upgrade that unlocks nothing but leads to a level that does is never disabled and says so', function (t) {
+    /* A built facility upgrades whatever the next level gives. */
+    var s = BR.defaultState(bdata);
+    s.partyLevel = 9;
+    s.builtExtras = [{ facId: 'hall_of_emissaries', status: 'built' }];
+    BR.ensureLevels(s, bdata);
+    t.equal(BR.upgradeCheck(s, bdata, 'workshop').ok, true, 'the Workshop still upgrades');
+    /* a synthetic case: Level 3 gives nothing, Level 4 gives something */
+    var fake = JSON.parse(JSON.stringify(bdata.facilities));
+    var lib = fake.filter(function (f) { return f.id === 'library_scriptorium'; })[0];
+    lib.functions.push({ id: 'later_order', label: 'A later order', requiredFacilityLevel: 4 });
+    var d2 = Object.assign({}, bdata, { facilities: fake });
+    var u = BR.levelUnlockSummary(d2, 'library_scriptorium', 2);
+    t.same([u.toLevel, u.unlocks, u.later && u.later.level, u.later && u.later.unlocks], [3, [], 4, ['A later order']]);
+  });
+
+  group('Session safety: research that does not work yet');
+
+  test('a choice that is not built cannot be chosen, and costs nothing', function (t) {
+    var s = BR.defaultState(bdata);
+    s.partyLevel = 9;
+    s.treasuryGP = 5000;
+    s.builtPlots = [{ facId: 'herbal_gardens', status: 'built' }];
+    BR.ensureLevels(s, bdata);
+    s.facilityLevels.herbal_gardens = 5;
+    var tokens = BR.researchTokens(s, bdata, 'herbal_gardens');
+    var gold = s.treasuryGP;
+    var res = BR.startResearch(s, bdata, 'herbal_gardens', 'commercial', 'dried_herb_packaging', Math.random);
+    t.equal(res.ok, false);
+    t.ok(/^Not available yet: it needs /.test(res.message) && /Nothing was spent\.$/.test(res.message), res.message);
+    t.same([s.treasuryGP, BR.researchTokens(s, bdata, 'herbal_gardens'), s.pendingOrders.length], [gold, tokens, 0], 'no gold, no token, no order');
+  });
+
+  test('a stage that no earlier choice can open is "unreachable", not "after Stage II"', function (t) {
+    var s = BR.defaultState(bdata);
+    s.partyLevel = 9;
+    s.treasuryGP = 5000;
+    s.builtPlots = [{ facId: 'herbal_gardens', status: 'built' }];
+    BR.ensureLevels(s, bdata);
+    s.facilityLevels.herbal_gardens = 5;
+    t.equal(BR.researchChoiceState(s, bdata, 'herbal_gardens', 'botanical', 'exotic_flora_conservatory'), 'unreachable');
+    var res = BR.researchCheck(s, bdata, 'herbal_gardens', 'botanical', 'exotic_flora_conservatory');
+    t.ok(!res.ok && /^Not reachable yet/.test(res.message) && /Nothing was spent\.$/.test(res.message), res.message);
+    t.equal(BR.researchChoiceState(s, bdata, 'herbal_gardens', 'agricultural', 'bountiful_harvests'), 'locked', 'a stage that can still be reached says "after Stage II"');
+    var tree = BR.researchTree(bdata, 'herbal_gardens');
+    t.equal(BR.researchStageReachable(tree, 'agricultural', 2, []), true);
+    t.equal(BR.researchStageReachable(tree, 'botanical', 2, []), false);
+    t.equal(BR.researchStageReachable(tree, 'botanical', 1, []), true);
+  });
+}());

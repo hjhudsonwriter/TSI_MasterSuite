@@ -425,6 +425,9 @@
     setTitle(TSI.SUITE_NAME);
     var shop = (DATA.links || {}).knightlyTreasures;
     main.className = 'tsi-home';
+    /* "Last backed up: 3 days ago" beside the backup buttons (Harry, 18 October 2026). */
+    function lastBackupLine() { return 'Last backed up: ' + TSI.backup.lastBackupText(); }
+    var lastBackupEl = TSI.el('span', { class: 'tsi-home__lastbackup', 'data-test': 'last-backup', title: 'When Back up everything, or an Export of the Explorer or the Bastion, last finished in this browser', text: lastBackupLine() });
 
     TSI.append(main, [
       TSI.el('div', { class: 'tsi-home__brand' }, [
@@ -457,12 +460,15 @@
             ' ',
             TSI.el('span', { class: 'tsi-extlink__note', text: '(needs internet)' })
           ]) : null,
+          lastBackupEl,
           TSI.el('button', {
             type: 'button',
             class: 'tsi-btn tsi-btn--small',
             title: 'Download everything the suite has saved as one file',
             'data-test': 'backup-everything',
-            onclick: TSI.oneAtATime(function () { return TSI.backup.backupEverything(); })
+            onclick: TSI.oneAtATime(function () {
+              return TSI.backup.backupEverything().then(function (r) { lastBackupEl.textContent = lastBackupLine(); return r; });
+            })
           }, 'Back up everything'),
           TSI.el('button', {
             type: 'button',
@@ -616,6 +622,8 @@
       loading.remove();
       return def.start(ctx);
     }).then(function () {
+      /* One reminder a page load, only for the campaign tools and only if due. */
+      try { TSI.backup.remindIfDue(info.id); } catch (e) { /* a reminder must never stop a tool opening */ }
       main.removeAttribute('aria-busy');
       if (waitingHere) setTitle('Waiting · ' + info.name + ' · The Scarlett Isles');
     }).catch(function (err) {

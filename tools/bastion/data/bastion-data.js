@@ -101,6 +101,29 @@ window.TSI_DATA.bastion = {
     upgradeDays: { 2: 7, 3: 14, 4: 21, 5: 28 },
     upgradeCostGP: 0
   },
+  /* What a level gives besides the orders it opens (an order's own
+     requiredFacilityLevel in facilities-data.js is listed by itself).
+     Shown under Upgrade (Harry, 18 October 2026) so the DM can see what a
+     level does. A facility or level with no order and no line here
+     unlocks nothing yet. Keep these true: they describe what the code
+     does (commerce-data.js, courier-data.js, creatures-data.js,
+     war-room-data.js, research-data.js). */
+  levelEffects: {
+    dock: {
+      2: ['Cargo ships: 2 lots on 1 ship'],
+      3: ['Cargo ships: 3 lots a ship'],
+      4: ['Cargo ships: 4 lots a ship, and a standing shipment on a schedule'],
+      5: ['Cargo ships: 5 lots a ship, 2 ships at sea at once']
+    },
+    courier_exchange: {
+      2: ['Regional deliveries: 2 parcels on the road at once, 10 items a parcel']
+    },
+    griffin_tower: { 2: ['Room for one more griffin'], 3: ['Room for one more griffin'], 4: ['Room for one more griffin'], 5: ['Room for one more griffin'] },
+    dire_wolf_den: { 2: ['Room for one more dire wolf'], 3: ['Room for one more dire wolf'], 4: ['Room for one more dire wolf'], 5: ['Room for one more dire wolf'] },
+    war_room: { 2: ['1 drill place'], 3: ['2 drill places'], 5: ['3 drill places'] },
+    hall_of_emissaries: { 2: ['Diplomacy rolls +4 (from +2)'], 3: ['Diplomacy rolls +6 (the most it gives)'] },
+    herbal_gardens: { 2: ['One more research token'], 3: ['One more research token'], 4: ['One more research token'], 5: ['One more research token'] }
+  },
   /* The facilities overhaul (13 October 2026): what each retired facility
      id became. A Bastion saved before it (v 2) is converted once
      (R.migrateToV3): built facilities, buildings under way, pending orders

@@ -1114,6 +1114,7 @@
 .tsi-page--bastion .tsi-bas-research__choice--running { border-style: solid; border-color: rgba(214, 178, 94, .5); }
 .tsi-page--bastion .tsi-bas-research__choice--other,
 .tsi-page--bastion .tsi-bas-research__choice--coming,
+.tsi-page--bastion .tsi-bas-research__choice--unreachable,
 .tsi-page--bastion .tsi-bas-research__choice--locked { opacity: .6; }
 .tsi-page--bastion .tsi-bas-research__cname { font-weight: 600; }
 .tsi-page--bastion .tsi-bas-research__ctext { font-size: 13px; line-height: 1.3; color: var(--tsi-text-soft); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -1541,3 +1542,5 @@
 .tsi-page--bastion .tsi-bas-rec__hint { grid-column: 1 / -1; font-size: 13px; }
 .tsi-page--bastion .tsi-bas-rec__viewcon { margin: 4px 0; }
 .tsi-page--bastion .tsi-bas-rec__history { max-height: 160px; overflow-y: auto; margin-bottom: 8px; }
+
+.tsi-page--bastion .tsi-bas-fn__unlocks { margin-top: 2px; }

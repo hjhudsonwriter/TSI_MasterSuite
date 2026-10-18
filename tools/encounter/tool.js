@@ -630,7 +630,7 @@
         link.send('vtt', patch);
       }
       function resetAll() {
-        ask('This will wipe your library and encounter data from this device/browser. Continue?', 'Reset', 'Reset').then(function (ok) {
+        TSI.backup.askReset({ toolId: 'encounter', title: 'Reset the Combat Tracker', okLabel: 'Reset', message: 'This will wipe your library and encounter data from this device/browser. Continue?' }).then(function (ok) {
           if (!ok) return;
           /* As before, the map and Battlemap settings stay (C10). */
           ctx.store.remove('tracker');
