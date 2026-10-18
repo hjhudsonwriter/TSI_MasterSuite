@@ -25,7 +25,7 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
 | Scarlett Isles Explorer (EXP) | 12 | 5 | 15 | 13 | 0 |
-| The Ironbow Bastion Manager (BAS) | 23 | 2 | 45 | 25 | 1 |
+| The Ironbow Bastion Manager (BAS) | 23 | 2 | 46 | 25 | 1 |
 | Clan Crest Creator (CRS) | 0 | 4 | 6 | 3 | 3 |
 | Arenas of The Scarlett Isles (ARN) | 8 | 2 | 0 | 17 | 0 |
 | The Heartwood Ritual (RIT) | 9 | 1 | 0 | 15 | 1 |
@@ -2443,6 +2443,18 @@ None of these reached Harry.
   - The Blessing of Pelagos goes to the very next cargo ship, with no choosing.
   - Favour is never given back on Cancel.
 - **Evidence:** `tools/bastion/data/facilities-data.js` (`bless_bastion_foundations`: `waiting`), `tools/bastion/commerce-rules.js` (`voyageProtections`, `dispatchCargo`).
+
+### BAS-97 · Rename… on every creature at the Ironbow
+**Deliberate change** (pull request 9; Harry, 18 October 2026) · other
+
+- **Before:** a creature's name was fixed when the DM granted it. Elara's wyvern could only be called "Elara's wyvern", and Harry doesn't know its name yet.
+- **After:** every creature in a Wyvern Roost, Griffin Tower or Dire Wolf Den panel has **Rename…**, waiting or housed.
+  - Up to 40 letters. An empty name gives the usual name back ("Elara's wyvern", or "Griffin (granted Day 5)").
+  - A House order still waiting for that creature follows the new name.
+  - The new name shows in the panels, Management, the War Table and the Day Log. It is saved, and loading twice gives the same save.
+  - It changes no stat, and nothing is sent back to the Explorer.
+- **Older copies (SUI-19):** an older Bastion keeps the creature but reads the name it knew; it won't lose anyone. Back up first anyway.
+- **Evidence:** `tools/bastion/creature-rules.js` (`renameCreature`), `tools/bastion/tool.js` (`onRenameCreature`); `tests/rules/creatures.test.js`, `tests/e2e/creatures.test.js`.
 
 ## Clan Crest Creator
 Old repo: `_legacy/clan-crest-creator` (file:line references point there).

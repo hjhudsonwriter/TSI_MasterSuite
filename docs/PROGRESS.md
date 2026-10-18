@@ -8,6 +8,11 @@ Double-click `index.html` to open the suite. The plan is in `docs/PLAN.md`, the 
 
 ## Done
 
+### The facilities overhaul, pull request 9a: renaming the beasts (18 October 2026)
+From Harry's request (18 October 2026): he doesn't know Elara's wyvern's name yet.
+- **Rename…** on every creature in the Wyvern Roost, Griffin Tower and Dire Wolf Den panels, housed or waiting (BAS-97). An empty name gives the usual one back.
+- **Tests:** 1 new rules test, 1 new click-through check in `tests/e2e/creatures.test.js`.
+
 ### The facilities overhaul, pull request 8b part 2: the Shrines in the Explorer (15 October 2026)
 Harry's check passed; merged as #32 (16 October 2026).
 From Harry's answers S2, S9 and S10 (`docs/MILITARY-DIPLOMACY-PLAN.md`).
