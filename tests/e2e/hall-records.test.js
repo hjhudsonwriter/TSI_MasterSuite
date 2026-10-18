@@ -140,14 +140,14 @@ async function fillRecord(page, f) {
     assert(/Confirmed on Day/.test(await text(page, 'record-view')));
     await page.fill('[data-test=rec-note-input]', 'The players want to send an apology.');
     await H.clickModal(page, 'Add note');
-    await page.waitForTimeout(400);
-    await page.click('[data-test=record-open-dr-0001]');
+    await page.waitForTimeout(500);
+    /* The record opens again, with the note in its history. */
     await page.waitForSelector('[data-test=record-view]');
     assert(/Note: The players want to send an apology/.test(await text(page, 'rec-history')));
     await page.click('[data-test=rec-end-dr-0001\\:c1]');
     await page.waitForTimeout(400);
     await H.clickModal(page, 'End early');
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(600);
     const s = await bas(page);
     equal([s.diplomaticRecords.list[0].consequences[0].status, s.honourRespectByClan.karr], ['ended', -1]);
     await closeAll(page);
