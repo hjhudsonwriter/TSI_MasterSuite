@@ -25,7 +25,7 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 | Combat Tracker & VTT Battlemap (ENC) | 13 | 0 | 0 | 15 | 0 |
 | Notice Board Quest Generator (QST) | 7 | 5 | 1 | 11 | 2 |
 | Scarlett Isles Explorer (EXP) | 12 | 5 | 15 | 13 | 0 |
-| The Ironbow Bastion Manager (BAS) | 23 | 2 | 46 | 25 | 1 |
+| The Ironbow Bastion Manager (BAS) | 23 | 2 | 47 | 25 | 1 |
 | Clan Crest Creator (CRS) | 0 | 4 | 6 | 3 | 3 |
 | Arenas of The Scarlett Isles (ARN) | 8 | 2 | 0 | 17 | 0 |
 | The Heartwood Ritual (RIT) | 9 | 1 | 0 | 15 | 1 |
@@ -2455,6 +2455,21 @@ None of these reached Harry.
   - It changes no stat, and nothing is sent back to the Explorer.
 - **Older copies (SUI-19):** an older Bastion keeps the creature but reads the name it knew; it won't lose anyone. Back up first anyway.
 - **Evidence:** `tools/bastion/creature-rules.js` (`renameCreature`), `tools/bastion/tool.js` (`onRenameCreature`); `tests/rules/creatures.test.js`, `tests/e2e/creatures.test.js`.
+
+### BAS-98 · The Hall's Clan Relations and Diplomatic Records
+**Deliberate change** (pull request 9; Harry's Hall handover and decisions, 18 October 2026) · other
+
+- **Before:** the Hall kept only its agreements, delegations, summits, writs, consortiums and routes. It had no record of campaign decisions, and no summary of where each Clan stood.
+- **After:** inside the Hall, beside its orders (which are untouched):
+  - **Clan Relations:** the seven Clans with the Bastion's own Honour & Respect and Political Capital (no second reputation system), and the restrictions, privileges and obligations still running.
+  - **Diplomatic Records:** a DM-written ledger. A record has a title, Clans, an in-game day (the shared Explorer day), situation, decision, outcome, notes and consequences. It is a draft until the DM confirms it; a draft can be edited or dismissed; a confirmed record can only take notes, and a lasting consequence can be ended early. Each record has a stable id (`dr-0001`) and a history.
+  - **Honour & Respect and Political Capital** changes are applied once, on Confirm, within their limits (−5..+5 and −100..+100), and the score before and after is recorded.
+  - **Restrictions, privileges, favours, obligations and quest hooks** are DM-tracked: recorded, shown and counted in days, never enforced. The screen says so.
+  - **Nothing is invented:** no preset effects, numbers, durations, events or frequencies. The DM types each one.
+- **Kept untouched, as Harry asked:** all six Hall orders, the old Trade Agreements and their income, the Trade Consortium, Port Charter registration, the Dock and the legacy Trade Network. No legacy notices.
+- **Not built (waiting for Harry's approval):** offered or generated events, the ~20 drafted events, new Level 4–5 orders, DCs, costs and durations, the commodity-backed Consortium, retiring the old Trade Agreements, and any Hall research (withdrawn).
+- **Older copies (SUI-19): back up before trying another copy.** An older Bastion drops `diplomaticRecords` from its save, losing the ledger.
+- **Evidence:** `tools/bastion/diplomacy-rules.js`, `tools/bastion/rules.js` (save, Reset Travel), `tools/bastion/tool.js` (the Hall's two new sections); `tests/rules/diplomacy.test.js`, `tests/e2e/hall-records.test.js`.
 
 ## Clan Crest Creator
 Old repo: `_legacy/clan-crest-creator` (file:line references point there).
