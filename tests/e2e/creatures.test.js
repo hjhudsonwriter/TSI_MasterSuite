@@ -469,6 +469,29 @@ async function clickPop(page, label) {
     await closeAll(ba);
   });
 
+  await check('Rename… on a housed creature (Harry, 18 October 2026): Elara\'s wyvern becomes "Ashwing" in its panel; an empty name gives the usual one back; Cancel changes nothing', async () => {
+    await openTile(ba, 'wyvern_roost');
+    await ba.click('[data-test=creature-rename-' + WYVERN + ']');
+    await ba.fill('[data-test=creature-name]', 'Ashwing');
+    await H.clickModal(ba, 'Cancel');
+    await ba.waitForTimeout(250);
+    equal((await panelCreatures(ba, 'wyvern_roost')).housed[0][0], 'Elara\'s wyvern');
+    await ba.click('[data-test=creature-rename-' + WYVERN + ']');
+    await ba.fill('[data-test=creature-name]', 'Ashwing');
+    await H.clickModal(ba, 'Rename');
+    await ba.waitForTimeout(400);
+    await openTile(ba, 'wyvern_roost');
+    equal((await panelCreatures(ba, 'wyvern_roost')).housed[0][0], 'Ashwing');
+    assert((await bas(ba)).log.some(l => /Elara's wyvern is now called Ashwing/.test(l.body)), 'the Day Log says so');
+    await ba.click('[data-test=creature-rename-' + WYVERN + ']');
+    await ba.fill('[data-test=creature-name]', '');
+    await H.clickModal(ba, 'Rename');
+    await ba.waitForTimeout(400);
+    await openTile(ba, 'wyvern_roost');
+    equal((await panelCreatures(ba, 'wyvern_roost')).housed[0][0], 'Elara\'s wyvern');
+    await closeAll(ba);
+  });
+
   await check('Management lists every creature under Creatures, with no Remove button', async () => {
     await closeAll(ba);
     await ba.waitForTimeout(300);

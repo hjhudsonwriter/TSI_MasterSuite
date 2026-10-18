@@ -529,6 +529,22 @@
         if (!res.ok) { await say(res.message); return; }
         done();
       });
+      var onRenameCreature = TSI.oneAtATime(async function (id) {
+        var c = R.creatureById(state, id);
+        if (!c) return;
+        var box = el('input', { type: 'text', class: 'tsi-input', value: c.name || '', maxlength: String(R.creatureNameMax(data)), placeholder: 'Leave empty for the usual name', 'data-test': 'creature-name' });
+        var ok = await plainModal({
+          title: 'Rename ' + R.creatureName(data, c),
+          className: 'tsi-bas-modal',
+          body: [field('Name (leave empty for the usual name)', box)],
+          actions: [{ label: 'Cancel', value: false }, { label: 'Rename', value: true, primary: true }],
+          onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'creature-rename-dialog'); setTimeout(function () { box.focus(); box.select(); }, 0); }
+        });
+        if (!ok || !life.alive) return;
+        var res = R.renameCreature(state, data, id, box.value);
+        if (!res.ok) { await say(res.message); return; }
+        done();
+      });
       function creatureRow(c, prefix, compact) {
         var test = prefix + '-' + c.id;
         var name = R.creatureName(data, c);
@@ -547,6 +563,7 @@
           ]),
           /* Harry (15 October 2026): a granted creature still waiting for a
              home can be released (asks first); once housed, it stays. */
+          compact ? null : btn('Rename…', function () { onRenameCreature(c.id); }, 'tsi-btn--ghost', prefix + '-rename-' + c.id),
           c.status === 'waiting' && !R.houseOrderFor(state, c.id)
             ? btn('Release…', function () { onRelease(c.id); }, 'tsi-btn--ghost', prefix + '-release-' + c.id)
             : null

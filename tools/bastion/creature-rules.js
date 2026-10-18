@@ -185,6 +185,28 @@
     R.log(s, 'Creatures', name + ' was released: it no longer waits at the Ironbow.', now);
     return { ok: true, name: name };
   };
+  /* The DM's name for a creature at the Ironbow: any of them, waiting or
+     housed, and Elara's wyvern too (Harry, 18 October 2026: he doesn't know
+     her wyvern's name yet). An empty name gives back the default one ("Elara's
+     wyvern", or "Griffin (granted Day 5)"). A House order still waiting for
+     it follows the new name. Returns { ok, changed, message?, log? }. */
+  R.renameCreature = function (s, data, id, text, now) {
+    var c = R.creatureById(s, id);
+    if (!c) return { ok: false, message: 'That creature isn\'t at the Ironbow any more.' };
+    var before = R.creatureName(data, c);
+    var oldOrderName = R.creatureOrderName(c);
+    c.name = String(text || '').replace(/\s+/g, ' ').trim().slice(0, R.creatureNameMax(data));
+    var after = R.creatureName(data, c);
+    var o = R.houseOrderFor(s, c.id);
+    if (o) {
+      var fresh = R.creatureOrderName(c);
+      if (typeof o.label === 'string' && oldOrderName && o.label.indexOf('(' + oldOrderName + ')') !== -1) o.label = o.label.replace('(' + oldOrderName + ')', '(' + fresh + ')');
+      o.optionLabel = fresh;
+    }
+    var line = before === after ? before + ' keeps its name.' : before + ' is now called ' + after + '.';
+    if (before !== after) R.log(s, 'Creatures', line, now);
+    return { ok: true, changed: before !== after, name: after, log: ['Creatures', line] };
+  };
   R.housingOptions = function (s, data, species) {
     return R.waitingCreatures(s, data, species).map(function (c) { return { label: R.creatureName(data, c), creatureId: c.id }; });
   };
