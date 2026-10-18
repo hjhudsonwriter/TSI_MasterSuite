@@ -128,6 +128,9 @@
       tradeNetwork: R.defaultTradeNetwork(),
       arbitration: { queue: [] },
       diplomacy: R.defaultDiplomacy(),
+      /* The Hall's Diplomatic Records (pull request 9, diplomacy-rules.js): a
+         ledger apart from diplomacy, so Clear Diplomacy Records never wipes it. */
+      diplomaticRecords: { next: 1, list: [] },
       /* The days overhaul (8 October 2026): v 2 marks a save in days. day is
          the last day the Bastion has passed; anchored, whether it has read
          the Explorer's day yet (until then any Explorer day moves the whole
@@ -432,6 +435,7 @@
     /* The creatures (pull request 7), before the war's records, which read them. */
     d.creatures = R.cleanCreatures(s.creatures, d.day);
     d.greatRites = R.cleanGreatRites(s.greatRites);
+    d.diplomaticRecords = R.cleanDiplomaticRecords ? R.cleanDiplomaticRecords(s.diplomaticRecords, d.day, data) : (isObj(s.diplomaticRecords) ? s.diplomaticRecords : { next: 1, list: [] });
     if (arr(s.militaryActions)) d.militaryActions = s.militaryActions.filter(isObj);
     /* Port Charters, ships at sea, standing shipments and sales (pull
        request 5, commerce-rules.js). */
@@ -3008,6 +3012,8 @@
     if (R.shiftCommerce) R.shiftCommerce(s, n);
     /* The Courier Exchange's parcels (pull request 6). */
     if (R.shiftCourier) R.shiftCourier(s, n);
+    /* The Hall's Diplomatic Records (pull request 9). */
+    if (R.shiftDiplomaticRecords) R.shiftDiplomaticRecords(s, n);
     /* The creatures (pull request 7): when each was granted and housed. */
     (Array.isArray(s.creatures) ? s.creatures : []).forEach(function (c) { mv(c, 'grantedDay'); mv(c, 'housedDay'); });
     /* The Great Rites (pull request 8b): the day each was made. */

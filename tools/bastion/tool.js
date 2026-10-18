@@ -529,6 +529,22 @@
         if (!res.ok) { await say(res.message); return; }
         done();
       });
+      var onRenameCreature = TSI.oneAtATime(async function (id) {
+        var c = R.creatureById(state, id);
+        if (!c) return;
+        var box = el('input', { type: 'text', class: 'tsi-input', value: c.name || '', maxlength: String(R.creatureNameMax(data)), placeholder: 'Leave empty for the usual name', 'data-test': 'creature-name' });
+        var ok = await plainModal({
+          title: 'Rename ' + R.creatureName(data, c),
+          className: 'tsi-bas-modal',
+          body: [field('Name (leave empty for the usual name)', box)],
+          actions: [{ label: 'Cancel', value: false }, { label: 'Rename', value: true, primary: true }],
+          onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'creature-rename-dialog'); setTimeout(function () { box.focus(); box.select(); }, 0); }
+        });
+        if (!ok || !life.alive) return;
+        var res = R.renameCreature(state, data, id, box.value);
+        if (!res.ok) { await say(res.message); return; }
+        done();
+      });
       function creatureRow(c, prefix, compact) {
         var test = prefix + '-' + c.id;
         var name = R.creatureName(data, c);
@@ -547,6 +563,7 @@
           ]),
           /* Harry (15 October 2026): a granted creature still waiting for a
              home can be released (asks first); once housed, it stays. */
+          compact ? null : btn('Rename…', function () { onRenameCreature(c.id); }, 'tsi-btn--ghost', prefix + '-rename-' + c.id),
           c.status === 'waiting' && !R.houseOrderFor(state, c.id)
             ? btn('Release…', function () { onRelease(c.id); }, 'tsi-btn--ghost', prefix + '-release-' + c.id)
             : null
@@ -2342,8 +2359,240 @@
           img,
           hallRepair ? el('div', { class: 'tsi-bas-hall__name' }, ['Hall of Emissaries ', repairLabel(hallRepair)]) : null,
           el('div', { class: 'tsi-bas-hall__fns' }, fns),
+          clanRelationsBox(),
+          recordsBox(),
           tradeNetworkSection()
         ]);
+      }
+
+
+      /* ---------- Clan Relations and Diplomatic Records (pull request 9) ----------
+         Harry's decisions, 18 October 2026. Inside the Hall, beside its
+         orders. The DM writes a record and its consequences; nothing changes
+         in the game until the DM confirms it (rules: diplomacy-rules.js).
+         Honour & Respect and Political Capital are the Bastion's own scores;
+         everything else is DM-tracked, and says so. */
+      function stateWord(c) {
+        var st = R.dipConsequenceState(state, c);
+        return st === 'pending' ? 'not applied yet' : st === 'applied' ? 'applied' : st === 'active' ? 'running' : st === 'expired' ? 'ran out' : 'ended early';
+      }
+      function untilText(until) { return typeof until === 'number' ? ' until ' + R.dayLabel(until) : ''; }
+      function relationChips(list, prefix) {
+        return list.map(function (it) {
+          return el('span', { class: 'tsi-bas-rel__chip', title: it.title, text: prefix + (it.text || it.title) + untilText(it.until) });
+        });
+      }
+      function clanRelationsBox() {
+        var rows = R.clanRelations(state, data).map(function (r) {
+          var chips = relationChips(r.restrictions, 'Restriction: ').concat(relationChips(r.privileges, 'Privilege: '), relationChips(r.obligations, 'Owed: '));
+          return el('div', { class: 'tsi-bas-rel__row', 'data-test': 'relations-row-' + r.key }, [
+            el('div', { class: 'tsi-bas-rel__name', text: r.name }),
+            el('div', { class: 'tsi-bas-rel__score', 'data-test': 'relations-hr-' + r.key, title: 'Honour & Respect (−5 to +5)', text: 'H&R ' + (r.hr > 0 ? '+' : r.hr < 0 ? '−' : '') + Math.abs(r.hr) }),
+            el('div', { class: 'tsi-bas-rel__score', 'data-test': 'relations-pc-' + r.key, title: 'Political Capital (−100 to +100)', text: 'PC ' + (r.pc > 0 ? '+' : r.pc < 0 ? '−' : '') + Math.abs(r.pc) }),
+            el('div', { class: 'tsi-bas-rel__chips' }, chips.length ? chips : [el('span', { class: 'tsi-bas-muted', text: 'Nothing running.' })])
+          ]);
+        });
+        var loose = R.dipUnattached(state);
+        return el('div', { class: 'tsi-bas-rel', 'data-test': 'clan-relations' }, [
+          el('div', { class: 'tsi-bas-hall__name', text: 'Clan Relations' }),
+          muted('Honour & Respect and Political Capital are the Bastion\'s own scores. Restrictions, privileges and what is owed are DM-tracked: the Bastion shows them and counts their days, but does not enforce them.')
+        ].concat(rows, loose.length ? [el('div', { class: 'tsi-bas-rel__row', 'data-test': 'relations-general' }, [
+          el('div', { class: 'tsi-bas-rel__name', text: 'No Clan named' }),
+          el('div', { class: 'tsi-bas-rel__chips' }, relationChips(loose, 'Open: '))
+        ])] : []));
+      }
+      function recordRow(r) {
+        var clans = r.clans.map(function (k) { return R.dipClanName(data, k).replace(/^Clan /, ''); }).join(', ');
+        var badge = r.status === 'confirmed' ? 'Confirmed' : r.status === 'dismissed' ? 'Dismissed' : 'Draft';
+        return el('div', { class: 'tsi-bas-rec tsi-bas-rec--' + r.status, 'data-test': 'record-' + r.id, 'data-status': r.status }, [
+          el('div', { class: 'tsi-bas-rec__main' }, [
+            el('div', { class: 'tsi-bas-rec__title' }, [
+              el('span', { class: 'tsi-bas-rec__badge', 'data-test': 'record-status-' + r.id, text: badge }), ' ',
+              el('b', { text: r.title })
+            ]),
+            el('div', { class: 'tsi-bas-rec__meta', text: R.dayLabel(r.day) + (clans ? ' • ' + clans : '') + (r.consequences.length ? ' • ' + r.consequences.length + (r.consequences.length === 1 ? ' consequence' : ' consequences') : '') })
+          ]),
+          btn(r.status === 'draft' ? 'Edit…' : 'Open…', function () { onOpenRecord(r.id); }, 'tsi-btn--ghost', 'record-open-' + r.id)
+        ]);
+      }
+      function recordsBox() {
+        var list = R.diplomaticRecords(state).slice().sort(function (a, b) { return b.day - a.day || (a.id < b.id ? 1 : -1); });
+        return el('div', { class: 'tsi-bas-recs', 'data-test': 'dip-records-ledger' }, [
+          el('div', { class: 'tsi-bas-recs__head' }, [
+            el('div', { class: 'tsi-bas-hall__name', text: 'Diplomatic Records' }),
+            btn('Record an event…', function () { onNewRecord(); }, '', 'record-new')
+          ]),
+          muted('A history of the campaign\'s diplomatic decisions. Nothing here changes the game until you confirm it.')
+        ].concat(list.length ? [el('div', { class: 'tsi-bas-recs__list', 'data-test': 'records-list' }, list.map(recordRow))] : [muted('No records yet.')]));
+      }
+
+      /* The editor. A draft is kept as typed if a check fails, and the box
+         opens again with the problem said. */
+      function blankForm() { return { title: '', clans: [], day: String(state.day), situation: '', decision: '', outcome: '', notes: '', consequences: [] }; }
+      function formOf(r) {
+        return { title: r.title, clans: r.clans.slice(), day: String(r.day), situation: r.situation, decision: r.decision, outcome: r.outcome, notes: r.notes,
+          consequences: r.consequences.map(function (c) { return { kind: c.kind, clan: c.clan, amount: c.amount ? String(c.amount) : '', days: c.days ? String(c.days) : '', text: c.text }; }) };
+      }
+      function textArea(test, value, rows) {
+        return el('textarea', { class: 'tsi-input tsi-bas-rec__area', rows: String(rows), maxlength: String(R.DIP_LIMITS.text), 'data-test': test }, value);
+      }
+      async function recordDialog(form, existing) {
+        var title = el('input', { type: 'text', class: 'tsi-input', maxlength: String(R.DIP_LIMITS.title), value: form.title, 'data-test': 'rec-title' });
+        var day = numberInput('rec-day', { value: form.day });
+        var checks = R.dipClans(data).map(function (c) {
+          var box = el('input', { type: 'checkbox', 'data-test': 'rec-clan-' + c.key });
+          box.checked = form.clans.indexOf(c.key) !== -1;
+          return { key: c.key, box: box, node: el('label', { class: 'tsi-bas-rec__clan' }, [box, ' ' + c.name]) };
+        });
+        var situation = textArea('rec-situation', form.situation, 3);
+        var decision = textArea('rec-decision', form.decision, 2);
+        var outcome = textArea('rec-outcome', form.outcome, 2);
+        var notes = textArea('rec-notes', form.notes, 2);
+        var rows = form.consequences.map(function (c) { return Object.assign({}, c); });
+        var list = el('div', { class: 'tsi-bas-rec__cons', 'data-test': 'rec-consequences' });
+        function readRows() {
+          Array.prototype.forEach.call(list.children, function (node, i) {
+            var q = function (name) { return node.querySelector('[data-name=' + name + ']'); };
+            rows[i] = { kind: q('kind').value, clan: q('clan').value, amount: q('amount').value, days: q('days').value, text: q('text').value };
+          });
+        }
+        function drawRows() {
+          TSI.clear(list);
+          rows.forEach(function (c, i) {
+            var k = R.dipKind(c.kind) || R.DIP_KINDS[0];
+            var kind = el('select', { class: 'tsi-input', 'data-name': 'kind', 'aria-label': 'Kind of consequence', 'data-test': 'rec-c-kind-' + i },
+              R.DIP_KINDS.map(function (x) { return el('option', { value: x.id, text: x.label + (x.enforced ? '' : ' (DM-tracked)') }); }));
+            kind.value = k.id;
+            var clan = el('select', { class: 'tsi-input', 'data-name': 'clan', 'aria-label': 'Clan', 'data-test': 'rec-c-clan-' + i },
+              [el('option', { value: '', text: k.clan === 'required' ? 'Choose a Clan…' : 'No Clan' })].concat(R.dipClans(data).map(function (x) { return el('option', { value: x.key, text: 'Clan ' + x.name }); })));
+            clan.value = c.clan || '';
+            var amount = el('input', { type: 'number', step: '1', class: 'tsi-input tsi-bas-num', 'data-name': 'amount', 'aria-label': 'Change', placeholder: k.amount ? (k.id === 'hr' ? '−5 to +5' : '−100 to +100') : '', 'data-test': 'rec-c-amount-' + i, value: c.amount || '' });
+            var days = el('input', { type: 'number', step: '1', min: '1', class: 'tsi-input tsi-bas-num', 'data-name': 'days', 'aria-label': 'Days', placeholder: k.days === 'required' ? 'Days' : 'Days (optional)', 'data-test': 'rec-c-days-' + i, value: c.days || '' });
+            var text = el('input', { type: 'text', class: 'tsi-input', 'data-name': 'text', maxlength: '400', 'aria-label': 'What it is', placeholder: k.enforced ? 'Reason (optional)' : 'What it is', 'data-test': 'rec-c-text-' + i, value: c.text || '' });
+            amount.hidden = !k.amount;
+            days.hidden = k.days === 'none';
+            kind.addEventListener('change', function () { readRows(); drawRows(); });
+            var node = el('div', { class: 'tsi-bas-rec__con' }, [
+              kind, clan, amount, days, text,
+              el('button', { type: 'button', class: 'tsi-btn tsi-btn--small', title: 'Remove this consequence', 'aria-label': 'Remove consequence', onclick: function () { readRows(); rows.splice(i, 1); drawRows(); } }, '✕'),
+              k.enforced ? null : el('div', { class: 'tsi-bas-muted tsi-bas-rec__hint', text: 'DM-tracked: the Bastion records it and counts its days, but does not enforce it.' })
+            ]);
+            list.appendChild(node);
+          });
+        }
+        drawRows();
+        var addBtn = btn('Add a consequence', function () {
+          if (rows.length >= R.DIP_LIMITS.consequences) return;
+          readRows(); rows.push({ kind: 'hr', clan: '', amount: '', days: '', text: '' }); drawRows();
+        }, '', 'rec-add-consequence');
+        var body = [
+          field('Event title', title),
+          el('div', { class: 'tsi-bas-field' }, [el('span', { text: 'Clans involved' }), el('div', { class: 'tsi-bas-rec__clans' }, checks.map(function (c) { return c.node; }))]),
+          field('In-game day (the shared Explorer day)', day),
+          field('Situation', situation), field('Decision or resolution reached', decision),
+          field('Recorded outcome and consequences', outcome), field('DM notes (optional)', notes),
+          el('div', { class: 'tsi-bas-field' }, [el('span', { text: 'Consequences (each one is typed by you; nothing is preset)' }), list, addBtn]),
+          muted('Nothing changes in the game until you press Confirm outcome. Save draft keeps it for later.')
+        ];
+        var action = await hallModal({
+          title: existing ? 'Edit a diplomatic record' : 'Record a diplomatic event',
+          className: 'tsi-bas-modal tsi-bas-modal--record',
+          body: body,
+          escValue: null,
+          actions: [{ label: 'Cancel', value: null }, { label: 'Save draft', value: 'draft' }, { label: 'Confirm outcome', value: 'confirm', primary: true }],
+          onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'record-dialog'); setTimeout(function () { title.focus(); }, 0); }
+        });
+        readRows();
+        var out = { title: title.value, clans: checks.filter(function (c) { return c.box.checked; }).map(function (c) { return c.key; }), day: day.value, situation: situation.value, decision: decision.value, outcome: outcome.value, notes: notes.value, consequences: rows };
+        return { action: action, form: out };
+      }
+      var onNewRecord = TSI.oneAtATime(function () { return editRecord(null); });
+      async function editRecord(id) {
+        var existing = id ? R.dipRecordById(state, id) : null;
+        var form = existing ? formOf(existing) : blankForm();
+        for (;;) {
+          var res = await recordDialog(form, existing);
+          if (!life.alive || !res.action) return;
+          form = res.form;
+          var chk = R.checkDipFields(state, data, form);
+          if (chk.problem) { await say(chk.problem, 'Diplomatic Records'); continue; }
+          if (res.action === 'confirm') {
+            var lines = chk.fields.consequences.map(function (c) { return R.dipConsequenceLine(state, data, c); });
+            var ok = await ask('Confirm "' + chk.fields.title + '"? ' + (lines.length ? 'This will: ' + lines.join(' • ') : 'It has no consequences, so it only goes into the history.') + ' It cannot be edited afterwards.', 'Confirm', 'Confirm the outcome');
+            if (!life.alive) return;
+            if (!ok) continue;
+          }
+          var saved = existing ? R.updateDipRecord(state, data, existing.id, form) : R.createDipRecord(state, data, form);
+          if (!saved.ok) { await say(saved.message, 'Diplomatic Records'); continue; }
+          if (res.action === 'confirm') {
+            var c = R.confirmDipRecord(state, data, saved.record.id);
+            if (!c.ok) { await say(c.message, 'Diplomatic Records'); done(); return; }
+          }
+          done();
+          return;
+        }
+      }
+      var onOpenRecord = TSI.oneAtATime(async function (id) {
+        var r = R.dipRecordById(state, id);
+        if (!r) return;
+        if (r.status === 'draft') { await editRecord(id); return; }
+        await viewRecord(id);
+      });
+      async function viewRecord(id) {
+        for (;;) {
+          var r = R.dipRecordById(state, id);
+          if (!r) return;
+          var changed = false;
+          var noteBox = el('input', { type: 'text', class: 'tsi-input', maxlength: '300', placeholder: 'Add a note to the history', 'aria-label': 'Note', 'data-test': 'rec-note-input' });
+          var pending = null;
+          var cons = r.consequences.map(function (c) {
+            var k = R.dipKind(c.kind);
+            var st = R.dipConsequenceState(state, c);
+            var what = R.dipConsequenceLine(state, data, c).replace(/ The DM tracks this.*$/, '');
+            var tail = k && k.enforced ? (c.status === 'applied' ? ' (was ' + (c.was > 0 ? '+' : '') + c.was + ', now ' + (c.now > 0 ? '+' : '') + c.now + ')' : '') : untilText(c.until);
+            var endBtn = k && !k.enforced && st === 'active' && r.status === 'confirmed'
+              ? el('button', { type: 'button', class: 'tsi-btn tsi-btn--small', 'data-test': 'rec-end-' + c.id, onclick: function () { pending = { end: c.id }; document.querySelector('[data-test=record-view] [data-act=close]').click(); } }, 'End early')
+              : null;
+            return el('div', { class: 'tsi-bas-rec__viewcon', 'data-test': 'rec-con-' + c.id, 'data-state': st }, [
+              el('span', { text: what + tail + ' — ' + stateWord(c) }), ' ', endBtn
+            ]);
+          });
+          var para = function (name, text) { return text ? el('div', null, [el('b', { text: name + ': ' }), text]) : null; };
+          var clans = r.clans.map(function (k) { return R.dipClanName(data, k); }).join(', ');
+          var body = [
+            el('div', { class: 'tsi-bas-muted', text: R.dayLabel(r.day) + (clans ? ' • ' + clans : '') + ' • ' + (r.status === 'confirmed' ? 'Confirmed on ' + R.dayLabel(r.confirmedDay) : 'Dismissed') }),
+            para('Situation', r.situation), para('Decision', r.decision), para('Outcome', r.outcome), para('DM notes', r.notes),
+            el('b', { text: 'Consequences' }),
+            el('div', { 'data-test': 'rec-cons' }, cons.length ? cons : [muted('None.')]),
+            el('b', { text: 'History' }),
+            el('div', { class: 'tsi-bas-rec__history', 'data-test': 'rec-history' }, r.history.slice().reverse().map(function (h) { return el('div', { class: 'tsi-bas-muted', text: R.dayLabel(h.day) + ': ' + h.text }); })),
+            noteBox
+          ].filter(Boolean);
+          var act = await hallModal({
+            title: r.title, className: 'tsi-bas-modal tsi-bas-modal--record', body: body, escValue: 'close',
+            actions: [{ label: 'Close', value: 'close' }, { label: 'Add note', value: 'note', primary: true }],
+            onOpen: function (parts) {
+              parts.dialog.setAttribute('data-test', 'record-view');
+              var closeBtn = Array.prototype.filter.call(parts.dialog.querySelectorAll('.tsi-modal__foot button'), function (b) { return b.textContent === 'Close'; })[0];
+              if (closeBtn) closeBtn.setAttribute('data-act', 'close');
+            }
+          });
+          if (!life.alive) return;
+          if (act === 'note' && noteBox.value.trim()) {
+            var n = R.addDipNote(state, id, noteBox.value);
+            if (!n.ok) await say(n.message, 'Diplomatic Records');
+            changed = true;
+          } else if (act === 'close' && pending && pending.end) {
+            var c = r.consequences.filter(function (x) { return x.id === pending.end; })[0];
+            var yes = c ? await ask('End this early? It stays in the history as ended on ' + R.dayLabel(state.day) + '.', 'End early', 'End a consequence') : false;
+            if (yes) { var e = R.endDipConsequence(state, data, id, pending.end); if (!e.ok) await say(e.message, 'Diplomatic Records'); changed = true; }
+            else if (!c) return;
+            else { continue; }
+          } else {
+            return;
+          }
+          if (changed) done();
+        }
       }
 
       function tradeNetworkSection() {

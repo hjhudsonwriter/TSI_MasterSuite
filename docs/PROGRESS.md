@@ -8,6 +8,18 @@ Double-click `index.html` to open the suite. The plan is in `docs/PLAN.md`, the 
 
 ## Done
 
+### The facilities overhaul, pull request 9a: renaming the beasts (18 October 2026)
+From Harry's request (18 October 2026): he doesn't know Elara's wyvern's name yet.
+- **Rename…** on every creature in the Wyvern Roost, Griffin Tower and Dire Wolf Den panels, housed or waiting (BAS-97). An empty name gives the usual one back.
+- **Tests:** 1 new rules test, 1 new click-through check in `tests/e2e/creatures.test.js`.
+
+### The facilities overhaul, pull request 9b: the Hall's Clan Relations and Diplomatic Records (18 October 2026)
+From Harry's Hall handover and his decisions of 18 October 2026 (`docs/specs/hall-of-emissaries-redesign.txt`). Awaiting Harry's check, in the same pull request as the beast renaming.
+- **Clan Relations** (the seven Clans' own scores, plus what's running) and a DM-led **Diplomatic Records** ledger inside the Hall (BAS-98). Nothing happens until the DM confirms; only Honour & Respect and Political Capital really change; everything else is DM-tracked.
+- **Untouched:** every Hall order, the old Trade Agreements and income, the Trade Consortium, Port Charter registration, the Dock.
+- **Tests:** 9 new rules tests (`tests/rules/diplomacy.test.js`), a new click-through (`tests/e2e/hall-records.test.js`).
+- **Next, when Harry says go:** the later Hall phases need his approval first (his handover leaves the order list, costs, dice, durations, event text, incident frequency, the commodity-backed Consortium and the migration policy undecided).
+
 ### The facilities overhaul, pull request 8b part 2: the Shrines in the Explorer (15 October 2026)
 Harry's check passed; merged as #32 (16 October 2026).
 From Harry's answers S2, S9 and S10 (`docs/MILITARY-DIPLOMACY-PLAN.md`).

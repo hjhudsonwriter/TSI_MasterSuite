@@ -896,4 +896,32 @@
     t.ok(has(17, 'recovery', 'Talon has found the way back to the Bastion.'));
     t.equal(coming.filter(function (x) { return x.kind === 'roll'; }).length, 0);
   });
+
+  test('renaming a creature (Harry, 18 October 2026): any creature, Elara\'s wyvern too; empty gives the usual name back; a waiting House order follows', function (t) {
+    var b = withWyvern(bastion(10, ['griffin_tower']));
+    t.equal(BR.creatureName(bdata, BR.creatureById(b, 'elara_wyvern')), 'Elara\'s wyvern');
+    var r = BR.renameCreature(b, bdata, 'elara_wyvern', '  Ashwing   the Bold ');
+    t.same([r.ok, r.changed, BR.creatureName(bdata, BR.creatureById(b, 'elara_wyvern'))], [true, true, 'Ashwing the Bold']);
+    t.same([BR.renameCreature(b, bdata, 'elara_wyvern', 'Ashwing the Bold').changed], [false], 'the same name changes nothing');
+    BR.renameCreature(b, bdata, 'elara_wyvern', '');
+    t.equal(BR.creatureName(bdata, BR.creatureById(b, 'elara_wyvern')), 'Elara\'s wyvern', 'empty gives the usual name back');
+    t.equal(BR.renameCreature(b, bdata, 'cr-nothing', 'X').ok, false, 'a creature that isn\'t there is refused');
+    var long = new Array(100).join('a');
+    BR.renameCreature(b, bdata, 'elara_wyvern', long);
+    t.equal(BR.creatureById(b, 'elara_wyvern').name.length, BR.creatureNameMax(bdata), 'cut to the longest name');
+    BR.renameCreature(b, bdata, 'elara_wyvern', 'Ashwing');
+    var g = bastion(10, ['griffin_tower']);
+    withGrants(g, [grantMsg({ id: gid(1), name: 'Swiftwing' })]);
+    var res = issue(g, 'griffin_tower');
+    t.ok(res.ok, res.message);
+    var o = lastOrder(g);
+    t.ok(/Swiftwing/.test(o.label));
+    BR.renameCreature(g, bdata, o.chosen.creatureId, 'Stormcrest');
+    t.ok(/\(Stormcrest\)/.test(o.label) && o.optionLabel === 'Stormcrest', 'the waiting order follows: ' + o.label);
+    complete(g, o);
+    t.equal(BR.creatureName(bdata, BR.creatureById(g, o.chosen.creatureId)), 'Stormcrest');
+    var back = reload(b);
+    t.equal(BR.creatureName(bdata, BR.creatureById(back, 'elara_wyvern')), 'Ashwing');
+    t.same(reload(back).creatures, back.creatures, 'loading twice changes nothing');
+  });
 }());
