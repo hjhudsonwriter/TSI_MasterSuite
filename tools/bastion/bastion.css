@@ -1516,3 +1516,28 @@
 .tsi-page--bastion .tsi-bas-regiment--recouping .tsi-bas-item__name { color: #e7b9a4; }
 .tsi-page--bastion .tsi-bas-fn__muster { display: flex; flex-wrap: wrap; gap: 0.4em; }
 .tsi-page--bastion .tsi-bas-fn__muster .tsi-bas-fn__select { flex: 1 1 10em; min-width: 0; }
+
+/* The Hall's Clan Relations and Diplomatic Records (pull request 9) */
+.tsi-page--bastion .tsi-bas-rel,
+.tsi-page--bastion .tsi-bas-recs { display: flex; flex-direction: column; gap: 6px; padding-top: 12px; border-top: 1px solid var(--tsi-line-faint); }
+.tsi-page--bastion .tsi-bas-rel__row { display: grid; grid-template-columns: 110px 70px 70px minmax(0, 1fr); gap: 8px; align-items: baseline; padding: 4px 8px; border: 1px solid var(--tsi-line-faint); border-radius: var(--tsi-radius-md); background: rgba(0, 0, 0, .18); }
+.tsi-page--bastion .tsi-bas-rel__name { font-family: var(--tsi-font-display); color: var(--tsi-gold-text); }
+.tsi-page--bastion .tsi-bas-rel__score { font: 400 14px var(--tsi-font-mono); }
+.tsi-page--bastion .tsi-bas-rel__chips { display: flex; flex-wrap: wrap; gap: 4px 8px; font-size: 14px; }
+.tsi-page--bastion .tsi-bas-rel__chip { padding: 0 8px; border: 1px solid var(--tsi-line-faint); border-radius: 999px; }
+.tsi-page--bastion .tsi-bas-recs__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.tsi-page--bastion .tsi-bas-recs__list { display: flex; flex-direction: column; gap: 6px; max-height: 260px; overflow-y: auto; }
+.tsi-page--bastion .tsi-bas-rec { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 10px; border: 1px solid var(--tsi-line-faint); border-radius: var(--tsi-radius-md); background: rgba(0, 0, 0, .18); }
+.tsi-page--bastion .tsi-bas-rec--dismissed { opacity: .65; }
+.tsi-page--bastion .tsi-bas-rec__badge { font: 400 12px var(--tsi-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--tsi-gold-text); }
+.tsi-page--bastion .tsi-bas-rec__meta { font-size: 14px; color: var(--tsi-text-soft); }
+.tsi-page--bastion .tsi-bas-modal--record { width: min(760px, 94vw); max-height: 92vh; overflow-y: auto; }
+.tsi-page--bastion .tsi-bas-rec__area { resize: vertical; font-family: inherit; }
+.tsi-page--bastion .tsi-bas-rec__clans { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.tsi-page--bastion .tsi-bas-rec__clan { display: inline-flex; align-items: center; gap: 4px; font: 400 15px var(--tsi-font-body); text-transform: none; letter-spacing: 0; }
+.tsi-page--bastion .tsi-bas-rec__cons { display: flex; flex-direction: column; gap: 6px; margin-bottom: 6px; }
+.tsi-page--bastion .tsi-bas-rec__con { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) 84px 84px minmax(0, 1.6fr) auto; gap: 6px; align-items: center; }
+.tsi-page--bastion .tsi-bas-rec__con [hidden] { display: block; visibility: hidden; }
+.tsi-page--bastion .tsi-bas-rec__hint { grid-column: 1 / -1; font-size: 13px; }
+.tsi-page--bastion .tsi-bas-rec__viewcon { margin: 4px 0; }
+.tsi-page--bastion .tsi-bas-rec__history { max-height: 160px; overflow-y: auto; margin-bottom: 8px; }
