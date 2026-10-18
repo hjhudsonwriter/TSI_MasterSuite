@@ -9,7 +9,8 @@ Double-click `index.html` to open the suite. The plan is in `docs/PLAN.md`, the 
 ## Done
 
 ### The facilities overhaul, pull request 8b part 2: the Shrines in the Explorer (15 October 2026)
-From Harry's answers S2, S9 and S10 (`docs/MILITARY-DIPLOMACY-PLAN.md`). Awaiting Harry's check.
+Harry's check passed; merged as #32 (16 October 2026).
+From Harry's answers S2, S9 and S10 (`docs/MILITARY-DIPLOMACY-PLAN.md`).
 - **Expeditions:** Start and End expedition in the Travel bags box (EXP-45).
 - **Great Rites:** wait at the Ironbow; the DM gives one to the party in an expedition; the Bastion is told once (SUI-36); it expires when the expedition ends.
 - **Charms:** offered at the five tagged checks, once a step. **Use…** on any Shrine item in the Travel bags counts one use.
@@ -927,8 +928,13 @@ Each tool's questions are needed before that tool's phase. The full wording and 
       - **Older copies:** an older copy of the Bastion deletes the creatures; back up before trying one.
     - **Pull request 8 (military and diplomacy):** 8a (the War Room and the creature guards) is built; see Done. Still open:
       - **8b part 2, the Shrines in the Explorer:** built; see Done.
-      - **Bless Bastion Foundations** waits for an environmental damage event (BAS-96): say if you'd like one added.
-      - **Later:** the research trees (War Room, Hall and Shrines) and the Hall's redesign.
+      - **Decided (Harry, 18 October 2026), recorded in `docs/MILITARY-DIPLOMACY-PLAN.md` section 4:**
+        - **Bless Bastion Foundations** stays unavailable. No damage events are added. It may be replaced later by an effect that works with existing play.
+        - **War Room research** (Infantry, Archery, Cavalry, Command & Logistics doctrines) is kept as a plan, but its trees and numbers aren't approved, so nothing is built. Training and Recouping don't depend on it.
+        - **The Hall gets no R&D tree.** Everything it does now stays until the separate Hall overhaul.
+        - **The Shrines get no research trees** for now.
+        - **Herbal Gardens research** and all saved research records are untouched.
+      - **Later:** the Hall's diplomacy-first overhaul (Harry's separate handover), and approved War Room doctrines.
       - **Choices made for Harry in 8a** (BAS-94): War Actions take regiments by number, best trained first; drill gold isn't refunded.
     - **Next for the courier, when you say go:** Levels 3 to 5 (return trips, priority, express), research, and more goods.
 - **Clan Crest Creator (phase 2, reworked 29 September 2026):** answered (K1–K4).

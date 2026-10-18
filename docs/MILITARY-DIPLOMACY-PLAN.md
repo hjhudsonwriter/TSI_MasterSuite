@@ -8,12 +8,12 @@ This file is for Harry and his planning assistant. It records Harry's answers of
 
 Nothing marked Proposed or To decide gets built until Harry approves the details. When a question is answered, write the answer under it and say "go".
 
-**Status (15 October 2026):** 8a is built and merged (#30) (the creature guards and the War Room's regiments, training, Recouping and Musters). 8b part 1, the Shrines' Bastion half, is built and merged (#31); part 2, the Explorer's half (S2, S9, S10 answered below), is built and awaiting Harry's check.
+**Status (15 October 2026):** 8a is built and merged (#30) (the creature guards and the War Room's regiments, training, Recouping and Musters). 8b part 1, the Shrines' Bastion half, is built and merged (#31); part 2, the Explorer's half (S2, S9, S10 answered below), is built and merged (#32).
 
 **Split, at Harry's request** (decisions of 15 October 2026 below):
 - **8a:** the two creature guards, plus the War Room.
 - **8b:** the Hall of Emissaries and the three Shrines.
-- The research trees for the War Room, Hall and Shrines come later, once Harry approves each complete tree.
+- Research: only the War Room may get a research tree, later, once Harry approves the complete tree and its numbers. The Hall and the Shrines get none for now (see "Decided (Harry, 18 October 2026)" at the end).
 
 ---
 
@@ -186,3 +186,27 @@ For now:
   - The party holds one Major Expedition Blessing at a time; it is used once and expires when the expedition ends.
   - Conditions stay the DM's to apply: Use… records the charge once and shows a short reminder of what it does.
 - **S10, the courier:** the Courier Exchange carries the Shrine's physical items (talismans, salves, lanterns, incense, charms and cleansing portions), each counting as 1 item, and they arrive in the Travel bags with their charges. Bless Bastion Foundations and Bless Commercial Shipment stay at the Ironbow, and Great Rites are assigned, not posted.
+
+---
+
+## 4. Decided (Harry, 18 October 2026): research, and Bless Bastion Foundations
+
+**Priority:** the Bastion supports the D&D campaign. It does not get extra management mechanics for their own sake.
+
+- **Bless Bastion Foundations stays "Not available yet".**
+  - No random storms, floods, subsidence or other facility-damage events are added to make it useful.
+  - No event frequencies, damage mechanics or facility targets are invented.
+  - Later, it may be replaced by an effect that works with existing Bastion, Explorer or campaign play. Harry will decide then.
+- **War Room research: deferred, but the plan stays.**
+  - Future specialist doctrines: Infantry, Archery, Cavalry, and Military Command & Logistics.
+  - The complete trees and their numbers are not approved, so none is built.
+  - Ordinary per-regiment training and Recouping work on their own, without research. They already do.
+  - Why the War Room differs: specialist training gives real choices in a combat system that already exists.
+- **Hall of Emissaries: no R&D tree.**
+  - The Hall's diplomacy-first redesign (diplomatic events, Clan relationships, privileges, narrative consequences, the redesigned Trade Consortium) is its progression.
+  - The "R&D" section of `docs/specs/hall-of-emissaries-redesign.txt` is withdrawn.
+  - Everything the Hall does today, and its saved data, stays until the separate Hall overhaul.
+- **Shrines: no research trees for now.**
+  - Their level orders, prayers, consumables and Great Rites are enough.
+  - Specialist Shrine research may come back if playtesting shows something genuinely useful for expeditions. No speculative nodes are built.
+- **Kept as they are:** the Herbal Gardens research, every working facility, and all saved research tokens and records.
