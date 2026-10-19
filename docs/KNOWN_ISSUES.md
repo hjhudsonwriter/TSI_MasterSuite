@@ -1054,7 +1054,7 @@ Old repo: `_legacy/scarlett-isles-explorer` (file:line references point there).
 **Later, Harry's call** · other
 
 - **Before:** Loading North Isle switches the events to North Isle, but the Region box still says Northern Province.
-- **After:** Kept as it is in the rebuild.
+- **After:** Warned about, not changed (19 October 2026, Harry chose option B). When the Region isn't the loaded map's own province, a short note under the Region box says so and that events, and any Honour/Respect they change, follow the Region. The Region still decides the Clan exactly as before; an uploaded map shows no warning.
 - **Evidence:** provinceSel set only at 2053; flow_test: dropdown northern_province, state the_north_isle.
 - **Phase 8:** Kept.
 

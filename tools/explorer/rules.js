@@ -242,6 +242,22 @@
     for (var i = 0; i < prefixes.length; i++) if (String(mapId).indexOf(prefixes[i]) === 0) return prefixes[i];
     return 'northern_province';
   };
+  /* The Region box against the loaded preset map's own province: null when they
+     agree, or when no preset map is showing (an uploaded map has no province).
+     Only a warning: the Region still decides the Clan and the events
+     (Harry, 19 October 2026). */
+  R.regionMismatch = function (state, data) {
+    if (!state.mapPresetId || state.mapUploadKey) return null;
+    var mapProvince = R.mapProvince(data, state.mapPresetId);
+    var region = (state.travel && state.travel.provinceId) || 'northern_province';
+    if (mapProvince === region) return null;
+    var p = R.preset(data, state.mapPresetId);
+    return {
+      mapLabel: p ? p.label : state.mapPresetId,
+      mapProvince: R.provinceLabel(data, mapProvince),
+      region: R.provinceLabel(data, region)
+    };
+  };
   R.mainEvent = function (data, id) {
     for (var i = 0; i < data.mainEvents.length; i++) if (data.mainEvents[i].id === id) return data.mainEvents[i];
     return null;

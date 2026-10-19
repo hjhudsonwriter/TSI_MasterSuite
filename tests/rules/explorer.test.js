@@ -303,6 +303,19 @@
     t.equal(R.mapKey(s), 'preset:southern_province_west');
   });
 
+  test('the Region box is checked against the loaded map\'s province: a warning, never a change', function (t) {
+    var s = fresh();
+    t.equal(R.regionMismatch(s, D), null, 'no preset map showing');
+    R.loadPreset(s, D, 'southern_province_west');
+    t.equal(R.regionMismatch(s, D), null, 'loading a map sets its own province');
+    s.travel.provinceId = 'northern_province';
+    var m = R.regionMismatch(s, D);
+    t.same([m.mapProvince, m.region], ['Southern Province', 'Northern Province']);
+    t.equal(s.travel.provinceId, 'northern_province', 'the Region is left as the DM set it');
+    s.mapUploadKey = 'abc';
+    t.equal(R.regionMismatch(s, D), null, 'an uploaded map has no province of its own');
+  });
+
   test('arriving from a linked map puts the party at the entry point, in formation', function (t) {
     var s = fresh();
     R.loadPreset(s, D, 'eastern_province_north');
