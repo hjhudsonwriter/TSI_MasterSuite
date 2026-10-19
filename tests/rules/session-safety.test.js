@@ -156,4 +156,30 @@
     t.equal(BR.handToParty(s, row, 1, '').ok, false, 'a second go on a removed row');
     t.equal(s.log.length, 1, 'logged once');
   });
+
+  group('Warehouse sort (19 October 2026)');
+  test('grouped view: supplies, ingredients, trade goods, then general items, each in the order added; the saved order is never changed', function (t) {
+    var rows = [
+      { id: 'a', item: 'Rope', qty: 2 },
+      { id: 'b', goodId: 'raw_timber', item: 'Raw Timber', qty: 1 },
+      { id: 'c', goodId: 'expedition_provision_pack', item: 'Expedition Provision Pack', qty: 3 },
+      { id: 'd', item: 'Potion of Healing', qty: 1 },
+      { id: 'e', goodId: 'restorative_herbs', item: 'Restorative Herbs', qty: 10 },
+      { id: 'f', goodId: 'earthward_talisman', item: 'Earthward Talisman', qty: 1 }
+    ];
+    var before = JSON.stringify(rows);
+    var v = BR.warehouseView(bdata, rows, 'grouped');
+    t.same(v.items.map(function (x) { return x.row.id; }), ['c', 'f', 'e', 'b', 'a', 'd'], 'supplies (pack, talisman), ingredient, trade good, then the two general items');
+    t.same(v.items.map(function (x) { return x.index; }), [2, 5, 4, 1, 0, 3], 'each keeps its place in the saved list');
+    t.same(v.groups, [{ id: 'supply', label: 'Supplies', count: 2 }, { id: 'ingredient', label: 'Ingredients', count: 1 }, { id: 'cargo', label: 'Trade goods', count: 1 }, { id: 'general', label: 'General items', count: 2 }]);
+    t.equal(JSON.stringify(rows), before, 'the saved rows are untouched');
+    t.same(BR.warehouseView(bdata, rows, 'entered').items.map(function (x) { return x.row.id; }), ['a', 'b', 'c', 'd', 'e', 'f'], 'as entered');
+    t.same(BR.warehouseView(bdata, rows).groups, [], 'no headings unless grouped');
+    t.same(BR.warehouseView(bdata, [], 'grouped'), { items: [], groups: [] });
+  });
+  test('the sort choice is remembered with the panels, and anything else is dropped', function (t) {
+    t.equal(BR.cleanUi({ whSort: 'grouped' }).whSort, 'grouped');
+    t.equal(BR.cleanUi({ whSort: 'zigzag' }).whSort, undefined);
+    t.equal(BR.cleanUi({ gridOpen: false }).whSort, undefined);
+  });
 }());

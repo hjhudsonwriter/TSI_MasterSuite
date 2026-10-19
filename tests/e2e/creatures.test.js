@@ -293,8 +293,8 @@ async function clickPop(page, label) {
     await openTile(ba, 'wyvern_roost');
     equal(await bare(ba, '[data-test=days-' + ROOST + ']'), 'Takes 3 days');
     equal(await orderState(ba, ROOST), { button: 'Issue Order', off: false, why: '' });
-    equal(await panelCreatures(ba, 'wyvern_roost'), { room: null, housed: [], waiting: [] });
-    assert(/None yet\. Give the order House Elara's Wyvern, above, to record Elara's wyvern here\./.test(await bare(ba, '[data-test=creatures-wyvern_roost]')), await bare(ba, '[data-test=creatures-wyvern_roost]'));
+    equal(await panelCreatures(ba, 'wyvern_roost'), { room: 'Room: 0 of 2 taken, 2 free. Each level of the Wyvern Roost houses one wyvern, plus one more (Elara\'s wyvern is one of them).', housed: [], waiting: [] });
+    assert(/None yet\. House Elara's Wyvern, above, records Elara's wyvern here; House a Wyvern gives a home to one the DM granted in the Explorer\./.test(await bare(ba, '[data-test=creatures-wyvern_roost]')), await bare(ba, '[data-test=creatures-wyvern_roost]'));
     equal(await panelFits(ba, ROOST), { sideways: false, outOfView: [], underFooter: false });
     await H.shot(ba, 'creatures-roost-empty-laptop');
   });
@@ -321,9 +321,9 @@ async function clickPop(page, label) {
     await ex.waitForSelector('[data-test=creature-dialog]');
     await ex.waitForTimeout(300);
     equal(await ex.$$eval('[data-test=creature-dialog]', l => l.length), 1, 'one dialog');
-    equal(await ex.$$eval('[data-test=creature-species] option', o => o.map(x => x.value + ' ' + x.textContent)), ['griffin Griffin', 'dire_wolf Dire Wolf']);
+    equal(await ex.$$eval('[data-test=creature-species] option', o => o.map(x => x.value + ' ' + x.textContent)), ['griffin Griffin', 'dire_wolf Dire Wolf', 'wyvern Wyvern']);
     equal(await ex.$$eval('[data-test=creature-dialog] .tsi-modal__foot button', l => l.map(b => b.textContent)), ['Cancel', 'Grant']);
-    assert(/^Grant the Ironbow a griffin or a dire wolf when the party has won one\./.test(await bare(ex, '[data-test=creature-dialog] .tsi-modal__body')), await bare(ex, '[data-test=creature-dialog] .tsi-modal__body'));
+    assert(/^Grant the Ironbow a griffin, a dire wolf or a wyvern when the party has won one\./.test(await bare(ex, '[data-test=creature-dialog] .tsi-modal__body')), await bare(ex, '[data-test=creature-dialog] .tsi-modal__body'));
     equal((await H.layoutCheck(ex, ['[data-test=creature-dialog]'])).outOfView, [], 'the dialog fits the laptop');
     await ex.click('[data-test=creature-dialog] .tsi-modal__foot button:text-is("Cancel")');
     await ex.waitForTimeout(400);
@@ -446,7 +446,7 @@ async function clickPop(page, label) {
 
   await check('the Roost\'s panel lists Elara\'s wyvern ("Defends the Ironbow: Battle Value 11, Flight"); a second House Elara\'s Wyvern is refused', async () => {
     await openTile(ba, 'wyvern_roost');
-    equal(await panelCreatures(ba, 'wyvern_roost'), { room: null, housed: [['Elara\'s wyvern', 'Guarding the Ironbow.']], waiting: [] });
+    equal(await panelCreatures(ba, 'wyvern_roost'), { room: 'Room: 1 of 2 taken, 1 free. Each level of the Wyvern Roost houses one wyvern, plus one more (Elara\'s wyvern is one of them).', housed: [['Elara\'s wyvern', 'Guarding the Ironbow.']], waiting: [] });
     equal(await bare(ba, '[data-test=creature-war-' + WYVERN + ']'), 'Defends the Ironbow: Battle Value 11, Flight');
     equal(await orderState(ba, ROOST), { button: 'Already at the Ironbow', off: true, why: 'Elara\'s wyvern already lives at the Ironbow.' });
     await ba.hover('[data-test=creature-' + WYVERN + ']');
