@@ -67,6 +67,12 @@
     return page + (toolId ? '?tool=' + encodeURIComponent(toolId) : '');
   }
 
+  /* The address of the DM doc's own window (its Pop out button). */
+  function dmDocUrl() {
+    var page = location.pathname.split('/').pop() || 'index.html';
+    return page + '?dmdoc=1';
+  }
+
   /* Open a tool in a new window, filling the screen this window is on.
      noopener matters: without it the browser copies this window's
      sessionStorage into the new one, and with it this tab's id for the
@@ -654,6 +660,15 @@
       info = null;
     }
 
+    /* The DM doc's own window (Pop out): just the DM doc, no tool, no top bar. */
+    if (params.get('dmdoc') === '1' && TSI.dmDoc) {
+      document.body.classList.add('tsi-page--dmdoc-window');
+      setTitle('DM doc · The Scarlett Isles');
+      /* No "Already open" check: this window only reads saves, and adds to its own list of score changes. */
+      TSI.dmDoc.startDocked();
+      return;
+    }
+
     buildTopbar(info);
     if (TSI.dmDoc) TSI.dmDoc.start();
     /* The "Already open" warning only minds another tab with the same tool,
@@ -683,6 +698,7 @@
     /* A link to a tool (or home, with no id) on this same page: 'index.html?tool=crest',
        or 'harness.html?tool=crest' on the test page. For a link that opens in a new tab. */
     pageUrl: pageUrl,
+    dmDocUrl: dmDocUrl,
     /* Open a built tool in a new window the size of this screen (see the top of this file). */
     openWindow: openWindow
   };

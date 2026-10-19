@@ -738,3 +738,9 @@ body.tsi-modal-open { overflow: hidden; }
 }
 .tsi-dmdoc__tracked { margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--tsi-gold-faint, rgba(214, 178, 94, 0.25)); }
 .tsi-dmdoc__tracked-title { margin: 0 0 4px; font-family: var(--tsi-font-heading); font-size: var(--tsi-fs-label, 0.8em); letter-spacing: 0.04em; color: var(--tsi-gold); }
+/* The DM doc in its own window (Pop out): it fills the window. */
+.tsi-dmdoc--docked { inset: 0; left: 0; top: 0; width: auto; height: auto; border-radius: 0; box-shadow: none; }
+.tsi-page--dmdoc-window { overflow: hidden; }
+.tsi-dmdoc__popout { margin-left: auto; margin-right: 6px; }
+.tsi-dmdoc__edit { display: grid; gap: 10px; min-width: min(320px, 80vw); }
+.tsi-dmdoc--docked .tsi-dmdoc__bar { cursor: default; }

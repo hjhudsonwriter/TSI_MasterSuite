@@ -908,6 +908,10 @@ Harry asked for a complete rework: the old tool's shields, colours and sigils we
 - Done: a note under the Explorer's Region box when it isn't the loaded map's province (EXP-20). Nothing about how the Region decides the Clan changed.
 - Still waiting: the DM doc's detachable window and manual score editing.
 
+### DM doc: Pop out and scores by hand (19 October 2026)
+- Done: Pop out window; Change a score… (Political Capital, Honour/Respect, Favour) applied once by the Bastion (SUI-39).
+- Next: whatever Harry chooses (deferred list: full research trees, Hall overhaul, Courier Levels 3–5, market saturation, upkeep deductions, War Room doctrines, Grand War Exercises, Stone Quarry, Weavers' Hall).
+
 ## Next
 **Harry tries Build 3**: makes a crest in the Crest Creator and sends it with Use for the Bastion (with the Bastion open in another window, and with it shut), uploads and removes one, founds a Clan, and sees the crest on the War Table. Then says what to change: the badge, the Party Identity panel's layout, or the Form Clan crest box. That completes the overhaul's plan.
 
