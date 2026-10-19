@@ -79,15 +79,16 @@ window.TSI_DATA.bastionCommerce = {
     }
   },
 
-  /* Market saturation (Harry, 14 October 2026), planned for a later pull
-     request and NOT active yet: within a rolling 28 days, at each port and
+  /* Market saturation (Harry, 14 October 2026), switched on 19 October 2026:
+     within a rolling 28 days, at each port and
      for each good, lots 1-4 sell at the Clan's demand, lots 5-8 one tier
      lower, 9-12 two tiers lower, and lot 13 onwards Oversupplied (tiers:
-     ×1.25, ×1.10, ×1.00, ×0.75). Each sale is already recorded (the Bastion
-     save's tradeNetwork.marketLedger: port, good, lots and day) so it can
-     be switched on later. keepDays: how long the record is kept. */
+     ×1.25, ×1.10, ×1.00, ×0.75). Each sale is recorded (the Bastion
+     save's tradeNetwork.marketLedger: port, good, lots and day) and counted
+     when the next cargo sells. keepDays: how long the record is kept.
+     active: false would switch it off again. */
   saturation: {
-    active: false,
+    active: true,
     windowDays: 28,
     lotsPerTier: 4,
     keepDays: 56

@@ -3738,7 +3738,7 @@
           var lines = [el('div', { 'data-test': 'cargo-room' }, 'Chosen: ' + plural(total, 'lot') + ' of ' + spec.lots + ' (a Level ' + spec.level + ' ship).')];
           if (problem) lines.push(el('div', { class: 'tsi-bas-repair-text', 'data-test': 'cargo-problem', text: problem }));
           if (c && route && r.picks.length) {
-            var q = R.cargoQuote(data, c, c.port, c.clan, r.picks);
+            var q = R.cargoQuote(data, c, c.port, c.clan, r.picks, R.saturationPrior(state, data, c.port));
             lines.push(el('ul', { class: 'tsi-bas-res-list' }, q.lines.map(function (l) { return el('li', { text: R.quoteLineText(l) }); })));
             lines.push(el('div', { 'data-test': 'cargo-net' }, R.quoteCostsText(q) + '.'));
             lines.push(muted(mode === 'ship'
