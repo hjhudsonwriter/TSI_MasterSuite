@@ -28,7 +28,7 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
 const qty = (s, id) => s.warehouse.filter(w => w.goodId === id).reduce((n, w) => n + w.qty, 0);
 
 async function context(browser, size) {
-  const ctx = await H.newContext(browser, size || 'laptop', { acceptDownloads: true });
+  const ctx = await H.newContext(browser, size || 'laptop', { acceptDownloads: true, backedUp: true });
   await ctx.setOffline(true);
   /* No travel or campfire events and no weather; the voyage roll comes out
      at 100 (safe) unless a check changes it. */

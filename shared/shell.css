@@ -120,3 +120,6 @@ h1.tsi-topbar__tool { margin: 0; }
 
 /* The test page (tests/harness.html) is labelled in the top bar. */
 .tsi-topbar__test { flex-shrink: 0; }
+
+/* "Last backed up: 3 days ago" on the home screen */
+.tsi-home__lastbackup { font-size: 14px; color: var(--tsi-text-soft); }

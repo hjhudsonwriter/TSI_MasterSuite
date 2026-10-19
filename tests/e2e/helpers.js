@@ -60,7 +60,20 @@ function equal(a, b, msg) {
 
 /* A browser context with a record of anything that went wrong or reached for the internet. */
 async function newContext(browser, size, extra) {
-  const context = await browser.newContext(Object.assign({}, SIZES[size || 'laptop'], extra || {}));
+  const options = Object.assign({}, SIZES[size || 'laptop'], extra || {});
+  const backedUp = options.backedUp;
+  delete options.backedUp;
+  const context = await browser.newContext(options);
+  /* The "back up your campaign" reminder would sit over the buttons being
+     clicked, so such a test starts as if backed up just now. (Opt in with backedUp: true, for tests that hold campaign data; the
+     rest keep the first-visit state.) */
+  if (backedUp) {
+    await context.addInitScript(() => {
+      try {
+        ['tsi.suite.last-backup', 'tsi.test:last-backup'].forEach(k => { if (!localStorage.getItem(k)) localStorage.setItem(k, String(Date.now())); });
+      } catch (e) { /* no storage */ }
+    });
+  }
   const log = { net: [], failed: [], aborted: [], errors: [], consoleErrors: [] };
   context.on('request', r => { if (!r.url().startsWith('file:') && !r.url().startsWith('data:') && !r.url().startsWith('blob:')) log.net.push(r.url()); });
   /* A missing file fails with ERR_FILE_NOT_FOUND. ERR_ABORTED only means the page

@@ -57,7 +57,7 @@ const sentTop = page => page.$eval('[data-test=sent]', n => ({
 }));
 
 async function context(browser, size) {
-  const ctx = await H.newContext(browser, size || 'laptop', { acceptDownloads: true });
+  const ctx = await H.newContext(browser, size || 'laptop', { acceptDownloads: true, backedUp: true });
   await ctx.setOffline(true);
   /* No travel or campfire events and no weather, like the courier test.
      window.__dice: the next values Math.random gives, before its usual 0.99

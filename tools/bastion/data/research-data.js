@@ -37,10 +37,10 @@ window.TSI_DATA = window.TSI_DATA || {};
 window.TSI_DATA.bastionResearch = {
   stageDays: [7, 14, 21],
   needs: {
-    goods: 'the goods catalogue (pull request 3)',
-    lab: 'the Arcane Laboratory\'s own recipes (a later pull request)',
-    explorer: 'the Explorer link, which tracks each hero\'s conditions (pull request 4)',
-    trade: 'trade in goods (pull requests 3 and 5)'
+    goods: 'the goods catalogue to give this choice a real effect, which it does not have yet',
+    lab: 'the Arcane Laboratory having recipes of its own, which it does not have yet',
+    explorer: 'the Explorer tracking each hero\'s conditions, which it does not do',
+    trade: 'research effects on commodity trade, which are not built'
   },
   trees: {
     herbal_gardens: {

@@ -2419,6 +2419,12 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       await page.click('[data-test=wh-remove-1]');
       equal((await st(page)).warehouse.length, 1);
       await page.click('[data-test=clear-warehouse]');
+      assert(/Clear the whole Warehouse \(1 row\)\?/.test(await page.$eval('.tsi-modal:not(.tsi-bas-panel)', m => m.textContent)), 'it asks first');
+      await clickModal(page, 'Cancel');
+      equal((await st(page)).warehouse.map(w => w.item), ['Rope'], 'Cancel keeps it');
+      await page.click('[data-test=clear-warehouse]');
+      await clickModal(page, 'Clear');
+      await pause(page);
       const s = await st(page);
       equal(s.warehouse.map(w => w.item), ['New Item']);
       equal(s.log.slice(0, 2).map(l => l.body), ['Cleared warehouse.', 'Cleared warehouse.']);

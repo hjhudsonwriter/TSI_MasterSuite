@@ -415,13 +415,15 @@
         button.classList.toggle('tsi-exp-on', !!on);
         button.setAttribute('aria-pressed', on ? 'true' : 'false');
       }
-      /* The Fog of War button isn't set when the Explorer opens, so it reads
-         Off until first pressed, as before (EXP-19, kept). */
+      /* The Fog of War button follows the saved fog from the moment the
+         Explorer opens (EXP-19 fixed, 18 October 2026): it used to read Off
+         until first pressed, so a first click switched fog off. */
       function updateFogButton() {
         btnFog.textContent = 'Fog of War: ' + (state.fog.enabled ? 'On' : 'Off');
         setOn(btnFog, state.fog.enabled);
       }
       function updateButtons() {
+        updateFogButton();
         btnGrid.textContent = 'Hex Grid: ' + (state.grid.enabled ? 'On' : 'Off');
         setOn(btnGrid, state.grid.enabled);
         btnSnap.textContent = 'Snap: ' + (state.snap.enabled ? 'On' : 'Off');
@@ -788,7 +790,7 @@
         setNotice(state.freeMove ? 'Free Move enabled: miles/events paused.' : 'Free Move disabled.');
       }
       function resetTravel() {
-        ask('Reset travel back to Day 1 and clear miles for ALL heroes? Active Effects and Threads stay, counted from the new Day 1.').then(function (ok) {
+        ask('Reset travel back to Day 1 and clear miles for ALL heroes? Active Effects and Threads stay, counted from the new Day 1. The Bastion follows the Explorer\'s day, so its calendar goes back to Day 1 as well: every order, build and timer there keeps the same number of days to go, but its dates move with it. Back up first if you are unsure.').then(function (ok) {
           if (!ok) return;
           R.resetTravel(state);
           setNotice('');

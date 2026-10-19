@@ -35,6 +35,18 @@
     try { return check(TSI.clone(records)); } catch (e) { return 'This file couldn\'t be checked: ' + e.message; }
   }
 
+  /* When the campaign was last backed up: Back up everything, or an Export
+     of the Explorer or the Bastion (which writes both). Kept in this
+     browser's small storage, apart from the saves, so it isn't itself part
+     of a backup. */
+  var STAMP_KEY = TSI.storeRules.spaceNames(TSI.space).lastBackup;
+  function readStamp() {
+    try { var v = parseInt(localStorage.getItem(STAMP_KEY), 10); return isFinite(v) && v > 0 ? v : null; } catch (e) { return null; }
+  }
+  function writeStamp() {
+    try { localStorage.setItem(STAMP_KEY, String(Date.now())); } catch (e) { /* the reminder just stays as it was */ }
+  }
+
   function downloadBackup(backup, kind, toolId) {
     var name = rules.fileName(kind, toolId, new Date(backup.savedAt), TSI.space);
     TSI.download(name, JSON.stringify(backup, null, 2), 'application/json');
@@ -121,10 +133,53 @@
       return TSI.store.freshAll().then(function (records) {
         var backup = rules.makeSuiteBackup(records, new Date(), TSI.space);
         var name = downloadBackup(backup, 'suite');
+        writeStamp();
         if (!options || !options.quiet) {
           TSI.notify('Saved to your Downloads folder as ' + name + '.', { type: 'ok', title: 'Backup downloaded.', timeout: 8000, id: 'tsi-backup' });
         }
         return name;
+      });
+    },
+
+    /* When the campaign was last backed up (milliseconds), or null. */
+    lastBackup: function () { return readStamp(); },
+    lastBackupText: function () { return rules.backupAgeText(readStamp(), Date.now()); },
+
+    /* One dismissible reminder when a campaign tool opens, if there is a
+       campaign saved and no backup in the last week. No settings, no
+       schedule. */
+    remindIfDue: function (toolId) {
+      if (!rules.inCampaign(toolId)) return;
+      var has = rules.CAMPAIGN.some(function (t) { return (TSI.store.records(t) || []).length > 0; });
+      var stamp = readStamp();
+      if (!rules.backupDue(stamp, Date.now(), has)) return;
+      var how = stamp === null ? 'This campaign has never been backed up.' : 'The last backup was ' + rules.backupAgeText(stamp, Date.now()) + '.';
+      TSI.notify(how + ' If the browser\'s site data is ever cleared, the campaign goes with it. Export now to keep a copy.', {
+        type: 'warn', title: 'Back up your campaign.', id: 'tsi-backup-reminder', timeout: 30000,
+        actions: [{ label: 'Export', primary: true, onClick: function () { TSI.backup.exportTool(toolId); } }]
+      });
+    },
+
+    /* "Reset" (Bastion, Combat Tracker): a question with a ticked "download a
+       copy first", like Import and Restore have. Resolves true if the DM
+       goes ahead (after the copy, if asked for), false for Cancel. */
+    askReset: function (options) {
+      var toolName = nameOf(options.toolId) || options.toolId;
+      var box = TSI.el('input', { type: 'checkbox', checked: true, name: 'tsi-backup-first', 'data-test': 'reset-copy' });
+      var label = rules.inCampaign(options.toolId) ? 'First, download a copy of the campaign as it is now' : 'First, download a copy of ' + TSI.the(toolName) + '\'s data';
+      var body = TSI.el('div', null, [
+        TSI.el('p', { text: options.message }),
+        TSI.el('label', { class: 'tsi-check' }, [box, TSI.el('span', { text: label })])
+      ]);
+      return TSI.modal.open({
+        title: options.title,
+        body: body,
+        escValue: false,
+        actions: [{ label: 'Cancel', value: false }, { label: options.okLabel || 'Reset', value: true, primary: true }]
+      }).then(function (go) {
+        if (!go) return false;
+        var first = box.checked ? TSI.backup.exportTool(options.toolId, { quiet: true }) : Promise.resolve();
+        return first.then(function () { return true; });
       });
     },
 
@@ -157,6 +212,7 @@
         });
       }).then(function (backup) {
         var name = downloadBackup(backup, backup.kind, toolId);
+        if (rules.inCampaign(toolId)) writeStamp();
         if (!options || !options.quiet) {
           TSI.notify('Saved to your Downloads folder as ' + name + '.', { type: 'ok', title: 'Exported.', timeout: 8000, id: 'tsi-backup' });
         }
