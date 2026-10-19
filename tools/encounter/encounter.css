@@ -259,6 +259,7 @@
 }
 .tsi-tool--encounter .tsi-enc-roster-row--defeated { opacity: .75; filter: grayscale(.2); }
 .tsi-tool--encounter .tsi-enc-cell { font-variant-numeric: tabular-nums; font-size: 17px; color: var(--tsi-text); }
+.tsi-tool--encounter .tsi-enc-arrival { width: 4.5em; padding: 2px 6px; font-size: 15px; }
 .tsi-tool--encounter .tsi-enc-cell--actions { text-align: right; }
 .tsi-tool--encounter .tsi-enc-name { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; min-width: 0; }
 .tsi-tool--encounter .tsi-enc-name-text { font-weight: 700; font-size: 17px; color: var(--tsi-text); overflow-wrap: anywhere; }

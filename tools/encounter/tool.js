@@ -203,6 +203,11 @@
       var encStatus = el('p', { class: 'tsi-enc-muted tsi-enc-panel-sub', 'data-test': 'enc-status' });
       var encName = input('enc-name', { placeholder: 'e.g. Underroot Ambush' });
       var autoInitBtn = btn('Auto-roll Initiative', 'auto-init', '', function () { R.autoInit(state); save(); render(); });
+      var rollArrivalsBtn = btn('Roll for new arrivals', 'roll-arrivals', '', function () {
+        var res = R.rollArrivals(state);
+        if (!res.ok) { note(res.message); return; }
+        save(); render();
+      }, { title: 'Rolls d20 plus the bonus for the reinforcements still waiting, and no one else. The round and the turn stay as they are.' });
       var beginBtn = btn('Begin Encounter', 'begin', 'tsi-btn--primary', function () { begin(); });
       var pauseBtn = btn('Pause', 'pause', 'tsi-btn--ghost', function () { state.encounter.status = 'paused'; save(); render(); }, { disabled: true });
       var endBtn = btn('End', 'end', 'tsi-enc-btn--danger', function () { state.encounter.status = 'ended'; save(); render(); }, { disabled: true });
@@ -250,7 +255,7 @@
             panelHead('Combatants by Initiative', encStatus, btn('Clear', 'clear-encounter', 'tsi-btn--ghost tsi-btn--small', function () { clearEncounter(); })),
             el('div', { class: 'tsi-enc-controls' }, [
               field('Encounter Name', encName, 'tsi-enc-grow'),
-              el('div', { class: 'tsi-enc-control-row' }, [autoInitBtn, beginBtn, pauseBtn, endBtn])
+              el('div', { class: 'tsi-enc-control-row' }, [autoInitBtn, rollArrivalsBtn, beginBtn, pauseBtn, endBtn])
             ]),
             el('div', { class: 'tsi-enc-table-head' }, [
               el('div'), el('div', { text: 'Init' }), el('div', { text: 'Name' }), el('div', { text: 'HP' }), el('div', { text: 'Conditions' }), el('div')
@@ -296,6 +301,7 @@
         endBtn.disabled = !(e.status === 'running' || e.status === 'paused');
         beginBtn.disabled = !e.roster.length || e.status === 'running';
         autoInitBtn.disabled = !e.roster.length || e.status === 'running';
+        rollArrivalsBtn.disabled = !R.waitingArrivals(e).length;
         addCondBtn.disabled = e.status !== 'running';
         completeBtn.disabled = e.status !== 'running';
 
@@ -398,7 +404,7 @@
               'data-test': 'roster-row', 'data-name': c.name
             }, [
               avatarImg(c.avatar, c.type, c.name),
-              el('div', { class: 'tsi-enc-cell', 'data-test': 'row-init', text: String(c.init != null ? c.init : '—') }),
+              c.arrival ? arrivalInit(c) : el('div', { class: 'tsi-enc-cell', 'data-test': 'row-init', text: String(c.init != null ? c.init : '—') }),
               el('div', { class: 'tsi-enc-name' }, [
                 el('span', { class: 'tsi-enc-name-text', text: c.name }),
                 c.defeated ? badge('DEFEATED', 'defeated') : null,
@@ -498,12 +504,30 @@
         resetAddForm();
       }
 
+      /* A reinforcement waiting for an initiative: type one, or use Roll for new arrivals. */
+      function arrivalInit(c) {
+        var box = el('input', { type: 'number', step: '1', min: '-20', max: '60', class: 'tsi-input tsi-enc-arrival', placeholder: 'Init', 'aria-label': 'Initiative for ' + c.name, 'data-test': 'row-init-input' });
+        box.addEventListener('click', function (ev) { ev.stopPropagation(); });
+        var placed = false;
+        function place() {
+          if (placed || box.value === '') return;
+          var res = R.placeArrival(state.encounter, c.encId, box.value);
+          if (!res.ok) { note(res.message); return; }
+          placed = true;
+          save(); render();
+        }
+        box.addEventListener('keydown', function (ev) { ev.stopPropagation(); if (ev.key === 'Enter') place(); });
+        box.addEventListener('change', place);
+        return el('div', { class: 'tsi-enc-cell', 'data-test': 'row-init' }, [box, el('span', { class: 'tsi-enc-muted', text: 'waiting' })]);
+      }
+
       /* ---------- Fight controls ---------- */
       var guardedAddSelected = TSI.oneAtATime(function () {
         var res = R.addSelected(state);
         if (!res.ok) { note(res.message); return; }
         save();
         render();
+        if (res.arrivals) TSI.notify(res.arrivals + (res.arrivals === 1 ? ' arrival is' : ' arrivals are') + ' waiting for an initiative. The round and the turn are unchanged.', { timeout: 6000 });
       });
       function clearEncounter() {
         ask('Clear the encounter roster?', 'Clear').then(function (ok) {

@@ -610,10 +610,10 @@ Old repo: `_legacy/scarlettisles-encounter-tracker` (file:line references point 
 **Later, Harry's call** · other
 
 - **Before:** If you add reinforcements with Add Selected during a running fight, the fight drops back to 'Ready', the round goes back to 1, Complete Turn greys out, and pressing Begin restarts from the top of the order. You lose your place in the fight.
-- **After:** Kept as it is in the rebuild.
+- **After:** Fixed (19 October 2026, Harry's request, M6). While a fight is running or paused, Add Selected leaves the fight running with the same round, turn and order. New arrivals wait at the end of the list, skipped, until they have an initiative: type one in their row and press Enter, or press **Roll for new arrivals** (d20 plus bonus, for the arrivals only). Each is slotted in after anyone with the same number, and the turn marker stays on whoever is acting. Before a fight starts, Add Selected still goes back to Ready as before (C4 kept for that case).
 - **Decision note:** C4
 - **Evidence:** app.js:788-829 always sets status 'ready', turnIndex 0 and round 1, and nothing disables Add Selected while running (352-358). t1.js C: 'running round=2 turn=Goblin a' became 'ready round=1 turn=Aria'; Complete Turn disabled; after Begin, round 1 and Aria's turn
-- **Phase 7:** Kept (C4).
+- **Phase 7:** Kept (C4); changed 19 October 2026 for a fight in progress (tests: `tests/rules/encounter.test.js`, `tests/e2e/reinforcements.test.js`).
 
 ### ENC-27 · Tokens with long names snap and reveal fog off-centre
 **Later, Harry's call** · other
