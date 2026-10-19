@@ -1545,3 +1545,6 @@
 .tsi-page--bastion .tsi-bas-rec__history { max-height: 160px; overflow-y: auto; margin-bottom: 8px; }
 
 .tsi-page--bastion .tsi-bas-fn__unlocks { margin-top: 2px; }
+
+.tsi-page--bastion .tsi-bas-wh__group { padding: 6px 4px 2px; font: 700 12px var(--tsi-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--tsi-gold-text); border-bottom: 1px solid var(--tsi-line-faint); }
+.tsi-page--bastion .tsi-bas-wh__sort { display: inline-flex; align-items: center; gap: 8px; margin-right: auto; }

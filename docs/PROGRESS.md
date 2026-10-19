@@ -915,6 +915,10 @@ Harry asked for a complete rework: the old tool's shields, colours and sigils we
 ### Stone Quarry & Masonworks and Weavers' Hall (19 October 2026)
 - Done: both opened as Level 5 Development Plot facilities with six trade-cargo orders each (SUI-40). Waiting on Harry: confirm which good feeds which (see SUI-40).
 
+### Wyvern grants and Warehouse sort (19 October 2026)
+- Done: wyverns can be granted and housed (Roost room 2 to 6) and the Warehouse has a Sort (SUI-41).
+- Next, waiting on Harry's answers: more Port Charter ports (and Bacca's river port), market saturation switch-on, the remaining Charter customisations, the Hall's Secure Trade Agreement retirement, and more kinds of parcel.
+
 ## Next
 **Harry tries Build 3**: makes a crest in the Crest Creator and sends it with Use for the Bastion (with the Bastion open in another window, and with it shut), uploads and removes one, founds a Clan, and sees the crest on the War Table. Then says what to change: the badge, the Party Identity panel's layout, or the Form Clan crest box. That completes the overhaul's plan.
 

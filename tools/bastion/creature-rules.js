@@ -107,6 +107,11 @@
     var r = cdata(data).room;
     return isObj(r) && isNum(r[facId]) ? clampInt(r[facId], 0, 20) : 0;
   };
+  /* Extra places a building has whatever its level (the Wyvern Roost: 1). */
+  R.creatureRoomBase = function (data, facId) {
+    var r = cdata(data).roomBase;
+    return isObj(r) && isNum(r[facId]) ? clampInt(r[facId], 0, 20) : 0;
+  };
   R.creaturesComingLater = function (data) { return txt(cdata(data).comingLater, 300); };
 
   /* ---------- The register ---------- */
@@ -220,10 +225,13 @@
   R.creatureRoom = function (s, data, facId) {
     var per = R.creatureRoomPerLevel(data, facId);
     var level = R.getFacilityLevel(s, facId);
-    var capacity = per * level;
+    var base = R.creatureRoomBase(data, facId);
+    var capacity = per * level + (per > 0 ? base : 0);
     var housed = R.housedAt(s, facId).length;
     var pending = R.houseOrderAt(s, facId) ? 1 : 0;
-    return { level: level, perLevel: per, capacity: capacity, housed: housed, pending: pending, free: Math.max(0, capacity - housed - pending), over: Math.max(0, housed - capacity) };
+    var out = { level: level, perLevel: per, capacity: capacity, housed: housed, pending: pending, free: Math.max(0, capacity - housed - pending), over: Math.max(0, housed - capacity) };
+    if (per > 0 && base) out.base = base;
+    return out;
   };
   /* Why a House order can't be given now, or ''. Under Repair, the
      party's level and the order's own level are checked by R.issueOrder. */

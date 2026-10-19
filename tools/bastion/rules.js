@@ -962,6 +962,7 @@
     var src = isObj(v) ? v : {};
     var out = { gridOpen: src.gridOpen !== false };
     if (isObj(src.warNoticed)) out.warNoticed = src.warNoticed;
+    if (src.whSort === 'grouped') out.whSort = 'grouped';
     return out;
   };
 
@@ -1960,6 +1961,35 @@
       'The DM records it on the character\'s D&D sheet: this tool doesn\'t.';
     R.log(state, 'Warehouse', line, now);
     return { ok: true, line: line, left: Math.max(0, row.qty) };
+  };
+
+  /* The Warehouse's Sort (Harry, 19 October 2026): only how the rows are
+     shown, never the saved order. "grouped" lists the supplies together
+     (packs, charts, the Shrines' items), then ingredients, then trade goods,
+     then every general item (rows typed by hand: potions, tools, anything),
+     each group keeping the order its rows were added in. "entered" is the
+     saved order, as before. */
+  R.WH_GROUPS = [
+    { id: 'supply', label: 'Supplies' },
+    { id: 'ingredient', label: 'Ingredients' },
+    { id: 'cargo', label: 'Trade goods' },
+    { id: 'general', label: 'General items' }
+  ];
+  R.warehouseGroup = function (data, row) {
+    if (!isObj(row) || !row.goodId) return 'general';
+    var g = R.good ? R.good(data, row.goodId) : null;
+    return g && g.kind === 'supply' ? 'supply' : g && g.kind === 'ingredient' ? 'ingredient' : 'cargo';
+  };
+  /* The rows to show: [{ row, index (its place in state.warehouse), group }],
+     in the saved order, or grouped; and for grouped, the headings'
+     counts: [{ id, label, count }] for the groups that have rows. */
+  R.warehouseView = function (data, rows, mode) {
+    var items = (rows || []).map(function (row, i) { return { row: row, index: i, group: R.warehouseGroup(data, row) }; });
+    if (mode !== 'grouped') return { items: items, groups: [] };
+    var order = R.WH_GROUPS.map(function (g) { return g.id; });
+    items = items.map(function (x, n) { x.n = n; return x; }).sort(function (a, b) { return (order.indexOf(a.group) - order.indexOf(b.group)) || (a.n - b.n); });
+    var groups = R.WH_GROUPS.map(function (g) { return { id: g.id, label: g.label, count: items.filter(function (x) { return x.group === g.id; }).length }; }).filter(function (g) { return g.count > 0; });
+    return { items: items, groups: groups };
   };
 
   /* ---------- Goods (the facilities overhaul's pull request 3, 13 October 2026) ----------

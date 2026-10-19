@@ -2415,6 +2415,31 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       equal(await page.inputValue('[data-test=wh-item-0]'), 'Rope');
     });
 
+    await check('Warehouse sort: Grouped lists the supplies, ingredients, trade goods and general items together; the saved order is unchanged; it is remembered', async () => {
+      await setUp(page, (s) => {
+        s.warehouse.push({ id: 'g1', goodId: 'raw_timber', item: 'Raw Timber', qty: 1, gp: '', notes: '' });
+        s.warehouse.push({ id: 'g2', goodId: 'expedition_provision_pack', item: 'Expedition Provision Pack', qty: 2, gp: '', notes: '' });
+        s.warehouse.push({ id: 'g3', goodId: 'restorative_herbs', item: 'Restorative Herbs', qty: 10, gp: '', notes: '' });
+      });
+      await pause(page);
+      const savedOrder = (await st(page)).warehouse.map(w => w.item);
+      await page.selectOption('[data-test=wh-sort]', 'grouped');
+      await pause(page);
+      const shown = () => page.evaluate(() => [...document.querySelectorAll('[data-test=warehouse] > *')].map(n => n.getAttribute('data-test') && n.getAttribute('data-test').startsWith('wh-group-') ? n.textContent : (n.querySelector('[data-test^=wh-item-]') ? (n.querySelector('[data-test^=wh-item-]').value || n.querySelector('[data-test^=wh-item-]').textContent) : '?')));
+      const g = await shown();
+      assert(/^Supplies \(1\)/.test(g[0]) && /Expedition Provision Pack/.test(g[1]), g.join(' | '));
+      assert(/^Ingredients \(1\)/.test(g[2]) && /^Trade goods \(1\)/.test(g[4]) && /^General items/.test(g[6]), g.join(' | '));
+      equal((await st(page)).warehouse.map(w => w.item), savedOrder, 'the saved order is untouched');
+      await page.reload();
+      await page.waitForSelector('[data-test=day-status]');
+      equal(await page.$eval('[data-test=wh-sort]', e => e.value), 'grouped', 'remembered after a reload');
+      await page.selectOption('[data-test=wh-sort]', 'entered');
+      await pause(page);
+      equal(await page.$$eval('[data-test^=wh-group-]', n => n.length), 0, 'no headings as entered');
+      await setUp(page, (s) => { s.warehouse = s.warehouse.filter(w => !w.goodId); });
+      await pause(page);
+    });
+
     await check('Hand to the party: asks first, takes only what is handed over, once, and the Day Log says so', async () => {
       await page.click('[data-test=wh-hand-0]');
       await page.waitForTimeout(500);

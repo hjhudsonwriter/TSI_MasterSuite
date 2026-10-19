@@ -2673,11 +2673,28 @@
          ================================================================ */
       var whCard = card('warehouse', 'Warehouse', { cls: 'tsi-bas-card--art tsi-bas-card--warehouse' });
       var whBody = el('div', { class: 'tsi-bas-wh__body', 'data-test': 'warehouse' });
+      /* Sort: only how the rows are shown (the saved order isn't changed); remembered with the panels. */
+      var whSort = el('select', { class: 'tsi-input', 'aria-label': 'Sort the Warehouse', 'data-test': 'wh-sort', title: 'Grouped lists the supplies together, then ingredients, trade goods and general items' }, [
+        el('option', { value: 'entered', text: 'As entered' }),
+        el('option', { value: 'grouped', text: 'Grouped: supplies, ingredients, trade goods, general items' })
+      ]);
+      whSort.value = ui.whSort === 'grouped' ? 'grouped' : 'entered';
+      whSort.addEventListener('change', function () {
+        if (whSort.value === 'grouped') ui.whSort = 'grouped'; else delete ui.whSort;
+        saveUi();
+        /* Changing the sort redraws the list even if a box in it had focus (what was typed is already saved). */
+        if (document.activeElement && whBody.contains(document.activeElement)) document.activeElement.blur();
+        renderWarehouse();
+      });
       TSI.append(whCard.body, [
         muted('DM editable. Function outputs append here automatically when completed. Goods made by the production orders are counted in lots, portions or packs: only their count and notes can be changed here, and the value shown is the base value per lot, before any trade.'),
         el('div', { class: 'tsi-bas-wh__head' }, ['Item', 'Qty', 'GP', 'Notes', 'Action'].map(function (t) { return el('div', { text: t }); })),
         whBody,
         el('div', { class: 'tsi-bas-actions tsi-bas-actions--start' }, [
+          el('label', { class: 'tsi-bas-wh__sort' }, [
+            el('span', { text: 'Sort' }),
+            whSort
+          ]),
           btn('Add Item', function () {
             state.warehouse.push({ id: R.uid(rand), item: 'New Item', qty: 1, gp: '', notes: '' });
             done();
@@ -2706,7 +2723,15 @@
         var active = document.activeElement;
         if (active && active.tagName === 'INPUT' && whBody.contains(active)) return;
         TSI.clear(whBody);
-        state.warehouse.forEach(function (row, i) {
+        var view = R.warehouseView(data, state.warehouse, ui.whSort);
+        var lastGroup = '';
+        view.items.forEach(function (it) {
+          var row = it.row, i = it.index;
+          if (ui.whSort === 'grouped' && it.group !== lastGroup) {
+            lastGroup = it.group;
+            var gi = view.groups.filter(function (g) { return g.id === it.group; })[0];
+            whBody.appendChild(el('div', { class: 'tsi-bas-wh__group', 'data-test': 'wh-group-' + it.group, text: gi.label + ' (' + gi.count + ')' }));
+          }
           if (row.goodId) { whBody.appendChild(goodsRow(row, i)); return; }
           var item = el('input', { type: 'text', class: 'tsi-input', value: String(row.item === undefined || row.item === null ? '' : row.item), 'aria-label': 'Item', 'data-test': 'wh-item-' + i });
           var qty = el('input', { type: 'number', min: '0', step: '1', class: 'tsi-input', value: String(R.clampInt(row.qty === undefined || row.qty === null ? 0 : row.qty, 0)), 'aria-label': 'Quantity', 'data-test': 'wh-qty-' + i });
@@ -3893,7 +3918,7 @@
           var text = 'Room: ' + used + ' of ' + room.capacity + ' taken' + (room.pending ? ' (1 being housed)' : '') + ', ' + free + ' free. ';
           text += room.over
             ? 'More live here than a Level ' + room.level + ' ' + fac.name + ' houses (it was rebuilt): they all stay, and housing another waits for room.'
-            : 'Each level of the ' + fac.name + ' houses one ' + noun + (!free && room.level < R.MAX_LEVEL ? '; upgrade it to house more.' : '.');
+            : 'Each level of the ' + fac.name + ' houses one ' + noun + (room.base ? ', plus ' + (room.base === 1 ? 'one' : room.base) + ' more (Elara\'s wyvern is one of them)' : '') + (!free && room.level < R.MAX_LEVEL ? '; upgrade it to house more.' : '.');
           roomLine = el('div', { class: 'tsi-bas-creatures__room' + (room.over ? ' tsi-bas-creatures__room--over' : ''), 'data-test': 'creature-room-' + facId, text: text });
         }
         var group = function (title, test, list, none) {
@@ -3902,7 +3927,7 @@
             list.length ? el('div', { class: 'tsi-bas-list', 'data-test': test }, list.map(function (c) { return creatureRow(c, 'creature'); })) : muted(none)
           ]);
         };
-        var fn = (fac.functions || [])[0];
+        var fn = (fac.functions || []).filter(function (f) { return f.housesSpecies; })[0] || (fac.functions || [])[0];
         var houseName = fn ? fn.label : 'its House order';
         var later = R.creaturesComingLater(data);
         return el('div', { class: 'tsi-bas-facpanel__cargo tsi-bas-facpanel__creatures', 'data-test': 'creatures-' + facId }, [
@@ -3910,7 +3935,7 @@
           roomLine,
           el('div', { class: 'tsi-bas-creatures__lists' }, [
             group('Living here', 'creatures-housed-' + facId, at.housed,
-              room ? 'None yet. ' + houseName + ', above, gives a home to one the DM granted in the Explorer.' : 'None yet. Give the order ' + houseName + ', above, to record ' + (fn && fn.housesCreature ? R.creatureName(data, { id: String(fn.housesCreature) }) : 'it') + ' here.'),
+              room ? (facId === 'wyvern_roost' ? 'None yet. House Elara\'s Wyvern, above, records Elara\'s wyvern here; ' + houseName + ' gives a home to one the DM granted in the Explorer.' : 'None yet. ' + houseName + ', above, gives a home to one the DM granted in the Explorer.') : 'None yet. Give the order ' + houseName + ', above, to record ' + (fn && fn.housesCreature ? R.creatureName(data, { id: String(fn.housesCreature) }) : 'it') + ' here.'),
             room ? group('Waiting for a home', 'creatures-waiting-' + facId, at.waiting,
               'None. The DM grants a ' + noun + ' in the Explorer (Grant a creature…, under Sent to the Bastion).') : null
           ]),

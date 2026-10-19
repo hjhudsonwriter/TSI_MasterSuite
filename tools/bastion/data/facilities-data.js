@@ -1866,7 +1866,7 @@ window.TSI_DATA.bastionFacilities = [
     "name": "Wyvern Roost",
     "id": "wyvern_roost",
     "requiredLevel": 5,
-    "description": "Home to Elara's wyvern, who guards the Ironbow when it is attacked.",
+    "description": "Home to Elara's wyvern and to the wyverns the DM grants, one more than the Roost's level; they guard the Ironbow when it is attacked.",
     "functions": [
       {
         "id": "house_elara_wyvern",
@@ -1877,6 +1877,16 @@ window.TSI_DATA.bastionFacilities = [
         "housesCreature": "elara_wyvern",
         "options": [],
         "notes": "Records Elara's own wyvern at the Ironbow, once: it is never a new animal. It guards the Ironbow when it is attacked (Defend Bastion battles only). No gold and no roll."
+      },
+      {
+        "id": "house_wyvern",
+        "label": "House a Wyvern",
+        "days": 3,
+        "costGP": 0,
+        "costText": "0",
+        "housesSpecies": "wyvern",
+        "options": [],
+        "notes": "Gives a home to a wyvern the DM granted in the Explorer. The Roost houses one more than its level (Elara's wyvern is one of them): 2 at Level 1, up to 6 at Level 5. Building or upgrading the Roost never makes a wyvern. Housed wyverns guard the Ironbow when it is attacked (Defend Bastion battles only). No gold and no roll."
       }
     ]
   },

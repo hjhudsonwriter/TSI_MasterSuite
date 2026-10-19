@@ -141,25 +141,26 @@
       ['Griffin', 'Griffins', 'griffin_tower', true, 'badly_wounded', 21, true, true],
       ['Dire Wolf', 'Dire Wolves', 'dire_wolf_den', true, 'badly_wounded', 21, true, true]
     ]);
-    t.same(CR.grantable, ['griffin', 'dire_wolf'], 'the wyvern is never granted');
+    t.same(CR.grantable, ['griffin', 'dire_wolf', 'wyvern'], 'the DM can grant a wyvern too (Harry, 19 October 2026)');
     t.same(CR.unique, { elara_wyvern: { species: 'wyvern', owner: 'elara', ownerName: 'Elara', name: '', defaultName: 'Elara\'s wyvern' } });
     t.ok(ED.heroes.some(function (h) { return h.id === 'elara' && h.title === 'Elara'; }), 'her owner is the Explorer\'s hero Elara');
-    t.same([CR.room, CR.houseDays, CR.nameMax, CR.provisional], [{ griffin_tower: 1, dire_wolf_den: 1 }, 3, 40, true]);
+    t.same([CR.room, CR.houseDays, CR.nameMax, CR.provisional], [{ griffin_tower: 1, dire_wolf_den: 1, wyvern_roost: 1 }, 3, 40, true]);
     t.ok(/Care, training, bonding, riding and breeding/.test(CR.comingLater));
     t.equal(W.beasts.Wyvern, undefined, 'the War Table\'s own file is unchanged: no wyvern or griffin in it');
     t.equal(W.beasts.Griffin, undefined);
   });
 
   test('the link knows the same kinds as the data, and its own copy (for a page without the data) matches', function (t) {
-    t.same(Bg.grantable(), ['griffin', 'dire_wolf']);
-    t.same([Bg.speciesName('griffin'), Bg.speciesName('dire_wolf'), Bg.speciesHomeName('griffin'), Bg.speciesHomeName('dire_wolf')], ['Griffin', 'Dire Wolf', 'Griffin Tower', 'Dire Wolf Den']);
+    t.same(Bg.grantable(), ['griffin', 'dire_wolf', 'wyvern']);
+    t.same([Bg.speciesName('griffin'), Bg.speciesName('dire_wolf'), Bg.speciesHomeName('griffin'), Bg.speciesHomeName('dire_wolf'), Bg.speciesHomeName('wyvern')], ['Griffin', 'Dire Wolf', 'Griffin Tower', 'Dire Wolf Den', 'Wyvern Roost']);
     var keep = T.bastionCreatures;
     try {
       delete T.bastionCreatures;
-      t.same(Bg.grantable(), ['griffin', 'dire_wolf'], 'without the data file');
-      t.same([Bg.speciesName('griffin'), Bg.speciesName('dire_wolf'), Bg.speciesHomeName('griffin'), Bg.speciesHomeName('dire_wolf')], ['Griffin', 'Dire Wolf', 'Griffin Tower', 'Dire Wolf Den']);
+      t.same(Bg.grantable(), ['griffin', 'dire_wolf', 'wyvern'], 'without the data file');
+      t.same([Bg.speciesName('griffin'), Bg.speciesName('dire_wolf'), Bg.speciesHomeName('griffin'), Bg.speciesHomeName('dire_wolf'), Bg.speciesHomeName('wyvern')], ['Griffin', 'Dire Wolf', 'Griffin Tower', 'Dire Wolf Den', 'Wyvern Roost']);
     } finally { T.bastionCreatures = keep; }
-    t.equal(Bg.isGrantable('wyvern'), false);
+    t.equal(Bg.isGrantable('wyvern'), true);
+    t.equal(Bg.isGrantable('phoenix'), false);
     t.equal(Bg.speciesName('phoenix'), 'Unknown creature');
   });
 
@@ -167,13 +168,14 @@
     ['wyvern_roost', 'griffin_tower', 'dire_wolf_den'].forEach(function (id) {
       var f = BR.facility(bdata, id);
       t.same([f.requiredLevel, f.inDevelopment, f.plot, typeof f.description], [5, undefined, undefined, 'string'], id);
-      t.equal(f.functions.length, 1, id + ': one order');
+      t.equal(f.functions.length, id === 'wyvern_roost' ? 2 : 1, id + ': one order (the Roost has two: Elara\'s wyvern and a granted one)');
       var fn = f.functions[0];
       t.same([fn.id, fn.days, fn.costGP, fn.costText, fn.requiredFacilityLevel, fn.options, fn.production], [FAC[id], CR.houseDays, 0, '0', undefined, [], undefined], id);
       t.equal(BR.isPlotFacility(bdata, id), false, id + ' takes a construction slot');
     });
     t.same(BR.facility(bdata, 'wyvern_roost').functions[0].label, 'House Elara\'s Wyvern');
     t.same(BR.facility(bdata, 'wyvern_roost').functions[0].housesCreature, 'elara_wyvern');
+    t.same([BR.facility(bdata, 'wyvern_roost').functions[1].label, BR.facility(bdata, 'wyvern_roost').functions[1].housesSpecies, BR.facility(bdata, 'wyvern_roost').functions[1].days, BR.facility(bdata, 'wyvern_roost').functions[1].costGP], ['House a Wyvern', 'wyvern', 3, 0]);
     t.same([BR.facility(bdata, 'griffin_tower').functions[0].label, BR.facility(bdata, 'griffin_tower').functions[0].housesSpecies], ['House a Griffin', 'griffin']);
     t.same([BR.facility(bdata, 'dire_wolf_den').functions[0].label, BR.facility(bdata, 'dire_wolf_den').functions[0].housesSpecies], ['House a Dire Wolf', 'dire_wolf']);
     t.equal(BR.buildDaysForRequiredLevel(5, bdata), 21);
@@ -294,7 +296,7 @@
 
   test('check() refuses a damaged one, with a plain reason', function (t) {
     t.equal(Bg.check(grantMsg({ id: 'bad' })), 'Its id is damaged.');
-    t.equal(Bg.check(grantMsg({ species: 'wyvern' })), 'It names a creature the DM can\'t grant (wyvern).', 'never a wyvern');
+    t.equal(Bg.check(grantMsg({ species: 'wyvern' })), '', 'a wyvern can be granted now');
     t.equal(Bg.check(grantMsg({ species: 'phoenix' })), 'It names a creature the DM can\'t grant (phoenix).');
     t.equal(Bg.check(grantMsg({ species: 3 })), 'It names a creature the DM can\'t grant (none).');
     t.equal(Bg.check(grantMsg({ name: new Array(42).join('x') })), 'Its name is damaged.', '41 letters');
@@ -309,8 +311,8 @@
     var s = explorer(5);
     var before = JSON.stringify(ER.toSave(s));
     t.same(J.grantCreature(s, 'griffin', { name: 'Swiftwing', memory: true }), { ok: false, message: 'This browser isn\'t saving, so the Bastion can\'t see the grant. Nothing was sent.' });
-    t.same(J.grantCreature(s, 'wyvern', { name: 'Swiftwing' }), { ok: false, message: 'The DM can grant a griffin or a dire wolf.' });
-    t.same(J.grantCreature(s, 'phoenix', {}), { ok: false, message: 'The DM can grant a griffin or a dire wolf.' });
+    t.same(J.grantCreature(s, 'phoenix', { name: 'Swiftwing' }), { ok: false, message: 'The DM can grant a griffin, a dire wolf or a wyvern.' });
+    t.same(J.grantCreature(s, 'phoenix', {}), { ok: false, message: 'The DM can grant a griffin, a dire wolf or a wyvern.' });
     t.same(J.grantCreature(s, 'griffin', { name: new Array(42).join('x') }), { ok: false, message: 'A name is at most 40 letters.' });
     t.equal(JSON.stringify(ER.toSave(s)), before, 'nothing changed');
     var bags = JSON.stringify(s.journey.inventory || []);
@@ -458,12 +460,11 @@
 
   test('a damaged grant is refused, with its receipt, and nothing is held', function (t) {
     var b = bastion(10);
-    var m = grantMsg({ species: 'wyvern' });
+    var m = grantMsg({ species: 'phoenix' });
     var r = BR.applyInbox(b, bdata, exWith([m]), 1000);
     t.same([r.refused, r.creatures, b.creatures], [1, [], []]);
-    t.same([b.bridge.done[m.id].r, b.bridge.done[m.id].type, b.bridge.done[m.id].why], ['refused', 'creature', 'It names a creature the DM can\'t grant (wyvern).']);
-    t.equal(Bg.statusOf(m, copy(BR.toSave(b))).line, 'Refused: It names a creature the DM can\'t grant (wyvern). Nothing changed.');
-    t.equal(BR.creatureReceiptHead(bdata, b.bridge.done[m.id]), 'Refused: creature granted, Wyvern (Swiftwing)');
+    t.same([b.bridge.done[m.id].r, b.bridge.done[m.id].type, b.bridge.done[m.id].why], ['refused', 'creature', 'It names a creature the DM can\'t grant (phoenix).']);
+    t.equal(Bg.statusOf(m, copy(BR.toSave(b))).line, 'Refused: It names a creature the DM can\'t grant (phoenix). Nothing changed.');
   });
 
   test('a grant dated after the Bastion\'s day waits; a Bastion that hasn\'t read the Explorer\'s day does nothing', function (t) {
@@ -544,6 +545,56 @@
     complete(b, lastOrder(b));
     withGrants(b, [grantMsg({ id: gid(6), name: 'F' })]);
     t.same(issue(b, 'griffin_tower').message, 'No room: a Level 5 Griffin Tower houses 5 griffins, its most.');
+  });
+
+  test('granted wyverns (Harry, 19 October 2026): the Roost houses one more than its level, Elara\'s wyvern is one of them, and building or upgrading never makes a wyvern', function (t) {
+    var b = bastion(10, ['wyvern_roost']);
+    t.same([1, 2, 3, 4, 5].map(function (l) { b.facilityLevels.wyvern_roost = l; return BR.creatureRoom(b, bdata, 'wyvern_roost').capacity; }), [2, 3, 4, 5, 6], 'room 2, 3, 4, 5, 6');
+    b.facilityLevels.wyvern_roost = 1;
+    t.same(BR.creatures(b), [], 'a built Roost holds no wyvern until one is granted or Elara\'s is housed');
+    t.equal(BR.issueUpgrade(b, bdata, 'wyvern_roost', dice([0.3])).ok, true);
+    t.same(BR.creatures(b), [], 'an upgrade makes none either');
+    b.pendingOrders = [];
+    b.facilityLevels.wyvern_roost = 1;
+    /* Nothing waiting: the House a Wyvern order says so. */
+    t.ok(/No wyvern is waiting for a home/.test(BR.issueOrder(b, bdata, 'wyvern_roost', 'house_wyvern', 0, dice([0.3])).message));
+    withWyvern(b);
+    t.same(BR.creatureRoom(b, bdata, 'wyvern_roost'), { level: 1, perLevel: 1, capacity: 2, housed: 1, pending: 0, free: 1, over: 0, base: 1 }, 'Elara\'s wyvern takes one of the two');
+    withGrants(b, [grantMsg({ id: gid(1), species: 'wyvern', name: 'Stormtalon' }), grantMsg({ id: gid(2), species: 'wyvern', name: 'Ashwing' })]);
+    var fac = BR.facility(bdata, 'wyvern_roost');
+    t.same(BR.fnOptions(b, bdata, fac, fac.functions[1]).map(function (x) { return x.label; }), ['Stormtalon', 'Ashwing']);
+    var r = BR.issueOrder(b, bdata, 'wyvern_roost', 'house_wyvern', 0, dice([0.3]));
+    t.equal(r.ok, true, r.message);
+    t.same(BR.creatureRoom(b, bdata, 'wyvern_roost').pending, 1, 'the pending order counts toward room');
+    complete(b, lastOrder(b));
+    t.same(names(BR.housedAt(b, 'wyvern_roost')), ['Elara\'s wyvern', 'Stormtalon']);
+    t.equal(BR.issueOrder(b, bdata, 'wyvern_roost', 'house_wyvern', 0, dice([0.3])).message, 'No room: a Level 1 Wyvern Roost houses 2 wyverns; upgrade it to house more.');
+    t.same(names(BR.creaturesAt(b, bdata, 'wyvern_roost').waiting), ['Ashwing'], 'the second one stays waiting for a home');
+    b.facilityLevels.wyvern_roost = 2;
+    t.equal(BR.issueOrder(b, bdata, 'wyvern_roost', 'house_wyvern', 0, dice([0.3])).ok, true, 'room at Level 2');
+    var again = reload(b);
+    t.same(names(BR.housedAt(again, 'wyvern_roost')), ['Elara\'s wyvern', 'Stormtalon'], 'a reload keeps them');
+  });
+
+  test('the Explorer grants a wyvern like any other creature: one message, a Day Log line, held once, waiting for the Roost', function (t) {
+    var s = explorer(5);
+    var r = J.grantCreature(s, 'wyvern', { name: 'Stormtalon' });
+    t.equal(r.ok, true, r.message);
+    t.equal(r.line, 'Sent to the Bastion: a wyvern (Stormtalon) for the Ironbow, to be housed at the Wyvern Roost.');
+    var m = s.journey.outbox[s.journey.outbox.length - 1];
+    var b = bastion(10, ['wyvern_roost']);
+    var res = BR.applyInbox(b, bdata, { travel: { day: 10 }, journey: { outbox: [m] } }, 1000);
+    t.same([res.creatures.length, BR.creatures(b).length], [1, 1]);
+    t.same([BR.creatures(b)[0].species, BR.creatures(b)[0].status], ['wyvern', 'waiting']);
+    BR.applyInbox(b, bdata, { travel: { day: 10 }, journey: { outbox: [m] } }, 2000);
+    t.equal(BR.creatures(b).length, 1, 'held once');
+  });
+
+  test('the griffin and dire wolf rooms are unchanged: one per level, no extra place', function (t) {
+    var b = bastion(10, ['griffin_tower', 'dire_wolf_den']);
+    t.same([1, 3, 5].map(function (l) { b.facilityLevels.griffin_tower = l; b.facilityLevels.dire_wolf_den = l; return [BR.creatureRoom(b, bdata, 'griffin_tower').capacity, BR.creatureRoom(b, bdata, 'dire_wolf_den').capacity]; }), [[1, 1], [3, 3], [5, 5]]);
+    t.equal(BR.creatureRoomBase(bdata, 'griffin_tower'), 0);
+    t.equal(BR.creatureRoomBase(bdata, 'wyvern_roost'), 1);
   });
 
   test('the Dire Wolf Den works the same way; a griffin is never housed there', function (t) {

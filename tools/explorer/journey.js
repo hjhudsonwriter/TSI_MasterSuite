@@ -667,7 +667,10 @@
     var o = isObj(opts) ? opts : {};
     if (!B || !B.creatureMessage) return { ok: false, message: 'This copy of the Explorer can\'t grant creatures.' };
     if (o.memory === true) return { ok: false, message: 'This browser isn\'t saving, so the Bastion can\'t see the grant. Nothing was sent.' };
-    if (!B.isGrantable(species)) return { ok: false, message: 'The DM can grant ' + B.grantable().map(function (k) { return 'a ' + B.speciesName(k).toLowerCase(); }).join(' or ') + '.' };
+    if (!B.isGrantable(species)) {
+      var kinds = B.grantable().map(function (k) { var n = B.speciesName(k).toLowerCase(); return (/^[aeiou]/.test(n) ? 'an ' : 'a ') + n; });
+      return { ok: false, message: 'The DM can grant ' + (kinds.length < 2 ? kinds.join('') : kinds.slice(0, -1).join(', ') + ' or ' + kinds[kinds.length - 1]) + '.' };
+    }
     var name = str(o.name).replace(/\s+/g, ' ').trim();
     if (name.length > B.NAME_MAX) return { ok: false, message: 'A name is at most ' + B.NAME_MAX + ' letters.' };
     var why = str(o.text).replace(/\s+/g, ' ').trim();

@@ -85,9 +85,11 @@ window.TSI_DATA.bastionCreatures = {
     }
   },
 
-  /* What the DM can grant in the Explorer. The wyvern is never granted:
-     Elara's is the only one, and the Roost houses it. */
-  grantable: ['griffin', 'dire_wolf'],
+  /* What the DM can grant in the Explorer. Since 19 October 2026 (Harry) the
+     DM can grant further wyverns too, once the story has given the party one;
+     Elara's own wyvern is still a single story creature the Roost houses with
+     its own House order, and nothing ever makes a wyvern by itself. */
+  grantable: ['griffin', 'dire_wolf', 'wyvern'],
 
   /* Creatures that already exist in the story, each recorded once. */
   unique: {
@@ -106,9 +108,12 @@ window.TSI_DATA.bastionCreatures = {
 
   /* Room at the Griffin Tower and the Dire Wolf Den: how many creatures each
      level of the building houses (Harry, Q6: one per level, so a Level 1
-     building houses 1 and a Level 5 one houses 5). The Roost houses only
-     Elara's wyvern. */
-  room: { griffin_tower: 1, dire_wolf_den: 1 },
+     building houses 1 and a Level 5 one houses 5). The Wyvern Roost (Harry,
+     19 October 2026) houses one more than its level: room 1 per level plus
+     roomBase 1, so 2 at Level 1 up to 6 at Level 5. Elara's wyvern is one of
+     those places. Room is room per level times the level, plus roomBase. */
+  room: { griffin_tower: 1, dire_wolf_den: 1, wyvern_roost: 1 },
+  roomBase: { wyvern_roost: 1 },
 
   /* The House orders' days, only for the Explorer's Grant a creature
      pop-up to say. The orders themselves take their "days" from
