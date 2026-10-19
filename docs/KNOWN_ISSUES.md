@@ -3303,3 +3303,12 @@ Old repo: `_legacy/pelagosi_marker_rune_puzzle` (file:line references point ther
 - **Why not write the Bastion directly:** the Bastion is single-window and owns these scores; writing its save from another window could overwrite it. A score is set to the number typed, so an old edit is never re-applied after a later change (its receipt stops that).
 - **Limits to know:** an edit waits while the Bastion is shut. Restoring only an older Bastion backup (not the whole suite) can re-apply a newer DM edit that the older save has no receipt for. The pop-out window does not take part in the "Already open" warning, because it only reads saves and adds to its own list.
 - **Tests:** `tests/rules/dmdoc-edits.test.js`, `tests/e2e/dmdoc-edit.test.js`.
+
+
+### SUI-40 · Stone Quarry & Masonworks and Weavers' Hall opened (19 October 2026)
+**Added, Harry's request** · missing functionality
+
+- **Before:** both were "in development" stubs with no orders and could not be built; their seven trade goods were in the Clan demand table but nothing made them.
+- **After:** both are Level 5 Development Plot facilities with six production orders each, in the Timber Yard's pattern (Harry's list of names and days): no gold, one production order at a time, ingredients taken from the Warehouse when an order is issued, output added as counted lots, shipped from the Dock as before. The map overlays and tiles already existed. Trade cargo only: nothing goes to the party, and no research, gold costs or Explorer rules were added. Harry plans R&D later (for example expedition clothing); none is designed, and Specialist Garments cargo stays separate from any future wearable item.
+- **Assumptions to confirm:** which good feeds which was not in the list, so I used the Timber Yard's chain: Dressed Stone from Raw Stone; Structural Masonry and Decorative Stonework from Dressed Stone; Sailcloth and Specialist Garments from Ordinary Textiles; the bulk processing orders 3 to 3; Improved Specialist Garment Production makes 2 lots from 2 in 7 days (more per day than the 5-day single batch). All in `tools/bastion/data/facilities-data.js`.
+- **Tests:** `tests/rules/bastion.test.js` (the new group), `tests/e2e/bastion-screen.test.js`.

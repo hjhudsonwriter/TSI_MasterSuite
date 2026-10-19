@@ -912,6 +912,9 @@ Harry asked for a complete rework: the old tool's shields, colours and sigils we
 - Done: Pop out window; Change a score… (Political Capital, Honour/Respect, Favour) applied once by the Bastion (SUI-39).
 - Next: whatever Harry chooses (deferred list: full research trees, Hall overhaul, Courier Levels 3–5, market saturation, upkeep deductions, War Room doctrines, Grand War Exercises, Stone Quarry, Weavers' Hall).
 
+### Stone Quarry & Masonworks and Weavers' Hall (19 October 2026)
+- Done: both opened as Level 5 Development Plot facilities with six trade-cargo orders each (SUI-40). Waiting on Harry: confirm which good feeds which (see SUI-40).
+
 ## Next
 **Harry tries Build 3**: makes a crest in the Crest Creator and sends it with Use for the Bastion (with the Bastion open in another window, and with it shut), uploads and removes one, founds a Clan, and sees the crest on the War Table. Then says what to change: the badge, the Party Identity panel's layout, or the Form Clan crest box. That completes the overhaul's plan.
 

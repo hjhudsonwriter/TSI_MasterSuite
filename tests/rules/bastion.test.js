@@ -32,12 +32,12 @@
 
   group('Bastion: content');
 
-  test('22 facilities (the overhaul, 13 October 2026: 2 of them still in development once pull request 3 opened the Fishery and Timber Yard, pull request 6 the Courier Exchange and pull request 7 the three creature buildings), 12 tool tables (9 can be artisan tools), 11 events, 7 clans, 270 compendium items (271 entries)', function (t) {
+  test('22 facilities (the overhaul, 13 October 2026: none still in development: pull request 3 opened the Fishery and Timber Yard, pull request 6 the Courier Exchange, pull request 7 the three creature buildings and 19 October 2026 the Stone Quarry and the Weavers\' Hall), 12 tool tables (9 can be artisan tools), 11 events, 7 clans, 270 compendium items (271 entries)', function (t) {
     t.equal(data.facilities.length, 22);
     /* Pull request 7 (Harry, 14 October 2026) opened the Wyvern Roost, Griffin
        Tower and Dire Wolf Den, so only these two are still in development. */
-    t.same(data.facilities.filter(function (f) { return f.inDevelopment; }).map(function (f) { return f.id; }),
-      ['stone_masonworks', 'weavers_hall']);
+    /* The Stone Quarry & Masonworks and the Weavers' Hall opened on 19 October 2026: none is left. */
+    t.same(data.facilities.filter(function (f) { return f.inDevelopment; }).map(function (f) { return f.id; }), []);
     t.same(['smithy', 'arcane_study', 'laboratory', 'library', 'garden', 'greenhouse', 'gaming_hall'].filter(function (id) { return R.facility(data, id); }), [], 'the old ones are gone');
     t.equal(Object.keys(data.tools).length, 12);
     t.equal(R.toolTableNames(data.tools).length, 9);
@@ -162,7 +162,7 @@
     t.same(s.builtExtras[0], { facId: 'library_scriptorium', status: 'building', startDay: 10, readyDay: 31 });
     t.equal(R.startBuild(s, data, 1, 'library_scriptorium').message, 'That facility is already built or under construction.');
     /* The Wyvern Roost was the example until pull request 7 made it buildable. */
-    t.equal(R.startBuild(s, data, 1, 'stone_masonworks').message, 'The Stone Quarry & Masonworks is still in development: it can\'t be built yet.');
+    t.equal(R.startBuild(s, data, 1, 'stone_masonworks', 'slot').ok, false, 'a Development Plot facility can\'t go in a special slot');
     t.equal(R.startBuild(s, data, 1, 'smithy').ok, false, 'the Smithy is gone');
     t.equal(R.startBuild(s, data, 1, 'barracks').message, 'That facility is already built or under construction.');
     t.equal(R.buildDaysLeft(s, s.builtExtras[0]), 21);
@@ -1451,16 +1451,82 @@
     s.partyLevel = 20;
     R.slotRows(s, 20);
     /* The three creature buildings left this list in pull request 7 (creatures.test.js builds them). */
-    ['stone_masonworks', 'weavers_hall'].forEach(function (id) {
-      var r = R.startBuild(s, data, 2, id, R.isPlotFacility(data, id) ? 'plot' : 'slot');
-      t.equal(r.ok, false, id);
-      t.ok(/still in development/.test(r.message), id + ': ' + r.message);
-    });
+    /* The Stone Quarry and the Weavers' Hall left it too (19 October 2026): nothing is in development now. */
+    t.same(data.facilities.filter(function (f) { return f.inDevelopment; }).map(function (f) { return f.id; }), []);
     ['fishery_smokehouse', 'timber_sawmill', 'courier_exchange'].forEach(function (id) {
       var r = R.startBuild(s, data, 2, id, 'slot');
       t.equal(r.ok, false, id + ' refused in a special slot');
       t.ok([0, 1, 2].some(function (i) { return R.startBuild(s, data, i, id, 'plot').ok; }), id + ' builds on a Development Plot');
     });
+  });
+
+  group('Bastion: the Stone Quarry and the Weavers\' Hall (19 October 2026)');
+  function stoneStock(level, id, goods) {
+    var s = plots(9, [id]);
+    s.facilityLevels[id] = level;
+    s.warehouse = [];
+    s.pendingOrders = [];
+    stock(s, goods);
+    return s;
+  }
+  test('both are plain Timber Yard-style trade facilities: Level 5, a Development Plot, one production order at a time, no gold', function (t) {
+    ['stone_masonworks', 'weavers_hall'].forEach(function (id) {
+      var f = R.facility(data, id);
+      t.same([f.requiredLevel, f.plot, f.productionLimit, !!f.inDevelopment], [5, true, 1, false], id);
+      t.same(f.functions.map(function (fn) { return [fn.days, fn.requiredFacilityLevel, fn.costGP]; }), [[4, 1, 0], [4, 2, 0], [5, 3, 0], [7, 4, 0], [9, 5, 0], [8, 5, 0]], id);
+      f.functions.forEach(function (fn) {
+        fn.options.forEach(function (o) {
+          (o.inputs || []).concat(o.outputs).forEach(function (x) { t.ok(T.bastionGoods.goods.some(function (g) { return g.id === x.good; }), id + ' uses a real good: ' + x.good); });
+        });
+      });
+    });
+    t.same(R.facility(data, 'stone_masonworks').functions.map(function (fn) { return fn.label; }),
+      ['Extract Raw Stone', 'Produce Dressed Stone', 'Produce Structural Masonry', 'Produce Decorative Stonework', 'Bulk Raw Stone Extraction', 'Bulk Stone Processing']);
+    t.same(R.facility(data, 'weavers_hall').functions.map(function (fn) { return fn.label; }),
+      ['Produce Ordinary Textiles', 'Produce Sailcloth', 'Produce Specialist Garments', 'Improved Specialist Garment Production', 'Bulk Textile Production', 'Bulk Sailcloth Production']);
+  });
+  test('they build on a Development Plot, not a special slot, at party level 5', function (t) {
+    var s = built(fresh(), []);
+    s.partyLevel = 9; s.day = 10; R.ensureLevels(s, data);
+    ['stone_masonworks', 'weavers_hall'].forEach(function (id) {
+      t.equal(R.startBuild(s, data, 0, id, 'slot').ok, false, id + ' refused in a special slot');
+    });
+    t.ok(R.startBuild(s, data, 0, 'stone_masonworks', 'plot').ok);
+  });
+  test('extracting needs nothing and the processing orders take their inputs from the Warehouse when they start', function (t) {
+    var s = stoneStock(3, 'stone_masonworks', []);
+    var r = R.issueOrder(s, data, 'stone_masonworks', 'extract_raw_stone', 0, dice([0.3]));
+    t.equal(r.ok, true, r.message);
+    s = stoneStock(3, 'stone_masonworks', []);
+    t.ok(/Needs 1 lot of Raw Stone in the Warehouse; it has 0 lots\./.test(R.issueOrder(s, data, 'stone_masonworks', 'produce_dressed_stone', 0, dice([0.3])).message));
+    s = stoneStock(3, 'stone_masonworks', [['raw_stone', 2]]);
+    r = R.issueOrder(s, data, 'stone_masonworks', 'produce_dressed_stone', 0, dice([0.3]));
+    t.equal(r.ok, true, r.message);
+    t.equal(R.goodsQty(s, 'raw_stone'), 1, 'one lot consumed at the start, not two');
+    t.equal(R.issueOrder(s, data, 'stone_masonworks', 'produce_dressed_stone', 0, dice([0.3])).ok, false, 'one production order at a time');
+  });
+  test('a finished order puts real, counted goods in the Warehouse (bulk processing: 3 raw to 3 dressed; improved garments: 2 textiles to 2 garments)', function (t) {
+    var s = stoneStock(5, 'stone_masonworks', []);
+    stock(s, [['raw_stone', 3]]);
+    t.equal(R.issueOrder(s, data, 'stone_masonworks', 'bulk_stone_processing', 0, dice([0.3])).ok, true);
+    t.equal(R.goodsQty(s, 'raw_stone'), 0, 'three lots taken at the start');
+    var o = s.pendingOrders[0];
+    t.equal(o.dueDay, s.day + 8);
+    finish(s, o);
+    t.same([R.goodsQty(s, 'raw_stone'), R.goodsQty(s, 'dressed_stone')], [0, 3], 'used up, never given back on completion');
+    var w = stoneStock(4, 'weavers_hall', []);
+    stock(w, [['ordinary_textiles', 2]]);
+    t.equal(R.issueOrder(w, data, 'weavers_hall', 'improved_specialist_garment_production', 0, dice([0.3])).ok, true);
+    t.equal(R.goodsQty(w, 'ordinary_textiles'), 0, 'two lots taken');
+    t.equal(w.pendingOrders[0].dueDay, w.day + 7);
+    finish(w, w.pendingOrders[0]);
+    t.equal(R.goodsQty(w, 'specialist_garments'), 2);
+  });
+  test('upgrade levels follow the orders: Level 2 unlocks the second order, and so on', function (t) {
+    var s = stoneStock(1, 'weavers_hall', [['ordinary_textiles', 1]]);
+    t.equal(R.issueOrder(s, data, 'weavers_hall', 'produce_sailcloth', 0, dice([0.3])).message, 'Needs Level 2.');
+    s.facilityLevels.weavers_hall = 2;
+    t.equal(R.issueOrder(s, data, 'weavers_hall', 'produce_sailcloth', 0, dice([0.3])).ok, true);
   });
 
   group('Bastion: Development Plots (pull request 3, 13 October 2026)');

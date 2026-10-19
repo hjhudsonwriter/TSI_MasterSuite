@@ -302,17 +302,18 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     equal((await st(page)).builtExtras.filter(Boolean), []);
   });
 
-  await check('the overhaul (13 October 2026): the new facilities are listed "In development" and can\'t be chosen; the old ones are gone', async () => {
+  await check('the overhaul (13 October 2026): none is "In development" any more; the old ones are gone', async () => {
     const ids = await page.$$eval('[data-test^=build-]', bs => bs.map(b => b.dataset.test.slice(6)));
     equal(ids.filter(id => ['smithy', 'library', 'garden', 'greenhouse', 'laboratory', 'arcane_study', 'gaming_hall'].includes(id)), [], 'the old facilities are gone');
     /* The Courier Exchange left this list in pull request 6 (14 October 2026): it's built on a Development Plot.
        The Wyvern Roost, Griffin Tower and Dire Wolf Den left it in pull request 7 (14 October 2026): they can be built now. */
-    const dev = ['stone_masonworks', 'weavers_hall'];
-    equal(ids.filter(id => dev.includes(id)).sort(), dev.slice().sort());
-    for (const id of dev) {
-      assert(/In development/.test(await text(page, 'build-' + id)), id);
-      equal(await page.$eval('[data-test=build-' + id + ']', e => e.tagName), 'DIV', id + ': not a button');
+    /* The Stone Quarry and the Weavers' Hall left it too (19 October 2026): Development Plot facilities, built on a plot. */
+    for (const id of ['stone_masonworks', 'weavers_hall']) {
+      equal(await page.$eval('[data-test=build-' + id + ']', e => e.tagName), 'BUTTON', id + ': can be built now');
+      assert(!/In development/.test(await text(page, 'build-' + id)), id);
+      assert(/Plots open at party level 9/.test(await text(page, 'build-' + id)), id + ': on a Development Plot');
     }
+    assert(!ids.some(id => id === 'nothing_in_development'), 'nothing is listed as in development');
     for (const id of ['wyvern_roost', 'griffin_tower', 'dire_wolf_den']) {
       equal(await page.$eval('[data-test=build-' + id + ']', e => e.tagName), 'BUTTON', id + ': can be built (pull request 7)');
       assert(!/In development/.test(await text(page, 'build-' + id)), id);
@@ -323,8 +324,7 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     assert(/Plots open at party level 9/.test(await text(page, 'build-courier_exchange')), 'on a Development Plot');
     await page.click('[data-test=build-weavers_hall]', { force: true });
     await page.waitForTimeout(250);
-    equal(await page.$(POP), null, 'no question');
-    equal((await st(page)).builtExtras.filter(Boolean), []);
+    equal((await st(page)).builtExtras.filter(Boolean), [], 'a plot facility isn\'t built in a special slot');
   });
 
   await check('Construct asks first ("Construct the Library & Scriptorium? It takes 21 days."); Cancel builds nothing', async () => {
@@ -494,6 +494,40 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
       await page.waitForTimeout(150);
     }
     await setUp(page, (s) => { s.builtExtras = []; });
+  });
+
+  await check('the Stone Quarry and the Weavers\' Hall (19 October 2026): six orders each, what they use and make, Level 2 unlocks the next, one at a time, goods land in the Warehouse', async () => {
+    const saved = (await st(page)).builtPlots.slice(0, 3);
+    await setUp(page, (s) => {
+      s.builtPlots[0] = { facId: 'stone_masonworks', status: 'built' };
+      s.builtPlots[2] = { facId: 'weavers_hall', status: 'built' };
+      s.facilityLevels.stone_masonworks = 2; s.facilityLevels.weavers_hall = 1; s.warehouse = []; s.pendingOrders = [];
+    });
+    await pause(page);
+    await page.click('[data-test=tile-stone_masonworks]');
+    await page.waitForSelector('[data-test=panel-fac-stone_masonworks]');
+    const lines = sel => page.$eval(sel, e => Array.from(e.children).map(c => c.textContent));
+    equal(await lines('[data-test=goods-stone_masonworks__extract_raw_stone]'), ['Makes: 1 lot of Raw Stone']);
+    equal(await lines('[data-test=goods-stone_masonworks__produce_dressed_stone]'), ['Uses: 1 lot of Raw Stone (the Warehouse has 0 lots)', 'Makes: 1 lot of Dressed Stone', 'Needs 1 lot of Raw Stone in the Warehouse; it has 0 lots.']);
+    equal(await text(page, 'issue-stone_masonworks__produce_structural_masonry'), 'Needs Level 3.');
+    equal(await text(page, 'days-stone_masonworks__bulk_raw_stone_extraction'), 'Takes 9 days');
+    equal((await H.layoutCheck(page, ['[data-test=panel-fac-stone_masonworks]', '[data-test=panel-fac-stone_masonworks] .tsi-modal__foot button'])).outOfView, [], 'the panel fits');
+    await H.shot(page, 'bs-06-stone');
+    await pause(page);
+    await page.click('[data-test=issue-stone_masonworks__extract_raw_stone]');
+    await page.waitForFunction(() => TSI.bastion.debug.state().pendingOrders.some(o => o.fnId === 'extract_raw_stone'));
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(150);
+    await days(page, 4);
+    equal((await st(page)).warehouse.filter(w => w.goodId).map(w => [w.goodId, w.qty]), [['raw_stone', 1]]);
+    await page.click('[data-test=tile-weavers_hall]');
+    await page.waitForSelector('[data-test=panel-fac-weavers_hall]');
+    equal(await text(page, 'days-weavers_hall__produce_ordinary_textiles'), 'Takes 4 days');
+    equal(await text(page, 'issue-weavers_hall__produce_sailcloth'), 'Needs Level 2.');
+    equal((await H.layoutCheck(page, ['[data-test=panel-fac-weavers_hall]'])).outOfView, [], 'the panel fits');
+    await page.keyboard.press('Escape');
+    const keep = JSON.stringify(saved);
+    await page.evaluate(k => TSI.bastion.debug.change(s => { const b = JSON.parse(k); [0, 1, 2].forEach(i => { s.builtPlots[i] = b[i]; }); }), keep);
   });
 
   await check('the Timber Yard: each order says what it uses and makes; Saw Lumber waits for Raw Timber; one production order at a time', async () => {
