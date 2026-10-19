@@ -900,6 +900,10 @@ Harry asked for a complete rework: the old tool's shields, colours and sigils we
 - Done: the DM doc lists the Region's Clan's open Hall agreements with their end day (SUI-38); Hand to the party on typed Warehouse rows.
 - Still waiting: the Combat Tracker reinforcements proposal, the Region investigation reply, and the DM doc's detachable window and manual score edits.
 
+### Combat Tracker reinforcements (19 October 2026)
+- Done: adding creatures to a running or paused fight no longer resets it (ENC-26); arrivals wait for a typed or rolled initiative.
+- Still waiting: the DM doc's detachable window and manual score editing; the Region selector (a warning is the suggested option, awaiting Harry).
+
 ## Next
 **Harry tries Build 3**: makes a crest in the Crest Creator and sends it with Use for the Bastion (with the Bastion open in another window, and with it shut), uploads and removes one, founds a Clan, and sees the crest on the War Table. Then says what to change: the badge, the Party Identity panel's layout, or the Form Clan crest box. That completes the overhaul's plan.
 

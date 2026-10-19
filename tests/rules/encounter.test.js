@@ -294,4 +294,78 @@
     t.same([d.tokenSize, d.grid.size, d.grid.opacity, d.fog.radiusSquares, d.fog.opacity, d.fog.monstersUnderFog], [56, 70, 0.35, 6, 0.9, true]);
     t.same(d.camera, { x: 0, y: 0, zoom: 1 });
   });
+
+  group('Combat Tracker: reinforcements added to a fight in progress');
+  function withLibrary(s) {
+    s.library = [{ id: 'g', name: 'Goblin', type: 'monster', maxHp: 7, curHp: 7, initBonus: 2 }];
+    s.selectedLibraryIds = new Set(['g']);
+    return s;
+  }
+  function midFight() {
+    var s = withLibrary(fight([c('Ana', 'pc', 20, { init: 18 }), c('Bo', 'pc', 20, { init: 12 }), c('Orc', 'monster', 15, { init: 12 }), c('Cy', 'pc', 20, { init: 5 })], { turnIndex: 1, round: 3 }));
+    s.ui.targetId = 'Bo';
+    return s;
+  }
+  test('adding mid-fight keeps the round, the turn, the status and the order; the arrival waits at the end', function (t) {
+    var s = midFight();
+    var r = R.addSelected(s);
+    t.same([r.ok, r.arrivals], [true, 1]);
+    t.same([s.encounter.status, s.encounter.round, s.encounter.turnIndex], ['running', 3, 1]);
+    t.same(names(s.encounter.roster), ['Ana', 'Bo', 'Orc', 'Cy', 'Goblin']);
+    t.equal(s.encounter.roster[4].arrival, true);
+    t.equal(s.ui.targetId, 'Bo', 'the chosen target stays');
+    t.same(R.waitingArrivals(s.encounter).length, 1);
+  });
+  test('paused counts as in progress; before the fight starts the old behaviour is kept (back to Ready, round 1)', function (t) {
+    var s = midFight();
+    s.encounter.status = 'paused';
+    R.addSelected(s);
+    t.same([s.encounter.status, s.encounter.round, s.encounter.turnIndex], ['paused', 3, 1]);
+    var r = withLibrary(fight([c('Ana', 'pc', 20)], { status: 'ready', turnIndex: 0, round: 1 }));
+    R.addSelected(r);
+    t.same([r.encounter.status, r.encounter.round, r.encounter.turnIndex], ['ready', 1, 0]);
+    t.equal(r.encounter.roster[1].arrival, undefined, 'no waiting flag before the fight');
+  });
+  test('a waiting arrival never takes a turn, and the turn order skips it', function (t) {
+    var s = midFight();
+    R.addSelected(s);
+    s.encounter.turnIndex = 3;
+    R.completeTurn(s, ok);
+    t.same([s.encounter.turnIndex, s.encounter.round], [0, 4], 'Cy to Ana, skipping the waiting Goblin; a new round');
+  });
+  test('placing an arrival puts it after others with the same number, and the turn marker follows the same creature', function (t) {
+    var s = midFight();
+    R.addSelected(s);
+    var id = s.encounter.roster[4].encId;
+    var r = R.placeArrival(s.encounter, id, '12');
+    t.equal(r.ok, true);
+    t.same(names(s.encounter.roster), ['Ana', 'Bo', 'Orc', 'Goblin', 'Cy'], 'after Bo and Orc, who also have 12');
+    t.equal(s.encounter.roster[s.encounter.turnIndex].name, 'Bo', 'still Bo\'s turn');
+    var s2 = midFight();
+    R.addSelected(s2);
+    R.placeArrival(s2.encounter, s2.encounter.roster[4].encId, 20);
+    t.same(names(s2.encounter.roster), ['Goblin', 'Ana', 'Bo', 'Orc', 'Cy']);
+    t.equal(s2.encounter.turnIndex, 2, 'the marker moved down with Bo');
+    t.equal(s2.encounter.round, 3);
+  });
+  test('Roll for new arrivals rolls only those waiting and nobody else', function (t) {
+    var s = midFight();
+    R.addSelected(s);
+    R.addSelected(s);
+    var before = s.encounter.roster.slice(0, 4).map(function (x) { return x.init; });
+    var r = withDice([face(10), face(1)], function () { return R.rollArrivals(s); });
+    t.same([r.ok, r.count], [true, 2]);
+    t.same(s.encounter.roster.filter(function (x) { return x.name.indexOf('Goblin') === 0; }).map(function (x) { return x.init; }).sort(function (a, b) { return a - b; }), [3, 12], 'd20 + 2');
+    t.same(R.waitingArrivals(s.encounter).length, 0);
+    t.same(s.encounter.roster.filter(function (x) { return !/Goblin/.test(x.name); }).map(function (x) { return x.init; }), before, 'the others kept their numbers');
+    t.equal(R.rollArrivals(s).ok, false, 'nothing left to roll');
+  });
+  test('a bad initiative changes nothing', function (t) {
+    var s = midFight();
+    R.addSelected(s);
+    var id = s.encounter.roster[4].encId;
+    ['', 'x', '1.5', 61, -21].forEach(function (v) { t.equal(R.placeArrival(s.encounter, id, v).ok, false, String(v)); });
+    t.equal(s.encounter.roster[4].arrival, true);
+    t.equal(R.placeArrival(s.encounter, 'Ana', 5).ok, false, 'someone already in the order');
+  });
 }());

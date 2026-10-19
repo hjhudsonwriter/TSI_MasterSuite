@@ -156,7 +156,7 @@
       var idx = ((startIndex % n) + n) % n;
       for (var i = 0; i < n; i++) {
         var c = e.roster[idx];
-        if (c && c.type !== 'npc' && !c.defeated && c.curHp > 0) return idx;
+        if (c && c.type !== 'npc' && !c.defeated && c.curHp > 0 && !c.arrival) return idx;
         idx = (idx + 1) % n;
       }
       return 0;
@@ -314,22 +314,84 @@
     },
 
     /* Add Selected: copies of the chosen library entries join the encounter, a
-       second copy gets " a", then " b"... (old btnAddSelected). It always
-       resets the fight to Ready, round 1 (C4: kept). */
+       second copy gets " a", then " b"... (old btnAddSelected). Before the
+       fight starts it puts the fight back to Ready, round 1 (C4: kept).
+       While a fight is running or paused it does NOT: the round, whose turn
+       it is and everyone's order stay as they are, and the new arrivals wait
+       at the end of the list, skipped, until they have an initiative
+       (Harry, 19 October 2026: reinforcements). */
     addSelected: function (state) {
       var ids = Array.from(state.selectedLibraryIds);
       if (!ids.length) return { ok: false, message: 'Select one or more combatants from Storage first.' };
       var e = state.encounter;
+      var live = e.status === 'running' || e.status === 'paused';
+      var added = 0;
       ids.forEach(function (id) {
         var base = state.library.filter(function (x) { return x.id === id; })[0];
         if (!base) return;
-        e.roster.push(R.rosterCopy(e, base));
+        var copy = R.rosterCopy(e, base);
+        if (live) copy.arrival = true;
+        e.roster.push(copy);
+        added++;
       });
+      if (live) return { ok: true, arrivals: added };
       e.status = 'ready';
       e.turnIndex = 0;
       e.round = 1;
       state.ui.targetId = (e.roster[0] || {}).encId || null;
       return { ok: true };
+    },
+
+    /* Reinforcements still waiting for an initiative. */
+    waitingArrivals: function (e) {
+      return (e.roster || []).filter(function (c) { return c.arrival; });
+    },
+
+    /* The initiative order without the name tie-break: NPCs last, highest first. */
+    initCompare: function (a, b) {
+      if (a.type === 'npc' && b.type !== 'npc') return 1;
+      if (b.type === 'npc' && a.type !== 'npc') return -1;
+      return Number(b.init || 0) - Number(a.init || 0);
+    },
+
+    /* Give one waiting arrival its initiative and slot it into the order: after
+       everyone already there with the same number. The round, the status and
+       whose turn it is don't change (the turn marker follows the same
+       creature to its new place). value: a whole number, -20 to 60. */
+    placeArrival: function (e, encId, value) {
+      var c = e.roster.filter(function (x) { return x.encId === encId; })[0];
+      if (!c || !c.arrival) return { ok: false, message: 'That creature isn\'t waiting for an initiative.' };
+      var n = typeof value === 'number' ? value : (String(value).trim() === '' ? NaN : Number(value));
+      if (!isFinite(n) || n !== Math.floor(n) || n < -20 || n > 60) return { ok: false, message: 'Type a whole number for the initiative, from -20 to 60.' };
+      var actor = (e.status === 'running' || e.status === 'paused') ? e.roster[e.turnIndex] : null;
+      c.init = n;
+      delete c.arrival;
+      e.roster = e.roster.filter(function (x) { return x !== c; });
+      var at = e.roster.length;
+      for (var i = 0; i < e.roster.length; i++) {
+        if (e.roster[i].arrival) { at = i; break; }
+        if (R.initCompare(c, e.roster[i]) < 0) { at = i; break; }
+      }
+      e.roster.splice(at, 0, c);
+      if (actor) {
+        var k = e.roster.indexOf(actor);
+        if (k >= 0) e.turnIndex = k;
+      }
+      return { ok: true, name: c.name, init: n };
+    },
+
+    /* Roll for new arrivals: d20 plus the library bonus for each one waiting,
+       and no one else. */
+    rollArrivals: function (state) {
+      var e = state.encounter;
+      var waiting = R.waitingArrivals(e);
+      if (!waiting.length) return { ok: false, message: 'No one is waiting for an initiative.' };
+      waiting.forEach(function (c) {
+        var base = state.library.filter(function (x) { return x.id === c.baseId; })[0];
+        var bonus = (base && Number.isFinite(base.initBonus)) ? base.initBonus : 0;
+        R.placeArrival(e, c.encId, R.d20() + bonus);
+      });
+      return { ok: true, count: waiting.length };
     },
 
     /* A copy of a library entry for the encounter: a second copy gets " a",
