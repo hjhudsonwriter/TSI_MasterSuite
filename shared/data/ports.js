@@ -1,6 +1,9 @@
 /* The Scarlett Isles: D&D Tool Suite — the ports where the Ironbow can hold
    a Port Charter (pull request 5 of the facilities overhaul; Harry, 14
-   October 2026: "Timberport and Goldport").
+   October 2026: "Timberport and Goldport"); Harry added eight more on 19
+   October 2026: the other genuine port towns of the Scarlett Isles, and the
+   River Rook as Clan Bacca's river port, since Midland Province has no
+   harbour town.
 
    A Port Charter lets the Bastion's ships sell cargo at that port. The DM
    grants one in the Explorer, the Explorer link carries it to the Bastion,
@@ -22,5 +25,13 @@ window.TSI_DATA = window.TSI_DATA || {};
 
 window.TSI_DATA.ports = {
   timberport: { label: 'Timberport', pin: 'timberport', mapId: 'northern_province_west', region: 'northern_province' },
-  goldport: { label: 'Goldport', pin: 'goldport', mapId: 'southern_province_west', region: 'southern_province' }
+  goldport: { label: 'Goldport', pin: 'goldport', mapId: 'southern_province_west', region: 'southern_province' },
+  port_brawdlyn: { label: 'Port Brawdlyn', pin: 'port_brawdlyn', mapId: 'the_east_isle', region: 'the_east_isle' },
+  steelport: { label: 'Steelport', pin: 'steelport', mapId: 'eastern_province_south', region: 'eastern_province' },
+  moltenport: { label: 'Moltenport', pin: 'moltenport', mapId: 'southern_province_east', region: 'southern_province' },
+  leatherport: { label: 'Leatherport', pin: 'leatherport', mapId: 'the_north_isle', region: 'the_north_isle' },
+  bleakharbour: { label: 'Bleakharbour', pin: 'bleakharbour', mapId: 'the_north_isle', region: 'the_north_isle' },
+  alderbridge: { label: 'Alderbridge', pin: 'alderbridge', mapId: 'northern_province_east', region: 'northern_province' },
+  redport: { label: 'Redport', pin: 'redport', mapId: 'western_province_south', region: 'western_province' },
+  river_rook: { label: 'The River Rook', pin: 'river_rook', mapId: 'midland_province', region: 'midland_province' }
 };

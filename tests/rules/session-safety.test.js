@@ -182,4 +182,29 @@
     t.equal(BR.cleanUi({ whSort: 'zigzag' }).whSort, undefined);
     t.equal(BR.cleanUi({ gridOpen: false }).whSort, undefined);
   });
+
+  group('Warehouse: trade goods that run out leave the list (19 October 2026)');
+  test('only trade goods with none left vanish; supplies, ingredients and typed rows stay', function (t) {
+    var s = BR.defaultState(bdata);
+    s.warehouse = [
+      { id: 'a', item: 'Rope', qty: 0 },
+      { id: 'b', goodId: 'raw_timber', item: 'Raw Timber', qty: 0 },
+      { id: 'c', goodId: 'sawn_lumber', item: 'Sawn Lumber', qty: 2 },
+      { id: 'd', goodId: 'expedition_provision_pack', item: 'Expedition Provision Pack', qty: 0 },
+      { id: 'e', goodId: 'restorative_herbs', item: 'Restorative Herbs', qty: 0 }
+    ];
+    t.equal(BR.pruneEmptyCargo(s, bdata), true);
+    t.same(s.warehouse.map(function (w) { return w.id; }), ['a', 'c', 'd', 'e'], 'the empty Raw Timber line went; the rest stayed');
+    t.equal(BR.pruneEmptyCargo(s, bdata), false, 'nothing more to remove');
+  });
+  test('using the last of a trade good takes its line away once the Warehouse is tidied, and making more brings a line back', function (t) {
+    var s = BR.defaultState(bdata);
+    s.warehouse = [];
+    BR.addGoods(s, bdata, 'raw_timber', 2, '', function () { return 0.5; });
+    t.equal(BR.takeGoods(s, bdata, [{ good: 'raw_timber', qty: 2 }]).length, 1);
+    BR.pruneEmptyCargo(s, bdata);
+    t.same(s.warehouse.filter(function (w) { return w.goodId; }), [], 'no line for what is not there');
+    BR.addGoods(s, bdata, 'raw_timber', 1, '', function () { return 0.5; });
+    t.same(s.warehouse.filter(function (w) { return w.goodId; }).map(function (w) { return [w.goodId, w.qty]; }), [['raw_timber', 1]]);
+  });
 }());

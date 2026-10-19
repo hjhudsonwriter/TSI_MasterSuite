@@ -111,7 +111,19 @@ window.TSI_DATA.bastionCommerce = {
      (bastion-data.js clanTrade: Blackstone low, Molten high). */
   routes: {
     timberport: { outDays: 7, backDays: 7, risk: 'low' },
-    goldport: { outDays: 7, backDays: 7, risk: 'high' }
+    goldport: { outDays: 7, backDays: 7, risk: 'high' },
+    /* The ports Harry added on 19 October 2026 (his order, shortest sailing
+       to longest, with Redport the only one longer than Timberport and
+       Goldport). Days and risk are my proposal for him to confirm: the risk
+       rises with the days. The River Rook is Clan Bacca's river port. */
+    port_brawdlyn: { outDays: 2, backDays: 2, risk: 'low' },
+    steelport: { outDays: 3, backDays: 3, risk: 'low' },
+    moltenport: { outDays: 4, backDays: 4, risk: 'medium' },
+    river_rook: { outDays: 4, backDays: 4, risk: 'medium' },
+    leatherport: { outDays: 5, backDays: 5, risk: 'medium' },
+    bleakharbour: { outDays: 6, backDays: 6, risk: 'high' },
+    alderbridge: { outDays: 7, backDays: 7, risk: 'high' },
+    redport: { outDays: 9, backDays: 9, risk: 'very_high' }
   },
 
   /* ---------- Voyage risk ----------
@@ -122,7 +134,9 @@ window.TSI_DATA.bastionCommerce = {
   risks: {
     low: { label: 'Low', pct: 5 },
     medium: { label: 'Medium', pct: 10 },
-    high: { label: 'High', pct: 20 }
+    high: { label: 'High', pct: 20 },
+    /* Redport only (19 October 2026): the longest voyage, the riskiest. */
+    very_high: { label: 'Very high', pct: 30 }
   },
 
   /* Protection for a voyage: each takes percentage points off the chance

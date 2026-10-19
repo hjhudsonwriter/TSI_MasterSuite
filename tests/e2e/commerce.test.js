@@ -123,10 +123,11 @@ async function closePanel(ba) {
     equal((await bas(ba)).day, 1);
   });
 
-  await check('Port Charter… lists both ports, Not held; Grant sends Goldport\'s with what it\'s for', async () => {
+  await check('Port Charter… lists all ten ports, Not held (the eight added on 19 October 2026 too), and the dialog fits the laptop; Grant sends Goldport\'s with what it\'s for', async () => {
     await ex.click('[data-test=charter-open]');
     await ex.waitForSelector('[data-test=charter-dialog]');
-    equal(await ex.$$eval('[data-test=charter-ports] li', l => l.map(x => x.textContent)), ['Timberport (Clan Blackstone): Not held.', 'Goldport (Clan Molten): Not held.']);
+    equal(await ex.$$eval('[data-test=charter-ports] li', l => l.map(x => x.textContent)), ['Timberport (Clan Blackstone): Not held.', 'Goldport (Clan Molten): Not held.', 'Port Brawdlyn (Clan Rowthorn): Not held.', 'Steelport (Clan Slade): Not held.', 'Moltenport (Clan Molten): Not held.', 'Leatherport (Clan Karr): Not held.', 'Bleakharbour (Clan Karr): Not held.', 'Alderbridge (Clan Blackstone): Not held.', 'Redport (Clan Farmer): Not held.', 'The River Rook (Clan Bacca): Not held.']);
+    equal((await H.layoutCheck(ex, ['[data-test=charter-dialog]', '[data-test=charter-dialog] .tsi-modal__foot button'])).outOfView, [], 'the dialog fits the laptop');
     await ex.selectOption('[data-test=charter-port]', 'goldport');
     await ex.fill('[data-test=charter-why]', 'Cleared the wreckers');
     await ex.click('[data-test=charter-dialog] .tsi-btn--primary');

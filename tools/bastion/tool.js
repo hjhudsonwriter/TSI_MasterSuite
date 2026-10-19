@@ -2779,6 +2779,8 @@
           save();
         };
         [qty, notes].forEach(function (input) { input.addEventListener('input', sync); });
+        /* Set to 0 by hand and left: a trade good with none left goes from the list. */
+        qty.addEventListener('change', function () { if (R.clampInt(row.qty, 0) <= 0 && g && g.kind === 'cargo') done(); });
         return el('div', { class: 'tsi-bas-wh__row tsi-bas-wh__row--goods', 'data-good': row.goodId }, [
           el('div', { class: 'tsi-bas-wh__good', 'data-test': 'wh-item-' + i }, [el('span', { class: 'tsi-bas-wh__goodname', text: row.item || R.goodName(data, row.goodId) }), unit ? el('span', { class: 'tsi-bas-wh__unit', text: unit, title: unit }) : null]),
           qty, value, notes,
@@ -5214,6 +5216,8 @@
         closePicker();
         /* Built facilities get level 1, as the old tool did on every redraw (1543-1547). */
         R.ensureLevels(state, data);
+        /* A trade good that has run out has no line in the Warehouse. */
+        if (R.pruneEmptyCargo(state, data)) save();
         setValue(levelSelect, state.partyLevel);
         renderTurnButton();
         renderSide();
