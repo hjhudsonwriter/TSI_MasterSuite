@@ -155,7 +155,7 @@
       if (!rules.backupDue(stamp, Date.now(), has)) return;
       var how = stamp === null ? 'This campaign has never been backed up.' : 'The last backup was ' + rules.backupAgeText(stamp, Date.now()) + '.';
       TSI.notify(how + ' If the browser\'s site data is ever cleared, the campaign goes with it. Export now to keep a copy.', {
-        type: 'warn', title: 'Back up your campaign.', id: 'tsi-backup-reminder', timeout: 0,
+        type: 'warn', title: 'Back up your campaign.', id: 'tsi-backup-reminder', timeout: 30000,
         actions: [{ label: 'Export', primary: true, onClick: function () { TSI.backup.exportTool(toolId); } }]
       });
     },
