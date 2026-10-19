@@ -3293,3 +3293,13 @@ Old repo: `_legacy/pelagosi_marker_rune_puzzle` (file:line references point ther
 - **After:** the DM doc lists the open agreements for the Region's Clan (and those naming no Clan), with their end day, labelled as yours to run at the table; scores the Bastion applies itself are not listed. On a typed Warehouse row, **Hand to the party** asks how many and who, deducts only that many once (the row goes at 0), and the Day Log records item, quantity, recipient, day and that the DM must write it on the D&D sheet. Goods the Ironbow makes cannot be handed over there (the Courier Exchange is the route), and no Explorer inventory was added.
 - **Not changed:** how the Region decides the Clan (see the Region investigation); expiry is shown, not enforced.
 - **Tests:** `tests/rules/campaign.test.js`, `tests/rules/session-safety.test.js`, `tests/e2e/dmdoc.test.js`, `tests/e2e/phase9.test.js`.
+
+
+### SUI-39 · DM doc: Pop out window and scores set by hand (19 October 2026)
+**Added, Harry's request** · usability
+
+- **Before:** the DM doc only floated inside the window that opened it, and Political Capital, Honour/Respect and Favour could be changed only inside the Bastion.
+- **After:** **Pop out** opens the DM doc in a window of its own (`index.html?dmdoc=1`) to drag onto another screen; it reads the same saves, and the floating one closes. **Change a score…** sets a Clan's Political Capital (−100 to 100) or Honour/Respect (−5 to 5), or a god's Favour (0 to 100%). The DM doc only adds to its own list (`tsi.dmdoc.edits`, in Back up everything); the open Bastion applies each edit once, writes a receipt in its own save (`dmEdits.done`) with the change, and logs what the score was and became. The list shows Waiting, Applied or Refused. The Bastion never has to be told to look: it checks every 2 seconds and when it opens.
+- **Why not write the Bastion directly:** the Bastion is single-window and owns these scores; writing its save from another window could overwrite it. A score is set to the number typed, so an old edit is never re-applied after a later change (its receipt stops that).
+- **Limits to know:** an edit waits while the Bastion is shut. Restoring only an older Bastion backup (not the whole suite) can re-apply a newer DM edit that the older save has no receipt for. The pop-out window does not take part in the "Already open" warning, because it only reads saves and adds to its own list.
+- **Tests:** `tests/rules/dmdoc-edits.test.js`, `tests/e2e/dmdoc-edit.test.js`.

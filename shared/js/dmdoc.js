@@ -36,6 +36,7 @@
   var OPEN_KEY = TSI.storeRules.spaceNames(TSI.space).dmdocOpen;
   var EXPLORER_KEY = 'tsi.explorer.save';
   var BASTION_KEY = 'tsi.bastion.state';
+  var EDITS_KEY = 'tsi.dmdoc.edits';
   var REFRESH_MS = 2000;
 
   var toggleButton = null;
@@ -51,6 +52,9 @@
   var shownKey = '';     /* what's on show, so an unchanged read doesn't redraw */
   var timer = null;
   var reading = false;
+  var docked = false;    /* the pop-out window: the DM doc fills it (index.html?dmdoc=1) */
+  var lastBastion = null; /* the Bastion's save as last read (for the scores in the dialog and the receipts) */
+  var lastEdits = [];     /* this DM doc's own list of score changes, as last read */
 
   /* ---------- The window ---------- */
   function view() {
@@ -94,7 +98,7 @@
   /* Fit the chosen size and place into the window as it is now (not saved,
      so moving back to a bigger screen puts it back where it was). */
   function fit() {
-    if (!panel || !opened) return;
+    if (!panel || !opened || docked) return;
     place(saved ? R.clamp(saved, view()) : R.defaultRect(view()));
   }
 
@@ -110,6 +114,19 @@
       onclick: function () { close({ returnFocus: true }); }
     }, TSI.el('span', { 'aria-hidden': 'true', text: '✕' }));
 
+    var popButton = docked ? null : TSI.el('button', {
+      type: 'button',
+      class: 'tsi-btn tsi-btn--small tsi-btn--ghost tsi-dmdoc__popout',
+      title: 'Open the DM doc in its own window, to drag onto another screen',
+      'data-test': 'dmdoc-popout',
+      onclick: popOut
+    }, 'Pop out');
+    if (docked) {
+      closeButton.setAttribute('title', 'Close this window');
+      closeButton.setAttribute('aria-label', 'Close this window');
+      closeButton.onclick = function () { try { window.close(); } catch (e) { /* the browser may not allow it */ } };
+    }
+
     bar = TSI.el('div', {
       class: 'tsi-dmdoc__bar',
       tabindex: '0',
@@ -120,6 +137,7 @@
       'data-test': 'dmdoc-bar'
     }, [
       TSI.el('h2', { class: 'tsi-dmdoc__title', text: 'DM doc' }),
+      popButton,
       closeButton
     ]);
 
@@ -148,12 +166,19 @@
       grip
     ]);
 
-    bar.addEventListener('pointerdown', function (event) {
-      if (event.target.closest('.tsi-dmdoc__close')) return;
-      startDrag(event, 'move', bar);
-    });
-    grip.addEventListener('pointerdown', function (event) { startDrag(event, 'resize', grip); });
-    bar.addEventListener('keydown', onBarKey);
+    if (docked) {
+      /* The pop-out window: it fills the window, so nothing to drag or resize. */
+      panel.classList.add('tsi-dmdoc--docked');
+      bar.removeAttribute('title');
+      grip.hidden = true;
+    } else {
+      bar.addEventListener('pointerdown', function (event) {
+        if (event.target.closest('.tsi-dmdoc__close, .tsi-dmdoc__popout')) return;
+        startDrag(event, 'move', bar);
+      });
+      grip.addEventListener('pointerdown', function (event) { startDrag(event, 'resize', grip); });
+      bar.addEventListener('keydown', onBarKey);
+    }
 
     document.body.appendChild(panel);
   }
@@ -187,6 +212,91 @@
         ]);
       }))
     ]);
+  }
+
+  function regionsData() { return (window.TSI_DATA && window.TSI_DATA.regions) || {}; }
+
+  /* ---------- Changing a score by hand ---------- */
+  function currentScore(kind, key) {
+    var map = kind === 'pc' ? 'politicalCapital' : kind === 'hr' ? 'honourRespectByClan' : 'favour';
+    var v = lastBastion && lastBastion[map] ? lastBastion[map][key] : 0;
+    return typeof v === 'number' && isFinite(v) ? v : 0;
+  }
+
+  /* The dialog: which score, for whom, the new number. It asks first, and
+     what it records is applied by the Bastion once (see dmdoc-rules.js). */
+  function editDialog(defaultClan) {
+    var kindSel = el('select', { class: 'tsi-input', 'aria-label': 'Which score', 'data-test': 'dmdoc-edit-kind' }, Object.keys(R.EDIT_KINDS).map(function (k) {
+      return el('option', { value: k, text: R.EDIT_KINDS[k].label });
+    }));
+    var whoSel = el('select', { class: 'tsi-input', 'aria-label': 'For', 'data-test': 'dmdoc-edit-who' });
+    var valueBox = el('input', { type: 'number', step: '1', class: 'tsi-input', 'aria-label': 'New value', 'data-test': 'dmdoc-edit-value' });
+    var now = el('p', { class: 'tsi-dmdoc__note', 'data-test': 'dmdoc-edit-now' });
+    function fillWho() {
+      var scope = R.EDIT_KINDS[kindSel.value].scope;
+      TSI.clear(whoSel);
+      (scope === 'god' ? R.GODS : R.clanKeys()).forEach(function (k) { whoSel.appendChild(el('option', { value: k, text: R.keyName(kindSel.value, k) })); });
+      if (scope === 'clan' && defaultClan) whoSel.value = defaultClan;
+      showNow();
+    }
+    function showNow() {
+      var k = R.EDIT_KINDS[kindSel.value];
+      var cur = currentScore(kindSel.value, whoSel.value);
+      valueBox.min = String(k.min); valueBox.max = String(k.max);
+      valueBox.value = String(cur);
+      now.textContent = 'Now ' + cur + (kindSel.value === 'favour' ? '%' : '') + ' in the Bastion. Allowed: ' + k.min + ' to ' + k.max + '.';
+    }
+    kindSel.addEventListener('change', fillWho);
+    whoSel.addEventListener('change', showNow);
+    fillWho();
+    var body = el('div', { class: 'tsi-dmdoc__edit' }, [
+      el('label', { class: 'tsi-field' }, [el('span', { text: 'Score' }), kindSel]),
+      el('label', { class: 'tsi-field' }, [el('span', { text: 'For' }), whoSel]),
+      el('label', { class: 'tsi-field' }, [el('span', { text: 'New value' }), valueBox]),
+      now,
+      el('p', { class: 'tsi-dmdoc__note', text: 'This sets the score to the number you type. The Bastion applies it once, the next time it is open (straight away if it already is), and its Day Log records what it was and what it became.' })
+    ]);
+    function again() {
+      return TSI.modal.open({
+        title: 'Change a score', body: body, escValue: false,
+        actions: [{ label: 'Cancel', value: false }, { label: 'Set it', value: true, primary: true }]
+      }).then(function (go) {
+        if (!go) return;
+        var made = R.makeEdit(kindSel.value, whoSel.value, valueBox.value, Date.now(), Math.random, null);
+        if (!made.ok) return TSI.modal.alert({ title: 'Change a score', message: made.message }).then(again);
+        return TSI.store.fresh(EDITS_KEY, null).then(function (raw) {
+          TSI.store.set(EDITS_KEY, R.addEdit(raw, made.edit));
+          shownKey = '';
+          refresh();
+        });
+      });
+    }
+    return again();
+  }
+
+  /* What was changed lately, and whether the Bastion has applied it yet. */
+  function editsSection(sum) {
+    var kids = [
+      el('p', { class: 'tsi-dmdoc__note', text: 'Set a Clan\'s Political Capital or Honour/Respect, or a god\'s Favour by hand. The Bastion applies it once, and its Day Log keeps it.' }),
+      el('button', {
+        type: 'button', class: 'tsi-btn tsi-btn--small', 'data-test': 'dmdoc-edit',
+        onclick: TSI.oneAtATime(function () { return editDialog(sum.region && regionsData()[sum.region.id] ? regionsData()[sum.region.id].clanKey : ''); })
+      }, 'Change a score…')
+    ];
+    var recent = lastEdits.slice(-6).reverse();
+    if (recent.length) {
+      kids.push(el('ul', { class: 'tsi-dmdoc__effects', 'data-test': 'dmdoc-edit-list' }, recent.map(function (e) {
+        var st = R.editStatus(e, lastBastion);
+        var status = st.state === 'waiting' ? 'Waiting for the Bastion: open it to apply.'
+          : st.state === 'refused' ? 'Refused: ' + st.receipt.why
+          : 'Applied' + (st.receipt.day !== null ? ' on Day ' + st.receipt.day : '') + ': was ' + st.receipt.was + (e.kind === 'favour' ? '%' : '') + '.';
+        return el('li', { class: 'tsi-dmdoc__effect', 'data-test': 'dmdoc-edit-item', 'data-state': st.state }, [
+          el('p', { class: 'tsi-dmdoc__effect-name' }, [el('strong', { text: R.editText(e) })]),
+          el('p', { class: 'tsi-dmdoc__effect-until', text: status })
+        ]);
+      })));
+    }
+    return section('Change a score', 'dmdoc-edits', kids);
   }
 
   function meter(label, value, min, max, text, test) {
@@ -257,6 +367,7 @@
     }
     if (sum.trackedAnywhere && sum.trackedAnywhere.length) where.push(el('div', { class: 'tsi-dmdoc__card' }, [trackedList(sum.trackedAnywhere, 'Open agreements that name no Clan (you run these at the table)', 'dmdoc-tracked-any')]));
     parts.push(section('Where the party is', 'dmdoc-where', where));
+    parts.push(editsSection(sum));
 
     parts.push(section('Active effects', 'dmdoc-effects', sum.effects.length
       ? [el('ul', { class: 'tsi-dmdoc__effects' }, sum.effects.map(function (e) {
@@ -289,11 +400,13 @@
   function refresh() {
     if (!opened || !loaded || reading) return;
     reading = true;
-    Promise.all([TSI.store.fresh(EXPLORER_KEY, null), TSI.store.fresh(BASTION_KEY, null)]).then(function (saves) {
+    Promise.all([TSI.store.fresh(EXPLORER_KEY, null), TSI.store.fresh(BASTION_KEY, null), TSI.store.fresh(EDITS_KEY, null)]).then(function (saves) {
       reading = false;
       if (!opened) return;
+      lastBastion = saves[1];
+      lastEdits = R.cleanEdits(saves[2]);
       var sum = TSI.campaign.summary(saves[0], saves[1], (window.TSI_DATA && window.TSI_DATA.regions) || {});
-      var key = JSON.stringify(sum);
+      var key = JSON.stringify([sum, lastEdits.slice(-6).map(function (e) { return [e.id, R.editStatus(e, lastBastion).state]; })]);
       if (key === shownKey) return;
       shownKey = key;
       render(sum);
@@ -398,6 +511,16 @@
     if (toggleButton && ((options && options.returnFocus) || hadFocus)) toggleButton.focus({ preventScroll: true });
   }
 
+  /* Pop out: the DM doc in a window of its own (index.html?dmdoc=1), which
+     can be dragged onto another screen. It reads the same saves, so it keeps
+     itself up to date, and the score changes it makes go through the same
+     list. The floating one closes here so there's only one. */
+  function popOut() {
+    var url = TSI.shell && TSI.shell.dmDocUrl ? TSI.shell.dmDocUrl() : 'index.html?dmdoc=1';
+    try { window.open(url, 'tsi-dmdoc-window', 'noopener,popup,width=520,height=900'); } catch (e) { TSI.reportError(e, 'opening the DM doc in its own window'); return; }
+    close({ returnFocus: true });
+  }
+
   var waiting = false;
   function toggle() {
     if (!loaded) {
@@ -462,6 +585,21 @@
         TSI.store.onStatus(function (st) { if (opened && st && st.state === 'saved') refresh(); });
         document.addEventListener('visibilitychange', function () { if (opened && !document.hidden) refresh(); });
         if (wasOpen()) open({ focus: false });
+      });
+    },
+
+    /* The pop-out window's own page: the DM doc fills it, always open. */
+    startDocked: function () {
+      if (started) return;
+      started = true;
+      docked = true;
+      TSI.store.ready.then(function () {
+        loaded = true;
+        build();
+        opened = true;
+        panel.hidden = false;
+        startReading();
+        document.addEventListener('visibilitychange', function () { if (!document.hidden) refresh(); });
       });
     },
 

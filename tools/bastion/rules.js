@@ -131,6 +131,7 @@
       /* The Hall's Diplomatic Records (pull request 9, diplomacy-rules.js): a
          ledger apart from diplomacy, so Clear Diplomacy Records never wipes it. */
       diplomaticRecords: { next: 1, list: [] },
+      dmEdits: { done: {} },
       /* The days overhaul (8 October 2026): v 2 marks a save in days. day is
          the last day the Bastion has passed; anchored, whether it has read
          the Explorer's day yet (until then any Explorer day moves the whole
@@ -435,6 +436,7 @@
     /* The creatures (pull request 7), before the war's records, which read them. */
     d.creatures = R.cleanCreatures(s.creatures, d.day);
     d.greatRites = R.cleanGreatRites(s.greatRites);
+    d.dmEdits = R.cleanDmEdits(s.dmEdits);
     d.diplomaticRecords = R.cleanDiplomaticRecords ? R.cleanDiplomaticRecords(s.diplomaticRecords, d.day, data) : (isObj(s.diplomaticRecords) ? s.diplomaticRecords : { next: 1, list: [] });
     if (arr(s.militaryActions)) d.militaryActions = s.militaryActions.filter(isObj);
     /* Port Charters, ships at sea, standing shipments and sales (pull
@@ -452,6 +454,66 @@
     return d;
   };
   R.toSave = function (state) { return TSI.clone(state); };
+
+  /* ---------- Scores set by hand in the DM doc (Harry, 19 October 2026) ----------
+     The DM doc keeps a list of edits (shared/js/dmdoc-rules.js). Each is
+     applied here once: the score is set, the Day Log says what it was and
+     is now, and a receipt (dmEdits.done[id]) is kept in the same save, so a
+     reload or a second look can't apply it again. An edit that can't be
+     used (a Clan or value this copy doesn't know) is refused for good, with
+     a receipt saying why; nothing changes. */
+  var DM_RECEIPTS_MAX = 300;
+  R.cleanDmEdits = function (raw) {
+    var done = {};
+    var src = isObj(raw) && isObj(raw.done) ? raw.done : {};
+    Object.keys(src).forEach(function (id) {
+      var r = src[id];
+      if (!isObj(r)) return;
+      done[id] = {
+        r: r.r === 'refused' ? 'refused' : 'applied',
+        at: typeof r.at === 'number' ? r.at : 0,
+        day: typeof r.day === 'number' ? r.day : null,
+        kind: String(r.kind || '').slice(0, 10), key: String(r.key || '').slice(0, 20),
+        was: typeof r.was === 'number' ? r.was : 0, now: typeof r.now === 'number' ? r.now : 0,
+        why: String(r.why || '').slice(0, 200)
+      };
+    });
+    var ids = Object.keys(done);
+    if (ids.length > DM_RECEIPTS_MAX) {
+      ids.sort(function (a, b) { return done[a].at - done[b].at; }).slice(0, ids.length - DM_RECEIPTS_MAX).forEach(function (id) { delete done[id]; });
+    }
+    return { done: done };
+  };
+  R.applyDmEdits = function (s, edits, now) {
+    var out = { changed: false, lines: [], refused: 0 };
+    var D = TSI.dmDocRules;
+    if (!D || !Array.isArray(edits)) return out;
+    if (!isObj(s.dmEdits) || !isObj(s.dmEdits.done)) s.dmEdits = R.cleanDmEdits(s.dmEdits);
+    var at = now === undefined ? Date.now() : now;
+    edits.slice().sort(function (a, b) { return (a.at || 0) - (b.at || 0); }).forEach(function (e) {
+      if (!isObj(e) || typeof e.id !== 'string' || Object.prototype.hasOwnProperty.call(s.dmEdits.done, e.id)) return;
+      var c = D.checkEdit(e.kind, e.key, e.value);
+      var rec = { r: 'applied', at: at, day: typeof s.day === 'number' ? s.day : null, kind: String(e.kind || ''), key: String(e.key || ''), was: 0, now: 0, why: '' };
+      if (!c.ok) {
+        rec.r = 'refused';
+        rec.why = c.message;
+        out.refused += 1;
+      } else {
+        var map = e.kind === 'pc' ? 'politicalCapital' : e.kind === 'hr' ? 'honourRespectByClan' : 'favour';
+        if (!isObj(s[map])) s[map] = {};
+        rec.was = clampInt(s[map][e.key] || 0, D.EDIT_KINDS[e.kind].min, D.EDIT_KINDS[e.kind].max);
+        s[map][e.key] = c.value;
+        rec.now = c.value;
+        var unit = e.kind === 'favour' ? '%' : '';
+        var line = D.EDIT_KINDS[e.kind].label + ' for ' + D.keyName(e.kind, e.key) + ' set by the DM: ' + rec.was + unit + ' to ' + c.value + unit + '.';
+        R.log(s, 'DM doc', line, at);
+        out.lines.push(line);
+      }
+      s.dmEdits.done[e.id] = rec;
+      out.changed = true;
+    });
+    return out;
+  };
 
   /* ---------- The Explorer link (pull request 4 of the facilities overhaul) ----------
      8 Explorer event moments send a change of 1 in a Clan's Honour/Respect

@@ -4422,7 +4422,23 @@
           TSI.reportError(err, 'reading the Explorer\'s day');
         }).then(function () { clockBusy = false; });
       }
-      life.setInterval(function () { checkClock(); checkCrestOffer(); }, 2000);
+      /* Scores the DM set by hand in the DM doc (Harry, 19 October 2026):
+         each waiting edit is applied once, with its receipt in this save. */
+      var dmEditsBusy = false;
+      function checkDmEdits() {
+        if (dmEditsBusy || !life.alive || turnRunning || militaryRunning) return Promise.resolve();
+        dmEditsBusy = true;
+        return TSI.store.fresh('tsi.dmdoc.edits', null).then(function (list) {
+          dmEditsBusy = false;
+          if (!life.alive || turnRunning || militaryRunning) return;
+          var res = R.applyDmEdits(state, list);
+          if (!res.changed) return;
+          done();
+          if (res.lines.length) notice('From the DM doc: ' + res.lines.join(' ') + ' The Day Log keeps it.', { type: 'info', title: 'Scores changed by the DM.', id: 'tsi-bas-dmedits', timeout: 12000 });
+          if (res.refused) notice('A score change from the DM doc couldn\'t be used, so nothing changed for it.', { type: 'warn', title: 'From the DM doc.', id: 'tsi-bas-dmedits-refused', timeout: 12000 });
+        }, function () { dmEditsBusy = false; });
+      }
+      life.setInterval(function () { checkClock(); checkCrestOffer(); checkDmEdits(); }, 2000);
       life.on(document, 'visibilitychange', function () { if (document.visibilityState === 'visible') checkClock(); });
 
       /* Pass every day up to the Explorer's, one at a time, each saved step
@@ -5224,6 +5240,7 @@
         change: function (fn) { fn(state); done(); },
         /* Read the Explorer's day now, rather than in up to 2 seconds. */
         clock: function () { checkClock(); },
+        dmEdits: function () { return checkDmEdits(); },
         /* The panel open now ('war', 'fac-barracks'…), or null. */
         panel: function () { return shown ? shown.id : null; },
         /* Open the panel that holds [data-test=test] by pressing its button
@@ -5297,6 +5314,7 @@
       /* Read the Explorer's day straight away (then every 2 seconds), and
          any crest sent from the Clan Crest Creator while the Bastion was shut. */
       checkClock();
+      checkDmEdits();
       checkCrestOffer();
     },
 
