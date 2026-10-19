@@ -116,6 +116,15 @@
         return el('option', { value: p.id, text: p.label });
       }));
       provinceSelect.value = state.travel.provinceId || 'northern_province';
+      /* A warning when the Region isn't the loaded map's own province. It changes nothing. */
+      var regionWarning = el('p', { class: 'tsi-exp-regionwarn', role: 'status', 'data-test': 'region-warning', hidden: true });
+      function updateRegionWarning() {
+        var m = R.regionMismatch(state, DATA);
+        regionWarning.hidden = !m;
+        regionWarning.textContent = m
+          ? 'The map shown (' + m.mapLabel + ') is in the ' + m.mapProvince + ', but the Region is set to the ' + m.region + '. Events, and any Honour/Respect they change, follow the Region.'
+          : '';
+      }
 
       var controls = el('aside', { class: 'tsi-exp-side tsi-exp-controls', 'aria-label': 'Map controls' }, [
         el('p', { class: 'tsi-exp-intro', text: 'Upload a map, align a hex grid, and drag your heroes around.' }),
@@ -144,7 +153,7 @@
           row([btn('Token −', function () { resizeTokens(-2); }, '', 'token-down'), btn('Token +', function () { resizeTokens(2); }, '', 'token-up')]),
           row([btn('Group', groupSelected, '', 'group'), btn('Ungroup', ungroupSelected, '', 'ungroup')])
         ]),
-        section('Region', [provinceSelect]),
+        section('Region', [provinceSelect, regionWarning]),
         section('Journey', [
           row([btn('Export Save', exportSave, '', 'export-save'), btn('Import Save', importSave, '', 'import-save')])
         ])
@@ -479,6 +488,7 @@
         renderTokens();
       }
       function renderAll() {
+        updateRegionWarning();
         showMap();
         updateButtons();
         redrawMap();
@@ -801,6 +811,7 @@
       life.on(provinceSelect, 'change', function () {
         state.travel.provinceId = provinceSelect.value;
         saveNow();
+        updateRegionWarning();
         setNotice('Region set: ' + R.provinceLabel(DATA, state.travel.provinceId));
       });
 

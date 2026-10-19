@@ -50,6 +50,8 @@
   background: var(--tsi-panel-fill);
   box-shadow: var(--tsi-shadow-panel);
 }
+.tsi-tool--explorer .tsi-exp-regionwarn { margin: 6px 0 0; padding: 6px 8px; font-size: 14px; line-height: 1.3; color: var(--tsi-text); border: 1px solid var(--tsi-gold); border-radius: var(--tsi-radius-row, 6px); background: var(--tsi-inset-fill, rgba(0,0,0,.25)); }
+.tsi-tool--explorer .tsi-exp-regionwarn[hidden] { display: none; }
 .tsi-tool--explorer .tsi-exp-intro { margin: 0; font-size: 15px; line-height: 1.3; color: var(--tsi-text-muted); }
 .tsi-tool--explorer .tsi-exp-section { display: flex; flex-direction: column; gap: 6px; }
 .tsi-tool--explorer .tsi-exp-section-title {
