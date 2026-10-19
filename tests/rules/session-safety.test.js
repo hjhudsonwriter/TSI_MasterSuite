@@ -116,4 +116,44 @@
     t.equal(BR.researchStageReachable(tree, 'botanical', 2, []), false);
     t.equal(BR.researchStageReachable(tree, 'botanical', 1, []), true);
   });
+
+  group('Hand to the party (pull request B)');
+  function hw() {
+    var s = BR.defaultState(bdata);
+    s.day = 12;
+    s.warehouse = [{ id: 'a', item: 'Rope', qty: 5, gp: '', notes: '' }, { id: 'g', goodId: 'sawn_lumber', item: 'Sawn Lumber', qty: 3, gp: '', notes: '' }];
+    return s;
+  }
+  test('handing over takes only that many, once, and the Day Log says who, when, and that the DM records it', function (t) {
+    var s = hw();
+    var row = s.warehouse[0];
+    var r = BR.handToParty(s, row, '2', '  Borin  ', 1000);
+    t.equal(r.ok, true);
+    t.equal(row.qty, 3, 'five less two');
+    t.equal(s.log.length, 1, 'one entry');
+    t.ok(/Handed to the party: 2 \u00d7 Rope \(to Borin\) on Day 12/.test(s.log[0].body), s.log[0].body);
+    t.ok(/records it on the character's D&D sheet/.test(s.log[0].body), s.log[0].body);
+    t.equal(s.log[0].day, 12);
+    t.equal(s.warehouse[1].qty, 3, 'other rows untouched');
+  });
+  test('handing over all of it removes the row; no recipient is fine', function (t) {
+    var s = hw();
+    var r = BR.handToParty(s, s.warehouse[0], 5, '');
+    t.equal(r.ok, true);
+    t.same(s.warehouse.map(function (w) { return w.item; }), ['Sawn Lumber']);
+    t.ok(!/\(to /.test(s.log[0].body), s.log[0].body);
+  });
+  test('too many, zero, fractions, text, goods the Ironbow makes and rows already gone change nothing', function (t) {
+    var s = hw();
+    var row = s.warehouse[0];
+    ['6', 0, '0', -1, '1.5', 'x', ''].forEach(function (q) {
+      t.equal(BR.handToParty(s, row, q, 'Borin').ok, false, 'refused: ' + q);
+    });
+    t.equal(BR.handToParty(s, s.warehouse[1], 1, 'Borin').ok, false, 'a good goes by the Courier Exchange');
+    t.equal(row.qty, 5);
+    t.equal(s.log.length, 0);
+    BR.handToParty(s, row, 5, '');
+    t.equal(BR.handToParty(s, row, 1, '').ok, false, 'a second go on a removed row');
+    t.equal(s.log.length, 1, 'logged once');
+  });
 }());

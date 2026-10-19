@@ -2718,10 +2718,13 @@
           };
           [item, qty, gp, notes].forEach(function (input) { input.addEventListener('input', sync); });
           whBody.appendChild(el('div', { class: 'tsi-bas-wh__row' }, [item, qty, gp, notes,
-            btn('Remove', function () {
-              state.warehouse = state.warehouse.filter(function (x) { return x !== row; });
-              done();
-            }, '', 'wh-remove-' + i)
+            el('div', { class: 'tsi-bas-wh__actions' }, [
+              btn('Hand to the party', function () { onHandToParty(row); }, '', 'wh-hand-' + i),
+              btn('Remove', function () {
+                state.warehouse = state.warehouse.filter(function (x) { return x !== row; });
+                done();
+              }, '', 'wh-remove-' + i)
+            ])
           ]));
         });
       }
@@ -2799,6 +2802,32 @@
         var res = R.addSupplies(state, data, goodSel.value, qty.value);
         if (!res.ok) { await say(res.message); return; }
         log(res.log[0], res.log[1]);
+        done();
+      });
+
+      /* Hand to the party: a confirmed hand-over of some of a typed row. */
+      var onHandToParty = TSI.oneAtATime(async function (row) {
+        if (turnRunning || militaryRunning) { await say('Wait for the day to finish.'); return; }
+        var name = String(row.item || '').trim() || 'New Item';
+        var have = R.clampInt(row.qty === undefined ? 0 : row.qty, 0);
+        if (have < 1) { await say('There is none of that in the Warehouse to hand over.'); return; }
+        var qty = numberInput('hand-qty', { min: '1', max: String(have), value: '1', 'aria-label': 'How many (1 to ' + have + ')' });
+        var who = el('input', { type: 'text', class: 'tsi-input', maxlength: String(R.HAND_RECIPIENT_MAX), placeholder: 'Who gets it (optional)', 'aria-label': 'Recipient', 'data-test': 'hand-who' });
+        var ok = await plainModal({
+          title: 'Hand to the party',
+          body: [
+            muted(name + ': the Warehouse has ' + have + '. Only the number you hand over leaves the Warehouse, once, and the Day Log records it.', 'tsi-bas-courier__intro'),
+            el('div', { class: 'tsi-bas-supplies' }, [field('How many', qty), field('Recipient', who)]),
+            muted('This tool does not keep a character\'s inventory. After handing it over, write the item on that character\'s D&D sheet yourself. Anything that has to be delivered from far away goes by the Courier Exchange, not here.')
+          ],
+          escValue: false,
+          actions: [{ label: 'Cancel', value: false }, { label: 'Hand over', value: true, primary: true }],
+          onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'hand-dialog'); }
+        });
+        if (!ok || !life.alive) return;
+        if (turnRunning || militaryRunning) { await say('A day was passing, so nothing was handed over. Try again once it has finished.'); return; }
+        var res = R.handToParty(state, row, qty.value, who.value);
+        if (!res.ok) { await say(res.message); return; }
         done();
       });
 

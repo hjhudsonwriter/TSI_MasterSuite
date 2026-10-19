@@ -1201,6 +1201,7 @@
   align-items: center;
 }
 .tsi-page--bastion .tsi-bas-wh__row--goods { align-items: center; }
+.tsi-page--bastion .tsi-bas-wh__actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .tsi-page--bastion .tsi-bas-wh__good { display: flex; flex-direction: column; min-width: 0; padding: 2px 4px; }
 .tsi-page--bastion .tsi-bas-wh__goodname { font-weight: 600; color: var(--tsi-text); }
 .tsi-page--bastion .tsi-bas-wh__unit { font-size: 13px; color: var(--tsi-text-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

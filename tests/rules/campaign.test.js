@@ -266,4 +266,30 @@
     t.equal(s.nextFollowUp, null);
     t.equal(s.region.id, 'northern_province', 'the Explorer\'s own first region');
   });
+
+  test('the DM doc lists the Hall\'s DM-tracked agreements for the Clan where the party is, with their end day', function (t) {
+    var ba = bastion();
+    ba.day = 10;
+    ba.diplomaticRecords = { next: 3, list: [{
+      id: 'd1', title: 'Pact of the Pass', status: 'confirmed', consequences: [
+        { id: 'c1', kind: 'restriction', clan: 'blackstone', text: 'No Blackstone iron to the Ironbow', until: 16 },
+        { id: 'c2', kind: 'obligation', clan: 'blackstone', text: 'Return the chief\'s banner' },
+        { id: 'c3', kind: 'hr', clan: 'blackstone', amount: 1, status: 'applied' },
+        { id: 'c4', kind: 'privilege', clan: 'bacca', text: 'Free passage', until: 30 },
+        { id: 'c5', kind: 'restriction', clan: 'blackstone', text: 'Old embargo', until: 5 },
+        { id: 'c6', kind: 'hook', clan: '', text: 'A rumour with no Clan' },
+        { id: 'c7', kind: 'obligation', clan: 'blackstone', text: 'Ended early', status: 'ended' }
+      ]
+    }, { id: 'd2', title: 'Unconfirmed', status: 'draft', consequences: [{ id: 'c8', kind: 'restriction', clan: 'blackstone', text: 'Not yet', until: 20 }] }] };
+    var ex = explorer('northern_province');
+    ex.travel.day = 10;
+    var s = sum(ex, ba);
+    t.same(s.clanTracked.map(function (x) { return [x.kind, x.text, x.when]; }), [
+      ['restriction', 'No Blackstone iron to the Ironbow', 'until Day 16 (6 days left)'],
+      ['obligation', 'Return the chief\'s banner', 'no end day']
+    ], 'only this Clan\'s, confirmed, still running, soonest end first; scores, ended and expired ones left out');
+    t.same(s.trackedAnywhere.map(function (x) { return x.text; }), ['A rumour with no Clan'], 'agreements that name no Clan');
+    t.same(sum(explorer('midland_province'), ba).clanTracked.map(function (x) { return x.text; }), ['Free passage'], 'another Region shows its own Clan\'s');
+    t.same(sum(ex, null).clanTracked, [], 'no Bastion save, nothing to list');
+  });
 }());

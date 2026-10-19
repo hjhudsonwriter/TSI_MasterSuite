@@ -3284,3 +3284,12 @@ Old repo: `_legacy/pelagosi_marker_rune_puzzle` (file:line references point ther
 - **Before:** the Bastion's Clear buttons (Military, Warehouse, Artisan tools, Day Log) and a Warehouse goods row's Remove acted at once. Reset in the Bastion and the Combat Tracker asked once, with no copy offered. Nothing told Harry how long ago he last backed up. Facilities showed "Upgrade" without saying what it unlocks. Research choices that cannot be used yet said "Coming" and could look as though they cost something.
 - **After:** each Clear and Remove asks first and says what will be lost (an empty list or a blank row is cleared without asking). Reset offers "download a copy first", ticked by default. The home screen shows "Last backed up: …" (the Explorer and Bastion Exports and Back up everything count), and opening a tool after 7 days without one gives a gentle reminder. Each upgrade row says what the next level unlocks (data only: `levelEffects` in `bastion-data.js`; no rule changed, and no upgrade is blocked). Research choices that are not operational say "Not available yet: it needs …" and cost no token and no gold, as before. Reset Travel's question now explains that the Bastion's calendar moves back with the Explorer's day.
 - **Tests:** `tests/rules/session-safety.test.js`, `tests/e2e/session-safety.test.js`, phase9 (Clear asks).
+
+
+### SUI-38 · Player-facing integration: tracked agreements and Hand to the party (19 October 2026)
+**Added, Harry's request** · usability
+
+- **Before:** the Hall's DM-tracked restrictions, privileges, favours, obligations and quest hooks were visible only inside the Bastion. A typed Warehouse row could only be edited or removed, so giving the party an item meant editing the count by hand with no record.
+- **After:** the DM doc lists the open agreements for the Region's Clan (and those naming no Clan), with their end day, labelled as yours to run at the table; scores the Bastion applies itself are not listed. On a typed Warehouse row, **Hand to the party** asks how many and who, deducts only that many once (the row goes at 0), and the Day Log records item, quantity, recipient, day and that the DM must write it on the D&D sheet. Goods the Ironbow makes cannot be handed over there (the Courier Exchange is the route), and no Explorer inventory was added.
+- **Not changed:** how the Region decides the Clan (see the Region investigation); expiry is shown, not enforced.
+- **Tests:** `tests/rules/campaign.test.js`, `tests/rules/session-safety.test.js`, `tests/e2e/dmdoc.test.js`, `tests/e2e/phase9.test.js`.

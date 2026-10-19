@@ -204,6 +204,39 @@
       return lines;
     },
 
+    /* The Hall's DM-tracked consequences still running (restrictions,
+       privileges, favours owed, obligations, quest hooks): read straight
+       from the Bastion's saved Diplomatic Records, so this page needn't load
+       the Bastion's rules. A change to a score (hr, pc) is applied by the
+       Bastion itself and never listed. clanKey: those naming this Clan; ''
+       gives those naming no Clan. Each: its kind, the record's title, the
+       text, and when it ends ("until Day 40 (6 days left)" or "no end
+       day"). Pending, applied and ended ones, and expired ones, are left out. */
+    TRACKED_KINDS: { restriction: 'Restriction or embargo', privilege: 'Privilege', favour: 'Favour owed', obligation: 'Unresolved obligation', hook: 'Quest hook' },
+    trackedConsequences: function (bastion, clanKey, today) {
+      var out = [];
+      var dr = isObj(bastion) && isObj(bastion.diplomaticRecords) ? bastion.diplomaticRecords : null;
+      var list = dr && Array.isArray(dr.list) ? dr.list : [];
+      var now = isNum(today) ? today : (isObj(bastion) && isNum(bastion.day) ? bastion.day : 1);
+      list.forEach(function (r) {
+        if (!isObj(r) || r.status !== 'confirmed' || !Array.isArray(r.consequences)) return;
+        r.consequences.forEach(function (c) {
+          if (!isObj(c) || !C.TRACKED_KINDS[c.kind]) return;
+          if (c.status === 'pending' || c.status === 'applied' || c.status === 'ended') return;
+          if (isNum(c.until) && now > c.until) return;
+          if ((str(c.clan) || '') !== (clanKey || '')) return;
+          var left = isNum(c.until) ? c.until - now : null;
+          out.push({
+            kind: c.kind, label: C.TRACKED_KINDS[c.kind], title: str(r.title), text: str(c.text),
+            until: isNum(c.until) ? c.until : null,
+            when: left === null ? 'no end day' : 'until Day ' + c.until + ' (' + (left === 0 ? 'last day' : left + (left === 1 ? ' day left' : ' days left')) + ')'
+          });
+        });
+      });
+      out.sort(function (a, b) { return (a.until === null ? 1e9 : a.until) - (b.until === null ? 1e9 : b.until); });
+      return out;
+    },
+
     summary: function (explorer, bastion, regions) {
       var ex = isObj(explorer) ? explorer : null;
       var ba = isObj(bastion) ? bastion : null;
@@ -256,12 +289,16 @@
           politicalCapital: ba ? clampInt(pc, -100, 100, 0) : null,
           honourRespect: ba ? clampInt(hr, -5, 5, 0) : null
         };
+        out.clanTracked = ba ? C.trackedConsequences(ba, reg.clanKey, day) : [];
         out.god = { key: reg.god, name: reg.godName, favour: ba ? clampInt(fav, 0, 100, 0) : null };
       } else {
         out.region = null;
         out.clan = null;
         out.god = null;
       }
+
+      /* Agreements that name no Clan, wherever the party is. */
+      out.trackedAnywhere = ba ? C.trackedConsequences(ba, '', day) : [];
 
       /* The party's event gold: a running total in the Explorer until the DM clears it. */
       var journey = ex && isObj(ex.journey) ? ex.journey : {};

@@ -172,6 +172,23 @@
     ]);
   }
   /* A bar: centred for a value that can go below zero, from the left for 0 to max. */
+  /* The Hall's DM-tracked agreements still running: the Bastion does not
+     enforce these, so they are for the DM to run (a change to Honour/Respect
+     or Political Capital is applied by the Bastion itself and isn't listed). */
+  function trackedList(items, heading, test) {
+    if (!items || !items.length) return null;
+    return el('div', { class: 'tsi-dmdoc__tracked', 'data-test': test }, [
+      el('p', { class: 'tsi-dmdoc__tracked-title', text: heading }),
+      el('ul', { class: 'tsi-dmdoc__effects' }, items.map(function (t) {
+        return el('li', { class: 'tsi-dmdoc__effect', 'data-test': 'dmdoc-tracked-item' }, [
+          el('p', { class: 'tsi-dmdoc__effect-name' }, [el('strong', { text: t.label }), el('span', { class: 'tsi-dmdoc__muted', text: ' · ' + t.title })]),
+          t.text ? el('p', { class: 'tsi-dmdoc__effect-text', text: t.text }) : null,
+          el('p', { class: 'tsi-dmdoc__effect-until', text: t.when })
+        ]);
+      }))
+    ]);
+  }
+
   function meter(label, value, min, max, text, test) {
     var known = value !== null && value !== undefined;
     var fill = el('span', { class: 'tsi-dmdoc__fill' + (known && value < 0 ? ' tsi-dmdoc__fill--low' : '') });
@@ -229,7 +246,8 @@
       where.push(el('div', { class: 'tsi-dmdoc__card', 'data-test': 'dmdoc-clan' }, [
         el('p', { class: 'tsi-dmdoc__card-title' }, [el('strong', { text: 'Clan ' + sum.clan.name + '\'s territory' }), el('span', { class: 'tsi-dmdoc__muted', text: ' · ' + sum.clan.chief })]),
         meter('Political Capital', sum.clan.politicalCapital, -100, 100, signed(sum.clan.politicalCapital), 'dmdoc-pc'),
-        meter('Honour/Respect', sum.clan.honourRespect, -5, 5, signed(sum.clan.honourRespect), 'dmdoc-hr')
+        meter('Honour/Respect', sum.clan.honourRespect, -5, 5, signed(sum.clan.honourRespect), 'dmdoc-hr'),
+        trackedList(sum.clanTracked, 'Agreed with Clan ' + sum.clan.name + ' (you run these at the table)', 'dmdoc-tracked')
       ]));
       where.push(el('div', { class: 'tsi-dmdoc__card tsi-dmdoc__card--' + sum.god.key, 'data-test': 'dmdoc-god' }, [
         el('p', { class: 'tsi-dmdoc__card-title' }, [el('strong', { text: sum.god.name + '\'s lands' })]),
@@ -237,6 +255,7 @@
       ]));
       if (!sum.bastionSaved) where.push(el('p', { class: 'tsi-dmdoc__note', text: 'Open the Bastion to see the Clan\'s and the god\'s standing.' }));
     }
+    if (sum.trackedAnywhere && sum.trackedAnywhere.length) where.push(el('div', { class: 'tsi-dmdoc__card' }, [trackedList(sum.trackedAnywhere, 'Open agreements that name no Clan (you run these at the table)', 'dmdoc-tracked-any')]));
     parts.push(section('Where the party is', 'dmdoc-where', where));
 
     parts.push(section('Active effects', 'dmdoc-effects', sum.effects.length
