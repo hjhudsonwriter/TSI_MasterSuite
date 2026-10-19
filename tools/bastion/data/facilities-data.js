@@ -41,6 +41,18 @@
    ingredients, into the Warehouse as the Fishery's packs go. "productionLimit": 1
    keeps it to one chart order at a time; the scripture Research order beside it is
    unchanged and isn't a production order, so it runs alongside.
+   The Stone Quarry & Masonworks and the Weavers' Hall opened on 19 October 2026 (Harry's
+   answers): Level 5, a Development Plot, "productionLimit": 1 and six orders each, in the
+   Timber Yard's pattern, no gold. Stone: Extract Raw Stone (L1, 4 days), Produce Dressed
+   Stone (L2, 4, uses 1 Raw Stone), Produce Structural Masonry (L3, 5, uses 1 Dressed
+   Stone), Produce Decorative Stonework (L4, 7, uses 1 Dressed Stone), Bulk Raw Stone
+   Extraction (L5, 9, 3 Raw Stone) and Bulk Stone Processing (L5, 8, 3 Raw to 3 Dressed).
+   Weavers: Produce Ordinary Textiles (L1, 4), Produce Sailcloth (L2, 4, uses 1 Ordinary
+   Textiles), Produce Specialist Garments (L3, 5, uses 1 Ordinary Textiles), Improved
+   Specialist Garment Production (L4, 7, 2 Ordinary Textiles to 2 Specialist Garments),
+   Bulk Textile Production (L5, 9, 3 Ordinary Textiles) and Bulk Sailcloth Production
+   (L5, 8, 3 Ordinary Textiles to 3 Sailcloth). The ingredients (which good feeds which) are
+   proposals Harry hasn't confirmed: change them here, nothing else needs to move.
    Pull request 7 (Harry, 14 October 2026) opens the Wyvern Roost, the Griffin
    Tower and the Dire Wolf Den, leaving two facilities in development (the Stone
    Quarry & Masonworks and the Weavers' Hall). Each takes a construction slot,
@@ -1259,18 +1271,320 @@ window.TSI_DATA.bastionFacilities = [
   {
     "name": "Stone Quarry & Masonworks",
     "id": "stone_masonworks",
-    "requiredLevel": null,
+    "requiredLevel": 5,
     "plot": true,
-    "inDevelopment": true,
-    "functions": []
+    "productionLimit": 1,
+    "functions": [
+      {
+        "id": "extract_raw_stone",
+        "label": "Extract Raw Stone",
+        "days": 4,
+        "costGP": 0,
+        "costText": "0",
+        "notes": null,
+        "requiredFacilityLevel": 1,
+        "production": true,
+        "options": [
+          {
+            "label": "Raw Stone (1 lot)",
+            "outputs": [
+              {
+                "good": "raw_stone",
+                "qty": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "produce_dressed_stone",
+        "label": "Produce Dressed Stone",
+        "days": 4,
+        "costGP": 0,
+        "costText": "0",
+        "notes": null,
+        "requiredFacilityLevel": 2,
+        "production": true,
+        "options": [
+          {
+            "label": "Dressed Stone (1 lot)",
+            "inputs": [
+              {
+                "good": "raw_stone",
+                "qty": 1
+              }
+            ],
+            "outputs": [
+              {
+                "good": "dressed_stone",
+                "qty": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "produce_structural_masonry",
+        "label": "Produce Structural Masonry",
+        "days": 5,
+        "costGP": 0,
+        "costText": "0",
+        "notes": null,
+        "requiredFacilityLevel": 3,
+        "production": true,
+        "options": [
+          {
+            "label": "Structural Masonry (1 lot)",
+            "inputs": [
+              {
+                "good": "dressed_stone",
+                "qty": 1
+              }
+            ],
+            "outputs": [
+              {
+                "good": "structural_masonry",
+                "qty": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "produce_decorative_stonework",
+        "label": "Produce Decorative Stonework",
+        "days": 7,
+        "costGP": 0,
+        "costText": "0",
+        "notes": null,
+        "requiredFacilityLevel": 4,
+        "production": true,
+        "options": [
+          {
+            "label": "Decorative Stonework (1 lot)",
+            "inputs": [
+              {
+                "good": "dressed_stone",
+                "qty": 1
+              }
+            ],
+            "outputs": [
+              {
+                "good": "decorative_stonework",
+                "qty": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "bulk_raw_stone_extraction",
+        "label": "Bulk Raw Stone Extraction",
+        "days": 9,
+        "costGP": 0,
+        "costText": "0",
+        "notes": null,
+        "requiredFacilityLevel": 5,
+        "production": true,
+        "options": [
+          {
+            "label": "Raw Stone (3 lots)",
+            "outputs": [
+              {
+                "good": "raw_stone",
+                "qty": 3
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "bulk_stone_processing",
+        "label": "Bulk Stone Processing",
+        "days": 8,
+        "costGP": 0,
+        "costText": "0",
+        "notes": null,
+        "requiredFacilityLevel": 5,
+        "production": true,
+        "options": [
+          {
+            "label": "Dressed Stone (3 lots)",
+            "inputs": [
+              {
+                "good": "raw_stone",
+                "qty": 3
+              }
+            ],
+            "outputs": [
+              {
+                "good": "dressed_stone",
+                "qty": 3
+              }
+            ]
+          }
+        ]
+      }
+    ]
   },
   {
     "name": "Weavers' Hall",
     "id": "weavers_hall",
-    "requiredLevel": null,
+    "requiredLevel": 5,
     "plot": true,
-    "inDevelopment": true,
-    "functions": []
+    "productionLimit": 1,
+    "functions": [
+      {
+        "id": "produce_ordinary_textiles",
+        "label": "Produce Ordinary Textiles",
+        "days": 4,
+        "costGP": 0,
+        "costText": "0",
+        "notes": null,
+        "requiredFacilityLevel": 1,
+        "production": true,
+        "options": [
+          {
+            "label": "Ordinary Textiles (1 lot)",
+            "outputs": [
+              {
+                "good": "ordinary_textiles",
+                "qty": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "produce_sailcloth",
+        "label": "Produce Sailcloth",
+        "days": 4,
+        "costGP": 0,
+        "costText": "0",
+        "notes": null,
+        "requiredFacilityLevel": 2,
+        "production": true,
+        "options": [
+          {
+            "label": "Sailcloth (1 lot)",
+            "inputs": [
+              {
+                "good": "ordinary_textiles",
+                "qty": 1
+              }
+            ],
+            "outputs": [
+              {
+                "good": "sailcloth",
+                "qty": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "produce_specialist_garments",
+        "label": "Produce Specialist Garments",
+        "days": 5,
+        "costGP": 0,
+        "costText": "0",
+        "notes": null,
+        "requiredFacilityLevel": 3,
+        "production": true,
+        "options": [
+          {
+            "label": "Specialist Garments (1 lot)",
+            "inputs": [
+              {
+                "good": "ordinary_textiles",
+                "qty": 1
+              }
+            ],
+            "outputs": [
+              {
+                "good": "specialist_garments",
+                "qty": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "improved_specialist_garment_production",
+        "label": "Improved Specialist Garment Production",
+        "days": 7,
+        "costGP": 0,
+        "costText": "0",
+        "notes": null,
+        "requiredFacilityLevel": 4,
+        "production": true,
+        "options": [
+          {
+            "label": "Specialist Garments (2 lots)",
+            "inputs": [
+              {
+                "good": "ordinary_textiles",
+                "qty": 2
+              }
+            ],
+            "outputs": [
+              {
+                "good": "specialist_garments",
+                "qty": 2
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "bulk_textile_production",
+        "label": "Bulk Textile Production",
+        "days": 9,
+        "costGP": 0,
+        "costText": "0",
+        "notes": null,
+        "requiredFacilityLevel": 5,
+        "production": true,
+        "options": [
+          {
+            "label": "Ordinary Textiles (3 lots)",
+            "outputs": [
+              {
+                "good": "ordinary_textiles",
+                "qty": 3
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "bulk_sailcloth_production",
+        "label": "Bulk Sailcloth Production",
+        "days": 8,
+        "costGP": 0,
+        "costText": "0",
+        "notes": null,
+        "requiredFacilityLevel": 5,
+        "production": true,
+        "options": [
+          {
+            "label": "Sailcloth (3 lots)",
+            "inputs": [
+              {
+                "good": "ordinary_textiles",
+                "qty": 3
+              }
+            ],
+            "outputs": [
+              {
+                "good": "sailcloth",
+                "qty": 3
+              }
+            ]
+          }
+        ]
+      }
+    ]
   },
   {
     "name": "Courier Exchange",
