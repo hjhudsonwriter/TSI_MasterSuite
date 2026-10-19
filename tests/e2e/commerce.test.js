@@ -154,8 +154,8 @@ async function closePanel(ba) {
     await ex.waitForTimeout(400);
     await ex.click('[data-test=charter-open]');
     await ex.waitForSelector('[data-test=charter-dialog]');
-    equal(await ex.$$eval('[data-test=charter-ports] li', l => l.map(x => x.getAttribute('data-status'))), ['none', 'held']);
-    equal(await ex.$$eval('[data-test=charter-port] option', o => o.map(x => x.value)), ['timberport'], 'only Timberport can be granted');
+    equal(await ex.$$eval('[data-test=charter-ports] li', l => l.map(x => x.getAttribute('data-status'))), ['none', 'held', 'none', 'none', 'none', 'none', 'none', 'none', 'none', 'none']);
+    equal(await ex.$$eval('[data-test=charter-port] option', o => o.map(x => x.value)), ['timberport', 'port_brawdlyn', 'steelport', 'moltenport', 'leatherport', 'bleakharbour', 'alderbridge', 'redport', 'river_rook'], 'every port but Goldport can still be granted');
     await ex.click('[data-test=charter-dialog] .tsi-modal__foot button:text-is("Cancel")');
   });
 

@@ -1183,12 +1183,12 @@ function serve(dir) {
   section('The pin-check page (tests/pin-check.html)');
   {
     const { context, page } = await newPage(browser, 'laptop');
-    await check('it shows all ten maps with all 33 pins, 18 of them marked hidden', async () => {
+    await check('it shows all ten maps with all 36 pins, 15 of them marked hidden', async () => {
       await page.goto(H.fileUrl('tests/pin-check.html'));
       await page.waitForFunction(() => Array.from(document.querySelectorAll('img.pc-picture')).every(i => i.complete && i.naturalWidth > 0));
       equal(await page.$$eval('img.pc-picture', is => is.length), 10);
-      equal(await page.$$eval('.pc-pin', ps => ps.length), 33);
-      equal(await page.$$eval('.pc-pin--hidden', ps => ps.length), 18);
+      equal(await page.$$eval('.pc-pin', ps => ps.length), 36);
+      equal(await page.$$eval('.pc-pin--hidden', ps => ps.length), 15);
       equal(context.log.errors, []);
       equal(context.log.failed, []);
     });

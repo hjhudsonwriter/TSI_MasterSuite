@@ -27,7 +27,7 @@
 <body>
   <main class="pc">
     <h1>Pin check</h1>
-    <p class="pc-intro">Every map with all 33 town pins, placed exactly as the Explorer places them. The tip of each pin (the white dot) should sit on its town. Gold pins show in the Explorer; grey pins stay hidden there because they have no town map yet (E10). This page only reads the Explorer's data: it changes nothing. If a pin is off, note the map and town for the next session.</p>
+    <p class="pc-intro">Every map with all 36 town pins, placed exactly as the Explorer places them. The tip of each pin (the white dot) should sit on its town. Gold pins show in the Explorer; grey pins stay hidden there because they have no town map yet (E10); the six ports still waiting for their picture (19 October 2026) show in gold too. This page only reads the Explorer's data: it changes nothing. If a pin is off, note the map and town for the next session.</p>
     <div class="pc-key">
       <span><img src="../tools/explorer/assets/markers/marker_gold.png" alt="" width="22" height="22"> Shows in the Explorer</span>
       <span><img src="../tools/explorer/assets/markers/marker_gold.png" alt="" width="22" height="22" style="filter: grayscale(1) brightness(1.4)"> Hidden (no town map)</span>
@@ -51,7 +51,7 @@
         pic.alt = map.label;
         frame.appendChild(pic);
         pins.forEach(function (m) {
-          var hidden = !m.submapImage;
+          var hidden = !m.submapImage && m.show !== true;
           var pin = el('div', 'pc-pin' + (hidden ? ' pc-pin--hidden' : ''));
           var img = el('img');
           img.src = '../tools/explorer/assets/markers/marker_gold.png';
