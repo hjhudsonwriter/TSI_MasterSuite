@@ -736,3 +736,5 @@ body.tsi-modal-open { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .tsi-dmdoc { animation: none; }
 }
+.tsi-dmdoc__tracked { margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--tsi-gold-faint, rgba(214, 178, 94, 0.25)); }
+.tsi-dmdoc__tracked-title { margin: 0 0 4px; font-family: var(--tsi-font-heading); font-size: var(--tsi-fs-label, 0.8em); letter-spacing: 0.04em; color: var(--tsi-gold); }

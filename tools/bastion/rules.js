@@ -1873,6 +1873,33 @@
       notes: String(fields.notes || '').trim()
     };
   };
+  /* Hand to the party (pull request B, 19 October 2026): some of a free-text
+     Warehouse row (typed by hand, not a good the Ironbow makes) goes to the
+     party. Only the quantity handed over leaves the row, once; a row that
+     reaches 0 is removed. The suite doesn't hold a character's inventory, so
+     the Day Log says plainly that the DM records the item on the D&D sheet.
+     Goods the Ironbow makes, and anything physically delivered, go by the
+     Courier Exchange instead. Returns { ok, message } or { ok, line }. */
+  R.HAND_RECIPIENT_MAX = 60;
+  R.handToParty = function (state, row, qty, recipient, now) {
+    var i = state.warehouse.indexOf(row);
+    if (i < 0) return { ok: false, message: 'That row isn\'t in the Warehouse any more.' };
+    if (row.goodId) return { ok: false, message: 'Goods the Ironbow makes can\'t be handed over here: send them by the Courier Exchange.' };
+    var have = clampInt(row.qty === undefined ? 0 : row.qty, 0);
+    var n = typeof qty === 'number' ? qty : (String(qty).trim() === '' ? NaN : Number(qty));
+    if (!isFinite(n) || n !== Math.floor(n) || n < 1) return { ok: false, message: 'Type a whole number of 1 or more.' };
+    if (n > have) return { ok: false, message: 'The Warehouse only has ' + have + ' of that.' };
+    var who = String(recipient || '').trim().slice(0, R.HAND_RECIPIENT_MAX);
+    var name = String(row.item || '').trim() || 'New Item';
+    row.qty = have - n;
+    if (row.qty <= 0) state.warehouse.splice(i, 1);
+    var line = 'Handed to the party: ' + n + ' \u00d7 ' + name + (who ? ' (to ' + who + ')' : '') + ' on ' + R.dayLabel(state.day) + '. ' +
+      (row.qty > 0 ? row.qty + ' left in the Warehouse. ' : 'None left in the Warehouse. ') +
+      'The DM records it on the character\'s D&D sheet: this tool doesn\'t.';
+    R.log(state, 'Warehouse', line, now);
+    return { ok: true, line: line, left: Math.max(0, row.qty) };
+  };
+
   /* ---------- Goods (the facilities overhaul's pull request 3, 13 October 2026) ----------
      The goods catalogue (data/goods-data.js) gives each good a stable id.
      In the Warehouse a good is a row with a "goodId" (its count in its own

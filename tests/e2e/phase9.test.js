@@ -2415,6 +2415,27 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       equal(await page.inputValue('[data-test=wh-item-0]'), 'Rope');
     });
 
+    await check('Hand to the party: asks first, takes only what is handed over, once, and the Day Log says so', async () => {
+      await page.click('[data-test=wh-hand-0]');
+      await page.waitForTimeout(500);
+      const t = await popText(page);
+      assert(/D&D sheet/.test(t) && /Courier Exchange/.test(t), t);
+      await page.locator('[data-test=hand-qty]').fill('2');
+      await page.locator('[data-test=hand-who]').fill('Borin');
+      await clickModal(page, 'Cancel');
+      equal((await st(page)).warehouse.map(w => [w.item, w.qty]), [['Rope', 3], ['Lantern', 1]], 'Cancel changes nothing');
+      await page.click('[data-test=wh-hand-0]');
+      await popText(page);
+      await page.locator('[data-test=hand-qty]').fill('2');
+      await page.locator('[data-test=hand-who]').fill('Borin');
+      await clickModal(page, 'Hand over');
+      await pause(page);
+      const s = await st(page);
+      equal(s.warehouse.map(w => [w.item, w.qty]), [['Rope', 1], ['Lantern', 1]], 'five-less-two style: 3 less 2');
+      equal(s.log.filter(l => /Handed to the party/.test(l.body)).length, 1, 'logged once');
+      assert(/2 \u00d7 Rope \(to Borin\) on Day 1/.test(s.log[0].body) && /D&D sheet/.test(s.log[0].body), s.log[0].body);
+    });
+
     await check('Remove and Clear (Clear is logged twice, as before: BAS-31, kept)', async () => {
       await page.click('[data-test=wh-remove-1]');
       equal((await st(page)).warehouse.length, 1);

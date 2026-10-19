@@ -896,6 +896,10 @@ Harry asked for a complete rework: the old tool's shields, colours and sigils we
 - Done: confirmations on the Bastion's Clear/Remove; Reset offers a copy first (Bastion, Combat Tracker); "Last backed up" on the home screen with a 7-day reminder; Fog button follows the saved fog; upgrade rows say what they unlock; not-yet-operational research choices are labelled and cost nothing; Reset Travel explains the Bastion calendar. See SUI-37.
 - Still waiting for Harry: the Combat Tracker reinforcements proposal (M6), the Region selector investigation, then the Player-Facing Integration PR and the DM doc PR (detachable window, manual scores).
 
+### Player-facing integration (19 October 2026)
+- Done: the DM doc lists the Region's Clan's open Hall agreements with their end day (SUI-38); Hand to the party on typed Warehouse rows.
+- Still waiting: the Combat Tracker reinforcements proposal, the Region investigation reply, and the DM doc's detachable window and manual score edits.
+
 ## Next
 **Harry tries Build 3**: makes a crest in the Crest Creator and sends it with Use for the Bastion (with the Bastion open in another window, and with it shut), uploads and removes one, founds a Clan, and sees the crest on the War Table. Then says what to change: the badge, the Party Identity panel's layout, or the Form Clan crest box. That completes the overhaul's plan.
 

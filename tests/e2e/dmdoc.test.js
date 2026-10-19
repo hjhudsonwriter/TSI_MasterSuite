@@ -174,6 +174,34 @@ async function jClick(page, test) {
       equal(fill, { left: '40%', width: '10%', low: true }, 'a negative Political Capital fills left of the centre, in crimson');
     });
 
+    await check('the Hall\'s DM-tracked agreements for the Region\'s Clan are listed with their end day; scores are not', async () => {
+      await go(page, 'bastion');
+      await setBastion(page, s => {
+        s.diplomaticRecords = { next: 2, list: [{ id: 'd1', title: 'Pact of the Pass', status: 'confirmed', consequences: [
+          { id: 'c1', kind: 'restriction', clan: 'blackstone', text: 'No Blackstone iron to the Ironbow', until: 9 },
+          { id: 'c2', kind: 'hr', clan: 'blackstone', amount: 1, status: 'applied' },
+          { id: 'c3', kind: 'privilege', clan: 'farmer', text: 'Free passage' }
+        ] }] };
+      });
+      await go(page, 'explorer');
+      await page.selectOption('[data-test=region]', 'northern_province');
+      await waitSaved(page);
+      const items = await until(page, () => true, 'x').then(() => page.evaluate(() => [...document.querySelectorAll('[data-test=dmdoc-tracked-item]')].map(n => n.textContent)));
+      equal(items.length, 1, items.join('|'));
+      assert(/Restriction or embargo/.test(items[0]) && /No Blackstone iron/.test(items[0]) && /until Day 9 \(8 days left\)/.test(items[0]), items[0]);
+      assert(/you run these at the table/.test(await page.textContent('[data-test=dmdoc-tracked]')));
+      await page.selectOption('[data-test=region]', 'western_province');
+      await waitSaved(page);
+      await page.waitForFunction(() => /Free passage/.test((document.querySelector('[data-test=dmdoc-tracked]') || {}).textContent || ''));
+      await H.shot(page, 'dmdoc-tracked');
+      /* Put things back for the checks after this one. */
+      await go(page, 'bastion');
+      await setBastion(page, s => { s.diplomaticRecords = { next: 1, list: [] }; });
+      await go(page, 'explorer');
+      await page.selectOption('[data-test=region]', 'northern_province');
+      await waitSaved(page);
+    });
+
     await check('an effect from an event appears, and goes on the day it ends', async () => {
       await moveDoc(page, 520, 150);
       assert(await page.evaluate(() => TSI.explorer.debug.startEvent('c6', 'camp')), 'started C6');
