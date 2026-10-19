@@ -49,17 +49,19 @@
     t.equal(window.TSI_DATA.explorerEvents, undefined, 'the old events file is switched off');
   });
 
-  test('33 town pins on 10 maps; the 15 with a town map show (E10)', function (t) {
-    var all = 0, shown = 0;
+  test('36 town pins on 10 maps; the 15 with a town map show (E10), and so do the 6 ports still waiting for a picture (19 October 2026)', function (t) {
+    var all = 0, shown = 0, waiting = 0;
     Object.keys(D.markersByMapId).forEach(function (m) {
       D.markersByMapId[m].forEach(function (p) {
         all++;
         if (p.submapImage) shown++;
+        else if (p.show === true) waiting++;
         t.ok(p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1, p.id + ' is on its map picture');
       });
     });
-    t.equal(all, 33);
+    t.equal(all, 36);
     t.equal(shown, 15);
+    t.equal(waiting, 6);
   });
 
   test('17 map-to-map entry points, all on the arriving map', function (t) {
@@ -364,10 +366,10 @@
     var b = board43();
     var s = fresh();
     s.mapPresetId = 'midland_province';
-    t.same(R.visibleMarkers(s, D, b).map(function (m) { return m.id; }), ['middlemount']);
+    t.same(R.visibleMarkers(s, D, b).map(function (m) { return m.id; }).sort(), ['middlemount', 'river_rook'], 'Middlemount (a town map) and the River Rook (a port waiting for its picture); the other pins stay hidden');
     s.fog.enabled = true;
     t.equal(R.visibleMarkers(s, D, b).length, 0);
-    var m = D.markersByMapId.midland_province[0];
+    var m = D.markersByMapId.midland_province.filter(function (x) { return x.id === 'middlemount'; })[0];
     R.reveal(s, R.hexAt(s.grid, m.x * b.w, m.y * b.h), 0);
     t.equal(R.visibleMarkers(s, D, b).length, 1);
   });

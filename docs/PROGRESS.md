@@ -919,6 +919,10 @@ Harry asked for a complete rework: the old tool's shields, colours and sigils we
 - Done: wyverns can be granted and housed (Roost room 2 to 6) and the Warehouse has a Sort (SUI-41).
 - Next, waiting on Harry's answers: more Port Charter ports (and Bacca's river port), market saturation switch-on, the remaining Charter customisations, the Hall's Secure Trade Agreement retirement, and more kinds of parcel.
 
+### More ports and tidy Warehouse (19 October 2026)
+- Done: ten Port Charter ports including the River Rook for Clan Bacca; trade goods with none left leave the Warehouse (SUI-42). Waiting on Harry: confirm the sailing days and risks, and check the three new pins.
+- Next (his order): market saturation and the remaining Charter customisations, then more parcel items, then retiring Secure Trade Agreement.
+
 ## Next
 **Harry tries Build 3**: makes a crest in the Crest Creator and sends it with Use for the Bastion (with the Bastion open in another window, and with it shut), uploads and removes one, founds a Clan, and sees the crest on the War Table. Then says what to change: the badge, the Party Identity panel's layout, or the Form Clan crest box. That completes the overhaul's plan.
 

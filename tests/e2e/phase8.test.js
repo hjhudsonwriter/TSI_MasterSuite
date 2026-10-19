@@ -220,8 +220,8 @@ function serve(dir) {
       }
     });
 
-    await check('the 15 town pins show and open their town maps', async () => {
-      let seen = 0;
+    await check('the 15 town pins show and open their town maps; the 6 ports still waiting for a picture show too and open a plain panel with their harbour box (19 October 2026)', async () => {
+      let seen = 0, waiting = 0;
       for (const id of await page.$$eval('[data-test=map-select] option', os => os.map(o => o.value).filter(Boolean))) {
         await loadMap(page, id);
         const pins = await page.$$('.tsi-exp-pin');
@@ -229,15 +229,15 @@ function serve(dir) {
           const label = await pins[i].getAttribute('title');
           await pause(page);
           await page.click('.tsi-exp-pin >> nth=' + i);
-          await page.waitForFunction(() => { const i = document.querySelector('.tsi-exp-place-media img'); return i && i.complete && i.naturalWidth > 0; });
-          const v = await page.evaluate(() => ({ t: document.querySelector('.tsi-modal .tsi-exp-event-title').textContent, w: document.querySelector('.tsi-exp-place-media img').naturalWidth }));
+          await page.waitForSelector('.tsi-modal .tsi-exp-event-title');
+          await page.waitForTimeout(150);
+          const v = await page.evaluate(() => { const i = document.querySelector('.tsi-exp-place-media img'); return { t: document.querySelector('.tsi-modal .tsi-exp-event-title').textContent, has: !!i, w: i ? i.naturalWidth : 0, harbour: !!document.querySelector('[data-test=harbour]') }; });
           equal(v.t, label);
-          equal(v.w, 2048);
-          seen++;
+          if (v.has) { equal(v.w, 2048); seen++; } else { waiting++; assert(v.harbour, label + ' has its harbour box'); }
           await closePopup(page);
         }
       }
-      equal(seen, 15);
+      equal([seen, waiting], [15, 6]);
     });
 
     await check('nothing reached for the internet, and nothing failed', async () => {
@@ -439,7 +439,7 @@ function serve(dir) {
     await loadMap(page, 'midland_province');
 
     await check('fog on: the map is dark except two hexes round the hero; pins hide', async () => {
-      equal(await page.$$eval('.tsi-exp-pin', ps => ps.map(p => p.title)), ['Middlemount']);
+      equal(await page.$$eval('.tsi-exp-pin', ps => ps.map(p => p.title)), ['The River Rook', 'Middlemount']);
       await page.click('[data-test=fog]');
       equal(await text(page, 'fog'), 'Fog of War: On');
       const s = await st(page);
@@ -449,7 +449,7 @@ function serve(dir) {
 
     await check('walking to a town uncovers its pin', async () => {
       await page.click('[data-test=free-move]');
-      const pin = await page.evaluate(() => { const m = TSI_DATA.explorer.markersByMapId.midland_province[0], b = TSI.explorer.debug.board(); return TSI.explorer.debug.toScreen(m.x * b.w, m.y * b.h); });
+      const pin = await page.evaluate(() => { const m = TSI_DATA.explorer.markersByMapId.midland_province.filter(x => x.id === 'middlemount')[0], b = TSI.explorer.debug.board(); return TSI.explorer.debug.toScreen(m.x * b.w, m.y * b.h); });
       const k = await page.evaluate(() => TSI.explorer.debug.tokenScreen('kaelen'));
       await drag(page, k, { x: pin.x - k.x, y: pin.y - k.y });
       equal(await page.$$eval('.tsi-exp-pin', ps => ps.map(p => p.title)), ['Middlemount']);
@@ -1183,12 +1183,12 @@ function serve(dir) {
   section('The pin-check page (tests/pin-check.html)');
   {
     const { context, page } = await newPage(browser, 'laptop');
-    await check('it shows all ten maps with all 33 pins, 18 of them marked hidden', async () => {
+    await check('it shows all ten maps with all 36 pins, 15 of them marked hidden', async () => {
       await page.goto(H.fileUrl('tests/pin-check.html'));
       await page.waitForFunction(() => Array.from(document.querySelectorAll('img.pc-picture')).every(i => i.complete && i.naturalWidth > 0));
       equal(await page.$$eval('img.pc-picture', is => is.length), 10);
-      equal(await page.$$eval('.pc-pin', ps => ps.length), 33);
-      equal(await page.$$eval('.pc-pin--hidden', ps => ps.length), 18);
+      equal(await page.$$eval('.pc-pin', ps => ps.length), 36);
+      equal(await page.$$eval('.pc-pin--hidden', ps => ps.length), 15);
       equal(context.log.errors, []);
       equal(context.log.failed, []);
     });

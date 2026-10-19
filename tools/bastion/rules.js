@@ -2072,6 +2072,20 @@
      taken, or null if anything is short. A goods row used up stays, at 0
      (the DM's Remove takes it away), so an order never leaves the Warehouse
      empty, which would bring back the "New Item" row an empty one shows. */
+  /* A trade good that has run out leaves the Warehouse (Harry, 19 October
+     2026): only trade goods that are actually there get a line. Supplies and
+     ingredients, and the rows typed by hand, are left as they are. Returns
+     true if a row went. */
+  R.pruneEmptyCargo = function (s, data) {
+    if (!Array.isArray(s.warehouse)) return false;
+    var before = s.warehouse.length;
+    s.warehouse = s.warehouse.filter(function (w) {
+      if (!isObj(w) || !w.goodId) return true;
+      var g = R.good(data, w.goodId);
+      return !(g && g.kind === 'cargo' && clampInt(w.qty, 0) <= 0);
+    });
+    return s.warehouse.length !== before;
+  };
   R.takeGoods = function (s, data, inputs) {
     inputs = mergeInputs(inputs);
     if (R.inputsShort(s, data, inputs)) return null;

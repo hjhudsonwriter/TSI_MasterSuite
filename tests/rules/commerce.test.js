@@ -106,16 +106,23 @@
     t.same(C.saturation, { active: false, windowDays: 28, lotsPerTier: 4, keepDays: 56 });
   });
 
-  test('no fees or tariffs; 7 days out and 7 back; risks 5, 10 and 20 in 100', function (t) {
+  test('no fees or tariffs; Timberport and Goldport 7 days out and 7 back; the later ports sail longer for more risk; risks 5, 10, 20 and (Redport) 30 in 100', function (t) {
     t.equal(C.feePerLot, 0);
     t.equal(C.tariffPct, 0);
     t.same(C.tariffByClan, {});
-    t.same([C.risks.low.pct, C.risks.medium.pct, C.risks.high.pct], [5, 10, 20]);
+    t.same([C.risks.low.pct, C.risks.medium.pct, C.risks.high.pct, C.risks.very_high.pct], [5, 10, 20, 30]);
     Bg.ports().forEach(function (p) {
       var r = BR.portRoute(bdata, p);
       t.ok(r, p + ' has a route');
-      t.same([r.outDays, r.backDays], [7, 7], p);
+      t.equal(r.outDays, r.backDays, p + ': the way back takes as long as the way out');
     });
+    t.same(['timberport', 'goldport'].map(function (p) { var r = BR.portRoute(bdata, p); return [r.outDays, r.backDays]; }), [[7, 7], [7, 7]]);
+    /* Harry's order, shortest to longest sailing (19 October 2026); Redport the only one longer than both of the first two. */
+    var order = ['port_brawdlyn', 'steelport', 'moltenport', 'leatherport', 'bleakharbour', 'alderbridge', 'redport'];
+    t.same(order.map(function (p) { return BR.portRoute(bdata, p).outDays; }), [2, 3, 4, 5, 6, 7, 9]);
+    t.same(Bg.ports().filter(function (p) { return BR.portRoute(bdata, p).outDays > 7; }), ['redport'], 'only Redport is longer than Timberport and Goldport');
+    t.same(order.map(function (p) { return BR.portRoute(bdata, p).pct; }), [5, 5, 10, 10, 20, 20, 30], 'risk rises with the days');
+    t.same([BR.portRoute(bdata, 'river_rook').outDays, BR.portRoute(bdata, 'river_rook').pct], [4, 10], 'the River Rook, Clan Bacca\'s river port');
     t.same([BR.portRoute(bdata, 'timberport').pct, BR.portRoute(bdata, 'goldport').pct], [5, 20], 'Blackstone low, Molten high, as the old Clan trade');
     t.equal(BR.portRoute(bdata, 'nowhere'), null);
   });
@@ -141,8 +148,9 @@
     t.ok(/isn't a trade good/.test(BR.goodShipBlocker(bdata, 'restorative_herbs', null)));
   });
 
-  test('the ports: Timberport and Goldport, spelt as the Explorer\'s pins, with their regions\' Clans', function (t) {
-    t.same(Bg.ports(), ['timberport', 'goldport']);
+  test('the ports: Timberport and Goldport, then the eight Harry added on 19 October 2026, spelt as the Explorer\'s pins, with their regions\' Clans (every Clan has one)', function (t) {
+    t.same(Bg.ports(), ['timberport', 'goldport', 'port_brawdlyn', 'steelport', 'moltenport', 'leatherport', 'bleakharbour', 'alderbridge', 'redport', 'river_rook']);
+    t.same(Bg.ports().map(function (id) { return Bg.portClan(id); }).sort().filter(function (c, i, a) { return a.indexOf(c) === i; }), ['bacca', 'blackstone', 'farmer', 'karr', 'molten', 'rowthorn', 'slade'], 'all seven Clans');
     Bg.ports().forEach(function (id) {
       var p = T.ports[id];
       var pin = (T.explorer.markersByMapId[p.mapId] || []).filter(function (m) { return m.id === p.pin; })[0];
@@ -167,7 +175,7 @@
 
   test('check() refuses a damaged Port Charter, with a plain reason', function (t) {
     t.ok(/which port/.test(Bg.check(charterMsg({ port: '' }))));
-    t.ok(/port the Bastion doesn't know \(leatherport\)/.test(Bg.check(charterMsg({ port: 'leatherport' }))));
+    t.ok(/port the Bastion doesn't know \(nowhere\)/.test(Bg.check(charterMsg({ port: 'nowhere' }))));
     t.ok(/isn't Goldport's/.test(Bg.check(charterMsg({ clan: 'slade' }))));
     t.ok(/doesn't know \(hr\)/.test(Bg.check(charterMsg({ hr: 1 }))), 'a Charter has no Honour/Respect');
     t.ok(/doesn't know \(port\)/.test(Bg.check(standingMsg({ port: 'goldport' }))), 'a standing message has no port');
@@ -265,7 +273,7 @@
     BR.applyInbox(b, bdata, ER.toSave(s), 1000);
     var saved = copy(BR.toSave(b));
     t.ok(/Held: register it/.test(J.grantCharter(s, 'goldport', {}, saved).message));
-    t.ok(/isn't a port/.test(J.grantCharter(s, 'leatherport', {}, saved).message));
+    t.ok(/isn't a port/.test(J.grantCharter(s, 'nowhere', {}, saved).message));
     var b2 = BR.defaultState(bdata);
     BR.anchor(b2, 4);
     BR.applyInbox(b2, bdata, ER.toSave(s), 1000);

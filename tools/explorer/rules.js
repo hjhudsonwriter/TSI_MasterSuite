@@ -407,7 +407,9 @@
     var list = data.markersByMapId[mapId];
     if (!Array.isArray(list) || !list.length) return [];
     return list.filter(function (m) {
-      if (!m.submapImage || !String(m.submapImage).trim()) return false;
+      /* A pin with no town map stays hidden (E10), unless it is a port that
+         is waiting for its picture (show: true, 19 October 2026). */
+      if ((!m.submapImage || !String(m.submapImage).trim()) && m.show !== true) return false;
       return R.markerRevealed(state, board, m);
     });
   };
