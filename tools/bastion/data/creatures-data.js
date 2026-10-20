@@ -135,6 +135,8 @@ window.TSI_DATA.bastionCreatures = {
     /* Specialist training places at once, by the building's level (the House
        orders don't use one). */
     trainingPlaces: { wyvern_roost: { 1: 1, 2: 1, 3: 2, 4: 2, 5: 3 } },
+    /* The party level a first mounted flight needs at the earliest (Harry, 20 October 2026), and what a harness costs (the order's own cost). */
+    firstFlightPartyLevel: 13,
     /* Defend Bastion bonuses a learned discipline gives that one creature
        (Battle Value stays as it was: Harry, 20 October 2026). */
     trainingBonus: {

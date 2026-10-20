@@ -168,7 +168,7 @@
     ['wyvern_roost', 'griffin_tower', 'dire_wolf_den'].forEach(function (id) {
       var f = BR.facility(bdata, id);
       t.same([f.requiredLevel, f.inDevelopment, f.plot, typeof f.description], [5, undefined, undefined, 'string'], id);
-      t.equal(f.functions.length, id === 'wyvern_roost' ? 8 : 1, id + ': one order (the Roost has two House orders and, since 20 October 2026, six training programmes)');
+      t.equal(f.functions.length, id === 'wyvern_roost' ? 14 : 1, id + ': one order (the Roost has two House orders and, since 20 October 2026, twelve training programmes)');
       var fn = f.functions[0];
       t.same([fn.id, fn.days, fn.costGP, fn.costText, fn.requiredFacilityLevel, fn.options, fn.production], [FAC[id], CR.houseDays, 0, '0', undefined, [], undefined], id);
       t.equal(BR.isPlotFacility(bdata, id), false, id + ' takes a construction slot');

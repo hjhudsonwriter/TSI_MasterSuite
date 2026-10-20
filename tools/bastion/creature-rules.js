@@ -524,8 +524,20 @@
     if (isNum(fn.bondTarget) && !d.handlerId) return name + ' has no handler yet. Assign one first.';
     if (isNum(fn.needsBond) && d.bond.level < fn.needsBond) return 'Needs Bond ' + fn.needsBond + ' (' + R.bondName(fn.needsBond) + '); ' + name + ' is Bond ' + d.bond.level + ' (' + R.bondName(d.bond.level) + ').';
     if (isNum(fn.bondTarget) && d.bond.level >= fn.bondTarget) return name + ' is already Bond ' + d.bond.level + ' (' + R.bondName(d.bond.level) + ') or more.';
+    if (fn.fitsHarness && d.harness && d.harness.fitted) return name + ' already has a fitted riding harness.';
+    if (fn.needsHarness && !(d.harness && d.harness.fitted)) return 'Needs a fitted riding harness: Commission Riding Harness first.';
+    var needT = Array.isArray(fn.needsTrained) ? fn.needsTrained : [];
+    for (var ni = 0; ni < needT.length; ni++) {
+      if (!R.trainingDone(c, needT[ni])) {
+        var nf = (fac.functions || []).filter(function (x) { return x.id === needT[ni]; })[0];
+        return 'Needs ' + (nf ? nf.label : needT[ni]) + ' first.';
+      }
+    }
+    if (fn.needsFirstFlight && !(d.firstFlight && d.firstFlight.approved)) return 'Needs the first mounted flight confirmed by the DM (see Riding in ' + name + '\'s profile).';
     var places = R.trainingPlaces(s, data, fac.id);
     if (places.free <= 0) return 'All ' + places.cap + ' training ' + (places.cap === 1 ? 'place is' : 'places are') + ' taken (a Level ' + places.level + ' ' + fac.name + ' has ' + places.cap + ').';
+    var cost = clampInt(fn.costGP || 0, 0, 100000);
+    if (cost && clampInt(s.treasuryGP, 0, 1e9) < cost) return 'Needs ' + cost + ' gp; the treasury has ' + clampInt(s.treasuryGP, 0, 1e9) + ' gp.';
     return '';
   };
   /* Issue one (R.issueOrder calls this): checks everything, then adds the
@@ -540,8 +552,11 @@
     var nm = R.creatureName(data, c);
     var label = fac.name + ': ' + fn.label + ' (' + nm + ')';
     var days = R.orderDays(fn);
-    s.pendingOrders.push({ id: R.uid(rand), facId: fac.id, fnId: fn.id, chosen: { label: nm, trainCreatureId: c.id }, optionLabel: nm, notes: '', label: label, costGP: 0, issuedDay: s.day, dueDay: s.day + days });
-    return { ok: true, log: ['Order Issued', label + ' (' + R.daysText(days) + ': due Day ' + (s.day + days) + ').'] };
+    /* The one gold cost (the 150 gp harness) is taken now, once, with the order. */
+    var cost = clampInt(fn.costGP || 0, 0, 100000);
+    s.treasuryGP = clampInt(s.treasuryGP, 0, 1e9) - cost;
+    s.pendingOrders.push({ id: R.uid(rand), facId: fac.id, fnId: fn.id, chosen: { label: nm, trainCreatureId: c.id }, optionLabel: nm, notes: '', label: label, costGP: cost, issuedDay: s.day, dueDay: s.day + days });
+    return { ok: true, log: ['Order Issued', label + ' (' + R.daysText(days) + ': due Day ' + (s.day + days) + ')' + (cost ? '. ' + cost + ' gp from the treasury' : '') + '.'] };
   };
   /* A programme completing, once: the discipline is recorded for good; a
      bond programme makes the next milestone ready (never the bond itself). */
@@ -556,6 +571,13 @@
     var line = fn.label + ' completed.';
     var bonus = isObj(cdata(data).development) && isObj(cdata(data).development.trainingBonus) ? cdata(data).development.trainingBonus[fn.id] : null;
     var tail = '';
+    if (fn.fitsHarness) {
+      d.harness = { fitted: true, paidGP: clampInt(order.costGP, 0, 100000), fittedDay: dayNum(s.day, 1) };
+      tail += ' A bespoke riding harness is fitted (' + d.harness.paidGP + ' gp, paid once).';
+    }
+    if (fn.id === 'wyr_ascent_landing') tail += ' Controlled-flight proficiency is recorded; it is not permission to mount yet.';
+    if (fn.id === 'wyr_emergency_recall') tail += ' Emergency-return discipline is recorded.';
+    if (fn.id === 'wyr_combat_signals') tail += ' Recorded as a prerequisite for a future mounted-combat system; nothing new happens in battle.';
     if (isNum(fn.bondTarget) && fn.bondTarget === d.bond.level + 1) {
       d.bond.ready = fn.bondTarget;
       tail = ' The Bond ' + fn.bondTarget + ' (' + R.bondName(fn.bondTarget) + ') milestone is ready: confirm it after a scene at the table.';
@@ -608,6 +630,10 @@
       if (!keepBond) d.bond.level = 0;
       d.bond.ready = null;
       d.handlerId = h;
+      if (d.firstFlight && d.firstFlight.approved) {
+        d.firstFlight = { approved: false, day: null, handlerId: null };
+        R.addChronicle(s, c, 'flight', 'The first flight was confirmed for the earlier pairing: the new pairing needs its own.', 'DM');
+      }
       R.addChronicle(s, c, 'handler', 'Handler changed to ' + R.handlerName(h) + '. ' + (keepBond ? 'The DM credited the old bond (Bond ' + was + ').' : 'The new pairing starts at Bond 0 (Bond ' + was + ' kept in the history).') + ' Reason: ' + why, 'DM');
       return { ok: true, log: ['Creatures', name + '\'s handler is now ' + R.handlerName(h) + (keepBond ? ' (Bond ' + d.bond.level + ' credited).' : ' (Bond 0: a new pairing).')] };
     }
@@ -653,12 +679,71 @@
     if (c.species !== 'wyvern') return '';
     if (c.status !== 'housed') return 'Needs a home at the Wyvern Roost first.';
     if (isNum(d.bond.ready)) return 'Bond ' + d.bond.ready + ' (' + R.bondName(d.bond.ready) + ') is ready: confirm it after a scene at the table.';
-    if (d.bond.level >= 4) return 'Bond ' + d.bond.level + ' (' + R.bondName(d.bond.level) + '). Riding preparation comes later.';
+    if (d.bond.level >= 4) {
+      var label = function (id) { var f = (R.facility(data, 'wyvern_roost').functions || []).filter(function (x) { return x.id === id; })[0]; return f ? f.label + ' (Level ' + (f.requiredFacilityLevel || 1) + ', ' + R.daysText(f.days) + (f.costGP ? ', ' + f.costGP + ' gp' : '') + ')' : id; };
+      var steps = [['harness', !(d.harness && d.harness.fitted), 'wyr_riding_harness'], ['ascent', !R.trainingDone(c, 'wyr_ascent_landing'), 'wyr_ascent_landing'], ['recall', !R.trainingDone(c, 'wyr_emergency_recall'), 'wyr_emergency_recall']];
+      for (var si = 0; si < steps.length; si++) if (steps[si][1]) return 'Bond ' + d.bond.level + ' (' + R.bondName(d.bond.level) + '). Next for riding: ' + label(steps[si][2]) + '.';
+      if (!(d.firstFlight && d.firstFlight.approved)) return 'Riding preparation is done: the first mounted flight waits for you (see Riding).';
+      if (d.bond.level < 5) return 'Bond ' + d.bond.level + ' (' + R.bondName(d.bond.level) + '). Next: ' + label('wyr_riders_pact') + '.';
+      return 'Bond 5 (' + R.bondName(5) + '). Elite Aerial Defence and Aerial Combat Signals are open to it.';
+    }
     var fac = R.facility(data, 'wyvern_roost');
     var next = (fac ? fac.functions : []).filter(function (f) { return f.trains && isNum(f.bondTarget) && f.bondTarget === d.bond.level + 1; })[0];
     if (!next) return '';
     if (!d.handlerId) return 'Assign a handler, then ' + next.label + ' (Level ' + (next.requiredFacilityLevel || 1) + ') prepares Bond ' + next.bondTarget + '.';
     if (R.trainingDone(c, next.id)) return 'Bond ' + next.bondTarget + ' training is done: waiting for the DM milestone.';
     return next.label + ' (Level ' + (next.requiredFacilityLevel || 1) + ', ' + R.daysText(next.days) + ') prepares Bond ' + next.bondTarget + ' (' + R.bondName(next.bondTarget) + ').';
+  };
+
+  /* ---------- First flight readiness (Wyvern Roost: Bonding, Training & Rider Mastery, phase 3) ----------
+     A wyvern and its handler may be marked ready for a FIRST FLIGHT SCENE
+     when every check below holds; the DM then runs the scene and confirms
+     it. That is all it means: story permission for a DM-run mounted flight.
+     There is no riding movement, speed, turn, feat or combat action in the
+     Bastion yet, and nothing says "rideable". */
+  R.firstFlightLevel = function (data) {
+    var n = isObj(cdata(data).development) ? cdata(data).development.firstFlightPartyLevel : null;
+    return isNum(n) ? clampInt(n, 1, 20) : 13;
+  };
+  /* [{ ok, text }]: each prerequisite, ticked or not, in plain words. */
+  R.firstFlightChecks = function (s, data, c) {
+    var d = R.devView(s, c);
+    var need = R.firstFlightLevel(data);
+    var roostLevel = R.builtFacilityIds(s, data).indexOf('wyvern_roost') !== -1 ? R.getFacilityLevel(s, 'wyvern_roost') : 0;
+    var housed = isObj(c) && c.status === 'housed' && c.home === 'wyvern_roost';
+    var rec = isObj(c) ? R.creatureRecovery(s, c.id) : null;
+    var st = isObj(c) ? R.creatureStatus(s, data, c) : { kind: '' };
+    return [
+      { ok: clampInt(s.partyLevel, 1, 20) >= need, text: 'Party level ' + need + ' or higher (it\'s ' + clampInt(s.partyLevel, 1, 20) + ')' },
+      { ok: roostLevel >= 4 && housed, text: 'Housed at a standing Wyvern Roost of Level 4 or more' },
+      { ok: d.bond.level >= 4 && !!d.handlerId, text: 'Bond 4 or more with a handler' },
+      { ok: !!(d.harness && d.harness.fitted), text: 'A fitted riding harness' },
+      { ok: R.trainingDone(c, 'wyr_ascent_landing'), text: 'Controlled Ascent & Landing' },
+      { ok: R.trainingDone(c, 'wyr_emergency_recall'), text: 'Emergency Recall Training' },
+      { ok: !rec && st.kind !== 'defending', text: 'Not wounded or defending' }
+    ];
+  };
+  R.firstFlightReady = function (s, data, c) { return R.firstFlightChecks(s, data, c).every(function (x) { return x.ok; }); };
+  /* The Riding line: never "rideable". */
+  R.ridingLine = function (s, data, c) {
+    var d = R.devView(s, c);
+    if (d.firstFlight && d.firstFlight.approved) return 'Mounted Flight Qualified (' + R.dayLabel(d.firstFlight.day) + ', handler ' + R.handlerName(d.firstFlight.handlerId) + '): story permission for a DM-run mounted flight only. Riding movement and mounted combat are not part of the Bastion yet.';
+    if (R.firstFlightReady(s, data, c)) return 'First flight ready, awaiting the DM\'s milestone.';
+    return 'Not ready for a first flight yet.';
+  };
+  /* The DM confirms the first flight scene happened. */
+  R.confirmFirstFlight = function (s, data, id, reason) {
+    var c = R.creatureById(s, id);
+    if (!c) return { ok: false, message: 'That creature isn\'t at the Ironbow any more.' };
+    var d = R.ensureDev(s, c);
+    var name = R.creatureName(data, c);
+    if (d.firstFlight && d.firstFlight.approved) return { ok: false, message: name + ' and ' + R.handlerName(d.firstFlight.handlerId) + ' have already flown.' };
+    var bad = R.firstFlightChecks(s, data, c).filter(function (x) { return !x.ok; })[0];
+    if (bad) return { ok: false, message: 'Not ready: ' + bad.text + '.' };
+    var why = reasonOf(reason);
+    if (why.length < 3) return { ok: false, message: 'Say how the first flight went (the scene).' };
+    d.firstFlight = { approved: true, day: dayNum(s.day, 1), handlerId: d.handlerId };
+    R.addChronicle(s, c, 'flight', 'First mounted flight confirmed by the DM with ' + R.handlerName(d.handlerId) + '. ' + why, 'DM');
+    return { ok: true, log: ['Creatures', name + ' and ' + R.handlerName(d.handlerId) + ': first mounted flight confirmed. ' + why] };
   };
 }());

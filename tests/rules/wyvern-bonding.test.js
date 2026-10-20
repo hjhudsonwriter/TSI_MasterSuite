@@ -100,7 +100,7 @@
 
   test('the six orders: Level 1 to 3, free, with the approved days; each names one housed wyvern', function (t) {
     var f = BR.facility(bdata, 'wyvern_roost');
-    var rows = f.functions.filter(function (x) { return x.trains; }).map(function (x) { return [x.id, x.days, x.requiredFacilityLevel, x.costGP]; });
+    var rows = f.functions.filter(function (x) { return x.trains && x.requiredFacilityLevel <= 3; }).map(function (x) { return [x.id, x.days, x.requiredFacilityLevel, x.costGP]; });
     t.same(rows, [['wyr_safe_acclimatisation', 5, 1, 0], ['wyr_keeper_routine', 7, 1, 0], ['wyr_signal_recall', 7, 2, 0], ['wyr_defence_drills', 7, 2, 0], ['wyr_open_sky_return', 10, 3, 0], ['wyr_aerial_sentinel', 7, 3, 0]]);
     t.same(f.functions.filter(function (x) { return !x.trains; }).map(function (x) { return x.id; }), ['house_elara_wyvern', 'house_wyvern'], 'the House orders are unchanged');
   });
@@ -291,5 +291,136 @@
     b.facilityLevels.wyvern_roost = 1;
     t.equal(BR.creatureRoom(b, bdata, 'wyvern_roost').housed, 1);
     t.equal(BR.fightingCreatures(b, bdata).length, 1);
+  });
+
+  group('Wyvern Roost: riding preparation (phase 3, 20 October 2026)');
+
+  /* Elara's wyvern at a Level 5 Roost, Bond 4, party level 13, with 400 gp. */
+  function rider() {
+    var b = roost(5);
+    b.partyLevel = 13;
+    b.treasuryGP = 400;
+    dev(b).bond.level = 4;
+    return b;
+  }
+
+  test('the six orders: Levels 4 and 5, the approved days, the harness the only one with a cost (150 gp)', function (t) {
+    var f = BR.facility(bdata, 'wyvern_roost');
+    var rows = f.functions.filter(function (x) { return x.trains && x.requiredFacilityLevel >= 4; }).map(function (x) { return [x.id, x.days, x.requiredFacilityLevel, x.costGP]; });
+    t.same(rows, [['wyr_riding_harness', 7, 4, 150], ['wyr_ascent_landing', 14, 4, 0], ['wyr_emergency_recall', 7, 4, 0], ['wyr_riders_pact', 14, 5, 0], ['wyr_elite_defence', 10, 5, 0], ['wyr_combat_signals', 14, 5, 0]]);
+  });
+
+  test('the harness: 150 gp once, taken when the order starts; too little gold refuses without a change; a second is refused; it stays through a reload and an upgrade', function (t) {
+    var b = rider();
+    b.treasuryGP = 149;
+    var snap = JSON.stringify(BR.toSave(b));
+    t.equal(train(b, 'wyr_riding_harness').message, 'Needs 150 gp; the treasury has 149 gp.');
+    t.equal(JSON.stringify(BR.toSave(b)), snap, 'nothing changed');
+    b.treasuryGP = 400;
+    var r = train(b, 'wyr_riding_harness');
+    t.equal(r.ok, true, r.message);
+    t.same([b.treasuryGP, last(b).costGP, last(b).dueDay - last(b).issuedDay], [250, 150, 7]);
+    t.ok(/already in a programme/.test(train(b, 'wyr_riding_harness').message), 'a pending harness can\'t be duplicated');
+    b.day = last(b).dueDay;
+    complete(b, last(b));
+    t.same(dev(b).harness, { fitted: true, paidGP: 150, fittedDay: b.day });
+    t.ok(/already completed Commission Riding Harness/.test(train(b, 'wyr_riding_harness').message), 'no second harness');
+    t.equal(b.treasuryGP, 250, 'charged exactly once');
+    b.facilityLevels.wyvern_roost = 4;
+    t.same(reload(b).creatures[0].development.harness, dev(b).harness, 'kept through a reload and an upgrade');
+  });
+
+  test('a cancelled harness order is not refunded (the screen warns first)', function (t) {
+    var b = rider();
+    train(b, 'wyr_riding_harness');
+    BR.cancelOrder(b, last(b).id, bdata);
+    t.same([b.treasuryGP, dev(b).harness.fitted, b.pendingOrders.length], [250, false, 0]);
+  });
+
+  test('the flight programmes follow in order: Ascent & Landing needs the harness, Emergency Recall needs Ascent & Landing; each says what is missing', function (t) {
+    var b = rider();
+    t.equal(train(b, 'wyr_ascent_landing').message, 'Needs a fitted riding harness: Commission Riding Harness first.');
+    t.equal(train(b, 'wyr_emergency_recall').message, 'Needs Controlled Ascent & Landing first.');
+    finish(b, 'wyr_riding_harness');
+    t.equal(train(b, 'wyr_emergency_recall').message, 'Needs Controlled Ascent & Landing first.');
+    var a = finish(b, 'wyr_ascent_landing');
+    t.ok(/not permission to mount yet/.test(a[0][1]), a[0][1]);
+    finish(b, 'wyr_emergency_recall');
+    t.same(Object.keys(dev(b).training).filter(function (k) { return /harness|ascent|recall/.test(k); }).sort(), ['wyr_ascent_landing', 'wyr_emergency_recall', 'wyr_riding_harness']);
+    t.equal(dev(b).bond.ready, null, 'none of them moves the bond');
+  });
+
+  test('first flight: every check must hold (party level 13 included), and even then it waits for the DM; "rideable" is never said', function (t) {
+    var b = rider();
+    finish(b, 'wyr_riding_harness'); finish(b, 'wyr_ascent_landing'); finish(b, 'wyr_emergency_recall');
+    var c = BR.creatureById(b, E);
+    t.equal(BR.firstFlightReady(b, bdata, c), true);
+    t.equal(BR.ridingLine(b, bdata, c), 'First flight ready, awaiting the DM\'s milestone.');
+    b.partyLevel = 12;
+    t.equal(BR.firstFlightReady(b, bdata, c), false, 'blocked at party level 12 with a Level 5 Roost and Bond 4');
+    t.ok(/Party level 13 or higher \(it's 12\)/.test(BR.confirmFirstFlight(b, bdata, E, 'The sky was clear.').message));
+    b.partyLevel = 13;
+    t.equal(BR.confirmFirstFlight(b, bdata, E, '').ok, false, 'a reason is required');
+    b.warRecovery = [{ id: 'r1', kind: 'creature', status: 'wounded', untilDay: 99, creatureId: E }];
+    t.ok(/Not wounded or defending/.test(BR.confirmFirstFlight(b, bdata, E, 'The sky was clear.').message), 'not while wounded');
+    b.warRecovery = [];
+    b.facilityLevels.wyvern_roost = 3;
+    t.equal(BR.firstFlightReady(b, bdata, c), false, 'the Roost must be Level 4 or more');
+    b.facilityLevels.wyvern_roost = 5;
+    var r = BR.confirmFirstFlight(b, bdata, E, 'Elara and the wyvern crossed the bay at dawn.');
+    t.equal(r.ok, true, r.message);
+    t.same([dev(b).firstFlight.approved, dev(b).firstFlight.handlerId, dev(b).firstFlight.day], [true, 'elara', b.day]);
+    t.ok(/Mounted Flight Qualified/.test(BR.ridingLine(b, bdata, c)) && !/rideable/i.test(BR.ridingLine(b, bdata, c)));
+    t.equal(BR.confirmFirstFlight(b, bdata, E, 'again please').ok, false, 'once');
+    t.equal(reload(b).creatures[0].development.firstFlight.approved, true, 'kept through a reload');
+  });
+
+  test('the Rider\'s Pact needs the first flight (no circle: Bond 4 is enough for the flight); it makes Bond 5 READY, never raises it', function (t) {
+    var b = rider();
+    t.ok(/first mounted flight confirmed by the DM/.test(train(b, 'wyr_riders_pact').message), train(b, 'wyr_riders_pact').message);
+    finish(b, 'wyr_riding_harness'); finish(b, 'wyr_ascent_landing'); finish(b, 'wyr_emergency_recall');
+    BR.confirmFirstFlight(b, bdata, E, 'They flew.');
+    var lines = finish(b, 'wyr_riders_pact');
+    t.ok(/Bond 5 \(Legendary Partnership\) milestone is ready/.test(lines[0][1]), lines[0][1]);
+    t.same([dev(b).bond.level, dev(b).bond.ready], [4, 5]);
+    BR.confirmBond(b, bdata, E, 'Elara and her wyvern stood together against the storm.');
+    t.same([dev(b).bond.level, dev(b).bond.ready], [5, null]);
+    t.ok(/Elite Aerial Defence and Aerial Combat Signals/.test(BR.nextStepLine(b, bdata, BR.creatureById(b, E))));
+  });
+
+  test('Elite Aerial Defence needs Aerial Sentinel and gives +1 Attack; Aerial Combat Signals needs Bond 5 and the flight and adds nothing in battle', function (t) {
+    var b = rider();
+    t.equal(train(b, 'wyr_elite_defence').message, 'Needs Aerial Sentinel Training first.');
+    finish(b, 'wyr_aerial_sentinel');
+    var before = BR.creatureWar(bdata, BR.creatureById(b, E));
+    finish(b, 'wyr_elite_defence');
+    var after = BR.creatureWar(bdata, BR.creatureById(b, E));
+    t.same([after.attack - (before.attack || 0), after.bv], [1, 11]);
+    t.ok(/Needs Bond 5/.test(train(b, 'wyr_combat_signals').message), train(b, 'wyr_combat_signals').message);
+    dev(b).bond.level = 5;
+    t.ok(/first mounted flight confirmed/.test(train(b, 'wyr_combat_signals').message));
+    dev(b).firstFlight = { approved: true, day: 1, handlerId: 'elara' };
+    var w0 = JSON.stringify(BR.creatureWar(bdata, BR.creatureById(b, E)));
+    finish(b, 'wyr_combat_signals');
+    t.equal(JSON.stringify(BR.creatureWar(bdata, BR.creatureById(b, E))), w0, 'no new combat effect');
+  });
+
+  test('a new handler needs their own first flight; the old record stays in the Chronicle; a granted wyvern never inherits Elara\'s harness or flight', function (t) {
+    var b = rider();
+    finish(b, 'wyr_riding_harness'); finish(b, 'wyr_ascent_landing'); finish(b, 'wyr_emergency_recall');
+    BR.confirmFirstFlight(b, bdata, E, 'They flew.');
+    BR.assignHandler(b, bdata, E, 'Mira', 'Elara gave her up.');
+    t.same([dev(b).firstFlight, dev(b).harness.fitted, dev(b).bond.level], [{ approved: false, day: null, handlerId: null }, true, 0]);
+    t.ok(dev(b).chronicle.some(function (e) { return /first flight was confirmed for the earlier pairing/.test(e.text); }));
+    b.facilityLevels.wyvern_roost = 5;
+    var g = grantAndHouse(b, 1);
+    t.same([BR.devView(b, g).harness.fitted, BR.devView(b, g).firstFlight.approved, BR.devView(b, g).bond.level], [false, false, 0]);
+  });
+
+  test('no mounted-flight, riding or expedition control exists: the profile says so and the orders only record', function (t) {
+    var b = rider();
+    var c = BR.creatureById(b, E);
+    t.ok(/Not ready for a first flight yet/.test(BR.ridingLine(b, bdata, c)));
+    t.ok(/Riding movement and mounted combat are not part of the Bastion yet/.test((function () { dev(b).firstFlight = { approved: true, day: 2, handlerId: 'elara' }; return BR.ridingLine(b, bdata, c); }())));
   });
 }());

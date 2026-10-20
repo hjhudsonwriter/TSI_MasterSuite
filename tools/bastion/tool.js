@@ -635,6 +635,32 @@
         if (!res.ok) { await say(res.message); return; }
         done();
       });
+      var onConfirmFlight = TSI.oneAtATime(async function (id) {
+        var c = R.creatureById(state, id);
+        if (!c) return;
+        var d = R.devView(state, c);
+        var why = el('textarea', { class: 'tsi-input', rows: '3', maxlength: '300', placeholder: 'How did the first flight go? (required)', 'data-test': 'flight-why' });
+        var problem = el('div', { class: 'tsi-bas-repair-text', 'data-test': 'flight-problem', hidden: true });
+        var mainBtn = null;
+        function check() {
+          var bad = String(why.value).replace(/\s+/g, ' ').trim().length < 3 ? 'Say how the first flight went.' : '';
+          problem.textContent = bad; problem.hidden = !bad;
+          if (mainBtn) { mainBtn.disabled = !!bad; mainBtn.title = bad; }
+        }
+        why.addEventListener('input', check);
+        var ok = await plainModal({
+          title: 'Confirm the first flight: ' + R.creatureName(data, c),
+          className: 'tsi-bas-modal',
+          body: [muted('Only confirm once you have run the first mounted flight scene with ' + R.handlerName(d.handlerId) + '. This records story permission only: the Bastion adds no riding movement or combat.'), field('The scene', why), problem],
+          actions: [{ label: 'Cancel', value: false }, { label: 'Confirm first flight', value: true, primary: true }],
+          onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'flight-dialog'); mainBtn = parts.dialog.querySelector('.tsi-modal__foot .tsi-btn--primary'); check(); }
+        });
+        if (!ok || !life.alive) return;
+        var res = R.confirmFirstFlight(state, data, id, why.value);
+        if (!res.ok) { await say(res.message); return; }
+        log(res.log[0], res.log[1]);
+        done();
+      });
       function wyvernProfile(c, prefix) {
         var d = R.devView(state, c);
         var t = d.temperament;
@@ -660,7 +686,9 @@
             el('span', { 'data-test': prefix + '-temper-' + c.id, text: (t.dominant || t.attachment || t.trigger) ? [t.dominant && 'Dominant: ' + t.dominant, t.attachment && 'Attachment: ' + t.attachment, t.trigger && 'Trigger: ' + t.trigger].filter(Boolean).join(' · ') : 'Not written yet' }), ' ',
             btn('Edit…', function () { onTemperament(c.id); }, 'tsi-btn--ghost', prefix + '-temper-edit-' + c.id)
           ]),
-          line('Riding', 'Not available yet: riding preparation comes later.'),
+          el('div', { class: 'tsi-bas-wyv__line' }, [el('b', { text: 'Riding ' }), el('span', { 'data-test': prefix + '-riding-' + c.id, text: R.ridingLine(state, data, c) })]),
+          (d.bond.level >= 4 || (d.harness && d.harness.fitted)) ? el('ul', { class: 'tsi-bas-wyv__checks', 'data-test': prefix + '-flightchecks-' + c.id }, R.firstFlightChecks(state, data, c).map(function (x) { return el('li', { text: (x.ok ? '✓ ' : '○ ') + x.text }); })) : null,
+          !(d.firstFlight && d.firstFlight.approved) && R.firstFlightReady(state, data, c) ? btn('Confirm first flight…', function () { onConfirmFlight(c.id); }, 'tsi-btn--primary', prefix + '-flight-' + c.id) : null,
           el('details', { class: 'tsi-bas-wyv__chronicle', 'data-test': prefix + '-chronicle-' + c.id }, [
             el('summary', { text: 'Chronicle (' + chron.length + ')' }),
             el('ul', { class: 'tsi-bas-res-list' }, chron.map(function (e) { return el('li', { text: R.dayLabel(e.day) + ' · ' + e.text }); })),
@@ -3568,7 +3596,13 @@
           ]),
           el('div', { class: 'tsi-bas-actions' }, [
             w.waiting ? btn('Resolve', function () { onResolveOrder(o.id); }, 'tsi-btn--primary', 'resolve-' + i, { disabled: turnRunning || militaryRunning }) : null,
-            btn('Cancel', function () {
+            btn('Cancel', async function () {
+              /* A paid training order (the harness) isn't refunded: ask first. */
+              if (o.chosen && o.chosen.trainCreatureId && R.clampInt(o.costGP, 0) > 0) {
+                if (!(await ask('Cancel ' + o.label + '? The ' + o.costGP + ' gp already paid is not refunded.', 'Cancel order', 'Cancel a paid order'))) return;
+                if (!life.alive) return;
+                if (!state.pendingOrders.some(function (x) { return x.id === o.id; })) return;
+              }
               logAll([R.cancelOrder(state, o.id, data)]);
               done();
             }, 'tsi-btn--ghost', 'cancel-' + i)
