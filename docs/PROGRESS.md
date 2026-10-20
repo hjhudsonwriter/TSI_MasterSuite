@@ -921,7 +921,7 @@ Harry asked for a complete rework: the old tool's shields, colours and sigils we
 
 ### More ports and tidy Warehouse (19 October 2026)
 - Done: ten Port Charter ports including the River Rook for Clan Bacca; trade goods with none left leave the Warehouse (SUI-42). Waiting on Harry: confirm the sailing days and risks, and check the three new pins.
-- Done (SUI-43): market saturation is on. Done (SUI-44): herbs and typed Warehouse items go by parcel. Done (SUI-46): Charter terms and the Barracks and Watchtower protections. Done (SUI-47): the Secure Trade Agreement is retired and archives on expiry. Next (his order): the remaining Charter customisations (to confirm with Harry), then more parcel items, then retiring Secure Trade Agreement.
+- Done (SUI-43): market saturation is on. Done (SUI-44): herbs and typed Warehouse items go by parcel. Done (SUI-46): Charter terms and the Barracks and Watchtower protections. Done (SUI-47): the Secure Trade Agreement is gone from the Hall and Register Port Charter takes its Level 1 place. Next (his order): the remaining Charter customisations (to confirm with Harry), then more parcel items, then retiring Secure Trade Agreement.
 
 ## Next
 **Harry tries Build 3**: makes a crest in the Crest Creator and sends it with Use for the Bastion (with the Bastion open in another window, and with it shut), uploads and removes one, founds a Clan, and sees the crest on the War Table. Then says what to change: the badge, the Party Identity panel's layout, or the Form Clan crest box. That completes the overhaul's plan.

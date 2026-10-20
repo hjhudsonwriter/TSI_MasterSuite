@@ -1641,9 +1641,20 @@ window.TSI_DATA.bastionFacilities = [
         }
       },
       {
+        "id": "register_port_charter",
+        "label": "Register Port Charter",
+        "days": 3,
+        "costGP": 0,
+        "costText": "0",
+        "requiredFacilityLevel": 1,
+        "portCharter": true,
+        "options": [],
+        "notes": "Registers a Port Charter the DM granted in the Explorer, so the Dock can ship cargo to that port. No gold and no roll."
+      },
+      {
         "id": "secure_trade_agreement",
         "label": "Secure Trade Agreement",
-        "retiredNote": "Retired: new ordinary commerce goes through Port Charters (register one here). Trade Agreements already running finish under their original terms, then move to Expired / Archived. The Trade Consortium is unchanged.",
+        "retiredNote": "The Secure Trade Agreement is retired; Port Charters replace it.",
         "days": 7,
         "costGP": 250,
         "requiredFacilityLevel": 1,
@@ -1791,17 +1802,6 @@ window.TSI_DATA.bastionFacilities = [
           "incomeMin": 140,
           "incomeMax": 260
         }
-      },
-      {
-        "id": "register_port_charter",
-        "label": "Register Port Charter",
-        "days": 3,
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 2,
-        "portCharter": true,
-        "options": [],
-        "notes": "Registers a Port Charter the DM granted in the Explorer, so the Dock can ship cargo to that port. No gold and no roll."
       }
     ]
   },

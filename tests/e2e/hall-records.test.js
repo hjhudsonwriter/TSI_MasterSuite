@@ -69,7 +69,7 @@ async function fillRecord(page, f) {
     equal(await text(page, 'relations-pc-slade'), 'PC −15');
     equal(await text(page, 'relations-hr-karr'), 'H&R 0');
     assert(/No records yet/.test(await text(page, 'dip-records-ledger')));
-    equal(await page.$$eval('.tsi-bas-hall__fns .tsi-bas-fn', f => f.length), 6, 'the six orders are unchanged');
+    equal(await page.$$eval('.tsi-bas-hall__fns .tsi-bas-fn', f => f.length), 6 - 1, 'the Hall\'s orders are unchanged, minus the retired Secure Trade Agreement');
   });
 
   await check('a record needs a title and valid consequences; the box stays as typed', async () => {
