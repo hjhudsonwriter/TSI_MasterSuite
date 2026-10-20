@@ -162,11 +162,20 @@
   }
   /* A row of the Travel bags: a known kind and a whole count above 0. */
   function cleanItem(it) {
-    if (!isObj(it) || !str(it.kind) || !items()[it.kind]) return null;
+    if (!isObj(it) || !str(it.kind)) return null;
+    var free = isFree(it.kind);
+    if (!free && !items()[it.kind]) return null;
     var qty = int(it.qty, 0);
     if (qty <= 0) return null;
-    return { id: str(it.id) || 'i-' + newUid(), kind: it.kind, qty: Math.min(qty, 9999) };
+    var row = { id: str(it.id) || 'i-' + newUid(), kind: it.kind, qty: Math.min(qty, 9999) };
+    if (free) { row.name = (str(it.name) || 'Item').trim().slice(0, 60) || 'Item'; freeNames[it.kind] = row.name; }
+    return row;
   }
+  /* An item typed into the Bastion's Warehouse and sent by courier (20
+     October 2026): kind 'free:<row id>', and the bags keep the name it was
+     sent with. The DM handles any effect; the bags only count it. */
+  var freeNames = {};
+  function isFree(kind) { return typeof kind === 'string' && kind.indexOf('free:') === 0 && kind.length > 5; }
 
   /* Tidy a saved journey: anything damaged is left out, never crashes. */
   J.clean = function (saved, defs) {
@@ -730,6 +739,7 @@
     var room = {};
     for (var i = 0; i < p.goods.length; i++) {
       var g = p.goods[i];
+      if (isFree(g.goodId)) freeNames[g.goodId] = (str(g.name) || 'Item').trim().slice(0, 60);
       var info = J.itemInfo(g.goodId);
       if (!info) return { ok: false, message: 'This copy of the Explorer can\'t carry ' + g.goodId.replace(/_/g, ' ') + ', so the parcel waits at ' + town + '.' };
       if (!isNum(g.qty) || Math.floor(g.qty) !== g.qty || g.qty < 1) return { ok: false, message: 'The Bastion\'s record of this parcel has a count the Travel bags can\'t take (' + g.qty + ' ' + info.plural + '), so the parcel waits at ' + town + '.' };
@@ -738,7 +748,7 @@
       if (room[g.goodId] > 9999) return { ok: false, message: 'The Travel bags can\'t hold that many ' + info.plural + ', so the parcel waits at ' + town + '.' };
     }
     /* Then change everything, together. */
-    p.goods.forEach(function (x) { addUses(state, x.goodId, x.qty); });
+    p.goods.forEach(function (x) { addUses(state, x.goodId, x.qty, x.name); });
     var what = B.parcelGoodsText(p.goods);
     if (!Array.isArray(j.outbox)) j.outbox = [];
     j.outbox.push(B.parcelMessage({
@@ -1010,7 +1020,13 @@
      Provision Packs one by one. A row at 0 goes. */
   J.PACK = 'expedition_provision_pack';
   J.CHART = 'overland_chart';
-  J.itemInfo = function (kind) { return items()[kind] || null; };
+  J.itemInfo = function (kind) {
+    if (isFree(kind)) {
+      var nm = freeNames[kind] || 'Item';
+      return { name: nm, plural: nm, use: 'dm', usesEach: 1, unit: 'item', units: 'items', text: 'Sent from the Ironbow\'s Warehouse as typed. The DM applies any effect at the table; the bags only count it.' };
+    }
+    return items()[kind] || null;
+  };
   J.itemQty = function (state, kind) {
     var n = 0;
     (journey(state).inventory || []).forEach(function (it) { if (it.kind === kind) n += int(it.qty, 0); });
@@ -1029,7 +1045,8 @@
   /* The DM adds n charts or packs. Returns the line it logs, or null. */
   /* Put a count of a kind into the bags, as uses (a chart is 3 days of
      use). + Add and a parcel's pickup both come through here. */
-  function addUses(state, kind, count) {
+  function addUses(state, kind, count, name) {
+    if (isFree(kind)) freeNames[kind] = (str(name) || freeNames[kind] || 'Item').trim().slice(0, 60);
     var info = J.itemInfo(kind);
     var j = journey(state);
     if (!Array.isArray(j.inventory)) j.inventory = [];
@@ -1037,7 +1054,11 @@
     var row = null;
     j.inventory.forEach(function (it) { if (it.kind === kind) row = it; });
     if (row) row.qty = Math.min(9999, int(row.qty, 0) + uses);
-    else j.inventory.push({ id: 'i-' + newUid(), kind: kind, qty: Math.min(9999, uses) });
+    else {
+      var made = { id: 'i-' + newUid(), kind: kind, qty: Math.min(9999, uses) };
+      if (isFree(kind)) made.name = freeNames[kind];
+      j.inventory.push(made);
+    }
     return uses;
   }
   J.addItem = function (state, kind, n) {

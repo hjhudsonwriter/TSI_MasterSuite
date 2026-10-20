@@ -231,6 +231,7 @@ function serve(dir) {
           await page.click('.tsi-exp-pin >> nth=' + i);
           await page.waitForSelector('.tsi-modal .tsi-exp-event-title');
           await page.waitForTimeout(150);
+          await page.waitForFunction(() => { const i = document.querySelector('.tsi-exp-place-media img'); return !i || i.complete; }, null, { timeout: 8000 });
           const v = await page.evaluate(() => { const i = document.querySelector('.tsi-exp-place-media img'); return { t: document.querySelector('.tsi-modal .tsi-exp-event-title').textContent, has: !!i, w: i ? i.naturalWidth : 0, harbour: !!document.querySelector('[data-test=harbour]') }; });
           equal(v.t, label);
           if (v.has) { equal(v.w, 2048); seen++; } else { waiting++; assert(v.harbour, label + ' has its harbour box'); }

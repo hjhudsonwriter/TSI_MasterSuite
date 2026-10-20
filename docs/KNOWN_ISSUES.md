@@ -3341,3 +3341,14 @@ Old repo: `_legacy/pelagosi_marker_rune_puzzle` (file:line references point ther
 - **Switch off:** `saturation.active: false` in `commerce-data.js`. Numbers (28 days, 4 lots) are there too.
 - **Tests:** `tests/rules/commerce.test.js` (tier boundaries, 28-day window, port and good kept apart, straddling cargo, reload).
 - **Still to ask Harry:** what "the remaining Charter customisations" are (my guess: concessions and protections).
+
+### SUI-44 · More things go by parcel (20 October 2026)
+**Added, Harry's request** · missing functionality
+
+- **Herbs and roots:** Restorative Herbs, Antivenom Roots, Toxic Blossoms and Alchemical Flowers can go by Courier, one portion = one item (so a parcel's room is unchanged). The Travel bags just count them ("portions of …"); the DM handles any effect.
+- **Typed Warehouse rows:** any row you typed by hand (no catalogue good) can be sent. The parcel keeps its own identity (`free:<row id>`) and the name it was sent with, so two rows with the same name stay apart and a rename or delete later changes nothing. Each count = 1 item. The Send dialog lists them under "Typed into the Warehouse". The empty Warehouse's placeholder "New Item" row isn't offered.
+- **Once only:** dispatch takes the count off the row once; collection puts it in the Travel bags once (a second pickup is refused, as before); a recalled parcel returns it once, to the same row, or a new row with the same id and name if the row was deleted.
+- **Travel bags:** show the exact name and count; no Use button (the DM handles it). Saved with the Explorer, kept through reloads and backups.
+- **Still excluded:** trade lots, currency, ships and living creatures. Courier levels, room, days and fees unchanged. `freeItems: false` in `courier-data.js` switches typed items off.
+- **Test-only fix:** the Explorer pin test (`phase8.test.js`) now waits for the town picture to load before checking its width (it failed on a slow machine).
+- **Tests:** `tests/rules/courier.test.js`, `tests/e2e/parcels-more.test.js`.
