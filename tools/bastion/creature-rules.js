@@ -204,11 +204,17 @@
     var after = R.creatureName(data, c);
     var o = R.houseOrderFor(s, c.id);
     var fresh = R.creatureOrderName(c);
-    [o, R.trainingOrderFor ? R.trainingOrderFor(s, c.id) : null].forEach(function (ord) {
-      if (!ord) return;
-      if (typeof ord.label === 'string' && oldOrderName && ord.label.indexOf('(' + oldOrderName + ')') !== -1) ord.label = ord.label.replace('(' + oldOrderName + ')', '(' + fresh + ')');
-      ord.optionLabel = fresh;
-    });
+    if (o) {
+      if (typeof o.label === 'string' && oldOrderName && o.label.indexOf('(' + oldOrderName + ')') !== -1) o.label = o.label.replace('(' + oldOrderName + ')', '(' + fresh + ')');
+      o.optionLabel = fresh;
+    }
+    /* A training programme names the creature as the panels do. */
+    var tr = R.trainingOrderFor ? R.trainingOrderFor(s, c.id) : null;
+    if (tr) {
+      if (typeof tr.label === 'string' && tr.label.indexOf('(' + before + ')') !== -1) tr.label = tr.label.replace('(' + before + ')', '(' + R.creatureName(data, c) + ')');
+      tr.optionLabel = R.creatureName(data, c);
+      if (isObj(tr.chosen)) tr.chosen.label = tr.optionLabel;
+    }
     var line = before === after ? before + ' keeps its name.' : before + ' is now called ' + after + '.';
     if (before !== after) R.log(s, 'Creatures', line, now);
     return { ok: true, changed: before !== after, name: after, log: ['Creatures', line] };
@@ -531,7 +537,7 @@
     if (!c) return { ok: false, message: R.trainingBlocker(s, data, fac, fn, null) || 'No wyvern is housed here yet.' };
     var why = R.trainingBlocker(s, data, fac, fn, c);
     if (why) return { ok: false, message: why };
-    var nm = R.creatureOrderName(c);
+    var nm = R.creatureName(data, c);
     var label = fac.name + ': ' + fn.label + ' (' + nm + ')';
     var days = R.orderDays(fn);
     s.pendingOrders.push({ id: R.uid(rand), facId: fac.id, fnId: fn.id, chosen: { label: nm, trainCreatureId: c.id }, optionLabel: nm, notes: '', label: label, costGP: 0, issuedDay: s.day, dueDay: s.day + days });

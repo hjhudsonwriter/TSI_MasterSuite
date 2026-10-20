@@ -3353,11 +3353,10 @@
         }
         function refresh() {
           var chosen = chosenNow();
-          var why = repair ? null : !avail.ok ? avail.message : fn.production ? (R.productionBusy(state, data, fac, fn) || R.recipeBlocker(state, data, fac, fn, chosen))
+          var why = repair ? null : isTrain ? (!options.length ? 'No wyvern is housed at the Wyvern Roost yet.' : R.trainingBlocker(state, data, fac, fn, chosen ? R.creatureById(state, chosen.trainCreatureId) : null) || null) : !avail.ok ? avail.message : fn.production ? (R.productionBusy(state, data, fac, fn) || R.recipeBlocker(state, data, fac, fn, chosen))
             : isCharter && R.registerBusy(state, data) ? R.registerBusy(state, data)
             : isCharter && !options.length ? 'No Port Charter to register: the DM grants one in the Explorer, and each is registered once.'
             : isProtection ? R.protectionBusy(state, data, fn) || null
-            : isTrain ? (!options.length ? 'No wyvern is housed at the Wyvern Roost yet.' : R.trainingBlocker(state, data, fac, fn, chosen ? R.creatureById(state, chosen.trainCreatureId) : null) || null)
             : isHousing ? R.housingBlocker(state, data, fac, fn) || null
             : isDrill ? (R.drillRoomBlocker(state, data) || (!options.length ? 'No regiment can drill now: a regiment drills at full strength, one drill at a time, up to Veteran.' : null)) : null;
           /* A Shrine order's Favour (pull request 8b). */
@@ -3365,10 +3364,10 @@
           if (noFavour) why = noFavour;
           issue.disabled = !!(locked || cd > 0 || repair > 0 || why);
           issue.title = repair ? repairText(fac, repair) : why || null;
-          issue.textContent = repair ? 'Under Repair' : !avail.ok ? avail.message : why && fn.production ? 'Can\'t order yet' : why && isCharter ? (options.length ? 'One at a time' : 'No Port Charter to register')
+          issue.textContent = repair ? 'Under Repair' : isTrain && why ? 'Can\'t train yet' : !avail.ok ? avail.message : why && fn.production ? 'Can\'t order yet' : why && isCharter ? (options.length ? 'One at a time' : 'No Port Charter to register')
             : why && isProtection ? (fn.protectionWindow ? 'Already active' : 'Convoy ready') : why && isTrain ? 'Can\'t train yet' : why && isHousing ? housingShort(fac, fn) : why && isDrill ? 'Can\'t drill now' : noFavour ? 'Not enough Favour' : cd > 0 ? 'Cooldown: ' + R.daysText(cd) : 'Issue Order';
           if (whyLine) {
-            var wtext = !avail.ok && avail.why ? avail.why : why && !repair && avail.ok ? why : '';
+            var wtext = !avail.ok && avail.why ? avail.why : why && !repair && (avail.ok || isTrain) ? why : '';
             whyLine.hidden = !wtext;
             whyLine.textContent = wtext;
           }
