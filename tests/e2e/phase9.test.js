@@ -196,6 +196,19 @@ async function planHall(page, fn, idx, extra) {
   await page.click('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__foot button.tsi-btn--primary');
   await page.waitForTimeout(150);
 }
+/* The Secure Trade Agreement is retired (20 October 2026): it can't be ordered, but a Bastion saved earlier can
+   still hold the order. This puts one in, as such a save would, so the rest of the flow (the dice box, Resolve,
+   the shipments) is still tested: the clan by its place in the list, and the weeks (default 3). */
+async function legacyAgreement(page, idx, weeks) {
+  await pause(page);
+  await page.evaluate(({ idx, weeks }) => TSI.bastion.debug.change(s => {
+    const key = ['Blackstone', 'Rowthorn', 'Karr', 'Farmer', 'Slade', 'Bacca', 'Molten'][idx];
+    s.treasuryGP -= 250;
+    s.pendingOrders.push({ id: 'legacy-' + s.day + '-' + idx, facId: 'hall_of_emissaries', fnId: 'secure_trade_agreement', chosen: { label: 'Clan ' + key, value: key }, optionLabel: 'Clan ' + key, notes: '',
+      label: 'Hall of Emissaries: Secure Trade Agreement (Clan ' + key + ')', costGP: 250, issuedDay: s.day, dueDay: s.day + 7, meta: { targetClan: 'Clan ' + key, weeks: weeks || 3 } });
+  }), { idx, weeks });
+  await page.waitForTimeout(150);
+}
 /* A see-through PNG crest (a gold disc on nothing), like the Crest Creator's download. */
 function crestPng(size) {
   const zlib = require('zlib');
@@ -561,7 +574,7 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
     });
 
     await check('while a dice box is open, Enter or Space can\'t start anything else, and the day waits (BAS-10)', async () => {
-      await planHall(page, 'secure_trade_agreement', 0, { dur: 3 });
+      await legacyAgreement(page, 0, 3);
       equal((await st(page)).pendingOrders[0].dueDay, 12, '7 days to negotiate');
       await setExplorerDay(page, 12);
       await page.waitForSelector('[data-test=d20]', { timeout: 15000 });
@@ -677,14 +690,12 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       equal(await page.isDisabled('[data-test="issue-hall_of_emissaries__trade_consortium"]'), true);
     });
 
-    await check('the planning box: Cancel costs nothing', async () => {
+    await check('the Secure Trade Agreement is retired: its button says so, is off, and costs nothing', async () => {
       await pause(page);
-      await page.click('[data-test="issue-hall_of_emissaries__secure_trade_agreement"]');
-      await page.waitForSelector('[data-test=hall-duration]');
-      equal(await page.inputValue('[data-test=hall-duration]'), '3');
-      equal(await page.$$eval('[data-test=hall-duration] option', os => os.map(o => o.textContent)), ['1 week (1 shipment)', '3 weeks (3 shipments)', '6 weeks (6 shipments)']);
-      await H.shot(page, 'p9-06-planning');
-      await clickModal(page, 'Cancel');
+      const sel = '[data-test="issue-hall_of_emissaries__secure_trade_agreement"]';
+      equal(await text(page, 'issue-hall_of_emissaries__secure_trade_agreement'), 'Retired');
+      equal(await page.isDisabled(sel), true);
+      assert(/Port Charters/.test(await text(page, 'why-hall_of_emissaries__secure_trade_agreement')), 'the reason is shown');
       equal([(await st(page)).treasuryGP, (await st(page)).pendingOrders.length], [5000, 0]);
     });
 
@@ -708,14 +719,15 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
     });
 
     await check('a bad failure: no deal, −20 Political Capital, and a 14-day cooldown on the button', async () => {
-      await planHall(page, 'secure_trade_agreement', 1);
+      await legacyAgreement(page, 1, 3);
       await days(page, 7, [5]);
       const s = await st(page);
       equal([s.diplomacy.agreements.length, s.politicalCapital.rowthorn, s.diplomacy.cooldowns.trade_agreement], [0, -20, s.day + 14]);
-      equal(await text(page, 'issue-hall_of_emissaries__secure_trade_agreement'), 'Cooldown: 14 days');
+      /* The button now says Retired (the cooldown is still kept, as it was). */
+      equal(await text(page, 'issue-hall_of_emissaries__secure_trade_agreement'), 'Retired');
       equal(await page.isDisabled('[data-test="issue-hall_of_emissaries__secure_trade_agreement"]'), true);
       await days(page, 4, []);
-      equal(await text(page, 'issue-hall_of_emissaries__secure_trade_agreement'), 'Cooldown: 10 days');
+      equal((await st(page)).diplomacy.cooldowns.trade_agreement, s.day + 14, 'the cooldown still counts down to the same day');
     });
 
     await check('the upgrade is free, takes 7 days to Level 2 (step 1b, D8: it was 14) and raises the Hall\'s bonus', async () => {

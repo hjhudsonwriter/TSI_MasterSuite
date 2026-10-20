@@ -1643,6 +1643,7 @@ window.TSI_DATA.bastionFacilities = [
       {
         "id": "secure_trade_agreement",
         "label": "Secure Trade Agreement",
+        "retiredNote": "Retired: new ordinary commerce goes through Port Charters (register one here). Trade Agreements already running finish under their original terms, then move to Expired / Archived. The Trade Consortium is unchanged.",
         "days": 7,
         "costGP": 250,
         "requiredFacilityLevel": 1,
