@@ -920,7 +920,7 @@ Harry asked for a complete rework: the old tool's shields, colours and sigils we
 - Next, waiting on Harry's answers: more Port Charter ports (and Bacca's river port), market saturation switch-on, the remaining Charter customisations, the Hall's Secure Trade Agreement retirement, and more kinds of parcel.
 
 ### More ports and tidy Warehouse (19 October 2026)
-- Done: ten Port Charter ports including the River Rook for Clan Bacca; trade goods with none left leave the Warehouse (SUI-42). Waiting on Harry: confirm the sailing days and risks, and check the three new pins.
+- Done: ten Port Charter ports including the River Rook for Clan Bacca; trade goods with none left leave the Warehouse (SUI-42). Confirmed by Harry: the sailing days and risks, and check the three new pins.
 - Done (SUI-43): market saturation is on. Done (SUI-44): herbs and typed Warehouse items go by parcel. Done (SUI-46): Charter terms and the Barracks and Watchtower protections. Done (SUI-47): the Secure Trade Agreement is gone from the Hall and Register Port Charter takes its Level 1 place. Next (his order): the remaining Charter customisations (to confirm with Harry), then more parcel items, then retiring Secure Trade Agreement.
 
 ## Next
