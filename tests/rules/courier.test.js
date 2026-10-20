@@ -738,7 +738,7 @@
       { kind: 'returning', line: 'Recalled: on its way back to the Ironbow (home on Day 16). It can\'t be collected.', goods: '1 Overland chart (3 days of use)' },
       { kind: 'on_road', line: 'On the road: due at Swyth on Day 24.', goods: '1 Expedition Provision Pack' }
     ]);
-    t.same(Bg.parcelView(list[4], ER.toSave(explorer(24))), { kind: 'due', line: 'Due at Swyth: the Bastion records its arrival when it reaches Day 24.', goods: '1 Expedition Provision Pack' });
+    t.same(Bg.parcelView(list[4], ER.toSave(explorer(24))), { kind: 'due', line: 'It reached Swyth on Day 24, but the Bastion hasn\'t recorded that yet. Open the Bastion (it catches up to today\'s day), and the parcel can then be collected here.', goods: '1 Expedition Provision Pack' });
     var e = explorer(14);
     t.equal(J.collectParcel(e, list[2].id, 'slades_muster', save, {}).ok, true);
     t.same(Bg.parcelView(list[2], ER.toSave(e)).kind, 'collected', 'collected as soon as the Explorer has sent the pickup, whatever the Bastion says');
