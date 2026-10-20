@@ -1912,6 +1912,82 @@ window.TSI_DATA.bastionFacilities = [
         "housesSpecies": "wyvern",
         "options": [],
         "notes": "Gives a home to a wyvern the DM granted in the Explorer. The Roost houses one more than its level (Elara's wyvern is one of them): 2 at Level 1, up to 6 at Level 5. Building or upgrading the Roost never makes a wyvern. Housed wyverns guard the Ironbow when it is attacked (Defend Bastion battles only). No gold and no roll."
+      },
+      {
+        "id": "wyr_safe_acclimatisation",
+        "label": "Safe Acclimatisation",
+        "days": 5,
+        "costGP": 0,
+        "costText": "0",
+        "requiredFacilityLevel": 1,
+        "trains": true,
+        "needsBond": 0,
+        "bondTarget": 1,
+        "options": [],
+        "notes": "Teaches one named wyvern to accept its handler's approach and the keepers' routines. Needs a handler. When it finishes, the next bond milestone is ready: you confirm it after a scene at the table (the timer never raises the bond by itself)."
+      },
+      {
+        "id": "wyr_keeper_routine",
+        "label": "Establish Keeper's Routine",
+        "days": 7,
+        "costGP": 0,
+        "costText": "0",
+        "requiredFacilityLevel": 1,
+        "trains": true,
+        "needsBond": 1,
+        "bondTarget": 2,
+        "options": [],
+        "notes": "Settles a familiar daily routine with one named wyvern. Needs Bond 1. When it finishes, the Bond 2 milestone is ready for you to confirm."
+      },
+      {
+        "id": "wyr_signal_recall",
+        "label": "Signal & Recall Training",
+        "days": 7,
+        "costGP": 0,
+        "costText": "0",
+        "requiredFacilityLevel": 2,
+        "trains": true,
+        "needsBond": 2,
+        "bondTarget": 3,
+        "options": [],
+        "notes": "Teaches one named wyvern familiar signals and to return to them. Needs Bond 2. When it finishes, the Bond 3 milestone is ready for you to confirm."
+      },
+      {
+        "id": "wyr_defence_drills",
+        "label": "Territorial Defence Drills",
+        "days": 7,
+        "costGP": 0,
+        "costText": "0",
+        "requiredFacilityLevel": 2,
+        "trains": true,
+        "needsBond": 2,
+        "options": [],
+        "notes": "Drills one named wyvern to hold the Ironbow's skies: +1 Resolve for it when the Ironbow is attacked (Defend Bastion). Needs Bond 2. Once for each wyvern."
+      },
+      {
+        "id": "wyr_open_sky_return",
+        "label": "Open-Sky Return Training",
+        "days": 10,
+        "costGP": 0,
+        "costText": "0",
+        "requiredFacilityLevel": 3,
+        "trains": true,
+        "needsBond": 3,
+        "bondTarget": 4,
+        "options": [],
+        "notes": "Teaches one named wyvern to return from open sky. Needs Bond 3. When it finishes, the Bond 4 milestone is ready for you to confirm."
+      },
+      {
+        "id": "wyr_aerial_sentinel",
+        "label": "Aerial Sentinel Training",
+        "days": 7,
+        "costGP": 0,
+        "costText": "0",
+        "requiredFacilityLevel": 3,
+        "trains": true,
+        "needsBond": 3,
+        "options": [],
+        "notes": "Trains one named wyvern as an aerial sentinel: +1 Defence for it when the Ironbow is attacked (Defend Bastion). Needs Bond 3. Once for each wyvern."
       }
     ]
   },

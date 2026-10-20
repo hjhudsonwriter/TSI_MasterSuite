@@ -203,11 +203,12 @@
     c.name = String(text || '').replace(/\s+/g, ' ').trim().slice(0, R.creatureNameMax(data));
     var after = R.creatureName(data, c);
     var o = R.houseOrderFor(s, c.id);
-    if (o) {
-      var fresh = R.creatureOrderName(c);
-      if (typeof o.label === 'string' && oldOrderName && o.label.indexOf('(' + oldOrderName + ')') !== -1) o.label = o.label.replace('(' + oldOrderName + ')', '(' + fresh + ')');
-      o.optionLabel = fresh;
-    }
+    var fresh = R.creatureOrderName(c);
+    [o, R.trainingOrderFor ? R.trainingOrderFor(s, c.id) : null].forEach(function (ord) {
+      if (!ord) return;
+      if (typeof ord.label === 'string' && oldOrderName && ord.label.indexOf('(' + oldOrderName + ')') !== -1) ord.label = ord.label.replace('(' + oldOrderName + ')', '(' + fresh + ')');
+      ord.optionLabel = fresh;
+    });
     var line = before === after ? before + ' keeps its name.' : before + ' is now called ' + after + '.';
     if (before !== after) R.log(s, 'Creatures', line, now);
     return { ok: true, changed: before !== after, name: after, log: ['Creatures', line] };
@@ -279,6 +280,8 @@
       var u = R.creatureUnique(data, uid);
       if (!u) return ['Creatures', lab + ': this copy of the Bastion doesn\'t know that creature, so nothing changed.'];
       var w = { id: uid, species: txt(u.species, 40), owner: txt(u.owner, 40), name: '', status: 'housed', home: fac.id, grantedDay: s.day, housedDay: s.day, msgId: '' };
+      /* Her bond (Bond 1) is credited once, with its Chronicle line. */
+      if (uid === 'elara_wyvern') w.development = R.newDevelopment(w, s.day);
       R.creatures(s).push(w);
       var owner = R.creatureOwnerName(data, w);
       return ['Order Completed', lab + ' → ' + R.creatureName(data, w) + ' lives at the Ironbow now, at the ' + fac.name + (owner ? ' (' + owner + '\'s)' : '') + '. It guards the Ironbow when it is attacked.'];
@@ -353,7 +356,16 @@
     if (!w) return null;
     var keys = ['cohesion', 'attack', 'defence', 'move', 'resolve', 'bv'];
     for (var i = 0; i < keys.length; i++) if (!isNum(w[keys[i]])) return null;
-    return w;
+    /* A discipline it has learned adds to its own numbers (Battle Value is
+       left as it was). */
+    var done = isObj(c.development) && isObj(c.development.training) ? c.development.training : {};
+    var bonus = isObj(cdata(data).development) && isObj(cdata(data).development.trainingBonus) ? cdata(data).development.trainingBonus : {};
+    var gained = Object.keys(bonus).filter(function (k) { return isObj(done[k]) && isObj(bonus[k]) && typeof bonus[k].stat === 'string' && isNum(w[bonus[k].stat]); });
+    if (!gained.length) return w;
+    var out = Object.assign({}, w);
+    gained.forEach(function (k) { out[bonus[k].stat] = w[bonus[k].stat] + (isNum(bonus[k].amount) ? bonus[k].amount : 0); });
+    out.trained = gained.map(function (k) { return String(bonus[k].label || k); });
+    return out;
   };
   /* Housed creatures that can defend the Ironbow (whether or not they're
      recovering or already defending: the War Table decides that). */
@@ -393,7 +405,7 @@
     if (!w) return '';
     var wd = R.warData ? R.warData(data) : null;
     var trait = w.trait ? (wd && wd.traits && wd.traits[w.trait] ? wd.traits[w.trait].name : words(w.trait)) : '';
-    return 'Defends the Ironbow: Battle Value ' + w.bv + (trait ? ', ' + trait : '');
+    return 'Defends the Ironbow: Battle Value ' + w.bv + (trait ? ', ' + trait : '') + (w.trained && w.trained.length ? ' (trained: ' + w.trained.join(', ') + ')' : '');
   };
   /* What a building's panel lists: the creatures housed there (by their
      home), those of its kind waiting for a home, and its room. */
@@ -418,5 +430,229 @@
       parts.push((o.label || 'The House order') + ' is cancelled' + (c && c.status === 'waiting' ? ': ' + R.creatureName(data, c) + ' keeps waiting for a home.' : '.'));
     }
     return parts.join(' ');
+  };
+
+  /* ---------- Bonding and training (Wyvern Roost: Bonding, Training & Rider Mastery) ----------
+     Harry's approvals of 20 October 2026. The Roost creates the chance, the
+     training makes the capability, and the DM confirms the bond:
+     - Each programme (an order at the Wyvern Roost, "trains") is for one
+       named, housed wyvern, costs nothing, and can be done once by each
+       wyvern. A wyvern has one programme at a time, and the Roost has a few
+       training places (Level 1: 1, 2: 1, 3: 2, 4: 2, 5: 3); the House
+       orders don't use one.
+     - A bond programme finishing makes the next bond milestone READY. It
+       never raises the bond: after a scene at the table the DM presses
+       Confirm bond milestone, gives a reason, and the bond rises by exactly
+       one level, with one Chronicle line. Nothing lowers a bond by itself.
+     - A learned discipline adds to that wyvern's own Defend Bastion numbers
+       (R.creatureWar); Battle Value is unchanged.
+     - A wyvern that is recovering from a battle pauses its programme: each
+       recovering day moves the due day on by one, so no training days are
+       lost and nothing is credited while it is hurt.
+     The Chronicle is the wyvern's dated record: grants, training, bond
+     confirmations, handler changes and the DM's own notes. */
+  function devOf(c) { return isObj(c) && isObj(c.development) ? c.development : null; }
+  R.creatureDev = devOf;
+  /* Its development, made (with the usual defaults) if it has none yet. */
+  R.ensureDev = function (s, c) {
+    if (!isObj(c)) return null;
+    if (!isObj(c.development)) c.development = R.newDevelopment(c, s.day);
+    return c.development;
+  };
+  /* What the panels read: its development, or the defaults (not stored). */
+  R.devView = function (s, c) { return devOf(c) || R.newDevelopment(isObj(c) && c.id !== 'elara_wyvern' ? c : { id: '' }, s.day); };
+  R.bondName = function (level) { return R.BOND_NAMES[clampInt(level, 0, 5)] || 'Unfamiliar'; };
+  R.handlerName = function (id) { return id === 'elara' ? 'Elara' : String(id || ''); };
+  R.addChronicle = function (s, c, cat, text, by, link) {
+    var d = R.ensureDev(s, c);
+    d.seq = clampInt(d.seq, 0, 1000000) + 1;
+    var e = { id: 'ch-' + d.seq, day: dayNum(s.day, 1), cat: txt(cat, 20), text: txt(text, 400), by: txt(by || 'DM', 40), link: txt(link || '', 80) };
+    d.chronicle.push(e);
+    if (d.chronicle.length > R.CHRONICLE_MAX) d.chronicle = d.chronicle.slice(d.chronicle.length - R.CHRONICLE_MAX);
+    return e;
+  };
+
+  /* ----- places ----- */
+  function trainOrder(o) {
+    return isObj(o) && isObj(o.chosen) && typeof o.chosen.trainCreatureId === 'string' && o.chosen.trainCreatureId &&
+      !(isObj(o.meta) && (o.meta.kind === 'upgrade' || o.meta.kind === 'research'));
+  }
+  R.trainingOrders = function (s) { return (arr(s.pendingOrders) || []).filter(trainOrder); };
+  R.trainingOrderFor = function (s, creatureId) {
+    return R.trainingOrders(s).filter(function (o) { return o.chosen.trainCreatureId === creatureId; })[0] || null;
+  };
+  /* { cap, used, free } at a building (the Roost's level decides). */
+  R.trainingPlaces = function (s, data, facId) {
+    var d = isObj(cdata(data).development) && isObj(cdata(data).development.trainingPlaces) ? cdata(data).development.trainingPlaces[facId] : null;
+    var level = R.getFacilityLevel(s, facId);
+    var cap = isObj(d) ? clampInt(d[level] !== undefined ? d[level] : d[Math.min(5, Math.max(1, level))], 0, 20) : 0;
+    var used = R.trainingOrders(s).filter(function (o) { return o.facId === facId; }).length;
+    return { cap: cap, used: used, free: Math.max(0, cap - used), level: level };
+  };
+  R.trainingDone = function (c, key) { var d = devOf(c); return !!(d && isObj(d.training) && isObj(d.training[key])); };
+
+  /* The wyverns an order can name: every housed one of its kind (what is
+     wrong with a choice is said when it is picked). */
+  R.trainingOptions = function (s, data, fac, fn) {
+    return R.creatures(s).filter(function (c) { return isObj(c) && c.status === 'housed' && c.species === 'wyvern'; })
+      .map(function (c) { return { label: R.creatureName(data, c), trainCreatureId: c.id }; });
+  };
+  /* Why this order can't be given to this wyvern now, or '' (the most
+     helpful reason first). */
+  R.trainingBlocker = function (s, data, fac, fn, c) {
+    if (!fac || !fn) return 'There\'s no such order.';
+    if (R.builtFacilityIds(s, data).indexOf(fac.id) === -1) return 'The ' + fac.name + ' isn\'t built yet.';
+    var need = clampInt(fn.requiredFacilityLevel || 1, 1, R.MAX_LEVEL);
+    var level = R.getFacilityLevel(s, fac.id);
+    if (level < need) return 'Needs the ' + fac.name + ' at Level ' + need + ' (it\'s Level ' + level + ').';
+    if (!isObj(c) || c.species !== 'wyvern') return 'Choose a wyvern.';
+    var name = R.creatureName(data, c);
+    if (c.status !== 'housed') return name + ' isn\'t housed at the Ironbow yet.';
+    if (R.trainingDone(c, fn.id)) return name + ' has already completed ' + fn.label + '.';
+    var cur = R.trainingOrderFor(s, c.id);
+    if (cur) return name + ' is already in a programme: ' + (cur.label || 'training') + ', ready on ' + R.dayLabel(cur.dueDay) + '.';
+    var d = devOf(c) || R.devView(s, c);
+    if (isNum(fn.bondTarget) || isNum(fn.needsBond)) {
+      if (isNum(d.bond.ready) && d.bond.ready > 0) return name + '\'s Bond ' + d.bond.ready + ' milestone (' + R.bondName(d.bond.ready) + ') is waiting for you to confirm it. Confirm it first.';
+    }
+    if (isNum(fn.bondTarget) && !d.handlerId) return name + ' has no handler yet. Assign one first.';
+    if (isNum(fn.needsBond) && d.bond.level < fn.needsBond) return 'Needs Bond ' + fn.needsBond + ' (' + R.bondName(fn.needsBond) + '); ' + name + ' is Bond ' + d.bond.level + ' (' + R.bondName(d.bond.level) + ').';
+    if (isNum(fn.bondTarget) && d.bond.level >= fn.bondTarget) return name + ' is already Bond ' + d.bond.level + ' (' + R.bondName(d.bond.level) + ') or more.';
+    var places = R.trainingPlaces(s, data, fac.id);
+    if (places.free <= 0) return 'All ' + places.cap + ' training ' + (places.cap === 1 ? 'place is' : 'places are') + ' taken (a Level ' + places.level + ' ' + fac.name + ' has ' + places.cap + ').';
+    return '';
+  };
+  /* Issue one (R.issueOrder calls this): checks everything, then adds the
+     order in one change. */
+  R.issueTraining = function (s, data, fac, fn, optionIdx, rand) {
+    var opts = R.trainingOptions(s, data, fac, fn);
+    var pick = opts[clampInt(optionIdx, 0)] || null;
+    var c = pick ? R.creatureById(s, pick.trainCreatureId) : null;
+    if (!c) return { ok: false, message: R.trainingBlocker(s, data, fac, fn, null) || 'No wyvern is housed here yet.' };
+    var why = R.trainingBlocker(s, data, fac, fn, c);
+    if (why) return { ok: false, message: why };
+    var nm = R.creatureOrderName(c);
+    var label = fac.name + ': ' + fn.label + ' (' + nm + ')';
+    var days = R.orderDays(fn);
+    s.pendingOrders.push({ id: R.uid(rand), facId: fac.id, fnId: fn.id, chosen: { label: nm, trainCreatureId: c.id }, optionLabel: nm, notes: '', label: label, costGP: 0, issuedDay: s.day, dueDay: s.day + days });
+    return { ok: true, log: ['Order Issued', label + ' (' + R.daysText(days) + ': due Day ' + (s.day + days) + ').'] };
+  };
+  /* A programme completing, once: the discipline is recorded for good; a
+     bond programme makes the next milestone ready (never the bond itself). */
+  R.completeTraining = function (s, data, order, fn, fac) {
+    var lab = order.label || (fac ? fac.name : 'Roost') + ': ' + (fn ? fn.label : 'training');
+    var c = isObj(order.chosen) ? R.creatureById(s, order.chosen.trainCreatureId) : null;
+    if (!c || !fn) return ['Creatures', lab + ': that wyvern isn\'t held any more, so nothing changed.'];
+    var name = R.creatureName(data, c);
+    if (R.trainingDone(c, fn.id)) return ['Creatures', lab + ': ' + name + ' had already completed it, so nothing changed.'];
+    var d = R.ensureDev(s, c);
+    d.training[fn.id] = { day: dayNum(s.day, 1) };
+    var line = fn.label + ' completed.';
+    var bonus = isObj(cdata(data).development) && isObj(cdata(data).development.trainingBonus) ? cdata(data).development.trainingBonus[fn.id] : null;
+    var tail = '';
+    if (isNum(fn.bondTarget) && fn.bondTarget === d.bond.level + 1) {
+      d.bond.ready = fn.bondTarget;
+      tail = ' The Bond ' + fn.bondTarget + ' (' + R.bondName(fn.bondTarget) + ') milestone is ready: confirm it after a scene at the table.';
+    }
+    if (isObj(bonus)) tail += ' It adds ' + String(bonus.label || '') + ' when the Ironbow is attacked.';
+    R.addChronicle(s, c, 'training', line + tail.replace(/^ /, ' '), 'Roost', order.id);
+    return ['Order Completed', lab + ' → ' + name + ': ' + line + tail];
+  };
+  /* Each day (the 'trade' stage, before the orders): a recovering wyvern's
+     programme doesn't advance, so its due day moves on by one, once a day. */
+  R.tickTraining = function (s, data) {
+    var n = 0;
+    R.trainingOrders(s).forEach(function (o) {
+      if (R.creatureRecovery(s, o.chosen.trainCreatureId) && o.pausedOn !== s.day) {
+        o.dueDay += 1;
+        o.pausedOn = s.day;
+        n++;
+      }
+    });
+    return n;
+  };
+  /* A programme in plain words, for the profile. */
+  R.trainingStatus = function (s, data, c) {
+    var o = R.trainingOrderFor(s, c.id);
+    if (!o) return null;
+    var rec = R.creatureRecovery(s, c.id);
+    return rec ? { kind: 'paused', line: 'Paused while recovering: ' + (o.label || 'training') + ' (resumes after ' + R.dayLabel(rec.untilDay) + ')' }
+      : { kind: 'training', line: (o.label || 'Training') + ', ready on ' + R.dayLabel(o.dueDay) };
+  };
+
+  /* ----- the DM's actions ----- */
+  function reasonOf(why) { return typeof why === 'string' ? why.replace(/\s+/g, ' ').trim() : ''; }
+  /* Assign (or change) the handler. The first assignment keeps the bond; a
+     change keeps the history and starts the new pairing at Bond 0, unless the
+     DM credits the old bond (keepBond). Training stays with the wyvern. */
+  R.assignHandler = function (s, data, id, handler, reason, keepBond) {
+    var c = R.creatureById(s, id);
+    if (!c) return { ok: false, message: 'That creature isn\'t at the Ironbow any more.' };
+    var h = String(handler || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+    var why = reasonOf(reason);
+    if (!h) return { ok: false, message: 'Type the handler\'s name.' };
+    var d = R.ensureDev(s, c);
+    var name = R.creatureName(data, c);
+    if (d.handlerId === h) return { ok: false, message: R.handlerName(h) + ' is already ' + name + '\'s handler.' };
+    if (d.handlerId) {
+      if (why.length < 3) return { ok: false, message: 'Say why the handler is changing.' };
+      if (R.trainingOrderFor(s, c.id)) return { ok: false, message: name + ' is in a programme: let it finish or cancel it before changing the handler.' };
+      d.handlerHistory.push({ handlerId: d.handlerId, bond: d.bond.level, fromDay: 1, toDay: s.day, reason: why });
+      var was = d.bond.level;
+      if (!keepBond) d.bond.level = 0;
+      d.bond.ready = null;
+      d.handlerId = h;
+      R.addChronicle(s, c, 'handler', 'Handler changed to ' + R.handlerName(h) + '. ' + (keepBond ? 'The DM credited the old bond (Bond ' + was + ').' : 'The new pairing starts at Bond 0 (Bond ' + was + ' kept in the history).') + ' Reason: ' + why, 'DM');
+      return { ok: true, log: ['Creatures', name + '\'s handler is now ' + R.handlerName(h) + (keepBond ? ' (Bond ' + d.bond.level + ' credited).' : ' (Bond 0: a new pairing).')] };
+    }
+    d.handlerId = h;
+    R.addChronicle(s, c, 'handler', R.handlerName(h) + ' assigned as handler.' + (why ? ' ' + why : ''), 'DM');
+    return { ok: true, log: ['Creatures', R.handlerName(h) + ' is now ' + name + '\'s handler.'] };
+  };
+  R.setTemperament = function (s, data, id, fields) {
+    var c = R.creatureById(s, id);
+    if (!c) return { ok: false, message: 'That creature isn\'t at the Ironbow any more.' };
+    var d = R.ensureDev(s, c);
+    var f = isObj(fields) ? fields : {};
+    ['dominant', 'attachment', 'trigger'].forEach(function (k) { if (typeof f[k] === 'string') d.temperament[k] = f[k].replace(/\s+/g, ' ').trim().slice(0, 120); });
+    return { ok: true, log: ['Creatures', R.creatureName(data, c) + '\'s temperament notes were updated.'] };
+  };
+  /* The DM confirms the ready milestone: exactly one level, with a reason. */
+  R.confirmBond = function (s, data, id, reason) {
+    var c = R.creatureById(s, id);
+    if (!c) return { ok: false, message: 'That creature isn\'t at the Ironbow any more.' };
+    var d = devOf(c);
+    var name = R.creatureName(data, c);
+    if (!d || !isNum(d.bond.ready) || d.bond.ready !== d.bond.level + 1) return { ok: false, message: 'No bond milestone is ready for ' + name + ': a bond programme has to finish first.' };
+    var why = reasonOf(reason);
+    if (why.length < 3) return { ok: false, message: 'Say what happened at the table (the scene that earned it).' };
+    d.bond.level = d.bond.ready;
+    d.bond.ready = null;
+    R.addChronicle(s, c, 'bond', 'Bond ' + d.bond.level + ' (' + R.bondName(d.bond.level) + ') confirmed by the DM. ' + why, 'DM');
+    return { ok: true, level: d.bond.level, log: ['Creatures', name + ' is now Bond ' + d.bond.level + ': ' + R.bondName(d.bond.level) + '. ' + why] };
+  };
+  /* A note in the Chronicle from the DM (a scene, a memory). */
+  R.addChronicleNote = function (s, data, id, text) {
+    var c = R.creatureById(s, id);
+    if (!c) return { ok: false, message: 'That creature isn\'t at the Ironbow any more.' };
+    var t = reasonOf(text);
+    if (t.length < 3) return { ok: false, message: 'Write the note.' };
+    R.addChronicle(s, c, 'note', t, 'DM');
+    return { ok: true, log: ['Creatures', 'A note was added to ' + R.creatureName(data, c) + '\'s Chronicle.'] };
+  };
+  /* What comes next for a wyvern, in one line, for the DM. */
+  R.nextStepLine = function (s, data, c) {
+    var d = R.devView(s, c);
+    var name = R.creatureName(data, c);
+    if (c.species !== 'wyvern') return '';
+    if (c.status !== 'housed') return 'Needs a home at the Wyvern Roost first.';
+    if (isNum(d.bond.ready)) return 'Bond ' + d.bond.ready + ' (' + R.bondName(d.bond.ready) + ') is ready: confirm it after a scene at the table.';
+    if (d.bond.level >= 4) return 'Bond ' + d.bond.level + ' (' + R.bondName(d.bond.level) + '). Riding preparation comes later.';
+    var fac = R.facility(data, 'wyvern_roost');
+    var next = (fac ? fac.functions : []).filter(function (f) { return f.trains && isNum(f.bondTarget) && f.bondTarget === d.bond.level + 1; })[0];
+    if (!next) return '';
+    if (!d.handlerId) return 'Assign a handler, then ' + next.label + ' (Level ' + (next.requiredFacilityLevel || 1) + ') prepares Bond ' + next.bondTarget + '.';
+    if (R.trainingDone(c, next.id)) return 'Bond ' + next.bondTarget + ' training is done: waiting for the DM milestone.';
+    return next.label + ' (Level ' + (next.requiredFacilityLevel || 1) + ', ' + R.daysText(next.days) + ') prepares Bond ' + next.bondTarget + ' (' + R.bondName(next.bondTarget) + ').';
   };
 }());

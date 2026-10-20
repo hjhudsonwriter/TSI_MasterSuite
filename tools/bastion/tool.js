@@ -545,6 +545,129 @@
         if (!res.ok) { await say(res.message); return; }
         done();
       });
+      /* ---------- A wyvern's bond, training and Chronicle (20 October 2026) ---------- */
+      var onAssignHandler = TSI.oneAtATime(async function (id) {
+        var c = R.creatureById(state, id);
+        if (!c) return;
+        var d = R.devView(state, c);
+        var changing = !!d.handlerId;
+        var who = el('input', { type: 'text', class: 'tsi-input', maxlength: '40', value: '', placeholder: 'The handler\'s name', 'data-test': 'handler-name' });
+        var why = el('textarea', { class: 'tsi-input', rows: '2', maxlength: '300', placeholder: changing ? 'Why is the handler changing? (required)' : 'Optional note', 'data-test': 'handler-why' });
+        var keep = el('input', { type: 'checkbox', 'data-test': 'handler-keep' });
+        var ok = await plainModal({
+          title: (changing ? 'Change handler: ' : 'Assign a handler: ') + R.creatureName(data, c),
+          className: 'tsi-bas-modal',
+          body: [
+            muted(changing ? 'The new pairing starts at Bond 0 and the old history is kept in the Chronicle. Tick the box only to credit the old bond to the new handler.' : 'The handler is the player this wyvern bonds with. Bond programmes need one.'),
+            field('Handler', who), field('Reason', why),
+            changing ? el('label', { class: 'tsi-bas-field' }, [keep, ' Credit the old bond (Bond ' + d.bond.level + ') to the new handler']) : null
+          ],
+          actions: [{ label: 'Cancel', value: false }, { label: changing ? 'Change handler' : 'Assign', value: true, primary: true }],
+          onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'handler-dialog'); setTimeout(function () { who.focus(); }, 0); }
+        });
+        if (!ok || !life.alive) return;
+        var res = R.assignHandler(state, data, id, who.value, why.value, keep.checked);
+        if (!res.ok) { await say(res.message); return; }
+        log(res.log[0], res.log[1]);
+        done();
+      });
+      var onTemperament = TSI.oneAtATime(async function (id) {
+        var c = R.creatureById(state, id);
+        if (!c) return;
+        var t = R.devView(state, c).temperament;
+        var boxes = [['dominant', 'Dominant temperament'], ['attachment', 'Attachment cue'], ['trigger', 'Instinctive trigger']].map(function (k) {
+          return [k[0], el('input', { type: 'text', class: 'tsi-input', maxlength: '120', value: t[k[0]] || '', 'data-test': 'temperament-' + k[0] }), k[1]];
+        });
+        var ok = await plainModal({
+          title: 'Temperament: ' + R.creatureName(data, c),
+          className: 'tsi-bas-modal',
+          body: [muted('Short notes in your own words. Nothing here is worked out for you.')].concat(boxes.map(function (b) { return field(b[2], b[1]); })),
+          actions: [{ label: 'Cancel', value: false }, { label: 'Save', value: true, primary: true }],
+          onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'temperament-dialog'); }
+        });
+        if (!ok || !life.alive) return;
+        var f = {};
+        boxes.forEach(function (b) { f[b[0]] = b[1].value; });
+        var res = R.setTemperament(state, data, id, f);
+        if (!res.ok) { await say(res.message); return; }
+        done();
+      });
+      var onConfirmBond = TSI.oneAtATime(async function (id) {
+        var c = R.creatureById(state, id);
+        if (!c) return;
+        var d = R.devView(state, c);
+        if (!isFinite(d.bond.ready) || d.bond.ready === null) { await say('No bond milestone is ready.'); return; }
+        var why = el('textarea', { class: 'tsi-input', rows: '3', maxlength: '300', placeholder: 'What happened at the table? (required)', 'data-test': 'bond-why' });
+        var problem = el('div', { class: 'tsi-bas-repair-text', 'data-test': 'bond-problem', hidden: true });
+        var mainBtn = null;
+        function check() {
+          var bad = String(why.value).replace(/\s+/g, ' ').trim().length < 3 ? 'Say what happened at the table.' : '';
+          problem.textContent = bad; problem.hidden = !bad;
+          if (mainBtn) { mainBtn.disabled = !!bad; mainBtn.title = bad; }
+        }
+        why.addEventListener('input', check);
+        var ok = await plainModal({
+          title: 'Confirm Bond ' + d.bond.ready + ': ' + R.bondName(d.bond.ready),
+          className: 'tsi-bas-modal',
+          body: [muted(R.creatureName(data, c) + ' rises from Bond ' + d.bond.level + ' to Bond ' + d.bond.ready + ' (' + R.bondName(d.bond.ready) + '), by exactly one level. Only confirm it once a suitable scene has happened.'), field('The scene', why), problem],
+          actions: [{ label: 'Cancel', value: false }, { label: 'Confirm bond', value: true, primary: true }],
+          onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'bond-dialog'); mainBtn = parts.dialog.querySelector('.tsi-modal__foot .tsi-btn--primary'); check(); }
+        });
+        if (!ok || !life.alive) return;
+        var res = R.confirmBond(state, data, id, why.value);
+        if (!res.ok) { await say(res.message); return; }
+        log(res.log[0], res.log[1]);
+        done();
+      });
+      var onChronicleNote = TSI.oneAtATime(async function (id) {
+        var c = R.creatureById(state, id);
+        if (!c) return;
+        var note = el('textarea', { class: 'tsi-input', rows: '3', maxlength: '400', placeholder: 'A scene, a memory, a correction…', 'data-test': 'note-text' });
+        var ok = await plainModal({
+          title: 'Chronicle note: ' + R.creatureName(data, c),
+          className: 'tsi-bas-modal',
+          body: [field('Note', note)],
+          actions: [{ label: 'Cancel', value: false }, { label: 'Add to the Chronicle', value: true, primary: true }],
+          onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'note-dialog'); setTimeout(function () { note.focus(); }, 0); }
+        });
+        if (!ok || !life.alive) return;
+        var res = R.addChronicleNote(state, data, id, note.value);
+        if (!res.ok) { await say(res.message); return; }
+        done();
+      });
+      function wyvernProfile(c, prefix) {
+        var d = R.devView(state, c);
+        var t = d.temperament;
+        var tr = R.trainingStatus(state, data, c);
+        var learned = Object.keys(d.training).map(function (k) {
+          var f = (R.facility(data, 'wyvern_roost').functions || []).filter(function (x) { return x.id === k; })[0];
+          return f ? f.label : k;
+        });
+        var chron = d.chronicle.slice().reverse();
+        var line = function (label, value, test) { return el('div', { class: 'tsi-bas-wyv__line' }, [el('b', { text: label + ' ' }), el('span', { 'data-test': test || null, text: value })]); };
+        return el('div', { class: 'tsi-bas-wyv', 'data-test': prefix + '-profile-' + c.id }, [
+          el('div', { class: 'tsi-bas-wyv__line' }, [
+            el('b', { text: 'Handler ' }), el('span', { 'data-test': prefix + '-handler-' + c.id, text: d.handlerId ? R.handlerName(d.handlerId) : 'None yet' }), ' ',
+            btn(d.handlerId ? 'Change handler…' : 'Assign handler…', function () { onAssignHandler(c.id); }, 'tsi-btn--ghost', prefix + '-assign-' + c.id)
+          ]),
+          line('Bond', d.bond.level + ': ' + R.bondName(d.bond.level), prefix + '-bond-' + c.id),
+          el('div', { class: 'tsi-bas-wyv__line tsi-bas-muted', 'data-test': prefix + '-next-' + c.id, text: R.nextStepLine(state, data, c) }),
+          isFinite(d.bond.ready) && d.bond.ready !== null ? btn('Confirm bond milestone…', function () { onConfirmBond(c.id); }, 'tsi-btn--primary', prefix + '-confirm-' + c.id) : null,
+          tr ? line('Training', tr.line, prefix + '-training-' + c.id) : null,
+          learned.length ? line('Learned', learned.join(', '), prefix + '-learned-' + c.id) : null,
+          el('div', { class: 'tsi-bas-wyv__line' }, [
+            el('b', { text: 'Temperament ' }),
+            el('span', { 'data-test': prefix + '-temper-' + c.id, text: (t.dominant || t.attachment || t.trigger) ? [t.dominant && 'Dominant: ' + t.dominant, t.attachment && 'Attachment: ' + t.attachment, t.trigger && 'Trigger: ' + t.trigger].filter(Boolean).join(' · ') : 'Not written yet' }), ' ',
+            btn('Edit…', function () { onTemperament(c.id); }, 'tsi-btn--ghost', prefix + '-temper-edit-' + c.id)
+          ]),
+          line('Riding', 'Not available yet: riding preparation comes later.'),
+          el('details', { class: 'tsi-bas-wyv__chronicle', 'data-test': prefix + '-chronicle-' + c.id }, [
+            el('summary', { text: 'Chronicle (' + chron.length + ')' }),
+            el('ul', { class: 'tsi-bas-res-list' }, chron.map(function (e) { return el('li', { text: R.dayLabel(e.day) + ' · ' + e.text }); })),
+            btn('Add a note…', function () { onChronicleNote(c.id); }, 'tsi-btn--ghost', prefix + '-note-' + c.id)
+          ])
+        ]);
+      }
       function creatureRow(c, prefix, compact) {
         var test = prefix + '-' + c.id;
         var name = R.creatureName(data, c);
@@ -571,6 +694,8 @@
         var tip = function () { return creatureTip(c); };
         bindTip(row, tip, { noChange: true });
         bindFocusTip(row, row, tip);
+        /* A housed wyvern also shows its profile (not in Management's compact list). */
+        if (!compact && c.species === 'wyvern' && c.status === 'housed') return el('div', { class: 'tsi-bas-creature-wrap' }, [row, wyvernProfile(c, prefix)]);
         return row;
       }
 
@@ -3184,6 +3309,8 @@
         /* The War Room (pull request 8a): Drill a Regiment lists the
            regiments that can drill; a Muster has one list per formation. */
         var isDrill = !!fn.drill;
+        /* A Wyvern Roost training programme: pick the wyvern; the reason it can't go ahead is said exactly. */
+        var isTrain = !!fn.trains;
         var musterN = R.musterSize ? R.musterSize(fn) : 0;
         if (musterN) {
           var msels = [];
@@ -3194,7 +3321,7 @@
           }
           select = { get value() { return msels.map(function (x) { return R.clampInt(x.value, 0); }); } };
           chooser = el('div', { class: 'tsi-bas-fn__muster', 'data-test': 'muster-' + key }, msels);
-        } else if ((fn.options && fn.options.length) || isCraft || (isCharter && options.length) || (fn.housesSpecies && options.length) || (isDrill && options.length)) {
+        } else if ((fn.options && fn.options.length) || isCraft || (isCharter && options.length) || (fn.housesSpecies && options.length) || (isDrill && options.length) || (isTrain && options.length)) {
           select = el('select', { class: 'tsi-input tsi-bas-fn__select', 'aria-label': fn.label, 'data-test': 'sel-' + key }, options.map(function (o, idx) {
             var lab = o && typeof o === 'object' && 'label' in o ? o.label : String(o);
             var cost = o && o.costGP !== undefined && o.costGP !== null ? ' (' + o.costGP + 'gp)' : '';
@@ -3219,9 +3346,9 @@
         /* A production order (pull request 3): what the chosen recipe uses and makes. */
         var goodsLine = fn.production ? el('div', { class: 'tsi-bas-fn__goods', 'data-test': 'goods-' + key }) : null;
         /* Why a House order can't be given now, in a sentence (pull request 7). */
-        var whyLine = (isHousing || isDrill || isProtection || (fn.favourCost && !fn.production) || fn.waiting) ? el('div', { class: 'tsi-bas-fn__why', 'data-test': 'why-' + key, hidden: true }) : null;
+        var whyLine = (isHousing || isDrill || isProtection || isTrain || (fn.favourCost && !fn.production) || fn.waiting) ? el('div', { class: 'tsi-bas-fn__why', 'data-test': 'why-' + key, hidden: true }) : null;
         function chosenNow() {
-          if (isDrill) return options[select ? R.clampInt(select.value, 0) : 0] || null;
+          if (isDrill || isTrain) return options[select ? R.clampInt(select.value, 0) : 0] || null;
           return fn.production && fn.options && fn.options.length ? fn.options[select ? R.clampInt(select.value, 0) : 0] || null : null;
         }
         function refresh() {
@@ -3230,6 +3357,7 @@
             : isCharter && R.registerBusy(state, data) ? R.registerBusy(state, data)
             : isCharter && !options.length ? 'No Port Charter to register: the DM grants one in the Explorer, and each is registered once.'
             : isProtection ? R.protectionBusy(state, data, fn) || null
+            : isTrain ? (!options.length ? 'No wyvern is housed at the Wyvern Roost yet.' : R.trainingBlocker(state, data, fac, fn, chosen ? R.creatureById(state, chosen.trainCreatureId) : null) || null)
             : isHousing ? R.housingBlocker(state, data, fac, fn) || null
             : isDrill ? (R.drillRoomBlocker(state, data) || (!options.length ? 'No regiment can drill now: a regiment drills at full strength, one drill at a time, up to Veteran.' : null)) : null;
           /* A Shrine order's Favour (pull request 8b). */
@@ -3238,7 +3366,7 @@
           issue.disabled = !!(locked || cd > 0 || repair > 0 || why);
           issue.title = repair ? repairText(fac, repair) : why || null;
           issue.textContent = repair ? 'Under Repair' : !avail.ok ? avail.message : why && fn.production ? 'Can\'t order yet' : why && isCharter ? (options.length ? 'One at a time' : 'No Port Charter to register')
-            : why && isProtection ? (fn.protectionWindow ? 'Already active' : 'Convoy ready') : why && isHousing ? housingShort(fac, fn) : why && isDrill ? 'Can\'t drill now' : noFavour ? 'Not enough Favour' : cd > 0 ? 'Cooldown: ' + R.daysText(cd) : 'Issue Order';
+            : why && isProtection ? (fn.protectionWindow ? 'Already active' : 'Convoy ready') : why && isTrain ? 'Can\'t train yet' : why && isHousing ? housingShort(fac, fn) : why && isDrill ? 'Can\'t drill now' : noFavour ? 'Not enough Favour' : cd > 0 ? 'Cooldown: ' + R.daysText(cd) : 'Issue Order';
           if (whyLine) {
             var wtext = !avail.ok && avail.why ? avail.why : why && !repair && avail.ok ? why : '';
             whyLine.hidden = !wtext;
@@ -4634,6 +4762,8 @@
           /* The War Room's regiments (pull request 8a): Recouping refills a
              day's worth, and a drill waits while its regiment is Recouping
              or away. Same write, so once. */
+          /* A recovering wyvern's training pauses (one day on its due day, once a day). */
+          if (R.tickTraining) R.tickTraining(state, data);
           if (R.settleRegiments) {
             var regs = R.settleRegiments(state, data);
             logAll(regs.log);

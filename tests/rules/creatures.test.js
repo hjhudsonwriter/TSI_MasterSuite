@@ -145,7 +145,7 @@
     t.same(CR.unique, { elara_wyvern: { species: 'wyvern', owner: 'elara', ownerName: 'Elara', name: '', defaultName: 'Elara\'s wyvern' } });
     t.ok(ED.heroes.some(function (h) { return h.id === 'elara' && h.title === 'Elara'; }), 'her owner is the Explorer\'s hero Elara');
     t.same([CR.room, CR.houseDays, CR.nameMax, CR.provisional], [{ griffin_tower: 1, dire_wolf_den: 1, wyvern_roost: 1 }, 3, 40, true]);
-    t.ok(/Care, training, bonding, riding and breeding/.test(CR.comingLater));
+    t.ok(/Riding preparation, mounted flight and breeding/.test(CR.comingLater));
     t.equal(W.beasts.Wyvern, undefined, 'the War Table\'s own file is unchanged: no wyvern or griffin in it');
     t.equal(W.beasts.Griffin, undefined);
   });
@@ -168,7 +168,7 @@
     ['wyvern_roost', 'griffin_tower', 'dire_wolf_den'].forEach(function (id) {
       var f = BR.facility(bdata, id);
       t.same([f.requiredLevel, f.inDevelopment, f.plot, typeof f.description], [5, undefined, undefined, 'string'], id);
-      t.equal(f.functions.length, id === 'wyvern_roost' ? 2 : 1, id + ': one order (the Roost has two: Elara\'s wyvern and a granted one)');
+      t.equal(f.functions.length, id === 'wyvern_roost' ? 8 : 1, id + ': one order (the Roost has two House orders and, since 20 October 2026, six training programmes)');
       var fn = f.functions[0];
       t.same([fn.id, fn.days, fn.costGP, fn.costText, fn.requiredFacilityLevel, fn.options, fn.production], [FAC[id], CR.houseDays, 0, '0', undefined, [], undefined], id);
       t.equal(BR.isPlotFacility(bdata, id), false, id + ' takes a construction slot');
@@ -224,8 +224,10 @@
     t.same(BR.dueOrders(b).map(function (x) { return x.id; }), [o.id]);
     var lines = BR.completeSimpleOrder(b, bdata, o, dice([0.5]));
     t.same(lines, [['Order Completed', 'Wyvern Roost: House Elara\'s Wyvern → Elara\'s wyvern lives at the Ironbow now, at the Wyvern Roost (Elara\'s). It guards the Ironbow when it is attacked.']]);
-    t.same(b.creatures, [{ id: 'elara_wyvern', species: 'wyvern', owner: 'elara', name: '', status: 'housed', home: 'wyvern_roost', grantedDay: 13, housedDay: 13, msgId: '' }]);
-    t.same(Object.keys(b.creatures[0]), KEYS);
+    var elaraDev = b.creatures[0].development;
+    t.same(b.creatures.map(function (c) { var x = Object.assign({}, c); delete x.development; return x; }), [{ id: 'elara_wyvern', species: 'wyvern', owner: 'elara', name: '', status: 'housed', home: 'wyvern_roost', grantedDay: 13, housedDay: 13, msgId: '' }]);
+    t.same([elaraDev.bond.level, elaraDev.handlerId, elaraDev.chronicle.length], [1, 'elara', 1], 'Elara\'s bond is credited once');
+    t.same(Object.keys(b.creatures[0]), KEYS.concat(['development']));
     t.same(BR.completeSimpleOrder(b, bdata, o, dice([0.5])), [['Creatures', 'Wyvern Roost: House Elara\'s Wyvern: Elara\'s wyvern already lives at the Ironbow, so nothing changed.']], 'a replay changes nothing');
     BR.removeOrder(b, o.id);
     t.equal(b.creatures.length, 1);
@@ -863,7 +865,7 @@
     withGriffin(b, 1, 'Swiftwing');
     withGrants(b, [grantMsg({ id: gid(2), species: 'dire_wolf', name: '' })]);
     var once = reload(b);
-    once.creatures.forEach(function (c) { t.same(Object.keys(c), KEYS, c.id); });
+    once.creatures.forEach(function (c) { t.same(Object.keys(c), c.id === 'elara_wyvern' ? KEYS.concat(['development']) : KEYS, c.id); });
     t.equal(JSON.stringify(BR.toSave(reload(once))), JSON.stringify(BR.toSave(once)), 'the same JSON twice');
     var list = [
       { msgId: 'x', name: 'Out of order', status: 'waiting', grantedDay: 3, species: 'griffin', id: 'a1', owner: '', home: '', housedDay: null },

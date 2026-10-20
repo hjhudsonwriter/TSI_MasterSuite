@@ -1548,3 +1548,10 @@
 
 .tsi-page--bastion .tsi-bas-wh__group { padding: 6px 4px 2px; font: 700 12px var(--tsi-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--tsi-gold-text); border-bottom: 1px solid var(--tsi-line-faint); }
 .tsi-page--bastion .tsi-bas-wh__sort { display: inline-flex; align-items: center; gap: 8px; margin-right: auto; }
+
+/* A housed wyvern's profile (bond, training, Chronicle; 20 October 2026) */
+.tsi-page--bastion .tsi-bas-creature-wrap { display: grid; gap: 6px; }
+.tsi-page--bastion .tsi-bas-wyv { display: grid; gap: 4px; padding: 6px 10px 8px; margin: -2px 0 6px; border-left: 2px solid var(--tsi-gold-dim, rgba(214, 178, 94, 0.45)); font-size: var(--tsi-fs-body-sm); }
+.tsi-page--bastion .tsi-bas-wyv__line { line-height: 1.35; }
+.tsi-page--bastion .tsi-bas-wyv__chronicle summary { cursor: pointer; }
+.tsi-page--bastion .tsi-bas-wyv__chronicle ul { margin: 4px 0; max-height: 11em; overflow: auto; }

@@ -126,6 +126,24 @@ window.TSI_DATA.bastionCreatures = {
      Explorer's Grant box and the link use. */
   nameMax: 40,
 
+  /* Bonding and training (Wyvern Roost: Bonding, Training & Rider Mastery,
+     Harry's approvals of 20 October 2026). Each named wyvern has a bond (0 to
+     5), a handler, disciplines it has learned and a Chronicle, kept in the
+     creature's "development". Training orders are in facilities-data.js (the
+     Wyvern Roost, "trains"); this is what they share. */
+  development: {
+    /* Specialist training places at once, by the building's level (the House
+       orders don't use one). */
+    trainingPlaces: { wyvern_roost: { 1: 1, 2: 1, 3: 2, 4: 2, 5: 3 } },
+    /* Defend Bastion bonuses a learned discipline gives that one creature
+       (Battle Value stays as it was: Harry, 20 October 2026). */
+    trainingBonus: {
+      wyr_defence_drills: { stat: 'resolve', amount: 1, label: '+1 Resolve' },
+      wyr_aerial_sentinel: { stat: 'defence', amount: 1, label: '+1 Defence' },
+      wyr_elite_defence: { stat: 'attack', amount: 1, label: '+1 Attack' }
+    }
+  },
+
   /* The panels' "Coming later" line. */
-  comingLater: 'Care, training, bonding, riding and breeding come later, once their rules are set.'
+  comingLater: 'Riding preparation, mounted flight and breeding come later, once their rules are set.'
 };
