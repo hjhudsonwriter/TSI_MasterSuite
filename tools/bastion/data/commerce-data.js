@@ -141,13 +141,16 @@ window.TSI_DATA.bastionCommerce = {
   },
 
   /* Protection for a voyage: each takes percentage points off the chance
-     (never below 0). They're built in, but none is available yet: each
-     becomes available when its order exists (a later pull request), and is
-     then applied to a voyage by itself and recorded with it. consumes: the
-     protection is used up by the voyage it protects. */
+     (never below 0), all three together if they are all ready. Each is
+     applied to a voyage by itself when it sails and recorded with it.
+     consumes: the protection is used up by the voyage it protects.
+     Convoy (the Barracks' Guard Commercial Convoy: 1 kept, used by the next
+     ship) and Approaches (the Watchtower's Protect Maritime Approaches: 7
+     days, every ship that sails in them) have their orders since 20 October
+     2026; the Blessing of Pelagos since the Shrines. */
   protections: [
-    { id: 'commercial_convoy', label: 'Commercial Convoy', facId: 'barracks', order: 'Guard Commercial Convoy', cut: 5, available: false },
-    { id: 'maritime_approaches', label: 'Protected Maritime Approaches', facId: 'watchtower', order: 'Protect Maritime Approaches', cut: 5, available: false },
+    { id: 'commercial_convoy', label: 'Commercial Convoy', facId: 'barracks', order: 'Guard Commercial Convoy', cut: 5, consumes: true, available: true },
+    { id: 'maritime_approaches', label: 'Protected Maritime Approaches', facId: 'watchtower', order: 'Protect Maritime Approaches', cut: 5, available: true },
     { id: 'pelagos_blessing', label: 'Blessing of Pelagos', facId: 'shrine_pelagos', order: 'Bless Commercial Shipment', cut: 10, consumes: true, available: true }
   ],
 

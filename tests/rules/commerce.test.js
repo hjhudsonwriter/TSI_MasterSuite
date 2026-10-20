@@ -135,9 +135,9 @@
     t.same(BR.fn(BR.facility(bdata, 'dock'), 'charter_berth').options.length, 8, 'the Charter Berth is unchanged');
   });
 
-  test('protections are built in but none is available; Fresh Fish sails only on voyages of 2 days or less', function (t) {
+  test('all three protections are available; Fresh Fish sails only on voyages of 2 days or less', function (t) {
     t.same(C.protections.map(function (p) { return [p.facId, p.cut, p.consumes === true, p.available]; }),
-      [['barracks', 5, false, false], ['watchtower', 5, false, false], ['shrine_pelagos', 10, true, true]], 'pull request 8b switches on the Blessing of Pelagos');
+      [['barracks', 5, true, true], ['watchtower', 5, false, true], ['shrine_pelagos', 10, true, true]], 'all three are on: the Blessing (pull request 8b), then the Convoy and the Approaches (20 October 2026)');
     t.same(BR.voyageProtections(bastion(1), bdata), [], 'none held: none applies');
     t.equal(BR.goodShipBlocker(bdata, 'fresh_fish', BR.portRoute(bdata, 'timberport')), 'Fresh Fish only ships on a voyage of 2 days or less (it doesn\'t keep longer), and this one takes 7 days.');
     t.equal(BR.goodShipBlocker(bdata, 'fresh_fish', { outDays: 2 }), '', '2 days: it sails');
@@ -1009,4 +1009,274 @@
     t.equal(BR.routesDueToday(b), true, 'the route still sails as before');
     t.equal(b.treasuryGP, 320, 'only the cargo was paid');
   });
+
+  /* ---------- Negotiated Charter terms and the two protections (Harry, 20 October 2026) ---------- */
+  group('Charter terms and commercial protections (20 October 2026)');
+
+  var STD = { priceMult: 1, feePerLot: 0, tariffPct: 0 };
+  function bw(b) {
+    b.builtExtras = [{ facId: 'barracks', status: 'built' }, { facId: 'watchtower', status: 'built' }];
+    BR.ensureLevels(b, bdata);
+    b.facilityLevels.barracks = 2;
+    b.facilityLevels.watchtower = 2;
+    return b;
+  }
+  function ordered(b, fac, fn) {
+    var r = BR.issueOrder(b, bdata, fac, fn, 0, dice([0.3]));
+    if (!r.ok) throw new Error('refused: ' + r.message);
+    return b.pendingOrders[b.pendingOrders.length - 1];
+  }
+  function finishOrder(b, o) { var out = BR.completeSimpleOrder(b, bdata, o, dice([0.3])); BR.removeOrder(b, o.id); return out; }
+  /* Sends a ship; any earlier one is cleared first, so a test can send several (the Dock's own room is tested elsewhere). */
+  function sail(b, c, qty, rolls) {
+    b.tradeNetwork.voyages = [];
+    stock(b, 'medicinal_herbs', qty || 2);
+    var r = BR.dispatchCargo(b, bdata, c.id, [{ goodId: 'medicinal_herbs', qty: qty || 2 }], dice(rolls || [0.3]));
+    if (!r.ok) throw new Error(r.message);
+    return r.voyage;
+  }
+
+  test('a Charter has standard terms (×1.00, 0 gp, 0%) until the DM amends them; the Charter and the Dock use them', function (t) {
+    var b = bastion(4, 2);
+    var c = registered(b);
+    t.same(BR.effectiveTerms(bdata, c, c.port, c.clan), STD);
+    t.equal(BR.isStandardTerms(bdata, c), true);
+    t.equal(BR.termsText(STD), '×1.00 price · 0 gp shipping a lot · 0% tariff');
+    t.equal(c.termsLog, undefined, 'no history on a Charter never amended');
+  });
+
+  test('the limits: price ×0.50 to ×2.00, fee 0 to 50 gp a lot, tariff 0 to 50%; typed values are checked', function (t) {
+    function ok(p, f, tr) { return BR.checkTermsInput({ priceMult: p, feePerLot: f, tariffPct: tr }).ok; }
+    t.equal(ok(0.5, 0, 0), true); t.equal(ok(2, 50, 50), true); t.equal(ok('1.25', '5', '10'), true);
+    t.equal(ok(0.49, 0, 0), false); t.equal(ok(2.01, 0, 0), false); t.equal(ok(1, -1, 0), false); t.equal(ok(1, 51, 0), false);
+    t.equal(ok(1, 0, 51), false); t.equal(ok(1, 0, -1), false); t.equal(ok(1, 2.5, 0), false); t.equal(ok(1, 0, 5.5), false);
+    t.equal(ok('', 0, 0), false); t.equal(ok('abc', 0, 0), false); t.equal(ok(1.255, 0, 0), false);
+    t.equal(ok(0.9, 5, 10), true, 'worse than standard is allowed when the DM sets it');
+  });
+
+  test('amending needs a reason, changes nothing on a refusal, and records the day, old terms, new terms and why', function (t) {
+    var b = bastion(4, 2);
+    var c = registered(b);
+    var before = copy(BR.toSave(b));
+    t.equal(BR.amendCharterTerms(b, bdata, c.id, { priceMult: 1.25, feePerLot: 0, tariffPct: 0 }, '').ok, false, 'no reason');
+    t.equal(BR.amendCharterTerms(b, bdata, c.id, { priceMult: 3, feePerLot: 0, tariffPct: 0 }, 'a feast').ok, false, 'over the limit');
+    t.equal(BR.amendCharterTerms(b, bdata, c.id, STD, 'nothing changes').ok, false, 'the same terms');
+    t.same(copy(BR.toSave(b)), before, 'refusals changed nothing');
+    var r = BR.amendCharterTerms(b, bdata, c.id, { priceMult: 1.25, feePerLot: 5, tariffPct: 10 }, '  The party saved   the harbour master\'s daughter. ');
+    t.equal(r.ok, true, r.message);
+    t.same(BR.effectiveTerms(bdata, c, c.port, c.clan), { priceMult: 1.25, feePerLot: 5, tariffPct: 10 });
+    t.same(c.termsLog, [{ day: 4, kind: 'amend', before: STD, after: { priceMult: 1.25, feePerLot: 5, tariffPct: 10 }, why: 'The party saved the harbour master\'s daughter.' }]);
+    t.ok(/Day 4/.test(r.log[1]) && /saved the harbour master/.test(r.log[1]) && /ships already at sea/i.test(r.log[1]));
+    t.equal(b.treasuryGP, 0, 'no gold, Honour, Respect or Political Capital changes');
+    b.day = 9;
+    t.equal(BR.amendCharterTerms(b, bdata, c.id, { priceMult: 0.9, feePerLot: 0, tariffPct: 0 }, 'a bad harvest').ok, true);
+    t.equal(c.termsLog.length, 2, 'the history only grows');
+    var again = reload(b);
+    t.same(BR.charterFor(again, c.port).termsLog, c.termsLog, 'kept through a reload');
+    t.same(copy(BR.toSave(reload(again))), copy(BR.toSave(again)), 'loading twice changes nothing');
+  });
+
+  test('a Charter can be amended before it is registered, but still can\'t ship until it is', function (t) {
+    var b = bastion(4, 2);
+    BR.addCharter(b, charterMsg({}), b.day);
+    var c = BR.charterFor(b, 'goldport');
+    t.equal(c.status, 'earned');
+    t.equal(BR.amendCharterTerms(b, bdata, c.id, { priceMult: 1.1, feePerLot: 0, tariffPct: 0 }, 'a gift').ok, true);
+    stock(b, 'medicinal_herbs', 2);
+    t.equal(BR.dispatchCargo(b, bdata, c.id, [{ goodId: 'medicinal_herbs', qty: 2 }], dice([0.3])).ok, false, 'shipping needs registration');
+  });
+
+  test('the price multiplier, fee and tariff change a sale; the worked estimate uses the same engine and says what it is', function (t) {
+    var b = bastion(4, 2);
+    var c = registered(b);
+    var std = BR.cargoQuote(bdata, c, c.port, c.clan, [{ goodId: 'medicinal_herbs', qty: 2 }]);
+    BR.amendCharterTerms(b, bdata, c.id, { priceMult: 1.5, feePerLot: 10, tariffPct: 10 }, 'a trade deal');
+    var q = BR.cargoQuote(bdata, c, c.port, c.clan, [{ goodId: 'medicinal_herbs', qty: 2 }]);
+    t.equal(std.gross, 350, '2 lots × 140 × ×1.25 (Molten)');
+    t.same([q.gross, q.fee, q.tariff, q.net], [525, 20, 52, 453], '×1.5; 10 gp a lot; 10% of 525');
+    var pv = BR.termsPreview(b, bdata, c);
+    t.same([pv.lots, pv.standard.net, pv.current.net > pv.standard.net], [4, 700, true]);
+    t.same(BR.cargoQuote(bdata, c, c.port, c.clan, [{ goodId: 'medicinal_herbs', qty: 2 }], null, STD).net, 350, 'locked standard terms');
+  });
+
+  test('reset needs a reason, removes the overrides and keeps the history; it makes no agreement', function (t) {
+    var b = bastion(4, 2);
+    var c = registered(b);
+    t.equal(BR.resetCharterTerms(b, bdata, c.id, 'because').ok, false, 'already standard');
+    BR.amendCharterTerms(b, bdata, c.id, { priceMult: 0.8, feePerLot: 3, tariffPct: 5 }, 'a feud');
+    t.equal(BR.resetCharterTerms(b, bdata, c.id, '').ok, false, 'a reason is required');
+    var r = BR.resetCharterTerms(b, bdata, c.id, 'the feud ended');
+    t.equal(r.ok, true, r.message);
+    t.same([c.terms, BR.isStandardTerms(bdata, c)], [{}, true]);
+    t.same(c.termsLog.map(function (e) { return [e.kind, e.why]; }), [['amend', 'a feud'], ['reset', 'the feud ended']]);
+    t.same(BR.portCharters(b).length, 1, 'no new agreement');
+  });
+
+  test('a ship keeps the terms it sailed with: the full terms are saved at departure, and survive a reload and a later amendment', function (t) {
+    var b = bastion(4, 2);
+    var c = registered(b);
+    BR.amendCharterTerms(b, bdata, c.id, { priceMult: 1.5, feePerLot: 10, tariffPct: 10 }, 'a trade deal');
+    var v = sail(b, c, 2);
+    t.same(v.terms, { priceMult: 1.5, feePerLot: 10, tariffPct: 10 }, 'the whole terms, not a partial object');
+    var other = bastion(4, 2);
+    var c2 = registered(other);
+    t.same(sail(other, c2, 2).terms, STD, 'standard terms are saved in full too');
+    BR.amendCharterTerms(b, bdata, c.id, { priceMult: 0.5, feePerLot: 50, tariffPct: 50 }, 'a disaster');
+    b = reload(b);
+    t.same(BR.voyages(b)[0].terms, { priceMult: 1.5, feePerLot: 10, tariffPct: 10 }, 'still the departure terms');
+    b.day = 11;
+    BR.settleVoyages(b, bdata, dice([0.5]));
+    t.equal(b.treasuryGP, 453, 'paid at the departure terms');
+    var rec = BR.cargoSales(b)[0];
+    t.same([rec.net, rec.fee, rec.tariff, rec.priceMult, rec.tariffPct], [453, 20, 52, 1.5, 10]);
+    BR.settleVoyages(b, bdata, dice([0.5]));
+    t.equal(b.treasuryGP, 453, 'never paid twice');
+  });
+
+  test('a standing shipment uses the terms in effect at each departure', function (t) {
+    var b = bastion(4, 4);
+    var c = registered(b);
+    stock(b, 'medicinal_herbs', 4);
+    var set = BR.setSchedule(b, bdata, c.id, [{ goodId: 'medicinal_herbs', qty: 2 }], dice([0.3]));
+    t.equal(set.ok, true, set.message);
+    BR.amendCharterTerms(b, bdata, c.id, { priceMult: 1.2, feePerLot: 0, tariffPct: 0 }, 'a favour');
+    b.day = 5;
+    BR.settleVoyages(b, bdata, dice([0.3]));
+    var v = BR.voyages(b)[0];
+    t.ok(v && v.scheduleId, 'it sailed');
+    t.same(v.terms, { priceMult: 1.2, feePerLot: 0, tariffPct: 0 });
+    BR.amendCharterTerms(b, bdata, c.id, { priceMult: 1.9, feePerLot: 0, tariffPct: 0 }, 'a later change');
+    t.same(BR.voyages(b)[0].terms.priceMult, 1.2, 'a later change affects later sailings only');
+  });
+
+  test('an outbound ship saved before terms existed gets its current effective terms once, before any amendment can reprice it', function (t) {
+    var b = bastion(4, 2);
+    var c = registered(b);
+    BR.amendCharterTerms(b, bdata, c.id, { priceMult: 1.4, feePerLot: 2, tariffPct: 0 }, 'old deal');
+    var v = sail(b, c, 2);
+    var old = copy(BR.toSave(b));
+    delete old.tradeNetwork.voyages[0].terms;
+    var loaded = BR.fromSave(copy(old), bdata);
+    t.same(BR.voyages(loaded)[0].terms, { priceMult: 1.4, feePerLot: 2, tariffPct: 0 }, 'set on load');
+    var legacy = BR.fromSave(copy(old), bdata);
+    legacy.tradeNetwork.voyages[0].terms = null;
+    var cc = BR.charterFor(legacy, 'goldport');
+    BR.amendCharterTerms(legacy, bdata, cc.id, { priceMult: 2, feePerLot: 0, tariffPct: 0 }, 'a change');
+    t.same(BR.voyages(legacy)[0].terms, { priceMult: 1.4, feePerLot: 2, tariffPct: 0 }, 'locked before the amendment took effect');
+    t.same(copy(BR.toSave(BR.fromSave(copy(BR.toSave(loaded)), bdata))), copy(BR.toSave(loaded)), 'stable through reload');
+    var home = bastion(4, 2);
+    var ch = registered(home);
+    var vh = sail(home, ch, 2);
+    home.day = 11;
+    BR.settleVoyages(home, bdata, dice([0.5]));
+    t.equal(BR.voyages(home)[0].stage, 'returning');
+    delete BR.voyages(home)[0].terms;
+    t.same(BR.lockOutboundTerms(home, bdata), 0, 'a returning ship is left alone');
+  });
+
+  group('Commercial protections: Barracks and Watchtower (20 October 2026)');
+
+  test('the Barracks and Watchtower orders: Level 2, 3 and 2 days, no gold or Favour', function (t) {
+    var g = BR.fn(BR.facility(bdata, 'barracks'), 'guard_commercial_convoy');
+    var w = BR.fn(BR.facility(bdata, 'watchtower'), 'protect_maritime_approaches');
+    t.same([g.days, g.costGP, g.requiredFacilityLevel, g.favourCost, g.protectionCharge, g.protectionMax], [3, 0, 2, undefined, 'commercial_convoy', 1]);
+    t.same([w.days, w.costGP, w.requiredFacilityLevel, w.favourCost, w.protectionWindow, w.windowDays], [2, 0, 2, undefined, 'maritime_approaches', 7]);
+    var b = bw(bastion(4, 2));
+    b.facilityLevels.barracks = 1;
+    t.equal(BR.issueOrder(b, bdata, 'barracks', 'guard_commercial_convoy', 0, dice([0.3])).message, 'Needs Level 2.');
+    b.facilityLevels.watchtower = 1;
+    t.equal(BR.issueOrder(b, bdata, 'watchtower', 'protect_maritime_approaches', 0, dice([0.3])).message, 'Needs Level 2.');
+    t.ok(BR.fn(BR.facility(bdata, 'watchtower'), 'patrol'), 'Patrol is unchanged');
+  });
+
+  test('Guard Commercial Convoy: 3 days, one charge, never more than one held, no defenders used; the next ship uses it up once', function (t) {
+    var b = bw(bastion(4, 2));
+    b.defenders = { count: 5, armed: true };
+    var c = registered(b);
+    var o = ordered(b, 'barracks', 'guard_commercial_convoy');
+    t.equal(o.dueDay, 7, '3 days');
+    t.equal(BR.issueOrder(b, bdata, 'barracks', 'guard_commercial_convoy', 0, dice([0.3])).message, 'That order is already pending.');
+    t.same(finishOrder(b, o), [['Order Completed', 'Barracks: Guard Commercial Convoy → A Commercial Convoy is prepared for the next ship the Dock sends with cargo (1 held).']]);
+    t.same(b.tradeNetwork.protections, { commercial_convoy: { charges: 1 } });
+    t.equal(b.defenders.count, 5, 'no defenders deducted');
+    var again = BR.issueOrder(b, bdata, 'barracks', 'guard_commercial_convoy', 0, dice([0.3]));
+    t.same([again.ok, /already prepared/.test(again.message)], [false, true], 'no second order while one is ready');
+    b = reload(b);
+    t.equal(b.tradeNetwork.protections.commercial_convoy.charges, 1, 'kept through a save and day progression');
+    c = BR.charterFor(b, 'goldport');
+    var v = sail(b, c, 2);
+    t.same([v.protections.map(function (p) { return [p.id, p.cut]; }), v.basePct, v.chance], [[['commercial_convoy', 5]], 20, 15]);
+    t.equal(b.tradeNetwork.protections.commercial_convoy.charges, 0, 'used exactly once');
+    var v2 = sail(b, c, 2);
+    t.same([v2.protections, v2.chance], [[], 20], 'the next ship goes without it');
+    t.equal(BR.issueOrder(b, bdata, 'barracks', 'guard_commercial_convoy', 0, dice([0.3])).ok, true, 'another can be ordered now it has been used');
+  });
+
+  test('Protect Maritime Approaches: 2 days, then 7 inclusive days with the completion day as Day 1; not used up, not extended, no retroactive cover', function (t) {
+    var b = bw(bastion(4, 2));
+    var c = registered(b);
+    var early = sail(b, c, 2);
+    var o = ordered(b, 'watchtower', 'protect_maritime_approaches');
+    t.equal(o.dueDay, 6, '2 days');
+    b.day = 6;
+    var out = finishOrder(b, o);
+    t.equal(b.tradeNetwork.protections.maritime_approaches.untilDay, 12, 'Day 6 is Day 1: it covers Days 6 to 12');
+    t.ok(/active until Day 12/.test(out[0][1]), out[0][1]);
+    t.same(early.protections, [], 'a ship already at sea gets nothing retroactively');
+    var blocked = BR.issueOrder(b, bdata, 'watchtower', 'protect_maritime_approaches', 0, dice([0.3]));
+    t.same([blocked.ok, /active until Day 12/.test(blocked.message)], [false, true], 'no overlapping order');
+    var a = sail(b, c, 2);
+    var a2 = sail(b, c, 2);
+    t.same([a.chance, a2.chance, b.tradeNetwork.protections.maritime_approaches.untilDay], [15, 15, 12], 'every ship in the window, and it is not used up');
+    b.day = 12;
+    t.equal(sail(b, c, 2).chance, 15, 'the 7th day still covers');
+    b.day = 13;
+    t.equal(sail(b, c, 2).chance, 20, 'the 8th does not');
+    t.equal(BR.issueOrder(b, bdata, 'watchtower', 'protect_maritime_approaches', 0, dice([0.3])).ok, true, 'the next order can be issued once it ends');
+    var late = reload(b);
+    t.same(BR.voyages(late)[BR.voyages(late).length - 1].chance, 20);
+    t.equal(a.chance, 15, 'later expiry never changes a ship already under way');
+  });
+
+  test('the three protections combine (−5, −5 and −10) and never take the chance below 0; the Pelagos blessing is unchanged; a failed voyage still returns the cargo', function (t) {
+    var b = bw(bastion(4, 2));
+    var c = registered(b, 'timberport');
+    b.tradeNetwork.protections = { commercial_convoy: { charges: 1 }, maritime_approaches: { untilDay: 20 }, pelagos_blessing: { charges: 2 } };
+    var v = sail(b, c, 2);
+    t.same([v.basePct, v.protections.map(function (p) { return p.cut; }), v.chance], [5, [5, 5, 10], 0], 'Timberport 5% − 20 points: never below 0');
+    t.same(b.tradeNetwork.protections, { commercial_convoy: { charges: 0 }, maritime_approaches: { untilDay: 20 }, pelagos_blessing: { charges: 1 } }, 'the Convoy and one Blessing are used; the Approaches stay');
+    var d = bw(bastion(4, 2));
+    var g = registered(d, 'bleakharbour');
+    d.tradeNetwork.protections = { commercial_convoy: { charges: 1 }, maritime_approaches: { untilDay: 20 }, pelagos_blessing: { charges: 1 } };
+    t.same([sail(d, g, 2).chance], [0], 'Bleakharbour 20% − 20 = 0');
+    var h = bw(bastion(4, 2));
+    var gp = registered(h, 'goldport');
+    sail(h, gp, 2, [0.3]);
+    h.day = 11;
+    BR.settleVoyages(h, bdata, dice([0.05]));
+    t.same([BR.voyages(h)[0].outcome, h.treasuryGP], ['turned_back', 0], 'trouble at sea: nothing sold');
+  });
+
+  test('Standing shipments follow the same protection rules', function (t) {
+    var b = bw(bastion(4, 4));
+    var c = registered(b);
+    stock(b, 'medicinal_herbs', 4);
+    b.tradeNetwork.protections = { commercial_convoy: { charges: 1 }, maritime_approaches: { untilDay: 30 } };
+    t.equal(BR.setSchedule(b, bdata, c.id, [{ goodId: 'medicinal_herbs', qty: 2 }], dice([0.3])).ok, true);
+    b.day = 5;
+    BR.settleVoyages(b, bdata, dice([0.3]));
+    var v = BR.voyages(b)[0];
+    t.same([v.scheduleId !== null, v.protections.map(function (p) { return p.id; }), v.chance], [true, ['commercial_convoy', 'maritime_approaches'], 10]);
+    t.same(b.tradeNetwork.protections, { commercial_convoy: { charges: 0 }, maritime_approaches: { untilDay: 30 } });
+  });
+
+  test('protectionStatus describes each one for the Dock', function (t) {
+    var b = bw(bastion(4, 2));
+    var st = function () { return BR.protectionStatus(b, bdata).map(function (p) { return [p.id, p.state]; }); };
+    t.same(st(), [['commercial_convoy', 'none'], ['maritime_approaches', 'none'], ['pelagos_blessing', 'none']]);
+    b.tradeNetwork.protections = { commercial_convoy: { charges: 1 }, maritime_approaches: { untilDay: 9 } };
+    t.same(st(), [['commercial_convoy', 'ready'], ['maritime_approaches', 'active'], ['pelagos_blessing', 'none']]);
+    t.ok(/active until Day 9/.test(BR.protectionStatus(b, bdata)[1].text));
+  });
+
 }());
