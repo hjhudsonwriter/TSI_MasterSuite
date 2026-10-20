@@ -94,7 +94,44 @@
       return { goodId: id, name: R.goodName(data, id), size: Math.floor(num(items[id].size, 1, 100, 1)) };
     });
   };
+  /* ---------- Rows typed into the Warehouse by hand (Harry, 20 October 2026) ----------
+     A row with no goodId (a potion, a tool, a letter) can go in a parcel.
+     Its identity is its row id, so two rows with the same name stay apart:
+     the parcel's entry is { goodId: 'free:<row id>', name, qty }. The name
+     is kept with the parcel (the row may be renamed or deleted after), and
+     each count is 1 item. Trade lots, coin, ships and living creatures are
+     never sent this way: they have their own rows or aren't rows at all,
+     and a typed row is refused if its name says it is one of those. */
+  var FREE = 'free:';
+  R.FREE_PREFIX = FREE;
+  R.isFreeGood = function (id) { return typeof id === 'string' && id.indexOf(FREE) === 0 && id.length > FREE.length; };
+  function freeOn(data) { return courier(data).freeItems !== false; }
+  /* A Warehouse row the courier could carry, or null. */
+  function freeRow(s, id) {
+    var rid = id.slice(FREE.length);
+    var row = (s.warehouse || []).filter(function (w) { return isObj(w) && !w.goodId && typeof w.id === 'string' && w.id === rid; })[0];
+    return row || null;
+  }
+  function freeName(row) { return String(row.item || '').trim().slice(0, 60); }
+  R.freeRowBlocker = function (s, data, id) {
+    if (!freeOn(data)) return 'Items typed into the Warehouse don\'t go by courier (courier-data.js).';
+    var row = freeRow(s, id);
+    if (!row) return 'That Warehouse item isn\'t there any more.';
+    var name = freeName(row);
+    if (!name) return 'A Warehouse item with no name can\'t be sent.';
+    /* The empty Warehouse's own placeholder row isn't an item. */
+    if (name === 'New Item' && !String(row.notes || '').trim() && (row.gp === '' || row.gp === undefined || row.gp === null)) return 'That is the Warehouse\'s empty placeholder row: rename it to send it.';
+    return '';
+  };
+  /* The typed rows the courier could carry now: [{ goodId, name, size, have, free: true }]. */
+  R.courierFreeRows = function (s, data) {
+    if (!freeOn(data)) return [];
+    return (s.warehouse || []).filter(function (w) {
+      return isObj(w) && !w.goodId && typeof w.id === 'string' && w.id && clampInt(w.qty, 0) > 0 && freeName(w) && !R.freeRowBlocker(s, data, FREE + w.id);
+    }).map(function (w) { return { goodId: FREE + w.id, name: freeName(w), size: 1, have: clampInt(w.qty, 0, 100000), free: true }; });
+  };
   function sizeOf(data, goodId) {
+    if (R.isFreeGood(goodId)) return 1;
     var items = isObj(courier(data).items) ? courier(data).items : {};
     return isObj(items[goodId]) ? Math.floor(num(items[goodId].size, 1, 100, 1)) : 1;
   }
@@ -105,8 +142,45 @@
   /* What the courier can carry and the Warehouse holds now:
      [{ goodId, name, size, have }]. */
   R.courierStock = function (s, data) {
-    return R.courierGoods(data).map(function (g) { return Object.assign({}, g, { have: R.goodsQty(s, g.goodId) }); });
+    return R.courierGoods(data).map(function (g) { return Object.assign({}, g, { have: R.goodsQty(s, g.goodId) }); }).concat(R.courierFreeRows(s, data));
   };
+  /* Take a parcel's goods out of the Warehouse, all or nothing: what was
+     taken ([{ goodId, qty, name? }]), or null if anything is short. The
+     named goods go through R.takeGoods; typed rows are counted down by row. */
+  function takeParcelGoods(s, data, goods) {
+    var plain = goods.filter(function (x) { return !R.isFreeGood(x.goodId); });
+    var typed = goods.filter(function (x) { return R.isFreeGood(x.goodId); });
+    for (var i = 0; i < typed.length; i++) {
+      var row = freeRow(s, typed[i].goodId);
+      if (!row || clampInt(row.qty, 0) < typed[i].qty) return null;
+    }
+    var got = plain.length ? R.takeGoods(s, data, plain.map(function (x) { return { good: x.goodId, qty: x.qty }; })) : [];
+    if (!got) return null;
+    var out = got.map(function (x) { return { goodId: x.goodId, qty: x.qty }; });
+    typed.forEach(function (x) {
+      var row = freeRow(s, x.goodId);
+      row.qty = clampInt(row.qty, 0) - x.qty;
+      out.push({ goodId: x.goodId, qty: x.qty, name: freeName(row) });
+    });
+    /* Keep the order the DM chose. */
+    return goods.map(function (g) { return out.filter(function (o) { return o.goodId === g.goodId; })[0]; });
+  }
+  /* Put a recalled parcel's goods back, once: named goods into their row,
+     typed goods into the row they came from (by id), or a new row with that
+     id and the kept name if it has been deleted. */
+  function returnParcelGoods(s, data, goods) {
+    var plain = [];
+    (goods || []).forEach(function (x) {
+      if (!R.isFreeGood(x.goodId)) { plain.push(x); return; }
+      var row = freeRow(s, x.goodId);
+      if (row) row.qty = clampInt(row.qty, 0) + x.qty;
+      else {
+        if (!Array.isArray(s.warehouse)) s.warehouse = [];
+        s.warehouse.push({ id: x.goodId.slice(FREE.length), item: txt(x.name, 60) || 'Returned item', qty: x.qty, gp: '', notes: 'Returned' });
+      }
+    });
+    R.returnGoods(s, data, plain);
+  }
 
   /* The Courier Exchange's room at its level: { built, level, name, onRoad,
      maxItems }. Levels above the highest one in the data use that one. */
@@ -177,7 +251,11 @@
   /* Parcels not yet closed (travelling or waiting). */
   R.openParcels = function (s) { return R.parcels(s).filter(function (p) { return OPEN.indexOf(p.status) !== -1; }); };
   /* "3 Expedition Provision Packs, 1 Overland chart". */
-  R.parcelGoodsText = function (data, goods) { return R.goodsListText(data, (goods || []).map(function (x) { return { goodId: x.goodId, qty: x.qty }; })); };
+  R.parcelGoodsText = function (data, goods) {
+    return (goods || []).map(function (x) {
+      return R.isFreeGood(x.goodId) ? x.qty + ' × ' + (txt(x.name, 60) || 'item') : R.goodsAmountText(data, x.goodId, x.qty);
+    }).join(', ');
+  };
   /* A parcel in plain words, for the panel. */
   R.parcelState = function (p) {
     var town = R.courierPointName(p.point);
@@ -244,14 +322,19 @@
     if (point.level > spec.level) return point.label + ' needs the Courier Exchange at Level ' + point.level + ' (it\'s Level ' + spec.level + ').';
     var goods = mergePicks(picks);
     for (var i = 0; i < goods.length; i++) {
-      var bad = R.courierGoodBlocker(data, goods[i].goodId);
+      var bad = R.isFreeGood(goods[i].goodId) ? R.freeRowBlocker(s, data, goods[i].goodId) : R.courierGoodBlocker(data, goods[i].goodId);
       if (bad) return bad;
     }
     var items = R.parcelItems(data, goods);
     if (items < 1) return 'Choose at least 1 item to send.';
     if (items > spec.maxItems) return 'That\'s ' + plural(items, 'item') + ': a parcel from a Level ' + spec.level + ' Courier Exchange holds up to ' + plural(spec.maxItems, 'item') + '.';
-    var short = R.inputsShort(s, data, goods.map(function (x) { return { good: x.goodId, qty: x.qty }; }));
+    var short = R.inputsShort(s, data, goods.filter(function (x) { return !R.isFreeGood(x.goodId); }).map(function (x) { return { good: x.goodId, qty: x.qty }; }));
     if (short) return short.message;
+    for (var k = 0; k < goods.length; k++) {
+      if (!R.isFreeGood(goods[k].goodId)) continue;
+      var frow = freeRow(s, goods[k].goodId);
+      if (clampInt(frow.qty, 0) < goods[k].qty) return 'Needs ' + goods[k].qty + ' × ' + freeName(frow) + ' in the Warehouse; it has ' + clampInt(frow.qty, 0) + '.';
+    }
     var gold = clampInt(s.treasuryGP, 0);
     if (gold < point.feeGP) return 'Sending a parcel to ' + point.label + ' costs ' + point.feeGP + ' gp; the treasury has ' + gold + ' gp.';
     return '';
@@ -302,13 +385,13 @@
     if (why) return { ok: false, message: why };
     var point = R.courierPoint(data, pointId);
     var goods = mergePicks(picks);
-    var taken = R.takeGoods(s, data, goods.map(function (x) { return { good: x.goodId, qty: x.qty }; }));
+    var taken = takeParcelGoods(s, data, goods);
     if (!taken) return { ok: false, message: 'The Warehouse doesn\'t have those supplies.' };
     s.treasuryGP = clampInt(s.treasuryGP, 0) - point.feeGP;
     var p = {
       id: uniqueId(s, rand, explorerSave),
       point: point.id,
-      goods: taken.map(function (x) { return { goodId: x.goodId, qty: x.qty }; }),
+      goods: taken.map(function (x) { return R.isFreeGood(x.goodId) ? { goodId: x.goodId, qty: x.qty, name: x.name } : { goodId: x.goodId, qty: x.qty }; }),
       items: R.parcelItems(data, taken),
       departDay: s.day,
       readyDay: s.day + point.days,
@@ -382,7 +465,7 @@
         out.log.push(['Courier', 'A parcel from the Ironbow has reached ' + town + ': ' + R.parcelGoodsText(data, p.goods) + '. It waits there until the party collects it.']);
         out.word.push('A parcel is waiting at ' + town + ' for the party to collect.');
       } else if (p.status === 'returning' && p.returnDay <= s.day) {
-        R.returnGoods(s, data, p.goods);
+        returnParcelGoods(s, data, p.goods);
         p.status = 'returned';
         out.changed = true;
         var line = 'The recalled parcel is back at the Ironbow; its contents (' + R.parcelGoodsText(data, p.goods) + ') are back in the Warehouse.';
@@ -479,7 +562,11 @@
   /* ---------- Saves: tidy each parcel, safe to run twice ---------- */
   function cleanGoods(list) {
     return (arr(list) || []).filter(function (x) { return isObj(x) && typeof x.goodId === 'string' && x.goodId && clampInt(x.qty, 0) > 0; })
-      .map(function (x) { return { goodId: txt(x.goodId, 60), qty: clampInt(x.qty, 1, 9999) }; });
+      .map(function (x) {
+        var g = { goodId: txt(x.goodId, 60), qty: clampInt(x.qty, 1, 9999) };
+        if (R.isFreeGood(g.goodId)) g.name = txt(typeof x.name === 'string' ? x.name.trim() : '', 60) || 'Item';
+        return g;
+      });
   }
   function dayOr(v, fallback) { return isNum(v) ? dayNum(v, fallback) : fallback; }
   /* A status from the saved one, or (if it's damaged) from what the record

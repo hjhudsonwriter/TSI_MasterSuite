@@ -282,8 +282,16 @@
   function cleanGoods(list) {
     return (Array.isArray(list) ? list : []).filter(function (x) {
       return isObj(x) && typeof x.goodId === 'string' && x.goodId && isWhole(x.qty) && x.qty > 0;
-    }).map(function (x) { return { goodId: x.goodId.slice(0, 60), qty: Math.min(x.qty, 9999) }; });
+    }).map(function (x) {
+      var g = { goodId: x.goodId.slice(0, 60), qty: Math.min(x.qty, 9999) };
+      /* A row typed into the Warehouse ('free:<row id>', 20 October 2026)
+         keeps the name it was sent with. */
+      if (B.isFreeGood(g.goodId)) g.name = (typeof x.name === 'string' ? x.name.trim().slice(0, 60) : '') || 'Item';
+      return g;
+    });
   }
+  B.FREE_PREFIX = 'free:';
+  B.isFreeGood = function (id) { return typeof id === 'string' && id.indexOf('free:') === 0 && id.length > 5; };
   B.cleanGoods = cleanGoods;
   /* A new pickup message (the Explorer makes these, J.collectParcel): its
      id comes from the parcel, its Clan from the town. */
@@ -601,6 +609,7 @@
     var known = (window.TSI_DATA && window.TSI_DATA.partyItems) || {};
     return cleanGoods(goods).map(function (x) {
       var info = isObj(known[x.goodId]) ? known[x.goodId] : null;
+      if (B.isFreeGood(x.goodId)) return x.qty + ' × ' + x.name;
       if (!info) return x.qty + ' × ' + x.goodId.replace(/_/g, ' ');
       var each = isWhole(info.usesEach) && info.usesEach > 1 ? info.usesEach : 1;
       var uses = each > 1 ? ' (' + x.qty * each + ' ' + (x.qty * each === 1 ? info.unit : info.units) + ')' : '';

@@ -4024,10 +4024,39 @@
         var summary = el('div', { 'data-test': 'parcel-summary' });
         var problem = el('div', { class: 'tsi-bas-repair-text', 'data-test': 'parcel-problem', hidden: true });
         var mainBtn = null;
+        /* Rows typed into the Warehouse by hand (20 October 2026): listed
+           under the named goods, made again whenever the Warehouse's rows
+           change, keeping what was already chosen for a row. */
+        var freeBox = el('div', { class: 'tsi-bas-cargo__rows', 'data-test': 'parcel-free' });
+        var freeInputs = {};
+        var freeKey = '';
+        function freeRows() {
+          var list = R.courierFreeRows(state, data);
+          var key = list.map(function (g) { return g.goodId + '|' + g.name + '|' + g.have; }).join('~');
+          if (key === freeKey) return list;
+          freeKey = key;
+          var kept = {};
+          Object.keys(freeInputs).forEach(function (id) { kept[id] = freeInputs[id].value; });
+          freeInputs = {};
+          TSI.clear(freeBox);
+          if (list.length) freeBox.appendChild(el('div', { class: 'tsi-bas-muted', text: 'Typed into the Warehouse:' }));
+          list.forEach(function (g) {
+            var input = numberInput('parcel-free-qty', { min: '0', value: kept[g.goodId] || '0', 'aria-label': g.name + ' (how many)', 'data-id': g.goodId });
+            input.max = String(g.have);
+            input.addEventListener('input', update);
+            freeInputs[g.goodId] = input;
+            freeBox.appendChild(el('div', { class: 'tsi-bas-cargo__row', 'data-test': 'parcel-free-row' }, [
+              el('span', { class: 'tsi-bas-cargo__name', text: g.name }), input,
+              el('span', { class: 'tsi-bas-muted', text: 'in the Warehouse: ' + g.have })
+            ]));
+          });
+          return list;
+        }
         function read() {
+          var free = Object.keys(freeInputs).map(function (id) { return { goodId: id, qty: R.clampInt(freeInputs[id].value, 0, 1000) }; });
           return {
             pointId: pointSel.value,
-            picks: goods.map(function (g) { return { goodId: g.goodId, qty: R.clampInt(counts[g.goodId].value, 0, 1000) }; }).filter(function (x) { return x.qty > 0; })
+            picks: goods.map(function (g) { return { goodId: g.goodId, qty: R.clampInt(counts[g.goodId].value, 0, 1000) }; }).concat(free).filter(function (x) { return x.qty > 0; })
           };
         }
         /* The towns this level reaches, each with its days and fee; the
@@ -4047,6 +4076,7 @@
         function update() {
           var spec = R.courierSpec(state, data);
           towns();
+          freeRows();
           goods.forEach(function (g) {
             var have = R.goodsQty(state, g.goodId);
             var input = counts[g.goodId];
@@ -4069,6 +4099,7 @@
           body: [
             field('Town', pointSel),
             goods.length ? el('div', { class: 'tsi-bas-cargo__rows' }, rows) : muted('The courier carries nothing yet (courier-data.js).'),
+            freeBox,
             el('div', { class: 'tsi-bas-cargo__quote' }, [summary, problem])
           ],
           read: read, update: update,

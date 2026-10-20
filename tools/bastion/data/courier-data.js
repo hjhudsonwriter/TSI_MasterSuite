@@ -44,8 +44,22 @@ window.TSI_DATA.bastionCourier = {
     purification_incense: { size: 1 },
     cleansing_portion: { size: 1 },
     voyage_blessing: { size: 1 },
-    aquatic_protection_charm: { size: 1 }
+    aquatic_protection_charm: { size: 1 },
+    /* The four herbs and roots (Harry, 20 October 2026). Each portion counts
+       as 1 item, so a parcel's room is unchanged. In the Travel bags they
+       are just counted: the DM handles what they do at the table. */
+    restorative_herbs: { size: 1 },
+    antivenom_roots: { size: 1 },
+    toxic_blossoms: { size: 1 },
+    alchemical_flowers: { size: 1 }
   },
+  /* Anything typed into the Warehouse by hand (a potion, a tool, a letter)
+     can also go by courier, 1 item per count (the DM chooses the rows to
+     send; trade lots, ships and living creatures have rows of their own and
+     are never sent this way). It
+     keeps the name it was typed with, and the Travel bags show that name
+     and the count; the DM handles any effect. Set false to turn this off. */
+  freeItems: true,
 
   /* "+ Add supplies" in the Warehouse: the goods the DM can add by hand, for
      now (Harry, 14 October 2026). Packs also come from the Fishery &

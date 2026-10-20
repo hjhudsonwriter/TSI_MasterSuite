@@ -125,7 +125,7 @@
   });
 
   test('what a parcel carries: packs and charts, 1 item each, each a Bastion good and a Travel bags kind; never a trade good', function (t) {
-    t.same(Object.keys(CD.items), ['expedition_provision_pack', 'overland_chart', 'earthward_talisman', 'rootguard_salve', 'blessed_lantern', 'purification_incense', 'cleansing_portion', 'voyage_blessing', 'aquatic_protection_charm'], 'and the Shrines\' items since pull request 8b');
+    t.same(Object.keys(CD.items), ['expedition_provision_pack', 'overland_chart', 'earthward_talisman', 'rootguard_salve', 'blessed_lantern', 'purification_incense', 'cleansing_portion', 'voyage_blessing', 'aquatic_protection_charm', 'restorative_herbs', 'antivenom_roots', 'toxic_blossoms', 'alchemical_flowers'], 'and the Shrines\' items since pull request 8b, and the four herbs and roots since 20 October 2026');
     Object.keys(CD.items).forEach(function (id) { t.equal(CD.items[id].size, 1); });
     t.same(CD.manualAdd, [PACK, CHART]);
     Object.keys(CD.items).forEach(function (id) {
@@ -135,14 +135,16 @@
       t.equal(g.name, T.partyItems[id].name, id + ': the same name in both tools');
     });
     t.same(BR.courierGoods(bdata).slice(0, 2).map(function (g) { return [g.goodId, g.name, g.size]; }), [[PACK, 'Expedition Provision Pack', 1], [CHART, 'Overland chart', 1]]);
-    t.equal(BR.courierGoods(bdata).length, 9);
+    t.equal(BR.courierGoods(bdata).length, 13);
     BR.goodsList(bdata).filter(function (g) { return g.kind === 'cargo'; }).forEach(function (g) {
       t.ok(BR.courierGoodBlocker(bdata, g.id), g.id + ' never goes by courier');
     });
     var listed = withCourier({ items: { raw_timber: { size: 1 }, restorative_herbs: { size: 1 }, expedition_provision_pack: { size: 2 } } });
     t.ok(/bulk cargo/.test(BR.courierGoodBlocker(listed, 'raw_timber')), 'a trade good is refused even if listed');
-    t.ok(/can't go in the Travel bags/.test(BR.courierGoodBlocker(listed, 'restorative_herbs')), 'so is a good the bags can\'t hold');
-    t.ok(/doesn't go by courier/.test(BR.courierGoodBlocker(bdata, 'restorative_herbs')));
+    var held = T.partyItems.restorative_herbs;
+    delete T.partyItems.restorative_herbs;
+    try { t.ok(/can't go in the Travel bags/.test(BR.courierGoodBlocker(listed, 'restorative_herbs')), 'so is a good the bags can\'t hold'); } finally { T.partyItems.restorative_herbs = held; }
+    t.ok(/doesn't go by courier/.test(BR.courierGoodBlocker(withCourier({ items: {} }), 'restorative_herbs')));
     t.equal(BR.parcelItems(listed, packs(3)), 6, 'size counts');
     t.equal(BR.goodShipBlocker(bdata, CHART, null), 'Overland chart isn\'t a trade good (ingredients and supplies don\'t sail).', 'a chart never sails with the Dock');
   });
@@ -886,4 +888,108 @@
     J.shiftDays(s, -11);
     t.equal(s.journey.outbox[0].day, 1, 'Reset Travel moves the pickup\'s day with the Explorer');
   });
+
+  /* ---------- More things by parcel (Harry, 20 October 2026) ---------- */
+  test('the four herbs and roots go by parcel, one portion each, and the bags know them', function (t) {
+    ['restorative_herbs', 'antivenom_roots', 'toxic_blossoms', 'alchemical_flowers'].forEach(function (id) {
+      t.equal(BR.courierGoodBlocker(bdata, id), '', id + ' can go');
+      t.ok(J.itemInfo(id) && J.itemInfo(id).use === 'dm', id + ' is counted in the bags, the DM handles it');
+    });
+    var b = bastion(10, 2);
+    BR.addGoods(b, bdata, 'restorative_herbs', 4, 'Test');
+    var r = BR.sendParcel(b, bdata, 'slades_muster', [{ goodId: 'restorative_herbs', qty: 4 }], dice([0.37]));
+    t.equal(r.ok, true, r.message);
+    t.equal(BR.goodsQty(b, 'restorative_herbs'), 0, 'deducted once');
+    b.day = 12;
+    BR.settleParcels(b, bdata);
+    var s = explorer(12);
+    t.equal(J.collectParcel(s, r.parcel.id, 'slades_muster', copy(BR.toSave(b)), {}).ok, true);
+    t.equal(J.itemQty(s, 'restorative_herbs'), 4);
+    t.ok(/4 portions of Restorative Herbs/.test(Bg.parcelGoodsText(r.parcel.goods)));
+  });
+
+  function typedRow(b, name, qty) {
+    var row = { id: 'row' + (b.warehouse.length + 1) + 'abcdef', item: name, qty: qty, gp: '', notes: '' };
+    b.warehouse.push(row);
+    return row;
+  }
+
+  test('a row typed into the Warehouse can go by parcel: deducted once, kept by name, and collected into the bags once', function (t) {
+    var b = bastion(10, 2);
+    var row = typedRow(b, 'Potion of Healing', 5);
+    var id = 'free:' + row.id;
+    t.ok(BR.courierStock(b, bdata).some(function (g) { return g.goodId === id && g.have === 5 && g.name === 'Potion of Healing'; }), 'listed with its count');
+    var r = BR.sendParcel(b, bdata, 'slades_muster', [{ goodId: id, qty: 3 }], dice([0.37]));
+    t.equal(r.ok, true, r.message);
+    t.equal(row.qty, 2, 'the row is counted down once');
+    t.same(r.parcel.goods, [{ goodId: id, qty: 3, name: 'Potion of Healing' }]);
+    t.equal(BR.parcelGoodsText(bdata, r.parcel.goods), '3 × Potion of Healing');
+    row.item = 'Renamed later';
+    b = reload(b);
+    t.same(BR.parcels(b)[0].goods, [{ goodId: id, qty: 3, name: 'Potion of Healing' }], 'the parcel keeps the name it was sent with, through a reload');
+    b.day = 12;
+    BR.settleParcels(b, bdata);
+    var s = explorer(12);
+    var p = BR.parcels(b)[0];
+    var c = J.collectParcel(s, p.id, 'slades_muster', copy(BR.toSave(b)), {});
+    t.equal(c.ok, true, c.message);
+    t.equal(J.itemQty(s, id), 3);
+    s = ER.fromSave(copy(ER.toSave(s)), ED, E);
+    t.equal(J.itemQty(s, id), 3, 'the bags keep the item, and its name, through a reload');
+    t.equal(J.itemInfo(id).name, 'Potion of Healing');
+    t.equal(J.collectParcel(s, p.id, 'slades_muster', copy(BR.toSave(b)), {}).ok, false, 'a second pickup is refused');
+    BR.applyInbox(b, bdata, ER.toSave(s), 1000);
+    BR.applyInbox(b, bdata, ER.toSave(s), 2000);
+    t.equal(row.qty, 2, 'nothing came back to the Warehouse');
+    t.equal(J.itemQty(s, id), 3);
+  });
+
+  test('two typed rows with the same name stay apart, and too many is refused', function (t) {
+    var b = bastion(10, 2);
+    var a = typedRow(b, 'Rope', 2);
+    var c = typedRow(b, 'Rope', 4);
+    var r = BR.sendParcel(b, bdata, 'slades_muster', [{ goodId: 'free:' + a.id, qty: 1 }, { goodId: 'free:' + c.id, qty: 2 }], dice([0.37]));
+    t.equal(r.ok, true, r.message);
+    t.same([a.qty, c.qty], [1, 2]);
+    var no = BR.sendParcel(b, bdata, 'moorcastle', [{ goodId: 'free:' + a.id, qty: 5 }], dice([0.5]));
+    t.equal(no.ok, false);
+    t.same([a.qty, b.treasuryGP], [1, 300 - 5], 'a refusal changes nothing');
+    t.equal(BR.sendParcel(b, bdata, 'moorcastle', [{ goodId: 'free:nothere', qty: 1 }], dice([0.5])).ok, false, 'a row that isn\'t there');
+    t.equal(BR.parcelItems(bdata, r.parcel.goods), 3, 'one item per count');
+  });
+
+  test('a recalled typed parcel returns to its own row once, or makes the row again if it was deleted', function (t) {
+    var b = bastion(10, 2);
+    var row = typedRow(b, 'Letter of Passage', 2);
+    var id = 'free:' + row.id;
+    var p = BR.sendParcel(b, bdata, 'moorcastle', [{ goodId: id, qty: 2 }], dice([0.37])).parcel;
+    b.day = 11;
+    t.equal(BR.recallParcel(b, bdata, p.id).ok, true);
+    b.warehouse = b.warehouse.filter(function (w) { return w !== row; });
+    b.day = 20;
+    BR.settleParcels(b, bdata);
+    BR.settleParcels(b, bdata);
+    var back = b.warehouse.filter(function (w) { return w.id === row.id; });
+    t.same(back.map(function (w) { return [w.item, w.qty]; }), [['Letter of Passage', 2]], 'back once, under the same id and name');
+    var again = bastion(10, 2);
+    var r2 = typedRow(again, 'Map case', 1);
+    var p2 = BR.sendParcel(again, bdata, 'moorcastle', [{ goodId: 'free:' + r2.id, qty: 1 }], dice([0.37])).parcel;
+    again.day = 11;
+    BR.recallParcel(again, bdata, p2.id);
+    again.day = 20;
+    BR.settleParcels(again, bdata);
+    t.equal(r2.qty, 1, 'added back to the row that is still there');
+  });
+
+  test('typed rows can be turned off in the data, and are never trade goods or the other kinds', function (t) {
+    var d = withCourier({ freeItems: false });
+    var b = bastion(10, 2);
+    var row = typedRow(b, 'Potion', 1);
+    t.same(BR.courierFreeRows(b, d), []);
+    t.equal(BR.sendParcel(b, d, 'slades_muster', [{ goodId: 'free:' + row.id, qty: 1 }], dice([0.37])).ok, false);
+    BR.addGoods(b, bdata, 'raw_timber', 2, 'Test');
+    t.ok(!BR.courierStock(b, bdata).some(function (g) { return g.goodId === 'raw_timber'; }), 'trade goods are not offered');
+    t.ok(!BR.courierFreeRows(b, bdata).some(function (g) { return !/^free:/.test(g.goodId); }), 'only typed rows are offered as typed');
+  });
+
 }());

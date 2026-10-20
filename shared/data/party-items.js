@@ -107,7 +107,13 @@ window.TSI_DATA.partyItems = {
     units: "charms",
     text: "Advantage on one Athletics check involving swimming, currents or a nonmagical water hazard (from the Shrine of Pelagos).",
     offer: { tag: 'water', skill: 'Athletics', effect: 'advantage on this check' }
-  }
+  },
+  /* Herbs and roots from the Herbal Gardens (Harry, 20 October 2026): only
+     counted in the bags; the DM handles what they do. */
+  restorative_herbs: { name: 'Restorative Herbs', plural: 'portions of Restorative Herbs', use: 'dm', usesEach: 1, unit: 'portion', units: 'portions', text: 'Medical supply herbs. The DM applies any effect at the table; the bags only count them.' },
+  antivenom_roots: { name: 'Antivenom Roots', plural: 'portions of Antivenom Roots', use: 'dm', usesEach: 1, unit: 'portion', units: 'portions', text: 'Roots for antitoxin and antidotes. The DM applies any effect at the table; the bags only count them.' },
+  toxic_blossoms: { name: 'Toxic Blossoms', plural: 'portions of Toxic Blossoms', use: 'dm', usesEach: 1, unit: 'portion', units: 'portions', text: 'Poisonous blossoms. The DM applies any effect at the table; the bags only count them.' },
+  alchemical_flowers: { name: 'Alchemical Flowers', plural: 'portions of Alchemical Flowers', use: 'dm', usesEach: 1, unit: 'portion', units: 'portions', text: 'Flowers for alchemy. The DM applies any effect at the table; the bags only count them.' }
 };
 
 /* The Shrines' Great Rites (pull request 8b, Harry's Shrine specification of
