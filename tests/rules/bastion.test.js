@@ -16,9 +16,16 @@
     return s;
   }
   function order(s, facId, fnId, idx, meta) {
-    var res = meta ? R.issueOrderWithMeta(s, data, facId, fnId, idx, meta, dice([0.3])) : R.issueOrder(s, data, facId, fnId, idx, dice([0.3]));
-    if (!res.ok) throw new Error('order refused: ' + res.message);
-    return s.pendingOrders[s.pendingOrders.length - 1];
+    /* The Secure Trade Agreement is retired (20 October 2026), but a Bastion
+       can still hold one issued earlier: tests that need one lift the note for this call. */
+    var fnDef = R.fn(R.facility(data, facId), fnId);
+    var note = fnDef && fnDef.retiredNote;
+    if (note && fnId === 'secure_trade_agreement') delete fnDef.retiredNote;
+    try {
+      var res = meta ? R.issueOrderWithMeta(s, data, facId, fnId, idx, meta, dice([0.3])) : R.issueOrder(s, data, facId, fnId, idx, dice([0.3]));
+      if (!res.ok) throw new Error('order refused: ' + res.message);
+      return s.pendingOrders[s.pendingOrders.length - 1];
+    } finally { if (note) fnDef.retiredNote = note; }
   }
   function roll(d20, total) { return { d20: d20, total: total }; }
   function titles(s) { return s.log.map(function (l) { return l.title; }); }
@@ -461,7 +468,7 @@
       var before = s.treasuryGP;
       var out = R.tickDiplomacy(s, data);
       if (s.treasuryGP > before) paid.push(d);
-      if (out.word.length) t.same([d, out.word], [33, ['Your Trade Agreement with Clan Karr has ended (its last shipment arrived).']]);
+      if (out.word.length) t.same([d, out.word], [33, ['Your Trade Agreement with Clan Karr has ended (its last shipment arrived), and is kept under Expired / Archived.']]);
     }
     t.same(paid, [19, 26, 33]);
     t.equal(s.treasuryGP, 300);
@@ -586,7 +593,7 @@
     t.equal(s.dayInProgress, null);
     t.same(titles(s), ['Diplomacy', 'Diplomacy', 'Construction Complete']);
     t.ok(s.log.every(function (l) { return l.day === 21; }), 'each log line has its day');
-    t.same(s.word, [{ day: 21, lines: ['The Library & Scriptorium is built.', 'Your Trade Agreement with Clan Karr has ended (its last shipment arrived).'] }]);
+    t.same(s.word, [{ day: 21, lines: ['The Library & Scriptorium is built.', 'Your Trade Agreement with Clan Karr has ended (its last shipment arrived), and is kept under Expired / Archived.'] }]);
   });
 
   test('a quiet day adds no word', function (t) {
@@ -1998,5 +2005,62 @@
     t.same(R.cleanUi({ collapsed: { war: true, diplomacy: true } }), { gridOpen: true }, 'the old panels\' open-or-closed settings');
     t.same(R.cleanUi({ gridOpen: false, warNoticed: { 'ma-1': true }, junk: 3 }), { gridOpen: false, warNoticed: { 'ma-1': true } });
     t.same(R.cleanUi({ gridOpen: 'no', warNoticed: [1] }), { gridOpen: true }, 'nonsense is ignored');
+  });
+
+  /* ---------- The Secure Trade Agreement is retired (Harry, 20 October 2026) ---------- */
+  test('the Secure Trade Agreement can\'t be ordered any more: unselectable, refused by both ways in, nothing paid; the other Hall orders are unchanged', function (t) {
+    var s = fresh();
+    s.day = 5;
+    s.treasuryGP = 1000;
+    s.builtExtras = [{ facId: 'hall_of_emissaries', status: 'built' }];
+    R.ensureLevels(s, data);
+    s.facilityLevels.hall_of_emissaries = 2;
+    var fac = R.facility(data, 'hall_of_emissaries');
+    var fn = R.fn(fac, 'secure_trade_agreement');
+    var av = R.fnAvailable(s, fac, fn);
+    t.same([av.ok, av.message, /Port Charters/.test(av.why), /finish under their original terms/.test(av.why)], [false, 'Retired', true, true]);
+    var a = R.issueOrderWithMeta(s, data, 'hall_of_emissaries', 'secure_trade_agreement', 0, { targetClan: 'Clan Karr', weeks: 3 }, dice([0.3]));
+    var b = R.issueOrder(s, data, 'hall_of_emissaries', 'secure_trade_agreement', 0, dice([0.3]));
+    t.same([a.ok, b.ok, s.treasuryGP, s.pendingOrders.length], [false, false, 1000, 0]);
+    ['host_delegation', 'trade_consortium', 'register_port_charter', 'inter_clan_summit', 'arbitration_authority'].forEach(function (id) {
+      t.equal(R.fn(fac, id).retiredNote, undefined, id + ' is not retired');
+    });
+    s.facilityLevels.hall_of_emissaries = 5;
+    t.equal(R.fnAvailable(s, fac, R.fn(fac, 'trade_consortium')).ok, true, 'the Trade Consortium is untouched');
+  });
+
+  test('a running agreement finishes under its own terms, pays each shipment once, and on its last day is archived whole, never deleted', function (t) {
+    var s = fresh();
+    s.day = 12;
+    var rec = { id: 'a', title: 'Trade Agreement', clan: 'Clan Karr', startDay: 12, endDay: 33, income: 100, lastShipmentDay: 12 };
+    s.diplomacy.agreements = [rec];
+    s.diplomacy.consortiums = [{ id: 'c', title: 'Form Trade Consortium', clan: 'Karr', startDay: 12, endDay: 20, income: 10, lastShipmentDay: 12 }];
+    var gold = 0;
+    for (var d = 13; d <= 36; d++) {
+      s.day = d;
+      var before = s.treasuryGP;
+      R.tickDiplomacy(s, data);
+      gold += s.treasuryGP - before;
+      if (d === 20) t.same(s.diplomacy.agreements.length, 1, 'still running with days to go');
+    }
+    t.equal(s.diplomacy.agreements.length, 0, 'no longer running');
+    t.equal(gold, 3 * 100 + 2 * 10, '3 shipments of 100 (Days 19, 26, 33) and the consortium\'s 2 of 10 (Days 19, 20), each paid once');
+    var arch = R.archivedAgreements(s);
+    t.same(arch.length, 1);
+    t.same([arch[0].title, arch[0].clan, arch[0].startDay, arch[0].endDay, arch[0].income, arch[0].status, arch[0].shipmentsPaid, arch[0].goldPaid, arch[0].archivedDay], ['Trade Agreement', 'Clan Karr', 12, 33, 100, 'expired', 3, 300, 33]);
+    t.same(s.diplomacy.consortiums.length, 0, 'the consortium ended as before');
+    t.equal(arch.some(function (a) { return a.id === 'c'; }), false, 'only agreements are archived');
+    R.tickDiplomacy(s, data);
+    t.equal(R.archivedAgreements(s).length, 1, 'archived once');
+    t.equal(R.archiveAgreement(s, rec, 7), false, 'never twice');
+    var back = R.fromSave(JSON.parse(JSON.stringify(R.toSave(s))), data);
+    t.same(R.archivedAgreements(back), R.archivedAgreements(s), 'kept through a save');
+    t.same(R.archivedAgreements(R.fromSave(JSON.parse(JSON.stringify(R.toSave(back))), data)), R.archivedAgreements(s), 'loading twice changes nothing');
+  });
+
+  test('a Bastion that never had a Trade Agreement has no archive, and saves look as before', function (t) {
+    var s = fresh();
+    t.same(R.archivedAgreements(s), []);
+    t.equal('archivedAgreements' in R.fromSave(JSON.parse(JSON.stringify(R.toSave(s))), data).diplomacy, false);
   });
 }());

@@ -2305,7 +2305,18 @@
 
       /* "Clan Karr • 21 days remaining (3 shipments) • +90 gp a shipment" (Harry,
          8 October 2026); a delegation or summit has just its days. */
-      function recordBox(title, list, contracts) {
+      function archiveBox() {
+        var list = R.archivedAgreements(state);
+        if (!list.length) return null;
+        var every = R.time(data).every;
+        return el('div', { class: 'tsi-bas-dip-box', 'data-test': 'archived-agreements' }, [el('div', { class: 'tsi-bas-dip-box__title', text: 'Expired / Archived Trade Agreements' })].concat(list.slice().reverse().map(function (x) {
+          return el('div', { class: 'tsi-bas-dip-row' }, [
+            el('div', { class: 'tsi-bas-dip-row__name', text: x.title || 'Trade Agreement' }),
+            el('div', { class: 'tsi-bas-dip-row__meta', text: (x.clan || '—') + ' • Day ' + x.startDay + ' to Day ' + x.endDay + ' • ' + R.shipmentsText(x.shipmentsPaid || 0) + ' paid, ' + (x.goldPaid || 0) + ' gp in all (+' + (x.income || 0) + ' gp a shipment) • Expired / Archived' })
+          ]);
+        })));
+      }
+      function recordBox(title, list, contracts, note) {
         var every = R.time(data).every;
         var rows = (list || []).map(function (x) {
           var days = R.daysLeft(state, x);
@@ -2316,16 +2327,17 @@
             el('div', { class: 'tsi-bas-dip-row__meta', 'data-test': 'dip-left', text: (x.clan || x.pair || '—') + ' • ' + left + extra })
           ]);
         });
-        return el('div', { class: 'tsi-bas-dip-box' }, [el('div', { class: 'tsi-bas-dip-box__title', text: title })].concat(rows.length ? rows : [muted('None.')]));
+        return el('div', { class: 'tsi-bas-dip-box' }, [el('div', { class: 'tsi-bas-dip-box__title', text: title })].concat(note ? [muted(note)] : [], rows.length ? rows : [muted('None.')]));
       }
 
       function renderDiplomacy() {
         var d = state.diplomacy;
         var income = R.passiveIncome(state);
-        dipMeta.textContent = income > 0 ? 'Active passive income: +' + income + ' gp a week (each contract sends a shipment every ' + R.time(data).every + ' days).' : 'No active contracts. Use the Hall of Emissaries to create agreements, summits and charters.';
+        dipMeta.textContent = income > 0 ? 'Active passive income: +' + income + ' gp a week (each contract sends a shipment every ' + R.time(data).every + ' days).' : 'No active contracts. Use the Hall of Emissaries for summits, delegations, arbitration and Port Charters.';
         TSI.clear(dipBoxes);
         TSI.append(dipBoxes, [
-          recordBox('Trade Agreements', d.agreements, true),
+          recordBox('Trade Agreements', d.agreements, true, 'Retired: no new Trade Agreements. These finish under their original terms, then move to Expired / Archived. New commerce goes through Port Charters.'),
+          archiveBox(),
           recordBox('Delegations', d.delegations, false),
           recordBox('Summits', d.summits, false),
           recordBox('Arbitration', d.arbitrations, true),
@@ -2735,8 +2747,10 @@
 
       async function onClearDiplomacy() {
         if (!(await ask('Clear Diplomacy & Trade records? (Does not undo gold already gained.)', 'Clear'))) return;
+        var kept = R.archivedAgreements(state);
         state.diplomacy = R.defaultDiplomacy();
-        log('Diplomacy', 'Cleared diplomacy records.');
+        if (kept.length) state.diplomacy.archivedAgreements = kept;
+        log('Diplomacy', 'Cleared diplomacy records.' + (kept.length ? ' The archive of ended Trade Agreements is kept.' : ''));
         done();
       }
 
@@ -3219,7 +3233,7 @@
         /* A production order (pull request 3): what the chosen recipe uses and makes. */
         var goodsLine = fn.production ? el('div', { class: 'tsi-bas-fn__goods', 'data-test': 'goods-' + key }) : null;
         /* Why a House order can't be given now, in a sentence (pull request 7). */
-        var whyLine = (isHousing || isDrill || isProtection || (fn.favourCost && !fn.production) || fn.waiting) ? el('div', { class: 'tsi-bas-fn__why', 'data-test': 'why-' + key, hidden: true }) : null;
+        var whyLine = (isHousing || isDrill || isProtection || fn.retiredNote || (fn.favourCost && !fn.production) || fn.waiting) ? el('div', { class: 'tsi-bas-fn__why', 'data-test': 'why-' + key, hidden: true }) : null;
         function chosenNow() {
           if (isDrill) return options[select ? R.clampInt(select.value, 0) : 0] || null;
           return fn.production && fn.options && fn.options.length ? fn.options[select ? R.clampInt(select.value, 0) : 0] || null : null;
