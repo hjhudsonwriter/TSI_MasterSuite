@@ -46,7 +46,7 @@
     t.same(BR.levelUnlocks(bdata, 'dock', 2), ['Cargo ships: 2 lots on 1 ship']);
     t.same(BR.levelUnlocks(bdata, 'dock', 5), ['Cargo ships: 5 lots a ship, 2 ships at sea at once']);
     t.same(BR.levelUnlocks(bdata, 'war_room', 3), ['Coordinated Muster', '2 drill places']);
-    t.same(BR.levelUnlocks(bdata, 'hall_of_emissaries', 2), ['Inter-Clan Summit', 'Register Port Charter', 'Diplomacy rolls +4 (from +2)']);
+    t.same(BR.levelUnlocks(bdata, 'hall_of_emissaries', 2), ['Inter-Clan Summit', 'Diplomacy rolls +4 (from +2)']);
     t.same(BR.levelUnlocks(bdata, 'hall_of_emissaries', 4), []);
     t.same(BR.levelUnlocks(bdata, 'griffin_tower', 3), ['Room for one more griffin']);
     t.same(BR.levelUnlocks(bdata, 'shrine_pelagos', 5), ['Great Rite of Pelagos']);

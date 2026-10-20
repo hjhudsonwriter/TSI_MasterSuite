@@ -685,17 +685,17 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       await page.waitForSelector('[data-test=panel-diplomacy] [data-test=hall]');
       await page.hover('.tsi-bas-hall__fns .tsi-bas-fn >> nth=0');
       await page.waitForSelector('[data-test=tooltip]:not([hidden])');
-      assert(/Creates a timed Trade Agreement/.test(await text(page, 'tooltip')));
+      assert(/Registers a Port Charter/.test(await text(page, 'tooltip')));
       equal(await page.isDisabled('[data-test="issue-hall_of_emissaries__inter_clan_summit"]'), true);
       equal(await page.isDisabled('[data-test="issue-hall_of_emissaries__trade_consortium"]'), true);
     });
 
-    await check('the Secure Trade Agreement is retired: its button says so, is off, and costs nothing', async () => {
+    await check('the Secure Trade Agreement is gone from the Hall, and Register Port Charter is its first order, open at Level 1', async () => {
       await pause(page);
-      const sel = '[data-test="issue-hall_of_emissaries__secure_trade_agreement"]';
-      equal(await text(page, 'issue-hall_of_emissaries__secure_trade_agreement'), 'Retired');
-      equal(await page.isDisabled(sel), true);
-      assert(/Port Charters/.test(await text(page, 'why-hall_of_emissaries__secure_trade_agreement')), 'the reason is shown');
+      equal(await page.$('[data-test="issue-hall_of_emissaries__secure_trade_agreement"]'), null, 'no button');
+      equal(await page.$$eval('.tsi-bas-hall__fns .tsi-bas-fn [data-test^="issue-hall_of_emissaries__"]', bs => bs.map(b => b.getAttribute('data-test').replace('issue-hall_of_emissaries__', '')).slice(0, 2)), ['register_port_charter', 'host_delegation']);
+      equal(await page.isDisabled('[data-test="issue-hall_of_emissaries__register_port_charter"]'), true, 'off only because no Charter is waiting');
+      assert(!/Trade Agreements|Archived|Retired/.test(await text(page, 'diplomacy-records')), 'no agreements box when there are none');
       equal([(await st(page)).treasuryGP, (await st(page)).pendingOrders.length], [5000, 0]);
     });
 
@@ -723,9 +723,8 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       await days(page, 7, [5]);
       const s = await st(page);
       equal([s.diplomacy.agreements.length, s.politicalCapital.rowthorn, s.diplomacy.cooldowns.trade_agreement], [0, -20, s.day + 14]);
-      /* The button now says Retired (the cooldown is still kept, as it was). */
-      equal(await text(page, 'issue-hall_of_emissaries__secure_trade_agreement'), 'Retired');
-      equal(await page.isDisabled('[data-test="issue-hall_of_emissaries__secure_trade_agreement"]'), true);
+      /* The order is gone from the Hall (the cooldown is still kept, as it was). */
+      equal(await page.$('[data-test="issue-hall_of_emissaries__secure_trade_agreement"]'), null);
       await days(page, 4, []);
       equal((await st(page)).diplomacy.cooldowns.trade_agreement, s.day + 14, 'the cooldown still counts down to the same day');
     });

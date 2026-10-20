@@ -110,25 +110,19 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     equal((await bas(ba)).pendingOrders.filter(o => o.fnId === 'guard_commercial_convoy').length, 1);
   });
 
-  await check('the Hall shows the Trade Agreement retirement, a running agreement\'s days left, and the archive (kept when records are cleared)', async () => {
+  await check('the Hall hides the Secure Trade Agreement, lists Register Port Charter first, and still shows a running agreement\'s days left', async () => {
     await close();
     await ba.evaluate(() => TSI.bastion.debug.change(s => {
       s.diplomacy.agreements = [{ id: 'run', title: 'Trade Agreement', clan: 'Clan Slade', startDay: s.day, endDay: s.day + 14, income: 80, lastShipmentDay: s.day }];
-      s.diplomacy.archivedAgreements = [{ id: 'old', title: 'Trade Agreement', clan: 'Clan Karr', startDay: 1, endDay: 22, income: 90, lastShipmentDay: 22, status: 'expired', archivedDay: 22, shipmentsPaid: 3, goldPaid: 270 }];
     }));
     await ba.waitForTimeout(300);
     await ba.click('[data-test=tile-hall_of_emissaries]');
     await ba.waitForSelector('[data-test=diplomacy-records]');
     const text = await bare(ba, '[data-test=diplomacy-records]');
-    assert(/Retired: no new Trade Agreements/.test(text), text);
     assert(/Clan Slade • 14 days remaining \(2 shipments\)/.test(text), text);
-    assert(/Expired \/ Archived Trade Agreements/.test(text) && /Clan Karr • Day 1 to Day 22 • 3 shipments paid, 270 gp in all/.test(text) && /Expired \/ Archived/.test(text), text);
-    await ba.click('[data-test=clear-diplomacy]');
-    await ba.waitForSelector('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__foot button');
-    await ba.click('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__foot button.tsi-btn--primary');
-    await ba.waitForTimeout(500);
-    const s = await bas(ba);
-    equal([s.diplomacy.agreements.length, (s.diplomacy.archivedAgreements || []).length], [0, 1], 'running records cleared as before; the archive stays');
+    assert(!/Retired|Archived/.test(text), text);
+    equal(await ba.$('[data-test="issue-hall_of_emissaries__secure_trade_agreement"]'), null);
+    equal(await ba.$$eval('[data-test^="issue-hall_of_emissaries__"]', bs => bs.map(b => b.getAttribute('data-test').replace('issue-hall_of_emissaries__', '')).slice(0, 2)), ['register_port_charter', 'host_delegation']);
   });
 
   await check('nothing went wrong or reached for the internet', async () => {

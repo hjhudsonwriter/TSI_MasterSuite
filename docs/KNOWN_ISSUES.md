@@ -3371,13 +3371,12 @@ Old repo: `_legacy/pelagosi_marker_rune_puzzle` (file:line references point ther
 - **Not changed:** the Explorer's Charter granting, the Hall's 3-day registration, Clan demand, saturation, ports, courier, the Trade Consortium and legacy trade agreements.
 - **Tests:** `tests/rules/commerce.test.js`, `tests/e2e/charter-terms.test.js`.
 
-### SUI-47 · The Hall's Secure Trade Agreement is retired (20 October 2026)
-**Changed, Harry's approved policy** · retirement of a legacy feature
+### SUI-47 · The Hall's Secure Trade Agreement is retired and Register Port Charter takes its place (20 October 2026)
+**Changed, Harry's approved policy and follow-up** · retirement of a legacy feature
 
-- **No new agreements:** the Secure Trade Agreement order is unselectable (its button says Retired, with the reason underneath) and refused by both ways in (`issueOrder` and the Hall's `issueOrderWithMeta`). Nothing is paid. An order already issued and paid before this change (pending or at its roll) still resolves normally, as it was paid for; none can be issued now.
-- **Running agreements** finish under their original terms and pay each shipment once, exactly as before (`tickDiplomacy` is unchanged apart from archiving). No renewals.
-- **Archive, not delete:** before, an ended agreement was dropped from the list (only a log line survived). Now it is copied whole (Clan, title, dates, income, last shipment) into `diplomacy.archivedAgreements` with `status: 'expired'`, the day archived, shipments paid and gold paid (worked out from its shipment dates, so nothing new is counted twice), and listed in the Hall under **Expired / Archived Trade Agreements**. It is created when the first agreement ends, so a Bastion that never had one saves exactly as before. Archived once, kept through save, reload and export.
-- **Clear Diplomacy Records** still clears the running records as it always did, but now keeps the archive.
-- **Not touched:** the Trade Consortium (and its sea routes), delegations, summits, arbitration, the Hall's Register Port Charter order, Port Charters, and the Diplomatic Records / Clan Relations. Only agreements are archived; other records end as before.
-- **Test changes:** the rules tests' order helper lifts the retirement note for tests that need an agreement; `phase9.test.js` now puts the order in as an older save would and checks the Retired button; the agreement's "has ended" line gains ", and is kept under Expired / Archived".
-- **Tests:** `tests/rules/bastion.test.js`, `tests/e2e/charter-terms.test.js`, `tests/e2e/phase9.test.js`.
+- **Gone from the Hall:** the Secure Trade Agreement order is hidden (not shown, not selectable) and refused by both ways in (`issueOrder` and the Hall's `issueOrderWithMeta`); nothing is paid. The order's definition stays in the data only so an order issued and paid before this change can still resolve; none can be issued now.
+- **Running agreements** finish under their original terms and pay each shipment once, as before, and show in the Hall's records box (with days and shipments left) until they end, when they simply end as they always did. No renewals. **No archive, no "Expired / Archived" list, no retirement note** (Harry asked for none; an archive an earlier build of this branch made is dropped on load).
+- **Register Port Charter** now sits in the Level 1 slot the Trade Agreement had: first of the Hall's orders, `requiredFacilityLevel` 1 (was 2). Still 3 days, no gold, no roll, one at a time; the Explorer's Charter granting and the Charter log line (which names the level only when it is above 1) are unchanged.
+- **Not touched:** the Trade Consortium and its routes, delegations, summits, arbitration, Port Charters, Diplomatic Records and Clan Relations.
+- **Test changes:** the rules tests' order helper lifts the retirement note for tests that need an agreement; `phase9.test.js` puts the order in as an older save would; Register Port Charter's level tests now expect Level 1.
+- **Tests:** `tests/rules/bastion.test.js`, `tests/rules/commerce.test.js`, `tests/rules/session-safety.test.js`, `tests/e2e/charter-terms.test.js`, `tests/e2e/phase9.test.js`.

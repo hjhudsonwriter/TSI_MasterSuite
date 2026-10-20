@@ -7,7 +7,7 @@
    - Port Charters. The DM grants one in the Explorer; the Explorer link
      carries it (shared/js/bridge-rules.js) and the Bastion holds it once,
      'earned' (R.addCharter, from R.applyInbox). A 3-day "Register Port
-     Charter" order at the Hall of Emissaries (Level 2) makes it
+     Charter" order at the Hall of Emissaries (Level 1) makes it
      'registered'. Only a registered Charter takes cargo.
    - Cargo. The Dock (Level 2 or higher) sends a ship with real Warehouse
      lots to a port with a registered Charter. The lots leave the Warehouse

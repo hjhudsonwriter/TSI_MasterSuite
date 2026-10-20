@@ -4,7 +4,7 @@
    - the DM grants a Port Charter in the Explorer; the Bastion holds it once
      (a notice, Clan Influence, the Hall's Port Charters box) and the
      Explorer says Applied;
-   - the Hall's Register Port Charter order (Level 2, 3 days) registers it;
+   - the Hall's Register Port Charter order (Level 1, 3 days) registers it;
    - the Dock's Ship cargo… sends real Warehouse lots (Fresh Fish only
      ships on a voyage of 2 days or less, so not on today's 7-day ones); the ship sells on
      arrival, once, even after a reload, and is home a week later; trouble
@@ -139,7 +139,7 @@ async function closePanel(ba) {
 
   await check('within a few seconds the Bastion holds it: a Port Charter notice, the Hall\'s box and Clan Influence', async () => {
     await ba.waitForFunction(() => TSI.bastion.debug.state().tradeNetwork.portCharters.length === 1, null, { timeout: 8000 });
-    await H.waitForNotice(ba, /Port Charter for Goldport \(Clan Molten\) \(DM, Day 1\): the Bastion now holds it\. Register it at the Hall of Emissaries \(Level 2\)/);
+    await H.waitForNotice(ba, /Port Charter for Goldport \(Clan Molten\) \(DM, Day 1\): the Bastion now holds it\. Register it at the Hall of Emissaries before the Dock ships cargo there/);
     const s = await bas(ba);
     equal([s.tradeNetwork.portCharters[0].status, s.tradeNetwork.portCharters[0].port], ['earned', 'goldport']);
     await ba.click('[data-test=open-influence]');
@@ -160,7 +160,7 @@ async function closePanel(ba) {
   });
 
   /* ------------------------------------------------------------------ */
-  section('The Hall registers it (Level 2, 3 days)');
+  section('The Hall registers it (Level 1, 3 days)');
 
   await check('Register Port Charter lists Goldport; Issue Order makes a 3-day order costing nothing', async () => {
     await ba.click('[data-test=tile-hall_of_emissaries]');

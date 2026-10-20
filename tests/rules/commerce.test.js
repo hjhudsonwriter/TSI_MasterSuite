@@ -300,7 +300,7 @@
     var c = BR.charterFor(b, 'goldport');
     t.same([c.status, c.clan, c.mode, c.earnedDay, c.registeredDay], ['earned', 'molten', 'commodity_backed', 3, null]);
     t.same(b.bridge.done[charterMsg().id], { r: 'applied', day: 4, at: 1000, clan: 'molten', hr: 0, was: 0, now: 0, text: 'For clearing the harbour of wreckers.', why: '', type: 'charter', port: 'goldport', held: false });
-    t.ok(/Port Charter for Goldport \(Clan Molten\) \(DM, Day 3\): the Bastion now holds it\. Register it at the Hall of Emissaries \(Level 2\)/.test(b.log[0].body));
+    t.ok(/Port Charter for Goldport \(Clan Molten\) \(DM, Day 3\): the Bastion now holds it\. Register it at the Hall of Emissaries before the Dock ships cargo there/.test(b.log[0].body));
     t.equal(BR.applyInbox(b, bdata, exWith([charterMsg()]), 2000).changed, false, 'a second look changes nothing');
     t.same(b.honourRespectByClan, BR.defaultState(bdata).honourRespectByClan);
   });
@@ -383,16 +383,16 @@
   });
 
   /* ---------------------------------------------------------------- */
-  group('Commodity trade: the Hall registers a Port Charter (3 days, Level 2)');
+  group('Commodity trade: the Hall registers a Port Charter (3 days, Level 1)');
 
-  test('Register Port Charter: Level 2, no gold, 3 days, the earned Charters to pick from', function (t) {
+  test('Register Port Charter: Level 1 (the slot the Trade Agreement had), no gold, 3 days, the earned Charters to pick from', function (t) {
     var b = withHall(bastion(4), 1);
     var hall = BR.facility(bdata, 'hall_of_emissaries');
     var fn = BR.fn(hall, 'register_port_charter');
-    t.same([fn.days, fn.costGP, fn.requiredFacilityLevel], [3, 0, 2]);
+    t.same([fn.days, fn.costGP, fn.requiredFacilityLevel], [3, 0, 1]);
+    t.equal(hall.functions.map(function (f) { return f.id; })[1], 'register_port_charter', 'listed first among the Hall\'s orders');
     t.equal(BR.isEmissary(hall, fn), false, 'no roll');
-    t.same(BR.fnAvailable(b, hall, fn), { ok: false, message: 'Needs Level 2.' });
-    b.facilityLevels.hall_of_emissaries = 2;
+    t.same(BR.fnAvailable(b, hall, fn), { ok: true }, 'available from Level 1');
     t.same(BR.fnOptions(b, bdata, hall, fn), []);
     t.ok(/no Port Charter to register/.test(BR.issueOrder(b, bdata, 'hall_of_emissaries', 'register_port_charter', 0, dice([0.4])).message));
     BR.applyInbox(b, bdata, exWith([charterMsg()]), 1000);

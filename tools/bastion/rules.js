@@ -386,7 +386,6 @@
       ['agreements', 'delegations', 'summits', 'arbitrations', 'consortiums'].forEach(function (k) {
         if (arr(s.diplomacy[k])) dip[k] = s.diplomacy[k].filter(isObj);
       });
-      if (arr(s.diplomacy.archivedAgreements) && s.diplomacy.archivedAgreements.length) dip.archivedAgreements = s.diplomacy.archivedAgreements.filter(isObj);
       if (typeof s.diplomacy.rep === 'number') dip.rep = s.diplomacy.rep;
       if (isObj(s.diplomacy.cooldowns)) dip.cooldowns = Object.assign({}, s.diplomacy.cooldowns);
       if (typeof s.diplomacy.tokens === 'number') dip.tokens = s.diplomacy.tokens;
@@ -1735,8 +1734,8 @@
        Bless Bastion Foundations): listed, never given. */
     if (fn && fn.waiting) return { ok: false, message: 'Not available yet', why: String(fn.waiting) };
     /* The Hall's Secure Trade Agreement (20 October 2026): no new ones; the
-       running ones finish and are archived (R.tickDiplomacy). */
-    if (fn && fn.retiredNote) return { ok: false, message: 'Retired', why: String(fn.retiredNote) };
+       running ones simply finish (R.tickDiplomacy). */
+    if (fn && fn.retiredNote) return { ok: false, hidden: true, message: 'That order has been retired.', why: String(fn.retiredNote) };
     /* An order a facility level unlocks (the Hall's, and the production orders: pull request 3). */
     var need = clampInt(fn && fn.requiredFacilityLevel ? fn.requiredFacilityLevel : 1, 1, R.MAX_LEVEL);
     if (fac && need > 1 && R.getFacilityLevel(s, fac.id) < need) return { ok: false, message: 'Needs Level ' + need + '.' };
@@ -1847,7 +1846,7 @@
     var broken = repairRefusal(s, fac);
     if (broken) return broken;
     var availM = R.fnAvailable(s, fac, fn);
-    if (!availM.ok && fn.retiredNote) return { ok: false, message: availM.why };
+    if (!availM.ok && fn.retiredNote) return { ok: false, message: availM.message };
     if (pendingSame(s, facId, fnId)) return { ok: false, message: 'That order is already pending.' };
     var chosen = null;
     var optionLabel = null;
@@ -2669,29 +2668,6 @@
     if (list === 'delegations') return 'delegation from ' + (rec.clan || '—');
     return (rec.title || 'contract') + ' with ' + (rec.clan || '—');
   }
-  /* The Trade Agreements that have ended, kept as they were (clan, terms,
-     dates) with what they paid: { …the agreement, status: 'expired',
-     archivedDay, shipmentsPaid, goldPaid }. They never come back and are not
-     renewed. Kept in s.diplomacy.archivedAgreements, made when the first
-     one ends. */
-  R.archivedAgreements = function (s) {
-    if (!isObj(s.diplomacy)) s.diplomacy = R.defaultDiplomacy();
-    return Array.isArray(s.diplomacy.archivedAgreements) ? s.diplomacy.archivedAgreements : [];
-  };
-  /* Shipments an agreement has sent so far (one each time lastShipmentDay moved on). */
-  R.shipmentsPaid = function (rec, every) {
-    var start = dayNum(rec.startDay, 0);
-    var last = dayNum(rec.lastShipmentDay, start);
-    return last > start ? Math.ceil((last - start) / (every || 7)) : 0;
-  };
-  R.archiveAgreement = function (s, rec, every) {
-    if (!isObj(s.diplomacy)) s.diplomacy = R.defaultDiplomacy();
-    if (!Array.isArray(s.diplomacy.archivedAgreements)) s.diplomacy.archivedAgreements = [];
-    if (s.diplomacy.archivedAgreements.some(function (a) { return a.id === rec.id; })) return false;
-    var n = R.shipmentsPaid(rec, every);
-    s.diplomacy.archivedAgreements.push(Object.assign({}, rec, { status: 'expired', archivedDay: s.day, shipmentsPaid: n, goldPaid: n * clampInt(rec.income || 0, 0) }));
-    return true;
-  };
   R.tickDiplomacy = function (s, data) {
     var logs = [];
     var word = [];
@@ -2715,10 +2691,7 @@
       d[list] = d[list].filter(function (x) {
         if (dayNum(x.endDay, s.day) > s.day) return true;
         var contract = CONTRACTS.indexOf(list) !== -1;
-        /* A Trade Agreement is retired (20 October 2026): when it ends it is
-           archived whole, never deleted. */
-        if (list === 'agreements') R.archiveAgreement(s, x, every);
-        var line = 'Your ' + recordName(list, x) + ' has ended' + (contract ? ' (its last shipment arrived)' : '') + (list === 'agreements' ? ', and is kept under Expired / Archived' : '') + '.';
+        var line = 'Your ' + recordName(list, x) + ' has ended' + (contract ? ' (its last shipment arrived)' : '') + '.';
         logs.push(['Diplomacy', line]);
         word.push(line);
         return false;
