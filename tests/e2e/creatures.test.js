@@ -439,7 +439,9 @@ async function clickPop(page, label) {
       [wolf, 'dire_wolf', '', 'housed', 'dire_wolf_den'],
       [WYVERN, 'wyvern', '', 'housed', 'wyvern_roost']
     ]);
-    equal(s.creatures[2], { id: WYVERN, species: 'wyvern', owner: 'elara', name: '', status: 'housed', home: 'wyvern_roost', grantedDay: 25, housedDay: 25, msgId: '' }, 'Elara\'s wyvern, recorded once');
+    const { development, ...elara } = s.creatures[2];
+    equal(elara, { id: WYVERN, species: 'wyvern', owner: 'elara', name: '', status: 'housed', home: 'wyvern_roost', grantedDay: 25, housedDay: 25, msgId: '' }, 'Elara\'s wyvern, recorded once');
+    equal([development.bond.level, development.handlerId, development.chronicle.length], [1, 'elara', 1], 'with Bond 1 credited once (20 October 2026)');
     assert(s.log.some(l => l.body === 'Wyvern Roost: House Elara\'s Wyvern → Elara\'s wyvern lives at the Ironbow now, at the Wyvern Roost (Elara\'s). It guards the Ironbow when it is attacked.'), logText(s));
     assert(s.log.some(l => l.body === 'Griffin Tower: House a Griffin (Swiftwing) → Swiftwing has a home at the Griffin Tower. It guards the Ironbow when it is attacked.'), logText(s));
   });

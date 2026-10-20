@@ -647,6 +647,75 @@
      The cleaner lives here, not in creature-rules.js, because a top-level
      field R.fromSave doesn't know is dropped, and this file is always
      loaded (the Explorer loads it to check a campaign file). */
+  /* ---------- A creature's development (Wyvern Roost: Bonding, Training & Rider Mastery, 20 October 2026) ----------
+     An optional extra on a creature, kept whole by the cleaner below (a
+     field this list doesn't know is dropped on every reload, so everything
+     the Roost adds lives here, never beside the creature):
+     development: { version, handlerId, bond: { level 0-5, ready: the level a
+     finished programme has made ready for the DM to confirm, or null },
+     temperament: { dominant, attachment, trigger } (the DM's own words),
+     training: { <programme id>: { day } } (each once, for good), harness:
+     { fitted, paidGP, fittedDay }, firstFlight: { approved, day, handlerId },
+     handlerHistory: [{ handlerId, bond, fromDay, toDay, reason }], seq, chronicle:
+     [{ id, day, cat, text, by, link }] }.
+     Elara's wyvern is credited Bond 1 once, with one Chronicle line, the first
+     time it is loaded or housed without a development; a creature whose
+     development is already there is never reset. Any other creature gets one
+     only when the DM first works with it (creature-rules.js). */
+  R.BOND_NAMES = ['Unfamiliar', 'Acclimatised', 'Trusting', 'Bonded', 'Devoted', 'Legendary Partnership'];
+  R.CHRONICLE_MAX = 500;
+  R.newDevelopment = function (c, day) {
+    var elara = !!c && c.id === 'elara_wyvern';
+    var d = {
+      version: 1,
+      handlerId: elara ? 'elara' : '',
+      bond: { level: elara ? 1 : 0, ready: null },
+      temperament: { dominant: '', attachment: '', trigger: '' },
+      training: {},
+      harness: { fitted: false, paidGP: 0, fittedDay: null },
+      firstFlight: { approved: false, day: null, handlerId: null },
+      handlerHistory: [],
+      seq: 0,
+      chronicle: []
+    };
+    if (elara) d.chronicle.push({ id: 'ch-credit', day: dayNum(day, 1), cat: 'bond', text: 'Existing relationship credited; Bond 1 per campaign decision.', by: 'DM', link: '' });
+    return d;
+  };
+  R.cleanDevelopment = function (raw) {
+    var d = isObj(raw) ? raw : {};
+    var level = clampInt(isObj(d.bond) ? d.bond.level : 0, 0, 5);
+    var ready = isObj(d.bond) && Number(d.bond.ready) === level + 1 && level < 5 ? level + 1 : null;
+    var training = {};
+    if (isObj(d.training)) Object.keys(d.training).forEach(function (k) {
+      if (/^[a-z0-9_]{1,40}$/.test(k) && isObj(d.training[k])) training[k] = { day: dayNum(d.training[k].day, 1) };
+    });
+    var t = isObj(d.temperament) ? d.temperament : {};
+    var h = isObj(d.harness) ? d.harness : {};
+    var f = isObj(d.firstFlight) ? d.firstFlight : {};
+    var seen = {};
+    var chronicle = (arr(d.chronicle) || []).filter(function (e) {
+      if (!isObj(e) || typeof e.id !== 'string' || !e.id || seen[e.id] || typeof e.text !== 'string' || !e.text) return false;
+      seen[e.id] = true;
+      return true;
+    }).map(function (e) {
+      return { id: txt(e.id, 40), day: dayNum(e.day, 1), cat: txt(e.cat, 20), text: txt(e.text, 400), by: txt(e.by, 40), link: txt(e.link, 80) };
+    });
+    if (chronicle.length > R.CHRONICLE_MAX) chronicle = chronicle.slice(chronicle.length - R.CHRONICLE_MAX);
+    return {
+      version: 1,
+      handlerId: txt(d.handlerId, 40),
+      bond: { level: level, ready: ready },
+      temperament: { dominant: txt(t.dominant, 120), attachment: txt(t.attachment, 120), trigger: txt(t.trigger, 120) },
+      training: training,
+      harness: { fitted: h.fitted === true, paidGP: clampInt(h.paidGP, 0, 100000), fittedDay: h.fitted === true && isFinite(Number(h.fittedDay)) && h.fittedDay !== null ? dayNum(h.fittedDay, 1) : null },
+      firstFlight: { approved: f.approved === true, day: f.approved === true && f.day !== null && isFinite(Number(f.day)) ? dayNum(f.day, 1) : null, handlerId: f.approved === true && typeof f.handlerId === 'string' ? txt(f.handlerId, 40) : null },
+      handlerHistory: (arr(d.handlerHistory) || []).filter(isObj).slice(-20).map(function (x) {
+        return { handlerId: txt(x.handlerId, 40), bond: clampInt(x.bond, 0, 5), fromDay: dayNum(x.fromDay, 1), toDay: dayNum(x.toDay, 1), reason: txt(x.reason, 300) };
+      }),
+      seq: clampInt(d.seq, 0, 1000000),
+      chronicle: chronicle
+    };
+  };
   R.CREATURE_KEYS = ['id', 'species', 'owner', 'name', 'status', 'home', 'grantedDay', 'housedDay', 'msgId'];
   R.cleanCreatures = function (src, today) {
     var out = [];
@@ -660,7 +729,7 @@
       var home = txt(c.home, 40);
       var status = c.status === 'housed' || c.status === 'waiting' ? c.status : (home ? 'housed' : 'waiting');
       var granted = dayNum(c.grantedDay, dayNum(c.housedDay, day));
-      out.push({
+      var rec = {
         id: id,
         species: txt(c.species, 40),
         owner: txt(c.owner, 40),
@@ -670,7 +739,11 @@
         grantedDay: granted,
         housedDay: status === 'housed' ? dayNum(c.housedDay, granted) : null,
         msgId: txt(c.msgId, 80)
-      });
+      };
+      /* Its development, kept whole; Elara's wyvern is credited Bond 1 once. */
+      if (isObj(c.development)) rec.development = R.cleanDevelopment(c.development);
+      else if (id === 'elara_wyvern' && status === 'housed') rec.development = R.newDevelopment({ id: id }, c.housedDay !== undefined && c.housedDay !== null ? c.housedDay : day);
+      out.push(rec);
     });
     return out;
   };
@@ -1692,6 +1765,8 @@
        a Muster: the Recruit order's own list (pull request 8a,
        regiment-rules.js). */
     if (fn.drill) return R.drillOptions ? R.drillOptions(s, data) : [];
+    /* The Wyvern Roost's training: every housed wyvern (creature-rules.js). */
+    if (fn.trains) return R.trainingOptions ? R.trainingOptions(s, data, fac, fn) : [];
     if (fn.muster) return R.musterChoices ? R.musterChoices(data) : [];
     return fn.options || [];
   };
@@ -1752,6 +1827,12 @@
     if (!fac || !fn) return { ok: false };
     var broken = repairRefusal(s, fac);
     if (broken) return broken;
+    /* A Wyvern Roost training programme: one named wyvern, with every reason
+       it can't be given said exactly (the level included). */
+    if (fn.trains) {
+      if (!R.issueTraining) return { ok: false, message: 'This copy of the Bastion can\'t train creatures.' };
+      return R.issueTraining(s, data, fac, fn, optionIdx, rand);
+    }
     var avail = R.fnAvailable(s, fac, fn);
     if (!avail.ok) return { ok: false, message: avail.message };
     /* Register Port Charter: one at a time, and it says whose is running. */
@@ -2498,6 +2579,9 @@
     /* A House order (pull request 7): its creature is housed, once; nothing
        goes into the Warehouse. (A copy without the creature rules changes
        nothing: a granted creature stays waiting, to be housed again.) */
+    if (fn.trains) {
+      return [R.completeTraining ? R.completeTraining(s, data, order, fn, fac) : ['Orders', (order.label || fac.name + ': ' + fn.label) + ' couldn\'t be completed: this copy of the Bastion can\'t train creatures.']];
+    }
     if (fn.housesCreature || fn.housesSpecies) {
       return [R.completeHousing ? R.completeHousing(s, data, order) : ['Orders', (order.label || fac.name + ': ' + fn.label) + ' couldn\'t be completed: this copy of the Bastion can\'t house creatures. Nothing changed.']];
     }
