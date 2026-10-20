@@ -2275,7 +2275,7 @@ None of these reached Harry.
 ### BAS-85 · Commodity trade's limits and open choices
 **Later, Harry's call** (pull request 5, 14 October 2026) · other
 
-- **Clan demand:** Harry's table is in (BAS-86). **Market saturation** (a good selling for less after many lots at one port in 28 days) isn't on yet: the sales are recorded for it, but no price uses them.
+- **Clan demand:** Harry's table is in (BAS-86). **Market saturation** (a good selling for less after many lots at one port in 28 days) is now on (SUI-43).
 - **Fresh Fish** sails only on a voyage of 2 days or less (BAS-86), so with today's two 7-day routes it never sails. There's no spoiling at sea.
 - **Recall ship…** (BAS-86) can call a ship back on its way out; once it has reached the port, it can't. An Import of a backup still undoes other mistakes.
 - **Protections** (the Barracks' convoy, the Watchtower's approaches, the Shrine of Pelagos' blessing) are built in but not available until their orders exist.
@@ -3329,5 +3329,15 @@ Old repo: `_legacy/pelagosi_marker_rune_puzzle` (file:line references point ther
 - **Pins:** Steelport, Moltenport and Port Brawdlyn already had pins (hidden, no town picture); Redport, Leatherport and The River Rook have new pins, placed from Harry's screenshots (Redport at the docks, Leatherport at its dockside buildings, the River Rook on the river's east bank by the road bridge east of Colver): drag-check them on the maps and tell me if one is off. A port pin now shows without a picture (`show: true`) and opens a plain panel with its harbour box; Harry's pictures will follow.
 - **Sailing days and risk (my proposal, for Harry to confirm; all in `commerce-data.js`):** Timberport and Goldport unchanged (7 days, Low and High). Then Port Brawdlyn 2 (Low), Steelport 3 (Low), Moltenport 4 (Medium), The River Rook 4 (Medium), Leatherport 5 (Medium), Bleakharbour 6 (High), Alderbridge 7 (High) and Redport 9, the only voyage longer than Timberport's and Goldport's, at a new **Very high** risk of 30 in 100. The way back takes as long as the way out. Port Brawdlyn's 2 days means Fresh Fish (2 days or less) can now sail there.
 - **Warehouse:** a trade good with none left no longer keeps a 0 line. It goes when the last is used or shipped, or when its count is set to 0 and left. Supplies, ingredients and rows typed by hand keep their lines. A good made or returned later brings its line back.
-- **Not changed:** Courier towns and their days, protections, concessions and market saturation (next).
+- **Not changed:** Courier towns and their days, protections and concessions. Market saturation came next (SUI-43).
 - **Tests:** `tests/rules/commerce.test.js`, `tests/rules/explorer.test.js`, `tests/rules/session-safety.test.js`, `tests/e2e/commerce.test.js`.
+
+### SUI-43 · Market saturation switched on (19 October 2026)
+**Added, Harry's request (rule approved 14 October)** · missing functionality
+
+- **The rule:** within a rolling 28 days, at each port and for each good, lots 1–4 sell at the buying Clan's demand, lots 5–8 one tier lower, lots 9–12 two lower, and lot 13 onwards Oversupplied (×1.25 / ×1.10 / ×1.00 / ×0.75). A cargo that crosses a boundary is priced lot by lot. A good already Normal drops to Oversupplied at lot 5.
+- **What counts:** only sales already recorded in the sales ledger (kept 56 days) when the ship arrives. The Dock's price preview counts the same recorded sales, not other ships still at sea; two ships arriving the same day are settled one after the other, so the second sees the first.
+- **The sale log** shows a "(market saturation)" breakdown when any lot sold below the Clan's demand. Sales are still paid once.
+- **Switch off:** `saturation.active: false` in `commerce-data.js`. Numbers (28 days, 4 lots) are there too.
+- **Tests:** `tests/rules/commerce.test.js` (tier boundaries, 28-day window, port and good kept apart, straddling cargo, reload).
+- **Still to ask Harry:** what "the remaining Charter customisations" are (my guess: concessions and protections).

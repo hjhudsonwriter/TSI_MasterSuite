@@ -265,7 +265,31 @@
      factor, rounded down. Then the fee (per lot) and the tariff (a
      percentage of what it fetched) come off; never below 0.
      Returns { lines, lots, gross, fee, tariff, tariffPct, feePerLot, priceMult, net }. */
-  R.cargoQuote = function (data, charter, port, clan, cargo) {
+  /* Market saturation (Harry, 14 October 2026; switched on 19 October 2026):
+     within a rolling 28 days, at each port and for each good, lots 1 to 4
+     sell at the Clan's demand, lots 5 to 8 one tier lower, lots 9 to 12 two
+     tiers lower, and lot 13 onwards Oversupplied. The tiers, best to worst,
+     are Highly sought-after, Moderate, Normal and Oversupplied. The lots
+     already sold come from the sales record (tradeNetwork.marketLedger).
+     prior(goodId) is how many lots of that good were sold at this port in
+     the window; without it (or with saturation off) there is none. */
+  var TIERS = ['high', 'moderate', 'normal', 'oversupplied'];
+  R.saturationOn = function (data) { return !!(isObj(commerce(data).saturation) && commerce(data).saturation.active === true); };
+  /* The tier a lot sells at: lotNo is its number in the window (1, 2, 3…). */
+  R.saturationTier = function (data, baseLevel, lotNo) {
+    var sat = isObj(commerce(data).saturation) ? commerce(data).saturation : {};
+    var per = Math.max(1, Math.floor(num(sat.lotsPerTier, 1, 1000, 4)));
+    var start = TIERS.indexOf(baseLevel);
+    if (start < 0) start = 2;
+    if (lotNo > per * 3) return 'oversupplied';
+    return TIERS[Math.min(TIERS.length - 1, start + Math.floor((Math.max(1, lotNo) - 1) / per))];
+  };
+  /* Lots of each good sold at a port in the window ending today. */
+  R.saturationPrior = function (s, data, port) {
+    var days = Math.floor(num((commerce(data).saturation || {}).windowDays, 1, 3650, 28));
+    return function (goodId) { return R.lotsSold(s, port, goodId, s.day - days, s.day); };
+  };
+  R.cargoQuote = function (data, charter, port, clan, cargo, prior) {
     var c = commerce(data);
     var route = R.portRoute(data, port) || {};
     var terms = isObj(charter && charter.terms) ? charter.terms : {};
@@ -283,11 +307,30 @@
       var base = g && isNum(g.gp) ? g.gp : 0;
       var d = R.demandFor(data, clan, x.goodId);
       lots += qty;
-      return {
+      /* The tiers its lots sell at (only when saturation is on and there is a record to count). */
+      var tiers = [];
+      var value = qty * base * d.mult;
+      if (typeof prior === 'function' && R.saturationOn(data)) {
+        var before = Math.max(0, clampInt(prior(x.goodId), 0));
+        var lv = levels(data);
+        value = 0;
+        for (var n = 1; n <= qty; n++) {
+          var t = R.saturationTier(data, d.level, before + n);
+          var mult = isObj(lv[t]) ? num(lv[t].mult, 0, 10, 1) : 1;
+          value += base * mult;
+          var last = tiers[tiers.length - 1];
+          if (last && last.level === t) last.qty += 1;
+          else tiers.push({ level: t, label: isObj(lv[t]) && typeof lv[t].label === 'string' ? lv[t].label : t, mult: mult, qty: 1 });
+        }
+      }
+      var line = {
         goodId: x.goodId, name: g ? g.name : R.goodName(data, x.goodId), qty: qty, base: base, cat: g && g.cat ? g.cat : '',
         demand: d.level, demandLabel: d.label, mult: d.mult,
-        gp: Math.floor(qty * base * d.mult * priceMult + 1e-9)
+        gp: Math.floor(value * priceMult + 1e-9)
       };
+      /* Only a line that saturation changed carries its tiers. */
+      if (tiers.length > 1 || (tiers.length === 1 && tiers[0].level !== d.level)) line.tiers = tiers;
+      return line;
     });
     var gross = lines.reduce(function (n, l) { return n + l.gp; }, 0);
     var fee = Math.floor(feePerLot * lots + 1e-9);
@@ -296,6 +339,11 @@
   };
   /* "2 lots of Sawn Lumber × 160 gp × Normal ×1.00 = 320 gp". */
   R.quoteLineText = function (l) {
+    /* Market saturation made some lots cheaper: say how many sold at each tier. */
+    var t = Array.isArray(l.tiers) ? l.tiers : [];
+    if (t.length > 1 || (t.length === 1 && t[0].level !== l.demand)) {
+      return plural(l.qty, 'lot') + ' of ' + l.name + ' × ' + l.base + ' gp, ' + t.map(function (x) { return plural(x.qty, 'lot') + ' at ' + x.label + ' ×' + x.mult.toFixed(2); }).join(', ') + ' (market saturation) = ' + l.gp + ' gp';
+    }
     return plural(l.qty, 'lot') + ' of ' + l.name + ' × ' + l.base + ' gp × ' + l.demandLabel + ' ×' + l.mult.toFixed(2) + ' = ' + l.gp + ' gp';
   };
   /* "Shipping 0 gp · tariff 0 gp · 320 gp to the treasury". */
@@ -488,7 +536,7 @@
     };
   };
 
-  /* ---------- The market ledger (for saturation, later) ----------
+  /* ---------- The market ledger (for market saturation) ----------
      Every good sold: { day, port, goodId, qty, saleId }, written in the same
      change as the sale, so once only. Kept for saturation.keepDays. */
   R.marketLedger = function (s) { return list(s, 'marketLedger'); };
@@ -535,7 +583,7 @@
       }
       var rec;
       if (roll > chance) {
-        var q = R.cargoQuote(data, R.charterById(s, v.charterId), v.port, v.clan, v.cargo);
+        var q = R.cargoQuote(data, R.charterById(s, v.charterId), v.port, v.clan, v.cargo, R.saturationPrior(s, data, v.port));
         s.treasuryGP += q.net;
         v.outcome = 'sold';
         rec = receipt('sold', q);
@@ -676,10 +724,13 @@
         roll: isNum(x.roll) ? clampInt(x.roll, 1, 100) : null, chance: clampInt(x.chance, 0, 100),
         cargo: cleanCargo(x.cargo),
         lines: (arr(x.lines) || []).filter(isObj).map(function (l) {
-          return {
+          var line = {
             goodId: txt(l.goodId, 60), name: txt(l.name, 80), qty: clampInt(l.qty, 0, 1000), base: clampInt(l.base, 0, 100000), cat: txt(l.cat, 20),
-            demand: txt(l.demand, 20), demandLabel: txt(l.demandLabel, 40), mult: isNum(l.mult) ? Math.max(0, Math.min(10, l.mult)) : 1, gp: clampInt(l.gp, 0, 10000000)
+            demand: txt(l.demand, 20), demandLabel: txt(l.demandLabel, 40), mult: isNum(l.mult) ? Math.max(0, Math.min(10, l.mult)) : 1, gp: clampInt(l.gp, 0, 10000000),
           };
+          var tiers = (arr(l.tiers) || []).filter(isObj).slice(0, 4).map(function (x) { return { level: txt(x.level, 20), label: txt(x.label, 40), mult: isNum(x.mult) ? Math.max(0, Math.min(10, x.mult)) : 1, qty: clampInt(x.qty, 0, 1000) }; });
+          if (tiers.length) line.tiers = tiers;
+          return line;
         }),
         gross: clampInt(x.gross, 0, 10000000), fee: clampInt(x.fee, 0, 10000000), tariff: clampInt(x.tariff, 0, 10000000),
         tariffPct: isNum(x.tariffPct) ? Math.max(0, Math.min(100, x.tariffPct)) : 0,

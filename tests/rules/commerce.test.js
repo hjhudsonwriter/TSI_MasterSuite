@@ -102,8 +102,8 @@
     t.same([BR.demandFor(d, 'molten', 'raw_timber').mult, BR.demandFor(d, 'molten', 'sawn_lumber').mult], [1, 1.1]);
   });
 
-  test('market saturation is planned but not active: the numbers are in the data, and prices don\'t use them yet', function (t) {
-    t.same(C.saturation, { active: false, windowDays: 28, lotsPerTier: 4, keepDays: 56 });
+  test('market saturation is on: 28 days, 4 lots a tier, records kept 56 days', function (t) {
+    t.same(C.saturation, { active: true, windowDays: 28, lotsPerTier: 4, keepDays: 56 });
   });
 
   test('no fees or tariffs; Timberport and Goldport 7 days out and 7 back; the later ports sail longer for more risk; risks 5, 10, 20 and (Redport) 30 in 100', function (t) {
@@ -706,7 +706,7 @@
     t.same(BR.marketLedger(tb), [], 'nothing sold, nothing recorded');
   });
 
-  test('saturation isn\'t on: a port with 20 lots of a good sold this month still pays the Clan\'s full demand', function (t) {
+  test('saturation is on: a port with 20 lots of a good sold this month pays the Oversupplied price', function (t) {
     var b = bastion(4, 2);
     var c = registered(b);
     b.tradeNetwork.marketLedger = [{ day: 2, port: 'goldport', goodId: 'medicinal_herbs', qty: 20, saleId: 'earlier' }];
@@ -714,8 +714,47 @@
     BR.dispatchCargo(b, bdata, c.id, [{ goodId: 'medicinal_herbs', qty: 2 }], dice([0.3]));
     b.day = 11;
     BR.settleVoyages(b, bdata, dice([0.5]));
-    t.equal(b.treasuryGP, 350, '2 lots × 140 gp × Highly sought-after 1.25');
+    t.equal(b.treasuryGP, 210, '2 lots × 140 gp × Oversupplied 0.75');
     t.equal(BR.lotsSold(b, 'goldport', 'medicinal_herbs', 11 - 28, 11), 22, 'both recorded');
+  });
+
+  test('saturation tiers: lots 1-4 at demand, 5-8 one lower, 9-12 two lower, 13 on Oversupplied', function (t) {
+    var tier = function (base, n) { return BR.saturationTier(bdata, base, n); };
+    t.same([1, 4, 5, 8, 9, 12, 13, 40].map(function (n) { return tier('high', n); }),
+      ['high', 'high', 'moderate', 'moderate', 'normal', 'normal', 'oversupplied', 'oversupplied']);
+    t.same([4, 5, 8, 9, 13].map(function (n) { return tier('normal', n); }),
+      ['normal', 'oversupplied', 'oversupplied', 'oversupplied', 'oversupplied']);
+    t.same([1, 5, 9].map(function (n) { return tier('moderate', n); }), ['moderate', 'normal', 'oversupplied']);
+  });
+
+  test('saturation: sales older than 28 days are ignored, and ports and goods are counted apart', function (t) {
+    var b = bastion(40, 2);
+    b.tradeNetwork.marketLedger = [
+      { day: 5, port: 'goldport', goodId: 'sawn_lumber', qty: 20, saleId: 'old' },
+      { day: 30, port: 'timberport', goodId: 'sawn_lumber', qty: 20, saleId: 'other-port' },
+      { day: 30, port: 'goldport', goodId: 'raw_stone', qty: 20, saleId: 'other-good' }
+    ];
+    var prior = BR.saturationPrior(b, bdata, 'goldport');
+    t.equal(prior('sawn_lumber'), 0, 'day 5 is outside the window');
+    t.equal(prior('medicinal_herbs'), 0);
+    b.tradeNetwork.marketLedger.push({ day: 20, port: 'goldport', goodId: 'sawn_lumber', qty: 3, saleId: 'recent' });
+    t.equal(BR.saturationPrior(b, bdata, 'goldport')('sawn_lumber'), 3, 'only the recent sale counts');
+  });
+
+  test('saturation: a cargo straddling a tier boundary is priced lot by lot, and the log says so', function (t) {
+    var b = bastion(4, 2);
+    var c = registered(b);
+    b.tradeNetwork.marketLedger = [{ day: 2, port: 'goldport', goodId: 'medicinal_herbs', qty: 3, saleId: 'earlier' }];
+    stock(b, 'medicinal_herbs', 2);
+    BR.dispatchCargo(b, bdata, c.id, [{ goodId: 'medicinal_herbs', qty: 2 }], dice([0.3]));
+    b.day = 11;
+    BR.settleVoyages(b, bdata, dice([0.5]));
+    var first = Math.floor(140 * 1.25), second = Math.floor(140 * 1.10);
+    t.ok(b.treasuryGP > 0 && b.treasuryGP <= first + second, 'lot 4 at one tier, lot 5 a tier lower');
+    var text = JSON.stringify(BR.cargoSales(b));
+    t.ok(/tiers/.test(text), 'the sale log keeps the tiers');
+    var r = reload(b);
+    t.same(BR.cargoSales(r), BR.cargoSales(b), 'the receipt survives a reload');
   });
 
   test('Fresh Fish on a 2-day route sails, sells at 80 gp a lot with demand, and is recorded', function (t) {
