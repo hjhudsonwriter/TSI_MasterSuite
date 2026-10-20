@@ -3352,3 +3352,10 @@ Old repo: `_legacy/pelagosi_marker_rune_puzzle` (file:line references point ther
 - **Still excluded:** trade lots, currency, ships and living creatures. Courier levels, room, days and fees unchanged. `freeItems: false` in `courier-data.js` switches typed items off.
 - **Test-only fix:** the Explorer pin test (`phase8.test.js`) now waits for the town picture to load before checking its width (it failed on a slow machine).
 - **Tests:** `tests/rules/courier.test.js`, `tests/e2e/parcels-more.test.js`.
+
+### SUI-45 · The courier post's "Due" wording (20 October 2026)
+**Fixed, Harry's report** · confusing wording
+
+- **Before:** a parcel past its due day showed "Due at Slade’s Muster: the Bastion records its arrival when it reaches Day 140" with no Collect button, even on Day 144.
+- **Why:** the Explorer can only collect a parcel the Bastion has recorded as arrived, and the Bastion catches up only when it is opened. Nothing was lost.
+- **After:** it says "It reached Slade’s Muster on Day 140, but the Bastion hasn't recorded that yet. Open the Bastion (it catches up to today's day), and the parcel can then be collected here." The rule is unchanged; whether to let the Explorer collect an unrecorded parcel is left to Harry.

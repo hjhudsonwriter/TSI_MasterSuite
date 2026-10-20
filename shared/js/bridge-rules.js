@@ -636,7 +636,7 @@
     if (p.status === 'ready') return view('waiting', 'Waiting at ' + town + (isWhole(p.arrivedDay) ? ' since ' + dayText(p.arrivedDay) : '') + ': collect it from the town picture at ' + town + '.');
     var j = isObj(explorerSave) && isObj(explorerSave.travel) ? explorerSave.travel : {};
     var today = isWhole(j.day) ? j.day : null;
-    if (isWhole(p.readyDay) && today !== null && p.readyDay <= today) return view('due', 'Due at ' + town + ': the Bastion records its arrival when it reaches ' + dayText(p.readyDay) + '.');
+    if (isWhole(p.readyDay) && today !== null && p.readyDay <= today) return view('due', 'It reached ' + town + ' on ' + dayText(p.readyDay) + ', but the Bastion hasn\'t recorded that yet. Open the Bastion (it catches up to today\'s day), and the parcel can then be collected here.');
     return view('on_road', 'On the road: due at ' + town + (isWhole(p.readyDay) ? ' on ' + dayText(p.readyDay) : '') + '.');
   };
   /* The parcels the Explorer lists: its From the Ironbow list (every town),
