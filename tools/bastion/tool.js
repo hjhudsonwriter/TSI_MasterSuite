@@ -2652,7 +2652,8 @@
           return el('div', { class: 'tsi-bas-tn-route', 'data-test': 'charter-' + c.port }, [
             el('div', { class: 'tsi-bas-tn-route__name', text: R.charterLabel(data, c) }),
             el('div', { class: 'tsi-bas-tn-route__meta', 'data-test': 'charter-state', text: R.charterState(state, c) + (TSI.bridge && !TSI.bridge.isPort(c.port) ? ' (not on the port list now)' : '') + '.' }),
-            ships.length ? el('div', { class: 'tsi-bas-tn-route__meta', text: ships.map(R.voyageState).join(' • ') + '.' }) : null
+            ships.length ? el('div', { class: 'tsi-bas-tn-route__meta', text: ships.map(R.voyageState).join(' • ') + '.' }) : null,
+            charterTermsBlock(c)
           ]);
         });
         return el('div', { class: 'tsi-bas-tn-charters', 'data-test': 'hall-charters' }, [
@@ -2660,6 +2661,77 @@
           muted('A Port Charter lets the Dock ship cargo to that port. The DM grants it in the Explorer; Register Port Charter (above) registers it. Cargo is paid when it sells, so it isn\'t in Expected Income / Week.')
         ].concat(rows.length ? rows : [muted('None held yet.')]));
       }
+
+      /* A Charter's negotiated terms (20 October 2026): what they are, what
+         they do to a sale (an estimate), how to change them, and the history. */
+      function charterTermsBlock(c) {
+        var terms = R.effectiveTerms(data, c, c.port, c.clan);
+        var std = R.isStandardTerms(data, c);
+        var pv = R.termsPreview(state, data, c);
+        var log2 = (c.termsLog || []).slice().reverse();
+        var blocked = turnRunning || militaryRunning;
+        return el('div', { class: 'tsi-bas-terms', 'data-test': 'charter-terms-' + c.port }, [
+          el('div', { class: 'tsi-bas-tn-route__meta', 'data-test': 'charter-terms', text: 'Terms: ' + R.termsText(terms) + (std ? ' (standard)' : ' (negotiated)') + '.' }),
+          pv ? el('div', { class: 'tsi-bas-muted', 'data-test': 'charter-terms-estimate', text: 'Estimate at current market conditions, ' + pv.lots + ' lots of ' + pv.name + ' to Clan ' + R.clanName(data, c.clan) + ': ' + pv.standard.net + ' gp on standard terms, ' + pv.current.net + ' gp on these terms (after ' + pv.current.fee + ' gp shipping and ' + pv.current.tariff + ' gp tariff).' }) : null,
+          el('div', { class: 'tsi-bas-terms__buttons' }, [
+            btn('Amend terms…', function () { onTerms(c.id, 'amend'); }, '', 'amend-terms', { disabled: blocked ? true : null }),
+            !std ? btn('Reset to standard terms…', function () { onTerms(c.id, 'reset'); }, 'tsi-btn--ghost', 'reset-terms', { disabled: blocked ? true : null }) : null
+          ]),
+          log2.length ? el('details', { class: 'tsi-bas-terms__history', 'data-test': 'terms-history' }, [
+            el('summary', { text: 'Terms history (' + log2.length + ')' }),
+            el('ul', { class: 'tsi-bas-res-list' }, log2.map(function (e) {
+              return el('li', { text: R.dayLabel(e.day) + ' · ' + (e.kind === 'reset' ? 'Reset to standard' : 'Amended') + ': ' + R.termsText(e.before) + ' → ' + R.termsText(e.after) + '. ' + e.why });
+            }))
+          ]) : null
+        ]);
+      }
+      var onTerms = TSI.oneAtATime(async function (id, mode) {
+        if (turnRunning || militaryRunning) return;
+        var c = R.charterById(state, id);
+        if (!c) return;
+        var cur = R.effectiveTerms(data, c, c.port, c.clan);
+        var std = R.standardTerms(data, c.port, c.clan);
+        var L = R.TERM_LIMITS;
+        var reset = mode === 'reset';
+        var price = numberInput('terms-price', { step: '0.01', min: String(L.priceMult.min), max: String(L.priceMult.max), value: String(reset ? std.priceMult : cur.priceMult), 'aria-label': 'Price multiplier', disabled: reset ? true : null });
+        var fee = numberInput('terms-fee', { min: String(L.feePerLot.min), max: String(L.feePerLot.max), value: String(reset ? std.feePerLot : cur.feePerLot), 'aria-label': 'Shipping fee per lot', disabled: reset ? true : null });
+        var tariff = numberInput('terms-tariff', { min: String(L.tariffPct.min), max: String(L.tariffPct.max), value: String(reset ? std.tariffPct : cur.tariffPct), 'aria-label': 'Tariff', disabled: reset ? true : null });
+        var why = el('textarea', { class: 'tsi-input', rows: '3', maxlength: '300', 'data-test': 'terms-why', 'aria-label': 'Why the terms change', placeholder: 'What happened in the story? (required)' });
+        var problem = el('div', { class: 'tsi-bas-repair-text', 'data-test': 'terms-problem', hidden: true });
+        var effect = el('div', { class: 'tsi-bas-muted', 'data-test': 'terms-effect' });
+        var mainBtn = null;
+        function check() {
+          var r = reset ? { ok: true, terms: std } : R.checkTermsInput({ priceMult: price.value, feePerLot: fee.value, tariffPct: tariff.value });
+          var text = !r.ok ? r.message : (R.isStandardTerms(data, c) && reset) ? 'This Charter is already on standard terms.'
+            : (!reset && r.terms.priceMult === cur.priceMult && r.terms.feePerLot === cur.feePerLot && r.terms.tariffPct === cur.tariffPct) ? 'Those are the terms already: nothing to change.'
+            : String(why.value).replace(/\s+/g, ' ').trim().length < 3 ? 'Say why (what happened in the story).' : '';
+          problem.textContent = text;
+          problem.hidden = !text;
+          if (r.ok) {
+            var pv = R.termsPreview(state, data, Object.assign({}, c, { terms: reset ? {} : r.terms }));
+            effect.textContent = pv ? 'Estimate at current market conditions: ' + pv.lots + ' lots of ' + pv.name + ' would sell for ' + pv.current.net + ' gp on these terms (' + pv.standard.net + ' gp on standard terms).' : '';
+          } else effect.textContent = '';
+          if (mainBtn) { mainBtn.disabled = !!text; mainBtn.title = text || ''; }
+        }
+        [price, fee, tariff].forEach(function (i) { i.addEventListener('input', check); });
+        why.addEventListener('input', check);
+        var ok = await plainModal({
+          title: (reset ? 'Reset to standard terms: ' : 'Amend terms: ') + R.portName(c.port),
+          body: [
+            muted((reset ? 'Remove the negotiated terms and go back to standard (×1.00 price, 0 gp a lot, 0% tariff). ' : 'Set what was agreed. Limits: price ×0.50 to ×2.00, shipping 0 to 50 gp a lot, tariff 0 to 50%. ') + 'Ships already at sea keep the terms they sailed with. This changes no Honour, Respect or Political Capital.'),
+            field('Price multiplier (×)', price), field('Shipping fee (gp a lot)', fee), field('Tariff (%)', tariff),
+            field('Reason', why), effect, problem
+          ],
+          escValue: false,
+          actions: [{ label: 'Cancel', value: false }, { label: reset ? 'Reset terms' : 'Save terms', value: true, primary: true }],
+          onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'terms-dialog'); mainBtn = parts.dialog.querySelector('.tsi-modal__foot .tsi-btn--primary'); check(); }
+        });
+        if (!ok || !life.alive || turnRunning || militaryRunning) return;
+        var res = reset ? R.resetCharterTerms(state, data, id, why.value) : R.amendCharterTerms(state, data, id, { priceMult: price.value, feePerLot: fee.value, tariffPct: tariff.value }, why.value);
+        if (!res.ok) { await say(res.message); return; }
+        log(res.log[0], res.log[1]);
+        done();
+      });
 
       async function onClearDiplomacy() {
         if (!(await ask('Clear Diplomacy & Trade records? (Does not undo gold already gained.)', 'Clear'))) return;
@@ -3104,6 +3176,8 @@
         /* A House order (pull request 7): the Roost's houses Elara's wyvern;
            the Tower's and the Den's list the creatures waiting for a home. */
         var isHousing = !!(fn.housesSpecies || fn.housesCreature);
+        /* A commercial voyage protection (20 October 2026): the Barracks' Convoy and the Watchtower's Approaches. */
+        var isProtection = !!((fn.protectionCharge && fn.protectionMax) || fn.protectionWindow);
         var options = R.fnOptions(state, data, fac, fn);
         var select = null;
         var chooser = null;
@@ -3145,7 +3219,7 @@
         /* A production order (pull request 3): what the chosen recipe uses and makes. */
         var goodsLine = fn.production ? el('div', { class: 'tsi-bas-fn__goods', 'data-test': 'goods-' + key }) : null;
         /* Why a House order can't be given now, in a sentence (pull request 7). */
-        var whyLine = (isHousing || isDrill || (fn.favourCost && !fn.production) || fn.waiting) ? el('div', { class: 'tsi-bas-fn__why', 'data-test': 'why-' + key, hidden: true }) : null;
+        var whyLine = (isHousing || isDrill || isProtection || (fn.favourCost && !fn.production) || fn.waiting) ? el('div', { class: 'tsi-bas-fn__why', 'data-test': 'why-' + key, hidden: true }) : null;
         function chosenNow() {
           if (isDrill) return options[select ? R.clampInt(select.value, 0) : 0] || null;
           return fn.production && fn.options && fn.options.length ? fn.options[select ? R.clampInt(select.value, 0) : 0] || null : null;
@@ -3155,6 +3229,7 @@
           var why = repair ? null : !avail.ok ? avail.message : fn.production ? (R.productionBusy(state, data, fac, fn) || R.recipeBlocker(state, data, fac, fn, chosen))
             : isCharter && R.registerBusy(state, data) ? R.registerBusy(state, data)
             : isCharter && !options.length ? 'No Port Charter to register: the DM grants one in the Explorer, and each is registered once.'
+            : isProtection ? R.protectionBusy(state, data, fn) || null
             : isHousing ? R.housingBlocker(state, data, fac, fn) || null
             : isDrill ? (R.drillRoomBlocker(state, data) || (!options.length ? 'No regiment can drill now: a regiment drills at full strength, one drill at a time, up to Veteran.' : null)) : null;
           /* A Shrine order's Favour (pull request 8b). */
@@ -3163,7 +3238,7 @@
           issue.disabled = !!(locked || cd > 0 || repair > 0 || why);
           issue.title = repair ? repairText(fac, repair) : why || null;
           issue.textContent = repair ? 'Under Repair' : !avail.ok ? avail.message : why && fn.production ? 'Can\'t order yet' : why && isCharter ? (options.length ? 'One at a time' : 'No Port Charter to register')
-            : why && isHousing ? housingShort(fac, fn) : why && isDrill ? 'Can\'t drill now' : noFavour ? 'Not enough Favour' : cd > 0 ? 'Cooldown: ' + R.daysText(cd) : 'Issue Order';
+            : why && isProtection ? (fn.protectionWindow ? 'Already active' : 'Convoy ready') : why && isHousing ? housingShort(fac, fn) : why && isDrill ? 'Can\'t drill now' : noFavour ? 'Not enough Favour' : cd > 0 ? 'Cooldown: ' + R.daysText(cd) : 'Issue Order';
           if (whyLine) {
             var wtext = !avail.ok && avail.why ? avail.why : why && !repair && avail.ok ? why : '';
             whyLine.hidden = !wtext;
@@ -3631,7 +3706,11 @@
         if (turnRunning || militaryRunning) why = why || 'Wait for the day to finish.';
         var shipBtn = btn('Ship cargo…', function () { onShipCargo(); }, 'tsi-btn--primary', 'ship-cargo', { disabled: why ? true : null, title: why || null });
         var charters = R.portCharters(state).map(function (c) {
-          return el('li', { 'data-test': 'dock-charter-' + c.port }, [el('b', { text: R.charterLabel(data, c) }), ': ' + R.charterState(state, c) + '.']);
+          var ter = R.effectiveTerms(data, c, c.port, c.clan);
+          return el('li', { 'data-test': 'dock-charter-' + c.port }, [el('b', { text: R.charterLabel(data, c) }), ': ' + R.charterState(state, c) + '. Terms: ' + R.termsText(ter) + (R.isStandardTerms(data, c) ? ' (standard).' : ' (negotiated, set in the Hall).')]);
+        });
+        var prots = R.protectionStatus(state, data).map(function (p) {
+          return el('li', { 'data-test': 'dock-protection-' + p.id, text: p.text });
         });
         var ships = R.voyages(state).map(function (v) {
           /* Recall ship… while it's on its way out (Harry, 14 October 2026). */
@@ -3659,6 +3738,7 @@
             : 'The Dock sends cargo from Level ' + (needShip || '?') + ' (it\'s Level ' + spec.level + ').'),
           el('div', { class: 'tsi-bas-cargo__go' }, [shipBtn, why ? el('span', { class: 'tsi-bas-muted', 'data-test': 'ship-why', text: why }) : null]),
           el('div', { class: 'tsi-bas-cargo__group' }, [el('b', { text: 'Port Charters' }), charters.length ? el('ul', { class: 'tsi-bas-res-list' }, charters) : muted('None held yet: the DM grants one in the Explorer.')]),
+          prots.length ? el('div', { class: 'tsi-bas-cargo__group' }, [el('b', { text: 'Voyage protection' }), el('ul', { class: 'tsi-bas-res-list', 'data-test': 'dock-protections' }, prots), muted('Applied by themselves when a ship sails; together they never take the chance below 0.')]) : null,
           el('div', { class: 'tsi-bas-cargo__group' }, [el('b', { text: 'Ships at sea' }), ships.length ? el('ul', { class: 'tsi-bas-res-list', 'data-test': 'voyages' }, ships) : muted('None.')]),
           spec.schedule || standing.length ? el('div', { class: 'tsi-bas-cargo__group' }, [
             el('b', { text: 'Standing shipments' }),

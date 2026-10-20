@@ -272,6 +272,18 @@ window.TSI_DATA.bastionFacilities = [
         "costGP": 0,
         "costText": "0",
         "notes": "1d4 defenders recruited and added to Bastion Defenders Panel"
+      },
+      {
+        "id": "guard_commercial_convoy",
+        "label": "Guard Commercial Convoy",
+        "days": 3,
+        "options": [],
+        "costGP": 0,
+        "costText": "0",
+        "requiredFacilityLevel": 2,
+        "protectionCharge": "commercial_convoy",
+        "protectionMax": 1,
+        "notes": "Prepares one Commercial Convoy from the Bastion's available personnel (no soldiers, defenders or regiments are used up): the next ship the Dock sends with cargo takes it, and its chance of trouble at sea is 5 points lower. One is kept at a time; another can be ordered once it has been used."
       }
     ]
   },
@@ -288,6 +300,18 @@ window.TSI_DATA.bastionFacilities = [
         "costGP": 0,
         "costText": "0",
         "notes": "Gives Advantage on all rolls for Bastion Defenders if the Bastion is attacked during the next 7 days"
+      },
+      {
+        "id": "protect_maritime_approaches",
+        "label": "Protect Maritime Approaches",
+        "days": 2,
+        "options": [],
+        "costGP": 0,
+        "costText": "0",
+        "requiredFacilityLevel": 2,
+        "protectionWindow": "maritime_approaches",
+        "windowDays": 7,
+        "notes": "Protects the sea lanes for 7 days (the day it completes is Day 1): every ship the Dock sends with cargo in that time has its chance of trouble at sea 5 points lower. Not used up, and not extended: the next order can be issued once it ends. Separate from Patrol."
       }
     ]
   },

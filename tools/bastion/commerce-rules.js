@@ -289,17 +289,38 @@
     var days = Math.floor(num((commerce(data).saturation || {}).windowDays, 1, 3650, 28));
     return function (goodId) { return R.lotsSold(s, port, goodId, s.day - days, s.day); };
   };
-  R.cargoQuote = function (data, charter, port, clan, cargo, prior) {
+  /* The terms a sale uses, whole: { priceMult, feePerLot, tariffPct }. A
+     Charter's own (negotiated) terms win; anything it doesn't set is the
+     standard: ×1.00, the route's or the data's fee, the Clan's or the
+     data's tariff. */
+  R.standardTerms = function (data, port, clan) {
     var c = commerce(data);
     var route = R.portRoute(data, port) || {};
-    var terms = isObj(charter && charter.terms) ? charter.terms : {};
-    var priceMult = isNum(terms.priceMult) ? Math.max(0, Math.min(10, terms.priceMult)) : 1;
-    var feePerLot = isNum(terms.feePerLot) ? Math.max(0, terms.feePerLot)
-      : isNum(route.feePerLot) ? route.feePerLot : Math.max(0, num(c.feePerLot, 0, 100000, 0));
     var byClan = isObj(c.tariffByClan) ? c.tariffByClan : {};
-    var tariffPct = isNum(terms.tariffPct) ? Math.max(0, Math.min(100, terms.tariffPct))
-      : isNum(route.tariffPct) ? route.tariffPct
-      : isNum(byClan[clan]) ? Math.max(0, Math.min(100, byClan[clan])) : num(c.tariffPct, 0, 100, 0);
+    return {
+      priceMult: 1,
+      feePerLot: isNum(route.feePerLot) ? route.feePerLot : Math.max(0, num(c.feePerLot, 0, 100000, 0)),
+      tariffPct: isNum(route.tariffPct) ? route.tariffPct
+        : isNum(byClan[clan]) ? Math.max(0, Math.min(100, byClan[clan])) : num(c.tariffPct, 0, 100, 0)
+    };
+  };
+  R.effectiveTerms = function (data, charter, port, clan) {
+    var std = R.standardTerms(data, port, clan);
+    var terms = isObj(charter && charter.terms) ? charter.terms : {};
+    return {
+      priceMult: isNum(terms.priceMult) ? Math.max(0, Math.min(10, terms.priceMult)) : std.priceMult,
+      feePerLot: isNum(terms.feePerLot) ? Math.max(0, terms.feePerLot) : std.feePerLot,
+      tariffPct: isNum(terms.tariffPct) ? Math.max(0, Math.min(100, terms.tariffPct)) : std.tariffPct
+    };
+  };
+  /* locked (optional): a voyage's own terms, set when it sailed; they are
+     used as they are, so changing the Charter afterwards never reprices a
+     ship already at sea. */
+  R.cargoQuote = function (data, charter, port, clan, cargo, prior, locked) {
+    var eff = isObj(locked) && isNum(locked.priceMult) && isNum(locked.feePerLot) && isNum(locked.tariffPct) ? locked : R.effectiveTerms(data, charter, port, clan);
+    var priceMult = Math.max(0, Math.min(10, eff.priceMult));
+    var feePerLot = Math.max(0, eff.feePerLot);
+    var tariffPct = Math.max(0, Math.min(100, eff.tariffPct));
     var lots = 0;
     var lines = (cargo || []).filter(function (x) { return isObj(x) && x.goodId && clampInt(x.qty, 0) > 0; }).map(function (x) {
       var g = R.good(data, x.goodId);
@@ -469,7 +490,10 @@
       scheduleId: opts && typeof opts.scheduleId === 'string' ? opts.scheduleId : null,
       outcome: null,
       recalledDay: null,
-      roll: null
+      roll: null,
+      /* The money terms it sailed with, in full (Harry, 20 October 2026):
+         a later change to the Charter never reprices this ship. */
+      terms: R.effectiveTerms(data, charter, charter.port, charter.clan)
     };
     R.voyages(s).push(v);
     var where = R.portWithClan(data, v.port, v.clan);
@@ -583,7 +607,7 @@
       }
       var rec;
       if (roll > chance) {
-        var q = R.cargoQuote(data, R.charterById(s, v.charterId), v.port, v.clan, v.cargo, R.saturationPrior(s, data, v.port));
+        var q = R.cargoQuote(data, R.charterById(s, v.charterId), v.port, v.clan, v.cargo, R.saturationPrior(s, data, v.port), v.terms);
         s.treasuryGP += q.net;
         v.outcome = 'sold';
         rec = receipt('sold', q);
@@ -637,6 +661,132 @@
     return out;
   };
 
+  /* ---------- Negotiated Charter terms (Harry, 20 October 2026) ----------
+     The DM sets a Charter's price multiplier, shipping fee per lot and
+     tariff from what happened in the story: "Amend terms…" in the Hall.
+     Safety limits only (no preset rewards, no rolls, nothing automatic):
+     price ×0.50 to ×2.00, fee 0 to 50 gp a lot, tariff 0 to 50%. A reason
+     is required. Standard terms (×1.00, 0 gp, 0%) are what a Charter has
+     until then, and what "Reset to standard terms" restores (it removes the
+     negotiated overrides; it makes no agreement). Terms stay until amended
+     or reset: nothing expires. Each change is kept in the Charter's
+     history (termsLog) and logged. A Charter can be amended before it is
+     registered; shipping still needs registration. Ships already at sea
+     keep the terms they sailed with (voyage.terms). */
+  R.TERM_LIMITS = { priceMult: { min: 0.5, max: 2 }, feePerLot: { min: 0, max: 50 }, tariffPct: { min: 0, max: 50 } };
+  R.termsText = function (t) {
+    return '×' + Number(t.priceMult).toFixed(2) + ' price · ' + t.feePerLot + ' gp shipping a lot · ' + t.tariffPct + '% tariff';
+  };
+  R.isStandardTerms = function (data, charter) {
+    var e = R.effectiveTerms(data, charter, charter.port, charter.clan);
+    var std = R.standardTerms(data, charter.port, charter.clan);
+    return e.priceMult === std.priceMult && e.feePerLot === std.feePerLot && e.tariffPct === std.tariffPct;
+  };
+  function termsEqual(a, b) { return a.priceMult === b.priceMult && a.feePerLot === b.feePerLot && a.tariffPct === b.tariffPct; }
+  /* Check what was typed: { ok, terms: { priceMult, feePerLot, tariffPct } } or { ok: false, message }. */
+  R.checkTermsInput = function (input) {
+    function read(v) { return typeof v === 'number' ? v : (typeof v === 'string' && v.trim() !== '' ? Number(v.trim()) : NaN); }
+    var L = R.TERM_LIMITS;
+    var price = read(input && input.priceMult), fee = read(input && input.feePerLot), tariff = read(input && input.tariffPct);
+    if (!isFinite(price) || Math.round(price * 100) / 100 !== price || price < L.priceMult.min || price > L.priceMult.max) return { ok: false, message: 'The price multiplier is from ×0.50 to ×2.00 (two decimals at most).' };
+    if (!isFinite(fee) || Math.floor(fee) !== fee || fee < L.feePerLot.min || fee > L.feePerLot.max) return { ok: false, message: 'The shipping fee is a whole number of gold pieces a lot, from 0 to 50.' };
+    if (!isFinite(tariff) || Math.floor(tariff) !== tariff || tariff < L.tariffPct.min || tariff > L.tariffPct.max) return { ok: false, message: 'The tariff is a whole percentage from 0 to 50.' };
+    return { ok: true, terms: { priceMult: price, feePerLot: fee, tariffPct: tariff } };
+  };
+  function cleanReason(why) {
+    var t = typeof why === 'string' ? why.replace(/\s+/g, ' ').trim() : '';
+    return t;
+  }
+  function setTerms(s, data, charter, after, why, kind, day) {
+    R.lockOutboundTerms(s, data);
+    var before = R.effectiveTerms(data, charter, charter.port, charter.clan);
+    var std = R.standardTerms(data, charter.port, charter.clan);
+    var over = {};
+    if (after.priceMult !== std.priceMult) over.priceMult = after.priceMult;
+    if (after.feePerLot !== std.feePerLot) over.feePerLot = after.feePerLot;
+    if (after.tariffPct !== std.tariffPct) over.tariffPct = after.tariffPct;
+    charter.terms = over;
+    if (!arr(charter.termsLog)) charter.termsLog = [];
+    charter.termsLog.push({ day: dayNum(day, 1), kind: kind, before: before, after: after, why: why });
+    return before;
+  }
+  R.amendCharterTerms = function (s, data, charterId, input, why) {
+    var c = R.charterById(s, charterId);
+    if (!c) return { ok: false, message: 'That Port Charter isn\'t held.' };
+    var reason = cleanReason(why);
+    if (reason.length < 3) return { ok: false, message: 'Say why the terms changed (what happened in the story).' };
+    if (reason.length > 300) return { ok: false, message: 'Keep the reason to 300 characters or fewer.' };
+    var chk = R.checkTermsInput(input);
+    if (!chk.ok) return chk;
+    var now = R.effectiveTerms(data, c, c.port, c.clan);
+    if (termsEqual(now, chk.terms)) return { ok: false, message: 'Those are the terms already: nothing to change.' };
+    var before = setTerms(s, data, c, chk.terms, reason, 'amend', s.day);
+    return { ok: true, charter: c, log: ['Port Charter', R.portName(c.port) + ' Charter terms amended (Day ' + s.day + '): ' + R.termsText(before) + ' → ' + R.termsText(chk.terms) + '. Reason: ' + reason + ' Ships already at sea keep the terms they sailed with.'] };
+  };
+  R.resetCharterTerms = function (s, data, charterId, why) {
+    var c = R.charterById(s, charterId);
+    if (!c) return { ok: false, message: 'That Port Charter isn\'t held.' };
+    var reason = cleanReason(why);
+    if (reason.length < 3) return { ok: false, message: 'Say why the terms are going back to standard.' };
+    if (reason.length > 300) return { ok: false, message: 'Keep the reason to 300 characters or fewer.' };
+    if (R.isStandardTerms(data, c)) return { ok: false, message: 'This Charter is already on standard terms.' };
+    var std = R.standardTerms(data, c.port, c.clan);
+    var before = setTerms(s, data, c, std, reason, 'reset', s.day);
+    return { ok: true, charter: c, log: ['Port Charter', R.portName(c.port) + ' Charter reset to standard terms (Day ' + s.day + '): ' + R.termsText(before) + ' → ' + R.termsText(std) + '. Reason: ' + reason + ' Ships already at sea keep the terms they sailed with.'] };
+  };
+  /* A worked comparison for the Hall, an estimate at today's market: the
+     Clan's most sought-after good (the first, in the data's order), 4 lots,
+     at standard terms and at the Charter's terms, through the same pricing
+     engine a sale uses (demand and market saturation included). Returns
+     null if the Clan has nothing in demand. */
+  R.termsPreview = function (s, data, charter) {
+    var demand = commerce(data).demand;
+    var table = isObj(demand) && isObj(demand[charter.clan]) ? demand[charter.clan] : {};
+    var goodId = Object.keys(table).filter(function (id) { return table[id] === 'high' && R.good(data, id); })[0];
+    if (!goodId) return null;
+    var cargo = [{ goodId: goodId, qty: 4 }];
+    var prior = R.saturationPrior(s, data, charter.port);
+    var cur = R.cargoQuote(data, charter, charter.port, charter.clan, cargo, prior);
+    var std = R.cargoQuote(data, charter, charter.port, charter.clan, cargo, prior, R.standardTerms(data, charter.port, charter.clan));
+    return { goodId: goodId, name: R.goodName(data, goodId), lots: 4, standard: { gross: std.gross, fee: std.fee, tariff: std.tariff, net: std.net }, current: { gross: cur.gross, fee: cur.fee, tariff: cur.tariff, net: cur.net } };
+  };
+
+  /* ---------- Commercial voyage protections (Harry, 20 October 2026) ----------
+     The Barracks' Guard Commercial Convoy prepares one Convoy charge (at
+     most one kept): the next ship the Dock sends uses it up. The
+     Watchtower's Protect Maritime Approaches protects every ship that sails
+     during 7 days, the day it completes counting as Day 1 (not used up,
+     never extended while active). Both are applied by themselves at
+     departure by R.voyageProtections, with the Blessing of Pelagos; the cuts
+     add up and never take the chance below 0. */
+  /* Why a protection order can't be issued now, or ''. */
+  R.protectionBusy = function (s, data, fn) {
+    var ready = isObj(tn(s).protections) ? tn(s).protections : {};
+    if (fn && fn.protectionCharge && fn.protectionMax) {
+      var r = ready[fn.protectionCharge];
+      if (isObj(r) && isNum(r.charges) && r.charges >= fn.protectionMax) return 'A Commercial Convoy is already prepared and waits for the next ship the Dock sends.';
+    }
+    if (fn && fn.protectionWindow) {
+      var w = ready[fn.protectionWindow];
+      if (isObj(w) && isNum(w.untilDay) && w.untilDay >= s.day) return 'Protected Maritime Approaches are active until ' + R.dayLabel(w.untilDay) + '. The next order can be issued once they end.';
+    }
+    return '';
+  };
+  /* The protections in plain words, for the Dock and the facility panels:
+     [{ id, label, cut, state, text }] (state: 'ready' | 'active' | 'none' | 'unavailable'). */
+  R.protectionStatus = function (s, data) {
+    var ready = isObj(tn(s).protections) ? tn(s).protections : {};
+    return (arr(commerce(data).protections) || []).filter(isObj).map(function (p) {
+      var r = isObj(ready[p.id]) ? ready[p.id] : {};
+      var cut = Math.floor(num(p.cut, 0, 100, 0));
+      var label = txt(p.label, 80) || p.id;
+      if (p.available !== true) return { id: p.id, label: label, cut: cut, state: 'unavailable', text: label + ': not available yet.' };
+      if (isNum(r.untilDay) && r.untilDay >= s.day) return { id: p.id, label: label, cut: cut, state: 'active', text: label + ': active until ' + R.dayLabel(r.untilDay) + ' (−' + cut + ' points of risk on each ship that sails).' };
+      if (isNum(r.charges) && r.charges > 0) return { id: p.id, label: label, cut: cut, state: 'ready', text: label + ': ' + r.charges + ' ready for the next ship (−' + cut + ' points of risk).' };
+      return { id: p.id, label: label, cut: cut, state: 'none', text: label + ': none ready (−' + cut + ' points of risk when it is).' };
+    });
+  };
+
   /* ---------- Saves: tidy each record, safe to run twice ---------- */
   function cleanCargo(list2) {
     return (arr(list2) || []).filter(function (x) { return isObj(x) && typeof x.goodId === 'string' && x.goodId && clampInt(x.qty, 0) > 0; })
@@ -661,7 +811,7 @@
       if (!pick[p] || (pick[p].status !== 'registered' && c.status === 'registered')) pick[p] = c;
     });
     return all.filter(function (c) { return pick[txt(c.port, 40)] === c; }).map(function (c) {
-      return {
+      return Object.assign({
         id: txt(c.id, 80), port: txt(c.port, 40), clan: txt(c.clan, 40), mode: R.ROUTE_MODES.cargo,
         status: STATUSES.indexOf(c.status) !== -1 ? c.status : 'earned',
         earnedDay: dayNum(c.earnedDay, 1),
@@ -669,9 +819,20 @@
         terms: cleanTerms(c.terms),
         from: { code: txt(c.from && c.from.code, 20), title: txt(c.from && c.from.title, 80) },
         text: txt(c.text, 200)
-      };
+      }, cleanTermsLog(c.termsLog));
     });
   };
+  /* The amendment history, kept whole: it only ever grows. Added to a
+     Charter only once it has an entry, so older Charters are unchanged. */
+  function termsSet(t) {
+    return isObj(t) ? { priceMult: isNum(t.priceMult) ? Math.max(0, Math.min(10, t.priceMult)) : 1, feePerLot: isNum(t.feePerLot) ? Math.max(0, Math.min(100000, t.feePerLot)) : 0, tariffPct: isNum(t.tariffPct) ? Math.max(0, Math.min(100, t.tariffPct)) : 0 } : null;
+  }
+  function cleanTermsLog(src) {
+    var list2 = (arr(src) || []).filter(function (x) { return isObj(x) && termsSet(x.before) && termsSet(x.after); }).map(function (x) {
+      return { day: dayNum(x.day, 1), kind: x.kind === 'reset' ? 'reset' : 'amend', before: termsSet(x.before), after: termsSet(x.after), why: txt(x.why, 300) };
+    });
+    return list2.length ? { termsLog: list2 } : {};
+  }
   R.cleanVoyages = function (src, today) {
     return (arr(src) || []).filter(function (v) { return isObj(v) && typeof v.id === 'string' && v.id && typeof v.port === 'string' && v.port; }).map(function (v) {
       var depart = dayNum(v.departDay, today);
@@ -698,9 +859,28 @@
            counts as turned back, so its cargo comes home and nothing is paid). */
         outcome: outcome,
         recalledDay: recalled,
-        roll: isNum(v.roll) ? clampInt(v.roll, 1, 100) : null
+        roll: isNum(v.roll) ? clampInt(v.roll, 1, 100) : null,
+        terms: cleanLockedTerms(v.terms)
       };
     });
+  };
+  /* A voyage's locked terms, or null (a ship saved before they existed). */
+  function cleanLockedTerms(t) {
+    if (!isObj(t) || !isNum(t.priceMult) || !isNum(t.feePerLot) || !isNum(t.tariffPct)) return null;
+    return { priceMult: Math.max(0, Math.min(10, t.priceMult)), feePerLot: Math.max(0, Math.min(100000, t.feePerLot)), tariffPct: Math.max(0, Math.min(100, t.tariffPct)) };
+  }
+  /* A ship still outbound with no locked terms (saved before this existed)
+     gets its current effective terms once, before any amendment could
+     reprice it. Run on load and before every amendment; changes nothing
+     for a ship that has them. Returns how many it fixed. */
+  R.lockOutboundTerms = function (s, data) {
+    var n = 0;
+    R.voyages(s).forEach(function (v) {
+      if (v.stage !== 'outbound' || v.terms) return;
+      v.terms = R.effectiveTerms(data, R.charterById(s, v.charterId), v.port, v.clan);
+      n++;
+    });
+    return n;
   };
   R.cleanLedger = function (src) {
     return (arr(src) || []).filter(function (x) { return isObj(x) && typeof x.port === 'string' && typeof x.goodId === 'string' && clampInt(x.qty, 0) > 0; })
@@ -759,6 +939,7 @@
     var t = tn(d);
     t.portCharters = R.cleanPortCharters(t.portCharters);
     t.voyages = R.cleanVoyages(t.voyages, d.day);
+    R.lockOutboundTerms(d, data);
     t.schedules = R.cleanSchedules(t.schedules, d.day);
     t.cargoSales = R.cleanCargoSales(t.cargoSales, num(commerce(data).salesKept, 1, 500, 30));
     t.protections = R.cleanProtections(t.protections);
@@ -776,7 +957,7 @@
   R.shiftCommerce = function (s, n) {
     var t = tn(s);
     var mv = function (obj, key) { if (obj && typeof obj[key] === 'number') obj[key] += n; };
-    (arr(t.portCharters) || []).forEach(function (c) { mv(c, 'earnedDay'); mv(c, 'registeredDay'); });
+    (arr(t.portCharters) || []).forEach(function (c) { mv(c, 'earnedDay'); mv(c, 'registeredDay'); (arr(c.termsLog) || []).forEach(function (e) { mv(e, 'day'); }); });
     (arr(t.voyages) || []).forEach(function (v) { mv(v, 'departDay'); mv(v, 'arriveDay'); mv(v, 'returnDay'); mv(v, 'recalledDay'); });
     (arr(t.marketLedger) || []).forEach(function (x) { mv(x, 'day'); });
     (arr(t.schedules) || []).forEach(function (sc) { mv(sc, 'nextDay'); });

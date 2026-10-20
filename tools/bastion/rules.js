@@ -1768,6 +1768,8 @@
       return R.issueDrill(s, data, pick.regimentId, rand);
     }
     if (pendingSame(s, facId, fnId)) return { ok: false, message: 'That order is already pending.' };
+    /* A commercial voyage protection (20 October 2026): refused while one is ready or active. */
+    if (R.protectionBusy) { var pbusy = R.protectionBusy(s, data, fn); if (pbusy) return { ok: false, message: pbusy }; }
     /* A Muster (pull request 8a): one formation for each of its lists. */
     if (fn.muster) {
       var choices = R.fnOptions(s, data, fac, fn);
@@ -2534,6 +2536,23 @@
     }
     /* The Shrines (pull request 8b): a Blessing of Pelagos for the next
        ship, or a Great Rite waiting at the Ironbow; each once. */
+    /* The Watchtower's Protect Maritime Approaches: active for windowDays,
+       the day it completes counting as Day 1 (so it ends on day + windowDays − 1). */
+    if (fn.protectionWindow) {
+      var tw = s.tradeNetwork;
+      if (!isObj(tw.protections)) tw.protections = {};
+      var until = s.day + clampInt(fn.windowDays || 7, 1, 365) - 1;
+      tw.protections[fn.protectionWindow] = { untilDay: until };
+      return [['Order Completed', (order.label || fac.name + ': ' + fn.label) + ' → Protected Maritime Approaches are active until ' + R.dayLabel(until) + ': every ship the Dock sends with cargo in that time has its voyage risk 5 points lower.']];
+    }
+    if (fn.protectionCharge === 'commercial_convoy') {
+      var tc = s.tradeNetwork;
+      if (!isObj(tc.protections)) tc.protections = {};
+      var pc = isObj(tc.protections.commercial_convoy) ? tc.protections.commercial_convoy : {};
+      pc.charges = Math.min(clampInt(fn.protectionMax || 1, 1, 99), clampInt(pc.charges || 0, 0, 999) + 1);
+      tc.protections.commercial_convoy = pc;
+      return [['Order Completed', (order.label || fac.name + ': ' + fn.label) + ' → A Commercial Convoy is prepared for the next ship the Dock sends with cargo (' + pc.charges + ' held).']];
+    }
     if (fn.protectionCharge) {
       var t8 = s.tradeNetwork;
       if (!isObj(t8.protections)) t8.protections = {};
