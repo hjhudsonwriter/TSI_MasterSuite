@@ -51,7 +51,7 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     equal(await bare(ba, '[data-test=creature-handler-elara_wyvern]'), 'Elara');
     equal(await bare(ba, '[data-test=creature-bond-elara_wyvern]'), '1: Acclimatised');
     assert(/Establish Keeper's Routine/.test(await bare(ba, '[data-test=creature-next-elara_wyvern]')), await bare(ba, '[data-test=creature-next-elara_wyvern]'));
-    assert(/Not available yet/.test(await bare(ba, '[data-test=creature-profile-elara_wyvern]')), 'riding is shown as not available');
+    assert(/Riding Not ready for a first flight yet/.test(await bare(ba, '[data-test=creature-profile-elara_wyvern]')), 'riding is shown as not ready');
     equal(await ba.$('[data-test=creature-confirm-elara_wyvern]'), null, 'nothing to confirm yet');
   });
 
@@ -131,6 +131,60 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     const d = s.creatures[0].development;
     equal([d.handlerId, d.bond.level, Object.keys(d.training), d.temperament.dominant], ['Mira', 0, ['wyr_keeper_routine'], 'Proud']);
     assert(s.log.some(l => /Bond 2/.test(l.body || l.text || '')), 'the Day Log has the confirmation');
+  });
+
+  section('Riding preparation (phase 3)');
+
+  await check('the harness is ordered for 150 gp; cancelling warns that it isn\'t refunded', async () => {
+    await ba.evaluate(() => TSI.bastion.debug.change(s => {
+      s.partyLevel = 13; s.treasuryGP = 400; s.facilityLevels.wyvern_roost = 5;
+      s.pendingOrders = [];
+      const d = s.creatures[0].development;
+      d.handlerId = 'elara'; d.bond = { level: 4, ready: null }; d.training = {}; d.firstFlight = { approved: false, day: null, handlerId: null };
+    }));
+    await openRoost();
+    const sel = '[data-test="issue-wyvern_roost__wyr_riding_harness"]';
+    await ba.waitForSelector(sel);
+    equal(await ba.$eval(sel, b => b.disabled), false);
+    await ba.click(sel);
+    await ba.waitForTimeout(500);
+    equal((await bas(ba)).treasuryGP, 250);
+    await close();
+    await ba.click('[data-test=orders-count]');
+    await ba.waitForSelector('[data-test=cancel-0]');
+    const cancel = await ba.$('[data-test=cancel-0]');
+    assert(cancel, 'the pending order has a Cancel button');
+    if (cancel) {
+      await cancel.click({ force: true });
+      await ba.waitForSelector('.tsi-modal:not(.tsi-bas-panel)');
+      assert(/150 gp already paid is not refunded/.test(await ba.$eval('.tsi-modal:not(.tsi-bas-panel)', n => n.textContent)), 'warns first');
+      await H.clickModal(ba, 'Cancel order');
+      await ba.waitForTimeout(500);
+      equal([(await bas(ba)).treasuryGP, (await bas(ba)).pendingOrders.length], [250, 0], 'cancelled, not refunded');
+    }
+    await ba.evaluate(() => TSI.bastion.debug.change(s => { s.treasuryGP = 400; }));
+  });
+
+  await check('the flight programmes are done, the checks tick, and Confirm first flight records story permission only', async () => {
+    await openRoost();
+    await ba.click('[data-test="issue-wyvern_roost__wyr_riding_harness"]');
+    await ba.waitForTimeout(400);
+    await completeLast();
+    await ba.evaluate(() => TSI.bastion.debug.change(s => { const d = s.creatures[0].development; d.training.wyr_ascent_landing = { day: 1 }; d.training.wyr_emergency_recall = { day: 1 }; }));
+    await openRoost();
+    assert(/First flight ready, awaiting the DM's milestone/.test(await bare(ba, '[data-test=creature-riding-elara_wyvern]')), await bare(ba, '[data-test=creature-riding-elara_wyvern]'));
+    assert(!/✗|○/.test(await bare(ba, '[data-test=creature-flightchecks-elara_wyvern]')), 'every check ticked');
+    await ba.click('[data-test=creature-flight-elara_wyvern]');
+    await ba.waitForSelector('[data-test=flight-dialog]');
+    equal(await ba.$eval('[data-test=flight-dialog] .tsi-modal__foot .tsi-btn--primary', b => b.disabled), true, 'a reason is required');
+    await ba.fill('[data-test=flight-why]', 'Elara and the wyvern crossed the bay at dawn.');
+    await ba.click('[data-test=flight-dialog] .tsi-modal__foot .tsi-btn--primary');
+    await ba.waitForTimeout(500);
+    const d = (await bas(ba)).creatures[0].development;
+    equal([d.firstFlight.approved, d.firstFlight.handlerId, d.harness.fitted, d.harness.paidGP], [true, 'elara', true, 150]);
+    await openRoost();
+    assert(/Mounted Flight Qualified/.test(await bare(ba, '[data-test=creature-riding-elara_wyvern]')) && /not part of the Bastion yet/.test(await bare(ba, '[data-test=creature-riding-elara_wyvern]')));
+    equal(await ba.$('[data-test=creature-flight-elara_wyvern]'), null, 'no second confirmation');
   });
 
   await check('nothing went wrong or reached for the internet', async () => {
