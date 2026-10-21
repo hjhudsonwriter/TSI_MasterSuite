@@ -26,9 +26,13 @@ Each code is **signed** with a secret only that handler and your Bastion know. I
 4. **You** press **Paste a request code…** in the same box (or **Open a file…**) and **Check and apply**. The Bastion does it once, or refuses it with a plain reason. Pasting the same code again changes nothing.
 5. **The answer goes back** as a fresh snapshot: the Result box that appears after you apply a request already holds one, ready to copy and send. When they paste it, the request leaves their "to send" list and shows as accepted or refused.
 
+## If a request was never sent
+
+Each unsent request has a **Forget it** button. Use it if you lost the code or never sent it, because an unsent request stops you making another at that building. Forgetting only clears the phone's list: if the DM already has the code, the Bastion can still apply it, and the answer shows in your next snapshot.
+
 ## If a code gets out
 
-Press **Take back code** beside the player's name. Every request signed with the old code is refused from then on. Press **New pairing code…** to give them a new one.
+Press **Take back code** beside the player's name. Every request signed with the old code is refused from then on. Press **New pairing code…** to give them a new one. A pairing code does not expire and is not single-use, so send it privately. The phone keeps showing the last snapshot it was given until the player unlinks it; it just can't make requests the Bastion will accept.
 
 ## Putting the page on a phone
 

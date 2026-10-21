@@ -140,7 +140,7 @@
     var r = apply(b, cmd(b, c, 'order.request', { fnId: 'wyr_safe_acclimatisation' }));
     var s = snapOf(b, 'Mira');
     t.same([s.receipts[0].state, s.receipts[0].dueDay], ['scheduled', r.receipt.dueDay]);
-    BR.removeOrder(b, last(b).id);
+    complete(b, last(b));
     t.equal(snapOf(b, 'Mira').receipts[0].state, 'completed');
   });
 
@@ -462,5 +462,92 @@
     });
     t.equal(Object.keys(e.beast.done).length, 0);
     t.same(BR.cleanBeast({ done: { '__proto__': { r: 'applied' }, 'constructor': { r: 'applied' } } }).done, {});
+  });
+
+  group('Beast Handler: what the independent review found (21 October 2026)');
+
+  test('an order the DM cancels is shown as cancelled, not completed; one that ran to its day is completed', function (t) {
+    var b = world();
+    var c = housed(b, 'wyvern', 'Stormwing', 'Mira');
+    var r = apply(b, cmd(b, c, 'order.request', { fnId: 'wyr_safe_acclimatisation' }));
+    t.ok(r.ok, r.receipt && r.receipt.why);
+    var row = function () { return BR.beastReceiptsFor(b, 'mira')[0]; };
+    t.equal(row().state, 'scheduled');
+    var order = last(b);
+    BR.cancelOrder(b, order.id, bdata, 1000);
+    t.equal(row().state, 'cancelled', 'gone before its ready day');
+    t.ok(/cancelled in the Bastion/.test(TSI.beasthandler.model.requestLine({ state: 'cancelled' })));
+    /* the same order, left to finish */
+    var b2 = world();
+    var c2 = housed(b2, 'wyvern', 'Stormwing', 'Mira');
+    t.ok(apply(b2, cmd(b2, c2, 'order.request', { fnId: 'wyr_safe_acclimatisation' })).ok);
+    var o2 = last(b2);
+    complete(b2, o2);
+    t.equal(BR.beastReceiptsFor(b2, 'mira')[0].state, 'completed');
+  });
+
+  test('forgetting old receipts never lets an old request be done again, and a request dated far ahead is refused', function (t) {
+    var b = world();
+    var c = housed(b, 'wyvern', 'Stormwing', 'Mira');
+    var first = cmd(b, c, 'profile.set', { dominant: 'Proud' });
+    t.ok(apply(b, first).ok);
+    var B = BR.beastState(b);
+    /* a thousand and one newer receipts push the first one out */
+    for (var i = 0; i < 1001; i++) B.done['filler-' + i + '-abcdef'] = { r: 'refused', why: 'x', day: 1, at: NOW + 5000 + i, type: 'profile.set', handler: 'mira', who: '', creature: c.id, label: '', orderId: '', dueDay: null };
+    BR.cleanBeast(B);
+    var cleaned = BR.cleanBeast(B);
+    t.ok(cleaned.floor >= NOW + 1000 && !cleaned.done[first.id], 'the oldest receipt went and the floor remembers it');
+    b.beast = cleaned;
+    var again = BR.beastProcess(b, bdata, first, { via: 'local' }, NOW + 5000, rnd);
+    t.equal(again.ok, false);
+    t.ok(!again.duplicate, 'it is no longer recognised as a duplicate...');
+    t.ok(/too old/.test(again.receipt.why), '...but it can no longer be done: ' + again.receipt.why);
+    /* a request made after the floor still works */
+    var fresh = cmd(b, c, 'profile.set', { attachment: 'A steady gaze' }, { at: cleaned.floor + 100000 });
+    t.ok(BR.beastProcess(b, bdata, fresh, { via: 'local' }, cleaned.floor + 200000, rnd).ok);
+    /* dated three days ahead: refused, so it could never expire */
+    var b2 = world();
+    var c2 = housed(b2, 'wyvern', 'Stormwing', 'Mira');
+    var future = cmd(b2, c2, 'profile.set', { dominant: 'Proud' }, { at: NOW + 3 * 24 * 3600 * 1000 });
+    var r = BR.beastProcess(b2, bdata, future, { via: 'local' }, NOW, rnd);
+    t.equal(r.ok, false);
+    t.ok(/in the future/.test(r.receipt.why), r.receipt.why);
+    var near = cmd(b2, c2, 'profile.set', { dominant: 'Proud' }, { at: NOW + 3600 * 1000 });
+    t.ok(BR.beastProcess(b2, bdata, near, { via: 'local' }, NOW, rnd).ok, 'a phone clock an hour fast is fine');
+    t.equal(BR.cleanBeast({ floor: 'x' }).floor, 0);
+    t.equal(BR.cleanBeast({ floor: 500 }).floor, 500);
+  });
+
+  test('a refusal never names a beast that is not the requesting handler\'s, and leaves its label empty', function (t) {
+    var b = world();
+    var mine = housed(b, 'wyvern', 'Stormwing', 'Mira');
+    var theirs = housed(b, 'griffin', 'Swiftwing', 'Joss');
+    var waiting = grant(b, 'dire_wolf', 'Greyfang');
+    var r1 = apply(b, cmd(b, theirs, 'profile.set', { dominant: 'Proud' }));
+    t.equal(r1.ok, false);
+    t.ok(!/Swiftwing/.test(r1.receipt.why) && r1.receipt.label === '', r1.receipt.why + ' / ' + r1.receipt.label);
+    var r2 = apply(b, cmd(b, waiting, 'profile.set', { dominant: 'Proud' }));
+    t.ok(!/Greyfang/.test(r2.receipt.why) && r2.receipt.label === '', r2.receipt.why);
+    var own = apply(b, cmd(b, mine, 'profile.set', { dominant: 'Proud' }));
+    t.ok(own.ok && /Stormwing/.test(own.receipt.label), 'its own handler still sees its beast named');
+  });
+
+  test('a pasted code survives the extra invisible characters a chat app adds, and hostile text never throws', function (t) {
+    var secret = 'abcdefghijklmnopqrstuvwx';
+    var code = C.encodeSnapshot({ kind: 'x', hello: 'wyvern' }, secret);
+    var messy = '​' + code.slice(0, 20) + '‍⁠' + code.slice(20) + '﻿‮';
+    t.equal(C.tidy(messy), code);
+    t.ok(C.decodeSnapshot(messy, secret).ok, 'zero-width characters are ignored');
+    var lone = 'BHS1.' + code.split('.')[1] + '\ud800.' + code.split('.')[2];
+    var r = C.decodeSnapshot(lone, secret);
+    t.equal(r.ok, false);
+    t.ok(/isn't a snapshot code/.test(r.why));
+    t.equal(C.peekCommand('BHC1.\ud800.abcd').ok, false);
+    t.equal(C.decodePairing('BHP1.\udfff').ok, false);
+    t.equal(C.decodeSnapshot('BHS1.ab cd.zz', secret).ok, false);
+  });
+
+  test('a note\'s hidden direction marks are cleaned, the Arabic letter mark included', function (t) {
+    t.equal(TSI.beasthandler.profile.clean('Proud؜⁠ and calm‮', 40), 'Proud and calm');
   });
 }());

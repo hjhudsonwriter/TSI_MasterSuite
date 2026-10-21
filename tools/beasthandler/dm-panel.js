@@ -93,7 +93,9 @@
           onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'beast-add-dialog'); host.life.setTimeout(function () { input.focus(); }, 0); }
         });
         if (!ok || !host.life.alive) return;
-        return onPair(input.value, false);
+        /* A name that is already paired makes a NEW code, which stops the old one: ask first, as the button does. */
+        var typed = R.beastRegistry(host.state(), host.data).filter(function (h) { return h.id === BH.projection.handlerKey(input.value); })[0];
+        return onPair(typed ? typed.name : input.value, !!(typed && typed.paired));
       });
 
       /* A request code from a phone: pasted or opened from a file. */

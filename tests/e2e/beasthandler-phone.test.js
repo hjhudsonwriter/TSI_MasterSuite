@@ -282,6 +282,40 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     }
   });
 
+  await check('Add a handler with a name that is already paired asks before it swaps their code', async () => {
+    const secretOf = async id => (await state()).beast.handlers.filter(h => h.id === id)[0].secret;
+    const before = await secretOf('joss');
+    assert(before, 'Joss has a code from the earlier check');
+    await openBox();
+    await ba.click('[data-test=beast-add]');
+    await ba.waitForSelector('[data-test=beast-add-name]');
+    await ba.fill('[data-test=beast-add-name]', '  JOSS ');
+    await ba.locator('.tsi-modal__foot .tsi-btn--primary').last().click();
+    await ba.waitForFunction(() => {
+      const all = document.querySelectorAll('.tsi-modal');
+      return /the old one stops working/.test(all[all.length - 1].textContent);
+    }, null, { timeout: 5000 });
+    await ba.locator('.tsi-modal__foot button', { hasText: 'Cancel' }).last().click();
+    await ba.waitForFunction(() => document.querySelectorAll('.tsi-modal').length === 1);
+    equal(await secretOf('joss'), before, 'Cancel changed nothing');
+  });
+
+  await check('a request that was never sent can be forgotten on the phone; a damaged stored snapshot is forgotten instead of blanking the page', async () => {
+    for (let i = 0; i < 3; i++) await pp.click('[data-test=bh-back]', { timeout: 1500 }).catch(() => {});
+    await pp.waitForSelector('[data-test=bhp-outbox]');
+    const before = await pp.$$eval('[data-test=bhp-outbox] li', n => n.length);
+    assert(before >= 1, 'a request is waiting to be sent');
+    await pp.locator('[data-test^=bhp-forget-]').first().click();
+    await pp.waitForSelector('.tsi-modal');
+    await pp.locator('.tsi-modal__foot .tsi-btn--primary').last().click();
+    await pp.waitForFunction(n => document.querySelectorAll('[data-test=bhp-outbox] li').length === n - 1, before);
+    equal(await pp.evaluate(() => JSON.parse(localStorage.getItem('tsi.beasthandler.phone.outbox')).length), before - 1, 'and it is gone from what the phone keeps');
+    await pp.evaluate(() => localStorage.setItem('tsi.beasthandler.phone.snapshot', JSON.stringify({ snapshot: { kind: 'tsi.beasthandler.snapshot', version: 1, facilities: 'nope', creatures: 5, campaign: 'x' }, at: Date.now() })));
+    await pp.reload();
+    await pp.waitForSelector('[data-test=bhp-screen-snap]');
+    assert(await pp.$('[data-test=bhp-unlink]'), 'the page is usable, with its Unlink button');
+  });
+
   await check('nothing went wrong or reached for the internet, on either device', async () => {
     for (const c of [dm, ph]) {
       equal(c.log.net, []);

@@ -29,7 +29,7 @@
   /* Words, safely: no markup brackets, control characters or characters that flip the text's direction. */
   Pf.clean = function (text, max) {
     var t = String(text === undefined || text === null ? '' : text)
-      .replace(/[\u0000-\u001f\u007f​-‏‪-‮⁦-⁩﻿<>]/g, ' ')
+      .replace(/[\u0000-\u001f\u007f\u061c\u200b-\u200f\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff<>]/g, ' ')
       .replace(/\s+/g, ' ').trim();
     return typeof max === 'number' ? t.slice(0, max) : t;
   };

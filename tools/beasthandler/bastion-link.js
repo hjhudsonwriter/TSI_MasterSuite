@@ -49,6 +49,8 @@
   var dayNum = R.dayNum;
 
   var RECEIPTS_MAX = 1000;
+  /* A phone's clock may be a little fast; more than this and the request is refused (it would never expire). */
+  var FUTURE_MS = 2 * 24 * 3600 * 1000;
   var PROFILE_LOG_MAX = 40;
   var HANDLERS_MAX = 40;
   var TYPES = ['profile.set', 'order.request'];
@@ -91,15 +93,19 @@
         dueDay: typeof r.dueDay === 'number' && isFinite(r.dueDay) ? Math.floor(r.dueDay) : null
       };
     });
+    /* floor: the time of the newest receipt ever forgotten. A request made at or before it is refused as too
+       old, so forgetting a receipt can never let its request be done a second time. */
+    var floor = typeof src.floor === 'number' && isFinite(src.floor) && src.floor > 0 ? src.floor : 0;
     var ids = Object.keys(done);
     if (ids.length > RECEIPTS_MAX) {
-      ids.sort(function (a, b) { return done[a].at - done[b].at; }).slice(0, ids.length - RECEIPTS_MAX).forEach(function (id) { delete done[id]; });
+      ids.sort(function (a, b) { return done[a].at - done[b].at; }).slice(0, ids.length - RECEIPTS_MAX).forEach(function (id) { floor = Math.max(floor, done[id].at); delete done[id]; });
     }
     return {
       campaignId: typeof src.campaignId === 'string' && /^[A-Za-z0-9]{8,40}$/.test(src.campaignId) ? src.campaignId : '',
       accept: src.accept !== false,
       handlers: handlers,
-      done: done
+      done: done,
+      floor: floor
     };
   };
 
@@ -163,7 +169,7 @@
 
   /* ---------- Receipts ---------- */
   /* A handler's own recent receipts, newest first, each with where its order has got to:
-     'scheduled' (still pending at the building) or 'completed' (done, or no longer pending). */
+     'scheduled' (still pending at the building), 'cancelled' (gone before its ready day) or 'completed'. */
   R.beastReceiptsFor = function (s, handlerId, limit) {
     var B = isObj(s.beast) ? s.beast : null;
     var key = P.handlerKey(handlerId);
@@ -175,7 +181,12 @@
       .sort(function (a, b) { return b.at - a.at; })
       .slice(0, limit || 20)
       .map(function (r) {
-        var state = r.r === 'refused' ? 'refused' : (r.type === 'order.request' ? (r.orderId && pending.has(r.orderId) ? 'scheduled' : 'completed') : 'saved');
+        /* No longer pending, and no Chronicle line from finishing it, before its ready day: it was cancelled
+           (or its building came down), not done. A finished programme leaves a Chronicle line linked to the order. */
+        var cr = r.orderId && !pending.has(r.orderId) ? R.creatureById(s, r.creature) : null;
+        var finished = !!(cr && isObj(cr.development) && arr(cr.development.chronicle).some(function (e) { return isObj(e) && e.link === r.orderId; }));
+        var gone = r.orderId && !pending.has(r.orderId) && !finished && typeof r.dueDay === 'number' && dayNum(s.day, 1) < r.dueDay;
+        var state = r.r === 'refused' ? 'refused' : (r.type === 'order.request' ? (r.orderId && pending.has(r.orderId) ? 'scheduled' : gone ? 'cancelled' : 'completed') : 'saved');
         return { id: r.id, type: r.type, state: state, why: r.why, day: r.day, label: r.label, creature: r.creature, dueDay: state === 'scheduled' ? pending.get(r.orderId).dueDay : r.dueDay };
       });
   };
@@ -244,7 +255,7 @@
       rec.r = r; rec.why = plain(why, 240);
       B.done[cmd.id] = rec;
       var ids = Object.keys(B.done);
-      if (ids.length > RECEIPTS_MAX) ids.sort(function (a, b) { return B.done[a].at - B.done[b].at; }).slice(0, ids.length - RECEIPTS_MAX).forEach(function (k) { delete B.done[k]; });
+      if (ids.length > RECEIPTS_MAX) ids.sort(function (a, b) { return B.done[a].at - B.done[b].at; }).slice(0, ids.length - RECEIPTS_MAX).forEach(function (k) { B.floor = Math.max(B.floor || 0, B.done[k].at); delete B.done[k]; });
       out.ok = r === 'applied'; out.receipt = rec;
       return out;
     }
@@ -252,17 +263,19 @@
 
     if (cmd.v !== 1 || TYPES.indexOf(cmd.type) === -1 || !isObj(cmd.payload) || typeof cmd.creature !== 'string' || !rec.handler) return refuse('That request isn\'t one this Bastion understands.');
     if (typeof cmd.campaign !== 'string' || cmd.campaign !== B.campaignId) return refuse('That request was made for a different Bastion save. Refresh your view and try again.');
-    if (typeof cmd.at !== 'number' || !isFinite(cmd.at) || at - cmd.at > BH.codes.MAX_AGE_MS) return refuse('That request is too old. Make it again.');
+    if (typeof cmd.at !== 'number' || !isFinite(cmd.at) || at - cmd.at > BH.codes.MAX_AGE_MS || cmd.at <= (B.floor || 0)) return refuse('That request is too old. Make it again.');
+    if (cmd.at - at > FUTURE_MS) return refuse('That request is dated in the future. Check the date and time on the phone, then make it again.');
     if (auth && auth.via === 'code' && !P.sameHandler(auth.handler, cmd.handler)) return refuse('That request wasn\'t signed by the handler it names.');
 
     var c = R.creatureById(s, cmd.creature);
     if (!c) return refuse('That creature isn\'t at the Ironbow any more.');
+    /* Whose is it, before anything is said about it: another handler's beast is never named. */
+    var d = R.creatureDev(c);
+    if (!d || !d.handlerId || !P.sameHandler(d.handlerId, cmd.handler)) return refuse('That creature isn\'t yours any more: the DM has given it another handler, or none.');
     var home = P.homes(data).filter(function (h) { return h.speciesId === c.species; })[0];
     var name = R.creatureName(data, c);
     rec.label = name;
     if (!home || c.status !== 'housed' || c.home !== home.facId || R.builtFacilityIds(s, data).indexOf(home.facId) === -1) return refuse(name + ' isn\'t housed in a standing building right now.');
-    var d = R.creatureDev(c);
-    if (!d || !d.handlerId || !P.sameHandler(d.handlerId, cmd.handler)) return refuse(name + ' isn\'t yours any more: the DM has given it another handler.');
     var who = R.handlerName(d.handlerId);
     rec.who = plain(who, 40);
 

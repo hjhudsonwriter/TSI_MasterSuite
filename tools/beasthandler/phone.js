@@ -41,6 +41,15 @@
   var pairing = read(KEY.pairing);
   if (!pairing || typeof pairing.secret !== 'string' || typeof pairing.handler !== 'string' || typeof pairing.campaign !== 'string') pairing = null;
   var held = read(KEY.snapshot);           /* { snapshot, at } */
+  /* A stored snapshot that isn't right for this link (damaged, from another version, another Bastion or
+     another handler) is forgotten, so it can never stop the page from opening. */
+  function usable(h) {
+    if (!h || typeof h !== 'object' || typeof h.at !== 'number' || !pairing) return false;
+    var sn = h.snapshot;
+    if (!sn || P.check(sn) || typeof sn.campaign !== 'string' || sn.campaign !== pairing.campaign) return false;
+    return !!sn.handler && typeof sn.handler.id === 'string' && P.handlerKey(sn.handler.id) === P.handlerKey(pairing.handler);
+  }
+  if (held && !usable(held)) { held = null; write(KEY.snapshot, null); }
   var outbox = Array.isArray(read(KEY.outbox)) ? read(KEY.outbox).filter(function (o) { return o && typeof o.id === 'string' && typeof o.code === 'string'; }) : [];
   var view = null;
   var viewRoot = null;
@@ -52,7 +61,7 @@
     var s = snapshot();
     if (!s) return;
     var answered = {};
-    (s.receipts || []).forEach(function (r) { answered[r.id] = true; });
+    (Array.isArray(s.receipts) ? s.receipts : []).forEach(function (r) { if (r && typeof r.id === 'string') answered[r.id] = true; });
     var keep = outbox.filter(function (o) { return !answered[o.id] && Date.now() - o.at < C.MAX_AGE_MS; });
     if (keep.length !== outbox.length) { outbox = keep; saveOutbox(); }
   }
@@ -186,6 +195,17 @@
     });
   });
 
+  /* A request that was never sent (a lost code, a closed chat) would otherwise block new ones for up to 30 days.
+     Forgetting it only clears this phone's list: if the code did reach the DM, the Bastion can still apply it. */
+  var onForget = TSI.oneAtATime(function (o) {
+    return TSI.modal.confirm({ title: 'Forget this request', message: 'Forget "' + o.label + '"? Only do this if you never sent it. If the DM has the code, it can still be applied, and the answer will show in your next snapshot.', okLabel: 'Forget it', cancelLabel: 'Keep it' }).then(function (go) {
+      if (!go) return;
+      outbox = outbox.filter(function (x) { return x.id !== o.id; });
+      saveOutbox();
+      refreshAll();
+    });
+  });
+
   function homeExtras() {
     var s = snapshot();
     var parts = [];
@@ -198,7 +218,7 @@
           return el('li', { class: 'tsi-bhp-send', 'data-id': o.id }, [
             el('span', { class: 'tsi-bhp-send__label', text: o.label }),
             el('span', { class: 'tsi-bh-muted', text: 'Made ' + ago(o.at) + '.' }),
-            el('div', { class: 'tsi-bhp-row' }, [copyBtn, btn('Show it', function () { showCode('Request: ' + o.label, 'Send this to the DM exactly as it is.', o.code, 'beast-handler-request.txt', 'bhp-show'); }, 'tsi-btn--ghost', 'bhp-show-' + o.id)])
+            el('div', { class: 'tsi-bhp-row' }, [copyBtn, btn('Show it', function () { showCode('Request: ' + o.label, 'Send this to the DM exactly as it is.', o.code, 'beast-handler-request.txt', 'bhp-show'); }, 'tsi-btn--ghost', 'bhp-show-' + o.id), btn('Forget it', function () { onForget(o); }, 'tsi-btn--ghost', 'bhp-forget-' + o.id)])
           ]);
         }))
       ]));
@@ -230,9 +250,10 @@
       input.node, problem, el('div', { class: 'tsi-bhp-row' }, go)
     ])));
   }
-  function screenSnapshot() {
+  function screenSnapshot(notice) {
     var input = codeInput('Paste the snapshot code here (it starts BHS1.)', 'bhp-first-snap');
     var problem = el('p', { class: 'tsi-bhp-error', hidden: true, role: 'alert', 'data-test': 'bhp-first-problem' });
+    if (notice) { problem.textContent = notice; problem.hidden = false; }
     var go = btn('Show my beasts', function () {
       var r = takeSnapshot(input.value());
       if (!r.ok) { problem.textContent = r.why; problem.hidden = false; return; }
@@ -252,8 +273,17 @@
     view = null;
     if (!pairing) return screenLink();
     if (!snapshot()) return screenSnapshot();
-    view = BH.view.mount(root, host);
-    view.render();
+    try {
+      view = BH.view.mount(root, host);
+      view.render();
+    } catch (e) {
+      /* Whatever was stored couldn't be shown: forget it, so the page can always be used again. */
+      view = null;
+      held = null;
+      write(KEY.snapshot, null);
+      TSI.clear(root);
+      return screenSnapshot('The page couldn\'t show the snapshot it had saved, so it was cleared. Ask the DM for a new snapshot code.');
+    }
     /* Keep "got 3 minutes ago" honest while the page is open. */
     life.setInterval(function () { if (view) view.render(); }, 60000);
   }

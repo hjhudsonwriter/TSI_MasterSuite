@@ -37,7 +37,7 @@
   function H() { return TSI.hmac; }
 
   /* A pasted code, with any spaces, line breaks and quotes a chat app added taken out. */
-  C.tidy = function (text) { return String(text === undefined || text === null ? '' : text).replace(/[\s"'“”‘’<>]+/g, ''); };
+  C.tidy = function (text) { return String(text === undefined || text === null ? '' : text).replace(/[\s"'“”‘’<>\u00ad\u061c\u200b-\u200f\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff]+/g, ''); };
 
   /* The kind of code this is ('pair', 'snap' or 'cmd'), or ''. */
   C.kind = function (text) {
@@ -58,6 +58,8 @@
     if (!t || t.length > C.MAX_LENGTH) return null;
     var bits = t.split('.');
     if (bits[0] !== tag || bits.length !== parts + 1) return null;
+    /* Only the letters a real code is made of ever reach the signing or the decoding. */
+    for (var i = 1; i < bits.length; i++) if (!/^[A-Za-z0-9_=-]*$/.test(bits[i])) return null;
     return bits.slice(1);
   }
   function parse(letters) {
