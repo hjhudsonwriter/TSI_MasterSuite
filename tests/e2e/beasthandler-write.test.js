@@ -228,6 +228,7 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     await bh.waitForSelector('[data-test=bh-portrait-large] img');
     const src = await bh.$eval('[data-test=bh-portrait-large] img', i => i.getAttribute('src'));
     assert(/tools\/beasthandler\/assets\/dire-wolf\/icepelt\.webp$/.test(src), src);
+    await bh.waitForFunction(() => { const i = document.querySelector('[data-test=bh-portrait-large] img'); return i && i.complete && i.naturalWidth > 0; }, null, { timeout: 8000 });
     assert(await bh.$eval('[data-test=bh-portrait-large] img', i => i.complete && i.naturalWidth === 941), 'the picture really loaded');
     await H.shot(bh, 'beasthandler-wolf-icepelt');
     const lay = await H.layoutCheck(bh, ['.tsi-bh-nav button', '[data-test=bh-bond]']);
