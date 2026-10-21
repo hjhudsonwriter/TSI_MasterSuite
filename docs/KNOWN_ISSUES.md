@@ -3493,3 +3493,21 @@ Old repo: `_legacy/pelagosi_marker_rune_puzzle` (file:line references point ther
 - **Wording:** another handler's programme now reads "A training programme is under way at the Wyvern Roost" (it never names the beast or the programme); the refusal reads "The Wyvern Roost is busy (a training programme is under way at the Wyvern Roost), ready on Day N."
 - **Tests:** `tests/rules/beasthandler-projection.test.js` (a House order no longer locks), `tests/rules/beasthandler-link.test.js` (a House order does not refuse a request; a training programme does).
 - **Also decided (no change needed):** the reasons a DM types for a bond or handler change stay visible; pairing codes may stay non-expiring and work on any number of phones; handlers are matched by name.
+
+### BH-05 · Beast Handler: charcoal-and-gold look, the beast's page, the first meeting, fades, and "the picture didn't appear" (22 October 2026)
+**Changed, Harry's request** · look and flow, no rules changed
+
+- **Before:** crimson-and-gold panels shared with the rest of the suite; a small round medallion (or painted picture) with a bond bar; Profile, Orders and Chronicle as buttons under it; a beast with no subspecies simply showed its species medallion; screens changed instantly.
+- **After:** the colours of Harry's Stitch mock-ups (charcoal page and cards, gold headings and main buttons) inside the Beast Handler only; the picture is the centrepiece with the subspecies name under it, a *Current rapport* card with five bond pills, and a bottom bar for Profile, Orders and Chronicle; the picture is **blank until a subspecies is chosen**; a first-meeting sequence; and a soft fade between screens (off when reduced motion is set).
+- **Harry's report (picture not appearing after the subspecies was set and saved):** not reproducible in Chromium. Likeliest causes, all addressed: (a) the request had not been answered yet (the laptop answers only while the Bastion's window is open; a phone waits for the DM to apply the code and send a new snapshot), so the snapshot genuinely had no subspecies; the page now shows the asked-for subspecies and its picture at once, marked as waiting; (b) a browser percent-height quirk could collapse the picture frame, now sized by a padding box that cannot; (c) a name that differed only by spaces, a hyphen or a trailing "Wyvern" now still matches its picture; (d) a stale copy of the page on the hosted site: a hard refresh fixes it. Tests: `beasthandler-write` and `beasthandler-phone` check the picture appears right after saving; `beasthandler-meet` checks the waiting state and the answer.
+- **Judgement calls (say if any should change):**
+  - The meeting runs whenever a beast has no subspecies (no separate "has met" flag), so a beast the DM has already set up never sees it; closing the page part-way starts it again, with nothing saved.
+  - On the DM's laptop there is **Skip for now** (the page opens with an empty frame and "Subspecies not chosen yet"); a player's phone has no skip.
+  - A player may keep a subspecies name of their own, but is told there will be no picture for it.
+  - The subspecies **Roll** picks evenly among the five (the old d12/d8 tables are unchanged).
+  - One request is sent at the end (all four lines at once), not four; the Bastion still checks it once.
+  - The picture is shown straight away after the last Save, marked "Waiting for the Bastion to confirm" (on a phone: "Not confirmed yet: send your request code to the DM"); it is only a display, the Bastion's answer is what counts.
+  - The gold-filled main button is a Beast Handler style; the rest of the suite keeps its crimson main buttons.
+- **Also fixed on the way (small):** the page heading no longer shows a gold box when focus lands on it after a screen change; the bottom bar stays in view on a laptop even when a "waiting" line is showing.
+- **Not done / not checked:** Safari and a real iPhone (as before); Firefox; any sound with the cinematic.
+- **Tests:** `tests/e2e/beasthandler-meet.test.js`; `beasthandler.test.js`, `beasthandler-write.test.js` and `beasthandler-phone.test.js` updated; `tests/rules/beasthandler-model.test.js` and `beasthandler-profile.test.js` (bond pills, possessive names, pending overlay, the meeting's words, loose name matching, the subspecies roll).

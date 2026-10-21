@@ -209,6 +209,8 @@ body.tsi-bh-phone .tsi-btn--primary:hover { filter: brightness(1.06); }
 
 /* ---------- The beast's page: the picture is the centrepiece (Harry, 22 October 2026) ---------- */
 .tsi-tool--beasthandler .tsi-bh-name { text-align: center; }
+/* The page heading is only a place for focus to land after a screen change, so it gets no box. */
+.tsi-tool--beasthandler h1[tabindex="-1"]:focus { outline: none; }
 .tsi-tool--beasthandler .tsi-bh-handler { text-align: center; font-style: italic; color: var(--tsi-text-muted); font-size: var(--tsi-fs-lead); }
 .tsi-tool--beasthandler .tsi-bh-herowrap { position: relative; display: grid; justify-items: center; gap: var(--tsi-space-2); margin: 0 calc(-1 * var(--tsi-space-1)); }
 /* The frame keeps its shape by itself (a padding box), so a picture can never collapse to nothing in any browser. */
@@ -413,14 +415,13 @@ body.tsi-bh-phone .tsi-btn--primary:hover { filter: brightness(1.06); }
 @media (min-width: 1000px) {
   .tsi-tool--beasthandler .tsi-bh-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .tsi-tool--beasthandler .tsi-bh[data-screen^="creature"] { max-width: 760px; }
-  .tsi-tool--beasthandler .tsi-bh-nav { position: static; border-radius: var(--tsi-radius-md); border: 1px solid var(--tsi-line); }
 }
 @media (max-height: 560px) and (orientation: landscape) {
   .tsi-tool--beasthandler .tsi-bh-hero2 { max-width: 300px; }
 }
 /* On a laptop the picture is sized by the window's height, so the rapport card and the three buttons stay in view. */
 @media (min-width: 720px) {
-  .tsi-tool--beasthandler .tsi-bh-hero2 { width: auto; max-width: 100%; height: min(46vh, 440px); aspect-ratio: 4 / 5; margin: 0 auto; }
+  .tsi-tool--beasthandler .tsi-bh-hero2 { width: auto; max-width: 100%; height: min(44vh, 430px); aspect-ratio: 4 / 5; margin: 0 auto; }
   .tsi-tool--beasthandler .tsi-bh-hero2::before { display: none; }
 }
 
