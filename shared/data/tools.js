@@ -186,7 +186,7 @@ window.TSI_DATA.tools = [
     built: true,
     /* It reads the Bastion's save (shared/js/dmdoc.js does the same) and keeps only the small queue of requests waiting for the Bastion. */
     saves: true,
-    desc: 'The companions of Ironbow. See your wyvern, griffin or dire wolf: its bond, profile and Chronicle, and ask the Bastion for a profile change or free training.',
+    desc: 'The companions of Ironbow. See your wyvern, griffin or dire wolf: its bond, profile and Chronicle.',
     art: 'shared/art/hero.png',
     files: {
       css: ['tools/beasthandler/beasthandler.css'],
