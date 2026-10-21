@@ -639,20 +639,20 @@
         var c = R.creatureById(state, id);
         if (!c) return;
         var d = R.devView(state, c);
-        var why = el('textarea', { class: 'tsi-input', rows: '3', maxlength: '300', placeholder: 'How did the first flight go? (required)', 'data-test': 'flight-why' });
+        var why = el('textarea', { class: 'tsi-input', rows: '3', maxlength: '300', placeholder: 'How did the first ' + R.rideNoun(data, c.species) + ' go? (required)', 'data-test': 'flight-why' });
         var problem = el('div', { class: 'tsi-bas-repair-text', 'data-test': 'flight-problem', hidden: true });
         var mainBtn = null;
         function check() {
-          var bad = String(why.value).replace(/\s+/g, ' ').trim().length < 3 ? 'Say how the first flight went.' : '';
+          var bad = String(why.value).replace(/\s+/g, ' ').trim().length < 3 ? 'Say how the first ' + R.rideNoun(data, c.species) + ' went.' : '';
           problem.textContent = bad; problem.hidden = !bad;
           if (mainBtn) { mainBtn.disabled = !!bad; mainBtn.title = bad; }
         }
         why.addEventListener('input', check);
         var ok = await plainModal({
-          title: 'Confirm the first flight: ' + R.creatureName(data, c),
+          title: 'Confirm the first ' + R.rideNoun(data, c.species) + ': ' + R.creatureName(data, c),
           className: 'tsi-bas-modal',
-          body: [muted('Only confirm once you have run the first mounted flight scene with ' + R.handlerName(d.handlerId) + '. This records story permission only: the Bastion adds no riding movement or combat.'), field('The scene', why), problem],
-          actions: [{ label: 'Cancel', value: false }, { label: 'Confirm first flight', value: true, primary: true }],
+          body: [muted('Only confirm once you have run the first mounted ' + R.rideNoun(data, c.species) + ' scene with ' + R.handlerName(d.handlerId) + '. This records story permission only: the Bastion adds no riding movement or combat.'), field('The scene', why), problem],
+          actions: [{ label: 'Cancel', value: false }, { label: 'Confirm first ' + R.rideNoun(data, c.species), value: true, primary: true }],
           onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'flight-dialog'); mainBtn = parts.dialog.querySelector('.tsi-modal__foot .tsi-btn--primary'); check(); }
         });
         if (!ok || !life.alive) return;
@@ -666,7 +666,7 @@
         var t = d.temperament;
         var tr = R.trainingStatus(state, data, c);
         var learned = Object.keys(d.training).map(function (k) {
-          var f = (R.facility(data, 'wyvern_roost').functions || []).filter(function (x) { return x.id === k; })[0];
+          var f = ((R.trainingFacility(data, c.species) || {}).functions || []).filter(function (x) { return x.id === k; })[0];
           return f ? f.label : k;
         });
         var chron = d.chronicle.slice().reverse();
@@ -688,7 +688,7 @@
           ]),
           el('div', { class: 'tsi-bas-wyv__line' }, [el('b', { text: 'Riding ' }), el('span', { 'data-test': prefix + '-riding-' + c.id, text: R.ridingLine(state, data, c) })]),
           (d.bond.level >= 4 || (d.harness && d.harness.fitted)) ? el('ul', { class: 'tsi-bas-wyv__checks', 'data-test': prefix + '-flightchecks-' + c.id }, R.firstFlightChecks(state, data, c).map(function (x) { return el('li', { text: (x.ok ? '✓ ' : '○ ') + x.text }); })) : null,
-          !(d.firstFlight && d.firstFlight.approved) && R.firstFlightReady(state, data, c) ? btn('Confirm first flight…', function () { onConfirmFlight(c.id); }, 'tsi-btn--primary', prefix + '-flight-' + c.id) : null,
+          !(d.firstFlight && d.firstFlight.approved) && R.firstFlightReady(state, data, c) ? btn('Confirm first ' + R.rideNoun(data, c.species) + '…', function () { onConfirmFlight(c.id); }, 'tsi-btn--primary', prefix + '-flight-' + c.id) : null,
           el('details', { class: 'tsi-bas-wyv__chronicle', 'data-test': prefix + '-chronicle-' + c.id }, [
             el('summary', { text: 'Chronicle (' + chron.length + ')' }),
             el('ul', { class: 'tsi-bas-res-list' }, chron.map(function (e) { return el('li', { text: R.dayLabel(e.day) + ' · ' + e.text }); })),
@@ -723,7 +723,7 @@
         bindTip(row, tip, { noChange: true });
         bindFocusTip(row, row, tip);
         /* A housed wyvern also shows its profile (not in Management's compact list). */
-        if (!compact && c.species === 'wyvern' && c.status === 'housed') return el('div', { class: 'tsi-bas-creature-wrap' }, [row, wyvernProfile(c, prefix)]);
+        if (!compact && R.hasDevelopment(data, c.species) && c.status === 'housed') return el('div', { class: 'tsi-bas-creature-wrap' }, [row, wyvernProfile(c, prefix)]);
         return row;
       }
 
@@ -3381,7 +3381,7 @@
         }
         function refresh() {
           var chosen = chosenNow();
-          var why = repair ? null : isTrain ? (!options.length ? 'No wyvern is housed at the Wyvern Roost yet.' : R.trainingBlocker(state, data, fac, fn, chosen ? R.creatureById(state, chosen.trainCreatureId) : null) || null) : !avail.ok ? avail.message : fn.production ? (R.productionBusy(state, data, fac, fn) || R.recipeBlocker(state, data, fac, fn, chosen))
+          var why = repair ? null : isTrain ? (!options.length ? 'No ' + R.speciesNoun(data, R.fnSpecies(data, fac, fn)) + ' is housed at the ' + fac.name + ' yet.' : R.trainingBlocker(state, data, fac, fn, chosen ? R.creatureById(state, chosen.trainCreatureId) : null) || null) : !avail.ok ? avail.message : fn.production ? (R.productionBusy(state, data, fac, fn) || R.recipeBlocker(state, data, fac, fn, chosen))
             : isCharter && R.registerBusy(state, data) ? R.registerBusy(state, data)
             : isCharter && !options.length ? 'No Port Charter to register: the DM grants one in the Explorer, and each is registered once.'
             : isProtection ? R.protectionBusy(state, data, fn) || null

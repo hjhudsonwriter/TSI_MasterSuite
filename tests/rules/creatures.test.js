@@ -145,7 +145,7 @@
     t.same(CR.unique, { elara_wyvern: { species: 'wyvern', owner: 'elara', ownerName: 'Elara', name: '', defaultName: 'Elara\'s wyvern' } });
     t.ok(ED.heroes.some(function (h) { return h.id === 'elara' && h.title === 'Elara'; }), 'her owner is the Explorer\'s hero Elara');
     t.same([CR.room, CR.houseDays, CR.nameMax, CR.provisional], [{ griffin_tower: 1, dire_wolf_den: 1, wyvern_roost: 1 }, 3, 40, true]);
-    t.ok(/Riding preparation, mounted flight and breeding/.test(CR.comingLater));
+    t.ok(/Mounted riding and flight rules beyond preparation, and breeding/.test(CR.comingLater));
     t.equal(W.beasts.Wyvern, undefined, 'the War Table\'s own file is unchanged: no wyvern or griffin in it');
     t.equal(W.beasts.Griffin, undefined);
   });
@@ -168,7 +168,7 @@
     ['wyvern_roost', 'griffin_tower', 'dire_wolf_den'].forEach(function (id) {
       var f = BR.facility(bdata, id);
       t.same([f.requiredLevel, f.inDevelopment, f.plot, typeof f.description], [5, undefined, undefined, 'string'], id);
-      t.equal(f.functions.length, id === 'wyvern_roost' ? 14 : 1, id + ': one order (the Roost has two House orders and, since 20 October 2026, twelve training programmes)');
+      t.equal(f.functions.length, id === 'wyvern_roost' ? 14 : 13, id + ': one House order and, since 20 October 2026, twelve training programmes (the Roost has two House orders)');
       var fn = f.functions[0];
       t.same([fn.id, fn.days, fn.costGP, fn.costText, fn.requiredFacilityLevel, fn.options, fn.production], [FAC[id], CR.houseDays, 0, '0', undefined, [], undefined], id);
       t.equal(BR.isPlotFacility(bdata, id), false, id + ' takes a construction slot');

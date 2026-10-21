@@ -48,7 +48,7 @@
     t.same(BR.levelUnlocks(bdata, 'war_room', 3), ['Coordinated Muster', '2 drill places']);
     t.same(BR.levelUnlocks(bdata, 'hall_of_emissaries', 2), ['Inter-Clan Summit', 'Diplomacy rolls +4 (from +2)']);
     t.same(BR.levelUnlocks(bdata, 'hall_of_emissaries', 4), []);
-    t.same(BR.levelUnlocks(bdata, 'griffin_tower', 3), ['Room for one more griffin']);
+    t.same(BR.levelUnlocks(bdata, 'griffin_tower', 3), ['Open-Sky Return Training', 'Aerial Sentinel Training', 'Room for one more griffin']);
     t.same(BR.levelUnlocks(bdata, 'shrine_pelagos', 5), ['Great Rite of Pelagos']);
     t.same(BR.levelUnlocks(bdata, 'herbal_gardens', 2), ['Cultivate Specialist Plants', 'One more research token']);
     t.same(BR.levelUnlocks(bdata, 'nothing_here', 2), []);

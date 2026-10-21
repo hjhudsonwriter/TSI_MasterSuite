@@ -134,7 +134,13 @@ window.TSI_DATA.bastionCreatures = {
   development: {
     /* Specialist training places at once, by the building's level (the House
        orders don't use one). */
-    trainingPlaces: { wyvern_roost: { 1: 1, 2: 1, 3: 2, 4: 2, 5: 3 } },
+    trainingPlaces: {
+      wyvern_roost: { 1: 1, 2: 1, 3: 2, 4: 2, 5: 3 },
+      griffin_tower: { 1: 1, 2: 1, 3: 2, 4: 2, 5: 3 },
+      dire_wolf_den: { 1: 1, 2: 1, 3: 2, 4: 2, 5: 3 }
+    },
+    /* What a first mounted outing is called: the fliers' is a flight, the wolves' a ride. */
+    rideNoun: { wyvern: 'flight', griffin: 'flight', dire_wolf: 'ride' },
     /* The party level a first mounted flight needs at the earliest (Harry, 20 October 2026), and what a harness costs (the order's own cost). */
     firstFlightPartyLevel: 13,
     /* Defend Bastion bonuses a learned discipline gives that one creature
@@ -142,10 +148,16 @@ window.TSI_DATA.bastionCreatures = {
     trainingBonus: {
       wyr_defence_drills: { stat: 'resolve', amount: 1, label: '+1 Resolve' },
       wyr_aerial_sentinel: { stat: 'defence', amount: 1, label: '+1 Defence' },
-      wyr_elite_defence: { stat: 'attack', amount: 1, label: '+1 Attack' }
+      wyr_elite_defence: { stat: 'attack', amount: 1, label: '+1 Attack' },
+      grf_defence_drills: { stat: 'resolve', amount: 1, label: '+1 Resolve' },
+      grf_aerial_sentinel: { stat: 'defence', amount: 1, label: '+1 Defence' },
+      grf_elite_defence: { stat: 'attack', amount: 1, label: '+1 Attack' },
+      dwf_defence_drills: { stat: 'resolve', amount: 1, label: '+1 Resolve' },
+      dwf_pack_sentinel: { stat: 'defence', amount: 1, label: '+1 Defence' },
+      dwf_elite_defence: { stat: 'attack', amount: 1, label: '+1 Attack' }
     }
   },
 
   /* The panels' "Coming later" line. */
-  comingLater: 'Riding preparation, mounted flight and breeding come later, once their rules are set.'
+  comingLater: 'Mounted riding and flight rules beyond preparation, and breeding, come later, once their rules are set.'
 };
