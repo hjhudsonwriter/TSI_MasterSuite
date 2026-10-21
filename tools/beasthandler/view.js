@@ -18,7 +18,9 @@
      snapshot(), problem(), syncLine(), syncOk(),
      handlerChoices?(), viewing?(), setViewing?(value)      (laptop only)
      canSubmit(): '' or the reason a request can't be made now,
-     outbox(): [{ id, type, creature, fac, label, at, payload }],   (payload: what was asked, so a waiting profile change can be shown)
+     outbox(all?): [{ id, type, creature, fac, label, at, payload }],   (payload: what was asked, so a waiting profile change can be shown;
+                    the viewed handler's own, or everyone's when all is true)
+     drafts?: { read(): object, write(object) }   (optional: keeps the first meeting's choices across a reload)
      submit(body): Promise<{ ok, message? , ... }>, body { type, creature, fac?, payload, view },
      afterSubmit?(result): Promise, extraHome?(): nodes, extraFoot?(): nodes } */
 (function () {
@@ -38,7 +40,7 @@
       var life = host.life;
 
       /* What the player is looking at (not saved). */
-      var ui = { screen: 'home', creatureId: null, tab: 'main', orderFn: null, edit: null, said: '', fadeNext: false, skipMeet: {}, meetDraft: {} };
+      var ui = { screen: 'home', creatureId: null, tab: 'main', orderFn: null, edit: null, said: '', fadeNext: false, skipMeet: {} };
       var shell = el('div', { class: 'tsi-bh', 'data-test': 'bh-root' });
       root.appendChild(shell);
 
@@ -49,6 +51,8 @@
       function snap() { return host.snapshot(); }
       function detail() { var s = snap(); return s && ui.creatureId ? s.creatures[ui.creatureId] || null : null; }
       function outbox() { return host.outbox ? host.outbox() : []; }
+      /* Every waiting request on this device, whoever made it (a building with an order waiting takes no second one). */
+      function outboxAll() { return host.outbox ? host.outbox(true) : []; }
       /* A profile draft is kept while the player stays on the same beast (moving between its tabs never loses what was typed or rolled). */
       /* After a new screen is drawn, focus goes to its heading, so a keyboard or screen-reader user starts at the top of what is new. */
       function focusHeading() {
@@ -445,7 +449,7 @@
         var body = [];
         body.push(el('p', { class: 'tsi-bh-orders-for', 'data-test': 'bh-orders-for', text: d.facility.name + ' Level ' + d.facility.level }));
         var trainingNow = trainingLine(d);
-        var waitingHere = M.waitingOrderAt(snap(), outbox(), d.facility.id);
+        var waitingHere = M.waitingOrderAt(snap(), outboxAll(), d.facility.id);
         if (o.status === 'busy') {
           body.push(el('div', { class: 'tsi-bh-panel tsi-bh-pending', 'data-test': 'bh-pending' }, [
             el('h2', { class: 'tsi-bh-panel__title', text: 'Waiting on the Bastion' }),
@@ -540,9 +544,15 @@
       /* ---------- Meeting a beast for the first time (intro.js) ---------- */
       var meetAfter = null;
       var meetingNow = false;
+      var memoryDrafts = {};
       var meet = BH.intro ? BH.intro.create({
         el: el, btn: btn, M: M, Pf: Pf, tables: tables, host: host, life: life,
-        drafts: ui.meetDraft,
+        /* What the player chose in the meeting, kept while a request waits so a refusal can put it back (and across a reload when the host can keep it). */
+        draft: {
+          get: function (id) { var m = host.drafts ? host.drafts.read() : memoryDrafts; return m && m[id] ? m[id] : null; },
+          set: function (id, v) { var m = host.drafts ? host.drafts.read() : memoryDrafts; m[id] = v; if (host.drafts) host.drafts.write(m); },
+          clear: function (id) { var m = host.drafts ? host.drafts.read() : memoryDrafts; if (m && m[id]) { delete m[id]; if (host.drafts) host.drafts.write(m); } }
+        },
         submit: submit,
         focusHeading: focusHeading,
         setInert: function (on) { if (on) shell.setAttribute('inert', ''); else shell.removeAttribute('inert'); },
@@ -558,7 +568,7 @@
         skipped: function (d) { return !!ui.skipMeet[d.id]; },
         blocked: function (d) { return M.requestRows(snap(), outbox(), d.id, 20).some(function (r) { return r.state === 'waiting' && r.type === 'profile.set'; }); },
         canSkip: function (d, refused) { return host.mode === 'laptop' || !!refused; },   /* a player can only skip after a refusal, so a refusal can never trap them */
-        skip: function (d) { ui.skipMeet[d.id] = true; ui.fadeNext = true; render(); },
+        skip: function (d) { ui.skipMeet[d.id] = true; ui.fadeNext = true; render(); focusHeading(); },
         leave: function () { ui.creatureId = null; go('home'); },
         finished: function () { ui.fadeNext = false; render(); window.scrollTo(0, 0); },
         afterClose: function (res) { return Promise.resolve(host.afterSubmit ? host.afterSubmit(res) : null); }

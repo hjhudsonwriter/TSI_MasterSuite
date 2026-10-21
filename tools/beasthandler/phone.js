@@ -26,7 +26,7 @@
   var root = document.getElementById('tsi-bhp-root');
 
   /* ---------- What this phone keeps ---------- */
-  var KEY = { pairing: 'tsi.beasthandler.phone.pairing', snapshot: 'tsi.beasthandler.phone.snapshot', outbox: 'tsi.beasthandler.phone.outbox' };
+  var KEY = { pairing: 'tsi.beasthandler.phone.pairing', snapshot: 'tsi.beasthandler.phone.snapshot', outbox: 'tsi.beasthandler.phone.outbox', draft: 'tsi.beasthandler.phone.draft' };
   var memory = {};   /* used only if the browser won't keep anything */
   var keepsNothing = false;
   function read(key) {
@@ -162,6 +162,11 @@
       if (!s.campaign || s.campaign !== pairing.campaign) return 'The DM needs to open the Bastion once and send a new snapshot before you can ask for anything.';
       return '';
     },
+    /* The first meeting's choices, kept on this phone while a request waits, so a refusal (which can come days later) can put them back. */
+    drafts: {
+      read: function () { var m = read(KEY.draft); return m && typeof m === 'object' && !Array.isArray(m) ? m : {}; },
+      write: function (m) { write(KEY.draft, m && Object.keys(m).length ? m : null); }
+    },
     outbox: function () { return outbox.map(function (o) { return { id: o.id, type: o.type, creature: o.creature, fac: o.fac, label: o.label, at: o.at, payload: payloadOf(o) }; }); },
     submit: function (body) {
       var why = host.canSubmit();
@@ -201,7 +206,7 @@
     return TSI.modal.confirm({ title: 'Unlink this phone', message: 'This forgets the link to your beasts, the snapshot and any requests you have not sent. You would need a new pairing code from the DM. Unlink?', okLabel: 'Unlink', cancelLabel: 'Keep it' }).then(function (go) {
       if (!go) return;
       pairing = null; held = null; outbox = [];
-      write(KEY.pairing, null); write(KEY.snapshot, null); write(KEY.outbox, null);
+      write(KEY.pairing, null); write(KEY.snapshot, null); write(KEY.outbox, null); write(KEY.draft, null);
       start();
     });
   });

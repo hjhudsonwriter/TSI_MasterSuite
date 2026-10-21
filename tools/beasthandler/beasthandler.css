@@ -154,7 +154,9 @@ body.tsi-bh-phone .tsi-btn--primary:hover { filter: brightness(1.06); }
   background: var(--tsi-head-fill);
   border-bottom: 1px solid var(--tsi-line-head);
 }
+.tsi-tool--beasthandler .tsi-bh-card__head .tsi-pill { flex: none; white-space: nowrap; }
 .tsi-tool--beasthandler .tsi-bh-card__title {
+  flex: 1 1 auto;
   margin: 0;
   font: 700 var(--tsi-fs-h2)/1.15 var(--tsi-font-display);
   letter-spacing: var(--tsi-track-heading);
@@ -186,8 +188,10 @@ body.tsi-bh-phone .tsi-btn--primary:hover { filter: brightness(1.06); }
 .tsi-tool--beasthandler .tsi-bh-beast--mine:focus-visible,
 .tsi-tool--beasthandler .tsi-bh-order:focus-visible { outline: none; border-color: var(--tsi-gold-text); box-shadow: var(--tsi-focus-ring); }
 /* The picture and the bottom bar are clipped or borderless, so their ring is drawn inside them, in plain gold. */
-.tsi-tool--beasthandler .tsi-bh-hero2__tap:focus-visible,
 .tsi-tool--beasthandler .tsi-bh-nav__btn:focus-visible { outline: 3px solid var(--tsi-gold); outline-offset: -5px; }
+/* The picture paints over its own button's outline, so its ring is a layer drawn on top: gold with a dark line inside it, readable on any painting. */
+.tsi-tool--beasthandler .tsi-bh-hero2__tap:focus-visible { outline: none; }
+.tsi-tool--beasthandler .tsi-bh-hero2__tap:focus-visible::after { content: ''; position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 0 4px var(--tsi-gold), inset 0 0 0 7px rgba(0, 0, 0, .7); }
 .tsi-tool--beasthandler .tsi-bh-beast--other { opacity: .82; cursor: default; }
 .tsi-tool--beasthandler .tsi-bh-beast__main { flex: 1 1 11em; display: grid; gap: 2px; }
 .tsi-tool--beasthandler .tsi-bh-beast__chips { flex: 0 1 auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--tsi-space-2); margin-left: auto; }
@@ -378,6 +382,13 @@ body.tsi-bh-phone .tsi-btn--primary:hover { filter: brightness(1.06); }
 .tsi-tool--beasthandler .tsi-bh-chron__day { font: 700 var(--tsi-fs-label)/1.2 var(--tsi-font-display); letter-spacing: var(--tsi-track-label); text-transform: uppercase; color: var(--tsi-gold-text); }
 .tsi-tool--beasthandler .tsi-bh-chron__text { margin-top: 6px; font-size: var(--tsi-fs-body); line-height: var(--tsi-lh-body); color: var(--tsi-text); }
 .tsi-tool--beasthandler .tsi-bh-chron__by { margin-top: 4px; font-size: var(--tsi-fs-body-sm); font-style: italic; color: var(--tsi-text-soft); }
+
+/* A control that takes keyboard focus must not land under the sticky bars: leave room for them when the page scrolls to it. */
+.tsi-tool--beasthandler .tsi-bh button,
+.tsi-tool--beasthandler .tsi-bh input,
+.tsi-tool--beasthandler .tsi-bh select,
+.tsi-tool--beasthandler .tsi-bh textarea,
+.tsi-tool--beasthandler .tsi-bh summary { scroll-margin-top: 84px; scroll-margin-bottom: 92px; }
 
 /* ---------- Bottom navigation (stays in reach of a thumb) ---------- */
 .tsi-tool--beasthandler .tsi-bh-nav {

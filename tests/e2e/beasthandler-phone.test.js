@@ -65,6 +65,8 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
   const pp = await ph.newPage();
   await pp.goto(PHONE);
   await pp.waitForSelector('[data-test=bhp-screen-link]');
+  /* A code box under 16 px makes iPhone Safari zoom the whole page when it is tapped. */
+  assert(await pp.$eval('[data-test=bhp-pair-input]', n => parseFloat(getComputedStyle(n).fontSize)) >= 16, 'the code box is at least 16 px');
 
   await check('the phone page loads no DM tool: no Bastion, no Explorer, no tool list', async () => {
     const loaded = await pp.evaluate(() => Array.from(document.scripts).map(s => s.getAttribute('src')));
@@ -333,6 +335,23 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     await pp.waitForTimeout(250);
     const hero = await pp.$eval('[data-test=bh-portrait-large]', n => { const b = n.getBoundingClientRect(); return [Math.round(b.width), Math.round(b.height)]; });
     assert(hero[1] >= 250, 'the picture held sideways is ' + hero.join(' x '));
+    await pp.setViewportSize({ width: 390, height: 844 });
+    /* A control reached with the keyboard is never left under the bottom bar or the top bar. */
+    await pp.setViewportSize({ width: 360, height: 640 });
+    await pp.click('[data-test=bh-tab-profile]');
+    for (const sel of ['[data-test=bh-edit]']) {
+      await pp.focus(sel);
+      await pp.waitForTimeout(200);
+      const top = await pp.evaluate(s => { const n = document.querySelector(s); const b = n.getBoundingClientRect(); const hit = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2); return hit === n || n.contains(hit); }, sel);
+      assert(top, sel + ' is hidden behind a bar when focused at 360 x 640');
+    }
+    /* On the narrowest phone a building's "Level N" tag stays on one line. */
+    await pp.setViewportSize({ width: 320, height: 640 });
+    await pp.click('[data-test=bh-back]');
+    await pp.click('[data-test=bh-back]');
+    await pp.waitForSelector('[data-test=bh-fac-wyvern_roost]');
+    const tall = await pp.$$eval('.tsi-bh-card__head .tsi-pill', ns => ns.map(n => Math.round(n.getBoundingClientRect().height)).filter(h => h > 32));
+    equal(tall, [], 'a Level tag wraps onto two lines at 320 px');
     await pp.setViewportSize({ width: 390, height: 844 });
   });
 

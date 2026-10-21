@@ -36,6 +36,14 @@ const checkS = (name, fn) => check(name, async () => {
   const ctx = await H.newContext(browser, 'laptop', { backedUp: true });
   await ctx.setOffline(true);
   await ctx.addInitScript(QUICK);
+  /* Two pictures are made slow on purpose: the Shadowmount wyvern's takes about 1.8 s to arrive, the Bleakhook's never arrives. */
+  await ctx.addInitScript(() => {
+    const desc = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
+    const delayFor = u => /\/wyvern\/shadowmount\.webp$/.test(u) ? 1800 : /\/wyvern\/bleakhook\.webp$/.test(u) ? 1e9 : 0;
+    Object.defineProperty(HTMLImageElement.prototype, 'src', { configurable: true, get() { return desc.get.call(this); }, set(v) { const d = delayFor(String(v)); if (d) setTimeout(() => desc.set.call(this, v), d); else desc.set.call(this, v); } });
+    const setAttr = Element.prototype.setAttribute;
+    Element.prototype.setAttribute = function (n, v) { if (this instanceof HTMLImageElement && n === 'src') { this.src = v; return; } return setAttr.call(this, n, v); };
+  });
   const ex = await ctx.newPage();
   await ex.goto(HARNESS + '?tool=explorer');
   await ex.waitForSelector('[data-test=camp]');
@@ -230,6 +238,7 @@ const checkS = (name, fn) => check(name, async () => {
   await checkS('Skip for now (laptop only): the beast opens with an empty frame and "Subspecies not chosen yet"; nothing is sent; a reload brings the meeting back', async () => {
     await bh.click('[data-test=bh-meet-skip]');
     await bh.waitForSelector('[data-test=bh-portrait-large][data-state=blank]');
+    equal(await bh.evaluate(() => document.activeElement && document.activeElement.tagName), 'H1', 'keyboard focus goes to the new page\'s heading, not nowhere');
     equal(await noPicture(), 0, 'no picture');
     equal(await bare(bh, '[data-test=bh-subspecies]'), '✦Subspecies not chosen yet');
     equal(await bh.$('[data-test=bh-greet-large]'), null, 'nothing to tap');
@@ -443,6 +452,111 @@ const checkS = (name, fn) => check(name, async () => {
     await bh.fill('[data-test=bh-meet-in-attachment]', 'Stays close');
     await bh.fill('[data-test=bh-meet-in-trigger]', 'Thunder');
     equal(await bh.$eval('[data-test=bh-meet-problem]', n => n.hidden), true, 'the message goes when the line is fixed');
+  });
+
+  await checkS('a refused request\'s choices survive a reload, and a line the DM changed meanwhile is not put back over it', async () => {
+    await addBeast('cr-stale', 'griffin', 'Stale', 'griffin_tower', { dominant: 'Calm', attachment: 'Lowers its head', trigger: 'Loud metallic ringing' });
+    await ba.evaluate(() => TSI.bastion.debug.change(s => { const B = TSI.bastion.rules.beastState(s); B.accept = false; B.floor = Date.now() + 600000; }));
+    await ba.evaluate(() => TSI.store.flush());
+    await bh.waitForTimeout(2600);
+    await home();
+    await bh.click('[data-test=bh-beast-cr-stale]');
+    await step(1);
+    await meetThrough('silvershroud', false);
+    equal(await bh.$eval('[data-test=bh-meet-in-dominant]', i => i.value), 'Calm');
+    await bh.click('[data-test=bh-meet-save-personality]');
+    await bh.waitForSelector('[data-test=bh-hero-pending]', { timeout: 14000 });
+    await bh.reload();
+    await bh.waitForSelector('[data-test=bh-viewas]');
+    await viewAs('Mira');
+    /* The DM changes the line, then the Bastion starts answering and refuses the request as too old. */
+    await ba.evaluate(() => TSI.bastion.debug.change(s => { s.creatures.find(c => c.id === 'cr-stale').development.temperament.dominant = 'Fierce'; TSI.bastion.rules.beastState(s).accept = true; }));
+    await ba.evaluate(() => TSI.store.flush());
+    await bh.click('[data-test=bh-beast-cr-stale]');
+    await bh.waitForSelector('[data-test=bh-meet-refused]', { timeout: 16000 });
+    assert(/Your choices are put back/.test(await bare(bh, '[data-test=bh-meet-refused]')), 'the choices came through the reload: ' + await bare(bh, '[data-test=bh-meet-refused]'));
+    await bh.click('[data-test=bh-meet-continue]'); await step(2);
+    equal(await bh.$eval('[data-test=bh-meet-in-regional]', i => i.value), 'Silvershroud');
+    await bh.click('[data-test=bh-meet-save-subspecies]'); await step(3);
+    equal(await bh.$eval('[data-test=bh-meet-in-dominant]', i => i.value), 'Fierce', 'the line the DM changed is shown as it is now, not as the player first saw it');
+    await ba.evaluate(() => TSI.bastion.debug.change(s => { TSI.bastion.rules.beastState(s).floor = 0; }));
+    await ba.evaluate(() => TSI.store.flush());
+    await bh.click('[data-test=bh-meet-save-personality]');
+    await ba.waitForFunction(() => TSI.bastion.debug.state().creatures.find(c => c.id === 'cr-stale').development.regional === 'Silvershroud', null, { timeout: 16000 });
+    const c = await creature('cr-stale');
+    equal([c.development.temperament.dominant, c.development.temperament.attachment, c.development.temperament.trigger], ['Fierce', 'Lowers its head', 'Loud metallic ringing'], 'the DM\'s newer line stands');
+  });
+
+  await checkS('when the choices were not kept (a cleared draft), the refusal says "Please choose again" and starts empty', async () => {
+    await addBeast('cr-nodraft', 'wyvern', 'Forgetful', 'wyvern_roost', null);
+    await ba.evaluate(() => TSI.bastion.debug.change(s => { const B = TSI.bastion.rules.beastState(s); B.accept = false; B.floor = Date.now() + 600000; }));
+    await ba.evaluate(() => TSI.store.flush());
+    await bh.waitForTimeout(2600);
+    await home();
+    await bh.click('[data-test=bh-beast-cr-nodraft]');
+    await step(1);
+    await meetThrough('widowspine', true);
+    await bh.click('[data-test=bh-meet-save-personality]');
+    await bh.waitForSelector('[data-test=bh-hero-pending]', { timeout: 14000 });
+    await bh.evaluate(() => Object.keys(sessionStorage).filter(k => /meetDraft/.test(k)).forEach(k => sessionStorage.removeItem(k)));
+    await ba.evaluate(() => TSI.bastion.debug.change(s => { TSI.bastion.rules.beastState(s).accept = true; }));
+    await ba.evaluate(() => TSI.store.flush());
+    await bh.waitForSelector('[data-test=bh-meet-refused]', { timeout: 16000 });
+    assert(/Please choose again/.test(await bare(bh, '[data-test=bh-meet-refused]')) && !/put back/.test(await bare(bh, '[data-test=bh-meet-refused]')), await bare(bh, '[data-test=bh-meet-refused]'));
+    await bh.click('[data-test=bh-meet-continue]'); await step(2);
+    equal(await bh.$eval('[data-test=bh-meet-in-regional]', i => i.value), '', 'nothing is put back that was not kept');
+    await ba.evaluate(() => TSI.bastion.debug.change(s => { TSI.bastion.rules.beastState(s).floor = 0; }));
+    await ba.evaluate(() => TSI.store.flush());
+  });
+
+  await checkS('the curtain waits for a slow picture, and gives up on one that never comes', async () => {
+    await addBeast('cr-slow', 'wyvern', 'Slowcoach', 'wyvern_roost', null);
+    await addBeast('cr-never', 'wyvern', 'Neverland', 'wyvern_roost', null);
+    await ba.evaluate(() => TSI.store.flush());
+    await bh.waitForTimeout(2600);
+    await home();
+    /* A picture that arrives after about 1.8 s: when the black starts to lift, the picture must already be there. */
+    await bh.click('[data-test=bh-beast-cr-slow]');
+    await step(1);
+    await meetThrough('shadowmount', true);
+    await bh.evaluate(() => {
+      window.TSI_BH_SPEED = 1; window.__lift = null; window.__seenOn = false;
+      const tick = () => {
+        const c = document.querySelector('[data-test=bh-curtain]');
+        const img = document.querySelector('[data-test=bh-portrait-large] img');
+        if (c && c.classList.contains('tsi-bh-curtain--on')) window.__seenOn = true;
+        else if (c && window.__seenOn && !window.__lift) window.__lift = { complete: !!(img && img.complete && img.naturalWidth > 0) };
+        if (!window.__lift) requestAnimationFrame(tick);
+      };
+      tick();
+    });
+    await bh.click('[data-test=bh-meet-save-personality]');
+    await bh.waitForFunction(() => window.__lift, null, { timeout: 20000 });
+    equal(await bh.evaluate(() => window.__lift.complete), true, 'the picture had arrived when the black began to lift');
+    await bh.waitForSelector('[data-test=bh-curtain]', { state: 'detached', timeout: 8000 });
+    /* A picture that never arrives: the black still lifts, after the wait runs out (shortened here by the test speed). */
+    await bh.evaluate(() => { window.TSI_BH_SPEED = 0.3; });
+    await home();
+    await bh.click('[data-test=bh-beast-cr-never]');
+    await step(1);
+    await meetThrough('bleakhook', true);
+    await bh.click('[data-test=bh-meet-save-personality]');
+    await bh.waitForSelector('[data-test=bh-curtain]');
+    await bh.waitForSelector('[data-test=bh-curtain]', { state: 'detached', timeout: 20000 });
+    equal(await bare(bh, '[data-test=bh-name]'), 'Neverland', 'the beast\'s page is there');
+    await bh.evaluate(() => { window.TSI_BH_SPEED = 0.02; });
+  });
+
+  await checkS('keyboard: Tab onto the picture shows a ring drawn over it, and focus never goes under the bars', async () => {
+    await home();
+    await bh.click('[data-test=bh-beast-cr-stormwing]');
+    await bh.waitForSelector('[data-test=bh-greet-large]');
+    await bh.keyboard.press('Tab');
+    equal(await bh.evaluate(() => document.activeElement && document.activeElement.getAttribute('data-test')), 'bh-greet-large');
+    const ring = await bh.$eval('[data-test=bh-greet-large]', n => { const a = getComputedStyle(n, '::after'); return { content: a.content, shadow: a.boxShadow }; });
+    assert(ring.content !== 'none' && /244, 205, 118/.test(ring.shadow), 'a gold ring is drawn: ' + JSON.stringify(ring));
+    const margin = await bh.$eval('[data-test=bh-tab-profile]', n => parseFloat(getComputedStyle(n).scrollMarginBottom));
+    assert(margin >= 80, 'room is left for the bottom bar when scrolling to a control: ' + margin);
   });
 
   await checkS('reduced motion: the screens do not fade and the black screen does not fade (it still shows the words)', async () => {

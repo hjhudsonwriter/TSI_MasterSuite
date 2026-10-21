@@ -24,7 +24,8 @@ body.tsi-bh-phone .tsi-tool { padding: 0; }
 .tsi-bhp-card h1 { margin: 0; font: 700 24px/1.15 var(--tsi-font-display); letter-spacing: var(--tsi-track-title); color: var(--tsi-gold); }
 .tsi-bhp-card p { margin: 0; font-size: var(--tsi-fs-body); line-height: var(--tsi-lh-body); color: var(--tsi-text-muted); }
 .tsi-bhp-card ol { margin: 0; padding-left: 1.2em; font-size: var(--tsi-fs-body); line-height: var(--tsi-lh-body); color: var(--tsi-text-muted); }
-.tsi-bhp-code { width: 100%; box-sizing: border-box; font: 12px/1.35 var(--tsi-font-mono); word-break: break-all; min-height: 110px; resize: vertical; }
+/* 16 px: a smaller box makes iPhone Safari zoom the whole page when it is tapped. */
+.tsi-bhp-code { width: 100%; box-sizing: border-box; font: 16px/1.35 var(--tsi-font-mono); word-break: break-all; min-height: 110px; resize: vertical; }
 .tsi-bhp-row { display: flex; flex-wrap: wrap; gap: var(--tsi-space-2); }
 .tsi-bhp-row .tsi-btn { min-height: 44px; }
 .tsi-bhp-error { padding: var(--tsi-space-3); border: 1px solid var(--tsi-danger); border-radius: var(--tsi-radius-sm); color: var(--tsi-text); background: rgba(120, 20, 30, .3); }

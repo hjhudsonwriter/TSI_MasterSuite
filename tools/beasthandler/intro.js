@@ -17,7 +17,7 @@
    with the reason and the player's choices put back.
 
    This file only draws and times the sequence. view.js gives it its helpers (env):
-   el, btn, M (model), Pf (profile rules), tables, host, life, drafts, submit(body, opts),
+   el, btn, M (model), Pf (profile rules), tables, host, life, draft {get, set, clear}, submit(body, opts),
    rerender(fade), focusHeading(), setInert(on), preload(d, name), heroImage(), refused(d),
    skipped(d), blocked(d), canSkip(d, refused), skip(d), leave(), finished(d), afterClose(result). */
 (function () {
@@ -45,12 +45,29 @@
       function fresh(d, pending) {
         var eff = M.effectiveProfile(d, pending);
         var refused = env.refused(d);
-        var draft = refused ? env.drafts[d.id] : null;
+        var draft = refused ? env.draft.get(d.id) : null;
         var original = { dominant: eff.dominant, attachment: eff.attachment, trigger: eff.trigger };
-        var values = draft
-          ? { regional: draft.regional || '', dominant: draft.dominant || '', attachment: draft.attachment || '', trigger: draft.trigger || '' }
-          : { regional: '', dominant: original.dominant, attachment: original.attachment, trigger: original.trigger };
-        return { creatureId: d.id, step: 0, values: values, original: original, suggested: {}, rolls: {}, said: '', refused: refused, holding: false, fading: false, closing: false };
+        var values = { regional: '', dominant: original.dominant, attachment: original.attachment, trigger: original.trigger };
+        if (draft && draft.values) {
+          values.regional = draft.values.regional || '';
+          /* A line the player left as they found it follows the Bastion as it is now (the DM may have changed it meanwhile); only lines they changed are put back. */
+          PERSONALITY.forEach(function (k) {
+            var theirs = typeof draft.values[k] === 'string' ? draft.values[k] : '';
+            var found = draft.original && typeof draft.original[k] === 'string' ? draft.original[k] : undefined;
+            values[k] = theirs === found ? original[k] : theirs;
+          });
+        }
+        return { creatureId: d.id, step: 0, values: values, original: original, suggested: {}, rolls: {}, said: '', refused: refused, restored: !!(draft && draft.values), holding: false, fading: false, closing: false };
+      }
+      /* While the panels are open the Bastion's own lines may change (the DM edits one): a line the player has not touched follows it,
+         and what counts as "changed" is always measured from what the Bastion holds now. */
+      function follow(d, pending) {
+        var eff = M.effectiveProfile(d, pending);
+        PERSONALITY.forEach(function (k) {
+          if (eff[k] === st.original[k]) return;
+          if (st.values[k] === st.original[k]) { st.values[k] = eff[k]; delete st.suggested[k]; }
+          st.original[k] = eff[k];
+        });
       }
       function mine(d) { return !!st && st.creatureId === d.id; }
       function go(step) { st.step = step; st.said = ''; env.rerender(true); env.focusHeading(); }
@@ -61,11 +78,11 @@
         if (!M.needsMeeting(d, pending)) {
           if (mine(d)) st = null;
           /* The choices are kept while the request is only waiting (a refusal brings them back); they go once the Bastion holds the subspecies. */
-          if (String(d.profile && d.profile.regional || '').trim()) delete env.drafts[d.id];
+          if (String(d.profile && d.profile.regional || '').trim()) env.draft.clear(d.id);
           return false;
         }
         if (env.skipped(d) || env.blocked(d)) return false;   /* skipped, or a profile request is already waiting */
-        if (!mine(d)) st = fresh(d, pending);
+        if (!mine(d)) st = fresh(d, pending); else follow(d, pending);
         return true;
       }
 
@@ -115,7 +132,7 @@
         var canSkip = env.canSkip(d, st.refused);
         return { nodes: [
           el('h1', { class: 'tsi-bh-meet__title', 'data-test': 'bh-meet-title', text: text.meet }),
-          st.refused ? el('p', { class: 'tsi-bh-message tsi-bh-message--warn tsi-bh-meet__refused', 'data-test': 'bh-meet-refused', role: 'status', text: 'Your last choice for ' + d.name + ' wasn’t accepted. ' + M.requestLine(st.refused, env.host.mode) + ' Your choices are kept: you can send them again' + (canSkip ? ', or skip for now.' : ', or ask the DM.') }) : null,
+          st.refused ? el('p', { class: 'tsi-bh-message tsi-bh-message--warn tsi-bh-meet__refused', 'data-test': 'bh-meet-refused', role: 'status', text: 'Your last choice for ' + d.name + ' wasn’t accepted. ' + M.requestLine(st.refused, env.host.mode) + ' ' + (st.restored ? 'Your choices are put back: you can send them again' : 'Please choose again') + (canSkip ? ', or skip for now.' : ', or ask the DM.') }) : null,
           el('p', { class: 'tsi-bh-meet__lead', text: 'A few quick choices, then you will see ' + d.name + ' for the first time.' }),
           el('div', { class: 'tsi-bh-meet__actions' }, [
             env.btn('Continue', function () { go(1); }, 'tsi-btn--primary tsi-bh-meet__go', 'bh-meet-continue'),
@@ -200,7 +217,10 @@
           if (!res.clean.regional || !res.clean.dominant || !res.clean.attachment || !res.clean.trigger) { prob.dataset.fromSave = '1'; showProblem(prob, 'Fill in all three, or roll for them.'); return null; }
           st.holding = true;
           save.disabled = true;
-          env.drafts[d.id] = { regional: res.clean.regional, dominant: res.clean.dominant, attachment: res.clean.attachment, trigger: res.clean.trigger };
+          env.draft.set(d.id, {
+            values: { regional: res.clean.regional, dominant: res.clean.dominant, attachment: res.clean.attachment, trigger: res.clean.trigger },
+            original: { dominant: st.original.dominant, attachment: st.original.attachment, trigger: st.original.trigger }
+          });
           env.preload(d, res.clean.regional);
           /* The subspecies, and only the personality lines the player wrote or changed (a line already written is not sent again). */
           var payload = { regional: res.clean.regional };
