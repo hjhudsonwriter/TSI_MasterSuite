@@ -385,7 +385,7 @@
     t.same([dev(b).bond.level, dev(b).bond.ready], [4, 5]);
     BR.confirmBond(b, bdata, E, 'Elara and her wyvern stood together against the storm.');
     t.same([dev(b).bond.level, dev(b).bond.ready], [5, null]);
-    t.ok(/Elite Aerial Defence and Aerial Combat Signals/.test(BR.nextStepLine(b, bdata, BR.creatureById(b, E))));
+    t.ok(/The Level 5 programmes are open to it/.test(BR.nextStepLine(b, bdata, BR.creatureById(b, E))));
   });
 
   test('Elite Aerial Defence needs Aerial Sentinel and gives +1 Attack; Aerial Combat Signals needs Bond 5 and the flight and adds nothing in battle', function (t) {
