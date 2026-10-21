@@ -75,7 +75,7 @@ Keep the folder layout exactly as it is. If you publish only the phone page, lea
 
 ## What the phone keeps
 
-In that phone's browser only, under names starting `tsi.beasthandler.phone`: the link (the handler and its secret), the latest snapshot, and requests not yet answered. If the player clears their browser data they only need to paste the pairing code again.
+In that phone's browser only, under names starting `tsi.beasthandler.phone`: the link (the handler and its secret), the latest snapshot, requests not yet answered, and, while a first-meeting request waits, the player's choices (so a refusal can put them back; they go once the Bastion holds the subspecies). If the player clears their browser data they only need to paste the pairing code again.
 
 ## What a phone can never do
 

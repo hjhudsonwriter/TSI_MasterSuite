@@ -3,10 +3,15 @@
    "It's time to meet…", the subspecies, and the personality, then the screen fades to black, "Welcome to the Ironbow,
    Name!" shows, and the beast's page fades in with its picture for the first time.
    Checks (laptop, then a phone with the code swap): no picture or page of the beast before the end; the panels and
-   their buttons; Roll and the five tap choices; one request with all four lines (sent once); the black screen and the
-   welcome words in order; the picture appears at once while the Bastion's answer is awaited, marked as waiting, and the
-   marks go when it answers; Skip for now (laptop only); closing the page mid-way sends nothing; reduced motion; the
-   black screen never outlives the tool; every button fits a phone.
+   their buttons; Roll and the five tap choices; one request (the subspecies and any line written or changed), sent once;
+   the panel fading to black, the welcome words, black again, in order and at real speed; the curtain waiting for a slow
+   picture and giving up on one that never comes; the picture appearing at once while the Bastion's answer is awaited,
+   marked as waiting, and the marks going when it answers; lines already written for the beast kept; a refused request
+   bringing the meeting back with the reason, the choices put back (across a reload) and a line the DM changed
+   meanwhile not put back over; another handler's waiting request not shown; clearing the subspecies shown as waiting;
+   a name with no painting said so; a missing picture file; Skip for now (laptop; on a phone only after a refusal);
+   closing the page mid-way sends nothing; keyboard use (focus, Enter, the ring on the picture, messages for a line too
+   long); reduced motion; the black screen never outliving the tool; every button fits a phone.
    Run with:  node tests/e2e/beasthandler-meet.test.js */
 'use strict';
 
