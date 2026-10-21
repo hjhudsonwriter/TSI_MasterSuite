@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#050506">
+  <title>Scarlett Isles: Beast Handler</title>
+  <link rel="stylesheet" href="shared/tokens.css">
+  <link rel="stylesheet" href="shared/components.css">
+  <link rel="stylesheet" href="tools/beasthandler/beasthandler.css">
+  <link rel="stylesheet" href="tools/beasthandler/phone.css">
+</head>
+<body class="tsi-bh-phone">
+  <!-- The player's phone page for the Beast Handler. It loads only the companion and the few shared pieces it
+       needs, never the Bastion, the Explorer or any other tool, so a player given this page cannot reach any
+       DM tool. It needs no internet: it works from the codes the DM sends (see docs/PHONE-PAGE.md). -->
+  <header class="tsi-bhp-bar">
+    <span class="tsi-bhp-bar__title">Scarlett Isles: Beast Handler</span>
+  </header>
+  <main class="tsi-tool tsi-tool--beasthandler" id="tsi-bhp-root"></main>
+
+  <script src="shared/js/core.js"></script>
+  <script src="shared/js/lifecycle.js"></script>
+  <script src="shared/js/modal.js"></script>
+  <script src="shared/js/hmac.js"></script>
+  <script src="tools/beasthandler/data/profile-tables.js"></script>
+  <script src="tools/beasthandler/data/art-map.js"></script>
+  <script src="tools/beasthandler/projection.js"></script>
+  <script src="tools/beasthandler/profile-rules.js"></script>
+  <script src="tools/beasthandler/codes.js"></script>
+  <script src="tools/beasthandler/model.js"></script>
+  <script src="tools/beasthandler/view.js"></script>
+  <script src="tools/beasthandler/phone.js"></script>
+</body>
+</html>
