@@ -457,14 +457,30 @@ Sent in the chat after pull request 3 merged, and kept exactly as received in `b
 | `bastion-new-art/3-courier-exchange/courier_exchange_overlay_2000x833.webp` | `tools/bastion/assets/map/overlays/courier_exchange.png` | 2000 × 833, scaled to 3000 × 1250 | Yes: on the map once the Courier Exchange can be built and is built, in the open square where the cart stands. It overlaps no other overlay |
 | `bastion-new-art/3-courier-exchange/courier_exchange_panel_1024.webp` | `tools/bastion/assets/facilities/courier_exchange.png` | 1024 × 1024, see-through ground | Yes: its picture in Construction now (In development), and its tile and panel once built |
 
-## Scarlett Isles: Beast Handler: Harry's Dire Wolf portraits (21 October 2026)
+## Scarlett Isles: Beast Handler: Harry's portraits (21 October 2026)
 
-Sent in the chat as five WebP pictures (941 × 1672, upright, pixel-painted), kept exactly as received. Not used yet: the companion draws a gold medallion until Harry says which picture is which Regional Variety and which, if any, is the default (the pictures go in with BH-4, through `tools/beasthandler/data/art-map.js`). So they are in `assets/extras/`.
+Sent in the chat as WebP pictures (941 × 1672, upright, pixel-painted) and kept exactly as received (each checked byte-for-byte after copying). The companion shows a beast's picture when it has a Regional Variety that has one, through `tools/beasthandler/data/art-map.js`; a beast with no Regional Variety shows its species' gold medallion (Harry's decision, 21 October 2026).
+
+### Dire Wolves (Harry named each one)
+
+| Original (as sent) | In the suite | Size | Regional Variety | Used? |
+|---|---|---|---|---|
+| 22.webp (white-grey wolf, blue eyes, snowy sea cliff) | `tools/beasthandler/assets/dire-wolf/icepelt.webp` | 489 KB | Icepelt | Yes |
+| 21.webp (black wolf mottled silver, green eyes, mossy forest with standing stones) | `tools/beasthandler/assets/dire-wolf/nightfang.webp` | 333 KB | Nightfang | Yes |
+| 20.webp (wet black-and-tan wolf, teal eyes, rocky shore and harbour town) | `tools/beasthandler/assets/dire-wolf/slatejaw.webp` | 376 KB | Slatejaw ("the spare") | Yes |
+| 24.webp (black wolf, mossy mane, scarred muzzle, misty marsh and ruins) | `tools/beasthandler/assets/dire-wolf/reedshadow.webp` | 428 KB | Reedshadow | Yes |
+| 23.webp (golden wolf, russet mane, sunlit citadel with sun banners) | `tools/beasthandler/assets/dire-wolf/hollowhowl.webp` | 322 KB | Hollowhowl | Yes |
+
+### Wyverns (kept in `extras/` until Harry says which is which)
 
 | Original (as sent) | In the suite | Size | What it shows | Used? |
 |---|---|---|---|---|
-| 20.webp | `tools/beasthandler/assets/extras/dire-wolf/dire-wolf-1-shore-and-harbour.webp` | 376 KB | A wet black-and-tan wolf with teal eyes on a rocky shore; waves, a sea arch and a harbour town with a red banner bearing a white tree | No: waiting for Harry's mapping |
-| 21.webp | `tools/beasthandler/assets/extras/dire-wolf/dire-wolf-2-mossy-forest.webp` | 333 KB | A black wolf streaked with silver and moss, green eyes, in an old forest with carved standing stones and a waterfall | No |
-| 22.webp | `tools/beasthandler/assets/extras/dire-wolf/dire-wolf-3-snowy-cliffs.webp` | 489 KB | A thick white-grey wolf with blue eyes on a snowy sea cliff, a castle in the distance | No |
-| 23.webp | `tools/beasthandler/assets/extras/dire-wolf/dire-wolf-4-golden-citadel.webp` | 322 KB | A golden wolf with a russet mane and amber eyes on a sunlit hill, a golden citadel with sun banners behind | No |
-| 24.webp | `tools/beasthandler/assets/extras/dire-wolf/dire-wolf-5-misty-ruins.webp` | 428 KB | A black wolf with a mossy mane, amber eyes and a scarred muzzle, in a misty marsh with ruins and a carved stone | No |
+| 25.webp | `tools/beasthandler/assets/extras/wyvern/wyvern-1-mossy-green-misty-valleys.webp` | 383 KB | A moss-covered green dragon with pale yellow-green wings above misty valleys, waterfalls and standing stones | No |
+| 26.webp | `tools/beasthandler/assets/extras/wyvern/wyvern-2-volcanic-copper-wings.webp` | 460 KB | A dark scaled dragon with glowing orange cracks and copper-orange wings, a volcano and lava rivers | No |
+| 27.webp | `tools/beasthandler/assets/extras/wyvern/wyvern-3-icy-blue-sea-cliffs.webp` | 331 KB | A blue-black, frosted dragon with pale blue wings on an icy sea cliff, a castle on the water | No |
+| 28.webp | `tools/beasthandler/assets/extras/wyvern/wyvern-4-crimson-red-cliffs.webp` | 327 KB | A crimson dragon with a bone-white chest and orange wings on red cliffs at sunset, a red-rock fortress and bridge | No |
+| 29.webp | `tools/beasthandler/assets/extras/wyvern/wyvern-5-storm-sea-castle.webp` | 382 KB | A blue-black dragon with ragged white-grey wings and curled horns on a storm-lashed sea cliff, a castle beyond | No |
+
+### Griffins
+
+Harry's five Griffin pictures reached the chat as images only, not as files, so they are **not saved yet**. Waiting for them to be sent again.
