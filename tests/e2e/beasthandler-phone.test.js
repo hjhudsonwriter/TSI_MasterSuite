@@ -37,6 +37,8 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     const mk = (id, species, name, home, handler) => {
       const c = { id, species, owner: '', name, status: 'housed', home, grantedDay: 1, housedDay: 1, msgId: '' };
       c.development = R.newDevelopment(c, s.day); c.development.handlerId = handler;
+      /* Both beasts have already met their handlers (a subspecies is set), so their pages open at once; the first meeting on a phone is tested in beasthandler-meet.test.js. */
+      c.development.regional = 'Widowspine';
       return c;
     };
     s.creatures = [mk('cr-stormwing', 'wyvern', 'Stormwing', 'wyvern_roost', 'Mira'), mk('cr-ashwing', 'wyvern', 'Ashwing', 'wyvern_roost', 'Joss')];
@@ -63,6 +65,8 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
   const pp = await ph.newPage();
   await pp.goto(PHONE);
   await pp.waitForSelector('[data-test=bhp-screen-link]');
+  /* A code box under 16 px makes iPhone Safari zoom the whole page when it is tapped. */
+  assert(await pp.$eval('[data-test=bhp-pair-input]', n => parseFloat(getComputedStyle(n).fontSize)) >= 16, 'the code box is at least 16 px');
 
   await check('the phone page loads no DM tool: no Bastion, no Explorer, no tool list', async () => {
     const loaded = await pp.evaluate(() => Array.from(document.scripts).map(s => s.getAttribute('src')));
@@ -164,6 +168,12 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     equal(await bare(pp, '[data-test=bh-p-dominant]'), 'Watchful');
     equal(await bare(pp, '[data-test=bh-p-regional]'), 'Bloodcrest');
     assert(/Saved in the Bastion/.test(await bare(pp, '[data-test=bh-requests]')), await bare(pp, '[data-test=bh-requests]'));
+    /* The saved variety's painted picture is on screen: really loaded, and big enough to see, on the phone's own page. */
+    await pp.click('[data-test=bh-back]');
+    await pp.waitForSelector('[data-test=bh-portrait-large] img', { timeout: 5000 });
+    const pic = await pp.$eval('[data-test=bh-portrait-large] img', i => { const r = i.getBoundingClientRect(); return { src: i.getAttribute('src'), w: Math.round(r.width), h: Math.round(r.height), loaded: i.complete && i.naturalWidth > 0 }; });
+    assert(/wyvern\/bloodcrest\.webp$/.test(pic.src) && pic.loaded && pic.w > 150 && pic.h > 250, JSON.stringify(pic));
+    await pp.click('[data-test=bh-tab-profile]');
   });
 
   await check('an older snapshot pasted after a newer one is refused, and the newer one stays', async () => {
@@ -295,6 +305,56 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
       equal(r.small, [], where + ' has small targets');
       await H.shot(pp, 'beasthandler-phone-' + where);
     }
+    /* The bond card on the beast's page, on the narrowest phones: pill names whole, the headline not broken inside a word. */
+    await pp.click('[data-test=bh-tab-orders]').catch(() => {});
+    await pp.click('[data-test=bh-back]').catch(() => {});
+    for (const w of [390, 360, 320]) {
+      await pp.setViewportSize({ width: w, height: 740 });
+      await pp.waitForTimeout(250);
+      const r = await pp.evaluate(() => {
+        const cut = [];
+        document.querySelectorAll('.tsi-bh-pill__label').forEach(n => { if (n.scrollWidth > n.clientWidth + 1 || n.getBoundingClientRect().right > n.parentElement.getBoundingClientRect().right + 1) cut.push(n.textContent); });
+        const line = document.querySelector('[data-test=bh-bond-line]');
+        const broken = [];
+        /* A word is broken when a line ends inside it: compare the line's rendered height with one line of its own text, per word. */
+        const words = line.textContent.split(/\s+/).filter(Boolean);
+        const probe = document.createElement('span');
+        probe.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap;font:' + getComputedStyle(line).font + ';letter-spacing:' + getComputedStyle(line).letterSpacing + ';text-transform:' + getComputedStyle(line).textTransform;
+        document.body.appendChild(probe);
+        words.forEach(x => { probe.textContent = x; if (probe.getBoundingClientRect().width > line.clientWidth + 1) broken.push(x); });
+        probe.remove();
+        return { cut, broken, sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth };
+      });
+      equal(r.cut, [], 'pill names are cut off at ' + w + ' px');
+      equal(r.broken, [], 'a word of the bond line would break at ' + w + ' px');
+      assert(r.sw <= r.cw, 'sideways scroll at ' + w + ' px');
+    }
+    await pp.setViewportSize({ width: 390, height: 844 });
+    /* Held sideways, the picture is still a proper size (a thumbnail would not do for the centrepiece). */
+    await pp.setViewportSize({ width: 844, height: 390 });
+    await pp.waitForTimeout(250);
+    const hero = await pp.$eval('[data-test=bh-portrait-large]', n => { const b = n.getBoundingClientRect(); return [Math.round(b.width), Math.round(b.height)]; });
+    assert(hero[1] >= 250, 'the picture held sideways is ' + hero.join(' x '));
+    await pp.setViewportSize({ width: 390, height: 844 });
+    /* A control reached with the keyboard is never left under the bottom bar or the top bar. */
+    await pp.setViewportSize({ width: 360, height: 640 });
+    await pp.click('[data-test=bh-tab-profile]');
+    const reachable = await pp.$$eval('.tsi-bh button:not([disabled]):not(.tsi-bh-nav__btn), .tsi-bh summary', ns => ns.map((n, i) => { n.setAttribute('data-kbd', String(i)); return '[data-kbd="' + i + '"]'; }));
+    assert(reachable.length >= 2, 'there are controls to check');
+    for (const sel of reachable) {
+      await pp.focus(sel);
+      await pp.waitForTimeout(250);
+      const top = await pp.evaluate(s => { const n = document.querySelector(s); const b = n.getBoundingClientRect(); const hit = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2); return { ok: hit === n || n.contains(hit), hit: hit ? (hit.getAttribute('data-test') || hit.className || hit.tagName) : null, what: n.getAttribute('data-test') || n.textContent.slice(0, 20), rect: [Math.round(b.top), Math.round(b.bottom)], vh: innerHeight, y: Math.round(scrollY) }; }, sel);
+      assert(top.ok, 'a control is hidden behind a bar when focused at 360 x 640: ' + JSON.stringify(top));
+    }
+    /* On the narrowest phone a building's "Level N" tag stays on one line. */
+    await pp.setViewportSize({ width: 320, height: 640 });
+    await pp.click('[data-test=bh-back]');
+    await pp.click('[data-test=bh-back]');
+    await pp.waitForSelector('[data-test=bh-fac-wyvern_roost]');
+    const tall = await pp.$$eval('.tsi-bh-card__head .tsi-pill', ns => ns.map(n => Math.round(n.getBoundingClientRect().height)).filter(h => h > 32));
+    equal(tall, [], 'a Level tag wraps onto two lines at 320 px');
+    await pp.setViewportSize({ width: 390, height: 844 });
   });
 
   await check('Add a handler with a name that is already paired asks before it swaps their code', async () => {

@@ -66,6 +66,14 @@
     var t = tb || tables();
     var sp = t && isObj(t.species) ? t.species[speciesId] : null;
     if (!sp) return null;
+    /* A subspecies (Regional Variety) rolls as an even pick among that kind's own varieties (a d5 for the five of each). */
+    if (field === 'regional') {
+      var names = Array.isArray(sp.regional) ? sp.regional.map(function (r) { return r.name; }) : [];
+      if (!names.length) return null;
+      var r = typeof rnd === 'function' ? rnd() : Math.random();
+      var n = Math.min(names.length, Math.max(1, Math.floor((isFinite(r) ? r : 0) * names.length) + 1));
+      return { text: names[n - 1], roll: n, of: names.length };
+    }
     var table = field === 'dominant' ? t.dominant : (field === 'attachment' || field === 'trigger') ? sp[field] : null;
     var e = Pf.rollTable(table, rnd);
     return e ? { text: e.label, roll: e.roll } : null;

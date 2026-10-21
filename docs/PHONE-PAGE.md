@@ -4,7 +4,7 @@ Written for Harry, in plain English. Last updated 21 October 2026.
 
 ## What this is
 
-`beasthandler.html` (in the main folder of the suite) is a small page for a **player's phone**. It shows them their own beast (portrait, Bond 0 to 5, Profile, free Orders, Chronicle) and lets them ask for a change. It is **not** a second copy of the Bastion. It cannot open the Bastion, the Explorer or any DM tool, and it cannot change your save. It can only *ask*; your Bastion checks the ask again and decides.
+`beasthandler.html` (in the main folder of the suite) is a small page for a **player's phone**. It shows them their own beast (its picture and subspecies, Bond 0 to 5, Profile, free Orders, Chronicle) and lets them ask for a change. It is **not** a second copy of the Bastion. It cannot open the Bastion, the Explorer or any DM tool, and it cannot change your save. It can only *ask*; your Bastion checks the ask again and decides.
 
 There is no internet and no server in the middle. The page and your laptop swap short pieces of text instead, called **codes**. A code can be pasted into a message (WhatsApp, Discord, text) or saved as a small `.txt` file and sent.
 
@@ -17,6 +17,10 @@ There is no internet and no server in the middle. The page and your laptop swap 
 | Request code | `BHC1.` | The player's phone | One request (a profile change or a free training order). |
 
 Each code is **signed** with a secret only that handler and your Bastion know. If someone changes a code on the way, or makes one up, the other side ignores it. Signing does not hide what is in a code: a snapshot holds only what that player may see anyway, and a request is only a profile line or an order.
+
+## Meeting a beast for the first time
+
+When a player opens a beast whose subspecies has not been chosen yet, the page walks them through three panels (meet, subspecies, personality), then plays a short fade to black with "Welcome to the Ironbow, Name!" before showing the beast. At the end the phone asks for **one request code** (the subspecies and any personality line the player wrote or changed; lines already written are shown and kept) to send to the DM; until the DM applies it and sends a fresh snapshot, the beast's page shows the choice with "Not confirmed yet". If the Bastion refuses the request, the next snapshot brings the meeting back with the reason and the player's choices put back, and only then does the phone offer **Skip for now**.
 
 ## The normal round trip
 
@@ -56,7 +60,7 @@ If Safari ever clears the page's saved link (it can, if the page isn't used for 
 
 ### The files a phone needs
 
-Only these (about 3 MB without the extras):
+Only these (about 9 MB in all, without the extras):
 
 - `beasthandler.html`
 - `shared/tokens.css`, `shared/components.css`
@@ -64,14 +68,14 @@ Only these (about 3 MB without the extras):
 - `shared/js/core.js`, `lifecycle.js`, `modal.js`, `hmac.js`
 - `tools/beasthandler/beasthandler.css`, `phone.css`
 - `tools/beasthandler/data/` (`profile-tables.js`, `art-map.js`)
-- `tools/beasthandler/projection.js`, `profile-rules.js`, `codes.js`, `model.js`, `view.js`, `phone.js`
-- `tools/beasthandler/assets/dire-wolf/` (the five wolf portraits) and `tools/beasthandler/assets/phone-icon-180.png` (the Home Screen icon). Leave out `assets/extras/` (unused wyvern pictures).
+- `tools/beasthandler/projection.js`, `profile-rules.js`, `codes.js`, `model.js`, `intro.js`, `view.js`, `phone.js`
+- `tools/beasthandler/assets/dire-wolf/`, `assets/wyvern/` and `assets/griffin/` (the fifteen portraits, about 6.5 MB between them; a beast's picture only appears if its folder is there) and `tools/beasthandler/assets/phone-icon-180.png` (the Home Screen icon). Leave out `assets/extras/` (the originals, about 48 MB).
 
 Keep the folder layout exactly as it is. If you publish only the phone page, leave out the Bastion, the Explorer and the rest of the suite. Players don't need them, and the phone page never loads them.
 
 ## What the phone keeps
 
-In that phone's browser only, under names starting `tsi.beasthandler.phone`: the link (the handler and its secret), the latest snapshot, and requests not yet answered. If the player clears their browser data they only need to paste the pairing code again.
+In that phone's browser only, under names starting `tsi.beasthandler.phone`: the link (the handler and its secret), the latest snapshot, requests not yet answered, and, while a first-meeting request waits, the player's choices (so a refusal can put them back; they go once the Bastion holds the subspecies). If the player clears their browser data they only need to paste the pairing code again.
 
 ## What a phone can never do
 

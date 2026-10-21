@@ -26,7 +26,7 @@
   var root = document.getElementById('tsi-bhp-root');
 
   /* ---------- What this phone keeps ---------- */
-  var KEY = { pairing: 'tsi.beasthandler.phone.pairing', snapshot: 'tsi.beasthandler.phone.snapshot', outbox: 'tsi.beasthandler.phone.outbox' };
+  var KEY = { pairing: 'tsi.beasthandler.phone.pairing', snapshot: 'tsi.beasthandler.phone.snapshot', outbox: 'tsi.beasthandler.phone.outbox', draft: 'tsi.beasthandler.phone.draft' };
   var memory = {};   /* used only if the browser won't keep anything */
   var keepsNothing = false;
   function read(key) {
@@ -56,6 +56,12 @@
 
   function snapshot() { return held && held.snapshot ? held.snapshot : null; }
   function saveOutbox() { write(KEY.outbox, outbox); }
+  /* What a waiting request asked for. A request kept by an earlier version of this page has no copy of it, but its code holds the whole request. */
+  function payloadOf(o) {
+    if (o.payload && typeof o.payload === 'object') return o.payload;
+    var peek = C.peekCommand(o.code);
+    return peek.ok && peek.command && peek.command.payload && typeof peek.command.payload === 'object' ? peek.command.payload : undefined;
+  }
   /* Requests the Bastion has answered leave the list when a snapshot shows their receipt. */
   function prune() {
     var s = snapshot();
@@ -156,7 +162,12 @@
       if (!s.campaign || s.campaign !== pairing.campaign) return 'The DM needs to open the Bastion once and send a new snapshot before you can ask for anything.';
       return '';
     },
-    outbox: function () { return outbox.map(function (o) { return { id: o.id, type: o.type, creature: o.creature, fac: o.fac, label: o.label, at: o.at }; }); },
+    /* The first meeting's choices, kept on this phone while a request waits, so a refusal (which can come days later) can put them back. */
+    drafts: {
+      read: function () { var m = read(KEY.draft); return m && typeof m === 'object' && !Array.isArray(m) ? m : {}; },
+      write: function (m) { write(KEY.draft, m && Object.keys(m).length ? m : null); }
+    },
+    outbox: function () { return outbox.map(function (o) { return { id: o.id, type: o.type, creature: o.creature, fac: o.fac, label: o.label, at: o.at, payload: payloadOf(o) }; }); },
     submit: function (body) {
       var why = host.canSubmit();
       if (why) return Promise.resolve({ ok: false, message: why });
@@ -165,7 +176,7 @@
       var label = !d ? '' : body.type === 'profile.set' ? d.name + ' (profile)' : d.name + ': ' + ((d.orders.available.filter(function (o) { return o.fnId === body.payload.fnId; })[0] || {}).label || body.payload.fnId);
       var cmd = { v: 1, id: 'p-' + TSI.hmac.randomId(24), campaign: pairing.campaign, handler: pairing.handler, creature: body.creature, fac: body.fac || '', type: body.type, view: body.view || '', label: label, payload: body.payload, at: Date.now() };
       var code = C.encodeCommand(cmd, pairing.secret);
-      outbox.push({ id: cmd.id, type: cmd.type, creature: cmd.creature, fac: cmd.fac, label: label, at: cmd.at, code: code });
+      outbox.push({ id: cmd.id, type: cmd.type, creature: cmd.creature, fac: cmd.fac, label: label, at: cmd.at, code: code, payload: cmd.payload });
       saveOutbox();
       return Promise.resolve({ ok: true, id: cmd.id, code: code, label: label });
     },
@@ -195,7 +206,7 @@
     return TSI.modal.confirm({ title: 'Unlink this phone', message: 'This forgets the link to your beasts, the snapshot and any requests you have not sent. You would need a new pairing code from the DM. Unlink?', okLabel: 'Unlink', cancelLabel: 'Keep it' }).then(function (go) {
       if (!go) return;
       pairing = null; held = null; outbox = [];
-      write(KEY.pairing, null); write(KEY.snapshot, null); write(KEY.outbox, null);
+      write(KEY.pairing, null); write(KEY.snapshot, null); write(KEY.outbox, null); write(KEY.draft, null);
       start();
     });
   });

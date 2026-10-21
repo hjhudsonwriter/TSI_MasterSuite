@@ -22,12 +22,39 @@
   };
   M.bondLine = function (bond) { return 'Bond ' + bond.level + ': ' + bond.name; };
 
-  /* The Regional Variety table entry whose name matches (any capitals), or null. */
+  /* Bond 1 to 5 as five pills for a beast's main page: { n, label, state: 'done' | 'current' | 'todo' }, and the stage line. */
+  M.BOND_SHORT = ['Acclimatised', 'Trusting', 'Bonded', 'Devoted', 'Legendary'];
+  M.bondPills = function (level) {
+    var lv = typeof level === 'number' && isFinite(level) ? Math.max(0, Math.min(5, Math.floor(level))) : 0;
+    var pills = [];
+    for (var n = 1; n <= 5; n++) pills.push({ n: n, label: M.BOND_SHORT[n - 1], state: n < lv ? 'done' : (n === lv ? 'current' : 'todo') });
+    return { level: lv, pills: pills, stageText: 'Stage ' + lv + ' of 5' };
+  };
+  /* "Bond 3 · Bonded" for the rapport line. */
+  M.rapportLine = function (bond) { return 'Bond ' + bond.level + ' · ' + bond.name; };
+
+  /* The Regional Variety table entry a typed name means, or null. Capitals, spaces, hyphens and apostrophes do not matter
+     ("Bleak hook" is Bleakhook); words in brackets are ignored; a leading "the" and a leading or trailing species word are
+     allowed ("The Widowspine Wyvern", "Dire Wolf Nightfang"); and a name that mentions exactly one of the species' varieties
+     means that one ("Slatejaw of the northern hills"). Anything else has no picture. */
+  function looseKey(text) { return String(text || '').toLowerCase().replace(/[^a-z]/g, ''); }
+  var SPECIES_WORDS = ['direwolf', 'wolf', 'wyvern', 'griffin'];
   M.regionalInfo = function (tables, speciesId, name) {
     var sp = tables && isObj(tables.species) ? tables.species[speciesId] : null;
-    var key = String(name || '').replace(/\s+/g, ' ').trim().toLowerCase();
-    if (!sp || !key) return null;
-    return (sp.regional || []).filter(function (r) { return r.name.toLowerCase() === key; })[0] || null;
+    var list = sp && Array.isArray(sp.regional) ? sp.regional : [];
+    var key = looseKey(String(name || '').replace(/[(\[{][^)\]}]*[)\]}]/g, ' ').replace(/^\s*the\s+/i, ''));
+    if (!list.length || !key) return null;
+    function find(k) { return list.filter(function (r) { return looseKey(r.name) === k; })[0] || null; }
+    var hit = find(key);
+    if (hit) return hit;
+    SPECIES_WORDS.some(function (w) {
+      if (key.length > w.length && key.slice(-w.length) === w) hit = find(key.slice(0, -w.length));
+      if (!hit && key.length > w.length && key.slice(0, w.length) === w) hit = find(key.slice(w.length));
+      return !!hit;
+    });
+    if (hit) return hit;
+    var inside = list.filter(function (r) { return key.indexOf(looseKey(r.name)) !== -1; });
+    return inside.length === 1 ? inside[0] : null;
   };
 
   /* Which picture to draw: { src, label, alt }; src is '' until a picture is added. */
@@ -76,6 +103,51 @@
     return 'Read from the Bastion saved on this device · ' + info.asOfLabel;
   };
 
+  /* ---------- The first meeting (Harry, 21 October 2026) ---------- */
+  M.possessive = function (name) { var n = String(name || '').trim(); return n + (/s$/i.test(n) ? '\u2019' : '\u2019s'); };
+  M.speciesNoun = function (detail) { return String(detail && detail.species && detail.species.name || 'beast').toLowerCase(); };
+  /* The profile lines still waiting to be answered for a beast, newest request last winning: { regional?, dominant?, ... } or null. */
+  M.pendingProfile = function (snap, outbox, creatureId) {
+    var rows = M.requestRows(snap, outbox, creatureId, 50).filter(function (r) { return r.state === 'waiting' && r.type === 'profile.set' && isObj(r.payload); });
+    if (!rows.length) return null;
+    var out = {};
+    rows.slice().reverse().forEach(function (r) {   /* requestRows is newest first; apply oldest first */
+      ['dominant', 'attachment', 'trigger', 'regional'].forEach(function (k) { if (typeof r.payload[k] === 'string') out[k] = r.payload[k]; });
+    });
+    return Object.keys(out).length ? out : null;
+  };
+  /* The profile as the player should see it: the Bastion's lines with the ones asked for and not yet answered laid over. */
+  M.effectiveProfile = function (detail, pending) {
+    var p = detail && isObj(detail.profile) ? detail.profile : {};
+    var out = { dominant: p.dominant || '', attachment: p.attachment || '', trigger: p.trigger || '', regional: p.regional || '' };
+    if (pending) Object.keys(pending).forEach(function (k) { if (typeof pending[k] === 'string') out[k] = pending[k]; });
+    return out;
+  };
+  /* Has this beast been introduced? Not until a subspecies has been chosen (saved, or asked for and waiting). */
+  M.needsMeeting = function (detail, pending) {
+    return !M.effectiveProfile(detail, pending).regional.trim();
+  };
+  /* Is the subspecies shown different from the Bastion's own (asked for, not yet answered)? Clearing it counts. */
+  M.regionalWaiting = function (detail, pending) {
+    var p = detail && isObj(detail.profile) ? detail.profile : {};
+    return !!(pending && typeof pending.regional === 'string' && pending.regional.trim() !== String(p.regional || '').trim());
+  };
+  /* The newest profile request for a beast, if the Bastion refused it (so the player is told why); otherwise null. */
+  M.refusedProfile = function (snap, outbox, creatureId) {
+    var row = M.requestRows(snap, outbox, creatureId, 50).filter(function (r) { return r.type === 'profile.set'; })[0];
+    return row && row.state === 'refused' ? row : null;
+  };
+  /* The words of the sequence. */
+  M.meetingText = function (detail) {
+    var n = detail.name, noun = M.speciesNoun(detail);
+    return {
+      meet: 'It\u2019s time to meet ' + n + '\u2026',
+      subspecies: 'There are many subspecies of ' + noun + ' in The Scarlett Isles, but which one is ' + n + '?',
+      personality: 'Every ' + noun + ' has its own unique personality. What is ' + M.possessive(n) + ' like?',
+      welcome: 'Welcome to the Ironbow, ' + n + '!'
+    };
+  };
+
   /* A handler picker's choices: [{ value, label }] with "no handler" first. */
   M.handlerChoices = function (handlers) {
     var out = [{ value: '', label: 'No handler (see the directory only)' }];
@@ -93,7 +165,7 @@
     receipts.forEach(function (r) { answered[r.id] = true; });
     var rows = (outbox || []).filter(function (o) { return o.creature === creatureId && !answered[o.id]; })
       .sort(function (a, b) { return (b.at || 0) - (a.at || 0); })
-      .map(function (o) { return { id: o.id, type: o.type, state: 'waiting', label: o.label, why: '', dueLabel: '' }; });
+      .map(function (o) { return { id: o.id, type: o.type, state: 'waiting', label: o.label, why: '', dueLabel: '', payload: isObj(o.payload) ? o.payload : null }; });
     receipts.filter(function (r) { return r.creature === creatureId; }).forEach(function (r) {
       rows.push({ id: r.id, type: r.type, state: r.state, label: r.label, why: r.why, dueLabel: r.dueDay ? 'Day ' + r.dueDay : '' });
     });

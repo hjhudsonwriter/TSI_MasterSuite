@@ -187,7 +187,7 @@ window.TSI_DATA.tools = [
     /* It reads the Bastion's save (shared/js/dmdoc.js does the same) and keeps only the small queue of requests waiting for the Bastion. */
     saves: true,
     desc: 'The companions of Ironbow. See your wyvern, griffin or dire wolf: its bond, profile and Chronicle.',
-    art: 'shared/art/hero.png',
+    /* No painted art behind this tool: its look is plain charcoal and gold (Harry's mock-ups, 21 October 2026). */
     files: {
       css: ['tools/beasthandler/beasthandler.css'],
       js: [
@@ -221,6 +221,7 @@ window.TSI_DATA.tools = [
         'tools/beasthandler/codes.js',
         'tools/beasthandler/bastion-link.js',
         'tools/beasthandler/model.js',
+        'tools/beasthandler/intro.js',
         'tools/beasthandler/view.js',
         'tools/beasthandler/tool.js'
       ]

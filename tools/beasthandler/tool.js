@@ -26,6 +26,7 @@
   var QUEUE_KEY = 'tsi.beasthandler.queue';
   var REFRESH_MS = 3000;
   var CHOICE_KEY = 'tsi.beasthandler.viewAs' + (TSI.space === 'test' ? '.test' : '');
+  var DRAFT_KEY = 'tsi.beasthandler.meetDraft' + (TSI.space === 'test' ? '.test' : '');
   /* As long as the Bastion would still take a request (codes.js MAX_AGE_MS: 30 days). */
   var STALE_MS = 30 * 24 * 3600 * 1000;
 
@@ -129,6 +130,11 @@
           var waiting = queue.commands.length;
           return base + (waiting ? ' · ' + waiting + (waiting === 1 ? ' request is' : ' requests are') + ' waiting for the Bastion to pick up' : '');
         },
+        /* The first meeting's choices live in this window only (they are working notes, not part of the saved suite). */
+        drafts: {
+          read: function () { try { var m = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || '{}'); return m && typeof m === 'object' ? m : {}; } catch (e) { return {}; } },
+          write: function (m) { try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify(m)); } catch (e) { /* this window just won't remember */ } }
+        },
         handlerChoices: function () { return M.handlerChoices(cur.handlers); },
         viewing: function () { return viewing(cur.handlers); },
         setViewing: function (v) { viewAs = v; writeChoice(v); refresh(); },
@@ -137,8 +143,11 @@
           if (!cur.snap.campaign) return 'The Bastion needs to be opened once so it can link up with the Beast Handler.';
           return '';
         },
-        outbox: function () {
-          return queue.commands.map(function (c) { return { id: c.id, type: c.type, creature: c.creature, fac: c.fac, label: c.label, at: c.at }; });
+        /* Only the viewed handler's own waiting requests: another handler's request for the same beast (the DM may have handed it on) must not show on this page. */
+        outbox: function (all) {
+          var me = cur.snap && cur.snap.handler ? cur.snap.handler.id : '';
+          return queue.commands.filter(function (c) { return all === true || (!!me && P.sameHandler(c.handler, me)); })
+            .map(function (c) { return { id: c.id, type: c.type, creature: c.creature, fac: c.fac, label: c.label, at: c.at, payload: c.payload }; });
         },
         submit: function (body) {
           var why = host.canSubmit();
