@@ -1,0 +1,42 @@
+/* Scarlett Isles: Beast Handler — the phone page's own frame (beasthandler.html).
+   The companion's screens are styled by beasthandler.css; this is only the slim top bar, the dark ground
+   (no heavy painting, so it loads fast on a phone) and the first-run screens. */
+html, body.tsi-bh-phone { min-height: 100%; }
+body.tsi-bh-phone {
+  margin: 0;
+  background:
+    radial-gradient(1000px 500px at 20% 0%, rgba(255, 120, 60, .13), transparent 60%),
+    radial-gradient(900px 500px at 90% 10%, rgba(214, 178, 94, .09), transparent 55%),
+    var(--tsi-bg);
+  background-attachment: fixed;
+  color: var(--tsi-text);
+  font-family: var(--tsi-font-body);
+}
+.tsi-bhp-bar {
+  position: sticky; top: 0; z-index: var(--tsi-z-sticky);
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: max(10px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) 10px max(14px, env(safe-area-inset-left));
+  background: var(--tsi-topbar-bg);
+  border-bottom: 1px solid var(--tsi-line-head);
+  box-shadow: var(--tsi-shadow-topbar);
+}
+.tsi-bhp-bar__title { font: 700 14px/1.2 var(--tsi-font-display); letter-spacing: var(--tsi-track-heading); text-transform: uppercase; color: var(--tsi-gold-text); }
+body.tsi-bh-phone .tsi-tool { padding: 0; }
+
+/* The first-run screens: link the phone, then fetch the first snapshot. */
+.tsi-bhp-card { display: grid; gap: var(--tsi-space-3); padding: var(--tsi-space-4); background: linear-gradient(180deg, var(--tsi-bh-panel-2, #221b17), var(--tsi-bh-panel, #161311)); border: var(--tsi-border-panel); border-radius: var(--tsi-radius-lg); }
+.tsi-bhp-card h1 { margin: 0; font: 700 24px/1.15 var(--tsi-font-display); letter-spacing: var(--tsi-track-title); color: var(--tsi-gold); }
+.tsi-bhp-card p { margin: 0; font-size: var(--tsi-fs-body); line-height: var(--tsi-lh-body); color: var(--tsi-text-muted); }
+.tsi-bhp-card ol { margin: 0; padding-left: 1.2em; font-size: var(--tsi-fs-body); line-height: var(--tsi-lh-body); color: var(--tsi-text-muted); }
+.tsi-bhp-code { width: 100%; box-sizing: border-box; font: 12px/1.35 var(--tsi-font-mono); word-break: break-all; min-height: 110px; resize: vertical; }
+.tsi-bhp-row { display: flex; flex-wrap: wrap; gap: var(--tsi-space-2); }
+.tsi-bhp-row .tsi-btn { min-height: 44px; }
+.tsi-bhp-error { padding: var(--tsi-space-3); border: 1px solid var(--tsi-danger); border-radius: var(--tsi-radius-sm); color: var(--tsi-text); background: rgba(120, 20, 30, .3); }
+.tsi-bhp-error[hidden] { display: none; }
+.tsi-bhp-sendlist { display: grid; gap: var(--tsi-space-2); list-style: none; margin: 0; padding: 0; }
+.tsi-bhp-send { display: grid; gap: 6px; padding: var(--tsi-space-3); background: rgba(0, 0, 0, .28); border-left: 3px solid var(--tsi-warn); border-radius: var(--tsi-radius-sm); }
+.tsi-bhp-send__label { font: 700 var(--tsi-fs-body-sm)/1.2 var(--tsi-font-display); letter-spacing: var(--tsi-track-label); }
+.tsi-bhp-send .tsi-btn { min-height: 44px; }
+/* Pop-ups sit outside the companion's own box, so their buttons need the phone's tap size here. */
+body.tsi-bh-phone .tsi-modal__foot .tsi-btn { min-height: 44px; }
+body.tsi-bh-phone .tsi-modal .tsi-btn { min-height: 44px; }

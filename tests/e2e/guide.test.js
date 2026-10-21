@@ -71,10 +71,10 @@ const lower = s => String(s).toLowerCase();
     await check('every contents link leads to a part of the page', async () => {
       const broken = await page.$$eval('a[href^="#"]', as => as.map(a => a.getAttribute('href')).filter(h => !document.getElementById(h.slice(1))));
       equal(broken, []);
-      equal(await page.$$eval('.tsi-guide__contents a', as => as.length), 14);
+      equal(await page.$$eval('.tsi-guide__contents a', as => as.length), 15);
     });
 
-    await check('all eight tools are there, by their real names, each with an Open link', async () => {
+    await check('all nine tools are there, by their real names, each with an Open link', async () => {
       const found = await page.$$eval('#tools h3[id]', hs => hs.map(h => ({ id: h.id, text: h.textContent, href: h.querySelector('a').getAttribute('href') })));
       equal(found.map(f => f.id).sort(), TOOLS.map(t => t.id).sort());
       TOOLS.forEach(t => {

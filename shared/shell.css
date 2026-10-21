@@ -53,7 +53,8 @@ h1.tsi-topbar__tool { margin: 0; }
 
 .tsi-home__cards {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  /* Five across: nine tools fit in two rows on the laptop (four across made three, and pushed the footer out of view). */
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 16px;
 }
 .tsi-home__cards .tsi-card { min-height: 188px; }

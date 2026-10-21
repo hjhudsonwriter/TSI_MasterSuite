@@ -79,7 +79,7 @@ window.TSI_DATA.tools = [
     single: true,
     desc: 'Manage facilities, orders, events, treasury and staff for your bastion, day by day with the Explorer.',
     files: {
-      css: ['tools/bastion/bastion.css', 'tools/bastion/war-table.css'],
+      css: ['tools/bastion/bastion.css', 'tools/bastion/war-table.css', 'tools/beasthandler/dm-panel.css'],
       js: [
         'tools/bastion/data/bastion-data.js',
         'tools/bastion/data/facilities-data.js',
@@ -103,6 +103,15 @@ window.TSI_DATA.tools = [
         'tools/bastion/war-battle-rules.js',
         'tools/bastion/war-ai.js',
         'tools/bastion/war-campaign-rules.js',
+        /* The Beast Handler's link (21 October 2026): the Bastion checks and applies each request from a
+           player's companion once, and the DM's panel makes the codes that link a phone. */
+        'shared/js/hmac.js',
+        'tools/beasthandler/data/profile-tables.js',
+        'tools/beasthandler/projection.js',
+        'tools/beasthandler/profile-rules.js',
+        'tools/beasthandler/codes.js',
+        'tools/beasthandler/bastion-link.js',
+        'tools/beasthandler/dm-panel.js',
         'tools/bastion/war-table.js',
         /* The Explorer's rules, only to check its half of a campaign file
            on Import (the Explorer and the Bastion save as one campaign). */
@@ -166,6 +175,54 @@ window.TSI_DATA.tools = [
         'tools/crest/rules.js',
         'tools/crest/draw.js',
         'tools/crest/tool.js'
+      ]
+    }
+  },
+  {
+    id: 'beasthandler',
+    name: 'Scarlett Isles: Beast Handler',
+    group: 'players',
+    phase: 'BH-1',
+    built: true,
+    /* It reads the Bastion's save (shared/js/dmdoc.js does the same) and keeps only the small queue of requests waiting for the Bastion. */
+    saves: true,
+    desc: 'The companions of Ironbow. See your wyvern, griffin or dire wolf: its bond, profile and Chronicle.',
+    art: 'shared/art/hero.png',
+    files: {
+      css: ['tools/beasthandler/beasthandler.css'],
+      js: [
+        /* The Bastion's data and rules, read-only: the companion builds the player's view from the Bastion's own save, never its screens. */
+        'tools/bastion/data/bastion-data.js',
+        'tools/bastion/data/facilities-data.js',
+        'tools/bastion/data/tools-data.js',
+        'tools/bastion/data/events-data.js',
+        'tools/bastion/data/war-units-data.js',
+        'tools/bastion/data/research-data.js',
+        'tools/bastion/data/goods-data.js',
+        'tools/bastion/data/commerce-data.js',
+        'tools/bastion/data/courier-data.js',
+        'tools/bastion/data/creatures-data.js',
+        'tools/bastion/data/war-room-data.js',
+        'tools/bastion/rules.js',
+        'tools/bastion/commerce-rules.js',
+        'tools/bastion/courier-rules.js',
+        'tools/bastion/creature-rules.js',
+        'tools/bastion/diplomacy-rules.js',
+        'tools/bastion/regiment-rules.js',
+        'tools/bastion/war-table-rules.js',
+        'tools/bastion/war-battle-rules.js',
+        'tools/bastion/war-ai.js',
+        'tools/bastion/war-campaign-rules.js',
+        'shared/js/hmac.js',
+        'tools/beasthandler/data/profile-tables.js',
+        'tools/beasthandler/data/art-map.js',
+        'tools/beasthandler/projection.js',
+        'tools/beasthandler/profile-rules.js',
+        'tools/beasthandler/codes.js',
+        'tools/beasthandler/bastion-link.js',
+        'tools/beasthandler/model.js',
+        'tools/beasthandler/view.js',
+        'tools/beasthandler/tool.js'
       ]
     }
   },

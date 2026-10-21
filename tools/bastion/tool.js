@@ -105,6 +105,8 @@
       }
       var ui = R.cleanUi(load('ui', R.isUi, 'the facility grid opened in its usual way (everything else is as it was)'));
       function save() { ctx.store.set('state', R.toSave(state)); }
+      /* The Beast Handler's record (its campaign id), made the first time this Bastion opens with it. */
+      if (R.beastState && !R.beastCampaignId(state)) { R.beastState(state); save(); }
       function saveUi() { ctx.store.set('ui', TSI.clone(ui)); }
       function log(title, body) { R.log(state, title, body); }
       function logAll(lines) { (lines || []).forEach(function (l) { log(l[0], l[1]); }); }
@@ -560,7 +562,8 @@
           body: [
             muted(changing ? 'The new pairing starts at Bond 0 and the old history is kept in the Chronicle. Tick the box only to credit the old bond to the new handler.' : 'The handler is the player this wyvern bonds with. Bond programmes need one.'),
             field('Handler', who), field('Reason', why),
-            changing ? el('label', { class: 'tsi-bas-field' }, [keep, ' Credit the old bond (Bond ' + d.bond.level + ') to the new handler']) : null
+            muted('The reason is written in the beast\'s Chronicle, which the player\'s Beast Handler shows.'),
+            changing ? el('label', { class: 'tsi-bas-field tsi-bas-field--inline' }, [keep, ' Credit the old bond (Bond ' + d.bond.level + ') to the new handler']) : null
           ],
           actions: [{ label: 'Cancel', value: false }, { label: changing ? 'Change handler' : 'Assign', value: true, primary: true }],
           onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'handler-dialog'); setTimeout(function () { who.focus(); }, 0); }
@@ -575,19 +578,34 @@
         var c = R.creatureById(state, id);
         if (!c) return;
         var t = R.devView(state, c).temperament;
-        var boxes = [['dominant', 'Dominant temperament'], ['attachment', 'Attachment cue'], ['trigger', 'Instinctive trigger']].map(function (k) {
-          return [k[0], el('input', { type: 'text', class: 'tsi-input', maxlength: '120', value: t[k[0]] || '', 'data-test': 'temperament-' + k[0] }), k[1]];
+        var dv = R.devView(state, c);
+        var opts = TSI.beasthandler && TSI.beasthandler.profile ? TSI.beasthandler.profile.options(c.species) : null;
+        /* The listed choices for this kind of beast (Harry's tables) are suggestions: anything can be typed. */
+        var lists = {};
+        var fieldDefs = [['dominant', 'Dominant temperament', t.dominant], ['attachment', 'Attachment cue', t.attachment], ['trigger', 'Instinctive trigger', t.trigger]];
+        if (opts) fieldDefs.push(['regional', 'Regional variety', dv.regional || '']);
+        var boxes = fieldDefs.map(function (k) {
+          var attrs = { type: 'text', class: 'tsi-input', maxlength: k[0] === 'regional' ? '60' : '120', value: k[2] || '', 'data-test': 'temperament-' + k[0] };
+          if (opts && opts[k[0]] && opts[k[0]].length) {
+            lists[k[0]] = el('datalist', { id: 'tsi-bas-dl-' + k[0] }, opts[k[0]].map(function (o) { return el('option', { value: o }); }));
+            attrs.list = 'tsi-bas-dl-' + k[0];
+          }
+          return [k[0], el('input', attrs), k[1]];
         });
         var ok = await plainModal({
           title: 'Temperament: ' + R.creatureName(data, c),
           className: 'tsi-bas-modal',
-          body: [muted('Short notes in your own words. Nothing here is worked out for you.')].concat(boxes.map(function (b) { return field(b[2], b[1]); })),
+          body: [muted('Short notes in your own words. Nothing here is worked out for you. The listed choices are only suggestions: type anything.')].concat(boxes.map(function (b) { return field(b[2], b[1]); }), Object.keys(lists).map(function (k) { return lists[k]; })),
           actions: [{ label: 'Cancel', value: false }, { label: 'Save', value: true, primary: true }],
           onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'temperament-dialog'); }
         });
         if (!ok || !life.alive) return;
+        /* Only the lines the DM actually changed are sent, so a handler's request accepted while this box was
+           open is never put back by the lines the DM didn't touch. */
         var f = {};
-        boxes.forEach(function (b) { f[b[0]] = b[1].value; });
+        var changedAny = false;
+        boxes.forEach(function (b, i) { if (b[1].value !== (fieldDefs[i][2] || '')) { f[b[0]] = b[1].value; changedAny = true; } });
+        if (!changedAny) return;
         var res = R.setTemperament(state, data, id, f);
         if (!res.ok) { await say(res.message); return; }
         done();
@@ -609,7 +627,7 @@
         var ok = await plainModal({
           title: 'Confirm Bond ' + d.bond.ready + ': ' + R.bondName(d.bond.ready),
           className: 'tsi-bas-modal',
-          body: [muted(R.creatureName(data, c) + ' rises from Bond ' + d.bond.level + ' to Bond ' + d.bond.ready + ' (' + R.bondName(d.bond.ready) + '), by exactly one level. Only confirm it once a suitable scene has happened.'), field('The scene', why), problem],
+          body: [muted(R.creatureName(data, c) + ' rises from Bond ' + d.bond.level + ' to Bond ' + d.bond.ready + ' (' + R.bondName(d.bond.ready) + '), by exactly one level. Only confirm it once a suitable scene has happened.'), field('The scene', why), muted('What you write here goes in the beast\'s Chronicle, which the player\'s Beast Handler shows.'), problem],
           actions: [{ label: 'Cancel', value: false }, { label: 'Confirm bond', value: true, primary: true }],
           onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'bond-dialog'); mainBtn = parts.dialog.querySelector('.tsi-modal__foot .tsi-btn--primary'); check(); }
         });
@@ -623,15 +641,17 @@
         var c = R.creatureById(state, id);
         if (!c) return;
         var note = el('textarea', { class: 'tsi-input', rows: '3', maxlength: '400', placeholder: 'A scene, a memory, a correction…', 'data-test': 'note-text' });
+        /* Beast Handler (Harry, D6): a note the player's companion must not show. */
+        var secret = el('input', { type: 'checkbox', 'data-test': 'note-private' });
         var ok = await plainModal({
           title: 'Chronicle note: ' + R.creatureName(data, c),
           className: 'tsi-bas-modal',
-          body: [field('Note', note)],
+          body: [field('Note', note), el('label', { class: 'tsi-bas-field tsi-bas-field--inline' }, [secret, ' DM only: the player\'s Beast Handler won\'t show this note'])],
           actions: [{ label: 'Cancel', value: false }, { label: 'Add to the Chronicle', value: true, primary: true }],
           onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'note-dialog'); setTimeout(function () { note.focus(); }, 0); }
         });
         if (!ok || !life.alive) return;
-        var res = R.addChronicleNote(state, data, id, note.value);
+        var res = R.addChronicleNote(state, data, id, note.value, secret.checked);
         if (!res.ok) { await say(res.message); return; }
         done();
       });
@@ -651,7 +671,7 @@
         var ok = await plainModal({
           title: 'Confirm the first ' + R.rideNoun(data, c.species) + ': ' + R.creatureName(data, c),
           className: 'tsi-bas-modal',
-          body: [muted('Only confirm once you have run the first mounted ' + R.rideNoun(data, c.species) + ' scene with ' + R.handlerName(d.handlerId) + '. This records story permission only: the Bastion adds no riding movement or combat.'), field('The scene', why), problem],
+          body: [muted('Only confirm once you have run the first mounted ' + R.rideNoun(data, c.species) + ' scene with ' + R.handlerName(d.handlerId) + '. This records story permission only: the Bastion adds no riding movement or combat.'), field('The scene', why), muted('What you write here goes in the beast\'s Chronicle, which the player\'s Beast Handler shows.'), problem],
           actions: [{ label: 'Cancel', value: false }, { label: 'Confirm first ' + R.rideNoun(data, c.species), value: true, primary: true }],
           onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'flight-dialog'); mainBtn = parts.dialog.querySelector('.tsi-modal__foot .tsi-btn--primary'); check(); }
         });
@@ -691,7 +711,7 @@
           !(d.firstFlight && d.firstFlight.approved) && R.firstFlightReady(state, data, c) ? btn('Confirm first ' + R.rideNoun(data, c.species) + '…', function () { onConfirmFlight(c.id); }, 'tsi-btn--primary', prefix + '-flight-' + c.id) : null,
           el('details', { class: 'tsi-bas-wyv__chronicle', 'data-test': prefix + '-chronicle-' + c.id }, [
             el('summary', { text: 'Chronicle (' + chron.length + ')' }),
-            el('ul', { class: 'tsi-bas-res-list' }, chron.map(function (e) { return el('li', { text: R.dayLabel(e.day) + ' · ' + e.text }); })),
+            el('ul', { class: 'tsi-bas-res-list' }, chron.map(function (e) { return el('li', { text: R.dayLabel(e.day) + ' · ' + e.text + (e.private ? ' (DM only)' : '') }); })),
             btn('Add a note…', function () { onChronicleNote(c.id); }, 'tsi-btn--ghost', prefix + '-note-' + c.id)
           ])
         ]);
@@ -1438,6 +1458,8 @@
          come and go only through their buildings' House orders and the
          Explorer, so there's no Remove button. */
       var creatureList = el('div', { class: 'tsi-bas-list', 'data-test': 'creatures' });
+      /* The Beast Handler (players' companion): pairing codes, requests, and how each went (tools/beasthandler/dm-panel.js). */
+      var beastDm = TSI.beasthandler && TSI.beasthandler.dmPanel && R.beastState ? TSI.beasthandler.dmPanel.create({ state: function () { return state; }, data: data, done: function () { done(); }, life: life }) : null;
       /* The treasury, in the map's top bar: saved when you finish typing
          (Enter, or leaving the box), not on every key. */
       var treasuryInput = numberInput('treasury', { min: '0', 'aria-label': 'Treasury (gp)', class: 'tsi-input tsi-bas-num tsi-bas-treasury__input' });
@@ -1470,7 +1492,9 @@
           label('Menagerie Beasts'),
           beastList,
           label('Creatures'),
-          creatureList
+          creatureList,
+          beastDm ? label('Beast Handler (players)') : null,
+          beastDm ? beastDm.node : null
         ]),
         el('div', { class: 'tsi-bas-box tsi-bas-box--art tsi-bas-box--military' }, [
           el('div', { class: 'tsi-bas-row__top' }, [
@@ -1607,6 +1631,7 @@
         var crs = R.creatures(state);
         if (!crs.length) creatureList.appendChild(muted('None yet. The Wyvern Roost, Griffin Tower and Dire Wolf Den house them.'));
         crs.forEach(function (c) { creatureList.appendChild(creatureRow(c, 'mgmt-creature', true)); });
+        if (beastDm) beastDm.render();
         renderForceList(militaryList, state.military, 'No military recruited yet.', 'military', 'military');
         setValue(treasuryInput, state.treasuryGP);
       }
@@ -4737,7 +4762,39 @@
           if (res.refused) notice('A score change from the DM doc couldn\'t be used, so nothing changed for it.', { type: 'warn', title: 'From the DM doc.', id: 'tsi-bas-dmedits-refused', timeout: 12000 });
         }, function () { dmEditsBusy = false; });
       }
-      life.setInterval(function () { checkClock(); checkCrestOffer(); checkDmEdits(); }, 2000);
+      /* Requests from the Beast Handler on this laptop (Harry, 21 October 2026): each is checked against this
+         Bastion and applied once, with its receipt in this save (tools/beasthandler/bastion-link.js). */
+      var beastBusy = false;
+      /* A request that has its receipt leaves the queue once that is saved, so a Bastion saved earlier and put
+         back later (Import) can never be made to do an answered request again. The companion only adds to the
+         queue and takes out its own old ones; both re-read it before writing. */
+      function trimBeastQueue(commands) {
+        var answered = (Array.isArray(commands) ? commands : []).filter(function (c) {
+          return c && typeof c.id === 'string' && state.beast && state.beast.done && Object.prototype.hasOwnProperty.call(state.beast.done, c.id);
+        }).map(function (c) { return c.id; });
+        if (!answered.length) return;
+        TSI.store.flush().then(function () {
+          return TSI.store.fresh('tsi.beasthandler.queue', null);
+        }).then(function (stored) {
+          if (!life.alive || !stored || !Array.isArray(stored.commands)) return;
+          var keep = stored.commands.filter(function (c) { return !(c && answered.indexOf(c.id) !== -1); });
+          if (keep.length !== stored.commands.length) TSI.store.set('tsi.beasthandler.queue', { commands: keep });
+        }).catch(function () { /* left in the queue: the Bastion would only see a duplicate and do nothing */ });
+      }
+      function checkBeast() {
+        if (!R.beastProcessQueue || beastBusy || !life.alive || turnRunning || militaryRunning) return Promise.resolve();
+        beastBusy = true;
+        return TSI.store.fresh('tsi.beasthandler.queue', null).then(function (q) {
+          beastBusy = false;
+          if (!life.alive || turnRunning || militaryRunning) return;
+          var res = R.beastProcessQueue(state, data, q && q.commands, Date.now(), rand);
+          trimBeastQueue(q && q.commands);
+          if (!res.changed) return;
+          done();
+          if (res.lines.length) notice('From the Beast Handler: ' + res.lines.join(' ') + ' The Day Log keeps it.', { type: res.refused && !res.applied ? 'warn' : 'info', title: 'A handler asked for something.', id: 'tsi-bas-beast', timeout: 14000 });
+        }, function () { beastBusy = false; });
+      }
+      life.setInterval(function () { checkClock(); checkCrestOffer(); checkDmEdits(); checkBeast(); }, 2000);
       life.on(document, 'visibilitychange', function () { if (document.visibilityState === 'visible') checkClock(); });
 
       /* Pass every day up to the Explorer's, one at a time, each saved step
@@ -5544,6 +5601,7 @@
         /* Read the Explorer's day now, rather than in up to 2 seconds. */
         clock: function () { checkClock(); },
         dmEdits: function () { return checkDmEdits(); },
+        beast: function () { return checkBeast(); },
         /* The panel open now ('war', 'fac-barracks'…), or null. */
         panel: function () { return shown ? shown.id : null; },
         /* Open the panel that holds [data-test=test] by pressing its button
@@ -5618,6 +5676,7 @@
          any crest sent from the Clan Crest Creator while the Bastion was shut. */
       checkClock();
       checkDmEdits();
+      checkBeast();
       checkCrestOffer();
     },
 

@@ -469,10 +469,11 @@
   R.devView = function (s, c) { return devOf(c) || R.newDevelopment(isObj(c) && c.id !== 'elara_wyvern' ? c : { id: '' }, s.day); };
   R.bondName = function (level) { return R.BOND_NAMES[clampInt(level, 0, 5)] || 'Unfamiliar'; };
   R.handlerName = function (id) { return id === 'elara' ? 'Elara' : String(id || ''); };
-  R.addChronicle = function (s, c, cat, text, by, link) {
+  R.addChronicle = function (s, c, cat, text, by, link, dmOnly) {
     var d = R.ensureDev(s, c);
     d.seq = clampInt(d.seq, 0, 1000000) + 1;
     var e = { id: 'ch-' + d.seq, day: dayNum(s.day, 1), cat: txt(cat, 20), text: txt(text, 400), by: txt(by || 'DM', 40), link: txt(link || '', 80) };
+    if (dmOnly === true) e.private = true;
     d.chronicle.push(e);
     if (d.chronicle.length > R.CHRONICLE_MAX) d.chronicle = d.chronicle.slice(d.chronicle.length - R.CHRONICLE_MAX);
     return e;
@@ -673,6 +674,11 @@
     var d = R.ensureDev(s, c);
     var f = isObj(fields) ? fields : {};
     ['dominant', 'attachment', 'trigger'].forEach(function (k) { if (typeof f[k] === 'string') d.temperament[k] = f[k].replace(/\s+/g, ' ').trim().slice(0, 120); });
+    /* The Regional Variety (Beast Handler, 21 October 2026): a cosmetic line of at most 60 letters; empty clears it. */
+    if (typeof f.regional === 'string') {
+      var rv = f.regional.replace(/[<>]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60);
+      if (rv) d.regional = rv; else delete d.regional;
+    }
     return { ok: true, log: ['Creatures', R.creatureName(data, c) + '\'s temperament notes were updated.'] };
   };
   /* The DM confirms the ready milestone: exactly one level, with a reason. */
@@ -689,14 +695,15 @@
     R.addChronicle(s, c, 'bond', 'Bond ' + d.bond.level + ' (' + R.bondName(d.bond.level) + ') confirmed by the DM. ' + why, 'DM');
     return { ok: true, level: d.bond.level, log: ['Creatures', name + ' is now Bond ' + d.bond.level + ': ' + R.bondName(d.bond.level) + '. ' + why] };
   };
-  /* A note in the Chronicle from the DM (a scene, a memory). */
-  R.addChronicleNote = function (s, data, id, text) {
+  /* A note in the Chronicle from the DM (a scene, a memory); dmOnly keeps it from the player's companion. */
+  R.addChronicleNote = function (s, data, id, text, dmOnly) {
     var c = R.creatureById(s, id);
     if (!c) return { ok: false, message: 'That creature isn\'t at the Ironbow any more.' };
     var t = reasonOf(text);
     if (t.length < 3) return { ok: false, message: 'Write the note.' };
-    R.addChronicle(s, c, 'note', t, 'DM');
-    return { ok: true, log: ['Creatures', 'A note was added to ' + R.creatureName(data, c) + '\'s Chronicle.'] };
+    /* dmOnly: the player's Beast Handler companion never shows it (Harry, D6). */
+    R.addChronicle(s, c, 'note', t, 'DM', '', dmOnly === true);
+    return { ok: true, log: ['Creatures', 'A note was added to ' + R.creatureName(data, c) + '\'s Chronicle' + (dmOnly === true ? ' (DM only)' : '') + '.'] };
   };
   /* What comes next for a creature, in one line, for the DM. */
   R.nextStepLine = function (s, data, c) {

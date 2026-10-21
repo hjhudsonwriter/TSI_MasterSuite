@@ -1,0 +1,376 @@
+/* ==========================================================================
+   Scarlett Isles: Beast Handler — styles
+   Every rule is scoped to the companion (.tsi-tool--beasthandler) and every
+   class starts "tsi-bh-". Colours and type come from shared/tokens.css; the
+   warm-black panels below are Harry's companion palette (#161311, #221B17),
+   kept here so the Bastion's burgundy is not merely shrunk.
+   Mobile first (375 to 430 px wide), then tablet and desktop. Every control is
+   at least 44 px tall. Nothing scrolls sideways.
+   ========================================================================== */
+
+.tsi-tool--beasthandler {
+  --tsi-bh-panel: #161311;
+  --tsi-bh-panel-2: #221b17;
+  --tsi-bh-tap: 44px;
+}
+
+.tsi-tool--beasthandler .tsi-bh {
+  position: relative;
+  box-sizing: border-box;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: var(--tsi-space-4) max(var(--tsi-space-4), env(safe-area-inset-left)) calc(var(--tsi-space-6) + env(safe-area-inset-bottom)) max(var(--tsi-space-4), env(safe-area-inset-right));
+  display: flex;
+  flex-direction: column;
+  gap: var(--tsi-space-4);
+  min-width: 0;
+}
+.tsi-tool--beasthandler .tsi-bh * { box-sizing: border-box; min-width: 0; overflow-wrap: break-word; }
+.tsi-tool--beasthandler .tsi-bh p { margin: 0; }
+.tsi-tool--beasthandler .tsi-bh button { font-family: inherit; }
+
+/* ---------- Title ---------- */
+.tsi-tool--beasthandler .tsi-bh-title { text-align: center; padding: var(--tsi-space-3) 0 var(--tsi-space-1); }
+.tsi-tool--beasthandler .tsi-bh-title__main {
+  margin: 0;
+  font: 700 clamp(24px, 6.4vw, 38px)/1.15 var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-title);
+  color: var(--tsi-text);
+  text-shadow: var(--tsi-text-shadow-title);
+}
+.tsi-tool--beasthandler .tsi-bh-title__sub {
+  margin-top: 6px;
+  font: 600 var(--tsi-fs-label)/1.3 var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-kicker);
+  text-transform: uppercase;
+  color: var(--tsi-gold-text);
+}
+
+/* ---------- Viewing as (the DM's laptop only) ---------- */
+.tsi-tool--beasthandler .tsi-bh-picker {
+  display: grid;
+  gap: 6px;
+  padding: var(--tsi-space-3) var(--tsi-space-4);
+  background: var(--tsi-bh-panel);
+  border: var(--tsi-border);
+  border-radius: var(--tsi-radius-md);
+}
+.tsi-tool--beasthandler .tsi-bh-picker__label {
+  font: 700 var(--tsi-fs-label)/1.2 var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-label);
+  text-transform: uppercase;
+  color: var(--tsi-gold-text);
+}
+.tsi-tool--beasthandler .tsi-bh-picker__select { min-height: var(--tsi-bh-tap); font-size: var(--tsi-fs-body-sm); }
+
+.tsi-tool--beasthandler .tsi-bh-muted { font-size: var(--tsi-fs-body-sm); line-height: var(--tsi-lh-body); color: var(--tsi-text-soft); }
+.tsi-tool--beasthandler .tsi-bh-message {
+  padding: var(--tsi-space-4);
+  text-align: center;
+  font-size: var(--tsi-fs-body);
+  line-height: var(--tsi-lh-body);
+  color: var(--tsi-text-muted);
+  background: var(--tsi-bh-panel);
+  border: 1px dashed var(--tsi-line);
+  border-radius: var(--tsi-radius-md);
+}
+
+/* ---------- The buildings ---------- */
+.tsi-tool--beasthandler .tsi-bh-cards { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--tsi-space-4); }
+.tsi-tool--beasthandler .tsi-bh-card {
+  background: linear-gradient(180deg, var(--tsi-bh-panel-2), var(--tsi-bh-panel));
+  border: var(--tsi-border-panel);
+  border-radius: var(--tsi-radius-lg);
+  box-shadow: var(--tsi-shadow-card);
+  overflow: hidden;
+}
+.tsi-tool--beasthandler .tsi-bh-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tsi-space-3);
+  padding: var(--tsi-space-3) var(--tsi-space-4);
+  background: var(--tsi-head-fill);
+  border-bottom: 1px solid var(--tsi-line-head);
+}
+.tsi-tool--beasthandler .tsi-bh-card__title {
+  margin: 0;
+  font: 700 var(--tsi-fs-h2)/1.15 var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-heading);
+  color: var(--tsi-gold);
+}
+.tsi-tool--beasthandler .tsi-bh-beasts { list-style: none; margin: 0; padding: var(--tsi-space-3); display: grid; gap: var(--tsi-space-2); }
+.tsi-tool--beasthandler .tsi-bh-beast-item { display: block; }
+.tsi-tool--beasthandler .tsi-bh-beast {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--tsi-space-2) var(--tsi-space-3);
+  width: 100%;
+  min-height: 56px;
+  padding: var(--tsi-space-3) var(--tsi-space-4);
+  text-align: left;
+  color: var(--tsi-text);
+  background: rgba(0, 0, 0, .28);
+  border: 1px solid var(--tsi-line);
+  border-radius: var(--tsi-radius-row);
+  list-style: none;
+}
+.tsi-tool--beasthandler .tsi-bh-beast--mine {
+  cursor: pointer;
+  border-color: var(--tsi-line-control);
+  transition: border-color var(--tsi-dur-base) var(--tsi-ease), background var(--tsi-dur-base) var(--tsi-ease), transform var(--tsi-dur-base) var(--tsi-ease);
+}
+.tsi-tool--beasthandler .tsi-bh-beast--mine:hover { border-color: var(--tsi-line-hover); background: rgba(214, 178, 94, .08); transform: var(--tsi-lift); }
+.tsi-tool--beasthandler .tsi-bh-beast--mine:focus-visible,
+.tsi-tool--beasthandler .tsi-bh-nav__btn:focus-visible,
+.tsi-tool--beasthandler .tsi-bh-order:focus-visible,
+.tsi-tool--beasthandler .tsi-bh-hero__tap:focus-visible { outline: none; border-color: var(--tsi-gold-text); box-shadow: var(--tsi-focus-ring); }
+.tsi-tool--beasthandler .tsi-bh-beast--other { opacity: .82; cursor: default; }
+.tsi-tool--beasthandler .tsi-bh-beast__main { flex: 1 1 11em; display: grid; gap: 2px; }
+.tsi-tool--beasthandler .tsi-bh-beast__chips { flex: 0 1 auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--tsi-space-2); margin-left: auto; }
+.tsi-tool--beasthandler .tsi-bh-beast__name { font: 700 var(--tsi-fs-h3)/1.2 var(--tsi-font-display); letter-spacing: var(--tsi-track-label); }
+.tsi-tool--beasthandler .tsi-bh-beast__meta { font-size: var(--tsi-fs-body-sm); color: var(--tsi-text-muted); }
+.tsi-tool--beasthandler .tsi-bh-beast__bond { flex: 0 1 auto; font: 600 var(--tsi-fs-label)/1.2 var(--tsi-font-display); letter-spacing: var(--tsi-track-label); color: var(--tsi-gold-text); text-align: right; }
+.tsi-tool--beasthandler .tsi-bh-beast__yours { flex: none; }
+.tsi-tool--beasthandler .tsi-bh-empty { margin: 0; padding: var(--tsi-space-5, 20px) var(--tsi-space-4); text-align: center; font-style: italic; color: var(--tsi-text-soft); font-size: var(--tsi-fs-body); }
+
+/* ---------- Back, names and the main screen ---------- */
+.tsi-tool--beasthandler .tsi-bh-back .tsi-btn { min-height: var(--tsi-bh-tap); }
+.tsi-tool--beasthandler .tsi-bh-name {
+  margin: 0;
+  text-align: center;
+  font: 700 clamp(28px, 8vw, 44px)/1.1 var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-title);
+  color: var(--tsi-gold);
+  text-shadow: var(--tsi-text-shadow-title);
+}
+.tsi-tool--beasthandler .tsi-bh-handler,
+.tsi-tool--beasthandler .tsi-bh-kind { text-align: center; font-size: var(--tsi-fs-body); color: var(--tsi-text-muted); }
+.tsi-tool--beasthandler .tsi-bh-kind { font-size: var(--tsi-fs-body-sm); color: var(--tsi-text-soft); }
+.tsi-tool--beasthandler .tsi-bh-training { text-align: center; font-size: var(--tsi-fs-body-sm); color: var(--tsi-gold-text); }
+
+/* ---------- The portrait (a gold medallion until the painted art arrives) ---------- */
+.tsi-tool--beasthandler .tsi-bh-hero { position: relative; margin: 0 auto; width: min(100%, 360px); aspect-ratio: 1; }
+.tsi-tool--beasthandler .tsi-bh-hero--small { width: 84px; flex: none; }
+.tsi-tool--beasthandler .tsi-bh-hero__tap {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  cursor: pointer;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 50%;
+}
+.tsi-tool--beasthandler .tsi-bh-hero__img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.tsi-tool--beasthandler .tsi-bh-medallion {
+  display: grid;
+  place-content: center;
+  gap: 4px;
+  width: 100%;
+  height: 100%;
+  text-align: center;
+  border-radius: 50%;
+  border: 3px solid var(--tsi-line-feature);
+  background:
+    radial-gradient(circle at 50% 38%, rgba(214, 178, 94, .22), rgba(214, 178, 94, 0) 58%),
+    radial-gradient(circle at 50% 50%, var(--tsi-bh-panel-2), var(--tsi-bg-warm) 72%);
+  box-shadow: inset 0 0 0 6px rgba(0, 0, 0, .35), inset 0 0 0 7px var(--tsi-line), var(--tsi-glow-gold);
+  animation: tsi-bh-breathe calc(6s * var(--tsi-signature-slowdown)) ease-in-out infinite;
+}
+.tsi-tool--beasthandler .tsi-bh-medallion__rune { font: 700 clamp(56px, 18vw, 120px)/1 var(--tsi-font-title); color: var(--tsi-gold); text-shadow: 0 0 18px rgba(214, 178, 94, .45); }
+.tsi-tool--beasthandler .tsi-bh-medallion__name { font: 600 var(--tsi-fs-label)/1.2 var(--tsi-font-display); letter-spacing: var(--tsi-track-kicker); text-transform: uppercase; color: var(--tsi-text-muted); }
+.tsi-tool--beasthandler .tsi-bh-hero--small .tsi-bh-medallion { border-width: 2px; box-shadow: inset 0 0 0 4px rgba(0, 0, 0, .35), var(--tsi-glow-gold); animation: none; }
+.tsi-tool--beasthandler .tsi-bh-hero--small .tsi-bh-medallion__rune { font-size: 40px; }
+.tsi-tool--beasthandler .tsi-bh-hero--small .tsi-bh-medallion__name { display: none; }
+/* The tap reaction: a soft pulse of light. It changes nothing but how the picture looks. */
+.tsi-tool--beasthandler .tsi-bh-hero--greet .tsi-bh-medallion,
+.tsi-tool--beasthandler .tsi-bh-hero--greet .tsi-bh-hero__img { animation: tsi-bh-greet calc(.9s * var(--tsi-signature-slowdown)) ease-out 1; }
+
+@keyframes tsi-bh-breathe {
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(1.012); filter: brightness(1.08); }
+}
+@keyframes tsi-bh-greet {
+  0% { transform: scale(1); filter: brightness(1); }
+  35% { transform: scale(1.035); filter: brightness(1.3); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tsi-tool--beasthandler .tsi-bh-medallion { animation: none; }
+  .tsi-tool--beasthandler .tsi-bh-hero--greet .tsi-bh-medallion,
+  .tsi-tool--beasthandler .tsi-bh-hero--greet .tsi-bh-hero__img { animation: none; filter: brightness(1.2); }
+  .tsi-tool--beasthandler .tsi-bh-beast--mine:hover { transform: none; }
+}
+
+/* ---------- Bond 0 to 5 ---------- */
+.tsi-tool--beasthandler .tsi-bh-bond { display: grid; gap: var(--tsi-space-2); justify-items: center; }
+.tsi-tool--beasthandler .tsi-bh-bond__line { font: 700 var(--tsi-fs-h3)/1.2 var(--tsi-font-display); letter-spacing: var(--tsi-track-label); color: var(--tsi-text); }
+.tsi-tool--beasthandler .tsi-bh-bond__steps { list-style: none; margin: 0; padding: 0; display: flex; gap: 8px; }
+.tsi-tool--beasthandler .tsi-bh-bond__step {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  font: 700 var(--tsi-fs-label)/1 var(--tsi-font-display);
+  color: var(--tsi-text-faint);
+  border: 1px solid var(--tsi-line-faint);
+  border-radius: 50%;
+}
+.tsi-tool--beasthandler .tsi-bh-bond__step--done { color: var(--tsi-bg); background: var(--tsi-gold-deep); border-color: var(--tsi-gold-deep); }
+.tsi-tool--beasthandler .tsi-bh-bond__step--current { color: var(--tsi-bg); background: var(--tsi-gold); border-color: var(--tsi-gold); box-shadow: var(--tsi-glow-gold); }
+
+/* ---------- Sub-screen heading ---------- */
+.tsi-tool--beasthandler .tsi-bh-head { display: flex; align-items: center; gap: var(--tsi-space-4); }
+.tsi-tool--beasthandler .tsi-bh-head__title { margin: 0; font: 700 var(--tsi-fs-h1)/1.1 var(--tsi-font-display); letter-spacing: var(--tsi-track-title); color: var(--tsi-gold); }
+.tsi-tool--beasthandler .tsi-bh-head__sub { margin-top: 4px; font-size: var(--tsi-fs-lead); color: var(--tsi-text-muted); }
+
+/* ---------- Panels, profile, orders ---------- */
+.tsi-tool--beasthandler .tsi-bh-panel {
+  display: grid;
+  gap: var(--tsi-space-3);
+  padding: var(--tsi-space-4);
+  background: linear-gradient(180deg, var(--tsi-bh-panel-2), var(--tsi-bh-panel));
+  border: var(--tsi-border-control);
+  border-radius: var(--tsi-radius-lg);
+}
+.tsi-tool--beasthandler .tsi-bh-panel--quiet { background: var(--tsi-bh-panel); border-style: dashed; }
+.tsi-tool--beasthandler .tsi-bh-panel__title { margin: 0; font: 700 var(--tsi-fs-h3)/1.2 var(--tsi-font-display); letter-spacing: var(--tsi-track-heading); color: var(--tsi-gold); }
+.tsi-tool--beasthandler .tsi-bh-profile { margin: 0; display: grid; gap: 2px; }
+.tsi-tool--beasthandler .tsi-bh-profile dt { margin-top: var(--tsi-space-3); font: 700 var(--tsi-fs-label)/1.2 var(--tsi-font-display); letter-spacing: var(--tsi-track-label); text-transform: uppercase; color: var(--tsi-gold-text); }
+.tsi-tool--beasthandler .tsi-bh-profile dt:first-child { margin-top: 0; }
+.tsi-tool--beasthandler .tsi-bh-profile dd { margin: 0; font-size: var(--tsi-fs-lead); line-height: var(--tsi-lh-body); color: var(--tsi-text); }
+.tsi-tool--beasthandler .tsi-bh-profile dd.tsi-bh-unset { font-style: italic; color: var(--tsi-text-soft); }
+.tsi-tool--beasthandler .tsi-bh-about { font-size: var(--tsi-fs-body-sm); color: var(--tsi-text-muted); }
+.tsi-tool--beasthandler .tsi-bh-about summary { min-height: var(--tsi-bh-tap); display: flex; align-items: center; cursor: pointer; font: 600 var(--tsi-fs-label)/1.2 var(--tsi-font-display); letter-spacing: var(--tsi-track-label); text-transform: uppercase; color: var(--tsi-gold-text); }
+.tsi-tool--beasthandler .tsi-bh-about p { margin-top: var(--tsi-space-2); line-height: var(--tsi-lh-body); }
+.tsi-tool--beasthandler .tsi-bh-panel .tsi-btn { min-height: var(--tsi-bh-tap); justify-content: center; }
+
+.tsi-tool--beasthandler .tsi-bh-orders-for { font: 700 var(--tsi-fs-lead)/1.2 var(--tsi-font-display); letter-spacing: var(--tsi-track-label); color: var(--tsi-text); }
+.tsi-tool--beasthandler .tsi-bh-orders { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--tsi-space-2); }
+.tsi-tool--beasthandler .tsi-bh-order {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  min-height: 60px;
+  padding: var(--tsi-space-3) var(--tsi-space-4);
+  text-align: left;
+  color: var(--tsi-text);
+  background: linear-gradient(180deg, var(--tsi-bh-panel-2), var(--tsi-bh-panel));
+  border: 1px solid var(--tsi-line-control);
+  border-radius: var(--tsi-radius-row);
+  cursor: pointer;
+}
+.tsi-tool--beasthandler .tsi-bh-order:hover { border-color: var(--tsi-line-hover); }
+.tsi-tool--beasthandler .tsi-bh-order__label { font: 700 var(--tsi-fs-h3)/1.2 var(--tsi-font-display); letter-spacing: var(--tsi-track-label); }
+.tsi-tool--beasthandler .tsi-bh-order__meta { font-size: var(--tsi-fs-body-sm); color: var(--tsi-text-muted); }
+.tsi-tool--beasthandler .tsi-bh-pending__label { font: 700 var(--tsi-fs-lead)/1.25 var(--tsi-font-display); color: var(--tsi-text); }
+.tsi-tool--beasthandler .tsi-bh-pending__due { font-size: var(--tsi-fs-lead); color: var(--tsi-gold-text); }
+
+/* ---------- Chronicle ---------- */
+.tsi-tool--beasthandler .tsi-bh-chron {
+  list-style: none;
+  margin: 0;
+  padding: var(--tsi-space-3);
+  max-height: min(62vh, 560px);
+  overflow-y: auto;
+  display: grid;
+  gap: var(--tsi-space-3);
+  background: var(--tsi-bh-panel);
+  border: var(--tsi-border);
+  border-radius: var(--tsi-radius-lg);
+}
+.tsi-tool--beasthandler .tsi-bh-chron:focus-visible { outline: none; box-shadow: var(--tsi-focus-ring); border-color: var(--tsi-gold-text); }
+.tsi-tool--beasthandler .tsi-bh-chron__item { padding: var(--tsi-space-3) var(--tsi-space-4); background: rgba(0, 0, 0, .28); border-left: 3px solid var(--tsi-gold-deep); border-radius: var(--tsi-radius-sm); }
+.tsi-tool--beasthandler .tsi-bh-chron__top { display: flex; align-items: center; justify-content: space-between; gap: var(--tsi-space-2); }
+.tsi-tool--beasthandler .tsi-bh-chron__day { font: 700 var(--tsi-fs-label)/1.2 var(--tsi-font-display); letter-spacing: var(--tsi-track-label); text-transform: uppercase; color: var(--tsi-gold-text); }
+.tsi-tool--beasthandler .tsi-bh-chron__text { margin-top: 6px; font-size: var(--tsi-fs-body); line-height: var(--tsi-lh-body); color: var(--tsi-text); }
+.tsi-tool--beasthandler .tsi-bh-chron__by { margin-top: 4px; font-size: var(--tsi-fs-body-sm); font-style: italic; color: var(--tsi-text-soft); }
+
+/* ---------- Bottom navigation (stays in reach of a thumb) ---------- */
+.tsi-tool--beasthandler .tsi-bh-nav {
+  position: sticky;
+  bottom: 0;
+  z-index: var(--tsi-z-sticky);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--tsi-space-2);
+  margin-top: auto;
+  padding: var(--tsi-space-2) 0 calc(var(--tsi-space-2) + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, rgba(5, 5, 6, 0), rgba(5, 5, 6, .92) 28%);
+}
+.tsi-tool--beasthandler .tsi-bh-nav__btn {
+  min-height: var(--tsi-bh-tap);
+  padding: var(--tsi-space-2) var(--tsi-space-3);
+  font: 700 var(--tsi-fs-button)/1.1 var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-button);
+  color: var(--tsi-text);
+  background: var(--tsi-bh-panel);
+  border: 1px solid var(--tsi-line-control);
+  border-radius: var(--tsi-radius-md);
+  cursor: pointer;
+}
+.tsi-tool--beasthandler .tsi-bh-nav__btn:hover { border-color: var(--tsi-line-hover); }
+.tsi-tool--beasthandler .tsi-bh-nav__btn--on { color: var(--tsi-gold); border-color: var(--tsi-gold); background: rgba(214, 178, 94, .12); }
+
+/* ---------- Connection line ---------- */
+.tsi-tool--beasthandler .tsi-bh-sync {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--tsi-space-2);
+  padding-top: var(--tsi-space-2);
+  font-size: var(--tsi-fs-body-sm);
+  color: var(--tsi-text-soft);
+  text-align: center;
+}
+.tsi-tool--beasthandler .tsi-bh-sync__dot { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--tsi-text-faint); }
+.tsi-tool--beasthandler .tsi-bh-sync__dot--on { background: var(--tsi-ok); box-shadow: 0 0 8px var(--tsi-ok); }
+
+/* ---------- Wider screens ---------- */
+@media (min-width: 720px) {
+  .tsi-tool--beasthandler .tsi-bh { padding-top: var(--tsi-space-6); }
+  .tsi-tool--beasthandler .tsi-bh-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+  .tsi-tool--beasthandler .tsi-bh-picker { grid-template-columns: auto minmax(0, 360px) 1fr; align-items: center; }
+  .tsi-tool--beasthandler .tsi-bh-hero--small { width: 104px; }
+}
+@media (min-width: 1000px) {
+  .tsi-tool--beasthandler .tsi-bh-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .tsi-tool--beasthandler .tsi-bh[data-screen^="creature"] { max-width: 760px; }
+  .tsi-tool--beasthandler .tsi-bh-nav { position: static; background: none; }
+}
+@media (max-height: 560px) and (orientation: landscape) {
+  .tsi-tool--beasthandler .tsi-bh-hero { width: min(100%, 220px); }
+}
+
+/* ---------- Writing: the profile editor and the requests list (BH-2c) ---------- */
+.tsi-tool--beasthandler .tsi-bh-message--warn { border-style: solid; border-color: var(--tsi-line-control); color: var(--tsi-text); }
+.tsi-tool--beasthandler .tsi-bh-edit { gap: var(--tsi-space-4); }
+.tsi-tool--beasthandler .tsi-bh-edit__field { display: grid; gap: 4px; }
+.tsi-tool--beasthandler .tsi-bh-edit__label { font: 700 var(--tsi-fs-label)/1.2 var(--tsi-font-display); letter-spacing: var(--tsi-track-label); text-transform: uppercase; color: var(--tsi-gold-text); }
+.tsi-tool--beasthandler .tsi-bh-edit__line { display: flex; gap: var(--tsi-space-2); align-items: stretch; }
+.tsi-tool--beasthandler .tsi-bh-edit__line .tsi-input { flex: 1 1 auto; min-height: var(--tsi-bh-tap); font-size: var(--tsi-fs-body); }
+.tsi-tool--beasthandler .tsi-bh-edit__line .tsi-btn { flex: none; min-height: var(--tsi-bh-tap); min-width: var(--tsi-bh-tap); }
+.tsi-tool--beasthandler .tsi-bh-edit__tag { font-size: var(--tsi-fs-body-sm); font-style: italic; color: var(--tsi-gold-text); }
+.tsi-tool--beasthandler .tsi-bh-edit__buttons { display: flex; flex-wrap: wrap; gap: var(--tsi-space-2); }
+.tsi-tool--beasthandler .tsi-bh-edit__buttons .tsi-btn { min-height: var(--tsi-bh-tap); }
+.tsi-tool--beasthandler .tsi-bh-requests__list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--tsi-space-2); }
+.tsi-tool--beasthandler .tsi-bh-request { display: grid; gap: 2px; padding: var(--tsi-space-2) var(--tsi-space-3); background: rgba(0, 0, 0, .28); border-left: 3px solid var(--tsi-line-control); border-radius: var(--tsi-radius-sm); }
+.tsi-tool--beasthandler .tsi-bh-request--waiting { border-left-color: var(--tsi-warn); }
+.tsi-tool--beasthandler .tsi-bh-request--scheduled, .tsi-tool--beasthandler .tsi-bh-request--completed, .tsi-tool--beasthandler .tsi-bh-request--saved { border-left-color: var(--tsi-ok); }
+.tsi-tool--beasthandler .tsi-bh-request--refused { border-left-color: var(--tsi-danger); }
+.tsi-tool--beasthandler .tsi-bh-request__label { font: 700 var(--tsi-fs-body-sm)/1.2 var(--tsi-font-display); letter-spacing: var(--tsi-track-label); color: var(--tsi-text); }
+.tsi-tool--beasthandler .tsi-bh-request__line { font-size: var(--tsi-fs-body-sm); color: var(--tsi-text-muted); }
+
+/* ---------- Painted portraits (Harry's art): upright pictures in a gold frame ---------- */
+.tsi-tool--beasthandler .tsi-bh-hero--art { width: min(100%, 340px); aspect-ratio: 9 / 16; }
+/* On a laptop or tablet the picture is sized by the window's height, so the bond and the three buttons stay in view. */
+@media (min-width: 720px) { .tsi-tool--beasthandler .tsi-bh-hero--art { width: auto; height: min(50vh, 520px); max-width: 100%; } }
+.tsi-tool--beasthandler .tsi-bh-hero--art .tsi-bh-hero__tap { border-radius: var(--tsi-radius-lg); border: var(--tsi-border-feature); overflow: hidden; box-shadow: var(--tsi-shadow-card), var(--tsi-glow-gold); }
+.tsi-tool--beasthandler .tsi-bh-hero--art .tsi-bh-hero__img { object-fit: cover; object-position: 50% 30%; }
+.tsi-tool--beasthandler .tsi-bh-hero--small.tsi-bh-hero--art { width: 84px; height: auto; aspect-ratio: 1; max-height: none; }
+.tsi-tool--beasthandler .tsi-bh-hero--small.tsi-bh-hero--art .tsi-bh-hero__tap { border-radius: 50%; border-width: 2px; box-shadow: var(--tsi-glow-gold); }
+.tsi-tool--beasthandler .tsi-bh-hero--small.tsi-bh-hero--art .tsi-bh-hero__img { object-position: 50% 28%; }
+@media (min-width: 720px) { .tsi-tool--beasthandler .tsi-bh-hero--small.tsi-bh-hero--art { width: 104px; height: auto; } }
+@media (prefers-reduced-motion: reduce) { .tsi-tool--beasthandler .tsi-bh-hero--greet .tsi-bh-hero__img { animation: none; } }

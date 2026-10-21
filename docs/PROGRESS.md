@@ -8,6 +8,27 @@ Double-click `index.html` to open the suite. The plan is in `docs/PLAN.md`, the 
 
 ## Done
 
+### Scarlett Isles: Beast Handler, BH-2 and BH-3a: writing back, the Bastion's box, and the phone page (21 October 2026)
+Harry went to bed asking for as much as possible in one pull request. Awaiting Harry's check, in the same pull request as BH-1 and the proposal (#52).
+- **BH-2a, the profile:** Roll suggests a line from Harry's tables and saves nothing; the player can reroll, pick another option or type their own; Save asks the Bastion. Elara's wyvern can be chosen rather than rolled. A roll never changes bond, stats, training or abilities. Later edits go in a small change log, not the Chronicle.
+- **BH-2b, the Bastion checks every request:** exactly once, with a receipt saved in the Bastion's own save; it can only ask for a profile line or a free training order, never gold, a bond or a name. Refused requests say why, in plain words.
+- **BH-2c, the DM's box:** a **Beast Handler (players)** box in the Bastion's Management panel (handler list, pairing and snapshot codes, take-back, paste a request, switch off, latest requests). The companion's write buttons are switched on, with the states waiting, accepted and scheduled, refused with reason, building busy.
+- **BH-3a, the phone page:** `beasthandler.html` swaps signed pairing, snapshot and request codes with the DM, with no internet and no server (`docs/PHONE-PAGE.md`). It loads no DM tool.
+- **Art:** the five Dire Wolf portraits show by Regional Variety. Wyverns and griffins show the species medallion until Harry says which picture is which (the five wyvern pictures are saved, unused).
+- **Tests:** four new rules files (hmac, link, profile, codes) and two new click-throughs (`beasthandler-write`, `beasthandler-phone`); the rules page is at 1269 of 1269.
+- **Open questions for Harry:** (1) the griffin pictures arrived only in the chat, so please send them again as files; (2) which wyvern and griffin picture goes with which Regional Variety; (3) how the phone page should reach players: **Harry tried an iPhone on 21 October and it can't open the page from a file (BH-03), so it needs a web address; GitHub Pages is recommended, see `docs/PHONE-PAGE.md`**; (4) should the lock count House and Upgrade orders, or training only; (5) should the reasons the DM types for a bond or handler change be hideable from players.
+- **Not done:** QR codes, a live link, anything for Firefox, the optional animation and polish of BH-4.
+
+### Scarlett Isles: Beast Handler, BH-1: the player's snapshot and the read-only screens (21 October 2026)
+Harry approved the proposal (D1 to D8 as recommended; no live relay) and supplied his profile tables. Awaiting Harry's check, in the same pull request as the proposal.
+- **Harry's tables** (d12 temperament, d8 attachment cue and instinctive trigger for each beast, fifteen regional varieties) are saved word for word as data. Nothing rolls them yet.
+- **The player's snapshot:** what a handler may see, built from the Bastion's own save. Their own beasts in full, everyone else's as a plain line. No treasury, Day Log, DM notes or raw save. Orders are free training only, and while anything is pending at a building nothing new is offered.
+- **Chronicle notes can be marked DM only** (SUI-51); the player's view never shows them.
+- **The tool:** Home, a beast's main screen, Profile, Orders (with a check-before-you-send screen), Chronicle. Everything that would ask the Bastion to do something is shown but switched off. It fits a phone, the laptop and the TV.
+- **Home screen:** nine cards now sit five across so the footer stays in view (BH-01).
+- **Tests:** three new rules files and `tests/e2e/beasthandler.test.js`; the guide, home screen and Roost click-throughs updated.
+- **Next:** done in the entry above (BH-2 and BH-3a).
+
 ### The facilities overhaul, pull request 9a: renaming the beasts (18 October 2026)
 From Harry's request (18 October 2026): he doesn't know Elara's wyvern's name yet.
 - **Rename…** on every creature in the Wyvern Roost, Griffin Tower and Dire Wolf Den panels, housed or waiting (BAS-97). An empty name gives the usual one back.
@@ -1077,6 +1098,7 @@ Each tool's questions are needed before that tool's phase. The full wording and 
   - Kept behaviours from phase 2 you may notice are in `docs/KNOWN_ISSUES.md` BAS-49: one battle-map picture shared by all battles, guards sometimes in front of a marker and sometimes behind, a battlefield width with no painting of its own, the small letters on tokens, and a very quick second Confirm being ignored.
 
 ## Notes for future sessions
+- **The Beast Handler (BH-1):** `tools/beasthandler/` has `projection.js` (the player's view of the Bastion: pure functions, the only thing that decides what a player may see; leak tests are in `tests/rules/beasthandler-projection.test.js`), `model.js` (the words the screens say), `tool.js` and `beasthandler.css` (the screens), and `data/` (Harry's profile tables, the player-order rule, the art map). It loads the Bastion's data and rules, never its screens, and reads `tsi.bastion.state` with `TSI.store.fresh`. Never add anything to a snapshot without a test that says why a player may see it. The plan, with Harry's decisions, is `docs/specs/beast-handler-proposal.md`. **Since BH-2/3a:** `profile-rules.js` (roll, clean and check a profile line), `bastion-link.js` (the Bastion's side: `R.beastProcess` applies a request once and keeps a receipt in `s.beast.done`; it loads in the Bastion and the companion, adds to `TSI.bastion.rules` and has no screen code), `codes.js` (pairing, snapshot and request codes signed with `shared/js/hmac.js`), `view.js` (the screens, shared by the laptop and the phone through a small host object), `tool.js` (the laptop host: writes requests to `tsi.beasthandler.queue`, which the Bastion's window reads every two seconds), `phone.js` and `beasthandler.html` (the phone host, which loads no DM tool), and `dm-panel.js` (the DM's box in the Bastion's Management panel). The companion never changes the Bastion's save: it only asks. Never let a request type do more than `profile.set` or a free `order.request` without Harry's say-so, and add a leak or exactly-once test for anything new.
 - **Explorer fights → Combat Tracker (7 October 2026).**
   - **The data:** fights are in `tools/explorer/data/fights-data.js`; a fight step names one with `encounter` (and `surprise: 'failed'` for an ambush). `tools/explorer/fights.js` builds the hand-off; `tools/encounter/rules.js` (`handoffProblem`, `loadHandoff`, `handoffWon`, `startPositions`, `handoffVtt`) loads it.
   - **How the windows talk:** each window has its own copy of the saves, read when it opens, so the two windows talk through `TSI.handoff` (`shared/js/handoff.js`): small messages in the browser's shared storage, heard by the other window at once. `TSI.store.fresh(key)` reads another tool's save as it is now.

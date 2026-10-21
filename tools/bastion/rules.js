@@ -435,6 +435,8 @@
     d.bridge = R.cleanBridge(s.bridge);
     /* The creatures (pull request 7), before the war's records, which read them. */
     d.creatures = R.cleanCreatures(s.creatures, d.day);
+    /* The Beast Handler's record (tools/beasthandler/bastion-link.js): only if the save has one. */
+    if (isObj(s.beast) && R.cleanBeast) d.beast = R.cleanBeast(s.beast);
     d.greatRites = R.cleanGreatRites(s.greatRites);
     d.dmEdits = R.cleanDmEdits(s.dmEdits);
     d.diplomaticRecords = R.cleanDiplomaticRecords ? R.cleanDiplomaticRecords(s.diplomaticRecords, d.day, data) : (isObj(s.diplomaticRecords) ? s.diplomaticRecords : { next: 1, list: [] });
@@ -527,6 +529,10 @@
      Explorer's day since it started from nothing); a save from before the
      link has none, so it applies the Explorer's new changes. */
   function txt(v, max) { return typeof v === 'string' ? v.slice(0, max) : ''; }
+  /* Words from a save: no markup brackets, control or direction-changing characters, tidy spaces, at most max letters. */
+  function words(v, max) {
+    return typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff<>]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max) : '';
+  }
   function numOr(v, fallback) { return typeof v === 'number' && isFinite(v) ? v : fallback; }
   R.cleanBridge = function (src) {
     var out = { fresh: false, done: {} };
@@ -657,13 +663,20 @@
      training: { <programme id>: { day } } (each once, for good), harness:
      { fitted, paidGP, fittedDay }, firstFlight: { approved, day, handlerId },
      handlerHistory: [{ handlerId, bond, fromDay, toDay, reason }], seq, chronicle:
-     [{ id, day, cat, text, by, link }] }.
+     [{ id, day, cat, text, by, link, private? }] } (private: a DM-only note,
+     never shown to the player's Beast Handler companion).
      Elara's wyvern is credited Bond 1 once, with one Chronicle line, the first
      time it is loaded or housed without a development; a creature whose
      development is already there is never reset. Any other creature gets one
      only when the DM first works with it (creature-rules.js). */
   R.BOND_NAMES = ['Unfamiliar', 'Acclimatised', 'Trusting', 'Bonded', 'Devoted', 'Legendary Partnership'];
   R.CHRONICLE_MAX = 500;
+  /* Is this Chronicle entry marked DM only? It fails closed: true, 1, "true", "yes" and the like all count, so a
+     hand-edited or imported file can never make a hidden note public by writing the flag a different way. */
+  R.isPrivateNote = function (e) {
+    var v = isObj(e) ? e.private : undefined;
+    return v === true || v === 1 || (typeof v === 'string' && /^\s*(true|1|yes|y|private)\s*$/i.test(v));
+  };
   R.newDevelopment = function (c, day) {
     var elara = !!c && c.id === 'elara_wyvern';
     var d = {
@@ -698,10 +711,13 @@
       seen[e.id] = true;
       return true;
     }).map(function (e) {
-      return { id: txt(e.id, 40), day: dayNum(e.day, 1), cat: txt(e.cat, 20), text: txt(e.text, 400), by: txt(e.by, 40), link: txt(e.link, 80) };
+      var out = { id: txt(e.id, 40), day: dayNum(e.day, 1), cat: txt(e.cat, 20), text: txt(e.text, 400), by: txt(e.by, 40), link: txt(e.link, 80) };
+      /* A DM-only entry (Beast Handler, D6): the player's companion never shows it. Kept only when set, so older saves are unchanged. */
+      if (R.isPrivateNote(e)) out.private = true;
+      return out;
     });
     if (chronicle.length > R.CHRONICLE_MAX) chronicle = chronicle.slice(chronicle.length - R.CHRONICLE_MAX);
-    return {
+    var kept = {
       version: 1,
       handlerId: txt(d.handlerId, 40),
       bond: { level: level, ready: ready },
@@ -715,6 +731,19 @@
       seq: clampInt(d.seq, 0, 1000000),
       chronicle: chronicle
     };
+    /* Beast Handler (21 October 2026): the Regional Variety (a cosmetic line, never a stat) and a short
+       note of each change to the profile lines (who, when, from, to), kept only when there is something to keep. */
+    var regional = words(d.regional, 60);
+    if (regional) kept.regional = regional;
+    var plog = (arr(d.profileLog) || []).filter(isObj).slice(-40).map(function (x) {
+      var change = {};
+      ['dominant', 'attachment', 'trigger', 'regional'].forEach(function (f) {
+        if (isObj(x.change) && isObj(x.change[f])) change[f] = { from: words(x.change[f].from, 120), to: words(x.change[f].to, 120) };
+      });
+      return { day: dayNum(x.day, 1), by: words(x.by, 40), change: change };
+    }).filter(function (x) { return Object.keys(x.change).length; });
+    if (plog.length) kept.profileLog = plog;
+    return kept;
   };
   R.CREATURE_KEYS = ['id', 'species', 'owner', 'name', 'status', 'home', 'grantedDay', 'housedDay', 'msgId'];
   R.cleanCreatures = function (src, today) {
