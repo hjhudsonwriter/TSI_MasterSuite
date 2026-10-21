@@ -27,7 +27,11 @@
 
   test('a picture falls back to the medallion until one is added, and a variety\'s own picture wins when it has one', function (t) {
     t.same(M.artFor(T.beastArt, 'wyvern', ''), { src: '', label: 'Wyvern', alt: 'A wyvern' });
-    t.same(M.artFor(T.beastArt, 'dire_wolf', 'icepelt'), { src: '', label: 'Dire Wolf', alt: 'A dire wolf' });
+    t.same(M.artFor(T.beastArt, 'wyvern', 'widowspine'), { src: '', label: 'Wyvern', alt: 'A wyvern' }, 'not matched yet');
+    t.same(M.artFor(T.beastArt, 'dire_wolf', 'icepelt'), { src: 'dire-wolf/icepelt.webp', label: 'Dire Wolf', alt: 'A dire wolf' }, 'Harry\'s Icepelt picture');
+    t.same(M.artFor(T.beastArt, 'dire_wolf', ''), { src: '', label: 'Dire Wolf', alt: 'A dire wolf' }, 'no variety: the medallion');
+    t.same(M.artFor(T.beastArt, 'dire_wolf', 'unknownvariety'), { src: '', label: 'Dire Wolf', alt: 'A dire wolf' });
+    ['nightfang', 'icepelt', 'slatejaw', 'reedshadow', 'hollowhowl'].forEach(function (v) { t.equal(M.artFor(T.beastArt, 'dire_wolf', v).src, 'dire-wolf/' + v + '.webp'); });
     t.same(M.artFor(T.beastArt, 'unicorn', ''), { src: '', label: 'Beast', alt: 'A beast' });
     var art = { species: { wyvern: { label: 'Wyvern', alt: 'A wyvern', default: { src: 'w.png' }, variants: { widowspine: { src: 'ws.png' } } } } };
     t.equal(M.artFor(art, 'wyvern', 'widowspine').src, 'ws.png');
@@ -65,5 +69,41 @@
     t.same(M.handlerChoices([{ id: 'Mira', name: 'Mira', count: 2 }, { id: 'elara', name: 'Elara', count: 1 }]), [
       { value: '', label: 'No handler (see the directory only)' }, { value: 'Mira', label: 'Mira (2 beasts)' }, { value: 'elara', label: 'Elara (1 beast)' }]);
     t.equal(M.handlerChoices().length, 1);
+  });
+
+  test('a beast\'s requests: those sent and not yet answered come first, then the Bastion\'s answers; nobody else\'s beast shows', function (t) {
+    var snap = { receipts: [
+      { id: 'r3', type: 'order.request', state: 'scheduled', label: 'Stormwing: Safe Acclimatisation', why: '', creature: 'c1', dueDay: 15 },
+      { id: 'r2', type: 'profile.set', state: 'saved', label: 'Stormwing (profile)', why: 'Saved.', creature: 'c1', dueDay: null },
+      { id: 'r1', type: 'order.request', state: 'refused', label: 'Ashwing: X', why: 'The Roost is busy.', creature: 'c2', dueDay: null }] };
+    var outbox = [{ id: 'w1', type: 'profile.set', creature: 'c1', fac: 'wyvern_roost', label: 'Stormwing (profile)', at: 5 }, { id: 'r3', type: 'order.request', creature: 'c1', fac: 'wyvern_roost', label: 'x', at: 4 }, { id: 'w2', type: 'profile.set', creature: 'c2', label: 'other', at: 9 }];
+    var rows = M.requestRows(snap, outbox, 'c1');
+    t.same(rows.map(function (r) { return r.id + ':' + r.state; }), ['w1:waiting', 'r3:scheduled', 'r2:saved']);
+    t.equal(M.requestLine(rows[0]), 'Submitted, waiting for the Bastion to confirm. Nothing has started.');
+    t.equal(M.requestLine(rows[1]), 'Accepted and scheduled in the Bastion: ready on Day 15.');
+    t.equal(M.requestLine({ state: 'completed' }), 'Completed.');
+    t.equal(M.requestLine({ state: 'saved' }), 'Saved in the Bastion.');
+    t.equal(M.requestLine({ state: 'refused', why: 'The Roost is busy.' }), 'Refused: The Roost is busy.');
+    t.same(M.requestRows(snap, outbox, 'c2').map(function (r) { return r.id; }), ['w2', 'r1']);
+    t.equal(M.requestRows(null, [], 'c1').length, 0);
+  });
+
+  test('an order already sent for a building and not yet answered stops a second one being offered there', function (t) {
+    var outbox = [{ id: 'a1', type: 'order.request', creature: 'c1', fac: 'wyvern_roost' }, { id: 'a2', type: 'profile.set', creature: 'c1', fac: 'wyvern_roost' }];
+    t.equal(M.waitingOrderAt({ receipts: [] }, outbox, 'wyvern_roost').id, 'a1');
+    t.equal(M.waitingOrderAt({ receipts: [] }, outbox, 'griffin_tower'), null, 'another building is not affected');
+    t.equal(M.waitingOrderAt({ receipts: [{ id: 'a1' }] }, outbox, 'wyvern_roost'), null, 'answered');
+  });
+
+  test('the queue on this laptop keeps only well-formed requests, once each, and no more than 100', function (t) {
+    var good = { v: 1, id: 'c-abcdefgh1', campaign: 'CAMPAIGN12345678', handler: 'mira', creature: 'c1', fac: 'wyvern_roost', type: 'order.request', view: 'abc', label: 'x', payload: { fnId: 'f' }, at: 1 };
+    var q = M.cleanQueue({ commands: [good, good, { id: 'short' }, Object.assign({}, good, { id: 'c-abcdefgh2', type: 'bond.confirm' }), Object.assign({}, good, { id: 'c-abcdefgh3', payload: null }), null, 'x', Object.assign({}, good, { id: 'c-abcdefgh4', at: 'now' })] });
+    t.same(q.commands.map(function (c) { return c.id; }), ['c-abcdefgh1']);
+    t.same(M.cleanQueue(null), { commands: [] });
+    var many = [];
+    for (var i = 0; i < 130; i++) many.push(Object.assign({}, good, { id: 'c-many' + (1000 + i) }));
+    var out = M.cleanQueue({ commands: many }).commands;
+    t.equal(out.length, 100);
+    t.equal(out[99].id, 'c-many1129', 'the newest are kept');
   });
 }());

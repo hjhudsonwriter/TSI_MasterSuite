@@ -107,15 +107,15 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     equal(await texts(bh, '.tsi-bh-nav__btn'), ['Profile', 'Orders', 'Chronicle']);
   });
 
-  await check('Profile shows the DM\'s own words and nothing can be changed yet', async () => {
+  await check('Profile shows the DM\'s own words, as read-only lines until Edit is pressed', async () => {
     await bh.click('[data-test=bh-tab-profile]');
     equal(await bare(bh, '[data-test=bh-p-beast]'), 'Wyvern');
     equal(await bare(bh, '[data-test=bh-p-dominant]'), 'Proud');
     equal(await bare(bh, '[data-test=bh-p-attachment]'), 'Lowers its head');
     equal(await bare(bh, '[data-test=bh-p-trigger]'), 'Loud metallic ringing');
     equal(await bare(bh, '[data-test=bh-p-regional]'), 'Not written yet');
-    equal(await bh.$eval('[data-test=bh-roll]', b => b.disabled), true);
     equal(await bh.$$eval('.tsi-bh-profile input, .tsi-bh-profile textarea, .tsi-bh-profile select', n => n.length), 0, 'no fields to type in');
+    equal(await bh.$eval('[data-test=bh-edit]', b => b.disabled), false, 'Edit is there');
   });
 
   await check('Chronicle: the Bastion\'s record in order, DM-only notes left out, no way to change it', async () => {
@@ -146,9 +146,9 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     await bh.click('[data-test=bh-order-wyr_safe_acclimatisation]');
     const confirm = await bare(bh, '[data-test=bh-confirm]');
     ['Check before you send', 'Stormwing', 'Wyvern Roost, Level 3', 'Safe Acclimatisation', '5 days', 'Free', 'Bond 1 (Acclimatised) is ready for the DM to confirm'].forEach(w => assert(confirm.indexOf(w) !== -1, '"' + w + '" is on the confirm screen: ' + confirm));
-    equal(await bh.$eval('[data-test=bh-send]', b => b.disabled), true, 'Send is switched off');
-    await bh.click('[data-test=bh-send]', { force: true }).catch(() => {});
-    equal(await bas(ba).then(s => s.pendingOrders.length), 0, 'nothing was ordered');
+    equal(await bh.$eval('[data-test=bh-send]', b => b.disabled), false, 'Send is there');
+    assert(/only asks the Bastion/.test(confirm), 'it says it only asks: ' + confirm);
+    equal(await bas(ba).then(s => s.pendingOrders.length), 0, 'nothing is ordered by looking');
     await bh.click('[data-test=bh-confirm-back]');
     assert(await bh.$('[data-test=bh-orders]'), 'back to the list');
   });
@@ -185,7 +185,7 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     equal(await texts(bh, '.tsi-bh-card__title').then(a => a.length), 2);
   });
 
-  await check('the Bastion itself was not changed by looking, greeting or trying to send', async () => {
+  await check('the Bastion itself was not changed by looking or greeting', async () => {
     const s = await bas(ba);
     equal(s.pendingOrders.length, 1, 'only the order the DM made');
     assert(JSON.stringify(s.creatures.map(c => c.development && c.development.bond)) !== before, 'sanity: the DM\'s order is what changed');

@@ -343,3 +343,32 @@
 @media (max-height: 560px) and (orientation: landscape) {
   .tsi-tool--beasthandler .tsi-bh-hero { width: min(100%, 220px); }
 }
+
+/* ---------- Writing: the profile editor and the requests list (BH-2c) ---------- */
+.tsi-tool--beasthandler .tsi-bh-message--warn { border-style: solid; border-color: var(--tsi-line-control); color: var(--tsi-text); }
+.tsi-tool--beasthandler .tsi-bh-edit { gap: var(--tsi-space-4); }
+.tsi-tool--beasthandler .tsi-bh-edit__field { display: grid; gap: 4px; }
+.tsi-tool--beasthandler .tsi-bh-edit__label { font: 700 var(--tsi-fs-label)/1.2 var(--tsi-font-display); letter-spacing: var(--tsi-track-label); text-transform: uppercase; color: var(--tsi-gold-text); }
+.tsi-tool--beasthandler .tsi-bh-edit__line { display: flex; gap: var(--tsi-space-2); align-items: stretch; }
+.tsi-tool--beasthandler .tsi-bh-edit__line .tsi-input { flex: 1 1 auto; min-height: var(--tsi-bh-tap); font-size: var(--tsi-fs-body); }
+.tsi-tool--beasthandler .tsi-bh-edit__line .tsi-btn { flex: none; min-height: var(--tsi-bh-tap); min-width: var(--tsi-bh-tap); }
+.tsi-tool--beasthandler .tsi-bh-edit__tag { font-size: var(--tsi-fs-body-sm); font-style: italic; color: var(--tsi-gold-text); }
+.tsi-tool--beasthandler .tsi-bh-edit__buttons { display: flex; flex-wrap: wrap; gap: var(--tsi-space-2); }
+.tsi-tool--beasthandler .tsi-bh-edit__buttons .tsi-btn { min-height: var(--tsi-bh-tap); }
+.tsi-tool--beasthandler .tsi-bh-requests__list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--tsi-space-2); }
+.tsi-tool--beasthandler .tsi-bh-request { display: grid; gap: 2px; padding: var(--tsi-space-2) var(--tsi-space-3); background: rgba(0, 0, 0, .28); border-left: 3px solid var(--tsi-line-control); border-radius: var(--tsi-radius-sm); }
+.tsi-tool--beasthandler .tsi-bh-request--waiting { border-left-color: var(--tsi-warn); }
+.tsi-tool--beasthandler .tsi-bh-request--scheduled, .tsi-tool--beasthandler .tsi-bh-request--completed, .tsi-tool--beasthandler .tsi-bh-request--saved { border-left-color: var(--tsi-ok); }
+.tsi-tool--beasthandler .tsi-bh-request--refused { border-left-color: var(--tsi-danger); }
+.tsi-tool--beasthandler .tsi-bh-request__label { font: 700 var(--tsi-fs-body-sm)/1.2 var(--tsi-font-display); letter-spacing: var(--tsi-track-label); color: var(--tsi-text); }
+.tsi-tool--beasthandler .tsi-bh-request__line { font-size: var(--tsi-fs-body-sm); color: var(--tsi-text-muted); }
+
+/* ---------- Painted portraits (Harry's art): upright pictures in a gold frame ---------- */
+.tsi-tool--beasthandler .tsi-bh-hero--art { width: min(100%, 360px); aspect-ratio: 9 / 16; max-height: 62vh; }
+.tsi-tool--beasthandler .tsi-bh-hero--art .tsi-bh-hero__tap { border-radius: var(--tsi-radius-lg); border: var(--tsi-border-feature); overflow: hidden; box-shadow: var(--tsi-shadow-card), var(--tsi-glow-gold); }
+.tsi-tool--beasthandler .tsi-bh-hero--art .tsi-bh-hero__img { object-fit: cover; object-position: 50% 30%; }
+.tsi-tool--beasthandler .tsi-bh-hero--small.tsi-bh-hero--art { width: 84px; aspect-ratio: 1; max-height: none; }
+.tsi-tool--beasthandler .tsi-bh-hero--small.tsi-bh-hero--art .tsi-bh-hero__tap { border-radius: 50%; border-width: 2px; box-shadow: var(--tsi-glow-gold); }
+.tsi-tool--beasthandler .tsi-bh-hero--small.tsi-bh-hero--art .tsi-bh-hero__img { object-position: 50% 28%; }
+@media (min-width: 720px) { .tsi-tool--beasthandler .tsi-bh-hero--small.tsi-bh-hero--art { width: 104px; } }
+@media (prefers-reduced-motion: reduce) { .tsi-tool--beasthandler .tsi-bh-hero--greet .tsi-bh-hero__img { animation: none; } }

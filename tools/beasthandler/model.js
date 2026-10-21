@@ -83,6 +83,58 @@
     return out;
   };
 
+  /* ---------- Requests (what has been asked, and how the Bastion answered) ---------- */
+  /* One beast's requests, newest first: those sent that the Bastion hasn't answered yet ('waiting'),
+     then its answers, each { id, type, state, label, why, dueLabel }. state is 'waiting', 'scheduled',
+     'completed', 'saved' or 'refused'. outbox: [{ id, type, creature, fac, label, at }]. */
+  M.requestRows = function (snap, outbox, creatureId, limit) {
+    var receipts = snap && Array.isArray(snap.receipts) ? snap.receipts : [];
+    var answered = {};
+    receipts.forEach(function (r) { answered[r.id] = true; });
+    var rows = (outbox || []).filter(function (o) { return o.creature === creatureId && !answered[o.id]; })
+      .sort(function (a, b) { return (b.at || 0) - (a.at || 0); })
+      .map(function (o) { return { id: o.id, type: o.type, state: 'waiting', label: o.label, why: '', dueLabel: '' }; });
+    receipts.filter(function (r) { return r.creature === creatureId; }).forEach(function (r) {
+      rows.push({ id: r.id, type: r.type, state: r.state, label: r.label, why: r.why, dueLabel: r.dueDay ? 'Day ' + r.dueDay : '' });
+    });
+    return rows.slice(0, limit || 6);
+  };
+  M.requestLine = function (row) {
+    if (row.state === 'waiting') return 'Submitted, waiting for the Bastion to confirm. Nothing has started.';
+    if (row.state === 'scheduled') return 'Accepted and scheduled in the Bastion' + (row.dueLabel ? ': ready on ' + row.dueLabel + '.' : '.');
+    if (row.state === 'completed') return 'Completed.';
+    if (row.state === 'saved') return 'Saved in the Bastion.';
+    return 'Refused: ' + (row.why || 'the Bastion couldn\'t do it.');
+  };
+  /* Has an order already been sent for this building and not yet answered? Then no second one is offered. */
+  M.waitingOrderAt = function (snap, outbox, facId) {
+    var answered = {};
+    ((snap && snap.receipts) || []).forEach(function (r) { answered[r.id] = true; });
+    return (outbox || []).filter(function (o) { return o.type === 'order.request' && o.fac === facId && !answered[o.id]; })[0] || null;
+  };
+
+  /* ---------- The companion's queue of requests on this laptop (tsi.beasthandler.queue) ---------- */
+  var ID_OK = /^[A-Za-z0-9._:-]{8,80}$/;
+  M.QUEUE_MAX = 100;
+  /* A queue as saved, with anything that isn't a well-formed request dropped. { commands: [...] } */
+  M.cleanQueue = function (raw) {
+    var list = isObj(raw) && Array.isArray(raw.commands) ? raw.commands : [];
+    var seen = {};
+    var out = [];
+    list.forEach(function (c) {
+      if (!isObj(c) || typeof c.id !== 'string' || !ID_OK.test(c.id) || seen[c.id] || c.v !== 1) return;
+      if (['profile.set', 'order.request'].indexOf(c.type) === -1 || !isObj(c.payload)) return;
+      if (typeof c.handler !== 'string' || !c.handler || typeof c.creature !== 'string' || typeof c.at !== 'number' || !isFinite(c.at)) return;
+      seen[c.id] = true;
+      out.push({
+        v: 1, id: c.id, campaign: typeof c.campaign === 'string' ? c.campaign.slice(0, 40) : '', handler: c.handler.slice(0, 40), creature: c.creature.slice(0, 80),
+        fac: typeof c.fac === 'string' ? c.fac.slice(0, 40) : '', type: c.type, view: typeof c.view === 'string' ? c.view.slice(0, 20) : '',
+        label: typeof c.label === 'string' ? c.label.slice(0, 160) : '', payload: JSON.parse(JSON.stringify(c.payload)), at: c.at
+      });
+    });
+    return { commands: out.slice(-M.QUEUE_MAX) };
+  };
+
   /* The title for a player to see: "Wyvern · Stormwing". */
   M.title = function (detail) { return detail.species.name + ' · ' + detail.name; };
 }());

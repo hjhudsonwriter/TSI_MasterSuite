@@ -184,8 +184,8 @@ window.TSI_DATA.tools = [
     group: 'players',
     phase: 'BH-1',
     built: true,
-    /* It keeps nothing of its own: it reads the Bastion's save (shared/js/dmdoc.js does the same). */
-    saves: false,
+    /* It reads the Bastion's save (shared/js/dmdoc.js does the same) and keeps only the small queue of requests waiting for the Bastion. */
+    saves: true,
     desc: 'The companions of Ironbow. See your wyvern, griffin or dire wolf: its bond, profile and Chronicle.',
     art: 'shared/art/hero.png',
     files: {
@@ -221,6 +221,7 @@ window.TSI_DATA.tools = [
         'tools/beasthandler/codes.js',
         'tools/beasthandler/bastion-link.js',
         'tools/beasthandler/model.js',
+        'tools/beasthandler/view.js',
         'tools/beasthandler/tool.js'
       ]
     }
