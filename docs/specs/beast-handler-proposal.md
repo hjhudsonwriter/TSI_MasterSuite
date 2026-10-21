@@ -204,3 +204,21 @@ Deferred as you asked and not touched here: Explorer collecting parcels before t
 | D9 | Not needed (no live relay). `CLAUDE.md` stays as it is. |
 
 Profile rules Harry set (for BH-2a): Roll shows a suggestion and saves nothing; the player can reroll, pick another option or type their own; Save asks the Bastion; later edits are logged for transparency but are **not** put into the Chronicle; a roll never changes bond, stats, training or abilities; Elara's wyvern can have its four lines chosen rather than rolled.
+
+---
+
+## 9. What was built (21 October 2026)
+
+| Phase | State | Notes |
+|---|---|---|
+| BH-0 proposal | Approved | Harry's decisions are in section 8. |
+| BH-1a projection | Done | `tools/beasthandler/projection.js`, with leak tests. |
+| BH-1b read-only screens | Done | Home, a beast's main screen, Profile, Orders, Chronicle. |
+| BH-2a profile data and rolls | Done | `profile-tables.js`, `profile-rules.js`; `development.regional` and a change log are kept by the save cleaners. |
+| BH-2b command processor | Done | `bastion-link.js`; exactly-once receipts in `s.beast.done`. **Different from this proposal:** a request carries the revision of the screen it was made from, but the Bastion does not refuse on it. Orders are re-checked against the live save; a profile change is last writer wins and is logged. |
+| BH-2c write flows and the DM's panel | Done | A box in the Bastion's Management panel; the companion's buttons are on. |
+| BH-3a code-swap transport | Done | `beasthandler.html`, `codes.js`, `shared/js/hmac.js`. No QR codes: the codes are long, so they are pasted or sent as a file. |
+| BH-3b live relay | Not wanted | Harry chose no relay (D1, D9). |
+| BH-4 art and polish | Part done | Five Dire Wolf portraits shown by Regional Variety; the five wyvern pictures saved but unused; the griffin pictures still to arrive as files. No animation yet. |
+
+See `docs/PHONE-PAGE.md` for how the phone page works and which files a phone needs.

@@ -1,0 +1,71 @@
+# The Beast Handler on a player's phone
+
+Written for Harry, in plain English. Last updated 21 October 2026.
+
+## What this is
+
+`beasthandler.html` (in the main folder of the suite) is a small page for a **player's phone**. It shows them their own beast (portrait, Bond 0 to 5, Profile, free Orders, Chronicle) and lets them ask for a change. It is **not** a second copy of the Bastion. It cannot open the Bastion, the Explorer or any DM tool, and it cannot change your save. It can only *ask*; your Bastion checks the ask again and decides.
+
+There is no internet and no server in the middle. The page and your laptop swap short pieces of text instead, called **codes**. A code can be pasted into a message (WhatsApp, Discord, text) or saved as a small `.txt` file and sent.
+
+## The three codes
+
+| Code | Starts with | Who makes it | What it does |
+|---|---|---|---|
+| Pairing code | `BHP1.` | You, in the Bastion | Links one phone to one handler. Sent once, privately. |
+| Snapshot code | `BHS1.` | You, in the Bastion | What that handler is allowed to see, as of today. |
+| Request code | `BHC1.` | The player's phone | One request (a profile change or a free training order). |
+
+Each code is **signed** with a secret only that handler and your Bastion know. If someone changes a code on the way, or makes one up, the other side ignores it. Signing does not hide what is in a code: a snapshot holds only what that player may see anyway, and a request is only a profile line or an order.
+
+## The normal round trip
+
+1. **Once, to set up.** In the Bastion open **Management**. In the **Beast Handler (players)** box, press **Pairing code…** beside the player's name (or **Add a handler…**). Send them the code, privately. They open the phone page, paste it in, and press **Link this phone**.
+2. **Whenever you want them to see something new.** Press **Snapshot code…** beside their name and send it. On a new phone they paste it and press **Show my beasts**; after that they press **Update from a snapshot…** and paste the new one. Make a new snapshot after anything changes (a new day, a new order, a bond).
+3. **When they want something.** On the phone they roll or type a profile line and press **Save**, or press **Send request** on an order. The phone shows a request code to send back to you and keeps it under **Requests to send to the DM** until a snapshot shows your answer.
+4. **You** press **Paste a request code…** in the same box (or **Open a file…**) and **Check and apply**. The Bastion does it once, or refuses it with a plain reason. Pasting the same code again changes nothing.
+5. **The answer goes back** as a fresh snapshot: the Result box that appears after you apply a request already holds one, ready to copy and send. When they paste it, the request leaves their "to send" list and shows as accepted or refused.
+
+## If a code gets out
+
+Press **Take back code** beside the player's name. Every request signed with the old code is refused from then on. Press **New pairing code…** to give them a new one.
+
+## Putting the page on a phone
+
+You need to decide how to get the page to a player. The page works from a file (it only needs a browser), so there are three ways. **This decision is yours; nothing has been set up.**
+
+- **Send the files.** Zip the files in the list below and send the zip. The player unzips it on their phone and opens `beasthandler.html`. This works with no internet at all, but phones don't always open local files nicely (iPhones in particular).
+- **Put the files on a website you already use.** Any plain web host that serves the same files will do. No account with us, no login. The page makes no network calls; the host only hands out the files.
+- **Play at the table.** On your laptop, open the Beast Handler from the home screen (the "same device" route). No codes needed.
+
+### The files a phone needs
+
+Only these (about 3 MB without the extras):
+
+- `beasthandler.html`
+- `shared/tokens.css`, `shared/components.css`
+- `shared/fonts/` (the whole folder, about 2.6 MB)
+- `shared/js/core.js`, `lifecycle.js`, `modal.js`, `hmac.js`
+- `tools/beasthandler/beasthandler.css`, `phone.css`
+- `tools/beasthandler/data/` (`profile-tables.js`, `art-map.js`)
+- `tools/beasthandler/projection.js`, `profile-rules.js`, `codes.js`, `model.js`, `view.js`, `phone.js`
+- `tools/beasthandler/assets/dire-wolf/` (the five wolf portraits). Leave out `assets/extras/` (unused wyvern pictures).
+
+Keep the folder layout exactly as it is. Do **not** send the Bastion, the Explorer, your saves or the rest of the suite. Players don't need them, and the phone page never loads them.
+
+## What the phone keeps
+
+In that phone's browser only, under names starting `tsi.beasthandler.phone`: the link (the handler and its secret), the latest snapshot, and requests not yet answered. If the player clears their browser data they only need to paste the pairing code again.
+
+## What a phone can never do
+
+- see the treasury, the Day Log, DM notes, other buildings, other players' details (their beasts appear only as a name, handler and bond line), or anything from your save that isn't in their snapshot;
+- change a bond, name, handler, milestone, Chronicle line, build or purchase, or spend any gold;
+- order anything except a **free training** order, and only when the Bastion's own rules would accept it right now;
+- order while anything else is pending at that building (the whole-building lock you chose).
+
+## Things to know
+
+- A snapshot is only as fresh as the moment you made it. The phone shows "As of Day N" so a player can tell.
+- A request code older than 30 days is refused as expired.
+- Not done: QR codes (the codes are long, so they are pasted or sent as a file), a live link that updates by itself, and a hosted page. These were not part of the plan you approved.
