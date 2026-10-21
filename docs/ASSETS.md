@@ -459,7 +459,7 @@ Sent in the chat after pull request 3 merged, and kept exactly as received in `b
 
 ## Scarlett Isles: Beast Handler: Harry's portraits (21 October 2026)
 
-Sent in the chat as WebP pictures (941 × 1672, upright, pixel-painted) and kept exactly as received (each checked byte-for-byte after copying). The companion shows a beast's picture when it has a Regional Variety that has one, through `tools/beasthandler/data/art-map.js`; a beast with no Regional Variety shows its species' gold medallion (Harry's decision, 21 October 2026).
+Sent in the chat as WebP pictures (941 × 1672, upright, pixel-painted) and kept exactly as received (each checked byte-for-byte after copying). The companion shows a beast's picture when it has a Regional Variety that has one, through `tools/beasthandler/data/art-map.js`; a beast with no Regional Variety shows an empty frame until one is chosen (Harry, 21 October 2026; the gold medallion that showed before was dropped).
 
 ### Dire Wolves (Harry named each one)
 

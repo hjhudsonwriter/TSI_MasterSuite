@@ -33,21 +33,28 @@
   /* "Bond 3 · Bonded" for the rapport line. */
   M.rapportLine = function (bond) { return 'Bond ' + bond.level + ' · ' + bond.name; };
 
-  /* The Regional Variety table entry whose name matches, or null. Capitals, spaces, hyphens and apostrophes do not matter
-     ("Bleak hook" is Bleakhook), and a trailing species word is allowed ("Widowspine Wyvern"). */
+  /* The Regional Variety table entry a typed name means, or null. Capitals, spaces, hyphens and apostrophes do not matter
+     ("Bleak hook" is Bleakhook); words in brackets are ignored; a leading "the" and a leading or trailing species word are
+     allowed ("The Widowspine Wyvern", "Dire Wolf Nightfang"); and a name that mentions exactly one of the species' varieties
+     means that one ("Slatejaw of the northern hills"). Anything else has no picture. */
   function looseKey(text) { return String(text || '').toLowerCase().replace(/[^a-z]/g, ''); }
+  var SPECIES_WORDS = ['direwolf', 'wolf', 'wyvern', 'griffin'];
   M.regionalInfo = function (tables, speciesId, name) {
     var sp = tables && isObj(tables.species) ? tables.species[speciesId] : null;
-    var key = looseKey(name);
-    if (!sp || !key) return null;
-    var list = sp.regional || [];
-    var hit = list.filter(function (r) { return looseKey(r.name) === key; })[0];
+    var list = sp && Array.isArray(sp.regional) ? sp.regional : [];
+    var key = looseKey(String(name || '').replace(/[(\[{][^)\]}]*[)\]}]/g, ' ').replace(/^\s*the\s+/i, ''));
+    if (!list.length || !key) return null;
+    function find(k) { return list.filter(function (r) { return looseKey(r.name) === k; })[0] || null; }
+    var hit = find(key);
     if (hit) return hit;
-    ['direwolf', 'wolf', 'wyvern', 'griffin'].some(function (w) {
-      if (key.length > w.length && key.slice(-w.length) === w) { hit = list.filter(function (r) { return looseKey(r.name) === key.slice(0, -w.length); })[0]; }
+    SPECIES_WORDS.some(function (w) {
+      if (key.length > w.length && key.slice(-w.length) === w) hit = find(key.slice(0, -w.length));
+      if (!hit && key.length > w.length && key.slice(0, w.length) === w) hit = find(key.slice(w.length));
       return !!hit;
     });
-    return hit || null;
+    if (hit) return hit;
+    var inside = list.filter(function (r) { return key.indexOf(looseKey(r.name)) !== -1; });
+    return inside.length === 1 ? inside[0] : null;
   };
 
   /* Which picture to draw: { src, label, alt }; src is '' until a picture is added. */
@@ -96,7 +103,7 @@
     return 'Read from the Bastion saved on this device · ' + info.asOfLabel;
   };
 
-  /* ---------- The first meeting (Harry, 22 October 2026) ---------- */
+  /* ---------- The first meeting (Harry, 21 October 2026) ---------- */
   M.possessive = function (name) { var n = String(name || '').trim(); return n + (/s$/i.test(n) ? '\u2019' : '\u2019s'); };
   M.speciesNoun = function (detail) { return String(detail && detail.species && detail.species.name || 'beast').toLowerCase(); };
   /* The profile lines still waiting to be answered for a beast, newest request last winning: { regional?, dominant?, ... } or null. */
@@ -119,6 +126,16 @@
   /* Has this beast been introduced? Not until a subspecies has been chosen (saved, or asked for and waiting). */
   M.needsMeeting = function (detail, pending) {
     return !M.effectiveProfile(detail, pending).regional.trim();
+  };
+  /* Is the subspecies shown different from the Bastion's own (asked for, not yet answered)? Clearing it counts. */
+  M.regionalWaiting = function (detail, pending) {
+    var p = detail && isObj(detail.profile) ? detail.profile : {};
+    return !!(pending && typeof pending.regional === 'string' && pending.regional.trim() !== String(p.regional || '').trim());
+  };
+  /* The newest profile request for a beast, if the Bastion refused it (so the player is told why); otherwise null. */
+  M.refusedProfile = function (snap, outbox, creatureId) {
+    var row = M.requestRows(snap, outbox, creatureId, 50).filter(function (r) { return r.type === 'profile.set'; })[0];
+    return row && row.state === 'refused' ? row : null;
   };
   /* The words of the sequence. */
   M.meetingText = function (detail) {

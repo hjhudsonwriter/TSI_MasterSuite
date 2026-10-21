@@ -18,7 +18,7 @@
      snapshot(), problem(), syncLine(), syncOk(),
      handlerChoices?(), viewing?(), setViewing?(value)      (laptop only)
      canSubmit(): '' or the reason a request can't be made now,
-     outbox(): [{ id, type, creature, fac, label, at }],
+     outbox(): [{ id, type, creature, fac, label, at, payload }],   (payload: what was asked, so a waiting profile change can be shown)
      submit(body): Promise<{ ok, message? , ... }>, body { type, creature, fac?, payload, view },
      afterSubmit?(result): Promise, extraHome?(): nodes, extraFoot?(): nodes } */
 (function () {
@@ -38,7 +38,7 @@
       var life = host.life;
 
       /* What the player is looking at (not saved). */
-      var ui = { screen: 'home', creatureId: null, tab: 'main', orderFn: null, edit: null, said: '', fadeNext: false, skipMeet: {} };
+      var ui = { screen: 'home', creatureId: null, tab: 'main', orderFn: null, edit: null, said: '', fadeNext: false, skipMeet: {}, meetDraft: {} };
       var shell = el('div', { class: 'tsi-bh', 'data-test': 'bh-root' });
       root.appendChild(shell);
 
@@ -69,14 +69,14 @@
       function pendingFor(d) { return M.pendingProfile(snap(), outbox(), d.id); }
       function effective(d) { return M.effectiveProfile(d, pendingFor(d)); }
 
-      /* The picture for the subspecies that has been chosen. None until one is: the frame stays blank (Harry, 22 October 2026). */
+      /* The picture for the subspecies that has been chosen. None until one is: the frame stays blank (Harry, 21 October 2026). */
       function pictureOf(d) {
         var pend = pendingFor(d);
         var eff = M.effectiveProfile(d, pend);
         var name = eff.regional.trim();
         var info = name ? M.regionalInfo(tables, d.species.id, name) : null;
         var pic = info ? M.artFor(art, d.species.id, info.id) : null;
-        return { name: name, info: info, src: pic && pic.src ? pic.src : '', alt: pic ? pic.alt + ' (' + info.name + ')' : '', waiting: !!(pend && typeof pend.regional === 'string' && pend.regional.trim() && pend.regional !== (d.profile.regional || '')) };
+        return { name: name, info: info, src: pic && pic.src ? pic.src : '', alt: pic ? pic.alt + ' (' + info.name + ')' : '', waiting: M.regionalWaiting(d, pend), unknown: !!(name && !info) };
       }
       function pictureEl(d, pic, cls) {
         return el('img', { class: cls, src: TSI.path('tools/beasthandler/assets/' + pic.src), alt: pic.alt, draggable: 'false' });
@@ -86,12 +86,21 @@
       function hero(d) {
         var pic = pictureOf(d);
         var frame = el('div', { class: 'tsi-bh-hero2' + (pic.src ? ' tsi-bh-hero2--art' : ' tsi-bh-hero2--blank'), 'data-species': d.species.id, 'data-test': 'bh-portrait-large', 'data-state': pic.src ? 'picture' : 'blank' });
+        var lost = el('p', { class: 'tsi-bh-pendingtag', 'data-test': 'bh-picture-lost', hidden: true, text: 'The picture for this subspecies couldn\u2019t be loaded here.' });
         if (pic.src) {
           /* A gentle reaction to a tap. It only changes how the picture looks: no bond, no ability, no request. */
+          var img = pictureEl(d, pic, 'tsi-bh-hero2__img');
+          /* A picture file that isn't there (a partly copied web folder) leaves an honest empty frame, not a broken image. */
+          img.addEventListener('error', function () {
+            frame.setAttribute('data-state', 'blank');
+            frame.classList.remove('tsi-bh-hero2--art'); frame.classList.add('tsi-bh-hero2--blank');
+            if (img.parentNode) img.parentNode.removeChild(img);
+            lost.hidden = false;
+          });
           frame.appendChild(el('button', {
             type: 'button', class: 'tsi-bh-hero2__tap', 'aria-label': 'Greet ' + d.name, 'data-test': 'bh-greet-large',
             onclick: function () { frame.classList.add('tsi-bh-hero2--greet'); life.setTimeout(function () { frame.classList.remove('tsi-bh-hero2--greet'); }, 900); }
-          }, pictureEl(d, pic, 'tsi-bh-hero2__img')));
+          }, img));
         } else {
           frame.setAttribute('role', 'img');
           frame.setAttribute('aria-label', 'No picture yet: choose ' + d.name + '\u2019s subspecies in Profile');
@@ -101,9 +110,12 @@
           el('span', { class: 'tsi-bh-subspecies__star', 'aria-hidden': 'true', text: '\u2726' }),
           el('span', { class: 'tsi-bh-subspecies__name', text: pic.name || 'Subspecies not chosen yet' })
         ]);
+        var count = Pf.options(d.species.id).regional.length;
         return el('div', { class: 'tsi-bh-herowrap' }, [
           frame, chip,
-          pic.waiting ? el('p', { class: 'tsi-bh-pendingtag', 'data-test': 'bh-hero-pending', text: host.mode === 'phone' ? 'Not confirmed yet: send your request code to the DM.' : 'Waiting for the Bastion to confirm.' }) : null
+          pic.waiting ? el('p', { class: 'tsi-bh-pendingtag', 'data-test': 'bh-hero-pending', text: host.mode === 'phone' ? 'Not confirmed yet: send your request code to the DM.' : 'Waiting for the Bastion to confirm.' }) : null,
+          pic.unknown ? el('p', { class: 'tsi-bh-pendingtag', 'data-test': 'bh-nopicture', text: 'There is no painted picture for \u201c' + pic.name + '\u201d. Choose one of the ' + count + ' ' + M.speciesNoun(d) + ' subspecies in Profile to see its picture.' }) : null,
+          lost
         ]);
       }
 
@@ -310,7 +322,8 @@
         var info = M.regionalInfo(tables, d.species.id, p.regional);
         function row(label, value, test, field) {
           var waitingMark = field && typeof pend[field] === 'string' && pend[field] !== (d.profile[field] || '');
-          return [el('dt', { text: label }), el('dd', { class: value ? '' : 'tsi-bh-unset', 'data-test': test }, value ? [value, waitingMark ? el('span', { class: 'tsi-bh-waitingmark', 'data-test': test + '-waiting', text: ' \u00b7 waiting' }) : null] : 'Not written yet')];
+          var mark = waitingMark ? el('span', { class: 'tsi-bh-waitingmark', 'data-test': test + '-waiting', text: ' \u00b7 waiting' }) : null;
+          return [el('dt', { text: label }), el('dd', { class: value ? '' : 'tsi-bh-unset', 'data-test': test }, value ? [value, mark] : ['Not written yet', mark])];
         }
         var waitingProfile = M.requestRows(snap(), outbox(), d.id, 20).some(function (r) { return r.state === 'waiting' && r.type === 'profile.set'; });
         var blocked = waitingProfile ? 'A profile change is already waiting for the Bastion.' : host.canSubmit();
@@ -356,8 +369,13 @@
         });
         var saveBtn = null;
         var problem = el('p', { class: 'tsi-bh-message tsi-bh-message--warn', 'data-test': 'bh-edit-problem', hidden: true, role: 'status' });
+        var unknown = el('p', { class: 'tsi-bh-muted', 'data-test': 'bh-edit-unknown', hidden: true });
         function check() {
           var res = Pf.check(e.values);
+          var typed = res.ok && res.clean.regional ? res.clean.regional : '';
+          var noPicture = !!typed && !M.regionalInfo(tables, d.species.id, typed);
+          unknown.hidden = !noPicture;
+          unknown.textContent = noPicture ? 'That isn\u2019t one of the ' + opts.regional.length + ' ' + M.speciesNoun(d) + ' subspecies, so there will be no picture for it. You can still keep it.' : '';
           var changed = Pf.changed(e.base, res.clean);
           var why = !res.ok ? res.problems[0] : !changed.length ? 'Nothing has changed yet.' : '';
           problem.textContent = res.ok ? '' : res.problems[0];
@@ -410,6 +428,7 @@
           el('p', { class: 'tsi-bh-muted', text: 'Type your own, pick from the list, or roll. A roll only suggests a line: it is not saved until you press Save, and it never changes a bond, a stat or a training. The DM can still change anything.' })
         ].concat(rows, lists, [
           problem,
+          unknown,
           el('div', { class: 'tsi-bh-edit__buttons' }, [saveBtn, rollAll, btn('Cancel', function () { ui.edit = null; render(); }, 'tsi-btn--ghost', 'bh-edit-cancel')])
         ]));
         life.setTimeout(check, 0);
@@ -523,11 +542,22 @@
       var meetingNow = false;
       var meet = BH.intro ? BH.intro.create({
         el: el, btn: btn, M: M, Pf: Pf, tables: tables, host: host, life: life,
+        drafts: ui.meetDraft,
         submit: submit,
+        focusHeading: focusHeading,
+        setInert: function (on) { if (on) shell.setAttribute('inert', ''); else shell.removeAttribute('inert'); },
+        /* Start fetching the picture for a subspecies, so it is there when the curtain lifts. */
+        preload: function (d, name) {
+          var info = M.regionalInfo(tables, d.species.id, name);
+          var pic = info ? M.artFor(art, d.species.id, info.id) : null;
+          if (pic && pic.src) { var i = new Image(); i.src = TSI.path('tools/beasthandler/assets/' + pic.src); }
+        },
+        heroImage: function () { return shell.querySelector('[data-test=bh-portrait-large] img'); },
+        refused: function (d) { return M.refusedProfile(snap(), outbox(), d.id); },
         rerender: function (fade) { ui.fadeNext = !!fade; render(); },
         skipped: function (d) { return !!ui.skipMeet[d.id]; },
         blocked: function (d) { return M.requestRows(snap(), outbox(), d.id, 20).some(function (r) { return r.state === 'waiting' && r.type === 'profile.set'; }); },
-        canSkip: function () { return host.mode === 'laptop'; },
+        canSkip: function (d, refused) { return host.mode === 'laptop' || !!refused; },   /* a player can only skip after a refusal, so a refusal can never trap them */
         skip: function (d) { ui.skipMeet[d.id] = true; ui.fadeNext = true; render(); },
         leave: function () { ui.creatureId = null; go('home'); },
         finished: function () { ui.fadeNext = false; render(); window.scrollTo(0, 0); },
@@ -547,7 +577,10 @@
         if (!life.alive) return;
         /* Keep the place the person was typing in. */
         var active = document.activeElement;
-        var keep = active && shell.contains(active) && active.id ? { id: active.id, start: active.selectionStart, end: active.selectionEnd } : null;
+        var keep = null;
+        if (active && shell.contains(active) && (active.id || active.getAttribute('data-test'))) {
+          keep = { sel: active.id ? '#' + active.id : '[data-test="' + active.getAttribute('data-test') + '"]', start: active.selectionStart, end: active.selectionEnd };
+        }
         TSI.clear(shell);
         meetAfter = null;
         meetingNow = false;
@@ -568,7 +601,8 @@
           shell.classList.add('tsi-bh--in');
         }
         if (keep) {
-          var again = document.getElementById(keep.id);
+          var again = null;
+          try { again = shell.querySelector(keep.sel); } catch (e) { /* an odd name: leave focus alone */ }
           if (again) { again.focus({ preventScroll: true }); try { again.setSelectionRange(keep.start, keep.end); } catch (e) { /* not a text box */ } }
         }
         drawn = true;

@@ -2,9 +2,9 @@
 
    Harry's painted portraits are matched to the Regional Varieties: all
    fifteen are in (21 October 2026; each file was named for its variety). A
-   beast with no Regional Variety, or one with no picture, shows its species'
-   gold medallion (Harry's decision), so nothing is missing and nothing is
-   faked. The two wyverns in assets/extras/wyvern/ (mossy green, volcanic
+   beast with no Regional Variety, or one whose name matches no variety here,
+   shows an empty frame (Harry, 21 October 2026: the picture stays blank until a
+   subspecies has been chosen), so nothing is faked. The two wyverns in assets/extras/wyvern/ (mossy green, volcanic
    copper) belong to no variety and are kept, unused.
 
    To add a picture: put the file in tools/beasthandler/assets/ and set src

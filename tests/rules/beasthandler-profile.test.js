@@ -41,7 +41,7 @@
     t.equal(Pf.suggest('unicorn', Math.random), null);
     var one = Pf.suggestOne('dire_wolf', 'trigger', seq(0.0));
     t.same(one, { text: 'Restrictive chains', roll: 1 });
-    /* A subspecies rolls as an even pick among that kind's own five (Harry, 22 October 2026). */
+    /* A subspecies rolls as an even pick among that kind's own five (Harry, 21 October 2026). */
     t.same(Pf.suggestOne('dire_wolf', 'regional', seq(0.0)), { text: 'Nightfang', roll: 1, of: 5 });
     t.same(Pf.suggestOne('dire_wolf', 'regional', seq(0.999)), { text: 'Hollowhowl', roll: 5, of: 5 });
     t.same(Pf.suggestOne('griffin', 'regional', seq(0.45)), { text: 'Silvershroud', roll: 3, of: 5 }, 'a griffin rolls a griffin variety');

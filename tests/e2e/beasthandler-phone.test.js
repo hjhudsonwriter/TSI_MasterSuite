@@ -303,6 +303,37 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
       equal(r.small, [], where + ' has small targets');
       await H.shot(pp, 'beasthandler-phone-' + where);
     }
+    /* The bond card on the beast's page, on the narrowest phones: pill names whole, the headline not broken inside a word. */
+    await pp.click('[data-test=bh-tab-orders]').catch(() => {});
+    await pp.click('[data-test=bh-back]').catch(() => {});
+    for (const w of [390, 360, 320]) {
+      await pp.setViewportSize({ width: w, height: 740 });
+      await pp.waitForTimeout(250);
+      const r = await pp.evaluate(() => {
+        const cut = [];
+        document.querySelectorAll('.tsi-bh-pill__label').forEach(n => { if (n.scrollWidth > n.clientWidth + 1 || n.getBoundingClientRect().right > n.parentElement.getBoundingClientRect().right + 1) cut.push(n.textContent); });
+        const line = document.querySelector('[data-test=bh-bond-line]');
+        const broken = [];
+        /* A word is broken when a line ends inside it: compare the line's rendered height with one line of its own text, per word. */
+        const words = line.textContent.split(/\s+/).filter(Boolean);
+        const probe = document.createElement('span');
+        probe.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap;font:' + getComputedStyle(line).font + ';letter-spacing:' + getComputedStyle(line).letterSpacing + ';text-transform:' + getComputedStyle(line).textTransform;
+        document.body.appendChild(probe);
+        words.forEach(x => { probe.textContent = x; if (probe.getBoundingClientRect().width > line.clientWidth + 1) broken.push(x); });
+        probe.remove();
+        return { cut, broken, sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth };
+      });
+      equal(r.cut, [], 'pill names are cut off at ' + w + ' px');
+      equal(r.broken, [], 'a word of the bond line would break at ' + w + ' px');
+      assert(r.sw <= r.cw, 'sideways scroll at ' + w + ' px');
+    }
+    await pp.setViewportSize({ width: 390, height: 844 });
+    /* Held sideways, the picture is still a proper size (a thumbnail would not do for the centrepiece). */
+    await pp.setViewportSize({ width: 844, height: 390 });
+    await pp.waitForTimeout(250);
+    const hero = await pp.$eval('[data-test=bh-portrait-large]', n => { const b = n.getBoundingClientRect(); return [Math.round(b.width), Math.round(b.height)]; });
+    assert(hero[1] >= 250, 'the picture held sideways is ' + hero.join(' x '));
+    await pp.setViewportSize({ width: 390, height: 844 });
   });
 
   await check('Add a handler with a name that is already paired asks before it swaps their code', async () => {

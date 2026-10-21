@@ -137,8 +137,11 @@
           if (!cur.snap.campaign) return 'The Bastion needs to be opened once so it can link up with the Beast Handler.';
           return '';
         },
+        /* Only the viewed handler's own waiting requests: another handler's request for the same beast (the DM may have handed it on) must not show on this page. */
         outbox: function () {
-          return queue.commands.map(function (c) { return { id: c.id, type: c.type, creature: c.creature, fac: c.fac, label: c.label, at: c.at, payload: c.payload }; });
+          var me = cur.snap && cur.snap.handler ? cur.snap.handler.id : '';
+          return queue.commands.filter(function (c) { return !!me && P.sameHandler(c.handler, me); })
+            .map(function (c) { return { id: c.id, type: c.type, creature: c.creature, fac: c.fac, label: c.label, at: c.at, payload: c.payload }; });
         },
         submit: function (body) {
           var why = host.canSubmit();

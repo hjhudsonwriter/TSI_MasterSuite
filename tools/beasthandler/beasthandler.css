@@ -8,7 +8,7 @@
    at least 44 px tall. Nothing scrolls sideways.
    ========================================================================== */
 
-/* ---------- The colour scheme: charcoal and gold, from Harry's Google Stitch mock-ups (22 October 2026) ----------
+/* ---------- The colour scheme: charcoal and gold, from Harry's Google Stitch mock-ups (21 October 2026) ----------
    Neutral dark greys (#131315 page, #1c1b1d cards), a soft gold (#f4cd76) for headings, labels and the
    one main button, and thin grey outlines instead of gold ones. Only the Beast Handler uses these: they are
    set on the page's body (so its pop-ups match) and on the phone page, and the rest of the suite keeps its
@@ -60,6 +60,10 @@ body.tsi-bh-phone {
   --tsi-warn: #f4cd76;
   --tsi-ok: #8fd6a4;
 }
+/* The shared pop-up is wider than a phone's content box and keeps the suite's old gold border: fit it, and match the palette. */
+body.tsi-page--beasthandler .tsi-modal,
+body.tsi-bh-phone .tsi-modal { border-color: rgba(244, 205, 118, .45); }
+body.tsi-bh-phone .tsi-modal { width: min(640px, 100%); }
 body.tsi-page--beasthandler .tsi-btn--primary,
 body.tsi-bh-phone .tsi-btn--primary { color: #1b1810; border-color: rgba(244, 205, 118, .9); font-weight: 800; }
 body.tsi-page--beasthandler .tsi-btn--primary:hover,
@@ -180,9 +184,10 @@ body.tsi-bh-phone .tsi-btn--primary:hover { filter: brightness(1.06); }
 }
 .tsi-tool--beasthandler .tsi-bh-beast--mine:hover { border-color: var(--tsi-line-hover); background: rgba(214, 178, 94, .08); transform: var(--tsi-lift); }
 .tsi-tool--beasthandler .tsi-bh-beast--mine:focus-visible,
-.tsi-tool--beasthandler .tsi-bh-nav__btn:focus-visible,
-.tsi-tool--beasthandler .tsi-bh-order:focus-visible,
-.tsi-tool--beasthandler .tsi-bh-hero__tap:focus-visible { outline: none; border-color: var(--tsi-gold-text); box-shadow: var(--tsi-focus-ring); }
+.tsi-tool--beasthandler .tsi-bh-order:focus-visible { outline: none; border-color: var(--tsi-gold-text); box-shadow: var(--tsi-focus-ring); }
+/* The picture and the bottom bar are clipped or borderless, so their ring is drawn inside them, in plain gold. */
+.tsi-tool--beasthandler .tsi-bh-hero2__tap:focus-visible,
+.tsi-tool--beasthandler .tsi-bh-nav__btn:focus-visible { outline: 3px solid var(--tsi-gold); outline-offset: -5px; }
 .tsi-tool--beasthandler .tsi-bh-beast--other { opacity: .82; cursor: default; }
 .tsi-tool--beasthandler .tsi-bh-beast__main { flex: 1 1 11em; display: grid; gap: 2px; }
 .tsi-tool--beasthandler .tsi-bh-beast__chips { flex: 0 1 auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--tsi-space-2); margin-left: auto; }
@@ -207,7 +212,7 @@ body.tsi-bh-phone .tsi-btn--primary:hover { filter: brightness(1.06); }
 .tsi-tool--beasthandler .tsi-bh-kind { font-size: var(--tsi-fs-body-sm); color: var(--tsi-text-soft); }
 .tsi-tool--beasthandler .tsi-bh-training { text-align: center; font-size: var(--tsi-fs-body-sm); color: var(--tsi-gold-text); }
 
-/* ---------- The beast's page: the picture is the centrepiece (Harry, 22 October 2026) ---------- */
+/* ---------- The beast's page: the picture is the centrepiece (Harry, 21 October 2026) ---------- */
 .tsi-tool--beasthandler .tsi-bh-name { text-align: center; }
 /* The page heading is only a place for focus to land after a screen change, so it gets no box. */
 .tsi-tool--beasthandler h1[tabindex="-1"]:focus { outline: none; }
@@ -280,18 +285,25 @@ body.tsi-bh-phone .tsi-btn--primary:hover { filter: brightness(1.06); }
   border-radius: var(--tsi-radius-lg);
   box-shadow: var(--tsi-shadow-card);
 }
-.tsi-tool--beasthandler .tsi-bh-rapport__top { display: flex; align-items: center; gap: var(--tsi-space-3); }
+.tsi-tool--beasthandler .tsi-bh-rapport__top { display: flex; flex-wrap: wrap; align-items: center; gap: var(--tsi-space-3); }
 .tsi-tool--beasthandler .tsi-bh-rapport__heart { flex: none; display: grid; place-items: center; width: 38px; height: 38px; font-size: 18px; color: var(--tsi-gold); background: rgba(244, 205, 118, .1); border: 1px solid rgba(244, 205, 118, .35); border-radius: 12px; }
-.tsi-tool--beasthandler .tsi-bh-rapport__words { flex: 1 1 auto; display: grid; gap: 2px; }
+.tsi-tool--beasthandler .tsi-bh-rapport__words { flex: 1 1 9em; min-width: 0; display: grid; gap: 2px; }
 .tsi-tool--beasthandler .tsi-bh-rapport__label { font: 600 11px/1.2 var(--tsi-font-display); letter-spacing: var(--tsi-track-kicker); text-transform: uppercase; color: var(--tsi-text-soft); }
-.tsi-tool--beasthandler .tsi-bh-rapport__line { font: 700 var(--tsi-fs-h3)/1.2 var(--tsi-font-display); letter-spacing: var(--tsi-track-label); color: var(--tsi-gold); }
+.tsi-tool--beasthandler .tsi-bh-rapport__line { font: 700 var(--tsi-fs-h3)/1.2 var(--tsi-font-display); letter-spacing: var(--tsi-track-label); color: var(--tsi-gold); overflow-wrap: normal; word-break: normal; }
 .tsi-tool--beasthandler .tsi-bh-rapport__stage { flex: none; padding: 6px 10px; font: 700 11px/1.2 var(--tsi-font-display); letter-spacing: var(--tsi-track-pill); text-transform: uppercase; color: var(--tsi-text-muted); background: rgba(255, 255, 255, .06); border: 1px solid var(--tsi-line); border-radius: 10px; }
 .tsi-tool--beasthandler .tsi-bh-pills { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
 .tsi-tool--beasthandler .tsi-bh-pill { display: grid; gap: 6px; justify-items: center; }
 .tsi-tool--beasthandler .tsi-bh-pill__bar { display: block; width: 100%; height: 8px; border-radius: 999px; background: #353436; }
 .tsi-tool--beasthandler .tsi-bh-pill--done .tsi-bh-pill__bar { background: #b98f3d; }
 .tsi-tool--beasthandler .tsi-bh-pill--current .tsi-bh-pill__bar { background: var(--tsi-gold); box-shadow: 0 0 10px rgba(244, 205, 118, .55); }
-.tsi-tool--beasthandler .tsi-bh-pill__label { max-width: 100%; font: 600 9px/1.1 var(--tsi-font-display); letter-spacing: .04em; text-transform: uppercase; text-align: center; color: var(--tsi-text-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tsi-tool--beasthandler .tsi-bh-pill__label { max-width: 100%; font: 600 11.5px/1.15 var(--tsi-font-body); letter-spacing: 0; text-align: center; color: var(--tsi-text-soft); overflow-wrap: normal; word-break: normal; hyphens: none; }
+/* Five names across the narrowest phones: the longest ("Acclimatised") must fit its column whole, so the type steps down a little. */
+@media (max-width: 399px) { .tsi-tool--beasthandler .tsi-bh-pill__label { font-size: 10.5px; } }
+@media (max-width: 340px) {
+  .tsi-tool--beasthandler .tsi-bh-rapport { padding: var(--tsi-space-3); }
+  .tsi-tool--beasthandler .tsi-bh-pills { gap: 3px; }
+  .tsi-tool--beasthandler .tsi-bh-pill__label { font-size: 9.5px; }
+}
 .tsi-tool--beasthandler .tsi-bh-pill--done .tsi-bh-pill__label { color: var(--tsi-text-soft); }
 .tsi-tool--beasthandler .tsi-bh-pill--current .tsi-bh-pill__label { color: var(--tsi-gold); }
 
@@ -372,7 +384,7 @@ body.tsi-bh-phone .tsi-btn--primary:hover { filter: brightness(1.06); }
   gap: 0;
   margin-top: auto;
   padding: 0 0 env(safe-area-inset-bottom);
-  background: rgba(19, 19, 21, .96);
+  background: #131315;
   border-top: 1px solid var(--tsi-line);
   border-radius: var(--tsi-radius-md) var(--tsi-radius-md) 0 0;
 }
@@ -420,7 +432,7 @@ body.tsi-bh-phone .tsi-btn--primary:hover { filter: brightness(1.06); }
   .tsi-tool--beasthandler .tsi-bh-hero2 { max-width: 300px; }
 }
 /* On a laptop the picture is sized by the window's height, so the rapport card and the three buttons stay in view. */
-@media (min-width: 720px) {
+@media (min-width: 720px) and (min-height: 561px) {
   .tsi-tool--beasthandler .tsi-bh-hero2 { width: auto; max-width: 100%; height: min(44vh, 430px); aspect-ratio: 4 / 5; margin: 0 auto; }
   .tsi-tool--beasthandler .tsi-bh-hero2::before { display: none; }
 }
@@ -475,6 +487,9 @@ body.tsi-bh-phone .tsi-btn--primary:hover { filter: brightness(1.06); }
 .tsi-tool--beasthandler .tsi-bh-meet__dot--done { background: #b98f3d; }
 .tsi-tool--beasthandler .tsi-bh-meet__dot--on { background: var(--tsi-gold); box-shadow: 0 0 8px rgba(244, 205, 118, .6); }
 .tsi-tool--beasthandler .tsi-bh-meet--closing { min-height: 50vh; }
+.tsi-tool--beasthandler .tsi-bh-meet--fading { pointer-events: none; }
+.tsi-tool--beasthandler .tsi-bh-meet__refused { max-width: 46ch; text-align: left; }
+.tsi-tool--beasthandler .tsi-bh-meet__kept { margin: 0; font-size: var(--tsi-fs-body-sm); }
 .tsi-tool--beasthandler .tsi-bh[data-screen="meet"] .tsi-bh-sync { display: none; }
 
 /* The black the screen fades to, with "Welcome to the Ironbow, <Name>!" on it. It sits above everything (pop-ups too). */
@@ -493,7 +508,8 @@ body.tsi-bh-phone .tsi-btn--primary:hover { filter: brightness(1.06); }
 .tsi-bh-curtain--on { opacity: 1; pointer-events: auto; }
 .tsi-bh-curtain__text {
   margin: 0;
-  max-width: 18ch;
+  max-width: min(18ch, 100%);
+  overflow-wrap: anywhere;
   text-align: center;
   font: 700 clamp(26px, 7vw, 46px)/1.25 var(--tsi-font-display);
   letter-spacing: var(--tsi-track-title);

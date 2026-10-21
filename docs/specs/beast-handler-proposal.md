@@ -234,6 +234,6 @@ See `docs/PHONE-PAGE.md` for how the phone page works and which files a phone ne
 - **Handlers:** matched by name: fine.
 - **Griffin pictures** (confirmed): fiery russet and bronze = Embermantle; brown head and silver-grey shoulders = Galeclaw; pale silver and white = Silvershroud; steel-grey with lightning = Thunderwing; gold and ivory = Dawnmantle. Harry uploaded all fifteen pictures to the repository the same day (`WY_`, `GR_` and `DW_` files, each named for its variety); they are in use.
 
-## 11. The new look and the first meeting (Harry, 22 October 2026)
+## 11. The new look and the first meeting (Harry, 21 October 2026)
 
 Harry sent Google Stitch mock-ups and asked for: the Beast Handler's colours to follow them; the beast's page to follow the "Elara's Wyvern" mock-up (the picture as the centrepiece with no rune border, the subspecies name under it, bond pills, Profile / Orders / Chronicle at the bottom, the picture empty until a subspecies is chosen); a first-time cinematic when a player meets their beast (three panels, then a fade to black, "Welcome to the Ironbow", and the reveal); and soft fades between screens. All built; see BH-05 in `docs/KNOWN_ISSUES.md` for the judgement calls and `docs/PROGRESS.md` for the summary.

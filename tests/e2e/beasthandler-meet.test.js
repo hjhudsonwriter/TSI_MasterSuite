@@ -1,4 +1,4 @@
-/* Scarlett Isles: Beast Handler — meeting a beast for the first time (Harry, 22 October 2026), from files with
+/* Scarlett Isles: Beast Handler — meeting a beast for the first time (Harry, 21 October 2026), from files with
    the internet off. A beast whose subspecies has not been chosen is not shown at all: the player is walked through
    "It's time to meet…", the subspecies, and the personality, then the screen fades to black, "Welcome to the Ironbow,
    Name!" shows, and the beast's page fades in with its picture for the first time.
@@ -17,6 +17,16 @@ const PHONE = H.fileUrl('beasthandler.html');
 const bare = (page, sel) => page.$eval(sel, n => n.textContent.replace(/\s+/g, ' ').trim());
 const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.debug.state())));
 const QUICK = () => { window.TSI_BH_SPEED = 0.02; };
+/* A failing check leaves a picture of each open companion window, so a failure can be seen rather than guessed at. */
+const windows = [];
+let failures = 0;
+const checkS = (name, fn) => check(name, async () => {
+  try { await fn(); } catch (e) {
+    failures += 1;
+    for (let i = 0; i < windows.length; i++) { try { await H.shot(windows[i], 'meet-failed-' + failures + '-' + i); } catch (x) { /* window gone */ } }
+    throw e;
+  }
+});
 
 (async () => {
   const browser = await H.chromium.launch();
@@ -50,15 +60,23 @@ const QUICK = () => { window.TSI_BH_SPEED = 0.02; };
   const creature = async id => (await state()).creatures.find(c => c.id === id);
   const requests = async () => Object.keys((await state()).beast.done).length;
   const bh = await ctx.newPage();
+  windows.push(bh);
   await bh.goto(HARNESS + '?tool=beasthandler');
   await bh.waitForSelector('[data-test=bh-viewas]');
-  const home = async () => { for (let i = 0; i < 3 && !(await bh.$('[data-test=bh-viewas]')); i++) { await bh.click('[data-test=bh-back]'); await bh.waitForTimeout(150); } };
+  /* Back to the list of beasts from wherever the window is (a beast's page, a section, or a panel of the meeting). */
+  const home = async () => {
+    for (let i = 0; i < 6 && !(await bh.$('[data-test=bh-viewas]')); i++) {
+      const sel = (await bh.$('[data-test=bh-meet-leave]')) ? 'bh-meet-leave' : (await bh.$('[data-test=bh-meet-back]')) ? 'bh-meet-back' : 'bh-back';
+      await bh.click('[data-test=' + sel + ']');
+      await bh.waitForTimeout(150);
+    }
+  };
   const viewAs = async who => { await home(); await bh.selectOption('[data-test=bh-viewas]', who); await bh.waitForTimeout(300); };
   const step = async n => bh.waitForSelector('[data-test=bh-meet][data-step="' + n + '"]', { timeout: 8000 });
   const noPicture = () => bh.$$eval('.tsi-bh img', n => n.length);
   await viewAs('Mira');
 
-  await check('a beast with no subspecies is not shown: the first panel comes instead, with no picture and no page', async () => {
+  await checkS('a beast with no subspecies is not shown: the first panel comes instead, with no picture and no page', async () => {
     await bh.click('[data-test=bh-beast-cr-stormwing]');
     await step(1);
     equal(await bare(bh, '[data-test=bh-meet-title]'), 'It’s time to meet Stormwing…');
@@ -72,7 +90,7 @@ const QUICK = () => { window.TSI_BH_SPEED = 0.02; };
     await H.shot(bh, 'beasthandler-meet-1');
   });
 
-  await check('subspecies: Save is off until there is a name; five tap choices fill it and say about the variety; an unknown name warns; Roll picks one of the five', async () => {
+  await checkS('subspecies: Save is off until there is a name; five tap choices fill it and say about the variety; an unknown name warns; Roll picks one of the five', async () => {
     await bh.click('[data-test=bh-meet-continue]');
     await step(2);
     assert(/There are many subspecies of wyvern in The Scarlett Isles, but which one is Stormwing\?/.test(await bare(bh, '[data-test=bh-meet-title]')), await bare(bh, '[data-test=bh-meet-title]'));
@@ -104,7 +122,7 @@ const QUICK = () => { window.TSI_BH_SPEED = 0.02; };
     equal(await requests(), 0, 'still nothing asked of the Bastion');
   });
 
-  await check('personality: the three lines are typed or rolled; Save needs all three; nothing is sent before the last Save', async () => {
+  await checkS('personality: the three lines are typed or rolled; Save needs all three; nothing is sent before the last Save', async () => {
     await bh.click('[data-test=bh-meet-save-subspecies]');
     await step(3);
     assert(/Every wyvern has its own unique personality\. What is Stormwing’s like\?/.test(await bare(bh, '[data-test=bh-meet-title]')), await bare(bh, '[data-test=bh-meet-title]'));
@@ -126,28 +144,37 @@ const QUICK = () => { window.TSI_BH_SPEED = 0.02; };
     await H.shot(bh, 'beasthandler-meet-3');
   });
 
-  await check('Save and continue: the screen goes black, "Welcome to the Ironbow, Stormwing!" shows, it goes black again, then the beast fades in with its picture', async () => {
+  await checkS('Save and continue: the panel fades to black, "Welcome to the Ironbow, Stormwing!" shows, it goes black again, then the beast fades in with its picture', async () => {
     await ba.evaluate(() => TSI.bastion.debug.change(s => { TSI.bastion.rules.beastState(s).accept = false; }));   /* the Bastion is not answering yet */
     await ba.evaluate(() => TSI.store.flush());
-    await bh.evaluate(() => { window.TSI_BH_SPEED = 0.3; });
+    await bh.evaluate(() => { window.TSI_BH_SPEED = 1; });   /* real speed, so the fades can be measured */
+    const opacity = () => bh.$eval('[data-test=bh-curtain]', n => Number(getComputedStyle(n).opacity));
     await bh.click('[data-test=bh-meet-save-personality]');
-    await bh.waitForSelector('[data-test=bh-curtain]', { timeout: 8000 });
     await bh.waitForSelector('.tsi-bh-curtain--on', { timeout: 8000 });
+    assert(await bh.$('[data-test=bh-meet]'), 'the panel is still there while the black comes over it (it does not blank first)');
+    equal(await bh.$eval('[data-test=bh-meet]', n => n.classList.contains('tsi-bh-meet--fading')), true, 'and cannot be used meanwhile');
+    equal(await bh.$eval('[data-test=bh-root]', n => n.hasAttribute('inert')), true, 'nothing behind the black can be reached');
     await bh.waitForSelector('.tsi-bh-curtain__text--on', { timeout: 8000 });
     equal(await bare(bh, '[data-test=bh-curtain-text]'), 'Welcome to the Ironbow, Stormwing!');
-    const cur = await bh.$eval('[data-test=bh-curtain]', n => { const cs = getComputedStyle(n); return { op: cs.opacity, pos: cs.position, bg: cs.backgroundColor }; });
-    assert(cur.pos === 'fixed', 'the curtain covers the screen: ' + cur.pos);
+    equal(await opacity(), 1, 'fully black while the welcome words are on');
+    equal(await bh.$eval('[data-test=bh-curtain]', n => getComputedStyle(n).position), 'fixed', 'the curtain covers the screen');
     equal(await noPicture(), 0, 'the beast has not been shown yet while "Welcome" is on screen');
+    equal(await bh.$('[data-test=bh-meet]'), null, 'the panel has stepped aside behind the black');
     await bh.waitForSelector('.tsi-bh-curtain__text--on', { state: 'detached', timeout: 8000 });
+    await bh.waitForTimeout(300);
+    equal(await opacity(), 1, 'still black after the words have gone: it goes black again');
+    equal(await noPicture(), 0, 'and the beast is still not shown');
+    await bh.waitForFunction(() => { const c = document.querySelector('[data-test=bh-curtain]'); return !c || Number(getComputedStyle(c).opacity) < 1; }, null, { timeout: 8000 });
     await bh.waitForSelector('[data-test=bh-curtain]', { state: 'detached', timeout: 8000 });
+    equal(await bh.$eval('[data-test=bh-root]', n => n.hasAttribute('inert')), false, 'the page is usable again');
     equal(await bare(bh, '[data-test=bh-name]'), 'Stormwing');
     await bh.waitForFunction(() => { const i = document.querySelector('[data-test=bh-portrait-large] img'); return i && i.complete && i.naturalWidth > 0; }, null, { timeout: 8000 });
     assert(/wyvern\/widowspine\.webp$/.test(await bh.$eval('[data-test=bh-portrait-large] img', i => i.getAttribute('src'))), 'the chosen subspecies is the picture');
-    equal(await bare(bh, '[data-test=bh-subspecies]'), '✦Widowspine');
+    equal(await bare(bh, '[data-test=bh-subspecies]'), '\u2726Widowspine');
     await bh.evaluate(() => { window.TSI_BH_SPEED = 0.02; });
   });
 
-  await check('while the Bastion has not answered the picture is already there, marked as waiting, and the Profile lines say so; the Bastion has nothing yet', async () => {
+  await checkS('while the Bastion has not answered the picture is already there, marked as waiting, and the Profile lines say so; the Bastion has nothing yet', async () => {
     equal(await bare(bh, '[data-test=bh-hero-pending]'), 'Waiting for the Bastion to confirm.');
     equal(await bare(bh, '[data-test=bh-bond-line]'), 'Bond 0 · Unfamiliar');
     assert(await bh.$eval('[data-test=bh-portrait-large] img', i => i.getBoundingClientRect().height > 200), 'a big picture, not a collapsed one');
@@ -159,7 +186,7 @@ const QUICK = () => { window.TSI_BH_SPEED = 0.02; };
     await H.shot(bh, 'beasthandler-meet-reveal-waiting');
   });
 
-  await check('when the Bastion answers, the request is applied once, all four lines are saved, and the waiting marks go', async () => {
+  await checkS('when the Bastion answers, the request is applied once, all four lines are saved, and the waiting marks go', async () => {
     await ba.evaluate(() => TSI.bastion.debug.change(s => { s.beast.accept = true; }));
     await ba.waitForFunction(() => TSI.bastion.debug.state().creatures.find(c => c.id === 'cr-stormwing').development.regional === 'Widowspine', null, { timeout: 12000 });
     await bh.waitForSelector('[data-test=bh-hero-pending]', { state: 'detached', timeout: 12000 });
@@ -173,7 +200,7 @@ const QUICK = () => { window.TSI_BH_SPEED = 0.02; };
     equal(await bh.$('[data-test=bh-meet]'), null, 'the meeting does not come back');
   });
 
-  await check('opening the same beast later goes straight to its page; another beast with no subspecies gets the meeting', async () => {
+  await checkS('opening the same beast later goes straight to its page; another beast with no subspecies gets the meeting', async () => {
     await home();
     await bh.click('[data-test=bh-beast-cr-stormwing]');
     await bh.waitForSelector('[data-test=bh-portrait-large] img');
@@ -184,7 +211,7 @@ const QUICK = () => { window.TSI_BH_SPEED = 0.02; };
     equal(await bare(bh, '[data-test=bh-meet-title]'), 'It’s time to meet Swiftwing…');
   });
 
-  await check('closing the page part-way sends nothing and the sequence starts again at the beginning', async () => {
+  await checkS('closing the page part-way sends nothing and the sequence starts again at the beginning', async () => {
     await bh.click('[data-test=bh-meet-continue]');
     await step(2);
     await bh.click('[data-test=bh-meet-chip-embermantle]');
@@ -200,7 +227,7 @@ const QUICK = () => { window.TSI_BH_SPEED = 0.02; };
     assert(!(await creature('cr-swiftwing')).development.regional, 'nothing was saved');
   });
 
-  await check('Skip for now (laptop only): the beast opens with an empty frame and "Subspecies not chosen yet"; nothing is sent; a reload brings the meeting back', async () => {
+  await checkS('Skip for now (laptop only): the beast opens with an empty frame and "Subspecies not chosen yet"; nothing is sent; a reload brings the meeting back', async () => {
     await bh.click('[data-test=bh-meet-skip]');
     await bh.waitForSelector('[data-test=bh-portrait-large][data-state=blank]');
     equal(await noPicture(), 0, 'no picture');
@@ -219,7 +246,7 @@ const QUICK = () => { window.TSI_BH_SPEED = 0.02; };
     await step(1);
   });
 
-  await check('the Profile page can still set a subspecies for a beast that was skipped, and the picture follows (as before)', async () => {
+  await checkS('the Profile page can still set a subspecies for a beast that was skipped, and the picture follows (as before)', async () => {
     await bh.click('[data-test=bh-meet-skip]');
     await bh.waitForSelector('[data-test=bh-portrait-large][data-state=blank]');
     await bh.click('[data-test=bh-tab-profile]');
@@ -233,7 +260,192 @@ const QUICK = () => { window.TSI_BH_SPEED = 0.02; };
     equal(await bare(bh, '[data-test=bh-subspecies]'), '✦Dawnmantle');
   });
 
-  await check('reduced motion: the screens do not fade and the black screen does not fade (it still shows the words)', async () => {
+  /* A helper for the checks below: a Bastion beast with the given lines, for Mira. */
+  const addBeast = (id, species, name, home, lines) => ba.evaluate(([id, species, name, home, lines]) => TSI.bastion.debug.change(s => {
+    const R = TSI.bastion.rules;
+    const c = { id, species, owner: '', name, status: 'housed', home, grantedDay: 1, housedDay: 1, msgId: '' };
+    c.development = R.newDevelopment(c, s.day); c.development.handlerId = 'Mira';
+    if (lines) Object.assign(c.development.temperament, lines);
+    s.creatures.push(c);
+  }), [id, species, name, home, lines || null]);
+  const meetThrough = async (chip, roll) => {
+    await bh.click('[data-test=bh-meet-continue]'); await step(2);
+    await bh.click('[data-test=bh-meet-chip-' + chip + ']');
+    await bh.click('[data-test=bh-meet-save-subspecies]'); await step(3);
+    if (roll) await bh.click('[data-test=bh-meet-roll-all]');
+  };
+
+  await checkS('a beast whose personality is already written keeps it: the lines are shown, Save needs no retyping, and only the subspecies is saved', async () => {
+    await addBeast('cr-kept', 'griffin', 'Keeper', 'griffin_tower', { dominant: 'Proud', attachment: 'Lowers its head', trigger: 'Loud metallic ringing' });
+    await ba.evaluate(() => TSI.store.flush());
+    await bh.waitForTimeout(2600);
+    await home();
+    await bh.click('[data-test=bh-beast-cr-kept]');
+    await step(1);
+    await meetThrough('dawnmantle', false);
+    equal(await bh.evaluate(() => ['dominant', 'attachment', 'trigger'].map(k => document.querySelector('[data-test=bh-meet-in-' + k + ']').value)), ['Proud', 'Lowers its head', 'Loud metallic ringing'], 'the lines are shown');
+    assert(/already written for Keeper are shown here and kept/.test(await bare(bh, '[data-test=bh-meet-kept]')), 'and it says they are kept');
+    equal(await bh.$eval('[data-test=bh-meet-save-personality]', b => b.disabled), false, 'Save needs no retyping');
+    await bh.click('[data-test=bh-meet-save-personality]');
+    await ba.waitForFunction(() => TSI.bastion.debug.state().creatures.find(c => c.id === 'cr-kept').development.regional === 'Dawnmantle', null, { timeout: 14000 });
+    const c = await creature('cr-kept');
+    equal([c.development.temperament.dominant, c.development.temperament.attachment, c.development.temperament.trigger], ['Proud', 'Lowers its head', 'Loud metallic ringing'], 'the written lines were not touched');
+    equal(c.development.profileLog.length, 1);
+    assert(!/Proud|Lowers its head|Loud metallic/.test(JSON.stringify(c.development.profileLog[0].changes || c.development.profileLog[0])), 'the change note names only the subspecies: ' + JSON.stringify(c.development.profileLog[0]));
+    await bh.waitForSelector('[data-test=bh-portrait-large] img', { timeout: 14000 });
+  });
+
+  await checkS('a refused first-meeting request brings the sequence back with the reason and the choices kept; a retry then works', async () => {
+    await addBeast('cr-refused', 'wyvern', 'Rebuffed', 'wyvern_roost', null);
+    await ba.evaluate(() => TSI.bastion.debug.change(s => { TSI.bastion.rules.beastState(s).accept = false; }));
+    await ba.evaluate(() => TSI.store.flush());
+    await bh.waitForTimeout(2600);
+    await home();
+    await bh.click('[data-test=bh-beast-cr-refused]');
+    await step(1);
+    await meetThrough('ironcrown', true);
+    const typed = await bh.evaluate(() => ['dominant', 'attachment', 'trigger'].map(k => document.querySelector('[data-test=bh-meet-in-' + k + ']').value));
+    await bh.evaluate(() => { window.TSI_BH_SPEED = 0.02; });
+    await bh.click('[data-test=bh-meet-save-personality]');
+    await bh.waitForSelector('[data-test=bh-portrait-large] img', { timeout: 14000 });
+    equal(await bare(bh, '[data-test=bh-hero-pending]'), 'Waiting for the Bastion to confirm.');
+    /* The Bastion will now refuse it as too old. */
+    await ba.evaluate(() => TSI.bastion.debug.change(s => { const B = TSI.bastion.rules.beastState(s); B.floor = Date.now() + 600000; B.accept = true; }));
+    await ba.evaluate(() => TSI.store.flush());
+    await step(1);
+    assert(/Your last choice for Rebuffed wasn.t accepted\. Refused: That request is too old/.test(await bare(bh, '[data-test=bh-meet-refused]')), await bare(bh, '[data-test=bh-meet-refused]'));
+    equal(await noPicture(), 0, 'no picture while the choice is refused');
+    assert(!(await creature('cr-refused')).development.regional, 'nothing was saved');
+    await bh.click('[data-test=bh-meet-continue]'); await step(2);
+    equal(await bh.$eval('[data-test=bh-meet-in-regional]', i => i.value), 'Ironcrown', 'the subspecies chosen is put back');
+    await bh.click('[data-test=bh-meet-save-subspecies]'); await step(3);
+    equal(await bh.evaluate(() => ['dominant', 'attachment', 'trigger'].map(k => document.querySelector('[data-test=bh-meet-in-' + k + ']').value)), typed, 'and so are the three lines');
+    await ba.evaluate(() => TSI.bastion.debug.change(s => { TSI.bastion.rules.beastState(s).floor = 0; }));
+    await ba.evaluate(() => TSI.store.flush());
+    await bh.click('[data-test=bh-meet-save-personality]');
+    await ba.waitForFunction(() => TSI.bastion.debug.state().creatures.find(c => c.id === 'cr-refused').development.regional === 'Ironcrown', null, { timeout: 14000 });
+    await bh.waitForSelector('[data-test=bh-portrait-large] img', { timeout: 14000 });
+    await bh.waitForSelector('[data-test=bh-hero-pending]', { state: 'detached', timeout: 14000 });
+  });
+
+  await checkS('another handler\'s waiting request does not show on a beast that has been handed on', async () => {
+    await addBeast('cr-handed', 'wyvern', 'Handed', 'wyvern_roost', null);
+    await ba.evaluate(() => TSI.bastion.debug.change(s => { TSI.bastion.rules.beastState(s).accept = false; }));
+    await ba.evaluate(() => TSI.store.flush());
+    await bh.waitForTimeout(2600);
+    await home();
+    await bh.click('[data-test=bh-beast-cr-handed]');
+    await step(1);
+    await meetThrough('shadowmount', true);
+    await bh.click('[data-test=bh-meet-save-personality]');
+    await bh.waitForSelector('[data-test=bh-hero-pending]', { timeout: 14000 });
+    await ba.evaluate(() => TSI.bastion.debug.change(s => {
+      const R = TSI.bastion.rules, T = window.TSI_DATA;
+      const data = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, events: T.bastionEvents, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier, creatures: T.bastionCreatures };
+      const r = R.assignHandler(s, data, 'cr-handed', 'Joss', 'handed on');
+      if (!r.ok) throw new Error(r.message);
+    }));
+    await ba.evaluate(() => TSI.store.flush());
+    await viewAs('Joss');
+    await bh.click('[data-test=bh-beast-cr-handed]');
+    await step(1);
+    equal(await bh.$('[data-test=bh-hero-pending]'), null, 'nothing of Mira\'s request is laid over Joss\'s page');
+    equal(await noPicture(), 0, 'and no picture of her choice');
+    await ba.evaluate(() => TSI.bastion.debug.change(s => { TSI.bastion.rules.beastState(s).accept = true; }));
+    await ba.evaluate(() => TSI.store.flush());
+    await bh.waitForTimeout(3000);
+    await viewAs('Mira');
+  });
+
+  await checkS('clearing the subspecies shows as waiting too, not as already done', async () => {
+    await ba.evaluate(() => TSI.bastion.debug.change(s => { TSI.bastion.rules.beastState(s).accept = false; }));
+    await ba.evaluate(() => TSI.store.flush());
+    await home();
+    await bh.click('[data-test=bh-beast-cr-stormwing]');
+    await bh.waitForSelector('[data-test=bh-portrait-large] img');
+    await bh.click('[data-test=bh-tab-profile]');
+    await bh.click('[data-test=bh-edit]');
+    await bh.fill('[data-test=bh-in-regional]', '');
+    await bh.click('[data-test=bh-save]');
+    await bh.waitForSelector('[data-test=bh-requests] [data-state=waiting]');
+    assert(/waiting/.test(await bare(bh, '[data-test=bh-p-regional]')), 'the Profile line says it is waiting: ' + await bare(bh, '[data-test=bh-p-regional]'));
+    await bh.click('[data-test=bh-back]');
+    equal(await bare(bh, '[data-test=bh-hero-pending]'), 'Waiting for the Bastion to confirm.', 'and so does the picture\'s page');
+    /* Put things back for the checks that follow. */
+    await ba.evaluate(() => TSI.bastion.debug.change(s => { const B = TSI.bastion.rules.beastState(s); B.accept = true; }));
+    await ba.waitForFunction(() => !TSI.bastion.debug.state().creatures.find(c => c.id === 'cr-stormwing').development.regional, null, { timeout: 14000 });
+    await ba.evaluate(() => TSI.bastion.debug.change(s => { s.creatures.find(c => c.id === 'cr-stormwing').development.regional = 'Widowspine'; }));
+    await ba.evaluate(() => TSI.store.flush());
+    await bh.waitForSelector('[data-test=bh-hero-pending]', { state: 'detached', timeout: 14000 });
+    await bh.waitForSelector('[data-test=bh-portrait-large] img', { timeout: 14000 });
+  });
+
+  await checkS('a subspecies name that matches no painting says so under the empty frame, and the editor says so as you type', async () => {
+    await home();
+    await bh.click('[data-test=bh-beast-cr-stormwing]');
+    await bh.click('[data-test=bh-tab-profile]');
+    await bh.click('[data-test=bh-edit]');
+    await bh.fill('[data-test=bh-in-regional]', 'Moonlit Rift');
+    await bh.waitForSelector('[data-test=bh-edit-unknown]:not([hidden])');
+    assert(/no picture for it/.test(await bare(bh, '[data-test=bh-edit-unknown]')), await bare(bh, '[data-test=bh-edit-unknown]'));
+    await bh.fill('[data-test=bh-in-regional]', 'Bleak hook');
+    equal(await bh.$eval('[data-test=bh-edit-unknown]', n => n.hidden), true, 'a close spelling of a real one is understood');
+    await bh.click('[data-test=bh-edit-cancel]');
+    await ba.evaluate(() => TSI.bastion.debug.change(s => { s.creatures.find(c => c.id === 'cr-stormwing').development.regional = 'Moonlit Rift'; }));
+    await ba.evaluate(() => TSI.store.flush());
+    await bh.click('[data-test=bh-back]');
+    await bh.waitForSelector('[data-test=bh-nopicture]', { timeout: 14000 });
+    assert(/no painted picture for .Moonlit Rift.\. Choose one of the 5 wyvern subspecies in Profile/.test(await bare(bh, '[data-test=bh-nopicture]')), await bare(bh, '[data-test=bh-nopicture]'));
+    equal(await bh.$('[data-test=bh-portrait-large] img'), null);
+    await ba.evaluate(() => TSI.bastion.debug.change(s => { s.creatures.find(c => c.id === 'cr-stormwing').development.regional = 'Widowspine'; }));
+    await ba.evaluate(() => TSI.store.flush());
+    await bh.waitForSelector('[data-test=bh-portrait-large] img', { timeout: 14000 });
+  });
+
+  await checkS('a picture file that cannot be loaded leaves an honest empty frame and says so', async () => {
+    await bh.evaluate(() => document.querySelector('[data-test=bh-portrait-large] img').dispatchEvent(new Event('error')));
+    equal(await bh.$eval('[data-test=bh-portrait-large]', n => n.getAttribute('data-state')), 'blank');
+    equal(await bh.$('[data-test=bh-portrait-large] img'), null);
+    assert(/couldn.t be loaded here/.test(await bare(bh, '[data-test=bh-picture-lost]')), 'it says so');
+    await bh.click('[data-test=bh-tab-profile]'); await bh.click('[data-test=bh-back]');
+    await bh.waitForSelector('[data-test=bh-portrait-large] img');
+  });
+
+  await checkS('keyboard: focus lands on each panel\'s heading; Enter moves on; a line one letter too long says why; "Skip for now" is a real button', async () => {
+    await ba.evaluate(() => TSI.bastion.debug.change(s => {
+      const R = TSI.bastion.rules;
+      const c = { id: 'cr-keys', species: 'dire_wolf', owner: '', name: 'Keys', status: 'housed', home: 'dire_wolf_den', grantedDay: 1, housedDay: 1, msgId: '' };
+      c.development = R.newDevelopment(c, s.day); c.development.handlerId = 'Mira';
+      s.creatures.push(c);
+    }));
+    await ba.evaluate(() => TSI.store.flush());
+    await bh.waitForTimeout(2600);
+    await home();
+    await bh.click('[data-test=bh-beast-cr-keys]');
+    await step(1);
+    await bh.focus('[data-test=bh-meet-continue]');
+    await bh.keyboard.press('Enter');
+    await step(2);
+    equal(await bh.evaluate(() => document.activeElement && document.activeElement.tagName), 'H1', 'focus is on the new panel\'s heading');
+    await bh.fill('[data-test=bh-meet-in-regional]', 'x'.repeat(61));
+    await bh.waitForSelector('[data-test=bh-meet-problem]:not([hidden])');
+    assert(/at most 60 letters/.test(await bare(bh, '[data-test=bh-meet-problem]')), await bare(bh, '[data-test=bh-meet-problem]'));
+    await bh.fill('[data-test=bh-meet-in-regional]', 'Nightfang');
+    await bh.keyboard.press('Enter');
+    await step(3);
+    await bh.fill('[data-test=bh-meet-in-dominant]', 'Calm');
+    await bh.keyboard.press('Enter');
+    equal(await bh.evaluate(() => document.activeElement && document.activeElement.getAttribute('data-test')), 'bh-meet-in-attachment', 'Enter moves to the next line');
+    await bh.fill('[data-test=bh-meet-in-attachment]', 'y'.repeat(121));
+    await bh.waitForSelector('[data-test=bh-meet-problem]:not([hidden])');
+    assert(/at most 120 letters/.test(await bare(bh, '[data-test=bh-meet-problem]')), await bare(bh, '[data-test=bh-meet-problem]'));
+    equal(await bh.$eval('[data-test=bh-meet-save-personality]', b => b.disabled), true);
+    await bh.fill('[data-test=bh-meet-in-attachment]', 'Stays close');
+    await bh.fill('[data-test=bh-meet-in-trigger]', 'Thunder');
+    equal(await bh.$eval('[data-test=bh-meet-problem]', n => n.hidden), true, 'the message goes when the line is fixed');
+  });
+
+  await checkS('reduced motion: the screens do not fade and the black screen does not fade (it still shows the words)', async () => {
     await bh.emulateMedia({ reducedMotion: 'reduce' });
     await home();
     await bh.click('[data-test=bh-beast-cr-ashfang]');
@@ -258,7 +470,7 @@ const QUICK = () => { window.TSI_BH_SPEED = 0.02; };
     equal(await bh.$eval('.tsi-bh', n => getComputedStyle(n).animationName), 'tsi-bh-fade-in', 'with motion allowed, screens fade in');
   });
 
-  await check('leaving the tool in the middle of the black screen removes it: nothing is left over another tool', async () => {
+  await checkS('leaving the tool in the middle of the black screen removes it: nothing is left over another tool', async () => {
     await ba.evaluate(() => TSI.bastion.debug.change(s => {
       const R = TSI.bastion.rules;
       const c = { id: 'cr-newcomer', species: 'griffin', owner: '', name: 'Newcomer', status: 'housed', home: 'griffin_tower', grantedDay: 1, housedDay: 1, msgId: '' };
@@ -282,7 +494,7 @@ const QUICK = () => { window.TSI_BH_SPEED = 0.02; };
     equal(await bh.evaluate(() => TSI.shell.current().life.counts()), { timeouts: 0, intervals: 0, frames: 0, listeners: 0, media: 0, cleanups: 0 });
   });
 
-  await check('on the laptop the first-meeting panels fit with their buttons in view and no sideways scroll', async () => {
+  await checkS('on the laptop the first-meeting panels fit with their buttons in view and no sideways scroll', async () => {
     await ba.evaluate(() => TSI.bastion.debug.change(s => {
       const R = TSI.bastion.rules;
       const c = { id: 'cr-fit', species: 'griffin', owner: '', name: 'Fitting', status: 'housed', home: 'griffin_tower', grantedDay: 1, housedDay: 1, msgId: '' };
@@ -317,6 +529,7 @@ const QUICK = () => { window.TSI_BH_SPEED = 0.02; };
   await ph.setOffline(true);
   await ph.addInitScript(QUICK);
   const pp = await ph.newPage();
+  windows.push(pp);
   const closeDialog = async () => { await ba.locator('.tsi-modal__foot .tsi-btn--primary').last().click(); await ba.waitForTimeout(250); };
   const openBox = async () => {
     if (!(await ba.$('[data-test=beast-box]:visible'))) { await ba.click('[data-test=open-management]'); await ba.waitForSelector('[data-test=beast-box]'); }
@@ -337,7 +550,7 @@ const QUICK = () => { window.TSI_BH_SPEED = 0.02; };
   }));
   await ba.evaluate(() => TSI.store.flush());
 
-  await check('phone: the beast is hidden behind the meeting; no Skip button; every button and choice is at least 44 px; nothing scrolls sideways', async () => {
+  await checkS('phone: the beast is hidden behind the meeting; no Skip button; every button and choice is at least 44 px; nothing scrolls sideways', async () => {
     await pp.goto(PHONE);
     await pp.waitForSelector('[data-test=bhp-screen-link]');
     await pp.fill('[data-test=bhp-pair-input]', await dmCode('beast-pair-mira', 'beast-pair-dialog'));
@@ -372,11 +585,15 @@ const QUICK = () => { window.TSI_BH_SPEED = 0.02; };
   });
 
   let code;
-  await check('phone: Save and continue plays the black screen and welcome, shows the picture marked "not confirmed yet", then offers the request code to send', async () => {
+  await checkS('phone: Save and continue plays the black screen and welcome, shows the picture marked "not confirmed yet", then offers the request code to send', async () => {
+    /* At this speed the words are on screen for a fraction of a second, so what they said is noted as it happens. */
+    await pp.evaluate(() => {
+      window.__welcome = '';
+      new MutationObserver(() => { const t = document.querySelector('[data-test=bh-curtain-text]'); if (t && t.textContent) window.__welcome = t.textContent; }).observe(document.body, { childList: true, subtree: true, characterData: true });
+    });
     await pp.click('[data-test=bh-meet-save-personality]');
-    await pp.waitForSelector('[data-test=bh-curtain]');
-    equal(await bare(pp, '[data-test=bh-curtain-text]'), 'Welcome to the Ironbow, Cloudy!');
     await pp.waitForSelector('[data-test=bhp-request-dialog]', { timeout: 10000 });
+    equal(await pp.evaluate(() => window.__welcome), 'Welcome to the Ironbow, Cloudy!');
     equal(await pp.$('[data-test=bh-curtain]'), null, 'the black screen is gone before the code is offered');
     code = await pp.$eval('[data-test=bhp-request]', t => t.value);
     assert(/^BHC1\./.test(code));
@@ -389,7 +606,17 @@ const QUICK = () => { window.TSI_BH_SPEED = 0.02; };
     await H.shot(pp, 'beasthandler-meet-phone-reveal');
   });
 
-  await check('phone: the DM applies the code once; the new snapshot takes the waiting mark away and keeps the picture', async () => {
+  await checkS('phone: a request kept by an earlier version of the page (no copy of what was asked) still shows its choice, read from its code', async () => {
+    await pp.evaluate(() => { const k = 'tsi.beasthandler.phone.outbox'; const o = JSON.parse(localStorage.getItem(k)); o.forEach(x => { delete x.payload; }); localStorage.setItem(k, JSON.stringify(o)); });
+    await pp.reload();
+    await pp.waitForSelector('[data-test=bh-beast-cr-cloudy]');
+    await pp.click('[data-test=bh-beast-cr-cloudy]');
+    await pp.waitForSelector('[data-test=bh-portrait-large] img', { timeout: 10000 });
+    equal(await bare(pp, '[data-test=bh-hero-pending]'), 'Not confirmed yet: send your request code to the DM.');
+    assert(/dire-wolf\/hollowhowl\.webp$/.test(await pp.$eval('[data-test=bh-portrait-large] img', i => i.getAttribute('src'))), 'the chosen subspecies is the picture');
+  });
+
+  await checkS('phone: the DM applies the code once; the new snapshot takes the waiting mark away and keeps the picture', async () => {
     const before = await requests();
     await openBox();
     await ba.click('[data-test=beast-paste]');
@@ -415,7 +642,74 @@ const QUICK = () => { window.TSI_BH_SPEED = 0.02; };
     assert(/dire-wolf\/hollowhowl\.webp$/.test(await pp.$eval('[data-test=bh-portrait-large] img', i => i.getAttribute('src'))));
   });
 
-  await check('nothing went wrong or reached for the internet, on either device', async () => {
+  await checkS('phone: a refused first-meeting request brings the meeting back with the reason and the choices kept, and only then can the player skip', async () => {
+    await ba.evaluate(() => TSI.bastion.debug.change(s => {
+      const R = TSI.bastion.rules;
+      const c = { id: 'cr-misty', species: 'dire_wolf', owner: '', name: 'Misty', status: 'housed', home: 'dire_wolf_den', grantedDay: 1, housedDay: 1, msgId: '' };
+      c.development = R.newDevelopment(c, s.day); c.development.handlerId = 'Mira';
+      s.creatures.push(c);
+    }));
+    await ba.evaluate(() => TSI.store.flush());
+    const takeSnapshot = async () => {
+      const snap = await dmCode('beast-snap-mira', 'beast-snap-dialog');
+      await pp.click('[data-test=bhp-update]');
+      await pp.fill('[data-test=bhp-snap-input]', snap);
+      await pp.click('.tsi-modal__foot .tsi-btn--primary');
+      await pp.waitForTimeout(500);
+    };
+    await pp.click('[data-test=bh-back]');
+    await takeSnapshot();
+    await pp.click('[data-test=bh-beast-cr-misty]');
+    await pp.waitForSelector('[data-test=bh-meet][data-step="1"]');
+    equal(await pp.$('[data-test=bh-meet-skip]'), null, 'no skip before a refusal');
+    equal(await pp.$('[data-test=bh-meet-refused]'), null);
+    await pp.click('[data-test=bh-meet-continue]');
+    await pp.waitForSelector('[data-test=bh-meet][data-step="2"]');
+    await pp.click('[data-test=bh-meet-chip-nightfang]');
+    await pp.click('[data-test=bh-meet-save-subspecies]');
+    await pp.waitForSelector('[data-test=bh-meet][data-step="3"]');
+    await pp.click('[data-test=bh-meet-roll-all]');
+    const typed = await pp.evaluate(() => ['dominant', 'attachment', 'trigger'].map(k => document.querySelector('[data-test=bh-meet-in-' + k + ']').value));
+    await pp.click('[data-test=bh-meet-save-personality]');
+    await pp.waitForSelector('[data-test=bhp-request-dialog]', { timeout: 10000 });
+    const refusedCode = await pp.$eval('[data-test=bhp-request]', t => t.value);
+    await pp.click('.tsi-modal__foot .tsi-btn--primary');
+    /* The Bastion refuses it as too old. */
+    await ba.evaluate(() => TSI.bastion.debug.change(s => { TSI.bastion.rules.beastState(s).floor = Date.now() + 600000; }));
+    await ba.evaluate(() => TSI.store.flush());
+    await openBox();
+    await ba.click('[data-test=beast-paste]');
+    await ba.waitForSelector('[data-test=beast-paste-dialog]');
+    await ba.fill('[data-test=beast-paste-text]', refusedCode);
+    await ba.click('.tsi-modal__foot .tsi-btn--primary');
+    await ba.waitForSelector('[data-test=beast-result-dialog]');
+    const answer = await ba.$eval('[data-test=beast-result]', t => t.value);
+    await closeDialog();
+    assert(!(await creature('cr-misty')).development.regional, 'nothing was saved');
+    await pp.click('[data-test=bh-back]');
+    await pp.click('[data-test=bhp-update]');
+    await pp.fill('[data-test=bhp-snap-input]', answer);
+    await pp.click('.tsi-modal__foot .tsi-btn--primary');
+    await pp.waitForTimeout(500);
+    await pp.click('[data-test=bh-beast-cr-misty]');
+    await pp.waitForSelector('[data-test=bh-meet][data-step="1"]');
+    assert(/Your last choice for Misty wasn.t accepted\. Refused: That request is too old/.test(await bare(pp, '[data-test=bh-meet-refused]')), await bare(pp, '[data-test=bh-meet-refused]'));
+    assert(await pp.$('[data-test=bh-meet-skip]'), 'after a refusal the player can skip, so a refusal never traps them');
+    await pp.click('[data-test=bh-meet-continue]');
+    await pp.waitForSelector('[data-test=bh-meet][data-step="2"]');
+    equal(await pp.$eval('[data-test=bh-meet-in-regional]', i => i.value), 'Nightfang', 'the subspecies is put back');
+    await pp.click('[data-test=bh-meet-save-subspecies]');
+    await pp.waitForSelector('[data-test=bh-meet][data-step="3"]');
+    equal(await pp.evaluate(() => ['dominant', 'attachment', 'trigger'].map(k => document.querySelector('[data-test=bh-meet-in-' + k + ']').value)), typed, 'and so are the three lines');
+    await pp.click('[data-test=bh-meet-back]'); await pp.click('[data-test=bh-meet-back]');
+    await pp.waitForSelector('[data-test=bh-meet][data-step="1"]');
+    await pp.click('[data-test=bh-meet-skip]');
+    await pp.waitForSelector('[data-test=bh-portrait-large][data-state=blank]');
+    equal(await pp.$eval('[data-test=bh-subspecies]', n => n.textContent.replace(/\s+/g, ' ').trim()), '✦Subspecies not chosen yet');
+    await ba.evaluate(() => TSI.bastion.debug.change(s => { TSI.bastion.rules.beastState(s).floor = 0; }));
+  });
+
+  await checkS('nothing went wrong or reached for the internet, on either device', async () => {
     equal(ctx.log.net, []); equal(ph.log.net, []);
     equal(ctx.log.failed, []); equal(ph.log.failed, []);
     equal(ctx.log.errors, []); equal(ph.log.errors, []);

@@ -56,6 +56,12 @@
 
   function snapshot() { return held && held.snapshot ? held.snapshot : null; }
   function saveOutbox() { write(KEY.outbox, outbox); }
+  /* What a waiting request asked for. A request kept by an earlier version of this page has no copy of it, but its code holds the whole request. */
+  function payloadOf(o) {
+    if (o.payload && typeof o.payload === 'object') return o.payload;
+    var peek = C.peekCommand(o.code);
+    return peek.ok && peek.command && peek.command.payload && typeof peek.command.payload === 'object' ? peek.command.payload : undefined;
+  }
   /* Requests the Bastion has answered leave the list when a snapshot shows their receipt. */
   function prune() {
     var s = snapshot();
@@ -156,7 +162,7 @@
       if (!s.campaign || s.campaign !== pairing.campaign) return 'The DM needs to open the Bastion once and send a new snapshot before you can ask for anything.';
       return '';
     },
-    outbox: function () { return outbox.map(function (o) { return { id: o.id, type: o.type, creature: o.creature, fac: o.fac, label: o.label, at: o.at, payload: o.payload }; }); },
+    outbox: function () { return outbox.map(function (o) { return { id: o.id, type: o.type, creature: o.creature, fac: o.fac, label: o.label, at: o.at, payload: payloadOf(o) }; }); },
     submit: function (body) {
       var why = host.canSubmit();
       if (why) return Promise.resolve({ ok: false, message: why });
