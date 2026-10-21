@@ -37,6 +37,8 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     const mk = (id, species, name, home, handler) => {
       const c = { id, species, owner: '', name, status: 'housed', home, grantedDay: 1, housedDay: 1, msgId: '' };
       c.development = R.newDevelopment(c, s.day); c.development.handlerId = handler;
+      /* Both beasts have already met their handlers (a subspecies is set), so their pages open at once; the first meeting on a phone is tested in beasthandler-meet.test.js. */
+      c.development.regional = 'Widowspine';
       return c;
     };
     s.creatures = [mk('cr-stormwing', 'wyvern', 'Stormwing', 'wyvern_roost', 'Mira'), mk('cr-ashwing', 'wyvern', 'Ashwing', 'wyvern_roost', 'Joss')];

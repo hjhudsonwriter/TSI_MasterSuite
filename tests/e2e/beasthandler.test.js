@@ -42,6 +42,8 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
       const c = { id, species, owner: '', name, status: 'housed', home, grantedDay: 1, housedDay: 1, msgId: '' };
       if (id === 'elara_wyvern') { c.owner = 'elara'; c.development = R.newDevelopment(c, s.day); }
       else if (handler) { c.development = R.newDevelopment(c, s.day); c.development.handlerId = handler; }
+      /* Every beast here has already been introduced (its subspecies is set), so its page opens at once; meeting a beast for the first time is tested in beasthandler-meet.test.js. */
+      if (c.development) c.development.regional = species === 'wyvern' ? 'Widowspine' : 'Embermantle';
       return c;
     };
     s.creatures = [
@@ -99,14 +101,16 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     await bh.click('[data-test=bh-beast-elara_wyvern]');
     equal(await bare(bh, '[data-test=bh-name]'), 'Elara\'s wyvern');
     equal(await bare(bh, '[data-test=bh-handler]'), 'Handler: Elara');
-    equal(await bare(bh, '[data-test=bh-bond-line]'), 'Bond 1: Acclimatised');
-    equal(await texts(bh, '.tsi-bh-bond__step'), ['0', '1', '2', '3', '4', '5']);
-    equal(await bh.$$eval('.tsi-bh-bond__step--done, .tsi-bh-bond__step--current, .tsi-bh-bond__step--todo', n => n.map(x => x.className.replace(/.*--/, ''))), ['done', 'current', 'todo', 'todo', 'todo', 'todo']);
+    equal(await bare(bh, '[data-test=bh-bond-line]'), 'Bond 1 \u00b7 Acclimatised');
+    equal(await bare(bh, '[data-test=bh-stage]'), 'Stage 1 of 5');
+    equal(await texts(bh, '.tsi-bh-pill__label'), ['Acclimatised', 'Trusting', 'Bonded', 'Devoted', 'Legendary']);
+    equal(await bh.$$eval('.tsi-bh-pill', n => n.map(x => x.className.replace(/.*--/, ''))), ['current', 'todo', 'todo', 'todo', 'todo']);
+    equal(await bare(bh, '[data-test=bh-subspecies]'), '\u2726Widowspine', 'the subspecies is named under the picture');
     await bh.click('[data-test=bh-greet-large]');
-    assert(await bh.$eval('[data-test=bh-portrait-large]', n => n.classList.contains('tsi-bh-hero--greet')), 'the picture reacts');
+    assert(await bh.$eval('[data-test=bh-portrait-large]', n => n.classList.contains('tsi-bh-hero2--greet')), 'the picture reacts');
     await bh.waitForTimeout(1200);
-    assert(!(await bh.$eval('[data-test=bh-portrait-large]', n => n.classList.contains('tsi-bh-hero--greet'))), 'and settles');
-    equal(await bare(bh, '[data-test=bh-bond-line]'), 'Bond 1: Acclimatised', 'a tap on the picture does not move the bond');
+    assert(!(await bh.$eval('[data-test=bh-portrait-large]', n => n.classList.contains('tsi-bh-hero2--greet'))), 'and settles');
+    equal(await bare(bh, '[data-test=bh-bond-line]'), 'Bond 1 \u00b7 Acclimatised', 'a tap on the picture does not move the bond');
     equal(await texts(bh, '.tsi-bh-nav__btn'), ['Profile', 'Orders', 'Chronicle']);
   });
 
@@ -116,7 +120,7 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     equal(await bare(bh, '[data-test=bh-p-dominant]'), 'Proud');
     equal(await bare(bh, '[data-test=bh-p-attachment]'), 'Lowers its head');
     equal(await bare(bh, '[data-test=bh-p-trigger]'), 'Loud metallic ringing');
-    equal(await bare(bh, '[data-test=bh-p-regional]'), 'Not written yet');
+    equal(await bare(bh, '[data-test=bh-p-regional]'), 'Widowspine');
     equal(await bh.$$eval('.tsi-bh-profile input, .tsi-bh-profile textarea, .tsi-bh-profile select', n => n.length), 0, 'no fields to type in');
     equal(await bh.$eval('[data-test=bh-edit]', b => b.disabled), false, 'Edit is there');
   });
@@ -141,7 +145,7 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
 
   await check('Orders: a Bond 0 wyvern is offered only Safe Acclimatisation, free, with its ready day; the confirm screen cannot send', async () => {
     await bh.click('[data-test=bh-beast-cr-stormwing]');
-    equal(await bare(bh, '[data-test=bh-bond-line]'), 'Bond 0: Unfamiliar');
+    equal(await bare(bh, '[data-test=bh-bond-line]'), 'Bond 0 \u00b7 Unfamiliar');
     await bh.click('[data-test=bh-tab-orders]');
     equal(await bare(bh, '[data-test=bh-orders-for]'), 'Wyvern Roost Level 3');
     equal(await texts(bh, '.tsi-bh-order__label'), ['Safe Acclimatisation']);
@@ -218,6 +222,7 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
         s.facilityLevels.wyvern_roost = 3;
         const c = { id: 'elara_wyvern', species: 'wyvern', owner: 'elara', name: '', status: 'housed', home: 'wyvern_roost', grantedDay: 1, housedDay: 1, msgId: '' };
         c.development = R.newDevelopment(c, s.day);
+        c.development.regional = 'Widowspine';
         for (let i = 0; i < 40; i++) c.development.chronicle.push({ id: 'ch-x' + i, day: 2 + i, cat: 'note', text: 'A long entry number ' + i + ' that keeps going to be sure that a long Chronicle wraps and scrolls and never pushes the page sideways.', by: 'DM', link: '' });
         s.creatures = [c];
       }));
@@ -247,23 +252,31 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
         equal(r.small, [], name + ' has small targets');
         await H.shot(p, 'beasthandler-' + size + '-' + (opts.viewport ? 'phone-' : '') + name);
       }
+      /* The test page's top bar is wider than a phone, which makes the emulated phone zoom out, so the buttons are pressed directly rather than aimed at with the mouse. */
+      const tap = sel => p.$eval(sel, n => { n.scrollIntoView({ block: 'center' }); n.click(); });
       await inspect('home');
-      await p.click('[data-test=bh-beast-elara_wyvern]'); await inspect('main');
-      await p.click('[data-test=bh-tab-profile]'); await inspect('profile');
-      await p.click('[data-test=bh-tab-orders]'); await inspect('orders');
-      await p.click('[data-test=bh-tab-chronicle]'); await inspect('chronicle');
+      await tap('[data-test=bh-beast-elara_wyvern]'); await inspect('main');
+      await tap('[data-test=bh-tab-profile]'); await inspect('profile');
+      await tap('[data-test=bh-tab-orders]'); await inspect('orders');
+      await tap('[data-test=bh-tab-chronicle]'); await inspect('chronicle');
       await c2.close();
     });
   }
 
-  await check('reduced motion stops the breathing glow and the greeting', async () => {
+  await check('reduced motion stops the greeting and the screen fade', async () => {
     await bh.emulateMedia({ reducedMotion: 'reduce' });
     await home();
     await view('elara');
     await bh.click('[data-test=bh-beast-elara_wyvern]');
-    const name = await bh.$eval('.tsi-bh-medallion', n => getComputedStyle(n).animationName);
-    equal(name, 'none');
+    await bh.click('[data-test=bh-greet-large]');
+    const img = await bh.$eval('[data-test=bh-portrait-large] .tsi-bh-hero2__img', n => getComputedStyle(n).animationName);
+    equal(img, 'none', 'the picture does not move');
+    const fade = await bh.$eval('.tsi-bh', n => getComputedStyle(n).animationName);
+    equal(fade, 'none', 'screens do not fade');
     await bh.emulateMedia({ reducedMotion: 'no-preference' });
+    await bh.click('[data-test=bh-tab-profile]');
+    const fade2 = await bh.$eval('.tsi-bh', n => getComputedStyle(n).animationName);
+    assert(/fade-in/.test(fade2), 'with motion allowed, a new screen fades in: ' + fade2);
   });
 
   await check('a Bastion that has never been saved gets a plain message', async () => {

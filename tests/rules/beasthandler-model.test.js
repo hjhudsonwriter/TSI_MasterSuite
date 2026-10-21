@@ -20,6 +20,10 @@
     t.equal(M.regionalInfo(T.beastProfile, 'dire_wolf', ' Icepelt ').area, 'North Isle');
     t.equal(M.regionalInfo(T.beastProfile, 'griffin', 'Widowspine'), null, 'a wyvern variety is not a griffin\'s');
     t.equal(M.regionalInfo(T.beastProfile, 'wyvern', ''), null);
+    t.equal(M.regionalInfo(T.beastProfile, 'wyvern', 'Bleak hook').name, 'Bleakhook', 'spaces do not matter');
+    t.equal(M.regionalInfo(T.beastProfile, 'wyvern', 'Widowspine Wyvern').name, 'Widowspine', 'a trailing species word is allowed');
+    t.equal(M.regionalInfo(T.beastProfile, 'dire_wolf', 'Ice-pelt wolf').name, 'Icepelt');
+    t.equal(M.regionalInfo(T.beastProfile, 'wyvern', 'Wyvern'), null, 'the species word alone is not a variety');
     t.equal(M.regionalInfo(T.beastProfile, 'wyvern', 'Tidecliff'), null, 'a typed variety simply has no extra text');
     t.equal(M.regionalInfo(T.beastProfile, 'unicorn', 'Widowspine'), null);
     t.equal(M.regionalInfo(null, 'wyvern', 'Widowspine'), null);

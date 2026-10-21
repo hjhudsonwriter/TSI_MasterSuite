@@ -35,6 +35,8 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     const mk = (id, species, name, home, handler) => {
       const c = { id, species, owner: '', name, status: 'housed', home, grantedDay: 1, housedDay: 1, msgId: '' };
       c.development = R.newDevelopment(c, s.day); c.development.handlerId = handler;
+      /* Each beast has already met its handler (its subspecies is set), so its page opens at once; the first meeting is tested in beasthandler-meet.test.js. */
+      c.development.regional = species === 'wyvern' ? 'Bleakhook' : species === 'griffin' ? 'Dawnmantle' : 'Nightfang';
       return c;
     };
     s.creatures = [mk('cr-stormwing', 'wyvern', 'Stormwing', 'wyvern_roost', 'Mira'), mk('cr-swiftwing', 'griffin', 'Swiftwing', 'griffin_tower', 'Mira'), mk('cr-ashfang', 'dire_wolf', 'Ashfang', 'dire_wolf_den', 'Joss')];
@@ -120,6 +122,14 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     equal(await bare(bh, '[data-test=bh-p-trigger]'), 'Thick smoke');
     equal(await bare(bh, '[data-test=bh-p-regional]'), 'Widowspine');
     assert(await bh.$('[data-test=bh-p-about]'), 'its variety is explained');
+    /* Harry's report: once the subspecies is set and saved, its picture must appear on the beast's page. */
+    await bh.click('[data-test=bh-back]');
+    await bh.waitForFunction(() => { const i = document.querySelector('[data-test=bh-portrait-large] img'); return i && i.complete && i.naturalWidth > 0; }, null, { timeout: 8000 });
+    assert(/wyvern\/widowspine\.webp$/.test(await bh.$eval('[data-test=bh-portrait-large] img', i => i.getAttribute('src'))), 'the saved subspecies shows its picture');
+    equal(await bare(bh, '[data-test=bh-subspecies]'), '\u2726Widowspine');
+    assert(await bh.$eval('[data-test=bh-portrait-large] img', i => i.getBoundingClientRect().height > 200), 'and it is big, not collapsed');
+    equal(await bh.$('[data-test=bh-hero-pending]'), null, 'nothing is waiting any more');
+    await bh.click('[data-test=bh-tab-profile]');
   });
 
   await check('the Bastion\'s own screen shows the DM the change, in the Management box', async () => {
@@ -220,7 +230,7 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     equal(await bh.$eval('[data-test=bh-beast-cr-stormwing]', n => n.getAttribute('data-mine')), 'no', 'it is a plain directory line now: no longer in Mira\'s hands');
   });
 
-  await check('Regional Variety shows Harry\'s painted portrait for a Dire Wolf, and the medallion for a beast with none', async () => {
+  await check('Regional Variety shows Harry\'s painted portrait for a Dire Wolf, and a subspecies with no painting leaves the picture blank', async () => {
     await ba.evaluate(() => TSI.bastion.debug.change(s => { s.creatures.find(c => c.id === 'cr-ashfang').development.regional = 'Icepelt'; }));
     await ba.evaluate(() => TSI.store.flush());
     await viewAs('Joss');
@@ -239,12 +249,16 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     const small = await bh.$eval('[data-test=bh-portrait-small]', n => { const r = n.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; });
     assert(small[0] === small[1] && small[0] <= 110, 'the small portrait is round: ' + small);
     await bh.click('[data-test=bh-back]');
+    await ba.evaluate(() => TSI.bastion.debug.change(s => { s.creatures.find(c => c.id === 'cr-swiftwing').development.regional = 'Moonlit Rift'; }));
+    await ba.evaluate(() => TSI.store.flush());
     await viewAs('Mira');
     await bh.click('[data-test=bh-beast-cr-swiftwing]');
-    assert(await bh.$('[data-test=bh-portrait-large] .tsi-bh-medallion'), 'a griffin with no picture matched yet shows the medallion');
+    await bh.waitForSelector('[data-test=bh-portrait-large][data-state=blank]', { timeout: 12000 });
+    equal(await bh.$('[data-test=bh-portrait-large] img'), null, 'a subspecies with no painting shows no picture');
+    equal(await bare(bh, '[data-test=bh-subspecies]'), '\u2726Moonlit Rift', 'but its name is still shown');
   });
 
-  await check('all fifteen painted portraits load; a griffin and a wyvern with a variety show theirs, and one with none keeps the medallion', async () => {
+  await check('all fifteen painted portraits load; a griffin and a wyvern with a variety show theirs', async () => {
     const bad = await bh.evaluate(async () => {
       const out = [];
       const art = window.TSI_DATA.beastArt.species;

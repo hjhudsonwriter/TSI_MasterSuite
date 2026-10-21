@@ -33,12 +33,21 @@
   /* "Bond 3 · Bonded" for the rapport line. */
   M.rapportLine = function (bond) { return 'Bond ' + bond.level + ' · ' + bond.name; };
 
-  /* The Regional Variety table entry whose name matches (any capitals), or null. */
+  /* The Regional Variety table entry whose name matches, or null. Capitals, spaces, hyphens and apostrophes do not matter
+     ("Bleak hook" is Bleakhook), and a trailing species word is allowed ("Widowspine Wyvern"). */
+  function looseKey(text) { return String(text || '').toLowerCase().replace(/[^a-z]/g, ''); }
   M.regionalInfo = function (tables, speciesId, name) {
     var sp = tables && isObj(tables.species) ? tables.species[speciesId] : null;
-    var key = String(name || '').replace(/\s+/g, ' ').trim().toLowerCase();
+    var key = looseKey(name);
     if (!sp || !key) return null;
-    return (sp.regional || []).filter(function (r) { return r.name.toLowerCase() === key; })[0] || null;
+    var list = sp.regional || [];
+    var hit = list.filter(function (r) { return looseKey(r.name) === key; })[0];
+    if (hit) return hit;
+    ['direwolf', 'wolf', 'wyvern', 'griffin'].some(function (w) {
+      if (key.length > w.length && key.slice(-w.length) === w) { hit = list.filter(function (r) { return looseKey(r.name) === key.slice(0, -w.length); })[0]; }
+      return !!hit;
+    });
+    return hit || null;
   };
 
   /* Which picture to draw: { src, label, alt }; src is '' until a picture is added. */
