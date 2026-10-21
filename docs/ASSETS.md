@@ -489,3 +489,20 @@ Harry's five Griffin pictures reached the chat as images only, not as files, so 
 | Old location | New location | Used |
 |---|---|---|
 | (made from) `shared/art/logo-hub.png`, 1400 × 1400, flattened on the near-black ground and shrunk to 180 × 180 (42 KB) | `tools/beasthandler/assets/phone-icon-180.png` | Yes: `beasthandler.html`'s Add to Home Screen icon on an iPhone |
+
+## Scarlett Isles: Beast Handler: Harry's updated Dire Wolf pictures (21 October 2026, uploaded to the repository root, then moved)
+
+Harry uploaded five PNGs (941 × 1672, about 3 MB each) as `DW_*.png`. The originals are kept untouched in `tools/beasthandler/assets/extras/dire-wolf-originals/`. Only two of the five were new pictures; the other three are the pictures already in use (mean pixel difference under 4 against the WebP versions), so their WebP files were left as they are.
+
+| Upload | Original kept at | In use (WebP, 941 × 1672) | Regional Variety | What changed |
+|---|---|---|---|---|
+| `DW_Hollowhowl.png` | `extras/dire-wolf-originals/DW_Hollowhowl.png` | `tools/beasthandler/assets/dire-wolf/hollowhowl.webp` (394 KB, made from the PNG at quality 88) | Hollowhowl | **New picture:** a dark grey-black wolf on a rocky mountain ridge. Replaces the golden wolf at the sunset citadel |
+| `DW_Icepelt.png` | `extras/dire-wolf-originals/DW_Icepelt.png` | `dire-wolf/icepelt.webp` (unchanged) | Icepelt | Same picture as before |
+| `DW_Nightfang.png` | `extras/dire-wolf-originals/DW_Nightfang.png` | `dire-wolf/nightfang.webp` (unchanged) | Nightfang | Same picture as before |
+| `DW_Reedshadow.png` | `extras/dire-wolf-originals/DW_Reedshadow.png` | `dire-wolf/reedshadow.webp` (unchanged) | Reedshadow | Same picture as before |
+| `DW_Slatejaw.png` | `extras/dire-wolf-originals/DW_Slatejaw.png` | `dire-wolf/slatejaw.webp` (461 KB, made from the PNG at quality 88) | Slatejaw | **New picture:** a russet and grey wolf on open moorland with mountains. Replaces the wet wolf on the shore |
+
+The two pictures that were replaced are kept, not used, in `tools/beasthandler/assets/extras/dire-wolf-previous/`: `hollowhowl-golden-wolf-at-sunset-citadel.webp` and `slatejaw-wet-wolf-on-the-shore.webp`.
+
+Still to arrive in the repository: the Wyvern (`WY_`) and Griffin (`GR_`) pictures. At the time of writing only the five `DW_` files had been committed.
+
