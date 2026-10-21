@@ -122,7 +122,7 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     assert(/^BHC1\./.test(profileCode));
     await pp.click('.tsi-modal__foot .tsi-btn--primary');
     await pp.waitForSelector('[data-test=bh-requests] [data-state=waiting]');
-    assert(/waiting for the Bastion to confirm/.test(await bare(pp, '[data-test=bh-requests]')));
+    assert(/Send the code to the DM: nothing has started/.test(await bare(pp, '[data-test=bh-requests]')), await bare(pp, '[data-test=bh-requests]'));
     equal((await state()).creatures[0].development.temperament.dominant, '', 'nothing changed in the Bastion');
   });
 
@@ -163,6 +163,20 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     equal(await bare(pp, '[data-test=bh-p-dominant]'), 'Watchful');
     equal(await bare(pp, '[data-test=bh-p-regional]'), 'Bloodcrest');
     assert(/Saved in the Bastion/.test(await bare(pp, '[data-test=bh-requests]')), await bare(pp, '[data-test=bh-requests]'));
+  });
+
+  await check('an older snapshot pasted after a newer one is refused, and the newer one stays', async () => {
+    await pp.click('[data-test=bh-back]');
+    await pp.click('[data-test=bh-back]');
+    const before = await bare(pp, '[data-test=bh-sync]');
+    await pp.click('[data-test=bhp-update]');
+    await pp.fill('[data-test=bhp-snap-input]', snapCode);
+    await pp.click('.tsi-modal__foot .tsi-btn--primary');
+    await pp.waitForFunction(() => { const m = document.querySelector('.tsi-modal'); return m && /older than the one you already have/.test(m.textContent); }, null, { timeout: 5000 });
+    await pp.click('.tsi-modal__foot .tsi-btn--primary');
+    await pp.waitForSelector('.tsi-modal', { state: 'detached' });
+    equal(await bare(pp, '[data-test=bh-sync]'), before, 'nothing changed');
+    await pp.click('[data-test=bh-beast-cr-stormwing]');
   });
 
   let orderCode;
@@ -314,6 +328,19 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     await pp.reload();
     await pp.waitForSelector('[data-test=bhp-screen-snap]');
     assert(await pp.$('[data-test=bhp-unlink]'), 'the page is usable, with its Unlink button');
+  });
+
+  await check('a request queued by the companion on the laptop is answered once and then taken out of the queue by the Bastion, even with the companion closed', async () => {
+    const campaign = (await state()).beast.campaignId;
+    await ba.evaluate(([campaign]) => {
+      const cmd = { v: 1, id: 'c-queued-trim-0001-abcdef', campaign, handler: 'mira', creature: 'cr-stormwing', fac: 'wyvern_roost', type: 'profile.set', view: '', label: 'Stormwing (profile)', payload: { attachment: 'A queued line' }, at: Date.now() };
+      TSI.store.set('tsi.beasthandler.queue', { commands: [cmd] });
+    }, [campaign]);
+    await ba.waitForFunction(() => TSI.bastion.debug.state().beast.done['c-queued-trim-0001-abcdef'], null, { timeout: 12000 });
+    const c = (await state()).creatures.find(x => x.id === 'cr-stormwing');
+    equal(c.development.temperament.attachment, 'A queued line');
+    await ba.waitForFunction(() => TSI.store.fresh('tsi.beasthandler.queue', null).then(q => !q || !q.commands || q.commands.length === 0).then(ok => { window.__qEmpty = ok; return true; }) && window.__qEmpty === true, null, { timeout: 12000 });
+    equal(await ba.evaluate(() => TSI.store.fresh('tsi.beasthandler.queue', null).then(q => (q && q.commands || []).length)), 0, 'the answered request left the queue');
   });
 
   await check('nothing went wrong or reached for the internet, on either device', async () => {

@@ -49,7 +49,16 @@
       function snap() { return host.snapshot(); }
       function detail() { var s = snap(); return s && ui.creatureId ? s.creatures[ui.creatureId] || null : null; }
       function outbox() { return host.outbox ? host.outbox() : []; }
-      function go(screen, tab) { ui.screen = screen; ui.tab = tab || 'main'; ui.orderFn = null; ui.edit = null; ui.said = ''; render(); window.scrollTo(0, 0); }
+      /* A profile draft is kept while the player stays on the same beast (moving between its tabs never loses what was typed or rolled). */
+      /* After a new screen is drawn, focus goes to its heading, so a keyboard or screen-reader user starts at the top of what is new. */
+      function focusHeading() {
+        var h = shell.querySelector('h1');
+        if (h) { h.setAttribute('tabindex', '-1'); try { h.focus({ preventScroll: true }); } catch (e) { /* not focusable here */ } }
+      }
+      function go(screen, tab) {
+        var keepDraft = screen === 'creature' && ui.edit && ui.edit.creatureId === ui.creatureId;
+        ui.screen = screen; ui.tab = tab || 'main'; ui.orderFn = null; if (!keepDraft) ui.edit = null; ui.said = ''; render(); focusHeading(); window.scrollTo(0, 0);
+      }
 
       /* If what we were looking at has gone (another handler now, or rehoused), go home. */
       function fixRoute() {
@@ -105,7 +114,7 @@
           el('ul', { class: 'tsi-bh-requests__list' }, rows.map(function (r) {
             return el('li', { class: 'tsi-bh-request tsi-bh-request--' + r.state, 'data-state': r.state, 'data-id': r.id }, [
               el('span', { class: 'tsi-bh-request__label', text: r.label }),
-              el('span', { class: 'tsi-bh-request__line', text: M.requestLine(r) })
+              el('span', { class: 'tsi-bh-request__line', text: M.requestLine(r, host.mode) })
             ]);
           }))
         ]);
@@ -126,6 +135,7 @@
           ui.said = '';
           ui.orderFn = null; ui.edit = null;
           render();
+          focusHeading();
           return Promise.resolve(host.afterSubmit ? host.afterSubmit(res) : null).then(function () { return res; });
         }, function (err) {
           submitting = false;
@@ -226,7 +236,7 @@
           el('p', { class: 'tsi-bh-handler', 'data-test': 'bh-handler', text: 'Handler: ' + d.handler.name }),
           bondBar(d.bond),
           trainingLine(d),
-          waiting ? el('p', { class: 'tsi-bh-training', 'data-test': 'bh-waiting', text: (waiting === 1 ? '1 request is' : waiting + ' requests are') + ' waiting for the Bastion.' }) : null,
+          waiting ? el('p', { class: 'tsi-bh-training', 'data-test': 'bh-waiting', text: host.mode === 'phone' ? (waiting === 1 ? '1 request is' : waiting + ' requests are') + ' waiting for you to send to the DM, or for the DM\'s answer.' : (waiting === 1 ? '1 request is' : waiting + ' requests are') + ' waiting for the Bastion.' }) : null,
           el('p', { class: 'tsi-bh-kind', text: d.species.name + ' · ' + d.facility.name + ', Level ' + d.facility.level }),
           nav(d)
         ];
@@ -249,7 +259,7 @@
       function profileValues(d) { return { dominant: d.profile.dominant, attachment: d.profile.attachment, trigger: d.profile.trigger, regional: d.profile.regional }; }
 
       function startEdit(d) {
-        ui.edit = { values: profileValues(d), suggested: {}, error: '', rolls: {} };
+        ui.edit = { creatureId: d.id, values: profileValues(d), suggested: {}, error: '', rolls: {} };
         render();
       }
 
@@ -381,9 +391,11 @@
           ]));
         } else if (waitingHere) {
           body.push(el('div', { class: 'tsi-bh-panel tsi-bh-pending', 'data-test': 'bh-order-waiting' }, [
-            el('h2', { class: 'tsi-bh-panel__title', text: 'Request submitted' }),
+            el('h2', { class: 'tsi-bh-panel__title', text: host.mode === 'phone' ? 'Request made' : 'Request submitted' }),
             el('p', { class: 'tsi-bh-pending__label', text: waitingHere.label }),
-            el('p', { class: 'tsi-bh-muted', text: 'Waiting for the Bastion to confirm. Nothing has started, and no new order can be asked for at this building until it answers.' })
+            el('p', { class: 'tsi-bh-muted', text: host.mode === 'phone'
+              ? 'Send the request code to the DM. Nothing has started until the Bastion answers, and no new order can be asked for at this building until it does.'
+              : 'Waiting for the Bastion to confirm. Nothing has started, and no new order can be asked for at this building until it answers.' })
           ]));
         } else if (o.status === 'available') {
           var chosen = ui.orderFn ? o.available.filter(function (a) { return a.fnId === ui.orderFn; })[0] : null;

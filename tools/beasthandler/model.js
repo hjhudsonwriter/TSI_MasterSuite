@@ -86,7 +86,7 @@
   /* ---------- Requests (what has been asked, and how the Bastion answered) ---------- */
   /* One beast's requests, newest first: those sent that the Bastion hasn't answered yet ('waiting'),
      then its answers, each { id, type, state, label, why, dueLabel }. state is 'waiting', 'scheduled',
-     'completed', 'cancelled', 'saved' or 'refused'. outbox: [{ id, type, creature, fac, label, at }]. */
+     'completed', 'cancelled', 'ended', 'saved' or 'refused'. outbox: [{ id, type, creature, fac, label, at }]. */
   M.requestRows = function (snap, outbox, creatureId, limit) {
     var receipts = snap && Array.isArray(snap.receipts) ? snap.receipts : [];
     var answered = {};
@@ -99,11 +99,14 @@
     });
     return rows.slice(0, limit || 6);
   };
-  M.requestLine = function (row) {
+  /* mode 'phone': a waiting request has only been made on this phone, so it says to send the code. */
+  M.requestLine = function (row, mode) {
+    if (row.state === 'waiting' && mode === 'phone') return 'Made on this phone. Send the code to the DM: nothing has started until the Bastion answers.';
     if (row.state === 'waiting') return 'Submitted, waiting for the Bastion to confirm. Nothing has started.';
     if (row.state === 'scheduled') return 'Accepted and scheduled in the Bastion' + (row.dueLabel ? ': ready on ' + row.dueLabel + '.' : '.');
     if (row.state === 'completed') return 'Completed.';
     if (row.state === 'cancelled') return 'No longer scheduled: it was cancelled in the Bastion before it finished.';
+    if (row.state === 'ended') return 'No longer scheduled in the Bastion.';
     if (row.state === 'saved') return 'Saved in the Bastion.';
     return 'Refused: ' + (row.why || 'the Bastion couldn\'t do it.');
   };

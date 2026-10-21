@@ -369,8 +369,8 @@
 @media (min-width: 720px) { .tsi-tool--beasthandler .tsi-bh-hero--art { width: auto; height: min(50vh, 520px); max-width: 100%; } }
 .tsi-tool--beasthandler .tsi-bh-hero--art .tsi-bh-hero__tap { border-radius: var(--tsi-radius-lg); border: var(--tsi-border-feature); overflow: hidden; box-shadow: var(--tsi-shadow-card), var(--tsi-glow-gold); }
 .tsi-tool--beasthandler .tsi-bh-hero--art .tsi-bh-hero__img { object-fit: cover; object-position: 50% 30%; }
-.tsi-tool--beasthandler .tsi-bh-hero--small.tsi-bh-hero--art { width: 84px; aspect-ratio: 1; max-height: none; }
+.tsi-tool--beasthandler .tsi-bh-hero--small.tsi-bh-hero--art { width: 84px; height: auto; aspect-ratio: 1; max-height: none; }
 .tsi-tool--beasthandler .tsi-bh-hero--small.tsi-bh-hero--art .tsi-bh-hero__tap { border-radius: 50%; border-width: 2px; box-shadow: var(--tsi-glow-gold); }
 .tsi-tool--beasthandler .tsi-bh-hero--small.tsi-bh-hero--art .tsi-bh-hero__img { object-position: 50% 28%; }
-@media (min-width: 720px) { .tsi-tool--beasthandler .tsi-bh-hero--small.tsi-bh-hero--art { width: 104px; } }
+@media (min-width: 720px) { .tsi-tool--beasthandler .tsi-bh-hero--small.tsi-bh-hero--art { width: 104px; height: auto; } }
 @media (prefers-reduced-motion: reduce) { .tsi-tool--beasthandler .tsi-bh-hero--greet .tsi-bh-hero__img { animation: none; } }

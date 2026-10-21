@@ -37,3 +37,6 @@ body.tsi-bh-phone .tsi-tool { padding: 0; }
 .tsi-bhp-send { display: grid; gap: 6px; padding: var(--tsi-space-3); background: rgba(0, 0, 0, .28); border-left: 3px solid var(--tsi-warn); border-radius: var(--tsi-radius-sm); }
 .tsi-bhp-send__label { font: 700 var(--tsi-fs-body-sm)/1.2 var(--tsi-font-display); letter-spacing: var(--tsi-track-label); }
 .tsi-bhp-send .tsi-btn { min-height: 44px; }
+/* Pop-ups sit outside the companion's own box, so their buttons need the phone's tap size here. */
+body.tsi-bh-phone .tsi-modal__foot .tsi-btn { min-height: 44px; }
+body.tsi-bh-phone .tsi-modal .tsi-btn { min-height: 44px; }

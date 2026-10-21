@@ -600,8 +600,12 @@
           onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'temperament-dialog'); }
         });
         if (!ok || !life.alive) return;
+        /* Only the lines the DM actually changed are sent, so a handler's request accepted while this box was
+           open is never put back by the lines the DM didn't touch. */
         var f = {};
-        boxes.forEach(function (b) { f[b[0]] = b[1].value; });
+        var changedAny = false;
+        boxes.forEach(function (b, i) { if (b[1].value !== (fieldDefs[i][2] || '')) { f[b[0]] = b[1].value; changedAny = true; } });
+        if (!changedAny) return;
         var res = R.setTemperament(state, data, id, f);
         if (!res.ok) { await say(res.message); return; }
         done();
@@ -4761,6 +4765,22 @@
       /* Requests from the Beast Handler on this laptop (Harry, 21 October 2026): each is checked against this
          Bastion and applied once, with its receipt in this save (tools/beasthandler/bastion-link.js). */
       var beastBusy = false;
+      /* A request that has its receipt leaves the queue once that is saved, so a Bastion saved earlier and put
+         back later (Import) can never be made to do an answered request again. The companion only adds to the
+         queue and takes out its own old ones; both re-read it before writing. */
+      function trimBeastQueue(commands) {
+        var answered = (Array.isArray(commands) ? commands : []).filter(function (c) {
+          return c && typeof c.id === 'string' && state.beast && state.beast.done && Object.prototype.hasOwnProperty.call(state.beast.done, c.id);
+        }).map(function (c) { return c.id; });
+        if (!answered.length) return;
+        TSI.store.flush().then(function () {
+          return TSI.store.fresh('tsi.beasthandler.queue', null);
+        }).then(function (stored) {
+          if (!life.alive || !stored || !Array.isArray(stored.commands)) return;
+          var keep = stored.commands.filter(function (c) { return !(c && answered.indexOf(c.id) !== -1); });
+          if (keep.length !== stored.commands.length) TSI.store.set('tsi.beasthandler.queue', { commands: keep });
+        }).catch(function () { /* left in the queue: the Bastion would only see a duplicate and do nothing */ });
+      }
       function checkBeast() {
         if (!R.beastProcessQueue || beastBusy || !life.alive || turnRunning || militaryRunning) return Promise.resolve();
         beastBusy = true;
@@ -4768,6 +4788,7 @@
           beastBusy = false;
           if (!life.alive || turnRunning || militaryRunning) return;
           var res = R.beastProcessQueue(state, data, q && q.commands, Date.now(), rand);
+          trimBeastQueue(q && q.commands);
           if (!res.changed) return;
           done();
           if (res.lines.length) notice('From the Beast Handler: ' + res.lines.join(' ') + ' The Day Log keeps it.', { type: res.refused && !res.applied ? 'warn' : 'info', title: 'A handler asked for something.', id: 'tsi-bas-beast', timeout: 14000 });

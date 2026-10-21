@@ -26,7 +26,8 @@
   var QUEUE_KEY = 'tsi.beasthandler.queue';
   var REFRESH_MS = 3000;
   var CHOICE_KEY = 'tsi.beasthandler.viewAs' + (TSI.space === 'test' ? '.test' : '');
-  var STALE_MS = 7 * 24 * 3600 * 1000;
+  /* As long as the Bastion would still take a request (codes.js MAX_AGE_MS: 30 days). */
+  var STALE_MS = 30 * 24 * 3600 * 1000;
 
   function readChoice() {
     try { var v = sessionStorage.getItem(CHOICE_KEY); return v === null ? undefined : v; } catch (e) { return undefined; }
@@ -60,17 +61,32 @@
           return R.fromSave(TSI.clone(saved), data);
         });
       }
-      function saveQueue() { ctx.store.set('queue', { commands: queue.commands }); }
+      /* Every change re-reads the stored queue first and changes only what it means to, so two windows (or the
+         Bastion taking answered requests out) never write over one another's. */
+      function changeQueue(edit) {
+        return TSI.store.fresh(QUEUE_KEY, null).then(function (stored) {
+          var list = M.cleanQueue(stored).commands;
+          var next = M.cleanQueue({ commands: edit(list) }).commands;
+          queue.commands = next;
+          if (JSON.stringify(next) !== JSON.stringify(list)) ctx.store.set('queue', { commands: next });
+          return next;
+        });
+      }
       /* Requests the Bastion has answered (their receipt is in its save), and very old ones, leave the queue. */
       function prune(state) {
         if (!state) return;
         var done = state.beast && state.beast.done ? state.beast.done : {};
-        var keep = queue.commands.filter(function (c) { return !Object.prototype.hasOwnProperty.call(done, c.id) && Date.now() - c.at < STALE_MS; });
-        if (keep.length !== queue.commands.length) { queue.commands = keep; saveQueue(); }
+        var gone = function (c) { return Object.prototype.hasOwnProperty.call(done, c.id) || Date.now() - c.at >= STALE_MS; };
+        if (!queue.commands.some(gone)) return;
+        queue.commands = queue.commands.filter(function (c) { return !gone(c); });
+        changeQueue(function (list) { return list.filter(function (c) { return !gone(c); }); });
       }
       function refresh() {
-        return read().then(function (state) {
+        /* The stored queue is adopted each time, so a request made in another window shows here too. */
+        return Promise.all([read(), TSI.store.fresh(QUEUE_KEY, null).then(function (q) { return M.cleanQueue(q).commands; }, function () { return null; })]).then(function (both) {
+          var state = both[0];
           if (!life.alive) return;
+          if (both[1]) queue.commands = both[1];
           var next;
           if (!state) {
             next = { snap: null, state: null, handlers: [], info: { ok: false }, problem: '' };
@@ -131,9 +147,7 @@
             v: 1, id: 'c-' + TSI.hmac.randomId(24), campaign: cur.snap.campaign, handler: cur.snap.handler.id, creature: body.creature, fac: body.fac || '',
             type: body.type, view: body.view || '', label: labelFor(body), payload: body.payload, at: Date.now()
           };
-          queue.commands = M.cleanQueue({ commands: queue.commands.concat([cmd]) }).commands;
-          saveQueue();
-          return Promise.resolve({ ok: true, id: cmd.id });
+          return changeQueue(function (list) { return list.concat([cmd]); }).then(function () { return { ok: true, id: cmd.id }; });
         }
       };
 

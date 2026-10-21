@@ -78,8 +78,10 @@
       ta.value = text;
       document.body.appendChild(ta);
       ta.select();
-      try { document.execCommand('copy'); ok(); } catch (e) { /* the code is on screen to copy by hand */ }
+      var copied = false;
+      try { copied = document.execCommand('copy'); } catch (e) { /* the code is on screen to copy by hand */ }
       ta.remove();
+      if (copied) ok();
     }
     try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(ok, fallback); else fallback(); } catch (e) { fallback(); }
   }
@@ -92,7 +94,7 @@
     return Math.floor(h / 24) + ' days ago';
   }
   function showCode(title, intro, code, filename, test) {
-    var box = el('textarea', { class: 'tsi-input tsi-bhp-code', readonly: 'readonly', 'data-test': test, onfocus: function () { box.select(); } });
+    var box = el('textarea', { class: 'tsi-input tsi-bhp-code', readonly: 'readonly', 'aria-label': title + ' (the code to copy)', 'data-test': test, onfocus: function () { box.select(); } });
     box.value = code;
     var copyBtn = btn('Copy', function () { copy(code, copyBtn); }, '', test + '-copy');
     return TSI.modal.open({
@@ -124,6 +126,9 @@
     var s = d.snapshot;
     if (typeof s.campaign !== 'string' || s.campaign !== pairing.campaign) return { ok: false, why: 'That snapshot is from a different Bastion save. Ask the DM for the right one.' };
     if (!s.handler || P.handlerKey(s.handler.id) !== P.handlerKey(pairing.handler)) return { ok: false, why: 'That snapshot is for a different handler.' };
+    if (held && held.snapshot && typeof held.snapshot.madeAt === 'number' && typeof s.madeAt === 'number' && s.madeAt < held.snapshot.madeAt) {
+      return { ok: false, why: 'That snapshot is older than the one you already have (' + (held.snapshot.asOfLabel || 'a later day') + '). Ask the DM for a newer one, or press Unlink this phone to start again.' };
+    }
     held = { snapshot: s, at: Date.now() };
     write(KEY.snapshot, held);
     prune();
@@ -217,7 +222,7 @@
           var copyBtn = btn('Copy the code', function () { copy(o.code, copyBtn); }, '', 'bhp-copy-' + o.id);
           return el('li', { class: 'tsi-bhp-send', 'data-id': o.id }, [
             el('span', { class: 'tsi-bhp-send__label', text: o.label }),
-            el('span', { class: 'tsi-bh-muted', text: 'Made ' + ago(o.at) + '.' }),
+            el('span', { class: 'tsi-bh-muted', 'data-made': String(o.at), text: 'Made ' + ago(o.at) + '.' }),
             el('div', { class: 'tsi-bhp-row' }, [copyBtn, btn('Show it', function () { showCode('Request: ' + o.label, 'Send this to the DM exactly as it is.', o.code, 'beast-handler-request.txt', 'bhp-show'); }, 'tsi-btn--ghost', 'bhp-show-' + o.id), btn('Forget it', function () { onForget(o); }, 'tsi-btn--ghost', 'bhp-forget-' + o.id)])
           ]);
         }))
@@ -284,8 +289,16 @@
       TSI.clear(root);
       return screenSnapshot('The page couldn\'t show the snapshot it had saved, so it was cleared. Ask the DM for a new snapshot code.');
     }
-    /* Keep "got 3 minutes ago" honest while the page is open. */
-    life.setInterval(function () { if (view) view.render(); }, 60000);
+    /* Keep "got 3 minutes ago" honest while the page is open, by changing only those words (a full redraw every
+       minute would close what the player has open and send a long list back to the top). */
+    if (!ageTimer) ageTimer = life.setInterval(tickAges, 60000);
+  }
+  var ageTimer = null;
+  function tickAges() {
+    if (!view) return;
+    var line = root.querySelector('[data-test="bh-sync"] span:last-child');
+    if (line) line.textContent = host.syncLine();
+    Array.prototype.forEach.call(root.querySelectorAll('[data-made]'), function (n) { n.textContent = 'Made ' + ago(Number(n.getAttribute('data-made'))) + '.'; });
   }
 
   start();

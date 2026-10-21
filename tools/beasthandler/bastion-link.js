@@ -169,7 +169,7 @@
 
   /* ---------- Receipts ---------- */
   /* A handler's own recent receipts, newest first, each with where its order has got to:
-     'scheduled' (still pending at the building), 'cancelled' (gone before its ready day) or 'completed'. */
+     'scheduled' (still pending at the building), 'cancelled' (gone without finishing), 'ended' (gone, and the creature too) or 'completed'. */
   R.beastReceiptsFor = function (s, handlerId, limit) {
     var B = isObj(s.beast) ? s.beast : null;
     var key = P.handlerKey(handlerId);
@@ -181,12 +181,14 @@
       .sort(function (a, b) { return b.at - a.at; })
       .slice(0, limit || 20)
       .map(function (r) {
-        /* No longer pending, and no Chronicle line from finishing it, before its ready day: it was cancelled
-           (or its building came down), not done. A finished programme leaves a Chronicle line linked to the order. */
+        /* No longer pending and no Chronicle line from finishing it: it was cancelled (or its building came
+           down), not done, whatever day it is now (a paused or repaired order's ready day moves later, so the
+           day it first promised proves nothing). A finished programme leaves a Chronicle line linked to the
+           order. If the creature has gone, all that is known is that it is no longer scheduled ('ended'). */
         var cr = r.orderId && !pending.has(r.orderId) ? R.creatureById(s, r.creature) : null;
         var finished = !!(cr && isObj(cr.development) && arr(cr.development.chronicle).some(function (e) { return isObj(e) && e.link === r.orderId; }));
-        var gone = r.orderId && !pending.has(r.orderId) && !finished && typeof r.dueDay === 'number' && dayNum(s.day, 1) < r.dueDay;
-        var state = r.r === 'refused' ? 'refused' : (r.type === 'order.request' ? (r.orderId && pending.has(r.orderId) ? 'scheduled' : gone ? 'cancelled' : 'completed') : 'saved');
+        var gone = r.orderId && !pending.has(r.orderId) && !finished;
+        var state = r.r === 'refused' ? 'refused' : (r.type === 'order.request' ? (r.orderId && pending.has(r.orderId) ? 'scheduled' : gone ? (cr ? 'cancelled' : 'ended') : 'completed') : 'saved');
         return { id: r.id, type: r.type, state: state, why: r.why, day: r.day, label: r.label, creature: r.creature, dueDay: state === 'scheduled' ? pending.get(r.orderId).dueDay : r.dueDay };
       });
   };
@@ -349,6 +351,8 @@
     var secret = R.beastSecret(s, handlerId);
     if (!secret) return { ok: false, message: 'Make a pairing code for this handler first.' };
     var snap = P.build(s, data, handlerId);
+    /* When this code was made, so a phone can tell if a snapshot pasted later is older than the one it holds. */
+    snap.madeAt = Date.now();
     Object.keys(snap.creatures).forEach(function (id) {
       var d = snap.creatures[id];
       if (d.chronicle.length > 40) { d.chroniclePartial = d.chronicle.length - 40; d.chronicle = d.chronicle.slice(-40); }

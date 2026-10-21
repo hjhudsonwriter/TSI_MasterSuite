@@ -92,7 +92,7 @@
     var bits = split(text, TAGS.snap, 2);
     if (!bits) return { ok: false, why: 'That isn\'t a snapshot code. It starts BHS1. and the DM gives it to you.' };
     if (!H().same(H().hmacHex(secret, bits[0]), bits[1])) {
-      return { ok: false, why: 'That snapshot wasn\'t made for you, or it was changed on the way. Ask the DM for a new one.' };
+      return { ok: false, why: 'That snapshot wasn\'t made for you, or it was changed on the way. If the DM has made you a new pairing code, press Unlink this phone and link again with it. Otherwise ask the DM for a new snapshot.' };
     }
     var v = parse(bits[0]);
     if (!v) return { ok: false, why: 'That snapshot is damaged. Ask the DM for a new one.' };

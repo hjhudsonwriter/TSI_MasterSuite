@@ -36,8 +36,10 @@
           ta.value = text;
           document.body.appendChild(ta);
           ta.select();
-          try { document.execCommand('copy'); ok(); } catch (e) { /* the code is on screen to copy by hand */ }
+          var copied = false;
+          try { copied = document.execCommand('copy'); } catch (e) { /* the code is on screen to copy by hand */ }
           ta.remove();
+          if (copied) ok();
         }
         try {
           if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(ok, fallback);
@@ -47,7 +49,7 @@
 
       /* A code on screen: the text, a Copy button and a Save as file button. */
       function showCode(title, intro, code, filename, test) {
-        var box = el('textarea', { class: 'tsi-input tsi-bas-beast__code', readonly: 'readonly', rows: '5', 'data-test': test, onfocus: function () { box.select(); } });
+        var box = el('textarea', { class: 'tsi-input tsi-bas-beast__code', readonly: 'readonly', rows: '5', 'aria-label': title + ' (the code to copy)', 'data-test': test, onfocus: function () { box.select(); } });
         box.value = code;
         var copyBtn = btn('Copy', function () { copy(code, copyBtn); }, test + '-copy');
         var body = el('div', null, [
@@ -85,7 +87,7 @@
           'What ' + h.name + ' can see, as of ' + res.snapshot.asOfLabel + '. Send it to their phone. Make a new one after anything changes.', res.code, 'beast-handler-snapshot-' + h.id + '.txt', 'beast-snap');
       });
       var onAdd = TSI.oneAtATime(async function () {
-        var input = el('input', { type: 'text', class: 'tsi-input', maxlength: '40', placeholder: 'The handler\'s name', 'data-test': 'beast-add-name' });
+        var input = el('input', { type: 'text', class: 'tsi-input', maxlength: '40', placeholder: 'The handler\'s name', 'aria-label': 'The handler\'s name', 'data-test': 'beast-add-name' });
         var ok = await TSI.modal.open({
           title: 'Add a handler', className: 'tsi-bas-modal',
           body: [el('p', { text: 'A handler is a player who looks after a beast. Type the name exactly as it is on their beast\'s profile (capitals don\'t matter).' }), input],
@@ -100,7 +102,7 @@
 
       /* A request code from a phone: pasted or opened from a file. */
       var onPaste = TSI.oneAtATime(async function () {
-        var area = el('textarea', { class: 'tsi-input tsi-bas-beast__code', rows: '5', placeholder: 'Paste the request code here (it starts BHC1.)', 'data-test': 'beast-paste-text' });
+        var area = el('textarea', { class: 'tsi-input tsi-bas-beast__code', rows: '5', placeholder: 'Paste the request code here (it starts BHC1.)', 'aria-label': 'The request code from a phone', 'data-test': 'beast-paste-text' });
         var fileBtn = btn('Open a file…', function () {
           TSI.pickFile('.txt,text/plain').then(function (f) { return f ? TSI.readFileText(f) : null; }).then(function (t) { if (t !== null) area.value = t; }, function () { /* not readable: nothing changes */ });
         }, 'beast-paste-file');
@@ -115,8 +117,8 @@
         if (res.ok || res.receipt || res.duplicate) host.done();
         var rec = res.receipt;
         var line = res.bad || res.held ? res.why
-          : res.duplicate ? 'That request had already been dealt with, so nothing changed: ' + (rec ? rec.label + ': ' + (rec.r === 'applied' ? 'accepted' : 'refused') + '. ' + rec.why : '')
-          : rec ? rec.label + ': ' + (rec.r === 'applied' ? 'accepted. ' : 'refused. ') + rec.why : 'Nothing was done.';
+          : res.duplicate ? 'That request had already been dealt with, so nothing changed: ' + (rec ? (rec.label || 'A request') + ': ' + (rec.r === 'applied' ? 'accepted' : 'refused') + '. ' + rec.why : '')
+          : rec ? (rec.label || 'A request') + ': ' + (rec.r === 'applied' ? 'accepted. ' : 'refused. ') + rec.why : 'Nothing was done.';
         var peek = C.peekCommand(area.value);
         var snap = peek.ok && R.beastSecret(host.state(), peek.command.handler) ? R.beastSnapshotCode(host.state(), host.data, peek.command.handler) : null;
         if (snap && snap.ok && (res.ok || res.receipt || res.duplicate)) {

@@ -51,6 +51,22 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
   const stormwing = async () => (await state()).creatures.find(c => c.id === 'cr-stormwing');
   await viewAs('Mira');
 
+  await check('a half-typed profile survives moving between the beast\'s sections, and is dropped on leaving the beast', async () => {
+    await bh.click('[data-test=bh-beast-cr-stormwing]');
+    await bh.click('[data-test=bh-tab-profile]');
+    await bh.click('[data-test=bh-edit]');
+    await waitFor(bh, '[data-test=bh-edit-form]');
+    await bh.fill('[data-test=bh-in-trigger]', 'A half-typed line');
+    await bh.click('[data-test=bh-tab-orders]');
+    await bh.click('[data-test=bh-tab-profile]');
+    equal(await bh.$eval('[data-test=bh-in-trigger]', i => i.value), 'A half-typed line', 'the draft is still there');
+    await home();
+    await bh.click('[data-test=bh-beast-cr-stormwing]');
+    await bh.click('[data-test=bh-tab-profile]');
+    equal(await bh.$('[data-test=bh-edit-form]'), null, 'leaving the beast dropped it');
+    await home();
+  });
+
   await check('rolling only suggests: values appear marked "not saved yet", and nothing reaches the Bastion', async () => {
     await bh.click('[data-test=bh-beast-cr-stormwing]');
     await bh.click('[data-test=bh-tab-profile]');
@@ -217,6 +233,11 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     const lay = await H.layoutCheck(bh, ['.tsi-bh-nav button', '[data-test=bh-bond]']);
     equal(lay.outOfView, [], 'the bond and the three buttons are in view on the laptop with a painted portrait');
     assert(lay.scrollWidth <= lay.clientWidth, 'no sideways scroll');
+    /* The small round portrait on the other sections must stay small and round on a laptop (it once stretched tall). */
+    await bh.click('[data-test=bh-tab-profile]');
+    const small = await bh.$eval('[data-test=bh-portrait-small]', n => { const r = n.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; });
+    assert(small[0] === small[1] && small[0] <= 110, 'the small portrait is round: ' + small);
+    await bh.click('[data-test=bh-back]');
     await viewAs('Mira');
     await bh.click('[data-test=bh-beast-cr-swiftwing]');
     assert(await bh.$('[data-test=bh-portrait-large] .tsi-bh-medallion'), 'a griffin with no picture matched yet shows the medallion');

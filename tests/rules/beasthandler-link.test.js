@@ -550,4 +550,38 @@
   test('a note\'s hidden direction marks are cleaned, the Arabic letter mark included', function (t) {
     t.equal(TSI.beasthandler.profile.clean('Proud؜⁠ and calm‮', 40), 'Proud and calm');
   });
+
+  test('an order cancelled after its first promised day is still "cancelled" (a paused order\'s day moves later); an order whose creature has gone is "ended"', function (t) {
+    var b = world();
+    var c = housed(b, 'wyvern', 'Stormwing', 'Mira');
+    t.ok(apply(b, cmd(b, c, 'order.request', { fnId: 'wyr_safe_acclimatisation' })).ok);
+    var promised = BR.beastReceiptsFor(b, 'mira')[0].dueDay;
+    var order = last(b);
+    order.dueDay = promised + 6;           /* a recovering wyvern's programme moves on */
+    b.day = promised + 2;                   /* past the day first promised */
+    BR.cancelOrder(b, order.id, bdata, 1000);
+    t.equal(BR.beastReceiptsFor(b, 'mira')[0].state, 'cancelled', 'past the first promised day, but cancelled');
+    var e = world();
+    var w = housed(e, 'wyvern', 'Stormwing', 'Mira');
+    t.ok(apply(e, cmd(e, w, 'order.request', { fnId: 'wyr_safe_acclimatisation' })).ok);
+    BR.cancelOrder(e, last(e).id, bdata, 1000);
+    e.creatures = e.creatures.filter(function (x) { return x.id !== w.id; });
+    t.equal(BR.beastReceiptsFor(e, 'mira')[0].state, 'ended');
+    t.equal(TSI.beasthandler.model.requestLine({ state: 'ended' }), 'No longer scheduled in the Bastion.');
+  });
+
+  test('a snapshot code says when it was made, so a phone can tell a later paste is older; the phone wording says to send the code', function (t) {
+    var b = world();
+    housed(b, 'wyvern', 'Stormwing', 'Mira');
+    var pr = BR.beastPair(b, bdata, 'Mira');
+    t.ok(pr.ok);
+    var first = BR.beastSnapshotCode(b, bdata, 'mira');
+    t.ok(first.ok && typeof first.snapshot.madeAt === 'number' && first.snapshot.madeAt > 1700000000000);
+    var back = C.decodeSnapshot(first.code, BR.beastSecret(b, 'mira'));
+    t.ok(back.ok && back.snapshot.madeAt === first.snapshot.madeAt, 'it travels in the signed code');
+    t.equal(P.build(b, bdata, 'mira').madeAt, undefined, 'the player\'s view itself has no such field; only the code carries it');
+    var M = TSI.beasthandler.model;
+    t.ok(/Send the code to the DM: nothing has started/.test(M.requestLine({ state: 'waiting' }, 'phone')));
+    t.equal(M.requestLine({ state: 'waiting' }), 'Submitted, waiting for the Bastion to confirm. Nothing has started.');
+  });
 }());
