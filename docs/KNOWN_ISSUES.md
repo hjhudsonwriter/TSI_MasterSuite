@@ -3416,3 +3416,24 @@ Old repo: `_legacy/pelagosi_marker_rune_puzzle` (file:line references point ther
 - **Existing creatures:** a granted griffin or dire wolf starts at Bond 0, with no handler and no development record until the DM works with it. Elara's wyvern is still the only creature credited a bond.
 - **Not changed:** House orders, room (one per level), War Table numbers, grants, the Menagerie.
 - **Tests:** `tests/rules/beast-bonding.test.js` (new, both animals), `tests/rules/wyvern-bonding.test.js`, `tests/e2e/beast-bonding.test.js` (new).
+
+### SUI-51 · Chronicle notes can be marked DM only (21 October 2026)
+**Added, Harry's decision D6 for the Beast Handler** · missing functionality
+
+- **Add a note…** in a creature's Chronicle has a **DM only** tick box. A ticked note is saved with `private: true` (`R.addChronicle`, `R.addChronicleNote`), kept by `R.cleanDevelopment`, marked "(DM only)" in the Bastion's own Chronicle list, and never put in the player's Beast Handler snapshot.
+- **Older saves are unchanged:** the flag is written only when set, so existing Chronicles read back exactly as before.
+- **Not flagged:** the automatic entries (training done, bond confirmed, handler changed, first flight) stay visible to the player. They include the reason the DM typed when confirming a bond or changing a handler, so tell Harry if he'd rather those were hideable too.
+- **Tests:** `tests/rules/beasthandler-projection.test.js`, and the Chronicle check in `tests/e2e/wyvern-bonding.test.js`.
+
+### BH-01 · Scarlett Isles: Beast Handler, first step (BH-1: Harry's tables, the player's snapshot, read-only screens) (21 October 2026)
+**Added, Harry's approval of the proposal (D1 to D8 as recommended)** · new tool
+
+- **What it is:** a Players tool that reads the Bastion saved on this laptop and shows a handler their beasts: Home (buildings, levels, who lives where), a creature's main screen (portrait, handler, Bond 0 to 5), Profile, Orders and Chronicle. It saves nothing of its own. Everything that would ask the Bastion to do something (Roll or edit, Send request) is shown but switched off until BH-2.
+- **What a player sees** is built by `tools/beasthandler/projection.js`: a snapshot of the handler's own creatures, plus a plain directory line for everyone else's. It never holds the treasury, the Day Log, DM notes, other buildings or any raw part of the save (leak tests in `tests/rules/beasthandler-projection.test.js`).
+- **Orders** follow D3 and D5: free training only (a programme that costs no gold), only what the Bastion's own rules would accept now at the building's current level, and **while any order is pending at the building** (training, housing or an upgrade) nothing new is offered; the pending order and its ready day are shown. Other buildings never block. The DM's own training places are untouched.
+- **Handler matching** is by name, ignoring capitals and spacing, until the handler list of BH-2c.
+- **Harry's profile tables** are saved as `tools/beasthandler/data/profile-tables.js`, word for word (the d12 temperaments, the d8 attachment cues and instinctive triggers for each beast, and fifteen regional varieties). They are only data in this step: nothing rolls them yet. "Tidecliff Wyvern" in his worked example is not one of the fifteen, so it was treated as an example only.
+- **Judgement calls:** (1) the "Viewing as" box is for the DM's laptop only; a phone page will not have it. (2) The portrait is a gold medallion until Harry's art arrives (`data/art-map.js` is where a picture goes). (3) The lock reads "any order at the building", including a House order or an Upgrade; if Harry wants training orders only, it is one line in `ordersFor`.
+- **Changed outside the tool:** the home screen's cards are now five across (`shared/shell.css`), because nine tools made three rows at four across and pushed the footer buttons off the laptop screen.
+- **Left alone (not a fault of the tool):** the suite's shared top bar is wider than a phone's screen, so opening the companion inside the suite on a phone would zoom out. The phone page of BH-3 gets its own slim bar. The companion's own content fits a 390 px phone with nothing sideways (tested).
+- **Tests:** `tests/rules/beasthandler-tables.test.js`, `-projection.test.js`, `-model.test.js`; `tests/e2e/beasthandler.test.js` (phone, laptop and TV sizes; no internet).

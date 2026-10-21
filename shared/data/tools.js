@@ -170,6 +170,49 @@ window.TSI_DATA.tools = [
     }
   },
   {
+    id: 'beasthandler',
+    name: 'Scarlett Isles: Beast Handler',
+    group: 'players',
+    phase: 'BH-1',
+    built: true,
+    /* It keeps nothing of its own: it reads the Bastion's save (shared/js/dmdoc.js does the same). */
+    saves: false,
+    desc: 'The companions of Ironbow. See your wyvern, griffin or dire wolf: its bond, profile and Chronicle.',
+    art: 'shared/art/hero.png',
+    files: {
+      css: ['tools/beasthandler/beasthandler.css'],
+      js: [
+        /* The Bastion's data and rules, read-only: the companion builds the player's view from the Bastion's own save, never its screens. */
+        'tools/bastion/data/bastion-data.js',
+        'tools/bastion/data/facilities-data.js',
+        'tools/bastion/data/tools-data.js',
+        'tools/bastion/data/events-data.js',
+        'tools/bastion/data/war-units-data.js',
+        'tools/bastion/data/research-data.js',
+        'tools/bastion/data/goods-data.js',
+        'tools/bastion/data/commerce-data.js',
+        'tools/bastion/data/courier-data.js',
+        'tools/bastion/data/creatures-data.js',
+        'tools/bastion/data/war-room-data.js',
+        'tools/bastion/rules.js',
+        'tools/bastion/commerce-rules.js',
+        'tools/bastion/courier-rules.js',
+        'tools/bastion/creature-rules.js',
+        'tools/bastion/diplomacy-rules.js',
+        'tools/bastion/regiment-rules.js',
+        'tools/bastion/war-table-rules.js',
+        'tools/bastion/war-battle-rules.js',
+        'tools/bastion/war-ai.js',
+        'tools/bastion/war-campaign-rules.js',
+        'tools/beasthandler/data/profile-tables.js',
+        'tools/beasthandler/data/art-map.js',
+        'tools/beasthandler/projection.js',
+        'tools/beasthandler/model.js',
+        'tools/beasthandler/tool.js'
+      ]
+    }
+  },
+  {
     id: 'arenas',
     name: 'Arenas of The Scarlett Isles',
     group: 'set',

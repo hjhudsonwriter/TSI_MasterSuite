@@ -8,6 +8,16 @@ Double-click `index.html` to open the suite. The plan is in `docs/PLAN.md`, the 
 
 ## Done
 
+### Scarlett Isles: Beast Handler, BH-1: the player's snapshot and the read-only screens (21 October 2026)
+Harry approved the proposal (D1 to D8 as recommended; no live relay) and supplied his profile tables. Awaiting Harry's check, in the same pull request as the proposal.
+- **Harry's tables** (d12 temperament, d8 attachment cue and instinctive trigger for each beast, fifteen regional varieties) are saved word for word as data. Nothing rolls them yet.
+- **The player's snapshot:** what a handler may see, built from the Bastion's own save. Their own beasts in full, everyone else's as a plain line. No treasury, Day Log, DM notes or raw save. Orders are free training only, and while anything is pending at a building nothing new is offered.
+- **Chronicle notes can be marked DM only** (SUI-51); the player's view never shows them.
+- **The tool:** Home, a beast's main screen, Profile, Orders (with a check-before-you-send screen), Chronicle. Everything that would ask the Bastion to do something is shown but switched off. It fits a phone, the laptop and the TV.
+- **Home screen:** nine cards now sit five across so the footer stays in view (BH-01).
+- **Tests:** three new rules files and `tests/e2e/beasthandler.test.js`; the guide, home screen and Roost click-throughs updated.
+- **Next, when Harry says go:** BH-2a (rolling and editing the profile, the Regional Variety saved safely), BH-2b (the command processor inside the Bastion, with receipts), BH-2c (a handler list, the DM's pairing panel and the write buttons switched on), then BH-3a (the offline code swap to a phone).
+
 ### The facilities overhaul, pull request 9a: renaming the beasts (18 October 2026)
 From Harry's request (18 October 2026): he doesn't know Elara's wyvern's name yet.
 - **Rename…** on every creature in the Wyvern Roost, Griffin Tower and Dire Wolf Den panels, housed or waiting (BAS-97). An empty name gives the usual one back.
@@ -1077,6 +1087,7 @@ Each tool's questions are needed before that tool's phase. The full wording and 
   - Kept behaviours from phase 2 you may notice are in `docs/KNOWN_ISSUES.md` BAS-49: one battle-map picture shared by all battles, guards sometimes in front of a marker and sometimes behind, a battlefield width with no painting of its own, the small letters on tokens, and a very quick second Confirm being ignored.
 
 ## Notes for future sessions
+- **The Beast Handler (BH-1):** `tools/beasthandler/` has `projection.js` (the player's view of the Bastion: pure functions, the only thing that decides what a player may see; leak tests are in `tests/rules/beasthandler-projection.test.js`), `model.js` (the words the screens say), `tool.js` and `beasthandler.css` (the screens), and `data/` (Harry's profile tables, the player-order rule, the art map). It loads the Bastion's data and rules, never its screens, and reads `tsi.bastion.state` with `TSI.store.fresh`. Never add anything to a snapshot without a test that says why a player may see it. The plan, with Harry's decisions, is `docs/specs/beast-handler-proposal.md`.
 - **Explorer fights → Combat Tracker (7 October 2026).**
   - **The data:** fights are in `tools/explorer/data/fights-data.js`; a fight step names one with `encounter` (and `surprise: 'failed'` for an ambush). `tools/explorer/fights.js` builds the hand-off; `tools/encounter/rules.js` (`handoffProblem`, `loadHandoff`, `handoffWon`, `startPositions`, `handoffVtt`) loads it.
   - **How the windows talk:** each window has its own copy of the saves, read when it opens, so the two windows talk through `TSI.handoff` (`shared/js/handoff.js`): small messages in the browser's shared storage, heard by the other window at once. `TSI.store.fresh(key)` reads another tool's save as it is now.

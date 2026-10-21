@@ -19,6 +19,7 @@ const EXPECTED_CARDS = [
   ['The Ironbow Bastion Manager', 'DM Tool', '9'],
   ['Scarlett Isles Explorer', 'World', '8'],
   ['Clan Crest Creator', 'Players', '2'],
+  ['Scarlett Isles: Beast Handler', 'Players', 'BH-1'],
   ['Arenas of The Scarlett Isles', 'Set Pieces', '6'],
   ['The Heartwood Ritual', 'Set Pieces', '5'],
   ['Pelagosi Puzzle Trials', 'Set Pieces', '3']
@@ -105,14 +106,14 @@ async function waitSaved(page) {
         assert(/^"?Cormorant Garamond/.test(f.body), 'body font ' + f.body);
       });
 
-      await check('all eight tools, in their groups; built ones open, the rest say their phase', async () => {
+      await check('all nine tools, in their groups; built ones open, the rest say their phase', async () => {
         const cards = await page.$$eval('.tsi-card', cs => cs.map(c => [
           c.querySelector('.tsi-card__title').textContent,
           c.querySelector('.tsi-pill').textContent,
           c.querySelector('.tsi-card__cta').textContent,
           c.tagName, c.getAttribute('aria-disabled')
         ]));
-        equal(cards.length, 8, 'cards');
+        equal(cards.length, 9, 'cards');
         cards.forEach((c, i) => {
           equal(c[0], EXPECTED_CARDS[i][0], 'card ' + (i + 1) + ' name');
           equal(c[1], EXPECTED_CARDS[i][1], c[0] + ' group');
@@ -138,7 +139,7 @@ async function waitSaved(page) {
           await p2.goto(INDEX + '?tool=' + UNBUILT.id);
           const the = /^The /.test(UNBUILT.name) ? UNBUILT.name : 'The ' + UNBUILT.name;
           await H.waitForNotice(p2, new RegExp(the.replace(/[&]/g, '\\$&') + ' is coming in phase ' + UNBUILT.phase));
-          equal(await p2.$$eval('.tsi-card', c => c.length), 8);
+          equal(await p2.$$eval('.tsi-card', c => c.length), 9);
         }
         await p2.goto(INDEX + '?tool=nonsense');
         await H.waitForNotice(p2, /no tool called "nonsense"/);
@@ -198,11 +199,11 @@ async function waitSaved(page) {
     await page.goto(INDEX);
     await page.waitForSelector('.tsi-card');
 
-    await check('lists Home and all eight tools, grouped; unbuilt ones not clickable', async () => {
+    await check('lists Home and all nine tools, grouped; unbuilt ones not clickable', async () => {
       await page.click('[data-test=switch-tool]');
       await page.waitForSelector('.tsi-menu:not([hidden])');
       const items = await page.$$eval('.tsi-menu__item', xs => xs.map(x => [x.dataset.tool, x.getAttribute('aria-disabled'), x.textContent]));
-      equal(items.length, 9);
+      equal(items.length, 10);
       equal(items[0][0], 'home');
       const groups = await page.$$eval('.tsi-menu__group', gs => gs.map(g => g.textContent));
       equal(groups, ['DM Tool', 'World', 'Players', 'Set Pieces']);
@@ -260,7 +261,7 @@ async function waitSaved(page) {
         await page.click('[data-test=switch-tool]');
         await page.waitForSelector('.tsi-menu:not([hidden])');
         equal(await page.$$eval('.tsi-menu__newwin', b => b.length), 0);
-        equal(await page.$$eval('.tsi-menu__item', b => b.length), 9);
+        equal(await page.$$eval('.tsi-menu__item', b => b.length), 10);
         await page.keyboard.press('Escape');
       });
 
@@ -271,7 +272,7 @@ async function waitSaved(page) {
         await page.click('[data-test=switch-tool]');
         await page.waitForSelector('.tsi-menu:not([hidden])');
         const rows = await menuRows(page);
-        equal(rows.length, 9, 'Home and the eight tools, as before');
+        equal(rows.length, 10, 'Home and the nine tools');
         equal(rows.filter(r => r.newwin).map(r => r.tool), others('crest'));
         equal(rows.find(r => r.tool === 'home').newwin, null, 'Home');
         equal(rows.find(r => r.tool === 'crest').newwin, null, 'the open tool');
@@ -427,7 +428,7 @@ async function waitSaved(page) {
       const rows = await menuRows(page);
       equal(await page.getAttribute('.tsi-menu__item[data-tool=arenas]', 'aria-disabled'), 'true');
       equal(rows.find(r => r.tool === 'arenas').newwin, null);
-      equal(rows.filter(r => r.newwin).length, 6);
+      equal(rows.filter(r => r.newwin).length, 7);
       equal(await page.evaluate(() => { TSI.shell.openWindow('arenas'); return 'ok'; }), 'ok');
     });
     await context.close();
