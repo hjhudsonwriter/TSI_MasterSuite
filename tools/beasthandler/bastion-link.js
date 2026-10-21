@@ -84,6 +84,7 @@
         at: typeof r.at === 'number' && isFinite(r.at) ? r.at : 0,
         type: TYPES.indexOf(r.type) !== -1 ? r.type : '',
         handler: P.handlerKey(r.handler).slice(0, 40),
+        who: plain(r.who, 40),
         creature: txt(r.creature, 80),
         label: plain(r.label, 160),
         orderId: txt(r.orderId, 60),
@@ -188,7 +189,7 @@
     return Object.keys(B.done).map(function (id) { return Object.assign({ id: id }, B.done[id]); })
       .sort(function (a, b) { return b.at - a.at; })
       .slice(0, limit || 10)
-      .map(function (r) { return { id: r.id, handler: names[r.handler] || r.handler, r: r.r, why: r.why, day: r.day, label: r.label, type: r.type }; });
+      .map(function (r) { return { id: r.id, handler: names[r.handler] || r.who || r.handler, r: r.r, why: r.why, day: r.day, label: r.label, type: r.type }; });
   };
 
   /* ---------- Applying a profile ---------- */
@@ -237,7 +238,7 @@
     if (Object.prototype.hasOwnProperty.call(B.done, cmd.id)) { out.duplicate = true; out.receipt = B.done[cmd.id]; return out; }
     if (B.accept === false) { out.held = true; return out; }
     var at = typeof now === 'number' ? now : Date.now();
-    var rec = { r: 'refused', why: '', day: dayNum(s.day, 1), at: at, type: TYPES.indexOf(cmd.type) !== -1 ? cmd.type : '', handler: P.handlerKey(cmd.handler).slice(0, 40), creature: txt(cmd.creature, 80), label: '', orderId: '', dueDay: null };
+    var rec = { r: 'refused', why: '', day: dayNum(s.day, 1), at: at, type: TYPES.indexOf(cmd.type) !== -1 ? cmd.type : '', handler: P.handlerKey(cmd.handler).slice(0, 40), who: '', creature: txt(cmd.creature, 80), label: '', orderId: '', dueDay: null };
     function finish(r, why) {
       rec.r = r; rec.why = plain(why, 240);
       B.done[cmd.id] = rec;
@@ -262,6 +263,7 @@
     var d = R.creatureDev(c);
     if (!d || !d.handlerId || !P.sameHandler(d.handlerId, cmd.handler)) return refuse(name + ' isn\'t yours any more: the DM has given it another handler.');
     var who = R.handlerName(d.handlerId);
+    rec.who = plain(who, 40);
 
     if (cmd.type === 'profile.set') {
       var chk = Pf.check(cmd.payload);
