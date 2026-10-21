@@ -82,12 +82,16 @@
     return list[0] || null;
   }
 
+  P.pendingAt = pendingAt;
+
   /* The creatures standing in a built building: housed there, of its kind. */
   function housedIn(s, data, home) {
     var r = R();
     if (r.builtFacilityIds(s, data).indexOf(home.facId) === -1) return [];
     return r.housedAt(s, home.facId).filter(function (c) { return c.species === home.speciesId; });
   }
+
+  P.housedIn = housedIn;
 
   function handlerOf(c) { return isObj(c.development) ? txt(c.development.handlerId, 40) : ''; }
 
@@ -176,13 +180,20 @@
     return { label: txt(fn ? fn.label : o.label, 80), dueDay: num(o.dueDay, 0), dueLabel: r.dayLabel(num(o.dueDay, 0)), paused: !!rec };
   }
 
+  /* A short fingerprint of what a player is looking at for one beast: if it has changed by the time a
+     request arrives, the Bastion knows the player saw an older picture (it still checks everything afresh). */
+  function viewRev(d) {
+    if (!TSI.hmac) return '';
+    return TSI.hmac.sha256Hex(JSON.stringify([d.handler.name, d.bond.level, d.profile, d.training, d.orders.status, d.orders.available.map(function (a) { return a.fnId; }), d.orders.busy ? [d.orders.busy.label, d.orders.busy.dueDay] : null])).slice(0, 12);
+  }
+
   function detailOf(s, data, c, home) {
     var r = R();
     var fac = r.facility(data, home.facId);
     var d = r.devView(s, c);
     var t = d.temperament;
     var level = r.getFacilityLevel(s, fac.id);
-    return {
+    var detail = {
       id: c.id,
       name: txt(r.creatureName(data, c), 80),
       species: { id: home.speciesId, name: home.speciesName },
@@ -200,6 +211,8 @@
       orders: ordersFor(s, data, c, fac),
       artKey: home.speciesId
     };
+    detail.rev = viewRev(detail);
+    return detail;
   }
 
   /* ---------- The snapshot ---------- */
@@ -238,9 +251,13 @@
     return {
       kind: P.KIND,
       version: P.VERSION,
+      /* This Bastion save's own id: a request made for another save is refused (set once the Bastion has run since the Beast Handler arrived). */
+      campaign: r.beastCampaignId ? r.beastCampaignId(s) : '',
       asOfDay: num(s.day, 1),
       asOfLabel: r.dayLabel(num(s.day, 1)),
-      handler: key ? { name: txt(r.handlerName(handlerId), 40), hasCreatures: anyMine } : null,
+      handler: key ? { id: key, name: txt(r.handlerName(handlerId), 40), hasCreatures: anyMine } : null,
+      /* This handler's own requests and where they have got to (never anyone else's). */
+      receipts: key && r.beastReceiptsFor ? r.beastReceiptsFor(s, key) : [],
       facilities: facilities,
       creatures: creatures
     };

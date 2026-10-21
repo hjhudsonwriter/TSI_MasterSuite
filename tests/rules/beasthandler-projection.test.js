@@ -188,8 +188,8 @@
     ['7654321', 'SECRETLOGLINE', 'SECRETCLANNAME', 'SECRETEDIT', 'SECRETWAREHOUSE', 'treasury', 'pendingOrders', 'warRecovery', 'msgId', 'grantedDay', 'housedDay', 'handlerHistory', 'development'].forEach(function (needle) {
       t.ok(raw.indexOf(needle) === -1, 'no "' + needle + '" in the snapshot');
     });
-    t.same(Object.keys(m).sort(), ['asOfDay', 'asOfLabel', 'creatures', 'facilities', 'handler', 'kind', 'version']);
-    t.same(Object.keys(m.creatures[w.id]).sort(), ['artKey', 'bond', 'chronicle', 'facility', 'handler', 'id', 'name', 'orders', 'profile', 'species', 'training']);
+    t.same(Object.keys(m).sort(), ['asOfDay', 'asOfLabel', 'campaign', 'creatures', 'facilities', 'handler', 'kind', 'receipts', 'version']);
+    t.same(Object.keys(m.creatures[w.id]).sort(), ['artKey', 'bond', 'chronicle', 'facility', 'handler', 'id', 'name', 'orders', 'profile', 'rev', 'species', 'training']);
     t.ok(e.id);
   });
 

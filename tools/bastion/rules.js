@@ -435,6 +435,8 @@
     d.bridge = R.cleanBridge(s.bridge);
     /* The creatures (pull request 7), before the war's records, which read them. */
     d.creatures = R.cleanCreatures(s.creatures, d.day);
+    /* The Beast Handler's record (tools/beasthandler/bastion-link.js): only if the save has one. */
+    if (isObj(s.beast) && R.cleanBeast) d.beast = R.cleanBeast(s.beast);
     d.greatRites = R.cleanGreatRites(s.greatRites);
     d.dmEdits = R.cleanDmEdits(s.dmEdits);
     d.diplomaticRecords = R.cleanDiplomaticRecords ? R.cleanDiplomaticRecords(s.diplomaticRecords, d.day, data) : (isObj(s.diplomaticRecords) ? s.diplomaticRecords : { next: 1, list: [] });
@@ -527,6 +529,10 @@
      Explorer's day since it started from nothing); a save from before the
      link has none, so it applies the Explorer's new changes. */
   function txt(v, max) { return typeof v === 'string' ? v.slice(0, max) : ''; }
+  /* Words from a save: no markup brackets, control or direction-changing characters, tidy spaces, at most max letters. */
+  function words(v, max) {
+    return typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff<>]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max) : '';
+  }
   function numOr(v, fallback) { return typeof v === 'number' && isFinite(v) ? v : fallback; }
   R.cleanBridge = function (src) {
     var out = { fresh: false, done: {} };
@@ -705,7 +711,7 @@
       return out;
     });
     if (chronicle.length > R.CHRONICLE_MAX) chronicle = chronicle.slice(chronicle.length - R.CHRONICLE_MAX);
-    return {
+    var kept = {
       version: 1,
       handlerId: txt(d.handlerId, 40),
       bond: { level: level, ready: ready },
@@ -719,6 +725,19 @@
       seq: clampInt(d.seq, 0, 1000000),
       chronicle: chronicle
     };
+    /* Beast Handler (21 October 2026): the Regional Variety (a cosmetic line, never a stat) and a short
+       note of each change to the profile lines (who, when, from, to), kept only when there is something to keep. */
+    var regional = words(d.regional, 60);
+    if (regional) kept.regional = regional;
+    var plog = (arr(d.profileLog) || []).filter(isObj).slice(-40).map(function (x) {
+      var change = {};
+      ['dominant', 'attachment', 'trigger', 'regional'].forEach(function (f) {
+        if (isObj(x.change) && isObj(x.change[f])) change[f] = { from: words(x.change[f].from, 120), to: words(x.change[f].to, 120) };
+      });
+      return { day: dayNum(x.day, 1), by: words(x.by, 40), change: change };
+    }).filter(function (x) { return Object.keys(x.change).length; });
+    if (plog.length) kept.profileLog = plog;
+    return kept;
   };
   R.CREATURE_KEYS = ['id', 'species', 'owner', 'name', 'status', 'home', 'grantedDay', 'housedDay', 'msgId'];
   R.cleanCreatures = function (src, today) {

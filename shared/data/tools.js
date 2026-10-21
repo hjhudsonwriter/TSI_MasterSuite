@@ -103,6 +103,15 @@ window.TSI_DATA.tools = [
         'tools/bastion/war-battle-rules.js',
         'tools/bastion/war-ai.js',
         'tools/bastion/war-campaign-rules.js',
+        /* The Beast Handler's link (21 October 2026): the Bastion checks and applies each request from a
+           player's companion once, and the DM's panel makes the codes that link a phone. */
+        'shared/js/hmac.js',
+        'tools/beasthandler/data/profile-tables.js',
+        'tools/beasthandler/projection.js',
+        'tools/beasthandler/profile-rules.js',
+        'tools/beasthandler/codes.js',
+        'tools/beasthandler/bastion-link.js',
+        'tools/beasthandler/dm-panel.js',
         'tools/bastion/war-table.js',
         /* The Explorer's rules, only to check its half of a campaign file
            on Import (the Explorer and the Bastion save as one campaign). */
@@ -204,9 +213,13 @@ window.TSI_DATA.tools = [
         'tools/bastion/war-battle-rules.js',
         'tools/bastion/war-ai.js',
         'tools/bastion/war-campaign-rules.js',
+        'shared/js/hmac.js',
         'tools/beasthandler/data/profile-tables.js',
         'tools/beasthandler/data/art-map.js',
         'tools/beasthandler/projection.js',
+        'tools/beasthandler/profile-rules.js',
+        'tools/beasthandler/codes.js',
+        'tools/beasthandler/bastion-link.js',
         'tools/beasthandler/model.js',
         'tools/beasthandler/tool.js'
       ]
