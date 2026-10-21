@@ -339,11 +339,13 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     /* A control reached with the keyboard is never left under the bottom bar or the top bar. */
     await pp.setViewportSize({ width: 360, height: 640 });
     await pp.click('[data-test=bh-tab-profile]');
-    for (const sel of ['[data-test=bh-edit]']) {
+    const reachable = await pp.$$eval('.tsi-bh button:not([disabled]):not(.tsi-bh-nav__btn), .tsi-bh summary', ns => ns.map((n, i) => { n.setAttribute('data-kbd', String(i)); return '[data-kbd="' + i + '"]'; }));
+    assert(reachable.length >= 2, 'there are controls to check');
+    for (const sel of reachable) {
       await pp.focus(sel);
-      await pp.waitForTimeout(200);
-      const top = await pp.evaluate(s => { const n = document.querySelector(s); const b = n.getBoundingClientRect(); const hit = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2); return hit === n || n.contains(hit); }, sel);
-      assert(top, sel + ' is hidden behind a bar when focused at 360 x 640');
+      await pp.waitForTimeout(250);
+      const top = await pp.evaluate(s => { const n = document.querySelector(s); const b = n.getBoundingClientRect(); const hit = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2); return { ok: hit === n || n.contains(hit), hit: hit ? (hit.getAttribute('data-test') || hit.className || hit.tagName) : null, what: n.getAttribute('data-test') || n.textContent.slice(0, 20), rect: [Math.round(b.top), Math.round(b.bottom)], vh: innerHeight, y: Math.round(scrollY) }; }, sel);
+      assert(top.ok, 'a control is hidden behind a bar when focused at 360 x 640: ' + JSON.stringify(top));
     }
     /* On the narrowest phone a building's "Level N" tag stays on one line. */
     await pp.setViewportSize({ width: 320, height: 640 });
