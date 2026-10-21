@@ -285,9 +285,14 @@ body.tsi-bh-phone .tsi-btn--primary:hover { filter: brightness(1.06); }
   border-radius: var(--tsi-radius-lg);
   box-shadow: var(--tsi-shadow-card);
 }
-.tsi-tool--beasthandler .tsi-bh-rapport__top { display: flex; flex-wrap: wrap; align-items: center; gap: var(--tsi-space-3); }
+.tsi-tool--beasthandler .tsi-bh-rapport__top { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--tsi-space-2) var(--tsi-space-3); }
+/* On a phone the stage chip sits under the headline instead of squeezing it. */
+@media (max-width: 479px) {
+  .tsi-tool--beasthandler .tsi-bh-rapport__top { grid-template-columns: auto minmax(0, 1fr); }
+  .tsi-tool--beasthandler .tsi-bh-rapport__stage { grid-column: 2; justify-self: start; }
+}
 .tsi-tool--beasthandler .tsi-bh-rapport__heart { flex: none; display: grid; place-items: center; width: 38px; height: 38px; font-size: 18px; color: var(--tsi-gold); background: rgba(244, 205, 118, .1); border: 1px solid rgba(244, 205, 118, .35); border-radius: 12px; }
-.tsi-tool--beasthandler .tsi-bh-rapport__words { flex: 1 1 9em; min-width: 0; display: grid; gap: 2px; }
+.tsi-tool--beasthandler .tsi-bh-rapport__words { min-width: 0; display: grid; gap: 2px; }
 .tsi-tool--beasthandler .tsi-bh-rapport__label { font: 600 11px/1.2 var(--tsi-font-display); letter-spacing: var(--tsi-track-kicker); text-transform: uppercase; color: var(--tsi-text-soft); }
 .tsi-tool--beasthandler .tsi-bh-rapport__line { font: 700 var(--tsi-fs-h3)/1.2 var(--tsi-font-display); letter-spacing: var(--tsi-track-label); color: var(--tsi-gold); overflow-wrap: normal; word-break: normal; }
 .tsi-tool--beasthandler .tsi-bh-rapport__stage { flex: none; padding: 6px 10px; font: 700 11px/1.2 var(--tsi-font-display); letter-spacing: var(--tsi-track-pill); text-transform: uppercase; color: var(--tsi-text-muted); background: rgba(255, 255, 255, .06); border: 1px solid var(--tsi-line); border-radius: 10px; }
