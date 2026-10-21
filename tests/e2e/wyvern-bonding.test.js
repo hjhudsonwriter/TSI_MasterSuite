@@ -110,6 +110,21 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     await ba.waitForTimeout(500);
     const d = (await bas(ba)).creatures[0].development;
     equal([d.temperament.dominant, d.chronicle[d.chronicle.length - 1].text], ['Proud', 'Slept on the tower in the rain.']);
+    equal(d.chronicle[d.chronicle.length - 1].private, undefined, 'an ordinary note is not flagged');
+    /* Beast Handler (D6): a note ticked "DM only" is flagged, and the list says so. */
+    await openRoost();
+    await ba.click('[data-test=creature-chronicle-elara_wyvern] summary');
+    await ba.click('[data-test=creature-note-elara_wyvern]');
+    await ba.waitForSelector('[data-test=note-dialog]');
+    await ba.fill('[data-test=note-text]', 'Who really sent the storm.');
+    await ba.check('[data-test=note-private]');
+    await ba.click('[data-test=note-dialog] .tsi-modal__foot .tsi-btn--primary');
+    await ba.waitForTimeout(500);
+    const e = (await bas(ba)).creatures[0].development;
+    equal([e.chronicle[e.chronicle.length - 1].text, e.chronicle[e.chronicle.length - 1].private], ['Who really sent the storm.', true]);
+    await openRoost();
+    await ba.click('[data-test=creature-chronicle-elara_wyvern] summary');
+    assert(/Who really sent the storm\. \(DM only\)/.test(await bare(ba, '[data-test=creature-chronicle-elara_wyvern]')), await bare(ba, '[data-test=creature-chronicle-elara_wyvern]'));
   });
 
   await check('the handler dialog changes the handler with a reason; the new pairing starts at Bond 0', async () => {

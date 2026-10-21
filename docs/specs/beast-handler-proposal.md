@@ -1,6 +1,6 @@
 # Beast Handler: audit and phased proposal (BH-0)
 
-Status: **proposal for Harry's approval. No code written.**
+Status: **approved by Harry on 21 October 2026 (D1 to D8 as recommended; D9 does not apply). Building BH-1.**
 Source brief: *BEAST_HANDLER Claude Code Handover* (20 pages). Section numbers below match the brief's section 19.
 
 ---
@@ -185,3 +185,22 @@ Nothing below is guessed. Defaults are my recommendation.
 - **D9. If you choose C:** you would create and own the hosted account, and I would amend `CLAUDE.md` ground rule 2 in a separate PR for you to approve first.
 
 Deferred as you asked and not touched here: Explorer collecting parcels before the Bastion opens, Courier Levels 3–5, research trees, upkeep deductions, War Room doctrines, Grand War Exercises, the Hall's wider overhaul, Stone Quarry / Weavers' Hall R&D.
+
+
+---
+
+## 8. Decisions recorded (Harry, 21 October 2026)
+
+| # | Decision |
+|---|---|
+| D1 | Phone route: **A + B** (same device now; the offline code swap later). No live relay. |
+| D2 | Griffin and Dire Wolf training orders are shown in the companion, with the same rules as the Wyvern's. |
+| D3 | The pending-order lock is for the **whole building**: while any order is pending there, the phone offers no new order and shows the pending one and its due day. The DM's own training places are untouched. (Built to read "any order", including a House order or an Upgrade; say if you want training orders only.) |
+| D4 | Other players' creatures: directory entry only. |
+| D5 | Players may request **free training only**. The 150 gp harness, House orders, milestones and the first flight stay with the DM. |
+| D6 | The Chronicle gets a **DM only** flag on notes. Built in BH-1a: the Bastion's Add a note box has a tick box, the flag is saved and kept by the save cleaner, and the player view leaves those notes out. |
+| D7 | Harry supplied the d12 temperament table, the Wyvern / Griffin / Dire Wolf d8 attachment cue and instinctive trigger tables, and fifteen Regional Varieties. Saved as `tools/beasthandler/data/profile-tables.js`. "Tidecliff Wyvern" in his worked example is not one of the fifteen, so it is treated as an example only. |
+| D8 | A small handler list in the Bastion save, with existing handler names mapped across (BH-2c). Until then a handler is matched by name, ignoring capitals and spacing. |
+| D9 | Not needed (no live relay). `CLAUDE.md` stays as it is. |
+
+Profile rules Harry set (for BH-2a): Roll shows a suggestion and saves nothing; the player can reroll, pick another option or type their own; Save asks the Bastion; later edits are logged for transparency but are **not** put into the Chronicle; a roll never changes bond, stats, training or abilities; Elara's wyvern can have its four lines chosen rather than rolled.

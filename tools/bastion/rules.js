@@ -657,7 +657,8 @@
      training: { <programme id>: { day } } (each once, for good), harness:
      { fitted, paidGP, fittedDay }, firstFlight: { approved, day, handlerId },
      handlerHistory: [{ handlerId, bond, fromDay, toDay, reason }], seq, chronicle:
-     [{ id, day, cat, text, by, link }] }.
+     [{ id, day, cat, text, by, link, private? }] } (private: a DM-only note,
+     never shown to the player's Beast Handler companion).
      Elara's wyvern is credited Bond 1 once, with one Chronicle line, the first
      time it is loaded or housed without a development; a creature whose
      development is already there is never reset. Any other creature gets one
@@ -698,7 +699,10 @@
       seen[e.id] = true;
       return true;
     }).map(function (e) {
-      return { id: txt(e.id, 40), day: dayNum(e.day, 1), cat: txt(e.cat, 20), text: txt(e.text, 400), by: txt(e.by, 40), link: txt(e.link, 80) };
+      var out = { id: txt(e.id, 40), day: dayNum(e.day, 1), cat: txt(e.cat, 20), text: txt(e.text, 400), by: txt(e.by, 40), link: txt(e.link, 80) };
+      /* A DM-only entry (Beast Handler, D6): the player's companion never shows it. Kept only when set, so older saves are unchanged. */
+      if (e.private === true) out.private = true;
+      return out;
     });
     if (chronicle.length > R.CHRONICLE_MAX) chronicle = chronicle.slice(chronicle.length - R.CHRONICLE_MAX);
     return {

@@ -623,15 +623,17 @@
         var c = R.creatureById(state, id);
         if (!c) return;
         var note = el('textarea', { class: 'tsi-input', rows: '3', maxlength: '400', placeholder: 'A scene, a memory, a correction…', 'data-test': 'note-text' });
+        /* Beast Handler (Harry, D6): a note the player's companion must not show. */
+        var secret = el('input', { type: 'checkbox', 'data-test': 'note-private' });
         var ok = await plainModal({
           title: 'Chronicle note: ' + R.creatureName(data, c),
           className: 'tsi-bas-modal',
-          body: [field('Note', note)],
+          body: [field('Note', note), el('label', { class: 'tsi-bas-field' }, [secret, ' DM only: the player\'s Beast Handler won\'t show this note'])],
           actions: [{ label: 'Cancel', value: false }, { label: 'Add to the Chronicle', value: true, primary: true }],
           onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'note-dialog'); setTimeout(function () { note.focus(); }, 0); }
         });
         if (!ok || !life.alive) return;
-        var res = R.addChronicleNote(state, data, id, note.value);
+        var res = R.addChronicleNote(state, data, id, note.value, secret.checked);
         if (!res.ok) { await say(res.message); return; }
         done();
       });
@@ -691,7 +693,7 @@
           !(d.firstFlight && d.firstFlight.approved) && R.firstFlightReady(state, data, c) ? btn('Confirm first ' + R.rideNoun(data, c.species) + '…', function () { onConfirmFlight(c.id); }, 'tsi-btn--primary', prefix + '-flight-' + c.id) : null,
           el('details', { class: 'tsi-bas-wyv__chronicle', 'data-test': prefix + '-chronicle-' + c.id }, [
             el('summary', { text: 'Chronicle (' + chron.length + ')' }),
-            el('ul', { class: 'tsi-bas-res-list' }, chron.map(function (e) { return el('li', { text: R.dayLabel(e.day) + ' · ' + e.text }); })),
+            el('ul', { class: 'tsi-bas-res-list' }, chron.map(function (e) { return el('li', { text: R.dayLabel(e.day) + ' · ' + e.text + (e.private ? ' (DM only)' : '') }); })),
             btn('Add a note…', function () { onChronicleNote(c.id); }, 'tsi-btn--ghost', prefix + '-note-' + c.id)
           ])
         ]);
