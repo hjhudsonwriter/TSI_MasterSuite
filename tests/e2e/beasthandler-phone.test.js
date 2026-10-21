@@ -164,6 +164,12 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     equal(await bare(pp, '[data-test=bh-p-dominant]'), 'Watchful');
     equal(await bare(pp, '[data-test=bh-p-regional]'), 'Bloodcrest');
     assert(/Saved in the Bastion/.test(await bare(pp, '[data-test=bh-requests]')), await bare(pp, '[data-test=bh-requests]'));
+    /* The saved variety's painted picture is on screen: really loaded, and big enough to see, on the phone's own page. */
+    await pp.click('[data-test=bh-back]');
+    await pp.waitForSelector('[data-test=bh-portrait-large] img', { timeout: 5000 });
+    const pic = await pp.$eval('[data-test=bh-portrait-large] img', i => { const r = i.getBoundingClientRect(); return { src: i.getAttribute('src'), w: Math.round(r.width), h: Math.round(r.height), loaded: i.complete && i.naturalWidth > 0 }; });
+    assert(/wyvern\/bloodcrest\.webp$/.test(pic.src) && pic.loaded && pic.w > 150 && pic.h > 250, JSON.stringify(pic));
+    await pp.click('[data-test=bh-tab-profile]');
   });
 
   await check('an older snapshot pasted after a newer one is refused, and the newer one stays', async () => {

@@ -118,4 +118,60 @@
     t.equal(M.artFor(T.beastArt, 'wyvern', 'shadowmount').src, 'wyvern/shadowmount.webp');
     t.equal(M.artFor(T.beastArt, 'griffin', '').src, '', 'no variety: the medallion');
   });
+
+  group('Beast Handler: the beast\'s page and the first meeting (22 October 2026)');
+
+  test('Bond 1 to 5 are five pills; Bond 0 fills none; the stage line says where it is', function (t) {
+    t.same(M.bondPills(3).pills.map(function (p) { return p.state; }), ['done', 'done', 'current', 'todo', 'todo']);
+    t.equal(M.bondPills(3).stageText, 'Stage 3 of 5');
+    t.same(M.bondPills(0).pills.map(function (p) { return p.state; }), ['todo', 'todo', 'todo', 'todo', 'todo']);
+    t.equal(M.bondPills(0).stageText, 'Stage 0 of 5');
+    t.same(M.bondPills(5).pills.map(function (p) { return p.state; }), ['done', 'done', 'done', 'done', 'current']);
+    t.equal(M.bondPills(9).level, 5, 'never past 5');
+    t.equal(M.bondPills(-2).level, 0);
+    t.same(M.bondPills(1).pills.map(function (p) { return p.label; }), ['Acclimatised', 'Trusting', 'Bonded', 'Devoted', 'Legendary']);
+    t.equal(M.rapportLine({ level: 3, name: 'Bonded' }), 'Bond 3 \u00b7 Bonded');
+  });
+
+  test('a name takes its apostrophe the usual way, and the kind of beast is lower case', function (t) {
+    t.equal(M.possessive('Elara'), 'Elara\u2019s');
+    t.equal(M.possessive('Aurelius'), 'Aurelius\u2019');
+    t.equal(M.speciesNoun({ species: { name: 'Dire Wolf' } }), 'dire wolf');
+    t.equal(M.speciesNoun(null), 'beast');
+  });
+
+  test('lines asked for and still waiting are laid over the Bastion\'s; the newest request wins; an answered one no longer counts', function (t) {
+    var d = { id: 'c1', species: { id: 'wyvern', name: 'Wyvern' }, profile: { dominant: 'Proud', attachment: '', trigger: '', regional: '' } };
+    var snap = { receipts: [] };
+    var box = [
+      { id: 'a', type: 'profile.set', creature: 'c1', label: 'x', at: 1, payload: { regional: 'Bleakhook', trigger: 'Storms' } },
+      { id: 'b', type: 'profile.set', creature: 'c1', label: 'x', at: 2, payload: { regional: 'Widowspine' } },
+      { id: 'o', type: 'order.request', creature: 'c1', label: 'x', at: 3, payload: { fnId: 'f' } },
+      { id: 'z', type: 'profile.set', creature: 'other', label: 'x', at: 4, payload: { regional: 'Ironcrown' } }
+    ];
+    var pend = M.pendingProfile(snap, box, 'c1');
+    t.same(pend, { trigger: 'Storms', regional: 'Widowspine' });
+    t.same(M.effectiveProfile(d, pend), { dominant: 'Proud', attachment: '', trigger: 'Storms', regional: 'Widowspine' });
+    t.same(M.effectiveProfile(d, null), { dominant: 'Proud', attachment: '', trigger: '', regional: '' });
+    t.equal(M.pendingProfile({ receipts: [{ id: 'a', creature: 'c1', type: 'profile.set', state: 'saved' }, { id: 'b', creature: 'c1', type: 'profile.set', state: 'saved' }] }, box, 'c1'), null, 'answered');
+    t.equal(M.pendingProfile(snap, [], 'c1'), null);
+  });
+
+  test('a beast is met once its subspecies is chosen (saved, or asked for and waiting), not before', function (t) {
+    var d = { id: 'c1', name: 'Stormwing', species: { id: 'wyvern', name: 'Wyvern' }, profile: { dominant: 'Proud', attachment: 'x', trigger: 'y', regional: '' } };
+    t.equal(M.needsMeeting(d, null), true, 'no subspecies yet');
+    t.equal(M.needsMeeting(d, { regional: '  ' }), true, 'a blank one is not a choice');
+    t.equal(M.needsMeeting(d, { regional: 'Widowspine' }), false, 'asked for and waiting');
+    d.profile.regional = 'Bleakhook';
+    t.equal(M.needsMeeting(d, null), false, 'saved');
+  });
+
+  test('the meeting\'s words use the beast\'s name and kind', function (t) {
+    var x = M.meetingText({ name: 'Stormwing', species: { name: 'Wyvern' } });
+    t.equal(x.meet, 'It\u2019s time to meet Stormwing\u2026');
+    t.equal(x.subspecies, 'There are many subspecies of wyvern in The Scarlett Isles, but which one is Stormwing?');
+    t.equal(x.personality, 'Every wyvern has its own unique personality. What is Stormwing\u2019s like?');
+    t.equal(x.welcome, 'Welcome to the Ironbow, Stormwing!');
+    t.equal(M.meetingText({ name: 'Aurelius', species: { name: 'Dire Wolf' } }).personality, 'Every dire wolf has its own unique personality. What is Aurelius\u2019 like?');
+  });
 }());

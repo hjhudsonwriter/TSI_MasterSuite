@@ -138,7 +138,7 @@
           return '';
         },
         outbox: function () {
-          return queue.commands.map(function (c) { return { id: c.id, type: c.type, creature: c.creature, fac: c.fac, label: c.label, at: c.at }; });
+          return queue.commands.map(function (c) { return { id: c.id, type: c.type, creature: c.creature, fac: c.fac, label: c.label, at: c.at, payload: c.payload }; });
         },
         submit: function (body) {
           var why = host.canSubmit();

@@ -22,6 +22,17 @@
   };
   M.bondLine = function (bond) { return 'Bond ' + bond.level + ': ' + bond.name; };
 
+  /* Bond 1 to 5 as five pills for a beast's main page: { n, label, state: 'done' | 'current' | 'todo' }, and the stage line. */
+  M.BOND_SHORT = ['Acclimatised', 'Trusting', 'Bonded', 'Devoted', 'Legendary'];
+  M.bondPills = function (level) {
+    var lv = typeof level === 'number' && isFinite(level) ? Math.max(0, Math.min(5, Math.floor(level))) : 0;
+    var pills = [];
+    for (var n = 1; n <= 5; n++) pills.push({ n: n, label: M.BOND_SHORT[n - 1], state: n < lv ? 'done' : (n === lv ? 'current' : 'todo') });
+    return { level: lv, pills: pills, stageText: 'Stage ' + lv + ' of 5' };
+  };
+  /* "Bond 3 · Bonded" for the rapport line. */
+  M.rapportLine = function (bond) { return 'Bond ' + bond.level + ' · ' + bond.name; };
+
   /* The Regional Variety table entry whose name matches (any capitals), or null. */
   M.regionalInfo = function (tables, speciesId, name) {
     var sp = tables && isObj(tables.species) ? tables.species[speciesId] : null;
@@ -76,6 +87,41 @@
     return 'Read from the Bastion saved on this device · ' + info.asOfLabel;
   };
 
+  /* ---------- The first meeting (Harry, 22 October 2026) ---------- */
+  M.possessive = function (name) { var n = String(name || '').trim(); return n + (/s$/i.test(n) ? '\u2019' : '\u2019s'); };
+  M.speciesNoun = function (detail) { return String(detail && detail.species && detail.species.name || 'beast').toLowerCase(); };
+  /* The profile lines still waiting to be answered for a beast, newest request last winning: { regional?, dominant?, ... } or null. */
+  M.pendingProfile = function (snap, outbox, creatureId) {
+    var rows = M.requestRows(snap, outbox, creatureId, 50).filter(function (r) { return r.state === 'waiting' && r.type === 'profile.set' && isObj(r.payload); });
+    if (!rows.length) return null;
+    var out = {};
+    rows.slice().reverse().forEach(function (r) {   /* requestRows is newest first; apply oldest first */
+      ['dominant', 'attachment', 'trigger', 'regional'].forEach(function (k) { if (typeof r.payload[k] === 'string') out[k] = r.payload[k]; });
+    });
+    return Object.keys(out).length ? out : null;
+  };
+  /* The profile as the player should see it: the Bastion's lines with the ones asked for and not yet answered laid over. */
+  M.effectiveProfile = function (detail, pending) {
+    var p = detail && isObj(detail.profile) ? detail.profile : {};
+    var out = { dominant: p.dominant || '', attachment: p.attachment || '', trigger: p.trigger || '', regional: p.regional || '' };
+    if (pending) Object.keys(pending).forEach(function (k) { if (typeof pending[k] === 'string') out[k] = pending[k]; });
+    return out;
+  };
+  /* Has this beast been introduced? Not until a subspecies has been chosen (saved, or asked for and waiting). */
+  M.needsMeeting = function (detail, pending) {
+    return !M.effectiveProfile(detail, pending).regional.trim();
+  };
+  /* The words of the sequence. */
+  M.meetingText = function (detail) {
+    var n = detail.name, noun = M.speciesNoun(detail);
+    return {
+      meet: 'It\u2019s time to meet ' + n + '\u2026',
+      subspecies: 'There are many subspecies of ' + noun + ' in The Scarlett Isles, but which one is ' + n + '?',
+      personality: 'Every ' + noun + ' has its own unique personality. What is ' + M.possessive(n) + ' like?',
+      welcome: 'Welcome to the Ironbow, ' + n + '!'
+    };
+  };
+
   /* A handler picker's choices: [{ value, label }] with "no handler" first. */
   M.handlerChoices = function (handlers) {
     var out = [{ value: '', label: 'No handler (see the directory only)' }];
@@ -93,7 +139,7 @@
     receipts.forEach(function (r) { answered[r.id] = true; });
     var rows = (outbox || []).filter(function (o) { return o.creature === creatureId && !answered[o.id]; })
       .sort(function (a, b) { return (b.at || 0) - (a.at || 0); })
-      .map(function (o) { return { id: o.id, type: o.type, state: 'waiting', label: o.label, why: '', dueLabel: '' }; });
+      .map(function (o) { return { id: o.id, type: o.type, state: 'waiting', label: o.label, why: '', dueLabel: '', payload: isObj(o.payload) ? o.payload : null }; });
     receipts.filter(function (r) { return r.creature === creatureId; }).forEach(function (r) {
       rows.push({ id: r.id, type: r.type, state: r.state, label: r.label, why: r.why, dueLabel: r.dueDay ? 'Day ' + r.dueDay : '' });
     });

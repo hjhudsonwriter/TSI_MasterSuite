@@ -156,7 +156,7 @@
       if (!s.campaign || s.campaign !== pairing.campaign) return 'The DM needs to open the Bastion once and send a new snapshot before you can ask for anything.';
       return '';
     },
-    outbox: function () { return outbox.map(function (o) { return { id: o.id, type: o.type, creature: o.creature, fac: o.fac, label: o.label, at: o.at }; }); },
+    outbox: function () { return outbox.map(function (o) { return { id: o.id, type: o.type, creature: o.creature, fac: o.fac, label: o.label, at: o.at, payload: o.payload }; }); },
     submit: function (body) {
       var why = host.canSubmit();
       if (why) return Promise.resolve({ ok: false, message: why });
@@ -165,7 +165,7 @@
       var label = !d ? '' : body.type === 'profile.set' ? d.name + ' (profile)' : d.name + ': ' + ((d.orders.available.filter(function (o) { return o.fnId === body.payload.fnId; })[0] || {}).label || body.payload.fnId);
       var cmd = { v: 1, id: 'p-' + TSI.hmac.randomId(24), campaign: pairing.campaign, handler: pairing.handler, creature: body.creature, fac: body.fac || '', type: body.type, view: body.view || '', label: label, payload: body.payload, at: Date.now() };
       var code = C.encodeCommand(cmd, pairing.secret);
-      outbox.push({ id: cmd.id, type: cmd.type, creature: cmd.creature, fac: cmd.fac, label: label, at: cmd.at, code: code });
+      outbox.push({ id: cmd.id, type: cmd.type, creature: cmd.creature, fac: cmd.fac, label: label, at: cmd.at, code: code, payload: cmd.payload });
       saveOutbox();
       return Promise.resolve({ ok: true, id: cmd.id, code: code, label: label });
     },

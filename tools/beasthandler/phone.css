@@ -1,14 +1,10 @@
 /* Scarlett Isles: Beast Handler — the phone page's own frame (beasthandler.html).
    The companion's screens are styled by beasthandler.css; this is only the slim top bar, the dark ground
-   (no heavy painting, so it loads fast on a phone) and the first-run screens. */
+   (plain charcoal, so it loads fast on a phone) and the first-run screens. */
 html, body.tsi-bh-phone { min-height: 100%; }
 body.tsi-bh-phone {
   margin: 0;
-  background:
-    radial-gradient(1000px 500px at 20% 0%, rgba(255, 120, 60, .13), transparent 60%),
-    radial-gradient(900px 500px at 90% 10%, rgba(214, 178, 94, .09), transparent 55%),
-    var(--tsi-bg);
-  background-attachment: fixed;
+  background: var(--tsi-bg);
   color: var(--tsi-text);
   font-family: var(--tsi-font-body);
 }
