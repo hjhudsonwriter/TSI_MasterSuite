@@ -27,7 +27,7 @@
 
   test('a picture falls back to the medallion until one is added, and a variety\'s own picture wins when it has one', function (t) {
     t.same(M.artFor(T.beastArt, 'wyvern', ''), { src: '', label: 'Wyvern', alt: 'A wyvern' });
-    t.same(M.artFor(T.beastArt, 'wyvern', 'widowspine'), { src: '', label: 'Wyvern', alt: 'A wyvern' }, 'not matched yet');
+    t.same(M.artFor(T.beastArt, 'wyvern', 'widowspine'), { src: 'wyvern/widowspine.webp', label: 'Wyvern', alt: 'A wyvern' }, 'its own picture');
     t.same(M.artFor(T.beastArt, 'dire_wolf', 'icepelt'), { src: 'dire-wolf/icepelt.webp', label: 'Dire Wolf', alt: 'A dire wolf' }, 'Harry\'s Icepelt picture');
     t.same(M.artFor(T.beastArt, 'dire_wolf', ''), { src: '', label: 'Dire Wolf', alt: 'A dire wolf' }, 'no variety: the medallion');
     t.same(M.artFor(T.beastArt, 'dire_wolf', 'unknownvariety'), { src: '', label: 'Dire Wolf', alt: 'A dire wolf' });
@@ -105,5 +105,17 @@
     var out = M.cleanQueue({ commands: many }).commands;
     t.equal(out.length, 100);
     t.equal(out[99].id, 'c-many1129', 'the newest are kept');
+  });
+
+  test('every Regional Variety in Harry\'s tables has its own picture, and no picture belongs to an unknown variety', function (t) {
+    ['wyvern', 'griffin', 'dire_wolf'].forEach(function (sp) {
+      var ids = T.beastProfile.species[sp].regional.map(function (r) { return r.id; }).sort();
+      var pics = Object.keys(T.beastArt.species[sp].variants).sort();
+      t.same(pics, ids, sp + ': one picture for each of its five varieties');
+      pics.forEach(function (id) { t.ok(new RegExp('^' + sp.replace('_', '-') + '/' + id + '\\.webp$').test(T.beastArt.species[sp].variants[id].src), sp + '/' + id + ' points at its own file'); });
+    });
+    t.equal(M.artFor(T.beastArt, 'griffin', 'embermantle').src, 'griffin/embermantle.webp');
+    t.equal(M.artFor(T.beastArt, 'wyvern', 'shadowmount').src, 'wyvern/shadowmount.webp');
+    t.equal(M.artFor(T.beastArt, 'griffin', '').src, '', 'no variety: the medallion');
   });
 }());

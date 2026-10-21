@@ -219,7 +219,7 @@ Profile rules Harry set (for BH-2a): Roll shows a suggestion and saves nothing; 
 | BH-2c write flows and the DM's panel | Done | A box in the Bastion's Management panel; the companion's buttons are on. |
 | BH-3a code-swap transport | Done | `beasthandler.html`, `codes.js`, `shared/js/hmac.js`. No QR codes: the codes are long, so they are pasted or sent as a file. |
 | BH-3b live relay | Not wanted | Harry chose no relay (D1, D9). |
-| BH-4 art and polish | Part done | Five Dire Wolf portraits shown by Regional Variety; the five wyvern pictures saved but unused; the griffin pictures still to arrive as files. No animation yet. |
+| BH-4 art and polish | Part done | All fifteen portraits (five Dire Wolves, five Wyverns, five Griffins) shown by Regional Variety. No animation yet. |
 
 See `docs/PHONE-PAGE.md` for how the phone page works and which files a phone needs.
 
@@ -232,4 +232,4 @@ See `docs/PHONE-PAGE.md` for how the phone page works and which files a phone ne
 - **Reasons the DM types for a bond or handler change:** stay visible to players.
 - **Pairing codes:** no expiry, any number of phones: fine as built.
 - **Handlers:** matched by name: fine.
-- **Griffin pictures** (confirmed): fiery russet and bronze = Embermantle; brown head and silver-grey shoulders = Galeclaw; pale silver and white = Silvershroud; steel-grey with lightning = Thunderwing; gold and ivory = Dawnmantle. The picture files themselves still have to be uploaded (they never reached the repository). Harry also has updated Wyvern and Dire Wolf pictures and descriptions to send.
+- **Griffin pictures** (confirmed): fiery russet and bronze = Embermantle; brown head and silver-grey shoulders = Galeclaw; pale silver and white = Silvershroud; steel-grey with lightning = Thunderwing; gold and ivory = Dawnmantle. Harry uploaded all fifteen pictures to the repository the same day (`WY_`, `GR_` and `DW_` files, each named for its variety); they are in use.

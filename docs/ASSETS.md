@@ -471,7 +471,9 @@ Sent in the chat as WebP pictures (941 × 1672, upright, pixel-painted) and kept
 | 24.webp (black wolf, mossy mane, scarred muzzle, misty marsh and ruins) | `tools/beasthandler/assets/dire-wolf/reedshadow.webp` | 428 KB | Reedshadow | Yes |
 | 23.webp (golden wolf, russet mane, sunlit citadel with sun banners) | `tools/beasthandler/assets/dire-wolf/hollowhowl.webp` | 322 KB | Hollowhowl | Yes |
 
-### Wyverns (kept in `extras/` until Harry says which is which)
+### Wyverns (first sent in the chat; superseded by Harry's named uploads below, 21 October 2026)
+
+**Moved:** `wyvern-3-icy-blue-sea-cliffs.webp`, `wyvern-4-crimson-red-cliffs.webp` and `wyvern-5-storm-sea-castle.webp` (rows 27, 28 and 29 below) now live at `tools/beasthandler/assets/wyvern/bleakhook.webp`, `bloodcrest.webp` and `widowspine.webp`, and are in use. The first two (rows 25 and 26) are still in `extras/wyvern/`, unused.
 
 | Original (as sent) | In the suite | Size | What it shows | Used? |
 |---|---|---|---|---|
@@ -483,7 +485,7 @@ Sent in the chat as WebP pictures (941 × 1672, upright, pixel-painted) and kept
 
 ### Griffins
 
-Harry's five Griffin pictures reached the chat as images only, not as files, so they are **not saved yet**. Waiting for them to be sent again.
+Harry's five Griffin pictures first reached the chat as images only, so they were not saved. He uploaded them to the repository as `GR_*.png` the same day (below).
 
 ### The phone page's Home Screen icon (21 October 2026)
 | Old location | New location | Used |
@@ -504,5 +506,22 @@ Harry uploaded five PNGs (941 × 1672, about 3 MB each) as `DW_*.png`. The origi
 
 The two pictures that were replaced are kept, not used, in `tools/beasthandler/assets/extras/dire-wolf-previous/`: `hollowhowl-golden-wolf-at-sunset-citadel.webp` and `slatejaw-wet-wolf-on-the-shore.webp`.
 
-Still to arrive in the repository: the Wyvern (`WY_`) and Griffin (`GR_`) pictures. At the time of writing only the five `DW_` files had been committed.
+## Scarlett Isles: Beast Handler: Harry's Wyvern and Griffin pictures (21 October 2026, uploaded to the repository root, then moved)
+
+Ten PNGs (941 × 1672, about 3 MB each), each named for its Regional Variety: `WY_*.png` and `GR_*.png`. Every original is kept untouched in `tools/beasthandler/assets/extras/wyvern-originals/` and `.../griffin-originals/`. The pictures in use are WebP copies (941 × 1672). Three of the wyverns were the same pictures first sent in the chat (mean pixel difference under 1), so those chat WebPs are the ones in use and were moved out of `extras/wyvern/`; the other seven were converted from the PNGs at quality 88.
+
+| Upload | In use | Regional Variety | Notes |
+|---|---|---|---|
+| `WY_Widowspine.png` | `tools/beasthandler/assets/wyvern/widowspine.webp` (the chat's `wyvern-5-storm-sea-castle.webp`, moved) | Widowspine | Same picture as the earlier upload |
+| `WY_Bleakhook.png` | `wyvern/bleakhook.webp` (the chat's `wyvern-3-icy-blue-sea-cliffs.webp`, moved) | Bleakhook | Same picture as the earlier upload |
+| `WY_Bloodcrest.png` | `wyvern/bloodcrest.webp` (the chat's `wyvern-4-crimson-red-cliffs.webp`, moved) | Bloodcrest | Same picture as the earlier upload |
+| `WY_Ironcrown.png` | `wyvern/ironcrown.webp` (525 KB, converted) | Ironcrown | New |
+| `WY_Shadowmount.png` | `wyvern/shadowmount.webp` (333 KB, converted) | Shadowmount | New |
+| `GR_Embermantle.png` | `tools/beasthandler/assets/griffin/embermantle.webp` (568 KB) | Embermantle | Fiery russet and bronze, sunset harbour with a lighthouse |
+| `GR_Galeclaw.png` | `griffin/galeclaw.webp` (495 KB) | Galeclaw | Brown head, silver-grey shoulders, snowy beacon tower |
+| `GR_Silvershroud.png` | `griffin/silvershroud.webp` (442 KB) | Silvershroud | Pale silver and white, misty lake and castle |
+| `GR_Thunderwing.png` | `griffin/thunderwing.webp` (484 KB) | Thunderwing | Steel-grey, lightning over ridgelines |
+| `GR_Dawnmantle.png` | `griffin/dawnmantle.webp` (600 KB) | Dawnmantle | Gold and ivory, sunlit citadel |
+
+**Still unused, kept:** `tools/beasthandler/assets/extras/wyvern/wyvern-1-mossy-green-misty-valleys.webp` and `wyvern-2-volcanic-copper-wings.webp` (first sent in the chat; they belong to none of the five varieties).
 

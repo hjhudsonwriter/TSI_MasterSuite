@@ -244,6 +244,34 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     assert(await bh.$('[data-test=bh-portrait-large] .tsi-bh-medallion'), 'a griffin with no picture matched yet shows the medallion');
   });
 
+  await check('all fifteen painted portraits load; a griffin and a wyvern with a variety show theirs, and one with none keeps the medallion', async () => {
+    const bad = await bh.evaluate(async () => {
+      const out = [];
+      const art = window.TSI_DATA.beastArt.species;
+      await Promise.all(Object.keys(art).reduce((all, sp) => all.concat(Object.keys(art[sp].variants).map(v => new Promise(res => {
+        const i = new Image();
+        i.onload = () => { if (i.naturalWidth !== 941 || i.naturalHeight !== 1672) out.push(sp + '/' + v + ' is ' + i.naturalWidth + ' wide'); res(); };
+        i.onerror = () => { out.push(sp + '/' + v + ' did not load'); res(); };
+        i.src = TSI.path('tools/beasthandler/assets/' + art[sp].variants[v].src);
+      }))), []));
+      return out;
+    });
+    equal(bad, []);
+    await ba.evaluate(() => TSI.bastion.debug.change(s => { s.creatures.find(c => c.id === 'cr-swiftwing').development.regional = 'Embermantle'; }));
+    await ba.evaluate(() => TSI.store.flush());
+    await viewAs('Mira');
+    await bh.click('[data-test=bh-beast-cr-swiftwing]');
+    await bh.waitForFunction(() => { const i = document.querySelector('[data-test=bh-portrait-large] img'); return i && i.complete && i.naturalWidth > 0; }, null, { timeout: 12000 });
+    assert(/griffin\/embermantle\.webp$/.test(await bh.$eval('[data-test=bh-portrait-large] img', i => i.getAttribute('src'))), 'the griffin shows Embermantle');
+    await H.shot(bh, 'beasthandler-griffin-embermantle');
+    await home();
+    await viewAs('Joss');   /* the DM gave Stormwing to Joss in an earlier check */
+    await bh.click('[data-test=bh-beast-cr-stormwing]');
+    await bh.waitForSelector('[data-test=bh-portrait-large] img', { timeout: 8000 });
+    assert(/wyvern\/widowspine\.webp$/.test(await bh.$eval('[data-test=bh-portrait-large] img', i => i.getAttribute('src'))), 'the wyvern shows Widowspine');
+    await home();
+  });
+
   await check('a line the DM changes while the editor is open is not put back by Save: only the lines the player changed are sent', async () => {
     await viewAs('Joss');
     await bh.click('[data-test=bh-beast-cr-ashfang]');
