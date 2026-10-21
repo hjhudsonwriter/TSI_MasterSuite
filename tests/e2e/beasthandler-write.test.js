@@ -243,6 +243,24 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     assert(await bh.$('[data-test=bh-portrait-large] .tsi-bh-medallion'), 'a griffin with no picture matched yet shows the medallion');
   });
 
+  await check('a line the DM changes while the editor is open is not put back by Save: only the lines the player changed are sent', async () => {
+    await viewAs('Joss');
+    await bh.click('[data-test=bh-beast-cr-ashfang]');
+    await bh.click('[data-test=bh-tab-profile]');
+    await bh.click('[data-test=bh-edit]');
+    await waitFor(bh, '[data-test=bh-edit-form]');
+    await bh.fill('[data-test=bh-in-trigger]', 'Sudden shouting');
+    await ba.evaluate(() => TSI.bastion.debug.change(s => { s.creatures.find(c => c.id === 'cr-ashfang').development.temperament.dominant = 'Unshakeably calm'; }));
+    await ba.evaluate(() => TSI.store.flush());
+    await bh.waitForFunction(() => document.querySelector('[data-test=bh-in-dominant]').value === 'Unshakeably calm', null, { timeout: 12000 });
+    equal(await bh.$eval('[data-test=bh-in-trigger]', i => i.value), 'Sudden shouting', 'the typed line is kept');
+    await bh.click('[data-test=bh-save]');
+    await bh.waitForSelector('[data-test=bh-requests] [data-state=saved]', { timeout: 12000 });
+    const c = (await state()).creatures.find(x => x.id === 'cr-ashfang');
+    equal([c.development.temperament.dominant, c.development.temperament.trigger], ['Unshakeably calm', 'Sudden shouting'], 'the DM\'s line stands and the player\'s line is saved');
+    await home();
+  });
+
   await check('nothing went wrong or reached for the internet', async () => {
     equal(ctx.log.net, []);
     equal(ctx.log.failed, []);

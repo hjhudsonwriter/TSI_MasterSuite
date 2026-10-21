@@ -133,7 +133,8 @@
           if (!life.alive) return res;
           if (!res || !res.ok) { ui.said = (res && res.message) || 'The request couldn\'t be made.'; render(); return res; }
           ui.said = '';
-          ui.orderFn = null; ui.edit = null;
+          ui.orderFn = null;
+          if (body.type === 'profile.set') ui.edit = null;   /* a half-typed profile survives sending an order */
           render();
           focusHeading();
           return Promise.resolve(host.afterSubmit ? host.afterSubmit(res) : null).then(function () { return res; });
@@ -259,7 +260,7 @@
       function profileValues(d) { return { dominant: d.profile.dominant, attachment: d.profile.attachment, trigger: d.profile.trigger, regional: d.profile.regional }; }
 
       function startEdit(d) {
-        ui.edit = { creatureId: d.id, values: profileValues(d), suggested: {}, error: '', rolls: {} };
+        ui.edit = { creatureId: d.id, base: profileValues(d), values: profileValues(d), suggested: {}, error: '', rolls: {} };
         render();
       }
 
@@ -298,6 +299,9 @@
         var e = ui.edit;
         var opts = Pf.options(d.species.id);
         var cur = profileValues(d);
+        /* A line the player hasn't touched follows the Bastion as it changes (the DM may edit it meanwhile); only lines
+           the player really changed from where this draft began are ever sent, so an old value is never put back. */
+        Pf.FIELDS.forEach(function (k) { if (e.values[k] === e.base[k] && cur[k] !== e.base[k]) { e.values[k] = e.base[k] = cur[k]; } });
         var fields = [
           ['dominant', 'Dominant Temperament', true],
           ['attachment', 'Attachment Cue', true],
@@ -312,7 +316,7 @@
         var problem = el('p', { class: 'tsi-bh-message tsi-bh-message--warn', 'data-test': 'bh-edit-problem', hidden: true, role: 'status' });
         function check() {
           var res = Pf.check(e.values);
-          var changed = Pf.changed(cur, res.clean);
+          var changed = Pf.changed(e.base, res.clean);
           var why = !res.ok ? res.problems[0] : !changed.length ? 'Nothing has changed yet.' : '';
           problem.textContent = res.ok ? '' : res.problems[0];
           problem.hidden = res.ok;
