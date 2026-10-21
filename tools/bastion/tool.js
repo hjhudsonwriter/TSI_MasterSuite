@@ -105,6 +105,8 @@
       }
       var ui = R.cleanUi(load('ui', R.isUi, 'the facility grid opened in its usual way (everything else is as it was)'));
       function save() { ctx.store.set('state', R.toSave(state)); }
+      /* The Beast Handler's record (its campaign id), made the first time this Bastion opens with it. */
+      if (R.beastState && !R.beastCampaignId(state)) { R.beastState(state); save(); }
       function saveUi() { ctx.store.set('ui', TSI.clone(ui)); }
       function log(title, body) { R.log(state, title, body); }
       function logAll(lines) { (lines || []).forEach(function (l) { log(l[0], l[1]); }); }
@@ -575,13 +577,24 @@
         var c = R.creatureById(state, id);
         if (!c) return;
         var t = R.devView(state, c).temperament;
-        var boxes = [['dominant', 'Dominant temperament'], ['attachment', 'Attachment cue'], ['trigger', 'Instinctive trigger']].map(function (k) {
-          return [k[0], el('input', { type: 'text', class: 'tsi-input', maxlength: '120', value: t[k[0]] || '', 'data-test': 'temperament-' + k[0] }), k[1]];
+        var dv = R.devView(state, c);
+        var opts = TSI.beasthandler && TSI.beasthandler.profile ? TSI.beasthandler.profile.options(c.species) : null;
+        /* The listed choices for this kind of beast (Harry's tables) are suggestions: anything can be typed. */
+        var lists = {};
+        var fieldDefs = [['dominant', 'Dominant temperament', t.dominant], ['attachment', 'Attachment cue', t.attachment], ['trigger', 'Instinctive trigger', t.trigger]];
+        if (opts) fieldDefs.push(['regional', 'Regional variety', dv.regional || '']);
+        var boxes = fieldDefs.map(function (k) {
+          var attrs = { type: 'text', class: 'tsi-input', maxlength: k[0] === 'regional' ? '60' : '120', value: k[2] || '', 'data-test': 'temperament-' + k[0] };
+          if (opts && opts[k[0]] && opts[k[0]].length) {
+            lists[k[0]] = el('datalist', { id: 'tsi-bas-dl-' + k[0] }, opts[k[0]].map(function (o) { return el('option', { value: o }); }));
+            attrs.list = 'tsi-bas-dl-' + k[0];
+          }
+          return [k[0], el('input', attrs), k[1]];
         });
         var ok = await plainModal({
           title: 'Temperament: ' + R.creatureName(data, c),
           className: 'tsi-bas-modal',
-          body: [muted('Short notes in your own words. Nothing here is worked out for you.')].concat(boxes.map(function (b) { return field(b[2], b[1]); })),
+          body: [muted('Short notes in your own words. Nothing here is worked out for you. The listed choices are only suggestions: type anything.')].concat(boxes.map(function (b) { return field(b[2], b[1]); }), Object.keys(lists).map(function (k) { return lists[k]; })),
           actions: [{ label: 'Cancel', value: false }, { label: 'Save', value: true, primary: true }],
           onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'temperament-dialog'); }
         });
@@ -1440,6 +1453,8 @@
          come and go only through their buildings' House orders and the
          Explorer, so there's no Remove button. */
       var creatureList = el('div', { class: 'tsi-bas-list', 'data-test': 'creatures' });
+      /* The Beast Handler (players' companion): pairing codes, requests, and how each went (tools/beasthandler/dm-panel.js). */
+      var beastDm = TSI.beasthandler && TSI.beasthandler.dmPanel && R.beastState ? TSI.beasthandler.dmPanel.create({ state: function () { return state; }, data: data, done: function () { done(); }, life: life }) : null;
       /* The treasury, in the map's top bar: saved when you finish typing
          (Enter, or leaving the box), not on every key. */
       var treasuryInput = numberInput('treasury', { min: '0', 'aria-label': 'Treasury (gp)', class: 'tsi-input tsi-bas-num tsi-bas-treasury__input' });
@@ -1472,7 +1487,9 @@
           label('Menagerie Beasts'),
           beastList,
           label('Creatures'),
-          creatureList
+          creatureList,
+          beastDm ? label('Beast Handler (players)') : null,
+          beastDm ? beastDm.node : null
         ]),
         el('div', { class: 'tsi-bas-box tsi-bas-box--art tsi-bas-box--military' }, [
           el('div', { class: 'tsi-bas-row__top' }, [
@@ -1609,6 +1626,7 @@
         var crs = R.creatures(state);
         if (!crs.length) creatureList.appendChild(muted('None yet. The Wyvern Roost, Griffin Tower and Dire Wolf Den house them.'));
         crs.forEach(function (c) { creatureList.appendChild(creatureRow(c, 'mgmt-creature', true)); });
+        if (beastDm) beastDm.render();
         renderForceList(militaryList, state.military, 'No military recruited yet.', 'military', 'military');
         setValue(treasuryInput, state.treasuryGP);
       }
@@ -4739,7 +4757,22 @@
           if (res.refused) notice('A score change from the DM doc couldn\'t be used, so nothing changed for it.', { type: 'warn', title: 'From the DM doc.', id: 'tsi-bas-dmedits-refused', timeout: 12000 });
         }, function () { dmEditsBusy = false; });
       }
-      life.setInterval(function () { checkClock(); checkCrestOffer(); checkDmEdits(); }, 2000);
+      /* Requests from the Beast Handler on this laptop (Harry, 21 October 2026): each is checked against this
+         Bastion and applied once, with its receipt in this save (tools/beasthandler/bastion-link.js). */
+      var beastBusy = false;
+      function checkBeast() {
+        if (!R.beastProcessQueue || beastBusy || !life.alive || turnRunning || militaryRunning) return Promise.resolve();
+        beastBusy = true;
+        return TSI.store.fresh('tsi.beasthandler.queue', null).then(function (q) {
+          beastBusy = false;
+          if (!life.alive || turnRunning || militaryRunning) return;
+          var res = R.beastProcessQueue(state, data, q && q.commands, Date.now(), rand);
+          if (!res.changed) return;
+          done();
+          if (res.lines.length) notice('From the Beast Handler: ' + res.lines.join(' ') + ' The Day Log keeps it.', { type: res.refused && !res.applied ? 'warn' : 'info', title: 'A handler asked for something.', id: 'tsi-bas-beast', timeout: 14000 });
+        }, function () { beastBusy = false; });
+      }
+      life.setInterval(function () { checkClock(); checkCrestOffer(); checkDmEdits(); checkBeast(); }, 2000);
       life.on(document, 'visibilitychange', function () { if (document.visibilityState === 'visible') checkClock(); });
 
       /* Pass every day up to the Explorer's, one at a time, each saved step
@@ -5546,6 +5579,7 @@
         /* Read the Explorer's day now, rather than in up to 2 seconds. */
         clock: function () { checkClock(); },
         dmEdits: function () { return checkDmEdits(); },
+        beast: function () { return checkBeast(); },
         /* The panel open now ('war', 'fac-barracks'…), or null. */
         panel: function () { return shown ? shown.id : null; },
         /* Open the panel that holds [data-test=test] by pressing its button
@@ -5620,6 +5654,7 @@
          any crest sent from the Clan Crest Creator while the Bastion was shut. */
       checkClock();
       checkDmEdits();
+      checkBeast();
       checkCrestOffer();
     },
 

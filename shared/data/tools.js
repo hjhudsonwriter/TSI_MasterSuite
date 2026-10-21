@@ -79,7 +79,7 @@ window.TSI_DATA.tools = [
     single: true,
     desc: 'Manage facilities, orders, events, treasury and staff for your bastion, day by day with the Explorer.',
     files: {
-      css: ['tools/bastion/bastion.css', 'tools/bastion/war-table.css'],
+      css: ['tools/bastion/bastion.css', 'tools/bastion/war-table.css', 'tools/beasthandler/dm-panel.css'],
       js: [
         'tools/bastion/data/bastion-data.js',
         'tools/bastion/data/facilities-data.js',

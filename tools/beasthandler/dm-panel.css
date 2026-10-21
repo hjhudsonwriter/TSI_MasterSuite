@@ -1,0 +1,16 @@
+/* Scarlett Isles: Beast Handler — the DM's box in the Bastion's Management panel and its code pop-ups.
+   Classes start "tsi-bas-beast", so nothing here reaches anything else. Pop-ups open outside the
+   Bastion's own page, so these rules do not depend on it. */
+.tsi-bas-beast { display: grid; gap: var(--tsi-space-3); }
+.tsi-bas-beast__row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--tsi-space-2); margin-top: var(--tsi-space-2); }
+.tsi-bas-beast__h { margin: var(--tsi-space-2) 0 0; font: 700 var(--tsi-fs-label)/1.2 var(--tsi-font-display); letter-spacing: var(--tsi-track-label); text-transform: uppercase; color: var(--tsi-gold-text); }
+.tsi-bas-beast__code {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: var(--tsi-space-2);
+  font: 12px/1.35 var(--tsi-font-mono);
+  word-break: break-all;
+  resize: vertical;
+}
+.tsi-bas-beast .tsi-bas-item { align-items: center; flex-wrap: wrap; gap: var(--tsi-space-2); }
+.tsi-bas-beast li[data-state="refused"] { color: var(--tsi-text-muted); }
