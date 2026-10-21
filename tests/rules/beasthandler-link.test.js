@@ -144,17 +144,27 @@
     t.equal(snapOf(b, 'Mira').receipts[0].state, 'completed');
   });
 
-  test('the whole-building lock: anything pending at the building refuses the request, with the order and its day', function (t) {
+  test('the building lock: a training programme pending at the building refuses the request, with its day (a House order does not)', function (t) {
     var b = world({ roost: 3 });
     var e = housed(b, 'wyvern', 'Elarion', 'Joss');
     var c = housed(b, 'wyvern', 'Stormwing', 'Mira');
     BR.issueOrder(b, bdata, 'wyvern_roost', 'wyr_safe_acclimatisation', 0, rnd);
     var r = apply(b, cmd(b, c, 'order.request', { fnId: 'wyr_safe_acclimatisation' }));
     t.equal(r.ok, false);
-    t.ok(/^The Wyvern Roost is busy \(something is under way at the Wyvern Roost\), ready on Day \d+\./.test(r.receipt.why), r.receipt.why);
+    t.ok(/^The Wyvern Roost is busy \(a training programme is under way at the Wyvern Roost\), ready on Day \d+\./.test(r.receipt.why), r.receipt.why);
     t.ok(r.receipt.why.indexOf('Elarion') === -1 && r.receipt.why.indexOf('Acclimatisation') === -1, 'another handler\'s beast and programme are not named');
     t.equal(BR.trainingOrders(b).length, 1);
     t.ok(e);
+  });
+
+  test('a House order pending at the building does not refuse a free training request', function (t) {
+    var b = world({ roost: 3 });
+    var c = housed(b, 'wyvern', 'Stormwing', 'Mira');
+    grant(b, 'wyvern', 'Second Wing');
+    t.ok(BR.issueOrder(b, bdata, 'wyvern_roost', 'house_wyvern', 0, rnd).ok);
+    var r = apply(b, cmd(b, c, 'order.request', { fnId: 'wyr_safe_acclimatisation' }));
+    t.ok(r.ok, r.receipt && r.receipt.why);
+    t.equal(BR.trainingOrders(b).length, 1);
   });
 
   test('a pending order at another building never blocks this one', function (t) {

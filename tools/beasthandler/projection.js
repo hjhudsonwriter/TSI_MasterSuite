@@ -78,9 +78,11 @@
     return out;
   };
 
-  /* The pending order that is due first at a building, or null. */
+  /* The pending TRAINING programme that is due first at a building, or null (Harry, 21 October 2026: training only).
+     A House order or an Upgrade pending there does not hold a handler back; the Bastion's own rules still decide whether
+     a programme can start. */
   function pendingAt(s, facId) {
-    var list = arr(s.pendingOrders).filter(function (o) { return isObj(o) && o.facId === facId; });
+    var list = R().trainingOrders(s).filter(function (o) { return o.facId === facId; });
     list.sort(function (a, b) { return num(a.dueDay, 1e9) - num(b.dueDay, 1e9); });
     return list[0] || null;
   }
@@ -127,8 +129,7 @@
   }
 
   /* What a player may be told about an order pending at a building: its own beast's programme by name, and
-     for anything else ("another handler's programme", a House order for a beast not yet shown, an Upgrade)
-     only that something is under way. The Bastion's own label can name creatures and choices, so it is never sent. */
+     for another handler's programme only that a training programme is under way. The Bastion's own label can name creatures and choices, so it is never sent. */
   P.busyLabel = function (s, data, order, creature) {
     var r = R();
     var fac = r.facility(data, order.facId);
@@ -136,7 +137,7 @@
       var fn = fac ? r.fn(fac, order.fnId) : null;
       return fn && fn.label ? txt(fn.label, 80) : 'A training programme';
     }
-    return 'Something is under way at the ' + (fac ? fac.name : 'building');
+    return 'A training programme is under way at the ' + (fac ? fac.name : 'building');
   };
 
   function ordersFor(s, data, c, fac) {

@@ -391,7 +391,7 @@
             el('p', { class: 'tsi-bh-pending__label', text: o.busy.label }),
             el('p', { class: 'tsi-bh-pending__due', 'data-test': 'bh-pending-due', text: 'Ready on ' + o.busy.dueLabel }),
             o.busy.forThisCreature ? el('p', { class: 'tsi-bh-muted', text: d.name + ' is in this programme.' }) : null,
-            el('p', { class: 'tsi-bh-muted', text: 'While anything is pending at a building, no new order can be requested from here.' })
+            el('p', { class: 'tsi-bh-muted', text: 'While a training programme is under way at a building, no new order can be requested from here.' })
           ]));
         } else if (waitingHere) {
           body.push(el('div', { class: 'tsi-bh-panel tsi-bh-pending', 'data-test': 'bh-order-waiting' }, [

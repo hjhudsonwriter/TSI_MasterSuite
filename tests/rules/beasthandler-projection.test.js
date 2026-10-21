@@ -338,7 +338,7 @@
     t.equal(snap(b, 'Joss').creatures[wf.id].orders.available[0].label, 'Safe Acclimatisation');
   });
 
-  test('while any order is pending at the building, nothing new is offered: the pending order and its day are shown instead', function (t) {
+  test('while a training programme is pending at the building, nothing new is offered: the pending programme and its day are shown instead', function (t) {
     var b = world({ roost: 3 });
     var e = houseElara(b);
     var w = housed(b, 'wyvern', 'Stormwing');
@@ -355,7 +355,7 @@
     var elara = snap(b, 'Elara').creatures.elara_wyvern.orders;
     t.equal(elara.status, 'busy', 'a different player\'s creature is locked out too (the whole building)');
     t.equal(elara.busy.forThisCreature, false);
-    t.equal(elara.busy.label, 'Something is under way at the Wyvern Roost', 'another handler\'s programme is not named');
+    t.equal(elara.busy.label, 'A training programme is under way at the Wyvern Roost', 'another handler\'s programme is not named');
     t.equal(JSON.stringify(snap(b, 'Elara')).indexOf('Acclimatisation'), -1, 'the other handler\'s programme is not in Elara\'s snapshot (the beast is only a directory line)');
     t.ok(!!BR.trainingOptions(b, bdata, BR.facility(bdata, 'wyvern_roost'), BR.fn(BR.facility(bdata, 'wyvern_roost'), 'wyr_safe_acclimatisation')).length);
   });
@@ -391,7 +391,7 @@
     t.equal(snap(b, 'Mira').creatures[w.id].orders.status, 'available', 'a Library order does not matter');
   });
 
-  test('a House order or an Upgrade pending at the building also holds the phone back (the whole building)', function (t) {
+  test('a House order or an Upgrade pending at the building does NOT hold the phone back: only a training programme does (Harry, 21 October 2026)', function (t) {
     var b = world({ roost: 3 });
     var w = housed(b, 'wyvern', 'Stormwing');
     BR.assignHandler(b, bdata, w.id, 'Mira', '');
@@ -399,9 +399,10 @@
     var r = BR.issueOrder(b, bdata, 'wyvern_roost', 'house_wyvern', 0, rnd);
     t.equal(r.ok, true, r.message);
     var o = snap(b, 'Mira').creatures[w.id].orders;
-    t.equal(o.status, 'busy');
-    t.equal(o.busy.label, 'Something is under way at the Wyvern Roost');
+    t.equal(o.status, 'available', 'housing a second wyvern does not lock the building');
+    t.ok(o.available.length > 0 && o.busy === null);
     t.ok(JSON.stringify(snap(b, 'Mira')).indexOf('Second Wing') === -1, 'a waiting creature\'s name never leaks through a House order');
+    t.equal(P.pendingAt(b, 'wyvern_roost'), null, 'no training programme is pending there');
   });
 
   test('the earliest-due pending order is the one shown; when it completes the building is free again', function (t) {
@@ -409,8 +410,8 @@
     var e = houseElara(b);
     var w = housed(b, 'wyvern', 'Stormwing');
     BR.assignHandler(b, bdata, w.id, 'Mira', '');
-    b.pendingOrders.push({ id: 'late', facId: 'wyvern_roost', fnId: 'x', chosen: null, optionLabel: '', notes: '', label: 'Wyvern Roost: Late', costGP: 0, issuedDay: 10, dueDay: 30 });
-    b.pendingOrders.push({ id: 'soon', facId: 'wyvern_roost', fnId: 'x', chosen: null, optionLabel: '', notes: '', label: 'Wyvern Roost: Soon', costGP: 0, issuedDay: 10, dueDay: 12 });
+    b.pendingOrders.push({ id: 'late', facId: 'wyvern_roost', fnId: 'x', chosen: { label: 'Other', trainCreatureId: 'other-late' }, optionLabel: '', notes: '', label: 'Wyvern Roost: Late', costGP: 0, issuedDay: 10, dueDay: 30 });
+    b.pendingOrders.push({ id: 'soon', facId: 'wyvern_roost', fnId: 'x', chosen: { label: 'Other', trainCreatureId: 'other-soon' }, optionLabel: '', notes: '', label: 'Wyvern Roost: Soon', costGP: 0, issuedDay: 10, dueDay: 12 });
     t.equal(snap(b, 'Mira').creatures[w.id].orders.busy.dueDay, 12, 'the one due first');
     BR.removeOrder(b, 'soon'); BR.removeOrder(b, 'late');
     t.equal(snap(b, 'Mira').creatures[w.id].orders.status, 'available');
