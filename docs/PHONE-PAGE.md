@@ -36,11 +36,23 @@ Press **Take back code** beside the player's name. Every request signed with the
 
 ## Putting the page on a phone
 
-You need to decide how to get the page to a player. The page works from a file (it only needs a browser), so there are three ways. **This decision is yours; nothing has been set up.**
+**An iPhone cannot open the page from a file.** This was tested on 21 October 2026: opening `beasthandler.html` from the Files app shows only its title (the preview never loads the page's styles or scripts), and typing a file address into Safari gives "Safari cannot open the page because it is a local file." Android phones are patchy too. So sending the files, or a zip, does not work for players.
 
-- **Send the files.** Zip the files in the list below and send the zip. The player unzips it on their phone and opens `beasthandler.html`. This works with no internet at all, but phones don't always open local files nicely (iPhones in particular).
-- **Put the files on a website you already use.** Any plain web host that serves the same files will do. No account with us, no login. The page makes no network calls; the host only hands out the files.
+**The page has to be on a web address.** It is still plain files and makes no network calls of its own: the web address only hands out the files. No server program, no account for your players and no login. Once it is open, the code swap needs no internet at all.
+
+Ways to do it (the choice is yours):
+
+- **GitHub Pages (recommended; the repository is already on GitHub, free, no code to write).** GitHub reports that Pages is switched on for this repository, but the settings can't be seen from here, so please check them: on github.com open the repository, then **Settings → Pages**. Under "Build and deployment", choose **Deploy from a branch**, set the branch (`main` once this pull request is merged, or the pull request's own branch to try it first) and the folder `/ (root)`, then **Save**. After a minute or two the phone page is at `https://hjhudsonwriter.github.io/TSI_MasterSuite/beasthandler.html`. A file called `.nojekyll` is already in the main folder, so GitHub publishes the files exactly as they are. Note that this publishes the whole suite at that address, not just the phone page. Your saves never go there (they stay in each browser), and the phone page loads none of the DM tools, but anyone with the address could open the other tools with empty saves. If you would rather publish only the phone page, say so and I'll set up a small separate folder for it.
+- **Any other web host you already use.** Put the files in the list below on it, keeping the folder layout.
 - **Play at the table.** On your laptop, open the Beast Handler from the home screen (the "same device" route). No codes needed.
+
+### What players do on an iPhone
+
+1. Open the web address in **Safari**.
+2. Optional: **Share → Add to Home Screen** for a crest icon and a full-screen page. **An iPhone keeps a home-screen page's saved link separately from Safari's.** So add it to the Home Screen *first*, open it from the icon, and then paste the pairing code there.
+3. Paste the pairing code, then the snapshot code.
+
+If Safari ever clears the page's saved link (it can, if the page isn't used for about a week), the player just pastes the pairing code again. It is one message in the chat.
 
 ### The files a phone needs
 
@@ -53,9 +65,9 @@ Only these (about 3 MB without the extras):
 - `tools/beasthandler/beasthandler.css`, `phone.css`
 - `tools/beasthandler/data/` (`profile-tables.js`, `art-map.js`)
 - `tools/beasthandler/projection.js`, `profile-rules.js`, `codes.js`, `model.js`, `view.js`, `phone.js`
-- `tools/beasthandler/assets/dire-wolf/` (the five wolf portraits). Leave out `assets/extras/` (unused wyvern pictures).
+- `tools/beasthandler/assets/dire-wolf/` (the five wolf portraits) and `tools/beasthandler/assets/phone-icon-180.png` (the Home Screen icon). Leave out `assets/extras/` (unused wyvern pictures).
 
-Keep the folder layout exactly as it is. Do **not** send the Bastion, the Explorer, your saves or the rest of the suite. Players don't need them, and the phone page never loads them.
+Keep the folder layout exactly as it is. If you publish only the phone page, leave out the Bastion, the Explorer and the rest of the suite. Players don't need them, and the phone page never loads them.
 
 ## What the phone keeps
 

@@ -484,3 +484,8 @@ Sent in the chat as WebP pictures (941 × 1672, upright, pixel-painted) and kept
 ### Griffins
 
 Harry's five Griffin pictures reached the chat as images only, not as files, so they are **not saved yet**. Waiting for them to be sent again.
+
+### The phone page's Home Screen icon (21 October 2026)
+| Old location | New location | Used |
+|---|---|---|
+| (made from) `shared/art/logo-hub.png`, 1400 × 1400, flattened on the near-black ground and shrunk to 180 × 180 (42 KB) | `tools/beasthandler/assets/phone-icon-180.png` | Yes: `beasthandler.html`'s Add to Home Screen icon on an iPhone |

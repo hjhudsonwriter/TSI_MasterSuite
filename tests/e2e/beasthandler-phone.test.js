@@ -11,7 +11,8 @@
 const H = require('./helpers');
 const { section, check, assert, equal } = H;
 const HARNESS = H.fileUrl('tests/harness.html');
-const PHONE = H.fileUrl('beasthandler.html');
+/* TSI_PHONE_URL=http://localhost:8123/beasthandler.html runs the phone's half against the page served from a web address (the DM's half stays on files). */
+const PHONE = process.env.TSI_PHONE_URL || H.fileUrl('beasthandler.html');
 const bare = (page, sel) => page.$eval(sel, n => n.textContent.replace(/\s+/g, ' ').trim());
 const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.debug.state())));
 
@@ -58,7 +59,7 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
 
   /* ---- the player's phone: its own browser, so it shares nothing with the laptop ---- */
   const ph = await H.newContext(browser, 'laptop', { viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, hasTouch: true, isMobile: true });
-  await ph.setOffline(true);
+  if (!process.env.TSI_PHONE_URL) await ph.setOffline(true);   /* served from a web address it has to be allowed to fetch the page's own files */
   const pp = await ph.newPage();
   await pp.goto(PHONE);
   await pp.waitForSelector('[data-test=bhp-screen-link]');
@@ -344,8 +345,9 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
   });
 
   await check('nothing went wrong or reached for the internet, on either device', async () => {
+    const phoneOrigin = process.env.TSI_PHONE_URL ? new URL(process.env.TSI_PHONE_URL).origin : null;
     for (const c of [dm, ph]) {
-      equal(c.log.net, []);
+      equal(c.log.net.filter(u => !phoneOrigin || c !== ph || u.indexOf(phoneOrigin) !== 0), [], 'nothing beyond the page\'s own address');
       equal(c.log.failed, []);
       equal(c.log.errors, []);
       equal(c.log.consoleErrors.filter(e => !/Failed to load resource/.test(e)), []);
