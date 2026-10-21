@@ -456,3 +456,15 @@ Sent in the chat after pull request 3 merged, and kept exactly as received in `b
 |---|---|---|---|
 | `bastion-new-art/3-courier-exchange/courier_exchange_overlay_2000x833.webp` | `tools/bastion/assets/map/overlays/courier_exchange.png` | 2000 × 833, scaled to 3000 × 1250 | Yes: on the map once the Courier Exchange can be built and is built, in the open square where the cart stands. It overlaps no other overlay |
 | `bastion-new-art/3-courier-exchange/courier_exchange_panel_1024.webp` | `tools/bastion/assets/facilities/courier_exchange.png` | 1024 × 1024, see-through ground | Yes: its picture in Construction now (In development), and its tile and panel once built |
+
+## Scarlett Isles: Beast Handler: Harry's Dire Wolf portraits (21 October 2026)
+
+Sent in the chat as five WebP pictures (941 × 1672, upright, pixel-painted), kept exactly as received. Not used yet: the companion draws a gold medallion until Harry says which picture is which Regional Variety and which, if any, is the default (the pictures go in with BH-4, through `tools/beasthandler/data/art-map.js`). So they are in `assets/extras/`.
+
+| Original (as sent) | In the suite | Size | What it shows | Used? |
+|---|---|---|---|---|
+| 20.webp | `tools/beasthandler/assets/extras/dire-wolf/dire-wolf-1-shore-and-harbour.webp` | 376 KB | A wet black-and-tan wolf with teal eyes on a rocky shore; waves, a sea arch and a harbour town with a red banner bearing a white tree | No: waiting for Harry's mapping |
+| 21.webp | `tools/beasthandler/assets/extras/dire-wolf/dire-wolf-2-mossy-forest.webp` | 333 KB | A black wolf streaked with silver and moss, green eyes, in an old forest with carved standing stones and a waterfall | No |
+| 22.webp | `tools/beasthandler/assets/extras/dire-wolf/dire-wolf-3-snowy-cliffs.webp` | 489 KB | A thick white-grey wolf with blue eyes on a snowy sea cliff, a castle in the distance | No |
+| 23.webp | `tools/beasthandler/assets/extras/dire-wolf/dire-wolf-4-golden-citadel.webp` | 322 KB | A golden wolf with a russet mane and amber eyes on a sunlit hill, a golden citadel with sun banners behind | No |
+| 24.webp | `tools/beasthandler/assets/extras/dire-wolf/dire-wolf-5-misty-ruins.webp` | 428 KB | A black wolf with a mossy mane, amber eyes and a scarred muzzle, in a misty marsh with ruins and a carved stone | No |
