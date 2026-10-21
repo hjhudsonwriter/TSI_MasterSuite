@@ -127,7 +127,7 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     equal(s.treasuryGP, 400);
     assert(/Accepted and scheduled in the Bastion: ready on Day \d+\./.test(await bare(bh, '[data-test=bh-requests]')), await bare(bh, '[data-test=bh-requests]'));
     await bh.waitForSelector('[data-test=bh-pending]', { timeout: 8000 });
-    assert(/Safe Acclimatisation \(Stormwing\)/.test(await bare(bh, '.tsi-bh-pending__label')));
+    assert(/^Safe Acclimatisation$/.test(await bare(bh, '.tsi-bh-pending__label')));
   });
 
   await check('reloading the companion, or opening it twice, never makes a second order', async () => {

@@ -151,7 +151,8 @@
     BR.issueOrder(b, bdata, 'wyvern_roost', 'wyr_safe_acclimatisation', 0, rnd);
     var r = apply(b, cmd(b, c, 'order.request', { fnId: 'wyr_safe_acclimatisation' }));
     t.equal(r.ok, false);
-    t.ok(/The Wyvern Roost is busy: Wyvern Roost: Safe Acclimatisation \(Elarion\), ready on Day \d+/.test(r.receipt.why), r.receipt.why);
+    t.ok(/^The Wyvern Roost is busy \(something is under way at the Wyvern Roost\), ready on Day \d+\./.test(r.receipt.why), r.receipt.why);
+    t.ok(r.receipt.why.indexOf('Elarion') === -1 && r.receipt.why.indexOf('Acclimatisation') === -1, 'another handler\'s beast and programme are not named');
     t.equal(BR.trainingOrders(b).length, 1);
     t.ok(e);
   });
@@ -433,5 +434,33 @@
     t.equal(BR.trainingOrders(b).length, 1, 'oldest first: the profile, then the one order; the third is refused');
     t.same(BR.beastProcessQueue(b, bdata, [c3, c2, c1], NOW + 2000, rnd), { changed: false, lines: [], applied: 0, refused: 0 });
     t.same(BR.beastProcessQueue(b, bdata, 'nothing', NOW, rnd), { changed: false, lines: [], applied: 0, refused: 0 });
+  });
+
+  group('Beast Handler: names that are also built-in words (the privacy review, 21 October 2026)');
+
+  test('handlers, ids and categories named like built-in words (constructor, __proto__, toString) are harmless', function (t) {
+    var b = world();
+    var c = housed(b, 'griffin', 'Swiftwing', 'Constructor');
+    var d = housed(b, 'griffin', 'Second', '__proto__');
+    var before = Object.prototype.count;
+    var hs = P.handlers(b, bdata);
+    t.ok(hs.some(function (h) { return h.name === 'Constructor'; }), 'the DM can still pick it in Viewing as');
+    t.equal(Object.prototype.count, before, 'nothing was added to every object on the page');
+    t.equal(Object.keys(snapOf(b, 'constructor').creatures).length, 1);
+    d.id = '__proto__';
+    var s = snapOf(b, '__proto__');
+    t.same(Object.keys(s.creatures), [], 'a creature id that is a built-in word is left out rather than breaking the map');
+    t.equal(Object.getPrototypeOf(s.creatures), Object.prototype);
+    BR.ensureDev(b, c).chronicle.push({ id: 'ch-x', day: 3, cat: 'constructor', text: 'odd category', by: 'DM', link: '' });
+    t.equal(TSI.beasthandler.model.catLabel('constructor'), 'Constructor');
+    t.equal(TSI.beasthandler.model.catLabel('toString'), 'ToString');
+    var e = world();
+    var w = housed(e, 'griffin', 'Swiftwing', 'Mira');
+    ['__proto__', 'constructor', 'toString', 'hasOwnProperty'].forEach(function (id) {
+      var r = apply(e, cmd(e, w, 'profile.set', { dominant: 'Proud' }, { id: id }));
+      t.equal(r.ignored, true, id + ' is not a usable request id');
+    });
+    t.equal(Object.keys(e.beast.done).length, 0);
+    t.same(BR.cleanBeast({ done: { '__proto__': { r: 'applied' }, 'constructor': { r: 'applied' } } }).done, {});
   });
 }());

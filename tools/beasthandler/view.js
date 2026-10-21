@@ -376,7 +376,7 @@
             el('h2', { class: 'tsi-bh-panel__title', text: 'Waiting on the Bastion' }),
             el('p', { class: 'tsi-bh-pending__label', text: o.busy.label }),
             el('p', { class: 'tsi-bh-pending__due', 'data-test': 'bh-pending-due', text: 'Ready on ' + o.busy.dueLabel }),
-            el('p', { class: 'tsi-bh-muted', text: o.busy.forThisCreature ? d.name + ' is in this programme.' : 'Something is already under way at the ' + d.facility.name + '.' }),
+            o.busy.forThisCreature ? el('p', { class: 'tsi-bh-muted', text: d.name + ' is in this programme.' }) : null,
             el('p', { class: 'tsi-bh-muted', text: 'While anything is pending at a building, no new order can be requested from here.' })
           ]));
         } else if (waitingHere) {

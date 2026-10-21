@@ -51,7 +51,7 @@
   /* The Chronicle's category names. */
   var CATS = { training: 'Training', bond: 'Bond', handler: 'Handler', flight: 'Flight', note: 'Note' };
   M.catLabel = function (cat) {
-    if (CATS[cat]) return CATS[cat];
+    if (typeof cat === 'string' && Object.prototype.hasOwnProperty.call(CATS, cat)) return CATS[cat];
     var s = String(cat || '');
     return s ? s.charAt(0).toUpperCase() + s.slice(1) : 'Note';
   };

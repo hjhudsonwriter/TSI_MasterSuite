@@ -50,9 +50,9 @@
       var view = null;
 
       /* ---------- Reading the Bastion ---------- */
+      /* Until the DM chooses a handler, only the directory shows (nobody's detail is open by default). */
       function viewing(handlers) {
-        if (viewAs === undefined) return handlers.length ? handlers[0].id : '';
-        return viewAs;
+        return viewAs === undefined ? '' : viewAs;
       }
       function read() {
         return TSI.store.fresh(BASTION_KEY, null).then(function (saved) {

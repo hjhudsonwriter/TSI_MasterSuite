@@ -40,6 +40,9 @@
   function txt(v, max) { return typeof v === 'string' ? v.slice(0, max) : ''; }
   function num(v, fallback) { return typeof v === 'number' && isFinite(v) ? v : fallback; }
 
+  /* A name that is safe to use as a key in a plain object (a save can hold any text for an id or a handler). */
+  P.safeKey = function (k) { return typeof k === 'string' && k !== '' && ['__proto__', 'constructor', 'prototype', 'toString', 'valueOf', 'hasOwnProperty'].indexOf(k) === -1; };
+
   /* ---------- Who is who ---------- */
   /* The handler's name is the key today ("elara"); compared without regard to capitals or spacing. */
   P.handlerKey = function (id) { return String(id === undefined || id === null ? '' : id).replace(/\s+/g, ' ').trim().toLowerCase(); };
@@ -98,15 +101,15 @@
   /* The handlers who have a creature in a standing building: [{ id, name, count }], for the DM's own preview. */
   P.handlers = function (s, data) {
     var r = R();
-    var seen = {};
+    var seen = new Map();
     var out = [];
     P.homes(data).forEach(function (home) {
       housedIn(s, data, home).forEach(function (c) {
         var h = handlerOf(c);
         var k = P.handlerKey(h);
         if (!k) return;
-        if (!seen[k]) { seen[k] = { id: h, name: r.handlerName(h), count: 0 }; out.push(seen[k]); }
-        seen[k].count++;
+        if (!seen.has(k)) { var entry = { id: h, name: r.handlerName(h), count: 0 }; seen.set(k, entry); out.push(entry); }
+        seen.get(k).count++;
       });
     });
     return out;
@@ -123,6 +126,19 @@
     return parts.join(' ');
   }
 
+  /* What a player may be told about an order pending at a building: its own beast's programme by name, and
+     for anything else ("another handler's programme", a House order for a beast not yet shown, an Upgrade)
+     only that something is under way. The Bastion's own label can name creatures and choices, so it is never sent. */
+  P.busyLabel = function (s, data, order, creature) {
+    var r = R();
+    var fac = r.facility(data, order.facId);
+    if (creature) {
+      var fn = fac ? r.fn(fac, order.fnId) : null;
+      return fn && fn.label ? txt(fn.label, 80) : 'A training programme';
+    }
+    return 'Something is under way at the ' + (fac ? fac.name : 'building');
+  };
+
   function ordersFor(s, data, c, fac) {
     var r = R();
     var out = { status: 'none', available: [], note: '', busy: null };
@@ -135,9 +151,10 @@
     var busy = pendingAt(s, fac.id);
     if (busy) {
       var mine = r.trainingOrderFor(s, c.id);
+      var forThis = !!mine && mine.id === busy.id;
       out.status = 'busy';
-      out.busy = { label: txt(busy.label, 160), dueDay: num(busy.dueDay, 0), dueLabel: r.dayLabel(num(busy.dueDay, 0)), forThisCreature: !!mine && mine.id === busy.id };
-      out.note = 'The ' + fac.name + ' is busy: ' + out.busy.label + ', ready on ' + out.busy.dueLabel + '.';
+      out.busy = { label: P.busyLabel(s, data, busy, forThis ? c : null), dueDay: num(busy.dueDay, 0), dueLabel: r.dayLabel(num(busy.dueDay, 0)), forThisCreature: forThis };
+      out.note = out.busy.label + ', ready on ' + out.busy.dueLabel + '.';
       return out;
     }
     var level = r.getFacilityLevel(s, fac.id);
@@ -164,10 +181,13 @@
   }
 
   /* ---------- One creature ---------- */
+  /* The Chronicle as a player sees it: in the order written, without the DM-only notes. The ids are numbered
+     afresh (e1, e2…) so a gap can never show that a hidden note was there, and no Bastion-internal link goes out. */
   function chronicleOf(d) {
-    return arr(d.chronicle).filter(function (e) { return isObj(e) && e.private !== true; }).map(function (e) {
-      var r = R();
-      return { id: txt(e.id, 40), day: num(e.day, 1), dayLabel: r.dayLabel(num(e.day, 1)), cat: txt(e.cat, 20), text: txt(e.text, 400), by: txt(e.by, 40), link: txt(e.link, 80) };
+    var r = R();
+    var isPrivate = r.isPrivateNote || function (e) { return !!e.private; };
+    return arr(d.chronicle).filter(function (e) { return isObj(e) && !isPrivate(e); }).map(function (e, i) {
+      return { id: 'e' + (i + 1), day: num(e.day, 1), dayLabel: r.dayLabel(num(e.day, 1)), cat: txt(e.cat, 20), text: txt(e.text, 400), by: txt(e.by, 40) };
     });
   }
 
@@ -232,9 +252,9 @@
         name: fac.name,
         level: r.getFacilityLevel(s, fac.id),
         species: { id: home.speciesId, name: home.speciesName },
-        creatures: list.map(function (c) {
+        creatures: list.filter(function (c) { return P.safeKey(c.id); }).map(function (c) {
           var mine = !!key && P.sameHandler(handlerOf(c), key);
-          if (mine) creatures[c.id] = detailOf(s, data, c, home);
+          if (mine && P.safeKey(c.id)) creatures[c.id] = detailOf(s, data, c, home);
           var d = isObj(c.development) ? c.development : null;
           return {
             id: c.id,

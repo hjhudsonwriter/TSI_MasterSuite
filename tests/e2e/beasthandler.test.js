@@ -70,7 +70,10 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
   };
   const home = async () => { if (await bh.$('[data-test=bh-back]')) { await bh.click('[data-test=bh-back]'); await bh.waitForTimeout(120); } if (await bh.$('[data-test=bh-back]')) { await bh.click('[data-test=bh-back]'); await bh.waitForTimeout(120); } };
 
-  await check('Home: the heading, the buildings that stand, who lives in them, and no Dire Wolf Den', async () => {
+  await check('Home: opens as the directory only (nobody\'s detail is open until the DM chooses), with the heading and the buildings that stand, and no Dire Wolf Den', async () => {
+    equal(await bh.$eval('[data-test=bh-viewas]', n => n.value), '');
+    equal(await bh.$$eval('.tsi-bh-beast--mine', n => n.length), 0);
+    assert(/Choose a handler/.test(await bare(bh, '[data-test=bh-message]')));
     equal(await bare(bh, '.tsi-bh-title__main'), 'Scarlett Isles: Beast Handler');
     equal(await bare(bh, '.tsi-bh-title__sub'), 'The Companions of Ironbow');
     equal(await texts(bh, '.tsi-bh-card__title'), ['Wyvern Roost', 'Griffin Tower']);
@@ -162,7 +165,7 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     }));
     await ba.evaluate(() => TSI.store.flush());
     await bh.waitForSelector('[data-test=bh-pending]', { timeout: 9000 });
-    assert(/Safe Acclimatisation \(Stormwing\)/.test(await bare(bh, '.tsi-bh-pending__label')), await bare(bh, '.tsi-bh-pending__label'));
+    assert(/^Safe Acclimatisation$/.test(await bare(bh, '.tsi-bh-pending__label')), await bare(bh, '.tsi-bh-pending__label'));
     assert(/^Ready on Day \d+$/.test(await bare(bh, '[data-test=bh-pending-due]')), await bare(bh, '[data-test=bh-pending-due]'));
     equal(await bh.$('[data-test=bh-orders]'), null, 'no new orders are offered');
     await bh.click('[data-test=bh-back]');
@@ -222,7 +225,9 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
       await b2.waitForTimeout(400);
       const p = await c2.newPage();
       await p.goto(HARNESS + '?tool=beasthandler');
-      await p.waitForSelector('[data-test=bh-beast-elara_wyvern]');
+      await p.waitForSelector('[data-test=bh-viewas]');
+      await p.selectOption('[data-test=bh-viewas]', 'elara');
+      await p.waitForSelector('[data-test=bh-beast-elara_wyvern][data-mine=yes]');
       async function inspect(name) {
         const r = await p.evaluate(() => {
           const small = [];

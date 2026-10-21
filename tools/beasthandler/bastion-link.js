@@ -76,7 +76,7 @@
     var d = isObj(src.done) ? src.done : {};
     Object.keys(d).forEach(function (id) {
       var r = d[id];
-      if (!isObj(r) || !/^[A-Za-z0-9._:-]{6,80}$/.test(id)) return;
+      if (!isObj(r) || !/^(?!(?:__proto__|constructor|prototype|toString|valueOf|hasOwnProperty)$)[A-Za-z0-9._:-]{6,80}$/.test(id)) return;
       done[id] = {
         r: r.r === 'applied' ? 'applied' : 'refused',
         why: plain(r.why, 240),
@@ -116,15 +116,16 @@
   /* [{ id, name, count, paired }]: every handler a standing creature names, plus any already paired. */
   R.beastRegistry = function (s, data) {
     var out = [];
-    var byId = {};
+    var byId = new Map();
     arr(isObj(s.beast) ? s.beast.handlers : []).forEach(function (h) {
-      byId[h.id] = { id: h.id, name: h.name, count: 0, paired: !!h.secret };
-      out.push(byId[h.id]);
+      var e = { id: h.id, name: h.name, count: 0, paired: !!h.secret };
+      byId.set(h.id, e);
+      out.push(e);
     });
     P.handlers(s, data).forEach(function (h) {
       var k = P.handlerKey(h.id);
-      if (!byId[k]) { byId[k] = { id: k, name: h.name, count: 0, paired: false }; out.push(byId[k]); }
-      byId[k].count = h.count;
+      if (!byId.has(k)) { var e = { id: k, name: h.name, count: 0, paired: false }; byId.set(k, e); out.push(e); }
+      byId.get(k).count = h.count;
     });
     return out.sort(function (a, b) { return a.name < b.name ? -1 : a.name > b.name ? 1 : 0; });
   };
@@ -167,15 +168,15 @@
     var B = isObj(s.beast) ? s.beast : null;
     var key = P.handlerKey(handlerId);
     if (!B || !key) return [];
-    var pending = {};
-    arr(s.pendingOrders).forEach(function (o) { if (isObj(o) && o.id) pending[o.id] = o; });
+    var pending = new Map();
+    arr(s.pendingOrders).forEach(function (o) { if (isObj(o) && o.id) pending.set(o.id, o); });
     return Object.keys(B.done).map(function (id) { return Object.assign({ id: id }, B.done[id]); })
       .filter(function (r) { return r.handler === key; })
       .sort(function (a, b) { return b.at - a.at; })
       .slice(0, limit || 20)
       .map(function (r) {
-        var state = r.r === 'refused' ? 'refused' : (r.type === 'order.request' ? (r.orderId && pending[r.orderId] ? 'scheduled' : 'completed') : 'saved');
-        return { id: r.id, type: r.type, state: state, why: r.why, day: r.day, label: r.label, creature: r.creature, dueDay: state === 'scheduled' && pending[r.orderId] ? pending[r.orderId].dueDay : r.dueDay };
+        var state = r.r === 'refused' ? 'refused' : (r.type === 'order.request' ? (r.orderId && pending.has(r.orderId) ? 'scheduled' : 'completed') : 'saved');
+        return { id: r.id, type: r.type, state: state, why: r.why, day: r.day, label: r.label, creature: r.creature, dueDay: state === 'scheduled' ? pending.get(r.orderId).dueDay : r.dueDay };
       });
   };
 
@@ -184,12 +185,12 @@
   R.beastRecent = function (s, limit) {
     var B = isObj(s.beast) ? s.beast : null;
     if (!B) return [];
-    var names = {};
-    B.handlers.forEach(function (h) { names[h.id] = h.name; });
+    var names = new Map();
+    B.handlers.forEach(function (h) { names.set(h.id, h.name); });
     return Object.keys(B.done).map(function (id) { return Object.assign({ id: id }, B.done[id]); })
       .sort(function (a, b) { return b.at - a.at; })
       .slice(0, limit || 10)
-      .map(function (r) { return { id: r.id, handler: names[r.handler] || r.who || r.handler, r: r.r, why: r.why, day: r.day, label: r.label, type: r.type }; });
+      .map(function (r) { return { id: r.id, handler: names.get(r.handler) || r.who || r.handler, r: r.r, why: r.why, day: r.day, label: r.label, type: r.type }; });
   };
 
   /* ---------- Applying a profile ---------- */
@@ -219,7 +220,7 @@
   };
 
   /* ---------- Applying a request ---------- */
-  var HANDLE_ID = /^[A-Za-z0-9._:-]{8,80}$/;
+  var HANDLE_ID = /^(?!(?:__proto__|constructor|prototype|toString|valueOf|hasOwnProperty)$)[A-Za-z0-9._:-]{8,80}$/;
   /* The refusal's words for a player: the Bastion's own reason, minus anything that is the DM's business. */
   function forPlayer(reason) {
     var t = String(reason || '');
@@ -281,7 +282,10 @@
     if (!fn || !P.isPlayerOrder(fn)) return refuse('That isn\'t an order a handler can ask for.');
     rec.label = name + ': ' + fn.label;
     var busy = P.pendingAt(s, fac.id);
-    if (busy) return refuse('The ' + fac.name + ' is busy: ' + plain(busy.label, 140) + ', ready on ' + R.dayLabel(busy.dueDay) + '. Nothing new can be asked until it is done.');
+    if (busy) {
+      var mineHere = R.trainingOrderFor(s, c.id);
+      return refuse('The ' + fac.name + ' is busy (' + P.busyLabel(s, data, busy, mineHere && mineHere.id === busy.id ? c : null).replace(/^Something is/, 'something is') + '), ready on ' + R.dayLabel(busy.dueDay) + '. Nothing new can be asked until it is done.');
+    }
     var why = R.trainingBlocker(s, data, fac, fn, c);
     if (why) return refuse(forPlayer(why));
     var idx = R.trainingOptions(s, data, fac, fn).map(function (o) { return o.trainCreatureId; }).indexOf(c.id);

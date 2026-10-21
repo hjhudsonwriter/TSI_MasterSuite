@@ -671,6 +671,12 @@
      only when the DM first works with it (creature-rules.js). */
   R.BOND_NAMES = ['Unfamiliar', 'Acclimatised', 'Trusting', 'Bonded', 'Devoted', 'Legendary Partnership'];
   R.CHRONICLE_MAX = 500;
+  /* Is this Chronicle entry marked DM only? It fails closed: true, 1, "true", "yes" and the like all count, so a
+     hand-edited or imported file can never make a hidden note public by writing the flag a different way. */
+  R.isPrivateNote = function (e) {
+    var v = isObj(e) ? e.private : undefined;
+    return v === true || v === 1 || (typeof v === 'string' && /^\s*(true|1|yes|y|private)\s*$/i.test(v));
+  };
   R.newDevelopment = function (c, day) {
     var elara = !!c && c.id === 'elara_wyvern';
     var d = {
@@ -707,7 +713,7 @@
     }).map(function (e) {
       var out = { id: txt(e.id, 40), day: dayNum(e.day, 1), cat: txt(e.cat, 20), text: txt(e.text, 400), by: txt(e.by, 40), link: txt(e.link, 80) };
       /* A DM-only entry (Beast Handler, D6): the player's companion never shows it. Kept only when set, so older saves are unchanged. */
-      if (e.private === true) out.private = true;
+      if (R.isPrivateNote(e)) out.private = true;
       return out;
     });
     if (chronicle.length > R.CHRONICLE_MAX) chronicle = chronicle.slice(chronicle.length - R.CHRONICLE_MAX);

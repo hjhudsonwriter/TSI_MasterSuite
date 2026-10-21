@@ -562,7 +562,8 @@
           body: [
             muted(changing ? 'The new pairing starts at Bond 0 and the old history is kept in the Chronicle. Tick the box only to credit the old bond to the new handler.' : 'The handler is the player this wyvern bonds with. Bond programmes need one.'),
             field('Handler', who), field('Reason', why),
-            changing ? el('label', { class: 'tsi-bas-field' }, [keep, ' Credit the old bond (Bond ' + d.bond.level + ') to the new handler']) : null
+            muted('The reason is written in the beast\'s Chronicle, which the player\'s Beast Handler shows.'),
+            changing ? el('label', { class: 'tsi-bas-field tsi-bas-field--inline' }, [keep, ' Credit the old bond (Bond ' + d.bond.level + ') to the new handler']) : null
           ],
           actions: [{ label: 'Cancel', value: false }, { label: changing ? 'Change handler' : 'Assign', value: true, primary: true }],
           onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'handler-dialog'); setTimeout(function () { who.focus(); }, 0); }
@@ -622,7 +623,7 @@
         var ok = await plainModal({
           title: 'Confirm Bond ' + d.bond.ready + ': ' + R.bondName(d.bond.ready),
           className: 'tsi-bas-modal',
-          body: [muted(R.creatureName(data, c) + ' rises from Bond ' + d.bond.level + ' to Bond ' + d.bond.ready + ' (' + R.bondName(d.bond.ready) + '), by exactly one level. Only confirm it once a suitable scene has happened.'), field('The scene', why), problem],
+          body: [muted(R.creatureName(data, c) + ' rises from Bond ' + d.bond.level + ' to Bond ' + d.bond.ready + ' (' + R.bondName(d.bond.ready) + '), by exactly one level. Only confirm it once a suitable scene has happened.'), field('The scene', why), muted('What you write here goes in the beast\'s Chronicle, which the player\'s Beast Handler shows.'), problem],
           actions: [{ label: 'Cancel', value: false }, { label: 'Confirm bond', value: true, primary: true }],
           onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'bond-dialog'); mainBtn = parts.dialog.querySelector('.tsi-modal__foot .tsi-btn--primary'); check(); }
         });
@@ -641,7 +642,7 @@
         var ok = await plainModal({
           title: 'Chronicle note: ' + R.creatureName(data, c),
           className: 'tsi-bas-modal',
-          body: [field('Note', note), el('label', { class: 'tsi-bas-field' }, [secret, ' DM only: the player\'s Beast Handler won\'t show this note'])],
+          body: [field('Note', note), el('label', { class: 'tsi-bas-field tsi-bas-field--inline' }, [secret, ' DM only: the player\'s Beast Handler won\'t show this note'])],
           actions: [{ label: 'Cancel', value: false }, { label: 'Add to the Chronicle', value: true, primary: true }],
           onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'note-dialog'); setTimeout(function () { note.focus(); }, 0); }
         });
@@ -666,7 +667,7 @@
         var ok = await plainModal({
           title: 'Confirm the first ' + R.rideNoun(data, c.species) + ': ' + R.creatureName(data, c),
           className: 'tsi-bas-modal',
-          body: [muted('Only confirm once you have run the first mounted ' + R.rideNoun(data, c.species) + ' scene with ' + R.handlerName(d.handlerId) + '. This records story permission only: the Bastion adds no riding movement or combat.'), field('The scene', why), problem],
+          body: [muted('Only confirm once you have run the first mounted ' + R.rideNoun(data, c.species) + ' scene with ' + R.handlerName(d.handlerId) + '. This records story permission only: the Bastion adds no riding movement or combat.'), field('The scene', why), muted('What you write here goes in the beast\'s Chronicle, which the player\'s Beast Handler shows.'), problem],
           actions: [{ label: 'Cancel', value: false }, { label: 'Confirm first ' + R.rideNoun(data, c.species), value: true, primary: true }],
           onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'flight-dialog'); mainBtn = parts.dialog.querySelector('.tsi-modal__foot .tsi-btn--primary'); check(); }
         });

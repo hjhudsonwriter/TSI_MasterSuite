@@ -68,7 +68,7 @@
     t.equal(d.name, 'Elara\'s wyvern');
     t.equal(d.handler.name, 'Elara');
     t.same([d.bond.level, d.bond.name, d.bond.max], [1, 'Acclimatised', 5]);
-    t.same(d.chronicle.map(function (e) { return [e.id, e.cat, e.text, e.by]; }), [['ch-credit', 'bond', 'Existing relationship credited; Bond 1 per campaign decision.', 'DM']]);
+    t.same(d.chronicle.map(function (e) { return [e.id, e.cat, e.text, e.by]; }), [['e1', 'bond', 'Existing relationship credited; Bond 1 per campaign decision.', 'DM']]);
     t.same([d.species.id, d.species.name, d.facility.id, d.facility.level], ['wyvern', 'Wyvern', 'wyvern_roost', 3]);
     t.equal(c.development.bond.level, 1, 'her Bastion record is untouched');
   });
@@ -204,7 +204,8 @@
     var dev = e.development;
     t.same(dev.chronicle.map(function (x) { return !!x.private; }), [false, false, true, false], 'the note is flagged in the Bastion');
     var ch = snap(b, 'elara').creatures.elara_wyvern.chronicle;
-    t.same(ch.map(function (x) { return x.id; }), ['ch-credit', 'ch-1', 'ch-3']);
+    t.same(ch.map(function (x) { return x.id; }), ['e1', 'e2', 'e3'], 'numbered afresh: no gap shows where the hidden note was');
+    t.ok(ch.every(function (x) { return x.link === undefined; }), 'no Bastion-internal link goes out');
     t.same(ch.map(function (x) { return x.text; }), ['Existing relationship credited; Bond 1 per campaign decision.', 'First public memory', 'Second public memory']);
     t.ok(JSON.stringify(snap(b, 'elara')).indexOf('SECRET-DM-NOTE') === -1);
     t.equal(ch[0].dayLabel, 'Day 10');
@@ -221,8 +222,18 @@
     t.same(ch.map(function (x) { return x.private === true; }), [false, false, true]);
     t.equal(Object.prototype.hasOwnProperty.call(ch[1], 'private'), false, 'an ordinary note carries no flag');
     t.same(copy(BR.toSave(again)).creatures, before.creatures, 'saving again changes nothing');
-    var clean = BR.cleanDevelopment({ chronicle: [{ id: 'a', day: 2, cat: 'note', text: 'x', by: 'DM', link: '', private: 'yes' }] });
-    t.equal(clean.chronicle[0].private, undefined, 'only a real true counts');
+    /* The flag fails closed: any plausible way of writing "yes" keeps the note hidden; a real false or nothing leaves it public. */
+    [true, 1, 'yes', 'true', 'TRUE', ' 1 ', 'private'].forEach(function (v) {
+      var c = BR.cleanDevelopment({ chronicle: [{ id: 'a', day: 2, cat: 'note', text: 'x', by: 'DM', link: '', private: v }] });
+      t.equal(c.chronicle[0].private, true, 'private: ' + JSON.stringify(v) + ' stays hidden');
+    });
+    [false, 0, 'false', '', null, undefined, 'no'].forEach(function (v) {
+      var c = BR.cleanDevelopment({ chronicle: [{ id: 'a', day: 2, cat: 'note', text: 'x', by: 'DM', link: '', private: v }] });
+      t.equal(c.chronicle[0].private, undefined, 'private: ' + JSON.stringify(v) + ' is an ordinary note');
+    });
+    var raw = BR.fromSave(copy(BR.toSave(b)), bdata);
+    BR.creatureById(raw, 'elara_wyvern').development.chronicle[1].private = 'yes';
+    t.equal(snap(raw, 'elara').creatures.elara_wyvern.chronicle.some(function (x) { return x.text === 'An ordinary note'; }), false, 'the snapshot hides it too, whatever way the flag is written');
   });
 
   test('building a snapshot changes nothing in the save, and gives a creature no development it did not have', function (t) {
@@ -338,11 +349,14 @@
     var mira = snap(b, 'Mira').creatures[w.id].orders;
     t.equal(mira.status, 'busy');
     t.same(mira.available, []);
-    t.same([mira.busy.label, mira.busy.dueDay, mira.busy.dueLabel, mira.busy.forThisCreature], [pend.label, 15, 'Day 15', true]);
-    t.ok(/is busy: .*ready on Day 15\./.test(mira.note), mira.note);
+    t.same([mira.busy.label, mira.busy.dueDay, mira.busy.dueLabel, mira.busy.forThisCreature], ['Safe Acclimatisation', 15, 'Day 15', true]);
+    t.equal(mira.note, 'Safe Acclimatisation, ready on Day 15.');
+    t.ok(pend);
     var elara = snap(b, 'Elara').creatures.elara_wyvern.orders;
     t.equal(elara.status, 'busy', 'a different player\'s creature is locked out too (the whole building)');
     t.equal(elara.busy.forThisCreature, false);
+    t.equal(elara.busy.label, 'Something is under way at the Wyvern Roost', 'another handler\'s programme is not named');
+    t.equal(JSON.stringify(snap(b, 'Elara')).indexOf('Acclimatisation'), -1, 'the other handler\'s programme is not in Elara\'s snapshot (the beast is only a directory line)');
     t.ok(!!BR.trainingOptions(b, bdata, BR.facility(bdata, 'wyvern_roost'), BR.fn(BR.facility(bdata, 'wyvern_roost'), 'wyr_safe_acclimatisation')).length);
   });
 
@@ -386,7 +400,8 @@
     t.equal(r.ok, true, r.message);
     var o = snap(b, 'Mira').creatures[w.id].orders;
     t.equal(o.status, 'busy');
-    t.ok(/House a Wyvern/.test(o.busy.label), o.busy.label);
+    t.equal(o.busy.label, 'Something is under way at the Wyvern Roost');
+    t.ok(JSON.stringify(snap(b, 'Mira')).indexOf('Second Wing') === -1, 'a waiting creature\'s name never leaks through a House order');
   });
 
   test('the earliest-due pending order is the one shown; when it completes the building is free again', function (t) {
@@ -396,7 +411,7 @@
     BR.assignHandler(b, bdata, w.id, 'Mira', '');
     b.pendingOrders.push({ id: 'late', facId: 'wyvern_roost', fnId: 'x', chosen: null, optionLabel: '', notes: '', label: 'Wyvern Roost: Late', costGP: 0, issuedDay: 10, dueDay: 30 });
     b.pendingOrders.push({ id: 'soon', facId: 'wyvern_roost', fnId: 'x', chosen: null, optionLabel: '', notes: '', label: 'Wyvern Roost: Soon', costGP: 0, issuedDay: 10, dueDay: 12 });
-    t.equal(snap(b, 'Mira').creatures[w.id].orders.busy.label, 'Wyvern Roost: Soon');
+    t.equal(snap(b, 'Mira').creatures[w.id].orders.busy.dueDay, 12, 'the one due first');
     BR.removeOrder(b, 'soon'); BR.removeOrder(b, 'late');
     t.equal(snap(b, 'Mira').creatures[w.id].orders.status, 'available');
     t.ok(e.id);
