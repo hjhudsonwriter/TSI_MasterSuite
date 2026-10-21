@@ -674,6 +674,11 @@
     var d = R.ensureDev(s, c);
     var f = isObj(fields) ? fields : {};
     ['dominant', 'attachment', 'trigger'].forEach(function (k) { if (typeof f[k] === 'string') d.temperament[k] = f[k].replace(/\s+/g, ' ').trim().slice(0, 120); });
+    /* The Regional Variety (Beast Handler, 21 October 2026): a cosmetic line of at most 60 letters; empty clears it. */
+    if (typeof f.regional === 'string') {
+      var rv = f.regional.replace(/[<>]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60);
+      if (rv) d.regional = rv; else delete d.regional;
+    }
     return { ok: true, log: ['Creatures', R.creatureName(data, c) + '\'s temperament notes were updated.'] };
   };
   /* The DM confirms the ready milestone: exactly one level, with a reason. */
