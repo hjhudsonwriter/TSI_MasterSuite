@@ -364,7 +364,9 @@
 .tsi-tool--beasthandler .tsi-bh-request__line { font-size: var(--tsi-fs-body-sm); color: var(--tsi-text-muted); }
 
 /* ---------- Painted portraits (Harry's art): upright pictures in a gold frame ---------- */
-.tsi-tool--beasthandler .tsi-bh-hero--art { width: min(100%, 360px); aspect-ratio: 9 / 16; max-height: 62vh; }
+.tsi-tool--beasthandler .tsi-bh-hero--art { width: min(100%, 340px); aspect-ratio: 9 / 16; }
+/* On a laptop or tablet the picture is sized by the window's height, so the bond and the three buttons stay in view. */
+@media (min-width: 720px) { .tsi-tool--beasthandler .tsi-bh-hero--art { width: auto; height: min(50vh, 520px); max-width: 100%; } }
 .tsi-tool--beasthandler .tsi-bh-hero--art .tsi-bh-hero__tap { border-radius: var(--tsi-radius-lg); border: var(--tsi-border-feature); overflow: hidden; box-shadow: var(--tsi-shadow-card), var(--tsi-glow-gold); }
 .tsi-tool--beasthandler .tsi-bh-hero--art .tsi-bh-hero__img { object-fit: cover; object-position: 50% 30%; }
 .tsi-tool--beasthandler .tsi-bh-hero--small.tsi-bh-hero--art { width: 84px; aspect-ratio: 1; max-height: none; }

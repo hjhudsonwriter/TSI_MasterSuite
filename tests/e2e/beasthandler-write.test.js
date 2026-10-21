@@ -214,6 +214,9 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     assert(/tools\/beasthandler\/assets\/dire-wolf\/icepelt\.webp$/.test(src), src);
     assert(await bh.$eval('[data-test=bh-portrait-large] img', i => i.complete && i.naturalWidth === 941), 'the picture really loaded');
     await H.shot(bh, 'beasthandler-wolf-icepelt');
+    const lay = await H.layoutCheck(bh, ['.tsi-bh-nav button', '[data-test=bh-bond]']);
+    equal(lay.outOfView, [], 'the bond and the three buttons are in view on the laptop with a painted portrait');
+    assert(lay.scrollWidth <= lay.clientWidth, 'no sideways scroll');
     await viewAs('Mira');
     await bh.click('[data-test=bh-beast-cr-swiftwing]');
     assert(await bh.$('[data-test=bh-portrait-large] .tsi-bh-medallion'), 'a griffin with no picture matched yet shows the medallion');
