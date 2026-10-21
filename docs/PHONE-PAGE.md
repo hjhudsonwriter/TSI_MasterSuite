@@ -78,7 +78,7 @@ In that phone's browser only, under names starting `tsi.beasthandler.phone`: the
 - see the treasury, the Day Log, DM notes, other buildings, other players' details (their beasts appear only as a name, handler and bond line), or anything from your save that isn't in their snapshot;
 - change a bond, name, handler, milestone, Chronicle line, build or purchase, or spend any gold;
 - order anything except a **free training** order, and only when the Bastion's own rules would accept it right now;
-- order while anything else is pending at that building (the whole-building lock you chose).
+- order while a training programme is pending at that building (the lock you chose, training only).
 
 ## Things to know
 

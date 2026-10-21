@@ -21,8 +21,9 @@
    A request is refused, with a plain reason, when: it isn't understood; it
    was made for a different Bastion save; it is more than 30 days old; the
    creature isn't housed in a standing building; the handler is no longer its
-   handler (the DM changed it); the order isn't free training; anything at all
-   is pending at that building (the whole-building lock, Harry's D3); the
+   handler (the DM changed it); the order isn't free training; a training
+   programme is pending at that building (the building lock, Harry's D3, narrowed
+   to training only on 21 October 2026); the
    building is Under Repair; or the Bastion's own rules (R.trainingBlocker)
    say the creature can't take it now (level, bond, handler, a place free).
    The DM's own training places and orders are untouched.
@@ -299,7 +300,7 @@
     var busy = P.pendingAt(s, fac.id);
     if (busy) {
       var mineHere = R.trainingOrderFor(s, c.id);
-      return refuse('The ' + fac.name + ' is busy (' + P.busyLabel(s, data, busy, mineHere && mineHere.id === busy.id ? c : null).replace(/^Something is/, 'something is') + '), ready on ' + R.dayLabel(busy.dueDay) + '. Nothing new can be asked until it is done.');
+      return refuse('The ' + fac.name + ' is busy (' + P.busyLabel(s, data, busy, mineHere && mineHere.id === busy.id ? c : null).replace(/^A training programme/, 'a training programme') + '), ready on ' + R.dayLabel(busy.dueDay) + '. Nothing new can be asked until it is done.');
     }
     var why = R.trainingBlocker(s, data, fac, fn, c);
     if (why) return refuse(forPlayer(why));

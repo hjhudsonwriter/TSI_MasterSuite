@@ -195,7 +195,7 @@ Deferred as you asked and not touched here: Explorer collecting parcels before t
 |---|---|
 | D1 | Phone route: **A + B** (same device now; the offline code swap later). No live relay. |
 | D2 | Griffin and Dire Wolf training orders are shown in the companion, with the same rules as the Wyvern's. |
-| D3 | The pending-order lock is for the **whole building**: while any order is pending there, the phone offers no new order and shows the pending one and its due day. The DM's own training places are untouched. (Built to read "any order", including a House order or an Upgrade; say if you want training orders only.) |
+| D3 | The pending-order lock is for the **whole building**: while any order is pending there (**amended 21 October 2026: a pending training programme only; House orders and Upgrades no longer lock**), the phone offers no new order and shows the pending one and its due day. The DM's own training places are untouched. (Built to read "any order", including a House order or an Upgrade; say if you want training orders only.) |
 | D4 | Other players' creatures: directory entry only. |
 | D5 | Players may request **free training only**. The 150 gp harness, House orders, milestones and the first flight stay with the DM. |
 | D6 | The Chronicle gets a **DM only** flag on notes. Built in BH-1a: the Bastion's Add a note box has a tick box, the flag is saved and kept by the save cleaner, and the player view leaves those notes out. |
@@ -222,3 +222,14 @@ Profile rules Harry set (for BH-2a): Roll shows a suggestion and saves nothing; 
 | BH-4 art and polish | Part done | Five Dire Wolf portraits shown by Regional Variety; the five wyvern pictures saved but unused; the griffin pictures still to arrive as files. No animation yet. |
 
 See `docs/PHONE-PAGE.md` for how the phone page works and which files a phone needs.
+
+---
+
+## 10. Decisions after testing (Harry, 21 October 2026)
+
+- **Hosting the phone page:** publish the whole suite on GitHub Pages (an iPhone can't open a local file). Pages should publish `main`, folder `/ (root)`.
+- **Building lock:** training programmes only (House orders and Upgrades no longer lock).
+- **Reasons the DM types for a bond or handler change:** stay visible to players.
+- **Pairing codes:** no expiry, any number of phones: fine as built.
+- **Handlers:** matched by name: fine.
+- **Griffin pictures** (confirmed): fiery russet and bronze = Embermantle; brown head and silver-grey shoulders = Galeclaw; pale silver and white = Silvershroud; steel-grey with lightning = Thunderwing; gold and ivory = Dawnmantle. The picture files themselves still have to be uploaded (they never reached the repository). Harry also has updated Wyvern and Dire Wolf pictures and descriptions to send.
