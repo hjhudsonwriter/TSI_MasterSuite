@@ -182,6 +182,38 @@
     t.equal(C.cancelledByConversion(order('x', 'wyvern_roost', 'house_elara_wyvern', 'Wyvern Roost: House Elara\'s Wyvern', 14)), false);
   });
 
+  test('the three beast buildings are ONE Beast Pen to a version 3 Bastion read before it is converted: one construction (the one ready first), no repair of a building that is going, none at all of a version 4', function (t) {
+    function save(v, extra) {
+      var b = bastion();
+      b.v = v;
+      b.day = 10;
+      b.anchored = true;
+      Object.keys(extra).forEach(function (k) { b[k] = extra[k]; });
+      return b;
+    }
+    function lines(b) { return C.bastionComing(b).map(function (x) { return x.day + ' ' + x.line; }); }
+    function building(id, ready) { return { facId: id, status: 'building', startDay: 1, readyDay: ready }; }
+    var three = save(3, { builtExtras: [building('wyvern_roost', 26), building('griffin_tower', 22), building('dire_wolf_den', 30)] });
+    t.same(lines(three), ['22 The Beast Pen is built.'], 'one Pen, on the day of the one ready first');
+    t.equal(JSON.stringify(C.bastionComing(three)).match(/is built/g).length, 1);
+    t.same(lines(save(2, { builtExtras: [building('wyvern_roost', 26), building('dire_wolf_den', 30)] })), ['26 The Beast Pen is built.'], 'a version 2 Bastion is converted too');
+    t.same(lines(save(3, { builtExtras: ['wyvern_roost', building('griffin_tower', 22)] })), [], 'one of them already built: that one is the Pen, the others\' construction ends');
+    t.same(lines(save(3, { builtExtras: [{ facId: 'dire_wolf_den', status: 'built' }, building('griffin_tower', 22)] })), []);
+    t.same(lines(save(3, { builtExtras: [building('griffin_tower', 22), { facId: 'beast_pen', status: 'building', startDay: 2, readyDay: 40 }] })), ['40 The Beast Pen is built.'], 'a Pen already in a slot is the Pen');
+    t.same(lines(save(3, { builtExtras: ['', building('wyvern_roost', 26)], builtPlots: [building('griffin_tower', 19)] })), ['19 The Beast Pen is built.'], 'slots and plots alike');
+    t.same(lines(save(3, { builtExtras: [building('wyvern_roost', 'soon')] })), [], 'a damaged day is never guessed');
+    t.same(lines(save(3, { builtExtras: [building('herbal_gardens', 15), building('wyvern_roost', 26)] })), ['15 The Herbal Gardens is built.', '26 The Beast Pen is built.'], 'other buildings are named as before');
+    /* Repairs of the buildings that are going are not forecast; repairs of anything else are, and orders are not held back by them. */
+    var repairs = save(3, { repairs: { griffin_tower: 18, wyvern_roost: 12, workshop: 14 }, pendingOrders: [{ id: 'h', facId: 'griffin_tower', fnId: 'house_griffin', label: 'Griffin Tower: House a Griffin (Swiftwing)', issuedDay: 9, dueDay: 15 }] });
+    t.same(lines(repairs), ['15 Griffin Tower: House a Griffin (Swiftwing) is complete.', '15 Repairs: the Workshop is working again.'], 'the order is due on its own day (the Tower\'s repair goes with the Tower); the Workshop\'s repair is still forecast');
+    /* A converted Bastion (version 4) is never filtered: it says what it holds, by its own names. */
+    var v4 = save(4, { repairs: { griffin_tower: 18 }, builtExtras: [building('beast_pen', 31), building('griffin_tower', 22)] });
+    t.same(lines(v4), ['19 Repairs: the Griffin Tower is working again.', '22 The Griffin Tower is built.', '31 The Beast Pen is built.']);
+    var before = JSON.stringify(three);
+    C.bastionComing(three);
+    t.equal(JSON.stringify(three), before, 'the save is only read');
+  });
+
   test('"The Ironbow sends word…": an upgrade (step 1b) is complete on its day, the Hall\'s too (no roll)', function (t) {
     var b = bastion();
     b.day = 10;

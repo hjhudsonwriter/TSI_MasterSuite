@@ -83,6 +83,25 @@
   var SHRINE_ORDERS_THAT_END = ['craft', 'prepare_purification_incense', 'prepare_aquatic_protection_charm', 'bless_bastion_foundations'];
   /* The House orders the Beast Pen step moves (the same lists as HOUSE_FNS in tools/bastion/strip-back-rules.js). */
   var BEAST_HOUSE_ORDERS = { wyvern_roost: ['house_elara_wyvern', 'house_wyvern'], griffin_tower: ['house_griffin'], dire_wolf_den: ['house_dire_wolf'] };
+  /* The Wyvern Roost, Griffin Tower and Dire Wolf Den become ONE Beast Pen when the Bastion converts a version 2 or 3 save
+     (rehomeBeasts): a built one is the Pen, else the one that would be ready first, and the others' construction ends; their
+     repairs go. A save read before that must forecast the same: one Pen, and no repair of a building that is going. */
+  function isOldPen(id) { return Object.prototype.hasOwnProperty.call(BEAST_HOUSE_ORDERS, id); }
+  function slotId(e) { return typeof e === 'string' ? e : isObj(e) ? str(e.facId) : ''; }
+  /* The day the one Beast Pen will be finished, for a save that will be converted and has none standing yet; else null. */
+  function penReadyDay(ba) {
+    var slots = (Array.isArray(ba.builtExtras) ? ba.builtExtras : []).concat(Array.isArray(ba.builtPlots) ? ba.builtPlots : []);
+    var standing = false, soonest = null;
+    slots.forEach(function (e) {
+      var id = slotId(e);
+      if (id === 'beast_pen') standing = true;
+      else if (isOldPen(id)) {
+        if (isObj(e) && e.status === 'building') { if (isNum(e.readyDay) && (soonest === null || e.readyDay < soonest)) soonest = e.readyDay; }
+        else standing = true;
+      }
+    });
+    return standing ? null : soonest;
+  }
   /* Will converting a version 3 Bastion CANCEL this pending order? (Not move it, not keep it.) */
   function cancelledByConversion(o) {
     if (!isObj(o) || !Object.prototype.hasOwnProperty.call(RETIRED_FACILITIES, o.facId)) return false;
@@ -136,15 +155,19 @@
       var out = [];
       function add(day, kind, line) { if (isNum(day)) out.push({ day: Math.trunc(day), kind: kind, line: line }); }
       var repairs = isObj(ba.repairs) ? ba.repairs : {};
+      /* A save that will be converted (below version 4): the three beast buildings are one Beast Pen. */
+      var converting = ba.v !== 4;
+      var repairOf = function (id) { return !(converting && isOldPen(id)) && isNum(repairs[id]) ? repairs[id] : null; };
       /* Construction slots, then Development Plots (the Bastion's pull request 3). */
       (Array.isArray(ba.builtExtras) ? ba.builtExtras : []).concat(Array.isArray(ba.builtPlots) ? ba.builtPlots : []).forEach(function (e) {
-        if (isObj(e) && e.status === 'building') add(e.readyDay, 'built', 'The ' + facilityName(e.facId) + ' is built.');
+        if (isObj(e) && e.status === 'building' && !(converting && isOldPen(slotId(e)))) add(e.readyDay, 'built', 'The ' + facilityName(e.facId) + ' is built.');
       });
+      if (converting) { var penDay = penReadyDay(ba); if (penDay !== null) add(penDay, 'built', 'The Beast Pen is built.'); }
       liveOrders(ba).forEach(function (o) {
         if (!isObj(o) || !isNum(o.dueDay)) return;
         var label = str(o.label) || 'An order';
         var m = isObj(o.meta) ? o.meta : {};
-        var fix = isNum(repairs[o.facId]) ? repairs[o.facId] : null;
+        var fix = repairOf(o.facId);
         var day = fix !== null && o.dueDay <= fix ? fix + 1 : o.dueDay;
         if (o.facId === 'war_council' || m.kind === 'war_action') {
           add(day, 'war', 'Your army is ready to march on ' + (str(m.targetName) || 'the enemy') + ' (' + (OBJECTIVES[m.objective] || 'War Action') + ').');
@@ -168,7 +191,7 @@
         });
       });
       Object.keys(repairs).forEach(function (id) {
-        if (isNum(repairs[id])) add(repairs[id] + 1, 'repairs', 'Repairs: the ' + facilityName(id) + ' is working again.');
+        if (repairOf(id) !== null) add(repairs[id] + 1, 'repairs', 'Repairs: the ' + facilityName(id) + ' is working again.');
       });
       (Array.isArray(ba.warRecovery) ? ba.warRecovery : []).forEach(function (r) {
         if (!isObj(r)) return;
