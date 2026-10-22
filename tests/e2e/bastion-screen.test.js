@@ -3,7 +3,7 @@
    the map filling the window on the laptop and the TV, the top bar (the
    day, the treasury, the counts), the facility grid and its tiles, the
    build panel, each facility's panel, the panels the bottom bar opens, the
-   Banner & War Council lock, the Party Identity badge, the shared tooltip,
+   Party Identity badge, the shared tooltip,
    and the keyboard. The Bastion's rules, played through these panels, are
    checked in tests/e2e/phase9.test.js.
    Run with:  node tests/e2e/bastion-screen.test.js */
@@ -115,12 +115,12 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
       await page.setViewportSize(H.SIZES[size].viewport);
       await page.waitForTimeout(200);
       await page.evaluate(() => TSI.notify('A long notice, to see where it sits: it has two lines of words in it, at least, on both screens.', { type: 'info', title: 'Test.', id: 'tsi-bs-test' }));
-      const hits = await page.evaluate(() => ['open-influence', 'open-favour', 'open-war', 'open-warehouse'].map(t => {
+      const hits = await page.evaluate(() => ['open-influence', 'open-favour', 'open-warehouse'].map(t => {
         const b = document.querySelector('[data-test=' + t + ']').getBoundingClientRect();
         const hit = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2);
         return t + ':' + !!(hit && hit.closest('[data-test=' + t + ']'));
       }));
-      equal(hits, ['open-influence:true', 'open-favour:true', 'open-war:true', 'open-warehouse:true'], size);
+      equal(hits, ['open-influence:true', 'open-favour:true', 'open-warehouse:true'], size);
       const n = await rect(page, '.tsi-notices');
       const bar = await rect(page, '.tsi-bas-bottom');
       assert(n.bottom <= bar.y, size + ': the notices end above the bar: ' + JSON.stringify([n, bar]));
@@ -889,12 +889,13 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
   /* ------------------------------------------------------------------ */
   section('The panels the bottom bar opens');
 
-  const PANELS = [['open-warehouse', 'warehouse', 'Warehouse', 'warehouse'], ['open-management', 'management', 'Management', 'defenders'],
+  const PANELS = [['open-warehouse', 'warehouse', 'Warehouse', 'warehouse'], ['open-management', 'management', 'Management', 'creatures'],
     ['open-log', 'log', 'Day Log', 'log'],
     ['open-influence', 'influence', 'Clan Influence', 'influence'], ['open-favour', 'favour', 'Favour of the Gods', 'favour-telluria']];
-  await check('the bottom bar has no Events button any more (S05): Warehouse, Management and Day Log on the left; Clan Influence, Favour and War Council on the right', async () => {
+  await check('the bottom bar has no Events button any more (S05): Warehouse, Management and Day Log on the left; Clan Influence and Favour on the right (the War Council went on 22 October 2026)', async () => {
     equal(await page.$$eval('.tsi-bas-pbtns--left [data-test^=open-]', bs => bs.map(b => b.getAttribute('data-test'))), ['open-warehouse', 'open-management', 'open-log']);
-    equal(await page.$$eval('.tsi-bas-pbtns--right [data-test^=open-]', bs => bs.map(b => b.getAttribute('data-test'))), ['open-influence', 'open-favour', 'open-war']);
+    equal(await page.$$eval('.tsi-bas-pbtns--right [data-test^=open-]', bs => bs.map(b => b.getAttribute('data-test'))), ['open-influence', 'open-favour']);
+    equal(await page.$('[data-test=open-war]'), null, 'no War Council button');
     equal(await page.$('[data-test=open-events]'), null);
     equal(await page.evaluate(() => TSI.bastion.debug.reveal('roll-event')), false, 'and nothing to reveal for the old button');
   });
@@ -934,28 +935,7 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
   });
 
   /* ------------------------------------------------------------------ */
-  section('The Banner & War Council lock, and the crest badge');
-
-  await check('locked while the Bastion has nothing that can fight: the padlock\'s tooltip says how to raise a banner', async () => {
-    await setUp(page, (s) => { s.defenders.count = 0; s.defenderBeasts = []; s.military = []; s.pendingOrders = []; });
-    equal(await page.$eval('[data-test=open-war]', b => b.classList.contains('is-locked')), true);
-    await page.click('[data-test=open-war]');
-    await page.waitForTimeout(200);
-    equal(await panelOpen(page), null);
-    assert(/Recruit defenders at the Barracks to raise your banner/.test(await bare(page, '[data-test=tooltip]')));
-    await page.mouse.move(5, 500);
-  });
-
-  await check('one defender unlocks it', async () => {
-    await page.click('[data-test=open-management]');
-    await page.click('[data-test=add-defender]');
-    await page.keyboard.press('Escape');
-    equal(await page.$eval('[data-test=open-war]', b => b.classList.contains('is-locked')), false);
-    await pause(page);
-    await page.click('[data-test=open-war]');
-    await page.waitForSelector('[data-test=panel-war] [data-test=queue-war]');
-    await page.keyboard.press('Escape');
-  });
+  section('The crest badge');
 
   await check('Party Identity, Form Clan\'s pop-up and the question about a crest sent from the Creator fit the laptop, full screen, the TV and a small window (Build 3)', async () => {
     const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
@@ -1017,7 +997,7 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
   /* ------------------------------------------------------------------ */
   section('What the screen remembers');
 
-  await check('the old panels\' open-or-closed settings are dropped; the grid\'s and the war pop-ups\' are kept', async () => {
+  await check('the old panels\' open-or-closed settings are dropped, and so are the war pop-ups\' (the war went on 22 October 2026); the grid\'s are kept', async () => {
     await page.evaluate(() => TSI.store.set('tsi.bastion.ui', { collapsed: { war: true, diplomacy: true }, gridOpen: false, warNoticed: { ma1: true } }));
     await page.evaluate(() => TSI.store.flush());
     await page.reload();
@@ -1026,8 +1006,7 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     await page.waitForTimeout(150);
     await page.evaluate(() => TSI.store.flush());
     const ui = await page.evaluate(() => TSI.store.get('tsi.bastion.ui', null));
-    /* ("ma1" is no Military Action waiting, so the war pop-ups' list tidies it away, as before.) */
-    equal(ui, { gridOpen: true, warNoticed: {} });
+    equal(ui, { gridOpen: true });
   });
 
   await check('nothing reached for the internet, and nothing failed', async () => {

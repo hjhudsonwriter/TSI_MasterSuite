@@ -14,9 +14,6 @@
    - House a Griffin (3 days) houses it; a second griffin waits ("No room")
      until the Tower is upgraded to Level 2 (7 days); a dire wolf is housed at
      the Den;
-   - a Defend Bastion battle: the creatures stand with the defenders, one
-     defeated creature is badly wounded (never killed), and after the
-     withdrawal no creature has gone;
    - Demolish the Griffin Tower: the question says its griffins stay, and
      they do;
    - a reload adds nothing;
@@ -446,16 +443,10 @@ async function clickPop(page, label) {
     assert(s.log.some(l => l.body === 'Griffin Tower: House a Griffin (Swiftwing) → Swiftwing has a home at the Griffin Tower. It guards the Ironbow when it is attacked.'), logText(s));
   });
 
-  await check('the Roost\'s panel lists Elara\'s wyvern ("Defends the Ironbow: Battle Value 11, Flight"); a second House Elara\'s Wyvern is refused', async () => {
+  await check('the Roost\'s panel lists Elara\'s wyvern; a second House Elara\'s Wyvern is refused', async () => {
     await openTile(ba, 'wyvern_roost');
     equal(await panelCreatures(ba, 'wyvern_roost'), { room: 'Room: 1 of 2 taken, 1 free. Each level of the Wyvern Roost houses one wyvern, plus one more (Elara\'s wyvern is one of them).', housed: [['Elara\'s wyvern', 'Guarding the Ironbow.']], waiting: [] });
-    equal(await bare(ba, '[data-test=creature-war-' + WYVERN + ']'), 'Defends the Ironbow: Battle Value 11, Flight');
     equal(await orderState(ba, ROOST), { button: 'Already at the Ironbow', off: true, why: 'Elara\'s wyvern already lives at the Ironbow.' });
-    await ba.hover('[data-test=creature-' + WYVERN + ']');
-    await ba.waitForFunction(() => /Elara's wyvern/.test(document.querySelector('[data-test=tooltip]').textContent), null, { timeout: 4000 });
-    const tip = await bare(ba, '[data-test=tooltip]');
-    assert(/Cohesion\s*7/.test(tip) && /Attack\s*\+6/.test(tip) && /Defence\s*13/.test(tip) && /Move\s*6/.test(tip) && /Resolve\s*\+2/.test(tip) && /Battle Value\s*11/.test(tip) && /Flight/.test(tip), tip);
-    assert(/Fights only when the Ironbow is attacked \(Defend Bastion\), never on a War Action\. Never killed or captured: at worst badly wounded for 21 days\./.test(tip), tip);
     await H.shot(ba, 'creatures-roost-wyvern-laptop');
     await ba.click('[data-test=issue-' + ROOST + ']', { force: true });
     await ba.waitForTimeout(400);
@@ -567,116 +558,19 @@ async function clickPop(page, label) {
   });
 
   /* ------------------------------------------------------------------ */
-  section('Defend Bastion: the creatures stand with the defenders');
+  section('The register');
 
   let before = null;
-  await check('at war with Bacca, its attack comes the next day: the pop-up names the four creatures, and they stand in the defence', async () => {
-    await ba.evaluate(() => TSI.bastion.debug.change(s => {
-      s.organization = { type: 'clan', name: 'Clan Ironbow', chief: 'Harry', motto: '', foundedAtDay: 1 };
-      s.clanHonor = 40;
-      s.defenders.count = 10;
-      s.defenders.armed = true;
-      s.politicalCapital.bacca = 10;
-      s.wars = { bacca: { since: s.day, last: s.day, next: s.day + 1 } };
-    }));
+  await check('the four creatures live at the Ironbow, each with its home (kept as the register the next checks compare with)', async () => {
     await closeAll(ex);
-    /* The attack d6 shows 1 and the attacking force's d6 shows 4 (the Bastion's dice only). */
-    await ba.evaluate(() => { window.__dice = [0, 0.5]; });
-    await camp(ex);
-    await ba.waitForSelector('[data-test=attack]', { timeout: 15000 });
-    await ba.waitForTimeout(450);
-    equal(await ba.evaluate(() => window.__dice.length), 0, 'both dice used');
-    const t = await bare(ba, '[data-test=attack]');
-    assert(/Standing to defend the Ironbow: 10 defenders, Swiftwing, Dire Wolf \(granted Day 22\), Elara's wyvern, Stormfeather\./.test(t), t);
     const s = await bas(ba);
-    equal([s.day, s.militaryActions.length, s.militaryActions[0].kind], [36, 1, 'defence']);
-    equal(s.militaryActions[0].commit.creatures, [swift, wolf, WYVERN, storm]);
+    equal(register(s), [
+      [swift, 'griffin', 'Swiftwing', 'housed', 'griffin_tower'],
+      [wolf, 'dire_wolf', '', 'housed', 'dire_wolf_den'],
+      [WYVERN, 'wyvern', '', 'housed', 'wyvern_roost'],
+      [storm, 'griffin', 'Stormfeather', 'housed', 'griffin_tower']
+    ]);
     before = s.creatures;
-    await H.shot(ba, 'creatures-attack-laptop');
-  });
-
-  await check('Defend the Ironbow: after the three rolls, the War Table has one unit for each creature, by its name; hovering shows its stat block', async () => {
-    await ba.click('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__foot button.tsi-btn--primary');
-    /* Weather 15, Morale 15, and Luck 3 (Luck −1: the enemy acts first, as in the war test). */
-    const rolls = [15, 15, 3];
-    for (let n = 0; n < 40; n++) {
-      await ba.waitForTimeout(250);
-      if (await ba.$('[data-test=wt-root]')) break;
-      if (!(await modalOpen(ba))) continue;
-      if (await ba.$('[data-test=d20]')) { await ba.fill('[data-test=d20]', String(rolls.shift())); await clickPop(ba, 'Continue'); }
-      else await ba.click('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__foot button.tsi-btn--primary');
-    }
-    await ba.waitForSelector('[data-test=wt-root]');
-    await ba.waitForTimeout(800);
-    await ba.click('[data-test=wt-begin-deploy]');
-    await ba.waitForTimeout(800);
-    const units = await ba.evaluate(() => TSI.bastion.debug.warTable().battle().units.filter(u => u.source && u.source.creature).map(u => [u.id, u.name, u.source.creature, u.source.species]));
-    equal(units, [['p-creature-1', 'Swiftwing', swift, 'griffin'], ['p-creature-2', 'Dire Wolf (granted Day 22)', wolf, 'dire_wolf'], ['p-creature-3', 'Elara\'s wyvern', WYVERN, 'wyvern'], ['p-creature-4', 'Stormfeather', storm, 'griffin']]);
-    const wolfToken = await ba.evaluate(() => TSI.bastion.debug.warTable().battle().units.find(u => u.id === 'p-creature-2').short);
-    equal(wolfToken, 'Wo1', 'an unnamed creature\'s token is its kind\'s, numbered (no day number in it)');
-    const r = await ba.evaluate(() => TSI.bastion.debug.warTable().tokenScreenRect('p-creature-3'));
-    await ba.mouse.move(r.x + r.w / 2, r.y + r.h / 2);
-    await ba.waitForFunction(() => { const t = document.querySelector('[data-test=wt-tip]'); return t && !t.hidden && /Elara's wyvern/.test(t.textContent); }, null, { timeout: 4000 });
-    const tip = await bare(ba, '[data-test=wt-tip]');
-    assert(/Cohesion\s*7\s*\/\s*7/.test(tip) && /Battle Value\s*11/.test(tip) && /Flight/.test(tip), tip);
-    equal(rolls, [], 'three rolls');
-    await H.shot(ba, 'creatures-war-table-laptop');
-    await ba.mouse.move(5, 5);
-  });
-
-  await check('the battle goes badly: Swiftwing is defeated, and after Withdraw the War Report says a creature is never killed; Swiftwing is badly wounded for 21 days', async () => {
-    await ba.waitForTimeout(400);
-    await ba.click('[data-test=wt-start-battle]');
-    await clickPop(ba, 'Start Battle');
-    await ba.waitForSelector('[data-test=wt-briefing]');
-    await clickPop(ba, 'Begin the battle');
-    await ba.waitForTimeout(400);
-    if ((await bas(ba)).militaryActions[0].battle.turnSide === 'enemy') {
-      await ba.waitForTimeout(400);
-      await ba.click('[data-test=wt-enemy-act]');
-    }
-    await ba.waitForFunction(() => { const m = TSI.bastion.debug.state().militaryActions[0]; return m.battle.started && m.battle.turnSide === 'player'; }, null, { timeout: 10000 });
-    await ba.waitForTimeout(400);
-    await ba.click('[data-test=wt-close]');
-    await ba.waitForTimeout(400);
-    /* As if the enemy had beaten Swiftwing (as the war test sets a battle up). */
-    await ba.evaluate(() => TSI.bastion.debug.change(s => {
-      const u = s.militaryActions[0].battle.units.find(x => x.id === 'p-creature-1');
-      Object.assign(u, { status: 'defeated', cohesion: 0, pos: null });
-    }));
-    await closeAll(ba);
-    await ba.evaluate(() => TSI.bastion.debug.reveal('ma-continue-0'));
-    await ba.waitForTimeout(400);
-    await ba.click('[data-test=ma-continue-0]');
-    await ba.waitForSelector('[data-test=wt-root]');
-    await ba.waitForTimeout(600);
-    await ba.click('[data-test=wt-withdraw]');
-    await ba.waitForSelector('[data-test=wt-withdraw-preview]');
-    const pre = await bare(ba, '[data-test=wt-withdraw-preview]');
-    assert(/withdrawing counts as losing the defence/.test(pre) && /A d6 for Swiftwing: badly wounded, wounded or recovering \(a creature is never killed or captured\)\./.test(pre), pre);
-    /* Swiftwing's d6 shows 1, which would kill anything else. */
-    await ba.evaluate(() => { window.__dice = [0]; });
-    await clickPop(ba, 'Withdraw');
-    await ba.waitForFunction(() => { const t = document.querySelector('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__title'); return t && t.textContent === 'War Report'; }, null, { timeout: 10000 });
-    await ba.waitForTimeout(450);
-    const report = await ba.$eval('.tsi-modal:not(.tsi-bas-panel)', m => m.textContent.replace(/\s+/g, ' '));
-    assert(/Withdrawal: Defend Bastion vs Bacca/.test(report), report);
-    assert(/Swiftwing: badly wounded \(d6 1: a creature is never killed\), back on Day 57\./.test(report), report);
-    await H.shot(ba, 'creatures-war-report-laptop');
-    await clickPop(ba, 'Close');
-    await ba.waitForFunction(() => !document.querySelector('[data-test=wt-root]'));
-    const s = await bas(ba);
-    equal(s.militaryActions.length, 0);
-    equal(s.warRecovery.filter(r => r.kind === 'creature').map(r => [r.creatureId, r.name, r.status, r.untilDay]), [[swift, 'Swiftwing', 'badly_wounded', 57]]);
-  });
-
-  await check('no creature has gone: the register is exactly as before the battle, and the Tower shows Swiftwing badly wounded until Day 57', async () => {
-    await closeAll(ba);
-    const s = await bas(ba);
-    equal(s.creatures, before);
-    await openTile(ba, 'griffin_tower');
-    equal((await panelCreatures(ba, 'griffin_tower')).housed, [['Swiftwing', 'Badly wounded: fit again on Day 57.'], ['Stormfeather', 'Guarding the Ironbow.']]);
-    await closeAll(ba);
   });
 
   /* ------------------------------------------------------------------ */
