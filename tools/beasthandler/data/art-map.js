@@ -1,7 +1,8 @@
 /* Scarlett Isles: Beast Handler — which picture goes with which kind of beast.
 
    Harry's painted portraits are matched to the Regional Varieties: all
-   fifteen are in (21 October 2026; each file was named for its variety). A
+   fifteen of the first three kinds are in (21 October 2026; each file was
+   named for its variety), and so is Blacktide, the sixth Dire Wolf (22 October 2026). A
    beast with no Regional Variety, or one whose name matches no variety here,
    shows an empty frame (Harry, 21 October 2026: the picture stays blank until a
    subspecies has been chosen), so nothing is faked. The two wyverns in assets/extras/wyvern/ (mossy green, volcanic
@@ -44,7 +45,22 @@ window.TSI_DATA.beastArt = {
         icepelt: { src: 'dire-wolf/icepelt.webp' },
         slatejaw: { src: 'dire-wolf/slatejaw.webp' },
         reedshadow: { src: 'dire-wolf/reedshadow.webp' },
-        hollowhowl: { src: 'dire-wolf/hollowhowl.webp' }
+        hollowhowl: { src: 'dire-wolf/hollowhowl.webp' },
+        blacktide: { src: 'dire-wolf/blacktide.webp' }
+      }
+    },
+    /* 22 October 2026: Harry's first paintings for the two new kinds. The other
+       eight varieties have no picture yet, and show the honest blank frame. */
+    buckbear: {
+      label: 'Buckbear', alt: 'A buckbear', default: { src: '' },
+      variants: {
+        broadcrown: { src: 'buckbear/broadcrown.webp' }
+      }
+    },
+    fellcat: {
+      label: 'Fellcat', alt: 'A fellcat', default: { src: '' },
+      variants: {
+        lichenback: { src: 'fellcat/lichenback.webp' }
       }
     }
   }

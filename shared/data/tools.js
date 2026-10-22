@@ -107,6 +107,7 @@ window.TSI_DATA.tools = [
            player's companion once, and the DM's panel makes the codes that link a phone. */
         'shared/js/hmac.js',
         'tools/beasthandler/data/profile-tables.js',
+        'tools/beasthandler/data/initiation-data.js',
         'tools/beasthandler/projection.js',
         'tools/beasthandler/profile-rules.js',
         'tools/beasthandler/codes.js',

@@ -47,7 +47,13 @@
     t.equal(M.artFor(art, 'wyvern', 'widowspine').src, 'ws.png');
     t.equal(M.artFor(art, 'wyvern', 'bleakhook').src, 'w.png');
     t.equal(M.artFor(art, 'wyvern', '').src, 'w.png');
-    t.same(Object.keys(T.beastArt.species), ['wyvern', 'griffin', 'dire_wolf']);
+    t.same(Object.keys(T.beastArt.species), ['wyvern', 'griffin', 'dire_wolf', 'buckbear', 'fellcat']);
+    /* 22 October 2026: Blacktide and the first Buckbear and Fellcat pictures; the rest of the two new kinds have none yet. */
+    t.equal(M.artFor(T.beastArt, 'dire_wolf', 'blacktide').src, 'dire-wolf/blacktide.webp');
+    t.equal(M.artFor(T.beastArt, 'buckbear', 'broadcrown').src, 'buckbear/broadcrown.webp');
+    t.equal(M.artFor(T.beastArt, 'fellcat', 'lichenback').src, 'fellcat/lichenback.webp');
+    t.same(M.artFor(T.beastArt, 'buckbear', 'shovelhorn'), { src: '', label: 'Buckbear', alt: 'A buckbear' }, 'a variety with no picture shows the empty frame');
+    t.same(M.artFor(T.beastArt, 'fellcat', 'mistveil'), { src: '', label: 'Fellcat', alt: 'A fellcat' });
   });
 
   test('the Home screen says the right friendly thing when there is nothing to list', function (t) {
@@ -117,7 +123,14 @@
     t.equal(out[99].id, 'c-many1129', 'the newest are kept');
   });
 
-  test('every Regional Variety in Harry\'s tables has its own picture, and no picture belongs to an unknown variety', function (t) {
+  test('every Regional Variety of the first three kinds has its own picture, and no picture belongs to an unknown variety; the new kinds\' pictures belong to real varieties', function (t) {
+    ['buckbear', 'fellcat'].forEach(function (sp) {
+      var ids = T.beastProfile.species[sp].regional.map(function (r) { return r.id; });
+      Object.keys(T.beastArt.species[sp].variants).forEach(function (id) {
+        t.ok(ids.indexOf(id) !== -1, sp + '/' + id + ' is a real variety');
+        t.ok(new RegExp('^' + sp + '/' + id + '\\.webp$').test(T.beastArt.species[sp].variants[id].src), sp + '/' + id + ' points at its own file');
+      });
+    });
     ['wyvern', 'griffin', 'dire_wolf'].forEach(function (sp) {
       var ids = T.beastProfile.species[sp].regional.map(function (r) { return r.id; }).sort();
       var pics = Object.keys(T.beastArt.species[sp].variants).sort();
