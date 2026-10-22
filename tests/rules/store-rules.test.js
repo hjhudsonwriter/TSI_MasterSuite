@@ -89,6 +89,21 @@
     t.equal(R.toolOf(rec.key), 'quarantine', 'it is in the quarantine family, so Back up everything carries it');
   });
 
+  test('a copy only counts as kept when it is read back from the browser exactly as it was written', function (t) {
+    var when = new Date(2026, 9, 22, 9, 5, 7);
+    var key = R.quarantineKey('tsi.bastion.state', when);
+    var value = { v: 3, treasuryGP: 400, pendingOrders: [{ id: 'a' }] };
+    var row = R.makeRecord(key, value, when, R.copyNote('tsi.bastion.state', 'x', when));
+    t.equal(R.copyIsIntact(row, key, value), true);
+    t.equal(R.copyIsIntact(null, key, value), false, 'nothing read back');
+    t.equal(R.copyIsIntact(undefined, key, value), false);
+    t.equal(R.copyIsIntact({ key: key, value: value }, key, value), false, 'not a whole record (no savedAt)');
+    t.equal(R.copyIsIntact(R.makeRecord(R.quarantineKey('tsi.bastion.ui', when), value, when), key, value), false, 'a different name');
+    t.equal(R.copyIsIntact(R.makeRecord(key, { v: 3, treasuryGP: 399, pendingOrders: [{ id: 'a' }] }, when), key, value), false, 'a value that is not the same');
+    t.equal(R.copyIsIntact(R.makeRecord(key, { v: 3, treasuryGP: 400, pendingOrders: [] }, when), key, value), false, 'a value cut short');
+    t.equal(R.describeFailure({ name: 'QuotaExceededError' }), 'The browser\'s storage space for the suite is full.', 'the reason a copy could not be kept, in words');
+  });
+
   test('explains save failures in plain English', function (t) {
     t.equal(R.describeFailure({ name: 'QuotaExceededError' }), 'The browser\'s storage space for the suite is full.');
     t.ok(/refused/.test(R.describeFailure(new Error('x'))));

@@ -78,19 +78,23 @@
         }
         return v;
       }
-      /* The conversion could not be proved safe: nothing was written, nothing set aside. */
-      function showUnsafe(raw, problems) {
+      /* The conversion could not be proved safe: nothing was written, nothing set aside.
+         copyFailed: the check passed, but the copy of the Bastion as it was could not be
+         kept (storage full, or a browser that is not keeping saves), so it stopped. */
+      function showUnsafe(raw, problems, copyFailed) {
         var box = el('div', { class: 'tsi-shell-message tsi-panel tsi-bas-unsafe', 'data-test': 'convert-unsafe', role: 'alert' }, [
           el('div', { class: 'tsi-panel__head' }, el('h2', { class: 'tsi-panel__title', text: 'The Bastion couldn\'t be converted safely. Nothing has been changed.' })),
           el('div', { class: 'tsi-panel__body' }, [
             el('p', { text: 'Your Bastion is exactly as you left it: nothing has been saved over, and nothing has been set aside.' }),
-            el('p', { text: 'The Bastion has changed, so a saved Bastion has to be converted to the new form. Before saving it, the Bastion checks that no gold, goods, Favour, orders or beasts are lost, and that check did not pass, so it stopped. Download your Bastion as a file below, and send it to whoever looks after the suite.' }),
+            el('p', { text: copyFailed
+              ? 'The Bastion has changed, so a saved Bastion has to be converted to the new form. Before converting it, the Bastion keeps a copy of yours exactly as it was, and that copy could not be kept, so it stopped rather than risk the only one you have. Download your Bastion as a file below to be safe; making room (or Export, then clearing old saves) lets it convert next time.'
+              : 'The Bastion has changed, so a saved Bastion has to be converted to the new form. Before saving it, the Bastion checks that no gold, goods, Favour, orders or beasts are lost, and that check did not pass, so it stopped. Download your Bastion as a file below, and send it to whoever looks after the suite.' }),
             el('div', { class: 'tsi-shell-message__actions' }, [
               el('button', { type: 'button', class: 'tsi-btn tsi-btn--primary', 'data-test': 'convert-download', onclick: function () { TSI.download('tsi-bastion-as-it-was.json', JSON.stringify(raw, null, 2)); } }, 'Download my Bastion as a file'),
               el('button', { type: 'button', class: 'tsi-btn', 'data-test': 'convert-home', onclick: function () { TSI.shell.go(null); } }, 'Back to the home screen')
             ]),
             el('details', { class: 'tsi-bas-unsafe__why' }, [
-              el('summary', { text: 'What the check found' }),
+              el('summary', { text: copyFailed ? 'Why the copy could not be kept' : 'What the check found' }),
               el('ul', null, problems.map(function (p) { return el('li', { text: p }); }))
             ])
           ])
@@ -111,7 +115,7 @@
           return name;
         });
       }
-      sweepOrphans(false);
+      /* (The sweep runs only once the Bastion is open and its save is safely written: see the end of start-up.) */
       /* A Bastion saved in turns, before the days overhaul, is set aside
          (kept, not deleted) and a new one starts on the Explorer's day
          (Harry, 8 October 2026: no turn-to-day conversion). */
@@ -122,26 +126,42 @@
       /* The Strip Back Overhaul (22 October 2026): a Bastion from before it
          (version 2 or 3), or a version 4 one that an older copy of the suite
          has saved over, is converted once (R.migrateToV4, which takes a
-         version 2 save through R.migrateToV3 first). In this order:
+         version 2 save through R.migrateToV3 first). In this order, and it
+         FAILS CLOSED at each step (a small page says nothing has been changed;
+         nothing is written, nothing is set aside, nothing is marked converted):
          1. converted in memory, and checked (R.stripBackAudit: no gold,
-            goods, Favour, order or beast lost). If the check fails nothing
-            is written and nothing is set aside: a small page says so;
+            goods, Favour, order or beast lost). An error in the conversion
+            counts as failing the check;
          2. the Bastion as it was is COPIED beside the live one
-            (TSI.store.keepCopy, so it is in Back up everything and the live
-            save is never absent), then the converted one is saved (at the
-            end of start-up; the copy is already queued, and the converted
-            save can't be saved without it);
-         3. the box that says what changed stays until Harry presses "I've
-            read this" (migration.v4.shown). */
+            (TSI.store.keepCopy) and the copy is CONFIRMED saved and read back.
+            Only then does the screen open, so the converted Bastion can't be
+            written over the only original while the copy is missing (storage
+            full, or a browser that is not keeping saves);
+         3. the converted Bastion is rendered and saved, and then the box that
+            says what changed opens and stays until Harry presses "I've read
+            this" (migration.v4.shown). */
       var conversion = null;
       if (saved && R.needsStripBack(saved, data)) {
-        conversion = R.migrateToV4(saved, data);
-        var unsafe = R.stripBackAudit(conversion.before, conversion.save, conversion.report, data);
-        if (unsafe.length) { showUnsafe(saved, unsafe); return; }
-        TSI.store.keepCopy(TSI.storeRules.keyFor('bastion', 'state'), 'A copy of the Bastion from before the Strip Back Overhaul (22 October 2026), kept in case it\'s needed.').then(function (kept) {
-          if (!kept && life.alive) TSI.notify('A copy of the Bastion as it was could not be saved, so the converted Bastion is not saved either. Nothing is lost: the old one is still in your browser. Try Export, then open the Bastion again.', { type: 'error', title: 'Not converted yet.', id: 'tsi-bas-copy-failed' });
+        var unsafe;
+        try {
+          conversion = R.migrateToV4(saved, data);
+          unsafe = R.stripBackAudit(conversion.before, conversion.save, conversion.report, data);
+        } catch (err) {
+          unsafe = ['The conversion stopped with an error: ' + (err && err.message ? err.message : String(err))];
+        }
+        if (unsafe.length) { showUnsafe(saved, unsafe, false); return; }
+        return TSI.store.keepCopy(TSI.storeRules.keyFor('bastion', 'state'), 'A copy of the Bastion from before the Strip Back Overhaul (22 October 2026), kept in case it\'s needed.').then(function (kept) {
+          if (!life.alive) return null;
+          if (!kept) {
+            showUnsafe(saved, [TSI.store.copyProblem() || 'The copy could not be saved.', 'No copy of your Bastion exists, so nothing was converted and nothing was written.'], true);
+            return null;
+          }
+          return begin();
         });
       }
+      return begin();
+      /* The rest of start-up, once the Bastion is safe to open (a converted one has its copy kept). */
+      function begin() {
       var migrating = !!conversion;
       var state = saved ? R.fromSave(TSI.clone(conversion ? conversion.save : saved), data) : R.defaultState(data);
       /* A Mercenary Brigade (archived in Build 3; Builds 1 and 2 still had
@@ -5679,6 +5699,9 @@
         var body = el('div', { class: 'tsi-bas-changes', 'data-test': 'changes-body' }, [
           m.again ? el('p', { class: 'tsi-bas-changes__lead', text: 'An older copy of the suite had saved over your Bastion, so it was converted again. Nothing was lost.' }) : null,
           lines.map(changeLine),
+          /* The words above are about the day it happened (they stay true when read again). The balance as it is NOW is
+             worked out here, live, and only on the first reading. */
+          first && m.gp > 0 ? el('p', { class: 'tsi-bas-changes__live', 'data-test': 'changes-now', text: 'Right now the treasury holds ' + R.stripBackFmt(state.treasuryGP) + ' gp.' }) : null,
           el('p', { class: 'tsi-bas-muted tsi-bas-changes__note', text: R.STRIP_BACK_NOTE }),
           el('div', { class: 'tsi-bas-actions tsi-bas-actions--start' }, [
             btn('Save this as a text file', function () { TSI.download('bastion-what-changed-day-' + Math.max(1, R.dayNum(m.day, 1)) + '.txt', R.stripBackText(m), 'text/plain'); }, '', 'changes-save')
@@ -5708,7 +5731,6 @@
           return ok === true;
         });
       }
-      if (state.migration && state.migration.v4 && state.migration.v4.shown !== true) showChanges();
 
       /* A Military Action waiting from before: say where to find it. */
       if ((state.militaryActions || []).length) {
@@ -5808,10 +5830,27 @@
       }
       /* Read the Explorer's day straight away (then every 2 seconds), and
          any crest sent from the Clan Crest Creator while the Bastion was shut. */
+      /* An unread "what changed" holds everything else back from here on; it opens (below) only once the converted
+         Bastion has been drawn and saved, so a start-up that fails part-way never leaves it over an error page. */
+      var unreadChanges = !!(state.migration && state.migration.v4 && state.migration.v4.shown !== true);
+      if (unreadChanges) changesOpen = true;
       checkClock();
       checkDmEdits();
       checkBeast();
       checkCrestOffer();
+      /* Everything is drawn and queued to save. Once the save has really been written: the War Table's orphan saves
+         are set aside (never before the converted Bastion is safe), and the box opens. If the save could not be
+         written, the converted Bastion isn't saved (the old one is still there, and it converts again next time), so
+         the box would claim what isn't true: say so instead. */
+      TSI.store.flush().then(function (ok) {
+        if (!life.alive) return;
+        if (ok) sweepOrphans(false);
+        if (!unreadChanges) return;
+        changesOpen = false;
+        if (ok) showChanges();
+        else notice('The converted Bastion could not be saved, so the Bastion is still as you left it in the browser (a copy was kept). It will convert again next time it opens. Try Export, and look at the warning about saving.', { type: 'error', title: 'Not saved.', id: 'tsi-bas-convert-unsaved' });
+      });
+      }
     },
 
     validateImport: function (records) {

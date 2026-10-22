@@ -997,6 +997,7 @@
   letter-spacing: var(--tsi-track-label);
   color: var(--tsi-gold-text);
 }
+.tsi-page--bastion .tsi-bas-changes__live { margin: 0 0 12px; color: var(--tsi-gold-text); font-style: italic; }
 .tsi-page--bastion .tsi-bas-changes__note { margin: 14px 0 12px; }
 .tsi-page--bastion .tsi-bas-changes-row[hidden] { display: none; }
 /* The page that says the conversion could not be proved safe (nothing was changed). */

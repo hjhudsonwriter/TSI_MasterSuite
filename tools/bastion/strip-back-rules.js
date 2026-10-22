@@ -139,6 +139,11 @@
     { id: 'events', title: 'Bastion events' },
     { id: 'also', title: 'Also' }
   ];
+  /* Each god's bar as the Bastion would load it (0 to 100). */
+  function favourBars(s) {
+    var f = isObj(s) && isObj(s.favour) ? s.favour : {};
+    return { telluria: clampInt(f.telluria, 0, 100), aurush: clampInt(f.aurush, 0, 100), pelagos: clampInt(f.pelagos, 0, 100) };
+  }
   function newReport(s, again, v3Lines) {
     var g = gold(s);
     return {
@@ -148,7 +153,7 @@
       /* The earlier change's lines (13 October 2026), when a version 2 save went through both. */
       v3Lines: (v3Lines || []).slice(),
       gold: { was: g, now: g, refunded: 0, settlement: 0, items: [] },
-      favour: { telluria: 0, aurush: 0, pelagos: 0, lost: { telluria: 0, aurush: 0, pelagos: 0 } },
+      favour: { telluria: 0, aurush: 0, pelagos: 0, lost: { telluria: 0, aurush: 0, pelagos: 0 }, was: favourBars(s) },
       goods: [],
       cancelled: [],
       moved: [],
@@ -225,7 +230,7 @@
     if (at === -1) return false;
     list.splice(at, 1);
     var label = str(order.label).trim() || 'An order';
-    var rec = { id: idOf(order), label: label, why: String(why || 'it can no longer be carried out'), facId: str(order.facId), gp: 0, favour: 0, god: '', goods: [] };
+    var rec = { id: idOf(order), label: label, why: String(why || 'it can no longer be carried out'), facId: str(order.facId), gp: 0, favour: 0, favourUnplaced: 0, god: '', goods: [] };
     rec.gp = R.stripBackPayGold(s, report, order.costGP, label, 'refund');
     var fav = clampInt(order.favourCost, 0, 100);
     if (fav > 0) {
@@ -235,6 +240,7 @@
         rec.god = god;
         addFavour(s, report, god, fav);
       } else {
+        rec.favourUnplaced = fav;
         R.stripBackSay(report, 'also', label + ' had used ' + fav + '% of a god\'s Favour. It could not be told which god, so that Favour could not be given back.');
       }
     }
@@ -248,12 +254,25 @@
     report.cancelled.push(rec);
     return true;
   };
-  /* An order that carries on somewhere else: patch is what changes (its place:
-     facId, fnId, label...); it keeps its id, due day, cost and everything it
-     holds. Listed as moved, with where it went (to: words). */
+  /* An order that carries on somewhere else. Only its PLACE and NAME may change:
+     R.STRIP_BACK_MOVE_KEYS (J 4.3: "a moved order keeps its id, due day and
+     chosen item"). Its id, what it cost (costGP), the Favour it used
+     (favourCost), the goods it holds (inputs), the day it was issued and its due
+     day, and its meta, are paid for and must come across exactly: asking to
+     change any of them is a mistake in the step that asks, so it stops the
+     conversion (which then fails closed) rather than quietly changing what was
+     paid. The audit checks it again on the result. Listed as moved, with where
+     it went (to: words). Only an order with an id can be moved (cancel one
+     without). */
+  R.STRIP_BACK_MOVE_KEYS = ['facId', 'fnId', 'label', 'optionLabel', 'chosen', 'notes'];
   R.stripBackMoveOrder = function (report, order, patch, to) {
+    var keys = Object.keys(patch || {});
+    keys.forEach(function (k) {
+      if (R.STRIP_BACK_MOVE_KEYS.indexOf(k) === -1) throw new Error('A moved order may only have its place and name changed (' + R.STRIP_BACK_MOVE_KEYS.join(', ') + '), not its "' + k + '".');
+    });
+    if (!idOf(order)) throw new Error('An order with no id can\'t be moved (cancel it with its refund instead).');
     var label = str(order.label).trim() || 'An order';
-    Object.keys(patch || {}).forEach(function (k) { order[k] = patch[k]; });
+    keys.forEach(function (k) { order[k] = patch[k]; });
     report.moved.push({ id: idOf(order), label: label, to: String(to || '') });
   };
 
@@ -370,12 +389,13 @@
     if (report.v3Lines.length) said.v3.unshift(report.v3Lines.join(' '));
     var total = report.gold.refunded + report.gold.settlement;
     if (total > 0) {
-      said.gold.unshift(fmt(total) + ' gp went back into the treasury (it was ' + fmt(report.gold.was) + ' gp, it is now ' + fmt(gold(s)) + ' gp): ' +
+      /* Worded as of the day it happened: it is read again later, when the treasury has moved on. */
+      said.gold.unshift(fmt(total) + ' gp went back into the treasury (on Day ' + report.day + ' it went from ' + fmt(report.gold.was) + ' gp to ' + fmt(gold(s)) + ' gp): ' +
         report.gold.items.map(function (i) { return i.label + ', ' + fmt(i.gp) + ' gp' + (i.kind === 'settlement' ? ' (paid out in full)' : ''); }).join('; ') + '.');
     }
     GODS.forEach(function (g) {
       var back = report.favour[g], lost = report.favour.lost[g];
-      if (back > 0) said.favour.push(GOD_NAMES[g] + ': ' + back + '% went back to the bar, which is now at ' + clampInt(s.favour && s.favour[g], 0, 100) + '%.');
+      if (back > 0) said.favour.push(GOD_NAMES[g] + ': ' + back + '% went back to the bar (on Day ' + report.day + ' it went from ' + report.favour.was[g] + '% to ' + clampInt(s.favour && s.favour[g], 0, 100) + '%).');
       if (lost > 0) said.favour.push(GOD_NAMES[g] + '\'s bar was too full to take back ' + lost + '% of what its orders had used.');
     });
     if (report.goods.length) said.goods.push(listText(report.goods.map(function (g) { return R.goodsAmountText(data, g.goodId, g.qty); })) + ' went back to the Warehouse.');
@@ -401,16 +421,41 @@
     if (report.removed.events) bits.push('the Bastion\'s event record was dropped');
     return bits.length ? bits.join('; ') + '.' : 'Nothing of yours changed.';
   }
+  /* What is kept in the save about this conversion (migration.v4). A report that
+     was never read is NEVER thrown away: if the Bastion is converted again before
+     "I've read this" was pressed, the new lines are added after the earlier ones
+     (each paragraph keeps its own figures), the day stays the first one, and it
+     does not claim an older copy of the suite did it. "An older copy saved over
+     your Bastion" is said only when the earlier report HAD been read and
+     something came back after that. Pure: prev is the earlier migration.v4 (or
+     null), report this conversion's, summary its one-line summary. */
+  R.stripBackReportRecord = function (prev, report, summary) {
+    var fresh = {
+      day: report.day, lines: report.lines.slice(), summary: summary, changed: report.lines.length > 0,
+      again: !!(report.again && isObj(prev) && prev.shown === true), shown: false,
+      gp: report.gold.refunded + report.gold.settlement
+    };
+    if (!isObj(prev) || prev.shown === true) return fresh;
+    if (!fresh.changed) return Object.assign({}, prev);
+    var earlier = arr(prev.lines) || [];
+    return {
+      day: prev.changed ? clampInt(prev.day, 1) : fresh.day,
+      lines: earlier.concat(earlier.length ? ['More was found on Day ' + report.day + ' and put right the same way.'] : [], fresh.lines),
+      summary: prev.changed ? String(prev.summary || '').replace(/\.$/, '') + '; then, on Day ' + report.day + ': ' + summary : summary,
+      changed: true, again: !!prev.again, shown: false,
+      gp: clampInt(prev.gp, 0) + fresh.gp
+    };
+  };
   /* The last step: the version, the report kept in the save, the archive. */
   function finish(s, data, report) {
     if (report.archived.length) s.archivedFacilities = (arr(s.archivedFacilities) || []).filter(function (x) { return isObj(x); }).concat(report.archived);
     report.gold.now = gold(s);
     report.lines = paragraphs(s, data, report);
     s.v = R.STATE_VERSION;
-    s.migration = Object.assign({}, isObj(s.migration) ? s.migration : {}, {
-      v4: { day: report.day, lines: report.lines.slice(), summary: summaryOf(report), changed: report.lines.length > 0, again: report.again, shown: false }
-    });
+    var prev = isObj(s.migration) && isObj(s.migration.v4) ? s.migration.v4 : null;
+    s.migration = Object.assign({}, isObj(s.migration) ? s.migration : {}, { v4: R.stripBackReportRecord(prev, report, summaryOf(report)) });
   }
+  R.stripBackFmt = fmt;
 
   /* The registry, in the order they run. Add a step ABOVE sweepFacilities. */
   R.stripBackSteps = [
@@ -477,6 +522,45 @@
     return (arr(s.warehouse) || []).filter(function (w) { return !(isObj(w) && typeof w.goodId === 'string' && w.goodId); });
   }
   function okWhole(n) { return typeof n === 'number' && isFinite(n) && n >= 0 && Math.floor(n) === n; }
+  /* The orders that are KEPT or MOVED are compared with what they were (J 4.3: what an order cost, the
+     Favour and goods it holds and its due day all come across exactly). A kept order must be unchanged
+     altogether; a moved one may change only its place and name (R.STRIP_BACK_MOVE_KEYS) and must be
+     listed as moved. Orders that share an id can't be told apart, so they are left to the counting. */
+  var PAID_ORDER_FIELDS = [['costGP', 'gold cost'], ['favourCost', 'Favour cost'], ['inputs', 'goods held'], ['issuedDay', 'issue day'], ['dueDay', 'due day']];
+  function without(o, keys) {
+    var out = Object.assign({}, o);
+    keys.forEach(function (k) { delete out[k]; });
+    return out;
+  }
+  function auditKeptOrders(before, after, report, bad) {
+    var gone = {}, movedIds = {}, bc = {}, ac = {}, first = {};
+    (arr(report.cancelled) || []).forEach(function (c) { if (isObj(c) && c.id) gone[c.id] = true; });
+    (arr(report.moved) || []).forEach(function (m) { if (isObj(m) && m.id) movedIds[m.id] = true; });
+    var bo = arr(before.pendingOrders) || [], ao = arr(after.pendingOrders) || [];
+    bo.forEach(function (o) { var id = idOf(o); if (id) bc[id] = (bc[id] || 0) + 1; });
+    ao.forEach(function (o) { var id = idOf(o); if (id) { ac[id] = (ac[id] || 0) + 1; if (!first[id]) first[id] = o; } });
+    bo.forEach(function (b) {
+      var id = idOf(b);
+      if (!id || gone[id] || bc[id] > 1 || ac[id] > 1 || !first[id]) return;
+      var a = first[id];
+      var name = str(b.label).trim() || 'An order';
+      PAID_ORDER_FIELDS.forEach(function (f) {
+        if (canon(b[f[0]]) !== canon(a[f[0]])) bad('"' + name + '" would have its ' + f[1] + ' changed.');
+      });
+      if (movedIds[id]) {
+        if (canon(without(b, R.STRIP_BACK_MOVE_KEYS)) !== canon(without(a, R.STRIP_BACK_MOVE_KEYS))) bad('"' + name + '" is listed as moved, but more than its place and name would change.');
+      } else if (canon(b) !== canon(a)) {
+        bad('"' + name + '" would be changed, but the report does not say it moved.');
+      }
+    });
+    /* An order with no id can't be followed by name: each one left must be exactly one there was. */
+    var spare = bo.filter(function (o) { return isObj(o) && !idOf(o); }).map(canon);
+    ao.forEach(function (o) {
+      if (!isObj(o) || idOf(o)) return;
+      var i = spare.indexOf(canon(o));
+      if (i === -1) bad('An order with no id would be changed.'); else spare.splice(i, 1);
+    });
+  }
   /* The seven guarantees (J 4.5). Returns a list of problems in plain English;
      empty when the conversion is safe. before and after are saves (R.migrateToV4's
      before and save), report its report; data defaults to the page's own. */
@@ -524,7 +608,9 @@
       var was = byId[c.id];
       if (was) {
         if (clampInt(was.costGP, 0) !== c.gp) bad('"' + c.label + '" cost ' + clampInt(was.costGP, 0) + ' gp, but ' + c.gp + ' gp is handed back for it.');
-        if (c.god && c.favour !== clampInt(was.favourCost, 0, 100)) bad('"' + c.label + '" used ' + clampInt(was.favourCost, 0, 100) + '% of a god\'s Favour, but ' + c.favour + '% is handed back.');
+        /* Every point of Favour the order used is either handed back to a god's bar or said to be unplaced. */
+        if (clampInt(c.favour, 0, 100) + clampInt(c.favourUnplaced, 0, 100) !== clampInt(was.favourCost, 0, 100)) bad('"' + c.label + '" used ' + clampInt(was.favourCost, 0, 100) + '% of a god\'s Favour, but ' + clampInt(c.favour, 0, 100) + '% is handed back' + (c.favourUnplaced ? ' and ' + c.favourUnplaced + '% is said to have no god' : '') + '.');
+        if (c.favour > 0 && !c.god) bad('"' + c.label + '" hands Favour back to no god.');
         var held = heldGoods(was, data).map(function (g) { return g.goodId + ':' + g.qty; }).sort().join(',');
         var back = (arr(c.goods) || []).map(function (g) { return g.goodId + ':' + g.qty; }).sort().join(',');
         if (held !== back) bad('"' + c.label + '" held goods that are not all put back in the Warehouse.');
@@ -539,6 +625,7 @@
     moved.forEach(function (m) {
       if (!isObj(m) || !m.id || !afterCounts[m.id]) bad('An order listed as moved is not in the converted Bastion.');
     });
+    auditKeptOrders(before, after, report, bad);
 
     /* I2: the Warehouse is what it was, plus the goods the cancelled orders held. */
     var returned = {};
