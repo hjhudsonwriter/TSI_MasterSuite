@@ -12,7 +12,7 @@ Shrines, the Library and the Arcane Laboratory are other steps and were not touc
 - **Creature-rules functions removed:** `creatureWar`, `fightingCreatures`, `creatureRecovery`, `defending`, `creatureStatus`, `creatureWarLine` and the `RECOVERY_WORDS` table. Kept: everything the Beast Pen and bonding use.
 - **Commerce:** the Commercial Convoy and Protected Maritime Approaches (the Barracks' and Watchtower's protections) are gone from the data. Only the Blessing of Pelagos remains. `R.protectionBusy` is removed. The generic charge/window rules for a voyage protection stay (the Blessing uses them) and the rules tests use stand-ins to keep them covered.
 - **Pictures:** the war game's facility, panel, map and battle pictures moved to `tools/bastion/assets/extras/` (nothing deleted; 8 files moved). `menagerie.png` stays in place as the Beast Pen's tile, and the Wyvern Roost overlay art stays. `docs/ASSETS.md` lists every move.
-- **Size:** against main after the merge, 67 files changed, 1,410 lines added and 25,919 removed. 18 files deleted, 8 pictures and 3 old documents moved. About 14,600 of the removed lines were code, data and styles in `tools/bastion` and about 11,200 were tests.
+- **Size:** against main after the second merge, 70 files changed, 1,535 lines added and 25,925 removed. 18 files deleted, 8 pictures and 3 old documents moved. About 14,600 of the removed lines were code, data and styles in `tools/bastion` and about 11,200 were tests.
 
 ## The migration (registry steps, in this order)
 
@@ -42,6 +42,14 @@ Start-up (`tools/bastion/tool.js`): the War Table's three saves (`tsi.bastion.wa
 - **Compendium entries for the removed units are removed** (21), not left as dead links.
 - **The commerce voyage-protection code stays generic**; only the Blessing is in data.
 - **Old documents go to `docs/archive/`** with a banner; `docs/KNOWN_ISSUES.md` and `docs/PROGRESS.md` are not edited here (see `S06-known-issues-draft.md`).
+
+## Results (after the second merge with main, tip `2981540`)
+
+- `node tests/static-check.js`: passed (6 pages, 9 tool manifests, 148 files named, 112 source files scanned).
+- Rules page (`node tests/run-rules.js`): all 1,016 tests passed.
+- Click-throughs, one at a time: bastion-days 16, bastion-screen 53, beast-pen 24, beasthandler-bond 12, beasthandler-meet 34, beasthandler-phone 15, beasthandler-sweep 17, beasthandler 15, bridge 37, charter-terms 6, commerce 27, courier 27, creatures 23, dmdoc-edit 11, dmdoc 50, fights 15, guide 21, hall-records 10, migration-v4 35, parcels-more 3, phase1 129, phase2 71, phase4 57, phase5 50, phase7 70, phase9 82, region-warning 4, reinforcements 6, session-safety 6, shrines-explorer 11, shrines 9: every check passed.
+- Passed only on a re-run alone: creatures (one run failed with "TSI is not defined" in a wait, while other lanes were running their own browsers; it passed twice alone), phase3 54 and phase6 74 (both timing-sensitive; they failed while the machine was busy and passed alone).
+- phase8: 77 of 78 checks passed; the one failure is "Compared with the old Explorer", which needs the old Explorer cloned into `_legacy/` and always fails in a worktree (known).
 
 ## Environment note
 
