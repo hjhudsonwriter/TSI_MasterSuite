@@ -39,7 +39,7 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
   const openRoost = async () => { await close(); await ba.click('[data-test=tile-wyvern_roost]'); await ba.waitForSelector('[data-test=creature-profile-elara_wyvern]'); };
   const completeLast = () => ba.evaluate(() => TSI.bastion.debug.change(s => {
     const T = window.TSI_DATA, R = TSI.bastion.rules;
-    const data = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, events: T.bastionEvents, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier, creatures: T.bastionCreatures };
+    const data = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier, creatures: T.bastionCreatures };
     const o = s.pendingOrders[s.pendingOrders.length - 1];
     s.day = o.dueDay;
     R.completeSimpleOrder(s, data, o, Math.random);

@@ -15,7 +15,6 @@
    - Lowering the party level keeps the buildings (BAS-04, B8).
    - Each trade route pays at most once each time it sails (BAS-05, BAS-11).
    - Host Delegation changes Political Capital once, by its own two rolls (B2).
-   - The Treasure event (99–00) can come up (B11).
 
    Days, not turns (Harry, 8 October 2026; docs/BASTION-OVERHAUL.md). The
    Bastion follows the Explorer's day: state.day is the last day it has
@@ -79,8 +78,7 @@
       buildDays: Array.isArray(t.buildDays) ? t.buildDays : [{ level: 17, days: 35 }, { level: 13, days: 35 }, { level: 9, days: 28 }, { level: 5, days: 21 }],
       every: t.every > 0 ? t.every : 7,
       patrolDays: t.patrolDays > 0 ? t.patrolDays : 7,
-      musterDays: t.musterDays > 0 ? t.musterDays : 3,
-      eventEvery: t.eventEvery > 0 ? t.eventEvery : 28
+      musterDays: t.musterDays > 0 ? t.musterDays : 3
     };
   };
   /* "The Ironbow sends word…": a short line for the day being passed, shown
@@ -139,9 +137,6 @@
       v: 4,
       day: 1,
       anchored: false,
-      lastEvent: null,
-      /* The day of the latest automatic Bastion event. */
-      lastEventDay: 0,
       log: [],
       /* 'unsworn' or 'clan' (the Mercenary Brigade was archived in the
          Bastion overhaul, Build 3: tools/bastion/archive/mercenary-brigade.js). */
@@ -404,8 +399,6 @@
       if (typeof s.diplomacy.tokens === 'number') dip.tokens = s.diplomacy.tokens;
       d.diplomacy = dip;
     }
-    d.lastEvent = isObj(s.lastEvent) ? s.lastEvent : null;
-    d.lastEventDay = dayNum(s.lastEventDay, 0);
     if (arr(s.log)) d.log = s.log.filter(isObj);
     /* A Mercenary Brigade (archived in Build 3) becomes Unsworn: the screen
        says so once and the Day Log keeps its name (R.formerBrigade). */
@@ -3400,38 +3393,6 @@
     return out;
   };
 
-  /* ---------- Bastion events (4728-4736) ---------- */
-  /* "99-00" means 99 to 100, so the Treasure event can come up (B11). */
-  R.resolveEvent = function (roll, table) {
-    var rows = table || [];
-    for (var i = 0; i < rows.length; i++) {
-      var parts = String(rows[i].range).split('-').map(function (x) { return parseInt(x, 10); });
-      var min = isNaN(parts[0]) ? 1 : parts[0];
-      var max = isNaN(parts[1]) ? min : parts[1];
-      if (max === 0 && min > 0) max = 100;
-      if (roll >= min && roll <= max) return rows[i];
-    }
-    return { range: '??', name: 'Unknown' };
-  };
-  R.rollEvent = function (s, events, rand, now) {
-    var roll = R.d(100, rand);
-    var ev = R.resolveEvent(roll, events.eventTable);
-    var lines = events.descriptions && events.descriptions[ev.name] ? events.descriptions[ev.name] : [];
-    s.lastEvent = { roll: roll, name: ev.name, lines: lines, at: now === undefined ? Date.now() : now, day: s.day };
-    return { roll: roll, name: ev.name };
-  };
-  /* The automatic event comes every 28 days, counted from Day 1: Days 29,
-     57, 85… (it was every 4th Bastion turn). */
-  R.isEventDay = function (data, day) {
-    var e = R.time(data).eventEvery;
-    return day > 1 && (day - 1) % e === 0;
-  };
-  R.nextEventDay = function (data, day) {
-    var e = R.time(data).eventEvery;
-    var n = day < 1 ? 1 + e : day + (e - ((day - 1) % e));
-    return n;
-  };
-
   /* ---------- Passing a day, as resumable steps (560-604; BAS-02) ----------
      The screen passes each new day in turn, in this order:
      1. R.startDay: the day number moves on; Lieutenants and beasts whose
@@ -3444,8 +3405,8 @@
         for any rolls; a cancelled roll leaves the order due, R.skipOrder).
      4. 'war' (R.rollWarAttack): each Clan at war whose 7-day mark is today
         rolls to attack.
-     5. R.finishDay: the automatic event on its day, then what happened goes
-        into "The Ironbow sends word…" (state.word).
+     5. R.finishDay: what happened goes into "The Ironbow sends word…"
+        (state.word).
      state.dayInProgress remembers the step reached, so a cancelled roll or
      a closed window loses nothing and nothing is done twice. */
   var DAY_STAGES = ['trade', 'orders'];
@@ -3487,16 +3448,10 @@
   R.skipOrder = function (s, id) {
     if (s.dayInProgress && s.dayInProgress.skipped.indexOf(id) === -1) s.dayInProgress.skipped.push(id);
   };
-  /* The day's last step: the automatic event on its day (once), then the
-     day's news is kept for "The Ironbow sends word…". */
-  R.finishDay = function (s, data, events, rand, now) {
+  /* The day's last step: the day's news is kept for "The Ironbow sends
+     word…". */
+  R.finishDay = function (s) {
     var dip = s.dayInProgress;
-    if (R.isEventDay(data, s.day) && s.lastEventDay !== s.day) {
-      var ev = R.rollEvent(s, events, rand, now);
-      s.lastEventDay = s.day;
-      R.log(s, 'Bastion Event', 'Auto event (Day ' + s.day + ') → Rolled ' + ev.roll + ' → ' + ev.name, now);
-      R.addWord(s, 'Bastion event: ' + ev.name + ' (rolled ' + ev.roll + ').');
-    }
     if (isObj(dip) && Array.isArray(dip.news) && dip.news.length) {
       if (!Array.isArray(s.word)) s.word = [];
       s.word.push({ day: s.day, lines: dip.news.slice() });
@@ -3528,7 +3483,6 @@
     var mv = function (obj, key) { if (obj && typeof obj[key] === 'number') obj[key] += n; };
     s.day = Math.max(1, s.day + n);
     if (isObj(s.dayInProgress)) s.dayInProgress.day = s.day;
-    mv(s, 'lastEventDay');
     if (isObj(s.defenders)) mv(s.defenders, 'patrolUntil');
     (s.pendingOrders || []).forEach(function (o) { mv(o, 'issuedDay'); mv(o, 'dueDay'); if (o.meta && isObj(o.meta.declared)) mv(o.meta.declared, 'day'); });
     (s.builtExtras || []).concat(s.builtPlots || []).forEach(function (e) { if (isObj(e)) { mv(e, 'startDay'); mv(e, 'readyDay'); } });

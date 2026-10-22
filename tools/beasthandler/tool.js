@@ -44,7 +44,7 @@
       var P = BH.projection;
       var M = BH.model;
       var D = window.TSI_DATA;
-      var data = { bastion: D.bastion, facilities: D.bastionFacilities, tools: D.bastionTools, events: D.bastionEvents, research: D.bastionResearch, goods: D.bastionGoods, commerce: D.bastionCommerce, courier: D.bastionCourier, creatures: D.bastionCreatures, warRoom: D.bastionWarRoom };
+      var data = { bastion: D.bastion, facilities: D.bastionFacilities, tools: D.bastionTools, research: D.bastionResearch, goods: D.bastionGoods, commerce: D.bastionCommerce, courier: D.bastionCourier, creatures: D.bastionCreatures, warRoom: D.bastionWarRoom };
 
       var viewAs = readChoice();
       var queue = M.cleanQueue(ctx.store.get('queue', null));

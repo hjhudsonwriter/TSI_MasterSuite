@@ -53,7 +53,7 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
       mk('cr-loose', 'griffin', 'Unhandled', 'griffin_tower', '')
     ];
     s.creatures[2].development.bond.level = 3;
-    const data = { bastion: window.TSI_DATA.bastion, facilities: window.TSI_DATA.bastionFacilities, tools: window.TSI_DATA.bastionTools, events: window.TSI_DATA.bastionEvents, research: window.TSI_DATA.bastionResearch, goods: window.TSI_DATA.bastionGoods, commerce: window.TSI_DATA.bastionCommerce, courier: window.TSI_DATA.bastionCourier, creatures: window.TSI_DATA.bastionCreatures };
+    const data = { bastion: window.TSI_DATA.bastion, facilities: window.TSI_DATA.bastionFacilities, tools: window.TSI_DATA.bastionTools, research: window.TSI_DATA.bastionResearch, goods: window.TSI_DATA.bastionGoods, commerce: window.TSI_DATA.bastionCommerce, courier: window.TSI_DATA.bastionCourier, creatures: window.TSI_DATA.bastionCreatures };
     R.setTemperament(s, data, 'elara_wyvern', { dominant: 'Proud', attachment: 'Lowers its head', trigger: 'Loud metallic ringing' });
     R.addChronicleNote(s, data, 'elara_wyvern', 'She came back to the tower at dusk.');
     R.addChronicleNote(s, data, 'elara_wyvern', 'SECRET-DM-NOTE who sent the storm', true);
@@ -163,7 +163,7 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
   await check('Orders: once the DM starts a programme there, the whole building is locked and the pending order shows its day', async () => {
     await ba.evaluate(() => TSI.bastion.debug.change(s => {
       const T = window.TSI_DATA;
-      const data = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, events: T.bastionEvents, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier, creatures: T.bastionCreatures };
+      const data = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier, creatures: T.bastionCreatures };
       const r = TSI.bastion.rules.issueOrder(s, data, 'wyvern_roost', 'wyr_safe_acclimatisation', 1, Math.random);
       if (!r.ok) throw new Error(r.message);
     }));

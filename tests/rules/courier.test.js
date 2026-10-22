@@ -13,7 +13,7 @@
   var ED = T.explorer;
   var E = T.journeyEvents;
   var CD = T.bastionCourier;
-  var bdata = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, events: T.bastionEvents, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier };
+  var bdata = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier };
   var PACK = 'expedition_provision_pack';
   var CHART = 'overland_chart';
   var KEYS = ['id', 'point', 'goods', 'items', 'departDay', 'readyDay', 'status', 'arrivedDay', 'collectedDay', 'collectId', 'recalledDay', 'returnDay', 'feeGP'];

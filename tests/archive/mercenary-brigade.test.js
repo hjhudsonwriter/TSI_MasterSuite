@@ -19,7 +19,7 @@
 (function () {
   var R = TSI.bastion.rules;
   var T = window.TSI_DATA;
-  var data = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, events: T.bastionEvents };
+  var data = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools };
 
   function dice(list) {
     var i = 0;

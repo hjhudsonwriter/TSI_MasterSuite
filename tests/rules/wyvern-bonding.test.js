@@ -8,7 +8,7 @@
 (function () {
   var BR = TSI.bastion.rules;
   var T = window.TSI_DATA;
-  var bdata = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, events: T.bastionEvents, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier, creatures: T.bastionCreatures };
+  var bdata = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier, creatures: T.bastionCreatures };
 
   /* A different number each time, so every order gets its own id (a constant would give them all the same one). */
   var seed = 0;

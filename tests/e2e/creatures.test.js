@@ -464,7 +464,7 @@ async function clickPop(page, label) {
     const res = await ba.evaluate(() => {
       const st = JSON.parse(JSON.stringify(TSI.bastion.debug.state()));
       const D = window.TSI_DATA;
-      const data = { bastion: D.bastion, facilities: D.bastionFacilities, tools: D.bastionTools, events: D.bastionEvents, research: D.bastionResearch, goods: D.bastionGoods, commerce: D.bastionCommerce, courier: D.bastionCourier, creatures: D.bastionCreatures };
+      const data = { bastion: D.bastion, facilities: D.bastionFacilities, tools: D.bastionTools, research: D.bastionResearch, goods: D.bastionGoods, commerce: D.bastionCommerce, courier: D.bastionCourier, creatures: D.bastionCreatures };
       return TSI.bastion.rules.issueOrder(st, data, 'wyvern_roost', 'house_elara_wyvern', 0, Math.random);
     });
     equal(res, { ok: false, message: 'Elara\'s wyvern already lives at the Ironbow.' }, 'the rules refuse it too');

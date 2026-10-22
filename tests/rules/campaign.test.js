@@ -8,7 +8,7 @@
   var EE = window.TSI_DATA.journeyEvents;
   var BR = TSI.bastion.rules;
   var T = window.TSI_DATA;
-  var bdata = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, events: T.bastionEvents };
+  var bdata = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools };
 
   function dice(list) {
     var i = 0;
@@ -183,9 +183,11 @@
     t.same(C.ironbowNews(b, 17, 29), [
       { day: 22, lines: ['The Arcane Laboratory is built.'] },
       { day: 23, lines: ['Your delegation from Clan Slade has ended.'] },
-      { day: 26, lines: ['Your Trade Agreement with Clan Karr has ended (its last shipment arrived).'] },
-      { day: 29, lines: ['A Bastion event is due.'] }
+      { day: 26, lines: ['Your Trade Agreement with Clan Karr has ended (its last shipment arrived).'] }
     ]);
+    t.same(C.ironbowNews(b, 28, 100), [], 'no Bastion event is due on Day 29, or any day (S05)');
+    t.equal(JSON.stringify(C.bastionComing(b)).indexOf('event'), -1, 'the forecast never mentions one');
+    t.equal('BASTION_EVENT_EVERY' in C, false);
     t.same(C.ironbowNews(b, 13, 13), []);
     t.equal(JSON.stringify(b), before, 'the save isn\'t changed');
     var ahead = busy();
@@ -210,7 +212,7 @@
         BR.completeSimpleOrder(b, bdata, o, dice([0.5])).forEach(function (l) { BR.addWord(b, l[1]); });
         BR.removeOrder(b, o.id);
       });
-      BR.finishDay(b, bdata, bdata.events, dice([0.5]), 0);
+      BR.finishDay(b);
     }
     t.same(b.word.map(function (w) { return w.day; }), predicted);
     t.same(b.word.filter(function (w) { return w.day === 22; })[0].lines, ['The Arcane Laboratory is built.']);

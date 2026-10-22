@@ -136,6 +136,7 @@
     { id: 'war', title: 'The army and the war' },
     { id: 'party', title: 'Your Party' },
     { id: 'beasts', title: 'Beasts' },
+    { id: 'events', title: 'Bastion events' },
     { id: 'also', title: 'Also' }
   ];
   function newReport(s, again, v3Lines) {
@@ -257,6 +258,46 @@
   };
 
   /* ---------- The steps ---------- */
+  /* Step S05: the Bastion has no events any more (Harry, 22 October 2026). The
+     panel, the Roll Bastion Event button, the d100 roll and the automatic one
+     every 28 days are gone, and so is what they kept: lastEvent (the last one
+     rolled: its roll, name, description, day) and lastEventDay (the day of the
+     last automatic one). An event was only a note for the DM: nothing in it
+     changed the Bastion's numbers, so nothing needs giving back. "The Ironbow
+     sends word" (state.word) keeps any line an earlier event put there: that
+     is history, and the audit checks it comes back the same.
+     A save that never had an event leaves no trace (the two fields are simply
+     not carried over, and nothing is said). Only a record that really held an
+     event, or the day of one, is a leftover and is reported. */
+  function eventLeft(v) { return v !== undefined && v !== null && v !== 0 && v !== false && v !== ''; }
+  function detectEvents(s) {
+    var out = [];
+    if (eventLeft(s.lastEvent)) out.push('the last Bastion event');
+    if (eventLeft(s.lastEventDay)) out.push('the day of the last Bastion event');
+    if (eventLeft(s.pendingEvent)) out.push('a Bastion event waiting');
+    var dip = isObj(s.dayInProgress) ? s.dayInProgress : null;
+    if (dip && (eventLeft(dip.event) || eventLeft(dip.pendingEvent))) out.push('a Bastion event in the day being passed');
+    return out;
+  }
+  function dropEvents(s, data, report) {
+    var found = detectEvents(s);
+    var last = isObj(s.lastEvent) ? s.lastEvent : null;
+    delete s.lastEvent;
+    delete s.lastEventDay;
+    delete s.pendingEvent;
+    if (isObj(s.dayInProgress)) {
+      delete s.dayInProgress.event;
+      delete s.dayInProgress.pendingEvent;
+    }
+    if (!found.length) return;
+    var name = last ? (str(last.name).trim() || words(last.id)) : '';
+    var day = last ? dayNum(last.day, null) : null;
+    report.removed.events = { name: name, day: day };
+    R.stripBackSay(report, 'events', last
+      ? 'The Bastion no longer has events, so the last one it rolled' + (name ? ' (' + name + (day !== null && day >= 1 ? ', Day ' + day : '') + ')' : '') + ' is not kept. It was only a note for you; nothing in it changed the Bastion\'s numbers.'
+      : 'The Bastion no longer has events, so its record of them is not kept. It was only a note for you; nothing in it changed the Bastion\'s numbers.');
+  }
+
   function slotId(x) { return typeof x === 'string' ? x : (isObj(x) && typeof x.facId === 'string' ? x.facId : ''); }
   function isGhostOrder(o, data) {
     return isObj(o) && typeof o.facId === 'string' && !R.facility(data, o.facId) && R.STRIP_BACK_PSEUDO_FACILITIES.indexOf(o.facId) === -1;
@@ -357,6 +398,7 @@
     if (report.moved.length) bits.push(plural(report.moved.length, 'order', 'orders') + ' moved');
     if (report.goods.length) bits.push('goods went back to the Warehouse');
     if (report.archived.length) bits.push(plural(report.archived.length, 'place', 'places') + ' removed');
+    if (report.removed.events) bits.push('the Bastion\'s event record was dropped');
     return bits.length ? bits.join('; ') + '.' : 'Nothing of yours changed.';
   }
   /* The last step: the version, the report kept in the save, the archive. */
@@ -372,6 +414,7 @@
 
   /* The registry, in the order they run. Add a step ABOVE sweepFacilities. */
   R.stripBackSteps = [
+    { id: 'dropEvents', detect: detectEvents, run: dropEvents },
     { id: 'sweepFacilities', detect: detectGhosts, run: sweepFacilities },
     { id: 'finish', detect: null, run: finish }
   ];
@@ -421,7 +464,7 @@
   /* ---------- The audit ---------- */
   function defaultData() {
     var D = window.TSI_DATA || {};
-    return { bastion: D.bastion, facilities: D.bastionFacilities, tools: D.bastionTools, events: D.bastionEvents, research: D.bastionResearch, goods: D.bastionGoods, commerce: D.bastionCommerce, courier: D.bastionCourier, creatures: D.bastionCreatures, warRoom: D.bastionWarRoom };
+    return { bastion: D.bastion, facilities: D.bastionFacilities, tools: D.bastionTools, research: D.bastionResearch, goods: D.bastionGoods, commerce: D.bastionCommerce, courier: D.bastionCourier, creatures: D.bastionCreatures, warRoom: D.bastionWarRoom };
   }
   function goodsTotals(s) {
     var t = {};

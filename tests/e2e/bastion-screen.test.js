@@ -890,8 +890,14 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
   section('The panels the bottom bar opens');
 
   const PANELS = [['open-warehouse', 'warehouse', 'Warehouse', 'warehouse'], ['open-management', 'management', 'Management', 'defenders'],
-    ['open-log', 'log', 'Day Log', 'log'], ['open-events', 'events', 'Bastion Events', 'roll-event'],
+    ['open-log', 'log', 'Day Log', 'log'],
     ['open-influence', 'influence', 'Clan Influence', 'influence'], ['open-favour', 'favour', 'Favour of the Gods', 'favour-telluria']];
+  await check('the bottom bar has no Events button any more (S05): Warehouse, Management and Day Log on the left; Clan Influence, Favour and War Council on the right', async () => {
+    equal(await page.$$eval('.tsi-bas-pbtns--left [data-test^=open-]', bs => bs.map(b => b.getAttribute('data-test'))), ['open-warehouse', 'open-management', 'open-log']);
+    equal(await page.$$eval('.tsi-bas-pbtns--right [data-test^=open-]', bs => bs.map(b => b.getAttribute('data-test'))), ['open-influence', 'open-favour', 'open-war']);
+    equal(await page.$('[data-test=open-events]'), null);
+    equal(await page.evaluate(() => TSI.bastion.debug.reveal('roll-event')), false, 'and nothing to reveal for the old button');
+  });
   for (const [button, id, title, inside] of PANELS) {
     await check(title + ': its button opens it over the map, and it fits', async () => {
       await pause(page);

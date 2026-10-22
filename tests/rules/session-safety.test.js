@@ -5,7 +5,7 @@
   var B = TSI.backupRules;
   var BR = TSI.bastion.rules;
   var T = window.TSI_DATA;
-  var bdata = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, events: T.bastionEvents, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier, creatures: T.bastionCreatures };
+  var bdata = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier, creatures: T.bastionCreatures };
   var DAY = 86400000;
   var now = Date.UTC(2026, 9, 18, 12, 0, 0);
 

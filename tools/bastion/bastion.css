@@ -838,15 +838,6 @@
 .tsi-page--bastion .tsi-bas-log__time { font: 400 12px var(--tsi-font-mono); color: var(--tsi-text-soft); }
 .tsi-page--bastion .tsi-bas-log__body { margin-top: 4px; font-size: 15px; line-height: 1.3; color: var(--tsi-text-muted); }
 
-.tsi-page--bastion .tsi-bas-event { font-size: var(--tsi-fs-body); line-height: 1.35; }
-.tsi-page--bastion .tsi-bas-event--empty { color: var(--tsi-text-soft); }
-.tsi-page--bastion .tsi-bas-event b { color: var(--tsi-text); }
-.tsi-page--bastion .tsi-bas-event__title { font: 700 17px/1.2 var(--tsi-font-display); margin-bottom: 4px; }
-.tsi-page--bastion .tsi-bas-event__roll { font: 400 13px var(--tsi-font-mono); color: var(--tsi-text-soft); margin-bottom: 8px; }
-.tsi-page--bastion .tsi-bas-event ul { margin: 6px 0 0 18px; padding: 0; }
-.tsi-page--bastion .tsi-bas-event li { margin: 4px 0; font-size: var(--tsi-fs-body-sm); }
-.tsi-page--bastion .tsi-bas-event__note { margin-top: 10px; font-size: 14px; }
-
 /* ---------- Party Identity & Clan Influence ---------- */
 .tsi-page--bastion .tsi-bas-req { font-size: 14px; }
 .tsi-page--bastion .tsi-bas-clan-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 8px; }
@@ -1486,7 +1477,6 @@
 }
 .tsi-page--bastion .tsi-bas-fn__days { font-size: 12px; color: var(--tsi-text-soft); margin: -2px 0 4px; }
 .tsi-page--bastion .tsi-bas-item--due { border-color: var(--tsi-gold); }
-.tsi-page--bastion .tsi-bas-event__next { margin-top: 8px; }
 .tsi-bas-modal--word .tsi-bas-word__day {
   margin: 10px 0 4px; font-family: var(--tsi-font-display); font-size: var(--tsi-fs-label);
   letter-spacing: var(--tsi-track-label); text-transform: uppercase; color: var(--tsi-gold-text);

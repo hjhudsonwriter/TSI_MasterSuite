@@ -214,7 +214,7 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     /* Meanwhile the DM gives the beast to someone else, then switches requests back on. */
     await ba.evaluate(() => TSI.bastion.debug.change(s => {
       const R = TSI.bastion.rules, T = window.TSI_DATA;
-      const data = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, events: T.bastionEvents, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier, creatures: T.bastionCreatures };
+      const data = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier, creatures: T.bastionCreatures };
       R.trainingOrders(s).slice().forEach(o => R.removeOrder(s, o.id));
       const r = R.assignHandler(s, data, 'cr-stormwing', 'Joss', 'Mira has gone home');
       if (!r.ok) throw new Error(r.message);

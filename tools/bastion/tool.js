@@ -1,6 +1,6 @@
 /* The Ironbow Bastion Manager — the screen.
    The old tool rebuilt as it was: party level, treasury and defenders;
-   building in construction slots; facility orders; Bastion events; the Hall of Emissaries, trade routes and the Council
+   building in construction slots; facility orders; the Hall of Emissaries, trade routes and the Council
    Ledger; party identity and the War Council; the warehouse and artisan
    tools; Favour of The Gods and Political Capital; the Compendium.
    The war mini-game (Harry's requests of 2 October 2026) adds the War
@@ -17,8 +17,7 @@
    Bastion follows the Explorer's day. It reads the Explorer's save when
    it opens, every 2 seconds while open and whenever this window comes back
    into view, and passes each new day in turn (orders due, building, the
-   week's shipments and sea routes, a Clan's attack roll, the automatic
-   event), then shows "The Ironbow sends word…". It never changes the
+   week's shipments and sea routes, a Clan's attack roll), then shows "The Ironbow sends word…". It never changes the
    Explorer's save. Reset Travel moves every Bastion day back with it.
 
    The Explorer link (pull request 4 of the facilities overhaul, 13 October
@@ -62,7 +61,7 @@
       var R = ns.rules;
       var D = window.TSI_DATA;
       var B = D.bastion;
-      var data = { bastion: B, facilities: D.bastionFacilities, tools: D.bastionTools, events: D.bastionEvents, research: D.bastionResearch, goods: D.bastionGoods, commerce: D.bastionCommerce, courier: D.bastionCourier, creatures: D.bastionCreatures, warRoom: D.bastionWarRoom };
+      var data = { bastion: B, facilities: D.bastionFacilities, tools: D.bastionTools, research: D.bastionResearch, goods: D.bastionGoods, commerce: D.bastionCommerce, courier: D.bastionCourier, creatures: D.bastionCreatures, warRoom: D.bastionWarRoom };
       /* The war mini-game's numbers (war-units-data.js): units, stat blocks, missions. */
       var W = D.bastionWar;
       var COMPENDIUM = (D.bastionCompendium && D.bastionCompendium.items) || {};
@@ -456,7 +455,6 @@
         warehouse: 'M4 8l8-4 8 4v9l-8 4-8-4z M4 8l8 4 8-4 M12 12v9',
         management: 'M9 11a3 3 0 100-6 3 3 0 000 6z M3 20c0-3.3 2.7-5 6-5s6 1.7 6 5 M16.5 11a2.5 2.5 0 100-5 M16 15c2.8 0 5 1.6 5 4.5',
         log: 'M6 4h12v16H6z M9 8h6 M9 12h6 M9 16h4',
-        events: 'M12 3l8 4.5v9L12 21l-8-4.5v-9z M12 3L7 12h10z M7 12l5 9 5-9',
         influence: 'M12 4v16 M8 20h8 M5 7h14 M5 7l-3 6a3 3 0 006 0z M19 7l-3 6a3 3 0 006 0z',
         favour: 'M12 3v3 M12 18v3 M3 12h3 M18 12h3 M5.6 5.6l2.1 2.1 M16.3 16.3l2.1 2.1 M5.6 18.4l2.1-2.1 M16.3 7.7l2.1-2.1 M12 8a4 4 0 110 8 4 4 0 010-8z',
         war: 'M4 4l11 11 M4 4h3l10 10 M20 4L9 15 M20 4h-3L7 14 M6.5 16.5l-2.5 2.5 M17.5 16.5l2.5 2.5 M5 14l5 5 M19 14l-5 5',
@@ -1001,7 +999,7 @@
       }
 
       /* ================================================================
-         The Day Log and Bastion Events panels, and the Bastion Map
+         The Day Log panel and the Bastion Map
          ================================================================ */
       var logList = el('div', { class: 'tsi-bas-log', 'data-test': 'log' });
       var logCard = card('log', 'Day Log');
@@ -1029,17 +1027,6 @@
         overlayLayer,
         mapHaze,
         labelLayer
-      ]);
-
-      /* The Bastion Events panel: Roll Bastion Event (its main action), the
-         last event, and when the next automatic one comes. */
-      var eventBox = el('div', { class: 'tsi-bas-event', 'data-test': 'event' });
-      var eventNext = el('p', { class: 'tsi-bas-muted tsi-bas-event__next', 'data-test': 'event-next' });
-      var eventCard = card('events', 'Bastion Events');
-      TSI.append(eventCard.body, [
-        el('div', { class: 'tsi-bas-actions tsi-bas-actions--start' }, [btn('Roll Bastion Event', function () { onRollEvent(); }, 'tsi-btn--primary', 'roll-event')]),
-        eventNext,
-        eventBox
       ]);
 
       /* "Day 12", or "Day 1 · the Explorer sets the day" until the Bastion has read it. */
@@ -1082,21 +1069,6 @@
             return (i ? ', ' : '') + r.name + ' (working again on Day ' + r.backDay + ')';
           })));
         }
-        eventNext.textContent = 'The next automatic event: Day ' + R.nextEventDay(data, state.day) + ' (every ' + R.time(data).eventEvery + ' days).';
-        TSI.clear(eventBox);
-        var le = state.lastEvent;
-        eventBox.classList.toggle('tsi-bas-event--empty', !le);
-        if (!le) {
-          TSI.append(eventBox, ['Click ', el('b', { text: 'Roll Bastion Event' }), ' to generate a 1d100 event.']);
-          return;
-        }
-        var lines = (le.lines || []).slice(0, 12);
-        TSI.append(eventBox, [
-          el('div', { class: 'tsi-bas-event__title', text: le.name }),
-          el('div', { class: 'tsi-bas-event__roll', text: 'Roll: ' + le.roll + (typeof le.day === 'number' ? ' · ' + R.dayLabel(le.day) : '') }),
-          lines.length ? el('ul', null, lines.map(function (l) { return el('li', { text: String(l) }); })) : muted('No description text found in data.'),
-          muted('DM note: Some events reference tables from the DMG / Bastion rules. Add your own roll results into the warehouse or log.', 'tsi-bas-event__note')
-        ]);
       }
 
       /* ================================================================
@@ -4975,7 +4947,7 @@
           done();
         } else save();
         if (attack && (await defendBastion(attack)) === 'stopped') return 'stopped';
-        R.finishDay(state, data, data.events, rand);
+        R.finishDay(state);
         if (turnNotice) { turnNotice.close(); turnNotice = null; }
         done();
         return null;
@@ -5337,14 +5309,8 @@
       }
 
       /* ================================================================
-         Bastion events, the Compendium, saving
+         The Compendium, saving
          ================================================================ */
-      var onRollEvent = TSI.oneAtATime(function () {
-        var ev = R.rollEvent(state, data.events, rand);
-        log('Bastion Event', 'Rolled ' + ev.roll + ' → ' + ev.name);
-        done();
-      });
-
       var compIndex = null;
       /* The War Room's units (war phase 2): each one's summary is its stat
          block from the war's data (war-units-data.js), built when the
@@ -5525,7 +5491,6 @@
       var openWarehouse = simplePanel(whCard, 'tsi-bas-panel--wide');
       var openManagement = simplePanel(mgmtCard, 'tsi-bas-panel--wide');
       var openLog = simplePanel(logCard);
-      var openEvents = simplePanel(eventCard);
       var openInfluence = simplePanel(influenceCard, 'tsi-bas-panel--wide');
       var openFavour = simplePanel(favourCard);
       var openWarPanel = simplePanel(warCard, 'tsi-bas-panel--wide');
@@ -5552,8 +5517,7 @@
       var leftButtons = el('div', { class: 'tsi-bas-pbtns tsi-bas-pbtns--left' }, [
         panelButton('warehouse', 'Warehouse', 'warehouse', openWarehouse),
         panelButton('management', 'Management', 'management', openManagement),
-        panelButton('log', 'Day Log', 'log', openLog),
-        panelButton('events', 'Events', 'events', openEvents)
+        panelButton('log', 'Day Log', 'log', openLog)
       ]);
       var rightButtons = el('div', { class: 'tsi-bas-pbtns tsi-bas-pbtns--right' }, [
         panelButton('influence', 'Clan Influence', 'influence', openInfluence),
@@ -5800,7 +5764,7 @@
       };
       /* For reveal: the data-test of what opens the panel holding sel. */
       function openerFor(test, sel) {
-        var fixed = [[whCard, 'open-warehouse'], [mgmtCard, 'open-management'], [logCard, 'open-log'], [eventCard, 'open-events'],
+        var fixed = [[whCard, 'open-warehouse'], [mgmtCard, 'open-management'], [logCard, 'open-log'],
           [influenceCard, 'open-influence'], [favourCard, 'open-favour'], [warCard, 'open-war'], [idCard, 'identity-badge'],
           [dipCard, 'tile-hall_of_emissaries'], [ordersCard, 'orders-count'], [artCard, 'tile-workshop']];
         for (var i = 0; i < fixed.length; i++) if (fixed[i][0].root.querySelector(sel)) return fixed[i][1];

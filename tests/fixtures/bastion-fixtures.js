@@ -1538,12 +1538,6 @@ window.TSI_FIXTURES = {
     "fnId": "saw_lumber",
     "chosen": {
      "label": "Sawn Lumber (1 lot)",
-     "inputs": [
-      {
-       "good": "raw_timber",
-       "qty": 1
-      }
-     ],
      "outputs": [
       {
        "good": "sawn_lumber",
@@ -2450,12 +2444,6 @@ window.TSI_FIXTURES = {
   "v": 3,
   "day": 40,
   "anchored": true,
-  "lastEvent": {
-   "id": "storm",
-   "day": 28,
-   "text": "A storm damaged the east wall."
-  },
-  "lastEventDay": 28,
   "log": [
    {
     "title": "Order Issued",
@@ -4005,6 +3993,16 @@ window.TSI_FIXTURES = {
     "status": "waiting"
    }
   ],
+  "lastEvent": {
+   "roll": 66,
+   "name": "Friendly Visitors",
+   "lines": [
+    "Friendly visitors arrive at the Bastion."
+   ],
+   "at": 1760000000000,
+   "day": 29
+  },
+  "lastEventDay": 29,
   "beast": {
    "campaignId": "HvCampaign2610",
    "accept": true,

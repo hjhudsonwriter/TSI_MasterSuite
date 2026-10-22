@@ -2,7 +2,7 @@
 (function () {
   var R = TSI.bastion.rules;
   var T = window.TSI_DATA;
-  var data = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, events: T.bastionEvents, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce };
+  var data = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce };
 
   /* Dice that come up in the given order (numbers from 0 up to 1). */
   function dice(list) {
@@ -48,7 +48,6 @@
     t.same(['smithy', 'arcane_study', 'laboratory', 'library', 'garden', 'greenhouse', 'gaming_hall'].filter(function (id) { return R.facility(data, id); }), [], 'the old ones are gone');
     t.equal(Object.keys(data.tools).length, 12);
     t.equal(R.toolTableNames(data.tools).length, 9);
-    t.equal(data.events.eventTable.length, 11);
     t.same(T.bastion.clans.map(function (c) { return c.name; }), ['Blackstone', 'Bacca', 'Farmer', 'Slade', 'Molten', 'Rowthorn', 'Karr']);
     /* The old tool's 265, less Regiment (100), plus the six War Room units of the war's phase 2
        (the old Regiment (100) entry is kept in the data, but nothing lists it any more). */
@@ -579,7 +578,6 @@
     s.day = 20;
     s.builtExtras = [{ facId: 'library_scriptorium', status: 'building', startDay: 0, readyDay: 21 }];
     s.diplomacy.agreements = [{ title: 'Trade Agreement', clan: 'Clan Karr', startDay: 14, endDay: 21, income: 100, lastShipmentDay: 14 }];
-    s.lastEvent = { name: 'Guest' };
     R.startDay(s, data, 1);
     t.equal(s.day, 21);
     t.equal(s.treasuryGP, 100, 'the last shipment');
@@ -588,8 +586,7 @@
     t.same(s.builtExtras[0], { facId: 'library_scriptorium', status: 'built' });
     R.finishRoutes(s);
     t.equal(s.dayInProgress.stage, 'orders');
-    t.same(s.lastEvent, { name: 'Guest' }, 'the last event stays until the next');
-    R.finishDay(s, data, data.events, dice([0.5]), 1);
+    R.finishDay(s);
     t.equal(s.dayInProgress, null);
     t.same(titles(s), ['Diplomacy', 'Diplomacy', 'Construction Complete']);
     t.ok(s.log.every(function (l) { return l.day === 21; }), 'each log line has its day');
@@ -601,29 +598,35 @@
     s.day = 3;
     R.startDay(s, data);
     R.finishRoutes(s);
-    R.finishDay(s, data, data.events, dice([0.5]));
+    R.finishDay(s);
     t.equal(s.day, 4);
     t.same(s.word, []);
     t.same(s.log, []);
   });
 
-  test('the automatic Bastion event comes every 28 days from Day 1 (Days 29, 57…), once', function (t) {
-    t.same([1, 2, 28, 29, 30, 57, 85].map(function (d) { return R.isEventDay(data, d); }), [false, false, false, true, false, true, true]);
-    t.same([1, 5, 29, 30, -3].map(function (d) { return R.nextEventDay(data, d); }), [29, 29, 57, 57, 29]);
+  test('no Bastion event comes any more: Day 29, 57 and 85 pass like any other day, the state holds no event, and the event rules are gone (S05)', function (t) {
+    ['rollEvent', 'resolveEvent', 'isEventDay', 'nextEventDay'].forEach(function (name) { t.equal(typeof R[name], 'undefined', name + ' is gone'); });
+    t.equal('eventEvery' in R.time(data), false, 'no every-28-days setting');
+    t.equal('lastEvent' in fresh() || 'lastEventDay' in fresh(), false, 'a new Bastion holds no event record');
     var s = fresh();
+    [28, 56, 84].forEach(function (before) {
+      s.day = before;
+      R.startDay(s, data);
+      R.finishRoutes(s);
+      R.finishDay(s);
+      t.equal(s.day, before + 1);
+      t.same(s.log, [], 'nothing logged on Day ' + s.day);
+      t.same(s.word, [], 'no word on Day ' + s.day);
+      t.equal('lastEvent' in s || 'lastEventDay' in s, false, 'no event record on Day ' + s.day);
+    });
     s.day = 28;
     R.startDay(s, data);
     R.finishRoutes(s);
-    R.finishDay(s, data, data.events, dice([0.995]));
-    t.equal(s.lastEvent.name, 'Treasure');
-    t.equal(s.lastEvent.day, 29);
-    t.equal(s.lastEventDay, 29);
-    t.equal(s.log[0].body, 'Auto event (Day 29) → Rolled 100 → Treasure');
-    t.same(s.word[0].lines, ['Bastion event: Treasure (rolled 100).']);
-    /* Finishing the same day again (a resumed day) can't roll it twice. */
-    s.dayInProgress = { day: 29, stage: 'orders', skipped: [], attackRolled: true, news: [] };
-    R.finishDay(s, data, data.events, dice([0.1]));
-    t.equal(s.lastEvent.name, 'Treasure');
+    var real = Math.random;
+    var rolled = 0;
+    Math.random = function () { rolled++; return real(); };
+    try { R.finishDay(s); } finally { Math.random = real; }
+    t.equal(rolled, 0, 'finishing a day rolls nothing');
   });
 
   test('a skipped order stays due and comes up the next day', function (t) {
@@ -634,7 +637,7 @@
     R.skipOrder(s, 'w');
     t.equal(R.dueOrders(s, s.dayInProgress.skipped).length, 0);
     t.equal(R.dueOrders(s).length, 1, 'still due (Resolve)');
-    R.finishDay(s, data, data.events, dice([0.1]));
+    R.finishDay(s);
     R.startDay(s, data);
     t.equal(R.dueOrders(s, s.dayInProgress.skipped).length, 1);
   });
@@ -1030,17 +1033,7 @@
     t.equal(R.crestFromHandoff('x'), null);
   });
 
-  group('Bastion: events and the Compendium');
-
-  test('the d100 table, with 99–00 now reaching Treasure (B11)', function (t) {
-    var table = data.events.eventTable;
-    t.same([1, 50, 51, 98, 99, 100].map(function (n) { return R.resolveEvent(n, table).name; }),
-      ['All Is Well', 'All Is Well', 'Attack', 'Request for Aid', 'Treasure', 'Treasure']);
-    var s = fresh();
-    var ev = R.rollEvent(s, data.events, dice([0.3]), 0);
-    t.same([ev.roll, ev.name], [31, 'All Is Well']);
-    t.ok(s.lastEvent.lines.length > 0);
-  });
+  group('Bastion: the Compendium');
 
   test('the Compendium index, its links, Roll20 and the offline export (B15)', function (t) {
     var idx = R.compendiumIndex(data.facilities, data.tools);
@@ -1945,7 +1938,6 @@
     s.diplomacy.tokens = 2;
     s.diplomacy.cooldowns = { summit: 15 };
     s.defenders.patrolUntil = 14;
-    s.lastEventDay = -3;
     s.dayInProgress = { day: 12, stage: 'orders', skipped: ['x'], attackRolled: true, news: ['The Smithy is built.'] };
     s.word = [{ day: 11, lines: ['Barracks: Recruit Defenders → Recruited 2 defenders.'] }];
     var back = R.fromSave(JSON.parse(JSON.stringify(R.toSave(s))), data);
