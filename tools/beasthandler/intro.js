@@ -7,11 +7,15 @@
      1. "It's time to meet <Name>…"
      2. "which subspecies?": the kind's subspecies as medallions in a freshly shuffled order, a die and one button,
         "Roll for subspecies". A gold marker hops from medallion to medallion, slowing down as it goes (a different path
-        every time, with a near miss), and lands on the subspecies the Bastion chose; the die settles on that
-        medallion's place in this run's order. Then its name, home and appearance are told.
+        every time, with a near miss), and lands on the subspecies the Bastion holds for the beast NOW (its profile's
+        Regional Variety: M.revealTarget), because that is the one the beast's page shows a moment later; the die settles on
+        that medallion's place in this run's order. Then its name, home and appearance are told. If the DM has cleared the
+        variety, or typed one that is not in the kind's table, there is nothing true to land on and this panel is left out
+        (one quick roll, not two).
      3. "what is <Name>'s personality like?": three cards (Dominant Temperament d12, Attachment Cue d8, Instinctive
         Trigger d8), each with a Roll button (and "Roll all three"). Each die tumbles and settles on the number the
-        Bastion really rolled, then the line appears. A card is locked once rolled.
+        Bastion really rolled, then the line appears. If the DM has changed that line since, the die shows a star instead of
+        a number that no longer belongs to the line. A card is locked once rolled.
    then the screen fades to black, "Welcome to the Ironbow, <Name>!" shows, it fades to black again and fades back in on
    the beast's page, where the picture for the subspecies is seen for the first time. No picture of the beast is shown
    before that.
@@ -41,29 +45,38 @@
       var el = env.el;
       var M = env.M;
       var life = env.life;
-      /* { creatureId, step, plan: what the Bastion rolled, order: the medallions' order this run (null until panel 2),
+      /* { creatureId, step, order: the medallions' order this run (null until panel 2),
            reg: { state: 'idle' | 'rolling' | 'landed', dest, value }, per: { dominant|attachment|trigger: 'idle' | 'rolling' | 'done' },
            animating (how many rolls are playing), fading (the screen is going black), closing (black, with the welcome words) } */
       var st = null;
       var idleFns = [];
 
       function fresh(d) {
-        var ini = d.initiation || {};
-        var rolls = ini.rolls || {};
         return {
           creatureId: d.id, step: 0,
-          plan: { regional: String(ini.regional || ''), rolls: { dominant: rolls.dominant || 0, attachment: rolls.attachment || 0, trigger: rolls.trigger || 0 } },
           order: null, reg: { state: 'idle', dest: -1, value: 0 }, per: { dominant: 'idle', attachment: 'idle', trigger: 'idle' },
           animating: 0, fading: false, closing: false
         };
       }
       function mine(d) { return !!st && st.creatureId === d.id; }
       var currentSpecies = '';
+      /* Is there a subspecies to stage? Only when the Bastion holds one of the kind's own varieties for this beast now. */
+      function staged(d) { return M.revealTarget(d, env.tables).kind !== 'none'; }
+      /* The panels this beast's meeting has, in order (the subspecies panel is left out when there is nothing true to show). */
+      function steps(d) { return staged(d) ? [0, 1, 2] : [0, 2]; }
+      var currentDetail = null;
       function go(step) {
+        if (step === 1 && currentDetail && !staged(currentDetail)) step = 2;
         st.step = step;
         /* A freshly shuffled order every time the subspecies panel is visited (until it has been rolled). */
         if (step === 1 && st.reg.state === 'idle') st.order = M.shuffle(M.revealVarieties(env.tables, currentSpecies), Math.random);
+        /* A new panel starts at its top: the last panel's scroll position is not carried over (a long panel on a small phone
+           would otherwise open with its heading scrolled out of sight). Smoothly, and at once under "reduce motion". */
+        toTop();
         env.rerender(true); env.focusHeading();
+      }
+      function toTop() {
+        try { window.scrollTo({ top: 0, left: 0, behavior: reduced() ? 'auto' : 'smooth' }); } catch (e) { try { window.scrollTo(0, 0); } catch (x) { /* nowhere to scroll */ } }
       }
 
       /* A roll is playing: the screen must not redraw over it. */
@@ -81,12 +94,14 @@
         }
         if (!mine(d)) st = fresh(d);
         currentSpecies = d.species.id;
+        currentDetail = d;
         return true;
       }
 
       /* ---------- Pieces ---------- */
-      function dots() {
-        return el('ol', { class: 'tsi-bh-meet__dots', 'aria-label': 'Step ' + (st.step + 1) + ' of 3' }, [0, 1, 2].map(function (n) {
+      function dots(d) {
+        var list = steps(d);
+        return el('ol', { class: 'tsi-bh-meet__dots', 'aria-label': 'Step ' + (list.indexOf(st.step) + 1) + ' of ' + list.length }, list.map(function (n) {
           return el('li', { class: 'tsi-bh-meet__dot' + (n === st.step ? ' tsi-bh-meet__dot--on' : n < st.step ? ' tsi-bh-meet__dot--done' : ''), 'aria-hidden': 'true' });
         }));
       }
@@ -123,7 +138,7 @@
           el('h1', { class: 'tsi-bh-meet__title', 'data-test': 'bh-meet-title', text: text.meet }),
           el('p', { class: 'tsi-bh-meet__lead', text: text.lead }),
           el('div', { class: 'tsi-bh-meet__actions' }, [
-            env.btn('Continue', function () { go(1); }, 'tsi-btn--primary tsi-bh-meet__go', 'bh-meet-continue'),
+            env.btn('Continue', function () { go(steps(d)[1]); }, 'tsi-btn--primary tsi-bh-meet__go', 'bh-meet-continue'),
             canSkip ? env.btn('Skip for now', function () { env.skip(d); }, 'tsi-btn--ghost', 'bh-meet-skip') : null,
             env.btn('‹ All beasts', function () { env.leave(); }, 'tsi-btn--ghost tsi-bh-meet__back', 'bh-meet-leave')
           ])
@@ -137,7 +152,8 @@
         var order = st.order;
         var n = order.length;
         var noun = M.speciesNoun(d);
-        var dest = order.map(function (v) { return v.id; }).indexOf(st.plan.regional);
+        /* The subspecies the Bastion holds now: it can differ from the roll it made if the DM changed the variety since. */
+        var dest = order.map(function (v) { return v.id; }).indexOf(M.revealTarget(d, env.tables).id);
         var medals = order.map(function (v, i) {
           return el('li', { class: 'tsi-bh-medal', 'data-variety': v.id, 'data-n': String(i + 1) }, [
             el('span', { class: 'tsi-bh-medal__n', 'aria-hidden': 'true', text: String(i + 1) }),
@@ -167,6 +183,10 @@
           status.textContent = (reg.value ? 'The die settled on ' + reg.value + '. ' : '') + (v ? v.name : String(d.profile && d.profile.regional || '')) + '.';
         }
         function showLanded() {
+          /* Drawn from what the Bastion holds now: if the variety changed after the roll landed, the panel shows the new one
+             (it is the one the page will show next), with its place in this run's order on the die. */
+          reg.dest = dest;
+          reg.value = dest >= 0 ? dest + 1 : 0;
           lit(dest);
           if (dest >= 0) { medals[dest].classList.add('tsi-bh-medal--landed'); list.classList.add('tsi-bh-medals--landed'); }
           die.textContent = reg.value ? String(reg.value) : '✦';
@@ -176,8 +196,6 @@
         }
         function land() {
           reg.state = 'landed';
-          reg.dest = dest;
-          reg.value = dest >= 0 ? dest + 1 : 0;
           showLanded();
           var v = dest >= 0 ? varietyById(d, order[dest].id) : null;
           env.preload(d, v ? v.name : String(d.profile && d.profile.regional || ''));   /* start fetching the picture now, so it is there when the curtain lifts */
@@ -221,7 +239,7 @@
             status, about
           ]),
           el('div', { class: 'tsi-bh-meet__actions' }, [nextBtn, back]),
-          dots()
+          dots(d)
         ], after: null };
       }
 
@@ -301,7 +319,7 @@
           el('h1', { class: 'tsi-bh-meet__title', 'data-test': 'bh-meet-title', text: text.personality }),
           el('div', { class: 'tsi-bh-meet__card' }, cards.map(function (c) { return parts[c.key].card; }).concat([rollAll])),
           el('div', { class: 'tsi-bh-meet__actions' }, [finish]),
-          dots()
+          dots(d)
         ], after: null };
       }
 
@@ -367,8 +385,10 @@
 
       /* { nodes, after }: the panel for the current step (after runs once it is on the page). */
       function render(d) {
-        var text = M.meetingText(d);
+        var text = M.meetingText(d, staged(d));
         if (st.closing) return { nodes: [el('div', { class: 'tsi-bh-meet tsi-bh-meet--closing', 'aria-hidden': 'true' })], after: null };
+        /* The Bastion's variety was cleared while the subspecies panel was open: there is nothing true to show, so move on. */
+        if (st.step === 1 && !staged(d)) st.step = 2;
         var p = st.step === 0 ? panelMeet(d, text) : st.step === 1 ? panelSubspecies(d, text) : panelPersonality(d, text);
         return { nodes: [el('section', { class: 'tsi-bh-meet' + (st.fading ? ' tsi-bh-meet--fading' : ''), 'data-test': 'bh-meet', 'data-step': String(st.step + 1), 'aria-label': 'Meeting ' + d.name }, p.nodes)], after: p.after };
       }

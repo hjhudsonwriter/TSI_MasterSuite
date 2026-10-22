@@ -16,6 +16,8 @@
    Run with:  node tests/e2e/beasthandler-meet.test.js */
 'use strict';
 
+const fs = require('fs');
+const path = require('path');
 const H = require('./helpers');
 const { section, check, assert, equal } = H;
 const HARNESS = H.fileUrl('tests/harness.html');
@@ -334,6 +336,187 @@ const checkS = (name, fn) => check(name, async () => {
     }
   });
 
+  /* ---- The DM changes the Bastion's words after the Bastion rolled the first meeting (fix 13) ---- */
+  /* What the Temperament dialog does (R.setTemperament), then the laptop copy looks at the Bastion again. */
+  const dmEdit = async (id, fields) => {
+    await ba.evaluate(([id, fields]) => TSI.bastion.debug.change(s => {
+      const T = window.TSI_DATA;
+      const data = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier, creatures: T.bastionCreatures };
+      TSI.bastion.rules.setTemperament(s, data, id, fields);
+    }), [id, fields]);
+    await ba.evaluate(() => TSI.store.flush());
+    await bh.evaluate(() => TSI.beasthandler.debug.refresh());
+  };
+  const playToTheEnd = async () => {
+    await bh.click('[data-test=bh-meet-roll-all]');
+    await bh.waitForSelector('[data-test=bh-meet-finish]:not([hidden])', { timeout: 8000 });
+    await bh.click('[data-test=bh-meet-finish]');
+    await bh.waitForSelector('[data-test=bh-name]', { timeout: 20000 });
+    await bh.waitForSelector('[data-test=bh-curtain]', { state: 'detached', timeout: 20000 });
+  };
+  const chipText = () => bare(bh, '[data-test=bh-subspecies]');
+
+  await checkS('the DM changed the variety after the Bastion rolled it (Bloodcrest to Ironcrown): the marker lands on Ironcrown, Ironcrown is told, and the page that follows shows Ironcrown; the roll the Bastion stored is left alone', async () => {
+    await addBeast('cr-moved', 'wyvern', 'Wanderer', 'beast_pen');
+    await ba.evaluate(() => TSI.store.flush());
+    equal((await creature('cr-moved')).development.regional, 'Bloodcrest', 'the Bastion rolled Bloodcrest');
+    await dmEdit('cr-moved', { regional: 'Ironcrown' });
+    await reopen('cr-moved');
+    await step(1);
+    await toPanel2();
+    const r = await rollSubspecies();
+    equal(r.variety, 'ironcrown', 'the marker lands on the variety the Bastion holds now');
+    equal(r.about, 'Ironcrown');
+    equal(r.die, String(r.order.indexOf('ironcrown') + 1), 'the die shows that medallion\'s place');
+    const area = await bh.evaluate(() => TSI_DATA.beastProfile.species.wyvern.regional.filter(x => x.id === 'ironcrown')[0].area);
+    assert(new RegExp(area).test(await bare(bh, '[data-test=bh-meet-about]')), 'its own home is told: ' + await bare(bh, '[data-test=bh-meet-about]'));
+    assert(!/Bloodcrest|red-cliff/.test(await bare(bh, '[data-test=bh-meet-about]') + ' ' + await bare(bh, '[data-test=bh-meet-status]')), 'and nothing of the old roll is told');
+    await bh.click('[data-test=bh-meet-next]');
+    await step(3);
+    await playToTheEnd();
+    equal(await chipText(), '✦Ironcrown', 'the page agrees with the reveal');
+    await bh.waitForFunction(() => { const i = document.querySelector('[data-test=bh-portrait-large] img'); return i && i.complete && i.naturalWidth > 0; }, null, { timeout: 8000 });
+    assert(/wyvern\/ironcrown\.webp$/.test(await bh.$eval('[data-test=bh-portrait-large] img', i => i.getAttribute('src'))), 'and so does the picture');
+    const c = await creature('cr-moved');
+    equal([c.development.initiation.regional, c.development.regional], ['bloodcrest', 'Ironcrown'], 'the stored roll is untouched and the DM\'s variety is kept');
+  });
+
+  await checkS('the DM cleared the variety: there is nothing true to land on, so the subspecies roll is left out (one quick roll), the old roll is never described, and the page says it is not known yet', async () => {
+    await addBeast('cr-blank', 'wyvern', 'Blankwing', 'beast_pen');
+    await ba.evaluate(() => TSI.store.flush());
+    equal((await creature('cr-blank')).development.regional, 'Bloodcrest');
+    await dmEdit('cr-blank', { regional: '' });
+    equal((await creature('cr-blank')).development.regional, undefined, 'cleared in the Bastion');
+    await reopen('cr-blank');
+    await step(1);
+    equal(await bare(bh, '.tsi-bh-meet__lead'), 'One quick roll, then you will see Blankwing for the first time.');
+    await bh.click('[data-test=bh-meet-continue]');
+    await step(3);
+    equal(await bh.$('.tsi-bh-medal'), null, 'no medallions');
+    equal(await bh.$('[data-test=bh-meet-roll-regional]'), null, 'and no subspecies roll');
+    equal(await bh.$eval('.tsi-bh-meet__dots', n => n.getAttribute('aria-label')), 'Step 2 of 2');
+    assert(!/Bloodcrest|East Isle|red-cliff/.test(await bare(bh, 'body')), 'nothing of the old roll is said');
+    await playToTheEnd();
+    equal(await chipText(), '✦Subspecies not known yet', 'the page agrees');
+    equal(await bh.$eval('[data-test=bh-portrait-large]', n => n.getAttribute('data-state')), 'blank');
+    equal(await bh.$('[data-test=bh-portrait-large] img'), null, 'no picture');
+  });
+
+  await checkS('a variety the DM typed in their own words (not in the kind\'s table) is also left out of the roll, and the page names it', async () => {
+    await addBeast('cr-own', 'griffin', 'Ownwing', 'beast_pen');
+    await ba.evaluate(() => TSI.store.flush());
+    await dmEdit('cr-own', { regional: 'Moonlit Rift' });
+    await reopen('cr-own');
+    await step(1);
+    equal(await bare(bh, '.tsi-bh-meet__lead'), 'One quick roll, then you will see Ownwing for the first time.');
+    await bh.click('[data-test=bh-meet-continue]');
+    await step(3);
+    await playToTheEnd();
+    equal(await chipText(), '✦Moonlit Rift');
+  });
+
+  await checkS('the variety changes while the player is looking at the landed panel: the panel moves to the new one (the page is about to show it); cleared, the meeting moves on to the personality panel', async () => {
+    await addBeast('cr-mid', 'dire_wolf', 'Midway', 'beast_pen');
+    await ba.evaluate(() => TSI.store.flush());
+    await reopen('cr-mid');
+    await step(1);
+    await toPanel2();
+    const r = await rollSubspecies();
+    equal(r.variety, 'blacktide');
+    await dmEdit('cr-mid', { regional: 'Icepelt' });
+    await bh.waitForFunction(() => { const l = document.querySelector('.tsi-bh-medal--lit'); return l && l.getAttribute('data-variety') === 'icepelt'; }, null, { timeout: 8000 });
+    equal(await bare(bh, '[data-test=bh-meet-about] h2'), 'Icepelt');
+    equal(await bh.$$eval('.tsi-bh-medal', n => n.map(x => x.getAttribute('data-variety'))), r.order, 'the medallions did not move');
+    equal(await bare(bh, '[data-test=bh-meet-die]'), String(r.order.indexOf('icepelt') + 1));
+    await dmEdit('cr-mid', { regional: '' });
+    await step(3);
+    equal(await bh.$('.tsi-bh-medal'), null);
+    await playToTheEnd();
+    equal(await chipText(), '✦Subspecies not known yet');
+  });
+
+  await checkS('a personality line the DM changed after the roll shows a star, not a number it no longer matches; a line the DM wrote before the roll shows its row\'s number, or a star if it is their own words; untouched lines show the Bastion\'s numbers', async () => {
+    const row = await ba.evaluate(() => { const e = TSI_DATA.beastProfile.species.griffin.attachment.entries[1]; return { roll: e.roll, label: e.label }; });
+    await addBeast('cr-lines', 'griffin', 'Wordsmith', 'beast_pen', { lines: { attachment: row.label, trigger: 'Something I wrote myself' } });
+    await ba.evaluate(() => TSI.store.flush());
+    const before = (await creature('cr-lines')).development;
+    equal([before.initiation.rolls.attachment, before.initiation.rolls.trigger], [row.roll, 0], 'the Bastion stored the row\'s number for the table line and 0 for the DM\'s own words');
+    equal(before.temperament.trigger, 'Something I wrote myself', 'and the DM\'s words stay');
+    await dmEdit('cr-lines', { dominant: 'Fierce' });
+    await reopen('cr-lines');
+    await step(1);
+    await toPanel2();
+    await toPanel3();
+    await bh.click('[data-test=bh-meet-roll-all]');
+    await bh.waitForSelector('[data-test=bh-meet-finish]:not([hidden])', { timeout: 8000 });
+    equal(await personality(), [['✦', 'Fierce'], [String(row.roll), row.label], ['✦', 'Something I wrote myself']]);
+    /* One line changed to another row of the table: the die cannot show the old number over the new line. */
+    await addBeast('cr-lines2', 'dire_wolf', 'Wordsmith Two', 'beast_pen');
+    await ba.evaluate(() => TSI.store.flush());
+    const rolls = (await creature('cr-lines2')).development.initiation.rolls;
+    const t = (await creature('cr-lines2')).development.temperament;
+    const other = await ba.evaluate(r => { const e = TSI_DATA.beastProfile.species.dire_wolf.trigger.entries; return e.filter(x => x.roll !== r)[0].label; }, rolls.trigger);
+    await dmEdit('cr-lines2', { trigger: other });
+    await reopen('cr-lines2');
+    await step(1);
+    await toPanel2();
+    await toPanel3();
+    await bh.click('[data-test=bh-meet-roll-all]');
+    await bh.waitForSelector('[data-test=bh-meet-finish]:not([hidden])', { timeout: 8000 });
+    equal(await personality(), [[String(rolls.dominant), t.dominant], [String(rolls.attachment), t.attachment], ['✦', other]]);
+  });
+
+  await checkS('every painted portrait in the art map exists, loads and is shown for its variety; a variety with no painting yet shows the honest empty frame (no broken image, no "could not be loaded" note)', async () => {
+    const data = await bh.evaluate(() => {
+      const kinds = {};
+      Object.keys(TSI_DATA.beastProfile.species).forEach(k => { kinds[k] = TSI_DATA.beastProfile.species[k].regional.map(r => ({ id: r.id, name: r.name })); });
+      return { kinds, art: JSON.parse(JSON.stringify(TSI_DATA.beastArt.species)) };
+    });
+    const dir = path.join(H.ROOT, 'tools', 'beasthandler', 'assets');
+    let pictures = 0;
+    let blanks = 0;
+    /* 1. The art map names only real varieties, and every file it names is there and loads as a picture. */
+    for (const k of Object.keys(data.kinds)) {
+      const ids = data.kinds[k].map(v => v.id);
+      const variants = (data.art[k] && data.art[k].variants) || {};
+      Object.keys(variants).forEach(id => assert(ids.indexOf(id) !== -1, k + ': the art map has "' + id + '", which is not one of the kind\'s varieties'));
+      for (const id of Object.keys(variants)) {
+        const src = variants[id].src;
+        assert(fs.existsSync(path.join(dir, src)), 'the file for ' + k + ' ' + id + ' is missing: ' + src);
+        const size = await bh.evaluate(src => new Promise(res => { const i = new Image(); i.onload = () => res([i.naturalWidth, i.naturalHeight]); i.onerror = () => res([0, 0]); i.src = TSI.path('tools/beasthandler/assets/' + src); }), src);
+        assert(size[0] > 0 && size[1] > 0, k + ' ' + id + ' (' + src + ') does not load as a picture');
+        pictures += 1;
+      }
+    }
+    assert(pictures >= 18, 'at least the eighteen painted portraits Harry has added: ' + pictures);
+    /* 2. On the page: each variety of each kind, in turn, on one beast of that kind. */
+    for (const k of Object.keys(data.kinds)) {
+      await addBeast('pic-' + k, k, 'Portrait ' + k, 'beast_pen', { regional: data.kinds[k][0].name, roll: false });
+    }
+    await ba.evaluate(() => TSI.store.flush());
+    await bh.waitForTimeout(300);
+    for (const k of Object.keys(data.kinds)) {
+      await reopen('pic-' + k);
+      await bh.waitForSelector('[data-test=bh-portrait-large]');
+      for (const v of data.kinds[k]) {
+        await dmEdit('pic-' + k, { regional: v.name });
+        await bh.waitForFunction(name => { const c = document.querySelector('[data-test=bh-subspecies]'); return c && c.textContent.indexOf(name) !== -1; }, v.name, { timeout: 8000 });
+        const art = data.art[k] && data.art[k].variants && data.art[k].variants[v.id];
+        if (art) {
+          await bh.waitForFunction(() => { const i = document.querySelector('[data-test=bh-portrait-large] img'); return i && i.complete && i.naturalWidth > 0; }, null, { timeout: 8000 });
+          equal(await bh.$eval('[data-test=bh-portrait-large]', n => n.getAttribute('data-state')), 'picture', k + ' ' + v.name);
+          assert(new RegExp(art.src.replace(/[.]/g, '\\.') + '$').test(await bh.$eval('[data-test=bh-portrait-large] img', i => i.getAttribute('src'))), k + ' ' + v.name + ' shows its own picture');
+        } else {
+          blanks += 1;
+          equal(await bh.$eval('[data-test=bh-portrait-large]', n => n.getAttribute('data-state')), 'blank', k + ' ' + v.name + ' has no painting yet: an empty frame');
+          equal(await bh.$('[data-test=bh-portrait-large] img'), null, k + ' ' + v.name + ': no broken image');
+          equal(await bh.$eval('[data-test=bh-picture-lost]', n => n.hidden), true, k + ' ' + v.name + ': it is not a picture that failed to load');
+        }
+      }
+    }
+    equal(blanks, Object.keys(data.kinds).reduce((n, k) => n + data.kinds[k].length, 0) - pictures, 'every variety is either painted or honestly empty');
+  });
+
   await checkS('real speed: it takes 3.5 to 4.5 seconds and slows down, the gaps growing from about 90 ms to about 420 ms', async () => {
     await bh.evaluate(() => sessionStorage.clear());
     await reopen('cr-ashfang');
@@ -568,6 +751,70 @@ const checkS = (name, fn) => check(name, async () => {
     }
   });
 
+  /* What the subspecies panel looks like on a page: any word of a name that is split over lines or sticks out of its medallion. */
+  const measureNames = () => {
+    const bad = [];
+    document.querySelectorAll('.tsi-bh-medal').forEach(m => {
+      const nm = m.querySelector('.tsi-bh-medal__name');
+      const text = nm.firstChild;
+      const mr = m.getBoundingClientRect();
+      const re = /\S+/g;
+      let hit;
+      while ((hit = re.exec(text.data))) {
+        const r = document.createRange();
+        r.setStart(text, hit.index); r.setEnd(text, hit.index + hit[0].length);
+        const lines = new Set([...r.getClientRects()].map(x => Math.round(x.top))).size;
+        const box = r.getBoundingClientRect();
+        if (lines !== 1) bad.push(hit[0] + ' is on ' + lines + ' lines');
+        if (box.left < mr.left - 0.5 || box.right > mr.right + 0.5) bad.push(hit[0] + ' sticks out of its medallion (' + Math.round(box.left - mr.left) + ', ' + Math.round(box.right - mr.right) + ')');
+      }
+      const cs = getComputedStyle(nm);
+      if (cs.overflowWrap === 'anywhere' || cs.overflowWrap === 'break-word' || cs.wordBreak === 'break-all') bad.push(nm.textContent + ': the rule that breaks words is on');
+      if (cs.hyphens === 'auto') bad.push(nm.textContent + ': hyphens are on');
+      if (parseFloat(cs.fontSize) < 9.5) bad.push(nm.textContent + ' is too small: ' + cs.fontSize);
+    });
+    /* The Beast Handler's own box (the suite's top bar, in the test page, is not what is being measured). */
+    const shell = document.querySelector('.tsi-bh');
+    const list = document.querySelector('[data-test=bh-meet-medals]').getBoundingClientRect();
+    return { bad, over: shell.scrollWidth - shell.clientWidth, off: Math.round(Math.max(0, list.right - innerWidth, -list.left)), medals: document.querySelectorAll('.tsi-bh-medal').length };
+  };
+
+  await checkS('a subspecies name never breaks in the middle of a word, is never clipped and never scrolls the page sideways, for every variety of every kind at 320, 360, 390, 480, 600, the laptop and the TV (the Dire Wolf has six)', async () => {
+    const sizes = [[320, 568], [360, 640], [390, 844], [480, 800], [600, 900], [1707, 930], [1920, 1080]];
+    const kinds = [['cr-stormwing', 5], ['cr-swiftwing', 5], ['cr-ashfang', 6], ['cr-tusk', 5], ['cr-prowl', 5]];
+    for (const [w, h] of sizes) {
+      const p = await ctx.newPage();
+      await p.setViewportSize({ width: w, height: h });
+      await p.goto(HARNESS + '?tool=beasthandler');
+      await p.waitForSelector('[data-test=bh-viewas]');
+      await p.selectOption('[data-test=bh-viewas]', 'Mira');
+      await H.dismissNotices(p);
+      for (const [id, n] of kinds) {
+        await p.waitForSelector('[data-test=bh-beast-' + id + ']');
+        await p.click('[data-test=bh-beast-' + id + ']');
+        await p.waitForSelector('[data-test=bh-meet][data-step="1"]');
+        await p.click('[data-test=bh-meet-continue]');
+        await p.waitForSelector('[data-test=bh-meet][data-step="2"]');
+        let got = await p.evaluate(measureNames);
+        equal(got.medals, n, id + ' at ' + w + ': medallions');
+        equal(got.bad, [], id + ' at ' + w + ' px wide, before the roll');
+        assert(got.over <= 0 && got.off === 0, id + ' at ' + w + ' scrolls sideways or runs off the screen: ' + JSON.stringify(got));
+        if (id === 'cr-ashfang' && (w === 320 || w === 600)) await H.shot(p, 'beasthandler-meet-names-' + w);
+        /* and once it has landed (the lit and landed medallions are styled differently) */
+        await p.click('[data-test=bh-meet-roll-regional]');
+        await p.waitForSelector('[data-test=bh-meet-next]:not([hidden])', { timeout: 15000 });
+        got = await p.evaluate(measureNames);
+        equal(got.bad, [], id + ' at ' + w + ' px wide, after the roll');
+        assert(got.over <= 0 && got.off === 0, id + ' at ' + w + ' scrolls sideways or runs off the screen after the roll: ' + JSON.stringify(got));
+        await p.reload();
+        await p.waitForSelector('[data-test=bh-viewas]');
+        await p.selectOption('[data-test=bh-viewas]', 'Mira');
+        await H.dismissNotices(p);
+      }
+      await p.close();
+    }
+  });
+
   /* ---- A player's phone: the same reveal, from a snapshot code ---- */
   const ph = await H.newContext(browser, 'laptop', { viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, hasTouch: true, isMobile: true });
   await ph.setOffline(true);
@@ -707,6 +954,57 @@ const checkS = (name, fn) => check(name, async () => {
     await pp.waitForSelector('[data-test=bh-beast-cr-cloudy]');
     await pp.click('[data-test=bh-beast-cr-cloudy]');
     await pp.waitForSelector('[data-test=bh-meet][data-step="1"]');
+  });
+
+  await checkS('phone: moving between the first-meeting panels starts the new panel at its top (smoothly; at once under reduced motion), so its heading is never left scrolled out of sight on a small phone; the names never break at 320 and 360 either', async () => {
+    const scrollY = () => pp.evaluate(() => Math.round(window.scrollY));
+    const headingInView = () => pp.evaluate(() => { const r = document.querySelector('[data-test=bh-meet-title]').getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight; });
+    const bottom = () => pp.evaluate(() => { window.scrollTo(0, document.documentElement.scrollHeight); return Math.round(window.scrollY); });
+    const toTop = () => pp.waitForFunction(() => window.scrollY === 0, null, { timeout: 4000 });
+    for (const [w, h] of [[320, 568], [360, 640]]) {
+      for (const reduce of [false, true]) {
+        const label = w + 'x' + h + (reduce ? ' (reduced motion)' : '');
+        await pp.setViewportSize({ width: w, height: h });
+        await pp.emulateMedia({ reducedMotion: reduce ? 'reduce' : 'no-preference' });
+        await pp.reload();
+        await pp.waitForSelector('[data-test=bh-beast-cr-cloudy]');
+        await pp.click('[data-test=bh-beast-cr-cloudy]');
+        await pp.waitForSelector('[data-test=bh-meet][data-step="1"]');
+        /* panel 1 to panel 2 */
+        await bottom();
+        await pp.click('[data-test=bh-meet-continue]');
+        await pp.waitForSelector('[data-test=bh-meet][data-step="2"]');
+        await toTop();
+        assert(await headingInView(), label + ': panel 2 heading is in view');
+        const names = await pp.evaluate(measureNames);
+        equal(names.bad, [], label + ': the six dire wolf names');
+        assert(await pp.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), label + ': the phone page does not scroll sideways');
+        /* panel 2 (landed, the tallest) to panel 3 */
+        await pp.click('[data-test=bh-meet-roll-regional]');
+        await pp.waitForSelector('[data-test=bh-meet-next]:not([hidden])', { timeout: 15000 });
+        const down = await bottom();
+        assert(down > 0, label + ': the landed panel is taller than the window, so there is something to scroll back from (' + down + ')');
+        await pp.click('[data-test=bh-meet-next]');
+        await pp.waitForSelector('[data-test=bh-meet][data-step="3"]');
+        if (reduce) equal(await scrollY(), 0, label + ': at once under reduced motion');
+        await toTop();
+        assert(await headingInView(), label + ': panel 3 heading is in view, not scrolled away');
+        /* Back from panel 2 to panel 1 */
+        await pp.reload();
+        await pp.waitForSelector('[data-test=bh-beast-cr-cloudy]');
+        await pp.click('[data-test=bh-beast-cr-cloudy]');
+        await pp.waitForSelector('[data-test=bh-meet][data-step="1"]');
+        await pp.click('[data-test=bh-meet-continue]');
+        await pp.waitForSelector('[data-test=bh-meet][data-step="2"]');
+        await bottom();
+        await pp.click('[data-test=bh-meet-back]');
+        await pp.waitForSelector('[data-test=bh-meet][data-step="1"]');
+        await toTop();
+        assert(await headingInView(), label + ': panel 1 heading is in view after Back');
+      }
+    }
+    await pp.emulateMedia({ reducedMotion: 'no-preference' });
+    await pp.setViewportSize({ width: 390, height: 844 });
   });
 
   await checkS('nothing went wrong or reached for the internet, on either device', async () => {
