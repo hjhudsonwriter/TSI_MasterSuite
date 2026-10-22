@@ -591,6 +591,8 @@
         var typing = TSI.keys.isTyping(e);
         if (e.key === '`' && !typing) { e.preventDefault(); toggleDock(); return; }
         if (rollCtx) {
+          /* Typing in a box that isn't the roll window's (the DM doc's Quest box, say) is not for the roll window. */
+          if (typing && !rollModal.contains(e.target)) return;
           if (e.key === 'Escape') closeRoll();
           /* Enter applies, whichever button is selected, as before (RIT-22, kept). */
           if (e.key === 'Enter') { e.preventDefault(); applyRoll(); }

@@ -1,25 +1,25 @@
-/* The creatures, and the Library's chart order (pull request 7 of the
-   facilities overhaul, Harry's answers of 14 October 2026), clicked through
-   from a double-clicked index.html with the internet off, with the Explorer
-   and the Bastion open side by side:
+/* The creatures and the Beast Pen (pull request 7 of the facilities overhaul,
+   Harry's answers of 14 October 2026; the Beast Pen replaced the Wyvern Roost,
+   Griffin Tower and Dire Wolf Den on 22 October 2026), clicked through from a
+   double-clicked index.html with the internet off, with the Explorer and the
+   Bastion open side by side:
    - the Library & Scriptorium at Level 2: Prepare Overland Travel Charts
      makes 1 Overland chart in 4 days, with no gold;
-   - the Wyvern Roost, Griffin Tower and Dire Wolf Den build in construction
-     slots in 21 days;
-   - House Elara's Wyvern (3 days) records her wyvern once; a second is
-     refused;
-   - Grant a creature… in the Explorer: the Bastion holds a named griffin
-     waiting for a home, with a notice and a row in Management's Changes from the Explorer, and the
-     Explorer's Sent to the Bastion says Applied;
-   - House a Griffin (3 days) houses it; a second griffin waits ("No room")
-     until the Tower is upgraded to Level 2 (7 days); a dire wolf is housed at
-     the Den;
-   - Demolish the Griffin Tower: the question says its griffins stay, and
-     they do;
+   - the Beast Pen builds in a construction slot in 21 days and brings no beast;
+   - Grant a creature… in the Explorer: five kinds, "the Beast Pen" named once;
+     the Bastion holds a named griffin waiting for a home, with a notice and a
+     row in Management's Changes from the Explorer, and the Explorer's Sent to
+     the Bastion says Applied;
+   - House Beast Here (3 days) houses it; a second griffin waits ("The Beast
+     Pen keeps one griffin at a time"); a dire wolf, a buckbear and a fellcat
+     are housed beside it;
+   - rename and release; Demolish is refused while a beast lives there;
    - a reload adds nothing;
-   - the panels and the Grant dialog fit the laptop and the TV;
-   - Harry's sample file imports on the test page, and the real suite
-     refuses it.
+   - the panel and the Grant dialog fit the laptop and the TV;
+   - Harry's sample file imports on the test page and its three old buildings
+     become the one Pen, and the real suite refuses it.
+   The Pen itself (acclimatising, going out on the road, Bonding Days) is in
+   tests/e2e/beast-pen.test.js.
    Run with:  node tests/e2e/creatures.test.js */
 'use strict';
 
@@ -33,10 +33,7 @@ const HARNESS = H.fileUrl('tests/harness.html');
 const SAMPLE = path.join(__dirname, '..', 'fixtures', 'bastion-pr7-sample.json');
 const CHART = 'overland_chart';
 const CHART_ORDER = 'library_scriptorium__prepare_overland_travel_charts';
-const ROOST = 'wyvern_roost__house_elara_wyvern';
-const TOWER = 'griffin_tower__house_griffin';
-const DEN = 'dire_wolf_den__house_dire_wolf';
-const WYVERN = 'elara_wyvern';
+const HOUSE = 'beast_pen__house_beast';
 
 const bare = (page, sel) => page.$eval(sel, n => n.textContent.replace(/\s+/g, ' ').trim());
 const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.debug.state())));
@@ -165,14 +162,17 @@ async function orderState(ba, key) {
     return { button: b.textContent, off: b.disabled, why: w && !w.hidden ? w.textContent : '' };
   }, key);
 }
-/* The creatures a building's panel lists: { housed: [[name, status]], waiting: [...] }. */
-async function panelCreatures(ba, fac) {
-  return ba.evaluate(f => {
-    const rows = test => Array.from(document.querySelectorAll('[data-test="' + test + '"] [data-creature]'))
-      .map(r => [r.querySelector('.tsi-bas-creature__name').textContent, r.querySelector('.tsi-bas-creature__status').textContent]);
-    const room = document.querySelector('[data-test="creature-room-' + f + '"]');
-    return { room: room ? room.textContent : null, housed: rows('creatures-housed-' + f), waiting: rows('creatures-waiting-' + f) };
-  }, fac);
+/* The beasts the Beast Pen's panel lists, stall by stall: { room, stalls: { griffin: [[name, status]] } }. */
+async function panelCreatures(ba) {
+  return ba.evaluate(() => {
+    const stalls = {};
+    document.querySelectorAll('[data-test^="stall-"][data-count]').forEach(st => {
+      stalls[st.getAttribute('data-test').slice(6)] = Array.from(st.querySelectorAll('[data-creature]'))
+        .map(r => [r.querySelector('.tsi-bas-creature__name').textContent, r.querySelector('.tsi-bas-creature__status').textContent]);
+    });
+    const room = document.querySelector('[data-test="creature-room-beast_pen"]');
+    return { room: room ? room.textContent : null, stalls };
+  });
 }
 /* Grant a creature… in the Explorer: its kind, name and what it's for. */
 async function grant(ex, species, name, why) {
@@ -253,18 +253,14 @@ async function clickPop(page, label) {
   });
 
   /* ------------------------------------------------------------------ */
-  section('Building the Wyvern Roost, Griffin Tower and Dire Wolf Den');
+  section('Building the Beast Pen');
 
-  await check('each builds in a construction slot in 21 days, for no gold ("Construct the Wyvern Roost? It takes 21 days.")', async () => {
-    const asked = [];
-    for (const fac of ['wyvern_roost', 'griffin_tower', 'dire_wolf_den']) asked.push(await construct(ba, fac));
-    assert(asked[0].includes('Construct the Wyvern Roost? It takes 21 days.'), asked[0]);
-    assert(asked[1].includes('Construct the Griffin Tower? It takes 21 days.'), asked[1]);
-    assert(asked[2].includes('Construct the Dire Wolf Den? It takes 21 days.'), asked[2]);
+  await check('it builds in a construction slot in 21 days, for no gold ("Construct the Beast Pen? It takes 21 days."), and building it brings no beast', async () => {
+    const asked = await construct(ba, 'beast_pen');
+    assert(asked.includes('Construct the Beast Pen? It takes 21 days.'), asked);
     const s = await bas(ba);
-    equal(s.builtExtras.slice(1).map(e => [e.facId, e.status, e.startDay, e.readyDay]),
-      [['wyvern_roost', 'building', 1, 22], ['griffin_tower', 'building', 1, 22], ['dire_wolf_den', 'building', 1, 22]]);
-    equal([s.builtPlots.filter(Boolean), s.treasuryGP, s.creatures], [[], 100, []], 'no plot used, no gold, and building them brings no creature');
+    equal(s.builtExtras.filter(Boolean).slice(1).map(e => [e.facId, e.status, e.startDay, e.readyDay]), [['beast_pen', 'building', 1, 22]]);
+    equal([s.builtPlots.filter(Boolean), s.treasuryGP, s.creatures], [[], 100, []], 'no plot used, no gold, and no beast');
   });
 
   await check('4 camps later the Library has made 1 Overland chart, into the Warehouse, with no gold spent', async () => {
@@ -275,52 +271,42 @@ async function clickPop(page, label) {
     assert(s.log.some(l => l.body === 'Library & Scriptorium: Prepare Overland Travel Charts → Added to Warehouse: 1 Overland chart.'), logText(s));
   });
 
-  await check('17 camps more (Day 22): all three are built at Level 1, with nobody living in them', async () => {
+  await check('17 camps more (Day 22): the Pen is built, at its one level, with nobody living in it', async () => {
     await passDays(ex, ba, 17);
     const s = await bas(ba);
-    equal([s.day, s.builtExtras.map(e => e.facId + ' ' + e.status)], [22, ['library_scriptorium built', 'wyvern_roost built', 'griffin_tower built', 'dire_wolf_den built']]);
-    equal(['wyvern_roost', 'griffin_tower', 'dire_wolf_den'].map(f => s.facilityLevels[f]), [1, 1, 1]);
+    equal([s.day, s.builtExtras.filter(Boolean).map(e => e.facId + ' ' + e.status)], [22, ['library_scriptorium built', 'beast_pen built']]);
+    equal(s.facilityLevels.beast_pen, 1);
     equal(s.creatures, []);
   });
 
-  /* ------------------------------------------------------------------ */
-  section('House Elara\'s Wyvern');
-
-  await check('the Roost\'s panel: House Elara\'s Wyvern takes 3 days, costs nothing, and the Creatures list is empty; the panel fits the laptop', async () => {
-    await openTile(ba, 'wyvern_roost');
-    equal(await bare(ba, '[data-test=days-' + ROOST + ']'), 'Takes 3 days');
-    equal(await orderState(ba, ROOST), { button: 'Issue Order', off: false, why: '' });
-    equal(await panelCreatures(ba, 'wyvern_roost'), { room: 'Room: 0 of 2 taken, 2 free. Each level of the Wyvern Roost houses one wyvern, plus one more (Elara\'s wyvern is one of them).', housed: [], waiting: [] });
-    assert(/None yet\. House Elara's Wyvern, above, records Elara's wyvern here; House a Wyvern gives a home to one the DM granted in the Explorer\./.test(await bare(ba, '[data-test=creatures-wyvern_roost]')), await bare(ba, '[data-test=creatures-wyvern_roost]'));
-    equal(await panelFits(ba, ROOST), { sideways: false, outOfView: [], underFooter: false });
-    await H.shot(ba, 'creatures-roost-empty-laptop');
-  });
-
-  await check('Issue Order: it\'s on its way (ready on Day 25), takes no gold, and a second can\'t be given', async () => {
-    gp = (await bas(ba)).treasuryGP;
-    await ba.dblclick('[data-test=issue-' + ROOST + ']');
-    await ba.waitForTimeout(500);
-    const s = await bas(ba);
-    const o = s.pendingOrders.filter(x => x.fnId === 'house_elara_wyvern');
-    equal([o.length, o[0].label, o[0].dueDay, s.treasuryGP, s.creatures], [1, 'Wyvern Roost: House Elara\'s Wyvern', 25, gp, []], 'one order, nothing recorded yet');
-    await openTile(ba, 'wyvern_roost');
-    equal(await orderState(ba, ROOST), { button: 'Being housed', off: true, why: 'Elara\'s wyvern is already being housed at the Wyvern Roost: ready on Day 25.' });
-    await closeAll(ba);
+  await check('the Pen\'s panel: Harry\'s picture across the top, one level, no Upgrade row, five empty stalls, House Beast Here with nothing waiting; the panel fits the laptop', async () => {
+    await openTile(ba, 'beast_pen');
+    equal(await bare(ba, '[data-test=fac-level]'), 'One level only');
+    equal(await ba.$('[data-test=upgrade-row-beast_pen]'), null, 'no Upgrade row');
+    equal(await orderState(ba, HOUSE), { button: 'None waiting', off: true, why: 'No beast is waiting for a home. The DM grants one in the Explorer.' });
+    const p = await panelCreatures(ba);
+    equal(Object.keys(p.stalls), ['wyvern', 'griffin', 'dire_wolf', 'buckbear', 'fellcat']);
+    equal(Object.values(p.stalls), [[], [], [], [], []]);
+    assert(p.room.startsWith('The Beast Pen keeps one beast of each kind: wyvern, griffin, dire wolf, buckbear'), p.room);
+    equal(await panelFits(ba, HOUSE), { sideways: false, outOfView: [], underFooter: false });
+    await H.shot(ba, 'creatures-pen-empty-laptop');
   });
 
   /* ------------------------------------------------------------------ */
   section('Grant a creature… in the Explorer');
 
-  await check('Grant a creature… sits under Sent to the Bastion; a double-click opens one dialog (Griffin or Dire Wolf, a name, what for), which fits the laptop; Cancel sends nothing', async () => {
+  await check('Grant a creature… sits under Sent to the Bastion; a double-click opens one dialog (the five kinds, a name, what for) that says "the Beast Pen" once; it fits the laptop; Cancel sends nothing', async () => {
     const before = await exs(ex);
     await ex.waitForTimeout(400);
     await ex.dblclick('[data-test=creature-open]');
     await ex.waitForSelector('[data-test=creature-dialog]');
     await ex.waitForTimeout(300);
     equal(await ex.$$eval('[data-test=creature-dialog]', l => l.length), 1, 'one dialog');
-    equal(await ex.$$eval('[data-test=creature-species] option', o => o.map(x => x.value + ' ' + x.textContent)), ['griffin Griffin', 'dire_wolf Dire Wolf', 'wyvern Wyvern']);
+    equal(await ex.$$eval('[data-test=creature-species] option', o => o.map(x => x.value + ' ' + x.textContent)), ['wyvern Wyvern', 'griffin Griffin', 'dire_wolf Dire Wolf', 'buckbear Buckbear', 'fellcat Fellcat']);
     equal(await ex.$$eval('[data-test=creature-dialog] .tsi-modal__foot button', l => l.map(b => b.textContent)), ['Cancel', 'Grant']);
-    assert(/^Grant the Ironbow a griffin, a dire wolf or a wyvern when the party has won one\./.test(await bare(ex, '[data-test=creature-dialog] .tsi-modal__body')), await bare(ex, '[data-test=creature-dialog] .tsi-modal__body'));
+    const body = await bare(ex, '[data-test=creature-dialog] .tsi-modal__body');
+    assert(/^Grant the Ironbow a wyvern, a griffin, a dire wolf, a buckbear or a fellcat when the party has won one\. The Bastion holds it, waiting for a home, until the Beast Pen houses it \(House Beast Here: 3 days\)\. The Beast Pen keeps one beast of each kind\./.test(body), body);
+    equal(body.split('Beast Pen').length - 1, 2, '"the Beast Pen" is said once in the sentence about the home and once about the limit, never five times');
     equal((await H.layoutCheck(ex, ['[data-test=creature-dialog]'])).outOfView, [], 'the dialog fits the laptop');
     await ex.click('[data-test=creature-dialog] .tsi-modal__foot button:text-is("Cancel")');
     await ex.waitForTimeout(400);
@@ -328,278 +314,201 @@ async function clickPop(page, label) {
   });
 
   await check('Grant a griffin named Swiftwing: the Explorer sends it once ("Sent to the Bastion: a griffin (Swiftwing)…"), listed as "Creature: Griffin (Swiftwing)"', async () => {
-    await closeAll(ex);
-    await ex.waitForTimeout(400);
-    await ex.click('[data-test=creature-open]');
-    await ex.waitForSelector('[data-test=creature-dialog]');
-    await ex.selectOption('[data-test=creature-species]', 'griffin');
-    await ex.fill('[data-test=creature-name]', 'Swiftwing');
-    await ex.fill('[data-test=creature-why]', 'Won at the Ember Fair');
-    await H.shot(ex, 'creatures-grant-dialog-laptop');
-    await ex.dblclick('[data-test=creature-dialog] .tsi-modal__foot .tsi-btn--primary');
-    /* Pull request 8a: Grant asks first ("Grant a griffin (Swiftwing) to the Ironbow?"); a double click there sends it once too. */
-    await ex.waitForTimeout(300);
-    equal((await lastModal(ex)).replace(/^Scarlett Isles Explorer/, ''), 'Grant a griffin (Swiftwing) to the Ironbow? Once the Bastion has it, it can only be released while it waits for a home.CancelGrant');
-    await ex.locator('.tsi-modal').last().locator('.tsi-modal__foot .tsi-btn--primary').dblclick();
-    await ex.waitForTimeout(500);
+    await grant(ex, 'griffin', 'Swiftwing', 'Won at the Ember Fair');
     const s = await exs(ex);
     const sent = s.journey.outbox.filter(m => m.type === 'creature');
     equal(sent.map(m => [m.type, m.day, m.species, m.name, m.text]), [['creature', 22, 'griffin', 'Swiftwing', 'Griffin for the Ironbow (Swiftwing): Won at the Ember Fair.']], 'one grant');
     assert(/^[A-Za-z0-9-]+:dm:0$/.test(sent[0].id), sent[0].id);
-    equal(await bare(ex, '[data-test=notice]'), 'Sent to the Bastion: a griffin (Swiftwing) for the Ironbow, to be housed at the Griffin Tower.');
+    equal(await bare(ex, '[data-test=notice]'), 'Sent to the Bastion: a griffin (Swiftwing) for the Ironbow, to be housed at the Beast Pen.');
     equal((await sentTop(ex)).title, 'Creature: Griffin (Swiftwing)');
   });
 
   await check('the Bastion holds Swiftwing once, waiting for a home: a notice, the Day Log, and "Creature granted: Griffin (Swiftwing)" in Management\'s Changes from the Explorer', async () => {
     await ba.waitForFunction(() => TSI.bastion.debug.state().creatures.length === 1, null, { timeout: 8000 });
-    await H.waitForNotice(ba, /From the Explorer: a griffin \(Swiftwing\) for the Ironbow, waiting for a home at the Griffin Tower\./);
+    await H.waitForNotice(ba, /From the Explorer: a griffin \(Swiftwing\) for the Ironbow, waiting for a home at the Beast Pen\./);
     const s = await bas(ba);
     const c = s.creatures[0];
     swift = c.id;
     const msg = (await exs(ex)).journey.outbox.filter(m => m.type === 'creature')[0];
     equal(c, { id: 'cr-' + msg.id.replace(/:/g, '-'), species: 'griffin', owner: '', name: 'Swiftwing', status: 'waiting', home: '', grantedDay: 22, housedDay: null, msgId: msg.id });
     equal(Object.values(s.bridge.done).map(r => [r.r, r.type, r.species, r.name, r.creatureId, r.held]), [['applied', 'creature', 'griffin', 'Swiftwing', swift, false]], 'one receipt');
-    assert(s.log.some(l => l.body === 'Creature granted (DM, Day 22): a griffin (Swiftwing), waiting for a home at the Griffin Tower. Griffin for the Ironbow (Swiftwing): Won at the Ember Fair.'), logText(s));
-    equal(s.treasuryGP, gp, 'no gold');
-    await H.shot(ba, 'creatures-grant-notice-laptop');
+    assert(s.log.some(l => l.body === 'Creature granted (DM, Day 22): a griffin (Swiftwing), waiting for a home at the Beast Pen. Griffin for the Ironbow (Swiftwing): Won at the Ember Fair.'), logText(s));
+    equal(s.treasuryGP, gp = 100, 'no gold');
     await H.dismissNotices(ba);
     await closeAll(ba);
     await ba.click('[data-test=open-management]');
     await ba.waitForSelector('[data-test=explorer-change]');
     assert(/^Creature granted: Griffin \(Swiftwing\)/.test(await bare(ba, '[data-test=explorer-change]')), await bare(ba, '[data-test=explorer-change]'));
+    equal(await ba.$('[data-test=creatures]'), null, 'Management has no creature list any more: the beasts are in the Beast Pen\'s panel');
+    equal(await ba.$('[data-test=beast-box]'), null, 'nor the Beast Handler box');
     await closeAll(ba);
   });
 
-  await check('the Explorer\'s Sent to the Bastion says Applied: "the Bastion holds the griffin (Swiftwing); house it at the Griffin Tower"', async () => {
+  await check('the Explorer\'s Sent to the Bastion says Applied: "the Bastion holds the griffin (Swiftwing); house it at the Beast Pen"', async () => {
     await ex.waitForFunction(() => document.querySelector('[data-test=sent]').getAttribute('data-status') === 'applied', null, { timeout: 8000 });
-    equal(await sentTop(ex), { status: 'applied', title: 'Creature: Griffin (Swiftwing)', line: 'Applied on Day 22: the Bastion holds the griffin (Swiftwing); house it at the Griffin Tower.' });
+    equal(await sentTop(ex), { status: 'applied', title: 'Creature: Griffin (Swiftwing)', line: 'Applied on Day 22: the Bastion holds the griffin (Swiftwing); house it at the Beast Pen.' });
     equal(await bare(ex, '[data-test=sent-status]'), 'Applied');
   });
 
   /* ------------------------------------------------------------------ */
-  section('House a Griffin, and House a Dire Wolf');
+  section('House Beast Here');
 
-  await check('the Griffin Tower\'s panel: Swiftwing waits for a home, Room 0 of 1, and House a Griffin offers Swiftwing; the panel fits the laptop', async () => {
-    await openTile(ba, 'griffin_tower');
-    equal(await panelCreatures(ba, 'griffin_tower'), {
-      room: 'Room: 0 of 1 taken, 1 free. Each level of the Griffin Tower houses one griffin.',
-      housed: [],
-      waiting: [['Swiftwing', 'Waiting for a home at the Griffin Tower.']]
-    });
-    equal(await ba.$$eval('[data-test=sel-' + TOWER + '] option', o => o.map(x => x.textContent)), ['Swiftwing']);
-    equal(await orderState(ba, TOWER), { button: 'Issue Order', off: false, why: '' });
-    equal(await bare(ba, '[data-test=days-' + TOWER + ']'), 'Takes 3 days');
-    assert(/^Coming later/.test(await bare(ba, '[data-test=creatures-later-griffin_tower]')), 'Coming later');
-    equal(await panelFits(ba, TOWER), { sideways: false, outOfView: [], underFooter: false });
-    await H.shot(ba, 'creatures-tower-waiting-laptop');
+  await check('the Pen\'s panel: Swiftwing waits in the griffin stall, and House Beast Here offers Swiftwing with its kind; the panel fits the laptop', async () => {
+    await openTile(ba, 'beast_pen');
+    const p = await panelCreatures(ba);
+    equal(p.stalls.griffin, [['Swiftwing', 'Waiting for a home at the Beast Pen.']]);
+    equal(await ba.$$eval('[data-test=sel-' + HOUSE + '] option', o => o.map(x => x.textContent)), ['Swiftwing (Griffin)']);
+    equal(await orderState(ba, HOUSE), { button: 'Issue Order', off: false, why: '' });
+    equal(await bare(ba, '[data-test=days-' + HOUSE + ']'), 'Takes 3 days');
+    equal(await ba.$eval('[data-test=stall-state-griffin]', n => n.textContent), 'Empty');
+    equal(await panelFits(ba, HOUSE), { sideways: false, outOfView: [], underFooter: false });
+    await H.shot(ba, 'creatures-pen-waiting-laptop');
   });
 
-  await check('House a Griffin (Swiftwing): ready on Day 25, no gold; the room is taken, so another can\'t be given meanwhile', async () => {
-    await ba.click('[data-test=issue-' + TOWER + ']');
+  await check('House Beast Here (Swiftwing): ready on Day 25, no gold; a second griffin can\'t go in meanwhile', async () => {
+    await ba.click('[data-test=issue-' + HOUSE + ']');
     await ba.waitForTimeout(450);
     const s = await bas(ba);
-    const o = s.pendingOrders.filter(x => x.fnId === 'house_griffin');
-    equal([o.length, o[0].label, o[0].dueDay, o[0].chosen.creatureId, s.treasuryGP], [1, 'Griffin Tower: House a Griffin (Swiftwing)', 25, swift, gp]);
-    await openTile(ba, 'griffin_tower');
-    const p = await panelCreatures(ba, 'griffin_tower');
-    equal([p.room, p.waiting], ['Room: 1 of 1 taken (1 being housed), 0 free. Each level of the Griffin Tower houses one griffin; upgrade it to house more.', [['Swiftwing', 'Being housed at the Griffin Tower: ready on Day 25.']]]);
-    equal(await orderState(ba, TOWER), { button: 'One at a time', off: true, why: 'The Griffin Tower houses one griffin at a time: Swiftwing is ready on Day 25.' });
+    const o = s.pendingOrders.filter(x => x.fnId === 'house_beast');
+    equal([o.length, o[0].label, o[0].dueDay, o[0].chosen.creatureId, s.treasuryGP], [1, 'Beast Pen: House Beast Here (Swiftwing)', 25, swift, gp]);
+    await openTile(ba, 'beast_pen');
+    const p = await panelCreatures(ba);
+    equal(p.stalls.griffin, [['Swiftwing', 'Being housed at the Beast Pen: ready on Day 25.']]);
+    equal(await ba.$eval('[data-test=stall-state-griffin]', n => n.textContent), 'Being housed');
     await closeAll(ba);
   });
 
-  await check('a dire wolf with no name, granted and given House a Dire Wolf at the Den (ready on Day 25)', async () => {
+  await check('a dire wolf with no name is granted and housed beside it: several beasts can be housed at once, one of each kind (ready on Day 25)', async () => {
     await grant(ex, 'dire_wolf', '', 'To guard the gate');
-    equal(await bare(ex, '[data-test=notice]'), 'Sent to the Bastion: a dire wolf for the Ironbow, to be housed at the Dire Wolf Den.');
+    equal(await bare(ex, '[data-test=notice]'), 'Sent to the Bastion: a dire wolf for the Ironbow, to be housed at the Beast Pen.');
     await ba.waitForFunction(() => TSI.bastion.debug.state().creatures.length === 2, null, { timeout: 8000 });
-    await H.waitForNotice(ba, /From the Explorer: a dire wolf for the Ironbow, waiting for a home at the Dire Wolf Den\./);
+    await H.waitForNotice(ba, /From the Explorer: a dire wolf for the Ironbow, waiting for a home at the Beast Pen\./);
     await H.dismissNotices(ba);
     wolf = (await bas(ba)).creatures[1].id;
-    await openTile(ba, 'dire_wolf_den');
-    equal(await ba.$$eval('[data-test=sel-' + DEN + '] option', o => o.map(x => x.textContent)), ['Dire Wolf (granted Day 22)']);
-    await ba.click('[data-test=issue-' + DEN + ']');
+    await openTile(ba, 'beast_pen');
+    equal(await ba.$$eval('[data-test=sel-' + HOUSE + '] option', o => o.map(x => x.textContent)), ['Dire Wolf (granted Day 22)']);
+    await ba.click('[data-test=issue-' + HOUSE + ']');
     await ba.waitForTimeout(450);
     const s = await bas(ba);
-    const o = s.pendingOrders.filter(x => x.fnId === 'house_dire_wolf');
-    equal([o.length, o[0].label, o[0].dueDay, o[0].chosen.creatureId, s.treasuryGP], [1, 'Dire Wolf Den: House a Dire Wolf (granted Day 22)', 25, wolf, gp]);
+    const o = s.pendingOrders.filter(x => x.fnId === 'house_beast');
+    equal(o.map(x => [x.label, x.dueDay, x.chosen.creatureId]), [['Beast Pen: House Beast Here (Swiftwing)', 25, swift], ['Beast Pen: House Beast Here (granted Day 22)', 25, wolf]]);
+    equal(s.treasuryGP, gp);
     await ex.waitForFunction(() => document.querySelector('[data-test=sent]').getAttribute('data-status') === 'applied', null, { timeout: 8000 });
-    equal(await sentTop(ex), { status: 'applied', title: 'Creature: Dire Wolf', line: 'Applied on Day 22: the Bastion holds the dire wolf; house it at the Dire Wolf Den.' });
+    equal(await sentTop(ex), { status: 'applied', title: 'Creature: Dire Wolf', line: 'Applied on Day 22: the Bastion holds the dire wolf; house it at the Beast Pen.' });
   });
 
-  await check('3 camps later (Day 25) all three are home: the forecast said so, and each panel lists its creature, guarding the Ironbow', async () => {
+  await check('3 camps later (Day 25) both are home: the forecast said so, no roll was asked for, and nothing was made by building', async () => {
     const w = await passDays(ex, ba, 3);
-    assert(/Wyvern Roost: House Elara's Wyvern is complete\./.test(w.exWord) && /Griffin Tower: House a Griffin \(Swiftwing\) is complete\./.test(w.exWord) && /Dire Wolf Den: House a Dire Wolf \(granted Day 22\) is complete\./.test(w.exWord), 'the Explorer\'s word: ' + w.exWord);
+    assert(/Beast Pen: House Beast Here \(Swiftwing\) is complete\./.test(w.exWord) && /Beast Pen: House Beast Here \(granted Day 22\) is complete\./.test(w.exWord), 'the Explorer\'s word: ' + w.exWord);
     assert(!/needs your roll/.test(w.exWord), 'no roll asked for: ' + w.exWord);
     const s = await bas(ba);
     equal([s.day, s.treasuryGP], [25, gp]);
-    equal(register(s), [
-      [swift, 'griffin', 'Swiftwing', 'housed', 'griffin_tower'],
-      [wolf, 'dire_wolf', '', 'housed', 'dire_wolf_den'],
-      [WYVERN, 'wyvern', '', 'housed', 'wyvern_roost']
-    ]);
-    const { development, ...elara } = s.creatures[2];
-    equal(elara, { id: WYVERN, species: 'wyvern', owner: 'elara', name: '', status: 'housed', home: 'wyvern_roost', grantedDay: 25, housedDay: 25, msgId: '' }, 'Elara\'s wyvern, recorded once');
-    equal([development.bond.level, development.handlerId, development.chronicle.length], [1, 'elara', 1], 'with Bond 1 credited once (20 October 2026)');
-    assert(s.log.some(l => l.body === 'Wyvern Roost: House Elara\'s Wyvern → Elara\'s wyvern lives at the Ironbow now, at the Wyvern Roost (Elara\'s). It guards the Ironbow when it is attacked.'), logText(s));
-    assert(s.log.some(l => l.body === 'Griffin Tower: House a Griffin (Swiftwing) → Swiftwing has a home at the Griffin Tower. It guards the Ironbow when it is attacked.'), logText(s));
-  });
-
-  await check('the Roost\'s panel lists Elara\'s wyvern; a second House Elara\'s Wyvern is refused', async () => {
-    await openTile(ba, 'wyvern_roost');
-    equal(await panelCreatures(ba, 'wyvern_roost'), { room: 'Room: 1 of 2 taken, 1 free. Each level of the Wyvern Roost houses one wyvern, plus one more (Elara\'s wyvern is one of them).', housed: [['Elara\'s wyvern', 'Guarding the Ironbow.']], waiting: [] });
-    equal(await orderState(ba, ROOST), { button: 'Already at the Ironbow', off: true, why: 'Elara\'s wyvern already lives at the Ironbow.' });
-    await H.shot(ba, 'creatures-roost-wyvern-laptop');
-    await ba.click('[data-test=issue-' + ROOST + ']', { force: true });
-    await ba.waitForTimeout(400);
-    const s = await bas(ba);
-    equal([s.pendingOrders.filter(o => o.fnId === 'house_elara_wyvern').length, s.creatures.filter(c => c.species === 'wyvern').length], [0, 1], 'no second order, no second wyvern');
-    const res = await ba.evaluate(() => {
-      const st = JSON.parse(JSON.stringify(TSI.bastion.debug.state()));
-      const D = window.TSI_DATA;
-      const data = { bastion: D.bastion, facilities: D.bastionFacilities, tools: D.bastionTools, research: D.bastionResearch, goods: D.bastionGoods, commerce: D.bastionCommerce, courier: D.bastionCourier, creatures: D.bastionCreatures };
-      return TSI.bastion.rules.issueOrder(st, data, 'wyvern_roost', 'house_elara_wyvern', 0, Math.random);
-    });
-    equal(res, { ok: false, message: 'Elara\'s wyvern already lives at the Ironbow.' }, 'the rules refuse it too');
+    equal(register(s), [[swift, 'griffin', 'Swiftwing', 'housed', 'beast_pen'], [wolf, 'dire_wolf', '', 'housed', 'beast_pen']]);
+    assert(s.log.some(l => l.body === 'Beast Pen: House Beast Here (Swiftwing) → Swiftwing has a home at the Beast Pen. Acclimatise it with its handler (Acclimatise With Beast) before it can go out on the road.'), logText(s));
+    equal(s.creatures.filter(c => c.id === 'elara_wyvern').length, 0, 'Elara\'s wyvern is not made by the Bastion any more');
+    await openTile(ba, 'beast_pen');
+    const p = await panelCreatures(ba);
+    equal([p.stalls.griffin, p.stalls.dire_wolf], [[['Swiftwing', 'At the Beast Pen. Not acclimatised yet']], [['Dire Wolf (granted Day 22)', 'At the Beast Pen. Not acclimatised yet']]]);
+    await H.shot(ba, 'creatures-pen-housed-laptop');
     await closeAll(ba);
   });
 
-  await check('Rename… on a housed creature (Harry, 18 October 2026): Elara\'s wyvern becomes "Ashwing" in its panel; an empty name gives the usual one back; Cancel changes nothing', async () => {
+  await check('Rename… on a housed beast (Harry, 18 October 2026): the wolf becomes "Greyfang"; an empty name gives the usual one back; Cancel changes nothing', async () => {
     const rename = async (text, button) => {
-      await openTile(ba, 'wyvern_roost');
-      await ba.click('[data-test=creature-rename-' + WYVERN + ']');
+      await openTile(ba, 'beast_pen');
+      await ba.click('[data-test=creature-rename-' + wolf + ']');
       await ba.waitForSelector('[data-test=creature-rename-dialog]');
       await ba.fill('[data-test=creature-name]', text);
       await H.clickModal(ba, button);
       await ba.waitForTimeout(500);
     };
-    await rename('Ashwing', 'Cancel');
-    await openTile(ba, 'wyvern_roost');
-    equal((await panelCreatures(ba, 'wyvern_roost')).housed[0][0], 'Elara\'s wyvern');
-    await rename('Ashwing', 'Rename');
-    await openTile(ba, 'wyvern_roost');
-    equal((await panelCreatures(ba, 'wyvern_roost')).housed[0][0], 'Ashwing');
-    assert((await bas(ba)).log.some(l => /Elara's wyvern is now called Ashwing/.test(l.body)), 'the Day Log says so');
+    await rename('Greyfang', 'Cancel');
+    await openTile(ba, 'beast_pen');
+    equal((await panelCreatures(ba)).stalls.dire_wolf[0][0], 'Dire Wolf (granted Day 22)');
+    await rename('Greyfang', 'Rename');
+    await openTile(ba, 'beast_pen');
+    equal((await panelCreatures(ba)).stalls.dire_wolf[0][0], 'Greyfang');
+    assert((await bas(ba)).log.some(l => /Dire Wolf \(granted Day 22\) is now called Greyfang/.test(l.body)), 'the Day Log says so');
     await rename('', 'Rename');
-    await openTile(ba, 'wyvern_roost');
-    equal((await panelCreatures(ba, 'wyvern_roost')).housed[0][0], 'Elara\'s wyvern');
-    await closeAll(ba);
-  });
-
-  await check('Management lists every creature under Creatures, with no Remove button', async () => {
-    await closeAll(ba);
-    await ba.waitForTimeout(300);
-    await ba.click('[data-test=open-management]');
-    await ba.waitForSelector('[data-test=creatures]');
-    await ba.waitForTimeout(300);
-    equal(await ba.$$eval('[data-test=creatures] [data-creature]', l => l.map(r => r.getAttribute('data-test'))), ['mgmt-creature-' + swift, 'mgmt-creature-' + wolf, 'mgmt-creature-' + WYVERN]);
-    equal(await bare(ba, '[data-test=mgmt-creature-' + WYVERN + ']'), 'Elara\'s wyvernWyvern • Elara\'s own • Wyvern Roost • Guarding the Ironbow.');
-    equal(await ba.$$eval('[data-test=creatures] button', l => l.length), 0, 'no Remove');
-    const lay = await H.layoutCheck(ba, []);
-    assert(lay.scrollWidth <= lay.clientWidth, 'sideways scroll in Management');
-    await H.shot(ba, 'creatures-management-laptop');
+    await openTile(ba, 'beast_pen');
+    equal((await panelCreatures(ba)).stalls.dire_wolf[0][0], 'Dire Wolf (granted Day 22)');
     await closeAll(ba);
   });
 
   /* ------------------------------------------------------------------ */
-  section('A second griffin: no room until the Tower is upgraded');
+  section('One of each kind');
 
-  await check('a second griffin, Stormfeather, waits: House a Griffin says "No room: a Level 1 Griffin Tower houses 1 griffin; upgrade it to house more."', async () => {
+  await check('a second griffin, Stormfeather, waits: House Beast Here says "The Beast Pen keeps one griffin at a time: Swiftwing lives here."; a buckbear and a fellcat are housed beside the griffin and wolf', async () => {
     await grant(ex, 'griffin', 'Stormfeather', '');
-    await ba.waitForFunction(() => TSI.bastion.debug.state().creatures.length === 4, null, { timeout: 8000 });
+    await ba.waitForFunction(() => TSI.bastion.debug.state().creatures.length === 3, null, { timeout: 8000 });
     await H.dismissNotices(ba);
-    storm = byName(await bas(ba), 'Stormfeather').id;
-    await openTile(ba, 'griffin_tower');
-    equal(await panelCreatures(ba, 'griffin_tower'), {
-      room: 'Room: 1 of 1 taken, 0 free. Each level of the Griffin Tower houses one griffin; upgrade it to house more.',
-      housed: [['Swiftwing', 'Guarding the Ironbow.']],
-      waiting: [['Stormfeather', 'Waiting for a home at the Griffin Tower.']]
-    });
-    equal(await orderState(ba, TOWER), { button: 'No room', off: true, why: 'No room: a Level 1 Griffin Tower houses 1 griffin; upgrade it to house more.' });
-    await H.shot(ba, 'creatures-tower-no-room-laptop');
-  });
-
-  await check('Upgrade the Griffin Tower to Level 2 (7 days, no gold); Stormfeather still waits meanwhile', async () => {
-    equal(await bare(ba, '[data-test=upgrade-text-griffin_tower]'), 'To Level 2: takes 7 days, no gold.');
-    await ba.click('[data-test=upgrade-griffin_tower]');
+    storm = (await bas(ba)).creatures[2].id;
+    await openTile(ba, 'beast_pen');
+    equal(await ba.$$eval('[data-test=sel-' + HOUSE + '] option', o => o.map(x => x.textContent)), ['Stormfeather (Griffin)']);
+    equal(await orderState(ba, HOUSE), { button: 'Kind is full', off: true, why: 'The Beast Pen keeps one griffin at a time: Swiftwing lives here.' });
+    equal((await panelCreatures(ba)).stalls.griffin, [['Swiftwing', 'At the Beast Pen. Not acclimatised yet'], ['Stormfeather', 'Waiting for a home at the Beast Pen.']], 'it waits in the griffin stall, never sent away');
+    equal(await ba.$('[data-test=creature-release-' + storm + ']') !== null, true, 'and can be released while it waits');
+    await closeAll(ba);
+    await grant(ex, 'buckbear', 'Bramble', '');
+    await grant(ex, 'fellcat', 'Lichen', '');
+    await ba.waitForFunction(() => TSI.bastion.debug.state().creatures.length === 5, null, { timeout: 8000 });
+    await H.dismissNotices(ba);
+    await openTile(ba, 'beast_pen');
+    equal(await ba.$$eval('[data-test=sel-' + HOUSE + '] option', o => o.map(x => x.textContent)), ['Stormfeather (Griffin)', 'Bramble (Buckbear)', 'Lichen (Fellcat)']);
+    await ba.selectOption('[data-test=sel-' + HOUSE + ']', '1');
+    await ba.waitForTimeout(200);
+    equal((await orderState(ba, HOUSE)).off, false, 'the buckbear can go in');
+    await ba.click('[data-test=issue-' + HOUSE + ']');
     await ba.waitForTimeout(450);
-    const s = await bas(ba);
-    const up = s.pendingOrders.filter(o => o.facId === 'griffin_tower')[0];
-    equal([up.label, up.dueDay, s.treasuryGP], ['Griffin Tower: Upgrade to Level 2', 32, gp]);
-    await openTile(ba, 'griffin_tower');
-    equal((await orderState(ba, TOWER)).button, 'No room');
+    await openTile(ba, 'beast_pen');
+    await ba.selectOption('[data-test=sel-' + HOUSE + ']', '1');
+    await ba.waitForTimeout(200);
+    await ba.click('[data-test=issue-' + HOUSE + ']');
+    await ba.waitForTimeout(450);
+    equal((await bas(ba)).pendingOrders.map(o => o.label), ['Beast Pen: House Beast Here (Bramble)', 'Beast Pen: House Beast Here (Lichen)']);
     await closeAll(ba);
   });
 
-  await check('7 camps later (Day 32) the Tower is Level 2: Room 1 of 2, and House a Griffin (Stormfeather) can be given', async () => {
-    await passDays(ex, ba, 7);
-    const s = await bas(ba);
-    equal([s.day, s.facilityLevels.griffin_tower], [32, 2]);
-    await openTile(ba, 'griffin_tower');
-    equal((await panelCreatures(ba, 'griffin_tower')).room, 'Room: 1 of 2 taken, 1 free. Each level of the Griffin Tower houses one griffin.');
-    equal(await ba.$$eval('[data-test=sel-' + TOWER + '] option', o => o.map(x => x.textContent)), ['Stormfeather']);
-    equal(await orderState(ba, TOWER), { button: 'Issue Order', off: false, why: '' });
-    await ba.click('[data-test=issue-' + TOWER + ']');
-    await ba.waitForTimeout(450);
-    const o = (await bas(ba)).pendingOrders.filter(x => x.fnId === 'house_griffin');
-    equal([o.length, o[0].label, o[0].dueDay, o[0].chosen.creatureId], [1, 'Griffin Tower: House a Griffin (Stormfeather)', 35, storm]);
-    await closeAll(ba);
-  });
-
-  await check('3 camps later (Day 35) Stormfeather lives at the Tower too: Room 2 of 2', async () => {
+  await check('3 camps later (Day 28) the buckbear and the fellcat live there too; four kinds are full, and the wyvern stall is empty; Release asks first and the griffin that waited goes', async () => {
     await passDays(ex, ba, 3);
     const s = await bas(ba);
-    equal([s.day, byName(s, 'Stormfeather').status, byName(s, 'Stormfeather').home, byName(s, 'Stormfeather').housedDay, s.creatures.length], [35, 'housed', 'griffin_tower', 35, 4]);
-    await openTile(ba, 'griffin_tower');
-    const p = await panelCreatures(ba, 'griffin_tower');
-    equal([p.room, p.housed, p.waiting], ['Room: 2 of 2 taken, 0 free. Each level of the Griffin Tower houses one griffin; upgrade it to house more.',
-      [['Swiftwing', 'Guarding the Ironbow.'], ['Stormfeather', 'Guarding the Ironbow.']], []]);
-    equal(await panelFits(ba, TOWER), { sideways: false, outOfView: [], underFooter: false });
-    await H.shot(ba, 'creatures-tower-two-laptop');
-    await closeAll(ba);
-  });
-
-  /* ------------------------------------------------------------------ */
-  section('The register');
-
-  let before = null;
-  await check('the four creatures live at the Ironbow, each with its home (kept as the register the next checks compare with)', async () => {
-    await closeAll(ex);
-    const s = await bas(ba);
-    equal(register(s), [
-      [swift, 'griffin', 'Swiftwing', 'housed', 'griffin_tower'],
-      [wolf, 'dire_wolf', '', 'housed', 'dire_wolf_den'],
-      [WYVERN, 'wyvern', '', 'housed', 'wyvern_roost'],
-      [storm, 'griffin', 'Stormfeather', 'housed', 'griffin_tower']
-    ]);
-    before = s.creatures;
-  });
-
-  /* ------------------------------------------------------------------ */
-  section('Demolishing the Griffin Tower');
-
-  await check('Demolish… says the two griffins stay at the Ironbow; Demolish keeps them, still guarding it', async () => {
-    await openTile(ba, 'griffin_tower');
-    await ba.click('[data-test=demolish-griffin_tower]');
-    await ba.waitForSelector('.tsi-modal__foot button:text-is("Demolish")');
-    const q = await lastModal(ba);
-    assert(q.includes('The 2 creatures living here stay at the Ironbow, still guarding it; rebuilding the Griffin Tower gives them a home again.'), q);
-    await H.shot(ba, 'creatures-demolish-laptop');
-    await H.clickModal(ba, 'Demolish');
-    await ba.waitForTimeout(500);
-    const s = await bas(ba);
-    equal(s.builtExtras.map(e => e ? e.facId : ''), ['library_scriptorium', 'wyvern_roost', '', 'dire_wolf_den'], 'its slot is free');
-    equal(s.creatures, before, 'both griffins stay, still housed there');
-    await closeAll(ba);
-    await ba.click('[data-test=open-management]');
-    await ba.waitForSelector('[data-test=creatures]');
+    equal(register(s).map(r => r.slice(1)), [['griffin', 'Swiftwing', 'housed', 'beast_pen'], ['dire_wolf', '', 'housed', 'beast_pen'], ['griffin', 'Stormfeather', 'waiting', ''], ['buckbear', 'Bramble', 'housed', 'beast_pen'], ['fellcat', 'Lichen', 'housed', 'beast_pen']]);
+    await openTile(ba, 'beast_pen');
+    equal(await ba.$$eval('[data-test^=stall-state-]', n => n.map(x => x.getAttribute('data-test').slice(12) + ':' + x.textContent)), ['wyvern:Empty', 'griffin:Full', 'dire_wolf:Full', 'buckbear:Full', 'fellcat:Full']);
+    await ba.click('[data-test=creature-release-' + storm + ']');
+    await ba.waitForSelector('.tsi-modal__foot button:text-is("Release")');
+    assert(/Release Stormfeather\?/.test(await lastModal(ba)), await lastModal(ba));
+    await H.clickModal(ba, 'Cancel');
     await ba.waitForTimeout(300);
-    equal(await bare(ba, '[data-test=mgmt-creature-status-' + storm + ']'), 'Guarding the Ironbow (the Griffin Tower isn\'t standing: rebuilding it gives it a home again).');
+    equal((await bas(ba)).creatures.length, 5, 'Cancel keeps it');
+    await ba.click('[data-test=creature-release-' + storm + ']');
+    await ba.waitForSelector('.tsi-modal__foot button:text-is("Release")');
+    await H.clickModal(ba, 'Release');
+    await ba.waitForTimeout(500);
+    equal((await bas(ba)).creatures.map(c => c.name), ['Swiftwing', '', 'Bramble', 'Lichen']);
+    await closeAll(ba);
+  });
+
+  /* ------------------------------------------------------------------ */
+  section('Demolishing the Beast Pen');
+
+  await check('Demolish… is refused while beasts live there, and says why; they and the Pen stay', async () => {
+    await openTile(ba, 'beast_pen');
+    const before = (await bas(ba)).creatures;
+    await ba.click('[data-test=demolish-beast_pen]');
+    await ba.waitForTimeout(500);
+    assert(/The Beast Pen can't be demolished while 4 beasts live in it: there is nowhere else for them to go\./.test(await lastModal(ba)), await lastModal(ba));
+    await H.clickModal(ba, 'OK');
+    const s = await bas(ba);
+    equal(s.builtExtras.filter(Boolean).map(e => e.facId), ['library_scriptorium', 'beast_pen'], 'still standing');
+    equal(s.creatures, before, 'nobody moved');
     await closeAll(ba);
   });
 
   /* ------------------------------------------------------------------ */
   section('A reload');
 
-  await check('a reload of both windows adds nothing: the same creatures, receipts and Sent to the Bastion, and no new notice', async () => {
+  await check('a reload of both windows adds nothing: the same beasts, receipts and Sent to the Bastion, and no new notice', async () => {
     const e0 = await exs(ex);
     const b0 = await bas(ba);
     await ex.reload();
@@ -612,13 +521,13 @@ async function clickPop(page, label) {
     equal([e1.journey.outbox.length, e1.journey.inventory], [e0.journey.outbox.length, e0.journey.inventory]);
     equal([b1.creatures, b1.bridge.done, b1.treasuryGP, qty(b1, CHART)], [b0.creatures, b0.bridge.done, b0.treasuryGP, qty(b0, CHART)]);
     equal(await ba.$$eval('.tsi-notice', ns => ns.filter(n => /From the Explorer: a/.test(n.textContent)).length), 0, 'no grant notice again');
-    equal(await ex.$$eval('[data-test=sent]', l => l.filter(n => /^Creature/.test(n.querySelector('strong').textContent)).map(n => n.getAttribute('data-status'))), ['applied', 'applied', 'applied']);
+    equal(await ex.$$eval('[data-test=sent]', l => l.filter(n => /^Creature/.test(n.querySelector('strong').textContent)).map(n => n.getAttribute('data-status'))), ['applied', 'applied', 'applied', 'applied', 'applied']);
   });
 
   /* ------------------------------------------------------------------ */
   section('Harry\'s sample file (tests/fixtures/bastion-pr7-sample.json), on the test page');
 
-  await check('on the test page, with only the Bastion open, the sample imports (the Library at Level 2, the Roost, Tower and Den at Level 1, 300 gp, no creatures); then the Explorer opens beside it, and a griffin granted earlier is skipped, not held', async () => {
+  await check('on the test page, with only the Bastion open, the sample imports and its Roost, Tower and Den become the one Beast Pen (the Library at Level 2, 300 gp, no beasts); then the Explorer opens beside it, and a griffin granted earlier is skipped, not held', async () => {
     const c2 = await context(browser, 'laptop');
     /* Earlier testing on the test page: a griffin granted and held. */
     const e0 = await openExplorer(c2, HARNESS);
@@ -642,20 +551,18 @@ async function clickPop(page, label) {
     await b3.waitForFunction(() => TSI.bastion.debug.state().anchored && !TSI.bastion.debug.state().bridge.fresh, null, { timeout: 8000 });
     const s = await bas(b3);
     equal([s.treasuryGP, s.partyLevel, s.builtExtras.filter(Boolean), s.builtPlots.filter(Boolean), s.creatures],
-      [300, 9, ['library_scriptorium', 'wyvern_roost', 'griffin_tower', 'dire_wolf_den'].map(id => ({ facId: id, status: 'built' })), [], []]);
-    equal(['library_scriptorium', 'wyvern_roost', 'griffin_tower', 'dire_wolf_den'].map(f => s.facilityLevels[f]), [2, 1, 1, 1]);
+      [300, 9, ['library_scriptorium', 'beast_pen'].map(id => ({ facId: id, status: 'built' })), [], []]);
+    equal(['library_scriptorium', 'beast_pen', 'wyvern_roost', 'griffin_tower', 'dire_wolf_den'].map(f => s.facilityLevels[f]), [2, 1, undefined, undefined, undefined]);
     equal(Object.values(s.bridge.done).map(r => [r.r, r.type, r.species, r.name]), [['skipped', 'creature', 'griffin', 'Old Test']], 'the earlier grant is skipped');
     assert(/1 creature grant, sent before this Bastion started, was skipped, so nothing counts twice\./.test(logText(s)), logText(s));
     assert(/A sample Bastion for trying the creatures/.test(logText(s)), logText(s));
     await e3.waitForFunction(() => { const n = document.querySelector('[data-test=sent]'); return n && n.getAttribute('data-status') === 'skipped'; }, null, { timeout: 8000 });
     equal(await bare(e3, '[data-test=sent-line]'), 'Skipped: sent before this Bastion started. Grant it again if it should count.');
-    /* The sample works: House Elara's Wyvern and the chart order can be given; the Tower has nobody waiting. */
-    await openTile(b3, 'wyvern_roost');
-    equal((await orderState(b3, ROOST)).button, 'Issue Order');
+    /* The sample works: the chart order can be given; the Pen has nobody waiting. */
     await openTile(b3, 'library_scriptorium');
     equal((await orderState(b3, CHART_ORDER)).button, 'Issue Order');
-    await openTile(b3, 'griffin_tower');
-    equal((await orderState(b3, TOWER)).why, 'No griffin is waiting for a home. The DM grants one in the Explorer.');
+    await openTile(b3, 'beast_pen');
+    equal((await orderState(b3, HOUSE)).why, 'No beast is waiting for a home. The DM grants one in the Explorer.');
     await closeAll(b3);
     equal(c2.log.errors, [], 'no page errors');
     equal(c2.log.net, [], 'nothing online');
@@ -679,7 +586,7 @@ async function clickPop(page, label) {
   /* ------------------------------------------------------------------ */
   section('The TV (1920 × 1080)');
 
-  await check('the Roost, Tower and Den panels, Management\'s Creatures and the Grant dialog fit the TV, with nothing scrolling sideways', async () => {
+  await check('the Beast Pen\'s panel, with all five kinds and a long name, and the Grant dialog fit the TV, with nothing scrolling sideways', async () => {
     await ex.close();
     await ba.close();
     const tv = await context(browser, 'tv');
@@ -688,34 +595,19 @@ async function clickPop(page, label) {
     const b2 = await openBastion(tv);
     await b2.evaluate(() => TSI.bastion.debug.change(s => {
       s.partyLevel = 9;
-      s.builtExtras = ['library_scriptorium', 'wyvern_roost', 'griffin_tower', 'dire_wolf_den'].map(id => ({ facId: id, status: 'built' }));
+      s.builtExtras = ['library_scriptorium', 'beast_pen'].map(id => ({ facId: id, status: 'built' }));
       s.facilityLevels.library_scriptorium = 2;
-      s.facilityLevels.griffin_tower = 3;
-      s.facilityLevels.dire_wolf_den = 2;
-      const C = (id, species, name, status, home) => ({ id, species, owner: '', name, status, home, grantedDay: 1, housedDay: status === 'housed' ? 1 : null, msgId: id.slice(3) + ':dm:0' });
+      const C = (id, species, name, status) => ({ id, species, owner: '', name, status, home: status === 'housed' ? 'beast_pen' : '', grantedDay: 1, housedDay: status === 'housed' ? 1 : null, msgId: id.slice(3) + ':dm:0' });
       s.creatures = [
-        { id: 'elara_wyvern', species: 'wyvern', owner: 'elara', name: '', status: 'housed', home: 'wyvern_roost', grantedDay: 1, housedDay: 1, msgId: '' },
-        C('cr-tvgriffin1', 'griffin', 'Swiftwing', 'housed', 'griffin_tower'),
-        C('cr-tvgriffin2', 'griffin', 'Stormfeather', 'housed', 'griffin_tower'),
-        C('cr-tvgriffin3', 'griffin', 'A griffin with a long name of forty lett', 'waiting', ''),
-        C('cr-tvwolf1', 'dire_wolf', 'Greyfang', 'housed', 'dire_wolf_den'),
-        C('cr-tvwolf2', 'dire_wolf', '', 'waiting', '')
+        C('cr-tvwyvern', 'wyvern', 'Stormtalon', 'housed'), C('cr-tvgriffin1', 'griffin', 'Swiftwing', 'housed'),
+        C('cr-tvgriffin2', 'griffin', 'A griffin with a long name of forty lett', 'waiting'),
+        C('cr-tvwolf', 'dire_wolf', 'Greyfang', 'housed'), C('cr-tvbuck', 'buckbear', 'Bramble', 'housed'), C('cr-tvcat', 'fellcat', '', 'waiting')
       ];
-      s.warRecovery = [{ id: 'rec-tv', kind: 'creature', name: 'Stormfeather', status: 'badly_wounded', untilDay: 22, creatureId: 'cr-tvgriffin2' }];
     }));
-    for (const [fac, key] of [['wyvern_roost', ROOST], ['griffin_tower', TOWER], ['dire_wolf_den', DEN]]) {
-      await openTile(b2, fac);
-      equal(await panelFits(b2, key), { sideways: false, outOfView: [], underFooter: false }, fac);
-      await H.shot(b2, 'creatures-' + fac + '-tv');
-    }
-    await closeAll(b2);
-    await b2.click('[data-test=open-management]');
-    await b2.waitForSelector('[data-test=creatures]');
-    await b2.waitForTimeout(300);
-    equal(await b2.$$eval('[data-test=creatures] [data-creature]', l => l.length), 6);
-    const lay = await H.layoutCheck(b2, []);
-    assert(lay.scrollWidth <= lay.clientWidth, 'sideways scroll in Management');
-    await H.shot(b2, 'creatures-management-tv');
+    await openTile(b2, 'beast_pen');
+    equal(await panelFits(b2, HOUSE), { sideways: false, outOfView: [], underFooter: false });
+    equal(await ba_count(b2), 6);
+    await H.shot(b2, 'creatures-pen-tv');
     await closeAll(b2);
     await e2.waitForTimeout(400);
     await e2.click('[data-test=creature-open]');
@@ -729,14 +621,15 @@ async function clickPop(page, label) {
     equal(tv.log.errors, [], 'no page errors on the TV');
     equal(tv.log.net, [], 'nothing online on the TV');
     await tv.close();
+    async function ba_count(page) { return page.$$eval('[data-creature]', l => l.length); }
   });
 
   await check('nothing went wrong or reached for the internet', async () => {
-    equal(ctx.log.errors, [], 'page errors');
-    equal(ctx.log.net, [], 'internet');
-    equal(ctx.log.failed, [], 'missing files');
+    equal(ctx.log.errors, []);
+    equal(ctx.log.net, []);
+    equal(ctx.log.failed, []);
   });
 
   await browser.close();
   process.exit(H.summary() ? 1 : 0);
-})();
+})().catch(err => { console.error(err); process.exit(1); });

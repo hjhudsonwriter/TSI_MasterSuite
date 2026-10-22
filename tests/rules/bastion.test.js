@@ -39,8 +39,8 @@
 
   group('Bastion: content');
 
-  test('22 facilities (the overhaul, 13 October 2026: none still in development: pull request 3 opened the Fishery and Timber Yard, pull request 6 the Courier Exchange, pull request 7 the three creature buildings and 19 October 2026 the Stone Quarry and the Weavers\' Hall), 12 tool tables (9 can be artisan tools), 11 events, 7 clans, 270 compendium items (271 entries)', function (t) {
-    t.equal(data.facilities.length, 22);
+  test('20 facilities (the overhaul, 13 October 2026, and the Beast Pen replacing the three creature buildings, 22 October 2026: none still in development: pull request 3 opened the Fishery and Timber Yard, pull request 6 the Courier Exchange and 19 October 2026 the Stone Quarry and the Weavers\' Hall), 12 tool tables (9 can be artisan tools), 11 events, 7 clans, 270 compendium items (271 entries)', function (t) {
+    t.equal(data.facilities.length, 20);
     /* Pull request 7 (Harry, 14 October 2026) opened the Wyvern Roost, Griffin
        Tower and Dire Wolf Den, so only these two are still in development. */
     /* The Stone Quarry & Masonworks and the Weavers' Hall opened on 19 October 2026: none is left. */
@@ -73,7 +73,7 @@
     t.same([m.width, m.height], [3000, 1250], 'Harry\'s new painting, 12 October 2026');
     m.overlays.forEach(function (o) { t.ok(R.facility(data, o.fac), o.fac); t.ok(/^map\/overlays\/[a-z_]+\.png$/.test(o.pic), o.pic); });
     t.same(m.overlays.map(function (o) { return o.fac; }), ['library_scriptorium', 'arcane_laboratory', 'herbal_gardens', 'war_room', 'hall_of_emissaries', 'shrine_aurush', 'shrine_telluria', 'shrine_pelagos',
-      'wyvern_roost', 'griffin_tower', 'dire_wolf_den', 'weavers_hall', 'stone_masonworks', 'fishery_smokehouse', 'timber_sawmill', 'courier_exchange']);
+      'beast_pen', 'weavers_hall', 'stone_masonworks', 'fishery_smokehouse', 'timber_sawmill', 'courier_exchange']);
     t.equal(m.overlays.filter(function (o) { return o.fac === 'menagerie'; }).length, 0, 'no map picture for the Menagerie');
     t.ok(T.bastion.mapLabels.courier_exchange, 'the Courier Exchange has a place for its label');
   });

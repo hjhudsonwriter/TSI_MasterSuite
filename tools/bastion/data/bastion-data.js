@@ -19,6 +19,9 @@ window.TSI_DATA.bastion = {
     arcane_laboratory: 'laboratory.png',
     library_scriptorium: 'library.png',
     herbal_gardens: 'greenhouse.png',
+    /* The Beast Pen's card shows the Menagerie's painting (Harry, 22 October 2026); the Pen's own picture,
+       beast_pen.jpg, spans the top of its panel (panelImages below). The file stays where it is. */
+    beast_pen: 'menagerie.png',
     shrine_telluria: 'shrine_of_telluria.png',
     shrine_aurush: 'shrine_of_aurush.png',
     shrine_pelagos: 'shrine_of_pelagos.png',
@@ -26,15 +29,20 @@ window.TSI_DATA.bastion = {
     /* Harry's own picture (13 October 2026; bastion-new-art/3-courier-exchange). */
     courier_exchange: 'courier_exchange.png'
   },
+  /* A picture that spans the full width at the top of a facility's panel, above its details and orders (Harry,
+     22 October 2026: the Beast Pen's), in assets/facilities/. */
+  panelImages: {
+    beast_pen: 'beast_pen.jpg'
+  },
   /* The new facilities have no tile painting yet: their tile shows their
      building from Harry's map overlay, cut to this box of the 3000 x 1250
      painting (from bastion-new-art/2-second-upload/placements.json, with a
      little room round it). The Courier Exchange has its own picture
      (facilityImages, above). */
   facilityTileCrops: {
-    wyvern_roost: { pic: 'map/overlays/wyvern_roost.png', x: 1934, y: 296, w: 295, h: 194 },
-    griffin_tower: { pic: 'map/overlays/griffin_tower.png', x: 1164, y: 296, w: 230, h: 195 },
-    dire_wolf_den: { pic: 'map/overlays/dire_wolf_den.png', x: 2328, y: 681, w: 264, h: 161 },
+    /* The Beast Pen (S14) uses the Wyvern Roost's building until Harry paints its own: the Menagerie never
+       had a map overlay to reuse (its card painting is in facilityImages). */
+    beast_pen: { pic: 'map/overlays/wyvern_roost.png', x: 1934, y: 296, w: 295, h: 194 },
     weavers_hall: { pic: 'map/overlays/weavers_sailmakers_hall.png', x: 2668, y: 670, w: 331, h: 170 },
     stone_masonworks: { pic: 'map/overlays/stone_quarry_masonworks.png', x: 2004, y: 809, w: 380, h: 206 },
     fishery_smokehouse: { pic: 'map/overlays/fishery_smokehouse.png', x: 11, y: 714, w: 349, h: 252 },
@@ -75,9 +83,7 @@ window.TSI_DATA.bastion = {
     shrine_aurush: { x: 1275, y: 532 },
     shrine_telluria: { x: 2252, y: 722 },
     shrine_pelagos: { x: 2668, y: 840 },
-    wyvern_roost: { x: 2081, y: 326 },
-    griffin_tower: { x: 1279, y: 306 },
-    dire_wolf_den: { x: 2460, y: 701 },
+    beast_pen: { x: 2081, y: 326 },
     weavers_hall: { x: 2838, y: 690 },
     stone_masonworks: { x: 2194, y: 829 },
     fishery_smokehouse: { x: 185, y: 734 },
@@ -112,8 +118,6 @@ window.TSI_DATA.bastion = {
     courier_exchange: {
       2: ['Regional deliveries: 2 parcels on the road at once, 10 items a parcel']
     },
-    griffin_tower: { 2: ['Room for one more griffin'], 3: ['Room for one more griffin'], 4: ['Room for one more griffin'], 5: ['Room for one more griffin'] },
-    dire_wolf_den: { 2: ['Room for one more dire wolf'], 3: ['Room for one more dire wolf'], 4: ['Room for one more dire wolf'], 5: ['Room for one more dire wolf'] },
     hall_of_emissaries: { 2: ['Diplomacy rolls +4 (from +2)'], 3: ['Diplomacy rolls +6 (the most it gives)'] },
     herbal_gardens: { 2: ['One more research token'], 3: ['One more research token'], 4: ['One more research token'], 5: ['One more research token'] }
   },
@@ -199,9 +203,7 @@ window.TSI_DATA.bastion = {
       { fac: 'shrine_aurush', pic: 'map/overlays/shrine_of_aurush.png' },
       { fac: 'shrine_telluria', pic: 'map/overlays/shrine_of_telluria.png' },
       { fac: 'shrine_pelagos', pic: 'map/overlays/shrine_of_pelagos.png' },
-      { fac: 'wyvern_roost', pic: 'map/overlays/wyvern_roost.png' },
-      { fac: 'griffin_tower', pic: 'map/overlays/griffin_tower.png' },
-      { fac: 'dire_wolf_den', pic: 'map/overlays/dire_wolf_den.png' },
+      { fac: 'beast_pen', pic: 'map/overlays/wyvern_roost.png' },
       { fac: 'weavers_hall', pic: 'map/overlays/weavers_sailmakers_hall.png' },
       { fac: 'stone_masonworks', pic: 'map/overlays/stone_quarry_masonworks.png' },
       { fac: 'fishery_smokehouse', pic: 'map/overlays/fishery_smokehouse.png' },

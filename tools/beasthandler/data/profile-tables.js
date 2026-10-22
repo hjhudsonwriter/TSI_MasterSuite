@@ -239,15 +239,3 @@ window.TSI_DATA.beastProfile = {
     }
   }
 };
-
-/* Which orders a player may ask for from the phone (Harry, 21 October 2026,
-   D5: free training only; the DM keeps anything that costs gold, and every
-   milestone). The rule: a training programme (trains) that costs no gold.
-   The riding harness (150 gp) is therefore the DM's; so are the House
-   orders, bond confirmation, handler changes and the first flight. Put an
-   order's id in denyIds to take it off the list. */
-window.TSI_DATA.beastPlayerOrders = {
-  version: 1,
-  rule: 'free_training',
-  denyIds: []
-};

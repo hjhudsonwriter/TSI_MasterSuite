@@ -62,14 +62,23 @@
      left out of it. */
   var RETIRED_FACILITIES = ['menagerie', 'war_room', 'library_scriptorium', 'arcane_laboratory', 'armoury', 'watchtower', 'barracks',
     'shrine_telluria', 'shrine_aurush', 'shrine_pelagos', 'wyvern_roost', 'griffin_tower', 'dire_wolf_den'];
+  /* The orders at a retired facility that the conversion MOVES instead of cancelling, so a version 3 save's forecast
+     still lists them (they keep their due day): the Wyvern Roost's, Griffin Tower's and Dire Wolf Den's House orders
+     become the Beast Pen's House Beast Here (step rehomeBeasts in tools/bastion/strip-back-rules.js). Every other order
+     at a retired facility is cancelled (with a refund), so it is left out. */
+  var MOVED_ORDERS = { wyvern_roost: ['house_elara_wyvern', 'house_wyvern'], griffin_tower: ['house_griffin'], dire_wolf_den: ['house_dire_wolf'] };
+  function movedOrder(o) { return isObj(o) && Array.isArray(MOVED_ORDERS[o.facId]) && MOVED_ORDERS[o.facId].indexOf(o.fnId) !== -1; }
+  /* The war game (the War Council, the War Table, wars, regiments, defenders and Military Actions) was removed on 22
+     October 2026 (step S06). A War Action was an order at the War Council, which is not a facility of the catalogue;
+     the conversion cancels it, so a version 3 save's forecast leaves it out like the retired facilities' orders. */
+  var WAR_FACILITIES = ['barracks', 'armoury', 'watchtower', 'war_room', 'menagerie'];
+  function isWarAction(o) { return isObj(o) && (o.facId === 'war_council' || (isObj(o.meta) && o.meta.kind === 'war_action')); }
   /* The pending orders a Bastion save will really have (see above). */
   function liveOrders(ba) {
     var list = Array.isArray(ba.pendingOrders) ? ba.pendingOrders : [];
     if (ba.v === 4) return list;
-    return list.filter(function (o) { return !(isObj(o) && RETIRED_FACILITIES.indexOf(o.facId) !== -1); });
+    return list.filter(function (o) { return !isWarAction(o) && (!(isObj(o) && RETIRED_FACILITIES.indexOf(o.facId) !== -1) || movedOrder(o)); });
   }
-  var OBJECTIVES = { raid: 'Raid', skirmish: 'Skirmish', seize_outpost: 'Seize Outpost' };
-  function clanTitle(name) { var n = str(name).trim(); return /^clan /i.test(n) ? n : 'Clan ' + n; }
   /* 'goldport' → 'Goldport' (shared/data/ports.js). */
   function portName(id) {
     var p = window.TSI_DATA && window.TSI_DATA.ports && window.TSI_DATA.ports[id];
@@ -84,32 +93,32 @@
   var C = TSI.campaign = {
     /* The 13 facilities the Strip Back Overhaul retires (see above). */
     RETIRED_FACILITIES: RETIRED_FACILITIES,
+    /* { facility id: [order ids] }: the orders at a retired facility the conversion moves, not cancels. */
+    MOVED_ORDERS: MOVED_ORDERS,
 
     /* What the Bastion has coming, from its save: [{ day, kind, line }], in day
        order (only what can be known before the day: building finished,
-       orders due, contracts and records ending, repairs and recovery over,
-       sea routes needing a roll, cargo ships and Courier Exchange parcels
-       due, a Clan at war's attack roll). Nothing for a
+       orders due, contracts and records ending, sea routes needing a roll,
+       cargo ships and Courier Exchange parcels due). Nothing for a
        Bastion that hasn't read the Explorer's day yet. */
     bastionComing: function (bastion) {
       var ba = isObj(bastion) ? bastion : null;
       if (!inDaysSave(ba) || ba.anchored !== true || !isNum(ba.day)) return [];
       var out = [];
       function add(day, kind, line) { if (isNum(day)) out.push({ day: Math.trunc(day), kind: kind, line: line }); }
-      var repairs = isObj(ba.repairs) ? ba.repairs : {};
       /* Construction slots, then Development Plots (the Bastion's pull request 3). */
       (Array.isArray(ba.builtExtras) ? ba.builtExtras : []).concat(Array.isArray(ba.builtPlots) ? ba.builtPlots : []).forEach(function (e) {
-        if (isObj(e) && e.status === 'building') add(e.readyDay, 'built', 'The ' + facilityName(e.facId) + ' is built.');
+        if (!isObj(e) || e.status !== 'building') return;
+        /* The War Room and the Menagerie were built in construction slots: the conversion stops the work. */
+        if (ba.v !== 4 && WAR_FACILITIES.indexOf(e.facId) !== -1) return;
+        add(e.readyDay, 'built', 'The ' + facilityName(e.facId) + ' is built.');
       });
       liveOrders(ba).forEach(function (o) {
         if (!isObj(o) || !isNum(o.dueDay)) return;
         var label = str(o.label) || 'An order';
         var m = isObj(o.meta) ? o.meta : {};
-        var fix = isNum(repairs[o.facId]) ? repairs[o.facId] : null;
-        var day = fix !== null && o.dueDay <= fix ? fix + 1 : o.dueDay;
-        if (o.facId === 'war_council' || m.kind === 'war_action') {
-          add(day, 'war', 'Your army is ready to march on ' + (str(m.targetName) || 'the enemy') + ' (' + (OBJECTIVES[m.objective] || 'War Action') + ').');
-        } else if (o.facId === 'hall_of_emissaries' && o.fnId !== 'upgrade_hall' && o.fnId !== 'register_port_charter' && !(isObj(m) && m.kind === 'upgrade')) {
+        var day = o.dueDay;
+        if (o.facId === 'hall_of_emissaries' && o.fnId !== 'upgrade_hall' && o.fnId !== 'register_port_charter' && !(isObj(m) && m.kind === 'upgrade')) {
           add(day, 'roll', label + ' needs your roll.');
         } else {
           /* Every other order, the creature buildings' House orders (pull
@@ -127,17 +136,6 @@
             : (str(r.title) || 'contract') + ' with ' + (str(r.clan) || '—');
           add(r.endDay, 'ended', 'Your ' + name + ' has ended' + (pair[1] ? ' (its last shipment arrived)' : '') + '.');
         });
-      });
-      Object.keys(repairs).forEach(function (id) {
-        if (isNum(repairs[id])) add(repairs[id] + 1, 'repairs', 'Repairs: the ' + facilityName(id) + ' is working again.');
-      });
-      (Array.isArray(ba.warRecovery) ? ba.warRecovery : []).forEach(function (r) {
-        if (!isObj(r)) return;
-        /* A creature (the Bastion's pull request 7) goes by its own name:
-           "Elara's wyvern is fit to fight again." */
-        add(r.untilDay, 'recovery', r.status === 'separated' ? str(r.name) + ' has found the way back to the Bastion.'
-          : r.kind === 'beast' ? 'The ' + str(r.name) + ' is fit to fight again.'
-          : r.kind === 'creature' ? (str(r.name) || 'A creature') + ' is fit to fight again.' : str(r.name) + ' is fit for duty again.');
       });
       var tn = isObj(ba.tradeNetwork) ? ba.tradeNetwork : {};
       if (tn.active) {
@@ -166,11 +164,6 @@
         if (!isObj(p)) return;
         if (p.status === 'in_transit') add(p.readyDay, 'parcel', 'A parcel from the Ironbow is due at ' + pointName(p.point) + '.');
         else if (p.status === 'returning') add(p.returnDay, 'parcel', 'A recalled parcel is due back at the Ironbow.');
-      });
-      var wars = isObj(ba.wars) ? ba.wars : {};
-      Object.keys(wars).forEach(function (k) {
-        var w = wars[k];
-        if (isObj(w) && isNum(w.next)) add(w.next, 'attack', clanTitle(k.charAt(0).toUpperCase() + k.slice(1)) + ' may attack: the Bastion rolls to see.');
       });
       return out.sort(function (a, b) { return a.day - b.day; });
     },
@@ -234,7 +227,7 @@
       list.forEach(function (r) {
         if (!isObj(r) || r.status !== 'confirmed' || !Array.isArray(r.consequences)) return;
         r.consequences.forEach(function (c) {
-          if (!isObj(c) || !C.TRACKED_KINDS[c.kind]) return;
+          if (!isObj(c) || typeof c.kind !== 'string' || !Object.prototype.hasOwnProperty.call(C.TRACKED_KINDS, c.kind)) return;
           if (c.status === 'pending' || c.status === 'applied' || c.status === 'ended') return;
           if (isNum(c.until) && now > c.until) return;
           if ((str(c.clan) || '') !== (clanKey || '')) return;
@@ -295,7 +288,7 @@
 
       /* Where the party is: the Explorer's Region, its Clan and god, and their standing in the Bastion. */
       var rid = ex ? (str(travel.provinceId) || 'northern_province') : null;
-      var reg = rid && regions && isObj(regions[rid]) ? regions[rid] : null;
+      var reg = rid && regions && Object.prototype.hasOwnProperty.call(regions, rid) && isObj(regions[rid]) ? regions[rid] : null;
       if (reg) {
         out.region = { id: rid, label: reg.label };
         var pc = ba && isObj(ba.politicalCapital) ? ba.politicalCapital[reg.clanKey] : 0;
@@ -341,7 +334,8 @@
 
       /* The Explorer's Active Effects, exactly as its own list shows them. */
       var effects = Array.isArray(journey.effects) ? journey.effects : [];
-      var heroById = {};
+      /* Looked up by an id taken from a save, so no name like "constructor" or "__proto__" can find anything but a hero. */
+      var heroById = Object.create(null);
       out.heroes.forEach(function (h) { if (h.id) heroById[h.id] = h; });
       out.effects = [];
       out.partyEffects = [];
@@ -361,7 +355,8 @@
       /* The Great Rite the party holds (not one of the Active Effects: it
          ends with the expedition). */
       var blessing = isObj(journey.blessing) && str(journey.blessing.rite) ? journey.blessing : null;
-      var riteInfo = blessing && window.TSI_DATA && window.TSI_DATA.shrineRites ? window.TSI_DATA.shrineRites[blessing.rite] : null;
+      var rites = window.TSI_DATA && window.TSI_DATA.shrineRites;
+      var riteInfo = blessing && rites && Object.prototype.hasOwnProperty.call(rites, blessing.rite) ? rites[blessing.rite] : null;
       out.rite = blessing ? { name: riteInfo && str(riteInfo.name) ? riteInfo.name : 'A Great Rite', used: blessing.used === true } : null;
 
       /* The expedition: none yet, under way (and for how many days), or ended
@@ -369,16 +364,14 @@
          does: today minus the start day. An end day an old save never stored
          is read from the Explorer's log, and left null if it isn't there. */
       var expd = isObj(journey.expedition) ? journey.expedition : {};
-      var xn = ex ? Math.max(0, clampInt(expd.n, 0, 100000, 0)) : 0;
-      var xActive = !!ex && xn > 0 && expd.active === true;
-      var xStart = isNum(expd.startedDay) && expd.startedDay > 0 ? Math.round(expd.startedDay) : null;
-      var xEnd = isNum(expd.endedDay) && expd.endedDay > 0 ? Math.round(expd.endedDay) : (xn > 0 && !xActive ? C.endedDayFromLog(journey.log, xn) || null : null);
+      var xc = ex ? C.cleanExpedition(expd, journey.log) : C.cleanExpedition(null, []);
+      var xKnown = xc.n > 0 && (expd.v === 2 || xc.startedDay > 0);     /* an older record's 0 was "not known" */
       out.expedition = {
-        n: xn,
-        state: xn === 0 ? 'none' : xActive ? 'active' : 'ended',
-        startedDay: xn === 0 ? null : xStart,
-        endedDay: xn > 0 && !xActive ? xEnd : null,
-        daysRunning: xActive && xStart !== null && day !== null ? Math.max(0, day - xStart) : null
+        n: xc.n,
+        state: xc.n === 0 ? 'none' : xc.active ? 'active' : 'ended',
+        startedDay: xKnown ? xc.startedDay : null,
+        endedDay: xc.n > 0 && !xc.active ? xc.endedDay : null,
+        daysRunning: xc.active && xKnown && day !== null ? Math.max(0, day - xc.startedDay) : null
       };
       return out;
     }
@@ -386,6 +379,27 @@
 
   /* How many pending orders the DM doc lists (the next to complete first). */
   C.ORDERS_LISTED = 5;
+
+  /* The Explorer's expedition record, read from a save: { v: 2, n, active,
+     startedDay, endedDay }. The days are whole numbers of any size, because
+     Reset Travel moves them with the other days and they can end up 0 or
+     below; endedDay is null while an expedition is under way and when there
+     has been none. A record without v 2 is from before that: its days of 0
+     meant "not known", and an expedition that had ended has no end day, so
+     it is taken from the log's "Expedition N ended on Day D." line while
+     that is still there, else left null. A day is never guessed. */
+  C.cleanExpedition = function (raw, log) {
+    var r = isObj(raw) ? raw : {};
+    var v2 = r.v === 2;
+    var n = Math.max(0, clampInt(r.n, 0, 100000, 0));
+    var active = r.active === true;
+    var started = isNum(r.startedDay) ? Math.round(r.startedDay) : 0;
+    if (!v2) started = Math.max(0, started);
+    var ended = isNum(r.endedDay) ? Math.round(r.endedDay) : null;
+    if (!v2 && ended !== null && ended <= 0) ended = null;
+    if (!v2 && n > 0 && !active && ended === null) ended = C.endedDayFromLog(log, n) || null;
+    return { v: 2, n: n, active: active, startedDay: started, endedDay: active ? null : ended };
+  };
 
   /* The day expedition number n ended, read from the Explorer's journey log
      (newest line first) when an older save never stored it: the line is

@@ -145,6 +145,10 @@
       function save() { ctx.store.set('state', R.toSave(state)); }
       /* The Beast Handler's record (its campaign id), made the first time this Bastion opens with it. */
       if (R.beastState && !R.beastCampaignId(state)) { R.beastState(state); save(); }
+      /* The Beast Handler no longer sends requests: its old queue is never read, so it is cleared away. */
+      try { TSI.store.remove('tsi.beasthandler.queue'); } catch (e) { /* nothing to clear */ }
+      /* The one-off sweep (Beast Handler): any beast already at Bond 1 or more with no variety is introduced now, once; the phone then plays the reveal. Not when a conversion report is still waiting to be read. */
+      if (R.sweepInitiation && !(state.migration && state.migration.v4 && state.migration.v4.shown !== true) && R.sweepInitiation(state, data, rand).changed) save();
       function saveUi() { ctx.store.set('ui', TSI.clone(ui)); }
       function log(title, body) { R.log(state, title, body); }
       function logAll(lines) { (lines || []).forEach(function (l) { log(l[0], l[1]); }); }
@@ -328,22 +332,23 @@
       function tipList(lines) { return TIP.list(lines); }
       life.onStop(hideTip);
 
-      /* ---------- The creatures (pull request 7, Harry, 14 October 2026) ----------
-         Elara's wyvern, and the griffins and dire wolves the DM grants in the
-         Explorer. Each shows its name, its kind and how it is doing. The rules
-         are in creature-rules.js. */
+      /* ---------- The beasts (pull request 7, Harry, 14 October 2026; the Beast Pen, 22 October 2026) ----------
+         Every beast the DM has granted in the Explorer, in the Beast Pen's panel: where it lives (waiting for a
+         home, being housed, at the Beast Pen, or away from the Ironbow with its handler), its handler, its bond and
+         Bonding Days, and its Chronicle. The rules are in creature-rules.js. */
       function creatureKindLine(c) {
         var owner = R.creatureOwnerName(data, c);
         var bits = [R.speciesName(data, c.species)];
         if (owner) bits.push(owner + '\'s own');
         /* One with no name already says when it was granted ("Griffin (granted Day 5)"). */
         else if (c.name && typeof c.grantedDay === 'number') bits.push('granted ' + R.dayLabel(c.grantedDay));
-        if (c.status === 'housed' && c.home) bits.push(R.creatureFacilityName(data, c.home));
         return bits.join(' • ');
       }
-      /* One creature's row: data-test <prefix>-<id>, and its status line
-         <prefix>-status-<id> (the panels use 'creature', Management
-         'mgmt-creature'). compact (Management): two lines. */
+      /* What the rules need to know about the day: the Bastion must be on the Explorer's day and not part-way through one
+         before a beast goes out or comes back, or the days between would be counted for a trip that began (or ended) "now". */
+      function penCtx() {
+        return { rand: rand, explorerDay: state.anchored && explorerDay !== null ? explorerDay : null };
+      }
       var onRelease = TSI.oneAtATime(async function (id) {
         var c = R.creatureById(state, id);
         var why = R.releaseBlocker(state, data, c);
@@ -370,7 +375,6 @@
         if (!res.ok) { await say(res.message); return; }
         done();
       });
-      /* ---------- A wyvern's bond, training and Chronicle (20 October 2026) ---------- */
       var onAssignHandler = TSI.oneAtATime(async function (id) {
         var c = R.creatureById(state, id);
         if (!c) return;
@@ -383,7 +387,7 @@
           title: (changing ? 'Change handler: ' : 'Assign a handler: ') + R.creatureName(data, c),
           className: 'tsi-bas-modal',
           body: [
-            muted(changing ? 'The new pairing starts at Bond 0 and the old history is kept in the Chronicle. Tick the box only to credit the old bond to the new handler.' : 'The handler is the player this wyvern bonds with. Bond programmes need one.'),
+            muted(changing ? 'The new pairing starts at Bond 0 (it must be acclimatised again) with its own Bonding Days, and the old history is kept in the Chronicle. Tick the box only to credit the old bond to the new handler.' : 'The handler is the player this beast bonds with. Acclimatise With Beast needs one.'),
             field('Handler', who), field('Reason', why),
             muted('The reason is written in the beast\'s Chronicle, which the player\'s Beast Handler shows.'),
             changing ? el('label', { class: 'tsi-bas-field tsi-bas-field--inline' }, [keep, ' Credit the old bond (Bond ' + d.bond.level + ') to the new handler']) : null
@@ -423,8 +427,8 @@
           onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'temperament-dialog'); }
         });
         if (!ok || !life.alive) return;
-        /* Only the lines the DM actually changed are sent, so a handler's request accepted while this box was
-           open is never put back by the lines the DM didn't touch. */
+        /* Only the lines the DM actually changed are sent, so a change made while this box was open is never put back
+           by the lines the DM didn't touch. */
         var f = {};
         var changedAny = false;
         boxes.forEach(function (b, i) { if (b[1].value !== (fieldDefs[i][2] || '')) { f[b[0]] = b[1].value; changedAny = true; } });
@@ -478,91 +482,125 @@
         if (!res.ok) { await say(res.message); return; }
         done();
       });
-      var onConfirmFlight = TSI.oneAtATime(async function (id) {
+      /* Acclimatise With Beast: the handler's Animal Handling total, typed by the DM after the roll at the table. */
+      var onAcclimatise = TSI.oneAtATime(async function (id) {
         var c = R.creatureById(state, id);
         if (!c) return;
+        var early = R.acclimatiseBlocker(state, data, id, penCtx());
+        if (early) { await say(early); return; }
+        var ad = R.acclimatiseData(data, c.species);
         var d = R.devView(state, c);
-        var why = el('textarea', { class: 'tsi-input', rows: '3', maxlength: '300', placeholder: 'How did the first ' + R.rideNoun(data, c.species) + ' go? (required)', 'data-test': 'flight-why' });
-        var problem = el('div', { class: 'tsi-bas-repair-text', 'data-test': 'flight-problem', hidden: true });
+        var name = R.creatureName(data, c);
+        var box = el('input', { type: 'number', class: 'tsi-input', min: '1', max: '60', step: '1', inputmode: 'numeric', placeholder: 'Their total', 'data-test': 'acclimatise-total', 'aria-label': 'The handler\'s ' + ad.skill + ' total' });
+        var problem = el('div', { class: 'tsi-bas-repair-text', 'data-test': 'acclimatise-problem', hidden: true });
         var mainBtn = null;
         function check() {
-          var bad = String(why.value).replace(/\s+/g, ' ').trim().length < 3 ? 'Say how the first ' + R.rideNoun(data, c.species) + ' went.' : '';
+          var bad = box.value === '' || R.acclimatiseTotal(box.value) !== null ? '' : 'Type a whole number from 1 to 60.';
           problem.textContent = bad; problem.hidden = !bad;
-          if (mainBtn) { mainBtn.disabled = !!bad; mainBtn.title = bad; }
+          if (mainBtn) { mainBtn.disabled = R.acclimatiseTotal(box.value) === null; mainBtn.title = R.acclimatiseTotal(box.value) === null ? 'Type the handler\'s total first.' : ''; }
         }
-        why.addEventListener('input', check);
+        box.addEventListener('input', check);
         var ok = await plainModal({
-          title: 'Confirm the first ' + R.rideNoun(data, c.species) + ': ' + R.creatureName(data, c),
+          title: 'Acclimatise With Beast: ' + name,
           className: 'tsi-bas-modal',
-          body: [muted('Only confirm once you have run the first mounted ' + R.rideNoun(data, c.species) + ' scene with ' + R.handlerName(d.handlerId) + '. This records story permission only: the Bastion adds no riding movement or combat.'), field('The scene', why), muted('What you write here goes in the beast\'s Chronicle, which the player\'s Beast Handler shows.'), problem],
-          actions: [{ label: 'Cancel', value: false }, { label: 'Confirm first ' + R.rideNoun(data, c.species), value: true, primary: true }],
-          onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'flight-dialog'); mainBtn = parts.dialog.querySelector('.tsi-modal__foot .tsi-btn--primary'); check(); }
+          body: [
+            muted(R.handlerName(d.handlerId) + ' rolls ' + ad.skill + ' at the table. A total of ' + ad.dc + ' or more passes: ' + name + ' becomes Bond 1 and can go out on the road. A lower total locks ' + name + ' for ' + R.daysText(ad.retryDays) + '.'),
+            field('The handler\'s total (DC ' + ad.dc + ')', box),
+            problem
+          ],
+          actions: [{ label: 'Cancel', value: false }, { label: 'Record the roll', value: true, primary: true }],
+          onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'acclimatise-dialog'); mainBtn = parts.dialog.querySelector('.tsi-modal__foot .tsi-btn--primary'); check(); setTimeout(function () { box.focus(); }, 0); }
         });
         if (!ok || !life.alive) return;
-        var res = R.confirmFirstFlight(state, data, id, why.value);
+        var res = R.acclimatise(state, data, id, box.value, penCtx());
+        if (!res.ok) { await say(res.message); return; }
+        log(res.log[0], res.log[1]);
+        done();
+        await say((res.pass ? 'Passed. ' : 'Failed. ') + res.log[1]);
+      });
+      var onTakeOut = TSI.oneAtATime(async function (id) {
+        var res = R.takeOut(state, data, id, penCtx());
         if (!res.ok) { await say(res.message); return; }
         log(res.log[0], res.log[1]);
         done();
       });
-      function wyvernProfile(c, prefix) {
+      var onReturnToPit = TSI.oneAtATime(async function (id) {
+        var res = R.returnToPit(state, data, id, penCtx());
+        if (!res.ok) { await say(res.message); return; }
+        log(res.log[0], res.log[1]);
+        done();
+      });
+      /* The five bond pills (Bond 1 to 5): full up to the bond, and the next one filling with the Bonding Days. */
+      function bondPillsEl(c) {
+        var p = R.bondProgress(state, data, c);
+        var short = ['Acclimatised', 'Trusting', 'Bonded', 'Devoted', 'Legendary'];
+        return el('ol', { class: 'tsi-bas-pills', 'data-test': 'creature-pills-' + c.id }, [1, 2, 3, 4, 5].map(function (n) {
+          var pct = n <= p.level ? 100 : (p.pill && p.pill.n === n ? Math.round(p.pill.fraction * 100) : 0);
+          var words = pct >= 100 && n <= p.level ? 'reached' : p.pill && p.pill.n === n ? p.pill.days + ' of ' + p.pill.need + ' days' + (p.ready === n ? ', ready for your scene' : '') : 'not yet';
+          return el('li', {
+            class: 'tsi-bas-pill' + (pct >= 100 ? ' tsi-bas-pill--full' : '') + (p.ready === n ? ' tsi-bas-pill--ready' : ''),
+            'data-test': 'creature-pill-' + c.id + '-' + n, 'data-fill': String(pct),
+            role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': String(pct),
+            'aria-label': 'Bond ' + n + ', ' + short[n - 1] + ': ' + words, title: 'Bond ' + n + ' ' + short[n - 1] + ': ' + words
+          }, [el('span', { class: 'tsi-bas-pill__fill', style: 'width:' + pct + '%' })]);
+        }));
+      }
+      /* One beast's block in the Beast Pen's panel: its name, kind and where it is; the buttons; and, once it is housed,
+         its handler, bond, Bonding Days, temperament and Chronicle. */
+      function beastRow(c) {
+        var prefix = 'creature';
+        var name = R.creatureName(data, c);
+        var st = R.penStatus(state, data, c);
+        var row = el('div', {
+          class: 'tsi-bas-item tsi-bas-creature tsi-bas-creature--' + st.kind, 'data-test': prefix + '-' + c.id, 'data-creature': c.id, 'data-status': st.kind,
+          role: 'group', 'aria-label': name + ': ' + creatureKindLine(c) + '. ' + st.line
+        }, [
+          el('div', { class: 'tsi-bas-item__text' }, [
+            el('div', { class: 'tsi-bas-item__name tsi-bas-creature__name', text: name }),
+            el('div', { class: 'tsi-bas-item__type', text: creatureKindLine(c) }),
+            el('div', { class: 'tsi-bas-creature__status', 'data-test': prefix + '-status-' + c.id, text: st.line })
+          ]),
+          btn('Rename…', function () { onRenameCreature(c.id); }, 'tsi-btn--ghost', prefix + '-rename-' + c.id),
+          /* Harry (15 October 2026): a granted creature still waiting for a home can be released (asks first); once housed, it stays. */
+          c.status === 'waiting' && !R.houseOrderFor(state, c.id) ? btn('Release…', function () { onRelease(c.id); }, 'tsi-btn--ghost', prefix + '-release-' + c.id) : null
+        ]);
+        if (c.status !== 'housed') return row;
         var d = R.devView(state, c);
+        var pr = R.bondProgress(state, data, c);
         var t = d.temperament;
-        var tr = R.trainingStatus(state, data, c);
-        var learned = Object.keys(d.training).map(function (k) {
-          var f = ((R.trainingFacility(data, c.species) || {}).functions || []).filter(function (x) { return x.id === k; })[0];
-          return f ? f.label : k;
-        });
+        var away = st.kind === 'away';
+        var acclimatised = d.bond.level >= 1;
         var chron = d.chronicle.slice().reverse();
-        var line = function (label, value, test) { return el('div', { class: 'tsi-bas-wyv__line' }, [el('b', { text: label + ' ' }), el('span', { 'data-test': test || null, text: value })]); };
-        return el('div', { class: 'tsi-bas-wyv', 'data-test': prefix + '-profile-' + c.id }, [
+        var line = function (labelText, value, test) { return el('div', { class: 'tsi-bas-wyv__line' }, [el('b', { text: labelText + ' ' }), el('span', { 'data-test': test || null, text: value })]); };
+        var goBlock = acclimatised ? R.awayBlocker(state, data, c.id, !away, penCtx()) : '';
+        var goBtn = !acclimatised ? null : away
+          ? btn('Return ' + name + ' to the Beast Pen', function () { onReturnToPit(c.id); }, '', prefix + '-return-' + c.id, { disabled: goBlock ? true : null, title: goBlock || null })
+          : btn('Take ' + name + ' on the road', function () { onTakeOut(c.id); }, '', prefix + '-takeout-' + c.id, { disabled: goBlock ? true : null, title: goBlock || null });
+        var detail = el('div', { class: 'tsi-bas-wyv', 'data-test': prefix + '-profile-' + c.id }, [
           el('div', { class: 'tsi-bas-wyv__line' }, [
             el('b', { text: 'Handler ' }), el('span', { 'data-test': prefix + '-handler-' + c.id, text: d.handlerId ? R.handlerName(d.handlerId) : 'None yet' }), ' ',
-            btn(d.handlerId ? 'Change handler…' : 'Assign handler…', function () { onAssignHandler(c.id); }, 'tsi-btn--ghost', prefix + '-assign-' + c.id)
+            btn(d.handlerId ? 'Change handler…' : 'Assign handler…', function () { onAssignHandler(c.id); }, 'tsi-btn--ghost', prefix + '-assign-' + c.id, { disabled: away ? true : null, title: away ? 'Return ' + name + ' to the Beast Pen first.' : null })
           ]),
           line('Bond', d.bond.level + ': ' + R.bondName(d.bond.level), prefix + '-bond-' + c.id),
+          acclimatised ? bondPillsEl(c) : null,
+          acclimatised ? line('Bonding Days', String(pr.days) + (away && pr.since !== null ? ' (out on the road since ' + R.dayLabel(pr.since) + ')' : ''), prefix + '-days-' + c.id) : null,
           el('div', { class: 'tsi-bas-wyv__line tsi-bas-muted', 'data-test': prefix + '-next-' + c.id, text: R.nextStepLine(state, data, c) }),
-          isFinite(d.bond.ready) && d.bond.ready !== null ? btn('Confirm bond milestone…', function () { onConfirmBond(c.id); }, 'tsi-btn--primary', prefix + '-confirm-' + c.id) : null,
-          tr ? line('Training', tr.line, prefix + '-training-' + c.id) : null,
-          learned.length ? line('Learned', learned.join(', '), prefix + '-learned-' + c.id) : null,
+          el('div', { class: 'tsi-bas-wyv__line tsi-bas-wyv__buttons' }, [
+            goBtn,
+            pr.ready !== null ? btn('Confirm bond milestone…', function () { onConfirmBond(c.id); }, 'tsi-btn--primary', prefix + '-confirm-' + c.id) : null
+          ]),
           el('div', { class: 'tsi-bas-wyv__line' }, [
             el('b', { text: 'Temperament ' }),
             el('span', { 'data-test': prefix + '-temper-' + c.id, text: (t.dominant || t.attachment || t.trigger) ? [t.dominant && 'Dominant: ' + t.dominant, t.attachment && 'Attachment: ' + t.attachment, t.trigger && 'Trigger: ' + t.trigger].filter(Boolean).join(' · ') : 'Not written yet' }), ' ',
             btn('Edit…', function () { onTemperament(c.id); }, 'tsi-btn--ghost', prefix + '-temper-edit-' + c.id)
           ]),
-          el('div', { class: 'tsi-bas-wyv__line' }, [el('b', { text: 'Riding ' }), el('span', { 'data-test': prefix + '-riding-' + c.id, text: R.ridingLine(state, data, c) })]),
-          (d.bond.level >= 4 || (d.harness && d.harness.fitted)) ? el('ul', { class: 'tsi-bas-wyv__checks', 'data-test': prefix + '-flightchecks-' + c.id }, R.firstFlightChecks(state, data, c).map(function (x) { return el('li', { text: (x.ok ? '✓ ' : '○ ') + x.text }); })) : null,
-          !(d.firstFlight && d.firstFlight.approved) && R.firstFlightReady(state, data, c) ? btn('Confirm first ' + R.rideNoun(data, c.species) + '…', function () { onConfirmFlight(c.id); }, 'tsi-btn--primary', prefix + '-flight-' + c.id) : null,
           el('details', { class: 'tsi-bas-wyv__chronicle', 'data-test': prefix + '-chronicle-' + c.id }, [
             el('summary', { text: 'Chronicle (' + chron.length + ')' }),
             el('ul', { class: 'tsi-bas-res-list' }, chron.map(function (e) { return el('li', { text: R.dayLabel(e.day) + ' · ' + e.text + (e.private ? ' (DM only)' : '') }); })),
             btn('Add a note…', function () { onChronicleNote(c.id); }, 'tsi-btn--ghost', prefix + '-note-' + c.id)
           ])
         ]);
-      }
-      function creatureRow(c, prefix, compact) {
-        var test = prefix + '-' + c.id;
-        var name = R.creatureName(data, c);
-        var st = R.creatureStatus(state, data, c);
-        var row = el('div', {
-          class: 'tsi-bas-item tsi-bas-creature tsi-bas-creature--' + st.kind, 'data-test': test, 'data-creature': c.id, 'data-status': st.kind,
-          role: 'group', 'aria-label': name + ': ' + creatureKindLine(c) + '. ' + st.line
-        }, [
-          el('div', { class: 'tsi-bas-item__text' }, [
-            el('div', { class: 'tsi-bas-item__name tsi-bas-creature__name', text: name }),
-            compact ? el('div', { class: 'tsi-bas-item__type' }, [creatureKindLine(c) + ' • ', el('span', { class: 'tsi-bas-creature__status', 'data-test': prefix + '-status-' + c.id, text: st.line })]) : null,
-            compact ? null : el('div', { class: 'tsi-bas-item__type', text: creatureKindLine(c) }),
-            compact ? null : el('div', { class: 'tsi-bas-creature__status', 'data-test': prefix + '-status-' + c.id, text: st.line })
-          ]),
-          /* Harry (15 October 2026): a granted creature still waiting for a
-             home can be released (asks first); once housed, it stays. */
-          compact ? null : btn('Rename…', function () { onRenameCreature(c.id); }, 'tsi-btn--ghost', prefix + '-rename-' + c.id),
-          c.status === 'waiting' && !R.houseOrderFor(state, c.id)
-            ? btn('Release…', function () { onRelease(c.id); }, 'tsi-btn--ghost', prefix + '-release-' + c.id)
-            : null
-        ]);
-        /* A housed wyvern also shows its profile (not in Management's compact list). */
-        if (!compact && R.hasDevelopment(data, c.species) && c.status === 'housed') return el('div', { class: 'tsi-bas-creature-wrap' }, [row, wyvernProfile(c, prefix)]);
-        return row;
+        return el('div', { class: 'tsi-bas-creature-wrap' }, [row, detail]);
       }
 
       /* ================================================================
@@ -822,7 +860,7 @@
           labelLayer.appendChild(el('div', {
             class: 'tsi-bas-maplabel' + (l.repair ? ' tsi-bas-maplabel--repair' : ''), 'data-test': 'map-label-' + l.fac, 'data-fac': l.fac, 'data-level': String(l.level),
             style: 'left:' + (l.x / B.map.width * 100) + '%;top:' + (l.y / B.map.height * 100) + '%'
-          }, [el('span', { class: 'tsi-bas-maplabel__name', text: l.name }), el('span', { class: 'tsi-bas-maplabel__level', text: 'Level ' + l.level })]));
+          }, [el('span', { class: 'tsi-bas-maplabel__name', text: l.name }), el('span', { class: 'tsi-bas-maplabel__level', text: l.single ? 'One level' : 'Level ' + l.level })]));
         });
         placeLabels();
       }
@@ -1232,11 +1270,8 @@
          Handler (the treasury is in the map's top bar)
          ================================================================ */
       var mgmtCard = card('management', 'Management');
-      /* The creatures (pull request 7): every one the Ironbow holds. They
-         come and go only through their buildings' House orders and the
-         Explorer, so there's no Remove button. */
-      var creatureList = el('div', { class: 'tsi-bas-list', 'data-test': 'creatures' });
-      /* The Beast Handler (players' companion): pairing codes, requests, and how each went (tools/beasthandler/dm-panel.js). */
+      /* The Beast Handler (players' companion): pairing codes and snapshots (tools/beasthandler/dm-panel.js). Since the
+         Beast Pen (22 October 2026) its box is in the Beast Pen's panel, with the beasts. */
       var beastDm = TSI.beasthandler && TSI.beasthandler.dmPanel && R.beastState ? TSI.beasthandler.dmPanel.create({ state: function () { return state; }, data: data, done: function () { done(); }, life: life }) : null;
       /* The treasury, in the map's top bar: saved when you finish typing
          (Enter, or leaving the box), not on every key. */
@@ -1271,13 +1306,6 @@
         xchangesList,
         xchangesMore
       ]));
-      /* The creatures and the Beast Handler box (they move to the Beast Pen in a later step). */
-      TSI.append(mgmtCard.body, el('div', { class: 'tsi-bas-box tsi-bas-box--creatures' }, [
-        label('Creatures'),
-        creatureList,
-        beastDm ? label('Beast Handler (players)') : null,
-        beastDm ? beastDm.node : null
-      ]));
 
       function renderExplorerChanges() {
         TSI.clear(xchangesList);
@@ -1299,11 +1327,6 @@
         var v4 = state.migration && state.migration.v4;
         changesRow.hidden = !v4;
         changesNote.textContent = v4 ? 'The Bastion\'s change of 22 October 2026 (Day ' + v4.day + '): ' + (v4.summary || 'Nothing of yours changed.') + ' Read it again.' : '';
-        TSI.clear(creatureList);
-        var crs = R.creatures(state);
-        if (!crs.length) creatureList.appendChild(muted('None yet. The Wyvern Roost, Griffin Tower and Dire Wolf Den house them.'));
-        crs.forEach(function (c) { creatureList.appendChild(creatureRow(c, 'mgmt-creature', true)); });
-        if (beastDm) beastDm.render();
         setValue(treasuryInput, state.treasuryGP);
       }
 
@@ -2083,6 +2106,8 @@
         return el('div', { class: 'tsi-bas-fn__days tsi-bas-fn__unlocks', 'data-test': 'upgrade-unlocks-' + fac.id, text: text });
       }
       function upgradeRow(fac) {
+        /* A facility with one level only (the Beast Pen) has no Upgrade row. */
+        if (fac.singleLevel) return null;
         var lvl = R.getFacilityLevel(state, fac.id);
         var c = R.upgradeCheck(state, data, fac.id);
         var repair = R.underRepair(state, fac.id);
@@ -2214,21 +2239,51 @@
         done();
       });
 
+      /* The Beast Pen's Acclimatise With Beast: not an order with days but an instant roll. The DM picks the beast (every
+         housed beast still at Bond 0), the handler rolls at the table, and the DM types their total in the box that opens. */
+      function acclimatiseRow(fac, fn, locked) {
+        var key = fac.id + '__' + fn.id;
+        var options = R.fnOptions(state, data, fac, fn);
+        var select = options.length ? el('select', { class: 'tsi-input tsi-bas-fn__select', 'aria-label': fn.label, 'data-test': 'sel-' + key }, options.map(function (o, idx) {
+          return el('option', { value: String(idx), text: o.label });
+        })) : null;
+        if (select && selections[key] !== undefined && Number(selections[key]) < options.length) select.value = String(selections[key]);
+        var ad = R.acclimatiseData(data);
+        var why = el('div', { class: 'tsi-bas-fn__why', 'data-test': 'why-' + key, hidden: true });
+        var issue = el('button', {
+          type: 'button', class: 'tsi-btn tsi-btn--small tsi-bas-fn__issue', 'data-test': 'issue-' + key,
+          onclick: function () { var o = options[select ? R.clampInt(select.value, 0) : 0]; if (o) onAcclimatise(o.creatureId); }
+        }, 'Roll to acclimatise…');
+        function refresh() {
+          var o = options[select ? R.clampInt(select.value, 0) : 0] || null;
+          var reason = !o ? 'No beast is waiting to be acclimatised: a beast must be housed here first.' : R.acclimatiseBlocker(state, data, o.creatureId, penCtx());
+          issue.disabled = !!(locked || reason);
+          issue.title = reason || null;
+          why.hidden = !reason;
+          why.textContent = reason || '';
+        }
+        if (select) select.addEventListener('change', function () { selections[key] = select.value; refresh(); });
+        refresh();
+        return el('div', { class: 'tsi-bas-fn', 'data-test': 'acclimatise-row' }, [
+          el('div', { class: 'tsi-bas-fn__head' }, [el('div', { class: 'tsi-bas-fn__name', text: fn.label }), el('div', { class: 'tsi-bas-fn__cost', text: ad.skill + ' · DC ' + ad.dc })]),
+          el('div', { class: 'tsi-bas-fn__days', 'data-test': 'days-' + key, text: 'At once: the handler rolls at the table' }),
+          select, why, issue,
+          fn.notes ? el('div', { class: 'tsi-bas-fn__notes', text: fn.notes }) : null
+        ]);
+      }
       function fnRow(fac, fn, locked) {
+        if (fn.acclimatise) return acclimatiseRow(fac, fn, locked);
         var key = fac.id + '__' + fn.id;
         var cd = R.isEmissary(fac, fn) ? R.cooldownLeft(state, String(fn.special.kind || '')) : 0;
         var isCraft = fac.id === 'workshop' && fn.id === 'craft';
         /* The Hall's Register Port Charter: a list of the Charters to register (pull request 5). */
         var isCharter = !!fn.portCharter;
-        /* A House order (pull request 7): the Roost's houses Elara's wyvern;
-           the Tower's and the Den's list the creatures waiting for a home. */
+        /* A House order (pull request 7): the Beast Pen's lists the beasts waiting for a home. */
         var isHousing = !!(fn.housesSpecies || fn.housesCreature);
         var options = R.fnOptions(state, data, fac, fn);
         var select = null;
         var chooser = null;
-        /* A Wyvern Roost training programme: pick the wyvern; the reason it can't go ahead is said exactly. */
-        var isTrain = !!fn.trains;
-        if ((fn.options && fn.options.length) || isCraft || (isCharter && options.length) || (fn.housesSpecies && options.length) || (isTrain && options.length)) {
+        if ((fn.options && fn.options.length) || isCraft || (isCharter && options.length) || (fn.housesSpecies && options.length)) {
           select = el('select', { class: 'tsi-input tsi-bas-fn__select', 'aria-label': fn.label, 'data-test': 'sel-' + key }, options.map(function (o, idx) {
             var lab = o && typeof o === 'object' && 'label' in o ? o.label : String(o);
             var cost = o && o.costGP !== undefined && o.costGP !== null ? ' (' + o.costGP + 'gp)' : '';
@@ -2251,26 +2306,26 @@
         /* A production order (pull request 3): what the chosen recipe uses and makes. */
         var goodsLine = fn.production ? el('div', { class: 'tsi-bas-fn__goods', 'data-test': 'goods-' + key }) : null;
         /* Why a House order can't be given now, in a sentence (pull request 7). */
-        var whyLine = (isHousing || isTrain || (fn.favourCost && !fn.production) || fn.waiting) ? el('div', { class: 'tsi-bas-fn__why', 'data-test': 'why-' + key, hidden: true }) : null;
+        var whyLine = (isHousing || (fn.favourCost && !fn.production) || fn.waiting) ? el('div', { class: 'tsi-bas-fn__why', 'data-test': 'why-' + key, hidden: true }) : null;
         function chosenNow() {
-          if (isTrain) return options[select ? R.clampInt(select.value, 0) : 0] || null;
+          if (isHousing && fn.housesSpecies) return options[select ? R.clampInt(select.value, 0) : 0] || null;
           return fn.production && fn.options && fn.options.length ? fn.options[select ? R.clampInt(select.value, 0) : 0] || null : null;
         }
         function refresh() {
           var chosen = chosenNow();
-          var why = repair ? null : isTrain ? (!options.length ? 'No ' + R.speciesNoun(data, R.fnSpecies(data, fac, fn)) + ' is housed at the ' + fac.name + ' yet.' : R.trainingBlocker(state, data, fac, fn, chosen ? R.creatureById(state, chosen.trainCreatureId) : null) || null) : !avail.ok ? avail.message : fn.production ? (R.productionBusy(state, data, fac, fn) || R.recipeBlocker(state, data, fac, fn, chosen))
+          var why = repair ? null : !avail.ok ? avail.message : fn.production ? (R.productionBusy(state, data, fac, fn) || R.recipeBlocker(state, data, fac, fn, chosen))
             : isCharter && R.registerBusy(state, data) ? R.registerBusy(state, data)
             : isCharter && !options.length ? 'No Port Charter to register: the DM grants one in the Explorer, and each is registered once.'
-            : isHousing ? R.housingBlocker(state, data, fac, fn) || null : null;
+            : isHousing ? R.housingBlocker(state, data, fac, fn, fn.housesSpecies && chosen ? chosen.creatureId : undefined) || null : null;
           /* A Shrine order's Favour (pull request 8b). */
           var noFavour = !why && !repair && avail.ok && R.favourBlocker ? R.favourBlocker(state, fac, fn) : '';
           if (noFavour) why = noFavour;
           issue.disabled = !!(locked || cd > 0 || repair > 0 || why);
           issue.title = repair ? repairText(fac, repair) : why || null;
-          issue.textContent = repair ? 'Under Repair' : isTrain && why ? 'Can\'t train yet' : !avail.ok ? avail.message : why && fn.production ? 'Can\'t order yet' : why && isCharter ? (options.length ? 'One at a time' : 'No Port Charter to register')
-            : why && isTrain ? 'Can\'t train yet' : why && isHousing ? housingShort(fac, fn) : noFavour ? 'Not enough Favour' : cd > 0 ? 'Cooldown: ' + R.daysText(cd) : 'Issue Order';
+          issue.textContent = repair ? 'Under Repair' : !avail.ok ? avail.message : why && fn.production ? 'Can\'t order yet' : why && isCharter ? (options.length ? 'One at a time' : 'No Port Charter to register')
+            : why && isHousing ? housingShort(fac, fn, chosen) : noFavour ? 'Not enough Favour' : cd > 0 ? 'Cooldown: ' + R.daysText(cd) : 'Issue Order';
           if (whyLine) {
-            var wtext = !avail.ok && avail.why ? avail.why : why && !repair && (avail.ok || isTrain) ? why : '';
+            var wtext = !avail.ok && avail.why ? avail.why : why && !repair && avail.ok ? why : '';
             whyLine.hidden = !wtext;
             whyLine.textContent = wtext;
           }
@@ -2300,14 +2355,14 @@
         ]);
       }
       /* A House order's button when it can't be given (the sentence is under it). */
-      function housingShort(fac, fn) {
+      function housingShort(fac, fn, chosen) {
         if (fn.housesCreature) {
           if (R.creatureById(state, String(fn.housesCreature))) return 'Already at the Ironbow';
           return R.houseOrderFor(state, String(fn.housesCreature)) ? 'Being housed' : 'Can\'t order yet';
         }
-        if (R.houseOrderAt(state, fac.id)) return 'One at a time';
         if (!R.waitingCreatures(state, data, fn.housesSpecies).length) return 'None waiting';
-        return R.creatureRoom(state, data, fac.id).free <= 0 ? 'No room' : 'Can\'t order yet';
+        if (chosen && chosen.creatureId && R.houseOrderFor(state, chosen.creatureId)) return 'Being housed';
+        return 'Kind is full';
       }
 
       /* ---------- Pending orders ---------- */
@@ -2334,12 +2389,6 @@
           el('div', { class: 'tsi-bas-actions' }, [
             w.waiting ? btn('Resolve', function () { onResolveOrder(o.id); }, 'tsi-btn--primary', 'resolve-' + i, { disabled: turnRunning }) : null,
             btn('Cancel', async function () {
-              /* A paid training order (the harness) isn't refunded: ask first. */
-              if (o.chosen && o.chosen.trainCreatureId && R.clampInt(o.costGP, 0) > 0) {
-                if (!(await ask('Cancel ' + o.label + '? The ' + o.costGP + ' gp already paid is not refunded.', 'Cancel order', 'Cancel a paid order'))) return;
-                if (!life.alive) return;
-                if (!state.pendingOrders.some(function (x) { return x.id === o.id; })) return;
-              }
               logAll([R.cancelOrder(state, o.id, data)]);
               done();
             }, 'tsi-btn--ghost', 'cancel-' + i)
@@ -2377,7 +2426,7 @@
         var fac = R.facility(data, id);
         return el('div', { class: cls + ' ' + cls + '--empty tsi-bas-artnone', 'data-art': 'none' }, [el('span', { text: (fac && fac.name) || id })]);
       }
-      function facLevelText(id) { return 'Level ' + R.getFacilityLevel(state, id); }
+      function facLevelText(id) { var f = R.facility(data, id); return f && f.singleLevel ? 'One level' : 'Level ' + R.getFacilityLevel(state, id); }
       /* A built facility's tile: its art, and a count of its pending orders. */
       function builtTile(id, extra) {
         var fac = R.facility(data, id);
@@ -2385,6 +2434,7 @@
         var repair = R.underRepair(state, id);
         var mine = ordersAt(id);
         var over = extra && extra.overCapacity;
+        var readyBeasts = id === R.PEN_ID ? R.creatures(state).filter(function (c) { return R.devView(state, c).bond.ready !== null && c.status === 'housed'; }) : [];
         var tile = el('button', {
           type: 'button', class: 'tsi-bas-tile tsi-bas-tile--built' + (extra && extra.kind === 'plot' ? ' tsi-bas-tile--onplot' : '') + (repair ? ' tsi-bas-tile--repair' : '') + (over ? ' tsi-bas-tile--over' : ''),
           'data-test': 'tile-' + id, 'data-fac': id,
@@ -2394,11 +2444,14 @@
           facArt(id, 'tsi-bas-tile__img'),
           repair ? el('span', { class: 'tsi-bas-tile__mark', 'aria-hidden': 'true' }, icon('hammer')) : null,
           mine.length ? el('span', { class: 'tsi-bas-tile__count', 'data-test': 'tile-orders-' + id, 'aria-hidden': 'true', text: String(mine.length) }) : null,
-          over ? el('span', { class: 'tsi-bas-tile__over', 'data-test': 'over-capacity', 'aria-hidden': 'true', text: '!' }) : null
+          over ? el('span', { class: 'tsi-bas-tile__over', 'data-test': 'over-capacity', 'aria-hidden': 'true', text: '!' }) : null,
+          /* A beast whose next bond level is ready, waiting for the DM's scene (the Beast Pen). */
+          readyBeasts.length ? el('span', { class: 'tsi-bas-tile__ready', 'data-test': 'tile-bond-ready', 'aria-hidden': 'true', title: 'A bond milestone is ready', text: '✦' }) : null
         ]);
         var build = function () {
           var parts = [muted(facLevelText(id) + (repair ? ' • Under Repair until Day ' + repair + ' (working again on Day ' + (repair + 1) + ')' : ' • Active'))];
           if (over) parts.push(muted(overText(extra.kind)));
+          if (readyBeasts.length) parts.push(muted(readyBeasts.map(function (c) { return R.creatureName(data, c) + '\'s Bond ' + R.devView(state, c).bond.ready + ' is ready for your scene.'; }).join(' ')));
           if (mine.length) parts.push(tipList(mine.map(orderTipLine)));
           else parts.push(muted('No orders pending here.'));
           return { title: name, parts: parts, foot: 'Click to open its orders' };
@@ -2542,11 +2595,15 @@
           var req = R.clampInt(fn.requiredFacilityLevel === undefined || fn.requiredFacilityLevel === null ? 1 : fn.requiredFacilityLevel, 1, R.MAX_LEVEL);
           return fnRow(fac, fn, lvl < req);
         }));
+        /* A facility with a picture of its own for the top of its panel (the Beast Pen's, Harry, 22 October 2026): it spans
+           the panel's full width, and the details and orders follow beneath it. */
+        var banner = B.panelImages && B.panelImages[id] ? el('img', { class: 'tsi-bas-facpanel__banner', 'data-test': 'fac-banner', src: asset('facilities/' + B.panelImages[id]), alt: fac.name + ': a painting of the ' + fac.name, draggable: 'false' }) : null;
         TSI.append(facPanelBody, [
-          el('div', { class: 'tsi-bas-facpanel__hero' + (repair ? ' tsi-bas-facpanel__hero--repair' : '') }, [
-            facArt(id, 'tsi-bas-facpanel__img'),
+          banner,
+          el('div', { class: 'tsi-bas-facpanel__hero' + (banner ? ' tsi-bas-facpanel__hero--banner' : '') + (repair ? ' tsi-bas-facpanel__hero--repair' : '') }, [
+            banner ? null : facArt(id, 'tsi-bas-facpanel__img'),
             el('div', { class: 'tsi-bas-facpanel__info' }, [
-              el('div', { class: 'tsi-bas-facpanel__level', 'data-test': 'fac-level', text: 'Level ' + lvl + ' of ' + R.MAX_LEVEL }),
+              el('div', { class: 'tsi-bas-facpanel__level', 'data-test': 'fac-level', text: fac.singleLevel ? 'One level only' : 'Level ' + lvl + ' of ' + R.MAX_LEVEL }),
               el('div', { class: 'tsi-bas-facpanel__status', 'data-test': 'fac-status' }, repair ? repairLabel(repair) : 'Active • each order shows the days it takes'),
               repair ? el('div', { class: 'tsi-bas-fac__repair', 'data-test': 'repair-note-' + id, text: 'Under Repair until Day ' + repair + ': no orders, and orders already here wait. Working again on Day ' + (repair + 1) + '.' }) : null,
               el('div', { class: 'tsi-bas-facpanel__orders' }, [label('Orders pending here')].concat(mine.length ? mine : [muted('None.')]))
@@ -2556,7 +2613,7 @@
           id === 'workshop' ? el('div', { class: 'tsi-bas-facpanel__artisan' }, [label('Artisan Tools'), artCard.root]) : null,
           id === 'dock' ? cargoSection() : null,
           id === R.COURIER_FAC ? courierSection() : null,
-          creatureSection(id),
+          penSection(id),
           R.shrineGod(id) ? shrineSection(id) : null,
           /* A facility in a construction slot can be demolished (Harry, 13
              October 2026); the starting facilities can't. */
@@ -2564,6 +2621,8 @@
             btn('Demolish…', function () { onDemolish(id); }, 'tsi-btn--ghost tsi-bas-demolish', 'demolish-' + id)
           ]) : null
         ]);
+        /* The Beast Handler box in the Beast Pen's panel (pairing codes for the players' phones). */
+        if (id === R.PEN_ID && beastDm) beastDm.render();
       }
 
       /* ---------- The Dock's cargo (pull request 5, Harry, 14 October 2026) ----------
@@ -2807,11 +2866,39 @@
         done();
       });
 
-      /* ---------- The creatures at the Wyvern Roost, Griffin Tower and Dire Wolf Den (pull request 7) ----------
-         Those living here, and at the Tower and the Den those of its kind
-         waiting for a home and the room it has (one per level). The House
-         order above is the panel's action; this only shows. null for a
-         building no kind of creature lives in. */
+      /* ---------- The Beast Pen's beasts (pull request 7; the Beast Pen, 22 October 2026) ----------
+         The panel's beasts: one stall for each kind the DM can grant (wyvern, griffin, dire wolf, buckbear, fellcat) with
+         the beast living in it, being housed or waiting for a home, each with its handler, bond and Chronicle; and the
+         Beast Handler box for the players' phones. The House Beast Here and Acclimatise With Beast orders are above, with
+         the other orders; this shows the beasts. */
+      function penSection(facId) {
+        if (facId !== R.PEN_ID) return null;
+        var kinds = R.penSummary(state, data);
+        var perKind = R.penPerKind(data);
+        var any = R.creatures(state).length > 0;
+        var stalls = kinds.map(function (k) {
+          var beasts = k.housed.concat(R.creatures(state).filter(function (c) {
+            return c.species === k.species && c.status !== 'housed';
+          }));
+          return el('div', { class: 'tsi-bas-stall' + (k.over ? ' tsi-bas-stall--over' : ''), 'data-test': 'stall-' + k.species, 'data-count': String(k.housed.length) }, [
+            el('div', { class: 'tsi-bas-stall__head' }, [
+              el('b', { text: k.name }),
+              el('span', { class: 'tsi-bas-muted', 'data-test': 'stall-state-' + k.species, text: k.over ? k.housed.length + ' here: all stay, no more can be housed' : k.housed.length ? 'Full' : k.pending.length ? 'Being housed' : 'Empty' })
+            ]),
+            beasts.length ? el('div', { class: 'tsi-bas-list' }, beasts.map(function (c) { return beastRow(c); }))
+              : muted('Empty. The DM grants ' + (/^[aeiou]/i.test(k.name) ? 'an ' : 'a ') + k.name.toLowerCase() + ' in the Explorer (Grant a creature…, under Sent to the Bastion), then House Beast Here gives it a home.')
+          ]);
+        });
+        return el('div', { class: 'tsi-bas-facpanel__cargo tsi-bas-facpanel__creatures', 'data-test': 'creatures-' + facId }, [
+          label('Beasts'),
+          el('div', { class: 'tsi-bas-creatures__room', 'data-test': 'creature-room-' + facId, text: 'The Beast Pen keeps ' + (perKind === 1 ? 'one beast of each kind' : plural(perKind, 'beast') + ' of each kind') + ': wyvern, griffin, dire wolf, buckbear and fellcat. A beast housed here must pass Acclimatise With Beast before it can go out on the road and bond with its handler.' }),
+          el('div', { class: 'tsi-bas-stalls', 'data-test': 'creatures-housed-' + facId }, stalls),
+          !any ? muted('No beast yet. The Pen houses beasts the DM grants in the Explorer; nothing here makes one.') : null,
+          beastDm ? label('Beast Handler (players)') : null,
+          beastDm ? beastDm.node : null
+        ]);
+      }
+
       /* ---------- A Shrine's Favour, Great Rites and blessings (pull request 8b) ---------- */
       function shrineSection(facId) {
         var god = R.shrineGod(facId);
@@ -2832,45 +2919,6 @@
         ]);
       }
 
-      function creatureSection(facId) {
-        var sp = R.creaturesData(data).species || {};
-        var kinds = Object.keys(sp).filter(function (k) { return R.speciesHome(data, k) === facId; });
-        if (!kinds.length) return null;
-        var fac = R.facility(data, facId);
-        var at = R.creaturesAt(state, data, facId);
-        var noun = R.speciesNoun(data, kinds[0]);
-        var room = at.room;
-        var roomLine = null;
-        if (room) {
-          var used = room.housed + room.pending;
-          var free = Math.max(0, room.capacity - used);
-          var text = 'Room: ' + used + ' of ' + room.capacity + ' taken' + (room.pending ? ' (1 being housed)' : '') + ', ' + free + ' free. ';
-          text += room.over
-            ? 'More live here than a Level ' + room.level + ' ' + fac.name + ' houses (it was rebuilt): they all stay, and housing another waits for room.'
-            : 'Each level of the ' + fac.name + ' houses one ' + noun + (room.base ? ', plus ' + (room.base === 1 ? 'one' : room.base) + ' more (Elara\'s wyvern is one of them)' : '') + (!free && room.level < R.MAX_LEVEL ? '; upgrade it to house more.' : '.');
-          roomLine = el('div', { class: 'tsi-bas-creatures__room' + (room.over ? ' tsi-bas-creatures__room--over' : ''), 'data-test': 'creature-room-' + facId, text: text });
-        }
-        var group = function (title, test, list, none) {
-          return el('div', { class: 'tsi-bas-cargo__group' }, [
-            el('b', { text: title }),
-            list.length ? el('div', { class: 'tsi-bas-list', 'data-test': test }, list.map(function (c) { return creatureRow(c, 'creature'); })) : muted(none)
-          ]);
-        };
-        var fn = (fac.functions || []).filter(function (f) { return f.housesSpecies; })[0] || (fac.functions || [])[0];
-        var houseName = fn ? fn.label : 'its House order';
-        var later = R.creaturesComingLater(data);
-        return el('div', { class: 'tsi-bas-facpanel__cargo tsi-bas-facpanel__creatures', 'data-test': 'creatures-' + facId }, [
-          label('Creatures'),
-          roomLine,
-          el('div', { class: 'tsi-bas-creatures__lists' }, [
-            group('Living here', 'creatures-housed-' + facId, at.housed,
-              room ? (facId === 'wyvern_roost' ? 'None yet. House Elara\'s Wyvern, above, records Elara\'s wyvern here; ' + houseName + ' gives a home to one the DM granted in the Explorer.' : 'None yet. ' + houseName + ', above, gives a home to one the DM granted in the Explorer.') : 'None yet. Give the order ' + houseName + ', above, to record ' + (fn && fn.housesCreature ? R.creatureName(data, { id: String(fn.housesCreature) }) : 'it') + ' here.'),
-            room ? group('Waiting for a home', 'creatures-waiting-' + facId, at.waiting,
-              'None. The DM grants a ' + noun + ' in the Explorer (Grant a creature…, under Sent to the Bastion).') : null
-          ]),
-          later ? el('div', { class: 'tsi-bas-cargo__group tsi-bas-courier__later', 'data-test': 'creatures-later-' + facId }, [el('b', { text: 'Coming later' }), muted(later)]) : null
-        ]);
-      }
 
       /* ---------- The Courier Exchange's parcels (pull request 6, Harry, 14 October 2026) ----------
          A parcel of supplies from the Warehouse goes to a town the level
@@ -3211,6 +3259,9 @@
         var name = fac ? fac.name : facId;
         var place = R.facilityPlace(state, facId);
         if (!place) return;
+        /* The Beast Pen stays while any beast lives in it. */
+        var penWhy = R.penDemolishBlocker(state, data, facId);
+        if (penWhy) { await say(penWhy); return; }
         var entry = place.entry;
         var where = place.kind === 'plot' ? 'plot' : 'slot';
         var building = entry.status === 'building';
@@ -3223,8 +3274,6 @@
             'Anything it has already made stays' + (facId === 'hall_of_emissaries' ? ', and your agreements, contracts and sea routes carry on' : '') + '. ' +
             /* The Courier Exchange's parcels already sent carry on (pull request 6). */
             (facId === R.COURIER_FAC && R.courierDemolishNote(state) ? R.courierDemolishNote(state) + ' ' : '') +
-            /* Creatures living here stay at the Ironbow (pull request 7). */
-            (R.creatureDemolishNote(state, data, facId) ? R.creatureDemolishNote(state, data, facId) + ' ' : '') +
             'It can be built again later ' + (R.isPlotFacility(data, facId) ? 'on a free Development Plot' + (R.plotsForLevel(state.partyLevel, data) ? '' : ' (plots open at party level 9)') : 'from an empty slot') + '.';
         var ok = await ask(msg, building ? 'Stop building' : 'Demolish', building ? 'Stop building' : 'Demolish');
         if (!ok || !life.alive) return;
@@ -3420,39 +3469,12 @@
           if (res.refused) notice('A score change from the DM doc couldn\'t be used, so nothing changed for it.', { type: 'warn', title: 'From the DM doc.', id: 'tsi-bas-dmedits-refused', timeout: 12000 });
         }, function () { dmEditsBusy = false; });
       }
-      /* Requests from the Beast Handler on this laptop (Harry, 21 October 2026): each is checked against this
-         Bastion and applied once, with its receipt in this save (tools/beasthandler/bastion-link.js). */
-      var beastBusy = false;
-      /* A request that has its receipt leaves the queue once that is saved, so a Bastion saved earlier and put
-         back later (Import) can never be made to do an answered request again. The companion only adds to the
-         queue and takes out its own old ones; both re-read it before writing. */
-      function trimBeastQueue(commands) {
-        var answered = (Array.isArray(commands) ? commands : []).filter(function (c) {
-          return c && typeof c.id === 'string' && state.beast && state.beast.done && Object.prototype.hasOwnProperty.call(state.beast.done, c.id);
-        }).map(function (c) { return c.id; });
-        if (!answered.length) return;
-        TSI.store.flush().then(function () {
-          return TSI.store.fresh('tsi.beasthandler.queue', null);
-        }).then(function (stored) {
-          if (!life.alive || !stored || !Array.isArray(stored.commands)) return;
-          var keep = stored.commands.filter(function (c) { return !(c && answered.indexOf(c.id) !== -1); });
-          if (keep.length !== stored.commands.length) TSI.store.set('tsi.beasthandler.queue', { commands: keep });
-        }).catch(function () { /* left in the queue: the Bastion would only see a duplicate and do nothing */ });
+      /* The Beast Handler's one-off sweep once the conversion report has been read (at open it runs before the screens exist, above). */
+      function checkInitiation() {
+        if (!R.sweepInitiation || !life.alive || turnRunning || changesOpen) return;
+        if (R.sweepInitiation(state, data, rand).changed) done();
       }
-      function checkBeast() {
-        if (!R.beastProcessQueue || beastBusy || !life.alive || turnRunning || changesOpen) return Promise.resolve();
-        beastBusy = true;
-        return TSI.store.fresh('tsi.beasthandler.queue', null).then(function (q) {
-          beastBusy = false;
-          if (!life.alive || turnRunning || changesOpen) return;
-          var res = R.beastProcessQueue(state, data, q && q.commands, Date.now(), rand);
-          trimBeastQueue(q && q.commands);
-          if (!res.changed) return;
-          done();
-          if (res.lines.length) notice('From the Beast Handler: ' + res.lines.join(' ') + ' The Day Log keeps it.', { type: res.refused && !res.applied ? 'warn' : 'info', title: 'A handler asked for something.', id: 'tsi-bas-beast', timeout: 14000 });
-        }, function () { beastBusy = false; });
-      }
-      life.setInterval(function () { checkClock(); checkCrestOffer(); checkDmEdits(); checkBeast(); }, 2000);
+      life.setInterval(function () { checkClock(); checkCrestOffer(); checkDmEdits(); }, 2000);
       life.on(document, 'visibilitychange', function () { if (document.visibilityState === 'visible') checkClock(); });
 
       /* Pass every day up to the Explorer's, one at a time, each saved step
@@ -3476,6 +3498,7 @@
             if (!state.dayInProgress) {
               if (explorerDay === null || explorerDay <= state.day || !state.anchored) break;
               R.startDay(state, data);
+              if (R.sweepInitiation) R.sweepInitiation(state, data, rand);
               settleInbox();
               done();
             } else if (settleInbox().changed) {
@@ -3507,8 +3530,6 @@
           var post = R.settleParcels(state, data);
           logAll(post.log);
           post.word.forEach(function (w) { R.addWord(state, w); });
-          /* A recovering wyvern's training pauses (one day on its due day, once a day). */
-          if (R.tickTraining) R.tickTraining(state, data);
           R.finishRoutes(state);
           save();
         }
@@ -4203,7 +4224,7 @@
             done();
           }
           /* Whatever waited behind the box carries on now. */
-          if (first) { checkClock(); checkCrestOffer(); checkDmEdits(); checkBeast(); }
+          if (first) { checkClock(); checkCrestOffer(); checkDmEdits(); checkInitiation(); }
           return ok === true;
         });
       }
@@ -4218,7 +4239,6 @@
         /* Read the Explorer's day now, rather than in up to 2 seconds. */
         clock: function () { checkClock(); },
         dmEdits: function () { return checkDmEdits(); },
-        beast: function () { return checkBeast(); },
         /* The Strip Back report (migration.v4) and the War Table's orphan saves (set aside as the Bastion opens). */
         changes: function () { return state.migration && state.migration.v4 ? TSI.clone(state.migration.v4) : null; },
         showChanges: function () { return showChanges(); },
@@ -4260,9 +4280,7 @@
         if (m) return 'tile-' + m[1];
         /* A creature's row in its building's panel (pull request 7): where it
            lives, or the building its kind waits for. */
-        var cm = /^creature(?:-status)?-(.+)$/.exec(test);
-        var cr = cm ? R.creatureById(state, cm[1]) : null;
-        if (cr) return 'tile-' + (cr.status === 'housed' && cr.home ? cr.home : R.speciesHome(data, cr.species));
+        if (/^(?:creature|stall|acclimatise|beast)-/.test(test) || /^(?:handler|temperament|bond|note|acclimatise)-(?:dialog|name|why|keep|total|problem|text|private)$/.test(test)) return 'tile-' + R.PEN_ID;
         if (test === 'clear-builds' || (/^build-[a-z_]+$/.test(test) && test !== 'build-panel')) {
           var kind = R.isPlotFacility(data, test.slice(6)) ? 'plot' : 'slot';
           var slot = freeSlot(kind);
@@ -4295,7 +4313,6 @@
          any crest sent from the Clan Crest Creator while the Bastion was shut. */
       checkClock();
       checkDmEdits();
-      checkBeast();
       checkCrestOffer();
     },
 
