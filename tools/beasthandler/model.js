@@ -27,14 +27,46 @@
   };
   M.bondLine = function (bond) { return 'Bond ' + bond.level + ': ' + bond.name; };
 
-  /* Bond 1 to 5 as five pills for a beast's Bond page: { n, label, state: 'done' | 'current' | 'todo' }, and the stage line. */
+  /* Bond 1 to 5 as five pills for a beast's Bond page, and the stage line. Each pill: { n, label, state, fill, text }.
+     state: 'done' (reached), 'current' (the level it is at now: also reached), 'filling' (the next one, with some Bonding Days),
+     'ready' (full, waiting for a moment with the DM) or 'todo'. fill: 0 to 100, how full the pill is; text: what a screen reader
+     says ("Bond 3, Bonded: 7 of 10 days"). bonding: the snapshot's block (days, pill { n, days, need, fraction, full }, ready), or
+     nothing (then the pills are only reached or not, as before the Beast Pen). */
   M.BOND_SHORT = ['Acclimatised', 'Trusting', 'Bonded', 'Devoted', 'Legendary'];
-  M.bondPills = function (level) {
+  M.BOND_NAMES = ['Acclimatised', 'Trusting', 'Bonded', 'Devoted', 'Legendary Partnership'];
+  M.READY_TEXT = 'Ready: waiting for a moment with your DM';
+  M.bondPills = function (level, bonding) {
     var lv = typeof level === 'number' && isFinite(level) ? Math.max(0, Math.min(5, Math.floor(level))) : 0;
+    var b = isObj(bonding) ? bonding : null;
+    var fp = b && isObj(b.pill) ? b.pill : null;
+    var ready = b && typeof b.ready === 'number' ? b.ready : null;
     var pills = [];
-    for (var n = 1; n <= 5; n++) pills.push({ n: n, label: M.BOND_SHORT[n - 1], state: n < lv ? 'done' : (n === lv ? 'current' : 'todo') });
-    return { level: lv, pills: pills, stageText: 'Stage ' + lv + ' of 5' };
+    for (var n = 1; n <= 5; n++) {
+      var p = { n: n, label: M.BOND_SHORT[n - 1], state: n < lv ? 'done' : (n === lv ? 'current' : 'todo'), fill: n <= lv ? 100 : 0, text: '' };
+      if (n <= lv) p.text = 'Bond ' + n + ', ' + M.BOND_NAMES[n - 1] + ': reached';
+      else if (fp && fp.n === n) {
+        var frac = typeof fp.fraction === 'number' && isFinite(fp.fraction) ? Math.max(0, Math.min(1, fp.fraction)) : 0;
+        p.fill = Math.round(frac * 100);
+        if (ready === n || fp.full === true) { p.state = 'ready'; p.fill = 100; p.text = 'Bond ' + n + ', ' + M.BOND_NAMES[n - 1] + ': ready, waiting for a moment with your DM'; }
+        else { p.state = p.fill > 0 ? 'filling' : 'todo'; p.text = 'Bond ' + n + ', ' + M.BOND_NAMES[n - 1] + ': ' + fp.days + ' of ' + fp.need + ' days'; }
+      } else p.text = 'Bond ' + n + ', ' + M.BOND_NAMES[n - 1] + ': not yet';
+      pills.push(p);
+    }
+    return { level: lv, pills: pills, stageText: 'Stage ' + lv + ' of 5', ready: ready, readyText: ready ? M.READY_TEXT : '' };
   };
+  /* The Bonding Days tile and its one line: { days, line }. A beast out on the road: "On the road with Mira since Day 31";
+     at the Pen: "Resting at the Beast Pen: bonding is paused" (the counter keeps showing the total). */
+  M.bondingTile = function (detail) {
+    var b = detail && isObj(detail.bonding) ? detail.bonding : null;
+    if (!b) return null;
+    var who = detail.handler && detail.handler.name ? detail.handler.name : 'its handler';
+    return {
+      days: typeof b.days === 'number' && isFinite(b.days) ? Math.max(0, Math.floor(b.days)) : 0,
+      line: b.away ? 'On the road with ' + who + (b.awaySinceLabel ? ' since ' + b.awaySinceLabel : '') : 'Resting at the Beast Pen: bonding is paused'
+    };
+  };
+  /* Where it is, in words (the kind line under the pills and the chip on a directory line). */
+  M.placeText = function (place) { return place === 'away' ? 'Away from the Ironbow' : 'At the Beast Pen'; };
   /* "Bond 3 · Bonded" for the rapport line. */
   M.rapportLine = function (bond) { return 'Bond ' + bond.level + ' · ' + bond.name; };
 
@@ -74,17 +106,17 @@
   /* What the Home screen says when there is nothing to list, or ''. */
   M.homeMessage = function (snap) {
     if (!snap) return 'The Bastion hasn\'t been saved yet on this device, so there is nothing to show. Open the Ironbow Bastion Manager first.';
-    if (!snap.facilities.length) return 'No beast buildings stand at the Ironbow yet. The Wyvern Roost, the Griffin Tower and the Dire Wolf Den appear here once they are built.';
+    if (!snap.facilities.length) return 'The Beast Pen isn\'t built at the Ironbow yet. It appears here once it is built.';
     if (snap.handler && !snap.handler.hasCreatures) return 'You have no beasts yet. The DM has to house a beast first and then make you its handler.';
     if (!snap.handler) return 'Choose a handler to see their beasts. Until then, you can see who lives where.';
     return '';
   };
-  M.emptyBuilding = function (f) { return 'No ' + f.species.name.toLowerCase() + ' is housed here yet.'; };
+  M.emptyBuilding = function (f) { return 'No beast is housed in the ' + f.name + ' yet.'; };
   /* The words on a directory line for a beast that has not passed acclimatisation (Bond 1) yet: no detail, nothing else. */
   M.NOT_YET = 'Not acclimatised yet';
 
   /* The Chronicle's category names. */
-  var CATS = { training: 'Training', bond: 'Bond', handler: 'Handler', flight: 'Flight', note: 'Note' };
+  var CATS = { training: 'Training', bond: 'Bond', handler: 'Handler', flight: 'Flight', travel: 'Travel', note: 'Note' };
   M.catLabel = function (cat) {
     if (typeof cat === 'string' && Object.prototype.hasOwnProperty.call(CATS, cat)) return CATS[cat];
     var s = String(cat || '');

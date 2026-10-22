@@ -1,8 +1,8 @@
 /* Scarlett Isles: Beast Handler (BH-1b, Harry's approvals of 21 October 2026; read-only since 22 October 2026),
    from the test page with the internet off. The Bastion is built in one
-   window (a Roost with Elara's wyvern and a second wyvern, a Griffin Tower
-   with two griffins and one that is not acclimatised yet, no Dire Wolf Den)
-   and the companion is opened in another.
+   window (a Beast Pen with Elara's wyvern and a second beast, a griffin, one
+   that has no handler and one that is not acclimatised yet) and the companion
+   is opened in another.
    It checks: the Home directory; "Viewing as"; other players' beasts as plain
    lines, and a Bond 0 beast as a line that says "Not acclimatised yet" and
    shows nothing else; the three tabs along the bottom (Profile, Bond,
@@ -38,9 +38,8 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     const R = TSI.bastion.rules;
     s.partyLevel = 9;
     s.treasuryGP = 7654321;
-    s.builtExtras = [{ facId: 'wyvern_roost', status: 'built' }, { facId: 'griffin_tower', status: 'built' }];
-    s.facilityLevels.wyvern_roost = 3;
-    s.facilityLevels.griffin_tower = 2;
+    s.builtExtras = [{ facId: 'beast_pen', status: 'built' }];
+    s.facilityLevels.beast_pen = 1;
     const mk = (id, species, name, home, handler) => {
       const c = { id, species, owner: '', name, status: 'housed', home, grantedDay: 1, housedDay: 1, msgId: '' };
       if (id === 'elara_wyvern') { c.owner = 'elara'; c.development = R.newDevelopment(c, s.day); }
@@ -50,11 +49,11 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
       return c;
     };
     s.creatures = [
-      mk('elara_wyvern', 'wyvern', '', 'wyvern_roost'),
-      mk('cr-stormwing', 'wyvern', 'Stormwing', 'wyvern_roost', 'Mira'),
-      mk('cr-swiftwing', 'griffin', 'Swiftwing', 'griffin_tower', 'Mira'),
-      mk('cr-loose', 'griffin', 'Unhandled', 'griffin_tower', ''),
-      mk('cr-newcomer', 'griffin', 'Newcomer', 'griffin_tower', 'Mira')
+      mk('elara_wyvern', 'wyvern', '', 'beast_pen'),
+      mk('cr-stormwing', 'wyvern', 'Stormwing', 'beast_pen', 'Mira'),
+      mk('cr-swiftwing', 'griffin', 'Swiftwing', 'beast_pen', 'Mira'),
+      mk('cr-loose', 'griffin', 'Unhandled', 'beast_pen', ''),
+      mk('cr-newcomer', 'griffin', 'Newcomer', 'beast_pen', 'Mira')
     ];
     s.creatures[1].development.bond.level = 2;
     s.creatures[2].development.bond.level = 3;
@@ -79,17 +78,16 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
   };
   const home = async () => { if (await bh.$('[data-test=bh-back]')) { await bh.click('[data-test=bh-back]'); await bh.waitForTimeout(120); } if (await bh.$('[data-test=bh-back]')) { await bh.click('[data-test=bh-back]'); await bh.waitForTimeout(120); } };
 
-  await check('Home: opens as the directory only (nobody\'s detail is open until the DM chooses), with the heading and the buildings that stand, and no Dire Wolf Den', async () => {
+  await check('Home: opens as the directory only (nobody\'s detail is open until the DM chooses), with the heading and the one Beast Pen, which lists every housed beast', async () => {
     equal(await bh.$eval('[data-test=bh-viewas]', n => n.value), '');
     equal(await bh.$$eval('.tsi-bh-beast--mine', n => n.length), 0);
     assert(/Choose a handler/.test(await bare(bh, '[data-test=bh-message]')));
     equal(await bare(bh, '.tsi-bh-title__main'), 'Scarlett Isles: Beast Handler');
     equal(await bare(bh, '.tsi-bh-title__sub'), 'The Companions of Ironbow');
-    equal(await texts(bh, '.tsi-bh-card__title'), ['Wyvern Roost', 'Griffin Tower']);
-    equal(await texts(bh, '.tsi-bh-card__head .tsi-pill'), ['Level 3', 'Level 2']);
-    equal(await bh.$('[data-test=bh-fac-dire_wolf_den]'), null, 'an unbuilt building is not listed');
-    equal(await texts(bh, '[data-test=bh-fac-wyvern_roost] .tsi-bh-beast__name'), ['Elara\'s wyvern', 'Stormwing']);
-    equal(await texts(bh, '[data-test=bh-fac-griffin_tower] .tsi-bh-beast__name'), ['Swiftwing', 'Unhandled', 'Newcomer']);
+    equal(await texts(bh, '.tsi-bh-card__title'), ['Beast Pen']);
+    equal(await texts(bh, '.tsi-bh-card__head .tsi-pill'), [], 'one level: no level chip');
+    equal(await bh.$('[data-test=bh-fac-wyvern_roost]'), null, 'the old buildings are not listed');
+    equal(await texts(bh, '[data-test=bh-fac-beast_pen] .tsi-bh-beast__name'), ['Elara\'s wyvern', 'Stormwing', 'Swiftwing', 'Unhandled', 'Newcomer']);
     assert(/Read from the Bastion saved on this device · Day \d+/.test(await bare(bh, '[data-test=bh-sync]')), await bare(bh, '[data-test=bh-sync]'));
   });
 
@@ -183,7 +181,7 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     await view('');
     assert(/Choose a handler/.test(await bare(bh, '[data-test=bh-message]')), await bare(bh, '[data-test=bh-message]'));
     equal(await bh.$$eval('.tsi-bh-beast--mine', n => n.length), 0);
-    equal(await texts(bh, '.tsi-bh-card__title').then(a => a.length), 2);
+    equal(await texts(bh, '.tsi-bh-card__title').then(a => a.length), 1);
   });
 
   await check('the Bastion itself was not changed by looking or greeting', async () => {
@@ -213,9 +211,9 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
       await b2.evaluate(() => TSI.bastion.debug.change(s => {
         const R = TSI.bastion.rules;
         s.partyLevel = 9;
-        s.builtExtras = [{ facId: 'wyvern_roost', status: 'built' }, { facId: 'griffin_tower', status: 'built' }, { facId: 'dire_wolf_den', status: 'built' }];
-        s.facilityLevels.wyvern_roost = 3;
-        const c = { id: 'elara_wyvern', species: 'wyvern', owner: 'elara', name: '', status: 'housed', home: 'wyvern_roost', grantedDay: 1, housedDay: 1, msgId: '' };
+        s.builtExtras = [{ facId: 'beast_pen', status: 'built' }];
+        s.facilityLevels.beast_pen = 1;
+        const c = { id: 'elara_wyvern', species: 'wyvern', owner: 'elara', name: '', status: 'housed', home: 'beast_pen', grantedDay: 1, housedDay: 1, msgId: '' };
         c.development = R.newDevelopment(c, s.day);
         c.development.regional = 'Widowspine';
         for (let i = 0; i < 40; i++) c.development.chronicle.push({ id: 'ch-x' + i, day: 2 + i, cat: 'note', text: 'A long entry number ' + i + ' that keeps going to be sure that a long Chronicle wraps and scrolls and never pushes the page sideways.', by: 'DM', link: '' });

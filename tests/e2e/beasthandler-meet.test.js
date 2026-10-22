@@ -74,18 +74,17 @@ const checkS = (name, fn) => check(name, async () => {
   }), [id, species, name, home, opts || {}]);
   await ba.evaluate(() => TSI.bastion.debug.change(s => {
     s.partyLevel = 9; s.treasuryGP = 400;
-    s.builtExtras = [{ facId: 'wyvern_roost', status: 'built' }, { facId: 'griffin_tower', status: 'built' }, { facId: 'dire_wolf_den', status: 'built' }];
-    s.facilityLevels.wyvern_roost = 3; s.facilityLevels.griffin_tower = 2; s.facilityLevels.dire_wolf_den = 2;
+    s.builtExtras = [{ facId: 'beast_pen', status: 'built' }];
+    s.facilityLevels.beast_pen = 1;
     s.creatures = [];
   }));
-  await addBeast('cr-stormwing', 'wyvern', 'Stormwing', 'wyvern_roost');
-  await addBeast('cr-swiftwing', 'griffin', 'Swiftwing', 'griffin_tower');
-  await addBeast('cr-ashfang', 'dire_wolf', 'Ashfang', 'dire_wolf_den');
-  /* The Buckbear and the Fellcat have no building yet (the Beast Pen comes later): the companion window is told they live in the Roost. */
-  await addBeast('cr-tusk', 'buckbear', 'Tusk', 'wyvern_roost');
-  await addBeast('cr-prowl', 'fellcat', 'Prowl', 'wyvern_roost');
-  await addBeast('cr-known', 'wyvern', 'Veteran', 'wyvern_roost', { regional: 'Widowspine' });
-  await addBeast('cr-fresh', 'griffin', 'Newcomer', 'griffin_tower', { bond: 0 });
+  await addBeast('cr-stormwing', 'wyvern', 'Stormwing', 'beast_pen');
+  await addBeast('cr-swiftwing', 'griffin', 'Swiftwing', 'beast_pen');
+  await addBeast('cr-ashfang', 'dire_wolf', 'Ashfang', 'beast_pen');
+  await addBeast('cr-tusk', 'buckbear', 'Tusk', 'beast_pen');
+  await addBeast('cr-prowl', 'fellcat', 'Prowl', 'beast_pen');
+  await addBeast('cr-known', 'wyvern', 'Veteran', 'beast_pen', { regional: 'Widowspine' });
+  await addBeast('cr-fresh', 'griffin', 'Newcomer', 'beast_pen', { bond: 0 });
   await ba.evaluate(() => TSI.store.flush());
   await ba.waitForTimeout(500);
   const state = () => bas(ba);
@@ -94,11 +93,6 @@ const checkS = (name, fn) => check(name, async () => {
   windows.push(bh);
   await bh.goto(HARNESS + '?tool=beasthandler');
   await bh.waitForSelector('[data-test=bh-viewas]');
-  await bh.evaluate(() => {
-    const sp = window.TSI_DATA.bastionCreatures.species;
-    sp.buckbear = { name: 'Buckbear', plural: 'Buckbears', short: 'Bu', home: 'wyvern_roost' };
-    sp.fellcat = { name: 'Fellcat', plural: 'Fellcats', short: 'Fe', home: 'wyvern_roost' };
-  });
   /* Back to the list of beasts from wherever the window is. */
   const home = async () => {
     for (let i = 0; i < 4 && !(await bh.$('[data-test=bh-viewas]')); i++) {
@@ -112,11 +106,6 @@ const checkS = (name, fn) => check(name, async () => {
   const reopen = async id => {
     await bh.reload();
     await bh.waitForSelector('[data-test=bh-viewas]');
-    await bh.evaluate(() => {
-      const sp = window.TSI_DATA.bastionCreatures.species;
-      sp.buckbear = { name: 'Buckbear', plural: 'Buckbears', short: 'Bu', home: 'wyvern_roost' };
-      sp.fellcat = { name: 'Fellcat', plural: 'Fellcats', short: 'Fe', home: 'wyvern_roost' };
-    });
     await viewAs('Mira');
     await bh.waitForSelector('[data-test=bh-beast-' + id + ']');
     await bh.click('[data-test=bh-beast-' + id + ']');
@@ -398,8 +387,8 @@ const checkS = (name, fn) => check(name, async () => {
   });
 
   await checkS('the curtain waits for a slow picture, and gives up on one that never comes', async () => {
-    await addBeast('cr-slow', 'wyvern', 'Slowcoach', 'wyvern_roost');
-    await addBeast('cr-never', 'griffin', 'Neverland', 'griffin_tower');
+    await addBeast('cr-slow', 'wyvern', 'Slowcoach', 'beast_pen');
+    await addBeast('cr-never', 'griffin', 'Neverland', 'beast_pen');
     await ba.evaluate(() => TSI.store.flush());
     await bh.waitForTimeout(2600);
     await bh.evaluate(() => { window.__slow = true; });
@@ -587,7 +576,7 @@ const checkS = (name, fn) => check(name, async () => {
   windows.push(pp);
   const closeDialog = async () => { await ba.locator('.tsi-modal__foot .tsi-btn--primary').last().click(); await ba.waitForTimeout(250); };
   const openBox = async () => {
-    if (!(await ba.$('[data-test=beast-box]:visible'))) { await ba.click('[data-test=open-management]'); await ba.waitForSelector('[data-test=beast-box]'); }
+    if (!(await ba.$('[data-test=beast-box]:visible'))) { await ba.click('[data-test=tile-beast_pen]'); await ba.waitForSelector('[data-test=beast-box]'); }
   };
   const dmCode = async (button, dialogTest) => {
     await openBox();
@@ -598,8 +587,8 @@ const checkS = (name, fn) => check(name, async () => {
     return code;
   };
   await ba.evaluate(() => TSI.bastion.debug.change(s => { s.creatures = []; }));
-  await addBeast('cr-cloudy', 'dire_wolf', 'Cloudy', 'dire_wolf_den');
-  await addBeast('cr-wisp', 'griffin', 'Wisp', 'griffin_tower');
+  await addBeast('cr-cloudy', 'dire_wolf', 'Cloudy', 'beast_pen');
+  await addBeast('cr-wisp', 'griffin', 'Wisp', 'beast_pen');
   await ba.evaluate(() => TSI.store.flush());
   const phoneSnapshot = async () => {
     const snap = await dmCode('beast-snap-mira', 'beast-snap-dialog');

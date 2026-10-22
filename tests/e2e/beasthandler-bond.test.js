@@ -2,7 +2,10 @@
    internet off. Checks: the three tabs in order (Profile, Bond, Chronicle) with Bond the page a beast opens on; the bond
    pills follow the Bastion's bond as it changes; and a new snapshot arriving while a roll is playing (the subspecies roll
    or a personality die) does not cut it: the panel keeps its own state, finishes, and is redrawn from what is known only
-   afterwards. (The Bonding Days counter and the filling pills come with the Beast Pen, in a later step.)
+   afterwards; the Bonding Days counter says how many days the beast has been on the road (and whether it is out now); the
+   five pills FILL as the Bastion counts days (a full one says it is ready and waits for the DM, with a soft pulse that
+   "reduce motion" switches off); each pill is a progress bar for a screen reader; and a new snapshot grows a pill in place
+   instead of redrawing the page, so a greeting or a roll is never cut and a pill never jumps.
    Run with:  node tests/e2e/beasthandler-bond.test.js */
 'use strict';
 
@@ -29,15 +32,15 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     const T = window.TSI_DATA;
     const data = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier, creatures: T.bastionCreatures };
     s.partyLevel = 9; s.treasuryGP = 400;
-    s.builtExtras = [{ facId: 'wyvern_roost', status: 'built' }, { facId: 'griffin_tower', status: 'built' }];
-    s.facilityLevels.wyvern_roost = 3; s.facilityLevels.griffin_tower = 2;
+    s.builtExtras = [{ facId: 'beast_pen', status: 'built' }];
+    s.facilityLevels.beast_pen = 1;
     const mk = (id, species, name, home, bond, regional) => {
       const c = { id, species, owner: '', name, status: 'housed', home, grantedDay: 1, housedDay: 1, msgId: '' };
       c.development = R.newDevelopment(c, s.day); c.development.handlerId = 'Mira'; c.development.bond.level = bond;
       if (regional) c.development.regional = regional;
       return c;
     };
-    s.creatures = [mk('cr-stormwing', 'wyvern', 'Stormwing', 'wyvern_roost', 3, 'Widowspine'), mk('cr-swiftwing', 'griffin', 'Swiftwing', 'griffin_tower', 1, ''), mk('cr-late', 'wyvern', 'Latecomer', 'wyvern_roost', 1, '')];
+    s.creatures = [mk('cr-stormwing', 'wyvern', 'Stormwing', 'beast_pen', 3, 'Widowspine'), mk('cr-swiftwing', 'griffin', 'Swiftwing', 'beast_pen', 1, ''), mk('cr-late', 'wyvern', 'Latecomer', 'beast_pen', 1, '')];
     R.rollInitiation(s, data, 'cr-swiftwing', Math.random);
   }));
   await ba.evaluate(() => TSI.store.flush());
@@ -145,6 +148,116 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     await bh.click('[data-test=bh-back]');
     await bh.click('[data-test=bh-beast-cr-late]');
     await bh.waitForSelector('[data-test=bh-meet][data-step="1"]');
+  });
+
+  /* ---------------- The Bonding Days counter and the filling pills (22 October 2026) ---------------- */
+  const setBonding = async fields => {
+    await ba.evaluate(f => TSI.bastion.debug.change(s => {
+      const c = s.creatures.find(x => x.id === 'cr-stormwing');
+      const d = c.development;
+      if (f.bond !== undefined) d.bond.level = f.bond;
+      if (f.ready !== undefined) d.bond.ready = f.ready;
+      if (f.bonding === null) delete d.bonding; else if (f.bonding) d.bonding = f.bonding;
+    }), fields);
+    await ba.evaluate(() => TSI.store.flush());
+    await bh.evaluate(() => TSI.beasthandler.debug.refresh());
+    await bh.waitForTimeout(150);
+  };
+  const pillInfo = () => bh.$$eval('.tsi-bh-pill', n => n.map(x => ({ state: x.className.replace(/.*--/, ''), fill: x.getAttribute('data-fill'), now: x.getAttribute('aria-valuenow'), label: x.getAttribute('aria-label'), role: x.getAttribute('role'), width: x.querySelector('.tsi-bh-pill__fill').style.width })));
+
+  await check('the Bonding Days counter: the total, and one line that says whether the beast is on the road or resting at the Pen', async () => {
+    await bh.reload();
+    await bh.waitForSelector('[data-test=bh-viewas]');
+    await bh.selectOption('[data-test=bh-viewas]', 'Mira');
+    await bh.waitForSelector('[data-test=bh-beast-cr-stormwing]');
+    await setBonding({ bond: 3, ready: null, bonding: null });
+    await bh.click('[data-test=bh-beast-cr-stormwing]');
+    await bh.waitForSelector('[data-test=bh-days]');
+    equal(await bare(bh, '[data-test=bh-days]'), '20', 'a beast at Bond 3 has the 20 days that level means');
+    equal(await bare(bh, '.tsi-bh-days__label'), 'Bonding Days');
+    equal(await bare(bh, '[data-test=bh-days-line]'), 'Resting at the Beast Pen: bonding is paused');
+    equal(await bare(bh, '[data-test=bh-kind]'), 'Wyvern \u00b7 At the Beast Pen');
+    await setBonding({ bonding: { away: true, awaySince: 12, lastTick: 12, days: 24 } });
+    equal(await bare(bh, '[data-test=bh-days]'), '24');
+    equal(await bare(bh, '[data-test=bh-days-line]'), 'On the road with Mira since Day 12');
+    equal(await bare(bh, '[data-test=bh-kind]'), 'Wyvern \u00b7 Away from the Ironbow');
+    await bh.click('[data-test=bh-back]');
+    equal(await bare(bh, '[data-test=bh-row-away-cr-stormwing]'), 'Away from the Ironbow', 'the directory shows who is out on the road');
+    equal(await bh.$('[data-test=bh-row-away-cr-swiftwing]'), null);
+    await bh.click('[data-test=bh-beast-cr-stormwing]');
+    await bh.waitForSelector('[data-test=bh-days]');
+  });
+
+  await check('the pills fill: reached ones are full, the next is as full as its days, each is a progress bar with its words, and the last ones are empty', async () => {
+    const p = await pillInfo();
+    equal(p.map(x => x.state), ['done', 'done', 'current', 'filling', 'todo']);
+    equal(p.map(x => x.fill), ['100', '100', '100', '40', '0']);
+    equal(p.map(x => x.now), ['100', '100', '100', '40', '0']);
+    equal(p.map(x => x.width), ['100%', '100%', '100%', '40%', '0%']);
+    equal(p.map(x => x.role), ['progressbar', 'progressbar', 'progressbar', 'progressbar', 'progressbar']);
+    equal(p[3].label, 'Bond 4, Devoted: 4 of 10 days');
+    equal(p[2].label, 'Bond 3, Bonded: reached');
+    equal(await bh.$eval('[data-test=bh-ready]', n => n.hidden), true, 'nothing is ready yet');
+    equal(await bh.$eval('[data-test=bh-pills]', n => n.getAttribute('role')), null, 'the list is no longer one picture: each pill speaks for itself');
+  });
+
+  await check('a new snapshot grows the pill in place: the same page, the same pill, no jump, the greeting not cut', async () => {
+    await bh.click('[data-test=bh-greet-large]');
+    await bh.evaluate(() => { document.querySelector('[data-test=bh-bond]').__mine = true; document.querySelector('[data-test=bh-pill-4]').__mine = true; });
+    await setBonding({ bonding: { away: true, awaySince: 12, lastTick: 17, days: 27 } });
+    equal(await bh.evaluate(() => !!(document.querySelector('[data-test=bh-bond]').__mine && document.querySelector('[data-test=bh-pill-4]').__mine)), true, 'nothing was redrawn');
+    assert(await bh.$eval('[data-test=bh-portrait-large]', n => n.classList.contains('tsi-bh-hero2--greet')), 'the greeting is still playing');
+    equal(await bare(bh, '[data-test=bh-days]'), '27');
+    equal((await pillInfo())[3].width, '70%', 'the bar now says 7 of 10');
+    equal((await pillInfo())[3].label, 'Bond 4, Devoted: 7 of 10 days');
+    /* The width eases from 70% towards 80% rather than jumping: read it part-way through. */
+    await bh.waitForTimeout(1200);
+    await setBonding({ bonding: { away: true, awaySince: 12, lastTick: 18, days: 28 } });
+    const ratio = await bh.$eval('[data-test=bh-pill-4]', n => {
+      const f = n.querySelector('.tsi-bh-pill__fill').getBoundingClientRect().width, t = n.querySelector('.tsi-bh-pill__bar').getBoundingClientRect().width;
+      return f / t;
+    });
+    assert(ratio > 0.69 && ratio < 0.795, 'part-way from 70% to 80%, not already there: ' + ratio);
+    const css = await bh.$eval('[data-test=bh-pill-4] .tsi-bh-pill__fill', n => { const c = getComputedStyle(n); return { prop: c.transitionProperty, dur: c.transitionDuration }; });
+    assert(/width/.test(css.prop) && parseFloat(css.dur) > 0, 'a width transition: ' + JSON.stringify(css));
+    await bh.waitForTimeout(1200);
+    equal((await pillInfo())[3].width, '80%');
+  });
+
+  await check('a full pill says it is ready and waits for the DM, with a soft pulse; "reduce motion" stops the pulse and the growing', async () => {
+    await setBonding({ bonding: { away: true, awaySince: 12, lastTick: 22, days: 30 }, ready: 4 });
+    const p = await pillInfo();
+    equal(p.map(x => x.state), ['done', 'done', 'current', 'ready', 'todo']);
+    equal(p[3].fill, '100');
+    equal(p[3].label, 'Bond 4, Devoted: ready, waiting for a moment with your DM');
+    equal(await bare(bh, '[data-test=bh-ready]'), 'Ready: waiting for a moment with your DM');
+    equal(await bh.$eval('[data-test=bh-ready]', n => n.hidden), false);
+    const anim = () => bh.$eval('[data-test=bh-pill-4] .tsi-bh-pill__bar', n => getComputedStyle(n).animationName);
+    equal(await anim(), 'tsi-bh-ready-pulse', 'it pulses');
+    await bh.emulateMedia({ reducedMotion: 'reduce' });
+    equal(await anim(), 'none', 'no pulse with reduce motion');
+    equal(await bh.$eval('[data-test=bh-pill-3] .tsi-bh-pill__fill', n => getComputedStyle(n).transitionDuration), '0s', 'and the fill no longer grows slowly');
+    await bh.emulateMedia({ reducedMotion: 'no-preference' });
+  });
+
+  await check('once the DM confirms the level, the next pill starts empty; at Bond 5 all five are full and no pill is left to fill', async () => {
+    await setBonding({ bond: 4, ready: null, bonding: { away: true, awaySince: 12, lastTick: 23, days: 31 } });
+    const p = await pillInfo();
+    equal(p.map(x => [x.state, x.fill]), [['done', '100'], ['done', '100'], ['done', '100'], ['current', '100'], ['filling', '5']]);
+    equal(await bare(bh, '[data-test=bh-bond-line]'), 'Bond 4 \u00b7 Devoted');
+    equal(await bare(bh, '[data-test=bh-stage]'), 'Stage 4 of 5');
+    equal(await bh.$eval('[data-test=bh-ready]', n => n.hidden), true);
+    await setBonding({ bond: 5, ready: null, bonding: { away: true, awaySince: 12, lastTick: 40, days: 60 } });
+    equal((await pillInfo()).map(x => x.fill), ['100', '100', '100', '100', '100']);
+    equal(await bare(bh, '[data-test=bh-days]'), '60');
+  });
+
+  await check('a Bastion with no bonding block (an older snapshot) still draws the pills, and a damaged one never shows NaN', async () => {
+    await setBonding({ bond: 3, ready: null, bonding: { away: false, awaySince: null, lastTick: null, days: 20 } });
+    equal((await pillInfo()).map(x => x.fill), ['100', '100', '100', '0', '0']);
+    assert(!/NaN|undefined/.test(await bare(bh, '[data-test=bh-bond]')), 'no code words in the card');
+    await setBonding({ bonding: null });
+    equal(await bare(bh, '[data-test=bh-days]'), '20', 'a beast at Bond 3 still has the days that level means');
   });
 
   await check('nothing went wrong or reached for the internet', async () => {

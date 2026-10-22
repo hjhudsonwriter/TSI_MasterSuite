@@ -5,11 +5,14 @@
    picture comes from belongs to a "host" (tool.js on the DM's laptop, phone.js
    on a player's phone), so the same screens serve both.
 
-   Screens: Home (the buildings and who lives in them; a beast that has not
+   Screens: Home (the Beast Pen and who lives in it; a beast that has not
    passed acclimatisation is a line that says so) and, for a beast that has,
    three tabs along the bottom: Profile (read-only: the Bastion's own words),
-   Bond (the landing page: the picture, the rapport card and the bond pills) and
-   Chronicle (read-only). The first time a beast is opened on a device its first
+   Bond (the landing page: the picture, the rapport card with the Bonding Days
+   counter and the five bond pills, which FILL as the days pass) and
+   Chronicle (read-only). A new snapshot repaints the Bond page's numbers and pills
+   in place (a pill grows, it never jumps), and never redraws a page that is only
+   getting new numbers. The first time a beast is opened on a device its first
    meeting plays instead (intro.js): a reveal of what the Bastion has already
    rolled for it, then "Welcome to the Ironbow".
 
@@ -113,25 +116,68 @@
         return wrap;
       }
 
-      /* "Current rapport", the stage, and the five bond pills. */
-      function bondBar(bond) {
-        var b = M.bondPills(bond.level);
+      /* "Current rapport", the Bonding Days counter and the five bond pills. The pills fill as the days pass; a full one is
+         "Ready: waiting for a moment with your DM". paintBond() changes these numbers in place when a new snapshot arrives. */
+      function pillNode(p) {
+        return el('li', {
+          class: 'tsi-bh-pill', 'data-test': 'bh-pill-' + p.n, role: 'progressbar',
+          'aria-valuemin': '0', 'aria-valuemax': '100'
+        }, [
+          el('span', { class: 'tsi-bh-pill__bar', 'aria-hidden': 'true' }, el('span', { class: 'tsi-bh-pill__fill' })),
+          el('span', { class: 'tsi-bh-pill__label', 'aria-hidden': 'true', text: p.label })
+        ]);
+      }
+      function bondBar(d) {
         return el('section', { class: 'tsi-bh-rapport', 'data-test': 'bh-bond', 'aria-label': 'Bond' }, [
           el('div', { class: 'tsi-bh-rapport__top' }, [
             el('span', { class: 'tsi-bh-rapport__heart', 'aria-hidden': 'true', text: '♥' }),
             el('div', { class: 'tsi-bh-rapport__words' }, [
               el('div', { class: 'tsi-bh-rapport__label', text: 'Current rapport' }),
-              el('div', { class: 'tsi-bh-rapport__line', 'data-test': 'bh-bond-line', text: M.rapportLine(bond) })
+              el('div', { class: 'tsi-bh-rapport__line', 'data-test': 'bh-bond-line' })
             ]),
-            el('span', { class: 'tsi-bh-rapport__stage', 'data-test': 'bh-stage', text: b.stageText })
+            el('span', { class: 'tsi-bh-rapport__stage', 'data-test': 'bh-stage' })
           ]),
-          el('ol', { class: 'tsi-bh-pills', role: 'img', 'aria-label': 'Bond ' + bond.level + ' of 5: ' + bond.name }, b.pills.map(function (p) {
-            return el('li', { class: 'tsi-bh-pill tsi-bh-pill--' + p.state, 'data-test': 'bh-pill-' + p.n }, [
-              el('span', { class: 'tsi-bh-pill__bar', 'aria-hidden': 'true' }),
-              el('span', { class: 'tsi-bh-pill__label', 'aria-hidden': 'true', text: p.label })
-            ]);
-          }))
+          el('div', { class: 'tsi-bh-days', 'data-test': 'bh-days-tile' }, [
+            el('div', { class: 'tsi-bh-days__count' }, [
+              el('span', { class: 'tsi-bh-days__num', 'data-test': 'bh-days' }),
+              el('span', { class: 'tsi-bh-days__label', text: 'Bonding Days' })
+            ]),
+            el('p', { class: 'tsi-bh-days__line', 'data-test': 'bh-days-line', role: 'status' })
+          ]),
+          el('ol', { class: 'tsi-bh-pills', 'data-test': 'bh-pills' }, M.bondPills(1).pills.map(pillNode)),
+          el('p', { class: 'tsi-bh-ready', 'data-test': 'bh-ready', hidden: true })
         ]);
+      }
+      /* Put the beast's current numbers into the rapport card, in place: the pill's width changes (and so grows smoothly, as the
+         style sheet says), nothing is rebuilt. Safe to run again with the same snapshot. */
+      function paintBond(d) {
+        var root = shell.querySelector('[data-test=bh-bond]');
+        if (!root) return;
+        var b = M.bondPills(d.bond.level, d.bonding);
+        var set = function (test, text) { var n = root.querySelector('[data-test=' + test + ']'); if (n && n.textContent !== text) n.textContent = text; };
+        set('bh-bond-line', M.rapportLine(d.bond));
+        set('bh-stage', b.stageText);
+        var tile = M.bondingTile(d);
+        var tileNode = root.querySelector('[data-test=bh-days-tile]');
+        tileNode.hidden = !tile;
+        if (tile) { set('bh-days', String(tile.days)); set('bh-days-line', tile.line); }
+        var items = root.querySelectorAll('.tsi-bh-pill');
+        b.pills.forEach(function (p, i) {
+          var li = items[i];
+          if (!li) return;
+          var cls = 'tsi-bh-pill tsi-bh-pill--' + p.state;
+          if (li.className !== cls) li.className = cls;
+          li.setAttribute('aria-valuenow', String(p.fill));
+          li.setAttribute('aria-label', p.text);
+          li.setAttribute('data-fill', String(p.fill));
+          var fill = li.querySelector('.tsi-bh-pill__fill');
+          if (fill && fill.style.width !== p.fill + '%') fill.style.width = p.fill + '%';
+        });
+        var ready = root.querySelector('[data-test=bh-ready]');
+        ready.hidden = !b.ready;
+        if (b.ready) ready.textContent = b.readyText;
+        var kind = shell.querySelector('[data-test=bh-kind]');
+        if (kind) kind.textContent = d.species.name + ' · ' + M.placeText(d.place);
       }
 
       /* ---------- Home ---------- */
@@ -161,6 +207,7 @@
           (c.bond || c.mine) ? el('span', { class: 'tsi-bh-beast__chips' }, [
             waiting ? el('span', { class: 'tsi-bh-beast__bond tsi-bh-beast__bond--wait', 'data-test': 'bh-row-wait-' + c.id, text: M.NOT_YET })
               : c.bond ? el('span', { class: 'tsi-bh-beast__bond', 'data-test': 'bh-row-bond-' + c.id, text: 'Bond ' + c.bond.level + ' · ' + c.bond.name }) : null,
+            !waiting && c.place === 'away' ? el('span', { class: 'tsi-bh-beast__bond tsi-bh-beast__bond--away', 'data-test': 'bh-row-away-' + c.id, text: M.placeText('away') }) : null,
             c.mine ? el('span', { class: 'tsi-pill tsi-bh-beast__yours', text: 'Yours' }) : null
           ]) : null
         ];
@@ -175,8 +222,7 @@
       function facilityCard(f) {
         return el('section', { class: 'tsi-bh-card', 'data-test': 'bh-fac-' + f.id, 'aria-labelledby': 'tsi-bh-fac-h-' + f.id }, [
           el('header', { class: 'tsi-bh-card__head' }, [
-            el('h2', { class: 'tsi-bh-card__title', id: 'tsi-bh-fac-h-' + f.id, text: f.name }),
-            el('span', { class: 'tsi-pill', text: 'Level ' + f.level })
+            el('h2', { class: 'tsi-bh-card__title', id: 'tsi-bh-fac-h-' + f.id, text: f.name })
           ]),
           f.creatures.length
             ? el('ul', { class: 'tsi-bh-beasts' }, f.creatures.map(creatureRow))
@@ -223,8 +269,8 @@
           el('h1', { class: 'tsi-bh-name', 'data-test': 'bh-name', text: d.name }),
           el('p', { class: 'tsi-bh-handler', 'data-test': 'bh-handler', text: 'Handler: ' + d.handler.name }),
           hero(d),
-          bondBar(d.bond),
-          el('p', { class: 'tsi-bh-kind', text: d.species.name + ' · ' + d.facility.name + ', Level ' + d.facility.level }),
+          bondBar(d),
+          el('p', { class: 'tsi-bh-kind', 'data-test': 'bh-kind', text: d.species.name + ' · ' + M.placeText(d.place) }),
           nav(d)
         ];
       }
@@ -337,12 +383,34 @@
         ]);
       }
 
+      /* The Bond page as last drawn: which beast, and everything about it that is NOT a number that grows (its name, handler, kind,
+         picture). While only the numbers have changed, a new snapshot repaints them in place (paintBond): a pill grows, the counter
+         counts, a greeting or a scroll is never cut by a redraw. */
+      var bondShown = null;
+      function bondSig(d) { return JSON.stringify([d.id, d.name, d.handler.name, d.species.id, d.profile.regional, host.mode]); }
+      function tryInPlace() {
+        if (!bondShown || ui.screen !== 'creature' || ui.tab !== 'bond' || ui.fadeNext || ui.entering !== null || host.problem()) return false;
+        var d = detail();
+        if (!d || d.available !== true || bondShown.id !== d.id || bondShown.sig !== bondSig(d)) return false;
+        if (!shell.querySelector('[data-test=bh-bond]')) return false;
+        paintBond(d);
+        var bar = shell.querySelector('[data-test=bh-sync]');
+        if (bar) {
+          var dot = bar.querySelector('.tsi-bh-sync__dot');
+          if (dot) dot.className = 'tsi-bh-sync__dot' + (host.syncOk() ? ' tsi-bh-sync__dot--on' : '');
+          var words = bar.lastChild;
+          if (words && words.textContent !== host.syncLine()) words.textContent = host.syncLine();
+        }
+        return true;
+      }
+
       function render() {
         if (!life.alive) return;
         /* A roll that is playing out is never cut in half by a redraw (a new snapshot arriving, say): it draws itself in place,
            and the screen is redrawn from what is known as soon as it has finished. */
         if (meet && meet.busy()) { redrawLater = true; return; }
         redrawLater = false;
+        if (tryInPlace()) return;
         /* Keep the place the person was in. */
         var active = document.activeElement;
         var keep = null;
@@ -361,6 +429,15 @@
         shell.setAttribute('data-mode', host.mode);
         TSI.append(shell, meeting ? parts : parts.concat([host.extraFoot ? host.extraFoot() : null, syncBar()]));
         if (meetAfter) meetAfter();
+        /* The Bond page: put the numbers in (and remember what was drawn, so a later snapshot can repaint just the numbers). */
+        bondShown = null;
+        if (!problem && !meeting && ui.screen === 'creature' && ui.tab === 'bond') {
+          var shownDetail = detail();
+          if (shownDetail && shownDetail.available === true && shell.querySelector('[data-test=bh-bond]')) {
+            paintBond(shownDetail);
+            bondShown = { id: shownDetail.id, sig: bondSig(shownDetail) };
+          }
+        }
         /* A screen change fades in softly (never a flash when only a line changes; none under "reduce motion"). */
         if (ui.fadeNext) {
           ui.fadeNext = false;

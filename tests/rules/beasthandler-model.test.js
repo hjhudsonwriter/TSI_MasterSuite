@@ -59,16 +59,16 @@
 
   test('the Home screen says the right friendly thing when there is nothing to list', function (t) {
     t.ok(/hasn't been saved yet/.test(M.homeMessage(null)));
-    t.ok(/No beast buildings stand/.test(M.homeMessage({ facilities: [], handler: null })));
+    t.ok(/The Beast Pen isn't built at the Ironbow yet/.test(M.homeMessage({ facilities: [], handler: null })));
     t.ok(/no beasts yet.*DM has to house a beast first and then make you its handler/.test(M.homeMessage({ facilities: [{}], handler: { hasCreatures: false } })));
     t.ok(/Choose a handler/.test(M.homeMessage({ facilities: [{}], handler: null })));
     t.equal(M.homeMessage({ facilities: [{}], handler: { hasCreatures: true } }), '');
-    t.equal(M.emptyBuilding({ species: { name: 'Dire Wolf' } }), 'No dire wolf is housed here yet.');
+    t.equal(M.emptyBuilding({ name: 'Beast Pen' }), 'No beast is housed in the Beast Pen yet.');
     t.equal(M.NOT_YET, 'Not acclimatised yet', 'a beast that has not passed acclimatisation is a line that says so');
   });
 
   test('Chronicle categories have plain names, and an unknown one is capitalised, never dropped', function (t) {
-    t.same(['training', 'bond', 'handler', 'flight', 'note'].map(M.catLabel), ['Training', 'Bond', 'Handler', 'Flight', 'Note']);
+    t.same(['training', 'bond', 'handler', 'flight', 'travel', 'note'].map(M.catLabel), ['Training', 'Bond', 'Handler', 'Flight', 'Travel', 'Note'], 'an old beast\'s training and flight lines keep their names; the Pen\'s going out and coming back is Travel');
     t.equal(M.catLabel('memory'), 'Memory');
     t.equal(M.catLabel(''), 'Note');
   });
@@ -112,6 +112,38 @@
     t.equal(M.bondPills(-2).level, 0);
     t.same(M.bondPills(1).pills.map(function (p) { return p.label; }), ['Acclimatised', 'Trusting', 'Bonded', 'Devoted', 'Legendary']);
     t.equal(M.rapportLine({ level: 3, name: 'Bonded' }), 'Bond 3 \u00b7 Bonded');
+  });
+
+  test('the pills FILL (22 October 2026): reached ones are full, the next fills with its Bonding Days, a full one is ready for the DM, and each says its progress in words', function (t) {
+    var none = M.bondPills(3);
+    t.same(none.pills.map(function (p) { return p.fill; }), [100, 100, 100, 0, 0], 'without a bonding block: reached or not');
+    var b = { days: 27, pill: { n: 4, days: 7, need: 10, fraction: 0.7, full: false }, ready: null };
+    var x = M.bondPills(3, b);
+    t.same(x.pills.map(function (p) { return [p.state, p.fill]; }), [['done', 100], ['done', 100], ['current', 100], ['filling', 70], ['todo', 0]]);
+    t.equal(x.pills[3].text, 'Bond 4, Devoted: 7 of 10 days');
+    t.equal(x.pills[2].text, 'Bond 3, Bonded: reached');
+    t.equal(x.pills[4].text, 'Bond 5, Legendary Partnership: not yet');
+    t.same([x.ready, x.readyText], [null, '']);
+    var empty = M.bondPills(1, { days: 0, pill: { n: 2, days: 0, need: 10, fraction: 0, full: false }, ready: null });
+    t.same(empty.pills.map(function (p) { return p.state; }), ['current', 'todo', 'todo', 'todo', 'todo'], 'nothing earned yet: not "filling"');
+    var full = M.bondPills(2, { days: 20, pill: { n: 3, days: 10, need: 10, fraction: 1, full: true }, ready: 3 });
+    t.same(full.pills.map(function (p) { return [p.state, p.fill]; }), [['done', 100], ['current', 100], ['ready', 100], ['todo', 0], ['todo', 0]]);
+    t.equal(full.pills[2].text, 'Bond 3, Bonded: ready, waiting for a moment with your DM');
+    t.same([full.ready, full.readyText], [3, 'Ready: waiting for a moment with your DM']);
+    t.same(M.bondPills(5, null).pills.map(function (p) { return p.fill; }), [100, 100, 100, 100, 100], 'Bond 5: all five are full');
+    t.same(M.bondPills(2, { days: 14, pill: { n: 3, days: 4, need: 10, fraction: 'x' }, ready: null }).pills[2].fill, 0, 'a damaged fraction is no fill, never NaN');
+    t.same(M.bondPills(2, { days: 14, pill: { n: 3, days: 40, need: 10, fraction: 9, full: false }, ready: null }).pills[2].fill, 100, 'and never over 100');
+  });
+
+  test('the Bonding Days tile and its one line, at the Pen and on the road; the places are named as the Bastion names them', function (t) {
+    var d = { handler: { name: 'Mira' }, bonding: { away: true, awaySince: 31, awaySinceLabel: 'Day 31', days: 12, pill: null, ready: null } };
+    t.same(M.bondingTile(d), { days: 12, line: 'On the road with Mira since Day 31' });
+    d.bonding = { away: false, awaySince: null, awaySinceLabel: '', days: 12, pill: null, ready: null };
+    t.same(M.bondingTile(d), { days: 12, line: 'Resting at the Beast Pen: bonding is paused' }, 'the counter keeps showing the total');
+    t.equal(M.bondingTile({ handler: { name: 'Mira' } }), null, 'a beast with no bonding block has no tile');
+    t.equal(M.bondingTile({ handler: { name: '' }, bonding: { away: true, awaySinceLabel: '', days: 'x' } }).line, 'On the road with its handler');
+    t.equal(M.bondingTile({ handler: { name: '' }, bonding: { away: true, awaySinceLabel: '', days: 'x' } }).days, 0);
+    t.same([M.placeText('pen'), M.placeText('away'), M.placeText(undefined)], ['At the Beast Pen', 'Away from the Ironbow', 'At the Beast Pen']);
   });
 
   test('a name takes its apostrophe the usual way, and the kind of beast is lower case', function (t) {
