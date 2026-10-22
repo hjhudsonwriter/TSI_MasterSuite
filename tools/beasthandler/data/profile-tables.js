@@ -5,8 +5,13 @@
    player confirms it) and one cosmetic Regional Variety:
    - Dominant Temperament: one d12 table, the same for every kind of beast.
    - Attachment Cue and Instinctive Trigger: one d8 table each for the
-     Wyvern, the Griffin and the Dire Wolf.
-   - Regional Variety: five for each kind, picked or typed (nothing rolls it).
+     Wyvern, the Griffin, the Dire Wolf, the Buckbear and the Fellcat. The
+     Buckbear and Fellcat d8 tables are DRAFT (22 October 2026): Harry had
+     not written them yet, so they are marked `draft: true` for him to
+     approve or replace.
+   - Regional Variety: five for each kind (six for the Dire Wolf, which has
+     Blacktide as well), picked or typed. The first meeting rolls it for the
+     Bastion, which fixes the answer for each kind (data/initiation-data.js).
    Rules Harry set: none of this changes a stat, an attack, a resistance,
    training speed or bond progress; a bond of 0 can have a temperament; a
    description never overrides something the DM has established.
@@ -151,7 +156,85 @@ window.TSI_DATA.beastProfile = {
         { id: 'icepelt', name: 'Icepelt', area: 'North Isle', where: 'Bleaker\'s Bay, Bleakharbour and the northern coastal uplands', appearance: 'Huge and thickset, with dense white-grey fur, a dark slate ridge down the spine, black lower legs, exceptionally thick shoulder fur and pale blue or amber eyes.' },
         { id: 'slatejaw', name: 'Slatejaw', area: 'Midland Province', where: 'Middlemount, rocky uplands and the foothills of the Fangs', appearance: 'Stocky, with dense granite-grey fur, a powerful neck, broad paws and a dark muzzle. Rust and earth-brown markings cover the shoulders and haunches.' },
         { id: 'reedshadow', name: 'Reedshadow', area: 'Midland Province', where: 'The River Rook and its surrounding riverbanks and low-lying ground', appearance: 'Lean and long-legged, with rich umber fur, dark olive-brown guard hairs, a pale underside, shorter fur around the legs and distinctive dark markings around the eyes.' },
-        { id: 'hollowhowl', name: 'Hollowhowl', area: 'Western Province', where: 'The Shadow Mountains, secluded passes and rocky mountain valleys', appearance: 'Dark smoke-brown fur, a long black mane around the neck and shoulders, silver-grey markings along the muzzle and brows, and mottled stone-coloured patches.' }
+        { id: 'hollowhowl', name: 'Hollowhowl', area: 'Western Province', where: 'The Shadow Mountains, secluded passes and rocky mountain valleys', appearance: 'Dark smoke-brown fur, a long black mane around the neck and shoulders, silver-grey markings along the muzzle and brows, and mottled stone-coloured patches.' },
+        { id: 'blacktide', name: 'Blacktide', area: 'The Black Straits (South) and Bolt Isle', where: 'Surf-cut rocks, wreck beaches, smugglers\' coves and pirate havens', appearance: 'Powerful wolf with tangled wet charcoal-black upper fur, pale grey-cream face, chest and legs, broad coastal paws, vivid sea-green eyes and a heavy dark tail.' }
+      ]
+    },
+
+    /* The Buckbear and the Fellcat joined the Beast Pen on 22 October 2026. The five
+       varieties of each are Harry's words. The two d8 tables of each are a DRAFT
+       written for him to approve or replace (draft: true). */
+    buckbear: {
+      draft: true,
+      attachment: {
+        dice: 8, draft: true,
+        entries: [
+          { roll: 1, label: 'Low, contented huff' },
+          { roll: 2, label: 'Lowers its antlers' },
+          { roll: 3, label: 'Leans its weight against handler' },
+          { roll: 4, label: 'Rubs its cheek on handler\'s arm' },
+          { roll: 5, label: 'Shields handler with its bulk' },
+          { roll: 6, label: 'Scrapes the ground softly' },
+          { roll: 7, label: 'Recognises handler\'s footsteps' },
+          { roll: 8, label: 'Settles down close beside handler' }
+        ]
+      },
+      trigger: {
+        dice: 8, draft: true,
+        entries: [
+          { roll: 1, label: 'Unexpected restraint' },
+          { roll: 2, label: 'Strangers near its food' },
+          { roll: 3, label: 'Sudden fire' },
+          { roll: 4, label: 'Blaring horns' },
+          { roll: 5, label: 'Hands on its antlers' },
+          { roll: 6, label: 'Crowded enclosure' },
+          { roll: 7, label: 'Rival buckbear scent' },
+          { roll: 8, label: 'Unsteady ground underfoot' }
+        ]
+      },
+      regional: [
+        { id: 'broadcrown', name: 'Broadcrown', area: 'Northern Province (Clan Blackstone)', where: 'The old-growth forests around Nightwood', appearance: 'The largest variety; a shaggy, dark-brown coat with tawny-gold tips, heaviest in a ruff around the neck and shoulders; tall, wide pale antlers with many upturned points, forming a crown; amber eyes and long, pale claws; usually found among moss, ferns and forest streams.' },
+        { id: 'shovelhorn', name: 'Shovelhorn', area: 'North Isle (Clan Karr)', where: 'The frozen country around Coldpass', appearance: 'Stocky and heavily built; a thick double coat from cream to smoke-grey; small, rounded ears; broad, flat antlers like a moose\'s, which it uses to scrape snow off food.' },
+        { id: 'cragbuck', name: 'Cragbuck', area: 'Midland Province (Clan Bacca)', where: 'The slopes of The Fangs', appearance: 'Lean and long-legged; a slate-grey coat with silver flecks; short antlers with few points, swept back close to the skull so they don\'t catch on rock; a sure-footed climber.' },
+        { id: 'fenwallow', name: 'Fenwallow', area: 'Eastern Province (Clan Slade)', where: 'The marshes and waterways', appearance: 'Low and heavy; an oily, dark-brown coat that sheds water and is usually caked in mud; wide, splayed paws for bog ground; short, forward-curving antlers often hung with reeds; a strong swimmer.' },
+        { id: 'saltcoat', name: 'Saltcoat', area: 'East Isle (Clan Rowthorn)', where: 'The coast and forest edges', appearance: 'The smallest variety; a russet-red coat bleached paler at the tips by salt and sun; narrow antlers with a slight forward hook; forages rock pools and the tideline for shellfish and fish.' }
+      ]
+    },
+
+    fellcat: {
+      draft: true,
+      attachment: {
+        dice: 8, draft: true,
+        entries: [
+          { roll: 1, label: 'Slow, trusting blink' },
+          { roll: 2, label: 'Low, rumbling purr' },
+          { roll: 3, label: 'Head-butts handler\'s hand' },
+          { roll: 4, label: 'Leaves a small catch nearby' },
+          { roll: 5, label: 'Grooms close to handler' },
+          { roll: 6, label: 'Curls its tail around handler' },
+          { roll: 7, label: 'Keeps watch from a high ledge' },
+          { roll: 8, label: 'Appears silently at handler\'s side' }
+        ]
+      },
+      trigger: {
+        dice: 8, draft: true,
+        entries: [
+          { roll: 1, label: 'Being grabbed from behind' },
+          { roll: 2, label: 'Sudden bright light' },
+          { roll: 3, label: 'Loud metallic clanging' },
+          { roll: 4, label: 'Rival fellcat scent' },
+          { roll: 5, label: 'Being cornered' },
+          { roll: 6, label: 'Soaking wet fur' },
+          { roll: 7, label: 'Strangers reaching for its ears' },
+          { roll: 8, label: 'Crowds and shouting' }
+        ]
+      },
+      regional: [
+        { id: 'mistveil', name: 'Mistveil', area: 'North Isle (Clan Karr)', where: 'The coast and fog banks of Bleaker\'s Bay', appearance: 'A thick silver coat with faint smoke-grey rosettes; tufted ears and oversized paws; pale grey-green eyes; fur that holds a damp sheen from the sea air. Camouflage: sea mist.' },
+        { id: 'whiteout', name: 'Whiteout', area: 'Icepoint', where: 'Icepoint', appearance: 'The palest and heaviest variety; an almost pure white coat with barely visible markings; the deepest fur, with fur-covered paw pads; a long, thick tail it wraps over its face when resting; ice-blue eyes. Camouflage: snow.' },
+        { id: 'lichenback', name: 'Lichenback', area: 'The northern highlands', where: 'The northern highlands', appearance: 'Leaner, built for rock rather than snow; a grey coat mottled grey-green like lichen, turning frost-white in winter; the longest ear tufts and a shorter tail; hard, scarred paw pads. Camouflage: frost-covered stone.' },
+        { id: 'tawnyfell', name: 'Tawnyfell', area: 'Midland Province (Clan Bacca)', where: 'The scree and lower slopes of The Fangs', appearance: 'A shorter coat, smoke-brown to tawny-grey; longer legs; hunts at dusk below the snowline. Camouflage: scree and twilight.' },
+        { id: 'smokecoat', name: 'Smokecoat', area: 'Western Province (Clan Farmer)', where: 'The high gorges of the Shadow Mountains', appearance: 'The smallest and rarest variety; a charcoal-grey coat with near-black rosettes; hunts at night. Camouflage: darkness and shadowed rock.' }
       ]
     }
   }

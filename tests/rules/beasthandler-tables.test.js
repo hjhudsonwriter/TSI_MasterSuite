@@ -4,7 +4,8 @@
 (function () {
   var T = window.TSI_DATA;
   var B = T.beastProfile;
-  var KINDS = ['wyvern', 'griffin', 'dire_wolf'];
+  var KINDS = ['wyvern', 'griffin', 'dire_wolf', 'buckbear', 'fellcat'];
+  var VARIETIES = { wyvern: 5, griffin: 5, dire_wolf: 6, buckbear: 5, fellcat: 5 };
 
   group('Beast Handler: Harry\'s profile tables (21 October 2026)');
 
@@ -18,7 +19,7 @@
     t.equal(B.dominant.entries[11].note, 'Shows strong attachment to familiar individuals');
   });
 
-  test('the Wyvern, Griffin and Dire Wolf each have a d8 Attachment Cue table, a d8 Instinctive Trigger table and five Regional Varieties', function (t) {
+  test('every kind has a d8 Attachment Cue table, a d8 Instinctive Trigger table and its Regional Varieties (five each, six for the Dire Wolf)', function (t) {
     t.same(Object.keys(B.species), KINDS);
     KINDS.forEach(function (k) {
       ['attachment', 'trigger'].forEach(function (which) {
@@ -27,8 +28,17 @@
         t.same(tab.entries.map(function (e) { return e.roll; }), [1, 2, 3, 4, 5, 6, 7, 8], k + ' ' + which + ' rolls');
         t.ok(tab.entries.every(function (e) { return typeof e.label === 'string' && e.label.length > 2; }), k + ' ' + which + ' labels');
       });
-      t.equal(B.species[k].regional.length, 5, k + ' varieties');
+      t.equal(B.species[k].regional.length, VARIETIES[k], k + ' varieties');
     });
+  });
+
+  test('the Buckbear and Fellcat d8 tables are a DRAFT, marked so, until Harry approves or replaces them', function (t) {
+    ['buckbear', 'fellcat'].forEach(function (k) {
+      t.equal(B.species[k].draft, true, k + ' kind is marked draft');
+      t.equal(B.species[k].attachment.draft, true, k + ' attachment');
+      t.equal(B.species[k].trigger.draft, true, k + ' trigger');
+    });
+    ['wyvern', 'griffin', 'dire_wolf'].forEach(function (k) { t.ok(!B.species[k].draft && !B.species[k].attachment.draft && !B.species[k].trigger.draft, k + ' is Harry\'s own and not draft'); });
   });
 
   test('Harry\'s exact words, a spread of them, spelt as he wrote them', function (t) {
@@ -46,11 +56,13 @@
     t.equal(S.dire_wolf.trigger.entries[6].label, 'Thunderstorms');
   });
 
-  test('the fifteen Regional Varieties, by kind, with their areas', function (t) {
+  test('the twenty-one Regional Varieties, by kind, with their areas', function (t) {
     function names(k) { return B.species[k].regional.map(function (r) { return r.name; }); }
     t.same(names('wyvern'), ['Widowspine', 'Bleakhook', 'Ironcrown', 'Bloodcrest', 'Shadowmount']);
     t.same(names('griffin'), ['Dawnmantle', 'Thunderwing', 'Silvershroud', 'Galeclaw', 'Embermantle']);
-    t.same(names('dire_wolf'), ['Nightfang', 'Icepelt', 'Slatejaw', 'Reedshadow', 'Hollowhowl']);
+    t.same(names('dire_wolf'), ['Nightfang', 'Icepelt', 'Slatejaw', 'Reedshadow', 'Hollowhowl', 'Blacktide']);
+    t.same(names('buckbear'), ['Broadcrown', 'Shovelhorn', 'Cragbuck', 'Fenwallow', 'Saltcoat']);
+    t.same(names('fellcat'), ['Mistveil', 'Whiteout', 'Lichenback', 'Tawnyfell', 'Smokecoat']);
     function area(k, n) { return B.species[k].regional.filter(function (r) { return r.name === n; })[0]; }
     t.same([area('wyvern', 'Widowspine').area, area('wyvern', 'Widowspine').where], ['The Black Straits', 'Sea stacks, storm-lashed cliffs and narrow coastal passages']);
     t.equal(area('wyvern', 'Bleakhook').area, 'North Isle');
@@ -58,15 +70,26 @@
     t.equal(area('dire_wolf', 'Icepelt').where, 'Bleaker\'s Bay, Bleakharbour and the northern coastal uplands');
     t.equal(area('griffin', 'Silvershroud').where, 'The shores and mist-covered approaches of Eastlake, near Swyth');
     t.equal(area('griffin', 'Galeclaw').area, 'Northern Province');
+    /* 22 October 2026: Harry's own words for the sixth wolf and the new kinds. */
+    t.same([area('dire_wolf', 'Blacktide').area, area('dire_wolf', 'Blacktide').where], ['The Black Straits (South) and Bolt Isle', 'Surf-cut rocks, wreck beaches, smugglers\' coves and pirate havens']);
+    t.equal(area('dire_wolf', 'Blacktide').appearance, 'Powerful wolf with tangled wet charcoal-black upper fur, pale grey-cream face, chest and legs, broad coastal paws, vivid sea-green eyes and a heavy dark tail.');
+    t.equal(area('buckbear', 'Broadcrown').where, 'The old-growth forests around Nightwood');
+    t.equal(area('buckbear', 'Shovelhorn').area, 'North Isle (Clan Karr)');
+    t.equal(area('buckbear', 'Fenwallow').area, 'Eastern Province (Clan Slade)');
+    t.equal(area('buckbear', 'Saltcoat').area, 'East Isle (Clan Rowthorn)');
+    t.equal(area('fellcat', 'Whiteout').area, 'Icepoint');
+    t.equal(area('fellcat', 'Tawnyfell').where, 'The scree and lower slopes of The Fangs');
+    t.equal(area('fellcat', 'Smokecoat').area, 'Western Province (Clan Farmer)');
+    t.ok(/Camouflage: sea mist\.$/.test(area('fellcat', 'Mistveil').appearance), 'a Fellcat\'s camouflage is kept');
     t.equal(area('griffin', 'Embermantle').where, 'Redport and the western coastal cliffs');
     t.ok(/^Near-black, wet-slate scales; long ivory-white spines;/.test(area('wyvern', 'Widowspine').appearance));
     t.ok(/Older animals develop a distinctive grey mantle\.$/.test(area('dire_wolf', 'Nightfang').appearance));
-    t.ok(B.species.wyvern.regional.concat(B.species.griffin.regional, B.species.dire_wolf.regional).every(function (r) {
+    t.ok(KINDS.reduce(function (all, k) { return all.concat(B.species[k].regional); }, []).every(function (r) {
       return r.id && r.name && r.area && r.where && r.appearance && /^[a-z]+$/.test(r.id) && r.id === r.name.toLowerCase();
     }), 'every variety is complete, with a plain id');
   });
 
-  test('"Tidecliff Wyvern" was only Harry\'s worked example: it is not one of the fifteen varieties', function (t) {
+  test('"Tidecliff Wyvern" was only Harry\'s worked example: it is not one of the varieties', function (t) {
     var all = [];
     KINDS.forEach(function (k) { B.species[k].regional.forEach(function (r) { all.push(r.name.toLowerCase()); }); });
     t.equal(all.indexOf('tidecliff'), -1);
@@ -86,9 +109,19 @@
     t.equal(B.textMax, 120);
   });
 
-  test('the kinds in the tables are the Bastion\'s own kinds', function (t) {
+  test('every kind the Bastion houses has its tables (the Buckbear and Fellcat join the Bastion with the Beast Pen)', function (t) {
     var sp = T.bastionCreatures.species;
-    t.same(Object.keys(sp), KINDS);
+    Object.keys(sp).forEach(function (k) { t.ok(KINDS.indexOf(k) !== -1, k + ' has profile tables'); });
+  });
+
+  test('the first meeting\'s fixed answers name a variety that exists for each kind (Harry, 22 October 2026)', function (t) {
+    var I = T.beastInitiation;
+    t.equal(I.regional.mode, 'fixed');
+    t.same(I.regional.fixed, { wyvern: 'bloodcrest', griffin: 'dawnmantle', dire_wolf: 'blacktide', buckbear: 'broadcrown', fellcat: 'lichenback' });
+    KINDS.forEach(function (k) {
+      t.ok(B.species[k].regional.some(function (r) { return r.id === I.regional.fixed[k]; }), k + ' fixed variety is one of its varieties');
+    });
+    t.equal(I.personality.mode, 'random');
   });
 
   test('players may ask only for free training; the harness (150 gp), housing and milestones stay with the DM', function (t) {

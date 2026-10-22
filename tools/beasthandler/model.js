@@ -38,7 +38,7 @@
      allowed ("The Widowspine Wyvern", "Dire Wolf Nightfang"); and a name that mentions exactly one of the species' varieties
      means that one ("Slatejaw of the northern hills"). Anything else has no picture. */
   function looseKey(text) { return String(text || '').toLowerCase().replace(/[^a-z]/g, ''); }
-  var SPECIES_WORDS = ['direwolf', 'wolf', 'wyvern', 'griffin'];
+  var SPECIES_WORDS = ['direwolf', 'wolf', 'wyvern', 'griffin', 'buckbear', 'fellcat'];
   M.regionalInfo = function (tables, speciesId, name) {
     var sp = tables && isObj(tables.species) ? tables.species[speciesId] : null;
     var list = sp && Array.isArray(sp.regional) ? sp.regional : [];
