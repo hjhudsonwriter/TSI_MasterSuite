@@ -1207,12 +1207,12 @@
   R.isUi = function (v) { return isObj(v); };
   /* What the screen remembers (tsi.bastion.ui), since the new screen
      (Build 2, 8 October 2026): gridOpen, whether the facility grid is open
-     (open at first), and warNoticed, the war pop-ups already seen. Anything
-     else (the old panels' open or closed state) is dropped. */
+     (open at first) and whSort, the Warehouse's Sort. Anything else (the old
+     panels' open or closed state, and the war pop-ups already seen, which
+     went with the war game on 22 October 2026) is dropped. */
   R.cleanUi = function (v) {
     var src = isObj(v) ? v : {};
     var out = { gridOpen: src.gridOpen !== false };
-    if (isObj(src.warNoticed)) out.warNoticed = src.warNoticed;
     if (src.whSort === 'grouped') out.whSort = 'grouped';
     return out;
   };

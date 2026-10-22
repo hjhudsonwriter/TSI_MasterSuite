@@ -2008,11 +2008,11 @@
   });
 
   /* What the screen remembers (tsi.bastion.ui) since the new screen (Build 2). */
-  test('the screen remembers only whether the grid is open and the war pop-ups seen; the old panels\' settings go', function (t) {
+  test('the screen remembers only whether the grid is open (and the Warehouse\'s Sort); the old panels\' settings and the war pop-ups seen go', function (t) {
     t.same(R.cleanUi(null), { gridOpen: true });
     t.same(R.cleanUi({}), { gridOpen: true });
     t.same(R.cleanUi({ collapsed: { war: true, diplomacy: true } }), { gridOpen: true }, 'the old panels\' open-or-closed settings');
-    t.same(R.cleanUi({ gridOpen: false, warNoticed: { 'ma-1': true }, junk: 3 }), { gridOpen: false, warNoticed: { 'ma-1': true } });
+    t.same(R.cleanUi({ gridOpen: false, warNoticed: { 'ma-1': true }, junk: 3 }), { gridOpen: false }, 'the war pop-ups seen went with the war (22 October 2026)');
     t.same(R.cleanUi({ gridOpen: 'no', warNoticed: [1] }), { gridOpen: true }, 'nonsense is ignored');
   });
 
