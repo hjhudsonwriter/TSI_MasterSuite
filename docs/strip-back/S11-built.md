@@ -51,3 +51,16 @@ Other lanes delete the war game and five facilities (wt-a), change the Hall and 
 - **The heavy fixture**: regenerate with `node tests/fixtures/make-heavy.js` after merging (all lanes touch it); `tests/rules/strip-back.test.js` (the order count 27 becomes 23 here, registry list, the "so far" fixture test) and `tests/e2e/migration-v4.test.js` (`heavyQuiet()`, the box's lines) change in every lane.
 - `tools/bastion/tool.js`, `rules.js`, `bastion.css`, `shared/data/tools.js`, `tests/rules.html`, `guide.html`, `commerce-data.js` (the `pelagos_blessing` row is one line beside the two protections the Hall/Dock lane may remove), `facilities-data.js` (the Temple block is at the end of the array), `bastion-data.js` (`facilityImages`, `mapLabels`, `map.overlays`, `stripBack`).
 - `strip-back-rules.js`: `shrinesToTemple` sits after `rehomeBeasts`, above `sweepFacilities`; keep it above the catch-all.
+
+## Results (all run one at a time, from a double-clicked `index.html` or the test page, internet off, in this worktree)
+
+- Rules page (`node tests/run-rules.js`): 1434 of 1434 passing.
+- New: `temple` 18/18, `shrines` (rewritten) 8/8. Rewritten or edited: `shrines-explorer` 11/11, `commerce` 27/27, `bastion-screen` 54/54, `phase9` 123/123, `migration-v4` 33/33, `courier` 27/27 (text only).
+- Other gates: `bridge` 37/37, `dmdoc` 50/50, `phase8` 77/78 (the one failure is "Compared with the old Explorer", which needs `_legacy/`: known in a worktree), `bastion-days` 16/16, `beast-pen` 24/24, `guide` 21/21, `phase1` 129/129.
+- Wider regression: `charter-terms` 7/7, `session-safety` 6/6, `hall-records` 10/10, `war-room` 12/12, `creatures` 23/23, `parcels-more` 3/3, `fights` 15/15, `beasthandler` 15/15, `-bond` 12/12, `-sweep` 17/17, `-phone` 15/15, `-meet` 34/34, `war-table` 145/145, `phase2` 71/71.
+- Layout: `temple.test.js` checks the panel at 1707 x 930 (ratio 1.5) and 1920 x 1080 (ratio 1) (and the 1280 x 720 window while the window is "moved" between sizes): no sideways scroll, every god's Pray, Receive Blessing and bar in view, the three thirds side by side.
+- Not tested: a real Edge or Firefox window (only headless Chromium); moving a window between two physical screens (the sizes are switched in the page instead).
+
+## Where I stopped
+
+Nothing is left over: S11 is finished, committed and tested. Not started (other steps): the Hall and Dock (wt-hd), the Workshop (wt-workshop), the war removal (wt-a), the art and map step S19 (the Temple's overlays, labels and tile already work with the Shrine pictures), `docs/KNOWN_ISSUES.md` and `PROGRESS.md` (the draft is in `S11-known-issues-draft.md`).
