@@ -87,7 +87,9 @@
           el('div', { class: 'tsi-panel__body' }, [
             el('p', { text: 'Your Bastion is exactly as you left it: nothing has been saved over, and nothing has been set aside.' }),
             el('p', { text: copyFailed
-              ? 'The Bastion has changed, so a saved Bastion has to be converted to the new form. Before converting it, the Bastion keeps a copy of yours exactly as it was, and that copy could not be kept, so it stopped rather than risk the only one you have. Download your Bastion as a file below to be safe; making room (or Export, then clearing old saves) lets it convert next time.'
+              ? (TSI.store.mode === 'memory'
+                ? 'The Bastion has changed, so a saved Bastion has to be converted to the new form. This browser is not keeping the suite\'s saves between visits at all (they are held in memory and vanish when the page closes), so no copy of your Bastion can be kept, and it has not been converted. Download your Bastion as a file below: that file is the only copy that will last.'
+                : 'The Bastion has changed, so a saved Bastion has to be converted to the new form. Before converting it, the Bastion keeps a copy of yours exactly as it was, and that copy could not be kept, so it stopped rather than risk the only one you have. Download your Bastion as a file below to be safe; making room (or Export, then clearing old saves) lets it convert next time.')
               : 'The Bastion has changed, so a saved Bastion has to be converted to the new form. Before saving it, the Bastion checks that no gold, goods, Favour, orders or beasts are lost, and that check did not pass, so it stopped. Download your Bastion as a file below, and send it to whoever looks after the suite.' }),
             el('div', { class: 'tsi-shell-message__actions' }, [
               el('button', { type: 'button', class: 'tsi-btn tsi-btn--primary', 'data-test': 'convert-download', onclick: function () { TSI.download('tsi-bastion-as-it-was.json', JSON.stringify(raw, null, 2)); } }, 'Download my Bastion as a file'),

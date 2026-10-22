@@ -525,7 +525,8 @@
   /* The orders that are KEPT or MOVED are compared with what they were (J 4.3: what an order cost, the
      Favour and goods it holds and its due day all come across exactly). A kept order must be unchanged
      altogether; a moved one may change only its place and name (R.STRIP_BACK_MOVE_KEYS) and must be
-     listed as moved. Orders that share an id can't be told apart, so they are left to the counting. */
+     listed as moved. Orders that share an id can't be told apart one by one, so when none of them was
+     cancelled or moved the lot must come across exactly (the same orders, whatever their order). */
   var PAID_ORDER_FIELDS = [['costGP', 'gold cost'], ['favourCost', 'Favour cost'], ['inputs', 'goods held'], ['issuedDay', 'issue day'], ['dueDay', 'due day']];
   function without(o, keys) {
     var out = Object.assign({}, o);
@@ -539,6 +540,13 @@
     var bo = arr(before.pendingOrders) || [], ao = arr(after.pendingOrders) || [];
     bo.forEach(function (o) { var id = idOf(o); if (id) bc[id] = (bc[id] || 0) + 1; });
     ao.forEach(function (o) { var id = idOf(o); if (id) { ac[id] = (ac[id] || 0) + 1; if (!first[id]) first[id] = o; } });
+    var sharedBefore = {}, sharedAfter = {};
+    bo.forEach(function (o) { var id = idOf(o); if (id && (bc[id] > 1 || ac[id] > 1)) (sharedBefore[id] = sharedBefore[id] || []).push(canon(o)); });
+    ao.forEach(function (o) { var id = idOf(o); if (id && (bc[id] > 1 || ac[id] > 1)) (sharedAfter[id] = sharedAfter[id] || []).push(canon(o)); });
+    Object.keys(sharedBefore).forEach(function (id) {
+      if (gone[id] || movedIds[id]) return;
+      if (JSON.stringify((sharedBefore[id] || []).sort()) !== JSON.stringify((sharedAfter[id] || []).sort())) bad('Orders that share the id "' + id + '" would be changed.');
+    });
     bo.forEach(function (b) {
       var id = idOf(b);
       if (!id || gone[id] || bc[id] > 1 || ac[id] > 1 || !first[id]) return;

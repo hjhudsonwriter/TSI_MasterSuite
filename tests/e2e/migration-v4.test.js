@@ -93,31 +93,43 @@ const safetyBrowser = () => {
     }
     return realSet.call(this, k, v);
   };
-  const waitFor = (ready, then) => { const t = setInterval(() => { if (ready()) { clearInterval(t); then(); } }, 0); };
+  /* Run something the moment a given file of the suite has been loaded, before any later file or the tool itself starts
+     (no timer to lose a race on a busy machine). */
+  const afterScript = (pattern, then) => {
+    const append = Node.prototype.appendChild;
+    Node.prototype.appendChild = function (n) {
+      if (n && n.tagName === 'SCRIPT' && pattern.test(n.src || '')) n.addEventListener('load', then);
+      return append.call(this, n);
+    };
+  };
   if (env.failStart) {
-    waitFor(() => window.TSI && TSI.bastion && TSI.bastion.rules && TSI.bastion.rules.settlePlots, () => {
+    afterScript(/tools\/bastion\/strip-back-rules\.js$/, () => {
       TSI.bastion.rules.settlePlots = function () { throw new Error('A fault put in on purpose, once the copy was kept.'); };
     });
   }
   if (env.breakAudit) {
-    waitFor(() => window.TSI && TSI.bastion && TSI.bastion.rules && TSI.bastion.rules.stripBackSteps, () => {
+    afterScript(/tools\/bastion\/strip-back-rules\.js$/, () => {
       TSI.bastion.rules.stripBackSteps.splice(0, 0, { id: 'broken', detect: () => [], run: s => { s.treasuryGP = (parseInt(s.treasuryGP, 10) || 0) - 1; } });
     });
   }
-  if (env.noWar) {
-    const append = Node.prototype.appendChild;
-    Node.prototype.appendChild = function (n) {
-      if (n && n.tagName === 'SCRIPT' && /war-table\.js$/.test(n.src || '')) {
-        n.addEventListener('load', () => { if (window.TSI && TSI.bastion) delete TSI.bastion.warTable; });
-      }
-      return append.call(this, n);
-    };
-  }
+  if (env.noWar) afterScript(/war-table\.js$/, () => { if (window.TSI && TSI.bastion) delete TSI.bastion.warTable; });
 };
 /* A browser that keeps nothing at all (no built-in database and no plain storage): saves live in memory only. */
 const keepsNothing = () => {
   try { Object.defineProperty(window, 'indexedDB', { value: undefined, configurable: true }); } catch (e) { /* already gone */ }
   Object.defineProperty(window, 'localStorage', { configurable: true, get() { throw new DOMException('Storage is turned off.', 'SecurityError'); } });
+};
+/* Puts a Bastion into a memory-only browser's saves (the way Import or Restore would) once the Bastion's first file has loaded, before it opens. */
+const seedMemory = state => {
+  const append = Node.prototype.appendChild;
+  let done = false;
+  Node.prototype.appendChild = function (n) {
+    if (!done && n && n.tagName === 'SCRIPT' && /tools\/bastion\//.test(n.src || '')) {
+      done = true;
+      TSI.store.set('tsi.bastion.state', state);
+    }
+    return append.call(this, n);
+  };
 };
 const setEnv = (page, env) => page.evaluate(e => sessionStorage.setItem('tsiTestEnv', JSON.stringify(e)), env);
 /* Everything the suite has saved in plain storage, exactly as written (not the window heartbeat the suite keeps beside it). */
@@ -501,6 +513,38 @@ const writeLog = page => page.evaluate(() => window.__writes.slice());
       assert(/not keeping the suite's saves at all/.test(out.why), out.why);
       equal(out.copies, [], 'nothing claimed as kept');
       equal(out.v, 3, 'the Bastion in memory is untouched');
+    });
+    await context.close();
+  }
+  {
+    /* The Bastion itself, opened in such a browser with a Bastion from before the change in its memory. */
+    const context = await H.newContext(browser, 'laptop', { acceptDownloads: true });
+    await context.setOffline(true);
+    await context.addInitScript(keepsNothing);
+    await context.addInitScript(seedMemory, withGhost());
+    const page = await context.newPage();
+    await check('the Bastion does not convert: it says plainly that nothing is kept in this browser, that no copy exists, and that nothing has been changed', async () => {
+      await page.goto(BASTION);
+      await page.waitForSelector('[data-test=convert-unsafe]');
+      equal(await page.evaluate(() => TSI.store.mode), 'memory');
+      const text = await bare(page, '[data-test=convert-unsafe]');
+      assert(/The Bastion couldn't be converted safely\. Nothing has been changed\./.test(text), text);
+      assert(/not keeping the suite's saves between visits at all/.test(text), 'says what is wrong: ' + text);
+      assert(/no copy of your Bastion can be kept/.test(text), text);
+      assert(/that file is the only copy that will last/.test(text), text);
+      assert(!/making room/.test(text), 'no advice about making room, which would not help here: ' + text);
+      assert(/No copy of your Bastion exists, so nothing was converted and nothing was written\./.test(text), text);
+      equal(await page.$('[data-test=changes-box]'), null);
+      equal(await page.$('[data-test=day-status]'), null, 'the Bastion itself did not open');
+    });
+    await check('the Bastion in memory is exactly as it was (version 3), no copy and nothing set aside is claimed, and the download gives it back', async () => {
+      await page.waitForTimeout(600);
+      const out = await page.evaluate(() => ({ v: TSI.store.get('tsi.bastion.state').v, copies: TSI.store.keys('quarantine'), migration: !!TSI.store.get('tsi.bastion.state').migration }));
+      equal(out.v, 3);
+      equal(out.copies, []);
+      equal(out.migration, false, 'nothing marked converted');
+      const d = await H.download(page, '[data-test=convert-download]');
+      equal(JSON.stringify(JSON.parse(d.text)), JSON.stringify(withGhost()));
     });
     await context.close();
   }

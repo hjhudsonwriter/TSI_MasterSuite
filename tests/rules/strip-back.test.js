@@ -454,6 +454,20 @@
     caught(t, res, function (a) { a.pendingOrders[0].extra = 1; }, /does not say it moved/, 'a field added');
   });
 
+  test('two orders that share an id can\'t be told apart, but together they must come across exactly', function (t) {
+    var res = convert(v3(function (s) {
+      s.pendingOrders = [
+        { id: 'twin', facId: 'workshop', fnId: 'craft', label: 'Workshop: Craft (Dagger)', costGP: 25, favourCost: 5, issuedDay: 10, dueDay: 13, inputs: [held('raw_timber', 2)] },
+        { id: 'twin', facId: 'workshop', fnId: 'craft', label: 'Workshop: Craft (Dagger)', costGP: 25, favourCost: 5, issuedDay: 10, dueDay: 14, inputs: [held('raw_timber', 1)] }
+      ];
+    }));
+    t.same(res.problems, [], 'unchanged, they pass');
+    caught(t, res, function (a) { a.pendingOrders[1].inputs = []; }, /Orders that share the id "twin" would be changed/, 'one of them has its held goods zeroed');
+    caught(t, res, function (a) { a.pendingOrders[0].dueDay = 20; }, /share the id "twin"/, 'one has a new due day');
+    var swapped = audit(res, function (a) { a.pendingOrders.reverse(); });
+    t.same(swapped, [], 'only the order they are listed in changed: that is not a loss');
+  });
+
   /* The Bastion before and after a step MOVES the order 'k' to the Workshop's Smithing, as a later step will. */
   function movedPair(patch) {
     var before = keptRes().before;

@@ -75,9 +75,11 @@
     shrine_telluria: 'move', shrine_aurush: 'move', shrine_pelagos: 'move',
     wyvern_roost: 'move', griffin_tower: 'move', dire_wolf_den: 'move'
   };
-  /* The Shrines' orders that end (Harry's decision of 22 October 2026: the Craft
-     charms and the three charms and prayers for the Temple's blessings that are
-     dropped), as the Temple keeps three blessings for each god. */
+  /* The Shrines' orders that end: the proposed default in
+     docs/strip-back/F-temple-hall-dock.md, where the Temple keeps three blessings
+     for each god and drops the Craft charms, Purification Incense, Aquatic
+     Protection Charm and Bless Bastion Foundations. Change this list in the same
+     commit as the step that settles the Shrines, if that step decides otherwise. */
   var SHRINE_ORDERS_THAT_END = ['craft', 'prepare_purification_incense', 'prepare_aquatic_protection_charm', 'bless_bastion_foundations'];
   /* Will converting a version 3 Bastion CANCEL this pending order? (Not move it, not keep it.) */
   function cancelledByConversion(o) {
