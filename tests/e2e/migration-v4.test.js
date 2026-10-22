@@ -76,25 +76,27 @@ async function openBastion(page) {
 
 /* A browser set up the way the "copy first" tests need it: no built-in database, so the suite saves to the
    browser's plain storage (where a copy can really fail for lack of room), and a log of every write to it.
-   What goes wrong is chosen from the test, by putting JSON in sessionStorage under tsiTestEnv:
+   What goes wrong is chosen from the test with setEnv (below), which puts it in window.__tsiEnv for every page
+   opened afterwards (an init script, not sessionStorage: that was sometimes empty on the next page on a busy machine):
      quota       how many characters of plain storage the browser allows (a write past it fails, as a full browser does)
      failStart   the Bastion's start-up throws once the copy is kept (an error part-way through opening)
      noWar       the War Table is not part of the Bastion, so its leftover saves are set aside
-     breakAudit  a fault is put into the conversion, so the safety check fails */
+     breakAudit  a fault is put into the conversion, so the safety check fails
+   Everything looks at window.__tsiEnv when it happens, so it does not matter which init script ran first. */
 const safetyBrowser = () => {
   try { Object.defineProperty(window, 'indexedDB', { value: undefined, configurable: true }); } catch (e) { /* already gone */ }
-  let env = {};
-  try { env = JSON.parse(sessionStorage.getItem('tsiTestEnv') || '{}'); } catch (e) { env = {}; }
+  const env = () => window.__tsiEnv || {};
   window.__writes = [];
   const realSet = Storage.prototype.setItem;
   Storage.prototype.setItem = function (k, v) {
     if (this === window.localStorage) {
-      if (env.quota) {
+      const quota = env().quota;
+      if (quota) {
         let total = 0;
         for (let i = 0; i < this.length; i++) { const kk = this.key(i); total += kk.length + (this.getItem(kk) || '').length; }
         const old = this.getItem(k);
         total += String(k).length + String(v).length - (old === null ? 0 : String(k).length + old.length);
-        if (total > env.quota) throw new DOMException('The quota has been exceeded.', 'QuotaExceededError');
+        if (total > quota) throw new DOMException('The quota has been exceeded.', 'QuotaExceededError');
       }
       let ver = null;
       try { const r = JSON.parse(v); ver = r && r.value && typeof r.value === 'object' ? (r.value.v === undefined ? null : r.value.v) : null; } catch (e) { ver = null; }
@@ -111,17 +113,11 @@ const safetyBrowser = () => {
       return append.call(this, n);
     };
   };
-  if (env.failStart) {
-    afterScript(/tools\/bastion\/strip-back-rules\.js$/, () => {
-      TSI.bastion.rules.settlePlots = function () { throw new Error('A fault put in on purpose, once the copy was kept.'); };
-    });
-  }
-  if (env.breakAudit) {
-    afterScript(/tools\/bastion\/strip-back-rules\.js$/, () => {
-      TSI.bastion.rules.stripBackSteps.splice(0, 0, { id: 'broken', detect: () => [], run: s => { s.treasuryGP = (parseInt(s.treasuryGP, 10) || 0) - 1; } });
-    });
-  }
-  if (env.noWar) afterScript(/war-table\.js$/, () => { if (window.TSI && TSI.bastion) delete TSI.bastion.warTable; });
+  afterScript(/tools\/bastion\/strip-back-rules\.js$/, () => {
+    if (env().failStart) TSI.bastion.rules.settlePlots = function () { throw new Error('A fault put in on purpose, once the copy was kept.'); };
+    if (env().breakAudit) TSI.bastion.rules.stripBackSteps.splice(0, 0, { id: 'broken', detect: () => [], run: s => { s.treasuryGP = (parseInt(s.treasuryGP, 10) || 0) - 1; } });
+  });
+  afterScript(/war-table\.js$/, () => { if (env().noWar && window.TSI && TSI.bastion) delete TSI.bastion.warTable; });
 };
 /* A browser that keeps nothing at all (no built-in database and no plain storage): saves live in memory only. */
 const keepsNothing = () => {
@@ -140,7 +136,8 @@ const seedMemory = state => {
     return append.call(this, n);
   };
 };
-const setEnv = (page, env) => page.evaluate(e => sessionStorage.setItem('tsiTestEnv', JSON.stringify(e)), env);
+/* From the next page this window opens (the one it is on is left as it is). */
+const setEnv = (page, env) => page.context().addInitScript(e => { window.__tsiEnv = e; }, env);
 /* Everything the suite has saved in plain storage, exactly as written (not the window heartbeat the suite keeps beside it). */
 const plainStorage = page => page.evaluate(() => Object.keys(localStorage).filter(k => !/^tsi\.suite\./.test(k)).sort().map(k => [k, localStorage.getItem(k)]));
 const WAR_KEYS = ['warMap', 'warTable', 'warTerrain'];
