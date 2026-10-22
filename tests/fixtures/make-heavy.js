@@ -41,7 +41,7 @@ function load(rel) { vm.runInContext(fs.readFileSync(path.join(ROOT, rel), 'utf8
 ].forEach(rel => { if (fs.existsSync(path.join(ROOT, rel))) load(rel); });
 const R = win.TSI.bastion.rules;
 const T = win.TSI_DATA;
-const data = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier, creatures: T.bastionCreatures, warRoom: T.bastionWarRoom };
+const data = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier, creatures: T.bastionCreatures };
 const clone = v => JSON.parse(JSON.stringify(v));
 
 /* ---------- The save ---------- */

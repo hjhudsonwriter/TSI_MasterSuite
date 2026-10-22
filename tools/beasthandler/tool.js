@@ -57,7 +57,7 @@
       var P = BH.projection;
       var M = BH.model;
       var D = window.TSI_DATA;
-      var data = { bastion: D.bastion, facilities: D.bastionFacilities, tools: D.bastionTools, research: D.bastionResearch, goods: D.bastionGoods, commerce: D.bastionCommerce, courier: D.bastionCourier, creatures: D.bastionCreatures, warRoom: D.bastionWarRoom };
+      var data = { bastion: D.bastion, facilities: D.bastionFacilities, tools: D.bastionTools, research: D.bastionResearch, goods: D.bastionGoods, commerce: D.bastionCommerce, courier: D.bastionCourier, creatures: D.bastionCreatures };
 
       /* The old request queue is never read by anything now: clear it away (and a working note the old first meeting kept). */
       try { TSI.store.remove(OLD_QUEUE_KEY); } catch (e) { /* nothing to clear */ }
