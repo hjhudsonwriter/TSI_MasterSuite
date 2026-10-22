@@ -457,9 +457,254 @@
   }
   R.stripBackFmt = fmt;
 
+  /* The Beast Handler's old request record (step S13, 22 October 2026). The app no longer sends requests, so the Bastion
+     has nothing to answer: s.beast.done (a receipt for each request), .accept (the "take requests" switch) and .floor
+     (the time of the newest receipt forgotten) are dropped. Nothing else of s.beast moves (the campaign id and the
+     handlers' pairing codes stay). It says nothing in the report: it is bookkeeping no one reads. A version 4 save only
+     counts as "needs converting" for this if a receipt, a raised floor or a switched-off switch is still in it; the
+     empty shape older builds wrote is dropped quietly when the save loads (R.cleanBeast). */
+  function detectBeastRequests(s) {
+    var b = isObj(s.beast) ? s.beast : null;
+    var out = [];
+    if (!b) return out;
+    if (isObj(b.done) && Object.keys(b.done).length) out.push('Beast Handler requests');
+    else if (typeof b.floor === 'number' && b.floor > 0) out.push('a Beast Handler request limit');
+    else if (b.accept === false) out.push('a Beast Handler request switch');
+    return out;
+  }
+  function dropBeastRequests(s) {
+    if (!isObj(s.beast)) return;
+    delete s.beast.done;
+    delete s.beast.accept;
+    delete s.beast.floor;
+  }
+
+  /* Step S14 (Harry, 22 October 2026): the Wyvern Roost, Griffin Tower and Dire Wolf Den become ONE Beast Pen.
+     - Their slots become one beast_pen entry in the slot of the one that was built (else the one that would be ready
+       first); the others' slots are free. facilityLevels.beast_pen is 1 (it has one level); the old levels, repairs and
+       research entries go. Every retired id is recorded in archivedFacilities.
+     - Every housed creature's home is the Beast Pen. Nothing is released, nothing is credited and no dice are rolled:
+       a creature's development (bond, handler, Chronicle, training, harness, first flight, the profile) is left exactly
+       as it was. A beast at Bond 1 or more counts as acclimatised; one at Bond 0 must roll at the Pen.
+     - Creatures but no beast building standing (demolished earlier, the creatures stayed): the Pen is built FREE in the
+       first empty slot (a Pen costs time, never gold; this only makes them visible again). Only housed creatures do
+       this: a creature still waiting for a home needs nothing built.
+     - House orders (house_wyvern, house_griffin, house_dire_wolf and Elara's house_elara_wyvern) MOVE to the Pen's
+       house_beast, keeping id, due day, cost and the creature they house; the label is written again. If the Pen has no
+       room for that kind when it completes (it keeps one of each kind), the beast keeps waiting: the report says so.
+     - Training orders and Upgrade orders at the three buildings are cancelled, with everything they cost given back (the
+       150 gp Riding Harness is the only one that cost gold).
+     - Two or more of one kind housed: all stay; the report says which kind is over and that no more can be housed.
+     Pure: no storage, clock or dice. */
+  var PEN_ID = 'beast_pen';
+  var OLD_PENS = ['wyvern_roost', 'griffin_tower', 'dire_wolf_den'];
+  var HOUSE_FNS = { wyvern_roost: ['house_elara_wyvern', 'house_wyvern'], griffin_tower: ['house_griffin'], dire_wolf_den: ['house_dire_wolf'] };
+  function creaturesData(data) {
+    if (data && isObj(data.creatures)) return data.creatures;
+    var g = window.TSI_DATA && window.TSI_DATA.bastionCreatures;
+    return isObj(g) ? g : {};
+  }
+  function kindOf(data, id) { var sp = creaturesData(data).species; return isObj(sp) && isObj(sp[id]) ? sp[id] : null; }
+  function kindNoun(data, id) { var k = kindOf(data, id); return k && str(k.name) ? str(k.name).toLowerCase() : 'beast'; }
+  function kindNounPlural(data, id) { var k = kindOf(data, id); return k && str(k.plural) ? str(k.plural).toLowerCase() : kindNoun(data, id) + 's'; }
+  function perKind(data) { var p = creaturesData(data).pen; return isObj(p) && typeof p.perKind === 'number' && p.perKind >= 1 ? Math.floor(p.perKind) : 1; }
+  /* A creature's name as the panels say it (rules in creature-rules.js, which the Explorer does not load). */
+  function beastName(data, c) {
+    if (isObj(c) && str(c.name)) return str(c.name);
+    var uniq = creaturesData(data).unique;
+    var u = isObj(c) && isObj(uniq) ? uniq[c.id] : null;
+    if (u && str(u.name)) return str(u.name);
+    if (u && str(u.defaultName)) return str(u.defaultName);
+    var kind = kindOf(data, isObj(c) ? c.species : '');
+    return (kind && str(kind.name) ? str(kind.name) : 'Creature') + ' (granted ' + dayWord(isObj(c) ? c.grantedDay : null) + ')';
+  }
+  function dayWord(n) { return typeof n === 'number' && n >= 1 ? 'Day ' + n : 'before Day 1'; }
+  /* The name an order's label uses ("Swiftwing", or "granted Day 5" for one with no name). */
+  function orderBeastName(data, c, id) {
+    if (isObj(c)) return str(c.name) ? str(c.name) : 'granted ' + dayWord(c.grantedDay);
+    var uniq = creaturesData(data).unique;
+    var u = isObj(uniq) ? uniq[id] : null;
+    return u ? (str(u.name) || str(u.defaultName) || 'a story beast') : 'a beast';
+  }
+  function entryOf(x) {
+    if (typeof x === 'string' && x) return { facId: x, status: 'built' };
+    return isObj(x) && typeof x.facId === 'string' && x.facId ? x : null;
+  }
+  function isOldPenId(id) { return OLD_PENS.indexOf(id) !== -1; }
+  function isHouseOrder(o) {
+    return isObj(o) && isOldPenId(o.facId) && (HOUSE_FNS[o.facId].indexOf(o.fnId) !== -1) && !(isObj(o.meta) && (o.meta.kind === 'upgrade' || o.meta.kind === 'research'));
+  }
+  function detectBeastPen(s) {
+    var out = [];
+    ['builtExtras', 'builtPlots'].forEach(function (key) {
+      (arr(s[key]) || []).forEach(function (x) { var e = entryOf(x); if (e && isOldPenId(e.facId)) out.push('a place: ' + e.facId); });
+    });
+    ['facilityLevels', 'repairs', 'research'].forEach(function (key) {
+      if (isObj(s[key])) Object.keys(s[key]).forEach(function (id) { if (isOldPenId(id)) out.push('a ' + (key === 'repairs' ? 'repair' : key === 'research' ? 'research' : 'level') + ': ' + id); });
+    });
+    (arr(s.pendingOrders) || []).forEach(function (o) { if (isObj(o) && isOldPenId(o.facId)) out.push('an order: ' + o.facId); });
+    (arr(s.creatures) || []).forEach(function (c) {
+      if (isObj(c) && c.status === 'housed' && typeof c.home === 'string' && c.home !== PEN_ID) out.push('a beast at ' + (c.home || 'no home'));
+    });
+    return out;
+  }
+  function rehomeBeasts(s, data, report) {
+    var found = detectBeastPen(s);
+    if (!found.length) return;
+    var day = report.day;
+    var cancelledBefore = report.cancelled.length;
+    var seen = {};
+    var penEntry = null;          /* the slot that stands as the Pen: { list, index } */
+    var olds = [];                /* every old building found in a slot: { list, index, entry, plot } */
+    [['builtExtras', false], ['builtPlots', true]].forEach(function (pair) {
+      var list = arr(s[pair[0]]);
+      if (!list) return;
+      list.forEach(function (x, i) {
+        var e = entryOf(x);
+        if (!e) return;
+        if (e.facId === PEN_ID && !penEntry) penEntry = { list: list, index: i };
+        if (isOldPenId(e.facId)) olds.push({ list: list, index: i, entry: e, plot: pair[1] });
+      });
+    });
+    /* The slot that carries on as the Pen: one that is already the Pen, else the built old building, else the one ready first. */
+    var keep = null;
+    if (!penEntry && olds.length) {
+      keep = olds.slice().sort(function (a, b) {
+        var A = a.entry.status === 'building' ? 1 : 0, B2 = b.entry.status === 'building' ? 1 : 0;
+        if (A !== B2) return A - B2;
+        if (A === 1) return dayNum(a.entry.readyDay, 0) - dayNum(b.entry.readyDay, 0) || a.index - b.index;
+        return a.index - b.index;
+      })[0];
+    }
+    var standing = penEntry ? entryOf(penEntry.list[penEntry.index]) : null;
+    var names = [];
+    olds.forEach(function (o) {
+      var name = R.stripBackName(data, o.entry.facId);
+      var building = o.entry.status === 'building';
+      var rec = { facId: o.entry.facId, name: name, status: building ? 'building' : 'built', slot: o.index, day: day };
+      if (o.plot) rec.plot = true;
+      report.archived.push(rec);
+      if (names.indexOf(name) === -1) names.push(name);
+      if (keep && o === keep) {
+        var made = { facId: PEN_ID, status: building ? 'building' : 'built' };
+        if (building) { made.startDay = o.entry.startDay; made.readyDay = o.entry.readyDay; }
+        o.list[o.index] = made;
+        standing = made;
+      } else {
+        o.list[o.index] = '';
+      }
+      seen[o.entry.facId] = true;
+    });
+    /* A creature housed but no building standing: the Pen is built free in the first empty slot. */
+    var housed = (arr(s.creatures) || []).filter(function (c) { return isObj(c) && c.status === 'housed'; });
+    var builtFree = false;
+    if (!standing && housed.length) {
+      if (!arr(s.builtExtras)) s.builtExtras = [];
+      var at = -1;
+      for (var i = 0; i < s.builtExtras.length; i++) { if (!entryOf(s.builtExtras[i])) { at = i; break; } }
+      if (at === -1) at = s.builtExtras.length;
+      s.builtExtras[at] = { facId: PEN_ID, status: 'built' };
+      standing = s.builtExtras[at];
+      builtFree = true;
+    }
+    /* Levels, repairs, research: the old ids go; the Pen has one level. */
+    ['facilityLevels', 'repairs', 'research'].forEach(function (key) {
+      if (!isObj(s[key])) return;
+      OLD_PENS.forEach(function (id) { if (id in s[key]) { delete s[key][id]; seen[id] = true; (report.removed[key] = report.removed[key] || []).push(id); } });
+    });
+    if (standing) {
+      if (!isObj(s.facilityLevels)) s.facilityLevels = {};
+      s.facilityLevels[PEN_ID] = 1;
+    }
+    /* Creatures: every housed one lives at the Pen now. Only the home changes. */
+    housed.forEach(function (c) { c.home = PEN_ID; });
+    /* Pending orders. */
+    var orders = arr(s.pendingOrders) || [];
+    orders.slice().forEach(function (o) {
+      if (!isObj(o) || !isOldPenId(o.facId)) return;
+      seen[o.facId] = true;
+      var fnName = '';
+      var isUpgrade = isObj(o.meta) && o.meta.kind === 'upgrade';
+      if (isHouseOrder(o)) {
+        var id = isObj(o.chosen) && typeof o.chosen.creatureId === 'string' ? o.chosen.creatureId : '';
+        var c = id ? (arr(s.creatures) || []).filter(function (x) { return isObj(x) && x.id === id; })[0] : null;
+        var uniq = creaturesData(data).unique;
+        if (!id || (!c && !(isObj(uniq) && isObj(uniq[id])))) {
+          R.stripBackCancel(s, data, report, o, 'the beast it was for could not be found');
+          return;
+        }
+        var nm = orderBeastName(data, c, id);
+        R.stripBackMoveOrder(report, o, { facId: PEN_ID, fnId: 'house_beast', label: 'Beast Pen: House Beast Here (' + nm + ')', optionLabel: nm }, 'the Beast Pen');
+        return;
+      }
+      R.stripBackCancel(s, data, report, o, isUpgrade ? 'the Beast Pen has one level only, so there is nothing to upgrade' : 'training and riding are gone: beasts now bond day by day on the road');
+    });
+
+    /* ---------- The words ---------- */
+    var poolNames = ['wyvern', 'griffin', 'dire wolf', 'buckbear', 'fellcat'];
+    if (olds.length) {
+      var these = OLD_PENS.filter(function (id) { return olds.some(function (o) { return o.entry.facId === id; }); }).map(function (id) { return R.stripBackName(data, id); });
+      var keepsLine = 'It keeps one beast of each kind: ' + listText(poolNames.map(function (n) { return (/^[aeiou]/.test(n) ? 'an ' : 'a ') + n; })) + '.';
+      var state = standing && standing.status === 'building' ? ' It is still being built (ready on Day ' + dayNum(standing.readyDay, day) + ').' : '';
+      var freed = olds.length - (keep ? 1 : 0);
+      R.stripBackSay(report, 'joined', 'The ' + listText(these) + (these.length > 1 ? ' have become one Beast Pen. ' : ' has become the Beast Pen. ') + keepsLine + state + (freed > 0 ? (freed === 1 ? ' The other slot is free.' : ' The other slots are free.') : ''));
+    }
+    if (builtFree) {
+      R.stripBackSay(report, 'beasts', 'Your beasts had no building left standing, so the Beast Pen was built for you, free, in an empty slot (a Beast Pen costs time, never gold). They are all still there.');
+    }
+    var beasts = arr(s.creatures) || [];
+    if (beasts.length) {
+      var hasDev = function (c, key) { return isObj(c.development) && isObj(c.development[key]); };
+      R.stripBackSay(report, 'beasts', beasts.length === 1
+        ? 'Your beast is still here, with its name, handler, bond and Chronicle: ' + beastName(data, beasts[0]) + '.'
+        : 'All ' + beasts.length + ' of your beasts are still here, with their names, handlers, bonds and Chronicles: ' + listText(beasts.map(function (c) { return beastName(data, c); })) + '.');
+      var acclimatised = housed.filter(function (c) { return isObj(c.development) && isObj(c.development.bond) && clampInt(c.development.bond.level, 0, 5) >= 1; });
+      var toRoll = housed.filter(function (c) { return !(isObj(c.development) && isObj(c.development.bond) && clampInt(c.development.bond.level, 0, 5) >= 1); });
+      if (acclimatised.length || toRoll.length) {
+        R.stripBackSay(report, 'beasts', [
+          acclimatised.length ? 'A beast at Bond 1 or more counts as acclimatised: ' + listText(acclimatised.map(function (c) { return beastName(data, c); })) + '.' : '',
+          toRoll.length ? listText(toRoll.map(function (c) { return beastName(data, c); })) + (toRoll.length > 1 ? ' still need' : ' still needs') + ' the Acclimatise With Beast roll at the Beast Pen before ' + (toRoll.length > 1 ? 'they can' : 'it can') + ' bond.' : ''
+        ].filter(Boolean).join(' '));
+      }
+      beasts.forEach(function (c) {
+        var d = isObj(c.development) ? c.development : null;
+        if (d && isObj(d.bond) && typeof d.bond.ready === 'number' && d.bond.ready === clampInt(d.bond.level, 0, 5) + 1) {
+          R.stripBackSay(report, 'beasts', beastName(data, c) + '\'s Bond ' + d.bond.ready + ' milestone was waiting for your scene, and still is: confirm it in the Beast Pen.');
+        }
+      });
+      var learned = beasts.filter(function (c) { return isObj(c.development) && ((isObj(c.development.training) && Object.keys(c.development.training).length) || (isObj(c.development.harness) && c.development.harness.fitted === true) || (isObj(c.development.firstFlight) && c.development.firstFlight.approved === true)); });
+      if (learned.length || report.cancelled.length > cancelledBefore) {
+        R.stripBackSay(report, 'beasts', 'Training, riding harnesses and first flights are gone, so beasts now bond day by day on the road with their handlers.' +
+          (learned.length ? ' What ' + listText(learned.map(function (c) { return beastName(data, c); })) + ' had learned stays in ' + (learned.length > 1 ? 'their records' : 'its record') + ', out of sight.' : ''));
+      }
+      /* Over the one-of-each limit. */
+      var count = {};
+      housed.forEach(function (c) { count[c.species] = (count[c.species] || 0) + 1; });
+      Object.keys(count).forEach(function (k) {
+        if (count[k] > perKind(data)) {
+          R.stripBackSay(report, 'beasts', 'The Beast Pen keeps ' + (perKind(data) === 1 ? 'one ' + kindNoun(data, k) : plural(perKind(data), kindNoun(data, k), kindNounPlural(data, k))) + ', and ' + count[k] + ' ' + kindNounPlural(data, k) + ' live there. They all stay: nothing is sent away. No more ' + kindNounPlural(data, k) + ' can be housed.');
+        }
+      });
+      /* A moved House order that will not fit when it completes. */
+      report.moved.forEach(function (m) {
+        var o = orders.filter(function (x) { return isObj(x) && idOf(x) === m.id; })[0];
+        if (!o || o.fnId !== 'house_beast') return;
+        var cid = isObj(o.chosen) ? o.chosen.creatureId : '';
+        var c = beasts.filter(function (x) { return isObj(x) && x.id === cid; })[0];
+        var uniq = creaturesData(data).unique;
+        var species = c ? c.species : (isObj(uniq) && isObj(uniq[cid]) ? uniq[cid].species : '');
+        if (species && (count[species] || 0) >= perKind(data)) {
+          R.stripBackSay(report, 'beasts', 'The House order for ' + orderBeastName(data, c, cid) + ' carries on, but the Beast Pen already holds a ' + kindNoun(data, species) + ', so ' + orderBeastName(data, c, cid) + ' will keep waiting for a home when it completes.');
+        }
+      });
+    }
+  }
+
   /* The registry, in the order they run. Add a step ABOVE sweepFacilities. */
   R.stripBackSteps = [
     { id: 'dropEvents', detect: detectEvents, run: dropEvents },
+    { id: 'dropBeastRequests', detect: detectBeastRequests, run: dropBeastRequests },
+    { id: 'rehomeBeasts', detect: detectBeastPen, run: rehomeBeasts },
     { id: 'sweepFacilities', detect: detectGhosts, run: sweepFacilities },
     { id: 'finish', detect: null, run: finish }
   ];
@@ -633,6 +878,7 @@
     moved.forEach(function (m) {
       if (!isObj(m) || !m.id || !afterCounts[m.id]) bad('An order listed as moved is not in the converted Bastion.');
     });
+    /* Kept and moved orders against what they were: the same cost, Favour, goods and days (a moved one changes only its place and name). */
     auditKeptOrders(before, after, report, bad);
 
     /* I2: the Warehouse is what it was, plus the goods the cancelled orders held. */

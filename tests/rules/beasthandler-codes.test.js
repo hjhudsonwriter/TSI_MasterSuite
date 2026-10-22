@@ -33,7 +33,7 @@
   });
 
   test('a snapshot is signed: it opens with the right secret, and not with another or after any change', function (t) {
-    var snap = { kind: 'tsi.beasthandler.snapshot', version: 1, handler: { name: 'Mira' }, note: 'é🐉' };
+    var snap = { kind: 'tsi.beasthandler.snapshot', version: 2, handler: { name: 'Mira' }, note: 'é🐉' };
     var code = C.encodeSnapshot(snap, SECRET);
     t.equal(C.kind(code), 'snap');
     t.same(C.decodeSnapshot(code, SECRET), { ok: true, snapshot: snap });
@@ -45,29 +45,21 @@
     t.equal(C.decodeSnapshot('BHC1.abc.def', SECRET).ok, false, 'a request is not a snapshot');
   });
 
-  test('a request is signed too: the same command always signs the same, whatever order its fields are in', function (t) {
-    var a = { v: 1, id: 'cmd-0001-abcdef', handler: 'mira', type: 'order.request', payload: { fnId: 'wyr_safe_acclimatisation' }, at: 5 };
-    var b = { at: 5, payload: { fnId: 'wyr_safe_acclimatisation' }, type: 'order.request', handler: 'mira', id: 'cmd-0001-abcdef', v: 1 };
-    t.equal(C.encodeCommand(a, SECRET), C.encodeCommand(b, SECRET));
+  test('the same pairing always encodes the same, whatever order its fields are in; a code of the wrong kind, garbage or one far too long is not a code', function (t) {
+    t.equal(C.encodePairing({ campaign: 'C', handler: 'mira', name: 'Mira', secret: SECRET }), C.encodePairing({ secret: SECRET, name: 'Mira', handler: 'mira', campaign: 'C' }));
     t.equal(C.canonical({ b: 1, a: [2, { d: 1, c: 2 }] }), '{"a":[2,{"c":2,"d":1}],"b":1}');
-    var code = C.encodeCommand(a, SECRET);
-    var peek = C.peekCommand(code);
-    t.equal(peek.ok, true);
-    t.equal(C.canonical(peek.command), C.canonical(b));
-    t.equal(C.verifyCommand(peek, SECRET), true);
-    t.equal(C.verifyCommand(peek, 'another-secret-entirely-x'), false);
-    t.equal(C.verifyCommand(peek, ''), false);
+    t.equal(C.kind('BHX1.a'), '');
+    t.equal(C.kind('nonsense'), '');
+    t.equal(C.decodePairing(new Array(C.MAX_LENGTH + 10).join('a')).ok, false, 'far too long');
   });
 
-  test('a changed request fails its signature; a code of the wrong kind or garbage is not a request', function (t) {
-    var cmd = { v: 1, id: 'cmd-0002-abcdef', handler: 'mira', type: 'profile.set', payload: { dominant: 'Proud' }, at: 5 };
-    var bits = C.encodeCommand(cmd, SECRET).split('.');
-    var forged = bits[0] + '.' + H.b64uEncode(C.canonical(Object.assign({}, cmd, { handler: 'elara' }))) + '.' + bits[2];
-    t.equal(C.verifyCommand(C.peekCommand(forged), SECRET), false);
-    t.equal(C.peekCommand('BHS1.abc.def').ok, false);
-    t.equal(C.peekCommand('nonsense').ok, false);
-    t.equal(C.peekCommand('BHC1.' + H.b64uEncode('[1,2]') + '.00').ok, false);
-    t.equal(C.peekCommand(new Array(C.MAX_LENGTH + 10).join('a')).ok, false, 'far too long');
-    t.equal(C.kind('BHX1.a'), '');
+  test('the request code (BHC1) is gone: nothing travels from a phone to the Bastion, so no code of that kind is recognised or made', function (t) {
+    t.same(Object.keys(C.TAGS), ['pair', 'snap']);
+    t.equal(C.kind('BHC1.abc.def'), '');
+    t.equal(C.encodeCommand, undefined);
+    t.equal(C.peekCommand, undefined);
+    t.equal(C.verifyCommand, undefined);
+    t.equal(C.MAX_AGE_MS, undefined);
+    t.equal(C.decodeSnapshot('BHC1.abc.def', SECRET).ok, false);
   });
 }());

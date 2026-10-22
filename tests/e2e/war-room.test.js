@@ -273,7 +273,7 @@ async function grantWithAsk(ex, species, name, answer) {
 
   await check('Release… frees a griffin still waiting (it asks first); the Explorer says it was released', async () => {
     await H.dismissNotices(ba).catch(() => {});
-    await openTile(ba, 'griffin_tower');
+    await openTile(ba, 'beast_pen');
     const cid = (await bas(ba)).creatures[0].id;
     await ba.click('[data-test=creature-release-' + cid + ']');
     await ba.waitForTimeout(400);

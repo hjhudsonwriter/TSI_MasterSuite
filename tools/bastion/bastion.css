@@ -395,6 +395,19 @@
   text-align: center;
   color: var(--tsi-text);
 }
+.tsi-page--bastion .tsi-bas-tile__ready {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  background: var(--tsi-crimson, #8a1f2b);
+  border: 1px solid rgba(214, 178, 94, .9);
+  font: 700 10px/14px var(--tsi-font-display);
+  text-align: center;
+  color: var(--tsi-gold-text);
+}
 .tsi-page--bastion .tsi-bas-tile__over {
   position: absolute;
   top: 2px;
@@ -480,6 +493,9 @@
 .tsi-page--bastion .tsi-bas-facpanel__hero { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 16px; align-items: start; }
 .tsi-page--bastion .tsi-bas-facpanel__img { display: block; width: 220px; height: 220px; object-fit: cover; border-radius: 12px; border: 1px solid rgba(214, 178, 94, .6); box-shadow: 0 0 18px rgba(214, 178, 94, .2); }
 .tsi-page--bastion .tsi-bas-facpanel__hero--repair .tsi-bas-facpanel__img { filter: grayscale(.55) brightness(.7) sepia(.25); }
+/* A picture across the full width at the top of a facility's panel (the Beast Pen's, 22 October 2026); its level, status and orders sit beneath it. */
+.tsi-page--bastion .tsi-bas-facpanel__banner { display: block; width: 100%; height: clamp(150px, 26vh, 270px); object-fit: cover; object-position: center 40%; border-radius: 12px; border: 1px solid rgba(214, 178, 94, .6); box-shadow: 0 0 18px rgba(214, 178, 94, .2); }
+.tsi-page--bastion .tsi-bas-facpanel__hero--banner { grid-template-columns: minmax(0, 1fr); }
 .tsi-page--bastion .tsi-bas-facpanel__info { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .tsi-page--bastion .tsi-bas-facpanel__level { font: 700 13px var(--tsi-font-display); letter-spacing: var(--tsi-track-label); text-transform: uppercase; color: var(--tsi-gold-text); }
 .tsi-page--bastion .tsi-bas-facpanel__status { font-size: var(--tsi-fs-body-sm); color: var(--tsi-text-muted); }
@@ -1581,3 +1597,18 @@
 .tsi-page--bastion .tsi-bas-wyv__chronicle ul { margin: 4px 0; max-height: 11em; overflow: auto; }
 
 .tsi-page--bastion .tsi-bas-wyv__checks { margin: 0; padding-left: 1.2em; list-style: none; }
+
+/* The Beast Pen's beasts (22 October 2026): one stall for each kind, the bond pills that fill with Bonding Days, and the buttons. */
+.tsi-page--bastion .tsi-bas-stalls { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 12px; align-items: start; }
+.tsi-page--bastion .tsi-bas-stall { display: grid; gap: 6px; padding: 10px 12px; border: 1px solid var(--tsi-line-faint); border-radius: var(--tsi-radius-md); background: rgba(0, 0, 0, .16); min-width: 0; }
+.tsi-page--bastion .tsi-bas-stall--over { border-color: var(--tsi-warn); }
+.tsi-page--bastion .tsi-bas-stall__head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: var(--tsi-fs-body-sm); }
+.tsi-page--bastion .tsi-bas-stall__head b { font-family: var(--tsi-font-display); letter-spacing: var(--tsi-track-label); text-transform: uppercase; color: var(--tsi-gold-text); }
+.tsi-page--bastion .tsi-bas-wyv__buttons { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tsi-page--bastion .tsi-bas-pills { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; margin: 2px 0 0; padding: 0; list-style: none; }
+.tsi-page--bastion .tsi-bas-pill { position: relative; height: 9px; border-radius: 5px; border: 1px solid rgba(214, 178, 94, .55); background: rgba(0, 0, 0, .35); overflow: hidden; }
+.tsi-page--bastion .tsi-bas-pill__fill { position: absolute; inset: 0 auto 0 0; display: block; height: 100%; background: linear-gradient(90deg, #b8923f, #e8cf86); }
+.tsi-page--bastion .tsi-bas-pill--ready { box-shadow: 0 0 6px rgba(232, 207, 134, .7); }
+@media (prefers-reduced-motion: no-preference) {
+  .tsi-page--bastion .tsi-bas-pill__fill { transition: width calc(.9s * var(--tsi-signature-slowdown, 1)) ease-out; }
+}

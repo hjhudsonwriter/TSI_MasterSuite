@@ -1,5 +1,6 @@
 /* Scarlett Isles: Beast Handler — the words and shapes the screens draw (BH-1b,
-   tools/beasthandler/model.js). */
+   tools/beasthandler/model.js). Read-only since 22 October 2026: the request, queue and draft helpers are gone, and the
+   staged first meeting (the shuffle, the marker's path, the personality cards) is worked out here and tested here. */
 (function () {
   var M = TSI.beasthandler.model;
   var T = window.TSI_DATA;
@@ -58,25 +59,18 @@
 
   test('the Home screen says the right friendly thing when there is nothing to list', function (t) {
     t.ok(/hasn't been saved yet/.test(M.homeMessage(null)));
-    t.ok(/No beast buildings stand/.test(M.homeMessage({ facilities: [], handler: null })));
+    t.ok(/The Beast Pen isn't built at the Ironbow yet/.test(M.homeMessage({ facilities: [], handler: null })));
     t.ok(/no beasts yet.*DM has to house a beast first and then make you its handler/.test(M.homeMessage({ facilities: [{}], handler: { hasCreatures: false } })));
     t.ok(/Choose a handler/.test(M.homeMessage({ facilities: [{}], handler: null })));
     t.equal(M.homeMessage({ facilities: [{}], handler: { hasCreatures: true } }), '');
-    t.equal(M.emptyBuilding({ species: { name: 'Dire Wolf' } }), 'No dire wolf is housed here yet.');
+    t.equal(M.emptyBuilding({ name: 'Beast Pen' }), 'No beast is housed in the Beast Pen yet.');
+    t.equal(M.NOT_YET, 'Not acclimatised yet', 'a beast that has not passed acclimatisation is a line that says so');
   });
 
   test('Chronicle categories have plain names, and an unknown one is capitalised, never dropped', function (t) {
-    t.same(['training', 'bond', 'handler', 'flight', 'note'].map(M.catLabel), ['Training', 'Bond', 'Handler', 'Flight', 'Note']);
+    t.same(['training', 'bond', 'handler', 'flight', 'travel', 'note'].map(M.catLabel), ['Training', 'Bond', 'Handler', 'Flight', 'Travel', 'Note'], 'an old beast\'s training and flight lines keep their names; the Pen\'s going out and coming back is Travel');
     t.equal(M.catLabel('memory'), 'Memory');
     t.equal(M.catLabel(''), 'Note');
-  });
-
-  test('the check-before-you-send screen lists creature, building, order, days, ready day, cost and what happens', function (t) {
-    var d = { name: 'Stormwing', facility: { name: 'Wyvern Roost', level: 3 } };
-    var o = { label: 'Safe Acclimatisation', daysText: '5 days', readyLabel: 'Day 15', costText: 'Free', consequence: 'When it finishes, Bond 1 is ready.' };
-    t.same(M.confirmLines(d, o), [['Creature', 'Stormwing'], ['Building', 'Wyvern Roost, Level 3'], ['Order', 'Safe Acclimatisation'], ['Takes', '5 days'], ['Ready on', 'Day 15'], ['Cost', 'Free'], ['What happens', 'When it finishes, Bond 1 is ready.']]);
-    o.consequence = '';
-    t.equal(M.confirmLines(d, o).length, 6, 'no empty last line');
   });
 
   test('the connection line and the handler choices', function (t) {
@@ -85,42 +79,6 @@
     t.same(M.handlerChoices([{ id: 'Mira', name: 'Mira', count: 2 }, { id: 'elara', name: 'Elara', count: 1 }]), [
       { value: '', label: 'No handler (see the directory only)' }, { value: 'Mira', label: 'Mira (2 beasts)' }, { value: 'elara', label: 'Elara (1 beast)' }]);
     t.equal(M.handlerChoices().length, 1);
-  });
-
-  test('a beast\'s requests: those sent and not yet answered come first, then the Bastion\'s answers; nobody else\'s beast shows', function (t) {
-    var snap = { receipts: [
-      { id: 'r3', type: 'order.request', state: 'scheduled', label: 'Stormwing: Safe Acclimatisation', why: '', creature: 'c1', dueDay: 15 },
-      { id: 'r2', type: 'profile.set', state: 'saved', label: 'Stormwing (profile)', why: 'Saved.', creature: 'c1', dueDay: null },
-      { id: 'r1', type: 'order.request', state: 'refused', label: 'Ashwing: X', why: 'The Roost is busy.', creature: 'c2', dueDay: null }] };
-    var outbox = [{ id: 'w1', type: 'profile.set', creature: 'c1', fac: 'wyvern_roost', label: 'Stormwing (profile)', at: 5 }, { id: 'r3', type: 'order.request', creature: 'c1', fac: 'wyvern_roost', label: 'x', at: 4 }, { id: 'w2', type: 'profile.set', creature: 'c2', label: 'other', at: 9 }];
-    var rows = M.requestRows(snap, outbox, 'c1');
-    t.same(rows.map(function (r) { return r.id + ':' + r.state; }), ['w1:waiting', 'r3:scheduled', 'r2:saved']);
-    t.equal(M.requestLine(rows[0]), 'Submitted, waiting for the Bastion to confirm. Nothing has started.');
-    t.equal(M.requestLine(rows[1]), 'Accepted and scheduled in the Bastion: ready on Day 15.');
-    t.equal(M.requestLine({ state: 'completed' }), 'Completed.');
-    t.equal(M.requestLine({ state: 'saved' }), 'Saved in the Bastion.');
-    t.equal(M.requestLine({ state: 'refused', why: 'The Roost is busy.' }), 'Refused: The Roost is busy.');
-    t.same(M.requestRows(snap, outbox, 'c2').map(function (r) { return r.id; }), ['w2', 'r1']);
-    t.equal(M.requestRows(null, [], 'c1').length, 0);
-  });
-
-  test('an order already sent for a building and not yet answered stops a second one being offered there', function (t) {
-    var outbox = [{ id: 'a1', type: 'order.request', creature: 'c1', fac: 'wyvern_roost' }, { id: 'a2', type: 'profile.set', creature: 'c1', fac: 'wyvern_roost' }];
-    t.equal(M.waitingOrderAt({ receipts: [] }, outbox, 'wyvern_roost').id, 'a1');
-    t.equal(M.waitingOrderAt({ receipts: [] }, outbox, 'griffin_tower'), null, 'another building is not affected');
-    t.equal(M.waitingOrderAt({ receipts: [{ id: 'a1' }] }, outbox, 'wyvern_roost'), null, 'answered');
-  });
-
-  test('the queue on this laptop keeps only well-formed requests, once each, and no more than 100', function (t) {
-    var good = { v: 1, id: 'c-abcdefgh1', campaign: 'CAMPAIGN12345678', handler: 'mira', creature: 'c1', fac: 'wyvern_roost', type: 'order.request', view: 'abc', label: 'x', payload: { fnId: 'f' }, at: 1 };
-    var q = M.cleanQueue({ commands: [good, good, { id: 'short' }, Object.assign({}, good, { id: 'c-abcdefgh2', type: 'bond.confirm' }), Object.assign({}, good, { id: 'c-abcdefgh3', payload: null }), null, 'x', Object.assign({}, good, { id: 'c-abcdefgh4', at: 'now' })] });
-    t.same(q.commands.map(function (c) { return c.id; }), ['c-abcdefgh1']);
-    t.same(M.cleanQueue(null), { commands: [] });
-    var many = [];
-    for (var i = 0; i < 130; i++) many.push(Object.assign({}, good, { id: 'c-many' + (1000 + i) }));
-    var out = M.cleanQueue({ commands: many }).commands;
-    t.equal(out.length, 100);
-    t.equal(out[99].id, 'c-many1129', 'the newest are kept');
   });
 
   test('every Regional Variety of the first three kinds has its own picture, and no picture belongs to an unknown variety; the new kinds\' pictures belong to real varieties', function (t) {
@@ -156,6 +114,38 @@
     t.equal(M.rapportLine({ level: 3, name: 'Bonded' }), 'Bond 3 \u00b7 Bonded');
   });
 
+  test('the pills FILL (22 October 2026): reached ones are full, the next fills with its Bonding Days, a full one is ready for the DM, and each says its progress in words', function (t) {
+    var none = M.bondPills(3);
+    t.same(none.pills.map(function (p) { return p.fill; }), [100, 100, 100, 0, 0], 'without a bonding block: reached or not');
+    var b = { days: 27, pill: { n: 4, days: 7, need: 10, fraction: 0.7, full: false }, ready: null };
+    var x = M.bondPills(3, b);
+    t.same(x.pills.map(function (p) { return [p.state, p.fill]; }), [['done', 100], ['done', 100], ['current', 100], ['filling', 70], ['todo', 0]]);
+    t.equal(x.pills[3].text, 'Bond 4, Devoted: 7 of 10 days');
+    t.equal(x.pills[2].text, 'Bond 3, Bonded: reached');
+    t.equal(x.pills[4].text, 'Bond 5, Legendary Partnership: not yet');
+    t.same([x.ready, x.readyText], [null, '']);
+    var empty = M.bondPills(1, { days: 0, pill: { n: 2, days: 0, need: 10, fraction: 0, full: false }, ready: null });
+    t.same(empty.pills.map(function (p) { return p.state; }), ['current', 'todo', 'todo', 'todo', 'todo'], 'nothing earned yet: not "filling"');
+    var full = M.bondPills(2, { days: 20, pill: { n: 3, days: 10, need: 10, fraction: 1, full: true }, ready: 3 });
+    t.same(full.pills.map(function (p) { return [p.state, p.fill]; }), [['done', 100], ['current', 100], ['ready', 100], ['todo', 0], ['todo', 0]]);
+    t.equal(full.pills[2].text, 'Bond 3, Bonded: ready, waiting for a moment with your DM');
+    t.same([full.ready, full.readyText], [3, 'Ready: waiting for a moment with your DM']);
+    t.same(M.bondPills(5, null).pills.map(function (p) { return p.fill; }), [100, 100, 100, 100, 100], 'Bond 5: all five are full');
+    t.same(M.bondPills(2, { days: 14, pill: { n: 3, days: 4, need: 10, fraction: 'x' }, ready: null }).pills[2].fill, 0, 'a damaged fraction is no fill, never NaN');
+    t.same(M.bondPills(2, { days: 14, pill: { n: 3, days: 40, need: 10, fraction: 9, full: false }, ready: null }).pills[2].fill, 100, 'and never over 100');
+  });
+
+  test('the Bonding Days tile and its one line, at the Pen and on the road; the places are named as the Bastion names them', function (t) {
+    var d = { handler: { name: 'Mira' }, bonding: { away: true, awaySince: 31, awaySinceLabel: 'Day 31', days: 12, pill: null, ready: null } };
+    t.same(M.bondingTile(d), { days: 12, line: 'On the road with Mira since Day 31' });
+    d.bonding = { away: false, awaySince: null, awaySinceLabel: '', days: 12, pill: null, ready: null };
+    t.same(M.bondingTile(d), { days: 12, line: 'Resting at the Beast Pen: bonding is paused' }, 'the counter keeps showing the total');
+    t.equal(M.bondingTile({ handler: { name: 'Mira' } }), null, 'a beast with no bonding block has no tile');
+    t.equal(M.bondingTile({ handler: { name: '' }, bonding: { away: true, awaySinceLabel: '', days: 'x' } }).line, 'On the road with its handler');
+    t.equal(M.bondingTile({ handler: { name: '' }, bonding: { away: true, awaySinceLabel: '', days: 'x' } }).days, 0);
+    t.same([M.placeText('pen'), M.placeText('away'), M.placeText(undefined)], ['At the Beast Pen', 'Away from the Ironbow', 'At the Beast Pen']);
+  });
+
   test('a name takes its apostrophe the usual way, and the kind of beast is lower case', function (t) {
     t.equal(M.possessive('Elara'), 'Elara\u2019s');
     t.equal(M.possessive('Aurelius'), 'Aurelius\u2019');
@@ -163,58 +153,142 @@
     t.equal(M.speciesNoun(null), 'beast');
   });
 
-  test('lines asked for and still waiting are laid over the Bastion\'s; the newest request wins; an answered one no longer counts', function (t) {
-    var d = { id: 'c1', species: { id: 'wyvern', name: 'Wyvern' }, profile: { dominant: 'Proud', attachment: '', trigger: '', regional: '' } };
-    var snap = { receipts: [] };
-    var box = [
-      { id: 'a', type: 'profile.set', creature: 'c1', label: 'x', at: 1, payload: { regional: 'Bleakhook', trigger: 'Storms' } },
-      { id: 'b', type: 'profile.set', creature: 'c1', label: 'x', at: 2, payload: { regional: 'Widowspine' } },
-      { id: 'o', type: 'order.request', creature: 'c1', label: 'x', at: 3, payload: { fnId: 'f' } },
-      { id: 'z', type: 'profile.set', creature: 'other', label: 'x', at: 4, payload: { regional: 'Ironcrown' } }
-    ];
-    var pend = M.pendingProfile(snap, box, 'c1');
-    t.same(pend, { trigger: 'Storms', regional: 'Widowspine' });
-    t.same(M.effectiveProfile(d, pend), { dominant: 'Proud', attachment: '', trigger: 'Storms', regional: 'Widowspine' });
-    t.same(M.effectiveProfile(d, null), { dominant: 'Proud', attachment: '', trigger: '', regional: '' });
-    t.equal(M.pendingProfile({ receipts: [{ id: 'a', creature: 'c1', type: 'profile.set', state: 'saved' }, { id: 'b', creature: 'c1', type: 'profile.set', state: 'saved' }] }, box, 'c1'), null, 'answered');
-    t.equal(M.pendingProfile(snap, [], 'c1'), null);
-  });
-
-  test('a beast is met once its subspecies is chosen (saved, or asked for and waiting), not before', function (t) {
-    var d = { id: 'c1', name: 'Stormwing', species: { id: 'wyvern', name: 'Wyvern' }, profile: { dominant: 'Proud', attachment: 'x', trigger: 'y', regional: '' } };
-    t.equal(M.needsMeeting(d, null), true, 'no subspecies yet');
-    t.equal(M.needsMeeting(d, { regional: '  ' }), true, 'a blank one is not a choice');
-    t.equal(M.needsMeeting(d, { regional: 'Widowspine' }), false, 'asked for and waiting');
-    d.profile.regional = 'Bleakhook';
-    t.equal(M.needsMeeting(d, null), false, 'saved');
-  });
-
-  test('a subspecies is waiting when the one shown differs from the Bastion\'s, clearing it included', function (t) {
-    var d = { profile: { regional: 'Bleakhook' } };
-    t.equal(M.regionalWaiting(d, null), false);
-    t.equal(M.regionalWaiting(d, { regional: 'Bleakhook' }), false, 'the same thing again');
-    t.equal(M.regionalWaiting(d, { regional: 'Widowspine' }), true);
-    t.equal(M.regionalWaiting(d, { regional: '' }), true, 'emptying it is a change waiting too');
-    t.equal(M.regionalWaiting(d, { trigger: 'Storms' }), false, 'another line is not the subspecies');
-    t.equal(M.regionalWaiting({ profile: { regional: '' } }, { regional: ' ' }), false, 'a blank for a blank');
-  });
-
-  test('a refused profile request is found so the player can be told why; waiting or answered ones are not', function (t) {
-    var refused = { receipts: [{ id: 'r1', creature: 'c1', type: 'profile.set', state: 'refused', why: 'That creature isn\u2019t yours any more.', label: 'x' }] };
-    t.equal(M.refusedProfile(refused, [], 'c1').why, 'That creature isn\u2019t yours any more.');
-    t.equal(M.refusedProfile(refused, [], 'other'), null, 'another beast');
-    t.equal(M.refusedProfile(refused, [{ id: 'w', type: 'profile.set', creature: 'c1', label: 'x', at: 5, payload: { regional: 'Bleakhook' } }], 'c1'), null, 'a newer request is waiting: that is the one that counts');
-    t.equal(M.refusedProfile({ receipts: [{ id: 'r2', creature: 'c1', type: 'profile.set', state: 'saved' }] }, [], 'c1'), null);
-    t.equal(M.refusedProfile({ receipts: [{ id: 'r3', creature: 'c1', type: 'order.request', state: 'refused', why: 'busy' }] }, [], 'c1'), null, 'an order is not a profile request');
-    t.equal(M.refusedProfile(null, [], 'c1'), null);
-  });
-
   test('the meeting\'s words use the beast\'s name and kind', function (t) {
     var x = M.meetingText({ name: 'Stormwing', species: { name: 'Wyvern' } });
     t.equal(x.meet, 'It\u2019s time to meet Stormwing\u2026');
+    t.equal(x.lead, 'Two quick rolls, then you will see Stormwing for the first time.');
     t.equal(x.subspecies, 'There are many subspecies of wyvern in The Scarlett Isles, but which one is Stormwing?');
     t.equal(x.personality, 'Every wyvern has its own unique personality. What is Stormwing\u2019s like?');
     t.equal(x.welcome, 'Welcome to the Ironbow, Stormwing!');
     t.equal(M.meetingText({ name: 'Aurelius', species: { name: 'Dire Wolf' } }).personality, 'Every dire wolf has its own unique personality. What is Aurelius\u2019 like?');
+  });
+
+  test('the request and queue helpers are gone from the model: the app sends nothing', function (t) {
+    ['confirmLines', 'requestRows', 'requestLine', 'waitingOrderAt', 'cleanQueue', 'QUEUE_MAX', 'pendingProfile', 'effectiveProfile', 'regionalWaiting', 'refusedProfile'].forEach(function (name) {
+      t.equal(M[name], undefined, name + ' is gone');
+    });
+  });
+
+  group('Beast Handler: the staged first meeting (22 October 2026)');
+
+  /* A beast of Mira's that has passed acclimatisation and been met by the Bastion. */
+  function detail(over) {
+    return Object.assign({ id: 'c1', name: 'Stormwing', available: true, species: { id: 'wyvern', name: 'Wyvern' }, initiation: { regional: 'bloodcrest', rolls: { dominant: 1, attachment: 3, trigger: 8 } },
+      profile: { regional: 'Bloodcrest', dominant: 'Proud', attachment: 'Relaxes its tail', trigger: 'Rival wyvern nearby' } }, over || {});
+  }
+
+  test('the meeting plays only for a beast that has passed acclimatisation, has a first meeting the Bastion rolled, and has not been seen on this device', function (t) {
+    t.equal(M.needsMeeting(detail(), {}), true);
+    t.equal(M.needsMeeting(detail(), null), true);
+    t.equal(M.needsMeeting(detail(), { c2: true }), true, 'another beast having been seen does not matter');
+    t.equal(M.needsMeeting(detail(), { c1: true }), false, 'seen once, never again');
+    t.equal(M.needsMeeting(detail({ available: false }), {}), false, 'not acclimatised');
+    t.equal(M.needsMeeting(detail({ initiation: null }), {}), false, 'a beast that was already introduced (or not yet rolled for) has no meeting');
+    t.equal(M.needsMeeting(detail({ initiation: undefined }), {}), false);
+    t.equal(M.needsMeeting(null, {}), false);
+    t.equal(M.needsMeeting(detail(), { c1: 'yes' }), true, 'only a real true counts as seen');
+  });
+
+  test('the kind\'s varieties come in the table\'s order, and a shuffle is a fresh order of the same ones that never changes the original', function (t) {
+    var v = M.revealVarieties(T.beastProfile, 'dire_wolf');
+    t.same(v.map(function (x) { return x.name; }), ['Nightfang', 'Icepelt', 'Slatejaw', 'Reedshadow', 'Hollowhowl', 'Blacktide']);
+    t.same(Object.keys(v[0]).sort(), ['id', 'name'], 'only the name and id: where it lives and how it looks stay hidden until the roll lands');
+    t.same(M.revealVarieties(T.beastProfile, 'unicorn'), []);
+    var before = JSON.stringify(v);
+    var orders = {};
+    for (var i = 0; i < 60; i++) {
+      var o = M.shuffle(v);
+      t.same(o.map(function (x) { return x.id; }).sort(), v.map(function (x) { return x.id; }).sort());
+      orders[o.map(function (x) { return x.id; }).join(',')] = true;
+    }
+    t.equal(JSON.stringify(v), before);
+    t.ok(Object.keys(orders).length > 20, 'different orders come up: ' + Object.keys(orders).length);
+    var seq = [0.99, 0.0, 0.5, 0.2, 0.7];
+    var k = 0;
+    t.same(M.shuffle([1, 2, 3, 4, 5, 6], function () { return seq[k++ % seq.length]; }), M.shuffle([1, 2, 3, 4, 5, 6], (function () { var j = 0; return function () { return seq[j++ % seq.length]; }; }())), 'the same dice give the same order');
+  });
+
+  test('the marker always ends on the answer, however the dice fall, for five and for six medallions', function (t) {
+    [5, 6].forEach(function (n) {
+      for (var dest = 0; dest < n; dest++) {
+        for (var run = 0; run < 60; run++) {
+          var p = M.revealPlan(n, dest, Math.random);
+          t.equal(p.stops[p.stops.length - 1], dest, n + ' medallions, answer ' + dest);
+          t.equal(p.stops.length, p.delays.length + 1);
+          t.ok(p.stops.every(function (i) { return i >= 0 && i < n; }), 'every stop is a real medallion');
+        }
+      }
+    });
+  });
+
+  test('it takes 3.5 to 4.5 seconds, and slows down: gaps start at about 90 ms and grow to about 420 ms', function (t) {
+    var firsts = [], lasts = [], totals = [];
+    for (var run = 0; run < 400; run++) {
+      var n = 5 + (run % 2);
+      var p = M.revealPlan(n, run % n, Math.random);
+      var gaps = p.delays.slice(0, -1);
+      t.equal(p.delays.reduce(function (a, b) { return a + b; }, 0), p.total, 'the waits add up to the total exactly');
+      t.ok(p.total >= 3500 && p.total <= 4500, 'total ' + p.total);
+      for (var i = 1; i < gaps.length; i++) if (gaps[i] < gaps[i - 1]) t.ok(false, 'a gap shrank: ' + gaps.join(','));
+      firsts.push(gaps[0]); lasts.push(gaps[gaps.length - 1]); totals.push(p.total);
+    }
+    t.ok(Math.min.apply(null, firsts) >= 60 && Math.max.apply(null, firsts) <= 150, 'the first gap is about 90 ms: ' + Math.min.apply(null, firsts) + ' to ' + Math.max.apply(null, firsts));
+    t.ok(Math.min.apply(null, lasts) >= 280 && Math.max.apply(null, lasts) <= 600, 'the last gap is about 420 ms: ' + Math.min.apply(null, lasts) + ' to ' + Math.max.apply(null, lasts));
+    t.ok(Math.min.apply(null, totals) < 3700 && Math.max.apply(null, totals) > 4300, 'the whole range is used');
+  });
+
+  test('every run has a near miss: it rests one beside the answer, then steps onto it; and it goes round at least once', function (t) {
+    var kinds = {};
+    for (var run = 0; run < 300; run++) {
+      var n = 5 + (run % 2);
+      var dest = (run * 7) % n;
+      var p = M.revealPlan(n, dest, Math.random);
+      var rest = p.stops[p.stops.length - 2];
+      var d = (rest - dest + n) % n;
+      t.ok(d === 1 || d === n - 1, 'the rest is beside the answer');
+      t.ok(rest !== dest);
+      t.ok(p.hold >= 450 && p.hold <= 800, 'it rests a moment: ' + p.hold);
+      t.equal(p.hold, p.delays[p.delays.length - 1]);
+      t.ok(p.hops >= n, 'at least one lap');
+      kinds[p.near] = true;
+    }
+    t.same(Object.keys(kinds).sort(), ['after', 'before'], 'sometimes it runs past and steps back, sometimes it stops short and steps on');
+  });
+
+  test('the start is random and no two runs look the same: path and timing differ', function (t) {
+    var starts = {}, paths = {}, timings = {};
+    for (var run = 0; run < 200; run++) {
+      var p = M.revealPlan(5, 2, Math.random);
+      starts[p.stops[0]] = true;
+      paths[p.stops.join('')] = true;
+      timings[p.delays.join(',')] = true;
+    }
+    t.equal(Object.keys(starts).length, 5, 'every medallion is a possible start');
+    t.ok(Object.keys(paths).length >= 8, 'paths: ' + Object.keys(paths).length);
+    t.ok(Object.keys(timings).length > 150, 'timings: ' + Object.keys(timings).length);
+    t.same(M.revealPlan(1, 0).stops, [0], 'one medallion has nothing to hop across');
+    t.same(M.revealPlan(5, 9, function () { return 0.5; }).stops.slice(-1), [4], 'an answer off the end is held to the last medallion');
+  });
+
+  test('the personality cards carry the Bastion\'s real numbers and lines, with the d12\'s note only while the line is still the one the roll gave', function (t) {
+    var cards = M.personalityCards(detail(), T.beastProfile);
+    t.same(cards.map(function (c) { return [c.key, c.label, c.dice, c.roll, c.line]; }), [
+      ['dominant', 'Dominant Temperament', 12, 1, 'Proud'],
+      ['attachment', 'Attachment Cue', 8, 3, 'Relaxes its tail'],
+      ['trigger', 'Instinctive Trigger', 8, 8, 'Rival wyvern nearby']
+    ]);
+    t.equal(cards[0].note, 'Expects respect and dislikes being hurried');
+    t.equal(cards[1].note, '', 'the d8 tables have no notes');
+    var edited = M.personalityCards(detail({ profile: { regional: 'Bloodcrest', dominant: 'Fierce', attachment: '', trigger: '' } }), T.beastProfile);
+    t.equal(edited[0].note, '', 'the DM changed the line, so the old note is not shown over it');
+    t.equal(edited[1].line, '');
+    var written = M.personalityCards(detail({ initiation: { regional: 'bloodcrest', rolls: { dominant: 0, attachment: 0, trigger: 0 } } }), T.beastProfile);
+    t.same(written.map(function (c) { return c.roll; }), [0, 0, 0], 'a line the DM wrote has no roll');
+    ['buckbear', 'fellcat'].forEach(function (k) {
+      var c = M.personalityCards(detail({ species: { id: k, name: k } }), T.beastProfile);
+      t.equal(c[1].dice, 8);
+      t.equal(c[2].dice, 8);
+    });
+    t.equal(M.personalityCards(detail({ species: { id: 'unicorn', name: 'Unicorn' } }), T.beastProfile)[1].dice, 0, 'a kind with no tables has no die, and does not throw');
   });
 }());

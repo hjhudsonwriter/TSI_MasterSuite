@@ -22,6 +22,7 @@
   function makeZip(files, tweak) {
     tweak = tweak || {};
     return Promise.all(files.map(function (f) {
+      if (f.packed) return Promise.resolve({ f: f, raw: { length: f.declared }, packed: f.packed, noCrc: true });
       var raw = f.bytes || enc.encode(f.text);
       return (f.stored ? Promise.resolve(raw) : deflate(raw)).then(function (packed) { return { f: f, raw: raw, packed: packed }; });
     })).then(function (parts) {
@@ -34,9 +35,10 @@
         var name = enc.encode(p.f.name);
         var method = p.f.stored ? 0 : 8;
         var flags = tweak.encrypted ? 1 : 0;
-        var local = [].concat(u32(0x04034b50), u16(20), u16(flags), u16(method), u16(0), u16(0), u32(crc32(p.raw)), u32(p.packed.length), u32(p.raw.length), u16(name.length), u16(0));
+        var crc = p.noCrc ? 0 : crc32(p.raw);
+        var local = [].concat(u32(0x04034b50), u16(20), u16(flags), u16(method), u16(0), u16(0), u32(crc), u32(p.packed.length), u32(p.raw.length), u16(name.length), u16(0));
         chunks.push(new Uint8Array(local), name, p.packed);
-        central.push(new Uint8Array([].concat(u32(0x02014b50), u16(20), u16(20), u16(flags), u16(method), u16(0), u16(0), u32(crc32(p.raw)), u32(p.packed.length), u32(p.raw.length), u16(name.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(offset))), name);
+        central.push(new Uint8Array([].concat(u32(0x02014b50), u16(20), u16(20), u16(flags), u16(method), u16(0), u16(0), u32(crc), u32(p.packed.length), u32(p.raw.length), u16(name.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(offset))), name);
         offset += local.length + name.length + p.packed.length;
       });
       var dirSize = central.reduce(function (n, c) { return n + c.length; }, 0);
@@ -188,6 +190,117 @@
     t.equal(X.kindOfType('application/pdf'), 'pdf');
     t.equal(X.kindOfType('image/png'), '');
     t.equal(X.MAX_BYTES, 20 * 1024 * 1024);
+  });
+
+  group('Importing into the Quest box: text files in other encodings');
+
+  function bytes(str) { var u = new Uint8Array(str.length); for (var i = 0; i < str.length; i++) u[i] = str.charCodeAt(i); return u; }
+
+  test('a text file saved as Windows ANSI (Word\'s plain-text save) reads with its quotes, dash and accent right, and says so', function (t) {
+    var ansi = bytes('Kaelen\x92s plan \x96 caf\xe9\r\n\x93Quoted\x94');
+    var d = X.decodeText(ansi);
+    t.same([d.text, d.encoding], ['Kaelen\u2019s plan \u2013 caf\u00e9\r\n\u201cQuoted\u201d', 'windows-1252']);
+    return X.readFile(new File([ansi], 'ansi.txt')).then(function (r) {
+      t.same([r.ok, r.encoding, r.kind], [true, 'windows-1252', 'text']);
+      t.equal(r.text, 'Kaelen\u2019s plan \u2013 caf\u00e9\r\n\u201cQuoted\u201d', 'no damaged characters');
+      t.ok(r.text.indexOf('\uFFFD') === -1, 'no replacement characters');
+    });
+  });
+
+  test('UTF-8 (with or without a byte-order mark) and UTF-16 are read as they are, with no note', function (t) {
+    var plain = new TextEncoder().encode('Kaelen\u2019s plan \u2013 caf\u00e9');
+    var bom = new Uint8Array(3 + plain.length);
+    bom.set([0xEF, 0xBB, 0xBF], 0);
+    bom.set(plain, 3);
+    var a = X.decodeText(plain);
+    var b = X.decodeText(bom);
+    t.same([a.text, a.encoding], ['Kaelen\u2019s plan \u2013 caf\u00e9', 'utf-8']);
+    t.same([b.text, b.encoding], ['Kaelen\u2019s plan \u2013 caf\u00e9', 'utf-8'], 'the byte-order mark is not part of the text');
+    var le = new Uint8Array([0xFF, 0xFE, 0x4B, 0x00, 0xE9, 0x00]);
+    var be = new Uint8Array([0xFE, 0xFF, 0x00, 0x4B, 0x00, 0xE9]);
+    t.same([X.decodeText(le).text, X.decodeText(le).encoding], ['K\u00e9', 'utf-16le']);
+    t.same([X.decodeText(be).text, X.decodeText(be).encoding], ['K\u00e9', 'utf-16be']);
+    t.same(X.decodeText(bytes('Just ASCII')).encoding, 'utf-8');
+    t.same(X.decodeText(new Uint8Array(0)).text, '');
+    return X.readFile(new File([bom], 'bom.txt')).then(function (r) {
+      t.same([r.ok, r.text, r.encoding], [true, 'Kaelen\u2019s plan \u2013 caf\u00e9', 'utf-8']);
+    });
+  });
+
+  group('Importing into the Quest box: a small file that unpacks into gigabytes');
+
+  function deflateZeros(total) {
+    var chunk = new Uint8Array(1 << 20);
+    var sent = 0;
+    var src = new ReadableStream({ pull: function (c) {
+      if (sent >= total) { c.close(); return; }
+      var n = Math.min(chunk.length, total - sent);
+      c.enqueue(n === chunk.length ? chunk : chunk.subarray(0, n));
+      sent += n;
+    } });
+    return new Response(src.pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer().then(function (b) { return new Uint8Array(b); });
+  }
+
+  test('a Word file that unpacks to more than 20 MB is stopped as it unpacks, whatever size it declares, with the right message', function (t) {
+    return deflateZeros(80 * 1024 * 1024).then(function (bomb) {
+      t.ok(bomb.length < 400000, 'the file is small: ' + bomb.length + ' bytes for 80 MB');
+      return Promise.all([
+        makeZip([{ name: 'word/document.xml', packed: bomb, declared: 80 * 1024 * 1024 }]),    /* honest */
+        makeZip([{ name: 'word/document.xml', packed: bomb, declared: 1000 }])                 /* lies: says 1,000 bytes */
+      ]);
+    }).then(function (zips) {
+      var t0 = Date.now();
+      return X.readFile(new File([zips[0]], 'honest.docx')).then(function (r) {
+        t.ok(!r.ok && r.code === 'zipbig' && /too big to read/.test(r.message), 'declared honestly: ' + r.message);
+        return X.readFile(new File([zips[1]], 'liar.docx'));
+      }).then(function (r) {
+        t.ok(!r.ok && r.code === 'zipbig' && /too big to read/.test(r.message), 'declared small: ' + r.message);
+        t.ok(!/damaged/.test(r.message), 'not called damaged');
+        t.ok(Date.now() - t0 < 6000, 'both refused quickly: ' + (Date.now() - t0) + ' ms');
+      });
+    });
+  });
+
+  test('a big but honest Word file (a few MB of text) still reads', function (t) {
+    var para = '<w:p><w:r><w:t>' + new Array(1001).join('word ') + '</w:t></w:r></w:p>';
+    var body = new Array(2001).join(para);                     /* about 10 MB of XML */
+    return makeZip([{ name: 'word/document.xml', text: docXml(body) }]).then(function (zip) {
+      return X.docxText(zip);
+    }).then(function (text) {
+      t.equal(text.split('\n').length, 2000);
+    });
+  });
+
+  group('Importing into the Quest box: a PDF with more text than the box holds');
+
+  test('a long PDF stops being read once its text is too long, and is never handed back cut off', function (t) {
+    var read = 0;
+    var oldLib = window.pdfjsLib;
+    var oldWorker = window.pdfjsWorker;
+    window.pdfjsWorker = {};
+    window.pdfjsLib = { getDocument: function () {
+      return { promise: Promise.resolve({
+        numPages: 100,
+        getPage: function () { return Promise.resolve({ getTextContent: function () { read++; return Promise.resolve({ items: [{ str: new Array(1001).join('x'), hasEOL: true }] }); } }); },
+        destroy: function () {}
+      }) };
+    } };
+    function limit(n) { return { checkAbove: n, tooLong: function (txt) { return txt.replace(/\s+$/, '').length > n; } }; }
+    function restore() { window.pdfjsLib = oldLib; window.pdfjsWorker = oldWorker; if (oldLib === undefined) delete window.pdfjsLib; if (oldWorker === undefined) delete window.pdfjsWorker; }
+    return X.pdfText(new ArrayBuffer(8), limit(5000)).then(function (r) {
+      t.equal(r.stopped, true, 'too long: stopped');
+      t.ok(read < 100, 'it did not read all 100 pages: ' + read);
+      read = 0;
+      return X.pdfText(new ArrayBuffer(8), limit(500000));
+    }).then(function (r) {
+      t.equal(r.stopped, false, 'under the limit it reads to the end');
+      t.equal(read, 100);
+      t.equal(r.text.split('\n\n').length, 100, 'a blank line between pages');
+      return X.readFile(new File([new Uint8Array([37, 80, 68, 70])], 'long.pdf'), limit(5000));
+    }).then(function (r) {
+      t.ok(!r.ok && r.code === 'toolong', 'readFile says too long, not a partial text: ' + JSON.stringify(r).slice(0, 120));
+      restore();
+    }, function (err) { restore(); throw err; });
   });
 
   group('Importing into the Quest box: the PDF text');

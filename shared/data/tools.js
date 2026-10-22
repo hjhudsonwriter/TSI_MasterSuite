@@ -186,9 +186,9 @@ window.TSI_DATA.tools = [
     group: 'players',
     phase: 'BH-1',
     built: true,
-    /* It reads the Bastion's save (shared/js/dmdoc.js does the same) and keeps only the small queue of requests waiting for the Bastion. */
-    saves: true,
-    desc: 'The companions of Ironbow. See your wyvern, griffin or dire wolf: its bond, profile and Chronicle.',
+    /* It reads the Bastion's save (shared/js/dmdoc.js does the same) and keeps nothing of its own: since 22 October 2026 it only looks, so there is no queue of requests to save. */
+    saves: false,
+    desc: 'The companions of Ironbow. See your wyvern, griffin, dire wolf, buckbear or fellcat: its bond, Bonding Days, profile and Chronicle. It only looks.',
     /* No painted art behind this tool: its look is plain charcoal and gold (Harry's mock-ups, 21 October 2026). */
     files: {
       css: ['tools/beasthandler/beasthandler.css'],

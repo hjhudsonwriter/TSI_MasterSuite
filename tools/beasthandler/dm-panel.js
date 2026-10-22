@@ -1,15 +1,13 @@
-/* Scarlett Isles: Beast Handler — the DM's panel inside the Bastion (BH-2c and BH-3a).
+/* Scarlett Isles: Beast Handler — the DM's panel inside the Bastion (BH-2c and BH-3a; read-only app since 22 October 2026).
 
-   A box in the Bastion's Management panel (tools/bastion/tool.js builds it with
+   A box in the Bastion's Beast Pen panel (tools/bastion/tool.js builds it with
    TSI.beasthandler.dmPanel.create(host)). It lets the DM:
    - see each handler and how many beasts they have;
    - make (or take back) a handler's PAIRING CODE, which links their phone;
-   - make a SNAPSHOT CODE: what that handler can see, to send to their phone;
-   - paste in a REQUEST CODE from a phone, which the Bastion checks and applies once
-     (the answer shows at once, with a fresh snapshot code to send back);
-   - switch requests off, and see the latest requests and how each went.
-   Requests from the companion on this laptop arrive by themselves and are
-   listed here too. The rules are in bastion-link.js; this file is only the screen.
+   - make a SNAPSHOT CODE: what that handler can see, to send to their phone.
+   The app only looks, so there is nothing to take back from a phone: no request
+   codes, no switch for requests and no list of requests any more. The rules are in
+   bastion-link.js; this file is only the screen.
 
    host: { state(): the live Bastion save, data, done(): save and redraw, life }. */
 (function () {
@@ -75,7 +73,7 @@
           'Send this once, privately, to ' + res.name + '. It links their phone to their own beasts only. If it ever gets out, press Take back code and make a new one.', code, 'beast-handler-pairing-' + res.handler + '.txt', 'beast-pair');
       });
       var onRevoke = TSI.oneAtATime(async function (h) {
-        var go = await TSI.modal.confirm({ title: 'Take back the code', message: 'Take back ' + h.name + '\'s code? Their phone stops working until you make a new one, and any request signed with the old code is refused.', okLabel: 'Take it back', cancelLabel: 'Cancel' });
+        var go = await TSI.modal.confirm({ title: 'Take back the code', message: 'Take back ' + h.name + '\'s code? Their phone stops showing new snapshots until you make a new code, and a snapshot made with the old code no longer opens.', okLabel: 'Take it back', cancelLabel: 'Cancel' });
         if (!go || !host.life.alive) return;
         R.beastRevoke(host.state(), h.id);
         host.done();
@@ -100,45 +98,9 @@
         return onPair(typed ? typed.name : input.value, !!(typed && typed.paired));
       });
 
-      /* A request code from a phone: pasted or opened from a file. */
-      var onPaste = TSI.oneAtATime(async function () {
-        var area = el('textarea', { class: 'tsi-input tsi-bas-beast__code', rows: '5', placeholder: 'Paste the request code here (it starts BHC1.)', 'aria-label': 'The request code from a phone', 'data-test': 'beast-paste-text' });
-        var fileBtn = btn('Open a file…', function () {
-          TSI.pickFile('.txt,text/plain').then(function (f) { return f ? TSI.readFileText(f) : null; }).then(function (t) { if (t !== null) area.value = t; }, function () { /* not readable: nothing changes */ });
-        }, 'beast-paste-file');
-        var ok = await TSI.modal.open({
-          title: 'Request from a phone', className: 'tsi-bas-modal',
-          body: [el('p', { text: 'The Bastion checks the request against its own save, and does it once. Pasting it again changes nothing.' }), area, el('div', { class: 'tsi-bas-beast__row' }, fileBtn)],
-          actions: [{ label: 'Cancel', value: false }, { label: 'Check and apply', value: true, primary: true }],
-          onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'beast-paste-dialog'); host.life.setTimeout(function () { area.focus(); }, 0); }
-        });
-        if (!ok || !host.life.alive) return;
-        var res = R.beastProcessCode(host.state(), host.data, area.value, Date.now(), Math.random);
-        if (res.ok || res.receipt || res.duplicate) host.done();
-        var rec = res.receipt;
-        var line = res.bad || res.held ? res.why
-          : res.duplicate ? 'That request had already been dealt with, so nothing changed: ' + (rec ? (rec.label || 'A request') + ': ' + (rec.r === 'applied' ? 'accepted' : 'refused') + '. ' + rec.why : '')
-          : rec ? (rec.label || 'A request') + ': ' + (rec.r === 'applied' ? 'accepted. ' : 'refused. ') + rec.why : 'Nothing was done.';
-        var peek = C.peekCommand(area.value);
-        var snap = peek.ok && R.beastSecret(host.state(), peek.command.handler) ? R.beastSnapshotCode(host.state(), host.data, peek.command.handler) : null;
-        if (snap && snap.ok && (res.ok || res.receipt || res.duplicate)) {
-          await showCode('Result', line + ' This is a fresh snapshot to send back to their phone, so it shows the answer.', snap.code, 'beast-handler-snapshot-' + P().handlerKey(peek.command.handler) + '.txt', 'beast-result');
-        } else {
-          await TSI.modal.alert({ title: 'Request from a phone', message: line });
-        }
-      });
-      function P() { return BH.projection; }
-
       function render() {
         var s = host.state();
         TSI.clear(root);
-        var B = s.beast || { accept: true, handlers: [], done: {} };
-        var accept = el('input', { type: 'checkbox', 'data-test': 'beast-accept', checked: B.accept !== false ? 'checked' : null });
-        accept.checked = B.accept !== false;
-        accept.addEventListener('change', function () {
-          R.beastState(host.state()).accept = accept.checked;
-          host.done();
-        });
         var regs = R.beastRegistry(s, host.data);
         var list = el('div', { class: 'tsi-bas-list', 'data-test': 'beast-handlers' }, regs.length ? regs.map(function (h) {
           return el('div', { class: 'tsi-bas-item', 'data-test': 'beast-handler-' + h.id }, [
@@ -150,22 +112,11 @@
             h.paired ? btn('Snapshot code…', function () { onSnapshot(h); }, 'beast-snap-' + h.id) : null,
             h.paired ? btn('Take back code', function () { onRevoke(h); }, 'beast-revoke-' + h.id, 'tsi-btn--ghost') : null
           ]);
-        }) : [muted('No handler yet. Give a beast a handler in its building\'s panel, or add one here.')]);
-        var recent = R.beastRecent(s, 8);
+        }) : [muted('No handler yet. Give a beast a handler in the Beast Pen\'s panel, or add one here.')]);
         TSI.append(root, [
-          el('p', { class: 'tsi-bas-muted', text: 'Players ask for things in the Beast Handler: a change to a beast\'s profile, or a free training order. The Bastion checks every request again and does each one only once. Nothing a player does costs gold.' }),
-          el('label', { class: 'tsi-bas-field' }, [accept, ' Take requests from handlers']),
+          el('p', { class: 'tsi-bas-muted', text: 'A player\'s Beast Handler shows their beasts: the bond, the profile and the Chronicle. It only looks: the player can\'t change or ask for anything, and nothing a player does costs gold. A beast shows there once it has passed acclimatisation (Bond 1).' }),
           list,
-          el('div', { class: 'tsi-bas-beast__row' }, [
-            btn('Add a handler…', onAdd, 'beast-add'),
-            btn('Paste a request code…', onPaste, 'beast-paste')
-          ]),
-          el('h4', { class: 'tsi-bas-beast__h', text: 'Latest requests' }),
-          recent.length
-            ? el('ul', { class: 'tsi-bas-res-list', 'data-test': 'beast-recent' }, recent.map(function (r) {
-              return el('li', { 'data-state': r.r, text: R.dayLabel(r.day) + ' · ' + r.handler + ' · ' + (r.label || 'a request') + ': ' + (r.r === 'applied' ? 'accepted' : 'refused') + (r.why ? '. ' + r.why : '') });
-            }))
-            : muted('None yet.')
+          el('div', { class: 'tsi-bas-beast__row' }, btn('Add a handler…', onAdd, 'beast-add'))
         ]);
       }
       return { node: root, render: render };

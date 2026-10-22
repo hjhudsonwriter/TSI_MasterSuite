@@ -124,16 +124,7 @@
     t.equal(I.personality.mode, 'random');
   });
 
-  test('players may ask only for free training; the harness (150 gp), housing and milestones stay with the DM', function (t) {
-    var rule = T.beastPlayerOrders;
-    t.same([rule.rule, rule.denyIds], ['free_training', []]);
-    var P = TSI.beasthandler.projection;
-    var fns = [];
-    T.bastionFacilities.forEach(function (f) { if (/^(wyvern_roost|griffin_tower|dire_wolf_den)$/.test(f.id)) fns = fns.concat(f.functions.map(function (x) { return { fac: f.id, fn: x }; })); });
-    var allowed = fns.filter(function (x) { return P.isPlayerOrder(x.fn); });
-    t.equal(allowed.length, 33, 'eleven free programmes in each of the three buildings');
-    t.ok(allowed.every(function (x) { return x.fn.trains === true && Number(x.fn.costGP || 0) === 0; }));
-    t.ok(fns.filter(function (x) { return /riding_harness$/.test(x.fn.id); }).length === 3 && fns.filter(function (x) { return /riding_harness$/.test(x.fn.id); }).every(function (x) { return !P.isPlayerOrder(x.fn); }), 'no harness');
-    t.ok(fns.filter(function (x) { return /^house_/.test(x.fn.id); }).every(function (x) { return !P.isPlayerOrder(x.fn); }), 'no House orders');
+  test('the data that said which orders a player may ask for is gone: the app has no orders (22 October 2026)', function (t) {
+    t.equal(T.beastPlayerOrders, undefined);
   });
 }());

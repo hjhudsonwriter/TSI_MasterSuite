@@ -460,7 +460,11 @@
           cache.set(record.key, record);
           pending.set(record.key, { op: 'put', key: record.key, record: record });
         });
-        return writeNow();
+        return writeNow().then(function (ok) {
+          /* Tell the other open windows (a storage event reaches them, not this one). */
+          if (ok) { try { localStorage.setItem(rules.spaceNames(SPACE).replaced, String(Date.now())); } catch (e) { /* no small storage: they look again when focused */ } }
+          return ok;
+        });
       });
     },
 

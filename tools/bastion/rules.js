@@ -659,18 +659,26 @@
      The cleaner lives here, not in creature-rules.js, because a top-level
      field R.fromSave doesn't know is dropped, and this file is always
      loaded (the Explorer loads it to check a campaign file). */
-  /* ---------- A creature's development (Wyvern Roost: Bonding, Training & Rider Mastery, 20 October 2026) ----------
+  /* ---------- A creature's development (Bonding, Training & Rider Mastery, 20 October 2026; the Beast Pen, 22 October 2026) ----------
      An optional extra on a creature, kept whole by the cleaner below (a
      field this list doesn't know is dropped on every reload, so everything
-     the Roost adds lives here, never beside the creature):
+     the Beast Pen adds lives here, never beside the creature). training,
+     harness and firstFlight are what the three old creature buildings
+     recorded: they are no longer used or shown, but they stay in the save as
+     history. bonding and acclimatise (22 October 2026) are the Beast Pen's:
+     { away, awaySince, lastTick, days } and { tries, retryDay, last }, added
+     only when used (see R.cleanDevelopment):
      development: { version, handlerId, bond: { level 0-5, ready: the level a
      finished programme has made ready for the DM to confirm, or null },
      temperament: { dominant, attachment, trigger } (the DM's own words),
      training: { <programme id>: { day } } (each once, for good), harness:
      { fitted, paidGP, fittedDay }, firstFlight: { approved, day, handlerId },
      handlerHistory: [{ handlerId, bond, fromDay, toDay, reason }], seq, chronicle:
-     [{ id, day, cat, text, by, link, private? }] } (private: a DM-only note,
-     never shown to the player's Beast Handler companion).
+     [{ id, day, cat, text, by, link, private? }], regional?, profileLog?,
+     initiation?: { regional, rolls: { dominant, attachment, trigger }, day } } (private: a DM-only note,
+     never shown to the player's Beast Handler companion; initiation: what the Bastion rolled for the
+     beast's first meeting, set once (tools/beasthandler/bastion-link.js R.rollInitiation): the variety's
+     id and the number each die showed, 0 for a line the DM had already written).
      Elara's wyvern is credited Bond 1 once, with one Chronicle line, the first
      time it is loaded or housed without a development; a creature whose
      development is already there is never reset. Any other creature gets one
@@ -749,8 +757,42 @@
       return { day: dayNum(x.day, 1), by: words(x.by, 40), change: change };
     }).filter(function (x) { return Object.keys(x.change).length; });
     if (plog.length) kept.profileLog = plog;
+    /* Beast Handler (22 October 2026): what the Bastion rolled for the first meeting, kept once it is set (a field this
+       cleaner does not list would be dropped on every load, and the roll would then be made again). The die numbers are
+       whole numbers from 0 (no roll: the DM had written that line) up. */
+    var ini = isObj(d.initiation) ? d.initiation : null;
+    if (ini && typeof ini.regional === 'string' && /^[a-z0-9_]{1,40}$/.test(ini.regional)) {
+      var rolls = isObj(ini.rolls) ? ini.rolls : {};
+      kept.initiation = {
+        regional: ini.regional,
+        rolls: { dominant: clampInt(rolls.dominant, 0, 100), attachment: clampInt(rolls.attachment, 0, 100), trigger: clampInt(rolls.trigger, 0, 100) },
+        day: dayNum(ini.day, 1)
+      };
+    }
+    /* The Beast Pen (22 October 2026): Bonding Days and the acclimatisation roll. Both are kept only when there is
+       something to keep, so an older save is unchanged. bonding: { away: out on the road with its handler, awaySince:
+       the Explorer day it went out, lastTick: the last Explorer day credited (so one day is never counted twice),
+       days: Bonding Days in all }. A beast is only away from Bond 1 (acclimatised). acclimatise: { tries, retryDay:
+       the first day it may try again after a fail, last: { day, total, dc, pass } }. Every day in them is an absolute
+       Explorer day, so R.shiftDays moves them with Reset Travel. */
+    var bd = isObj(d.bonding) ? d.bonding : null;
+    if (bd) {
+      var away = bd.away === true && level >= 1;
+      var bdays = clampInt(bd.days, 0, 100000);
+      if (away || bdays > 0) kept.bonding = { away: away, awaySince: away && hasDayVal(bd.awaySince) ? dayNum(bd.awaySince, 1) : null, lastTick: away && hasDayVal(bd.lastTick) ? dayNum(bd.lastTick, 1) : null, days: bdays };
+    }
+    var ac = isObj(d.acclimatise) ? d.acclimatise : null;
+    if (ac && clampInt(ac.tries, 0, 100000) > 0) {
+      var al = isObj(ac.last) ? ac.last : null;
+      kept.acclimatise = {
+        tries: clampInt(ac.tries, 0, 100000),
+        retryDay: hasDayVal(ac.retryDay) ? dayNum(ac.retryDay, 1) : null,
+        last: al && hasDayVal(al.day) ? { day: dayNum(al.day, 1), total: clampInt(al.total, 0, 1000), dc: clampInt(al.dc, 0, 1000), pass: al.pass === true } : null
+      };
+    }
     return kept;
   };
+  function hasDayVal(v) { return v !== null && v !== undefined && v !== '' && isFinite(Number(v)); }
   R.CREATURE_KEYS = ['id', 'species', 'owner', 'name', 'status', 'home', 'grantedDay', 'housedDay', 'msgId'];
   R.cleanCreatures = function (src, today) {
     var out = [];
@@ -778,6 +820,11 @@
       /* Its development, kept whole; Elara's wyvern is credited Bond 1 once. */
       if (isObj(c.development)) rec.development = R.cleanDevelopment(c.development);
       else if (id === 'elara_wyvern' && status === 'housed') rec.development = R.newDevelopment({ id: id }, c.housedDay !== undefined && c.housedDay !== null ? c.housedDay : day);
+      /* A beast that is not housed cannot be out on the road (its Bonding Days stay). */
+      if (rec.development && rec.development.bonding && status !== 'housed' && rec.development.bonding.away) {
+        rec.development.bonding = { away: false, awaySince: null, lastTick: null, days: rec.development.bonding.days };
+        if (!rec.development.bonding.days) delete rec.development.bonding;
+      }
       out.push(rec);
     });
     return out;
@@ -1440,7 +1487,7 @@
       var p = at[id];
       if (!isObj(p) || !okDay(p.x) || !okDay(p.y)) return null;
       var f = R.facility(data, id);
-      return { fac: id, name: (f && f.name) || id, level: R.getFacilityLevel(s, id), x: p.x, y: p.y, repair: !!R.underRepair(s, id) };
+      return { fac: id, name: (f && f.name) || id, level: R.getFacilityLevel(s, id), single: !!(f && f.singleLevel), x: p.x, y: p.y, repair: !!R.underRepair(s, id) };
     }).filter(Boolean);
   };
   /* Built and working (249-255). */
@@ -1546,6 +1593,9 @@
     if (data.bastion.startingBuilt.indexOf(facId) !== -1) return { ok: false, message: 'The ' + name + ' is one of the five starting facilities: it can\'t be demolished.' };
     var place = R.facilityPlace(s, facId);
     if (!place) return { ok: false, message: 'The ' + name + ' isn\'t built or being built.' };
+    /* The Beast Pen stays while any beast lives in it (creature-rules.js). */
+    var penWhy = R.penDemolishBlocker ? R.penDemolishBlocker(s, data, facId) : '';
+    if (penWhy) return { ok: false, message: penWhy };
     var building = place.entry.status === 'building';
     (place.kind === 'plot' ? s.builtPlots : s.builtExtras)[place.index] = '';
     var where = place.kind === 'plot' ? 'plot' : 'slot';
@@ -1682,6 +1732,8 @@
     if (R.builtFacilityIds(s, data).indexOf(facId) === -1) return { ok: false, message: 'The ' + fac.name + ' isn\'t built yet.' };
     var max = clampInt(levelsTable(data).max || R.MAX_LEVEL, 1, R.MAX_LEVEL);
     var cur = R.getFacilityLevel(s, facId);
+    /* A facility with one level only ("singleLevel": the Beast Pen) has nothing to upgrade to: no Upgrade row at all. */
+    if (fac.singleLevel) return { ok: false, top: true, single: true, message: 'The ' + fac.name + ' has one level only.' };
     if (cur >= max) return { ok: false, top: true, message: 'The ' + fac.name + ' is at its highest level (' + max + ').' };
     var pend = R.upgradePending(s, facId);
     if (pend) return { ok: false, pending: pend, message: 'The ' + fac.name + ' is already being upgraded: ready on Day ' + pend.dueDay + '.' };
@@ -1987,16 +2039,15 @@
     if (fn.portCharter) {
       return (R.registrableCharters ? R.registrableCharters(s) : []).map(function (c) { return { label: 'Port Charter: ' + R.charterLabel(data, c), charterId: c.id }; });
     }
-    /* The Griffin Tower's and Dire Wolf Den's House order: the creatures of
-       its kind waiting for a home, and not being housed already (pull
-       request 7, creature-rules.js). */
+    /* The Beast Pen's House Beast Here: the beasts waiting for a home, and not
+       being housed already (pull request 7, creature-rules.js). */
     if (fn.housesSpecies) return R.housingOptions ? R.housingOptions(s, data, fn.housesSpecies) : [];
     /* The War Room's Drill a Regiment: every regiment that can drill now;
        a Muster: the Recruit order's own list (pull request 8a,
        regiment-rules.js). */
     if (fn.drill) return R.drillOptions ? R.drillOptions(s, data) : [];
-    /* The Wyvern Roost's training: every housed wyvern (creature-rules.js). */
-    if (fn.trains) return R.trainingOptions ? R.trainingOptions(s, data, fac, fn) : [];
+    /* The Beast Pen's Acclimatise With Beast: every housed beast still at Bond 0 (creature-rules.js). */
+    if (fn.acclimatise) return R.acclimatiseOptions ? R.acclimatiseOptions(s, data) : [];
     if (fn.muster) return R.musterChoices ? R.musterChoices(data) : [];
     return fn.options || [];
   };
@@ -2065,12 +2116,9 @@
     if (!fac || !fn) return { ok: false };
     var broken = repairRefusal(s, fac);
     if (broken) return broken;
-    /* A Wyvern Roost training programme: one named wyvern, with every reason
-       it can't be given said exactly (the level included). */
-    if (fn.trains) {
-      if (!R.issueTraining) return { ok: false, message: 'This copy of the Bastion can\'t train creatures.' };
-      return R.issueTraining(s, data, fac, fn, optionIdx, rand);
-    }
+    /* Acclimatise With Beast is a roll at the table, never an order with days
+       (creature-rules.js R.acclimatise). */
+    if (fn.acclimatise) return { ok: false, message: 'Acclimatise With Beast is rolled at the table: choose the beast and press its button, then type the handler\'s total.' };
     var avail = R.fnAvailable(s, fac, fn);
     if (!avail.ok) return { ok: false, message: avail.message };
     /* Register Port Charter: one at a time, and it says whose is running. */
@@ -2078,7 +2126,8 @@
     /* A House order (pull request 7): its creature, its room, one at a time
        (creature-rules.js); refused in a copy without the creature rules. */
     if (fn.housesCreature || fn.housesSpecies) {
-      var homeless = R.housingBlocker ? R.housingBlocker(s, data, fac, fn) : 'This copy of the Bastion can\'t house creatures.';
+      var housePick = fn.housesSpecies ? R.fnOptions(s, data, fac, fn)[clampInt(optionIdx, 0)] || null : null;
+      var homeless = R.housingBlocker ? R.housingBlocker(s, data, fac, fn, housePick ? housePick.creatureId : undefined) : 'This copy of the Bastion can\'t house creatures.';
       if (homeless) return { ok: false, message: homeless };
     }
     /* Drill a Regiment (pull request 8a): one order per regiment, as many
@@ -2089,7 +2138,8 @@
       if (!pick) return { ok: false, message: R.drillRoomBlocker(s, data) || 'No regiment can drill now: each must be at full strength and not drilling already.' };
       return R.issueDrill(s, data, pick.regimentId, rand);
     }
-    if (pendingSame(s, facId, fnId)) return { ok: false, message: 'That order is already pending.' };
+    /* The House order is the one order that can be pending more than once: up to one for each beast (and one for each kind: housingBlocker). */
+    if (!(fn.housesCreature || fn.housesSpecies) && pendingSame(s, facId, fnId)) return { ok: false, message: 'That order is already pending.' };
     /* A commercial voyage protection (20 October 2026): refused while one is ready or active. */
     if (R.protectionBusy) { var pbusy = R.protectionBusy(s, data, fn); if (pbusy) return { ok: false, message: pbusy }; }
     /* A Muster (pull request 8a): one formation for each of its lists. */
@@ -2130,6 +2180,7 @@
       chosen = R.fnOptions(s, data, fac, fn)[clampInt(optionIdx, 0)] || null;
       if (!chosen) return { ok: false, message: R.housingBlocker(s, data, fac, fn) || 'Choose a creature to house.' };
       optionLabel = R.creatureOrderName(R.creatureById(s, chosen.creatureId));
+      chosen = { label: optionLabel, creatureId: chosen.creatureId };
     } else if (fn.housesCreature) {
       chosen = { creatureId: String(fn.housesCreature) };
     }
@@ -2817,9 +2868,6 @@
     /* A House order (pull request 7): its creature is housed, once; nothing
        goes into the Warehouse. (A copy without the creature rules changes
        nothing: a granted creature stays waiting, to be housed again.) */
-    if (fn.trains) {
-      return [R.completeTraining ? R.completeTraining(s, data, order, fn, fac) : ['Orders', (order.label || fac.name + ': ' + fn.label) + ' couldn\'t be completed: this copy of the Bastion can\'t train creatures.']];
-    }
     if (fn.housesCreature || fn.housesSpecies) {
       return [R.completeHousing ? R.completeHousing(s, data, order) : ['Orders', (order.label || fac.name + ': ' + fn.label) + ' couldn\'t be completed: this copy of the Bastion can\'t house creatures. Nothing changed.']];
     }
@@ -3431,6 +3479,10 @@
     var dip = R.tickDiplomacy(s, data);
     dip.logs.forEach(function (l) { R.log(s, l[0], l[1], now); });
     dip.word.forEach(function (l) { R.addWord(s, l); });
+    /* The Beast Pen (22 October 2026): each beast out on the road with its handler earns one Bonding Day for this day,
+       once (creature-rules.js R.tickBonding). It is in the same change as the day moving on, so a day can never be
+       counted without being passed, or passed without being counted. */
+    if (R.tickBonding) R.tickBonding(s, data, now);
   };
   /* Routes sailing today and still to settle (running, and their day has
      come). A route whose roll was cancelled stays due. */
@@ -3504,8 +3556,17 @@
     if (R.shiftCourier) R.shiftCourier(s, n);
     /* The Hall's Diplomatic Records (pull request 9). */
     if (R.shiftDiplomaticRecords) R.shiftDiplomaticRecords(s, n);
-    /* The creatures (pull request 7): when each was granted and housed. */
-    (Array.isArray(s.creatures) ? s.creatures : []).forEach(function (c) { mv(c, 'grantedDay'); mv(c, 'housedDay'); });
+    /* The creatures (pull request 7): when each was granted and housed, and (the Beast Pen, 22 October 2026) the days
+       in its development: the day it went out on the road, the last day credited as a Bonding Day, the day it may try
+       acclimatising again and the day of its last try. Without these a Reset Travel would leave the "one day is never
+       counted twice" guard (lastTick) in the future, and no day would count until the Explorer caught up. */
+    (Array.isArray(s.creatures) ? s.creatures : []).forEach(function (c) {
+      mv(c, 'grantedDay'); mv(c, 'housedDay');
+      var dv = isObj(c) && isObj(c.development) ? c.development : null;
+      if (!dv) return;
+      if (isObj(dv.bonding)) { mv(dv.bonding, 'awaySince'); mv(dv.bonding, 'lastTick'); }
+      if (isObj(dv.acclimatise)) { mv(dv.acclimatise, 'retryDay'); if (isObj(dv.acclimatise.last)) mv(dv.acclimatise.last, 'day'); }
+    });
     /* The Great Rites (pull request 8b): the day each was made. */
     (Array.isArray(s.greatRites) ? s.greatRites : []).forEach(function (g) { mv(g, 'madeDay'); if (g && g.assignedDay !== undefined) mv(g, 'assignedDay'); });
   };

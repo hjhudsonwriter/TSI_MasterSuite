@@ -1,18 +1,17 @@
-/* Scarlett Isles: Beast Handler — the player's phone (BH-3a, the offline code swap).
+/* Scarlett Isles: Beast Handler — the player's phone (BH-3a; read-only since 22 October 2026).
 
    beasthandler.html loads this with only the companion's own files. There is no
-   internet and no server between this phone and the DM's Bastion, so they swap
-   short pieces of text (pasted, or sent as a small file), each signed with a
-   secret only that handler and the DM's Bastion know (codes.js):
+   internet and no server between this phone and the DM's Bastion in this
+   version, so the DM sends short pieces of text (pasted, or sent as a small
+   file), each signed with a secret only that handler and the DM's Bastion know
+   (codes.js). A way to link by scanning a code, and to update by itself, is to come.
 
    1. The DM gives a PAIRING code once. Pasting it links this phone to one handler.
    2. The DM sends a SNAPSHOT code: what this handler can see. Pasting it shows the beasts.
-   3. A change the player makes becomes a REQUEST code to send back to the DM, who
-      pastes it into the Bastion. The Bastion checks it again, does it once, and
-      the answer comes back in the next snapshot.
-   Nothing here ever changes the Bastion: it only asks. What is kept on this phone
-   (the link, the latest snapshot and the requests not yet answered) is in this
-   browser only, under keys starting "tsi.beasthandler.phone". */
+   The app only LOOKS: nothing is ever sent back to the DM, so there are no request
+   codes. What is kept on this phone (the link, the latest snapshot, and which
+   beasts' first meeting has been shown) is in this browser only, under keys
+   starting "tsi.beasthandler.phone". Unlinking forgets all of it. */
 (function () {
   'use strict';
 
@@ -26,7 +25,9 @@
   var root = document.getElementById('tsi-bhp-root');
 
   /* ---------- What this phone keeps ---------- */
-  var KEY = { pairing: 'tsi.beasthandler.phone.pairing', snapshot: 'tsi.beasthandler.phone.snapshot', outbox: 'tsi.beasthandler.phone.outbox', draft: 'tsi.beasthandler.phone.draft' };
+  var KEY = { pairing: 'tsi.beasthandler.phone.pairing', snapshot: 'tsi.beasthandler.phone.snapshot', seen: 'tsi.beasthandler.phone.seen' };
+  /* Kept by earlier versions (requests to send, a first-meeting draft): the app sends nothing now, so they are cleared away. */
+  var OLD_KEYS = ['tsi.beasthandler.phone.outbox', 'tsi.beasthandler.phone.draft'];
   var memory = {};   /* used only if the browser won't keep anything */
   var keepsNothing = false;
   function read(key) {
@@ -50,46 +51,17 @@
     return !!sn.handler && typeof sn.handler.id === 'string' && P.handlerKey(sn.handler.id) === P.handlerKey(pairing.handler);
   }
   if (held && !usable(held)) { held = null; write(KEY.snapshot, null); }
-  var outbox = Array.isArray(read(KEY.outbox)) ? read(KEY.outbox).filter(function (o) { return o && typeof o.id === 'string' && typeof o.code === 'string'; }) : [];
+  OLD_KEYS.forEach(function (k) { write(k, null); });
+  var seen = read(KEY.seen);          /* { <creature id>: true }: the first meetings that have been shown on this phone */
+  if (!seen || typeof seen !== 'object' || Array.isArray(seen)) seen = {};
   var view = null;
   var viewRoot = null;
 
   function snapshot() { return held && held.snapshot ? held.snapshot : null; }
-  function saveOutbox() { write(KEY.outbox, outbox); }
-  /* What a waiting request asked for. A request kept by an earlier version of this page has no copy of it, but its code holds the whole request. */
-  function payloadOf(o) {
-    if (o.payload && typeof o.payload === 'object') return o.payload;
-    var peek = C.peekCommand(o.code);
-    return peek.ok && peek.command && peek.command.payload && typeof peek.command.payload === 'object' ? peek.command.payload : undefined;
-  }
-  /* Requests the Bastion has answered leave the list when a snapshot shows their receipt. */
-  function prune() {
-    var s = snapshot();
-    if (!s) return;
-    var answered = {};
-    (Array.isArray(s.receipts) ? s.receipts : []).forEach(function (r) { if (r && typeof r.id === 'string') answered[r.id] = true; });
-    var keep = outbox.filter(function (o) { return !answered[o.id] && Date.now() - o.at < C.MAX_AGE_MS; });
-    if (keep.length !== outbox.length) { outbox = keep; saveOutbox(); }
-  }
-  prune();
 
   /* ---------- Small pieces ---------- */
   function btn(label, onclick, cls, test, attrs) {
     return el('button', Object.assign({ type: 'button', class: 'tsi-btn ' + (cls || ''), 'data-test': test || null, onclick: onclick }, attrs || {}), label);
-  }
-  function copy(text, button) {
-    function ok() { if (!button) return; var was = button.textContent; button.textContent = 'Copied ✓'; life.setTimeout(function () { button.textContent = was; }, 1600); }
-    function fallback() {
-      var ta = el('textarea', { style: 'position:fixed;opacity:0;left:-999px', 'aria-hidden': 'true' });
-      ta.value = text;
-      document.body.appendChild(ta);
-      ta.select();
-      var copied = false;
-      try { copied = document.execCommand('copy'); } catch (e) { /* the code is on screen to copy by hand */ }
-      ta.remove();
-      if (copied) ok();
-    }
-    try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(ok, fallback); else fallback(); } catch (e) { fallback(); }
   }
   function ago(ms) {
     var m = Math.floor(Math.max(0, Date.now() - ms) / 60000);
@@ -98,20 +70,6 @@
     var h = Math.floor(m / 60);
     if (h < 48) return h + (h === 1 ? ' hour ago' : ' hours ago');
     return Math.floor(h / 24) + ' days ago';
-  }
-  function showCode(title, intro, code, filename, test) {
-    var box = el('textarea', { class: 'tsi-input tsi-bhp-code', readonly: 'readonly', 'aria-label': title + ' (the code to copy)', 'data-test': test, onfocus: function () { box.select(); } });
-    box.value = code;
-    var copyBtn = btn('Copy', function () { copy(code, copyBtn); }, '', test + '-copy');
-    return TSI.modal.open({
-      title: title,
-      body: el('div', null, [
-        el('p', { text: intro }), box,
-        el('div', { class: 'tsi-bhp-row' }, [copyBtn, btn('Save as a file', function () { TSI.download(filename, code, 'text/plain'); }, '', test + '-save')])
-      ]),
-      actions: [{ label: 'Done', value: true, primary: true }],
-      onOpen: function (parts) { parts.dialog.setAttribute('data-test', test + '-dialog'); }
-    });
   }
   /* A text box with a button to open a file instead. Returns { node, value() }. */
   function codeInput(placeholder, test) {
@@ -137,7 +95,6 @@
     }
     held = { snapshot: s, at: Date.now() };
     write(KEY.snapshot, held);
-    prune();
     return { ok: true };
   }
 
@@ -152,41 +109,15 @@
       var s = snapshot();
       if (!s) return 'No snapshot yet.';
       var old = Date.now() - held.at > 24 * 3600 * 1000;
-      var waiting = outbox.length;
-      return 'Snapshot of ' + s.asOfLabel + ', got ' + ago(held.at) + (old ? '. It is more than a day old: ask the DM for a new one' : '') + (waiting ? ' · ' + waiting + (waiting === 1 ? ' request' : ' requests') + ' to send' : '');
+      return 'Snapshot of ' + s.asOfLabel + ', got ' + ago(held.at) + (old ? '. It is more than a day old: ask the DM for a new one' : '');
     },
-    canSubmit: function () {
-      var s = snapshot();
-      if (!pairing) return 'Link this phone first.';
-      if (!s) return 'Get a snapshot from the DM first.';
-      if (!s.campaign || s.campaign !== pairing.campaign) return 'The DM needs to open the Bastion once and send a new snapshot before you can ask for anything.';
-      return '';
-    },
-    /* The first meeting's choices, kept on this phone while a request waits, so a refusal (which can come days later) can put them back. */
-    drafts: {
-      read: function () { var m = read(KEY.draft); return m && typeof m === 'object' && !Array.isArray(m) ? m : {}; },
-      write: function (m) { write(KEY.draft, m && Object.keys(m).length ? m : null); }
-    },
-    outbox: function () { return outbox.map(function (o) { return { id: o.id, type: o.type, creature: o.creature, fac: o.fac, label: o.label, at: o.at, payload: payloadOf(o) }; }); },
-    submit: function (body) {
-      var why = host.canSubmit();
-      if (why) return Promise.resolve({ ok: false, message: why });
-      var s = snapshot();
-      var d = s.creatures[body.creature];
-      var label = !d ? '' : body.type === 'profile.set' ? d.name + ' (profile)' : d.name + ': ' + ((d.orders.available.filter(function (o) { return o.fnId === body.payload.fnId; })[0] || {}).label || body.payload.fnId);
-      var cmd = { v: 1, id: 'p-' + TSI.hmac.randomId(24), campaign: pairing.campaign, handler: pairing.handler, creature: body.creature, fac: body.fac || '', type: body.type, view: body.view || '', label: label, payload: body.payload, at: Date.now() };
-      var code = C.encodeCommand(cmd, pairing.secret);
-      outbox.push({ id: cmd.id, type: cmd.type, creature: cmd.creature, fac: cmd.fac, label: label, at: cmd.at, code: code, payload: cmd.payload });
-      saveOutbox();
-      return Promise.resolve({ ok: true, id: cmd.id, code: code, label: label });
-    },
-    afterSubmit: function (res) {
-      return showCode('Send this to the DM', 'This is your request. Send it to the DM exactly as it is (a message, an email, or save it as a file). It only asks: nothing starts until the DM\'s Bastion checks it and accepts it. Then the DM sends you a new snapshot with the answer.', res.code, 'beast-handler-request.txt', 'bhp-request');
-    },
+    /* Which beasts' first meeting has played on this phone (kept here until the phone is unlinked). */
+    seen: function () { return seen; },
+    markSeen: function (id) { seen = Object.assign({}, seen); seen[id] = true; write(KEY.seen, seen); },
     extraHome: function () { return homeExtras(); }
   };
 
-  /* ---------- Home extras: the snapshot, the requests to send, unlinking ---------- */
+  /* ---------- Home extras: the snapshot and unlinking ---------- */
   var onUpdate = TSI.oneAtATime(function () {
     var input = codeInput('Paste the snapshot code here (it starts BHS1.)', 'bhp-snap-input');
     var problem = el('p', { class: 'tsi-bhp-error', hidden: true, role: 'alert', 'data-test': 'bhp-snap-problem' });
@@ -203,42 +134,17 @@
     });
   });
   var onUnlink = TSI.oneAtATime(function () {
-    return TSI.modal.confirm({ title: 'Unlink this phone', message: 'This forgets the link to your beasts, the snapshot and any requests you have not sent. You would need a new pairing code from the DM. Unlink?', okLabel: 'Unlink', cancelLabel: 'Keep it' }).then(function (go) {
+    return TSI.modal.confirm({ title: 'Unlink this phone', message: 'This forgets the link to your beasts and the snapshot. You would need a new pairing code from the DM, and each beast\'s first meeting would play again. Unlink?', okLabel: 'Unlink', cancelLabel: 'Keep it' }).then(function (go) {
       if (!go) return;
-      pairing = null; held = null; outbox = [];
-      write(KEY.pairing, null); write(KEY.snapshot, null); write(KEY.outbox, null); write(KEY.draft, null);
+      pairing = null; held = null; seen = {};
+      write(KEY.pairing, null); write(KEY.snapshot, null); write(KEY.seen, null);
       start();
-    });
-  });
-
-  /* A request that was never sent (a lost code, a closed chat) would otherwise block new ones for up to 30 days.
-     Forgetting it only clears this phone's list: if the code did reach the DM, the Bastion can still apply it. */
-  var onForget = TSI.oneAtATime(function (o) {
-    return TSI.modal.confirm({ title: 'Forget this request', message: 'Forget "' + o.label + '"? Only do this if you never sent it. If the DM has the code, it can still be applied, and the answer will show in your next snapshot.', okLabel: 'Forget it', cancelLabel: 'Keep it' }).then(function (go) {
-      if (!go) return;
-      outbox = outbox.filter(function (x) { return x.id !== o.id; });
-      saveOutbox();
-      refreshAll();
     });
   });
 
   function homeExtras() {
     var s = snapshot();
     var parts = [];
-    if (outbox.length) {
-      parts.push(el('section', { class: 'tsi-bh-panel', 'data-test': 'bhp-outbox' }, [
-        el('h2', { class: 'tsi-bh-panel__title', text: 'Requests to send to the DM' }),
-        el('p', { class: 'tsi-bh-muted', text: 'Send each code to the DM. It leaves this list once a snapshot shows the Bastion\'s answer.' }),
-        el('ul', { class: 'tsi-bhp-sendlist' }, outbox.map(function (o) {
-          var copyBtn = btn('Copy the code', function () { copy(o.code, copyBtn); }, '', 'bhp-copy-' + o.id);
-          return el('li', { class: 'tsi-bhp-send', 'data-id': o.id }, [
-            el('span', { class: 'tsi-bhp-send__label', text: o.label }),
-            el('span', { class: 'tsi-bh-muted', 'data-made': String(o.at), text: 'Made ' + ago(o.at) + '.' }),
-            el('div', { class: 'tsi-bhp-row' }, [copyBtn, btn('Show it', function () { showCode('Request: ' + o.label, 'Send this to the DM exactly as it is.', o.code, 'beast-handler-request.txt', 'bhp-show'); }, 'tsi-btn--ghost', 'bhp-show-' + o.id), btn('Forget it', function () { onForget(o); }, 'tsi-btn--ghost', 'bhp-forget-' + o.id)])
-          ]);
-        }))
-      ]));
-    }
     parts.push(el('section', { class: 'tsi-bh-panel tsi-bh-panel--quiet', 'data-test': 'bhp-snap' }, [
       el('h2', { class: 'tsi-bh-panel__title', text: s ? 'Your snapshot' : 'No snapshot yet' }),
       el('p', { class: 'tsi-bh-muted', text: s ? 'This is what the DM\'s Bastion showed for ' + pairing.name + ' on ' + s.asOfLabel + '. Ask the DM for a new snapshot when you want to see changes.' : 'Ask the DM for a snapshot code.' }),
@@ -261,7 +167,7 @@
     }, 'tsi-btn--primary', 'bhp-link');
     TSI.append(root, el('div', { class: 'tsi-bh' }, el('div', { class: 'tsi-bhp-card', 'data-test': 'bhp-screen-link' }, [
       el('h1', { text: 'Link your phone' }),
-      el('p', { text: 'This page shows your beasts at the Ironbow and lets you ask your DM for things. It needs no internet.' }),
+      el('p', { text: 'This page shows your beasts at the Ironbow: their bond, their profile and their Chronicle. It only looks, so nothing you do here changes anything. It needs no internet.' }),
       el('ol', null, [el('li', { text: 'Your DM gives you a pairing code. It starts BHP1.' }), el('li', { text: 'Paste it below and press Link this phone.' }), el('li', { text: 'Then your DM sends you a snapshot code to show your beasts.' })]),
       input.node, problem, el('div', { class: 'tsi-bhp-row' }, go)
     ])));
@@ -309,7 +215,6 @@
     if (!view) return;
     var line = root.querySelector('[data-test="bh-sync"] span:last-child');
     if (line) line.textContent = host.syncLine();
-    Array.prototype.forEach.call(root.querySelectorAll('[data-made]'), function (n) { n.textContent = 'Made ' + ago(Number(n.getAttribute('data-made'))) + '.'; });
   }
 
   start();

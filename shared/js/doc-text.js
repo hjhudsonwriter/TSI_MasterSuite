@@ -16,10 +16,13 @@
      works from a double-clicked file). Each text item's end-of-line flag
      keeps the lines; a blank line separates the pages. A scanned PDF (a
      picture of each page) has no text to read.
-   - A plain text file is read with FileReader.
+   - A plain text file is read as UTF-8 (or UTF-16, from its byte-order
+     mark); one that is not valid UTF-8 is read as Windows text (ANSI), which
+     is what Word's and Notepad's plain-text save gives, and the result says so.
 
-   TSI.docText.readFile(file, options) → Promise of { ok: true, text, kind }
-   or { ok: false, message } (a message in plain English; it never throws).
+   TSI.docText.readFile(file, options) → Promise of { ok: true, text, kind
+   [, encoding] } or { ok: false, message, code } (a message in plain English;
+   it never throws).
    The text is raw: the Quest box tidies it (TSI.dmDocRules.cleanImportedText). */
 (function () {
   'use strict';
@@ -27,7 +30,7 @@
   var TSI = window.TSI = window.TSI || {};
 
   var MAX_BYTES = 20 * 1024 * 1024;          /* the biggest file it will try to read */
-  var MAX_XML_BYTES = 80 * 1024 * 1024;      /* a document.xml bigger than this, once unpacked, is refused */
+  var MAX_XML_BYTES = 20 * 1024 * 1024;      /* a document.xml bigger than this, once unpacked, is refused (the unpacking stops there) */
   var pdfReady = null;
   var PDF_FILES = ['shared/lib/pdfjs/pdf.min.js', 'shared/lib/pdfjs/pdf.worker.min.js'];
 
@@ -35,6 +38,8 @@
     notdocx: 'That isn\'t a Word .docx document (it may be an old .doc file, or a different kind of file with a .docx name). Save it as .docx from Word and try again, or paste the text in.',
     encrypted: 'That file is password protected, so it can\'t be read. Take the password off and try again, or paste the text in.',
     zip64: 'That Word document is too big or too unusual for this reader. Paste the text in instead.',
+    zipbig: 'That Word document is too big to read here: its text unpacks to more than 20 MB. Paste the part you need instead.',
+    toolong: 'That PDF has more text than will fit.',
     nounzip: 'This browser can\'t open Word files here. Paste the text in instead.',
     badzip: 'That Word document looks damaged, so it can\'t be read. Paste the text in instead.',
     notpdf: 'That isn\'t a PDF this reader can open. Paste the text in instead.',
@@ -107,23 +112,42 @@
       return bytes.subarray(start, start + entry.packed);
     },
 
-    /* The file's bytes unpacked: stored as they are, or deflated (the browser's own unpacker). */
+    /* The file's bytes unpacked: stored as they are, or deflated (the browser's
+       own unpacker). The size a zip declares is not trusted: the unpacking is
+       read piece by piece and stopped, with the 'zipbig' message, as soon as it
+       passes 20 MB, so a small file made to unpack into gigabytes costs nothing. */
     zipUnpack: function (bytes, entry) {
       var packed = doc.zipEntryBytes(bytes, entry);
       if (entry.method === 0) return Promise.resolve(packed);
       if (entry.method !== 8) return Promise.reject(fail('badzip'));
-      if (entry.size > MAX_XML_BYTES) return Promise.reject(fail('zip64'));
+      if (entry.size > MAX_XML_BYTES) return Promise.reject(fail('zipbig'));
       if (typeof DecompressionStream !== 'function') return Promise.reject(fail('nounzip'));
-      var stream;
+      var reader;
       try {
-        stream = new Response(new Blob([packed]).stream().pipeThrough(new DecompressionStream('deflate-raw')));
+        reader = new Blob([packed]).stream().pipeThrough(new DecompressionStream('deflate-raw')).getReader();
       } catch (e) {
         return Promise.reject(fail('nounzip'));
       }
-      return stream.arrayBuffer().then(function (buffer) {
-        if (buffer.byteLength > MAX_XML_BYTES) throw fail('zip64');
-        return new Uint8Array(buffer);
-      }, function () { throw fail('badzip'); });
+      var chunks = [];
+      var total = 0;
+      function pump() {
+        return reader.read().then(function (r) {
+          if (r.done) {
+            var out = new Uint8Array(total);
+            var at = 0;
+            chunks.forEach(function (c) { out.set(c, at); at += c.length; });
+            return out;
+          }
+          total += r.value.length;
+          if (total > MAX_XML_BYTES) {
+            try { reader.cancel(); } catch (e) { /* it is being dropped anyway */ }
+            throw fail('zipbig');
+          }
+          chunks.push(r.value);
+          return pump();
+        }, function () { throw fail('badzip'); });
+      }
+      return pump();
     },
 
     /* ---------- The Word XML ---------- */
@@ -248,27 +272,37 @@
       return pdfReady.then(function () { return window.pdfjsLib; });
     },
 
-    /* A PDF (an ArrayBuffer) → Promise of its text, pages apart by a blank
-       line. options.stopAt: once this many characters are read, stop (the
-       caller will say it is too long). */
+    /* A PDF (an ArrayBuffer) → Promise of { text, stopped }, pages apart by a
+       blank line. Reading can stop early when the text is already too long
+       for the Quest box: options.checkAbove is the number of characters
+       above which options.tooLong(text) is asked, and when it says yes the
+       reading stops with stopped true (the text is then only the start, and
+       is never to be used). The question is asked again only after the text
+       has doubled, so a long PDF is not tidied over and over. */
     pdfText: function (data, options) {
-      var stopAt = options && typeof options.stopAt === 'number' ? options.stopAt : Infinity;
+      var checkAt = options && typeof options.checkAbove === 'number' ? options.checkAbove : Infinity;
+      var tooLong = options && typeof options.tooLong === 'function' ? options.tooLong : null;
       return doc.loadPdfJs().then(function (lib) {
         return lib.getDocument({ data: new Uint8Array(data) }).promise.then(function (pdf) {
           var pages = [];
           var total = 0;
+          var stopped = false;
           function next(n) {
-            if (n > pdf.numPages || total > stopAt) return Promise.resolve();
+            if (n > pdf.numPages || stopped) return Promise.resolve();
             return pdf.getPage(n).then(function (page) { return page.getTextContent(); }).then(function (content) {
               var text = doc.pageText(content.items);
               pages.push(text);
               total += text.length;
+              if (tooLong && total > checkAt) {
+                if (tooLong(pages.join('\n\n'))) stopped = true;
+                else checkAt = total * 2;
+              }
               return next(n + 1);
             });
           }
           return next(1).then(function () {
             try { pdf.destroy(); } catch (e) { /* nothing to free */ }
-            return pages.join('\n\n');
+            return { text: pages.join('\n\n'), stopped: stopped };
           }, function (err) {
             try { pdf.destroy(); } catch (e) { /* nothing to free */ }
             throw err;
@@ -281,6 +315,22 @@
         if (name === 'InvalidPDFException' || name === 'MissingPDFException' || name === 'FormatError') throw fail('notpdf');
         throw err;
       });
+    },
+
+    /* A text file's bytes as text. UTF-8 (with or without a byte-order mark)
+       and UTF-16 are read as they are; a file that is not valid UTF-8 is
+       taken to be Windows text (what Word's and Notepad's plain-text Save
+       gives, ANSI), so its curly quotes, dashes and accents come out right
+       and not as damaged characters. encoding says which was used. */
+    decodeText: function (data) {
+      var u = data instanceof Uint8Array ? data : new Uint8Array(data);
+      if (u.length >= 2 && u[0] === 0xFF && u[1] === 0xFE) return { text: new TextDecoder('utf-16le').decode(u), encoding: 'utf-16le' };
+      if (u.length >= 2 && u[0] === 0xFE && u[1] === 0xFF) return { text: new TextDecoder('utf-16be').decode(u), encoding: 'utf-16be' };
+      try {
+        return { text: new TextDecoder('utf-8', { fatal: true }).decode(u), encoding: 'utf-8' };
+      } catch (e) {
+        return { text: new TextDecoder('windows-1252').decode(u), encoding: 'windows-1252' };
+      }
     },
 
     /* ---------- Any file ---------- */
@@ -302,13 +352,18 @@
       return '';
     },
 
-    /* The text of a file the DM picked (a File), or why not, in plain English. Never throws. */
+    /* The text of a file the DM picked (a File), or why not, in plain English.
+       Never throws. A text file that was not UTF-8 says which it was read as
+       (encoding: 'windows-1252'); a PDF with too much text for the box comes
+       back as { ok: false, code: 'toolong' } rather than as a cut-off text.
+       options: checkAbove and tooLong, for the PDF (see pdfText). */
     readFile: function (file, options) {
       var kind = file ? (doc.kindOf(file.name) || doc.kindOfType(file.type)) : '';
-      var cap = options && typeof options.stopAt === 'number' ? options.stopAt : Infinity;
-      function done(text) {
-        if (!String(text).replace(/[\s ﻿]/g, '')) throw fail(kind === 'pdf' ? 'scan' : 'notext');
-        return { ok: true, text: String(text), kind: kind };
+      function done(text, encoding) {
+        if (!String(text).replace(/[\s\u00A0\uFEFF]/g, '')) throw fail(kind === 'pdf' ? 'scan' : 'notext');
+        var r = { ok: true, text: String(text), kind: kind };
+        if (encoding) r.encoding = encoding;
+        return r;
       }
       return Promise.resolve().then(function () {
         if (!file) throw fail('kind');
@@ -320,9 +375,13 @@
           e.docCode = 'toobig';
           throw e;
         }
-        if (kind === 'text') return TSI.readFileText(file).then(done);
         return file.arrayBuffer().then(function (buffer) {
-          return kind === 'docx' ? doc.docxText(buffer).then(done) : doc.pdfText(buffer, { stopAt: cap }).then(done);
+          if (kind === 'text') { var d = doc.decodeText(buffer); return done(d.text, d.encoding); }
+          if (kind === 'docx') return doc.docxText(buffer).then(function (t) { return done(t); });
+          return doc.pdfText(buffer, options).then(function (r) {
+            if (r.stopped) throw fail('toolong');
+            return done(r.text);
+          });
         });
       }).catch(function (err) {
         if (err && err.docCode) return { ok: false, message: err.message, code: err.docCode };
