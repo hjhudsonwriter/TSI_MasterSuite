@@ -16,7 +16,11 @@
    - the first meeting: R.rollInitiation / R.sweepInitiation roll a beast's
      Regional Variety and personality ONCE, at Bond 1, and the phone plays a
      reveal of the stored result;
-   - the snapshot code a handler pastes into their phone (R.beastSnapshotCode).
+   - the snapshot code a handler pastes into their phone (R.beastSnapshotCode);
+   - the QR link (S17): R.beastLink builds the address a handler's phone is linked
+     with (the phone page's address, then # and the pairing), s.beast.phoneUrl is the
+     one setting for that address, and s.beast.onlineLink is the OFF-by-default
+     switch for the optional online link (relay.js, docs/ONLINE-LINK-SETUP.md).
    A Bastion saved before 22 October 2026 may still hold the old request record
    (s.beast.accept, .done and .floor): R.cleanBeast loads it and quietly drops
    those three, and the version 4 conversion removes them (step dropBeastRequests
@@ -60,10 +64,15 @@
       seen.add(id);
       handlers.push({ id: id.slice(0, 40), name: name || id, secret: typeof h.secret === 'string' && /^[A-Za-z0-9]{16,64}$/.test(h.secret) ? h.secret : '', since: dayNum(h.since, 1) });
     });
-    return {
+    var out = {
       campaignId: typeof src.campaignId === 'string' && /^[A-Za-z0-9]{8,40}$/.test(src.campaignId) ? src.campaignId : '',
       handlers: handlers
     };
+    /* Kept only when set, so a Bastion that never used them saves exactly what it did before: the phone page's address
+       (an https address, nothing after the page name) and the online link's switch (only ever true if the DM pressed it). */
+    if (typeof src.phoneUrl === 'string' && /^https:\/\/[^\s#?]{4,190}$/.test(src.phoneUrl)) out.phoneUrl = src.phoneUrl;
+    if (src.onlineLink === true) out.onlineLink = true;
+    return out;
   };
 
   /* The record, made (with this Bastion's own campaign id) if there isn't one yet. */
@@ -122,6 +131,46 @@
     e.secret = '';
     R.log(s, 'Beast Handler', 'The code for ' + e.name + ' was taken back. Snapshots made with it no longer open on their phone.');
     return { ok: true, name: e.name };
+  };
+
+  /* ---------- The QR link and the online link's switch ---------- */
+  /* The phone page's address in use: the DM's setting if there is a good one, else the default. */
+  R.beastPhoneUrl = function (s) { return BH.link.phoneUrl(isObj(s.beast) ? s.beast.phoneUrl : ''); };
+  /* Save the phone page's address ('' goes back to the default). { ok, url } or { ok: false, message }. */
+  R.setBeastPhoneUrl = function (s, text) {
+    if (!String(text || '').trim()) {
+      if (isObj(s.beast)) delete s.beast.phoneUrl;
+      return { ok: true, url: BH.link.DEFAULT_PHONE_URL };
+    }
+    var r = BH.link.cleanPhoneUrl(text);
+    if (!r.ok) return { ok: false, message: r.why };
+    R.beastState(s).phoneUrl = r.url;
+    return { ok: true, url: r.url };
+  };
+  /* The link a handler's phone is linked with, from the pairing they already have (it never makes a new secret, so showing
+     the QR again changes nothing). { ok, link, name, handler } or { ok: false, message }. The link holds the secret: it
+     is for that handler's eyes only, so it is never written to the Day Log or a snapshot. */
+  R.beastLink = function (s, data, handlerId) {
+    var e = entryFor(s, handlerId, false);
+    if (!e || !e.secret) return { ok: false, message: 'Make a pairing for this handler first.' };
+    var pairing = { campaign: R.beastState(s).campaignId, handler: e.id, name: e.name, secret: e.secret };
+    return { ok: true, link: BH.link.buildLink(R.beastPhoneUrl(s), pairing), name: e.name, handler: e.id, pairing: pairing };
+  };
+  /* Make a pairing for a handler if they have none yet (nothing changes if they already have one). */
+  R.beastEnsurePaired = function (s, data, name) {
+    var nm = plain(name, 40);
+    if (!nm) return { ok: false, message: 'Choose which handler the code is for.' };
+    var e = entryFor(s, nm, false);
+    if (e && e.secret) return { ok: true, handler: e.id, name: e.name, made: false };
+    var res = R.beastPair(s, data, nm);
+    return res.ok ? { ok: true, handler: res.handler, name: res.name, made: true } : res;
+  };
+  /* Is the online link switched on? Off unless the DM pressed Switch on. */
+  R.beastOnlineLink = function (s) { return isObj(s.beast) && s.beast.onlineLink === true; };
+  R.setBeastOnlineLink = function (s, on) {
+    if (on) R.beastState(s).onlineLink = true;
+    else if (isObj(s.beast)) delete s.beast.onlineLink;
+    return R.beastOnlineLink(s);
   };
 
   /* ---------- Applying a profile ---------- */
@@ -252,15 +301,23 @@
   /* The snapshot code for a handler (what their phone shows), signed with their secret.
      The Chronicle is cut to its latest 40 entries to keep the code short. */
   R.beastSnapshotCode = function (s, data, handlerId) {
+    var body = R.beastSnapshotBody(s, data, handlerId);
+    if (!body.ok) return body;
+    var snap = body.snapshot;
+    /* When this code was made, so a phone can tell if a snapshot pasted later is older than the one it holds. */
+    snap.madeAt = Date.now();
+    return { ok: true, snapshot: snap, code: BH.codes.encodeSnapshot(snap, body.secret) };
+  };
+  /* The snapshot as it stands, without the time it was made (R.beastSnapshotCode and the online link's sender add that), so
+     two of them can be compared to see whether anything changed. Never changes the save. */
+  R.beastSnapshotBody = function (s, data, handlerId) {
     var secret = R.beastSecret(s, handlerId);
     if (!secret) return { ok: false, message: 'Make a pairing code for this handler first.' };
     var snap = P.build(s, data, handlerId);
-    /* When this code was made, so a phone can tell if a snapshot pasted later is older than the one it holds. */
-    snap.madeAt = Date.now();
     Object.keys(snap.creatures).forEach(function (id) {
       var d = snap.creatures[id];
       if (Array.isArray(d.chronicle) && d.chronicle.length > 40) { d.chroniclePartial = d.chronicle.length - 40; d.chronicle = d.chronicle.slice(-40); }
     });
-    return { ok: true, snapshot: snap, code: BH.codes.encodeSnapshot(snap, secret) };
+    return { ok: true, snapshot: snap, secret: secret };
   };
 }());

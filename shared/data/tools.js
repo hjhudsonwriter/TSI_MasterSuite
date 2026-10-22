@@ -111,6 +111,15 @@ window.TSI_DATA.tools = [
         'tools/beasthandler/projection.js',
         'tools/beasthandler/profile-rules.js',
         'tools/beasthandler/codes.js',
+        /* The phone link (S17): the QR code maker and its drawing, the rules of the link, and the OPTIONAL online link
+           (switched off, and it does nothing at all, until the DM switches it on and relay-config.js holds an address). */
+        'tools/beasthandler/lib/qrcode.js',
+        'tools/beasthandler/qr.js',
+        'tools/beasthandler/link-rules.js',
+        'tools/beasthandler/seal.js',
+        'tools/beasthandler/relay-config.js',
+        'tools/beasthandler/relay.js',
+        'tools/beasthandler/publisher.js',
         'tools/beasthandler/bastion-link.js',
         'tools/beasthandler/dm-panel.js',
         'tools/bastion/war-table.js',
@@ -221,6 +230,7 @@ window.TSI_DATA.tools = [
         'tools/beasthandler/projection.js',
         'tools/beasthandler/profile-rules.js',
         'tools/beasthandler/codes.js',
+        'tools/beasthandler/link-rules.js',
         'tools/beasthandler/bastion-link.js',
         'tools/beasthandler/model.js',
         'tools/beasthandler/intro.js',

@@ -12,6 +12,7 @@ Everything the suite needs is stored in this folder tree, so it works with no in
 | `tools/quests/lib/firebase/firebase-app-compat.js`, `firebase-database-compat.js` | Firebase 9.22.0 (the Notice Board's ★ → Knightly Treasures link) | Apache 2.0: `licences/firebase-Apache-2.0.txt` | npm `firebase@9.22.0` |
 | `shared/lib/pdfjs/pdf.min.js`, `pdf.worker.min.js` | PDF.js 3.11.174 (the Combat Tracker's "Import PDF", and the DM doc's Quest box "Import…") | Apache 2.0: `licences/pdfjs-Apache-2.0.txt` | npm `pdfjs-dist@3.11.174`, `legacy/build/` |
 | `tools/beasthandler/lib/qrcode.js` | qrcode-generator 2.0.4 (draws the QR code in the Beast Handler box; the Bastion page only, never the phone page) | MIT: `licences/qrcode-generator-MIT.txt` | npm `qrcode-generator@2.0.4`, `dist/qrcode.js` |
+| `tests/vendor/jsQR.js` | jsQR 1.4.0 (**tests only**: reads a QR code back from a picture so the click-through tests can prove the Beast Handler's QR code holds the right link; no tool loads it) | Apache 2.0: `licences/jsQR-Apache-2.0.txt` | npm `jsqr@1.4.0`, `dist/jsQR.js`, SHA-256 `bc40c8a15196236b2314db0856f72ca0b49980cd5413b8c852a7349f5fee0859` |
 
 The font files were checked byte-for-byte (SHA-256) against the google/fonts repository on 25 September 2026.
 
