@@ -1062,6 +1062,57 @@
     });
   });
 
+  test('fuzz: a damaged entry (empty, text, a number, a wrong shape) in the creatures, the orders, the slots or the levels never stops the conversion; the audit stays clean and converting again changes nothing', function (t) {
+    var junk = [null, 'x', 5, true, [], {}, [null], { id: null }, { facId: 5 }, { facId: 'wyvern_roost' }, { id: 'o1', facId: 'wyvern_roost', fnId: 5 }, { id: 'c9', status: 'housed', species: 7, development: 'x' }];
+    function base() {
+      return v3(function (s) {
+        s.builtExtras = [old('wyvern_roost'), old('griffin_tower')];
+        s.builtPlots = ['', old('dire_wolf_den')];
+        s.facilityLevels = { wyvern_roost: 2, griffin_tower: 1 };
+        s.repairs = { wyvern_roost: 20 };
+        s.creatures = [creature('g1', 'griffin', 'Swiftwing', 'housed', 'griffin_tower', 2), creature('w1', 'wyvern', 'Ash', 'waiting', '', null), creature('d1', 'dire_wolf', 'Ashfang', 'housed', 'dire_wolf_den', 0, { development: { bond: { level: 1 } } })];
+        s.pendingOrders = [
+          order('e', 'wyvern_roost', 'house_elara_wyvern', { chosen: { creatureId: 'elara_wyvern' }, label: 'Wyvern Roost: House Elara\'s Wyvern', dueDay: 14 }),
+          order('w', 'wyvern_roost', 'house_wyvern', { chosen: { label: 'Ash', creatureId: 'w1' }, optionLabel: 'Ash', label: 'Wyvern Roost: House a Wyvern (Ash)', dueDay: 15 }),
+          order('t', 'griffin_tower', 'grf_keeper_routine', { chosen: { label: 'Swiftwing', trainCreatureId: 'g1' }, label: 'Griffin Tower: Keeper\'s Routine', dueDay: 20 })
+        ];
+      });
+    }
+    var tried = 0;
+    function attempt(label, s) {
+      tried++;
+      var res;
+      try { res = convert(s); } catch (e) { t.ok(false, label + ' threw: ' + e.message); return; }
+      t.same(res.problems, [], label + ': the audit');
+      t.equal(res.save.v, 4, label + ': converted');
+      try { BR.fromSave(copy(res.save), data); } catch (e2) { t.ok(false, label + ': the converted save would not load: ' + e2.message); }
+      t.equal(canon(BR.migrateToV4(res.save, data).save), canon(res.save), label + ': converting again changes nothing');
+    }
+    ['creatures', 'pendingOrders', 'builtExtras', 'builtPlots'].forEach(function (key) {
+      junk.forEach(function (j, i) {
+        var tail = base(); tail[key] = (Array.isArray(tail[key]) ? tail[key] : []).concat([j]); attempt(key + ' + junk ' + i + ' at the end', tail);
+        var head = base(); head[key] = [j].concat(Array.isArray(head[key]) ? head[key] : []); attempt(key + ' + junk ' + i + ' at the start', head);
+      });
+    });
+    ['facilityLevels', 'repairs', 'research'].forEach(function (key) {
+      junk.forEach(function (j, i) {
+        var whole = base(); whole[key] = j; attempt(key + ' = junk ' + i, whole);
+        var one = base(); one[key] = { wyvern_roost: j, griffin_tower: j, dire_wolf_den: j, beast_pen: j }; attempt(key + ' ids = junk ' + i, one);
+      });
+    });
+    ['status', 'home', 'name', 'species', 'development', 'id'].forEach(function (field) {
+      junk.forEach(function (j, i) {
+        var s = base(); s.creatures.forEach(function (c) { c[field] = j; }); attempt('every creature ' + field + ' = junk ' + i, s);
+      });
+    });
+    ['bond', 'chronicle', 'handlerId', 'training', 'harness', 'firstFlight'].forEach(function (field) {
+      junk.forEach(function (j, i) {
+        var s = base(); s.creatures.forEach(function (c) { if (c && c.development) c.development[field] = j; }); attempt('every development.' + field + ' = junk ' + i, s);
+      });
+    });
+    t.ok(tried > 300, 'a good many shapes were tried: ' + tried);
+  });
+
   test('a damaged field in the beast parts is ignored, not refused', function (t) {
     ['x', 5, null, [1], {}].forEach(function (v) {
       var res = convert(v3(function (s) { s.creatures = v; s.builtExtras = [old('wyvern_roost')]; s.facilityLevels = { wyvern_roost: v }; s.repairs = { griffin_tower: v }; }));

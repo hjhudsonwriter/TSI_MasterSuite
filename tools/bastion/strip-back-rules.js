@@ -547,8 +547,10 @@
     ['builtExtras', 'builtPlots'].forEach(function (key) {
       (arr(s[key]) || []).forEach(function (x) { var e = entryOf(x); if (e && isOldPenId(e.facId)) out.push('a place: ' + e.facId); });
     });
-    ['facilityLevels', 'repairs', 'research'].forEach(function (key) {
-      if (isObj(s[key])) Object.keys(s[key]).forEach(function (id) { if (isOldPenId(id)) out.push('a ' + (key === 'repairs' ? 'repair' : key === 'research' ? 'research' : 'level') + ': ' + id); });
+    /* (The saved research is not touched: none of the three buildings ever had a research tree, the audit insists the
+       research record comes back exactly as it was, and the Bastion drops a tree it does not know when it loads.) */
+    ['facilityLevels', 'repairs'].forEach(function (key) {
+      if (isObj(s[key])) Object.keys(s[key]).forEach(function (id) { if (isOldPenId(id)) out.push('a ' + (key === 'repairs' ? 'repair' : 'level') + ': ' + id); });
     });
     (arr(s.pendingOrders) || []).forEach(function (o) { if (isObj(o) && isOldPenId(o.facId)) out.push('an order: ' + o.facId); });
     (arr(s.creatures) || []).forEach(function (c) {
@@ -617,8 +619,8 @@
       builtFree = true;
       report.pen.builtFree = true;
     }
-    /* Levels, repairs, research: the old ids go; the Pen has one level. */
-    ['facilityLevels', 'repairs', 'research'].forEach(function (key) {
+    /* Levels and repairs: the old ids go; the Pen has one level. */
+    ['facilityLevels', 'repairs'].forEach(function (key) {
       if (!isObj(s[key])) return;
       OLD_PENS.forEach(function (id) { if (id in s[key]) { delete s[key][id]; seen[id] = true; (report.removed[key] = report.removed[key] || []).push(id); } });
     });
