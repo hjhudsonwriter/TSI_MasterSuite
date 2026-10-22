@@ -233,6 +233,105 @@
     return { ok: true, changed: changed, name: name };
   };
 
+  /* ---------- The first meeting: what the Bastion decides (Harry, 22 October 2026) ----------
+     The phone app is read-only. When a beast passes acclimatisation (Bond 1) the BASTION rolls its first meeting
+     once and keeps the result in development.initiation; the phone only plays the reveal of what is stored.
+     - The Regional Variety comes from data/initiation-data.js: mode 'fixed' names one for each kind (until Harry
+       says otherwise), mode 'random' is an even pick among the kind's own varieties.
+     - The three personality lines are genuinely random: Dominant Temperament (d12, the same for every kind),
+       Attachment Cue (d8) and Instinctive Trigger (d8), from Harry's tables (data/profile-tables.js). The order of
+       the dice is: the variety (random mode only), then dominant, attachment, trigger.
+     - It happens ONCE: a beast that already has an initiation, or already has a Regional Variety (the DM typed one,
+       or it was written before this existed), is treated as introduced and is never rolled for, so nothing can be
+       rolled twice or overwritten.
+     - Lines the DM has already written are kept; the roll fills blanks only. Its die number is the matching table
+       row's roll, or 0 when the line matches none (then there is nothing to roll for on the phone).
+     - It never touches a bond, a stat, an ability or the Chronicle: it writes the profile through R.setProfile
+       (which keeps the change note and the Day Log line) and says in the Day Log when the variety was staged. */
+  function initiationData() { return window.TSI_DATA && isObj(window.TSI_DATA.beastInitiation) ? window.TSI_DATA.beastInitiation : {}; }
+  function profileTables() { return window.TSI_DATA && isObj(window.TSI_DATA.beastProfile) ? window.TSI_DATA.beastProfile : null; }
+  /* The kind's variety table entry for an id or a name, or null. */
+  function varietyOf(sp, key) {
+    var k = String(key || '').toLowerCase();
+    return arr(sp && sp.regional).filter(function (v) { return v.id === k || String(v.name).toLowerCase() === k; })[0] || null;
+  }
+  /* Which variety this kind meets as: { variety, mode } ('fixed' unless the data says 'random' or names nothing real). */
+  R.initiationVariety = function (speciesId, rand) {
+    var t = profileTables();
+    var sp = t && isObj(t.species) ? t.species[speciesId] : null;
+    var list = arr(sp && sp.regional);
+    if (!list.length) return null;
+    var rule = isObj(initiationData().regional) ? initiationData().regional : {};
+    if (rule.mode === 'fixed' && isObj(rule.fixed)) {
+      var fixed = varietyOf(sp, rule.fixed[speciesId]);
+      if (fixed) return { variety: fixed, mode: 'fixed' };
+    }
+    var r = typeof rand === 'function' ? rand() : Math.random();
+    var n = Math.min(list.length, Math.max(1, Math.floor((isFinite(r) ? r : 0) * list.length) + 1));
+    return { variety: list[n - 1], mode: 'random', roll: n, of: list.length };
+  };
+
+  /* Roll the first meeting for one beast, once. rand: 0 up to (not including) 1.
+     Returns { ok, initiated?, introduced?, already?, message?, regional?, rolls?, lines? }: initiated is true only when
+     this call did it. Nothing changes for a beast that is already introduced (initiated is then not set). */
+  R.rollInitiation = function (s, data, creatureId, rand) {
+    var c = R.creatureById(s, creatureId);
+    if (!c) return { ok: false, message: 'That creature isn\'t at the Ironbow any more.' };
+    var existing = R.creatureDev(c);
+    if (existing && isObj(existing.initiation)) return { ok: true, already: true };
+    if (existing && String(existing.regional || '').trim()) return { ok: true, introduced: true };
+    var t = profileTables();
+    var sp = t && isObj(t.species) ? t.species[c.species] : null;
+    if (!sp || !arr(sp.regional).length) return { ok: false, message: 'There are no varieties written for this kind of beast, so it cannot be introduced.' };
+    var rnd = typeof rand === 'function' ? rand : Math.random;
+    var d = R.ensureDev(s, c);
+    var picked = R.initiationVariety(c.species, rnd);
+    if (!picked) return { ok: false, message: 'There are no varieties written for this kind of beast, so it cannot be introduced.' };
+    var tables = { dominant: t.dominant, attachment: sp.attachment, trigger: sp.trigger };
+    var clean = { regional: picked.variety.name };
+    var rolls = {};
+    var made = {};
+    ['dominant', 'attachment', 'trigger'].forEach(function (k) {
+      var table = tables[k];
+      var written = plain(d.temperament[k], 120);
+      if (written) {
+        /* The DM's own line stays. Its number is the row it matches, or 0. */
+        var row = isObj(table) ? arr(table.entries).filter(function (e) { return String(e.label).toLowerCase() === written.toLowerCase(); })[0] : null;
+        rolls[k] = row ? clampInt(row.roll, 0, 100) : 0;
+        return;
+      }
+      var e = Pf.rollTable(table, rnd);
+      if (!e) { rolls[k] = 0; return; }
+      rolls[k] = clampInt(e.roll, 0, 100);
+      clean[k] = e.label;
+      made[k] = { roll: e.roll, dice: table.dice > 0 ? table.dice : arr(table.entries).length };
+    });
+    d.initiation = { regional: picked.variety.id, rolls: rolls, day: dayNum(s.day, 1) };
+    var res = R.setProfile(s, data, c.id, clean, 'the first meeting');
+    var name = R.creatureName(data, c);
+    var parts = [];
+    Object.keys(made).forEach(function (k) { parts.push(Pf.LABELS[k] + ' d' + made[k].dice + ' ' + made[k].roll); });
+    var line = name + ': first meeting prepared. Regional Variety ' + picked.variety.name +
+      (picked.mode === 'fixed' ? ' (staged: fixed until further notice)' : ' (rolled d' + picked.of + ' ' + picked.roll + ')') +
+      (parts.length ? '; ' + parts.join('; ') : '') + '. The player\'s Beast Handler plays it as a reveal.';
+    R.log(s, 'Beast Handler', line);
+    return { ok: true, initiated: true, regional: picked.variety.name, regionalId: picked.variety.id, rolls: rolls, changed: res.changed || [], lines: [line] };
+  };
+
+  /* The one-off sweep: every beast at Bond 1 or more with no initiation and no Regional Variety is rolled for, once
+     (the Bastion runs it when it opens and at each day, never the snapshot builder). { changed, count, lines }. */
+  R.sweepInitiation = function (s, data, rand) {
+    var out = { changed: false, count: 0, lines: [] };
+    if (!isObj(s) || !Array.isArray(s.creatures)) return out;
+    s.creatures.forEach(function (c) {
+      var d = R.creatureDev(c);
+      if (!d || !d.bond || d.bond.level < 1 || isObj(d.initiation) || String(d.regional || '').trim()) return;
+      var res = R.rollInitiation(s, data, c.id, rand);
+      if (res.ok && res.initiated) { out.changed = true; out.count += 1; out.lines = out.lines.concat(res.lines); }
+    });
+    return out;
+  };
+
   /* ---------- Applying a request ---------- */
   var HANDLE_ID = /^(?!(?:__proto__|constructor|prototype|toString|valueOf|hasOwnProperty)$)[A-Za-z0-9._:-]{8,80}$/;
   /* The refusal's words for a player: the Bastion's own reason, minus anything that is the DM's business. */
