@@ -190,15 +190,16 @@
     t.equal(D.makeQuest(exact + exact, 1).text.length, 200000);
   });
 
-  test('two windows: the copy typed in last wins; a tie changes nothing', function (t) {
-    var mine = { text: 'mine', at: 100 };
-    var theirs = { text: 'theirs', at: 200 };
-    t.same(D.newerQuest(mine, theirs), theirs, 'the other window typed later');
-    t.same(D.newerQuest(theirs, mine), theirs, 'and the other way round');
-    t.same(D.newerQuest(mine, { text: 'same time', at: 100 }), mine, 'a tie keeps mine');
-    t.same(D.newerQuest(mine, null), mine, 'nothing saved elsewhere');
-    t.same(D.newerQuest(null, theirs), theirs, 'nothing here yet');
-    t.same(D.newerQuest(null, null), { text: '', at: 0 });
+  test('another window, or a Restore, has changed the saved text when the whole saved value differs; the time alone does not decide', function (t) {
+    var known = { text: 'mine', at: 100 };
+    t.equal(D.questChanged(known, { text: 'mine', at: 100 }), false, 'the same');
+    t.equal(D.questChanged(known, { text: 'theirs', at: 200 }), true, 'another window typed later');
+    t.equal(D.questChanged(known, { text: 'a restored older copy', at: 50 }), true, 'a Restore puts back an OLDER copy: that is a change too');
+    t.equal(D.questChanged(known, { text: 'mine', at: 300 }), true, 'the same words saved again later');
+    t.equal(D.questChanged(known, null), true, 'a Restore from a backup with no Quest text empties it');
+    t.equal(D.questChanged({ text: '', at: 0 }, null), false, 'nothing here, nothing saved: no change');
+    t.equal(D.questChanged(null, { text: 'x', at: 1 }), true, 'nothing here yet, something saved');
+    t.equal(D.questChanged(null, null), false);
   });
 
   test('imported text is tidied: no byte-order mark or hidden characters, plain line endings, no big gaps', function (t) {
@@ -212,10 +213,38 @@
     t.equal(D.cleanImportedText('  \n\n  Hello  \n\n'), 'Hello', 'trimmed at both ends');
     t.equal(D.cleanImportedText('a\u00A0b'), 'a b', 'a non-breaking space is a space');
     t.equal(D.cleanImportedText('a\u2028b'), 'a\nb', 'a line separator');
+    t.equal(D.cleanImportedText('one\u000Btwo\u000Cthree'), 'one\ntwo\nthree', 'a vertical tab or form feed is a line break, so the words stay apart');
     t.equal(D.cleanImportedText('Ironbow \u2014 Kaelen\u2019s <b>bold</b>'), 'Ironbow \u2014 Kaelen\u2019s <b>bold</b>', 'real characters and angle brackets are untouched');
     t.equal(D.cleanImportedText(null), '');
     t.equal(D.cleanImportedText(undefined), '');
     t.equal(D.cleanImportedText(12), '12');
+  });
+
+  test('tidying is quick however long a run of spaces or tabs: 200,000 take well under a second', function (t) {
+    function time(text) { var t0 = Date.now(); var out = D.cleanImportedText(text); return { ms: Date.now() - t0, out: out }; }
+    var spaces = new Array(200001).join(' ');
+    var cases = [
+      [spaces + 'a', 'a', 'a long run of spaces, then a word'],
+      ['a' + spaces, 'a', 'a word, then a long run of spaces'],
+      ['a' + spaces + '\nb', 'a\nb', 'a long run of spaces at the end of a line'],
+      [new Array(100001).join(' \t') + 'x', 'x', 'spaces and tabs mixed'],
+      [new Array(50001).join(' \n') + 'x', 'x', 'many lines of spaces'],
+      [new Array(100001).join('\r\n') + 'x', 'x', 'many Windows line ends']
+    ];
+    cases.forEach(function (c) {
+      var r = time(c[0]);
+      t.equal(r.out, c[1], c[2] + ': the right text');
+      t.ok(r.ms < 500, c[2] + ': ' + r.ms + ' ms');
+    });
+    var j0 = Date.now();
+    var joined = D.joinQuest(new Array(150001).join(' ') + 'x', 'y', 'append');
+    t.ok(Date.now() - j0 < 500 && joined.ok, 'adding to a box ending in a long run of spaces is quick too');
+  });
+
+  test('the Quest rules take a name like "constructor" for no score kind', function (t) {
+    ['constructor', '__proto__', 'toString', 'hasOwnProperty'].forEach(function (k) {
+      t.equal(D.checkEdit(k, 'blackstone', 5).ok, false, k);
+    });
   });
 
   test('Replace or Add to the end: what the box would hold, and the limit', function (t) {

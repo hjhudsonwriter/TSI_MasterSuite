@@ -129,7 +129,8 @@
      A box for the DM's own text (a session file to read from, pasted or
      imported from a PDF, Word or text file). One box, saved as
      tsi.dmdoc.quest = { text, at }, where `at` is when it was last typed in
-     (so a window can tell whether another window's copy is newer). It is
+     (a window tells whether another copy has replaced its own by comparing
+     the whole saved value, not the time alone: see questChanged). It is
      never sent to the players: nothing but the DM doc reads this key.
      QUEST_MAX is far under what the browser's database could hold; it is
      there for the day the browser falls back to its small storage (about 5
@@ -158,40 +159,53 @@
     return q;
   };
 
-  /* Which of two windows' copies to keep: the one typed in last. A tie keeps
-     `mine` (nothing has changed). Either may be null. */
-  rules.newerQuest = function (mine, theirs) {
-    var a = mine ? rules.cleanQuest(mine) : null;
-    var b = theirs ? rules.cleanQuest(theirs) : null;
-    if (!b) return a || rules.cleanQuest(null);
-    if (!a) return b;
-    return b.at > a.at ? b : a;
+  /* Has the saved Quest text changed since this window last saved or loaded
+     it? known: the { text, at } this window last saved or loaded; stored:
+     what is saved now (null: nothing is). Any difference counts, an older
+     `at` too: another window may have typed later, but a Restore from a
+     backup puts back an older copy, and it is the saved one that should
+     show. */
+  rules.questChanged = function (known, stored) {
+    var a = rules.cleanQuest(known);
+    var b = rules.cleanQuest(stored);
+    return a.text !== b.text || a.at !== b.at;
   };
 
   /* Imported text tidied for the box: no byte-order mark or hidden control
-     characters, plain line endings, no trailing spaces, no run of more than
-     two blank lines, and no blank space at either end. */
+     characters, plain line endings (a vertical tab or form feed is a line
+     break too, so the words either side stay apart), no trailing spaces, no
+     run of more than two blank lines, and no blank space at either end. One
+     pass over the lines, so a very long run of spaces costs no more than
+     any other text of its length. */
   rules.cleanImportedText = function (raw) {
-    var text = String(raw === null || raw === undefined ? '' : raw);
-    return text
+    var text = String(raw === null || raw === undefined ? '' : raw)
       .replace(/\uFEFF/g, '')
-      .replace(/\r\n?/g, '\n')
-      .replace(/[\u2028\u2029]/g, '\n')
+      .replace(/\r\n?|[\u2028\u2029\u000B\u000C]/g, '\n')
       .replace(/\u00A0/g, ' ')
-      .replace(CONTROL, '')
-      .replace(/[ \t]+\n/g, '\n')
-      .replace(/\n{4,}/g, '\n\n\n')
-      .trim();
+      .replace(CONTROL, '');
+    var lines = text.split('\n');
+    var out = [];
+    var blanks = 0;
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      var end = line.length;
+      while (end > 0 && (line.charCodeAt(end - 1) === 32 || line.charCodeAt(end - 1) === 9)) end--;
+      if (end < line.length) line = line.slice(0, end);
+      if (line === '') { blanks++; if (blanks > 2) continue; } else blanks = 0;
+      out.push(line);
+    }
+    return out.join('\n').trim();
   };
 
   /* What the box would hold if imported text were put in it. mode 'replace'
      puts it in place of what is there; 'append' adds it to the end, after a
      blank line. Too long: { ok: false, message }, and nothing should change;
-     there is no cutting off the end of a document silently. */
-  rules.joinQuest = function (current, incoming, mode) {
-    var add = rules.cleanImportedText(incoming);
+     there is no cutting off the end of a document silently. clean: the text
+     has already been through cleanImportedText (so it isn't done again). */
+  rules.joinQuest = function (current, incoming, mode, clean) {
+    var add = clean === true ? String(incoming) : rules.cleanImportedText(incoming);
     var have = String(current || '');
-    var text = mode === 'append' && have.trim() ? have.replace(/\s+$/, '') + '\n\n' + add : add;
+    var text = mode === 'append' && have.trim() ? have.trimEnd() + '\n\n' + add : add;
     if (!add) return { ok: false, message: 'There was no text to import.' };
     if (text.length > rules.QUEST_MAX) {
       return {
