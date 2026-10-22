@@ -31,6 +31,8 @@ const QUEST = 'tsi.dmdoc.quest';
 async function go(page, tool) {
   await page.goto(INDEX + (tool ? '?tool=' + tool : ''));
   await page.waitForSelector('.tsi-topbar');
+  /* The Bastion and the Explorer have a hook for the tests once they are open (slower when the machine is busy). */
+  if (tool === 'bastion' || tool === 'explorer') await page.waitForFunction(t => window.TSI && window.TSI[t] && window.TSI[t].debug, tool, { timeout: 20000 });
   await page.waitForTimeout(500);
 }
 async function waitSaved(page) {
@@ -701,6 +703,30 @@ const sessionPdf = () => F.write(TMP, 'Session 13.pdf', F.pdf([['Chapter One', '
       await importFile(page, F.write(TMP, 'notes.txt', '﻿First line  \r\nSecond line\r\n\r\n\r\n\r\n\r\n\r\nThird after a gap\r\n'));
       await waitNote(page, /Imported \d+ characters from notes\.txt/);
       equal(await boxText(page), 'First line\nSecond line\n\n\nThird after a gap');
+    });
+
+    await check('a text file saved as Windows ANSI (Word\'s plain-text save) comes in with its quotes, dash and accent right, and the note says how it was read', async () => {
+      await page.fill('[data-test=dmdoc-quest-text]', '');
+      await importFile(page, F.write(TMP, 'ansi.txt', Buffer.from('Kaelen\x92s plan \x96 caf\xe9\r\n\x93Quoted\x94', 'latin1')));
+      await waitNote(page, /Imported \d+ characters from ansi\.txt/);
+      equal(await boxText(page), 'Kaelen\u2019s plan \u2013 caf\u00e9\n\u201cQuoted\u201d');
+      assert(/not saved as UTF-8.*Windows \(ANSI\)/.test(await note(page)), await note(page));
+      await page.fill('[data-test=dmdoc-quest-text]', '');
+      await importFile(page, F.write(TMP, 'utf8.txt', Buffer.concat([Buffer.from([0xEF, 0xBB, 0xBF]), Buffer.from('Kaelen\u2019s plan \u2013 caf\u00e9', 'utf8')])));
+      await waitNote(page, /Imported \d+ characters from utf8\.txt/);
+      equal(await boxText(page), 'Kaelen\u2019s plan \u2013 caf\u00e9');
+      assert(!/ANSI/.test(await note(page)), 'a UTF-8 file says nothing about encodings: ' + await note(page));
+    });
+
+    await check('a PDF with more text than the box holds says so with the limit and imports nothing', async () => {
+      await page.fill('[data-test=dmdoc-quest-text]', 'Keep me');
+      await savedAs(page, 'Keep me');
+      const pages = [];                                                   /* 80 pages of 45 lines of 70 characters: about 250,000 */
+      for (let p = 0; p < 80; p++) { const lines = []; for (let i = 0; i < 45; i++) lines.push(('P' + p + ' line ' + i + ' ').padEnd(70, 'x')); pages.push(lines); }
+      await importFile(page, F.write(TMP, 'Huge.pdf', F.pdf(pages)));
+      await waitNote(page, /more than 200,000 characters of text.*Nothing was imported/);
+      equal(await page.$('.tsi-modal'), null, 'it did not ask');
+      equal(await boxText(page), 'Keep me');
     });
 
     await check('what cannot be read says so in plain words, and changes nothing', async () => {

@@ -1045,8 +1045,15 @@
     window.addEventListener('pagehide', commitQuestNow);
     /* Another window did a Restore or an Import: look again at what is saved. */
     var replacedKey = TSI.storeRules.spaceNames(TSI.space).replaced;
+    var draftKeyName = draftKey();
     window.addEventListener('storage', function (event) {
       if (event.key === replacedKey && opened) { loadQuest(); refresh(); }
+      /* Another window is closing with typing the browser may not finish saving: this window, if its DM doc has been opened, saves it. */
+      if (event.key === draftKeyName && event.newValue && quest) {
+        var left = null;
+        try { left = JSON.parse(event.newValue); } catch (e) { /* not ours to read */ }
+        if (left && left.final === true) pickUpDraft();       /* only the last copy, not each key of someone typing */
+      }
     });
     window.addEventListener('focus', function () { if (opened) loadQuest(); });
     document.addEventListener('visibilitychange', function () {
