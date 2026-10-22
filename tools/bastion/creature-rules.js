@@ -243,7 +243,8 @@
     var o = R.houseOrderFor(s, c.id);
     var fresh = R.creatureOrderName(c);
     if (o) {
-      if (typeof o.label === 'string' && oldOrderName && o.label.indexOf('(' + oldOrderName + ')') !== -1) o.label = o.label.replace('(' + oldOrderName + ')', '(' + fresh + ')');
+      /* A function, not a string, as the replacement: a name with $& or $1 in it must be written as typed. */
+      if (typeof o.label === 'string' && oldOrderName && o.label.indexOf('(' + oldOrderName + ')') !== -1) o.label = o.label.replace('(' + oldOrderName + ')', function () { return '(' + fresh + ')'; });
       o.optionLabel = fresh;
     }
     var line = before === after ? before + ' keeps its name.' : before + ' is now called ' + after + '.';
@@ -746,7 +747,8 @@
   /* ----- the DM's actions ----- */
   /* Assign (or change) the handler. The first assignment keeps the bond; a change keeps the history and starts the new
      pairing at Bond 0 (it must be acclimatised with the new handler), unless the DM credits the old bond (keepBond).
-     Never while the beast is away: it has to be back at the Pen first. A new pairing starts its Bonding Days again. */
+     Never while the beast is away: it has to be back at the Pen first. A new pairing starts its Bonding Days again; a failed
+     acclimatisation roll's wait (3 days) is kept, whoever the handler is. */
   R.assignHandler = function (s, data, id, handler, reason, keepBond) {
     var c = R.creatureById(s, id);
     if (!c) return gone();
@@ -764,9 +766,9 @@
       if (!keepBond) d.bond.level = 0;
       d.bond.ready = null;
       d.handlerId = h;
-      /* A new pairing: its own Bonding Days, and its own try at acclimatising. */
+      /* A new pairing: its own Bonding Days. A failed acclimatisation roll still holds, though (Harry: "that beast cannot try
+         again for 3 in-game days"): the wait belongs to the beast, not to its handler, so d.acclimatise stays as it was. */
       delete d.bonding;
-      delete d.acclimatise;
       R.addChronicle(s, c, 'handler', 'Handler changed to ' + R.handlerName(h) + '. ' + (keepBond ? 'The DM credited the old bond (Bond ' + was + ').' : 'The new pairing starts at Bond 0 (Bond ' + was + ' kept in the history). It must be acclimatised again.') + ' Reason: ' + why, 'DM');
       return { ok: true, log: ['Creatures', name + '\'s handler is now ' + R.handlerName(h) + (keepBond ? ' (Bond ' + d.bond.level + ' credited).' : ' (Bond 0: a new pairing).')] };
     }
