@@ -679,16 +679,16 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       await page.waitForSelector('[data-test=panel-diplomacy] [data-test=hall]');
       await page.hover('.tsi-bas-hall__fns .tsi-bas-fn >> nth=0');
       await page.waitForSelector('[data-test=tooltip]:not([hidden])');
-      assert(/Registers a Port Charter/.test(await text(page, 'tooltip')));
+      assert(/Host a clan delegation/.test(await text(page, 'tooltip')));
       equal(await page.isDisabled('[data-test="issue-hall_of_emissaries__inter_clan_summit"]'), true);
       equal(await page.isDisabled('[data-test="issue-hall_of_emissaries__trade_consortium"]'), true);
     });
 
-    await check('the Secure Trade Agreement is gone from the Hall, and Register Port Charter is its first order, open at Level 1', async () => {
+    await check('the Secure Trade Agreement is gone from the Hall, and Register Port Charter has moved to the Dock', async () => {
       await pause(page);
       equal(await page.$('[data-test="issue-hall_of_emissaries__secure_trade_agreement"]'), null, 'no button');
-      equal(await page.$$eval('.tsi-bas-hall__fns .tsi-bas-fn [data-test^="issue-hall_of_emissaries__"]', bs => bs.map(b => b.getAttribute('data-test').replace('issue-hall_of_emissaries__', '')).slice(0, 2)), ['register_port_charter', 'host_delegation']);
-      equal(await page.isDisabled('[data-test="issue-hall_of_emissaries__register_port_charter"]'), true, 'off only because no Charter is waiting');
+      equal(await page.$('[data-test="issue-hall_of_emissaries__register_port_charter"]'), null, 'not in the Hall (step S08)');
+      equal(await page.$$eval('.tsi-bas-hall__fns .tsi-bas-fn [data-test^="issue-hall_of_emissaries__"]', bs => bs.map(b => b.getAttribute('data-test').replace('issue-hall_of_emissaries__', '')).slice(0, 2)), ['host_delegation', 'inter_clan_summit']);
       assert(!/Trade Agreements|Archived|Retired/.test(await text(page, 'diplomacy-records')), 'no agreements box when there are none');
       equal([(await st(page)).treasuryGP, (await st(page)).pendingOrders.length], [5000, 0]);
     });
@@ -790,18 +790,6 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       assert(/No routes are due to sail\. Each sails every 7 days; the next on Day 10\./.test(await popText(page)), await popText(page));
       await clickModal(page, 'Close');
       assert(/Next sails: Day 10/.test(await text(page, 'routes-list')), await text(page, 'routes-list'));
-    });
-
-    await check('the Sea Trade Routes map lights up each running route', async () => {
-      await pause(page);
-      await page.click('[data-test=routes]');
-      await page.waitForSelector('[data-test=trade-map]');
-      await page.waitForFunction(() => Array.from(document.querySelectorAll('.tsi-bas-trademap img')).every(i => i.complete));
-      equal(await text(page, 'routes-shown'), 'Blackstone, Karr');
-      equal(await page.$$eval('.tsi-bas-trademap img', is => is.map(i => [i.getAttribute('src').split('/').pop(), i.naturalWidth])),
-        [['clan_trading_locations.png', 1494], ['blackstone_trade_route.png', 1494], ['karr_trade_route.png', 1494]]);
-      await H.shot(page, 'p9-08-trade-map');
-      await clickModal(page, 'Close');
     });
 
     await check('a week on (Day 10): the routes sail again, and a disaster at sea disrupts Karr and files a dispute', async () => {
@@ -2264,6 +2252,8 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
         await pause(page);
         await page.click('[data-test=tile-' + id + ']');
         await page.waitForSelector('[data-test=panel-fac-' + id + ']');
+        /* The Dock's orders are under its Orders tab (step S08). */
+        if (id === 'dock') await page.click('[data-test=dock-tab-orders]');
         equal(await page.textContent('[data-test=panel-fac-' + id + '] [data-test=repair-label]'), '(Under Repair)');
         equal(await text(page, 'repair-note-' + id), 'Under Repair until Day 15: no orders, and orders already here wait. Working again on Day 16.');
         const issueBtns = await page.$$eval('[data-test=panel-fac-' + id + '] .tsi-bas-fn__issue', bs => bs.map(b => [b.disabled, b.textContent, b.title]));

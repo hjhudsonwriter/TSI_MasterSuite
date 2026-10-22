@@ -384,6 +384,17 @@ window.TSI_DATA.bastionFacilities = [
         "costGP": null,
         "costText": "100GP\n200GP\n400GP\n500GP\n750GP\n900 GP\n1000GP\n1250GP",
         "notes": null
+      },
+      {
+        "id": "register_port_charter",
+        "label": "Register Port Charter",
+        "days": 3,
+        "costGP": 0,
+        "costText": "0",
+        "requiredFacilityLevel": 1,
+        "portCharter": true,
+        "options": [],
+        "notes": "Registers a Port Charter the DM granted in the Explorer, so the Dock can ship cargo to that port. No gold and no roll."
       }
     ]
   },
@@ -1574,17 +1585,6 @@ window.TSI_DATA.bastionFacilities = [
             "3": 1200
           }
         }
-      },
-      {
-        "id": "register_port_charter",
-        "label": "Register Port Charter",
-        "days": 3,
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 1,
-        "portCharter": true,
-        "options": [],
-        "notes": "Registers a Port Charter the DM granted in the Explorer, so the Dock can ship cargo to that port. No gold and no roll."
       },
       {
         "id": "secure_trade_agreement",

@@ -532,7 +532,15 @@
 .tsi-page--bastion .tsi-bas-modal--parcel .tsi-bas-cargo__row { grid-template-columns: minmax(180px, 1fr) 80px minmax(200px, 1.4fr); }
 .tsi-page--bastion .tsi-bas-modal--supplies { width: min(560px, 96vw); }
 .tsi-page--bastion .tsi-bas-supplies { display: grid; grid-template-columns: minmax(0, 1fr) 120px; gap: 0 12px; }
-.tsi-page--bastion .tsi-bas-tn-charters { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.tsi-page--bastion .tsi-bas-tn-charters { display: flex; flex-direction: column; gap: 6px; }
+/* The Dock's tabs (step S08): Cargo, Orders, Port Charters, Routes. */
+.tsi-page--bastion .tsi-bas-docktabs { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--tsi-line-faint); }
+.tsi-page--bastion .tsi-bas-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.tsi-page--bastion .tsi-bas-tab { padding: 7px 16px; border-radius: 999px; border: 1px solid var(--tsi-line); background: transparent; color: var(--tsi-text); font: 600 13px var(--tsi-font-display); letter-spacing: var(--tsi-track-label); text-transform: uppercase; cursor: pointer; }
+.tsi-page--bastion .tsi-bas-tab:hover { border-color: var(--tsi-gold-text); }
+.tsi-page--bastion .tsi-bas-tab--on { background: rgba(214, 178, 94, .16); border-color: var(--tsi-gold-text); color: var(--tsi-gold-text); }
+.tsi-page--bastion .tsi-bas-tabpane { min-width: 0; }
+.tsi-page--bastion .tsi-bas-tabpane .tsi-bas-facpanel__cargo { margin-top: 0; padding-top: 0; border-top: 0; }
 
 /* The build panel. */
 .tsi-page--bastion .tsi-bas-buildpanel { display: flex; flex-direction: column; gap: 12px; }
@@ -1365,15 +1373,16 @@
 .tsi-page--bastion .tsi-bas-res-hero img { flex-shrink: 0; width: 140px; border-radius: 14px; border: 1px solid var(--tsi-line-faint); }
 .tsi-page--bastion .tsi-bas-res-hero .tsi-bas-res-summary:first-child { margin-top: 0; }
 
-/* The Sea Trade Routes map: each running route glows (2631-2716, styles 1897-2016). */
-.tsi-page--bastion .tsi-bas-modal--trademap { width: min(1100px, 96vw); }
+/* The Routes map, in the Dock (step S08 of the Strip Back Overhaul; it was the Hall's Sea Trade Routes pop-up):
+   each Clan with a registered Port Charter glows, and glows brighter while a ship is at sea to it. */
+.tsi-page--bastion .tsi-bas-routes { display: grid; grid-template-columns: minmax(240px, 380px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.tsi-page--bastion .tsi-bas-routes__side { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.tsi-page--bastion .tsi-bas-routes__head { font-family: var(--tsi-font-display); font-size: 13px; letter-spacing: var(--tsi-track-heading); text-transform: uppercase; color: var(--tsi-gold-text); font-weight: 600; }
 .tsi-page--bastion .tsi-bas-trademap {
-  max-height: 58vh;
-  overflow: auto;
   border-radius: 18px;
   border: 1px solid var(--tsi-line-faint);
   background: rgba(0, 0, 0, .25);
-  scrollbar-color: rgba(214, 178, 94, .3) transparent;
+  overflow: hidden;
 }
 .tsi-page--bastion .tsi-bas-trademap__canvas { position: relative; }
 .tsi-page--bastion .tsi-bas-trademap__img { display: block; width: 100%; height: auto; filter: brightness(.92) contrast(1.05) saturate(1.04); }
@@ -1388,10 +1397,18 @@
   filter: drop-shadow(0 0 8px rgba(255, 245, 210, 1)) drop-shadow(0 0 18px rgba(255, 220, 150, .95)) drop-shadow(0 0 36px rgba(214, 178, 94, .85)) drop-shadow(0 0 78px rgba(214, 178, 94, .55));
   animation: tsi-bas-route-pulse calc(1.9s * var(--tsi-signature-slowdown)) ease-in-out infinite;
 }
+/* A ship at sea to that Clan: the lane glows brighter and a little faster. */
+.tsi-page--bastion .tsi-bas-trademap__route--sea {
+  filter: brightness(1.25) drop-shadow(0 0 10px rgba(255, 250, 225, 1)) drop-shadow(0 0 24px rgba(255, 228, 160, 1)) drop-shadow(0 0 48px rgba(230, 190, 100, .95)) drop-shadow(0 0 96px rgba(214, 178, 94, .7));
+  animation: tsi-bas-route-pulse-sea calc(1.2s * var(--tsi-signature-slowdown)) ease-in-out infinite;
+}
 .tsi-page--bastion .tsi-bas-trademap__route[data-clan="Rowthorn"] {
   mix-blend-mode: normal;
   filter: brightness(1.35) contrast(1.25) drop-shadow(0 0 10px rgba(255, 245, 210, .95)) drop-shadow(0 0 26px rgba(214, 178, 94, .7)) drop-shadow(0 0 60px rgba(214, 178, 94, .4));
   animation: none;
+}
+.tsi-page--bastion .tsi-bas-trademap__route--sea[data-clan="Rowthorn"] {
+  filter: brightness(1.6) contrast(1.25) drop-shadow(0 0 12px rgba(255, 250, 225, 1)) drop-shadow(0 0 32px rgba(230, 190, 100, .9)) drop-shadow(0 0 70px rgba(214, 178, 94, .55));
 }
 @keyframes tsi-bas-route-pulse {
   0%, 100% {
@@ -1402,6 +1419,21 @@
     opacity: 1;
     filter: drop-shadow(0 0 10px rgba(255, 245, 210, 1)) drop-shadow(0 0 22px rgba(255, 220, 150, 1)) drop-shadow(0 0 44px rgba(214, 178, 94, .95)) drop-shadow(0 0 96px rgba(214, 178, 94, .65));
   }
+}
+
+@keyframes tsi-bas-route-pulse-sea {
+  0%, 100% {
+    opacity: .85;
+    filter: brightness(1.15) drop-shadow(0 0 8px rgba(255, 250, 225, 1)) drop-shadow(0 0 20px rgba(255, 228, 160, .95)) drop-shadow(0 0 40px rgba(230, 190, 100, .85)) drop-shadow(0 0 80px rgba(214, 178, 94, .55));
+  }
+  50% {
+    opacity: 1;
+    filter: brightness(1.45) drop-shadow(0 0 14px rgba(255, 250, 225, 1)) drop-shadow(0 0 30px rgba(255, 232, 170, 1)) drop-shadow(0 0 60px rgba(230, 190, 100, 1)) drop-shadow(0 0 110px rgba(214, 178, 94, .8));
+  }
+}
+/* Reduced motion: no pulsing at all, a steady glow (the brighter one for a ship at sea). */
+@media (prefers-reduced-motion: reduce) {
+  .tsi-page--bastion .tsi-bas-trademap__route { animation: none; opacity: 1; }
 }
 
 /* The Council Ledger (trade_disputes.png, faint, behind the petitions). */
@@ -1466,6 +1498,7 @@
 @media (max-width: 1150px) {
   .tsi-page--bastion .tsi-bas-dip-grid,
   .tsi-page--bastion .tsi-bas-whrow,
+  .tsi-page--bastion .tsi-bas-routes,
   .tsi-page--bastion .tsi-bas-split { grid-template-columns: minmax(0, 1fr); }
   .tsi-page--bastion .tsi-bas-dip-right { border-left: 0; padding-left: 0; }
   .tsi-page--bastion .tsi-bas-dip-head { grid-template-columns: minmax(0, 1fr); }

@@ -2017,7 +2017,7 @@
   });
 
   /* ---------- The Secure Trade Agreement is retired (Harry, 20 October 2026) ---------- */
-  test('the Secure Trade Agreement can\'t be ordered and isn\'t shown: hidden, refused by both ways in, nothing paid; Register Port Charter takes its Level 1 place; the other Hall orders are unchanged', function (t) {
+  test('the Secure Trade Agreement can\'t be ordered and isn\'t shown: hidden, refused by both ways in, nothing paid; Register Port Charter moved to the Dock; the other Hall orders are unchanged', function (t) {
     var s = fresh();
     s.day = 5;
     s.treasuryGP = 1000;
@@ -2030,8 +2030,9 @@
     var a = R.issueOrderWithMeta(s, data, 'hall_of_emissaries', 'secure_trade_agreement', 0, { targetClan: 'Clan Karr', weeks: 3 }, dice([0.3]));
     var b = R.issueOrder(s, data, 'hall_of_emissaries', 'secure_trade_agreement', 0, dice([0.3]));
     t.same([a.ok, b.ok, s.treasuryGP, s.pendingOrders.length], [false, false, 1000, 0]);
-    var reg = R.fn(fac, 'register_port_charter');
-    t.same([reg.requiredFacilityLevel, R.fnAvailable(s, fac, reg).ok, fac.functions.map(function (f) { return f.id; }).slice(0, 3)], [1, true, ['upgrade_hall', 'register_port_charter', 'secure_trade_agreement']], 'Level 1, first of the Hall\'s visible orders');
+    var dock = R.facility(data, 'dock');
+    var reg = R.fn(dock, 'register_port_charter');
+    t.same([reg.requiredFacilityLevel, R.fnAvailable(s, dock, reg).ok, R.fn(fac, 'register_port_charter'), fac.functions.map(function (f) { return f.id; }).slice(0, 2)], [1, true, null, ['upgrade_hall', 'secure_trade_agreement']], 'Register Port Charter is the Dock\'s now (Level 1), not the Hall\'s');
     ['host_delegation', 'trade_consortium', 'inter_clan_summit', 'arbitration_authority'].forEach(function (id) {
       t.equal(R.fn(fac, id).retiredNote, undefined, id + ' is not retired');
     });

@@ -987,10 +987,10 @@
         var got = R.addCharter(s, m, day);
         receipt(m, 'applied', { type: 'charter', port: txt(m.port, 40), held: !got.added });
         var where = R.portWithClan(data, m.port, m.clan);
-        var regFn = R.fn(R.facility(data, 'hall_of_emissaries'), 'register_port_charter');
+        var regFn = R.fn(R.facility(data, 'dock'), 'register_port_charter');
         var regLevel = regFn && regFn.requiredFacilityLevel > 1 ? ' (Level ' + regFn.requiredFacilityLevel + ')' : '';
         var cline = 'Port Charter for ' + where + ' (' + fromText(m) + '): ' + (got.added
-          ? 'the Bastion now holds it. Register it at the Hall of Emissaries' + regLevel + ' before the Dock ships cargo there.'
+          ? 'the Bastion now holds it. Register it at the Dock' + regLevel + ' before the Dock ships cargo there.'
           : 'the Bastion already holds it, so nothing changed.');
         R.log(s, 'From the Explorer', cline + (m.text ? ' ' + txt(m.text, 200) : ''), at);
         R.addWord(s, 'From the Explorer: Port Charter for ' + where + (got.added ? '.' : ' (already held).'));
@@ -2055,8 +2055,9 @@
     if (fac.id === 'workshop' && fn.id === 'craft') {
       return R.craftItems(s, data.tools).map(function (name) { return { label: name, craftItem: name }; });
     }
-    /* The Hall's Register Port Charter: the Charters held and not yet
-       registered or being registered (pull request 5). */
+    /* The Dock's Register Port Charter: the Charters held and not yet
+       registered or being registered (pull request 5; it moved from the Hall
+       of Emissaries to the Dock in the Strip Back Overhaul, step S08). */
     if (fn.portCharter) {
       return (R.registrableCharters ? R.registrableCharters(s) : []).map(function (c) { return { label: 'Port Charter: ' + R.charterLabel(data, c), charterId: c.id }; });
     }
@@ -2142,7 +2143,7 @@
     if (fn.acclimatise) return { ok: false, message: 'Acclimatise With Beast is rolled at the table: choose the beast and press its button, then type the handler\'s total.' };
     var avail = R.fnAvailable(s, fac, fn);
     if (!avail.ok) return { ok: false, message: avail.message };
-    /* Register Port Charter: one at a time, and it says whose is running. */
+    /* Register Port Charter (at the Dock): one at a time, and it says whose is running. */
     if (fn.portCharter && R.registerBusy && R.registerBusy(s, data)) return { ok: false, message: R.registerBusy(s, data) };
     /* A House order (pull request 7): its creature, its room, one at a time
        (creature-rules.js); refused in a copy without the creature rules. */
@@ -2883,8 +2884,8 @@
     if (isObj(order.meta) && order.meta.kind === 'research') return [R.completeResearch(s, data, order)];
     var fn = R.fn(fac, order.fnId);
     if (!fn) return R.dropOrderGoods(s, data, order, rand);
-    /* The Hall's Register Port Charter (pull request 5): the Charter becomes
-       registered, once; nothing goes into the Warehouse. */
+    /* The Dock's Register Port Charter (pull request 5; the Hall's until step S08):
+       the Charter becomes registered, once; nothing goes into the Warehouse. */
     if (fn.portCharter && R.completeCharterRegistration) return [R.completeCharterRegistration(s, data, order)];
     /* A House order (pull request 7): its creature is housed, once; nothing
        goes into the Warehouse. (A copy without the creature rules changes

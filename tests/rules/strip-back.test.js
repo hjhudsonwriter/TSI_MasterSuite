@@ -107,7 +107,7 @@
   });
 
   test('the registry: the steps run in order, the last one finishes, and a later step can be added above the catch-all', function (t) {
-    t.same(R.stripBackSteps.map(function (st) { return st.id; }), ['dropEvents', 'dropBeastRequests', 'rehomeBeasts', 'sweepFacilities', 'finish']);
+    t.same(R.stripBackSteps.map(function (st) { return st.id; }), ['dropEvents', 'dropBeastRequests', 'rehomeBeasts', 'moveCharterOrders', 'endOldProtections', 'sweepFacilities', 'finish']);
     var steps = R.stripBackSteps;
     var added = {
       id: 'example',
@@ -132,7 +132,7 @@
     } finally {
       steps.splice(0, 1);
     }
-    t.same(R.stripBackSteps.map(function (st) { return st.id; }), ['dropEvents', 'dropBeastRequests', 'rehomeBeasts', 'sweepFacilities', 'finish']);
+    t.same(R.stripBackSteps.map(function (st) { return st.id; }), ['dropEvents', 'dropBeastRequests', 'rehomeBeasts', 'moveCharterOrders', 'endOldProtections', 'sweepFacilities', 'finish']);
   });
 
   group('Strip Back: the catch-all (a facility the Bastion does not know)');
@@ -729,7 +729,7 @@
       if (name === 'bastion-before-overhaul') return;
       var res = convert(FIX[name]);
       /* The heavy one had an event to drop and the three creature buildings (S14); two earlier ones had the three buildings. */
-      t.equal(res.report.lines.filter(function (l) { return !/^Places that joined others\. /.test(l) && !/^Beasts\. /.test(l) && !/^Gold\. /.test(l) && !/^Orders\. /.test(l); }).length, name === 'bastion-v3-heavy' ? 1 : 0, name + ': only the heavy one had an event to drop');
+      t.equal(res.report.lines.filter(function (l) { return !/^Places that joined others\. /.test(l) && !/^Beasts\. /.test(l) && !/^Gold\. /.test(l) && !/^Orders\. /.test(l) && !/^Trade\. /.test(l); }).length, name === 'bastion-v3-heavy' ? 1 : 0, name + ': only the heavy one had an event to drop');
       var a = clone(res.save), b = clone(FIX[name]);
       delete a.migration; delete b.migration;
       delete b.lastEvent; delete b.lastEventDay;
@@ -738,6 +738,8 @@
       if (res.report.archived.some(function (x) { return /^(wyvern_roost|griffin_tower|dire_wolf_den)$/.test(x.facId); })) {
         ['builtExtras', 'builtPlots', 'facilityLevels', 'archivedFacilities', 'creatures', 'pendingOrders', 'treasuryGP'].forEach(function (k) { delete a[k]; delete b[k]; });
       }
+      /* Changed by the Dock (S08): a Register Port Charter order at the Hall moves to the Dock (checked in the S08 group below). */
+      if (res.report.moved.some(function (m) { return /^Hall of Emissaries: Register Port Charter/.test(m.label); })) { delete a.pendingOrders; delete b.pendingOrders; }
       /* Removed so far (S13): the Beast Handler's old request record. */
       if (b.beast) { delete b.beast.done; delete b.beast.accept; delete b.beast.floor; }
       t.equal(canon(a), canon(b), name + ': every other field exactly as it was');

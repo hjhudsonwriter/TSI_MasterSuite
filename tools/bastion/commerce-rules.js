@@ -7,8 +7,9 @@
    - Port Charters. The DM grants one in the Explorer; the Explorer link
      carries it (shared/js/bridge-rules.js) and the Bastion holds it once,
      'earned' (R.addCharter, from R.applyInbox). A 3-day "Register Port
-     Charter" order at the Hall of Emissaries (Level 1) makes it
-     'registered'. Only a registered Charter takes cargo.
+     Charter" order at the Dock (any level; it was the Hall of Emissaries' until
+     the Strip Back Overhaul, step S08) makes it 'registered'. Only a
+     registered Charter takes cargo.
    - Cargo. The Dock (Level 2 or higher) sends a ship with real Warehouse
      lots to a port with a registered Charter. The lots leave the Warehouse
      when it sails, and are held by the voyage (tradeNetwork.voyages). The
@@ -175,33 +176,33 @@
   R.charterFor = function (s, port) { return R.portCharters(s).filter(function (c) { return c.port === port; })[0] || null; };
   R.charterById = function (s, id) { return R.portCharters(s).filter(function (c) { return c.id === id; })[0] || null; };
   R.charterLabel = function (data, c) { return R.portWithClan(data, c.port, c.clan); };
-  /* The Hall's Register order for this Charter, if one is pending. */
+  /* The Dock's Register order for this Charter, if one is pending. */
   R.registerOrderFor = function (s, charterId) {
     return (s.pendingOrders || []).filter(function (o) {
       return isObj(o) && o.fnId === 'register_port_charter' && isObj(o.chosen) && o.chosen.charterId === charterId;
     })[0] || null;
   };
-  /* Charters the Hall can register now: earned, and not being registered. */
+  /* Charters the Dock can register now: earned, and not being registered. */
   R.registrableCharters = function (s) {
     return R.portCharters(s).filter(function (c) { return c.status === 'earned' && !R.registerOrderFor(s, c.id); });
   };
-  /* The Hall registers one Charter at a time: why another can't start now,
+  /* The Dock registers one Charter at a time: why another can't start now,
      or ''. */
   R.registerBusy = function (s, data) {
     var o = (s.pendingOrders || []).filter(function (x) { return isObj(x) && x.fnId === 'register_port_charter'; })[0];
     if (!o) return '';
     var c = isObj(o.chosen) ? R.charterById(s, o.chosen.charterId) : null;
-    return 'The Hall registers one Port Charter at a time: ' + (c ? R.portName(c.port) + '\'s' : 'one') + ' is ready on ' + R.dayLabel(o.dueDay) + '.';
+    return 'The Dock registers one Port Charter at a time: ' + (c ? R.portName(c.port) + '\'s' : 'one') + ' is ready on ' + R.dayLabel(o.dueDay) + '.';
   };
   R.registeredCharters = function (s) { return R.portCharters(s).filter(function (c) { return c.status === 'registered'; }); };
   /* A Charter's state in plain words: "Registered on Day 12", "Being
-     registered at the Hall (ready Day 12)", "Earned on Day 9: register it
-     at the Hall of Emissaries". */
+     registered at the Dock (ready Day 12)", "Earned on Day 9: register it
+     at the Dock". */
   R.charterState = function (s, c) {
     if (c.status === 'registered') return 'Registered' + (isNum(c.registeredDay) ? ' on ' + R.dayLabel(c.registeredDay) : '');
     var o = R.registerOrderFor(s, c.id);
-    if (o) return 'Being registered at the Hall of Emissaries (ready ' + R.dayLabel(o.dueDay) + ')';
-    return 'Earned' + (isNum(c.earnedDay) ? ' on ' + R.dayLabel(c.earnedDay) : '') + ': register it at the Hall of Emissaries';
+    if (o) return 'Being registered at the Dock (ready ' + R.dayLabel(o.dueDay) + ')';
+    return 'Earned' + (isNum(c.earnedDay) ? ' on ' + R.dayLabel(c.earnedDay) : '') + ': register it at the Dock';
   };
 
   /* A Port Charter message from the Explorer (already checked by the
@@ -227,7 +228,7 @@
     return { added: true, charter: c };
   };
 
-  /* The Hall's Register order completing: the Charter becomes registered,
+  /* The Dock's Register order completing: the Charter becomes registered,
      once. Returns a log line [title, body]. */
   R.completeCharterRegistration = function (s, data, order) {
     var id = isObj(order.chosen) ? order.chosen.charterId : null;
@@ -239,6 +240,63 @@
     c.registeredDay = s.day;
     var need = R.dockLevelFor(data, 'ship');
     return ['Order Completed', lab + ' → The Port Charter for ' + R.charterLabel(data, c) + ' is registered. The Dock can ship cargo there' + (need > 1 ? ' from Level ' + need : '') + '.'];
+  };
+
+  /* ---------- The Routes map (the Dock; Harry, 22 October 2026, step S08) ----------
+     The map of the Scarlett Isles shows where the Ironbow trades. A Clan's lane
+     GLOWS when the Ironbow holds a REGISTERED Port Charter at one of that Clan's
+     ports, and glows brighter while a ship is at sea to one of its ports (a ship
+     outbound, or on its way home). The map has one lane for each Clan, not each
+     port (ten ports share seven lanes), so two ports of one Clan light the same
+     lane. A Charter that is only earned, or being registered, lights nothing: it
+     is listed, with where it stands.
+     Returns { lanes, rows, ships }:
+       lanes: the Clans to light, in the Clans' order: { key, name, glow:
+         'registered' | 'sea', art (the lane's picture, or ''), ports: [names],
+         ships: how many are at sea to it };
+       rows: every Charter held, by port: { id, port, portName, clan, clanName, label,
+         status ('registered' | 'registering' | 'earned'), stateText, ships: [the
+         ships' words], atSea };
+       ships: how many ships are at sea in all.
+     Plain data, no screen and no dice; it changes nothing. */
+  R.routesMap = function (s, data) {
+    var clans = (data && data.bastion && arr(data.bastion.clans)) || [];
+    var art = data && data.bastion && isObj(data.bastion.routeOverlays) ? data.bastion.routeOverlays : {};
+    var charters = R.portCharters(s);
+    var ships = R.voyages(s);
+    function clanKeyOf(x) {
+      var k = String(x || '').trim().toLowerCase().replace(/^clan\s+/, '');
+      for (var i = 0; i < clans.length; i++) if (clans[i].key === k || String(clans[i].name).toLowerCase() === k) return clans[i].key;
+      return k;
+    }
+    /* The Clan a ship sails to: its Charter's, else the ship's own record. */
+    function shipClan(v) {
+      var c = v.charterId ? R.charterById(s, v.charterId) : null;
+      return clanKeyOf(c ? c.clan : v.clan);
+    }
+    var rows = charters.map(function (c) {
+      var key = clanKeyOf(c.clan);
+      var mine = ships.filter(function (v) { return v.port === c.port; });
+      return {
+        id: c.id, port: c.port, portName: R.portName(c.port), clan: key, clanName: R.clanName(data, key),
+        label: R.charterLabel(data, c),
+        status: c.status === 'registered' ? 'registered' : R.registerOrderFor(s, c.id) ? 'registering' : 'earned',
+        stateText: R.charterState(s, c),
+        ships: mine.map(function (v) { return R.voyageState(v); }), atSea: mine.length
+      };
+    });
+    var lanes = [];
+    clans.forEach(function (cl) {
+      var registered = rows.filter(function (r) { return r.clan === cl.key && r.status === 'registered'; });
+      var seaCount = ships.filter(function (v) { return shipClan(v) === cl.key; }).length;
+      if (!registered.length && !seaCount) return;
+      lanes.push({
+        key: cl.key, name: cl.name, glow: seaCount ? 'sea' : 'registered',
+        art: typeof art[cl.key] === 'string' ? art[cl.key] : '',
+        ports: registered.map(function (r) { return r.portName; }), ships: seaCount
+      });
+    });
+    return { lanes: lanes, rows: rows, ships: ships.length };
   };
 
   /* ---------- Voyage risk and its protections ---------- */
@@ -402,7 +460,7 @@
       var back = out.reduce(function (m, v) { return m === null || v.returnDay < m ? v.returnDay : m; }, null);
       return (spec.ships === 1 ? 'The ship is at sea' : 'Every ship is at sea') + (back !== null ? ': the first one home is back on ' + R.dayLabel(back) + '.' : '.');
     }
-    if (!R.registeredCharters(s).length) return 'No Port Charter is registered yet: the DM grants one in the Explorer, then the Hall of Emissaries registers it.';
+    if (!R.registeredCharters(s).length) return 'No Port Charter is registered yet: the DM grants one in the Explorer, then the Dock registers it.';
     return '';
   };
 
@@ -422,7 +480,7 @@
      '' or the reason. Stock isn't checked here (R.takeGoods does that). */
   R.cargoBlocker = function (s, data, charter, picks) {
     if (!charter) return 'That Port Charter isn\'t held.';
-    if (charter.status !== 'registered') return 'The Port Charter for ' + R.charterLabel(data, charter) + ' isn\'t registered yet: the Hall of Emissaries registers it.';
+    if (charter.status !== 'registered') return 'The Port Charter for ' + R.charterLabel(data, charter) + ' isn\'t registered yet: the Dock registers it.';
     var B = bridge();
     if (B && !B.isPort(charter.port)) return R.portName(charter.port) + ' isn\'t on the port list any more (shared/data/ports.js).';
     var route = R.portRoute(data, charter.port);
@@ -663,7 +721,7 @@
 
   /* ---------- Negotiated Charter terms (Harry, 20 October 2026) ----------
      The DM sets a Charter's price multiplier, shipping fee per lot and
-     tariff from what happened in the story: "Amend terms…" in the Hall.
+     tariff from what happened in the story: "Amend terms…" at the Dock.
      Safety limits only (no preset rewards, no rolls, nothing automatic):
      price ×0.50 to ×2.00, fee 0 to 50 gp a lot, tariff 0 to 50%. A reason
      is required. Standard terms (×1.00, 0 gp, 0%) are what a Charter has
@@ -734,7 +792,7 @@
     var before = setTerms(s, data, c, std, reason, 'reset', s.day);
     return { ok: true, charter: c, log: ['Port Charter', R.portName(c.port) + ' Charter reset to standard terms (Day ' + s.day + '): ' + R.termsText(before) + ' → ' + R.termsText(std) + '. Reason: ' + reason + ' Ships already at sea keep the terms they sailed with.'] };
   };
-  /* A worked comparison for the Hall, an estimate at today's market: the
+  /* A worked comparison for the Dock, an estimate at today's market: the
      Clan's most sought-after good (the first, in the data's order), 4 lots,
      at standard terms and at the Charter's terms, through the same pricing
      engine a sale uses (demand and market saturation included). Returns

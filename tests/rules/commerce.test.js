@@ -1,7 +1,8 @@
 /* Commodity trade and Port Charters (pull request 5 of the facilities
    overhaul; Harry's answers, 14 October 2026): the data, the link's Port
    Charter message (shared/js/bridge-rules.js), the Bastion holding and the
-   Hall registering a Charter, and cargo voyages (tools/bastion/commerce-rules.js). */
+   Dock registering a Charter (the Hall of Emissaries did until the Strip Back
+   Overhaul, step S08), and cargo voyages (tools/bastion/commerce-rules.js). */
 (function () {
   var Bg = TSI.bridge;
   var BR = TSI.bastion.rules;
@@ -28,12 +29,6 @@
     b.anchored = true;
     b.bridge.fresh = false;
     b.facilityLevels.dock = dockLevel || 2;
-    return b;
-  }
-  function withHall(b, level) {
-    b.builtExtras = [{ facId: 'hall_of_emissaries', status: 'built' }];
-    BR.ensureLevels(b, bdata);
-    b.facilityLevels.hall_of_emissaries = level || 2;
     return b;
   }
   function charterMsg(over) {
@@ -135,9 +130,9 @@
     t.same(BR.fn(BR.facility(bdata, 'dock'), 'charter_berth').options.length, 8, 'the Charter Berth is unchanged');
   });
 
-  test('all three protections are available; Fresh Fish sails only on voyages of 2 days or less', function (t) {
-    t.same(C.protections.map(function (p) { return [p.facId, p.cut, p.consumes === true, p.available]; }),
-      [['barracks', 5, true, true], ['watchtower', 5, false, true], ['shrine_pelagos', 10, true, true]], 'all three are on: the Blessing (pull request 8b), then the Convoy and the Approaches (20 October 2026)');
+  test('the Blessing of Pelagos is the one voyage protection (the Convoy and the Approaches went with the Barracks and Watchtower); Fresh Fish sails only on voyages of 2 days or less', function (t) {
+    t.same(C.protections.map(function (p) { return [p.id, p.facId, p.cut, p.consumes === true, p.available]; }),
+      [['pelagos_blessing', 'shrine_pelagos', 10, true, true]], 'only the Blessing (pull request 8b) is left');
     t.same(BR.voyageProtections(bastion(1), bdata), [], 'none held: none applies');
     t.equal(BR.goodShipBlocker(bdata, 'fresh_fish', BR.portRoute(bdata, 'timberport')), 'Fresh Fish only ships on a voyage of 2 days or less (it doesn\'t keep longer), and this one takes 7 days.');
     t.equal(BR.goodShipBlocker(bdata, 'fresh_fish', { outDays: 2 }), '', '2 days: it sails');
@@ -221,9 +216,8 @@
     var b = bastion(4);
     BR.applyInbox(b, bdata, ex, 1000);
     var saved = copy(BR.toSave(b));
-    t.same([Bg.portStatus('goldport', ex, saved).kind, Bg.portStatus('goldport', ex, saved).line], ['held', 'Held: register it at the Hall of Emissaries.']);
-    withHall(b, 2);
-    t.equal(BR.issueOrder(b, bdata, 'hall_of_emissaries', 'register_port_charter', 0, dice([0.4])).ok, true);
+    t.same([Bg.portStatus('goldport', ex, saved).kind, Bg.portStatus('goldport', ex, saved).line], ['held', 'Held: register it at the Dock.']);
+    t.equal(BR.issueOrder(b, bdata, 'dock', 'register_port_charter', 0, dice([0.4])).ok, true);
     t.ok(/being registered/.test(Bg.portStatus('goldport', ex, copy(BR.toSave(b))).line));
     BR.charterFor(b, 'goldport').status = 'registered';
     BR.charterFor(b, 'goldport').registeredDay = 7;
@@ -300,7 +294,7 @@
     var c = BR.charterFor(b, 'goldport');
     t.same([c.status, c.clan, c.mode, c.earnedDay, c.registeredDay], ['earned', 'molten', 'commodity_backed', 3, null]);
     t.same(b.bridge.done[charterMsg().id], { r: 'applied', day: 4, at: 1000, clan: 'molten', hr: 0, was: 0, now: 0, text: 'For clearing the harbour of wreckers.', why: '', type: 'charter', port: 'goldport', held: false });
-    t.ok(/Port Charter for Goldport \(Clan Molten\) \(DM, Day 3\): the Bastion now holds it\. Register it at the Hall of Emissaries before the Dock ships cargo there/.test(b.log[0].body));
+    t.ok(/Port Charter for Goldport \(Clan Molten\) \(DM, Day 3\): the Bastion now holds it\. Register it at the Dock before the Dock ships cargo there/.test(b.log[0].body));
     t.equal(BR.applyInbox(b, bdata, exWith([charterMsg()]), 2000).changed, false, 'a second look changes nothing');
     t.same(b.honourRespectByClan, BR.defaultState(bdata).honourRespectByClan);
   });
@@ -383,34 +377,36 @@
   });
 
   /* ---------------------------------------------------------------- */
-  group('Commodity trade: the Hall registers a Port Charter (3 days, Level 1)');
+  group('Commodity trade: the Dock registers a Port Charter (3 days, any level)');
 
-  test('Register Port Charter: Level 1 (the slot the Trade Agreement had), no gold, 3 days, the earned Charters to pick from', function (t) {
-    var b = withHall(bastion(4), 1);
-    var hall = BR.facility(bdata, 'hall_of_emissaries');
-    var fn = BR.fn(hall, 'register_port_charter');
+  test('Register Port Charter is a Dock order: Level 1, no gold, 3 days, the earned Charters to pick from; the Hall no longer has it', function (t) {
+    var b = bastion(4, 1);
+    var dock = BR.facility(bdata, 'dock');
+    var fn = BR.fn(dock, 'register_port_charter');
     t.same([fn.days, fn.costGP, fn.requiredFacilityLevel], [3, 0, 1]);
-    t.equal(hall.functions.map(function (f) { return f.id; })[1], 'register_port_charter', 'listed first among the Hall\'s orders');
-    t.equal(BR.isEmissary(hall, fn), false, 'no roll');
-    t.same(BR.fnAvailable(b, hall, fn), { ok: true }, 'available from Level 1');
-    t.same(BR.fnOptions(b, bdata, hall, fn), []);
-    t.ok(/no Port Charter to register/.test(BR.issueOrder(b, bdata, 'hall_of_emissaries', 'register_port_charter', 0, dice([0.4])).message));
+    t.equal(dock.functions.map(function (f) { return f.id; }).join(), 'charter_berth,register_port_charter', 'listed after the Charter Berth');
+    t.equal(BR.fn(BR.facility(bdata, 'hall_of_emissaries'), 'register_port_charter'), null, 'the Hall has no Register order any more');
+    t.equal(BR.orderKind(bdata, { facId: 'dock', fnId: 'register_port_charter' }), 'simple', 'no roll');
+    t.same(BR.fnAvailable(b, dock, fn), { ok: true }, 'available at Level 1: a Level 1 Dock can register a Charter (but not ship)');
+    t.same(BR.fnOptions(b, bdata, dock, fn), []);
+    t.ok(/no Port Charter to register/.test(BR.issueOrder(b, bdata, 'dock', 'register_port_charter', 0, dice([0.4])).message));
     BR.applyInbox(b, bdata, exWith([charterMsg()]), 1000);
-    t.same(BR.fnOptions(b, bdata, hall, fn), [{ label: 'Port Charter: Goldport (Clan Molten)', charterId: charterMsg().id }]);
+    t.same(BR.fnOptions(b, bdata, dock, fn), [{ label: 'Port Charter: Goldport (Clan Molten)', charterId: charterMsg().id }]);
     var gp = b.treasuryGP;
-    var res = BR.issueOrder(b, bdata, 'hall_of_emissaries', 'register_port_charter', 0, dice([0.4]));
+    var res = BR.issueOrder(b, bdata, 'dock', 'register_port_charter', 0, dice([0.4]));
     t.equal(res.ok, true);
     var o = b.pendingOrders[0];
-    t.same([o.label, o.dueDay, o.costGP, o.chosen.charterId, b.treasuryGP], ['Hall of Emissaries: Register Port Charter (Goldport)', 7, 0, charterMsg().id, gp]);
+    t.same([o.label, o.dueDay, o.costGP, o.chosen.charterId, b.treasuryGP], ['Dock: Register Port Charter (Goldport)', 7, 0, charterMsg().id, gp]);
     t.equal(BR.orderKind(bdata, o), 'simple');
-    t.same(BR.fnOptions(b, bdata, hall, fn), [], 'not offered again while it\'s being registered');
-    t.ok(/one Port Charter at a time: Goldport's is ready on Day 7/.test(BR.issueOrder(b, bdata, 'hall_of_emissaries', 'register_port_charter', 0, dice([0.4])).message));
+    t.same(BR.fnOptions(b, bdata, dock, fn), [], 'not offered again while it\'s being registered');
+    t.ok(/one Port Charter at a time: Goldport's is ready on Day 7/.test(BR.issueOrder(b, bdata, 'dock', 'register_port_charter', 0, dice([0.4])).message));
+    t.equal(BR.charterState(b, BR.charterFor(b, 'goldport')), 'Being registered at the Dock (ready Day 7)');
   });
 
   test('on its day the Charter is registered, once, and nothing goes into the Warehouse', function (t) {
-    var b = withHall(bastion(4), 2);
+    var b = bastion(4, 2);
     BR.applyInbox(b, bdata, exWith([charterMsg()]), 1000);
-    BR.issueOrder(b, bdata, 'hall_of_emissaries', 'register_port_charter', 0, dice([0.4]));
+    BR.issueOrder(b, bdata, 'dock', 'register_port_charter', 0, dice([0.4]));
     var o = b.pendingOrders[0];
     var stale = copy(o);
     b.day = 7;
@@ -425,29 +421,29 @@
     t.equal(BR.charterFor(b, 'goldport').registeredDay, 7);
   });
 
-  test('two Charters: the Hall registers one at a time, and says so', function (t) {
-    var b = withHall(bastion(4), 2);
+  test('two Charters: the Dock registers one at a time, and says so', function (t) {
+    var b = bastion(4, 2);
     BR.applyInbox(b, bdata, exWith([charterMsg(), charterMsg({ id: 'chartr-timb0000:dm:0', port: 'timberport', clan: 'blackstone' })]), 1000);
-    t.equal(BR.issueOrder(b, bdata, 'hall_of_emissaries', 'register_port_charter', 0, dice([0.4])).ok, true);
-    t.equal(BR.issueOrder(b, bdata, 'hall_of_emissaries', 'register_port_charter', 0, dice([0.4])).message, 'The Hall registers one Port Charter at a time: Goldport\'s is ready on Day 7.');
+    t.equal(BR.issueOrder(b, bdata, 'dock', 'register_port_charter', 0, dice([0.4])).ok, true);
+    t.equal(BR.issueOrder(b, bdata, 'dock', 'register_port_charter', 0, dice([0.4])).message, 'The Dock registers one Port Charter at a time: Goldport\'s is ready on Day 7.');
     var o = b.pendingOrders[0];
     b.day = 7;
     BR.completeSimpleOrder(b, bdata, o, dice([0.5]));
     BR.removeOrder(b, o.id);
     t.equal(BR.registerBusy(b, bdata), '');
-    t.equal(BR.issueOrder(b, bdata, 'hall_of_emissaries', 'register_port_charter', 0, dice([0.4])).ok, true, 'then Timberport');
+    t.equal(BR.issueOrder(b, bdata, 'dock', 'register_port_charter', 0, dice([0.4])).ok, true, 'then Timberport');
     t.equal(b.pendingOrders[0].chosen.charterId, 'chartr-timb0000:dm:0');
   });
 
-  test('Cancel, or the Hall Under Repair, leaves the Charter earned', function (t) {
-    var b = withHall(bastion(4), 2);
+  test('Cancel, or the Dock Under Repair, leaves the Charter earned', function (t) {
+    var b = bastion(4, 2);
     BR.applyInbox(b, bdata, exWith([charterMsg()]), 1000);
-    BR.issueOrder(b, bdata, 'hall_of_emissaries', 'register_port_charter', 0, dice([0.4]));
+    BR.issueOrder(b, bdata, 'dock', 'register_port_charter', 0, dice([0.4]));
     BR.cancelOrder(b, b.pendingOrders[0].id, bdata);
     t.equal(BR.charterFor(b, 'goldport').status, 'earned');
     t.equal(BR.registrableCharters(b).length, 1, 'it can be ordered again');
-    b.repairs = { hall_of_emissaries: 6 };
-    t.ok(/Under Repair/.test(BR.issueOrder(b, bdata, 'hall_of_emissaries', 'register_port_charter', 0, dice([0.4])).message));
+    b.repairs = { dock: 6 };
+    t.ok(/Under Repair/.test(BR.issueOrder(b, bdata, 'dock', 'register_port_charter', 0, dice([0.4])).message));
   });
 
   /* ---------------------------------------------------------------- */
@@ -855,7 +851,7 @@
   });
 
   test('protections: each cut comes off, never below 0; a blessing is used up by its voyage', function (t) {
-    t.equal(BR.voyageChance(20, [{ cut: 5 }, { cut: 5 }, { cut: 10 }]), 0);
+    t.equal(BR.voyageChance(20, [{ cut: 5 }, { cut: 5 }, { cut: 10 }]), 0, 'cuts add up, whatever gives them');
     t.equal(BR.voyageChance(5, [{ cut: 10 }]), 0);
     t.equal(BR.voyageChance(20, [{ cut: 5 }]), 15);
     t.equal(BR.voyageChance(10, []), 10);
@@ -865,15 +861,12 @@
     var c = registered(b);
     stock(b, 'raw_stone', 4);
     t.same(BR.voyageProtections(b, d), [], 'available, but none ready in this Bastion');
-    b.tradeNetwork.protections = { pelagos_blessing: { charges: 1 }, maritime_approaches: { untilDay: 6 } };
+    b.tradeNetwork.protections = { pelagos_blessing: { charges: 1 } };
     BR.dispatchCargo(b, d, c.id, [{ goodId: 'raw_stone', qty: 1 }], dice([0.3]));
     var v = BR.voyages(b)[0];
-    t.same([v.chance, v.protections.map(function (p) { return p.id; })], [5, ['maritime_approaches', 'pelagos_blessing']]);
+    t.same([v.chance, v.protections.map(function (p) { return p.id; })], [10, ['pelagos_blessing']], 'Goldport 20% − 10 points');
     t.equal(b.tradeNetwork.protections.pelagos_blessing.charges, 0, 'the blessing is used');
-    b.day = 6;
-    t.same(BR.voyageProtections(b, d).map(function (p) { return p.id; }), ['maritime_approaches'], 'the Watchtower\'s still holds on Day 6; the blessing is gone');
-    b.day = 7;
-    t.same(BR.voyageProtections(b, d), [], 'the Watchtower\'s has run out by Day 7');
+    t.same(BR.voyageProtections(b, d), [], 'and then none is ready');
   });
 
   /* ---------------------------------------------------------------- */
@@ -984,15 +977,14 @@
     var b = sailed();
     b.facilityLevels.dock = 4;
     BR.setSchedule(b, bdata, BR.portCharters(b)[0].id, [{ goodId: 'raw_stone', qty: 1 }], dice([0.3]));
-    withHall(b, 2);
     BR.applyInbox(b, bdata, exWith([charterMsg({ id: 'chartr-timb0000:dm:0', port: 'timberport', clan: 'blackstone' })]), 1000);
-    BR.issueOrder(b, bdata, 'hall_of_emissaries', 'register_port_charter', 0, dice([0.4]));
+    BR.issueOrder(b, bdata, 'dock', 'register_port_charter', 0, dice([0.4]));
     var news = TSI.campaign.ironbowNews(copy(BR.toSave(b)), 4, 18);
     var lines = [].concat.apply([], news.map(function (w) { return w.lines.map(function (l) { return w.day + ' ' + l; }); }));
     t.ok(lines.indexOf('11 Your cargo ship reaches Goldport.') !== -1, lines.join(' | '));
     t.ok(lines.indexOf('18 Your cargo ship is home from Goldport.') !== -1);
     t.ok(lines.indexOf('5 A standing shipment to Goldport is due to sail, if a ship and the goods are ready.') !== -1);
-    t.ok(lines.indexOf('7 Hall of Emissaries: Register Port Charter (Timberport) is complete.') !== -1, 'no roll for the Register order');
+    t.ok(lines.indexOf('7 Dock: Register Port Charter (Timberport) is complete.') !== -1, 'no roll for the Register order');
     t.ok(!lines.some(function (l) { return /gp|sold|turned back/.test(l); }), 'never what it sells for');
   });
 
@@ -1014,19 +1006,6 @@
   group('Charter terms and commercial protections (20 October 2026)');
 
   var STD = { priceMult: 1, feePerLot: 0, tariffPct: 0 };
-  function bw(b) {
-    b.builtExtras = [{ facId: 'barracks', status: 'built' }, { facId: 'watchtower', status: 'built' }];
-    BR.ensureLevels(b, bdata);
-    b.facilityLevels.barracks = 2;
-    b.facilityLevels.watchtower = 2;
-    return b;
-  }
-  function ordered(b, fac, fn) {
-    var r = BR.issueOrder(b, bdata, fac, fn, 0, dice([0.3]));
-    if (!r.ok) throw new Error('refused: ' + r.message);
-    return b.pendingOrders[b.pendingOrders.length - 1];
-  }
-  function finishOrder(b, o) { var out = BR.completeSimpleOrder(b, bdata, o, dice([0.3])); BR.removeOrder(b, o.id); return out; }
   /* Sends a ship; any earlier one is cleared first, so a test can send several (the Dock's own room is tested elsewhere). */
   function sail(b, c, qty, rolls) {
     b.tradeNetwork.voyages = [];
@@ -1174,82 +1153,25 @@
     t.same(BR.lockOutboundTerms(home, bdata), 0, 'a returning ship is left alone');
   });
 
-  group('Commercial protections: Barracks and Watchtower (20 October 2026)');
+  group('Commercial protections: the Blessing of Pelagos is the one left (the Strip Back Overhaul, 22 October 2026)');
 
-  test('the Barracks and Watchtower orders: Level 2, 3 and 2 days, no gold or Favour', function (t) {
-    var g = BR.fn(BR.facility(bdata, 'barracks'), 'guard_commercial_convoy');
-    var w = BR.fn(BR.facility(bdata, 'watchtower'), 'protect_maritime_approaches');
-    t.same([g.days, g.costGP, g.requiredFacilityLevel, g.favourCost, g.protectionCharge, g.protectionMax], [3, 0, 2, undefined, 'commercial_convoy', 1]);
-    t.same([w.days, w.costGP, w.requiredFacilityLevel, w.favourCost, w.protectionWindow, w.windowDays], [2, 0, 2, undefined, 'maritime_approaches', 7]);
-    var b = bw(bastion(4, 2));
-    b.facilityLevels.barracks = 1;
-    t.equal(BR.issueOrder(b, bdata, 'barracks', 'guard_commercial_convoy', 0, dice([0.3])).message, 'Needs Level 2.');
-    b.facilityLevels.watchtower = 1;
-    t.equal(BR.issueOrder(b, bdata, 'watchtower', 'protect_maritime_approaches', 0, dice([0.3])).message, 'Needs Level 2.');
-    t.ok(BR.fn(BR.facility(bdata, 'watchtower'), 'patrol'), 'Patrol is unchanged');
+  test('the Barracks\' Convoy and the Watchtower\'s Approaches are gone from the voyage protections', function (t) {
+    t.same(C.protections.map(function (p) { return p.id; }), ['pelagos_blessing']);
+    t.same(BR.voyageProtections(bastion(4, 2), bdata), []);
   });
 
-  test('Guard Commercial Convoy: 3 days, one charge, never more than one held, no defenders used; the next ship uses it up once', function (t) {
-    var b = bw(bastion(4, 2));
-    b.defenders = { count: 5, armed: true };
-    var c = registered(b);
-    var o = ordered(b, 'barracks', 'guard_commercial_convoy');
-    t.equal(o.dueDay, 7, '3 days');
-    t.equal(BR.issueOrder(b, bdata, 'barracks', 'guard_commercial_convoy', 0, dice([0.3])).message, 'That order is already pending.');
-    t.same(finishOrder(b, o), [['Order Completed', 'Barracks: Guard Commercial Convoy → A Commercial Convoy is prepared for the next ship the Dock sends with cargo (1 held).']]);
-    t.same(b.tradeNetwork.protections, { commercial_convoy: { charges: 1 } });
-    t.equal(b.defenders.count, 5, 'no defenders deducted');
-    var again = BR.issueOrder(b, bdata, 'barracks', 'guard_commercial_convoy', 0, dice([0.3]));
-    t.same([again.ok, /already prepared/.test(again.message)], [false, true], 'no second order while one is ready');
-    b = reload(b);
-    t.equal(b.tradeNetwork.protections.commercial_convoy.charges, 1, 'kept through a save and day progression');
-    c = BR.charterFor(b, 'goldport');
-    var v = sail(b, c, 2);
-    t.same([v.protections.map(function (p) { return [p.id, p.cut]; }), v.basePct, v.chance], [[['commercial_convoy', 5]], 20, 15]);
-    t.equal(b.tradeNetwork.protections.commercial_convoy.charges, 0, 'used exactly once');
-    var v2 = sail(b, c, 2);
-    t.same([v2.protections, v2.chance], [[], 20], 'the next ship goes without it');
-    t.equal(BR.issueOrder(b, bdata, 'barracks', 'guard_commercial_convoy', 0, dice([0.3])).ok, true, 'another can be ordered now it has been used');
-  });
-
-  test('Protect Maritime Approaches: 2 days, then 7 inclusive days with the completion day as Day 1; not used up, not extended, no retroactive cover', function (t) {
-    var b = bw(bastion(4, 2));
-    var c = registered(b);
-    var early = sail(b, c, 2);
-    var o = ordered(b, 'watchtower', 'protect_maritime_approaches');
-    t.equal(o.dueDay, 6, '2 days');
-    b.day = 6;
-    var out = finishOrder(b, o);
-    t.equal(b.tradeNetwork.protections.maritime_approaches.untilDay, 12, 'Day 6 is Day 1: it covers Days 6 to 12');
-    t.ok(/active until Day 12/.test(out[0][1]), out[0][1]);
-    t.same(early.protections, [], 'a ship already at sea gets nothing retroactively');
-    var blocked = BR.issueOrder(b, bdata, 'watchtower', 'protect_maritime_approaches', 0, dice([0.3]));
-    t.same([blocked.ok, /active until Day 12/.test(blocked.message)], [false, true], 'no overlapping order');
-    var a = sail(b, c, 2);
-    var a2 = sail(b, c, 2);
-    t.same([a.chance, a2.chance, b.tradeNetwork.protections.maritime_approaches.untilDay], [15, 15, 12], 'every ship in the window, and it is not used up');
-    b.day = 12;
-    t.equal(sail(b, c, 2).chance, 15, 'the 7th day still covers');
-    b.day = 13;
-    t.equal(sail(b, c, 2).chance, 20, 'the 8th does not');
-    t.equal(BR.issueOrder(b, bdata, 'watchtower', 'protect_maritime_approaches', 0, dice([0.3])).ok, true, 'the next order can be issued once it ends');
-    var late = reload(b);
-    t.same(BR.voyages(late)[BR.voyages(late).length - 1].chance, 20);
-    t.equal(a.chance, 15, 'later expiry never changes a ship already under way');
-  });
-
-  test('the three protections combine (−5, −5 and −10) and never take the chance below 0; the Pelagos blessing is unchanged; a failed voyage still returns the cargo', function (t) {
-    var b = bw(bastion(4, 2));
+  test('the Blessing never takes the chance below 0; a failed voyage still returns the cargo', function (t) {
+    var b = bastion(4, 2);
     var c = registered(b, 'timberport');
-    b.tradeNetwork.protections = { commercial_convoy: { charges: 1 }, maritime_approaches: { untilDay: 20 }, pelagos_blessing: { charges: 2 } };
+    b.tradeNetwork.protections = { pelagos_blessing: { charges: 2 } };
     var v = sail(b, c, 2);
-    t.same([v.basePct, v.protections.map(function (p) { return p.cut; }), v.chance], [5, [5, 5, 10], 0], 'Timberport 5% − 20 points: never below 0');
-    t.same(b.tradeNetwork.protections, { commercial_convoy: { charges: 0 }, maritime_approaches: { untilDay: 20 }, pelagos_blessing: { charges: 1 } }, 'the Convoy and one Blessing are used; the Approaches stay');
-    var d = bw(bastion(4, 2));
+    t.same([v.basePct, v.protections.map(function (p) { return p.cut; }), v.chance], [5, [10], 0], 'Timberport 5% − 10 points: never below 0');
+    t.same(b.tradeNetwork.protections, { pelagos_blessing: { charges: 1 } }, 'one Blessing is used');
+    var d = bastion(4, 2);
     var g = registered(d, 'bleakharbour');
-    d.tradeNetwork.protections = { commercial_convoy: { charges: 1 }, maritime_approaches: { untilDay: 20 }, pelagos_blessing: { charges: 1 } };
-    t.same([sail(d, g, 2).chance], [0], 'Bleakharbour 20% − 20 = 0');
-    var h = bw(bastion(4, 2));
+    d.tradeNetwork.protections = { pelagos_blessing: { charges: 1 } };
+    t.same([sail(d, g, 2).chance], [10], 'Bleakharbour 20% − 10 = 10');
+    var h = bastion(4, 2);
     var gp = registered(h, 'goldport');
     sail(h, gp, 2, [0.3]);
     h.day = 11;
@@ -1257,26 +1179,26 @@
     t.same([BR.voyages(h)[0].outcome, h.treasuryGP], ['turned_back', 0], 'trouble at sea: nothing sold');
   });
 
-  test('Standing shipments follow the same protection rules', function (t) {
-    var b = bw(bastion(4, 4));
+  test('Standing shipments take the Blessing too', function (t) {
+    var b = bastion(4, 4);
     var c = registered(b);
     stock(b, 'medicinal_herbs', 4);
-    b.tradeNetwork.protections = { commercial_convoy: { charges: 1 }, maritime_approaches: { untilDay: 30 } };
+    b.tradeNetwork.protections = { pelagos_blessing: { charges: 1 } };
     t.equal(BR.setSchedule(b, bdata, c.id, [{ goodId: 'medicinal_herbs', qty: 2 }], dice([0.3])).ok, true);
     b.day = 5;
     BR.settleVoyages(b, bdata, dice([0.3]));
     var v = BR.voyages(b)[0];
-    t.same([v.scheduleId !== null, v.protections.map(function (p) { return p.id; }), v.chance], [true, ['commercial_convoy', 'maritime_approaches'], 10]);
-    t.same(b.tradeNetwork.protections, { commercial_convoy: { charges: 0 }, maritime_approaches: { untilDay: 30 } });
+    t.same([v.scheduleId !== null, v.protections.map(function (p) { return p.id; }), v.chance], [true, ['pelagos_blessing'], 10]);
+    t.same(b.tradeNetwork.protections, { pelagos_blessing: { charges: 0 } });
   });
 
-  test('protectionStatus describes each one for the Dock', function (t) {
-    var b = bw(bastion(4, 2));
+  test('protectionStatus describes the Blessing for the Dock', function (t) {
+    var b = bastion(4, 2);
     var st = function () { return BR.protectionStatus(b, bdata).map(function (p) { return [p.id, p.state]; }); };
-    t.same(st(), [['commercial_convoy', 'none'], ['maritime_approaches', 'none'], ['pelagos_blessing', 'none']]);
-    b.tradeNetwork.protections = { commercial_convoy: { charges: 1 }, maritime_approaches: { untilDay: 9 } };
-    t.same(st(), [['commercial_convoy', 'ready'], ['maritime_approaches', 'active'], ['pelagos_blessing', 'none']]);
-    t.ok(/active until Day 9/.test(BR.protectionStatus(b, bdata)[1].text));
+    t.same(st(), [['pelagos_blessing', 'none']]);
+    b.tradeNetwork.protections = { pelagos_blessing: { charges: 2 } };
+    t.same(st(), [['pelagos_blessing', 'ready']]);
+    t.ok(/2 ready for the next ship/.test(BR.protectionStatus(b, bdata)[0].text));
   });
 
 }());

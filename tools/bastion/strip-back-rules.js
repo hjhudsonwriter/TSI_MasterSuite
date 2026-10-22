@@ -700,11 +700,75 @@
     }
   }
 
+  /* ================================================================================================
+     STEPS S08 AND S09: THE DOCK TAKES THE PORT CHARTERS, AND THE HALL OF EMISSARIES IS STRIPPED
+     (Harry, 22 October 2026; docs/strip-back/F-temple-hall-dock.md sections 3 to 6,
+     docs/strip-back/J-cross-cutting.md 4.3 and 4.4, docs/strip-back/S08-S09-built.md)
+     ================================================================================================ */
+
+  /* S08, first: a Register Port Charter order pending at the Hall of Emissaries MOVES to the Dock
+     (Register Port Charter is a Dock order now). It keeps its id, due day, cost (none), issue day and
+     the Port Charter it registers; only its place and its name change ("Dock: Register Port Charter
+     (Goldport)"), so it completes on the same day, to the same effect. */
+  var HALL_ID = 'hall_of_emissaries';
+  var DOCK_ID = 'dock';
+  function isHallRegisterOrder(o) { return isObj(o) && o.facId === HALL_ID && o.fnId === 'register_port_charter'; }
+  function detectCharterOrders(s) {
+    return (arr(s.pendingOrders) || []).filter(isHallRegisterOrder).map(function () { return 'a Register Port Charter order at the Hall of Emissaries'; });
+  }
+  function moveCharterOrders(s, data, report) {
+    var moved = 0;
+    (arr(s.pendingOrders) || []).slice().forEach(function (o) {
+      if (!isHallRegisterOrder(o)) return;
+      /* An order with no id can't be followed from one place to the next: it is cancelled (it was free). */
+      if (!idOf(o)) { R.stripBackCancel(s, data, report, o, 'it had no record to follow it by'); return; }
+      /* Looked up by hand: R.charterById would add an empty trade record to a save that has none. */
+      var held = isObj(s.tradeNetwork) && arr(s.tradeNetwork.portCharters) ? s.tradeNetwork.portCharters : [];
+      var cid = isObj(o.chosen) ? o.chosen.charterId : '';
+      var charter = held.filter(function (c) { return isObj(c) && c.id === cid; })[0] || null;
+      var port = str(o.optionLabel).trim() || (charter && R.portName ? R.portName(charter.port) : '');
+      R.stripBackMoveOrder(report, o, { facId: DOCK_ID, label: 'Dock: Register Port Charter' + (port ? ' (' + port + ')' : '') }, 'the Dock');
+      moved += 1;
+    });
+    if (moved) {
+      R.stripBackSay(report, 'trade', (moved === 1 ? 'Your Register Port Charter order carries on' : 'Your ' + moved + ' Register Port Charter orders carry on') + ' at the Dock, with the same due day' + (moved === 1 ? '' : 's') +
+        '. Port Charters, their terms and the Routes map all belong to the Dock now.');
+    }
+  }
+
+  /* S08: the Barracks' Commercial Convoy and the Watchtower's Maritime Approaches are gone, so a charge or a window
+     left in tradeNetwork.protections has no order that made it and nothing that reads it. It is dropped. (Free to
+     prepare, so there is nothing to give back.) The Blessing of Pelagos is NOT touched. */
+  var OLD_PROTECTIONS = { commercial_convoy: 'a prepared Commercial Convoy', maritime_approaches: 'a window of Protected Maritime Approaches' };
+  function protectionLive(s, key) {
+    var t = isObj(s.tradeNetwork) && isObj(s.tradeNetwork.protections) ? s.tradeNetwork.protections : null;
+    var p = t && isObj(t[key]) ? t[key] : null;
+    if (!p) return false;
+    return (typeof p.charges === 'number' && p.charges > 0) || (typeof p.untilDay === 'number' && p.untilDay >= dayNum(s.day, 1));
+  }
+  function detectOldProtections(s) {
+    return Object.keys(OLD_PROTECTIONS).filter(function (k) { return protectionLive(s, k); }).map(function (k) { return OLD_PROTECTIONS[k]; });
+  }
+  function endOldProtections(s, data, report) {
+    var said = Object.keys(OLD_PROTECTIONS).filter(function (k) { return protectionLive(s, k); });
+    if (isObj(s.tradeNetwork) && isObj(s.tradeNetwork.protections)) {
+      Object.keys(OLD_PROTECTIONS).forEach(function (k) { delete s.tradeNetwork.protections[k]; });
+    }
+    if (said.length) {
+      R.stripBackSay(report, 'trade', 'The Barracks and the Watchtower are gone, so ' + listText(said.map(function (k) { return OLD_PROTECTIONS[k]; })) + ' ended with ' + (said.length === 1 ? 'it' : 'them') +
+        '. They cost no gold to prepare, so nothing is owed back. The Blessing of Pelagos still protects a ship.');
+    }
+  }
+
   /* The registry, in the order they run. Add a step ABOVE sweepFacilities. */
   R.stripBackSteps = [
     { id: 'dropEvents', detect: detectEvents, run: dropEvents },
     { id: 'dropBeastRequests', detect: detectBeastRequests, run: dropBeastRequests },
     { id: 'rehomeBeasts', detect: detectBeastPen, run: rehomeBeasts },
+    /* ---- S08 and S09 (the Dock and the Hall): their steps stay together ---- */
+    { id: 'moveCharterOrders', detect: detectCharterOrders, run: moveCharterOrders },
+    { id: 'endOldProtections', detect: detectOldProtections, run: endOldProtections },
+    /* ---- end of S08 and S09 ---- */
     { id: 'sweepFacilities', detect: detectGhosts, run: sweepFacilities },
     { id: 'finish', detect: null, run: finish }
   ];

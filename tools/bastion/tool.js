@@ -2563,7 +2563,6 @@
               el('div', { class: 'tsi-bas-hall-head__title', text: 'Hall of Emissaries' }),
               hallLevelBadge,
               hallUpgradePill,
-              pill('Routes', function () { onRoutesMap(); }, 'routes', 'View active sea trade routes'),
               pill('Resolve', function () { onResolveRoutes(); }, 'resolve', 'Settle the trade routes due to sail (each sails every 7 days)'),
               ledgerPill
             ]),
@@ -2917,100 +2916,9 @@
             pill('Invest: Yield', function () { onNetworkUpgrade('yield'); }, 'invest-yield'),
             pill((tn.highRiskRouting ? 'Disable' : 'Enable') + ' High-Risk Routing', function () { onNetworkUpgrade('toggle_high_risk'); }, 'toggle-high-risk')
           ]),
-          el('div', { class: 'tsi-bas-tn-routes', 'data-test': 'routes-list' }, routeRows),
-          portChartersBox()
+          el('div', { class: 'tsi-bas-tn-routes', 'data-test': 'routes-list' }, routeRows)
         ]);
       }
-      /* Port Charters (pull request 5): each Charter's state and its ships at
-         sea. Cargo is paid when it sells, so it isn't in Expected Income / Week. */
-      function portChartersBox() {
-        var list = R.portCharters(state);
-        var rows = list.map(function (c) {
-          var ships = R.voyages(state).filter(function (v) { return v.port === c.port; });
-          return el('div', { class: 'tsi-bas-tn-route', 'data-test': 'charter-' + c.port }, [
-            el('div', { class: 'tsi-bas-tn-route__name', text: R.charterLabel(data, c) }),
-            el('div', { class: 'tsi-bas-tn-route__meta', 'data-test': 'charter-state', text: R.charterState(state, c) + (TSI.bridge && !TSI.bridge.isPort(c.port) ? ' (not on the port list now)' : '') + '.' }),
-            ships.length ? el('div', { class: 'tsi-bas-tn-route__meta', text: ships.map(R.voyageState).join(' • ') + '.' }) : null,
-            charterTermsBlock(c)
-          ]);
-        });
-        return el('div', { class: 'tsi-bas-tn-charters', 'data-test': 'hall-charters' }, [
-          el('div', { class: 'tsi-bas-hall__name', text: 'Port Charters' }),
-          muted('A Port Charter lets the Dock ship cargo to that port. The DM grants it in the Explorer; Register Port Charter (above) registers it. Cargo is paid when it sells, so it isn\'t in Expected Income / Week.')
-        ].concat(rows.length ? rows : [muted('None held yet.')]));
-      }
-
-      /* A Charter's negotiated terms (20 October 2026): what they are, what
-         they do to a sale (an estimate), how to change them, and the history. */
-      function charterTermsBlock(c) {
-        var terms = R.effectiveTerms(data, c, c.port, c.clan);
-        var std = R.isStandardTerms(data, c);
-        var pv = R.termsPreview(state, data, c);
-        var log2 = (c.termsLog || []).slice().reverse();
-        var blocked = turnRunning || militaryRunning;
-        return el('div', { class: 'tsi-bas-terms', 'data-test': 'charter-terms-' + c.port }, [
-          el('div', { class: 'tsi-bas-tn-route__meta', 'data-test': 'charter-terms', text: 'Terms: ' + R.termsText(terms) + (std ? ' (standard)' : ' (negotiated)') + '.' }),
-          pv ? el('div', { class: 'tsi-bas-muted', 'data-test': 'charter-terms-estimate', text: 'Estimate at current market conditions, ' + pv.lots + ' lots of ' + pv.name + ' to Clan ' + R.clanName(data, c.clan) + ': ' + pv.standard.net + ' gp on standard terms, ' + pv.current.net + ' gp on these terms (after ' + pv.current.fee + ' gp shipping and ' + pv.current.tariff + ' gp tariff).' }) : null,
-          el('div', { class: 'tsi-bas-terms__buttons' }, [
-            btn('Amend terms…', function () { onTerms(c.id, 'amend'); }, '', 'amend-terms', { disabled: blocked ? true : null }),
-            !std ? btn('Reset to standard terms…', function () { onTerms(c.id, 'reset'); }, 'tsi-btn--ghost', 'reset-terms', { disabled: blocked ? true : null }) : null
-          ]),
-          log2.length ? el('details', { class: 'tsi-bas-terms__history', 'data-test': 'terms-history' }, [
-            el('summary', { text: 'Terms history (' + log2.length + ')' }),
-            el('ul', { class: 'tsi-bas-res-list' }, log2.map(function (e) {
-              return el('li', { text: R.dayLabel(e.day) + ' · ' + (e.kind === 'reset' ? 'Reset to standard' : 'Amended') + ': ' + R.termsText(e.before) + ' → ' + R.termsText(e.after) + '. ' + e.why });
-            }))
-          ]) : null
-        ]);
-      }
-      var onTerms = TSI.oneAtATime(async function (id, mode) {
-        if (turnRunning || militaryRunning) return;
-        var c = R.charterById(state, id);
-        if (!c) return;
-        var cur = R.effectiveTerms(data, c, c.port, c.clan);
-        var std = R.standardTerms(data, c.port, c.clan);
-        var L = R.TERM_LIMITS;
-        var reset = mode === 'reset';
-        var price = numberInput('terms-price', { step: '0.01', min: String(L.priceMult.min), max: String(L.priceMult.max), value: String(reset ? std.priceMult : cur.priceMult), 'aria-label': 'Price multiplier', disabled: reset ? true : null });
-        var fee = numberInput('terms-fee', { min: String(L.feePerLot.min), max: String(L.feePerLot.max), value: String(reset ? std.feePerLot : cur.feePerLot), 'aria-label': 'Shipping fee per lot', disabled: reset ? true : null });
-        var tariff = numberInput('terms-tariff', { min: String(L.tariffPct.min), max: String(L.tariffPct.max), value: String(reset ? std.tariffPct : cur.tariffPct), 'aria-label': 'Tariff', disabled: reset ? true : null });
-        var why = el('textarea', { class: 'tsi-input', rows: '3', maxlength: '300', 'data-test': 'terms-why', 'aria-label': 'Why the terms change', placeholder: 'What happened in the story? (required)' });
-        var problem = el('div', { class: 'tsi-bas-repair-text', 'data-test': 'terms-problem', hidden: true });
-        var effect = el('div', { class: 'tsi-bas-muted', 'data-test': 'terms-effect' });
-        var mainBtn = null;
-        function check() {
-          var r = reset ? { ok: true, terms: std } : R.checkTermsInput({ priceMult: price.value, feePerLot: fee.value, tariffPct: tariff.value });
-          var text = !r.ok ? r.message : (R.isStandardTerms(data, c) && reset) ? 'This Charter is already on standard terms.'
-            : (!reset && r.terms.priceMult === cur.priceMult && r.terms.feePerLot === cur.feePerLot && r.terms.tariffPct === cur.tariffPct) ? 'Those are the terms already: nothing to change.'
-            : String(why.value).replace(/\s+/g, ' ').trim().length < 3 ? 'Say why (what happened in the story).' : '';
-          problem.textContent = text;
-          problem.hidden = !text;
-          if (r.ok) {
-            var pv = R.termsPreview(state, data, Object.assign({}, c, { terms: reset ? {} : r.terms }));
-            effect.textContent = pv ? 'Estimate at current market conditions: ' + pv.lots + ' lots of ' + pv.name + ' would sell for ' + pv.current.net + ' gp on these terms (' + pv.standard.net + ' gp on standard terms).' : '';
-          } else effect.textContent = '';
-          if (mainBtn) { mainBtn.disabled = !!text; mainBtn.title = text || ''; }
-        }
-        [price, fee, tariff].forEach(function (i) { i.addEventListener('input', check); });
-        why.addEventListener('input', check);
-        var ok = await plainModal({
-          title: (reset ? 'Reset to standard terms: ' : 'Amend terms: ') + R.portName(c.port),
-          body: [
-            muted((reset ? 'Remove the negotiated terms and go back to standard (×1.00 price, 0 gp a lot, 0% tariff). ' : 'Set what was agreed. Limits: price ×0.50 to ×2.00, shipping 0 to 50 gp a lot, tariff 0 to 50%. ') + 'Ships already at sea keep the terms they sailed with. This changes no Honour, Respect or Political Capital.'),
-            field('Price multiplier (×)', price), field('Shipping fee (gp a lot)', fee), field('Tariff (%)', tariff),
-            field('Reason', why), effect, problem
-          ],
-          escValue: false,
-          actions: [{ label: 'Cancel', value: false }, { label: reset ? 'Reset terms' : 'Save terms', value: true, primary: true }],
-          onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'terms-dialog'); mainBtn = parts.dialog.querySelector('.tsi-modal__foot .tsi-btn--primary'); check(); }
-        });
-        if (!ok || !life.alive || turnRunning || militaryRunning) return;
-        var res = reset ? R.resetCharterTerms(state, data, id, why.value) : R.amendCharterTerms(state, data, id, { priceMult: price.value, feePerLot: fee.value, tariffPct: tariff.value }, why.value);
-        if (!res.ok) { await say(res.message); return; }
-        log(res.log[0], res.log[1]);
-        done();
-      });
-
       async function onClearDiplomacy() {
         if (!(await ask('Clear Diplomacy & Trade records? (Does not undo gold already gained.)', 'Clear'))) return;
         state.diplomacy = R.defaultDiplomacy();
@@ -3488,7 +3396,7 @@
         var key = fac.id + '__' + fn.id;
         var cd = R.isEmissary(fac, fn) ? R.cooldownLeft(state, String(fn.special.kind || '')) : 0;
         var isCraft = fac.id === 'workshop' && fn.id === 'craft';
-        /* The Hall's Register Port Charter: a list of the Charters to register (pull request 5). */
+        /* The Dock's Register Port Charter: a list of the Charters to register (pull request 5; the Hall's until step S08). */
         var isCharter = !!fn.portCharter;
         /* A House order (pull request 7): the Beast Pen's lists the beasts waiting for a home. */
         var isHousing = !!(fn.housesSpecies || fn.housesCreature);
@@ -3949,6 +3857,8 @@
         }
         var fac = R.facility(data, id);
         if (!fac) return null;
+        /* The Dock opens on its Cargo tab each time (the tab you pick stays while the panel is open). */
+        if (id === 'dock' && !(shown && shown.id === 'fac-dock')) dockTab = 'cargo';
         return openPanel('fac-' + id, { title: fac.name, node: facPanelBody, render: function () { renderFacPanel(id); }, cls: 'tsi-bas-panel--wide', back: 'tile-' + id });
       }
       function renderFacPanel(id) {
@@ -3970,6 +3880,8 @@
         /* A facility with a picture of its own for the top of its panel (the Beast Pen's, Harry, 22 October 2026): it spans
            the panel's full width, and the details and orders follow beneath it. */
         var banner = B.panelImages && B.panelImages[id] ? el('img', { class: 'tsi-bas-facpanel__banner', 'data-test': 'fac-banner', src: asset('facilities/' + B.panelImages[id]), alt: fac.name + ': a painting of the ' + fac.name, draggable: 'false' }) : null;
+        /* The Dock's orders sit in its Orders tab (the Strip Back Overhaul, step S08); every other facility lists them under its picture. */
+        var fnsNode = el('div', { class: 'tsi-bas-fac__fns tsi-bas-facpanel__fns' }, fns.length ? fns : [muted('No functions listed.')]);
         TSI.append(facPanelBody, [
           banner,
           el('div', { class: 'tsi-bas-facpanel__hero' + (banner ? ' tsi-bas-facpanel__hero--banner' : '') + (repair ? ' tsi-bas-facpanel__hero--repair' : '') }, [
@@ -3981,9 +3893,9 @@
               el('div', { class: 'tsi-bas-facpanel__orders' }, [label('Orders pending here')].concat(mine.length ? mine : [muted('None.')]))
             ])
           ]),
-          el('div', { class: 'tsi-bas-fac__fns tsi-bas-facpanel__fns' }, fns.length ? fns : [muted('No functions listed.')]),
+          id === 'dock' ? null : fnsNode,
           id === 'workshop' ? el('div', { class: 'tsi-bas-facpanel__artisan' }, [label('Artisan Tools'), artCard.root]) : null,
-          id === 'dock' ? cargoSection() : null,
+          id === 'dock' ? dockTabs(fnsNode) : null,
           id === R.COURIER_FAC ? courierSection() : null,
           penSection(id),
           id === 'war_room' ? regimentSection() : null,
@@ -4036,7 +3948,7 @@
         var shipBtn = btn('Ship cargo…', function () { onShipCargo(); }, 'tsi-btn--primary', 'ship-cargo', { disabled: why ? true : null, title: why || null });
         var charters = R.portCharters(state).map(function (c) {
           var ter = R.effectiveTerms(data, c, c.port, c.clan);
-          return el('li', { 'data-test': 'dock-charter-' + c.port }, [el('b', { text: R.charterLabel(data, c) }), ': ' + R.charterState(state, c) + '. Terms: ' + R.termsText(ter) + (R.isStandardTerms(data, c) ? ' (standard).' : ' (negotiated, set in the Hall).')]);
+          return el('li', { 'data-test': 'dock-charter-' + c.port }, [el('b', { text: R.charterLabel(data, c) }), ': ' + R.charterState(state, c) + '. Terms: ' + R.termsText(ter) + (R.isStandardTerms(data, c) ? ' (standard).' : ' (negotiated; change them under Port Charters).')]);
         });
         var prots = R.protectionStatus(state, data).map(function (p) {
           return el('li', { 'data-test': 'dock-protection-' + p.id, text: p.text });
@@ -4062,11 +3974,11 @@
         var canSchedule = spec.schedule && R.registeredCharters(state).length > 0 && !turnRunning && !militaryRunning;
         /* Ship cargo… first, so it's in view on the laptop however long the lists get (a review fix). */
         return el('div', { class: 'tsi-bas-facpanel__cargo', 'data-test': 'dock-cargo' }, [
-          label('Cargo and Port Charters'),
+          label('Cargo'),
           muted(spec.lots ? 'Level ' + spec.level + ': each ship carries up to ' + plural(spec.lots, 'lot') + ', ' + plural(spec.ships, 'ship') + ' at sea at once' + (spec.schedule ? ', and a standing shipment can be set to sail every ' + plural(every, 'day') + ' (each sailing waits until a ship is home)' : '') + '. Cargo is paid when it sells at the port; if there\'s trouble at sea, nothing sells and the cargo comes home.'
             : 'The Dock sends cargo from Level ' + (needShip || '?') + ' (it\'s Level ' + spec.level + ').'),
           el('div', { class: 'tsi-bas-cargo__go' }, [shipBtn, why ? el('span', { class: 'tsi-bas-muted', 'data-test': 'ship-why', text: why }) : null]),
-          el('div', { class: 'tsi-bas-cargo__group' }, [el('b', { text: 'Port Charters' }), charters.length ? el('ul', { class: 'tsi-bas-res-list' }, charters) : muted('None held yet: the DM grants one in the Explorer.')]),
+          el('div', { class: 'tsi-bas-cargo__group' }, [el('b', { text: 'Port Charters' }), charters.length ? el('ul', { class: 'tsi-bas-res-list' }, charters) : muted('None held yet: the DM grants one in the Explorer, then Register Port Charter (under Orders) registers it.')]),
           prots.length ? el('div', { class: 'tsi-bas-cargo__group' }, [el('b', { text: 'Voyage protection' }), el('ul', { class: 'tsi-bas-res-list', 'data-test': 'dock-protections' }, prots), muted('Applied by themselves when a ship sails; together they never take the chance below 0.')]) : null,
           el('div', { class: 'tsi-bas-cargo__group' }, [el('b', { text: 'Ships at sea' }), ships.length ? el('ul', { class: 'tsi-bas-res-list', 'data-test': 'voyages' }, ships) : muted('None.')]),
           spec.schedule || standing.length ? el('div', { class: 'tsi-bas-cargo__group' }, [
@@ -4238,6 +4150,166 @@
         log(res.log[0], res.log[1]);
         done();
       });
+
+      /* ---------- The Dock's tabs (the Strip Back Overhaul, step S08) ----------
+         The Dock holds all of the trade now: its orders (Charter Berth and Register
+         Port Charter, once the Hall's), the Cargo, every Port Charter with its terms,
+         and the Routes map. Four tabs keep the panel short enough for the laptop;
+         "Ship cargo…" stays the one main button, at the top of the Cargo tab (the one
+         it opens on). Only the tab being looked at is drawn. */
+      var DOCK_TABS = [['cargo', 'Cargo'], ['orders', 'Orders'], ['charters', 'Port Charters'], ['routes', 'Routes']];
+      var dockTab = 'cargo';
+      function pickDockTab(id, focus) {
+        if (DOCK_TABS.every(function (t) { return t[0] !== id; })) return;
+        dockTab = id;
+        renderPanel();
+        if (focus) {
+          var again = document.querySelector('[data-test="dock-tab-' + id + '"]');
+          if (again) again.focus({ preventScroll: true });
+        }
+      }
+      function dockTabs(ordersNode) {
+        var tabs = DOCK_TABS.map(function (t, i) {
+          var on = dockTab === t[0];
+          return el('button', {
+            type: 'button', class: 'tsi-bas-tab' + (on ? ' tsi-bas-tab--on' : ''), role: 'tab', id: 'tsi-bas-dock-tab-' + t[0],
+            'aria-selected': on ? 'true' : 'false', 'aria-controls': 'tsi-bas-dock-pane', tabindex: on ? '0' : '-1', 'data-test': 'dock-tab-' + t[0],
+            onclick: function () { pickDockTab(t[0], false); },
+            onkeydown: function (e) {
+              var step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+              if (e.key === 'Home') step = -DOCK_TABS.length;
+              if (e.key === 'End') step = DOCK_TABS.length;
+              if (!step) return;
+              e.preventDefault();
+              pickDockTab(DOCK_TABS[Math.max(0, Math.min(DOCK_TABS.length - 1, i + step))][0], true);
+            }
+          }, t[1]);
+        });
+        var pane = dockTab === 'orders' ? ordersNode : dockTab === 'charters' ? chartersPane() : dockTab === 'routes' ? routesPane() : cargoSection();
+        return el('div', { class: 'tsi-bas-docktabs', 'data-test': 'dock-tabs', 'data-tab': dockTab }, [
+          el('div', { class: 'tsi-bas-tabs', role: 'tablist', 'aria-label': 'The Dock' }, tabs),
+          el('div', { class: 'tsi-bas-tabpane', id: 'tsi-bas-dock-pane', role: 'tabpanel', 'aria-labelledby': 'tsi-bas-dock-tab-' + dockTab, 'data-test': 'dock-pane-' + dockTab }, pane)
+        ]);
+      }
+
+      /* Port Charters (pull request 5; the Hall's box until step S08): each Charter's state, its ships at
+         sea and its terms. Cargo is paid when it sells. */
+      function chartersPane() {
+        var list = R.portCharters(state);
+        var rows = list.map(function (c) {
+          var ships = R.voyages(state).filter(function (v) { return v.port === c.port; });
+          return el('div', { class: 'tsi-bas-tn-route', 'data-test': 'charter-' + c.port }, [
+            el('div', { class: 'tsi-bas-tn-route__name', text: R.charterLabel(data, c) }),
+            el('div', { class: 'tsi-bas-tn-route__meta', 'data-test': 'charter-state', text: R.charterState(state, c) + (TSI.bridge && !TSI.bridge.isPort(c.port) ? ' (not on the port list now)' : '') + '.' }),
+            ships.length ? el('div', { class: 'tsi-bas-tn-route__meta', text: ships.map(R.voyageState).join(' • ') + '.' }) : null,
+            charterTermsBlock(c)
+          ]);
+        });
+        return el('div', { class: 'tsi-bas-tn-charters', 'data-test': 'dock-charters' }, [
+          muted('A Port Charter lets the Dock ship cargo to that port. The DM grants it in the Explorer; Register Port Charter (under Orders) registers it. Cargo is paid when it sells.')
+        ].concat(rows.length ? rows : [muted('None held yet: the DM grants one in the Explorer.')]));
+      }
+
+      /* A Charter's negotiated terms (20 October 2026): what they are, what
+         they do to a sale (an estimate), how to change them, and the history. */
+      function charterTermsBlock(c) {
+        var terms = R.effectiveTerms(data, c, c.port, c.clan);
+        var std = R.isStandardTerms(data, c);
+        var pv = R.termsPreview(state, data, c);
+        var log2 = (c.termsLog || []).slice().reverse();
+        var blocked = turnRunning || militaryRunning;
+        return el('div', { class: 'tsi-bas-terms', 'data-test': 'charter-terms-' + c.port }, [
+          el('div', { class: 'tsi-bas-tn-route__meta', 'data-test': 'charter-terms', text: 'Terms: ' + R.termsText(terms) + (std ? ' (standard)' : ' (negotiated)') + '.' }),
+          pv ? el('div', { class: 'tsi-bas-muted', 'data-test': 'charter-terms-estimate', text: 'Estimate at current market conditions, ' + pv.lots + ' lots of ' + pv.name + ' to Clan ' + R.clanName(data, c.clan) + ': ' + pv.standard.net + ' gp on standard terms, ' + pv.current.net + ' gp on these terms (after ' + pv.current.fee + ' gp shipping and ' + pv.current.tariff + ' gp tariff).' }) : null,
+          el('div', { class: 'tsi-bas-terms__buttons' }, [
+            btn('Amend terms…', function () { onTerms(c.id, 'amend'); }, '', 'amend-terms', { disabled: blocked ? true : null }),
+            !std ? btn('Reset to standard terms…', function () { onTerms(c.id, 'reset'); }, 'tsi-btn--ghost', 'reset-terms', { disabled: blocked ? true : null }) : null
+          ]),
+          log2.length ? el('details', { class: 'tsi-bas-terms__history', 'data-test': 'terms-history' }, [
+            el('summary', { text: 'Terms history (' + log2.length + ')' }),
+            el('ul', { class: 'tsi-bas-res-list' }, log2.map(function (e) {
+              return el('li', { text: R.dayLabel(e.day) + ' · ' + (e.kind === 'reset' ? 'Reset to standard' : 'Amended') + ': ' + R.termsText(e.before) + ' → ' + R.termsText(e.after) + '. ' + e.why });
+            }))
+          ]) : null
+        ]);
+      }
+      var onTerms = TSI.oneAtATime(async function (id, mode) {
+        if (turnRunning || militaryRunning) return;
+        var c = R.charterById(state, id);
+        if (!c) return;
+        var cur = R.effectiveTerms(data, c, c.port, c.clan);
+        var std = R.standardTerms(data, c.port, c.clan);
+        var L = R.TERM_LIMITS;
+        var reset = mode === 'reset';
+        var price = numberInput('terms-price', { step: '0.01', min: String(L.priceMult.min), max: String(L.priceMult.max), value: String(reset ? std.priceMult : cur.priceMult), 'aria-label': 'Price multiplier', disabled: reset ? true : null });
+        var fee = numberInput('terms-fee', { min: String(L.feePerLot.min), max: String(L.feePerLot.max), value: String(reset ? std.feePerLot : cur.feePerLot), 'aria-label': 'Shipping fee per lot', disabled: reset ? true : null });
+        var tariff = numberInput('terms-tariff', { min: String(L.tariffPct.min), max: String(L.tariffPct.max), value: String(reset ? std.tariffPct : cur.tariffPct), 'aria-label': 'Tariff', disabled: reset ? true : null });
+        var why = el('textarea', { class: 'tsi-input', rows: '3', maxlength: '300', 'data-test': 'terms-why', 'aria-label': 'Why the terms change', placeholder: 'What happened in the story? (required)' });
+        var problem = el('div', { class: 'tsi-bas-repair-text', 'data-test': 'terms-problem', hidden: true });
+        var effect = el('div', { class: 'tsi-bas-muted', 'data-test': 'terms-effect' });
+        var mainBtn = null;
+        function check() {
+          var r = reset ? { ok: true, terms: std } : R.checkTermsInput({ priceMult: price.value, feePerLot: fee.value, tariffPct: tariff.value });
+          var text = !r.ok ? r.message : (R.isStandardTerms(data, c) && reset) ? 'This Charter is already on standard terms.'
+            : (!reset && r.terms.priceMult === cur.priceMult && r.terms.feePerLot === cur.feePerLot && r.terms.tariffPct === cur.tariffPct) ? 'Those are the terms already: nothing to change.'
+            : String(why.value).replace(/\s+/g, ' ').trim().length < 3 ? 'Say why (what happened in the story).' : '';
+          problem.textContent = text;
+          problem.hidden = !text;
+          if (r.ok) {
+            var pv = R.termsPreview(state, data, Object.assign({}, c, { terms: reset ? {} : r.terms }));
+            effect.textContent = pv ? 'Estimate at current market conditions: ' + pv.lots + ' lots of ' + pv.name + ' would sell for ' + pv.current.net + ' gp on these terms (' + pv.standard.net + ' gp on standard terms).' : '';
+          } else effect.textContent = '';
+          if (mainBtn) { mainBtn.disabled = !!text; mainBtn.title = text || ''; }
+        }
+        [price, fee, tariff].forEach(function (i) { i.addEventListener('input', check); });
+        why.addEventListener('input', check);
+        var ok = await plainModal({
+          title: (reset ? 'Reset to standard terms: ' : 'Amend terms: ') + R.portName(c.port),
+          body: [
+            muted((reset ? 'Remove the negotiated terms and go back to standard (×1.00 price, 0 gp a lot, 0% tariff). ' : 'Set what was agreed. Limits: price ×0.50 to ×2.00, shipping 0 to 50 gp a lot, tariff 0 to 50%. ') + 'Ships already at sea keep the terms they sailed with. This changes no Honour, Respect or Political Capital.'),
+            field('Price multiplier (×)', price), field('Shipping fee (gp a lot)', fee), field('Tariff (%)', tariff),
+            field('Reason', why), effect, problem
+          ],
+          escValue: false,
+          actions: [{ label: 'Cancel', value: false }, { label: reset ? 'Reset terms' : 'Save terms', value: true, primary: true }],
+          onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'terms-dialog'); mainBtn = parts.dialog.querySelector('.tsi-modal__foot .tsi-btn--primary'); check(); }
+        });
+        if (!ok || !life.alive || turnRunning || militaryRunning) return;
+        var res = reset ? R.resetCharterTerms(state, data, id, why.value) : R.amendCharterTerms(state, data, id, { priceMult: price.value, feePerLot: fee.value, tariffPct: tariff.value }, why.value);
+        if (!res.ok) { await say(res.message); return; }
+        log(res.log[0], res.log[1]);
+        done();
+      });
+
+
+      /* ---------- The Routes map (the Hall's until step S08) ----------
+         The map of the Scarlett Isles. A Clan's lane GLOWS when the Ironbow holds a registered Port Charter at one of
+         its ports, and brighter while a ship is at sea to it (R.routesMap, commerce-rules.js). Beside it, every Charter
+         and the ships on the way. Nothing here changes the Bastion. */
+      function routesPane() {
+        var map = R.routesMap(state, data);
+        var lit = map.lanes.filter(function (l) { return l.art; });
+        var overlays = lit.map(function (l) {
+          return el('img', { class: 'tsi-bas-trademap__route' + (l.glow === 'sea' ? ' tsi-bas-trademap__route--sea' : ''), src: asset(l.art), alt: 'Clan ' + l.name + ' trade route', 'data-clan': l.name, 'data-glow': l.glow });
+        });
+        var rows = map.rows.map(function (r) {
+          return el('li', { 'data-test': 'route-row-' + r.port, 'data-status': r.status }, [
+            el('b', { text: r.label }), ': ' + r.stateText + '.',
+            r.ships.length ? el('div', { class: 'tsi-bas-muted', text: r.ships.join(' • ') + '.' }) : null
+          ]);
+        });
+        return el('div', { class: 'tsi-bas-routes', 'data-test': 'dock-routes' }, [
+          el('div', { class: 'tsi-bas-trademap', 'data-test': 'trade-map' }, el('div', { class: 'tsi-bas-trademap__canvas' }, [
+            el('img', { class: 'tsi-bas-trademap__img', src: asset('ui/clan_trading_locations.png'), alt: 'The Scarlett Isles: where the Clans trade' })
+          ].concat(overlays))),
+          el('div', { class: 'tsi-bas-routes__side' }, [
+            muted('A Clan\'s route glows while the Ironbow holds a registered Port Charter at one of its ports, and glows brighter while a ship is at sea to it.'),
+            el('p', { class: 'tsi-bas-muted' }, ['Glowing now: ', el('b', { 'data-test': 'routes-shown', text: lit.length ? lit.map(function (l) { return l.name + (l.glow === 'sea' ? ' (a ship at sea)' : ''); }).join(', ') : 'none' })]),
+            el('b', { class: 'tsi-bas-routes__head', text: 'Port Charters and ships' }),
+            rows.length ? el('ul', { class: 'tsi-bas-res-list', 'data-test': 'routes-list' }, rows) : muted('No Port Charter yet. The DM grants one in the Explorer; once the Dock has registered it, its Clan\'s route lights up here.')
+          ])
+        ]);
+      }
 
       /* ---------- The Beast Pen's beasts (pull request 7; the Beast Pen, 22 October 2026) ----------
          The panel's beasts: one stall for each kind the DM can grant (wyvern, griffin, dire wolf, buckbear, fellcat) with
@@ -5228,44 +5300,6 @@
         return resolveRoutes(false).then(finish, function (err) { finish(); throw err; });
       });
 
-      /* The Sea Trade Routes map (2631-2716). Each clan with a running route
-         glows on the map. */
-      var onRoutesMap = TSI.oneAtATime(function () {
-        var routes = state.tradeNetwork.routes.filter(function (r) {
-          if (!r || r.status === 'removed') return false;
-          if (r.expiresDay !== undefined && r.expiresDay !== null && state.day > r.expiresDay) return false;
-          return String(r.status || '').toLowerCase() !== 'expired';
-        });
-        var clans = [];
-        routes.forEach(function (r) { var c = String(r.clan || '').trim(); if (c && clans.indexOf(c) === -1) clans.push(c); });
-        /* Trade Agreements are listed too, but as "Clan Blackstone" they find no route art (BAS-27, kept). */
-        state.diplomacy.agreements.forEach(function (a) {
-          if (!a || !(a.endDay > state.day)) return;
-          var c = String(a.clan || '').trim();
-          if (c && clans.indexOf(c) === -1) clans.push(c);
-        });
-        var shown = clans.filter(function (c) { return !!B.routeOverlays[c.toLowerCase()]; });
-        var overlays = shown.map(function (c) {
-          return el('img', { class: 'tsi-bas-trademap__route', src: asset(B.routeOverlays[c.toLowerCase()]), alt: c + ' trade route', 'data-clan': c });
-        });
-        var list = routes.length ? el('ul', { class: 'tsi-bas-res-list' }, routes.map(function (r) {
-          var meta = (r.commodity || 'Goods') + ' • ' + (r.risk || 'medium') + ' risk • ' + R.clampInt(r.yieldGP || 0, 0, 999999) + ' gp a sailing, every ' + R.time(data).every + ' days';
-          return el('li', null, [el('b', { text: String(r.clan || 'Unknown') }), ' — ' + (r.status === 'disrupted' ? 'DISRUPTED' : 'ACTIVE') + ' ', el('span', { class: 'tsi-bas-muted', text: '(' + meta + ')' })]);
-        })) : muted('No active routes yet. Create a Trade Consortium to open at least one route.');
-        return hallModal({
-          title: 'Sea Trade Routes',
-          className: 'tsi-bas-modal tsi-bas-modal--hall tsi-bas-modal--trademap',
-          body: [
-            el('div', { class: 'tsi-bas-trademap', 'data-test': 'trade-map' }, el('div', { class: 'tsi-bas-trademap__canvas' }, [
-              el('img', { class: 'tsi-bas-trademap__img', src: asset('ui/clan_trading_locations.png'), alt: 'Clan Trading Locations' })
-            ].concat(overlays))),
-            el('p', { class: 'tsi-bas-muted' }, ['Showing routes for: ', el('b', { 'data-test': 'routes-shown', text: shown.length ? shown.join(', ') : 'none' })]),
-            el('div', { class: 'tsi-bas-res-changes' }, [el('div', { class: 'tsi-bas-res-changes__title', text: 'Active Routes' }), list])
-          ],
-          actions: CLOSE
-        });
-      });
-
       /* ================================================================
          The Council Ledger (2784-3051)
          ================================================================ */
@@ -5805,9 +5839,19 @@
           if (top && !panelOnTop) return false;
           closePanel();
           button.click();
+          /* The Dock's panel is in tabs: show the one that holds what was asked for. */
+          var want = opener === 'tile-dock' ? dockTabFor(test) : '';
+          if (want && want !== dockTab) { dockTab = want; renderPanel(); }
           return !!document.querySelector(sel);
         }
       };
+      /* For reveal: which of the Dock's tabs holds [data-test=test] ('' for the Cargo tab, which it opens on). */
+      function dockTabFor(test) {
+        if (/^(?:issue|sel|days|why|goods)-dock__/.test(test) || test === 'upgrade-dock' || test === 'upgrade-row-dock' || test === 'upgrade-text-dock') return 'orders';
+        if (/^(?:dock-charters|charter-.+|amend-terms|reset-terms|terms-history)$/.test(test)) return 'charters';
+        if (/^(?:dock-routes|trade-map|routes-.+|route-row-.+)$/.test(test)) return 'routes';
+        return '';
+      }
       /* For reveal: the data-test of what opens the panel holding sel. */
       function openerFor(test, sel) {
         var fixed = [[whCard, 'open-warehouse'], [mgmtCard, 'open-management'], [logCard, 'open-log'],
