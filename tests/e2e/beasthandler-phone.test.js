@@ -52,8 +52,14 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
   const openBox = async () => {
     if (!(await ba.$('[data-test=beast-box]:visible'))) { await ba.click('[data-test=tile-beast_pen]'); await ba.waitForSelector('[data-test=beast-box]'); }
   };
-  const dmCode = async (button, dialogTest) => {
+  /* Since S17 the pairing and snapshot codes are under "Offline backup", shut until opened, on the DM's box and on the phone. */
+  const openBackup = async () => {
     await openBox();
+    if (!(await ba.$eval('[data-test=beast-backup]', d => d.open))) await ba.click('[data-test=beast-backup-toggle]');
+  };
+  const openPB = () => pp.evaluate(() => { const d = document.querySelector('[data-test=bhp-backup]'); if (d) d.open = true; });
+  const dmCode = async (button, dialogTest) => {
+    await openBackup();
     await ba.click('[data-test=' + button + ']');
     await ba.waitForSelector('[data-test=' + dialogTest + ']');
     const code = await ba.$eval('[data-test=' + dialogTest.replace('-dialog', '') + ']', t => t.value);
@@ -86,9 +92,11 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
   });
 
   await check('a wrong code is refused in plain words; the right one links the phone', async () => {
+    await openPB();
     await pp.fill('[data-test=bhp-pair-input]', 'hello there');
     await pp.click('[data-test=bhp-link]');
     assert(/isn't a pairing code/.test(await bare(pp, '[data-test=bhp-pair-problem]')), await bare(pp, '[data-test=bhp-pair-problem]'));
+    await openPB();
     await pp.fill('[data-test=bhp-pair-input]', pairingCode);
     await pp.click('[data-test=bhp-link]');
     await pp.waitForSelector('[data-test=bhp-screen-snap]');
@@ -99,9 +107,11 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     snapCode = await dmCode('beast-snap-mira', 'beast-snap-dialog');
     assert(/^BHS1\./.test(snapCode));
     const bits = snapCode.split('.');
+    await openPB();
     await pp.fill('[data-test=bhp-first-snap]', bits[0] + '.' + bits[1].slice(0, -2) + 'AA.' + bits[2]);
     await pp.click('[data-test=bhp-first-go]');
     assert(/wasn't made for you, or it was changed/.test(await bare(pp, '[data-test=bhp-first-problem]')), await bare(pp, '[data-test=bhp-first-problem]'));
+    await openPB();
     await pp.fill('[data-test=bhp-first-snap]', snapCode);
     await pp.click('[data-test=bhp-first-go]');
     await pp.waitForSelector('[data-test=bh-beast-cr-stormwing][data-mine=yes]');
@@ -131,6 +141,7 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     equal(await pp.$$eval('.tsi-bh input, .tsi-bh textarea', n => n.length), 0, 'and has nothing to type in');
     await pp.click('[data-test=bh-back]');
     answerSnap = await dmCode('beast-snap-mira', 'beast-snap-dialog');
+    await openPB();
     await pp.click('[data-test=bhp-update]');
     await pp.fill('[data-test=bhp-snap-input]', answerSnap);
     await pp.click('.tsi-modal__foot .tsi-btn--primary');
@@ -149,6 +160,7 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
   await check('an older snapshot pasted after a newer one is refused, and the newer one stays', async () => {
     await pp.click('[data-test=bh-back]');
     const before = await bare(pp, '[data-test=bh-sync]');
+    await openPB();
     await pp.click('[data-test=bhp-update]');
     await pp.fill('[data-test=bhp-snap-input]', snapCode);
     await pp.click('.tsi-modal__foot .tsi-btn--primary');
@@ -159,11 +171,12 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
   });
 
   await check('a snapshot made for another handler is refused by this phone', async () => {
-    await openBox();
+    await openBackup();
     await ba.click('[data-test=beast-pair-joss]');
     await ba.waitForSelector('[data-test=beast-pair-dialog]');
     await closeDialog();
     const jossSnap = await dmCode('beast-snap-joss', 'beast-snap-dialog');
+    await openPB();
     await pp.click('[data-test=bhp-update]');
     await pp.fill('[data-test=bhp-snap-input]', jossSnap);
     await pp.click('.tsi-modal__foot .tsi-btn--primary');
@@ -186,6 +199,7 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     await ba.waitForSelector('[data-test=beast-pair-dialog]');
     await closeDialog();
     const fresh = await dmCode('beast-snap-mira', 'beast-snap-dialog');
+    await openPB();
     await pp.click('[data-test=bhp-update]');
     await pp.fill('[data-test=bhp-snap-input]', fresh);
     await pp.click('.tsi-modal__foot .tsi-btn--primary');
@@ -269,7 +283,7 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     await pp.setViewportSize({ width: 390, height: 844 });
   });
 
-  await check('Add a handler with a name that is already paired asks before it swaps their code', async () => {
+  await check('Add a handler with a name that is already linked shows that handler\'s QR code again and swaps nothing (the code is only replaced by Take back code, or New pairing code under Offline backup, which asks first)', async () => {
     const secretOf = async id => (await state()).beast.handlers.filter(h => h.id === id)[0].secret;
     const before = await secretOf('joss');
     assert(before, 'Joss has a code from the earlier check');
@@ -278,13 +292,20 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     await ba.waitForSelector('[data-test=beast-add-name]');
     await ba.fill('[data-test=beast-add-name]', '  JOSS ');
     await ba.locator('.tsi-modal__foot .tsi-btn--primary').last().click();
+    await ba.waitForSelector('[data-test=beast-qr-dialog]');
+    assert(/Show this only to Joss/.test(await bare(ba, '[data-test=beast-qr-caption]')));
+    assert((await ba.$eval('[data-test=beast-qr-link]', n => n.textContent)).indexOf('.' + before + '.') !== -1, 'the QR holds Joss\'s existing secret');
+    await closeDialog();
+    equal(await secretOf('joss'), before, 'nothing was swapped');
+    await openBackup();
+    await ba.click('[data-test=beast-pair-joss]');
     await ba.waitForFunction(() => {
       const all = document.querySelectorAll('.tsi-modal');
       return /the old one stops working/.test(all[all.length - 1].textContent);
     }, null, { timeout: 5000 });
     await ba.locator('.tsi-modal__foot button', { hasText: 'Cancel' }).last().click();
     await ba.waitForFunction(() => document.querySelectorAll('.tsi-modal').length === 1);
-    equal(await secretOf('joss'), before, 'Cancel changed nothing');
+    equal(await secretOf('joss'), before, 'and Cancel on New pairing code changed nothing');
   });
 
   await check('a damaged stored snapshot, or a version 1 snapshot an old phone kept, is forgotten instead of blanking the page; the old request list and first-meeting draft are cleared', async () => {
