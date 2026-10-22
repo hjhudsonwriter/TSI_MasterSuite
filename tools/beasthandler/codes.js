@@ -1,8 +1,8 @@
-/* Scarlett Isles: Beast Handler — the codes a phone and the Bastion swap (BH-3a).
+/* Scarlett Isles: Beast Handler — the codes a phone and the Bastion swap (BH-3a; read-only since 22 October 2026).
 
    Plain functions, tested on tests/rules.html. With no internet and no
    server between a player's phone and the DM's Bastion, they pass text
-   (pasted, or saved as a small file) instead. There are three kinds, each
+   (pasted, or saved as a small file) instead. There are two kinds, each
    starting with its own tag so one can never be mistaken for another:
 
    BHP1.<letters>               a PAIRING code: the DM gives it to one player
@@ -10,15 +10,15 @@
                                 handler's id and name, and a secret.
    BHS1.<letters>.<signature>   a SNAPSHOT: what that handler may see (one
                                 snapshot, projection.js), signed with the secret.
-   BHC1.<letters>.<signature>   a REQUEST: one command from the phone to the
-                                Bastion, signed with the secret.
 
-   The signature (HMAC-SHA256, shared/js/hmac.js) lets each side tell the code
-   came from the other and wasn't changed on the way. It does not hide
-   anything: a snapshot holds only what that handler may see anyway. The
-   secret stays on the DM's laptop and that handler's phone; it never goes in
-   a snapshot or a request. Revoke a handler's code in the Bastion and every
-   request signed with the old secret is refused. */
+   Nothing travels from the phone to the Bastion: the app only looks, so the
+   request code (BHC1) that earlier versions had is gone. The signature
+   (HMAC-SHA256, shared/js/hmac.js) lets the phone tell a snapshot came from
+   the Bastion and wasn't changed on the way. It does not hide anything: a
+   snapshot holds only what that handler may see anyway. The secret stays on
+   the DM's laptop and that handler's phone; it never goes in a snapshot.
+   Take a handler's code back in the Bastion and a snapshot made with the
+   old secret no longer opens. */
 (function () {
   'use strict';
 
@@ -26,12 +26,10 @@
   var ns = TSI.beasthandler = TSI.beasthandler || {};
   var C = ns.codes = {};
 
-  var TAGS = { pair: 'BHP1', snap: 'BHS1', cmd: 'BHC1' };
+  var TAGS = { pair: 'BHP1', snap: 'BHS1' };
   C.TAGS = TAGS;
   /* The most a code may hold (letters): far more than a real one. */
   C.MAX_LENGTH = 600000;
-  /* Commands older than this (milliseconds) are refused as expired. */
-  C.MAX_AGE_MS = 30 * 24 * 3600 * 1000;
 
   function isObj(v) { return !!v && typeof v === 'object' && !Array.isArray(v); }
   function H() { return TSI.hmac; }
@@ -39,14 +37,14 @@
   /* A pasted code, with any spaces, line breaks and quotes a chat app added taken out. */
   C.tidy = function (text) { return String(text === undefined || text === null ? '' : text).replace(/[\s"'“”‘’<>\u00ad\u061c\u200b-\u200f\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff]+/g, ''); };
 
-  /* The kind of code this is ('pair', 'snap' or 'cmd'), or ''. */
+  /* The kind of code this is ('pair' or 'snap'), or ''. */
   C.kind = function (text) {
     var t = C.tidy(text);
     for (var k in TAGS) if (Object.prototype.hasOwnProperty.call(TAGS, k) && t.indexOf(TAGS[k] + '.') === 0) return k;
     return '';
   };
 
-  /* JSON with its keys in a fixed order, so the same command always signs the same. */
+  /* JSON with its keys in a fixed order, so the same pairing always encodes the same. */
   C.canonical = function (v) {
     if (Array.isArray(v)) return '[' + v.map(C.canonical).join(',') + ']';
     if (isObj(v)) return '{' + Object.keys(v).sort().filter(function (k) { return v[k] !== undefined; }).map(function (k) { return JSON.stringify(k) + ':' + C.canonical(v[k]); }).join(',') + '}';
@@ -97,22 +95,5 @@
     var v = parse(bits[0]);
     if (!v) return { ok: false, why: 'That snapshot is damaged. Ask the DM for a new one.' };
     return { ok: true, snapshot: v };
-  };
-
-  /* ---------- Requests (phone to Bastion) ---------- */
-  C.encodeCommand = function (cmd, secret) {
-    var letters = H().b64uEncode(C.canonical(cmd));
-    return TAGS.cmd + '.' + letters + '.' + H().hmacHex(secret, letters);
-  };
-  /* The request inside, before it is checked: the Bastion needs the handler's name to find the secret. */
-  C.peekCommand = function (text) {
-    var bits = split(text, TAGS.cmd, 2);
-    if (!bits) return { ok: false, why: 'That isn\'t a request code. It starts BHC1.' };
-    var v = parse(bits[0]);
-    if (!v || typeof v.handler !== 'string' || !v.handler) return { ok: false, why: 'That request code is damaged.' };
-    return { ok: true, command: v, letters: bits[0], signature: bits[1] };
-  };
-  C.verifyCommand = function (peeked, secret) {
-    return !!(peeked && peeked.ok && secret && H().same(H().hmacHex(secret, peeked.letters), peeked.signature));
   };
 }());

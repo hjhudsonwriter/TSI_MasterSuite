@@ -1,42 +1,43 @@
 # The Beast Handler on a player's phone
 
-Written for Harry, in plain English. Last updated 21 October 2026.
+Written for Harry, in plain English. Last updated 22 October 2026 (the phone page became read-only).
 
 ## What this is
 
-`beasthandler.html` (in the main folder of the suite) is a small page for a **player's phone**. It shows them their own beast (its picture and subspecies, Bond 0 to 5, Profile, free Orders, Chronicle) and lets them ask for a change. It is **not** a second copy of the Bastion. It cannot open the Bastion, the Explorer or any DM tool, and it cannot change your save. It can only *ask*; your Bastion checks the ask again and decides.
+`beasthandler.html` (in the main folder of the suite) is a small page for a **player's phone**. It shows them their own beasts: the picture and subspecies, the Bond page, the Profile and the Chronicle. It **only looks**: a player can't type, choose, ask for or change anything in it, and it sends nothing back to your Bastion. It is **not** a second copy of the Bastion, and it cannot open the Bastion, the Explorer or any DM tool.
 
-There is no internet and no server in the middle. The page and your laptop swap short pieces of text instead, called **codes**. A code can be pasted into a message (WhatsApp, Discord, text) or saved as a small `.txt` file and sent.
+There is no internet and no server in the middle in this version. The page and your laptop swap short pieces of text instead, called **codes**, from you to the phone. A code can be pasted into a message (WhatsApp, Discord, text) or saved as a small `.txt` file and sent. A way to link a phone by scanning a code, and a way for the page to update itself, are **to come** (a later step); until then, the codes below are how it works.
 
-## The three codes
+## The two codes
 
 | Code | Starts with | Who makes it | What it does |
 |---|---|---|---|
 | Pairing code | `BHP1.` | You, in the Bastion | Links one phone to one handler. Sent once, privately. |
 | Snapshot code | `BHS1.` | You, in the Bastion | What that handler is allowed to see, as of today. |
-| Request code | `BHC1.` | The player's phone | One request (a profile change or a free training order). |
 
-Each code is **signed** with a secret only that handler and your Bastion know. If someone changes a code on the way, or makes one up, the other side ignores it. Signing does not hide what is in a code: a snapshot holds only what that player may see anyway, and a request is only a profile line or an order.
+There is no request code any more (it used to be `BHC1.`): the phone never sends anything to you.
 
-## Meeting a beast for the first time
+Each code is **signed** with a secret only that handler and your Bastion know. If someone changes a snapshot on the way, or makes one up, the phone ignores it. Signing does not hide what is in a code: a snapshot holds only what that player may see anyway.
 
-When a player opens a beast whose subspecies has not been chosen yet, the page walks them through three panels (meet, subspecies, personality), then plays a short fade to black with "Welcome to the Ironbow, Name!" before showing the beast. At the end the phone asks for **one request code** (the subspecies and any personality line the player wrote or changed; lines already written are shown and kept) to send to the DM; until the DM applies it and sends a fresh snapshot, the beast's page shows the choice with "Not confirmed yet". If the Bastion refuses the request, the next snapshot brings the meeting back with the reason and the player's choices put back, and only then does the phone offer **Skip for now**.
+## The first meeting
+
+When your Bastion has passed a beast's acclimatisation (Bond 1), it rolls the beast's **subspecies and personality once** and keeps them: the subspecies is fixed for each kind for now (Bloodcrest, Dawnmantle, Blacktide, Broadcrown, Lichenback), the personality is genuinely random (the Day Log says *first meeting prepared*). The first time a player opens that beast on their phone, the page plays a short **reveal** of what the Bastion decided: the kind's subspecies as medallions, a die and a gold marker that hops and lands on the answer; then three personality dice that settle on the real numbers; then a fade to black with "Welcome to the Ironbow, Name!" before the beast appears. The player presses buttons but chooses nothing: they get what they are given.
+
+It plays **once for each beast on each phone** (the phone remembers which, until it is unlinked). If the page is closed part-way, nothing was sent and the reveal simply starts again. The player cannot skip it. A beast that already has a subspecies (you typed one) is treated as already introduced and never plays it.
 
 ## The normal round trip
 
 1. **Once, to set up.** In the Bastion open **Management**. In the **Beast Handler (players)** box, press **Pairing code…** beside the player's name (or **Add a handler…**). Send them the code, privately. They open the phone page, paste it in, and press **Link this phone**.
-2. **Whenever you want them to see something new.** Press **Snapshot code…** beside their name and send it. On a new phone they paste it and press **Show my beasts**; after that they press **Update from a snapshot…** and paste the new one. Make a new snapshot after anything changes (a new day, a new order, a bond).
-3. **When they want something.** On the phone they roll or type a profile line and press **Save**, or press **Send request** on an order. The phone shows a request code to send back to you and keeps it under **Requests to send to the DM** until a snapshot shows your answer.
-4. **You** press **Paste a request code…** in the same box (or **Open a file…**) and **Check and apply**. The Bastion does it once, or refuses it with a plain reason. Pasting the same code again changes nothing.
-5. **The answer goes back** as a fresh snapshot: the Result box that appears after you apply a request already holds one, ready to copy and send. When they paste it, the request leaves their "to send" list and shows as accepted or refused.
-
-## If a request was never sent
-
-Each unsent request has a **Forget it** button. Use it if you lost the code or never sent it, because an unsent request stops you making another at that building. Forgetting only clears the phone's list: if the DM already has the code, the Bastion can still apply it, and the answer shows in your next snapshot.
+2. **Whenever you want them to see something new.** Press **Snapshot code…** beside their name and send it. On a new phone they paste it and press **Show my beasts**; after that they press **Update from a snapshot…** and paste the new one. Make a new snapshot after anything changes (a new day, a bond, a note in the Chronicle). A beast shows on the phone once it is at Bond 1; before that it is a line that says "Not acclimatised yet".
+3. **That is all.** Nothing comes back to you.
 
 ## If a code gets out
 
-Press **Take back code** beside the player's name. Every request signed with the old code is refused from then on. Press **New pairing code…** to give them a new one. A pairing code does not expire and is not single-use, so send it privately. The phone keeps showing the last snapshot it was given until the player unlinks it; it just can't make requests the Bastion will accept.
+Press **Take back code** beside the player's name. A snapshot made with the old code no longer opens on their phone. Press **New pairing code…** to give them a new one (the phone then needs **Unlink this phone** and the new code). A pairing code does not expire and is not single-use, so send it privately. The phone keeps showing the last snapshot it was given until the player unlinks it. Because the page is read-only, a leaked code lets someone read that player's snapshot and nothing more.
+
+## A phone that linked before 22 October 2026
+
+Its stored snapshot is from the old version, so the page forgets it and asks for a new snapshot (its link is kept). Anything it was holding to send (waiting requests, a first-meeting draft) is cleared away. Send a new snapshot code once.
 
 ## Putting the page on a phone
 
@@ -67,25 +68,23 @@ Only these (about 9 MB in all, without the extras):
 - `shared/fonts/` (the whole folder, about 2.6 MB)
 - `shared/js/core.js`, `lifecycle.js`, `modal.js`, `hmac.js`
 - `tools/beasthandler/beasthandler.css`, `phone.css`
-- `tools/beasthandler/data/` (`profile-tables.js`, `art-map.js`)
+- `tools/beasthandler/data/` (`profile-tables.js`, `art-map.js`). The phone does **not** need `initiation-data.js`: that file, which says which subspecies each kind meets as, stays in the Bastion so the phone page's own files don't spell out the answer.
 - `tools/beasthandler/projection.js`, `profile-rules.js`, `codes.js`, `model.js`, `intro.js`, `view.js`, `phone.js`
-- `tools/beasthandler/assets/dire-wolf/`, `assets/wyvern/` and `assets/griffin/` (the fifteen portraits, about 6.5 MB between them; a beast's picture only appears if its folder is there) and `tools/beasthandler/assets/phone-icon-180.png` (the Home Screen icon). Leave out `assets/extras/` (the originals, about 48 MB).
+- `tools/beasthandler/assets/dire-wolf/`, `assets/wyvern/`, `assets/griffin/`, `assets/buckbear/` and `assets/fellcat/` (the portraits, a few MB each folder; a beast's picture only appears if its folder is there) and `tools/beasthandler/assets/phone-icon-180.png` (the Home Screen icon). Leave out `assets/extras/` (the originals, about 48 MB).
 
 Keep the folder layout exactly as it is. If you publish only the phone page, leave out the Bastion, the Explorer and the rest of the suite. Players don't need them, and the phone page never loads them.
 
 ## What the phone keeps
 
-In that phone's browser only, under names starting `tsi.beasthandler.phone`: the link (the handler and its secret), the latest snapshot, requests not yet answered, and, while a first-meeting request waits, the player's choices (so a refusal can put them back; they go once the Bastion holds the subspecies). If the player clears their browser data they only need to paste the pairing code again.
+In that phone's browser only, under names starting `tsi.beasthandler.phone`: the link (the handler and its secret), the latest snapshot, and `seen` (which beasts' first meeting has played on this phone). **Unlink this phone** forgets all three, so linking again plays the first meetings again. If the player clears their browser data they only need to paste the pairing code again.
 
 ## What a phone can never do
 
-- see the treasury, the Day Log, DM notes, other buildings, other players' details (their beasts appear only as a name, handler and bond line), or anything from your save that isn't in their snapshot;
-- change a bond, name, handler, milestone, Chronicle line, build or purchase, or spend any gold;
-- order anything except a **free training** order, and only when the Bastion's own rules would accept it right now;
-- order while a training programme is pending at that building (the lock you chose, training only).
+- see the treasury, the Day Log, DM notes, other buildings, other players' details (their beasts appear only as a name, handler and bond line), the first meeting or profile of a beast that isn't theirs, or anything from your save that isn't in their snapshot;
+- change anything at all: a bond, a name, a handler, a milestone, a Chronicle line, a profile line, a build or a purchase, or spend any gold. It sends nothing to your Bastion, so it has nothing to forge or repeat: a player who edits their own phone can only change what their own screen shows.
 
 ## Things to know
 
 - A snapshot is only as fresh as the moment you made it. The phone shows "As of Day N" so a player can tell.
-- A request code older than 30 days is refused as expired.
-- Not done: QR codes (the codes are long, so they are pasted or sent as a file), a live link that updates by itself, and a hosted page. These were not part of the plan you approved.
+- The first meeting's answer is in the player's own snapshot before they play the reveal (it is signed, not secret). A curious player who decodes their own snapshot could see their beast's subspecies and lines early. They cannot change them, so this gives no advantage.
+- Scanning a code to link, and a page that updates by itself, are **to come** (a later step).

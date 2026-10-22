@@ -716,7 +716,15 @@ async function clickPop(page, label) {
     const e1 = await exs(ex);
     const b1 = await bas(ba);
     equal([e1.journey.outbox.length, e1.journey.inventory], [e0.journey.outbox.length, e0.journey.inventory]);
-    equal([b1.creatures, b1.bridge.done, b1.treasuryGP, qty(b1, CHART)], [b0.creatures, b0.bridge.done, b0.treasuryGP, qty(b0, CHART)]);
+    /* Reopening the Bastion also rolls the first meeting once for any beast already at Bond 1 or more that has no subspecies (Elara's wyvern):
+       that is the only change, and it is made the first time only. Everything else about the creatures is exactly as it was. */
+    const noMeeting = list => list.map(c => { const k = JSON.parse(JSON.stringify(c)); if (k.development) { delete k.development.initiation; delete k.development.regional; delete k.development.profileLog; k.development.temperament = { dominant: '', attachment: '', trigger: '' }; } return k; });
+    equal([noMeeting(b1.creatures), b1.bridge.done, b1.treasuryGP, qty(b1, CHART)], [noMeeting(b0.creatures), b0.bridge.done, b0.treasuryGP, qty(b0, CHART)]);
+    const met = b1.creatures.filter(c => c.development && c.development.initiation).map(c => c.id);
+    equal(met, b1.creatures.filter(c => c.development && c.development.bond.level >= 1).map(c => c.id), 'only a beast at Bond 1 or more was introduced');
+    await ba.reload();
+    await ba.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().anchored, null, { timeout: 8000 });
+    equal((await bas(ba)).creatures, b1.creatures, 'and a second reload changes nothing at all: one roll per beast');
     equal(await ba.$$eval('.tsi-notice', ns => ns.filter(n => /From the Explorer: a/.test(n.textContent)).length), 0, 'no grant notice again');
     equal(await ex.$$eval('[data-test=sent]', l => l.filter(n => /^Creature/.test(n.querySelector('strong').textContent)).map(n => n.getAttribute('data-status'))), ['applied', 'applied', 'applied']);
   });

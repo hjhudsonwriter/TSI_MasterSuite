@@ -669,8 +669,11 @@
      training: { <programme id>: { day } } (each once, for good), harness:
      { fitted, paidGP, fittedDay }, firstFlight: { approved, day, handlerId },
      handlerHistory: [{ handlerId, bond, fromDay, toDay, reason }], seq, chronicle:
-     [{ id, day, cat, text, by, link, private? }] } (private: a DM-only note,
-     never shown to the player's Beast Handler companion).
+     [{ id, day, cat, text, by, link, private? }], regional?, profileLog?,
+     initiation?: { regional, rolls: { dominant, attachment, trigger }, day } } (private: a DM-only note,
+     never shown to the player's Beast Handler companion; initiation: what the Bastion rolled for the
+     beast's first meeting, set once (tools/beasthandler/bastion-link.js R.rollInitiation): the variety's
+     id and the number each die showed, 0 for a line the DM had already written).
      Elara's wyvern is credited Bond 1 once, with one Chronicle line, the first
      time it is loaded or housed without a development; a creature whose
      development is already there is never reset. Any other creature gets one
@@ -749,6 +752,18 @@
       return { day: dayNum(x.day, 1), by: words(x.by, 40), change: change };
     }).filter(function (x) { return Object.keys(x.change).length; });
     if (plog.length) kept.profileLog = plog;
+    /* Beast Handler (22 October 2026): what the Bastion rolled for the first meeting, kept once it is set (a field this
+       cleaner does not list would be dropped on every load, and the roll would then be made again). The die numbers are
+       whole numbers from 0 (no roll: the DM had written that line) up. */
+    var ini = isObj(d.initiation) ? d.initiation : null;
+    if (ini && typeof ini.regional === 'string' && /^[a-z0-9_]{1,40}$/.test(ini.regional)) {
+      var rolls = isObj(ini.rolls) ? ini.rolls : {};
+      kept.initiation = {
+        regional: ini.regional,
+        rolls: { dominant: clampInt(rolls.dominant, 0, 100), attachment: clampInt(rolls.attachment, 0, 100), trigger: clampInt(rolls.trigger, 0, 100) },
+        day: dayNum(ini.day, 1)
+      };
+    }
     return kept;
   };
   R.CREATURE_KEYS = ['id', 'species', 'owner', 'name', 'status', 'home', 'grantedDay', 'housedDay', 'msgId'];

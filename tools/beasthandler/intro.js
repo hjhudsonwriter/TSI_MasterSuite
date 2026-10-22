@@ -1,25 +1,29 @@
-/* Scarlett Isles: Beast Handler — meeting a beast for the first time (Harry, 21 October 2026).
+/* Scarlett Isles: Beast Handler — meeting a beast for the first time (Harry, 21 and 22 October 2026).
 
-   When a player opens a beast whose subspecies has not been chosen yet, the beast's page is
-   held back and they are walked through three panels instead:
+   The app is read-only: a player never types, picks or sends anything. When the Bastion has passed a beast's
+   acclimatisation it rolls the beast's first meeting ONCE and keeps the answer (the Bastion's R.rollInitiation). The
+   first time a beast is opened on a device, its page is held back and the player is walked through three panels that
+   PLAY OUT what the Bastion has already decided:
      1. "It's time to meet <Name>…"
-     2. which subspecies <Name> is (type it, tap one, or roll)
-     3. what <Name>'s personality is like (the three temperament lines, typed or rolled; lines
-        already written for the beast are shown and kept unless the player changes them)
-   then the screen fades to black, "Welcome to the Ironbow, <Name>!" shows, it fades to black
-   again and fades back in on the beast's page, where the picture for the chosen subspecies is
-   seen for the first time. No picture of the beast is shown before that.
+     2. "which subspecies?": the kind's subspecies as medallions in a freshly shuffled order, a die and one button,
+        "Roll for subspecies". A gold marker hops from medallion to medallion, slowing down as it goes (a different path
+        every time, with a near miss), and lands on the subspecies the Bastion chose; the die settles on that
+        medallion's place in this run's order. Then its name, home and appearance are told.
+     3. "what is <Name>'s personality like?": three cards (Dominant Temperament d12, Attachment Cue d8, Instinctive
+        Trigger d8), each with a Roll button (and "Roll all three"). Each die tumbles and settles on the number the
+        Bastion really rolled, then the line appears. A card is locked once rolled.
+   then the screen fades to black, "Welcome to the Ironbow, <Name>!" shows, it fades to black again and fades back in on
+   the beast's page, where the picture for the subspecies is seen for the first time. No picture of the beast is shown
+   before that.
 
-   Nothing is asked of the Bastion until the last panel: its Save sends ONE ordinary profile
-   request (the same kind the Profile page makes) with the subspecies and any personality line
-   the player wrote or changed, so the Bastion still decides. Until it answers, the page shows
-   the lines asked for, marked as waiting. If the Bastion refuses, the sequence starts again
-   with the reason and the player's choices put back.
+   It plays once per device for each beast (the host remembers which: env.seen / env.markSeen). Closing the page part-way
+   sends nothing and plays it again from the start; nothing here is ever sent anywhere. A roll that is playing is never
+   cut in half by a redraw (a new snapshot arriving): busy() tells the screen to hold off, and onIdle() tells it when to
+   catch up. With "reduce motion" nothing hops or tumbles: the answer is shown with a short fade.
 
    This file only draws and times the sequence. view.js gives it its helpers (env):
-   el, btn, M (model), Pf (profile rules), tables, host, life, draft {get, set, clear}, submit(body, opts),
-   rerender(fade), focusHeading(), setInert(on), preload(d, name), heroImage(), refused(d),
-   skipped(d), blocked(d), canSkip(d, refused), skip(d), leave(), finished(d), afterClose(result). */
+   el, btn, M (model), tables, host, life, focusHeading(), setInert(on), seen(), markSeen(id), preload(d, name),
+   heroImage(), rerender(fade), canSkip(d), skip(d), leave(), finished(d). */
 (function () {
   'use strict';
 
@@ -36,53 +40,47 @@
     create: function (env) {
       var el = env.el;
       var M = env.M;
-      var Pf = env.Pf;
-      var PERSONALITY = ['dominant', 'attachment', 'trigger'];
-      /* { creatureId, step, values, original, suggested, rolls, said, refused, holding (a save is on its way),
-           fading (the screen is going black), closing (black, with the welcome words) } */
+      var life = env.life;
+      /* { creatureId, step, plan: what the Bastion rolled, order: the medallions' order this run (null until panel 2),
+           reg: { state: 'idle' | 'rolling' | 'landed', dest, value }, per: { dominant|attachment|trigger: 'idle' | 'rolling' | 'done' },
+           animating (how many rolls are playing), fading (the screen is going black), closing (black, with the welcome words) } */
       var st = null;
+      var idleFns = [];
 
-      function fresh(d, pending) {
-        var eff = M.effectiveProfile(d, pending);
-        var refused = env.refused(d);
-        var draft = refused ? env.draft.get(d.id) : null;
-        var original = { dominant: eff.dominant, attachment: eff.attachment, trigger: eff.trigger };
-        var values = { regional: '', dominant: original.dominant, attachment: original.attachment, trigger: original.trigger };
-        if (draft && draft.values) {
-          values.regional = draft.values.regional || '';
-          /* A line the player left as they found it follows the Bastion as it is now (the DM may have changed it meanwhile); only lines they changed are put back. */
-          PERSONALITY.forEach(function (k) {
-            var theirs = typeof draft.values[k] === 'string' ? draft.values[k] : '';
-            var found = draft.original && typeof draft.original[k] === 'string' ? draft.original[k] : undefined;
-            values[k] = theirs === found ? original[k] : theirs;
-          });
-        }
-        return { creatureId: d.id, step: 0, values: values, original: original, suggested: {}, rolls: {}, said: '', refused: refused, restored: !!(draft && draft.values), holding: false, fading: false, closing: false };
-      }
-      /* While the panels are open the Bastion's own lines may change (the DM edits one): a line the player has not touched follows it,
-         and what counts as "changed" is always measured from what the Bastion holds now. */
-      function follow(d, pending) {
-        var eff = M.effectiveProfile(d, pending);
-        PERSONALITY.forEach(function (k) {
-          if (eff[k] === st.original[k]) return;
-          if (st.values[k] === st.original[k]) { st.values[k] = eff[k]; delete st.suggested[k]; }
-          st.original[k] = eff[k];
-        });
+      function fresh(d) {
+        var ini = d.initiation || {};
+        var rolls = ini.rolls || {};
+        return {
+          creatureId: d.id, step: 0,
+          plan: { regional: String(ini.regional || ''), rolls: { dominant: rolls.dominant || 0, attachment: rolls.attachment || 0, trigger: rolls.trigger || 0 } },
+          order: null, reg: { state: 'idle', dest: -1, value: 0 }, per: { dominant: 'idle', attachment: 'idle', trigger: 'idle' },
+          animating: 0, fading: false, closing: false
+        };
       }
       function mine(d) { return !!st && st.creatureId === d.id; }
-      function go(step) { st.step = step; st.said = ''; env.rerender(true); env.focusHeading(); }
+      var currentSpecies = '';
+      function go(step) {
+        st.step = step;
+        /* A freshly shuffled order every time the subspecies panel is visited (until it has been rolled). */
+        if (step === 1 && st.reg.state === 'idle') st.order = M.shuffle(M.revealVarieties(env.tables, currentSpecies), Math.random);
+        env.rerender(true); env.focusHeading();
+      }
+
+      /* A roll is playing: the screen must not redraw over it. */
+      function begin() { st.animating += 1; }
+      function end() { if (st) st.animating = Math.max(0, st.animating - 1); }
+      /* Once the last playing roll has finished (and what it showed is in place), the screen may catch up with anything that arrived meanwhile. */
+      function settle() { if (st && st.animating === 0) idleFns.slice().forEach(function (f) { f(); }); }
 
       /* Is the sequence on screen for this beast? */
-      function active(d, pending) {
-        if (mine(d) && (st.closing || st.holding || st.fading)) return true;
-        if (!M.needsMeeting(d, pending)) {
+      function active(d) {
+        if (mine(d) && (st.closing || st.fading)) return true;
+        if (!M.needsMeeting(d, env.seen())) {
           if (mine(d)) st = null;
-          /* The choices are kept while the request is only waiting (a refusal brings them back); they go once the Bastion holds the subspecies. */
-          if (String(d.profile && d.profile.regional || '').trim()) env.draft.clear(d.id);
           return false;
         }
-        if (env.skipped(d) || env.blocked(d)) return false;   /* skipped, or a profile request is already waiting */
-        if (!mine(d)) st = fresh(d, pending); else follow(d, pending);
+        if (!mine(d)) st = fresh(d);
+        currentSpecies = d.species.id;
         return true;
       }
 
@@ -92,48 +90,38 @@
           return el('li', { class: 'tsi-bh-meet__dot' + (n === st.step ? ' tsi-bh-meet__dot--on' : n < st.step ? ' tsi-bh-meet__dot--done' : ''), 'aria-hidden': 'true' });
         }));
       }
-      function datalist(id, list) { return el('datalist', { id: id }, (list || []).map(function (o) { return el('option', { value: o }); })); }
       function backBtn(to) { return env.btn('‹ Back', function () { go(to); }, 'tsi-btn--ghost tsi-bh-meet__back', 'bh-meet-back'); }
-      function problemLine(test) { return el('p', { class: 'tsi-bh-message tsi-bh-message--warn', 'data-test': test, role: 'status', hidden: true }); }
-      function showProblem(node, text) { node.textContent = text || ''; node.hidden = !text; }
-      /* The first thing wrong with what has been typed in these fields (a line that is too long), in words, or ''. */
-      function trouble(keys) {
-        var o = {};
-        keys.forEach(function (k) { o[k] = st.values[k]; });
-        var r = Pf.check(o);
-        return r.ok ? '' : r.problems[0];
+      function dieNode(sides) {
+        return el('span', { class: 'tsi-bh-die', 'data-test': 'bh-meet-die', 'data-state': 'idle', 'data-value': '', 'aria-hidden': 'true', text: 'd' + sides });
       }
-
-      /* One line to type, pick or roll. onInput runs after any change; onEnter when Enter is pressed in it. */
-      function field(d, key, label, listId, onInput, onEnter) {
-        var input = el('input', { type: 'text', class: 'tsi-input', id: 'tsi-bh-meet-' + key, maxlength: String(Pf.limit(key, env.tables) + 1), list: listId, autocomplete: 'off', enterkeyhint: 'next', 'data-test': 'bh-meet-in-' + key });
-        input.value = st.values[key] || '';
-        var tag = el('span', { class: 'tsi-bh-edit__tag', 'data-test': 'bh-meet-sugg-' + key, hidden: !st.suggested[key], text: st.suggested[key] ? 'Suggestion (rolled ' + st.rolls[key] + '): not saved yet' : '' });
-        function set(text, suggested, roll) {
-          st.values[key] = text; st.suggested[key] = !!suggested; if (roll !== undefined) st.rolls[key] = roll;
-          input.value = text; tag.hidden = !suggested; tag.textContent = suggested ? 'Suggestion (rolled ' + roll + '): not saved yet' : '';
-          onInput();
-        }
-        input.addEventListener('input', function () { st.values[key] = input.value; st.suggested[key] = false; tag.hidden = true; onInput(); });
-        input.addEventListener('keydown', function (e) { if (e.key === 'Enter' && onEnter) { e.preventDefault(); onEnter(); } });
-        var roll = env.btn('Roll', function () {
-          var r = Pf.suggestOne(d.species.id, key, Math.random);
-          if (r) set(r.text, true, r.of ? r.roll + ' of ' + r.of : r.roll);
-        }, 'tsi-btn--small tsi-btn--ghost', 'bh-meet-roll-' + key, { 'aria-label': 'Roll ' + label });
-        return {
-          input: input, set: set,
-          node: el('div', { class: 'tsi-bh-edit__field tsi-bh-meet__field' }, [el('label', { class: 'tsi-bh-edit__label', for: 'tsi-bh-meet-' + key, text: label }), el('div', { class: 'tsi-bh-edit__line' }, [input, roll]), tag])
-        };
+      function setDie(node, state, value) {
+        node.setAttribute('data-state', state);
+        node.setAttribute('data-value', value === undefined || value === null ? '' : String(value));
       }
-      function cleaned(key) { var r = Pf.check((function (o) { o[key] = st.values[key]; return o; })({})); return r.ok ? r.clean[key] : ''; }
+      /* A die that shows a changing number until until() says stop. Faces never repeat twice running. */
+      function tumble(node, sides, until) {
+        return (async function () {
+          var last = 0;
+          while (st && !until()) {
+            var v;
+            do { v = 1 + Math.floor(Math.random() * Math.max(1, sides)); } while (sides > 1 && v === last);
+            last = v;
+            node.textContent = String(v);
+            await life.wait(ms(70));
+          }
+        }());
+      }
+      function varietyById(d, id) {
+        var sp = env.tables && env.tables.species ? env.tables.species[d.species.id] : null;
+        return (sp && sp.regional || []).filter(function (r) { return r.id === id; })[0] || null;
+      }
 
       /* ---------- Panel 1: it's time to meet… ---------- */
       function panelMeet(d, text) {
-        var canSkip = env.canSkip(d, st.refused);
+        var canSkip = env.canSkip(d);
         return { nodes: [
           el('h1', { class: 'tsi-bh-meet__title', 'data-test': 'bh-meet-title', text: text.meet }),
-          st.refused ? el('p', { class: 'tsi-bh-message tsi-bh-message--warn tsi-bh-meet__refused', 'data-test': 'bh-meet-refused', role: 'status', text: 'Your last choice for ' + d.name + ' wasn’t accepted. ' + M.requestLine(st.refused, env.host.mode) + ' ' + (st.restored ? 'Your choices are put back: you can send them again' : 'Please choose again') + (canSkip ? ', or skip for now.' : ', or ask the DM.') }) : null,
-          el('p', { class: 'tsi-bh-meet__lead', text: 'A few quick choices, then you will see ' + d.name + ' for the first time.' }),
+          el('p', { class: 'tsi-bh-meet__lead', text: text.lead }),
           el('div', { class: 'tsi-bh-meet__actions' }, [
             env.btn('Continue', function () { go(1); }, 'tsi-btn--primary tsi-bh-meet__go', 'bh-meet-continue'),
             canSkip ? env.btn('Skip for now', function () { env.skip(d); }, 'tsi-btn--ghost', 'bh-meet-skip') : null,
@@ -142,121 +130,189 @@
         ], after: null };
       }
 
-      /* ---------- Panel 2: which subspecies ---------- */
+      /* ---------- Panel 2: which subspecies (the staged roll) ---------- */
       function panelSubspecies(d, text) {
-        var opts = Pf.options(d.species.id);
-        var info = el('div', { class: 'tsi-bh-meet__about', 'data-test': 'bh-meet-about', 'aria-live': 'polite' });
-        var warn = el('p', { class: 'tsi-bh-muted tsi-bh-meet__warn', 'data-test': 'bh-meet-warn', hidden: true });
-        var prob = problemLine('bh-meet-problem');
-        var next = env.btn('Save and continue', function () {
-          var name = cleaned('regional');
-          if (!name) return;
-          var known = M.regionalInfo(env.tables, d.species.id, name);
-          st.values.regional = known ? known.name : name;
-          env.preload(d, st.values.regional);   /* start fetching the picture now, so it is there when the curtain lifts */
-          go(2);
-        }, 'tsi-btn--primary tsi-bh-meet__go', 'bh-meet-save-subspecies', { disabled: 'disabled' });
-        var chips = [];
-        function refresh() {
-          var name = cleaned('regional');
-          var trouble1 = trouble(['regional']);
-          showProblem(prob, trouble1);
-          next.disabled = !name;
-          var known = name ? M.regionalInfo(env.tables, d.species.id, name) : null;
-          TSI.clear(info);
-          if (known) TSI.append(info, [el('h2', { class: 'tsi-bh-meet__about-name', text: known.name }), el('p', { class: 'tsi-bh-meet__about-where', text: known.area + ': ' + known.where + '.' }), el('p', { text: known.appearance })]);
-          warn.hidden = !(name && !known);
-          warn.textContent = name && !known ? 'That isn’t one of the ' + opts.regional.length + ' ' + M.speciesNoun(d) + ' subspecies, so there will be no picture for it. You can still keep it.' : '';
-          chips.forEach(function (c) { var on = !!known && known.name === c.name; c.node.setAttribute('aria-pressed', on ? 'true' : 'false'); c.node.classList.toggle('tsi-bh-meet__chip--on', on); });
-        }
-        var f = field(d, 'regional', 'Regional subspecies', 'tsi-bh-meet-dl-regional', refresh, function () { if (!next.disabled) next.click(); });
-        chips = (opts.regional || []).map(function (name) {
-          return { name: name, node: el('button', { type: 'button', class: 'tsi-bh-meet__chip', 'data-test': 'bh-meet-chip-' + name.toLowerCase(), 'aria-pressed': 'false', onclick: function () { f.set(name, false); } }, name) };
+        var reg = st.reg;
+        if (!st.order) st.order = M.shuffle(M.revealVarieties(env.tables, d.species.id), Math.random);
+        var order = st.order;
+        var n = order.length;
+        var noun = M.speciesNoun(d);
+        var dest = order.map(function (v) { return v.id; }).indexOf(st.plan.regional);
+        var medals = order.map(function (v, i) {
+          return el('li', { class: 'tsi-bh-medal', 'data-variety': v.id, 'data-n': String(i + 1) }, [
+            el('span', { class: 'tsi-bh-medal__n', 'aria-hidden': 'true', text: String(i + 1) }),
+            el('span', { class: 'tsi-bh-medal__name', text: v.name })
+          ]);
         });
+        var list = el('ol', { class: 'tsi-bh-medals', 'data-test': 'bh-meet-medals', 'data-lit': '', 'aria-label': 'The ' + n + ' ' + noun + ' subspecies' }, medals);
+        var die = dieNode(n);
+        var status = el('p', { class: 'tsi-bh-meet__status', 'data-test': 'bh-meet-status', role: 'status', 'aria-live': 'polite' });
+        var about = el('div', { class: 'tsi-bh-meet__about', 'data-test': 'bh-meet-about' });
+        var rollBtn = env.btn('Roll for subspecies', function () { roll(); }, 'tsi-btn--primary tsi-bh-meet__go', 'bh-meet-roll-regional');
+        var nextBtn = env.btn('Continue', function () { go(2); }, 'tsi-btn--primary tsi-bh-meet__go', 'bh-meet-next', { hidden: true });
+        var back = backBtn(0);
+        function lit(index) {
+          medals.forEach(function (m, i) { m.classList.toggle('tsi-bh-medal--lit', i === index); });
+          list.setAttribute('data-lit', index < 0 ? '' : String(index));
+        }
+        function tell() {
+          var v = dest >= 0 ? varietyById(d, order[dest].id) : null;
+          TSI.clear(about);
+          if (v) {
+            TSI.append(about, [el('h2', { class: 'tsi-bh-meet__about-name', text: v.name }), el('p', { class: 'tsi-bh-meet__about-where', text: v.area + ': ' + v.where + '.' }), el('p', { text: v.appearance })]);
+          } else {
+            TSI.append(about, el('h2', { class: 'tsi-bh-meet__about-name', text: String(d.profile && d.profile.regional || 'A subspecies of its own') }));
+          }
+          about.classList.add('tsi-bh-meet__about--in');
+          status.textContent = (reg.value ? 'The die settled on ' + reg.value + '. ' : '') + (v ? v.name : String(d.profile && d.profile.regional || '')) + '.';
+        }
+        function showLanded() {
+          lit(dest);
+          if (dest >= 0) { medals[dest].classList.add('tsi-bh-medal--landed'); list.classList.add('tsi-bh-medals--landed'); }
+          die.textContent = reg.value ? String(reg.value) : '✦';
+          setDie(die, 'landed', reg.value);
+          rollBtn.hidden = true; back.hidden = true; nextBtn.hidden = false;
+          tell();
+        }
+        function land() {
+          reg.state = 'landed';
+          reg.dest = dest;
+          reg.value = dest >= 0 ? dest + 1 : 0;
+          showLanded();
+          var v = dest >= 0 ? varietyById(d, order[dest].id) : null;
+          env.preload(d, v ? v.name : String(d.profile && d.profile.regional || ''));   /* start fetching the picture now, so it is there when the curtain lifts */
+          end();
+          try { nextBtn.focus({ preventScroll: true }); } catch (e) { /* not focusable here */ }
+          settle();
+        }
+        async function roll() {
+          if (reg.state !== 'idle') return;
+          reg.state = 'rolling';
+          begin();
+          rollBtn.disabled = true; back.disabled = true;
+          setDie(die, 'rolling', '');
+          if (reduced() || dest < 0 || n < 2) {
+            /* No hopping and no tumbling: a short pause, then the answer fades in. */
+            await life.wait(ms(150));
+            if (!st) return;
+            land();
+            return;
+          }
+          var plan = M.revealPlan(n, dest, Math.random);
+          var landed = false;
+          var spin = tumble(die, n, function () { return landed; });
+          lit(plan.stops[0]);
+          for (var i = 0; i < plan.delays.length; i++) {
+            await life.wait(ms(plan.delays[i]));
+            if (!st) return;
+            lit(plan.stops[i + 1]);
+          }
+          landed = true;
+          await spin;
+          if (!st) return;
+          land();
+        }
+        if (reg.state === 'landed') showLanded();
         return { nodes: [
           el('h1', { class: 'tsi-bh-meet__title', 'data-test': 'bh-meet-title', text: text.subspecies }),
           el('div', { class: 'tsi-bh-meet__card' }, [
-            f.node,
-            datalist('tsi-bh-meet-dl-regional', opts.regional),
-            el('div', { class: 'tsi-bh-meet__chips', role: 'group', 'aria-label': 'The ' + opts.regional.length + ' subspecies' }, chips.map(function (c) { return c.node; })),
-            info, warn, prob
+            list,
+            el('div', { class: 'tsi-bh-meet__rollrow' }, [die, rollBtn]),
+            status, about
           ]),
-          el('div', { class: 'tsi-bh-meet__actions' }, [next, backBtn(0)]),
+          el('div', { class: 'tsi-bh-meet__actions' }, [nextBtn, back]),
           dots()
-        ], after: refresh };
+        ], after: null };
       }
 
-      /* ---------- Panel 3: personality ---------- */
+      /* ---------- Panel 3: personality (three dice) ---------- */
       function panelPersonality(d, text) {
-        var opts = Pf.options(d.species.id);
-        var prob = problemLine('bh-meet-problem');
-        var save;
-        var written = PERSONALITY.some(function (k) { return !!st.original[k]; });
-        function refresh() {
-          var ok = PERSONALITY.every(function (k) { return !!cleaned(k); });
-          var why = trouble(PERSONALITY);
-          if (why) showProblem(prob, why); else if (!prob.dataset.fromSave) showProblem(prob, '');
-          if (save) save.disabled = !ok || st.holding;
+        var cards = M.personalityCards(d, env.tables);
+        var rollAll;
+        var finish;
+        var parts = {};
+        function allDone() { return cards.every(function (c) { return st.per[c.key] === 'done'; }); }
+        function showResult(c) {
+          var p = parts[c.key];
+          p.die.textContent = c.roll ? String(c.roll) : '✦';
+          setDie(p.die, 'landed', c.roll);
+          p.btn.hidden = true;
+          TSI.clear(p.result);
+          TSI.append(p.result, [
+            el('p', { class: 'tsi-bh-pcard__line', 'data-test': 'bh-meet-line-' + c.key, text: c.line || 'Still to be discovered' }),
+            c.note ? el('p', { class: 'tsi-bh-pcard__note', text: c.note }) : null
+          ]);
+          p.result.classList.add('tsi-bh-pcard__result--in');
+          p.card.classList.add('tsi-bh-pcard--rolled');
         }
-        function onInput() { delete prob.dataset.fromSave; refresh(); }
-        var fs = [];
-        function pressEnter(i) {
-          return function () {
-            if (i < PERSONALITY.length - 1) { fs[i + 1].input.focus(); return; }
-            if (save && !save.disabled) save.click();
-          };
+        function refreshButtons() {
+          var left = cards.filter(function (c) { return st.per[c.key] === 'idle'; }).length;
+          rollAll.hidden = left < 2;
+          rollAll.disabled = st.animating > 0;
+          finish.hidden = !allDone();
         }
-        fs = [
-          field(d, 'dominant', 'Dominant Temperament', 'tsi-bh-meet-dl-dominant', onInput, pressEnter(0)),
-          field(d, 'attachment', 'Attachment Cue', 'tsi-bh-meet-dl-attachment', onInput, pressEnter(1)),
-          field(d, 'trigger', 'Instinctive Trigger', 'tsi-bh-meet-dl-trigger', onInput, pressEnter(2))
-        ];
-        save = env.btn('Save and continue', TSI.oneAtATime(function () {
-          var res = Pf.check({ regional: st.values.regional, dominant: st.values.dominant, attachment: st.values.attachment, trigger: st.values.trigger });
-          if (!res.ok) { prob.dataset.fromSave = '1'; showProblem(prob, res.problems[0]); return null; }
-          if (!res.clean.regional || !res.clean.dominant || !res.clean.attachment || !res.clean.trigger) { prob.dataset.fromSave = '1'; showProblem(prob, 'Fill in all three, or roll for them.'); return null; }
-          st.holding = true;
-          save.disabled = true;
-          env.draft.set(d.id, {
-            values: { regional: res.clean.regional, dominant: res.clean.dominant, attachment: res.clean.attachment, trigger: res.clean.trigger },
-            original: { dominant: st.original.dominant, attachment: st.original.attachment, trigger: st.original.trigger }
-          });
-          env.preload(d, res.clean.regional);
-          /* The subspecies, and only the personality lines the player wrote or changed (a line already written is not sent again). */
-          var payload = { regional: res.clean.regional };
-          Pf.changed(st.original, res.clean).forEach(function (k) { if (k !== 'regional') payload[k] = res.clean[k]; });
-          return env.submit({ type: 'profile.set', creature: d.id, fac: d.facility.id, payload: payload, view: d.rev }, { quiet: true }).then(function (r) {
-            if (!st) return;
-            if (!r || !r.ok) { st.holding = false; st.said = (r && r.message) || 'It couldn’t be saved just now.'; env.rerender(false); return; }
-            return close(d, r);
-          });
-        }), 'tsi-btn--primary tsi-bh-meet__go', 'bh-meet-save-personality', { disabled: 'disabled' });
-        var rollAll = env.btn('Roll all three', function () {
-          var s = Pf.suggest(d.species.id, Math.random);
-          if (!s) return;
-          PERSONALITY.forEach(function (k, i) { fs[i].set(s[k], true, s.rolls[k]); });
+        async function rollOne(c, extra) {
+          if (st.per[c.key] !== 'idle') return;
+          st.per[c.key] = 'rolling';
+          begin();
+          var p = parts[c.key];
+          p.btn.disabled = true;
+          rollAll.disabled = true;
+          setDie(p.die, 'rolling', '');
+          if (reduced()) {
+            await life.wait(ms(150));
+          } else {
+            var over = false;
+            life.setTimeout(function () { over = true; }, ms(1200 + extra));
+            await tumble(p.die, c.dice, function () { return over; });
+          }
+          if (!st) return;
+          st.per[c.key] = 'done';
+          showResult(c);
+          end();
+          refreshButtons();
+          if (allDone()) { try { finish.focus({ preventScroll: true }); } catch (e) { /* not focusable here */ } }
+          settle();
+        }
+        cards.forEach(function (c) {
+          var die = dieNode(c.dice);
+          var b = env.btn('Roll', function () { rollOne(c, 0); }, 'tsi-btn--small', 'bh-meet-roll-' + c.key, { 'aria-label': 'Roll ' + c.label });
+          var result = el('div', { class: 'tsi-bh-pcard__result', 'data-test': 'bh-meet-result-' + c.key, 'aria-live': 'polite' });
+          var card = el('div', { class: 'tsi-bh-pcard', 'data-test': 'bh-meet-card-' + c.key }, [
+            el('div', { class: 'tsi-bh-pcard__head' }, [
+              el('h2', { class: 'tsi-bh-pcard__label', text: c.label }),
+              el('span', { class: 'tsi-bh-pcard__dice', text: 'd' + c.dice })
+            ]),
+            el('div', { class: 'tsi-bh-pcard__roll' }, [die, b]),
+            result
+          ]);
+          die.setAttribute('data-test', 'bh-meet-die-' + c.key);
+          parts[c.key] = { card: card, die: die, btn: b, result: result };
+        });
+        rollAll = env.btn('Roll all three', function () {
+          var extra = 0;
+          cards.forEach(function (c) { if (st.per[c.key] === 'idle') { rollOne(c, extra); extra += 300; } });
         }, 'tsi-btn--ghost', 'bh-meet-roll-all');
-        var said = st.said ? el('p', { class: 'tsi-bh-message tsi-bh-message--warn', 'data-test': 'bh-meet-said', role: 'status', text: st.said }) : null;
+        finish = env.btn('Continue', function () { close(d); }, 'tsi-btn--primary tsi-bh-meet__go', 'bh-meet-finish', { hidden: true });
+        /* Cards rolled before a redraw are drawn as they were left. */
+        cards.forEach(function (c) { if (st.per[c.key] === 'done') showResult(c); });
+        refreshButtons();
         return { nodes: [
           el('h1', { class: 'tsi-bh-meet__title', 'data-test': 'bh-meet-title', text: text.personality }),
-          el('div', { class: 'tsi-bh-meet__card' }, [written ? el('p', { class: 'tsi-bh-muted tsi-bh-meet__kept', 'data-test': 'bh-meet-kept', text: 'Lines already written for ' + d.name + ' are shown here and kept unless you change them.' }) : null]
-            .concat(fs.map(function (f) { return f.node; }), [
-              datalist('tsi-bh-meet-dl-dominant', opts.dominant), datalist('tsi-bh-meet-dl-attachment', opts.attachment), datalist('tsi-bh-meet-dl-trigger', opts.trigger), prob, said, rollAll
-            ])),
-          el('div', { class: 'tsi-bh-meet__actions' }, [save, backBtn(1)]),
+          el('div', { class: 'tsi-bh-meet__card' }, cards.map(function (c) { return parts[c.key].card; }).concat([rollAll])),
+          el('div', { class: 'tsi-bh-meet__actions' }, [finish]),
           dots()
-        ], after: refresh };
+        ], after: null };
       }
 
       /* ---------- The closing sequence: the panel fades to black, "Welcome…", black, then the beast ---------- */
-      function close(d, result) {
-        st.holding = false;
+      function close(d) {
+        env.markSeen(d.id);   /* it has been watched to the end: it never plays here again */
         st.fading = true;
         var text = M.meetingText(d);
         var textNode = el('p', { class: 'tsi-bh-curtain__text', 'data-test': 'bh-curtain-text' });
         var curtain = el('div', { class: 'tsi-bh-curtain', 'data-test': 'bh-curtain', role: 'status', 'aria-live': 'polite' }, textNode);
         document.body.appendChild(curtain);
-        var life = env.life;
         function tidy() { if (curtain.parentNode) curtain.parentNode.removeChild(curtain); env.setInert(false); }
         life.onStop(tidy);
         env.setInert(true);   /* nothing behind the black can be tabbed to or read out */
@@ -306,7 +362,6 @@
         }).then(function () {
           tidy();
           env.focusHeading();
-          return env.afterClose(result);
         });
       }
 
@@ -318,7 +373,16 @@
         return { nodes: [el('section', { class: 'tsi-bh-meet' + (st.fading ? ' tsi-bh-meet--fading' : ''), 'data-test': 'bh-meet', 'data-step': String(st.step + 1), 'aria-label': 'Meeting ' + d.name }, p.nodes)], after: p.after };
       }
 
-      return { active: active, render: render, reset: function () { st = null; } };
+      return {
+        active: active, render: render,
+        /* Is a meeting already under way for this beast? */
+        has: function (d) { return mine(d); },
+        /* A roll is playing now: the screen holds back redraws. */
+        busy: function () { return !!st && st.animating > 0; },
+        /* fn runs each time the last playing roll finishes. */
+        onIdle: function (fn) { idleFns.push(fn); },
+        reset: function () { st = null; }
+      };
     }
   };
 }());
