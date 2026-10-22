@@ -517,7 +517,10 @@ body.tsi-modal-open { overflow: hidden; }
 /* ---------- The DM doc (shared/js/dmdoc.js) ----------
    A floating panel for the DM's own notes: dragged by its title bar, resized
    by the grip in its bottom-right corner, above the tool but below notices
-   and pop-ups. The script sets its place and size. */
+   and pop-ups. The script sets its place and size. Four panels (Party,
+   Bastion, Explorer, Quest) in a 2 × 2 grid, each scrolling on its own; the
+   Quest box fills its panel. Narrower than about 760 pixels they stack in
+   one column and the whole body scrolls. */
 .tsi-dmdoc-toggle[aria-expanded="true"] {
   border-color: var(--tsi-gold-text);
   background: rgba(214, 178, 94, .16);
@@ -584,9 +587,55 @@ body.tsi-modal-open { overflow: hidden; }
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
-  padding: 14px 16px 26px;
+  /* So the grid can ask how wide the panel is (a container query, below). */
+  container-type: inline-size;
+  container-name: tsi-dmdoc;
 }
-/* What it shows: four figures at the top, then the heroes, where the party is, and the Active Effects. */
+.tsi-dmdoc__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 12px;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+}
+/* The four panels: a thin gold border, a soft glow, a title, and a body that scrolls on its own. */
+.tsi-dmdoc__panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: var(--tsi-radius-md);
+  border: var(--tsi-border);
+  background: rgba(0, 0, 0, .2);
+  box-shadow: 0 0 14px rgba(214, 178, 94, .1);
+}
+.tsi-dmdoc__panel-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--tsi-head-fill);
+  border-bottom: 1px solid var(--tsi-line-head);
+}
+.tsi-dmdoc__panel-h {
+  margin: 0;
+  font: 700 14px/1.2 var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-heading);
+  text-transform: uppercase;
+  color: var(--tsi-gold-text);
+}
+.tsi-dmdoc__panel-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 10px 12px 12px;
+  font-size: var(--tsi-fs-body-sm);
+}
 .tsi-dmdoc__note {
   margin: 0;
   font-size: var(--tsi-fs-body-sm);
@@ -594,21 +643,21 @@ body.tsi-modal-open { overflow: hidden; }
   font-style: italic;
 }
 .tsi-dmdoc__muted { color: var(--tsi-text-muted); }
-.tsi-dmdoc__tiles {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-.tsi-dmdoc__tile {
+/* A figure with its label above and a note below. */
+.tsi-dmdoc__stats { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.tsi-dmdoc__stat {
+  flex: 1 1 8em;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 8px 10px;
+  gap: 0;
+  min-width: 0;
+  padding: 4px 10px 5px;
   border-radius: var(--tsi-radius-sm);
   border: 1px solid var(--tsi-line-faint);
   background: rgba(0, 0, 0, .22);
 }
-.tsi-dmdoc__tile-label,
+.tsi-dmdoc__stat--wide { flex: 2 1 12em; }
+.tsi-dmdoc__stat-label,
 .tsi-dmdoc__h,
 .tsi-dmdoc__meter-label {
   font: 600 var(--tsi-fs-label)/1.3 var(--tsi-font-display);
@@ -616,37 +665,63 @@ body.tsi-modal-open { overflow: hidden; }
   text-transform: uppercase;
   color: var(--tsi-gold-text);
 }
-.tsi-dmdoc__tile-value {
-  font: 700 24px/1.15 var(--tsi-font-display);
+.tsi-dmdoc__stat-main { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 8px; }
+.tsi-dmdoc__stat-value {
+  font: 700 22px/1.2 var(--tsi-font-display);
   text-transform: none;
   color: var(--tsi-text);
 }
-.tsi-dmdoc__tile-note {
-  font-size: 15px;
+.tsi-dmdoc__stat-line {
+  font: 600 var(--tsi-fs-body-sm)/1.25 var(--tsi-font-body);
+  color: var(--tsi-text);
+}
+.tsi-dmdoc__stat-note {
+  font-size: 14px;
   line-height: 1.25;
   color: var(--tsi-text-muted);
 }
-.tsi-dmdoc__sec { margin-top: 16px; }
+.tsi-dmdoc__block { margin-bottom: 14px; }
+.tsi-dmdoc__block > .tsi-dmdoc__stat { margin-bottom: 4px; }
+.tsi-dmdoc__sub { margin-top: 14px; }
+.tsi-dmdoc__sub:first-child { margin-top: 0; }
 .tsi-dmdoc__h {
-  margin: 0 0 8px;
-  padding-bottom: 4px;
+  margin: 0 0 6px;
+  padding-bottom: 3px;
   border-bottom: 1px solid var(--tsi-line-faint);
 }
+/* The heroes: a name, and beside it that hero's own effects. */
 .tsi-dmdoc__heroes {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  flex-direction: column;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 .tsi-dmdoc__hero {
-  padding: 2px 12px;
-  border-radius: var(--tsi-radius-pill);
+  display: grid;
+  grid-template-columns: 6.5em minmax(0, 1fr);
+  align-items: start;
+  gap: 4px 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(214, 178, 94, .14);
+}
+.tsi-dmdoc__hero:last-child { border-bottom: 0; }
+.tsi-dmdoc__hero-name { font-weight: 700; overflow-wrap: anywhere; }
+.tsi-dmdoc__hero-effects { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 6px; min-width: 0; }
+.tsi-dmdoc__chip {
+  display: flex;
+  flex-direction: column;
+  max-width: 100%;
+  padding: 2px 10px 3px;
+  border-radius: var(--tsi-radius-sm);
   border: 1px solid var(--tsi-line);
   background: rgba(214, 178, 94, .08);
-  font-size: var(--tsi-fs-body-sm);
+  font-size: 15px;
+  line-height: 1.3;
 }
+.tsi-dmdoc__chip-until { color: var(--tsi-gold-text); }
+.tsi-dmdoc__chip-text { color: var(--tsi-text-muted); font-size: 14px; }
+.tsi-dmdoc__rite .tsi-dmdoc__effect-name { margin: 0; }
 .tsi-dmdoc__region {
   margin: 0 0 8px;
   font: 700 17px/1.25 var(--tsi-font-display);
@@ -654,7 +729,7 @@ body.tsi-modal-open { overflow: hidden; }
 }
 .tsi-dmdoc__card {
   margin-top: 8px;
-  padding: 8px 10px;
+  padding: 6px 10px 8px;
   border-radius: var(--tsi-radius-sm);
   border: 1px solid var(--tsi-line-faint);
   background: rgba(0, 0, 0, .22);
@@ -744,3 +819,41 @@ body.tsi-modal-open { overflow: hidden; }
 .tsi-dmdoc__popout { margin-left: auto; margin-right: 6px; }
 .tsi-dmdoc__edit { display: grid; gap: 10px; min-width: min(320px, 80vw); }
 .tsi-dmdoc--docked .tsi-dmdoc__bar { cursor: default; }
+.tsi-dmdoc--busy .tsi-dmdoc__body { padding: 16px; display: grid; gap: 12px; align-content: start; }
+/* The Quest panel: a few buttons, the box (it takes the rest of the panel), a count and a message. */
+.tsi-dmdoc__panel-body.tsi-dmdoc__quest {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: hidden;
+}
+.tsi-dmdoc__quest-tools { flex: none; display: flex; flex-wrap: wrap; gap: 8px; }
+.tsi-dmdoc__quest-text {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+  resize: none;
+  font: 400 var(--tsi-fs-body-sm)/1.45 var(--tsi-font-body);
+}
+.tsi-dmdoc__quest-foot { flex: none; display: flex; justify-content: space-between; gap: 8px; font-size: 14px; color: var(--tsi-text-muted); }
+.tsi-dmdoc__quest-status {
+  font: 600 var(--tsi-fs-label)/1.3 var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-heading);
+  text-transform: uppercase;
+  color: var(--tsi-ok);
+}
+.tsi-dmdoc__quest-status[data-state="saving"] { color: var(--tsi-text-muted); }
+.tsi-dmdoc__quest-status[data-state="failed"] { color: var(--tsi-danger); }
+.tsi-dmdoc__quest-msg { flex: none; margin: 0; font-size: 14px; line-height: 1.3; color: var(--tsi-text-muted); }
+.tsi-dmdoc__quest-msg:empty { display: none; }
+.tsi-dmdoc__quest-msg[data-kind="warn"] { color: var(--tsi-warn); }
+/* Narrow (a small window, or the panel squeezed): the panels stack in one
+   column and the whole body scrolls; the Quest box gets a sensible height. */
+@container tsi-dmdoc (max-width: 759px) {
+  .tsi-dmdoc__grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; height: auto; }
+  .tsi-dmdoc__panel { overflow: visible; }
+  .tsi-dmdoc__panel-body { overflow: visible; }
+  .tsi-dmdoc__panel-body.tsi-dmdoc__quest { overflow: visible; }
+  .tsi-dmdoc__quest-text { flex: none; min-height: 16em; }
+}
