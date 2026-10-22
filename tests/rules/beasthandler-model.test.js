@@ -154,7 +154,7 @@
     t.equal(M.needsMeeting(detail({ initiation: null }), {}), false, 'a beast that was already introduced (or not yet rolled for) has no meeting');
     t.equal(M.needsMeeting(detail({ initiation: undefined }), {}), false);
     t.equal(M.needsMeeting(null, {}), false);
-    t.equal(M.needsMeeting(detail(), { c1: 'yes' }), true, 'only a real "true" counts as seen... ');
+    t.equal(M.needsMeeting(detail(), { c1: 'yes' }), true, 'only a real true counts as seen');
   });
 
   test('the kind\'s varieties come in the table\'s order, and a shuffle is a fresh order of the same ones that never changes the original', function (t) {
