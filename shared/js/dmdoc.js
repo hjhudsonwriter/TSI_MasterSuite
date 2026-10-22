@@ -410,15 +410,15 @@
     var list = [];
     if (orders && orders.list.length) {
       list.push(el('ul', { class: 'tsi-dmdoc__effects', 'data-test': 'dmdoc-order-list' }, orders.list.map(function (o) {
-        return el('li', { class: 'tsi-dmdoc__effect', 'data-test': 'dmdoc-order' }, [
+        return el('li', { class: 'tsi-dmdoc__effect', 'data-test': 'dmdoc-order', 'data-overdue': o.inDays < 0 ? 'yes' : 'no' }, [
           el('p', { class: 'tsi-dmdoc__effect-name' }, [el('strong', { text: o.label })]),
-          el('p', { class: 'tsi-dmdoc__effect-until', text: 'Completes Day ' + o.day + ' · ' + inDaysText(o.inDays) })
+          el('p', { class: 'tsi-dmdoc__effect-until', text: o.inDays < 0 ? 'Was due Day ' + o.day + ', ' + plural(-o.inDays, 'day', 'days') + ' ago' : 'Completes Day ' + o.day + ' · ' + inDaysText(o.inDays) })
         ]);
       })));
       if (orders.count > orders.list.length) list.push(el('p', { class: 'tsi-dmdoc__note', text: 'and ' + (orders.count - orders.list.length) + ' more' }));
     }
     parts.push(el('div', { class: 'tsi-dmdoc__block', 'data-test': 'dmdoc-orders' }, [
-      stat('Orders pending', orders ? String(orders.count) : '—', !orders ? 'Bastion not saved yet' : orders.next ? 'next completes Day ' + orders.next.day : 'none at the Bastion', 'dmdoc-orders-count')
+      stat('Orders pending', orders ? String(orders.count) : '—', !orders ? 'Bastion not saved yet' : orders.next ? (orders.next.inDays < 0 ? 'next was due Day ' : 'next completes Day ') + orders.next.day : 'none at the Bastion', 'dmdoc-orders-count')
     ].concat(list)));
 
     var lines = [];
@@ -442,17 +442,25 @@
     return sum.threads.length + ' open' + (n ? ' · next follow-up due ' + (n.from === n.to ? 'Day ' + n.from : 'Days ' + n.from + '–' + n.to) : '');
   }
 
+  /* A day by its number. Reset Travel puts the day back to 1 and moves every
+     other day with it, so an expedition that began before the reset can have
+     a day of 0 or below: it is written with a proper minus sign, and the line
+     says the reset moved the days. */
+  function dayName(n) { return 'Day ' + (n < 0 ? '\u2212' + (-n) : n); }
+  var MOVED = ' (Reset Travel moved the days)';
+
   /* The expedition line, in Harry's words. */
   function expeditionText(sum) {
     var x = sum.expedition;
     if (!sum.explorerSaved) return 'Explorer not started';
     if (x.state === 'active') {
-      var began = x.startedDay === null ? 'began' : x.daysRunning === 0 ? 'began today (Day ' + x.startedDay + ')' : 'began Day ' + x.startedDay;
-      return 'Expedition: ' + began + (x.daysRunning === null || x.daysRunning === 0 ? '' : ' · running ' + plural(x.daysRunning, 'day', 'days'));
+      var began = x.startedDay === null ? 'began' : x.daysRunning === 0 ? 'began today' + (x.startedDay >= 1 ? ' (' + dayName(x.startedDay) + ')' : '') : 'began ' + dayName(x.startedDay);
+      return 'Expedition: ' + began + (x.daysRunning === null || x.daysRunning === 0 ? '' : ' \u00b7 running ' + plural(x.daysRunning, 'day', 'days')) + (x.startedDay !== null && x.startedDay < 1 ? MOVED : '');
     }
     if (x.state === 'ended') {
-      if (x.startedDay !== null && x.endedDay !== null) return 'Expedition ended - Day ' + x.startedDay + ' to Day ' + x.endedDay;
-      return 'Expedition ended' + (x.startedDay !== null ? ' - began Day ' + x.startedDay : '') + (x.endedDay !== null ? ' - ended Day ' + x.endedDay : '');
+      var moved = (x.startedDay !== null && x.startedDay < 1) || (x.endedDay !== null && x.endedDay < 1) ? MOVED : '';
+      if (x.startedDay !== null && x.endedDay !== null) return 'Expedition ended - ' + dayName(x.startedDay) + ' to ' + dayName(x.endedDay) + moved;
+      return 'Expedition ended' + (x.startedDay !== null ? ' - began ' + dayName(x.startedDay) : '') + (x.endedDay !== null ? ' - ended ' + dayName(x.endedDay) : '') + moved;
     }
     return 'No expedition yet';
   }
@@ -556,12 +564,22 @@
      what is typed, the caret, the selection and the focus all survive. Text
      goes in only through .value (never as HTML). It saves as you type (about
      0.4 s after you stop) and straight away when you click out of it, when
-     the page is hidden and when it closes. Another window may change the
-     text too (the doc open here and in a pop-out): the last typed wins, but
-     the box is never changed under you while it is focused or holds typing
-     that hasn't been saved. */
+     the page is hidden and when it closes. As a safety net for the last
+     moments (the browser finishes a save after the page has gone, or doesn't),
+     what is typed is also copied to the browser's small storage, at once and
+     in full when the page is hidden or closed, and picked up again, if the
+     saved text is older, the next time the DM doc opens.
+     Another window may change the saved text too (the doc open here and in a
+     pop-out, or a Restore): this window takes any saved text that differs
+     from what it last saved or loaded, whenever the box holds no typing that
+     hasn't been saved (the caret may be in it: it stays where it was, as far
+     as the new text allows). If there is unsaved typing, that is kept, a note
+     says so, and its next save replaces the other copy. */
   var SAVE_DELAY = 400;
-  var quest = null;   /* { box, status, count, msg, buttons…, lastAt, dirty, timer, state } */
+  var MIRROR_DELAY = 150;
+  var quest = null;   /* { box, status, count, msg, buttons…, known, dirty, unsaved, timer, mirrorTimer, typedAt, state }:
+                         known is the { text, at } this window last saved or loaded; dirty is typing not yet handed to the store;
+                         unsaved is a save handed over but not yet confirmed by the browser */
 
   function questNote(kind, text) {
     if (!quest) return;
@@ -584,38 +602,83 @@
     else if (quest.msg.getAttribute('data-kind') === 'warn' && /box is full/.test(quest.msg.textContent)) questNote('', '');
   }
 
+  /* The copy in the browser's small storage (see the comment above). Every
+     use is guarded: where there is no small storage it simply does nothing,
+     and the Quest panel's own "Not saved" message is the honest one. */
+  function draftKey() { return TSI.storeRules.spaceNames(TSI.space).dmdocDraft; }
+  function writeDraft(final) {
+    if (!quest) return;
+    try {
+      localStorage.setItem(draftKey(), JSON.stringify({ text: quest.box.value, at: quest.typedAt || Date.now(), mirrored: Date.now(), final: final === true }));
+    } catch (e) { /* no small storage, or it is full */ }
+  }
+  function clearDraft() { try { localStorage.removeItem(draftKey()); } catch (e) { /* nothing to clear */ } }
+  function readDraft() {
+    try {
+      var d = JSON.parse(localStorage.getItem(draftKey()));
+      return d && typeof d === 'object' && typeof d.text === 'string' && typeof d.at === 'number' ? d : null;
+    } catch (e) { return null; }
+  }
+  /* When the DM doc opens: typing that was copied across but never reached the
+     saved text (the window was closed, or went to another page, a moment after
+     the last key) is put back, if it is newer than what is saved. A copy still
+     being written by a window that is open is left alone for a few seconds. */
+  function pickUpDraft() {
+    var d = readDraft();
+    if (!d) return;
+    TSI.store.fresh(R.QUEST_KEY, null).then(function (raw) {
+      if (!quest) return;
+      var stored = R.cleanQuest(raw);
+      if (d.text === stored.text || d.at <= stored.at) { clearDraft(); return; }
+      if (d.final !== true && Date.now() - (d.mirrored || 0) < 5000) return;
+      if (quest.dirty) return;
+      quest.box.value = R.cleanQuest({ text: d.text, at: 1 }).text;
+      quest.known = { text: stored.text, at: stored.at };
+      quest.dirty = true;
+      questCount();
+      questNote('info', 'The last words you typed before the window closed were put back.');
+      commitQuest();
+    }, function () { /* can't read the saved text just now: the copy stays for next time */ });
+  }
+
   /* Save what is in the box now (and wait for the browser to say so). */
   function commitQuest() {
     if (!quest) return Promise.resolve(true);
     if (quest.timer) { clearTimeout(quest.timer); quest.timer = null; }
     if (!quest.dirty) return Promise.resolve(true);
-    var q = R.makeQuest(quest.box.value, Math.max(Date.now(), quest.lastAt + 1));
+    var q = R.makeQuest(quest.box.value, Math.max(Date.now(), quest.known.at + 1));
     quest.dirty = false;
-    quest.lastAt = q.at;
+    quest.known = { text: q.text, at: q.at };
+    quest.unsaved = true;
     questState('saving');
     try {
       TSI.store.set(R.QUEST_KEY, q);
     } catch (err) {
       quest.dirty = true;
+      quest.unsaved = false;
       questState('failed', 'the browser would not take it');
       TSI.reportError(err, 'saving the Quest notes');
       return Promise.resolve(false);
     }
     return TSI.store.flush().then(function (ok) {
-      if (!quest || quest.dirty || quest.lastAt !== q.at) return ok;
+      if (!quest || quest.known.at !== q.at) return ok;
+      quest.unsaved = false;
+      if (quest.dirty) return ok;
       if (TSI.store.mode === 'memory') questState('failed', 'this browser is not saving');
       else if (!ok) questState('failed', TSI.store.status().reason || 'the browser could not save it');
-      else questState('saved');
+      else { questState('saved'); clearDraft(); }
       return ok;
     });
   }
   function typedQuest() {
     if (!quest) return;
     quest.dirty = true;
+    quest.typedAt = Date.now();
     questState('saving');
     questCount();
     if (quest.timer) clearTimeout(quest.timer);
     quest.timer = setTimeout(function () { quest.timer = null; commitQuest(); }, SAVE_DELAY);
+    if (!quest.mirrorTimer) quest.mirrorTimer = setTimeout(function () { quest.mirrorTimer = null; if (quest && (quest.dirty || quest.unsaved)) writeDraft(false); }, MIRROR_DELAY);
   }
 
   /* Put new text in the box (an import, or Clear) and save it at once. */
@@ -623,59 +686,77 @@
     if (!quest) return;
     quest.box.value = text;
     quest.dirty = true;
+    quest.typedAt = Date.now();
     questCount();
     return commitQuest();
   }
 
-  /* Look for another window's newer copy: when the doc opens, when this window
-     is focused again and when it comes back into view; not on a timer. */
+  /* Look at the saved text again: when the doc opens, when this window is
+     focused again, when it comes back into view, when the box is clicked out
+     of and when another window has done a Restore; not on a timer. If
+     what is saved differs from what this window last saved or loaded (the
+     time is not what decides: a Restore puts back an older copy), it is
+     taken, unless there is typing not yet saved, which is kept. */
   function loadQuest() {
     if (!quest || !loaded) return Promise.resolve();
     return TSI.store.fresh(R.QUEST_KEY, null).then(function (raw) {
-      if (!quest || !raw) return;
+      if (!quest || !R.questChanged(quest.known, raw)) return;
       var theirs = R.cleanQuest(raw);
-      if (theirs.at <= quest.lastAt) return;
-      /* In use: typing not yet saved, or the caret is in it in the window being used. */
-      if (quest.dirty || (document.activeElement === quest.box && document.hasFocus())) {
-        questNote('warn', 'These notes were also changed in another window. What is in the box is kept, and the next save replaces that copy.');
+      if (quest.dirty) {
+        questNote('warn', 'These notes were also changed in another window (or put back from a backup). What you have typed is kept, and the next save replaces that copy.');
         return;
       }
-      quest.box.value = theirs.text;
-      quest.lastAt = theirs.at;
+      var box = quest.box;
+      var inUse = document.activeElement === box;
+      var from = [box.selectionStart, box.selectionEnd];
+      var top = box.scrollTop;
+      var differs = box.value !== theirs.text;
+      box.value = theirs.text;
+      quest.known = { text: theirs.text, at: theirs.at };
+      if (inUse) {
+        var end = box.value.length;
+        try { box.setSelectionRange(Math.min(from[0], end), Math.min(from[1], end)); } catch (e) { /* the caret stays where the browser put it */ }
+      }
+      box.scrollTop = top;
       questCount();
-      questNote('', '');
+      if (differs) questNote('info', 'These notes were updated from another window (or put back from a backup).');
     }, function () { /* can't read it just now; what is here stays */ });
   }
 
   /* Import: the DM picks a PDF, Word or text file; its text goes into the
      box. If the box already has text it asks first: Replace, Add to the end
-     or Cancel. Too long for the box (200,000 characters): nothing changes. */
+     or Cancel. Too long for the box (200,000 characters): nothing changes,
+     and nothing is ever cut off. */
   function importQuest() {
     if (!quest) return false;
     var q = quest;
+    var limit = R.QUEST_MAX.toLocaleString('en-GB');
     return TSI.pickFile('.pdf,.docx,.txt,.md,.text,.markdown,application/pdf,text/plain').then(function (file) {
       if (!file) return;
       q.importBtn.disabled = true;
       q.importBtn.textContent = 'Reading…';
       questNote('info', 'Reading ' + file.name + '…');
-      return TSI.docText.readFile(file, { stopAt: R.QUEST_MAX * 2 }).then(function (res) {
+      var readOptions = { checkAbove: R.QUEST_MAX, tooLong: function (text) { return R.cleanImportedText(text).length > R.QUEST_MAX; } };
+      return TSI.docText.readFile(file, readOptions).then(function (res) {
+        if (!res.ok && res.code === 'toolong') { questNote('warn', 'That PDF has more than ' + limit + ' characters of text, which is more than the Quest box holds. Nothing was imported. Paste the part you need instead.'); return; }
         if (!res.ok) { questNote('warn', res.message); return; }
-        var length = R.cleanImportedText(res.text).length;
+        var text = R.cleanImportedText(res.text);            /* tidied once; the length below is the real one */
+        var how = res.encoding === 'windows-1252' ? ' That file was not saved as UTF-8, so it was read as Windows (ANSI) text: check any quotes, dashes or accented letters.' : '';
         var have = q.box.value.trim() ? q.box.value.length : 0;
         var asked = have ? TSI.modal.open({
           title: 'Import into the Quest box',
-          message: 'The Quest box already has text (' + have.toLocaleString('en-GB') + ' characters). Import ' + length.toLocaleString('en-GB') + ' characters from "' + file.name + '"? Replace removes what is there; Add to the end keeps it and puts the new text after it.',
+          message: 'The Quest box already has text (' + have.toLocaleString('en-GB') + ' characters). Import ' + text.length.toLocaleString('en-GB') + ' characters from "' + file.name + '"? Replace removes what is there; Add to the end keeps it and puts the new text after it.',
           escValue: 'cancel',
           actions: [{ label: 'Cancel', value: 'cancel' }, { label: 'Add to the end', value: 'append' }, { label: 'Replace', value: 'replace', primary: true }]
         }) : Promise.resolve('replace');
         return asked.then(function (mode) {
           if (mode !== 'replace' && mode !== 'append') { questNote('', ''); return; }
           /* What is in the box is read again now, in case it was typed in meanwhile. */
-          var joined = R.joinQuest(q.box.value, res.text, mode);
+          var joined = R.joinQuest(q.box.value, text, mode, true);
           if (!joined.ok) { questNote('warn', joined.message); return; }
           return setQuestText(joined.text).then(function () {
             q.box.scrollTop = mode === 'append' ? q.box.scrollHeight : 0;
-            questNote('info', 'Imported ' + length.toLocaleString('en-GB') + ' characters from ' + file.name + (mode === 'append' ? ', added to the end.' : '.'));
+            questNote(how ? 'warn' : 'info', 'Imported ' + text.length.toLocaleString('en-GB') + ' characters from ' + file.name + (mode === 'append' ? ', added to the end.' : '.') + how);
           });
         });
       });
@@ -689,7 +770,7 @@
 
   function questPanel(shell) {
     var initial = R.cleanQuest(TSI.store.get(R.QUEST_KEY, null));
-    var q = quest = { lastAt: initial.at, dirty: false, timer: null, state: 'saved' };
+    var q = quest = { known: { text: initial.text, at: initial.at }, dirty: false, unsaved: false, timer: null, mirrorTimer: null, typedAt: 0, state: 'saved' };
     q.box = el('textarea', {
       class: 'tsi-input tsi-dmdoc__quest-text',
       'data-test': 'dmdoc-quest-text',
@@ -755,11 +836,16 @@
       questState('saved');
     }
     questCount();
+    pickUpDraft();
     return q;
   }
 
   /* Anything typed and not yet saved goes in before the page is hidden or closed. */
-  function commitQuestNow() { if (quest && quest.dirty) commitQuest(); }
+  function commitQuestNow() {
+    if (!quest || !(quest.dirty || quest.unsaved)) return;
+    writeDraft(true);                                  /* straight away, whatever the browser manages to finish after this */
+    if (quest.dirty) commitQuest();
+  }
 
   /* ---------- Dragging and resizing (pointer events, so mouse, pen and touch all work) ---------- */
   function startDrag(event, mode, handle) {
@@ -957,6 +1043,18 @@
     if (watching) return;
     watching = true;
     window.addEventListener('pagehide', commitQuestNow);
+    /* Another window did a Restore or an Import: look again at what is saved. */
+    var replacedKey = TSI.storeRules.spaceNames(TSI.space).replaced;
+    var draftKeyName = draftKey();
+    window.addEventListener('storage', function (event) {
+      if (event.key === replacedKey && opened) { loadQuest(); refresh(); }
+      /* Another window is closing with typing the browser may not finish saving: this window, if its DM doc has been opened, saves it. */
+      if (event.key === draftKeyName && event.newValue && quest) {
+        var left = null;
+        try { left = JSON.parse(event.newValue); } catch (e) { /* not ours to read */ }
+        if (left && left.final === true) pickUpDraft();       /* only the last copy, not each key of someone typing */
+      }
+    });
     window.addEventListener('focus', function () { if (opened) loadQuest(); });
     document.addEventListener('visibilitychange', function () {
       if (document.hidden) commitQuestNow();

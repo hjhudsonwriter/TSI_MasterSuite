@@ -234,7 +234,7 @@
       list.forEach(function (r) {
         if (!isObj(r) || r.status !== 'confirmed' || !Array.isArray(r.consequences)) return;
         r.consequences.forEach(function (c) {
-          if (!isObj(c) || !C.TRACKED_KINDS[c.kind]) return;
+          if (!isObj(c) || typeof c.kind !== 'string' || !Object.prototype.hasOwnProperty.call(C.TRACKED_KINDS, c.kind)) return;
           if (c.status === 'pending' || c.status === 'applied' || c.status === 'ended') return;
           if (isNum(c.until) && now > c.until) return;
           if ((str(c.clan) || '') !== (clanKey || '')) return;
@@ -295,7 +295,7 @@
 
       /* Where the party is: the Explorer's Region, its Clan and god, and their standing in the Bastion. */
       var rid = ex ? (str(travel.provinceId) || 'northern_province') : null;
-      var reg = rid && regions && isObj(regions[rid]) ? regions[rid] : null;
+      var reg = rid && regions && Object.prototype.hasOwnProperty.call(regions, rid) && isObj(regions[rid]) ? regions[rid] : null;
       if (reg) {
         out.region = { id: rid, label: reg.label };
         var pc = ba && isObj(ba.politicalCapital) ? ba.politicalCapital[reg.clanKey] : 0;
@@ -341,7 +341,8 @@
 
       /* The Explorer's Active Effects, exactly as its own list shows them. */
       var effects = Array.isArray(journey.effects) ? journey.effects : [];
-      var heroById = {};
+      /* Looked up by an id taken from a save, so no name like "constructor" or "__proto__" can find anything but a hero. */
+      var heroById = Object.create(null);
       out.heroes.forEach(function (h) { if (h.id) heroById[h.id] = h; });
       out.effects = [];
       out.partyEffects = [];
@@ -361,7 +362,8 @@
       /* The Great Rite the party holds (not one of the Active Effects: it
          ends with the expedition). */
       var blessing = isObj(journey.blessing) && str(journey.blessing.rite) ? journey.blessing : null;
-      var riteInfo = blessing && window.TSI_DATA && window.TSI_DATA.shrineRites ? window.TSI_DATA.shrineRites[blessing.rite] : null;
+      var rites = window.TSI_DATA && window.TSI_DATA.shrineRites;
+      var riteInfo = blessing && rites && Object.prototype.hasOwnProperty.call(rites, blessing.rite) ? rites[blessing.rite] : null;
       out.rite = blessing ? { name: riteInfo && str(riteInfo.name) ? riteInfo.name : 'A Great Rite', used: blessing.used === true } : null;
 
       /* The expedition: none yet, under way (and for how many days), or ended
@@ -369,16 +371,14 @@
          does: today minus the start day. An end day an old save never stored
          is read from the Explorer's log, and left null if it isn't there. */
       var expd = isObj(journey.expedition) ? journey.expedition : {};
-      var xn = ex ? Math.max(0, clampInt(expd.n, 0, 100000, 0)) : 0;
-      var xActive = !!ex && xn > 0 && expd.active === true;
-      var xStart = isNum(expd.startedDay) && expd.startedDay > 0 ? Math.round(expd.startedDay) : null;
-      var xEnd = isNum(expd.endedDay) && expd.endedDay > 0 ? Math.round(expd.endedDay) : (xn > 0 && !xActive ? C.endedDayFromLog(journey.log, xn) || null : null);
+      var xc = ex ? C.cleanExpedition(expd, journey.log) : C.cleanExpedition(null, []);
+      var xKnown = xc.n > 0 && (expd.v === 2 || xc.startedDay > 0);     /* an older record's 0 was "not known" */
       out.expedition = {
-        n: xn,
-        state: xn === 0 ? 'none' : xActive ? 'active' : 'ended',
-        startedDay: xn === 0 ? null : xStart,
-        endedDay: xn > 0 && !xActive ? xEnd : null,
-        daysRunning: xActive && xStart !== null && day !== null ? Math.max(0, day - xStart) : null
+        n: xc.n,
+        state: xc.n === 0 ? 'none' : xc.active ? 'active' : 'ended',
+        startedDay: xKnown ? xc.startedDay : null,
+        endedDay: xc.n > 0 && !xc.active ? xc.endedDay : null,
+        daysRunning: xc.active && xKnown && day !== null ? Math.max(0, day - xc.startedDay) : null
       };
       return out;
     }
@@ -386,6 +386,27 @@
 
   /* How many pending orders the DM doc lists (the next to complete first). */
   C.ORDERS_LISTED = 5;
+
+  /* The Explorer's expedition record, read from a save: { v: 2, n, active,
+     startedDay, endedDay }. The days are whole numbers of any size, because
+     Reset Travel moves them with the other days and they can end up 0 or
+     below; endedDay is null while an expedition is under way and when there
+     has been none. A record without v 2 is from before that: its days of 0
+     meant "not known", and an expedition that had ended has no end day, so
+     it is taken from the log's "Expedition N ended on Day D." line while
+     that is still there, else left null. A day is never guessed. */
+  C.cleanExpedition = function (raw, log) {
+    var r = isObj(raw) ? raw : {};
+    var v2 = r.v === 2;
+    var n = Math.max(0, clampInt(r.n, 0, 100000, 0));
+    var active = r.active === true;
+    var started = isNum(r.startedDay) ? Math.round(r.startedDay) : 0;
+    if (!v2) started = Math.max(0, started);
+    var ended = isNum(r.endedDay) ? Math.round(r.endedDay) : null;
+    if (!v2 && ended !== null && ended <= 0) ended = null;
+    if (!v2 && n > 0 && !active && ended === null) ended = C.endedDayFromLog(log, n) || null;
+    return { v: 2, n: n, active: active, startedDay: started, endedDay: active ? null : ended };
+  };
 
   /* The day expedition number n ended, read from the Explorer's journey log
      (newest line first) when an older save never stored it: the line is

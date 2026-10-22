@@ -239,7 +239,10 @@
       }
 
       life.on(document, 'keydown', function (e) {
-        if (pop && e.key === 'Escape') { e.stopPropagation(); closePop(true); }
+        if (pop && e.key === 'Escape') {
+          if (TSI.keys.isTyping(e) && !pop.node.contains(e.target)) return;       /* typing elsewhere (the DM doc's Quest box) */
+          e.stopPropagation(); closePop(true);
+        }
       }, true);
       life.on(document, 'pointerdown', function (e) {
         if (pop && !pop.node.contains(e.target) && e.target !== pop.owner && !pop.owner.contains(e.target)) closePop(false);

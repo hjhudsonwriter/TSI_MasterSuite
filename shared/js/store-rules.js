@@ -40,6 +40,11 @@
          each open tab's heartbeat, { at, tool }, for the "Already open"
          warning; dmdocOpen: whether this window has the DM doc open, kept
          per window so it never pops up on the TV's window by itself)
+       - dmdocDraft: a copy of the DM doc's Quest text typed in the last
+         moments, kept in the small storage until the saved text has caught up
+         (a safety net for a window closed a moment after the last key)
+       - replaced: the time of the last Restore or Import, so another open
+         window (the DM doc's pop-out) can look again at what it shows
        - handoff, handback: a fight passed from the Explorer to the Combat
          Tracker, and its result passed back (TSI.handoff)
        - handoffCrest: a crest sent from the Clan Crest Creator to the
@@ -51,9 +56,9 @@
        - file: the start of backup file names */
     spaceNames: function (space) {
       if (space === 'test') {
-        return { space: 'test', db: 'tsi.test', local: 'tsi.test:', tabs: 'tsi.test:tabs', tabId: 'tsi.test:tab-id', flash: 'tsi.test:flash', dmdocOpen: 'tsi.test:dmdoc-open', lastBackup: 'tsi.test:last-backup', handoff: 'tsi.test:handoff', handback: 'tsi.test:handback', handoffCrest: 'tsi.test:handoff-crest', lock: 'tsi.test:lock.', file: 'tsi-test-' };
+        return { space: 'test', db: 'tsi.test', local: 'tsi.test:', tabs: 'tsi.test:tabs', tabId: 'tsi.test:tab-id', flash: 'tsi.test:flash', dmdocOpen: 'tsi.test:dmdoc-open', dmdocDraft: 'tsi.test:dmdoc-quest-draft', replaced: 'tsi.test:replaced', lastBackup: 'tsi.test:last-backup', handoff: 'tsi.test:handoff', handback: 'tsi.test:handback', handoffCrest: 'tsi.test:handoff-crest', lock: 'tsi.test:lock.', file: 'tsi-test-' };
       }
-      return { space: 'suite', db: 'tsi.suite', local: '', tabs: 'tsi.suite.tabs', tabId: 'tsi.suite.tab-id', flash: 'tsi.suite.flash', dmdocOpen: 'tsi.suite.dmdoc-open', lastBackup: 'tsi.suite.last-backup', handoff: 'tsi.suite.handoff', handback: 'tsi.suite.handback', handoffCrest: 'tsi.suite.handoff-crest', lock: 'tsi.suite.lock.', file: 'tsi-' };
+      return { space: 'suite', db: 'tsi.suite', local: '', tabs: 'tsi.suite.tabs', tabId: 'tsi.suite.tab-id', flash: 'tsi.suite.flash', dmdocOpen: 'tsi.suite.dmdoc-open', dmdocDraft: 'tsi.suite.dmdoc-quest-draft', replaced: 'tsi.suite.replaced', lastBackup: 'tsi.suite.last-backup', handoff: 'tsi.suite.handoff', handback: 'tsi.suite.handback', handoffCrest: 'tsi.suite.handoff-crest', lock: 'tsi.suite.lock.', file: 'tsi-' };
     },
 
     /* The fallback-storage key for a save, and back again (null if it isn't one of this space's). */

@@ -31,6 +31,8 @@ const QUEST = 'tsi.dmdoc.quest';
 async function go(page, tool) {
   await page.goto(INDEX + (tool ? '?tool=' + tool : ''));
   await page.waitForSelector('.tsi-topbar');
+  /* The Bastion and the Explorer have a hook for the tests once they are open (slower when the machine is busy). */
+  if (tool === 'bastion' || tool === 'explorer') await page.waitForFunction(t => window.TSI && window.TSI[t] && window.TSI[t].debug, tool, { timeout: 20000 });
   await page.waitForTimeout(500);
 }
 async function waitSaved(page) {
@@ -353,6 +355,8 @@ const sessionPdf = () => F.write(TMP, 'Session 13.pdf', F.pdf([['Chapter One', '
       await makeCamp(page);
       const later = await until(page, x => x.day === 'Day 9 8 days passed', 'Day 9');
       equal(later.expedition, 'Expedition Expedition ended - Day 1 to Day 8', 'it stays until the next one starts');
+      equal(later.ordersCount, 'Orders pending 1 next was due Day 8', 'an order whose day has passed is not "today"');
+      equal(later.orders, ['Dock: Charter Berth (Longship) Was due Day 8, 1 day ago']);
       await page.click('[data-test=expedition-start]');
       await waitSaved(page);
       const next = await until(page, x => /Expedition:/.test(x.expedition || ''), 'the next expedition');
@@ -410,6 +414,24 @@ const sessionPdf = () => F.write(TMP, 'Session 13.pdf', F.pdf([['Chapter One', '
 
       await page.selectOption('[data-test=region]', 'northern_province');
       await waitSaved(page);
+    });
+
+    await check('Reset Travel: the expedition line still makes sense (its days moved with the rest, to below 1)', async () => {
+      await makeCamp(page);
+      await makeCamp(page);                                               /* Day 11: the expedition began on Day 9 */
+      const before = await until(page, x => x.day === 'Day 11 10 days passed', 'Day 11');
+      equal(before.expedition, 'Expedition Expedition: began Day 9 \u00b7 running 2 days');
+      await page.click('[data-test=reset-travel]');
+      await H.clickModal(page, 'OK');
+      await waitSaved(page);
+      const line = 'Expedition Expedition: began Day \u22121 \u00b7 running 2 days (Reset Travel moved the days)';
+      const d = await until(page, x => x.day === 'Day 1 0 days passed', 'Day 1 again');
+      equal(d.expedition, line, 'Day 9 moved with the reset: 2 days before the new Day 1 is Day \u22121');
+      await page.reload();
+      await page.waitForSelector('[data-test=region]');
+      await openDoc(page);
+      equal((await until(page, x => /Expedition:/.test(x.expedition || ''), 'the line after a reload')).expedition, line, 'and a reload keeps it');
+      await H.shot(page, 'dmdoc-contents-reset');
     });
 
     await check('a change made in another window shows up by itself', async () => {
@@ -557,21 +579,56 @@ const sessionPdf = () => F.write(TMP, 'Session 13.pdf', F.pdf([['Chapter One', '
       await savedAs(page, await boxText(page));
     });
 
-    await check('another window\'s newer text shows when the box is not in use, and never replaces what is typed or focused', async () => {
+    const writeElsewhere = async (value) => {
       const other = await context.newPage();
       await go(other, '');
-      await other.evaluate(() => TSI.store.ready.then(() => { TSI.store.set('tsi.dmdoc.quest', { text: 'From another window', at: Date.now() + 5000 }); return TSI.store.flush(); }));
+      await other.evaluate(v => TSI.store.ready.then(() => { if (v === null) TSI.store.remove('tsi.dmdoc.quest'); else TSI.store.set('tsi.dmdoc.quest', v); return TSI.store.flush(); }), value);
       await other.close();
-      /* The box is focused: it is left alone, and the DM doc says so. */
+    };
+    await check('another window\'s saved text is taken even when the caret is in the box, if nothing typed is unsaved; the caret stays', async () => {
+      await page.fill('[data-test=dmdoc-quest-text]', 'Session 12 notes');
+      await savedAs(page, 'Session 12 notes');
       await page.click('[data-test=dmdoc-quest-text]');
+      await page.keyboard.press('Control+Home');
+      await page.keyboard.press('ArrowRight');
+      await page.keyboard.press('ArrowRight');                           /* caret after "Se", nothing typed */
+      await writeElsewhere({ text: 'From another window', at: Date.now() + 5000 });
       await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-      await page.waitForFunction(() => /also changed in another window/.test(document.querySelector('[data-test=dmdoc-quest-msg]').textContent));
-      equal((await boxText(page)).startsWith('Session 12'), true, 'the focused box was not overwritten');
-      /* Clicked out of, with nothing unsaved, it takes the newer copy. */
-      await page.click('[data-test=dmdoc-bar]');
       await page.waitForFunction(() => document.querySelector('[data-test=dmdoc-quest-text]').value === 'From another window', null, { timeout: 4000 });
-      equal(await note(page), '', 'the message clears');
+      equal(await page.evaluate(() => { const t = document.querySelector('[data-test=dmdoc-quest-text]'); return [document.activeElement === t, t.selectionStart, t.selectionEnd]; }), [true, 2, 2], 'still focused, caret where it was');
+      assert(/updated from another window/.test(await note(page)), await note(page));
+      await page.keyboard.type('X');
+      equal(await boxText(page), 'FrXom another window', 'and typing goes on from there');
+      await savedAs(page, 'FrXom another window');
+    });
+
+    await check('typing that is not saved yet is kept against another window\'s text, with a note; the next save replaces that copy', async () => {
+      await writeElsewhere({ text: 'Typed in the other window', at: Date.now() + 9000 });
+      /* Typed, and the window looked again before the short pause is over. */
+      await page.evaluate(() => {
+        const t = document.querySelector('[data-test=dmdoc-quest-text]');
+        t.focus();
+        t.value = 'Typed just now';
+        t.dispatchEvent(new Event('input', { bubbles: true }));
+        window.dispatchEvent(new Event('focus'));
+      });
+      await page.waitForFunction(() => /also changed in another window/.test(document.querySelector('[data-test=dmdoc-quest-msg]').textContent), null, { timeout: 4000 });
+      equal(await boxText(page), 'Typed just now', 'the typing was kept');
+      await savedAs(page, 'Typed just now');
+      equal((await stored(page)).text, 'Typed just now', 'and its save replaced the other copy');
+    });
+
+    await check('a Restore puts back an OLDER copy, or none: an open window takes that too', async () => {
+      await writeElsewhere({ text: 'A restored older copy', at: 1000 });
+      await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+      await page.waitForFunction(() => document.querySelector('[data-test=dmdoc-quest-text]').value === 'A restored older copy', null, { timeout: 4000 });
       equal(await status(page), 'Saved');
+      await page.keyboard.type('!');                                       /* one keystroke must not undo the restore */
+      equal((await boxText(page)).replace('!', ''), 'A restored older copy', 'the restored text is there, with the one key added to it');
+      await savedAs(page, await boxText(page));
+      await writeElsewhere(null);                                          /* a backup that had no Quest text */
+      await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+      await page.waitForFunction(() => document.querySelector('[data-test=dmdoc-quest-text]').value === '', null, { timeout: 4000 });
     });
 
     await check('Save as text file downloads exactly what is in the box', async () => {
@@ -648,6 +705,30 @@ const sessionPdf = () => F.write(TMP, 'Session 13.pdf', F.pdf([['Chapter One', '
       equal(await boxText(page), 'First line\nSecond line\n\n\nThird after a gap');
     });
 
+    await check('a text file saved as Windows ANSI (Word\'s plain-text save) comes in with its quotes, dash and accent right, and the note says how it was read', async () => {
+      await page.fill('[data-test=dmdoc-quest-text]', '');
+      await importFile(page, F.write(TMP, 'ansi.txt', Buffer.from('Kaelen\x92s plan \x96 caf\xe9\r\n\x93Quoted\x94', 'latin1')));
+      await waitNote(page, /Imported \d+ characters from ansi\.txt/);
+      equal(await boxText(page), 'Kaelen\u2019s plan \u2013 caf\u00e9\n\u201cQuoted\u201d');
+      assert(/not saved as UTF-8.*Windows \(ANSI\)/.test(await note(page)), await note(page));
+      await page.fill('[data-test=dmdoc-quest-text]', '');
+      await importFile(page, F.write(TMP, 'utf8.txt', Buffer.concat([Buffer.from([0xEF, 0xBB, 0xBF]), Buffer.from('Kaelen\u2019s plan \u2013 caf\u00e9', 'utf8')])));
+      await waitNote(page, /Imported \d+ characters from utf8\.txt/);
+      equal(await boxText(page), 'Kaelen\u2019s plan \u2013 caf\u00e9');
+      assert(!/ANSI/.test(await note(page)), 'a UTF-8 file says nothing about encodings: ' + await note(page));
+    });
+
+    await check('a PDF with more text than the box holds says so with the limit and imports nothing', async () => {
+      await page.fill('[data-test=dmdoc-quest-text]', 'Keep me');
+      await savedAs(page, 'Keep me');
+      const pages = [];                                                   /* 80 pages of 45 lines of 70 characters: about 250,000 */
+      for (let p = 0; p < 80; p++) { const lines = []; for (let i = 0; i < 45; i++) lines.push(('P' + p + ' line ' + i + ' ').padEnd(70, 'x')); pages.push(lines); }
+      await importFile(page, F.write(TMP, 'Huge.pdf', F.pdf(pages)));
+      await waitNote(page, /more than 200,000 characters of text.*Nothing was imported/);
+      equal(await page.$('.tsi-modal'), null, 'it did not ask');
+      equal(await boxText(page), 'Keep me');
+    });
+
     await check('what cannot be read says so in plain words, and changes nothing', async () => {
       const keep = await boxText(page);
       const tries = [
@@ -722,6 +803,69 @@ const sessionPdf = () => F.write(TMP, 'Session 13.pdf', F.pdf([['Chapter One', '
       await Promise.all([page.waitForEvent('load'), H.clickModal(page, 'Restore')]);
       await page.waitForSelector('.tsi-card');
       equal(await page.evaluate(() => TSI.store.ready.then(() => TSI.store.get('tsi.dmdoc.quest', null))), null, 'an old backup has no Quest text, so it is empty after Restore');
+    });
+
+    await check('a real Restore in one window reaches the DM doc open in another: it shows the restored text without a click', async () => {
+      const a = context.pages()[0];
+      await go(a, '');
+      await openDoc(a);
+      await a.fill('[data-test=dmdoc-quest-text]', 'Original notes');
+      await savedAs(a, 'Original notes');
+      const b = await context.newPage();
+      await go(b, '');
+      const d = await H.download(b, '[data-test=backup-everything]');                /* a backup that holds "Original notes" */
+      await a.fill('[data-test=dmdoc-quest-text]', 'Changed after the backup');
+      await savedAs(a, 'Changed after the backup');
+      await a.click('[data-test=dmdoc-bar]');
+      await H.chooseFile(b, '[data-test=restore]', H.writeTemp('dmdoc-backup-quest.json', JSON.parse(d.text)));
+      await b.uncheck('.tsi-modal input[type=checkbox]').catch(() => {});
+      await Promise.all([b.waitForEvent('load'), H.clickModal(b, 'Restore')]);
+      await a.waitForFunction(() => document.querySelector('[data-test=dmdoc-quest-text]').value === 'Original notes', null, { timeout: 8000 });
+      equal(await status(a), 'Saved');
+      equal((await stored(a)).text, 'Original notes', 'the saved text is the restored one');
+      await b.close();
+    });
+
+    await check('closing or leaving the page a moment after the last key loses nothing (the last words come back)', async () => {
+      await go(page, '');
+      await openDoc(page);
+      for (let i = 1; i <= 3; i++) {
+        const text = 'Last words ' + i;
+        await page.fill('[data-test=dmdoc-quest-text]', 'x');
+        await savedAs(page, 'x');
+        await page.click('[data-test=dmdoc-quest-text]');
+        await page.keyboard.type(text);
+        await page.goto(INDEX);                                           /* straight away: well inside the short pause */
+        await page.waitForSelector('[data-test=dmdoc-quest-text]');
+        await page.waitForFunction(t => document.querySelector('[data-test=dmdoc-quest-text]').value.endsWith(t), text, { timeout: 5000 });
+        await page.waitForFunction(() => document.querySelector('[data-test=dmdoc-quest-status]').textContent === 'Saved' && !TSI.store.hasUnsaved());
+        equal((await stored(page)).text.endsWith(text), true, 'attempt ' + i + ': saved');
+        equal(await page.evaluate(() => localStorage.getItem('tsi.suite.dmdoc-quest-draft')), null, 'and the safety copy is cleared');
+      }
+    });
+
+    await check('a safety copy left by a window that closed is put back if it is newer than the saved text, dropped if it is not', async () => {
+      const draft = (text, at, extra) => page.evaluate(([t, a, e]) => localStorage.setItem('tsi.suite.dmdoc-quest-draft', JSON.stringify(Object.assign({ text: t, at: a, mirrored: Date.now() - 60000, final: false }, e))), [text, at, extra || {}]);
+      await page.fill('[data-test=dmdoc-quest-text]', 'Saved text');
+      await savedAs(page, 'Saved text');
+      const savedAt = (await stored(page)).at;
+      await draft('Saved text plus the last words', savedAt + 500);
+      await page.reload();
+      await page.waitForFunction(() => document.querySelector('[data-test=dmdoc-quest-text]') && document.querySelector('[data-test=dmdoc-quest-text]').value === 'Saved text plus the last words', null, { timeout: 5000 });
+      assert(/last words you typed/.test(await note(page)), 'it says so: ' + await note(page));
+      await savedAs(page, 'Saved text plus the last words');
+      await draft('Older draft that must lose', 5);
+      await page.reload();
+      await page.waitForSelector('[data-test=dmdoc-quest-text]');
+      await page.waitForTimeout(600);
+      equal(await boxText(page), 'Saved text plus the last words', 'an older copy changes nothing');
+      equal(await page.evaluate(() => localStorage.getItem('tsi.suite.dmdoc-quest-draft')), null, 'and is cleared');
+      await draft('Still being typed in another window', Date.now() + 1000, { mirrored: Date.now() });
+      await page.reload();
+      await page.waitForSelector('[data-test=dmdoc-quest-text]');
+      await page.waitForTimeout(600);
+      equal(await boxText(page), 'Saved text plus the last words', 'a copy a window is still writing is left alone');
+      await page.evaluate(() => localStorage.removeItem('tsi.suite.dmdoc-quest-draft'));
     });
 
     await check('nothing failed, and nothing reached for the internet (the PDF reader came from the suite folder)', async () => {
@@ -801,6 +945,33 @@ const sessionPdf = () => F.write(TMP, 'Session 13.pdf', F.pdf([['Chapter One', '
       await page.keyboard.type(' c');
       equal(await boxText(page), 'a b c');
       equal(await heroes(), before, 'the heroes and the map did not move');
+      await page.fill('[data-test=dmdoc-quest-text]', '');
+      await savedAs(page, '');
+    });
+
+    await check('Heartwood Ritual: with a roll window open, Enter and Esc typed in the Quest box do not apply or close it; in its own roll box they still do', async () => {
+      await go(page, 'ritual');
+      await page.waitForSelector('[data-test=attempt-weight]');
+      await openDoc(page);
+      await page.evaluate(() => document.querySelector('[data-test=attempt-weight]').click());
+      await page.waitForSelector('[data-test=roll].tsi-rit-modal--open');
+      await page.fill('[data-test=roll-input]', '12');
+      const stone = () => page.$eval('[data-test=stone-weight]', n => n.querySelectorAll('.tsi-rit-prog .tsi-rit-pip--on').length + '/' + n.querySelectorAll('.tsi-rit-stress .tsi-rit-pip--stress').length);
+      const before = await stone();
+      await page.click('[data-test=dmdoc-quest-text]');
+      await page.keyboard.type('Plan');
+      await page.keyboard.press('Enter');
+      await page.keyboard.type('more');
+      await page.keyboard.press('Escape');
+      equal(await boxText(page), 'Plan\nmore', 'it was typed into the Quest box');
+      assert(await page.$('[data-test=roll].tsi-rit-modal--open'), 'the roll window was closed by Esc typed in the Quest box');
+      equal(await page.inputValue('[data-test=roll-input]'), '12', 'and its roll was not applied');
+      equal(await stone(), before, 'nothing changed on the stone');
+      await page.focus('[data-test=roll-input]');
+      await page.keyboard.press('Enter');                                  /* in its own box, Enter applies, as before */
+      await page.waitForSelector('[data-test=roll].tsi-rit-modal--open', { state: 'detached', timeout: 3000 }).catch(() => {});
+      assert(!(await page.$('[data-test=roll].tsi-rit-modal--open')), 'Enter in the roll box no longer applies it');
+      assert((await stone()) !== before, 'the roll was applied');
       await page.fill('[data-test=dmdoc-quest-text]', '');
       await savedAs(page, '');
     });

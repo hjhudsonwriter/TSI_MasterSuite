@@ -325,14 +325,62 @@
     J.startExpedition(s);
     s.travel.day = 9;
     J.endExpedition(s);
-    delete s.journey.expedition.endedDay;
+    delete s.journey.expedition.endedDay;                 /* as an older save has it: no v 2, no end day */
+    delete s.journey.expedition.v;
     t.same(sum(s, null).expedition, { n: 1, state: 'ended', startedDay: 4, endedDay: 9, daysRunning: null }, 'read from "Expedition 1 ended on Day 9."');
     s.journey.log = [];
     t.same(sum(s, null).expedition, { n: 1, state: 'ended', startedDay: 4, endedDay: null, daysRunning: null }, 'no log line: unknown, never guessed');
     s.journey.expedition = { n: 2, active: true, startedDay: 0 };
-    t.same(sum(s, null).expedition, { n: 2, state: 'active', startedDay: null, endedDay: null, daysRunning: null }, 'a start day that was never saved is unknown too');
+    t.same(sum(s, null).expedition, { n: 2, state: 'active', startedDay: null, endedDay: null, daysRunning: null }, 'a start day of 0 in an older record was "not known"');
+    s.journey.expedition = { v: 2, n: 2, active: true, startedDay: 0 };
+    t.same(sum(s, null).expedition, { n: 2, state: 'active', startedDay: 0, endedDay: null, daysRunning: 9 }, 'but in a v 2 record 0 is a real day (Reset Travel can make it so)');
     s.journey.expedition = 'junk';
     t.equal(sum(s, null).expedition.state, 'none', 'a damaged record is no expedition');
+  });
+
+  test('after Reset Travel the expedition line still makes sense: the days moved, 0 and below allowed', function (t) {
+    var J = TSI.explorer.journey;
+    var s = explorer();
+    s.travel.day = 4;
+    J.startExpedition(s);
+    s.travel.day = 10;
+    t.same(sum(s, null).expedition, { n: 1, state: 'active', startedDay: 4, endedDay: null, daysRunning: 6 });
+    ER.resetTravel(s);
+    t.same(sum(s, null).expedition, { n: 1, state: 'active', startedDay: -5, endedDay: null, daysRunning: 6 }, 'Day 4 is now Day -5, and it has still been running 6 days');
+    s.travel.day = 3;
+    t.equal(sum(s, null).expedition.daysRunning, 8, 'and it goes on counting');
+    var e = explorer();
+    e.travel.day = 4;
+    J.startExpedition(e);
+    e.travel.day = 9;
+    J.endExpedition(e);
+    e.travel.day = 10;
+    ER.resetTravel(e);
+    t.same(sum(e, null).expedition, { n: 1, state: 'ended', startedDay: -5, endedDay: 0, daysRunning: null }, 'ended: -5 to 0, both real days');
+  });
+
+  test('a damaged save never stops the summary, whatever names it uses: constructor, __proto__, toString', function (t) {
+    var bad = ['constructor', '__proto__', 'toString', 'hasOwnProperty', 'valueOf'];
+    bad.forEach(function (name) {
+      var s = explorer();
+      s.travel.provinceId = name;
+      s.journey.effects.push({ id: 'e1', name: 'Odd', text: '', who: name, whoName: name, from: 'X', day: 1, until: 'dm', untilDay: null });
+      s.journey.blessing = { id: 'x', rite: name, expedition: 1, used: false };
+      s.journey.expedition = { n: 1, active: true, startedDay: 2, who: name };
+      var b = bastion();
+      b.diplomaticRecords = { next: 1, list: [{ id: 'd', title: 'Odd', status: 'confirmed', consequences: [{ id: 'c', kind: name, clan: '', text: 'x' }] }] };
+      var r;
+      try { r = sum(s, b); } catch (err) { t.ok(false, name + ' threw: ' + err.message); return; }
+      t.ok(r.effects.length === 1 && r.partyEffects.length === 1, name + ': the effect is shown, with the party\'s (it fits no hero)');
+      t.same(r.rite, { name: 'A Great Rite', used: false }, name + ': not one of the rites, so it is just "a Great Rite" (not the function of that name)');
+      t.equal(r.region, null, name + ': not a region');
+      t.same(r.trackedAnywhere, [], name + ': not an agreement kind');
+      t.same(r.heroes.map(function (h) { return h.effects.length; }), [0, 0, 0, 0, 0], name + ': no hero was given it');
+    });
+    var tok = explorer();
+    tok.tokens[0].id = '__proto__';
+    tok.journey.effects.push({ id: 'e2', name: 'Fine', text: '', who: '__proto__', whoName: 'Kaelen', from: 'X', day: 1, until: 'dm', untilDay: null });
+    t.equal(sum(tok, null).heroes[0].effects.length, 1, 'a hero whose id is a plain name like that still gets their own');
   });
 
   test('odd values are kept within the Bastion\'s own limits', function (t) {

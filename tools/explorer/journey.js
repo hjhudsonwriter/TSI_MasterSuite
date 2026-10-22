@@ -55,7 +55,7 @@
 
   /* ---------- The journey record ---------- */
   J.empty = function () {
-    return { gold: 0, effects: [], threads: [], used: { travel: [], camp: [] }, lastTravelDay: 0, rolledDay: 0, tonight: null, current: null, log: [], seq: 0, outbox: [], inventory: [], expedition: { n: 0, active: false, startedDay: 0, endedDay: 0 }, blessing: null, ritesTaken: [] };
+    return { gold: 0, effects: [], threads: [], used: { travel: [], camp: [] }, lastTravelDay: 0, rolledDay: 0, tonight: null, current: null, log: [], seq: 0, outbox: [], inventory: [], expedition: { v: 2, n: 0, active: false, startedDay: 0, endedDay: null }, blessing: null, ritesTaken: [] };
   };
 
   /* The link's shared rules (shared/js/bridge-rules.js) and the party's
@@ -196,8 +196,8 @@
     j.outbox = (Array.isArray(saved.outbox) ? saved.outbox : []).map(cleanMessage).filter(Boolean);
     /* The expedition, the Great Rite the party holds, and the rites already
        taken from the Ironbow (pull request 8b). */
-    if (isObj(saved.expedition)) j.expedition = { n: Math.max(0, int(saved.expedition.n, 0)), active: saved.expedition.active === true, startedDay: Math.max(0, int(saved.expedition.startedDay, 0)), endedDay: Math.max(0, int(saved.expedition.endedDay, 0)) };
-    if (isObj(saved.blessing) && str(saved.blessing.id) && rites()[saved.blessing.rite]) {
+    if (isObj(saved.expedition)) j.expedition = TSI.campaign.cleanExpedition(saved.expedition, j.log);
+    if (isObj(saved.blessing) && str(saved.blessing.id) && J.riteInfo(saved.blessing.rite)) {
       j.blessing = { id: saved.blessing.id, rite: saved.blessing.rite, expedition: Math.max(0, int(saved.blessing.expedition, 0)), used: saved.blessing.used === true };
     }
     j.ritesTaken = strList(saved.ritesTaken);
@@ -1142,23 +1142,27 @@
      A tagged check (journey-events.js) offers the charms that fit it, once
      a step, and the DM still rolls. Nothing changes a hero's sheet. */
   function rites() { return (window.TSI_DATA && window.TSI_DATA.shrineRites) || {}; }
-  J.riteInfo = function (rite) { return rites()[rite] || null; };
+  /* A rite by the name a save gives (only the rites the data holds: a name
+     like "constructor" in a damaged save finds nothing). */
+  J.riteInfo = function (rite) {
+    var all = rites();
+    return typeof rite === 'string' && Object.prototype.hasOwnProperty.call(all, rite) ? all[rite] : null;
+  };
+  /* The expedition record: { v: 2, n, active, startedDay, endedDay }. Its days
+     are whole numbers that Reset Travel moves with every other day, so after
+     a reset they can be 0 or below (as a message's day can); endedDay is null
+     while one is under way and before there has been one. A record without
+     v 2 is older (days of 0 meant "not known", and an ended expedition had no
+     end day): TSI.campaign.cleanExpedition reads it, taking the end day from
+     the journey log's "Expedition N ended on Day D." line while that is
+     still there, and never guessing one. */
   function exped(state) {
     var j = journey(state);
-    if (!isObj(j.expedition)) j.expedition = { n: 0, active: false, startedDay: 0, endedDay: 0 };
+    if (!isObj(j.expedition)) j.expedition = TSI.campaign.cleanExpedition(null, j.log);
+    else if (j.expedition.v !== 2) j.expedition = TSI.campaign.cleanExpedition(j.expedition, j.log);
     return j.expedition;
   }
-  /* endedDay is the day the last expedition ended (0 while one is under way,
-     or before there has been one). A save from before the DM doc overhaul
-     has none; for an expedition that had already ended it is read back from
-     the journey log's "Expedition N ended on Day D." line when that is still
-     there, and left 0 (unknown) when it isn't: it is never guessed. */
-  J.expedition = function (state) {
-    var e = exped(state);
-    var ended = e.active === true ? 0 : Math.max(0, int(e.endedDay, 0));
-    if (!e.active && !ended && e.n > 0 && TSI.campaign && TSI.campaign.endedDayFromLog) ended = TSI.campaign.endedDayFromLog(journey(state).log, e.n);
-    return { n: e.n, active: e.active === true, startedDay: e.startedDay, endedDay: ended };
-  };
+  J.expedition = function (state) { var e = exped(state); return { n: e.n, active: e.active === true, startedDay: e.startedDay, endedDay: e.endedDay }; };
   /* The DM starts and ends expeditions; Make Camp and resting don't. */
   J.startExpedition = function (state) {
     var e = exped(state);
@@ -1166,7 +1170,7 @@
     e.n += 1;
     e.active = true;
     e.startedDay = day(state);
-    e.endedDay = 0;
+    e.endedDay = null;
     var line = 'Expedition ' + e.n + ' began on Day ' + e.startedDay + '.';
     logLine(state, line);
     return { ok: true, line: line };
@@ -1368,6 +1372,12 @@
     var j = journey(state);
     if (!delta) return;
     j.effects.forEach(function (e) { e.day += delta; if (e.untilDay !== null) e.untilDay += delta; });
+    /* The expedition's days move too (and can end up 0 or below). */
+    var x = exped(state);
+    if (x.n > 0) {
+      x.startedDay += delta;
+      if (isNum(x.endedDay)) x.endedDay += delta;
+    }
     j.threads.forEach(function (t) {
       t.day += delta;
       if (t.follow) { t.follow.from += delta; t.follow.to += delta; }
