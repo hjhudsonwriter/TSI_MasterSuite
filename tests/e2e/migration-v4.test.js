@@ -43,6 +43,17 @@ function heavyQuiet() {
   s.facilityLevels.beast_pen = 1;
   s.pendingOrders = s.pendingOrders.filter(o => !old.includes(o.facId));
   s.creatures.forEach(c => { if (c.status === 'housed') c.home = 'beast_pen'; });
+  /* ... and whose three Shrines are already the Temple (S11): the first built Shrine's slot is the Temple, the other two are free, the Upgrade, the two prayers and the Aquatic Protection Charm are cancelled (its 5% of Pelagos's Favour and its 3 portions of Alchemical Flowers are back), and the salve and the Great Rite are at the Temple. */
+  const shrines = ['shrine_telluria', 'shrine_aurush', 'shrine_pelagos'];
+  const first = s.builtExtras.findIndex(e => e && shrines.includes(e.facId) && e.status === 'built');
+  s.builtExtras = s.builtExtras.map(e => (e && shrines.includes(e.facId) ? '' : e));
+  s.builtExtras[first] = { facId: 'temple', status: 'built' };
+  shrines.forEach(id => { delete s.facilityLevels[id]; });
+  s.facilityLevels.temple = 1;
+  s.pendingOrders = s.pendingOrders.filter(o => !['hv-17', 'hv-18', 'hv-19', 'hv-21'].includes(o.id));
+  s.pendingOrders.filter(o => shrines.includes(o.facId)).forEach(o => { o.facId = 'temple'; });
+  s.favour.pelagos += 5;
+  s.warehouse.push({ id: 'returned-alchemical_flowers', goodId: 'alchemical_flowers', item: 'Alchemical Flowers', qty: 3, gp: '', notes: 'Returned' });
   return s;
 }
 function plain() {
@@ -167,7 +178,7 @@ const writeLog = page => page.evaluate(() => window.__writes.slice());
       const s = await st(page);
       equal(s.v, 4);
       equal(s.treasuryGP, 2270, '2,000 gp, the 120 gp the Old Mill\'s order cost and the 150 gp Riding Harness');
-      equal(s.pendingOrders.length, 27, 'the 28 orders the Bastion knows, less the harness; the Old Mill\'s is cancelled');
+      equal(s.pendingOrders.length, 23, 'the 28 orders the Bastion knows, less the harness, the Shrines\' Upgrade, two prayers and Aquatic Protection Charm (the Old Mill\'s is cancelled too)');
       equal(s.migration.v4.shown, false);
       equal('lastEvent' in s || 'lastEventDay' in s, false, 'the Bastion keeps no event record any more (S05)');
     });
@@ -177,16 +188,19 @@ const writeLog = page => page.evaluate(() => window.__writes.slice());
       assert(text.indexOf('The Bastion has changed. Here is exactly what happened to yours.') !== -1, text);
       assert(/Gold\. 270 gp went back into the treasury \(on Day 40 it went from 2,000 gp to 2,270 gp\): Dire Wolf Den: Riding Harness \(Ashfang\), 150 gp; Old Mill: Grind Grain, 120 gp\./.test(text), text);
       equal(await bare(page, '[data-test=changes-now]'), 'Right now the treasury holds 2,270 gp.', 'the balance as it is now is worked out live, on the first reading only');
-      assert(/Goods\. 3 lots of Raw Timber went back to the Warehouse\./.test(text), text);
-      assert(/Orders\. 2 orders were cancelled: Dire Wolf Den: Riding Harness \(Ashfang\) \(training and riding are gone: beasts now bond day by day on the road\); Old Mill: Grind Grain \(the Old Mill is no longer part of the Bastion\)\. One order moved with its place, keeping its due day: Wyvern Roost: House a Wyvern \(Skyrender\) \(now at the Beast Pen\)\./.test(text), text);
+      assert(/Favour\. Pelagos: 5% went back to the bar \(on Day 40 it went from 40% to 45%\)\./.test(text), text);
+      assert(/Goods\. 3 portions of Alchemical Flowers and 3 lots of Raw Timber went back to the Warehouse\./.test(text), text);
+      assert(/Orders\. The Temple keeps three blessings for each god; .* gave back what they cost\. 6 orders were cancelled: Dire Wolf Den: Riding Harness \(Ashfang\) \(training and riding are gone: beasts now bond day by day on the road\); Shrine of Pelagos: Upgrade to Level 6 \(the Temple has one level only, so there is nothing to upgrade\); Shrine of Telluria: Pray \(Telluria's Blessing\) \(praying at the Temple is instant now, so this one-day prayer ended without its roll\); Shrine of Pelagos: Pray \(Pelagos's Tidings\) \(the Temple's hint and long-rest prayers are gone; Pray to Pelagos is instant and adds to the Favour bar\); Shrine of Pelagos: Prepare Aquatic Protection Charm \(1 Aquatic Protection Charm\) \(the Temple gives three blessings for each god, and this is not one of Pelagos's\); Old Mill: Grind Grain \(the Old Mill is no longer part of the Bastion\)\. 3 orders moved with their places, keeping their due days: Wyvern Roost: House a Wyvern \(Skyrender\) \(now at the Beast Pen\); Shrine of Telluria: Prepare Rootguard Salve \(2 doses of Rootguard Salve\) \(now at the Temple\); Shrine of Pelagos: Great Rite of Pelagos \(now at the Temple\)\./.test(text), text);
       assert(/Places that joined others\. The Wyvern Roost, Griffin Tower and Dire Wolf Den have become one Beast Pen\. It keeps one beast of each kind: a wyvern, a griffin, a dire wolf, a buckbear and a fellcat\. The other slots are free\./.test(text), text);
       assert(/Beasts\. All 4 of your beasts are still here, with their names, handlers, bonds and Chronicles: Elara's wyvern, Swiftwing, Ashfang and Skyrender\./.test(text), text);
       assert(/Places that are gone\. The Old Mill is no longer part of the Bastion; its slot is free\./.test(text), text);
       assert(/Bastion events\. The Bastion no longer has events, so the last one it rolled \(Friendly Visitors, Day 29\) is not kept\. It was only a note for you; nothing in it changed the Bastion's numbers\./.test(text), text);
       assert(/A copy of your Bastion exactly as it was is kept in "Back up everything"/.test(text), text);
-      assert(!/undefined|null|NaN|old_mill|\[object/.test(text), 'no code words');
-      equal(await page.$$eval('[data-test=changes-line]', n => n.length), 7);
-      equal(await page.$$eval('[data-test=changes-line] strong', n => n.map(x => x.textContent)), ['Gold.', 'Goods.', 'Orders.', 'Places that are gone.', 'Places that joined others.', 'Beasts.', 'Bastion events.']);
+      assert(/The Shrine of Telluria, the Shrine of Aurush and the Shrine of Pelagos have become one Temple\./.test(text), text);
+      assert(/Your Favour bars carry over as they are, and what you already hold is kept: one Great Rite \(Cleansing Radiance\) and one Blessing of Pelagos for the Dock\./.test(text), text);
+      assert(!/undefined|null|NaN|old_mill|shrine_|\[object/.test(text), 'no code words');
+      equal(await page.$$eval('[data-test=changes-line]', n => n.length), 8);
+      equal(await page.$$eval('[data-test=changes-line] strong', n => n.map(x => x.textContent)), ['Gold.', 'Favour.', 'Goods.', 'Orders.', 'Places that are gone.', 'Places that joined others.', 'Beasts.', 'Bastion events.']);
       equal(await page.textContent('[data-test=changes-ok]'), 'I\'ve read this');
       equal(await page.isVisible('[data-test=changes-save]'), true);
       await H.shot(page, 'migration-box');
@@ -267,7 +281,7 @@ const writeLog = page => page.evaluate(() => window.__writes.slice());
       await page.evaluate(() => TSI.bastion.debug.change(s => { s.treasuryGP = 9999; }));
       await page.click('[data-test=open-management]');
       await page.waitForSelector('[data-test=changes-row]');
-      assert(/The Bastion's change of 22 October 2026 \(Day 40\): 270 gp went back into the treasury; 2 orders were cancelled/.test(await bare(page, '[data-test=changes-row]')), await bare(page, '[data-test=changes-row]'));
+      assert(/The Bastion's change of 22 October 2026 \(Day 40\): 270 gp went back into the treasury; 6 orders were cancelled/.test(await bare(page, '[data-test=changes-row]')), await bare(page, '[data-test=changes-row]'));
       await page.click('[data-test=show-changes]');
       await page.waitForSelector('[data-test=changes-box]');
       const text = await bare(page, '[data-test=changes-box]');
@@ -291,12 +305,12 @@ const writeLog = page => page.evaluate(() => window.__writes.slice());
     const { context, page } = await seeded(browser, 'laptop', heavyQuiet());
     await openBastion(page);
 
-    await check('the heavy Bastion (with no event ever rolled) needs nothing taken out yet, so the box is one line, and nothing is lost: 26 orders, 4 beasts, 200 log lines, 2,000 gp', async () => {
+    await check('the heavy Bastion (with no event ever rolled) needs nothing taken out yet, so the box is one line, and nothing is lost: 22 orders, 4 beasts, 200 log lines, 2,000 gp', async () => {
       await page.waitForSelector('[data-test=changes-box]');
       equal(await page.textContent('.tsi-modal__title'), 'The Bastion has been updated; nothing of yours changed.');
       equal(await page.$$eval('[data-test=changes-line]', n => n.length), 0);
       const s = await st(page);
-      equal([s.v, s.treasuryGP, s.pendingOrders.length, s.creatures.length, s.log.length, s.migration.v4.changed, s.migration.v4.summary], [4, 2000, 26, 4, 200, false, 'Nothing of yours changed.']);
+      equal([s.v, s.treasuryGP, s.pendingOrders.length, s.creatures.length, s.log.length, s.migration.v4.changed, s.migration.v4.summary], [4, 2000, 22, 4, 200, false, 'Nothing of yours changed.']);
       await page.waitForFunction(() => TSI.store.keys('quarantine').some(k => k.indexOf('tsi.quarantine.bastion.state') === 0));
     });
 
@@ -345,7 +359,7 @@ const writeLog = page => page.evaluate(() => window.__writes.slice());
       assert(/An older copy of the suite had saved over your Bastion, so it was converted again\. Nothing was lost\./.test(text), text);
       assert(/Gold\. 45 gp went back into the treasury/.test(text), text);
       const s = await st(page);
-      equal([s.treasuryGP, s.pendingOrders.length, s.migration.v4.again, s.migration.v4.shown], [2045, 26, true, false]);
+      equal([s.treasuryGP, s.pendingOrders.length, s.migration.v4.again, s.migration.v4.shown], [2045, 22, true, false]);
       await page.waitForFunction(() => TSI.store.keys('quarantine').length === 1);
       await H.ackChanges(page);
     });
