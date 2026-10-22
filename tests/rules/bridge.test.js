@@ -1001,7 +1001,7 @@
     t.equal(only[0].type, 'warn');
     t.equal(only[0].message, all[1].message, 'in the same words');
     var other = BR.settledNotices(res, { problemsOnly: true, suffix: '-8' });
-    t.notEqual ? t.notEqual(other[0].id, only[0].id) : t.ok(other[0].id !== only[0].id, 'another settling, another id');
+    t.ok(other[0].id !== only[0].id, 'another settling, another id');
     var f = BR.defaultState(bdata);
     BR.anchor(f, 4);
     var skipped = BR.settledNotices(BR.applyInbox(f, bdata, exWith([msg()]), 1000), { problemsOnly: true, suffix: '-2' });
