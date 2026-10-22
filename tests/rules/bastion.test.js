@@ -1476,14 +1476,15 @@
     stock(s, goods);
     return s;
   }
-  test('both are plain Timber Yard-style trade facilities: Level 5, a Development Plot, one production order at a time, no gold', function (t) {
+  test('both are plain Timber Yard-style trade facilities: Level 5, a Development Plot, one production order at a time, no gold, each level replacing the last, no goods needed', function (t) {
     ['stone_masonworks', 'weavers_hall'].forEach(function (id) {
       var f = R.facility(data, id);
-      t.same([f.requiredLevel, f.plot, f.productionLimit, !!f.inDevelopment], [5, true, 1, false], id);
+      t.same([f.requiredLevel, f.plot, f.productionLimit, f.levelOrders, !!f.inDevelopment], [5, true, 1, 'replace', false], id);
       t.same(f.functions.map(function (fn) { return [fn.days, fn.requiredFacilityLevel, fn.costGP]; }), [[4, 1, 0], [4, 2, 0], [5, 3, 0], [7, 4, 0], [9, 5, 0], [8, 5, 0]], id);
       f.functions.forEach(function (fn) {
         fn.options.forEach(function (o) {
-          (o.inputs || []).concat(o.outputs).forEach(function (x) { t.ok(T.bastionGoods.goods.some(function (g) { return g.id === x.good; }), id + ' uses a real good: ' + x.good); });
+          t.equal(o.inputs, undefined, id + ' ' + fn.id + ' takes nothing from the Warehouse (Strip Back Overhaul, S04: orders are self-contained)');
+          o.outputs.forEach(function (x) { t.ok(T.bastionGoods.goods.some(function (g) { return g.id === x.good; }), id + ' makes a real good: ' + x.good); });
         });
       });
     });
@@ -1500,40 +1501,37 @@
     });
     t.ok(R.startBuild(s, data, 0, 'stone_masonworks', 'plot').ok);
   });
-  test('extracting needs nothing and the processing orders take their inputs from the Warehouse when they start', function (t) {
-    var s = stoneStock(3, 'stone_masonworks', []);
-    var r = R.issueOrder(s, data, 'stone_masonworks', 'extract_raw_stone', 0, dice([0.3]));
+  test('every Stone order works on its own: with an empty Warehouse the Level 2 order starts and takes nothing; one production order at a time', function (t) {
+    var s = stoneStock(2, 'stone_masonworks', []);
+    var r = R.issueOrder(s, data, 'stone_masonworks', 'produce_dressed_stone', 0, dice([0.3]));
     t.equal(r.ok, true, r.message);
-    s = stoneStock(3, 'stone_masonworks', []);
-    t.ok(/Needs 1 lot of Raw Stone in the Warehouse; it has 0 lots\./.test(R.issueOrder(s, data, 'stone_masonworks', 'produce_dressed_stone', 0, dice([0.3])).message));
-    s = stoneStock(3, 'stone_masonworks', [['raw_stone', 2]]);
-    r = R.issueOrder(s, data, 'stone_masonworks', 'produce_dressed_stone', 0, dice([0.3]));
-    t.equal(r.ok, true, r.message);
-    t.equal(R.goodsQty(s, 'raw_stone'), 1, 'one lot consumed at the start, not two');
+    t.same(r.log, ['Order Issued', 'Stone Quarry & Masonworks: Produce Dressed Stone (4 days: due Day 14).'], 'no "Taken from the Warehouse" part');
+    t.equal(s.pendingOrders[0].inputs, undefined, 'it holds nothing');
+    t.equal(s.warehouse.length, 0, 'the Warehouse was not touched');
     t.equal(R.issueOrder(s, data, 'stone_masonworks', 'produce_dressed_stone', 0, dice([0.3])).ok, false, 'one production order at a time');
+    s = stoneStock(2, 'stone_masonworks', [['raw_stone', 2]]);
+    t.equal(R.issueOrder(s, data, 'stone_masonworks', 'produce_dressed_stone', 0, dice([0.3])).ok, true);
+    t.equal(R.goodsQty(s, 'raw_stone'), 2, 'goods already in the Warehouse are left alone, not used up');
   });
-  test('a finished order puts real, counted goods in the Warehouse (bulk processing: 3 raw to 3 dressed; improved garments: 2 textiles to 2 garments)', function (t) {
+  test('a finished order puts real, counted goods in the Warehouse and uses nothing up (bulk processing: 3 dressed; improved garments: 2 garments)', function (t) {
     var s = stoneStock(5, 'stone_masonworks', []);
-    stock(s, [['raw_stone', 3]]);
-    t.equal(R.issueOrder(s, data, 'stone_masonworks', 'bulk_stone_processing', 0, dice([0.3])).ok, true);
-    t.equal(R.goodsQty(s, 'raw_stone'), 0, 'three lots taken at the start');
+    t.equal(R.issueOrder(s, data, 'stone_masonworks', 'bulk_stone_processing', 0, dice([0.3])).ok, true, 'an empty Warehouse is enough');
     var o = s.pendingOrders[0];
     t.equal(o.dueDay, s.day + 8);
     finish(s, o);
-    t.same([R.goodsQty(s, 'raw_stone'), R.goodsQty(s, 'dressed_stone')], [0, 3], 'used up, never given back on completion');
+    t.same([R.goodsQty(s, 'raw_stone'), R.goodsQty(s, 'dressed_stone')], [0, 3]);
     var w = stoneStock(4, 'weavers_hall', []);
-    stock(w, [['ordinary_textiles', 2]]);
     t.equal(R.issueOrder(w, data, 'weavers_hall', 'improved_specialist_garment_production', 0, dice([0.3])).ok, true);
-    t.equal(R.goodsQty(w, 'ordinary_textiles'), 0, 'two lots taken');
     t.equal(w.pendingOrders[0].dueDay, w.day + 7);
     finish(w, w.pendingOrders[0]);
-    t.equal(R.goodsQty(w, 'specialist_garments'), 2);
+    t.same([R.goodsQty(w, 'ordinary_textiles'), R.goodsQty(w, 'specialist_garments')], [0, 2]);
   });
-  test('upgrade levels follow the orders: Level 2 unlocks the second order, and so on', function (t) {
-    var s = stoneStock(1, 'weavers_hall', [['ordinary_textiles', 1]]);
-    t.equal(R.issueOrder(s, data, 'weavers_hall', 'produce_sailcloth', 0, dice([0.3])).message, 'Needs Level 2.');
+  test('upgrade levels replace the orders: Weavers\' Level 1 order is gone at Level 2, and the Level 2 order is refused until then', function (t) {
+    var s = stoneStock(1, 'weavers_hall', []);
+    t.equal(R.issueOrder(s, data, 'weavers_hall', 'produce_sailcloth', 0, dice([0.3])).message, 'That order belongs to Level 2.');
     s.facilityLevels.weavers_hall = 2;
-    t.equal(R.issueOrder(s, data, 'weavers_hall', 'produce_sailcloth', 0, dice([0.3])).ok, true);
+    t.equal(R.issueOrder(s, data, 'weavers_hall', 'produce_ordinary_textiles', 0, dice([0.3])).message, 'That order belongs to Level 1.', 'Level 1\'s order is replaced');
+    t.equal(R.issueOrder(s, data, 'weavers_hall', 'produce_sailcloth', 0, dice([0.3])).ok, true, 'with an empty Warehouse');
   });
 
   group('Bastion: Development Plots (pull request 3, 13 October 2026)');
@@ -1705,58 +1703,77 @@
     t.same(R.readGoodsRow({ qty: '-4', notes: ' kept ' }), { qty: 0, notes: 'kept' });
   });
 
-  test('the Timber Yard: orders open by its level; one production order at a time; inputs taken when it begins', function (t) {
+  test('the Timber Yard: each level offers only its own order (it replaces the last); one production order at a time, even across an upgrade; nothing is taken from the Warehouse', function (t) {
     var s = plots(9, ['timber_sawmill']);
-    t.equal(R.issueOrder(s, data, 'timber_sawmill', 'saw_lumber', 0, dice([0.3])).message, 'Needs Level 2.');
-    s.facilityLevels.timber_sawmill = 2;
-    t.equal(R.issueOrder(s, data, 'timber_sawmill', 'saw_lumber', 0, dice([0.3])).message, 'Needs 1 lot of Raw Timber in the Warehouse; it has 0 lots.');
+    t.equal(R.issueOrder(s, data, 'timber_sawmill', 'saw_lumber', 0, dice([0.3])).message, 'That order belongs to Level 2.');
     var r = R.issueOrder(s, data, 'timber_sawmill', 'harvest_timber', 0, dice([0.3]));
     t.same(r.log, ['Order Issued', 'Timber Yard & Sawmill: Harvest Timber (4 days: due Day 14).']);
-    stock(s, [['raw_timber', 1]]);
+    t.equal(R.issueUpgrade(s, data, 'timber_sawmill', dice([0.7])).ok, true, 'an upgrade isn\'t a production order');
+    var up = s.pendingOrders.filter(function (x) { return x.fnId === 'upgrade'; })[0];
+    /* The upgrade completes while Harvest Timber is still pending: Level 2, so Harvest Timber is replaced... */
+    finish(s, up);
+    t.equal(R.getFacilityLevel(s, 'timber_sawmill'), 2);
+    t.equal(R.issueOrder(s, data, 'timber_sawmill', 'harvest_timber', 0, dice([0.3])).message, 'That order belongs to Level 1.');
+    /* ...but the order already running still counts, and still finishes. */
     t.equal(R.issueOrder(s, data, 'timber_sawmill', 'saw_lumber', 0, dice([0.3])).message, 'The Timber Yard & Sawmill is busy: one production order at a time (Timber Yard & Sawmill: Harvest Timber, due on Day 14).');
-    t.equal(R.issueUpgrade(s, data, 'timber_sawmill', dice([0.3])).ok, true, 'an upgrade isn\'t a production order');
     var o = s.pendingOrders.filter(function (x) { return x.fnId === 'harvest_timber'; })[0];
     t.same(finish(s, o), [['Order Completed', 'Timber Yard & Sawmill: Harvest Timber → Added to Warehouse: 1 lot of Raw Timber.']]);
-    t.equal(R.goodsQty(s, 'raw_timber'), 2);
-    r = R.issueOrder(s, data, 'timber_sawmill', 'saw_lumber', 0, dice([0.3]));
-    t.same(r.log, ['Order Issued', 'Timber Yard & Sawmill: Saw Lumber (4 days: due Day 14). Taken from the Warehouse: 1 lot of Raw Timber.']);
     t.equal(R.goodsQty(s, 'raw_timber'), 1);
+    r = R.issueOrder(s, data, 'timber_sawmill', 'saw_lumber', 0, dice([0.3]));
+    t.same(r.log, ['Order Issued', 'Timber Yard & Sawmill: Saw Lumber (4 days: due Day 14).'], 'no "Taken from the Warehouse"');
     o = s.pendingOrders.filter(function (x) { return x.fnId === 'saw_lumber'; })[0];
-    t.same(o.inputs, [{ goodId: 'raw_timber', name: 'Raw Timber', qty: 1 }]);
+    t.equal(o.inputs, undefined);
     finish(s, o);
-    t.same([R.goodsQty(s, 'raw_timber'), R.goodsQty(s, 'sawn_lumber')], [1, 1], 'used up, never given back on completion');
+    t.same([R.goodsQty(s, 'raw_timber'), R.goodsQty(s, 'sawn_lumber')], [1, 1], 'the Raw Timber is left alone');
   });
 
-  test('cancelling gives held goods back once; demolishing gives them back; an order whose facility is gone gives them back', function (t) {
-    var s = stock(plots(9, ['timber_sawmill']), [['raw_timber', 1]]);
-    s.facilityLevels.timber_sawmill = 2;
-    R.issueOrder(s, data, 'timber_sawmill', 'saw_lumber', 0, dice([0.3]));
+  test('cancelling gives held goods back once; demolishing gives them back; an order whose facility is gone gives them back (the Herbal Gardens still uses goods)', function (t) {
+    var s = stock(plots(9, ['herbal_gardens']), [['restorative_herbs', 10]]);
+    s.facilityLevels.herbal_gardens = 3;
+    var r = R.issueOrder(s, data, 'herbal_gardens', 'field_medical_supplies', 1, dice([0.3]));
+    t.equal(r.ok, true, r.message);
+    t.equal(R.goodsQty(s, 'restorative_herbs'), 0, 'taken when it begins');
     var id = s.pendingOrders[0].id;
-    t.same(R.cancelOrder(s, id, data, 10), ['Orders', 'Cancelled Timber Yard & Sawmill: Saw Lumber. 1 lot of Raw Timber went back to the Warehouse.']);
+    var back = R.cancelOrder(s, id, data, 10);
+    t.equal(back[0], 'Orders');
+    t.ok(/10 portions of Restorative Herbs went back to the Warehouse\.$/.test(back[1]), back[1]);
     t.same(R.cancelOrder(s, id, data, 10), ['Orders', 'Cancelled an order.'], 'a second Cancel gives nothing');
-    t.equal(R.goodsQty(s, 'raw_timber'), 1);
-    R.issueOrder(s, data, 'timber_sawmill', 'saw_lumber', 0, dice([0.3]));
-    var d = R.demolishFacility(s, data, 'timber_sawmill');
-    t.equal(d.log[1], 'The Timber Yard & Sawmill was demolished; its plot is free. Cancelled: Timber Yard & Sawmill: Saw Lumber. 1 lot of Raw Timber went back to the Warehouse.');
-    t.equal(R.goodsQty(s, 'raw_timber'), 1);
+    t.equal(R.goodsQty(s, 'restorative_herbs'), 10);
+    R.issueOrder(s, data, 'herbal_gardens', 'field_medical_supplies', 1, dice([0.3]));
+    var d = R.demolishFacility(s, data, 'herbal_gardens');
+    t.ok(/^The Herbal Gardens was demolished; its plot is free\. Cancelled: .*10 portions of Restorative Herbs went back to the Warehouse\.$/.test(d.log[1]), d.log[1]);
+    t.equal(R.goodsQty(s, 'restorative_herbs'), 10);
     var lost = { id: 'x', facId: 'old_mill', fnId: 'grind', label: 'Old Mill: Grind', inputs: [{ goodId: 'raw_timber', name: 'Raw Timber', qty: 2 }], dueDay: 10 };
     t.equal(R.orderKind(data, lost), 'none');
     t.same(R.dropOrderGoods(s, data, lost), [['Orders', 'Old Mill: Grind couldn\'t be completed (its facility or order no longer exists). 2 lots of Raw Timber went back to the Warehouse.']]);
-    t.equal(R.goodsQty(s, 'raw_timber'), 3);
+    t.equal(R.goodsQty(s, 'raw_timber'), 2);
     t.equal(R.dropOrderGoods(s, data, { id: 'y', facId: 'old_mill' }), null, 'nothing held, nothing said');
   });
 
-  test('the Fishery: fish, smoked fish, provision packs; Level 5\'s bulk orders make three', function (t) {
+  test('the Timber Yard: Cancel after the upgrade gives nothing extra back (no goods were held) and frees the slot for the new level\'s order', function (t) {
+    var s = plots(9, ['timber_sawmill']);
+    order(s, 'timber_sawmill', 'harvest_timber', 0);
+    s.facilityLevels.timber_sawmill = 2;
+    var held = JSON.stringify(s.warehouse);
+    t.equal(R.issueOrder(s, data, 'timber_sawmill', 'saw_lumber', 0, dice([0.3])).ok, false, 'busy while Harvest Timber is pending');
+    t.same(R.cancelOrder(s, s.pendingOrders[0].id, data, 10), ['Orders', 'Cancelled an order.'], 'nothing came back');
+    t.equal(JSON.stringify(s.warehouse), held, 'the Warehouse is as it was');
+    t.equal(R.issueOrder(s, data, 'timber_sawmill', 'saw_lumber', 0, dice([0.3])).ok, true, 'the slot is free');
+  });
+
+  test('the Fishery: each level\'s order on its own (fish, smoked fish, provision packs); Level 5\'s two bulk orders make three and use nothing', function (t) {
     var s = plots(9, ['fishery_smokehouse']);
+    s.facilityLevels.fishery_smokehouse = 3;
+    finish(s, order(s, 'fishery_smokehouse', 'prepare_expedition_provisions', 0));
+    t.same([R.goodsQty(s, 'preserved_fish'), R.goodsQty(s, 'expedition_provision_pack')], [0, 5], 'five packs from an empty Warehouse');
     s.facilityLevels.fishery_smokehouse = 5;
+    t.equal(R.issueOrder(s, data, 'fishery_smokehouse', 'prepare_expedition_provisions', 0, dice([0.3])).message, 'That order belongs to Level 3.');
     finish(s, order(s, 'fishery_smokehouse', 'commercial_fishing_fleet', 0));
     t.equal(R.goodsQty(s, 'fresh_fish'), 3);
     var o = order(s, 'fishery_smokehouse', 'bulk_smokehouse_production', 0);
     t.equal(o.dueDay, 17, '7 days');
     finish(s, o);
-    t.same([R.goodsQty(s, 'fresh_fish'), R.goodsQty(s, 'preserved_fish')], [0, 3]);
-    finish(s, order(s, 'fishery_smokehouse', 'prepare_expedition_provisions', 0));
-    t.same([R.goodsQty(s, 'preserved_fish'), R.goodsQty(s, 'expedition_provision_pack')], [2, 5]);
+    t.same([R.goodsQty(s, 'fresh_fish'), R.goodsQty(s, 'preserved_fish')], [3, 3], 'the Fresh Fish is not used up');
   });
 
   test('the Library & Scriptorium (Harry, 14 October 2026): Prepare Overland Travel Charts at Level 2 makes 1 Overland chart in 4 days, no gold; one at a time, beside scripture Research', function (t) {
