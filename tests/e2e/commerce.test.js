@@ -2,7 +2,7 @@
    overhaul, Harry's answers of 14 October 2026), clicked through from a
    double-clicked index.html with the internet off:
    - the DM grants a Port Charter in the Explorer; the Bastion holds it once
-     (a notice, Clan Influence, the Hall's Port Charters box) and the
+     (a notice, Management's Changes from the Explorer, the Hall's Port Charters box) and the
      Explorer says Applied;
    - the Hall's Register Port Charter order (Level 1, 3 days) registers it;
    - the Dock's Ship cargo… sends real Warehouse lots (Fresh Fish only
@@ -137,14 +137,14 @@ async function closePanel(ba) {
     equal(out.map(m => [m.type, m.port, m.clan, m.text]), [['charter', 'goldport', 'molten', 'Port Charter for Goldport (Clan Molten): Cleared the wreckers']]);
   });
 
-  await check('within a few seconds the Bastion holds it: a Port Charter notice, the Hall\'s box and Clan Influence', async () => {
+  await check('within a few seconds the Bastion holds it: a Port Charter notice, the Hall\'s box and Management\'s Changes from the Explorer', async () => {
     await ba.waitForFunction(() => TSI.bastion.debug.state().tradeNetwork.portCharters.length === 1, null, { timeout: 8000 });
     await H.waitForNotice(ba, /Port Charter for Goldport \(Clan Molten\) \(DM, Day 1\): the Bastion now holds it\. Register it at the Hall of Emissaries before the Dock ships cargo there/);
     const s = await bas(ba);
     equal([s.tradeNetwork.portCharters[0].status, s.tradeNetwork.portCharters[0].port], ['earned', 'goldport']);
-    await ba.click('[data-test=open-influence]');
-    await ba.waitForSelector('[data-test=bridge-row]');
-    assert(/Port Charter: Goldport \(Clan Molten\) · Day 1/.test(await bare(ba, '[data-test=bridge-row]')), await bare(ba, '[data-test=bridge-row]'));
+    await ba.click('[data-test=open-management]');
+    await ba.waitForSelector('[data-test=explorer-change]');
+    assert(/Port Charter: Goldport \(Clan Molten\) · Day 1/.test(await bare(ba, '[data-test=explorer-change]')), await bare(ba, '[data-test=explorer-change]'));
     await closePanel(ba);
   });
 

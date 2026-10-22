@@ -1525,6 +1525,23 @@
 .tsi-page--bastion .tsi-bas-influence__logwhy { color: var(--tsi-text-muted); font-size: 14px; }
 .tsi-page--bastion .tsi-bas-asset.tsi-bas-bridge { grid-template-columns: minmax(0, 1fr); }
 
+/* ---------- Management: changes from the Explorer (Strip Back Overhaul, S02) ---------- */
+.tsi-page--bastion .tsi-bas-xchanges__list { display: flex; flex-direction: column; gap: 6px; }
+.tsi-page--bastion .tsi-bas-xchange {
+  padding: 6px 10px;
+  border-radius: var(--tsi-radius-md);
+  border: 1px solid var(--tsi-line-faint);
+  background: rgba(0, 0, 0, .22);
+  font-size: var(--tsi-fs-body-sm);
+  line-height: 1.35;
+}
+.tsi-page--bastion .tsi-bas-xchange__head strong { color: var(--tsi-gold-text); }
+.tsi-page--bastion .tsi-bas-xchange--skipped .tsi-bas-xchange__head strong { color: var(--tsi-warn); }
+.tsi-page--bastion .tsi-bas-xchange--refused .tsi-bas-xchange__head strong { color: var(--tsi-danger); }
+.tsi-page--bastion .tsi-bas-xchange__text { color: var(--tsi-text); overflow-wrap: anywhere; }
+.tsi-page--bastion .tsi-bas-xchange__why { color: var(--tsi-text-muted); font-size: 14px; }
+.tsi-page--bastion .tsi-bas-xchanges > .tsi-btn { align-self: flex-start; }
+
 /* ---------- The War Room's regiments (pull request 8a) ---------- */
 .tsi-page--bastion .tsi-bas-tag {
   display: inline-block; padding: 0 0.5em; border: 1px solid var(--tsi-gold-deep); border-radius: 999px;

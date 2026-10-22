@@ -372,7 +372,7 @@ async function panelFits(ba) {
     await closeAll(ex);
   });
 
-  await check('the Bastion closes the parcel once, with a notice and "Parcel collected: Slade’s Muster" in Clan Influence; the Explorer says Applied', async () => {
+  await check('the Bastion closes the parcel once, with a notice and "Parcel collected: Slade’s Muster" in Management\'s Changes from the Explorer; the Explorer says Applied', async () => {
     await ba.waitForFunction(() => TSI.bastion.debug.state().tradeNetwork.parcels[0].status === 'collected', null, { timeout: 8000 });
     await H.waitForNotice(ba, /Collected at Slade’s Muster: 3 Expedition Provision Packs, 1 Overland chart[^.]* \(from the Explorer\)\./);
     const s = await bas(ba);
@@ -382,9 +382,9 @@ async function panelFits(ba) {
     await openCourier(ba);
     assert(/^Collected at Slade’s Muster on Day 24 · 3 Expedition Provision Packs/.test(await bare(ba, '[data-test=parcels-closed] [data-test=parcel]')), await bare(ba, '[data-test=parcels-closed]'));
     await closeAll(ba);
-    await ba.click('[data-test=open-influence]');
-    await ba.waitForSelector('[data-test=bridge-row]');
-    assert(/Parcel collected: Slade’s Muster/.test(await bare(ba, '[data-test=bridge-row]')), await bare(ba, '[data-test=bridge-row]'));
+    await ba.click('[data-test=open-management]');
+    await ba.waitForSelector('[data-test=explorer-change]');
+    assert(/Parcel collected: Slade’s Muster/.test(await bare(ba, '[data-test=explorer-change]')), await bare(ba, '[data-test=explorer-change]'));
     await closeAll(ba);
     await ex.waitForFunction(() => document.querySelector('[data-test=sent]').getAttribute('data-status') === 'applied', null, { timeout: 8000 });
     equal(await ex.$eval('[data-test=sent] strong', n => n.textContent), 'Parcel collected: ' + SLADE);

@@ -740,4 +740,203 @@
     t.equal(bBack.honourRespectByClan.slade, 1);
     t.equal(BR.applyInbox(bBack, bdata, saved(exBack), 2000).changed, false, 'nothing twice');
   });
+
+  /* ---------------------------------------------------------------- */
+  group('Explorer link: "Changes from the Explorer" and its notices (Strip Back Overhaul, S02)');
+
+  /* A receipt as the Bastion keeps it (rules.js R.cleanBridge), with its id. */
+  function receipt(over) {
+    return Object.assign({ id: 'r-1', r: 'applied', day: 3, at: 1000, clan: 'slade', hr: 1, was: 0, now: 1, text: '', why: '' }, over || {});
+  }
+
+  test('an applied change to Honour/Respect reads as the Clan, the change and the day, with no reason and nothing to do', function (t) {
+    var s = bastion(3);
+    BR.applyInbox(s, bdata, exWith([msg({ text: 'Honour/Respect +1 with Clan Slade.' })]), 1000);
+    var c = BR.bridgeChanges(s, bdata);
+    t.equal(c.length, 1);
+    t.same(c[0], { id: msg().id, result: 'applied', kind: 'standing', head: 'Clan Slade +1 (0 → +1)', day: 3, dayText: 'Day 3', text: 'Honour/Respect +1 with Clan Slade.', why: '', tail: '' });
+    s.honourRespectByClan.slade = 5;
+    BR.applyInbox(s, bdata, exWith([msg(), msg({ id: 'bbbbbb-00000002:won:2' })]), 2000);
+    t.equal(BR.bridgeChanges(s, bdata)[0].head, 'Clan Slade: no change, already at +5', 'applied at the limit');
+  });
+
+  test('a refused change says why: the Explorer\'s own words, and no panel that is going away', function (t) {
+    var s = bastion(3);
+    BR.applyInbox(s, bdata, exWith([msg({ hr: 3 })]), 1000);
+    var c = BR.bridgeChanges(s, bdata)[0];
+    t.equal(c.result, 'refused');
+    t.equal(c.head, 'Refused: Clan Slade');
+    t.ok(/\+1 or −1/.test(c.why), c.why);
+    t.equal(c.tail, '', 'nothing to type in for a refused one');
+    t.ok(!/Clan Influence|type it in above/i.test(JSON.stringify(c)));
+  });
+
+  test('a skipped change says why and what to do, in words that name the DM doc, not Clan Influence', function (t) {
+    var s = BR.defaultState(bdata);
+    BR.anchor(s, 4);
+    BR.applyInbox(s, bdata, exWith([msg()]), 1000);
+    var c = BR.bridgeChanges(s, bdata)[0];
+    t.same([c.result, c.head, c.why], ['skipped', 'Skipped: Clan Slade', 'Sent before this Bastion started.']);
+    t.equal(c.tail, 'Use Change a score in the DM doc if it should count.');
+    t.ok(!/Clan Influence|type it in above/i.test(JSON.stringify(c)));
+  });
+
+  test('newest first, and every receipt is there (the screen shows the first few)', function (t) {
+    var s = bastion(3);
+    BR.applyInbox(s, bdata, exWith([msg()]), 1000);
+    var later = msg({ id: 'yyyyyy-00000008:won:2', clan: 'bacca' });
+    BR.applyInbox(s, bdata, exWith([msg(), later]), 2000);
+    t.same(BR.bridgeChanges(s, bdata).map(function (c) { return c.id; }), [later.id, msg().id]);
+    t.same(BR.bridgeChanges(s, bdata).map(function (c) { return c.id; }), BR.bridgeHistory(s).map(function (r) { return r.id; }), 'the same receipts as the old list reads');
+    t.same(BR.bridgeChanges(BR.defaultState(bdata), bdata), [], 'none yet');
+  });
+
+  test('the other kinds: Port Charter, parcel, creature and Great Rite, applied, held, skipped and refused', function (t) {
+    var s = bastion(3);
+    var c = function (over) { return BR.bridgeChange(s, bdata, receipt(over)); };
+    t.equal(c({ type: 'charter', port: 'goldport', clan: 'molten', held: false }).head, 'Port Charter: Goldport (Clan Molten)');
+    t.equal(c({ type: 'charter', port: 'goldport', clan: 'molten', held: true }).head, 'Port Charter: Goldport (Clan Molten) (already held)');
+    var sk = c({ type: 'charter', port: 'goldport', clan: 'molten', r: 'skipped', why: 'Sent before this Bastion started.' });
+    t.same([sk.head, sk.tail], ['Skipped: Port Charter: Goldport (Clan Molten)', 'Grant it again in the Explorer if it should count.']);
+    t.equal(c({ type: 'parcel_collected', point: 'slades_muster', clan: 'slade' }).head, 'Parcel collected: Slade’s Muster');
+    var rp = c({ type: 'parcel_collected', point: 'slades_muster', r: 'refused', why: 'That parcel isn\'t out.' });
+    t.same([rp.head, rp.why, rp.tail], ['Refused: parcel collected at Slade’s Muster', 'That parcel isn\'t out.', ''], 'a refusal has no "do it again"');
+    t.equal(c({ type: 'parcel_collected', point: 'slades_muster', r: 'skipped', why: 'x' }).tail, 'The items stay in the Travel bags.');
+    t.equal(c({ type: 'creature', species: 'griffin', name: 'Swiftwing' }).head, 'Creature granted: Griffin (Swiftwing)');
+    t.equal(c({ type: 'creature', species: 'griffin', name: 'Swiftwing', r: 'refused', why: 'x' }).head, 'Refused: creature granted, Griffin (Swiftwing)');
+    t.equal(c({ type: 'rite', rite: 'tides_passage' }).head, 'Great Rite: Tide\'s Passage went with the party');
+    t.equal(c({ type: 'rite', rite: 'tides_passage', held: true }).head, 'Great Rite: Tide\'s Passage went with the party (already marked)');
+    var rs = c({ type: 'rite', rite: 'tides_passage', r: 'skipped', why: 'Sent before this Bastion started.' });
+    t.same([rs.head, rs.tail], ['Skipped: Great Rite handover', ''], 'nothing to do for a rite');
+  });
+
+  test('a receipt an older copy stripped of its kind is still known by the Charter it made or the parcel in its id', function (t) {
+    var s = bastion(3);
+    var pickup = receipt({ id: 'abc123-1a2b3c4d:collect:0', hr: 0, was: 0, now: 0, point: 'slades_muster' });
+    t.equal(BR.bridgeChange(s, bdata, pickup).kind, 'parcel');
+    t.equal(BR.bridgeChange(s, bdata, receipt({ id: 'plain-1', hr: 1 })).kind, 'standing');
+  });
+
+  test('a skipped or refused receipt always has a reason, even if the saved one is empty; an applied one has none', function (t) {
+    var s = bastion(3);
+    t.equal(BR.bridgeChange(s, bdata, receipt({ r: 'refused', why: '' })).why, 'The Bastion couldn\'t use it, so nothing changed.');
+    t.equal(BR.bridgeChange(s, bdata, receipt({ r: 'skipped', why: '' })).why, 'The Bastion skipped it, so nothing counts twice.');
+    t.equal(BR.bridgeChange(s, bdata, receipt({ r: 'applied', why: 'left over' })).why, '', 'an applied change has nothing to explain');
+  });
+
+  test('damaged receipts are said, never thrown on, and the save is not touched', function (t) {
+    var s = bastion(3);
+    s.bridge.done.odd = 'junk';
+    s.bridge.done.odd2 = { r: 'what', hr: 'x', day: 'soon', clan: 7 };
+    var before = JSON.stringify(s);
+    var list = BR.bridgeChanges(s, bdata);
+    t.equal(list.length, 2);
+    list.forEach(function (c) {
+      t.equal(c.result, 'refused');
+      t.ok(c.why.length > 0 && c.head.length > 0);
+      t.equal(c.day, null);
+      t.equal(c.dayText, '');
+    });
+    t.equal(BR.bridgeChange(s, bdata, null).result, 'refused');
+    t.equal(JSON.stringify(s), before, 'nothing changed');
+  });
+
+  test('a day before Day 1 reads "before Day 1"', function (t) {
+    var s = bastion(3);
+    t.equal(BR.bridgeChange(s, bdata, receipt({ day: 0 })).dayText, 'before Day 1');
+  });
+
+  test('applyInbox keeps a sentence, with its reason, for each refusal, and one for each kind skipped at a start', function (t) {
+    var b = bastion(3);
+    var r = BR.applyInbox(b, bdata, exWith([msg({ hr: 3 }), msg({ id: 'zzzzzz-00000001:won:2', clan: 'nowhere' })]), 1000);
+    t.equal(r.refused, 2);
+    t.equal(r.refusals.length, 2);
+    t.ok(/couldn't be used, so nothing changed: Its change isn.t \+1 or −1\./.test(r.refusals[0]), r.refusals[0]);
+    t.ok(/Clan the Bastion doesn.t know/.test(r.refusals[1]), r.refusals[1]);
+    t.same(r.skips, []);
+    var f = BR.defaultState(bdata);
+    BR.anchor(f, 4);
+    var k = BR.applyInbox(f, bdata, exWith([msg(), msg({ id: 'zzzzzz-00000009:hand:1', clan: 'bacca' })]), 1000);
+    t.equal(k.skipped, 2);
+    t.same(k.skips, ['2 changes to Honour/Respect, sent before this Bastion started, were skipped, so nothing counts twice. Use Change a score in the DM doc if they should count.']);
+    t.same(k.refusals, []);
+  });
+
+  test('notices: an applied change points at the list in Management, not at Clan Influence', function (t) {
+    var b = bastion(3);
+    var n = BR.settledNotices(BR.applyInbox(b, bdata, exWith([msg()]), 1000));
+    t.equal(n.length, 1);
+    t.same([n[0].type, n[0].title, n[0].id], ['info', 'Honour/Respect.', 'tsi-bas-bridge']);
+    t.equal(n[0].message, 'From the Explorer: Honour/Respect +1 with Clan Slade (T4, Day 3): 0 → +1. Changes from the Explorer, in Management, lists it.');
+    t.ok(!/Clan Influence/.test(n[0].message));
+  });
+
+  test('notices: a refused change has its own notice with the reason, even when another change was applied alongside it', function (t) {
+    var b = bastion(3);
+    var res = BR.applyInbox(b, bdata, exWith([msg({ id: 'aaaaaa-00000001:won:2' }), msg({ id: 'bbbbbb-00000002:won:2', hr: 3 })]), 1000);
+    var n = BR.settledNotices(res);
+    t.same(n.map(function (x) { return x.id; }), ['tsi-bas-bridge', 'tsi-bas-bridge-refused'], 'two notices, two ids: the second does not replace the first');
+    var refused = n[1];
+    t.equal(refused.type, 'warn');
+    t.ok(/Its change isn.t \+1 or −1\./.test(refused.message), refused.message);
+    t.ok(/Changes from the Explorer, in Management, lists it\.$/.test(refused.message), refused.message);
+    t.ok(!/Clan Influence says why/.test(refused.message));
+  });
+
+  test('notices: several refusals show the first three and count the rest', function (t) {
+    var n = BR.settledNotices({ applied: [], charters: [], parcels: [], creatures: [], refused: 5, skipped: 0, skips: [], refusals: ['A one.', 'A two.', 'A three.', 'A four.', 'A five.'] });
+    t.equal(n.length, 1);
+    t.equal(n[0].message, 'A one. A two. A three. 2 more were refused too. Changes from the Explorer, in Management, lists them.');
+    var one = BR.settledNotices({ applied: [], charters: [], parcels: [], creatures: [], refused: 4, refusals: ['A one.', 'A two.', 'A three.', 'A four.'] });
+    t.equal(one[0].message, 'A one. A two. A three. 1 more was refused too. Changes from the Explorer, in Management, lists them.');
+  });
+
+  test('notices: a refusal counted by an older result with no sentence still says where the reason is', function (t) {
+    var n = BR.settledNotices({ applied: [], refused: 1 });
+    t.equal(n.length, 1);
+    t.ok(/couldn.t be used, so nothing changed\. Changes from the Explorer, in Management, lists it, with the reason\./.test(n[0].message), n[0].message);
+  });
+
+  test('notices: what was skipped at a start is told, once, with what to do', function (t) {
+    var f = BR.defaultState(bdata);
+    BR.anchor(f, 4);
+    var res = BR.applyInbox(f, bdata, exWith([msg()]), 1000);
+    var n = BR.settledNotices(res);
+    t.equal(n.length, 1);
+    t.same([n[0].type, n[0].title, n[0].id], ['info', 'Skipped.', 'tsi-bas-bridge-skipped']);
+    t.equal(n[0].message, '1 change to Honour/Respect, sent before this Bastion started, was skipped, so nothing counts twice. Use Change a score in the DM doc if it should count. Changes from the Explorer, in Management, lists it.');
+    t.same(BR.settledNotices(BR.applyInbox(f, bdata, exWith([msg()]), 2000)), [], 'a second look says nothing more');
+  });
+
+  test('notices: Port Charters, parcels and creatures keep their own notices; nothing at all gives none', function (t) {
+    var n = BR.settledNotices({ applied: [], charters: ['Port Charter for X: held.'], parcels: ['Collected at Y.'], creatures: ['From the Explorer: a griffin.'], refused: 0, skipped: 0 });
+    t.same(n.map(function (x) { return x.title; }), ['Port Charter.', 'Courier Exchange.', 'Creatures.']);
+    t.equal(n[0].message, 'From the Explorer: Port Charter for X: held.');
+    t.same(BR.settledNotices({ applied: [], charters: [], parcels: [], creatures: [], refused: 0, skipped: 0, refusals: [], skips: [] }), []);
+    t.same(BR.settledNotices(null), []);
+    t.same(BR.settledNotices(undefined), []);
+  });
+
+  test('a refused parcel or Great Rite is told with its reason too', function (t) {
+    var b = bastion(3);
+    var m = { id: 'abc123-1a2b3c4d:collect:0', type: 'parcel_collected', day: 3, at: '2026-10-13T10:00:00.000Z', from: { code: 'DM', title: 'DM', step: 'dm' }, clan: 'slade', point: 'slades_muster', parcel: 'abc123-1a2b3c4d', goods: [], text: 'Collected.' };
+    var res = BR.applyInbox(b, bdata, exWith([m]), 1000);
+    t.equal(res.refused, 1, 'no such parcel in this Bastion');
+    t.equal(res.refusals.length, 1);
+    t.ok(/^A parcel pickup from the Explorer \(DM, Day 3\) couldn.t be used, so nothing changed: /.test(res.refusals[0]), res.refusals[0]);
+    var row = BR.bridgeChanges(b, bdata)[0];
+    t.same([row.result, row.kind, row.head], ['refused', 'parcel', 'Refused: parcel collected at Slade’s Muster']);
+    t.ok(res.refusals[0].indexOf(row.why) !== -1, 'the notice and the list give the same reason');
+  });
+
+  test('a Resolve result becomes one short notice; no lines, no notice', function (t) {
+    var n = BR.resolveNotice([['Order Completed', 'Shrine: Pray → Rolled 1d20 = 14. Added +14% to PELAGOS favour.']], 'o-7');
+    t.same(n, { message: 'Shrine: Pray → Rolled 1d20 = 14. Added +14% to PELAGOS favour.', type: 'info', title: 'Order resolved.', id: 'tsi-bas-resolved-o-7', timeout: 14000 });
+    t.equal(BR.resolveNotice([['A', 'One.'], ['B', 'Two.']]).message, 'One. Two.', 'several lines join');
+    t.equal(BR.resolveNotice([['A', 'Two.']]).id, 'tsi-bas-resolved', 'no order id: a plain id');
+    t.equal(BR.resolveNotice([['Orders', 'X couldn\'t be completed: this copy can\'t house creatures. Nothing changed.']]).type, 'warn', 'a failure warns');
+    t.equal(BR.resolveNotice([]), null);
+    t.equal(BR.resolveNotice(null), null);
+    t.equal(BR.resolveNotice([['A', '   ']]), null, 'blank lines are nothing');
+  });
 }());

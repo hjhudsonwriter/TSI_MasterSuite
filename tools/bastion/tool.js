@@ -25,7 +25,8 @@
    2026): 8 Explorer event moments send a change of 1 in a Clan's
    Honour/Respect. The Bastion applies each once, with a receipt in its own
    save (R.applyInbox): when it's idle, after it reads the Explorer's day,
-   and at the start of each day it passes. Clan Influence lists them. It
+   and at the start of each day it passes. Management's "Changes from the
+   Explorer" lists them, refused and skipped ones with their reason. It
    runs in one window at a time (shared/js/toollock.js), so two copies can
    never apply one twice.
 
@@ -1533,6 +1534,20 @@
         ])
       ]);
       mgmtCard.body.appendChild(changesRow);
+      /* "Changes from the Explorer": what the Explorer link has delivered,
+         newest first, each counted once; a refused or skipped one says why.
+         It reads the same receipts (state.bridge.done) as Clan Influence's
+         list, through R.bridgeChanges. The newest few show; the rest on request. */
+      var XCHANGES_SHOWN = 10;
+      var xchangesAll = false;
+      var xchangesList = el('div', { class: 'tsi-bas-xchanges__list', 'data-test': 'explorer-changes-list' });
+      var xchangesMore = btn('Show all', function () { xchangesAll = !xchangesAll; renderExplorerChanges(); }, 'tsi-btn--ghost', 'explorer-changes-more', { hidden: true });
+      mgmtCard.body.appendChild(el('div', { class: 'tsi-bas-box tsi-bas-xchanges', 'data-test': 'explorer-changes' }, [
+        label('Changes from the Explorer'),
+        muted('What the Explorer sent the Bastion, newest first. Each is counted once. A change that was refused or skipped says why.'),
+        xchangesList,
+        xchangesMore
+      ]));
       TSI.append(mgmtCard.body, el('div', { class: 'tsi-bas-mgmt' }, [
         el('div', { class: 'tsi-bas-box tsi-bas-box--art tsi-bas-box--defenders' }, [
           el('div', { class: 'tsi-bas-row__top' }, [
@@ -1686,7 +1701,23 @@
           node.appendChild(row);
         });
       }
+      function renderExplorerChanges() {
+        TSI.clear(xchangesList);
+        var all = R.bridgeChanges(state, data);
+        if (!all.length) { xchangesList.appendChild(muted('None yet.', 'tsi-bas-xchanges__none')); xchangesMore.hidden = true; return; }
+        all.slice(0, xchangesAll ? all.length : XCHANGES_SHOWN).forEach(function (c) {
+          var why = c.why ? c.why + (c.tail ? ' ' + c.tail : '') : '';
+          xchangesList.appendChild(el('div', { class: 'tsi-bas-xchange tsi-bas-xchange--' + c.result, 'data-test': 'explorer-change', 'data-result': c.result, 'data-kind': c.kind }, [
+            el('div', { class: 'tsi-bas-xchange__head' }, [el('strong', { text: c.head }), c.dayText ? ' · ' + c.dayText : '']),
+            c.text ? el('div', { class: 'tsi-bas-xchange__text', text: c.text }) : null,
+            why ? el('div', { class: 'tsi-bas-xchange__why', 'data-test': 'explorer-change-why', text: why }) : null
+          ]));
+        });
+        xchangesMore.hidden = all.length <= XCHANGES_SHOWN;
+        xchangesMore.textContent = xchangesAll ? 'Show only the newest ' + XCHANGES_SHOWN : 'Show all ' + all.length;
+      }
       function renderManagement() {
+        renderExplorerChanges();
         var v4 = state.migration && state.migration.v4;
         changesRow.hidden = !v4;
         changesNote.textContent = v4 ? 'The Bastion\'s change of 22 October 2026 (Day ' + v4.day + '): ' + (v4.summary || 'Nothing of yours changed.') + ' Read it again.' : '';
@@ -4746,26 +4777,14 @@
       function settleInbox() {
         return R.applyInbox(state, data, lastExplorer);
       }
+      /* What the Explorer's changes did, as notices (R.settledNotices): each
+         applied kind has its own, and so does everything refused or skipped,
+         with its reason. Changes from the Explorer, in Management, keeps them. */
       function tellSettled(res) {
         if (!res || !life.alive) return;
-        /* A Port Charter (pull request 5) has its own notice. */
-        if (res.charters && res.charters.length) {
-          notice('From the Explorer: ' + res.charters.join(' '), { type: 'info', title: 'Port Charter.', id: 'tsi-bas-charter', timeout: 14000 });
-        }
-        /* So does a parcel collected in the Explorer (pull request 6). */
-        if (res.parcels && res.parcels.length) {
-          notice(res.parcels.join(' '), { type: 'info', title: 'Courier Exchange.', id: 'tsi-bas-courier', timeout: 14000 });
-        }
-        /* And a griffin or dire wolf the DM granted (pull request 7): each
-           line is a sentence starting "From the Explorer: …". */
-        if (res.creatures && res.creatures.length) {
-          notice(res.creatures.join(' '), { type: 'info', title: 'Creatures.', id: 'tsi-bas-creature', timeout: 14000 });
-        }
-        if (res.applied.length) {
-          notice('From the Explorer: ' + res.applied.join(' ') + (res.applied.length === 1 ? ' Clan Influence lists it.' : ' Clan Influence lists them.'), { type: 'info', title: 'Honour/Respect.', id: 'tsi-bas-bridge', timeout: 12000 });
-        } else if (res.refused) {
-          notice('A change from the Explorer couldn\'t be used, so nothing changed. Clan Influence says why.', { type: 'warn', title: 'From the Explorer.', id: 'tsi-bas-bridge', timeout: 12000 });
-        }
+        R.settledNotices(res).forEach(function (n) {
+          notice(n.message, { type: n.type, title: n.title, id: n.id, timeout: n.timeout });
+        });
       }
       function renderTurnButton() {
         var dip = state.dayInProgress;
@@ -5003,6 +5022,14 @@
         return life.alive ? null : 'stopped';
       }
 
+      /* An order settled with Resolve (not as a day passes) says what it did
+         in a notice, as well as in the Day Log: a Shrine's prayer roll, a
+         craft, an order whose home has gone. */
+      function tellResolved(lines, o) {
+        var n = R.resolveNotice(lines, o && o.id);
+        if (n && life.alive) notice(n.message, { type: n.type, title: n.title, id: n.id, timeout: n.timeout });
+      }
+
       /* One due order (819-1254). Each is saved as soon as it's done. inDay:
          it's being completed as a day passes (so it goes into the day's word,
          and a cancelled roll skips it for the rest of the day). */
@@ -5045,6 +5072,7 @@
             R.removeOrder(state, o.id);
             log('Order Completed', lab + ' → Blocked (cooldown: ' + R.daysText(p.blocked) + ' left).');
             if (inDay) R.addWord(state, lab + ': blocked (the Hall is cooling down).');
+            else tellResolved([['Order Completed', lab + ' → Blocked (cooldown: ' + R.daysText(p.blocked) + ' left).']], o);
             done();
             return null;
           }
@@ -5077,6 +5105,7 @@
           R.removeOrder(state, o.id);
           logAll(lines);
           if (inDay) (lines || []).forEach(function (l) { R.addWord(state, l[1]); });
+          else tellResolved(lines, o);
           done();
           return null;
         }
@@ -5087,6 +5116,7 @@
         if (dropped) {
           logAll(dropped);
           if (inDay) dropped.forEach(function (l) { R.addWord(state, l[1]); });
+          else tellResolved(dropped, o);
         }
         done();
         return null;
