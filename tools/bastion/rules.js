@@ -1446,6 +1446,51 @@
     var t = data.bastion && data.bastion.levels;
     return isObj(t) ? t : { max: R.MAX_LEVEL, upgradeDays: { 2: 7, 3: 14, 4: 21, 5: 28 }, upgradeCostGP: 0 };
   }
+  /* ---------- Levels that replace each other (Strip Back Overhaul, step S04) ----------
+     The Timber Yard & Sawmill, Fishery & Smokehouse, Stone Quarry & Masonworks
+     and Weavers' Hall carry "levelOrders": "replace" in facilities-data.js: a
+     level offers only the order(s) whose requiredFacilityLevel is that level,
+     and an upgrade replaces the last level's order. The words below are made
+     from the data, so a renamed order renames them. */
+  R.replacesLevelOrders = function (fac) { return !!fac && fac.levelOrders === 'replace'; };
+  function orderLevel(fn) {
+    return clampInt(fn && fn.requiredFacilityLevel !== undefined && fn.requiredFacilityLevel !== null ? fn.requiredFacilityLevel : 1, 1, R.MAX_LEVEL);
+  }
+  /* The labels of the orders a level of the facility offers (data order). */
+  R.levelOrderLabels = function (fac, level) {
+    return ((fac && fac.functions) || []).filter(function (fn) {
+      return fn && fn.id !== 'upgrade' && fn.id !== 'upgrade_hall' && !fn.retired && orderLevel(fn) === level;
+    }).map(function (fn) { return fn.label || fn.id; });
+  };
+  /* "A", "A and B", "A, B and C". */
+  R.joinNames = function (names) {
+    var n = names.length;
+    return n < 2 ? (names[0] || '') : names.slice(0, n - 1).join(', ') + ' and ' + names[n - 1];
+  };
+  /* What reaching a level does to the orders at a facility whose levels
+     replace each other: { from, to, text } ("replaces Harvest Timber with Saw
+     Lumber"), or null for any other facility, for Level 1, or a level with
+     nothing to swap. */
+  R.levelReplacement = function (data, facId, level) {
+    var fac = R.facility(data, facId);
+    if (!R.replacesLevelOrders(fac) || !(level > 1)) return null;
+    var from = R.levelOrderLabels(fac, level - 1);
+    var to = R.levelOrderLabels(fac, level);
+    if (!from.length || !to.length) return null;
+    return { from: from, to: to, text: 'replaces ' + R.joinNames(from) + ' with ' + R.joinNames(to) };
+  };
+  /* The question asked before such an upgrade, or null for any other: what the
+     new level replaces and that the replaced order can't be started again
+     (one already running still finishes). */
+  R.upgradeReplaceNotice = function (s, data, facId) {
+    var c = R.upgradeCheck(s, data, facId);
+    if (!c.ok) return null;
+    var swap = R.levelReplacement(data, facId, c.toLevel);
+    if (!swap) return null;
+    var fac = R.facility(data, facId);
+    return 'Upgrade the ' + fac.name + ' to Level ' + c.toLevel + '? Level ' + c.toLevel + ' ' + swap.text + '. Once the upgrade finishes, ' +
+      R.joinNames(swap.from) + ' can no longer be started; an order already running will still finish.';
+  };
   /* What reaching a level gives (Harry, 18 October 2026): the orders that
      open at it, then the lines in data.bastion.levels.effects. An empty list
      means the level unlocks nothing yet. */
@@ -1453,7 +1498,12 @@
     var fac = R.facility(data, facId);
     var out = [];
     if (!fac) return out;
-    (fac.functions || []).forEach(function (fn) {
+    /* A facility whose levels replace each other (levelOrders "replace", the
+       Strip Back Overhaul's S04) says so, in one line, instead of listing the
+       new order as an addition. */
+    var swap = R.levelReplacement(data, facId, level);
+    if (swap) out.push(swap.text.charAt(0).toUpperCase() + swap.text.slice(1));
+    else (fac.functions || []).forEach(function (fn) {
       if (!fn || fn.id === 'upgrade' || fn.id === 'upgrade_hall') return;
       var req = clampInt(fn.requiredFacilityLevel === undefined || fn.requiredFacilityLevel === null ? 1 : fn.requiredFacilityLevel, 1, R.MAX_LEVEL);
       if (req === level && level > 1) out.push(fn.label || fn.id);
@@ -1470,7 +1520,7 @@
     var to = fromLevel + 1;
     if (to > max) return null;
     var list = R.levelUnlocks(data, facId, to);
-    var out = { toLevel: to, unlocks: list, later: null };
+    var out = { toLevel: to, unlocks: list, later: null, replaces: R.levelReplacement(data, facId, to) };
     if (!list.length) {
       for (var l = to + 1; l <= max; l++) {
         var more = R.levelUnlocks(data, facId, l);
@@ -1855,6 +1905,14 @@
     /* The Hall's Secure Trade Agreement (20 October 2026): no new ones; the
        running ones simply finish (R.tickDiplomacy). */
     if (fn && fn.retiredNote) return { ok: false, hidden: true, message: 'That order has been retired.', why: String(fn.retiredNote) };
+    /* A facility whose levels replace each other (levelOrders "replace", the
+       Strip Back Overhaul's S04) offers only the order(s) of its current level:
+       the others are hidden, never deleted, so an order already pending still
+       completes (R.fn finds it by id). */
+    if (fac && fn && R.replacesLevelOrders(fac)) {
+      var own = orderLevel(fn);
+      if (own !== R.getFacilityLevel(s, fac.id)) return { ok: false, hidden: true, message: 'That order belongs to Level ' + own + '.' };
+    }
     /* An order a facility level unlocks (the Hall's, and the production orders: pull request 3). */
     var need = clampInt(fn && fn.requiredFacilityLevel ? fn.requiredFacilityLevel : 1, 1, R.MAX_LEVEL);
     if (fac && need > 1 && R.getFacilityLevel(s, fac.id) < need) return { ok: false, message: 'Needs Level ' + need + '.' };

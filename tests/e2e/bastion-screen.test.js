@@ -496,7 +496,9 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     await setUp(page, (s) => { s.builtExtras = []; });
   });
 
-  await check('the Stone Quarry and the Weavers\' Hall (19 October 2026): six orders each, what they use and make, Level 2 unlocks the next, one at a time, goods land in the Warehouse', async () => {
+  const rowsOf = (page, fac) => page.$$eval('[data-test^="issue-' + fac + '__"]', bs => bs.map(b => b.dataset.test.slice('issue-'.length)));
+
+  await check('the Stone Quarry and the Weavers\' Hall (Strip Back Overhaul, S04): each shows only its level\'s order, the Upgrade says what it replaces, an empty Warehouse is enough, and goods land in the Warehouse', async () => {
     const saved = (await st(page)).builtPlots.slice(0, 3);
     await setUp(page, (s) => {
       s.builtPlots[0] = { facId: 'stone_masonworks', status: 'built' };
@@ -507,58 +509,116 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     await page.click('[data-test=tile-stone_masonworks]');
     await page.waitForSelector('[data-test=panel-fac-stone_masonworks]');
     const lines = sel => page.$eval(sel, e => Array.from(e.children).map(c => c.textContent));
-    equal(await lines('[data-test=goods-stone_masonworks__extract_raw_stone]'), ['Makes: 1 lot of Raw Stone']);
-    equal(await lines('[data-test=goods-stone_masonworks__produce_dressed_stone]'), ['Uses: 1 lot of Raw Stone (the Warehouse has 0 lots)', 'Makes: 1 lot of Dressed Stone', 'Needs 1 lot of Raw Stone in the Warehouse; it has 0 lots.']);
-    equal(await text(page, 'issue-stone_masonworks__produce_structural_masonry'), 'Needs Level 3.');
-    equal(await text(page, 'days-stone_masonworks__bulk_raw_stone_extraction'), 'Takes 9 days');
+    equal(await rowsOf(page, 'stone_masonworks'), ['stone_masonworks__produce_dressed_stone'], 'Level 2: only Produce Dressed Stone; Extract Raw Stone is replaced, the later orders are not shown');
+    equal(await lines('[data-test=goods-stone_masonworks__produce_dressed_stone]'), ['Makes: 1 lot of Dressed Stone'], 'it uses nothing, so no "Uses" line and no reason');
+    equal([await page.isDisabled('[data-test=issue-stone_masonworks__produce_dressed_stone]'), await text(page, 'issue-stone_masonworks__produce_dressed_stone')], [false, 'Issue Order'], 'with an empty Warehouse');
+    equal(await text(page, 'days-stone_masonworks__produce_dressed_stone'), 'Takes 4 days');
+    equal(await text(page, 'upgrade-unlocks-stone_masonworks'), 'Level 3 replaces Produce Dressed Stone with Produce Structural Masonry.');
     equal((await H.layoutCheck(page, ['[data-test=panel-fac-stone_masonworks]', '[data-test=panel-fac-stone_masonworks] .tsi-modal__foot button'])).outOfView, [], 'the panel fits');
     await H.shot(page, 'bs-06-stone');
     await pause(page);
-    await page.click('[data-test=issue-stone_masonworks__extract_raw_stone]');
-    await page.waitForFunction(() => TSI.bastion.debug.state().pendingOrders.some(o => o.fnId === 'extract_raw_stone'));
+    await page.click('[data-test=issue-stone_masonworks__produce_dressed_stone]');
+    await page.waitForFunction(() => TSI.bastion.debug.state().pendingOrders.some(o => o.fnId === 'produce_dressed_stone'));
+    assert(!/Taken from the Warehouse/.test((await st(page)).log[0].body), 'nothing was taken');
     await page.keyboard.press('Escape');
     await page.waitForTimeout(150);
     await days(page, 4);
-    equal((await st(page)).warehouse.filter(w => w.goodId).map(w => [w.goodId, w.qty]), [['raw_stone', 1]]);
+    equal((await st(page)).warehouse.filter(w => w.goodId).map(w => [w.goodId, w.qty]), [['dressed_stone', 1]]);
     await page.click('[data-test=tile-weavers_hall]');
     await page.waitForSelector('[data-test=panel-fac-weavers_hall]');
+    equal(await rowsOf(page, 'weavers_hall'), ['weavers_hall__produce_ordinary_textiles'], 'Level 1: only Produce Ordinary Textiles');
     equal(await text(page, 'days-weavers_hall__produce_ordinary_textiles'), 'Takes 4 days');
-    equal(await text(page, 'issue-weavers_hall__produce_sailcloth'), 'Needs Level 2.');
+    equal(await text(page, 'upgrade-unlocks-weavers_hall'), 'Level 2 replaces Produce Ordinary Textiles with Produce Sailcloth.');
     equal((await H.layoutCheck(page, ['[data-test=panel-fac-weavers_hall]'])).outOfView, [], 'the panel fits');
     await page.keyboard.press('Escape');
+    /* Level 5 offers both its orders, one running at a time. */
+    await setUp(page, (s) => { s.facilityLevels.weavers_hall = 5; s.pendingOrders = []; });
+    await pause(page);
+    await page.click('[data-test=tile-weavers_hall]');
+    await page.waitForSelector('[data-test=panel-fac-weavers_hall]');
+    equal(await rowsOf(page, 'weavers_hall'), ['weavers_hall__bulk_textile_production', 'weavers_hall__bulk_sailcloth_production'], 'Level 5: both orders');
+    equal(await lines('[data-test=goods-weavers_hall__bulk_sailcloth_production]'), ['Makes: 3 lots of Sailcloth'], 'Bulk Sailcloth Production needs no Ordinary Textiles');
+    await page.click('[data-test=issue-weavers_hall__bulk_sailcloth_production]');
+    await page.waitForFunction(() => TSI.bastion.debug.state().pendingOrders.some(o => o.fnId === 'bulk_sailcloth_production'));
+    equal([await page.isDisabled('[data-test=issue-weavers_hall__bulk_textile_production]'), await text(page, 'issue-weavers_hall__bulk_textile_production')], [true, 'Can\'t order yet'], 'only one runs at a time');
+    assert(/is busy: one production order at a time/.test(await text(page, 'why-weavers_hall__bulk_textile_production')), 'and it says why');
+    await H.shot(page, 'bs-06-weavers-l5');
+    await page.keyboard.press('Escape');
+    await setUp(page, (s) => { s.pendingOrders = []; s.warehouse = []; });
     const keep = JSON.stringify(saved);
     await page.evaluate(k => TSI.bastion.debug.change(s => { const b = JSON.parse(k); [0, 1, 2].forEach(i => { s.builtPlots[i] = b[i]; }); }), keep);
   });
 
-  await check('the Timber Yard: each order says what it uses and makes; Saw Lumber waits for Raw Timber; one production order at a time', async () => {
-    await setUp(page, (s) => { s.builtPlots[1] = { facId: 'timber_sawmill', status: 'built' }; s.facilityLevels.timber_sawmill = 2; s.warehouse = []; s.pendingOrders = []; });
+  await check('the Timber Yard: Level 1 shows Harvest Timber only; the Upgrade asks first; Level 2 shows Saw Lumber only; an order pending across the upgrade finishes and counts as the one running', async () => {
+    await setUp(page, (s) => { s.builtPlots[1] = { facId: 'timber_sawmill', status: 'built' }; s.facilityLevels.timber_sawmill = 1; s.warehouse = []; s.pendingOrders = []; });
     await pause(page);
     await page.click('[data-test=tile-timber_sawmill]');
     await page.waitForSelector('[data-test=panel-fac-timber_sawmill]');
     const lines = sel => page.$eval(sel, e => Array.from(e.children).map(c => c.textContent));
+    equal(await rowsOf(page, 'timber_sawmill'), ['timber_sawmill__harvest_timber'], 'Level 1: Harvest Timber only');
     equal(await lines('[data-test=goods-timber_sawmill__harvest_timber]'), ['Makes: 1 lot of Raw Timber']);
-    equal(await lines('[data-test=goods-timber_sawmill__saw_lumber]'), ['Uses: 1 lot of Raw Timber (the Warehouse has 0 lots)', 'Makes: 1 lot of Sawn Lumber', 'Needs 1 lot of Raw Timber in the Warehouse; it has 0 lots.']);
-    equal([await page.isDisabled('[data-test=issue-timber_sawmill__saw_lumber]'), await text(page, 'issue-timber_sawmill__saw_lumber')], [true, 'Can\'t order yet']);
-    equal(await text(page, 'issue-timber_sawmill__prepare_construction_timber'), 'Needs Level 3.');
     equal(await text(page, 'days-timber_sawmill__harvest_timber'), 'Takes 4 days');
+    equal(await text(page, 'upgrade-text-timber_sawmill'), 'To Level 2: takes 7 days, no gold.');
+    equal(await text(page, 'upgrade-unlocks-timber_sawmill'), 'Level 2 replaces Harvest Timber with Saw Lumber.');
     equal((await H.layoutCheck(page, ['[data-test=panel-fac-timber_sawmill]', '[data-test=panel-fac-timber_sawmill] .tsi-modal__foot button'])).outOfView, [], 'the panel fits');
     await H.shot(page, 'bs-06-timber');
     await pause(page);
     await page.click('[data-test=issue-timber_sawmill__harvest_timber]');
     await page.waitForFunction(() => TSI.bastion.debug.state().pendingOrders.some(o => o.fnId === 'harvest_timber'));
-    const due = (await st(page)).pendingOrders[0].dueDay;
-    await setUp(page, (s) => { s.warehouse.push({ id: 'g1', goodId: 'raw_timber', item: 'Raw Timber', qty: 1, gp: '', notes: '' }); });
-    await page.waitForTimeout(200);
-    equal(await text(page, 'why-timber_sawmill__saw_lumber'), 'The Timber Yard & Sawmill is busy: one production order at a time (Timber Yard & Sawmill: Harvest Timber, due on Day ' + due + ').');
-    equal(await page.isDisabled('[data-test=issue-timber_sawmill__saw_lumber]'), true);
     await page.keyboard.press('Escape');
     await page.waitForTimeout(150);
     await days(page, 4);
-    const s = await st(page);
-    equal(s.warehouse.filter(w => w.goodId).map(w => [w.goodId, w.qty]), [['raw_timber', 2]], 'Harvest Timber made a lot, added to the same row');
+    equal((await st(page)).warehouse.filter(w => w.goodId).map(w => [w.goodId, w.qty]), [['raw_timber', 1]], 'Harvest Timber made a lot');
+
+    /* The Upgrade asks first: Cancel changes nothing, Upgrade orders it. */
+    await pause(page);
+    await page.click('[data-test=tile-timber_sawmill]');
+    await page.waitForSelector('[data-test=panel-fac-timber_sawmill]');
+    await pause(page);
+    await page.click('[data-test=upgrade-timber_sawmill]');
+    await page.waitForSelector(POP);
+    equal(await bare(page, POP + ' .tsi-modal__body'), 'Upgrade the Timber Yard & Sawmill to Level 2? Level 2 replaces Harvest Timber with Saw Lumber. Once the upgrade finishes, Harvest Timber can no longer be started; an order already running will still finish.');
+    await H.shot(page, 'bs-06-timber-upgrade-ask');
+    await page.click(POP + ' .tsi-modal__foot button:text-is("Cancel")');
+    await page.waitForTimeout(250);
+    equal((await st(page)).pendingOrders.length, 0, 'Cancel orders nothing');
+    await pause(page);
+    await page.click('[data-test=upgrade-timber_sawmill]');
+    await page.waitForSelector(POP);
+    await page.click(POP + ' .tsi-modal__foot button:text-is("Upgrade")');
+    await page.waitForFunction(() => TSI.bastion.debug.state().pendingOrders.some(o => o.fnId === 'upgrade'));
+    equal(await text(page, 'fac-level'), 'Level 1 of 5', 'still Level 1 until it finishes');
+    equal(await rowsOf(page, 'timber_sawmill'), ['timber_sawmill__harvest_timber'], 'and Harvest Timber is still on offer until then');
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(150);
+
+    /* Harvest Timber is ordered late, so it is still pending when the upgrade finishes. */
+    await days(page, 6);
+    await pause(page);
+    await page.click('[data-test=tile-timber_sawmill]');
+    await page.waitForSelector('[data-test=panel-fac-timber_sawmill]');
+    await page.click('[data-test=issue-timber_sawmill__harvest_timber]');
+    await page.waitForFunction(() => TSI.bastion.debug.state().pendingOrders.some(o => o.fnId === 'harvest_timber'));
+    const due = (await st(page)).pendingOrders.find(o => o.fnId === 'harvest_timber').dueDay;
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(150);
+    await days(page, 1);
+    await pause(page);
+    await page.click('[data-test=tile-timber_sawmill]');
+    await page.waitForSelector('[data-test=panel-fac-timber_sawmill]');
+    equal(await text(page, 'fac-level'), 'Level 2 of 5');
+    equal(await rowsOf(page, 'timber_sawmill'), ['timber_sawmill__saw_lumber'], 'Level 2: Saw Lumber only; Harvest Timber is replaced');
+    equal(await lines('[data-test=goods-timber_sawmill__saw_lumber]').then(l => l.slice(0, 2)), ['Makes: 1 lot of Sawn Lumber', 'The Timber Yard & Sawmill is busy: one production order at a time (Timber Yard & Sawmill: Harvest Timber, due on Day ' + due + ').'], 'no "Uses" line; the order still running holds it back');
+    equal([await page.isDisabled('[data-test=issue-timber_sawmill__saw_lumber]'), await text(page, 'issue-timber_sawmill__saw_lumber')], [true, 'Can\'t order yet']);
+    assert(/Harvest Timber/.test(await bare(page, '.tsi-bas-facpanel__orders')), 'the old order is still pending here');
+    equal(await text(page, 'upgrade-unlocks-timber_sawmill'), 'Level 3 replaces Saw Lumber with Prepare Construction Timber.');
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(150);
+    await days(page, 3);
+    equal((await st(page)).warehouse.filter(w => w.goodId).map(w => [w.goodId, w.qty]), [['raw_timber', 2]], 'the pending Harvest Timber finished, once, into the same row');
   });
 
-  await check('Saw Lumber takes its Raw Timber when it begins; the order shows what it holds; Cancel gives it back', async () => {
+  await check('Saw Lumber needs nothing from the Warehouse; Cancel gives nothing extra back and frees the slot', async () => {
     await pause(page);
     await page.click('[data-test=tile-timber_sawmill]');
     await page.waitForSelector('[data-test=panel-fac-timber_sawmill]');
@@ -567,22 +627,29 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     await page.click('[data-test=issue-timber_sawmill__saw_lumber]');
     await page.waitForFunction(() => TSI.bastion.debug.state().pendingOrders.some(o => o.fnId === 'saw_lumber'));
     let s = await st(page);
-    equal(s.warehouse.filter(w => w.goodId).map(w => [w.goodId, w.qty]), [['raw_timber', 1]]);
-    assert(/Taken from the Warehouse: 1 lot of Raw Timber\./.test(s.log[0].body), s.log[0].body);
+    equal(s.warehouse.filter(w => w.goodId).map(w => [w.goodId, w.qty]), [['raw_timber', 2]], 'the Raw Timber is untouched');
+    assert(!/Taken from the Warehouse/.test(s.log[0].body), s.log[0].body);
+    assert(!/Holding/.test(await bare(page, '[data-test=panel-fac-timber_sawmill]')), 'the order holds nothing');
     const i = s.pendingOrders.findIndex(o => o.fnId === 'saw_lumber');
-    assert(/Holding 1 lot of Raw Timber \(Cancel gives them back\)/.test(await bare(page, '[data-test=panel-fac-timber_sawmill]')), 'the panel\'s pending list says what it holds');
+    equal(s.pendingOrders[i].inputs, undefined);
     await page.keyboard.press('Escape');
     await page.waitForTimeout(150);
     await pause(page);
     await page.click('[data-test=orders-count]');
-    await page.waitForSelector('[data-test=pending-held-' + i + ']');
-    equal(await text(page, 'pending-held-' + i), 'Holding 1 lot of Raw Timber (Cancel gives them back)');
+    await page.waitForSelector('[data-test=cancel-' + i + ']');
+    equal(await page.$('[data-test=pending-held-' + i + ']'), null, 'no "Holding" line');
     await pause(page);
     await page.click('[data-test=cancel-' + i + ']');
     await page.waitForTimeout(250);
     s = await st(page);
-    equal(s.warehouse.filter(w => w.goodId).map(w => [w.goodId, w.qty]), [['raw_timber', 2]]);
-    equal([s.log[0].title, s.log[0].body], ['Orders', 'Cancelled Timber Yard & Sawmill: Saw Lumber. 1 lot of Raw Timber went back to the Warehouse.']);
+    equal(s.warehouse.filter(w => w.goodId).map(w => [w.goodId, w.qty]), [['raw_timber', 2]], 'nothing extra came back');
+    equal([s.log[0].title, s.log[0].body], ['Orders', 'Cancelled an order.']);
+    equal(s.pendingOrders.length, 0);
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(150);
+    await page.click('[data-test=tile-timber_sawmill]');
+    await page.waitForSelector('[data-test=panel-fac-timber_sawmill]');
+    equal(await page.isDisabled('[data-test=issue-timber_sawmill__saw_lumber]'), false, 'the slot is free again');
     await page.keyboard.press('Escape');
     await page.waitForTimeout(150);
   });

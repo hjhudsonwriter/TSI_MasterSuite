@@ -51,8 +51,20 @@
    Textiles), Produce Specialist Garments (L3, 5, uses 1 Ordinary Textiles), Improved
    Specialist Garment Production (L4, 7, 2 Ordinary Textiles to 2 Specialist Garments),
    Bulk Textile Production (L5, 9, 3 Ordinary Textiles) and Bulk Sailcloth Production
-   (L5, 8, 3 Ordinary Textiles to 3 Sailcloth). The ingredients (which good feeds which) are
-   proposals Harry hasn't confirmed: change them here, nothing else needs to move.
+   (L5, 8, 3 Ordinary Textiles to 3 Sailcloth). Those ingredients were dropped in the
+   Strip Back Overhaul (see "levelOrders" below): the orders above are as they were at
+   19 October 2026 apart from what they use.
+   The Strip Back Overhaul (Harry, 22 October 2026, step S04): the four production
+   facilities built to the Timber Yard's pattern (timber_sawmill, fishery_smokehouse,
+   stone_masonworks, weavers_hall) carry "levelOrders": "replace". Each level offers only
+   its own order(s): the ones whose "requiredFacilityLevel" is the facility's level (two
+   at Level 5, still one running at a time: "productionLimit": 1), and an upgrade REPLACES
+   the last level's order (R.fnAvailable hides the others, "That order belongs to Level
+   N."). Orders are self-contained: none lists "inputs", so every level works with an
+   empty Warehouse. Nothing is ever deleted or renumbered: an order issued at Level N
+   that is still pending when the upgrade completes finishes as usual, because the
+   engine finds it by its id. Without the flag (the Herbal Gardens, the Courier
+   Exchange) every order stays listed at every level, locked until its level.
    Pull request 7 (Harry, 14 October 2026) opens the Wyvern Roost, the Griffin
    Tower and the Dire Wolf Den, leaving two facilities in development (the Stone
    Quarry & Masonworks and the Weavers' Hall). Each takes a construction slot,
@@ -992,6 +1004,7 @@ window.TSI_DATA.bastionFacilities = [
     "requiredLevel": 5,
     "plot": true,
     "productionLimit": 1,
+    "levelOrders": "replace",
     "functions": [
       {
         "id": "catch_fresh_fish",
@@ -1026,12 +1039,6 @@ window.TSI_DATA.bastionFacilities = [
         "options": [
           {
             "label": "Preserved Fish (1 lot)",
-            "inputs": [
-              {
-                "good": "fresh_fish",
-                "qty": 1
-              }
-            ],
             "outputs": [
               {
                 "good": "preserved_fish",
@@ -1053,12 +1060,6 @@ window.TSI_DATA.bastionFacilities = [
         "options": [
           {
             "label": "5 Expedition Provision Packs",
-            "inputs": [
-              {
-                "good": "preserved_fish",
-                "qty": 1
-              }
-            ],
             "outputs": [
               {
                 "good": "expedition_provision_pack",
@@ -1122,12 +1123,6 @@ window.TSI_DATA.bastionFacilities = [
         "options": [
           {
             "label": "Preserved Fish (3 lots)",
-            "inputs": [
-              {
-                "good": "fresh_fish",
-                "qty": 3
-              }
-            ],
             "outputs": [
               {
                 "good": "preserved_fish",
@@ -1145,6 +1140,7 @@ window.TSI_DATA.bastionFacilities = [
     "requiredLevel": 5,
     "plot": true,
     "productionLimit": 1,
+    "levelOrders": "replace",
     "functions": [
       {
         "id": "harvest_timber",
@@ -1179,12 +1175,6 @@ window.TSI_DATA.bastionFacilities = [
         "options": [
           {
             "label": "Sawn Lumber (1 lot)",
-            "inputs": [
-              {
-                "good": "raw_timber",
-                "qty": 1
-              }
-            ],
             "outputs": [
               {
                 "good": "sawn_lumber",
@@ -1206,12 +1196,6 @@ window.TSI_DATA.bastionFacilities = [
         "options": [
           {
             "label": "Construction Timber (1 lot)",
-            "inputs": [
-              {
-                "good": "sawn_lumber",
-                "qty": 1
-              }
-            ],
             "outputs": [
               {
                 "good": "construction_timber",
@@ -1275,12 +1259,6 @@ window.TSI_DATA.bastionFacilities = [
         "options": [
           {
             "label": "Sawn Lumber (3 lots)",
-            "inputs": [
-              {
-                "good": "raw_timber",
-                "qty": 3
-              }
-            ],
             "outputs": [
               {
                 "good": "sawn_lumber",
@@ -1298,6 +1276,7 @@ window.TSI_DATA.bastionFacilities = [
     "requiredLevel": 5,
     "plot": true,
     "productionLimit": 1,
+    "levelOrders": "replace",
     "functions": [
       {
         "id": "extract_raw_stone",
@@ -1332,12 +1311,6 @@ window.TSI_DATA.bastionFacilities = [
         "options": [
           {
             "label": "Dressed Stone (1 lot)",
-            "inputs": [
-              {
-                "good": "raw_stone",
-                "qty": 1
-              }
-            ],
             "outputs": [
               {
                 "good": "dressed_stone",
@@ -1359,12 +1332,6 @@ window.TSI_DATA.bastionFacilities = [
         "options": [
           {
             "label": "Structural Masonry (1 lot)",
-            "inputs": [
-              {
-                "good": "dressed_stone",
-                "qty": 1
-              }
-            ],
             "outputs": [
               {
                 "good": "structural_masonry",
@@ -1386,12 +1353,6 @@ window.TSI_DATA.bastionFacilities = [
         "options": [
           {
             "label": "Decorative Stonework (1 lot)",
-            "inputs": [
-              {
-                "good": "dressed_stone",
-                "qty": 1
-              }
-            ],
             "outputs": [
               {
                 "good": "decorative_stonework",
@@ -1434,12 +1395,6 @@ window.TSI_DATA.bastionFacilities = [
         "options": [
           {
             "label": "Dressed Stone (3 lots)",
-            "inputs": [
-              {
-                "good": "raw_stone",
-                "qty": 3
-              }
-            ],
             "outputs": [
               {
                 "good": "dressed_stone",
@@ -1457,6 +1412,7 @@ window.TSI_DATA.bastionFacilities = [
     "requiredLevel": 5,
     "plot": true,
     "productionLimit": 1,
+    "levelOrders": "replace",
     "functions": [
       {
         "id": "produce_ordinary_textiles",
@@ -1491,12 +1447,6 @@ window.TSI_DATA.bastionFacilities = [
         "options": [
           {
             "label": "Sailcloth (1 lot)",
-            "inputs": [
-              {
-                "good": "ordinary_textiles",
-                "qty": 1
-              }
-            ],
             "outputs": [
               {
                 "good": "sailcloth",
@@ -1518,12 +1468,6 @@ window.TSI_DATA.bastionFacilities = [
         "options": [
           {
             "label": "Specialist Garments (1 lot)",
-            "inputs": [
-              {
-                "good": "ordinary_textiles",
-                "qty": 1
-              }
-            ],
             "outputs": [
               {
                 "good": "specialist_garments",
@@ -1545,12 +1489,6 @@ window.TSI_DATA.bastionFacilities = [
         "options": [
           {
             "label": "Specialist Garments (2 lots)",
-            "inputs": [
-              {
-                "good": "ordinary_textiles",
-                "qty": 2
-              }
-            ],
             "outputs": [
               {
                 "good": "specialist_garments",
@@ -1593,12 +1531,6 @@ window.TSI_DATA.bastionFacilities = [
         "options": [
           {
             "label": "Sailcloth (3 lots)",
-            "inputs": [
-              {
-                "good": "ordinary_textiles",
-                "qty": 3
-              }
-            ],
             "outputs": [
               {
                 "good": "sailcloth",
