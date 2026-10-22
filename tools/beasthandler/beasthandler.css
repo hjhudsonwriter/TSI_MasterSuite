@@ -430,9 +430,6 @@ body.tsi-bh-phone .tsi-btn--primary:hover { filter: brightness(1.06); }
   .tsi-tool--beasthandler .tsi-bh-hero2::before { display: none; }
 }
 
-/* A plain line of words in a box (a message, a problem). */
-.tsi-tool--beasthandler .tsi-bh-message--warn { border-style: solid; border-color: var(--tsi-line-control); color: var(--tsi-text); }
-
 /* ---------- A screen change fades in softly ---------- */
 @keyframes tsi-bh-fade-in { from { opacity: 0; } to { opacity: 1; } }
 .tsi-tool--beasthandler .tsi-bh.tsi-bh--in { animation: tsi-bh-fade-in 280ms ease-out both; }

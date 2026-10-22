@@ -1,5 +1,7 @@
 # Beast Handler: audit and phased proposal (BH-0)
 
+> **Superseded in part by the Strip Back Overhaul (22 October 2026).** The app is now read-only: the request protocol, the orders and the editing described in sections 5 to 8 (D2 to D5) were removed (step S13; see `docs/strip-back/H-handler-app.md` and `docs/strip-back/S13-built.md`). This document is kept as history; it is not rewritten.
+
 Status: **approved by Harry on 21 October 2026 (D1 to D8 as recommended; D9 does not apply). Building BH-1.**
 Source brief: *BEAST_HANDLER Claude Code Handover* (20 pages). Section numbers below match the brief's section 19.
 
