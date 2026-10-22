@@ -38,14 +38,15 @@
    receipt. The Explorer reads the Bastion's parcels from its save (B.parcels,
    B.parcelView) but never changes them.
 
-   Pull request 7 (Harry, 14 October 2026) adds a fourth kind: a griffin or
-   a dire wolf the DM grants in the Explorer, { id, type: 'creature', day,
+   Pull request 7 (Harry, 14 October 2026) adds a fourth kind: a beast (a
+   griffin or dire wolf; since 22 October 2026 also a wyvern, buckbear or
+   fellcat) the DM grants in the Explorer, { id, type: 'creature', day,
    at, from, species, name, text } (species: one the DM can grant, from
    tools/bastion/data/creatures-data.js grantable; name: as typed, at most
    40 letters, or ''). It has no Clan. Its id is a new random id with
    ':dm:0', as the Port Charter button's. The Bastion holds the creature
-   once, waiting for a home, and the Griffin Tower's or Dire Wolf Den's
-   House order houses it.
+   once, waiting for a home, and the Beast Pen's House Beast Here order
+   houses it.
 
    Pull request 8b (Harry, 15 October 2026) adds a fifth kind: a Shrine's
    Great Rite the DM gives the party in the Explorer, { id, type: 'rite',
@@ -140,7 +141,7 @@
   /* The creatures the DM can grant (pull request 7): from the Bastion's
      creatures-data.js when the page has it, otherwise these (keep them the
      same as that file). */
-  var FALLBACK_CREATURES = { griffin: { name: 'Griffin', home: 'griffin_tower' }, dire_wolf: { name: 'Dire Wolf', home: 'dire_wolf_den' }, wyvern: { name: 'Wyvern', home: 'wyvern_roost' } };
+  var FALLBACK_CREATURES = { wyvern: { name: 'Wyvern', home: 'beast_pen' }, griffin: { name: 'Griffin', home: 'beast_pen' }, dire_wolf: { name: 'Dire Wolf', home: 'beast_pen' }, buckbear: { name: 'Buckbear', home: 'beast_pen' }, fellcat: { name: 'Fellcat', home: 'beast_pen' } };
   function creatures() { var c = window.TSI_DATA && window.TSI_DATA.bastionCreatures; return isObj(c) && isObj(c.species) ? c : null; }
   B.grantable = function () {
     var c = creatures();

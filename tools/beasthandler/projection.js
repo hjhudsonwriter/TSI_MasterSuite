@@ -8,17 +8,17 @@
    either: R.sweepInitiation does that, in the Bastion).
 
    What a snapshot holds (version 2):
-   - the directory: each standing Wyvern Roost, Griffin Tower and Dire Wolf
-     Den, its level, and every creature housed there (name, kind, the
-     handler's name, the bond, and whether it has been acclimatised). A
-     creature that belongs to someone else is a directory line and nothing
-     more.
+   - the directory: the Beast Pen (one entry, level 1) and every creature
+     housed there (name, kind, the handler's name, the bond, whether it has
+     been acclimatised and whether it is at the Pen or away from the Ironbow
+     with its handler). A creature that belongs to someone else is a
+     directory line and nothing more.
    - the detail of the handler's OWN creatures only. A creature that has not
      passed acclimatisation (Bond 0) is "not available": its name, kind,
-     building, handler and bond, and nothing else. From Bond 1 the detail is
-     its profile, its Chronicle (without the DM's DM-only notes), its picture
-     key and the first meeting the Bastion rolled for it (null until it has
-     one).
+     handler and bond, and nothing else. From Bond 1 the detail is its place,
+     its Bonding Days and pills (how far it is to its next bond level), its
+     profile, its Chronicle (without the DM's DM-only notes), its picture key
+     and the first meeting the Bastion rolled for it (null until it has one).
    It never holds the treasury, the Day Log, the DM's notes, other
    buildings, or any raw part of the save, and since version 2 it holds no
    orders, training, receipts or request fingerprints: the app sends the
@@ -55,43 +55,29 @@
     return x !== '' && x === P.handlerKey(b);
   };
 
-  /* ---------- The three buildings ---------- */
-  /* [{ speciesId, speciesName, facId }] in the creatures data's order. */
-  P.homes = function (data) {
+  /* ---------- The Beast Pen ---------- */
+  /* The creatures standing in the Beast Pen: housed, and the Pen built. Every kind lives there. */
+  function housedIn(s, data) {
     var r = R();
-    var sp = r.creaturesData(data).species;
-    var out = [];
-    Object.keys(isObj(sp) ? sp : {}).forEach(function (id) {
-      var home = r.speciesHome(data, id);
-      if (home && r.facility(data, home)) out.push({ speciesId: id, speciesName: r.speciesName(data, id), facId: home });
-    });
-    return out;
-  };
-
-  /* The creatures standing in a built building: housed there, of its kind. */
-  function housedIn(s, data, home) {
-    var r = R();
-    if (r.builtFacilityIds(s, data).indexOf(home.facId) === -1) return [];
-    return r.housedAt(s, home.facId).filter(function (c) { return c.species === home.speciesId; });
+    if (r.builtFacilityIds(s, data).indexOf(r.PEN_ID) === -1) return [];
+    return r.penHoused(s);
   }
 
   P.housedIn = housedIn;
 
   function handlerOf(c) { return isObj(c.development) ? txt(c.development.handlerId, 40) : ''; }
 
-  /* The handlers who have a creature in a standing building: [{ id, name, count }], for the DM's own preview. */
+  /* The handlers who have a creature in the standing Pen: [{ id, name, count }], for the DM's own preview. */
   P.handlers = function (s, data) {
     var r = R();
     var seen = new Map();
     var out = [];
-    P.homes(data).forEach(function (home) {
-      housedIn(s, data, home).forEach(function (c) {
-        var h = handlerOf(c);
-        var k = P.handlerKey(h);
-        if (!k) return;
-        if (!seen.has(k)) { var entry = { id: h, name: r.handlerName(h), count: 0 }; seen.set(k, entry); out.push(entry); }
-        seen.get(k).count++;
-      });
+    housedIn(s, data).forEach(function (c) {
+      var h = handlerOf(c);
+      var k = P.handlerKey(h);
+      if (!k) return;
+      if (!seen.has(k)) { var entry = { id: h, name: r.handlerName(h), count: 0 }; seen.set(k, entry); out.push(entry); }
+      seen.get(k).count++;
     });
     return out;
   };
@@ -119,26 +105,46 @@
     };
   }
 
-  function detailOf(s, data, c, home) {
+  /* Where a beast is: 'away' (out on the road with its handler: "Away from the Ironbow") or 'pen' ("At the Beast Pen"). */
+  function placeOf(c) { var r = R(); return r.isAway && r.isAway(c) ? 'away' : 'pen'; }
+
+  /* Its Bonding Days and how far the next pill has filled (a beast with a bond of 1 to 4: the pill filling; Bond 5: none).
+     Why a player may see it: it is their own beast's progress, which is what the Bond page is for. */
+  function bondingOf(s, data, c) {
     var r = R();
-    var fac = r.facility(data, home.facId);
+    var p = r.bondProgress(s, data, c);
+    var out = {
+      away: p.away === true,
+      awaySince: p.away && typeof p.since === 'number' ? p.since : null,
+      awaySinceLabel: p.away && typeof p.since === 'number' ? r.dayLabel(p.since) : '',
+      days: num(p.days, 0),
+      pill: null,
+      ready: typeof p.ready === 'number' ? p.ready : null
+    };
+    if (p.pill) out.pill = { n: p.pill.n, days: num(p.pill.days, 0), need: num(p.pill.need, 0), fraction: num(p.pill.fraction, 0), full: p.pill.full === true };
+    return out;
+  }
+
+  function detailOf(s, data, c) {
+    var r = R();
     var d = r.devView(s, c);
     var t = d.temperament;
     var level = d.bond.level;
     var detail = {
-      /* A name, a kind, a building and a handler are on the directory line anyway. */
+      /* A name, a kind and a handler are on the directory line anyway. */
       id: c.id,
       name: txt(r.creatureName(data, c), 80),
-      species: { id: home.speciesId, name: home.speciesName },
-      facility: { id: fac.id, name: fac.name, level: r.getFacilityLevel(s, fac.id) },
+      species: { id: c.species, name: r.speciesName(data, c.species) },
       handler: { name: txt(r.handlerName(d.handlerId), 40) },
-      /* Whether the app opens this beast at all: only after the Pit's acclimatisation (Bond 1). */
+      /* Whether the app opens this beast at all: only after the Pen's acclimatisation (Bond 1). */
       available: level >= 1,
       bond: { level: level, name: r.bondName(level), max: 5 }
     };
     /* Bond 0: nothing more is sent. */
     if (!detail.available) return detail;
-    /* Its own handler's beast, so its own profile lines. */
+    /* Its own handler's beast, so its own place, bonding and profile lines. */
+    detail.place = placeOf(c);
+    detail.bonding = bondingOf(s, data, c);
     detail.initiation = initiationOf(d);
     detail.profile = {
       regional: txt(d.regional, 60),
@@ -147,7 +153,7 @@
       trigger: txt(t.trigger, 120)
     };
     detail.chronicle = chronicleOf(d);
-    detail.artKey = home.speciesId;
+    detail.artKey = c.species;
     return detail;
   }
 
@@ -159,32 +165,31 @@
     var key = P.handlerKey(handlerId);
     var facilities = [];
     var creatures = {};
-    P.homes(data).forEach(function (home) {
-      var fac = r.facility(data, home.facId);
-      if (r.builtFacilityIds(s, data).indexOf(home.facId) === -1) return;
-      var list = housedIn(s, data, home);
+    if (r.builtFacilityIds(s, data).indexOf(r.PEN_ID) !== -1) {
+      var fac = r.facility(data, r.PEN_ID);
       facilities.push({
         id: fac.id,
         name: fac.name,
         level: r.getFacilityLevel(s, fac.id),
-        species: { id: home.speciesId, name: home.speciesName },
-        creatures: list.filter(function (c) { return P.safeKey(c.id); }).map(function (c) {
+        creatures: housedIn(s, data).filter(function (c) { return P.safeKey(c.id); }).map(function (c) {
           var mine = !!key && P.sameHandler(handlerOf(c), key);
-          if (mine && P.safeKey(c.id)) creatures[c.id] = detailOf(s, data, c, home);
+          if (mine) creatures[c.id] = detailOf(s, data, c);
           var d = isObj(c.development) ? c.development : null;
           return {
             id: c.id,
             name: txt(r.creatureName(data, c), 80),
-            species: { id: home.speciesId, name: home.speciesName },
+            species: { id: c.species, name: r.speciesName(data, c.species) },
             handlerName: d && d.handlerId ? txt(r.handlerName(d.handlerId), 40) : '',
             bond: d ? { level: d.bond.level, name: r.bondName(d.bond.level) } : null,
             /* Whether the beast has passed acclimatisation: the directory says "Not acclimatised yet" otherwise. */
             available: !!d && d.bond.level >= 1,
+            /* At the Pen or away from the Ironbow: the table sees who is out on the road. */
+            place: placeOf(c),
             mine: mine
           };
         })
       });
-    });
+    }
     var anyMine = Object.keys(creatures).length > 0;
     return {
       kind: P.KIND,

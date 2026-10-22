@@ -107,7 +107,7 @@
   });
 
   test('the registry: the steps run in order, the last one finishes, and a later step can be added above the catch-all', function (t) {
-    t.same(R.stripBackSteps.map(function (st) { return st.id; }), ['dropEvents', 'dropBeastRequests', 'sweepFacilities', 'finish']);
+    t.same(R.stripBackSteps.map(function (st) { return st.id; }), ['dropEvents', 'dropBeastRequests', 'rehomeBeasts', 'sweepFacilities', 'finish']);
     var steps = R.stripBackSteps;
     var added = {
       id: 'example',
@@ -132,7 +132,7 @@
     } finally {
       steps.splice(0, 1);
     }
-    t.same(R.stripBackSteps.map(function (st) { return st.id; }), ['dropEvents', 'dropBeastRequests', 'sweepFacilities', 'finish']);
+    t.same(R.stripBackSteps.map(function (st) { return st.id; }), ['dropEvents', 'dropBeastRequests', 'rehomeBeasts', 'sweepFacilities', 'finish']);
   });
 
   group('Strip Back: the catch-all (a facility the Bastion does not know)');
@@ -268,8 +268,11 @@
     var ids = ['menagerie', 'war_room', 'library_scriptorium', 'arcane_laboratory', 'armoury', 'watchtower', 'barracks', 'shrine_telluria', 'shrine_aurush', 'shrine_pelagos', 'wyvern_roost', 'griffin_tower', 'dire_wolf_den'];
     t.same(Object.keys(T.bastion.stripBack.facilities).sort(), ids.slice().sort(), 'the 13 facilities going');
     ids.forEach(function (id) {
-      t.equal(T.bastion.stripBack.facilities[id], R.facility(data, id).name, id + ': spelt as the catalogue spells it');
+      /* The three creature buildings are already out of the catalogue (S14): their names are the table's own. */
+      var fac = R.facility(data, id);
+      t.equal(T.bastion.stripBack.facilities[id], fac ? fac.name : { wyvern_roost: 'Wyvern Roost', griffin_tower: 'Griffin Tower', dire_wolf_den: 'Dire Wolf Den' }[id], id + ': spelt as the catalogue spells it');
     });
+    t.equal(R.stripBackName(data, 'wyvern_roost'), 'Wyvern Roost', 'still named after its definition went');
     t.same(Object.keys(T.bastion.stripBack).sort(), ['facilities', 'menagerieValue', 'names', 'orders']);
     /* Still named when its definition has gone from the catalogue. */
     var gone = { bastion: T.bastion, facilities: T.bastionFacilities.filter(function (f) { return f.id !== 'war_room'; }) };
@@ -454,22 +457,27 @@
     Object.keys(FIX).forEach(function (name) {
       if (name === 'bastion-before-overhaul') return;
       var res = convert(FIX[name]);
-      t.equal(res.report.lines.length, name === 'bastion-v3-heavy' ? 1 : 0, name + ': only the heavy one had an event to drop');
+      /* The heavy one had an event to drop and the three creature buildings (S14); two earlier ones had the three buildings. */
+      t.equal(res.report.lines.filter(function (l) { return !/^Places that joined others\. /.test(l) && !/^Beasts\. /.test(l) && !/^Gold\. /.test(l) && !/^Orders\. /.test(l); }).length, name === 'bastion-v3-heavy' ? 1 : 0, name + ': only the heavy one had an event to drop');
       var a = clone(res.save), b = clone(FIX[name]);
       delete a.migration; delete b.migration;
       delete b.lastEvent; delete b.lastEventDay;
       a.v = 3;
+      /* Changed by the Beast Pen (S14): the slots, levels, orders and creatures' homes of the three creature buildings. They are checked in tests/rules/beast-pen.test.js. */
+      if (res.report.archived.some(function (x) { return /^(wyvern_roost|griffin_tower|dire_wolf_den)$/.test(x.facId); })) {
+        ['builtExtras', 'builtPlots', 'facilityLevels', 'archivedFacilities', 'creatures', 'pendingOrders', 'treasuryGP'].forEach(function (k) { delete a[k]; delete b[k]; });
+      }
       /* Removed so far (S13): the Beast Handler's old request record. */
       if (b.beast) { delete b.beast.done; delete b.beast.accept; delete b.beast.floor; }
       t.equal(canon(a), canon(b), name + ': every other field exactly as it was');
     });
     var heavy = R.fromSave(clone(FIX['bastion-v3-heavy']), data);
     t.equal(heavy.v, 4);
-    t.equal(heavy.pendingOrders.length, 28);
+    t.equal(heavy.pendingOrders.length, 27, '28, less the Riding Harness (cancelled and refunded)');
     t.equal(heavy.creatures.length, 4);
     t.equal(heavy.log.length, 200);
-    t.equal(heavy.treasuryGP, 2000);
-    t.same(heavy.builtExtras.filter(Boolean).map(function (e) { return e.facId; }), ['menagerie', 'war_room', 'library_scriptorium', 'arcane_laboratory', 'shrine_telluria', 'shrine_aurush', 'shrine_pelagos', 'wyvern_roost', 'griffin_tower', 'dire_wolf_den', 'hall_of_emissaries']);
+    t.equal(heavy.treasuryGP, 2150, '2,000 and the 150 gp harness back');
+    t.same(heavy.builtExtras.filter(Boolean).map(function (e) { return e.facId; }), ['menagerie', 'war_room', 'library_scriptorium', 'arcane_laboratory', 'shrine_telluria', 'shrine_aurush', 'shrine_pelagos', 'beast_pen', 'hall_of_emissaries']);
     t.equal(heavy.migration.v4.changed, true, 'its event record was dropped, and it says so');
     t.equal('lastEvent' in heavy || 'lastEventDay' in heavy, false);
   });
@@ -784,7 +792,7 @@
     var res = convert(raw);
     t.same(res.problems, []);
     t.equal(res.save.migration.v4.lines.filter(function (l) { return /^Bastion events\./.test(l); }).length, 1);
-    t.equal(res.save.migration.v4.lines[0], EVENT_LINE);
+    t.ok(res.save.migration.v4.lines.indexOf(EVENT_LINE) !== -1, 'its sentence is in the report');
     t.equal('lastEvent' in res.save || 'lastEventDay' in res.save, false);
     t.same(R.stripBackLeftovers(res.save, data), []);
     t.equal(canon(R.migrateToV4(res.save, data).save), canon(res.save), 'idempotent');

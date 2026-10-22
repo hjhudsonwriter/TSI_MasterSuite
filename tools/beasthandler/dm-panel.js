@@ -1,6 +1,6 @@
 /* Scarlett Isles: Beast Handler — the DM's panel inside the Bastion (BH-2c and BH-3a; read-only app since 22 October 2026).
 
-   A box in the Bastion's Management panel (tools/bastion/tool.js builds it with
+   A box in the Bastion's Beast Pen panel (tools/bastion/tool.js builds it with
    TSI.beasthandler.dmPanel.create(host)). It lets the DM:
    - see each handler and how many beasts they have;
    - make (or take back) a handler's PAIRING CODE, which links their phone;
@@ -112,7 +112,7 @@
             h.paired ? btn('Snapshot code…', function () { onSnapshot(h); }, 'beast-snap-' + h.id) : null,
             h.paired ? btn('Take back code', function () { onRevoke(h); }, 'beast-revoke-' + h.id, 'tsi-btn--ghost') : null
           ]);
-        }) : [muted('No handler yet. Give a beast a handler in its building\'s panel, or add one here.')]);
+        }) : [muted('No handler yet. Give a beast a handler in the Beast Pen\'s panel, or add one here.')]);
         TSI.append(root, [
           el('p', { class: 'tsi-bas-muted', text: 'A player\'s Beast Handler shows their beasts: the bond, the profile and the Chronicle. It only looks: the player can\'t change or ask for anything, and nothing a player does costs gold. A beast shows there once it has passed acclimatisation (Bond 1).' }),
           list,

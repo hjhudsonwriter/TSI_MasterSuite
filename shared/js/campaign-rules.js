@@ -62,11 +62,17 @@
      left out of it. */
   var RETIRED_FACILITIES = ['menagerie', 'war_room', 'library_scriptorium', 'arcane_laboratory', 'armoury', 'watchtower', 'barracks',
     'shrine_telluria', 'shrine_aurush', 'shrine_pelagos', 'wyvern_roost', 'griffin_tower', 'dire_wolf_den'];
+  /* The orders at a retired facility that the conversion MOVES instead of cancelling, so a version 3 save's forecast
+     still lists them (they keep their due day): the Wyvern Roost's, Griffin Tower's and Dire Wolf Den's House orders
+     become the Beast Pen's House Beast Here (step rehomeBeasts in tools/bastion/strip-back-rules.js). Every other order
+     at a retired facility is cancelled (with a refund), so it is left out. */
+  var MOVED_ORDERS = { wyvern_roost: ['house_elara_wyvern', 'house_wyvern'], griffin_tower: ['house_griffin'], dire_wolf_den: ['house_dire_wolf'] };
+  function movedOrder(o) { return isObj(o) && Array.isArray(MOVED_ORDERS[o.facId]) && MOVED_ORDERS[o.facId].indexOf(o.fnId) !== -1; }
   /* The pending orders a Bastion save will really have (see above). */
   function liveOrders(ba) {
     var list = Array.isArray(ba.pendingOrders) ? ba.pendingOrders : [];
     if (ba.v === 4) return list;
-    return list.filter(function (o) { return !(isObj(o) && RETIRED_FACILITIES.indexOf(o.facId) !== -1); });
+    return list.filter(function (o) { return !(isObj(o) && RETIRED_FACILITIES.indexOf(o.facId) !== -1) || movedOrder(o); });
   }
   var OBJECTIVES = { raid: 'Raid', skirmish: 'Skirmish', seize_outpost: 'Seize Outpost' };
   function clanTitle(name) { var n = str(name).trim(); return /^clan /i.test(n) ? n : 'Clan ' + n; }
@@ -84,6 +90,8 @@
   var C = TSI.campaign = {
     /* The 13 facilities the Strip Back Overhaul retires (see above). */
     RETIRED_FACILITIES: RETIRED_FACILITIES,
+    /* { facility id: [order ids] }: the orders at a retired facility the conversion moves, not cancels. */
+    MOVED_ORDERS: MOVED_ORDERS,
 
     /* What the Bastion has coming, from its save: [{ day, kind, line }], in day
        order (only what can be known before the day: building finished,

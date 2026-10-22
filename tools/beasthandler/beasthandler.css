@@ -299,9 +299,30 @@ body.tsi-bh-phone .tsi-btn--primary:hover { filter: brightness(1.06); }
 .tsi-tool--beasthandler .tsi-bh-rapport__stage { flex: none; padding: 6px 10px; font: 700 11px/1.2 var(--tsi-font-display); letter-spacing: var(--tsi-track-pill); text-transform: uppercase; color: var(--tsi-text-muted); background: rgba(255, 255, 255, .06); border: 1px solid var(--tsi-line); border-radius: 10px; }
 .tsi-tool--beasthandler .tsi-bh-pills { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
 .tsi-tool--beasthandler .tsi-bh-pill { display: grid; gap: 6px; justify-items: center; }
-.tsi-tool--beasthandler .tsi-bh-pill__bar { display: block; width: 100%; height: 8px; border-radius: 999px; background: #353436; }
-.tsi-tool--beasthandler .tsi-bh-pill--done .tsi-bh-pill__bar { background: #b98f3d; }
-.tsi-tool--beasthandler .tsi-bh-pill--current .tsi-bh-pill__bar { background: var(--tsi-gold); box-shadow: 0 0 10px rgba(244, 205, 118, .55); }
+/* A pill is a track with a fill inside it: the fill's width is how far the Bonding Days have taken it (0 to 100). */
+.tsi-tool--beasthandler .tsi-bh-pill__bar { position: relative; display: block; width: 100%; height: 8px; border-radius: 999px; background: #353436; overflow: hidden; }
+.tsi-tool--beasthandler .tsi-bh-pill__fill { position: absolute; top: 0; bottom: 0; left: 0; display: block; width: 0; border-radius: 999px; background: #b98f3d; }
+.tsi-tool--beasthandler .tsi-bh-pill--current .tsi-bh-pill__bar { box-shadow: 0 0 10px rgba(244, 205, 118, .55); }
+.tsi-tool--beasthandler .tsi-bh-pill--current .tsi-bh-pill__fill { background: var(--tsi-gold); }
+.tsi-tool--beasthandler .tsi-bh-pill--filling .tsi-bh-pill__fill { background: linear-gradient(90deg, #b98f3d, var(--tsi-gold)); }
+.tsi-tool--beasthandler .tsi-bh-pill--ready .tsi-bh-pill__fill { background: var(--tsi-gold); }
+.tsi-tool--beasthandler .tsi-bh-pill--ready .tsi-bh-pill__bar { box-shadow: 0 0 10px rgba(244, 205, 118, .7); }
+.tsi-tool--beasthandler .tsi-bh-pill--ready .tsi-bh-pill__label { color: var(--tsi-gold); }
+/* The fill grows smoothly, at the suite's signature speed; with "reduce motion" on there is no transition and no pulse at all. */
+@media (prefers-reduced-motion: no-preference) {
+  .tsi-tool--beasthandler .tsi-bh-pill__fill { transition: width calc(.9s * var(--tsi-signature-slowdown)) ease-out; }
+  .tsi-tool--beasthandler .tsi-bh-pill--ready .tsi-bh-pill__bar { animation: tsi-bh-ready-pulse calc(2.4s * var(--tsi-signature-slowdown)) ease-in-out infinite; }
+}
+@keyframes tsi-bh-ready-pulse { 0%, 100% { box-shadow: 0 0 6px rgba(244, 205, 118, .45); } 50% { box-shadow: 0 0 14px rgba(244, 205, 118, .85); } }
+/* The Bonding Days counter: a tile with the number, and one line under it. */
+.tsi-tool--beasthandler .tsi-bh-days { display: grid; gap: 4px; padding: var(--tsi-space-3); background: rgba(255, 255, 255, .04); border: 1px solid var(--tsi-line); border-radius: var(--tsi-radius-md); }
+.tsi-tool--beasthandler .tsi-bh-days[hidden] { display: none; }
+.tsi-tool--beasthandler .tsi-bh-days__count { display: flex; align-items: baseline; gap: var(--tsi-space-2); }
+.tsi-tool--beasthandler .tsi-bh-days__num { font: 700 clamp(26px, 6vw, 34px)/1 var(--tsi-font-display); color: var(--tsi-gold); }
+.tsi-tool--beasthandler .tsi-bh-days__label { font: 600 11px/1.2 var(--tsi-font-display); letter-spacing: var(--tsi-track-kicker); text-transform: uppercase; color: var(--tsi-text-soft); }
+.tsi-tool--beasthandler .tsi-bh-days__line { margin: 0; font-size: var(--tsi-fs-body-sm); color: var(--tsi-text-muted); }
+.tsi-tool--beasthandler .tsi-bh-ready { margin: 0; text-align: center; font: 700 var(--tsi-fs-body-sm)/1.3 var(--tsi-font-display); letter-spacing: var(--tsi-track-label); color: var(--tsi-gold); }
+.tsi-tool--beasthandler .tsi-bh-ready[hidden] { display: none; }
 .tsi-tool--beasthandler .tsi-bh-pill__label { max-width: 100%; font: 600 11.5px/1.15 var(--tsi-font-body); letter-spacing: 0; text-align: center; color: var(--tsi-text-soft); overflow-wrap: normal; word-break: normal; hyphens: none; }
 /* Five names across the narrowest phones: the longest ("Acclimatised") must fit its column whole, so the type steps down a little. */
 @media (max-width: 399px) { .tsi-tool--beasthandler .tsi-bh-pill__label { font-size: 10.5px; } }
@@ -311,6 +332,7 @@ body.tsi-bh-phone .tsi-btn--primary:hover { filter: brightness(1.06); }
   .tsi-tool--beasthandler .tsi-bh-pill__label { font-size: 9.5px; }
 }
 .tsi-tool--beasthandler .tsi-bh-pill--done .tsi-bh-pill__label { color: var(--tsi-text-soft); }
+.tsi-tool--beasthandler .tsi-bh-beast__bond--away { color: var(--tsi-gold); border-color: rgba(244, 205, 118, .45); }
 .tsi-tool--beasthandler .tsi-bh-pill--current .tsi-bh-pill__label { color: var(--tsi-gold); }
 
 /* ---------- Sub-screen heading ---------- */

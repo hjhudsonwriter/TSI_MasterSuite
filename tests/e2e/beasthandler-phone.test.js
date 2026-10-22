@@ -33,8 +33,8 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
   await ba.evaluate(() => TSI.bastion.debug.change(s => {
     const R = TSI.bastion.rules;
     s.partyLevel = 9; s.treasuryGP = 400;
-    s.builtExtras = [{ facId: 'wyvern_roost', status: 'built' }, { facId: 'griffin_tower', status: 'built' }];
-    s.facilityLevels.wyvern_roost = 3; s.facilityLevels.griffin_tower = 2;
+    s.builtExtras = [{ facId: 'beast_pen', status: 'built' }];
+    s.facilityLevels.beast_pen = 1;
     const mk = (id, species, name, home, handler) => {
       const c = { id, species, owner: '', name, status: 'housed', home, grantedDay: 1, housedDay: 1, msgId: '' };
       c.development = R.newDevelopment(c, s.day); c.development.handlerId = handler;
@@ -43,14 +43,14 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
       c.development.regional = 'Widowspine';
       return c;
     };
-    s.creatures = [mk('cr-stormwing', 'wyvern', 'Stormwing', 'wyvern_roost', 'Mira'), mk('cr-ashwing', 'wyvern', 'Ashwing', 'wyvern_roost', 'Joss')];
+    s.creatures = [mk('cr-stormwing', 'wyvern', 'Stormwing', 'beast_pen', 'Mira'), mk('cr-ashwing', 'griffin', 'Ashwing', 'beast_pen', 'Joss')];
   }));
   await ba.evaluate(() => TSI.store.flush());
   await ba.waitForTimeout(500);
   const state = () => bas(ba);
   const closeDialog = async () => { await ba.locator('.tsi-modal__foot .tsi-btn--primary').last().click(); await ba.waitForTimeout(250); };
   const openBox = async () => {
-    if (!(await ba.$('[data-test=beast-box]:visible'))) { await ba.click('[data-test=open-management]'); await ba.waitForSelector('[data-test=beast-box]'); }
+    if (!(await ba.$('[data-test=beast-box]:visible'))) { await ba.click('[data-test=tile-beast_pen]'); await ba.waitForSelector('[data-test=beast-box]'); }
   };
   const dmCode = async (button, dialogTest) => {
     await openBox();
@@ -260,12 +260,12 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
       const top = await pp.evaluate(s => { const n = document.querySelector(s); const b = n.getBoundingClientRect(); const hit = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2); return { ok: hit === n || n.contains(hit), hit: hit ? (hit.getAttribute('data-test') || hit.className || hit.tagName) : null, what: n.getAttribute('data-test') || n.textContent.slice(0, 20), rect: [Math.round(b.top), Math.round(b.bottom)], vh: innerHeight, y: Math.round(scrollY) }; }, sel);
       assert(top.ok, 'a control is hidden behind a bar when focused at 360 x 640: ' + JSON.stringify(top));
     }
-    /* On the narrowest phone a building's "Level N" tag stays on one line. */
+    /* On the narrowest phone the Beast Pen's card and its chips stay inside the page. */
     await pp.setViewportSize({ width: 320, height: 640 });
     await pp.click('[data-test=bh-back]');
-    await pp.waitForSelector('[data-test=bh-fac-wyvern_roost]');
-    const tall = await pp.$$eval('.tsi-bh-card__head .tsi-pill', ns => ns.map(n => Math.round(n.getBoundingClientRect().height)).filter(h => h > 32));
-    equal(tall, [], 'a Level tag wraps onto two lines at 320 px');
+    await pp.waitForSelector('[data-test=bh-fac-beast_pen]');
+    const wide = await pp.$$eval('.tsi-bh-card, .tsi-bh-beast', ns => ns.filter(n => n.getBoundingClientRect().right > document.documentElement.clientWidth + 1).length);
+    equal(wide, 0, 'the Pen\'s card is wider than a 320 px phone');
     await pp.setViewportSize({ width: 390, height: 844 });
   });
 

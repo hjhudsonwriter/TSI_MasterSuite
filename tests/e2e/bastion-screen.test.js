@@ -314,11 +314,11 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
       assert(/Plots open at party level 9/.test(await text(page, 'build-' + id)), id + ': on a Development Plot');
     }
     assert(!ids.some(id => id === 'nothing_in_development'), 'nothing is listed as in development');
-    for (const id of ['wyvern_roost', 'griffin_tower', 'dire_wolf_den']) {
-      equal(await page.$eval('[data-test=build-' + id + ']', e => e.tagName), 'BUTTON', id + ': can be built (pull request 7)');
-      assert(!/In development/.test(await text(page, 'build-' + id)), id);
-    }
-    equal(await page.$eval('[data-test=build-wyvern_roost] [data-art]', e => [e.dataset.art, /wyvern_roost\.png/.test(e.style.backgroundImage)]), ['crop', true], 'its building cut from the map painting');
+    /* The Beast Pen replaced the Wyvern Roost, Griffin Tower and Dire Wolf Den (22 October 2026): one building, one level. */
+    for (const id of ['wyvern_roost', 'griffin_tower', 'dire_wolf_den']) equal(await page.$('[data-test=build-' + id + ']'), null, id + ': gone, the Beast Pen replaces it');
+    equal(await page.$eval('[data-test=build-beast_pen]', e => e.tagName), 'BUTTON', 'the Beast Pen can be built');
+    assert(!/In development/.test(await text(page, 'build-beast_pen')), 'beast_pen');
+    equal(await page.$eval('[data-test=build-beast_pen] img', e => [e.getAttribute('src').split('/').pop(), e.naturalWidth > 0]), ['menagerie.png', true], 'its tile uses the Menagerie\'s painting');
     equal(await page.$eval('[data-test=build-courier_exchange] img', e => [e.getAttribute('src').split('/').pop(), e.naturalWidth > 0]), ['courier_exchange.png', true], 'Harry\'s picture (13 October 2026)');
     equal(await page.$eval('[data-test=build-courier_exchange]', e => e.tagName), 'BUTTON', 'the Courier Exchange can be built (pull request 6)');
     assert(/Plots open at party level 9/.test(await text(page, 'build-courier_exchange')), 'on a Development Plot');
