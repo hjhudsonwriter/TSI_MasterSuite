@@ -541,7 +541,7 @@ async function waitSaved(page) {
         const r = await rect(page);
         const mid = [r.x + r.w / 2, r.y + r.h / 2];
         equal(await top(r.x + 30, r.y + 20), 'dmdoc', 'over the Bastion\'s own bar');
-        /* A full-window overlay at the tools' highest layer (the Ritual's go up to 690; the War Table is at 80). */
+        /* A full-window overlay at the tools' highest layer (the Ritual's go up to 690). */
         await page.evaluate(() => {
           const o = document.createElement('div');
           o.className = 'tsi-dmdoc-test-overlay';
