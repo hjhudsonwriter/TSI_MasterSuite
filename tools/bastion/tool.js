@@ -3208,7 +3208,11 @@
       function unlockLine(fac, lvl) {
         var u = R.levelUnlockSummary(data, fac.id, lvl);
         if (!u) return null;
-        var text = u.unlocks.length
+        /* The four production facilities whose levels replace each other
+           (Strip Back Overhaul, S04): "Level 2 replaces Harvest Timber with Saw Lumber." */
+        var text = u.replaces
+          ? 'Level ' + u.toLevel + ' ' + u.replaces.text + '.' + (u.unlocks.length > 1 ? ' It also gives: ' + u.unlocks.slice(1).join('; ') + '.' : '')
+          : u.unlocks.length
           ? 'Level ' + u.toLevel + ' unlocks: ' + u.unlocks.join('; ') + '.'
           : 'Level ' + u.toLevel + ' unlocks nothing new yet.' + (u.later ? ' It is needed to reach Level ' + u.later.level + ', which unlocks: ' + u.later.unlocks.join('; ') + '.' : '');
         return el('div', { class: 'tsi-bas-fn__days tsi-bas-fn__unlocks', 'data-test': 'upgrade-unlocks-' + fac.id, text: text });
@@ -4492,7 +4496,7 @@
             return {
               title: f.name || f.id,
               parts: [locked ? muted('Unlocks at party level ' + req + '.') : null, f.plot ? muted('Built on a Development Plot (' + (noRoom || 'plots open at party levels 9, 13 and 17') + ').') : noRoom ? muted(noRoom + ': every construction slot is in use.') : null]
-                .concat(fns.length ? [muted('What it does:'), tipList(fns)] : [muted(f.description || 'No actions listed.')]),
+                .concat(fns.length ? [muted(R.replacesLevelOrders(f) ? 'What it does (one order at a time: each level replaces the last):' : 'What it does:'), tipList(fns)] : [muted(f.description || 'No actions listed.')]),
               foot: 'Takes ' + R.daysText(days) + ' to build'
             };
           };
@@ -4599,6 +4603,14 @@
         done();
       });
       var onUpgrade = TSI.oneAtATime(async function (facId) {
+        /* A production facility whose levels replace each other asks first
+           (Strip Back Overhaul, S04): what the new level replaces, and that the
+           replaced order can't be started again once it finishes. */
+        var warn = R.upgradeReplaceNotice(state, data, facId);
+        if (warn) {
+          var go = await ask(warn, 'Upgrade', 'Upgrade ' + (R.facility(data, facId).name));
+          if (!go || !life.alive) return;
+        }
         var res = R.issueUpgrade(state, data, facId, rand);
         if (!res.ok) { if (res.message) await say(res.message); return; }
         log(res.log[0], res.log[1]);
