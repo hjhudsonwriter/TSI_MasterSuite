@@ -83,5 +83,5 @@ The real Google Firebase console and each step marked so in the guide; a real da
 | `guide.test.js` | 21 of 21 |
 | `creatures.test.js` (the Beast Pen's panel fits the laptop; it caught a text box in the panel taking the focus and scrolling it to the bottom, since fixed) | 23 of 23 |
 | `bastion-screen.test.js` | 55 of 55 |
-| `phase1.test.js` | see the end of this file |
-| `phase4.test.js` (the Knightly Treasures link is unaffected) | see the end of this file |
+| `phase1.test.js` | 129 of 129 |
+| `phase4.test.js` (the Knightly Treasures link is unaffected; its "no Firebase outside the Notice Board" checks hold because the online link uses plain web requests, not Google's library) | 57 of 57 (the old-tool comparison is skipped: `_legacy/` is missing in a worktree) |
