@@ -133,13 +133,13 @@
       anchored: false,
       log: [],
       /* 'unsworn' or 'clan' (the Mercenary Brigade was archived in the
-         Bastion overhaul, Build 3: tools/bastion/archive/mercenary-brigade.js). */
+         Bastion overhaul, Build 3, and its code deleted with the war game on
+         22 October 2026; commit 4f1db26 has it). */
       organization: { type: 'unsworn', name: '', chief: '', motto: '', foundedAtDay: null },
       clanHonor: 40,
       honourRespectByClan: clanMap(0),
       /* The archived Brigade's Trusted Clients scores: nothing reads them
-         now, but they're kept in the save, so putting the Brigade back
-         (archive/mercenary-brigade.js) loses nothing. */
+         now (a later step of the Strip Back Overhaul drops them). */
       trustedClientsByClan: clanMap(50),
       /* Where passing a day has got to ({ day, stage, skipped, news }), so it can finish after a cancelled roll or a closed window
          (BAS-02); and "The Ironbow sends word…" not yet shown, [{ day,

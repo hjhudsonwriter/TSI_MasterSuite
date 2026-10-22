@@ -248,7 +248,7 @@ window.TSI_DATA.bastion = {
   consortiumName: 'Ironbow Trade Consortium',
 
   /* Party identity (4947-4954): founding a Clan. (The Mercenary Brigade's
-     level 7 and 3 defenders are in tools/bastion/archive/mercenary-brigade.js.) */
+     level 7 and 3 defenders went with the war game, 22 October 2026.) */
   identityRules: {
     clanMinLevel: 9,
     clanSupportTotalMin: 360,
