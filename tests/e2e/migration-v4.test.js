@@ -29,24 +29,8 @@ function withGhost() {
   return s;
 }
 /* The smallest Bastion that is still a Bastion, from before the change (version 3), on Day 1. */
-/* The heavy Bastion as one that never rolled a Bastion event (the heavy one has: Friendly Visitors, Day 29), so it has nothing at all to convert. */
-function heavyQuiet() {
-  const s = clone(HEAVY);
-  delete s.lastEvent;
-  delete s.lastEventDay;
-  /* ... and one whose three creature buildings are already the Beast Pen (S14): the Roost's slot is the Pen, the other two are free, the House and harness orders are gone, and the beasts live at the Pen. */
-  const old = ['wyvern_roost', 'griffin_tower', 'dire_wolf_den'];
-  const at = s.builtExtras.findIndex(e => e && e.facId === 'wyvern_roost');
-  s.builtExtras = s.builtExtras.map(e => (e && old.includes(e.facId) ? '' : e));
-  s.builtExtras[at] = { facId: 'beast_pen', status: 'built' };
-  old.forEach(id => { delete s.facilityLevels[id]; });
-  s.facilityLevels.beast_pen = 1;
-  s.pendingOrders = s.pendingOrders.filter(o => !old.includes(o.facId));
-  s.creatures.forEach(c => { if (c.status === 'housed') c.home = 'beast_pen'; });
-  return s;
-}
 function plain() {
-  return { v: 3, day: 1, anchored: true, treasuryGP: 100, partyLevel: 7, builtExtras: [], pendingOrders: [], defenders: { count: 0, armed: false, patrolUntil: 0 }, warehouse: [], log: [] };
+  return { v: 3, day: 1, anchored: true, treasuryGP: 100, partyLevel: 7, builtExtras: [], pendingOrders: [], warehouse: [], log: [] };
 }
 
 const st = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.debug.state())));
@@ -88,8 +72,8 @@ async function openBastion(page) {
       await page.waitForFunction(() => TSI.store.keys('quarantine').some(k => k.indexOf('tsi.quarantine.bastion.state') === 0));
       const s = await st(page);
       equal(s.v, 4);
-      equal(s.treasuryGP, 2270, '2,000 gp, the 120 gp the Old Mill\'s order cost and the 150 gp Riding Harness');
-      equal(s.pendingOrders.length, 27, 'the 28 orders the Bastion knows, less the harness; the Old Mill\'s is cancelled');
+      equal(s.treasuryGP, 3765, '2,000 gp, the 1,495 gp the war game\'s cancelled orders and the Riding Harness cost, and the 120 gp of the Old Mill\'s');
+      equal(s.pendingOrders.length, 20, 'the 28 orders the Bastion knows, less the eight cancelled (seven for the war game, the harness) and the Old Mill\'s; the Roost\'s House order moved');
       equal(s.migration.v4.shown, false);
       equal('lastEvent' in s || 'lastEventDay' in s, false, 'the Bastion keeps no event record any more (S05)');
     });
@@ -97,17 +81,22 @@ async function openBastion(page) {
     await check('the box has the headline, the lines in plain English, and two buttons', async () => {
       const text = await bare(page, '[data-test=changes-box]');
       assert(text.indexOf('The Bastion has changed. Here is exactly what happened to yours.') !== -1, text);
-      assert(/Gold\. 270 gp went back into the treasury \(it was 2,000 gp, it is now 2,270 gp\): Dire Wolf Den: Riding Harness \(Ashfang\), 150 gp; Old Mill: Grind Grain, 120 gp\./.test(text), text);
+      assert(/Gold\. 1,765 gp went back into the treasury \(it was 2,000 gp, it is now 3,765 gp\): Armoury: Arm Defenders, 300 gp; War Room: Recruit \(Archers \(50\)\), 120 gp; War Room: Drill a Regiment \(Line Infantry I → Trained\), 75 gp; Menagerie: Recruit Beast \(Tiger\), 1,000 gp; Dire Wolf Den: Riding Harness \(Ashfang\), 150 gp; Old Mill: Grind Grain, 120 gp\./.test(text), text);
+      assert(/Trade\. The Commercial Convoy you had ready for the next ship is gone with the Barracks\. It was a charge for the next ship, not gold, so nothing goes back to the treasury\. The Protected Maritime Approaches, in force until Day 44, are gone with the Watchtower\. Ships already at sea are not affected\./.test(text), text);
       assert(/Goods\. 3 lots of Raw Timber went back to the Warehouse\./.test(text), text);
-      assert(/Orders\. 2 orders were cancelled: Dire Wolf Den: Riding Harness \(Ashfang\) \(training and riding are gone: beasts now bond day by day on the road\); Old Mill: Grind Grain \(the Old Mill is no longer part of the Bastion\)\. One order moved with its place, keeping its due day: Wyvern Roost: House a Wyvern \(Skyrender\) \(now at the Beast Pen\)\./.test(text), text);
+      assert(/Orders\. 9 orders were cancelled: Barracks: Recruit Defenders \(the Barracks is gone with the war game\); /.test(text), text);
+      assert(/War Action \(the war game was removed; what declaring war cost you in Honour\/Respect and Political Capital is not given back\)/.test(text), text);
+      assert(/Dire Wolf Den: Riding Harness \(Ashfang\) \(training and riding are gone: beasts now bond day by day on the road\); Old Mill: Grind Grain \(the Old Mill is no longer part of the Bastion\)\. One order moved with its place, keeping its due day: Wyvern Roost: House a Wyvern \(Skyrender\) \(now at the Beast Pen\)\./.test(text), text);
       assert(/Places that joined others\. The Wyvern Roost, Griffin Tower and Dire Wolf Den have become one Beast Pen\. It keeps one beast of each kind: a wyvern, a griffin, a dire wolf, a buckbear and a fellcat\. The other slots are free\./.test(text), text);
       assert(/Beasts\. All 4 of your beasts are still here, with their names, handlers, bonds and Chronicles: Elara's wyvern, Swiftwing, Ashfang and Skyrender\./.test(text), text);
-      assert(/Places that are gone\. The Old Mill is no longer part of the Bastion; its slot is free\./.test(text), text);
+      assert(/Places that are gone\. Barracks, Armoury, Watchtower, War Room and Menagerie are gone with the war game\. The War Room's and the Menagerie's slots are free\. The Old Mill is no longer part of the Bastion; its slot is free\./.test(text), text);
+      assert(/The army and the war\. 6 defenders, 1 tiger \(bought for 1,000 gp\), 1 giant vulture \(bought for 1,000 gp\), 4 regiments and 2 Lieutenants are gone with the war game\. What was spent on them is not given back\. /.test(text), text);
+      assert(/Clan Bacca was at war with you, and that war is over\. The Honour\/Respect and Political Capital the war had already cost you are not changed\. Use Change a score in the DM doc if you want them back\./.test(text), text);
       assert(/Bastion events\. The Bastion no longer has events, so the last one it rolled \(Friendly Visitors, Day 29\) is not kept\. It was only a note for you; nothing in it changed the Bastion's numbers\./.test(text), text);
       assert(/A copy of your Bastion exactly as it was is kept in "Back up everything"/.test(text), text);
       assert(!/undefined|null|NaN|old_mill|\[object/.test(text), 'no code words');
-      equal(await page.$$eval('[data-test=changes-line]', n => n.length), 7);
-      equal(await page.$$eval('[data-test=changes-line] strong', n => n.map(x => x.textContent)), ['Gold.', 'Goods.', 'Orders.', 'Places that are gone.', 'Places that joined others.', 'Beasts.', 'Bastion events.']);
+      equal(await page.$$eval('[data-test=changes-line]', n => n.length), 9);
+      equal(await page.$$eval('[data-test=changes-line] strong', n => n.map(x => x.textContent)), ['Gold.', 'Trade.', 'Goods.', 'Orders.', 'Places that are gone.', 'Places that joined others.', 'The army and the war.', 'Beasts.', 'Bastion events.']);
       equal(await page.textContent('[data-test=changes-ok]'), 'I\'ve read this');
       equal(await page.isVisible('[data-test=changes-save]'), true);
       await H.shot(page, 'migration-box');
@@ -122,12 +111,12 @@ async function openBastion(page) {
       const d = await H.download(page, '[data-test=changes-save]');
       assert(/^bastion-what-changed-day-40\.txt$/.test(d.name), d.name);
       assert(d.text.indexOf('The Bastion has changed. Here is exactly what happened to yours.\n') === 0, d.text);
-      assert(d.text.indexOf('Gold. 270 gp went back into the treasury') !== -1);
+      assert(d.text.indexOf('Gold. 1,765 gp went back into the treasury') !== -1);
       assert(d.text.indexOf('"Back up everything"') !== -1);
       equal(await page.isVisible('[data-test=changes-box]'), true, 'the box is still there');
     });
 
-    await check('the copy is the Bastion exactly as it was (version 3, 2,000 gp, 28 orders plus the Old Mill\'s) and is in "Back up everything"', async () => {
+    await check('the copy is the Bastion exactly as it was (version 3, 2,000 gp, 28 orders plus the Old Mill\'s, the army and the war still in it) and is in "Back up everything"', async () => {
       const keys = await quarantined(page);
       equal(keys.length, 1, keys.join());
       assert(/^tsi\.quarantine\.bastion\.state\.\d{8}-\d{6}$/.test(keys[0]), keys[0]);
@@ -186,11 +175,11 @@ async function openBastion(page) {
     await check('Management\'s "What changed" opens the same words again, with Close (not "I\'ve read this"), and it stays read', async () => {
       await page.click('[data-test=open-management]');
       await page.waitForSelector('[data-test=changes-row]');
-      assert(/The Bastion's change of 22 October 2026 \(Day 40\): 270 gp went back into the treasury; 2 orders were cancelled/.test(await bare(page, '[data-test=changes-row]')), await bare(page, '[data-test=changes-row]'));
+      assert(/The Bastion's change of 22 October 2026 \(Day 40\): 1,765 gp went back into the treasury; 9 orders were cancelled/.test(await bare(page, '[data-test=changes-row]')), await bare(page, '[data-test=changes-row]'));
       await page.click('[data-test=show-changes]');
       await page.waitForSelector('[data-test=changes-box]');
       const text = await bare(page, '[data-test=changes-box]');
-      assert(/Gold\. 270 gp went back into the treasury/.test(text), text);
+      assert(/Gold\. 1,765 gp went back into the treasury/.test(text), text);
       equal(await page.isVisible('[data-test=changes-ok]'), true);
       equal(await page.textContent('[data-test=changes-ok]'), 'Close');
       await page.click('[data-test=changes-ok]');
@@ -203,18 +192,24 @@ async function openBastion(page) {
   }
 
   /* ------------------------------------------------------------------ */
-  section('Nothing of yours changed: a short box that still needs reading');
+  section('A report with nothing in it: a short box that still needs reading');
   {
-    const { context, page } = await seeded(browser, 'laptop', heavyQuiet());
+    /* No real Bastion has one since the war game went (every version 3 Bastion had the Barracks, Armoury and Watchtower to say goodbye to),
+       but the short box is still there for a report with no lines, so it is made here by hand. */
+    const { context, page } = await seeded(browser, 'laptop', plain());
     await openBastion(page);
+    await page.waitForSelector('[data-test=changes-box]');
+    await H.ackChanges(page);
+    await page.evaluate(() => TSI.bastion.debug.change(s => { s.migration.v4 = { day: 1, lines: [], summary: 'Nothing of yours changed.', changed: false, again: false, shown: false }; }));
+    await page.evaluate(() => TSI.store.flush());
 
-    await check('the heavy Bastion (with no event ever rolled) needs nothing taken out yet, so the box is one line, and nothing is lost: 26 orders, 4 beasts, 200 log lines, 2,000 gp', async () => {
+    await check('it says nothing of yours changed, with no lines; and nothing is lost', async () => {
+      await page.reload();
       await page.waitForSelector('[data-test=changes-box]');
       equal(await page.textContent('.tsi-modal__title'), 'The Bastion has been updated; nothing of yours changed.');
       equal(await page.$$eval('[data-test=changes-line]', n => n.length), 0);
       const s = await st(page);
-      equal([s.v, s.treasuryGP, s.pendingOrders.length, s.creatures.length, s.log.length, s.migration.v4.changed, s.migration.v4.summary], [4, 2000, 26, 4, 200, false, 'Nothing of yours changed.']);
-      await page.waitForFunction(() => TSI.store.keys('quarantine').some(k => k.indexOf('tsi.quarantine.bastion.state') === 0));
+      equal([s.v, s.treasuryGP, s.migration.v4.changed, s.migration.v4.summary], [4, 100, false, 'Nothing of yours changed.']);
     });
 
     await check('it is read like the long one: it stays until pressed, then is saved as read', async () => {
@@ -249,8 +244,18 @@ async function openBastion(page) {
   /* ------------------------------------------------------------------ */
   section('A version 4 Bastion that an older copy of the suite saved over');
   {
-    const converted = heavyQuiet();
-    converted.v = 4;
+    /* The heavy Bastion after its conversion, as the Bastion saves it (made by opening it once). */
+    const base = await (async () => {
+      const first = await seeded(browser, 'laptop', clone(HEAVY));
+      await openBastion(first.page);
+      await first.page.waitForSelector('[data-test=changes-box]');
+      await H.ackChanges(first.page);
+      await first.page.evaluate(() => TSI.store.flush());
+      const s = await stored(first.page);
+      await first.context.close();
+      return s;
+    })();
+    const converted = clone(base);
     converted.migration = { v4: { day: 40, lines: [], summary: 'Nothing of yours changed.', changed: false, again: false, shown: true } };
     converted.pendingOrders.push({ id: 'late', facId: 'old_mill', fnId: 'grind', chosen: null, optionLabel: null, notes: '', label: 'Old Mill: Grind Grain', costGP: 45, issuedDay: 39, dueDay: 44 });
     const { context, page } = await seeded(browser, 'laptop', converted);
@@ -262,7 +267,7 @@ async function openBastion(page) {
       assert(/An older copy of the suite had saved over your Bastion, so it was converted again\. Nothing was lost\./.test(text), text);
       assert(/Gold\. 45 gp went back into the treasury/.test(text), text);
       const s = await st(page);
-      equal([s.treasuryGP, s.pendingOrders.length, s.migration.v4.again, s.migration.v4.shown], [2045, 26, true, false]);
+      equal([s.treasuryGP, s.pendingOrders.length, s.migration.v4.again, s.migration.v4.shown], [base.treasuryGP + 45, base.pendingOrders.length, true, false]);
       await page.waitForFunction(() => TSI.store.keys('quarantine').length === 1);
       await H.ackChanges(page);
     });
@@ -333,30 +338,61 @@ async function openBastion(page) {
   }
 
   /* ------------------------------------------------------------------ */
-  section('The War Table\'s saves are set aside every time the Bastion opens (once the War Table is gone)');
+  section('The War Table\'s saves are set aside every time the Bastion opens (the War Table is gone)');
   {
-    const converted = clone(HEAVY);
-    const { context, page } = await seeded(browser, 'laptop', converted);
-    await check('while the War Table is still part of the Bastion its saves are left alone; asked to, the sweep moves them to quarantine', async () => {
-      await page.evaluate(() => {
-        TSI.store.set('tsi.bastion.warMap', { dataUrl: 'data:image/png;base64,AAAA', key: 'k', name: 'map.png' });
-        TSI.store.set('tsi.bastion.warTable', { cols: 22 });
-        TSI.store.set('tsi.bastion.warTerrain', {});
-        return TSI.store.flush();
-      });
+    const WAR_KEYS = ['warMap', 'warTable', 'warTerrain'];
+    const has = page => page.evaluate(ks => ks.map(k => TSI.store.has('tsi.bastion.' + k)), WAR_KEYS);
+    const plantWarSaves = page => page.evaluate(() => {
+      TSI.store.set('tsi.bastion.warMap', { dataUrl: 'data:image/png;base64,AAAA', key: 'k', name: 'map.png' });
+      TSI.store.set('tsi.bastion.warTable', { cols: 22 });
+      TSI.store.set('tsi.bastion.warTerrain', {});
+      return TSI.store.flush();
+    });
+    const { context, page } = await seeded(browser, 'laptop', clone(HEAVY));
+    await check('opening the Bastion converts it and then sets the three saves aside in quarantine: never deleted, with their contents', async () => {
+      await plantWarSaves(page);
+      equal(await has(page), [true, true, true]);
       await openBastion(page);
       await H.ackChanges(page);
-      equal(await page.evaluate(() => ['warMap', 'warTable', 'warTerrain'].map(k => TSI.store.has('tsi.bastion.' + k))), [true, true, true], 'left alone');
-      const moved = await page.evaluate(() => TSI.bastion.debug.sweepOrphans(true));
-      equal(moved, ['warMap', 'warTable', 'warTerrain']);
+      await page.waitForFunction(ks => ks.every(k => !TSI.store.has('tsi.bastion.' + k)), WAR_KEYS);
       await page.evaluate(() => TSI.store.flush());
-      equal(await page.evaluate(() => ['warMap', 'warTable', 'warTerrain'].map(k => TSI.store.has('tsi.bastion.' + k))), [false, false, false]);
+      equal(await has(page), [false, false, false]);
       const keys = await page.evaluate(() => TSI.store.keys('quarantine'));
-      equal(['warMap', 'warTable', 'warTerrain'].map(n => keys.filter(k => k.indexOf('tsi.quarantine.bastion.' + n + '.') === 0).length), [1, 1, 1], 'each set aside, not deleted: ' + keys.join());
+      equal(WAR_KEYS.map(n => keys.filter(k => k.indexOf('tsi.quarantine.bastion.' + n + '.') === 0).length), [1, 1, 1], 'each set aside, not deleted: ' + keys.join());
       assert(await page.evaluate(k => TSI.store.get(k).cols === 22, keys.find(k => k.indexOf('.warTable.') !== -1)), 'with its contents');
-      equal(await page.evaluate(() => TSI.bastion.debug.sweepOrphans(true)), [], 'nothing to do when they are gone');
+      equal((await st(page)).v, 4);
+    });
+    await check('a Restore of an old backup brings them back, and the next open sets them aside again (a second copy each)', async () => {
+      await plantWarSaves(page);
+      await page.reload();
+      await page.waitForSelector('[data-test=day-status]');
+      await page.waitForFunction(ks => ks.every(k => !TSI.store.has('tsi.bastion.' + k)), WAR_KEYS);
+      await page.evaluate(() => TSI.store.flush());
+      const keys = await page.evaluate(() => TSI.store.keys('quarantine'));
+      equal(WAR_KEYS.map(n => keys.filter(k => k.indexOf('tsi.quarantine.bastion.' + n + '.') === 0).length), [2, 2, 2], keys.join());
+      equal(await page.evaluate(() => TSI.bastion.debug.sweepOrphans()), [], 'nothing to do when they are gone');
     });
     await context.close();
+
+    /* A conversion that cannot be proved safe changes nothing: not even these. */
+    const breakIt = () => {
+      const t = setInterval(() => {
+        const R = window.TSI && TSI.bastion && TSI.bastion.rules;
+        if (!R || !R.stripBackSteps) return;
+        clearInterval(t);
+        R.stripBackSteps.splice(0, 0, { id: 'broken', detect: () => [], run: s => { s.treasuryGP = (parseInt(s.treasuryGP, 10) || 0) - 1; } });
+      }, 0);
+    };
+    const unsafe = await seeded(browser, 'laptop', clone(HEAVY), null, breakIt);
+    await check('when the conversion fails its check, the three saves are left exactly where they are', async () => {
+      await plantWarSaves(unsafe.page);
+      await unsafe.page.goto(BASTION);
+      await unsafe.page.waitForSelector('[data-test=convert-unsafe]');
+      await unsafe.page.waitForTimeout(500);
+      equal(await has(unsafe.page), [true, true, true]);
+      equal((await quarantined(unsafe.page)).length, 0);
+    });
+    await unsafe.context.close();
   }
 
   /* ------------------------------------------------------------------ */

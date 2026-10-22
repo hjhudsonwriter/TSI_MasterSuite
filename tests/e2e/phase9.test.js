@@ -224,7 +224,7 @@ async function bareModal(page) { await page.waitForSelector('.tsi-modal:not(.tsi
 /* The facilities that could be built when this phase was written (the facilities overhaul, 13 October 2026, when the
    eight new ones were still in development; the Fishery, Timber Yard, Courier Exchange and, in pull request 7, the
    three creature buildings have opened since). */
-const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens', 'menagerie', 'war_room', 'shrine_telluria', 'shrine_aurush', 'shrine_pelagos', 'hall_of_emissaries'];
+const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens', 'shrine_telluria', 'shrine_aurush', 'shrine_pelagos', 'hall_of_emissaries'];
 
 (async () => {
   const browser = await H.chromium.launch();
@@ -242,13 +242,13 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       equal(await page.$$eval('.tsi-card', cs => cs.filter(c => /Coming in phase/.test(c.textContent)).length), 0);
     });
 
-    await check('it opens from its card on Day 1 (until the Explorer sets the day), level 7, with the five starting facilities in the grid', async () => {
+    await check('it opens from its card on Day 1 (until the Explorer sets the day), level 7, with the two starting facilities in the grid (the Workshop and the Dock)', async () => {
       await page.click('.tsi-card[href*="bastion"]');
       await page.waitForSelector('[data-test=day-status]');
       equal(await text(page, 'day-status'), 'Day 1 · the Explorer sets the day');
       equal(await page.isHidden('[data-test=advance]'), true, 'no button to pass a day: the Explorer\'s Make Camp does that');
       equal(await page.inputValue('[data-test=level]'), '7');
-      equal(await page.$$eval('.tsi-bas-tile', ts => ts.slice(0, 5).map(t => t.dataset.fac)), ['workshop', 'barracks', 'watchtower', 'dock', 'armoury']);
+      equal(await page.$$eval('.tsi-bas-tile', ts => ts.slice(0, 2).map(t => t.dataset.fac)), ['workshop', 'dock']);
       equal(await page.$$eval('.tsi-bas-tile--slot', ts => ts.length), 2, 'two slots to build in at level 7');
     });
 
@@ -265,11 +265,11 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
     await page.setViewportSize(H.SIZES.laptop.viewport);
     await H.shot(page, 'p9-01-laptop');
 
-    await check('every facility picture, the new map and its eleven overlays load with no internet; every label fits on the painting, none over another', async () => {
+    await check('every facility picture, the new map and its ten overlays load with no internet; every label fits on the painting, none over another', async () => {
       /* (The Courier Exchange is put on a plot by hand, as it can't be built yet, to check its overlay and label beside the Shrine of Aurush's.) */
       await setUp(page, (s) => {
         s.partyLevel = 17;
-        s.builtExtras = ['arcane_laboratory', 'library_scriptorium', 'menagerie', 'war_room', 'shrine_telluria', 'shrine_aurush', 'shrine_pelagos', 'hall_of_emissaries'].map(id => ({ facId: id, status: 'built' }));
+        s.builtExtras = ['arcane_laboratory', 'library_scriptorium', 'shrine_telluria', 'shrine_aurush', 'shrine_pelagos', 'hall_of_emissaries'].map(id => ({ facId: id, status: 'built' }));
         s.builtPlots = ['herbal_gardens', 'fishery_smokehouse', 'timber_sawmill', 'courier_exchange'].map(id => ({ facId: id, status: 'built' }));
       });
       await page.waitForFunction(() => Array.from(document.images).every(i => i.complete));
@@ -277,11 +277,11 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       const imgs = await page.$$eval('img.tsi-bas-tile__img, .tsi-bas-map__overlay, .tsi-bas-map__img', is => is.map(i => [i.getAttribute('src').split('/').pop(), i.naturalWidth]));
       equal(imgs.filter(i => !i[1]), [], 'all loaded');
       equal(await page.$$eval('[data-test=tile-fishery_smokehouse] [data-art=crop], [data-test=tile-timber_sawmill] [data-art=crop]', cs => cs.length), 2, 'the two crops');
-      equal(await page.$$eval('.tsi-bas-tile--built', ts => ts.length), 17, 'every facility that can be built has a tile, the Hall too');
+      equal(await page.$$eval('.tsi-bas-tile--built', ts => ts.length), 12, 'every facility that can be built has a tile, the Hall too');
       equal(await page.$$eval('[data-test=grid-plots] .tsi-bas-tile--built', ts => ts.map(t => t.dataset.fac)), ['herbal_gardens', 'fishery_smokehouse', 'timber_sawmill', 'courier_exchange'], 'the production facilities on the plots, in the row below');
       equal(await page.$eval('.tsi-bas-map__img', i => [i.naturalWidth, i.naturalHeight]), [3000, 1250], 'Harry\'s new painting');
-      equal(await page.$$eval('.tsi-bas-map__overlay', os => os.map(o => o.dataset.fac)), ['library_scriptorium', 'arcane_laboratory', 'herbal_gardens', 'war_room', 'hall_of_emissaries', 'shrine_aurush', 'shrine_telluria', 'shrine_pelagos', 'fishery_smokehouse', 'timber_sawmill', 'courier_exchange'], 'the Shrines shown; nothing for the Menagerie');
-      equal(await page.$$eval('.tsi-bas-map__overlay', os => os.map(o => o.naturalWidth + 'x' + o.naturalHeight)), Array(11).fill('3000x1250'));
+      equal(await page.$$eval('.tsi-bas-map__overlay', os => os.map(o => o.dataset.fac)), ['library_scriptorium', 'arcane_laboratory', 'herbal_gardens', 'hall_of_emissaries', 'shrine_aurush', 'shrine_telluria', 'shrine_pelagos', 'fishery_smokehouse', 'timber_sawmill', 'courier_exchange'], 'the Shrines shown; nothing for the war game\'s facilities, which are gone');
+      equal(await page.$$eval('.tsi-bas-map__overlay', os => os.map(o => o.naturalWidth + 'x' + o.naturalHeight)), Array(10).fill('3000x1250'));
       equal((await H.layoutCheck(page, ['.tsi-bas-tile'])).scrollWidth, H.SIZES.laptop.viewport.width, 'no sideways scroll');
       for (const size of ['laptop', 'laptopFull', 'tv', 'smallWindow']) {
         await page.setViewportSize(H.SIZES[size].viewport);
@@ -295,7 +295,7 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
           const hit = (a, b) => a.x < b.right - 1 && b.x < a.right - 1 && a.y < b.bottom - 1 && b.y < a.bottom - 1;
           const clash = [];
           ls.forEach((a, i) => ls.slice(i + 1).forEach(b => { if (hit(a, b)) clash.push(a.fac + '/' + b.fac); }));
-          /* All nineteen tiles (eight in six slots, two of them over capacity, and three on plots, beside the empty ones) whole and square inside the grid. */
+          /* All fourteen tiles (two starting facilities, six slots and six plots, built or empty) whole and square inside the grid. */
           const grid = box(document.querySelector('[data-test=grid]'));
           const tiles = Array.from(document.querySelectorAll('[data-test=grid] .tsi-bas-tile')).map(t => Object.assign({ t: t.dataset.test }, box(t)));
           const cut = tiles.filter(t => t.x < grid.x - 0.5 || t.right > grid.right + 0.5 || t.y < grid.y - 0.5 || t.bottom > grid.bottom + 0.5 || Math.abs((t.right - t.x) - (t.bottom - t.y)) > 1 || t.right - t.x < 40).map(t => t.t);
@@ -307,7 +307,7 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
             onTray: ls.filter(l => hit(l, tray)).map(l => l.fac)
           };
         });
-        equal(m, { tiles: 19, cut: [], n: 16, clash: [], off: [], onBadge: [], onTray: [] }, size + ': nineteen whole, square tiles; sixteen labels (none for the Menagerie), each clear of the others, the badge and the tray');
+        equal(m, { tiles: 14, cut: [], n: 12, clash: [], off: [], onBadge: [], onTray: [] }, size + ': fourteen whole, square tiles (two starting facilities, six slots and six plots); twelve labels (one for each facility built), each clear of the others, the badge and the tray');
         await H.shot(page, 'p9-02-everything-built-' + size);
       }
       await page.setViewportSize(H.SIZES.laptop.viewport);
@@ -358,12 +358,18 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
     });
 
     await check('locked facilities stay listed but can\'t be picked', async () => {
+      await page.selectOption('[data-test=level]', '7');
+      await pause(page);
+      await page.click('[data-test=slot-0]');
+      await page.waitForSelector('[data-test=build-shrine_telluria]');
+      equal(await page.getAttribute('[data-test=build-shrine_telluria]', 'aria-disabled'), 'true');
+      assert(/Locked: level 8/.test(await text(page, 'build-shrine_telluria')));
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(200);
       await page.selectOption('[data-test=level]', '9');
       await pause(page);
       await page.click('[data-test=slot-0]');
-      await page.waitForSelector('[data-test=build-menagerie]');
-      equal(await page.getAttribute('[data-test=build-menagerie]', 'aria-disabled'), 'true');
-      assert(/Locked: level 13/.test(await text(page, 'build-menagerie')));
+      await page.waitForSelector('[data-test=build-library_scriptorium]');
       equal(await page.getAttribute('[data-test=build-library_scriptorium]', 'aria-disabled'), null);
       assert(/Party level 9: 4 construction slots, 0 in use\./.test(await text(page, 'build-panel')));
     });
@@ -377,13 +383,13 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       await page.mouse.move(5, 400);
     });
 
-    await check('building takes 21 or 35 days (none takes 28 since the overhaul), then the facility joins the grid and the map', async () => {
+    await check('building takes 21 days (none takes 28 since the overhaul, and the Menagerie\'s 35 went on 22 October 2026), then the facility joins the grid and the map', async () => {
       await construct(0, 'library_scriptorium');
       await page.selectOption('[data-test=level]', '13');
       await page.waitForTimeout(80);
-      await construct(1, 'menagerie');
-      equal(await page.$$eval('.tsi-bas-tile--building', ts => ts.map(t => [t.dataset.test, t.textContent])), [['tile-library_scriptorium', '21'], ['tile-menagerie', '35']]);
-      equal((await st(page)).builtExtras.slice(0, 2), [{ facId: 'library_scriptorium', status: 'building', startDay: 1, readyDay: 22 }, { facId: 'menagerie', status: 'building', startDay: 1, readyDay: 36 }]);
+      await construct(1, 'beast_pen');
+      equal(await page.$$eval('.tsi-bas-tile--building', ts => ts.map(t => [t.dataset.test, t.textContent])), [['tile-library_scriptorium', '21'], ['tile-beast_pen', '21']]);
+      equal((await st(page)).builtExtras.slice(0, 2), [{ facId: 'library_scriptorium', status: 'building', startDay: 1, readyDay: 22 }, { facId: 'beast_pen', status: 'building', startDay: 1, readyDay: 22 }]);
       await pause(page);
       await page.click('[data-test=slot-2]');
       await page.waitForSelector('[data-test=build-panel]');
@@ -393,7 +399,7 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       equal(await text(page, 'tile-library_scriptorium'), '1', 'Day 21: one day to go');
       await days(page, 1, []);
       equal(await page.$eval('[data-test=tile-library_scriptorium]', t => [t.tagName, t.classList.contains('tsi-bas-tile--built')]), ['BUTTON', true]);
-      equal(await page.$$eval('.tsi-bas-map__overlay', os => os.map(o => o.dataset.fac)), ['library_scriptorium']);
+      equal(await page.$$eval('.tsi-bas-map__overlay', os => os.map(o => o.dataset.fac)), ['library_scriptorium', 'beast_pen'], 'the Beast Pen was built beside it, and is finished on the same day');
       assert((await st(page)).log.some(l => l.title === 'Construction Complete' && l.body === 'Library & Scriptorium is now built and active.'));
     });
 
@@ -436,7 +442,7 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
 
     await check('Clear extra builds asks first; Cancel keeps them; Clear empties the slots and the Development Plots', async () => {
       await page.click('[data-test=clear-builds]');
-      assert(/\(slots and Development Plots\) only\? Your 5 starting facilities remain/.test(await popText(page)));
+      assert(/\(slots and Development Plots\) only\? Your starting facilities \(the Workshop and the Dock\) remain/.test(await popText(page)));
       await clickModal(page, 'Cancel');
       equal((await st(page)).builtExtras.filter(Boolean).length, 4);
       await page.waitForTimeout(400);
@@ -464,45 +470,41 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       equal([s.treasuryGP, s.pendingOrders.map(o => o.label)], [800, ['Dock: Charter Berth (Longship)']]);
       assert(/Due Day 8 \(in 7 days\)/.test(await text(page, 'pending')), await text(page, 'pending'));
       equal(await text(page, 'days-dock__charter_berth'), 'Takes 7 days');
-      equal(await text(page, 'days-barracks__recruit_defenders'), 'Takes 5 days');
     });
 
     await check('the same order again, or one you can\'t afford, is refused with a message', async () => {
       await issue(page, 'dock', 'charter_berth');
       equal(await popText(page).then(t => /That order is already pending\./.test(t)), true);
       await clickModal(page, 'OK');
-      await issue(page, 'armoury', 'arm_defenders');
-      await treasury(page, '50');
-      await issue(page, 'barracks', 'recruit_defenders');
-      equal((await st(page)).pendingOrders.length, 3, 'Recruit Defenders is free');
-      await setUp(page, (s) => { s.defenders.count = 2; });
       await pause(page);
-      await page.click('[data-test=cancel-1]');
-      await issue(page, 'armoury', 'arm_defenders');
-      assert(/Not enough gp\. Need 300gp, you have 50gp\./.test(await popText(page)));
+      await page.click('[data-test=cancel-0]');
+      await treasury(page, '50');
+      await issue(page, 'dock', 'charter_berth');
+      assert(/Not enough gp\. Need 200gp, you have 50gp\./.test(await popText(page)));
       await clickModal(page, 'OK');
+      equal((await st(page)).pendingOrders.length, 0, 'nothing was ordered');
     });
 
     await check('cancelling keeps the gold spent (B9, kept)', async () => {
       await treasury(page, '500');
-      await issue(page, 'armoury', 'arm_defenders');
-      equal((await st(page)).treasuryGP, 200);
+      await issue(page, 'dock', 'charter_berth');
+      equal((await st(page)).treasuryGP, 300);
       await pause(page);
-      await page.click('[data-test=cancel-2]');
+      await page.click('[data-test=cancel-0]');
       const s = await st(page);
-      equal([s.treasuryGP, s.pendingOrders.length, s.log[0].body], [200, 2, 'Cancelled an order.']);
+      equal([s.treasuryGP, s.pendingOrders.length, s.log[0].body], [300, 0, 'Cancelled an order.']);
     });
 
-    await check('orders complete on their days: defenders recruited on Day 6, the ship in the warehouse on Day 8', async () => {
+    await check('orders complete on their days: the ship is in the warehouse on Day 8', async () => {
+      await issue(page, 'dock', 'charter_berth');
       await page.evaluate(() => window.__seed(4));
       await days(page, 5, []);
-      equal((await st(page)).pendingOrders.map(o => o.label), ['Dock: Charter Berth (Longship)'], 'Day 6: the Barracks\' order is done');
+      equal((await st(page)).pendingOrders.map(o => o.label), ['Dock: Charter Berth (Longship)'], 'Day 6: still on its way');
       await days(page, 2, []);
       const s = await st(page);
       equal(s.pendingOrders, []);
-      assert(s.defenders.count > 2);
       assert(s.warehouse.some(w => w.item === 'Longship' && w.notes === 'Dock'), JSON.stringify(s.warehouse));
-      assert(/Recruited \d defenders/.test(s.log.map(l => l.body).join('|')));
+      assert(/Dock: Charter Berth \(Longship\) → Added to Warehouse\./.test(s.log.map(l => l.body).join('|')));
     });
     await context.close();
   }
@@ -523,7 +525,7 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
     });
 
     await check('looking at the Explorer\'s day twice at once passes each day once (BAS-12)', async () => {
-      await setUp(page, (s) => { s.pendingOrders.push({ id: 'p1', facId: 'barracks', fnId: 'recruit_defenders', label: 'Barracks: Recruit Defenders', costGP: 0, issuedDay: 1, dueDay: 5 }); });
+      await setUp(page, (s) => { s.pendingOrders.push({ id: 'p1', facId: 'dock', fnId: 'charter_berth', chosen: { label: 'Longship' }, optionLabel: 'Longship', notes: '', label: 'Dock: Charter Berth (Longship)', costGP: 0, issuedDay: 1, dueDay: 5 }); });
       await page.evaluate(() => {
         const ex = TSI.store.get('tsi.explorer.save', null);
         ex.travel.day = 5;
@@ -533,7 +535,8 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       await word(page);
       const s = await st(page);
       equal(s.day, 5);
-      equal(s.log.filter(l => /Recruited \d defenders/.test(l.body)).length, 1, 'the order completed once');
+      equal(s.log.filter(l => /Dock: Charter Berth \(Longship\) → Added to Warehouse\./.test(l.body)).length, 1, 'the order completed once');
+      equal(s.warehouse.filter(w => w.item === 'Longship' && w.notes === 'Dock').reduce((n, w) => n + w.qty, 0), 1, 'and one ship came');
     });
 
     await check('while a dice box is open, Enter or Space can\'t start anything else, and the day waits (BAS-10)', async () => {
@@ -1236,11 +1239,11 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       equal((await st(page)).politicalCapital.molten, 0);
     });
 
-    await check('the Compendium: 270 items, search, details, card and Roll20 link', async () => {
+    await check('the Compendium: 250 items, search, details, card and Roll20 link', async () => {
       await pause(page);
       await page.click('[data-test=compendium]');
       await page.waitForSelector('[data-test=comp-list]');
-      equal(await page.$$eval('.tsi-bas-comp__item', b => b.length), 270);
+      equal(await page.$$eval('.tsi-bas-comp__item', b => b.length), 250);
       await page.fill('[data-test=comp-search]', 'regiment');
       equal(await page.$$eval('.tsi-bas-comp__item', b => b.length), 0, 'the old Regiment (100) is no longer recruited');
       await page.fill('[data-test=comp-search]', 'bag of');
@@ -1260,8 +1263,8 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       const [dl] = await Promise.all([page.waitForEvent('download'), page.click('[data-test=comp-export]')]);
       equal(dl.suggestedFilename(), 'compendium_items.json');
       const file = JSON.parse(fs.readFileSync(await dl.path(), 'utf8'));
-      equal([file.version, Object.keys(file.items).length], [1, 271]);
-      equal(await text(page, 'comp-status'), 'Done. Filled: 0 • Kept: 68 • Stubbed: 202. Downloading…');
+      equal([file.version, Object.keys(file.items).length], [1, 250]);
+      equal(await text(page, 'comp-status'), 'Done. Filled: 0 • Kept: 62 • Stubbed: 188. Downloading…');
       assert(/^https:\/\/roll20\.net\//.test(file.items['Bag of Holding'].roll20), 'other items keep theirs');
       await clickModal(page, 'Close');
       equal(context.log.net, []);
@@ -1385,8 +1388,8 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       equal(s.builtPlots, [{ facId: 'herbal_gardens', status: 'building', startDay: 1, readyDay: d + 9 }, '', '', '']);
       assert(s.log.some(l => l.title === 'Development Plots' && l.body === 'The Herbal Gardens moved to a Development Plot; its construction slot is free.'), 'the Day Log says so');
       equal(s.pendingOrders.map(o => [o.id, o.facId, o.fnId, o.dueDay]), [['o1', 'arcane_laboratory', 'alchemy', d + 6], ['o2', 'workshop', 'smithing', d + 5]]);
-      equal([s.facilityLevels.arcane_laboratory, s.repairs.arcane_laboratory, s.legacyFacilities, s.treasuryGP], [2, d + 4, ['smithy'], 400]);
-      equal(s.archivedFacilities.map(a => a.name), ['Gaming Hall']);
+      equal([s.facilityLevels.arcane_laboratory, s.repairs.arcane_laboratory, s.legacyFacilities, s.treasuryGP], [2, undefined, ['smithy'], 400], 'the Laboratory\'s repair ended: only a lost battle in the war game ever caused one');
+      equal(s.archivedFacilities.map(a => a.name), ['Gaming Hall', 'Barracks', 'Armoury', 'Watchtower']);
       equal(s.migration.v3.shown, true, 'the notice has been shown');
       const entry = s.log.find(l => l.title === 'Facilities');
       assert(entry && /^The facilities overhaul \(13 October 2026\): /.test(entry.body) && /The Arcane Study and the Laboratory are now one Arcane Laboratory: the other slot is free\./.test(entry.body), JSON.stringify(entry));
@@ -1451,7 +1454,7 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       const saved = await page.evaluate(() => {
         const v = JSON.parse(JSON.stringify(TSI.bastion.rules.toSave(TSI.bastion.debug.state())));
         v.partyLevel = 13;
-        v.builtExtras = [{ facId: 'war_room', status: 'built' }, { facId: 'herbal_gardens', status: 'built' }];
+        v.builtExtras = [{ facId: 'library_scriptorium', status: 'built' }, { facId: 'herbal_gardens', status: 'built' }];
         delete v.builtPlots;
         v.facilityLevels = Object.assign({}, v.facilityLevels, { herbal_gardens: 3 });
         v.log = [];
@@ -1463,7 +1466,7 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       await reopen(page);
       await H.waitForNotice(page, /The Herbal Gardens moved to a Development Plot; its construction slot is free\./);
       let s = await st(page);
-      equal([s.builtExtras.filter(Boolean).map(e => e.facId), s.builtPlots[0], s.facilityLevels.herbal_gardens], [['war_room'], { facId: 'herbal_gardens', status: 'built' }, 3]);
+      equal([s.builtExtras.filter(Boolean).map(e => e.facId), s.builtPlots[0], s.facilityLevels.herbal_gardens], [['library_scriptorium'], { facId: 'herbal_gardens', status: 'built' }, 3]);
       await page.evaluate(() => TSI.store.flush());
       const stored = await page.evaluate(() => TSI.store.get('tsi.bastion.state'));
       equal(stored.builtPlots[0], { facId: 'herbal_gardens', status: 'built' }, 'saved there at once');
@@ -1486,7 +1489,7 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       equal([s.partyLevel, s.treasuryGP, s.builtPlots.filter(Boolean).map(e => e.facId)], [13, 3000, ['herbal_gardens', 'timber_sawmill', 'fishery_smokehouse']]);
       equal(s.warehouse.map(w => [w.goodId || w.item, w.qty]), [['Rope (50 ft)', 2], ['raw_timber', 2], ['fresh_fish', 1], ['preserved_fish', 1], ['restorative_herbs', 20], ['antivenom_roots', 5], ['alchemical_flowers', 20]]);
       equal(await page.$$eval('[data-test=grid-plots] .tsi-bas-tile--plot', ts => ts.map(t => t.dataset.test)), ['plot-3']);
-      equal(await page.$$eval('.tsi-bas-maplabel', ls => ls.length), 12, 'the starting five, four in slots and three on plots, each labelled');
+      equal(await page.$$eval('.tsi-bas-maplabel', ls => ls.length), 9, 'the starting two, four in slots and three on plots, each labelled');
       await H.dismissNotices(page);
     });
 
