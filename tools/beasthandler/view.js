@@ -204,7 +204,8 @@
             el('span', { class: 'tsi-bh-beast__name', text: c.name }),
             el('span', { class: 'tsi-bh-beast__meta', text: c.handlerName ? 'Handler: ' + c.handlerName : 'No handler yet' })
           ]),
-          (c.bond || c.mine) ? el('span', { class: 'tsi-bh-beast__chips' }, [
+          /* A beast that has not passed acclimatisation always says so (with a handler or without one, with a bond record or without one). */
+          (c.bond || c.mine || waiting) ? el('span', { class: 'tsi-bh-beast__chips' }, [
             waiting ? el('span', { class: 'tsi-bh-beast__bond tsi-bh-beast__bond--wait', 'data-test': 'bh-row-wait-' + c.id, text: M.NOT_YET })
               : c.bond ? el('span', { class: 'tsi-bh-beast__bond', 'data-test': 'bh-row-bond-' + c.id, text: 'Bond ' + c.bond.level + ' · ' + c.bond.name }) : null,
             !waiting && c.place === 'away' ? el('span', { class: 'tsi-bh-beast__bond tsi-bh-beast__bond--away', 'data-test': 'bh-row-away-' + c.id, text: M.placeText('away') }) : null,

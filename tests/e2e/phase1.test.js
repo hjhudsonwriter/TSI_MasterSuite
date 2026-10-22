@@ -1531,6 +1531,45 @@ async function waitSaved(page) {
       equal(r.notes, [['tsi.demo.state', 'a test', true], ['tsi.demo.state', 'a test again', true]]);
       equal(r.saved, 1, 'and it is saved in the browser\'s database');
     });
+
+    await check('keepCopy answers about its own copy only: it is really in the browser when the answer comes, even with a big save in flight, and another save failing does not make it fail', async () => {
+      const r = await page.evaluate(async () => {
+        const readRow = key => new Promise(res => { const rq = indexedDB.open('tsi.test', 1); rq.onsuccess = () => { const g = rq.result.transaction('records', 'readonly').objectStore('records').get(key); g.onsuccess = () => { rq.result.close(); res(g.result || null); }; }; });
+        TSI.store.set('tsi.demo.state', { count: 9 });
+        await TSI.store.flush();
+        /* A big save is still going when the copy is asked for. */
+        TSI.store.set('tsi.demo.bulk', { text: 'x'.repeat(400000) });
+        const inFlight = TSI.store.flush();
+        const k1 = await TSI.store.keepCopy('tsi.demo.state', 'while another save is going');
+        const row1 = await readRow(k1);
+        await inFlight;
+        /* Some other save is refused by the browser. */
+        const realPut = IDBObjectStore.prototype.put;
+        IDBObjectStore.prototype.put = function (rec) { if (rec && rec.key === 'tsi.demo.poison') throw new Error('refused on purpose'); return realPut.apply(this, arguments); };
+        let k2 = null, row2 = null, failed = null, problemAfter = null;
+        try {
+          TSI.store.set('tsi.demo.poison', { x: 1 });
+          failed = await TSI.store.flush();
+          k2 = await TSI.store.keepCopy('tsi.demo.state', 'after another save failed');
+          problemAfter = TSI.store.copyProblem();
+          row2 = k2 ? await readRow(k2) : null;
+        } finally {
+          IDBObjectStore.prototype.put = realPut;
+          TSI.store.remove('tsi.demo.poison');
+          TSI.store.remove('tsi.demo.bulk');
+          await TSI.store.flush();
+        }
+        return { k1: !!k1, ok1: !!row1 && row1.value.count === 9 && row1.key === k1, failed, k2: !!k2, ok2: !!row2 && row2.value.count === 9, problemAfter, live: TSI.store.get('tsi.demo.state'), status: TSI.store.status().state };
+      });
+      equal(r.k1, true, 'a copy is reported');
+      equal(r.ok1, true, 'and it was already in the browser, exactly as the save was, when it was reported');
+      equal(r.failed, false, 'the other save really did fail');
+      equal(r.k2, true, 'the copy is still reported as kept');
+      equal(r.ok2, true, 'and it is really there');
+      equal(r.problemAfter, '', 'with no problem said');
+      equal(r.live, { count: 9 });
+      equal(r.status, 'saved', 'the save status is back to normal once the other save is settled');
+    });
     await context.close();
   }
 

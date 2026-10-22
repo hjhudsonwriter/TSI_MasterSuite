@@ -108,6 +108,35 @@
     t.equal(BR.cleanBeast({ campaignId: 'short', handlers: [{ id: 'a', secret: 'tooshort' }] }).campaignId, '');
   });
 
+  test('a handler named after something built into every JavaScript object (Constructor, __proto__, toString) keeps its pairing through a save and a load; real duplicates are still dropped', function (t) {
+    ['Constructor', '__proto__', 'toString', 'hasOwnProperty', 'valueOf'].forEach(function (name) {
+      var b = world();
+      var pair = BR.beastPair(b, bdata, name);
+      t.equal(pair.ok, true, name + ' can be paired');
+      var secret = pair.pairing.secret;
+      t.equal(BR.beastSecret(b, name), secret, name + ': the secret is found');
+      var again = BR.fromSave(copy(BR.toSave(b)), bdata);
+      t.equal(again.beast.handlers.length, 1, name + ' is not dropped on load');
+      t.equal(again.beast.handlers[0].secret, secret, name + ' keeps its secret');
+      t.equal(BR.beastSecret(again, name), secret);
+      t.equal(BR.beastSnapshotCode(again, bdata, name).ok, true, name + ' can still be given a snapshot code');
+      var twice = BR.fromSave(copy(BR.toSave(again)), bdata);
+      t.equal(JSON.stringify(twice.beast.handlers), JSON.stringify(again.beast.handlers), name + ': loading again changes nothing');
+    });
+    var raw = { campaignId: 'AbCdEfGh12345678', handlers: [
+      { id: 'constructor', name: 'Constructor', secret: 'abcdefghijkmnpqrstuvwxyz', since: 2 },
+      { id: '__proto__', name: '__proto__', secret: 'zyxwvutsrqpnmkjihgfedcba', since: 3 },
+      { id: 'mira', name: 'Mira', secret: 'abcdefghijkmnpqrstuvwxyz', since: 4 },
+      { id: 'MIRA ', name: 'Mira again', secret: 'zzzzzzzzzzzzzzzzzzzzzzzz', since: 5 },
+      { id: 'constructor', name: 'Constructor twice', secret: 'qqqqqqqqqqqqqqqqqqqqqqqq', since: 6 }
+    ] };
+    var kept = BR.cleanBeast(copy(raw)).handlers;
+    t.same(kept.map(function (h) { return h.id; }), ['constructor', '__proto__', 'mira'], 'each name once, the first one kept');
+    t.equal(kept[0].secret, 'abcdefghijkmnpqrstuvwxyz');
+    t.equal(kept[1].secret, 'zyxwvutsrqpnmkjihgfedcba');
+    t.equal(Object.getPrototypeOf(kept[1]) === Object.prototype, true, 'and nothing changed any object\'s prototype');
+  });
+
   group('Beast Handler: a save from before the app became read-only (22 October 2026)');
 
   test('an old Beast Handler record (accept, done, floor) is loaded without a word and quietly dropped; the campaign id and the handlers stay', function (t) {
@@ -204,7 +233,7 @@
     BR.ensureDev(b, c).chronicle.push({ id: 'ch-x', day: 3, cat: 'constructor', text: 'odd category', by: 'DM', link: '' });
     t.equal(TSI.beasthandler.model.catLabel('constructor'), 'Constructor');
     t.equal(TSI.beasthandler.model.catLabel('toString'), 'ToString');
-    t.same(BR.cleanBeast({ handlers: [{ id: '__proto__', name: 'x' }, { id: 'constructor', name: 'y' }, { id: 'mira', name: 'Mira' }] }).handlers.map(function (h) { return h.id; }), ['mira'], 'a handler named like a built-in word is left out rather than breaking anything');
+    t.same(BR.cleanBeast({ handlers: [{ id: '__proto__', name: 'x' }, { id: 'constructor', name: 'y' }, { id: 'mira', name: 'Mira' }] }).handlers.map(function (h) { return h.id; }), ['__proto__', 'constructor', 'mira'], 'a handler named like a built-in word is kept, with its pairing secret, and breaks nothing (it used to be dropped on every load)');
     t.equal(Object.getPrototypeOf(BR.cleanBeast({ done: { '__proto__': { r: 'applied' } } })), Object.prototype);
   });
 

@@ -86,7 +86,7 @@
     t.same(res.problems, []);
     t.equal(res.save.v, 4);
     t.same(res.report.lines, [GONE_LINE]);
-    t.same(res.save.migration.v4, { day: 12, lines: res.report.lines, summary: '3 places removed.', changed: true, again: false, shown: false });
+    t.same(res.save.migration.v4, { day: 12, lines: res.report.lines, summary: '3 places removed.', changed: true, again: false, shown: false, gp: 0 });
     var rest = clone(res.save);
     delete rest.migration; delete rest.archivedFacilities;
     rest.v = 3;
@@ -200,7 +200,7 @@
     t.equal(res.save.warehouse.filter(function (w) { return w.goodId === 'alchemical_flowers'; })[0].id, 'returned-alchemical_flowers', 'a row made by the conversion has a fixed id (never random)');
     t.same(res.save.favour, { telluria: 10, aurush: 50, pelagos: 99 }, 'a facility that is not a Shrine has no god to give Favour back to');
     t.equal(res.save.migration.v4.lines.length, 5, 'gold, goods, orders, the places that are gone, and the note about a facility with no god');
-    t.ok(/^Gold\. 150 gp went back into the treasury \(it was 400 gp, it is now 550 gp\): Old Mill: Grind Grain, 120 gp; Old Mill: Press Oil, 30 gp\.$/.test(res.save.migration.v4.lines[0]), res.save.migration.v4.lines[0]);
+    t.equal(res.save.migration.v4.lines[0], 'Gold. 150 gp went back into the treasury (on Day 12 it went from 400 gp to 550 gp): Old Mill: Grind Grain, 120 gp; Old Mill: Press Oil, 30 gp.');
     t.equal(res.save.migration.v4.lines[1], 'Goods. 4 lots of Raw Timber and 4 portions of Alchemical Flowers went back to the Warehouse.');
     t.equal(res.save.migration.v4.lines[2], 'Orders. 2 orders were cancelled: Old Mill: Grind Grain (the Old Mill is no longer part of the Bastion); Old Mill: Press Oil (the Old Mill is no longer part of the Bastion).');
     /* Converting it again changes nothing: no second refund. */
@@ -441,6 +441,286 @@
     t.equal(R.stripBackSteps.length, tripped.length);
     t.same(R.stripBackAudit(null, null, null), ['The converted Bastion could not be compared with the one it started from.']);
   });
+
+  group('Strip Back: the audit compares every order with what it was');
+
+  /* A Bastion with one order that stays (paid in gold, Favour and goods) and one that is cancelled. */
+  function keptRes() {
+    return convert(v3(function (s) {
+      s.warehouse = [{ id: 'w2', goodId: 'raw_timber', item: 'Raw Timber', qty: 1, gp: '', notes: '' }];
+      s.pendingOrders = [
+        { id: 'k', facId: 'workshop', fnId: 'craft', chosen: { label: 'Dagger', craftItem: 'Dagger' }, optionLabel: 'Dagger', notes: '', label: 'Workshop: Craft (Dagger)', costGP: 25, favourCost: 5, inputs: [held('raw_timber', 2)], issuedDay: 10, dueDay: 13, meta: { note: 'x' } },
+        ghost('g1', { costGP: 120, inputs: [held('raw_timber', 3)] })
+      ];
+    }));
+  }
+
+  test('a KEPT order must come across exactly: zeroed goods, a dropped Favour cost, a changed due or issue day or gold cost, and any change the report does not mention are all caught', function (t) {
+    var res = keptRes();
+    t.same(res.problems, [], 'unchanged, it passes');
+    t.same(res.save.pendingOrders.map(function (o) { return o.id; }), ['k']);
+    caught(t, res, function (a) { a.pendingOrders[0].inputs = []; }, /"Workshop: Craft \(Dagger\)" would have its goods held changed/, 'its held goods zeroed');
+    caught(t, res, function (a) { a.pendingOrders[0].inputs[0].qty = 1; }, /goods held changed/, 'a lot fewer held');
+    caught(t, res, function (a) { delete a.pendingOrders[0].inputs; }, /goods held changed/, 'its held goods dropped');
+    caught(t, res, function (a) { delete a.pendingOrders[0].favourCost; }, /would have its Favour cost changed/, 'its Favour cost dropped');
+    caught(t, res, function (a) { a.pendingOrders[0].favourCost = 0; }, /Favour cost changed/, 'its Favour cost zeroed');
+    caught(t, res, function (a) { a.pendingOrders[0].dueDay = 14; }, /would have its due day changed/, 'its due day moved on');
+    caught(t, res, function (a) { a.pendingOrders[0].issuedDay = 9; }, /would have its issue day changed/, 'its issue day changed');
+    caught(t, res, function (a) { a.pendingOrders[0].costGP = 0; }, /would have its gold cost changed/, 'its gold cost zeroed');
+    caught(t, res, function (a) { a.pendingOrders[0].label = 'Workshop: Craft (Sword)'; }, /would be changed, but the report does not say it moved/, 'a new name with no report entry');
+    caught(t, res, function (a) { a.pendingOrders[0].facId = 'dock'; }, /does not say it moved/, 'a new place with no report entry');
+    caught(t, res, function (a) { a.pendingOrders[0].chosen = { label: 'Sword' }; }, /does not say it moved/, 'a different choice with no report entry');
+    caught(t, res, function (a) { a.pendingOrders[0].meta = { note: 'y' }; }, /does not say it moved/, 'its notes in meta changed');
+    caught(t, res, function (a) { a.pendingOrders[0].extra = 1; }, /does not say it moved/, 'a field added');
+  });
+
+  test('two orders that share an id can\'t be told apart, but together they must come across exactly', function (t) {
+    var res = convert(v3(function (s) {
+      s.pendingOrders = [
+        { id: 'twin', facId: 'workshop', fnId: 'craft', label: 'Workshop: Craft (Dagger)', costGP: 25, favourCost: 5, issuedDay: 10, dueDay: 13, inputs: [held('raw_timber', 2)] },
+        { id: 'twin', facId: 'workshop', fnId: 'craft', label: 'Workshop: Craft (Dagger)', costGP: 25, favourCost: 5, issuedDay: 10, dueDay: 14, inputs: [held('raw_timber', 1)] }
+      ];
+    }));
+    t.same(res.problems, [], 'unchanged, they pass');
+    caught(t, res, function (a) { a.pendingOrders[1].inputs = []; }, /Orders that share the id "twin" would be changed/, 'one of them has its held goods zeroed');
+    caught(t, res, function (a) { a.pendingOrders[0].dueDay = 20; }, /share the id "twin"/, 'one has a new due day');
+    var swapped = audit(res, function (a) { a.pendingOrders.reverse(); });
+    t.same(swapped, [], 'only the order they are listed in changed: that is not a loss');
+  });
+
+  /* The Bastion before and after a step MOVES the order 'k' to the Workshop's Smithing, as a later step will. */
+  function movedPair(patch) {
+    var before = clone(keptRes().before);
+    /* The hand-made "after" below is not run through the war steps, so the Bastion starts without the war game's facilities
+       (otherwise the audit rightly says it would be converted again). */
+    ['barracks', 'armoury', 'watchtower'].forEach(function (id) { delete before.facilityLevels[id]; });
+    ['defenders', 'defenderBeasts', 'military', 'militaryActions', 'warMissions', 'warMissionSeq', 'warRecovery', 'wars', 'warLog', 'repairs'].forEach(function (k) { delete before[k]; });
+    if (before.dayInProgress) delete before.dayInProgress.attackRolled;
+    before.builtFacilities = ['workshop', 'dock'];
+    var after = clone(before);
+    after.v = 4;
+    var report = R.stripBackNewReport(after, data);
+    var o = after.pendingOrders.filter(function (x) { return x.id === 'k'; })[0];
+    R.stripBackMoveOrder(report, o, patch || { fnId: 'smithing', label: 'Workshop: Smithing (Dagger)' }, 'the Workshop\'s Smithing');
+    after.pendingOrders = after.pendingOrders.filter(function (x) { return x.id === 'k'; });
+    var g = before.pendingOrders.filter(function (x) { return x.id === 'g1'; })[0];
+    /* The other order is cancelled, so its refund is recorded the usual way. */
+    var spare = clone(before);
+    var rep2 = R.stripBackNewReport(spare, data);
+    R.stripBackCancel(spare, data, rep2, spare.pendingOrders.filter(function (x) { return x.id === 'g1'; })[0], 'a reason');
+    spare.pendingOrders = spare.pendingOrders.filter(function (x) { return x.id !== 'g1'; });
+    after.treasuryGP = spare.treasuryGP;
+    after.warehouse = spare.warehouse;
+    rep2.moved = report.moved;
+    rep2.day = report.day;
+    return { before: before, after: after, report: rep2 };
+  }
+  function movedAudit(pair, mutate) {
+    var after = clone(pair.after), report = clone(pair.report);
+    if (mutate) mutate(after, report);
+    return R.stripBackAudit(pair.before, after, report, data);
+  }
+
+  test('a MOVED order passes when only its place and name changed, and is caught if anything paid, anything else, or the report entry is missing', function (t) {
+    var pair = movedPair();
+    t.same(movedAudit(pair), [], 'a move of its place and name only');
+    t.same(pair.report.moved, [{ id: 'k', label: 'Workshop: Craft (Dagger)', to: 'the Workshop\'s Smithing' }]);
+    function caughtMoved(mutate, pattern, why) {
+      var problems = movedAudit(pair, mutate);
+      t.ok(problems.some(function (p) { return pattern.test(p); }), why + ': ' + JSON.stringify(problems));
+    }
+    caughtMoved(function (a) { a.pendingOrders[0].costGP = 0; }, /gold cost changed/, 'moved, and its gold cost zeroed');
+    caughtMoved(function (a) { a.pendingOrders[0].favourCost = 1; }, /Favour cost changed/, 'moved, and its Favour cost changed');
+    caughtMoved(function (a) { a.pendingOrders[0].inputs = []; }, /goods held changed/, 'moved, and its held goods zeroed');
+    caughtMoved(function (a) { a.pendingOrders[0].dueDay = 20; }, /due day changed/, 'moved, and its due day changed');
+    caughtMoved(function (a) { a.pendingOrders[0].issuedDay = 1; }, /issue day changed/, 'moved, and its issue day changed');
+    caughtMoved(function (a) { a.pendingOrders[0].meta = { note: 'z' }; }, /more than its place and name would change/, 'moved, and its meta changed');
+    caughtMoved(function (a) { a.pendingOrders[0].extra = true; }, /more than its place and name/, 'moved, and a field added');
+    caughtMoved(function (a, r) { r.moved = []; }, /does not say it moved/, 'the report forgets to say it moved');
+  });
+
+  test('a move may change only an order\'s place and name: its id, cost, Favour, held goods, days and meta are refused, and nothing is applied', function (t) {
+    t.same(R.STRIP_BACK_MOVE_KEYS, ['facId', 'fnId', 'label', 'optionLabel', 'chosen', 'notes']);
+    ['id', 'costGP', 'favourCost', 'inputs', 'issuedDay', 'dueDay', 'meta', 'extra'].forEach(function (k) {
+      var o = { id: 'k', facId: 'library_scriptorium', fnId: 'research', label: 'Library & Scriptorium: Research (Geographical Scriptures)', costGP: 5, favourCost: 0, inputs: [held('raw_timber', 1)], issuedDay: 9, dueDay: 14, meta: { a: 1 } };
+      var before = canon(o);
+      var report = R.stripBackNewReport({}, data);
+      var patch = { facId: 'workshop' };
+      patch[k] = k === 'id' ? 'other' : 0;
+      t.throws(function () { R.stripBackMoveOrder(report, o, patch, 'the Workshop'); }, 'refused: ' + k);
+      t.equal(canon(o), before, k + ': nothing was applied, not even the allowed part');
+      t.same(report.moved, [], k + ': nothing recorded');
+    });
+    var o = { id: 'k', facId: 'library_scriptorium', fnId: 'research', label: 'L: R', chosen: { label: 'a' }, optionLabel: 'a', notes: '', costGP: 5, issuedDay: 9, dueDay: 14 };
+    var report = R.stripBackNewReport({}, data);
+    R.stripBackMoveOrder(report, o, { facId: 'workshop', fnId: 'scholar', label: 'Workshop: Scholar', chosen: { label: 'b' }, optionLabel: 'b', notes: 'moved' }, 'the Workshop');
+    t.same([o.facId, o.fnId, o.label, o.chosen, o.optionLabel, o.notes, o.costGP, o.dueDay], ['workshop', 'scholar', 'Workshop: Scholar', { label: 'b' }, 'b', 'moved', 5, 14], 'place and name change; what was paid does not');
+    t.throws(function () { R.stripBackMoveOrder(report, { facId: 'a', fnId: 'b', label: 'x' }, { facId: 'c' }, 'y'); }, 'an order with no id can\'t be moved');
+  });
+
+  test('a CANCELLED order is checked against the order it was: an under-refund of gold, goods or Favour fails, and so does Favour that simply vanishes', function (t) {
+    var res = good();
+    t.same(res.problems, []);
+    /* Everything below is made CONSISTENT with itself (the report, the treasury and the Warehouse agree), so only the
+       comparison with the original order can see it. */
+    caught(t, res, function (a, r) {
+      r.cancelled[0].gp = 100; r.gold.refunded = 100; r.gold.items[0].gp = 100; a.treasuryGP = 500;
+    }, /"Old Mill: Grind Grain" cost 120 gp, but 100 gp is handed back for it/, 'gold under-refunded, consistently');
+    caught(t, res, function (a, r) {
+      r.cancelled[0].gp = 0; r.gold.refunded = 0; r.gold.items = []; a.treasuryGP = 400;
+    }, /cost 120 gp, but 0 gp is handed back/, 'gold not refunded at all, consistently');
+    caught(t, res, function (a, r) {
+      r.cancelled[0].goods[0].qty = 2; r.goods[0].qty = 2;
+      a.warehouse.forEach(function (w) { if (w.goodId === 'raw_timber') w.qty = 3; });
+    }, /"Old Mill: Grind Grain" held goods that are not all put back in the Warehouse/, 'goods under-returned, consistently');
+    caught(t, res, function (a, r) {
+      r.cancelled[0].goods = []; r.goods = [];
+      a.warehouse.forEach(function (w) { if (w.goodId === 'raw_timber') w.qty = 1; });
+    }, /held goods that are not all put back/, 'goods not returned at all, consistently');
+    /* Favour: a Shrine order cancelled by hand, as a later step does. */
+    var shrine = v3(function (s) {
+      s.favour = { telluria: 10, aurush: 50, pelagos: 40 };
+      s.pendingOrders = [{ id: 'f1', facId: 'shrine_pelagos', fnId: 'prepare_aquatic_protection_charm', label: 'Shrine of Pelagos: Prepare Aquatic Protection Charm', costGP: 0, favourCost: 10, issuedDay: 10, dueDay: 14 }];
+    });
+    var after = clone(shrine);
+    var report = R.stripBackNewReport(after, data);
+    R.stripBackCancel(after, data, report, after.pendingOrders[0], 'the Temple replaces the Shrines');
+    after.v = 4;
+    function favourProblems(mutate) {
+      var a = clone(after), r = clone(report);
+      mutate(a, r);
+      return R.stripBackAudit(shrine, a, r, data).filter(function (p) { return /Favour/.test(p); });
+    }
+    t.same(favourProblems(function () {}), [], 'the whole 10% handed back passes');
+    t.equal(after.favour.pelagos, 50);
+    t.ok(favourProblems(function (a, r) { r.cancelled[0].favour = 5; r.favour.pelagos = 5; a.favour.pelagos = 45; }).some(function (p) { return /used 10% of a god's Favour, but 5% is handed back/.test(p); }), 'only half handed back, consistently');
+    t.ok(favourProblems(function (a, r) { r.cancelled[0].favour = 0; r.cancelled[0].god = ''; r.favour.pelagos = 0; a.favour.pelagos = 40; }).some(function (p) { return /used 10% of a god's Favour, but 0% is handed back/.test(p); }), 'the Favour simply vanishes, consistently');
+    t.same(report.cancelled[0].favourUnplaced, 0, 'with a Shrine\'s god the helper never leaves any unplaced');
+    /* An order at a place with no god: the helper says the Favour could not be given back. */
+    var nogod = v3(function (s) { s.pendingOrders = [ghost('g9', { favourCost: 10, costGP: 0 })]; });
+    var res2 = convert(nogod);
+    t.same(res2.problems, []);
+    t.same([res2.report.cancelled[0].favour, res2.report.cancelled[0].favourUnplaced], [0, 10]);
+    var hidden = clone(res2);
+    hidden.report.cancelled[0].favourUnplaced = 0;
+    t.ok(R.stripBackAudit(hidden.before, hidden.save, hidden.report, data).some(function (p) { return /used 10% of a god's Favour, but 0% is handed back/.test(p); }), 'Favour dropped with no mention fails');
+  });
+
+  group('Strip Back: a report nobody has read yet is never lost');
+
+  test('converting again before "I\'ve read this": the earlier lines are kept, the new ones added after them, and it does not blame an older copy of the suite', function (t) {
+    var first = convert(v3(function (s) {
+      s.treasuryGP = 400;
+      s.pendingOrders = [ghost('g1', { costGP: 120, inputs: [held('raw_timber', 3)] })];
+    }));
+    t.same(first.problems, []);
+    var firstLines = first.save.migration.v4.lines.slice();
+    t.equal(first.save.migration.v4.shown, false);
+    t.equal(first.save.migration.v4.gp, 120);
+    /* Before it is read, something saves another order at an unknown facility over it. */
+    var dirty = clone(first.save);
+    dirty.pendingOrders.push(ghost('g2', { label: 'Sawpit: Cut Planks', facId: 'sawpit', costGP: 45 }));
+    var second = convert(dirty);
+    t.same(second.problems, []);
+    var m = second.save.migration.v4;
+    t.equal(m.shown, false, 'still to be read');
+    t.same(m.lines.slice(0, firstLines.length), firstLines, 'the earlier lines are kept exactly, in order');
+    t.equal(m.lines[firstLines.length], 'More was found on Day 12 and put right the same way.');
+    t.ok(m.lines.slice(firstLines.length + 1).some(function (l) { return /^Gold\. 45 gp went back into the treasury \(on Day 12 it went from 520 gp to 565 gp\): Sawpit: Cut Planks, 45 gp\.$/.test(l); }), JSON.stringify(m.lines));
+    t.ok(m.lines.some(function (l) { return /^Gold\. 120 gp went back into the treasury \(on Day 12 it went from 400 gp to 520 gp\): Old Mill: Grind Grain, 120 gp\.$/.test(l); }), 'the first conversion\'s gold is still itemised');
+    t.equal(m.gp, 165, 'the gold handed back adds up');
+    t.equal(m.again, false, 'an older copy is NOT blamed: the first report was never read');
+    t.equal(m.changed, true);
+    t.equal(m.summary, '120 gp went back into the treasury; 1 order was cancelled; goods went back to the Warehouse; 3 places removed; then, on Day 12: 45 gp went back into the treasury; 1 order was cancelled.');
+    t.equal(R.stripBackHeadline(m), 'The Bastion has changed. Here is exactly what happened to yours.');
+    t.equal(second.save.treasuryGP, 565);
+    /* A third time with nothing to say leaves the unread report exactly as it was. */
+    var quiet = clone(second.save);
+    quiet.facilityLevels.old_mill = 2;
+    var third = convert(quiet);
+    t.same(third.problems, []);
+    t.equal(R.needsStripBack(quiet, data), true);
+    t.same(third.save.migration.v4, m, 'a leftover with nothing to say changes nothing in the unread report');
+  });
+
+  test('"an older copy of the suite had saved over it" is said only when the earlier report HAD been read and something then reappeared', function (t) {
+    var first = convert(v3(function (s) { s.pendingOrders = [ghost('g1', { costGP: 120 })]; })).save;
+    var read = clone(first);
+    read.migration.v4.shown = true;
+    read.pendingOrders.push(ghost('late', { costGP: 45 }));
+    var again = convert(read);
+    t.same(again.problems, []);
+    t.same([again.save.migration.v4.again, again.save.migration.v4.shown], [true, false]);
+    t.equal(R.stripBackHeadline(again.save.migration.v4), 'The Bastion has been tidied again.');
+    t.ok(/An older copy of the suite had saved over your Bastion/.test(R.stripBackText(again.save.migration.v4)));
+    t.same(again.save.migration.v4.lines, [
+      'Gold. 45 gp went back into the treasury (on Day 12 it went from 520 gp to 565 gp): Old Mill: Grind Grain, 45 gp.',
+      'Orders. One order was cancelled: Old Mill: Grind Grain (the Old Mill is no longer part of the Bastion).'
+    ], 'the new conversion\'s lines only: the read report is not repeated');
+    var unread = clone(first);
+    unread.pendingOrders.push(ghost('late', { costGP: 45 }));
+    var merged = convert(unread);
+    t.equal(merged.save.migration.v4.again, false);
+    t.ok(R.stripBackText(merged.save.migration.v4).indexOf('An older copy of the suite') === -1, 'not blamed');
+    /* A version 4 save with no report at all, and a leftover: not blamed either. */
+    var none = convert(clone(first));
+    t.same(none.report.lines, [], 'a clean version 4 save needs nothing');
+    var noReport = clone(first);
+    delete noReport.migration;
+    noReport.pendingOrders.push(ghost('late', { costGP: 45 }));
+    var res = convert(noReport);
+    t.equal(res.save.migration.v4.again, false, 'nothing was ever reported, so there is no "older copy" to blame');
+    t.equal(R.stripBackHeadline(res.save.migration.v4), 'The Bastion has changed. Here is exactly what happened to yours.');
+    /* An unread report that said nothing, then something found: the new lines stand alone. */
+    var quiet = convert(v3()).save;
+    /* A real version 3 save always says the Barracks, Armoury and Watchtower are gone (S06), so the unread report that said
+       nothing is set up by hand. */
+    quiet.migration.v4 = { day: 12, lines: [], summary: 'Nothing of yours changed.', changed: false, again: false, shown: false, gp: 0 };
+    quiet.pendingOrders.push(ghost('late', { costGP: 45 }));
+    var fromQuiet = convert(quiet);
+    t.same(fromQuiet.save.migration.v4.lines, ['Gold. 45 gp went back into the treasury (on Day 12 it went from 400 gp to 445 gp): Old Mill: Grind Grain, 45 gp.', 'Orders. One order was cancelled: Old Mill: Grind Grain (the Old Mill is no longer part of the Bastion).']);
+    t.equal(fromQuiet.save.migration.v4.changed, true);
+    t.ok(!/More was found/.test(fromQuiet.save.migration.v4.lines.join(' ')), 'nothing earlier to add to');
+  });
+
+  group('Strip Back: what is stored still reads true later');
+
+  test('the stored lines say what happened ON THAT DAY, so reading them again after play is still true: no "it is now"', function (t) {
+    var steps = R.stripBackSteps;
+    /* A Shrine order cancelled by a step, as a later step will, so Favour is in the report too. */
+    steps.splice(0, 0, {
+      id: 'tmpshrine', detect: function () { return []; },
+      run: function (s, d, report) { (s.pendingOrders || []).slice().forEach(function (o) { if (o.facId === 'shrine_pelagos') R.stripBackCancel(s, d, report, o, 'the Temple replaces the Shrines'); }); }
+    });
+    var res;
+    try {
+      res = convert(v3(function (s) {
+        s.treasuryGP = 400;
+        s.favour = { telluria: 10, aurush: 50, pelagos: 95 };
+        s.pendingOrders = [{ id: 'f1', facId: 'shrine_pelagos', fnId: 'prepare_aquatic_protection_charm', label: 'Shrine of Pelagos: Prepare Aquatic Protection Charm', costGP: 30, favourCost: 10, issuedDay: 10, dueDay: 14 }];
+      }));
+    } finally {
+      steps.splice(0, 1);
+    }
+    t.same(res.problems, []);
+    var m = res.save.migration.v4;
+    t.equal(m.lines[0], 'Gold. 30 gp went back into the treasury (on Day 12 it went from 400 gp to 430 gp): Shrine of Pelagos: Prepare Aquatic Protection Charm, 30 gp.');
+    t.equal(m.lines[1], 'Favour. Pelagos: 5% went back to the bar (on Day 12 it went from 95% to 100%). Pelagos\'s bar was too full to take back 5% of what its orders had used.');
+    var before = JSON.stringify(m);
+    /* Play goes on: the treasury and the bar move. The stored words must not change meaning. */
+    var played = clone(res.save);
+    played.treasuryGP = 9999;
+    played.favour.pelagos = 12;
+    t.equal(JSON.stringify(played.migration.v4), before, 'the report is not touched by play');
+    var text = R.stripBackText(played.migration.v4);
+    t.ok(text.indexOf('on Day 12 it went from 400 gp to 430 gp') !== -1);
+    m.lines.forEach(function (l) {
+      t.ok(!/\bnow\b/i.test(l), 'no "now" in: ' + l);
+      t.ok(!/\bit is\b|\bis at\b|\bis now\b/.test(l), 'no present-tense claim about a balance in: ' + l);
+    });
+    t.ok(!/\bnow\b/i.test(text.replace(/\bno longer\b/g, '')), 'nor in the text file');
+  });
+
 
   group('Strip Back: the fixtures');
 
@@ -687,11 +967,11 @@
       t.ok(/^[A-Z]/.test(line), 'starts with a capital: ' + line);
       t.ok(/\.$/.test(line), 'ends with a full stop: ' + line);
     });
-    t.ok(/1,005 gp went back into the treasury \(it was 1,200 gp, it is now 2,205 gp\)/.test(lines[0]), lines[0]);
+    t.ok(/^Gold\. 1,005 gp went back into the treasury \(on Day 12 it went from 1,200 gp to 2,205 gp\)/.test(lines[0]), lines[0]);
     t.ok(/Old Mill: Grind Grain, 1,000 gp; Sawpit: Cut Planks, 5 gp/.test(lines[0]), lines[0]);
     var orders = lines.filter(function (l) { return /^Orders\./.test(l); })[0];
     t.ok(/^Orders\. 3 orders were cancelled: Old Mill: Grind Grain \(the Old Mill is no longer part of the Bastion\); Sawpit: Cut Planks \(the Sawpit is no longer part of the Bastion\); Old Mill: Press Oil \(the Old Mill is no longer part of the Bastion\)\.$/.test(orders), orders);
-    t.ok(/^Goods\. 2 lots of Raw Timber, 1 portion of Alchemical Flowers, 2 portions of Restorative Herbs and|Goods\. 1 lot of Raw Timber/.test(lines[1]) || /Goods\./.test(lines[1]), lines[1]);
+    t.equal(lines[1], 'Goods. 1 lot of Raw Timber, 1 portion of Alchemical Flowers, 2 portions of Restorative Herbs and 1 lot of Fresh Fish went back to the Warehouse.');
     /* One order, one lot: the singular. */
     var one = convert(v3(function (s) { s.pendingOrders = [ghost('g1', { costGP: 50, inputs: [held('raw_timber', 1)] })]; }));
     var ol = one.save.migration.v4.lines;

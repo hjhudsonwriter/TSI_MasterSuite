@@ -58,6 +58,84 @@ async function openBastion(page) {
   await page.waitForSelector('[data-test=day-status]');
 }
 
+/* A browser set up the way the "copy first" tests need it: no built-in database, so the suite saves to the
+   browser's plain storage (where a copy can really fail for lack of room), and a log of every write to it.
+   What goes wrong is chosen from the test with setEnv (below), which puts it in window.__tsiEnv for every page
+   opened afterwards (an init script, not sessionStorage: that was sometimes empty on the next page on a busy machine):
+     quota       how many characters of plain storage the browser allows (a write past it fails, as a full browser does)
+     failStart   the Bastion's start-up throws once the copy is kept (an error part-way through opening)
+     noWar       the War Table is not part of the Bastion, so its leftover saves are set aside
+     breakAudit  a fault is put into the conversion, so the safety check fails
+   Everything looks at window.__tsiEnv when it happens, so it does not matter which init script ran first. */
+const safetyBrowser = () => {
+  try { Object.defineProperty(window, 'indexedDB', { value: undefined, configurable: true }); } catch (e) { /* already gone */ }
+  const env = () => window.__tsiEnv || {};
+  window.__writes = [];
+  const realSet = Storage.prototype.setItem;
+  Storage.prototype.setItem = function (k, v) {
+    if (this === window.localStorage) {
+      const quota = env().quota;
+      if (quota) {
+        let total = 0;
+        for (let i = 0; i < this.length; i++) { const kk = this.key(i); total += kk.length + (this.getItem(kk) || '').length; }
+        const old = this.getItem(k);
+        total += String(k).length + String(v).length - (old === null ? 0 : String(k).length + old.length);
+        if (total > quota) throw new DOMException('The quota has been exceeded.', 'QuotaExceededError');
+      }
+      let ver = null;
+      try { const r = JSON.parse(v); ver = r && r.value && typeof r.value === 'object' ? (r.value.v === undefined ? null : r.value.v) : null; } catch (e) { ver = null; }
+      if (!/^tsi\.suite\./.test(String(k))) window.__writes.push({ k: String(k), ver });
+    }
+    return realSet.call(this, k, v);
+  };
+  /* Run something the moment a given file of the suite has been loaded, before any later file or the tool itself starts
+     (no timer to lose a race on a busy machine). */
+  const afterScript = (pattern, then) => {
+    const append = Node.prototype.appendChild;
+    Node.prototype.appendChild = function (n) {
+      if (n && n.tagName === 'SCRIPT' && pattern.test(n.src || '')) n.addEventListener('load', then);
+      return append.call(this, n);
+    };
+  };
+  afterScript(/tools\/bastion\/strip-back-rules\.js$/, () => {
+    if (env().failStart) TSI.bastion.rules.settlePlots = function () { throw new Error('A fault put in on purpose, once the copy was kept.'); };
+    if (env().breakAudit) TSI.bastion.rules.stripBackSteps.splice(0, 0, { id: 'broken', detect: () => [], run: s => { s.treasuryGP = (parseInt(s.treasuryGP, 10) || 0) - 1; } });
+  });
+  afterScript(/war-table\.js$/, () => { if (env().noWar && window.TSI && TSI.bastion) delete TSI.bastion.warTable; });
+};
+/* A browser that keeps nothing at all (no built-in database and no plain storage): saves live in memory only. */
+const keepsNothing = () => {
+  try { Object.defineProperty(window, 'indexedDB', { value: undefined, configurable: true }); } catch (e) { /* already gone */ }
+  Object.defineProperty(window, 'localStorage', { configurable: true, get() { throw new DOMException('Storage is turned off.', 'SecurityError'); } });
+};
+/* Puts a Bastion into a memory-only browser's saves (the way Import or Restore would) once the Bastion's first file has loaded, before it opens. */
+const seedMemory = state => {
+  const append = Node.prototype.appendChild;
+  let done = false;
+  Node.prototype.appendChild = function (n) {
+    if (!done && n && n.tagName === 'SCRIPT' && /tools\/bastion\//.test(n.src || '')) {
+      done = true;
+      TSI.store.set('tsi.bastion.state', state);
+    }
+    return append.call(this, n);
+  };
+};
+/* From the next page this window opens (the one it is on is left as it is). */
+const setEnv = (page, env) => page.context().addInitScript(e => { window.__tsiEnv = e; }, env);
+/* Everything the suite has saved in plain storage, exactly as written (not the window heartbeat the suite keeps beside it). */
+const plainStorage = page => page.evaluate(() => Object.keys(localStorage).filter(k => !/^tsi\.suite\./.test(k)).sort().map(k => [k, localStorage.getItem(k)]));
+const WAR_KEYS = ['warMap', 'warTable', 'warTerrain'];
+async function putWarSaves(page) {
+  await page.evaluate(() => {
+    TSI.store.set('tsi.bastion.warMap', { dataUrl: 'data:image/png;base64,AAAA', key: 'k', name: 'map.png' });
+    TSI.store.set('tsi.bastion.warTable', { cols: 22 });
+    TSI.store.set('tsi.bastion.warTerrain', {});
+    return TSI.store.flush();
+  });
+}
+const warSavesLeft = page => page.evaluate(names => names.map(k => TSI.store.has('tsi.bastion.' + k)), WAR_KEYS);
+const writeLog = page => page.evaluate(() => window.__writes.slice());
+
 (async () => {
   const browser = await H.chromium.launch();
 
@@ -81,8 +159,9 @@ async function openBastion(page) {
     await check('the box has the headline, the lines in plain English, and two buttons', async () => {
       const text = await bare(page, '[data-test=changes-box]');
       assert(text.indexOf('The Bastion has changed. Here is exactly what happened to yours.') !== -1, text);
-      assert(/Gold\. 1,765 gp went back into the treasury \(it was 2,000 gp, it is now 3,765 gp\): Armoury: Arm Defenders, 300 gp; War Room: Recruit \(Archers \(50\)\), 120 gp; War Room: Drill a Regiment \(Line Infantry I → Trained\), 75 gp; Menagerie: Recruit Beast \(Tiger\), 1,000 gp; Dire Wolf Den: Riding Harness \(Ashfang\), 150 gp; Old Mill: Grind Grain, 120 gp\./.test(text), text);
+      assert(/Gold\. 1,765 gp went back into the treasury \(on Day 40 it went from 2,000 gp to 3,765 gp\): Armoury: Arm Defenders, 300 gp; War Room: Recruit \(Archers \(50\)\), 120 gp; War Room: Drill a Regiment \(Line Infantry I → Trained\), 75 gp; Menagerie: Recruit Beast \(Tiger\), 1,000 gp; Dire Wolf Den: Riding Harness \(Ashfang\), 150 gp; Old Mill: Grind Grain, 120 gp\./.test(text), text);
       assert(/Trade\. The Commercial Convoy you had ready for the next ship is gone with the Barracks\. It was a charge for the next ship, not gold, so nothing goes back to the treasury\. The Protected Maritime Approaches, in force until Day 44, are gone with the Watchtower\. Ships already at sea are not affected\./.test(text), text);
+      equal(await bare(page, '[data-test=changes-now]'), 'Right now the treasury holds 3,765 gp.', 'the balance as it is now is worked out live, on the first reading only');
       assert(/Goods\. 3 lots of Raw Timber went back to the Warehouse\./.test(text), text);
       assert(/Orders\. 9 orders were cancelled: Barracks: Recruit Defenders \(the Barracks is gone with the war game\); /.test(text), text);
       assert(/War Action \(the war game was removed; what declaring war cost you in Honour\/Respect and Political Capital is not given back\)/.test(text), text);
@@ -172,14 +251,18 @@ async function openBastion(page) {
       equal((await st(page)).v, 4);
     });
 
-    await check('Management\'s "What changed" opens the same words again, with Close (not "I\'ve read this"), and it stays read', async () => {
+    await check('Management\'s "What changed" opens the same words again, with Close (not "I\'ve read this"), and it stays read; after play the words are still true', async () => {
+      /* The party spends and earns: the treasury is no longer what it was when the conversion happened. */
+      await page.evaluate(() => TSI.bastion.debug.change(s => { s.treasuryGP = 9999; }));
       await page.click('[data-test=open-management]');
       await page.waitForSelector('[data-test=changes-row]');
       assert(/The Bastion's change of 22 October 2026 \(Day 40\): 1,765 gp went back into the treasury; 9 orders were cancelled/.test(await bare(page, '[data-test=changes-row]')), await bare(page, '[data-test=changes-row]'));
       await page.click('[data-test=show-changes]');
       await page.waitForSelector('[data-test=changes-box]');
       const text = await bare(page, '[data-test=changes-box]');
-      assert(/Gold\. 1,765 gp went back into the treasury/.test(text), text);
+      assert(/Gold\. 1,765 gp went back into the treasury \(on Day 40 it went from 2,000 gp to 3,765 gp\)/.test(text), text);
+      assert(!/\b(it is now|is now at|which is now)\b/i.test(text), 'nothing in it claims what a balance is now, as it has moved on: ' + text);
+      equal(await page.$('[data-test=changes-now]'), null, 'the live balance is only for the first reading');
       equal(await page.isVisible('[data-test=changes-ok]'), true);
       equal(await page.textContent('[data-test=changes-ok]'), 'Close');
       await page.click('[data-test=changes-ok]');
@@ -393,6 +476,168 @@ async function openBastion(page) {
       equal((await quarantined(unsafe.page)).length, 0);
     });
     await unsafe.context.close();
+  }
+
+  /* ------------------------------------------------------------------ */
+  section('A copy that cannot be kept stops the conversion before anything is written (the browser\'s storage is full)');
+  {
+    const { context, page } = await seeded(browser, 'laptop', withGhost(), null, safetyBrowser);
+    await putWarSaves(page);
+    const before = await plainStorage(page);
+    const room = await page.evaluate(() => Object.keys(localStorage).reduce((n, k) => n + k.length + localStorage.getItem(k).length, 0));
+    await setEnv(page, { quota: room + 300, noWar: true });
+
+    await check('the Bastion says it could not convert, that nothing has been changed, and that no safe copy could be confirmed', async () => {
+      equal(await page.evaluate(() => TSI.store.mode), 'local', 'the browser is saving to its plain storage');
+      await page.goto(BASTION);
+      await page.waitForSelector('[data-test=convert-unsafe]');
+      const text = await bare(page, '[data-test=convert-unsafe]');
+      assert(/The Bastion couldn't be converted safely\. Nothing has been changed\./.test(text), text);
+      assert(/that copy could not be kept, so it stopped/.test(text), 'says why: ' + text);
+      assert(/storage space for the suite is full/.test(text), 'the reason: ' + text);
+      assert(/No safe copy of your Bastion could be confirmed, so nothing was converted and nothing was written\./.test(text), text);
+      equal(await page.$('[data-test=changes-box]'), null);
+      equal(await page.$('[data-test=day-status]'), null, 'the Bastion itself did not open');
+      await H.shot(page, 'migration-copy-failed');
+    });
+
+    await check('nothing was written: the saved Bastion and everything else is byte for byte as it was, nothing set aside, nothing marked converted', async () => {
+      await page.waitForTimeout(600);
+      await page.evaluate(() => TSI.store.flush());
+      equal(await plainStorage(page), before);
+      const writes = await writeLog(page);
+      equal(writes.filter(w => /tsi\.bastion\.state$/.test(w.k)), [], 'the Bastion was never written');
+      equal(writes.filter(w => w.ver === 4), [], 'nothing version 4 was written');
+      equal(writes.filter(w => /quarantine/.test(w.k)).length, 0, 'nothing set aside');
+      equal(await page.evaluate(() => TSI.store.get('tsi.bastion.state').v), 3);
+    });
+
+    await check('the War Table\'s saves were not touched either (they are only set aside once the converted Bastion is safely saved)', async () => {
+      equal(await warSavesLeft(page), [true, true, true]);
+    });
+
+    await check('"Download my Bastion as a file" gives the raw record', async () => {
+      const d = await H.download(page, '[data-test=convert-download]');
+      equal(JSON.stringify(JSON.parse(d.text)), JSON.stringify(withGhost()));
+    });
+
+    await check('with room again it converts: the copy is kept first, then the converted Bastion is saved, and only then are the War Table\'s saves set aside', async () => {
+      await setEnv(page, { noWar: true });
+      await page.goto(BASTION);
+      await page.waitForSelector('[data-test=changes-box]');
+      /* By the time the box is on screen, the converted Bastion is already saved. */
+      const live = await page.evaluate(() => { const k = Object.keys(localStorage).find(x => /tsi\.bastion\.state$/.test(x)); return JSON.parse(localStorage.getItem(k)).value.v; });
+      equal(live, 4, 'the saved Bastion is version 4 when the box appears');
+      await page.waitForFunction(() => ['warMap', 'warTable', 'warTerrain'].every(k => !TSI.store.has('tsi.bastion.' + k)), null, { timeout: 4000 });
+      await page.evaluate(() => TSI.store.flush());
+      const writes = await writeLog(page);
+      const at = f => writes.findIndex(f);
+      const copyAt = at(w => /quarantine\.bastion\.state\./.test(w.k));
+      const stateAt = at(w => /tsi\.bastion\.state$/.test(w.k) && w.ver === 4);
+      const warAt = at(w => /quarantine\.bastion\.war/.test(w.k));
+      assert(copyAt !== -1 && stateAt !== -1 && warAt !== -1, 'all three happened: ' + JSON.stringify(writes.map(w => w.k.slice(-34))));
+      assert(copyAt < stateAt, 'the copy was written before the converted Bastion');
+      assert(stateAt < warAt, 'the converted Bastion was written before the War Table\'s saves were moved');
+      const copies = await quarantined(page);
+      equal(copies.length, 1);
+      equal(JSON.stringify(await page.evaluate(k => TSI.store.get(k), copies[0])), JSON.stringify(withGhost()), 'the copy is the Bastion exactly as it was');
+      await H.ackChanges(page);
+    });
+    await context.close();
+  }
+
+  /* ------------------------------------------------------------------ */
+  section('A browser that keeps nothing cannot claim a copy exists (memory only)');
+  {
+    const { context, page } = await seeded(browser, 'laptop', withGhost(), null, keepsNothing);
+    await check('the store says it is holding saves in memory only, and keepCopy gives no copy and says why', async () => {
+      equal(await page.evaluate(() => TSI.store.mode), 'memory');
+      const out = await page.evaluate(() => TSI.store.keepCopy('tsi.bastion.state', 'test').then(k => ({ k, why: TSI.store.copyProblem(), copies: TSI.store.keys('quarantine'), v: TSI.store.get('tsi.bastion.state').v })));
+      equal(out.k, null);
+      assert(/not keeping the suite's saves at all/.test(out.why), out.why);
+      equal(out.copies, [], 'nothing claimed as kept');
+      equal(out.v, 3, 'the Bastion in memory is untouched');
+    });
+    await context.close();
+  }
+  {
+    /* The Bastion itself, opened in such a browser with a Bastion from before the change in its memory. */
+    const context = await H.newContext(browser, 'laptop', { acceptDownloads: true });
+    await context.setOffline(true);
+    await context.addInitScript(keepsNothing);
+    await context.addInitScript(seedMemory, withGhost());
+    const page = await context.newPage();
+    await check('the Bastion does not convert: it says plainly that nothing is kept in this browser, that no safe copy could be confirmed, and that nothing has been changed', async () => {
+      await page.goto(BASTION);
+      await page.waitForSelector('[data-test=convert-unsafe]');
+      equal(await page.evaluate(() => TSI.store.mode), 'memory');
+      const text = await bare(page, '[data-test=convert-unsafe]');
+      assert(/The Bastion couldn't be converted safely\. Nothing has been changed\./.test(text), text);
+      assert(/not keeping the suite's saves between visits at all/.test(text), 'says what is wrong: ' + text);
+      assert(/no copy of your Bastion can be kept/.test(text), text);
+      assert(/that file is the only copy that will last/.test(text), text);
+      assert(!/making room/.test(text), 'no advice about making room, which would not help here: ' + text);
+      assert(/No safe copy of your Bastion could be confirmed, so nothing was converted and nothing was written\./.test(text), text);
+      equal(await page.$('[data-test=changes-box]'), null);
+      equal(await page.$('[data-test=day-status]'), null, 'the Bastion itself did not open');
+    });
+    await check('the Bastion in memory is exactly as it was (version 3), no copy and nothing set aside is claimed, and the download gives it back', async () => {
+      await page.waitForTimeout(600);
+      const out = await page.evaluate(() => ({ v: TSI.store.get('tsi.bastion.state').v, copies: TSI.store.keys('quarantine'), migration: !!TSI.store.get('tsi.bastion.state').migration }));
+      equal(out.v, 3);
+      equal(out.copies, []);
+      equal(out.migration, false, 'nothing marked converted');
+      const d = await H.download(page, '[data-test=convert-download]');
+      equal(JSON.stringify(JSON.parse(d.text)), JSON.stringify(withGhost()));
+    });
+    await context.close();
+  }
+
+  /* ------------------------------------------------------------------ */
+  section('A conversion that fails its check leaves the War Table\'s saves alone');
+  {
+    const { context, page } = await seeded(browser, 'laptop', withGhost(), null, safetyBrowser);
+    await putWarSaves(page);
+    const before = await plainStorage(page);
+    await setEnv(page, { breakAudit: true, noWar: true });
+    await check('the unsafe page shows, nothing is written, and the War Table\'s saves are still where they were', async () => {
+      await page.goto(BASTION);
+      await page.waitForSelector('[data-test=convert-unsafe]');
+      await page.waitForTimeout(600);
+      await page.evaluate(() => TSI.store.flush());
+      equal(await plainStorage(page), before);
+      equal(await warSavesLeft(page), [true, true, true]);
+      equal((await writeLog(page)).length, 0, 'not one write');
+    });
+    await context.close();
+  }
+
+  /* ------------------------------------------------------------------ */
+  section('A start-up that fails part-way never leaves the box over an error page');
+  {
+    const { context, page } = await seeded(browser, 'laptop', withGhost(), null, safetyBrowser);
+    await setEnv(page, { failStart: true, noWar: true });
+    await check('the Bastion says it could not open, and the box never opens over it', async () => {
+      await page.goto(BASTION);
+      await page.waitForSelector('.tsi-modal__details');
+      assert(/on purpose/.test(await bare(page, '.tsi-modal__details')), 'it is the fault that was put in');
+      await page.waitForTimeout(800);
+      equal(await page.$('[data-test=changes-box]'), null);
+      equal(await page.$('[data-test=day-status]'), null);
+    });
+    await check('the copy of the Bastion as it was is safe, and next time (the fault gone) the box opens and says what changed', async () => {
+      await page.evaluate(() => TSI.store.flush());
+      await setEnv(page, { noWar: true });
+      await page.goto(BASTION);
+      await page.waitForSelector('[data-test=changes-box]');
+      equal(await page.evaluate(() => !!TSI.store.get('tsi.bastion.state').migration.v4.lines.length), true, 'it has its lines');
+      const copies = await quarantined(page);
+      assert(copies.length >= 1, 'a copy is kept');
+      for (const k of copies) equal(JSON.stringify(await page.evaluate(k2 => TSI.store.get(k2), k)), JSON.stringify(withGhost()), 'each copy is the Bastion exactly as it was');
+      await H.ackChanges(page);
+      equal(await page.evaluate(() => TSI.store.get('tsi.bastion.state').migration.v4.shown), true);
+    });
+    await context.close();
   }
 
   /* ------------------------------------------------------------------ */

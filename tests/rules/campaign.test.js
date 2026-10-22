@@ -114,41 +114,68 @@
     t.equal(sum(e, bastion()).orders.count, 0, 'a new Bastion (version 4)');
   });
 
-  test('the 13 retired facilities: a version 3 Bastion read before it is converted does not forecast their orders; a converted (version 4) one still does until each step removes them', function (t) {
-    t.same(C.RETIRED_FACILITIES, ['menagerie', 'war_room', 'library_scriptorium', 'arcane_laboratory', 'armoury', 'watchtower', 'barracks',
-      'shrine_telluria', 'shrine_aurush', 'shrine_pelagos', 'wyvern_roost', 'griffin_tower', 'dire_wolf_den']);
-    C.RETIRED_FACILITIES.forEach(function (id) { t.ok(!!T.bastion.stripBack.facilities[id], id + ' is in the Bastion\'s own list too'); });
+  test('the 13 retired facilities: a version 3 Bastion read before it is converted does not forecast the orders the conversion will CANCEL, but still forecasts the ones it only MOVES; a converted (version 4) one is never filtered', function (t) {
+    t.same(C.RETIRED_FACILITIES, {
+      barracks: 'cancel', armoury: 'cancel', watchtower: 'cancel', war_room: 'cancel', menagerie: 'cancel',
+      library_scriptorium: 'move', arcane_laboratory: 'move',
+      shrine_telluria: 'move', shrine_aurush: 'move', shrine_pelagos: 'move',
+      wyvern_roost: 'move', griffin_tower: 'move', dire_wolf_den: 'move'
+    });
+    Object.keys(C.RETIRED_FACILITIES).forEach(function (id) { t.ok(!!T.bastion.stripBack.facilities[id], id + ' is in the Bastion\'s own list too'); });
+    t.equal(Object.keys(C.RETIRED_FACILITIES).length, 13);
     var e = explorer();
     e.travel.day = 10;
+    function order(id, facId, fnId, label, dueDay, extra) {
+      return Object.assign({ id: id, facId: facId, fnId: fnId, label: label, issuedDay: 9, dueDay: dueDay }, extra || {});
+    }
     function withOrders(v) {
       var b = bastion();
       b.v = v;
       b.day = 10;
       b.anchored = true;
       b.pendingOrders = [
-        { id: 'a', facId: 'barracks', fnId: 'recruit_defenders', label: 'Barracks: Recruit Defenders', issuedDay: 9, dueDay: 14 },
-        { id: 'm', facId: 'menagerie', fnId: 'recruit_beast', label: 'Menagerie: Recruit Beast (Tiger)', issuedDay: 9, dueDay: 15 },
-        { id: 'x', facId: 'war_council', fnId: 'war_action', label: 'War Action', issuedDay: 9, dueDay: 13, meta: { kind: 'war_action', objective: 'raid', targetName: 'Bacca' } },
-        { id: 'p', facId: 'shrine_aurush', fnId: 'pray', label: 'Shrine of Aurush: Pray (Aurush\'s Blessing)', issuedDay: 9, dueDay: 12 },
-        { id: 'd', facId: 'dock', fnId: 'charter_berth', label: 'Dock: Charter Berth (Longship)', issuedDay: 8, dueDay: 16 },
-        { id: 'w', facId: 'workshop', fnId: 'craft', label: 'Workshop: Craft (Dagger)', issuedDay: 8, dueDay: 13 }
+        /* Cancelled by the conversion. */
+        order('a', 'barracks', 'recruit_defenders', 'Barracks: Recruit Defenders', 14),
+        order('m', 'menagerie', 'recruit_beast', 'Menagerie: Recruit Beast (Tiger)', 15),
+        order('x', 'war_council', 'war_action', 'War Action', 13, { meta: { kind: 'war_action', objective: 'raid', targetName: 'Bacca' } }),
+        order('u', 'library_scriptorium', 'upgrade', 'Library & Scriptorium: Upgrade to Level 3', 20, { meta: { kind: 'upgrade', toLevel: 3 } }),
+        order('h', 'shrine_pelagos', 'pray', 'Shrine of Pelagos: Pray (Pelagos\'s Tidings)', 11, { chosen: { label: 'Pelagos\'s Tidings', special: { type: 'oracle_hint', god: 'pelagos' } } }),
+        order('c', 'shrine_aurush', 'prepare_purification_incense', 'Shrine of Aurush: Prepare Purification Incense', 12),
+        order('t', 'dire_wolf_den', 'dwf_riding_harness', 'Dire Wolf Den: Riding Harness (Ashfang)', 17),
+        /* Only moved by the conversion: still forecast. */
+        order('r', 'library_scriptorium', 'research', 'Library & Scriptorium: Research (Geographical Scriptures)', 18),
+        order('l', 'arcane_laboratory', 'alchemy', 'Arcane Laboratory: Alchemy (Antitoxin)', 19),
+        order('f', 'shrine_telluria', 'pray', 'Shrine of Telluria: Pray (Telluria\'s Blessing)', 12, { chosen: { label: 'Telluria\'s Blessing', special: { type: 'favour_blessing', god: 'telluria' } } }),
+        order('b', 'shrine_pelagos', 'bless_voyage', 'Shrine of Pelagos: Bless Voyage', 13),
+        order('w2', 'wyvern_roost', 'house_wyvern', 'Wyvern Roost: House a Wyvern (Skyrender)', 14),
+        /* Never retired. */
+        order('d', 'dock', 'charter_berth', 'Dock: Charter Berth (Longship)', 16),
+        order('w', 'workshop', 'craft', 'Workshop: Craft (Dagger)', 13)
       ];
       return b;
     }
+    var cancelled = ['a', 'm', 'x', 'u', 'h', 'c', 't'];
+    var kept = ['r', 'l', 'f', 'b', 'w2', 'd', 'w'];
+    cancelled.forEach(function (id) { t.equal(C.cancelledByConversion(withOrders(3).pendingOrders.filter(function (o) { return o.id === id; })[0]), true, id + ' is cancelled'); });
+    kept.forEach(function (id) { t.equal(C.cancelledByConversion(withOrders(3).pendingOrders.filter(function (o) { return o.id === id; })[0]), false, id + ' is kept or moved'); });
     var old = withOrders(3);
     var s3 = sum(e, old);
-    t.same([s3.orders.count, s3.orders.next.label], [2, 'Workshop: Craft (Dagger)'], 'only the Dock\'s and the Workshop\'s orders');
-    t.same(C.ironbowNews(old, 10, 20), [{ day: 13, lines: ['Workshop: Craft (Dagger) is complete.'] }, { day: 16, lines: ['Dock: Charter Berth (Longship) is complete.'] }]);
-    t.same(s3.nextWord, { day: 13, inDays: 3, lines: ['Workshop: Craft (Dagger) is complete.'] }, 'the next word never names a retired facility');
-    t.ok(!JSON.stringify([s3, C.ironbowNews(old, 10, 30)]).match(/Barracks|Menagerie|Shrine of Aurush|War Action/), 'none of the three, nor a War Action, is named anywhere');
-    var v2 = withOrders(2);
-    t.equal(sum(e, v2).orders.count, 2, 'a version 2 Bastion is also converted when it opens, so it is read the same way');
+    t.equal(s3.orders.count, kept.length, 'only what will survive');
+    t.equal(s3.orders.next.label, 'Shrine of Telluria: Pray (Telluria\'s Blessing)', 'the Favour prayer moves to the Temple, so it is still due on Day 12');
+    var news = JSON.stringify([s3, C.ironbowNews(old, 10, 30)]);
+    ['Barracks', 'Menagerie', 'War Action', 'Pelagos\'s Tidings', 'Purification', 'Riding Harness', 'Upgrade to Level 3'].forEach(function (name) { t.ok(news.indexOf(name) === -1, name + ' is never named'); });
+    ['Research (Geographical Scriptures)', 'Alchemy (Antitoxin)', 'Bless Voyage', 'House a Wyvern', 'Charter Berth', 'Craft (Dagger)', 'Pray (Telluria'].forEach(function (name) { t.ok(news.indexOf(name) !== -1, name + ' is still forecast'); });
+    t.equal(sum(e, withOrders(2)).orders.count, kept.length, 'a version 2 Bastion is also converted when it opens, so it is read the same way');
     var converted = withOrders(4);
-    t.equal(sum(e, converted).orders.count, 5, 'version 4: nothing is left out (a War Action is never forecast)');
+    t.equal(sum(e, converted).orders.count, 13, 'version 4: nothing is left out (a War Action an older copy put back is never forecast)');
     t.ok(/Barracks: Recruit Defenders is complete/.test(JSON.stringify(C.ironbowNews(converted, 10, 20))), 'its Barracks order is still forecast');
     var before = JSON.stringify(old);
     C.ironbowNews(old, 10, 20);
     t.equal(JSON.stringify(old), before, 'the save is only read');
+    t.equal(C.cancelledByConversion(null), false);
+    t.equal(C.cancelledByConversion({ facId: 'toString', fnId: 'x' }), false, 'a name that is not a facility');
+    t.equal(C.cancelledByConversion(order('x', 'war_room', 'recruit', 'War Room: Recruit (Archers (50))', 14)), true, 'every War Room order ends');
+    t.equal(C.cancelledByConversion(order('x', 'wyvern_roost', 'house_elara_wyvern', 'Wyvern Roost: House Elara\'s Wyvern', 14)), false);
   });
 
   test('the war game is gone (S06): a Clan at war, a regiment or beast recovering, a facility Under Repair, a War Action and a War Room being built are never forecast, in a version 3 save read before it is converted or in any other', function (t) {
