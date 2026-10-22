@@ -293,7 +293,7 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       await check('fits ' + size + ' with no scrolling either way, the main controls in view', async () => {
         await page.setViewportSize(H.SIZES[size].viewport);
         await page.waitForTimeout(250);
-        const lc = await H.layoutCheck(page, ['[data-test=day-status]', '[data-test=level]', '[data-test=treasury]', '[data-test=compendium]', '[data-test=download-save]', '[data-test=import-save]', '[data-test=map]', '[data-test=open-events]', '[data-test=open-war]', '.tsi-bas-tile']);
+        const lc = await H.layoutCheck(page, ['[data-test=day-status]', '[data-test=level]', '[data-test=treasury]', '[data-test=compendium]', '[data-test=download-save]', '[data-test=import-save]', '[data-test=map]', '[data-test=open-log]', '[data-test=open-war]', '.tsi-bas-tile']);
         equal(lc.scrollWidth, lc.clientWidth, 'no sideways scroll');
         equal(lc.outOfView, [], 'in view');
         equal(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight + 1), true, 'the page itself never scrolls down');
@@ -630,15 +630,16 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       equal(s2.log.filter(l => /^Host Delegation/.test(l.body)).length, 1, 'once');
     });
 
-    await check('the automatic Bastion event comes on Day 29 into the event box, and says when the next is due', async () => {
-      equal(await text(page, 'event-next'), 'The next automatic event: Day 29 (every 28 days).');
+    await check('Day 29 passes like any other day: no Bastion event is rolled and there is no Events button (S05)', async () => {
+      equal(await page.$('[data-test=open-events]'), null, 'no Events button in the bottom bar');
+      equal(await page.$('[data-test=event]'), null, 'no event box');
       await page.evaluate(() => window.__seed(12));
       await days(page, 12, []);
       equal(await text(page, 'day-status'), 'Day 29');
-      const ev = await text(page, 'event');
-      assert(/Roll: \d+ · Day 29/.test(ev), ev);
-      assert((await st(page)).log.some(l => /^Auto event \(Day 29\)/.test(l.body)));
-      equal(await text(page, 'event-next'), 'The next automatic event: Day 57 (every 28 days).');
+      const s = await st(page);
+      equal('lastEvent' in s || 'lastEventDay' in s, false, 'the Bastion keeps no event record');
+      assert(!s.log.some(l => /Auto event|Bastion Event/.test(l.title + ' ' + l.body)), 'nothing in the Day Log: ' + JSON.stringify(s.log.slice(0, 2)));
+      assert(JSON.stringify(s.word).indexOf('Bastion event') === -1, 'and no word from the Ironbow about one');
     });
 
     await check('Reset Travel in the Explorer moves every Bastion day back, and the log says so', async () => {
@@ -653,13 +654,6 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       equal(await text(page, 'day-status'), 'Day 1');
     });
 
-    await check('Roll Bastion Event rolls a d100 and shows its description', async () => {
-      await pause(page);
-      await page.click('[data-test=roll-event]');
-      const s = await st(page);
-      assert(s.lastEvent && s.log[0].body === 'Rolled ' + s.lastEvent.roll + ' → ' + s.lastEvent.name, JSON.stringify(s.log[0]));
-      assert((await text(page, 'event')).indexOf(s.lastEvent.name) === 0);
-    });
     await context.close();
   }
 
@@ -1914,7 +1908,7 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       s.politicalCapital.bacca = 10;
       s.honourRespectByClan.bacca = 1;
     });
-    const DATA = 'var data = { bastion: TSI_DATA.bastion, facilities: TSI_DATA.bastionFacilities, tools: TSI_DATA.bastionTools, events: TSI_DATA.bastionEvents };';
+    const DATA = 'var data = { bastion: TSI_DATA.bastion, facilities: TSI_DATA.bastionFacilities, tools: TSI_DATA.bastionTools };';
     const sgn = n => n < 0 ? '−' + Math.abs(n) : n > 0 ? '+' + n : '0';
     const penalty = commit => page.evaluate(c => TSI.bastion.rules.warPenalty(TSI.bastion.debug.state(), {}, c), commit);
     async function commitWar(f) {

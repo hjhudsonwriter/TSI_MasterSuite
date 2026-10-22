@@ -32,7 +32,7 @@ function load(rel) { vm.runInContext(fs.readFileSync(path.join(ROOT, rel), 'utf8
 [
   'shared/data/ports.js', 'shared/data/courier-points.js',
   'tools/bastion/data/bastion-data.js', 'tools/bastion/data/facilities-data.js', 'tools/bastion/data/tools-data.js',
-  'tools/bastion/data/events-data.js', 'tools/bastion/data/war-units-data.js', 'tools/bastion/data/research-data.js',
+  'tools/bastion/data/war-units-data.js', 'tools/bastion/data/research-data.js',
   'tools/bastion/data/goods-data.js', 'tools/bastion/data/commerce-data.js', 'tools/bastion/data/courier-data.js',
   'tools/bastion/data/creatures-data.js', 'tools/bastion/data/war-room-data.js',
   'tools/bastion/rules.js', 'tools/bastion/strip-back-rules.js', 'tools/bastion/commerce-rules.js', 'tools/bastion/courier-rules.js',
@@ -42,7 +42,7 @@ function load(rel) { vm.runInContext(fs.readFileSync(path.join(ROOT, rel), 'utf8
 ].forEach(rel => { if (fs.existsSync(path.join(ROOT, rel))) load(rel); });
 const R = win.TSI.bastion.rules;
 const T = win.TSI_DATA;
-const data = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, events: T.bastionEvents, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier, creatures: T.bastionCreatures, warRoom: T.bastionWarRoom };
+const data = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier, creatures: T.bastionCreatures, warRoom: T.bastionWarRoom };
 const clone = v => JSON.parse(JSON.stringify(v));
 
 /* ---------- The save ---------- */
@@ -176,8 +176,10 @@ s.warLog = [{ title: 'War', body: 'Clan Bacca is at war with the Ironbow.', at: 
 s.warMissions = {};
 s.warMissionSeq = 3;
 s.militaryActions = [];
-s.lastEvent = { id: 'storm', day: 28, text: 'A storm damaged the east wall.' };
-s.lastEventDay = 28;
+/* The Bastion's d100 event, as the Bastion saved it (the Events panel went in step S05, 22 October 2026):
+   the last event rolled and the day of the last automatic one. */
+s.lastEvent = { roll: 66, name: 'Friendly Visitors', lines: ['Friendly visitors arrive at the Bastion.'], at: 1760000000000, day: 29 };
+s.lastEventDay = 29;
 
 /* ---------- The Hall: contracts, a consortium, sea routes, a dispute, Favour Tokens ---------- */
 s.diplomacy = {
@@ -310,7 +312,8 @@ s.beast = R.cleanBeast({
 /* ---------- Check: loading the save drops nothing ---------- */
 const loaded = R.fromSave(clone(s), data);
 const raw = clone(s);
-const IGNORE = ['v', 'migration', 'archivedFacilities'];
+/* What the conversion changes on purpose (lastEvent and lastEventDay go in step S05). */
+const IGNORE = ['v', 'migration', 'archivedFacilities', 'lastEvent', 'lastEventDay'];
 const dropped = [];
 Object.keys(raw).forEach(k => {
   if (IGNORE.indexOf(k) !== -1) return;

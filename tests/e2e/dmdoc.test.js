@@ -340,7 +340,7 @@ const sessionPdf = () => F.write(TMP, 'Session 13.pdf', F.pdf([['Chapter One', '
       d = await until(page, x => x.day === 'Day 8 7 days passed', 'Day 8');
       equal(d.partyText, 'Party effects Great Rite: Earth\'s Endurance , ready', 'the effects are gone on Day 8, as the Explorer removes them; the Great Rite is not one of them');
       equal(d.heroes.map(h => h.effects.length), [0, 0, 0, 0, 0], 'and the hero\'s too');
-      equal(d.next, 'Next word from the Ironbow Day 29 in 21 days A Bastion event is due.', 'after today: the automatic event');
+      equal(d.next, 'Next word from the Ironbow — nothing due', 'after today: nothing more is coming (no Bastion event on Day 29 any more)');
       equal(await page.$eval('[data-test=effects-list]', e => e.textContent), 'None.');
     });
 

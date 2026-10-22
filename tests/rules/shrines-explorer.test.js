@@ -11,7 +11,7 @@
   var J = TSI.explorer.journey;
   var T = window.TSI_DATA;
   var E = T.journeyEvents;
-  var bdata = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, events: T.bastionEvents, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier, creatures: T.bastionCreatures };
+  var bdata = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier, creatures: T.bastionCreatures };
   var UID = 'rite-ab12cd34';
 
   function dice(list) { var i = 0; return function () { var v = list[i % list.length]; i++; return v; }; }

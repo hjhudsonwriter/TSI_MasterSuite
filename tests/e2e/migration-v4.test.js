@@ -29,6 +29,13 @@ function withGhost() {
   return s;
 }
 /* The smallest Bastion that is still a Bastion, from before the change (version 3), on Day 1. */
+/* The heavy Bastion as one that never rolled a Bastion event (the heavy one has: Friendly Visitors, Day 29), so it has nothing at all to convert. */
+function heavyQuiet() {
+  const s = clone(HEAVY);
+  delete s.lastEvent;
+  delete s.lastEventDay;
+  return s;
+}
 function plain() {
   return { v: 3, day: 1, anchored: true, treasuryGP: 100, partyLevel: 7, builtExtras: [], pendingOrders: [], defenders: { count: 0, armed: false, patrolUntil: 0 }, warehouse: [], log: [] };
 }
@@ -75,6 +82,7 @@ async function openBastion(page) {
       equal(s.treasuryGP, 2120, '2,000 gp and the 120 gp the Old Mill\'s order cost');
       equal(s.pendingOrders.length, 28, 'the 28 orders the Bastion knows; the Old Mill\'s is cancelled');
       equal(s.migration.v4.shown, false);
+      equal('lastEvent' in s || 'lastEventDay' in s, false, 'the Bastion keeps no event record any more (S05)');
     });
 
     await check('the box has the headline, the lines in plain English, and two buttons', async () => {
@@ -84,10 +92,11 @@ async function openBastion(page) {
       assert(/Goods\. 3 lots of Raw Timber went back to the Warehouse\./.test(text), text);
       assert(/Orders\. One order was cancelled: Old Mill: Grind Grain \(the Old Mill is no longer part of the Bastion\)\./.test(text), text);
       assert(/Places that are gone\. The Old Mill is no longer part of the Bastion; its slot is free\./.test(text), text);
+      assert(/Bastion events\. The Bastion no longer has events, so the last one it rolled \(Friendly Visitors, Day 29\) is not kept\. It was only a note for you; nothing in it changed the Bastion's numbers\./.test(text), text);
       assert(/A copy of your Bastion exactly as it was is kept in "Back up everything"/.test(text), text);
       assert(!/undefined|null|NaN|old_mill|\[object/.test(text), 'no code words');
-      equal(await page.$$eval('[data-test=changes-line]', n => n.length), 4);
-      equal(await page.$$eval('[data-test=changes-line] strong', n => n.map(x => x.textContent)), ['Gold.', 'Goods.', 'Orders.', 'Places that are gone.']);
+      equal(await page.$$eval('[data-test=changes-line]', n => n.length), 5);
+      equal(await page.$$eval('[data-test=changes-line] strong', n => n.map(x => x.textContent)), ['Gold.', 'Goods.', 'Orders.', 'Places that are gone.', 'Bastion events.']);
       equal(await page.textContent('[data-test=changes-ok]'), 'I\'ve read this');
       equal(await page.isVisible('[data-test=changes-save]'), true);
       await H.shot(page, 'migration-box');
@@ -185,10 +194,10 @@ async function openBastion(page) {
   /* ------------------------------------------------------------------ */
   section('Nothing of yours changed: a short box that still needs reading');
   {
-    const { context, page } = await seeded(browser, 'laptop', HEAVY);
+    const { context, page } = await seeded(browser, 'laptop', heavyQuiet());
     await openBastion(page);
 
-    await check('the heavy Bastion needs nothing taken out yet, so the box is one line, and nothing is lost: 28 orders, 4 beasts, 200 log lines, 2,000 gp', async () => {
+    await check('the heavy Bastion (with no event ever rolled) needs nothing taken out yet, so the box is one line, and nothing is lost: 28 orders, 4 beasts, 200 log lines, 2,000 gp', async () => {
       await page.waitForSelector('[data-test=changes-box]');
       equal(await page.textContent('.tsi-modal__title'), 'The Bastion has been updated; nothing of yours changed.');
       equal(await page.$$eval('[data-test=changes-line]', n => n.length), 0);
@@ -229,7 +238,7 @@ async function openBastion(page) {
   /* ------------------------------------------------------------------ */
   section('A version 4 Bastion that an older copy of the suite saved over');
   {
-    const converted = clone(HEAVY);
+    const converted = heavyQuiet();
     converted.v = 4;
     converted.migration = { v4: { day: 40, lines: [], summary: 'Nothing of yours changed.', changed: false, again: false, shown: true } };
     converted.pendingOrders.push({ id: 'late', facId: 'old_mill', fnId: 'grind', chosen: null, optionLabel: null, notes: '', label: 'Old Mill: Grind Grain', costGP: 45, issuedDay: 39, dueDay: 44 });

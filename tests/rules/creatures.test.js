@@ -15,7 +15,7 @@
   var E = T.journeyEvents;
   var CR = T.bastionCreatures;
   var W = T.bastionWar;
-  var bdata = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, events: T.bastionEvents, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier, creatures: T.bastionCreatures };
+  var bdata = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier, creatures: T.bastionCreatures };
   var KEYS = ['id', 'species', 'owner', 'name', 'status', 'home', 'grantedDay', 'housedDay', 'msgId'];
   var FAC = { wyvern_roost: 'house_elara_wyvern', griffin_tower: 'house_griffin', dire_wolf_den: 'house_dire_wolf' };
 

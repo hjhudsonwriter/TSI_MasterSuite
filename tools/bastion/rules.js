@@ -15,7 +15,6 @@
    - Lowering the party level keeps the buildings (BAS-04, B8).
    - Each trade route pays at most once each time it sails (BAS-05, BAS-11).
    - Host Delegation changes Political Capital once, by its own two rolls (B2).
-   - The Treasure event (99–00) can come up (B11).
 
    Days, not turns (Harry, 8 October 2026; docs/BASTION-OVERHAUL.md). The
    Bastion follows the Explorer's day: state.day is the last day it has
@@ -79,8 +78,7 @@
       buildDays: Array.isArray(t.buildDays) ? t.buildDays : [{ level: 17, days: 35 }, { level: 13, days: 35 }, { level: 9, days: 28 }, { level: 5, days: 21 }],
       every: t.every > 0 ? t.every : 7,
       patrolDays: t.patrolDays > 0 ? t.patrolDays : 7,
-      musterDays: t.musterDays > 0 ? t.musterDays : 3,
-      eventEvery: t.eventEvery > 0 ? t.eventEvery : 28
+      musterDays: t.musterDays > 0 ? t.musterDays : 3
     };
   };
   /* "The Ironbow sends word…": a short line for the day being passed, shown
@@ -139,9 +137,6 @@
       v: 4,
       day: 1,
       anchored: false,
-      lastEvent: null,
-      /* The day of the latest automatic Bastion event. */
-      lastEventDay: 0,
       log: [],
       /* 'unsworn' or 'clan' (the Mercenary Brigade was archived in the
          Bastion overhaul, Build 3: tools/bastion/archive/mercenary-brigade.js). */
@@ -404,8 +399,6 @@
       if (typeof s.diplomacy.tokens === 'number') dip.tokens = s.diplomacy.tokens;
       d.diplomacy = dip;
     }
-    d.lastEvent = isObj(s.lastEvent) ? s.lastEvent : null;
-    d.lastEventDay = dayNum(s.lastEventDay, 0);
     if (arr(s.log)) d.log = s.log.filter(isObj);
     /* A Mercenary Brigade (archived in Build 3) becomes Unsworn: the screen
        says so once and the Day Log keeps its name (R.formerBrigade). */
@@ -825,9 +818,13 @@
      copy without the creature rules leaves the grant waiting. A kind of
      message from a newer copy of the suite waits, with no receipt.
      Returns { changed, applied: [lines], charters: [lines], parcels:
-     [notices], creatures: [notices], skipped: n, refused: n }. */
+     [notices], creatures: [notices], skipped: n, refused: n, refusals:
+     [sentences], skips: [sentences] }: refusals has one plain sentence for
+     each change that couldn't be used, with its reason; skips has one for each
+     kind of change skipped because it was sent before this Bastion started
+     (R.settledNotices turns both into notices). */
   R.applyInbox = function (s, data, explorerSave, now) {
-    var out = { changed: false, applied: [], charters: [], parcels: [], creatures: [], skipped: 0, refused: 0 };
+    var out = { changed: false, applied: [], charters: [], parcels: [], creatures: [], skipped: 0, refused: 0, refusals: [], skips: [] };
     var B = TSI.bridge;
     if (!B) return out;
     if (!isObj(s.bridge) || !isObj(s.bridge.done)) s.bridge = R.cleanBridge(s.bridge);
@@ -891,6 +888,16 @@
       s.bridge.fresh = false;
       out.changed = true;
       var standing = out.skipped - charters - newer - pickups - grants - rites;
+      /* The same skips as notices: what was skipped, why, and what to do. */
+      function skipSaid(n, what, tail) {
+        out.skips.push(n + ' ' + what + (n === 1 ? ' was' : ' were') + ' skipped, so nothing counts twice.' + (tail ? ' ' + tail : ''));
+      }
+      if (newer) skipSaid(newer, newer === 1 ? 'message from a newer copy of the suite, sent before this Bastion started,' : 'messages from a newer copy of the suite, sent before this Bastion started,');
+      if (standing) skipSaid(standing, (standing === 1 ? 'change to Honour/Respect' : 'changes to Honour/Respect') + ', sent before this Bastion started,', standing === 1 ? 'Use Change a score in the DM doc if it should count.' : 'Use Change a score in the DM doc if they should count.');
+      if (charters) skipSaid(charters, (charters === 1 ? 'Port Charter' : 'Port Charters') + ', sent before this Bastion started,', charters === 1 ? 'Grant it again in the Explorer if it should count.' : 'Grant them again in the Explorer if they should count.');
+      if (pickups) skipSaid(pickups, (pickups === 1 ? 'parcel pickup' : 'parcel pickups') + ', collected before this Bastion started,', 'The items stay in the Travel bags.');
+      if (grants) skipSaid(grants, (grants === 1 ? 'creature grant' : 'creature grants') + ', sent before this Bastion started,', grants === 1 ? 'Grant it again in the Explorer if it should count.' : 'Grant them again in the Explorer if they should count.');
+      if (rites) skipSaid(rites, (rites === 1 ? 'Great Rite handover' : 'Great Rite handovers') + ', sent before this Bastion started,');
       if (newer) {
         R.log(s, 'From the Explorer', newer + (newer === 1 ? ' message' : ' messages') + ' from a newer copy of the suite, sent before this Bastion started, ' + (newer === 1 ? 'was' : 'were') + ' skipped, so nothing counts twice.', at);
       }
@@ -946,6 +953,7 @@
         receipt(m, pr.r, Object.assign(parcelExtra(m, pr), { why: pr.r === 'refused' ? pr.why : '' }));
         if (pr.r === 'refused') {
           out.refused += 1;
+          out.refusals.push('A parcel pickup from the Explorer (' + fromText(m) + ') couldn\'t be used, so nothing changed: ' + pr.why);
           R.log(s, 'From the Explorer', 'A parcel pickup from the Explorer (' + fromText(m) + ') couldn\'t be used, so nothing changed: ' + pr.why, at);
           return;
         }
@@ -978,6 +986,7 @@
         receipt(m, rr.r, Object.assign(riteExtra(m, rr), { why: rr.r === 'refused' ? rr.why : '' }));
         if (rr.r === 'refused') {
           out.refused += 1;
+          out.refusals.push('A Great Rite handover from the Explorer (' + fromText(m) + ') couldn\'t be used, so nothing changed: ' + rr.why);
           R.log(s, 'From the Explorer', 'A Great Rite handover from the Explorer (' + fromText(m) + ') couldn\'t be used, so nothing changed: ' + rr.why, at);
           return;
         }
@@ -990,6 +999,7 @@
         why = why || 'It names a Clan the Bastion doesn\'t know.';
         receipt(m, 'refused', Object.assign(charterExtra(m), { why: why }));
         out.refused += 1;
+        out.refusals.push('A change from the Explorer (' + fromText(m) + ') couldn\'t be used, so nothing changed: ' + why);
         R.log(s, 'From the Explorer', 'A change from the Explorer couldn\'t be used, so nothing changed: ' + why + (m.text ? ' (' + txt(m.text, 200) + ')' : ''), at);
         return;
       }
@@ -1010,6 +1020,132 @@
     var list = Object.keys(done).map(function (id) { return Object.assign({ id: id }, done[id]); });
     list.sort(function (a, b) { return (b.at || 0) - (a.at || 0) || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0); });
     return typeof max === 'number' ? list.slice(0, max) : list;
+  };
+
+  /* ---------- What the Explorer link delivered, in words ----------
+     (Strip Back Overhaul, step S02: replacement before removal. The list in
+     Management, "Changes from the Explorer", and the notices read these, so
+     Clan Influence can go without the Explorer's deliveries, refusals and
+     skips losing their home. Plain functions: no screen, no clock, no dice.)
+
+     R.bridgeChange(s, data, receipt) says one receipt (a record of
+     s.bridge.done, with its id) as { id, result: 'applied' | 'skipped' |
+     'refused', kind: 'standing' | 'charter' | 'parcel' | 'creature' | 'rite',
+     head, day: number or null, dayText, text, why, tail }:
+     - head: what it was ("Clan Farmer +1 (0 → +1)", "Port Charter: Goldport
+       (Clan Molten)", "Skipped: Great Rite handover");
+     - text: what the Explorer said about it, if anything;
+     - why: for a skipped or refused one, always a reason (the receipt's own,
+       or a plain one if an older copy left it out); '' for an applied one;
+     - tail: for a skipped one, what to do about it, in words that name no
+       panel that is going away ('' when there is nothing to do). */
+  R.bridgeChange = function (s, data, r) {
+    var B = TSI.bridge;
+    r = isObj(r) ? r : {};
+    var result = r.r === 'applied' || r.r === 'skipped' ? r.r : 'refused';
+    var kind = r.type === 'charter' || r.type === 'creature' || r.type === 'rite' ? r.type : '';
+    var made = null;
+    /* An older copy of the suite can strip a receipt's kind: the Port Charter
+       it made, or the parcel id in its own id, still say what it was. */
+    if (!kind && R.charterById) made = R.charterById(s, r.id);
+    if (!kind && made) kind = 'charter';
+    var pid = !kind && B && B.parcelIdOf ? B.parcelIdOf(r.id) : '';
+    var sent = pid && R.parcelById ? R.parcelById(s, pid) : null;
+    if (!kind && (r.type === 'parcel_collected' || pid)) kind = 'parcel';
+    if (!kind) kind = 'standing';
+    var prefix = result === 'skipped' ? 'Skipped: ' : result === 'refused' ? 'Refused: ' : '';
+    var clanKey = typeof r.clan === 'string' ? r.clan : '';
+    var clanWord = clanKey && R.clanName ? R.clanName(data, clanKey) : '';
+    var clan = clanWord ? 'Clan ' + clanWord : 'An unknown Clan';
+    var head;
+    var tail = '';
+    if (kind === 'rite') {
+      head = result === 'applied'
+        ? 'Great Rite: ' + (R.RITE_NAMES[r.rite] || 'a Great Rite') + ' went with the party' + (r.held ? ' (already marked)' : '')
+        : prefix + 'Great Rite handover';
+    } else if (kind === 'creature') {
+      head = R.creatureReceiptHead ? R.creatureReceiptHead(data, r) : prefix + 'creature granted';
+      tail = 'Grant it again in the Explorer if it should count.';
+    } else if (kind === 'parcel') {
+      var town = R.courierPointName ? R.courierPointName(r.point || (sent ? sent.point : '')) : '';
+      head = result === 'applied' ? 'Parcel collected: ' + town + (r.held ? ' (already recorded)' : '') : prefix + 'parcel collected at ' + town;
+      tail = 'The items stay in the Travel bags.';
+    } else if (kind === 'charter') {
+      var what = 'Port Charter: ' + (R.portWithClan ? R.portWithClan(data, made ? made.port : r.port, made ? made.clan : r.clan) : String(r.port || ''));
+      head = result === 'applied' ? what + (r.held ? ' (already held)' : '') : prefix + what;
+      tail = 'Grant it again in the Explorer if it should count.';
+    } else {
+      head = result === 'applied'
+        ? (r.hr ? clan + ' ' + signedNum(r.hr) + ' (' + signedNum(r.was) + ' → ' + signedNum(r.now) + ')' : clan + ': no change, already at ' + signedNum(r.now))
+        : prefix + clan;
+      tail = 'Use Change a score in the DM doc if it should count.';
+    }
+    var why = '';
+    if (result !== 'applied') {
+      why = typeof r.why === 'string' && r.why ? r.why : result === 'skipped' ? 'The Bastion skipped it, so nothing counts twice.' : 'The Bastion couldn\'t use it, so nothing changed.';
+    }
+    var day = typeof r.day === 'number' && isFinite(r.day) ? Math.trunc(r.day) : null;
+    return {
+      id: String(r.id || ''), result: result, kind: kind, head: head,
+      day: day, dayText: day === null ? '' : R.dayLabel(day),
+      text: typeof r.text === 'string' ? r.text : '',
+      why: why, tail: result === 'skipped' && kind !== 'rite' ? tail : ''
+    };
+  };
+
+  /* Every receipt, newest first, each said as R.bridgeChange does (the screen
+     shows the first few, and the rest on request). */
+  R.bridgeChanges = function (s, data) {
+    return R.bridgeHistory(s).map(function (r) { return R.bridgeChange(s, data, r); });
+  };
+
+  /* The notices R.applyInbox's result calls for, as [{ message, type, title,
+     id, timeout }] for TSI.notify: Port Charters, parcels, creatures and
+     Honour/Respect that were applied; then, on their own, every change that
+     couldn't be used (each with its reason) and every kind of change skipped
+     because it was sent before this Bastion started (what to do about it). A
+     refusal is never folded into an applied notice: it has its own, so its
+     reason is not lost. */
+  var NOTICE_SHOWN = 3;
+  R.settledNotices = function (res) {
+    var out = [];
+    if (!isObj(res)) return out;
+    var list = function (v) { return Array.isArray(v) ? v : []; };
+    var look = 'Changes from the Explorer, in Management, lists ';
+    if (list(res.charters).length) out.push({ message: 'From the Explorer: ' + res.charters.join(' '), type: 'info', title: 'Port Charter.', id: 'tsi-bas-charter', timeout: 14000 });
+    if (list(res.parcels).length) out.push({ message: res.parcels.join(' '), type: 'info', title: 'Courier Exchange.', id: 'tsi-bas-courier', timeout: 14000 });
+    if (list(res.creatures).length) out.push({ message: res.creatures.join(' '), type: 'info', title: 'Creatures.', id: 'tsi-bas-creature', timeout: 14000 });
+    if (list(res.applied).length) {
+      out.push({ message: 'From the Explorer: ' + res.applied.join(' ') + ' ' + look + (res.applied.length === 1 ? 'it.' : 'them.'), type: 'info', title: 'Honour/Respect.', id: 'tsi-bas-bridge', timeout: 12000 });
+    }
+    var refusals = list(res.refusals);
+    if (refusals.length) {
+      var more = refusals.length - NOTICE_SHOWN;
+      out.push({
+        message: refusals.slice(0, NOTICE_SHOWN).join(' ') + (more > 0 ? ' ' + more + (more === 1 ? ' more was' : ' more were') + ' refused too.' : '') + ' ' + look + (refusals.length === 1 ? 'it.' : 'them.'),
+        type: 'warn', title: 'Not used.', id: 'tsi-bas-bridge-refused', timeout: 20000
+      });
+    } else if (res.refused) {
+      out.push({ message: 'A change from the Explorer couldn\'t be used, so nothing changed. ' + look + 'it, with the reason.', type: 'warn', title: 'Not used.', id: 'tsi-bas-bridge-refused', timeout: 20000 });
+    }
+    var skips = list(res.skips);
+    if (skips.length) out.push({ message: skips.join(' ') + ' ' + look + (res.skipped === 1 ? 'it.' : 'them.'), type: 'info', title: 'Skipped.', id: 'tsi-bas-bridge-skipped', timeout: 20000 });
+    return out;
+  };
+
+  /* A finished order's result as a notice, for an order settled on its own
+     (the Resolve button, outside a day passing: inside a day the result goes
+     into "The Ironbow sends word…"). lines: [[title, body], …] as the order
+     rules return them. { message, type, title, id, timeout }, or null when
+     there is nothing to say. */
+  R.resolveNotice = function (lines, orderId) {
+    var bodies = (Array.isArray(lines) ? lines : []).map(function (l) { return Array.isArray(l) ? String(l[1] === undefined ? '' : l[1]).trim() : ''; }).filter(Boolean);
+    if (!bodies.length) return null;
+    var message = bodies.join(' ');
+    return {
+      message: message, type: /couldn.t be completed|can.t be/.test(message) ? 'warn' : 'info',
+      title: 'Order resolved.', id: 'tsi-bas-resolved' + (orderId ? '-' + orderId : ''), timeout: 14000
+    };
   };
 
   /* The wars, as saved: only known Clans, each with the day it began, the
@@ -3257,38 +3393,6 @@
     return out;
   };
 
-  /* ---------- Bastion events (4728-4736) ---------- */
-  /* "99-00" means 99 to 100, so the Treasure event can come up (B11). */
-  R.resolveEvent = function (roll, table) {
-    var rows = table || [];
-    for (var i = 0; i < rows.length; i++) {
-      var parts = String(rows[i].range).split('-').map(function (x) { return parseInt(x, 10); });
-      var min = isNaN(parts[0]) ? 1 : parts[0];
-      var max = isNaN(parts[1]) ? min : parts[1];
-      if (max === 0 && min > 0) max = 100;
-      if (roll >= min && roll <= max) return rows[i];
-    }
-    return { range: '??', name: 'Unknown' };
-  };
-  R.rollEvent = function (s, events, rand, now) {
-    var roll = R.d(100, rand);
-    var ev = R.resolveEvent(roll, events.eventTable);
-    var lines = events.descriptions && events.descriptions[ev.name] ? events.descriptions[ev.name] : [];
-    s.lastEvent = { roll: roll, name: ev.name, lines: lines, at: now === undefined ? Date.now() : now, day: s.day };
-    return { roll: roll, name: ev.name };
-  };
-  /* The automatic event comes every 28 days, counted from Day 1: Days 29,
-     57, 85… (it was every 4th Bastion turn). */
-  R.isEventDay = function (data, day) {
-    var e = R.time(data).eventEvery;
-    return day > 1 && (day - 1) % e === 0;
-  };
-  R.nextEventDay = function (data, day) {
-    var e = R.time(data).eventEvery;
-    var n = day < 1 ? 1 + e : day + (e - ((day - 1) % e));
-    return n;
-  };
-
   /* ---------- Passing a day, as resumable steps (560-604; BAS-02) ----------
      The screen passes each new day in turn, in this order:
      1. R.startDay: the day number moves on; Lieutenants and beasts whose
@@ -3301,8 +3405,8 @@
         for any rolls; a cancelled roll leaves the order due, R.skipOrder).
      4. 'war' (R.rollWarAttack): each Clan at war whose 7-day mark is today
         rolls to attack.
-     5. R.finishDay: the automatic event on its day, then what happened goes
-        into "The Ironbow sends word…" (state.word).
+     5. R.finishDay: what happened goes into "The Ironbow sends word…"
+        (state.word).
      state.dayInProgress remembers the step reached, so a cancelled roll or
      a closed window loses nothing and nothing is done twice. */
   var DAY_STAGES = ['trade', 'orders'];
@@ -3344,16 +3448,10 @@
   R.skipOrder = function (s, id) {
     if (s.dayInProgress && s.dayInProgress.skipped.indexOf(id) === -1) s.dayInProgress.skipped.push(id);
   };
-  /* The day's last step: the automatic event on its day (once), then the
-     day's news is kept for "The Ironbow sends word…". */
-  R.finishDay = function (s, data, events, rand, now) {
+  /* The day's last step: the day's news is kept for "The Ironbow sends
+     word…". */
+  R.finishDay = function (s) {
     var dip = s.dayInProgress;
-    if (R.isEventDay(data, s.day) && s.lastEventDay !== s.day) {
-      var ev = R.rollEvent(s, events, rand, now);
-      s.lastEventDay = s.day;
-      R.log(s, 'Bastion Event', 'Auto event (Day ' + s.day + ') → Rolled ' + ev.roll + ' → ' + ev.name, now);
-      R.addWord(s, 'Bastion event: ' + ev.name + ' (rolled ' + ev.roll + ').');
-    }
     if (isObj(dip) && Array.isArray(dip.news) && dip.news.length) {
       if (!Array.isArray(s.word)) s.word = [];
       s.word.push({ day: s.day, lines: dip.news.slice() });
@@ -3385,7 +3483,6 @@
     var mv = function (obj, key) { if (obj && typeof obj[key] === 'number') obj[key] += n; };
     s.day = Math.max(1, s.day + n);
     if (isObj(s.dayInProgress)) s.dayInProgress.day = s.day;
-    mv(s, 'lastEventDay');
     if (isObj(s.defenders)) mv(s.defenders, 'patrolUntil');
     (s.pendingOrders || []).forEach(function (o) { mv(o, 'issuedDay'); mv(o, 'dueDay'); if (o.meta && isObj(o.meta.declared)) mv(o.meta.declared, 'day'); });
     (s.builtExtras || []).concat(s.builtPlots || []).forEach(function (e) { if (isObj(e)) { mv(e, 'startDay'); mv(e, 'readyDay'); } });

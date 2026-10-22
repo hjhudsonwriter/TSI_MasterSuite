@@ -7,7 +7,7 @@
   var R = TSI.bastion.rules;
   var T = window.TSI_DATA;
   var W = T.bastionWar;
-  var data = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, events: T.bastionEvents };
+  var data = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools };
 
   /* Dice that come up in the given order (numbers from 0 up to 1). */
   function dice(list) {
@@ -1642,7 +1642,7 @@
       R.rollWarAttack(s, data, r, 0);
       if (r.used) rolled.push(d + ':' + r.used);
       R.finishRoutes(s);
-      R.finishDay(s, data, data.events, dice([0.5]), 0);
+      R.finishDay(s);
     }
     t.same(rolled, ['10:1', '12:1', '17:1', '19:1', '24:1', '26:1']);
   });
@@ -1680,7 +1680,7 @@
     var r = counted([d6(1)]);
     t.equal(R.rollWarAttack(back, data, r, 0), null);
     t.same([r.used, back.militaryActions.length], [0, 1]);
-    R.finishDay(back, data, data.events, dice([0.5]), 0);
+    R.finishDay(back);
     back.wars.bacca.next = 5;
     R.startDay(back, data, 0);
     t.equal(back.dayInProgress.attackRolled, false, 'a new day rolls again');
@@ -1695,7 +1695,7 @@
     R.startDay(s, data, 0);
     var first = R.rollWarAttack(s, data, dice([d6(6), d6(1), d6(4)]), 0);
     t.same([first.targetKey, first.undefended], ['karr', false]);
-    R.finishDay(s, data, data.events, dice([0.5]), 0);
+    R.finishDay(s);
     s.wars.bacca.next = 5;
     s.wars.karr.next = 5;
     R.startDay(s, data, 0);
@@ -1707,7 +1707,7 @@
     /* Karr's attack fought (won): on the next roll day, the Clans roll again. */
     var won = R.finishBattle(s, data, first.id, battleFrom(first, 'victory', {}), counted([0.5]), 0);
     t.ok(won && won.report, 'Karr\'s attack fought');
-    R.finishDay(s, data, data.events, dice([0.5]), 0);
+    R.finishDay(s);
     s.day = 11;
     R.startDay(s, data, 0);
     var next = R.rollWarAttack(s, data, dice([d6(1), d6(2)]), 0);
@@ -1882,7 +1882,7 @@
     t.ok(Object.keys(d.s.repairs).every(function (k) { return d.s.repairs[k] === 16; }));
     var e = defence();
     e.s.treasuryGP = 33;
-    var bf = { bastion: Object.assign({}, data.bastion, { startingBuilt: ['barracks', 'dock'] }), facilities: data.facilities, tools: data.tools, events: data.events };
+    var bf = { bastion: Object.assign({}, data.bastion, { startingBuilt: ['barracks', 'dock'] }), facilities: data.facilities, tools: data.tools };
     lines = R.finishBattle(e.s, bf, e.ma.id, battleFrom(e.ma, 'defeat', {}), dice([d10(1), d4(4), 0.6, 0]), 0).lines;
     t.same([e.s.treasuryGP, e.s.repairs], [32, { barracks: 16, dock: 16 }], '5% of 33 is 1.65: 1 gp, rounded down');
     t.ok(lines.indexOf('Under Repair until Day 16 (d4 4, but only 2 facilities are built): Barracks, Dock. They take no orders until Day 17.') !== -1, lines.join(' | '));

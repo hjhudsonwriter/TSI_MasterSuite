@@ -7,7 +7,7 @@
   var BR = TSI.bastion.rules;
   var T = window.TSI_DATA;
   var C = T.bastionCommerce;
-  var bdata = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, events: T.bastionEvents, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce };
+  var bdata = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce };
 
   function dice(list) {
     var i = 0;

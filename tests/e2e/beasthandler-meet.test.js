@@ -355,7 +355,7 @@ const checkS = (name, fn) => check(name, async () => {
     await bh.waitForSelector('[data-test=bh-hero-pending]', { timeout: 14000 });
     await ba.evaluate(() => TSI.bastion.debug.change(s => {
       const R = TSI.bastion.rules, T = window.TSI_DATA;
-      const data = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, events: T.bastionEvents, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier, creatures: T.bastionCreatures };
+      const data = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier, creatures: T.bastionCreatures };
       const r = R.assignHandler(s, data, 'cr-handed', 'Joss', 'handed on');
       if (!r.ok) throw new Error(r.message);
     }));

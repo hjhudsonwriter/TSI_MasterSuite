@@ -9,7 +9,7 @@
    - House Elara's Wyvern (3 days) records her wyvern once; a second is
      refused;
    - Grant a creature… in the Explorer: the Bastion holds a named griffin
-     waiting for a home, with a notice and a Clan Influence row, and the
+     waiting for a home, with a notice and a row in Management's Changes from the Explorer, and the
      Explorer's Sent to the Bastion says Applied;
    - House a Griffin (3 days) houses it; a second griffin waits ("No room")
      until the Tower is upgraded to Level 2 (7 days); a dire wolf is housed at
@@ -353,7 +353,7 @@ async function clickPop(page, label) {
     equal((await sentTop(ex)).title, 'Creature: Griffin (Swiftwing)');
   });
 
-  await check('the Bastion holds Swiftwing once, waiting for a home: a notice, the Day Log, and "Creature granted: Griffin (Swiftwing)" in Clan Influence', async () => {
+  await check('the Bastion holds Swiftwing once, waiting for a home: a notice, the Day Log, and "Creature granted: Griffin (Swiftwing)" in Management\'s Changes from the Explorer', async () => {
     await ba.waitForFunction(() => TSI.bastion.debug.state().creatures.length === 1, null, { timeout: 8000 });
     await H.waitForNotice(ba, /From the Explorer: a griffin \(Swiftwing\) for the Ironbow, waiting for a home at the Griffin Tower\./);
     const s = await bas(ba);
@@ -367,9 +367,9 @@ async function clickPop(page, label) {
     await H.shot(ba, 'creatures-grant-notice-laptop');
     await H.dismissNotices(ba);
     await closeAll(ba);
-    await ba.click('[data-test=open-influence]');
-    await ba.waitForSelector('[data-test=bridge-row]');
-    assert(/^Creature granted: Griffin \(Swiftwing\)/.test(await bare(ba, '[data-test=bridge-row]')), await bare(ba, '[data-test=bridge-row]'));
+    await ba.click('[data-test=open-management]');
+    await ba.waitForSelector('[data-test=explorer-change]');
+    assert(/^Creature granted: Griffin \(Swiftwing\)/.test(await bare(ba, '[data-test=explorer-change]')), await bare(ba, '[data-test=explorer-change]'));
     await closeAll(ba);
   });
 
@@ -464,7 +464,7 @@ async function clickPop(page, label) {
     const res = await ba.evaluate(() => {
       const st = JSON.parse(JSON.stringify(TSI.bastion.debug.state()));
       const D = window.TSI_DATA;
-      const data = { bastion: D.bastion, facilities: D.bastionFacilities, tools: D.bastionTools, events: D.bastionEvents, research: D.bastionResearch, goods: D.bastionGoods, commerce: D.bastionCommerce, courier: D.bastionCourier, creatures: D.bastionCreatures };
+      const data = { bastion: D.bastion, facilities: D.bastionFacilities, tools: D.bastionTools, research: D.bastionResearch, goods: D.bastionGoods, commerce: D.bastionCommerce, courier: D.bastionCourier, creatures: D.bastionCreatures };
       return TSI.bastion.rules.issueOrder(st, data, 'wyvern_roost', 'house_elara_wyvern', 0, Math.random);
     });
     equal(res, { ok: false, message: 'Elara\'s wyvern already lives at the Ironbow.' }, 'the rules refuse it too');

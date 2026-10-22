@@ -6,7 +6,7 @@
 (function () {
   var R = TSI.bastion.rules;
   var T = window.TSI_DATA;
-  var data = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, events: T.bastionEvents, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier, creatures: T.bastionCreatures, warRoom: T.bastionWarRoom };
+  var data = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier, creatures: T.bastionCreatures, warRoom: T.bastionWarRoom };
   var FIX = window.TSI_FIXTURES || {};
   var canon = R.stripBackCanon;
 
@@ -107,7 +107,7 @@
   });
 
   test('the registry: the steps run in order, the last one finishes, and a later step can be added above the catch-all', function (t) {
-    t.same(R.stripBackSteps.map(function (st) { return st.id; }), ['sweepFacilities', 'finish']);
+    t.same(R.stripBackSteps.map(function (st) { return st.id; }), ['dropEvents', 'sweepFacilities', 'finish']);
     var steps = R.stripBackSteps;
     var added = {
       id: 'example',
@@ -132,7 +132,7 @@
     } finally {
       steps.splice(0, 1);
     }
-    t.same(R.stripBackSteps.map(function (st) { return st.id; }), ['sweepFacilities', 'finish']);
+    t.same(R.stripBackSteps.map(function (st) { return st.id; }), ['dropEvents', 'sweepFacilities', 'finish']);
   });
 
   group('Strip Back: the catch-all (a facility the Bastion does not know)');
@@ -450,15 +450,16 @@
     function clampTreasury(s) { return Math.max(0, parseInt(s.treasuryGP, 10) || 0); }
   });
 
-  test('S01 changes nothing in any fixture except its version (nothing is removed yet): the heavy Bastion keeps its 28 orders, 4 beasts and 200 log lines', function (t) {
+  test('so far the conversion changes nothing in any fixture except its version and the Bastion\'s event record (S05): the heavy Bastion keeps its 28 orders, 4 beasts and 200 log lines', function (t) {
     Object.keys(FIX).forEach(function (name) {
       if (name === 'bastion-before-overhaul') return;
       var res = convert(FIX[name]);
-      t.same(res.report.lines, [], name + ': nothing to say');
+      t.equal(res.report.lines.length, name === 'bastion-v3-heavy' ? 1 : 0, name + ': only the heavy one had an event to drop');
       var a = clone(res.save), b = clone(FIX[name]);
       delete a.migration; delete b.migration;
+      delete b.lastEvent; delete b.lastEventDay;
       a.v = 3;
-      t.equal(canon(a), canon(b), name + ': every field exactly as it was');
+      t.equal(canon(a), canon(b), name + ': every other field exactly as it was');
     });
     var heavy = R.fromSave(clone(FIX['bastion-v3-heavy']), data);
     t.equal(heavy.v, 4);
@@ -467,7 +468,8 @@
     t.equal(heavy.log.length, 200);
     t.equal(heavy.treasuryGP, 2000);
     t.same(heavy.builtExtras.filter(Boolean).map(function (e) { return e.facId; }), ['menagerie', 'war_room', 'library_scriptorium', 'arcane_laboratory', 'shrine_telluria', 'shrine_aurush', 'shrine_pelagos', 'wyvern_roost', 'griffin_tower', 'dire_wolf_den', 'hall_of_emissaries']);
-    t.equal(heavy.migration.v4.changed, false);
+    t.equal(heavy.migration.v4.changed, true, 'its event record was dropped, and it says so');
+    t.equal('lastEvent' in heavy || 'lastEventDay' in heavy, false);
   });
 
   test('the heavy fixture has something in every part the overhaul touches', function (t) {
@@ -624,5 +626,157 @@
     R.stripBackSay(report, 'gone', 'The Armoury is gone.');
     R.stripBackSay(report, 'no-such-heading', 'Something else.');
     t.same([report.said.gone, report.notes], [['The Armoury is gone.'], ['Something else.']]);
+  });
+  group('Strip Back: Bastion events are gone (S05)');
+
+  /* The Bastion's event record as the Bastion saved it. */
+  function oldEvent(over) { return Object.assign({ roll: 66, name: 'Friendly Visitors', lines: ['Friendly visitors arrive at the Bastion.'], at: 1760000000000, day: 29 }, over || {}); }
+  var EVENT_LINE = 'Bastion events. The Bastion no longer has events, so the last one it rolled (Friendly Visitors, Day 29) is not kept. It was only a note for you; nothing in it changed the Bastion\'s numbers.';
+
+  test('a Bastion that had rolled an event: the record and the day of the last automatic one go, one plain sentence says so, the audit is clean', function (t) {
+    var raw = v3(function (s) { s.lastEvent = oldEvent(); s.lastEventDay = 29; s.day = 30; });
+    var before = canon(raw);
+    var res = convert(raw);
+    t.equal(canon(raw), before, 'the save it was given is untouched');
+    t.same(res.problems, []);
+    t.equal('lastEvent' in res.save || 'lastEventDay' in res.save, false);
+    t.same(res.save.migration.v4.lines, [EVENT_LINE]);
+    t.same(res.report.removed.events, { name: 'Friendly Visitors', day: 29 });
+    t.equal(res.save.migration.v4.changed, true);
+    t.equal(res.save.migration.v4.summary, 'the Bastion\'s event record was dropped.');
+    t.same(jargon(res.save.migration.v4.lines[0]), []);
+    var rest = clone(res.save);
+    delete rest.migration;
+    rest.v = 3;
+    var orig = clone(raw);
+    delete orig.migration;
+    delete orig.lastEvent; delete orig.lastEventDay;
+    t.equal(canon(rest), canon(orig), 'nothing else changed: no gold, goods, orders or Favour moved');
+  });
+
+  test('a Bastion that never had an event leaves no trace: no sentence, no event fields, and it is the same save as one that never had the fields', function (t) {
+    var withNone = v3(function (s) { s.lastEvent = null; s.lastEventDay = 0; });
+    var without = v3(function (s) { delete s.lastEvent; delete s.lastEventDay; });
+    var a = convert(withNone), b = convert(without);
+    t.same(a.problems, []);
+    t.same(a.report.lines, []);
+    t.equal('lastEvent' in a.save || 'lastEventDay' in a.save, false, 'the empty fields are not carried over');
+    t.equal(canon(a.save), canon(b.save), 'the same save either way');
+    t.equal(canon(a.report), canon(b.report), 'and the same report');
+    t.equal(a.save.migration.v4.summary, 'Nothing of yours changed.');
+    t.equal(a.save.migration.v4.changed, false);
+    t.same(R.stripBackLeftovers(withNone, data), [], 'empty fields are not a leftover');
+  });
+
+  test('the day of an event with no record, an event waiting, and one in the day being passed are all dropped, and said once', function (t) {
+    var onlyDay = convert(v3(function (s) { s.lastEvent = null; s.lastEventDay = -3; }));
+    t.same(onlyDay.problems, []);
+    t.same(onlyDay.save.migration.v4.lines, ['Bastion events. The Bastion no longer has events, so its record of them is not kept. It was only a note for you; nothing in it changed the Bastion\'s numbers.']);
+    var waiting = convert(v3(function (s) {
+      s.pendingEvent = { name: 'Guest' };
+      s.dayInProgress = { day: 12, stage: 'orders', skipped: [], attackRolled: false, news: ['The Smithy is built.'], event: { name: 'Guest' }, pendingEvent: { name: 'Guest' } };
+    }));
+    t.same(waiting.problems, []);
+    t.equal('pendingEvent' in waiting.save, false);
+    t.same(Object.keys(waiting.save.dayInProgress).sort(), ['attackRolled', 'day', 'news', 'skipped', 'stage'], 'the day in progress keeps everything else');
+    t.same(waiting.save.dayInProgress.news, ['The Smithy is built.']);
+    t.equal(waiting.save.migration.v4.lines.length, 1);
+    t.equal(R.fromSave(clone(onlyDay.save), data).dayInProgress, null);
+  });
+
+  test('an event with no name is called by its id in words; a damaged record is dropped without a throw', function (t) {
+    t.same(convert(v3(function (s) { s.lastEvent = { id: 'storm', day: 28 }; })).save.migration.v4.lines,
+      ['Bastion events. The Bastion no longer has events, so the last one it rolled (Storm, Day 28) is not kept. It was only a note for you; nothing in it changed the Bastion\'s numbers.']);
+    t.same(convert(v3(function (s) { s.lastEvent = {}; })).save.migration.v4.lines,
+      ['Bastion events. The Bastion no longer has events, so the last one it rolled is not kept. It was only a note for you; nothing in it changed the Bastion\'s numbers.']);
+    var junk = convert(v3(function (s) { s.lastEvent = 'x'; s.lastEventDay = 'soon'; }));
+    t.same(junk.problems, []);
+    t.equal(junk.save.migration.v4.lines.length, 1);
+    t.equal('lastEvent' in junk.save, false);
+    var noDay = convert(v3(function (s) { s.lastEvent = oldEvent({ day: 0 }); }));
+    t.equal(noDay.save.migration.v4.lines[0], 'Bastion events. The Bastion no longer has events, so the last one it rolled (Friendly Visitors) is not kept. It was only a note for you; nothing in it changed the Bastion\'s numbers.', 'a day before Day 1 is not named');
+  });
+
+  test('what an earlier event put in "The Ironbow sends word" is history: it is kept exactly, and the audit proves it', function (t) {
+    var raw = v3(function (s) {
+      s.lastEvent = oldEvent();
+      s.lastEventDay = 29;
+      s.word = [{ day: 29, lines: ['Bastion event: Friendly Visitors (rolled 66).', 'The Library & Scriptorium is built.'] }];
+    });
+    var res = convert(raw);
+    t.same(res.problems, []);
+    t.same(res.save.word, raw.word);
+    var tampered = clone(res.save);
+    tampered.word = [];
+    t.ok(R.stripBackAudit(res.before, tampered, res.report, data).length > 0, 'losing it would be caught');
+  });
+
+  test('the heavy fixture: its event goes once, in plain words, with the audit clean; converting again or loading twice changes nothing', function (t) {
+    var raw = FIX['bastion-v3-heavy'];
+    t.same([raw.lastEvent.name, raw.lastEventDay], ['Friendly Visitors', 29], 'it has an event to drop');
+    var res = convert(raw);
+    t.same(res.problems, []);
+    t.equal(res.save.migration.v4.lines.filter(function (l) { return /^Bastion events\./.test(l); }).length, 1);
+    t.equal(res.save.migration.v4.lines[0], EVENT_LINE);
+    t.equal('lastEvent' in res.save || 'lastEventDay' in res.save, false);
+    t.same(R.stripBackLeftovers(res.save, data), []);
+    t.equal(canon(R.migrateToV4(res.save, data).save), canon(res.save), 'idempotent');
+    var loaded = R.fromSave(clone(raw), data);
+    t.equal('lastEvent' in loaded || 'lastEventDay' in loaded, false);
+    t.same(R.fromSave(R.toSave(loaded), data), loaded, 'loading twice gives the same Bastion');
+    t.equal(loaded.log.length, 200, 'the Day Log is untouched (its own step is later)');
+    t.equal(loaded.word.length, raw.word.length, 'and so is the Ironbow\'s word');
+  });
+
+  test('every other fixture has no event record, so no step line, and nothing named "event" is in its report', function (t) {
+    Object.keys(FIX).forEach(function (name) {
+      if (name === 'bastion-v3-heavy') return;
+      var res = convert(FIX[name]);
+      t.equal(res.save.migration.v4.lines.filter(function (l) { return /^Bastion events\./.test(l); }).length, 0, name);
+      t.equal('lastEvent' in res.save || 'lastEventDay' in res.save, false, name + ': the empty fields are dropped');
+    });
+  });
+
+  test('a version 4 save that an older copy of the suite put an event back into is found, cleaned again and told in the short notice', function (t) {
+    var once = convert(v3()).save;
+    once.migration.v4.shown = true;
+    var dirty = clone(once);
+    dirty.lastEvent = oldEvent({ day: 57 });
+    dirty.lastEventDay = 57;
+    t.equal(R.needsStripBack(dirty, data), true);
+    t.same(R.stripBackLeftovers(dirty, data).map(function (x) { return x.step; }), ['dropEvents', 'dropEvents']);
+    var res = convert(dirty);
+    t.same(res.problems, []);
+    t.same([res.report.again, res.save.migration.v4.again, res.save.migration.v4.shown], [true, true, false]);
+    t.equal(R.stripBackHeadline(res.save.migration.v4), 'The Bastion has been tidied again.');
+    t.ok(/Friendly Visitors, Day 57/.test(R.stripBackText(res.save.migration.v4)));
+    t.equal(R.needsStripBack(res.save, data), false);
+    var empty = clone(once);
+    empty.lastEvent = null;
+    empty.lastEventDay = 0;
+    t.equal(R.needsStripBack(empty, data), false, 'empty event fields alone do not make a notice');
+  });
+
+  test('the step runs before the catch-all and the other steps are not disturbed: an event record and a ghost order convert together', function (t) {
+    var raw = v3(function (s) { s.lastEvent = oldEvent(); s.lastEventDay = 29; s.treasuryGP = 90; s.pendingOrders = [ghost('g1', { costGP: 40 })]; });
+    var res = convert(raw);
+    t.same(res.problems, []);
+    t.equal(res.save.treasuryGP, 130);
+    t.same(res.save.pendingOrders, []);
+    t.equal(res.save.migration.v4.lines.length, 3);
+    t.ok(/^Gold\. /.test(res.save.migration.v4.lines[0]));
+    t.ok(/^Orders\. /.test(res.save.migration.v4.lines[1]));
+    t.ok(/^Bastion events\. /.test(res.save.migration.v4.lines[2]), 'in the order of the headings');
+  });
+
+  test('the Bastion\'s own pieces are gone: no event data, no event rules, no 28-day setting, no event forecast', function (t) {
+    t.equal(window.TSI_DATA.bastionEvents, undefined, 'events-data.js is no longer loaded');
+    ['rollEvent', 'resolveEvent', 'isEventDay', 'nextEventDay'].forEach(function (name) { t.equal(typeof R[name], 'undefined', name); });
+    t.equal(T.bastion.time.eventEvery, undefined);
+    t.equal('eventEvery' in R.time(data), false);
+    t.equal('BASTION_EVENT_EVERY' in TSI.campaign, false);
+    var d = R.defaultState(data);
+    t.equal('lastEvent' in d || 'lastEventDay' in d, false);
+    t.equal('lastEvent' in R.toSave(d) || 'lastEventDay' in R.toSave(d), false);
   });
 }());

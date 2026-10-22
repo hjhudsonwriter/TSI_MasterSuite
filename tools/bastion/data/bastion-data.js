@@ -299,15 +299,12 @@ window.TSI_DATA.bastion = {
        rolls to attack, every this many days from when each began.
      - patrolDays: the Watchtower's Patrol gives Advantage for this many
        days after it completes (it was "this turn").
-     - musterDays: a War Action musters this many days after it's queued.
-     - eventEvery: the automatic Bastion event comes every this many days,
-       counted from Day 1 (Days 29, 57, 85…; it was every 4th turn). */
+     - musterDays: a War Action musters this many days after it's queued. */
   time: {
     buildDays: [{ level: 17, days: 35 }, { level: 13, days: 35 }, { level: 9, days: 28 }, { level: 5, days: 21 }],
     every: 7,
     patrolDays: 7,
-    musterDays: 3,
-    eventEvery: 28
+    musterDays: 3
   },
 
   /* War (5285-5339): gold and target Political Capital on success / failure.

@@ -5,7 +5,7 @@
   var D = TSI.dmDocRules;
   var BR = TSI.bastion.rules;
   var T = window.TSI_DATA;
-  var bdata = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, events: T.bastionEvents };
+  var bdata = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools };
   function bastion() { var s = BR.defaultState(bdata); s.day = 14; return s; }
   function edit(kind, key, value, at) { return D.makeEdit(kind, key, value, at || 1000, function () { return 0.5; }, 14).edit; }
 

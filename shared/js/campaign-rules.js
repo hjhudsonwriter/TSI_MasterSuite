@@ -82,10 +82,6 @@
   }
 
   var C = TSI.campaign = {
-    /* The automatic Bastion event comes every this many days from Day 1
-       (keep it the same as tools/bastion/data/bastion-data.js time.eventEvery). */
-    BASTION_EVENT_EVERY: 28,
-
     /* The 13 facilities the Strip Back Overhaul retires (see above). */
     RETIRED_FACILITIES: RETIRED_FACILITIES,
 
@@ -93,7 +89,7 @@
        order (only what can be known before the day: building finished,
        orders due, contracts and records ending, repairs and recovery over,
        sea routes needing a roll, cargo ships and Courier Exchange parcels
-       due, a Clan at war's attack roll, the automatic event). Nothing for a
+       due, a Clan at war's attack roll). Nothing for a
        Bastion that hasn't read the Explorer's day yet. */
     bastionComing: function (bastion) {
       var ba = isObj(bastion) ? bastion : null;
@@ -176,10 +172,6 @@
         var w = wars[k];
         if (isObj(w) && isNum(w.next)) add(w.next, 'attack', clanTitle(k.charAt(0).toUpperCase() + k.slice(1)) + ' may attack: the Bastion rolls to see.');
       });
-      var e = C.BASTION_EVENT_EVERY;
-      var today = Math.trunc(ba.day);
-      var ev = today < 1 ? 1 + e : today + (e - ((today - 1) % e));
-      add(ev, 'event', 'A Bastion event is due.');
       return out.sort(function (a, b) { return a.day - b.day; });
     },
 
