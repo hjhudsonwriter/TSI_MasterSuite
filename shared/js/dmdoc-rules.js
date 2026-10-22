@@ -236,7 +236,7 @@
   };
   /* A typed value read as a whole number in range, or why not. */
   rules.checkEdit = function (kind, key, value) {
-    var k = rules.EDIT_KINDS[kind];
+    var k = typeof kind === 'string' && Object.prototype.hasOwnProperty.call(rules.EDIT_KINDS, kind) ? rules.EDIT_KINDS[kind] : null;
     if (!k) return { ok: false, message: 'That isn\'t a score the DM doc can change.' };
     var valid = k.scope === 'god' ? GODS : rules.clanKeys();
     if (valid.indexOf(key) === -1) return { ok: false, message: 'Pick ' + (k.scope === 'god' ? 'a god' : 'a Clan') + ' from the list.' };
