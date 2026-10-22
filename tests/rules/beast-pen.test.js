@@ -87,7 +87,7 @@
     t.same([house.days, house.costGP, house.costText, house.housesSpecies, house.options], [CR.houseDays, 0, '0', '*', []], 'House Beast Here: 3 days, no gold, any kind');
     t.same([f.functions[1].acclimatise, f.functions[1].instant, f.functions[1].costGP], [true, true, 0], 'Acclimatise With Beast is a roll at once, not an order with days');
     ['wyvern_roost', 'griffin_tower', 'dire_wolf_den'].forEach(function (id) { t.equal(BR.facility(bdata, id), null, id + ' is gone from the catalogue'); });
-    t.equal(bdata.facilities.length, 20, 'twenty facilities: the Pen replaced three');
+    t.equal(bdata.facilities.length, 15, 'fifteen facilities: the Pen replaced three, and the war game\'s five (S06) are gone');
     t.equal(BR.isPlotFacility(bdata, PEN), false, 'it takes a construction slot');
     t.equal(BR.buildDaysForRequiredLevel(5, bdata), 21);
     var b = bastion(10);
@@ -99,7 +99,7 @@
     b.day = 31;
     t.same(BR.completeConstruction(b), [PEN]);
     t.same(b.creatures, [], 'nor does finishing it');
-    t.equal(BR.compendiumIndex(bdata.facilities, bdata.tools).items.length, 270, 'its orders add nothing to the Compendium');
+    t.equal(BR.compendiumIndex(bdata.facilities, bdata.tools).items.length, 250, 'its orders add nothing to the Compendium');
   });
 
   test('one level only: no Upgrade, no unlock lines, and the facility panel says so', function (t) {
@@ -783,6 +783,8 @@
     if (bond !== null && bond !== undefined) { c.development = BR.newDevelopment({ id: id }, 3); c.development.bond.level = bond; if (bond) c.development.handlerId = 'mira'; }
     return Object.assign(c, extra || {});
   }
+  /* A report's lines without the one every version 3 Bastion gets since the war game went (S06): the Barracks, Armoury and Watchtower are gone. */
+  function noWar(res) { return res.report.lines.filter(function (l) { return !/^Places that are gone\. Barracks, Armoury and Watchtower are gone with the war game\.$/.test(l); }); }
   function order(id, facId, fnId, extra) {
     return Object.assign({ id: id, facId: facId, fnId: fnId, chosen: null, optionLabel: null, notes: '', label: facId + ': ' + fnId, costGP: 0, issuedDay: 10, dueDay: 15 }, extra || {});
   }
@@ -807,7 +809,7 @@
     t.equal(s.pendingOrders.some(function (o) { return o.id === 'hv-28'; }), false, 'the Riding Harness order is cancelled');
     var refund = res.report.gold.items.filter(function (i) { return /Riding Harness/.test(i.label); })[0];
     t.same([refund.gp, refund.kind], [150, 'refund']);
-    t.equal(s.treasuryGP, 2150, 'the 150 gp is back in the treasury');
+    t.equal(s.treasuryGP, 2000 + 1645, 'the 150 gp is back in the treasury, with the 1,495 the war game\'s cancelled orders cost (its own tests are in strip-back.test.js)');
     t.same(res.report.cancelled.filter(function (c) { return c.id === 'hv-28'; }).map(function (c) { return [c.gp, /training and riding are gone/.test(c.why)]; }), [[150, true]]);
     t.same(res.report.moved.filter(function (m) { return m.id === 'hv-27'; }).map(function (m) { return m.to; }), ['the Beast Pen']);
     var lines = s.migration.v4.lines.join('\n');
@@ -858,8 +860,9 @@
     t.equal(c.save.facilityLevels[PEN], 1);
     t.same(['wyvern_roost', 'griffin_tower', 'dire_wolf_den'].filter(function (id) { return id in c.save.facilityLevels; }), []);
     var one = convert(v3(function (s) { s.builtExtras = [old('griffin_tower')]; s.facilityLevels = { griffin_tower: 3 }; }));
-    t.ok(/^Places that joined others\. The Griffin Tower has become the Beast Pen\./.test(one.save.migration.v4.lines[0]), one.save.migration.v4.lines[0]);
-    t.equal(/other slot/.test(one.save.migration.v4.lines[0]), false, 'nothing else to free');
+    var oneLine = noWar(one)[0];
+    t.ok(/^Places that joined others\. The Griffin Tower has become the Beast Pen\./.test(oneLine), oneLine);
+    t.equal(/other slot/.test(oneLine), false, 'nothing else to free');
   });
 
   test('beasts but no building left standing (it was demolished and they stayed): the Pen is built free in the first empty slot and the report says so; beasts that only wait need no Pen', function (t) {
@@ -882,9 +885,9 @@
     var waiting = convert(v3(function (s) { s.creatures = [creature('c2', 'dire_wolf', 'Ashfang', 'waiting', '', null)]; }));
     t.same(waiting.problems, []);
     t.equal(BR.builtFacilityIds(waiting.save, data).indexOf(PEN), -1, 'a beast that only waits needs nothing built');
-    t.same(waiting.report.lines, [], 'nothing to say: it still waits');
+    t.same(noWar(waiting), [], 'nothing to say: it still waits');
     var none = convert(v3());
-    t.same(none.report.lines, [], 'no beasts and no old buildings: nothing to say');
+    t.same(noWar(none), [], 'no beasts and no old buildings: nothing to say');
     t.equal(BR.builtFacilityIds(none.save, data).indexOf(PEN), -1);
   });
 

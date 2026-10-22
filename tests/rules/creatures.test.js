@@ -4,8 +4,9 @@
    facilities-data.js), the Bastion's creature register and House orders
    (tools/bastion/rules.js, creature-rules.js), the link's fourth kind
    (shared/js/bridge-rules.js), the Explorer's Grant a creature
-   (tools/explorer/journey.js), the War Table (war-campaign-rules.js) and the
-   forecast (shared/js/campaign-rules.js). The Pen itself (one beast of each
+   (tools/explorer/journey.js) and the forecast (shared/js/campaign-rules.js).
+   The war game (the War Table, where creatures once defended the Ironbow) was
+   removed on 22 October 2026; its tests went with it. The Pen itself (one beast of each
    kind, acclimatising, going out on the road, Bonding Days, the conversion) is
    in tests/rules/beast-pen.test.js. */
 (function () {
@@ -17,7 +18,6 @@
   var ED = T.explorer;
   var E = T.journeyEvents;
   var CR = T.bastionCreatures;
-  var W = T.bastionWar;
   var bdata = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier, creatures: T.bastionCreatures };
   var KEYS = ['id', 'species', 'owner', 'name', 'status', 'home', 'grantedDay', 'housedDay', 'msgId'];
   var PEN = 'beast_pen';
@@ -96,65 +96,23 @@
     complete(b, lastOrder(b));
     return b;
   }
-  /* A Clan at war with the Bastion attacks it on its day: the Defend
-     Bastion action, with its three rolls made (all passed). */
-  function defence(b, clan) {
-    b.wars = b.wars || {};
-    b.wars[clan || 'bacca'] = { since: b.day - 1, last: b.day - 1, next: b.day + 6 };
-    var ma = BR.beginDefence(b, bdata, clan || 'bacca', dice([d6(1)]), 0);
-    BR.militaryRoll(b, bdata, ma.id, 'weather', roll(15), dice([0]));
-    BR.militaryRoll(b, bdata, ma.id, 'morale', roll(15), dice([0]));
-    BR.militaryRoll(b, bdata, ma.id, 'luck', roll(12), dice([0]));
-    return ma;
-  }
-  /* A finished battle in the battle rules' saved shape, from the action's
-     line-up; set: { unitId: { status, cohesion } }. */
-  function battleFrom(ma, outcome, set) {
-    function unit(u, side) {
-      var x = copy(u);
-      x.side = side; x.support = null; x.leaderId = null;
-      x.cohesionMax = u.profile.cohesion; x.cohesion = u.profile.cohesion; x.status = 'steady';
-      x.pos = null; x.startPos = null; x.activated = false; x.holding = false; x.carrying = null; x.heldFast = false; x.everHalf = false;
-      return x;
-    }
-    var units = ma.spec.player.units.map(function (u) { return unit(u, 'player'); });
-    ma.spec.enemy.units.forEach(function (u) { units.push(unit(u, 'enemy')); });
-    Object.keys(set || {}).forEach(function (id) { units.forEach(function (u) { if (u.id === id) Object.assign(u, set[id]); }); });
-    return {
-      v: 2, phase: 'over', cols: 22, rows: 14, strip: [6, 7],
-      objective: { id: ma.objective, markers: [], zone: null, held: { player: 0, enemy: 0 }, extracted: 0 },
-      conditions: ma.spec.conditions, round: 6, maxRounds: 6, firstSide: 'player', turnSide: 'player', started: true,
-      units: units, leaders: [], log: [], startBV: { player: 20, enemy: 18 },
-      result: { outcome: outcome, reason: 'The battle is decided', round: 6, lostPct: { player: 40, enemy: 20 }, extracted: 0, broken: { player: true, enemy: false } }
-    };
-  }
-  function creatureUnits(ma) { return ma.spec.player.units.filter(function (u) { return u.source && u.source.creature; }); }
 
   /* ---------------------------------------------------------------- */
   group('Creatures: the data (Harry, 14 October 2026)');
 
-  test('the five kinds: Harry\'s War Table numbers for the first three; the dire wolf is the War Table\'s Dire Wolf; each defends only, and is at worst badly wounded for 21 days; every kind lives at the Beast Pen', function (t) {
-    function nums(w) { return [w.cohesion, w.attack, w.defence, w.move, w.resolve, w.bv, w.trait]; }
+  test('the five kinds: each has a name, a plural and lives at the Beast Pen; none has War Table numbers any more (S06)', function (t) {
     t.same(Object.keys(CR.species), ['wyvern', 'griffin', 'dire_wolf', 'buckbear', 'fellcat']);
-    t.same(nums(CR.species.wyvern.war), [7, 6, 13, 6, 2, 11, 'flight'], 'the wyvern (Q3)');
-    t.same(nums(CR.species.griffin.war), [5, 5, 12, 6, 1, 8, 'flight'], 'the griffin (Q5)');
-    t.same(nums(CR.species.dire_wolf.war), [5, 5, 12, 5, 1, 7, 'pack'], 'the dire wolf (Q5)');
-    t.same(nums(CR.species.dire_wolf.war), nums(W.beasts['Dire Wolf']), 'the same as the War Table\'s Dire Wolf');
-    t.equal(CR.species.dire_wolf.war.distinction, W.beasts['Dire Wolf'].distinction);
-    t.same(['wyvern', 'griffin', 'dire_wolf'].map(function (k) { var sp = CR.species[k]; return [sp.name, sp.plural, sp.home, sp.defendOnly, sp.worstResult, sp.woundedDays, !!W.traits[sp.war.trait], !!sp.war.distinction]; }), [
-      ['Wyvern', 'Wyverns', 'beast_pen', true, 'badly_wounded', 21, true, true],
-      ['Griffin', 'Griffins', 'beast_pen', true, 'badly_wounded', 21, true, true],
-      ['Dire Wolf', 'Dire Wolves', 'beast_pen', true, 'badly_wounded', 21, true, true]
+    t.same(Object.keys(CR.species).map(function (k) { var sp = CR.species[k]; return [sp.name, sp.plural, sp.home]; }), [
+      ['Wyvern', 'Wyverns', 'beast_pen'], ['Griffin', 'Griffins', 'beast_pen'], ['Dire Wolf', 'Dire Wolves', 'beast_pen'], ['Buckbear', 'Buckbears', 'beast_pen'], ['Fellcat', 'Fellcats', 'beast_pen']
     ]);
-    t.same(['buckbear', 'fellcat'].map(function (k) { var sp = CR.species[k]; return [sp.name, sp.plural, sp.home, sp.war]; }), [['Buckbear', 'Buckbears', 'beast_pen', undefined], ['Fellcat', 'Fellcats', 'beast_pen', undefined]], 'the two new kinds (22 October 2026) live at the Pen and have no War Table profile');
+    t.same(Object.keys(CR.species).filter(function (k) { return Object.keys(CR.species[k]).some(function (f) { return ['war', 'short', 'defendOnly', 'worstResult', 'woundedDays'].indexOf(f) !== -1; }); }), [], 'no war profile, token letters, or wounded days');
+    t.same(['creatureWar', 'fightingCreatures', 'creatureRecovery', 'creatureStatus', 'creatureWarLine'].filter(function (k) { return k in BR; }), [], 'and none of the rules for them');
     t.same(CR.grantable, ['wyvern', 'griffin', 'dire_wolf', 'buckbear', 'fellcat'], 'the DM can grant five kinds (Harry, 22 October 2026)');
     t.same(CR.unique, { elara_wyvern: { species: 'wyvern', owner: 'elara', ownerName: 'Elara', name: '', defaultName: 'Elara\'s wyvern' } });
     t.ok(ED.heroes.some(function (h) { return h.id === 'elara' && h.title === 'Elara'; }), 'her owner is the Explorer\'s hero Elara');
     t.same([CR.pen, CR.houseDays, CR.nameMax, CR.provisional], [{ perKind: 1 }, 3, 40, true]);
     t.same([CR.acclimatise, CR.bondTotals], [{ dc: 20, skill: 'Animal Handling', retryDays: 3 }, { 2: 10, 3: 20, 4: 30, 5: 50 }], 'the DC, the lock and the Bonding Day totals');
     t.same(['room', 'roomBase', 'development', 'comingLater'].filter(function (k) { return k in CR; }), [], 'room for each level, training, harnesses and riding are gone');
-    t.equal(W.beasts.Wyvern, undefined, 'the War Table\'s own file is unchanged: no wyvern or griffin in it');
-    t.equal(W.beasts.Griffin, undefined);
   });
 
   test('the link knows the same kinds as the data, and its own copy (for a page without the data) matches', function (t) {
@@ -378,7 +336,7 @@
   });
 
   /* ---------------------------------------------------------------- */
-  group('Creatures: the Beast Pen and the Menagerie');
+  group('Creatures: the Beast Pen');
 
   test('the Explorer grants any of the five kinds like any other creature: one message, a Day Log line, held once, waiting for the Beast Pen', function (t) {
     var s = explorer(5);
@@ -401,184 +359,6 @@
       BR.applyInbox(b, bdata, { travel: { day: 10 }, journey: { outbox: [m2] } }, 3000);
     });
     t.same(BR.creatures(b).map(function (c) { return [c.species, c.status]; }), [['wyvern', 'waiting'], ['buckbear', 'waiting'], ['fellcat', 'waiting']], 'the two new kinds are held too, waiting for a home');
-  });
-
-  test('the Menagerie is unchanged: its beasts, R.beastQty and the War Council\'s lock never count a creature', function (t) {
-    var b = bastion(10);
-    t.equal(BR.warCouncilOpen(b), false);
-    withWyvern(b);
-    withGriffin(b, 1);
-    t.same([BR.beastQty(b), b.defenderBeasts, BR.warCouncilOpen(b)], [0, [], false], 'creatures alone never open the lock');
-    t.same(BR.warForces(b, bdata).beasts, {});
-    b.defenderBeasts = [{ name: 'Dire Wolf', qty: 2, source: 'Menagerie' }];
-    withGrants(b, [grantMsg({ id: gid(5), species: 'dire_wolf', name: 'Greymane' })]);
-    t.same([BR.beastQty(b), BR.warForces(b, bdata).beasts, BR.warCouncilOpen(b)], [2, { 'Dire Wolf': 2 }, true]);
-    var menagerie = BR.facility(bdata, 'menagerie');
-    t.same([menagerie.requiredLevel, menagerie.functions.length, menagerie.functions[0].options.length], [13, 1, 13]);
-  });
-
-  /* ---------------------------------------------------------------- */
-  group('Creatures: defending the Ironbow on the War Table');
-
-  test('Defend Bastion: every housed creature defends, one unit each with its own name, profile and trait; a waiting one doesn\'t', function (t) {
-    var b = withWyvern(bastion(10));
-    withGriffin(b, 1, 'Swiftwing');
-    withGrants(b, [grantMsg({ id: gid(2), species: 'dire_wolf', name: 'Greymane' })]);
-    b.defenders = { count: 20, armed: true, patrolUntil: 0 };
-    t.same(BR.warForces(b, bdata).creatures, ['elara_wyvern', BR.creatureIdFor(gid(1))]);
-    var ma = defence(b);
-    t.same(ma.commit, { defenders: 20, lieutenants: 0, units: {}, beasts: {}, creatures: ['elara_wyvern', BR.creatureIdFor(gid(1))] });
-    t.equal(ma.undefended, false);
-    var units = creatureUnits(ma);
-    t.same(units.map(function (u) { return [u.id, u.kind, u.type, u.name, u.label, u.traits, u.profile]; }), [
-      ['p-creature-1', 'beast', 'beast', 'Elara\'s wyvern', 'Elara\'s wyvern', ['flight'], { cohesion: 7, attack: 6, defence: 13, move: 6, resolve: 2, bv: 11 }],
-      ['p-creature-2', 'beast', 'beast', 'Swiftwing', 'Swiftwing', ['flight'], { cohesion: 5, attack: 5, defence: 12, move: 6, resolve: 1, bv: 8 }]
-    ]);
-    t.same(units[0].source, { key: 'creature-elara_wyvern', creature: 'elara_wyvern', species: 'wyvern', beast: 'Elara\'s wyvern' });
-    t.equal(BR.sideBV(bdata, { units: units }), 19);
-    t.equal(b.log[0].body.indexOf('Defending it: 20 defenders, Elara\'s wyvern, Swiftwing.') !== -1, true, b.log[0].body);
-    t.same(BR.warForces(b, bdata).creatures, [], 'the waiting defence holds them');
-    /* A second Clan attacking while the first waits finds them held. */
-    b.wars.karr = { since: 9, last: 9, next: 16 };
-    var second = BR.beginDefence(b, bdata, 'karr', dice([d6(1)]), 0);
-    t.equal(second.commit.creatures, undefined, 'a second waiting defence doesn\'t get the same creatures');
-    t.equal(second.undefended, true);
-    t.equal(BR.creatureStatus(b, bdata, b.creatures[0]).line, 'Defending the Ironbow against an attack.');
-  });
-
-  test('never sent on a War Action: the form never takes a creature, and the Military list is unchanged', function (t) {
-    var b = withWyvern(bastion(10));
-    b.organization = { type: 'clan', name: 'Clan Ironbow', chief: '', motto: '', foundedAtDay: 1 };
-    b.defenders = { count: 20, armed: true, patrolUntil: 0 };
-    t.same(BR.warCommit2(b, bdata, { defenders: 5, creatures: ['elara_wyvern'], beasts: { 'elara_wyvern': 1, 'Wyvern': 1 } }), { defenders: 5, lieutenants: 0, units: {}, beasts: {} });
-    t.same(BR.warAvailable(b, bdata), { defenders: 20, beasts: 0, lieutenants: 0, regiments: 0, fullWar: true });
-    var order = BR.queueWarAction2(b, bdata, { targetKey: 'bacca', objective: 'raid', tier: 'small', commit: { defenders: 5, creatures: ['elara_wyvern'] } });
-    t.same(order.meta.commit.creatures, undefined, 'the War Action carries none');
-    var ma = BR.beginMilitaryAction(b, bdata, order, dice([0.5]), 0);
-    t.same([ma.commit.creatures, creatureUnits(ma)], [undefined, []]);
-    t.same(BR.warForces(b, bdata).creatures, ['elara_wyvern'], 'it stays home, free to defend');
-  });
-
-  test('a defeat never kills or captures a creature: at worst badly wounded for 21 days; it stays on the register', function (t) {
-    var b = withWyvern(bastion(10));
-    withGriffin(b, 1, 'Swiftwing');
-    withGrants(b, [grantMsg({ id: gid(2), species: 'dire_wolf', name: 'Greymane' })]);
-    complete(b, (issue(b, PEN), lastOrder(b)));
-    b.defenders = { count: 0, armed: false, patrolUntil: 0 };
-    var ma = defence(b);
-    t.equal(creatureUnits(ma).length, 3);
-    var before = copy(b.creatures);
-    var battle = battleFrom(ma, 'defeat', {
-      'p-creature-1': { status: 'defeated', cohesion: 0 },
-      'p-creature-2': { status: 'defeated', cohesion: 0 },
-      'p-creature-3': { status: 'routed' }
-    });
-    /* d6 1 (killed) and 2 (captured: the enemy holds the field) for the two defeated; then the loss's d10 and d4. */
-    var res = BR.finishBattle(b, bdata, ma.id, battle, dice([d6(1), d6(2), d10(1), d4(1), 0]), 0);
-    t.same(b.creatures, before, 'nobody removed');
-    t.same(b.warRecovery.map(function (r) { return [r.kind, r.name, r.status, r.untilDay, r.creatureId]; }), [
-      ['creature', 'Elara\'s wyvern', 'badly_wounded', 31, 'elara_wyvern'],
-      ['creature', 'Swiftwing', 'badly_wounded', 31, BR.creatureIdFor(gid(1))],
-      ['creature', 'Greymane', 'separated', 17, BR.creatureIdFor(gid(2))]
-    ]);
-    t.same(Object.keys(b.warRecovery[0]), ['id', 'kind', 'name', 'status', 'untilDay', 'creatureId']);
-    t.ok(res.lines.indexOf('Elara\'s wyvern: badly wounded (d6 1: a creature is never killed), back on Day 31.') !== -1, res.lines.join(' | '));
-    t.ok(res.lines.indexOf('Swiftwing: badly wounded (d6 2: a creature is never captured), back on Day 31.') !== -1, res.lines.join(' | '));
-    t.ok(res.lines.indexOf('Greymane: separated from the army, back on Day 17.') !== -1, res.lines.join(' | '));
-    t.equal(res.report.subtitle, 'Defending the Bastion: Elara\'s wyvern, Swiftwing, Greymane');
-    t.same([BR.beastQty(b), b.defenderBeasts], [0, []], 'the Menagerie untouched');
-    t.same(BR.warForces(b, bdata).creatures, [], 'recovering, so not free');
-    t.equal(BR.creatureStatus(b, bdata, b.creatures[0]).line, 'Badly wounded: fit again on Day 31.');
-    t.equal(BR.creatureStatus(b, bdata, BR.creatureById(b, BR.creatureIdFor(gid(2)))).line, 'Separated from the army: fit again on Day 17.');
-    /* The recovery records survive a reload, and Reset Travel moves them. */
-    var back = reload(b);
-    t.same(back.warRecovery, b.warRecovery);
-    t.equal(JSON.stringify(BR.toSave(reload(back))), JSON.stringify(BR.toSave(back)), 'the same twice');
-    BR.shiftDays(back, -5);
-    t.same(back.warRecovery.map(function (r) { return r.untilDay; }), [26, 26, 12]);
-    /* Back on its day, with its own words. */
-    b.day = 16;
-    BR.startDay(b, bdata, 0);
-    t.equal(b.log[0].body, 'Greymane has found the way back to the Bastion.');
-    b.day = 30;
-    BR.startDay(b, bdata, 0);
-    t.same(b.log.filter(function (l) { return l.title === 'War Recovery'; }).slice(0, 2).map(function (l) { return l.body; }).sort(), ['Elara\'s wyvern is fit to fight again.', 'Swiftwing is fit to fight again.']);
-    t.same(BR.warForces(b, bdata).creatures.length, 3, 'all three free again');
-  });
-
-  test('a lesser d6: wounded or recovering as any beast; a won defence hurts nobody', function (t) {
-    var b = withWyvern(bastion(10));
-    var ma = defence(b);
-    BR.finishBattle(b, bdata, ma.id, battleFrom(ma, 'defeat', { 'p-creature-1': { status: 'defeated', cohesion: 0 } }), dice([d6(4), d10(1), d4(1), 0]), 0);
-    t.same(b.warRecovery.map(function (r) { return [r.status, r.untilDay]; }), [['wounded', 24]]);
-    var c = withWyvern(bastion(10));
-    var mc = defence(c);
-    BR.finishBattle(c, bdata, mc.id, battleFrom(mc, 'victory', {}), dice([0.5]), 0);
-    t.same([c.warRecovery, c.creatures.length], [[], 1]);
-  });
-
-  test('a Menagerie Dire Wolf and a granted dire wolf never share a count or a recovery', function (t) {
-    var b = bastion(10, ['beast_pen']);
-    withGrants(b, [grantMsg({ id: gid(1), species: 'dire_wolf', name: 'Greymane' })]);
-    complete(b, (issue(b, PEN), lastOrder(b)));
-    b.defenderBeasts = [{ name: 'Dire Wolf', qty: 1, source: 'Menagerie' }];
-    var ma = defence(b);
-    t.same([ma.commit.beasts, ma.commit.creatures], [{ 'Dire Wolf': 1 }, [BR.creatureIdFor(gid(1))]]);
-    var beast = ma.spec.player.units.filter(function (u) { return !u.source.creature; })[0];
-    var wolf = creatureUnits(ma)[0];
-    t.same([beast.name, wolf.name, beast.profile, wolf.profile], ['Dire Wolf', 'Greymane', wolf.profile, beast.profile], 'the same numbers, two different animals');
-    /* The Menagerie's is killed (d6 1); the granted one, also on a 1, is badly wounded. */
-    BR.finishBattle(b, bdata, ma.id, battleFrom(ma, 'defeat', { 'p-beast-1': { status: 'defeated' }, 'p-creature-1': { status: 'defeated' } }), dice([d6(1), d6(1), d10(1), d4(1), 0]), 0);
-    t.same([b.defenderBeasts, b.creatures.length, b.warRecovery.map(function (r) { return [r.kind, r.name, r.status]; })], [[], 1, [['creature', 'Greymane', 'badly_wounded']]]);
-  });
-
-  test('a creature alone still defends (the Ironbow isn\'t undefended); the withdraw warning says it can\'t be killed', function (t) {
-    var b = withWyvern(bastion(10));
-    var ma = defence(b);
-    t.same([ma.undefended, ma.commit.creatures, ma.commit.defenders], [false, ['elara_wyvern'], 0]);
-    var pre = BR.withdrawPreview(b, bdata, ma.id, battleFrom(ma, 'withdrawal', { 'p-creature-1': { status: 'defeated' } }));
-    t.ok(pre.indexOf('A d6 for Elara\'s wyvern: badly wounded, wounded or recovering (a creature is never killed or captured).') !== -1, pre.join(' | '));
-  });
-
-  test('a waiting defence keeps its creatures through a reload, the same JSON twice', function (t) {
-    var b = withWyvern(bastion(10));
-    var ma = defence(b);
-    var back = reload(b);
-    t.same(back.militaryActions[0].commit, ma.commit);
-    t.same(creatureUnits(back.militaryActions[0]).length, 1);
-    t.equal(JSON.stringify(BR.toSave(reload(back))), JSON.stringify(BR.toSave(back)));
-    t.same(BR.warForces(back, bdata).creatures, [], 'still held');
-    var noSpec = copy(BR.toSave(b));
-    noSpec.militaryActions[0].spec = null;
-    t.same(creatureUnits(BR.fromSave(noSpec, bdata).militaryActions[0]).map(function (u) { return u.name; }), ['Elara\'s wyvern'], 'a line-up rebuilt on loading has it too');
-  });
-
-  test('the stat block: its name, its kind\'s numbers and trait; and the War Table line', function (t) {
-    var b = withWyvern(bastion(10));
-    var block = BR.creatureStatBlock(b, bdata, 'elara_wyvern');
-    t.equal(block.title, 'Elara\'s wyvern');
-    t.same(block.rows.map(function (r) { return [r.key, r.value]; }), [['cohesion', '7'], ['attack', '+6'], ['defence', '13'], ['move', '6'], ['resolve', '+2'], ['bv', '11']]);
-    t.same(block.traits.map(function (x) { return x.name; }), ['Flight']);
-    t.equal(block.distinction, CR.species.wyvern.war.distinction);
-    t.equal(BR.creatureWarLine(bdata, b.creatures[0]), 'Defends the Ironbow: Battle Value 11, Flight');
-    t.equal(BR.creatureStatBlock(b, bdata, 'nobody'), null);
-    var wolf = { id: 'w', species: 'dire_wolf', owner: '', name: 'Ash', status: 'housed', home: 'beast_pen', grantedDay: 1, housedDay: 1, msgId: '' };
-    t.equal(BR.creatureWarLine(bdata, wolf), 'Defends the Ironbow: Battle Value 7, Pack');
-  });
-
-  test('with no creature data at all, no creature fights (never the default beast)', function (t) {
-    var b = withWyvern(bastion(10));
-    var keep = T.bastionCreatures;
-    var bare = Object.assign({}, bdata);
-    delete bare.creatures;
-    try {
-      delete T.bastionCreatures;
-      t.same(BR.warForces(b, bare).creatures, []);
-      b.wars = { bacca: { since: 9, last: 9, next: 16 } };
-      var ma = BR.beginDefence(b, bare, 'bacca', dice([d6(1)]), 0);
-      t.same([ma.undefended, creatureUnits(ma)], [true, []]);
-    } finally { T.bastionCreatures = keep; }
-    t.equal(b.creatures.length, 1, 'still on the register');
   });
 
   /* ---------------------------------------------------------------- */
@@ -618,7 +398,6 @@
     ]);
     t.same(BR.cleanCreatures(out, 10), out, 'the same twice');
     t.same([BR.speciesName(bdata, 'phoenix'), BR.creatureName(bdata, { id: 'p2', species: 'phoenix', grantedDay: 4 })], ['Unknown creature', 'Unknown creature (granted Day 4)'], 'shown as unknown');
-    t.equal(BR.creatureWar(bdata, out[1]), null, 'and it doesn\'t fight');
     t.same(BR.cleanCreatures('nope', 10), []);
   });
 
@@ -633,13 +412,11 @@
     t.equal(BR.saveProblem(s), null);
   });
 
-  test('Reset Travel moves when each was granted and housed, and their recovery', function (t) {
+  test('Reset Travel moves when each was granted and housed', function (t) {
     var b = withWyvern(bastion(10));
     withGrants(b, [grantMsg({ id: gid(2), name: 'Talon' })]);
-    b.warRecovery = [{ id: 'r1', kind: 'creature', name: 'Elara\'s wyvern', status: 'badly_wounded', untilDay: 30, creatureId: 'elara_wyvern' }];
     BR.shiftDays(b, -4);
     t.same(b.creatures.map(function (c) { return [c.grantedDay, c.housedDay]; }), [[6, 6], [1, null]], 'housed on Day 10, granted on Day 5');
-    t.equal(b.warRecovery[0].untilDay, 26);
     t.same(Object.keys(b.creatures[1]), KEYS);
   });
 
@@ -650,31 +427,14 @@
     t.same(BR.cleanBridge(once), once);
   });
 
-  test('a recovery record for a creature is kept by its id, even without its name; any other odd one goes as before', function (t) {
-    var s = copy(BR.toSave(bastion(10)));
-    s.warRecovery = [
-      { id: 'r1', kind: 'creature', name: 'Swiftwing', status: 'wounded', untilDay: 20, creatureId: 'cr-x' },
-      { id: 'r2', kind: 'creature', status: 'badly_wounded', untilDay: 30, creatureId: 'cr-y' },
-      { id: 'r3', kind: 'creature', name: 'No id', untilDay: 30 },
-      { id: 'r4', kind: 'beast', name: 'Ape', status: 'wounded', untilDay: 12 }
-    ];
-    var b = BR.fromSave(s, bdata);
-    t.same(b.warRecovery, [
-      { id: 'r1', kind: 'creature', name: 'Swiftwing', status: 'wounded', untilDay: 20, creatureId: 'cr-x' },
-      { id: 'r2', kind: 'creature', name: 'A creature', status: 'badly_wounded', untilDay: 30, creatureId: 'cr-y' },
-      { id: 'r4', kind: 'beast', name: 'Ape', status: 'wounded', untilDay: 12 }
-    ]);
-  });
-
   /* ---------------------------------------------------------------- */
   group('Creatures: the forecast and the DM doc');
 
-  test('a House order "is complete" (never a roll); a creature\'s recovery "is fit to fight again"', function (t) {
+  test('a House order "is complete" (never a roll)', function (t) {
     var b = bastion(10, ['beast_pen']);
     withGrants(b, [grantMsg(), grantMsg({ id: gid(2), species: 'wyvern', name: 'Stormtalon' })]);
     issue(b, PEN);
     issue(b, PEN);
-    b.warRecovery = [{ id: 'r1', kind: 'creature', name: 'Greymane', status: 'badly_wounded', untilDay: 31, creatureId: 'cr-g' }, { id: 'r2', kind: 'creature', name: 'Talon', status: 'separated', untilDay: 17, creatureId: 'cr-t' }];
     var coming = TSI.campaign.bastionComing(copy(BR.toSave(b)));
     function has(day, kind, line) { return coming.some(function (x) { return x.day === day && x.kind === kind && x.line === line; }); }
     t.ok(has(13, 'order', 'Beast Pen: House Beast Here (Swiftwing) is complete.'), JSON.stringify(coming));
@@ -690,8 +450,7 @@
     var oldComing = TSI.campaign.bastionComing(old).filter(function (x) { return x.kind === 'order'; }).map(function (x) { return x.line; });
     t.same(oldComing, ['Wyvern Roost: House a Wyvern (Stormtalon) is complete.', 'Griffin Tower: House a Griffin (Swiftwing) is complete.']);
     t.same(TSI.campaign.MOVED_ORDERS, { wyvern_roost: ['house_elara_wyvern', 'house_wyvern'], griffin_tower: ['house_griffin'], dire_wolf_den: ['house_dire_wolf'] });
-    t.ok(has(31, 'recovery', 'Greymane is fit to fight again.'));
-    t.ok(has(17, 'recovery', 'Talon has found the way back to the Bastion.'));
+    t.equal(coming.filter(function (x) { return x.kind === 'recovery'; }).length, 0, 'no creature is ever "fit to fight again": the war game is gone');
     t.equal(coming.filter(function (x) { return x.kind === 'roll'; }).length, 0);
   });
 

@@ -708,17 +708,6 @@
     });
   });
 
-  test('a War Action cancelled the same day gives back its own cost and keeps the Explorer\'s change', function (t) {
-    var b = bastion(3);
-    b.organization = { type: 'clan', name: 'Clan Ironbow', chief: '', motto: '', foundedAtDay: 1 };
-    b.honourRespectByClan.slade = -2;
-    var order = { id: 'w1', facId: 'war_council', fnId: 'war_action', optionIdx: 0, label: 'War Action', issuedDay: 3, dueDay: 6, meta: { kind: 'war_action', objective: 'raid', targetKey: 'slade', targetName: 'Slade', declared: { day: 3, hr: -2, pc: 0, prev: null, quiet: false, rollDone: true } } };
-    BR.applyInbox(b, bdata, exWith([msg()]), 1000);
-    t.equal(b.honourRespectByClan.slade, -1);
-    BR.undoWarDeclaration(b, bdata, order, 2000);
-    t.equal(b.honourRespectByClan.slade, 1, '−1 + 2 given back: the Explorer\'s +1 stays');
-  });
-
   test('a campaign file keeps the messages, receipts and bags, and applying again adds nothing', function (t) {
     var ex = explorer('eastern_province');
     J.addItem(ex, J.CHART, 1);
