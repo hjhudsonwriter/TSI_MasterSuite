@@ -44,13 +44,18 @@
     t.same(s.level, { value: 7, fromBastion: false });
     t.same([s.heroes, s.day, s.daysPassed, s.orders, s.nextWord], [[], null, null, null, null]);
     t.same([s.region, s.clan, s.god, s.effects], [null, null, null, []]);
+    t.same([s.partyEffects, s.rite], [[], null]);
+    t.same(s.expedition, { n: 0, state: 'none', startedDay: null, endedDay: null, daysRunning: null }, 'no Explorer, no expedition');
   });
 
   test('a fresh Explorer and Bastion: Day 1, five heroes, no orders yet, the Northern Province', function (t) {
     var s = sum(explorer(), bastion());
-    t.same(s.heroes, ['Kaelen', 'Umbrys', 'Magnus', 'Elara', 'Charles']);
+    t.same(s.heroes.map(function (h) { return h.name; }), ['Kaelen', 'Umbrys', 'Magnus', 'Elara', 'Charles']);
+    t.same(s.heroes.map(function (h) { return h.id; }), ['kaelen', 'umbrys', 'magnus', 'elara', 'charles'], 'each hero carries the Explorer\'s id');
+    t.same(s.heroes.map(function (h) { return h.effects.length; }), [0, 0, 0, 0, 0]);
+    t.same([s.partyEffects, s.rite, s.expedition.state], [[], null, 'none']);
     t.same([s.day, s.daysPassed], [1, 0]);
-    t.same([s.orders, s.nextWord], [{ count: 0, next: null }, null], 'a Bastion that hasn\'t read the Explorer\'s day yet has no word to send');
+    t.same([s.orders, s.nextWord], [{ count: 0, next: null, list: [] }, null], 'a Bastion that hasn\'t read the Explorer\'s day yet has no word to send');
     t.same(s.level, { value: 7, fromBastion: true });
     t.same(s.region, { id: 'northern_province', label: 'Northern Province' });
     t.same(s.clan, { name: 'Blackstone', chief: 'Boris Blackstone', politicalCapital: 0, honourRespect: 0 });
@@ -83,7 +88,12 @@
     var e = explorer();
     e.travel.day = 10;
     var s = sum(e, busy());
-    t.same(s.orders, { count: 4, next: { day: 13, label: 'War Action', inDays: 3 } });
+    t.same(s.orders, { count: 4, next: { day: 13, label: 'War Action', inDays: 3 }, list: [
+      { day: 13, label: 'War Action', inDays: 3 },
+      { day: 14, label: 'Barracks: Recruit Defenders', inDays: 4 },
+      { day: 15, label: 'Dock: Charter Berth (Longship)', inDays: 5 },
+      { day: 17, label: 'Hall of Emissaries: Secure Trade Agreement (Clan Karr)', inDays: 7 }
+    ] });
     t.same(s.nextWord, { day: 11, inDays: 1, lines: ['The Ape is fit to fight again.'] });
     e.travel.day = 11;
     t.same(sum(e, busy()).nextWord.day, 12, 'the Bastion\'s day 11 is still to come, but the DM doc looks after the Explorer\'s day');
@@ -178,6 +188,98 @@
     t.same(s.god, { key: 'pelagos', name: 'Pelagos', favour: null });
   });
 
+  test('Orders Pending lists up to five orders, the one completing next first; the count is all of them', function (t) {
+    var b = bastion();
+    b.day = 5; b.anchored = true;
+    [30, 12, 9, 21, 15, 18, 7].forEach(function (d, i) { b.pendingOrders.push({ id: 'o' + i, facId: 'dock', fnId: 'x', label: 'Order ' + d, issuedDay: 1, dueDay: d }); });
+    b.pendingOrders.push({ id: 'turns', completeTurn: 3, label: 'No day' });
+    var e = explorer();
+    e.travel.day = 6;
+    var o = sum(e, b).orders;
+    t.equal(o.count, 7, 'the order with no day is not counted');
+    t.same(o.list.map(function (x) { return x.day; }), [7, 9, 12, 15, 18], 'five, soonest first');
+    t.same(o.list[0], { day: 7, label: 'Order 7', inDays: 1 });
+    t.same(o.next, o.list[0], 'next is the first on the list');
+    b.pendingOrders = [{ id: 'z', facId: 'dock', fnId: 'x', label: '', issuedDay: 1, dueDay: 8 }];
+    t.same(sum(e, b).orders.list, [{ day: 8, label: 'An order', inDays: 2 }], 'an order with no name still shows');
+  });
+
+  test('each hero\'s effects are listed with that hero (by id); the party\'s own, and any that fit nobody, are the party\'s', function (t) {
+    var s = explorer();
+    s.travel.day = 3;
+    s.journey.effects.push({ id: 'e1', name: 'Wolf-Friend', text: 'Advantage on Perception.', who: null, whoName: 'The party', from: 'C6', day: 1, until: 'days', untilDay: 8 });
+    s.journey.effects.push({ id: 'e2', name: 'Warm', text: '', who: 'elara', whoName: 'Elara', from: 'T12', day: 1, until: 'camp', untilDay: 4 });
+    s.journey.effects.push({ id: 'e3', name: 'Frostbitten', text: 'Slower.', who: 'umbrys', whoName: 'Umbrys', from: 'T3', day: 2, until: 'dm', untilDay: null });
+    s.journey.effects.push({ id: 'e4', name: 'Frostbitten', text: 'Slower.', who: 'magnus', whoName: 'Magnus', from: 'T3', day: 2, until: 'dm', untilDay: null });
+    s.journey.effects.push({ id: 'e5', name: 'Cursed Boots', text: '', who: 'gone_hero', whoName: 'Old Bob', from: 'X1', day: 1, until: 'used', untilDay: null });
+    s.journey.effects.push({ id: 'e6', name: 'Second Wind', text: '', who: 'elara', whoName: 'Elara', from: 'X2', day: 1, until: 'used', untilDay: null });
+    var r = sum(s, null);
+    var byHero = {};
+    r.heroes.forEach(function (h) { byHero[h.id] = h.effects.map(function (x) { return x.name; }); });
+    t.same(byHero, { kaelen: [], umbrys: ['Frostbitten'], magnus: ['Frostbitten'], elara: ['Warm', 'Second Wind'], charles: [] }, 'the same effect on two heroes shows under each');
+    t.same(r.partyEffects.map(function (x) { return [x.name, x.who]; }), [['Wolf-Friend', 'The party'], ['Cursed Boots', 'Old Bob']], 'the party\'s own, and an orphan with the name it was saved under');
+    t.equal(r.effects.length, 6, 'effects still lists them all');
+    t.same(r.heroes[3].effects[0], { id: 'e2', name: 'Warm', who: 'Elara', text: '', until: 'until Make Camp', from: 'T12' }, 'the same line as the full list');
+    var renamed = JSON.parse(JSON.stringify(s));
+    renamed.tokens[3].name = 'Elara Vane';
+    t.same(sum(renamed, null).heroes[3].effects.map(function (x) { return x.name; }), ['Warm', 'Second Wind'], 'a renamed hero keeps their effects');
+    var noTokens = JSON.parse(JSON.stringify(s));
+    noTokens.tokens = [];
+    var nt = sum(noTokens, null);
+    t.same([nt.heroes.length, nt.partyEffects.length], [0, 6], 'with no heroes read, every effect is still shown');
+  });
+
+  test('the Great Rite the party holds shows as one line, ready or used', function (t) {
+    var s = explorer();
+    t.equal(sum(s, null).rite, null);
+    s.journey.blessing = { id: 'rite-ab12cd34', rite: 'earths_endurance', expedition: 1, used: false };
+    t.same(sum(s, null).rite, { name: 'Earth\'s Endurance', used: false });
+    s.journey.blessing.used = true;
+    t.same(sum(s, null).rite, { name: 'Earth\'s Endurance', used: true });
+    s.journey.blessing.rite = 'unknown_rite';
+    t.same(sum(s, null).rite, { name: 'A Great Rite', used: true }, 'a rite this copy doesn\'t know still shows');
+    s.journey.blessing = { id: 'x' };
+    t.equal(sum(s, null).rite, null, 'a damaged one is not shown');
+    t.equal(sum(s, null).effects.length, 0, 'it is never one of the Active Effects');
+  });
+
+  test('the expedition: none yet, under way with its days running, ended with the days it ran', function (t) {
+    var J = TSI.explorer.journey;
+    var s = explorer();
+    s.travel.day = 4;
+    t.same(sum(s, null).expedition, { n: 0, state: 'none', startedDay: null, endedDay: null, daysRunning: null });
+    J.startExpedition(s);
+    t.same(sum(s, null).expedition, { n: 1, state: 'active', startedDay: 4, endedDay: null, daysRunning: 0 }, 'began today');
+    s.travel.day = 7;
+    t.same(sum(s, null).expedition, { n: 1, state: 'active', startedDay: 4, endedDay: null, daysRunning: 3 }, 'began Day 4, now Day 7: running 3 days');
+    s.travel.day = 2;
+    t.equal(sum(s, null).expedition.daysRunning, 0, 'Reset Travel can put today before the start; never below 0');
+    s.travel.day = 9;
+    J.endExpedition(s);
+    t.same(sum(s, null).expedition, { n: 1, state: 'ended', startedDay: 4, endedDay: 9, daysRunning: null }, 'ended: Day 4 to Day 9');
+    s.travel.day = 30;
+    t.same([sum(s, null).expedition.startedDay, sum(s, null).expedition.endedDay], [4, 9], 'it stays until the next one starts, whatever the day');
+    J.startExpedition(s);
+    t.same(sum(s, null).expedition, { n: 2, state: 'active', startedDay: 30, endedDay: null, daysRunning: 0 }, 'the next one replaces it');
+  });
+
+  test('an expedition that ended in an older save: its end day comes from the log, or is left unknown', function (t) {
+    var J = TSI.explorer.journey;
+    var s = explorer();
+    s.travel.day = 4;
+    J.startExpedition(s);
+    s.travel.day = 9;
+    J.endExpedition(s);
+    delete s.journey.expedition.endedDay;
+    t.same(sum(s, null).expedition, { n: 1, state: 'ended', startedDay: 4, endedDay: 9, daysRunning: null }, 'read from "Expedition 1 ended on Day 9."');
+    s.journey.log = [];
+    t.same(sum(s, null).expedition, { n: 1, state: 'ended', startedDay: 4, endedDay: null, daysRunning: null }, 'no log line: unknown, never guessed');
+    s.journey.expedition = { n: 2, active: true, startedDay: 0 };
+    t.same(sum(s, null).expedition, { n: 2, state: 'active', startedDay: null, endedDay: null, daysRunning: null }, 'a start day that was never saved is unknown too');
+    s.journey.expedition = 'junk';
+    t.equal(sum(s, null).expedition.state, 'none', 'a damaged record is no expedition');
+  });
+
   test('odd values are kept within the Bastion\'s own limits', function (t) {
     var b = bastion();
     b.politicalCapital.blackstone = 400; b.honourRespectByClan.blackstone = -9; b.favour.telluria = 'lots';
@@ -261,7 +363,8 @@
 
   test('a damaged Explorer save doesn\'t stop the summary', function (t) {
     var s = sum({ tokens: 'x', travel: null, journey: { gold: 'lots', effects: [null, { text: 'no name' }], threads: [7, { note: 'no name' }, { name: 'Odd', follow: { from: 'x' }, resolve: 'y' }] } }, 'junk');
-    t.same([s.heroes, s.day, s.bastionSaved, s.effects, s.gold], [[], 1, false, [], 0]);
+    t.same([s.heroes, s.day, s.bastionSaved, s.effects, s.partyEffects, s.gold], [[], 1, false, [], [], 0]);
+    t.same([s.rite, s.expedition.state], [null, 'none']);
     t.same(s.threads.map(function (x) { return [x.name, x.due, x.reward]; }), [['Odd', '', []]]);
     t.equal(s.nextFollowUp, null);
     t.equal(s.region.id, 'northern_province', 'the Explorer\'s own first region');
