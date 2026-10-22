@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Scarlett Isles: Beast Handler — styles
+   Scarlett Isles: Beast Handler — styles (read-only app since 22 October 2026: no orders, requests or editing)
    Every rule is scoped to the companion (.tsi-tool--beasthandler) and every
    class starts "tsi-bh-". Type and spacing come from shared/tokens.css; the colours
    are this tool's own charcoal-and-gold set (see the block below), from Harry's
@@ -185,8 +185,7 @@ body.tsi-bh-phone .tsi-btn--primary:hover { filter: brightness(1.06); }
   transition: border-color var(--tsi-dur-base) var(--tsi-ease), background var(--tsi-dur-base) var(--tsi-ease), transform var(--tsi-dur-base) var(--tsi-ease);
 }
 .tsi-tool--beasthandler .tsi-bh-beast--mine:hover { border-color: var(--tsi-line-hover); background: rgba(214, 178, 94, .08); transform: var(--tsi-lift); }
-.tsi-tool--beasthandler .tsi-bh-beast--mine:focus-visible,
-.tsi-tool--beasthandler .tsi-bh-order:focus-visible { outline: none; border-color: var(--tsi-gold-text); box-shadow: var(--tsi-focus-ring); }
+.tsi-tool--beasthandler .tsi-bh-beast--mine:focus-visible { outline: none; border-color: var(--tsi-gold-text); box-shadow: var(--tsi-focus-ring); }
 /* The picture and the bottom bar are clipped or borderless, so their ring is drawn inside them, in plain gold. */
 .tsi-tool--beasthandler .tsi-bh-nav__btn:focus-visible { outline: 3px solid var(--tsi-gold); outline-offset: -5px; }
 /* The picture paints over its own button's outline, so its ring is a layer drawn on top: gold with a dark line inside it, readable on any painting. */
@@ -214,7 +213,6 @@ body.tsi-bh-phone .tsi-btn--primary:hover { filter: brightness(1.06); }
 .tsi-tool--beasthandler .tsi-bh-handler,
 .tsi-tool--beasthandler .tsi-bh-kind { text-align: center; font-size: var(--tsi-fs-body); color: var(--tsi-text-muted); }
 .tsi-tool--beasthandler .tsi-bh-kind { font-size: var(--tsi-fs-body-sm); color: var(--tsi-text-soft); }
-.tsi-tool--beasthandler .tsi-bh-training { text-align: center; font-size: var(--tsi-fs-body-sm); color: var(--tsi-gold-text); }
 
 /* ---------- The beast's page: the picture is the centrepiece (Harry, 21 October 2026) ---------- */
 .tsi-tool--beasthandler .tsi-bh-name { text-align: center; }
@@ -260,7 +258,6 @@ body.tsi-bh-phone .tsi-btn--primary:hover { filter: brightness(1.06); }
 .tsi-tool--beasthandler .tsi-bh-subspecies--none { color: var(--tsi-text-soft); border-color: var(--tsi-line-control); box-shadow: 0 6px 18px rgba(0, 0, 0, .4); }
 .tsi-tool--beasthandler .tsi-bh-subspecies__star { font-size: 14px; }
 .tsi-tool--beasthandler .tsi-bh-pendingtag { text-align: center; font-size: var(--tsi-fs-body-sm); font-style: italic; color: var(--tsi-gold-text); }
-.tsi-tool--beasthandler .tsi-bh-waitingmark { font-style: italic; font-size: var(--tsi-fs-body-sm); color: var(--tsi-gold-text); }
 .tsi-tool--beasthandler .tsi-bh-hero2--greet .tsi-bh-hero2__img { animation: tsi-bh-greet calc(.9s * var(--tsi-signature-slowdown)) ease-out 1; }
 
 /* The small round picture beside a section's heading. */
@@ -321,7 +318,7 @@ body.tsi-bh-phone .tsi-btn--primary:hover { filter: brightness(1.06); }
 .tsi-tool--beasthandler .tsi-bh-head__title { margin: 0; font: 700 var(--tsi-fs-h1)/1.1 var(--tsi-font-display); letter-spacing: var(--tsi-track-title); color: var(--tsi-gold); }
 .tsi-tool--beasthandler .tsi-bh-head__sub { margin-top: 4px; font-size: var(--tsi-fs-lead); color: var(--tsi-text-muted); }
 
-/* ---------- Panels, profile, orders ---------- */
+/* ---------- Panels and the profile ---------- */
 .tsi-tool--beasthandler .tsi-bh-panel {
   display: grid;
   gap: var(--tsi-space-3);
@@ -342,26 +339,6 @@ body.tsi-bh-phone .tsi-btn--primary:hover { filter: brightness(1.06); }
 .tsi-tool--beasthandler .tsi-bh-about p { margin-top: var(--tsi-space-2); line-height: var(--tsi-lh-body); }
 .tsi-tool--beasthandler .tsi-bh-panel .tsi-btn { min-height: var(--tsi-bh-tap); justify-content: center; }
 
-.tsi-tool--beasthandler .tsi-bh-orders-for { font: 700 var(--tsi-fs-lead)/1.2 var(--tsi-font-display); letter-spacing: var(--tsi-track-label); color: var(--tsi-text); }
-.tsi-tool--beasthandler .tsi-bh-orders { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--tsi-space-2); }
-.tsi-tool--beasthandler .tsi-bh-order {
-  display: grid;
-  gap: 2px;
-  width: 100%;
-  min-height: 60px;
-  padding: var(--tsi-space-3) var(--tsi-space-4);
-  text-align: left;
-  color: var(--tsi-text);
-  background: linear-gradient(180deg, var(--tsi-bh-panel-2), var(--tsi-bh-panel));
-  border: 1px solid var(--tsi-line-control);
-  border-radius: var(--tsi-radius-row);
-  cursor: pointer;
-}
-.tsi-tool--beasthandler .tsi-bh-order:hover { border-color: var(--tsi-line-hover); }
-.tsi-tool--beasthandler .tsi-bh-order__label { font: 700 var(--tsi-fs-h3)/1.2 var(--tsi-font-display); letter-spacing: var(--tsi-track-label); }
-.tsi-tool--beasthandler .tsi-bh-order__meta { font-size: var(--tsi-fs-body-sm); color: var(--tsi-text-muted); }
-.tsi-tool--beasthandler .tsi-bh-pending__label { font: 700 var(--tsi-fs-lead)/1.25 var(--tsi-font-display); color: var(--tsi-text); }
-.tsi-tool--beasthandler .tsi-bh-pending__due { font-size: var(--tsi-fs-lead); color: var(--tsi-gold-text); }
 
 /* ---------- Chronicle ---------- */
 .tsi-tool--beasthandler .tsi-bh-chron {
@@ -453,24 +430,8 @@ body.tsi-bh-phone .tsi-btn--primary:hover { filter: brightness(1.06); }
   .tsi-tool--beasthandler .tsi-bh-hero2::before { display: none; }
 }
 
-/* ---------- Writing: the profile editor and the requests list (BH-2c) ---------- */
+/* A plain line of words in a box (a message, a problem). */
 .tsi-tool--beasthandler .tsi-bh-message--warn { border-style: solid; border-color: var(--tsi-line-control); color: var(--tsi-text); }
-.tsi-tool--beasthandler .tsi-bh-edit { gap: var(--tsi-space-4); }
-.tsi-tool--beasthandler .tsi-bh-edit__field { display: grid; gap: 4px; }
-.tsi-tool--beasthandler .tsi-bh-edit__label { font: 700 var(--tsi-fs-label)/1.2 var(--tsi-font-display); letter-spacing: var(--tsi-track-label); text-transform: uppercase; color: var(--tsi-gold-text); }
-.tsi-tool--beasthandler .tsi-bh-edit__line { display: flex; gap: var(--tsi-space-2); align-items: stretch; }
-.tsi-tool--beasthandler .tsi-bh-edit__line .tsi-input { flex: 1 1 auto; min-height: var(--tsi-bh-tap); font-size: var(--tsi-fs-body); }
-.tsi-tool--beasthandler .tsi-bh-edit__line .tsi-btn { flex: none; min-height: var(--tsi-bh-tap); min-width: var(--tsi-bh-tap); }
-.tsi-tool--beasthandler .tsi-bh-edit__tag { font-size: var(--tsi-fs-body-sm); font-style: italic; color: var(--tsi-gold-text); }
-.tsi-tool--beasthandler .tsi-bh-edit__buttons { display: flex; flex-wrap: wrap; gap: var(--tsi-space-2); }
-.tsi-tool--beasthandler .tsi-bh-edit__buttons .tsi-btn { min-height: var(--tsi-bh-tap); }
-.tsi-tool--beasthandler .tsi-bh-requests__list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--tsi-space-2); }
-.tsi-tool--beasthandler .tsi-bh-request { display: grid; gap: 2px; padding: var(--tsi-space-2) var(--tsi-space-3); background: rgba(0, 0, 0, .28); border-left: 3px solid var(--tsi-line-control); border-radius: var(--tsi-radius-sm); }
-.tsi-tool--beasthandler .tsi-bh-request--waiting { border-left-color: var(--tsi-warn); }
-.tsi-tool--beasthandler .tsi-bh-request--scheduled, .tsi-tool--beasthandler .tsi-bh-request--completed, .tsi-tool--beasthandler .tsi-bh-request--saved { border-left-color: var(--tsi-ok); }
-.tsi-tool--beasthandler .tsi-bh-request--refused { border-left-color: var(--tsi-danger); }
-.tsi-tool--beasthandler .tsi-bh-request__label { font: 700 var(--tsi-fs-body-sm)/1.2 var(--tsi-font-display); letter-spacing: var(--tsi-track-label); color: var(--tsi-text); }
-.tsi-tool--beasthandler .tsi-bh-request__line { font-size: var(--tsi-fs-body-sm); color: var(--tsi-text-muted); }
 
 /* ---------- A screen change fades in softly ---------- */
 @keyframes tsi-bh-fade-in { from { opacity: 0; } to { opacity: 1; } }
@@ -489,24 +450,73 @@ body.tsi-bh-phone .tsi-btn--primary:hover { filter: brightness(1.06); }
 .tsi-tool--beasthandler .tsi-bh-meet__go { min-width: 220px; min-height: 52px; font-size: 16px; }
 .tsi-tool--beasthandler .tsi-bh-meet__actions .tsi-btn,
 .tsi-tool--beasthandler .tsi-bh-meet__card .tsi-btn { min-height: var(--tsi-bh-tap); justify-content: center; }
-.tsi-tool--beasthandler .tsi-bh-meet__chips { display: flex; flex-wrap: wrap; gap: var(--tsi-space-2); }
-.tsi-tool--beasthandler .tsi-bh-meet__chip { min-height: var(--tsi-bh-tap); padding: 8px 14px; font: 700 var(--tsi-fs-label)/1.1 var(--tsi-font-display); letter-spacing: var(--tsi-track-label); text-transform: uppercase; color: var(--tsi-text-muted); background: rgba(255, 255, 255, .05); border: 1px solid var(--tsi-line-control); border-radius: var(--tsi-radius-pill); cursor: pointer; }
-.tsi-tool--beasthandler .tsi-bh-meet__chip:hover { border-color: var(--tsi-line-hover); color: var(--tsi-text); }
-.tsi-tool--beasthandler .tsi-bh-meet__chip--on { color: var(--tsi-gold); border-color: var(--tsi-gold); background: rgba(244, 205, 118, .12); }
+.tsi-tool--beasthandler .tsi-bh-meet__actions .tsi-btn[hidden],
+.tsi-tool--beasthandler .tsi-bh-meet__card .tsi-btn[hidden] { display: none; }
 .tsi-tool--beasthandler .tsi-bh-meet__about { display: grid; gap: 6px; min-height: 0; }
 .tsi-tool--beasthandler .tsi-bh-meet__about:empty { display: none; }
 .tsi-tool--beasthandler .tsi-bh-meet__about-name { margin: 0; font: 700 var(--tsi-fs-h3)/1.2 var(--tsi-font-display); letter-spacing: var(--tsi-track-heading); color: var(--tsi-gold); }
 .tsi-tool--beasthandler .tsi-bh-meet__about-where { font-style: italic; color: var(--tsi-text-muted); }
-.tsi-tool--beasthandler .tsi-bh-meet__about p, .tsi-tool--beasthandler .tsi-bh-meet__warn { font-size: var(--tsi-fs-body-sm); line-height: var(--tsi-lh-body); }
+.tsi-tool--beasthandler .tsi-bh-meet__about p { font-size: var(--tsi-fs-body-sm); line-height: var(--tsi-lh-body); }
 .tsi-tool--beasthandler .tsi-bh-meet__dots { list-style: none; margin: 0; padding: 0; display: flex; gap: 8px; }
 .tsi-tool--beasthandler .tsi-bh-meet__dot { width: 8px; height: 8px; border-radius: 50%; background: #353436; }
 .tsi-tool--beasthandler .tsi-bh-meet__dot--done { background: #b98f3d; }
 .tsi-tool--beasthandler .tsi-bh-meet__dot--on { background: var(--tsi-gold); box-shadow: 0 0 8px rgba(244, 205, 118, .6); }
 .tsi-tool--beasthandler .tsi-bh-meet--closing { min-height: 50vh; }
 .tsi-tool--beasthandler .tsi-bh-meet--fading { pointer-events: none; }
-.tsi-tool--beasthandler .tsi-bh-meet__refused { max-width: 46ch; text-align: left; }
-.tsi-tool--beasthandler .tsi-bh-meet__kept { margin: 0; font-size: var(--tsi-fs-body-sm); }
 .tsi-tool--beasthandler .tsi-bh[data-screen="meet"] .tsi-bh-sync { display: none; }
+
+/* ---------- The reveal: the subspecies medallions and their die, then the three personality cards ---------- */
+.tsi-tool--beasthandler .tsi-bh-medals { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--tsi-space-2); }
+@media (min-width: 480px) { .tsi-tool--beasthandler .tsi-bh-medals { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.tsi-tool--beasthandler .tsi-bh-medal {
+  display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 8px 12px;
+  font: 700 var(--tsi-fs-label)/1.15 var(--tsi-font-display); letter-spacing: var(--tsi-track-label); text-transform: uppercase;
+  color: var(--tsi-text-muted); background: rgba(255, 255, 255, .04); border: 1px solid var(--tsi-line-control); border-radius: var(--tsi-radius-pill);
+  transition: color var(--tsi-dur-base) var(--tsi-ease), border-color var(--tsi-dur-base) var(--tsi-ease), background var(--tsi-dur-base) var(--tsi-ease), box-shadow var(--tsi-dur-base) var(--tsi-ease), opacity var(--tsi-dur-base) var(--tsi-ease);
+}
+.tsi-tool--beasthandler .tsi-bh-medal__n { flex: none; display: grid; place-items: center; width: 24px; height: 24px; font: 700 12px/1 var(--tsi-font-display); color: var(--tsi-text-soft); background: #353436; border-radius: 50%; }
+.tsi-tool--beasthandler .tsi-bh-medal__name { min-width: 0; overflow-wrap: anywhere; }
+/* The gold marker: whichever medallion it is on is lit. */
+.tsi-tool--beasthandler .tsi-bh-medal--lit { color: var(--tsi-gold); border-color: var(--tsi-gold); background: rgba(244, 205, 118, .14); box-shadow: 0 0 14px rgba(244, 205, 118, .4); }
+.tsi-tool--beasthandler .tsi-bh-medal--lit .tsi-bh-medal__n { color: #1b1810; background: var(--tsi-gold); }
+.tsi-tool--beasthandler .tsi-bh-medals--landed .tsi-bh-medal:not(.tsi-bh-medal--landed) { opacity: .4; }
+.tsi-tool--beasthandler .tsi-bh-medal--landed { box-shadow: 0 0 22px rgba(244, 205, 118, .55); }
+.tsi-tool--beasthandler .tsi-bh-meet__rollrow { display: flex; align-items: center; justify-content: center; gap: var(--tsi-space-4); }
+.tsi-tool--beasthandler .tsi-bh-meet__rollrow .tsi-btn[hidden] { display: none; }
+/* Spoken to a screen reader only: what the die showed and where the marker landed. */
+.tsi-tool--beasthandler .tsi-bh-meet__status { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.tsi-tool--beasthandler .tsi-bh-die {
+  flex: none; display: grid; place-items: center; width: 64px; height: 64px;
+  font: 700 22px/1 var(--tsi-font-display); color: var(--tsi-gold);
+  background: radial-gradient(circle at 35% 30%, #2c2b2e, #161618 75%); border: 2px solid rgba(244, 205, 118, .55); border-radius: 16px;
+  box-shadow: inset 0 0 12px rgba(0, 0, 0, .5), 0 0 14px rgba(244, 205, 118, .12);
+}
+.tsi-tool--beasthandler .tsi-bh-die[data-state="rolling"] { color: var(--tsi-text); animation: tsi-bh-tumble 420ms linear infinite; }
+.tsi-tool--beasthandler .tsi-bh-die[data-state="landed"] { font-size: 28px; border-color: var(--tsi-gold); box-shadow: inset 0 0 12px rgba(0, 0, 0, .5), 0 0 18px rgba(244, 205, 118, .4); }
+@keyframes tsi-bh-tumble { 0% { transform: rotate(0) scale(1); } 25% { transform: rotate(9deg) scale(1.05); } 75% { transform: rotate(-9deg) scale(1.05); } 100% { transform: rotate(0) scale(1); } }
+.tsi-tool--beasthandler .tsi-bh-meet__about--in,
+.tsi-tool--beasthandler .tsi-bh-pcard__result--in { animation: tsi-bh-fade-in 600ms ease-out both; }
+.tsi-tool--beasthandler .tsi-bh-pcard { display: grid; gap: 8px; padding: var(--tsi-space-3) var(--tsi-space-4); background: rgba(0, 0, 0, .22); border: 1px solid var(--tsi-line); border-radius: var(--tsi-radius-md); }
+.tsi-tool--beasthandler .tsi-bh-pcard--rolled { border-color: rgba(244, 205, 118, .45); }
+.tsi-tool--beasthandler .tsi-bh-pcard__head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--tsi-space-2); }
+.tsi-tool--beasthandler .tsi-bh-pcard__label { margin: 0; font: 700 var(--tsi-fs-label)/1.2 var(--tsi-font-display); letter-spacing: var(--tsi-track-label); text-transform: uppercase; color: var(--tsi-gold-text); }
+.tsi-tool--beasthandler .tsi-bh-pcard__dice { font: 600 12px/1 var(--tsi-font-display); letter-spacing: var(--tsi-track-label); color: var(--tsi-text-soft); }
+.tsi-tool--beasthandler .tsi-bh-pcard__roll { display: flex; align-items: center; gap: var(--tsi-space-3); }
+.tsi-tool--beasthandler .tsi-bh-pcard .tsi-bh-die { width: 52px; height: 52px; font-size: 18px; border-radius: 14px; }
+.tsi-tool--beasthandler .tsi-bh-pcard .tsi-bh-die[data-state="landed"] { font-size: 22px; }
+.tsi-tool--beasthandler .tsi-bh-pcard .tsi-btn { min-width: 96px; }
+.tsi-tool--beasthandler .tsi-bh-pcard .tsi-btn[hidden] { display: none; }
+.tsi-tool--beasthandler .tsi-bh-pcard__result:empty { display: none; }
+.tsi-tool--beasthandler .tsi-bh-pcard__line { font: 700 var(--tsi-fs-lead)/1.3 var(--tsi-font-display); color: var(--tsi-text); }
+.tsi-tool--beasthandler .tsi-bh-pcard__note { margin-top: 4px; font-size: var(--tsi-fs-body-sm); font-style: italic; line-height: var(--tsi-lh-body); color: var(--tsi-text-muted); }
+@media (prefers-reduced-motion: reduce) {
+  /* Nothing tumbles or hops: the answer is shown with a short fade. */
+  .tsi-tool--beasthandler .tsi-bh-die[data-state="rolling"] { animation: none; }
+  .tsi-tool--beasthandler .tsi-bh-medal { transition: none; }
+  .tsi-tool--beasthandler .tsi-bh-meet__about--in,
+  .tsi-tool--beasthandler .tsi-bh-pcard__result--in { animation-duration: 150ms; }
+}
+.tsi-tool--beasthandler .tsi-bh-beast__bond--wait { color: var(--tsi-text-soft); font-style: italic; text-transform: none; letter-spacing: 0; font-weight: 600; }
 
 /* The black the screen fades to, with "Welcome to the Ironbow, <Name>!" on it. It sits above everything (pop-ups too). */
 .tsi-bh-curtain {
