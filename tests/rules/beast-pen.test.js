@@ -87,7 +87,7 @@
     t.same([house.days, house.costGP, house.costText, house.housesSpecies, house.options], [CR.houseDays, 0, '0', '*', []], 'House Beast Here: 3 days, no gold, any kind');
     t.same([f.functions[1].acclimatise, f.functions[1].instant, f.functions[1].costGP], [true, true, 0], 'Acclimatise With Beast is a roll at once, not an order with days');
     ['wyvern_roost', 'griffin_tower', 'dire_wolf_den'].forEach(function (id) { t.equal(BR.facility(bdata, id), null, id + ' is gone from the catalogue'); });
-    t.equal(bdata.facilities.length, 20, 'twenty facilities: the Pen replaced three');
+    t.equal(bdata.facilities.length, 18, 'eighteen facilities: the Pen replaced three and the Temple replaced three');
     t.equal(BR.isPlotFacility(bdata, PEN), false, 'it takes a construction slot');
     t.equal(BR.buildDaysForRequiredLevel(5, bdata), 21);
     var b = bastion(10);
@@ -99,7 +99,7 @@
     b.day = 31;
     t.same(BR.completeConstruction(b), [PEN]);
     t.same(b.creatures, [], 'nor does finishing it');
-    t.equal(BR.compendiumIndex(bdata.facilities, bdata.tools).items.length, 270, 'its orders add nothing to the Compendium');
+    t.equal(BR.compendiumIndex(bdata.facilities, bdata.tools).items.length, 255, 'its orders add nothing to the Compendium (270 before the Temple took the Shrines\' 15 charms and prayers out)');
   });
 
   test('one level only: no Upgrade, no unlock lines, and the facility panel says so', function (t) {

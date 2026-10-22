@@ -1136,7 +1136,7 @@
     return line;
   };
 
-  /* ---------- The Shrines' items, expeditions and Great Rites (pull request 8b) ----------
+  /* ---------- The Temple's items, expeditions and Great Rites (pull request 8b; the Shrines, now one Temple) ----------
      Harry's Shrine specification, 15 October 2026. The items are in the
      Travel bags; each charm's rule is in shared/data/party-items.js (offer).
      A tagged check (journey-events.js) offers the charms that fit it, once
@@ -1230,7 +1230,7 @@
     if (!Array.isArray(j.outbox)) j.outbox = [];
     j.outbox.push(B.riteMessage({
       riteId: rite.id, rite: rite.rite, day: day(state), at: new Date().toISOString(),
-      from: { code: 'DM', title: 'Shrine blessing', step: 'dm' },
+      from: { code: 'DM', title: 'Temple blessing', step: 'dm' },
       text: (info.name + ' given to the party for expedition ' + e.n + '.').slice(0, B.TEXT_MAX)
     }));
     var line = info.name + ' is with the party for expedition ' + e.n + ': ' + info.reminder + ' Sent to the Bastion.';
@@ -1315,7 +1315,7 @@
     return line;
   };
   /* The DM uses a Shrine item away from a check: one use, with its
-     reminder. Only the Shrines' items (use 'shrine') are used this way. */
+     reminder. Only the Temple's items (use 'shrine', a code word) are used this way. */
   J.useItem = function (state, kind) {
     var info = J.itemInfo(kind);
     if (!info || info.use !== 'shrine') return null;

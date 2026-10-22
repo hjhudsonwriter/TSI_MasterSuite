@@ -137,7 +137,7 @@
 
   test('all three protections are available; Fresh Fish sails only on voyages of 2 days or less', function (t) {
     t.same(C.protections.map(function (p) { return [p.facId, p.cut, p.consumes === true, p.available]; }),
-      [['barracks', 5, true, true], ['watchtower', 5, false, true], ['shrine_pelagos', 10, true, true]], 'all three are on: the Blessing (pull request 8b), then the Convoy and the Approaches (20 October 2026)');
+      [['barracks', 5, true, true], ['watchtower', 5, false, true], ['temple', 10, true, true]], 'all three are on: the Blessing (pull request 8b), then the Convoy and the Approaches (20 October 2026)');
     t.same(BR.voyageProtections(bastion(1), bdata), [], 'none held: none applies');
     t.equal(BR.goodShipBlocker(bdata, 'fresh_fish', BR.portRoute(bdata, 'timberport')), 'Fresh Fish only ships on a voyage of 2 days or less (it doesn\'t keep longer), and this one takes 7 days.');
     t.equal(BR.goodShipBlocker(bdata, 'fresh_fish', { outDays: 2 }), '', '2 days: it sails');

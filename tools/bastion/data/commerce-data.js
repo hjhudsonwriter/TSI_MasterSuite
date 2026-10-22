@@ -147,11 +147,11 @@ window.TSI_DATA.bastionCommerce = {
      Convoy (the Barracks' Guard Commercial Convoy: 1 kept, used by the next
      ship) and Approaches (the Watchtower's Protect Maritime Approaches: 7
      days, every ship that sails in them) have their orders since 20 October
-     2026; the Blessing of Pelagos since the Shrines. */
+     2026; the Blessing of Pelagos since the Shrines (the Temple's Bless Commercial Shipment, since 22 October 2026). */
   protections: [
     { id: 'commercial_convoy', label: 'Commercial Convoy', facId: 'barracks', order: 'Guard Commercial Convoy', cut: 5, consumes: true, available: true },
     { id: 'maritime_approaches', label: 'Protected Maritime Approaches', facId: 'watchtower', order: 'Protect Maritime Approaches', cut: 5, available: true },
-    { id: 'pelagos_blessing', label: 'Blessing of Pelagos', facId: 'shrine_pelagos', order: 'Bless Commercial Shipment', cut: 10, consumes: true, available: true }
+    { id: 'pelagos_blessing', label: 'Blessing of Pelagos', facId: 'temple', order: 'Bless Commercial Shipment', cut: 10, consumes: true, available: true }
   ],
 
   /* ---------- The Dock ----------

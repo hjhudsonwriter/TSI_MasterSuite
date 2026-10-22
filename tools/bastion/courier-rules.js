@@ -288,9 +288,9 @@
     if (!R.courierPoints(s, data).length) return 'The Courier Exchange reaches no town yet (courier-data.js).';
     var stock = R.courierStock(s, data);
     if (!stock.some(function (g) { return g.have > 0; })) {
-      /* The first two by name, then "and the Shrines' items" (pull request 8b). */
+      /* The first two by name, then "and the Temple's items" (pull request 8b). */
       var names = stock.slice(0, 2).map(function (g) { var x = R.good(data, g.goodId); return x && x.kind === 'supply' ? (typeof x.plural === 'string' && x.plural ? x.plural : g.name + 's') : g.name; });
-      var more = stock.length > 2 ? ' and the Shrines\' items' : '';
+      var more = stock.length > 2 ? ' and the Temple\'s items' : '';
       return 'The Warehouse has nothing the courier carries' + (names.length ? ' (' + names.join(', ') + more + ')' : '') + '.';
     }
     return '';

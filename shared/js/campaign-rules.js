@@ -59,7 +59,7 @@
        'cancel': the facility's orders end, with a refund (the Barracks, Armoury,
                  Watchtower, War Room and Menagerie);
        'move':   the facility's orders carry on somewhere else (the Library and
-                 Arcane Laboratory's to the Workshop; the Shrines' to the Temple;
+                 Arcane Laboratory's to the Workshop; the Shrines' blessings to the Temple;
                  the Wyvern Roost, Griffin Tower and Dire Wolf Den's House orders to
                  the Beast Pen), EXCEPT the few that end, which
                  C.cancelledByConversion names exactly.
@@ -75,12 +75,16 @@
     shrine_telluria: 'move', shrine_aurush: 'move', shrine_pelagos: 'move',
     wyvern_roost: 'move', griffin_tower: 'move', dire_wolf_den: 'move'
   };
-  /* The Shrines' orders that end: the proposed default in
-     docs/strip-back/F-temple-hall-dock.md, where the Temple keeps three blessings
-     for each god and drops the Craft charms, Purification Incense, Aquatic
-     Protection Charm and Bless Bastion Foundations. Change this list in the same
-     commit as the step that settles the Shrines, if that step decides otherwise. */
-  var SHRINE_ORDERS_THAT_END = ['craft', 'prepare_purification_incense', 'prepare_aquatic_protection_charm', 'bless_bastion_foundations'];
+  /* The Shrines' orders that carry on at the Temple (step S11, Harry, 22 October 2026): the nine blessings it gives, three
+     for each god (the same ids as the Temple's blessing functions in tools/bastion/data/facilities-data.js, which the step
+     shrinesToTemple in tools/bastion/strip-back-rules.js reads; a test keeps the two the same). Every other Shrine order
+     ends with its cost given back: Craft, every Pray (the Temple's Pray is instant), Purification Incense, the Aquatic
+     Protection Charm and Bless Bastion Foundations. */
+  var SHRINE_ORDERS_THAT_CARRY_ON = {
+    shrine_telluria: ['prepare_earthward_talisman', 'prepare_rootguard_salve', 'great_rite_telluria'],
+    shrine_aurush: ['prepare_blessed_lantern', 'consecrate_expedition_supplies', 'great_rite_aurush'],
+    shrine_pelagos: ['bless_voyage', 'bless_commercial_shipment', 'great_rite_pelagos']
+  };
   /* The House orders the Beast Pen step moves (the same lists as HOUSE_FNS in tools/bastion/strip-back-rules.js). */
   var BEAST_HOUSE_ORDERS = { wyvern_roost: ['house_elara_wyvern', 'house_wyvern'], griffin_tower: ['house_griffin'], dire_wolf_den: ['house_dire_wolf'] };
   /* Will converting a version 3 Bastion CANCEL this pending order? (Not move it, not keep it.) */
@@ -89,12 +93,7 @@
     if (RETIRED_FACILITIES[o.facId] === 'cancel') return true;
     /* Whatever a place's orders do, its Upgrade orders end (the place is going; they cost no gold). */
     if (isObj(o.meta) && o.meta.kind === 'upgrade') return true;
-    if (/^shrine_/.test(o.facId)) {
-      if (SHRINE_ORDERS_THAT_END.indexOf(o.fnId) !== -1) return true;
-      /* A prayer: only the Favour prayer (option 3) carries on, as the Temple's Pray. */
-      if (o.fnId === 'pray') return isObj(o.chosen) && isObj(o.chosen.special) && o.chosen.special.type !== 'favour_blessing';
-      return false;
-    }
+    if (SHRINE_ORDERS_THAT_CARRY_ON[o.facId]) return SHRINE_ORDERS_THAT_CARRY_ON[o.facId].indexOf(o.fnId) === -1;
     /* A creature building: its House orders carry on at the Beast Pen (rehomeBeasts); training, riding and flight orders end. */
     if (BEAST_HOUSE_ORDERS[o.facId]) return BEAST_HOUSE_ORDERS[o.facId].indexOf(o.fnId) === -1;
     /* The Library & Scriptorium and the Arcane Laboratory: their jobs go to the Workshop's Scholar and Alchemist. */

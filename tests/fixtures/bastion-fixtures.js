@@ -4005,7 +4005,6 @@ window.TSI_FIXTURES = {
   "lastEventDay": 29,
   "beast": {
    "campaignId": "HvCampaign2610",
-   "accept": true,
    "handlers": [
     {
      "id": "kaelen",
@@ -4020,6 +4019,7 @@ window.TSI_FIXTURES = {
      "since": 10
     }
    ],
+   "accept": true,
    "done": {
     "cmd-hv-0001": {
      "r": "applied",

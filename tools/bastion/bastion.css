@@ -582,7 +582,6 @@
 .tsi-page--bastion .tsi-bas-influence__sup-label { font: 400 10px var(--tsi-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--tsi-text-soft); }
 .tsi-page--bastion .tsi-bas-influence__support { font: 400 13px var(--tsi-font-mono); color: var(--tsi-text); }
 .tsi-page--bastion .tsi-bas-influence__support b { color: var(--tsi-gold-text); }
-.tsi-page--bastion .tsi-bas-favour { display: flex; flex-direction: column; gap: 2px; }
 
 /* ---------- Panels ---------- */
 .tsi-page--bastion .tsi-bas-card {
@@ -811,6 +810,33 @@
 .tsi-page--bastion .tsi-bas-god-icon--telluria { color: var(--tsi-telluria); filter: drop-shadow(0 0 4px rgba(55, 200, 95, .6)); }
 .tsi-page--bastion .tsi-bas-god-icon--aurush { color: var(--tsi-aurush); filter: drop-shadow(0 0 4px rgba(235, 55, 55, .6)); }
 .tsi-page--bastion .tsi-bas-god-icon--pelagos { color: var(--tsi-pelagos); filter: drop-shadow(0 0 4px rgba(60, 145, 255, .6)); }
+/* The Temple (22 October 2026): the panel split into thirds, one for each god, each with its Favour bar, Pray and Receive Blessing. */
+.tsi-page--bastion .tsi-bas-temple { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 12px; }
+.tsi-page--bastion .tsi-bas-temple__god { display: flex; flex-direction: column; gap: 10px; min-width: 0; padding: 12px; border: 1px solid var(--tsi-line-faint); border-radius: var(--tsi-radius-md); background: var(--tsi-inset-fill); }
+.tsi-page--bastion .tsi-bas-temple__art { display: block; width: 100%; height: clamp(84px, 15vh, 140px); object-fit: cover; border-radius: 8px; border: 1px solid rgba(214, 178, 94, .5); }
+.tsi-page--bastion .tsi-bas-temple__name { display: flex; align-items: center; gap: 8px; margin: 0; font: 700 18px var(--tsi-font-display); letter-spacing: var(--tsi-track-heading); text-transform: uppercase; color: var(--tsi-gold-text); }
+.tsi-page--bastion .tsi-bas-temple__name .tsi-bas-god-icon { width: 22px; height: 22px; }
+.tsi-page--bastion .tsi-bas-temple__favour { display: grid; grid-template-columns: minmax(0, 1fr) 46px; align-items: center; gap: 8px; }
+.tsi-page--bastion .tsi-bas-temple__bar { height: 14px; }
+.tsi-page--bastion .tsi-bas-temple__god--telluria .tsi-bas-bar-fill { background: linear-gradient(90deg, rgba(55, 200, 95, .35), var(--tsi-telluria)); }
+.tsi-page--bastion .tsi-bas-temple__god--aurush .tsi-bas-bar-fill { background: linear-gradient(90deg, rgba(235, 55, 55, .35), var(--tsi-aurush)); }
+.tsi-page--bastion .tsi-bas-temple__god--pelagos .tsi-bas-bar-fill { background: linear-gradient(90deg, rgba(60, 145, 255, .35), var(--tsi-pelagos)); }
+.tsi-page--bastion .tsi-bas-temple__pct { font: 400 14px var(--tsi-font-mono); text-align: right; color: var(--tsi-text); }
+.tsi-page--bastion .tsi-bas-temple__pray { align-self: flex-start; }
+.tsi-page--bastion .tsi-bas-temple__said { min-height: 2.8em; font-size: var(--tsi-fs-body-sm); color: var(--tsi-text-muted); }
+.tsi-page--bastion .tsi-bas-temple__give { display: flex; flex-direction: column; gap: 8px; padding-top: 10px; border-top: 1px solid var(--tsi-line-faint); }
+.tsi-page--bastion .tsi-bas-temple__select { width: 100%; max-width: 100%; }
+.tsi-page--bastion .tsi-bas-temple__select:disabled,
+.tsi-page--bastion .tsi-bas-temple__receive:disabled { opacity: .5; cursor: not-allowed; }
+.tsi-page--bastion .tsi-bas-temple__receive { align-self: flex-start; }
+.tsi-page--bastion .tsi-bas-temple__note { min-height: 3.6em; font-size: var(--tsi-fs-body-sm); color: var(--tsi-text-muted); }
+.tsi-page--bastion .tsi-bas-temple__why { font-size: var(--tsi-fs-body-sm); color: var(--tsi-text-muted); }
+.tsi-page--bastion .tsi-bas-temple__held,
+.tsi-page--bastion .tsi-bas-temple__rites { margin: 0; font-size: var(--tsi-fs-body-sm); }
+@media (max-width: 820px) { .tsi-page--bastion .tsi-bas-temple { grid-template-columns: minmax(0, 1fr); } }
+/* A tile or picture made of several paintings side by side (the Temple's three Shrines). */
+.tsi-page--bastion .tsi-bas-artstrips { display: flex; overflow: hidden; }
+.tsi-page--bastion .tsi-bas-artstrips__img { display: block; flex: 1 1 0; min-width: 0; height: 100%; object-fit: cover; }
 .tsi-page--bastion .tsi-bas-asset {
   display: grid;
   grid-template-columns: 1fr auto;

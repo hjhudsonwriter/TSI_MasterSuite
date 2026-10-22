@@ -39,8 +39,8 @@
 
   group('Bastion: content');
 
-  test('20 facilities (the overhaul, 13 October 2026, and the Beast Pen replacing the three creature buildings, 22 October 2026: none still in development: pull request 3 opened the Fishery and Timber Yard, pull request 6 the Courier Exchange and 19 October 2026 the Stone Quarry and the Weavers\' Hall), 12 tool tables (9 can be artisan tools), 11 events, 7 clans, 270 compendium items (271 entries)', function (t) {
-    t.equal(data.facilities.length, 20);
+  test('18 facilities (the overhaul, 13 October 2026, the Beast Pen replacing the three creature buildings and the Temple replacing the three Shrines, 22 October 2026: none still in development: pull request 3 opened the Fishery and Timber Yard, pull request 6 the Courier Exchange and 19 October 2026 the Stone Quarry and the Weavers\' Hall), 12 tool tables (9 can be artisan tools), 11 events, 7 clans, 255 compendium items (271 entries)', function (t) {
+    t.equal(data.facilities.length, 18);
     /* Pull request 7 (Harry, 14 October 2026) opened the Wyvern Roost, Griffin
        Tower and Dire Wolf Den, so only these two are still in development. */
     /* The Stone Quarry & Masonworks and the Weavers' Hall opened on 19 October 2026: none is left. */
@@ -51,7 +51,8 @@
     t.same(T.bastion.clans.map(function (c) { return c.name; }), ['Blackstone', 'Bacca', 'Farmer', 'Slade', 'Molten', 'Rowthorn', 'Karr']);
     /* The old tool's 265, less Regiment (100), plus the six War Room units of the war's phase 2
        (the old Regiment (100) entry is kept in the data, but nothing lists it any more). */
-    t.equal(R.compendiumIndex(data.facilities, data.tools).items.length, 270);
+    /* Then the Shrines' 15 (six Craft charms and nine prayers) left with the Temple (22 October 2026). */
+    t.equal(R.compendiumIndex(data.facilities, data.tools).items.length, 255);
     t.equal(Object.keys(T.bastionCompendium.items).length, 271);
     /* The War Room's Recruit list is the war data's, in the same order. */
     var warRoom = R.facility(data, 'war_room').functions[0].options.map(function (o) { return o.label; });
@@ -72,22 +73,27 @@
     t.equal(m.base, 'map/bastion_base.jpg');
     t.same([m.width, m.height], [3000, 1250], 'Harry\'s new painting, 12 October 2026');
     m.overlays.forEach(function (o) { t.ok(R.facility(data, o.fac), o.fac); t.ok(/^map\/overlays\/[a-z_]+\.png$/.test(o.pic), o.pic); });
-    t.same(m.overlays.map(function (o) { return o.fac; }), ['library_scriptorium', 'arcane_laboratory', 'herbal_gardens', 'war_room', 'hall_of_emissaries', 'shrine_aurush', 'shrine_telluria', 'shrine_pelagos',
+    t.same(m.overlays.map(function (o) { return o.fac; }), ['library_scriptorium', 'arcane_laboratory', 'herbal_gardens', 'war_room', 'hall_of_emissaries', 'temple', 'temple', 'temple',
       'beast_pen', 'weavers_hall', 'stone_masonworks', 'fishery_smokehouse', 'timber_sawmill', 'courier_exchange']);
     t.equal(m.overlays.filter(function (o) { return o.fac === 'menagerie'; }).length, 0, 'no map picture for the Menagerie');
     t.ok(T.bastion.mapLabels.courier_exchange, 'the Courier Exchange has a place for its label');
+    t.same(m.overlays.filter(function (o) { return o.fac === 'temple'; }).map(function (o) { return o.pic; }), ['map/overlays/shrine_of_aurush.png', 'map/overlays/shrine_of_telluria.png', 'map/overlays/shrine_of_pelagos.png'], 'the Temple draws the three Shrine buildings');
+    t.same(T.bastion.facilityImages.temple, ['shrine_of_telluria.png', 'shrine_of_aurush.png', 'shrine_of_pelagos.png'], 'and its tile shows the three Shrine paintings side by side');
+    t.same([T.bastion.mapLabels.temple.x, T.bastion.mapLabels.temple.y, T.bastion.mapLabels.temple.also], [1275, 532, [{ x: 2252, y: 722 }, { x: 2668, y: 840 }]], 'a label at each of the three buildings');
   });
 
   test('the map overlays: one per built facility with a picture, a shared picture drawn once, darkened while Under Repair', function (t) {
     var s = fresh();
     t.same(R.mapOverlays(s, data), [], 'the starting five are in the base painting');
-    s.builtExtras = ['shrine_pelagos', 'herbal_gardens', 'menagerie', 'library_scriptorium'].map(function (id) { return { facId: id, status: 'built' }; });
+    s.builtExtras = ['temple', 'herbal_gardens', 'menagerie', 'library_scriptorium'].map(function (id) { return { facId: id, status: 'built' }; });
     s.builtExtras.push({ facId: 'war_room', status: 'building', startDay: 1, readyDay: 36 });
     t.same(R.mapOverlays(s, data).map(function (o) { return [o.pic, o.facs]; }), [
       ['map/overlays/library.png', ['library_scriptorium']],
       ['map/overlays/greenhouse.png', ['herbal_gardens']],
-      ['map/overlays/shrine_of_pelagos.png', ['shrine_pelagos']]
-    ], 'in the data\'s order; nothing for the Menagerie or a building still being built');
+      ['map/overlays/shrine_of_aurush.png', ['temple']],
+      ['map/overlays/shrine_of_telluria.png', ['temple']],
+      ['map/overlays/shrine_of_pelagos.png', ['temple']]
+    ], 'in the data\'s order (the Temple draws all three Shrine buildings); nothing for the Menagerie or a building still being built');
     s.repairs = { herbal_gardens: s.day + 3 };
     t.same(R.mapOverlays(s, data).filter(function (o) { return o.repair; }).map(function (o) { return o.facs; }), [['herbal_gardens']], 'darkened while Under Repair');
     /* No two facilities share a picture since the overhaul; the rule still draws a shared one once. */
@@ -182,7 +188,7 @@
   });
 
   test('lowering the level keeps every building, marking the extra ones over capacity (BAS-04, B8)', function (t) {
-    var s = built(fresh(), ['library_scriptorium', 'arcane_laboratory', 'herbal_gardens', 'hall_of_emissaries', 'shrine_aurush']);
+    var s = built(fresh(), ['library_scriptorium', 'arcane_laboratory', 'herbal_gardens', 'hall_of_emissaries', 'temple']);
     var rows = R.slotRows(s, 13);
     t.equal(rows.over, 0);
     rows = R.slotRows(s, 9);
@@ -191,7 +197,7 @@
     t.equal(rows.over, 1);
     t.same(rows.rows.map(function (r) { return r.overCapacity; }), [false, false, false, false, true]);
     t.ok(rows.rows.every(function (r) { return !r.canBuild; }), 'no room to build');
-    t.ok(R.builtFacilityIds(s, data).indexOf('shrine_aurush') !== -1, 'still built and working');
+    t.ok(R.builtFacilityIds(s, data).indexOf('temple') !== -1, 'still built and working');
     rows = R.slotRows(s, 13);
     t.equal(rows.over, 0, 'back up: nothing over');
   });
@@ -326,21 +332,6 @@
     t.equal(R.metaLine(s.military[0]), 'x2 • War Room');
     R.completeSimpleOrder(s, data, { facId: 'menagerie', fnId: 'recruit_beast', optionLabel: 'Ape', label: 'x' }, dice([0.1]));
     t.same(s.defenderBeasts, [{ name: 'Ape', qty: 1, source: 'Menagerie' }]);
-  });
-
-  test('shrine prayers: 1d20% favour, a 1d10 hint on 4–7, a 1d6 rest on 5–6', function (t) {
-    var s = fresh();
-    var pray = R.fn(R.facility(data, 'shrine_telluria'), 'pray');
-    var lines = R.completeSimpleOrder(s, data, { facId: 'shrine_telluria', fnId: 'pray', chosen: pray.options[2], label: 'L' }, dice([0.5]));
-    t.equal(s.favour.telluria, 11);
-    t.same(lines, [['Order Completed', 'L → Rolled 1d20 = 11. Added +11% to TELLURIA favour.']]);
-    t.same(R.completeSimpleOrder(s, data, { facId: 'shrine_telluria', fnId: 'pray', chosen: pray.options[0], label: 'L' }, dice([0.4])),
-      [['Order Completed', 'L → Rolled 1d10 = 5. A hint is granted (DM decides the hint).']]);
-    t.same(R.completeSimpleOrder(s, data, { facId: 'shrine_telluria', fnId: 'pray', chosen: pray.options[1], label: 'L' }, dice([0.1])),
-      [['Order Completed', 'L → Rolled 1d6 = 1. No rest granted.']]);
-    s.favour.telluria = 95;
-    R.completeSimpleOrder(s, data, { facId: 'shrine_telluria', fnId: 'pray', chosen: pray.options[2], label: 'L' }, dice([0.99]));
-    t.equal(s.favour.telluria, 100, 'favour stops at 100%');
   });
 
   test('other orders land in the warehouse; the same item adds to its count', function (t) {
@@ -1041,7 +1032,7 @@
     t.equal(R.roll20Url('Bag of Holding'), 'https://roll20.net/compendium/dnd5e/Bag%20of%20Holding');
     var out = R.compendiumExport(idx, T.bastionCompendium.items);
     t.equal(out.filled, 0);
-    t.equal(out.kept + out.stubbed, 270);
+    t.equal(out.kept + out.stubbed, 255);
     t.equal(out.kept, 68);
     t.equal(out.file.version, 1);
     t.equal(T.bastion.compendiumCards.length, 36);
@@ -1431,7 +1422,7 @@
     var plain = R.fromSave(v2(function (b) { b.builtExtras = [{ facId: 'shrine_aurush', status: 'built' }]; }), data);
     t.same(plain.migration.v3, { day: 12, lines: [], shown: true }, 'nothing changed: no notice');
     t.equal(plain.log.filter(function (l) { return l.title === 'Facilities'; }).length, 0);
-    t.same(slots(plain), ['shrine_aurush']);
+    t.same(slots(plain), ['temple'], 'a Shrine in a version 2 save is the Temple once the Strip Back conversion has run (22 October 2026)');
   });
 
   test('new orders: Alchemy and Greenhouse Harvest need party level 9; a facility still in development can\'t be built; a plot facility can\'t go in a special slot', function (t) {
@@ -1785,58 +1776,24 @@
       ['Geographical Scriptures', 'Religious Scriptures', 'Combat Scriptures', 'Political scriptures'], 'the scripture choices are unchanged');
   });
 
-  /* Pull request 8b (Harry's Shrine specification, 15 October 2026). */
-  test('the Shrines at Levels 2 to 5: Favour 0 / 5 / 10 / 25, taken once when the order starts; items into the Warehouse; Craft and Pray unchanged', function (t) {
-    var s = plots(9, [], ['shrine_telluria', 'shrine_aurush', 'shrine_pelagos']);
-    t.same(['shrine_telluria', 'shrine_aurush', 'shrine_pelagos'].map(function (id) { return R.facility(data, id).functions.map(function (f) { return [f.id, f.requiredFacilityLevel || 1, f.days, f.favourCost || 0]; }); }), [
-      [['craft', 1, 5, 0], ['pray', 1, 1, 0], ['prepare_earthward_talisman', 2, 3, 0], ['prepare_rootguard_salve', 3, 4, 5], ['bless_bastion_foundations', 4, 5, 10], ['great_rite_telluria', 5, 7, 25]],
-      [['craft', 1, 5, 0], ['pray', 1, 1, 0], ['prepare_blessed_lantern', 2, 3, 0], ['prepare_purification_incense', 3, 4, 5], ['consecrate_expedition_supplies', 4, 5, 10], ['great_rite_aurush', 5, 7, 25]],
-      [['craft', 1, 5, 0], ['pray', 1, 1, 0], ['bless_voyage', 2, 3, 0], ['prepare_aquatic_protection_charm', 3, 4, 5], ['bless_commercial_shipment', 4, 5, 10], ['great_rite_pelagos', 5, 7, 25]]
-    ]);
-    t.equal(R.issueOrder(s, data, 'shrine_telluria', 'prepare_earthward_talisman', 0, dice([0.3])).message, 'Needs Level 2.');
-    s.facilityLevels.shrine_telluria = 3;
-    s.facilityLevels.shrine_aurush = 4;
-    s.favour = { telluria: 4, aurush: 30, pelagos: 0 };
-    var o = order(s, 'shrine_telluria', 'prepare_earthward_talisman', 0);
-    t.same([o.dueDay, s.favour.telluria], [13, 4], 'Level 2: no Favour');
-    t.same(finish(s, o), [['Order Completed', 'Shrine of Telluria: Prepare Earthward Talisman → Added to Warehouse: 1 Earthward Talisman.']]);
-    var gold = s.treasuryGP;
-    var res = R.issueOrder(s, data, 'shrine_telluria', 'prepare_rootguard_salve', 0, dice([0.3]));
-    t.same([res.ok, res.message, s.favour.telluria, s.pendingOrders.length], [false, 'Needs 5% of Telluria\'s Favour; the Ironbow has 4%.', 4, 0], 'refused: nothing taken');
-    s.favour.telluria = 7;
-    var r2 = R.issueOrder(s, data, 'shrine_telluria', 'prepare_rootguard_salve', 0, dice([0.3]));
-    o = s.pendingOrders[s.pendingOrders.length - 1];
-    t.same([s.favour.telluria, o.favourCost, o.dueDay, s.treasuryGP], [2, 5, 14, gold]);
-    t.ok(/5% of Telluria's Favour spent \(now 2%\)\.$/.test(r2.log[1]), r2.log[1]);
-    var r3 = R.issueOrder(s, data, 'shrine_aurush', 'consecrate_expedition_supplies', 0, dice([0.7]));
-    t.ok(r3.ok, r3.message);
-    var cons = s.pendingOrders[s.pendingOrders.length - 1];
-    t.equal(s.favour.aurush, 20, 'Level 4: 10%');
-    finish(s, o);
-    t.same([R.goodsQty(s, 'rootguard_salve'), R.goodsAmountText(data, 'rootguard_salve', 2), R.goodsAmountText(data, 'purification_incense', 1)], [2, '2 doses of Rootguard Salve', '1 Purification Incense']);
-    t.equal(s.pendingOrders.length, 1, 'the Aurush order is still waiting');
-    R.cancelOrder(s, cons.id, data);
-    t.equal(s.pendingOrders.length, 0);
-    t.equal(s.favour.aurush, 20, 'Cancel gives no Favour back (as gold)');
-    s.facilityLevels.shrine_telluria = 4;
-    var w = R.issueOrder(s, data, 'shrine_telluria', 'bless_bastion_foundations', 0, dice([0.3]));
-    t.same([w.ok, w.message, s.favour.telluria], [false, 'Not available yet', 2], 'Bless Bastion Foundations: no environmental event yet');
-    t.ok(/no Bastion event damages a facility by natural causes yet/.test(R.fnAvailable(s, R.facility(data, 'shrine_telluria'), R.fn(R.facility(data, 'shrine_telluria'), 'bless_bastion_foundations')).why));
-  });
-
-  test('a Great Rite waits at the Ironbow, once; a Blessing of Pelagos is held for the Dock; both survive a reload', function (t) {
-    var s = plots(17, [], ['shrine_aurush', 'shrine_pelagos']);
-    s.facilityLevels.shrine_aurush = 5;
-    s.facilityLevels.shrine_pelagos = 4;
+  /* Pull request 8b (Harry's Shrine specification, 15 October 2026), changed by the Strip Back Overhaul (22 October 2026): the Shrines are
+     one Temple, whose blessings happen at once (tests/rules/temple.test.js). What stays here is an order carried over from a Shrine. */
+  test('an order carried over from a Shrine completes at the Temple: a Great Rite waits at the Ironbow, once; a Blessing of Pelagos is held for the Dock; both survive a reload', function (t) {
+    var s = plots(17, [], ['temple']);
     s.favour = { telluria: 0, aurush: 30, pelagos: 25 };
-    var o = order(s, 'shrine_aurush', 'great_rite_aurush', 0);
-    t.same([o.dueDay, s.favour.aurush], [17, 5]);
-    t.same(R.completeSimpleOrder(s, data, o, dice([0.3])), [['Order Completed', 'Shrine of Aurush: Great Rite of Aurush → Cleansing Radiance waits at the Ironbow until the DM gives it to the party on an expedition.']]);
+    function carried(id, fnId) {
+      var fn = R.fn(R.facility(data, 'temple'), fnId);
+      var o = { id: id, facId: 'temple', fnId: fnId, chosen: null, optionLabel: null, notes: '', label: 'Temple: ' + fn.label, costGP: 0, issuedDay: 10, dueDay: 17, favourCost: 25 };
+      s.pendingOrders.push(o);
+      return o;
+    }
+    var o = carried('o1', 'great_rite_aurush');
+    t.same(R.completeSimpleOrder(s, data, o, dice([0.3])), [['Order Completed', 'Temple: Great Rite of Aurush → Cleansing Radiance waits at the Ironbow until the DM gives it to the party on an expedition.']]);
     R.completeSimpleOrder(s, data, o, dice([0.3]));
     t.same(s.greatRites, [{ id: 'rite-' + o.id, rite: 'cleansing_radiance', god: 'aurush', madeDay: 10, status: 'waiting' }], 'once, however often it completes');
     R.removeOrder(s, o.id);
-    var b = order(s, 'shrine_pelagos', 'bless_commercial_shipment', 0);
-    t.same(finish(s, b), [['Order Completed', 'Shrine of Pelagos: Bless Commercial Shipment → A Blessing of Pelagos waits for the next ship the Dock sends with cargo (1 held).']]);
+    var b = carried('o2', 'bless_commercial_shipment');
+    t.same(finish(s, b), [['Order Completed', 'Temple: Bless Commercial Shipment → A Blessing of Pelagos waits for the next ship the Dock sends with cargo (1 held).']]);
     t.same(s.tradeNetwork.protections, { pelagos_blessing: { charges: 1 } });
     var back = R.fromSave(JSON.parse(JSON.stringify(R.toSave(s))), data);
     t.same([back.greatRites, back.tradeNetwork.protections], [s.greatRites, s.tradeNetwork.protections]);

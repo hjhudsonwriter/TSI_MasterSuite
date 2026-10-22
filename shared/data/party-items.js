@@ -48,7 +48,7 @@ window.TSI_DATA.partyItems = {
     usesEach: 1,
     unit: "talisman",
     units: "talismans",
-    text: "+2 to one saving throw against a nonmagical natural-terrain hazard (from the Shrine of Telluria).",
+    text: "+2 to one saving throw against a nonmagical natural-terrain hazard (from the Temple).",
     offer: { tag: 'terrain', skill: 'saving throw', effect: '+2 to this saving throw' }
   },
   rootguard_salve: {
@@ -58,7 +58,7 @@ window.TSI_DATA.partyItems = {
     usesEach: 1,
     unit: "dose",
     units: "doses",
-    text: "Advantage on one saving throw against being Restrained by nonmagical vegetation (from the Shrine of Telluria).",
+    text: "Advantage on one saving throw against being Restrained by nonmagical vegetation (from the Temple).",
     offer: { tag: 'vegetation', skill: 'saving throw', effect: 'advantage on this saving throw' }
   },
   blessed_lantern: {
@@ -68,7 +68,7 @@ window.TSI_DATA.partyItems = {
     usesEach: 3,
     unit: "day of light",
     units: "days of light",
-    text: "Fuel-free light: bright light 20 ft and dim light another 20 ft. Each lantern gives three days of light (from the Shrine of Aurush)."
+    text: "Fuel-free light: bright light 20 ft and dim light another 20 ft. Each lantern gives three days of light (from the Temple)."
   },
   purification_incense: {
     name: "Purification Incense",
@@ -77,7 +77,7 @@ window.TSI_DATA.partyItems = {
     usesEach: 1,
     unit: "portion",
     units: "portions",
-    text: "Advantage on one saving throw against nonmagical poison or disease (from the Shrine of Aurush)."
+    text: "Advantage on one saving throw against nonmagical poison or disease (from the Temple)."
   },
   cleansing_portion: {
     name: "Cleansing Portion",
@@ -86,7 +86,7 @@ window.TSI_DATA.partyItems = {
     usesEach: 1,
     unit: "portion",
     units: "portions",
-    text: "Removes the ordinary Poisoned condition from one creature. It heals no hit points and cures no disease or curse (from the Shrine of Aurush)."
+    text: "Removes the ordinary Poisoned condition from one creature. It heals no hit points and cures no disease or curse (from the Temple)."
   },
   voyage_blessing: {
     name: "Voyage Blessing",
@@ -95,7 +95,7 @@ window.TSI_DATA.partyItems = {
     usesEach: 1,
     unit: "blessing",
     units: "blessings",
-    text: "+2 to one navigation or maritime hazard check during an expedition (from the Shrine of Pelagos).",
+    text: "+2 to one navigation or maritime hazard check during an expedition (from the Temple).",
     offer: { tag: 'water', skill: '', effect: '+2 to this check' }
   },
   aquatic_protection_charm: {
@@ -105,7 +105,7 @@ window.TSI_DATA.partyItems = {
     usesEach: 1,
     unit: "charm",
     units: "charms",
-    text: "Advantage on one Athletics check involving swimming, currents or a nonmagical water hazard (from the Shrine of Pelagos).",
+    text: "Advantage on one Athletics check involving swimming, currents or a nonmagical water hazard (from the Temple).",
     offer: { tag: 'water', skill: 'Athletics', effect: 'advantage on this check' }
   },
   /* Herbs and roots from the Herbal Gardens (Harry, 20 October 2026): only

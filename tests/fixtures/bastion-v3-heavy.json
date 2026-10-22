@@ -2659,7 +2659,6 @@
         "lastEventDay": 29,
         "beast": {
           "campaignId": "HvCampaign2610",
-          "accept": true,
           "handlers": [
             {
               "id": "kaelen",
@@ -2674,6 +2673,7 @@
               "since": 10
             }
           ],
+          "accept": true,
           "done": {
             "cmd-hv-0001": {
               "r": "applied",

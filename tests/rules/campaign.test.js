@@ -29,12 +29,13 @@
     ED.provinces.forEach(function (p) { t.equal(REG[p.id].label, p.label, p.id); });
     var clans = T.bastion.clans.map(function (c) { return c.key; }).sort();
     t.same(Object.keys(REG).map(function (id) { return REG[id].clanKey; }).sort(), clans, 'one region for each of the Bastion\'s seven Clans');
-    var gods = T.bastion.gods.map(function (g) { return g.key; });
+    var temple = BR.templeGods(bdata);
+    var gods = temple.map(function (g) { return g.id; });
     Object.keys(REG).forEach(function (id) {
       var r = REG[id];
       t.equal(T.bastion.clans.filter(function (c) { return c.key === r.clanKey; })[0].name, r.clan, id + ': the Clan\'s name as the Bastion spells it');
       t.ok(gods.indexOf(r.god) >= 0, id + ': a god the Bastion keeps Favour for');
-      t.equal(T.bastion.gods.filter(function (g) { return g.key === r.god; })[0].name, r.godName, id + ': the god\'s name as the Bastion spells it');
+      t.equal(temple.filter(function (g) { return g.id === r.god; })[0].name, r.godName, id + ': the god\'s name as the Temple spells it');
     });
   });
 
@@ -145,12 +146,13 @@
         order('u', 'library_scriptorium', 'upgrade', 'Library & Scriptorium: Upgrade to Level 3', 20, { meta: { kind: 'upgrade', toLevel: 3 } }),
         order('h', 'shrine_pelagos', 'pray', 'Shrine of Pelagos: Pray (Pelagos\'s Tidings)', 11, { chosen: { label: 'Pelagos\'s Tidings', special: { type: 'oracle_hint', god: 'pelagos' } } }),
         order('c', 'shrine_aurush', 'prepare_purification_incense', 'Shrine of Aurush: Prepare Purification Incense', 12),
+        order('f', 'shrine_telluria', 'pray', 'Shrine of Telluria: Pray (Telluria\'s Blessing)', 12, { chosen: { label: 'Telluria\'s Blessing', special: { type: 'favour_blessing', god: 'telluria' } } }),
         order('t', 'dire_wolf_den', 'dwf_riding_harness', 'Dire Wolf Den: Riding Harness (Ashfang)', 17),
         /* Only moved by the conversion: still forecast. */
         order('r', 'library_scriptorium', 'research', 'Library & Scriptorium: Research (Geographical Scriptures)', 18),
         order('l', 'arcane_laboratory', 'alchemy', 'Arcane Laboratory: Alchemy (Antitoxin)', 19),
-        order('f', 'shrine_telluria', 'pray', 'Shrine of Telluria: Pray (Telluria\'s Blessing)', 12, { chosen: { label: 'Telluria\'s Blessing', special: { type: 'favour_blessing', god: 'telluria' } } }),
         order('b', 'shrine_pelagos', 'bless_voyage', 'Shrine of Pelagos: Bless Voyage', 13),
+        order('g', 'shrine_aurush', 'great_rite_aurush', 'Shrine of Aurush: Great Rite of Aurush', 15),
         order('w2', 'wyvern_roost', 'house_wyvern', 'Wyvern Roost: House a Wyvern (Skyrender)', 14),
         /* Never retired. */
         order('d', 'dock', 'charter_berth', 'Dock: Charter Berth (Longship)', 16),
@@ -158,20 +160,21 @@
       ];
       return b;
     }
-    var cancelled = ['a', 'm', 'u', 'h', 'c', 't'];
-    var kept = ['r', 'l', 'f', 'b', 'w2', 'd', 'w'];
+    /* The Temple's Pray is instant, so even the Favour prayer ends; the Temple's nine blessings carry on (a Great Rite and a Voyage Blessing here). */
+    var cancelled = ['a', 'm', 'u', 'h', 'c', 'f', 't'];
+    var kept = ['r', 'l', 'b', 'g', 'w2', 'd', 'w'];
     cancelled.forEach(function (id) { t.equal(C.cancelledByConversion(withOrders(3).pendingOrders.filter(function (o) { return o.id === id; })[0]), true, id + ' is cancelled'); });
     kept.forEach(function (id) { t.equal(C.cancelledByConversion(withOrders(3).pendingOrders.filter(function (o) { return o.id === id; })[0]), false, id + ' is kept or moved'); });
     var old = withOrders(3);
     var s3 = sum(e, old);
     t.equal(s3.orders.count, kept.length, 'only what will survive');
-    t.equal(s3.orders.next.label, 'Shrine of Telluria: Pray (Telluria\'s Blessing)', 'the Favour prayer moves to the Temple, so it is still due on Day 12');
+    t.equal(s3.orders.next.label, 'Shrine of Pelagos: Bless Voyage', 'the Voyage Blessing moves to the Temple, so it is still due on Day 13 (the Favour prayer due on Day 12 ends)');
     var news = JSON.stringify([s3, C.ironbowNews(old, 10, 30)]);
-    ['Barracks', 'Menagerie', 'Pelagos\'s Tidings', 'Purification', 'Riding Harness', 'Upgrade to Level 3'].forEach(function (name) { t.ok(news.indexOf(name) === -1, name + ' is never named'); });
-    ['Research (Geographical Scriptures)', 'Alchemy (Antitoxin)', 'Bless Voyage', 'House a Wyvern', 'Charter Berth', 'Craft (Dagger)', 'Pray (Telluria'].forEach(function (name) { t.ok(news.indexOf(name) !== -1, name + ' is still forecast'); });
+    ['Barracks', 'Menagerie', 'Pelagos\'s Tidings', 'Telluria\'s Blessing', 'Purification', 'Riding Harness', 'Upgrade to Level 3'].forEach(function (name) { t.ok(news.indexOf(name) === -1, name + ' is never named'); });
+    ['Research (Geographical Scriptures)', 'Alchemy (Antitoxin)', 'Bless Voyage', 'Great Rite of Aurush', 'House a Wyvern', 'Charter Berth', 'Craft (Dagger)'].forEach(function (name) { t.ok(news.indexOf(name) !== -1, name + ' is still forecast'); });
     t.equal(sum(e, withOrders(2)).orders.count, kept.length, 'a version 2 Bastion is also converted when it opens, so it is read the same way');
     var converted = withOrders(4);
-    t.equal(sum(e, converted).orders.count, 13, 'version 4: nothing is left out');
+    t.equal(sum(e, converted).orders.count, 14, 'version 4: nothing is left out');
     t.ok(/Barracks: Recruit Defenders is complete/.test(JSON.stringify(C.ironbowNews(converted, 10, 20))), 'its Barracks order is still forecast');
     var before = JSON.stringify(old);
     C.ironbowNews(old, 10, 20);

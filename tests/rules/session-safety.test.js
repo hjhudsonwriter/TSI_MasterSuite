@@ -49,7 +49,7 @@
     t.same(BR.levelUnlocks(bdata, 'hall_of_emissaries', 2), ['Inter-Clan Summit', 'Diplomacy rolls +4 (from +2)']);
     t.same(BR.levelUnlocks(bdata, 'hall_of_emissaries', 4), []);
     t.same(BR.levelUnlocks(bdata, 'beast_pen', 3), [], 'the Beast Pen has one level and unlocks nothing by level');
-    t.same(BR.levelUnlocks(bdata, 'shrine_pelagos', 5), ['Great Rite of Pelagos']);
+    t.same(BR.levelUnlocks(bdata, 'temple', 5), [], 'the Temple has one level and unlocks nothing by level (its three blessings need a full bar, not a level)');
     t.same(BR.levelUnlocks(bdata, 'herbal_gardens', 2), ['Cultivate Specialist Plants', 'One more research token']);
     t.same(BR.levelUnlocks(bdata, 'nothing_here', 2), []);
     t.same(BR.levelUnlocks(bdata, 'dock', 1), [], 'Level 1 is where it starts');
