@@ -19,6 +19,7 @@ const { section, check, assert, equal } = H;
 const INDEX = H.fileUrl('index.html');
 const pause = page => page.waitForTimeout(400);
 const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.debug.state())));
+const bare = (page, sel) => page.$eval(sel, n => n.textContent.replace(/\s+/g, ' ').trim());
 const exs = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.explorer.debug.state())));
 
 async function context(browser, size) {
@@ -419,6 +420,69 @@ async function changeRows(ba) {
     assert(s.log.some(l => l.body === 'Dock: Charter Berth (Keelboat) → Added to Warehouse.'), 'the Day Log line is still written');
   });
   await E2.close();
+
+  /* ------------------------------------------------------------------ */
+  section('A change the Bastion cannot use, landing while days are being passed (fix 13 of the Strip Back review)');
+  const E3 = await context(browser, 'laptop');
+  const ba6 = await open(E3, 'bastion');
+  await ba6.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state, null, { timeout: 8000 });
+  const refusedAtDay3 = { id: 'r1-1a2b3c4d:won:2', type: 'standing', day: 3, at: '2026-10-13T10:00:00.000Z', from: { code: 'T4', title: 'The Knight-Errant\'s Challenge', step: 'won' }, clan: 'slade', hr: 3, text: 'Too big, sent on Day 3.' };
+  const REFUSED = /A change from the Explorer \(T4, Day 3\) couldn.t be used, so nothing changed: Its change isn.t \+1 or −1\./;
+  let word = '';
+  let wordKept = [];
+
+  await check('the Bastion on Day 1 and the Explorer on Day 4, with a change dated Day 3 that is refused: the days pass, a warning notice says why, and it comes up once', async () => {
+    await H.dismissNotices(ba6);
+    await ba6.evaluate(async () => {
+      TSI.store.set('tsi.explorer.save', { travel: { day: 1 }, journey: { outbox: [] } });
+      await TSI.store.flush();
+      TSI.bastion.debug.clock();
+    });
+    await ba6.waitForFunction(() => TSI.bastion.debug.state().anchored && TSI.bastion.debug.state().day === 1, null, { timeout: 8000 });
+    await ba6.evaluate(async msg => {
+      TSI.store.set('tsi.explorer.save', { travel: { day: 4 }, journey: { outbox: [msg] } });
+      await TSI.store.flush();
+      TSI.bastion.debug.clock();
+    }, refusedAtDay3);
+    await ba6.waitForSelector('[data-test=ironbow-word]', { timeout: 15000 });
+    word = await bare(ba6, '[data-test=ironbow-word]');
+    wordKept = (await bas(ba6)).word;   /* the news is kept until the box is closed */
+    await H.waitForNotice(ba6, REFUSED);
+    const notes = await ba6.$$eval('.tsi-notice', ns => ns.map(n => ({ cls: n.className, text: n.textContent })));
+    const mine = notes.filter(x => /couldn.t be used/.test(x.text));
+    equal(mine.length, 1, 'one notice, not one for each day');
+    assert(/tsi-notice--warn/.test(mine[0].cls), mine[0].cls);
+    assert(/^Not used\./.test(mine[0].text) && /Changes from the Explorer, in Management, lists it\./.test(mine[0].text), mine[0].text);
+    assert(!/Clan Influence/.test(mine[0].text), mine[0].text);
+  });
+
+  await check('"The Ironbow sends word…" lists the refusal with its reason, among the news of Day 3', async () => {
+    assert(/From the Explorer: a change \(T4, Day 3\) couldn.t be used, so nothing changed: Its change isn.t \+1 or −1\./.test(word), word);
+    await ba6.click('[data-test=ironbow-word] .tsi-modal__foot button.tsi-btn--primary');
+    await ba6.waitForFunction(() => { const s = TSI.bastion.debug.state(); return s.day === 4 && !s.dayInProgress; }, null, { timeout: 8000 });
+    const s = await bas(ba6);
+    const day3 = wordKept.filter(w => w.day === 3);
+    equal(day3.length, 1);
+    assert(day3[0].lines.some(l => /^From the Explorer: a change \(T4, Day 3\) couldn.t be used/.test(l)), JSON.stringify(day3));
+    equal(wordKept.filter(w => w.lines.some(l => /couldn.t be used/.test(l))).length, 1, 'one word line in all');
+    equal(s.honourRespectByClan.slade, 0, 'nothing changed');
+  });
+
+  await check('it is only ever told once: the receipt says Refused once, the Day Log has one line, and no second notice comes later', async () => {
+    await ba6.waitForTimeout(4500);
+    const s = await bas(ba6);
+    equal(Object.values(s.bridge.done).map(r => r.r), ['refused']);
+    equal(s.log.filter(l => /couldn.t be used, so nothing changed/.test(l.body)).length, 1);
+    const notes = await ba6.$$eval('.tsi-notice', ns => ns.map(n => n.textContent));
+    equal(notes.filter(x => /couldn.t be used/.test(x)).length, 1);
+  });
+
+  await check('Management lists it as Refused with the same reason', async () => {
+    const rows = await changeRows(ba6);
+    equal(rows.map(r => r.r), ['refused']);
+    assert(/Its change isn.t \+1 or −1\./.test(rows[0].text), rows[0].text);
+  });
+  await E3.close();
 
   /* ------------------------------------------------------------------ */
   for (const size of ['laptop', 'tv']) {

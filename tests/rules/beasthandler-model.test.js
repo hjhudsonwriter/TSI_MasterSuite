@@ -282,6 +282,8 @@
     var edited = M.personalityCards(detail({ profile: { regional: 'Bloodcrest', dominant: 'Fierce', attachment: '', trigger: '' } }), T.beastProfile);
     t.equal(edited[0].note, '', 'the DM changed the line, so the old note is not shown over it');
     t.equal(edited[1].line, '');
+    t.same(edited.map(function (c) { return c.roll; }), [0, 0, 0], 'and the die has no number for a line that is no longer the one the roll gave (a star is drawn)');
+    t.same(edited.map(function (c) { return c.rolled; }), [1, 3, 8], 'the number the Bastion stored is still reported as rolled');
     var written = M.personalityCards(detail({ initiation: { regional: 'bloodcrest', rolls: { dominant: 0, attachment: 0, trigger: 0 } } }), T.beastProfile);
     t.same(written.map(function (c) { return c.roll; }), [0, 0, 0], 'a line the DM wrote has no roll');
     ['buckbear', 'fellcat'].forEach(function (k) {
@@ -290,5 +292,74 @@
       t.equal(c[2].dice, 8);
     });
     t.equal(M.personalityCards(detail({ species: { id: 'unicorn', name: 'Unicorn' } }), T.beastProfile)[1].dice, 0, 'a kind with no tables has no die, and does not throw');
+  });
+
+  test('a personality line the DM changed or cleared after the roll shows a star, not a number it no longer matches; a line that still is the roll\'s row keeps its number', function (t) {
+    function cards(profile, rolls) {
+      return M.personalityCards(detail({ initiation: { regional: 'bloodcrest', rolls: rolls || { dominant: 1, attachment: 3, trigger: 8 } }, profile: Object.assign({ regional: 'Bloodcrest', dominant: 'Proud', attachment: 'Relaxes its tail', trigger: 'Rival wyvern nearby' }, profile) }), T.beastProfile);
+    }
+    t.same(cards({}).map(function (c) { return c.roll; }), [1, 3, 8], 'untouched: the Bastion\'s numbers');
+    t.same(cards({ attachment: 'Lowers its head' }).map(function (c) { return c.roll; }), [1, 0, 8], 'one line changed to another row: its die has no honest number (the line is row 2, the roll was 3)');
+    t.equal(cards({ attachment: 'Lowers its head' })[1].line, 'Lowers its head', 'but the line shown is the Bastion\'s');
+    t.same(cards({ dominant: '' }).map(function (c) { return c.roll; }), [0, 3, 8], 'a cleared line');
+    t.equal(cards({ dominant: '' })[0].line, '');
+    t.same(cards({ trigger: 'Something I wrote myself' }).map(function (c) { return c.roll; }), [1, 3, 0], 'a line the DM wrote in their own words');
+    t.equal(cards({ dominant: 'proud' })[0].roll, 1, 'capitals and spaces do not matter: it is still the roll\'s row');
+    t.equal(cards({ dominant: '  Proud ' })[0].roll, 1);
+    t.equal(cards({ dominant: 'proud' })[0].note, 'Expects respect and dislikes being hurried', 'and its note stays');
+    /* A line the DM wrote BEFORE the first meeting: the Bastion stored the matching row (or 0). The die agrees with the same rule. */
+    t.same(cards({ dominant: 'Watchful' }, { dominant: 3, attachment: 3, trigger: 8 }).map(function (c) { return c.roll; }), [3, 3, 8], 'the DM\'s line is a table row: its number');
+    t.same(cards({ dominant: 'My own word' }, { dominant: 0, attachment: 3, trigger: 8 }).map(function (c) { return c.roll; }), [0, 3, 8], 'the DM\'s line is no row: stored as 0, drawn as a star');
+    t.same(cards({ dominant: 'Watchful' }, { dominant: 1, attachment: 3, trigger: 8 }).map(function (c) { return c.roll; }), [0, 3, 8], 'a stored number that names another row than the line says is not shown over it');
+  });
+
+  group('Beast Handler: which subspecies the staged roll lands on (fix 13)');
+
+  test('it lands on the variety the Bastion holds NOW, not on the roll it made earlier', function (t) {
+    var same = M.revealTarget(detail(), T.beastProfile);
+    t.same([same.id, same.name, same.kind], ['bloodcrest', 'Bloodcrest', 'now'], 'unchanged: the variety the Bastion rolled');
+    var moved = M.revealTarget(detail({ profile: { regional: 'Ironcrown', dominant: 'Proud', attachment: '', trigger: '' } }), T.beastProfile);
+    t.same([moved.id, moved.name, moved.kind], ['ironcrown', 'Ironcrown', 'now'], 'the DM changed the variety after the roll: the roll\'s Bloodcrest is not used');
+    t.equal(M.revealTarget(detail({ profile: { regional: ' ironcrown ' } }), T.beastProfile).id, 'ironcrown', 'capitals and spaces do not matter, as on the page');
+    t.equal(M.revealTarget(detail({ profile: { regional: 'Ironcrown Wyvern' } }), T.beastProfile).id, 'ironcrown', 'the same loose name the page uses for its picture');
+    t.equal(M.revealTarget(detail({ profile: { regional: 'Nightfang' } }), T.beastProfile).kind, 'none', 'another kind\'s variety is not this kind\'s');
+  });
+
+  test('a variety the DM cleared, or typed in their own words, has nothing true to land on: the staged roll is left out, never the old roll', function (t) {
+    var cleared = M.revealTarget(detail({ profile: { regional: '', dominant: 'Proud', attachment: '', trigger: '' } }), T.beastProfile);
+    t.same([cleared.id, cleared.kind], ['', 'none'], 'cleared');
+    t.equal(M.revealTarget(detail({ profile: { regional: '   ' } }), T.beastProfile).kind, 'none', 'blank');
+    t.equal(M.revealTarget(detail({ profile: { regional: 'Moonlit Rift' } }), T.beastProfile).kind, 'none', 'a name of the DM\'s own');
+    t.equal(M.revealTarget(detail({ profile: { regional: 'Widowspine and Bleakhook' } }), T.beastProfile).kind, 'none', 'two varieties is no variety, as on the page');
+  });
+
+  test('only a snapshot that says nothing at all about the profile falls back to the roll the Bastion made, and only if it is one of the kind\'s own varieties', function (t) {
+    var d = detail(); delete d.profile;
+    t.same([M.revealTarget(d, T.beastProfile).id, M.revealTarget(d, T.beastProfile).kind], ['bloodcrest', 'rolled']);
+    var odd = detail({ initiation: { regional: 'nightfang', rolls: { dominant: 1, attachment: 1, trigger: 1 } } }); delete odd.profile;
+    t.equal(M.revealTarget(odd, T.beastProfile).kind, 'none', 'a roll naming another kind\'s variety is nothing');
+    var empty = detail({ initiation: { regional: '', rolls: {} } }); delete empty.profile;
+    t.equal(M.revealTarget(empty, T.beastProfile).kind, 'none');
+    t.equal(M.revealTarget(null, T.beastProfile).kind, 'none', 'no beast, no throw');
+    t.equal(M.revealTarget(detail(), null).kind, 'none', 'no tables, no throw');
+    t.equal(M.revealTarget({ profile: { regional: 'Bloodcrest' } }, T.beastProfile).kind, 'none', 'no kind, no throw');
+  });
+
+  test('every kind\'s varieties are found by name, so the staged roll can land on each of them (the Dire Wolf\'s six too)', function (t) {
+    ['wyvern', 'griffin', 'dire_wolf', 'buckbear', 'fellcat'].forEach(function (k) {
+      var list = M.revealVarieties(T.beastProfile, k);
+      t.ok(list.length >= 5, k + ' has its varieties');
+      list.forEach(function (v) {
+        var got = M.revealTarget({ species: { id: k }, profile: { regional: v.name }, initiation: { regional: 'zzz' } }, T.beastProfile);
+        t.same([got.id, got.kind], [v.id, 'now'], k + ' ' + v.name);
+      });
+    });
+  });
+
+  test('the meeting\'s lead says one quick roll when the subspecies roll is left out, and two otherwise', function (t) {
+    var b = { name: 'Stormwing', species: { name: 'Wyvern' } };
+    t.equal(M.meetingText(b, false).lead, 'One quick roll, then you will see Stormwing for the first time.');
+    t.equal(M.meetingText(b, true).lead, 'Two quick rolls, then you will see Stormwing for the first time.');
+    t.equal(M.meetingText(b).lead, 'Two quick rolls, then you will see Stormwing for the first time.', 'two is the usual');
   });
 }());

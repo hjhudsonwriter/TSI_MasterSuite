@@ -100,6 +100,9 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     assert(/Bond 1 · Acclimatised/.test(await bare(bh, '[data-test=bh-row-bond-elara_wyvern]')), 'Elara\'s bond is on her line');
     equal(await bh.$('[data-test=bh-row-bond-cr-swiftwing]') === null, false, 'a creature with a bond record shows it');
     equal(await bh.$('[data-test=bh-row-bond-cr-loose]'), null, 'a creature with no bond record shows none');
+    equal(await bare(bh, '[data-test=bh-row-wait-cr-loose]'), 'Not acclimatised yet', 'but a beast with no handler and no record yet says it is not acclimatised, just as one with a handler does');
+    assert(/No handler yet/.test(await bare(bh, '[data-test=bh-beast-cr-loose]')), 'and says it has no handler: ' + await bare(bh, '[data-test=bh-beast-cr-loose]'));
+    equal(await bh.$eval('[data-test=bh-beast-cr-loose]', n => n.tagName), 'LI', 'with nothing to open');
   });
 
   await check('Elara\'s Bond page (where a beast opens): name, handler, Bond 1 of 0 to 5, a harmless greeting, three tabs with Bond lit', async () => {

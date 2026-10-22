@@ -485,16 +485,36 @@ body.tsi-bh-phone .tsi-btn--primary:hover { filter: brightness(1.06); }
 .tsi-tool--beasthandler .tsi-bh[data-screen="meet"] .tsi-bh-sync { display: none; }
 
 /* ---------- The reveal: the subspecies medallions and their die, then the three personality cards ---------- */
+/* A subspecies name is one word and must never break in the middle of it (fix 13: "THUNDERWI / NG" at 320 to 600 px wide).
+   So: on a narrow screen the medallion stacks (number badge above the name, name across the whole width), the name never
+   wraps inside a word (no hyphens, no break-anywhere), and its letters step down in size to fit the width the medallion
+   really has (container units; a longest name today, Shadowmount, is about 9.8 times the font size wide, so the steps allow
+   names about 8% longer than that). From 720 px wide the pill (badge on the left) has room at the full size.
+   Two columns up to 559 px, three from there. Proved at 320 to 600 px, the laptop and the TV by tests/e2e/beasthandler-meet.test.js. */
 .tsi-tool--beasthandler .tsi-bh-medals { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--tsi-space-2); }
-@media (min-width: 480px) { .tsi-tool--beasthandler .tsi-bh-medals { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 560px) { .tsi-tool--beasthandler .tsi-bh-medals { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .tsi-tool--beasthandler .tsi-bh-medal {
-  display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 8px 12px;
+  container-type: inline-size;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 56px; padding: 6px 6px; text-align: center;
   font: 700 var(--tsi-fs-label)/1.15 var(--tsi-font-display); letter-spacing: var(--tsi-track-label); text-transform: uppercase;
   color: var(--tsi-text-muted); background: rgba(255, 255, 255, .04); border: 1px solid var(--tsi-line-control); border-radius: var(--tsi-radius-pill);
   transition: color var(--tsi-dur-base) var(--tsi-ease), border-color var(--tsi-dur-base) var(--tsi-ease), background var(--tsi-dur-base) var(--tsi-ease), box-shadow var(--tsi-dur-base) var(--tsi-ease), opacity var(--tsi-dur-base) var(--tsi-ease);
 }
+@media (min-width: 720px) {
+  .tsi-tool--beasthandler .tsi-bh-medal { flex-direction: row; justify-content: flex-start; gap: 10px; min-height: 48px; padding: 8px 12px; text-align: left; }
+}
 .tsi-tool--beasthandler .tsi-bh-medal__n { flex: none; display: grid; place-items: center; width: 24px; height: 24px; font: 700 12px/1 var(--tsi-font-display); color: var(--tsi-text-soft); background: #353436; border-radius: 50%; }
-.tsi-tool--beasthandler .tsi-bh-medal__name { min-width: 0; overflow-wrap: anywhere; }
+.tsi-tool--beasthandler .tsi-bh-medal__name {
+  min-width: 0; max-width: 100%;
+  overflow-wrap: normal; word-break: normal; hyphens: none; -webkit-hyphens: none;
+  font-size: clamp(9px, 3vw, var(--tsi-fs-label));   /* for a browser that does not know container units */
+}
+@supports (width: 1cqw) {
+  .tsi-tool--beasthandler .tsi-bh-medal__name { font-size: min(var(--tsi-fs-label), calc(100cqw / 10.6)); }
+  @media (min-width: 720px) {
+    .tsi-tool--beasthandler .tsi-bh-medal__name { font-size: min(var(--tsi-fs-label), calc((100cqw - 34px) / 10.6)); }
+  }
+}
 /* The gold marker: whichever medallion it is on is lit. */
 .tsi-tool--beasthandler .tsi-bh-medal--lit { color: var(--tsi-gold); border-color: var(--tsi-gold); background: rgba(244, 205, 118, .14); box-shadow: 0 0 14px rgba(244, 205, 118, .4); }
 .tsi-tool--beasthandler .tsi-bh-medal--lit .tsi-bh-medal__n { color: #1b1810; background: var(--tsi-gold); }
