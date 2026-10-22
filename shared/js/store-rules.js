@@ -139,6 +139,13 @@
       return key;
     },
 
+    /* Was a copy read back from the browser exactly as it was written? The
+       row read must be a real record under the copy's own name holding the same
+       value (TSI.store.keepCopy only says a copy is kept once this is true). */
+    copyIsIntact: function (row, key, value) {
+      return rules.isRecord(row) && row.key === key && JSON.stringify(row.value) === JSON.stringify(value);
+    },
+
     /* The note kept with a copy made by TSI.store.keepCopy: where it came
        from and why. copy: true tells it apart from a record that was moved. */
     copyNote: function (key, reason, when) {

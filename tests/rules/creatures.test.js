@@ -689,7 +689,14 @@
     ];
     var oldComing = TSI.campaign.bastionComing(old).filter(function (x) { return x.kind === 'order'; }).map(function (x) { return x.line; });
     t.same(oldComing, ['Wyvern Roost: House a Wyvern (Stormtalon) is complete.', 'Griffin Tower: House a Griffin (Swiftwing) is complete.']);
-    t.same(TSI.campaign.MOVED_ORDERS, { wyvern_roost: ['house_elara_wyvern', 'house_wyvern'], griffin_tower: ['house_griffin'], dire_wolf_den: ['house_dire_wolf'] });
+    /* The forecast follows the conversion exactly: the four House orders are moved, every other order at the three buildings is cancelled. */
+    [['wyvern_roost', 'house_elara_wyvern'], ['wyvern_roost', 'house_wyvern'], ['griffin_tower', 'house_griffin'], ['dire_wolf_den', 'house_dire_wolf']].forEach(function (p) {
+      t.equal(TSI.campaign.cancelledByConversion({ id: 'x', facId: p[0], fnId: p[1] }), false, p[1] + ' is moved, not cancelled');
+    });
+    ['dwf_riding_harness', 'house_unknown', 'train_wyvern'].forEach(function (fnId) {
+      t.equal(TSI.campaign.cancelledByConversion({ id: 'x', facId: 'wyvern_roost', fnId: fnId }), true, fnId + ' is cancelled');
+    });
+    t.equal(TSI.campaign.cancelledByConversion({ id: 'x', facId: 'griffin_tower', fnId: 'house_griffin', meta: { kind: 'upgrade' } }), true, 'an Upgrade order is cancelled');
     t.ok(has(31, 'recovery', 'Greymane is fit to fight again.'));
     t.ok(has(17, 'recovery', 'Talon has found the way back to the Bastion.'));
     t.equal(coming.filter(function (x) { return x.kind === 'roll'; }).length, 0);

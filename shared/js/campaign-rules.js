@@ -53,26 +53,58 @@
      and the Explorer read all three: a version missed here would silently
      blank "The Ironbow sends word…" and the DM doc's orders. */
   function inDaysSave(ba) { return !!ba && (ba.v === 2 || ba.v === 3 || ba.v === 4); }
-  /* The 13 facilities the Strip Back Overhaul takes out of the Bastion (the
-     Shrines become the Temple; the Wyvern Roost, Griffin Tower and Dire Wolf
-     Den the Beast Pen; the Library and Arcane Laboratory join the Workshop).
-     The Bastion cancels (with a refund) or moves each one's pending orders when
-     it next opens, so a version 3 save read before then must not forecast them
-     as if they would complete. A version 4 save has been converted: nothing is
-     left out of it. */
-  var RETIRED_FACILITIES = ['menagerie', 'war_room', 'library_scriptorium', 'arcane_laboratory', 'armoury', 'watchtower', 'barracks',
-    'shrine_telluria', 'shrine_aurush', 'shrine_pelagos', 'wyvern_roost', 'griffin_tower', 'dire_wolf_den'];
-  /* The orders at a retired facility that the conversion MOVES instead of cancelling, so a version 3 save's forecast
-     still lists them (they keep their due day): the Wyvern Roost's, Griffin Tower's and Dire Wolf Den's House orders
-     become the Beast Pen's House Beast Here (step rehomeBeasts in tools/bastion/strip-back-rules.js). Every other order
-     at a retired facility is cancelled (with a refund), so it is left out. */
-  var MOVED_ORDERS = { wyvern_roost: ['house_elara_wyvern', 'house_wyvern'], griffin_tower: ['house_griffin'], dire_wolf_den: ['house_dire_wolf'] };
-  function movedOrder(o) { return isObj(o) && Array.isArray(MOVED_ORDERS[o.facId]) && MOVED_ORDERS[o.facId].indexOf(o.fnId) !== -1; }
+  /* The 13 facilities the Strip Back Overhaul takes out of the Bastion, and what
+     becomes of their pending orders when the Bastion next opens and converts a
+     save (R.migrateToV4, docs/strip-back/J-cross-cutting.md section 4.3):
+       'cancel': the facility's orders end, with a refund (the Barracks, Armoury,
+                 Watchtower, War Room and Menagerie);
+       'move':   the facility's orders carry on somewhere else (the Library and
+                 Arcane Laboratory's to the Workshop; the Shrines' to the Temple;
+                 the Wyvern Roost, Griffin Tower and Dire Wolf Den's House orders to
+                 the Beast Pen), EXCEPT the few that end, which
+                 C.cancelledByConversion names exactly.
+     A version 3 save read before the Bastion opens must not forecast an order
+     that will be cancelled, but must still forecast one that will only move
+     (it completes on the same day). A version 4 save has been converted, so
+     nothing is left out of it. KEEP THIS TABLE TRUE: each later step that
+     retires or re-homes a facility changes its row here (and the rule below) in
+     the same commit as its step in tools/bastion/strip-back-rules.js. */
+  var RETIRED_FACILITIES = {
+    barracks: 'cancel', armoury: 'cancel', watchtower: 'cancel', war_room: 'cancel', menagerie: 'cancel',
+    library_scriptorium: 'move', arcane_laboratory: 'move',
+    shrine_telluria: 'move', shrine_aurush: 'move', shrine_pelagos: 'move',
+    wyvern_roost: 'move', griffin_tower: 'move', dire_wolf_den: 'move'
+  };
+  /* The Shrines' orders that end: the proposed default in
+     docs/strip-back/F-temple-hall-dock.md, where the Temple keeps three blessings
+     for each god and drops the Craft charms, Purification Incense, Aquatic
+     Protection Charm and Bless Bastion Foundations. Change this list in the same
+     commit as the step that settles the Shrines, if that step decides otherwise. */
+  var SHRINE_ORDERS_THAT_END = ['craft', 'prepare_purification_incense', 'prepare_aquatic_protection_charm', 'bless_bastion_foundations'];
+  /* The House orders the Beast Pen step moves (the same lists as HOUSE_FNS in tools/bastion/strip-back-rules.js). */
+  var BEAST_HOUSE_ORDERS = { wyvern_roost: ['house_elara_wyvern', 'house_wyvern'], griffin_tower: ['house_griffin'], dire_wolf_den: ['house_dire_wolf'] };
+  /* Will converting a version 3 Bastion CANCEL this pending order? (Not move it, not keep it.) */
+  function cancelledByConversion(o) {
+    if (!isObj(o) || !Object.prototype.hasOwnProperty.call(RETIRED_FACILITIES, o.facId)) return false;
+    if (RETIRED_FACILITIES[o.facId] === 'cancel') return true;
+    /* Whatever a place's orders do, its Upgrade orders end (the place is going; they cost no gold). */
+    if (isObj(o.meta) && o.meta.kind === 'upgrade') return true;
+    if (/^shrine_/.test(o.facId)) {
+      if (SHRINE_ORDERS_THAT_END.indexOf(o.fnId) !== -1) return true;
+      /* A prayer: only the Favour prayer (option 3) carries on, as the Temple's Pray. */
+      if (o.fnId === 'pray') return isObj(o.chosen) && isObj(o.chosen.special) && o.chosen.special.type !== 'favour_blessing';
+      return false;
+    }
+    /* A creature building: its House orders carry on at the Beast Pen (rehomeBeasts); training, riding and flight orders end. */
+    if (BEAST_HOUSE_ORDERS[o.facId]) return BEAST_HOUSE_ORDERS[o.facId].indexOf(o.fnId) === -1;
+    /* The Library & Scriptorium and the Arcane Laboratory: their jobs go to the Workshop's Scholar and Alchemist. */
+    return false;
+  }
   /* The pending orders a Bastion save will really have (see above). */
   function liveOrders(ba) {
     var list = Array.isArray(ba.pendingOrders) ? ba.pendingOrders : [];
     if (ba.v === 4) return list;
-    return list.filter(function (o) { return !(isObj(o) && RETIRED_FACILITIES.indexOf(o.facId) !== -1) || movedOrder(o); });
+    return list.filter(function (o) { return !cancelledByConversion(o); });
   }
   var OBJECTIVES = { raid: 'Raid', skirmish: 'Skirmish', seize_outpost: 'Seize Outpost' };
   function clanTitle(name) { var n = str(name).trim(); return /^clan /i.test(n) ? n : 'Clan ' + n; }
@@ -88,10 +120,9 @@
   }
 
   var C = TSI.campaign = {
-    /* The 13 facilities the Strip Back Overhaul retires (see above). */
+    /* The 13 facilities the Strip Back Overhaul retires, and the fate of their orders (see above). */
     RETIRED_FACILITIES: RETIRED_FACILITIES,
-    /* { facility id: [order ids] }: the orders at a retired facility the conversion moves, not cancels. */
-    MOVED_ORDERS: MOVED_ORDERS,
+    cancelledByConversion: cancelledByConversion,
 
     /* What the Bastion has coming, from its save: [{ day, kind, line }], in day
        order (only what can be known before the day: building finished,
