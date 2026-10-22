@@ -37,7 +37,7 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
       if (regional) c.development.regional = regional;
       return c;
     };
-    s.creatures = [mk('cr-stormwing', 'wyvern', 'Stormwing', 'wyvern_roost', 3, 'Widowspine'), mk('cr-swiftwing', 'griffin', 'Swiftwing', 'griffin_tower', 1, '')];
+    s.creatures = [mk('cr-stormwing', 'wyvern', 'Stormwing', 'wyvern_roost', 3, 'Widowspine'), mk('cr-swiftwing', 'griffin', 'Swiftwing', 'griffin_tower', 1, ''), mk('cr-late', 'wyvern', 'Latecomer', 'wyvern_roost', 1, '')];
     R.rollInitiation(s, data, 'cr-swiftwing', Math.random);
   }));
   await ba.evaluate(() => TSI.store.flush());
@@ -122,6 +122,29 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     const c = (await bas(ba)).creatures.find(x => x.id === 'cr-swiftwing');
     equal(await bh.$$eval('.tsi-bh-pcard .tsi-bh-die', n => n.map(x => x.textContent)), [c.development.initiation.rolls.dominant, c.development.initiation.rolls.attachment, c.development.initiation.rolls.trigger].map(String), 'each die shows the Bastion\'s number');
     await bh.evaluate(() => { window.TSI_BH_SPEED = 0.02; });
+  });
+
+  await check('a first meeting that becomes due while the beast\'s page is open does not cover the page: it waits until the beast is next opened from Home', async () => {
+    await bh.reload();
+    await bh.waitForSelector('[data-test=bh-viewas]');
+    await bh.selectOption('[data-test=bh-viewas]', 'Mira');
+    await bh.waitForSelector('[data-test=bh-beast-cr-late]');
+    await bh.click('[data-test=bh-beast-cr-late]');
+    await bh.waitForSelector('[data-test=bh-bond]');
+    equal(await bare(bh, '[data-test=bh-subspecies]'), '\u2726Subspecies not known yet', 'the Bastion has not rolled for it yet');
+    equal(await bh.$('[data-test=bh-meet]'), null);
+    await ba.evaluate(() => TSI.bastion.debug.change(s => {
+      const T = window.TSI_DATA;
+      const data = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, events: T.bastionEvents, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier, creatures: T.bastionCreatures };
+      TSI.bastion.rules.sweepInitiation(s, data, Math.random);
+    }));
+    await ba.evaluate(() => TSI.store.flush());
+    await bh.evaluate(() => TSI.beasthandler.debug.refresh());
+    await bh.waitForFunction(() => /Bloodcrest/.test(document.querySelector('[data-test=bh-subspecies]').textContent), null, { timeout: 8000 });
+    equal(await bh.$('[data-test=bh-meet]'), null, 'the page stays as it was, now showing the subspecies');
+    await bh.click('[data-test=bh-back]');
+    await bh.click('[data-test=bh-beast-cr-late]');
+    await bh.waitForSelector('[data-test=bh-meet][data-step="1"]');
   });
 
   await check('nothing went wrong or reached for the internet', async () => {

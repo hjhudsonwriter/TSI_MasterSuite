@@ -36,7 +36,8 @@
       var life = host.life;
 
       /* What the player is looking at (not saved). */
-      var ui = { screen: 'home', creatureId: null, tab: 'bond', fadeNext: false, skipMeet: {} };
+      /* entering: the beast just opened from Home. Only then can its first meeting start: one that becomes due while a beast's page is already open waits for the next time it is opened from Home, so a page is never covered without warning. */
+      var ui = { screen: 'home', creatureId: null, tab: 'bond', fadeNext: false, skipMeet: {}, entering: null };
       var shell = el('div', { class: 'tsi-bh', 'data-test': 'bh-root' });
       root.appendChild(shell);
 
@@ -167,7 +168,7 @@
         if (!c.mine || waiting) return el('li', { class: 'tsi-bh-beast tsi-bh-beast--other', 'data-test': 'bh-beast-' + c.id, 'data-mine': c.mine ? 'yes' : 'no' }, inner);
         return el('li', { class: 'tsi-bh-beast-item' }, el('button', {
           type: 'button', class: 'tsi-bh-beast tsi-bh-beast--mine', 'data-test': 'bh-beast-' + c.id, 'data-mine': 'yes',
-          onclick: function () { ui.creatureId = c.id; go('creature', 'bond'); }
+          onclick: function () { ui.creatureId = c.id; ui.entering = c.id; go('creature', 'bond'); }
         }, inner));
       }
 
@@ -291,7 +292,9 @@
       function renderCreature() {
         var d = detail();
         if (!d || d.available !== true) return renderHome();
-        if (meet && !ui.skipMeet[d.id] && meet.active(d)) {
+        var entering = ui.entering === d.id;
+        ui.entering = null;
+        if (meet && !ui.skipMeet[d.id] && (entering || meet.has(d)) && meet.active(d)) {
           var m = meet.render(d);
           meetAfter = m.after;
           meetingNow = true;

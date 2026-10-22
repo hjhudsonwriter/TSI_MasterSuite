@@ -375,6 +375,8 @@
 
       return {
         active: active, render: render,
+        /* Is a meeting already under way for this beast? */
+        has: function (d) { return mine(d); },
         /* A roll is playing now: the screen holds back redraws. */
         busy: function () { return !!st && st.animating > 0; },
         /* fn runs each time the last playing roll finishes. */
