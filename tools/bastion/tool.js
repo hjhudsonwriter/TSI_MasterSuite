@@ -155,7 +155,7 @@
         return TSI.store.keepCopy(TSI.storeRules.keyFor('bastion', 'state'), 'A copy of the Bastion from before the Strip Back Overhaul (22 October 2026), kept in case it\'s needed.').then(function (kept) {
           if (!life.alive) return null;
           if (!kept) {
-            showUnsafe(saved, [TSI.store.copyProblem() || 'The copy could not be saved.', 'No copy of your Bastion exists, so nothing was converted and nothing was written.'], true);
+            showUnsafe(saved, [TSI.store.copyProblem() || 'The copy could not be saved.', 'No safe copy of your Bastion could be confirmed, so nothing was converted and nothing was written.'], true);
             return null;
           }
           return begin();

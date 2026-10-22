@@ -451,7 +451,7 @@ const writeLog = page => page.evaluate(() => window.__writes.slice());
     const room = await page.evaluate(() => Object.keys(localStorage).reduce((n, k) => n + k.length + localStorage.getItem(k).length, 0));
     await setEnv(page, { quota: room + 300, noWar: true });
 
-    await check('the Bastion says it could not convert, that nothing has been changed, and that no copy exists', async () => {
+    await check('the Bastion says it could not convert, that nothing has been changed, and that no safe copy could be confirmed', async () => {
       equal(await page.evaluate(() => TSI.store.mode), 'local', 'the browser is saving to its plain storage');
       await page.goto(BASTION);
       await page.waitForSelector('[data-test=convert-unsafe]');
@@ -459,7 +459,7 @@ const writeLog = page => page.evaluate(() => window.__writes.slice());
       assert(/The Bastion couldn't be converted safely\. Nothing has been changed\./.test(text), text);
       assert(/that copy could not be kept, so it stopped/.test(text), 'says why: ' + text);
       assert(/storage space for the suite is full/.test(text), 'the reason: ' + text);
-      assert(/No copy of your Bastion exists, so nothing was converted and nothing was written\./.test(text), text);
+      assert(/No safe copy of your Bastion could be confirmed, so nothing was converted and nothing was written\./.test(text), text);
       equal(await page.$('[data-test=changes-box]'), null);
       equal(await page.$('[data-test=day-status]'), null, 'the Bastion itself did not open');
       await H.shot(page, 'migration-copy-failed');
@@ -531,7 +531,7 @@ const writeLog = page => page.evaluate(() => window.__writes.slice());
     await context.addInitScript(keepsNothing);
     await context.addInitScript(seedMemory, withGhost());
     const page = await context.newPage();
-    await check('the Bastion does not convert: it says plainly that nothing is kept in this browser, that no copy exists, and that nothing has been changed', async () => {
+    await check('the Bastion does not convert: it says plainly that nothing is kept in this browser, that no safe copy could be confirmed, and that nothing has been changed', async () => {
       await page.goto(BASTION);
       await page.waitForSelector('[data-test=convert-unsafe]');
       equal(await page.evaluate(() => TSI.store.mode), 'memory');
@@ -541,7 +541,7 @@ const writeLog = page => page.evaluate(() => window.__writes.slice());
       assert(/no copy of your Bastion can be kept/.test(text), text);
       assert(/that file is the only copy that will last/.test(text), text);
       assert(!/making room/.test(text), 'no advice about making room, which would not help here: ' + text);
-      assert(/No copy of your Bastion exists, so nothing was converted and nothing was written\./.test(text), text);
+      assert(/No safe copy of your Bastion could be confirmed, so nothing was converted and nothing was written\./.test(text), text);
       equal(await page.$('[data-test=changes-box]'), null);
       equal(await page.$('[data-test=day-status]'), null, 'the Bastion itself did not open');
     });
