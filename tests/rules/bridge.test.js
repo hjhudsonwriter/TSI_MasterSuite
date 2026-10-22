@@ -939,4 +939,98 @@
     t.equal(BR.resolveNotice(null), null);
     t.equal(BR.resolveNotice([['A', '   ']]), null, 'blank lines are nothing');
   });
+
+  group('Explorer link: a change that cannot be used, arriving while days are passed (fix 13)');
+
+  /* The Bastion on Day 1 and the Explorer on Day 4, with a standing change dated Day 3 that the Bastion will refuse. */
+  function passTo(b, ex, toDay) {
+    var seen = [];
+    while (b.day < toDay) {
+      BR.startDay(b, bdata);
+      var res = BR.applyInbox(b, bdata, ex, 1000 + b.day);
+      seen.push({ day: b.day, res: res });
+      BR.finishDay(b);
+    }
+    return seen;
+  }
+
+  test('a refused change that lands on a day being passed is written into that day\'s word, with its reason, once', function (t) {
+    var b = bastion(1);
+    var seen = passTo(b, { travel: { day: 4 }, journey: { outbox: [msg({ day: 3, hr: 3 })] } }, 4);
+    t.same(seen.map(function (x) { return x.res.refused; }), [0, 1, 0], 'refused on Day 3, and only there');
+    var lines = (b.word || []).map(function (w) { return w.day + ': ' + w.lines.join(' | '); });
+    t.equal(lines.length, 1, 'one day has news: ' + JSON.stringify(lines));
+    t.ok(/^3: From the Explorer: a change \(T4, Day 3\) couldn.t be used, so nothing changed: Its change isn.t \+1 or −1\.$/.test(lines[0]), lines[0]);
+    t.equal(b.honourRespectByClan.slade, 0, 'and nothing changed');
+    t.equal(b.bridge.done[msg().id].r, 'refused');
+    t.equal(b.log.filter(function (l) { return /couldn.t be used/.test(l.body); }).length, 1, 'one Day Log line');
+    var again = BR.applyInbox(b, bdata, { travel: { day: 4 }, journey: { outbox: [msg({ day: 3, hr: 3 })] } }, 9000);
+    t.equal(again.refused, 0, 'a second look finds it already settled');
+  });
+
+  test('the same refusal in a parcel pickup or a Great Rite handover writes a word line too', function (t) {
+    var b = bastion(2);
+    BR.startDay(b, bdata);
+    var parcel = { id: 'abc123-1a2b3c4d:collect:0', type: 'parcel_collected', day: 3, at: '2026-10-13T10:00:00.000Z', from: { code: 'DM', title: 'DM', step: 'dm' }, clan: 'slade', point: 'slades_muster', parcel: 'abc123-1a2b3c4d', goods: [], text: 'Collected.' };
+    var res = BR.applyInbox(b, bdata, exWith([parcel]), 1000);
+    t.equal(res.refused, 1);
+    t.ok(b.dayInProgress.news.some(function (l) { return /^From the Explorer: a parcel pickup \(DM, Day 3\) couldn.t be used, so nothing changed: /.test(l); }), JSON.stringify(b.dayInProgress.news));
+    var rite = { id: 'rite12-1a2b3c4d:rite:0', type: 'rite', day: 3, at: '2026-10-13T10:00:00.000Z', from: { code: 'DM', title: 'DM', step: 'dm' }, rite: 'tides_passage', text: 'Handed over.' };
+    BR.applyInbox(b, bdata, exWith([rite]), 2000);
+    if (b.bridge.done[rite.id] && b.bridge.done[rite.id].r === 'refused') {
+      t.ok(b.dayInProgress.news.some(function (l) { return /^From the Explorer: a Great Rite handover/.test(l); }), JSON.stringify(b.dayInProgress.news));
+    }
+  });
+
+  test('outside a day being passed there is nothing to write the word into, and the refusal is still told by its notice', function (t) {
+    var b = bastion(3);
+    t.equal(b.dayInProgress, null);
+    var res = BR.applyInbox(b, bdata, exWith([msg({ hr: 3 })]), 1000);
+    t.equal(b.dayInProgress, null);
+    t.equal(res.refusals.length, 1);
+    t.equal(BR.settledNotices(res).length, 1, 'the notice of the idle path is as before');
+  });
+
+  test('a day being passed uses the problems-only notices: what was applied is not told twice, a refusal is, and every settling has its own id', function (t) {
+    var b = bastion(3);
+    var res = BR.applyInbox(b, bdata, exWith([msg({ id: 'aaaaaa-00000001:won:2' }), msg({ id: 'bbbbbb-00000002:won:2', hr: 3 })]), 1000);
+    var all = BR.settledNotices(res);
+    var only = BR.settledNotices(res, { problemsOnly: true, suffix: '-7' });
+    t.same(all.map(function (x) { return x.id; }), ['tsi-bas-bridge', 'tsi-bas-bridge-refused'], 'the idle path tells both');
+    t.same(only.map(function (x) { return x.id; }), ['tsi-bas-bridge-refused-7'], 'a day being passed tells only the refusal, under its own id');
+    t.equal(only[0].type, 'warn');
+    t.equal(only[0].message, all[1].message, 'in the same words');
+    var other = BR.settledNotices(res, { problemsOnly: true, suffix: '-8' });
+    t.notEqual ? t.notEqual(other[0].id, only[0].id) : t.ok(other[0].id !== only[0].id, 'another settling, another id');
+    var f = BR.defaultState(bdata);
+    BR.anchor(f, 4);
+    var skipped = BR.settledNotices(BR.applyInbox(f, bdata, exWith([msg()]), 1000), { problemsOnly: true, suffix: '-2' });
+    t.same(skipped.map(function (x) { return x.id; }), ['tsi-bas-bridge-skipped-2'], 'a skip is told the same way');
+    t.same(BR.settledNotices({ applied: ['x'], charters: ['y'], parcels: ['z'], creatures: ['w'] }, { problemsOnly: true }), [], 'nothing that worked is told');
+    t.same(BR.settledNotices(res).map(function (x) { return x.id; }), ['tsi-bas-bridge', 'tsi-bas-bridge-refused'], 'and asking without options changes nothing');
+  });
+
+  test('a message of a kind this version does not know, skipped at a start, is described plainly: not as a Clan, with no Honour/Respect instruction', function (t) {
+    var newer = { id: 'newer1-0a0b0c0d:dm:0', type: 'courier', day: 2, at: 'x', from: { code: 'DM', title: 'Courier', step: 'dm' }, gold: 50 };
+    var f = BR.defaultState(bdata);
+    BR.anchor(f, 5);
+    var res = BR.applyInbox(f, bdata, exWith([newer]), 1000);
+    t.equal(f.bridge.done[newer.id].r, 'skipped');
+    t.equal(f.bridge.done[newer.id].type, 'newer');
+    var c = BR.bridgeChanges(f, bdata)[0];
+    t.same([c.result, c.kind, c.head], ['skipped', 'newer', 'Skipped: A message of a kind this version doesn\'t understand']);
+    t.equal(c.why, 'Sent before this Bastion started.');
+    t.equal(c.tail, '', 'nothing to type in');
+    t.ok(!/Clan|Honour|Respect|Change a score/.test(JSON.stringify(c)), JSON.stringify(c));
+    var again = reload(f);
+    t.equal(again.bridge.done[newer.id].type, 'newer', 'kept through a save');
+    t.equal(BR.bridgeChanges(again, bdata)[0].head, c.head);
+    t.ok(res.skips.length === 1 && !/Honour/.test(res.skips[0]), 'the notice does not call it Honour/Respect: ' + res.skips[0]);
+    /* A real standing change skipped at a start is described as before. */
+    var g = BR.defaultState(bdata);
+    BR.anchor(g, 4);
+    BR.applyInbox(g, bdata, exWith([msg()]), 1000);
+    var std = BR.bridgeChanges(g, bdata)[0];
+    t.same([std.kind, std.head, std.tail], ['standing', 'Skipped: Clan Slade', 'Use Change a score in the DM doc if it should count.']);
+  });
 }());
