@@ -299,10 +299,15 @@ for (let i = 0; i < 200; i++) {
   s.log.push({ title: ['Order Issued', 'Order Completed', 'Days', 'Treasury', 'Hall'][i % 5], body: 'Day log line ' + (200 - i) + ': the Ironbow carried on.', at: 1760000000000 + (200 - i) * 60000, day });
 }
 
-/* ---------- The Beast Handler's record (the pairing secrets stay) ---------- */
-s.beast = R.cleanBeast({
-  campaignId: 'HvCampaign2610', accept: true,
-  handlers: [{ id: 'kaelen', name: 'Kaelen', secret: 'AbCdEfGhIjKlMnOp12', since: 10 }, { id: 'umbrys', name: 'Umbrys', secret: 'QrStUvWxYzAbCdEf34', since: 10 }],
+/* ---------- The Beast Handler's record, in its OLD shape (the pairing secrets stay) ----------
+   Since 22 October 2026 R.cleanBeast keeps only the campaign id and the handlers, so the old request record (accept,
+   done, floor) is written by hand here: this fixture is a Bastion from before the app became read-only, and the
+   conversion's step dropBeastRequests (tools/bastion/strip-back-rules.js) has to remove it. */
+s.beast = Object.assign(R.cleanBeast({
+  campaignId: 'HvCampaign2610',
+  handlers: [{ id: 'kaelen', name: 'Kaelen', secret: 'AbCdEfGhIjKlMnOp12', since: 10 }, { id: 'umbrys', name: 'Umbrys', secret: 'QrStUvWxYzAbCdEf34', since: 10 }]
+}), {
+  accept: true,
   done: { 'cmd-hv-0001': { r: 'applied', why: '', day: 36, at: 1760000400000, type: 'profile.set', handler: 'kaelen', who: 'Kaelen', creature: 'cr-hv-griffin-swiftwing', label: 'Swiftwing: attachment', orderId: '', dueDay: null } },
   floor: 0
 });
@@ -310,7 +315,8 @@ s.beast = R.cleanBeast({
 /* ---------- Check: loading the save drops nothing ---------- */
 const loaded = R.fromSave(clone(s), data);
 const raw = clone(s);
-const IGNORE = ['v', 'migration', 'archivedFacilities'];
+/* beast: the old request record is deliberately not kept by the cleaner any more (see above). */
+const IGNORE = ['v', 'migration', 'archivedFacilities', 'beast'];
 const dropped = [];
 Object.keys(raw).forEach(k => {
   if (IGNORE.indexOf(k) !== -1) return;

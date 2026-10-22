@@ -160,6 +160,10 @@
       function save() { ctx.store.set('state', R.toSave(state)); }
       /* The Beast Handler's record (its campaign id), made the first time this Bastion opens with it. */
       if (R.beastState && !R.beastCampaignId(state)) { R.beastState(state); save(); }
+      /* The Beast Handler no longer sends requests: its old queue is never read, so it is cleared away. */
+      try { TSI.store.remove('tsi.beasthandler.queue'); } catch (e) { /* nothing to clear */ }
+      /* The one-off sweep (Beast Handler): any beast already at Bond 1 or more with no variety is introduced now, once; the phone then plays the reveal. Not when a conversion report is still waiting to be read. */
+      if (R.sweepInitiation && !(state.migration && state.migration.v4 && state.migration.v4.shown !== true) && R.sweepInitiation(state, data, rand).changed) save();
       function saveUi() { ctx.store.set('ui', TSI.clone(ui)); }
       function log(title, body) { R.log(state, title, body); }
       function logAll(lines) { (lines || []).forEach(function (l) { log(l[0], l[1]); }); }
@@ -4841,39 +4845,12 @@
           if (res.refused) notice('A score change from the DM doc couldn\'t be used, so nothing changed for it.', { type: 'warn', title: 'From the DM doc.', id: 'tsi-bas-dmedits-refused', timeout: 12000 });
         }, function () { dmEditsBusy = false; });
       }
-      /* Requests from the Beast Handler on this laptop (Harry, 21 October 2026): each is checked against this
-         Bastion and applied once, with its receipt in this save (tools/beasthandler/bastion-link.js). */
-      var beastBusy = false;
-      /* A request that has its receipt leaves the queue once that is saved, so a Bastion saved earlier and put
-         back later (Import) can never be made to do an answered request again. The companion only adds to the
-         queue and takes out its own old ones; both re-read it before writing. */
-      function trimBeastQueue(commands) {
-        var answered = (Array.isArray(commands) ? commands : []).filter(function (c) {
-          return c && typeof c.id === 'string' && state.beast && state.beast.done && Object.prototype.hasOwnProperty.call(state.beast.done, c.id);
-        }).map(function (c) { return c.id; });
-        if (!answered.length) return;
-        TSI.store.flush().then(function () {
-          return TSI.store.fresh('tsi.beasthandler.queue', null);
-        }).then(function (stored) {
-          if (!life.alive || !stored || !Array.isArray(stored.commands)) return;
-          var keep = stored.commands.filter(function (c) { return !(c && answered.indexOf(c.id) !== -1); });
-          if (keep.length !== stored.commands.length) TSI.store.set('tsi.beasthandler.queue', { commands: keep });
-        }).catch(function () { /* left in the queue: the Bastion would only see a duplicate and do nothing */ });
+      /* The Beast Handler's one-off sweep once the conversion report has been read (at open it runs before the screens exist, above). */
+      function checkInitiation() {
+        if (!R.sweepInitiation || !life.alive || turnRunning || militaryRunning || changesOpen) return;
+        if (R.sweepInitiation(state, data, rand).changed) done();
       }
-      function checkBeast() {
-        if (!R.beastProcessQueue || beastBusy || !life.alive || turnRunning || militaryRunning || changesOpen) return Promise.resolve();
-        beastBusy = true;
-        return TSI.store.fresh('tsi.beasthandler.queue', null).then(function (q) {
-          beastBusy = false;
-          if (!life.alive || turnRunning || militaryRunning || changesOpen) return;
-          var res = R.beastProcessQueue(state, data, q && q.commands, Date.now(), rand);
-          trimBeastQueue(q && q.commands);
-          if (!res.changed) return;
-          done();
-          if (res.lines.length) notice('From the Beast Handler: ' + res.lines.join(' ') + ' The Day Log keeps it.', { type: res.refused && !res.applied ? 'warn' : 'info', title: 'A handler asked for something.', id: 'tsi-bas-beast', timeout: 14000 });
-        }, function () { beastBusy = false; });
-      }
-      life.setInterval(function () { checkClock(); checkCrestOffer(); checkDmEdits(); checkBeast(); }, 2000);
+      life.setInterval(function () { checkClock(); checkCrestOffer(); checkDmEdits(); }, 2000);
       life.on(document, 'visibilitychange', function () { if (document.visibilityState === 'visible') checkClock(); });
 
       /* Pass every day up to the Explorer's, one at a time, each saved step
@@ -4897,6 +4874,7 @@
             if (!state.dayInProgress) {
               if (explorerDay === null || explorerDay <= state.day || !state.anchored) break;
               R.startDay(state, data);
+              if (R.sweepInitiation) R.sweepInitiation(state, data, rand);
               settleInbox();
               done();
             } else if (settleInbox().changed) {
@@ -5710,7 +5688,7 @@
             done();
           }
           /* Whatever waited behind the box carries on now. */
-          if (first) { checkClock(); checkCrestOffer(); checkDmEdits(); checkBeast(); }
+          if (first) { checkClock(); checkCrestOffer(); checkDmEdits(); checkInitiation(); }
           return ok === true;
         });
       }
@@ -5737,7 +5715,6 @@
         /* Read the Explorer's day now, rather than in up to 2 seconds. */
         clock: function () { checkClock(); },
         dmEdits: function () { return checkDmEdits(); },
-        beast: function () { return checkBeast(); },
         /* The Strip Back report (migration.v4) and the War Table's orphan saves (force: even while the War Table is part of the Bastion). */
         changes: function () { return state.migration && state.migration.v4 ? TSI.clone(state.migration.v4) : null; },
         showChanges: function () { return showChanges(); },
@@ -5816,7 +5793,6 @@
          any crest sent from the Clan Crest Creator while the Bastion was shut. */
       checkClock();
       checkDmEdits();
-      checkBeast();
       checkCrestOffer();
     },
 

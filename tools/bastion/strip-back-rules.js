@@ -370,8 +370,31 @@
     });
   }
 
+  /* The Beast Handler's old request record (step S13, 22 October 2026). The app no longer sends requests, so the Bastion
+     has nothing to answer: s.beast.done (a receipt for each request), .accept (the "take requests" switch) and .floor
+     (the time of the newest receipt forgotten) are dropped. Nothing else of s.beast moves (the campaign id and the
+     handlers' pairing codes stay). It says nothing in the report: it is bookkeeping no one reads. A version 4 save only
+     counts as "needs converting" for this if a receipt, a raised floor or a switched-off switch is still in it; the
+     empty shape older builds wrote is dropped quietly when the save loads (R.cleanBeast). */
+  function detectBeastRequests(s) {
+    var b = isObj(s.beast) ? s.beast : null;
+    var out = [];
+    if (!b) return out;
+    if (isObj(b.done) && Object.keys(b.done).length) out.push('Beast Handler requests');
+    else if (typeof b.floor === 'number' && b.floor > 0) out.push('a Beast Handler request limit');
+    else if (b.accept === false) out.push('a Beast Handler request switch');
+    return out;
+  }
+  function dropBeastRequests(s) {
+    if (!isObj(s.beast)) return;
+    delete s.beast.done;
+    delete s.beast.accept;
+    delete s.beast.floor;
+  }
+
   /* The registry, in the order they run. Add a step ABOVE sweepFacilities. */
   R.stripBackSteps = [
+    { id: 'dropBeastRequests', detect: detectBeastRequests, run: dropBeastRequests },
     { id: 'sweepFacilities', detect: detectGhosts, run: sweepFacilities },
     { id: 'finish', detect: null, run: finish }
   ];

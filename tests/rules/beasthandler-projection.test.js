@@ -1,6 +1,8 @@
 /* Scarlett Isles: Beast Handler — the player's view of the Bastion (BH-1a,
    tools/beasthandler/projection.js) and the DM-only Chronicle note it relies on
-   (Harry's approvals of 21 October 2026, D1 to D8). */
+   (Harry's approvals of 21 October 2026, D1 to D8). Version 2 (22 October 2026): read-only, so no orders, training,
+   receipts or request fingerprints; a Bond 0 beast has no detail; the first meeting the Bastion rolled is carried to
+   its own handler only. Every field is listed with the reason a player may see it, and a field with no reason fails. */
 (function () {
   var BR = TSI.bastion.rules;
   var P = TSI.beasthandler.projection;
@@ -107,7 +109,7 @@
     var b = world();
     var g = housed(b, 'griffin', 'Swiftwing');
     var dir = fac(snap(b, ''), 'griffin_tower').creatures[0];
-    t.same([dir.name, dir.handlerName, dir.bond, dir.mine], ['Swiftwing', '', null, false]);
+    t.same([dir.name, dir.handlerName, dir.bond, dir.mine, dir.available], ['Swiftwing', '', null, false, false]);
     BR.assignHandler(b, bdata, g.id, 'Mira', '');
     var after = snap(b, 'Mira');
     t.same(fac(after, 'griffin_tower').creatures[0].bond, { level: 0, name: 'Unfamiliar' });
@@ -159,7 +161,7 @@
 
   group('Beast Handler: what a player never sees (BH-1a)');
 
-  test('another player\'s creature is a directory line and nothing more: no profile, Chronicle or orders', function (t) {
+  test('another player\'s creature is a directory line and nothing more: no profile, Chronicle or first meeting', function (t) {
     var b = world();
     var e = houseElara(b);
     var w = housed(b, 'wyvern', 'Stormwing');
@@ -169,7 +171,7 @@
     t.ok(JSON.stringify(m).indexOf('OTHERPLAYERNOTE') === -1, 'Elara\'s Chronicle is not in Mira\'s snapshot');
     t.ok(JSON.stringify(m).indexOf('Existing relationship credited') === -1);
     var line = fac(m, 'wyvern_roost').creatures[0];
-    t.same(Object.keys(line).sort(), ['bond', 'handlerName', 'id', 'mine', 'name', 'species']);
+    t.same(Object.keys(line).sort(), ['available', 'bond', 'handlerName', 'id', 'mine', 'name', 'species']);
     t.same([line.name, line.handlerName, line.mine, line.bond.level], ['Elara\'s wyvern', 'Elara', false, 1]);
   });
 
@@ -188,8 +190,8 @@
     ['7654321', 'SECRETLOGLINE', 'SECRETCLANNAME', 'SECRETEDIT', 'SECRETWAREHOUSE', 'treasury', 'pendingOrders', 'warRecovery', 'msgId', 'grantedDay', 'housedDay', 'handlerHistory', 'development'].forEach(function (needle) {
       t.ok(raw.indexOf(needle) === -1, 'no "' + needle + '" in the snapshot');
     });
-    t.same(Object.keys(m).sort(), ['asOfDay', 'asOfLabel', 'campaign', 'creatures', 'facilities', 'handler', 'kind', 'receipts', 'version']);
-    t.same(Object.keys(m.creatures[w.id]).sort(), ['artKey', 'bond', 'chronicle', 'facility', 'handler', 'id', 'name', 'orders', 'profile', 'rev', 'species', 'training']);
+    t.same(Object.keys(m).sort(), ['asOfDay', 'asOfLabel', 'campaign', 'creatures', 'facilities', 'handler', 'kind', 'version']);
+    t.same(Object.keys(m.creatures[w.id]).sort(), ['available', 'bond', 'facility', 'handler', 'id', 'name', 'species'], 'a Bond 0 beast: no more than this');
     t.ok(e.id);
   });
 
@@ -276,32 +278,27 @@
     t.same(snap(b2, 'Mira'), s1);
   });
 
-  test('P.check accepts a snapshot and refuses anything else', function (t) {
+  test('P.check accepts a version 2 snapshot and refuses anything else, including every version 1 snapshot an old phone kept', function (t) {
     var s = snap(world(), '');
+    t.equal(P.VERSION, 2);
     t.equal(P.check(s), '');
     t.ok(P.check(null) !== '');
-    t.ok(P.check({ kind: 'something.else', version: 1, facilities: [], creatures: {} }) !== '');
-    t.ok(P.check({ kind: P.KIND, version: 2, facilities: [], creatures: {} }) !== '');
-    t.ok(P.check({ kind: P.KIND, version: 1, facilities: {}, creatures: {} }) !== '');
-    t.ok(P.check({ kind: P.KIND, version: 1, facilities: [] }) !== '');
+    t.ok(P.check({ kind: 'something.else', version: 2, facilities: [], creatures: {} }) !== '');
+    t.ok(/different version/.test(P.check({ kind: P.KIND, version: 1, facilities: [], creatures: {} })), 'version 1 is retired');
+    t.ok(P.check({ kind: P.KIND, version: 3, facilities: [], creatures: {} }) !== '');
+    t.ok(P.check({ kind: P.KIND, version: 2, facilities: {}, creatures: {} }) !== '');
+    t.ok(P.check({ kind: P.KIND, version: 2, facilities: [] }) !== '');
   });
 
-  group('Beast Handler: orders and the pending-order lock (BH-1a)');
+  group('Beast Handler: the read-only snapshot, version 2 (22 October 2026)');
 
-  test('a Bond 0 wyvern at Level 3 is offered only what the Bastion would accept: Safe Acclimatisation, free, with its ready day', function (t) {
-    var b = world({ roost: 3 });
-    var e = houseElara(b);
-    var w = housed(b, 'wyvern', 'Stormwing');
-    BR.assignHandler(b, bdata, w.id, 'Mira', '');
-    var o = snap(b, 'Mira').creatures[w.id].orders;
-    t.equal(o.status, 'available');
-    t.same(o.available.map(function (x) { return x.fnId; }), ['wyr_safe_acclimatisation']);
-    var a = o.available[0];
-    t.same([a.label, a.days, a.daysText, a.readyDay, a.readyLabel, a.level, a.costGP, a.costText], ['Safe Acclimatisation', 5, '5 days', 15, 'Day 15', 1, 0, 'Free']);
-    t.ok(/Bond 1 \(Acclimatised\) is ready for the DM to confirm/.test(a.consequence), a.consequence);
-    t.equal(BR.trainingBlocker(b, bdata, BR.facility(bdata, 'wyvern_roost'), BR.fn(BR.facility(bdata, 'wyvern_roost'), 'wyr_safe_acclimatisation'), w), '', 'the Bastion agrees');
-    t.ok(e.id);
-  });
+  /* The beast that has passed acclimatisation (Bond 1), housed and handled by Mira. */
+  function mira(b, species, name, bond) {
+    var c = housed(b, species || 'wyvern', name || 'Stormwing');
+    BR.assignHandler(b, bdata, c.id, 'Mira', '');
+    BR.ensureDev(b, c).bond.level = bond === undefined ? 1 : bond;
+    return c;
+  }
 
   test('a creature with no handler belongs to nobody\'s companion', function (t) {
     var b = world();
@@ -311,158 +308,116 @@
     t.same(Object.keys(snap(b, 'Mira').creatures), []);
   });
 
-  test('orders appear as the building and the bond allow, never above the building\'s level', function (t) {
-    var b = world({ roost: 1 });
-    var w = housed(b, 'wyvern', 'Stormwing');
-    BR.assignHandler(b, bdata, w.id, 'Mira', '');
-    var dev = BR.ensureDev(b, w);
-    dev.bond.level = 2;
-    function ids() { return snap(b, 'Mira').creatures[w.id].orders.available.map(function (x) { return x.fnId; }); }
-    t.same(ids(), [], 'Level 1 offers nothing at Bond 2 (Safe Acclimatisation and the Keeper\'s Routine are for lower bonds)');
-    b.facilityLevels.wyvern_roost = 2;
-    var lvl2 = ids();
-    t.ok(lvl2.indexOf('wyr_signal_recall') !== -1 && lvl2.indexOf('wyr_defence_drills') !== -1, 'Level 2 opens Signal & Recall and Territorial Defence Drills');
-    t.ok(lvl2.indexOf('wyr_open_sky_return') === -1 && lvl2.indexOf('wyr_aerial_sentinel') === -1, 'Level 3 programmes are still hidden');
-    b.facilityLevels.wyvern_roost = 3;
-    var lvl3 = ids();
-    t.ok(lvl3.indexOf('wyr_aerial_sentinel') === -1, 'Aerial Sentinel needs Bond 3');
-    dev.bond.level = 3;
-    t.ok(ids().indexOf('wyr_aerial_sentinel') !== -1 && ids().indexOf('wyr_open_sky_return') !== -1);
-  });
-
-  test('the riding harness (150 gp), House orders and the first flight are never offered, even when the Bastion would allow them', function (t) {
-    var b = world({ roost: 5 });
-    b.treasuryGP = 5000;
-    var w = housed(b, 'wyvern', 'Stormwing');
-    BR.assignHandler(b, bdata, w.id, 'Mira', '');
-    BR.ensureDev(b, w).bond.level = 4;
-    var fac = BR.facility(bdata, 'wyvern_roost');
-    t.equal(BR.trainingBlocker(b, bdata, fac, BR.fn(fac, 'wyr_riding_harness'), w), '', 'the Bastion itself would accept the harness');
-    var offered = snap(b, 'Mira').creatures[w.id].orders.available.map(function (x) { return x.fnId; });
-    t.equal(offered.indexOf('wyr_riding_harness'), -1);
-    t.ok(offered.every(function (id) { return !/^house_/.test(id); }));
-    t.ok(offered.length > 0 && offered.every(function (id) { return Number(BR.fn(fac, id).costGP) === 0; }));
-  });
-
-  test('griffins and dire wolves are offered their own programmes now (the brief\'s "no training yet" is out of date)', function (t) {
+  test('every field of the snapshot, and the reason a player may see it (a field with no reason fails)', function (t) {
     var b = world();
-    var g = housed(b, 'griffin', 'Swiftwing');
-    var wf = housed(b, 'dire_wolf', 'Ashfang');
-    BR.assignHandler(b, bdata, g.id, 'Mira', '');
-    BR.assignHandler(b, bdata, wf.id, 'Joss', '');
-    t.same(snap(b, 'Mira').creatures[g.id].orders.available.map(function (x) { return x.fnId; }), ['grf_safe_acclimatisation']);
-    t.same(snap(b, 'Joss').creatures[wf.id].orders.available.map(function (x) { return x.fnId; }), ['dwf_safe_acclimatisation']);
-    t.equal(snap(b, 'Joss').creatures[wf.id].orders.available[0].label, 'Safe Acclimatisation');
+    var c = mira(b, 'wyvern', 'Stormwing', 2);
+    BR.sweepInitiation(b, bdata, rnd);
+    BR.addChronicleNote(b, bdata, c.id, 'A public note.');
+    BR.setTemperament(b, bdata, c.id, { dominant: 'Proud', attachment: 'Lowers its head', trigger: 'Thick smoke' });
+    var s = snap(b, 'Mira');
+    var TOP = {
+      kind: 'names the file, so a phone can tell a snapshot from anything else',
+      version: 'lets a phone retire a snapshot from another version',
+      campaign: 'the Bastion\'s own random id: a phone only takes a snapshot for the Bastion it was paired with',
+      asOfDay: 'the in-game day, already on every screen of the Explorer',
+      asOfLabel: 'the same day, as words',
+      handler: 'the viewer\'s own name and whether they have a beast',
+      facilities: 'the directory: which buildings stand and who lives in them (public in the Ironbow)',
+      creatures: 'the detail of the viewer\'s OWN beasts only'
+    };
+    t.same(Object.keys(s).sort(), Object.keys(TOP).sort());
+    var DIR = {
+      id: 'an id the phone needs to open its own beast', name: 'seen by everyone at the Ironbow', species: 'a beast\'s kind is plain to see',
+      handlerName: 'who looks after it is public', bond: 'the bond is on every directory line (Harry, 21 October 2026)',
+      available: 'whether it has passed acclimatisation: the line says "Not acclimatised yet" otherwise', mine: 'whether the viewer is its handler'
+    };
+    t.same(Object.keys(s.facilities[0].creatures[0]).sort(), Object.keys(DIR).sort());
+    t.same(Object.keys(s.facilities[0]).sort(), ['creatures', 'id', 'level', 'name', 'species'], 'a building: its name, level and kind are public');
+    var DETAIL = {
+      id: 'its own id', name: 'its own name', species: 'its own kind', facility: 'where it lives (public)', handler: 'its own handler\'s name',
+      available: 'true from Bond 1', bond: 'its own bond',
+      initiation: 'the first meeting the Bastion rolled for THIS handler\'s beast, for the reveal; null until it has one',
+      profile: 'its own Regional Variety and personality lines, the DM\'s or rolled words, for its own handler',
+      chronicle: 'its own record, without the DM-only notes', artKey: 'which kind\'s picture to use'
+    };
+    t.same(Object.keys(s.creatures[c.id]).sort(), Object.keys(DETAIL).sort());
+    Object.keys(DETAIL).forEach(function (k) { t.ok(DETAIL[k].length > 5, 'a reason for ' + k); });
+    Object.keys(TOP).concat(Object.keys(DIR)).forEach(function (k) { t.ok((TOP[k] || DIR[k]).length > 5, 'a reason for ' + k); });
+    t.same(Object.keys(s.creatures[c.id].initiation).sort(), ['regional', 'rolls']);
+    t.same(Object.keys(s.creatures[c.id].initiation.rolls).sort(), ['attachment', 'dominant', 'trigger']);
   });
 
-  test('while a training programme is pending at the building, nothing new is offered: the pending programme and its day are shown instead', function (t) {
+  test('version 2 holds no orders, training, receipts or request fingerprint, anywhere', function (t) {
     var b = world({ roost: 3 });
-    var e = houseElara(b);
-    var w = housed(b, 'wyvern', 'Stormwing');
-    BR.assignHandler(b, bdata, w.id, 'Mira', '');
-    var r = train(b, 'wyvern_roost', 'wyr_safe_acclimatisation', 1);
-    t.equal(r.ok, true, r.message);
-    var pend = last(b);
-    var mira = snap(b, 'Mira').creatures[w.id].orders;
-    t.equal(mira.status, 'busy');
-    t.same(mira.available, []);
-    t.same([mira.busy.label, mira.busy.dueDay, mira.busy.dueLabel, mira.busy.forThisCreature], ['Safe Acclimatisation', 15, 'Day 15', true]);
-    t.equal(mira.note, 'Safe Acclimatisation, ready on Day 15.');
-    t.ok(pend);
-    var elara = snap(b, 'Elara').creatures.elara_wyvern.orders;
-    t.equal(elara.status, 'busy', 'a different player\'s creature is locked out too (the whole building)');
-    t.equal(elara.busy.forThisCreature, false);
-    t.equal(elara.busy.label, 'A training programme is under way at the Wyvern Roost', 'another handler\'s programme is not named');
-    t.equal(JSON.stringify(snap(b, 'Elara')).indexOf('Acclimatisation'), -1, 'the other handler\'s programme is not in Elara\'s snapshot (the beast is only a directory line)');
-    t.ok(!!BR.trainingOptions(b, bdata, BR.facility(bdata, 'wyvern_roost'), BR.fn(BR.facility(bdata, 'wyvern_roost'), 'wyr_safe_acclimatisation')).length);
+    var c = mira(b, 'wyvern', 'Stormwing', 1);
+    train(b, 'wyvern_roost', 'wyr_keeper_routine', 0);
+    b.beast = BR.beastState(b);
+    var s = snap(b, 'Mira');
+    var raw = JSON.stringify(s);
+    ['"orders"', '"training"', '"receipts"', '"rev"', 'trainCreatureId', 'costGP', 'readyLabel', 'fnId'].forEach(function (needle) { t.equal(raw.indexOf(needle), -1, 'no ' + needle); });
+    t.equal(s.receipts, undefined);
+    t.equal(s.creatures[c.id].orders, undefined);
+    t.equal(s.creatures[c.id].training, undefined);
+    t.equal(s.creatures[c.id].rev, undefined);
+    t.equal(P.pendingAt, undefined);
+    t.equal(P.isPlayerOrder, undefined);
+    t.equal(P.busyLabel, undefined);
+    t.equal(window.TSI_DATA.beastPlayerOrders, undefined, 'and the data that said which orders a player may ask for is gone');
   });
 
-  test('the DM\'s own training places are untouched: the Bastion still takes a second programme at Level 3 while the phone is locked', function (t) {
-    var b = world({ roost: 3 });
-    var e = houseElara(b);
-    var w = housed(b, 'wyvern', 'Stormwing');
-    BR.assignHandler(b, bdata, w.id, 'Mira', '');
-    train(b, 'wyvern_roost', 'wyr_safe_acclimatisation', 1);
-    t.equal(BR.trainingPlaces(b, bdata, 'wyvern_roost').free, 1, 'one of the two places is free');
-    BR.ensureDev(b, e).bond.level = 1;
-    var second = train(b, 'wyvern_roost', 'wyr_keeper_routine', 0);
-    t.equal(second.ok, true, second.message);
-    t.equal(BR.trainingOrders(b).length, 2, 'both programmes are running');
-    t.equal(snap(b, 'Mira').creatures[w.id].orders.status, 'busy');
+  test('a Bond 0 beast is "not available": its own handler gets its name, kind, building, handler and bond, and nothing else; the directory line says so', function (t) {
+    var b = world();
+    var c = mira(b, 'griffin', 'Swiftwing', 0);
+    BR.setTemperament(b, bdata, c.id, { dominant: 'SECRETDOM', regional: 'SECRETREGION' });
+    BR.addChronicleNote(b, bdata, c.id, 'SECRETCHRONICLE');
+    BR.ensureDev(b, c).initiation = { regional: 'dawnmantle', rolls: { dominant: 3, attachment: 4, trigger: 5 }, day: 9 };
+    var s = snap(b, 'Mira');
+    var d = s.creatures[c.id];
+    t.equal(d.available, false);
+    t.same(Object.keys(d).sort(), ['available', 'bond', 'facility', 'handler', 'id', 'name', 'species']);
+    ['SECRETDOM', 'SECRETREGION', 'SECRETCHRONICLE', 'dawnmantle', 'rolls'].forEach(function (n) { t.equal(JSON.stringify(s).indexOf(n), -1, 'no ' + n + ' before acclimatisation'); });
+    t.same(fac(s, 'griffin_tower').creatures[0].available, false);
+    t.same(fac(s, 'griffin_tower').creatures[0].bond, { level: 0, name: 'Unfamiliar' });
+    BR.ensureDev(b, c).bond.level = 1;
+    var s2 = snap(b, 'Mira');
+    t.equal(s2.creatures[c.id].available, true);
+    t.equal(s2.creatures[c.id].profile.dominant, 'SECRETDOM', 'from Bond 1 the detail is sent');
+    t.equal(fac(s2, 'griffin_tower').creatures[0].available, true);
   });
 
-  test('an order pending at some other building never blocks this one', function (t) {
-    var b = world({ roost: 3, tower: 2, den: 2 });
-    var w = housed(b, 'wyvern', 'Stormwing');
-    BR.assignHandler(b, bdata, w.id, 'Mira', '');
-    var g = housed(b, 'griffin', 'Swiftwing');
-    BR.assignHandler(b, bdata, g.id, 'Joss', '');
-    var r = train(b, 'griffin_tower', 'grf_safe_acclimatisation', 0);
-    t.equal(r.ok, true, r.message);
-    t.equal(snap(b, 'Joss').creatures[g.id].orders.status, 'busy');
-    var m = snap(b, 'Mira').creatures[w.id].orders;
-    t.equal(m.status, 'available', 'the Roost is free');
-    var grant2 = grant(b, 'dire_wolf', 'Waiting Wolf');
-    t.ok(grant2);
-    b.pendingOrders.push({ id: 'x1', facId: 'library_scriptorium', fnId: 'research', chosen: null, optionLabel: '', notes: '', label: 'Library: Research', costGP: 0, issuedDay: 10, dueDay: 14 });
-    t.equal(snap(b, 'Mira').creatures[w.id].orders.status, 'available', 'a Library order does not matter');
+  test('the first meeting is null until the Bastion has rolled it, and is the stored result afterwards: its variety\'s id and the three die numbers, nothing else', function (t) {
+    var b = world();
+    var c = mira(b, 'dire_wolf', 'Ashfang', 1);
+    t.equal(snap(b, 'Mira').creatures[c.id].initiation, null);
+    BR.rollInitiation(b, bdata, c.id, function () { return 0.5; });
+    var ini = snap(b, 'Mira').creatures[c.id].initiation;
+    t.same(ini, { regional: 'blacktide', rolls: { dominant: 7, attachment: 5, trigger: 5 } });
+    t.equal(snap(b, 'Mira').creatures[c.id].profile.regional, 'Blacktide');
+    t.equal(JSON.stringify(ini).indexOf('day'), -1, 'the day it was made is the Bastion\'s business');
   });
 
-  test('a House order or an Upgrade pending at the building does NOT hold the phone back: only a training programme does (Harry, 21 October 2026)', function (t) {
-    var b = world({ roost: 3 });
-    var w = housed(b, 'wyvern', 'Stormwing');
-    BR.assignHandler(b, bdata, w.id, 'Mira', '');
-    grant(b, 'wyvern', 'Second Wing');
-    var r = BR.issueOrder(b, bdata, 'wyvern_roost', 'house_wyvern', 0, rnd);
-    t.equal(r.ok, true, r.message);
-    var o = snap(b, 'Mira').creatures[w.id].orders;
-    t.equal(o.status, 'available', 'housing a second wyvern does not lock the building');
-    t.ok(o.available.length > 0 && o.busy === null);
-    t.ok(JSON.stringify(snap(b, 'Mira')).indexOf('Second Wing') === -1, 'a waiting creature\'s name never leaks through a House order');
-    t.equal(P.pendingAt(b, 'wyvern_roost'), null, 'no training programme is pending there');
+  test('another handler\'s beast never gets its first meeting, profile or Chronicle; the directory line shows only that it has been acclimatised', function (t) {
+    var b = world();
+    var theirs = housed(b, 'wyvern', 'Stormwing');
+    BR.assignHandler(b, bdata, theirs.id, 'Joss', '');
+    BR.ensureDev(b, theirs).bond.level = 3;
+    BR.rollInitiation(b, bdata, theirs.id, function () { return 0.2; });
+    BR.addChronicleNote(b, bdata, theirs.id, 'JOSSNOTE');
+    var mine = mira(b, 'griffin', 'Swiftwing', 1);
+    var s = snap(b, 'Mira');
+    t.same(Object.keys(s.creatures), [mine.id]);
+    var raw = JSON.stringify(s);
+    ['JOSSNOTE', 'bloodcrest', 'Bloodcrest', 'rolls'].forEach(function (n) { t.equal(raw.indexOf(n), -1, 'no ' + n + ' in Mira\'s snapshot of Joss\'s beast'); });
+    var line = fac(s, 'wyvern_roost').creatures[0];
+    t.same([line.available, line.mine, line.bond.level], [true, false, 3]);
+    t.ok(Object.keys(snap(b, '').creatures).length === 0 && JSON.stringify(snap(b, '')).indexOf('rolls') === -1, 'nor does a viewer with no handler');
   });
 
-  test('the earliest-due pending order is the one shown; when it completes the building is free again', function (t) {
-    var b = world({ roost: 3 });
-    var e = houseElara(b);
-    var w = housed(b, 'wyvern', 'Stormwing');
-    BR.assignHandler(b, bdata, w.id, 'Mira', '');
-    b.pendingOrders.push({ id: 'late', facId: 'wyvern_roost', fnId: 'x', chosen: { label: 'Other', trainCreatureId: 'other-late' }, optionLabel: '', notes: '', label: 'Wyvern Roost: Late', costGP: 0, issuedDay: 10, dueDay: 30 });
-    b.pendingOrders.push({ id: 'soon', facId: 'wyvern_roost', fnId: 'x', chosen: { label: 'Other', trainCreatureId: 'other-soon' }, optionLabel: '', notes: '', label: 'Wyvern Roost: Soon', costGP: 0, issuedDay: 10, dueDay: 12 });
-    t.equal(snap(b, 'Mira').creatures[w.id].orders.busy.dueDay, 12, 'the one due first');
-    BR.removeOrder(b, 'soon'); BR.removeOrder(b, 'late');
-    t.equal(snap(b, 'Mira').creatures[w.id].orders.status, 'available');
-    t.ok(e.id);
-  });
-
-  test('a building Under Repair offers nothing and says so', function (t) {
-    var b = world({ roost: 3 });
-    var w = housed(b, 'wyvern', 'Stormwing');
-    BR.assignHandler(b, bdata, w.id, 'Mira', '');
-    b.repairs = { wyvern_roost: 14 };
-    var o = snap(b, 'Mira').creatures[w.id].orders;
-    t.equal(o.status, 'repair');
-    t.equal(o.note, 'The Wyvern Roost is Under Repair until Day 14.');
-    t.same(o.available, []);
-  });
-
-  test('the creature\'s own current training is shown with its due day, and "paused" while it recovers', function (t) {
-    var b = world({ roost: 3 });
-    var w = housed(b, 'wyvern', 'Stormwing');
-    BR.assignHandler(b, bdata, w.id, 'Mira', '');
-    t.equal(snap(b, 'Mira').creatures[w.id].training, null);
-    train(b, 'wyvern_roost', 'wyr_safe_acclimatisation', 0);
-    t.same(snap(b, 'Mira').creatures[w.id].training, { label: 'Safe Acclimatisation', dueDay: 15, dueLabel: 'Day 15', paused: false });
-    b.warRecovery = [{ kind: 'creature', creatureId: w.id, status: 'wounded', untilDay: 20 }];
-    t.equal(snap(b, 'Mira').creatures[w.id].training.paused, true);
-  });
-
-  test('nothing is claimed as started: a snapshot has no "accepted" or "completed" state of its own', function (t) {
-    var b = world({ roost: 3 });
-    var w = housed(b, 'wyvern', 'Stormwing');
-    BR.assignHandler(b, bdata, w.id, 'Mira', '');
-    var o = snap(b, 'Mira').creatures[w.id].orders;
-    t.ok(['available', 'busy', 'none', 'repair'].indexOf(o.status) !== -1);
-    t.equal(JSON.stringify(snap(b, 'Mira')).indexOf('"accepted"'), -1);
+  test('one directory entry for each standing building (the Beast Pen replaces them in a later step), five kinds named by their data', function (t) {
+    var b = world();
+    mira(b, 'wyvern', 'Stormwing', 1);
+    var s = snap(b, 'Mira');
+    t.same(s.facilities.map(function (f) { return f.id; }), ['wyvern_roost', 'griffin_tower', 'dire_wolf_den']);
+    t.same(P.homes(bdata).map(function (h) { return h.speciesId; }), ['wyvern', 'griffin', 'dire_wolf']);
   });
 }());

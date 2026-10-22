@@ -107,7 +107,7 @@
   });
 
   test('the registry: the steps run in order, the last one finishes, and a later step can be added above the catch-all', function (t) {
-    t.same(R.stripBackSteps.map(function (st) { return st.id; }), ['sweepFacilities', 'finish']);
+    t.same(R.stripBackSteps.map(function (st) { return st.id; }), ['dropBeastRequests', 'sweepFacilities', 'finish']);
     var steps = R.stripBackSteps;
     var added = {
       id: 'example',
@@ -132,7 +132,7 @@
     } finally {
       steps.splice(0, 1);
     }
-    t.same(R.stripBackSteps.map(function (st) { return st.id; }), ['sweepFacilities', 'finish']);
+    t.same(R.stripBackSteps.map(function (st) { return st.id; }), ['dropBeastRequests', 'sweepFacilities', 'finish']);
   });
 
   group('Strip Back: the catch-all (a facility the Bastion does not know)');
@@ -450,7 +450,7 @@
     function clampTreasury(s) { return Math.max(0, parseInt(s.treasuryGP, 10) || 0); }
   });
 
-  test('S01 changes nothing in any fixture except its version (nothing is removed yet): the heavy Bastion keeps its 28 orders, 4 beasts and 200 log lines', function (t) {
+  test('S01 changes nothing in any fixture except its version and the Beast Handler\'s old request record (S13): the heavy Bastion keeps its 28 orders, 4 beasts and 200 log lines', function (t) {
     Object.keys(FIX).forEach(function (name) {
       if (name === 'bastion-before-overhaul') return;
       var res = convert(FIX[name]);
@@ -458,6 +458,8 @@
       var a = clone(res.save), b = clone(FIX[name]);
       delete a.migration; delete b.migration;
       a.v = 3;
+      /* The one thing removed so far (S13): the Beast Handler's old request record. */
+      if (b.beast) { delete b.beast.done; delete b.beast.accept; delete b.beast.floor; }
       t.equal(canon(a), canon(b), name + ': every field exactly as it was');
     });
     var heavy = R.fromSave(clone(FIX['bastion-v3-heavy']), data);
@@ -517,6 +519,71 @@
     t.equal(res.save.treasuryGP, 400);
     t.equal(R.fromSave(clone(raw), data).v, 4);
     t.equal(R.migrateToV3(res.save, data).save.v, 4, 'version 3\'s conversion leaves a version 4 save alone');
+  });
+
+  group('Strip Back: the Beast Handler\'s old requests (S13, 22 October 2026)');
+
+  test('the old request record (receipts, the switch and the limit) is dropped; the campaign id and the handlers\' pairing codes stay, and it says nothing in the report', function (t) {
+    var raw = v3(function (s) {
+      s.beast = {
+        campaignId: 'AbCdEfGh12345678', accept: false, floor: 1760000000000,
+        handlers: [{ id: 'mira', name: 'Mira', secret: 'abcdefghijkmnpqrstuvwxyz', since: 4 }],
+        done: { 'cmd-1-abcdef12': { r: 'applied', why: '', day: 4, at: 1760000000001, type: 'profile.set', handler: 'mira', who: 'Mira', creature: 'x', label: 'x', orderId: '', dueDay: null } }
+      };
+    });
+    var res = convert(raw);
+    t.same(res.problems, [], 'the audit');
+    t.same(Object.keys(res.save.beast).sort(), ['campaignId', 'handlers']);
+    t.equal(res.save.beast.campaignId, 'AbCdEfGh12345678');
+    t.equal(res.save.beast.handlers[0].secret, 'abcdefghijkmnpqrstuvwxyz');
+    t.same(res.report.lines, [], 'nothing for Harry to read about it');
+    t.equal(res.save.migration.v4.changed, false);
+    t.equal(R.needsStripBack(res.save, data), false);
+    t.equal(canon(R.migrateToV4(res.save, data).save), canon(res.save), 'converting again changes nothing');
+    t.ok(raw.beast.done, 'the save it was given is untouched');
+  });
+
+  test('a save with no Beast Handler record, or a damaged one, is not a problem', function (t) {
+    t.same(convert(v3()).problems, []);
+    ['x', 5, [1], null].forEach(function (v) {
+      var res = convert(v3(function (s) { s.beast = v; }));
+      t.same(res.problems, [], 'beast: ' + JSON.stringify(v));
+      t.equal(res.save.v, 4);
+    });
+    var odd = convert(v3(function (s) { s.beast = { done: 'nope', floor: 'x', accept: 3, campaignId: 'AbCdEfGh12345678' }; }));
+    t.same(Object.keys(odd.save.beast), ['campaignId']);
+  });
+
+  test('a version 4 save that still holds receipts, a raised limit or a switched-off switch is cleaned again; the empty shape older builds wrote is not worth a notice and loads quietly', function (t) {
+    var once = convert(v3()).save;
+    once.migration.v4.shown = true;
+    [{ done: { 'cmd-1-abcdef12': { r: 'applied' } } }, { floor: 5 }, { accept: false }].forEach(function (extra) {
+      var dirty = clone(once);
+      dirty.beast = Object.assign({ campaignId: 'AbCdEfGh12345678', handlers: [] }, extra);
+      t.equal(R.needsStripBack(dirty, data), true, JSON.stringify(Object.keys(extra)));
+      t.equal(R.stripBackLeftovers(dirty, data)[0].step, 'dropBeastRequests');
+      var res = convert(dirty);
+      t.same(res.problems, []);
+      t.same(Object.keys(res.save.beast).sort(), ['campaignId', 'handlers']);
+    });
+    var empty = clone(once);
+    empty.beast = { campaignId: 'AbCdEfGh12345678', accept: true, handlers: [], done: {}, floor: 0 };
+    t.equal(R.needsStripBack(empty, data), false, 'no notice for an empty shape');
+    var loaded = R.fromSave(clone(empty), data);
+    t.same(Object.keys(loaded.beast).sort(), ['campaignId', 'handlers'], 'but it loads without the three');
+  });
+
+  test('the heavy Bastion\'s old record (a receipt, two handlers with codes) converts: the audit is clean, and it loads with the handlers and without the receipt', function (t) {
+    var h = FIX['bastion-v3-heavy'];
+    t.ok(h.beast && h.beast.done && Object.keys(h.beast.done).length === 1 && h.beast.accept === true, 'the fixture has the old shape');
+    var res = convert(h);
+    t.same(res.problems, []);
+    t.same(Object.keys(res.save.beast).sort(), ['campaignId', 'handlers']);
+    t.same(res.save.beast.handlers.map(function (x) { return x.id; }), ['kaelen', 'umbrys']);
+    var loaded = R.fromSave(clone(h), data);
+    t.same(Object.keys(loaded.beast).sort(), ['campaignId', 'handlers']);
+    t.equal(loaded.beast.campaignId, 'HvCampaign2610');
+    t.same(R.fromSave(R.toSave(loaded), data), loaded, 'and loading again gives the same Bastion');
   });
 
   group('Strip Back: other ways a save can arrive');
