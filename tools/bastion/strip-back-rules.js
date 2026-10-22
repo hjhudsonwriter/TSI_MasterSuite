@@ -464,7 +464,7 @@
     var day = report.day;
     var stood = [];       /* names, in order, of those that stood built */
     var stopped = [];     /* names whose building work stopped */
-    var slots = 0;
+    var slotNames = [];    /* names of those that held a slot, built or building */
     var seen = {};
     ['builtExtras', 'builtPlots'].forEach(function (key) {
       var list = arr(s[key]);
@@ -476,7 +476,7 @@
         var name = R.stripBackName(data, id);
         report.archived.push({ facId: id, name: name, status: building ? 'building' : 'built', slot: i, day: day });
         list[i] = '';
-        slots += 1;
+        slotNames.push(name);
         seen[id] = true;
         (building ? stopped : stood).push(name);
       }
@@ -496,13 +496,16 @@
     /* Starting facilities first, in the order they were always shown. */
     var order = WAR_FACILITIES.map(function (id) { return R.stripBackName(data, id); });
     stood.sort(function (a, b) { return order.indexOf(a) - order.indexOf(b); });
+    slotNames.sort(function (a, b) { return order.indexOf(a) - order.indexOf(b); });
     if (isObj(s.facilityLevels)) s.facilityLevels = levelOf;
     if (arr(s.builtFacilities)) s.builtFacilities = (data.bastion.startingBuilt || []).slice();
-    if (stood.length) {
-      R.stripBackSay(report, 'gone', listText(stood) + (stood.length === 1 ? ' is' : ' are') + ' gone with the war game.' +
-        (slots ? ' ' + (slots === 1 ? 'Its slot is' : 'Their slots are') + ' free.' : ''));
+    if (stood.length) R.stripBackSay(report, 'gone', listText(stood) + (stood.length === 1 ? ' is' : ' are') + ' gone with the war game.');
+    if (stopped.length) R.stripBackSay(report, 'gone', 'Building work on the ' + listText(stopped) + ' stopped, as ' + (stopped.length === 1 ? 'it is' : 'they are') + ' gone with the war game.');
+    /* Only the War Room and the Menagerie stood in a slot (the other three are starting facilities, which have none). */
+    if (slotNames.length) {
+      var whose = listText(slotNames.map(function (n) { return 'the ' + n + '\'s'; }));
+      R.stripBackSay(report, 'gone', whose.charAt(0).toUpperCase() + whose.slice(1) + (slotNames.length === 1 ? ' slot is' : ' slots are') + ' free.');
     }
-    if (stopped.length) R.stripBackSay(report, 'gone', 'Building work on the ' + listText(stopped) + ' stopped, as ' + (stopped.length === 1 ? 'it is' : 'they are') + ' gone with the war game.' + (stood.length ? '' : ' ' + (slots === 1 ? 'Its slot is' : 'Their slots are') + ' free.'));
     /* The two protections the Barracks and Watchtower gave the Dock. */
     var prot = isObj(s.tradeNetwork) && isObj(s.tradeNetwork.protections) ? s.tradeNetwork.protections : null;
     if (prot) {

@@ -94,14 +94,16 @@
          the war game, which was removed on 22 October 2026. Nothing reads
          them now, so every time the Bastion opens any that are there (a
          Restore of an old backup brings them back) are set aside in
-         quarantine, never deleted. */
+         quarantine, never deleted. It runs at the end of start-up, once the
+         conversion has passed its check and the converted Bastion and the
+         copy of the old one are on their way to being saved: if the check
+         fails, the page says so and nothing at all is moved. */
       function sweepOrphans() {
         return R.stripBackOrphans(function (name) { return ctx.store.has(name); }).map(function (name) {
           TSI.store.quarantine(TSI.storeRules.keyFor('bastion', name), 'The War Table was removed from the Bastion (the Strip Back Overhaul, 22 October 2026); this is its saved ' + name + ', kept in case it is needed.');
           return name;
         });
       }
-      sweepOrphans();
       /* A Bastion saved in turns, before the days overhaul, is set aside
          (kept, not deleted) and a new one starts on the Explorer's day
          (Harry, 8 October 2026: no turn-to-day conversion). */
@@ -3952,8 +3954,8 @@
       var onReset = TSI.oneAtATime(async function () {
         var ok = await TSI.backup.askReset({ toolId: 'bastion', title: 'Reset the Bastion', okLabel: 'Reset', message: 'Reset the Bastion? This clears its saved data in this browser only: facilities, orders, diplomacy records and the crest. The Explorer is left as it is.' });
         if (!ok || !life.alive) return;
-        /* The crest goes too (and any War Table save an old copy left behind); the panels' open or closed state stays. */
-        ['state', 'crest', 'warMap', 'warTable', 'warTerrain'].forEach(function (k) { if (ctx.store.has(k)) ctx.store.remove(k); });
+        /* The crest goes too; the panels' open or closed state stays. (Any War Table save an old copy left behind is set aside when the Bastion opens again.) */
+        ['state', 'crest'].forEach(function (k) { if (ctx.store.has(k)) ctx.store.remove(k); });
         TSI.store.flush().then(function () { TSI.shell.reload(); });
       });
 
@@ -4298,6 +4300,7 @@
       renderAll();
       /* The first open saves the starting Bastion, as the old tool did. */
       if (!saved || formerBrigade || migrating || settled.length) save();
+      sweepOrphans();
       if (settled.length) notice(R.settleLine(data, settled) + ' The Day Log says so too.', { type: 'info', title: 'Development Plots.', id: 'tsi-bas-plots', timeout: 20000 });
       /* The facilities overhaul's report, once. */
       var mig = state.migration && state.migration.v3;
