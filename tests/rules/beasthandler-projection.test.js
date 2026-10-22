@@ -193,6 +193,23 @@
     t.ok(e.id);
   });
 
+  test('the DM doc\'s Quest text (tsi.dmdoc.quest) never reaches the snapshot, even if it were copied into the Bastion\'s save', function (t) {
+    var b = world();
+    var w = housed(b, 'wyvern', 'Stormwing');
+    BR.assignHandler(b, bdata, w.id, 'Mira', '');
+    var before = JSON.stringify(snap(b, 'Mira'));
+    var secret = 'SECRET-QUEST-TEXT the keystone is under the Ironbow';
+    var q = TSI.dmDocRules.makeQuest(secret, 5);
+    b.dmdocQuest = q;                   /* as if it had been copied into the Bastion's save by mistake */
+    b.notes = secret;
+    b['tsi.dmdoc.quest'] = q;
+    var after = JSON.stringify(snap(b, 'Mira'));
+    t.equal(after, before, 'the snapshot is the same with the Quest text there');
+    ['SECRET-QUEST', 'keystone', 'dmdoc', 'quest'].forEach(function (needle) {
+      t.ok(after.toLowerCase().indexOf(needle.toLowerCase()) === -1, 'no "' + needle + '" in the snapshot');
+    });
+  });
+
   test('DM-only Chronicle notes never reach the snapshot; ordinary notes, ids and order do, exactly', function (t) {
     var b = world();
     var e = houseElara(b);

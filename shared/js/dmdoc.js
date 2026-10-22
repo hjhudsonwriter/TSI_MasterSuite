@@ -635,7 +635,8 @@
       if (!quest || !raw) return;
       var theirs = R.cleanQuest(raw);
       if (theirs.at <= quest.lastAt) return;
-      if (quest.dirty || document.activeElement === quest.box) {
+      /* In use: typing not yet saved, or the caret is in it in the window being used. */
+      if (quest.dirty || (document.activeElement === quest.box && document.hasFocus())) {
         questNote('warn', 'These notes were also changed in another window. What is in the box is kept, and the next save replaces that copy.');
         return;
       }
@@ -858,23 +859,38 @@
      says so instead of opening a second copy.
      noopener stays: without it the new window would copy this one's
      sessionStorage (see shell.js), so a window name can't be reused. */
-  var popOpening = false;
+  var popOpening = false;   /* a Pop out is being worked out, or its window is still starting up */
+  var popOpened = false;    /* ...and the window has been asked for */
+  function saySoPopOut() {
+    TSI.notify('The DM doc is already open in its own window. Look for it on your other screen, or close that one first.', { type: 'info', id: 'tsi-dmdoc-popout', timeout: 9000 });
+  }
+  /* Until the new window has taken its lock (a few seconds at most), a quick
+     second click is told so, not given a second window. */
+  function waitForPopOut(startedAt) {
+    var lock = TSI.toolLock;
+    function release() { popOpening = false; popOpened = false; }
+    if (!lock || !lock.heldElsewhere) { setTimeout(release, 3000); return; }
+    lock.heldElsewhere(POP_LOCK).then(function (held) {
+      if (held || Date.now() - startedAt > 5000) release();
+      else setTimeout(function () { waitForPopOut(startedAt); }, 250);
+    });
+  }
   function popOut() {
-    if (popOpening) return;
+    if (popOpening) { if (popOpened) saySoPopOut(); return; }
     popOpening = true;
     var lock = TSI.toolLock;
     var already = lock && lock.heldElsewhere ? lock.heldElsewhere(POP_LOCK) : Promise.resolve(false);
     Promise.all([commitQuest(), already]).then(function (answers) {
       if (answers[1]) {
         popOpening = false;
-        TSI.notify('The DM doc is already open in its own window. Look for it on your other screen, or close that one first.', { type: 'info', id: 'tsi-dmdoc-popout', timeout: 9000 });
+        saySoPopOut();
         return;
       }
       var url = TSI.shell && TSI.shell.dmDocUrl ? TSI.shell.dmDocUrl() : 'index.html?dmdoc=1';
       try { window.open(url, 'tsi-dmdoc-window', R.popOutFeatures()); } catch (e) { popOpening = false; TSI.reportError(e, 'opening the DM doc in its own window'); return; }
+      popOpened = true;
       close({ returnFocus: true });
-      /* A moment for the new window to take its lock, so a quick second click is caught too. */
-      setTimeout(function () { popOpening = false; }, 4000);
+      waitForPopOut(Date.now());
     }, function () { popOpening = false; });
   }
 
