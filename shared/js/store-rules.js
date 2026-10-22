@@ -125,6 +125,22 @@
       return 'tsi.quarantine.' + rest + '.' + stamp;
     },
 
+    /* A name nothing else has: base, or base-2, base-3... (two copies set
+       aside in the same second must never overwrite each other). taken(name)
+       says whether a name is already used. */
+    uniqueKey: function (base, taken) {
+      var key = base;
+      for (var n = 2; taken(key); n++) key = base + '-' + n;
+      return key;
+    },
+
+    /* The note kept with a copy made by TSI.store.keepCopy: where it came
+       from and why. copy: true tells it apart from a record that was moved. */
+    copyNote: function (key, reason, when) {
+      var d = when instanceof Date ? when : new Date(when || Date.now());
+      return { from: key, reason: reason || 'A copy kept in case it is needed.', at: d.toISOString(), copy: true };
+    },
+
     /* ---------- Two open copies (the "Already open" warning) ----------
        Each open tab says which tool it has open: a tool id, '' for the home
        screen (null is read as the home screen too). Anything else, such as

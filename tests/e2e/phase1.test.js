@@ -1503,6 +1503,31 @@ async function waitSaved(page) {
       const keys = JSON.parse(d.text).records.map(r => r.key);
       equal(keys.filter(k => k.startsWith('tsi.quarantine.')).length, 2);
     });
+
+    await check('keepCopy puts a copy under a quarantine name and leaves the save itself where it is (never a moment with none)', async () => {
+      const r = await page.evaluate(async () => {
+        TSI.store.set('tsi.demo.state', { count: 7, note: 'keep me' });
+        await TSI.store.flush();
+        let gone = false;
+        /* The live save is checked at every step the copy takes. */
+        const watch = setInterval(() => { if (!TSI.store.has('tsi.demo.state')) gone = true; }, 0);
+        const a = await TSI.store.keepCopy('tsi.demo.state', 'a test');
+        const b = await TSI.store.keepCopy('tsi.demo.state', 'a test again');
+        const none = await TSI.store.keepCopy('tsi.demo.nothing', 'nothing there');
+        clearInterval(watch);
+        await TSI.store.flush();
+        const rows = await new Promise(res => { const rq = indexedDB.open('tsi.test', 1); rq.onsuccess = () => { const g = rq.result.transaction('records', 'readonly').objectStore('records').getAll(); g.onsuccess = () => { rq.result.close(); res(g.result); }; }; });
+        return { a, b, none, gone, live: TSI.store.get('tsi.demo.state'), copyA: TSI.store.get(a), notes: rows.filter(x => x.key === a || x.key === b).map(x => [x.note.from, x.note.reason, x.note.copy]), saved: rows.filter(x => x.key === 'tsi.demo.state').length };
+      });
+      assert(/^tsi\.quarantine\.demo\.state\.\d{8}-\d{6}/.test(r.a), r.a);
+      assert(r.b && r.b !== r.a, 'a second copy in the same second has its own name');
+      equal(r.none, null, 'nothing to copy gives null');
+      equal(r.gone, false, 'the live save was never absent');
+      equal(r.live, { count: 7, note: 'keep me' });
+      equal(r.copyA, { count: 7, note: 'keep me' });
+      equal(r.notes, [['tsi.demo.state', 'a test', true], ['tsi.demo.state', 'a test again', true]]);
+      equal(r.saved, 1, 'and it is saved in the browser\'s database');
+    });
     await context.close();
   }
 

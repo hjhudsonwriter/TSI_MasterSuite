@@ -470,15 +470,33 @@
       var now = new Date();
       /* Two set aside in the same second get different names, so the first
          isn't overwritten by the second. */
-      var base = rules.quarantineKey(key, now);
-      var newKey = base;
-      for (var n = 2; cache.has(newKey) || pending.has(newKey); n++) newKey = base + '-' + n;
+      var newKey = rules.uniqueKey(rules.quarantineKey(key, now), function (k) { return cache.has(k) || pending.has(k); });
       var moved = rules.makeRecord(newKey, record.value, now, { from: key, reason: reason || 'It couldn\'t be read.', at: now.toISOString() });
       cache.set(newKey, moved);
       cache.delete(key);
       pending.set(newKey, { op: 'put', key: newKey, record: moved });
       pending.set(key, { op: 'delete', key: key });
       return writeNow().then(function () { return newKey; });
+    },
+
+    /* Keep a copy of a save under the quarantine name (tsi.quarantine.<tool>.
+       <name>.<stamp>), LEAVING the save itself where it is. The Bastion's
+       conversion uses it: the copy is written first, then the converted save,
+       so there is never a moment with no Bastion, and the old one can always
+       be put back from "Back up everything". Nothing is written to the live
+       key. Resolves with the copy's key once it is saved, or null if there was
+       nothing to copy or the browser refused (the converted save then waits in
+       the same queue, so it can't be saved without its copy). */
+    keepCopy: function (key, reason) {
+      requireReady();
+      var record = cache.get(key);
+      if (!record) return Promise.resolve(null);
+      var now = new Date();
+      var newKey = rules.uniqueKey(rules.quarantineKey(key, now), function (k) { return cache.has(k) || pending.has(k); });
+      var copy = rules.makeRecord(newKey, record.value, now, rules.copyNote(key, reason, now));
+      cache.set(newKey, copy);
+      pending.set(newKey, { op: 'put', key: newKey, record: copy });
+      return writeNow().then(function (ok) { return ok ? newKey : null; });
     },
 
     /* Save everything waiting now. Resolves true if all saved. */
