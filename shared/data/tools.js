@@ -94,6 +94,7 @@ window.TSI_DATA.tools = [
         'tools/bastion/data/creatures-data.js',
         'tools/bastion/data/war-room-data.js',
         'tools/bastion/rules.js',
+        'tools/bastion/strip-back-rules.js',
         'tools/bastion/commerce-rules.js',
         'tools/bastion/courier-rules.js',
         'tools/bastion/creature-rules.js',
@@ -151,6 +152,7 @@ window.TSI_DATA.tools = [
         /* The Bastion's rules, only to check its half of a campaign file
            on Import (the Explorer and the Bastion save as one campaign). */
         'tools/bastion/rules.js',
+        'tools/bastion/strip-back-rules.js',
         'tools/explorer/tool.js'
       ]
     }
@@ -204,6 +206,7 @@ window.TSI_DATA.tools = [
         'tools/bastion/data/creatures-data.js',
         'tools/bastion/data/war-room-data.js',
         'tools/bastion/rules.js',
+        'tools/bastion/strip-back-rules.js',
         'tools/bastion/commerce-rules.js',
         'tools/bastion/courier-rules.js',
         'tools/bastion/creature-rules.js',

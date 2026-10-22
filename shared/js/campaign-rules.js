@@ -47,9 +47,27 @@
     if (words[0] === 'shrine' && words.length === 2) words = ['shrine', 'of', words[1]];
     return words.map(function (w) { return w === 'of' ? w : w.charAt(0).toUpperCase() + w.slice(1); }).join(' ');
   }
-  /* A Bastion saved in days: v 2, or v 3 after the facilities overhaul (13
-     October 2026). The Bastion converts a v 2 save the next time it opens. */
-  function inDaysSave(ba) { return !!ba && (ba.v === 2 || ba.v === 3); }
+  /* A Bastion saved in days: v 2, v 3 (the facilities overhaul, 13 October
+     2026) or v 4 (the Strip Back Overhaul, 22 October 2026). The Bastion
+     converts an older save the next time it opens, so this page, the DM doc
+     and the Explorer read all three: a version missed here would silently
+     blank "The Ironbow sends word…" and the DM doc's orders. */
+  function inDaysSave(ba) { return !!ba && (ba.v === 2 || ba.v === 3 || ba.v === 4); }
+  /* The 13 facilities the Strip Back Overhaul takes out of the Bastion (the
+     Shrines become the Temple; the Wyvern Roost, Griffin Tower and Dire Wolf
+     Den the Beast Pen; the Library and Arcane Laboratory join the Workshop).
+     The Bastion cancels (with a refund) or moves each one's pending orders when
+     it next opens, so a version 3 save read before then must not forecast them
+     as if they would complete. A version 4 save has been converted: nothing is
+     left out of it. */
+  var RETIRED_FACILITIES = ['menagerie', 'war_room', 'library_scriptorium', 'arcane_laboratory', 'armoury', 'watchtower', 'barracks',
+    'shrine_telluria', 'shrine_aurush', 'shrine_pelagos', 'wyvern_roost', 'griffin_tower', 'dire_wolf_den'];
+  /* The pending orders a Bastion save will really have (see above). */
+  function liveOrders(ba) {
+    var list = Array.isArray(ba.pendingOrders) ? ba.pendingOrders : [];
+    if (ba.v === 4) return list;
+    return list.filter(function (o) { return !(isObj(o) && RETIRED_FACILITIES.indexOf(o.facId) !== -1); });
+  }
   var OBJECTIVES = { raid: 'Raid', skirmish: 'Skirmish', seize_outpost: 'Seize Outpost' };
   function clanTitle(name) { var n = str(name).trim(); return /^clan /i.test(n) ? n : 'Clan ' + n; }
   /* 'goldport' → 'Goldport' (shared/data/ports.js). */
@@ -68,6 +86,9 @@
        (keep it the same as tools/bastion/data/bastion-data.js time.eventEvery). */
     BASTION_EVENT_EVERY: 28,
 
+    /* The 13 facilities the Strip Back Overhaul retires (see above). */
+    RETIRED_FACILITIES: RETIRED_FACILITIES,
+
     /* What the Bastion has coming, from its save: [{ day, kind, line }], in day
        order (only what can be known before the day: building finished,
        orders due, contracts and records ending, repairs and recovery over,
@@ -84,7 +105,7 @@
       (Array.isArray(ba.builtExtras) ? ba.builtExtras : []).concat(Array.isArray(ba.builtPlots) ? ba.builtPlots : []).forEach(function (e) {
         if (isObj(e) && e.status === 'building') add(e.readyDay, 'built', 'The ' + facilityName(e.facId) + ' is built.');
       });
-      (Array.isArray(ba.pendingOrders) ? ba.pendingOrders : []).forEach(function (o) {
+      liveOrders(ba).forEach(function (o) {
         if (!isObj(o) || !isNum(o.dueDay)) return;
         var label = str(o.label) || 'An order';
         var m = isObj(o.meta) ? o.meta : {};
@@ -260,7 +281,7 @@
       var inDays = inDaysSave(ba) ? ba : null;
       if (inDays) {
         var today = day === null ? clampInt(inDays.day, 1, 100000, 1) : day;
-        var orders = (Array.isArray(inDays.pendingOrders) ? inDays.pendingOrders : []).filter(function (o) { return isObj(o) && isNum(o.dueDay); })
+        var orders = liveOrders(inDays).filter(function (o) { return isObj(o) && isNum(o.dueDay); })
           .slice().sort(function (a, b) { return a.dueDay - b.dueDay; });
         out.orders = {
           count: orders.length,

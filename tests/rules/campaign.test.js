@@ -92,6 +92,59 @@
     t.same([s.orders, s.nextWord, s.level.value], [null, null, 9], 'a Bastion saved in turns has neither (it\'s set aside when the Bastion opens)');
   });
 
+  test('a Bastion saved by the Strip Back Overhaul (version 4) is read like version 2 and 3 (a version missed here would blank the DM doc\'s orders and the word from the Ironbow without any error)', function (t) {
+    var e = explorer();
+    e.travel.day = 10;
+    [2, 3, 4].forEach(function (v) {
+      var b = busy();
+      b.v = v;
+      var s = sum(e, b);
+      t.ok(s.orders && s.orders.count > 0, 'version ' + v + ': its orders are shown');
+      t.ok(s.nextWord, 'version ' + v + ': it has a next word');
+      t.ok(C.ironbowNews(b, 10, 17).length > 0, 'version ' + v + ': "The Ironbow sends word…"');
+    });
+    var future = busy();
+    future.v = 5;
+    t.same([sum(e, future).orders, sum(e, future).nextWord, C.ironbowNews(future, 10, 17)], [null, null, []], 'a version this page has never heard of is not guessed at');
+    t.equal(sum(e, bastion()).orders.count, 0, 'a new Bastion (version 4)');
+  });
+
+  test('the 13 retired facilities: a version 3 Bastion read before it is converted does not forecast their orders; a converted (version 4) one still does until each step removes them', function (t) {
+    t.same(C.RETIRED_FACILITIES, ['menagerie', 'war_room', 'library_scriptorium', 'arcane_laboratory', 'armoury', 'watchtower', 'barracks',
+      'shrine_telluria', 'shrine_aurush', 'shrine_pelagos', 'wyvern_roost', 'griffin_tower', 'dire_wolf_den']);
+    C.RETIRED_FACILITIES.forEach(function (id) { t.ok(!!T.bastion.stripBack.facilities[id], id + ' is in the Bastion\'s own list too'); });
+    var e = explorer();
+    e.travel.day = 10;
+    function withOrders(v) {
+      var b = bastion();
+      b.v = v;
+      b.day = 10;
+      b.anchored = true;
+      b.pendingOrders = [
+        { id: 'a', facId: 'barracks', fnId: 'recruit_defenders', label: 'Barracks: Recruit Defenders', issuedDay: 9, dueDay: 14 },
+        { id: 'm', facId: 'menagerie', fnId: 'recruit_beast', label: 'Menagerie: Recruit Beast (Tiger)', issuedDay: 9, dueDay: 15 },
+        { id: 'p', facId: 'shrine_aurush', fnId: 'pray', label: 'Shrine of Aurush: Pray (Aurush\'s Blessing)', issuedDay: 9, dueDay: 12 },
+        { id: 'd', facId: 'dock', fnId: 'charter_berth', label: 'Dock: Charter Berth (Longship)', issuedDay: 8, dueDay: 16 },
+        { id: 'w', facId: 'workshop', fnId: 'craft', label: 'Workshop: Craft (Dagger)', issuedDay: 8, dueDay: 13 }
+      ];
+      return b;
+    }
+    var old = withOrders(3);
+    var s3 = sum(e, old);
+    t.same([s3.orders.count, s3.orders.next.label], [2, 'Workshop: Craft (Dagger)'], 'only the Dock\'s and the Workshop\'s orders');
+    t.same(C.ironbowNews(old, 10, 20), [{ day: 13, lines: ['Workshop: Craft (Dagger) is complete.'] }, { day: 16, lines: ['Dock: Charter Berth (Longship) is complete.'] }]);
+    t.same(s3.nextWord, { day: 13, inDays: 3, lines: ['Workshop: Craft (Dagger) is complete.'] }, 'the next word never names a retired facility');
+    t.ok(!JSON.stringify([s3, C.ironbowNews(old, 10, 30)]).match(/Barracks|Menagerie|Shrine of Aurush/), 'none of the three is named anywhere');
+    var v2 = withOrders(2);
+    t.equal(sum(e, v2).orders.count, 2, 'a version 2 Bastion is also converted when it opens, so it is read the same way');
+    var converted = withOrders(4);
+    t.equal(sum(e, converted).orders.count, 5, 'version 4: nothing is left out');
+    t.ok(/Barracks: Recruit Defenders is complete/.test(JSON.stringify(C.ironbowNews(converted, 10, 20))), 'its Barracks order is still forecast');
+    var before = JSON.stringify(old);
+    C.ironbowNews(old, 10, 20);
+    t.equal(JSON.stringify(old), before, 'the save is only read');
+  });
+
   test('"The Ironbow sends word…": an upgrade (step 1b) is complete on its day, the Hall\'s too (no roll)', function (t) {
     var b = bastion();
     b.day = 10;

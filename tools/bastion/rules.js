@@ -136,7 +136,7 @@
          the last day the Bastion has passed; anchored, whether it has read
          the Explorer's day yet (until then any Explorer day moves the whole
          Bastion to it, without passing days). */
-      v: 2,
+      v: 4,
       day: 1,
       anchored: false,
       lastEvent: null,
@@ -204,10 +204,14 @@
          expedition (the Explorer's half comes next). */
       greatRites: []
     };
-    s.v = 3;
     R.ensureLevels(s, data);
     return s;
   };
+  /* The save's version: 2 (the days overhaul, 8 October 2026), 3 (the
+     facilities overhaul, 13 October 2026), 4 (the Strip Back Overhaul, 22
+     October 2026: R.migrateToV4 in strip-back-rules.js). A new Bastion is
+     already the latest. */
+  R.STATE_VERSION = 4;
 
   /* ---------- The facilities overhaul: converting a v 2 save, once ----------
      (Harry, 13 October 2026; docs/FACILITIES-OVERHAUL-PLAN.md section 4.)
@@ -226,7 +230,8 @@
      Returns { save, lines } (lines: the report, in plain English). */
   R.migrateToV3 = function (raw, data) {
     var s = TSI.clone(raw);
-    if (isObj(s) && s.v === 3) return { save: s, lines: [] };
+    /* A save already converted (v 3), or newer (v 4), comes back as it is. */
+    if (isObj(s) && s.v >= 3) return { save: s, lines: [] };
     var map = (data.bastion && data.bastion.retiredFacilities) || {};
     var day = Math.max(1, dayNum(s.day, 1));
     var lines = [];
@@ -349,8 +354,16 @@
      The treasury is floored at 0 when loaded, as before (B17). */
   R.fromSave = function (saved, data) {
     var d = R.defaultState(data);
-    /* A save from before the facilities overhaul is converted first, once. */
-    var s = isObj(saved) && saved.v === 2 ? R.migrateToV3(saved, data).save : saved;
+    /* A save from before the Strip Back Overhaul (v 2 or 3, or a v 4 that an
+       older copy of the suite has overwritten, so it holds things the
+       Bastion no longer has) is converted first, once: v 2 to v 3
+       (R.migrateToV3), then v 3 to v 4 (R.migrateToV4, which runs the older
+       step itself for a v 2 save). The Bastion's own screen converts it
+       before this, so it can check the result and keep a copy
+       (tools/bastion/tool.js); this chain is for everything else that reads
+       a save (the Beast Handler on the laptop), in memory only. */
+    var s = saved;
+    if (R.needsStripBack(s, data)) s = R.migrateToV4(s, data).save;
     d.treasuryGP = clampInt(s.treasuryGP === undefined || s.treasuryGP === null ? 0 : s.treasuryGP, 0);
     d.partyLevel = clampInt(s.partyLevel === undefined || s.partyLevel === null ? 7 : s.partyLevel, 1, 20);
     if (arr(s.builtFacilities)) d.builtFacilities = s.builtFacilities.slice();
@@ -1053,7 +1066,7 @@
   /* A Bastion saved in turns, before the days overhaul (it has no v: 2).
      It's set aside, not converted (Harry, 8 October 2026). */
   R.isOldSave = function (s) {
-    return isObj(s) && s.v !== 2 && s.v !== 3 && ('turn' in s || 'turnInProgress' in s);
+    return isObj(s) && s.v !== 2 && s.v !== 3 && s.v !== 4 && ('turn' in s || 'turnInProgress' in s);
   };
   R.isUi = function (v) { return isObj(v); };
   /* What the screen remembers (tsi.bastion.ui), since the new screen
@@ -1150,9 +1163,11 @@
       }
       if (r.key === 'tsi.bastion.ui' && !isObj(r.value)) return 'This file\'s panel settings aren\'t in the right form, so it wasn\'t imported. Nothing was changed.';
       if (r.key === 'tsi.bastion.crest' && !R.isCrest(r.value)) return 'This file\'s crest picture isn\'t in the right form, so it wasn\'t imported. Nothing was changed.';
-      if (r.key === 'tsi.bastion.warMap' && !R.isWarMap(r.value)) return 'This file\'s battle map isn\'t in the right form, so it wasn\'t imported. Nothing was changed.';
-      if (r.key === 'tsi.bastion.warTable' && !R.isWarTable(r.value)) return 'This file\'s War Table settings aren\'t in the right form, so it wasn\'t imported. Nothing was changed.';
-      if (r.key === 'tsi.bastion.warTerrain' && !R.isWarTerrain(r.value)) return 'This file\'s battle terrain isn\'t in the right form, so it wasn\'t imported. Nothing was changed.';
+      /* The War Table's three saves (tsi.bastion.warMap, .warTable, .warTerrain)
+         are not checked any more (the Strip Back Overhaul, 22 October 2026):
+         the war game is going, and an old backup must never be refused for
+         them. If the War Table is still there it checks them itself when it
+         opens; otherwise the Bastion sets them aside (STRIP_BACK_ORPHAN_KEYS). */
     }
     return null;
   };

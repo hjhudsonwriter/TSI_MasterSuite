@@ -1342,7 +1342,11 @@
     t.same([ma.tier, ma.missionKey, ma.commit], ['established', 'molten|defend|established', { defenders: 5, lieutenants: 1, units: { line: 1 }, beasts: { 'Giant Vulture': 1 } }]);
   });
 
-  test('the War Table\'s painted terrain is checked on import', function (t) {
+  /* Since the Strip Back Overhaul (22 October 2026, S01) the Bastion's Import no longer
+     refuses a file for a damaged War Table save (the war game is going, and an old backup
+     must never be refused for it): R.isWarTerrain still says what a good one looks like,
+     for the War Table, which checks it itself when it opens. */
+  test('the War Table\'s painted terrain is checked by the War Table, no longer on import', function (t) {
     var good = { none: { cols: 2, rows: 2, cells: '.w.x' }, 'map-abc': { cols: 22, rows: 12, cells: new Array(265).join('.') } };
     t.ok(R.isWarTerrain(good));
     t.ok(R.isWarTerrain({}));
@@ -1356,7 +1360,8 @@
       ['x'],
       'x'
     ].forEach(function (bad) {
-      t.ok(/battle terrain/.test(R.importProblem([{ key: 'tsi.bastion.warTerrain', value: bad }]) || ''), JSON.stringify(bad));
+      t.ok(!R.isWarTerrain(bad), JSON.stringify(bad));
+      t.equal(R.importProblem([{ key: 'tsi.bastion.warTerrain', value: bad }]), null, 'ignored on import: ' + JSON.stringify(bad));
     });
   });
 

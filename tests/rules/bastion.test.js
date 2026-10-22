@@ -132,7 +132,7 @@
   test('the starting Bastion: five facilities, Day 1 (not yet set by the Explorer), level 7, 0 gp, unsworn', function (t) {
     var s = fresh();
     t.same(R.builtFacilityIds(s, data), ['barracks', 'armoury', 'watchtower', 'workshop', 'dock']);
-    t.equal(s.v, 3, 'a save in days, with the overhauled facilities (13 October 2026)');
+    t.equal(s.v, 4, 'a save in days, with the overhauled facilities (13 October 2026) and stripped back (22 October 2026)');
     t.same([s.legacyFacilities, s.archivedFacilities, s.migration], [[], [], null]);
     t.equal(s.day, 1);
     t.equal(s.anchored, false);
@@ -993,7 +993,7 @@
 
   group('Bastion: the crest and the War Table\'s saves');
 
-  test('a crest is a picture record; anything else is refused on import', function (t) {
+  test('a crest is a picture record; anything else is refused on import (the War Table\'s saves are not checked any more: Strip Back, 22 October 2026)', function (t) {
     var good = { dataUrl: 'data:image/webp;base64,AAAA', key: R.hashText('data:image/webp;base64,AAAA'), name: 'crest.png' };
     t.ok(R.isCrest(good));
     t.ok(!R.isCrest({ dataUrl: 'http://example.com/x.png', key: 'k' }));
@@ -1001,8 +1001,8 @@
     t.ok(!R.isCrest('data:image/png;base64,AAAA'));
     t.equal(R.importProblem([{ key: 'tsi.bastion.crest', value: good }]), null);
     t.ok(/crest picture/.test(R.importProblem([{ key: 'tsi.bastion.crest', value: { dataUrl: 'x' } }])));
-    t.ok(/battle map/.test(R.importProblem([{ key: 'tsi.bastion.warMap', value: { dataUrl: 'nope', key: 1 } }])));
-    t.ok(/War Table settings/.test(R.importProblem([{ key: 'tsi.bastion.warTable', value: 'x' }])));
+    t.equal(R.importProblem([{ key: 'tsi.bastion.warMap', value: { dataUrl: 'nope', key: 1 } }]), null, 'a damaged battle map is ignored, so an old backup is never refused for it');
+    t.equal(R.importProblem([{ key: 'tsi.bastion.warTable', value: 'x' }]), null, 'and so are the War Table\'s settings');
     t.equal(R.importProblem([{ key: 'tsi.bastion.warMap', value: good }, { key: 'tsi.bastion.warTable', value: {} }]), null);
     t.equal(R.hashText('abc'), R.hashText('abc'));
     t.ok(R.hashText('abc') !== R.hashText('abd'));
@@ -1430,13 +1430,13 @@
   test('converted once: loading again changes nothing, and a Bastion with nothing to convert has no notice', function (t) {
     var raw = v2(function (b) { b.builtExtras = [{ facId: 'library', status: 'built' }, { facId: 'gaming_hall', status: 'built' }]; });
     var once = R.fromSave(raw, data);
-    t.equal(once.v, 3);
+    t.equal(once.v, 4, 'a version 2 save is now taken on to version 4 in one go (Strip Back, 22 October 2026)');
     var twice = R.fromSave(JSON.parse(JSON.stringify(R.toSave(once))), data);
     t.same(twice, once, 'a v 3 save is loaded as it is');
     t.same(R.migrateToV3(R.toSave(once), data), { save: R.toSave(once), lines: [] }, 'and isn\'t converted again');
     t.equal(once.log.filter(function (l) { return l.title === 'Facilities'; }).length, 1, 'one Day Log entry');
     var plain = R.fromSave(v2(function (b) { b.builtExtras = [{ facId: 'shrine_aurush', status: 'built' }]; }), data);
-    t.same(plain.migration, { v3: { day: 12, lines: [], shown: true } }, 'nothing changed: no notice');
+    t.same(plain.migration.v3, { day: 12, lines: [], shown: true }, 'nothing changed: no notice');
     t.equal(plain.log.filter(function (l) { return l.title === 'Facilities'; }).length, 0);
     t.same(slots(plain), ['shrine_aurush']);
   });

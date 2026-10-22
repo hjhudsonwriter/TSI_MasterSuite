@@ -1,0 +1,628 @@
+/* The Strip Back conversion (version 3 to 4): tools/bastion/strip-back-rules.js,
+   R.fromSave's chain, the seven guarantees of R.stripBackAudit, and the
+   fixtures (tests/fixtures; the heavy one is made by tests/fixtures/make-heavy.js).
+   Harry's decisions of 22 October 2026: docs/STRIP-BACK-PLAN.md; the design:
+   docs/strip-back/J-cross-cutting.md sections 0 to 4. */
+(function () {
+  var R = TSI.bastion.rules;
+  var T = window.TSI_DATA;
+  var data = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, events: T.bastionEvents, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier, creatures: T.bastionCreatures, warRoom: T.bastionWarRoom };
+  var FIX = window.TSI_FIXTURES || {};
+  var canon = R.stripBackCanon;
+
+  function clone(v) { return JSON.parse(JSON.stringify(v)); }
+  /* A plain version 3 Bastion on Day 12, edited by fn. */
+  function v3(fn) {
+    var s = clone(R.toSave(R.defaultState(data)));
+    s.v = 3;
+    s.day = 12;
+    s.anchored = true;
+    s.treasuryGP = 400;
+    s.partyLevel = 13;
+    if (fn) fn(s);
+    return s;
+  }
+  function convert(raw) {
+    var res = R.migrateToV4(raw, data);
+    res.problems = R.stripBackAudit(res.before, res.save, res.report, data);
+    return res;
+  }
+  /* An order at a facility this copy of the suite has never heard of. */
+  function ghost(id, extra) {
+    return Object.assign({ id: id, facId: 'old_mill', fnId: 'grind', chosen: null, optionLabel: null, notes: '', label: 'Old Mill: Grind Grain', costGP: 0, issuedDay: 10, dueDay: 15 }, extra || {});
+  }
+  function held(goodId, qty) { return { goodId: goodId, name: R.goodName(data, goodId), qty: qty }; }
+  var ONE_OF = ['telluria', 'aurush', 'pelagos'];
+  /* Text a person reads must not have these in it. */
+  function jargon(text) {
+    var bad = [];
+    if (/undefined|null|NaN|\[object|Infinity/.test(text)) bad.push('a code word');
+    if (/\b[a-z]+_[a-z_]+\b/.test(text)) bad.push('an id with an underscore');
+    if (/\b(facId|fnId|pendingOrders|treasuryGP|builtExtras)\b/.test(text)) bad.push('a field name');
+    if (/\b1 (orders|lots|places)\b/.test(text)) bad.push('a plural after 1');
+    if (/\b[2-9] (order was|place was)\b/.test(text)) bad.push('a singular after a number');
+    if (/  /.test(text)) bad.push('a double space');
+    return bad;
+  }
+
+  group('Strip Back: the version 4 shell (S01)');
+
+  test('a fresh Bastion is already version 4: nothing to convert, no notice', function (t) {
+    var s = R.defaultState(data);
+    t.equal(s.v, 4);
+    t.equal(R.STATE_VERSION, 4);
+    t.equal(s.migration, null);
+    t.equal(R.needsStripBack(s, data), false);
+    var res = R.migrateToV4(R.toSave(s), data);
+    t.same(res.save, R.toSave(s), 'a clean version 4 save comes back as it is');
+    t.same(res.report.lines, []);
+    t.same(R.fromSave(R.toSave(s), data), s, 'and loads as it is');
+  });
+
+  test('what needs converting: anything below version 4, a version 4 with something the Bastion no longer has, and a save with no version', function (t) {
+    t.equal(R.needsStripBack(v3(), data), true);
+    t.equal(R.needsStripBack(v3(function (s) { s.v = 2; }), data), true);
+    t.equal(R.needsStripBack(v3(function (s) { delete s.v; }), data), true);
+    var clean = convert(v3()).save;
+    t.equal(R.needsStripBack(clean, data), false);
+    var dirty = clone(clean);
+    dirty.pendingOrders.push(ghost('late'));
+    t.equal(R.needsStripBack(dirty, data), true, 'an older copy of the suite saved over it');
+    t.same(R.stripBackLeftovers(dirty, data), [{ step: 'sweepFacilities', what: 'an order: old_mill' }]);
+    t.equal(R.needsStripBack(null, data), false);
+    t.equal(R.needsStripBack('x', data), false);
+  });
+
+  test('a version 3 Bastion with nothing to convert becomes version 4 and says so in one line; nothing else changes', function (t) {
+    var raw = v3(function (s) { s.pendingOrders = [{ id: 'o1', facId: 'workshop', fnId: 'craft', label: 'Workshop: Craft (Dagger)', costGP: 0, issuedDay: 10, dueDay: 15 }]; });
+    var before = JSON.stringify(raw);
+    var res = convert(raw);
+    t.equal(JSON.stringify(raw), before, 'the save it was given is untouched');
+    t.same(res.problems, []);
+    t.equal(res.save.v, 4);
+    t.same(res.report.lines, []);
+    t.same(res.save.migration.v4, { day: 12, lines: [], summary: 'Nothing of yours changed.', changed: false, again: false, shown: false });
+    var rest = clone(res.save);
+    delete rest.migration;
+    rest.v = 3;
+    var orig = clone(raw);
+    delete orig.migration;
+    t.same(rest, orig, 'every other field is exactly as it was');
+    t.equal(R.stripBackHeadline(res.save.migration.v4), 'The Bastion has been updated; nothing of yours changed.');
+  });
+
+  test('the conversion is pure: the same save gives the same result every time, and it never touches the one it is given', function (t) {
+    var raw = v3(function (s) {
+      s.treasuryGP = 90;
+      s.warehouse = [{ id: 'w1', goodId: 'raw_timber', item: 'Raw Timber', qty: 1, gp: '', notes: '' }];
+      s.pendingOrders = [ghost('g1', { costGP: 40, inputs: [held('raw_timber', 2), held('sawn_lumber', 1)] })];
+    });
+    var before = canon(raw);
+    var a = R.migrateToV4(raw, data);
+    var b = R.migrateToV4(raw, data);
+    t.equal(canon(raw), before);
+    t.equal(canon(a.save), canon(b.save));
+    t.equal(canon(a.report), canon(b.report));
+    t.equal(canon(a.before), canon(raw), 'before is what it started from');
+  });
+
+  test('the registry: the steps run in order, the last one finishes, and a later step can be added above the catch-all', function (t) {
+    t.same(R.stripBackSteps.map(function (st) { return st.id; }), ['sweepFacilities', 'finish']);
+    var steps = R.stripBackSteps;
+    var added = {
+      id: 'example',
+      detect: function (s) { return s.exampleLeftover ? ['an example'] : []; },
+      run: function (s, d, report) {
+        if (!s.exampleLeftover) return;
+        delete s.exampleLeftover;
+        R.stripBackSay(report, 'war', 'The example went away.');
+      }
+    };
+    steps.splice(0, 0, added);
+    try {
+      var raw = v3(function (s) { s.exampleLeftover = true; });
+      t.equal(R.needsStripBack(clone(convert(v3()).save), data), false, 'a clean save is not caught by it');
+      var withLeft = clone(convert(v3()).save);
+      withLeft.exampleLeftover = 1;
+      t.equal(R.needsStripBack(withLeft, data), true, 'its own leftovers make a version 4 save convert again');
+      var res = convert(raw);
+      t.same(res.problems, []);
+      t.equal('exampleLeftover' in res.save, false);
+      t.same(res.save.migration.v4.lines, ['The army and the war. The example went away.'], 'its sentence is under its heading');
+    } finally {
+      steps.splice(0, 1);
+    }
+    t.same(R.stripBackSteps.map(function (st) { return st.id; }), ['sweepFacilities', 'finish']);
+  });
+
+  group('Strip Back: the catch-all (a facility the Bastion does not know)');
+
+  test('a facility the catalogue does not know is freed from its slot, its plot, its level and its repairs, and recorded', function (t) {
+    var raw = v3(function (s) {
+      s.builtExtras = [{ facId: 'old_mill', status: 'built' }, { facId: 'war_room', status: 'built' }, { facId: 'sawpit', status: 'building', startDay: 8, readyDay: 29 }, ''];
+      s.builtPlots = [{ facId: 'old_mill', status: 'built' }, ''];
+      s.facilityLevels = Object.assign(s.facilityLevels, { old_mill: 3, sawpit: 1, war_room: 1 });
+      s.repairs = { old_mill: 14, dock: 15 };
+    });
+    var res = convert(raw);
+    t.same(res.problems, []);
+    t.same(res.save.builtExtras, ['', { facId: 'war_room', status: 'built' }, '', ''], 'positions are kept; the known facility stays');
+    t.same(res.save.builtPlots, ['', '']);
+    t.same(['old_mill' in res.save.facilityLevels, 'sawpit' in res.save.facilityLevels, 'war_room' in res.save.facilityLevels], [false, false, true]);
+    t.same(res.save.repairs, { dock: 15 });
+    t.same(res.save.archivedFacilities.map(function (a) { return [a.facId, a.name, a.status, a.slot, a.day, a.plot === true]; }), [
+      ['old_mill', 'Old Mill', 'built', 0, 12, false], ['sawpit', 'Sawpit', 'building', 2, 12, false], ['old_mill', 'Old Mill', 'built', 0, 12, true]
+    ]);
+    t.same(res.save.migration.v4.lines, ['Places that are gone. The Old Mill is no longer part of the Bastion; its slot is free. Building work on the Sawpit stopped, as it is no longer part of the Bastion; its slot is free.']);
+    t.equal(R.needsStripBack(res.save, data), false);
+  });
+
+  test('its pending orders are cancelled and EVERYTHING they cost comes back, exactly once: gold, Favour and the goods they held', function (t) {
+    var raw = v3(function (s) {
+      s.treasuryGP = 400;
+      s.favour = { telluria: 10, aurush: 50, pelagos: 99 };
+      s.warehouse = [
+        { id: 'w1', item: 'Rope (50 ft)', qty: 2, gp: '', notes: 'typed by hand' },
+        { id: 'w2', goodId: 'raw_timber', item: 'Raw Timber', qty: 1, gp: '', notes: '' }
+      ];
+      s.pendingOrders = [
+        { id: 'k', facId: 'workshop', fnId: 'craft', label: 'Workshop: Craft (Dagger)', costGP: 2, issuedDay: 10, dueDay: 13 },
+        ghost('g1', { costGP: 120, favourCost: 10, favourGod: 'telluria', inputs: [held('raw_timber', 3), held('alchemical_flowers', 4)] }),
+        ghost('g2', { label: 'Old Mill: Press Oil', costGP: 30, inputs: [held('raw_timber', 1)] })
+      ];
+    });
+    var res = convert(raw);
+    t.same(res.problems, []);
+    t.same(res.save.pendingOrders.map(function (o) { return o.id; }), ['k'], 'the order at a facility that stays is kept');
+    t.equal(res.save.treasuryGP, 550, '400 + 120 + 30');
+    t.same([res.report.gold.refunded, res.report.gold.settlement, res.report.gold.was, res.report.gold.now], [150, 0, 400, 550]);
+    t.same(res.report.gold.items, [{ label: 'Old Mill: Grind Grain', gp: 120, kind: 'refund' }, { label: 'Old Mill: Press Oil', gp: 30, kind: 'refund' }], 'every pound itemised');
+    var rows = {};
+    res.save.warehouse.forEach(function (w) { if (w.goodId) rows[w.goodId] = w.qty; });
+    t.same(rows, { raw_timber: 5, alchemical_flowers: 4 }, '1 + 3 + 1 lots of Raw Timber; a new row for the flowers');
+    t.same(res.save.warehouse.filter(function (w) { return !w.goodId; }), [raw.warehouse[0]], 'the row typed by hand is untouched');
+    t.same(res.report.goods.map(function (g) { return [g.goodId, g.qty]; }), [['raw_timber', 4], ['alchemical_flowers', 4]]);
+    t.equal(res.save.warehouse.filter(function (w) { return w.goodId === 'alchemical_flowers'; })[0].id, 'returned-alchemical_flowers', 'a row made by the conversion has a fixed id (never random)');
+    t.same(res.save.favour, { telluria: 10, aurush: 50, pelagos: 99 }, 'a facility that is not a Shrine has no god to give Favour back to');
+    t.equal(res.save.migration.v4.lines.length, 4);
+    t.ok(/^Gold\. 150 gp went back into the treasury \(it was 400 gp, it is now 550 gp\): Old Mill: Grind Grain, 120 gp; Old Mill: Press Oil, 30 gp\.$/.test(res.save.migration.v4.lines[0]), res.save.migration.v4.lines[0]);
+    t.equal(res.save.migration.v4.lines[1], 'Goods. 4 lots of Raw Timber and 4 portions of Alchemical Flowers went back to the Warehouse.');
+    t.equal(res.save.migration.v4.lines[2], 'Orders. 2 orders were cancelled: Old Mill: Grind Grain (the Old Mill is no longer part of the Bastion); Old Mill: Press Oil (the Old Mill is no longer part of the Bastion).');
+    /* Converting it again changes nothing: no second refund. */
+    var again = R.migrateToV4(res.save, data);
+    t.equal(again.save.treasuryGP, 550);
+    t.same(again.report.cancelled, []);
+  });
+
+  test('Favour comes back up to 100% and no further; what could not go back is said', function (t) {
+    var shrineOrder = function (id, facId, fav) { return { id: id, facId: facId, fnId: 'prepare_aquatic_protection_charm', label: 'Shrine of Pelagos: Prepare Aquatic Protection Charm', costGP: 0, favourCost: fav, issuedDay: 10, dueDay: 14 }; };
+    /* A Shrine the catalogue does not know, named as a Shrine is, so its god can be told. */
+    var res = convert(v3(function (s) {
+      s.favour = { telluria: 0, aurush: 0, pelagos: 95 };
+      s.pendingOrders = [shrineOrder('f1', 'shrine_pelagos', 10), shrineOrder('f2', 'old_mill', 5)];
+    }));
+    t.same(res.problems, []);
+    /* The real Shrine of Pelagos is still in the catalogue at this step, so only the Old Mill's order is cancelled. */
+    t.same(res.save.pendingOrders.map(function (o) { return o.id; }), ['f1']);
+    t.same(res.save.favour, { telluria: 0, aurush: 0, pelagos: 95 });
+    t.ok(res.report.notes.some(function (n) { return /5% of a god's Favour/.test(n); }), 'an order that used Favour at a place with no god says it could not give it back');
+    /* The cap, tested straight on the helper a later step uses. */
+    var s = v3(function (x) { x.favour = { telluria: 0, aurush: 0, pelagos: 95 }; x.pendingOrders = [shrineOrder('f3', 'shrine_pelagos', 10)]; });
+    var report = R.stripBackNewReport(s, data);
+    R.stripBackCancel(s, data, report, s.pendingOrders[0], 'the Temple replaces the Shrines');
+    t.equal(s.favour.pelagos, 100, 'capped at 100');
+    t.same([report.favour.pelagos, report.favour.lost.pelagos], [5, 5]);
+    t.same(report.cancelled.map(function (c) { return [c.id, c.god, c.favour, c.why]; }), [['f3', 'pelagos', 10, 'the Temple replaces the Shrines']]);
+  });
+
+  test('orders kept as they are: at a real facility, an upgrade, and the War Council\'s and Trade Network\'s own orders (their steps deal with them)', function (t) {
+    var raw = v3(function (s) {
+      s.pendingOrders = [
+        { id: 'a', facId: 'workshop', fnId: 'upgrade', label: 'Workshop: Upgrade to Level 2', costGP: 0, issuedDay: 10, dueDay: 17, meta: { kind: 'upgrade', toLevel: 2 } },
+        { id: 'b', facId: 'war_council', fnId: 'war_action', label: 'War Action', costGP: 0, issuedDay: 10, dueDay: 13, meta: { kind: 'war_action' } },
+        { id: 'c', facId: 'trade_network', fnId: 'upgrade', label: 'Ironbow Trade Network: Stability Investment', costGP: 75, issuedDay: 10, dueDay: 17, meta: { kind: 'stability' } },
+        'not an order'
+      ];
+    });
+    var res = convert(raw);
+    t.same(res.problems, []);
+    t.same(res.save.pendingOrders, raw.pendingOrders);
+    t.equal(res.save.treasuryGP, 400);
+    t.same(R.STRIP_BACK_PSEUDO_FACILITIES, ['war_council', 'trade_network']);
+  });
+
+  test('goods an order held that cannot be read are said, and the rest still go back; an order with no id is still cancelled and refunded', function (t) {
+    var res = convert(v3(function (s) {
+      s.pendingOrders = [{ facId: 'old_mill', fnId: 'grind', label: 'Old Mill: Grind Grain', costGP: 25, issuedDay: 10, dueDay: 14, inputs: [held('raw_timber', 1), { goodId: 5 }, 'x'] }];
+    }));
+    t.same(res.problems, []);
+    t.equal(res.save.treasuryGP, 425);
+    t.same(res.save.pendingOrders, []);
+    t.same(res.report.goods.map(function (g) { return [g.goodId, g.qty]; }), [['raw_timber', 1]]);
+    t.ok(res.report.notes.some(function (n) { return /some goods that could not be read/.test(n); }));
+    t.ok(/Also\. Old Mill: Grind Grain held some goods that could not be read/.test(res.save.migration.v4.lines[res.save.migration.v4.lines.length - 1]));
+  });
+
+  test('cancelling with a refund happens once: a second try finds no order and gives nothing', function (t) {
+    var s = v3(function (x) { x.pendingOrders = [ghost('g1', { costGP: 60 })]; });
+    var report = R.stripBackNewReport(s, data);
+    var o = s.pendingOrders[0];
+    t.equal(R.stripBackCancel(s, data, report, o, 'a reason'), true);
+    t.equal(R.stripBackCancel(s, data, report, o, 'a reason'), false);
+    t.equal(s.treasuryGP, 460);
+    t.same([report.gold.refunded, report.cancelled.length], [60, 1]);
+    /* A move keeps the order whole. */
+    var s2 = v3(function (x) { x.pendingOrders = [{ id: 'm', facId: 'library_scriptorium', fnId: 'research', label: 'Library & Scriptorium: Research (Geographical Scriptures)', costGP: 0, issuedDay: 10, dueDay: 15, inputs: [held('raw_timber', 1)] }]; });
+    var r2 = R.stripBackNewReport(s2, data);
+    R.stripBackMoveOrder(r2, s2.pendingOrders[0], { facId: 'workshop', fnId: 'scholar_research' }, 'the Workshop\'s Scholar');
+    t.same([s2.pendingOrders[0].id, s2.pendingOrders[0].dueDay, s2.pendingOrders[0].inputs.length, s2.pendingOrders[0].facId], ['m', 15, 1, 'workshop']);
+    t.same(r2.moved, [{ id: 'm', label: 'Library & Scriptorium: Research (Geographical Scriptures)', to: 'the Workshop\'s Scholar' }]);
+  });
+
+  test('names are never raw ids: the catalogue, then the Strip Back table (the 13 going), then the older retired ones, then the id in words', function (t) {
+    t.equal(R.stripBackName(data, 'workshop'), 'Workshop');
+    t.equal(R.stripBackName(data, 'war_room'), 'War Room');
+    t.equal(R.stripBackName(data, 'old_mill'), 'Old Mill');
+    t.equal(R.stripBackName(data, 'smithy'), 'Smithy');
+    t.equal(R.stripBackName(data, ''), 'A facility');
+    var ids = ['menagerie', 'war_room', 'library_scriptorium', 'arcane_laboratory', 'armoury', 'watchtower', 'barracks', 'shrine_telluria', 'shrine_aurush', 'shrine_pelagos', 'wyvern_roost', 'griffin_tower', 'dire_wolf_den'];
+    t.same(Object.keys(T.bastion.stripBack.facilities).sort(), ids.slice().sort(), 'the 13 facilities going');
+    ids.forEach(function (id) {
+      t.equal(T.bastion.stripBack.facilities[id], R.facility(data, id).name, id + ': spelt as the catalogue spells it');
+    });
+    t.same(Object.keys(T.bastion.stripBack).sort(), ['facilities', 'menagerieValue', 'names', 'orders']);
+    /* Still named when its definition has gone from the catalogue. */
+    var gone = { bastion: T.bastion, facilities: T.bastionFacilities.filter(function (f) { return f.id !== 'war_room'; }) };
+    t.equal(R.stripBackName(gone, 'war_room'), 'War Room');
+  });
+
+  group('Strip Back: the audit (the seven guarantees)');
+
+  /* A conversion that refunds, to break in turn. */
+  function good() {
+    var raw = v3(function (s) {
+      s.treasuryGP = 400;
+      s.favour = { telluria: 10, aurush: 50, pelagos: 95 };
+      s.warehouse = [{ id: 'w1', item: 'Rope (50 ft)', qty: 2, gp: '', notes: '' }, { id: 'w2', goodId: 'raw_timber', item: 'Raw Timber', qty: 1, gp: '', notes: '' }];
+      s.pendingOrders = [
+        { id: 'k', facId: 'workshop', fnId: 'craft', label: 'Workshop: Craft (Dagger)', costGP: 0, issuedDay: 10, dueDay: 13 },
+        ghost('g1', { costGP: 120, inputs: [held('raw_timber', 3)] })
+      ];
+      s.creatures = [{ id: 'c1', species: 'griffin', owner: '', name: 'Swiftwing', status: 'housed', home: 'griffin_tower', grantedDay: 1, housedDay: 3, msgId: '', development: R.newDevelopment({ id: 'c1' }, 3) }];
+      s.bridge = R.cleanBridge({ fresh: false, done: { 'm-1': { r: 'applied', day: 5, at: 1, clan: 'karr', hr: 1, was: 0, now: 1, text: 't', why: '' } } });
+      s.dmEdits = { done: { 'e-1': { r: 'applied', at: 1, day: 3, kind: 'pc', key: 'karr', was: 0, now: 5, why: '' } } };
+      s.greatRites = [{ id: 'r1', rite: 'tides_passage', god: 'pelagos', madeDay: 4, status: 'waiting' }];
+      s.word = [{ day: 11, lines: ['x'] }];
+      s.research = { herbal_gardens: { agricultural: ['fertile_soil'] } };
+      s.tradeNetwork.portCharters = [{ id: 'ch1', port: 'goldport', clan: 'Slade', mode: 'commodity_backed', status: 'registered', earnedDay: 2, registeredDay: 4, terms: {}, from: { code: '', title: '' }, text: '' }];
+      s.tradeNetwork.protections = { pelagos_blessing: { charges: 1 } };
+    });
+    return convert(raw);
+  }
+  function audit(res, mutate) {
+    var after = clone(res.save);
+    var report = clone(res.report);
+    mutate(after, report);
+    return R.stripBackAudit(res.before, after, report, data);
+  }
+  function caught(t, res, mutate, pattern, why) {
+    var problems = audit(res, mutate);
+    t.ok(problems.length > 0, why + ': nothing was caught');
+    t.ok(problems.some(function (p) { return pattern.test(p); }), why + ': ' + JSON.stringify(problems));
+  }
+
+  test('a clean conversion passes every check', function (t) {
+    var res = good();
+    t.same(res.problems, []);
+    t.equal(res.save.treasuryGP, 520);
+    t.same(res.report.cancelled.length, 1);
+  });
+
+  test('I1, gold: a lower treasury, gold that is not itemised, or a refund that is not what the orders cost is caught', function (t) {
+    var res = good();
+    caught(t, res, function (a) { a.treasuryGP = 399; }, /treasury would go down/, 'lower than before');
+    caught(t, res, function (a) { a.treasuryGP = 521; }, /treasury changes by/, 'a pound that is not reported');
+    caught(t, res, function (a) { a.treasuryGP = 400; }, /treasury changes by 0 gp, but the report says 120/, 'a refund that was not paid');
+    caught(t, res, function (a, r) { r.gold.items = []; }, /Not every pound is itemised/, 'no itemised lines');
+    caught(t, res, function (a, r) { r.gold.items[0].gp = 100; }, /itemised/, 'a line that does not add up');
+    caught(t, res, function (a, r) { r.gold.refunded = 119; a.treasuryGP = 519; r.gold.items[0].gp = 119; }, /not what the cancelled orders cost/, 'a refund smaller than the order cost');
+    caught(t, res, function (a, r) { r.gold.refunded = -1; }, /whole number/, 'a negative amount');
+  });
+
+  test('I2, Warehouse: goods that go missing, goods that appear, and a row typed by hand that changes are caught', function (t) {
+    var res = good();
+    t.equal(res.save.warehouse.filter(function (w) { return w.goodId === 'raw_timber'; })[0].qty, 4);
+    caught(t, res, function (a) { a.warehouse.forEach(function (w) { if (w.goodId === 'raw_timber') w.qty = 3; }); }, /raw timber would be 3, not 4/, 'a lot lost');
+    caught(t, res, function (a) { a.warehouse.forEach(function (w) { if (w.goodId === 'raw_timber') w.qty = 5; }); }, /raw timber would be 5, not 4/, 'a lot made from nothing');
+    caught(t, res, function (a) { a.warehouse.push({ id: 'x', goodId: 'sawn_lumber', item: 'Sawn Lumber', qty: 1, gp: '', notes: '' }); }, /sawn lumber/, 'another good appears');
+    caught(t, res, function (a) { a.warehouse[0].qty = 1; }, /written by hand/, 'a typed row changes');
+    caught(t, res, function (a, r) { r.goods[0].qty = 2; }, /not what the cancelled orders held/, 'the report says less than was held');
+  });
+
+  test('I3, Favour: lower, past 100%, or not what the orders used is caught; overflow is allowed only when the bar is full', function (t) {
+    var shrine = v3(function (s) {
+      s.favour = { telluria: 10, aurush: 50, pelagos: 95 };
+      s.pendingOrders = [{ id: 'f1', facId: 'shrine_pelagos', fnId: 'prepare_aquatic_protection_charm', label: 'Shrine of Pelagos: Prepare Aquatic Protection Charm', costGP: 0, favourCost: 10, issuedDay: 10, dueDay: 14 }];
+    });
+    /* Cancel it by hand, as a later step will, then audit that result. */
+    var after = clone(shrine);
+    var report = R.stripBackNewReport(after, data);
+    R.stripBackCancel(after, data, report, after.pendingOrders[0], 'a reason');
+    after.v = 4;
+    t.same(R.stripBackAudit(shrine, after, report, data).filter(function (p) { return !/converted again|version/.test(p); }), [], 'a refund with overflow passes');
+    function only(mutate) { var a = clone(after), r = clone(report); mutate(a, r); return R.stripBackAudit(shrine, a, r, data).filter(function (p) { return !/converted again|version/.test(p); }); }
+    t.ok(only(function (a) { a.favour.pelagos = 90; }).some(function (p) { return /Pelagos's Favour would go down/.test(p); }), 'lower');
+    t.ok(only(function (a) { a.favour.aurush = 49; }).some(function (p) { return /Aurush's Favour would go down/.test(p); }), 'another god\'s bar');
+    t.ok(only(function (a) { a.favour.pelagos = 105; }).some(function (p) { return /pass 100%/.test(p); }), 'past 100');
+    t.ok(only(function (a) { a.favour.telluria = 12; }).some(function (p) { return /Telluria's Favour changes by 2%/.test(p); }), 'a bar that changes with no report');
+    t.ok(only(function (a, r) { r.favour.lost.pelagos = 0; }).some(function (p) { return /not what the cancelled orders used/.test(p); }), 'overflow not reported');
+    t.ok(only(function (a, r) { a.favour.pelagos = 97; r.favour.pelagos = 2; r.favour.lost.pelagos = 8; }).some(function (p) { return /held back although its bar is not full/.test(p); }), 'held back with room on the bar');
+  });
+
+  test('I4, orders: one that vanishes, one listed as cancelled that is still there, a new one, and a cancel with no reason are caught', function (t) {
+    var res = good();
+    t.same(res.save.pendingOrders.map(function (o) { return o.id; }), ['k']);
+    caught(t, res, function (a) { a.pendingOrders = []; }, /not accounted for/, 'the kept order vanishes');
+    caught(t, res, function (a) { a.pendingOrders.push(ghost('g1')); }, /not accounted for/, 'a cancelled order is still there');
+    caught(t, res, function (a) { a.pendingOrders.push(ghost('brand-new')); }, /not accounted for/, 'an order that was never there');
+    caught(t, res, function (a, r) { r.cancelled[0].why = ''; }, /without its name or its reason/, 'no reason');
+    caught(t, res, function (a, r) { r.cancelled.push({ id: 'nope', label: 'X', why: 'y', gp: 0, favour: 0, god: '', goods: [] }); }, /no such order/, 'a cancel of an order that was never there');
+    caught(t, res, function (a, r) { r.moved.push({ id: 'ghost', label: 'X', to: 'y' }); }, /listed as moved is not in the converted Bastion/, 'a move to nowhere');
+    /* A moved order passes when it is still there. */
+    var moved = clone(res);
+    moved.report.moved = [{ id: 'k', label: 'Workshop: Craft (Dagger)', to: 'the Workshop' }];
+    moved.save.pendingOrders[0].fnId = 'smithing';
+    t.same(R.stripBackAudit(moved.before, moved.save, moved.report, data), []);
+  });
+
+  test('I5, creatures: the same animals and the same development; only a home may change', function (t) {
+    var res = good();
+    t.same(audit(res, function (a) { a.creatures[0].home = 'beast_pen'; }), [], 'a home may change');
+    caught(t, res, function (a) { a.creatures = []; }, /number of creatures/, 'one released');
+    caught(t, res, function (a) { a.creatures[0].development.bond.level = 2; }, /creature would change/, 'a bond raised');
+    caught(t, res, function (a) { a.creatures[0].development.chronicle = []; a.creatures[0].development.seq = 9; }, /creature would change/, 'a Chronicle changed');
+    caught(t, res, function (a) { a.creatures[0].status = 'waiting'; }, /creature would change/, 'a status changed');
+    caught(t, res, function (a) { a.creatures[0].name = 'Other'; }, /creature would change/, 'a name changed');
+    caught(t, res, function (a) { a.creatures.push({ id: 'new', species: 'griffin' }); }, /number of creatures/, 'one made up');
+  });
+
+  test('I6, the records that must never change: the Explorer link\'s receipts, the DM doc\'s edits, scores, Great Rites, research, word, Charters, the Blessing of Pelagos', function (t) {
+    var res = good();
+    caught(t, res, function (a) { delete a.bridge.done['m-1']; }, /bridge record would change/, 'a lost Explorer receipt (the one way a change could count twice)');
+    caught(t, res, function (a) { a.dmEdits.done = {}; }, /dmEdits record/, 'a DM doc edit receipt lost');
+    caught(t, res, function (a) { a.politicalCapital.karr = 1; }, /politicalCapital/, 'Political Capital');
+    caught(t, res, function (a) { a.honourRespectByClan.karr = 1; }, /honourRespectByClan/, 'Honour and Respect');
+    caught(t, res, function (a) { a.greatRites = []; }, /greatRites/, 'a Great Rite');
+    caught(t, res, function (a) { a.research = {}; }, /research/, 'research');
+    caught(t, res, function (a) { a.word = []; }, /word/, 'the word from the Ironbow');
+    caught(t, res, function (a) { a.diplomaticRecords.next = 9; }, /diplomaticRecords/, 'the Diplomatic Records');
+    caught(t, res, function (a) { a.tradeNetwork.portCharters = []; }, /portCharters/, 'a Port Charter');
+    caught(t, res, function (a) { a.tradeNetwork.voyages = [{ id: 'v' }]; }, /voyages/, 'a ship');
+    caught(t, res, function (a) { a.tradeNetwork.schedules = [{ id: 's' }]; }, /schedules/, 'a standing shipment');
+    caught(t, res, function (a) { a.tradeNetwork.cargoSales = [{ id: 's' }]; }, /cargoSales/, 'a sale');
+    caught(t, res, function (a) { a.tradeNetwork.marketLedger = [{ day: 1 }]; }, /marketLedger/, 'the ledger');
+    caught(t, res, function (a) { a.tradeNetwork.parcels = [{ id: 'p' }]; }, /parcels/, 'a parcel');
+    caught(t, res, function (a) { a.tradeNetwork.protections.pelagos_blessing = { charges: 0 }; }, /Pelagos blessing/, 'the Blessing of Pelagos');
+    t.same(audit(res, function (a) { a.tradeNetwork.active = true; a.tradeNetwork.stability = 10; }), [], 'the rest of the trade network (the Hall\'s old money) is not on the list: a later step winds it down');
+  });
+
+  test('I7, converting again changes nothing: a conversion that would leave something to convert, or would change again, is caught', function (t) {
+    var res = good();
+    caught(t, res, function (a) { a.pendingOrders.push(ghost('g1')); a.treasuryGP = 400; }, /converted again|not accounted/, 'something left behind');
+    caught(t, res, function (a) { a.v = 3; }, /version 4|converted again/, 'not marked version 4');
+    var tripped = clone(R.stripBackSteps);
+    R.stripBackSteps.splice(0, 0, { id: 'restless', detect: function () { return []; }, run: function (s) { s.restless = (s.restless || 0) + 1; } });
+    try {
+      var bad = convert(v3());
+      t.ok(bad.problems.some(function (p) { return /steps again would change/.test(p); }), JSON.stringify(bad.problems));
+    } finally {
+      R.stripBackSteps.splice(0, 1);
+    }
+    t.equal(R.stripBackSteps.length, tripped.length);
+    t.same(R.stripBackAudit(null, null, null), ['The converted Bastion could not be compared with the one it started from.']);
+  });
+
+  group('Strip Back: the fixtures');
+
+  test('the fixtures are all here: the seven earlier Bastions and the heavy one', function (t) {
+    t.same(Object.keys(FIX).sort(), ['bastion-before-overhaul', 'bastion-pr3-sample', 'bastion-pr5-sample', 'bastion-pr6-sample', 'bastion-pr7-sample', 'bastion-pr8a-sample', 'bastion-pr8b-sample', 'bastion-v3-heavy']);
+    t.equal(FIX['bastion-before-overhaul'].v, 2);
+    t.equal(FIX['bastion-pr8b-sample'].v, 3);
+    t.equal(FIX['bastion-v3-heavy'].v, 3);
+  });
+
+  test('every fixture converts safely and idempotently: the audit is clean, it is version 4, converting or loading again changes nothing', function (t) {
+    Object.keys(FIX).forEach(function (name) {
+      var raw = FIX[name];
+      var before = canon(raw);
+      var res = convert(raw);
+      t.equal(canon(raw), before, name + ': the fixture itself is untouched');
+      t.same(res.problems, [], name + ': the audit');
+      t.equal(res.save.v, 4, name);
+      t.equal(R.needsStripBack(res.save, data), false, name + ': nothing left to convert');
+      t.equal(canon(R.migrateToV4(res.save, data).save), canon(res.save), name + ': converting again changes nothing');
+      var loaded = R.fromSave(clone(raw), data);
+      t.equal(loaded.v, 4, name + ': loads as version 4');
+      var again = R.fromSave(R.toSave(loaded), data);
+      t.same(again, loaded, name + ': loading twice gives the same Bastion');
+      t.equal(loaded.treasuryGP >= clampTreasury(raw), true, name + ': the treasury is never lower');
+    });
+    function clampTreasury(s) { return Math.max(0, parseInt(s.treasuryGP, 10) || 0); }
+  });
+
+  test('S01 changes nothing in any fixture except its version (nothing is removed yet): the heavy Bastion keeps its 28 orders, 4 beasts and 200 log lines', function (t) {
+    Object.keys(FIX).forEach(function (name) {
+      if (name === 'bastion-before-overhaul') return;
+      var res = convert(FIX[name]);
+      t.same(res.report.lines, [], name + ': nothing to say');
+      var a = clone(res.save), b = clone(FIX[name]);
+      delete a.migration; delete b.migration;
+      a.v = 3;
+      t.equal(canon(a), canon(b), name + ': every field exactly as it was');
+    });
+    var heavy = R.fromSave(clone(FIX['bastion-v3-heavy']), data);
+    t.equal(heavy.v, 4);
+    t.equal(heavy.pendingOrders.length, 28);
+    t.equal(heavy.creatures.length, 4);
+    t.equal(heavy.log.length, 200);
+    t.equal(heavy.treasuryGP, 2000);
+    t.same(heavy.builtExtras.filter(Boolean).map(function (e) { return e.facId; }), ['menagerie', 'war_room', 'library_scriptorium', 'arcane_laboratory', 'shrine_telluria', 'shrine_aurush', 'shrine_pelagos', 'wyvern_roost', 'griffin_tower', 'dire_wolf_den', 'hall_of_emissaries']);
+    t.equal(heavy.migration.v4.changed, false);
+  });
+
+  test('the heavy fixture has something in every part the overhaul touches', function (t) {
+    var h = FIX['bastion-v3-heavy'];
+    var facs = {};
+    h.pendingOrders.forEach(function (o) { facs[o.facId] = true; });
+    ['workshop', 'dock', 'herbal_gardens', 'timber_sawmill', 'barracks', 'watchtower', 'armoury', 'war_room', 'war_council', 'menagerie', 'library_scriptorium', 'arcane_laboratory', 'shrine_telluria', 'shrine_pelagos', 'hall_of_emissaries', 'trade_network', 'wyvern_roost', 'dire_wolf_den'].forEach(function (id) {
+      t.ok(facs[id], 'a pending order at ' + id);
+    });
+    t.ok(h.pendingOrders.some(function (o) { return o.meta && o.meta.kind === 'upgrade'; }), 'an upgrade');
+    t.ok(h.pendingOrders.some(function (o) { return o.costGP > 0 && o.favourCost > 0 || o.inputs; }), 'orders with gold, Favour and goods');
+    t.ok(h.pendingOrders.filter(function (o) { return o.favourCost; }).length >= 3 && h.pendingOrders.filter(function (o) { return o.inputs; }).length >= 3);
+    t.equal(h.creatures.length, 4);
+    t.same(h.creatures.map(function (c) { return c.development ? c.development.bond.level : -1; }), [1, 2, 3, -1], 'bonds 1, 2 and 3, and one waiting with none');
+    t.same([h.diplomacy.agreements.length, h.diplomacy.consortiums.length, h.tradeNetwork.routes.length, h.arbitration.queue.length, h.diplomacy.tokens], [2, 1, 2, 1, 2]);
+    t.same(Object.keys(h.wars), ['bacca']);
+    t.equal(h.military.length, 5, 'four regiments and a Lieutenants row');
+    t.equal(h.defenderBeasts.length, 2);
+    t.same([h.defenders.count, h.defenders.armed], [6, true]);
+    t.equal(h.artisanTools.filter(Boolean).length, 6);
+    t.same([h.organization.type, h.organization.name], ['clan', 'Clan Ironbow']);
+    t.equal(h.log.length, 200);
+    t.equal(h.greatRites.length, 1);
+    t.same(h.tradeNetwork.protections, { pelagos_blessing: { charges: 1 } });
+    t.ok(h.tradeNetwork.portCharters.some(function (c) { return c.termsLog && c.termsLog.length; }), 'a Charter with a terms history');
+    t.equal(h.tradeNetwork.voyages.length, 1);
+    t.equal(h.tradeNetwork.schedules.length, 1);
+    t.equal(h.tradeNetwork.parcels.length, 2);
+    t.ok(R.facility(data, 'war_room'), 'the facilities it uses are in the catalogue today');
+  });
+
+  test('a version 2 fixture goes through version 3 and then version 4 in one go, and the report holds both lists', function (t) {
+    var raw = FIX['bastion-before-overhaul'];
+    var before = canon(raw);
+    var res = convert(raw);
+    t.equal(canon(raw), before);
+    t.same(res.problems, []);
+    t.equal(res.save.v, 4);
+    t.ok(res.report.v3Lines.length >= 3, 'the facilities change\'s lines are kept: ' + res.report.v3Lines.length);
+    t.same(res.save.migration.v3.lines, res.report.v3Lines, 'version 3\'s own notice is kept as it was');
+    t.equal(res.save.migration.v3.shown, false);
+    t.equal(res.save.migration.v4.shown, false);
+    t.ok(/^Facilities \(the change of 13 October 2026\)\. The Smithy joined the Workshop/.test(res.save.migration.v4.lines[0]), res.save.migration.v4.lines[0]);
+    t.equal(res.save.migration.v4.changed, true);
+    t.equal(R.stripBackHeadline(res.save.migration.v4), 'The Bastion has changed. Here is exactly what happened to yours.');
+    t.same(res.save.pendingOrders.map(function (o) { return o.fnId; }).sort(), ['alchemy', 'smithing'], 'orders followed their facilities');
+    t.equal(res.save.treasuryGP, 400);
+    t.equal(R.fromSave(clone(raw), data).v, 4);
+    t.equal(R.migrateToV3(res.save, data).save.v, 4, 'version 3\'s conversion leaves a version 4 save alone');
+  });
+
+  group('Strip Back: other ways a save can arrive');
+
+  test('a version 4 save that an older copy of the suite overwrote (it holds something the Bastion no longer has) is cleaned again, with a short notice', function (t) {
+    var once = convert(v3()).save;
+    once.migration.v4.shown = true;
+    var dirty = clone(once);
+    dirty.builtExtras = [{ facId: 'old_mill', status: 'built' }];
+    dirty.pendingOrders = [ghost('late', { costGP: 45 })];
+    var res = convert(dirty);
+    t.same(res.problems, []);
+    t.equal(res.save.treasuryGP, 445);
+    t.same(res.save.builtExtras, ['']);
+    t.same([res.report.again, res.save.migration.v4.again, res.save.migration.v4.shown], [true, true, false], 'to be read again');
+    t.equal(R.stripBackHeadline(res.save.migration.v4), 'The Bastion has been tidied again.');
+    t.ok(/An older copy of the suite had saved over your Bastion/.test(R.stripBackText(res.save.migration.v4)));
+    t.equal(R.needsStripBack(res.save, data), false);
+  });
+
+  test('a damaged value in a list the overhaul will drop is ignored, never refused or fatal; the three War Table saves are no longer checked on Import', function (t) {
+    var raw = v3(function (s) { s.military = 'x'; s.warLog = 5; s.wars = [1]; s.defenderBeasts = { a: 1 }; s.militaryActions = 'no'; });
+    var res = convert(raw);
+    t.same(res.problems, []);
+    t.equal(res.save.v, 4);
+    t.equal(R.fromSave(clone(raw), data).v, 4, 'it loads');
+    t.equal(R.importProblem([{ key: 'tsi.bastion.warMap', value: 'not a map' }, { key: 'tsi.bastion.warTable', value: 7 }, { key: 'tsi.bastion.warTerrain', value: [1] }]), null, 'an old backup is never refused for them');
+    t.ok(/Bastion isn't in the right form/.test(R.importProblem([{ key: 'tsi.bastion.state', value: { treasuryGP: 1, partyLevel: 2, day: 3, builtExtras: 'x' } }])), 'the Bastion itself is still checked');
+    t.equal(R.importProblem([{ key: 'tsi.bastion.state', value: convert(v3()).save }]), null, 'a version 4 save imports');
+    t.same(R.STRIP_BACK_ORPHAN_KEYS, ['warMap', 'warTable', 'warTerrain']);
+    t.same(R.stripBackOrphans(function (name) { return name === 'warTable' || name === 'crest'; }), ['warTable']);
+    t.same(R.stripBackOrphans(function () { return false; }), []);
+  });
+
+  test('a save in turns is still "old", and a version 4 save is never mistaken for one', function (t) {
+    t.equal(R.isOldSave({ turn: 4, treasuryGP: 1 }), true);
+    t.equal(R.isOldSave({ v: 4, treasuryGP: 1, turn: 4 }), false);
+    t.equal(R.isOldSave(convert(v3()).save), false);
+  });
+
+  test('a save with no version, a version below 2, or odd numbers still converts safely', function (t) {
+    var raw = v3(function (s) { delete s.v; s.treasuryGP = '250'; s.favour = { telluria: 'x', aurush: 120, pelagos: -4 }; s.pendingOrders = [ghost('g1', { costGP: '15' })]; });
+    var res = convert(raw);
+    t.same(res.problems, []);
+    t.equal(res.save.v, 4);
+    t.equal(res.save.treasuryGP, 265);
+    var loaded = R.fromSave(clone(raw), data);
+    t.same([loaded.treasuryGP, loaded.favour.aurush, loaded.favour.pelagos], [265, 100, 0]);
+  });
+
+  group('Strip Back: what Harry reads');
+
+  test('every line is plain English: no code words, no ids, plurals right, sentence case, and every cancelled order named by its saved label', function (t) {
+    var raw = v3(function (s) {
+      s.builtExtras = [{ facId: 'old_mill', status: 'built' }, { facId: 'sawpit', status: 'building', startDay: 8, readyDay: 29 }];
+      s.builtPlots = [{ facId: 'old_mill', status: 'built' }];
+      s.treasuryGP = 1200;
+      s.warehouse = [{ id: 'w1', goodId: 'raw_timber', item: 'Raw Timber', qty: 1, gp: '', notes: '' }];
+      s.pendingOrders = [
+        ghost('g1', { costGP: 1000, inputs: [held('raw_timber', 1)] }),
+        ghost('g2', { label: 'Sawpit: Cut Planks', facId: 'sawpit', costGP: 5, inputs: [held('alchemical_flowers', 1), held('restorative_herbs', 2), held('fresh_fish', 1)] }),
+        ghost('g3', { label: 'Old Mill: Press Oil' })
+      ];
+    });
+    var res = convert(raw);
+    t.same(res.problems, []);
+    var lines = res.save.migration.v4.lines;
+    t.ok(lines.length >= 4);
+    lines.forEach(function (line) {
+      t.same(jargon(line), [], line);
+      t.ok(/^[A-Z]/.test(line), 'starts with a capital: ' + line);
+      t.ok(/\.$/.test(line), 'ends with a full stop: ' + line);
+    });
+    t.ok(/1,005 gp went back into the treasury \(it was 1,200 gp, it is now 2,205 gp\)/.test(lines[0]), lines[0]);
+    t.ok(/Old Mill: Grind Grain, 1,000 gp; Sawpit: Cut Planks, 5 gp/.test(lines[0]), lines[0]);
+    var orders = lines.filter(function (l) { return /^Orders\./.test(l); })[0];
+    t.ok(/^Orders\. 3 orders were cancelled: Old Mill: Grind Grain \(the Old Mill is no longer part of the Bastion\); Sawpit: Cut Planks \(the Sawpit is no longer part of the Bastion\); Old Mill: Press Oil \(the Old Mill is no longer part of the Bastion\)\.$/.test(orders), orders);
+    t.ok(/^Goods\. 2 lots of Raw Timber, 1 portion of Alchemical Flowers, 2 portions of Restorative Herbs and|Goods\. 1 lot of Raw Timber/.test(lines[1]) || /Goods\./.test(lines[1]), lines[1]);
+    /* One order, one lot: the singular. */
+    var one = convert(v3(function (s) { s.pendingOrders = [ghost('g1', { costGP: 50, inputs: [held('raw_timber', 1)] })]; }));
+    var ol = one.save.migration.v4.lines;
+    t.ok(ol.some(function (l) { return /^Orders\. One order was cancelled: /.test(l); }), JSON.stringify(ol));
+    t.ok(ol.some(function (l) { return /^Goods\. 1 lot of Raw Timber went back to the Warehouse\.$/.test(l); }), JSON.stringify(ol));
+    ol.forEach(function (l) { t.same(jargon(l), [], l); });
+    R.STRIP_BACK_HEADINGS.forEach(function (h) { t.same(jargon(h.title), [], h.title); });
+  });
+
+  test('the text file: the headline, the day, each paragraph and the note about the copy', function (t) {
+    var res = convert(v3(function (s) { s.pendingOrders = [ghost('g1', { costGP: 50 })]; }));
+    var text = R.stripBackText(res.save.migration.v4);
+    var lines = text.split('\n');
+    t.equal(lines[0], 'The Bastion has changed. Here is exactly what happened to yours.');
+    t.ok(text.indexOf('Converted on Day 12 of the campaign.') !== -1);
+    t.ok(text.indexOf('Gold. 50 gp went back into the treasury') !== -1);
+    t.ok(text.indexOf('Orders. One order was cancelled: Old Mill: Grind Grain (the Old Mill is no longer part of the Bastion).') !== -1);
+    t.ok(text.indexOf('"Back up everything"') !== -1);
+    t.ok(/\n$/.test(text));
+    t.same(jargon(text), []);
+    var quiet = R.stripBackText(convert(v3()).save.migration.v4);
+    t.ok(quiet.indexOf('The Bastion has been updated; nothing of yours changed.') === 0);
+    t.equal(R.stripBackText(null), '');
+    t.equal(R.stripBackHeadline(null), '');
+    t.ok(R.stripBackSay, 'a later step can add a sentence under a heading');
+    var report = R.stripBackNewReport({}, data);
+    R.stripBackSay(report, 'gone', 'The Armoury is gone.');
+    R.stripBackSay(report, 'no-such-heading', 'Something else.');
+    t.same([report.said.gone, report.notes], [['The Armoury is gone.'], ['Something else.']]);
+  });
+}());

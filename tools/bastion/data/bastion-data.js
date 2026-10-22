@@ -139,6 +139,43 @@ window.TSI_DATA.bastion = {
     greenhouse: { to: 'herbal_gardens', name: 'Greenhouse', fns: { harvest: 'cultivate' } },
     gaming_hall: { to: null, name: 'Gaming Hall', fns: {} }
   },
+  /* The Strip Back Overhaul (Harry, 22 October 2026; docs/STRIP-BACK-PLAN.md):
+     what the one conversion to version 4 (R.migrateToV4, strip-back-rules.js)
+     needs to know AFTER the facilities and orders it deals with have been
+     taken out of facilities-data.js, so its report can still name them in
+     plain English. Names only for now; each later step fills in its own part.
+     - facilities: the 13 facilities being retired, by id: their names as
+       the Bastion has always shown them (the catalogue's own names until
+       each is deleted). The Menagerie, War Room, Library & Scriptorium,
+       Arcane Laboratory, Armoury, Watchtower and Barracks go or join the
+       Workshop; the three Shrines become one Temple; the Wyvern Roost,
+       Griffin Tower and Dire Wolf Den become one Beast Pen.
+     - orders: what becomes of each retired order (kept, moved, cancelled)
+       and the words for it (filled in by the steps that retire them);
+     - names: other things the report names that the data will no longer hold;
+     - menagerieValue: what each Menagerie beast cost, so the report can say
+       "a Tiger, bought for 1,000 gp" (filled in with the Menagerie's removal).
+     Keep every name spelled as above. A new facility never goes in here. */
+  stripBack: {
+    facilities: {
+      menagerie: 'Menagerie',
+      war_room: 'War Room',
+      library_scriptorium: 'Library & Scriptorium',
+      arcane_laboratory: 'Arcane Laboratory',
+      armoury: 'Armoury',
+      watchtower: 'Watchtower',
+      barracks: 'Barracks',
+      shrine_telluria: 'Shrine of Telluria',
+      shrine_aurush: 'Shrine of Aurush',
+      shrine_pelagos: 'Shrine of Pelagos',
+      wyvern_roost: 'Wyvern Roost',
+      griffin_tower: 'Griffin Tower',
+      dire_wolf_den: 'Dire Wolf Den'
+    },
+    orders: {},
+    names: {},
+    menagerieValue: {}
+  },
 
   /* The Bastion map (Harry's new painting, 12 October 2026; in use since
      13 October): one base painting, and a see-through overlay the same size
