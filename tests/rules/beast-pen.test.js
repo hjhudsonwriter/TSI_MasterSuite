@@ -1399,4 +1399,55 @@
     t.equal(o.label, 'Beast Pen: House Beast Here (granted Day 5)', 'an empty name gives back the usual one');
   });
 
+  test('Clear extra builds follows the Pen\'s Demolish rule: refused while any beast lives in it, allowed when none does', function (t) {
+    var b = withPen(10);
+    t.equal(BR.clearBuildsBlocker(b, bdata), '', 'an empty Pen can go');
+    housed(b, 1, 'griffin', 'Swiftwing');
+    t.equal(BR.clearBuildsBlocker(b, bdata), 'Clear extra builds would also demolish the Beast Pen, and a beast lives in it: there is nowhere else for it to go. Nothing was cleared. Demolish the buildings you do not want one at a time instead.');
+    housed(b, 2, 'wyvern', 'Ash');
+    t.ok(/and 2 beasts live in it: there is nowhere else for them to go\./.test(BR.clearBuildsBlocker(b, bdata)));
+    b.builtExtras = [{ facId: PEN, status: 'building', startDay: 1, readyDay: 22 }];
+    t.ok(BR.clearBuildsBlocker(b, bdata) !== '', 'a Pen still being built counts, as Demolish does');
+    b.builtExtras = [];
+    b.builtPlots = [PEN];
+    t.ok(BR.clearBuildsBlocker(b, bdata) !== '', 'a Pen in a plot counts too (a bare name in the slot)');
+    b.builtPlots = [];
+    t.equal(BR.clearBuildsBlocker(b, bdata), '', 'no Pen standing: nothing to refuse');
+    var waiting = withPen(10);
+    grant(waiting, 1, 'griffin', 'Swiftwing');
+    t.equal(BR.clearBuildsBlocker(waiting, bdata), '', 'a beast that only waits has no home to lose');
+  });
+
+  test('the Acclimatise row\'s DC and note are made from the data: one kind\'s DC, the shared DC or the range, and the days to wait', function (t) {
+    t.equal(BR.acclimatiseDcText(bdata, 'griffin'), 'DC 20');
+    t.equal(BR.acclimatiseDcText(bdata), 'DC 20', 'the same for every kind: just the number');
+    var custom = copy(CR);
+    custom.species.fellcat.acclimatiseDC = 23;
+    custom.acclimatise = { dc: 18, skill: 'Animal Handling', retryDays: 5 };
+    var cd = Object.assign({}, bdata, { creatures: custom });
+    t.equal(BR.acclimatiseDcText(cd, 'fellcat'), 'DC 23');
+    t.equal(BR.acclimatiseDcText(cd, 'wyvern'), 'DC 18');
+    t.equal(BR.acclimatiseDcText(cd), 'DC 18 to 23');
+    var note = BR.acclimatiseNote(cd);
+    t.ok(/Animal Handling at the table/.test(note) && /\(DC 18 to 23, each kind has its own\)/.test(note) && /locks that beast for 5 days\./.test(note), note);
+    t.ok(/\(DC 20\): the beast becomes Bond 1/.test(BR.acclimatiseNote(bdata)) && /locks that beast for 3 days\./.test(BR.acclimatiseNote(bdata)), BR.acclimatiseNote(bdata));
+    t.equal(/creatures-data|\.js\b/.test(BR.acclimatiseNote(bdata)), false, 'no file names in what the DM reads');
+    var fn = BR.facility(bdata, PEN).functions[1];
+    t.equal(/creatures-data|\b20\b|\b3 days\b/.test(fn.notes), false, 'the data\'s own note has no file name and no DC or days that could go out of step');
+  });
+
+  test('a kind this copy does not know lives in the Pen too: its lines never say "at the its home"', function (t) {
+    var b = withPen(10);
+    b.creatures.push({ id: 'x1', species: 'phoenix', owner: '', name: 'Emberwing', status: 'waiting', home: '', grantedDay: 3, housedDay: null, msgId: '' });
+    var c = BR.creatureById(b, 'x1');
+    t.equal(BR.speciesHome(bdata, 'phoenix'), PEN);
+    t.equal(BR.penStatus(b, bdata, c).line, 'Waiting for a home at the Beast Pen.');
+    t.equal(BR.nextStepLine(b, bdata, c), 'Needs a home at the Beast Pen first.');
+    t.equal(BR.speciesName(bdata, 'phoenix'), 'Unknown creature');
+    t.equal(BR.releaseBlocker(b, bdata, c), '', 'and a waiting one can be released');
+    t.equal(BR.renameCreature(b, bdata, 'x1', 'Cinder').ok, true);
+    t.equal(BR.assignHandler(b, bdata, 'x1', 'Mira', '').ok, true);
+    t.equal(reload(b).creatures.filter(function (x) { return x.id === 'x1'; }).length, 1, 'and it survives a reload');
+  });
+
 }());

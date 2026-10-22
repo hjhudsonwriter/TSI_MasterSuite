@@ -93,10 +93,11 @@
     var sp = R.creatureSpecies(data, id);
     return sp && typeof sp.plural === 'string' && sp.plural ? sp.plural.toLowerCase() : R.speciesNoun(data, id) + 's';
   };
-  /* The facility a kind of creature lives in ('griffin' → 'griffin_tower'), or ''. */
+  /* The facility a kind of creature lives in ('griffin' → 'beast_pen'). A kind this copy does not know (a save from a newer
+     copy) lives in the Pen too, so its lines never say "at the its home". */
   R.speciesHome = function (data, id) {
     var sp = R.creatureSpecies(data, id);
-    return sp && typeof sp.home === 'string' ? sp.home : '';
+    return sp && typeof sp.home === 'string' && sp.home ? sp.home : R.PEN_ID;
   };
   function facName(data, facId) {
     var f = facId ? R.facility(data, facId) : null;
@@ -128,6 +129,22 @@
     };
   };
   R.acclimatiseDC = function (data, species) { return R.acclimatiseData(data, species).dc; };
+  /* "DC 20" for one kind; for no kind in particular, the one DC every kind shares, or the range ("DC 18 to 22"). */
+  R.acclimatiseDcText = function (data, species) {
+    if (species) return 'DC ' + R.acclimatiseDC(data, species);
+    var sp = cdata(data).species;
+    var dcs = [R.acclimatiseDC(data)];
+    Object.keys(isObj(sp) ? sp : {}).forEach(function (k) { dcs.push(R.acclimatiseDC(data, k)); });
+    var lo = Math.min.apply(null, dcs), hi = Math.max.apply(null, dcs);
+    return lo === hi ? 'DC ' + lo : 'DC ' + lo + ' to ' + hi;
+  };
+  /* What the order says about itself, made from the data (so it can never go out of step with it). */
+  R.acclimatiseNote = function (data) {
+    var ad = R.acclimatiseData(data);
+    var dc = R.acclimatiseDcText(data);
+    return 'A beast housed here must be acclimatised with its handler before it can bond. The handler rolls ' + ad.skill + ' at the table; you type their total. ' +
+      'A total of the DC or more passes (' + dc + (/ to /.test(dc) ? ', each kind has its own' : '') + '): the beast becomes Bond 1 and leaves this list. A lower total locks that beast for ' + R.daysText(ad.retryDays) + '. It happens at once, with no days.';
+  };
   /* The Bonding Days a level needs in all (Bond 2: 10, 3: 20, 4: 30, 5: 50); 0 for Bond 1 or less, null above 5. */
   R.bondTotal = function (data, level) {
     var n = clampInt(level, 0, 99);
@@ -742,6 +759,17 @@
     var n = R.penHoused(s).length;
     if (!n) return '';
     return 'The Beast Pen can\'t be demolished while ' + (n === 1 ? 'a beast lives' : plural(n, 'beast', 'beasts') + ' live') + ' in it: there is nowhere else for ' + (n === 1 ? 'it' : 'them') + ' to go.';
+  };
+
+  /* Clear extra builds takes every built extra facility away in one go, so the Pen's rule for Demolish applies to it too: it
+     refuses while any beast lives in the Pen. Returns the sentence that says why, or ''. */
+  R.clearBuildsBlocker = function (s, data) {
+    var stands = (arr(s.builtExtras) || []).concat(arr(s.builtPlots) || []).some(function (x) {
+      return (typeof x === 'string' ? x : isObj(x) ? x.facId : '') === R.PEN_ID;
+    });
+    if (!stands || !R.penHoused(s).length) return '';
+    var n = R.penHoused(s).length;
+    return 'Clear extra builds would also demolish the Beast Pen, and ' + (n === 1 ? 'a beast lives' : plural(n, 'beast', 'beasts') + ' live') + ' in it: there is nowhere else for ' + (n === 1 ? 'it' : 'them') + ' to go. Nothing was cleared. Demolish the buildings you do not want one at a time instead.';
   };
 
   /* ----- the DM's actions ----- */

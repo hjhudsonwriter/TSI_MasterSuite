@@ -588,6 +588,15 @@
       function penCtx() {
         return { rand: rand, explorerDay: state.anchored && explorerDay !== null ? explorerDay : null };
       }
+      /* The same, with the Explorer's day read again from its save this moment (not the 2-second look that explorerDay
+         is from): a click a moment after Make Camp must see that day, or the rule would count a Bonding Day it should not.
+         Used right before Acclimatise, Take out and Return; if the save cannot be read, the last look stands. */
+      function penCtxNow() {
+        return TSI.store.fresh('tsi.explorer.save', null).then(function (ex) {
+          var d = ex && ex.travel ? Number(ex.travel.day) : NaN;
+          explorerDay = isFinite(d) && d >= 1 ? Math.floor(d) : null;
+        }, function () { /* keep the last look */ }).then(function () { return penCtx(); });
+      }
       var onRelease = TSI.oneAtATime(async function (id) {
         var c = R.creatureById(state, id);
         var why = R.releaseBlocker(state, data, c);
@@ -725,7 +734,7 @@
       var onAcclimatise = TSI.oneAtATime(async function (id) {
         var c = R.creatureById(state, id);
         if (!c) return;
-        var early = R.acclimatiseBlocker(state, data, id, penCtx());
+        var early = R.acclimatiseBlocker(state, data, id, await penCtxNow());
         if (early) { await say(early); return; }
         var ad = R.acclimatiseData(data, c.species);
         var d = R.devView(state, c);
@@ -751,20 +760,20 @@
           onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'acclimatise-dialog'); mainBtn = parts.dialog.querySelector('.tsi-modal__foot .tsi-btn--primary'); check(); setTimeout(function () { box.focus(); }, 0); }
         });
         if (!ok || !life.alive) return;
-        var res = R.acclimatise(state, data, id, box.value, penCtx());
+        var res = R.acclimatise(state, data, id, box.value, await penCtxNow());
         if (!res.ok) { await say(res.message); return; }
         log(res.log[0], res.log[1]);
         done();
         await say((res.pass ? 'Passed. ' : 'Failed. ') + res.log[1]);
       });
       var onTakeOut = TSI.oneAtATime(async function (id) {
-        var res = R.takeOut(state, data, id, penCtx());
+        var res = R.takeOut(state, data, id, await penCtxNow());
         if (!res.ok) { await say(res.message); return; }
         log(res.log[0], res.log[1]);
         done();
       });
       var onReturnToPit = TSI.oneAtATime(async function (id) {
-        var res = R.returnToPit(state, data, id, penCtx());
+        var res = R.returnToPit(state, data, id, await penCtxNow());
         if (!res.ok) { await say(res.message); return; }
         log(res.log[0], res.log[1]);
         done();
@@ -773,15 +782,15 @@
       function bondPillsEl(c) {
         var p = R.bondProgress(state, data, c);
         var short = ['Acclimatised', 'Trusting', 'Bonded', 'Devoted', 'Legendary'];
-        return el('ol', { class: 'tsi-bas-pills', 'data-test': 'creature-pills-' + c.id }, [1, 2, 3, 4, 5].map(function (n) {
+        return el('ol', { class: 'tsi-bas-bonds', 'data-test': 'creature-pills-' + c.id }, [1, 2, 3, 4, 5].map(function (n) {
           var pct = n <= p.level ? 100 : (p.pill && p.pill.n === n ? Math.round(p.pill.fraction * 100) : 0);
           var words = pct >= 100 && n <= p.level ? 'reached' : p.pill && p.pill.n === n ? p.pill.days + ' of ' + p.pill.need + ' days' + (p.ready === n ? ', ready for your scene' : '') : 'not yet';
           return el('li', {
-            class: 'tsi-bas-pill' + (pct >= 100 ? ' tsi-bas-pill--full' : '') + (p.ready === n ? ' tsi-bas-pill--ready' : ''),
+            class: 'tsi-bas-bond' + (pct >= 100 ? ' tsi-bas-bond--full' : '') + (p.ready === n ? ' tsi-bas-bond--ready' : ''),
             'data-test': 'creature-pill-' + c.id + '-' + n, 'data-fill': String(pct),
             role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': String(pct),
             'aria-label': 'Bond ' + n + ', ' + short[n - 1] + ': ' + words, title: 'Bond ' + n + ' ' + short[n - 1] + ': ' + words
-          }, [el('span', { class: 'tsi-bas-pill__fill', style: 'width:' + pct + '%' })]);
+          }, [el('span', { class: 'tsi-bas-bond__fill', style: 'width:' + pct + '%' })]);
         }));
       }
       /* One beast's block in the Beast Pen's panel: its name, kind and where it is; the buttons; and, once it is housed,
@@ -801,7 +810,7 @@
           ]),
           btn('Rename…', function () { onRenameCreature(c.id); }, 'tsi-btn--ghost', prefix + '-rename-' + c.id),
           /* Harry (15 October 2026): a granted creature still waiting for a home can be released (asks first); once housed, it stays. */
-          c.status === 'waiting' && !R.houseOrderFor(state, c.id) ? btn('Release…', function () { onRelease(c.id); }, 'tsi-btn--ghost', prefix + '-release-' + c.id) : null
+          c.status === 'waiting' && !R.houseOrderFor(state, c.id) && !R.creatureUnique(data, c.id) ? btn('Release…', function () { onRelease(c.id); }, 'tsi-btn--ghost', prefix + '-release-' + c.id) : null
         ]);
         if (c.status !== 'housed') return row;
         var d = R.devView(state, c);
@@ -3466,8 +3475,12 @@
           type: 'button', class: 'tsi-btn tsi-btn--small tsi-bas-fn__issue', 'data-test': 'issue-' + key,
           onclick: function () { var o = options[select ? R.clampInt(select.value, 0) : 0]; if (o) onAcclimatise(o.creatureId); }
         }, 'Roll to acclimatise…');
+        /* The DC of the kind selected (its own, if the data gives it one), or the one every kind shares / the range when none is. */
+        var costLine = el('div', { class: 'tsi-bas-fn__cost' });
         function refresh() {
           var o = options[select ? R.clampInt(select.value, 0) : 0] || null;
+          var chosen = o ? R.creatureById(state, o.creatureId) : null;
+          costLine.textContent = ad.skill + ' · ' + R.acclimatiseDcText(data, chosen ? chosen.species : '');
           var reason = !o ? 'No beast is waiting to be acclimatised: a beast must be housed here first.' : R.acclimatiseBlocker(state, data, o.creatureId, penCtx());
           issue.disabled = !!(locked || reason);
           issue.title = reason || null;
@@ -3477,10 +3490,11 @@
         if (select) select.addEventListener('change', function () { selections[key] = select.value; refresh(); });
         refresh();
         return el('div', { class: 'tsi-bas-fn', 'data-test': 'acclimatise-row' }, [
-          el('div', { class: 'tsi-bas-fn__head' }, [el('div', { class: 'tsi-bas-fn__name', text: fn.label }), el('div', { class: 'tsi-bas-fn__cost', text: ad.skill + ' · DC ' + ad.dc })]),
+          el('div', { class: 'tsi-bas-fn__head' }, [el('div', { class: 'tsi-bas-fn__name', text: fn.label }), costLine]),
           el('div', { class: 'tsi-bas-fn__days', 'data-test': 'days-' + key, text: 'At once: the handler rolls at the table' }),
           select, why, issue,
-          fn.notes ? el('div', { class: 'tsi-bas-fn__notes', text: fn.notes }) : null
+          /* Made from the data (the skill, the DC and the days to wait), so it can never say a number the rule does not use. */
+          el('div', { class: 'tsi-bas-fn__notes', 'data-test': 'acclimatise-note', text: R.acclimatiseNote(data) })
         ]);
       }
       function fnRow(fac, fn, locked) {
@@ -3951,7 +3965,61 @@
         if (!fac) return null;
         return openPanel('fac-' + id, { title: fac.name, node: facPanelBody, render: function () { renderFacPanel(id); }, cls: 'tsi-bas-panel--wide', back: 'tile-' + id });
       }
-      function renderFacPanel(id) {
+      /* Redraw a panel without throwing the DM back to its top. Every press in the Beast Pen's panel (Take out, Return,
+         Rename, Assign handler, Confirm bond, Add a note…) redraws the whole panel; this keeps what the DM was doing:
+         - how far every scrolled box around it was scrolled;
+         - which control had the keyboard focus (by its data-test), or, if that button no longer exists, the one that takes
+           its place ("Return X" where "Take X out" was; a beast's other buttons when Confirm bond goes);
+         - which Chronicle (<details>) was open.
+         redraw() builds the panel again inside host. */
+      var FOCUS_AFTER = {
+        takeout: ['return', 'rename'], return: ['takeout', 'rename'], confirm: ['takeout', 'return', 'rename'],
+        release: ['rename'], assign: ['rename'], note: ['rename'], 'temper-edit': ['rename'], rename: []
+      };
+      function replacementKeys(key) {
+        var m = /^creature-(takeout|return|confirm|release|assign|note|temper-edit|rename)-(.+)$/.exec(key || '');
+        return m ? (FOCUS_AFTER[m[1]] || []).map(function (kind) { return 'creature-' + kind + '-' + m[2]; }) : [];
+      }
+      function findByTest(host, key) {
+        var all = host.querySelectorAll('[data-test]');
+        for (var i = 0; i < all.length; i++) if (all[i].getAttribute('data-test') === key) return all[i];
+        return null;
+      }
+      function keepView(host, redraw) {
+        var scrolls = [];
+        for (var n = host; n && n.nodeType === 1; n = n.parentElement) if (n.scrollTop > 0) scrolls.push([n, n.scrollTop]);
+        var act = document.activeElement;
+        var focusNode = act && act !== document.body && host.contains(act) ? act : null;
+        var focusKey = focusNode ? focusNode.getAttribute('data-test') : null;
+        var open = {};
+        Array.prototype.forEach.call(host.querySelectorAll('details[data-test]'), function (d) { if (d.open) open[d.getAttribute('data-test')] = true; });
+        redraw();
+        Array.prototype.forEach.call(host.querySelectorAll('details[data-test]'), function (d) { if (open[d.getAttribute('data-test')]) d.open = true; });
+        scrolls.forEach(function (pair) { pair[0].scrollTop = pair[1]; });
+        if (!focusNode) return;
+        /* A node that survived the redraw (the Beast Handler box is built once and put back) still has its focus, or gets it back. */
+        var again = focusNode.isConnected ? focusNode : null;
+        if (!again && focusKey) {
+          again = findByTest(host, focusKey);
+          var swap = replacementKeys(focusKey);
+          for (var i = 0; !again && i < swap.length; i++) again = findByTest(host, swap[i]);
+        }
+        if (again && again !== document.activeElement && !again.disabled) {
+          try { again.focus({ preventScroll: true }); } catch (e) { /* ignore */ }
+        }
+        /* focus() with no scrolling may leave the control a little out of view if the panel got shorter: scroll it just into view. */
+        if (again && again === document.activeElement && again.scrollIntoView) {
+          var hr = again.getBoundingClientRect();
+          var box = null;
+          for (var m = host; m && m.nodeType === 1; m = m.parentElement) { if (m.scrollHeight > m.clientHeight + 1 && /(auto|scroll)/.test(getComputedStyle(m).overflowY)) { box = m; break; } }
+          if (box) {
+            var br = box.getBoundingClientRect();
+            if (hr.top < br.top || hr.bottom > br.bottom) again.scrollIntoView({ block: 'nearest' });
+          }
+        }
+      }
+      function renderFacPanel(id) { keepView(facPanelBody, function () { drawFacPanel(id); }); }
+      function drawFacPanel(id) {
         var fac = R.facility(data, id);
         TSI.clear(facPanelBody);
         facPanelBody.setAttribute('data-fac', id);
@@ -4251,7 +4319,7 @@
         var any = R.creatures(state).length > 0;
         var stalls = kinds.map(function (k) {
           var beasts = k.housed.concat(R.creatures(state).filter(function (c) {
-            return c.species === k.species && c.status !== 'housed';
+            return c && c.species === k.species && c.status !== 'housed';
           }));
           return el('div', { class: 'tsi-bas-stall' + (k.over ? ' tsi-bas-stall--over' : ''), 'data-test': 'stall-' + k.species, 'data-count': String(k.housed.length) }, [
             el('div', { class: 'tsi-bas-stall__head' }, [
@@ -4262,6 +4330,20 @@
               : muted('Empty. The DM grants ' + (/^[aeiou]/i.test(k.name) ? 'an ' : 'a ') + k.name.toLowerCase() + ' in the Explorer (Grant a creature…, under Sent to the Bastion), then House Beast Here gives it a home.')
           ]);
         });
+        /* Beasts of a kind this copy of the suite has no stall for (a save from a newer copy): they still need to be seen, named,
+           given a handler, released (if waiting) and read, so they get a stall of their own. */
+        var known = kinds.map(function (k) { return k.species; });
+        var others = R.creatures(state).filter(function (c) { return c && typeof c === 'object' && known.indexOf(c.species) === -1; });
+        if (others.length) {
+          stalls.push(el('div', { class: 'tsi-bas-stall', 'data-test': 'stall-other', 'data-count': String(others.length) }, [
+            el('div', { class: 'tsi-bas-stall__head' }, [
+              el('b', { text: 'Other beasts' }),
+              el('span', { class: 'tsi-bas-muted', 'data-test': 'stall-state-other', text: others.length + (others.length === 1 ? ' beast' : ' beasts') })
+            ]),
+            muted('Kinds this copy of the Bastion does not know, from a newer copy. They keep their place, name, handler, bond and Chronicle; nothing is sent away.'),
+            el('div', { class: 'tsi-bas-list' }, others.map(function (c) { return beastRow(c); }))
+          ]));
+        }
         return el('div', { class: 'tsi-bas-facpanel__cargo tsi-bas-facpanel__creatures', 'data-test': 'creatures-' + facId }, [
           label('Beasts'),
           el('div', { class: 'tsi-bas-creatures__room', 'data-test': 'creature-room-' + facId, text: 'The Beast Pen keeps ' + (perKind === 1 ? 'one beast of each kind' : plural(perKind, 'beast') + ' of each kind') + ': wyvern, griffin, dire wolf, buckbear and fellcat. A beast housed here must pass Acclimatise With Beast before it can go out on the road and bond with its handler.' }),
@@ -4706,7 +4788,14 @@
         done();
       });
       async function onClearBuilds() {
+        /* The Beast Pen can't be demolished while beasts live in it, and this would demolish it. */
+        var penWhy = R.clearBuildsBlocker(state, data);
+        if (penWhy) { await say(penWhy); return; }
         if (!(await ask('Clear all extra built facilities (slots and Development Plots) only? Your 5 starting facilities remain.', 'Clear'))) return;
+        if (!life.alive) return;
+        /* Asked again: a beast may have been housed while the question was open. */
+        penWhy = R.clearBuildsBlocker(state, data);
+        if (penWhy) { await say(penWhy); return; }
         state.builtExtras = [];
         state.builtPlots = [];
         log('Facilities', 'Cleared extra built facilities.');

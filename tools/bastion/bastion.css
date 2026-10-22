@@ -1602,13 +1602,26 @@
 .tsi-page--bastion .tsi-bas-stalls { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 12px; align-items: start; }
 .tsi-page--bastion .tsi-bas-stall { display: grid; gap: 6px; padding: 10px 12px; border: 1px solid var(--tsi-line-faint); border-radius: var(--tsi-radius-md); background: rgba(0, 0, 0, .16); min-width: 0; }
 .tsi-page--bastion .tsi-bas-stall--over { border-color: var(--tsi-warn); }
+/* A long unbroken word (a 40-letter name, a web link in a note) wraps inside its stall instead of pushing the panel sideways:
+   the stall, the beast's block and its lines may all shrink below the width of their longest word. */
+.tsi-page--bastion .tsi-bas-stall { grid-template-columns: minmax(0, 1fr); overflow-wrap: anywhere; }
+.tsi-page--bastion .tsi-bas-stall .tsi-bas-list,
+.tsi-page--bastion .tsi-bas-stall .tsi-bas-item,
+.tsi-page--bastion .tsi-bas-stall .tsi-bas-wyv__line,
+.tsi-page--bastion .tsi-bas-stall .tsi-bas-wyv__chronicle,
+.tsi-page--bastion .tsi-bas-stall .tsi-bas-wyv__chronicle li { min-width: 0; }
+.tsi-page--bastion .tsi-bas-creature-wrap,
+.tsi-page--bastion .tsi-bas-wyv { grid-template-columns: minmax(0, 1fr); min-width: 0; }
+.tsi-page--bastion .tsi-bas-stall .tsi-btn { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 .tsi-page--bastion .tsi-bas-stall__head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: var(--tsi-fs-body-sm); }
 .tsi-page--bastion .tsi-bas-stall__head b { font-family: var(--tsi-font-display); letter-spacing: var(--tsi-track-label); text-transform: uppercase; color: var(--tsi-gold-text); }
 .tsi-page--bastion .tsi-bas-wyv__buttons { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.tsi-page--bastion .tsi-bas-pills { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; margin: 2px 0 0; padding: 0; list-style: none; }
-.tsi-page--bastion .tsi-bas-pill { position: relative; height: 9px; border-radius: 5px; border: 1px solid rgba(214, 178, 94, .55); background: rgba(0, 0, 0, .35); overflow: hidden; }
-.tsi-page--bastion .tsi-bas-pill__fill { position: absolute; inset: 0 auto 0 0; display: block; height: 100%; background: linear-gradient(90deg, #b8923f, #e8cf86); }
-.tsi-page--bastion .tsi-bas-pill--ready { box-shadow: 0 0 6px rgba(232, 207, 134, .7); }
+/* The five bond bars are a read-out, not buttons: they have their own class, so they never take the gold button's pointer
+   cursor, hover brightening, padding or text styling (that is .tsi-bas-pill, used by the real pill buttons). */
+.tsi-page--bastion .tsi-bas-bonds { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; margin: 2px 0 0; padding: 0; list-style: none; }
+.tsi-page--bastion .tsi-bas-bond { position: relative; height: 9px; border-radius: 5px; border: 1px solid rgba(214, 178, 94, .55); background: rgba(0, 0, 0, .35); overflow: hidden; cursor: default; }
+.tsi-page--bastion .tsi-bas-bond__fill { position: absolute; inset: 0 auto 0 0; display: block; height: 100%; background: linear-gradient(90deg, #b8923f, #e8cf86); }
+.tsi-page--bastion .tsi-bas-bond--ready { box-shadow: 0 0 6px rgba(232, 207, 134, .7); }
 @media (prefers-reduced-motion: no-preference) {
-  .tsi-page--bastion .tsi-bas-pill__fill { transition: width calc(.9s * var(--tsi-signature-slowdown, 1)) ease-out; }
+  .tsi-page--bastion .tsi-bas-bond__fill { transition: width calc(.9s * var(--tsi-signature-slowdown, 1)) ease-out; }
 }
