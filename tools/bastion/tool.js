@@ -78,6 +78,40 @@
         }
         return v;
       }
+      /* The conversion could not be proved safe: nothing was written, nothing set aside. */
+      function showUnsafe(raw, problems) {
+        var box = el('div', { class: 'tsi-shell-message tsi-panel tsi-bas-unsafe', 'data-test': 'convert-unsafe', role: 'alert' }, [
+          el('div', { class: 'tsi-panel__head' }, el('h2', { class: 'tsi-panel__title', text: 'The Bastion couldn\'t be converted safely. Nothing has been changed.' })),
+          el('div', { class: 'tsi-panel__body' }, [
+            el('p', { text: 'Your Bastion is exactly as you left it: nothing has been saved over, and nothing has been set aside.' }),
+            el('p', { text: 'The Bastion has changed, so a saved Bastion has to be converted to the new form. Before saving it, the Bastion checks that no gold, goods, Favour, orders or beasts are lost, and that check did not pass, so it stopped. Download your Bastion as a file below, and send it to whoever looks after the suite.' }),
+            el('div', { class: 'tsi-shell-message__actions' }, [
+              el('button', { type: 'button', class: 'tsi-btn tsi-btn--primary', 'data-test': 'convert-download', onclick: function () { TSI.download('tsi-bastion-as-it-was.json', JSON.stringify(raw, null, 2)); } }, 'Download my Bastion as a file'),
+              el('button', { type: 'button', class: 'tsi-btn', 'data-test': 'convert-home', onclick: function () { TSI.shell.go(null); } }, 'Back to the home screen')
+            ]),
+            el('details', { class: 'tsi-bas-unsafe__why' }, [
+              el('summary', { text: 'What the check found' }),
+              el('ul', null, problems.map(function (p) { return el('li', { text: p }); }))
+            ])
+          ])
+        ]);
+        ctx.root.appendChild(box);
+      }
+      /* The War Table's three saves (warMap, warTable, warTerrain) belong to
+         the war game, which is going. Once the War Table is gone from the
+         Bastion nothing reads them, so every time the Bastion opens any that
+         are there (a Restore of an old backup brings them back) are set aside,
+         never deleted. While the War Table is still part of the Bastion they
+         are its own saves, so nothing is touched: the step that removes
+         war-table.js makes this start working, with no other change. */
+      function sweepOrphans(force) {
+        if (!force && ns.warTable) return [];
+        return R.stripBackOrphans(function (name) { return ctx.store.has(name); }).map(function (name) {
+          TSI.store.quarantine(TSI.storeRules.keyFor('bastion', name), 'The War Table was removed from the Bastion (the Strip Back Overhaul, 22 October 2026); this is its saved ' + name + ', kept in case it is needed.');
+          return name;
+        });
+      }
+      sweepOrphans(false);
       /* A Bastion saved in turns, before the days overhaul, is set aside
          (kept, not deleted) and a new one starts on the Explorer's day
          (Harry, 8 October 2026: no turn-to-day conversion). */
@@ -85,12 +119,31 @@
       var setAside = oldSave !== null && R.isOldSave(oldSave);
       if (setAside) TSI.store.quarantine(TSI.storeRules.keyFor('bastion', 'state'), 'It was saved in Bastion turns, before the Bastion counted in days (8 October 2026).');
       var saved = setAside ? null : load('state', R.isSave);
-      /* A Bastion from before the facilities overhaul (v 2) is converted once
-         (R.migrateToV3, inside R.fromSave). An untouched copy is set aside
-         first, so it's in Back up everything, and the converted one saved. */
-      var migrating = !!(saved && saved.v === 2);
-      if (migrating) TSI.store.quarantine(TSI.storeRules.keyFor('bastion', 'state'), 'A copy of the Bastion from before the facilities overhaul (13 October 2026), kept in case it\'s needed.');
-      var state = saved ? R.fromSave(TSI.clone(saved), data) : R.defaultState(data);
+      /* The Strip Back Overhaul (22 October 2026): a Bastion from before it
+         (version 2 or 3), or a version 4 one that an older copy of the suite
+         has saved over, is converted once (R.migrateToV4, which takes a
+         version 2 save through R.migrateToV3 first). In this order:
+         1. converted in memory, and checked (R.stripBackAudit: no gold,
+            goods, Favour, order or beast lost). If the check fails nothing
+            is written and nothing is set aside: a small page says so;
+         2. the Bastion as it was is COPIED beside the live one
+            (TSI.store.keepCopy, so it is in Back up everything and the live
+            save is never absent), then the converted one is saved (at the
+            end of start-up; the copy is already queued, and the converted
+            save can't be saved without it);
+         3. the box that says what changed stays until Harry presses "I've
+            read this" (migration.v4.shown). */
+      var conversion = null;
+      if (saved && R.needsStripBack(saved, data)) {
+        conversion = R.migrateToV4(saved, data);
+        var unsafe = R.stripBackAudit(conversion.before, conversion.save, conversion.report, data);
+        if (unsafe.length) { showUnsafe(saved, unsafe); return; }
+        TSI.store.keepCopy(TSI.storeRules.keyFor('bastion', 'state'), 'A copy of the Bastion from before the Strip Back Overhaul (22 October 2026), kept in case it\'s needed.').then(function (kept) {
+          if (!kept && life.alive) TSI.notify('A copy of the Bastion as it was could not be saved, so the converted Bastion is not saved either. Nothing is lost: the old one is still in your browser. Try Export, then open the Bastion again.', { type: 'error', title: 'Not converted yet.', id: 'tsi-bas-copy-failed' });
+        });
+      }
+      var migrating = !!conversion;
+      var state = saved ? R.fromSave(TSI.clone(conversion ? conversion.save : saved), data) : R.defaultState(data);
       /* A Mercenary Brigade (archived in Build 3; Builds 1 and 2 still had
          Form Mercenary Brigade) loads as Unsworn: the Day Log keeps its
          name, and the screen says so once, as it opens. */
@@ -1196,7 +1249,7 @@
       var offerId = null;       /* the hand-off being asked about */
       var closeOffer = null;    /* closes the question (as No) */
       function checkCrestOffer() {
-        if (crestOfferOpen || !life.alive || turnRunning || militaryRunning || warTableOpen) return;
+        if (crestOfferOpen || changesOpen || !life.alive || turnRunning || militaryRunning || warTableOpen) return;
         var h = TSI.handoff.read('crest');
         if (!h) return;
         var c = R.crestFromHandoff(h);
@@ -1470,6 +1523,16 @@
       });
       life.on(treasuryInput, 'keydown', function (e) { if (e.key === 'Enter') treasuryInput.blur(); });
       var militaryList = el('div', { class: 'tsi-bas-list', 'data-test': 'military' });
+      /* "What changed": the Strip Back Overhaul's report, kept in the save
+         (migration.v4), readable again whenever it is wanted. */
+      var changesNote = muted('');
+      var changesRow = el('div', { class: 'tsi-bas-box tsi-bas-changes-row', hidden: true, 'data-test': 'changes-row' }, [
+        el('div', { class: 'tsi-bas-row__top' }, [
+          el('div', null, [label('What changed'), changesNote]),
+          btn('What changed', function () { showChanges(); }, '', 'show-changes')
+        ])
+      ]);
+      mgmtCard.body.appendChild(changesRow);
       TSI.append(mgmtCard.body, el('div', { class: 'tsi-bas-mgmt' }, [
         el('div', { class: 'tsi-bas-box tsi-bas-box--art tsi-bas-box--defenders' }, [
           el('div', { class: 'tsi-bas-row__top' }, [
@@ -1624,6 +1687,9 @@
         });
       }
       function renderManagement() {
+        var v4 = state.migration && state.migration.v4;
+        changesRow.hidden = !v4;
+        changesNote.textContent = v4 ? 'The Bastion\'s change of 22 October 2026 (Day ' + v4.day + '): ' + (v4.summary || 'Nothing of yours changed.') + ' Read it again.' : '';
         defValue.textContent = String(state.defenders.count);
         defMeta.textContent = state.defenders.count === 0 ? 'None recruited' : state.defenders.armed ? 'Armed' : 'Unarmed';
         renderForceList(beastList, state.defenderBeasts, 'No beasts recruited yet.', 'beast', 'beast');
@@ -4719,7 +4785,8 @@
           lastExplorer = ex;
           /* Nothing moves on while the crest question is open: the next
              look (2 seconds on) passes the day once it's answered. */
-          if (!life.alive || turnRunning || militaryRunning || crestOfferOpen) return null;
+          /* Nor while "what changed" is waiting to be read (changesOpen). */
+          if (!life.alive || turnRunning || militaryRunning || crestOfferOpen || changesOpen) return null;
           var act = R.clockAction(state, explorerDay);
           var settled = null;
           if (act.kind === 'anchor') {
@@ -4750,11 +4817,11 @@
          each waiting edit is applied once, with its receipt in this save. */
       var dmEditsBusy = false;
       function checkDmEdits() {
-        if (dmEditsBusy || !life.alive || turnRunning || militaryRunning) return Promise.resolve();
+        if (dmEditsBusy || !life.alive || turnRunning || militaryRunning || changesOpen) return Promise.resolve();
         dmEditsBusy = true;
         return TSI.store.fresh('tsi.dmdoc.edits', null).then(function (list) {
           dmEditsBusy = false;
-          if (!life.alive || turnRunning || militaryRunning) return;
+          if (!life.alive || turnRunning || militaryRunning || changesOpen) return;
           var res = R.applyDmEdits(state, list);
           if (!res.changed) return;
           done();
@@ -4782,11 +4849,11 @@
         }).catch(function () { /* left in the queue: the Bastion would only see a duplicate and do nothing */ });
       }
       function checkBeast() {
-        if (!R.beastProcessQueue || beastBusy || !life.alive || turnRunning || militaryRunning) return Promise.resolve();
+        if (!R.beastProcessQueue || beastBusy || !life.alive || turnRunning || militaryRunning || changesOpen) return Promise.resolve();
         beastBusy = true;
         return TSI.store.fresh('tsi.beasthandler.queue', null).then(function (q) {
           beastBusy = false;
-          if (!life.alive || turnRunning || militaryRunning) return;
+          if (!life.alive || turnRunning || militaryRunning || changesOpen) return;
           var res = R.beastProcessQueue(state, data, q && q.commands, Date.now(), rand);
           trimBeastQueue(q && q.commands);
           if (!res.changed) return;
@@ -5580,6 +5647,63 @@
         life.onStop(function () { if (turnNotice) turnNotice.close(); });
       }
 
+      /* ---------- "The Bastion has changed" (the Strip Back Overhaul, 22 October 2026) ----------
+         What the conversion did, in plain English (migration.v4.lines,
+         written by the conversion itself): a box that STAYS until "I've read
+         this" is pressed, and only then is it marked read (saved), so a window
+         closed with it showing shows it again. Esc closes it without marking it
+         read. While it is waiting nothing else moves on (no day is passed, no
+         request or crest is taken): the report describes the Bastion as it was
+         converted. Re-opened from Management's "What changed". */
+      var changesOpen = false;
+      var changesShowing = false;
+      /* A paragraph: its heading in bold ("Gold."), then the rest. */
+      function changeLine(line) {
+        var text = String(line);
+        var heading = R.STRIP_BACK_HEADINGS.map(function (h) { return h.title; }).filter(function (h) { return text.indexOf(h + '. ') === 0; })[0];
+        return el('p', { class: 'tsi-bas-changes__line', 'data-test': 'changes-line' }, heading ? [el('strong', { text: heading + '.' }), ' ' + text.slice(heading.length + 2)] : text);
+      }
+      function showChanges() {
+        var m = state.migration && state.migration.v4;
+        if (!m || changesShowing || !life.alive) return Promise.resolve(false);
+        var first = m.shown !== true;
+        var lines = Array.isArray(m.lines) ? m.lines : [];
+        changesShowing = true;
+        if (first) changesOpen = true;
+        var body = el('div', { class: 'tsi-bas-changes', 'data-test': 'changes-body' }, [
+          m.again ? el('p', { class: 'tsi-bas-changes__lead', text: 'An older copy of the suite had saved over your Bastion, so it was converted again. Nothing was lost.' }) : null,
+          lines.map(changeLine),
+          el('p', { class: 'tsi-bas-muted tsi-bas-changes__note', text: R.STRIP_BACK_NOTE }),
+          el('div', { class: 'tsi-bas-actions tsi-bas-actions--start' }, [
+            btn('Save this as a text file', function () { TSI.download('bastion-what-changed-day-' + Math.max(1, R.dayNum(m.day, 1)) + '.txt', R.stripBackText(m), 'text/plain'); }, '', 'changes-save')
+          ])
+        ]);
+        return plainModal({
+          title: R.stripBackHeadline(m),
+          className: 'tsi-bas-modal tsi-bas-modal--changes',
+          body: body,
+          escValue: false,
+          actions: first ? [{ label: 'I\'ve read this', value: true, primary: true }] : [{ label: 'Close', value: true, primary: true }],
+          onOpen: function (parts) {
+            parts.dialog.setAttribute('data-test', 'changes-box');
+            var ok = parts.foot.querySelector('.tsi-btn--primary');
+            if (ok) ok.setAttribute('data-test', 'changes-ok');
+          }
+        }).then(function (ok) {
+          changesShowing = false;
+          if (first) changesOpen = false;
+          if (!life.alive) return false;
+          if (first && ok === true) {
+            m.shown = true;
+            done();
+          }
+          /* Whatever waited behind the box carries on now. */
+          if (first) { checkClock(); checkCrestOffer(); checkDmEdits(); checkBeast(); }
+          return ok === true;
+        });
+      }
+      if (state.migration && state.migration.v4 && state.migration.v4.shown !== true) showChanges();
+
       /* A Military Action waiting from before: say where to find it. */
       if ((state.militaryActions || []).length) {
         /* An attack on the Bastion first: it's the one that can't be called off. */
@@ -5602,6 +5726,10 @@
         clock: function () { checkClock(); },
         dmEdits: function () { return checkDmEdits(); },
         beast: function () { return checkBeast(); },
+        /* The Strip Back report (migration.v4) and the War Table's orphan saves (force: even while the War Table is part of the Bastion). */
+        changes: function () { return state.migration && state.migration.v4 ? TSI.clone(state.migration.v4) : null; },
+        showChanges: function () { return showChanges(); },
+        sweepOrphans: function (force) { return sweepOrphans(force === true); },
         /* The panel open now ('war', 'fac-barracks'…), or null. */
         panel: function () { return shown ? shown.id : null; },
         /* Open the panel that holds [data-test=test] by pressing its button

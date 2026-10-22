@@ -996,6 +996,22 @@
 /* In the narrow Political Capital column, the tag goes under the name. */
 .tsi-page--bastion .tsi-bas-meter__name { flex-wrap: wrap; row-gap: 3px; }
 .tsi-page--bastion .tsi-bas-meter__name .tsi-bas-atwar { margin: 0; }
+/* "The Bastion has changed" (the Strip Back Overhaul's report, 22 October 2026): a box that stays
+   until "I've read this", and the "What changed" row in Management that opens it again. */
+.tsi-page--bastion .tsi-bas-modal--changes { width: min(760px, 96vw); }
+.tsi-page--bastion .tsi-bas-changes__lead { margin: 0 0 12px; color: var(--tsi-text); }
+.tsi-page--bastion .tsi-bas-changes__line { margin: 0 0 12px; line-height: 1.5; }
+.tsi-page--bastion .tsi-bas-changes__line strong {
+  font: 700 var(--tsi-fs-label)/1.3 var(--tsi-font-display);
+  letter-spacing: var(--tsi-track-label);
+  color: var(--tsi-gold-text);
+}
+.tsi-page--bastion .tsi-bas-changes__note { margin: 14px 0 12px; }
+.tsi-page--bastion .tsi-bas-changes-row[hidden] { display: none; }
+/* The page that says the conversion could not be proved safe (nothing was changed). */
+.tsi-page--bastion .tsi-bas-unsafe { max-width: 720px; margin: 24px auto; }
+.tsi-page--bastion .tsi-bas-unsafe__why { margin-top: 14px; color: var(--tsi-text-soft); font-size: var(--tsi-fs-body-sm); }
+.tsi-page--bastion .tsi-bas-unsafe__why ul { margin: 8px 0 0; padding-left: 22px; }
 /* Declare war on a Clan? (Queue War Action asks first.) */
 .tsi-page--bastion .tsi-bas-modal--war { width: min(680px, 96vw); }
 .tsi-page--bastion .tsi-bas-declare p { margin: 0 0 10px; }

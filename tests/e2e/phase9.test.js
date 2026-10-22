@@ -2598,7 +2598,7 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       const file = JSON.parse(d.text);
       equal([file.kind, file.tools], ['campaign', ['explorer', 'bastion']]);
       const rec = file.records.find(r => r.key === 'tsi.bastion.state');
-      equal([rec.value.treasuryGP, rec.value.day, rec.value.v], [1234, 2, 3]);
+      equal([rec.value.treasuryGP, rec.value.day, rec.value.v], [1234, 2, 4]);
       equal(file.records.find(r => r.key === 'tsi.explorer.save').value.travel.day, 2, 'the Explorer\'s half');
       await page.waitForFunction(() => TSI.bastion.debug.state().log[0].title === 'Save File');
     });
@@ -2651,7 +2651,7 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
     await check('a damaged save in the browser is set aside, and the Bastion still opens', async () => {
       await page.evaluate(() => TSI.store.set('tsi.bastion.state', { heroes: [] }));
       await reopen(page);
-      equal([(await st(page)).treasuryGP, (await st(page)).v], [0, 3]);
+      equal([(await st(page)).treasuryGP, (await st(page)).v], [0, 4]);
       assert((await page.evaluate(() => TSI.store.keys())).some(k => k.indexOf('tsi.quarantine.bastion.state') === 0));
     });
 
@@ -2662,7 +2662,7 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       await H.waitForNotice(page, /Your Bastion was saved in Bastion turns, before the Bastion counted in days, so it has been set aside/);
       await page.waitForFunction(() => TSI.bastion.debug.state().anchored);
       const s = await st(page);
-      equal([s.v, s.treasuryGP, s.partyLevel, s.pendingOrders, s.day], [3, 0, 7, [], 2]);
+      equal([s.v, s.treasuryGP, s.partyLevel, s.pendingOrders, s.day], [4, 0, 7, [], 2]);
       const keys = (await page.evaluate(() => TSI.store.keys())).filter(k => k.indexOf('tsi.quarantine.bastion.state') === 0);
       equal(keys.length, before + 1, 'the old Bastion is kept aside');
       equal((await page.evaluate(k => TSI.store.get(k), keys[keys.length - 1])).turn, 6);
@@ -2690,7 +2690,7 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       await reopen(page);
       await H.waitForNotice(page, /Facilities\. The Bastion's facilities have changed: The Smithy joined the Workshop: its slot is free, and the Workshop keeps the Smithy's order\. The Gaming Hall is no longer part of the Bastion; its slot is free\./);
       const s = await st(page);
-      equal(s.v, 3);
+      equal(s.v, 4, 'version 2 goes on to version 4 (the Strip Back Overhaul, 22 October 2026)');
       equal(s.builtExtras, [{ facId: 'arcane_laboratory', status: 'built' }, '', '', '', '']);
       /* The Garden became the Herbal Gardens, and moved to a Development Plot (open at party level 13), still being built. */
       equal(s.builtPlots, [{ facId: 'herbal_gardens', status: 'building', startDay: 1, readyDay: d + 9 }, '', '', '']);
@@ -2734,7 +2734,7 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       await H.chooseFile(page, '[data-test=import-save]', H.writeTemp('bastion-v2.json', file));
       await clickModal(page, 'Import');
       await page.waitForSelector('[data-test=day-status]');
-      await page.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().v === 3);
+      await page.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().v === 4);
       await H.waitForNotice(page, /The Bastion's facilities have changed/);
       const s = await st(page);
       equal([s.builtExtras[0].facId, s.legacyFacilities, s.pendingOrders.length], ['arcane_laboratory', ['smithy'], 2]);
@@ -2746,8 +2746,10 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       await H.chooseFile(page, '[data-test=import-save]', require('path').join(__dirname, '..', 'fixtures', 'bastion-before-overhaul.json'));
       await clickModal(page, 'Import');
       await page.waitForSelector('[data-test=day-status]');
-      await page.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().v === 3);
+      await page.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().v === 4);
       await H.waitForNotice(page, /The Bastion's facilities have changed: The Smithy joined the Workshop/);
+      /* The box that says what changed holds the Bastion until it is read. */
+      await H.ackChanges(page);
       await page.waitForFunction(() => TSI.bastion.debug.state().anchored && !TSI.bastion.debug.busy());
       const s = await st(page);
       equal([s.builtExtras[0].facId, s.legacyFacilities, s.pendingOrders.map(o => o.fnId).sort(), s.treasuryGP, s.facilityLevels.arcane_laboratory], ['arcane_laboratory', ['smithy'], ['alchemy', 'smithing'], 400, 2]);
@@ -2764,10 +2766,11 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
         delete v.builtPlots;
         v.facilityLevels = Object.assign({}, v.facilityLevels, { herbal_gardens: 3 });
         v.log = [];
+        v.v = 3;
         TSI.store.set('tsi.bastion.state', v);
         return v;
       });
-      equal(saved.v, 3);
+      equal(saved.v, 3, 'a version 3 Bastion, as pull request 2 saved it (it is converted to version 4 when it opens)');
       await reopen(page);
       await H.waitForNotice(page, /The Herbal Gardens moved to a Development Plot; its construction slot is free\./);
       let s = await st(page);
@@ -2788,6 +2791,7 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       await H.chooseFile(page, '[data-test=import-save]', require('path').join(__dirname, '..', 'fixtures', 'bastion-pr3-sample.json'));
       await clickModal(page, 'Import');
       await page.waitForSelector('[data-test=day-status]');
+      await H.ackChanges(page);
       await page.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().anchored && !TSI.bastion.debug.busy());
       const s = await st(page);
       equal([s.partyLevel, s.treasuryGP, s.builtPlots.filter(Boolean).map(e => e.facId)], [13, 3000, ['herbal_gardens', 'timber_sawmill', 'fishery_smokehouse']]);
@@ -2832,7 +2836,7 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       await page.waitForSelector('[data-test=day-status]');
       await H.waitForNotice(page, /The Bastion's facilities have changed/);
       const s = await st(page);
-      equal([s.v, s.builtExtras[0].facId, s.legacyFacilities, s.pendingOrders.map(o => o.fnId)], [3, 'arcane_laboratory', ['smithy'], ['alchemy', 'smithing']]);
+      equal([s.v, s.builtExtras[0].facId, s.legacyFacilities, s.pendingOrders.map(o => o.fnId)], [4, 'arcane_laboratory', ['smithy'], ['alchemy', 'smithing']]);
       await H.dismissNotices(page);
       await page.evaluate(() => TSI.store.flush());
       await page.click('[data-test=home]');

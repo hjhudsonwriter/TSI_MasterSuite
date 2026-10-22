@@ -136,7 +136,21 @@ async function waitForNotice(page, pattern, timeout) {
   }, pattern.source, { timeout: timeout || 5000 });
 }
 
+/* The Bastion's "The Bastion has changed" box (the Strip Back Overhaul, 22 October 2026) stays until
+   "I've read this" is pressed, and the Bastion waits behind it: no day passes. Tests that open a
+   Bastion from before that change (a version 2 or 3 save, or a sample file) press it first. Resolves
+   true if the box was there. */
+async function ackChanges(page, timeout) {
+  try {
+    await page.waitForSelector('[data-test=changes-ok]', { timeout: timeout === undefined ? 1500 : timeout });
+  } catch (e) { return false; }
+  await page.click('[data-test=changes-ok]');
+  await page.waitForSelector('[data-test=changes-ok]', { state: 'detached', timeout: 4000 }).catch(() => {});
+  return true;
+}
+
 async function dismissNotices(page) {
+  if (await page.$('[data-test=changes-ok]')) await ackChanges(page, 200);
   for (const b of await page.$$('.tsi-notice button[aria-label="Dismiss this notice"], .tsi-notice button:text-is("Dismiss")')) {
     await b.click().catch(() => {});
   }
@@ -174,5 +188,5 @@ function summary() {
 
 module.exports = {
   chromium, ROOT, SHOTS, SIZES, fileUrl, toolList, section, check, assert, equal, newContext, watch, shot, writeTemp,
-  chooseFile, download, dismissNotices, noticeTexts, waitForNotice, modalText, clickModal, layoutCheck, summary, results
+  chooseFile, download, dismissNotices, ackChanges, noticeTexts, waitForNotice, modalText, clickModal, layoutCheck, summary, results
 };
