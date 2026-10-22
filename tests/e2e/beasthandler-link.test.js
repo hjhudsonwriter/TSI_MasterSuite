@@ -160,7 +160,7 @@ const newDb = () => ({ docs: {}, log: [], stray: [] });
     await openBox();
     equal(await bare(ba, '[data-test=beast-qr-mira]'), 'Show QR to Mira');
     equal(await bare(ba, '[data-test=beast-qr-joss]'), 'Show QR to Joss');
-    equal(await ba.$eval('[data-test=beast-phoneurl-input]', n => n.value), DEFAULT_URL);
+    equal(await bare(ba, '[data-test=beast-phoneurl-value]'), DEFAULT_URL);
     equal(await bare(ba, '[data-test=beast-online-status]'), 'Online link: off (not set up).');
     assert(/guide\.html#beasthandler-online$/.test(await ba.$eval('[data-test=beast-online-guide]', a => a.getAttribute('href'))), 'a link to the setup guide');
     equal(await ba.$$eval('[data-test=beast-online-on], [data-test=beast-online-off], [data-test=beast-online-test], [data-test=beast-online-send]', n => n.length), 0, 'no switch while it is not set up');
@@ -213,22 +213,35 @@ const newDb = () => ({ docs: {}, log: [], stray: [] });
     equal([u.origin + u.pathname, u.search, u.hash.length > 20], [DEFAULT_URL, '', true]);
   });
 
-  await check('the phone page address is a setting: a bad one is refused in plain words, a good one is saved and used by the next QR code, and the standard one comes back', async () => {
+  await check('the phone page address is a setting (shown as text, changed in a small window, with no text box in the panel itself): a bad one is refused in plain words, a good one is saved and used by the next QR code, and the standard one comes back', async () => {
     await openBox();
+    equal(await bare(ba, '[data-test=beast-phoneurl-value]'), DEFAULT_URL);
+    equal(await ba.$('[data-test=beast-box] input, [data-test=beast-box] textarea'), null, 'no text box sits in the panel (it would take the keyboard focus when the Pen\'s panel opens)');
+    equal(await ba.$('[data-test=beast-phoneurl-default]'), null, 'no "standard address" button while it is the standard');
+    await ba.click('[data-test=beast-phoneurl-change]');
+    await ba.waitForSelector('[data-test=beast-phoneurl-input]');
     await ba.fill('[data-test=beast-phoneurl-input]', 'http://example.org/x.html');
-    await ba.click('[data-test=beast-phoneurl-save]');
-    assert(/https/.test(await bare(ba, '[data-test=beast-phoneurl-problem]')), await bare(ba, '[data-test=beast-phoneurl-problem]'));
+    await ba.locator('.tsi-modal__foot .tsi-btn--primary').last().click();
+    await ba.waitForFunction(() => /won't work/.test(document.body.textContent) && /https/.test(document.body.textContent));
     equal((await state()).beast.phoneUrl, undefined, 'nothing was saved');
+    await ba.locator('.tsi-modal__foot .tsi-btn--primary').last().click();
+    await ba.waitForSelector('[data-test=beast-phoneurl-input]');
+    equal(await ba.$eval('[data-test=beast-phoneurl-input]', n => n.value), 'http://example.org/x.html', 'the window comes back with what was typed');
     await ba.fill('[data-test=beast-phoneurl-input]', 'https://example.org/play/beasthandler.html?x=1#y');
-    await ba.click('[data-test=beast-phoneurl-save]');
+    await ba.locator('.tsi-modal__foot .tsi-btn--primary').last().click();
+    await ba.waitForSelector('[data-test=beast-phoneurl-input]', { state: 'detached' });
     await ba.waitForTimeout(300);
     equal((await state()).beast.phoneUrl, 'https://example.org/play/beasthandler.html');
     await openBox();
-    equal(await ba.$eval('[data-test=beast-phoneurl-input]', n => n.value), 'https://example.org/play/beasthandler.html');
+    equal(await bare(ba, '[data-test=beast-phoneurl-value]'), 'https://example.org/play/beasthandler.html');
     const link = await showQr('Mira');
     assert(link.indexOf('https://example.org/play/beasthandler.html#L1.') === 0, link);
     await closeDialog();
     await openBox();
+    await ba.click('[data-test=beast-phoneurl-change]');
+    await ba.waitForSelector('[data-test=beast-phoneurl-input]');
+    await ba.locator('.tsi-modal__foot button', { hasText: 'Cancel' }).last().click();
+    equal((await state()).beast.phoneUrl, 'https://example.org/play/beasthandler.html', 'Cancel changes nothing');
     await ba.click('[data-test=beast-phoneurl-default]');
     await ba.waitForTimeout(300);
     equal((await state()).beast.phoneUrl, undefined);
@@ -502,6 +515,35 @@ const newDb = () => ({ docs: {}, log: [], stray: [] });
     }
     await pp.setViewportSize({ width: 390, height: 844 });
     await p2.setViewportSize({ width: 390, height: 844 });
+  });
+
+  await check('the phone page also fits the laptop window (1707 x 930, ratio 1.5) and the TV (1920 x 1080, ratio 1) when someone opens it there: no sideways scroll, 44 px buttons', async () => {
+    for (const size of ['laptop', 'tv']) {
+      const c = await H.newContext(browser, size);
+      await c.setOffline(true);
+      const p = await c.newPage();
+      const measure = () => p.evaluate(() => {
+        const small = [];
+        document.querySelectorAll('button, summary').forEach(n => { const b = n.getBoundingClientRect(); if (b.width && b.height && b.height < 43.5 && n.offsetParent !== null) small.push((n.getAttribute('data-test') || n.className) + ' ' + Math.round(b.height)); });
+        const r = document.querySelector('.tsi-bhp-card').getBoundingClientRect();
+        return { sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth, small, inView: r.left >= 0 && r.right <= innerWidth + 0.5 };
+      });
+      await p.goto(PHONE);
+      await p.waitForSelector('[data-test=bhp-screen-link]');
+      await p.evaluate(() => document.querySelectorAll('details').forEach(d => { d.open = true; }));
+      for (const [name, m] of [['link screen', await measure()]]) {
+        assert(m.sw <= m.cw && m.inView, size + ' ' + name + ' scrolls sideways: ' + JSON.stringify(m));
+        equal(m.small, [], size + ' ' + name + ' small targets');
+      }
+      await p.goto(PHONE + fragment(miraLink));
+      await p.waitForSelector('[data-test=bhp-screen-snap]');
+      await p.evaluate(() => document.querySelectorAll('details').forEach(d => { d.open = true; }));
+      const m2 = await measure();
+      assert(m2.sw <= m2.cw && m2.inView, size + ' waiting screen scrolls sideways: ' + JSON.stringify(m2));
+      equal(m2.small, [], size + ' waiting screen small targets');
+      await H.shot(p, 'beasthandler-link-phone-on-' + size);
+      await c.close();
+    }
   });
 
   /* ====================================================================================================

@@ -138,26 +138,37 @@
       });
 
       /* ---------- The phone page's address ---------- */
-      function addressBox(s) {
-        var saved = R.beastPhoneUrl(s);
-        var input = el('input', { type: 'url', class: 'tsi-input', maxlength: '200', 'aria-label': 'Phone page address', 'data-test': 'beast-phoneurl-input', autocomplete: 'off', spellcheck: 'false' });
-        input.value = saved;
-        var problem = el('p', { class: 'tsi-bas-error', hidden: true, role: 'alert', 'data-test': 'beast-phoneurl-problem' });
-        function save() {
-          var r = R.setBeastPhoneUrl(host.state(), input.value);
-          if (!r.ok) { problem.textContent = r.message; problem.hidden = false; return; }
-          problem.hidden = true;
-          host.done();
-          render();
+      /* The box shows the address as plain text and a button opens a small window to change it. There is deliberately no
+         text box in the panel itself: a pop-up gives keyboard focus to the first text box in it, which would scroll the
+         Beast Pen's panel down to the bottom every time it opened. */
+      var onAddress = TSI.oneAtATime(async function () {
+        var value = R.beastPhoneUrl(host.state());
+        for (;;) {
+          var input = el('input', { type: 'url', class: 'tsi-input', maxlength: '200', 'aria-label': 'Phone page address', 'data-test': 'beast-phoneurl-input', autocomplete: 'off', spellcheck: 'false' });
+          input.value = value;
+          var go = await TSI.modal.open({
+            title: 'Phone page address', className: 'tsi-bas-modal',
+            body: [el('p', { text: 'The web address of the Beast Handler phone page. A QR code is this address plus the player\'s private link. Leave it as it is unless you put the phone page somewhere else. It must start https://' }), input],
+            actions: [{ label: 'Cancel', value: false }, { label: 'Save address', value: true, primary: true }],
+            onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'beast-phoneurl-dialog'); }
+          });
+          if (!go || !host.life.alive) return;
+          value = input.value;
+          var r = R.setBeastPhoneUrl(host.state(), value);
+          if (r.ok) { host.done(); render(); return; }
+          await TSI.modal.alert({ title: 'That address won\'t work', message: r.message });
+          if (!host.life.alive) return;
         }
+      });
+      function addressBox(s) {
+        var custom = !!(s.beast && s.beast.phoneUrl);
         return el('div', { class: 'tsi-bas-box tsi-bas-beast__box', 'data-test': 'beast-phoneurl' }, [
           el('div', { class: 'tsi-bas-label', text: 'Phone page address' }),
-          muted('The web address of the Beast Handler phone page. A QR code is this address plus the player\'s private link. Leave it as it is unless you put the phone page somewhere else. It must start https://'),
-          input,
-          problem,
+          muted('Where the QR code sends a player\'s phone. Leave it as it is unless you put the Beast Handler phone page somewhere else.'),
+          el('p', { class: 'tsi-bas-qr__link', 'data-test': 'beast-phoneurl-value', text: R.beastPhoneUrl(s) }),
           el('div', { class: 'tsi-bas-beast__row' }, [
-            btn('Save address', save, 'beast-phoneurl-save'),
-            btn('Use the standard address', function () { input.value = BH.link.DEFAULT_PHONE_URL; save(); }, 'beast-phoneurl-default', 'tsi-btn--ghost')
+            btn('Change address…', onAddress, 'beast-phoneurl-change'),
+            custom ? btn('Use the standard address', function () { R.setBeastPhoneUrl(host.state(), ''); host.done(); render(); }, 'beast-phoneurl-default', 'tsi-btn--ghost') : null
           ])
         ]);
       }
