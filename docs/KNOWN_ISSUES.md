@@ -2471,6 +2471,21 @@ None of these reached Harry.
 - **Older copies (SUI-19): back up before trying another copy.** An older Bastion drops `diplomaticRecords` from its save, losing the ledger.
 - **Evidence:** `tools/bastion/diplomacy-rules.js`, `tools/bastion/rules.js` (save, Reset Travel), `tools/bastion/tool.js` (the Hall's two new sections); `tests/rules/diplomacy.test.js`, `tests/e2e/hall-records.test.js`.
 
+### BAS-S04 · Production facilities: one order at a time, each level replacing the last, no goods needed
+**Deliberate change** (Strip Back Overhaul, step S04; Harry's STRIP BACK handover and his answer "orders are self-contained", 22 October 2026) · other
+
+*(Temporary id: another step may be adding BAS entries at the same time. Rename to the next free BAS number when the branches are merged.)*
+
+- **Before:** the Timber Yard & Sawmill, Fishery & Smokehouse, Stone Quarry & Masonworks and Weavers' Hall listed all six of their orders, with the ones above the facility's level locked ("Needs Level 2."). Levels added orders. Most orders from Level 2 up used goods an earlier order made (Raw Timber, then Sawn Lumber, and so on).
+- **After:**
+  - Each level shows **only its own order** (two at Level 5, still one running at a time). Upgrading **replaces** the last level's order: the Upgrade row says "Level 2 replaces Harvest Timber with Saw Lumber.", and its button asks first. A replaced order (or one from a level not reached) is refused with "That order belongs to Level N."
+  - **Orders are self-contained:** the 14 orders that used goods (every Level 2 to 4 processing order, and the Level 5 bulk processing orders) no longer take anything from the Warehouse. Days, gold (none) and what each order makes are exactly as before, so a Level 2 Timber Yard works with an empty Warehouse. Goods already in the Warehouse are left alone.
+  - An order issued before the upgrade and still running when it finishes completes normally and still counts as the one running; Cancel frees the slot.
+  - The Herbal Gardens and the Courier Exchange are unchanged (every order listed at every level, locked until its level; the Herbal Gardens' recipes still use goods).
+- **Side effect to know about:** with no inputs, Bulk Lumber Processing, Bulk Smokehouse Production, Bulk Stone Processing and Bulk Sailcloth Production now make three lots of Sawn Lumber, Preserved Fish, Dressed Stone and Sailcloth from nothing, so processed goods cost no raw goods. Harry chose this; if it makes the Dock too generous, the numbers are in `facilities-data.js`.
+- **Older copies and saves:** no save change, no migration (levels already live in `facilityLevels`). A Timber Yard saved at Level 3 simply shows only Prepare Construction Timber from now on. An order an older copy issued that is holding goods still completes, and Cancel still gives the goods back once. An older Bastion (before this change) does not know the flag and lists every order again.
+- **Evidence:** `tools/bastion/data/facilities-data.js` (`levelOrders`), `tools/bastion/rules.js` (`R.fnAvailable`, `R.levelReplacement`, `R.upgradeReplaceNotice`), `tools/bastion/tool.js` (`unlockLine`, `onUpgrade`); `tests/rules/dev-facilities.test.js`, `tests/rules/bastion.test.js`, `tests/e2e/bastion-screen.test.js`.
+
 ## Clan Crest Creator
 Old repo: `_legacy/clan-crest-creator` (file:line references point there).
 
