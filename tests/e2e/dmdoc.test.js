@@ -732,6 +732,31 @@ const sessionPdf = () => F.write(TMP, 'Session 13.pdf', F.pdf([['Chapter One', '
     await context.close();
   }
 
+  section('The Quest box when the browser cannot save');
+  await check('with no browser storage at all, the Quest panel says so plainly instead of saying Saved', async () => {
+    const context = await H.newContext(browser, 'laptop', { backedUp: true });
+    await context.setOffline(true);
+    await context.addInitScript(() => {
+      Object.defineProperty(window, 'indexedDB', { get() { throw new Error('no indexedDB'); } });
+      Object.defineProperty(window, 'localStorage', { get() { throw new Error('no localStorage'); } });
+    });
+    const page = await context.newPage();
+    await page.goto(INDEX);
+    await page.waitForSelector('[data-test=dm-doc]');
+    equal(await page.evaluate(() => TSI.store.ready.then(() => TSI.store.mode)), 'memory');
+    await openDoc(page);
+    equal(await status(page), 'Not saved: this browser is not saving');
+    assert(/lost when this window closes/.test(await page.textContent('[data-test=dmdoc-quest-memory]')), 'a plain warning');
+    await page.click('[data-test=dmdoc-quest-text]');
+    await page.keyboard.type('hello');
+    await page.waitForTimeout(1000);
+    equal(await status(page), 'Not saved: this browser is not saving', 'still not claiming it saved');
+    equal(await boxText(page), 'hello', 'what was typed is still there');
+    const d = await H.download(page, '[data-test=dmdoc-quest-export]');
+    equal(d.text, 'hello', 'Save as text file still works');
+    await context.close();
+  });
+
   section('Typing in the Quest box on top of a tool does not trigger the tool\'s shortcuts');
   {
     const context = await H.newContext(browser, 'laptop', { backedUp: true });
