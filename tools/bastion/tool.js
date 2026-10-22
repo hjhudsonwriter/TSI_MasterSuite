@@ -3483,7 +3483,10 @@
       life.on(window, 'resize', function () { closePicker(false); });
       /* Escape closes the open list, not the panel it's in: this runs before the pop-up's own Escape. */
       life.on(window, 'keydown', function (e) {
-        if (picker && e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closePicker(true); }
+        if (picker && e.key === 'Escape') {
+          if (TSI.keys.isTyping(e) && !picker.list.contains(e.target)) return;    /* typing elsewhere (the DM doc's Quest box) */
+          e.preventDefault(); e.stopPropagation(); closePicker(true);
+        }
       }, { capture: true });
       life.on(window, 'scroll', function (e) { if (picker && !picker.list.contains(e.target)) closePicker(false); }, { capture: true, passive: true });
       life.on(document, 'pointerdown', function (e) {

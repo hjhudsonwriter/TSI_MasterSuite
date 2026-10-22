@@ -162,6 +162,17 @@
     t.ok(!B.parse(JSON.stringify(quest)).ok, 'nor the Quest box\'s text');
   });
 
+  test('the Quest text\'s safety copy and the Restore stamp have their own tsi. names, are never saves, and differ on the test page', function (t) {
+    var real = S.spaceNames('suite');
+    var fake = S.spaceNames('test');
+    t.equal(real.dmdocDraft, 'tsi.suite.dmdoc-quest-draft');
+    t.equal(fake.dmdocDraft, 'tsi.test:dmdoc-quest-draft');
+    t.equal(real.replaced, 'tsi.suite.replaced');
+    t.equal(fake.replaced, 'tsi.test:replaced');
+    [real.dmdocDraft, real.replaced].forEach(function (k) { t.equal(S.fromLocalKey(k, 'suite'), null, k + ' is not a saved record, so a backup never holds it'); });
+    [fake.dmdocDraft, fake.replaced].forEach(function (k) { t.equal(S.fromLocalKey(k, 'test'), null, k); });
+  });
+
   test('whether it\'s open is kept per window, under a tsi. name, apart on the test page', function (t) {
     t.equal(S.spaceNames('suite').dmdocOpen, 'tsi.suite.dmdoc-open');
     t.equal(S.spaceNames('test').dmdocOpen, 'tsi.test:dmdoc-open');
