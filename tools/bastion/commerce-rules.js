@@ -752,26 +752,12 @@
   };
 
   /* ---------- Commercial voyage protections (Harry, 20 October 2026) ----------
-     The Barracks' Guard Commercial Convoy prepares one Convoy charge (at
-     most one kept): the next ship the Dock sends uses it up. The
-     Watchtower's Protect Maritime Approaches protects every ship that sails
-     during 7 days, the day it completes counting as Day 1 (not used up,
-     never extended while active). Both are applied by themselves at
-     departure by R.voyageProtections, with the Blessing of Pelagos; the cuts
-     add up and never take the chance below 0. */
-  /* Why a protection order can't be issued now, or ''. */
-  R.protectionBusy = function (s, data, fn) {
-    var ready = isObj(tn(s).protections) ? tn(s).protections : {};
-    if (fn && fn.protectionCharge && fn.protectionMax) {
-      var r = ready[fn.protectionCharge];
-      if (isObj(r) && isNum(r.charges) && r.charges >= fn.protectionMax) return 'A Commercial Convoy is already prepared and waits for the next ship the Dock sends.';
-    }
-    if (fn && fn.protectionWindow) {
-      var w = ready[fn.protectionWindow];
-      if (isObj(w) && isNum(w.untilDay) && w.untilDay >= s.day) return 'Protected Maritime Approaches are active until ' + R.dayLabel(w.untilDay) + '. The next order can be issued once they end.';
-    }
-    return '';
-  };
+     Only the Blessing of Pelagos is left (the Shrines' Bless Commercial
+     Shipment keeps one charge for the next ship the Dock sends). It is
+     applied by itself at departure by R.voyageProtections; the cut never
+     takes the chance below 0. The Barracks' Commercial Convoy and the
+     Watchtower's Protected Maritime Approaches went with the war game on 22
+     October 2026. */
   /* The protections in plain words, for the Dock and the facility panels:
      [{ id, label, cut, state, text }] (state: 'ready' | 'active' | 'none' | 'unavailable'). */
   R.protectionStatus = function (s, data) {

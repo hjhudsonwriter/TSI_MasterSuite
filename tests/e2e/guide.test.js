@@ -24,7 +24,8 @@ function sourceOf(dir) {
       else if (/\.js$/.test(e.name)) text += fs.readFileSync(p, 'utf8') + '\n';
     });
   }(dir));
-  return text;
+  /* A word in single quotes with an apostrophe is written \' in the code; the guide spells it as it shows on screen. */
+  return text.replace(/\\'/g, "'");
 }
 const lower = s => String(s).toLowerCase();
 
