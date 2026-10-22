@@ -309,7 +309,9 @@
     /* its recipes still use goods, held by the order */
     var s = yard('herbal_gardens', 3);
     R.addGoods(s, data, 'restorative_herbs', 10, '', rand);
-    t.equal(R.issueOrder(s, data, 'herbal_gardens', 'field_medical_supplies', 1, rand).ok, true);
+    var issued = R.issueOrder(s, data, 'herbal_gardens', 'field_medical_supplies', 1, rand);
+    t.equal(issued.ok, true);
+    t.ok(/Taken from the Warehouse: 10 portions of Restorative Herbs/.test(issued.log || ''), 'the issue line still says which goods the order took: ' + issued.log);
     t.same(s.pendingOrders[0].inputs, [{ goodId: 'restorative_herbs', name: 'Restorative Herbs', qty: 10 }]);
     t.equal(R.goodsQty(s, 'restorative_herbs'), 0);
     t.equal(R.facility(data, 'herbal_gardens').functions[3].options[0].inputs.length, 2, 'the recipes\' goods are still listed');
