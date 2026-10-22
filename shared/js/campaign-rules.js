@@ -333,4 +333,17 @@
       return out;
     }
   };
+
+  /* The day expedition number n ended, read from the Explorer's journey log
+     (newest line first) when an older save never stored it: the line is
+     "Day 9 · Expedition 2 ended on Day 9." Returns 0 when it isn't there (the
+     log keeps only the last 100 lines), because a day is never guessed. */
+  C.endedDayFromLog = function (log, n) {
+    var list = Array.isArray(log) ? log : [];
+    for (var i = 0; i < list.length; i++) {
+      var m = typeof list[i] === 'string' ? /Expedition (\d+) ended on Day (\d+)\./.exec(list[i]) : null;
+      if (m && Number(m[1]) === n) return Number(m[2]);
+    }
+    return 0;
+  };
 }());
