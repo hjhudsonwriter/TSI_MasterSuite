@@ -1,0 +1,2700 @@
+{
+  "format": "tsi-backup",
+  "version": 1,
+  "kind": "tool",
+  "space": "test",
+  "tool": "bastion",
+  "toolName": "The Ironbow Bastion Manager",
+  "suite": "The Scarlett Isles: D&D Tool Suite",
+  "savedAt": "2026-10-22T12:00:00.000Z",
+  "records": [
+    {
+      "key": "tsi.bastion.state",
+      "value": {
+        "treasuryGP": 2000,
+        "partyLevel": 17,
+        "builtFacilities": [
+          "barracks",
+          "armoury",
+          "watchtower",
+          "workshop",
+          "dock"
+        ],
+        "builtExtras": [
+          {
+            "facId": "menagerie",
+            "status": "built"
+          },
+          {
+            "facId": "war_room",
+            "status": "built"
+          },
+          {
+            "facId": "library_scriptorium",
+            "status": "built"
+          },
+          {
+            "facId": "arcane_laboratory",
+            "status": "built"
+          },
+          {
+            "facId": "shrine_telluria",
+            "status": "built"
+          },
+          {
+            "facId": "shrine_aurush",
+            "status": "building",
+            "startDay": 36,
+            "readyDay": 64
+          },
+          {
+            "facId": "shrine_pelagos",
+            "status": "built"
+          },
+          {
+            "facId": "wyvern_roost",
+            "status": "built"
+          },
+          {
+            "facId": "griffin_tower",
+            "status": "building",
+            "startDay": 33,
+            "readyDay": 54
+          },
+          {
+            "facId": "dire_wolf_den",
+            "status": "built"
+          },
+          {
+            "facId": "hall_of_emissaries",
+            "status": "built"
+          }
+        ],
+        "builtPlots": [
+          {
+            "facId": "herbal_gardens",
+            "status": "built"
+          },
+          {
+            "facId": "timber_sawmill",
+            "status": "built"
+          },
+          {
+            "facId": "fishery_smokehouse",
+            "status": "built"
+          },
+          ""
+        ],
+        "facilityLevels": {
+          "workshop": 2,
+          "barracks": 2,
+          "armoury": 1,
+          "watchtower": 2,
+          "dock": 4,
+          "menagerie": 1,
+          "war_room": 3,
+          "library_scriptorium": 2,
+          "arcane_laboratory": 3,
+          "shrine_telluria": 3,
+          "shrine_aurush": 1,
+          "shrine_pelagos": 5,
+          "wyvern_roost": 3,
+          "griffin_tower": 2,
+          "dire_wolf_den": 2,
+          "hall_of_emissaries": 3,
+          "herbal_gardens": 3,
+          "timber_sawmill": 2,
+          "fishery_smokehouse": 1
+        },
+        "pendingOrders": [
+          {
+            "id": "hv-01",
+            "facId": "workshop",
+            "fnId": "craft",
+            "chosen": {
+              "label": "Dagger",
+              "craftItem": "Dagger"
+            },
+            "optionLabel": "Dagger",
+            "notes": "",
+            "label": "Workshop: Craft (Dagger)",
+            "costGP": 2,
+            "issuedDay": 38,
+            "dueDay": 41
+          },
+          {
+            "id": "hv-02",
+            "facId": "dock",
+            "fnId": "charter_berth",
+            "chosen": {
+              "label": "Keelboat",
+              "costGP": 100,
+              "costText": "100GP"
+            },
+            "optionLabel": "Keelboat",
+            "notes": "",
+            "label": "Dock: Charter Berth (Keelboat)",
+            "costGP": 0,
+            "issuedDay": 38,
+            "dueDay": 45
+          },
+          {
+            "id": "hv-03",
+            "facId": "herbal_gardens",
+            "fnId": "field_medical_supplies",
+            "chosen": {
+              "label": "2 Healer's Kits + 4 Antitoxin vials",
+              "key": "kits_and_antitoxin",
+              "days": 6,
+              "inputs": [
+                {
+                  "good": "restorative_herbs",
+                  "qty": 5
+                },
+                {
+                  "good": "antivenom_roots",
+                  "qty": 5
+                }
+              ],
+              "outputs": [
+                {
+                  "item": "Healer's Kit",
+                  "qty": 2
+                },
+                {
+                  "item": "Antitoxin (2 vials)",
+                  "qty": 2
+                }
+              ]
+            },
+            "optionLabel": "2 Healer's Kits + 4 Antitoxin vials",
+            "notes": "",
+            "label": "Herbal Gardens: Prepare Field Medical Supplies (2 Healer's Kits + 4 Antitoxin vials)",
+            "costGP": 0,
+            "issuedDay": 38,
+            "dueDay": 44,
+            "inputs": [
+              {
+                "goodId": "restorative_herbs",
+                "name": "Restorative Herbs",
+                "qty": 5
+              },
+              {
+                "goodId": "antivenom_roots",
+                "name": "Antivenom Roots",
+                "qty": 5
+              }
+            ]
+          },
+          {
+            "id": "hv-04",
+            "facId": "timber_sawmill",
+            "fnId": "saw_lumber",
+            "chosen": {
+              "label": "Sawn Lumber (1 lot)",
+              "inputs": [
+                {
+                  "good": "raw_timber",
+                  "qty": 1
+                }
+              ],
+              "outputs": [
+                {
+                  "good": "sawn_lumber",
+                  "qty": 1
+                }
+              ]
+            },
+            "optionLabel": "Sawn Lumber (1 lot)",
+            "notes": "",
+            "label": "Timber Yard & Sawmill: Saw Lumber (Sawn Lumber (1 lot))",
+            "costGP": 0,
+            "issuedDay": 38,
+            "dueDay": 42,
+            "inputs": [
+              {
+                "goodId": "raw_timber",
+                "name": "Raw Timber",
+                "qty": 1
+              }
+            ]
+          },
+          {
+            "id": "hv-05",
+            "facId": "workshop",
+            "fnId": "upgrade",
+            "chosen": null,
+            "optionLabel": null,
+            "notes": "",
+            "label": "Workshop: Upgrade to Level 3",
+            "costGP": 0,
+            "issuedDay": 39,
+            "dueDay": 53,
+            "meta": {
+              "kind": "upgrade",
+              "toLevel": 3
+            }
+          },
+          {
+            "id": "hv-06",
+            "facId": "barracks",
+            "fnId": "recruit_defenders",
+            "chosen": null,
+            "optionLabel": null,
+            "notes": "",
+            "label": "Barracks: Recruit Defenders",
+            "costGP": 0,
+            "issuedDay": 38,
+            "dueDay": 43
+          },
+          {
+            "id": "hv-07",
+            "facId": "watchtower",
+            "fnId": "patrol",
+            "chosen": null,
+            "optionLabel": null,
+            "notes": "",
+            "label": "Watchtower: Patrol",
+            "costGP": 0,
+            "issuedDay": 38,
+            "dueDay": 39
+          },
+          {
+            "id": "hv-08",
+            "facId": "armoury",
+            "fnId": "arm_defenders",
+            "chosen": null,
+            "optionLabel": null,
+            "notes": "",
+            "label": "Armoury: Arm Defenders",
+            "costGP": 300,
+            "issuedDay": 38,
+            "dueDay": 41
+          },
+          {
+            "id": "hv-09",
+            "facId": "war_room",
+            "fnId": "recruit",
+            "chosen": {
+              "label": "Archers (50)"
+            },
+            "optionLabel": "Archers (50)",
+            "notes": "",
+            "label": "War Room: Recruit (Archers (50))",
+            "costGP": 120,
+            "issuedDay": 38,
+            "dueDay": 45
+          },
+          {
+            "id": "hv-10",
+            "facId": "war_room",
+            "fnId": "drill",
+            "chosen": {
+              "label": "Line Infantry I → Trained",
+              "regimentId": "reg-hv-line",
+              "toGrade": "trained"
+            },
+            "optionLabel": "Line Infantry I → Trained",
+            "notes": "",
+            "label": "War Room: Drill a Regiment (Line Infantry I → Trained)",
+            "costGP": 75,
+            "issuedDay": 38,
+            "dueDay": 45
+          },
+          {
+            "id": "hv-11",
+            "facId": "war_council",
+            "fnId": "war_action",
+            "chosen": null,
+            "optionLabel": null,
+            "notes": "",
+            "label": "War Action",
+            "issuedDay": 39,
+            "dueDay": 42,
+            "optionIdx": 0,
+            "meta": {
+              "kind": "war_action",
+              "objective": "raid",
+              "targetKey": "bacca",
+              "targetName": "Bacca",
+              "tier": "established",
+              "declared": {
+                "day": 39,
+                "hr": -2,
+                "pc": 0,
+                "prev": null,
+                "quiet": false,
+                "rollDone": true
+              }
+            }
+          },
+          {
+            "id": "hv-12",
+            "facId": "menagerie",
+            "fnId": "recruit_beast",
+            "chosen": {
+              "label": "Tiger",
+              "costGP": 1000,
+              "costText": "1,000 GP"
+            },
+            "optionLabel": "Tiger",
+            "notes": "",
+            "label": "Menagerie: Recruit Beast (Tiger)",
+            "costGP": 1000,
+            "issuedDay": 38,
+            "dueDay": 48
+          },
+          {
+            "id": "hv-13",
+            "facId": "library_scriptorium",
+            "fnId": "research",
+            "chosen": {
+              "label": "Geographical Scriptures"
+            },
+            "optionLabel": "Geographical Scriptures",
+            "notes": "",
+            "label": "Library & Scriptorium: Research (Geographical Scriptures)",
+            "costGP": 0,
+            "issuedDay": 38,
+            "dueDay": 43
+          },
+          {
+            "id": "hv-14",
+            "facId": "library_scriptorium",
+            "fnId": "prepare_overland_travel_charts",
+            "chosen": {
+              "label": "1 Overland chart",
+              "outputs": [
+                {
+                  "good": "overland_chart",
+                  "qty": 1
+                }
+              ]
+            },
+            "optionLabel": "1 Overland chart",
+            "notes": "",
+            "label": "Library & Scriptorium: Prepare Overland Travel Charts (1 Overland chart)",
+            "costGP": 0,
+            "issuedDay": 38,
+            "dueDay": 42
+          },
+          {
+            "id": "hv-15",
+            "facId": "arcane_laboratory",
+            "fnId": "craft_common",
+            "chosen": {
+              "label": "Bead of Nourishment"
+            },
+            "optionLabel": "Bead of Nourishment",
+            "notes": "",
+            "label": "Arcane Laboratory: Craft Common (Bead of Nourishment)",
+            "costGP": 0,
+            "issuedDay": 38,
+            "dueDay": 43
+          },
+          {
+            "id": "hv-16",
+            "facId": "arcane_laboratory",
+            "fnId": "alchemy",
+            "chosen": {
+              "label": "Burnt Othur Fumes (Poison)"
+            },
+            "optionLabel": "Burnt Othur Fumes (Poison)",
+            "notes": "",
+            "label": "Arcane Laboratory: Alchemy (Burnt Othur Fumes (Poison))",
+            "costGP": 0,
+            "issuedDay": 38,
+            "dueDay": 43
+          },
+          {
+            "id": "hv-17",
+            "facId": "shrine_pelagos",
+            "fnId": "upgrade",
+            "chosen": null,
+            "optionLabel": null,
+            "notes": "",
+            "label": "Shrine of Pelagos: Upgrade to Level 6",
+            "costGP": 0,
+            "issuedDay": 39,
+            "dueDay": 68,
+            "meta": {
+              "kind": "upgrade",
+              "toLevel": 6
+            }
+          },
+          {
+            "id": "hv-18",
+            "facId": "shrine_telluria",
+            "fnId": "pray",
+            "chosen": {
+              "label": "Telluria's Blessing",
+              "special": {
+                "type": "favour_blessing",
+                "god": "telluria"
+              }
+            },
+            "optionLabel": "Telluria's Blessing",
+            "notes": "",
+            "label": "Shrine of Telluria: Pray (Telluria's Blessing)",
+            "costGP": 0,
+            "issuedDay": 38,
+            "dueDay": 39
+          },
+          {
+            "id": "hv-19",
+            "facId": "shrine_pelagos",
+            "fnId": "pray",
+            "chosen": {
+              "label": "Pelagos's Tidings",
+              "special": {
+                "type": "oracle_hint",
+                "god": "pelagos"
+              }
+            },
+            "optionLabel": "Pelagos's Tidings",
+            "notes": "",
+            "label": "Shrine of Pelagos: Pray (Pelagos's Tidings)",
+            "costGP": 0,
+            "issuedDay": 38,
+            "dueDay": 39
+          },
+          {
+            "id": "hv-20",
+            "facId": "shrine_telluria",
+            "fnId": "prepare_rootguard_salve",
+            "chosen": {
+              "label": "2 doses of Rootguard Salve",
+              "outputs": [
+                {
+                  "good": "rootguard_salve",
+                  "qty": 2
+                }
+              ]
+            },
+            "optionLabel": "2 doses of Rootguard Salve",
+            "notes": "",
+            "label": "Shrine of Telluria: Prepare Rootguard Salve (2 doses of Rootguard Salve)",
+            "costGP": 0,
+            "issuedDay": 38,
+            "dueDay": 42,
+            "favourCost": 5
+          },
+          {
+            "id": "hv-21",
+            "facId": "shrine_pelagos",
+            "fnId": "prepare_aquatic_protection_charm",
+            "chosen": {
+              "label": "1 Aquatic Protection Charm",
+              "outputs": [
+                {
+                  "good": "aquatic_protection_charm",
+                  "qty": 1
+                }
+              ]
+            },
+            "optionLabel": "1 Aquatic Protection Charm",
+            "notes": "",
+            "label": "Shrine of Pelagos: Prepare Aquatic Protection Charm (1 Aquatic Protection Charm)",
+            "costGP": 0,
+            "issuedDay": 38,
+            "dueDay": 42,
+            "favourCost": 5,
+            "inputs": [
+              {
+                "goodId": "alchemical_flowers",
+                "name": "Alchemical Flowers",
+                "qty": 3
+              }
+            ]
+          },
+          {
+            "id": "hv-22",
+            "facId": "shrine_pelagos",
+            "fnId": "great_rite_pelagos",
+            "chosen": null,
+            "optionLabel": null,
+            "notes": "",
+            "label": "Shrine of Pelagos: Great Rite of Pelagos",
+            "costGP": 0,
+            "issuedDay": 38,
+            "dueDay": 45,
+            "favourCost": 25
+          },
+          {
+            "id": "hv-23",
+            "facId": "hall_of_emissaries",
+            "fnId": "register_port_charter",
+            "chosen": {
+              "charterId": "chr-hv-timberport",
+              "label": "Timberport"
+            },
+            "optionLabel": "Timberport",
+            "notes": "",
+            "label": "Hall of Emissaries: Register Port Charter (Timberport)",
+            "costGP": 0,
+            "issuedDay": 38,
+            "dueDay": 41
+          },
+          {
+            "id": "hv-24",
+            "facId": "hall_of_emissaries",
+            "fnId": "host_delegation",
+            "chosen": {
+              "label": "Clan Blackstone",
+              "value": "Blackstone"
+            },
+            "optionLabel": "Clan Blackstone",
+            "notes": "",
+            "label": "Hall of Emissaries: Host Delegation (Clan Blackstone)",
+            "costGP": 150,
+            "issuedDay": 38,
+            "dueDay": 43,
+            "meta": {
+              "targetClan": "Slade",
+              "notes": ""
+            }
+          },
+          {
+            "id": "hv-25",
+            "facId": "hall_of_emissaries",
+            "fnId": "trade_consortium",
+            "chosen": null,
+            "optionLabel": null,
+            "notes": "",
+            "label": "Hall of Emissaries: Trade Consortium",
+            "costGP": 900,
+            "issuedDay": 38,
+            "dueDay": 52,
+            "meta": {
+              "targetClan": "Blackstone",
+              "notes": ""
+            }
+          },
+          {
+            "id": "hv-26",
+            "facId": "trade_network",
+            "fnId": "upgrade",
+            "chosen": null,
+            "optionLabel": null,
+            "label": "Ironbow Trade Network: Stability Investment",
+            "costGP": 75,
+            "issuedDay": 39,
+            "dueDay": 46,
+            "meta": {
+              "kind": "stability"
+            }
+          },
+          {
+            "id": "hv-27",
+            "facId": "wyvern_roost",
+            "fnId": "house_wyvern",
+            "chosen": {
+              "label": "Skyrender",
+              "creatureId": "cr-hv-wyvern-skyrender"
+            },
+            "optionLabel": "Skyrender",
+            "notes": "",
+            "label": "Wyvern Roost: House a Wyvern (Skyrender)",
+            "costGP": 0,
+            "issuedDay": 38,
+            "dueDay": 41
+          },
+          {
+            "id": "hv-28",
+            "facId": "dire_wolf_den",
+            "fnId": "dwf_riding_harness",
+            "chosen": {
+              "label": "Ashfang",
+              "trainCreatureId": "cr-hv-wolf-ashfang"
+            },
+            "optionLabel": "Ashfang",
+            "notes": "",
+            "label": "Dire Wolf Den: Riding Harness (Ashfang)",
+            "costGP": 150,
+            "issuedDay": 38,
+            "dueDay": 43
+          }
+        ],
+        "defenders": {
+          "count": 6,
+          "armed": true,
+          "patrolUntil": 44
+        },
+        "defenderBeasts": [
+          {
+            "name": "Tiger",
+            "qty": 1,
+            "source": "Menagerie"
+          },
+          {
+            "name": "Giant Vulture",
+            "qty": 1,
+            "source": "Menagerie"
+          }
+        ],
+        "military": [
+          {
+            "id": "reg-hv-line",
+            "name": "Line Infantry (100)",
+            "qty": 1,
+            "source": "War Room",
+            "num": 1,
+            "label": "",
+            "grade": "trained"
+          },
+          {
+            "id": "reg-hv-archers",
+            "name": "Archers (50)",
+            "qty": 1,
+            "source": "War Room",
+            "num": 1,
+            "label": "",
+            "grade": "regular"
+          },
+          {
+            "id": "reg-hv-riders",
+            "name": "Light Cavalry (50)",
+            "qty": 1,
+            "source": "War Room",
+            "num": 1,
+            "label": "The Dawn Riders",
+            "grade": "veteran"
+          },
+          {
+            "id": "reg-hv-levy",
+            "name": "Levy Infantry (150)",
+            "qty": 1,
+            "source": "War Room",
+            "num": 1,
+            "label": "",
+            "grade": "regular",
+            "strength": 90,
+            "depleted": true,
+            "recoup": {
+              "days": 14,
+              "left": 9,
+              "from": 90
+            }
+          },
+          {
+            "name": "Lieutenant (1)",
+            "qty": 2,
+            "source": "War Room"
+          }
+        ],
+        "warehouse": [
+          {
+            "id": "hv-wh-1",
+            "item": "Rope (50 ft)",
+            "qty": 2,
+            "gp": "",
+            "notes": "bought at Goldport"
+          },
+          {
+            "id": "hv-wh-2",
+            "goodId": "raw_timber",
+            "item": "Raw Timber",
+            "qty": 4,
+            "gp": "",
+            "notes": "Timber Yard & Sawmill"
+          },
+          {
+            "id": "hv-wh-3",
+            "goodId": "restorative_herbs",
+            "item": "Restorative Herbs",
+            "qty": 12,
+            "gp": "",
+            "notes": "Herbal Gardens"
+          },
+          {
+            "id": "hv-wh-4",
+            "goodId": "fresh_fish",
+            "item": "Fresh Fish",
+            "qty": 3,
+            "gp": "",
+            "notes": "Fishery & Smokehouse"
+          },
+          {
+            "id": "hv-wh-5",
+            "item": "Potion of Healing",
+            "qty": 3,
+            "gp": "50",
+            "notes": "Arcane Laboratory"
+          },
+          {
+            "id": "hv-wh-6",
+            "goodId": "overland_chart",
+            "item": "Overland chart",
+            "qty": 1,
+            "gp": "",
+            "notes": "Library & Scriptorium"
+          }
+        ],
+        "artisanTools": [
+          "Smith's Tools",
+          "Alchemist's Supplies",
+          "Herbalism Kit",
+          "Tinker's Tools",
+          "Cook's Utensils",
+          "Carpenter's Tools"
+        ],
+        "favour": {
+          "telluria": 70,
+          "aurush": 95,
+          "pelagos": 40
+        },
+        "politicalCapital": {
+          "blackstone": 30,
+          "bacca": -20,
+          "farmer": 10,
+          "slade": 15,
+          "molten": 0,
+          "rowthorn": 5,
+          "karr": 25
+        },
+        "tradeNetwork": {
+          "active": true,
+          "strategy": "balanced",
+          "stability": 70,
+          "routes": [
+            {
+              "id": "hv-route-1",
+              "clan": "Karr",
+              "commodity": "Wool & Furs",
+              "risk": "high",
+              "openedDay": 28,
+              "expiresDay": 63,
+              "nextDay": 42,
+              "yieldGP": 160,
+              "stabilityDC": 12,
+              "status": "active"
+            },
+            {
+              "id": "hv-route-2",
+              "clan": "Molten",
+              "commodity": "Precious Metals",
+              "risk": "high",
+              "openedDay": 28,
+              "expiresDay": 63,
+              "nextDay": 42,
+              "yieldGP": 210,
+              "stabilityDC": 12,
+              "status": "active"
+            }
+          ],
+          "portCharters": [
+            {
+              "id": "chr-hv-timberport",
+              "port": "timberport",
+              "clan": "Blackstone",
+              "mode": "commodity_backed",
+              "status": "earned",
+              "earnedDay": 36,
+              "registeredDay": null,
+              "terms": {},
+              "from": {
+                "code": "EX-12",
+                "title": "The Timber Treaty"
+              },
+              "text": "Granted at Timberport."
+            },
+            {
+              "id": "chr-hv-goldport",
+              "port": "goldport",
+              "clan": "Slade",
+              "mode": "commodity_backed",
+              "status": "registered",
+              "earnedDay": 20,
+              "registeredDay": 24,
+              "terms": {
+                "priceMult": 1.1,
+                "feePerLot": 5,
+                "tariffPct": 4
+              },
+              "from": {
+                "code": "EX-07",
+                "title": "The Goldport Charter"
+              },
+              "text": "Granted at Goldport.",
+              "termsLog": [
+                {
+                  "day": 30,
+                  "kind": "amend",
+                  "before": {
+                    "priceMult": 1,
+                    "feePerLot": 0,
+                    "tariffPct": 0
+                  },
+                  "after": {
+                    "priceMult": 1.1,
+                    "feePerLot": 5,
+                    "tariffPct": 4
+                  },
+                  "why": "The Charter was renegotiated after the Goldport fair."
+                }
+              ]
+            }
+          ],
+          "voyages": [
+            {
+              "id": "hv-voyage-1",
+              "port": "goldport",
+              "clan": "Slade",
+              "charterId": "chr-hv-goldport",
+              "mode": "commodity_backed",
+              "cargo": [
+                {
+                  "goodId": "preserved_fish",
+                  "name": "Preserved Fish",
+                  "qty": 2
+                }
+              ],
+              "departDay": 38,
+              "arriveDay": 43,
+              "returnDay": 49,
+              "stage": "outbound",
+              "risk": "medium",
+              "basePct": 15,
+              "protections": [],
+              "chance": 15,
+              "scheduleId": "hv-sched-1",
+              "outcome": null,
+              "recalledDay": null,
+              "roll": null,
+              "terms": {
+                "priceMult": 1.1,
+                "feePerLot": 5,
+                "tariffPct": 4
+              }
+            }
+          ],
+          "schedules": [
+            {
+              "id": "hv-sched-1",
+              "charterId": "chr-hv-goldport",
+              "port": "goldport",
+              "lots": [
+                {
+                  "goodId": "preserved_fish",
+                  "name": "Preserved Fish",
+                  "qty": 2
+                }
+              ],
+              "every": 7,
+              "nextDay": 45,
+              "waiting": ""
+            }
+          ],
+          "cargoSales": [
+            {
+              "id": "hv-sale-1",
+              "day": 34,
+              "port": "goldport",
+              "clan": "Slade",
+              "outcome": "sold",
+              "roll": 71,
+              "chance": 15,
+              "cargo": [
+                {
+                  "goodId": "fresh_fish",
+                  "name": "Fresh Fish",
+                  "qty": 2
+                }
+              ],
+              "lines": [
+                {
+                  "goodId": "fresh_fish",
+                  "name": "Fresh Fish",
+                  "qty": 2,
+                  "base": 20,
+                  "cat": "cargo",
+                  "demand": "normal",
+                  "demandLabel": "Normal",
+                  "mult": 1,
+                  "gp": 40
+                }
+              ],
+              "gross": 40,
+              "fee": 10,
+              "tariff": 2,
+              "tariffPct": 5,
+              "priceMult": 1,
+              "net": 28
+            }
+          ],
+          "protections": {
+            "pelagos_blessing": {
+              "charges": 1
+            }
+          },
+          "marketLedger": [
+            {
+              "day": 34,
+              "port": "goldport",
+              "goodId": "fresh_fish",
+              "qty": 2,
+              "saleId": "hv-sale-1"
+            }
+          ],
+          "parcels": [
+            {
+              "id": "hv-parcel-1",
+              "point": "slades_muster",
+              "goods": [
+                {
+                  "goodId": "overland_chart",
+                  "qty": 1
+                }
+              ],
+              "items": 1,
+              "departDay": 37,
+              "readyDay": 41,
+              "status": "in_transit",
+              "arrivedDay": null,
+              "collectedDay": null,
+              "collectId": null,
+              "recalledDay": null,
+              "returnDay": null,
+              "feeGP": 10
+            },
+            {
+              "id": "hv-parcel-2",
+              "point": "slades_muster",
+              "goods": [
+                {
+                  "goodId": "restorative_herbs",
+                  "qty": 4
+                }
+              ],
+              "items": 4,
+              "departDay": 30,
+              "readyDay": 34,
+              "status": "ready",
+              "arrivedDay": 34,
+              "collectedDay": null,
+              "collectId": null,
+              "recalledDay": null,
+              "returnDay": null,
+              "feeGP": 10
+            }
+          ]
+        },
+        "arbitration": {
+          "queue": [
+            {
+              "id": "hv-dispute-1",
+              "a": "Karr",
+              "b": "Ironbow Trade Consortium",
+              "reason": "A dispute over tariffs and delayed cargo.",
+              "createdDay": 40,
+              "meta": {
+                "kind": "trade",
+                "routeClan": "Karr",
+                "routeId": "hv-route-1",
+                "risk": "high",
+                "commodity": "Wool & Furs",
+                "disruptedDay": 36,
+                "stabilityAtFiling": 70
+              }
+            }
+          ]
+        },
+        "diplomacy": {
+          "agreements": [
+            {
+              "id": "hv-agr-1",
+              "title": "Trade Agreement",
+              "clan": "Clan Karr",
+              "startDay": 30,
+              "endDay": 51,
+              "income": 90,
+              "lastShipmentDay": 37
+            },
+            {
+              "id": "hv-agr-2",
+              "title": "Trade Agreement",
+              "clan": "Clan Slade",
+              "startDay": 36,
+              "endDay": 57,
+              "income": 70,
+              "lastShipmentDay": 36
+            }
+          ],
+          "delegations": [
+            {
+              "id": "hv-del-1",
+              "title": "Hosted Delegation (assertive)",
+              "clan": "Clan Molten",
+              "startDay": 38,
+              "endDay": 52
+            }
+          ],
+          "summits": [],
+          "arbitrations": [],
+          "consortiums": [
+            {
+              "id": "hv-con-1",
+              "title": "Form Trade Consortium",
+              "clan": "Clan Blackstone",
+              "startDay": 28,
+              "endDay": 63,
+              "income": 110,
+              "lastShipmentDay": 35
+            }
+          ],
+          "rep": 12,
+          "cooldowns": {
+            "summit": 46
+          },
+          "tokens": 2
+        },
+        "diplomaticRecords": {
+          "next": 2,
+          "list": [
+            {
+              "id": "dr-0001",
+              "title": "The Karr tariff talks",
+              "clans": [
+                "karr"
+              ],
+              "day": 33,
+              "situation": "Clan Karr raised its harbour tariff.",
+              "decision": "The party offered a fair price for wool.",
+              "outcome": "Karr agreed to a lower tariff for a season.",
+              "notes": "",
+              "status": "confirmed",
+              "createdDay": 33,
+              "confirmedDay": 34,
+              "history": [
+                {
+                  "day": 34,
+                  "text": "Confirmed by the DM."
+                }
+              ],
+              "consequences": [
+                {
+                  "id": "dr-0001:c1",
+                  "kind": "privilege",
+                  "clan": "karr",
+                  "amount": 0,
+                  "days": 30,
+                  "text": "Lower tariff at Karr harbours.",
+                  "status": "active",
+                  "until": null,
+                  "appliedDay": 1
+                }
+              ]
+            }
+          ]
+        },
+        "dmEdits": {
+          "done": {
+            "edit-hv-1": {
+              "r": "applied",
+              "at": 1760000300000,
+              "day": 36,
+              "kind": "pc",
+              "key": "slade",
+              "was": 10,
+              "now": 15,
+              "why": ""
+            }
+          }
+        },
+        "v": 3,
+        "day": 40,
+        "anchored": true,
+        "lastEvent": {
+          "id": "storm",
+          "day": 28,
+          "text": "A storm damaged the east wall."
+        },
+        "lastEventDay": 28,
+        "log": [
+          {
+            "title": "Order Issued",
+            "body": "Day log line 200: the Ironbow carried on.",
+            "at": 1760012000000,
+            "day": 40
+          },
+          {
+            "title": "Order Completed",
+            "body": "Day log line 199: the Ironbow carried on.",
+            "at": 1760011940000,
+            "day": 40
+          },
+          {
+            "title": "Days",
+            "body": "Day log line 198: the Ironbow carried on.",
+            "at": 1760011880000,
+            "day": 40
+          },
+          {
+            "title": "Treasury",
+            "body": "Day log line 197: the Ironbow carried on.",
+            "at": 1760011820000,
+            "day": 40
+          },
+          {
+            "title": "Hall",
+            "body": "Day log line 196: the Ironbow carried on.",
+            "at": 1760011760000,
+            "day": 40
+          },
+          {
+            "title": "Order Issued",
+            "body": "Day log line 195: the Ironbow carried on.",
+            "at": 1760011700000,
+            "day": 39
+          },
+          {
+            "title": "Order Completed",
+            "body": "Day log line 194: the Ironbow carried on.",
+            "at": 1760011640000,
+            "day": 39
+          },
+          {
+            "title": "Days",
+            "body": "Day log line 193: the Ironbow carried on.",
+            "at": 1760011580000,
+            "day": 39
+          },
+          {
+            "title": "Treasury",
+            "body": "Day log line 192: the Ironbow carried on.",
+            "at": 1760011520000,
+            "day": 39
+          },
+          {
+            "title": "Hall",
+            "body": "Day log line 191: the Ironbow carried on.",
+            "at": 1760011460000,
+            "day": 39
+          },
+          {
+            "title": "Order Issued",
+            "body": "Day log line 190: the Ironbow carried on.",
+            "at": 1760011400000,
+            "day": 38
+          },
+          {
+            "title": "Order Completed",
+            "body": "Day log line 189: the Ironbow carried on.",
+            "at": 1760011340000,
+            "day": 38
+          },
+          {
+            "title": "Days",
+            "body": "Day log line 188: the Ironbow carried on.",
+            "at": 1760011280000,
+            "day": 38
+          },
+          {
+            "title": "Treasury",
+            "body": "Day log line 187: the Ironbow carried on.",
+            "at": 1760011220000,
+            "day": 38
+          },
+          {
+            "title": "Hall",
+            "body": "Day log line 186: the Ironbow carried on.",
+            "at": 1760011160000,
+            "day": 38
+          },
+          {
+            "title": "Order Issued",
+            "body": "Day log line 185: the Ironbow carried on.",
+            "at": 1760011100000,
+            "day": 37
+          },
+          {
+            "title": "Order Completed",
+            "body": "Day log line 184: the Ironbow carried on.",
+            "at": 1760011040000,
+            "day": 37
+          },
+          {
+            "title": "Days",
+            "body": "Day log line 183: the Ironbow carried on.",
+            "at": 1760010980000,
+            "day": 37
+          },
+          {
+            "title": "Treasury",
+            "body": "Day log line 182: the Ironbow carried on.",
+            "at": 1760010920000,
+            "day": 37
+          },
+          {
+            "title": "Hall",
+            "body": "Day log line 181: the Ironbow carried on.",
+            "at": 1760010860000,
+            "day": 37
+          },
+          {
+            "title": "Order Issued",
+            "body": "Day log line 180: the Ironbow carried on.",
+            "at": 1760010800000,
+            "day": 36
+          },
+          {
+            "title": "Order Completed",
+            "body": "Day log line 179: the Ironbow carried on.",
+            "at": 1760010740000,
+            "day": 36
+          },
+          {
+            "title": "Days",
+            "body": "Day log line 178: the Ironbow carried on.",
+            "at": 1760010680000,
+            "day": 36
+          },
+          {
+            "title": "Treasury",
+            "body": "Day log line 177: the Ironbow carried on.",
+            "at": 1760010620000,
+            "day": 36
+          },
+          {
+            "title": "Hall",
+            "body": "Day log line 176: the Ironbow carried on.",
+            "at": 1760010560000,
+            "day": 36
+          },
+          {
+            "title": "Order Issued",
+            "body": "Day log line 175: the Ironbow carried on.",
+            "at": 1760010500000,
+            "day": 35
+          },
+          {
+            "title": "Order Completed",
+            "body": "Day log line 174: the Ironbow carried on.",
+            "at": 1760010440000,
+            "day": 35
+          },
+          {
+            "title": "Days",
+            "body": "Day log line 173: the Ironbow carried on.",
+            "at": 1760010380000,
+            "day": 35
+          },
+          {
+            "title": "Treasury",
+            "body": "Day log line 172: the Ironbow carried on.",
+            "at": 1760010320000,
+            "day": 35
+          },
+          {
+            "title": "Hall",
+            "body": "Day log line 171: the Ironbow carried on.",
+            "at": 1760010260000,
+            "day": 35
+          },
+          {
+            "title": "Order Issued",
+            "body": "Day log line 170: the Ironbow carried on.",
+            "at": 1760010200000,
+            "day": 34
+          },
+          {
+            "title": "Order Completed",
+            "body": "Day log line 169: the Ironbow carried on.",
+            "at": 1760010140000,
+            "day": 34
+          },
+          {
+            "title": "Days",
+            "body": "Day log line 168: the Ironbow carried on.",
+            "at": 1760010080000,
+            "day": 34
+          },
+          {
+            "title": "Treasury",
+            "body": "Day log line 167: the Ironbow carried on.",
+            "at": 1760010020000,
+            "day": 34
+          },
+          {
+            "title": "Hall",
+            "body": "Day log line 166: the Ironbow carried on.",
+            "at": 1760009960000,
+            "day": 34
+          },
+          {
+            "title": "Order Issued",
+            "body": "Day log line 165: the Ironbow carried on.",
+            "at": 1760009900000,
+            "day": 33
+          },
+          {
+            "title": "Order Completed",
+            "body": "Day log line 164: the Ironbow carried on.",
+            "at": 1760009840000,
+            "day": 33
+          },
+          {
+            "title": "Days",
+            "body": "Day log line 163: the Ironbow carried on.",
+            "at": 1760009780000,
+            "day": 33
+          },
+          {
+            "title": "Treasury",
+            "body": "Day log line 162: the Ironbow carried on.",
+            "at": 1760009720000,
+            "day": 33
+          },
+          {
+            "title": "Hall",
+            "body": "Day log line 161: the Ironbow carried on.",
+            "at": 1760009660000,
+            "day": 33
+          },
+          {
+            "title": "Order Issued",
+            "body": "Day log line 160: the Ironbow carried on.",
+            "at": 1760009600000,
+            "day": 32
+          },
+          {
+            "title": "Order Completed",
+            "body": "Day log line 159: the Ironbow carried on.",
+            "at": 1760009540000,
+            "day": 32
+          },
+          {
+            "title": "Days",
+            "body": "Day log line 158: the Ironbow carried on.",
+            "at": 1760009480000,
+            "day": 32
+          },
+          {
+            "title": "Treasury",
+            "body": "Day log line 157: the Ironbow carried on.",
+            "at": 1760009420000,
+            "day": 32
+          },
+          {
+            "title": "Hall",
+            "body": "Day log line 156: the Ironbow carried on.",
+            "at": 1760009360000,
+            "day": 32
+          },
+          {
+            "title": "Order Issued",
+            "body": "Day log line 155: the Ironbow carried on.",
+            "at": 1760009300000,
+            "day": 31
+          },
+          {
+            "title": "Order Completed",
+            "body": "Day log line 154: the Ironbow carried on.",
+            "at": 1760009240000,
+            "day": 31
+          },
+          {
+            "title": "Days",
+            "body": "Day log line 153: the Ironbow carried on.",
+            "at": 1760009180000,
+            "day": 31
+          },
+          {
+            "title": "Treasury",
+            "body": "Day log line 152: the Ironbow carried on.",
+            "at": 1760009120000,
+            "day": 31
+          },
+          {
+            "title": "Hall",
+            "body": "Day log line 151: the Ironbow carried on.",
+            "at": 1760009060000,
+            "day": 31
+          },
+          {
+            "title": "Order Issued",
+            "body": "Day log line 150: the Ironbow carried on.",
+            "at": 1760009000000,
+            "day": 30
+          },
+          {
+            "title": "Order Completed",
+            "body": "Day log line 149: the Ironbow carried on.",
+            "at": 1760008940000,
+            "day": 30
+          },
+          {
+            "title": "Days",
+            "body": "Day log line 148: the Ironbow carried on.",
+            "at": 1760008880000,
+            "day": 30
+          },
+          {
+            "title": "Treasury",
+            "body": "Day log line 147: the Ironbow carried on.",
+            "at": 1760008820000,
+            "day": 30
+          },
+          {
+            "title": "Hall",
+            "body": "Day log line 146: the Ironbow carried on.",
+            "at": 1760008760000,
+            "day": 30
+          },
+          {
+            "title": "Order Issued",
+            "body": "Day log line 145: the Ironbow carried on.",
+            "at": 1760008700000,
+            "day": 29
+          },
+          {
+            "title": "Order Completed",
+            "body": "Day log line 144: the Ironbow carried on.",
+            "at": 1760008640000,
+            "day": 29
+          },
+          {
+            "title": "Days",
+            "body": "Day log line 143: the Ironbow carried on.",
+            "at": 1760008580000,
+            "day": 29
+          },
+          {
+            "title": "Treasury",
+            "body": "Day log line 142: the Ironbow carried on.",
+            "at": 1760008520000,
+            "day": 29
+          },
+          {
+            "title": "Hall",
+            "body": "Day log line 141: the Ironbow carried on.",
+            "at": 1760008460000,
+            "day": 29
+          },
+          {
+            "title": "Order Issued",
+            "body": "Day log line 140: the Ironbow carried on.",
+            "at": 1760008400000,
+            "day": 28
+          },
+          {
+            "title": "Order Completed",
+            "body": "Day log line 139: the Ironbow carried on.",
+            "at": 1760008340000,
+            "day": 28
+          },
+          {
+            "title": "Days",
+            "body": "Day log line 138: the Ironbow carried on.",
+            "at": 1760008280000,
+            "day": 28
+          },
+          {
+            "title": "Treasury",
+            "body": "Day log line 137: the Ironbow carried on.",
+            "at": 1760008220000,
+            "day": 28
+          },
+          {
+            "title": "Hall",
+            "body": "Day log line 136: the Ironbow carried on.",
+            "at": 1760008160000,
+            "day": 28
+          },
+          {
+            "title": "Order Issued",
+            "body": "Day log line 135: the Ironbow carried on.",
+            "at": 1760008100000,
+            "day": 27
+          },
+          {
+            "title": "Order Completed",
+            "body": "Day log line 134: the Ironbow carried on.",
+            "at": 1760008040000,
+            "day": 27
+          },
+          {
+            "title": "Days",
+            "body": "Day log line 133: the Ironbow carried on.",
+            "at": 1760007980000,
+            "day": 27
+          },
+          {
+            "title": "Treasury",
+            "body": "Day log line 132: the Ironbow carried on.",
+            "at": 1760007920000,
+            "day": 27
+          },
+          {
+            "title": "Hall",
+            "body": "Day log line 131: the Ironbow carried on.",
+            "at": 1760007860000,
+            "day": 27
+          },
+          {
+            "title": "Order Issued",
+            "body": "Day log line 130: the Ironbow carried on.",
+            "at": 1760007800000,
+            "day": 26
+          },
+          {
+            "title": "Order Completed",
+            "body": "Day log line 129: the Ironbow carried on.",
+            "at": 1760007740000,
+            "day": 26
+          },
+          {
+            "title": "Days",
+            "body": "Day log line 128: the Ironbow carried on.",
+            "at": 1760007680000,
+            "day": 26
+          },
+          {
+            "title": "Treasury",
+            "body": "Day log line 127: the Ironbow carried on.",
+            "at": 1760007620000,
+            "day": 26
+          },
+          {
+            "title": "Hall",
+            "body": "Day log line 126: the Ironbow carried on.",
+            "at": 1760007560000,
+            "day": 26
+          },
+          {
+            "title": "Order Issued",
+            "body": "Day log line 125: the Ironbow carried on.",
+            "at": 1760007500000,
+            "day": 25
+          },
+          {
+            "title": "Order Completed",
+            "body": "Day log line 124: the Ironbow carried on.",
+            "at": 1760007440000,
+            "day": 25
+          },
+          {
+            "title": "Days",
+            "body": "Day log line 123: the Ironbow carried on.",
+            "at": 1760007380000,
+            "day": 25
+          },
+          {
+            "title": "Treasury",
+            "body": "Day log line 122: the Ironbow carried on.",
+            "at": 1760007320000,
+            "day": 25
+          },
+          {
+            "title": "Hall",
+            "body": "Day log line 121: the Ironbow carried on.",
+            "at": 1760007260000,
+            "day": 25
+          },
+          {
+            "title": "Order Issued",
+            "body": "Day log line 120: the Ironbow carried on.",
+            "at": 1760007200000,
+            "day": 24
+          },
+          {
+            "title": "Order Completed",
+            "body": "Day log line 119: the Ironbow carried on.",
+            "at": 1760007140000,
+            "day": 24
+          },
+          {
+            "title": "Days",
+            "body": "Day log line 118: the Ironbow carried on.",
+            "at": 1760007080000,
+            "day": 24
+          },
+          {
+            "title": "Treasury",
+            "body": "Day log line 117: the Ironbow carried on.",
+            "at": 1760007020000,
+            "day": 24
+          },
+          {
+            "title": "Hall",
+            "body": "Day log line 116: the Ironbow carried on.",
+            "at": 1760006960000,
+            "day": 24
+          },
+          {
+            "title": "Order Issued",
+            "body": "Day log line 115: the Ironbow carried on.",
+            "at": 1760006900000,
+            "day": 23
+          },
+          {
+            "title": "Order Completed",
+            "body": "Day log line 114: the Ironbow carried on.",
+            "at": 1760006840000,
+            "day": 23
+          },
+          {
+            "title": "Days",
+            "body": "Day log line 113: the Ironbow carried on.",
+            "at": 1760006780000,
+            "day": 23
+          },
+          {
+            "title": "Treasury",
+            "body": "Day log line 112: the Ironbow carried on.",
+            "at": 1760006720000,
+            "day": 23
+          },
+          {
+            "title": "Hall",
+            "body": "Day log line 111: the Ironbow carried on.",
+            "at": 1760006660000,
+            "day": 23
+          },
+          {
+            "title": "Order Issued",
+            "body": "Day log line 110: the Ironbow carried on.",
+            "at": 1760006600000,
+            "day": 22
+          },
+          {
+            "title": "Order Completed",
+            "body": "Day log line 109: the Ironbow carried on.",
+            "at": 1760006540000,
+            "day": 22
+          },
+          {
+            "title": "Days",
+            "body": "Day log line 108: the Ironbow carried on.",
+            "at": 1760006480000,
+            "day": 22
+          },
+          {
+            "title": "Treasury",
+            "body": "Day log line 107: the Ironbow carried on.",
+            "at": 1760006420000,
+            "day": 22
+          },
+          {
+            "title": "Hall",
+            "body": "Day log line 106: the Ironbow carried on.",
+            "at": 1760006360000,
+            "day": 22
+          },
+          {
+            "title": "Order Issued",
+            "body": "Day log line 105: the Ironbow carried on.",
+            "at": 1760006300000,
+            "day": 21
+          },
+          {
+            "title": "Order Completed",
+            "body": "Day log line 104: the Ironbow carried on.",
+            "at": 1760006240000,
+            "day": 21
+          },
+          {
+            "title": "Days",
+            "body": "Day log line 103: the Ironbow carried on.",
+            "at": 1760006180000,
+            "day": 21
+          },
+          {
+            "title": "Treasury",
+            "body": "Day log line 102: the Ironbow carried on.",
+            "at": 1760006120000,
+            "day": 21
+          },
+          {
+            "title": "Hall",
+            "body": "Day log line 101: the Ironbow carried on.",
+            "at": 1760006060000,
+            "day": 21
+          },
+          {
+            "title": "Order Issued",
+            "body": "Day log line 100: the Ironbow carried on.",
+            "at": 1760006000000,
+            "day": 20
+          },
+          {
+            "title": "Order Completed",
+            "body": "Day log line 99: the Ironbow carried on.",
+            "at": 1760005940000,
+            "day": 20
+          },
+          {
+            "title": "Days",
+            "body": "Day log line 98: the Ironbow carried on.",
+            "at": 1760005880000,
+            "day": 20
+          },
+          {
+            "title": "Treasury",
+            "body": "Day log line 97: the Ironbow carried on.",
+            "at": 1760005820000,
+            "day": 20
+          },
+          {
+            "title": "Hall",
+            "body": "Day log line 96: the Ironbow carried on.",
+            "at": 1760005760000,
+            "day": 20
+          },
+          {
+            "title": "Order Issued",
+            "body": "Day log line 95: the Ironbow carried on.",
+            "at": 1760005700000,
+            "day": 19
+          },
+          {
+            "title": "Order Completed",
+            "body": "Day log line 94: the Ironbow carried on.",
+            "at": 1760005640000,
+            "day": 19
+          },
+          {
+            "title": "Days",
+            "body": "Day log line 93: the Ironbow carried on.",
+            "at": 1760005580000,
+            "day": 19
+          },
+          {
+            "title": "Treasury",
+            "body": "Day log line 92: the Ironbow carried on.",
+            "at": 1760005520000,
+            "day": 19
+          },
+          {
+            "title": "Hall",
+            "body": "Day log line 91: the Ironbow carried on.",
+            "at": 1760005460000,
+            "day": 19
+          },
+          {
+            "title": "Order Issued",
+            "body": "Day log line 90: the Ironbow carried on.",
+            "at": 1760005400000,
+            "day": 18
+          },
+          {
+            "title": "Order Completed",
+            "body": "Day log line 89: the Ironbow carried on.",
+            "at": 1760005340000,
+            "day": 18
+          },
+          {
+            "title": "Days",
+            "body": "Day log line 88: the Ironbow carried on.",
+            "at": 1760005280000,
+            "day": 18
+          },
+          {
+            "title": "Treasury",
+            "body": "Day log line 87: the Ironbow carried on.",
+            "at": 1760005220000,
+            "day": 18
+          },
+          {
+            "title": "Hall",
+            "body": "Day log line 86: the Ironbow carried on.",
+            "at": 1760005160000,
+            "day": 18
+          },
+          {
+            "title": "Order Issued",
+            "body": "Day log line 85: the Ironbow carried on.",
+            "at": 1760005100000,
+            "day": 17
+          },
+          {
+            "title": "Order Completed",
+            "body": "Day log line 84: the Ironbow carried on.",
+            "at": 1760005040000,
+            "day": 17
+          },
+          {
+            "title": "Days",
+            "body": "Day log line 83: the Ironbow carried on.",
+            "at": 1760004980000,
+            "day": 17
+          },
+          {
+            "title": "Treasury",
+            "body": "Day log line 82: the Ironbow carried on.",
+            "at": 1760004920000,
+            "day": 17
+          },
+          {
+            "title": "Hall",
+            "body": "Day log line 81: the Ironbow carried on.",
+            "at": 1760004860000,
+            "day": 17
+          },
+          {
+            "title": "Order Issued",
+            "body": "Day log line 80: the Ironbow carried on.",
+            "at": 1760004800000,
+            "day": 16
+          },
+          {
+            "title": "Order Completed",
+            "body": "Day log line 79: the Ironbow carried on.",
+            "at": 1760004740000,
+            "day": 16
+          },
+          {
+            "title": "Days",
+            "body": "Day log line 78: the Ironbow carried on.",
+            "at": 1760004680000,
+            "day": 16
+          },
+          {
+            "title": "Treasury",
+            "body": "Day log line 77: the Ironbow carried on.",
+            "at": 1760004620000,
+            "day": 16
+          },
+          {
+            "title": "Hall",
+            "body": "Day log line 76: the Ironbow carried on.",
+            "at": 1760004560000,
+            "day": 16
+          },
+          {
+            "title": "Order Issued",
+            "body": "Day log line 75: the Ironbow carried on.",
+            "at": 1760004500000,
+            "day": 15
+          },
+          {
+            "title": "Order Completed",
+            "body": "Day log line 74: the Ironbow carried on.",
+            "at": 1760004440000,
+            "day": 15
+          },
+          {
+            "title": "Days",
+            "body": "Day log line 73: the Ironbow carried on.",
+            "at": 1760004380000,
+            "day": 15
+          },
+          {
+            "title": "Treasury",
+            "body": "Day log line 72: the Ironbow carried on.",
+            "at": 1760004320000,
+            "day": 15
+          },
+          {
+            "title": "Hall",
+            "body": "Day log line 71: the Ironbow carried on.",
+            "at": 1760004260000,
+            "day": 15
+          },
+          {
+            "title": "Order Issued",
+            "body": "Day log line 70: the Ironbow carried on.",
+            "at": 1760004200000,
+            "day": 14
+          },
+          {
+            "title": "Order Completed",
+            "body": "Day log line 69: the Ironbow carried on.",
+            "at": 1760004140000,
+            "day": 14
+          },
+          {
+            "title": "Days",
+            "body": "Day log line 68: the Ironbow carried on.",
+            "at": 1760004080000,
+            "day": 14
+          },
+          {
+            "title": "Treasury",
+            "body": "Day log line 67: the Ironbow carried on.",
+            "at": 1760004020000,
+            "day": 14
+          },
+          {
+            "title": "Hall",
+            "body": "Day log line 66: the Ironbow carried on.",
+            "at": 1760003960000,
+            "day": 14
+          },
+          {
+            "title": "Order Issued",
+            "body": "Day log line 65: the Ironbow carried on.",
+            "at": 1760003900000,
+            "day": 13
+          },
+          {
+            "title": "Order Completed",
+            "body": "Day log line 64: the Ironbow carried on.",
+            "at": 1760003840000,
+            "day": 13
+          },
+          {
+            "title": "Days",
+            "body": "Day log line 63: the Ironbow carried on.",
+            "at": 1760003780000,
+            "day": 13
+          },
+          {
+            "title": "Treasury",
+            "body": "Day log line 62: the Ironbow carried on.",
+            "at": 1760003720000,
+            "day": 13
+          },
+          {
+            "title": "Hall",
+            "body": "Day log line 61: the Ironbow carried on.",
+            "at": 1760003660000,
+            "day": 13
+          },
+          {
+            "title": "Order Issued",
+            "body": "Day log line 60: the Ironbow carried on.",
+            "at": 1760003600000,
+            "day": 12
+          },
+          {
+            "title": "Order Completed",
+            "body": "Day log line 59: the Ironbow carried on.",
+            "at": 1760003540000,
+            "day": 12
+          },
+          {
+            "title": "Days",
+            "body": "Day log line 58: the Ironbow carried on.",
+            "at": 1760003480000,
+            "day": 12
+          },
+          {
+            "title": "Treasury",
+            "body": "Day log line 57: the Ironbow carried on.",
+            "at": 1760003420000,
+            "day": 12
+          },
+          {
+            "title": "Hall",
+            "body": "Day log line 56: the Ironbow carried on.",
+            "at": 1760003360000,
+            "day": 12
+          },
+          {
+            "title": "Order Issued",
+            "body": "Day log line 55: the Ironbow carried on.",
+            "at": 1760003300000,
+            "day": 11
+          },
+          {
+            "title": "Order Completed",
+            "body": "Day log line 54: the Ironbow carried on.",
+            "at": 1760003240000,
+            "day": 11
+          },
+          {
+            "title": "Days",
+            "body": "Day log line 53: the Ironbow carried on.",
+            "at": 1760003180000,
+            "day": 11
+          },
+          {
+            "title": "Treasury",
+            "body": "Day log line 52: the Ironbow carried on.",
+            "at": 1760003120000,
+            "day": 11
+          },
+          {
+            "title": "Hall",
+            "body": "Day log line 51: the Ironbow carried on.",
+            "at": 1760003060000,
+            "day": 11
+          },
+          {
+            "title": "Order Issued",
+            "body": "Day log line 50: the Ironbow carried on.",
+            "at": 1760003000000,
+            "day": 10
+          },
+          {
+            "title": "Order Completed",
+            "body": "Day log line 49: the Ironbow carried on.",
+            "at": 1760002940000,
+            "day": 10
+          },
+          {
+            "title": "Days",
+            "body": "Day log line 48: the Ironbow carried on.",
+            "at": 1760002880000,
+            "day": 10
+          },
+          {
+            "title": "Treasury",
+            "body": "Day log line 47: the Ironbow carried on.",
+            "at": 1760002820000,
+            "day": 10
+          },
+          {
+            "title": "Hall",
+            "body": "Day log line 46: the Ironbow carried on.",
+            "at": 1760002760000,
+            "day": 10
+          },
+          {
+            "title": "Order Issued",
+            "body": "Day log line 45: the Ironbow carried on.",
+            "at": 1760002700000,
+            "day": 9
+          },
+          {
+            "title": "Order Completed",
+            "body": "Day log line 44: the Ironbow carried on.",
+            "at": 1760002640000,
+            "day": 9
+          },
+          {
+            "title": "Days",
+            "body": "Day log line 43: the Ironbow carried on.",
+            "at": 1760002580000,
+            "day": 9
+          },
+          {
+            "title": "Treasury",
+            "body": "Day log line 42: the Ironbow carried on.",
+            "at": 1760002520000,
+            "day": 9
+          },
+          {
+            "title": "Hall",
+            "body": "Day log line 41: the Ironbow carried on.",
+            "at": 1760002460000,
+            "day": 9
+          },
+          {
+            "title": "Order Issued",
+            "body": "Day log line 40: the Ironbow carried on.",
+            "at": 1760002400000,
+            "day": 8
+          },
+          {
+            "title": "Order Completed",
+            "body": "Day log line 39: the Ironbow carried on.",
+            "at": 1760002340000,
+            "day": 8
+          },
+          {
+            "title": "Days",
+            "body": "Day log line 38: the Ironbow carried on.",
+            "at": 1760002280000,
+            "day": 8
+          },
+          {
+            "title": "Treasury",
+            "body": "Day log line 37: the Ironbow carried on.",
+            "at": 1760002220000,
+            "day": 8
+          },
+          {
+            "title": "Hall",
+            "body": "Day log line 36: the Ironbow carried on.",
+            "at": 1760002160000,
+            "day": 8
+          },
+          {
+            "title": "Order Issued",
+            "body": "Day log line 35: the Ironbow carried on.",
+            "at": 1760002100000,
+            "day": 7
+          },
+          {
+            "title": "Order Completed",
+            "body": "Day log line 34: the Ironbow carried on.",
+            "at": 1760002040000,
+            "day": 7
+          },
+          {
+            "title": "Days",
+            "body": "Day log line 33: the Ironbow carried on.",
+            "at": 1760001980000,
+            "day": 7
+          },
+          {
+            "title": "Treasury",
+            "body": "Day log line 32: the Ironbow carried on.",
+            "at": 1760001920000,
+            "day": 7
+          },
+          {
+            "title": "Hall",
+            "body": "Day log line 31: the Ironbow carried on.",
+            "at": 1760001860000,
+            "day": 7
+          },
+          {
+            "title": "Order Issued",
+            "body": "Day log line 30: the Ironbow carried on.",
+            "at": 1760001800000,
+            "day": 6
+          },
+          {
+            "title": "Order Completed",
+            "body": "Day log line 29: the Ironbow carried on.",
+            "at": 1760001740000,
+            "day": 6
+          },
+          {
+            "title": "Days",
+            "body": "Day log line 28: the Ironbow carried on.",
+            "at": 1760001680000,
+            "day": 6
+          },
+          {
+            "title": "Treasury",
+            "body": "Day log line 27: the Ironbow carried on.",
+            "at": 1760001620000,
+            "day": 6
+          },
+          {
+            "title": "Hall",
+            "body": "Day log line 26: the Ironbow carried on.",
+            "at": 1760001560000,
+            "day": 6
+          },
+          {
+            "title": "Order Issued",
+            "body": "Day log line 25: the Ironbow carried on.",
+            "at": 1760001500000,
+            "day": 5
+          },
+          {
+            "title": "Order Completed",
+            "body": "Day log line 24: the Ironbow carried on.",
+            "at": 1760001440000,
+            "day": 5
+          },
+          {
+            "title": "Days",
+            "body": "Day log line 23: the Ironbow carried on.",
+            "at": 1760001380000,
+            "day": 5
+          },
+          {
+            "title": "Treasury",
+            "body": "Day log line 22: the Ironbow carried on.",
+            "at": 1760001320000,
+            "day": 5
+          },
+          {
+            "title": "Hall",
+            "body": "Day log line 21: the Ironbow carried on.",
+            "at": 1760001260000,
+            "day": 5
+          },
+          {
+            "title": "Order Issued",
+            "body": "Day log line 20: the Ironbow carried on.",
+            "at": 1760001200000,
+            "day": 4
+          },
+          {
+            "title": "Order Completed",
+            "body": "Day log line 19: the Ironbow carried on.",
+            "at": 1760001140000,
+            "day": 4
+          },
+          {
+            "title": "Days",
+            "body": "Day log line 18: the Ironbow carried on.",
+            "at": 1760001080000,
+            "day": 4
+          },
+          {
+            "title": "Treasury",
+            "body": "Day log line 17: the Ironbow carried on.",
+            "at": 1760001020000,
+            "day": 4
+          },
+          {
+            "title": "Hall",
+            "body": "Day log line 16: the Ironbow carried on.",
+            "at": 1760000960000,
+            "day": 4
+          },
+          {
+            "title": "Order Issued",
+            "body": "Day log line 15: the Ironbow carried on.",
+            "at": 1760000900000,
+            "day": 3
+          },
+          {
+            "title": "Order Completed",
+            "body": "Day log line 14: the Ironbow carried on.",
+            "at": 1760000840000,
+            "day": 3
+          },
+          {
+            "title": "Days",
+            "body": "Day log line 13: the Ironbow carried on.",
+            "at": 1760000780000,
+            "day": 3
+          },
+          {
+            "title": "Treasury",
+            "body": "Day log line 12: the Ironbow carried on.",
+            "at": 1760000720000,
+            "day": 3
+          },
+          {
+            "title": "Hall",
+            "body": "Day log line 11: the Ironbow carried on.",
+            "at": 1760000660000,
+            "day": 3
+          },
+          {
+            "title": "Order Issued",
+            "body": "Day log line 10: the Ironbow carried on.",
+            "at": 1760000600000,
+            "day": 2
+          },
+          {
+            "title": "Order Completed",
+            "body": "Day log line 9: the Ironbow carried on.",
+            "at": 1760000540000,
+            "day": 2
+          },
+          {
+            "title": "Days",
+            "body": "Day log line 8: the Ironbow carried on.",
+            "at": 1760000480000,
+            "day": 2
+          },
+          {
+            "title": "Treasury",
+            "body": "Day log line 7: the Ironbow carried on.",
+            "at": 1760000420000,
+            "day": 2
+          },
+          {
+            "title": "Hall",
+            "body": "Day log line 6: the Ironbow carried on.",
+            "at": 1760000360000,
+            "day": 2
+          },
+          {
+            "title": "Order Issued",
+            "body": "Day log line 5: the Ironbow carried on.",
+            "at": 1760000300000,
+            "day": 1
+          },
+          {
+            "title": "Order Completed",
+            "body": "Day log line 4: the Ironbow carried on.",
+            "at": 1760000240000,
+            "day": 1
+          },
+          {
+            "title": "Days",
+            "body": "Day log line 3: the Ironbow carried on.",
+            "at": 1760000180000,
+            "day": 1
+          },
+          {
+            "title": "Treasury",
+            "body": "Day log line 2: the Ironbow carried on.",
+            "at": 1760000120000,
+            "day": 1
+          },
+          {
+            "title": "Hall",
+            "body": "Day log line 1: the Ironbow carried on.",
+            "at": 1760000060000,
+            "day": 1
+          }
+        ],
+        "organization": {
+          "type": "clan",
+          "name": "Clan Ironbow",
+          "chief": "Harry",
+          "motto": "Root and Steel",
+          "foundedAtDay": 14
+        },
+        "clanHonor": 55,
+        "honourRespectByClan": {
+          "blackstone": 2,
+          "bacca": -3,
+          "farmer": 0,
+          "slade": 1,
+          "molten": 0,
+          "rowthorn": 1,
+          "karr": 2
+        },
+        "trustedClientsByClan": {
+          "blackstone": 50,
+          "bacca": 50,
+          "farmer": 50,
+          "slade": 50,
+          "molten": 50,
+          "rowthorn": 50,
+          "karr": 50
+        },
+        "warLog": [
+          {
+            "title": "War",
+            "body": "Clan Bacca is at war with the Ironbow.",
+            "at": 1760000000000,
+            "day": 30
+          }
+        ],
+        "dayInProgress": null,
+        "word": [
+          {
+            "day": 39,
+            "lines": [
+              "Workshop: Craft (Dagger) is complete."
+            ]
+          }
+        ],
+        "militaryActions": [],
+        "warMissions": {},
+        "warRecovery": [
+          {
+            "id": "rec-hv-1",
+            "kind": "beast",
+            "name": "Giant Vulture",
+            "status": "wounded",
+            "untilDay": 43
+          }
+        ],
+        "warMissionSeq": 3,
+        "wars": {
+          "bacca": {
+            "since": 30,
+            "last": 38,
+            "next": 45
+          }
+        },
+        "repairs": {
+          "watchtower": 43
+        },
+        "legacyFacilities": [
+          "smithy"
+        ],
+        "research": {
+          "herbal_gardens": {
+            "agricultural": [
+              "fertile_soil"
+            ]
+          }
+        },
+        "archivedFacilities": [
+          {
+            "facId": "gaming_hall",
+            "name": "Gaming Hall",
+            "status": "built",
+            "slot": 4,
+            "day": 12
+          }
+        ],
+        "migration": null,
+        "bridge": {
+          "fresh": false,
+          "done": {
+            "msg-hv-1": {
+              "r": "applied",
+              "day": 31,
+              "at": 1760000100000,
+              "clan": "karr",
+              "hr": 1,
+              "was": 1,
+              "now": 2,
+              "text": "The party helped a Karr shepherd.",
+              "why": ""
+            },
+            "msg-hv-2": {
+              "r": "applied",
+              "day": 35,
+              "at": 1760000200000,
+              "clan": "bacca",
+              "hr": -1,
+              "was": -2,
+              "now": -3,
+              "text": "The party refused a Bacca envoy.",
+              "why": ""
+            }
+          }
+        },
+        "creatures": [
+          {
+            "id": "elara_wyvern",
+            "species": "wyvern",
+            "owner": "elara",
+            "name": "",
+            "status": "housed",
+            "home": "wyvern_roost",
+            "grantedDay": 1,
+            "housedDay": 5,
+            "msgId": "",
+            "development": {
+              "version": 1,
+              "handlerId": "elara",
+              "bond": {
+                "level": 1,
+                "ready": null
+              },
+              "temperament": {
+                "dominant": "",
+                "attachment": "",
+                "trigger": ""
+              },
+              "training": {},
+              "harness": {
+                "fitted": false,
+                "paidGP": 0,
+                "fittedDay": null
+              },
+              "firstFlight": {
+                "approved": false,
+                "day": null,
+                "handlerId": null
+              },
+              "handlerHistory": [],
+              "seq": 0,
+              "chronicle": [
+                {
+                  "id": "ch-credit",
+                  "day": 5,
+                  "cat": "bond",
+                  "text": "Existing relationship credited; Bond 1 per campaign decision.",
+                  "by": "DM",
+                  "link": ""
+                }
+              ]
+            }
+          },
+          {
+            "id": "cr-hv-griffin-swiftwing",
+            "species": "griffin",
+            "owner": "",
+            "name": "Swiftwing",
+            "status": "housed",
+            "home": "griffin_tower",
+            "grantedDay": 12,
+            "housedDay": 16,
+            "msgId": "hv-grant-1",
+            "development": {
+              "version": 1,
+              "handlerId": "kaelen",
+              "bond": {
+                "level": 2,
+                "ready": null
+              },
+              "temperament": {
+                "dominant": "Watchful",
+                "attachment": "Rests its head on the handler's shoulder",
+                "trigger": "Loud bells"
+              },
+              "training": {
+                "grf_safe_acclimatisation": {
+                  "day": 20
+                },
+                "grf_keeper_routine": {
+                  "day": 28
+                }
+              },
+              "harness": {
+                "fitted": false,
+                "paidGP": 0,
+                "fittedDay": null
+              },
+              "firstFlight": {
+                "approved": false,
+                "day": null,
+                "handlerId": null
+              },
+              "handlerHistory": [],
+              "seq": 2,
+              "chronicle": [
+                {
+                  "id": "ch-1",
+                  "day": 16,
+                  "cat": "housing",
+                  "text": "Swiftwing was housed at the Griffin Tower.",
+                  "by": "DM",
+                  "link": ""
+                },
+                {
+                  "id": "ch-2",
+                  "day": 28,
+                  "cat": "training",
+                  "text": "Establish Keeper's Routine finished.",
+                  "by": "DM",
+                  "link": ""
+                }
+              ],
+              "regional": "Highland"
+            }
+          },
+          {
+            "id": "cr-hv-wolf-ashfang",
+            "species": "dire_wolf",
+            "owner": "",
+            "name": "Ashfang",
+            "status": "housed",
+            "home": "dire_wolf_den",
+            "grantedDay": 18,
+            "housedDay": 22,
+            "msgId": "hv-grant-2",
+            "development": {
+              "version": 1,
+              "handlerId": "umbrys",
+              "bond": {
+                "level": 3,
+                "ready": null
+              },
+              "temperament": {
+                "dominant": "Bold",
+                "attachment": "Follows at the handler's heel",
+                "trigger": "The smell of smoke"
+              },
+              "training": {
+                "dwf_safe_acclimatisation": {
+                  "day": 26
+                },
+                "dwf_keeper_routine": {
+                  "day": 31
+                },
+                "dwf_heel_recall": {
+                  "day": 37
+                }
+              },
+              "harness": {
+                "fitted": true,
+                "paidGP": 150,
+                "fittedDay": 38
+              },
+              "firstFlight": {
+                "approved": true,
+                "day": 39,
+                "handlerId": "umbrys"
+              },
+              "handlerHistory": [
+                {
+                  "handlerId": "magnus",
+                  "bond": 1,
+                  "fromDay": 22,
+                  "toDay": 30,
+                  "reason": "Magnus left on the expedition."
+                }
+              ],
+              "seq": 4,
+              "chronicle": [
+                {
+                  "id": "ch-1",
+                  "day": 22,
+                  "cat": "housing",
+                  "text": "Ashfang was housed at the Dire Wolf Den.",
+                  "by": "DM",
+                  "link": ""
+                },
+                {
+                  "id": "ch-2",
+                  "day": 31,
+                  "cat": "bond",
+                  "text": "Bond 2 confirmed after the night at the ford.",
+                  "by": "DM",
+                  "link": ""
+                },
+                {
+                  "id": "ch-3",
+                  "day": 37,
+                  "cat": "bond",
+                  "text": "Bond 3 confirmed: Ashfang guarded the camp alone.",
+                  "by": "DM",
+                  "link": "",
+                  "private": true
+                },
+                {
+                  "id": "ch-4",
+                  "day": 38,
+                  "cat": "training",
+                  "text": "Riding Harness fitted (150 gp).",
+                  "by": "DM",
+                  "link": ""
+                }
+              ],
+              "regional": "Northern Moor",
+              "profileLog": [
+                {
+                  "day": 30,
+                  "by": "DM",
+                  "change": {
+                    "dominant": {
+                      "from": "Wary",
+                      "to": "Bold"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "id": "cr-hv-wyvern-skyrender",
+            "species": "wyvern",
+            "owner": "",
+            "name": "Skyrender",
+            "status": "waiting",
+            "home": "",
+            "grantedDay": 38,
+            "housedDay": null,
+            "msgId": "hv-grant-3"
+          }
+        ],
+        "greatRites": [
+          {
+            "id": "rite-hv-1",
+            "rite": "cleansing_radiance",
+            "god": "aurush",
+            "madeDay": 32,
+            "status": "waiting"
+          }
+        ],
+        "beast": {
+          "campaignId": "HvCampaign2610",
+          "accept": true,
+          "handlers": [
+            {
+              "id": "kaelen",
+              "name": "Kaelen",
+              "secret": "AbCdEfGhIjKlMnOp12",
+              "since": 10
+            },
+            {
+              "id": "umbrys",
+              "name": "Umbrys",
+              "secret": "QrStUvWxYzAbCdEf34",
+              "since": 10
+            }
+          ],
+          "done": {
+            "cmd-hv-0001": {
+              "r": "applied",
+              "why": "",
+              "day": 36,
+              "at": 1760000400000,
+              "type": "profile.set",
+              "handler": "kaelen",
+              "who": "Kaelen",
+              "creature": "cr-hv-griffin-swiftwing",
+              "label": "Swiftwing: attachment",
+              "orderId": "",
+              "dueDay": null
+            }
+          },
+          "floor": 0
+        }
+      },
+      "savedAt": "2026-10-22T11:59:00.000Z"
+    }
+  ]
+}
