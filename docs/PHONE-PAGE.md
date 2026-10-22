@@ -1,6 +1,6 @@
 # The Beast Handler on a player's phone
 
-Written for Harry, in plain English. Last updated 22 October 2026 (the phone page became read-only).
+Written for Harry, in plain English. Last updated 22 October 2026 (the phone page became read-only; then the Beast Pen and the Bonding Days counter).
 
 ## What this is
 
@@ -25,10 +25,23 @@ When your Bastion has passed a beast's acclimatisation (Bond 1), it rolls the be
 
 It plays **once for each beast on each phone** (the phone remembers which, until it is unlinked). If the page is closed part-way, nothing was sent and the reveal simply starts again. The player cannot skip it. A beast that already has a subspecies (you typed one) is treated as already introduced and never plays it.
 
+## Bonding Days and the filling pills
+
+A beast bonds with its handler by **days on the road**. In the Bastion's Beast Pen the DM presses *Take (the beast) on the road*, and from then every day that passes in the Explorer counts as one **Bonding Day** until the DM presses *Return (the beast) to the Beast Pen*. The total is never lost. Bond 2 is ready at 10 days, Bond 3 at 20, Bond 4 at 30 and Bond 5 at 50; the DM then runs a scene at the table and confirms the level in the Bastion (one level at a time).
+
+What the phone shows on the **Bond** page (nothing is typed or sent from it):
+
+- a **Bonding Days** counter in the *Current rapport* card, with one line under it: *On the road with (the handler) since Day N* while the beast is out, or *Resting at the Beast Pen: bonding is paused* while it is home (the counter keeps showing the total);
+- the five bond pills. Every level already reached is a full pill, and the **next pill fills slowly** as the days pass. When it is full it says *Ready: waiting for a moment with your DM* and glows softly (the glow stops if the phone is set to reduce motion). Once the DM confirms the level in the Bastion, the next pill starts to fill. A screen reader hears each pill as a progress bar, for example "Bond 3, Bonded: 7 of 10 days".
+
+Like everything else, this is only as fresh as the last snapshot. When a new snapshot is pasted in, the numbers and the filling pill change **in place**: the page is not redrawn, so a greeting or a roll that is playing is never cut.
+
+What a snapshot now carries for a beast of its own handler (all of it is that player's own beast's progress): where the beast is (at the Pen or away), the day it went out, its Bonding Days, how far the next pill has filled and which milestone, if any, is ready. A beast still at Bond 0 sends no detail at all, as before. The snapshot's version is unchanged (it is still version 2), so a phone that already holds one keeps working: an older snapshot simply has no counter until a new one is pasted.
+
 ## The normal round trip
 
-1. **Once, to set up.** In the Bastion open **Management**. In the **Beast Handler (players)** box, press **Pairing code…** beside the player's name (or **Add a handler…**). Send them the code, privately. They open the phone page, paste it in, and press **Link this phone**.
-2. **Whenever you want them to see something new.** Press **Snapshot code…** beside their name and send it. On a new phone they paste it and press **Show my beasts**; after that they press **Update from a snapshot…** and paste the new one. Make a new snapshot after anything changes (a new day, a bond, a note in the Chronicle). A beast shows on the phone once it is at Bond 1; before that it is a line that says "Not acclimatised yet".
+1. **Once, to set up.** In the Bastion open the **Beast Pen** (its tile on the map). At the bottom of its panel, in the **Beast Handler (players)** box, press **Pairing code…** beside the player's name (or **Add a handler…**). Send them the code, privately. They open the phone page, paste it in, and press **Link this phone**.
+2. **Whenever you want them to see something new.** Press **Snapshot code…** beside their name and send it. On a new phone they paste it and press **Show my beasts**; after that they press **Update from a snapshot…** and paste the new one. Make a new snapshot after anything changes (a new day, a bond, a note in the Chronicle). A beast shows on the phone once it has passed **Acclimatise With Beast** in the Beast Pen (Bond 1); before that it is a line that says "Not acclimatised yet", and the snapshot carries nothing else about it.
 3. **That is all.** Nothing comes back to you.
 
 ## If a code gets out
