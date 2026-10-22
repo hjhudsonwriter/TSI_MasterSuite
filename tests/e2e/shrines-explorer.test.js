@@ -210,6 +210,8 @@ const RITE = 'rite-ab12cd34';
     await H.chooseFile(ba, '[data-test=import-save]', SAMPLE);
     await H.clickModal(ba, 'Import');
     await ba.waitForFunction(() => window.TSI && TSI.bastion && TSI.bastion.debug && (TSI.bastion.debug.state().builtExtras || []).filter(Boolean).length === 3, null, { timeout: 8000 });
+    /* The box that says what changed holds the Bastion until it is read (the Strip Back Overhaul). */
+    await H.ackChanges(ba);
     ex = await openExplorer(ctx, HARNESS);
     await ba.waitForFunction(() => TSI.bastion.debug.state().anchored, null, { timeout: 8000 });
     /* Changed after it has read the Explorer's day, so the saved copy is anchored. */

@@ -598,6 +598,8 @@ async function panelFits(ba) {
     await H.chooseFile(b3, '[data-test=import-save]', SAMPLE);
     await H.clickModal(b3, 'Import');
     await b3.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().facilityLevels.courier_exchange === 2, null, { timeout: 8000 });
+    /* The box that says what changed holds the Bastion until it is read (the Strip Back Overhaul). */
+    await H.ackChanges(b3);
     const e3 = await openExplorer(c2, HARNESS);
     await e3.waitForTimeout(500);
     await b3.waitForFunction(() => TSI.bastion.debug.state().anchored && !TSI.bastion.debug.state().bridge.fresh, null, { timeout: 8000 });

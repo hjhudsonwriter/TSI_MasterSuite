@@ -124,10 +124,13 @@ async function closePopup(page) {
 }
 /* A Bastion save (in days, following the Explorer) with one order due on
    the given day, for "The Ironbow sends word…" at Make Camp. The Explorer
-   only reads it. */
+   only reads it. It is a version 4 save (the Strip Back Overhaul, 22 October
+   2026): the Explorer reads a version 3 save without the orders of the 13
+   facilities that are going (the Barracks, Armoury...), which the Bastion
+   cancels or moves when it next opens (TSI.campaign.RETIRED_FACILITIES). */
 async function seedBastion(page, dueDay, today) {
   await page.evaluate(([due, d]) => TSI.store.set('tsi.bastion.state', {
-    v: 2, day: d, anchored: true, treasuryGP: 0, partyLevel: 7, builtExtras: [], warehouse: [], defenders: { count: 0, armed: false, patrolUntil: 0 },
+    v: 4, day: d, anchored: true, treasuryGP: 0, partyLevel: 7, builtExtras: [], warehouse: [], defenders: { count: 0, armed: false, patrolUntil: 0 },
     pendingOrders: [{ id: 'o1', facId: 'barracks', fnId: 'recruit_defenders', label: 'Barracks: Recruit Defenders', costGP: 0, issuedDay: d, dueDay: due }]
   }), [dueDay, today]);
 }
