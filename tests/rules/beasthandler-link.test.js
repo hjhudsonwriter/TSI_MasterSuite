@@ -16,15 +16,11 @@
   function complete(b, o) { var l = BR.completeSimpleOrder(b, bdata, o, rnd); BR.removeOrder(b, o.id); return l; }
   var grantN = 100;
 
-  function world(levels) {
-    var lv = levels || {};
+  function world() {
     var b = BR.defaultState(bdata);
     b.day = 10; b.anchored = true; b.bridge.fresh = false; b.partyLevel = 9; b.treasuryGP = 400;
-    b.builtExtras = [{ facId: 'wyvern_roost', status: 'built' }, { facId: 'griffin_tower', status: 'built' }, { facId: 'dire_wolf_den', status: 'built' }];
+    b.builtExtras = [{ facId: 'beast_pen', status: 'built' }];
     BR.ensureLevels(b, bdata);
-    b.facilityLevels.wyvern_roost = lv.roost || 3;
-    b.facilityLevels.griffin_tower = lv.tower || 2;
-    b.facilityLevels.dire_wolf_den = lv.den || 2;
     BR.beastState(b);
     return b;
   }
@@ -34,13 +30,11 @@
     BR.applyInbox(b, bdata, { travel: { day: b.day }, journey: { outbox: [{ id: gid, type: 'creature', day: b.day, at: '2026-10-21T10:00:00.000Z', from: { code: 'DM', title: 'DM', step: 'dm' }, species: species, name: name, text: 'Granted' }] } }, 1000);
     return BR.creatureById(b, BR.creatureIdFor(gid));
   }
-  var HOUSE = { wyvern: ['wyvern_roost', 'house_wyvern'], griffin: ['griffin_tower', 'house_griffin'], dire_wolf: ['dire_wolf_den', 'house_dire_wolf'] };
   function housed(b, species, name, handler) {
     var c = grant(b, species, name);
-    var h = HOUSE[species];
     var idx = 0;
-    BR.housingOptions(b, bdata, species).forEach(function (o, i) { if (o.creatureId === c.id) idx = i; });
-    var r = BR.issueOrder(b, bdata, h[0], h[1], idx, rnd);
+    BR.housingOptions(b, bdata, '*').forEach(function (o, i) { if (o.creatureId === c.id) idx = i; });
+    var r = BR.issueOrder(b, bdata, 'beast_pen', 'house_beast', idx, rnd);
     if (!r.ok) throw new Error(r.message);
     complete(b, last(b));
     if (handler) BR.assignHandler(b, bdata, c.id, handler, '');
@@ -174,7 +168,7 @@
   test('a snapshot code opens with the pairing secret and holds the handler\'s own beasts, the campaign id, and a short Chronicle', function (t) {
     var b = world();
     var c = housed(b, 'wyvern', 'Stormwing', 'Mira');
-    var other = housed(b, 'wyvern', 'Ashwing', 'Joss');
+    var other = housed(b, 'griffin', 'Ashwing', 'Joss');
     c.development.bond.level = 1;
     other.development.bond.level = 1;
     for (var i = 0; i < 60; i++) BR.addChronicleNote(b, bdata, c.id, 'A note number ' + i);
@@ -199,7 +193,7 @@
   test('handlers, ids and categories named like built-in words (constructor, __proto__, toString) are harmless', function (t) {
     var b = world();
     var c = housed(b, 'griffin', 'Swiftwing', 'Constructor');
-    var d = housed(b, 'griffin', 'Second', '__proto__');
+    var d = housed(b, 'wyvern', 'Second', '__proto__');
     var before = Object.prototype.count;
     var hs = P.handlers(b, bdata);
     t.ok(hs.some(function (h) { return h.name === 'Constructor'; }), 'the DM can still pick it in Viewing as');

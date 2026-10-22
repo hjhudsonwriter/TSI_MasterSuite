@@ -1,44 +1,50 @@
-/* The Ironbow Bastion Manager — the creatures (pull request 7 of the
-   facilities overhaul; Harry's answers, 14 October 2026). Plain functions
+/* The Ironbow Bastion Manager: the creatures (pull request 7 of the
+   facilities overhaul; Harry's answers, 14 October 2026; reworked for the
+   Beast Pen in the Strip Back Overhaul, 22 October 2026). Plain functions
    (no screen code), tested on tests/rules.html. They add to the Bastion's
    rules (tools/bastion/rules.js), as courier-rules.js does.
 
-   How a creature comes to the Ironbow:
-   - Elara's wyvern. The Wyvern Roost's Level 1 order, House Elara's Wyvern
-     (3 days, no gold), records her existing wyvern when it completes, once
-     ever ('elara_wyvern', owner 'elara'). It is never a new animal: a
-     second order is refused, and completing one twice changes nothing.
-   - A griffin or a dire wolf. The DM grants one in the Explorer; the link
-     carries it (shared/js/bridge-rules.js, a 'creature' message) and the
-     Bastion holds it once, 'waiting' for a home (R.addCreatureGrant, from
-     R.applyInbox, with its receipt in the same change). The Griffin
-     Tower's or Dire Wolf Den's Level 1 order (House a Griffin, House a Dire
-     Wolf: 3 days, no gold) houses the waiting creature the DM picks: the
-     order keeps its id (as Register Port Charter keeps its Charter), and
-     when it completes the creature is 'housed' there, once.
-   Room: each level of the Tower or the Den houses one creature (Harry, Q6).
-   Room left = the level's room − the creatures housed there − a House order
-   waiting there (one at a time). A creature with no room waits until there
-   is room (an Upgrade adds it).
+   How a creature comes to the Ironbow: the DM grants one in the Explorer
+   (a wyvern, griffin, dire wolf, buckbear or fellcat); the link carries it
+   (shared/js/bridge-rules.js, a 'creature' message) and the Bastion holds it
+   once, 'waiting' for a home (R.addCreatureGrant, from R.applyInbox, with its
+   receipt in the same change). The Beast Pen's House Beast Here order (3
+   days, no gold) houses the waiting creature the DM picks: the order keeps
+   its id (as Register Port Charter keeps its Charter), and when it completes
+   the creature is 'housed' there, once. Nothing makes an animal by itself
+   (Elara's wyvern too: an old save that has her keeps her).
 
-   The record and its cleaner are in rules.js (R.cleanCreatures), which is
-   always loaded. The data is data/creatures-data.js (data.creatures).
+   Room: the Pen keeps ONE beast of each kind (creatures-data.js "pen"). A kind
+   is full when one is housed or being housed; a creature of a full kind waits
+   for a home. The limit only blocks NEW housing: beasts already housed (an
+   older save with two griffins) all stay, and nothing is ever sent away.
 
-   Demolish: a House order waiting there is cancelled, and its creature
-   keeps waiting. Creatures already housed stay at the Ironbow, still
-   guarding it, and keep their home: rebuilding the building is their home
-   again, and adds nobody twice. A rebuilt Tower or Den starts at Level 1,
-   so if more creatures live there than its room, they all stay and new
-   housing waits for room.
-   Under Repair: House orders wait, as every order does; the creatures
-   still guard the Ironbow. Cancel gives nothing back (nothing was paid or
-   held): a granted creature keeps waiting.
+   Acclimatise With Beast (R.acclimatise): a housed beast at Bond 0 is rolled
+   for at the table. The handler rolls Animal Handling, the DM types the total,
+   and a total of the DC (20) or more passes: Bond 1, and the Bastion rolls the
+   beast's first meeting for the Beast Handler once. A fail locks that beast, and
+   only it, for 3 days. Until then nothing else about bonding works.
 
-   On the War Table (war-campaign-rules.js) every housed creature defends
-   the Ironbow when it is attacked (Defend Bastion only), one unit each
-   with its own profile; it is never sent on a War Action and never killed
-   or captured. None of this changes the Menagerie, R.beastQty or the War
-   Council's lock. */
+   Out on the road (R.takeOut, R.returnToPit): an acclimatised beast with a
+   handler can be taken out of the Pen ("Away from the Ironbow"). Each day that
+   passes while it is away is one Bonding Day (R.tickBonding, called by R.startDay
+   exactly once for each day). Bonding Days are totals (creatures-data.js
+   bondTotals): 10 days make Bond 2 ready, 20 Bond 3, 30 Bond 4, 50 Bond 5. A
+   ready level waits for the DM, who runs a scene and confirms it (R.confirmBond):
+   exactly ONE level at a time, and the days keep counting while it waits.
+
+   The record and its cleaner are in rules.js (R.cleanCreatures,
+   R.cleanDevelopment), which is always loaded. The data is
+   data/creatures-data.js (data.creatures).
+
+   Demolish: the Pen can't be demolished while any beast is housed. Under Repair:
+   House orders wait, as every order does. Cancel gives nothing back (nothing was
+   paid or held): a granted creature keeps waiting.
+
+   On the War Table (war-campaign-rules.js) every housed creature defends the
+   Ironbow when it is attacked (Defend Bastion only), one unit each with its own
+   profile; it is never sent on a War Action and never killed or captured. None
+   of this changes the Menagerie, R.beastQty or the War Council's lock. */
 (function () {
   'use strict';
 
@@ -102,17 +108,36 @@
   R.grantableSpecies = function (data) {
     return (arr(cdata(data).grantable) || []).filter(function (id) { return !!R.creatureSpecies(data, id); });
   };
-  /* Room at a building: creatures housed per level (0 if it houses none by level). */
-  R.creatureRoomPerLevel = function (data, facId) {
-    var r = cdata(data).room;
-    return isObj(r) && isNum(r[facId]) ? clampInt(r[facId], 0, 20) : 0;
+  /* ---------- The Beast Pen's numbers (creatures-data.js) ---------- */
+  /* The Beast Pen's id in facilities-data.js. */
+  R.PEN_ID = 'beast_pen';
+  /* How many beasts of each kind the Pen keeps (1). */
+  R.penPerKind = function (data) {
+    var p = cdata(data).pen;
+    return isObj(p) && isNum(p.perKind) ? clampInt(p.perKind, 1, 20) : 1;
   };
-  /* Extra places a building has whatever its level (the Wyvern Roost: 1). */
-  R.creatureRoomBase = function (data, facId) {
-    var r = cdata(data).roomBase;
-    return isObj(r) && isNum(r[facId]) ? clampInt(r[facId], 0, 20) : 0;
+  /* { dc, skill, retryDays } for Acclimatise With Beast; a kind's own DC (species.<kind>.acclimatiseDC) wins. */
+  R.acclimatiseData = function (data, species) {
+    var a = isObj(cdata(data).acclimatise) ? cdata(data).acclimatise : {};
+    var sp = species ? R.creatureSpecies(data, species) : null;
+    var dc = sp && isNum(sp.acclimatiseDC) ? sp.acclimatiseDC : a.dc;
+    return {
+      dc: isNum(dc) ? clampInt(dc, 1, 60) : 20,
+      skill: txt(a.skill, 40) || 'Animal Handling',
+      retryDays: isNum(a.retryDays) ? clampInt(a.retryDays, 1, 100) : 3
+    };
   };
-  R.creaturesComingLater = function (data) { return txt(cdata(data).comingLater, 300); };
+  R.acclimatiseDC = function (data, species) { return R.acclimatiseData(data, species).dc; };
+  /* The Bonding Days a level needs in all (Bond 2: 10, 3: 20, 4: 30, 5: 50); 0 for Bond 1 or less, null above 5. */
+  R.bondTotal = function (data, level) {
+    var n = clampInt(level, 0, 99);
+    if (n > 5) return null;
+    if (n <= 1) return 0;
+    var t = cdata(data).bondTotals;
+    var v = isObj(t) ? t[n] : undefined;
+    var def = { 2: 10, 3: 20, 4: 30, 5: 50 }[n];
+    return isNum(v) ? clampInt(v, 1, 100000) : def;
+  };
 
   /* ---------- The register ---------- */
   R.creatures = function (s) {
@@ -159,15 +184,26 @@
   R.houseOrderFor = function (s, creatureId) {
     return (arr(s.pendingOrders) || []).filter(function (o) { return isHouseOrder(o) && o.chosen.creatureId === creatureId; })[0] || null;
   };
-  /* The House order waiting at a building (one at a time), or null. */
+  /* The House order waiting at a building, or null (the Pen can have one for each kind at once). */
   R.houseOrderAt = function (s, facId) {
     return (arr(s.pendingOrders) || []).filter(function (o) { return isHouseOrder(o) && o.facId === facId; })[0] || null;
   };
-  /* Granted creatures of a kind waiting for a home, and not being housed:
-     the House order's list. */
+  /* The kind of creature a House order is for ('' if it can't be told): the creature's own, or the story creature's. */
+  function orderKind(s, data, o) {
+    var id = isObj(o) && isObj(o.chosen) ? o.chosen.creatureId : '';
+    var c = id ? R.creatureById(s, id) : null;
+    if (c) return c.species;
+    var u = id ? R.creatureUnique(data, id) : null;
+    return u && typeof u.species === 'string' ? u.species : '';
+  }
+  /* The House order waiting for a beast of this kind, or null (one at a time for each kind). */
+  R.houseOrderForKind = function (s, data, species) {
+    return (arr(s.pendingOrders) || []).filter(function (o) { return isHouseOrder(o) && orderKind(s, data, o) === species; })[0] || null;
+  };
+  /* Granted creatures waiting for a home, and not being housed: the House order's list. species: one kind, or '*' / nothing for all. */
   R.waitingCreatures = function (s, data, species) {
     return R.creatures(s).filter(function (c) {
-      return isObj(c) && c.status === 'waiting' && (!species || c.species === species) && !R.houseOrderFor(s, c.id);
+      return isObj(c) && c.status === 'waiting' && (!species || species === '*' || c.species === species) && !R.houseOrderFor(s, c.id);
     });
   };
   /* Release a granted creature still waiting for a home (Harry, 15 October
@@ -208,44 +244,51 @@
       if (typeof o.label === 'string' && oldOrderName && o.label.indexOf('(' + oldOrderName + ')') !== -1) o.label = o.label.replace('(' + oldOrderName + ')', '(' + fresh + ')');
       o.optionLabel = fresh;
     }
-    /* A training programme names the creature as the panels do. */
-    var tr = R.trainingOrderFor ? R.trainingOrderFor(s, c.id) : null;
-    if (tr) {
-      if (typeof tr.label === 'string' && tr.label.indexOf('(' + before + ')') !== -1) tr.label = tr.label.replace('(' + before + ')', '(' + R.creatureName(data, c) + ')');
-      tr.optionLabel = R.creatureName(data, c);
-      if (isObj(tr.chosen)) tr.chosen.label = tr.optionLabel;
-    }
     var line = before === after ? before + ' keeps its name.' : before + ' is now called ' + after + '.';
     if (before !== after) R.log(s, 'Creatures', line, now);
     return { ok: true, changed: before !== after, name: after, log: ['Creatures', line] };
-  };
-  R.housingOptions = function (s, data, species) {
-    return R.waitingCreatures(s, data, species).map(function (c) { return { label: R.creatureName(data, c), creatureId: c.id }; });
   };
   /* The creatures housed at a building (kept when it's demolished). */
   R.housedAt = function (s, facId) {
     return R.creatures(s).filter(function (c) { return isObj(c) && c.status === 'housed' && c.home === facId; });
   };
-  /* Room at the Griffin Tower or Dire Wolf Den: { level, perLevel,
-     capacity, housed, pending, free, over }. free is never below 0; over:
-     more live there than its room (a rebuilt building starts at Level 1). */
-  R.creatureRoom = function (s, data, facId) {
-    var per = R.creatureRoomPerLevel(data, facId);
-    var level = R.getFacilityLevel(s, facId);
-    var base = R.creatureRoomBase(data, facId);
-    var capacity = per * level + (per > 0 ? base : 0);
-    var housed = R.housedAt(s, facId).length;
-    var pending = R.houseOrderAt(s, facId) ? 1 : 0;
-    var out = { level: level, perLevel: per, capacity: capacity, housed: housed, pending: pending, free: Math.max(0, capacity - housed - pending), over: Math.max(0, housed - capacity) };
-    if (per > 0 && base) out.base = base;
-    return out;
+  /* Every housed creature: they all live at the Beast Pen (an older save's creature with another home id is still one of them). */
+  R.penHoused = function (s) {
+    return R.creatures(s).filter(function (c) { return isObj(c) && c.status === 'housed'; });
   };
-  /* Why a House order can't be given now, or ''. Under Repair, the
-     party's level and the order's own level are checked by R.issueOrder. */
-  R.housingBlocker = function (s, data, fac, fn) {
+  /* Does the Beast Pen stand (built, not only being built)? */
+  R.penStands = function (s, data) { return R.builtFacilityIds(s, data).indexOf(R.PEN_ID) !== -1; };
+  /* House Beast Here's list: the beasts waiting for a home and not being housed. A named one shows its kind ("Swiftwing (Griffin)"). */
+  R.housingOptions = function (s, data, species) {
+    return R.waitingCreatures(s, data, species).map(function (c) {
+      var name = R.creatureName(data, c);
+      return { label: c.name ? name + ' (' + R.speciesName(data, c.species) + ')' : name, creatureId: c.id };
+    });
+  };
+  /* Room in the Pen for one kind: { species, perKind, housed, pending, free, over }. housed: the creatures of this kind
+     housed; pending: the House orders for this kind. free is never below 0; over: more of this kind are housed than the
+     Pen keeps (an older save: they all stay, and housing another waits). */
+  R.penRoom = function (s, data, species) {
+    var per = R.penPerKind(data);
+    var housed = R.penHoused(s).filter(function (c) { return c.species === species; });
+    var pending = (arr(s.pendingOrders) || []).filter(function (o) { return isHouseOrder(o) && orderKind(s, data, o) === species; });
+    return { species: species, perKind: per, housed: housed, pending: pending, free: Math.max(0, per - housed.length - pending.length), over: Math.max(0, housed.length - per) };
+  };
+  /* Why this creature can't be housed now, or '' ("The Beast Pen keeps one griffin at a time: Swiftwing lives here."). */
+  function roomBlocker(s, data, c) {
+    var room = R.penRoom(s, data, c.species);
+    if (room.free > 0) return '';
+    var noun = R.speciesNoun(data, c.species);
+    var holder = room.housed[0] ? R.creatureName(data, room.housed[0]) + ' lives here' : 'one is being housed (ready on ' + R.dayLabel(room.pending[0] && room.pending[0].dueDay) + ')';
+    return 'The Beast Pen keeps ' + (room.perKind === 1 ? 'one ' + noun + ' at a time' : plural(room.perKind, noun, R.speciesNounPlural(data, c.species)) + ' at a time') + ': ' + holder + '.';
+  }
+  /* Why a House order can't be given now, or ''. creatureId: the beast chosen in the list; left out, the order as a whole
+     (can ANY waiting beast be housed?). Under Repair, the party's level and the order's own level are checked by R.issueOrder. */
+  R.housingBlocker = function (s, data, fac, fn, creatureId) {
     if (!fac || !fn) return 'There\'s no such order.';
     if (R.builtFacilityIds(s, data).indexOf(fac.id) === -1) return 'The ' + fac.name + ' isn\'t built yet.';
     if (fn.housesCreature) {
+      /* An order kept from before the Strip Back Overhaul (Elara's wyvern): never offered for a new one. */
       var id = String(fn.housesCreature);
       if (!R.creatureUnique(data, id)) return 'This copy of the Bastion doesn\'t know that creature.';
       var have = R.creatureById(s, id);
@@ -256,53 +299,62 @@
       return '';
     }
     var species = String(fn.housesSpecies || '');
-    if (!R.creatureSpecies(data, species)) return 'This copy of the Bastion doesn\'t know that kind of creature.';
-    var noun = R.speciesNoun(data, species);
-    var busy = R.houseOrderAt(s, fac.id);
-    if (busy) {
-      var bc = R.creatureById(s, busy.chosen.creatureId);
-      return 'The ' + fac.name + ' houses one ' + noun + ' at a time: ' + (bc ? R.creatureName(data, bc) : 'one') + ' is ready on ' + R.dayLabel(busy.dueDay) + '.';
+    if (species !== '*' && !R.creatureSpecies(data, species)) return 'This copy of the Bastion doesn\'t know that kind of creature.';
+    if (creatureId === undefined) {
+      var list = R.waitingCreatures(s, data, species);
+      if (!list.length) return species === '*' ? 'No beast is waiting for a home. The DM grants one in the Explorer.' : 'No ' + R.speciesNoun(data, species) + ' is waiting for a home. The DM grants one in the Explorer.';
+      var first = '';
+      for (var i = 0; i < list.length; i++) { first = roomBlocker(s, data, list[i]); if (!first) return ''; }
+      return first;
     }
-    if (!R.waitingCreatures(s, data, species).length) return 'No ' + noun + ' is waiting for a home. The DM grants one in the Explorer.';
-    var room = R.creatureRoom(s, data, fac.id);
-    if (room.free <= 0) {
-      return 'No room: a Level ' + room.level + ' ' + fac.name + ' houses ' + plural(room.capacity, noun, R.speciesNounPlural(data, species)) +
-        (room.level >= R.MAX_LEVEL ? ', its most.' : '; upgrade it to house more.');
-    }
-    return '';
+    var c = R.creatureById(s, creatureId);
+    if (!c) return 'That beast isn\'t at the Ironbow any more.';
+    var cname = R.creatureName(data, c);
+    if (c.status === 'housed') return cname + ' already lives at the ' + fac.name + '.';
+    var pending = R.houseOrderFor(s, c.id);
+    if (pending) return cname + ' is already being housed: ready on ' + R.dayLabel(pending.dueDay) + '.';
+    if (species !== '*' && c.species !== species) return cname + ' isn\'t a ' + R.speciesNoun(data, species) + '.';
+    return roomBlocker(s, data, c);
   };
 
   /* A House order completing: its creature is housed, once. Returns a log
-     line [title, body]. */
+     line [title, body]. The Pen's room is checked again now: an order given
+     under the old rules (up to three side by side, a room for each level) never
+     overfills the Pen, and the beast keeps waiting. */
   R.completeHousing = function (s, data, order) {
     var fac = R.facility(data, order.facId);
     var fn = R.fn(fac, order.fnId);
     var lab = order.label || (fac ? fac.name : 'House') + ': ' + (fn ? fn.label : 'House');
     if (!fac || !fn) return ['Creatures', lab + ': nothing changed.'];
-    if (fn.housesCreature) {
-      var uid = String(fn.housesCreature);
-      var have = R.creatureById(s, uid);
-      if (have) return ['Creatures', lab + ': ' + R.creatureName(data, have) + ' already lives at the Ironbow, so nothing changed.'];
-      var u = R.creatureUnique(data, uid);
-      if (!u) return ['Creatures', lab + ': this copy of the Bastion doesn\'t know that creature, so nothing changed.'];
-      var w = { id: uid, species: txt(u.species, 40), owner: txt(u.owner, 40), name: '', status: 'housed', home: fac.id, grantedDay: s.day, housedDay: s.day, msgId: '' };
-      /* Her bond (Bond 1) is credited once, with its Chronicle line. */
-      if (uid === 'elara_wyvern') w.development = R.newDevelopment(w, s.day);
+    var id = isObj(order.chosen) && typeof order.chosen.creatureId === 'string' && order.chosen.creatureId ? order.chosen.creatureId : (fn.housesCreature ? String(fn.housesCreature) : '');
+    var have0 = id ? R.creatureById(s, id) : null;
+    /* A creature that already exists in the story and was not recorded yet (Elara's wyvern, ordered before the change): recorded once. */
+    if (id && !have0 && R.creatureUnique(data, id)) {
+      var u = R.creatureUnique(data, id);
+      var w = { id: id, species: txt(u.species, 40), owner: txt(u.owner, 40), name: '', status: 'housed', home: fac.id, grantedDay: s.day, housedDay: s.day, msgId: '' };
+      var uroom = R.penRoom(s, data, w.species);
+      /* The order itself is pending, so it counts as the one place for this kind: only already-housed beasts can fill it. */
+      if (uroom.housed.length >= uroom.perKind) return ['Creatures', lab + ': the Beast Pen keeps one ' + R.speciesNoun(data, w.species) + ' and ' + R.creatureName(data, uroom.housed[0]) + ' lives here, so nothing changed.'];
+      if (id === 'elara_wyvern') w.development = R.newDevelopment(w, s.day);
       R.creatures(s).push(w);
       var owner = R.creatureOwnerName(data, w);
-      return ['Order Completed', lab + ' → ' + R.creatureName(data, w) + ' lives at the Ironbow now, at the ' + fac.name + (owner ? ' (' + owner + '\'s)' : '') + '. It guards the Ironbow when it is attacked.'];
+      return ['Order Completed', lab + ' → ' + R.creatureName(data, w) + ' lives at the Ironbow now, at the ' + fac.name + (owner ? ' (' + owner + '\'s)' : '') + '.'];
     }
-    var id = isObj(order.chosen) ? order.chosen.creatureId : '';
-    var c = id ? R.creatureById(s, id) : null;
-    var noun = R.speciesNoun(data, fn.housesSpecies);
-    if (!c) return ['Creatures', lab + ': that ' + noun + ' isn\'t held any more, so nothing changed.'];
+    var c = have0;
+    var noun = R.speciesNoun(data, fn.housesSpecies === '*' ? (c ? c.species : '') : fn.housesSpecies);
+    if (!c) return ['Creatures', lab + ': that beast isn\'t held any more, so nothing changed.'];
     var name = R.creatureName(data, c);
     if (c.status === 'housed') return ['Creatures', lab + ': ' + name + ' already has a home' + (c.home ? ' at the ' + facName(data, c.home) : '') + ', so nothing changed.'];
-    if (c.species !== fn.housesSpecies) return ['Creatures', lab + ': ' + name + ' isn\'t a ' + noun + ', so nothing changed.'];
+    if (fn.housesSpecies && fn.housesSpecies !== '*' && c.species !== fn.housesSpecies) return ['Creatures', lab + ': ' + name + ' isn\'t a ' + noun + ', so nothing changed.'];
+    /* Room, counting only the housed beasts (this order is the pending one). */
+    var room = R.penRoom(s, data, c.species);
+    if (room.housed.length >= room.perKind) {
+      return ['Creatures', lab + ': the Beast Pen keeps ' + (room.perKind === 1 ? 'one ' + R.speciesNoun(data, c.species) : plural(room.perKind, R.speciesNoun(data, c.species), R.speciesNounPlural(data, c.species))) + ' and ' + R.creatureName(data, room.housed[0]) + ' lives here, so ' + name + ' keeps waiting for a home.'];
+    }
     c.status = 'housed';
     c.home = fac.id;
     c.housedDay = s.day;
-    return ['Order Completed', lab + ' → ' + name + ' has a home at the ' + fac.name + '. It guards the Ironbow when it is attacked.'];
+    return ['Order Completed', lab + ' → ' + name + ' has a home at the ' + fac.name + '. Acclimatise it with its handler (Acclimatise With Beast) before it can go out on the road.'];
   };
 
   /* ---------- Grants from the Explorer ---------- */
@@ -413,50 +465,11 @@
     var trait = w.trait ? (wd && wd.traits && wd.traits[w.trait] ? wd.traits[w.trait].name : words(w.trait)) : '';
     return 'Defends the Ironbow: Battle Value ' + w.bv + (trait ? ', ' + trait : '') + (w.trained && w.trained.length ? ' (trained: ' + w.trained.join(', ') + ')' : '');
   };
-  /* What a building's panel lists: the creatures housed there (by their
-     home), those of its kind waiting for a home, and its room. */
-  R.creaturesAt = function (s, data, facId) {
-    var species = Object.keys(isObj(cdata(data).species) ? cdata(data).species : {}).filter(function (k) { return R.speciesHome(data, k) === facId; });
-    return {
-      housed: R.housedAt(s, facId),
-      waiting: R.creatures(s).filter(function (c) { return isObj(c) && c.status === 'waiting' && species.indexOf(c.species) !== -1; }),
-      room: R.creatureRoomPerLevel(data, facId) > 0 ? R.creatureRoom(s, data, facId) : null
-    };
-  };
-  /* The Demolish question's extra sentences, or ''. */
-  R.creatureDemolishNote = function (s, data, facId) {
-    var parts = [];
-    var housed = R.housedAt(s, facId);
-    var name = facName(data, facId);
-    if (housed.length === 1) parts.push(R.creatureName(data, housed[0]) + ' stays at the Ironbow, still guarding it; rebuilding the ' + name + ' gives it a home again.');
-    else if (housed.length > 1) parts.push('The ' + housed.length + ' creatures living here stay at the Ironbow, still guarding it; rebuilding the ' + name + ' gives them a home again.');
-    var o = R.houseOrderAt(s, facId);
-    if (o) {
-      var c = R.creatureById(s, o.chosen.creatureId);
-      parts.push((o.label || 'The House order') + ' is cancelled' + (c && c.status === 'waiting' ? ': ' + R.creatureName(data, c) + ' keeps waiting for a home.' : '.'));
-    }
-    return parts.join(' ');
-  };
-
-  /* ---------- Bonding and training (Wyvern Roost: Bonding, Training & Rider Mastery) ----------
-     Harry's approvals of 20 October 2026. The Roost creates the chance, the
-     training makes the capability, and the DM confirms the bond:
-     - Each programme (an order at the Wyvern Roost, "trains") is for one
-       named, housed wyvern, costs nothing, and can be done once by each
-       wyvern. A wyvern has one programme at a time, and the Roost has a few
-       training places (Level 1: 1, 2: 1, 3: 2, 4: 2, 5: 3); the House
-       orders don't use one.
-     - A bond programme finishing makes the next bond milestone READY. It
-       never raises the bond: after a scene at the table the DM presses
-       Confirm bond milestone, gives a reason, and the bond rises by exactly
-       one level, with one Chronicle line. Nothing lowers a bond by itself.
-     - A learned discipline adds to that wyvern's own Defend Bastion numbers
-       (R.creatureWar); Battle Value is unchanged.
-     - A wyvern that is recovering from a battle pauses its programme: each
-       recovering day moves the due day on by one, so no training days are
-       lost and nothing is credited while it is hurt.
-     The Chronicle is the wyvern's dated record: grants, training, bond
-     confirmations, handler changes and the DM's own notes. */
+  /* ---------- Bonding: the record, the Chronicle and the DM's actions ----------
+     A beast's bond (0 to 5), handler and Chronicle are kept in its "development" (rules.js). Bond 1 comes from the
+     Beast Pen's acclimatisation roll; Bond 2 to 5 come from Bonding Days (days out on the road with its handler), and
+     the DM confirms each after a scene at the table. The Chronicle is the beast's dated record: grants, acclimatising,
+     going out and coming back, bond confirmations, handler changes and the DM's own notes. */
   function devOf(c) { return isObj(c) && isObj(c.development) ? c.development : null; }
   R.creatureDev = devOf;
   /* Its development, made (with the usual defaults) if it has none yet. */
@@ -478,190 +491,254 @@
     if (d.chronicle.length > R.CHRONICLE_MAX) d.chronicle = d.chronicle.slice(d.chronicle.length - R.CHRONICLE_MAX);
     return e;
   };
+  function reasonOf(why) { return typeof why === 'string' ? why.replace(/\s+/g, ' ').trim() : ''; }
+  function gone() { return { ok: false, message: 'That creature isn\'t at the Ironbow any more.' }; }
 
-  /* ----- places ----- */
-  function trainOrder(o) {
-    return isObj(o) && isObj(o.chosen) && typeof o.chosen.trainCreatureId === 'string' && o.chosen.trainCreatureId &&
-      !(isObj(o.meta) && (o.meta.kind === 'upgrade' || o.meta.kind === 'research'));
-  }
-  R.trainingOrders = function (s) { return (arr(s.pendingOrders) || []).filter(trainOrder); };
-  R.trainingOrderFor = function (s, creatureId) {
-    return R.trainingOrders(s).filter(function (o) { return o.chosen.trainCreatureId === creatureId; })[0] || null;
+  /* ---------- Bonding Days ---------- */
+  /* The Bonding Days a beast already has by being at this level: Bond 2 = 10, 3 = 20... (an older save's beast, brought
+     to a level by the old programmes, counts as having them). */
+  R.bondFloor = function (data, level) { var n = R.bondTotal(data, level); return n === null ? 0 : n; };
+  /* A beast's Bonding Days in all, as the counter shows them: what it earned, and never fewer than its level's total. */
+  R.bondingDays = function (data, c) {
+    var d = devOf(c);
+    var level = d ? d.bond.level : 0;
+    var own = d && isObj(d.bonding) ? d.bonding.days : 0;
+    return Math.max(own, R.bondFloor(data, level));
   };
-  /* { cap, used, free } at a building (the Roost's level decides). */
-  R.trainingPlaces = function (s, data, facId) {
-    var d = isObj(cdata(data).development) && isObj(cdata(data).development.trainingPlaces) ? cdata(data).development.trainingPlaces[facId] : null;
-    var level = R.getFacilityLevel(s, facId);
-    var cap = isObj(d) ? clampInt(d[level] !== undefined ? d[level] : d[Math.min(5, Math.max(1, level))], 0, 20) : 0;
-    var used = R.trainingOrders(s).filter(function (o) { return o.facId === facId; }).length;
-    return { cap: cap, used: used, free: Math.max(0, cap - used), level: level };
-  };
-  R.trainingDone = function (c, key) { var d = devOf(c); return !!(d && isObj(d.training) && isObj(d.training[key])); };
-
-  /* Whose programme an order is: its own species, else the kind that lives
-     in its building (the Roost's are wyverns, the Tower's griffins, the
-     Den's dire wolves). */
-  R.fnSpecies = function (data, fac, fn) {
-    if (isObj(fn) && typeof fn.species === 'string' && fn.species) return fn.species;
-    var sp = isObj(cdata(data).species) ? cdata(data).species : {};
-    return Object.keys(sp).filter(function (k) { return fac && R.speciesHome(data, k) === fac.id; })[0] || 'wyvern';
-  };
-  /* The word for a first mounted outing: 'flight' for the fliers, 'ride' for the wolves. */
-  R.rideNoun = function (data, species) {
-    var m = isObj(cdata(data).development) && isObj(cdata(data).development.rideNoun) ? cdata(data).development.rideNoun : {};
-    return typeof m[species] === 'string' && m[species] ? m[species] : 'flight';
-  };
-  /* The building where a kind of creature is trained, and its programme with a given role (or null). */
-  R.trainingFacility = function (data, species) { return R.facility(data, R.speciesHome(data, species)); };
-  R.trainingFnByRole = function (data, species, role) {
-    var fac = R.trainingFacility(data, species);
-    return fac ? (fac.functions || []).filter(function (f) { return f.trains && f.role === role && R.fnSpecies(data, fac, f) === species; })[0] || null : null;
-  };
-  /* Does this kind have bonding and training (a building with programmes)? */
-  R.hasDevelopment = function (data, species) {
-    var fac = R.trainingFacility(data, species);
-    return !!fac && (fac.functions || []).some(function (f) { return f.trains && R.fnSpecies(data, fac, f) === species; });
-  };
-  /* The wyverns (or griffins, or dire wolves) an order can name: every housed one of its kind (what is
-     wrong with a choice is said when it is picked). */
-  R.trainingOptions = function (s, data, fac, fn) {
-    var kind = R.fnSpecies(data, fac, fn);
-    return R.creatures(s).filter(function (c) { return isObj(c) && c.status === 'housed' && c.species === kind; })
-      .map(function (c) { return { label: R.creatureName(data, c), trainCreatureId: c.id }; });
-  };
-  /* Why this order can't be given to this wyvern now, or '' (the most
-     helpful reason first). */
-  R.trainingBlocker = function (s, data, fac, fn, c) {
-    if (!fac || !fn) return 'There\'s no such order.';
-    if (R.builtFacilityIds(s, data).indexOf(fac.id) === -1) return 'The ' + fac.name + ' isn\'t built yet.';
-    var need = clampInt(fn.requiredFacilityLevel || 1, 1, R.MAX_LEVEL);
-    var level = R.getFacilityLevel(s, fac.id);
-    if (level < need) return 'Needs the ' + fac.name + ' at Level ' + need + ' (it\'s Level ' + level + ').';
-    var kind = R.fnSpecies(data, fac, fn);
-    if (!isObj(c) || c.species !== kind) return 'Choose a ' + R.speciesNoun(data, kind) + '.';
-    var name = R.creatureName(data, c);
-    if (c.status !== 'housed') return name + ' isn\'t housed at the Ironbow yet.';
-    if (R.trainingDone(c, fn.id)) return name + ' has already completed ' + fn.label + '.';
-    var cur = R.trainingOrderFor(s, c.id);
-    if (cur) return name + ' is already in a programme: ' + (cur.label || 'training') + ', ready on ' + R.dayLabel(cur.dueDay) + '.';
-    var d = devOf(c) || R.devView(s, c);
-    if (isNum(fn.bondTarget) || isNum(fn.needsBond)) {
-      if (isNum(d.bond.ready) && d.bond.ready > 0) return name + '\'s Bond ' + d.bond.ready + ' milestone (' + R.bondName(d.bond.ready) + ') is waiting for you to confirm it. Confirm it first.';
+  /* Is it out on the road with its handler? */
+  R.isAway = function (c) { var d = devOf(c); return !!(d && isObj(d.bonding) && d.bonding.away === true && c.status === 'housed'); };
+  /* Where it stands on the way to its next level (read only; nothing changes): { level, name, next, days (in all),
+     since, away, ready (the level waiting for the DM, or null), pill: null (Bond 0 or 5) or { n: the pill filling,
+     days (into this pill), need (this pill needs), fraction (0 to 1), full }, line }. A pill fills between the two
+     totals either side of it (pill 3: 10 to 20 days); Pill 1 is full at Bond 1 (the acclimatisation roll). */
+  R.bondProgress = function (s, data, c) {
+    var d = R.devView(s, c);
+    var level = d.bond.level;
+    var days = R.bondingDays(data, c);
+    var away = R.isAway(c);
+    var b = devOf(c) && isObj(devOf(c).bonding) ? devOf(c).bonding : null;
+    var out = { level: level, name: R.bondName(level), next: level >= 1 && level < 5 ? level + 1 : null, days: days, away: away, since: away && b ? b.awaySince : null, ready: isNum(d.bond.ready) ? d.bond.ready : null, pill: null };
+    if (out.next) {
+      var prev = R.bondTotal(data, level);
+      var need = R.bondTotal(data, out.next);
+      var span = Math.max(1, need - prev);
+      var into = Math.max(0, Math.min(span, days - prev));
+      out.pill = { n: out.next, days: into, need: span, fraction: into / span, full: into >= span || out.ready === out.next };
     }
-    if (isNum(fn.bondTarget) && !d.handlerId) return name + ' has no handler yet. Assign one first.';
-    if (isNum(fn.needsBond) && d.bond.level < fn.needsBond) return 'Needs Bond ' + fn.needsBond + ' (' + R.bondName(fn.needsBond) + '); ' + name + ' is Bond ' + d.bond.level + ' (' + R.bondName(d.bond.level) + ').';
-    if (isNum(fn.bondTarget) && d.bond.level >= fn.bondTarget) return name + ' is already Bond ' + d.bond.level + ' (' + R.bondName(d.bond.level) + ') or more.';
-    if (fn.fitsHarness && d.harness && d.harness.fitted) return name + ' already has a fitted riding harness.';
-    if (fn.needsHarness && !(d.harness && d.harness.fitted)) { var hf = R.trainingFnByRole(data, kind, 'harness'); return 'Needs a fitted riding harness: ' + (hf ? hf.label : 'Commission Riding Harness') + ' first.'; }
-    var needT = Array.isArray(fn.needsTrained) ? fn.needsTrained : [];
-    for (var ni = 0; ni < needT.length; ni++) {
-      if (!R.trainingDone(c, needT[ni])) {
-        var nf = (fac.functions || []).filter(function (x) { return x.id === needT[ni]; })[0];
-        return 'Needs ' + (nf ? nf.label : needT[ni]) + ' first.';
+    return out;
+  };
+  /* Make the next level ready for the DM if the Bonding Days already meet its total and none is waiting. Returns the
+     level made ready, or 0 (nothing to do). */
+  R.refreshBondReady = function (s, data, c) {
+    var d = devOf(c);
+    if (!d || c.status !== 'housed' || d.bond.level < 1 || d.bond.level >= 5 || isNum(d.bond.ready)) return 0;
+    var next = d.bond.level + 1;
+    if (R.bondingDays(data, c) < R.bondTotal(data, next)) return 0;
+    d.bond.ready = next;
+    return next;
+  };
+  /* A day passes (R.startDay calls this once for each new day): every beast out on the road with its handler earns one
+     Bonding Day, once. The guard is lastTick, the last Explorer day credited: asked again for the same day it does
+     nothing. The counter keeps counting while a milestone waits for the DM (nothing is lost); a level that has just
+     become ready is said once, in the Day Log and in "The Ironbow sends word…". Returns the lines said. */
+  R.tickBonding = function (s, data, now) {
+    var said = [];
+    R.creatures(s).forEach(function (c) {
+      var d = devOf(c);
+      if (!d || c.status !== 'housed') return;
+      var b = isObj(d.bonding) ? d.bonding : null;
+      if (b && b.away === true && d.bond.level >= 1 && !(isNum(b.lastTick) && b.lastTick >= s.day)) {
+        b.lastTick = s.day;
+        b.days = R.bondingDays(data, c) + 1;
       }
-    }
-    if (fn.needsFirstFlight && !(d.firstFlight && d.firstFlight.approved)) return 'Needs the first mounted ' + R.rideNoun(data, kind) + ' confirmed by the DM (see Riding in ' + name + '\'s profile).';
-    var places = R.trainingPlaces(s, data, fac.id);
-    if (places.free <= 0) return 'All ' + places.cap + ' training ' + (places.cap === 1 ? 'place is' : 'places are') + ' taken (a Level ' + places.level + ' ' + fac.name + ' has ' + places.cap + ').';
-    var cost = clampInt(fn.costGP || 0, 0, 100000);
-    if (cost && clampInt(s.treasuryGP, 0, 1e9) < cost) return 'Needs ' + cost + ' gp; the treasury has ' + clampInt(s.treasuryGP, 0, 1e9) + ' gp.';
-    return '';
-  };
-  /* Issue one (R.issueOrder calls this): checks everything, then adds the
-     order in one change. */
-  R.issueTraining = function (s, data, fac, fn, optionIdx, rand) {
-    var opts = R.trainingOptions(s, data, fac, fn);
-    var pick = opts[clampInt(optionIdx, 0)] || null;
-    var c = pick ? R.creatureById(s, pick.trainCreatureId) : null;
-    if (!c) return { ok: false, message: R.trainingBlocker(s, data, fac, fn, null) || 'No ' + R.speciesNoun(data, R.fnSpecies(data, fac, fn)) + ' is housed here yet.' };
-    var why = R.trainingBlocker(s, data, fac, fn, c);
-    if (why) return { ok: false, message: why };
-    var nm = R.creatureName(data, c);
-    var label = fac.name + ': ' + fn.label + ' (' + nm + ')';
-    var days = R.orderDays(fn);
-    /* The one gold cost (the 150 gp harness) is taken now, once, with the order. */
-    var cost = clampInt(fn.costGP || 0, 0, 100000);
-    s.treasuryGP = clampInt(s.treasuryGP, 0, 1e9) - cost;
-    s.pendingOrders.push({ id: R.uid(rand), facId: fac.id, fnId: fn.id, chosen: { label: nm, trainCreatureId: c.id }, optionLabel: nm, notes: '', label: label, costGP: cost, issuedDay: s.day, dueDay: s.day + days });
-    return { ok: true, log: ['Order Issued', label + ' (' + R.daysText(days) + ': due Day ' + (s.day + days) + ')' + (cost ? '. ' + cost + ' gp from the treasury' : '') + '.'] };
-  };
-  /* A programme completing, once: the discipline is recorded for good; a
-     bond programme makes the next milestone ready (never the bond itself). */
-  R.completeTraining = function (s, data, order, fn, fac) {
-    var lab = order.label || (fac ? fac.name : 'Roost') + ': ' + (fn ? fn.label : 'training');
-    var c = isObj(order.chosen) ? R.creatureById(s, order.chosen.trainCreatureId) : null;
-    if (!c || !fn) return ['Creatures', lab + ': that creature isn\'t held any more, so nothing changed.'];
-    var name = R.creatureName(data, c);
-    if (R.trainingDone(c, fn.id)) return ['Creatures', lab + ': ' + name + ' had already completed it, so nothing changed.'];
-    var d = R.ensureDev(s, c);
-    d.training[fn.id] = { day: dayNum(s.day, 1) };
-    var line = fn.label + ' completed.';
-    var bonus = isObj(cdata(data).development) && isObj(cdata(data).development.trainingBonus) ? cdata(data).development.trainingBonus[fn.id] : null;
-    var tail = '';
-    if (fn.fitsHarness) {
-      d.harness = { fitted: true, paidGP: clampInt(order.costGP, 0, 100000), fittedDay: dayNum(s.day, 1) };
-      tail += ' A bespoke riding harness is fitted (' + d.harness.paidGP + ' gp, paid once).';
-    }
-    if (fn.role === 'ascent') tail += ' Riding proficiency is recorded; it is not permission to mount yet.';
-    if (fn.role === 'recall') tail += ' Emergency-return discipline is recorded.';
-    if (fn.role === 'signals') tail += ' Recorded as a prerequisite for a future mounted-combat system; nothing new happens in battle.';
-    if (isNum(fn.bondTarget) && fn.bondTarget === d.bond.level + 1) {
-      d.bond.ready = fn.bondTarget;
-      tail = ' The Bond ' + fn.bondTarget + ' (' + R.bondName(fn.bondTarget) + ') milestone is ready: confirm it after a scene at the table.';
-    }
-    if (isObj(bonus)) tail += ' It adds ' + String(bonus.label || '') + ' when the Ironbow is attacked.';
-    R.addChronicle(s, c, 'training', line + tail.replace(/^ /, ' '), 'Roost', order.id);
-    return ['Order Completed', lab + ' → ' + name + ': ' + line + tail];
-  };
-  /* Each day (the 'trade' stage, before the orders): a recovering wyvern's
-     programme doesn't advance, so its due day moves on by one, once a day. */
-  R.tickTraining = function (s, data) {
-    var n = 0;
-    R.trainingOrders(s).forEach(function (o) {
-      if (R.creatureRecovery(s, o.chosen.trainCreatureId) && o.pausedOn !== s.day) {
-        o.dueDay += 1;
-        o.pausedOn = s.day;
-        n++;
+      var made = R.refreshBondReady(s, data, c);
+      if (made) {
+        var name = R.creatureName(data, c);
+        var line = name + ' and ' + R.handlerName(d.handlerId) + ' have spent ' + plural(R.bondingDays(data, c), 'day', 'days') + ' together: Bond ' + made + ' (' + R.bondName(made) + ') is ready. Run a scene at the table, then confirm it in the Beast Pen.';
+        R.log(s, 'Creatures', line, now);
+        R.addWord(s, line);
+        said.push(line);
       }
     });
-    return n;
+    return said;
   };
-  /* A programme in plain words, for the profile. */
-  R.trainingStatus = function (s, data, c) {
-    var o = R.trainingOrderFor(s, c.id);
-    if (!o) return null;
-    var rec = R.creatureRecovery(s, c.id);
-    return rec ? { kind: 'paused', line: 'Paused while recovering: ' + (o.label || 'training') + ' (resumes after ' + R.dayLabel(rec.untilDay) + ')' }
-      : { kind: 'training', line: (o.label || 'Training') + ', ready on ' + R.dayLabel(o.dueDay) };
+
+  /* ---------- Acclimatise With Beast ---------- */
+  /* The beasts the roll is for: housed, Bond 0, in a standing Pen. Each: { label, creatureId, blocked }, blocked being
+     why it can't be rolled for now ('' when it can: needs a handler, or tries again on Day N). */
+  R.acclimatiseBlocker = function (s, data, id, ctx) {
+    var c = R.creatureById(s, id);
+    if (!c) return 'That beast isn\'t at the Ironbow any more.';
+    var name = R.creatureName(data, c);
+    if (c.status !== 'housed') return name + ' has no home at the Beast Pen yet.';
+    if (!R.penStands(s, data)) return 'The Beast Pen isn\'t built yet.';
+    var d = devOf(c);
+    if (d && d.bond.level >= 1) return name + ' is already acclimatised (Bond ' + d.bond.level + ').';
+    if (!d || !d.handlerId) return name + ' has no handler yet. Assign one first.';
+    var a = d && isObj(d.acclimatise) ? d.acclimatise : null;
+    if (a && isNum(a.retryDay) && s.day < a.retryDay) return name + ' can try again on ' + R.dayLabel(a.retryDay) + '.';
+    if (s.dayInProgress) return 'A day is being passed. Wait for it to finish.';
+    if (ctx && isNum(ctx.explorerDay) && ctx.explorerDay > s.day) return 'The Bastion is catching up with the Explorer\'s day. Wait a moment.';
+    return '';
+  };
+  R.acclimatiseOptions = function (s, data) {
+    if (!R.penStands(s, data)) return [];
+    return R.creatures(s).filter(function (c) {
+      var d = devOf(c);
+      return isObj(c) && c.status === 'housed' && !(d && d.bond.level >= 1);
+    }).map(function (c) {
+      var d = devOf(c);
+      var a = d && isObj(d.acclimatise) ? d.acclimatise : null;
+      var blocked = !d || !d.handlerId ? 'needs a handler' : a && isNum(a.retryDay) && s.day < a.retryDay ? 'tries again on ' + R.dayLabel(a.retryDay) : '';
+      var name = R.creatureName(data, c);
+      return { label: (c.name ? name + ' (' + R.speciesName(data, c.species) + ')' : name) + (d && d.handlerId ? ', handler ' + R.handlerName(d.handlerId) : '') + (blocked ? ': ' + blocked : ''), creatureId: c.id, blocked: blocked };
+    });
+  };
+  /* The handler's total, as typed at the table: a whole number from 1 to 60, or null. */
+  R.acclimatiseTotal = function (v) {
+    var n = typeof v === 'number' ? v : (typeof v === 'string' && /^\s*\d{1,3}\s*$/.test(v) ? Number(v) : NaN);
+    return isNum(n) && Math.floor(n) === n && n >= 1 && n <= 60 ? n : null;
+  };
+  /* The roll. ctx: { rand (for the first meeting), explorerDay }. A pass is Bond 1 at once (and the Bastion rolls the
+     beast's first meeting for the Beast Handler); a fail locks that beast for the data's days (a fail on Day 10 blocks
+     Days 11 and 12, and Day 13 is allowed). Returns { ok, pass, total, dc, name, handler, retryDay?, log, introduced? } or
+     { ok: false, message }. Nothing changes when it is refused. */
+  R.acclimatise = function (s, data, id, total, ctx) {
+    var why = R.acclimatiseBlocker(s, data, id, ctx);
+    if (why) return { ok: false, message: why };
+    var n = R.acclimatiseTotal(total);
+    if (n === null) return { ok: false, message: 'Type the handler\'s total as a whole number from 1 to 60.' };
+    var c = R.creatureById(s, id);
+    var name = R.creatureName(data, c);
+    var d = R.ensureDev(s, c);
+    var ad = R.acclimatiseData(data, c.species);
+    var handler = R.handlerName(d.handlerId);
+    var pass = n >= ad.dc;
+    var prev = isObj(d.acclimatise) ? d.acclimatise : { tries: 0 };
+    var rec = { tries: clampInt(prev.tries, 0, 100000) + 1, retryDay: null, last: { day: dayNum(s.day, 1), total: n, dc: ad.dc, pass: pass } };
+    var out = { ok: true, pass: pass, total: n, dc: ad.dc, skill: ad.skill, name: name, handler: handler };
+    if (pass) {
+      d.acclimatise = rec;
+      d.bond.level = 1;
+      d.bond.ready = null;
+      R.addChronicle(s, c, 'bond', 'Acclimatised with ' + handler + ' on ' + R.dayLabel(s.day) + ' (rolled ' + n + ' against DC ' + ad.dc + '). Bond 1 (' + R.bondName(1) + ').', 'DM');
+      /* The first meeting is rolled now, once, so the Beast Handler has it (the daily sweep would do it later: this is the same). */
+      if (R.rollInitiation) out.introduced = R.rollInitiation(s, data, c.id, ctx && typeof ctx.rand === 'function' ? ctx.rand : undefined);
+      out.log = ['Creatures', name + ' and ' + handler + ' passed acclimatisation (' + ad.skill + ' ' + n + ' against DC ' + ad.dc + '): Bond 1 on ' + R.dayLabel(s.day) + '. ' + name + ' can now go out on the road with ' + handler + '.'];
+      R.addWord(s, out.log[1]);
+    } else {
+      rec.retryDay = dayNum(s.day, 1) + ad.retryDays;
+      d.acclimatise = rec;
+      out.retryDay = rec.retryDay;
+      R.addChronicle(s, c, 'bond', 'Acclimatisation failed on ' + R.dayLabel(s.day) + ': rolled ' + n + ' against DC ' + ad.dc + '. It can try again on ' + R.dayLabel(rec.retryDay) + '.', 'DM', '', true);
+      out.log = ['Creatures', name + ' and ' + handler + ' failed acclimatisation (' + ad.skill + ' ' + n + ' against DC ' + ad.dc + '). ' + name + ' can try again on ' + R.dayLabel(rec.retryDay) + '.'];
+    }
+    return out;
+  };
+
+  /* ---------- Out on the road, and back ---------- */
+  /* Why this beast can't go out (take) or come back (!take) now, or ''. ctx: { explorerDay }. The Bastion must be on the
+     Explorer's day and not part-way through one: otherwise the days between would be counted for a trip that began
+     (or ended) "now". */
+  R.awayBlocker = function (s, data, id, take, ctx) {
+    var c = R.creatureById(s, id);
+    if (!c) return 'That beast isn\'t at the Ironbow any more.';
+    var name = R.creatureName(data, c);
+    var d = devOf(c);
+    if (c.status !== 'housed') return name + ' has no home at the Beast Pen yet.';
+    if (take) {
+      if (R.isAway(c)) return name + ' is already away from the Ironbow.';
+      if (!R.penStands(s, data)) return 'The Beast Pen must stand before ' + name + ' can go out.';
+      if (!d || d.bond.level < 1) return name + ' must pass Acclimatise With Beast first.';
+      if (!d.handlerId) return name + ' has no handler. Assign one first.';
+    } else if (!R.isAway(c)) return name + ' is already at the Beast Pen.';
+    if (s.dayInProgress) return 'A day is being passed. Wait for it to finish.';
+    if (ctx && isNum(ctx.explorerDay) && ctx.explorerDay > s.day) return 'The Bastion is catching up with the Explorer\'s day. Wait a moment.';
+    return '';
+  };
+  /* Take it out on the road with its handler: "Away from the Ironbow". The day it goes out is not counted; each day that
+     passes after it is. Returns { ok, name, log } or { ok: false, message }. */
+  R.takeOut = function (s, data, id, ctx) {
+    var why = R.awayBlocker(s, data, id, true, ctx);
+    if (why) return { ok: false, message: why };
+    var c = R.creatureById(s, id);
+    var d = R.ensureDev(s, c);
+    var name = R.creatureName(data, c);
+    var handler = R.handlerName(d.handlerId);
+    d.bonding = { away: true, awaySince: dayNum(s.day, 1), lastTick: dayNum(s.day, 1), days: R.bondingDays(data, c) };
+    R.addChronicle(s, c, 'travel', 'Taken out on the road with ' + handler + ' on ' + R.dayLabel(s.day) + '.', 'DM');
+    return { ok: true, name: name, log: ['Creatures', name + ' is away from the Ironbow with ' + handler + ' (' + R.dayLabel(s.day) + '). Each day that passes now is a Bonding Day.'] };
+  };
+  /* Bring it back: "At the Beast Pen". Its Bonding Days stay; no more are counted until it goes out again. */
+  R.returnToPit = function (s, data, id, ctx) {
+    var why = R.awayBlocker(s, data, id, false, ctx);
+    if (why) return { ok: false, message: why };
+    var c = R.creatureById(s, id);
+    var d = devOf(c);
+    var name = R.creatureName(data, c);
+    var since = isNum(d.bonding.awaySince) ? d.bonding.awaySince : s.day;
+    var away = Math.max(0, s.day - since);
+    var total = R.bondingDays(data, c);
+    d.bonding = { away: false, awaySince: null, lastTick: null, days: total };
+    R.addChronicle(s, c, 'travel', 'Returned to the Beast Pen on ' + R.dayLabel(s.day) + ' after ' + plural(away, 'day', 'days') + ' on the road.', 'DM');
+    return { ok: true, name: name, days: away, log: ['Creatures', name + ' is back at the Beast Pen on ' + R.dayLabel(s.day) + ' after ' + plural(away, 'day', 'days') + ' on the road (' + plural(total, 'Bonding Day', 'Bonding Days') + ' in all).'] };
+  };
+
+  /* ---------- Where a beast is, in words ---------- */
+  /* { kind: 'waiting' | 'housing' | 'pen' | 'away', line }. */
+  R.penStatus = function (s, data, c) {
+    if (!isObj(c)) return { kind: 'waiting', line: '' };
+    if (c.status !== 'housed') {
+      var o = R.houseOrderFor(s, c.id);
+      if (o) return { kind: 'housing', line: 'Being housed at the ' + facName(data, o.facId) + ': ready on ' + R.dayLabel(o.dueDay) + '.' };
+      return { kind: 'waiting', line: 'Waiting for a home at the ' + facName(data, R.speciesHome(data, c.species)) + '.' };
+    }
+    var d = devOf(c);
+    if (R.isAway(c)) return { kind: 'away', line: 'Away from the Ironbow since ' + R.dayLabel(d.bonding.awaySince) };
+    return { kind: 'pen', line: 'At the Beast Pen' + (d && d.bond.level >= 1 ? '' : '. Not acclimatised yet') };
+  };
+  /* The Pen's stalls, one for each kind the DM can grant: [{ species, name, housed, waiting, pending, free, over }]. */
+  R.penSummary = function (s, data) {
+    var kinds = R.grantableSpecies(data);
+    Object.keys(isObj(cdata(data).species) ? cdata(data).species : {}).forEach(function (k) { if (kinds.indexOf(k) === -1) kinds.push(k); });
+    return kinds.map(function (k) {
+      var room = R.penRoom(s, data, k);
+      return { species: k, name: R.speciesName(data, k), housed: room.housed, pending: room.pending, waiting: R.creatures(s).filter(function (c) { return isObj(c) && c.status === 'waiting' && c.species === k; }), free: room.free, over: room.over };
+    });
+  };
+  /* The Demolish question's refusal, or '': the Pen stays while any beast lives in it (there is nowhere else to take them). */
+  R.penDemolishBlocker = function (s, data, facId) {
+    if (facId !== R.PEN_ID) return '';
+    var n = R.penHoused(s).length;
+    if (!n) return '';
+    return 'The Beast Pen can\'t be demolished while ' + (n === 1 ? 'a beast lives' : plural(n, 'beast', 'beasts') + ' live') + ' in it: there is nowhere else for ' + (n === 1 ? 'it' : 'them') + ' to go.';
   };
 
   /* ----- the DM's actions ----- */
-  function reasonOf(why) { return typeof why === 'string' ? why.replace(/\s+/g, ' ').trim() : ''; }
-  /* Assign (or change) the handler. The first assignment keeps the bond; a
-     change keeps the history and starts the new pairing at Bond 0, unless the
-     DM credits the old bond (keepBond). Training stays with the wyvern. */
+  /* Assign (or change) the handler. The first assignment keeps the bond; a change keeps the history and starts the new
+     pairing at Bond 0 (it must be acclimatised with the new handler), unless the DM credits the old bond (keepBond).
+     Never while the beast is away: it has to be back at the Pen first. A new pairing starts its Bonding Days again. */
   R.assignHandler = function (s, data, id, handler, reason, keepBond) {
     var c = R.creatureById(s, id);
-    if (!c) return { ok: false, message: 'That creature isn\'t at the Ironbow any more.' };
+    if (!c) return gone();
     var h = String(handler || '').replace(/\s+/g, ' ').trim().slice(0, 40);
     var why = reasonOf(reason);
     if (!h) return { ok: false, message: 'Type the handler\'s name.' };
     var d = R.ensureDev(s, c);
     var name = R.creatureName(data, c);
     if (d.handlerId === h) return { ok: false, message: R.handlerName(h) + ' is already ' + name + '\'s handler.' };
+    if (R.isAway(c)) return { ok: false, message: 'Return ' + name + ' to the Beast Pen first.' };
     if (d.handlerId) {
       if (why.length < 3) return { ok: false, message: 'Say why the handler is changing.' };
-      if (R.trainingOrderFor(s, c.id)) return { ok: false, message: name + ' is in a programme: let it finish or cancel it before changing the handler.' };
       d.handlerHistory.push({ handlerId: d.handlerId, bond: d.bond.level, fromDay: 1, toDay: s.day, reason: why });
       var was = d.bond.level;
       if (!keepBond) d.bond.level = 0;
       d.bond.ready = null;
       d.handlerId = h;
-      if (d.firstFlight && d.firstFlight.approved) {
-        d.firstFlight = { approved: false, day: null, handlerId: null };
-        R.addChronicle(s, c, 'flight', 'The first flight was confirmed for the earlier pairing: the new pairing needs its own.', 'DM');
-      }
-      R.addChronicle(s, c, 'handler', 'Handler changed to ' + R.handlerName(h) + '. ' + (keepBond ? 'The DM credited the old bond (Bond ' + was + ').' : 'The new pairing starts at Bond 0 (Bond ' + was + ' kept in the history).') + ' Reason: ' + why, 'DM');
+      /* A new pairing: its own Bonding Days, and its own try at acclimatising. */
+      delete d.bonding;
+      delete d.acclimatise;
+      R.addChronicle(s, c, 'handler', 'Handler changed to ' + R.handlerName(h) + '. ' + (keepBond ? 'The DM credited the old bond (Bond ' + was + ').' : 'The new pairing starts at Bond 0 (Bond ' + was + ' kept in the history). It must be acclimatised again.') + ' Reason: ' + why, 'DM');
       return { ok: true, log: ['Creatures', name + '\'s handler is now ' + R.handlerName(h) + (keepBond ? ' (Bond ' + d.bond.level + ' credited).' : ' (Bond 0: a new pairing).')] };
     }
     d.handlerId = h;
@@ -670,7 +747,7 @@
   };
   R.setTemperament = function (s, data, id, fields) {
     var c = R.creatureById(s, id);
-    if (!c) return { ok: false, message: 'That creature isn\'t at the Ironbow any more.' };
+    if (!c) return gone();
     var d = R.ensureDev(s, c);
     var f = isObj(fields) ? fields : {};
     ['dominant', 'attachment', 'trigger'].forEach(function (k) { if (typeof f[k] === 'string') d.temperament[k] = f[k].replace(/\s+/g, ' ').trim().slice(0, 120); });
@@ -681,119 +758,51 @@
     }
     return { ok: true, log: ['Creatures', R.creatureName(data, c) + '\'s temperament notes were updated.'] };
   };
-  /* The DM confirms the ready milestone: exactly one level, with a reason. */
+  /* The DM confirms the ready milestone: exactly one level, with a reason. If the Bonding Days already meet the next
+     level's total (they kept counting while it waited), the next level is ready at once and needs its own scene: a
+     level is never skipped. */
   R.confirmBond = function (s, data, id, reason) {
     var c = R.creatureById(s, id);
-    if (!c) return { ok: false, message: 'That creature isn\'t at the Ironbow any more.' };
+    if (!c) return gone();
     var d = devOf(c);
     var name = R.creatureName(data, c);
-    if (!d || !isNum(d.bond.ready) || d.bond.ready !== d.bond.level + 1) return { ok: false, message: 'No bond milestone is ready for ' + name + ': a bond programme has to finish first.' };
+    if (!d || !isNum(d.bond.ready) || d.bond.ready !== d.bond.level + 1) return { ok: false, message: 'No bond milestone is ready for ' + name + ': it needs more days on the road with its handler.' };
     var why = reasonOf(reason);
     if (why.length < 3) return { ok: false, message: 'Say what happened at the table (the scene that earned it).' };
     d.bond.level = d.bond.ready;
     d.bond.ready = null;
     R.addChronicle(s, c, 'bond', 'Bond ' + d.bond.level + ' (' + R.bondName(d.bond.level) + ') confirmed by the DM. ' + why, 'DM');
-    return { ok: true, level: d.bond.level, log: ['Creatures', name + ' is now Bond ' + d.bond.level + ': ' + R.bondName(d.bond.level) + '. ' + why] };
+    var again = R.refreshBondReady(s, data, c);
+    return { ok: true, level: d.bond.level, readyNext: again || null, log: ['Creatures', name + ' is now Bond ' + d.bond.level + ': ' + R.bondName(d.bond.level) + '. ' + why + (again ? ' Bond ' + again + ' (' + R.bondName(again) + ') is ready too: it needs its own scene.' : '')] };
   };
   /* A note in the Chronicle from the DM (a scene, a memory); dmOnly keeps it from the player's companion. */
   R.addChronicleNote = function (s, data, id, text, dmOnly) {
     var c = R.creatureById(s, id);
-    if (!c) return { ok: false, message: 'That creature isn\'t at the Ironbow any more.' };
+    if (!c) return gone();
     var t = reasonOf(text);
     if (t.length < 3) return { ok: false, message: 'Write the note.' };
     /* dmOnly: the player's Beast Handler companion never shows it (Harry, D6). */
     R.addChronicle(s, c, 'note', t, 'DM', '', dmOnly === true);
     return { ok: true, log: ['Creatures', 'A note was added to ' + R.creatureName(data, c) + '\'s Chronicle' + (dmOnly === true ? ' (DM only)' : '') + '.'] };
   };
-  /* What comes next for a creature, in one line, for the DM. */
+  /* What comes next for a beast, in one line, for the DM. */
   R.nextStepLine = function (s, data, c) {
-    var d = R.devView(s, c);
-    var sp = c.species;
-    if (!R.hasDevelopment(data, sp)) return '';
-    var fac = R.trainingFacility(data, sp);
-    var noun = R.rideNoun(data, sp);
-    if (c.status !== 'housed') return 'Needs a home at the ' + fac.name + ' first.';
-    if (isNum(d.bond.ready)) return 'Bond ' + d.bond.ready + ' (' + R.bondName(d.bond.ready) + ') is ready: confirm it after a scene at the table.';
-    var byRole = function (role) { return R.trainingFnByRole(data, sp, role); };
-    var label = function (f) { return f ? f.label + ' (Level ' + (f.requiredFacilityLevel || 1) + ', ' + R.daysText(f.days) + (f.costGP ? ', ' + f.costGP + ' gp' : '') + ')' : ''; };
-    if (d.bond.level >= 4) {
-      var steps = [['harness', !(d.harness && d.harness.fitted)], ['ascent', true], ['recall', true]];
-      for (var si = 0; si < steps.length; si++) {
-        var f = byRole(steps[si][0]);
-        var open = steps[si][0] === 'harness' ? steps[si][1] : (f && !R.trainingDone(c, f.id));
-        if (f && open) return 'Bond ' + d.bond.level + ' (' + R.bondName(d.bond.level) + '). Next for riding: ' + label(f) + '.';
-      }
-      if (!(d.firstFlight && d.firstFlight.approved)) return 'Riding preparation is done: the first mounted ' + noun + ' waits for you (see Riding).';
-      if (d.bond.level < 5) return 'Bond ' + d.bond.level + ' (' + R.bondName(d.bond.level) + '). Next: ' + label(byRole('pact')) + '.';
-      return 'Bond 5 (' + R.bondName(5) + '). The Level 5 programmes are open to it.';
-    }
-    var next = (fac.functions || []).filter(function (f) { return f.trains && R.fnSpecies(data, fac, f) === sp && isNum(f.bondTarget) && f.bondTarget === d.bond.level + 1; })[0];
-    if (!next) return '';
-    if (!d.handlerId) return 'Assign a handler, then ' + next.label + ' (Level ' + (next.requiredFacilityLevel || 1) + ') prepares Bond ' + next.bondTarget + '.';
-    if (R.trainingDone(c, next.id)) return 'Bond ' + next.bondTarget + ' training is done: waiting for the DM milestone.';
-    return next.label + ' (Level ' + (next.requiredFacilityLevel || 1) + ', ' + R.daysText(next.days) + ') prepares Bond ' + next.bondTarget + ' (' + R.bondName(next.bondTarget) + ').';
-  };
-
-  /* ---------- First flight readiness (Wyvern Roost: Bonding, Training & Rider Mastery, phase 3) ----------
-     A wyvern and its handler may be marked ready for a FIRST FLIGHT SCENE
-     when every check below holds; the DM then runs the scene and confirms
-     it. That is all it means: story permission for a DM-run mounted flight.
-     There is no riding movement, speed, turn, feat or combat action in the
-     Bastion yet, and nothing says "rideable". */
-  R.firstFlightLevel = function (data) {
-    var n = isObj(cdata(data).development) ? cdata(data).development.firstFlightPartyLevel : null;
-    return isNum(n) ? clampInt(n, 1, 20) : 13;
-  };
-  /* [{ ok, text }]: each prerequisite, ticked or not, in plain words. */
-  R.firstFlightChecks = function (s, data, c) {
-    var d = R.devView(s, c);
-    var sp = isObj(c) ? c.species : '';
-    var fac = R.trainingFacility(data, sp);
-    var need = R.firstFlightLevel(data);
-    var harnessFn = R.trainingFnByRole(data, sp, 'harness');
-    var minLevel = harnessFn ? clampInt(harnessFn.requiredFacilityLevel || 4, 1, R.MAX_LEVEL) : 4;
-    var home = fac ? fac.id : '';
-    var homeLevel = home && R.builtFacilityIds(s, data).indexOf(home) !== -1 ? R.getFacilityLevel(s, home) : 0;
-    var housed = isObj(c) && c.status === 'housed' && c.home === home;
-    var rec = isObj(c) ? R.creatureRecovery(s, c.id) : null;
-    var st = isObj(c) ? R.creatureStatus(s, data, c) : { kind: '' };
-    var list = [
-      { ok: clampInt(s.partyLevel, 1, 20) >= need, text: 'Party level ' + need + ' or higher (it\'s ' + clampInt(s.partyLevel, 1, 20) + ')' },
-      { ok: homeLevel >= minLevel && housed, text: 'Housed at a standing ' + (fac ? fac.name : 'building') + ' of Level ' + minLevel + ' or more' },
-      { ok: d.bond.level >= 4 && !!d.handlerId, text: 'Bond 4 or more with a handler' },
-      { ok: !!(d.harness && d.harness.fitted), text: 'A fitted riding harness' }
-    ];
-    ['ascent', 'recall'].forEach(function (role) {
-      var f = R.trainingFnByRole(data, sp, role);
-      if (f) list.push({ ok: R.trainingDone(c, f.id), text: f.label });
-    });
-    list.push({ ok: !rec && st.kind !== 'defending', text: 'Not wounded or defending' });
-    return list;
-  };
-  R.firstFlightReady = function (s, data, c) { return R.firstFlightChecks(s, data, c).every(function (x) { return x.ok; }); };
-  /* The Riding line: never "rideable". */
-  R.ridingLine = function (s, data, c) {
-    var d = R.devView(s, c);
-    var noun = R.rideNoun(data, c.species);
-    var Noun = noun.charAt(0).toUpperCase() + noun.slice(1);
-    if (d.firstFlight && d.firstFlight.approved) return 'Mounted ' + Noun + ' Qualified (' + R.dayLabel(d.firstFlight.day) + ', handler ' + R.handlerName(d.firstFlight.handlerId) + '): story permission for a DM-run mounted ' + noun + ' only. Riding movement and mounted combat are not part of the Bastion yet.';
-    if (R.firstFlightReady(s, data, c)) return 'First ' + noun + ' ready, awaiting the DM\'s milestone.';
-    return 'Not ready for a first ' + noun + ' yet.';
-  };
-  /* The DM confirms the first flight (or ride) scene happened. */
-  R.confirmFirstFlight = function (s, data, id, reason) {
-    var c = R.creatureById(s, id);
-    if (!c) return { ok: false, message: 'That creature isn\'t at the Ironbow any more.' };
-    var d = R.ensureDev(s, c);
     var name = R.creatureName(data, c);
-    var noun = R.rideNoun(data, c.species);
-    if (d.firstFlight && d.firstFlight.approved) return { ok: false, message: name + ' and ' + R.handlerName(d.firstFlight.handlerId) + ' have already ' + (noun === 'ride' ? 'ridden' : 'flown') + '.' };
-    var bad = R.firstFlightChecks(s, data, c).filter(function (x) { return !x.ok; })[0];
-    if (bad) return { ok: false, message: 'Not ready: ' + bad.text + '.' };
-    var why = reasonOf(reason);
-    if (why.length < 3) return { ok: false, message: 'Say how the first ' + noun + ' went (the scene).' };
-    d.firstFlight = { approved: true, day: dayNum(s.day, 1), handlerId: d.handlerId };
-    R.addChronicle(s, c, 'flight', 'First mounted ' + noun + ' confirmed by the DM with ' + R.handlerName(d.handlerId) + '. ' + why, 'DM');
-    return { ok: true, log: ['Creatures', name + ' and ' + R.handlerName(d.handlerId) + ': first mounted ' + noun + ' confirmed. ' + why] };
+    var ad = R.acclimatiseData(data, c.species);
+    if (c.status !== 'housed') return 'Needs a home at the ' + facName(data, R.speciesHome(data, c.species)) + ' first.';
+    var d = devOf(c);
+    if (!d || !d.handlerId) return 'Assign a handler, then Acclimatise With Beast.';
+    if (d.bond.level < 1) {
+      var a = isObj(d.acclimatise) ? d.acclimatise : null;
+      if (a && isNum(a.retryDay) && s.day < a.retryDay) return 'Its last try failed. It can try again on ' + R.dayLabel(a.retryDay) + '.';
+      return 'Ready to acclimatise: ' + R.handlerName(d.handlerId) + ' rolls ' + ad.skill + ' against DC ' + ad.dc + '.';
+    }
+    var pr = R.bondProgress(s, data, c);
+    if (pr.ready) return 'Bond ' + pr.ready + ' (' + R.bondName(pr.ready) + ') is ready: confirm it after a scene at the table.';
+    if (!pr.pill) return 'Bond 5 (' + R.bondName(5) + '): the highest bond.';
+    var left = pr.pill.need - pr.pill.days;
+    return pr.away
+      ? 'Out on the road with ' + R.handlerName(d.handlerId) + ': ' + pr.pill.days + ' of ' + pr.pill.need + ' days to Bond ' + pr.pill.n + '.'
+      : 'At the Beast Pen: take ' + name + ' on the road to bond (' + plural(left, 'more day', 'more days') + ' to Bond ' + pr.pill.n + ').';
   };
 }());

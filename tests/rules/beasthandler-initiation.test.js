@@ -270,10 +270,10 @@
   test('building the snapshot never rolls and never changes the save, whoever is asked about', function (t) {
     var b = world();
     var c = beast(b, 'wyvern', 'Quiet', 1);
-    /* P.homes lists beasts by building: house it where the snapshot can find it. */
-    b.builtExtras = [{ facId: 'wyvern_roost', status: 'built' }];
+    /* The snapshot lists the beasts housed in a standing Beast Pen: house it there. */
+    b.builtExtras = [{ facId: 'beast_pen', status: 'built' }];
     BR.ensureLevels(b, bdata);
-    c.home = 'wyvern_roost';
+    c.home = 'beast_pen';
     var before = JSON.stringify(b);
     P.build(b, bdata, 'mira');
     P.build(b, bdata, 'joss');
