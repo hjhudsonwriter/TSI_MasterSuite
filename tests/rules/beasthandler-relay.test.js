@@ -517,6 +517,41 @@
     });
   });
 
+  test('closing the Bastion stops the sender: its timer, its post box and anything in flight go with the tool\'s life, so nothing can send afterwards', function (t) {
+    return withConfig(TEST_URL, function () {
+      var b = world();
+      BR.beastEnsurePaired(b, bdata, 'Mira');
+      BR.setBeastOnlineLink(b, true);
+      var store = { docs: {}, log: [], online: true };
+      var life = TSI.createLife('a test of closing');
+      var made = [];
+      BH.publisher.create({ state: function () { return b; }, data: bdata, life: life }, { tickMs: 20, transport: function () { var m = RL.memory(store); made.push(m); return m; } });
+      return new Promise(function (resolve) { setTimeout(resolve, 400); }).then(function () {
+        t.ok(store.log.length >= 1, 'while the tool is open it sends: ' + store.log.length);
+        life.stop();
+        var n = store.log.length;
+        BR.beastEnsurePaired(b, bdata, 'Joss');
+        b.day = 20;
+        return new Promise(function (resolve) { setTimeout(resolve, 400); }).then(function () {
+          t.equal(store.log.length, n, 'after it closes nothing more is sent, whatever changes');
+          return made[0].getState(S.chan(BR.beastSecret(b, 'mira')));
+        });
+      }).then(function (r) { t.equal(r.why, 'closed', 'and the post box connection is closed'); });
+    });
+  });
+
+  test('a link is told apart from a snapshot code when pasted', function (t) {
+    var link = L.buildLink('', { campaign: 'CAMPAIGN12345678', handler: 'mira', name: 'Mira', secret: SECRET });
+    t.equal(C.looksLikeLink(link), true);
+    t.equal(C.looksLikeLink('#L1.a.b.c'), true);
+    t.equal(C.looksLikeLink('L1.a.b.c'), true);
+    t.equal(C.looksLikeLink('pair=BHP1.abc'), true);
+    t.equal(C.looksLikeLink('BHP1.abc.def'), false);
+    t.equal(C.looksLikeLink('BHS1.abc.def'), false);
+    t.equal(C.looksLikeLink('hello there'), false);
+    t.equal(C.looksLikeLink(null), false);
+  });
+
   test('a phone looks for a new copy, takes only one that opens, belongs to it and is newer, and keeps quiet when something is wrong', function (t) {
     return withConfig(TEST_URL, function () {
       var w = setup();

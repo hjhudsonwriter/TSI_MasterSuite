@@ -144,6 +144,8 @@
     }
     var r = BH.link.cleanPhoneUrl(text);
     if (!r.ok) return { ok: false, message: r.why };
+    /* The standard address is not saved: nothing is kept that would stop it following the standard if that ever changes. */
+    if (r.url === BH.link.DEFAULT_PHONE_URL) { if (isObj(s.beast)) delete s.beast.phoneUrl; return { ok: true, url: r.url }; }
     R.beastState(s).phoneUrl = r.url;
     return { ok: true, url: r.url };
   };

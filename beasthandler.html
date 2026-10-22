@@ -19,7 +19,10 @@
 <body class="tsi-bh-phone">
   <!-- The player's phone page for the Beast Handler. It loads only the companion and the few shared pieces it
        needs, never the Bastion, the Explorer or any other tool, so a player given this page cannot reach any
-       DM tool. It needs no internet: it works from the codes the DM sends (see docs/PHONE-PAGE.md). -->
+       DM tool. It needs no internet: it links from the DM's QR code and works from the snapshot codes the DM sends
+       (see docs/PHONE-PAGE.md). relay-config.js ships empty; while it is, this page never makes a request. Only if
+       the DM has set up the optional online link (docs/ONLINE-LINK-SETUP.md) does a linked phone also look for
+       new snapshots by itself. -->
   <header class="tsi-bhp-bar">
     <span class="tsi-bhp-bar__title">Scarlett Isles: Beast Handler</span>
   </header>
@@ -34,6 +37,11 @@
   <script src="tools/beasthandler/projection.js"></script>
   <script src="tools/beasthandler/profile-rules.js"></script>
   <script src="tools/beasthandler/codes.js"></script>
+  <script src="tools/beasthandler/link-rules.js"></script>
+  <script src="tools/beasthandler/seal.js"></script>
+  <script src="tools/beasthandler/relay-config.js"></script>
+  <script src="tools/beasthandler/relay.js"></script>
+  <script src="tools/beasthandler/puller.js"></script>
   <script src="tools/beasthandler/model.js"></script>
   <script src="tools/beasthandler/intro.js"></script>
   <script src="tools/beasthandler/view.js"></script>
