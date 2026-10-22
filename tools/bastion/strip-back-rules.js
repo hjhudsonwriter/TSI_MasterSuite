@@ -392,7 +392,8 @@
     if (c.wars.length) out.push('a war');
     if (c.log) out.push('the War Log');
     if (c.missions || c.recovering) out.push('enemy armies and those recovering');
-    if (c.repairs.length) out.push('facilities Under Repair');
+    /* Repairs are not looked for here: Under Repair stays in the rules (nothing puts a facility there now), so a version 4
+       save that holds one is not "left over". A version 3 save is converted anyway, and the step clears them. */
     var dip = isObj(s.dayInProgress) ? s.dayInProgress : null;
     if (dip && 'attackRolled' in dip) out.push('the day\'s attack roll');
     return out;
@@ -406,7 +407,10 @@
   function dropWar(s, data, report) {
     var c = warCounts(s);
     var values = isObj(sbData(data).menagerieValue) ? sbData(data).menagerieValue : {};
-    ['defenders', 'defenderBeasts', 'military', 'militaryActions', 'warMissions', 'warMissionSeq', 'warRecovery', 'wars', 'repairs', 'warLog'].forEach(function (k) { delete s[k]; });
+    ['defenders', 'defenderBeasts', 'military', 'militaryActions', 'warMissions', 'warMissionSeq', 'warRecovery', 'wars', 'warLog'].forEach(function (k) { delete s[k]; });
+    /* Only a lost battle ever put a facility Under Repair, so a version 3 Bastion\'s repairs all end here. Under Repair itself
+       stays in the rules (nothing sets it now), so a version 4 save that is converted again for another reason keeps its own. */
+    if (!report.again) delete s.repairs;
     if (isObj(s.dayInProgress)) delete s.dayInProgress.attackRolled;
     var removed = {
       defenders: c.defenders, armed: c.armed, regiments: c.regiments, lieutenants: c.lieutenants, militaryActions: c.actions,
@@ -414,7 +418,8 @@
       beasts: c.beasts.map(function (b) { return { name: b.name, qty: b.qty, value: (isObj(values) && typeof values[b.name] === 'number' ? values[b.name] : 0) * b.qty }; })
     };
     var any = c.defenders > 0 || c.beasts.length || c.regiments || c.lieutenants || c.actions || c.wars.length || c.log || c.missions || c.recovering;
-    var worry = c.repairs.filter(function (k) { return WAR_FACILITIES.indexOf(k) === -1; });
+    /* A facility Under Repair that is staying (the war facilities and any the catalogue does not know are dealt with elsewhere). */
+    var worry = c.repairs.filter(function (k) { return WAR_FACILITIES.indexOf(k) === -1 && !!R.facility(data, k); });
     if (!any && !worry.length) return;
     report.removed.war = removed;
     /* The army. */
@@ -437,8 +442,8 @@
     }
     if (c.wars.length || costed) R.stripBackSay(report, 'war', 'The Honour/Respect and Political Capital the war had already cost you are not changed. Use Change a score in the DM doc if you want them back.');
     if (worry.length) {
-      var fac = worry.map(function (k) { return 'The ' + R.stripBackName(data, k); });
-      R.stripBackSay(report, 'war', listText(fac) + (fac.length === 1 ? ' was' : ' were') + ' Under Repair after a lost battle: ' + (fac.length === 1 ? 'it is' : 'they are') + ' working again now.');
+      var fac = listText(worry.map(function (k) { return 'the ' + R.stripBackName(data, k); }));
+      R.stripBackSay(report, 'war', fac.charAt(0).toUpperCase() + fac.slice(1) + (worry.length === 1 ? ' was' : ' were') + ' Under Repair after a lost battle: ' + (worry.length === 1 ? 'it is' : 'they are') + ' working again now.');
     }
   }
 

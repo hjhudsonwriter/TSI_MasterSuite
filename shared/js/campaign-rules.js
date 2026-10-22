@@ -76,7 +76,8 @@
   /* The pending orders a Bastion save will really have (see above). */
   function liveOrders(ba) {
     var list = Array.isArray(ba.pendingOrders) ? ba.pendingOrders : [];
-    if (ba.v === 4) return list;
+    /* A War Action is never forecast, whatever the version; a retired facility's order only while it is still to be converted. */
+    if (ba.v === 4) return list.filter(function (o) { return !isWarAction(o); });
     return list.filter(function (o) { return !isWarAction(o) && (!(isObj(o) && RETIRED_FACILITIES.indexOf(o.facId) !== -1) || movedOrder(o)); });
   }
   /* 'goldport' → 'Goldport' (shared/data/ports.js). */
@@ -110,7 +111,7 @@
       (Array.isArray(ba.builtExtras) ? ba.builtExtras : []).concat(Array.isArray(ba.builtPlots) ? ba.builtPlots : []).forEach(function (e) {
         if (!isObj(e) || e.status !== 'building') return;
         /* The War Room and the Menagerie were built in construction slots: the conversion stops the work. */
-        if (ba.v !== 4 && WAR_FACILITIES.indexOf(e.facId) !== -1) return;
+        if (WAR_FACILITIES.indexOf(e.facId) !== -1) return;
         add(e.readyDay, 'built', 'The ' + facilityName(e.facId) + ' is built.');
       });
       liveOrders(ba).forEach(function (o) {
