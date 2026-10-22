@@ -1,9 +1,13 @@
-/* The Scarlett Isles: D&D Tool Suite — the DM doc's geometry (plain functions, tested in tests/rules.html).
-   The DM doc is a floating panel (shared/js/dmdoc.js). These work out where it
+/* The Scarlett Isles: D&D Tool Suite — the DM doc's rules (plain functions, tested in tests/rules.html).
+   The DM doc is a floating panel (shared/js/dmdoc.js) with four panels in a
+   2 × 2 grid: Party, Bastion, Explorer and Quest. These work out where it
    sits and how big it is, so it always stays on screen:
    - never wider or taller than the window, and no smaller than 280 × 200
      (unless the window itself is smaller than that);
    - never over the suite's top bar, so its title bar can always be grabbed.
+   They also hold the Quest box's rules (what is saved, how much, how a
+   second window's copy is told from this one's, how imported text is tidied)
+   and the hand-set scores' list (below).
 
    A "rect" is { x, y, w, h } in CSS pixels from the window's top-left corner.
    A "view" is the window: { width, height, top }, where top is the bottom edge
@@ -20,8 +24,21 @@
   var rules = {
     MIN_W: 280,
     MIN_H: 200,
-    DEFAULT_W: 440,
-    DEFAULT_H: 800,   /* everything shows on the laptop until the lists get long; then it scrolls (7 October 2026) */
+    /* The first size for the 2 × 2 grid (the DM doc overhaul): it fits the
+       laptop (1707 × 930) and the TV (1920 × 1080); each panel scrolls on
+       its own if its lists get long. */
+    DEFAULT_W: 1040,
+    DEFAULT_H: 640,
+    /* Below this width the four panels stack in one column (dmdoc.js and
+       components.css use it: the narrowest the grid is comfortable at). */
+    NARROW_W: 760,
+    /* The size the pop-out window opens at: landscape, for the four panels. */
+    POPOUT_W: 1100,
+    POPOUT_H: 760,
+    /* The saved layout's version. Version 1 (no number) was the old tall,
+       narrow column, 440 wide: it would reopen as a squashed box, so it is
+       ignored once, and the next move or resize saves a version 2. */
+    LAYOUT_VERSION: 2,
     /* The gap from the window's right edge and the top bar when it first opens. */
     GAP: 24,
     /* Arrow keys on the title bar move it this far (Shift: further). */
@@ -86,18 +103,110 @@
       return d ? rules.move(rect, d[0], d[1], view) : null;
     },
 
-    /* What's saved: { x, y, w, h } as whole numbers. */
-    toSaved: function (rect) {
-      return { x: Math.round(rect.x), y: Math.round(rect.y), w: Math.round(rect.w), h: Math.round(rect.h) };
+    /* The window features for the pop-out: noopener (so the new window doesn't
+       share this one's tab), landscape and wide enough for the four panels. */
+    popOutFeatures: function () {
+      return 'noopener,popup,width=' + rules.POPOUT_W + ',height=' + rules.POPOUT_H;
     },
 
-    /* A saved layout read back, or null if it's missing or damaged. */
+    /* What's saved: { v, x, y, w, h }, with whole numbers. */
+    toSaved: function (rect) {
+      return { v: rules.LAYOUT_VERSION, x: Math.round(rect.x), y: Math.round(rect.y), w: Math.round(rect.w), h: Math.round(rect.h) };
+    },
+
+    /* A saved layout read back, or null if it's missing, damaged or from the
+       old single-column version (so the first size for the new grid is used). */
     fromSaved: function (value) {
       if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+      if (value.v !== rules.LAYOUT_VERSION) return null;
       var ok = ['x', 'y', 'w', 'h'].every(function (k) { return typeof value[k] === 'number' && isFinite(value[k]); });
       if (!ok || value.w <= 0 || value.h <= 0) return null;
       return { x: value.x, y: value.y, w: value.w, h: value.h };
     }
+  };
+
+  /* ---------- The Quest box ----------
+     A box for the DM's own text (a session file to read from, pasted or
+     imported from a PDF, Word or text file). One box, saved as
+     tsi.dmdoc.quest = { text, at }, where `at` is when it was last typed in
+     (so a window can tell whether another window's copy is newer). It is
+     never sent to the players: nothing but the DM doc reads this key.
+     QUEST_MAX is far under what the browser's database could hold; it is
+     there for the day the browser falls back to its small storage (about 5
+     million characters for the whole suite). */
+  rules.QUEST_KEY = 'tsi.dmdoc.quest';
+  rules.QUEST_MAX = 200000;
+  /* The biggest file the import will even try to read. */
+  rules.IMPORT_MAX_BYTES = 20 * 1024 * 1024;
+  var CONTROL = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
+
+  /* A saved Quest value read back: { text, at }, with the text no longer than the limit. */
+  rules.cleanQuest = function (raw) {
+    var text = '';
+    var at = 0;
+    if (typeof raw === 'string') text = raw;
+    else if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+      if (typeof raw.text === 'string') text = raw.text;
+      at = typeof raw.at === 'number' && isFinite(raw.at) && raw.at > 0 ? Math.floor(raw.at) : 0;
+    }
+    return { text: text.length > rules.QUEST_MAX ? text.slice(0, rules.QUEST_MAX) : text, at: at };
+  };
+
+  /* What to save for the text now in the box. */
+  rules.makeQuest = function (text, now) {
+    var q = rules.cleanQuest({ text: String(text === null || text === undefined ? '' : text), at: typeof now === 'number' ? now : Date.now() });
+    return q;
+  };
+
+  /* Which of two windows' copies to keep: the one typed in last. A tie keeps
+     `mine` (nothing has changed). Either may be null. */
+  rules.newerQuest = function (mine, theirs) {
+    var a = mine ? rules.cleanQuest(mine) : null;
+    var b = theirs ? rules.cleanQuest(theirs) : null;
+    if (!b) return a || rules.cleanQuest(null);
+    if (!a) return b;
+    return b.at > a.at ? b : a;
+  };
+
+  /* Imported text tidied for the box: no byte-order mark or hidden control
+     characters, plain line endings, no trailing spaces, no run of more than
+     two blank lines, and no blank space at either end. */
+  rules.cleanImportedText = function (raw) {
+    var text = String(raw === null || raw === undefined ? '' : raw);
+    return text
+      .replace(/\uFEFF/g, '')
+      .replace(/\r\n?/g, '\n')
+      .replace(/[\u2028\u2029]/g, '\n')
+      .replace(/\u00A0/g, ' ')
+      .replace(CONTROL, '')
+      .replace(/[ \t]+\n/g, '\n')
+      .replace(/\n{4,}/g, '\n\n\n')
+      .trim();
+  };
+
+  /* What the box would hold if imported text were put in it. mode 'replace'
+     puts it in place of what is there; 'append' adds it to the end, after a
+     blank line. Too long: { ok: false, message }, and nothing should change;
+     there is no cutting off the end of a document silently. */
+  rules.joinQuest = function (current, incoming, mode) {
+    var add = rules.cleanImportedText(incoming);
+    var have = String(current || '');
+    var text = mode === 'append' && have.trim() ? have.replace(/\s+$/, '') + '\n\n' + add : add;
+    if (!add) return { ok: false, message: 'There was no text to import.' };
+    if (text.length > rules.QUEST_MAX) {
+      return {
+        ok: false,
+        message: 'That would make ' + text.length.toLocaleString('en-GB') + ' characters, and the Quest box holds up to ' + rules.QUEST_MAX.toLocaleString('en-GB') + '. Nothing was imported.'
+      };
+    }
+    return { ok: true, text: text };
+  };
+
+  /* The name for "Save as text file". */
+  rules.questFileName = function (now) {
+    var d = new Date(typeof now === 'number' ? now : Date.now());
+    function p(n) { return (n < 10 ? '0' : '') + n; }
+    return 'dm-doc-quest-' + d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + '.txt';
   };
 
   /* ---------- Editing the scores by hand (Harry, 19 October 2026) ----------
