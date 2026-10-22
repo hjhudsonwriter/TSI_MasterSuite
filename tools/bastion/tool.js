@@ -185,7 +185,9 @@
       /* The Beast Handler no longer sends requests: its old queue is never read, so it is cleared away. */
       try { TSI.store.remove('tsi.beasthandler.queue'); } catch (e) { /* nothing to clear */ }
       /* The one-off sweep (Beast Handler): any beast already at Bond 1 or more with no variety is introduced now, once; the phone then plays the reveal. Not when a conversion report is still waiting to be read. */
-      if (R.sweepInitiation && !(state.migration && state.migration.v4 && state.migration.v4.shown !== true) && R.sweepInitiation(state, data, rand).changed) save();
+      /* Is the version 4 conversion report still waiting to be read? The Beast Handler's sweep waits for it (below, at each day and when the report is closed). */
+      function reportUnread() { return !!(state.migration && state.migration.v4 && state.migration.v4.shown !== true); }
+      if (R.sweepInitiation && !reportUnread() && R.sweepInitiation(state, data, rand).changed) save();
       function saveUi() { ctx.store.set('ui', TSI.clone(ui)); }
       function log(title, body) { R.log(state, title, body); }
       function logAll(lines) { (lines || []).forEach(function (l) { log(l[0], l[1]); }); }
@@ -4815,6 +4817,17 @@
           notice(n.message, { type: n.type, title: n.title, id: n.id, timeout: n.timeout });
         });
       }
+      /* The same while days are being passed: what was applied there goes into "The Ironbow sends word…" (as it always did),
+         and a change that could not be used, or was skipped, ALSO raises its notice (with the reason), once: every settling
+         has its own number in the id, so one notice never replaces another. The word line itself is written by R.applyInbox. */
+      var problemSeq = 0;
+      function tellProblems(res) {
+        if (!res || !life.alive) return;
+        problemSeq += 1;
+        R.settledNotices(res, { problemsOnly: true, suffix: '-' + problemSeq }).forEach(function (n) {
+          notice(n.message, { type: n.type, title: n.title, id: n.id, timeout: n.timeout });
+        });
+      }
       function renderTurnButton() {
         var dip = state.dayInProgress;
         var behind = state.anchored && explorerDay !== null && explorerDay > state.day;
@@ -4891,7 +4904,7 @@
       }
       /* The Beast Handler's one-off sweep once the conversion report has been read (at open it runs before the screens exist, above). */
       function checkInitiation() {
-        if (!R.sweepInitiation || !life.alive || turnRunning || militaryRunning || changesOpen) return;
+        if (!R.sweepInitiation || !life.alive || turnRunning || militaryRunning || changesOpen || reportUnread()) return;
         if (R.sweepInitiation(state, data, rand).changed) done();
       }
       life.setInterval(function () { checkClock(); checkCrestOffer(); checkDmEdits(); }, 2000);
@@ -4918,11 +4931,14 @@
             if (!state.dayInProgress) {
               if (explorerDay === null || explorerDay <= state.day || !state.anchored) break;
               R.startDay(state, data);
-              if (R.sweepInitiation) R.sweepInitiation(state, data, rand);
-              settleInbox();
+              if (R.sweepInitiation && !reportUnread()) R.sweepInitiation(state, data, rand);
+              var dayChanges = settleInbox();
               done();
-            } else if (settleInbox().changed) {
-              done();
+              tellProblems(dayChanges);
+            } else {
+              var midDay = settleInbox();
+              if (midDay.changed) done();
+              tellProblems(midDay);
             }
             if ((await runDay()) === 'stopped') return 'stopped';
           }

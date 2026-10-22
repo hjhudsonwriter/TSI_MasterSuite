@@ -74,6 +74,18 @@
     t.equal(B.checkForSuite(B.makeSuiteBackup([], when), names), null);
   });
 
+  test('Restore refuses an old Beast Handler file by saying there is nothing to load (the tool has no Import button now), not by pointing to a button that is not there', function (t) {
+    var backup = B.makeToolBackup('beasthandler', 'Scarlett Isles: Beast Handler', [rec('tsi.beasthandler.queue', { items: [] })], when);
+    var named = function (id) { return id === 'beasthandler' ? 'Scarlett Isles: Beast Handler' : names(id); };
+    var reason = B.checkForSuite(backup, named);
+    t.ok(!/use Import/.test(reason), reason);
+    t.ok(/^This is an old backup of just the Beast Handler\. The Beast Handler no longer keeps anything of its own/.test(reason), reason);
+    t.ok(/nothing in this file to load/.test(reason) && /no Import button any more/.test(reason) && /ignore the file/.test(reason), reason);
+    t.ok(/whole-suite backup or a campaign file/.test(reason), 'and says where the beasts really are: ' + reason);
+    t.equal(B.checkForSuite(B.makeToolBackup('quests', 'Notice Board Quest Generator', [rec('tsi.quests.accepted', 1)], when), names), 'This is a backup of just the Notice Board Quest Generator. To load it, open the Notice Board Quest Generator and use Import.', 'every other tool\'s message is as it was');
+    t.equal(B.checkForSuite(B.makeCampaignBackup([], when), names).indexOf('use Import') > 0, true, 'the campaign file still says to use Import (the Explorer and the Bastion have one)');
+  });
+
   test('Import refuses a whole-suite backup', function (t) {
     var reason = B.checkForTool(B.makeSuiteBackup([], when), 'quests', names);
     t.ok(/whole-suite backup/.test(reason), reason);

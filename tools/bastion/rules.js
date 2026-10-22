@@ -590,6 +590,9 @@
           out.done[id].riteId = txt(r.riteId, 80);
           out.done[id].held = r.held === true;
         }
+        /* A message of a kind this copy does not know (a newer copy of the suite sent it) that was skipped as old at a fresh
+           start: the receipt says only that, so it is never described as a change to a Clan. */
+        if (r.type === 'newer') out.done[id].type = 'newer';
       });
     }
     return out;
@@ -901,6 +904,7 @@
       if (m.type === 'parcel_collected') return parcelExtra(m, null);
       if (m.type === 'creature') return creatureExtra(m, null);
       if (m.type === 'rite') return riteExtra(m, null);
+      if (B.waitsForNewer && B.waitsForNewer(m)) return { type: 'newer' };
       return {};
     }
     function riteExtra(m, res) {
@@ -937,7 +941,9 @@
       var standing = out.skipped - charters - newer - pickups - grants - rites;
       /* The same skips as notices: what was skipped, why, and what to do. */
       function skipSaid(n, what, tail) {
-        out.skips.push(n + ' ' + what + (n === 1 ? ' was' : ' were') + ' skipped, so nothing counts twice.' + (tail ? ' ' + tail : ''));
+        var said = n + ' ' + what + (n === 1 ? ' was' : ' were') + ' skipped, so nothing counts twice.' + (tail ? ' ' + tail : '');
+        out.skips.push(said);
+        R.addWord(s, 'From the Explorer: ' + said);
       }
       if (newer) skipSaid(newer, newer === 1 ? 'message from a newer copy of the suite, sent before this Bastion started,' : 'messages from a newer copy of the suite, sent before this Bastion started,');
       if (standing) skipSaid(standing, (standing === 1 ? 'change to Honour/Respect' : 'changes to Honour/Respect') + ', sent before this Bastion started,', standing === 1 ? 'Use Change a score in the DM doc if it should count.' : 'Use Change a score in the DM doc if they should count.');
@@ -1002,6 +1008,7 @@
           out.refused += 1;
           out.refusals.push('A parcel pickup from the Explorer (' + fromText(m) + ') couldn\'t be used, so nothing changed: ' + pr.why);
           R.log(s, 'From the Explorer', 'A parcel pickup from the Explorer (' + fromText(m) + ') couldn\'t be used, so nothing changed: ' + pr.why, at);
+          R.addWord(s, 'From the Explorer: a parcel pickup (' + fromText(m) + ') couldn\'t be used, so nothing changed: ' + pr.why);
           return;
         }
         R.log(s, 'From the Explorer', pr.line, at);
@@ -1035,6 +1042,7 @@
           out.refused += 1;
           out.refusals.push('A Great Rite handover from the Explorer (' + fromText(m) + ') couldn\'t be used, so nothing changed: ' + rr.why);
           R.log(s, 'From the Explorer', 'A Great Rite handover from the Explorer (' + fromText(m) + ') couldn\'t be used, so nothing changed: ' + rr.why, at);
+          R.addWord(s, 'From the Explorer: a Great Rite handover (' + fromText(m) + ') couldn\'t be used, so nothing changed: ' + rr.why);
           return;
         }
         R.log(s, 'From the Explorer', R.RITE_NAMES[rr.rite] + (rr.held ? ' was already marked as with the party, so nothing changed' : ' went with the party (' + fromText(m) + ')') + '.', at);
@@ -1048,6 +1056,7 @@
         out.refused += 1;
         out.refusals.push('A change from the Explorer (' + fromText(m) + ') couldn\'t be used, so nothing changed: ' + why);
         R.log(s, 'From the Explorer', 'A change from the Explorer couldn\'t be used, so nothing changed: ' + why + (m.text ? ' (' + txt(m.text, 200) + ')' : ''), at);
+        R.addWord(s, 'From the Explorer: a change (' + fromText(m) + ') couldn\'t be used, so nothing changed: ' + why);
         return;
       }
       receipt(m, 'applied', { hr: res.delta, was: res.was, now: res.now });
@@ -1077,7 +1086,7 @@
 
      R.bridgeChange(s, data, receipt) says one receipt (a record of
      s.bridge.done, with its id) as { id, result: 'applied' | 'skipped' |
-     'refused', kind: 'standing' | 'charter' | 'parcel' | 'creature' | 'rite',
+     'refused', kind: 'standing' | 'charter' | 'parcel' | 'creature' | 'rite' | 'newer',
      head, day: number or null, dayText, text, why, tail }:
      - head: what it was ("Clan Farmer +1 (0 → +1)", "Port Charter: Goldport
        (Clan Molten)", "Skipped: Great Rite handover");
@@ -1090,7 +1099,7 @@
     var B = TSI.bridge;
     r = isObj(r) ? r : {};
     var result = r.r === 'applied' || r.r === 'skipped' ? r.r : 'refused';
-    var kind = r.type === 'charter' || r.type === 'creature' || r.type === 'rite' ? r.type : '';
+    var kind = r.type === 'charter' || r.type === 'creature' || r.type === 'rite' || r.type === 'newer' ? r.type : '';
     var made = null;
     /* An older copy of the suite can strip a receipt's kind: the Port Charter
        it made, or the parcel id in its own id, still say what it was. */
@@ -1106,7 +1115,10 @@
     var clan = clanWord ? 'Clan ' + clanWord : 'An unknown Clan';
     var head;
     var tail = '';
-    if (kind === 'rite') {
+    if (kind === 'newer') {
+      /* A kind of message this copy does not know: not a Clan's score, so nothing is said about Honour/Respect. */
+      head = prefix + 'A message of a kind this version doesn\'t understand';
+    } else if (kind === 'rite') {
       head = result === 'applied'
         ? 'Great Rite: ' + (R.RITE_NAMES[r.rite] || 'a Great Rite') + ' went with the party' + (r.held ? ' (already marked)' : '')
         : prefix + 'Great Rite handover';
@@ -1136,7 +1148,7 @@
       id: String(r.id || ''), result: result, kind: kind, head: head,
       day: day, dayText: day === null ? '' : R.dayLabel(day),
       text: typeof r.text === 'string' ? r.text : '',
-      why: why, tail: result === 'skipped' && kind !== 'rite' ? tail : ''
+      why: why, tail: result === 'skipped' && kind !== 'rite' && kind !== 'newer' ? tail : ''
     };
   };
 
@@ -1152,31 +1164,40 @@
      couldn't be used (each with its reason) and every kind of change skipped
      because it was sent before this Bastion started (what to do about it). A
      refusal is never folded into an applied notice: it has its own, so its
-     reason is not lost. */
+     reason is not lost.
+     options.problemsOnly: only the refusals and the skips (what a day being
+     passed uses: what was applied there goes into "The Ironbow sends word…", as
+     it always did, and only what could not be used needs a notice too).
+     options.suffix: added to every notice's id, so a notice raised on another
+     day or in another settling does not replace this one. */
   var NOTICE_SHOWN = 3;
-  R.settledNotices = function (res) {
+  R.settledNotices = function (res, options) {
     var out = [];
     if (!isObj(res)) return out;
+    var only = isObj(options) && options.problemsOnly === true;
+    var suffix = isObj(options) && typeof options.suffix === 'string' ? options.suffix : '';
     var list = function (v) { return Array.isArray(v) ? v : []; };
     var look = 'Changes from the Explorer, in Management, lists ';
-    if (list(res.charters).length) out.push({ message: 'From the Explorer: ' + res.charters.join(' '), type: 'info', title: 'Port Charter.', id: 'tsi-bas-charter', timeout: 14000 });
-    if (list(res.parcels).length) out.push({ message: res.parcels.join(' '), type: 'info', title: 'Courier Exchange.', id: 'tsi-bas-courier', timeout: 14000 });
-    if (list(res.creatures).length) out.push({ message: res.creatures.join(' '), type: 'info', title: 'Creatures.', id: 'tsi-bas-creature', timeout: 14000 });
-    if (list(res.applied).length) {
-      out.push({ message: 'From the Explorer: ' + res.applied.join(' ') + ' ' + look + (res.applied.length === 1 ? 'it.' : 'them.'), type: 'info', title: 'Honour/Respect.', id: 'tsi-bas-bridge', timeout: 12000 });
+    if (!only) {
+      if (list(res.charters).length) out.push({ message: 'From the Explorer: ' + res.charters.join(' '), type: 'info', title: 'Port Charter.', id: 'tsi-bas-charter', timeout: 14000 });
+      if (list(res.parcels).length) out.push({ message: res.parcels.join(' '), type: 'info', title: 'Courier Exchange.', id: 'tsi-bas-courier', timeout: 14000 });
+      if (list(res.creatures).length) out.push({ message: res.creatures.join(' '), type: 'info', title: 'Creatures.', id: 'tsi-bas-creature', timeout: 14000 });
+      if (list(res.applied).length) {
+        out.push({ message: 'From the Explorer: ' + res.applied.join(' ') + ' ' + look + (res.applied.length === 1 ? 'it.' : 'them.'), type: 'info', title: 'Honour/Respect.', id: 'tsi-bas-bridge', timeout: 12000 });
+      }
     }
     var refusals = list(res.refusals);
     if (refusals.length) {
       var more = refusals.length - NOTICE_SHOWN;
       out.push({
         message: refusals.slice(0, NOTICE_SHOWN).join(' ') + (more > 0 ? ' ' + more + (more === 1 ? ' more was' : ' more were') + ' refused too.' : '') + ' ' + look + (refusals.length === 1 ? 'it.' : 'them.'),
-        type: 'warn', title: 'Not used.', id: 'tsi-bas-bridge-refused', timeout: 20000
+        type: 'warn', title: 'Not used.', id: 'tsi-bas-bridge-refused' + suffix, timeout: 20000
       });
     } else if (res.refused) {
-      out.push({ message: 'A change from the Explorer couldn\'t be used, so nothing changed. ' + look + 'it, with the reason.', type: 'warn', title: 'Not used.', id: 'tsi-bas-bridge-refused', timeout: 20000 });
+      out.push({ message: 'A change from the Explorer couldn\'t be used, so nothing changed. ' + look + 'it, with the reason.', type: 'warn', title: 'Not used.', id: 'tsi-bas-bridge-refused' + suffix, timeout: 20000 });
     }
     var skips = list(res.skips);
-    if (skips.length) out.push({ message: skips.join(' ') + ' ' + look + (res.skipped === 1 ? 'it.' : 'them.'), type: 'info', title: 'Skipped.', id: 'tsi-bas-bridge-skipped', timeout: 20000 });
+    if (skips.length) out.push({ message: skips.join(' ') + ' ' + look + (res.skipped === 1 ? 'it.' : 'them.'), type: 'info', title: 'Skipped.', id: 'tsi-bas-bridge-skipped' + suffix, timeout: 20000 });
     return out;
   };
 

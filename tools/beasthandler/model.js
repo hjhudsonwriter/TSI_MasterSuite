@@ -139,12 +139,34 @@
     if (!detail || detail.available !== true || !isObj(detail.initiation)) return false;
     return !(isObj(seen) && seen[detail.id] === true);
   };
-  /* The words of the sequence. */
-  M.meetingText = function (detail) {
+  /* Which subspecies the staged roll lands on: the one the Bastion holds for the beast NOW (its profile's Regional Variety),
+     because that is the one the beast's page will show a moment later (the chip and the picture). The Bastion rolled a variety
+     at acclimatisation, but the DM can change it afterwards (the Temperament dialog), and the reveal must agree with the page,
+     not with an old roll. Returns { id, name, kind }:
+       'now'    the Bastion's current variety is one of the kind's own varieties: land on it;
+       'rolled' the snapshot says nothing about the profile at all (not something this suite sends): the roll the Bastion made;
+       'none'   the Bastion holds no variety (the DM cleared it) or one of its own that is not in the kind's table: there is
+                nothing true to land a marker on, so the staged subspecies roll is left out. */
+  M.revealTarget = function (detail, tables) {
+    var none = { id: '', name: '', kind: 'none' };
+    if (!isObj(detail) || !isObj(detail.species)) return none;
+    var profile = isObj(detail.profile) ? detail.profile : null;
+    if (profile && typeof profile.regional === 'string') {
+      var info = profile.regional.trim() ? M.regionalInfo(tables, detail.species.id, profile.regional) : null;
+      return info ? { id: info.id, name: info.name, kind: 'now' } : none;
+    }
+    var rolled = isObj(detail.initiation) && typeof detail.initiation.regional === 'string' ? detail.initiation.regional : '';
+    var found = rolled ? M.revealVarieties(tables, detail.species.id).filter(function (v) { return v.id === rolled; })[0] : null;
+    return found ? { id: found.id, name: found.name, kind: 'rolled' } : none;
+  };
+
+  /* The words of the sequence. staged: false when the subspecies roll is left out (the Bastion holds no variety to show), which
+     makes it one quick roll, not two. */
+  M.meetingText = function (detail, staged) {
     var n = detail.name, noun = M.speciesNoun(detail);
     return {
       meet: 'It’s time to meet ' + n + '…',
-      lead: 'Two quick rolls, then you will see ' + n + ' for the first time.',
+      lead: (staged === false ? 'One quick roll, then you will see ' : 'Two quick rolls, then you will see ') + n + ' for the first time.',
       subspecies: 'There are many subspecies of ' + noun + ' in The Scarlett Isles, but which one is ' + n + '?',
       personality: 'Every ' + noun + ' has its own unique personality. What is ' + M.possessive(n) + ' like?',
       welcome: 'Welcome to the Ironbow, ' + n + '!'
@@ -215,14 +237,18 @@
     return { stops: stops, delays: delays, total: total, hops: best.hops + 1, laps: Math.round(best.hops / n * 10) / 10, near: near, hold: delays[delays.length - 1] };
   };
 
-  /* The three personality cards of the first meeting: [{ key, label, dice, roll, line, note }]. roll is what the Bastion
-     rolled (0 when the DM had already written that line); line is the Bastion's own line now; note is the table's own note
-     for a roll (only the d12 has them), shown only while the line is still the one the roll gave. */
+  /* The three personality cards of the first meeting: [{ key, label, dice, roll, rolled, line, note }]. line is the Bastion's own
+     line now (what the page will show). rolled is the number the Bastion stored (0 when the DM had already written that line and
+     it matched no table row). roll is the number the card's die may SHOW: the stored number only while the line is still the one
+     that number gave (the table row it names has the same words); once the DM has changed or cleared the line, or if the line was
+     the DM's own words, the die has no honest number to show and roll is 0 (the screen shows a star). note is the table's own
+     note for that row (only the d12 has them), shown on the same condition. */
   M.PERSONALITY = [
     { key: 'dominant', label: 'Dominant Temperament' },
     { key: 'attachment', label: 'Attachment Cue' },
     { key: 'trigger', label: 'Instinctive Trigger' }
   ];
+  function sameWords(a, b) { return String(a || '').replace(/\s+/g, ' ').trim().toLowerCase() === String(b || '').replace(/\s+/g, ' ').trim().toLowerCase(); }
   M.personalityCards = function (detail, tables) {
     var sp = tables && isObj(tables.species) ? tables.species[detail.species.id] : null;
     var rolls = detail.initiation && isObj(detail.initiation.rolls) ? detail.initiation.rolls : {};
@@ -231,10 +257,11 @@
       var table = c.key === 'dominant' ? (tables && tables.dominant) : (sp && sp[c.key]);
       var entries = table && Array.isArray(table.entries) ? table.entries : [];
       var dice = table && table.dice > 0 ? table.dice : entries.length;
-      var roll = typeof rolls[c.key] === 'number' && rolls[c.key] > 0 ? Math.floor(rolls[c.key]) : 0;
+      var rolled = typeof rolls[c.key] === 'number' && rolls[c.key] > 0 ? Math.floor(rolls[c.key]) : 0;
       var line = String(profile[c.key] || '');
-      var row = entries.filter(function (e) { return e.roll === roll; })[0] || null;
-      return { key: c.key, label: c.label, dice: dice, roll: roll, line: line, note: row && row.note && String(row.label) === line ? String(row.note) : '' };
+      var row = rolled ? entries.filter(function (e) { return e.roll === rolled; })[0] || null : null;
+      var still = !!row && !!line && sameWords(row.label, line);
+      return { key: c.key, label: c.label, dice: dice, roll: still ? rolled : 0, rolled: rolled, line: line, note: still && row.note ? String(row.note) : '' };
     });
   };
 

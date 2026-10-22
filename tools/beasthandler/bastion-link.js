@@ -48,14 +48,16 @@
      loaded without complaint and dropped. */
   R.cleanBeast = function (raw) {
     var src = isObj(raw) ? raw : {};
-    var seen = {};
+    /* A Set, not a plain object: a handler may be named anything ("Constructor", "__proto__"), and a plain object's own
+       built-in names would make such a handler look like a duplicate and be dropped, losing its pairing secret. */
+    var seen = new Set();
     var handlers = [];
     arr(src.handlers).forEach(function (h) {
       if (!isObj(h) || handlers.length >= HANDLERS_MAX) return;
       var name = plain(h.name, 40);
       var id = P.handlerKey(h.id !== undefined && h.id !== '' ? h.id : name);
-      if (!id || seen[id]) return;
-      seen[id] = true;
+      if (!id || seen.has(id)) return;
+      seen.add(id);
       handlers.push({ id: id.slice(0, 40), name: name || id, secret: typeof h.secret === 'string' && /^[A-Za-z0-9]{16,64}$/.test(h.secret) ? h.secret : '', since: dayNum(h.since, 1) });
     });
     return {
