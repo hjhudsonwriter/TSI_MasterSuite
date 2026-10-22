@@ -245,13 +245,48 @@
     t.same(lines, [['Order Completed', 'Beast Pen: House Beast Here (Elara\'s wyvern) → Elara\'s wyvern lives at the Ironbow now, at the Beast Pen (Elara\'s).']]);
     t.same([b.creatures[0].id, b.creatures[0].home, b.creatures[0].development.bond.level, b.creatures[0].development.handlerId], ['elara_wyvern', PEN, 1, 'elara'], 'she keeps her Bond 1 and her handler');
     t.same(BR.completeSimpleOrder(b, bdata, order, dice([0.5])), [['Creatures', 'Beast Pen: House Beast Here (Elara\'s wyvern): Elara\'s wyvern already has a home at the Beast Pen, so nothing changed.']], 'once');
-    /* With a wyvern already housed, there is no room. */
+    /* With a wyvern already housed, there is no room: she is recorded waiting for a home, never lost with her order. */
     var c = withPen();
     housed(c, 1, 'wyvern', 'Ash');
     c.pendingOrders.push(copy(order));
     var again = BR.completeSimpleOrder(c, bdata, c.pendingOrders[0], dice([0.5]));
-    t.same(again, [['Creatures', 'Beast Pen: House Beast Here (Elara\'s wyvern): the Beast Pen keeps one wyvern and Ash lives here, so nothing changed.']]);
-    t.equal(c.creatures.length, 1);
+    t.same(again, [['Creatures', 'Beast Pen: House Beast Here (Elara\'s wyvern): the Beast Pen keeps one wyvern and Ash lives here, so Elara\'s wyvern keeps waiting for a home. It is listed in the Beast Pen, not lost.']]);
+    t.same(c.creatures.map(function (x) { return [x.id, x.status, x.home]; }).slice(1), [['elara_wyvern', 'waiting', '']], 'she is in the list, waiting');
+    t.same([c.creatures[1].development.handlerId, c.creatures[1].development.bond.level], ['elara', 1], 'with the relationship the story gave her');
+    BR.removeOrder(c, 'e1');
+    t.same(BR.waitingCreatures(c, bdata, 'wyvern').map(function (x) { return x.id; }), ['elara_wyvern'], 'she can be housed later: she is on the waiting list');
+    t.equal(BR.releaseBlocker(c, bdata, c.creatures[1]), 'Elara\'s wyvern is part of the story, and the Explorer cannot grant it again, so it stays at the Ironbow.', 'and she cannot be released by mistake');
+    t.equal(BR.housingBlocker(c, bdata, BR.facility(bdata, PEN), BR.facility(bdata, PEN).functions[0]), 'The Beast Pen keeps one wyvern at a time: Ash lives here.', 'the Pen says plainly why she waits');
+    /* Asked again (a repeat of the same order), nothing is made twice. */
+    c.pendingOrders.push(copy(order));
+    t.equal(BR.completeSimpleOrder(c, bdata, c.pendingOrders[0], dice([0.5]))[0][0], 'Creatures');
+    t.equal(c.creatures.length, 2, 'still two records');
+    /* Cancelled by the DM, or the Pen demolished with only her order pending: she is kept, waiting, in the same way. */
+    var d = withPen();
+    d.pendingOrders.push(copy(order));
+    var cl = BR.cancelOrder(d, 'e1', bdata, 0);
+    t.same([d.creatures.map(function (x) { return [x.id, x.status]; }), d.pendingOrders.length], [[['elara_wyvern', 'waiting']], 0], 'cancelled: kept');
+    t.equal(cl[1], 'Cancelled Beast Pen: House Beast Here (Elara\'s wyvern). Elara\'s wyvern stays at the Ironbow, waiting for a home.');
+    var e = withPen();
+    e.pendingOrders.push(copy(order));
+    var dem = BR.demolishFacility(e, bdata, PEN);
+    t.equal(dem.ok, true);
+    t.same(e.creatures.map(function (x) { return [x.id, x.status]; }), [['elara_wyvern', 'waiting']], 'demolished: kept');
+    t.ok(/Elara's wyvern stays at the Ironbow, waiting for a home\.$/.test(dem.log[1]), dem.log[1]);
+    /* An order for an ordinary granted beast is unchanged by all this. */
+    var f = withPen();
+    var gid1 = grant(f, 1, 'griffin', 'Swiftwing');
+    issueHouse(f);
+    BR.cancelOrder(f, lastOrder(f).id, bdata, 0);
+    t.same(f.creatures.map(function (x) { return x.id; }), [gid1], 'no extra record');
+    /* Once the Pen is free of the other wyvern in a (made-up) copy that keeps two of a kind, she is housed by an ordinary order. */
+    var g = withPen();
+    g.pendingOrders.push(copy(order));
+    BR.cancelOrder(g, 'e1', bdata, 0);
+    var r = issueHouse(g);
+    t.equal(r.ok, true, 'her House Beast Here order can be given (no other wyvern is housed)');
+    complete(g, lastOrder(g));
+    t.same([BR.creatureById(g, 'elara_wyvern').status, BR.creatureById(g, 'elara_wyvern').home], ['housed', PEN]);
   });
 
   test('a House order from before (up to three side by side) never overfills the Pen: the beast keeps waiting and the log says so', function (t) {
@@ -811,6 +846,8 @@
     t.same(res.report.cancelled.filter(function (c) { return c.id === 'hv-28'; }).map(function (c) { return [c.gp, /training and riding are gone/.test(c.why)]; }), [[150, true]]);
     t.same(res.report.moved.filter(function (m) { return m.id === 'hv-27'; }).map(function (m) { return m.to; }), ['the Beast Pen']);
     var lines = s.migration.v4.lines.join('\n');
+    t.ok(/^The three beast buildings became one Beast Pen; 150 gp went back into the treasury; /.test(s.migration.v4.summary), 'the summary: ' + s.migration.v4.summary);
+    t.equal(/\d+ places? removed/.test(s.migration.v4.summary), false, 'the three buildings are not "removed": they are the Pen');
     t.ok(/The Wyvern Roost, Griffin Tower and Dire Wolf Den have become one Beast Pen\. It keeps one beast of each kind: a wyvern, a griffin, a dire wolf, a buckbear and a fellcat\. The other slots are free\./.test(lines), lines);
     t.ok(/All 4 of your beasts are still here/.test(lines));
     t.ok(/A beast at Bond 1 or more counts as acclimatised: Elara's wyvern, Swiftwing and Ashfang\./.test(lines));
@@ -871,7 +908,14 @@
     t.same(res.save.builtExtras.map(function (e) { return e && (e.facId || e); }), ['library_scriptorium', PEN, 'arcane_laboratory'], 'in the first empty slot, built');
     t.equal(res.save.facilityLevels[PEN], 1);
     t.same(res.save.creatures.map(function (c) { return [c.id, c.status, c.home]; }), [['c1', 'housed', PEN], ['c2', 'waiting', '']]);
-    t.ok(/Your beasts had no building left standing, so the Beast Pen was built for you, free, in an empty slot/.test(res.save.migration.v4.lines.join(' ')));
+    t.ok(/Your beast had no building left standing, so the Beast Pen was built for you, free, in an empty slot \(a Beast Pen costs time, never gold\)\. It is still there\./.test(res.save.migration.v4.lines.join(' ')), 'one beast: singular: ' + res.save.migration.v4.lines.join(' '));
+    t.equal(res.save.migration.v4.summary, 'A Beast Pen was built for your beasts.', 'and the one-line summary says it was built, not "nothing changed"');
+    var three = convert(v3(function (s) {
+      s.builtExtras = ['library_scriptorium'];
+      s.creatures = [creature('c1', 'griffin', 'Swiftwing', 'housed', 'griffin_tower', 1), creature('c2', 'dire_wolf', 'Ashfang', 'housed', 'dire_wolf_den', 0), creature('c3', 'wyvern', 'Ash', 'housed', 'wyvern_roost', 2)];
+    }));
+    t.same(three.problems, []);
+    t.ok(/Your beasts had no building left standing, so the Beast Pen was built for you, free, in an empty slot \(a Beast Pen costs time, never gold\)\. They are all still there\./.test(three.save.migration.v4.lines.join(' ')), 'three beasts: plural');
     t.equal(res.save.archivedFacilities.some(function (a) { return a.facId === PEN; }), false);
     var full = convert(v3(function (s) {
       s.builtExtras = ['library_scriptorium', old('arcane_laboratory')];
@@ -931,6 +975,40 @@
     b.day = 14;
     var e = b.pendingOrders[0];
     t.equal(BR.completeSimpleOrder(b, data, e, dice([0.5]))[0][0], 'Order Completed', 'Elara\'s order records her (a wyvern waits, but none is housed yet)');
+  });
+
+  test('a waiting wyvern and Elara\'s House order while the Pen already holds a wyvern: the report says plainly who waits and why, nothing is lost, and when her order completes she is kept waiting', function (t) {
+    var raw = v3(function (s) {
+      s.builtExtras = [old('wyvern_roost')];
+      s.creatures = [creature('w1', 'wyvern', 'Ash', 'housed', 'wyvern_roost', 1), creature('w2', 'wyvern', 'Skyrender', 'waiting', '', null), creature('g1', 'griffin', 'Swiftwing', 'waiting', '', null)];
+      s.pendingOrders = [order('e', 'wyvern_roost', 'house_elara_wyvern', { chosen: { creatureId: 'elara_wyvern' }, label: 'Wyvern Roost: House Elara\'s Wyvern', dueDay: 14 })];
+    });
+    var res = convert(raw);
+    t.same(res.problems, [], 'the audit');
+    var lines = res.save.migration.v4.lines.join('\n');
+    t.ok(/The House order for Elara's wyvern carries on, but the Beast Pen already holds a wyvern, so Elara's wyvern will wait for a home when it completes \(it is added to the list of waiting beasts then; it is not lost\)\./.test(lines), lines);
+    t.ok(/Skyrender is waiting for a home, because the Beast Pen already holds a wyvern\. It stays on the waiting list; nothing is sent away\./.test(lines), lines);
+    t.equal(/Swiftwing is waiting for a home/.test(lines), false, 'a griffin waiting is not blocked: no griffin is housed');
+    t.equal(res.save.migration.v4.summary, 'The beast building became the Beast Pen; 1 order moved.', 'the one-line summary');
+    t.same(res.save.creatures.map(function (c) { return c.id; }), ['w1', 'w2', 'g1'], 'conversion adds and removes nobody');
+    /* Two waiting wyverns and a griffin: the line names each with its kind. */
+    var two = convert(v3(function (s) {
+      s.builtExtras = [old('wyvern_roost')];
+      s.creatures = [creature('w1', 'wyvern', 'Ash', 'housed', 'wyvern_roost', 1), creature('g0', 'griffin', 'Talon', 'housed', 'griffin_tower', 1), creature('w2', 'wyvern', 'Skyrender', 'waiting', '', null), creature('g1', 'griffin', 'Swiftwing', 'waiting', '', null)];
+    }));
+    t.same(two.problems, []);
+    t.ok(/These beasts are waiting for a home, because the Beast Pen already holds one of their kind: Skyrender \(a wyvern\) and Swiftwing \(a griffin\)\. They stay on the waiting list; nothing is sent away\./.test(two.save.migration.v4.lines.join(' ')), two.save.migration.v4.lines.join(' '));
+    /* When her order's day comes, she is recorded waiting, and the order is gone: she is not lost. */
+    var b = BR.fromSave(copy(res.save), data);
+    b.day = 14;
+    var o = b.pendingOrders[0];
+    var done = BR.completeSimpleOrder(b, data, o, dice([0.5]));
+    BR.removeOrder(b, o.id);
+    t.equal(done[0][0], 'Creatures');
+    t.same(b.creatures.map(function (c) { return [c.id, c.status, c.home]; }), [['w1', 'housed', PEN], ['w2', 'waiting', ''], ['g1', 'waiting', ''], ['elara_wyvern', 'waiting', '']], 'three waiting, one housed, none lost');
+    t.same(b.pendingOrders, []);
+    t.equal(canon(BR.fromSave(BR.toSave(b), data)), canon(b), 'she survives a save and a reload');
+    t.equal(canon(BR.migrateToV4(res.save, data).save), canon(res.save), 'converting again changes nothing');
   });
 
   test('a beast that is Bond 1 or more is acclimatised, Bond 0 must roll; a bond waiting for the DM\'s scene still waits; nothing is credited and nothing rolled', function (t) {

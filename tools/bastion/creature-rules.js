@@ -12,7 +12,7 @@
    days, no gold) houses the waiting creature the DM picks: the order keeps
    its id (as Register Port Charter keeps its Charter), and when it completes
    the creature is 'housed' there, once. Nothing makes an animal by itself
-   (Elara's wyvern too: an old save that has her keeps her).
+   (Elara's wyvern too: an old save that has it keeps it).
 
    Room: the Pen keeps ONE beast of each kind (creatures-data.js "pen"). A kind
    is full when one is housed or being housed; a creature of a full kind waits
@@ -214,6 +214,8 @@
     if (!isObj(c) || !R.creatureById(s, c.id)) return 'That creature isn\'t at the Ironbow any more.';
     var name = R.creatureName(data, c);
     if (c.status !== 'waiting') return name + ' lives at the Ironbow now, and stays.';
+    /* A story beast is not a grant the Explorer can send again, so it is never released. */
+    if (R.creatureUnique(data, c.id)) return name + ' is part of the story, and the Explorer cannot grant it again, so it stays at the Ironbow.';
     if (R.houseOrderFor(s, c.id)) return name + ' is being housed. Cancel that order first.';
     return '';
   };
@@ -333,9 +335,17 @@
       var u = R.creatureUnique(data, id);
       var w = { id: id, species: txt(u.species, 40), owner: txt(u.owner, 40), name: '', status: 'housed', home: fac.id, grantedDay: s.day, housedDay: s.day, msgId: '' };
       var uroom = R.penRoom(s, data, w.species);
-      /* The order itself is pending, so it counts as the one place for this kind: only already-housed beasts can fill it. */
-      if (uroom.housed.length >= uroom.perKind) return ['Creatures', lab + ': the Beast Pen keeps one ' + R.speciesNoun(data, w.species) + ' and ' + R.creatureName(data, uroom.housed[0]) + ' lives here, so nothing changed.'];
       if (id === 'elara_wyvern') w.development = R.newDevelopment(w, s.day);
+      /* The order itself is pending, so it counts as the one place for this kind: only already-housed beasts can fill it.
+         When they do, the story beast is recorded all the same, waiting for a home like a granted one, so it is never lost
+         with its order (the Explorer cannot grant it again). */
+      if (uroom.housed.length >= uroom.perKind) {
+        w.status = 'waiting';
+        w.home = '';
+        w.housedDay = null;
+        R.creatures(s).push(w);
+        return ['Creatures', lab + ': the Beast Pen keeps ' + (uroom.perKind === 1 ? 'one ' + R.speciesNoun(data, w.species) : plural(uroom.perKind, R.speciesNoun(data, w.species), R.speciesNounPlural(data, w.species))) + ' and ' + R.creatureName(data, uroom.housed[0]) + ' lives here, so ' + R.creatureName(data, w) + ' keeps waiting for a home. It is listed in the Beast Pen, not lost.'];
+      }
       R.creatures(s).push(w);
       var owner = R.creatureOwnerName(data, w);
       return ['Order Completed', lab + ' → ' + R.creatureName(data, w) + ' lives at the Ironbow now, at the ' + fac.name + (owner ? ' (' + owner + '\'s)' : '') + '.'];
@@ -355,6 +365,25 @@
     c.home = fac.id;
     c.housedDay = s.day;
     return ['Order Completed', lab + ' → ' + name + ' has a home at the ' + fac.name + '. Acclimatise it with its handler (Acclimatise With Beast) before it can go out on the road.'];
+  };
+
+  /* A House order for a story beast that is not recorded yet (Elara's wyvern, ordered before the Strip Back Overhaul) is
+     the only thing that holds it: when such an order goes without completing (the DM cancels it, or the Pen it was for
+     is demolished), it is recorded waiting for a home, exactly as a granted beast would be, so nothing is lost with it.
+     orders: the orders going. Returns the creatures recorded. */
+  R.keepStoryBeasts = function (s, data, orders) {
+    var kept = [];
+    (arr(orders) || []).forEach(function (o) {
+      if (!isHouseOrder(o)) return;
+      var id = o.chosen.creatureId;
+      var u = R.creatureUnique(data, id);
+      if (!u || R.creatureById(s, id)) return;
+      var w = { id: id, species: txt(u.species, 40), owner: txt(u.owner, 40), name: '', status: 'waiting', home: '', grantedDay: s.day, housedDay: null, msgId: '' };
+      if (id === 'elara_wyvern') w.development = R.newDevelopment(w, s.day);
+      R.creatures(s).push(w);
+      kept.push(w);
+    });
+    return kept;
   };
 
   /* ---------- Grants from the Explorer ---------- */
