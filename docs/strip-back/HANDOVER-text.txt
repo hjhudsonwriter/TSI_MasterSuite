@@ -1,0 +1,202 @@
+STRIP BACK OVERHAUL HANDOVER DOCUMENT FOR CLAUDE CODE:
+Remove the following facilities from the Bastion:
+● Menagerie
+● War Room
+● Library & Scriptorium
+● Arcane Laboratory
+● Armoury
+● Watchtower
+● Barracks
+● Temple of Pelagos
+● Temple of Aurush
+● Temple of Telluria
+● Wyvern Roost
+● Griffin Tower
+● Dire Wolf Den
+Some of the functionality and orders from these removed facilities will be transferred to other
+facilities (to be detailed below).
+Remove the following panels from the interface:
+Favour of the Gods
+Clan Influence
+War Council
+Day Log
+Events
+Remove all of the above panels and all of their associated functionality - no more war games
+VTT.
+Form a Clan / Party Identity Overhaul:
+Remove the ability for parties to formally found their own Clan (party identity).
+Keep the crest in the top right corner of the bastion image panel and automatically allow parties
+to create their own crest for the bastion from the very start of the game and apply it here. Create
+an optional ‘Party Name’ editor where the party can enter a collective name for themselves that
+will be displayed above their crest once selected.
+DM Doc Overhaul:
+The DM Doc is now a pop out that can move onto another screen, which is perfect, because the
+players can't see it. I want to review the layout and optimisation of the DM Doc, as well as
+expand its information and capability. I want the following layout and functionality implemented
+please:
+
+=== page 1 ===
+
+Top left panel: 'Party' Panel. Contains - Party Level, Party Gold, Party Effects (any effects from
+the explorer that relate to the entire party as a whole), then Heroes, with each heroes name
+listed. Beside each heroes name should be any active effects from the explorer that are directly
+related to that specific hero.
+Top right panel: 'Bastion' Panel. Contains - Orders Pending, Next Word From The Ironbow.
+Bottom left panel: 'Explorer' Panel. Contains - Day, Where The Party Is, Change A Score,
+Threads, Expedition (a line detailing if there is an active expedition. If so, what day did it begin
+and how many days has it been running for. Once expedition is ended in the explorer, the line in
+this panel reads 'expedition ended - *day 'x' to day 'x'*.
+Bottom right panel: 'Quest' panel. A box where text can be pasted (e.g a session file for the DM
+to read from) (perhaps if not too complicated - option to import a session file pdf or docx?
+Optional).
+Workshop Overhaul:
+Applying Artisan Tools should be removed from the workshop. Instead, where the 6 slots for
+Artisan Tools currently are, should be 5 slots that represent the staff at the workshop (each with
+their own specialisation), that open up 1 by 1 as the workshop upgrades, adding further crafting
+options:
+● L1 - Handyman (common crafting - list to be provided)
+● L2 - Smith (Smith’s Tools)
+● L3 - Scholar (Calligrapher’s Tools orders + Overland Charts + Research)
+● L4 - Alchemist (Alchemist’s Tools + any items this doesn’t already include that can be
+crafted at the Arcane Laboratory)
+● L5 - Artisan (Adds additional options to each of the previous levels order lists - these are
+TBD)
+Development Facility Mechanics Overhaul (excluding Courier Exchange):
+The 4 production based development facilities should have their mechanics changed to function
+as follows:
+Only 1 order is ever available to produce at these facilities at one time - there is not big list of
+orders that are blocked until you unlock them.
+At level 1 the facility order should be whatever it is listed as currently - that is the only thing that
+the facility does at this level. Once the facility is upgraded, the previous Level 1 order is now
+replaced entirely with the Level 2 order, and the Level 1 order is no longer available to create.
+E.g, at level 1 the Timber Yard & Sawmill has one order only: Raw Timber. Once upgraded to
+level 2, the order is replaced with Sawn Lumber - Raw Timber is no longer an option and has
+been replaced entirely. This continues as stated through the remaining levels.
+Current L1-L5 orders do not need to change, only the way the facility works (as just described)
+needs to change.
+New / Merged Facilities:
+
+=== page 2 ===
+
+1. The Temple:
+The Temple of Pelagos, Temple of Aurush and Temple of Telluria should be removed as
+individual facilities, and replaced with a singular ‘Temple’.
+In the Temple facility panel once you’ve clicked on it to open it, the panel should be split
+vertically into thirds, with each third representing a God. At the top of each third should be the
+God’s name - Telluria / Aurush / Pelagos. Below that should be the Favour of the gods bar for
+the relevant god. Below that, each should have a ‘Pray to *God Name*’ function, that functions
+exactly the same as the ‘blessings’ prayer does at each of the Temples currently - increasing the
+favour of the gods by a generated dice roll.
+Below each ‘Pray’ function should be a ‘Receive Blessing’ function, with a dropdown that lists 3
+blessings to choose from e.g Voyage Blessing, Bless Commercial Shipment and Great Rite of
+Pelagos (from the current Temple of Pelagos functions). This function should be greyed out and
+not able to select until your favour of the gods bar for the relevant god has filled up, and you
+then spend that full bar on one of these blessings, and then your favour bar resets.
+2. Hall of Emissaries:
+Remove the Port Charter functionality from the Hall and insert it into the Dock instead.
+Along with the Port Charter functionality, send the ‘Routes’ panel to the dock as well.
+Remove all other functions from the Hall - Host Delegation, Secure Writ, Inter Clan Summit &
+Trade Consortium - all gone.
+Remove all upgrade functionality - its a standalone single-level facility.
+Remove the ‘Resolve’ and ‘Council Ledger’ functions.
+What remains at the Hall / what it displays:
+Clan Honour/Respect
+Clan Political Capital
+Diplomatic Events
+3. Dock
+Bring the entire functionality of the Port Charter system over to the Dock, along with the ‘Routes’
+panel from the Hall of Emissaries that displays the Scarlett Isles map and active trade routes.
+This is where all trade will be managed now.
+4. Beast Pit (working title) - Beast Facilities Overhaul:
+All individual beast facilities are removed in place of one single Beast Pit.
+When any type of creature is granted to the party, they all get sent here - the same way that
+they were sent to their own facilities before.
+Beasts can be housed here, then named, then assigned a handler as before.
+Player-Beast management and Bonding re-work:
+The previous way that players would increase their bond with their creatures was to issue
+orders which would then be approved by the DM with the confirmation and sign-off of a narrative
+event, in order to make it feel less robotic. This should be replaced with the following…
+Bonding should now be directly linked to the days that pass in the explorer and bastion. Players
+can bring their beast with them on their travels, and the bond with their beast will slowly grow as
+they spend more time together, reaching milestone points after X amount of days that will then
+
+=== page 3 ===
+
+prompt a DM-led event in order to confirm the bonding level-up (similar to the DM confirmation
+before). However, when a beast is very first housed at the Pit, handlers must complete a strict,
+difficult DC roll in order to pass safe acclimatisation with their beast and reach Bond Level 1.
+Only then can the beast be let out from the Pit and taken with the player on their travels and
+begin to bond with them day by day. Until this DC is passed, no day by day bonding can take
+place. Other than ‘House Beast Here’, the only other order should be ‘Acclimatise With Beast’,
+where a housed beast can be selected from a dropdown and then rolled for. If the roll passes,
+the bond moves to Level 1 with their handler, and that beast disappears from the ‘Acclimatise
+with Beast’ order dropdown list. If it fails, you cannot try again for 3 in-game days.
+Upon passing acclimatisation, this is when the Beast Handler App and the initiation sequence
+becomes available, and the player can link up their phone and complete the initiation sequence
+to give their beast its subspecies and personality. (more on this later)
+Once acclimatisation has passed, a button appears beside that beast’s name in the Beast Pit -
+something that represents the ability for the player to take their beast out on their travels. Once
+this is clicked, the beast is labelled as ‘Away from the Ironbow’, and this is the point where the
+new day by day player bonding system will come into play. The reverse button becomes
+available once the beast is away from the bastion, something like ‘Return *beast name* to the
+Beast Pit. Once that is clicked, the beast is labelled as being at the Beast Pit, and the day by
+day bonding system pauses (as the player does not bond with their beast if they are not
+together).
+Types of Beasts:
+There will now be 5 types of Beasts available for the players to be granted in the explorer and
+sent back to the Beast Pit at the Ironbow:
+Wyvern
+Griffin
+Dire Wolf
+Buckbear
+Fellcat
+Until further notice / build phase instructions - The Beast Pit should only be able to house 1 of
+each beast type.
+Beast Handler App Overhaul:
+Having passed the acclimatisation DC roll in the Beast Pit, this is the point where the Beast
+Handler App becomes available for the players to link their phones up to and begin their
+initiation sequence with their beast.
+The current system for linking this up is far far too time consuming and clunky, particularly with
+the whole pasting codes back and forth etc etc. If possible, please investigate other ways to
+streamline this process. Could there be a QR code that appears for the players to scan that
+would bring up the app automatically on their phones?
+We need an automatically updating link between the explorer/bastion and the Beast Handler
+App in order for the day by day bonding progression to be displayed accurately for the players -
+
+=== page 4 ===
+
+whats the best way to do this? I am not opposed to putting some small, simple backend in here
+if it would help - Firebase / Supabase or something? (I have never used these tools before and
+know nothing about them, so if this is the route we take then i will need step by step idiot proof,
+jargon free guidance through it).
+What’s should be in the App:
+Change the initiation sequence to remove the ability to manually input regional varieties and
+personality traits - the player must roll, and they get what they are given.
+For this first iteration of the app, I want to feign the idea of choice of regional variety but
+streamline this behind the scenes to fix what regional variety of the beast type comes up. Make
+sure we present the illusion of chance, but until further notice, fix the app so that the following
+regional varieties of each beast are always landed on in the regional variety initiation sequence
+rolls:
+Wyvern - Bloodcrest
+Griffin - Dawnmantle
+Dire Wolf - Blacktide (new - to be uploaded to the Repo and description given to Claude Code)
+Buckbear - Broadcrown - (new - to be uploaded to the Repo and description given to Claude
+Code)
+Fellcat - Lichenback - (new - to be uploaded to the Repo and description given to Claude Code)
+The Beast Handler App will now act only as a visual aid and bonding tracker, with no orders
+panel as it is no longer required after the Beast Pit rework.
+With the orders panel removed, there should be a control bar across the bottom of the page
+where players can select from 3 pages.From left to right: Profile / Bond / Chronicle.
+● Profile: This screen is already built.
+● Bonding: New name for the main hero image page (already built). Keep this page as it is,
+but add a ‘Bonding Days’ counter, displaying the number of days that the beast has been
+out of the Bastion and on it’s travels with it’s handler. Keep the 1-5 bonding pills as they
+are aesthetically, but each pill should slowly fill up as the ‘Bonding Days’ counter
+increases (as per the new day by day bonding system), and once a pill is full, a
+notification is produced in the Bastion prompting the DM to begin a narrative led event in
+order to confirm and sign off on level up. Once that has been confirmed by the DM, it
+moves on to the next level’s pill to start filling up in the App.
+● Chronicle: this page is already built - keep it as it is.
+
+=== page 5 ===
+

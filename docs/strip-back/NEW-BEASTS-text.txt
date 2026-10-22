@@ -1,0 +1,89 @@
+NEW BEASTS (Harry's message of 22 October 2026, verbatim apart from layout)
+
+Images attached in the chat (file names Harry gave them):
+  DW_Blacktide  - Dire Wolf, Blacktide (a black-and-tan wolf on a storm-lashed rocky shore, wrecked ship, red banner with a white tree sigil)
+  BB_Broadcrown - Broadcrown Buckbear (a huge shaggy brown bear with tall pale antlers in an old-growth forest)
+  FC_Lichenback - Fellcat, Lichenback (a grey, lichen-mottled lynx-like cat with long ear tufts on a frosty rock ledge in the northern highlands)
+
+Other Buckbear species (no images other than Broadcrown as not yet needed):
+1. Broadcrown
+ * Region: the old-growth forests around Nightwood, Northern Province (Clan Blackstone).
+ * Appearance:
+   * the largest variety;
+   * a shaggy, dark-brown coat with tawny-gold tips, heaviest in a ruff around the neck and shoulders;
+   * tall, wide pale antlers with many upturned points, forming a crown;
+   * amber eyes and long, pale claws;
+   * usually found among moss, ferns and forest streams.
+ * Lore link: the Heartwood Ritual's Rootbound Buckbear could be read as a Broadcrown corrupted by the Veinwood. Only adopt that if you want it.
+2. Shovelhorn
+ * Region: the frozen country around Coldpass, North Isle (Clan Karr).
+ * Appearance:
+   * stocky and heavily built;
+   * a thick double coat from cream to smoke-grey;
+   * small, rounded ears;
+   * broad, flat antlers like a moose's, which it uses to scrape snow off food.
+3. Cragbuck
+ * Region: the slopes of The Fangs, Midland Province (Clan Bacca).
+ * Appearance:
+   * lean and long-legged;
+   * a slate-grey coat with silver flecks;
+   * short antlers with few points, swept back close to the skull so they don't catch on rock;
+   * a sure-footed climber.
+4. Fenwallow
+ * Region: the marshes and waterways of the Eastern Province (Clan Slade).
+ * Appearance:
+   * low and heavy;
+   * an oily, dark-brown coat that sheds water and is usually caked in mud;
+   * wide, splayed paws for bog ground;
+   * short, forward-curving antlers often hung with reeds;
+   * a strong swimmer.
+5. Saltcoat
+ * Region: the coast and forest edges of the East Isle (Clan Rowthorn).
+ * Appearance:
+   * the smallest variety;
+   * a russet-red coat bleached paler at the tips by salt and sun;
+   * narrow antlers with a slight forward hook;
+   * forages rock pools and the tideline for shellfish and fish.
+
+Fellcat Regional Varieties (no images other than Lichenback as not yet needed):
+1. Mistveil (your base description)
+ * Region: the coast and fog banks of Bleaker's Bay, North Isle (Clan Karr).
+ * Appearance:
+   * a thick silver coat with faint smoke-grey rosettes;
+   * tufted ears and oversized paws;
+   * pale grey-green eyes;
+   * fur that holds a damp sheen from the sea air.
+ * Camouflage: sea mist.
+2. Whiteout
+ * Region: Icepoint.
+ * Appearance:
+   * the palest and heaviest variety;
+   * an almost pure white coat with barely visible markings;
+   * the deepest fur, with fur-covered paw pads;
+   * a long, thick tail it wraps over its face when resting;
+   * ice-blue eyes.
+ * Camouflage: snow.
+3. Lichenback
+ * Region: the northern highlands.
+ * Appearance:
+   * leaner, built for rock rather than snow;
+   * a grey coat mottled grey-green like lichen, turning frost-white in winter;
+   * the longest ear tufts and a shorter tail;
+   * hard, scarred paw pads.
+ * Camouflage: frost-covered stone.
+4. Tawnyfell
+ * Region: the scree and lower slopes of The Fangs, Midland Province (Clan Bacca).
+ * Appearance:
+   * a shorter coat, smoke-brown to tawny-grey;
+   * longer legs;
+   * hunts at dusk below the snowline.
+ * Camouflage: scree and twilight.
+5. Smokecoat
+ * Region: the high gorges of the Shadow Mountains, Western Province (Clan Farmer).
+ * Appearance:
+   * the smallest and rarest variety;
+   * a charcoal-grey coat with near-black rosettes;
+   * hunts at night.
+ * Camouflage: darkness and shadowed rock.
+
+NOT YET SUPPLIED for Buckbear and Fellcat (needed for their profile tables): the d8 Attachment Cue table, the d8 Instinctive Trigger table (the d12 Dominant Temperament table is shared by all beasts). The Dire Wolf's Blacktide variety text (region, appearance) is not in this message either: only its picture.
