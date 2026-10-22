@@ -28,6 +28,10 @@ Branch `fix13` (from the main branch with the Beast Pen and bonding days, S14 an
 
 Rules page: new groups in `beasthandler-model` (revealTarget, the cards), `beasthandler-link` (the built-in names), `backup-rules`, `bridge` (refusals in a day pass, problems-only notices, unknown kinds). Click-throughs: `beasthandler-meet` (variety edited to another, cleared, typed, changed while looking, a personality line edited before and after the roll, names at seven widths for every variety of every kind, scroll to top at 320 x 568 and 360 x 640 with and without reduced motion on the phone page, the portraits), `beasthandler` (the chip), `bridge` (Bastion Day 1, Explorer Day 4, a refused change dated Day 3), and the new `beasthandler-sweep`. Each new check was shown to fail without its fix (the sweep calls, the Esc guard, the day notices, the scroll, the old CSS).
 
+## Gates (each run on its own, from files, offline)
+
+Rules page 1,399 passing (was 1,386). Click-throughs: `beasthandler` 15, `beasthandler-meet` 34, `beasthandler-phone` 15, `beasthandler-bond` 12, `beasthandler-sweep` 17 (new), `beast-pen` 24, `creatures` 23, `bridge` 37, `bastion-days` 16, `bastion-screen` 55, `migration-v4` 22, `session-safety` 6, `dmdoc` 50, `guide` 21, `phase1` 128, all passing. The sweep test saves (`TSI.store.flush()`) before it reloads the page, as a person would take longer than the Bastion's short save delay; without that, a reload straight after "I've read this" once showed the report again.
+
 ## Not changed, on purpose
 
 - The Esc behaviour of the conversion box (days still pass after it is closed unread) is as it was; only the Beast Handler's sweep now waits.

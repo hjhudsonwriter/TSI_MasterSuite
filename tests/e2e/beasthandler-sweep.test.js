@@ -201,6 +201,8 @@ function setUpBeasts(ba) {
       equal(beast(s, 'cr-hv-griffin-swiftwing').development.regional, 'Highland');
       equal(beast(s, 'cr-hv-wolf-ashfang').development.regional, 'Northern Moor');
       equal([!!beast(s, 'cr-hv-griffin-swiftwing').development.initiation, !!beast(s, 'cr-hv-wolf-ashfang').development.initiation], [false, false]);
+      /* The Bastion saves a moment after each change; wait for that before the page is reloaded (a person takes longer than this). */
+      await ba.evaluate(() => TSI.store.flush());
       equal((await stored()).regional, 'Bloodcrest', 'it was saved');
       frozen = canon(d);
     });
