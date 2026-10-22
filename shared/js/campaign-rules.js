@@ -267,8 +267,10 @@
       /* The party: the Bastion's level (7, its starting level, until it saves one), and the Explorer's heroes. */
       var level = ba ? clampInt(ba.partyLevel, 1, 20, null) : null;
       out.level = { value: level === null ? 7 : level, fromBastion: level !== null };
+      /* Each hero is { id, name, effects }: the effects are filled in below,
+         once the Explorer's Active Effects have been read. */
       out.heroes = ex && Array.isArray(ex.tokens)
-        ? ex.tokens.map(function (t) { return isObj(t) ? str(t.name).trim() : ''; }).filter(Boolean)
+        ? ex.tokens.filter(function (t) { return isObj(t) && str(t.name).trim(); }).map(function (t) { return { id: str(t.id), name: str(t.name).trim(), effects: [] }; })
         : [];
 
       /* Time: the Explorer's day (the campaign's only clock). The Bastion's
@@ -285,7 +287,9 @@
           .slice().sort(function (a, b) { return a.dueDay - b.dueDay; });
         out.orders = {
           count: orders.length,
-          next: orders.length ? { day: orders[0].dueDay, label: str(orders[0].label) || 'An order', inDays: orders[0].dueDay - today } : null
+          next: orders.length ? { day: orders[0].dueDay, label: str(orders[0].label) || 'An order', inDays: orders[0].dueDay - today } : null,
+          /* Up to five, the one completing next first. */
+          list: orders.slice(0, C.ORDERS_LISTED).map(function (o) { return { day: o.dueDay, label: str(o.label) || 'An order', inDays: o.dueDay - today }; })
         };
         var coming = C.bastionComing(inDays).filter(function (x) { return x.day > today; });
         out.nextWord = coming.length ? {
@@ -345,13 +349,62 @@
 
       /* The Explorer's Active Effects, exactly as its own list shows them. */
       var effects = Array.isArray(journey.effects) ? journey.effects : [];
-      out.effects = effects.filter(function (e) { return isObj(e) && str(e.name); }).map(function (e) {
-        return {
+      var heroById = {};
+      out.heroes.forEach(function (h) { if (h.id) heroById[h.id] = h; });
+      out.effects = [];
+      out.partyEffects = [];
+      effects.filter(function (e) { return isObj(e) && str(e.name); }).forEach(function (e) {
+        var line = {
           id: str(e.id), name: e.name, who: str(e.whoName) || 'The party', text: str(e.text),
           until: C.untilText(e, day === null ? 1 : day), from: str(e.from)
         };
+        out.effects.push(line);
+        /* An effect belongs to a hero by the hero's id (so a later rename can't
+           orphan it). One for the whole party, or for a hero who is no longer
+           in the Explorer's list, goes with the party's, so none is hidden. */
+        var hero = typeof e.who === 'string' && e.who ? heroById[e.who] : null;
+        (hero ? hero.effects : out.partyEffects).push(line);
       });
+
+      /* The Great Rite the party holds (not one of the Active Effects: it
+         ends with the expedition). */
+      var blessing = isObj(journey.blessing) && str(journey.blessing.rite) ? journey.blessing : null;
+      var riteInfo = blessing && window.TSI_DATA && window.TSI_DATA.shrineRites ? window.TSI_DATA.shrineRites[blessing.rite] : null;
+      out.rite = blessing ? { name: riteInfo && str(riteInfo.name) ? riteInfo.name : 'A Great Rite', used: blessing.used === true } : null;
+
+      /* The expedition: none yet, under way (and for how many days), or ended
+         (and which days it ran). Days count as the Explorer's "days passed"
+         does: today minus the start day. An end day an old save never stored
+         is read from the Explorer's log, and left null if it isn't there. */
+      var expd = isObj(journey.expedition) ? journey.expedition : {};
+      var xn = ex ? Math.max(0, clampInt(expd.n, 0, 100000, 0)) : 0;
+      var xActive = !!ex && xn > 0 && expd.active === true;
+      var xStart = isNum(expd.startedDay) && expd.startedDay > 0 ? Math.round(expd.startedDay) : null;
+      var xEnd = isNum(expd.endedDay) && expd.endedDay > 0 ? Math.round(expd.endedDay) : (xn > 0 && !xActive ? C.endedDayFromLog(journey.log, xn) || null : null);
+      out.expedition = {
+        n: xn,
+        state: xn === 0 ? 'none' : xActive ? 'active' : 'ended',
+        startedDay: xn === 0 ? null : xStart,
+        endedDay: xn > 0 && !xActive ? xEnd : null,
+        daysRunning: xActive && xStart !== null && day !== null ? Math.max(0, day - xStart) : null
+      };
       return out;
     }
+  };
+
+  /* How many pending orders the DM doc lists (the next to complete first). */
+  C.ORDERS_LISTED = 5;
+
+  /* The day expedition number n ended, read from the Explorer's journey log
+     (newest line first) when an older save never stored it: the line is
+     "Day 9 · Expedition 2 ended on Day 9." Returns 0 when it isn't there (the
+     log keeps only the last 100 lines), because a day is never guessed. */
+  C.endedDayFromLog = function (log, n) {
+    var list = Array.isArray(log) ? log : [];
+    for (var i = 0; i < list.length; i++) {
+      var m = typeof list[i] === 'string' ? /Expedition (\d+) ended on Day (\d+)\./.exec(list[i]) : null;
+      if (m && Number(m[1]) === n) return Number(m[2]);
+    }
+    return 0;
   };
 }());

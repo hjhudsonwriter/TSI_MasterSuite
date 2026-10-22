@@ -440,7 +440,9 @@ async function waitSaved(page) {
     const KEY = 'tsi.dmdoc.layout';
     const box = (p, sel) => p.$eval(sel, e => { const r = e.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; });
     const rect = p => p.evaluate(() => TSI.dmDoc.rect());
-    const saved = p => p.evaluate(k => TSI.store.ready.then(() => TSI.store.get(k, null)), KEY);
+    /* What is saved is { v: 2, x, y, w, h } (the version tells the old single-column layout apart); most checks only care about the box. */
+    const savedRaw = p => p.evaluate(k => TSI.store.ready.then(() => TSI.store.get(k, null)), KEY);
+    const saved = p => savedRaw(p).then(v => v && { x: v.x, y: v.y, w: v.w, h: v.h });
     const view = p => p.evaluate(() => ({ width: document.documentElement.clientWidth, height: document.documentElement.clientHeight, top: document.querySelector('.tsi-topbar').getBoundingClientRect().bottom }));
     const isOpen = p => p.$eval('[data-test=dmdoc-panel]', d => !d.hidden).catch(() => false);
     const focused = p => p.evaluate(() => document.activeElement && (document.activeElement.dataset.test || document.activeElement.tagName));
@@ -527,7 +529,7 @@ async function waitSaved(page) {
         equal(await focused(page), 'dmdoc-bar');
         const r = await panelMatches(page);
         const v = await view(page);
-        equal(r, { x: v.width - 440 - 24, y: v.top + 24, w: 440, h: 800 }, 'it first opens near the right edge, below the top bar');
+        equal(r, { x: v.width - 1040 - 24, y: v.top + 24, w: 1040, h: 640 }, 'it first opens near the right edge, below the top bar, sized for its four panels');
         await H.shot(page, 'dmdoc-' + size);
       });
 
@@ -578,14 +580,15 @@ async function waitSaved(page) {
       });
 
       await check(size + ': dragging the title bar moves it, and it\'s saved', async () => {
-        await moveTo(page, 840, 70);
+        await moveTo(page, 400, 90);
         const start = await panelMatches(page);
-        equal([start.x, start.y], [840, 70]);
+        equal([start.x, start.y], [400, 90]);
         await drag(page, '[data-test=dmdoc-bar]', { dx: -300, dy: 40 }, BAR_GRAB);
         const r = await panelMatches(page);
         equal(r, { x: start.x - 300, y: start.y + 40, w: start.w, h: start.h });
         await page.waitForTimeout(200);
         equal(await saved(page), r);
+        equal((await savedRaw(page)).v, 2, 'saved with the layout version');
       });
 
       await check(size + ': dragging from the close button doesn\'t move it', async () => {
@@ -598,7 +601,7 @@ async function waitSaved(page) {
       await check(size + ': the corner grip resizes it, no smaller than 280 × 200', async () => {
         await moveTo(page, 300, 70);
         const before = await rect(page);
-        equal(before, { x: 300, y: 70, w: 440, h: 800 });
+        equal(before, { x: 300, y: 70, w: 1040, h: 640 });
         await drag(page, '[data-test=dmdoc-grip]', { dx: 80, dy: 40 });
         const r = await panelMatches(page);
         equal(r, { x: before.x, y: before.y, w: before.w + 80, h: before.h + 40 });
@@ -753,8 +756,8 @@ async function waitSaved(page) {
         const b = JSON.parse(d.text);
         const rec = b.records.find(r => r.key === KEY);
         assert(rec, 'not in the backup: ' + b.records.map(r => r.key));
-        equal(rec.value, now);
-        rec.value = { x: 120, y: 150, w: 360, h: 300 };
+        equal(rec.value, Object.assign({ v: 2 }, now));
+        rec.value = { v: 2, x: 120, y: 150, w: 360, h: 300 };
         await H.chooseFile(page, '[data-test=restore]', H.writeTemp('dmdoc-backup-' + size + '.json', b));
         assert(/DM doc: 1 saved item/.test(await H.modalText(page)), await H.modalText(page));
         await page.uncheck('.tsi-modal input[type=checkbox]');

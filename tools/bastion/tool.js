@@ -4837,7 +4837,7 @@
           var res = R.applyDmEdits(state, list);
           if (!res.changed) return;
           done();
-          if (res.lines.length) notice('From the DM doc: ' + res.lines.join(' ') + ' The Day Log keeps it.', { type: 'info', title: 'Scores changed by the DM.', id: 'tsi-bas-dmedits', timeout: 12000 });
+          if (res.lines.length) notice('From the DM doc: ' + res.lines.join(' '), { type: 'info', title: 'Scores changed by the DM.', id: 'tsi-bas-dmedits', timeout: 12000 });
           if (res.refused) notice('A score change from the DM doc couldn\'t be used, so nothing changed for it.', { type: 'warn', title: 'From the DM doc.', id: 'tsi-bas-dmedits-refused', timeout: 12000 });
         }, function () { dmEditsBusy = false; });
       }

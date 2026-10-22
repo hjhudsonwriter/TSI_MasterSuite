@@ -78,6 +78,51 @@
     t.same([back.expedition.n, back.expedition.active], [1, false], 'it survives saving');
   });
 
+  test('expeditions remember the day they ended: set on End, cleared on Start, kept through a save', function (t) {
+    var s = explorer(4);
+    t.equal(J.expedition(s).endedDay, 0, 'none yet');
+    J.startExpedition(s);
+    t.same([J.expedition(s).startedDay, J.expedition(s).endedDay], [4, 0], 'under way: no end day');
+    s.travel.day = 9;
+    J.endExpedition(s);
+    t.same(J.expedition(s), { n: 1, active: false, startedDay: 4, endedDay: 9 }, 'ended on Day 9');
+    var back = J.clean(copy(s.journey), E);
+    t.equal(back.expedition.endedDay, 9, 'it survives saving and loading');
+    t.equal(J.clean(copy(back), E).expedition.endedDay, 9, 'and loading twice');
+    s.travel.day = 12;
+    J.startExpedition(s);
+    t.same(J.expedition(s), { n: 2, active: true, startedDay: 12, endedDay: 0 }, 'the next one clears it');
+    s.travel.day = 15;
+    J.endExpedition(s);
+    t.same([J.expedition(s).n, J.expedition(s).startedDay, J.expedition(s).endedDay], [2, 12, 15]);
+    t.equal(J.empty().expedition.endedDay, 0, 'a new journey starts with none');
+    var bad = copy(s.journey);
+    bad.expedition.endedDay = 'soon';
+    t.equal(J.clean(bad, E).expedition.endedDay, 0, 'a damaged value becomes unknown');
+  });
+
+  test('an expedition that ended in an older save: the end day is read from the log, never invented', function (t) {
+    var s = explorer(4);
+    J.startExpedition(s);
+    s.travel.day = 9;
+    J.endExpedition(s);
+    delete s.journey.expedition.endedDay;            /* a save made before endedDay existed */
+    t.equal(J.expedition(s).endedDay, 9, 'found in the "Expedition 1 ended on Day 9." line');
+    var old = J.clean(copy(s.journey), E);
+    t.equal(old.expedition.endedDay, 0, 'loading an old save adds nothing of its own');
+    t.equal(J.expedition({ travel: { day: 9 }, journey: old }).endedDay, 9, 'but the log still answers');
+    var gone = copy(s.journey);
+    gone.log = [];
+    delete gone.expedition.endedDay;
+    t.equal(J.expedition({ travel: { day: 9 }, journey: gone }).endedDay, 0, 'no log line: unknown, not guessed');
+    var other = copy(s.journey);
+    other.expedition.n = 2;                          /* the log only speaks of expedition 1 */
+    delete other.expedition.endedDay;
+    t.equal(J.expedition({ travel: { day: 9 }, journey: other }).endedDay, 0, 'a line about another expedition is not used');
+    t.equal(TSI.campaign.endedDayFromLog(['Day 9 · Expedition 2 ended on Day 9. Earth\'s Endurance expired unused.', 'Day 3 · Expedition 1 ended on Day 3.'], 1), 3, 'the right expedition, with a Great Rite note after it');
+    t.equal(TSI.campaign.endedDayFromLog(null, 1), 0);
+  });
+
   test('assigning a Great Rite is refused when it should be', function (t) {
     var s = explorer(6);
     var b = bastion();
