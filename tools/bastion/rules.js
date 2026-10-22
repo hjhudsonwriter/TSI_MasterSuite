@@ -19,9 +19,9 @@
    Days, not turns (Harry, 8 October 2026; docs/BASTION-OVERHAUL.md). The
    Bastion follows the Explorer's day: state.day is the last day it has
    passed, and the screen passes each new day in turn (R.startDay, the
-   day's routes and orders, R.rollWarAttack, R.finishDay). Orders complete
-   on a due day; buildings on a ready day; contracts send a shipment, routes
-   sail and a Clan at war rolls to attack every 7 days from when each began.
+   day's routes and orders, R.finishDay). Orders complete
+   on a due day; buildings on a ready day; contracts send a shipment and
+   routes sail every 7 days from when each began.
    Every day stored is an Explorer day number (it can be 0 or less after
    R.shiftDays, for something that happened before a Reset Travel). A save
    from before (in Bastion turns) is set aside, not converted (Harry). */
@@ -76,9 +76,7 @@
     var t = (data && data.bastion && data.bastion.time) || {};
     return {
       buildDays: Array.isArray(t.buildDays) ? t.buildDays : [{ level: 17, days: 35 }, { level: 13, days: 35 }, { level: 9, days: 28 }, { level: 5, days: 21 }],
-      every: t.every > 0 ? t.every : 7,
-      patrolDays: t.patrolDays > 0 ? t.patrolDays : 7,
-      musterDays: t.musterDays > 0 ? t.musterDays : 3
+      every: t.every > 0 ? t.every : 7
     };
   };
   /* "The Ironbow sends word…": a short line for the day being passed, shown
@@ -115,10 +113,6 @@
       builtPlots: [],
       facilityLevels: {},
       pendingOrders: [],
-      /* patrolUntil: the last day the Watchtower's Patrol gives Advantage. */
-      defenders: { count: 0, armed: false, patrolUntil: 0 },
-      defenderBeasts: [],
-      military: [],
       warehouse: [],
       artisanTools: ['', '', '', '', '', ''],
       favour: { telluria: 0, aurush: 0, pelagos: 0 },
@@ -147,32 +141,16 @@
          now, but they're kept in the save, so putting the Brigade back
          (archive/mercenary-brigade.js) loses nothing. */
       trustedClientsByClan: clanMap(50),
-      warLog: [],
-      /* Where passing a day has got to ({ day, stage, skipped, attackRolled,
-         news }), so it can finish after a cancelled roll or a closed window
+      /* Where passing a day has got to ({ day, stage, skipped, news }), so it can finish after a cancelled roll or a closed window
          (BAS-02); and "The Ironbow sends word…" not yet shown, [{ day,
          lines }]. */
       dayInProgress: null,
       word: [],
-      /* New: Military Actions under way, one per war action that has come
-         due (rolls, deployment), so each step is kept as it happens
-         (Harry's request, 2 October 2026). */
-      militaryActions: [],
-      /* New in the war's phase 2 (war-campaign-rules.js): the enemy armies
-         drawn up for missions, by "target|objective|force"; Lieutenants and
-         beasts recovering from a battle; and the counter that seeds each new
-         mission's dice. */
-      warMissions: {},
-      warRecovery: [],
-      warMissionSeq: 0,
-      /* New in the war's round of 4 October 2026 (war-campaign-rules.js):
-         the Clans you're at war with, { clanKey: { since, last, next } }
-         (the day the war began, the day of the latest War Action, muster,
-         battle or attack between you, and the day of its next attack roll);
-         and the facilities Under Repair after a lost Defend Bastion,
-         { facId: untilDay } (Under Repair while the day is at or before
-         untilDay). */
-      wars: {},
+      /* The facilities Under Repair, { facId: untilDay } (Under Repair while
+         the day is at or before untilDay). Only a lost battle in the war game
+         ever put one there; the war game was removed on 22 October 2026 (the
+         conversion to version 4 clears any a Bastion had), so this stays empty
+         and R.underRepair is left as it was. */
       repairs: {},
       /* The facilities overhaul (13 October 2026): v 3. Retired buildings
          whose old order is kept ("smithy": the Workshop's Smithing), the
@@ -192,7 +170,7 @@
       /* The creatures (pull request 7, 14 October 2026): each real, named
          animal the Ironbow keeps (Elara's wyvern, and the griffins and dire
          wolves the DM grants in the Explorer), as R.cleanCreatures keeps
-         them. The Menagerie's beasts stay in defenderBeasts. */
+         them. */
       creatures: [],
       /* The Shrines' Great Rites (pull request 8b): each made at the Ironbow
          and waiting there until the DM gives it to the party on an
@@ -368,15 +346,6 @@
     if (arr(s.pendingOrders)) d.pendingOrders = s.pendingOrders.filter(isObj).map(function (o) { return cleanOrderInputs(o); });
     d.day = Math.max(1, dayNum(s.day, 1));
     d.anchored = s.anchored === true;
-    if (isObj(s.defenders)) {
-      d.defenders = {
-        count: clampInt(s.defenders.count === undefined || s.defenders.count === null ? 0 : s.defenders.count, 0),
-        armed: !!s.defenders.armed,
-        patrolUntil: dayNum(s.defenders.patrolUntil, 0)
-      };
-    }
-    if (arr(s.defenderBeasts)) d.defenderBeasts = s.defenderBeasts.filter(isObj);
-    if (arr(s.military)) d.military = s.military.filter(isObj);
     if (arr(s.warehouse)) d.warehouse = R.cleanWarehouse(s.warehouse, data);
     if (arr(s.artisanTools)) d.artisanTools = s.artisanTools.map(function (x) { return typeof x === 'string' ? x : ''; });
     d.favour = numMap(s.favour, ['telluria', 'aurush', 'pelagos'], 0, 100, 0);
@@ -415,15 +384,12 @@
     if (s.clanHonor !== undefined && s.clanHonor !== null) d.clanHonor = clampInt(s.clanHonor, 0, 100);
     d.honourRespectByClan = numMap(s.honourRespectByClan, CLAN_KEYS, -5, 5, 0);
     d.trustedClientsByClan = numMap(s.trustedClientsByClan, CLAN_KEYS, 0, 100, 50);
-    if (arr(s.warLog)) d.warLog = s.warLog.filter(isObj);
     if (isObj(s.dayInProgress) && typeof s.dayInProgress.stage === 'string') {
       var dip = s.dayInProgress;
       d.dayInProgress = {
         day: Math.max(1, dayNum(dip.day, d.day)),
         stage: DAY_STAGES.indexOf(dip.stage) === -1 ? 'orders' : dip.stage,
         skipped: arr(dip.skipped) ? dip.skipped.slice() : [],
-        /* The day's attack roll has been made, so it can't be made again. */
-        attackRolled: dip.attackRolled === true,
         news: arr(dip.news) ? dip.news.filter(function (x) { return typeof x === 'string'; }) : []
       };
     }
@@ -432,21 +398,19 @@
         return { day: dayNum(w.day, d.day), lines: w.lines.filter(function (x) { return typeof x === 'string'; }) };
       });
     }
-    d.wars = cleanWars(s.wars, d.day);
     d.repairs = cleanRepairs(s.repairs, data);
     d.legacyFacilities = arr(s.legacyFacilities) ? s.legacyFacilities.filter(function (x) { return typeof x === 'string'; }) : [];
     d.archivedFacilities = arr(s.archivedFacilities) ? s.archivedFacilities.filter(isObj) : [];
     d.migration = isObj(s.migration) ? s.migration : null;
     d.research = R.cleanResearch(s.research, data);
     d.bridge = R.cleanBridge(s.bridge);
-    /* The creatures (pull request 7), before the war's records, which read them. */
+    /* The creatures (pull request 7). */
     d.creatures = R.cleanCreatures(s.creatures, d.day);
     /* The Beast Handler's record (tools/beasthandler/bastion-link.js): only if the save has one. */
     if (isObj(s.beast) && R.cleanBeast) d.beast = R.cleanBeast(s.beast);
     d.greatRites = R.cleanGreatRites(s.greatRites);
     d.dmEdits = R.cleanDmEdits(s.dmEdits);
     d.diplomaticRecords = R.cleanDiplomaticRecords ? R.cleanDiplomaticRecords(s.diplomaticRecords, d.day, data) : (isObj(s.diplomaticRecords) ? s.diplomaticRecords : { next: 1, list: [] });
-    if (arr(s.militaryActions)) d.militaryActions = s.militaryActions.filter(isObj);
     /* Port Charters, ships at sea, standing shipments and sales (pull
        request 5, commerce-rules.js). */
     if (R.cleanCommerce) R.cleanCommerce(d, data);
@@ -455,10 +419,6 @@
     R.normalizeBuiltExtras(d);
     tidyPlots(d, data);
     R.ensureLevels(d, data);
-    /* The war's records (missions, recovery, depleted regiments, Military
-       Actions, including upgrading phase 1 ones) are tidied last, by
-       war-campaign-rules.js, as they need everything else loaded. */
-    if (R.normalizeWar) R.normalizeWar(d, s, data);
     return d;
   };
   R.toSave = function (state) { return TSI.clone(state); };
@@ -1148,23 +1108,7 @@
     };
   };
 
-  /* The wars, as saved: only known Clans, each with the day it began, the
-     day of the latest war activity (never before the first, never after
-     today) and the day of its next attack roll (a week on from today if
-     it's missing). Anything damaged is dropped: that Clan is at peace. */
   function okDay(v) { return typeof v === 'number' && isFinite(v); }
-  function cleanWars(src, day) {
-    var out = {};
-    if (!isObj(src)) return out;
-    CLAN_KEYS.forEach(function (k) {
-      var w = src[k];
-      if (!isObj(w) || !okDay(w.since) || !okDay(w.last)) return;
-      var since = Math.min(dayNum(w.since, day), day);
-      var last = Math.max(since, Math.min(dayNum(w.last, day), day));
-      out[k] = { since: since, last: last, next: okDay(w.next) ? dayNum(w.next, day + 7) : day + 7 };
-    });
-    return out;
-  }
   /* The facilities Under Repair, as saved: only known facilities, each with
      the last day of its repairs as a whole number. Anything damaged is
      dropped: that facility is working. */
@@ -1184,14 +1128,14 @@
   R.saveProblem = function (s) {
     if (!isObj(s)) return 'It isn\'t a Bastion save.';
     if (R.isOldSave(s)) return 'It was saved before the Bastion counted in days (in Bastion turns), so it can\'t be used.';
-    var marks = ['treasuryGP', 'partyLevel', 'day', 'builtExtras', 'pendingOrders', 'defenders', 'warehouse'];
+    var marks = ['treasuryGP', 'partyLevel', 'day', 'builtExtras', 'pendingOrders', 'warehouse'];
     var found = marks.filter(function (k) { return k in s; }).length;
     if (found < 4) return 'It doesn\'t look like a Bastion save.';
-    var lists = ['builtExtras', 'builtPlots', 'pendingOrders', 'defenderBeasts', 'military', 'warehouse', 'log', 'warLog', 'militaryActions', 'warRecovery', 'creatures', 'greatRites'];
+    var lists = ['builtExtras', 'builtPlots', 'pendingOrders', 'warehouse', 'log', 'creatures', 'greatRites'];
     for (var i = 0; i < lists.length; i++) {
       if (lists[i] in s && !Array.isArray(s[lists[i]])) return 'Its ' + lists[i] + ' list is damaged.';
     }
-    var maps = ['defenders', 'favour', 'politicalCapital', 'tradeNetwork', 'arbitration', 'diplomacy', 'organization', 'facilityLevels', 'warMissions', 'wars', 'repairs', 'bridge'];
+    var maps = ['favour', 'politicalCapital', 'tradeNetwork', 'arbitration', 'diplomacy', 'organization', 'facilityLevels', 'bridge'];
     for (var j = 0; j < maps.length; j++) {
       if (maps[j] in s && s[maps[j]] !== null && !isObj(s[maps[j]])) return 'Its ' + maps[j] + ' record is damaged.';
     }
@@ -1258,37 +1202,6 @@
     for (var i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0;
     return (h >>> 0).toString(16);
   };
-  /* The War Table's battle map and settings (tsi.bastion.warMap and
-     tsi.bastion.warTable), checked by war-table-rules.js. */
-  function warTableRules() { return ns.warTableRules || null; }
-  R.isWarMap = function (v) {
-    var W = warTableRules();
-    return W ? W.isMap(v) : (isObj(v) && typeof v.dataUrl === 'string' && /^data:image\//.test(v.dataUrl) && typeof v.key === 'string');
-  };
-  R.isWarTable = function (v) {
-    var W = warTableRules();
-    return W ? W.isSettings(v) : isObj(v);
-  };
-
-  /* The War Table's painted terrain (tsi.bastion.warTerrain): one painting
-     per map, { [mapKey]: { cols, rows, cells } }, cells being a string of
-     terrain codes (war-units-data.js), one per square, row by row. */
-  R.isWarTerrain = function (v) {
-    if (!isObj(v)) return false;
-    var war = window.TSI_DATA && window.TSI_DATA.bastionWar;
-    var codes = war ? war.terrain.map(function (t) { return t.code; }).join('') : null;
-    return Object.keys(v).every(function (k) {
-      var p = v[k];
-      if (!isObj(p) || typeof p.cells !== 'string') return false;
-      var cols = p.cols, rows = p.rows;
-      if (!Number.isInteger(cols) || !Number.isInteger(rows) || cols < 1 || rows < 1 || cols > 200 || rows > 200) return false;
-      if (p.cells.length !== cols * rows) return false;
-      if (!codes) return true;
-      for (var i = 0; i < p.cells.length; i++) if (codes.indexOf(p.cells.charAt(i)) === -1) return false;
-      return true;
-    });
-  };
-
   R.importProblem = function (records) {
     for (var i = 0; i < records.length; i++) {
       var r = records[i];
@@ -1300,10 +1213,9 @@
       if (r.key === 'tsi.bastion.ui' && !isObj(r.value)) return 'This file\'s panel settings aren\'t in the right form, so it wasn\'t imported. Nothing was changed.';
       if (r.key === 'tsi.bastion.crest' && !R.isCrest(r.value)) return 'This file\'s crest picture isn\'t in the right form, so it wasn\'t imported. Nothing was changed.';
       /* The War Table's three saves (tsi.bastion.warMap, .warTable, .warTerrain)
-         are not checked any more (the Strip Back Overhaul, 22 October 2026):
-         the war game is going, and an old backup must never be refused for
-         them. If the War Table is still there it checks them itself when it
-         opens; otherwise the Bastion sets them aside (STRIP_BACK_ORPHAN_KEYS). */
+         are not checked: the war game was removed on 22 October 2026, and an
+         old backup must never be refused for them. The Bastion sets them
+         aside the next time it opens (STRIP_BACK_ORPHAN_KEYS). */
     }
     return null;
   };
@@ -1532,18 +1444,18 @@
     return { ok: true, log: ['Construction Started', name + ' is under construction (' + days + ' days: ready on Day ' + (s.day + days) + ').'] };
   };
   /* Demolish a facility in a construction slot or on a Development Plot,
-     built or still being built (Harry, 13 October 2026). The five starting
+     built or still being built (Harry, 13 October 2026). The starting
      facilities can't be demolished. Its slot or plot is freed; orders pending
      there are cancelled (their gold isn't given back, as with Cancel: B9, but
      goods they hold go back to the Warehouse); its level and any repairs go.
-     What it already made stays (the Warehouse, defenders, beasts, units),
+     What it already made stays (the Warehouse, the creatures),
      and the Hall's records and routes carry on. Returns { ok, log, cancelled, moved }
      or { ok: false, message }. */
   R.demolishFacility = function (s, data, facId) {
     R.normalizeBuiltExtras(s);
     var fac = R.facility(data, facId);
     var name = (fac && fac.name) || facId;
-    if (data.bastion.startingBuilt.indexOf(facId) !== -1) return { ok: false, message: 'The ' + name + ' is one of the five starting facilities: it can\'t be demolished.' };
+    if (data.bastion.startingBuilt.indexOf(facId) !== -1) return { ok: false, message: 'The ' + name + ' is one of the starting facilities: it can\'t be demolished.' };
     var place = R.facilityPlace(s, facId);
     if (!place) return { ok: false, message: 'The ' + name + ' isn\'t built or being built.' };
     var building = place.entry.status === 'building';
@@ -1938,10 +1850,6 @@
   /* ---------- Orders ---------- */
   /* What a function costs (4692-4725). */
   R.computeFnCost = function (s, fac, fn, chosen) {
-    if (fac.id === 'armoury' && fn.id === 'arm_defenders') {
-      var dyn = 100 + (s.defenders.count * 100);
-      return { costGP: dyn, costText: dyn + 'gp (100 + defenders×100)' };
-    }
     if (chosen && chosen.costGP !== undefined && chosen.costGP !== null) {
       return { costGP: Number(chosen.costGP) || 0, costText: (Number(chosen.costGP) || 0) + 'gp' };
     }
@@ -1991,13 +1899,8 @@
        its kind waiting for a home, and not being housed already (pull
        request 7, creature-rules.js). */
     if (fn.housesSpecies) return R.housingOptions ? R.housingOptions(s, data, fn.housesSpecies) : [];
-    /* The War Room's Drill a Regiment: every regiment that can drill now;
-       a Muster: the Recruit order's own list (pull request 8a,
-       regiment-rules.js). */
-    if (fn.drill) return R.drillOptions ? R.drillOptions(s, data) : [];
     /* The Wyvern Roost's training: every housed wyvern (creature-rules.js). */
     if (fn.trains) return R.trainingOptions ? R.trainingOptions(s, data, fac, fn) : [];
-    if (fn.muster) return R.musterChoices ? R.musterChoices(data) : [];
     return fn.options || [];
   };
   function orderLabel(fac, fn, optionLabel) {
@@ -2011,8 +1914,9 @@
   }
 
   /* ---------- Under Repair (Harry, 4 October 2026) ----------
-     A lost Defend Bastion leaves some facilities Under Repair
-     (war-campaign-rules.js): s.repairs = { facId: untilDay }. While the
+     A lost Defend Bastion once left some facilities Under Repair (the war
+     game, removed on 22 October 2026, so nothing does now):
+     s.repairs = { facId: untilDay }. While the
      day is at or before untilDay, the facility takes no orders, and orders
      already running there wait. Returns untilDay, or 0. */
   R.underRepair = function (s, facId) {
@@ -2081,32 +1985,7 @@
       var homeless = R.housingBlocker ? R.housingBlocker(s, data, fac, fn) : 'This copy of the Bastion can\'t house creatures.';
       if (homeless) return { ok: false, message: homeless };
     }
-    /* Drill a Regiment (pull request 8a): one order per regiment, as many
-       at once as the War Room has drill places (regiment-rules.js). */
-    if (fn.drill) {
-      if (!R.issueDrill) return { ok: false, message: 'This copy of the Bastion can\'t drill regiments.' };
-      var pick = R.fnOptions(s, data, fac, fn)[clampInt(optionIdx, 0)] || null;
-      if (!pick) return { ok: false, message: R.drillRoomBlocker(s, data) || 'No regiment can drill now: each must be at full strength and not drilling already.' };
-      return R.issueDrill(s, data, pick.regimentId, rand);
-    }
     if (pendingSame(s, facId, fnId)) return { ok: false, message: 'That order is already pending.' };
-    /* A commercial voyage protection (20 October 2026): refused while one is ready or active. */
-    if (R.protectionBusy) { var pbusy = R.protectionBusy(s, data, fn); if (pbusy) return { ok: false, message: pbusy }; }
-    /* A Muster (pull request 8a): one formation for each of its lists. */
-    if (fn.muster) {
-      var choices = R.fnOptions(s, data, fac, fn);
-      var idxs = Array.isArray(optionIdx) ? optionIdx : [optionIdx];
-      var picks = [];
-      for (var mi = 0; mi < R.musterSize(fn); mi++) {
-        var ch = choices[clampInt(idxs[mi] === undefined ? 0 : idxs[mi], 0)];
-        if (!ch) return { ok: false, message: 'Choose what to raise.' };
-        picks.push(String(ch.label));
-      }
-      var mLabel = fac.name + ': ' + fn.label + ' (' + picks.join(', ') + ')';
-      var mDays = R.orderDays(fn);
-      s.pendingOrders.push({ id: R.uid(rand), facId: facId, fnId: fnId, chosen: { label: picks.join(', '), units: picks }, optionLabel: picks.join(', '), notes: '', label: mLabel, costGP: 0, issuedDay: s.day, dueDay: s.day + mDays });
-      return { ok: true, log: ['Order Issued', mLabel + ' (' + R.daysText(mDays) + ': due Day ' + (s.day + mDays) + ').'] };
-    }
     var busy = productionBusy(s, data, fac, fn);
     if (busy) return { ok: false, message: busy };
     var blocked = R.recipeBlocker(s, data, fac, fn, fn.options && fn.options.length ? fn.options[clampInt(optionIdx, 0)] || null : null);
@@ -2199,39 +2078,18 @@
     return { ok: true, log: ['Order Issued', up.label + ' (' + days + (days === 1 ? ' day' : ' days') + ': due Day ' + (s.day + days) + ').'] };
   };
 
-  /* Cancelling an order keeps the gold spent (B9, kept). A War Action
-     cancelled on the day it was queued gives back what declaring war cost
-     (R.undoWarDeclaration, war-campaign-rules.js), and says so. */
+  /* Cancelling an order keeps the gold spent (B9, kept). */
   R.cancelOrder = function (s, id, data, now) {
     var gone = s.pendingOrders.filter(function (x) { return String(x.id) === String(id); })[0];
     s.pendingOrders = s.pendingOrders.filter(function (x) { return String(x.id) !== String(id); });
-    var war = gone && R.undoWarDeclaration ? R.undoWarDeclaration(s, data, gone, now) : null;
     /* Goods it held go back to the Warehouse (only an order actually found and
        removed here, so a second Cancel gives nothing back). */
     var back = gone && arr(gone.inputs) && gone.inputs.length ? R.returnGoods(s, data, gone.inputs) : '';
     if (back) return ['Orders', 'Cancelled ' + (gone.label || 'an order') + '. ' + back];
-    return war || ['Orders', 'Cancelled an order.'];
+    return ['Orders', 'Cancelled an order.'];
   };
 
   /* ---------- Lists, warehouse, favour, Political Capital ---------- */
-  /* Same name adds to the count (5406-5415). A regiment that came home
-     under strength has its own row (depleted), which is never added to. */
-  R.addToList = function (list, name, meta) {
-    var idx = -1;
-    for (var i = 0; i < list.length; i++) if (list[i].name === name && list[i].depleted !== true) { idx = i; break; }
-    if (idx >= 0) {
-      list[idx].qty = (list[idx].qty || 1) + 1;
-      list[idx].source = (meta && meta.source) || list[idx].source;
-    } else {
-      list.push({ name: name, qty: 1, source: (meta && meta.source) || '' });
-    }
-  };
-  R.metaLine = function (it) {
-    var parts = [];
-    if (it.qty && it.qty !== 1) parts.push('x' + it.qty);
-    if (it.source) parts.push(it.source);
-    return parts.join(' • ') || '—';
-  };
   /* Add to the warehouse, merging a same-named row (1455-1475). */
   R.appendToWarehouse = function (s, itemName, qty, gp, notes, rand) {
     var name = String(itemName || '').trim();
@@ -2847,39 +2705,8 @@
         return [['Order Completed', label + ' → Rolled 1d6 = ' + r6 + '. ' + (r6 >= 5 ? 'Long Rest effects granted.' : 'No rest granted.')]];
       }
     }
-    if (fac.id === 'barracks' && fn.id === 'recruit_defenders') {
-      var r4 = R.d(4, rand);
-      s.defenders.count += r4;
-      return [['Order Completed', label + ' → Recruited ' + r4 + ' defenders.']];
-    }
-    if (fac.id === 'watchtower' && fn.id === 'patrol') {
-      var until = s.day + R.time(data).patrolDays;
-      s.defenders.patrolUntil = Math.max(R.patrolActive(s) ? s.defenders.patrolUntil : 0, until);
-      return [['Order Completed', label + ' → Patrol active until Day ' + s.defenders.patrolUntil + '.']];
-    }
-    if (fac.id === 'armoury' && fn.id === 'arm_defenders') {
-      s.defenders.armed = s.defenders.count > 0;
-      return [['Order Completed', label + ' → Defenders armed.']];
-    }
     /* The Shrines (pull request 8b): a Blessing of Pelagos for the next
        ship, or a Great Rite waiting at the Ironbow; each once. */
-    /* The Watchtower's Protect Maritime Approaches: active for windowDays,
-       the day it completes counting as Day 1 (so it ends on day + windowDays − 1). */
-    if (fn.protectionWindow) {
-      var tw = s.tradeNetwork;
-      if (!isObj(tw.protections)) tw.protections = {};
-      var until = s.day + clampInt(fn.windowDays || 7, 1, 365) - 1;
-      tw.protections[fn.protectionWindow] = { untilDay: until };
-      return [['Order Completed', (order.label || fac.name + ': ' + fn.label) + ' → Protected Maritime Approaches are active until ' + R.dayLabel(until) + ': every ship the Dock sends with cargo in that time has its voyage risk 5 points lower.']];
-    }
-    if (fn.protectionCharge === 'commercial_convoy') {
-      var tc = s.tradeNetwork;
-      if (!isObj(tc.protections)) tc.protections = {};
-      var pc = isObj(tc.protections.commercial_convoy) ? tc.protections.commercial_convoy : {};
-      pc.charges = Math.min(clampInt(fn.protectionMax || 1, 1, 99), clampInt(pc.charges || 0, 0, 999) + 1);
-      tc.protections.commercial_convoy = pc;
-      return [['Order Completed', (order.label || fac.name + ': ' + fn.label) + ' → A Commercial Convoy is prepared for the next ship the Dock sends with cargo (' + pc.charges + ' held).']];
-    }
     if (fn.protectionCharge) {
       var t8 = s.tradeNetwork;
       if (!isObj(t8.protections)) t8.protections = {};
@@ -2893,22 +2720,6 @@
       var rid = 'rite-' + String(order.id);
       if (!s.greatRites.some(function (g) { return g.id === rid; })) s.greatRites.push({ id: rid, rite: fn.greatRite, god: R.shrineGod(fac.id), madeDay: s.day, status: 'waiting' });
       return [['Order Completed', (order.label || fac.name + ': ' + fn.label) + ' → ' + R.RITE_NAMES[fn.greatRite] + ' waits at the Ironbow until the DM gives it to the party on an expedition.']];
-    }
-    /* Pull request 8a (regiment-rules.js). */
-    if (fac.id === 'war_room' && fn.drill && R.completeDrill) return [['Order Completed', R.completeDrill(s, data, order)]];
-    if (fac.id === 'war_room' && fn.muster && R.completeMuster) return [['Order Completed', R.completeMuster(s, data, order)]];
-    if (fac.id === 'war_room' && fn.id === 'recruit') {
-      var unit = optionLabel || 'Unit';
-      /* A depleted regiment of that type is brought back to full strength
-         first (war-campaign-rules.js). */
-      if (R.recruitUnit) return [['Order Completed', label + ' → ' + R.recruitUnit(s, data, unit)]];
-      R.addToList(s.military, unit, { source: 'War Room' });
-      return [['Order Completed', label + ' → Recruited: ' + unit + '.']];
-    }
-    if (fac.id === 'menagerie' && fn.id === 'recruit_beast') {
-      var beast = optionLabel || 'Beast';
-      R.addToList(s.defenderBeasts, beast, { source: 'Menagerie' });
-      return [['Order Completed', label + ' → Recruited beast: ' + beast + '. Added to Bastion Defenders.']];
     }
     if (fac.id === 'hall_of_emissaries' && fn.special && fn.special.type === 'upgrade_facility') {
       return [R.upgradeHall(s, fn)];
@@ -2931,21 +2742,15 @@
     return [['Order Completed', label + ' → Completed.']];
   };
 
-  /* How an order is completed: 'network', 'war', 'emissary', 'simple' or 'none'. */
+  /* How an order is completed: 'network', 'emissary', 'simple' or 'none'. */
   R.orderKind = function (data, order) {
     if (order.facId === 'trade_network') return 'network';
-    if (order.facId === 'war_council' || (order.meta && order.meta.kind === 'war_action')) return 'war';
     var fac = R.facility(data, order.facId);
     if (fac && order.meta && (order.meta.kind === 'upgrade' || order.meta.kind === 'research')) return 'simple';
     var fn = R.fn(fac, order.fnId);
     if (!fac || !fn) return 'none';
     if (R.isEmissary(fac, fn)) return 'emissary';
     return 'simple';
-  };
-  /* The Watchtower's Patrol: Advantage for the defenders, from the day it
-     completes until patrolUntil. */
-  R.patrolActive = function (s) {
-    return !!(isObj(s.defenders) && typeof s.defenders.patrolUntil === 'number' && s.defenders.patrolUntil >= s.day && s.defenders.patrolUntil > 0);
   };
   /* Is an order due (its day has come)? */
   R.isDue = function (s, o) { return isObj(o) && !(dayNum(o.dueDay, s.day) > s.day); };
@@ -3234,178 +3039,16 @@
       r.clanSupportClanCountMin + ' clans at ' + r.clanSupportPerClanMin + '+ (' + (c.countOk ? 'OK' : 'NO') + ').';
   };
 
-  /* ---------- War (5262-5404) ---------- */
-  /* Military counted by quantity, e.g. "Lieutenant (1)" rows (4983-4993). */
-  R.militaryQty = function (s, rx) {
-    return (s.military || []).reduce(function (sum, it) {
-      return rx.test(String((it && it.name) || '')) ? sum + clampInt(it.qty === undefined || it.qty === null ? 1 : it.qty, 0) : sum;
-    }, 0);
-  };
-  /* Beasts counted by number: each row is one kind of beast with its qty,
-     so five Giant Vultures are five beasts (BAS-25, Harry's request,
-     2 October 2026; they were counted by row before, B10). */
-  R.beastQty = function (s) {
-    return (Array.isArray(s.defenderBeasts) ? s.defenderBeasts : []).reduce(function (sum, it) {
-      return sum + clampInt(it && it.qty !== undefined && it.qty !== null ? it.qty : 1, 0);
-    }, 0);
-  };
-  /* The old single-roll war (R.warCommit, R.queueWarAction, R.warPlan,
-     R.resolveWar and R.removeBeasts) was archived in Build 3, with the
-     Mercenary Brigade: tools/bastion/archive/mercenary-brigade.js. What can
-     be committed is R.warForces, R.warAvailable and R.warCommit2, in
-     war-campaign-rules.js. */
-
-  /* ---------- The Military Action (Harry's request, 2 October 2026) ----------
-     When a war action comes due, it becomes a Military Action instead of a
-     single roll: three rolls (Weather, Morale, Luck), then the battle on the
-     War Table. Every step is saved as it happens, and each one only applies
-     at its own step, so a cancelled roll or a closed window loses nothing
-     and nothing is applied twice.
-     step: 'weather' → 'morale' → 'luck' → 'deploy' → 'battle'.
-     The opening rolls are here; the rest (starting the action, its battle
-     line-up, saving the battle, calling off, and the consequences) is in
-     war-campaign-rules.js, with R.MILITARY_STEPS. */
-  function maData(data) { return data.bastion.war.militaryAction; }
-
-  /* "Giant Vulture" → "GV"; "Ape" → "Ap". */
-  R.forceInitials = function (name) {
-    var words = String(name || '').trim().split(/\s+/).filter(Boolean);
-    if (!words.length) return '?';
-    if (words.length === 1) return words[0].slice(0, 2).replace(/^./, function (c) { return c.toUpperCase(); });
-    return (words[0][0] + words[words.length - 1][0]).toUpperCase();
-  };
-
-  R.militaryById = function (s, id) {
-    var list = Array.isArray(s.militaryActions) ? s.militaryActions : [];
-    for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
-    return null;
-  };
-  /* "Raid vs Bacca": the objective's own name from war-units-data.js (the
-     old tool wrote its id in capitals, "SEIZE_OUTPOST vs Bacca"). */
-  R.militaryName = function (ma) {
-    var war = window.TSI_DATA && window.TSI_DATA.bastionWar;
-    var o = war && war.objectives && war.objectives[ma.objective || 'raid'];
-    return (o ? o.name : String(ma.objective || 'raid').toUpperCase()) + ' vs ' + ma.targetName;
-  };
-
-  R.militaryWeather = function (data, id) {
-    var m = maData(data);
-    if (id === m.clear.id) return m.clear;
-    for (var i = 0; i < m.storms.length; i++) if (m.storms[i].id === id) return m.storms[i];
-    return m.clear;
-  };
-  /* The DC for a step. Morale's rises with bad weather. */
-  R.militaryDC = function (data, ma, step) {
-    var dc = maData(data).dc;
-    if (step === 'weather') return dc.weather;
-    if (step === 'morale') return dc.morale + (ma.weather ? R.militaryWeather(data, ma.weather.id).moraleDc || 0 : 0);
-    if (step === 'luck') return dc.luck;
-    return null;
-  };
-  /* The Luck roll's modifier to every attack in the battle: the war data
-     file's (W.luck passMod / failMod), so the Luck box, the summary and the
-     battle always agree; +1 / −1 if that file isn't loaded. */
-  R.luckMod = function (data, pass) {
-    var w = (data && data.war) || (window.TSI_DATA && window.TSI_DATA.bastionWar);
-    var l = w && w.luck;
-    if (pass) return l && typeof l.passMod === 'number' ? l.passMod : 1;
-    return l && typeof l.failMod === 'number' ? l.failMod : -1;
-  };
-  R.militaryRollTitle = function (step) {
-    return { weather: 'Weather Conditions', morale: 'Morale', luck: 'Luck' }[step] || 'Roll';
-  };
-
-  /* Apply one roll ({ d20, total }) at its step. Returns what happened (see
-     militaryResult), or null if it isn't that step any more. */
-  R.militaryRoll = function (s, data, id, step, roll, rand) {
-    var ma = R.militaryById(s, id);
-    if (!ma || ma.step !== step || !roll) return null;
-    var dc = R.militaryDC(data, ma, step);
-    var pass = roll.total >= dc;
-    var rec = { d20: roll.d20, total: roll.total, dc: dc, pass: pass };
-    if (step === 'weather') {
-      var storms = maData(data).storms;
-      rec.id = pass ? maData(data).clear.id : storms[Math.min(storms.length - 1, Math.floor(rand() * storms.length))].id;
-      ma.weather = rec;
-      ma.step = 'morale';
-    } else if (step === 'morale') {
-      ma.morale = rec;
-      ma.step = 'luck';
-    } else if (step === 'luck') {
-      rec.mod = R.luckMod(data, pass);
-      ma.luck = rec;
-      ma.step = 'deploy';
-      /* The three rolls now belong to the mission and the battle's line-up. */
-      if (R.warConditionsRolled) R.warConditionsRolled(s, data, ma);
-    } else {
-      return null;
-    }
-    return R.militaryResult(data, ma, step);
-  };
-
-  /* Who keeps the ranks going: the Lieutenants if any march, otherwise the
-     party themselves ("you"). */
-  function leaders(ma, capital) {
-    var who = ma.commit && ma.commit.lieutenants > 0 ? 'your Lieutenants' : 'you';
-    return capital ? who.charAt(0).toUpperCase() + who.slice(1) : who;
-  }
-  function signed(n) { return (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(n); }
-
-  /* What a finished step shows: { title, headline, text, video }. */
-  R.militaryResult = function (data, ma, step) {
-    var m = maData(data);
-    if (step === 'weather' && ma.weather) {
-      var w = R.militaryWeather(data, ma.weather.id);
-      return {
-        title: 'Weather Conditions', pass: ma.weather.pass,
-        headline: ma.weather.pass || w.title.indexOf(w.kind) !== -1 ? w.title : w.title + ' (' + w.kind + ')',
-        text: w.text + (w.moraleDc ? '\n\nThe march will be hard: the Morale DC rises by ' + w.moraleDc + '.' : ''),
-        video: w.video || null
-      };
-    }
-    if (step === 'morale' && ma.morale) {
-      var wid = ma.weather ? R.militaryWeather(data, ma.weather.id).id : m.clear.id;
-      var t = (m.morale[wid] || m.morale.clear)[ma.morale.pass ? 'pass' : 'fail'];
-      return {
-        title: 'Morale', pass: ma.morale.pass,
-        headline: ma.morale.pass ? 'Morale: High' : 'Morale: Low',
-        text: t.replace(/\{leaders\}/g, leaders(ma, false)).replace(/\{Leaders\}/g, leaders(ma, true)),
-        video: null
-      };
-    }
-    if (step === 'luck' && ma.luck) {
-      return {
-        title: 'Luck', pass: ma.luck.pass,
-        headline: 'Luck: ' + signed(ma.luck.mod),
-        text: m.luck[ma.luck.pass ? 'pass' : 'fail'],
-        video: null
-      };
-    }
-    return null;
-  };
-
-  /* The three results so far, for the War Table's header and the panel. */
-  R.militarySummary = function (data, ma) {
-    var out = [];
-    if (ma.weather) out.push({ label: 'Weather', value: R.militaryWeather(data, ma.weather.id).title });
-    if (ma.morale) out.push({ label: 'Morale', value: ma.morale.pass ? 'High' : 'Low' });
-    if (ma.luck) out.push({ label: 'Luck', value: signed(ma.luck.mod) });
-    return out;
-  };
-
   /* ---------- Passing a day, as resumable steps (560-604; BAS-02) ----------
      The screen passes each new day in turn, in this order:
-     1. R.startDay: the day number moves on; Lieutenants and beasts whose
-        recovery is over are fit again, quiet wars end, repairs that are
-        done finish, building work due today is built, contracts due a
-        shipment send it and records whose days are up end.
+     1. R.startDay: the day number moves on; building work due today is
+        built, contracts due a shipment send it and records whose days are
+        up end.
      2. 'trade': the sea routes sailing today settle (a d20 for a high-risk
         route, asked for by the screen; R.settleRoute), then R.finishRoutes.
      3. 'orders': the orders due today complete one by one (the screen asks
         for any rolls; a cancelled roll leaves the order due, R.skipOrder).
-     4. 'war' (R.rollWarAttack): each Clan at war whose 7-day mark is today
-        rolls to attack.
-     5. R.finishDay: what happened goes into "The Ironbow sends word…"
+     4. R.finishDay: what happened goes into "The Ironbow sends word…"
         (state.word).
      state.dayInProgress remembers the step reached, so a cancelled roll or
      a closed window loses nothing and nothing is done twice. */
@@ -3413,15 +3056,7 @@
   R.DAY_STAGES = DAY_STAGES;
   R.startDay = function (s, data, now) {
     s.day += 1;
-    s.dayInProgress = { day: s.day, stage: 'trade', skipped: [], attackRolled: false, news: [] };
-    /* Lieutenants and beasts whose recovery is over are fit again; wars
-       with 42 quiet days end; repairs that are done finish
-       (war-campaign-rules.js). Each says so in the log and the word. */
-    var before = s.log.length;
-    if (R.tickRecovery) R.tickRecovery(s, now);
-    if (R.tickWars) R.tickWars(s, now, data);
-    if (R.tickRepairs) R.tickRepairs(s, now, data);
-    for (var i = s.log.length - before - 1; i >= 0; i--) R.addWord(s, s.log[i].body);
+    s.dayInProgress = { day: s.day, stage: 'trade', skipped: [], news: [] };
     R.completeConstruction(s).forEach(function (id) {
       var fac = R.facility(data, id);
       var name = fac ? fac.name : id;
@@ -3474,8 +3109,8 @@
   };
   /* Move the whole Bastion by `by` days (Reset Travel put the Explorer's day
      back, or the Bastion is reading the Explorer's day for the first time):
-     every due day, ready day, end day, cooldown, route, war, repair and
-     recovery moves with it, so what was due in 4 days is still due in 4
+     every due day, ready day, end day, cooldown, route and repair
+     moves with it, so what was due in 4 days is still due in 4
      days. The log and "The Ironbow sends word…" are history and stay. */
   R.shiftDays = function (s, by) {
     var n = dayNum(by, 0);
@@ -3483,8 +3118,7 @@
     var mv = function (obj, key) { if (obj && typeof obj[key] === 'number') obj[key] += n; };
     s.day = Math.max(1, s.day + n);
     if (isObj(s.dayInProgress)) s.dayInProgress.day = s.day;
-    if (isObj(s.defenders)) mv(s.defenders, 'patrolUntil');
-    (s.pendingOrders || []).forEach(function (o) { mv(o, 'issuedDay'); mv(o, 'dueDay'); if (o.meta && isObj(o.meta.declared)) mv(o.meta.declared, 'day'); });
+    (s.pendingOrders || []).forEach(function (o) { mv(o, 'issuedDay'); mv(o, 'dueDay'); });
     (s.builtExtras || []).concat(s.builtPlots || []).forEach(function (e) { if (isObj(e)) { mv(e, 'startDay'); mv(e, 'readyDay'); } });
     RECORDS.forEach(function (list) {
       (s.diplomacy[list] || []).forEach(function (x) { mv(x, 'startDay'); mv(x, 'endDay'); mv(x, 'lastShipmentDay'); });
@@ -3493,10 +3127,6 @@
     (s.tradeNetwork.routes || []).forEach(function (r) { mv(r, 'openedDay'); mv(r, 'expiresDay'); mv(r, 'nextDay'); mv(r, 'lastSettledDay'); });
     (s.arbitration.queue || []).forEach(function (q) { mv(q, 'createdDay'); if (q.meta) mv(q.meta, 'disruptedDay'); });
     Object.keys(s.repairs || {}).forEach(function (k) { mv(s.repairs, k); });
-    Object.keys(s.wars || {}).forEach(function (k) { mv(s.wars[k], 'since'); mv(s.wars[k], 'last'); mv(s.wars[k], 'next'); });
-    (s.warRecovery || []).forEach(function (r) { mv(r, 'untilDay'); });
-    (s.militaryActions || []).forEach(function (ma) { mv(ma, 'day'); });
-    Object.keys(s.warMissions || {}).forEach(function (k) { mv(s.warMissions[k], 'createdDay'); mv(s.warMissions[k], 'seenDay'); });
     if (isObj(s.organization)) mv(s.organization, 'foundedAtDay');
     /* Port Charters, ships at sea and standing shipments (pull request 5). */
     if (R.shiftCommerce) R.shiftCommerce(s, n);

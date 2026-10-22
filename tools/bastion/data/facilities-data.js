@@ -1,9 +1,12 @@
-/* The Ironbow Bastion Manager: the 22 facilities, their functions, options, costs and specials.
-   A word-for-word copy of the old tool's data/facilities.json, stored as a script so it
+/* The Ironbow Bastion Manager: the 17 facilities, their functions, options, costs and specials.
+   A copy of the old tool's data/facilities.json, stored as a script so it
    loads from a double-clicked file. Edit it here.
-   One change since: the War Room's Recruit list is the war mini-game's units (phase 2,
-   Harry's decision of 2 October 2026), in the order and with the labels of
-   war-units-data.js (TSI_DATA.bastionWar.warRoom); keep the two the same.
+   The Strip Back Overhaul (Harry, 22 October 2026, step S06): the war game is gone, and
+   with it five facilities: the Barracks, Armoury and Watchtower (starting facilities),
+   the War Room and the Menagerie. Their blocks are deleted; a Bastion that had them is
+   converted once (R.migrateToV4, strip-back-rules.js: their orders are cancelled with
+   what they cost given back, the slots are freed). To see them again, check out commit
+   4f1db26.
    And since the days overhaul (Harry, 8 October 2026): every order has "days", how
    many in-game days after it's issued it completes (docs/BASTION-OVERHAUL.md
    section 2), and the Hall's records last "durationDays" (they lasted
@@ -272,62 +275,6 @@ window.TSI_DATA.bastionFacilities = [
     ]
   },
   {
-    "name": "Barracks",
-    "id": "barracks",
-    "requiredLevel": 5,
-    "functions": [
-      {
-        "id": "recruit_defenders",
-        "label": "Recruit Defenders",
-        "days": 5,
-        "options": [],
-        "costGP": 0,
-        "costText": "0",
-        "notes": "1d4 defenders recruited and added to Bastion Defenders Panel"
-      },
-      {
-        "id": "guard_commercial_convoy",
-        "label": "Guard Commercial Convoy",
-        "days": 3,
-        "options": [],
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 2,
-        "protectionCharge": "commercial_convoy",
-        "protectionMax": 1,
-        "notes": "Prepares one Commercial Convoy from the Bastion's available personnel (no soldiers, defenders or regiments are used up): the next ship the Dock sends with cargo takes it, and its chance of trouble at sea is 5 points lower. One is kept at a time; another can be ordered once it has been used."
-      }
-    ]
-  },
-  {
-    "name": "Watchtower",
-    "id": "watchtower",
-    "requiredLevel": 5,
-    "functions": [
-      {
-        "id": "patrol",
-        "label": "Patrol",
-        "days": 1,
-        "options": [],
-        "costGP": 0,
-        "costText": "0",
-        "notes": "Gives Advantage on all rolls for Bastion Defenders if the Bastion is attacked during the next 7 days"
-      },
-      {
-        "id": "protect_maritime_approaches",
-        "label": "Protect Maritime Approaches",
-        "days": 2,
-        "options": [],
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 2,
-        "protectionWindow": "maritime_approaches",
-        "windowDays": 7,
-        "notes": "Protects the sea lanes for 7 days (the day it completes is Day 1): every ship the Dock sends with cargo in that time has its chance of trouble at sea 5 points lower. Not used up, and not extended: the next order can be issued once it ends. Separate from Patrol."
-      }
-    ]
-  },
-  {
     "name": "Dock",
     "id": "dock",
     "requiredLevel": 5,
@@ -381,90 +328,6 @@ window.TSI_DATA.bastionFacilities = [
         "costGP": null,
         "costText": "100GP\n200GP\n400GP\n500GP\n750GP\n900 GP\n1000GP\n1250GP",
         "notes": null
-      }
-    ]
-  },
-  {
-    "name": "Armoury",
-    "id": "armoury",
-    "requiredLevel": 5,
-    "functions": [
-      {
-        "id": "arm_defenders",
-        "label": "Arm Defenders",
-        "days": 3,
-        "options": [],
-        "costGP": null,
-        "costText": "100GP + (current bastion defenders x 100GP)",
-        "notes": "Once action completed, Bastion Defenders Panel shows 'Armed'"
-      }
-    ]
-  },
-  {
-    "name": "War Room",
-    "id": "war_room",
-    "requiredLevel": 17,
-    "functions": [
-      {
-        "id": "recruit",
-        "label": "Recruit",
-        "days": 7,
-        "options": [
-          {
-            "label": "Lieutenant (1)"
-          },
-          {
-            "label": "Archers (50)"
-          },
-          {
-            "label": "Levy Infantry (150)"
-          },
-          {
-            "label": "Line Infantry (100)"
-          },
-          {
-            "label": "Heavy Infantry (50)"
-          },
-          {
-            "label": "Light Cavalry (50)"
-          },
-          {
-            "label": "Shock Cavalry (25)"
-          }
-        ],
-        "costGP": 0,
-        "costText": "0",
-        "notes": "No cost to recruit, but each soldier costs 1 gp every 7 days. Hover over a choice to see its stat block. Lieutenants and units join the Military panel when the order completes; a unit of a type that came home depleted brings that regiment back to full strength first."
-      },
-      {
-        "id": "drill",
-        "label": "Drill a Regiment",
-        "days": 7,
-        "costGP": 0,
-        "costText": "25 gp × Battle Value (Trained), 50 gp × (Veteran)",
-        "requiredFacilityLevel": 2,
-        "drill": true,
-        "notes": "Choose one regiment at full strength. Trained (7 days): +1 Resolve and +0.5 Battle Value. Veteran (14 more days): +1 Cohesion and +0.5 Battle Value more. The gold is paid when the drill starts. A regiment drilling stays at the Ironbow: it can't go on a War Action, but it defends the Ironbow if it's attacked."
-      },
-      {
-        "id": "coordinated_muster",
-        "label": "Coordinated Muster",
-        "days": 7,
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 3,
-        "muster": 2,
-        "notes": "Raises two formations in one order, in any mix (a regiment of a kind that came home depleted is refilled first, as Recruit does)."
-      },
-      {
-        "id": "grand_muster",
-        "label": "Grand Muster",
-        "days": 7,
-        "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 5,
-        "muster": 3,
-        "notes": "Raises three formations in one order, in any mix (a regiment of a kind that came home depleted is refilled first, as Recruit does)."
       }
     ]
   },
@@ -1734,88 +1597,6 @@ window.TSI_DATA.bastionFacilities = [
           "incomeMin": 140,
           "incomeMax": 260
         }
-      }
-    ]
-  },
-  {
-    "name": "Menagerie",
-    "id": "menagerie",
-    "requiredLevel": 13,
-    "functions": [
-      {
-        "id": "recruit_beast",
-        "label": "Recruit Beast",
-        "days": 10,
-        "options": [
-          {
-            "label": "Ape",
-            "costGP": 500,
-            "costText": "500 GP"
-          },
-          {
-            "label": "Black Bear",
-            "costGP": 500,
-            "costText": "500 GP"
-          },
-          {
-            "label": "Brown Bear",
-            "costGP": 1000,
-            "costText": "1,000 GP"
-          },
-          {
-            "label": "Constrictor Snake",
-            "costGP": 250,
-            "costText": "250 GP"
-          },
-          {
-            "label": "Crocodile",
-            "costGP": 500,
-            "costText": "500 GP"
-          },
-          {
-            "label": "Dire Wolf",
-            "costGP": 1000,
-            "costText": "1,000 GP"
-          },
-          {
-            "label": "Giant Vulture",
-            "costGP": 1000,
-            "costText": "1,000 GP"
-          },
-          {
-            "label": "Hyena",
-            "costGP": 50,
-            "costText": "50 GP"
-          },
-          {
-            "label": "Jackal",
-            "costGP": 50,
-            "costText": "50 GP"
-          },
-          {
-            "label": "Lion",
-            "costGP": 1000,
-            "costText": "1,000 GP"
-          },
-          {
-            "label": "Owlbear",
-            "costGP": 3500,
-            "costText": "3,500 GP"
-          },
-          {
-            "label": "Panther",
-            "costGP": 250,
-            "costText": "250 GP"
-          },
-          {
-            "label": "Tiger",
-            "costGP": 1000,
-            "costText": "1,000 GP"
-          }
-        ],
-        "costGP": null,
-        "costText": "500 GP\n500 GP\n1,000 GP\n250 GP\n500 GP\n1,000 GP\n1,000 GP\n50 GP\n50 GP\n1,000 GP\n3,500 GP\n250 GP\n1,000 GP",
-        "notes": "Recruited Beasts are listed in the Bastion Defenders Panel"
       }
     ]
   },

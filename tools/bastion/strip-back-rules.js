@@ -85,10 +85,11 @@
   var GOD_NAMES = { telluria: 'Telluria', aurush: 'Aurush', pelagos: 'Pelagos' };
 
   /* Orders that are not at a facility of the catalogue but are still real
-     (the old War Council's War Actions, the Trade Network's investments).
-     The step that removes each one deals with its orders and then takes its
-     name off this list; until then the catch-all leaves them alone. */
-  R.STRIP_BACK_PSEUDO_FACILITIES = ['war_council', 'trade_network'];
+     (the Trade Network's investments; the War Council's War Actions were one
+     too, until step S06). The step that removes each one deals with its
+     orders and then takes its name off this list; until then the catch-all
+     leaves them alone. */
+  R.STRIP_BACK_PSEUDO_FACILITIES = ['trade_network'];
 
   /* The War Table's three saves (tsi.bastion.<name>). Once the War Table is
      gone nothing reads them: the Bastion sets them aside every time it opens
@@ -299,6 +300,221 @@
   }
 
   function slotId(x) { return typeof x === 'string' ? x : (isObj(x) && typeof x.facId === 'string' ? x.facId : ''); }
+
+  /* Step S06: the war game and five facilities are gone (Harry, 22 October
+     2026; the last version that had them is commit 4f1db26). Three small
+     steps, in this order:
+     1. settleWarOrders: every pending order of the Barracks, Armoury,
+        Watchtower, War Room and Menagerie, and every War Action (the War
+        Council's own orders), is cancelled; what each cost goes back (gold:
+        a Drill, an Arm Defenders, a Recruit Beast). A War Action cost no
+        gold: declaring war cost Honour/Respect and Political Capital, which
+        were taken at once and are NOT given back (the DM doc's "Change a
+        score" can set them again).
+     2. dropWar: the army and the war are dropped, and said: defenders, the
+        Menagerie's beasts (listed with what they cost: a purchase already
+        made is not refunded), regiments and Lieutenants, Military Actions,
+        the enemy armies the scouts drew up, who was recovering, the wars (the
+        Clans are named), the War Log, and the facilities Under Repair after a
+        lost battle (they are working again).
+     3. dropWarFacilities: the five facilities are freed from their slots (a
+        building or a built one), their levels go, and they are recorded in
+        archivedFacilities (the Barracks, Armoury and Watchtower were starting
+        facilities, so they had no slot). The two commerce protections they
+        gave the Dock, a Commercial Convoy and Protected Maritime Approaches,
+        are dropped, and a held one is said (a Convoy is a charge for the next
+        ship, not gold). */
+  var WAR_FACILITIES = ['barracks', 'armoury', 'watchtower', 'war_room', 'menagerie'];
+  var WAR_PROTECTIONS = ['commercial_convoy', 'maritime_approaches'];
+  /* The War Council's own orders have no facility in the catalogue. */
+  function isWarAction(o) { return isObj(o) && (o.facId === 'war_council' || (isObj(o.meta) && o.meta.kind === 'war_action')); }
+  function atWarFacility(o) { return isObj(o) && WAR_FACILITIES.indexOf(o.facId) !== -1; }
+
+  function detectWarOrders(s) {
+    var out = [];
+    (arr(s.pendingOrders) || []).forEach(function (o) {
+      if (isWarAction(o)) out.push('a War Action');
+      else if (atWarFacility(o)) out.push('an order: ' + o.facId);
+    });
+    return out;
+  }
+  function settleWarOrders(s, data, report) {
+    var cancelled = {};
+    (arr(s.pendingOrders) || []).slice().forEach(function (o) {
+      var why = '';
+      if (isWarAction(o)) why = 'the war game was removed; what declaring war cost you in Honour/Respect and Political Capital is not given back';
+      else if (atWarFacility(o)) why = 'the ' + R.stripBackName(data, o.facId) + ' is gone with the war game';
+      if (!why) return;
+      var id = idOf(o);
+      if (R.stripBackCancel(s, data, report, o, why) && id) cancelled[id] = true;
+    });
+    /* A day left part-way may have skipped one of them: nothing waits for it now. */
+    if (isObj(s.dayInProgress) && arr(s.dayInProgress.skipped)) {
+      s.dayInProgress.skipped = s.dayInProgress.skipped.filter(function (id) { return !cancelled[String(id)]; });
+    }
+  }
+
+  /* What the army and the war left in a save: nothing counts that is only
+     the empty value the old Bastion always wrote (no defenders, an empty list). */
+  function warCounts(s) {
+    var c = { defenders: 0, armed: false, beasts: [], regiments: 0, lieutenants: 0, actions: 0, wars: [], log: 0, missions: 0, recovering: 0, repairs: [] };
+    var d = isObj(s.defenders) ? s.defenders : null;
+    if (d) { c.defenders = clampInt(d.count, 0); c.armed = d.armed === true; }
+    var beastRows = {};
+    (arr(s.defenderBeasts) || []).forEach(function (b) {
+      if (!isObj(b)) return;
+      var name = str(b.name).trim() || 'beast';
+      var qty = clampInt(b.qty === undefined || b.qty === null ? 1 : b.qty, 0);
+      if (qty <= 0) return;
+      if (!beastRows[name]) { beastRows[name] = { name: name, qty: 0 }; c.beasts.push(beastRows[name]); }
+      beastRows[name].qty += qty;
+    });
+    (arr(s.military) || []).forEach(function (u) {
+      if (!isObj(u)) return;
+      var qty = clampInt(u.qty === undefined || u.qty === null ? 1 : u.qty, 0) || 1;
+      if (/lieutenant/i.test(str(u.name))) c.lieutenants += qty; else c.regiments += qty;
+    });
+    c.actions = (arr(s.militaryActions) || []).filter(isObj).length;
+    if (isObj(s.wars)) c.wars = Object.keys(s.wars).filter(function (k) { return isObj(s.wars[k]); });
+    c.log = (arr(s.warLog) || []).filter(isObj).length;
+    c.missions = isObj(s.warMissions) ? Object.keys(s.warMissions).length : 0;
+    c.recovering = (arr(s.warRecovery) || []).filter(isObj).length;
+    if (isObj(s.repairs)) c.repairs = Object.keys(s.repairs).filter(function (k) { return typeof s.repairs[k] === 'number' && s.repairs[k] > 0; });
+    return c;
+  }
+  function detectWar(s) {
+    var c = warCounts(s);
+    var out = [];
+    if (c.defenders > 0 || c.armed) out.push('defenders');
+    if (c.beasts.length) out.push('the Menagerie\'s beasts');
+    if (c.regiments || c.lieutenants) out.push('regiments');
+    if (c.actions) out.push('Military Actions');
+    if (c.wars.length) out.push('a war');
+    if (c.log) out.push('the War Log');
+    if (c.missions || c.recovering) out.push('enemy armies and those recovering');
+    if (c.repairs.length) out.push('facilities Under Repair');
+    var dip = isObj(s.dayInProgress) ? s.dayInProgress : null;
+    if (dip && 'attackRolled' in dip) out.push('the day\'s attack roll');
+    return out;
+  }
+  /* "giant vulture" → "giant vultures", "dire wolf" → "dire wolves". */
+  function beastPlural(name, qty) {
+    var low = name.toLowerCase();
+    if (qty === 1) return '1 ' + low;
+    return qty + ' ' + (/wolf$/.test(low) ? low.replace(/wolf$/, 'wolves') : low + 's');
+  }
+  function dropWar(s, data, report) {
+    var c = warCounts(s);
+    var values = isObj(sbData(data).menagerieValue) ? sbData(data).menagerieValue : {};
+    ['defenders', 'defenderBeasts', 'military', 'militaryActions', 'warMissions', 'warMissionSeq', 'warRecovery', 'wars', 'repairs', 'warLog'].forEach(function (k) { delete s[k]; });
+    if (isObj(s.dayInProgress)) delete s.dayInProgress.attackRolled;
+    var removed = {
+      defenders: c.defenders, armed: c.armed, regiments: c.regiments, lieutenants: c.lieutenants, militaryActions: c.actions,
+      wars: c.wars.map(function (k) { return R.clanName(data, k) || words(k); }), warLog: c.log,
+      beasts: c.beasts.map(function (b) { return { name: b.name, qty: b.qty, value: (isObj(values) && typeof values[b.name] === 'number' ? values[b.name] : 0) * b.qty }; })
+    };
+    var any = c.defenders > 0 || c.beasts.length || c.regiments || c.lieutenants || c.actions || c.wars.length || c.log || c.missions || c.recovering;
+    var worry = c.repairs.filter(function (k) { return WAR_FACILITIES.indexOf(k) === -1; });
+    if (!any && !worry.length) return;
+    report.removed.war = removed;
+    /* The army. */
+    var parts = [];
+    if (c.defenders > 0) parts.push(plural(c.defenders, 'defender', 'defenders'));
+    removed.beasts.forEach(function (b) { parts.push(beastPlural(b.name, b.qty) + (b.value > 0 ? ' (bought for ' + fmt(b.value) + ' gp)' : '')); });
+    if (c.regiments) parts.push(plural(c.regiments, 'regiment', 'regiments'));
+    if (c.lieutenants) parts.push(plural(c.lieutenants, 'Lieutenant', 'Lieutenants'));
+    if (parts.length) {
+      var one = parts.length === 1 && (c.defenders === 1 || c.regiments === 1 || c.lieutenants === 1 || (c.beasts.length === 1 && c.beasts[0].qty === 1));
+      R.stripBackSay(report, 'war', listText(parts) + (one ? ' is' : ' are') + ' gone with the war game. What was spent on ' + (one ? 'it' : 'them') + ' is not given back.');
+    }
+    if (c.actions) R.stripBackSay(report, 'war', plural(c.actions, 'Military Action', 'Military Actions') + ', waiting or under way, ' + (c.actions === 1 ? 'is' : 'are') + ' gone; nothing was won or lost by ' + (c.actions === 1 ? 'it' : 'them') + '.');
+    if (c.missions || c.recovering) R.stripBackSay(report, 'war', 'The enemy armies the scouts had drawn up' + (c.recovering ? ', and the list of those recovering from battle,' : '') + ' are gone too.');
+    if (c.log) R.stripBackSay(report, 'war', 'The War Log (' + plural(c.log, 'entry', 'entries') + ') is gone.');
+    var costed = report.cancelled.some(function (x) { return x.facId === 'war_council'; });
+    if (c.wars.length) {
+      var names = removed.wars.map(function (n) { return 'Clan ' + n; });
+      R.stripBackSay(report, 'war', listText(names) + (names.length === 1 ? ' was' : ' were') + ' at war with you, and ' + (names.length === 1 ? 'that war' : 'those wars') + ' ' + (names.length === 1 ? 'is' : 'are') + ' over.');
+    }
+    if (c.wars.length || costed) R.stripBackSay(report, 'war', 'The Honour/Respect and Political Capital the war had already cost you are not changed. Use Change a score in the DM doc if you want them back.');
+    if (worry.length) {
+      var fac = worry.map(function (k) { return 'The ' + R.stripBackName(data, k); });
+      R.stripBackSay(report, 'war', listText(fac) + (fac.length === 1 ? ' was' : ' were') + ' Under Repair after a lost battle: ' + (fac.length === 1 ? 'it is' : 'they are') + ' working again now.');
+    }
+  }
+
+  /* The five facilities. A starting facility (the Barracks, Armoury and
+     Watchtower) has no slot, so it "stood" in every Bastion that was not
+     already converted. */
+  function detectWarFacilities(s) {
+    var out = [];
+    ['builtExtras', 'builtPlots'].forEach(function (key) {
+      (arr(s[key]) || []).forEach(function (x) { var id = slotId(x); if (WAR_FACILITIES.indexOf(id) !== -1) out.push('a place: ' + id); });
+    });
+    if (isObj(s.facilityLevels)) Object.keys(s.facilityLevels).forEach(function (id) { if (WAR_FACILITIES.indexOf(id) !== -1) out.push('a level: ' + id); });
+    var prot = isObj(s.tradeNetwork) && isObj(s.tradeNetwork.protections) ? s.tradeNetwork.protections : {};
+    WAR_PROTECTIONS.forEach(function (id) { var p = prot[id]; if (isObj(p) && (clampInt(p.charges, 0) > 0 || clampInt(p.untilDay, 0) > 0)) out.push('a voyage protection: ' + id); });
+    return out;
+  }
+  function dropWarFacilities(s, data, report) {
+    var day = report.day;
+    var stood = [];       /* names, in order, of those that stood built */
+    var stopped = [];     /* names whose building work stopped */
+    var slots = 0;
+    var seen = {};
+    ['builtExtras', 'builtPlots'].forEach(function (key) {
+      var list = arr(s[key]);
+      if (!list) return;
+      for (var i = 0; i < list.length; i++) {
+        var id = slotId(list[i]);
+        if (WAR_FACILITIES.indexOf(id) === -1) continue;
+        var building = isObj(list[i]) && list[i].status === 'building';
+        var name = R.stripBackName(data, id);
+        report.archived.push({ facId: id, name: name, status: building ? 'building' : 'built', slot: i, day: day });
+        list[i] = '';
+        slots += 1;
+        seen[id] = true;
+        (building ? stopped : stood).push(name);
+      }
+    });
+    var levelOf = isObj(s.facilityLevels) ? s.facilityLevels : {};
+    WAR_FACILITIES.forEach(function (id) {
+      var starting = ['barracks', 'armoury', 'watchtower'].indexOf(id) !== -1;
+      /* A starting facility stood in every Bastion not yet converted, or is still there in a copy an older suite saved. */
+      if (starting && !seen[id] && (!report.again || id in levelOf)) {
+        var name = R.stripBackName(data, id);
+        report.archived.push({ facId: id, name: name, status: 'built', slot: null, day: day, starting: true });
+        seen[id] = true;
+        stood.push(name);
+      }
+      delete levelOf[id];
+    });
+    /* Starting facilities first, in the order they were always shown. */
+    var order = WAR_FACILITIES.map(function (id) { return R.stripBackName(data, id); });
+    stood.sort(function (a, b) { return order.indexOf(a) - order.indexOf(b); });
+    if (isObj(s.facilityLevels)) s.facilityLevels = levelOf;
+    if (arr(s.builtFacilities)) s.builtFacilities = (data.bastion.startingBuilt || []).slice();
+    if (stood.length) {
+      R.stripBackSay(report, 'gone', listText(stood) + (stood.length === 1 ? ' is' : ' are') + ' gone with the war game.' +
+        (slots ? ' ' + (slots === 1 ? 'Its slot is' : 'Their slots are') + ' free.' : ''));
+    }
+    if (stopped.length) R.stripBackSay(report, 'gone', 'Building work on the ' + listText(stopped) + ' stopped, as ' + (stopped.length === 1 ? 'it is' : 'they are') + ' gone with the war game.' + (stood.length ? '' : ' ' + (slots === 1 ? 'Its slot is' : 'Their slots are') + ' free.'));
+    /* The two protections the Barracks and Watchtower gave the Dock. */
+    var prot = isObj(s.tradeNetwork) && isObj(s.tradeNetwork.protections) ? s.tradeNetwork.protections : null;
+    if (prot) {
+      var convoy = isObj(prot.commercial_convoy) ? clampInt(prot.commercial_convoy.charges, 0) : 0;
+      var until = isObj(prot.maritime_approaches) ? clampInt(prot.maritime_approaches.untilDay, 0) : 0;
+      if (convoy > 0) {
+        report.removed.convoy = convoy;
+        R.stripBackSay(report, 'trade', (convoy === 1 ? 'The Commercial Convoy you had ready for the next ship is' : plural(convoy, 'Commercial Convoy', 'Commercial Convoys') + ' you had ready are') + ' gone with the Barracks. ' + (convoy === 1 ? 'It was' : 'They were') + ' a charge for the next ship, not gold, so nothing goes back to the treasury.');
+      }
+      if (until >= day) {
+        report.removed.approaches = until;
+        R.stripBackSay(report, 'trade', 'The Protected Maritime Approaches, in force until Day ' + until + ', are gone with the Watchtower. Ships already at sea are not affected.');
+      }
+      WAR_PROTECTIONS.forEach(function (id) { delete prot[id]; });
+    }
+  }
+
   function isGhostOrder(o, data) {
     return isObj(o) && typeof o.facId === 'string' && !R.facility(data, o.facId) && R.STRIP_BACK_PSEUDO_FACILITIES.indexOf(o.facId) === -1;
   }
@@ -399,6 +615,7 @@
     if (report.goods.length) bits.push('goods went back to the Warehouse');
     if (report.archived.length) bits.push(plural(report.archived.length, 'place', 'places') + ' removed');
     if (report.removed.events) bits.push('the Bastion\'s event record was dropped');
+    if (report.removed.war) bits.push('the army and the war were removed');
     return bits.length ? bits.join('; ') + '.' : 'Nothing of yours changed.';
   }
   /* The last step: the version, the report kept in the save, the archive. */
@@ -415,6 +632,9 @@
   /* The registry, in the order they run. Add a step ABOVE sweepFacilities. */
   R.stripBackSteps = [
     { id: 'dropEvents', detect: detectEvents, run: dropEvents },
+    { id: 'settleWarOrders', detect: detectWarOrders, run: settleWarOrders },
+    { id: 'dropWar', detect: detectWar, run: dropWar },
+    { id: 'dropWarFacilities', detect: detectWarFacilities, run: dropWarFacilities },
     { id: 'sweepFacilities', detect: detectGhosts, run: sweepFacilities },
     { id: 'finish', detect: null, run: finish }
   ];

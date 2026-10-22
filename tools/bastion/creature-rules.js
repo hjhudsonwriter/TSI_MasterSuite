@@ -34,11 +34,9 @@
    still guard the Ironbow. Cancel gives nothing back (nothing was paid or
    held): a granted creature keeps waiting.
 
-   On the War Table (war-campaign-rules.js) every housed creature defends
-   the Ironbow when it is attacked (Defend Bastion only), one unit each
-   with its own profile; it is never sent on a War Action and never killed
-   or captured. None of this changes the Menagerie, R.beastQty or the War
-   Council's lock. */
+   The war game (the War Table, in which every housed creature defended the
+   Ironbow when it was attacked) was removed on 22 October 2026 (the Strip
+   Back Overhaul), and so were the creatures' war profiles. */
 (function () {
   'use strict';
 

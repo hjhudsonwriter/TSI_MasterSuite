@@ -56,7 +56,7 @@
       var R = ns.rules;
       var D = window.TSI_DATA;
       var B = D.bastion;
-      var data = { bastion: B, facilities: D.bastionFacilities, tools: D.bastionTools, research: D.bastionResearch, goods: D.bastionGoods, commerce: D.bastionCommerce, courier: D.bastionCourier, creatures: D.bastionCreatures, warRoom: D.bastionWarRoom };
+      var data = { bastion: B, facilities: D.bastionFacilities, tools: D.bastionTools, research: D.bastionResearch, goods: D.bastionGoods, commerce: D.bastionCommerce, courier: D.bastionCourier, creatures: D.bastionCreatures };
       var COMPENDIUM = (D.bastionCompendium && D.bastionCompendium.items) || {};
       var TOOL_NAME = 'The Ironbow Bastion Manager';
       function rand() { return Math.random(); }
@@ -90,21 +90,18 @@
         ]);
         ctx.root.appendChild(box);
       }
-      /* The War Table's three saves (warMap, warTable, warTerrain) belong to
-         the war game, which is going. Once the War Table is gone from the
-         Bastion nothing reads them, so every time the Bastion opens any that
-         are there (a Restore of an old backup brings them back) are set aside,
-         never deleted. While the War Table is still part of the Bastion they
-         are its own saves, so nothing is touched: the step that removes
-         war-table.js makes this start working, with no other change. */
-      function sweepOrphans(force) {
-        if (!force && ns.warTable) return [];
+      /* The War Table's three saves (warMap, warTable, warTerrain) belonged to
+         the war game, which was removed on 22 October 2026. Nothing reads
+         them now, so every time the Bastion opens any that are there (a
+         Restore of an old backup brings them back) are set aside in
+         quarantine, never deleted. */
+      function sweepOrphans() {
         return R.stripBackOrphans(function (name) { return ctx.store.has(name); }).map(function (name) {
           TSI.store.quarantine(TSI.storeRules.keyFor('bastion', name), 'The War Table was removed from the Bastion (the Strip Back Overhaul, 22 October 2026); this is its saved ' + name + ', kept in case it is needed.');
           return name;
         });
       }
-      sweepOrphans(false);
+      sweepOrphans();
       /* A Bastion saved in turns, before the days overhaul, is set aside
          (kept, not deleted) and a new one starts on the Explorer's day
          (Harry, 8 October 2026: no turn-to-day conversion). */
@@ -784,7 +781,6 @@
          same size as it), fitted into the map panel and never cropped, so
          they always line up (fitMap, below). */
       var overlayLayer = el('div', { class: 'tsi-bas-map__overlays', 'data-test': 'map-overlays' });
-      var mapRepairs = el('div', { class: 'tsi-bas-map__repairs', hidden: true, 'data-test': 'map-repairs' });
       /* While the facility grid is open (Harry, 13 October 2026): a warm haze
          over the painting, and each built facility's name and level above it.
          Both follow the stage's is-grid-closed class (bastion.css), so
@@ -829,15 +825,6 @@
           }, [el('span', { class: 'tsi-bas-maplabel__name', text: l.name }), el('span', { class: 'tsi-bas-maplabel__level', text: 'Level ' + l.level })]));
         });
         placeLabels();
-        /* Under the map: which facilities are Under Repair, and when each is back. */
-        var fixing = R.repairsList(state, data);
-        mapRepairs.hidden = !fixing.length;
-        TSI.clear(mapRepairs);
-        if (fixing.length) {
-          TSI.append(mapRepairs, [el('b', { text: 'Under Repair: ' })].concat(fixing.map(function (r, i) {
-            return (i ? ', ' : '') + r.name + ' (working again on Day ' + r.backDay + ')';
-          })));
-        }
       }
 
       /* ================================================================
@@ -2034,7 +2021,7 @@
       /* ================================================================
          Facilities: the grid in the map's bottom bar, the build panel,
          each facility's panel, and the Orders panel
-         The grid, in two rows: the five starting facilities and the six
+         The grid, in two rows: the two starting facilities and the six
          construction slots, and below them the six Development Plots (pull
          request 3: only for the economic facilities; they open at party
          levels 9, 9, 13, 13, 17, 17). A built facility's tile opens its panel (the Hall's opens the
@@ -2042,8 +2029,7 @@
          slot the party's level allows opens the build panel; a locked one
          says the level it opens at.
          ================================================================ */
-      var GRID_START = ['workshop', 'barracks', 'watchtower', 'dock', 'armoury'].filter(function (id) { return B.startingBuilt.indexOf(id) !== -1; })
-        .concat(B.startingBuilt.filter(function (id) { return ['workshop', 'barracks', 'watchtower', 'dock', 'armoury'].indexOf(id) === -1; }));
+      var GRID_START = B.startingBuilt.slice();
       var SLOT_COUNT = R.constructionSlotsForLevel(20);
       var PLOT_COUNT = R.plotsForLevel(20, data);
       /* The party level a slot (0 to 5) opens at: 5, 5, 9, 9, 13, 17. */
@@ -2237,8 +2223,6 @@
         /* A House order (pull request 7): the Roost's houses Elara's wyvern;
            the Tower's and the Den's list the creatures waiting for a home. */
         var isHousing = !!(fn.housesSpecies || fn.housesCreature);
-        /* A commercial voyage protection (20 October 2026): the Shrine of Pelagos' blessing for the Dock. */
-        var isProtection = !!((fn.protectionCharge && fn.protectionMax) || fn.protectionWindow);
         var options = R.fnOptions(state, data, fac, fn);
         var select = null;
         var chooser = null;
@@ -2267,7 +2251,7 @@
         /* A production order (pull request 3): what the chosen recipe uses and makes. */
         var goodsLine = fn.production ? el('div', { class: 'tsi-bas-fn__goods', 'data-test': 'goods-' + key }) : null;
         /* Why a House order can't be given now, in a sentence (pull request 7). */
-        var whyLine = (isHousing || isProtection || isTrain || (fn.favourCost && !fn.production) || fn.waiting) ? el('div', { class: 'tsi-bas-fn__why', 'data-test': 'why-' + key, hidden: true }) : null;
+        var whyLine = (isHousing || isTrain || (fn.favourCost && !fn.production) || fn.waiting) ? el('div', { class: 'tsi-bas-fn__why', 'data-test': 'why-' + key, hidden: true }) : null;
         function chosenNow() {
           if (isTrain) return options[select ? R.clampInt(select.value, 0) : 0] || null;
           return fn.production && fn.options && fn.options.length ? fn.options[select ? R.clampInt(select.value, 0) : 0] || null : null;
@@ -2277,7 +2261,6 @@
           var why = repair ? null : isTrain ? (!options.length ? 'No ' + R.speciesNoun(data, R.fnSpecies(data, fac, fn)) + ' is housed at the ' + fac.name + ' yet.' : R.trainingBlocker(state, data, fac, fn, chosen ? R.creatureById(state, chosen.trainCreatureId) : null) || null) : !avail.ok ? avail.message : fn.production ? (R.productionBusy(state, data, fac, fn) || R.recipeBlocker(state, data, fac, fn, chosen))
             : isCharter && R.registerBusy(state, data) ? R.registerBusy(state, data)
             : isCharter && !options.length ? 'No Port Charter to register: the DM grants one in the Explorer, and each is registered once.'
-            : isProtection ? R.protectionBusy(state, data, fn) || null
             : isHousing ? R.housingBlocker(state, data, fac, fn) || null : null;
           /* A Shrine order's Favour (pull request 8b). */
           var noFavour = !why && !repair && avail.ok && R.favourBlocker ? R.favourBlocker(state, fac, fn) : '';
@@ -2285,7 +2268,7 @@
           issue.disabled = !!(locked || cd > 0 || repair > 0 || why);
           issue.title = repair ? repairText(fac, repair) : why || null;
           issue.textContent = repair ? 'Under Repair' : isTrain && why ? 'Can\'t train yet' : !avail.ok ? avail.message : why && fn.production ? 'Can\'t order yet' : why && isCharter ? (options.length ? 'One at a time' : 'No Port Charter to register')
-            : why && isProtection ? (fn.protectionWindow ? 'Already active' : 'Convoy ready') : why && isTrain ? 'Can\'t train yet' : why && isHousing ? housingShort(fac, fn) : noFavour ? 'Not enough Favour' : cd > 0 ? 'Cooldown: ' + R.daysText(cd) : 'Issue Order';
+            : why && isTrain ? 'Can\'t train yet' : why && isHousing ? housingShort(fac, fn) : noFavour ? 'Not enough Favour' : cd > 0 ? 'Cooldown: ' + R.daysText(cd) : 'Issue Order';
           if (whyLine) {
             var wtext = !avail.ok && avail.why ? avail.why : why && !repair && (avail.ok || isTrain) ? why : '';
             whyLine.hidden = !wtext;
@@ -2576,7 +2559,7 @@
           creatureSection(id),
           R.shrineGod(id) ? shrineSection(id) : null,
           /* A facility in a construction slot can be demolished (Harry, 13
-             October 2026); the five starting facilities can't. */
+             October 2026); the starting facilities can't. */
           B.startingBuilt.indexOf(id) === -1 ? el('div', { class: 'tsi-bas-facpanel__demolish' }, [
             btn('Demolish…', function () { onDemolish(id); }, 'tsi-btn--ghost tsi-bas-demolish', 'demolish-' + id)
           ]) : null
@@ -3252,7 +3235,7 @@
         done();
       });
       async function onClearBuilds() {
-        if (!(await ask('Clear all extra built facilities (slots and Development Plots) only? Your 5 starting facilities remain.', 'Clear'))) return;
+        if (!(await ask('Clear all extra built facilities (slots and Development Plots) only? Your starting facilities (the Workshop and the Dock) remain.', 'Clear'))) return;
         state.builtExtras = [];
         state.builtPlots = [];
         log('Facilities', 'Cleared extra built facilities.');
@@ -4021,8 +4004,7 @@
         el('div', { class: 'tsi-bas-topbar__day' }, [dayStatus, advanceBtn]),
         treasuryBox,
         facCountBtn,
-        orderCountBtn,
-        mapRepairs
+        orderCountBtn
       ]);
 
       /* The bottom bar's buttons: a small picture and a short name. */
@@ -4237,10 +4219,10 @@
         clock: function () { checkClock(); },
         dmEdits: function () { return checkDmEdits(); },
         beast: function () { return checkBeast(); },
-        /* The Strip Back report (migration.v4) and the War Table's orphan saves. */
+        /* The Strip Back report (migration.v4) and the War Table's orphan saves (set aside as the Bastion opens). */
         changes: function () { return state.migration && state.migration.v4 ? TSI.clone(state.migration.v4) : null; },
         showChanges: function () { return showChanges(); },
-        sweepOrphans: function (force) { return sweepOrphans(force === true); },
+        sweepOrphans: function () { return sweepOrphans(); },
         /* The panel open now ('favour', 'fac-workshop'…), or null. */
         panel: function () { return shown ? shown.id : null; },
         /* Open the panel that holds [data-test=test] by pressing its button
