@@ -646,6 +646,46 @@
     }, function () { /* can't read it just now; what is here stays */ });
   }
 
+  /* Import: the DM picks a PDF, Word or text file; its text goes into the
+     box. If the box already has text it asks first: Replace, Add to the end
+     or Cancel. Too long for the box (200,000 characters): nothing changes. */
+  function importQuest() {
+    if (!quest) return false;
+    var q = quest;
+    return TSI.pickFile('.pdf,.docx,.txt,.md,.text,.markdown,application/pdf,text/plain').then(function (file) {
+      if (!file) return;
+      q.importBtn.disabled = true;
+      q.importBtn.textContent = 'Reading…';
+      questNote('info', 'Reading ' + file.name + '…');
+      return TSI.docText.readFile(file, { stopAt: R.QUEST_MAX * 2 }).then(function (res) {
+        if (!res.ok) { questNote('warn', res.message); return; }
+        var length = R.cleanImportedText(res.text).length;
+        var have = q.box.value.trim() ? q.box.value.length : 0;
+        var asked = have ? TSI.modal.open({
+          title: 'Import into the Quest box',
+          message: 'The Quest box already has text (' + have.toLocaleString('en-GB') + ' characters). Import ' + length.toLocaleString('en-GB') + ' characters from "' + file.name + '"? Replace removes what is there; Add to the end keeps it and puts the new text after it.',
+          escValue: 'cancel',
+          actions: [{ label: 'Cancel', value: 'cancel' }, { label: 'Add to the end', value: 'append' }, { label: 'Replace', value: 'replace', primary: true }]
+        }) : Promise.resolve('replace');
+        return asked.then(function (mode) {
+          if (mode !== 'replace' && mode !== 'append') { questNote('', ''); return; }
+          /* What is in the box is read again now, in case it was typed in meanwhile. */
+          var joined = R.joinQuest(q.box.value, res.text, mode);
+          if (!joined.ok) { questNote('warn', joined.message); return; }
+          return setQuestText(joined.text).then(function () {
+            q.box.scrollTop = mode === 'append' ? q.box.scrollHeight : 0;
+            questNote('info', 'Imported ' + length.toLocaleString('en-GB') + ' characters from ' + file.name + (mode === 'append' ? ', added to the end.' : '.'));
+          });
+        });
+      });
+    }).catch(function (err) {
+      questNote('warn', 'That file could not be imported' + (err && err.message ? ' (' + err.message + ')' : '') + '.');
+    }).then(function () {
+      q.importBtn.disabled = false;
+      q.importBtn.textContent = 'Import…';
+    });
+  }
+
   function questPanel(shell) {
     var initial = R.cleanQuest(TSI.store.get(R.QUEST_KEY, null));
     var q = quest = { lastAt: initial.at, dirty: false, timer: null, state: 'saved' };
@@ -661,6 +701,11 @@
     q.status = el('span', { class: 'tsi-dmdoc__quest-status', 'data-test': 'dmdoc-quest-status', role: 'status' });
     q.count = el('span', { class: 'tsi-dmdoc__quest-count', 'data-test': 'dmdoc-quest-count' });
     q.msg = el('p', { class: 'tsi-dmdoc__quest-msg', 'data-test': 'dmdoc-quest-msg', role: 'status', 'aria-live': 'polite' });
+    q.importBtn = el('button', {
+      type: 'button', class: 'tsi-btn tsi-btn--small', 'data-test': 'dmdoc-quest-import',
+      title: 'Read a PDF, Word (.docx) or text file into the box',
+      onclick: TSI.oneAtATime(importQuest)
+    }, 'Import…');
     q.exportBtn = el('button', {
       type: 'button', class: 'tsi-btn tsi-btn--small', 'data-test': 'dmdoc-quest-export',
       title: 'Download the notes as a plain text file',
@@ -687,7 +732,7 @@
         });
       })
     }, 'Clear');
-    q.tools = el('div', { class: 'tsi-dmdoc__quest-tools' }, [q.exportBtn, q.clearBtn]);
+    q.tools = el('div', { class: 'tsi-dmdoc__quest-tools' }, [q.importBtn, q.exportBtn, q.clearBtn]);
 
     q.box.addEventListener('input', typedQuest);
     q.box.addEventListener('blur', function () {
