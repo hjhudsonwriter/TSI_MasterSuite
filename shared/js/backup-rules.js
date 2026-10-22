@@ -37,6 +37,12 @@
 
     inCampaign: function (toolId) { return rules.CAMPAIGN.indexOf(toolId) !== -1; },
 
+    /* Tools that keep nothing of their own any more, so they have no Import button: an older backup file of one of them has
+       nothing to load, and "open it and use Import" would send the DM to a button that is not there. The words say why. */
+    NOTHING_OF_ITS_OWN: {
+      beasthandler: { name: 'Beast Handler', why: 'it only shows what the Bastion has saved, and what it used to keep (the old requests from players) is not used any more' }
+    },
+
     makeCampaignBackup: function (records, when, space) {
       return {
         format: rules.FORMAT,
@@ -185,6 +191,10 @@
       }
       if (backup.kind === 'tool') {
         var name = (nameOf && nameOf(backup.tool)) || backup.toolName || backup.tool;
+        if (Object.prototype.hasOwnProperty.call(rules.NOTHING_OF_ITS_OWN, backup.tool)) {
+          var none = rules.NOTHING_OF_ITS_OWN[backup.tool];
+          return 'This is an old backup of just ' + the(none.name) + '. ' + the(none.name, true) + ' no longer keeps anything of its own (' + none.why + '), so there is nothing in this file to load, and it has no Import button any more. You can ignore the file. Your beasts are kept by the Bastion: to bring them back, restore a whole-suite backup or a campaign file made from the Bastion.';
+        }
         return 'This is a backup of just ' + the(name) + '. To load it, open ' + the(name) + ' and use Import.';
       }
       return null;
