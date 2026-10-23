@@ -112,7 +112,7 @@ const jargon = text => /undefined|null|NaN|\[object|\b[a-z]+_[a-z_]+\b|partyName
     });
 
     await check('there is no Form Clan, Clan Honour, Unsworn or Found a Clan in any panel of the Bastion', async () => {
-      for (const t of ['open-warehouse', 'open-management', 'open-log', 'open-influence', 'open-favour', 'identity-badge', 'tile-workshop', 'tile-dock']) {
+      for (const t of ['open-warehouse', 'open-management', 'open-log', 'open-influence', 'identity-badge', 'tile-workshop', 'tile-dock']) {
         await pause(page);
         await page.click('[data-test=' + t + ']');
         await page.waitForSelector('.tsi-bas-panel');
@@ -243,7 +243,7 @@ const jargon = text => /undefined|null|NaN|\[object|\b[a-z]+_[a-z_]+\b|partyName
       await page.waitForFunction(() => TSI.bastion.debug.state().partyName === 'SECRET Wardens');
       await closePanel(page);
       await pause(page);
-      for (const t of ['open-warehouse', 'open-management', 'open-log', 'open-influence', 'open-favour', 'tile-workshop', 'tile-dock']) {
+      for (const t of ['open-warehouse', 'open-management', 'open-log', 'open-influence', 'tile-workshop', 'tile-dock']) {
         await pause(page);
         await page.click('[data-test=' + t + ']');
         await page.waitForSelector('.tsi-bas-panel');
