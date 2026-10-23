@@ -47,6 +47,7 @@ async function recruit(ba) {
   /* The Dock's Charter Berth (7 days; the war game's Barracks was the example until 22 October 2026). It costs gold, so the treasury is topped up first. */
   await ba.evaluate(() => TSI.bastion.debug.change(s => { if (s.treasuryGP < 500) s.treasuryGP = 500; }));
   await ba.click('[data-test=tile-dock]');
+  await ba.click('[data-test=dock-tab-orders]'); /* the Dock opens on Cargo (step S08): its orders are under Orders */
   await ba.waitForSelector('[data-test="issue-dock__charter_berth"]');
   await ba.click('[data-test="issue-dock__charter_berth"]');
   await ba.waitForTimeout(300);
