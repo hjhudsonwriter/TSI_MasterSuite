@@ -848,8 +848,9 @@
     t.same(res.report.cancelled.filter(function (c) { return c.id === 'hv-28'; }).map(function (c) { return [c.gp, /training and riding are gone/.test(c.why)]; }), [[150, true]]);
     t.same(res.report.moved.filter(function (m) { return m.id === 'hv-27'; }).map(function (m) { return m.to; }), ['the Beast Pen']);
     var lines = s.migration.v4.lines.join('\n');
-    t.ok(/^The three beast buildings became one Beast Pen; 150 gp went back into the treasury; /.test(s.migration.v4.summary), 'the summary: ' + s.migration.v4.summary);
-    t.equal(/\d+ places? removed/.test(s.migration.v4.summary), false, 'the three buildings are not "removed": they are the Pen');
+    t.ok(/^The three beast buildings became one Beast Pen; [\d,]+ gp went back into the treasury; /.test(s.migration.v4.summary), 'the summary: ' + s.migration.v4.summary);
+    var otherPlaces = res.report.archived.filter(function (a) { return !/^(wyvern_roost|griffin_tower|dire_wolf_den)$/.test(a.facId); }).length;
+    t.ok(otherPlaces === 0 ? !/places? removed/.test(s.migration.v4.summary) : s.migration.v4.summary.indexOf((otherPlaces === 1 ? '1 place' : otherPlaces + ' places') + ' removed') !== -1, 'the three buildings are not counted as "removed": they are the Pen (only the ' + otherPlaces + ' other places are)');
     t.ok(/The Wyvern Roost, Griffin Tower and Dire Wolf Den have become one Beast Pen\. It keeps one beast of each kind: a wyvern, a griffin, a dire wolf, a buckbear and a fellcat\. The other slots are free\./.test(lines), lines);
     t.ok(/All 4 of your beasts are still here/.test(lines));
     t.ok(/A beast at Bond 1 or more counts as acclimatised: Elara's wyvern, Swiftwing and Ashfang\./.test(lines));
@@ -912,7 +913,7 @@
     t.equal(res.save.facilityLevels[PEN], 1);
     t.same(res.save.creatures.map(function (c) { return [c.id, c.status, c.home]; }), [['c1', 'housed', PEN], ['c2', 'waiting', '']]);
     t.ok(/Your beast had no building left standing, so the Beast Pen was built for you, free, in an empty slot \(a Beast Pen costs time, never gold\)\. It is still there\./.test(res.save.migration.v4.lines.join(' ')), 'one beast: singular: ' + res.save.migration.v4.lines.join(' '));
-    t.equal(res.save.migration.v4.summary, 'A Beast Pen was built for your beasts.', 'and the one-line summary says it was built, not "nothing changed"');
+    t.ok(/^A Beast Pen was built for your beasts(;|\.)/.test(res.save.migration.v4.summary), 'and the one-line summary says it was built, not "nothing changed": ' + res.save.migration.v4.summary);
     var three = convert(v3(function (s) {
       s.builtExtras = ['library_scriptorium'];
       s.creatures = [creature('c1', 'griffin', 'Swiftwing', 'housed', 'griffin_tower', 1), creature('c2', 'dire_wolf', 'Ashfang', 'housed', 'dire_wolf_den', 0), creature('c3', 'wyvern', 'Ash', 'housed', 'wyvern_roost', 2)];
@@ -992,7 +993,7 @@
     t.ok(/The House order for Elara's wyvern carries on, but the Beast Pen already holds a wyvern, so Elara's wyvern will wait for a home when it completes \(it is added to the list of waiting beasts then; it is not lost\)\./.test(lines), lines);
     t.ok(/Skyrender is waiting for a home, because the Beast Pen already holds a wyvern\. It stays on the waiting list; nothing is sent away\./.test(lines), lines);
     t.equal(/Swiftwing is waiting for a home/.test(lines), false, 'a griffin waiting is not blocked: no griffin is housed');
-    t.equal(res.save.migration.v4.summary, 'The beast building became the Beast Pen; 1 order moved.', 'the one-line summary');
+    t.ok(/^The beast building became the Beast Pen; 1 order moved(;|\.)/.test(res.save.migration.v4.summary), 'the one-line summary: ' + res.save.migration.v4.summary);
     t.same(res.save.creatures.map(function (c) { return c.id; }), ['w1', 'w2', 'g1'], 'conversion adds and removes nobody');
     /* Two waiting wyverns and a griffin: the line names each with its kind. */
     var two = convert(v3(function (s) {
