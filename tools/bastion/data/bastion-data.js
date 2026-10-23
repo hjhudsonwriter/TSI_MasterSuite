@@ -247,15 +247,6 @@ window.TSI_DATA.bastion = {
   },
   consortiumName: 'Ironbow Trade Consortium',
 
-  /* Party identity (4947-4954): founding a Clan. (The Mercenary Brigade's
-     level 7 and 3 defenders went with the war game, 22 October 2026.) */
-  identityRules: {
-    clanMinLevel: 9,
-    clanSupportTotalMin: 360,
-    clanSupportPerClanMin: 55,
-    clanSupportClanCountMin: 3
-  },
-
   /* Hall of Emissaries: the DC for each action (908-915). */
   hallDC: { trade_agreement: 14, host_delegation: 13, summit: 12, arbitration: 15, consortium: 16 },
   /* What a roll tier does to a Hall action (960-964): days added to how
