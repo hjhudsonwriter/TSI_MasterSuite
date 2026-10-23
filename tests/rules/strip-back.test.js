@@ -6,15 +6,18 @@
 (function () {
   var R = TSI.bastion.rules;
   var T = window.TSI_DATA;
-  var data = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier, creatures: T.bastionCreatures, warRoom: T.bastionWarRoom };
+  var data = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier, creatures: T.bastionCreatures };
   var FIX = window.TSI_FIXTURES || {};
   var canon = R.stripBackCanon;
 
   function clone(v) { return JSON.parse(JSON.stringify(v)); }
-  /* A plain version 3 Bastion on Day 12, edited by fn. */
+  /* A plain version 3 Bastion on Day 12, edited by fn. Like every real one it has the Barracks, Armoury and Watchtower
+     (starting facilities, until the war game went on 22 October 2026). */
   function v3(fn) {
     var s = clone(R.toSave(R.defaultState(data)));
     s.v = 3;
+    s.builtFacilities = ['barracks', 'armoury', 'watchtower', 'workshop', 'dock'];
+    s.facilityLevels = Object.assign({ barracks: 1, armoury: 1, watchtower: 1 }, s.facilityLevels);
     s.day = 12;
     s.anchored = true;
     s.treasuryGP = 400;
@@ -33,6 +36,8 @@
   }
   function held(goodId, qty) { return { goodId: goodId, name: R.goodName(data, goodId), qty: qty }; }
   var ONE_OF = ['telluria', 'aurush', 'pelagos'];
+  /* Every version 3 Bastion had the Barracks, Armoury and Watchtower, so every conversion says they are gone (S06). */
+  var GONE_LINE = 'Places that are gone. Barracks, Armoury and Watchtower are gone with the war game.';
   /* Text a person reads must not have these in it. */
   function jargon(text) {
     var bad = [];
@@ -73,22 +78,30 @@
     t.equal(R.needsStripBack('x', data), false);
   });
 
-  test('a version 3 Bastion with nothing to convert becomes version 4 and says so in one line; nothing else changes', function (t) {
+  test('a version 3 Bastion with nothing else to convert becomes version 4 and says only that the Barracks, Armoury and Watchtower are gone; nothing else changes', function (t) {
     var raw = v3(function (s) { s.pendingOrders = [{ id: 'o1', facId: 'workshop', fnId: 'craft', label: 'Workshop: Craft (Dagger)', costGP: 0, issuedDay: 10, dueDay: 15 }]; });
     var before = JSON.stringify(raw);
     var res = convert(raw);
     t.equal(JSON.stringify(raw), before, 'the save it was given is untouched');
     t.same(res.problems, []);
     t.equal(res.save.v, 4);
-    t.same(res.report.lines, []);
-    t.same(res.save.migration.v4, { day: 12, lines: [], summary: 'Nothing of yours changed.', changed: false, again: false, shown: false, gp: 0 });
+    t.same(res.report.lines, [GONE_LINE]);
+    t.same(res.save.migration.v4, { day: 12, lines: res.report.lines, summary: '3 places removed.', changed: true, again: false, shown: false, gp: 0 });
     var rest = clone(res.save);
-    delete rest.migration;
+    delete rest.migration; delete rest.archivedFacilities;
     rest.v = 3;
     var orig = clone(raw);
     delete orig.migration;
+    ['barracks', 'armoury', 'watchtower'].forEach(function (id) { delete orig.facilityLevels[id]; });
+    orig.builtFacilities = ['workshop', 'dock'];
+    delete orig.repairs; delete orig.archivedFacilities;
     t.same(rest, orig, 'every other field is exactly as it was');
-    t.equal(R.stripBackHeadline(res.save.migration.v4), 'The Bastion has been updated; nothing of yours changed.');
+    t.same(res.save.archivedFacilities.map(function (a) { return [a.facId, a.name, a.status]; }), [['barracks', 'Barracks', 'built'], ['armoury', 'Armoury', 'built'], ['watchtower', 'Watchtower', 'built']], 'and the three are written down in the archive');
+    var plain = clone(R.toSave(R.defaultState(data)));
+    plain.v = 3;
+    var res2 = convert(plain);
+    t.same(res2.report.lines, [GONE_LINE], 'every version 3 Bastion had them, so every one says so (even one saved without their levels)');
+    t.equal(R.stripBackHeadline(res.save.migration.v4), 'The Bastion has changed. Here is exactly what happened to yours.');
   });
 
   test('the conversion is pure: the same save gives the same result every time, and it never touches the one it is given', function (t) {
@@ -107,7 +120,7 @@
   });
 
   test('the registry: the steps run in order, the last one finishes, and a later step can be added above the catch-all', function (t) {
-    t.same(R.stripBackSteps.map(function (st) { return st.id; }), ['dropEvents', 'dropBeastRequests', 'rehomeBeasts', 'moveCharterOrders', 'endOldProtections', 'windDownHall', 'sweepFacilities', 'finish']);
+    t.same(R.stripBackSteps.map(function (st) { return st.id; }), ['dropEvents', 'settleWarOrders', 'dropWar', 'dropWarFacilities', 'dropBeastRequests', 'rehomeBeasts', 'moveCharterOrders', 'windDownHall', 'sweepFacilities', 'finish']);
     var steps = R.stripBackSteps;
     var added = {
       id: 'example',
@@ -128,32 +141,34 @@
       var res = convert(raw);
       t.same(res.problems, []);
       t.equal('exampleLeftover' in res.save, false);
-      t.same(res.save.migration.v4.lines, ['The army and the war. The example went away.'], 'its sentence is under its heading');
+      t.same(res.save.migration.v4.lines, [GONE_LINE, 'The army and the war. The example went away.'], 'its sentence is under its heading');
     } finally {
       steps.splice(0, 1);
     }
-    t.same(R.stripBackSteps.map(function (st) { return st.id; }), ['dropEvents', 'dropBeastRequests', 'rehomeBeasts', 'moveCharterOrders', 'endOldProtections', 'windDownHall', 'sweepFacilities', 'finish']);
+    t.same(R.stripBackSteps.map(function (st) { return st.id; }), ['dropEvents', 'settleWarOrders', 'dropWar', 'dropWarFacilities', 'dropBeastRequests', 'rehomeBeasts', 'moveCharterOrders', 'windDownHall', 'sweepFacilities', 'finish']);
   });
 
   group('Strip Back: the catch-all (a facility the Bastion does not know)');
 
   test('a facility the catalogue does not know is freed from its slot, its plot, its level and its repairs, and recorded', function (t) {
     var raw = v3(function (s) {
-      s.builtExtras = [{ facId: 'old_mill', status: 'built' }, { facId: 'war_room', status: 'built' }, { facId: 'sawpit', status: 'building', startDay: 8, readyDay: 29 }, ''];
+      s.builtExtras = [{ facId: 'old_mill', status: 'built' }, { facId: 'hall_of_emissaries', status: 'built' }, { facId: 'sawpit', status: 'building', startDay: 8, readyDay: 29 }, ''];
       s.builtPlots = [{ facId: 'old_mill', status: 'built' }, ''];
-      s.facilityLevels = Object.assign(s.facilityLevels, { old_mill: 3, sawpit: 1, war_room: 1 });
+      s.facilityLevels = Object.assign(s.facilityLevels, { old_mill: 3, sawpit: 1, hall_of_emissaries: 1 });
       s.repairs = { old_mill: 14, dock: 15 };
     });
     var res = convert(raw);
     t.same(res.problems, []);
-    t.same(res.save.builtExtras, ['', { facId: 'war_room', status: 'built' }, '', ''], 'positions are kept; the known facility stays');
+    t.same(res.save.builtExtras, ['', { facId: 'hall_of_emissaries', status: 'built' }, '', ''], 'positions are kept; the known facility stays');
     t.same(res.save.builtPlots, ['', '']);
-    t.same(['old_mill' in res.save.facilityLevels, 'sawpit' in res.save.facilityLevels, 'war_room' in res.save.facilityLevels], [false, false, true]);
-    t.same(res.save.repairs, { dock: 15 });
-    t.same(res.save.archivedFacilities.map(function (a) { return [a.facId, a.name, a.status, a.slot, a.day, a.plot === true]; }), [
+    t.same(['old_mill' in res.save.facilityLevels, 'sawpit' in res.save.facilityLevels, 'hall_of_emissaries' in res.save.facilityLevels], [false, false, true]);
+    t.equal(res.save.repairs, undefined, 'every repair goes: only a lost battle in the war game ever caused one (S06); the loader writes the empty list');
+    t.same(R.fromSave(clone(raw), data).repairs, {}, 'and a loaded Bastion has none');
+    t.same(res.save.archivedFacilities.filter(function (a) { return !a.starting; }).map(function (a) { return [a.facId, a.name, a.status, a.slot, a.day, a.plot === true]; }), [
       ['old_mill', 'Old Mill', 'built', 0, 12, false], ['sawpit', 'Sawpit', 'building', 2, 12, false], ['old_mill', 'Old Mill', 'built', 0, 12, true]
     ]);
-    t.same(res.save.migration.v4.lines, ['Places that are gone. The Old Mill is no longer part of the Bastion; its slot is free. Building work on the Sawpit stopped, as it is no longer part of the Bastion; its slot is free.']);
+    t.same(res.save.migration.v4.lines, ['Places that are gone. Barracks, Armoury and Watchtower are gone with the war game. The Old Mill is no longer part of the Bastion; its slot is free. Building work on the Sawpit stopped, as it is no longer part of the Bastion; its slot is free.',
+      'The army and the war. The Dock was Under Repair after a lost battle: it is working again now.']);
     t.equal(R.needsStripBack(res.save, data), false);
   });
 
@@ -184,7 +199,7 @@
     t.same(res.report.goods.map(function (g) { return [g.goodId, g.qty]; }), [['raw_timber', 4], ['alchemical_flowers', 4]]);
     t.equal(res.save.warehouse.filter(function (w) { return w.goodId === 'alchemical_flowers'; })[0].id, 'returned-alchemical_flowers', 'a row made by the conversion has a fixed id (never random)');
     t.same(res.save.favour, { telluria: 10, aurush: 50, pelagos: 99 }, 'a facility that is not a Shrine has no god to give Favour back to');
-    t.equal(res.save.migration.v4.lines.length, 4);
+    t.equal(res.save.migration.v4.lines.length, 5, 'gold, goods, orders, the places that are gone, and the note about a facility with no god');
     t.equal(res.save.migration.v4.lines[0], 'Gold. 150 gp went back into the treasury (on Day 12 it went from 400 gp to 550 gp): Old Mill: Grind Grain, 120 gp; Old Mill: Press Oil, 30 gp.');
     t.equal(res.save.migration.v4.lines[1], 'Goods. 4 lots of Raw Timber and 4 portions of Alchemical Flowers went back to the Warehouse.');
     t.equal(res.save.migration.v4.lines[2], 'Orders. 2 orders were cancelled: Old Mill: Grind Grain (the Old Mill is no longer part of the Bastion); Old Mill: Press Oil (the Old Mill is no longer part of the Bastion).');
@@ -215,7 +230,7 @@
     t.same(report.cancelled.map(function (c) { return [c.id, c.god, c.favour, c.why]; }), [['f3', 'pelagos', 10, 'the Temple replaces the Shrines']]);
   });
 
-  test('orders kept as they are: at a real facility, an upgrade, and the War Council\'s own orders (its step deals with them)', function (t) {
+  test('orders kept as they are: at a real facility and an upgrade; a War Action is cancelled and refunds nothing', function (t) {
     var raw = v3(function (s) {
       s.pendingOrders = [
         { id: 'a', facId: 'workshop', fnId: 'upgrade', label: 'Workshop: Upgrade to Level 2', costGP: 0, issuedDay: 10, dueDay: 17, meta: { kind: 'upgrade', toLevel: 2 } },
@@ -225,9 +240,10 @@
     });
     var res = convert(raw);
     t.same(res.problems, []);
-    t.same(res.save.pendingOrders, raw.pendingOrders);
-    t.equal(res.save.treasuryGP, 400);
-    t.same(R.STRIP_BACK_PSEUDO_FACILITIES, ['war_council'], 'the Trade Network\'s orders are dealt with by windDownHall (S09), so it left the list');
+    t.same(res.save.pendingOrders, [raw.pendingOrders[0], 'not an order'], 'the junk entry is left alone, as it always was');
+    t.equal(res.save.treasuryGP, 400, 'a War Action cost no gold: declaring war cost Honour/Respect and Political Capital, which are not given back');
+    t.same(res.report.cancelled.map(function (c) { return c.id; }), ['b']);
+    t.same(R.STRIP_BACK_PSEUDO_FACILITIES, [], 'the war game and the Trade Network were the only orders with no facility of their own, and their steps (dropWar, windDownHall) deal with them');
   });
 
   test('goods an order held that cannot be read are said, and the rest still go back; an order with no id is still cancelled and refunded', function (t) {
@@ -267,9 +283,10 @@
     var ids = ['menagerie', 'war_room', 'library_scriptorium', 'arcane_laboratory', 'armoury', 'watchtower', 'barracks', 'shrine_telluria', 'shrine_aurush', 'shrine_pelagos', 'wyvern_roost', 'griffin_tower', 'dire_wolf_den'];
     t.same(Object.keys(T.bastion.stripBack.facilities).sort(), ids.slice().sort(), 'the 13 facilities going');
     ids.forEach(function (id) {
-      /* The three creature buildings are already out of the catalogue (S14): their names are the table's own. */
+      /* The three creature buildings (S14) and the war game's five facilities (S06) are already out of the catalogue: their names are the table's own. */
       var fac = R.facility(data, id);
-      t.equal(T.bastion.stripBack.facilities[id], fac ? fac.name : { wyvern_roost: 'Wyvern Roost', griffin_tower: 'Griffin Tower', dire_wolf_den: 'Dire Wolf Den' }[id], id + ': spelt as the catalogue spells it');
+      var own = { wyvern_roost: 'Wyvern Roost', griffin_tower: 'Griffin Tower', dire_wolf_den: 'Dire Wolf Den', menagerie: 'Menagerie', war_room: 'War Room', armoury: 'Armoury', watchtower: 'Watchtower', barracks: 'Barracks' };
+      t.equal(T.bastion.stripBack.facilities[id], fac ? fac.name : own[id], id + ': spelt as the catalogue spells it');
     });
     t.equal(R.stripBackName(data, 'wyvern_roost'), 'Wyvern Roost', 'still named after its definition went');
     t.same(Object.keys(T.bastion.stripBack).sort(), ['facilities', 'menagerieValue', 'names', 'orders']);
@@ -472,7 +489,13 @@
 
   /* The Bastion before and after a step MOVES the order 'k' to the Workshop's Smithing, as a later step will. */
   function movedPair(patch) {
-    var before = keptRes().before;
+    var before = clone(keptRes().before);
+    /* The hand-made "after" below is not run through the war steps, so the Bastion starts without the war game's facilities
+       (otherwise the audit rightly says it would be converted again). */
+    ['barracks', 'armoury', 'watchtower'].forEach(function (id) { delete before.facilityLevels[id]; });
+    ['defenders', 'defenderBeasts', 'military', 'militaryActions', 'warMissions', 'warMissionSeq', 'warRecovery', 'wars', 'warLog', 'repairs'].forEach(function (k) { delete before[k]; });
+    if (before.dayInProgress) delete before.dayInProgress.attackRolled;
+    before.builtFacilities = ['workshop', 'dock'];
     var after = clone(before);
     after.v = 4;
     var report = R.stripBackNewReport(after, data);
@@ -607,7 +630,7 @@
     t.equal(m.gp, 165, 'the gold handed back adds up');
     t.equal(m.again, false, 'an older copy is NOT blamed: the first report was never read');
     t.equal(m.changed, true);
-    t.equal(m.summary, '120 gp went back into the treasury; 1 order was cancelled; goods went back to the Warehouse; then, on Day 12: 45 gp went back into the treasury; 1 order was cancelled.');
+    t.equal(m.summary, '120 gp went back into the treasury; 1 order was cancelled; goods went back to the Warehouse; 3 places removed; then, on Day 12: 45 gp went back into the treasury; 1 order was cancelled.');
     t.equal(R.stripBackHeadline(m), 'The Bastion has changed. Here is exactly what happened to yours.');
     t.equal(second.save.treasuryGP, 565);
     /* A third time with nothing to say leaves the unread report exactly as it was. */
@@ -649,6 +672,9 @@
     t.equal(R.stripBackHeadline(res.save.migration.v4), 'The Bastion has changed. Here is exactly what happened to yours.');
     /* An unread report that said nothing, then something found: the new lines stand alone. */
     var quiet = convert(v3()).save;
+    /* A real version 3 save always says the Barracks, Armoury and Watchtower are gone (S06), so the unread report that said
+       nothing is set up by hand. */
+    quiet.migration.v4 = { day: 12, lines: [], summary: 'Nothing of yours changed.', changed: false, again: false, shown: false, gp: 0 };
     quiet.pendingOrders.push(ghost('late', { costGP: 45 }));
     var fromQuiet = convert(quiet);
     t.same(fromQuiet.save.migration.v4.lines, ['Gold. 45 gp went back into the treasury (on Day 12 it went from 400 gp to 445 gp): Old Mill: Grind Grain, 45 gp.', 'Orders. One order was cancelled: Old Mill: Grind Grain (the Old Mill is no longer part of the Bastion).']);
@@ -723,39 +749,39 @@
     function clampTreasury(s) { return Math.max(0, parseInt(s.treasuryGP, 10) || 0); }
   });
 
-  test('so far the conversion changes nothing in any fixture except its version, the Bastion\'s event record (S05) and the Beast Handler\'s old request record (S13): the heavy Bastion keeps its 28 orders, 4 beasts and 200 log lines', function (t) {
+  test('so far the conversion changes nothing in any fixture except its version, the Bastion\'s event record (S05), the Beast Handler\'s old request record (S13), the Beast Pen (S14) and the war game and its five facilities (S06): the heavy Bastion keeps its beasts and 200 log lines', function (t) {
+    var WAR_FIELDS = ['defenders', 'defenderBeasts', 'military', 'militaryActions', 'warMissions', 'warMissionSeq', 'warRecovery', 'wars', 'repairs', 'warLog'];
     Object.keys(FIX).forEach(function (name) {
       if (name === 'bastion-before-overhaul') return;
       var res = convert(FIX[name]);
-      /* The heavy one had an event to drop and the three creature buildings (S14); two earlier ones had the three buildings. */
-      t.equal(res.report.lines.filter(function (l) { return !/^Places that joined others\. /.test(l) && !/^Beasts\. /.test(l) && !/^Gold\. /.test(l) && !/^Orders\. /.test(l) && !/^Trade\. /.test(l); }).length, name === 'bastion-v3-heavy' ? 1 : 0, name + ': only the heavy one had an event to drop');
+      /* Headings the earlier steps and the war game's own use. Anything else has to be the heavy Bastion's one event to drop. */
+      t.equal(res.report.lines.filter(function (l) { return !/^(Places that joined others|Places that are gone|The army and the war|Trade|Beasts|Gold|Orders)\. /.test(l); }).length, name === 'bastion-v3-heavy' ? 1 : 0, name + ': only the heavy one had an event to drop');
       var a = clone(res.save), b = clone(FIX[name]);
       delete a.migration; delete b.migration;
       delete b.lastEvent; delete b.lastEventDay;
       a.v = 3;
-      /* Changed by the Beast Pen (S14): the slots, levels, orders and creatures' homes of the three creature buildings. They are checked in tests/rules/beast-pen.test.js. */
-      if (res.report.archived.some(function (x) { return /^(wyvern_roost|griffin_tower|dire_wolf_den)$/.test(x.facId); })) {
-        ['builtExtras', 'builtPlots', 'facilityLevels', 'archivedFacilities', 'creatures', 'pendingOrders', 'treasuryGP'].forEach(function (k) { delete a[k]; delete b[k]; });
-      }
-      /* Changed by the Hall's wind-down (S09): the old contracts, routes and disputes end and their fields go (checked in tests/rules/hall-dock.test.js), and the Hall has one level. */
+      /* Changed by the Beast Pen (S14) and the war game's five facilities (S06): the slots, levels, orders, gold, the repairs and the creatures' homes.
+         They are checked in tests/rules/beast-pen.test.js and in the group at the end of this file. */
+      ['builtFacilities', 'builtExtras', 'builtPlots', 'facilityLevels', 'archivedFacilities', 'creatures', 'pendingOrders', 'treasuryGP'].forEach(function (k) { delete a[k]; delete b[k]; });
+      /* Removed with the war game (S06): the army, the wars, the log, the repairs. */
+      WAR_FIELDS.forEach(function (k) { delete a[k]; delete b[k]; });
+      if (b.dayInProgress) delete b.dayInProgress.attackRolled;
+      if (b.tradeNetwork && b.tradeNetwork.protections) { delete b.tradeNetwork.protections.commercial_convoy; delete b.tradeNetwork.protections.maritime_approaches; }
+      /* Changed by the Hall's wind-down (S09): the old contracts, routes and disputes end and their fields go (checked in tests/rules/hall-dock.test.js). */
       ['arbitration', 'diplomacy', 'legacyDiplomacy'].forEach(function (k) { delete a[k]; delete b[k]; });
       if (a.tradeNetwork && b.tradeNetwork) ['active', 'strategy', 'stability', 'routes', 'highRiskRouting', 'yieldBonusPct'].forEach(function (k) { delete a.tradeNetwork[k]; delete b.tradeNetwork[k]; });
-      if (a.facilityLevels && b.facilityLevels) { delete a.facilityLevels.hall_of_emissaries; delete b.facilityLevels.hall_of_emissaries; }
-      if (res.report.gold.settlement > 0 || res.report.cancelled.some(function (c) { return /^(Hall of Emissaries|Ironbow Trade Network)/.test(c.label); })) { ['treasuryGP', 'pendingOrders'].forEach(function (k) { delete a[k]; delete b[k]; }); }
-      /* Changed by the Dock (S08): a Register Port Charter order at the Hall moves to the Dock (checked in the S08 group below). */
-      if (res.report.moved.some(function (m) { return /^Hall of Emissaries: Register Port Charter/.test(m.label); })) { delete a.pendingOrders; delete b.pendingOrders; }
       /* Removed so far (S13): the Beast Handler's old request record. */
       if (b.beast) { delete b.beast.done; delete b.beast.accept; delete b.beast.floor; }
       t.equal(canon(a), canon(b), name + ': every other field exactly as it was');
     });
     var heavy = R.fromSave(clone(FIX['bastion-v3-heavy']), data);
     t.equal(heavy.v, 4);
-    t.equal(heavy.pendingOrders.length, 24, '28, less the Riding Harness (cancelled and refunded) and, from the Hall\'s wind-down (S09), its Host Delegation and Trade Consortium and the Trade Network\'s investment');
+    t.equal(heavy.pendingOrders.length, 17, '28, less the eight cancelled (seven for the war game, the Riding Harness) and, from the Hall\'s wind-down (S09), its Host Delegation and Trade Consortium and the Trade Network\'s investment; the Roost\'s House order moved');
     t.equal(heavy.creatures.length, 4);
     t.equal(heavy.log.length, 200);
-    t.equal(heavy.treasuryGP, 4105, '2,000, the 150 gp harness back, the Hall\'s 1,125 gp of cancelled orders back and 830 gp of final settlement (S09)');
-    t.same(heavy.builtExtras.filter(Boolean).map(function (e) { return e.facId; }), ['menagerie', 'war_room', 'library_scriptorium', 'arcane_laboratory', 'shrine_telluria', 'shrine_aurush', 'shrine_pelagos', 'beast_pen', 'hall_of_emissaries']);
-    t.equal(heavy.migration.v4.changed, true, 'its event record was dropped, and it says so');
+    t.equal(heavy.treasuryGP, 5600, '2,000, the 1,645 gp the war game\'s and the harness\'s cancelled orders cost, the Hall\'s 1,125 gp of cancelled orders back and 830 gp of final settlement (S09)');
+    t.same(heavy.builtExtras.filter(Boolean).map(function (e) { return e.facId; }), ['library_scriptorium', 'arcane_laboratory', 'shrine_telluria', 'shrine_aurush', 'shrine_pelagos', 'beast_pen', 'hall_of_emissaries']);
+    t.equal(heavy.migration.v4.changed, true, 'its event record, the war game and its facilities were dropped, and it says so');
     t.equal('lastEvent' in heavy || 'lastEventDay' in heavy, false);
   });
 
@@ -773,6 +799,7 @@
     t.same(h.creatures.map(function (c) { return c.development ? c.development.bond.level : -1; }), [1, 2, 3, -1], 'bonds 1, 2 and 3, and one waiting with none');
     t.same([h.diplomacy.agreements.length, h.diplomacy.consortiums.length, h.tradeNetwork.routes.length, h.arbitration.queue.length, h.diplomacy.tokens], [2, 1, 2, 1, 2]);
     t.same(Object.keys(h.wars), ['bacca']);
+    t.same(Object.keys(h.tradeNetwork.protections).sort(), ['commercial_convoy', 'maritime_approaches', 'pelagos_blessing'], 'a held Convoy, the Approaches in force and a Blessing of Pelagos');
     t.equal(h.military.length, 5, 'four regiments and a Lieutenants row');
     t.equal(h.defenderBeasts.length, 2);
     t.same([h.defenders.count, h.defenders.armed], [6, true]);
@@ -780,12 +807,11 @@
     t.same([h.organization.type, h.organization.name], ['clan', 'Clan Ironbow']);
     t.equal(h.log.length, 200);
     t.equal(h.greatRites.length, 1);
-    t.same(h.tradeNetwork.protections, { pelagos_blessing: { charges: 1 } });
     t.ok(h.tradeNetwork.portCharters.some(function (c) { return c.termsLog && c.termsLog.length; }), 'a Charter with a terms history');
     t.equal(h.tradeNetwork.voyages.length, 1);
     t.equal(h.tradeNetwork.schedules.length, 1);
     t.equal(h.tradeNetwork.parcels.length, 2);
-    t.ok(R.facility(data, 'war_room'), 'the facilities it uses are in the catalogue today');
+    t.ok(R.facility(data, 'library_scriptorium') && !R.facility(data, 'war_room'), 'the facilities it uses are in the catalogue today, but for the war game\'s five (written out in the generator)');
   });
 
   test('a version 2 fixture goes through version 3 and then version 4 in one go, and the report holds both lists', function (t) {
@@ -823,8 +849,7 @@
     t.same(Object.keys(res.save.beast).sort(), ['campaignId', 'handlers']);
     t.equal(res.save.beast.campaignId, 'AbCdEfGh12345678');
     t.equal(res.save.beast.handlers[0].secret, 'abcdefghijkmnpqrstuvwxyz');
-    t.same(res.report.lines, [], 'nothing for Harry to read about it');
-    t.equal(res.save.migration.v4.changed, false);
+    t.same(res.report.lines, [GONE_LINE], 'nothing about the old requests for Harry to read');
     t.equal(R.needsStripBack(res.save, data), false);
     t.equal(canon(R.migrateToV4(res.save, data).save), canon(res.save), 'converting again changes nothing');
     t.ok(raw.beast.done, 'the save it was given is untouched');
@@ -969,8 +994,8 @@
     t.ok(text.indexOf('"Back up everything"') !== -1);
     t.ok(/\n$/.test(text));
     t.same(jargon(text), []);
-    var quiet = R.stripBackText(convert(v3()).save.migration.v4);
-    t.ok(quiet.indexOf('The Bastion has been updated; nothing of yours changed.') === 0);
+    var quiet = R.stripBackText({ day: 12, lines: [], summary: 'Nothing of yours changed.', changed: false, again: false, shown: false });
+    t.ok(quiet.indexOf('The Bastion has been updated; nothing of yours changed.') === 0, 'a report with nothing in it (no real Bastion has one now: every version 3 Bastion had the war facilities)');
     t.equal(R.stripBackText(null), '');
     t.equal(R.stripBackHeadline(null), '');
     t.ok(R.stripBackSay, 'a later step can add a sentence under a heading');
@@ -992,17 +1017,20 @@
     t.equal(canon(raw), before, 'the save it was given is untouched');
     t.same(res.problems, []);
     t.equal('lastEvent' in res.save || 'lastEventDay' in res.save, false);
-    t.same(res.save.migration.v4.lines, [EVENT_LINE]);
+    t.same(res.save.migration.v4.lines, [GONE_LINE, EVENT_LINE]);
     t.same(res.report.removed.events, { name: 'Friendly Visitors', day: 29 });
     t.equal(res.save.migration.v4.changed, true);
-    t.equal(res.save.migration.v4.summary, 'the Bastion\'s event record was dropped.');
-    t.same(jargon(res.save.migration.v4.lines[0]), []);
+    t.equal(res.save.migration.v4.summary, '3 places removed; the Bastion\'s event record was dropped.');
+    t.same(jargon(res.save.migration.v4.lines[1]), []);
     var rest = clone(res.save);
-    delete rest.migration;
+    delete rest.migration; delete rest.archivedFacilities;
     rest.v = 3;
     var orig = clone(raw);
     delete orig.migration;
     delete orig.lastEvent; delete orig.lastEventDay;
+    ['barracks', 'armoury', 'watchtower'].forEach(function (id) { delete orig.facilityLevels[id]; });
+    orig.builtFacilities = ['workshop', 'dock'];
+    delete orig.repairs; delete orig.archivedFacilities;
     t.equal(canon(rest), canon(orig), 'nothing else changed: no gold, goods, orders or Favour moved');
   });
 
@@ -1011,42 +1039,41 @@
     var without = v3(function (s) { delete s.lastEvent; delete s.lastEventDay; });
     var a = convert(withNone), b = convert(without);
     t.same(a.problems, []);
-    t.same(a.report.lines, []);
+    t.same(a.report.lines, [GONE_LINE], 'only the war facilities are said');
     t.equal('lastEvent' in a.save || 'lastEventDay' in a.save, false, 'the empty fields are not carried over');
     t.equal(canon(a.save), canon(b.save), 'the same save either way');
     t.equal(canon(a.report), canon(b.report), 'and the same report');
-    t.equal(a.save.migration.v4.summary, 'Nothing of yours changed.');
-    t.equal(a.save.migration.v4.changed, false);
-    t.same(R.stripBackLeftovers(withNone, data), [], 'empty fields are not a leftover');
+    t.equal(a.save.migration.v4.summary, '3 places removed.');
+    t.same(R.stripBackLeftovers(a.save, data), [], 'empty fields are not a leftover');
   });
 
   test('the day of an event with no record, an event waiting, and one in the day being passed are all dropped, and said once', function (t) {
     var onlyDay = convert(v3(function (s) { s.lastEvent = null; s.lastEventDay = -3; }));
     t.same(onlyDay.problems, []);
-    t.same(onlyDay.save.migration.v4.lines, ['Bastion events. The Bastion no longer has events, so its record of them is not kept. It was only a note for you; nothing in it changed the Bastion\'s numbers.']);
+    t.same(onlyDay.save.migration.v4.lines, [GONE_LINE, 'Bastion events. The Bastion no longer has events, so its record of them is not kept. It was only a note for you; nothing in it changed the Bastion\'s numbers.']);
     var waiting = convert(v3(function (s) {
       s.pendingEvent = { name: 'Guest' };
       s.dayInProgress = { day: 12, stage: 'orders', skipped: [], attackRolled: false, news: ['The Smithy is built.'], event: { name: 'Guest' }, pendingEvent: { name: 'Guest' } };
     }));
     t.same(waiting.problems, []);
     t.equal('pendingEvent' in waiting.save, false);
-    t.same(Object.keys(waiting.save.dayInProgress).sort(), ['attackRolled', 'day', 'news', 'skipped', 'stage'], 'the day in progress keeps everything else');
+    t.same(Object.keys(waiting.save.dayInProgress).sort(), ['day', 'news', 'skipped', 'stage'], 'the day in progress keeps everything else (the attack roll went with the war game)');
     t.same(waiting.save.dayInProgress.news, ['The Smithy is built.']);
-    t.equal(waiting.save.migration.v4.lines.length, 1);
+    t.equal(waiting.save.migration.v4.lines.length, 2);
     t.equal(R.fromSave(clone(onlyDay.save), data).dayInProgress, null);
   });
 
   test('an event with no name is called by its id in words; a damaged record is dropped without a throw', function (t) {
     t.same(convert(v3(function (s) { s.lastEvent = { id: 'storm', day: 28 }; })).save.migration.v4.lines,
-      ['Bastion events. The Bastion no longer has events, so the last one it rolled (Storm, Day 28) is not kept. It was only a note for you; nothing in it changed the Bastion\'s numbers.']);
+      [GONE_LINE, 'Bastion events. The Bastion no longer has events, so the last one it rolled (Storm, Day 28) is not kept. It was only a note for you; nothing in it changed the Bastion\'s numbers.']);
     t.same(convert(v3(function (s) { s.lastEvent = {}; })).save.migration.v4.lines,
-      ['Bastion events. The Bastion no longer has events, so the last one it rolled is not kept. It was only a note for you; nothing in it changed the Bastion\'s numbers.']);
+      [GONE_LINE, 'Bastion events. The Bastion no longer has events, so the last one it rolled is not kept. It was only a note for you; nothing in it changed the Bastion\'s numbers.']);
     var junk = convert(v3(function (s) { s.lastEvent = 'x'; s.lastEventDay = 'soon'; }));
     t.same(junk.problems, []);
-    t.equal(junk.save.migration.v4.lines.length, 1);
+    t.equal(junk.save.migration.v4.lines.length, 2);
     t.equal('lastEvent' in junk.save, false);
     var noDay = convert(v3(function (s) { s.lastEvent = oldEvent({ day: 0 }); }));
-    t.equal(noDay.save.migration.v4.lines[0], 'Bastion events. The Bastion no longer has events, so the last one it rolled (Friendly Visitors) is not kept. It was only a note for you; nothing in it changed the Bastion\'s numbers.', 'a day before Day 1 is not named');
+    t.equal(noDay.save.migration.v4.lines[1], 'Bastion events. The Bastion no longer has events, so the last one it rolled (Friendly Visitors) is not kept. It was only a note for you; nothing in it changed the Bastion\'s numbers.', 'a day before Day 1 is not named');
   });
 
   test('what an earlier event put in "The Ironbow sends word" is history: it is kept exactly, and the audit proves it', function (t) {
@@ -1115,10 +1142,11 @@
     t.same(res.problems, []);
     t.equal(res.save.treasuryGP, 130);
     t.same(res.save.pendingOrders, []);
-    t.equal(res.save.migration.v4.lines.length, 3);
+    t.equal(res.save.migration.v4.lines.length, 4);
     t.ok(/^Gold\. /.test(res.save.migration.v4.lines[0]));
     t.ok(/^Orders\. /.test(res.save.migration.v4.lines[1]));
-    t.ok(/^Bastion events\. /.test(res.save.migration.v4.lines[2]), 'in the order of the headings');
+    t.ok(/^Places that are gone\. /.test(res.save.migration.v4.lines[2]));
+    t.ok(/^Bastion events\. /.test(res.save.migration.v4.lines[3]), 'in the order of the headings');
   });
 
   test('the Bastion\'s own pieces are gone: no event data, no event rules, no 28-day setting, no event forecast', function (t) {

@@ -1,3 +1,8 @@
+REMOVED 22 OCTOBER 2026. The war game this proposal describes (the War Room's regiments, drills and musters, and the rest of the war) was deleted in the
+Strip Back Overhaul at Harry's request (docs/STRIP-BACK-PLAN.md). It is kept here as history only. The last version of the code that follows it is commit
+4f1db26 (git checkout 4f1db26).
+-----------------------------------------------------------------------------------------------------------------------------------------------------------
+
 Harry's War Room proposal (Ironbow_War_Room_Training_and_Upgrades_Proposal.docx), text copy made 15 October 2026. Harry approved section 10 as written on 15 October 2026, except Grand War Exercises (kept for the Command & Logistics research) and upkeep (stays uncharged, as today).
 
 War Room

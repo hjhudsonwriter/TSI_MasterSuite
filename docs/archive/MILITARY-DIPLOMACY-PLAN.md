@@ -1,3 +1,5 @@
+> **Removed 22 October 2026.** The war game this document describes (the War Council, the War Table, wars, regiments, Lieutenants, defenders, Military Actions, and the Barracks, Armoury, Watchtower, War Room and Menagerie) was deleted in the Strip Back Overhaul at Harry's request (`docs/STRIP-BACK-PLAN.md`). It is kept here as history only; nothing in the suite follows its war parts any more (section 1, the War Room). Section 2, the Hall's Diplomatic Records, still describes work that stays, though the Hall itself is cut back by a later step of the same overhaul. The last version of the code that does is commit `4f1db26` (`git checkout 4f1db26`).
+
 # Pull request 8: Military and diplomacy, the plan so far
 
 This file is for Harry and his planning assistant. It records Harry's answers of 15 October 2026, sorted into four kinds:

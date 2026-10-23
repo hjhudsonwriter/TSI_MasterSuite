@@ -1,10 +1,11 @@
-/* The Ironbow Bastion Manager: the 271 compendium entries (68 filled in, the rest name only).
+/* The Ironbow Bastion Manager: the 238 compendium entries (62 filled in, the rest name only).
    A word-for-word copy of the old tool's data/compendium_items.json (265 entries), stored as a
-   script so it loads from a double-clicked file, plus the six War Room units of the war
-   mini-game (phase 2), which have no Roll20 page. Edit it here.
-   The War Room units' summaries below only hold their places: the Bastion builds each one's
-   stat block from war-units-data.js when the Compendium opens (and in Export Compendium JSON),
-   so change their numbers there. */
+   script so it loads from a double-clicked file. Edit it here.
+   The Strip Back Overhaul (22 October 2026) took out the 21 entries that belonged to the war
+   game: the Menagerie's 13 beasts, the War Room's six units and Lieutenant, and the old
+   Regiment (100). The restore point is commit 4f1db26.
+   Step S09 (22 October 2026) took out the 12 entries that were only the Clan and Clan-pair choices of the
+   Hall of Emissaries' orders ("Clan Karr", "Bacca + Molten" and the rest); none had anything written in it. */
 window.TSI_DATA = window.TSI_DATA || {};
 window.TSI_DATA.bastionCompendium = {
   "version": 1,
@@ -44,13 +45,6 @@ window.TSI_DATA.bastionCompendium = {
       "source": "",
       "roll20": "https://roll20.net/compendium/dnd5e/Antitoxin%20(2%20vials)"
     },
-    "Ape": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Ape"
-    },
     "Arcane focus (crystal)": {
       "type": "",
       "attunement": "",
@@ -64,13 +58,6 @@ window.TSI_DATA.bastionCompendium = {
       "summary": "",
       "source": "",
       "roll20": "https://roll20.net/compendium/dnd5e/Arcane%20focus%20(orb)"
-    },
-    "Archers (50)": {
-      "type": "",
-      "attunement": "",
-      "summary": "A War Room unit of the war mini-game: the Compendium shows its stat block from war-units-data.js.",
-      "source": "War Room",
-      "roll20": ""
     },
     "Assassin's Blood": {
       "type": "",
@@ -113,13 +100,6 @@ window.TSI_DATA.bastionCompendium = {
       "summary": "",
       "source": "",
       "roll20": "https://roll20.net/compendium/dnd5e/Aurush's%20Radiance"
-    },
-    "Bacca + Molten": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Bacca%20%2B%20Molten"
     },
     "Backpack": {
       "type": "Adventuring Gear",
@@ -197,27 +177,6 @@ window.TSI_DATA.bastionCompendium = {
       "summary": "",
       "source": "",
       "roll20": "https://roll20.net/compendium/dnd5e/Belt%20(magic%20item%20base)"
-    },
-    "Black Bear": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Black%20Bear"
-    },
-    "Blackstone + Karr": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Blackstone%20%2B%20Karr"
-    },
-    "Blackstone + Rowthorn": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Blackstone%20%2B%20Rowthorn"
     },
     "Blanket": {
       "type": "Adventuring Gear",
@@ -330,13 +289,6 @@ window.TSI_DATA.bastionCompendium = {
       "summary": "",
       "source": "",
       "roll20": "https://roll20.net/compendium/dnd5e/Brig"
-    },
-    "Brown Bear": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Brown%20Bear"
     },
     "Burnt Othur Fumes (Poison)": {
       "type": "",
@@ -485,26 +437,12 @@ window.TSI_DATA.bastionCompendium = {
       "source": "https://www.dnd5eapi.co/api/2014/magic-items/circlet-of-blasting",
       "roll20": "https://roll20.net/compendium/dnd5e/Circlet%20of%20Blasting"
     },
-    "Clan Bacca": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Clan%20Bacca"
-    },
     "Clan Bacca Warrior Disguise": {
       "type": "",
       "attunement": "",
       "summary": "",
       "source": "",
       "roll20": "https://roll20.net/compendium/dnd5e/Clan%20Bacca%20Warrior%20Disguise"
-    },
-    "Clan Blackstone": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Clan%20Blackstone"
     },
     "Clan Blackstone Warden Disguise": {
       "type": "",
@@ -513,26 +451,12 @@ window.TSI_DATA.bastionCompendium = {
       "source": "",
       "roll20": "https://roll20.net/compendium/dnd5e/Clan%20Blackstone%20Warden%20Disguise"
     },
-    "Clan Farmer": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Clan%20Farmer"
-    },
     "Clan Farmer Warrior Disguise": {
       "type": "",
       "attunement": "",
       "summary": "",
       "source": "",
       "roll20": "https://roll20.net/compendium/dnd5e/Clan%20Farmer%20Warrior%20Disguise"
-    },
-    "Clan Karr": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Clan%20Karr"
     },
     "Clan Karr Warrior Disguise": {
       "type": "",
@@ -541,13 +465,6 @@ window.TSI_DATA.bastionCompendium = {
       "source": "",
       "roll20": "https://roll20.net/compendium/dnd5e/Clan%20Karr%20Warrior%20Disguise"
     },
-    "Clan Molten": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Clan%20Molten"
-    },
     "Clan Molten Warrior Disguise": {
       "type": "",
       "attunement": "",
@@ -555,26 +472,12 @@ window.TSI_DATA.bastionCompendium = {
       "source": "",
       "roll20": "https://roll20.net/compendium/dnd5e/Clan%20Molten%20Warrior%20Disguise"
     },
-    "Clan Rowthorn": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Clan%20Rowthorn"
-    },
     "Clan Rowthorn Warrior Disguise": {
       "type": "",
       "attunement": "",
       "summary": "",
       "source": "",
       "roll20": "https://roll20.net/compendium/dnd5e/Clan%20Rowthorn%20Warrior%20Disguise"
-    },
-    "Clan Slade": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Clan%20Slade"
     },
     "Clan Slade Warrior Disguise": {
       "type": "",
@@ -625,26 +528,12 @@ window.TSI_DATA.bastionCompendium = {
       "source": "",
       "roll20": "https://roll20.net/compendium/dnd5e/Common%20clothes"
     },
-    "Constrictor Snake": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Constrictor%20Snake"
-    },
     "Costume clothes": {
       "type": "",
       "attunement": "",
       "summary": "",
       "source": "",
       "roll20": "https://roll20.net/compendium/dnd5e/Costume%20clothes"
-    },
-    "Crocodile": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Crocodile"
     },
     "Cutter": {
       "type": "",
@@ -667,13 +556,6 @@ window.TSI_DATA.bastionCompendium = {
       "source": "",
       "roll20": "https://roll20.net/compendium/dnd5e/Darkvision%20draught%20(base%20item)"
     },
-    "Dire Wolf": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Dire%20Wolf"
-    },
     "Door frame": {
       "type": "",
       "attunement": "",
@@ -694,13 +576,6 @@ window.TSI_DATA.bastionCompendium = {
       "summary": "",
       "source": "",
       "roll20": "https://roll20.net/compendium/dnd5e/Essence%20of%20Ether%20(Poison)"
-    },
-    "Farmer + Slade": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Farmer%20%2B%20Slade"
     },
     "Fermented ale": {
       "type": "",
@@ -814,13 +689,6 @@ window.TSI_DATA.bastionCompendium = {
       "source": "",
       "roll20": "https://roll20.net/compendium/dnd5e/Geographical%20Scriptures"
     },
-    "Giant Vulture": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Giant%20Vulture"
-    },
     "Glaive": {
       "type": "Weapon",
       "attunement": "No",
@@ -912,13 +780,6 @@ window.TSI_DATA.bastionCompendium = {
       "source": "https://www.dnd5eapi.co/api/2014/equipment/healers-kit",
       "roll20": "https://roll20.net/compendium/dnd5e/Healer's%20Kit"
     },
-    "Heavy Infantry (50)": {
-      "type": "",
-      "attunement": "",
-      "summary": "A War Room unit of the war mini-game: the Compendium shows its stat block from war-units-data.js.",
-      "source": "War Room",
-      "roll20": ""
-    },
     "Hide armor": {
       "type": "Armor",
       "attunement": "No",
@@ -926,26 +787,12 @@ window.TSI_DATA.bastionCompendium = {
       "source": "https://www.dnd5eapi.co/api/2014/equipment/hide-armor",
       "roll20": "https://roll20.net/compendium/dnd5e/Hide%20armor"
     },
-    "Hyena": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Hyena"
-    },
     "Interior wall (wood)": {
       "type": "",
       "attunement": "",
       "summary": "",
       "source": "",
       "roll20": "https://roll20.net/compendium/dnd5e/Interior%20wall%20(wood)"
-    },
-    "Jackal": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Jackal"
     },
     "Javelin": {
       "type": "Weapon",
@@ -1038,41 +885,6 @@ window.TSI_DATA.bastionCompendium = {
       "source": "",
       "roll20": "https://roll20.net/compendium/dnd5e/Leather%20shield%20straps"
     },
-    "Levy Infantry (150)": {
-      "type": "",
-      "attunement": "",
-      "summary": "A War Room unit of the war mini-game: the Compendium shows its stat block from war-units-data.js.",
-      "source": "War Room",
-      "roll20": ""
-    },
-    "Lieutenant (1)": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Lieutenant%20(1)"
-    },
-    "Light Cavalry (50)": {
-      "type": "",
-      "attunement": "",
-      "summary": "A War Room unit of the war mini-game: the Compendium shows its stat block from war-units-data.js.",
-      "source": "War Room",
-      "roll20": ""
-    },
-    "Line Infantry (100)": {
-      "type": "",
-      "attunement": "",
-      "summary": "A War Room unit of the war mini-game: the Compendium shows its stat block from war-units-data.js.",
-      "source": "War Room",
-      "roll20": ""
-    },
-    "Lion": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Lion"
-    },
     "Lock of Trickery": {
       "type": "",
       "attunement": "",
@@ -1164,13 +976,6 @@ window.TSI_DATA.bastionCompendium = {
       "source": "",
       "roll20": "https://roll20.net/compendium/dnd5e/Official%20seal%20script"
     },
-    "Owlbear": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Owlbear"
-    },
     "Pale Tincture": {
       "type": "",
       "attunement": "",
@@ -1184,13 +989,6 @@ window.TSI_DATA.bastionCompendium = {
       "summary": "",
       "source": "",
       "roll20": "https://roll20.net/compendium/dnd5e/Palisade%20section"
-    },
-    "Panther": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Panther"
     },
     "Pelagos Current Charm": {
       "type": "",
@@ -1381,13 +1179,6 @@ window.TSI_DATA.bastionCompendium = {
       "source": "",
       "roll20": "https://roll20.net/compendium/dnd5e/Rations%20(100)"
     },
-    "Regiment (100)": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Regiment%20(100)"
-    },
     "Reinforced cloak": {
       "type": "",
       "attunement": "",
@@ -1443,13 +1234,6 @@ window.TSI_DATA.bastionCompendium = {
       "summary": "Wondrous item, uncommon This 60-foot length of silk rope weighs 3 pounds and can hold up to 3,000 pounds. If you hold one end of the rope and use an action to speak the command word, the rope animates. As a bonus action, you can command the other end to move toward a destination you choose. That end moves 10 feet on your turn when you first command it and 10 feet on each of your turns until reaching its destinatio…",
       "source": "https://www.dnd5eapi.co/api/2014/magic-items/rope-of-climbing",
       "roll20": "https://roll20.net/compendium/dnd5e/Rope%20of%20Climbing"
-    },
-    "Rowthorn + Karr": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Rowthorn%20%2B%20Karr"
     },
     "Saddle": {
       "type": "",
@@ -1520,13 +1304,6 @@ window.TSI_DATA.bastionCompendium = {
       "summary": "",
       "source": "",
       "roll20": "https://roll20.net/compendium/dnd5e/Shield%2C%20%2B1"
-    },
-    "Shock Cavalry (25)": {
-      "type": "",
-      "attunement": "",
-      "summary": "A War Room unit of the war mini-game: the Compendium shows its stat block from war-units-data.js.",
-      "source": "War Room",
-      "roll20": ""
     },
     "Shortsword": {
       "type": "Weapon",
@@ -1751,13 +1528,6 @@ window.TSI_DATA.bastionCompendium = {
       "summary": "",
       "source": "",
       "roll20": "https://roll20.net/compendium/dnd5e/Tent%20(leather%20panels)"
-    },
-    "Tiger": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Tiger"
     },
     "Torpor (Poison)": {
       "type": "",

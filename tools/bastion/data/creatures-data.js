@@ -20,9 +20,10 @@
      day it spends away from the Ironbow counts as a Bonding Day, and the
      totals below raise the next bond level: the DM confirms each one after a
      scene at the table.
-   Every creature housed at the Ironbow fights when the Ironbow is attacked
-   (Defend Bastion battles only), as it always has; that is kept until the War
-   Table is removed.
+   The war game (the War Table, where every housed creature once fought when
+   the Ironbow was attacked) was removed on 22 October 2026, and with it each
+   kind's War Table numbers, its token letters and the rule that a defeat
+   leaves it wounded. A beast is never at risk of anything in the Bastion now.
 
    Training, harnesses, first flight and riding were removed with the three old
    buildings: a beast's record of them stays in its saved development, hidden.
@@ -30,8 +31,7 @@
    Every number here is provisional: edit it here, and nothing else needs to
    change, except the two marked below (houseDays and nameMax), which must
    match a number kept elsewhere. The rules are in tools/bastion/creature-rules.js
-   (housing, acclimatising, bonding) and tools/bastion/war-campaign-rules.js (the
-   War Table). */
+   (housing, acclimatising, bonding). */
 window.TSI_DATA = window.TSI_DATA || {};
 window.TSI_DATA.bastionCreatures = {
   /* Harry's values are provisional until he has tried them at the table. */
@@ -40,58 +40,25 @@ window.TSI_DATA.bastionCreatures = {
   /* ---------- The kinds of creature ----------
      name / plural: as the panels show them ("the griffin", "2 griffins" in
      a sentence);
-     short: the War Table token for one with no name, numbered (Gr1, Gr2);
-     a named creature's token comes from its name's initials;
      home: the facility that houses this kind (its id in facilities-data.js): the Beast Pen for every kind;
-     acclimatiseDC (optional): this kind's own DC for Acclimatise With Beast, instead of acclimatise.dc below;
-     war: how it fights on the War Table, in the same shape as a beast in
-     war-units-data.js (Cohesion, Attack, Defence, Move, Resolve, Battle
-     Value, its one trait and a line about it);
-     defendOnly: it fights only when the Ironbow is attacked (Defend Bastion),
-     never on a War Action;
-     worstResult / woundedDays: after a defeat it is never killed or
-     captured; a d6 that would kill or capture it leaves it badly wounded for
-     this many days instead. */
+     acclimatiseDC (optional): this kind's own DC for Acclimatise With Beast, instead of acclimatise.dc below. */
   species: {
-    /* Harry (Q3): the Owlbear's Cohesion, Attack, Defence and Resolve, the
-       Giant Vulture's Flight and Move 6, and Battle Value 11 (the Owlbear's
-       10, plus 1 for flying at Move 6). */
     wyvern: {
       name: 'Wyvern',
-      short: 'Wy',
       plural: 'Wyverns',
-      home: 'beast_pen',
-      war: { cohesion: 7, attack: 6, defence: 13, move: 6, resolve: 2, bv: 11, trait: 'flight', distinction: 'A winged hunter that strikes from above wherever the line is weakest.' },
-      defendOnly: true,
-      worstResult: 'badly_wounded',
-      woundedDays: 21
+      home: 'beast_pen'
     },
-    /* Harry (Q5): Cohesion 5, Attack +5, Defence 12, Move 6, Resolve +1,
-       Flight, Battle Value 8. */
     griffin: {
       name: 'Griffin',
-      short: 'Gr',
       plural: 'Griffins',
-      home: 'beast_pen',
-      war: { cohesion: 5, attack: 5, defence: 12, move: 6, resolve: 1, bv: 8, trait: 'flight', distinction: 'A proud flier that dives on the enemy\'s flanks.' },
-      defendOnly: true,
-      worstResult: 'badly_wounded',
-      woundedDays: 21
+      home: 'beast_pen'
     },
-    /* Harry (Q5): the War Table's Dire Wolf (war-units-data.js), copied here
-       so the War Table's own file stays as it is. */
     dire_wolf: {
       name: 'Dire Wolf',
-      short: 'Wo',
       plural: 'Dire Wolves',
-      home: 'beast_pen',
-      war: { cohesion: 5, attack: 5, defence: 12, move: 5, resolve: 1, bv: 7, trait: 'pack', distinction: 'A hunter that brings down the isolated.' },
-      defendOnly: true,
-      worstResult: 'badly_wounded',
-      woundedDays: 21
+      home: 'beast_pen'
     },
-    /* Buckbear and Fellcat (Harry, 22 October 2026): new kinds the DM can grant. They have no War Table
-       profile yet, so they do not fight (the War Table is going). Their varieties, pictures and
+    /* Buckbear and Fellcat (Harry, 22 October 2026): new kinds the DM can grant. Their varieties, pictures and
        personality tables are in tools/beasthandler/data/. */
     buckbear: {
       name: 'Buckbear',

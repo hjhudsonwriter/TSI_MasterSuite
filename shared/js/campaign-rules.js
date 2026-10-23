@@ -83,6 +83,10 @@
   var SHRINE_ORDERS_THAT_END = ['craft', 'prepare_purification_incense', 'prepare_aquatic_protection_charm', 'bless_bastion_foundations'];
   /* The House orders the Beast Pen step moves (the same lists as HOUSE_FNS in tools/bastion/strip-back-rules.js). */
   var BEAST_HOUSE_ORDERS = { wyvern_roost: ['house_elara_wyvern', 'house_wyvern'], griffin_tower: ['house_griffin'], dire_wolf_den: ['house_dire_wolf'] };
+  /* The war game (the War Council, the War Table, wars, regiments, defenders and Military Actions) was removed on 22
+     October 2026 (step S06). A War Action was an order at the War Council, which is not a facility of the catalogue;
+     the conversion cancels it (settleWarOrders), so it is never forecast, whatever the save's version. */
+  function isWarAction(o) { return isObj(o) && (o.facId === 'war_council' || (isObj(o.meta) && o.meta.kind === 'war_action')); }
   /* The Hall of Emissaries and the Trade Network (Strip Back Overhaul, step S09): the Hall STAYS, as a single-level hall
      with no orders. Every order it held is CANCELLED when a version 3 Bastion is converted, with its gold handed back
      (Host Delegation 150, Inter-Clan Summit 450, Secure Writ of Authority 600, Trade Consortium 900, the retired Secure
@@ -94,6 +98,7 @@
   var NETWORK_ID = 'trade_network';
   /* Will converting a version 3 Bastion CANCEL this pending order? (Not move it, not keep it.) */
   function cancelledByConversion(o) {
+    if (isWarAction(o)) return true;
     if (isObj(o) && o.facId === NETWORK_ID) return true;
     if (isObj(o) && o.facId === HALL_ID) return o.fnId !== HALL_ORDER_THAT_MOVES;
     if (!isObj(o) || !Object.prototype.hasOwnProperty.call(RETIRED_FACILITIES, o.facId)) return false;
@@ -114,11 +119,10 @@
   /* The pending orders a Bastion save will really have (see above). */
   function liveOrders(ba) {
     var list = Array.isArray(ba.pendingOrders) ? ba.pendingOrders : [];
-    if (ba.v === 4) return list;
+    /* A version 4 save has been converted: only a War Action an older copy of the suite put back is left out. */
+    if (ba.v === 4) return list.filter(function (o) { return !isWarAction(o); });
     return list.filter(function (o) { return !cancelledByConversion(o); });
   }
-  var OBJECTIVES = { raid: 'Raid', skirmish: 'Skirmish', seize_outpost: 'Seize Outpost' };
-  function clanTitle(name) { var n = str(name).trim(); return /^clan /i.test(n) ? n : 'Clan ' + n; }
   /* 'goldport' → 'Goldport' (shared/data/ports.js). */
   function portName(id) {
     var p = window.TSI_DATA && window.TSI_DATA.ports && window.TSI_DATA.ports[id];
@@ -137,45 +141,28 @@
 
     /* What the Bastion has coming, from its save: [{ day, kind, line }], in day
        order (only what can be known before the day: building finished,
-       orders due, repairs and recovery over, cargo ships and Courier
-       Exchange parcels due, a Clan at war's attack roll). Nothing for a
+       orders due, cargo ships and Courier Exchange parcels due). Nothing for a
        Bastion that hasn't read the Explorer's day yet. */
     bastionComing: function (bastion) {
       var ba = isObj(bastion) ? bastion : null;
       if (!inDaysSave(ba) || ba.anchored !== true || !isNum(ba.day)) return [];
       var out = [];
       function add(day, kind, line) { if (isNum(day)) out.push({ day: Math.trunc(day), kind: kind, line: line }); }
-      var repairs = isObj(ba.repairs) ? ba.repairs : {};
       /* Construction slots, then Development Plots (the Bastion's pull request 3). */
       (Array.isArray(ba.builtExtras) ? ba.builtExtras : []).concat(Array.isArray(ba.builtPlots) ? ba.builtPlots : []).forEach(function (e) {
-        if (isObj(e) && e.status === 'building') add(e.readyDay, 'built', 'The ' + facilityName(e.facId) + ' is built.');
+        if (!isObj(e) || e.status !== 'building') return;
+        /* The War Room and the Menagerie were built in construction slots: the conversion stops the work. */
+        if (Object.prototype.hasOwnProperty.call(RETIRED_FACILITIES, e.facId) && RETIRED_FACILITIES[e.facId] === 'cancel') return;
+        add(e.readyDay, 'built', 'The ' + facilityName(e.facId) + ' is built.');
       });
       liveOrders(ba).forEach(function (o) {
         if (!isObj(o) || !isNum(o.dueDay)) return;
         var label = str(o.label) || 'An order';
-        var m = isObj(o.meta) ? o.meta : {};
-        var fix = isNum(repairs[o.facId]) ? repairs[o.facId] : null;
-        var day = fix !== null && o.dueDay <= fix ? fix + 1 : o.dueDay;
-        if (o.facId === 'war_council' || m.kind === 'war_action') {
-          add(day, 'war', 'Your army is ready to march on ' + (str(m.targetName) || 'the enemy') + ' (' + (OBJECTIVES[m.objective] || 'War Action') + ').');
-        } else {
-          /* Every other order, the creature buildings' House orders (pull
-             request 7) among them: "Griffin Tower: House a Griffin
-             (Swiftwing) is complete." No roll is ever asked for (the Hall's
-             actions, which did, are gone: step S09). */
-          add(day, 'order', label + ' is complete.');
-        }
-      });
-      Object.keys(repairs).forEach(function (id) {
-        if (isNum(repairs[id])) add(repairs[id] + 1, 'repairs', 'Repairs: the ' + facilityName(id) + ' is working again.');
-      });
-      (Array.isArray(ba.warRecovery) ? ba.warRecovery : []).forEach(function (r) {
-        if (!isObj(r)) return;
-        /* A creature (the Bastion's pull request 7) goes by its own name:
-           "Elara's wyvern is fit to fight again." */
-        add(r.untilDay, 'recovery', r.status === 'separated' ? str(r.name) + ' has found the way back to the Bastion.'
-          : r.kind === 'beast' ? 'The ' + str(r.name) + ' is fit to fight again.'
-          : r.kind === 'creature' ? (str(r.name) || 'A creature') + ' is fit to fight again.' : str(r.name) + ' is fit for duty again.');
+        var day = o.dueDay;
+        /* Every order, the creature buildings' House orders (pull request 7) among them: "Griffin Tower: House a
+           Griffin (Swiftwing) is complete." No roll is ever asked for (the Hall's actions, which did, are gone:
+           step S09). */
+        add(day, 'order', label + ' is complete.');
       });
       var tn = isObj(ba.tradeNetwork) ? ba.tradeNetwork : {};
       /* Cargo ships (pull request 5): when each reaches its port and comes
@@ -197,11 +184,6 @@
         if (!isObj(p)) return;
         if (p.status === 'in_transit') add(p.readyDay, 'parcel', 'A parcel from the Ironbow is due at ' + pointName(p.point) + '.');
         else if (p.status === 'returning') add(p.returnDay, 'parcel', 'A recalled parcel is due back at the Ironbow.');
-      });
-      var wars = isObj(ba.wars) ? ba.wars : {};
-      Object.keys(wars).forEach(function (k) {
-        var w = wars[k];
-        if (isObj(w) && isNum(w.next)) add(w.next, 'attack', clanTitle(k.charAt(0).toUpperCase() + k.slice(1)) + ' may attack: the Bastion rolls to see.');
       });
       return out.sort(function (a, b) { return a.day - b.day; });
     },

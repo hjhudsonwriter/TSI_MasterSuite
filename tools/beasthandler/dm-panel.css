@@ -12,3 +12,24 @@
   resize: vertical;
 }
 .tsi-bas-beast .tsi-bas-item { align-items: center; flex-wrap: wrap; gap: var(--tsi-space-2); }
+
+/* S17: the QR window, the address and online link boxes, and the Offline backup (shut until opened). */
+.tsi-bas-beast__box { display: grid; gap: var(--tsi-space-2); }
+.tsi-bas-beast__status { margin: 0; font-weight: 600; color: var(--tsi-text); }
+.tsi-bas-beast__checks { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--tsi-space-1); }
+.tsi-bas-beast__check--ok { color: var(--tsi-ok, #7cc48a); }
+.tsi-bas-beast__check--bad { color: var(--tsi-danger, #e0707a); }
+.tsi-bas-beast__backup { border: 1px solid var(--tsi-line); border-radius: var(--tsi-radius-sm); }
+.tsi-bas-beast__backup-summary { display: flex; align-items: center; min-height: 44px; padding: 0 var(--tsi-space-3); cursor: pointer; font: 600 13px/1.3 var(--tsi-font-display); letter-spacing: var(--tsi-track-label); color: var(--tsi-gold-text); }
+.tsi-bas-beast__backup-body { display: grid; gap: var(--tsi-space-2); padding: var(--tsi-space-2) var(--tsi-space-3) var(--tsi-space-3); }
+.tsi-bas-qr { display: grid; gap: var(--tsi-space-3); justify-items: stretch; }
+.tsi-bas-qr p { margin: 0; }
+.tsi-bas-qr__caption { font: 700 18px/1.3 var(--tsi-font-display); letter-spacing: var(--tsi-track-label); color: var(--tsi-gold-text); text-align: center; }
+.tsi-bas-qr__code { display: flex; justify-content: center; }
+/* Black on white with a white margin, whatever the theme: a phone camera needs the contrast. Never taller than the window. */
+.tsi-bas-qr__code svg { display: block; width: min(100%, 340px, 46vh); height: auto; aspect-ratio: 1 / 1; background: #fff; border-radius: 4px; }
+.tsi-bas-modal--qr .tsi-btn { min-height: 44px; }
+/* The link as plain text: all of it selects with one click, and it breaks anywhere rather than run off a narrow window. */
+.tsi-bas-qr__link { margin: 0; padding: var(--tsi-space-2) var(--tsi-space-3); border: 1px solid var(--tsi-line); border-radius: var(--tsi-radius-sm); background: rgba(0, 0, 0, .35); font: 13px/1.4 var(--tsi-font-mono); word-break: break-all; overflow-wrap: anywhere; user-select: all; }
+/* Inside the screen on the narrowest phone: the shared pop-up is 96vw wide, which is a little wider than the space left by its margins. */
+.tsi-modal.tsi-bas-modal--qr { width: min(560px, 100%); }

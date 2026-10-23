@@ -1,17 +1,12 @@
 /* The Ironbow Bastion Manager — the screen.
-   The old tool rebuilt as it was: party level, treasury and defenders;
+   The old tool rebuilt as it was: party level and treasury;
    building in construction slots; facility orders; the Hall of Emissaries, trade routes and the Council
-   Ledger; party identity and the War Council; the warehouse and artisan
+   Ledger; party identity; the warehouse and artisan
    tools; Favour of The Gods and Political Capital; the Compendium.
-   The war mini-game (Harry's requests of 2 October 2026) adds the War
-   Room's units and their stat blocks, the War Action's missions, and the
-   Military Action, fought on the War Table (war-table.js); its rules are
-   in war-campaign-rules.js and war-battle-rules.js.
-   Wars (Harry, 4 October 2026): Queue War Action declares war on the Clan
-   (asking first, with its cost); an At War tag follows that Clan's name
-   wherever it shows; the War Council's Wars box has Make peace; while at
-   war, a Clan may attack every 7 days of the war ("Sound the horns!"),
-   fought on the Ironbow coast; losing it puts facilities Under Repair.
+   The war game (the War Council, the War Table, Military Actions, wars,
+   regiments, defenders and the Menagerie's beasts) was removed on 22
+   October 2026 (the Strip Back Overhaul, docs/strip-back/S06-built.md). To
+   bring it back, check out commit 4f1db26.
 
    Days, not turns (Harry, 8 October 2026; docs/BASTION-OVERHAUL.md): the
    Bastion follows the Explorer's day. It reads the Explorer's save when
@@ -61,9 +56,7 @@
       var R = ns.rules;
       var D = window.TSI_DATA;
       var B = D.bastion;
-      var data = { bastion: B, facilities: D.bastionFacilities, tools: D.bastionTools, research: D.bastionResearch, goods: D.bastionGoods, commerce: D.bastionCommerce, courier: D.bastionCourier, creatures: D.bastionCreatures, warRoom: D.bastionWarRoom };
-      /* The war mini-game's numbers (war-units-data.js): units, stat blocks, missions. */
-      var W = D.bastionWar;
+      var data = { bastion: B, facilities: D.bastionFacilities, tools: D.bastionTools, research: D.bastionResearch, goods: D.bastionGoods, commerce: D.bastionCommerce, courier: D.bastionCourier, creatures: D.bastionCreatures };
       var COMPENDIUM = (D.bastionCompendium && D.bastionCompendium.items) || {};
       var TOOL_NAME = 'The Ironbow Bastion Manager';
       function rand() { return Math.random(); }
@@ -103,21 +96,21 @@
         ]);
         ctx.root.appendChild(box);
       }
-      /* The War Table's three saves (warMap, warTable, warTerrain) belong to
-         the war game, which is going. Once the War Table is gone from the
-         Bastion nothing reads them, so every time the Bastion opens any that
-         are there (a Restore of an old backup brings them back) are set aside,
-         never deleted. While the War Table is still part of the Bastion they
-         are its own saves, so nothing is touched: the step that removes
-         war-table.js makes this start working, with no other change. */
-      function sweepOrphans(force) {
-        if (!force && ns.warTable) return [];
+      /* The War Table's three saves (warMap, warTable, warTerrain) belonged to
+         the war game, which was removed on 22 October 2026. Nothing reads
+         them now, so every time the Bastion opens any that are there (a
+         Restore of an old backup brings them back) are set aside in
+         quarantine, never deleted. It runs only once the Bastion is open
+         and its save has really been written (the end of start-up, after
+         the conversion has passed its check and the old Bastion has been
+         copied): if the check fails, the page says so and nothing at all
+         is moved. */
+      function sweepOrphans() {
         return R.stripBackOrphans(function (name) { return ctx.store.has(name); }).map(function (name) {
           TSI.store.quarantine(TSI.storeRules.keyFor('bastion', name), 'The War Table was removed from the Bastion (the Strip Back Overhaul, 22 October 2026); this is its saved ' + name + ', kept in case it is needed.');
           return name;
         });
       }
-      /* (The sweep runs only once the Bastion is open and its save is safely written: see the end of start-up.) */
       /* A Bastion saved in turns, before the days overhaul, is set aside
          (kept, not deleted) and a new one starts on the Explorer's day
          (Harry, 8 October 2026: no turn-to-day conversion). */
@@ -171,12 +164,7 @@
          name, and the screen says so once, as it opens. */
       var formerBrigade = saved ? R.formerBrigade(saved) : null;
       if (formerBrigade) {
-        /* Its waiting War Actions with Lieutenants or regiments: only a Clan
-           can send those, so they'll stay home when the order musters. */
-        var cutOrders = state.pendingOrders.filter(function (o) { return R.isWarOrder(o) && R.clanOnlyCut(state, data, R.orderCommit(state, data, o)); }).length;
-        formerBrigade.orders = cutOrders;
-        R.log(state, 'Identity', 'The Mercenary Brigade, ' + formerBrigade.name + ', is no more: the Bastion no longer has Brigades, so the party is Unsworn again. Its Trusted Clients scores are kept in the save. A Clan can be founded in Party Identity.' +
-          (cutOrders ? ' ' + (cutOrders === 1 ? 'Its waiting War Action committed' : 'Its ' + cutOrders + ' waiting War Actions committed') + ' Lieutenants or regiments: only a Clan can send them, so they stay home when it musters, and an order with nothing else lapses.' : ''));
+        R.log(state, 'Identity', 'The Mercenary Brigade, ' + formerBrigade.name + ', is no more: the Bastion no longer has Brigades, so the party is Unsworn again. Its Trusted Clients scores are kept in the save. A Clan can be founded in Party Identity.');
       }
       var ui = R.cleanUi(load('ui', R.isUi, 'the facility grid opened in its usual way (everything else is as it was)'));
       function save() { ctx.store.set('state', R.toSave(state)); }
@@ -200,19 +188,9 @@
       var turnRunning = false;
 
       /* ---------- Messages and pop-ups ----------
-         Every pop-up the Bastion opens is marked (POP), so the At War tags
-         (below) can find it; the War Table's own pop-ups aren't. say and ask
-         are the suite's alert and confirm, marked. */
-      var POP = 'data-tsi-bas-pop';
+         say and ask are the suite's alert and confirm. */
       function openPop(options) {
-        var onOpen = options.onOpen;
-        return TSI.modal.open(Object.assign({}, options, {
-          onOpen: function (parts) {
-            parts.dialog.setAttribute(POP, '');
-            tagWars(parts.dialog);
-            if (onOpen) onOpen(parts);
-          }
-        }));
+        return TSI.modal.open(options);
       }
       function say(message, title) {
         return openPop({ title: title || TOOL_NAME, message: message, role: 'alertdialog', actions: [{ label: 'OK', value: true, primary: true }] });
@@ -227,146 +205,11 @@
       function plainModal(options) {
         return openPop(Object.assign({ className: 'tsi-bas-modal' }, options));
       }
-      /* A notice the Bastion shows (TSI.notify), marked as its pop-ups are. */
+      /* A notice the Bastion shows (TSI.notify). */
       function notice(message, options) {
-        var n = TSI.notify(message, options);
-        if (n && n.node) { n.node.setAttribute(POP, ''); tagWars(n.node); }
-        return n;
+        return TSI.notify(message, options);
       }
 
-      /* ---------- "At War" tags (Harry, 4 October 2026) ----------
-         While you're at war with a Clan, a small "At War" tag follows its
-         name wherever it shows: in the Bastion's page, and in the pop-ups and
-         notices the Bastion opens. Not on the War Table, in the suite's top
-         bar, or in boxes you type in; in a list's choices the name reads
-         "Bacca (At War)" instead. The page is redrawn often, so the tags are
-         added again after each redraw (renderAll), and a watcher catches
-         anything that changes in between (a pop-up, a line that updates as
-         you type). Adding them is idempotent, and they go when peace comes. */
-      var ATWAR = 'tsi-bas-atwar';
-      var OWN_TEXT = 'data-tsi-bas-name';
-      var NO_TAGS = 'input, textarea, select, script, style, .tsi-bas-wt, .' + ATWAR;
-      function escapeRe(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
-      /* The Clans at war now: { names: ['Bacca', 'BACCA'], keyOf: { Bacca:
-         'bacca', BACCA: 'bacca' } }. The capitals are for the old tool's
-         log lines that write a Clan that way ("Honour Change prompted for
-         Clan MOLTEN"). The match is never caseless: "farmer" in a story
-         isn't the Farmer clan. */
-      function warNames() {
-        var out = { names: [], keyOf: {} };
-        B.clans.forEach(function (c) {
-          if (!R.atWar(state, c.key)) return;
-          [c.name, c.name.toUpperCase()].forEach(function (n) {
-            if (out.keyOf[n]) return;
-            out.names.push(n);
-            out.keyOf[n] = c.key;
-          });
-        });
-        return out;
-      }
-      /* A name, whole, with "'s" after it if there is one ("Bacca", "Bacca's").
-         Not the first word of a longer name, such as an enemy unit's
-         ("Bacca Stoneguard 1", "Bacca Captain 2"): a tag on every unit in a
-         War Report says nothing new and buries the report. */
-      function nameRe(names, flags) {
-        return new RegExp('\\b(' + names.map(escapeRe).join('|') + ')(?:[\'’]s)?\\b(?![ \\u00a0][A-Z])', flags || '');
-      }
-      function tagWars(root) {
-        if (!root || !life.alive) return;
-        var w = warNames();
-        /* Tags for Clans no longer at war go. */
-        Array.prototype.forEach.call(root.querySelectorAll('.' + ATWAR), function (t) {
-          if (w.names.indexOf(t.getAttribute('data-name')) !== -1) return;
-          var parent = t.parentNode;
-          t.remove();
-          if (parent) parent.normalize();
-        });
-        var re = w.names.length ? nameRe(w.names, 'g') : null;
-        /* A list's choices: "Bacca (At War)". */
-        Array.prototype.forEach.call(root.querySelectorAll(re ? 'option' : 'option[' + OWN_TEXT + ']'), function (o) {
-          if (o.closest('.tsi-bas-wt')) return;
-          var own = o.hasAttribute(OWN_TEXT) ? o.getAttribute(OWN_TEXT) : o.textContent;
-          var want = re ? own.replace(re, function (m) { return m + ' (At War)'; }) : own;
-          if (want !== own) o.setAttribute(OWN_TEXT, own); else o.removeAttribute(OWN_TEXT);
-          if (o.textContent !== want) o.textContent = want;
-        });
-        if (!re) return;
-        if (root.matches(NO_TAGS)) return;
-        var test = nameRe(w.names);
-        var found = [];
-        /* The text with a name in it, leaving out the places tags don't go. */
-        var walk = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
-          acceptNode: function (n) {
-            if (n.nodeType === 1) return n.matches(NO_TAGS) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_SKIP;
-            return test.test(n.data) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
-          }
-        });
-        for (var n = walk.nextNode(); n; n = walk.nextNode()) found.push(n);
-        found.forEach(function (node) {
-          var hits = [];
-          var m;
-          re.lastIndex = 0;
-          while ((m = re.exec(node.data))) hits.push({ end: m.index + m[0].length, name: m[1] });
-          /* From the last to the first, so the earlier places stay put. */
-          for (var i = hits.length - 1; i >= 0; i--) {
-            var h = hits[i];
-            if (h.end === node.data.length) {
-              var next = node.nextSibling;
-              if (next && next.nodeType === 1 && next.classList.contains(ATWAR) && next.getAttribute('data-name') === h.name) continue;
-            }
-            var after = h.end < node.data.length ? node.splitText(h.end) : null;
-            var tag = el('span', { class: ATWAR, 'data-test': 'atwar-tag', 'data-name': h.name, 'data-clan': w.keyOf[h.name], text: 'At War' });
-            node.parentNode.insertBefore(tag, after || node.nextSibling);
-          }
-        });
-      }
-      /* The page and every pop-up and notice the Bastion has open. */
-      function tagAll() {
-        if (!life.alive || typeof page === 'undefined') return;
-        tagWars(page);
-        Array.prototype.forEach.call(document.querySelectorAll('[' + POP + ']'), tagWars);
-        /* Its own changes aren't news to it. */
-        tagWatch.takeRecords();
-      }
-      /* What changed is tagged at once, before the page is painted (an
-         observer's callback runs before the next paint), so a line that is
-         rebuilt as you type never shows for a moment without its tag. Only
-         the parts that changed are looked at, inside the page or a pop-up
-         (a new pop-up or notice tags itself as it opens). */
-      var tagWatch = new MutationObserver(function (records) {
-        if (!life.alive || typeof page === 'undefined' || !warNames().names.length) return;
-        var roots = [];
-        for (var i = 0; i < records.length; i++) {
-          var t = records[i].target;
-          var e = t.nodeType === 1 ? t : t.parentElement;
-          /* The War Table changes all the time, and has no tags. */
-          if (!e || !e.isConnected || e.closest('.tsi-bas-wt')) continue;
-          if (!page.contains(e) && !e.closest('[' + POP + ']')) continue;
-          if (roots.some(function (r) { return r.contains(e); })) continue;
-          roots = roots.filter(function (r) { return !e.contains(r); });
-          roots.push(e);
-        }
-        if (!roots.length) return;
-        if (roots.length > 40) { tagAll(); return; }
-        roots.forEach(tagWars);
-        /* Its own changes aren't news to it. */
-        tagWatch.takeRecords();
-      });
-      tagWatch.observe(document.body, { childList: true, subtree: true, characterData: true });
-      life.onStop(function () { tagWatch.disconnect(); });
-      /* A Military Action's pop-ups come one after another, so for a moment
-         after one opens its buttons ignore the mouse: a double click on the
-         last pop-up's button can't press this one's. */
-      function settling(options) {
-        var onOpen = options.onOpen;
-        return Object.assign({}, options, {
-          onOpen: function (parts) {
-            parts.dialog.classList.add('tsi-bas-modal--settling');
-            life.setTimeout(function () { parts.dialog.classList.remove('tsi-bas-modal--settling'); }, 400);
-            if (onOpen) onOpen(parts);
-          }
-        });
-      }
       var CONTINUE = [{ label: 'Continue', value: true, primary: true }];
       var CLOSE = [{ label: 'Close', value: true, primary: true }];
 
@@ -397,10 +240,14 @@
           escValue: false,
           actions: [{ label: 'Cancel', value: false }, { label: 'Continue', value: true, primary: true }]
         };
-        return openPop(options.settle ? settling(dice) : dice).then(function (ok) { return ok ? R.readD20(input.value, mod) : null; });
+        return openPop(dice).then(function (ok) { return ok ? R.readD20(input.value, mod) : null; });
       }
 
       /* ---------- Small builders ---------- */
+      function plural(n, one, many) { return n + ' ' + (n === 1 ? one : (many || one + 's')); }
+      /* "−4", "+2", "0". */
+      function signedNum(n) { return n < 0 ? '−' + Math.abs(n) : n > 0 ? '+' + n : '0'; }
+      function clanTitle(key) { return 'Clan ' + R.clanName(data, key); }
       function btn(label, onClick, cls, test, attrs) {
         return el('button', Object.assign({ type: 'button', class: 'tsi-btn tsi-btn--small' + (cls ? ' ' + cls : ''), 'data-test': test || null, onclick: onClick }, attrs || {}), label);
       }
@@ -432,8 +279,7 @@
          again on every redraw while it's open (the facility, build and
          orders panels). One panel at a time: opening another closes it.
          back: the data-test of what to put the focus back on when it
-         closes (a tile, which a redraw may have made again). The War Table
-         closes it first (it opens over everything). */
+         closes (a tile, which a redraw may have made again). */
       var shown = null;
       function openPanel(id, spec) {
         if (shown && shown.id === id) return shown.promise;
@@ -454,7 +300,6 @@
         }).then(function (v) {
           if (shown === entry) shown = null;
           hideTip();
-          closePicker(false);
           if (life.alive && spec.back && (!document.activeElement || document.activeElement === document.body)) {
             var again = page.querySelector('[data-test="' + spec.back + '"]');
             if (again) again.focus({ preventScroll: true });
@@ -484,7 +329,6 @@
         log: 'M6 4h12v16H6z M9 8h6 M9 12h6 M9 16h4',
         influence: 'M12 4v16 M8 20h8 M5 7h14 M5 7l-3 6a3 3 0 006 0z M19 7l-3 6a3 3 0 006 0z',
         favour: 'M12 3v3 M12 18v3 M3 12h3 M18 12h3 M5.6 5.6l2.1 2.1 M16.3 16.3l2.1 2.1 M5.6 18.4l2.1-2.1 M16.3 7.7l2.1-2.1 M12 8a4 4 0 110 8 4 4 0 010-8z',
-        war: 'M4 4l11 11 M4 4h3l10 10 M20 4L9 15 M20 4h-3L7 14 M6.5 16.5l-2.5 2.5 M17.5 16.5l2.5 2.5 M5 14l5 5 M19 14l-5 5',
         shield: 'M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z',
         up: 'M6 15l6-6 6 6',
         down: 'M6 9l6 6 6-6'
@@ -502,10 +346,8 @@
       }
 
       /* The suite's tooltip card (shared/js/tooltip.js), for the grid's
-         tiles, the top bar's counts, the artisan tools, the Hall's actions
-         and the war's stat blocks (the War Room's Recruit list, the Military
-         and Menagerie lists, the War Action's forces). It sits beside what it
-         describes, and above the panels. */
+         tiles, the top bar's counts, the artisan tools and the Hall's
+         actions. It sits beside what it describes, and above the panels. */
       var TIP = TSI.tooltip;
       function hideTip() { TIP.hide(); }
       /* opts.noChange: not on 'change' (for number boxes, which change as they're typed in). */
@@ -514,61 +356,6 @@
       function bindFocusTip(target, anchor, build) { TIP.bindFocus(target, anchor, build); }
       function tipList(lines) { return TIP.list(lines); }
       life.onStop(hideTip);
-
-      /* ---------- Stat blocks (the war mini-game, phase 2) ----------
-         A War Room unit, a Lieutenant or a Menagerie beast, as the War Table
-         shows it: the six stats, the traits, what's special about it, and how
-         many soldiers. opts.beast: a Menagerie beast (one with no profile in
-         the data fights with the default one, under its own name). opts.lead:
-         a line under the title; opts.notes: lines after the traits;
-         opts.unit: a unit as it will fight (a depleted regiment, from
-         fieldUnit), whose own profile is shown instead of the full-strength
-         one; opts.block: a stat block already made (a creature's, pull
-         request 7: R.creatureStatBlock). */
-      function plural(n, one, many) { return n + ' ' + (n === 1 ? one : (many || one + 's')); }
-      function unitBlock(u) {
-        var a = W.archetypes[u.type] || {};
-        var src = Object.assign({ name: a.name || u.name, traits: (u.traits || []).slice(), distinction: a.distinction || '' }, u.profile);
-        var br = ns.battleRules;
-        return br && typeof br.statBlock === 'function' ? br.statBlock(src, W) : R.formatStatBlock(Object.assign({ kind: 'formation' }, src), data);
-      }
-      function statTip(name, opts) {
-        opts = opts || {};
-        var block = opts.block || (opts.unit ? unitBlock(opts.unit) : R.unitStatBlock(data, name, opts.beast ? { beast: true } : undefined));
-        if (!block) return null;
-        var type = opts.beast || opts.block ? null : R.unitTypeOf(name, data);
-        var arch = type && W.archetypes[type];
-        var leader = type === 'lieutenant';
-        var lead = opts.lead || (arch ? 'Military unit • ' + plural(arch.size, 'soldier') : leader ? 'One officer' : opts.beast ? 'Menagerie beast' : '');
-        return {
-          title: block.title,
-          parts: [
-            lead ? el('div', { class: 'tsi-bas-stat-lead', text: lead }) : null,
-            el('dl', { class: 'tsi-bas-stats', 'data-test': 'stat-block' }, block.rows.map(function (row) {
-              return el('div', { class: 'tsi-bas-stat' }, [el('dt', { text: row.name }), el('dd', { text: row.value })]);
-            })),
-            block.traits.length ? el('ul', { class: 'tsi-bas-stat-traits' }, block.traits.map(function (t) {
-              return el('li', null, [el('b', { text: t.name + ': ' }), t.text]);
-            })) : null,
-            (opts.notes || []).length ? el('ul', { class: 'tsi-bas-stat-notes' }, opts.notes.map(function (t) { return el('li', { text: t }); })) : null,
-            block.distinction ? el('p', { class: leader ? 'tsi-bas-stat-rule' : 'tsi-bas-stat-flavour', text: block.distinction }) : null
-          ]
-        };
-      }
-      /* Lieutenants and beasts away after a battle (state.warRecovery): "(1 recovering: back on Day 17)". */
-      function awayNote(recs) {
-        if (!recs.length) return '';
-        var days = [];
-        recs.forEach(function (r) { if (days.indexOf(r.untilDay) === -1) days.push(r.untilDay); });
-        days.sort(function (a, b) { return a - b; });
-        var word = recs.every(function (r) { return r.status === 'separated'; }) ? 'separated' : 'recovering';
-        return '(' + recs.length + ' ' + word + ': back on Day' + (days.length > 1 ? 's ' + days.slice(0, -1).join(', ') + ' and ' + days[days.length - 1] : ' ' + days[0]) + ')';
-      }
-      function awayList(kind, name) {
-        return (Array.isArray(state.warRecovery) ? state.warRecovery : []).filter(function (r) {
-          return r && r.kind === kind && (name === undefined || r.name === name);
-        });
-      }
 
       /* ---------- The beasts (pull request 7, Harry, 14 October 2026; the Beast Pen, 22 October 2026) ----------
          Every beast the DM has granted in the Explorer, in the Beast Pen's panel: where it lives (waiting for a
@@ -1057,7 +844,6 @@
          same size as it), fitted into the map panel and never cropped, so
          they always line up (fitMap, below). */
       var overlayLayer = el('div', { class: 'tsi-bas-map__overlays', 'data-test': 'map-overlays' });
-      var mapRepairs = el('div', { class: 'tsi-bas-map__repairs', hidden: true, 'data-test': 'map-repairs' });
       /* While the facility grid is open (Harry, 13 October 2026): a warm haze
          over the painting, and each built facility's name and level above it.
          Both follow the stage's is-grid-closed class (bastion.css), so
@@ -1102,15 +888,6 @@
           }, [el('span', { class: 'tsi-bas-maplabel__name', text: l.name }), el('span', { class: 'tsi-bas-maplabel__level', text: l.single ? 'One level' : 'Level ' + l.level })]));
         });
         placeLabels();
-        /* Under the map: which facilities are Under Repair, and when each is back. */
-        var fixing = R.repairsList(state, data);
-        mapRepairs.hidden = !fixing.length;
-        TSI.clear(mapRepairs);
-        if (fixing.length) {
-          TSI.append(mapRepairs, [el('b', { text: 'Under Repair: ' })].concat(fixing.map(function (r, i) {
-            return (i ? ', ' : '') + r.name + ' (working again on Day ' + r.backDay + ')';
-          })));
-        }
       }
 
       /* ================================================================
@@ -1256,7 +1033,7 @@
       });
 
       /* A crest sent from the Clan Crest Creator: asked about at once, when
-         nothing else is going on (no day being passed, no War Table), or as
+         nothing else is going on (no day being passed), or as
          the Bastion opens. Either answer clears it, so it's asked once. A
          newer one sent while it's asking takes its place (only the latest
          crest sent is kept). */
@@ -1264,7 +1041,7 @@
       var offerId = null;       /* the hand-off being asked about */
       var closeOffer = null;    /* closes the question (as No) */
       function checkCrestOffer() {
-        if (crestOfferOpen || changesOpen || !life.alive || turnRunning || militaryRunning || warTableOpen) return;
+        if (crestOfferOpen || changesOpen || !life.alive || turnRunning) return;
         var h = TSI.handoff.read('crest');
         if (!h) return;
         var c = R.crestFromHandoff(h);
@@ -1320,7 +1097,7 @@
               el('div', { class: 'tsi-bas-crest' }, img),
               el('div', null, [
                 el('p', { text: 'Use this crest for the Bastion?' }),
-                crest ? muted('It replaces the crest the Bastion has now.') : muted('It shows on the map\'s badge, in Party Identity, and on your tokens on the War Table.')
+                crest ? muted('It replaces the crest the Bastion has now.') : muted('It shows on the map\'s badge and in Party Identity.')
               ])
             ])
           ],
@@ -1465,7 +1242,7 @@
             typeof o.foundedAtDay === 'number' ? muted('Founded on Day ' + o.foundedAtDay) : null
           ]);
         }
-        orgDesc.textContent = clan ? 'You are a political entity. Clan Honour unlocks future war and territory systems.'
+        orgDesc.textContent = clan ? 'You are a political entity.'
           : 'You may found a Clan once enough of the Clans support you.';
         showCrest(crestImg, crest);
         crestImg.alt = crest ? crestName() : '';
@@ -1514,14 +1291,10 @@
       });
 
       /* ================================================================
-         Management: Defenders and Menagerie Beasts · Military (the
-         treasury is in the map's top bar)
+         Management: the Explorer's changes, the creatures and the Beast
+         Handler (the treasury is in the map's top bar)
          ================================================================ */
       var mgmtCard = card('management', 'Management');
-      var defValue = el('div', { class: 'tsi-bas-value', 'data-test': 'defenders', text: '0' });
-      var defMeta = muted('None recruited');
-      defMeta.setAttribute('data-test', 'defenders-meta');
-      var beastList = el('div', { class: 'tsi-bas-list', 'data-test': 'beasts' });
       /* The Beast Handler (players' companion): pairing codes and snapshots (tools/beasthandler/dm-panel.js). Since the
          Beast Pen (22 October 2026) its box is in the Beast Pen's panel, with the beasts. */
       var beastDm = TSI.beasthandler && TSI.beasthandler.dmPanel && R.beastState ? TSI.beasthandler.dmPanel.create({ state: function () { return state; }, data: data, done: function () { done(); }, life: life }) : null;
@@ -1534,7 +1307,6 @@
         done();
       });
       life.on(treasuryInput, 'keydown', function (e) { if (e.key === 'Enter') treasuryInput.blur(); });
-      var militaryList = el('div', { class: 'tsi-bas-list', 'data-test': 'military' });
       /* "What changed": the Strip Back Overhaul's report, kept in the save
          (migration.v4), readable again whenever it is wanted. */
       var changesNote = muted('');
@@ -1559,155 +1331,7 @@
         xchangesList,
         xchangesMore
       ]));
-      TSI.append(mgmtCard.body, el('div', { class: 'tsi-bas-mgmt' }, [
-        el('div', { class: 'tsi-bas-box tsi-bas-box--art tsi-bas-box--defenders' }, [
-          el('div', { class: 'tsi-bas-row__top' }, [
-            el('div', null, [label('Bastion Defenders'), defMeta]),
-            el('div', { class: 'tsi-bas-actions' }, [
-              btn('+1 Defender', function () {
-                state.defenders.count += 1;
-                log('Defenders', 'Added 1 Bastion Defender.');
-                done();
-              }, '', 'add-defender'),
-              btn('-1', function () {
-                state.defenders.count = Math.max(0, state.defenders.count - 1);
-                if (state.defenders.count === 0) state.defenders.armed = false;
-                log('Defenders', 'Removed 1 Bastion Defender.');
-                done();
-              }, '', 'remove-defender', { 'aria-label': 'Remove 1 Bastion Defender' })
-            ])
-          ]),
-          defValue,
-          label('Menagerie Beasts'),
-          beastList,
-        ]),
-        el('div', { class: 'tsi-bas-box tsi-bas-box--art tsi-bas-box--military' }, [
-          el('div', { class: 'tsi-bas-row__top' }, [
-            el('div', null, [label('Military'), muted('Units recruited from the War Room.')]),
-            btn('Clear', async function () {
-              var n = (state.military || []).reduce(function (a, u) { return a + (R.clampInt(u && u.qty, 0) || 1); }, 0);
-              if (n && !(await ask('Clear the whole Military list (' + n + (n === 1 ? ' unit' : ' units') + ')? This removes every regiment recruited at the War Room, with its name, training and Recouping. It cannot be undone, and the gold already spent is not given back.', 'Clear', 'Clear the Military list'))) return;
-              if (!life.alive) return;
-              state.military = [];
-              log('Military', 'Cleared military list.');
-              done();
-            }, '', 'clear-military')
-          ]),
-          militaryList
-        ])
-      ]));
 
-      /* The Military and Menagerie lists. Each row says what the unit is
-         (its type and soldiers; a regiment that came home under strength is
-         "Depleted: 60/100"), who is away recovering after a battle, and shows
-         its stat block on hover (war phase 2). */
-      function qtyOf(it) { return R.clampInt(it && it.qty !== undefined && it.qty !== null ? it.qty : 1, 0); }
-      function militaryInfo(it, ltAway) {
-        var type = R.unitTypeOf(it.name, data);
-        if (type === 'lieutenant') {
-          var n = qtyOf(it);
-          return {
-            line: plural(n, 'Lieutenant') + (ltAway.length ? ' ' + awayNote(ltAway) : ''),
-            tip: function () { return statTip(it.name, { notes: ltAway.map(R.recoveryText) }); }
-          };
-        }
-        var a = type && W.archetypes[type];
-        if (!a) return { line: '', tip: function () { return null; } };
-        var legacy = a.name.toLowerCase() !== String(it.name).replace(/\s*\(\s*\d+\s*\)\s*$/, '').trim().toLowerCase();
-        var strength = R.clampInt(it.strength, 0, a.size);
-        var depleted = it.depleted === true;
-        /* A regiment record (pull request 8a): its grade, Recouping and drill. */
-        var record = typeof it.num === 'number' && !!R.regimentStatus;
-        var line = record
-          ? (legacy ? 'Fights as ' : '') + a.name + ' • ' + R.regimentStatus(state, data, it)
-          : (legacy ? 'Fights as ' : '') + a.name + ' • ' + (depleted ? 'Depleted: ' + strength + '/' + a.size : (qtyOf(it) > 1 ? qtyOf(it) + ' × ' : '') + plural(a.size, 'soldier'));
-        var notes = [];
-        if (legacy) notes.push('Recruited before the war rules came in: it fights as ' + a.name + '.');
-        if (!depleted) {
-          if (record) return { line: line, tip: function () { var fu = fieldUnit(it, type); return fu ? statTip(type, { unit: fu, notes: notes }) : statTip(type, { notes: notes }); } };
-          return { line: line, tip: function () { return statTip(type, { notes: notes }); } };
-        }
-        /* A depleted regiment's stat block is the one it fights with. */
-        return {
-          line: line,
-          tip: function () {
-            var u = fieldUnit(it, type);
-            if (!u) return statTip(type, { notes: notes });
-            /* What's lower than at full strength, as shown: "Cohesion 2 (not 5)". */
-            var full = {};
-            (R.unitStatBlock(data, type) || { rows: [] }).rows.forEach(function (r) { full[r.key] = r.value; });
-            var weaker = unitBlock(u).rows.filter(function (r) { return full[r.key] !== undefined && full[r.key] !== r.value; }).map(function (r) {
-              return r.name + ' ' + r.value + ' (not ' + full[r.key] + ')';
-            });
-            var came = (record ? 'Recouping: ' : 'Depleted: ') + u.personnel + ' of ' + a.size + ' soldiers came home';
-            var back = record
-              ? 'it refills by itself (full on ' + R.dayLabel(R.recoupFullDay(state, it)) + '), or at once when the War Room recruits ' + a.name + ' again'
-              : 'the War Room recruits ' + a.name + ' again, which brings it back to full strength';
-            var why = weaker.length
-              ? came + ', so it fights at ' + andList(weaker) + ' until ' + back + '.'
-              : came + '. Too few were lost to weaken it in battle; ' + (record ? back.charAt(0).toUpperCase() + back.slice(1) + '.' : 'recruiting ' + a.name + ' in the War Room brings it back to full strength.');
-            return statTip(type, { unit: u, lead: 'Military unit • ' + u.personnel + ' of ' + plural(a.size, 'soldier'), notes: notes.concat([why]) });
-          }
-        };
-      }
-      function andList(xs) { return xs.length < 2 ? xs.join('') : xs.slice(0, -1).join(', ') + ' and ' + xs[xs.length - 1]; }
-      /* A regiment as it will fight: the campaign rules' own line-up
-         (R.playerSide) for a Bastion holding only this row, so a depleted
-         one's Cohesion and Battle Value are scaled exactly as in battle. */
-      function fieldUnit(it, type) {
-        var one = {
-          organization: { type: 'clan' }, military: [Object.assign({}, it, { qty: 1 })], defenders: { count: 0, armed: false },
-          defenderBeasts: [], pendingOrders: [], militaryActions: [], warRecovery: []
-        };
-        var units = {};
-        units[type] = 1;
-        var side = R.playerSide(one, data, { defenders: 0, lieutenants: 0, units: units, beasts: {} });
-        return (side && side.units && side.units[0]) || null;
-      }
-      function beastInfo(it) {
-        var away = awayList('beast', String(it.name));
-        var p = W.beasts[it.name] || W.beastDefault;
-        var trait = p.trait && W.traits[p.trait] ? W.traits[p.trait].name : '';
-        return {
-          line: plural(qtyOf(it), 'beast') + (trait ? ' • ' + trait : '') + (away.length ? ' ' + awayNote(away) : ''),
-          tip: function () { return statTip(String(it.name), { beast: true, notes: away.map(R.recoveryText) }); }
-        };
-      }
-      function renderForceList(node, list, emptyText, test, kind) {
-        TSI.clear(node);
-        if (!list || !list.length) { node.appendChild(muted(emptyText)); return; }
-        /* Lieutenants away are noted on the first Lieutenant row. */
-        var ltAway = kind === 'military' ? awayList('lieutenant') : [];
-        var ltShown = false;
-        list.forEach(function (it, idx) {
-          var info;
-          if (kind === 'beast') info = beastInfo(it);
-          else {
-            var isLt = R.unitTypeOf(it && it.name, data) === 'lieutenant';
-            info = militaryInfo(it, isLt && !ltShown ? ltAway : []);
-            if (isLt) ltShown = true;
-          }
-          /* A row with a stat block can be reached with the Tab key, which shows it too. */
-          var keyed = !!info.line;
-          var isReg = kind === 'military' && it && typeof it.num === 'number' && !!R.regimentName;
-          var shownName = isReg ? R.regimentName(it, data) : it.name;
-          var row = el('div', {
-            class: 'tsi-bas-item' + (keyed ? ' tsi-bas-item--tip' : '') + (isReg && it.depleted ? ' tsi-bas-regiment--recouping' : ''), 'data-test': test + '-row-' + idx,
-            tabindex: keyed ? '0' : null, role: keyed ? 'group' : null, 'aria-label': keyed ? shownName + ': ' + info.line : null
-          }, [
-            el('div', { class: 'tsi-bas-item__text' }, [
-              el('div', { class: 'tsi-bas-item__name', text: shownName }),
-              info.line ? el('div', { class: 'tsi-bas-item__type', 'data-test': test + '-type-' + idx, text: info.line }) : null,
-              el('div', { class: 'tsi-bas-item__meta', text: R.metaLine(it) })
-            ]),
-            isReg ? btn('Rename…', function () { onRename(it.id); }, 'tsi-btn--ghost', test + '-rename-' + idx) : null,
-            btn('Remove', function () { list.splice(idx, 1); done(); }, 'tsi-btn--ghost', test + '-remove-' + idx)
-          ]);
-          bindTip(row, info.tip, { noChange: true });
-          if (keyed) bindFocusTip(row, row, info.tip);
-          node.appendChild(row);
-        });
-      }
       function renderExplorerChanges() {
         TSI.clear(xchangesList);
         var all = R.bridgeChanges(state, data);
@@ -1728,817 +1352,8 @@
         var v4 = state.migration && state.migration.v4;
         changesRow.hidden = !v4;
         changesNote.textContent = v4 ? 'The Bastion\'s change of 22 October 2026 (Day ' + v4.day + '): ' + (v4.summary || 'Nothing of yours changed.') + ' Read it again.' : '';
-        defValue.textContent = String(state.defenders.count);
-        defMeta.textContent = state.defenders.count === 0 ? 'None recruited' : state.defenders.armed ? 'Armed' : 'Unarmed';
-        renderForceList(beastList, state.defenderBeasts, 'No beasts recruited yet.', 'beast', 'beast');
-        renderForceList(militaryList, state.military, 'No military recruited yet.', 'military', 'military');
         setValue(treasuryInput, state.treasuryGP);
       }
-
-      /* ================================================================
-         Banner & War Council (the war mini-game, phase 2)
-         The War Action: the target clan, the objective and the size of the
-         enemy force, then what to commit: defenders, Lieutenants, each kind
-         of regiment you have and each kind of beast. The scouts' estimate of
-         the enemy (its army is drawn up as soon as the choice is shown, and
-         saved, so changing what you commit never redraws it) and your army's
-         Battle Value follow as you type. Rules: war-campaign-rules.js.
-         ================================================================ */
-      var warCard = card('war', 'Banner & War Council');
-      var warTarget = el('select', { class: 'tsi-input', 'data-test': 'war-target' }, B.clans.map(function (c) { return el('option', { value: c.key, text: c.name }); }));
-      /* Raid, Skirmish and Seize Outpost: Defend Bastion isn't one you
-         choose, it comes to you when a Clan at war attacks (Harry, 4 October 2026). */
-      var warObjective = el('select', { class: 'tsi-input', 'data-test': 'war-objective' }, R.warActionObjectives(data).map(function (o) {
-        return el('option', { value: o.id, text: o.name });
-      }));
-      var warTier = el('select', { class: 'tsi-input', 'data-test': 'war-tier' }, W.tiers.map(function (t) { return el('option', { value: t.id, text: t.name }); }));
-      if (W.tiers.some(function (t) { return t.id === 'established'; })) warTier.value = 'established';
-      var warForcesGrid = el('div', { class: 'tsi-bas-war-forces', 'data-test': 'war-forces' });
-      var warHint = muted('', 'tsi-bas-war-hint');
-      warHint.setAttribute('data-test', 'war-hint');
-      var intelText = el('div', { class: 'tsi-bas-war-intel__text', 'data-test': 'war-intel-estimate' });
-      var intelRule = muted('', 'tsi-bas-war-intel__rule');
-      intelRule.setAttribute('data-test', 'war-intel-rule');
-      var warIntel = el('div', { class: 'tsi-bas-war-intel', 'data-test': 'war-intel', 'aria-live': 'polite' }, [label('Intelligence'), intelText, intelRule]);
-      var armyBV = el('div', { class: 'tsi-bas-war-bv', 'data-test': 'war-army-bv' });
-      /* What queueing it costs: it declares war on the Clan, or renews the war (Harry, 4 October 2026). */
-      var warCost = el('div', { class: 'tsi-bas-war-cost', 'data-test': 'war-cost', 'aria-live': 'polite' });
-      var warLogList = el('div', { class: 'tsi-bas-list', 'data-test': 'war-log' });
-      var queueWarBtn = btn('Queue War Action', function () { onQueueWar(); }, 'tsi-btn--primary', 'queue-war');
-      /* Military Actions waiting or under way (Harry's request, 2 October 2026). */
-      var maList = el('div', { class: 'tsi-bas-ma-list', 'data-test': 'military-actions' });
-      var maBox = el('div', { class: 'tsi-bas-row tsi-bas-ma-box', hidden: true }, [
-        label('Military Actions'),
-        muted('Each war action becomes a Military Action when your forces muster, ' + plural(R.time(data).musterDays, 'day') + ' after it\'s queued: roll for the weather, morale and luck, then fight the battle on the War Table. An attack on your Bastion waits here too.'),
-        maList
-      ]);
-      warCard.body.appendChild(maBox);
-      /* The Clans you're at war with, and Make peace (Harry, 4 October 2026). */
-      var warsList = el('div', { class: 'tsi-bas-ma-list', 'data-test': 'wars' });
-      var warsBox = el('div', { class: 'tsi-bas-row tsi-bas-wars-box', hidden: true, 'data-test': 'wars-box' }, [
-        label('Wars'),
-        muted('While you’re at war with a Clan, it may attack your Bastion: every ' + R.attackEvery(data) + ' days of the war it rolls a d' + W.wars.attackDie + ', and a 1 means it attacks. A war ends by itself after ' +
-          plural(W.wars.quietDays, 'day') + ' without a battle between you.'),
-        warsList
-      ]);
-      warCard.body.appendChild(warsBox);
-      TSI.append(warCard.body, el('div', { class: 'tsi-bas-row' }, [
-        label('War Action'),
-        muted('Queue a war action. Your forces muster ' + plural(R.time(data).musterDays, 'day') + ' later.'),
-        el('div', { class: 'tsi-bas-war-grid' }, [
-          field('Target Clan', warTarget),
-          field('Objective', warObjective),
-          field('Enemy force', warTier)
-        ]),
-        el('div', { class: 'tsi-bas-war-sub' }, [
-          el('div', { class: 'tsi-bas-war-sub__head' }, [label('Forces to commit'), muted('Hover over a name, or move to its box with the Tab key, to see its stat block.')]),
-          warForcesGrid
-        ]),
-        el('div', { class: 'tsi-bas-war-plan' }, [warIntel, el('div', { class: 'tsi-bas-war-plan__side' }, [armyBV, warCost, el('div', { class: 'tsi-bas-actions' }, [queueWarBtn])])]),
-        warHint,
-        el('div', { class: 'tsi-bas-war-log' }, [label('War Log'), muted('Newest first. Click an entry for details.'), warLogList])
-      ]));
-
-      /* One box per kind of force. The boxes are made again only when the
-         kinds change (a new kind of regiment or beast), so what's typed in
-         them stays. */
-      var warRows = {};
-      var warRowKeys = '';
-      function slug(name) { return String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'beast'; }
-      function ownedTypes() {
-        var have = {};
-        (state.military || []).forEach(function (row) {
-          var t = R.unitTypeOf(row && row.name, data);
-          if (t && W.archetypes[t] && qtyOf(row) > 0) have[t] = true;
-        });
-        return Object.keys(W.archetypes).filter(function (t) { return have[t]; });
-      }
-      function beastKinds() {
-        var out = [];
-        (state.defenderBeasts || []).forEach(function (row) {
-          var n = String((row && row.name) || 'Beast');
-          if (qtyOf(row) > 0 && out.indexOf(n) === -1) out.push(n);
-        });
-        return out;
-      }
-      function warSpecs() {
-        var specs = [
-          { key: 'defenders', label: 'Defenders', test: 'war-defenders', note: 'war-avail-defenders' },
-          { key: 'lieutenants', label: 'Lieutenants', test: 'war-lieutenants', note: 'war-avail-lieutenants', sworn: true, tip: 'Lieutenant (1)' }
-        ];
-        var types = ownedTypes();
-        types.forEach(function (t) {
-          specs.push({ key: 'unit:' + t, type: t, label: W.archetypes[t].name, test: 'war-unit-' + t, note: 'war-avail-unit-' + t, sworn: true, tip: t });
-        });
-        if (!types.length) specs.push({ key: 'units-none', label: 'Regiments', note: 'war-avail-regiments', empty: true });
-        var kinds = beastKinds();
-        kinds.forEach(function (n) {
-          specs.push({ key: 'beast:' + n, beast: n, label: n, test: 'war-beast-' + slug(n), note: 'war-avail-beast-' + slug(n), tip: n, tipBeast: true });
-        });
-        if (!kinds.length) specs.push({ key: 'beasts-none', label: 'Beasts', note: 'war-avail-beasts', empty: true });
-        return specs;
-      }
-      function makeWarRow(sp) {
-        var note = el('span', { class: 'tsi-bas-war-avail', 'data-test': sp.note });
-        var input = null;
-        if (!sp.empty) {
-          input = numberInput(sp.test, { min: '0', 'aria-label': sp.label + ' committed' });
-          /* The notes follow as you type; the number is only kept within
-             what's free once you've finished typing it (or on Queue War
-             Action), so it's never rewritten under your fingers. */
-          input.addEventListener('input', function () { showWar(); });
-          input.addEventListener('change', function () { clampWar(false); });
-        }
-        var name = el('span', { class: sp.tip ? 'tsi-bas-war-field__name tsi-bas-war-field__name--tip' : 'tsi-bas-war-field__name', text: sp.label });
-        var fieldNode = el(input ? 'label' : 'div', { class: 'tsi-bas-field tsi-bas-war-field' + (input ? '' : ' tsi-bas-war-field--empty') }, [name, input, note]);
-        if (sp.tip) {
-          var build = function () { return statTip(sp.tip, { beast: !!sp.tipBeast }); };
-          bindTip(name, build, { noChange: true });
-          /* From the keyboard: moving to the box shows the stat block beside it. */
-          if (input) bindFocusTip(input, fieldNode, build);
-        }
-        return Object.assign({}, sp, { input: input, note: note, field: fieldNode });
-      }
-      function buildWarRows() {
-        var specs = warSpecs();
-        var keys = specs.map(function (x) { return x.key; }).join('|');
-        if (keys === warRowKeys) return;
-        warRowKeys = keys;
-        var old = warRows;
-        warRows = {};
-        TSI.clear(warForcesGrid);
-        specs.forEach(function (sp) {
-          var r = old[sp.key] || makeWarRow(sp);
-          warRows[sp.key] = r;
-          warForcesGrid.appendChild(r.field);
-        });
-      }
-      /* The boxes as typed, in the shape the rules take. */
-      function warFields() {
-        var f = { defenders: 0, lieutenants: 0, units: {}, beasts: {} };
-        Object.keys(warRows).forEach(function (k) {
-          var r = warRows[k];
-          if (!r.input) return;
-          if (k === 'defenders') f.defenders = r.input.value;
-          else if (k === 'lieutenants') f.lieutenants = r.input.value;
-          else if (r.type) f.units[r.type] = r.input.value;
-          else if (r.beast) f.beasts[r.beast] = r.input.value;
-        });
-        return f;
-      }
-      /* Each box kept within what's free. Lieutenants are kept within the
-         Lieutenants free; how many of them can lead (one each per regiment or
-         defender detachment) is settled when the war is queued, and the hint
-         says so, so typing Lieutenants before regiments doesn't lose them.
-         keepFocused: leave the box being typed in alone (a redraw). */
-      function clampWar(keepFocused) {
-        var f = R.warForces(state, data);
-        var c = R.warCommit2(state, data, warFields());
-        Object.keys(warRows).forEach(function (k) {
-          var r = warRows[k];
-          if (!r.input || (keepFocused && document.activeElement === r.input)) return;
-          var v;
-          if (k === 'defenders') v = c.defenders;
-          else if (k === 'lieutenants') v = f.fullWar ? R.clampInt(r.input.value, 0, f.lieutenants) : 0;
-          else if (r.type) v = c.units[r.type] || 0;
-          else v = c.beasts[r.beast] || 0;
-          r.input.value = String(v);
-        });
-        showWar(f);
-      }
-      /* Under each box: how many are free, or why it can't be used; then the
-         hint, and the army's Battle Value. */
-      function showWar(f) {
-        f = f || R.warForces(state, data);
-        var sworn = 'Only a Clan can commit Lieutenants and Regiments.';
-        var ltOwned = R.militaryQty(state, /lieutenant/i);
-        Object.keys(warRows).forEach(function (k) {
-          var r = warRows[k];
-          var n = 0;
-          var text;
-          if (k === 'defenders') {
-            n = f.defenders.count;
-            text = n > 0 ? n + ' available' : R.clampInt(state.defenders.count, 0) > 0 ? 'None free: committed to a war action' : 'None yet';
-          } else if (k === 'lieutenants') {
-            n = f.lieutenants;
-            text = !f.fullWar ? 'Clan only' : n > 0 ? n + ' available' : ltOwned > 0 ? 'None free: committed or recovering' : 'None yet: recruit in the War Room';
-          } else if (r.type) {
-            var list = f.units[r.type] || [];
-            var dep = list.filter(function (d) { return d.depleted; });
-            n = list.length;
-            text = !f.fullWar ? 'Clan only' : n > 0 ? n + ' available' + (dep.length ? ' (' + dep.map(function (d) { return 'one at ' + d.personnel + '/' + d.size; }).join(', ') + ')' : '') : 'None free: committed to a war action';
-          } else if (r.beast) {
-            n = f.beasts[r.beast] || 0;
-            text = n > 0 ? n + ' available' : 'None free: committed or recovering';
-          } else if (k === 'units-none') {
-            text = f.fullWar ? 'None yet: recruit in the War Room' : 'Clan only';
-          } else {
-            text = 'None in the Menagerie yet';
-          }
-          r.note.textContent = text;
-          r.note.classList.toggle('is-none', !(n > 0));
-          if (r.input) {
-            var off = !!r.sworn && !f.fullWar;
-            r.input.disabled = off;
-            r.input.title = off ? sworn : '';
-            /* The spinner arrows stop at what's free. */
-            r.input.max = String(off ? 0 : n);
-          }
-        });
-        var a = R.warAvailable(state, data);
-        var c = R.warCommit2(state, data, warFields());
-        var ltRow = warRows.lieutenants;
-        var typedLts = ltRow && ltRow.input ? Math.min(R.clampInt(ltRow.input.value, 0), f.lieutenants) : 0;
-        var hint = 'Available: ' + plural(a.defenders, 'defender') + ', ' + plural(a.lieutenants, 'Lieutenant') + ', ' + plural(a.regiments, 'regiment') + ', ' + plural(a.beasts, 'beast') + '. ' +
-          (a.fullWar ? 'Everything can be committed.' : 'Unsworn war is limited to defenders and beasts.');
-        if (f.fullWar && typedLts > c.lieutenants) {
-          hint += ' Each Lieutenant leads one regiment or defender detachment, so ' + (c.lieutenants ? 'only ' + c.lieutenants : 'none') + ' of them can march with these forces.';
-        }
-        warHint.textContent = hint;
-        TSI.clear(armyBV);
-        TSI.append(armyBV, ['Your army: ', el('b', { text: String(R.armyBV(state, data, c)) }), ' Battle Value']);
-        showCost();
-      }
-      /* "−4", "+2", "0". */
-      function signedNum(n) { return n < 0 ? '−' + Math.abs(n) : n > 0 ? '+' + n : '0'; }
-      function clanTitle(key) { return 'Clan ' + R.clanName(data, key); }
-      /* The cost line by Queue War Action: "Declaring war on Clan Bacca:
-         Honour & Respect −4, Political Capital −40 (your army: 31 Battle
-         Value)", or "Renewing the war on …" when already at war. */
-      function showCost() {
-        var key = String(warTarget.value);
-        var pen = R.warPenalty(state, data, warFields());
-        TSI.clear(warCost);
-        TSI.append(warCost, [
-          (R.atWar(state, key) ? 'Renewing the war on ' : 'Declaring war on ') + clanTitle(key) + ': Honour & Respect ',
-          el('b', { text: signedNum(pen.honourRespect) }), ', Political Capital ', el('b', { text: signedNum(pen.politicalCapital) }),
-          ' (your army: ' + pen.bv + ' Battle Value)'
-        ]);
-        /* Its At War tag straight away: the line is rebuilt as you type. */
-        tagWars(warCost);
-      }
-      /* The scouts' estimate for the target, objective and force chosen. The
-         enemy army is drawn up the first time it's shown (with its own dice,
-         never Math.random) and saved, so it never changes with what you commit. */
-      function showIntel() {
-        var t = String(warTarget.value);
-        var o = String(warObjective.value);
-        var tier = String(warTier.value);
-        var key = R.missionKey(t, o, tier);
-        var had = !!(state.warMissions && state.warMissions[key]);
-        var seen = had ? state.warMissions[key].seenDay : undefined;
-        var m = R.ensureMission(state, data, t, o, tier);
-        /* Saved when new, or when first shown today: the stamp keeps it
-           from being pruned while Harry browses other missions. */
-        if (m && (!had || m.seenDay !== seen)) save();
-        intelText.textContent = m ? R.missionEstimateLine(m, data) : 'No word from the scouts.';
-        var wo = W.objectives[o];
-        intelRule.textContent = wo ? wo.name + ': ' + wo.rule : '';
-      }
-      [warTarget, warObjective, warTier].forEach(function (s) { life.on(s, 'change', showIntel); });
-      life.on(warTarget, 'change', function () { showCost(); });
-
-      function renderWar() {
-        buildWarRows();
-        var f = R.warForces(state, data);
-        Object.keys(warRows).forEach(function (k) {
-          var r = warRows[k];
-          if (r.input && r.input.value === '') r.input.value = k === 'defenders' ? String(Math.min(2, f.defenders.count)) : '0';
-        });
-        clampWar(true);
-        showIntel();
-        renderMilitary();
-        TSI.clear(warLogList);
-        if (!state.warLog.length) { warLogList.appendChild(muted('No war actions recorded yet.')); return; }
-        state.warLog.slice(0, 20).forEach(function (w, i) {
-          var open = function () { openWarReport(w); };
-          warLogList.appendChild(el('div', { class: 'tsi-bas-item tsi-bas-item--click', onclick: open }, [
-            el('div', null, [el('div', { class: 'tsi-bas-item__name', text: w.title }), el('div', { class: 'tsi-bas-item__meta', text: R.formatTime(w.at) })]),
-            el('button', { type: 'button', class: 'tsi-btn tsi-btn--small tsi-btn--ghost', 'data-test': 'war-view-' + i, onclick: function (e) { e.stopPropagation(); open(); } }, 'View')
-          ]));
-        });
-      }
-      function openWarReport(w, settle) {
-        var report = {
-          title: 'War Report',
-          body: [
-            el('div', { class: 'tsi-bas-res-top' }, [el('div', { class: 'tsi-bas-res-action', 'data-test': 'war-report-title', text: w.title }), muted(w.subtitle || '')]),
-            el('div', { class: 'tsi-bas-res-roll tsi-bas-res-roll--pre', 'data-test': 'war-report', text: w.details || '' })
-          ],
-          actions: CLOSE
-        };
-        return hallModal(settle ? settling(report) : report);
-      }
-      /* A double click queues one war action, not two (BAS-15). More than one
-         a day is still allowed (B22). What's queued is kept within what's
-         free (R.queueWarAction2), and the mission is the one the
-         intelligence box shows. */
-      var NOTHING_FIGHTS = 'Commit at least one force that fights: defenders, beasts or, for a Clan, regiments. Lieutenants only lead them.';
-      function sumOf(o) { return Object.keys(o || {}).reduce(function (a, k) { return a + (Number(o[k]) || 0); }, 0); }
-      /* Queueing it declares war on the Clan (or renews the war), so it asks
-         first, with what it costs (Harry, 4 October 2026). Cancel changes nothing. */
-      var onQueueWar = TSI.oneAtATime(async function () {
-        var opts = {
-          targetKey: String(warTarget.value || 'blackstone'),
-          objective: String(warObjective.value || 'raid'),
-          tier: String(warTier.value || ''),
-          commit: warFields()
-        };
-        var c = R.warCommit2(state, data, opts.commit);
-        if (c.defenders + sumOf(c.units) + sumOf(c.beasts) <= 0) { await say(NOTHING_FIGHTS); return; }
-        var ok = await declareWarAsk(opts);
-        if (!ok || !life.alive) return;
-        var order = R.queueWarAction2(state, data, opts);
-        if (!order) { await say(NOTHING_FIGHTS); return; }
-        var line = R.warOrderLine(order);
-        log(line[0], line[1]);
-        done();
-      });
-      /* "Declare war on Clan Bacca?" (or "Renew the war on Clan Bacca?"):
-         the cost to each score, from what it is now to what it will be. */
-      function declareWarAsk(opts) {
-        var key = opts.targetKey;
-        var name = clanTitle(key);
-        var renew = R.atWar(state, key);
-        var pen = R.warPenalty(state, data, opts.commit);
-        function cost(labelText, before, delta, lo, hi) {
-          var after = Math.max(lo, Math.min(hi, before + delta));
-          var real = after - before;
-          return el('li', null, [
-            labelText + ' with ' + R.clanName(data, key) + ': ', el('b', { text: real ? signedNum(real) : 'no change' }),
-            ' (from ' + signedNum(before) + ' to ' + signedNum(after) + (real !== delta ? '; it can’t go below ' + signedNum(lo) : '') + ')'
-          ]);
-        }
-        var hr = R.clampInt(state.honourRespectByClan[key] || 0, -5, 5);
-        var pc = R.clampInt(state.politicalCapital[key] || 0, -100, 100);
-        var action = R.militaryName({ objective: opts.objective, targetName: R.clanName(data, key) });
-        return openPop({
-          title: (renew ? 'Renew the war on ' : 'Declare war on ') + name + '?',
-          className: 'tsi-bas-modal tsi-bas-modal--war',
-          body: el('div', { class: 'tsi-bas-declare', 'data-test': 'declare-war' }, [
-            el('p', { text: renew
-              ? 'You’re already at war with ' + name + '. Queueing this War Action (' + action + ') renews the war, and costs you again at once, for an army of ' + pen.bv + ' Battle Value:'
-              : 'Queueing this War Action (' + action + ') declares war on ' + name + '. For an army of ' + pen.bv + ' Battle Value, it costs you at once:' }),
-            el('ul', { class: 'tsi-bas-res-list', 'data-test': 'declare-costs' }, [
-              cost('Honour & Respect', hr, pen.honourRespect, -5, 5),
-              cost('Political Capital', pc, pen.politicalCapital, -100, 100)
-            ]),
-            el('p', { 'data-test': 'declare-risk', text: (renew ? name + ' may still attack your Bastion' : 'While you’re at war, ' + name + ' may attack your Bastion') +
-              ': every ' + R.attackEvery(data) + ' days of the war, a 1 on a d' + W.wars.attackDie + ' means they attack. The war ends after ' + plural(W.wars.quietDays, 'day') +
-              ' without a battle between you' + (renew ? ' (counted again from now)' : '') + ', or when you make peace in the War Council.' })
-          ]),
-          escValue: false,
-          actions: [{ label: 'Cancel', value: false }, { label: renew ? 'Renew the war' : 'Declare war', value: true, primary: true }]
-        });
-      }
-
-      /* ================================================================
-         The Military Action (Harry's request, 2 October 2026; phase 2)
-         When a war action's forces muster (its due day), it becomes a
-         Military Action: Begin Military Action (or Later, from this panel),
-         roll Weather Conditions, Morale and Luck, then the War Table:
-         deploy, Start Battle, and fight it activation by activation. The
-         battle is saved as it goes (R.militaryBattleSave); when it ends, its
-         consequences are applied once (R.finishBattle) and the War Report
-         shows. Call off (before the first activation) keeps the enemy and
-         the conditions for the next attempt.
-         ================================================================ */
-      var militaryRunning = false;
-      var warTableOpen = null;
-      var maNotice = null;
-      /* Actions that started from a called-off attempt's rolls, and have said
-         so once (in the muster pop-up, or in "The conditions are unchanged"
-         when that was missed). Kept with the panels' state (tsi.bastion.ui),
-         so it isn't said again after reopening; only actions still waiting
-         are kept. */
-      if (!ui.warNoticed || typeof ui.warNoticed !== 'object' || Array.isArray(ui.warNoticed)) ui.warNoticed = {};
-      function noticed(id) { return ui.warNoticed[id] === true; }
-      function pruneNoticed() {
-        var live = {};
-        var gone = false;
-        (state.militaryActions || []).forEach(function (m) { if (m && m.id) live[m.id] = true; });
-        Object.keys(ui.warNoticed).forEach(function (k) { if (!live[k]) { delete ui.warNoticed[k]; gone = true; } });
-        return gone;
-      }
-      function setNoticed(id) {
-        ui.warNoticed[id] = true;
-        pruneNoticed();
-        saveUi();
-      }
-      if (pruneNoticed()) saveUi();
-      function chip(item) {
-        return el('span', { class: 'tsi-bas-ma-chip' }, [el('span', { class: 'tsi-bas-ma-chip__label', text: item.label }), ' ', el('b', { text: item.value })]);
-      }
-      /* The action's name on screen: "Seize Outpost vs Bacca", as in the log. */
-      function maName(ma) { return R.militaryName(ma); }
-      function tierName(id) {
-        for (var i = 0; i < W.tiers.length; i++) if (W.tiers[i].id === id) return W.tiers[i].name;
-        return '';
-      }
-      /* Weather, Morale and Luck so far, and the enemy force. */
-      function maChips(ma) {
-        var out = R.militarySummary(data, ma).slice();
-        var t = tierName(ma.tier);
-        if (t) out.unshift({ label: 'Enemy', value: t });
-        return out;
-      }
-      function missionOf(ma) { return state.warMissions && ma.missionKey ? state.warMissions[ma.missionKey] || null : null; }
-      /* Did this action start from the rolls of an earlier attempt that was called off? */
-      function inherited(ma) {
-        var m = missionOf(ma);
-        var c = m && m.conditions;
-        return !!(c && c.weather && ma.weather && c.weather.d20 === ma.weather.d20 && c.weather.total === ma.weather.total && c.weather.id === ma.weather.id);
-      }
-      function isDefence(ma) { return !!ma && ma.kind === 'defence'; }
-      /* The main button of a waiting Military Action. */
-      function maButtonLabel(ma) {
-        if (isDefence(ma) && ma.undefended) return 'See the War Report';
-        if (ma.step !== 'weather') return 'Continue';
-        return isDefence(ma) ? 'Defend the Ironbow' : 'Begin Military Action';
-      }
-      function renderMilitary() {
-        var list = state.militaryActions || [];
-        maBox.hidden = !list.length;
-        /* While one waits, it's the panel's main action. */
-        queueWarBtn.classList.toggle('tsi-btn--primary', !list.length);
-        TSI.clear(maList);
-        list.forEach(function (ma, i) {
-          var summary = maChips(ma);
-          var busy = turnRunning || militaryRunning;
-          maList.appendChild(el('div', { class: 'tsi-bas-ma' + (isDefence(ma) ? ' tsi-bas-ma--defence' : ''), 'data-test': 'ma-' + i }, [
-            el('div', { class: 'tsi-bas-ma__main' }, [
-              el('div', { class: 'tsi-bas-item__name', text: maName(ma) }),
-              el('div', { class: 'tsi-bas-item__meta', text: isDefence(ma)
-                ? clanTitle(ma.targetKey) + ' attacked your Bastion on ' + R.dayLabel(ma.day) + '. Defending it: ' + (ma.undefended ? 'nobody' : R.militaryCommitLine(ma.commit, state, data))
-                : 'Committed: ' + R.militaryCommitLine(ma.commit, state, data) }),
-              el('div', { class: 'tsi-bas-ma__status', 'data-test': 'ma-status-' + i, text: R.militaryStatus(ma) }),
-              R.patrolLine(ma) ? el('div', { class: 'tsi-bas-item__meta', 'data-test': 'ma-patrol-' + i, text: R.patrolLine(ma) }) : null,
-              summary.length ? el('div', { class: 'tsi-bas-ma__chips' }, summary.map(chip)) : null
-            ]),
-            el('div', { class: 'tsi-bas-actions' }, [
-              /* Call off only before the battle's first activation (never an attack on the Bastion). */
-              R.canCallOff(ma) ? btn('Call off', function () { onCallOff(ma.id); }, 'tsi-btn--ghost', 'ma-calloff-' + i, { disabled: busy }) : null,
-              btn(maButtonLabel(ma), function () { onContinueMilitary(ma.id); }, 'tsi-btn--primary', 'ma-continue-' + i, { disabled: busy })
-            ])
-          ]));
-        });
-        renderWars();
-      }
-
-      /* The Wars box: each war, how long until it ends by itself, and Make
-         peace (refused, and saying why, while a war order or a battle with
-         that Clan still waits). */
-      function quietText(w) {
-        return (w.quietLeft > 0 ? 'peace after ' + plural(w.quietLeft, 'more quiet day', 'more quiet days')
-          : 'peace on the next day, once nothing between you is waiting') + ' · their next attack roll: ' + R.dayLabel(w.next);
-      }
-      function renderWars() {
-        var wars = R.warsList(state, data);
-        var busy = turnRunning || militaryRunning;
-        warsBox.hidden = !wars.length;
-        TSI.clear(warsList);
-        wars.forEach(function (w) {
-          warsList.appendChild(el('div', { class: 'tsi-bas-ma tsi-bas-war-row', 'data-test': 'wars-row-' + w.key }, [
-            el('div', { class: 'tsi-bas-ma__main' }, [
-              el('div', { class: 'tsi-bas-item__name', text: 'Clan ' + w.name }),
-              el('div', { class: 'tsi-bas-item__meta', 'data-test': 'wars-since-' + w.key, text: 'Since ' + R.dayLabel(w.since) + ' · ' + quietText(w) }),
-              w.canMakePeace ? null : el('div', { class: 'tsi-bas-war-row__why', 'data-test': 'wars-why-' + w.key, text: w.peaceWhy })
-            ]),
-            el('div', { class: 'tsi-bas-actions' }, [
-              btn('Make peace', function () { onMakePeace(w.key); }, 'tsi-btn--ghost', 'make-peace-' + w.key, { disabled: !w.canMakePeace || busy, title: w.peaceWhy || null })
-            ])
-          ]));
-        });
-      }
-      var onMakePeace = TSI.oneAtATime(async function (key) {
-        if (turnRunning || militaryRunning || !R.atWar(state, key)) return;
-        var name = clanTitle(key);
-        var ok = await ask('Make peace with ' + name + '? The war ends now, and ' + name + ' can no longer attack your Bastion. What declaring war cost you (Honour & Respect and Political Capital) isn’t given back.', 'Make peace', 'Make peace with ' + name + '?');
-        if (!ok || !life.alive) return;
-        var res = R.makePeace(state, data, key);
-        if (!res.ok) { await say(res.why); return; }
-        done();
-      });
-
-      /* The pop-up when the war's forces muster (its due day). When
-         an earlier attempt was called off, it says which rolls stand (so the
-         "conditions are unchanged" pop-up isn't needed as well). */
-      /* cut: a line when an older war order musters with less than it
-         committed (its forces were shared with another order). */
-      function militaryPrompt(ma, cut) {
-        var m = missionOf(ma);
-        var again = inherited(ma);
-        var later = 'Begin the Military Action now, or choose Later and begin it from the Banner & War Council panel.';
-        var text = !again
-          ? 'Begin the Military Action now: roll for the Weather Conditions, your forces’ Morale and their Luck, then fight the battle on the War Table. Or choose Later and begin it from the Banner & War Council panel.'
-          : ma.luck
-            ? 'An earlier attempt at this mission was called off, so its conditions stand: ' + R.conditionsText(data, ma) + '. There are no rolls this time. ' + later
-            : 'An earlier attempt at this mission was called off, so the rolls it made stand: ' + R.conditionsText(data, ma) + '. Next: the ' + R.militaryRollTitle(ma.step) + ' roll. ' + later;
-        var chips = again ? R.militarySummary(data, ma) : [];
-        var p = hallModal(settling({
-          title: 'War Action: ' + maName(ma),
-          className: 'tsi-bas-modal tsi-bas-modal--hall tsi-bas-modal--military',
-          body: [
-            el('div', { class: 'tsi-bas-ma-pop' }, [
-              el('div', { class: 'tsi-bas-ma-pop__headline', text: 'Your forces muster for battle' }),
-              muted('Committed: ' + R.militaryCommitLine(ma.commit, state, data) + '.'),
-              cut ? muted(cut.charAt(0).toUpperCase() + cut.slice(1)) : null,
-              m ? muted('Enemy: ' + tierName(ma.tier) + '. ' + R.missionEstimateLine(m, data)) : null,
-              chips.length ? el('div', { class: 'tsi-bas-ma__chips' }, chips.map(chip)) : null,
-              el('p', { class: 'tsi-bas-ma-pop__text', 'data-test': 'ma-muster-text', text: text })
-            ])
-          ],
-          escValue: false,
-          actions: [{ label: 'Later', value: false }, { label: 'Begin Military Action', value: true, primary: true }]
-        }));
-        /* Said once: Begin, or Later and Continue from the War Council, goes straight on. */
-        return again ? p.then(function (v) { if (life.alive) setNoticed(ma.id); return v; }) : p;
-      }
-
-      /* Two crossed swords, for the attack pop-up (drawn here: no picture file). */
-      function swordsIcon() {
-        var NS = 'http://www.w3.org/2000/svg';
-        var svg = document.createElementNS(NS, 'svg');
-        svg.setAttribute('viewBox', '0 0 64 64');
-        svg.setAttribute('class', 'tsi-bas-attack__swords');
-        svg.setAttribute('aria-hidden', 'true');
-        svg.setAttribute('data-test', 'attack-icon');
-        function part(tag, attrs) {
-          var n = document.createElementNS(NS, tag);
-          Object.keys(attrs).forEach(function (k) { n.setAttribute(k, attrs[k]); });
-          svg.appendChild(n);
-        }
-        /* Each sword: the blade (point at the top), the cross-guard, the grip and the pommel. */
-        [1, -1].forEach(function (side) {
-          function x(v) { return side === 1 ? v : 64 - v; }
-          part('path', { class: 'tsi-bas-attack__blade', d: 'M' + x(6) + ' 6 L' + x(15) + ' 9 L' + x(41) + ' 35 L' + x(35) + ' 41 L' + x(9) + ' 15 Z' });
-          part('path', { class: 'tsi-bas-attack__hilt', d: 'M' + x(31) + ' 45 L' + x(45) + ' 31' });
-          part('path', { class: 'tsi-bas-attack__hilt', d: 'M' + x(41) + ' 41 L' + x(50) + ' 50' });
-          part('circle', { class: 'tsi-bas-attack__pommel', cx: String(x(53)), cy: '53', r: '3.5' });
-        });
-        return svg;
-      }
-      /* "Sound the horns!": a Clan at war attacks (Harry, 4 October 2026).
-         Defend the Ironbow goes into the Military Action (rolls, then the
-         War Table on the Ironbow coast); Later leaves it waiting in the War
-         Council. With nobody free to defend, its one button shows what was
-         lost. Resolves to true (defend, or see the loss) or false (Later). */
-      function attackModal(ma) {
-        var m = missionOf(ma);
-        var title = W.defence.title;
-        var story = R.defenceText(data, ma.targetKey);
-        /* The title says "Sound the horns!", so the words under it go on from there. */
-        var headline = story.indexOf(title) === 0 && story.length > title.length ? story.slice(title.length).trim() : story;
-        var T = W.defence.treasuryLoss;
-        var P = W.defence.repairs;
-        var loss = 'You lose 1d' + T.die + ' × ' + T.pctPerPip + '% of your treasury (' + T.pctPerPip + '% to ' + (T.die * T.pctPerPip) + '%), and 1d' + P.die +
-          ' of your facilities, chosen at random, are Under Repair for ' + plural(P.days, 'day') + ', today included.';
-        var body = el('div', { class: 'tsi-bas-ma-pop tsi-bas-attack', 'data-test': 'attack' }, [
-          el('div', { class: 'tsi-bas-attack__icon' }, swordsIcon()),
-          el('div', { class: 'tsi-bas-ma-pop__headline tsi-bas-attack__headline', 'data-test': 'attack-text', text: headline }),
-          ma.undefended
-            ? el('p', { class: 'tsi-bas-ma-pop__text', 'data-test': 'attack-undefended', text: 'Nobody is free to defend the Bastion, so ' + clanTitle(ma.targetKey) + ' takes what it came for unopposed. ' + loss })
-            : [
-              muted('Standing to defend the Ironbow: ' + R.militaryCommitLine(ma.commit, state, data) + '.', 'tsi-bas-attack__line'),
-              m ? muted('Enemy: ' + tierName(ma.tier) + '. ' + R.missionEstimateLine(m, data), 'tsi-bas-attack__line') : null,
-              R.patrolLine(ma) ? el('div', { class: 'tsi-bas-muted tsi-bas-attack__line tsi-bas-attack__patrol', 'data-test': 'attack-patrol', text: R.patrolLine(ma) }) : null,
-              el('p', { class: 'tsi-bas-ma-pop__text', 'data-test': 'attack-more', text: 'Defend the Ironbow now: roll for the Weather Conditions, your forces’ Morale and their Luck, then fight the battle on the Ironbow coast. Or choose Later and defend it from the Banner & War Council panel. An attack can’t be called off. If the Bastion falls: ' + loss.charAt(0).toLowerCase() + loss.slice(1) })
-            ]
-        ]);
-        return hallModal(settling({
-          title: title,
-          className: 'tsi-bas-modal tsi-bas-modal--hall tsi-bas-modal--military tsi-bas-modal--attack',
-          body: body,
-          escValue: false,
-          actions: ma.undefended
-            ? [{ label: 'See the War Report', value: true, primary: true }]
-            : [{ label: 'Later', value: false }, { label: 'Defend the Ironbow', value: true, primary: true }]
-        }));
-      }
-
-      /* An earlier attempt was called off: its rolls stand, in one pop-up.
-         Only when the muster pop-up didn't say so (the Bastion was closed
-         while it showed), and only before the battle: once per action. */
-      function needsUnchanged(ma) {
-        var b = ma && ma.battle;
-        return !!ma && !noticed(ma.id) && inherited(ma) && (!b || ((b.phase === 'setup' || b.phase === 'deploy') && !b.started && !b.result));
-      }
-      function unchangedModal(ma) {
-        var text = ma.luck
-          ? 'The conditions are unchanged: ' + R.conditionsText(data, ma) + '. The earlier attempt was called off before the battle began, so its weather, morale and luck stand.'
-          : 'The rolls already made are unchanged: ' + R.conditionsText(data, ma) + '. Next: the ' + R.militaryRollTitle(ma.step) + ' roll.';
-        var chips = R.militarySummary(data, ma);
-        return hallModal(settling({
-          title: 'War Action: ' + maName(ma),
-          className: 'tsi-bas-modal tsi-bas-modal--hall tsi-bas-modal--military',
-          body: [
-            el('div', { class: 'tsi-bas-ma-pop', 'data-test': 'ma-unchanged' }, [
-              el('div', { class: 'tsi-bas-ma-pop__headline', text: ma.luck ? 'The conditions are unchanged' : 'The rolls made stand' }),
-              chips.length ? el('div', { class: 'tsi-bas-ma__chips' }, chips.map(chip)) : null,
-              el('p', { class: 'tsi-bas-ma-pop__text', 'data-test': 'ma-text', text: text })
-            ])
-          ],
-          actions: CONTINUE
-        }));
-      }
-
-      /* What a roll brought: the weather's video plays above the words. */
-      function militaryResultModal(res, roll) {
-        var video = null;
-        if (res.video) {
-          /* Shown once it can play, so a browser that can't play it shows no empty box. */
-          video = el('video', { class: 'tsi-bas-ma-pop__video', muted: true, playsinline: true, loop: true, preload: 'auto', 'aria-hidden': 'true', hidden: true });
-          video.muted = true;
-          video.addEventListener('loadeddata', function () { video.hidden = false; });
-          life.track(video);
-          video.setAttribute('src', TSI.path(res.video));
-        }
-        var verdict = res.pass ? 'Passed' : 'Failed';
-        var p = hallModal(settling({
-          title: res.title,
-          className: 'tsi-bas-modal tsi-bas-modal--hall tsi-bas-modal--military',
-          body: [
-            el('div', { class: 'tsi-bas-ma-pop', 'data-test': 'ma-result' }, [
-              video,
-              el('div', { class: 'tsi-bas-ma-pop__headline', 'data-test': 'ma-headline', text: res.headline }),
-              el('div', { class: 'tsi-bas-ma-pop__roll ' + (res.pass ? 'is-pass' : 'is-fail'), text: 'd20 ' + roll.total + ' vs DC ' + roll.dc + ': ' + verdict }),
-              el('p', { class: 'tsi-bas-ma-pop__text', 'data-test': 'ma-text', text: res.text })
-            ])
-          ],
-          actions: CONTINUE
-        }));
-        if (video) {
-          var play = video.play();
-          if (play && play.catch) play.catch(function () {});
-        }
-        return p.then(function (v) {
-          if (video) { video.pause(); video.removeAttribute('src'); video.load(); life.untrack(video); }
-          return v;
-        });
-      }
-
-      /* Run a Military Action from wherever it has got to. Resolves when its
-         rolls are done and the War Table is closed. */
-      async function runMilitary(id) {
-        /* The "waiting" and "day left part-way" notices have done their job
-           (the button says Finish Day), and mustn't cover the War Table's
-           buttons or your own ground on the board. */
-        if (maNotice) { maNotice.close(); maNotice = null; }
-        if (turnNotice) { turnNotice.close(); turnNotice = null; }
-        /* The War Table opens over everything: the panel it was begun from closes. */
-        closePanel();
-        militaryRunning = true;
-        renderTurnButton();
-        renderMilitary();
-        try {
-          var first = R.militaryById(state, id);
-          if (needsUnchanged(first)) {
-            setNoticed(id);
-            await unchangedModal(first);
-            if (!life.alive) return 'stopped';
-          }
-          for (;;) {
-            if (!life.alive) return 'stopped';
-            var ma = R.militaryById(state, id);
-            if (!ma) return null;
-            /* Nobody was free to defend the Bastion: it's lost without a battle. */
-            if (isDefence(ma) && ma.undefended) return await loseUndefended(id);
-            var step = ma.step;
-            if (step === 'weather' || step === 'morale' || step === 'luck') {
-              var dc = R.militaryDC(data, ma, step);
-              var roll = await rollD20({ title: R.militaryRollTitle(step) + ': ' + maName(ma), mod: 0, dc: dc, settle: true });
-              if (!life.alive) return 'stopped';
-              if (!roll) {
-                log('War Action', R.militaryName(ma) + ': the ' + R.militaryRollTitle(step) + ' roll was cancelled. The Military Action waits in the War Council.');
-                done();
-                return null;
-              }
-              var res = R.militaryRoll(state, data, id, step, roll, rand);
-              done();
-              if (res) {
-                var rec = R.militaryById(state, id)[step];
-                await militaryResultModal(res, rec);
-                if (!life.alive) return 'stopped';
-              }
-              continue;
-            }
-            return await openWarTable(id);
-          }
-        } finally {
-          militaryRunning = false;
-          if (life.alive) { renderTurnButton(); renderMilitary(); }
-        }
-      }
-
-      /* The War Table (war-table.js), full screen inside the Bastion. It
-         plays the whole battle; the Bastion saves it as it goes and applies
-         the result once. */
-      function openWarTable(id) {
-        return new Promise(function (resolve) {
-          var ma = R.militaryById(state, id);
-          if (!ma || !ma.spec || !ns.warTable) { resolve(null); return; }
-          var finished = false;
-          function finish(v) {
-            if (finished) return;
-            finished = true;
-            warTableOpen = null;
-            if (life.alive) renderAll();
-            resolve(v);
-          }
-          /* The crest is on your tokens whether or not a Clan is formed; the
-             army has the Clan's name once there is one. */
-          var o = state.organization;
-          var options = {
-            host: page,
-            life: life,
-            store: ctx.store,
-            inert: [bar, stage],
-            title: maName(ma),
-            summary: R.militarySummary(data, ma),
-            crest: crest ? { dataUrl: crest.dataUrl } : null,
-            armyName: o.type === 'clan' && o.name ? o.name : 'Your forces',
-            enemy: { clanKey: ma.targetKey, clanName: ma.targetName },
-            spec: TSI.clone(ma.spec),
-            battle: ma.battle ? TSI.clone(ma.battle) : null,
-            rand: rand,
-            canCallOff: R.canCallOff(ma),
-            withdrawPreview: function (b) { return R.withdrawPreview(state, data, id, b); },
-            /* Every deployment move and activation: saved at once (no redraw: the table covers the Bastion). */
-            onChange: function (b) { if (R.militaryBattleSave(state, id, b)) save(); },
-            onEnd: function (b) { return reportBattle(id, b); },
-            onCallOff: function () { return callOffAsk(id); },
-            onClose: function () { finish(null); }
-          };
-          /* An attack on the Bastion is fought on the Ironbow coast, its
-             terrain already painted (war-units-data.js presetMaps). */
-          var preset = isDefence(ma) && W.presetMaps ? W.presetMaps[ma.map] : null;
-          if (preset) options.presetMap = Object.assign({ key: 'preset:' + ma.map }, preset);
-          /* If the table can't open, say so, and the Military Action waits in the War Council. */
-          try {
-            warTableOpen = ns.warTable.open(options);
-          } catch (err) {
-            TSI.reportError(err, 'the War Table');
-            finish(null);
-          }
-        });
-      }
-
-      /* The battle has a result: its consequences are applied once (casualties,
-         Lieutenants and beasts, rewards, the war log), then the War Report.
-         The War Table closes when the report does. */
-      var reporting = {};
-      function reportBattle(id, b) {
-        if (reporting[id]) return reporting[id];
-        reporting[id] = (async function () {
-          try {
-            if (!R.militaryById(state, id)) return null;
-            R.militaryBattleSave(state, id, b);
-            var out = R.finishBattle(state, data, id, b, rand);
-            if (pruneNoticed()) saveUi();
-            done();
-            if (!out || !life.alive) return null;
-            await openWarReport(out.report, true);
-            return null;
-          } finally {
-            delete reporting[id];
-          }
-        }());
-        return reporting[id];
-      }
-
-      /* An attack with nobody free to defend the Bastion: lost at once, with
-         no battle (R.finishUndefended), then the War Report. */
-      async function loseUndefended(id) {
-        var out = R.finishUndefended(state, data, id, rand);
-        if (pruneNoticed()) saveUi();
-        done();
-        if (!out || !life.alive) return life.alive ? null : 'stopped';
-        await openWarReport(out.report, true);
-        return life.alive ? null : 'stopped';
-      }
-
-      /* Call off (before the battle's first activation): nothing is won or
-         lost, and the enemy and the rolls made so far stay for the next try. */
-      function callOffAsk(id) {
-        var ma = R.militaryById(state, id);
-        if (!ma || !R.canCallOff(ma)) return Promise.resolve(false);
-        return ask('Call off the Military Action (' + maName(ma) + ')? Nothing is won or lost, and your forces stand down. The enemy army and the conditions rolled so far stay the same for the next attempt.', 'Call off').then(function (ok) {
-          if (!ok || !life.alive) return false;
-          if (!R.callOffMilitaryAction(state, id)) return false;
-          if (pruneNoticed()) saveUi();
-          done();
-          return true;
-        });
-      }
-
-      var onContinueMilitary = TSI.oneAtATime(function (id) {
-        if (turnRunning || militaryRunning) return false;
-        return runMilitary(id);
-      });
-      var onCallOff = TSI.oneAtATime(function (id) {
-        if (turnRunning || militaryRunning) return null;
-        return callOffAsk(id);
-      });
 
       /* ================================================================
          The Hall of Emissaries (the Strip Back Overhaul, Harry, 22 October 2026, step S09)
@@ -2964,7 +1779,7 @@
          double click adds once; it's a saved change, so a reload adds
          nothing. */
       var onAddSupplies = TSI.oneAtATime(async function () {
-        if (turnRunning || militaryRunning) { await say('Wait for the day to finish.'); return; }
+        if (turnRunning) { await say('Wait for the day to finish.'); return; }
         var list = R.manualAddGoods(data);
         if (!list.length) { await say('There are no supplies to add by hand (courier-data.js).'); return; }
         var goodSel = el('select', { class: 'tsi-input', 'aria-label': 'Supply', 'data-test': 'supplies-good' }, list.map(function (g) {
@@ -2988,7 +1803,7 @@
           onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'supplies-dialog'); }
         });
         if (!ok || !life.alive) return;
-        if (turnRunning || militaryRunning) { await say('A day was passing, so nothing was added. Try again once it has finished.'); return; }
+        if (turnRunning) { await say('A day was passing, so nothing was added. Try again once it has finished.'); return; }
         var res = R.addSupplies(state, data, goodSel.value, qty.value);
         if (!res.ok) { await say(res.message); return; }
         log(res.log[0], res.log[1]);
@@ -2997,7 +1812,7 @@
 
       /* Hand to the party: a confirmed hand-over of some of a typed row. */
       var onHandToParty = TSI.oneAtATime(async function (row) {
-        if (turnRunning || militaryRunning) { await say('Wait for the day to finish.'); return; }
+        if (turnRunning) { await say('Wait for the day to finish.'); return; }
         var name = String(row.item || '').trim() || 'New Item';
         var have = R.clampInt(row.qty === undefined ? 0 : row.qty, 0);
         if (have < 1) { await say('There is none of that in the Warehouse to hand over.'); return; }
@@ -3015,7 +1830,7 @@
           onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'hand-dialog'); }
         });
         if (!ok || !life.alive) return;
-        if (turnRunning || militaryRunning) { await say('A day was passing, so nothing was handed over. Try again once it has finished.'); return; }
+        if (turnRunning) { await say('A day was passing, so nothing was handed over. Try again once it has finished.'); return; }
         var res = R.handToParty(state, row, qty.value, who.value);
         if (!res.ok) { await say(res.message); return; }
         done();
@@ -3068,7 +1883,7 @@
       /* ================================================================
          Facilities: the grid in the map's bottom bar, the build panel,
          each facility's panel, and the Orders panel
-         The grid, in two rows: the five starting facilities and the six
+         The grid, in two rows: the two starting facilities and the six
          construction slots, and below them the six Development Plots (pull
          request 3: only for the economic facilities; they open at party
          levels 9, 9, 13, 13, 17, 17). A built facility's tile opens its panel (the Hall's opens the
@@ -3076,8 +1891,7 @@
          slot the party's level allows opens the build panel; a locked one
          says the level it opens at.
          ================================================================ */
-      var GRID_START = ['workshop', 'barracks', 'watchtower', 'dock', 'armoury'].filter(function (id) { return B.startingBuilt.indexOf(id) !== -1; })
-        .concat(B.startingBuilt.filter(function (id) { return ['workshop', 'barracks', 'watchtower', 'dock', 'armoury'].indexOf(id) === -1; }));
+      var GRID_START = B.startingBuilt.slice();
       var SLOT_COUNT = R.constructionSlotsForLevel(20);
       var PLOT_COUNT = R.plotsForLevel(20, data);
       /* The party level a slot (0 to 5) opens at: 5, 5, 9, 9, 13, 17. */
@@ -3105,7 +1919,7 @@
       var facPanelBody = el('div', { class: 'tsi-bas-facpanel', 'data-test': 'fac-panel' });
       var buildBody = el('div', { class: 'tsi-bas-buildpanel', 'data-test': 'build-panel' });
 
-      /* "The Barracks is Under Repair until Day 19." (as R.issueOrder says it) */
+      /* "The Dock is Under Repair until Day 19." (as R.issueOrder says it) */
       function repairText(fac, until) { return 'The ' + fac.name + ' is Under Repair until Day ' + until + '.'; }
       /* "(Under Repair)" beside a facility's name. */
       function repairLabel(until) {
@@ -3304,25 +2118,10 @@
         var isCharter = !!fn.portCharter;
         /* A House order (pull request 7): the Beast Pen's lists the beasts waiting for a home. */
         var isHousing = !!(fn.housesSpecies || fn.housesCreature);
-        /* A commercial voyage protection (20 October 2026): the Barracks' Convoy and the Watchtower's Approaches. */
-        var isProtection = !!((fn.protectionCharge && fn.protectionMax) || fn.protectionWindow);
         var options = R.fnOptions(state, data, fac, fn);
         var select = null;
         var chooser = null;
-        /* The War Room (pull request 8a): Drill a Regiment lists the
-           regiments that can drill; a Muster has one list per formation. */
-        var isDrill = !!fn.drill;
-        var musterN = R.musterSize ? R.musterSize(fn) : 0;
-        if (musterN) {
-          var msels = [];
-          for (var mi = 0; mi < musterN; mi++) {
-            msels.push(el('select', { class: 'tsi-input tsi-bas-fn__select', 'aria-label': fn.label + ': formation ' + (mi + 1), 'data-test': 'sel-' + key + '-' + mi }, options.map(function (o, idx) {
-              return el('option', { value: String(idx), text: o && o.label ? o.label : String(o) });
-            })));
-          }
-          select = { get value() { return msels.map(function (x) { return R.clampInt(x.value, 0); }); } };
-          chooser = el('div', { class: 'tsi-bas-fn__muster', 'data-test': 'muster-' + key }, msels);
-        } else if ((fn.options && fn.options.length) || isCraft || (isCharter && options.length) || (fn.housesSpecies && options.length) || (isDrill && options.length)) {
+        if ((fn.options && fn.options.length) || isCraft || (isCharter && options.length) || (fn.housesSpecies && options.length)) {
           select = el('select', { class: 'tsi-input tsi-bas-fn__select', 'aria-label': fn.label, 'data-test': 'sel-' + key }, options.map(function (o, idx) {
             var lab = o && typeof o === 'object' && 'label' in o ? o.label : String(o);
             var cost = o && o.costGP !== undefined && o.costGP !== null ? ' (' + o.costGP + 'gp)' : '';
@@ -3332,10 +2131,8 @@
           if (selections[key] !== undefined && Number(selections[key]) < options.length) select.value = String(selections[key]);
           select.addEventListener('change', function () { selections[key] = select.value; refresh(); });
           chooser = select;
-          /* The War Room's Recruit: a list that shows each unit's stat block (war phase 2). */
-          if (fac.id === 'war_room' && fn.id === 'recruit') chooser = recruitPicker(select, options, fn.label, locked);
         }
-        /* Under Repair after a lost Defend Bastion: no orders until it's working again. */
+        /* Under Repair: no orders until it's working again (nothing puts a facility Under Repair now that the war is gone; an old Bastion's repairs were cleared). */
         var repair = R.underRepair(state, fac.id);
         /* A merged order keeps its old building's party level (the facilities overhaul). */
         var avail = R.fnAvailable(state, fac, fn);
@@ -3347,9 +2144,9 @@
         /* A production order (pull request 3): what the chosen recipe uses and makes. */
         var goodsLine = fn.production ? el('div', { class: 'tsi-bas-fn__goods', 'data-test': 'goods-' + key }) : null;
         /* Why a House order can't be given now, in a sentence (pull request 7). */
-        var whyLine = (isHousing || isDrill || isProtection || (fn.favourCost && !fn.production) || fn.waiting) ? el('div', { class: 'tsi-bas-fn__why', 'data-test': 'why-' + key, hidden: true }) : null;
+        var whyLine = (isHousing || (fn.favourCost && !fn.production) || fn.waiting) ? el('div', { class: 'tsi-bas-fn__why', 'data-test': 'why-' + key, hidden: true }) : null;
         function chosenNow() {
-          if (isDrill || (isHousing && fn.housesSpecies)) return options[select ? R.clampInt(select.value, 0) : 0] || null;
+          if (isHousing && fn.housesSpecies) return options[select ? R.clampInt(select.value, 0) : 0] || null;
           return fn.production && fn.options && fn.options.length ? fn.options[select ? R.clampInt(select.value, 0) : 0] || null : null;
         }
         function refresh() {
@@ -3357,16 +2154,14 @@
           var why = repair ? null : !avail.ok ? avail.message : fn.production ? (R.productionBusy(state, data, fac, fn) || R.recipeBlocker(state, data, fac, fn, chosen))
             : isCharter && R.registerBusy(state, data) ? R.registerBusy(state, data)
             : isCharter && !options.length ? 'No Port Charter to register: the DM grants one in the Explorer, and each is registered once.'
-            : isProtection ? R.protectionBusy(state, data, fn) || null
-            : isHousing ? R.housingBlocker(state, data, fac, fn, fn.housesSpecies && chosen ? chosen.creatureId : undefined) || null
-            : isDrill ? (R.drillRoomBlocker(state, data) || (!options.length ? 'No regiment can drill now: a regiment drills at full strength, one drill at a time, up to Veteran.' : null)) : null;
+            : isHousing ? R.housingBlocker(state, data, fac, fn, fn.housesSpecies && chosen ? chosen.creatureId : undefined) || null : null;
           /* A Shrine order's Favour (pull request 8b). */
           var noFavour = !why && !repair && avail.ok && R.favourBlocker ? R.favourBlocker(state, fac, fn) : '';
           if (noFavour) why = noFavour;
           issue.disabled = !!(locked || repair > 0 || why);
           issue.title = repair ? repairText(fac, repair) : why || null;
           issue.textContent = repair ? 'Under Repair' : !avail.ok ? avail.message : why && fn.production ? 'Can\'t order yet' : why && isCharter ? (options.length ? 'One at a time' : 'No Port Charter to register')
-            : why && isProtection ? (fn.protectionWindow ? 'Already active' : 'Convoy ready') : why && isHousing ? housingShort(fac, fn, chosen) : why && isDrill ? 'Can\'t drill now' : noFavour ? 'Not enough Favour' : 'Issue Order';
+            : why && isHousing ? housingShort(fac, fn, chosen) : noFavour ? 'Not enough Favour' : 'Issue Order';
           if (whyLine) {
             var wtext = !avail.ok && avail.why ? avail.why : why && !repair && avail.ok ? why : '';
             whyLine.hidden = !wtext;
@@ -3388,7 +2183,7 @@
         }
         refresh();
         return el('div', { class: 'tsi-bas-fn' + (fn.production ? ' tsi-bas-fn--production' : '') }, [
-          el('div', { class: 'tsi-bas-fn__head' }, [el('div', { class: 'tsi-bas-fn__name', text: fn.label }), el('div', { class: 'tsi-bas-fn__cost', text: isDrill ? fn.costText : (R.computeFnCost(state, fac, fn, null).costText || '0gp') + (fn.favourCost ? ' · ' + fn.favourCost + '% Favour' : '') })]),
+          el('div', { class: 'tsi-bas-fn__head' }, [el('div', { class: 'tsi-bas-fn__name', text: fn.label }), el('div', { class: 'tsi-bas-fn__cost', text: (R.computeFnCost(state, fac, fn, null).costText || '0gp') + (fn.favourCost ? ' · ' + fn.favourCost + '% Favour' : '') })]),
           daysLine,
           chooser,
           goodsLine,
@@ -3406,147 +2201,6 @@
         if (!R.waitingCreatures(state, data, fn.housesSpecies).length) return 'None waiting';
         if (chosen && chosen.creatureId && R.houseOrderFor(state, chosen.creatureId)) return 'Being housed';
         return 'Kind is full';
-      }
-
-      /* ---------- The War Room's Recruit list (war phase 2) ----------
-         A button showing the choice opens a list of the units (a listbox:
-         the arrow keys, Home and End move through it, Enter or Space choose,
-         Escape or Tab close it). Hovering over a unit, or moving to it with
-         the keys, shows its stat block beside the list. The choice is kept
-         in a hidden native select (sel-war_room__recruit), as every other
-         order's list does, so Issue Order works exactly as before. The open
-         list sits on the page, not in the facility's card (which would cut
-         it off), and closes if the page scrolls or the window changes size. */
-      var picker = null;
-      var pickerSeq = 0;
-      function closePicker(refocus) {
-        if (!picker) return;
-        var p = picker;
-        picker = null;
-        p.list.remove();
-        p.button.setAttribute('aria-expanded', 'false');
-        hideTip();
-        if (refocus && p.button.isConnected) p.button.focus({ preventScroll: true });
-      }
-      life.on(window, 'resize', function () { closePicker(false); });
-      /* Escape closes the open list, not the panel it's in: this runs before the pop-up's own Escape. */
-      life.on(window, 'keydown', function (e) {
-        if (picker && e.key === 'Escape') {
-          if (TSI.keys.isTyping(e) && !picker.list.contains(e.target)) return;    /* typing elsewhere (the DM doc's Quest box) */
-          e.preventDefault(); e.stopPropagation(); closePicker(true);
-        }
-      }, { capture: true });
-      life.on(window, 'scroll', function (e) { if (picker && !picker.list.contains(e.target)) closePicker(false); }, { capture: true, passive: true });
-      life.on(document, 'pointerdown', function (e) {
-        if (picker && !picker.list.contains(e.target) && !picker.button.contains(e.target)) closePicker(false);
-      }, { capture: true });
-
-      function recruitPicker(select, options, fnLabel, locked) {
-        var n = ++pickerSeq;
-        var listId = 'tsi-bas-wr-list-' + n;
-        function labelOf(idx) {
-          var o = options[idx];
-          return o && typeof o === 'object' && 'label' in o ? String(o.label) : String(o === undefined ? '' : o);
-        }
-        function current() { return R.clampInt(select.value, 0, Math.max(0, options.length - 1)); }
-        var shown = el('span', { class: 'tsi-bas-pick__value' });
-        var button = el('button', {
-          type: 'button', class: 'tsi-input tsi-bas-pick', 'aria-haspopup': 'listbox', 'aria-expanded': 'false', 'aria-controls': listId,
-          'data-test': 'wr-recruit', disabled: locked || null
-        }, [shown, el('span', { class: 'tsi-bas-pick__caret', 'aria-hidden': 'true' })]);
-        function sync() {
-          shown.textContent = labelOf(current());
-          button.setAttribute('aria-label', fnLabel + ': ' + labelOf(current()) + '. Open the list of units.');
-        }
-        sync();
-        /* Out of sight and out of reach, but there for the tests and Issue Order. */
-        select.classList.add('tsi-bas-pick__native');
-        select.tabIndex = -1;
-        select.setAttribute('aria-hidden', 'true');
-        select.addEventListener('change', sync);
-
-        function tipFor(li) {
-          var c = statTip(labelOf(Number(li.getAttribute('data-index'))));
-          if (!c || !picker) { hideTip(); return; }
-          TIP.show(c, picker.list, { beside: true, row: li.getBoundingClientRect() });
-        }
-        function choose(idx) {
-          select.value = String(idx);
-          select.dispatchEvent(new Event('change'));
-          closePicker(true);
-        }
-        function open(focusIdx) {
-          closePicker(false);
-          var items = options.map(function (o, idx) {
-            var type = R.unitTypeOf(labelOf(idx), data);
-            var arch = type && W.archetypes[type];
-            return el('li', {
-              role: 'option', id: listId + '-' + idx, class: 'tsi-bas-pick__opt', tabindex: '-1',
-              'aria-selected': String(idx === current()), 'aria-describedby': TIP.node.id, 'data-index': String(idx), 'data-test': 'wr-option-' + idx
-            }, [
-              el('span', { class: 'tsi-bas-pick__name', text: arch ? arch.name : type === 'lieutenant' ? W.lieutenant.name : labelOf(idx) }),
-              el('span', { class: 'tsi-bas-pick__size', text: arch ? plural(arch.size, 'soldier') : type === 'lieutenant' ? 'One officer' : '' })
-            ]);
-          });
-          var list = el('ul', { class: 'tsi-bas-pick__list', role: 'listbox', id: listId, tabindex: '-1', 'aria-label': fnLabel, 'data-test': 'wr-list' }, items);
-          /* In the War Room's panel (so the pop-up keeps the keyboard inside it). */
-          (button.closest('.tsi-modal') || page).appendChild(list);
-          picker = { list: list, button: button };
-          button.setAttribute('aria-expanded', 'true');
-          /* Under the button, or above it if there's no room below. */
-          var r = button.getBoundingClientRect();
-          list.style.left = Math.max(8, Math.min(r.left, window.innerWidth - list.offsetWidth - 8)) + 'px';
-          list.style.minWidth = r.width + 'px';
-          var below = r.bottom + 4;
-          list.style.top = (below + list.offsetHeight > window.innerHeight - 8 ? Math.max(8, r.top - 4 - list.offsetHeight) : below) + 'px';
-          list.addEventListener('mouseover', function (e) {
-            var li = e.target.closest && e.target.closest('.tsi-bas-pick__opt');
-            if (li && list.contains(li)) tipFor(li);
-          });
-          list.addEventListener('mouseleave', function () {
-            var f = document.activeElement;
-            if (f && list.contains(f) && f.classList.contains('tsi-bas-pick__opt')) tipFor(f); else hideTip();
-          });
-          list.addEventListener('focusin', function (e) {
-            if (e.target.classList && e.target.classList.contains('tsi-bas-pick__opt')) tipFor(e.target);
-          });
-          list.addEventListener('click', function (e) {
-            var li = e.target.closest && e.target.closest('.tsi-bas-pick__opt');
-            if (li && list.contains(li)) choose(Number(li.getAttribute('data-index')));
-          });
-          list.addEventListener('keydown', function (e) {
-            var at = items.indexOf(document.activeElement);
-            if (at < 0) at = current();
-            var to = null;
-            if (e.key === 'ArrowDown') to = Math.min(items.length - 1, at + 1);
-            else if (e.key === 'ArrowUp') to = Math.max(0, at - 1);
-            else if (e.key === 'Home') to = 0;
-            else if (e.key === 'End') to = items.length - 1;
-            else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); choose(at); return; }
-            else if (e.key === 'Escape' || e.key === 'Tab') { e.preventDefault(); e.stopPropagation(); closePicker(true); return; }
-            if (to === null) return;
-            e.preventDefault();
-            items[to].focus();
-          });
-          list.addEventListener('focusout', function (e) {
-            if (e.relatedTarget && (list.contains(e.relatedTarget) || e.relatedTarget === button)) return;
-            /* Focus went somewhere else (a click elsewhere is handled by pointerdown). */
-            if (e.relatedTarget) closePicker(false);
-          });
-          var start = items[Math.max(0, Math.min(items.length - 1, focusIdx))];
-          if (start) start.focus({ preventScroll: true });
-        }
-        button.addEventListener('click', function () {
-          if (picker && picker.button === button) closePicker(true);
-          else open(current());
-        });
-        button.addEventListener('keydown', function (e) {
-          if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-            e.preventDefault();
-            open(e.key === 'ArrowUp' ? options.length - 1 : current());
-          }
-        });
-        return el('div', { class: 'tsi-bas-pick-wrap' }, [button, select]);
       }
 
       /* ---------- Pending orders ---------- */
@@ -3571,7 +2225,7 @@
             o.inputs && o.inputs.length ? el('div', { class: 'tsi-bas-item__meta', 'data-test': 'pending-held-' + i, text: 'Holding ' + R.goodsListText(data, o.inputs) + ' (Cancel gives them back)' }) : null
           ]),
           el('div', { class: 'tsi-bas-actions' }, [
-            w.waiting ? btn('Resolve', function () { onResolveOrder(o.id); }, 'tsi-btn--primary', 'resolve-' + i, { disabled: turnRunning || militaryRunning }) : null,
+            w.waiting ? btn('Resolve', function () { onResolveOrder(o.id); }, 'tsi-btn--primary', 'resolve-' + i, { disabled: turnRunning }) : null,
             btn('Cancel', async function () {
               logAll([R.cancelOrder(state, o.id, data)]);
               done();
@@ -3584,7 +2238,7 @@
         if (!state.pendingOrders.length) pendingList.appendChild(muted('No pending orders.'));
         state.pendingOrders.forEach(function (o, i) { pendingList.appendChild(pendingRow(o, i)); });
       }
-      /* "Recruit Defenders: due Day 6 (in 5 days)" for a tooltip. */
+      /* "Workshop: Craft: due Day 6 (in 5 days)" for a tooltip. */
       function orderTipLine(o) {
         var w = orderWhen(o);
         return o.label + ': ' + (w.waiting ? 'due now, roll needed' : 'due Day ' + o.dueDay + ' (' + R.inDays(state.day, o.dueDay) + ')');
@@ -3802,10 +2456,9 @@
           id === 'dock' ? dockTabs(fnsNode) : null,
           id === R.COURIER_FAC ? courierSection() : null,
           penSection(id),
-          id === 'war_room' ? regimentSection() : null,
           R.shrineGod(id) ? shrineSection(id) : null,
           /* A facility in a construction slot can be demolished (Harry, 13
-             October 2026); the five starting facilities can't. */
+             October 2026); the starting facilities can't. */
           B.startingBuilt.indexOf(id) === -1 ? el('div', { class: 'tsi-bas-facpanel__demolish' }, [
             btn('Demolish…', function () { onDemolish(id); }, 'tsi-btn--ghost tsi-bas-demolish', 'demolish-' + id)
           ]) : null
@@ -3848,7 +2501,7 @@
         var why = R.dispatchBlocker(state, data) ||
           (!cargoGoodsInStock().length ? 'There are no trade goods in the Warehouse: the Timber Yard, the Fishery and the Herbal Gardens make them.'
             : !shippableInStock().length ? stuckReason() : '');
-        if (turnRunning || militaryRunning) why = why || 'Wait for the day to finish.';
+        if (turnRunning) why = why || 'Wait for the day to finish.';
         var shipBtn = btn('Ship cargo…', function () { onShipCargo(); }, 'tsi-btn--primary', 'ship-cargo', { disabled: why ? true : null, title: why || null });
         var charters = R.portCharters(state).map(function (c) {
           var ter = R.effectiveTerms(data, c, c.port, c.clan);
@@ -3861,7 +2514,7 @@
           /* Recall ship… while it's on its way out (Harry, 14 October 2026). */
           var canRecall = !R.recallBlocker(state, v);
           return el('li', { 'data-test': 'voyage' }, [el('b', { text: R.voyageState(v) }), ' · ' + R.cargoText(data, v.cargo) + (v.stage === 'outbound' ? ' · risk ' + v.chance + ' in 100' : '') + (v.protections.length ? ' (with ' + v.protections.map(function (p) { return p.label; }).join(', ') + ')' : '') + (v.scheduleId ? ' · standing shipment' : '') + ' ',
-            canRecall ? btn('Recall ship…', function () { onRecall(v.id); }, 'tsi-btn--ghost', 'recall-ship', { disabled: turnRunning || militaryRunning ? true : null }) : null]);
+            canRecall ? btn('Recall ship…', function () { onRecall(v.id); }, 'tsi-btn--ghost', 'recall-ship', { disabled: turnRunning ? true : null }) : null]);
         });
         var standing = R.schedules(state).map(function (sc) {
           return el('li', { 'data-test': 'schedule' }, [
@@ -3875,7 +2528,7 @@
             : 'turned back with ' + R.cargoText(data, x.cargo) + ' (rolled ' + x.roll + ' against ' + x.chance + ' in 100); nothing sold'));
         });
         var every = R.clampInt(R.commerce(data).scheduleEvery, 1, 365);
-        var canSchedule = spec.schedule && R.registeredCharters(state).length > 0 && !turnRunning && !militaryRunning;
+        var canSchedule = spec.schedule && R.registeredCharters(state).length > 0 && !turnRunning;
         /* Ship cargo… first, so it's in view on the laptop however long the lists get (a review fix). */
         return el('div', { class: 'tsi-bas-facpanel__cargo', 'data-test': 'dock-cargo' }, [
           label('Cargo'),
@@ -3990,7 +2643,7 @@
         };
       }
       var onShipCargo = TSI.oneAtATime(async function () {
-        if (turnRunning || militaryRunning) return;
+        if (turnRunning) return;
         var why = R.dispatchBlocker(state, data);
         if (why) { await say(why); return; }
         var picker = cargoPicker('ship');
@@ -4004,7 +2657,7 @@
           onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'cargo-dialog'); picker.hold(parts.dialog); }
         });
         livePicker = null;
-        if (!ok || !life.alive || turnRunning || militaryRunning) return;
+        if (!ok || !life.alive || turnRunning) return;
         var pick = picker.read();
         var res = R.dispatchCargo(state, data, pick.charterId, pick.picks, rand);
         if (!res.ok) { await say(res.message); return; }
@@ -4012,7 +2665,7 @@
         done();
       });
       var onSchedule = TSI.oneAtATime(async function () {
-        if (turnRunning || militaryRunning) return;
+        if (turnRunning) return;
         var picker = cargoPicker('schedule');
         livePicker = picker;
         var ok = await plainModal({
@@ -4024,7 +2677,7 @@
           onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'schedule-dialog'); picker.hold(parts.dialog); }
         });
         livePicker = null;
-        if (!ok || !life.alive || turnRunning || militaryRunning) return;
+        if (!ok || !life.alive || turnRunning) return;
         var pick = picker.read();
         var res = R.setSchedule(state, data, pick.charterId, pick.picks, rand);
         if (!res.ok) { await say(res.message); return; }
@@ -4032,7 +2685,7 @@
         done();
       });
       var onRecall = TSI.oneAtATime(async function (id) {
-        if (turnRunning || militaryRunning) return;
+        if (turnRunning) return;
         var v = R.voyages(state).filter(function (x) { return x.id === id; })[0];
         var why = R.recallBlocker(state, v);
         if (why) { await say(why); return; }
@@ -4040,14 +2693,14 @@
         /* Only if its standing shipment hasn't been stopped since it sailed. */
         var standing = !!v.scheduleId && R.schedules(state).some(function (sc) { return sc.id === v.scheduleId; });
         if (!(await ask('Recall the ship bound for ' + R.portName(v.port) + '? It turns for home now and is back on ' + R.dayLabel(state.day + back) + ' (' + plural(back, 'day') + ' away). Nothing is sold, and its cargo (' + R.cargoText(data, v.cargo) + ') goes back into the Warehouse when it docks.' + (standing ? ' Its standing shipment carries on.' : ''), 'Recall ship', 'Recall ship'))) return;
-        if (!life.alive || turnRunning || militaryRunning) return;
+        if (!life.alive || turnRunning) return;
         var res = R.recallVoyage(state, data, id);
         if (!res.ok) { await say(res.message); return; }
         log(res.log[0], res.log[1]);
         done();
       });
       var onStopSchedule = TSI.oneAtATime(async function (id) {
-        if (turnRunning || militaryRunning) return;
+        if (turnRunning) return;
         if (!(await ask('Stop this standing shipment? Ships already at sea carry on.', 'Stop'))) return;
         var res = R.stopSchedule(state, data, id);
         if (!res.ok) { await say(res.message); return; }
@@ -4121,7 +2774,7 @@
         var std = R.isStandardTerms(data, c);
         var pv = R.termsPreview(state, data, c);
         var log2 = (c.termsLog || []).slice().reverse();
-        var blocked = turnRunning || militaryRunning;
+        var blocked = turnRunning;
         return el('div', { class: 'tsi-bas-terms', 'data-test': 'charter-terms-' + c.port }, [
           el('div', { class: 'tsi-bas-tn-route__meta', 'data-test': 'charter-terms', text: 'Terms: ' + R.termsText(terms) + (std ? ' (standard)' : ' (negotiated)') + '.' }),
           pv ? el('div', { class: 'tsi-bas-muted', 'data-test': 'charter-terms-estimate', text: 'Estimate at current market conditions, ' + pv.lots + ' lots of ' + pv.name + ' to Clan ' + R.clanName(data, c.clan) + ': ' + pv.standard.net + ' gp on standard terms, ' + pv.current.net + ' gp on these terms (after ' + pv.current.fee + ' gp shipping and ' + pv.current.tariff + ' gp tariff).' }) : null,
@@ -4138,7 +2791,7 @@
         ]);
       }
       var onTerms = TSI.oneAtATime(async function (id, mode) {
-        if (turnRunning || militaryRunning) return;
+        if (turnRunning) return;
         var c = R.charterById(state, id);
         if (!c) return;
         var cur = R.effectiveTerms(data, c, c.port, c.clan);
@@ -4178,7 +2831,7 @@
           actions: [{ label: 'Cancel', value: false }, { label: reset ? 'Reset terms' : 'Save terms', value: true, primary: true }],
           onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'terms-dialog'); mainBtn = parts.dialog.querySelector('.tsi-modal__foot .tsi-btn--primary'); check(); }
         });
-        if (!ok || !life.alive || turnRunning || militaryRunning) return;
+        if (!ok || !life.alive || turnRunning) return;
         var res = reset ? R.resetCharterTerms(state, data, id, why.value) : R.amendCharterTerms(state, data, id, { priceMult: price.value, feePerLot: fee.value, tariffPct: tariff.value }, why.value);
         if (!res.ok) { await say(res.message); return; }
         log(res.log[0], res.log[1]);
@@ -4268,55 +2921,6 @@
         ]);
       }
 
-      /* ---------- The War Room's regiments (pull request 8a) ----------
-         Every regiment, with its grade, Recouping and drill, and Rename…;
-         the drill places in use. The rules are in regiment-rules.js. */
-      function regimentSection() {
-        var list = R.regiments ? R.regiments(state, data) : [];
-        var slots = R.drillSlots(state, data), busy = R.drillOrders(state).length;
-        return el('div', { class: 'tsi-bas-facpanel__cargo tsi-bas-facpanel__regiments', 'data-test': 'regiments' }, [
-          label('Regiments'),
-          el('div', { class: 'tsi-bas-creatures__room', 'data-test': 'drill-places', text: slots
-            ? 'Drill places: ' + busy + ' of ' + slots + ' in use. Trained: +1 Resolve, +0.5 Battle Value; Veteran: +1 Cohesion, +0.5 Battle Value more.'
-            : 'Drilling starts at War Room Level 2.' }),
-          list.length
-            ? el('div', { class: 'tsi-bas-list', 'data-test': 'regiment-list' }, list.map(function (r) { return regimentRow(r, 'regiment'); }))
-            : muted('None yet. Recruit raises one.')
-        ]);
-      }
-      function regimentRow(r, prefix) {
-        var name = R.regimentName(r, data);
-        var renamed = !!(r.label && r.label.trim());
-        return el('div', { class: 'tsi-bas-item tsi-bas-regiment' + (r.depleted ? ' tsi-bas-regiment--recouping' : ''), 'data-test': prefix + '-' + r.id, 'data-regiment': r.id }, [
-          el('div', { class: 'tsi-bas-item__text' }, [
-            el('div', { class: 'tsi-bas-item__name', text: name }),
-            el('div', { class: 'tsi-bas-item__type', 'data-test': prefix + '-status-' + r.id }, [
-              renamed ? R.regimentKindName(r, data) + ' • ' : '',
-              r.depleted ? el('span', { class: 'tsi-bas-tag', text: 'Recouping' }) : null,
-              r.depleted ? ' ' : '',
-              R.regimentStatus(state, data, r)
-            ])
-          ]),
-          btn('Rename…', function () { onRename(r.id); }, 'tsi-btn--ghost', prefix + '-rename-' + r.id)
-        ]);
-      }
-      var onRename = TSI.oneAtATime(async function (id) {
-        var r = R.regimentById(state, id);
-        if (!r) return;
-        var box = el('input', { type: 'text', class: 'tsi-input', value: r.label || '', maxlength: String(R.warRoomData(data).nameMax || 40), placeholder: R.regimentKindName(r, data) + ' ' + R.roman(r.num || 1), 'data-test': 'regiment-name' });
-        var ok = await plainModal({
-          title: 'Rename ' + R.regimentName(r, data),
-          className: 'tsi-bas-modal',
-          body: [field('Name (leave empty for its number)', box)],
-          actions: [{ label: 'Cancel', value: false }, { label: 'Rename', value: true, primary: true }],
-          onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'rename-dialog'); setTimeout(function () { box.focus(); box.select(); }, 0); }
-        });
-        if (!ok || !life.alive) return;
-        var res = R.renameRegiment(state, data, id, box.value);
-        if (!res.ok) { await say(res.message); return; }
-        if (res.changed) log(res.log[0], res.log[1]);
-        done();
-      });
 
       /* ---------- The Courier Exchange's parcels (pull request 6, Harry, 14 October 2026) ----------
          A parcel of supplies from the Warehouse goes to a town the level
@@ -4326,7 +2930,7 @@
          however long the lists get. The rules are in courier-rules.js. */
       function courierSection() {
         var spec = R.courierSpec(state, data);
-        var busy = turnRunning || militaryRunning;
+        var busy = turnRunning;
         var why = R.parcelBlocker(state, data) || (busy ? 'Wait for the day to finish.' : '');
         var sendBtn = btn('Send a parcel…', function () { onSendParcel(); }, 'tsi-btn--primary', 'send-parcel', { disabled: why ? true : null, title: why || null });
         var goodsText = function (p) { return R.parcelGoodsText(data, p.goods) || 'nothing the Bastion knows'; };
@@ -4459,7 +3063,7 @@
             notes[g.goodId].textContent = 'in the Warehouse: ' + R.goodsCountText(data, g.goodId, have) + (g.size !== 1 ? ' · each counts as ' + plural(g.size, 'item') : '');
           });
           var r = read();
-          var why = R.parcelProblem(state, data, r.pointId, r.picks) || (turnRunning || militaryRunning ? 'Wait for the day to finish.' : '');
+          var why = R.parcelProblem(state, data, r.pointId, r.picks) || (turnRunning ? 'Wait for the day to finish.' : '');
           summary.textContent = R.parcelSummary(state, data, r.pointId, r.picks);
           problem.textContent = why;
           problem.hidden = !why;
@@ -4480,7 +3084,7 @@
         };
       }
       var onSendParcel = TSI.oneAtATime(async function () {
-        if (turnRunning || militaryRunning) return;
+        if (turnRunning) return;
         var why = R.parcelBlocker(state, data);
         if (why) { await say(why); return; }
         var spec = R.courierSpec(state, data);
@@ -4496,7 +3100,7 @@
         });
         livePicker = null;
         if (!ok || !life.alive) return;
-        if (turnRunning || militaryRunning) { await say('A day was passing, so the parcel wasn\'t sent. Try again once it has finished.'); return; }
+        if (turnRunning) { await say('A day was passing, so the parcel wasn\'t sent. Try again once it has finished.'); return; }
         /* Checked again: a day may have passed while the pop-up was open. */
         var pick = picker.read();
         var res = R.sendParcel(state, data, pick.pointId, pick.picks, rand, lastExplorer);
@@ -4505,7 +3109,7 @@
         done();
       });
       var onRecallParcel = TSI.oneAtATime(async function (id) {
-        if (turnRunning || militaryRunning) return;
+        if (turnRunning) return;
         var p = R.parcelById(state, id);
         var why = R.parcelRecallBlocker(state, p, data);
         if (why) { await say(why); return; }
@@ -4514,7 +3118,7 @@
         var asked = state.day;
         if (!(await ask('Recall the parcel bound for ' + town + '? It turns back now and is home on ' + R.dayLabel(home) + ' (' + plural(home - state.day, 'day') + ' away). Its contents (' + R.parcelGoodsText(data, p.goods) + ') go back into the Warehouse then. The ' + R.clampInt(p.feeGP, 0) + ' gp fee isn\'t refunded.', 'Recall parcel', 'Recall parcel'))) return;
         if (!life.alive) return;
-        if (turnRunning || militaryRunning) { await say('A day was passing, so the parcel wasn\'t recalled. Try again once it has finished.'); return; }
+        if (turnRunning) { await say('A day was passing, so the parcel wasn\'t recalled. Try again once it has finished.'); return; }
         /* A day passed while the question was open: its return day has moved, so ask again. */
         if (state.day !== asked) { await say('A day passed while the question was open, so the parcel wasn\'t recalled: its way home is longer now. Try again to see the new day.'); return; }
         var res = R.recallParcel(state, data, id);
@@ -4682,7 +3286,7 @@
         done();
       });
       async function onClearBuilds() {
-        if (!(await ask('Clear all extra built facilities (slots and Development Plots) only? Your 5 starting facilities remain.', 'Clear'))) return;
+        if (!(await ask('Clear all extra built facilities (slots and Development Plots) only? Your starting facilities (the Workshop and the Dock) remain.', 'Clear'))) return;
         state.builtExtras = [];
         state.builtPlots = [];
         log('Facilities', 'Cleared extra built facilities.');
@@ -4752,13 +3356,13 @@
         var behind = state.anchored && explorerDay !== null && explorerDay > state.day;
         advanceBtn.hidden = !dip || turnRunning;
         advanceBtn.textContent = dip ? 'Finish Day ' + dip.day : 'Finish Day';
-        advanceBtn.disabled = turnRunning || militaryRunning;
+        advanceBtn.disabled = turnRunning;
         dayStatus.textContent = turnRunning && dip ? 'Passing Day ' + dip.day + '…'
           : dayText() + (behind ? ' · Day ' + explorerDay + ' in the Explorer' : '');
       }
       /* Days pass by themselves; the button only finishes a day left part-way. */
       var onAdvance = TSI.oneAtATime(function () {
-        if (turnRunning || militaryRunning) return false;
+        if (turnRunning) return false;
         return passDays();
       });
       life.on(advanceBtn, 'click', function () { onAdvance(); });
@@ -4778,7 +3382,7 @@
           /* Nothing moves on while the crest question is open: the next
              look (2 seconds on) passes the day once it's answered. */
           /* Nor while "what changed" is waiting to be read (changesOpen). */
-          if (!life.alive || turnRunning || militaryRunning || crestOfferOpen || changesOpen) return null;
+          if (!life.alive || turnRunning || crestOfferOpen || changesOpen) return null;
           var act = R.clockAction(state, explorerDay);
           var settled = null;
           if (act.kind === 'anchor') {
@@ -4809,11 +3413,11 @@
          each waiting edit is applied once, with its receipt in this save. */
       var dmEditsBusy = false;
       function checkDmEdits() {
-        if (dmEditsBusy || !life.alive || turnRunning || militaryRunning || changesOpen) return Promise.resolve();
+        if (dmEditsBusy || !life.alive || turnRunning || changesOpen) return Promise.resolve();
         dmEditsBusy = true;
         return TSI.store.fresh('tsi.dmdoc.edits', null).then(function (list) {
           dmEditsBusy = false;
-          if (!life.alive || turnRunning || militaryRunning || changesOpen) return;
+          if (!life.alive || turnRunning || changesOpen) return;
           var res = R.applyDmEdits(state, list);
           if (!res.changed) return;
           done();
@@ -4823,7 +3427,7 @@
       }
       /* The Beast Handler's one-off sweep once the conversion report has been read (at open it runs before the screens exist, above). */
       function checkInitiation() {
-        if (!R.sweepInitiation || !life.alive || turnRunning || militaryRunning || changesOpen || reportUnread()) return;
+        if (!R.sweepInitiation || !life.alive || turnRunning || changesOpen || reportUnread()) return;
         if (R.sweepInitiation(state, data, rand).changed) done();
       }
       life.setInterval(function () { checkClock(); checkCrestOffer(); checkDmEdits(); }, 2000);
@@ -4882,14 +3486,6 @@
           var post = R.settleParcels(state, data);
           logAll(post.log);
           post.word.forEach(function (w) { R.addWord(state, w); });
-          /* The War Room's regiments (pull request 8a): Recouping refills a
-             day's worth, and a drill waits while its regiment is Recouping
-             or away. Same write, so once. */
-          if (R.settleRegiments) {
-            var regs = R.settleRegiments(state, data);
-            logAll(regs.log);
-            regs.word.forEach(function (w) { R.addWord(state, w); });
-          }
           R.finishRoutes(state);
           save();
         }
@@ -4899,15 +3495,6 @@
           if (!due.length) break;
           if ((await completeOrder(due[0], true)) === 'stopped') return 'stopped';
         }
-        /* While at war: does a Clan attack? Rolled once a day, and saved at
-           once, so a day left part-way can't roll it again (the attack waits
-           in the War Council). */
-        var attack = R.rollWarAttack(state, data, rand);
-        if (attack) {
-          R.addWord(state, R.defenceText(data, attack.targetKey));
-          done();
-        } else save();
-        if (attack && (await defendBastion(attack)) === 'stopped') return 'stopped';
         R.finishDay(state);
         if (turnNotice) { turnNotice.close(); turnNotice = null; }
         done();
@@ -4938,7 +3525,7 @@
 
       /* Resolve an order that's due but waiting (its roll was cancelled). */
       var onResolveOrder = TSI.oneAtATime(function (id) {
-        if (turnRunning || militaryRunning) return false;
+        if (turnRunning) return false;
         var o = state.pendingOrders.filter(function (x) { return x.id === id; })[0];
         if (!o || !R.isDue(state, o) || R.underRepair(state, o.facId)) return false;
         turnRunning = true;
@@ -4946,14 +3533,6 @@
         var finish = function () { turnRunning = false; if (life.alive) renderAll(); };
         return completeOrder(o, false).then(finish, function (err) { finish(); throw err; });
       });
-
-      /* The attack pop-up, then (Defend the Ironbow) the Military Action. */
-      async function defendBastion(ma) {
-        var go = await attackModal(ma);
-        if (!life.alive) return 'stopped';
-        if (go && (await runMilitary(ma.id)) === 'stopped') return 'stopped';
-        return life.alive ? null : 'stopped';
-      }
 
       /* An order settled with Resolve (not as a day passes) says what it did
          in a notice, as well as in the Day Log: a Shrine's prayer roll, a
@@ -4968,20 +3547,6 @@
          and a cancelled roll skips it for the rest of the day). */
       async function completeOrder(o, inDay) {
         var kind = R.orderKind(data, o);
-        if (kind === 'war') {
-          /* The war order becomes a saved Military Action at once, so it can't
-             come due twice; then Begin Military Action, or Later. */
-          var ordered = R.orderCommit(state, data, o);
-          var ma = R.beginMilitaryAction(state, data, o, rand);
-          if (inDay && ma) R.addWord(state, 'Your army is ready to march on ' + ma.targetName + ' (' + R.militaryName(ma).split(' vs ')[0] + ').');
-          done();
-          /* Nothing committed to it was still free (the log says so): the order lapsed. */
-          if (!ma) return life.alive ? null : 'stopped';
-          var go = await militaryPrompt(ma, R.musterShortfall(data, ordered, ma.commit, R.clanOnlyCut(state, data, ordered)));
-          if (!life.alive) return 'stopped';
-          if (go && (await runMilitary(ma.id)) === 'stopped') return 'stopped';
-          return life.alive ? null : 'stopped';
-        }
         if (kind === 'simple') {
           var lines = R.completeSimpleOrder(state, data, o, rand);
           R.removeOrder(state, o.id);
@@ -5008,27 +3573,8 @@
          The Compendium, saving
          ================================================================ */
       var compIndex = null;
-      /* The War Room's units (war phase 2): each one's summary is its stat
-         block from the war's data (war-units-data.js), built when the
-         Compendium opens, so a change there shows here and in the export too;
-         they have no Roll20 page. compendium-data.js only holds their places. */
-      function warRoomUnits() {
-        return W.warRoom.filter(function (e) { return e.type && W.archetypes[e.type]; });
-      }
-      function warUnitSummary(type) {
-        var a = W.archetypes[type];
-        var b = R.unitStatBlock(data, type);
-        if (!a || !b) return '';
-        return ['Military unit', plural(a.size, 'soldier')]
-          .concat(b.rows.map(function (r) { return r.name + ' ' + r.value; }), b.traits.map(function (t) { return t.name; }))
-          .join(' • ') + '.' + (b.distinction ? ' ' + b.distinction : '');
-      }
       function compendiumItems() {
-        var out = Object.assign({}, COMPENDIUM);
-        warRoomUnits().forEach(function (e) {
-          out[e.label] = Object.assign({ type: '', attunement: '' }, COMPENDIUM[e.label], { summary: warUnitSummary(e.type), source: 'War Room', roll20: '' });
-        });
-        return out;
+        return Object.assign({}, COMPENDIUM);
       }
       var onCompendium = TSI.oneAtATime(function () {
         if (!compIndex) compIndex = R.compendiumIndex(data.facilities, data.tools);
@@ -5040,8 +3586,7 @@
         function showItem(item) {
           var links = compIndex.links[item] || [];
           var info = items[item] || null;
-          var warUnit = warRoomUnits().some(function (e) { return e.label === item; });
-          var rollLink = warUnit ? null : info && info.roll20 ? info.roll20 : R.roll20Url(item);
+          var rollLink = info && info.roll20 ? info.roll20 : R.roll20Url(item);
           /* A card picture shows when one has the item's exact name (B15). */
           var cardWrap = B.compendiumCards.indexOf(item) === -1 ? null : el('div', { class: 'tsi-bas-comp__card', 'data-test': 'comp-card' },
             el('img', { src: asset('compendium_cards/' + encodeURIComponent(item) + '.png'), alt: item + ' card' }));
@@ -5074,8 +3619,6 @@
           onclick: function () {
             /* The old online lookup is left out (B15): filled-in entries are kept, the rest are stubs. */
             var out = R.compendiumExport(compIndex, items);
-            /* The export fills in an empty Roll20 link; the War Room's units have none. */
-            warRoomUnits().forEach(function (e) { if (out.file.items[e.label]) out.file.items[e.label].roll20 = ''; });
             status.textContent = 'Done. Filled: ' + out.filled + ' • Kept: ' + out.kept + ' • Stubbed: ' + out.stubbed + '. Downloading…';
             TSI.download('compendium_items.json', JSON.stringify(out.file, null, 2), 'application/json');
           }
@@ -5098,10 +3641,10 @@
       });
       var onImport = TSI.oneAtATime(function () { return TSI.backup.importTool('bastion'); });
       var onReset = TSI.oneAtATime(async function () {
-        var ok = await TSI.backup.askReset({ toolId: 'bastion', title: 'Reset the Bastion', okLabel: 'Reset', message: 'Reset the Bastion? This clears its saved data in this browser only: facilities, orders, regiments, diplomacy records, the crest and the War Table\'s map. The Explorer is left as it is.' });
+        var ok = await TSI.backup.askReset({ toolId: 'bastion', title: 'Reset the Bastion', okLabel: 'Reset', message: 'Reset the Bastion? This clears its saved data in this browser only: facilities, orders, diplomacy records and the crest. The Explorer is left as it is.' });
         if (!ok || !life.alive) return;
-        /* The crest and the War Table's map, settings and painted terrain go too; the panels' open or closed state stays. */
-        ['state', 'crest', 'warMap', 'warTable', 'warTerrain'].forEach(function (k) { if (ctx.store.has(k)) ctx.store.remove(k); });
+        /* The crest goes too; the panels' open or closed state stays. (Any War Table save an old copy left behind is set aside when the Bastion opens again.) */
+        ['state', 'crest'].forEach(function (k) { if (ctx.store.has(k)) ctx.store.remove(k); });
         TSI.store.flush().then(function () { TSI.shell.reload(); });
       });
 
@@ -5173,8 +3716,7 @@
         el('div', { class: 'tsi-bas-topbar__day' }, [dayStatus, advanceBtn]),
         treasuryBox,
         facCountBtn,
-        orderCountBtn,
-        mapRepairs
+        orderCountBtn
       ]);
 
       /* The bottom bar's buttons: a small picture and a short name. */
@@ -5189,27 +3731,6 @@
       var openLog = simplePanel(logCard);
       var openInfluence = simplePanel(influenceCard, 'tsi-bas-panel--wide');
       var openFavour = simplePanel(favourCard);
-      var openWarPanel = simplePanel(warCard, 'tsi-bas-panel--wide');
-      /* Banner & War Council: locked until the Bastion has something that
-         can fight (Harry's answer 6). The padlock's tooltip says how. */
-      var WAR_LOCKED = 'Recruit defenders at the Barracks to raise your banner (or take in a beast at the Menagerie, or a unit at the War Room).';
-      var warLock = el('span', { class: 'tsi-bas-pbtn__lock', 'aria-hidden': 'true' }, icon('lock'));
-      var warBtn = panelButton('war', 'War Council', 'war', function () {
-        if (!R.warCouncilOpen(state)) { TIP.show({ title: 'Banner & War Council', parts: [muted(WAR_LOCKED)] }, warBtn); return; }
-        openWarPanel();
-      });
-      warBtn.appendChild(warLock);
-      bindTip(warBtn, function () {
-        return R.warCouncilOpen(state) ? null : { title: 'Banner & War Council', parts: [muted(WAR_LOCKED)] };
-      }, { noChange: true });
-      function renderWarLock() {
-        var open = R.warCouncilOpen(state);
-        warBtn.classList.toggle('is-locked', !open);
-        warLock.hidden = open;
-        warBtn.setAttribute('aria-label', open ? 'Banner & War Council' : 'Banner & War Council (locked). ' + WAR_LOCKED);
-        /* Something to do there: an attack or a Military Action waiting. */
-        warBtn.classList.toggle('is-alert', open && (state.militaryActions || []).length > 0);
-      }
       var leftButtons = el('div', { class: 'tsi-bas-pbtns tsi-bas-pbtns--left' }, [
         panelButton('warehouse', 'Warehouse', 'warehouse', openWarehouse),
         panelButton('management', 'Management', 'management', openManagement),
@@ -5217,8 +3738,7 @@
       ]);
       var rightButtons = el('div', { class: 'tsi-bas-pbtns tsi-bas-pbtns--right' }, [
         panelButton('influence', 'Clan Influence', 'influence', openInfluence),
-        panelButton('favour', 'Favour', 'favour', openFavour, { 'aria-label': 'Favour of the Gods' }),
-        warBtn
+        panelButton('favour', 'Favour', 'favour', openFavour, { 'aria-label': 'Favour of the Gods' })
       ]);
 
       /* The grid folds away with ▼ (and back with ▲), remembered. */
@@ -5313,7 +3833,6 @@
 
       function renderAll() {
         hideTip();
-        closePicker();
         /* Built facilities get level 1, as the old tool did on every redraw (1543-1547). */
         R.ensureLevels(state, data);
         /* A trade good that has run out has no line in the Warehouse. */
@@ -5325,8 +3844,6 @@
         renderIdentity();
         renderBadge();
         renderManagement();
-        renderWar();
-        renderWarLock();
         renderDiplomacy();
         renderWarehouse();
         renderArtisan();
@@ -5334,8 +3851,6 @@
         renderPanel();
         /* An open Ship cargo or Standing shipment pop-up follows the Bastion. */
         if (livePicker) livePicker.update();
-        /* The At War tags, straight away (the watcher would add them a moment later). */
-        tagAll();
       }
 
       /* The old Bastion set aside: say so. */
@@ -5408,37 +3923,25 @@
         });
       }
 
-      /* A Military Action waiting from before: say where to find it. */
-      if ((state.militaryActions || []).length) {
-        /* An attack on the Bastion first: it's the one that can't be called off. */
-        var waiting = state.militaryActions.filter(isDefence)[0];
-        maNotice = notice(waiting
-          ? 'An attack on your Bastion (' + maName(waiting) + ') is waiting. Defend the Ironbow from the Banner & War Council panel.'
-          : 'A Military Action (' + maName(state.militaryActions[0]) + ') is waiting. Continue it from the Banner & War Council panel.', { id: 'tsi-bas-military', timeout: 12000 });
-        life.onStop(function () { if (maNotice) maNotice.close(); });
-      }
-
       /* For the tests. */
       ns.debug = {
         state: function () { return state; },
         busy: function () { return turnRunning; },
-        military: function () { return militaryRunning; },
-        warTable: function () { return warTableOpen; },
         /* Change the Bastion directly (to set up a test), then save and redraw. */
         change: function (fn) { fn(state); done(); },
         /* Read the Explorer's day now, rather than in up to 2 seconds. */
         clock: function () { checkClock(); },
         dmEdits: function () { return checkDmEdits(); },
-        /* The Strip Back report (migration.v4) and the War Table's orphan saves (force: even while the War Table is part of the Bastion). */
+        /* The Strip Back report (migration.v4) and the War Table's orphan saves (set aside as the Bastion opens). */
         changes: function () { return state.migration && state.migration.v4 ? TSI.clone(state.migration.v4) : null; },
         showChanges: function () { return showChanges(); },
-        sweepOrphans: function (force) { return sweepOrphans(force === true); },
-        /* The panel open now ('war', 'fac-barracks'…), or null. */
+        sweepOrphans: function () { return sweepOrphans(); },
+        /* The panel open now ('favour', 'fac-workshop'…), or null. */
         panel: function () { return shown ? shown.id : null; },
         /* Open the panel that holds [data-test=test] by pressing its button
            (a tile, the badge, a bottom-bar button), as Harry would. False if
-           it's in no panel, its button isn't there (a locked War Council, a
-           Hall not built), or another pop-up is open over the panels. */
+           it's in no panel, its button isn't there (a Hall not built), or
+           another pop-up is open over the panels. */
         reveal: function (test) {
           var sel = '[data-test="' + test + '"]';
           var modals = document.querySelectorAll('.tsi-modal');
@@ -5472,7 +3975,7 @@
       /* For reveal: the data-test of what opens the panel holding sel. */
       function openerFor(test, sel) {
         var fixed = [[whCard, 'open-warehouse'], [mgmtCard, 'open-management'], [logCard, 'open-log'],
-          [influenceCard, 'open-influence'], [favourCard, 'open-favour'], [warCard, 'open-war'], [idCard, 'identity-badge'],
+          [influenceCard, 'open-influence'], [favourCard, 'open-favour'], [idCard, 'identity-badge'],
           [dipCard, 'tile-hall_of_emissaries'], [ordersCard, 'orders-count'], [artCard, 'tile-workshop']];
         for (var i = 0; i < fixed.length; i++) if (fixed[i][0].root.querySelector(sel)) return fixed[i][1];
         var m = /^(?:issue|sel|days|why|goods)-([a-z_]+)__/.exec(test) || /^repair-note-([a-z_]+)$/.exec(test) ||
@@ -5481,7 +3984,6 @@
         /* A creature's row in its building's panel (pull request 7): where it
            lives, or the building its kind waits for. */
         if (/^(?:creature|stall|acclimatise|beast)-/.test(test) || /^(?:handler|temperament|bond|note|acclimatise)-(?:dialog|name|why|keep|total|problem|text|private)$/.test(test)) return 'tile-' + R.PEN_ID;
-        if (/^wr-/.test(test)) return 'tile-war_room';
         if (test === 'clear-builds' || (/^build-[a-z_]+$/.test(test) && test !== 'build-panel')) {
           var kind = R.isPlotFacility(data, test.slice(6)) ? 'plot' : 'slot';
           var slot = freeSlot(kind);
@@ -5508,8 +4010,7 @@
         notice('The Bastion\'s facilities have changed: ' + mig.lines.join(' ') + ' The Day Log says so too, and the Bastion as it was is kept as a set-aside copy.', { type: 'info', title: 'Facilities.', id: 'tsi-bas-migration', timeout: 30000 });
       }
       if (formerBrigade) {
-        notice('The Mercenary Brigade, ' + formerBrigade.name + ', is no more: the Bastion no longer has Brigades, so the party is Unsworn again.' +
-          (formerBrigade.orders ? ' Only a Clan can send Lieutenants and regiments, so those in its waiting War Actions stay home.' : '') + ' The Day Log says so.', { type: 'info', title: 'Party Identity.', id: 'tsi-bas-brigade', timeout: 20000 });
+        notice('The Mercenary Brigade, ' + formerBrigade.name + ', is no more: the Bastion no longer has Brigades, so the party is Unsworn again. The Day Log says so.', { type: 'info', title: 'Party Identity.', id: 'tsi-bas-brigade', timeout: 20000 });
       }
       /* Read the Explorer's day straight away (then every 2 seconds), and
          any crest sent from the Clan Crest Creator while the Bastion was shut. */
@@ -5526,7 +4027,7 @@
          the box would claim what isn't true: say so instead. */
       TSI.store.flush().then(function (ok) {
         if (!life.alive) return;
-        if (ok) sweepOrphans(false);
+        if (ok) sweepOrphans();
         if (!unreadChanges) return;
         changesOpen = false;
         if (ok) showChanges();

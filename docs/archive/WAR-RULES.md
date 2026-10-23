@@ -1,3 +1,5 @@
+> **Removed 22 October 2026.** The war game this document describes (the War Council, the War Table, wars, regiments, Lieutenants, defenders, Military Actions, and the Barracks, Armoury, Watchtower, War Room and Menagerie) was deleted in the Strip Back Overhaul at Harry's request (`docs/STRIP-BACK-PLAN.md`). It is kept here as history only; nothing in the suite follows it any more. The last version of the code that does is commit `4f1db26` (`git checkout 4f1db26`).
+
 # The war mini-game: how a war works
 
 This is the rulebook for the Ironbow Bastion Manager's wars, as built in phase 2 (October 2026). Since the days overhaul (8 October 2026) the Bastion has no turns: it follows the Explorer's day, and every length that was counted in Bastion turns is now counted in days, at 7 days a turn. Every number here is a **starting value to test at the table**, not a claim that it's balanced. They all live in one file, `tools/bastion/data/war-units-data.js`, so any of them can be changed in one place.

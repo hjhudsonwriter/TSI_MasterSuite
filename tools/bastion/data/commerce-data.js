@@ -143,10 +143,11 @@ window.TSI_DATA.bastionCommerce = {
   /* Protection for a voyage: each takes percentage points off the chance
      (never below 0). Each is applied to a voyage by itself when it sails and
      recorded with it. consumes: the protection is used up by the voyage it
-     protects. The Barracks' Commercial Convoy and the Watchtower's Maritime
-     Approaches went with those buildings (the Strip Back Overhaul, Harry,
-     22 October 2026), so only the Blessing of Pelagos is left (its order
-     comes from the Shrine of Pelagos, soon the Temple). */
+     protects. Only the Blessing of Pelagos is left (the Shrines' Bless
+     Commercial Shipment): the Commercial Convoy (the Barracks) and the
+     Protected Maritime Approaches (the Watchtower) went with the war game on
+     22 October 2026, and a Bastion's held one is dropped and told about when
+     it is converted (strip-back-rules.js). */
   protections: [
     { id: 'pelagos_blessing', label: 'Blessing of Pelagos', facId: 'shrine_pelagos', order: 'Bless Commercial Shipment', cut: 10, consumes: true, available: true }
   ],

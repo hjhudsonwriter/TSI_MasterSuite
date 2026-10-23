@@ -3,7 +3,7 @@
    the map filling the window on the laptop and the TV, the top bar (the
    day, the treasury, the counts), the facility grid and its tiles, the
    build panel, each facility's panel, the panels the bottom bar opens, the
-   Banner & War Council lock, the Party Identity badge, the shared tooltip,
+   Party Identity badge, the shared tooltip,
    and the keyboard. The Bastion's rules, played through these panels, are
    checked in tests/e2e/phase9.test.js.
    Run with:  node tests/e2e/bastion-screen.test.js */
@@ -72,8 +72,8 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
       equal(lc.scrollWidth, lc.clientWidth, 'no sideways scroll');
       equal(lc.outOfView, [], 'in view');
       equal(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight + 1), true, 'the page doesn\'t scroll down');
-      equal(await page.$$eval('.tsi-bas-tile', ts => ts.length), 17, 'five facilities, six slots and six Development Plots');
-      equal(await page.$$eval('[data-test=grid-slots] .tsi-bas-tile', ts => ts.length), 11, 'the top row: the facilities and slots');
+      equal(await page.$$eval('.tsi-bas-tile', ts => ts.length), 14, 'two facilities, six slots and six Development Plots');
+      equal(await page.$$eval('[data-test=grid-slots] .tsi-bas-tile', ts => ts.length), 8, 'the top row: the facilities and slots');
       equal(await page.$$eval('[data-test=grid-plots] .tsi-bas-tile', ts => ts.length), 6, 'the row below: the plots');
       const map = await rect(page, '.tsi-bas-map');
       assert(Math.abs(map.w / map.h - 3000 / 1250) < 0.01, 'fitted, not stretched: ' + JSON.stringify(map));
@@ -99,7 +99,7 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
       assert(tray.y >= map.y + 1150 * k && tray.y >= map.bottom - 45, size + ': the tray rises only a little over the painting: ' + JSON.stringify([tray, map]));
       assert(tray.bottom <= bar.bottom, size + ': the tray ends inside the bar');
       const labels = await page.$$eval('.tsi-bas-maplabel', ls => ls.map(l => { const r = l.getBoundingClientRect(); return { fac: l.dataset.fac, x: r.x, y: r.y, right: r.right, bottom: r.bottom }; }));
-      equal(labels.map(l => l.fac).sort(), ['armoury', 'barracks', 'dock', 'watchtower', 'workshop'], 'a label for each built facility');
+      equal(labels.map(l => l.fac).sort(), ['dock', 'workshop'], 'a label for each built facility');
       for (const l of labels) {
         assert(!overlaps(l, tray), size + ': the tray is clear of the ' + l.fac + '\'s label');
         assert(l.x >= map.x - 1 && l.right <= map.right + 1 && l.y >= map.y - 1 && l.bottom <= map.bottom + 1, size + ': the ' + l.fac + '\'s label is on the painting');
@@ -115,12 +115,12 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
       await page.setViewportSize(H.SIZES[size].viewport);
       await page.waitForTimeout(200);
       await page.evaluate(() => TSI.notify('A long notice, to see where it sits: it has two lines of words in it, at least, on both screens.', { type: 'info', title: 'Test.', id: 'tsi-bs-test' }));
-      const hits = await page.evaluate(() => ['open-influence', 'open-favour', 'open-war', 'open-warehouse'].map(t => {
+      const hits = await page.evaluate(() => ['open-influence', 'open-favour', 'open-warehouse'].map(t => {
         const b = document.querySelector('[data-test=' + t + ']').getBoundingClientRect();
         const hit = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2);
         return t + ':' + !!(hit && hit.closest('[data-test=' + t + ']'));
       }));
-      equal(hits, ['open-influence:true', 'open-favour:true', 'open-war:true', 'open-warehouse:true'], size);
+      equal(hits, ['open-influence:true', 'open-favour:true', 'open-warehouse:true'], size);
       const n = await rect(page, '.tsi-notices');
       const bar = await rect(page, '.tsi-bas-bottom');
       assert(n.bottom <= bar.y, size + ': the notices end above the bar: ' + JSON.stringify([n, bar]));
@@ -179,12 +179,12 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
   });
 
   await check('Facilities and Orders count, and hovering lists them', async () => {
-    equal(await text(page, 'facilities-n'), '5');
+    equal(await text(page, 'facilities-n'), '2');
     equal(await text(page, 'orders-n'), '0');
     await page.hover('[data-test=facilities-count]');
     await page.waitForSelector('[data-test=tooltip]:not([hidden])');
     const tip = await bare(page, '[data-test=tooltip]');
-    assert(/^Facilities/.test(tip) && /Barracks/.test(tip) && /Workshop/.test(tip), tip);
+    assert(/^Facilities/.test(tip) && /Dock/.test(tip) && /Workshop/.test(tip), tip);
     assert(!overlaps(await rect(page, '[data-test=tooltip]'), await rect(page, '[data-test=facilities-count]')), 'the tooltip doesn\'t cover what it describes');
     await page.mouse.move(5, 500);
     equal(await tipShown(page), false);
@@ -193,9 +193,9 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
   /* ------------------------------------------------------------------ */
   section('The facility grid');
 
-  await check('the five starting facilities first (Workshop, Barracks, Watchtower, Dock, Armoury), then the six slots; the six Development Plots in the row below', async () => {
-    equal(await page.$$eval('[data-test=grid-slots] .tsi-bas-tile', ts => ts.slice(0, 5).map(t => t.dataset.fac)), ['workshop', 'barracks', 'watchtower', 'dock', 'armoury']);
-    equal(await page.$$eval('[data-test=grid-slots] .tsi-bas-tile', ts => ts.slice(5).map(t => t.dataset.test)), ['slot-0', 'slot-1', 'slot-2', 'slot-3', 'slot-4', 'slot-5']);
+  await check('the two starting facilities first (Workshop, Dock; the Barracks, Watchtower and Armoury went on 22 October 2026), then the six slots; the six Development Plots in the row below', async () => {
+    equal(await page.$$eval('[data-test=grid-slots] .tsi-bas-tile', ts => ts.slice(0, 2).map(t => t.dataset.fac)), ['workshop', 'dock']);
+    equal(await page.$$eval('[data-test=grid-slots] .tsi-bas-tile', ts => ts.slice(2).map(t => t.dataset.test)), ['slot-0', 'slot-1', 'slot-2', 'slot-3', 'slot-4', 'slot-5']);
     equal(await page.$$eval('[data-test=grid-plots] .tsi-bas-tile', ts => ts.map(t => t.dataset.test)), ['plot-0', 'plot-1', 'plot-2', 'plot-3', 'plot-4', 'plot-5']);
     const a = await rect(page, '[data-test=tile-workshop]');
     const b = await rect(page, '[data-test=plot-0]');
@@ -228,11 +228,11 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
   });
 
   await check('a starting facility\'s tile: its name, level and orders on hover, never covering the tile', async () => {
-    await page.hover('[data-test=tile-barracks]');
-    await page.waitForFunction(() => /Barracks/.test(document.querySelector('[data-test=tooltip]').textContent));
+    await page.hover('[data-test=tile-dock]');
+    await page.waitForFunction(() => /Dock/.test(document.querySelector('[data-test=tooltip]').textContent));
     const tip = await bare(page, '[data-test=tooltip]');
-    assert(/^Barracks/.test(tip) && /Level 1/.test(tip) && /No orders pending here/.test(tip), tip);
-    assert(!overlaps(await rect(page, '[data-test=tooltip]'), await rect(page, '[data-test=tile-barracks]')), 'beside the tile, not over it');
+    assert(/^Dock/.test(tip) && /Level 1/.test(tip) && /No orders pending here/.test(tip), tip);
+    assert(!overlaps(await rect(page, '[data-test=tooltip]'), await rect(page, '[data-test=tile-dock]')), 'beside the tile, not over it');
     await page.mouse.move(5, 500);
   });
 
@@ -253,7 +253,7 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
   await check('▼ folds the grid away (the painting grows, and the haze and labels go), ▲ brings it back, and it\'s remembered', async () => {
     const before = await rect(page, '.tsi-bas-map');
     equal(await page.isVisible('[data-test=map-labels]'), true, 'the labels show while the grid is open');
-    equal(await text(page, 'map-label-barracks'), 'BarracksLevel 1');
+    equal(await text(page, 'map-label-dock'), 'DockLevel 1');
     assert(await page.$eval('[data-test=map]', e => getComputedStyle(e).filter !== 'none'), 'the painting is hazed');
     await page.click('[data-test=grid-toggle]');
     await page.waitForTimeout(200);
@@ -283,8 +283,9 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     await page.waitForSelector('[data-test=panel-build]');
     equal(await panelOpen(page), 'build');
     assert(/Party level 7: 2 construction slots, 0 in use/.test(await text(page, 'build-panel')));
-    equal(await page.getAttribute('[data-test=build-war_room]', 'aria-disabled'), 'true', 'the War Room needs level 17');
-    assert(/Locked: level 17/.test(await text(page, 'build-war_room')));
+    equal(await page.getAttribute('[data-test=build-shrine_telluria]', 'aria-disabled'), 'true', 'the Shrine of Telluria needs level 8');
+    assert(/Locked: level 8/.test(await text(page, 'build-shrine_telluria')));
+    equal(await page.$('[data-test=build-war_room]'), null, 'the War Room is gone (22 October 2026)');
     equal(await page.getAttribute('[data-test=build-library_scriptorium]', 'aria-disabled'), null);
     await page.hover('[data-test=build-library_scriptorium]');
     await page.waitForFunction(() => /Library & Scriptorium/.test(document.querySelector('[data-test=tooltip]').textContent));
@@ -296,7 +297,7 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
   });
 
   await check('a locked facility can\'t be chosen', async () => {
-    await page.click('[data-test=build-war_room]', { force: true });
+    await page.click('[data-test=build-shrine_telluria]', { force: true });
     await page.waitForTimeout(250);
     equal(await page.$(POP), null, 'no question');
     equal((await st(page)).builtExtras.filter(Boolean), []);
@@ -364,7 +365,7 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     equal((await st(page)).builtExtras[0].status, 'building', 'still being built');
     await days(page, 21);
     equal(await page.$eval('[data-test=tile-library_scriptorium]', t => t.tagName), 'BUTTON');
-    equal(await text(page, 'facilities-n'), '6');
+    equal(await text(page, 'facilities-n'), '3');
     equal(await text(page, 'map-label-library_scriptorium'), 'Library & ScriptoriumLevel 1');
     await page.click('[data-test=tile-library_scriptorium]');
     await page.waitForSelector('[data-test=panel-fac-library_scriptorium]');
@@ -394,7 +395,7 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     equal(s.builtExtras.filter(Boolean), [], 'the slot is free');
     equal(s.pendingOrders.filter(o => o.facId === 'library_scriptorium'), [], 'its order is cancelled');
     equal([s.log[0].title, s.log[0].body], ['Facility Demolished', 'The Library & Scriptorium was demolished; its slot is free. Cancelled: Library & Scriptorium: Research (Arcana).']);
-    equal(await text(page, 'facilities-n'), '5');
+    equal(await text(page, 'facilities-n'), '2');
     equal(await page.$('[data-test=tile-library_scriptorium]'), null);
     equal(await page.$('[data-test=map-label-library_scriptorium]'), null, 'its label goes too');
   });
@@ -706,79 +707,81 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
   /* ------------------------------------------------------------------ */
   section('A facility\'s panel');
 
-  await check('the Barracks: its painting, level, orders pending here, and its orders with their days', async () => {
+  await check('the Dock: its painting, level, orders pending here, and its orders with their days', async () => {
+    await setUp(page, (s) => { s.treasuryGP = 500; });
     await pause(page);
-    await page.click('[data-test=tile-barracks]');
-    await page.waitForSelector('[data-test=panel-fac-barracks]');
-    equal(await page.$('[data-test=demolish-barracks]'), null, 'a starting facility can\'t be demolished');
+    await page.click('[data-test=tile-dock]');
+    await page.waitForSelector('[data-test=panel-fac-dock]');
+    equal(await page.$('[data-test=demolish-dock]'), null, 'a starting facility can\'t be demolished');
     assert(/Level 1/.test(await text(page, 'fac-panel')));
-    equal(await text(page, 'days-barracks__recruit_defenders'), 'Takes 5 days');
-    await page.click('[data-test="issue-barracks__recruit_defenders"]');
+    equal(await text(page, 'days-dock__charter_berth'), 'Takes 7 days');
+    await page.click('[data-test="issue-dock__charter_berth"]');
     await page.waitForTimeout(200);
-    const due = (await st(page)).day + 5;
+    const due = (await st(page)).day + 7;
     const here = await bare(page, '.tsi-bas-facpanel__orders');
-    assert(/Recruit Defenders/.test(here) && here.indexOf('Due Day ' + due + ' (in 5 days)') !== -1, here);
+    assert(/Charter Berth/.test(here) && here.indexOf('Due Day ' + due + ' (in 7 days)') !== -1, here);
     equal(await page.$$eval('.tsi-bas-facpanel__orders [data-test^=cancel-]', bs => bs.length), 1, 'with Cancel');
-    await H.shot(page, 'bs-03-barracks');
+    await H.shot(page, 'bs-03-dock');
   });
 
   await check('Escape closes it and puts the focus back on its tile; the tile counts its order, and so does the top bar', async () => {
     await page.keyboard.press('Escape');
     await page.waitForTimeout(150);
     equal(await panelOpen(page), null);
-    equal(await page.evaluate(() => document.activeElement && document.activeElement.dataset.test), 'tile-barracks');
-    equal(await text(page, 'tile-orders-barracks'), '1');
+    equal(await page.evaluate(() => document.activeElement && document.activeElement.dataset.test), 'tile-dock');
+    equal(await text(page, 'tile-orders-dock'), '1');
     equal(await text(page, 'orders-n'), '1');
     await page.click('[data-test=orders-count]');
     await page.waitForSelector('[data-test=panel-orders]');
-    assert(/Recruit Defenders/.test(await text(page, 'pending')));
+    assert(/Charter Berth/.test(await text(page, 'pending')));
     await page.keyboard.press('Escape');
+    await setUp(page, (s) => { s.pendingOrders = []; });
   });
 
   await check('levels (step 1b): a facility\'s panel shows its level and an Upgrade, first among its orders, which takes 7 days and no gold; then it\'s Level 2', async () => {
     await pause(page);
-    await page.click('[data-test=tile-watchtower]');
-    await page.waitForSelector('[data-test=panel-fac-watchtower]');
+    await page.click('[data-test=tile-dock]');
+    await page.waitForSelector('[data-test=panel-fac-dock]');
     equal(await text(page, 'fac-level'), 'Level 1 of 5');
-    equal(await page.$eval('.tsi-bas-facpanel__fns > .tsi-bas-fn', e => e.dataset.test), 'upgrade-row-watchtower', 'Upgrade comes first');
-    equal(await text(page, 'upgrade-text-watchtower'), 'To Level 2: takes 7 days, no gold.');
+    equal(await page.$eval('.tsi-bas-facpanel__fns > .tsi-bas-fn', e => e.dataset.test), 'upgrade-row-dock', 'Upgrade comes first');
+    equal(await text(page, 'upgrade-text-dock'), 'To Level 2: takes 7 days, no gold.');
     const gp = (await st(page)).treasuryGP;
-    await page.click('[data-test=upgrade-watchtower]');
+    await page.click('[data-test=upgrade-dock]');
     await page.waitForTimeout(250);
     const s = await st(page);
-    const up = s.pendingOrders.find(o => o.facId === 'watchtower');
-    equal([up.label, up.dueDay - s.day, s.treasuryGP], ['Watchtower: Upgrade to Level 2', 7, gp]);
-    equal([await text(page, 'upgrade-watchtower'), await page.isDisabled('[data-test=upgrade-watchtower]')], ['Upgrading', true]);
-    equal(await text(page, 'upgrade-text-watchtower'), 'Upgrading to Level 2: ready on Day ' + up.dueDay + '.');
+    const up = s.pendingOrders.find(o => o.facId === 'dock');
+    equal([up.label, up.dueDay - s.day, s.treasuryGP], ['Dock: Upgrade to Level 2', 7, gp]);
+    equal([await text(page, 'upgrade-dock'), await page.isDisabled('[data-test=upgrade-dock]')], ['Upgrading', true]);
+    equal(await text(page, 'upgrade-text-dock'), 'Upgrading to Level 2: ready on Day ' + up.dueDay + '.');
     assert(/Upgrade to Level 2/.test(await bare(page, '.tsi-bas-facpanel__orders')), 'it\'s pending here, with Cancel');
-    equal(await page.isDisabled('[data-test="issue-watchtower__patrol"]'), false, 'its other orders carry on');
+    equal(await page.isDisabled('[data-test="issue-dock__charter_berth"]'), false, 'its other orders carry on');
     await page.keyboard.press('Escape');
     await days(page, 7);
     await pause(page);
-    await page.click('[data-test=tile-watchtower]');
-    await page.waitForSelector('[data-test=panel-fac-watchtower]');
+    await page.click('[data-test=tile-dock]');
+    await page.waitForSelector('[data-test=panel-fac-dock]');
     equal(await text(page, 'fac-level'), 'Level 2 of 5');
-    equal(await text(page, 'upgrade-text-watchtower'), 'To Level 3: takes 14 days, no gold.');
-    assert((await st(page)).log.some(l => l.body === 'Watchtower: Upgrade to Level 2 → The Watchtower is now Level 2.'));
+    equal(await text(page, 'upgrade-text-dock'), 'To Level 3: takes 14 days, no gold.');
+    assert((await st(page)).log.some(l => l.body === 'Dock: Upgrade to Level 2 → The Dock is now Level 2.'));
     await H.shot(page, 'bs-04-upgrade');
     await page.keyboard.press('Escape');
   });
 
   await check('no upgrading while Under Repair (D6); at Level 5, no Upgrade button', async () => {
-    await setUp(page, (s) => { s.repairs = { watchtower: s.day + 3 }; s.facilityLevels.armoury = 5; });
+    await setUp(page, (s) => { s.repairs = { dock: s.day + 3 }; s.facilityLevels.workshop = 5; });
     await pause(page);
-    await page.click('[data-test=tile-watchtower]');
-    await page.waitForSelector('[data-test=panel-fac-watchtower]');
-    equal([await text(page, 'upgrade-watchtower'), await page.isDisabled('[data-test=upgrade-watchtower]')], ['Under Repair', true]);
+    await page.click('[data-test=tile-dock]');
+    await page.waitForSelector('[data-test=panel-fac-dock]');
+    equal([await text(page, 'upgrade-dock'), await page.isDisabled('[data-test=upgrade-dock]')], ['Under Repair', true]);
     await page.keyboard.press('Escape');
     await pause(page);
-    await page.click('[data-test=tile-armoury]');
-    await page.waitForSelector('[data-test=panel-fac-armoury]');
+    await page.click('[data-test=tile-workshop]');
+    await page.waitForSelector('[data-test=panel-fac-workshop]');
     equal(await text(page, 'fac-level'), 'Level 5 of 5');
-    equal(await text(page, 'upgrade-text-armoury'), 'Level 5 is the highest.');
-    equal(await page.$('[data-test=upgrade-armoury]'), null);
+    equal(await text(page, 'upgrade-text-workshop'), 'Level 5 is the highest.');
+    equal(await page.$('[data-test=upgrade-workshop]'), null);
     await page.keyboard.press('Escape');
-    await setUp(page, (s) => { s.repairs = {}; s.facilityLevels.armoury = 1; });
+    await setUp(page, (s) => { s.repairs = {}; s.facilityLevels.workshop = 1; s.facilityLevels.dock = 1; s.pendingOrders = []; s.treasuryGP = 0; });
   });
 
   /* ------------------------------------------------------------------ */
@@ -790,7 +793,7 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     equal(await page.$$eval('.tsi-bas-facpanel__fns > .tsi-bas-fn', es => es.slice(0, 2).map(e => e.dataset.test)), ['upgrade-row-herbal_gardens', 'research-row-herbal_gardens'], 'after Upgrade');
     equal(await text(page, 'research-tokens-herbal_gardens'), 'Tokens: 0 of 0 free');
     equal(await text(page, 'research-text-herbal_gardens'), 'Research opens at Level 2: upgrade the Herbal Gardens to earn its first token.');
-    equal(await page.$('[data-test=research-row-watchtower]'), null);
+    equal(await page.$('[data-test=research-row-workshop]'), null);
     await page.click('[data-test=open-research-herbal_gardens]');
     await page.waitForSelector('[data-test=panel-research-herbal_gardens]');
     equal(await page.$$eval('[data-test^=branch-]', bs => bs.map(b => b.querySelector('.tsi-bas-research__bname').textContent)), ['Agricultural Development', 'Herbal Medicine', 'Botanical Research', 'Commercial Cultivation']);
@@ -876,12 +879,12 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
   });
 
   await check('the keyboard: Tab reaches a tile, its tooltip shows, and Enter opens it', async () => {
-    await page.focus('[data-test=tile-watchtower]');
+    await page.focus('[data-test=tile-dock]');
     await page.keyboard.press('Shift+Tab');
     await page.keyboard.press('Tab');
-    await page.waitForFunction(() => /Watchtower/.test(document.querySelector('[data-test=tooltip]').textContent) && !document.querySelector('[data-test=tooltip]').hidden);
+    await page.waitForFunction(() => /Dock/.test(document.querySelector('[data-test=tooltip]').textContent) && !document.querySelector('[data-test=tooltip]').hidden);
     await page.keyboard.press('Enter');
-    await page.waitForSelector('[data-test=panel-fac-watchtower]');
+    await page.waitForSelector('[data-test=panel-fac-dock]');
     await page.keyboard.press('Escape');
     await page.waitForTimeout(150);
   });
@@ -889,12 +892,13 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
   /* ------------------------------------------------------------------ */
   section('The panels the bottom bar opens');
 
-  const PANELS = [['open-warehouse', 'warehouse', 'Warehouse', 'warehouse'], ['open-management', 'management', 'Management', 'defenders'],
+  const PANELS = [['open-warehouse', 'warehouse', 'Warehouse', 'warehouse'], ['open-management', 'management', 'Management', 'explorer-changes'],
     ['open-log', 'log', 'Day Log', 'log'],
     ['open-influence', 'influence', 'Clan Influence', 'influence'], ['open-favour', 'favour', 'Favour of the Gods', 'favour-telluria']];
-  await check('the bottom bar has no Events button any more (S05): Warehouse, Management and Day Log on the left; Clan Influence, Favour and War Council on the right', async () => {
+  await check('the bottom bar has no Events button any more (S05): Warehouse, Management and Day Log on the left; Clan Influence and Favour on the right (the War Council went on 22 October 2026)', async () => {
     equal(await page.$$eval('.tsi-bas-pbtns--left [data-test^=open-]', bs => bs.map(b => b.getAttribute('data-test'))), ['open-warehouse', 'open-management', 'open-log']);
-    equal(await page.$$eval('.tsi-bas-pbtns--right [data-test^=open-]', bs => bs.map(b => b.getAttribute('data-test'))), ['open-influence', 'open-favour', 'open-war']);
+    equal(await page.$$eval('.tsi-bas-pbtns--right [data-test^=open-]', bs => bs.map(b => b.getAttribute('data-test'))), ['open-influence', 'open-favour']);
+    equal(await page.$('[data-test=open-war]'), null, 'no War Council button');
     equal(await page.$('[data-test=open-events]'), null);
     equal(await page.evaluate(() => TSI.bastion.debug.reveal('roll-event')), false, 'and nothing to reveal for the old button');
   });
@@ -934,28 +938,7 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
   });
 
   /* ------------------------------------------------------------------ */
-  section('The Banner & War Council lock, and the crest badge');
-
-  await check('locked while the Bastion has nothing that can fight: the padlock\'s tooltip says how to raise a banner', async () => {
-    await setUp(page, (s) => { s.defenders.count = 0; s.defenderBeasts = []; s.military = []; s.pendingOrders = []; });
-    equal(await page.$eval('[data-test=open-war]', b => b.classList.contains('is-locked')), true);
-    await page.click('[data-test=open-war]');
-    await page.waitForTimeout(200);
-    equal(await panelOpen(page), null);
-    assert(/Recruit defenders at the Barracks to raise your banner/.test(await bare(page, '[data-test=tooltip]')));
-    await page.mouse.move(5, 500);
-  });
-
-  await check('one defender unlocks it', async () => {
-    await page.click('[data-test=open-management]');
-    await page.click('[data-test=add-defender]');
-    await page.keyboard.press('Escape');
-    equal(await page.$eval('[data-test=open-war]', b => b.classList.contains('is-locked')), false);
-    await pause(page);
-    await page.click('[data-test=open-war]');
-    await page.waitForSelector('[data-test=panel-war] [data-test=queue-war]');
-    await page.keyboard.press('Escape');
-  });
+  section('The crest badge');
 
   await check('Party Identity, Form Clan\'s pop-up and the question about a crest sent from the Creator fit the laptop, full screen, the TV and a small window (Build 3)', async () => {
     const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
@@ -1017,7 +1000,7 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
   /* ------------------------------------------------------------------ */
   section('What the screen remembers');
 
-  await check('the old panels\' open-or-closed settings are dropped; the grid\'s and the war pop-ups\' are kept', async () => {
+  await check('the old panels\' open-or-closed settings are dropped, and so are the war pop-ups\' (the war went on 22 October 2026); the grid\'s are kept', async () => {
     await page.evaluate(() => TSI.store.set('tsi.bastion.ui', { collapsed: { war: true, diplomacy: true }, gridOpen: false, warNoticed: { ma1: true } }));
     await page.evaluate(() => TSI.store.flush());
     await page.reload();
@@ -1026,8 +1009,7 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     await page.waitForTimeout(150);
     await page.evaluate(() => TSI.store.flush());
     const ui = await page.evaluate(() => TSI.store.get('tsi.bastion.ui', null));
-    /* ("ma1" is no Military Action waiting, so the war pop-ups' list tidies it away, as before.) */
-    equal(ui, { gridOpen: true, warNoticed: {} });
+    equal(ui, { gridOpen: true });
   });
 
   await check('nothing reached for the internet, and nothing failed', async () => {

@@ -1,7 +1,7 @@
 /* The Dock takes the Port Charter system and the Routes map (step S08), and the Hall of Emissaries
    is stripped to a single-level read-only facility (step S09) of the Strip Back Overhaul (Harry,
    22 October 2026). Rules only: tools/bastion/strip-back-rules.js (the conversion steps
-   moveCharterOrders, endOldProtections, windDownHall), tools/bastion/commerce-rules.js (the Routes
+   moveCharterOrders, windDownHall), tools/bastion/commerce-rules.js (the Routes
    map) and tools/bastion/diplomacy-rules.js (the Diplomatic Events ledger, unchanged).
    The design: docs/strip-back/F-temple-hall-dock.md and docs/strip-back/J-cross-cutting.md 4.3, 4.4;
    what was built: docs/strip-back/S08-S09-built.md. The click-throughs are tests/e2e/dock.test.js and
@@ -31,6 +31,9 @@
     res.problems = R.stripBackAudit(res.before, res.save, res.report, data);
     return res;
   }
+  /* A version 3 Bastion always has the Barracks, Armoury and Watchtower, which the war game's step says are gone: that line is
+     not the Hall's, so a test about what the Hall says leaves it out. */
+  function hallSays(res) { return res.report.lines.filter(function (l) { return !/^Places that are gone\. /.test(l); }); }
   /* Text a person reads must not have these in it. */
   function jargon(text) {
     var bad = [];
@@ -167,41 +170,12 @@
   /* ================================================================================================ */
   group('The Dock takes the Port Charters (S08): the Barracks\' Convoy and the Watchtower\'s Approaches are gone');
 
-  test('a prepared Convoy and a running Approaches window end, with a line; nothing is owed; the Blessing of Pelagos stays exactly', function (t) {
-    var raw = v3(function (s) {
-      s.tradeNetwork.protections = { commercial_convoy: { charges: 1 }, maritime_approaches: { untilDay: 20 }, pelagos_blessing: { charges: 2 } };
-    });
-    var res = convert(raw);
-    t.same(res.problems, []);
-    t.same(res.save.tradeNetwork.protections, { pelagos_blessing: { charges: 2 } });
-    t.equal(res.save.treasuryGP, 400);
-    var line = res.report.lines.filter(function (l) { return /^Trade\. /.test(l); })[0];
-    t.equal(line, 'Trade. The Barracks and the Watchtower are gone, so a prepared Commercial Convoy and a window of Protected Maritime Approaches ended with them. They cost no gold to prepare, so nothing is owed back. The Blessing of Pelagos still protects a ship.');
-    t.same(jargon(line), []);
-  });
-
-  test('one alone is said alone; an empty or ended one goes quietly', function (t) {
-    var one = convert(v3(function (s) { s.tradeNetwork.protections = { maritime_approaches: { untilDay: 12 } }; }));
-    t.ok(/a window of Protected Maritime Approaches ended with it\./.test(one.report.lines.join(' ')), one.report.lines.join(' | '));
-    var quiet = convert(v3(function (s) { s.tradeNetwork.protections = { commercial_convoy: { charges: 0 }, maritime_approaches: { untilDay: 5 } }; }));
-    t.same(quiet.save.tradeNetwork.protections, {});
-    t.equal(quiet.report.lines.length, 0, 'nothing worth a line');
-    t.same(quiet.problems, []);
-  });
-
-  test('a version 4 Bastion holding a live Convoy is converted again and loses only the Convoy', function (t) {
-    var res = convert(v3());
-    var dirty = clone(res.save);
-    dirty.tradeNetwork.protections = { commercial_convoy: { charges: 1 }, pelagos_blessing: { charges: 1 } };
-    t.same(R.stripBackLeftovers(dirty, data), [{ step: 'endOldProtections', what: 'a prepared Commercial Convoy' }]);
-    var again = convert(dirty);
-    t.same(again.problems, []);
-    t.same(again.save.tradeNetwork.protections, { pelagos_blessing: { charges: 1 } });
-  });
-
-  test('the Dock\'s protection list reads only the data: just the Blessing of Pelagos', function (t) {
+  test('the Dock\'s protection list reads only the data: just the Blessing of Pelagos (a held Convoy or Approaches is dropped by the war step, dropWarFacilities)', function (t) {
     var b = R.defaultState(data);
     t.same(R.protectionStatus(b, data).map(function (p) { return p.id; }), ['pelagos_blessing']);
+    var res = convert(v3(function (s) { s.tradeNetwork.protections = { commercial_convoy: { charges: 1 }, pelagos_blessing: { charges: 2 } }; }));
+    t.same(res.problems, []);
+    t.same(res.save.tradeNetwork.protections, { pelagos_blessing: { charges: 2 } }, 'the Blessing stays exactly');
   });
 
   /* ================================================================================================ */
@@ -401,14 +375,14 @@
     var again = R.migrateToV4(res.save, data);
     t.equal(again.report.lines.length, 0);
     var quiet = convert(v3(function (s) { s.builtExtras = [{ facId: HALL, status: 'built' }]; s.facilityLevels[HALL] = 1; }));
-    t.same(quiet.report.lines, [], 'a plain Hall: nothing to say');
+    t.same(hallSays(quiet), [], 'a plain Hall: nothing to say');
     t.equal(quiet.save.legacyDiplomacy.records.length, 0);
   });
 
   test('a Hall that is not built and never held anything: nothing is said, even with an old level on record', function (t) {
     var res = convert(v3(function (s) { s.facilityLevels[HALL] = 4; }));
     t.same(res.problems, []);
-    t.same(res.report.lines, []);
+    t.same(hallSays(res), []);
     t.equal(res.save.facilityLevels[HALL], 1);
   });
 
