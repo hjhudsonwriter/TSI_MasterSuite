@@ -57,3 +57,7 @@ Another lane is deleting war code and the Barracks, Armoury, Watchtower, War Roo
 ## Where I stopped
 
 Nothing is left over: S14 and S15 are finished, committed and tested. Not started (other steps): the QR link and live updating of the phone, the Hall, the Temple, the Workshop, the Party Name editor.
+
+## After the independent review
+
+Thirteen defects found by the review were fixed afterwards; see `docs/strip-back/FIXPEN-built.md`. Decision 4 above changed: a moved House order for Elara's wyvern that cannot fit now records her as a waiting beast instead of losing her.

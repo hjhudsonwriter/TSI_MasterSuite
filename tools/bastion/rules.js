@@ -1541,6 +1541,8 @@
     var where = place.kind === 'plot' ? 'plot' : 'slot';
     var cancelled = s.pendingOrders.filter(function (o) { return o && o.facId === facId; });
     s.pendingOrders = s.pendingOrders.filter(function (o) { return !(o && o.facId === facId); });
+    /* A story beast only a cancelled House order held (Elara's wyvern) is recorded waiting for a home, never lost with it. */
+    var storyKept = R.keepStoryBeasts ? R.keepStoryBeasts(s, data, cancelled) : [];
     var held = [];
     cancelled.forEach(function (o) { if (arr(o.inputs)) held = held.concat(o.inputs); });
     var back = held.length ? R.returnGoods(s, data, held) : '';
@@ -1551,7 +1553,8 @@
     var moved = place.kind === 'plot' ? R.settlePlots(s, data) : [];
     var body = (building
       ? 'Building work on the ' + name + ' stopped; its ' + where + ' is free.'
-      : 'The ' + name + ' was demolished; its ' + where + ' is free.' + (cancelled.length ? ' Cancelled: ' + cancelled.map(function (o) { return o.label; }).join('; ') + '.' : '') + (back ? ' ' + back : '')) +
+      : 'The ' + name + ' was demolished; its ' + where + ' is free.' + (cancelled.length ? ' Cancelled: ' + cancelled.map(function (o) { return o.label; }).join('; ') + '.' : '') + (back ? ' ' + back : '') +
+        (storyKept.length ? ' ' + storyKept.map(function (c) { return R.creatureName(data, c); }).join(' and ') + ' stays at the Ironbow, waiting for a home.' : '')) +
       (moved.length ? ' ' + R.settleLine(data, moved) : '');
     return { ok: true, log: [building ? 'Construction Stopped' : 'Facility Demolished', body], cancelled: cancelled, moved: moved };
   };
@@ -2160,10 +2163,13 @@
   /* Cancelling an order keeps the gold spent (B9, kept). */
   R.cancelOrder = function (s, id, data, now) {
     var gone = s.pendingOrders.filter(function (x) { return String(x.id) === String(id); })[0];
+    /* A story beast only this order holds (Elara's wyvern) is recorded waiting for a home, never lost with it (creature-rules.js). */
+    var storyKept = gone && R.keepStoryBeasts ? R.keepStoryBeasts(s, data, [gone]) : [];
     s.pendingOrders = s.pendingOrders.filter(function (x) { return String(x.id) !== String(id); });
     /* Goods it held go back to the Warehouse (only an order actually found and
        removed here, so a second Cancel gives nothing back). */
     var back = gone && arr(gone.inputs) && gone.inputs.length ? R.returnGoods(s, data, gone.inputs) : '';
+    if (storyKept.length) return ['Orders', 'Cancelled ' + (gone.label || 'an order') + '. ' + R.creatureName(data, storyKept[0]) + ' stays at the Ironbow, waiting for a home.' + (back ? ' ' + back : '')];
     if (back) return ['Orders', 'Cancelled ' + (gone.label || 'an order') + '. ' + back];
     return ['Orders', 'Cancelled an order.'];
   };

@@ -446,9 +446,14 @@ body.tsi-bh-phone .tsi-btn--primary:hover { filter: brightness(1.06); }
 @media (max-height: 560px) and (orientation: landscape) {
   .tsi-tool--beasthandler .tsi-bh-hero2 { max-width: 300px; }
 }
-/* On a laptop the picture is sized by the window's height, so the rapport card and the three buttons stay in view. */
+/* On a laptop the picture is sized by the window's height, so the rapport card (with its Bonding Days tile, the five bond names
+   and, when a level is waiting, the "Ready" line) and the sticky tab bar under it all stay in view together. What is above and
+   below the picture adds up to about 650px at the most (the top bar, Back, the name and handler line, the subspecies tag, the
+   rapport card at its tallest, the kind line and the tab bar), so the picture takes what is left of the window's height: 280px
+   at 1707 x 930, 430px (its full size) at 1920 x 1080, and never under 220px. Proved at both sizes, in an away and a ready state,
+   by tests/e2e/beasthandler-bond.test.js. */
 @media (min-width: 720px) and (min-height: 561px) {
-  .tsi-tool--beasthandler .tsi-bh-hero2 { width: auto; max-width: 100%; height: min(44vh, 430px); aspect-ratio: 4 / 5; margin: 0 auto; }
+  .tsi-tool--beasthandler .tsi-bh-hero2 { width: auto; max-width: 100%; height: clamp(220px, calc(100vh - 650px), min(44vh, 430px)); aspect-ratio: 4 / 5; margin: 0 auto; }
   .tsi-tool--beasthandler .tsi-bh-hero2::before { display: none; }
 }
 
