@@ -712,6 +712,7 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     await pause(page);
     await page.click('[data-test=tile-dock]');
     await page.waitForSelector('[data-test=panel-fac-dock]');
+    await page.click('[data-test=dock-tab-orders]'); /* the Dock opens on Cargo (step S08): its orders are under Orders */
     equal(await page.$('[data-test=demolish-dock]'), null, 'a starting facility can\'t be demolished');
     assert(/Level 1/.test(await text(page, 'fac-panel')));
     equal(await text(page, 'days-dock__charter_berth'), 'Takes 7 days');
@@ -742,6 +743,7 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     await pause(page);
     await page.click('[data-test=tile-dock]');
     await page.waitForSelector('[data-test=panel-fac-dock]');
+    await page.click('[data-test=dock-tab-orders]'); /* the Dock opens on Cargo (step S08): its orders are under Orders */
     equal(await text(page, 'fac-level'), 'Level 1 of 5');
     equal(await page.$eval('.tsi-bas-facpanel__fns > .tsi-bas-fn', e => e.dataset.test), 'upgrade-row-dock', 'Upgrade comes first');
     equal(await text(page, 'upgrade-text-dock'), 'To Level 2: takes 7 days, no gold.');
@@ -760,6 +762,7 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     await pause(page);
     await page.click('[data-test=tile-dock]');
     await page.waitForSelector('[data-test=panel-fac-dock]');
+    await page.click('[data-test=dock-tab-orders]'); /* the Dock opens on Cargo (step S08): its orders are under Orders */
     equal(await text(page, 'fac-level'), 'Level 2 of 5');
     equal(await text(page, 'upgrade-text-dock'), 'To Level 3: takes 14 days, no gold.');
     assert((await st(page)).log.some(l => l.body === 'Dock: Upgrade to Level 2 → The Dock is now Level 2.'));
@@ -772,6 +775,7 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     await pause(page);
     await page.click('[data-test=tile-dock]');
     await page.waitForSelector('[data-test=panel-fac-dock]');
+    await page.click('[data-test=dock-tab-orders]'); /* the Dock opens on Cargo (step S08): its orders are under Orders */
     equal([await text(page, 'upgrade-dock'), await page.isDisabled('[data-test=upgrade-dock]')], ['Under Repair', true]);
     await page.keyboard.press('Escape');
     await pause(page);

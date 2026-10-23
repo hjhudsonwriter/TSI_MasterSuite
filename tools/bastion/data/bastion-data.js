@@ -94,8 +94,9 @@ window.TSI_DATA.bastion = {
      Harry's decisions D6 to D8): every facility goes from Level 1 to 5. An
      upgrade is an order at that facility (a pending order, like any other)
      taking these days to reach each level, and costing no gold for now. It
-     can't be ordered while the facility is Under Repair (D6). The Hall's
-     roll bonus stays +6 at Levels 4 and 5 (D7). */
+     can't be ordered while the facility is Under Repair (D6). A facility with
+     "singleLevel": true in facilities-data.js (the Beast Pen, the Hall of
+     Emissaries) has one level and no Upgrade. */
   levels: {
     max: 5,
     upgradeDays: { 2: 7, 3: 14, 4: 21, 5: 28 },
@@ -118,7 +119,6 @@ window.TSI_DATA.bastion = {
     courier_exchange: {
       2: ['Regional deliveries: 2 parcels on the road at once, 10 items a parcel']
     },
-    hall_of_emissaries: { 2: ['Diplomacy rolls +4 (from +2)'], 3: ['Diplomacy rolls +6 (the most it gives)'] },
     herbal_gardens: { 2: ['One more research token'], 3: ['One more research token'], 4: ['One more research token'], 5: ['One more research token'] }
   },
   /* The facilities overhaul (13 October 2026): what each retired facility
@@ -225,20 +225,8 @@ window.TSI_DATA.bastion = {
     { key: 'rowthorn', name: 'Rowthorn' },
     { key: 'karr', name: 'Karr' }
   ],
-  /* The order the Hall's planning box lists clans when an action has no options (1914). */
-  hallClanOrder: ['Blackstone', 'Karr', 'Bacca', 'Farmer', 'Molten', 'Slade', 'Rowthorn'],
-
-  /* What each clan trades (1753-1761). */
-  clanTrade: {
-    blackstone: { name: 'Blackstone', commodity: 'Timber', risk: 'low' },
-    bacca: { name: 'Bacca', commodity: 'Weapons', risk: 'medium' },
-    slade: { name: 'Slade', commodity: 'Steel', risk: 'medium' },
-    rowthorn: { name: 'Rowthorn', commodity: 'Maritime', risk: 'low' },
-    karr: { name: 'Karr', commodity: 'Wool & Furs', risk: 'high' },
-    molten: { name: 'Molten', commodity: 'Precious Metals', risk: 'high' },
-    farmer: { name: 'Farmer', commodity: 'Livestock', risk: 'high' }
-  },
-  /* Each clan's glowing route on the Sea Trade Routes map (2617-2629). */
+  /* Each Clan's glowing route on the Dock's Routes map (the Hall's Sea Trade Routes map until step S08 of the
+     Strip Back Overhaul): lit by a registered Port Charter at one of its ports (R.routesMap). */
   routeOverlays: {
     blackstone: 'ui/blackstone_trade_route.png',
     karr: 'ui/karr_trade_route.png',
@@ -248,38 +236,7 @@ window.TSI_DATA.bastion = {
     slade: 'ui/slade_trade_route.png',
     rowthorn: 'ui/rowthorn_trade_route.png'
   },
-  consortiumName: 'Ironbow Trade Consortium',
 
-  /* Hall of Emissaries: the DC for each action (908-915). */
-  hallDC: { trade_agreement: 14, host_delegation: 13, summit: 12, arbitration: 15, consortium: 16 },
-  /* What a roll tier does to a Hall action (960-964): days added to how
-     long its record lasts, income multiplier, Political Capital, and the
-     days the action is then cooling down. These were turns (+2 to −2, a
-     2-turn cooldown); since the days overhaul (8 October 2026) they're the
-     same at 7 days a turn. A natural 1 has no row, so it counts as a plain
-     success with no change (B20, kept). */
-  hallTiers: {
-    critical_success: { daysAdj: 14, incomeMult: 1.35, pcDelta: 25 },
-    great_success: { daysAdj: 7, incomeMult: 1.20, pcDelta: 15 },
-    success: { daysAdj: 0, incomeMult: 1.00, pcDelta: 8 },
-    failure: { daysAdj: -7, incomeMult: 0.75, pcDelta: -10 },
-    bad_failure: { daysAdj: -14, incomeMult: 0, pcDelta: -20, cooldownDays: 14 }
-  },
-  /* A Trade Agreement runs for the weeks chosen when it's planned (Harry,
-     8 October 2026), plus or minus the roll tier's days, and never less
-     than one week. */
-  tradeAgreementWeeks: [1, 3, 6],
-  tradeAgreementDefaultWeeks: 3,
-  /* Hosting a delegation (1011-1097). */
-  delegation: { diplomacyDC: 13, insightDC: 12, toneMod: { conciliatory: 2, assertive: 0, opportunistic: -2 } },
-  /* Trade Network investments (710-817). */
-  networkUpgrades: {
-    stability: { costGP: 75, days: 7, label: 'Ironbow Trade Network: Stability Investment' },
-    yield: { costGP: 90, days: 7, label: 'Ironbow Trade Network: Yield Investment' },
-    toggle_high_risk: { costGP: 0, days: 1, label: 'Ironbow Trade Network: Routing Doctrine Change' }
-  },
-  /* The Council Ledger (2884-3051). */
-  councilDC: 13,
 
   /* ---------- Time (the days overhaul, Harry, 8 October 2026) ----------
      The Bastion follows the Explorer's day (docs/BASTION-OVERHAUL.md).
@@ -287,8 +244,9 @@ window.TSI_DATA.bastion = {
      - buildDays: building a facility, by its required level (the first row
        whose level it reaches): 21 / 28 / 35 / 35 days at levels 5 / 9 / 13
        / 17 (it was 3 / 4 / 5 / 5 turns).
-     - every: contracts send a shipment and sea routes settle every this many
-       days from when each began. */
+     - every: how often the old sea routes of the Hall of Emissaries sailed, in days, from when each began (kept only
+       for the final settlement when an older Bastion is converted, in strip-back-rules.js; the Dock's ships and
+       standing shipments set their own days). */
   time: {
     buildDays: [{ level: 17, days: 35 }, { level: 13, days: 35 }, { level: 9, days: 28 }, { level: 5, days: 21 }],
     every: 7
@@ -306,24 +264,6 @@ window.TSI_DATA.bastion = {
     Combat: 'Adv. on Athletics checks once per long rest.',
     Religious: 'Adv. on Religion checks once per long rest.',
     Political: 'Adv. on 1 check when interacting with Clan members, once per long rest.'
-  },
-
-  /* A clan's reaction to a Hall action, picked at random (1877-1898). */
-  reactions: {
-    good: ['{clan} accepts with measured approval.', '{clan}\'s envoy nods once, and the room quietly shifts.', 'A seal is pressed. {clan} seems satisfied.'],
-    mid: ['{clan} agrees, but their eyes keep counting.', '{clan} watches carefully. Nothing is free.', 'The ink dries. The court stays quiet.'],
-    bad: ['{clan} withdraws behind polite smiles.', '{clan}\'s envoy leaves without finishing their wine.', 'A quiet insult lands like a thrown gauntlet. {clan} remembers.']
-  },
-
-  /* The Hall's hover notes (3552-3603). */
-  hallTips: {
-    trade_agreement: ['Creates a timed Trade Agreement with a clan, for 1, 3 or 6 weeks.', 'On resolution: a d20 vs DC determines the income per shipment, duration tilt, and Political Capital change.', 'A shipment arrives every 7 days while it runs, its gold paid automatically.'],
-    host_delegation: ['Host a clan delegation at the Hall.', 'On resolution: two rolls (Diplomacy + Insight).', 'Strong outcomes can grant a Favour Token and boost Political Capital.'],
-    summit: ['Convene an inter-clan summit to reduce costs on Hall actions.', 'On resolution: sets a % discount for future Hall actions for a limited time.', 'Also shifts Political Capital for both clans.'],
-    arbitration: ['Secures a Writ of Authority from the capital.', 'Effect: +2 to Council Verdict rolls for the next 3 rulings.', 'Use Council Ledger to judge disputes created by disrupted routes.'],
-    consortium: ['Creates a Trade Consortium contract and activates the Ironbow Trade Network.', 'On resolution: opens a route for the chosen clan (with risk + yield).', 'Each route sails every 7 days for income, disruption, and disputes.'],
-    port_charter: ['Registers a Port Charter the DM granted in the Explorer.', 'Takes 3 days: no gold and no roll. One Charter at a time.', 'Once registered, the Dock (Level 2 or higher) can ship cargo to that port.'],
-    other: ['A diplomatic action issued from the Hall.', 'Resolves when its days are up.', 'Outcome is determined by your roll and applies Political Capital changes.']
   },
 
   /* The Compendium's card pictures (assets/compendium_cards/<name>.png). A card

@@ -46,7 +46,7 @@
     t.same(BR.levelUnlocks(bdata, 'dock', 2), ['Cargo ships: 2 lots on 1 ship']);
     t.same(BR.levelUnlocks(bdata, 'dock', 5), ['Cargo ships: 5 lots a ship, 2 ships at sea at once']);
     t.same(BR.levelUnlocks(bdata, 'war_room', 3), [], 'the War Room is gone (S06): nothing to list');
-    t.same(BR.levelUnlocks(bdata, 'hall_of_emissaries', 2), ['Inter-Clan Summit', 'Diplomacy rolls +4 (from +2)']);
+    t.same(BR.levelUnlocks(bdata, 'hall_of_emissaries', 2), [], 'the Hall has one level and unlocks nothing (step S09)');
     t.same(BR.levelUnlocks(bdata, 'hall_of_emissaries', 4), []);
     t.same(BR.levelUnlocks(bdata, 'beast_pen', 3), [], 'the Beast Pen has one level and unlocks nothing by level');
     t.same(BR.levelUnlocks(bdata, 'temple', 5), [], 'the Temple has one level and unlocks nothing by level (its three blessings need a full bar, not a level)');

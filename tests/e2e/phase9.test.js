@@ -156,29 +156,6 @@ async function issue(page, fac, fn, idx) {
   await page.click('[data-test="issue-' + fac + '__' + fn + '"]');
   await page.waitForTimeout(100);
 }
-async function planHall(page, fn, idx, extra) {
-  await pause(page);
-  await page.click('[data-test="issue-hall_of_emissaries__' + fn + '"]');
-  await page.waitForSelector('[data-test=hall-target]');
-  await page.selectOption('[data-test=hall-target]', String(idx));
-  if (extra && extra.dur) await page.selectOption('[data-test=hall-duration]', String(extra.dur));
-  if (extra && extra.tone) await page.selectOption('[data-test=hall-tone]', extra.tone);
-  await page.click('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__foot button.tsi-btn--primary');
-  await page.waitForTimeout(150);
-}
-/* The Secure Trade Agreement is retired (20 October 2026): it can't be ordered, but a Bastion saved earlier can
-   still hold the order. This puts one in, as such a save would, so the rest of the flow (the dice box, Resolve,
-   the shipments) is still tested: the clan by its place in the list, and the weeks (default 3). */
-async function legacyAgreement(page, idx, weeks) {
-  await pause(page);
-  await page.evaluate(({ idx, weeks }) => TSI.bastion.debug.change(s => {
-    const key = ['Blackstone', 'Rowthorn', 'Karr', 'Farmer', 'Slade', 'Bacca', 'Molten'][idx];
-    s.treasuryGP -= 250;
-    s.pendingOrders.push({ id: 'legacy-' + s.day + '-' + idx, facId: 'hall_of_emissaries', fnId: 'secure_trade_agreement', chosen: { label: 'Clan ' + key, value: key }, optionLabel: 'Clan ' + key, notes: '',
-      label: 'Hall of Emissaries: Secure Trade Agreement (Clan ' + key + ')', costGP: 250, issuedDay: s.day, dueDay: s.day + 7, meta: { targetClan: 'Clan ' + key, weeks: weeks || 3 } });
-  }), { idx, weeks });
-  await page.waitForTimeout(150);
-}
 /* A see-through PNG crest (a gold disc on nothing), like the Crest Creator's download. */
 function crestPng(size) {
   const zlib = require('zlib');
@@ -539,68 +516,16 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       equal(s.warehouse.filter(w => w.item === 'Longship' && w.notes === 'Dock').reduce((n, w) => n + w.qty, 0), 1, 'and one ship came');
     });
 
-    await check('while a dice box is open, Enter or Space can\'t start anything else, and the day waits (BAS-10)', async () => {
-      await legacyAgreement(page, 0, 3);
-      equal((await st(page)).pendingOrders[0].dueDay, 12, '7 days to negotiate');
-      await setExplorerDay(page, 12);
-      await page.waitForSelector('[data-test=d20]', { timeout: 15000 });
-      equal(await text(page, 'day-status'), 'Passing Day 12…');
-      await page.keyboard.press('Enter');
-      await page.keyboard.press('Space');
-      await page.waitForTimeout(300);
-      const s = await st(page);
-      equal([s.day, s.dayInProgress && s.dayInProgress.day], [12, 12]);
-      equal(await page.$$eval('.tsi-modal:not(.tsi-bas-panel)', m => m.length), 1);
-      await H.shot(page, 'p9-05-dice');
-    });
-
-    await check('a cancelled roll keeps the order, due, with Resolve; the day still finishes, and the word says so (BAS-02)', async () => {
-      await clickModal(page, 'Cancel');
-      const w = await word(page);
-      assert(/Hall of Emissaries: Secure Trade Agreement \(Clan Blackstone\) needs your roll/.test(w), w);
-      const s = await st(page);
-      equal([s.day, s.dayInProgress], [12, null]);
-      equal(s.pendingOrders.map(o => [o.label, o.dueDay]), [['Hall of Emissaries: Secure Trade Agreement (Clan Blackstone)', 12]]);
-      assert(s.log.some(l => l.body === 'Hall of Emissaries: Secure Trade Agreement (Clan Blackstone) → Roll cancelled. The order stays due: press Resolve on it, or it comes up again tomorrow.'), JSON.stringify(s.log.slice(0, 3)));
-      equal(await text(page, 'pending-meta-0'), 'Due now: waiting for your roll');
-      equal(await page.isVisible('[data-test=resolve-0]'), true);
-      equal(s.treasuryGP, 4750, 'paid once');
-    });
-
-    await check('Resolve asks again and completes it: three weeks, three shipments (BAS-13)', async () => {
-      await pause(page);
-      await page.click('[data-test=resolve-0]');
-      await answerAll(page, [15]);
-      await page.waitForFunction(() => !TSI.bastion.debug.busy());
-      const s = await st(page);
-      equal(s.pendingOrders, []);
-      equal(s.diplomacy.agreements.map(a => [a.startDay, a.endDay]), [[12, 33]]);
-      equal(s.treasuryGP, 4750);
-      assert(/21 days remaining \(3 shipments\)/.test(await text(page, 'diplomacy-records')), await text(page, 'diplomacy-records'));
-    });
-
-    await check('closing the window mid-day loses nothing: it reopens and finishes the day by itself', async () => {
-      await planHall(page, 'host_delegation', 1, { tone: 'assertive' });
-      await setExplorerDay(page, 17);
-      await page.waitForSelector('[data-test=d20]', { timeout: 15000 });
-      const mid = await st(page);
-      equal([mid.day, mid.dayInProgress.stage], [17, 'orders']);
-      await reopen(page);
-      await H.waitForNotice(page, /Day 17 was left part-way through\. It carries on now; nothing has been lost\./);
-      await answerAll(page, [12, 14, 13]);
-      await page.waitForFunction(() => !TSI.bastion.debug.busy() && !TSI.bastion.debug.state().dayInProgress);
-      await answerAll(page, []);
-      const s2 = await st(page);
-      equal([s2.day, s2.dayInProgress, s2.pendingOrders.length, s2.diplomacy.delegations.length], [17, null, 0, 1]);
-      equal(s2.treasuryGP === mid.treasuryGP || s2.treasuryGP !== null, true);
-      equal(s2.log.filter(l => /^Host Delegation/.test(l.body)).length, 1, 'once');
-    });
+    /* The Hall's actions were the only orders that asked for a typed d20 inside a day (the War Council's War Actions the
+       other), so the checks that paused a day on a dice box (Enter and Space can't start anything else, BAS-10; a
+       cancelled roll keeps the order due with Resolve, BAS-02 and BAS-13; closing the window mid-day, BAS-02) went with
+       them in step S09 (Strip Back Overhaul, 22 October 2026): see docs/strip-back/S08-S09-known-issues-draft.md. */
 
     await check('Day 29 passes like any other day: no Bastion event is rolled and there is no Events button (S05)', async () => {
       equal(await page.$('[data-test=open-events]'), null, 'no Events button in the bottom bar');
       equal(await page.$('[data-test=event]'), null, 'no event box');
       await page.evaluate(() => window.__seed(12));
-      await days(page, 12, []);
+      await days(page, 29 - (await st(page)).day, []);
       equal(await text(page, 'day-status'), 'Day 29');
       const s = await st(page);
       equal('lastEvent' in s || 'lastEventDay' in s, false, 'the Bastion keeps no event record');
@@ -609,13 +534,13 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
     });
 
     await check('Reset Travel in the Explorer moves every Bastion day back, and the log says so', async () => {
-      await planHall(page, 'host_delegation', 2, { tone: 'assertive' });
+      await issue(page, 'dock', 'charter_berth', 0);
       const before = await st(page);
-      equal(before.pendingOrders[0].dueDay, 34);
+      equal([before.day, before.pendingOrders[0].dueDay], [29, 36]);
       await setExplorerDay(page, 1);
       await page.waitForFunction(() => TSI.bastion.debug.state().day === 1);
       const s = await st(page);
-      equal(s.pendingOrders[0].dueDay, 6, 'still 5 days off');
+      equal(s.pendingOrders[0].dueDay, 8, 'still 7 days off');
       equal(s.log[0].body, 'The Explorer\'s day went back (Reset Travel): the Bastion moves from Day 29 to Day 1, and everything due keeps its days.');
       equal(await text(page, 'day-status'), 'Day 1');
     });
@@ -640,174 +565,35 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
 
     await setUp(page, (s) => { s.partyLevel = 9; s.builtExtras = [{ facId: 'hall_of_emissaries', status: 'built' }, '', '', '']; });
 
-    await check('its tile opens the Hall of Emissaries; its actions show their notes on hover, and lock until the Hall is upgraded', async () => {
+    await check('its tile opens the Hall of Emissaries: one level, no orders, no Upgrade; the Clans\' scores to read and the Diplomatic Events (step S09)', async () => {
       await page.click('[data-test=tile-hall_of_emissaries]');
       await page.waitForSelector('[data-test=panel-diplomacy] [data-test=hall]');
-      await page.hover('.tsi-bas-hall__fns .tsi-bas-fn >> nth=0');
-      await page.waitForSelector('[data-test=tooltip]:not([hidden])');
-      assert(/Registers a Port Charter/.test(await text(page, 'tooltip')));
-      equal(await page.isDisabled('[data-test="issue-hall_of_emissaries__inter_clan_summit"]'), true);
-      equal(await page.isDisabled('[data-test="issue-hall_of_emissaries__trade_consortium"]'), true);
-    });
-
-    await check('the Secure Trade Agreement is gone from the Hall, and Register Port Charter is its first order, open at Level 1', async () => {
-      await pause(page);
-      equal(await page.$('[data-test="issue-hall_of_emissaries__secure_trade_agreement"]'), null, 'no button');
-      equal(await page.$$eval('.tsi-bas-hall__fns .tsi-bas-fn [data-test^="issue-hall_of_emissaries__"]', bs => bs.map(b => b.getAttribute('data-test').replace('issue-hall_of_emissaries__', '')).slice(0, 2)), ['register_port_charter', 'host_delegation']);
-      equal(await page.isDisabled('[data-test="issue-hall_of_emissaries__register_port_charter"]'), true, 'off only because no Charter is waiting');
-      assert(!/Trade Agreements|Archived|Retired/.test(await text(page, 'diplomacy-records')), 'no agreements box when there are none');
+      equal(await text(page, 'hall-level'), 'One level only');
+      equal(await page.$$('[data-test^="issue-hall_of_emissaries__"], [data-test=hall-upgrade]').then(l => l.length), 0, 'no orders and no Upgrade');
+      equal(await page.$$eval('[data-test=clan-relations] .tsi-bas-rel__row', r => r.length), 7);
+      assert(/Diplomatic Events/.test(await text(page, 'dip-records-ledger')));
       equal([(await st(page)).treasuryGP, (await st(page)).pendingOrders.length], [5000, 0]);
+      await page.keyboard.press('Escape');
     });
 
-    await check('Host Delegation: three dice boxes, Political Capital changes once (B2)', async () => {
-      await planHall(page, 'host_delegation', 0, { tone: 'conciliatory' });
-      equal((await st(page)).treasuryGP, 4850);
-      equal((await st(page)).pendingOrders[0].dueDay, 6, '5 days');
-      await setExplorerDay(page, 6);
-      const titles = [];
-      for (const r of [20, 12, 11]) { await page.waitForSelector('[data-test=d20]'); titles.push(await modalTitle(page)); await d20(page, r); }
-      equal(titles, ['Host Delegation (Clan Blackstone)', 'Diplomacy Roll (conciliatory)', 'Insight Roll (conciliatory)']);
-      assert(/Critical Success/.test(await text(page, 'result-roll')));
-      const changes = await text(page, 'result-changes');
-      assert(/Political Capital: \+15 \(Clan Blackstone\)/.test(changes) && (changes.match(/Political Capital/g) || []).length === 1, changes);
-      await H.shot(page, 'p9-07-result');
-      await clickModal(page, 'Continue');
-      assert(/Host Delegation \(Clan Blackstone\): Critical Success\./.test(await word(page)));
-      equal(await text(page, 'pc-blackstone'), '15');
-      equal(await text(page, 'tokens'), '1');
-      assert(/Hosted Delegation \(conciliatory\)Clan Blackstone • 28 days remaining/.test(await text(page, 'diplomacy-records')), await text(page, 'diplomacy-records'));
-    });
-
-    await check('a bad failure: no deal, −20 Political Capital, and a 14-day cooldown on the button', async () => {
-      await legacyAgreement(page, 1, 3);
-      await days(page, 7, [5]);
-      const s = await st(page);
-      equal([s.diplomacy.agreements.length, s.politicalCapital.rowthorn, s.diplomacy.cooldowns.trade_agreement], [0, -20, s.day + 14]);
-      /* The order is gone from the Hall (the cooldown is still kept, as it was). */
-      equal(await page.$('[data-test="issue-hall_of_emissaries__secure_trade_agreement"]'), null);
-      await days(page, 4, []);
-      equal((await st(page)).diplomacy.cooldowns.trade_agreement, s.day + 14, 'the cooldown still counts down to the same day');
-    });
-
-    await check('the upgrade is free, takes 7 days to Level 2 (step 1b, D8: it was 14) and raises the Hall\'s bonus', async () => {
+    await check('days pass with nothing from the Hall: no shipment, no roll, no word, no Diplomacy line in the Day Log', async () => {
       const gp = (await st(page)).treasuryGP;
-      await pause(page);
-      await page.click('[data-test=hall-upgrade]');
-      equal((await st(page)).treasuryGP, gp);
-      const up = (await st(page)).pendingOrders.find(o => o.meta && o.meta.kind === 'upgrade');
-      equal([up.label, up.dueDay - up.issuedDay], ['Hall of Emissaries: Upgrade to Level 2', 7]);
-      equal(await page.isDisabled('[data-test=hall-upgrade]'), true, 'one upgrade at a time');
       await days(page, 7, []);
-      equal(await text(page, 'hall-level'), 'L2');
-      equal(await page.isDisabled('[data-test="issue-hall_of_emissaries__inter_clan_summit"]'), false);
-    });
-
-    await check('Clear Diplomacy Records asks first', async () => {
-      await pause(page);
-      await page.click('[data-test=clear-diplomacy]');
-      assert(/Does not undo gold already gained/.test(await popText(page)));
-      await clickModal(page, 'Cancel');
-      equal((await st(page)).diplomacy.delegations.length, 1);
-    });
-    await context.close();
-  }
-
-  /* ------------------------------------------------------------------ */
-  if (want('Trade routes and the Council Ledger (BAS-05, BAS-11)')) {
-    section('Trade routes and the Council Ledger (BAS-05, BAS-11)');
-    const { context, page } = await newPage(browser, 'laptop');
-    await openBastion(page);
-    await days(page, 2, []);
-    /* Two routes due to sail today (Day 3), each every 7 days. */
-    await setUp(page, (s) => {
-      s.partyLevel = 9;
-      s.builtExtras = [{ facId: 'hall_of_emissaries', status: 'built' }, '', '', ''];
-      s.tradeNetwork.active = true;
-      s.diplomacy.consortiums = [{ id: 'c1', title: 'Form Trade Consortium', clan: 'Blackstone', startDay: 3, endDay: 38, income: 100, lastShipmentDay: 3 }, { id: 'c2', title: 'Form Trade Consortium', clan: 'Karr', startDay: 3, endDay: 38, income: 200, lastShipmentDay: 3 }];
-      s.tradeNetwork.routes = [
-        { id: 'r1', clan: 'Blackstone', commodity: 'Timber', risk: 'low', openedDay: -4, nextDay: 3, expiresDay: 40, yieldGP: 100, stabilityDC: 12, status: 'active' },
-        { id: 'r2', clan: 'Karr', commodity: 'Wool & Furs', risk: 'high', openedDay: -4, nextDay: 3, expiresDay: 40, yieldGP: 200, stabilityDC: 12, status: 'active' }
-      ];
-    });
-
-    await check('a cancelled roll, then Resolve again: each route pays once (BAS-05)', async () => {
-      await pause(page);
-      await page.click('[data-test=resolve]');
-      await page.waitForSelector('[data-test=d20]');
-      equal(await modalTitle(page), 'Resolve Route: Karr (Wool & Furs)');
-      equal((await st(page)).treasuryGP, 100, 'Blackstone paid');
-      await clickModal(page, 'Cancel');
-      await page.waitForFunction(() => !TSI.bastion.debug.busy());
-      await pause(page);
-      await page.click('[data-test=resolve]');
-      await page.waitForSelector('[data-test=d20]');
-      await page.keyboard.press('Enter');
-      await page.waitForTimeout(200);
-      equal(await page.$$eval('.tsi-modal:not(.tsi-bas-panel)', m => m.length), 1, 'Enter didn\'t start another');
-      await d20(page, 15);
-      assert(/Total Collected: 200 gp/.test(await text(page, 'routes-total')));
-      await clickModal(page, 'Continue');
-      equal((await st(page)).treasuryGP, 300, '100 + 200, not 100 + 100 + 200');
-    });
-
-    await check('a third Resolve says none is due, and when the next sails', async () => {
-      await pause(page);
-      await page.click('[data-test=resolve]');
-      assert(/No routes are due to sail\. Each sails every 7 days; the next on Day 10\./.test(await popText(page)), await popText(page));
-      await clickModal(page, 'Close');
-      assert(/Next sails: Day 10/.test(await text(page, 'routes-list')), await text(page, 'routes-list'));
-    });
-
-    await check('the Sea Trade Routes map lights up each running route', async () => {
-      await pause(page);
-      await page.click('[data-test=routes]');
-      await page.waitForSelector('[data-test=trade-map]');
-      await page.waitForFunction(() => Array.from(document.querySelectorAll('.tsi-bas-trademap img')).every(i => i.complete));
-      equal(await text(page, 'routes-shown'), 'Blackstone, Karr');
-      equal(await page.$$eval('.tsi-bas-trademap img', is => is.map(i => [i.getAttribute('src').split('/').pop(), i.naturalWidth])),
-        [['clan_trading_locations.png', 1494], ['blackstone_trade_route.png', 1494], ['karr_trade_route.png', 1494]]);
-      await H.shot(page, 'p9-08-trade-map');
-      await clickModal(page, 'Close');
-    });
-
-    await check('a week on (Day 10): the routes sail again, and a disaster at sea disrupts Karr and files a dispute', async () => {
-      await days(page, 7, [3]);
       const s = await st(page);
-      equal(s.tradeNetwork.routes.map(r => r.status), ['active', 'disrupted']);
-      equal(s.arbitration.queue.length, 1);
-      equal(await text(page, 'ledger'), 'Council Ledger (1)');
+      equal(s.treasuryGP, gp);
+      equal(s.log.filter(l => l.title === 'Diplomacy').length, 0);
+      equal(s.word.length, 0);
     });
 
-    await check('the Council Ledger: a binding verdict restores the route', async () => {
+    await check('Demolish… is in the Hall\'s panel and asks first', async () => {
       await pause(page);
-      await page.click('[data-test=ledger]');
-      await page.waitForSelector('.tsi-bas-dispute');
-      await H.shot(page, 'p9-09-ledger');
-      await page.click('[data-test=rule-b]');
-      await d20(page, 15);
-      equal(await modalTitle(page), 'Council Verdict');
-      assert(/Karr route status: Restored \(Active\)\./.test(await popText(page)));
-      await clickModal(page, 'Continue');
-      const s = await st(page);
-      equal([s.tradeNetwork.routes[1].status, s.arbitration.queue.length, s.politicalCapital.karr], ['active', 0, -4]);
-      equal(await text(page, 'ledger'), 'Council Ledger');
-    });
-
-    await check('an empty ledger says so', async () => {
-      await pause(page);
-      await page.click('[data-test=ledger]');
-      assert(/No disputes await judgement\./.test(await popText(page)));
-      await clickModal(page, 'Close');
-    });
-
-    await check('network investments are orders that take their days (Stability: 7)', async () => {
-      await setUp(page, (s) => { s.treasuryGP = 500; });
-      await pause(page);
-      await page.click('[data-test=invest-stability]');
-      equal((await st(page)).pendingOrders.map(o => o.dueDay), [17]);
-      await days(page, 7, [15]);
-      equal((await st(page)).treasuryGP > 0, true);
-      assert((await st(page)).log.some(l => l.body === 'Ironbow Trade Network: Stability Investment resolved.'));
+      await page.click('[data-test=tile-hall_of_emissaries]');
+      await page.waitForSelector('[data-test=demolish-hall_of_emissaries]');
+      await page.click('[data-test=demolish-hall_of_emissaries]');
+      const said = await popText(page);
+      assert(/Demolish the Hall of Emissaries\?/.test(said) && !/agreements, contracts and sea routes/.test(said), said);
+      await clickModal(page, 'Cancel');
+      equal((await st(page)).builtExtras.filter(e => e && e.facId === 'hall_of_emissaries').length, 1);
     });
     await context.close();
   }
@@ -877,12 +663,12 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       await H.shot(page, 'p9-crest-none');
     });
 
-    await check('the Party Name and diplomacy survive reopening (BAS-01)', async () => {
-      await setUp(page, (s) => { s.diplomacy.agreements = [{ id: 'a', title: 'Trade Agreement', clan: 'Clan Karr', startDay: s.day, endDay: s.day + 21, income: 90, lastShipmentDay: s.day }]; s.diplomacy.tokens = 2; });
+    await check('the Party Name and the Hall\'s history survive reopening (BAS-01)', async () => {
+      await setUp(page, (s) => { s.legacyDiplomacy = { records: [{ kind: 'Trade Agreement', title: 'Trade Agreement', clan: 'Clan Karr', startDay: 1, endDay: s.day + 21, endedDay: s.day, income: 90, shipments: 3, paid: 270, note: '' }] }; });
       const before = await st(page);
       await reopen(page);
       const after = await st(page);
-      ['partyName', 'honourRespectByClan', 'diplomacy', 'politicalCapital'].forEach(k => equal(after[k], before[k], k));
+      ['partyName', 'honourRespectByClan', 'diplomacy', 'legacyDiplomacy', 'politicalCapital'].forEach(k => equal(after[k], before[k], k));
       equal(after.partyName, 'The Ironbow Company');
       equal(await page.$eval('[data-test=badge-name]', n => n.textContent), 'The Ironbow Company');
     });

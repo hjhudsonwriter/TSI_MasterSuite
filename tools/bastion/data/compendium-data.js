@@ -1,11 +1,13 @@
-/* The Ironbow Bastion Manager: the 235 compendium entries (62 filled in, the rest name only).
+/* The Ironbow Bastion Manager: the 223 compendium entries (62 filled in, the rest name only).
    A word-for-word copy of the old tool's data/compendium_items.json (265 entries), stored as a
    script so it loads from a double-clicked file. Edit it here.
    The Strip Back Overhaul (22 October 2026) took out the 21 entries that belonged to the war
    game: the Menagerie's 13 beasts, the War Room's six units and Lieutenant, and the old
    Regiment (100). The restore point is commit 4f1db26.
    The Temple (S11, 22 October 2026) took out the 15 entries that belonged to the three Shrines: the six
-   Craft charms and the nine prayers. */
+   Craft charms and the nine prayers.
+   Step S09 (22 October 2026) took out the 12 entries that were only the Clan and Clan-pair choices of the
+   Hall of Emissaries' orders ("Clan Karr", "Bacca + Molten" and the rest); none had anything written in it. */
 window.TSI_DATA = window.TSI_DATA || {};
 window.TSI_DATA.bastionCompendium = {
   "version": 1,
@@ -65,13 +67,6 @@ window.TSI_DATA.bastionCompendium = {
       "summary": "",
       "source": "",
       "roll20": "https://roll20.net/compendium/dnd5e/Assassin's%20Blood"
-    },
-    "Bacca + Molten": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Bacca%20%2B%20Molten"
     },
     "Backpack": {
       "type": "Adventuring Gear",
@@ -149,20 +144,6 @@ window.TSI_DATA.bastionCompendium = {
       "summary": "",
       "source": "",
       "roll20": "https://roll20.net/compendium/dnd5e/Belt%20(magic%20item%20base)"
-    },
-    "Blackstone + Karr": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Blackstone%20%2B%20Karr"
-    },
-    "Blackstone + Rowthorn": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Blackstone%20%2B%20Rowthorn"
     },
     "Blanket": {
       "type": "Adventuring Gear",
@@ -423,26 +404,12 @@ window.TSI_DATA.bastionCompendium = {
       "source": "https://www.dnd5eapi.co/api/2014/magic-items/circlet-of-blasting",
       "roll20": "https://roll20.net/compendium/dnd5e/Circlet%20of%20Blasting"
     },
-    "Clan Bacca": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Clan%20Bacca"
-    },
     "Clan Bacca Warrior Disguise": {
       "type": "",
       "attunement": "",
       "summary": "",
       "source": "",
       "roll20": "https://roll20.net/compendium/dnd5e/Clan%20Bacca%20Warrior%20Disguise"
-    },
-    "Clan Blackstone": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Clan%20Blackstone"
     },
     "Clan Blackstone Warden Disguise": {
       "type": "",
@@ -451,26 +418,12 @@ window.TSI_DATA.bastionCompendium = {
       "source": "",
       "roll20": "https://roll20.net/compendium/dnd5e/Clan%20Blackstone%20Warden%20Disguise"
     },
-    "Clan Farmer": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Clan%20Farmer"
-    },
     "Clan Farmer Warrior Disguise": {
       "type": "",
       "attunement": "",
       "summary": "",
       "source": "",
       "roll20": "https://roll20.net/compendium/dnd5e/Clan%20Farmer%20Warrior%20Disguise"
-    },
-    "Clan Karr": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Clan%20Karr"
     },
     "Clan Karr Warrior Disguise": {
       "type": "",
@@ -479,13 +432,6 @@ window.TSI_DATA.bastionCompendium = {
       "source": "",
       "roll20": "https://roll20.net/compendium/dnd5e/Clan%20Karr%20Warrior%20Disguise"
     },
-    "Clan Molten": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Clan%20Molten"
-    },
     "Clan Molten Warrior Disguise": {
       "type": "",
       "attunement": "",
@@ -493,26 +439,12 @@ window.TSI_DATA.bastionCompendium = {
       "source": "",
       "roll20": "https://roll20.net/compendium/dnd5e/Clan%20Molten%20Warrior%20Disguise"
     },
-    "Clan Rowthorn": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Clan%20Rowthorn"
-    },
     "Clan Rowthorn Warrior Disguise": {
       "type": "",
       "attunement": "",
       "summary": "",
       "source": "",
       "roll20": "https://roll20.net/compendium/dnd5e/Clan%20Rowthorn%20Warrior%20Disguise"
-    },
-    "Clan Slade": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Clan%20Slade"
     },
     "Clan Slade Warrior Disguise": {
       "type": "",
@@ -611,13 +543,6 @@ window.TSI_DATA.bastionCompendium = {
       "summary": "",
       "source": "",
       "roll20": "https://roll20.net/compendium/dnd5e/Essence%20of%20Ether%20(Poison)"
-    },
-    "Farmer + Slade": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Farmer%20%2B%20Slade"
     },
     "Fermented ale": {
       "type": "",
@@ -1241,13 +1166,6 @@ window.TSI_DATA.bastionCompendium = {
       "summary": "Wondrous item, uncommon This 60-foot length of silk rope weighs 3 pounds and can hold up to 3,000 pounds. If you hold one end of the rope and use an action to speak the command word, the rope animates. As a bonus action, you can command the other end to move toward a destination you choose. That end moves 10 feet on your turn when you first command it and 10 feet on each of your turns until reaching its destinatio…",
       "source": "https://www.dnd5eapi.co/api/2014/magic-items/rope-of-climbing",
       "roll20": "https://roll20.net/compendium/dnd5e/Rope%20of%20Climbing"
-    },
-    "Rowthorn + Karr": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Rowthorn%20%2B%20Karr"
     },
     "Saddle": {
       "type": "",

@@ -71,13 +71,9 @@
     b.builtExtras = [{ facId: 'arcane_laboratory', status: 'building', startDay: 1, readyDay: 22 }, { facId: 'shrine_aurush', status: 'built' }];
     b.pendingOrders = [
       { id: 'a', facId: 'library_scriptorium', fnId: 'prepare_overland_travel_charts', label: 'Library & Scriptorium: Prepare Overland Travel Charts', issuedDay: 9, dueDay: 14 },
-      { id: 'h', facId: 'hall_of_emissaries', fnId: 'secure_trade_agreement', label: 'Hall of Emissaries: Secure Trade Agreement (Clan Karr)', issuedDay: 10, dueDay: 17 },
+      { id: 'h', facId: 'dock', fnId: 'register_port_charter', label: 'Dock: Register Port Charter (Goldport)', issuedDay: 10, dueDay: 17 },
       { id: 'd', facId: 'dock', fnId: 'charter_berth', label: 'Dock: Charter Berth (Longship)', issuedDay: 8, dueDay: 15 }
     ];
-    b.diplomacy.agreements = [{ title: 'Trade Agreement', clan: 'Clan Karr', startDay: 5, endDay: 26, income: 90, lastShipmentDay: 5 }];
-    b.diplomacy.delegations = [{ title: 'Hosted Delegation (assertive)', clan: 'Clan Slade', startDay: 9, endDay: 23 }];
-    b.tradeNetwork.active = true;
-    b.tradeNetwork.routes = [{ id: 'r', clan: 'Karr', risk: 'high', status: 'active', nextDay: 12, expiresDay: 40 }, { id: 's', clan: 'Farmer', risk: 'low', status: 'active', nextDay: 12, expiresDay: 40 }];
     return b;
   }
 
@@ -88,11 +84,11 @@
     t.same(s.orders, { count: 3, next: { day: 14, label: 'Library & Scriptorium: Prepare Overland Travel Charts', inDays: 4 }, list: [
       { day: 14, label: 'Library & Scriptorium: Prepare Overland Travel Charts', inDays: 4 },
       { day: 15, label: 'Dock: Charter Berth (Longship)', inDays: 5 },
-      { day: 17, label: 'Hall of Emissaries: Secure Trade Agreement (Clan Karr)', inDays: 7 }
+      { day: 17, label: 'Dock: Register Port Charter (Goldport)', inDays: 7 }
     ] });
-    t.same(s.nextWord, { day: 12, inDays: 2, lines: ['The sea route to Karr needs a roll.'] });
+    t.same(s.nextWord, { day: 14, inDays: 4, lines: ['Library & Scriptorium: Prepare Overland Travel Charts is complete.'] });
     e.travel.day = 11;
-    t.same(sum(e, busy()).nextWord.day, 12, 'the Bastion\'s day 11 is still to come, but the DM doc looks after the Explorer\'s day');
+    t.same(sum(e, busy()).nextWord.day, 14, 'the Bastion\'s day 11 is still to come, but the DM doc looks after the Explorer\'s day');
     var old = { treasuryGP: 5, partyLevel: 9, turn: 4, builtExtras: [], pendingOrders: [{ completeTurn: 5 }], defenders: {}, warehouse: [] };
     s = sum(e, old);
     t.same([s.orders, s.nextWord, s.level.value], [null, null, 9], 'a Bastion saved in turns has neither (it\'s set aside when the Bastion opens)');
@@ -252,17 +248,16 @@
     t.equal(JSON.stringify(three), before, 'the save is only read');
   });
 
-  test('"The Ironbow sends word…": an upgrade (step 1b) is complete on its day, the Hall\'s too (no roll)', function (t) {
+  test('"The Ironbow sends word…": an upgrade (step 1b) is complete on its day, the Dock\'s too (no roll)', function (t) {
     var b = bastion();
     b.day = 10;
     b.anchored = true;
-    b.builtExtras = [{ facId: 'hall_of_emissaries', status: 'built' }];
     b.pendingOrders = [
-      { id: 'u', facId: 'hall_of_emissaries', fnId: 'upgrade', label: 'Hall of Emissaries: Upgrade to Level 2', costGP: 0, issuedDay: 10, dueDay: 17, meta: { kind: 'upgrade', toLevel: 2 } },
+      { id: 'u', facId: 'dock', fnId: 'upgrade', label: 'Dock: Upgrade to Level 2', costGP: 0, issuedDay: 10, dueDay: 17, meta: { kind: 'upgrade', toLevel: 2 } },
       { id: 'v', facId: 'workshop', fnId: 'upgrade', label: 'Workshop: Upgrade to Level 3', costGP: 0, issuedDay: 10, dueDay: 24, meta: { kind: 'upgrade', toLevel: 3 } }
     ];
     t.same(C.ironbowNews(b, 10, 24).filter(function (w) { return w.day === 17 || w.day === 24; }), [
-      { day: 17, lines: ['Hall of Emissaries: Upgrade to Level 2 is complete.'] },
+      { day: 17, lines: ['Dock: Upgrade to Level 2 is complete.'] },
       { day: 24, lines: ['Workshop: Upgrade to Level 3 is complete.'] }
     ]);
   });
@@ -271,16 +266,13 @@
     var b = busy();
     var before = JSON.stringify(b);
     t.same(C.ironbowNews(b, 10, 17), [
-      { day: 12, lines: ['The sea route to Karr needs a roll.'] },
       { day: 14, lines: ['Library & Scriptorium: Prepare Overland Travel Charts is complete.'] },
       { day: 15, lines: ['Dock: Charter Berth (Longship) is complete.'] },
-      { day: 17, lines: ['Hall of Emissaries: Secure Trade Agreement (Clan Karr) needs your roll.'] }
-    ], 'the low-risk route pays without a roll; no war, recovery or repair lines any more (S06)');
+      { day: 17, lines: ['Dock: Register Port Charter (Goldport) is complete.'] }
+    ], 'no war, recovery, repair or roll lines any more (S06), and the Hall has no actions or sea routes to ask for one (S09)');
     t.same(C.ironbowNews(b, 17, 29), [
-      { day: 22, lines: ['The Arcane Laboratory is built.'] },
-      { day: 23, lines: ['Your delegation from Clan Slade has ended.'] },
-      { day: 26, lines: ['Your Trade Agreement with Clan Karr has ended (its last shipment arrived).'] }
-    ]);
+      { day: 22, lines: ['The Arcane Laboratory is built.'] }
+    ], 'no contract ends and no delegation: the Hall has none now');
     t.same(C.ironbowNews(b, 28, 100), [], 'no Bastion event is due on Day 29, or any day (S05)');
     t.equal(JSON.stringify(C.bastionComing(b)).indexOf('event'), -1, 'the forecast never mentions one');
     t.equal('BASTION_EVENT_EVERY' in C, false);
@@ -297,8 +289,6 @@
 
   test('the word the Explorer sends at Make Camp comes on the days the Bastion itself has news', function (t) {
     var b = busy();
-    b.tradeNetwork.routes = [];
-    b.pendingOrders = b.pendingOrders.filter(function (o) { return o.facId !== 'hall_of_emissaries'; });
     var predicted = C.ironbowNews(b, 10, 30).map(function (w) { return w.day; });
     for (var d = 11; d <= 30; d++) {
       BR.startDay(b, bdata, 0);

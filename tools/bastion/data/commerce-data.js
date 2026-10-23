@@ -8,9 +8,9 @@
    changing. The rules are in tools/bastion/rules.js ("Cargo and Port
    Charters").
 
-   This is separate from the Hall's old trade (Trade Agreements, the Trade
-   Consortium's sea routes and their income), which is unchanged. A cargo
-   voyage never pays route income, and a route never sells cargo. */
+   The Hall of Emissaries' old trade (Trade Agreements, the Trade Consortium's
+   sea routes and their income) ended in the Strip Back Overhaul; this is the
+   only trade now, and the Dock manages all of it. */
 window.TSI_DATA = window.TSI_DATA || {};
 window.TSI_DATA.bastionCommerce = {
   /* Harry's values are provisional until he has tried trade at the table. */

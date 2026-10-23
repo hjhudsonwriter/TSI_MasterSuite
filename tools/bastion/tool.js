@@ -205,7 +205,6 @@
 
       var CONTINUE = [{ label: 'Continue', value: true, primary: true }];
       var CLOSE = [{ label: 'Close', value: true, primary: true }];
-      function hallNote(title, message) { return hallModal({ title: title, body: muted(message), actions: CLOSE }); }
 
       /* The dice box (old rollD20Manual): type the d20 rolled at the table,
          or press Roll 1d20. Resolves to { d20, total }, or null if cancelled. */
@@ -1233,120 +1232,71 @@
       }
 
       /* ================================================================
-         Diplomacy & Trade (with the Hall of Emissaries)
+         The Hall of Emissaries (the Strip Back Overhaul, Harry, 22 October 2026, step S09)
+         One level and no orders. Its panel shows where each Clan stands (Honour/Respect and Political Capital, to read
+         only: they change through Change a score in the DM doc or a confirmed Diplomatic Event), the Diplomatic Events
+         ledger, and what the old agreements and sea routes were, kept as history. Its tile opens this panel.
          ================================================================ */
-      var dipMeta = muted('');
-      dipMeta.setAttribute('data-test', 'diplomacy-meta');
-      var hallLevelBadge = el('div', { class: 'tsi-bas-hall-level', 'data-test': 'hall-level', text: 'L1' });
-      /* The Hall's Upgrade is the same Upgrade order as every facility's (step 1b). */
-      var hallUpgradePill = pill('Upgrade', function () { onUpgrade('hall_of_emissaries'); }, 'hall-upgrade', 'Upgrade Hall');
-      var ledgerPill = pill('Council Ledger', function () { onLedger(); }, 'ledger', 'Hear the next dispute before the Arbitration Authority');
-      var HALL_DAYS_TEXT = 'Each diplomatic action takes its own days, shown beside it.';
-      var hallSub = muted(HALL_DAYS_TEXT);
-      /* The Hall of Emissaries' panel, opened from the Hall's tile in the
-         facility grid (as the Diplomacy & Trade panel was before). */
-      var dipCard = card('diplomacy', 'Hall of Emissaries · Diplomacy & Trade', {
+      var hallLevelBadge = el('div', { class: 'tsi-bas-hall-level', 'data-test': 'hall-level', text: 'One level only' });
+      var HALL_SUB_TEXT = 'Honour/Respect and Political Capital change only through Change a score in the DM doc, or a confirmed Diplomatic Event.';
+      var hallSub = muted(HALL_SUB_TEXT);
+      var dipCard = card('diplomacy', 'Hall of Emissaries', {
         cls: 'tsi-bas-card--diplomacy',
         head: el('div', { class: 'tsi-bas-dip-head' }, [
-          el('div', null, [label('Diplomacy & Trade'), dipMeta]),
+          el('div', null, [label('Where the Clans stand')]),
           el('div', { class: 'tsi-bas-dip-head__right' }, [
             el('div', { class: 'tsi-bas-hall-head' }, [
               el('div', { class: 'tsi-bas-hall-head__title', text: 'Hall of Emissaries' }),
-              hallLevelBadge,
-              hallUpgradePill,
-              pill('Routes', function () { onRoutesMap(); }, 'routes', 'View active sea trade routes'),
-              pill('Resolve', function () { onResolveRoutes(); }, 'resolve', 'Settle the trade routes due to sail (each sails every 7 days)'),
-              ledgerPill
+              hallLevelBadge
             ]),
             hallSub
           ])
         ])
       });
-      var dipBoxes = el('div', { class: 'tsi-bas-dip-boxes', 'data-test': 'diplomacy-records' });
       var hallCard = el('div', { class: 'tsi-bas-hall', 'data-test': 'hall' });
       TSI.append(dipCard.body, [
-        el('div', { class: 'tsi-bas-dip-grid' }, [el('div', { class: 'tsi-bas-dip-left' }, dipBoxes), el('div', { class: 'tsi-bas-dip-right' }, hallCard)]),
+        hallCard,
         el('div', { class: 'tsi-bas-dip-foot' }, [
-          btn('Clear Diplomacy Records', function () { onClearDiplomacy(); }, 'tsi-btn--ghost', 'clear-diplomacy'),
           btn('Demolish…', function () { onDemolish('hall_of_emissaries'); }, 'tsi-btn--ghost tsi-bas-demolish', 'demolish-hall_of_emissaries')
         ])
       ]);
 
-      /* "Clan Karr • 21 days remaining (3 shipments) • +90 gp a shipment" (Harry,
-         8 October 2026); a delegation or summit has just its days. */
-      function recordBox(title, list, contracts) {
-        var every = R.time(data).every;
-        var rows = (list || []).map(function (x) {
-          var days = R.daysLeft(state, x);
-          var left = R.daysText(days) + ' remaining' + (contracts ? ' (' + R.shipmentsText(R.shipmentsLeft(x, every)) + ')' : '');
-          var extra = contracts && x.income ? ' • +' + x.income + ' gp a shipment' : '';
-          return el('div', { class: 'tsi-bas-dip-row' }, [
-            el('div', { class: 'tsi-bas-dip-row__name', text: x.title || 'Record' }),
-            el('div', { class: 'tsi-bas-dip-row__meta', 'data-test': 'dip-left', text: (x.clan || x.pair || '—') + ' • ' + left + extra })
-          ]);
-        });
-        return el('div', { class: 'tsi-bas-dip-box' }, [el('div', { class: 'tsi-bas-dip-box__title', text: title })].concat(rows.length ? rows : [muted('None.')]));
-      }
-
       function renderDiplomacy() {
-        var d = state.diplomacy;
-        var income = R.passiveIncome(state);
-        dipMeta.textContent = income > 0 ? 'Active passive income: +' + income + ' gp a week (each contract sends a shipment every ' + R.time(data).every + ' days).' : 'No active contracts. Use the Hall of Emissaries for summits, delegations, arbitration and Port Charters.';
-        TSI.clear(dipBoxes);
-        TSI.append(dipBoxes, [
-          (d.agreements || []).length ? recordBox('Trade Agreements', d.agreements, true) : null,
-          recordBox('Delegations', d.delegations, false),
-          recordBox('Summits', d.summits, false),
-          recordBox('Arbitration', d.arbitrations, true),
-          recordBox('Consortiums', d.consortiums, true)
-        ]);
-        var count = state.arbitration.queue.length;
-        ledgerPill.textContent = count > 0 ? 'Council Ledger (' + count + ')' : 'Council Ledger';
-        ledgerPill.classList.toggle('tsi-bas-pill--alert', count > 0);
-
-        var hall = R.facility(data, 'hall_of_emissaries');
         var built = R.builtFacilityIds(state, data).indexOf('hall_of_emissaries') !== -1;
-        var lvl = R.getFacilityLevel(state, 'hall_of_emissaries');
-        hallLevelBadge.textContent = 'L' + lvl;
         var hallRepair = built ? R.underRepair(state, 'hall_of_emissaries') : 0;
-        var hallUp = R.upgradeCheck(state, data, 'hall_of_emissaries');
-        hallUpgradePill.disabled = !hallUp.ok;
-        hallUpgradePill.title = hallRepair ? repairText(hall, hallRepair) : hallUp.ok ? 'Upgrade to Level ' + hallUp.toLevel + ' (' + R.daysText(hallUp.days) + ')' : hallUp.message;
-        hallSub.textContent = !built ? 'Not built yet. Build it in Construction to unlock diplomacy actions.'
-          : hallRepair ? 'Under Repair until Day ' + hallRepair + ': no diplomatic actions until Day ' + (hallRepair + 1) + '.'
-          : HALL_DAYS_TEXT;
-        hallSub.classList.toggle('tsi-bas-repair-text', hallRepair > 0);
+        hallSub.textContent = !built ? 'Not built yet. Build it in Construction to see where the Clans stand.' : HALL_SUB_TEXT;
         TSI.clear(hallCard);
         var img = el('div', { class: 'tsi-bas-hall__img' }, el('img', { src: asset('facilities/' + B.facilityImages.hall_of_emissaries), alt: 'Hall of Emissaries' }));
         if (!built) {
           TSI.append(hallCard, [
-            el('div', { class: 'tsi-bas-hall__top' }, [el('div', { class: 'tsi-bas-hall__name', text: 'Hall of Emissaries' }), muted('Not built yet. Build it in Construction to unlock diplomacy actions.')]),
+            el('div', { class: 'tsi-bas-hall__top' }, [el('div', { class: 'tsi-bas-hall__name', text: 'Hall of Emissaries' }), muted('Not built yet. Build it in Construction to see where the Clans stand.')]),
             img
           ]);
           return;
         }
-        var fns = (hall.functions || []).filter(function (fn) { return fn.id !== 'upgrade_hall' && !R.fnAvailable(state, hall, fn).hidden; }).map(function (fn) {
-          var req = R.clampInt(fn.requiredFacilityLevel === undefined || fn.requiredFacilityLevel === null ? 1 : fn.requiredFacilityLevel, 1, R.MAX_LEVEL);
-          var row = fnRow(hall, fn, lvl < req);
-          var kind = fn.portCharter ? 'port_charter' : String((fn.special && fn.special.kind) || '');
-          bindTip(row, function () { return { title: fn.label || 'Hall Action', parts: tipList(B.hallTips[kind] || B.hallTips.other) }; });
-          return row;
-        });
         TSI.append(hallCard, [
           img,
           hallRepair ? el('div', { class: 'tsi-bas-hall__name' }, ['Hall of Emissaries ', repairLabel(hallRepair)]) : null,
-          el('div', { class: 'tsi-bas-hall__fns' }, fns),
-          clanRelationsBox(),
-          recordsBox(),
-          tradeNetworkSection()
+          el('div', { class: 'tsi-bas-dip-grid' }, [
+            el('div', { class: 'tsi-bas-dip-left' }, clanRelationsBox()),
+            el('div', { class: 'tsi-bas-dip-right' }, [recordsBox(), earlierBox()])
+          ])
+        ]);
+      }
+      /* What the Hall's old Trade Agreements, Writs, Consortiums, delegations, summits and sea routes were: read only (step S09). */
+      function earlierBox() {
+        var list = R.cleanLegacyDiplomacy(state.legacyDiplomacy).records;
+        if (!list.length) return null;
+        return el('details', { class: 'tsi-bas-earlier', 'data-test': 'earlier-agreements' }, [
+          el('summary', { text: 'Earlier agreements and routes (' + list.length + ', ended and kept as history)' }),
+          el('ul', { class: 'tsi-bas-res-list' }, list.map(function (r) { return el('li', { 'data-test': 'earlier-row', text: R.legacyDiplomacyLine(r) }); }))
         ]);
       }
 
-
-      /* ---------- Clan Relations and Diplomatic Records (pull request 9) ----------
-         Harry's decisions, 18 October 2026. Inside the Hall, beside its
-         orders. The DM writes a record and its consequences; nothing changes
-         in the game until the DM confirms it (rules: diplomacy-rules.js).
+      /* ---------- Clan Relations and Diplomatic Events (pull request 9; "Diplomatic Events" is Harry's name, 22 October 2026, for the
+         Diplomatic Records ledger) ----------
+         Harry's decisions, 18 October 2026. The Hall's panel is these two boxes. The DM writes an event and its
+         consequences; nothing changes in the game until the DM confirms it (rules: diplomacy-rules.js).
          Honour & Respect and Political Capital are the Bastion's own scores;
          everything else is DM-tracked, and says so. */
       function stateWord(c) {
@@ -1372,7 +1322,7 @@
         var loose = R.dipUnattached(state);
         return el('div', { class: 'tsi-bas-rel', 'data-test': 'clan-relations' }, [
           el('div', { class: 'tsi-bas-hall__name', text: 'Clan Relations' }),
-          muted('Honour & Respect and Political Capital are the Bastion\'s own scores. Restrictions, privileges and what is owed are DM-tracked: the Bastion shows them and counts their days, but does not enforce them.')
+          muted('Honour & Respect and Political Capital are the Bastion\'s own scores, shown here to read: they change only through Change a score in the DM doc, or a confirmed Diplomatic Event. Restrictions, privileges and what is owed are DM-tracked: the Bastion shows them and counts their days, but does not enforce them.')
         ].concat(rows, loose.length ? [el('div', { class: 'tsi-bas-rel__row', 'data-test': 'relations-general' }, [
           el('div', { class: 'tsi-bas-rel__name', text: 'No Clan named' }),
           el('div', { class: 'tsi-bas-rel__chips' }, relationChips(loose, 'Open: '))
@@ -1396,11 +1346,11 @@
         var list = R.diplomaticRecords(state).slice().sort(function (a, b) { return b.day - a.day || (a.id < b.id ? 1 : -1); });
         return el('div', { class: 'tsi-bas-recs', 'data-test': 'dip-records-ledger' }, [
           el('div', { class: 'tsi-bas-recs__head' }, [
-            el('div', { class: 'tsi-bas-hall__name', text: 'Diplomatic Records' }),
+            el('div', { class: 'tsi-bas-hall__name', text: 'Diplomatic Events' }),
             btn('Record an event…', function () { onNewRecord(); }, '', 'record-new')
           ]),
           muted('A history of the campaign\'s diplomatic decisions. Nothing here changes the game until you confirm it.')
-        ].concat(list.length ? [el('div', { class: 'tsi-bas-recs__list', 'data-test': 'records-list' }, list.map(recordRow))] : [muted('No records yet.')]));
+        ].concat(list.length ? [el('div', { class: 'tsi-bas-recs__list', 'data-test': 'records-list' }, list.map(recordRow))] : [muted('No events recorded yet.')]));
       }
 
       /* The editor. A draft is kept as typed if a check fails, and the box
@@ -1472,7 +1422,7 @@
           muted('Nothing changes in the game until you press Confirm outcome. Save draft keeps it for later.')
         ];
         var action = await hallModal({
-          title: existing ? 'Edit a diplomatic record' : 'Record a diplomatic event',
+          title: existing ? 'Edit a diplomatic event' : 'Record a diplomatic event',
           className: 'tsi-bas-modal tsi-bas-modal--record',
           body: body,
           escValue: null,
@@ -1492,7 +1442,7 @@
           if (!life.alive || !res.action) return;
           form = res.form;
           var chk = R.checkDipFields(state, data, form);
-          if (chk.problem) { await say(chk.problem, 'Diplomatic Records'); continue; }
+          if (chk.problem) { await say(chk.problem, 'Diplomatic Events'); continue; }
           if (res.action === 'confirm') {
             var lines = chk.fields.consequences.map(function (c) { return R.dipConsequenceLine(state, data, c); });
             var ok = await ask('Confirm "' + chk.fields.title + '"? ' + (lines.length ? 'This will: ' + lines.join(' • ') : 'It has no consequences, so it only goes into the history.') + ' It cannot be edited afterwards.', 'Confirm', 'Confirm the outcome');
@@ -1500,10 +1450,10 @@
             if (!ok) continue;
           }
           var saved = existing ? R.updateDipRecord(state, data, existing.id, form) : R.createDipRecord(state, data, form);
-          if (!saved.ok) { await say(saved.message, 'Diplomatic Records'); continue; }
+          if (!saved.ok) { await say(saved.message, 'Diplomatic Events'); continue; }
           if (res.action === 'confirm') {
             var c = R.confirmDipRecord(state, data, saved.record.id);
-            if (!c.ok) { await say(c.message, 'Diplomatic Records'); done(); return; }
+            if (!c.ok) { await say(c.message, 'Diplomatic Events'); done(); return; }
           }
           done();
           return;
@@ -1557,12 +1507,12 @@
           if (!life.alive) return;
           if (act === 'note' && noteBox.value.trim()) {
             var n = R.addDipNote(state, id, noteBox.value);
-            if (!n.ok) await say(n.message, 'Diplomatic Records');
+            if (!n.ok) await say(n.message, 'Diplomatic Events');
             changed = true;
           } else if (act === 'close' && pending && pending.end) {
             var c = r.consequences.filter(function (x) { return x.id === pending.end; })[0];
             var yes = c ? await ask('End this early? It stays in the history as ended on ' + R.dayLabel(state.day) + '.', 'End early', 'End a consequence') : false;
-            if (yes) { var e = R.endDipConsequence(state, data, id, pending.end); if (!e.ok) await say(e.message, 'Diplomatic Records'); changed = true; }
+            if (yes) { var e = R.endDipConsequence(state, data, id, pending.end); if (!e.ok) await say(e.message, 'Diplomatic Events'); changed = true; }
             else if (!c) return;
             else { continue; }
           } else {
@@ -1570,143 +1520,6 @@
           }
           if (changed) done();
         }
-      }
-
-      function tradeNetworkSection() {
-        var tn = state.tradeNetwork;
-        var routes = tn.routes.filter(function (r) { return r.status !== 'expired'; });
-        var disrupted = routes.filter(function (r) { return r.status === 'disrupted'; });
-        var income = routes.filter(function (r) { return r.status !== 'disrupted'; }).reduce(function (a, r) { return a + R.routePayout(state, r, 'success'); }, 0);
-        function stat(name, value, test) {
-          return el('div', { class: 'tsi-bas-tn-stat' }, [el('div', { class: 'tsi-bas-tn-stat__label', text: name }), el('div', { class: 'tsi-bas-tn-stat__val', 'data-test': test, text: value })]);
-        }
-        function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
-        var routeRows = routes.length ? routes.map(function (r) {
-          var status = String(r.status || 'active');
-          var est = status === 'disrupted' ? 0 : R.routePayout(state, r, 'success');
-          return el('div', { class: 'tsi-bas-tn-route' }, [
-            el('div', { class: 'tsi-bas-tn-route__name' }, [r.clan + ' ', el('span', { class: 'tsi-bas-muted', text: '(' + (r.commodity || 'goods') + ')' })]),
-            el('div', { class: 'tsi-bas-tn-route__meta' }, ['Risk: ', el('b', { text: cap(String(r.risk || 'low')) }), ' • Status: ', el('b', { text: cap(status) }), ' • Est. yield: ', el('b', { text: est + ' gp' }),
-              status === 'expired' ? null : [' • Next sails: ', el('b', { 'data-test': 'route-next', text: R.dayLabel(r.nextDay) })]])
-          ]);
-        }) : [muted('No routes recorded yet.')];
-        return el('div', { class: 'tsi-bas-tn', 'data-test': 'trade-network' }, [
-          el('div', { class: 'tsi-bas-hall__name', text: 'Ironbow Trade Network' }),
-          el('div', { class: 'tsi-bas-muted' }, [
-            'Consortium status: ', el('b', { text: tn.active ? 'Active' : 'Inactive' }),
-            ' • Disrupted: ', el('b', { text: String(disrupted.length) }),
-            ' • Disputes awaiting judgement: ', el('b', { text: String(state.arbitration.queue.length) })
-          ]),
-          el('div', { class: 'tsi-bas-tn-grid' }, [
-            stat('Market Stability', (tn.stability === undefined ? 75 : tn.stability) + '%', 'stability'),
-            stat('Expected Income / Week', income + ' gp', 'expected-income'),
-            stat('Yield Upgrades', '+' + (tn.yieldBonusPct || 0) + '%', 'yield'),
-            stat('High-Risk Routing', tn.highRiskRouting ? 'Enabled' : 'Disabled', 'high-risk')
-          ]),
-          el('div', { class: 'tsi-bas-tn-btns' }, [
-            pill('Invest: Stability', function () { onNetworkUpgrade('stability'); }, 'invest-stability'),
-            pill('Invest: Yield', function () { onNetworkUpgrade('yield'); }, 'invest-yield'),
-            pill((tn.highRiskRouting ? 'Disable' : 'Enable') + ' High-Risk Routing', function () { onNetworkUpgrade('toggle_high_risk'); }, 'toggle-high-risk')
-          ]),
-          el('div', { class: 'tsi-bas-tn-routes', 'data-test': 'routes-list' }, routeRows),
-          portChartersBox()
-        ]);
-      }
-      /* Port Charters (pull request 5): each Charter's state and its ships at
-         sea. Cargo is paid when it sells, so it isn't in Expected Income / Week. */
-      function portChartersBox() {
-        var list = R.portCharters(state);
-        var rows = list.map(function (c) {
-          var ships = R.voyages(state).filter(function (v) { return v.port === c.port; });
-          return el('div', { class: 'tsi-bas-tn-route', 'data-test': 'charter-' + c.port }, [
-            el('div', { class: 'tsi-bas-tn-route__name', text: R.charterLabel(data, c) }),
-            el('div', { class: 'tsi-bas-tn-route__meta', 'data-test': 'charter-state', text: R.charterState(state, c) + (TSI.bridge && !TSI.bridge.isPort(c.port) ? ' (not on the port list now)' : '') + '.' }),
-            ships.length ? el('div', { class: 'tsi-bas-tn-route__meta', text: ships.map(R.voyageState).join(' • ') + '.' }) : null,
-            charterTermsBlock(c)
-          ]);
-        });
-        return el('div', { class: 'tsi-bas-tn-charters', 'data-test': 'hall-charters' }, [
-          el('div', { class: 'tsi-bas-hall__name', text: 'Port Charters' }),
-          muted('A Port Charter lets the Dock ship cargo to that port. The DM grants it in the Explorer; Register Port Charter (above) registers it. Cargo is paid when it sells, so it isn\'t in Expected Income / Week.')
-        ].concat(rows.length ? rows : [muted('None held yet.')]));
-      }
-
-      /* A Charter's negotiated terms (20 October 2026): what they are, what
-         they do to a sale (an estimate), how to change them, and the history. */
-      function charterTermsBlock(c) {
-        var terms = R.effectiveTerms(data, c, c.port, c.clan);
-        var std = R.isStandardTerms(data, c);
-        var pv = R.termsPreview(state, data, c);
-        var log2 = (c.termsLog || []).slice().reverse();
-        var blocked = turnRunning;
-        return el('div', { class: 'tsi-bas-terms', 'data-test': 'charter-terms-' + c.port }, [
-          el('div', { class: 'tsi-bas-tn-route__meta', 'data-test': 'charter-terms', text: 'Terms: ' + R.termsText(terms) + (std ? ' (standard)' : ' (negotiated)') + '.' }),
-          pv ? el('div', { class: 'tsi-bas-muted', 'data-test': 'charter-terms-estimate', text: 'Estimate at current market conditions, ' + pv.lots + ' lots of ' + pv.name + ' to Clan ' + R.clanName(data, c.clan) + ': ' + pv.standard.net + ' gp on standard terms, ' + pv.current.net + ' gp on these terms (after ' + pv.current.fee + ' gp shipping and ' + pv.current.tariff + ' gp tariff).' }) : null,
-          el('div', { class: 'tsi-bas-terms__buttons' }, [
-            btn('Amend terms…', function () { onTerms(c.id, 'amend'); }, '', 'amend-terms', { disabled: blocked ? true : null }),
-            !std ? btn('Reset to standard terms…', function () { onTerms(c.id, 'reset'); }, 'tsi-btn--ghost', 'reset-terms', { disabled: blocked ? true : null }) : null
-          ]),
-          log2.length ? el('details', { class: 'tsi-bas-terms__history', 'data-test': 'terms-history' }, [
-            el('summary', { text: 'Terms history (' + log2.length + ')' }),
-            el('ul', { class: 'tsi-bas-res-list' }, log2.map(function (e) {
-              return el('li', { text: R.dayLabel(e.day) + ' · ' + (e.kind === 'reset' ? 'Reset to standard' : 'Amended') + ': ' + R.termsText(e.before) + ' → ' + R.termsText(e.after) + '. ' + e.why });
-            }))
-          ]) : null
-        ]);
-      }
-      var onTerms = TSI.oneAtATime(async function (id, mode) {
-        if (turnRunning) return;
-        var c = R.charterById(state, id);
-        if (!c) return;
-        var cur = R.effectiveTerms(data, c, c.port, c.clan);
-        var std = R.standardTerms(data, c.port, c.clan);
-        var L = R.TERM_LIMITS;
-        var reset = mode === 'reset';
-        var price = numberInput('terms-price', { step: '0.01', min: String(L.priceMult.min), max: String(L.priceMult.max), value: String(reset ? std.priceMult : cur.priceMult), 'aria-label': 'Price multiplier', disabled: reset ? true : null });
-        var fee = numberInput('terms-fee', { min: String(L.feePerLot.min), max: String(L.feePerLot.max), value: String(reset ? std.feePerLot : cur.feePerLot), 'aria-label': 'Shipping fee per lot', disabled: reset ? true : null });
-        var tariff = numberInput('terms-tariff', { min: String(L.tariffPct.min), max: String(L.tariffPct.max), value: String(reset ? std.tariffPct : cur.tariffPct), 'aria-label': 'Tariff', disabled: reset ? true : null });
-        var why = el('textarea', { class: 'tsi-input', rows: '3', maxlength: '300', 'data-test': 'terms-why', 'aria-label': 'Why the terms change', placeholder: 'What happened in the story? (required)' });
-        var problem = el('div', { class: 'tsi-bas-repair-text', 'data-test': 'terms-problem', hidden: true });
-        var effect = el('div', { class: 'tsi-bas-muted', 'data-test': 'terms-effect' });
-        var mainBtn = null;
-        function check() {
-          var r = reset ? { ok: true, terms: std } : R.checkTermsInput({ priceMult: price.value, feePerLot: fee.value, tariffPct: tariff.value });
-          var text = !r.ok ? r.message : (R.isStandardTerms(data, c) && reset) ? 'This Charter is already on standard terms.'
-            : (!reset && r.terms.priceMult === cur.priceMult && r.terms.feePerLot === cur.feePerLot && r.terms.tariffPct === cur.tariffPct) ? 'Those are the terms already: nothing to change.'
-            : String(why.value).replace(/\s+/g, ' ').trim().length < 3 ? 'Say why (what happened in the story).' : '';
-          problem.textContent = text;
-          problem.hidden = !text;
-          if (r.ok) {
-            var pv = R.termsPreview(state, data, Object.assign({}, c, { terms: reset ? {} : r.terms }));
-            effect.textContent = pv ? 'Estimate at current market conditions: ' + pv.lots + ' lots of ' + pv.name + ' would sell for ' + pv.current.net + ' gp on these terms (' + pv.standard.net + ' gp on standard terms).' : '';
-          } else effect.textContent = '';
-          if (mainBtn) { mainBtn.disabled = !!text; mainBtn.title = text || ''; }
-        }
-        [price, fee, tariff].forEach(function (i) { i.addEventListener('input', check); });
-        why.addEventListener('input', check);
-        var ok = await plainModal({
-          title: (reset ? 'Reset to standard terms: ' : 'Amend terms: ') + R.portName(c.port),
-          body: [
-            muted((reset ? 'Remove the negotiated terms and go back to standard (×1.00 price, 0 gp a lot, 0% tariff). ' : 'Set what was agreed. Limits: price ×0.50 to ×2.00, shipping 0 to 50 gp a lot, tariff 0 to 50%. ') + 'Ships already at sea keep the terms they sailed with. This changes no Honour, Respect or Political Capital.'),
-            field('Price multiplier (×)', price), field('Shipping fee (gp a lot)', fee), field('Tariff (%)', tariff),
-            field('Reason', why), effect, problem
-          ],
-          escValue: false,
-          actions: [{ label: 'Cancel', value: false }, { label: reset ? 'Reset terms' : 'Save terms', value: true, primary: true }],
-          onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'terms-dialog'); mainBtn = parts.dialog.querySelector('.tsi-modal__foot .tsi-btn--primary'); check(); }
-        });
-        if (!ok || !life.alive || turnRunning) return;
-        var res = reset ? R.resetCharterTerms(state, data, id, why.value) : R.amendCharterTerms(state, data, id, { priceMult: price.value, feePerLot: fee.value, tariffPct: tariff.value }, why.value);
-        if (!res.ok) { await say(res.message); return; }
-        log(res.log[0], res.log[1]);
-        done();
-      });
-
-      async function onClearDiplomacy() {
-        if (!(await ask('Clear Diplomacy & Trade records? (Does not undo gold already gained.)', 'Clear'))) return;
-        state.diplomacy = R.defaultDiplomacy();
-        log('Diplomacy', 'Cleared diplomacy records.');
-        done();
       }
 
       /* ================================================================
@@ -2181,9 +1994,8 @@
       function fnRow(fac, fn, locked) {
         if (fn.acclimatise) return acclimatiseRow(fac, fn, locked);
         var key = fac.id + '__' + fn.id;
-        var cd = R.isEmissary(fac, fn) ? R.cooldownLeft(state, String(fn.special.kind || '')) : 0;
         var isCraft = fac.id === 'workshop' && fn.id === 'craft';
-        /* The Hall's Register Port Charter: a list of the Charters to register (pull request 5). */
+        /* The Dock's Register Port Charter: a list of the Charters to register (pull request 5; the Hall's until step S08). */
         var isCharter = !!fn.portCharter;
         /* A House order (pull request 7): the Beast Pen's lists the beasts waiting for a home. */
         var isHousing = !!(fn.housesSpecies || fn.housesCreature);
@@ -2227,10 +2039,10 @@
           /* A Shrine order's Favour (pull request 8b). */
           var noFavour = !why && !repair && avail.ok && R.favourBlocker ? R.favourBlocker(state, fac, fn) : '';
           if (noFavour) why = noFavour;
-          issue.disabled = !!(locked || cd > 0 || repair > 0 || why);
+          issue.disabled = !!(locked || repair > 0 || why);
           issue.title = repair ? repairText(fac, repair) : why || null;
           issue.textContent = repair ? 'Under Repair' : !avail.ok ? avail.message : why && fn.production ? 'Can\'t order yet' : why && isCharter ? (options.length ? 'One at a time' : 'No Port Charter to register')
-            : why && isHousing ? housingShort(fac, fn, chosen) : noFavour ? 'Not enough Favour' : cd > 0 ? 'Cooldown: ' + R.daysText(cd) : 'Issue Order';
+            : why && isHousing ? housingShort(fac, fn, chosen) : noFavour ? 'Not enough Favour' : 'Issue Order';
           if (whyLine) {
             var wtext = !avail.ok && avail.why ? avail.why : why && !repair && avail.ok ? why : '';
             whyLine.hidden = !wtext;
@@ -2490,6 +2302,8 @@
         }
         var fac = R.facility(data, id);
         if (!fac) return null;
+        /* The Dock opens on its Cargo tab each time (the tab you pick stays while the panel is open). */
+        if (id === 'dock' && !(shown && shown.id === 'fac-dock')) dockTab = 'cargo';
         return openPanel('fac-' + id, { title: fac.name, node: facPanelBody, render: function () { renderFacPanel(id); }, cls: 'tsi-bas-panel--wide', back: 'tile-' + id });
       }
       /* Redraw a panel without throwing the DM back to its top. Every press in the Beast Pen's panel (Take out, Return,
@@ -2567,6 +2381,8 @@
         /* A facility with a picture of its own for the top of its panel (the Beast Pen's, Harry, 22 October 2026): it spans
            the panel's full width, and the details and orders follow beneath it. */
         var banner = B.panelImages && B.panelImages[id] ? el('img', { class: 'tsi-bas-facpanel__banner', 'data-test': 'fac-banner', src: asset('facilities/' + B.panelImages[id]), alt: fac.name + ': a painting of the ' + fac.name, draggable: 'false' }) : null;
+        /* The Dock's orders sit in its Orders tab (the Strip Back Overhaul, step S08); every other facility lists them under its picture. */
+        var fnsNode = el('div', { class: 'tsi-bas-fac__fns tsi-bas-facpanel__fns' }, fns.length ? fns : [muted('No functions listed.')]);
         TSI.append(facPanelBody, [
           banner,
           el('div', { class: 'tsi-bas-facpanel__hero' + (banner || isTemple ? ' tsi-bas-facpanel__hero--banner' : '') + (repair ? ' tsi-bas-facpanel__hero--repair' : '') }, [
@@ -2578,9 +2394,9 @@
               el('div', { class: 'tsi-bas-facpanel__orders' }, [label('Orders pending here')].concat(mine.length ? mine : [muted('None.')]))
             ])
           ]),
-          isTemple ? templeSection() : el('div', { class: 'tsi-bas-fac__fns tsi-bas-facpanel__fns' }, fns.length ? fns : [muted('No functions listed.')]),
+          id === 'dock' ? null : isTemple ? templeSection() : fnsNode,
           id === 'workshop' ? el('div', { class: 'tsi-bas-facpanel__artisan' }, [label('Artisan Tools'), artCard.root]) : null,
-          id === 'dock' ? cargoSection() : null,
+          id === 'dock' ? dockTabs(fnsNode) : null,
           id === R.COURIER_FAC ? courierSection() : null,
           penSection(id),
           /* A facility in a construction slot can be demolished (Harry, 13
@@ -2631,7 +2447,7 @@
         var shipBtn = btn('Ship cargo…', function () { onShipCargo(); }, 'tsi-btn--primary', 'ship-cargo', { disabled: why ? true : null, title: why || null });
         var charters = R.portCharters(state).map(function (c) {
           var ter = R.effectiveTerms(data, c, c.port, c.clan);
-          return el('li', { 'data-test': 'dock-charter-' + c.port }, [el('b', { text: R.charterLabel(data, c) }), ': ' + R.charterState(state, c) + '. Terms: ' + R.termsText(ter) + (R.isStandardTerms(data, c) ? ' (standard).' : ' (negotiated, set in the Hall).')]);
+          return el('li', { 'data-test': 'dock-charter-' + c.port }, [el('b', { text: R.charterLabel(data, c) }), ': ' + R.charterState(state, c) + '. Terms: ' + R.termsText(ter) + (R.isStandardTerms(data, c) ? ' (standard).' : ' (negotiated; change them under Port Charters).')]);
         });
         var prots = R.protectionStatus(state, data).map(function (p) {
           return el('li', { 'data-test': 'dock-protection-' + p.id, text: p.text });
@@ -2657,11 +2473,11 @@
         var canSchedule = spec.schedule && R.registeredCharters(state).length > 0 && !turnRunning;
         /* Ship cargo… first, so it's in view on the laptop however long the lists get (a review fix). */
         return el('div', { class: 'tsi-bas-facpanel__cargo', 'data-test': 'dock-cargo' }, [
-          label('Cargo and Port Charters'),
+          label('Cargo'),
           muted(spec.lots ? 'Level ' + spec.level + ': each ship carries up to ' + plural(spec.lots, 'lot') + ', ' + plural(spec.ships, 'ship') + ' at sea at once' + (spec.schedule ? ', and a standing shipment can be set to sail every ' + plural(every, 'day') + ' (each sailing waits until a ship is home)' : '') + '. Cargo is paid when it sells at the port; if there\'s trouble at sea, nothing sells and the cargo comes home.'
             : 'The Dock sends cargo from Level ' + (needShip || '?') + ' (it\'s Level ' + spec.level + ').'),
           el('div', { class: 'tsi-bas-cargo__go' }, [shipBtn, why ? el('span', { class: 'tsi-bas-muted', 'data-test': 'ship-why', text: why }) : null]),
-          el('div', { class: 'tsi-bas-cargo__group' }, [el('b', { text: 'Port Charters' }), charters.length ? el('ul', { class: 'tsi-bas-res-list' }, charters) : muted('None held yet: the DM grants one in the Explorer.')]),
+          el('div', { class: 'tsi-bas-cargo__group' }, [el('b', { text: 'Port Charters' }), charters.length ? el('ul', { class: 'tsi-bas-res-list' }, charters) : muted('None held yet: the DM grants one in the Explorer, then Register Port Charter (under Orders) registers it.')]),
           prots.length ? el('div', { class: 'tsi-bas-cargo__group' }, [el('b', { text: 'Voyage protection' }), el('ul', { class: 'tsi-bas-res-list', 'data-test': 'dock-protections' }, prots), muted('Applied by themselves when a ship sails; together they never take the chance below 0.')]) : null,
           el('div', { class: 'tsi-bas-cargo__group' }, [el('b', { text: 'Ships at sea' }), ships.length ? el('ul', { class: 'tsi-bas-res-list', 'data-test': 'voyages' }, ships) : muted('None.')]),
           spec.schedule || standing.length ? el('div', { class: 'tsi-bas-cargo__group' }, [
@@ -2833,6 +2649,166 @@
         log(res.log[0], res.log[1]);
         done();
       });
+
+      /* ---------- The Dock's tabs (the Strip Back Overhaul, step S08) ----------
+         The Dock holds all of the trade now: its orders (Charter Berth and Register
+         Port Charter, once the Hall's), the Cargo, every Port Charter with its terms,
+         and the Routes map. Four tabs keep the panel short enough for the laptop;
+         "Ship cargo…" stays the one main button, at the top of the Cargo tab (the one
+         it opens on). Only the tab being looked at is drawn. */
+      var DOCK_TABS = [['cargo', 'Cargo'], ['orders', 'Orders'], ['charters', 'Port Charters'], ['routes', 'Routes']];
+      var dockTab = 'cargo';
+      function pickDockTab(id, focus) {
+        if (DOCK_TABS.every(function (t) { return t[0] !== id; })) return;
+        dockTab = id;
+        renderPanel();
+        if (focus) {
+          var again = document.querySelector('[data-test="dock-tab-' + id + '"]');
+          if (again) again.focus({ preventScroll: true });
+        }
+      }
+      function dockTabs(ordersNode) {
+        var tabs = DOCK_TABS.map(function (t, i) {
+          var on = dockTab === t[0];
+          return el('button', {
+            type: 'button', class: 'tsi-bas-tab' + (on ? ' tsi-bas-tab--on' : ''), role: 'tab', id: 'tsi-bas-dock-tab-' + t[0],
+            'aria-selected': on ? 'true' : 'false', 'aria-controls': 'tsi-bas-dock-pane', tabindex: on ? '0' : '-1', 'data-test': 'dock-tab-' + t[0],
+            onclick: function () { pickDockTab(t[0], false); },
+            onkeydown: function (e) {
+              var step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+              if (e.key === 'Home') step = -DOCK_TABS.length;
+              if (e.key === 'End') step = DOCK_TABS.length;
+              if (!step) return;
+              e.preventDefault();
+              pickDockTab(DOCK_TABS[Math.max(0, Math.min(DOCK_TABS.length - 1, i + step))][0], true);
+            }
+          }, t[1]);
+        });
+        var pane = dockTab === 'orders' ? ordersNode : dockTab === 'charters' ? chartersPane() : dockTab === 'routes' ? routesPane() : cargoSection();
+        return el('div', { class: 'tsi-bas-docktabs', 'data-test': 'dock-tabs', 'data-tab': dockTab }, [
+          el('div', { class: 'tsi-bas-tabs', role: 'tablist', 'aria-label': 'The Dock' }, tabs),
+          el('div', { class: 'tsi-bas-tabpane', id: 'tsi-bas-dock-pane', role: 'tabpanel', 'aria-labelledby': 'tsi-bas-dock-tab-' + dockTab, 'data-test': 'dock-pane-' + dockTab }, pane)
+        ]);
+      }
+
+      /* Port Charters (pull request 5; the Hall's box until step S08): each Charter's state, its ships at
+         sea and its terms. Cargo is paid when it sells. */
+      function chartersPane() {
+        var list = R.portCharters(state);
+        var rows = list.map(function (c) {
+          var ships = R.voyages(state).filter(function (v) { return v.port === c.port; });
+          return el('div', { class: 'tsi-bas-tn-route', 'data-test': 'charter-' + c.port }, [
+            el('div', { class: 'tsi-bas-tn-route__name', text: R.charterLabel(data, c) }),
+            el('div', { class: 'tsi-bas-tn-route__meta', 'data-test': 'charter-state', text: R.charterState(state, c) + (TSI.bridge && !TSI.bridge.isPort(c.port) ? ' (not on the port list now)' : '') + '.' }),
+            ships.length ? el('div', { class: 'tsi-bas-tn-route__meta', text: ships.map(R.voyageState).join(' • ') + '.' }) : null,
+            charterTermsBlock(c)
+          ]);
+        });
+        return el('div', { class: 'tsi-bas-tn-charters', 'data-test': 'dock-charters' }, [
+          muted('A Port Charter lets the Dock ship cargo to that port. The DM grants it in the Explorer; Register Port Charter (under Orders) registers it. Cargo is paid when it sells.')
+        ].concat(rows.length ? rows : [muted('None held yet: the DM grants one in the Explorer.')]));
+      }
+
+      /* A Charter's negotiated terms (20 October 2026): what they are, what
+         they do to a sale (an estimate), how to change them, and the history. */
+      function charterTermsBlock(c) {
+        var terms = R.effectiveTerms(data, c, c.port, c.clan);
+        var std = R.isStandardTerms(data, c);
+        var pv = R.termsPreview(state, data, c);
+        var log2 = (c.termsLog || []).slice().reverse();
+        var blocked = turnRunning;
+        return el('div', { class: 'tsi-bas-terms', 'data-test': 'charter-terms-' + c.port }, [
+          el('div', { class: 'tsi-bas-tn-route__meta', 'data-test': 'charter-terms', text: 'Terms: ' + R.termsText(terms) + (std ? ' (standard)' : ' (negotiated)') + '.' }),
+          pv ? el('div', { class: 'tsi-bas-muted', 'data-test': 'charter-terms-estimate', text: 'Estimate at current market conditions, ' + pv.lots + ' lots of ' + pv.name + ' to Clan ' + R.clanName(data, c.clan) + ': ' + pv.standard.net + ' gp on standard terms, ' + pv.current.net + ' gp on these terms (after ' + pv.current.fee + ' gp shipping and ' + pv.current.tariff + ' gp tariff).' }) : null,
+          el('div', { class: 'tsi-bas-terms__buttons' }, [
+            btn('Amend terms…', function () { onTerms(c.id, 'amend'); }, '', 'amend-terms', { disabled: blocked ? true : null }),
+            !std ? btn('Reset to standard terms…', function () { onTerms(c.id, 'reset'); }, 'tsi-btn--ghost', 'reset-terms', { disabled: blocked ? true : null }) : null
+          ]),
+          log2.length ? el('details', { class: 'tsi-bas-terms__history', 'data-test': 'terms-history' }, [
+            el('summary', { text: 'Terms history (' + log2.length + ')' }),
+            el('ul', { class: 'tsi-bas-res-list' }, log2.map(function (e) {
+              return el('li', { text: R.dayLabel(e.day) + ' · ' + (e.kind === 'reset' ? 'Reset to standard' : 'Amended') + ': ' + R.termsText(e.before) + ' → ' + R.termsText(e.after) + '. ' + e.why });
+            }))
+          ]) : null
+        ]);
+      }
+      var onTerms = TSI.oneAtATime(async function (id, mode) {
+        if (turnRunning) return;
+        var c = R.charterById(state, id);
+        if (!c) return;
+        var cur = R.effectiveTerms(data, c, c.port, c.clan);
+        var std = R.standardTerms(data, c.port, c.clan);
+        var L = R.TERM_LIMITS;
+        var reset = mode === 'reset';
+        var price = numberInput('terms-price', { step: '0.01', min: String(L.priceMult.min), max: String(L.priceMult.max), value: String(reset ? std.priceMult : cur.priceMult), 'aria-label': 'Price multiplier', disabled: reset ? true : null });
+        var fee = numberInput('terms-fee', { min: String(L.feePerLot.min), max: String(L.feePerLot.max), value: String(reset ? std.feePerLot : cur.feePerLot), 'aria-label': 'Shipping fee per lot', disabled: reset ? true : null });
+        var tariff = numberInput('terms-tariff', { min: String(L.tariffPct.min), max: String(L.tariffPct.max), value: String(reset ? std.tariffPct : cur.tariffPct), 'aria-label': 'Tariff', disabled: reset ? true : null });
+        var why = el('textarea', { class: 'tsi-input', rows: '3', maxlength: '300', 'data-test': 'terms-why', 'aria-label': 'Why the terms change', placeholder: 'What happened in the story? (required)' });
+        var problem = el('div', { class: 'tsi-bas-repair-text', 'data-test': 'terms-problem', hidden: true });
+        var effect = el('div', { class: 'tsi-bas-muted', 'data-test': 'terms-effect' });
+        var mainBtn = null;
+        function check() {
+          var r = reset ? { ok: true, terms: std } : R.checkTermsInput({ priceMult: price.value, feePerLot: fee.value, tariffPct: tariff.value });
+          var text = !r.ok ? r.message : (R.isStandardTerms(data, c) && reset) ? 'This Charter is already on standard terms.'
+            : (!reset && r.terms.priceMult === cur.priceMult && r.terms.feePerLot === cur.feePerLot && r.terms.tariffPct === cur.tariffPct) ? 'Those are the terms already: nothing to change.'
+            : String(why.value).replace(/\s+/g, ' ').trim().length < 3 ? 'Say why (what happened in the story).' : '';
+          problem.textContent = text;
+          problem.hidden = !text;
+          if (r.ok) {
+            var pv = R.termsPreview(state, data, Object.assign({}, c, { terms: reset ? {} : r.terms }));
+            effect.textContent = pv ? 'Estimate at current market conditions: ' + pv.lots + ' lots of ' + pv.name + ' would sell for ' + pv.current.net + ' gp on these terms (' + pv.standard.net + ' gp on standard terms).' : '';
+          } else effect.textContent = '';
+          if (mainBtn) { mainBtn.disabled = !!text; mainBtn.title = text || ''; }
+        }
+        [price, fee, tariff].forEach(function (i) { i.addEventListener('input', check); });
+        why.addEventListener('input', check);
+        var ok = await plainModal({
+          title: (reset ? 'Reset to standard terms: ' : 'Amend terms: ') + R.portName(c.port),
+          body: [
+            muted((reset ? 'Remove the negotiated terms and go back to standard (×1.00 price, 0 gp a lot, 0% tariff). ' : 'Set what was agreed. Limits: price ×0.50 to ×2.00, shipping 0 to 50 gp a lot, tariff 0 to 50%. ') + 'Ships already at sea keep the terms they sailed with. This changes no Honour, Respect or Political Capital.'),
+            field('Price multiplier (×)', price), field('Shipping fee (gp a lot)', fee), field('Tariff (%)', tariff),
+            field('Reason', why), effect, problem
+          ],
+          escValue: false,
+          actions: [{ label: 'Cancel', value: false }, { label: reset ? 'Reset terms' : 'Save terms', value: true, primary: true }],
+          onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'terms-dialog'); mainBtn = parts.dialog.querySelector('.tsi-modal__foot .tsi-btn--primary'); check(); }
+        });
+        if (!ok || !life.alive || turnRunning) return;
+        var res = reset ? R.resetCharterTerms(state, data, id, why.value) : R.amendCharterTerms(state, data, id, { priceMult: price.value, feePerLot: fee.value, tariffPct: tariff.value }, why.value);
+        if (!res.ok) { await say(res.message); return; }
+        log(res.log[0], res.log[1]);
+        done();
+      });
+
+
+      /* ---------- The Routes map (the Hall's until step S08) ----------
+         The map of the Scarlett Isles. A Clan's lane GLOWS when the Ironbow holds a registered Port Charter at one of
+         its ports, and brighter while a ship is at sea to it (R.routesMap, commerce-rules.js). Beside it, every Charter
+         and the ships on the way. Nothing here changes the Bastion. */
+      function routesPane() {
+        var map = R.routesMap(state, data);
+        var lit = map.lanes.filter(function (l) { return l.art; });
+        var overlays = lit.map(function (l) {
+          return el('img', { class: 'tsi-bas-trademap__route' + (l.glow === 'sea' ? ' tsi-bas-trademap__route--sea' : ''), src: asset(l.art), alt: 'Clan ' + l.name + ' trade route', 'data-clan': l.name, 'data-glow': l.glow });
+        });
+        var rows = map.rows.map(function (r) {
+          return el('li', { 'data-test': 'route-row-' + r.port, 'data-status': r.status }, [
+            el('b', { text: r.label }), ': ' + r.stateText + '.',
+            r.ships.length ? el('div', { class: 'tsi-bas-muted', text: r.ships.join(' • ') + '.' }) : null
+          ]);
+        });
+        return el('div', { class: 'tsi-bas-routes', 'data-test': 'dock-routes' }, [
+          el('div', { class: 'tsi-bas-trademap', 'data-test': 'trade-map' }, el('div', { class: 'tsi-bas-trademap__canvas' }, [
+            el('img', { class: 'tsi-bas-trademap__img', src: asset('ui/clan_trading_locations.png'), alt: 'The Scarlett Isles: where the Clans trade' })
+          ].concat(overlays))),
+          el('div', { class: 'tsi-bas-routes__side' }, [
+            muted('A Clan\'s route glows while the Ironbow holds a registered Port Charter at one of its ports, and glows brighter while a ship is at sea to it.'),
+            el('p', { class: 'tsi-bas-muted' }, ['Glowing now: ', el('b', { 'data-test': 'routes-shown', text: lit.length ? lit.map(function (l) { return l.name + (l.glow === 'sea' ? ' (a ship at sea)' : ''); }).join(', ') : 'none' })]),
+            el('b', { class: 'tsi-bas-routes__head', text: 'Port Charters and ships' }),
+            rows.length ? el('ul', { class: 'tsi-bas-res-list', 'data-test': 'routes-list' }, rows) : muted('No Port Charter yet. The DM grants one in the Explorer; once the Dock has registered it, its Clan\'s route lights up here.')
+          ])
+        ]);
+      }
 
       /* ---------- The Beast Pen's beasts (pull request 7; the Beast Pen, 22 October 2026) ----------
          The panel's beasts: one stall for each kind the DM can grant (wyvern, griffin, dire wolf, buckbear, fellcat) with
@@ -3312,7 +3288,7 @@
           ? 'Stop building the ' + name + '? Its ' + where + ' is freed, and the days of work so far are lost.'
           : 'Demolish the ' + name + '? It goes from the Bastion and its ' + where + ' is freed. ' +
             (orders.length ? plural(orders.length, 'order') + ' pending here ' + (orders.length === 1 ? 'is' : 'are') + ' cancelled, and the gold spent isn\'t given back' + (held ? ' (goods they hold go back to the Warehouse)' : '') + '. ' : '') +
-            'Anything it has already made stays' + (facId === 'hall_of_emissaries' ? ', and your agreements, contracts and sea routes carry on' : '') + '. ' +
+            'Anything it has already made stays. ' +
             /* The Courier Exchange's parcels already sent carry on (pull request 6). */
             (facId === R.COURIER_FAC && R.courierDemolishNote(state) ? R.courierDemolishNote(state) + ' ' : '') +
             'It can be built again later ' + (R.isPlotFacility(data, facId) ? 'on a free Development Plot' + (R.plotsForLevel(state.partyLevel, data) ? '' : ' (plots open at party level 9)') : 'from an empty slot') + '.';
@@ -3339,19 +3315,12 @@
         done();
       }
 
-      /* Issuing an order. The Hall's actions open their planning box first. */
+      /* Issuing an order. */
       var onIssue = TSI.oneAtATime(async function (facId, fnId, select) {
         var fac = R.facility(data, facId);
         var fn = R.fn(fac, fnId);
         if (!fac || !fn) return;
-        var res;
-        if (R.isEmissary(fac, fn)) {
-          var plan = await planHall(fac, fn, select);
-          if (!plan || !life.alive) return;
-          res = R.issueOrderWithMeta(state, data, facId, fnId, plan.optionIdx, plan.meta, rand);
-        } else {
-          res = R.issueOrder(state, data, facId, fnId, select ? select.value : 0, rand);
-        }
+        var res = R.issueOrder(state, data, facId, fnId, select ? select.value : 0, rand);
         if (!res.ok) { if (res.message) await say(res.message); return; }
         log(res.log[0], res.log[1]);
         done();
@@ -3370,56 +3339,6 @@
         log(res.log[0], res.log[1]);
         done();
       });
-      var onNetworkUpgrade = TSI.oneAtATime(function (kind) {
-        var res = R.issueNetworkUpgrade(state, data, kind, rand);
-        if (!res.ok) { say(res.message); return; }
-        log(res.log[0], res.log[1]);
-        done();
-      });
-
-      /* The Hall's planning box (1900-2007). */
-      async function planHall(fac, fn, cardSelect) {
-        var kind = String(fn.special.kind || '');
-        var options = (fn.options || []).map(function (o, idx) { return { idx: idx, label: o && o.label ? o.label : String(o) }; });
-        if (!options.length) options = B.hallClanOrder.map(function (lab, idx) { return { idx: idx, label: lab }; });
-        var defaultIdx = R.clampInt(cardSelect ? cardSelect.value : 0, 0);
-        var clanSel = el('select', { class: 'tsi-input', 'data-test': 'hall-target' }, options.map(function (o) { return el('option', { value: String(o.idx), text: o.label }); }));
-        if (defaultIdx < options.length) clanSel.value = String(defaultIdx);
-        var durSel = null;
-        var toneSel = null;
-        var extra;
-        function projected(text) { return el('div', { class: 'tsi-bas-res-summary' }, [el('b', { text: 'Projected:' }), ' ' + text]); }
-        if (kind === 'trade_agreement') {
-          /* The agreement runs the weeks chosen, a shipment each week (Harry, 8 October 2026). */
-          var weeks = B.tradeAgreementWeeks || [1, 3, 6];
-          durSel = el('select', { class: 'tsi-input', 'data-test': 'hall-duration' }, weeks.map(function (w) { return el('option', { value: String(w), text: w + (w === 1 ? ' week' : ' weeks') + ' (' + w + (w === 1 ? ' shipment' : ' shipments') + ')' }); }));
-          durSel.value = String(B.tradeAgreementDefaultWeeks || 3);
-          extra = [field('Duration', durSel), projected('A negotiation roll will determine the income per shipment, a week or two more or less, and the Political Capital change.')];
-        } else if (kind === 'host_delegation') {
-          toneSel = el('select', { class: 'tsi-input', 'data-test': 'hall-tone' }, [
-            el('option', { value: 'conciliatory', text: 'Conciliatory (safer)' }),
-            el('option', { value: 'assertive', text: 'Assertive (balanced)' }),
-            el('option', { value: 'opportunistic', text: 'Opportunistic (higher risk)' })
-          ]);
-          extra = [field('Tone', toneSel), projected('Two rolls (Diplomacy + Insight). Strong results can award a Favour Token.')];
-        } else {
-          extra = [projected('Political Capital shifts on resolution. Duration and income are affected by your roll tier.')];
-        }
-        var verb = kind === 'trade_agreement' ? 'Negotiate' : kind === 'host_delegation' ? 'Receive Delegation' : 'Proceed';
-        var ok = await hallModal({
-          title: fn.label,
-          body: [field('Select target', clanSel)].concat(extra),
-          escValue: false,
-          actions: [{ label: 'Cancel', value: false }, { label: verb, value: true, primary: true }]
-        });
-        if (!ok) return null;
-        var idx = R.clampInt(clanSel.value, 0);
-        var meta = {};
-        if (durSel) meta.weeks = R.clampInt(durSel.value, 1, 52);
-        if (toneSel) meta.tone = String(toneSel.value || 'assertive');
-        meta.targetClan = options[idx] ? String(options[idx].label) : '';
-        return { optionIdx: idx, meta: meta };
-      }
 
       /* ================================================================
          Passing days, following the Explorer (resumable; BAS-02, BAS-03,
@@ -3577,9 +3496,6 @@
       async function runDay() {
         var dp = state.dayInProgress;
         if (dp.stage === 'trade') {
-          if (R.routesDueToday(state)) {
-            if ((await resolveRoutes(true)) === 'stopped') return 'stopped';
-          }
           /* Cargo ships (pull request 5): arrivals sell or turn back, ships
              come home, standing shipments sail. Saved in the same write as
              the stage moving on, so none of it can happen twice. */
@@ -3653,57 +3569,6 @@
          and a cancelled roll skips it for the rest of the day). */
       async function completeOrder(o, inDay) {
         var kind = R.orderKind(data, o);
-        if (kind === 'network') {
-          var net = R.completeNetworkUpgrade(state, o);
-          R.removeOrder(state, o.id);
-          log(net.log[0], net.log[1]);
-          if (inDay) R.addWord(state, (o.label || 'Trade Network') + ' is complete.');
-          done();
-          await hallModal({
-            title: net.title,
-            body: [
-              el('div', { class: 'tsi-bas-res-hero' }, [el('img', { src: asset('ui/trade_signing.png'), alt: '' }), muted('Parchment. Quill-scratch. A final breath held. Then the seal.')]),
-              el('ul', { class: 'tsi-bas-res-list' }, net.lines.map(function (x) { return el('li', { text: x }); }))
-            ],
-            actions: CONTINUE
-          });
-          return life.alive ? null : 'stopped';
-        }
-        if (kind === 'emissary') {
-          var p = R.emissaryPlan(state, data, o);
-          var lab = o.label || (p.fac.name + ': ' + p.fn.label);
-          if (p.blocked > 0) {
-            R.removeOrder(state, o.id);
-            log('Order Completed', lab + ' → Blocked (cooldown: ' + R.daysText(p.blocked) + ' left).');
-            if (inDay) R.addWord(state, lab + ': blocked (the Hall is cooling down).');
-            else tellResolved([['Order Completed', lab + ' → Blocked (cooldown: ' + R.daysText(p.blocked) + ' left).']], o);
-            done();
-            return null;
-          }
-          var rolls = {};
-          for (var i = 0; i < p.rolls.length; i++) {
-            var q = p.rolls[i];
-            var got = await rollD20({ title: q.title, mod: q.mod, dc: q.dc });
-            if (!life.alive) return 'stopped';
-            if (!got) {
-              if (inDay) {
-                R.skipOrder(state, o.id);
-                R.addWord(state, lab + ' needs your roll (press Resolve on it).');
-              }
-              log('Orders', lab + ' → Roll cancelled. The order stays due: press Resolve on it, or it comes up again tomorrow.');
-              done();
-              return null;
-            }
-            rolls[q.key] = got;
-          }
-          var res = R.applyEmissary(state, data, o, p, rolls, rand);
-          R.removeOrder(state, o.id);
-          log(res.log[0], res.log[1]);
-          if (inDay) R.addWord(state, lab + ': ' + R.formatTier(res.tier) + '.');
-          done();
-          await emissaryResult(p, res);
-          return life.alive ? null : 'stopped';
-        }
         if (kind === 'simple') {
           var lines = R.completeSimpleOrder(state, data, o, rand);
           R.removeOrder(state, o.id);
@@ -3724,220 +3589,6 @@
         }
         done();
         return null;
-      }
-
-      function emissaryResult(p, res) {
-        return hallModal({
-          title: 'Order Resolved',
-          body: [
-            el('div', { class: 'tsi-bas-res-top' }, [
-              el('div', { class: 'tsi-bas-res-action', text: p.fn.label }),
-              el('div', { class: 'tsi-bas-res-target' }, ['Target: ', el('b', { text: String(p.opt) })])
-            ]),
-            el('div', { class: 'tsi-bas-res-roll', 'data-test': 'result-roll' }, [
-              el('div', null, [el('b', { text: 'Roll' }), ': d20 (' + res.roll.d20 + ') ' + (p.mod >= 0 ? '+' : '') + p.mod + ' = ', el('b', { text: String(res.roll.total) })]),
-              el('div', null, [el('b', { text: 'DC' }), ': ' + p.dc + ' • ', el('b', { text: R.formatTier(res.tier) })])
-            ]),
-            el('div', { class: 'tsi-bas-res-summary', text: res.summary }),
-            el('div', { class: 'tsi-bas-res-summary', text: res.narrative }),
-            el('div', { class: 'tsi-bas-res-changes' }, [
-              el('div', { class: 'tsi-bas-res-changes__title', text: 'Applied Changes' }),
-              res.changes.length ? el('ul', { class: 'tsi-bas-res-list', 'data-test': 'result-changes' }, res.changes.map(function (x) { return el('li', { text: x }); })) : muted('No tracked changes.')
-            ])
-          ],
-          actions: CONTINUE
-        });
-      }
-
-      /* ================================================================
-         Trade routes: resolve, and the Sea Trade Routes map
-         ================================================================ */
-      /* Each route is saved as it's settled, so none can pay twice for a sailing,
-         even after a cancelled roll or a press of Enter (BAS-05, BAS-11). */
-      /* Each route sails every 7 days from the day it opened; the ones due
-         settle here, as a day passes (inDay) or from the Hall's Resolve. */
-      async function resolveRoutes(inDay) {
-        var title = 'Ironbow Trade Network';
-        if (!state.tradeNetwork.active) { await hallNote(title, 'No active Trade Consortium. Establish a Trade Consortium to open routes.'); return null; }
-        var live = R.liveRoutes(state);
-        if (!live.length) { await hallNote(title, 'No routes exist yet. Activate Trade Consortium targeting a clan to open a route.'); return null; }
-        var routes = R.routesToSettle(state);
-        if (!routes.length) {
-          var next = live.reduce(function (m, r) { return m === null || r.nextDay < m ? r.nextDay : m; }, null);
-          await hallNote(title, 'No routes are due to sail. Each sails every ' + R.time(data).every + ' days' + (next !== null ? '; the next on Day ' + next + '.' : '.'));
-          return null;
-        }
-        var total = 0;
-        var lines = [];
-        for (var i = 0; i < routes.length; i++) {
-          var r = routes[i];
-          var roll = null;
-          if (r.status !== 'disrupted' && R.routeNeedsRoll(state, r)) {
-            roll = await rollD20({ title: 'Resolve Route: ' + r.clan + ' (' + r.commodity + ')', mod: 0, dc: R.routeDC(state, r) });
-            if (!life.alive) return 'stopped';
-            if (!roll) {
-              log('Trade Network', 'Route resolution cancelled. The routes still due wait: press Resolve in the Hall.');
-              if (inDay) routes.slice(i).forEach(function (x) { R.addWord(state, 'The sea route to ' + x.clan + ' needs a roll (press Resolve in the Hall).'); });
-              done();
-              return 'cancelled';
-            }
-          }
-          var out = R.settleRoute(state, data, r, roll, rand);
-          total += out.gained;
-          lines.push(out.line);
-          save();
-        }
-        var stab = state.tradeNetwork.stability === undefined ? 75 : state.tradeNetwork.stability;
-        log('Trade Network', 'Routes resolved. +' + total + ' gp. Market Stability ' + stab + '%.');
-        if (inDay) R.addWord(state, 'Trade routes sailed: +' + total + ' gp.');
-        done();
-        await hallModal({
-          title: 'Trade Routes Resolved',
-          body: [
-            el('div', { class: 'tsi-bas-res-hero' }, [
-              el('img', { src: asset('ui/trade_signing.png'), alt: '' }),
-              el('div', null, [
-                el('div', { class: 'tsi-bas-res-summary', 'data-test': 'routes-total' }, [el('b', { text: 'Total Collected:' }), ' ' + total + ' gp']),
-                el('div', { class: 'tsi-bas-res-summary' }, [el('b', { text: 'Market Stability:' }), ' ' + stab + '%'])
-              ])
-            ]),
-            el('ul', { class: 'tsi-bas-res-list' }, lines.map(function (x) { return el('li', { text: x }); }))
-          ],
-          actions: CONTINUE
-        });
-        return life.alive ? null : 'stopped';
-      }
-      var onResolveRoutes = TSI.oneAtATime(function () {
-        if (turnRunning) return false;
-        turnRunning = true;
-        renderTurnButton();
-        var finish = function () { turnRunning = false; if (life.alive) renderAll(); };
-        return resolveRoutes(false).then(finish, function (err) { finish(); throw err; });
-      });
-
-      /* The Sea Trade Routes map (2631-2716). Each clan with a running route
-         glows on the map. */
-      var onRoutesMap = TSI.oneAtATime(function () {
-        var routes = state.tradeNetwork.routes.filter(function (r) {
-          if (!r || r.status === 'removed') return false;
-          if (r.expiresDay !== undefined && r.expiresDay !== null && state.day > r.expiresDay) return false;
-          return String(r.status || '').toLowerCase() !== 'expired';
-        });
-        var clans = [];
-        routes.forEach(function (r) { var c = String(r.clan || '').trim(); if (c && clans.indexOf(c) === -1) clans.push(c); });
-        /* Trade Agreements are listed too, but as "Clan Blackstone" they find no route art (BAS-27, kept). */
-        state.diplomacy.agreements.forEach(function (a) {
-          if (!a || !(a.endDay > state.day)) return;
-          var c = String(a.clan || '').trim();
-          if (c && clans.indexOf(c) === -1) clans.push(c);
-        });
-        var shown = clans.filter(function (c) { return !!B.routeOverlays[c.toLowerCase()]; });
-        var overlays = shown.map(function (c) {
-          return el('img', { class: 'tsi-bas-trademap__route', src: asset(B.routeOverlays[c.toLowerCase()]), alt: c + ' trade route', 'data-clan': c });
-        });
-        var list = routes.length ? el('ul', { class: 'tsi-bas-res-list' }, routes.map(function (r) {
-          var meta = (r.commodity || 'Goods') + ' • ' + (r.risk || 'medium') + ' risk • ' + R.clampInt(r.yieldGP || 0, 0, 999999) + ' gp a sailing, every ' + R.time(data).every + ' days';
-          return el('li', null, [el('b', { text: String(r.clan || 'Unknown') }), ' — ' + (r.status === 'disrupted' ? 'DISRUPTED' : 'ACTIVE') + ' ', el('span', { class: 'tsi-bas-muted', text: '(' + meta + ')' })]);
-        })) : muted('No active routes yet. Create a Trade Consortium to open at least one route.');
-        return hallModal({
-          title: 'Sea Trade Routes',
-          className: 'tsi-bas-modal tsi-bas-modal--hall tsi-bas-modal--trademap',
-          body: [
-            el('div', { class: 'tsi-bas-trademap', 'data-test': 'trade-map' }, el('div', { class: 'tsi-bas-trademap__canvas' }, [
-              el('img', { class: 'tsi-bas-trademap__img', src: asset('ui/clan_trading_locations.png'), alt: 'Clan Trading Locations' })
-            ].concat(overlays))),
-            el('p', { class: 'tsi-bas-muted' }, ['Showing routes for: ', el('b', { 'data-test': 'routes-shown', text: shown.length ? shown.join(', ') : 'none' })]),
-            el('div', { class: 'tsi-bas-res-changes' }, [el('div', { class: 'tsi-bas-res-changes__title', text: 'Active Routes' }), list])
-          ],
-          actions: CLOSE
-        });
-      });
-
-      /* ================================================================
-         The Council Ledger (2784-3051)
-         ================================================================ */
-      var onLedger = TSI.oneAtATime(function () { return openLedger(); });
-      async function openLedger() {
-        var q = state.arbitration.queue.slice();
-        if (!q.length) {
-          await plainModal({ title: 'Council Ledger', body: muted('No disputes await judgement.'), actions: CLOSE });
-          return;
-        }
-        var closeLedger = null;
-        var cards = q.map(function (d) {
-          var a = String(d.a || 'Unknown');
-          var b = String(d.b || B.consortiumName);
-          var rc = d.meta && d.meta.routeClan ? String(d.meta.routeClan) : '';
-          var commodity = d.meta && d.meta.commodity ? String(d.meta.commodity) : '';
-          var dayOf = function (n) { return typeof n === 'number' ? R.dayLabel(n) : '?'; };
-          var disruptedOn = d.meta && typeof d.meta.disruptedDay === 'number' ? dayOf(d.meta.disruptedDay) : dayOf(d.createdDay);
-          var stabAt = d.meta && d.meta.stabilityAtFiling !== undefined && d.meta.stabilityAtFiling !== null ? String(d.meta.stabilityAtFiling) : String(R.clampInt(state.tradeNetwork.stability === undefined ? 75 : state.tradeNetwork.stability, 0, 100));
-          function choose(choice) { return function () { if (closeLedger) closeLedger({ id: d.id, choice: choice }); }; }
-          return el('div', { class: 'tsi-bas-dispute' }, [
-            el('div', { class: 'tsi-bas-dispute__top' }, [
-              el('div', null, [el('b', { text: a }), ' vs ', el('b', { text: b })]),
-              muted('Filed ' + dayOf(d.createdDay))
-            ]),
-            el('div', { class: 'tsi-bas-dispute__reason', text: String(d.reason || '') }),
-            el('div', { class: 'tsi-bas-muted' }, [
-              'Route: ', el('b', { text: rc || a }), commodity ? [' • Commodity: ', el('b', { text: commodity })] : null,
-              el('br'),
-              'Disrupted on ', el('b', { text: disruptedOn }), ' • Stability at filing: ', el('b', { text: stabAt + '%' })
-            ]),
-            muted('Choose a ruling:', 'tsi-bas-dispute__choose'),
-            el('div', { class: 'tsi-bas-tn-btns' }, [
-              pill('Rule for ' + String(d.a || 'Clan'), choose('A'), 'rule-a'),
-              pill('Split Claims', choose('S'), 'rule-s'),
-              pill('Rule for ' + b, choose('B'), 'rule-b')
-            ])
-          ]);
-        });
-        var picked = await plainModal({
-          title: 'Council Ledger (' + q.length + ')',
-          className: 'tsi-bas-modal tsi-bas-modal--ledger',
-          body: el('div', { class: 'tsi-bas-ledger' }, [
-            muted('Sealed petitions are laid before the council. Wax cracks. Quills hover. Your verdict carries weight.'),
-            el('div', { class: 'tsi-bas-ledger__list' }, cards),
-            muted('(Each ruling will prompt a manual Authority roll.)')
-          ]),
-          escValue: null,
-          actions: [{ label: 'Close', value: null, primary: true }],
-          onOpen: function (parts) { closeLedger = parts.close; }
-        });
-        if (!picked || !life.alive) return;
-        await ruleDispute(picked.id, picked.choice);
-      }
-      async function ruleDispute(id, choice) {
-        var exists = state.arbitration.queue.some(function (x) { return String(x.id) === String(id); });
-        if (!exists) return;
-        var bonus = R.councilBonus(state);
-        var roll = await rollD20({ title: 'Council Verdict', mod: bonus, dc: B.councilDC, skin: 'plain' });
-        if (!roll || !life.alive) return;
-        var res = R.rule(state, data, id, choice, roll);
-        log(res.log[0], res.log[1]);
-        done();
-        await plainModal({
-          title: res.passed ? 'Council Verdict' : 'Council Deadlock',
-          body: [
-            el('div', { class: 'tsi-bas-res-hero' }, [
-              el('img', { src: asset('ui/wax_stamp.png'), alt: '' }),
-              el('div', null, [
-                el('div', { class: 'tsi-bas-res-summary' }, el('b', { text: res.rulingLabel })),
-                el('div', { class: 'tsi-bas-muted', 'data-test': 'verdict-roll' }, [
-                  'Roll: ', el('b', { text: String(roll.d20) }), res.bonus ? [' + ', el('b', { text: String(res.bonus) })] : null,
-                  ' = ', el('b', { text: String(res.total) }), ' vs DC ', el('b', { text: String(res.dc) })
-                ])
-              ])
-            ]),
-            el('p', { text: res.verdictText }),
-            el('ul', { class: 'tsi-bas-res-list' }, res.effects.map(function (x) { return el('li', { text: x }); })),
-            el('div', { class: 'tsi-bas-muted' }, ['Market Stability: ', el('b', { text: (state.tradeNetwork.stability === undefined ? 75 : state.tradeNetwork.stability) + '%' })])
-          ],
-          actions: CONTINUE
-        });
-        if (!life.alive) return;
-        var remaining = state.arbitration.queue.length;
-        if (remaining > 0 && (remaining > 1 || !res.stillThere)) await openLedger();
       }
 
       /* ================================================================
@@ -4339,9 +3990,19 @@
           if (top && !panelOnTop) return false;
           closePanel();
           button.click();
+          /* The Dock's panel is in tabs: show the one that holds what was asked for. */
+          var want = opener === 'tile-dock' ? dockTabFor(test) : '';
+          if (want && want !== dockTab) { dockTab = want; renderPanel(); }
           return !!document.querySelector(sel);
         }
       };
+      /* For reveal: which of the Dock's tabs holds [data-test=test] ('' for the Cargo tab, which it opens on). */
+      function dockTabFor(test) {
+        if (/^(?:issue|sel|days|why|goods)-dock__/.test(test) || test === 'upgrade-dock' || test === 'upgrade-row-dock' || test === 'upgrade-text-dock') return 'orders';
+        if (/^(?:dock-charters|charter-.+|amend-terms|reset-terms|terms-history)$/.test(test)) return 'charters';
+        if (/^(?:dock-routes|trade-map|routes-.+|route-row-.+)$/.test(test)) return 'routes';
+        return '';
+      }
       /* For reveal: the data-test of what opens the panel holding sel. */
       function openerFor(test, sel) {
         var fixed = [[whCard, 'open-warehouse'], [mgmtCard, 'open-management'], [logCard, 'open-log'],

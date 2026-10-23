@@ -122,7 +122,7 @@
   test('the registry: the steps run in order, the last one finishes, and a later step can be added above the catch-all', function (t) {
     var ids = R.stripBackSteps.map(function (st) { return st.id; });
     t.same(ids.slice(-2), ['sweepFacilities', 'finish'], 'the catch-all and the last step stay at the end');
-    ['dropEvents', 'settleWarOrders', 'dropWar', 'dropWarFacilities', 'dropBeastRequests', 'identity', 'rehomeBeasts', 'shrinesToTemple'].forEach(function (id) {
+    ['dropEvents', 'settleWarOrders', 'dropWar', 'dropWarFacilities', 'dropBeastRequests', 'identity', 'rehomeBeasts', 'shrinesToTemple', 'moveCharterOrders', 'windDownHall'].forEach(function (id) {
       t.ok(ids.indexOf(id) !== -1 && ids.indexOf(id) < ids.length - 2, id + ' is a step, above the catch-all');
     });
     var steps = R.stripBackSteps;
@@ -151,7 +151,7 @@
     }
     var ids = R.stripBackSteps.map(function (st) { return st.id; });
     t.same(ids.slice(-2), ['sweepFacilities', 'finish'], 'the catch-all and the last step stay at the end');
-    ['dropEvents', 'settleWarOrders', 'dropWar', 'dropWarFacilities', 'dropBeastRequests', 'identity', 'rehomeBeasts', 'shrinesToTemple'].forEach(function (id) {
+    ['dropEvents', 'settleWarOrders', 'dropWar', 'dropWarFacilities', 'dropBeastRequests', 'identity', 'rehomeBeasts', 'shrinesToTemple', 'moveCharterOrders', 'windDownHall'].forEach(function (id) {
       t.ok(ids.indexOf(id) !== -1 && ids.indexOf(id) < ids.length - 2, id + ' is a step, above the catch-all');
     });
   });
@@ -239,21 +239,20 @@
     t.same(report.cancelled.map(function (c) { return [c.id, c.god, c.favour, c.why]; }), [['f3', 'pelagos', 10, 'the Temple replaces the Shrines']]);
   });
 
-  test('orders kept as they are: at a real facility, an upgrade, and the Trade Network\'s own orders (its step deals with them); a War Action is cancelled and refunds nothing', function (t) {
+  test('orders kept as they are: at a real facility and an upgrade; a War Action is cancelled and refunds nothing', function (t) {
     var raw = v3(function (s) {
       s.pendingOrders = [
         { id: 'a', facId: 'workshop', fnId: 'upgrade', label: 'Workshop: Upgrade to Level 2', costGP: 0, issuedDay: 10, dueDay: 17, meta: { kind: 'upgrade', toLevel: 2 } },
         { id: 'b', facId: 'war_council', fnId: 'war_action', label: 'War Action', costGP: 0, issuedDay: 10, dueDay: 13, meta: { kind: 'war_action' } },
-        { id: 'c', facId: 'trade_network', fnId: 'upgrade', label: 'Ironbow Trade Network: Stability Investment', costGP: 75, issuedDay: 10, dueDay: 17, meta: { kind: 'stability' } },
         'not an order'
       ];
     });
     var res = convert(raw);
     t.same(res.problems, []);
-    t.same(res.save.pendingOrders, [raw.pendingOrders[0], raw.pendingOrders[2], 'not an order'], 'the junk entry is left alone, as it always was');
+    t.same(res.save.pendingOrders, [raw.pendingOrders[0], 'not an order'], 'the junk entry is left alone, as it always was');
     t.equal(res.save.treasuryGP, 400, 'a War Action cost no gold: declaring war cost Honour/Respect and Political Capital, which are not given back');
     t.same(res.report.cancelled.map(function (c) { return c.id; }), ['b']);
-    t.same(R.STRIP_BACK_PSEUDO_FACILITIES, ['trade_network']);
+    t.same(R.STRIP_BACK_PSEUDO_FACILITIES, [], 'the war game and the Trade Network were the only orders with no facility of their own, and their steps (dropWar, windDownHall) deal with them');
   });
 
   test('goods an order held that cannot be read are said, and the rest still go back; an order with no id is still cancelled and refunded', function (t) {
@@ -432,7 +431,7 @@
     caught(t, res, function (a) { a.tradeNetwork.marketLedger = [{ day: 1 }]; }, /marketLedger/, 'the ledger');
     caught(t, res, function (a) { a.tradeNetwork.parcels = [{ id: 'p' }]; }, /parcels/, 'a parcel');
     caught(t, res, function (a) { a.tradeNetwork.protections.pelagos_blessing = { charges: 0 }; }, /Pelagos blessing/, 'the Blessing of Pelagos');
-    t.same(audit(res, function (a) { a.tradeNetwork.active = true; a.tradeNetwork.stability = 10; }), [], 'the rest of the trade network (the Hall\'s old money) is not on the list: a later step winds it down');
+    t.same(audit(res, function (a) { a.tradeNetwork.notListed = 5; }), [], 'the rest of the trade network is not on the list');
   });
 
   test('I7, converting again changes nothing: a conversion that would leave something to convert, or would change again, is caught', function (t) {
@@ -780,6 +779,9 @@
       WAR_FIELDS.forEach(function (k) { delete a[k]; delete b[k]; });
       if (b.dayInProgress) delete b.dayInProgress.attackRolled;
       if (b.tradeNetwork && b.tradeNetwork.protections) { delete b.tradeNetwork.protections.commercial_convoy; delete b.tradeNetwork.protections.maritime_approaches; }
+      /* Changed by the Hall's wind-down (S09): the old contracts, routes and disputes end and their fields go (checked in tests/rules/hall-dock.test.js). */
+      ['arbitration', 'diplomacy', 'legacyDiplomacy'].forEach(function (k) { delete a[k]; delete b[k]; });
+      if (a.tradeNetwork && b.tradeNetwork) ['active', 'strategy', 'stability', 'routes', 'highRiskRouting', 'yieldBonusPct'].forEach(function (k) { delete a.tradeNetwork[k]; delete b.tradeNetwork[k]; });
       /* Changed by the Temple (S11): the Favour and the Warehouse a cancelled Shrine order gave back. They are checked in tests/rules/temple.test.js. */
       if (res.report.archived.some(function (x) { return /^shrine_/.test(x.facId); })) {
         ['favour', 'warehouse'].forEach(function (k) { delete a[k]; delete b[k]; });
@@ -795,7 +797,7 @@
     t.equal(heavy.pendingOrders.length, raw.pendingOrders.length - res.report.cancelled.length, 'every order is kept, moved or cancelled: the war game\'s, the Riding Harness, and the Shrines\' Upgrade, two prayers and Aquatic Protection Charm are cancelled; the Roost\'s House order, the salve and the Great Rite move');
     t.equal(heavy.creatures.length, 4);
     t.equal(heavy.log.length, 200);
-    t.equal(heavy.treasuryGP, raw.treasuryGP + res.report.gold.refunded, '2,000 and what the cancelled orders cost');
+    t.equal(heavy.treasuryGP, raw.treasuryGP + res.report.gold.refunded + res.report.gold.settlement, '2,000, what the cancelled orders cost and, from the Hall\'s wind-down (S09), the final settlement of its running contracts');
     t.same(heavy.builtExtras.filter(Boolean).map(function (e) { return e.facId; }), ['library_scriptorium', 'arcane_laboratory', 'temple', 'beast_pen', 'hall_of_emissaries'], 'the three Shrines are one Temple');
     t.equal(heavy.migration.v4.changed, true, 'its event record, the war game and its facilities were dropped, and it says so');
     t.equal('lastEvent' in heavy || 'lastEventDay' in heavy, false);

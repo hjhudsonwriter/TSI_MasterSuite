@@ -23,7 +23,8 @@
    from, clan, port, text } (port: a key of shared/data/ports.js; clan: that
    port's Clan). Its id is a new random id with ':dm:0' (the Port Charter
    button) or ':pin:0' (a port's harbour box). The Bastion holds it once, and
-   the Hall of Emissaries registers it.
+   the Dock registers it (the Hall of Emissaries did until the Strip Back
+   Overhaul, step S08).
 
    Pull request 6 (Harry, 14 October 2026) adds a third kind: a parcel from
    the Bastion's Courier Exchange collected in the Explorer, { id, type:
@@ -570,7 +571,7 @@
       var registering = (Array.isArray(bastionSave.pendingOrders) ? bastionSave.pendingOrders : []).some(function (o) {
         return isObj(o) && o.fnId === 'register_port_charter' && isObj(o.chosen) && o.chosen.charterId === held.id;
       });
-      return { kind: 'held', line: registering ? 'Held, and being registered at the Hall of Emissaries.' : 'Held: register it at the Hall of Emissaries.' };
+      return { kind: 'held', line: registering ? 'Held, and being registered at the Dock.' : 'Held: register it at the Dock.' };
     }
     var waiting = null;
     B.outbox(explorerSave).forEach(function (m) {

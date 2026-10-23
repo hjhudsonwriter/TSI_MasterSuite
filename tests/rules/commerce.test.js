@@ -1,7 +1,8 @@
 /* Commodity trade and Port Charters (pull request 5 of the facilities
    overhaul; Harry's answers, 14 October 2026): the data, the link's Port
    Charter message (shared/js/bridge-rules.js), the Bastion holding and the
-   Hall registering a Charter, and cargo voyages (tools/bastion/commerce-rules.js). */
+   Dock registering a Charter (the Hall of Emissaries did until the Strip Back
+   Overhaul, step S08), and cargo voyages (tools/bastion/commerce-rules.js). */
 (function () {
   var Bg = TSI.bridge;
   var BR = TSI.bastion.rules;
@@ -28,12 +29,6 @@
     b.anchored = true;
     b.bridge.fresh = false;
     b.facilityLevels.dock = dockLevel || 2;
-    return b;
-  }
-  function withHall(b, level) {
-    b.builtExtras = [{ facId: 'hall_of_emissaries', status: 'built' }];
-    BR.ensureLevels(b, bdata);
-    b.facilityLevels.hall_of_emissaries = level || 2;
     return b;
   }
   function charterMsg(over) {
@@ -221,9 +216,8 @@
     var b = bastion(4);
     BR.applyInbox(b, bdata, ex, 1000);
     var saved = copy(BR.toSave(b));
-    t.same([Bg.portStatus('goldport', ex, saved).kind, Bg.portStatus('goldport', ex, saved).line], ['held', 'Held: register it at the Hall of Emissaries.']);
-    withHall(b, 2);
-    t.equal(BR.issueOrder(b, bdata, 'hall_of_emissaries', 'register_port_charter', 0, dice([0.4])).ok, true);
+    t.same([Bg.portStatus('goldport', ex, saved).kind, Bg.portStatus('goldport', ex, saved).line], ['held', 'Held: register it at the Dock.']);
+    t.equal(BR.issueOrder(b, bdata, 'dock', 'register_port_charter', 0, dice([0.4])).ok, true);
     t.ok(/being registered/.test(Bg.portStatus('goldport', ex, copy(BR.toSave(b))).line));
     BR.charterFor(b, 'goldport').status = 'registered';
     BR.charterFor(b, 'goldport').registeredDay = 7;
@@ -300,7 +294,7 @@
     var c = BR.charterFor(b, 'goldport');
     t.same([c.status, c.clan, c.mode, c.earnedDay, c.registeredDay], ['earned', 'molten', 'commodity_backed', 3, null]);
     t.same(b.bridge.done[charterMsg().id], { r: 'applied', day: 4, at: 1000, clan: 'molten', hr: 0, was: 0, now: 0, text: 'For clearing the harbour of wreckers.', why: '', type: 'charter', port: 'goldport', held: false });
-    t.ok(/Port Charter for Goldport \(Clan Molten\) \(DM, Day 3\): the Bastion now holds it\. Register it at the Hall of Emissaries before the Dock ships cargo there/.test(b.log[0].body));
+    t.ok(/Port Charter for Goldport \(Clan Molten\) \(DM, Day 3\): the Bastion now holds it\. Register it at the Dock before the Dock ships cargo there/.test(b.log[0].body));
     t.equal(BR.applyInbox(b, bdata, exWith([charterMsg()]), 2000).changed, false, 'a second look changes nothing');
     t.same(b.honourRespectByClan, BR.defaultState(bdata).honourRespectByClan);
   });
@@ -383,34 +377,36 @@
   });
 
   /* ---------------------------------------------------------------- */
-  group('Commodity trade: the Hall registers a Port Charter (3 days, Level 1)');
+  group('Commodity trade: the Dock registers a Port Charter (3 days, any level)');
 
-  test('Register Port Charter: Level 1 (the slot the Trade Agreement had), no gold, 3 days, the earned Charters to pick from', function (t) {
-    var b = withHall(bastion(4), 1);
-    var hall = BR.facility(bdata, 'hall_of_emissaries');
-    var fn = BR.fn(hall, 'register_port_charter');
+  test('Register Port Charter is a Dock order: Level 1, no gold, 3 days, the earned Charters to pick from; the Hall no longer has it', function (t) {
+    var b = bastion(4, 1);
+    var dock = BR.facility(bdata, 'dock');
+    var fn = BR.fn(dock, 'register_port_charter');
     t.same([fn.days, fn.costGP, fn.requiredFacilityLevel], [3, 0, 1]);
-    t.equal(hall.functions.map(function (f) { return f.id; })[1], 'register_port_charter', 'listed first among the Hall\'s orders');
-    t.equal(BR.isEmissary(hall, fn), false, 'no roll');
-    t.same(BR.fnAvailable(b, hall, fn), { ok: true }, 'available from Level 1');
-    t.same(BR.fnOptions(b, bdata, hall, fn), []);
-    t.ok(/no Port Charter to register/.test(BR.issueOrder(b, bdata, 'hall_of_emissaries', 'register_port_charter', 0, dice([0.4])).message));
+    t.equal(dock.functions.map(function (f) { return f.id; }).join(), 'charter_berth,register_port_charter', 'listed after the Charter Berth');
+    t.equal(BR.fn(BR.facility(bdata, 'hall_of_emissaries'), 'register_port_charter'), null, 'the Hall has no Register order any more');
+    t.equal(BR.orderKind(bdata, { facId: 'dock', fnId: 'register_port_charter' }), 'simple', 'no roll');
+    t.same(BR.fnAvailable(b, dock, fn), { ok: true }, 'available at Level 1: a Level 1 Dock can register a Charter (but not ship)');
+    t.same(BR.fnOptions(b, bdata, dock, fn), []);
+    t.ok(/no Port Charter to register/.test(BR.issueOrder(b, bdata, 'dock', 'register_port_charter', 0, dice([0.4])).message));
     BR.applyInbox(b, bdata, exWith([charterMsg()]), 1000);
-    t.same(BR.fnOptions(b, bdata, hall, fn), [{ label: 'Port Charter: Goldport (Clan Molten)', charterId: charterMsg().id }]);
+    t.same(BR.fnOptions(b, bdata, dock, fn), [{ label: 'Port Charter: Goldport (Clan Molten)', charterId: charterMsg().id }]);
     var gp = b.treasuryGP;
-    var res = BR.issueOrder(b, bdata, 'hall_of_emissaries', 'register_port_charter', 0, dice([0.4]));
+    var res = BR.issueOrder(b, bdata, 'dock', 'register_port_charter', 0, dice([0.4]));
     t.equal(res.ok, true);
     var o = b.pendingOrders[0];
-    t.same([o.label, o.dueDay, o.costGP, o.chosen.charterId, b.treasuryGP], ['Hall of Emissaries: Register Port Charter (Goldport)', 7, 0, charterMsg().id, gp]);
+    t.same([o.label, o.dueDay, o.costGP, o.chosen.charterId, b.treasuryGP], ['Dock: Register Port Charter (Goldport)', 7, 0, charterMsg().id, gp]);
     t.equal(BR.orderKind(bdata, o), 'simple');
-    t.same(BR.fnOptions(b, bdata, hall, fn), [], 'not offered again while it\'s being registered');
-    t.ok(/one Port Charter at a time: Goldport's is ready on Day 7/.test(BR.issueOrder(b, bdata, 'hall_of_emissaries', 'register_port_charter', 0, dice([0.4])).message));
+    t.same(BR.fnOptions(b, bdata, dock, fn), [], 'not offered again while it\'s being registered');
+    t.ok(/one Port Charter at a time: Goldport's is ready on Day 7/.test(BR.issueOrder(b, bdata, 'dock', 'register_port_charter', 0, dice([0.4])).message));
+    t.equal(BR.charterState(b, BR.charterFor(b, 'goldport')), 'Being registered at the Dock (ready Day 7)');
   });
 
   test('on its day the Charter is registered, once, and nothing goes into the Warehouse', function (t) {
-    var b = withHall(bastion(4), 2);
+    var b = bastion(4, 2);
     BR.applyInbox(b, bdata, exWith([charterMsg()]), 1000);
-    BR.issueOrder(b, bdata, 'hall_of_emissaries', 'register_port_charter', 0, dice([0.4]));
+    BR.issueOrder(b, bdata, 'dock', 'register_port_charter', 0, dice([0.4]));
     var o = b.pendingOrders[0];
     var stale = copy(o);
     b.day = 7;
@@ -425,29 +421,29 @@
     t.equal(BR.charterFor(b, 'goldport').registeredDay, 7);
   });
 
-  test('two Charters: the Hall registers one at a time, and says so', function (t) {
-    var b = withHall(bastion(4), 2);
+  test('two Charters: the Dock registers one at a time, and says so', function (t) {
+    var b = bastion(4, 2);
     BR.applyInbox(b, bdata, exWith([charterMsg(), charterMsg({ id: 'chartr-timb0000:dm:0', port: 'timberport', clan: 'blackstone' })]), 1000);
-    t.equal(BR.issueOrder(b, bdata, 'hall_of_emissaries', 'register_port_charter', 0, dice([0.4])).ok, true);
-    t.equal(BR.issueOrder(b, bdata, 'hall_of_emissaries', 'register_port_charter', 0, dice([0.4])).message, 'The Hall registers one Port Charter at a time: Goldport\'s is ready on Day 7.');
+    t.equal(BR.issueOrder(b, bdata, 'dock', 'register_port_charter', 0, dice([0.4])).ok, true);
+    t.equal(BR.issueOrder(b, bdata, 'dock', 'register_port_charter', 0, dice([0.4])).message, 'The Dock registers one Port Charter at a time: Goldport\'s is ready on Day 7.');
     var o = b.pendingOrders[0];
     b.day = 7;
     BR.completeSimpleOrder(b, bdata, o, dice([0.5]));
     BR.removeOrder(b, o.id);
     t.equal(BR.registerBusy(b, bdata), '');
-    t.equal(BR.issueOrder(b, bdata, 'hall_of_emissaries', 'register_port_charter', 0, dice([0.4])).ok, true, 'then Timberport');
+    t.equal(BR.issueOrder(b, bdata, 'dock', 'register_port_charter', 0, dice([0.4])).ok, true, 'then Timberport');
     t.equal(b.pendingOrders[0].chosen.charterId, 'chartr-timb0000:dm:0');
   });
 
-  test('Cancel, or the Hall Under Repair, leaves the Charter earned', function (t) {
-    var b = withHall(bastion(4), 2);
+  test('Cancel, or the Dock Under Repair, leaves the Charter earned', function (t) {
+    var b = bastion(4, 2);
     BR.applyInbox(b, bdata, exWith([charterMsg()]), 1000);
-    BR.issueOrder(b, bdata, 'hall_of_emissaries', 'register_port_charter', 0, dice([0.4]));
+    BR.issueOrder(b, bdata, 'dock', 'register_port_charter', 0, dice([0.4]));
     BR.cancelOrder(b, b.pendingOrders[0].id, bdata);
     t.equal(BR.charterFor(b, 'goldport').status, 'earned');
     t.equal(BR.registrableCharters(b).length, 1, 'it can be ordered again');
-    b.repairs = { hall_of_emissaries: 6 };
-    t.ok(/Under Repair/.test(BR.issueOrder(b, bdata, 'hall_of_emissaries', 'register_port_charter', 0, dice([0.4])).message));
+    b.repairs = { dock: 6 };
+    t.ok(/Under Repair/.test(BR.issueOrder(b, bdata, 'dock', 'register_port_charter', 0, dice([0.4])).message));
   });
 
   /* ---------------------------------------------------------------- */
@@ -855,7 +851,7 @@
   });
 
   test('protections: each cut comes off, never below 0; a blessing is used up by its voyage', function (t) {
-    t.equal(BR.voyageChance(20, [{ cut: 5 }, { cut: 5 }, { cut: 10 }]), 0);
+    t.equal(BR.voyageChance(20, [{ cut: 5 }, { cut: 5 }, { cut: 10 }]), 0, 'cuts add up, whatever gives them');
     t.equal(BR.voyageChance(5, [{ cut: 10 }]), 0);
     t.equal(BR.voyageChance(20, [{ cut: 5 }]), 15);
     t.equal(BR.voyageChance(10, []), 10);
@@ -984,30 +980,15 @@
     var b = sailed();
     b.facilityLevels.dock = 4;
     BR.setSchedule(b, bdata, BR.portCharters(b)[0].id, [{ goodId: 'raw_stone', qty: 1 }], dice([0.3]));
-    withHall(b, 2);
     BR.applyInbox(b, bdata, exWith([charterMsg({ id: 'chartr-timb0000:dm:0', port: 'timberport', clan: 'blackstone' })]), 1000);
-    BR.issueOrder(b, bdata, 'hall_of_emissaries', 'register_port_charter', 0, dice([0.4]));
+    BR.issueOrder(b, bdata, 'dock', 'register_port_charter', 0, dice([0.4]));
     var news = TSI.campaign.ironbowNews(copy(BR.toSave(b)), 4, 18);
     var lines = [].concat.apply([], news.map(function (w) { return w.lines.map(function (l) { return w.day + ' ' + l; }); }));
     t.ok(lines.indexOf('11 Your cargo ship reaches Goldport.') !== -1, lines.join(' | '));
     t.ok(lines.indexOf('18 Your cargo ship is home from Goldport.') !== -1);
     t.ok(lines.indexOf('5 A standing shipment to Goldport is due to sail, if a ship and the goods are ready.') !== -1);
-    t.ok(lines.indexOf('7 Hall of Emissaries: Register Port Charter (Timberport) is complete.') !== -1, 'no roll for the Register order');
+    t.ok(lines.indexOf('7 Dock: Register Port Charter (Timberport) is complete.') !== -1, 'no roll for the Register order');
     t.ok(!lines.some(function (l) { return /gp|sold|turned back/.test(l); }), 'never what it sells for');
-  });
-
-  test('the old trade is untouched: routes, their income and Expected Income / Week', function (t) {
-    var b = sailed();
-    b.tradeNetwork.active = true;
-    b.tradeNetwork.routes = [{ id: 'r1', clan: 'Molten', commodity: 'Precious Metals', risk: 'low', status: 'active', yieldGP: 100, openedDay: 4, nextDay: 11 }];
-    var before = copy(b.tradeNetwork.routes);
-    var income = BR.passiveIncome(b);
-    b.day = 11;
-    BR.settleVoyages(b, bdata, dice([0.5]));
-    t.same(b.tradeNetwork.routes, before);
-    t.equal(BR.passiveIncome(b), income);
-    t.equal(BR.routesDueToday(b), true, 'the route still sails as before');
-    t.equal(b.treasuryGP, 320, 'only the cargo was paid');
   });
 
   /* ---------- Negotiated Charter terms and the two protections (Harry, 20 October 2026) ---------- */

@@ -1458,7 +1458,7 @@
           if (preset && free.some(function (r) { return r.port === preset; })) picked.value = preset;
           whyBox = el('input', { type: 'text', maxlength: '120', class: 'tsi-input tsi-exp-charter-why', placeholder: 'What for (optional)', 'aria-label': 'What for (optional)', 'data-test': 'charter-why' });
           var body = [
-            el('p', { text: 'A Port Charter lets the Bastion\'s Dock ship cargo to a port and sell it there. Grant one when the party has won it. The Bastion holds it, then a Register Port Charter order at the Hall of Emissaries (Level 2, 3 days) registers it.' }),
+            el('p', { text: 'A Port Charter lets the Bastion\'s Dock ship cargo to a port and sell it there. Grant one when the party has won it. The Bastion holds it, then a Register Port Charter order at the Dock (3 days) registers it.' }),
             el('ul', { class: 'tsi-exp-charters', 'data-test': 'charter-ports' }, rows.map(function (r) {
               return el('li', { 'data-test': 'charter-row-' + r.port, 'data-status': r.st.kind }, [el('strong', { text: portTitle(r.port) }), ': ' + r.st.line]);
             }))

@@ -844,7 +844,7 @@
     t.equal(s.pendingOrders.some(function (o) { return o.id === 'hv-28'; }), false, 'the Riding Harness order is cancelled');
     var refund = res.report.gold.items.filter(function (i) { return /Riding Harness/.test(i.label); })[0];
     t.same([refund.gp, refund.kind], [150, 'refund']);
-    t.equal(s.treasuryGP, 2000 + 1645, 'the 150 gp is back in the treasury, with the 1,495 the war game\'s cancelled orders cost (its own tests are in strip-back.test.js)');
+    t.equal(s.treasuryGP, 2000 + 1645 + 1125 + 830, 'the 150 gp is back in the treasury, with the 1,495 the war game\'s cancelled orders cost (its own tests are in strip-back.test.js) and, from the Hall\'s wind-down (S09), 1,125 gp of cancelled orders and 830 gp of final settlement');
     t.same(res.report.cancelled.filter(function (c) { return c.id === 'hv-28'; }).map(function (c) { return [c.gp, /training and riding are gone/.test(c.why)]; }), [[150, true]]);
     t.same(res.report.moved.filter(function (m) { return m.id === 'hv-27'; }).map(function (m) { return m.to; }), ['the Beast Pen']);
     var lines = s.migration.v4.lines.join('\n');

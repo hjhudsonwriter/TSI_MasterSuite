@@ -13,15 +13,15 @@
      an action needs is asked for first, then the result is applied at once.
    - Orders complete on their day or any later one (BAS-13).
    - Lowering the party level keeps the buildings (BAS-04, B8).
-   - Each trade route pays at most once each time it sails (BAS-05, BAS-11).
-   - Host Delegation changes Political Capital once, by its own two rolls (B2).
+   (BAS-05, BAS-11 and B2 were about the Hall's sea routes and Host Delegation, which ended in the Strip Back
+   Overhaul, step S09; the Dock's ships are paid once in tools/bastion/commerce-rules.js.)
 
    Days, not turns (Harry, 8 October 2026; docs/BASTION-OVERHAUL.md). The
    Bastion follows the Explorer's day: state.day is the last day it has
    passed, and the screen passes each new day in turn (R.startDay, the
-   day's routes and orders, R.finishDay). Orders complete
-   on a due day; buildings on a ready day; contracts send a shipment and
-   routes sail every 7 days from when each began.
+   day's trade and orders, R.finishDay). Orders complete
+   on a due day; buildings on a ready day; the Dock's ships sail on the
+   schedules set in tools/bastion/commerce-rules.js.
    Every day stored is an Explorer day number (it can be 0 or less after
    R.shiftDays, for something that happened before a Reset Travel). A save
    from before (in Bastion turns) is set aside, not converted (Harry). */
@@ -93,16 +93,47 @@
   function clanMap(value) {
     return { blackstone: value, bacca: value, farmer: value, slade: value, molten: value, rowthorn: value, karr: value };
   }
+  /* The Hall of Emissaries' old contracts, delegations, summits and cooldowns are gone (the Strip Back Overhaul,
+     Harry, 22 October 2026, step S09: R.migrateToV4's windDownHall ends them and keeps them as history in
+     legacyDiplomacy). Only the Favour Tokens count is left, because the Clan Influence panel still shows it until
+     that panel goes (step S10); the conversion sets it to 0. */
   R.defaultDiplomacy = function () {
-    return { agreements: [], delegations: [], summits: [], arbitrations: [], consortiums: [], rep: 0, cooldowns: {}, tokens: 0 };
+    return { tokens: 0 };
   };
-  /* routes: the Hall's old sea routes (legacy_abstract). Then commodity
-     trade (pull request 5, commerce-rules.js): Port Charters, cargo ships at
-     sea, standing shipments, sale receipts, voyage protections ready to use,
-     and each good sold (for market saturation). parcels: the Courier
-     Exchange's parcels (pull request 6, courier-rules.js). */
+  /* Commodity trade (pull request 5, commerce-rules.js): Port Charters, cargo ships at sea, standing shipments, sale
+     receipts, voyage protections ready to use, and each good sold (for market saturation). parcels: the Courier
+     Exchange's parcels (pull request 6, courier-rules.js). (The Hall's old sea routes, with their stability and
+     yield, ended in the Strip Back Overhaul, step S09.) */
   R.defaultTradeNetwork = function () {
-    return { active: false, strategy: 'balanced', stability: 75, routes: [], portCharters: [], voyages: [], schedules: [], cargoSales: [], protections: {}, marketLedger: [], parcels: [] };
+    return { portCharters: [], voyages: [], schedules: [], cargoSales: [], protections: {}, marketLedger: [], parcels: [] };
+  };
+  /* What the Hall's old contracts and sea routes were, kept as read-only history when they ended (step S09):
+     { records: [{ kind, title, clan, startDay, endDay, endedDay, income, paid }], routes: [...] }. Nothing reads it
+     but the Hall's "Earlier agreements" list. */
+  R.defaultLegacyDiplomacy = function () { return { records: [] }; };
+  /* Tidy that history on load: each record kept as plain words and whole numbers (never more than 500). */
+  R.cleanLegacyDiplomacy = function (src) {
+    var out = R.defaultLegacyDiplomacy();
+    var list = isObj(src) && Array.isArray(src.records) ? src.records : [];
+    var text = function (v, max) { return typeof v === 'string' ? v.slice(0, max) : ''; };
+    out.records = list.filter(isObj).slice(0, 500).map(function (r) {
+      return {
+        kind: text(r.kind, 40), title: text(r.title, 80), clan: text(r.clan, 40),
+        startDay: dayNum(r.startDay, null), endDay: dayNum(r.endDay, null), endedDay: dayNum(r.endedDay, null),
+        income: clampInt(r.income, 0, 1000000), shipments: clampInt(r.shipments, 0, 10000), paid: clampInt(r.paid, 0, 10000000), note: text(r.note, 160)
+      };
+    });
+    return out;
+  };
+  /* One line of that history, in plain words: "Trade Agreement with Clan Karr · Day 30 to Day 51 · ended Day 40 · paid out in full, 270 gp". */
+  R.legacyDiplomacyLine = function (r) {
+    var clan = r.clan ? (/^clan /i.test(r.clan) ? r.clan : 'Clan ' + r.clan) : '';
+    var name = r.kind === 'Sea route' ? (r.title || 'Sea route') : r.kind === 'Inter-Clan Summit' ? (r.title || r.kind) + (r.clan ? ' (' + r.clan + ')' : '') : (r.title || r.kind || 'Agreement') + (clan ? ' with ' + clan : '');
+    var parts = [name];
+    if (r.startDay !== null && r.endDay !== null) parts.push(R.dayLabel(r.startDay) + ' to ' + R.dayLabel(r.endDay));
+    if (r.endedDay !== null) parts.push('ended ' + R.dayLabel(r.endedDay));
+    parts.push(r.paid > 0 ? 'paid out in full, ' + r.paid + ' gp' : (r.note ? r.note : 'nothing owed'));
+    return parts.join(' · ');
   };
   R.defaultState = function (data) {
     var s = {
@@ -118,10 +149,9 @@
       favour: { telluria: 0, aurush: 0, pelagos: 0 },
       politicalCapital: clanMap(0),
       tradeNetwork: R.defaultTradeNetwork(),
-      arbitration: { queue: [] },
       diplomacy: R.defaultDiplomacy(),
-      /* The Hall's Diplomatic Records (pull request 9, diplomacy-rules.js): a
-         ledger apart from diplomacy, so Clear Diplomacy Records never wipes it. */
+      legacyDiplomacy: R.defaultLegacyDiplomacy(),
+      /* The Hall's Diplomatic Events ledger (pull request 9, diplomacy-rules.js; its Diplomatic Records). */
       diplomaticRecords: { next: 1, list: [] },
       dmEdits: { done: {} },
       /* The days overhaul (8 October 2026): v 2 marks a save in days. day is
@@ -350,22 +380,11 @@
     d.politicalCapital = numMap(s.politicalCapital, CLAN_KEYS, -100, 100, 0);
     if (isObj(s.tradeNetwork)) {
       d.tradeNetwork = Object.assign(R.defaultTradeNetwork(), s.tradeNetwork);
-      d.tradeNetwork.routes = arr(s.tradeNetwork.routes) ? s.tradeNetwork.routes.filter(isObj) : [];
+      /* The Hall's old sea routes' fields are gone (step S09). */
+      ['active', 'strategy', 'stability', 'routes', 'highRiskRouting', 'yieldBonusPct'].forEach(function (k) { delete d.tradeNetwork[k]; });
     }
-    if (isObj(s.arbitration)) {
-      d.arbitration = Object.assign({ queue: [] }, s.arbitration);
-      d.arbitration.queue = arr(s.arbitration.queue) ? s.arbitration.queue.filter(isObj) : [];
-    }
-    if (isObj(s.diplomacy)) {
-      var dip = R.defaultDiplomacy();
-      ['agreements', 'delegations', 'summits', 'arbitrations', 'consortiums'].forEach(function (k) {
-        if (arr(s.diplomacy[k])) dip[k] = s.diplomacy[k].filter(isObj);
-      });
-      if (typeof s.diplomacy.rep === 'number') dip.rep = s.diplomacy.rep;
-      if (isObj(s.diplomacy.cooldowns)) dip.cooldowns = Object.assign({}, s.diplomacy.cooldowns);
-      if (typeof s.diplomacy.tokens === 'number') dip.tokens = s.diplomacy.tokens;
-      d.diplomacy = dip;
-    }
+    if (isObj(s.diplomacy) && typeof s.diplomacy.tokens === 'number') d.diplomacy = { tokens: clampInt(s.diplomacy.tokens, 0, 999) };
+    d.legacyDiplomacy = R.cleanLegacyDiplomacy(s.legacyDiplomacy);
     if (arr(s.log)) d.log = s.log.filter(isObj);
     /* The Party Name (a founded Clan's name was made into one by the
        conversion; organization, clanHonor and trustedClientsByClan are not
@@ -944,10 +963,10 @@
         var got = R.addCharter(s, m, day);
         receipt(m, 'applied', { type: 'charter', port: txt(m.port, 40), held: !got.added });
         var where = R.portWithClan(data, m.port, m.clan);
-        var regFn = R.fn(R.facility(data, 'hall_of_emissaries'), 'register_port_charter');
+        var regFn = R.fn(R.facility(data, 'dock'), 'register_port_charter');
         var regLevel = regFn && regFn.requiredFacilityLevel > 1 ? ' (Level ' + regFn.requiredFacilityLevel + ')' : '';
         var cline = 'Port Charter for ' + where + ' (' + fromText(m) + '): ' + (got.added
-          ? 'the Bastion now holds it. Register it at the Hall of Emissaries' + regLevel + ' before the Dock ships cargo there.'
+          ? 'the Bastion now holds it. Register it at the Dock' + regLevel + ' before the Dock ships cargo there.'
           : 'the Bastion already holds it, so nothing changed.');
         R.log(s, 'From the Explorer', cline + (m.text ? ' ' + txt(m.text, 200) : ''), at);
         R.addWord(s, 'From the Explorer: Port Charter for ' + where + (got.added ? '.' : ' (already held).'));
@@ -1680,7 +1699,7 @@
     var d = levelsTable(data).upgradeDays || {};
     return clampInt(d[toLevel] === undefined || d[toLevel] === null ? 7 : d[toLevel], 1, 365);
   };
-  function isUpgradeOrder(o) { return isObj(o) && ((isObj(o.meta) && o.meta.kind === 'upgrade') || o.fnId === 'upgrade_hall'); }
+  function isUpgradeOrder(o) { return isObj(o) && (isObj(o.meta) && o.meta.kind === 'upgrade'); }
   R.isUpgradeOrder = isUpgradeOrder;
   /* The upgrade pending at a facility, or null. */
   R.upgradePending = function (s, facId) {
@@ -1963,17 +1982,6 @@
     }
     return { costGP: 0, costText: '0gp' };
   };
-  R.isEmissary = function (fac, fn) { return fac.id === 'hall_of_emissaries' && !!(fn.special && fn.special.type === 'emissary_action'); };
-  /* An active summit cuts the cost of Hall actions (3308-3315). */
-  R.withSummitDiscount = function (s, fac, fn, cost) {
-    if (!R.isEmissary(fac, fn)) return cost;
-    var summit = (s.diplomacy.summits || [])[0];
-    if (summit && summit.costReductionPct) {
-      var pct = clampInt(summit.costReductionPct, 0, 90);
-      return Math.max(0, Math.floor(cost * (100 - pct) / 100));
-    }
-    return cost;
-  };
   /* The tool tables that can be picked as artisan tools (3420-3422). */
   R.toolTableNames = function (tools) {
     return Object.keys(tools || {}).filter(function (k) { return /Tools$/.test(k) || /Supplies$/.test(k); });
@@ -1991,8 +1999,9 @@
     if (fac.id === 'workshop' && fn.id === 'craft') {
       return R.craftItems(s, data.tools).map(function (name) { return { label: name, craftItem: name }; });
     }
-    /* The Hall's Register Port Charter: the Charters held and not yet
-       registered or being registered (pull request 5). */
+    /* The Dock's Register Port Charter: the Charters held and not yet
+       registered or being registered (pull request 5; it moved from the Hall
+       of Emissaries to the Dock in the Strip Back Overhaul, step S08). */
     if (fn.portCharter) {
       return (R.registrableCharters ? R.registrableCharters(s) : []).map(function (c) { return { label: 'Port Charter: ' + R.charterLabel(data, c), charterId: c.id }; });
     }
@@ -2036,15 +2045,9 @@
      Smithy's order only for a Bastion that had a Smithy ("onlyIfLegacy";
      hidden otherwise). Returns { ok } or { ok: false, hidden?, message }. */
   R.fnAvailable = function (s, fac, fn) {
-    /* The Hall's own Upgrade, replaced by every facility's Upgrade in step 1b
-       ("retired": one already ordered still completes). */
-    if (fn && fn.retired) return { ok: false, hidden: true, message: 'That order has been replaced by Upgrade.' };
     /* An order whose effect has nothing to work on yet (pull request 8b:
        Bless Bastion Foundations): listed, never given. */
     if (fn && fn.waiting) return { ok: false, message: 'Not available yet', why: String(fn.waiting) };
-    /* The Hall's Secure Trade Agreement (20 October 2026): no new ones; the
-       running ones simply finish (R.tickDiplomacy). */
-    if (fn && fn.retiredNote) return { ok: false, hidden: true, message: 'That order has been retired.', why: String(fn.retiredNote) };
     /* A facility whose levels replace each other (levelOrders "replace", the
        Strip Back Overhaul's S04) offers only the order(s) of its current level:
        the others are hidden, never deleted, so an order already pending still
@@ -2077,7 +2080,7 @@
     if (fn.acclimatise) return { ok: false, message: 'Acclimatise With Beast is rolled at the table: choose the beast and press its button, then type the handler\'s total.' };
     var avail = R.fnAvailable(s, fac, fn);
     if (!avail.ok) return { ok: false, message: avail.message };
-    /* Register Port Charter: one at a time, and it says whose is running. */
+    /* Register Port Charter (at the Dock): one at a time, and it says whose is running. */
     if (fn.portCharter && R.registerBusy && R.registerBusy(s, data)) return { ok: false, message: R.registerBusy(s, data) };
     /* A House order (pull request 7): its creature, its room, one at a time
        (creature-rules.js); refused in a copy without the creature rules. */
@@ -2118,7 +2121,7 @@
     var notes = '';
     if (facId === 'library_scriptorium' && fnId === 'research') notes = data.bastion.scriptureNotes[String(optionLabel || '').trim()] || '';
     var inputs = chosen && Array.isArray(chosen.inputs) ? chosen.inputs : [];
-    var costGP = R.withSummitDiscount(s, fac, fn, R.computeFnCost(s, fac, fn, chosen).costGP);
+    var costGP = R.computeFnCost(s, fac, fn, chosen).costGP;
     if (costGP > s.treasuryGP) return { ok: false, message: 'Not enough gp. Need ' + costGP + 'gp, you have ' + s.treasuryGP + 'gp.' };
     /* A Shrine order's Favour (pull request 8b): taken once, when it starts. */
     var noFavour = R.favourBlocker ? R.favourBlocker(s, fac, fn) : '';
@@ -2137,48 +2140,6 @@
     s.pendingOrders.push(o);
     return { ok: true, log: ['Order Issued', label + ' (' + days + (days === 1 ? ' day' : ' days') + ': due Day ' + (s.day + days) + ')' + (taken.length ? '. Taken from the Warehouse: ' + R.goodsListText(data, taken) : '') +
       (favour ? '. ' + favour + '% of ' + R.GOD_NAMES[R.shrineGod(fac.id, fn)] + '\'s Favour spent (now ' + s.favour[R.shrineGod(fac.id, fn)] + '%)' : '') + '.'] };
-  };
-
-  /* Issue a Hall action after its planning box (3346-3417). */
-  R.issueOrderWithMeta = function (s, data, facId, fnId, optionIdx, meta, rand) {
-    var fac = R.facility(data, facId);
-    var fn = R.fn(fac, fnId);
-    if (!fac || !fn) return { ok: false };
-    var broken = repairRefusal(s, fac);
-    if (broken) return broken;
-    var availM = R.fnAvailable(s, fac, fn);
-    if (!availM.ok && fn.retiredNote) return { ok: false, message: availM.message };
-    if (pendingSame(s, facId, fnId)) return { ok: false, message: 'That order is already pending.' };
-    var chosen = null;
-    var optionLabel = null;
-    if (fn.options && fn.options.length) {
-      chosen = fn.options[clampInt(optionIdx, 0)] || null;
-      optionLabel = chosen && chosen.label ? chosen.label : String(chosen || '');
-    } else {
-      var t = isObj(meta) ? String(meta.targetClan || '') : '';
-      if (t) { optionLabel = t; chosen = { label: t }; }
-    }
-    var costGP = R.withSummitDiscount(s, fac, fn, R.computeFnCost(s, fac, fn, chosen).costGP);
-    if (costGP > s.treasuryGP) return { ok: false, message: 'Not enough gp. Need ' + costGP + 'gp, you have ' + s.treasuryGP + 'gp.' };
-    s.treasuryGP -= costGP;
-    var label = orderLabel(fac, fn, optionLabel);
-    var notes = isObj(meta) && meta.notes ? String(meta.notes) : '';
-    var days = R.orderDays(fn);
-    s.pendingOrders.push({ id: R.uid(rand), facId: facId, fnId: fnId, chosen: chosen, optionLabel: optionLabel, notes: notes, label: label, costGP: costGP, issuedDay: s.day, dueDay: s.day + days, meta: isObj(meta) ? meta : null });
-    return { ok: true, log: ['Order Issued', label + ' (' + days + (days === 1 ? ' day' : ' days') + ': due Day ' + (s.day + days) + ').'] };
-  };
-
-  /* Trade Network investments (710-763). */
-  R.issueNetworkUpgrade = function (s, data, kind, rand) {
-    if (!s.tradeNetwork.active) return { ok: false, message: 'No active Trade Consortium. Establish the Trade Network first.' };
-    if (s.pendingOrders.some(function (o) { return o.facId === 'trade_network'; })) return { ok: false, message: 'A Trade Network upgrade is already pending.' };
-    var up = data.bastion.networkUpgrades[kind];
-    if (!up) return { ok: false, message: 'Unknown upgrade type.' };
-    if (up.costGP > s.treasuryGP) return { ok: false, message: 'Not enough gp. Need ' + up.costGP + 'gp, you have ' + s.treasuryGP + 'gp.' };
-    s.treasuryGP -= up.costGP;
-    var days = clampInt(up.days === undefined ? 7 : up.days, 1, 365);
-    s.pendingOrders.push({ id: R.uid(rand), facId: 'trade_network', fnId: 'upgrade', chosen: null, optionLabel: null, label: up.label, costGP: up.costGP, issuedDay: s.day, dueDay: s.day + days, meta: { kind: kind } });
-    return { ok: true, log: ['Order Issued', up.label + ' (' + days + (days === 1 ? ' day' : ' days') + ': due Day ' + (s.day + days) + ').'] };
   };
 
   /* Cancelling an order keeps the gold spent (B9, kept). */
@@ -2501,271 +2462,16 @@
     s.politicalCapital[id] = clampInt((s.politicalCapital[id] || 0) + clampInt(delta, -100, 100), -100, 100);
   };
 
-  /* ---------- Rolls and the Hall of Emissaries ---------- */
-  /* A roll's tier (1857-1868). */
-  R.tierFromRoll = function (d20, total, dc) {
-    if (d20 === 20) return 'critical_success';
-    if (d20 === 1) return 'critical_failure';
-    if (total >= dc + 5) return 'great_success';
-    if (total >= dc) return 'success';
-    if (total <= dc - 5) return 'bad_failure';
-    return 'failure';
-  };
-  R.formatTier = function (t) {
-    if (t === 'critical_success') return 'Critical Success';
-    if (t === 'great_success') return 'Great Success';
-    if (t === 'success') return 'Success';
-    if (t === 'failure') return 'Failure';
-    return 'Bad Failure';
-  };
+  /* ---------- Rolls ---------- */
   /* A typed d20: 1 to 20 (1681-1683). */
   R.readD20 = function (text, mod) {
     var d20 = clampInt(text === undefined || text === null ? 10 : text, 1, 20);
     return { d20: d20, total: d20 + clampInt(mod, -50, 50) };
   };
-  R.clanReactionLine = function (data, clanLabel, tier, rand) {
-    var clan = String(clanLabel || '').trim();
-    var set = tier === 'critical_success' || tier === 'great_success' ? data.bastion.reactions.good : tier === 'success' ? data.bastion.reactions.mid : data.bastion.reactions.bad;
-    return set[Math.floor(rand() * set.length)].replace(/\{clan\}/g, clan);
-  };
-  /* The Hall's bonus: level 1 +2, level 2 +4, level 3 +6, plus reputation (1830-1837). */
-  R.diplomacyModForHall = function (s) {
-    var lvl = R.getFacilityLevel(s, 'hall_of_emissaries');
-    var rep = clampInt(s.diplomacy.rep || 0, -5, 5);
-    return (lvl === 1 ? 2 : lvl === 2 ? 4 : 6) + rep;
-  };
-  /* A Hall action cooling down after a bad failure: cooldowns[kind] is the
-     day it's free again. The days left (0 when it's free). */
-  R.cooldownLeft = function (s, key) {
-    var until = s.diplomacy.cooldowns ? s.diplomacy.cooldowns[key] : undefined;
-    return typeof until === 'number' ? Math.max(0, until - s.day) : 0;
-  };
-  R.setCooldown = function (s, key, days) {
-    var t = clampInt(days, 0, 999);
-    if (t <= 0) delete s.diplomacy.cooldowns[key];
-    else s.diplomacy.cooldowns[key] = s.day + t;
-  };
-
-  /* What a Hall action needs before anything happens: the rolls to ask for,
-     in the old order (the action roll, then for a delegation its Diplomacy
-     and Insight rolls). blocked is set while the action is cooling down. */
-  R.emissaryPlan = function (s, data, order) {
-    var fac = R.facility(data, order.facId);
-    var fn = R.fn(fac, order.fnId);
-    var kind = String(fn.special.kind || 'unknown');
-    var opt = order.optionLabel || (order.meta && order.meta.targetClan) || '';
-    var dc = data.bastion.hallDC[kind] !== undefined ? data.bastion.hallDC[kind] : 14;
-    var cd = R.cooldownLeft(s, kind);
-    var mod = R.diplomacyModForHall(s);
-    var rolls = [{ key: 'main', title: fn.label + ' (' + opt + ')', mod: mod, dc: dc }];
-    var tone = null;
-    if (kind === 'host_delegation') {
-      tone = String((order.meta && order.meta.tone) || 'assertive');
-      var toneMod = data.bastion.delegation.toneMod[tone] || 0;
-      rolls.push({ key: 'r1', title: 'Diplomacy Roll (' + tone + ')', mod: mod + toneMod, dc: data.bastion.delegation.diplomacyDC });
-      rolls.push({ key: 'r2', title: 'Insight Roll (' + tone + ')', mod: mod, dc: data.bastion.delegation.insightDC });
-    }
-    return { fac: fac, fn: fn, kind: kind, opt: opt, dc: dc, mod: mod, tone: tone, blocked: cd, rolls: rolls };
-  };
-
-  /* How long a Hall action's record lasts before its roll tier: its
-     durationDays, or for a Trade Agreement the weeks chosen when it was
-     planned (1, 3 or 6; Harry, 8 October 2026). */
-  R.hallBaseDays = function (data, fn, order) {
-    var sp = fn.special || {};
-    if (sp.kind === 'trade_agreement') {
-      var choices = data.bastion.tradeAgreementWeeks || [1, 3, 6];
-      var w = order && order.meta ? Number(order.meta.weeks) : NaN;
-      if (choices.indexOf(w) === -1) w = data.bastion.tradeAgreementDefaultWeeks || 3;
-      return w * 7;
-    }
-    return clampInt(sp.durationDays === undefined || sp.durationDays === null ? 14 : sp.durationDays, 1, 365);
-  };
-  /* "21 days (3 shipments)". */
+  /* "21 days". */
   R.daysText = function (n) { return n + (n === 1 ? ' day' : ' days'); };
-  R.shipmentsText = function (n) { return n + (n === 1 ? ' shipment' : ' shipments'); };
 
-  /* Apply a Hall action once all its rolls are in (899-1201). rolls holds
-     { main, r1, r2 } as { d20, total }. Returns the result box's lines.
-     Its record lasts its base days plus the roll tier's (at least a week);
-     a contract sends a shipment every 7 days from today, the last on its
-     final day. */
-  R.applyEmissary = function (s, data, order, plan, rolls, rand) {
-    var fn = plan.fn;
-    var kind = plan.kind;
-    var opt = plan.opt;
-    var roll = rolls.main;
-    var tier = R.tierFromRoll(roll.d20, roll.total, plan.dc);
-    var changes = [];
-    var summary = '';
-    var every = R.time(data).every;
-    var baseDays = R.hallBaseDays(data, fn, order);
-    var randBetween = function (a, b) {
-      var min = clampInt(Math.min(a, b), -999999, 999999);
-      var max = clampInt(Math.max(a, b), -999999, 999999);
-      return min + Math.floor(rand() * (max - min + 1));
-    };
-    var t = data.bastion.hallTiers[tier] || { daysAdj: 0, incomeMult: 1, pcDelta: 0 };
-    var daysAdj = t.daysAdj || 0;
-    var incomeMult = t.incomeMult;
-    var pcDelta = t.pcDelta;
-    if (t.cooldownDays) { R.setCooldown(s, kind, t.cooldownDays); changes.push('Cooldown: ' + R.daysText(t.cooldownDays)); }
-
-    /* The action roll's Political Capital. A delegation's comes from its own
-       two rolls instead (B2), so it isn't changed here. */
-    if (kind === 'summit') {
-      var parts = String(opt).split(/[&\/+]/).map(function (x) { return x.trim(); }).filter(Boolean);
-      parts.forEach(function (p) { R.addPoliticalCapital(s, p, pcDelta); });
-      if (parts.length) changes.push('Political Capital: ' + (pcDelta >= 0 ? '+' : '') + pcDelta + ' (' + parts.join(' & ') + ')');
-    } else if (kind !== 'host_delegation') {
-      R.addPoliticalCapital(s, opt, pcDelta);
-      changes.push('Political Capital: ' + (pcDelta >= 0 ? '+' : '') + pcDelta + ' (' + String(opt) + ')');
-    }
-    var days = clampInt(baseDays + daysAdj, every, 365);
-    var endDay = s.day + days;
-    var shipments = Math.ceil(days / every);
-
-    if (kind === 'summit') {
-      if (incomeMult === 0) {
-        summary = 'The summit collapses into accusation and slammed goblets. No accord is reached.';
-      } else {
-        var basePct = clampInt(fn.special.costReductionPct || 0, 0, 90);
-        var pct = tier === 'critical_success' ? clampInt(basePct + 10, 0, 90)
-          : tier === 'great_success' ? clampInt(basePct + 5, 0, 90)
-          : tier === 'failure' ? clampInt(basePct - 5, 0, 90)
-          : basePct;
-        s.diplomacy.summits.push({ id: R.uid(rand), title: 'Inter-Clan Summit', pair: String(opt), startDay: s.day, endDay: endDay, costReductionPct: pct });
-        R.appendToWarehouse(s, 'Summit Charter', 1, '', 'Hall of Emissaries', rand);
-        changes.push('Trade action discount: ' + pct + '% (' + R.daysText(days) + ', until Day ' + endDay + ')');
-        summary = 'A charter is inked. Trade routes loosen. The room exhales.';
-      }
-    } else if (kind === 'host_delegation') {
-      var tone = plan.tone;
-      var gMin = clampInt(fn.special.oneTimeTreasuryMin || 0, 0);
-      var gMax = clampInt(fn.special.oneTimeTreasuryMax === undefined ? gMin : fn.special.oneTimeTreasuryMax, gMin);
-      var dDC = data.bastion.delegation.diplomacyDC;
-      var iDC = data.bastion.delegation.insightDC;
-      var s1 = rolls.r1.total >= dDC;
-      var s2 = rolls.r2.total >= iDC;
-      var successes = (s1 ? 1 : 0) + (s2 ? 1 : 0);
-      var weak = !s1 && !s2 && (rolls.r1.total >= dDC - 2 || rolls.r2.total >= iDC - 2);
-      var dPc = 0;
-      var tokenGain = 0;
-      /* This outcome text was never shown (BAS-34, kept). */
-      if (successes === 2) { dPc = 15; tokenGain = 1; }
-      else if (successes === 1) { dPc = 8; }
-      else if (weak) { dPc = 0; }
-      else { dPc = -12; }
-      R.addPoliticalCapital(s, opt, dPc);
-      changes.push('Political Capital: ' + (dPc >= 0 ? '+' : '') + dPc + ' (' + String(opt) + ')');
-      if (tokenGain > 0) {
-        s.diplomacy.tokens = clampInt((s.diplomacy.tokens || 0) + tokenGain, 0, 999);
-        changes.push('Favour Token: +' + tokenGain);
-      }
-      var gained = clampInt(randBetween(gMin, gMax), 0, 999999);
-      if (tone === 'conciliatory') gained = clampInt(Math.floor(gained * 0.85), 0, 999999);
-      if (tone === 'opportunistic') gained = clampInt(Math.floor(gained * 1.15), 0, 999999);
-      if (successes > 0 || weak) {
-        s.treasuryGP += gained;
-        changes.push('Treasury: +' + gained + ' gp');
-      } else {
-        var penalty = clampInt(Math.ceil((gMin + gMax) / 6), 0);
-        s.treasuryGP -= penalty;
-        changes.push('Treasury: -' + penalty + ' gp');
-      }
-      s.diplomacy.delegations.push({ id: R.uid(rand), title: 'Hosted Delegation (' + tone + ')', clan: String(opt), startDay: s.day, endDay: endDay });
-      changes.push('Delegation active: ' + R.daysText(days) + ', until Day ' + endDay);
-    } else {
-      var iMin = clampInt(fn.special.incomeMin || 0, 0);
-      var iMax = clampInt(fn.special.incomeMax === undefined ? iMin : fn.special.incomeMax, iMin);
-      var baseIncome = randBetween(iMin, iMax);
-      if (incomeMult === 0) {
-        summary = 'Negotiations sour. Ink never touches parchment.';
-      } else {
-        var perShipment = clampInt(Math.floor(baseIncome * incomeMult), 0);
-        var title = kind === 'arbitration' ? 'Secure Writ of Authority' : kind === 'consortium' ? 'Form Trade Consortium' : 'Trade Agreement';
-        /* income: the gold each shipment brings; lastShipmentDay: the day
-           of the latest shipment (today, to start the count). */
-        var rec = { id: R.uid(rand), title: title, clan: String(opt), startDay: s.day, endDay: endDay, income: perShipment, lastShipmentDay: s.day };
-        var list = kind === 'arbitration' ? 'arbitrations' : kind === 'consortium' ? 'consortiums' : 'agreements';
-        s.diplomacy[list].push(rec);
-        changes.push('New record: ' + rec.title + ' (' + R.daysText(days) + ', ' + R.shipmentsText(shipments) + ', until Day ' + endDay + ')');
-        if (rec.income) changes.push('Income: +' + rec.income + ' gp a shipment, every ' + every + ' days');
-        if (kind === 'consortium') {
-          s.tradeNetwork.active = true;
-          if (!Array.isArray(s.tradeNetwork.routes)) s.tradeNetwork.routes = [];
-          var ck = R.clanIdFromLabel(opt);
-          if (ck) {
-            var meta = data.bastion.clanTrade[ck] || { name: opt, commodity: 'Goods', risk: 'medium' };
-            /* An expired route counts too, so a new consortium can't reopen it (B21, kept). */
-            var exists = s.tradeNetwork.routes.some(function (r) { return String(r.clan).toLowerCase() === meta.name.toLowerCase(); });
-            if (!exists) {
-              /* It sails every 7 days from today (nextDay), until its
-                 consortium's base days are up (the roll's tier doesn't
-                 change the route's life, as before). */
-              s.tradeNetwork.routes.push({
-                id: R.uid(rand), clan: meta.name, commodity: meta.commodity, risk: meta.risk,
-                openedDay: s.day, expiresDay: s.day + clampInt(fn.special.durationDays === undefined ? 35 : fn.special.durationDays, 1, 365),
-                nextDay: s.day + every, yieldGP: perShipment, stabilityDC: 12, status: 'active'
-              });
-              changes.push('Trade Network: Route opened (' + meta.name + ')');
-            }
-          }
-          changes.push('Market Stability: ' + clampInt(s.tradeNetwork.stability === undefined ? 75 : s.tradeNetwork.stability, 0, 100) + '%');
-        }
-        R.appendToWarehouse(s, rec.title + ' Contract', 1, '', 'Hall of Emissaries', rand);
-        summary = tier === 'critical_success' ? 'The deal is legendary. Other emissaries will quote this contract for years.'
-          : tier === 'great_success' ? 'A strong deal. Clean clauses. Better margins.'
-          : tier === 'failure' ? 'A deal, but you concede ground. The margins are thinner.'
-          : 'Terms are acceptable. The contract is sealed.';
-      }
-    }
-    var narrative = R.clanReactionLine(data, opt, tier, rand);
-    return {
-      tier: tier, dc: plan.dc, mod: plan.mod, roll: roll, summary: summary, narrative: narrative, changes: changes,
-      log: ['Order Resolved', fn.label + ' (' + opt + ') → ' + R.formatTier(tier) + '. ' + narrative + ' ' + summary]
-    };
-  };
-
-  /* Hall upgrade: one level, free (1204-1226; B4, kept). */
-  R.upgradeHall = function (s, fn) {
-    var cur = R.getFacilityLevel(s, 'hall_of_emissaries');
-    /* Up to Level 5 since step 1b (the data's maxLevel 3 is the old limit). */
-    if (cur >= R.MAX_LEVEL) return ['Upgrade', 'Hall of Emissaries is already max level.'];
-    s.facilityLevels.hall_of_emissaries = clampInt(cur + 1, 1, R.MAX_LEVEL);
-    return ['Upgrade', 'Hall of Emissaries upgraded to Level ' + (cur + 1) + '.'];
-  };
-
-  /* A Trade Network investment completing (765-817). */
-  R.completeNetworkUpgrade = function (s, order) {
-    var tn = s.tradeNetwork;
-    var kind = order.meta && order.meta.kind;
-    var lines = [];
-    var title = 'Consortium Resolution';
-    if (kind === 'stability') {
-      var before = clampInt(tn.stability === undefined ? 75 : tn.stability, 0, 100);
-      tn.stability = clampInt(before + 8, 0, 100);
-      lines.push('Coin changes hands under closed doors. Inspectors are paid. Bribes are… politely renamed.');
-      lines.push('Market Stability rises from ' + before + '% to ' + tn.stability + '%.');
-      title = 'Stability Investment Sealed';
-    } else if (kind === 'yield') {
-      var b2 = clampInt(tn.yieldBonusPct || 0, 0, 200);
-      tn.yieldBonusPct = clampInt(b2 + 5, 0, 200);
-      lines.push('New contracts are drafted with sharper margins and stricter ledgers.');
-      lines.push('Network yield improves from +' + b2 + '% to +' + tn.yieldBonusPct + '%.');
-      title = 'Yield Investment Sealed';
-    } else if (kind === 'toggle_high_risk') {
-      tn.highRiskRouting = !tn.highRiskRouting;
-      lines.push('A doctrine memorandum is circulated: routes will be ' + (tn.highRiskRouting ? 'pushed harder' : 'kept conservative') + '.');
-      lines.push('High-Risk Routing is now ' + (tn.highRiskRouting ? 'Enabled' : 'Disabled') + '.');
-      title = 'Routing Doctrine Issued';
-    } else {
-      lines.push('The Council archives a motion with no clear effect.');
-    }
-    return { title: title, lines: lines, log: ['Trade Network', (order.label || 'Trade Network upgrade') + ' resolved.'] };
-  };
-
-  /* Orders that need no typed roll (819-1254, the non-Hall parts).
+  /* Orders that need no typed roll (819-1254).
      Returns log lines, or null if the order has no facility (as before,
      nothing happens then). */
   R.completeSimpleOrder = function (s, data, order, rand) {
@@ -2775,8 +2481,8 @@
     if (isObj(order.meta) && order.meta.kind === 'research') return [R.completeResearch(s, data, order)];
     var fn = R.fn(fac, order.fnId);
     if (!fn) return R.dropOrderGoods(s, data, order, rand);
-    /* The Hall's Register Port Charter (pull request 5): the Charter becomes
-       registered, once; nothing goes into the Warehouse. */
+    /* The Dock's Register Port Charter (pull request 5; the Hall's until step S08):
+       the Charter becomes registered, once; nothing goes into the Warehouse. */
     if (fn.portCharter && R.completeCharterRegistration) return [R.completeCharterRegistration(s, data, order)];
     /* A House order (pull request 7): its creature is housed, once; nothing
        goes into the Warehouse. (A copy without the creature rules changes
@@ -2807,9 +2513,6 @@
       if (!s.greatRites.some(function (g) { return g.id === rid; })) s.greatRites.push({ id: rid, rite: fn.greatRite, god: R.shrineGod(fac.id, fn), madeDay: s.day, status: 'waiting' });
       return [['Order Completed', (order.label || fac.name + ': ' + fn.label) + ' → ' + R.RITE_NAMES[fn.greatRite] + ' waits at the Ironbow until the DM gives it to the party on an expedition.']];
     }
-    if (fac.id === 'hall_of_emissaries' && fn.special && fn.special.type === 'upgrade_facility') {
-      return [R.upgradeHall(s, fn)];
-    }
     if (fac.id === 'dock' && fn.id === 'charter_berth') {
       R.appendToWarehouse(s, optionLabel || 'Chartered vessel', 1, '', 'Dock', rand);
       return [['Order Completed', label + ' → Added to Warehouse.']];
@@ -2828,14 +2531,14 @@
     return [['Order Completed', label + ' → Completed.']];
   };
 
-  /* How an order is completed: 'network', 'emissary', 'simple' or 'none'. */
+  /* How an order is completed: 'simple' or 'none' (the Hall's 'emissary' and the Trade Network's 'network'
+     ended in the Strip Back Overhaul, step S09: such an order is cancelled, with its gold given back, when the
+     Bastion is converted). */
   R.orderKind = function (data, order) {
-    if (order.facId === 'trade_network') return 'network';
     var fac = R.facility(data, order.facId);
     if (fac && order.meta && (order.meta.kind === 'upgrade' || order.meta.kind === 'research')) return 'simple';
     var fn = R.fn(fac, order.fnId);
     if (!fac || !fn) return 'none';
-    if (R.isEmissary(fac, fn)) return 'emissary';
     return 'simple';
   };
   /* Is an order due (its day has come)? */
@@ -2849,249 +2552,6 @@
   };
   R.removeOrder = function (s, id) {
     s.pendingOrders = s.pendingOrders.filter(function (o) { return o.id !== id; });
-  };
-
-  /* ---------- Diplomacy each day (2331-2385) ----------
-     Contracts (agreements, writs, consortiums) send a shipment every 7 days
-     from the day each was signed, the last one on its final day; then
-     every record whose final day has come ends (a delegation or summit
-     lasts until its final day). A sea route whose consortium has ended, or
-     whose own days are up, expires; a cooldown that's over is cleared.
-     Returns { logs, word }: the log lines, and the lines for "The Ironbow
-     sends word…" (records that ended). */
-  var CONTRACTS = ['agreements', 'arbitrations', 'consortiums'];
-  var RECORDS = ['agreements', 'delegations', 'summits', 'arbitrations', 'consortiums'];
-  /* The day a contract's next shipment comes, or null when it's had them all. */
-  R.nextShipmentDay = function (rec, every) {
-    var last = dayNum(rec.lastShipmentDay, dayNum(rec.startDay, 0));
-    var end = dayNum(rec.endDay, last);
-    if (last >= end) return null;
-    return Math.min(last + (every || 7), end);
-  };
-  /* Shipments still to come, and days left. */
-  R.shipmentsLeft = function (rec, every) {
-    var last = dayNum(rec.lastShipmentDay, dayNum(rec.startDay, 0));
-    var end = dayNum(rec.endDay, last);
-    return end > last ? Math.ceil((end - last) / (every || 7)) : 0;
-  };
-  R.daysLeft = function (s, rec) { return Math.max(0, dayNum(rec.endDay, s.day) - s.day); };
-  /* "Trade Agreement with Clan Karr". */
-  function recordName(list, rec) {
-    if (list === 'summits') return 'Inter-Clan Summit (' + (rec.pair || '—') + ')';
-    if (list === 'delegations') return 'delegation from ' + (rec.clan || '—');
-    return (rec.title || 'contract') + ' with ' + (rec.clan || '—');
-  }
-  R.tickDiplomacy = function (s, data) {
-    var logs = [];
-    var word = [];
-    var d = s.diplomacy;
-    var every = R.time(data).every;
-    var income = 0;
-    CONTRACTS.forEach(function (list) {
-      (Array.isArray(d[list]) ? d[list] : []).forEach(function (x) {
-        var next = R.nextShipmentDay(x, every);
-        if (next === null || next > s.day) return;
-        x.lastShipmentDay = next;
-        income += clampInt(x.income || 0, 0);
-      });
-    });
-    if (income > 0) {
-      s.treasuryGP += income;
-      logs.push(['Diplomacy', 'Contract shipments arrived: +' + income + ' gp.']);
-    }
-    RECORDS.forEach(function (list) {
-      if (!Array.isArray(d[list])) { d[list] = []; return; }
-      d[list] = d[list].filter(function (x) {
-        if (dayNum(x.endDay, s.day) > s.day) return true;
-        var contract = CONTRACTS.indexOf(list) !== -1;
-        var line = 'Your ' + recordName(list, x) + ' has ended' + (contract ? ' (its last shipment arrived)' : '') + '.';
-        logs.push(['Diplomacy', line]);
-        word.push(line);
-        return false;
-      });
-    });
-    var clans = {};
-    (d.consortiums || []).forEach(function (x) { clans[String(x.clan || '')] = true; });
-    (s.tradeNetwork.routes || []).forEach(function (r) {
-      if (!r || r.status === 'expired') return;
-      if (!clans[String(r.clan || '')] || (r.expiresDay !== undefined && r.expiresDay !== null && s.day > r.expiresDay)) r.status = 'expired';
-    });
-    Object.keys(d.cooldowns || {}).forEach(function (k) {
-      if (!(d.cooldowns[k] > s.day)) delete d.cooldowns[k];
-    });
-    return { logs: logs, word: word };
-  };
-  /* The gold contracts bring each week (a shipment each, every 7 days). */
-  R.passiveIncome = function (s) {
-    var d = s.diplomacy;
-    return (d.agreements || []).concat(d.arbitrations || [], d.consortiums || []).reduce(function (a, x) { return a + (x.income || 0); }, 0);
-  };
-
-  /* ---------- Trade routes (2390-2595) ---------- */
-  R.routeDC = function (s, route) {
-    var stab = clampInt(s.tradeNetwork.stability === undefined ? 75 : s.tradeNetwork.stability, 0, 100);
-    var stabMod = stab >= 85 ? -2 : stab >= 70 ? -1 : stab >= 50 ? 0 : stab >= 35 ? 1 : 2;
-    var riskMod = route.risk === 'high' ? 3 : route.risk === 'medium' ? 1 : 0;
-    var strat = String(s.tradeNetwork.strategy || 'balanced');
-    var stratMod = strat === 'conservative' ? -1 : strat === 'aggressive' ? 2 : 0;
-    var hr = s.tradeNetwork.highRiskRouting ? 2 : 0;
-    return clampInt(12 + stabMod + riskMod + stratMod + hr, 6, 20);
-  };
-  R.routePayout = function (s, route, outcome) {
-    if (String((route && route.status) || '').toLowerCase() === 'expired') return 0;
-    var baseYield = clampInt(route.yieldGP || 0, 0, 999999);
-    var yieldBonusPct = clampInt(s.tradeNetwork.yieldBonusPct || 0, 0, 200);
-    var hrBonusPct = s.tradeNetwork.highRiskRouting ? 20 : 0;
-    var boosted = Math.floor(baseYield * (100 + yieldBonusPct + hrBonusPct) / 100);
-    if (outcome === 'strong_success') return clampInt(Math.floor(boosted * 1.20), 0, 999999);
-    if (outcome === 'success') return clampInt(boosted, 0, 999999);
-    return 0;
-  };
-  R.routeOutcomeFromTier = function (tier) {
-    if (tier === 'critical_success' || tier === 'great_success') return 'strong_success';
-    if (tier === 'success') return 'success';
-    if (tier === 'failure') return 'failure';
-    return 'critical_failure';
-  };
-  /* Routes still running today (2456-2463). */
-  R.liveRoutes = function (s) {
-    return (s.tradeNetwork.routes || []).filter(function (r) {
-      if (!r || r.status === 'removed') return false;
-      if (String(r.status || '').toLowerCase() === 'expired') return false;
-      if (r.expiresDay !== undefined && r.expiresDay !== null && s.day > r.expiresDay) return false;
-      return true;
-    });
-  };
-  /* A route has sailed: its next sailing is 7 days on from the one just
-     settled, so none can pay twice for the same sailing (BAS-05, BAS-11). */
-  R.markSettled = function (s, r, data) {
-    r.nextDay = dayNum(r.nextDay, s.day) + R.time(data).every;
-    r.lastSettledDay = s.day;
-  };
-  /* Does this route need a typed roll? High-risk routes do, and every route
-     does with High-Risk Routing on (2492-2494). */
-  R.routeNeedsRoll = function (s, r) {
-    return String(r.risk || 'low') === 'high' || !!s.tradeNetwork.highRiskRouting;
-  };
-  /* Settle one route: with no roll needed, roll is null. Returns the
-     narrative line and the gold paid (2486-2568). */
-  R.settleRoute = function (s, data, r, roll, rand) {
-    var gained = 0;
-    var line;
-    if (r.status === 'disrupted') {
-      line = r.clan + ': disrupted. Dockmasters report no confirmed arrivals.';
-    } else if (!R.routeNeedsRoll(s, r)) {
-      var payout = R.routePayout(s, r, 'success');
-      if (payout > 0) {
-        s.treasuryGP += payout;
-        gained = payout;
-        line = r.clan + ' caravans arrive on schedule, holds sealed and accounted. Treasury increases by ' + payout + ' gp.';
-      } else {
-        line = r.clan + ' reports routine movement, but no taxable yield was recorded.';
-      }
-    } else {
-      var dc = R.routeDC(s, r);
-      var outcome = R.routeOutcomeFromTier(R.tierFromRoll(roll.d20, roll.total, dc));
-      if (outcome === 'success' || outcome === 'strong_success') {
-        var pay = R.routePayout(s, r, outcome);
-        s.treasuryGP += pay;
-        gained = pay;
-        line = outcome === 'strong_success'
-          ? r.clan + ' convoys arrive early with double-stamped manifests. Treasury increases by ' + pay + ' gp.'
-          : r.clan + ' convoys arrive after a tense crossing. Treasury increases by ' + pay + ' gp.';
-      } else {
-        r.status = 'disrupted';
-        if (outcome === 'failure') {
-          line = r.clan + ' route collapses into delays and seized cargo. Status: Disrupted. No income collected.';
-        } else {
-          var drop = String(r.risk || 'low') === 'high' ? 10 : 6;
-          s.tradeNetwork.stability = clampInt((s.tradeNetwork.stability === undefined ? 75 : s.tradeNetwork.stability) - drop, 0, 100);
-          line = r.clan + ' suffers a catastrophic loss at sea. Status: Disrupted. Market Stability falls by ' + drop + '%.';
-          R.enqueueDispute(s, data, r.clan, 'Trade disruption and disputed tariffs.', {
-            kind: 'trade', routeClan: r.clan, commodity: r.commodity || 'Goods', disruptedDay: s.day,
-            stabilityAtFiling: clampInt(s.tradeNetwork.stability === undefined ? 75 : s.tradeNetwork.stability, 0, 100),
-            risk: r.risk || 'medium', b: data.bastion.consortiumName
-          }, rand);
-        }
-      }
-    }
-    R.markSettled(s, r, data);
-    return { line: line, gained: gained };
-  };
-
-  /* ---------- The Council Ledger (2753-3051) ---------- */
-  R.enqueueDispute = function (s, data, clanA, reason, meta, rand) {
-    meta = meta || {};
-    s.arbitration.queue.push({
-      id: R.uid(rand),
-      a: String(clanA || 'Unknown'),
-      b: String(meta.b || data.bastion.consortiumName),
-      reason: String(reason || 'A dispute over tariffs, delays, and cargo claims.'),
-      createdDay: s.day,
-      meta: {
-        kind: String(meta.kind || 'trade'),
-        routeClan: String(meta.routeClan || clanA || ''),
-        routeId: meta.routeId ? String(meta.routeId) : null,
-        risk: meta.risk ? String(meta.risk) : null,
-        commodity: meta.commodity ? String(meta.commodity) : null,
-        disruptedDay: meta.disruptedDay !== undefined && meta.disruptedDay !== null ? dayNum(meta.disruptedDay, null) : null,
-        stabilityAtFiling: meta.stabilityAtFiling !== undefined && meta.stabilityAtFiling !== null ? clampInt(meta.stabilityAtFiling, 0, 100) : null
-      }
-    });
-  };
-  /* The Writ bonus. It's never granted, so this is always 0 (B6, kept). */
-  R.councilBonus = function (s) { return s.arbitration.authorityBonusTurns && s.arbitration.authorityBonusTurns > 0 ? 2 : 0; };
-  /* A ruling once its roll is in. choice is 'A', 'S' or 'B'. */
-  R.rule = function (s, data, disputeId, choice, roll) {
-    var d = null;
-    s.arbitration.queue.forEach(function (x) { if (String(x.id) === String(disputeId)) d = x; });
-    if (!d) return null;
-    var dc = data.bastion.councilDC;
-    var bonus = R.councilBonus(s);
-    var total = roll.total;
-    var passed = total >= dc;
-    var clanA = String(d.a || '');
-    var clanB = String(d.b || data.bastion.consortiumName);
-    if (passed) s.arbitration.queue = s.arbitration.queue.filter(function (x) { return String(x.id) !== String(disputeId); });
-    else d.reason = String(d.reason || '') + ' (Returned to docket after council deadlock.)';
-    if (s.arbitration.authorityBonusTurns && s.arbitration.authorityBonusTurns > 0) s.arbitration.authorityBonusTurns -= 1;
-    /* A binding verdict restores the first route with that clan, if it's disrupted. */
-    if (passed && d.meta && d.meta.routeClan) {
-      var rc = String(d.meta.routeClan);
-      var route = null;
-      (s.tradeNetwork.routes || []).some(function (r) { if (String(r.clan) === rc) { route = r; return true; } return false; });
-      if (route && route.status === 'disrupted') route.status = 'active';
-    }
-    var verdictWord = choice === 'A' ? 'ruled for ' + clanA : choice === 'B' ? 'ruled for ' + clanB : 'split the claims';
-    /* The log shows "[object Object]" for the roll, as before (BAS-29, kept). */
-    var outcomeLine = passed
-      ? 'The seal is struck. The council has ' + verdictWord + '. (Roll [object Object]' + (bonus ? '+' + bonus : '') + ' = ' + total + ' vs DC ' + dc + ')'
-      : 'Wax cracks under hesitation. The council fails to reach binding consensus. (Roll [object Object]' + (bonus ? '+' + bonus : '') + ' = ' + total + ' vs DC ' + dc + ')';
-    var rulingLabel = choice === 'A' ? 'Rule for ' + clanA : choice === 'B' ? 'Rule for ' + clanB : 'Split the Claims';
-    var effects = [];
-    var stab = function (delta) { s.tradeNetwork.stability = clampInt((s.tradeNetwork.stability === undefined ? 75 : s.tradeNetwork.stability) + delta, 0, 100); };
-    if (passed) {
-      if (choice === 'A') {
-        R.addPoliticalCapital(s, clanA, 6); stab(-1);
-        effects.push(clanA + ' gains political leverage (+6 Political Capital).', 'Consortium confidence wavers. Market Stability -1%.');
-      } else if (choice === 'S') {
-        R.addPoliticalCapital(s, clanA, 2); stab(2);
-        effects.push(clanA + ' accepts a compromise (+2 Political Capital).', 'Market Stability +2%.');
-      } else if (choice === 'B') {
-        R.addPoliticalCapital(s, clanA, -4); stab(4);
-        effects.push(clanA + ' loses face (-4 Political Capital).', 'Market Stability +4%.');
-      }
-      if (d.meta && d.meta.routeClan) effects.push(d.meta.routeClan + ' route status: Restored (Active).');
-    } else {
-      R.addPoliticalCapital(s, clanA, -2); stab(-2);
-      effects.push(clanA + ' storms out of chamber (-2 Political Capital).', 'Market Stability -2%.');
-    }
-    return {
-      passed: passed, dc: dc, bonus: bonus, total: total, roll: roll, rulingLabel: rulingLabel, effects: effects,
-      verdictText: passed ? 'A verdict is issued. The council seals the ruling: ' + rulingLabel + '.' : 'The council deadlocks. No binding verdict is sealed today.',
-      log: ['Arbitration', outcomeLine],
-      stillThere: s.arbitration.queue.some(function (x) { return String(x.id) === String(disputeId); })
-    };
   };
 
   /* ---------- Clan support (the Clan Influence panel's number) ----------
@@ -3109,10 +2569,9 @@
   /* ---------- Passing a day, as resumable steps (560-604; BAS-02) ----------
      The screen passes each new day in turn, in this order:
      1. R.startDay: the day number moves on; building work due today is
-        built, contracts due a shipment send it and records whose days are
-        up end.
-     2. 'trade': the sea routes sailing today settle (a d20 for a high-risk
-        route, asked for by the screen; R.settleRoute), then R.finishRoutes.
+        built and each beast out on the road earns its Bonding Day.
+     2. 'trade': the Dock's ships reaching their port sell or turn back and
+        ships home unload (R.settleVoyages), then R.finishRoutes.
      3. 'orders': the orders due today complete one by one (the screen asks
         for any rolls; a cancelled roll leaves the order due, R.skipOrder).
      4. R.finishDay: what happened goes into "The Ironbow sends word…"
@@ -3130,22 +2589,12 @@
       R.log(s, 'Construction Complete', name + ' is now built and active.', now);
       R.addWord(s, 'The ' + name + ' is built.');
     });
-    var dip = R.tickDiplomacy(s, data);
-    dip.logs.forEach(function (l) { R.log(s, l[0], l[1], now); });
-    dip.word.forEach(function (l) { R.addWord(s, l); });
     /* The Beast Pen (22 October 2026): each beast out on the road with its handler earns one Bonding Day for this day,
        once (creature-rules.js R.tickBonding). It is in the same change as the day moving on, so a day can never be
        counted without being passed, or passed without being counted. */
     if (R.tickBonding) R.tickBonding(s, data, now);
   };
-  /* Routes sailing today and still to settle (running, and their day has
-     come). A route whose roll was cancelled stays due. */
-  R.routesToSettle = function (s) {
-    if (!s.tradeNetwork.active) return [];
-    return R.liveRoutes(s).filter(function (r) { return !(dayNum(r.nextDay, s.day) > s.day); });
-  };
-  R.routesDueToday = function (s) { return R.routesToSettle(s).length > 0; };
-  /* The day's routes are done (or put off): on to the orders. */
+  /* The day's trade is done (ships settled): on to the orders. (The Hall's sea routes used to be settled here too.) */
   R.finishRoutes = function (s) {
     if (s.dayInProgress && s.dayInProgress.stage === 'trade') s.dayInProgress.stage = 'orders';
   };
@@ -3191,12 +2640,10 @@
     if (isObj(s.dayInProgress)) s.dayInProgress.day = s.day;
     (s.pendingOrders || []).forEach(function (o) { mv(o, 'issuedDay'); mv(o, 'dueDay'); });
     (s.builtExtras || []).concat(s.builtPlots || []).forEach(function (e) { if (isObj(e)) { mv(e, 'startDay'); mv(e, 'readyDay'); } });
-    RECORDS.forEach(function (list) {
-      (s.diplomacy[list] || []).forEach(function (x) { mv(x, 'startDay'); mv(x, 'endDay'); mv(x, 'lastShipmentDay'); });
-    });
-    Object.keys(s.diplomacy.cooldowns || {}).forEach(function (k) { mv(s.diplomacy.cooldowns, k); });
-    (s.tradeNetwork.routes || []).forEach(function (r) { mv(r, 'openedDay'); mv(r, 'expiresDay'); mv(r, 'nextDay'); mv(r, 'lastSettledDay'); });
-    (s.arbitration.queue || []).forEach(function (q) { mv(q, 'createdDay'); if (q.meta) mv(q.meta, 'disruptedDay'); });
+    /* What the Hall's old contracts and routes were (history, step S09): the days they ran and ended. */
+    if (isObj(s.legacyDiplomacy)) {
+      (Array.isArray(s.legacyDiplomacy.records) ? s.legacyDiplomacy.records : []).forEach(function (x) { mv(x, 'startDay'); mv(x, 'endDay'); mv(x, 'endedDay'); });
+    }
     Object.keys(s.repairs || {}).forEach(function (k) { mv(s.repairs, k); });
     /* Port Charters, ships at sea and standing shipments (pull request 5). */
     if (R.shiftCommerce) R.shiftCommerce(s, n);

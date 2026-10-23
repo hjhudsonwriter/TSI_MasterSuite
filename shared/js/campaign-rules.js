@@ -117,9 +117,20 @@
      October 2026 (step S06). A War Action was an order at the War Council, which is not a facility of the catalogue;
      the conversion cancels it (settleWarOrders), so it is never forecast, whatever the save's version. */
   function isWarAction(o) { return isObj(o) && (o.facId === 'war_council' || (isObj(o.meta) && o.meta.kind === 'war_action')); }
+  /* The Hall of Emissaries and the Trade Network (Strip Back Overhaul, step S09): the Hall STAYS, as a single-level hall
+     with no orders. Every order it held is CANCELLED when a version 3 Bastion is converted, with its gold handed back
+     (Host Delegation 150, Inter-Clan Summit 450, Secure Writ of Authority 600, Trade Consortium 900, the retired Secure
+     Trade Agreement 250, any Upgrade), and so is every Trade Network investment (Stability 75, Yield 90); the one
+     order that is MOVED, not cancelled, is Register Port Charter, which becomes the Dock's (so it is still forecast,
+     on its own due day). Kept true with windDownHall and moveCharterOrders in tools/bastion/strip-back-rules.js. */
+  var HALL_ID = 'hall_of_emissaries';
+  var HALL_ORDER_THAT_MOVES = 'register_port_charter';
+  var NETWORK_ID = 'trade_network';
   /* Will converting a version 3 Bastion CANCEL this pending order? (Not move it, not keep it.) */
   function cancelledByConversion(o) {
     if (isWarAction(o)) return true;
+    if (isObj(o) && o.facId === NETWORK_ID) return true;
+    if (isObj(o) && o.facId === HALL_ID) return o.fnId !== HALL_ORDER_THAT_MOVES;
     if (!isObj(o) || !Object.prototype.hasOwnProperty.call(RETIRED_FACILITIES, o.facId)) return false;
     if (RETIRED_FACILITIES[o.facId] === 'cancel') return true;
     /* Whatever a place's orders do, its Upgrade orders end (the place is going; they cost no gold). */
@@ -155,8 +166,7 @@
 
     /* What the Bastion has coming, from its save: [{ day, kind, line }], in day
        order (only what can be known before the day: building finished,
-       orders due, contracts and records ending, sea routes needing a roll,
-       cargo ships and Courier Exchange parcels due). Nothing for a
+       orders due, cargo ships and Courier Exchange parcels due). Nothing for a
        Bastion that hasn't read the Explorer's day yet. */
     bastionComing: function (bastion) {
       var ba = isObj(bastion) ? bastion : null;
@@ -180,35 +190,13 @@
       liveOrders(ba).forEach(function (o) {
         if (!isObj(o) || !isNum(o.dueDay)) return;
         var label = str(o.label) || 'An order';
-        var m = isObj(o.meta) ? o.meta : {};
         var day = o.dueDay;
-        if (o.facId === 'hall_of_emissaries' && o.fnId !== 'upgrade_hall' && o.fnId !== 'register_port_charter' && !(isObj(m) && m.kind === 'upgrade')) {
-          add(day, 'roll', label + ' needs your roll.');
-        } else {
-          /* Every other order, the creature buildings' House orders (pull
-             request 7) among them: "Griffin Tower: House a Griffin
-             (Swiftwing) is complete." No roll is ever asked for. */
-          add(day, 'order', label + ' is complete.');
-        }
-      });
-      var dip = isObj(ba.diplomacy) ? ba.diplomacy : {};
-      [['agreements', true], ['arbitrations', true], ['consortiums', true], ['delegations', false], ['summits', false]].forEach(function (pair) {
-        (Array.isArray(dip[pair[0]]) ? dip[pair[0]] : []).forEach(function (r) {
-          if (!isObj(r)) return;
-          var name = pair[0] === 'summits' ? 'Inter-Clan Summit (' + (str(r.pair) || '—') + ')'
-            : pair[0] === 'delegations' ? 'delegation from ' + (str(r.clan) || '—')
-            : (str(r.title) || 'contract') + ' with ' + (str(r.clan) || '—');
-          add(r.endDay, 'ended', 'Your ' + name + ' has ended' + (pair[1] ? ' (its last shipment arrived)' : '') + '.');
-        });
+        /* Every order, the creature buildings' House orders (pull request 7) among them: "Griffin Tower: House a
+           Griffin (Swiftwing) is complete." No roll is ever asked for (the Hall's actions, which did, are gone:
+           step S09). */
+        add(day, 'order', label + ' is complete.');
       });
       var tn = isObj(ba.tradeNetwork) ? ba.tradeNetwork : {};
-      if (tn.active) {
-        (Array.isArray(tn.routes) ? tn.routes : []).forEach(function (r) {
-          if (!isObj(r) || r.status !== 'active' || !isNum(r.nextDay)) return;
-          if (isNum(r.expiresDay) && r.nextDay > r.expiresDay) return;
-          if (r.risk === 'high' || tn.highRiskRouting) add(r.nextDay, 'route', 'The sea route to ' + str(r.clan) + ' needs a roll.');
-        });
-      }
       /* Cargo ships (pull request 5): when each reaches its port and comes
          home, and when a standing shipment is due to sail. Never what it
          sells for: the Bastion rolls the voyage when the day comes. */
