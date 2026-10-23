@@ -333,6 +333,9 @@
     if (fn) fn(s);
     return s;
   }
+  /* A report's lines without the one every version 3 Bastion gets since the war game went (S06): the Barracks, Armoury and Watchtower are gone. */
+  function noWar(res) { return res.report.lines.filter(function (l) { return !/^Places that are gone\. Barracks, Armoury and Watchtower are gone with the war game\.$/.test(l); }); }
+  function joinedLine(res) { return res.save.migration.v4.lines.filter(function (l) { return /^Places that joined others\. /.test(l); })[0] || ''; }
   function shrine(god, extra) { return Object.assign({ facId: 'shrine_' + god, status: 'built' }, extra || {}); }
   function order(id, facId, fnId, extra) {
     return Object.assign({ id: id, facId: facId, fnId: fnId, chosen: null, optionLabel: null, notes: '', label: facId + ': ' + fnId, costGP: 0, issuedDay: 10, dueDay: 15 }, extra || {});
@@ -480,16 +483,16 @@
     t.equal(c.save.facilityLevels[TEMPLE], 1);
     t.same(['shrine_telluria', 'shrine_aurush', 'shrine_pelagos'].filter(function (id) { return id in c.save.facilityLevels; }), []);
     var one = convert(v3(function (s) { s.builtExtras = [shrine('aurush')]; s.facilityLevels = { shrine_aurush: 4 }; }));
-    t.ok(/^Places that joined others\. The Shrine of Aurush has become the Temple\./.test(one.save.migration.v4.lines[0]), one.save.migration.v4.lines[0]);
-    t.equal(/other slot/.test(one.save.migration.v4.lines[0]), false, 'nothing else to free');
+    t.ok(/^Places that joined others\. The Shrine of Aurush has become the Temple\./.test(joinedLine(one)), joinedLine(one));
+    t.equal(/other slot/.test(joinedLine(one)), false, 'nothing else to free');
   });
 
   test('a Bastion with no Shrine: nothing to convert, nothing said about the Temple; a Temple already built stays as it is', function (t) {
     var none = convert(v3());
-    t.same(none.report.lines, []);
+    t.same(noWar(none), []);
     t.equal(none.save.builtExtras.some(function (e) { return e && e.facId === TEMPLE; }), false, 'no Temple is made from nothing');
     var have = convert(v3(function (s) { s.builtExtras = [{ facId: TEMPLE, status: 'built' }]; s.favour.aurush = 77; }));
-    t.same(have.report.lines, []);
+    t.same(noWar(have), []);
     t.same(have.save.builtExtras, [{ facId: TEMPLE, status: 'built' }]);
     t.equal(have.save.favour.aurush, 77);
   });

@@ -135,9 +135,9 @@
     t.same(BR.fn(BR.facility(bdata, 'dock'), 'charter_berth').options.length, 8, 'the Charter Berth is unchanged');
   });
 
-  test('all three protections are available; Fresh Fish sails only on voyages of 2 days or less', function (t) {
+  test('the Blessing of Pelagos is the only protection left; Fresh Fish sails only on voyages of 2 days or less', function (t) {
     t.same(C.protections.map(function (p) { return [p.facId, p.cut, p.consumes === true, p.available]; }),
-      [['barracks', 5, true, true], ['watchtower', 5, false, true], ['temple', 10, true, true]], 'all three are on: the Blessing (pull request 8b), then the Convoy and the Approaches (20 October 2026)');
+      [['temple', 10, true, true]], 'the Blessing of Pelagos (pull request 8b, now the Temple\'s); the Convoy and the Approaches (20 October 2026) went with the war game (22 October 2026)');
     t.same(BR.voyageProtections(bastion(1), bdata), [], 'none held: none applies');
     t.equal(BR.goodShipBlocker(bdata, 'fresh_fish', BR.portRoute(bdata, 'timberport')), 'Fresh Fish only ships on a voyage of 2 days or less (it doesn\'t keep longer), and this one takes 7 days.');
     t.equal(BR.goodShipBlocker(bdata, 'fresh_fish', { outDays: 2 }), '', '2 days: it sails');
@@ -859,21 +859,21 @@
     t.equal(BR.voyageChance(5, [{ cut: 10 }]), 0);
     t.equal(BR.voyageChance(20, [{ cut: 5 }]), 15);
     t.equal(BR.voyageChance(10, []), 10);
-    var prot = copy(C.protections).map(function (p) { p.available = true; return p; });
+    var prot = [{ id: 'test_window', label: 'A test window', cut: 5, available: true }].concat(copy(C.protections)).map(function (p) { p.available = true; return p; });
     var d = withCommerce({ protections: prot });
     var b = bastion(4, 2);
     var c = registered(b);
     stock(b, 'raw_stone', 4);
     t.same(BR.voyageProtections(b, d), [], 'available, but none ready in this Bastion');
-    b.tradeNetwork.protections = { pelagos_blessing: { charges: 1 }, maritime_approaches: { untilDay: 6 } };
+    b.tradeNetwork.protections = { pelagos_blessing: { charges: 1 }, test_window: { untilDay: 6 } };
     BR.dispatchCargo(b, d, c.id, [{ goodId: 'raw_stone', qty: 1 }], dice([0.3]));
     var v = BR.voyages(b)[0];
-    t.same([v.chance, v.protections.map(function (p) { return p.id; })], [5, ['maritime_approaches', 'pelagos_blessing']]);
+    t.same([v.chance, v.protections.map(function (p) { return p.id; })], [5, ['test_window', 'pelagos_blessing']]);
     t.equal(b.tradeNetwork.protections.pelagos_blessing.charges, 0, 'the blessing is used');
     b.day = 6;
-    t.same(BR.voyageProtections(b, d).map(function (p) { return p.id; }), ['maritime_approaches'], 'the Watchtower\'s still holds on Day 6; the blessing is gone');
+    t.same(BR.voyageProtections(b, d).map(function (p) { return p.id; }), ['test_window'], 'a window still holds on its last day (Day 6); the blessing is gone');
     b.day = 7;
-    t.same(BR.voyageProtections(b, d), [], 'the Watchtower\'s has run out by Day 7');
+    t.same(BR.voyageProtections(b, d), [], 'it has run out by Day 7');
   });
 
   /* ---------------------------------------------------------------- */
@@ -970,12 +970,12 @@
     BR.settleVoyages(b, bdata, dice([0.5]));
     b.facilityLevels.dock = 4;
     BR.setSchedule(b, bdata, BR.portCharters(b)[0].id, [{ goodId: 'raw_stone', qty: 1 }], dice([0.3]));
-    b.tradeNetwork.protections = { maritime_approaches: { untilDay: 20 } };
+    b.tradeNetwork.protections = { test_window: { untilDay: 20 } };
     var sale = copy(BR.cargoSales(b));
     BR.shiftDays(b, -5);
     var c = BR.portCharters(b)[0];
     var v = BR.voyages(b)[0];
-    t.same([c.earnedDay, c.registeredDay, v.departDay, v.arriveDay, v.returnDay, BR.schedules(b)[0].nextDay, b.tradeNetwork.protections.maritime_approaches.untilDay],
+    t.same([c.earnedDay, c.registeredDay, v.departDay, v.arriveDay, v.returnDay, BR.schedules(b)[0].nextDay, b.tradeNetwork.protections.test_window.untilDay],
       [-2, -1, -1, 6, 13, 7, 15]);
     t.same(BR.cargoSales(b), sale);
   });
@@ -1014,24 +1014,11 @@
   group('Charter terms and commercial protections (20 October 2026)');
 
   var STD = { priceMult: 1, feePerLot: 0, tariffPct: 0 };
-  function bw(b) {
-    b.builtExtras = [{ facId: 'barracks', status: 'built' }, { facId: 'watchtower', status: 'built' }];
-    BR.ensureLevels(b, bdata);
-    b.facilityLevels.barracks = 2;
-    b.facilityLevels.watchtower = 2;
-    return b;
-  }
-  function ordered(b, fac, fn) {
-    var r = BR.issueOrder(b, bdata, fac, fn, 0, dice([0.3]));
-    if (!r.ok) throw new Error('refused: ' + r.message);
-    return b.pendingOrders[b.pendingOrders.length - 1];
-  }
-  function finishOrder(b, o) { var out = BR.completeSimpleOrder(b, bdata, o, dice([0.3])); BR.removeOrder(b, o.id); return out; }
   /* Sends a ship; any earlier one is cleared first, so a test can send several (the Dock's own room is tested elsewhere). */
-  function sail(b, c, qty, rolls) {
+  function sail(b, c, qty, rolls, d) {
     b.tradeNetwork.voyages = [];
     stock(b, 'medicinal_herbs', qty || 2);
-    var r = BR.dispatchCargo(b, bdata, c.id, [{ goodId: 'medicinal_herbs', qty: qty || 2 }], dice(rolls || [0.3]));
+    var r = BR.dispatchCargo(b, d || bdata, c.id, [{ goodId: 'medicinal_herbs', qty: qty || 2 }], dice(rolls || [0.3]));
     if (!r.ok) throw new Error(r.message);
     return r.voyage;
   }
@@ -1174,82 +1161,38 @@
     t.same(BR.lockOutboundTerms(home, bdata), 0, 'a returning ship is left alone');
   });
 
-  group('Commercial protections: Barracks and Watchtower (20 October 2026)');
+  group('Commercial protections: only the Blessing of Pelagos is left (the Convoy and the Approaches went with the war game, 22 October 2026)');
 
-  test('the Barracks and Watchtower orders: Level 2, 3 and 2 days, no gold or Favour', function (t) {
-    var g = BR.fn(BR.facility(bdata, 'barracks'), 'guard_commercial_convoy');
-    var w = BR.fn(BR.facility(bdata, 'watchtower'), 'protect_maritime_approaches');
-    t.same([g.days, g.costGP, g.requiredFacilityLevel, g.favourCost, g.protectionCharge, g.protectionMax], [3, 0, 2, undefined, 'commercial_convoy', 1]);
-    t.same([w.days, w.costGP, w.requiredFacilityLevel, w.favourCost, w.protectionWindow, w.windowDays], [2, 0, 2, undefined, 'maritime_approaches', 7]);
-    var b = bw(bastion(4, 2));
-    b.facilityLevels.barracks = 1;
-    t.equal(BR.issueOrder(b, bdata, 'barracks', 'guard_commercial_convoy', 0, dice([0.3])).message, 'Needs Level 2.');
-    b.facilityLevels.watchtower = 1;
-    t.equal(BR.issueOrder(b, bdata, 'watchtower', 'protect_maritime_approaches', 0, dice([0.3])).message, 'Needs Level 2.');
-    t.ok(BR.fn(BR.facility(bdata, 'watchtower'), 'patrol'), 'Patrol is unchanged');
+  /* A charge and a window of the kind the Convoy and the Approaches were, as stand-ins in the data, so the general rules
+     (a charge is used up by one ship; a window covers every ship while it lasts; they add up) are still covered. */
+  var TEST_CHARGE = { id: 'test_charge', label: 'A test charge', cut: 5, consumes: true, available: true };
+  var TEST_WINDOW = { id: 'test_window', label: 'A test window', cut: 5, available: true };
+  function dataWith3() { return withCommerce({ protections: [TEST_CHARGE, TEST_WINDOW].concat(copy(C.protections)) }); }
+
+  test('the Barracks and Watchtower orders and their two protections are gone; the Blessing of Pelagos is the only one in the data', function (t) {
+    t.equal(BR.facility(bdata, 'barracks'), null);
+    t.equal(BR.facility(bdata, 'watchtower'), null);
+    t.same(C.protections.map(function (p) { return p.id; }), ['pelagos_blessing']);
+    t.equal(BR.protectionBusy, undefined, 'no rule refuses a second Convoy or Approaches order any more');
+    var b = bastion(4, 2);
+    b.tradeNetwork.protections = { commercial_convoy: { charges: 1 }, maritime_approaches: { untilDay: 20 } };
+    t.same(BR.voyageProtections(b, bdata), [], 'one a save still holds from before is ignored');
   });
 
-  test('Guard Commercial Convoy: 3 days, one charge, never more than one held, no defenders used; the next ship uses it up once', function (t) {
-    var b = bw(bastion(4, 2));
-    b.defenders = { count: 5, armed: true };
-    var c = registered(b);
-    var o = ordered(b, 'barracks', 'guard_commercial_convoy');
-    t.equal(o.dueDay, 7, '3 days');
-    t.equal(BR.issueOrder(b, bdata, 'barracks', 'guard_commercial_convoy', 0, dice([0.3])).message, 'That order is already pending.');
-    t.same(finishOrder(b, o), [['Order Completed', 'Barracks: Guard Commercial Convoy → A Commercial Convoy is prepared for the next ship the Dock sends with cargo (1 held).']]);
-    t.same(b.tradeNetwork.protections, { commercial_convoy: { charges: 1 } });
-    t.equal(b.defenders.count, 5, 'no defenders deducted');
-    var again = BR.issueOrder(b, bdata, 'barracks', 'guard_commercial_convoy', 0, dice([0.3]));
-    t.same([again.ok, /already prepared/.test(again.message)], [false, true], 'no second order while one is ready');
-    b = reload(b);
-    t.equal(b.tradeNetwork.protections.commercial_convoy.charges, 1, 'kept through a save and day progression');
-    c = BR.charterFor(b, 'goldport');
-    var v = sail(b, c, 2);
-    t.same([v.protections.map(function (p) { return [p.id, p.cut]; }), v.basePct, v.chance], [[['commercial_convoy', 5]], 20, 15]);
-    t.equal(b.tradeNetwork.protections.commercial_convoy.charges, 0, 'used exactly once');
-    var v2 = sail(b, c, 2);
-    t.same([v2.protections, v2.chance], [[], 20], 'the next ship goes without it');
-    t.equal(BR.issueOrder(b, bdata, 'barracks', 'guard_commercial_convoy', 0, dice([0.3])).ok, true, 'another can be ordered now it has been used');
-  });
 
-  test('Protect Maritime Approaches: 2 days, then 7 inclusive days with the completion day as Day 1; not used up, not extended, no retroactive cover', function (t) {
-    var b = bw(bastion(4, 2));
-    var c = registered(b);
-    var early = sail(b, c, 2);
-    var o = ordered(b, 'watchtower', 'protect_maritime_approaches');
-    t.equal(o.dueDay, 6, '2 days');
-    b.day = 6;
-    var out = finishOrder(b, o);
-    t.equal(b.tradeNetwork.protections.maritime_approaches.untilDay, 12, 'Day 6 is Day 1: it covers Days 6 to 12');
-    t.ok(/active until Day 12/.test(out[0][1]), out[0][1]);
-    t.same(early.protections, [], 'a ship already at sea gets nothing retroactively');
-    var blocked = BR.issueOrder(b, bdata, 'watchtower', 'protect_maritime_approaches', 0, dice([0.3]));
-    t.same([blocked.ok, /active until Day 12/.test(blocked.message)], [false, true], 'no overlapping order');
-    var a = sail(b, c, 2);
-    var a2 = sail(b, c, 2);
-    t.same([a.chance, a2.chance, b.tradeNetwork.protections.maritime_approaches.untilDay], [15, 15, 12], 'every ship in the window, and it is not used up');
-    b.day = 12;
-    t.equal(sail(b, c, 2).chance, 15, 'the 7th day still covers');
-    b.day = 13;
-    t.equal(sail(b, c, 2).chance, 20, 'the 8th does not');
-    t.equal(BR.issueOrder(b, bdata, 'watchtower', 'protect_maritime_approaches', 0, dice([0.3])).ok, true, 'the next order can be issued once it ends');
-    var late = reload(b);
-    t.same(BR.voyages(late)[BR.voyages(late).length - 1].chance, 20);
-    t.equal(a.chance, 15, 'later expiry never changes a ship already under way');
-  });
-
-  test('the three protections combine (−5, −5 and −10) and never take the chance below 0; the Pelagos blessing is unchanged; a failed voyage still returns the cargo', function (t) {
-    var b = bw(bastion(4, 2));
+  test('protections combine (−5, −5 and −10) and never take the chance below 0; the Pelagos blessing is unchanged; a failed voyage still returns the cargo', function (t) {
+    var d3 = dataWith3();
+    var b = bastion(4, 2);
     var c = registered(b, 'timberport');
-    b.tradeNetwork.protections = { commercial_convoy: { charges: 1 }, maritime_approaches: { untilDay: 20 }, pelagos_blessing: { charges: 2 } };
-    var v = sail(b, c, 2);
+    b.tradeNetwork.protections = { test_charge: { charges: 1 }, test_window: { untilDay: 20 }, pelagos_blessing: { charges: 2 } };
+    var v = sail(b, c, 2, undefined, d3);
     t.same([v.basePct, v.protections.map(function (p) { return p.cut; }), v.chance], [5, [5, 5, 10], 0], 'Timberport 5% − 20 points: never below 0');
-    t.same(b.tradeNetwork.protections, { commercial_convoy: { charges: 0 }, maritime_approaches: { untilDay: 20 }, pelagos_blessing: { charges: 1 } }, 'the Convoy and one Blessing are used; the Approaches stay');
-    var d = bw(bastion(4, 2));
+    t.same(b.tradeNetwork.protections, { test_charge: { charges: 0 }, test_window: { untilDay: 20 }, pelagos_blessing: { charges: 1 } }, 'the charge and one Blessing are used; the window stays');
+    var d = bastion(4, 2);
     var g = registered(d, 'bleakharbour');
-    d.tradeNetwork.protections = { commercial_convoy: { charges: 1 }, maritime_approaches: { untilDay: 20 }, pelagos_blessing: { charges: 1 } };
-    t.same([sail(d, g, 2).chance], [0], 'Bleakharbour 20% − 20 = 0');
-    var h = bw(bastion(4, 2));
+    d.tradeNetwork.protections = { test_charge: { charges: 1 }, test_window: { untilDay: 20 }, pelagos_blessing: { charges: 1 } };
+    t.same([sail(d, g, 2, undefined, d3).chance], [0], 'Bleakharbour 20% − 20 = 0');
+    var h = bastion(4, 2);
     var gp = registered(h, 'goldport');
     sail(h, gp, 2, [0.3]);
     h.day = 11;
@@ -1258,25 +1201,28 @@
   });
 
   test('Standing shipments follow the same protection rules', function (t) {
-    var b = bw(bastion(4, 4));
+    var d3 = dataWith3();
+    var b = bastion(4, 4);
     var c = registered(b);
     stock(b, 'medicinal_herbs', 4);
-    b.tradeNetwork.protections = { commercial_convoy: { charges: 1 }, maritime_approaches: { untilDay: 30 } };
-    t.equal(BR.setSchedule(b, bdata, c.id, [{ goodId: 'medicinal_herbs', qty: 2 }], dice([0.3])).ok, true);
+    b.tradeNetwork.protections = { test_charge: { charges: 1 }, test_window: { untilDay: 30 } };
+    t.equal(BR.setSchedule(b, d3, c.id, [{ goodId: 'medicinal_herbs', qty: 2 }], dice([0.3])).ok, true);
     b.day = 5;
-    BR.settleVoyages(b, bdata, dice([0.3]));
+    BR.settleVoyages(b, d3, dice([0.3]));
     var v = BR.voyages(b)[0];
-    t.same([v.scheduleId !== null, v.protections.map(function (p) { return p.id; }), v.chance], [true, ['commercial_convoy', 'maritime_approaches'], 10]);
-    t.same(b.tradeNetwork.protections, { commercial_convoy: { charges: 0 }, maritime_approaches: { untilDay: 30 } });
+    t.same([v.scheduleId !== null, v.protections.map(function (p) { return p.id; }), v.chance], [true, ['test_charge', 'test_window'], 10]);
+    t.same(b.tradeNetwork.protections, { test_charge: { charges: 0 }, test_window: { untilDay: 30 } });
   });
 
   test('protectionStatus describes each one for the Dock', function (t) {
-    var b = bw(bastion(4, 2));
-    var st = function () { return BR.protectionStatus(b, bdata).map(function (p) { return [p.id, p.state]; }); };
-    t.same(st(), [['commercial_convoy', 'none'], ['maritime_approaches', 'none'], ['pelagos_blessing', 'none']]);
-    b.tradeNetwork.protections = { commercial_convoy: { charges: 1 }, maritime_approaches: { untilDay: 9 } };
-    t.same(st(), [['commercial_convoy', 'ready'], ['maritime_approaches', 'active'], ['pelagos_blessing', 'none']]);
-    t.ok(/active until Day 9/.test(BR.protectionStatus(b, bdata)[1].text));
+    var d3 = dataWith3();
+    var b = bastion(4, 2);
+    var st = function () { return BR.protectionStatus(b, d3).map(function (p) { return [p.id, p.state]; }); };
+    t.same(st(), [['test_charge', 'none'], ['test_window', 'none'], ['pelagos_blessing', 'none']]);
+    b.tradeNetwork.protections = { test_charge: { charges: 1 }, test_window: { untilDay: 9 } };
+    t.same(st(), [['test_charge', 'ready'], ['test_window', 'active'], ['pelagos_blessing', 'none']]);
+    t.ok(/active until Day 9/.test(BR.protectionStatus(b, d3)[1].text));
+    t.same(BR.protectionStatus(b, bdata).map(function (p) { return p.id; }), ['pelagos_blessing'], 'the Dock lists only the Blessing now');
   });
 
 }());

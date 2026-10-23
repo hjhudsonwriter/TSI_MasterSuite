@@ -41,10 +41,9 @@
    House orders wait, as every order does. Cancel gives nothing back (nothing was
    paid or held): a granted creature keeps waiting.
 
-   On the War Table (war-campaign-rules.js) every housed creature defends the
-   Ironbow when it is attacked (Defend Bastion only), one unit each with its own
-   profile; it is never sent on a War Action and never killed or captured. None
-   of this changes the Menagerie, R.beastQty or the War Council's lock. */
+   The war game (the War Table, in which every housed creature defended the
+   Ironbow when it was attacked) was removed on 22 October 2026 (the Strip
+   Back Overhaul, step S06), and so were the creatures' war profiles. */
 (function () {
   'use strict';
 
@@ -406,65 +405,6 @@
     return (r && r.r === 'skipped' ? 'Skipped: ' : 'Refused: ') + 'creature granted, ' + what;
   };
 
-  /* ---------- How a creature is doing ---------- */
-  /* Its War Table numbers (data species.war), or null: it doesn't fight. */
-  R.creatureWar = function (data, c) {
-    var sp = isObj(c) ? R.creatureSpecies(data, c.species) : null;
-    var w = sp && isObj(sp.war) ? sp.war : null;
-    if (!w) return null;
-    var keys = ['cohesion', 'attack', 'defence', 'move', 'resolve', 'bv'];
-    for (var i = 0; i < keys.length; i++) if (!isNum(w[keys[i]])) return null;
-    /* A discipline it has learned adds to its own numbers (Battle Value is
-       left as it was). */
-    var done = isObj(c.development) && isObj(c.development.training) ? c.development.training : {};
-    var bonus = isObj(cdata(data).development) && isObj(cdata(data).development.trainingBonus) ? cdata(data).development.trainingBonus : {};
-    var gained = Object.keys(bonus).filter(function (k) { return isObj(done[k]) && isObj(bonus[k]) && typeof bonus[k].stat === 'string' && isNum(w[bonus[k].stat]); });
-    if (!gained.length) return w;
-    var out = Object.assign({}, w);
-    gained.forEach(function (k) { out[bonus[k].stat] = w[bonus[k].stat] + (isNum(bonus[k].amount) ? bonus[k].amount : 0); });
-    out.trained = gained.map(function (k) { return String(bonus[k].label || k); });
-    return out;
-  };
-  /* Housed creatures that can defend the Ironbow (whether or not they're
-     recovering or already defending: the War Table decides that). */
-  R.fightingCreatures = function (s, data) {
-    return R.creatures(s).filter(function (c) { return isObj(c) && c.status === 'housed' && !!R.creatureWar(data, c); });
-  };
-  /* Its record in warRecovery after a battle, or null. */
-  R.creatureRecovery = function (s, id) {
-    return (arr(s.warRecovery) || []).filter(function (r) { return isObj(r) && r.kind === 'creature' && r.creatureId === id; })[0] || null;
-  };
-  /* The Defend Bastion it stands in, or null. */
-  function defending(s, id) {
-    return (arr(s.militaryActions) || []).filter(function (ma) {
-      return isObj(ma) && isObj(ma.commit) && Array.isArray(ma.commit.creatures) && ma.commit.creatures.indexOf(id) !== -1;
-    })[0] || null;
-  }
-  var RECOVERY_WORDS = { badly_wounded: 'Badly wounded', wounded: 'Wounded', recovered: 'Recovering', separated: 'Separated from the army' };
-  /* { kind: 'waiting' | 'housing' | 'guarding' | 'defending' | 'recovering', line }. */
-  R.creatureStatus = function (s, data, c) {
-    if (!isObj(c)) return { kind: 'waiting', line: '' };
-    if (c.status !== 'housed') {
-      var home = facName(data, R.speciesHome(data, c.species));
-      var o = R.houseOrderFor(s, c.id);
-      if (o) return { kind: 'housing', line: 'Being housed at the ' + facName(data, o.facId) + ': ready on ' + R.dayLabel(o.dueDay) + '.' };
-      return { kind: 'waiting', line: 'Waiting for a home at the ' + home + '.' };
-    }
-    var rec = R.creatureRecovery(s, c.id);
-    if (rec) return { kind: 'recovering', line: (RECOVERY_WORDS[rec.status] || 'Recovering') + ': fit again on ' + R.dayLabel(rec.untilDay) + '.' };
-    if (!R.creatureWar(data, c)) return { kind: 'guarding', line: 'Lives at the Ironbow (this copy of the Bastion doesn\'t know how it fights).' };
-    if (defending(s, c.id)) return { kind: 'defending', line: 'Defending the Ironbow against an attack.' };
-    var built = c.home && R.builtFacilityIds(s, data).indexOf(c.home) !== -1;
-    return { kind: 'guarding', line: built || !c.home ? 'Guarding the Ironbow.' : 'Guarding the Ironbow (the ' + facName(data, c.home) + ' isn\'t standing: rebuilding it gives it a home again).' };
-  };
-  /* Its War Table line: "Defends the Ironbow: Battle Value 11, Flight", or ''. */
-  R.creatureWarLine = function (data, c) {
-    var w = R.creatureWar(data, c);
-    if (!w) return '';
-    var wd = R.warData ? R.warData(data) : null;
-    var trait = w.trait ? (wd && wd.traits && wd.traits[w.trait] ? wd.traits[w.trait].name : words(w.trait)) : '';
-    return 'Defends the Ironbow: Battle Value ' + w.bv + (trait ? ', ' + trait : '') + (w.trained && w.trained.length ? ' (trained: ' + w.trained.join(', ') + ')' : '');
-  };
   /* ---------- Bonding: the record, the Chronicle and the DM's actions ----------
      A beast's bond (0 to 5), handler and Chronicle are kept in its "development" (rules.js). Bond 1 comes from the
      Beast Pen's acclimatisation roll; Bond 2 to 5 come from Bonding Days (days out on the road with its handler), and

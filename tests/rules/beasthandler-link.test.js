@@ -57,12 +57,11 @@
     t.equal(BR.fromSave(copy(BR.toSave(BR.defaultState(bdata))), bdata).beast, undefined, 'a Bastion that never used it gains nothing');
   });
 
-  test('the DM\'s profile change is applied once: the lines change, the Day Log and a change note say so, the Chronicle, bond and stats do not move', function (t) {
+  test('the DM\'s profile change is applied once: the lines change, the Day Log and a change note say so, the Chronicle and bond do not move', function (t) {
     var b = world();
     var c = housed(b, 'wyvern', 'Stormwing', 'Mira');
     var chronBefore = JSON.stringify(c.development.chronicle);
     var bondBefore = JSON.stringify(c.development.bond);
-    var warBefore = JSON.stringify(BR.creatureWar(bdata, c));
     var logBefore = b.log.length;
     var clean = TSI.beasthandler.profile.check({ dominant: 'Watchful', attachment: 'Lowers its head', trigger: 'Loud metallic ringing', regional: 'Widowspine' }).clean;
     var r = BR.setProfile(b, bdata, c.id, clean, 'Mira');
@@ -70,7 +69,6 @@
     t.same([c.development.temperament.dominant, c.development.temperament.attachment, c.development.temperament.trigger, c.development.regional], ['Watchful', 'Lowers its head', 'Loud metallic ringing', 'Widowspine']);
     t.equal(JSON.stringify(c.development.chronicle), chronBefore, 'the Chronicle is untouched');
     t.equal(JSON.stringify(c.development.bond), bondBefore, 'the bond is untouched');
-    t.equal(JSON.stringify(BR.creatureWar(bdata, c)), warBefore, 'the stats are untouched');
     t.equal(b.log.length, logBefore + 1);
     t.ok(/Stormwing's profile was changed by Mira: Dominant Temperament \(blank\) → "Watchful"/.test(b.log[0].body), JSON.stringify(b.log[0]));
     t.equal(c.development.profileLog.length, 1);

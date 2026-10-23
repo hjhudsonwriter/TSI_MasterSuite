@@ -122,8 +122,8 @@ async function receive(ba, god, label, answer) {
 
   section('Building the Temple');
 
-  await check('the Favour of the Gods panel and its button are gone: the right of the bottom bar is Clan Influence and War Council', async () => {
-    equal(await ba.$$eval('.tsi-bas-pbtns--right [data-test^=open-]', bs => bs.map(b => b.getAttribute('data-test'))), ['open-influence', 'open-war']);
+  await check('the Favour of the Gods panel and its button are gone: nothing named Favour or Claim is left on the bottom bar', async () => {
+    equal(await ba.$$eval('.tsi-bas-pbtns [data-test^=open-]', bs => bs.map(b => b.getAttribute('data-test')).filter(t => /favour/.test(t))), []);
     equal(await ba.$('[data-test=open-favour]'), null);
     equal(await ba.$('[data-test=panel-favour]'), null);
     equal(await ba.$('[data-test^=claim-]'), null, 'no Claim button anywhere');

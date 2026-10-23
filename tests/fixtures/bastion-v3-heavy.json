@@ -609,73 +609,6 @@
             "dueDay": 43
           }
         ],
-        "defenders": {
-          "count": 6,
-          "armed": true,
-          "patrolUntil": 44
-        },
-        "defenderBeasts": [
-          {
-            "name": "Tiger",
-            "qty": 1,
-            "source": "Menagerie"
-          },
-          {
-            "name": "Giant Vulture",
-            "qty": 1,
-            "source": "Menagerie"
-          }
-        ],
-        "military": [
-          {
-            "id": "reg-hv-line",
-            "name": "Line Infantry (100)",
-            "qty": 1,
-            "source": "War Room",
-            "num": 1,
-            "label": "",
-            "grade": "trained"
-          },
-          {
-            "id": "reg-hv-archers",
-            "name": "Archers (50)",
-            "qty": 1,
-            "source": "War Room",
-            "num": 1,
-            "label": "",
-            "grade": "regular"
-          },
-          {
-            "id": "reg-hv-riders",
-            "name": "Light Cavalry (50)",
-            "qty": 1,
-            "source": "War Room",
-            "num": 1,
-            "label": "The Dawn Riders",
-            "grade": "veteran"
-          },
-          {
-            "id": "reg-hv-levy",
-            "name": "Levy Infantry (150)",
-            "qty": 1,
-            "source": "War Room",
-            "num": 1,
-            "label": "",
-            "grade": "regular",
-            "strength": 90,
-            "depleted": true,
-            "recoup": {
-              "days": 14,
-              "left": 9,
-              "from": 90
-            }
-          },
-          {
-            "name": "Lieutenant (1)",
-            "qty": 2,
-            "source": "War Room"
-          }
-        ],
         "warehouse": [
           {
             "id": "hv-wh-1",
@@ -917,6 +850,12 @@
             }
           ],
           "protections": {
+            "commercial_convoy": {
+              "charges": 1
+            },
+            "maritime_approaches": {
+              "untilDay": 44
+            },
             "pelagos_blessing": {
               "charges": 1
             }
@@ -2326,14 +2265,6 @@
           "rowthorn": 50,
           "karr": 50
         },
-        "warLog": [
-          {
-            "title": "War",
-            "body": "Clan Bacca is at war with the Ironbow.",
-            "at": 1760000000000,
-            "day": 30
-          }
-        ],
         "dayInProgress": null,
         "word": [
           {
@@ -2343,25 +2274,6 @@
             ]
           }
         ],
-        "militaryActions": [],
-        "warMissions": {},
-        "warRecovery": [
-          {
-            "id": "rec-hv-1",
-            "kind": "beast",
-            "name": "Giant Vulture",
-            "status": "wounded",
-            "untilDay": 43
-          }
-        ],
-        "warMissionSeq": 3,
-        "wars": {
-          "bacca": {
-            "since": 30,
-            "last": 38,
-            "next": 45
-          }
-        },
         "repairs": {
           "watchtower": 43
         },
@@ -2647,6 +2559,100 @@
             "status": "waiting"
           }
         ],
+        "wars": {
+          "bacca": {
+            "since": 30,
+            "last": 38,
+            "next": 45
+          }
+        },
+        "defenders": {
+          "count": 6,
+          "armed": true,
+          "patrolUntil": 44
+        },
+        "defenderBeasts": [
+          {
+            "name": "Tiger",
+            "qty": 1,
+            "source": "Menagerie"
+          },
+          {
+            "name": "Giant Vulture",
+            "qty": 1,
+            "source": "Menagerie"
+          }
+        ],
+        "military": [
+          {
+            "id": "reg-hv-line",
+            "name": "Line Infantry (100)",
+            "qty": 1,
+            "source": "War Room",
+            "num": 1,
+            "label": "",
+            "grade": "trained"
+          },
+          {
+            "id": "reg-hv-archers",
+            "name": "Archers (50)",
+            "qty": 1,
+            "source": "War Room",
+            "num": 1,
+            "label": "",
+            "grade": "regular"
+          },
+          {
+            "id": "reg-hv-riders",
+            "name": "Light Cavalry (50)",
+            "qty": 1,
+            "source": "War Room",
+            "num": 1,
+            "label": "The Dawn Riders",
+            "grade": "veteran"
+          },
+          {
+            "id": "reg-hv-levy",
+            "name": "Levy Infantry (150)",
+            "qty": 1,
+            "source": "War Room",
+            "num": 1,
+            "label": "",
+            "grade": "regular",
+            "strength": 90,
+            "depleted": true,
+            "recoup": {
+              "days": 14,
+              "left": 9,
+              "from": 90
+            }
+          },
+          {
+            "name": "Lieutenant (1)",
+            "qty": 2,
+            "source": "War Room"
+          }
+        ],
+        "warRecovery": [
+          {
+            "id": "rec-hv-1",
+            "kind": "beast",
+            "name": "Giant Vulture",
+            "status": "wounded",
+            "untilDay": 43
+          }
+        ],
+        "warLog": [
+          {
+            "title": "War",
+            "body": "Clan Bacca is at war with the Ironbow.",
+            "at": 1760000000000,
+            "day": 30
+          }
+        ],
+        "warMissions": {},
+        "warMissionSeq": 3,
+        "militaryActions": [],
         "lastEvent": {
           "roll": 66,
           "name": "Friendly Visitors",

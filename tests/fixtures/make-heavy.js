@@ -32,22 +32,23 @@ function load(rel) { vm.runInContext(fs.readFileSync(path.join(ROOT, rel), 'utf8
 [
   'shared/data/ports.js', 'shared/data/courier-points.js',
   'tools/bastion/data/bastion-data.js', 'tools/bastion/data/facilities-data.js', 'tools/bastion/data/tools-data.js',
-  'tools/bastion/data/war-units-data.js', 'tools/bastion/data/research-data.js',
+  'tools/bastion/data/research-data.js',
   'tools/bastion/data/goods-data.js', 'tools/bastion/data/commerce-data.js', 'tools/bastion/data/courier-data.js',
-  'tools/bastion/data/creatures-data.js', 'tools/bastion/data/war-room-data.js',
+  'tools/bastion/data/creatures-data.js',
   'tools/bastion/rules.js', 'tools/bastion/strip-back-rules.js', 'tools/bastion/commerce-rules.js', 'tools/bastion/courier-rules.js',
-  'tools/bastion/creature-rules.js', 'tools/bastion/diplomacy-rules.js', 'tools/bastion/regiment-rules.js',
-  'tools/bastion/war-table-rules.js', 'tools/bastion/war-battle-rules.js', 'tools/bastion/war-ai.js', 'tools/bastion/war-campaign-rules.js',
+  'tools/bastion/creature-rules.js', 'tools/bastion/diplomacy-rules.js',
   'shared/js/hmac.js', 'tools/beasthandler/data/profile-tables.js', 'tools/beasthandler/projection.js', 'tools/beasthandler/profile-rules.js', 'tools/beasthandler/bastion-link.js'
 ].forEach(rel => { if (fs.existsSync(path.join(ROOT, rel))) load(rel); });
 const R = win.TSI.bastion.rules;
 const T = win.TSI_DATA;
-const data = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier, creatures: T.bastionCreatures, warRoom: T.bastionWarRoom };
+const data = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier, creatures: T.bastionCreatures };
 const clone = v => JSON.parse(JSON.stringify(v));
 
 /* ---------- The save ---------- */
 const s = R.defaultState(data);
 s.v = 3;
+/* A version 3 Bastion started with five facilities; the Barracks, Armoury and Watchtower went with the war game (step S06). */
+s.builtFacilities = ['barracks', 'armoury', 'watchtower', 'workshop', 'dock'];
 s.treasuryGP = 2000;
 s.partyLevel = 17;
 s.day = 40;
@@ -115,14 +116,15 @@ s.pendingOrders = [
   order('hv-03', 'herbal_gardens', 'field_medical_supplies', 0, { dueDay: DAY + 4, inputs: [held('restorative_herbs', 5), held('antivenom_roots', 5)] }),
   order('hv-04', 'timber_sawmill', 'saw_lumber', 0, { dueDay: DAY + 2, inputs: [held('raw_timber', 1)] }),
   { id: 'hv-05', facId: 'workshop', fnId: 'upgrade', chosen: null, optionLabel: null, notes: '', label: 'Workshop: Upgrade to Level 3', costGP: 0, issuedDay: DAY - 1, dueDay: DAY + 13, meta: { kind: 'upgrade', toLevel: 3 } },
-  /* Barracks, Watchtower, Armoury, War Room, War Council, Menagerie: cancelled. */
-  order('hv-06', 'barracks', 'recruit_defenders', 0),
-  order('hv-07', 'watchtower', 'patrol', 0),
-  order('hv-08', 'armoury', 'arm_defenders', 0, { costGP: 300, label: 'Armoury: Arm Defenders' }),
-  order('hv-09', 'war_room', 'recruit', opt('war_room', 'recruit', 'Archers (50)'), { costGP: 120 }),
-  order('hv-10', 'war_room', 'drill', 0, { chosen: { label: 'Line Infantry I → Trained', regimentId: 'reg-hv-line', toGrade: 'trained' }, optionLabel: 'Line Infantry I → Trained', label: 'War Room: Drill a Regiment (Line Infantry I → Trained)', costGP: 75 }),
+  /* Barracks, Watchtower, Armoury, War Room, War Council, Menagerie: cancelled. Since 22 October 2026 (step S06) the
+     war game's five facilities are no longer in the data, so these seven orders are written out as they were saved. */
+  order('hv-06', 'barracks', 'recruit_defenders', 0, { label: 'Barracks: Recruit Defenders', dueDay: 43 }),
+  order('hv-07', 'watchtower', 'patrol', 0, { label: 'Watchtower: Patrol', dueDay: 39 }),
+  order('hv-08', 'armoury', 'arm_defenders', 0, { costGP: 300, label: 'Armoury: Arm Defenders', dueDay: 41 }),
+  order('hv-09', 'war_room', 'recruit', 0, { chosen: { label: 'Archers (50)' }, optionLabel: 'Archers (50)', label: 'War Room: Recruit (Archers (50))', costGP: 120, dueDay: 45 }),
+  order('hv-10', 'war_room', 'drill', 0, { chosen: { label: 'Line Infantry I → Trained', regimentId: 'reg-hv-line', toGrade: 'trained' }, optionLabel: 'Line Infantry I → Trained', label: 'War Room: Drill a Regiment (Line Infantry I → Trained)', costGP: 75, dueDay: 45 }),
   { id: 'hv-11', facId: 'war_council', fnId: 'war_action', chosen: null, optionLabel: null, notes: '', label: 'War Action', issuedDay: DAY - 1, dueDay: DAY + 2, optionIdx: 0, meta: { kind: 'war_action', objective: 'raid', targetKey: 'bacca', targetName: 'Bacca', tier: 'established', declared: { day: DAY - 1, hr: -2, pc: 0, prev: null, quiet: false, rollDone: true } } },
-  order('hv-12', 'menagerie', 'recruit_beast', opt('menagerie', 'recruit_beast', 'Tiger'), { costGP: 1000 }),
+  order('hv-12', 'menagerie', 'recruit_beast', 0, { chosen: { label: 'Tiger', costGP: 1000, costText: '1,000 GP' }, optionLabel: 'Tiger', label: 'Menagerie: Recruit Beast (Tiger)', costGP: 1000, dueDay: 48 }),
   /* Library and Arcane Laboratory: move to the Workshop. */
   order('hv-13', 'library_scriptorium', 'research', 0, { notes: R.fn(R.facility(data, 'library_scriptorium'), 'research') && data.bastion.scriptureNotes['Geographical Scriptures'] || '' }),
   order('hv-14', 'library_scriptorium', 'prepare_overland_travel_charts', 0, { dueDay: DAY + 2 }),
@@ -172,13 +174,14 @@ s.organization = { type: 'clan', name: 'Clan Ironbow', chief: 'Harry', motto: 'R
 s.wars = { bacca: { since: 30, last: 38, next: 45 } };
 s.defenders = { count: 6, armed: true, patrolUntil: 44 };
 s.defenderBeasts = [{ name: 'Tiger', qty: 1, source: 'Menagerie' }, { name: 'Giant Vulture', qty: 1, source: 'Menagerie' }];
-s.military = R.cleanRegiments([
-  { id: 'reg-hv-line', name: 'Line Infantry (100)', qty: 1, source: 'War Room', grade: 'trained' },
-  { id: 'reg-hv-archers', name: 'Archers (50)', qty: 1, source: 'War Room', grade: 'regular' },
-  { id: 'reg-hv-riders', name: 'Light Cavalry (50)', qty: 1, source: 'War Room', grade: 'veteran', label: 'The Dawn Riders' },
-  { id: 'reg-hv-levy', name: 'Levy Infantry (150)', qty: 1, source: 'War Room', grade: 'regular', strength: 90, depleted: true, recoup: { days: 14, left: 9, from: 90 } },
+/* As the War Room's regiment rules saved them (R.cleanRegiments went with the war game on 22 October 2026). */
+s.military = [
+  { id: 'reg-hv-line', name: 'Line Infantry (100)', qty: 1, source: 'War Room', num: 1, label: '', grade: 'trained' },
+  { id: 'reg-hv-archers', name: 'Archers (50)', qty: 1, source: 'War Room', num: 1, label: '', grade: 'regular' },
+  { id: 'reg-hv-riders', name: 'Light Cavalry (50)', qty: 1, source: 'War Room', num: 1, label: 'The Dawn Riders', grade: 'veteran' },
+  { id: 'reg-hv-levy', name: 'Levy Infantry (150)', qty: 1, source: 'War Room', num: 1, label: '', grade: 'regular', strength: 90, depleted: true, recoup: { days: 14, left: 9, from: 90 } },
   { name: 'Lieutenant (1)', qty: 2, source: 'War Room' }
-], data);
+];
 s.warRecovery = [{ id: 'rec-hv-1', kind: 'beast', name: 'Giant Vulture', status: 'wounded', untilDay: 43 }];
 s.warLog = [{ title: 'War', body: 'Clan Bacca is at war with the Ironbow.', at: 1760000000000, day: 30 }];
 s.warMissions = {};
@@ -231,7 +234,9 @@ s.tradeNetwork.voyages = [{
   scheduleId: 'hv-sched-1', outcome: null, recalledDay: null, roll: null, terms: terms(1.1, 5, 4)
 }];
 s.tradeNetwork.schedules = [{ id: 'hv-sched-1', charterId: 'chr-hv-goldport', port: 'goldport', lots: [{ goodId: 'preserved_fish', name: 'Preserved Fish', qty: 2 }], every: 7, nextDay: 45, waiting: '' }];
-s.tradeNetwork.protections = { pelagos_blessing: { charges: 1 } };
+/* A Commercial Convoy waiting for the next ship (the Barracks), the Protected Maritime Approaches in force until Day 44 (the
+   Watchtower) and a Blessing of Pelagos (the Shrines). The first two went with the war game (step S06). */
+s.tradeNetwork.protections = { commercial_convoy: { charges: 1 }, maritime_approaches: { untilDay: 44 }, pelagos_blessing: { charges: 1 } };
 s.tradeNetwork.marketLedger = [{ day: 34, port: 'goldport', goodId: 'fresh_fish', qty: 2, saleId: 'hv-sale-1' }];
 s.tradeNetwork.cargoSales = [{
   id: 'hv-sale-1', day: 34, port: 'goldport', clan: 'Slade', outcome: 'sold', roll: 71, chance: 15,
@@ -325,12 +330,15 @@ s.beast = Object.assign(R.cleanBeast({
 /* ---------- Check: loading the save drops nothing ---------- */
 const loaded = R.fromSave(clone(s), data);
 const raw = clone(s);
-/* What the conversion changes on purpose: lastEvent and lastEventDay go in step S05; beast: the old request
-   record is deliberately not kept by the cleaner any more (step S13, see above). */
-const IGNORE = ['v', 'migration', 'archivedFacilities', 'lastEvent', 'lastEventDay', 'beast'];
+/* Loading converts a version 3 save in memory (R.migrateToV4), and that changes a good deal on purpose (the war game,
+   the five facilities, the Beast Pen, the events, the old request record). So only the fields the conversion leaves
+   as they are must come through the cleaners unchanged; v and migration are the conversion's own. */
+const converted = R.migrateToV4(clone(s), data).save;
+const IGNORE = ['v', 'migration'];
 const dropped = [];
 Object.keys(raw).forEach(k => {
   if (IGNORE.indexOf(k) !== -1) return;
+  if (JSON.stringify(raw[k]) !== JSON.stringify(converted[k])) return;
   if (JSON.stringify(raw[k]) !== JSON.stringify(loaded[k])) dropped.push(k);
 });
 if (dropped.length) {

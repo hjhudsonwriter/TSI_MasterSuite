@@ -825,8 +825,14 @@ const checkS = (name, fn) => check(name, async () => {
   const openBox = async () => {
     if (!(await ba.$('[data-test=beast-box]:visible'))) { await ba.click('[data-test=tile-beast_pen]'); await ba.waitForSelector('[data-test=beast-box]'); }
   };
-  const dmCode = async (button, dialogTest) => {
+  /* Since S17 the pairing and snapshot codes are under "Offline backup", shut until opened, on the DM's box and on the phone. */
+  const openBackup = async () => {
     await openBox();
+    if (!(await ba.$eval('[data-test=beast-backup]', d => d.open))) await ba.click('[data-test=beast-backup-toggle]');
+  };
+  const openPB = () => pp.evaluate(() => { const d = document.querySelector('[data-test=bhp-backup]'); if (d) d.open = true; });
+  const dmCode = async (button, dialogTest) => {
+    await openBackup();
     await ba.click('[data-test=' + button + ']');
     await ba.waitForSelector('[data-test=' + dialogTest + ']');
     const code = await ba.$eval('[data-test=' + dialogTest.replace('-dialog', '') + ']', t => t.value);
@@ -839,6 +845,7 @@ const checkS = (name, fn) => check(name, async () => {
   await ba.evaluate(() => TSI.store.flush());
   const phoneSnapshot = async () => {
     const snap = await dmCode('beast-snap-mira', 'beast-snap-dialog');
+    await openPB();
     await pp.click('[data-test=bhp-update]');
     await pp.fill('[data-test=bhp-snap-input]', snap);
     await pp.click('.tsi-modal__foot .tsi-btn--primary');
@@ -848,9 +855,11 @@ const checkS = (name, fn) => check(name, async () => {
   await checkS('phone: the beast is hidden behind the meeting; no Skip button; every button is at least 44 px; nothing scrolls sideways, on all three panels', async () => {
     await pp.goto(PHONE);
     await pp.waitForSelector('[data-test=bhp-screen-link]');
+    await openPB();
     await pp.fill('[data-test=bhp-pair-input]', await dmCode('beast-pair-mira', 'beast-pair-dialog'));
     await pp.click('[data-test=bhp-link]');
     await pp.waitForSelector('[data-test=bhp-screen-snap]');
+    await openPB();
     await pp.fill('[data-test=bhp-first-snap]', await dmCode('beast-snap-mira', 'beast-snap-dialog'));
     await pp.click('[data-test=bhp-first-go]');
     await pp.waitForSelector('[data-test=bh-beast-cr-cloudy][data-mine=yes]');
@@ -939,16 +948,18 @@ const checkS = (name, fn) => check(name, async () => {
     await pp.waitForSelector('[data-test=bhp-screen-link]');
     equal(await pp.evaluate(() => localStorage.getItem('tsi.beasthandler.phone.seen')), null);
     /* Mira is already paired, so a new code is asked for with a question first. */
-    await openBox();
+    await openBackup();
     await ba.click('[data-test=beast-pair-mira]');
     await ba.waitForFunction(() => /the old one stops working|old one stops/.test(document.body.textContent) || document.querySelectorAll('.tsi-modal').length >= 2);
     await ba.locator('.tsi-modal__foot .tsi-btn--primary').last().click();
     await ba.waitForSelector('[data-test=beast-pair-dialog]');
     const again = await ba.$eval('[data-test=beast-pair]', t => t.value);
     await closeDialog();
+    await openPB();
     await pp.fill('[data-test=bhp-pair-input]', again);
     await pp.click('[data-test=bhp-link]');
     await pp.waitForSelector('[data-test=bhp-screen-snap]');
+    await openPB();
     await pp.fill('[data-test=bhp-first-snap]', await dmCode('beast-snap-mira', 'beast-snap-dialog'));
     await pp.click('[data-test=bhp-first-go]');
     await pp.waitForSelector('[data-test=bh-beast-cr-cloudy]');
