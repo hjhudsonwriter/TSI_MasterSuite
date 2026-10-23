@@ -412,13 +412,13 @@
       return '';
     }
     /* A Great Rite given to the party (pull request 8b): its kind, its id
-       (which names the rite) and a Great Rite the Shrines make. Its text and
+       (which names the rite) and a Great Rite the Temple makes. Its text and
        other fields are only for showing. */
     if (m.type === 'rite') {
       if (typeof m.id !== 'string' || !B.ID_PATTERN.test(m.id)) return 'Its id is damaged.';
       var rid = B.riteIdOf(m.id);
       if (!rid || !B.UID_PATTERN.test(rid)) return 'Its id isn\'t a Great Rite\'s.';
-      if (B.RITES.indexOf(m.rite) === -1) return 'It names a Great Rite the Shrines don\'t make (' + (typeof m.rite === 'string' ? str(m.rite, 40) : 'none') + ').';
+      if (B.RITES.indexOf(m.rite) === -1) return 'It names a Great Rite the Temple doesn\'t make (' + (typeof m.rite === 'string' ? str(m.rite, 40) : 'none') + ').';
       if (typeof m.riteId === 'string' && m.riteId && m.riteId !== rid) return 'It names a different rite from its id.';
       return '';
     }

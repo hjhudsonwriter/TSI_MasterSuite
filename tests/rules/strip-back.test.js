@@ -120,7 +120,11 @@
   });
 
   test('the registry: the steps run in order, the last one finishes, and a later step can be added above the catch-all', function (t) {
-    t.same(R.stripBackSteps.map(function (st) { return st.id; }), ['dropEvents', 'settleWarOrders', 'dropWar', 'dropWarFacilities', 'dropBeastRequests', 'identity', 'rehomeBeasts', 'sweepFacilities', 'finish']);
+    var ids = R.stripBackSteps.map(function (st) { return st.id; });
+    t.same(ids.slice(-2), ['sweepFacilities', 'finish'], 'the catch-all and the last step stay at the end');
+    ['dropEvents', 'settleWarOrders', 'dropWar', 'dropWarFacilities', 'dropBeastRequests', 'identity', 'rehomeBeasts', 'shrinesToTemple'].forEach(function (id) {
+      t.ok(ids.indexOf(id) !== -1 && ids.indexOf(id) < ids.length - 2, id + ' is a step, above the catch-all');
+    });
     var steps = R.stripBackSteps;
     var added = {
       id: 'example',
@@ -145,7 +149,11 @@
     } finally {
       steps.splice(0, 1);
     }
-    t.same(R.stripBackSteps.map(function (st) { return st.id; }), ['dropEvents', 'settleWarOrders', 'dropWar', 'dropWarFacilities', 'dropBeastRequests', 'identity', 'rehomeBeasts', 'sweepFacilities', 'finish']);
+    var ids = R.stripBackSteps.map(function (st) { return st.id; });
+    t.same(ids.slice(-2), ['sweepFacilities', 'finish'], 'the catch-all and the last step stay at the end');
+    ['dropEvents', 'settleWarOrders', 'dropWar', 'dropWarFacilities', 'dropBeastRequests', 'identity', 'rehomeBeasts', 'shrinesToTemple'].forEach(function (id) {
+      t.ok(ids.indexOf(id) !== -1 && ids.indexOf(id) < ids.length - 2, id + ' is a step, above the catch-all');
+    });
   });
 
   group('Strip Back: the catch-all (a facility the Bastion does not know)');
@@ -211,15 +219,16 @@
 
   test('Favour comes back up to 100% and no further; what could not go back is said', function (t) {
     var shrineOrder = function (id, facId, fav) { return { id: id, facId: facId, fnId: 'prepare_aquatic_protection_charm', label: 'Shrine of Pelagos: Prepare Aquatic Protection Charm', costGP: 0, favourCost: fav, issuedDay: 10, dueDay: 14 }; };
-    /* A Shrine the catalogue does not know, named as a Shrine is, so its god can be told. */
+    /* A Shrine order (the Temple's step, S11, hands its Favour back to the god the Strip Back table names) and an order at a place
+       with no god. */
     var res = convert(v3(function (s) {
       s.favour = { telluria: 0, aurush: 0, pelagos: 95 };
       s.pendingOrders = [shrineOrder('f1', 'shrine_pelagos', 10), shrineOrder('f2', 'old_mill', 5)];
     }));
     t.same(res.problems, []);
-    /* The real Shrine of Pelagos is still in the catalogue at this step, so only the Old Mill's order is cancelled. */
-    t.same(res.save.pendingOrders.map(function (o) { return o.id; }), ['f1']);
-    t.same(res.save.favour, { telluria: 0, aurush: 0, pelagos: 95 });
+    t.same(res.save.pendingOrders.map(function (o) { return o.id; }), [], 'the Aquatic Protection Charm is not one of the Temple\'s blessings, and the Old Mill is gone');
+    t.same(res.save.favour, { telluria: 0, aurush: 0, pelagos: 100 }, 'the Shrine\'s 10% goes back to Pelagos\'s bar, which stops at 100');
+    t.equal(res.report.favour.lost.pelagos, 5);
     t.ok(res.report.notes.some(function (n) { return /5% of a god's Favour/.test(n); }), 'an order that used Favour at a place with no god says it could not give it back');
     /* The cap, tested straight on the helper a later step uses. */
     var s = v3(function (x) { x.favour = { telluria: 0, aurush: 0, pelagos: 95 }; x.pendingOrders = [shrineOrder('f3', 'shrine_pelagos', 10)]; });
@@ -286,11 +295,11 @@
     ids.forEach(function (id) {
       /* The three creature buildings (S14) and the war game's five facilities (S06) are already out of the catalogue: their names are the table's own. */
       var fac = R.facility(data, id);
-      var own = { wyvern_roost: 'Wyvern Roost', griffin_tower: 'Griffin Tower', dire_wolf_den: 'Dire Wolf Den', menagerie: 'Menagerie', war_room: 'War Room', armoury: 'Armoury', watchtower: 'Watchtower', barracks: 'Barracks' };
+      var own = { wyvern_roost: 'Wyvern Roost', griffin_tower: 'Griffin Tower', dire_wolf_den: 'Dire Wolf Den', menagerie: 'Menagerie', war_room: 'War Room', armoury: 'Armoury', watchtower: 'Watchtower', barracks: 'Barracks', shrine_telluria: 'Shrine of Telluria', shrine_aurush: 'Shrine of Aurush', shrine_pelagos: 'Shrine of Pelagos' };
       t.equal(T.bastion.stripBack.facilities[id], fac ? fac.name : own[id], id + ': spelt as the catalogue spells it');
     });
     t.equal(R.stripBackName(data, 'wyvern_roost'), 'Wyvern Roost', 'still named after its definition went');
-    t.same(Object.keys(T.bastion.stripBack).sort(), ['facilities', 'menagerieValue', 'names', 'orders']);
+    t.same(Object.keys(T.bastion.stripBack).sort(), ['facilities', 'gods', 'menagerieValue', 'names', 'orders']);
     /* Still named when its definition has gone from the catalogue. */
     var gone = { bastion: T.bastion, facilities: T.bastionFacilities.filter(function (f) { return f.id !== 'war_room'; }) };
     t.equal(R.stripBackName(gone, 'war_room'), 'War Room');
@@ -756,7 +765,7 @@
       if (name === 'bastion-before-overhaul') return;
       var res = convert(FIX[name]);
       /* Headings the earlier steps and the war game's own use. Anything else has to be the heavy Bastion's one event to drop. */
-      t.equal(res.report.lines.filter(function (l) { return !/^(Places that joined others|Places that are gone|The army and the war|Your Party|Trade|Beasts|Gold|Orders)\. /.test(l); }).length, name === 'bastion-v3-heavy' ? 1 : 0, name + ': only the heavy one had an event to drop');
+      t.equal(res.report.lines.filter(function (l) { return !/^(Places that joined others|Places that are gone|The army and the war|Your Party|Trade|Beasts|Gold|Orders|Favour|Goods)\. /.test(l); }).length, name === 'bastion-v3-heavy' ? 1 : 0, name + ': only the heavy one had an event to drop');
       var a = clone(res.save), b = clone(FIX[name]);
       delete a.migration; delete b.migration;
       delete b.lastEvent; delete b.lastEventDay;
@@ -771,17 +780,23 @@
       WAR_FIELDS.forEach(function (k) { delete a[k]; delete b[k]; });
       if (b.dayInProgress) delete b.dayInProgress.attackRolled;
       if (b.tradeNetwork && b.tradeNetwork.protections) { delete b.tradeNetwork.protections.commercial_convoy; delete b.tradeNetwork.protections.maritime_approaches; }
+      /* Changed by the Temple (S11): the Favour and the Warehouse a cancelled Shrine order gave back. They are checked in tests/rules/temple.test.js. */
+      if (res.report.archived.some(function (x) { return /^shrine_/.test(x.facId); })) {
+        ['favour', 'warehouse'].forEach(function (k) { delete a[k]; delete b[k]; });
+      }
       /* Removed so far (S13): the Beast Handler's old request record. */
       if (b.beast) { delete b.beast.done; delete b.beast.accept; delete b.beast.floor; }
       t.equal(canon(a), canon(b), name + ': every other field exactly as it was');
     });
     var heavy = R.fromSave(clone(FIX['bastion-v3-heavy']), data);
     t.equal(heavy.v, 4);
-    t.equal(heavy.pendingOrders.length, 20, '28, less the eight cancelled (seven for the war game, the Riding Harness); the Roost\'s House order moved');
+    var raw = FIX['bastion-v3-heavy'];
+    var res = convert(raw);
+    t.equal(heavy.pendingOrders.length, raw.pendingOrders.length - res.report.cancelled.length, 'every order is kept, moved or cancelled: the war game\'s, the Riding Harness, and the Shrines\' Upgrade, two prayers and Aquatic Protection Charm are cancelled; the Roost\'s House order, the salve and the Great Rite move');
     t.equal(heavy.creatures.length, 4);
     t.equal(heavy.log.length, 200);
-    t.equal(heavy.treasuryGP, 3645, '2,000 and the 1,645 gp the cancelled orders cost');
-    t.same(heavy.builtExtras.filter(Boolean).map(function (e) { return e.facId; }), ['library_scriptorium', 'arcane_laboratory', 'shrine_telluria', 'shrine_aurush', 'shrine_pelagos', 'beast_pen', 'hall_of_emissaries']);
+    t.equal(heavy.treasuryGP, raw.treasuryGP + res.report.gold.refunded, '2,000 and what the cancelled orders cost');
+    t.same(heavy.builtExtras.filter(Boolean).map(function (e) { return e.facId; }), ['library_scriptorium', 'arcane_laboratory', 'temple', 'beast_pen', 'hall_of_emissaries'], 'the three Shrines are one Temple');
     t.equal(heavy.migration.v4.changed, true, 'its event record, the war game and its facilities were dropped, and it says so');
     t.equal('lastEvent' in heavy || 'lastEventDay' in heavy, false);
   });

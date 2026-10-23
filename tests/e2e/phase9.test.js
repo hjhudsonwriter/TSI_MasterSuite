@@ -224,7 +224,7 @@ async function bareModal(page) { await page.waitForSelector('.tsi-modal:not(.tsi
 /* The facilities that could be built when this phase was written (the facilities overhaul, 13 October 2026, when the
    eight new ones were still in development; the Fishery, Timber Yard, Courier Exchange and, in pull request 7, the
    three creature buildings have opened since). */
-const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens', 'shrine_telluria', 'shrine_aurush', 'shrine_pelagos', 'hall_of_emissaries'];
+const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens', 'temple', 'hall_of_emissaries'];
 
 (async () => {
   const browser = await H.chromium.launch();
@@ -266,10 +266,10 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
     await H.shot(page, 'p9-01-laptop');
 
     await check('every facility picture, the new map and its ten overlays load with no internet; every label fits on the painting, none over another', async () => {
-      /* (The Courier Exchange is put on a plot by hand, as it can't be built yet, to check its overlay and label beside the Shrine of Aurush's.) */
+      /* (The Courier Exchange is put on a plot by hand, as it can't be built yet, to check its overlay and label beside the Temple's.) */
       await setUp(page, (s) => {
         s.partyLevel = 17;
-        s.builtExtras = ['arcane_laboratory', 'library_scriptorium', 'shrine_telluria', 'shrine_aurush', 'shrine_pelagos', 'hall_of_emissaries'].map(id => ({ facId: id, status: 'built' }));
+        s.builtExtras = ['arcane_laboratory', 'library_scriptorium', 'temple', 'hall_of_emissaries'].map(id => ({ facId: id, status: 'built' }));
         s.builtPlots = ['herbal_gardens', 'fishery_smokehouse', 'timber_sawmill', 'courier_exchange'].map(id => ({ facId: id, status: 'built' }));
       });
       await page.waitForFunction(() => Array.from(document.images).every(i => i.complete));
@@ -277,10 +277,10 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       const imgs = await page.$$eval('img.tsi-bas-tile__img, .tsi-bas-map__overlay, .tsi-bas-map__img', is => is.map(i => [i.getAttribute('src').split('/').pop(), i.naturalWidth]));
       equal(imgs.filter(i => !i[1]), [], 'all loaded');
       equal(await page.$$eval('[data-test=tile-fishery_smokehouse] [data-art=crop], [data-test=tile-timber_sawmill] [data-art=crop]', cs => cs.length), 2, 'the two crops');
-      equal(await page.$$eval('.tsi-bas-tile--built', ts => ts.length), 12, 'every facility that can be built has a tile, the Hall too');
+      equal(await page.$$eval('.tsi-bas-tile--built', ts => ts.length), 10, 'every facility that can be built has a tile, the Hall and the Temple too (the Temple is one tile for the three Shrines)');
       equal(await page.$$eval('[data-test=grid-plots] .tsi-bas-tile--built', ts => ts.map(t => t.dataset.fac)), ['herbal_gardens', 'fishery_smokehouse', 'timber_sawmill', 'courier_exchange'], 'the production facilities on the plots, in the row below');
       equal(await page.$eval('.tsi-bas-map__img', i => [i.naturalWidth, i.naturalHeight]), [3000, 1250], 'Harry\'s new painting');
-      equal(await page.$$eval('.tsi-bas-map__overlay', os => os.map(o => o.dataset.fac)), ['library_scriptorium', 'arcane_laboratory', 'herbal_gardens', 'hall_of_emissaries', 'shrine_aurush', 'shrine_telluria', 'shrine_pelagos', 'fishery_smokehouse', 'timber_sawmill', 'courier_exchange'], 'the Shrines shown; nothing for the war game\'s facilities, which are gone');
+      equal(await page.$$eval('.tsi-bas-map__overlay', os => os.map(o => o.dataset.fac)), ['library_scriptorium', 'arcane_laboratory', 'herbal_gardens', 'hall_of_emissaries', 'temple', 'temple', 'temple', 'fishery_smokehouse', 'timber_sawmill', 'courier_exchange'], 'the Temple draws the three Shrine buildings; nothing for the war game\'s facilities, which are gone');
       equal(await page.$$eval('.tsi-bas-map__overlay', os => os.map(o => o.naturalWidth + 'x' + o.naturalHeight)), Array(10).fill('3000x1250'));
       equal((await H.layoutCheck(page, ['.tsi-bas-tile'])).scrollWidth, H.SIZES.laptop.viewport.width, 'no sideways scroll');
       for (const size of ['laptop', 'laptopFull', 'tv', 'smallWindow']) {
@@ -307,7 +307,7 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
             onTray: ls.filter(l => hit(l, tray)).map(l => l.fac)
           };
         });
-        equal(m, { tiles: 14, cut: [], n: 12, clash: [], off: [], onBadge: [], onTray: [] }, size + ': fourteen whole, square tiles (two starting facilities, six slots and six plots); twelve labels (one for each facility built), each clear of the others, the badge and the tray');
+        equal(m, { tiles: 14, cut: [], n: 12, clash: [], off: [], onBadge: [], onTray: [] }, size + ': fourteen whole, square tiles (two starting facilities, six slots and six plots); twelve labels (one for each facility built, the Temple\'s at each of its three buildings), each clear of the others, the badge and the tray');
         await H.shot(page, 'p9-02-everything-built-' + size);
       }
       await page.setViewportSize(H.SIZES.laptop.viewport);
@@ -361,9 +361,9 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       await page.selectOption('[data-test=level]', '7');
       await pause(page);
       await page.click('[data-test=slot-0]');
-      await page.waitForSelector('[data-test=build-shrine_telluria]');
-      equal(await page.getAttribute('[data-test=build-shrine_telluria]', 'aria-disabled'), 'true');
-      assert(/Locked: level 8/.test(await text(page, 'build-shrine_telluria')));
+      await page.waitForSelector('[data-test=build-temple]');
+      equal(await page.getAttribute('[data-test=build-temple]', 'aria-disabled'), 'true');
+      assert(/Locked: level 8/.test(await text(page, 'build-temple')));
       await page.keyboard.press('Escape');
       await page.waitForTimeout(200);
       await page.selectOption('[data-test=level]', '9');
@@ -405,7 +405,7 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
 
     await check('lowering the level keeps every building, marked over capacity (BAS-04, B8)', async () => {
       await construct(2, 'arcane_laboratory');
-      await construct(3, 'shrine_aurush');
+      await construct(3, 'temple');
       await page.selectOption('[data-test=level]', '5');
       await page.waitForTimeout(100);
       equal(await page.$$eval('[data-test=over-capacity]', os => os.length), 2);
@@ -1182,20 +1182,22 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       equal(await page.isVisible('[data-test=grid]'), true);
     });
 
-    await check('Favour of The Gods: a full bar shows Claim, which resets it', async () => {
+    await check('Clan Influence: at -100 Honour Change resets Political Capital to neutral (the Favour bars are in the Temple now: see temple.test.js)', async () => {
       await setUp(page, (s) => { s.favour.pelagos = 100; s.politicalCapital.molten = -100; });
-      equal(await text(page, 'favour-pelagos'), '100%');
-      await page.click('[data-test=claim-pelagos]');
-      equal((await st(page)).favour.pelagos, 0);
+      equal(await page.$('[data-test=open-favour]'), null, 'no Favour of the Gods panel any more');
+      await pause(page);
+      await page.click('[data-test=open-influence]');
+      await page.waitForSelector('[data-test=honour-molten]');
       await page.click('[data-test=honour-molten]');
       equal((await st(page)).politicalCapital.molten, 0);
     });
 
-    await check('the Compendium: 250 items, search, details, card and Roll20 link', async () => {
+    await check('the Compendium: it lists what the facilities offer, with search, details, card and Roll20 link', async () => {
       await pause(page);
       await page.click('[data-test=compendium]');
       await page.waitForSelector('[data-test=comp-list]');
-      equal(await page.$$eval('.tsi-bas-comp__item', b => b.length), 250);
+      const listed = await page.evaluate(() => TSI.bastion.rules.compendiumIndex(TSI_DATA.bastionFacilities, TSI_DATA.bastionTools).items.length);
+      equal(await page.$$eval('.tsi-bas-comp__item', b => b.length), listed);
       await page.fill('[data-test=comp-search]', 'regiment');
       equal(await page.$$eval('.tsi-bas-comp__item', b => b.length), 0, 'the old Regiment (100) is no longer recruited');
       await page.fill('[data-test=comp-search]', 'bag of');
@@ -1215,8 +1217,9 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       const [dl] = await Promise.all([page.waitForEvent('download'), page.click('[data-test=comp-export]')]);
       equal(dl.suggestedFilename(), 'compendium_items.json');
       const file = JSON.parse(fs.readFileSync(await dl.path(), 'utf8'));
-      equal([file.version, Object.keys(file.items).length], [1, 250]);
-      equal(await text(page, 'comp-status'), 'Done. Filled: 0 • Kept: 62 • Stubbed: 188. Downloading…');
+      const exp = await page.evaluate(() => { const R = TSI.bastion.rules; const o = R.compendiumExport(R.compendiumIndex(TSI_DATA.bastionFacilities, TSI_DATA.bastionTools), TSI_DATA.bastionCompendium.items); return { n: Object.keys(o.file.items).length, kept: o.kept, stubbed: o.stubbed }; });
+      equal([file.version, Object.keys(file.items).length], [1, exp.n]);
+      equal(await text(page, 'comp-status'), 'Done. Filled: 0 • Kept: ' + exp.kept + ' • Stubbed: ' + exp.stubbed + '. Downloading…');
       assert(/^https:\/\/roll20\.net\//.test(file.items['Bag of Holding'].roll20), 'other items keep theirs');
       await clickModal(page, 'Close');
       equal(context.log.net, []);
@@ -1441,7 +1444,7 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       equal([s.partyLevel, s.treasuryGP, s.builtPlots.filter(Boolean).map(e => e.facId)], [13, 3000, ['herbal_gardens', 'timber_sawmill', 'fishery_smokehouse']]);
       equal(s.warehouse.map(w => [w.goodId || w.item, w.qty]), [['Rope (50 ft)', 2], ['raw_timber', 2], ['fresh_fish', 1], ['preserved_fish', 1], ['restorative_herbs', 20], ['antivenom_roots', 5], ['alchemical_flowers', 20]]);
       equal(await page.$$eval('[data-test=grid-plots] .tsi-bas-tile--plot', ts => ts.map(t => t.dataset.test)), ['plot-3']);
-      equal(await page.$$eval('.tsi-bas-maplabel', ls => ls.length), 9, 'the starting two, four in slots and three on plots, each labelled');
+      equal(await page.$$eval('.tsi-bas-maplabel', ls => ls.length), 11, 'the starting two, four in slots (the Shrine of Aurush is the Temple now, labelled at each of its three buildings) and three on plots, each labelled');
       await H.dismissNotices(page);
     });
 

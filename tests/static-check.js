@@ -87,13 +87,22 @@ try {
   vm.runInNewContext(read(path.join(BAS, 'data/bastion-data.js')), win);
   const B = win.TSI_DATA.bastion;
   const from = 'bastion-data.js';
-  Object.keys(B.facilityImages || {}).forEach(k => need(from + ' facilityImages.' + k, assets('facilities/' + B.facilityImages[k]), 'picture'));
+  /* A facility's picture is one file, or a list of files drawn side by side (the Temple's three Shrine paintings). */
+  Object.keys(B.facilityImages || {}).forEach(k => [].concat(B.facilityImages[k]).forEach(f => need(from + ' facilityImages.' + k, assets('facilities/' + f), 'picture')));
   Object.keys(B.panelImages || {}).forEach(k => need(from + ' panelImages.' + k, assets('facilities/' + B.panelImages[k]), 'picture'));
   Object.keys(B.facilityTileCrops || {}).forEach(k => need(from + ' facilityTileCrops.' + k, assets(B.facilityTileCrops[k].pic), 'picture'));
   need(from + ' map.base', assets(B.map.base), 'picture');
   (B.map.overlays || []).forEach(o => need(from + ' map.overlays (' + o.fac + ')', assets(o.pic), 'picture'));
   (B.compendiumCards || []).forEach(n => need(from + ' compendiumCards', assets('compendium_cards/' + n + '.png'), 'card'));
 } catch (e) { problems.push('bastion-data.js could not be read: ' + e.message); }
+/* The Temple's three gods each have a painting (facilities-data.js, the Temple's "temple" block). */
+try {
+  const win = { TSI_DATA: {} };
+  win.window = win;
+  vm.runInNewContext(read(path.join(BAS, 'data/facilities-data.js')), win);
+  const temple = win.TSI_DATA.bastionFacilities.filter(f => f.id === 'temple')[0];
+  ((temple && temple.temple && temple.temple.gods) || []).forEach(g => { if (g.art) need('facilities-data.js the Temple\'s ' + g.id, assets('facilities/' + g.art), 'picture'); });
+} catch (e) { problems.push('facilities-data.js could not be read: ' + e.message); }
 
 /* ---------- 3. Nothing refers to what the war game left behind ---------- */
 /* Pieces of the war game that no longer exist. The conversion's own file, the forecast's list of retired facilities and

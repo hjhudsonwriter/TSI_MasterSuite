@@ -143,13 +143,14 @@ window.TSI_DATA.bastionCommerce = {
   /* Protection for a voyage: each takes percentage points off the chance
      (never below 0). Each is applied to a voyage by itself when it sails and
      recorded with it. consumes: the protection is used up by the voyage it
-     protects. Only the Blessing of Pelagos is left (the Shrines' Bless
-     Commercial Shipment): the Commercial Convoy (the Barracks) and the
-     Protected Maritime Approaches (the Watchtower) went with the war game on
-     22 October 2026, and a Bastion's held one is dropped and told about when
-     it is converted (strip-back-rules.js). */
+     protects. Only the Blessing of Pelagos is left (the Temple's Bless
+     Commercial Shipment, which was the Shrine of Pelagos's): the Commercial
+     Convoy (the Barracks) and the Protected Maritime Approaches (the
+     Watchtower) went with the war game on 22 October 2026, and a Bastion's
+     held one is dropped and told about when it is converted
+     (strip-back-rules.js). */
   protections: [
-    { id: 'pelagos_blessing', label: 'Blessing of Pelagos', facId: 'shrine_pelagos', order: 'Bless Commercial Shipment', cut: 10, consumes: true, available: true }
+    { id: 'pelagos_blessing', label: 'Blessing of Pelagos', facId: 'temple', order: 'Bless Commercial Shipment', cut: 10, consumes: true, available: true }
   ],
 
   /* ---------- The Dock ----------

@@ -42,7 +42,7 @@
   var TSI = window.TSI;
   var ns = TSI.bastion = TSI.bastion || {};
 
-  /* The three gods' little icons on the Favour panel (old index.html). */
+  /* The three gods' little icons, in the Temple's panel (from the old Favour panel, old index.html). */
   var GOD_PATHS = {
     telluria: 'M12 2C7 4 5 9 5 13c0 5 3 9 7 9s7-4 7-9c0-4-2-9-7-11zM12 6v12',
     aurush: 'M12 2C9 6 7 8 7 12a5 5 0 0010 0c0-4-2-6-5-10z',
@@ -322,7 +322,6 @@
         management: 'M9 11a3 3 0 100-6 3 3 0 000 6z M3 20c0-3.3 2.7-5 6-5s6 1.7 6 5 M16.5 11a2.5 2.5 0 100-5 M16 15c2.8 0 5 1.6 5 4.5',
         log: 'M6 4h12v16H6z M9 8h6 M9 12h6 M9 16h4',
         influence: 'M12 4v16 M8 20h8 M5 7h14 M5 7l-3 6a3 3 0 006 0z M19 7l-3 6a3 3 0 006 0z',
-        favour: 'M12 3v3 M12 18v3 M3 12h3 M18 12h3 M5.6 5.6l2.1 2.1 M16.3 16.3l2.1 2.1 M5.6 18.4l2.1-2.1 M16.3 7.7l2.1-2.1 M12 8a4 4 0 110 8 4 4 0 010-8z',
         shield: 'M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z',
         up: 'M6 15l6-6 6 6',
         down: 'M6 9l6 6 6-6'
@@ -658,7 +657,9 @@
       ]);
 
       /* ================================================================
-         Favour of The Gods, Political Capital, Diplomatic Assets (left)
+         The gods' icons (the Temple's panel), Political Capital, Diplomatic Assets (left)
+         The Favour of the Gods panel went with the Strip Back Overhaul (22 October 2026):
+         its three bars are in the Temple's panel now.
          ================================================================ */
       function godIcon(key) {
         var NS = 'http://www.w3.org/2000/svg';
@@ -671,29 +672,6 @@
         svg.appendChild(path);
         return svg;
       }
-      var favourRows = {};
-      var favourList = B.gods.map(function (g) {
-        var fill = el('div', { class: 'tsi-bas-bar-fill' });
-        var pct = el('div', { class: 'tsi-bas-meter__val', 'data-test': 'favour-' + g.key, text: '0%' });
-        var claim = btn('Claim', function () {
-          state.favour[g.key] = 0;
-          log('Favour Claimed', g.key.toUpperCase() + ' favour claimed. Bar reset to 0%.');
-          done();
-        }, 'tsi-btn--ghost tsi-bas-meter__btn', 'claim-' + g.key, { hidden: true });
-        favourRows[g.key] = { fill: fill, pct: pct, claim: claim };
-        return el('div', { class: 'tsi-bas-meter' }, [
-          el('div', { class: 'tsi-bas-meter__name' }, [godIcon(g.key), g.name]),
-          el('div', { class: 'tsi-bas-meter__bar' }, fill),
-          pct, claim
-        ]);
-      });
-      /* The Favour of the Gods panel: the three bars and Claim. */
-      var favourCard = card('favour', 'Favour of the Gods');
-      TSI.append(favourCard.body, [
-        el('div', { class: 'tsi-bas-favour' }, favourList),
-        muted('Shrine blessings add 1d20% to their god. At 100%, Claim it and the bar starts again from 0%.', 'tsi-bas-side__hint')
-      ]);
-
       /* The Clan Influence panel: one row per Clan, with its Political
          Capital bar (and Honour Change at ±100), its Honour/Respect (the
          DM's to set, −5 to +5) and the support they add up to; then the
@@ -762,13 +740,6 @@
       ]);
 
       function renderSide() {
-        B.gods.forEach(function (g) {
-          var v = R.clampInt(state.favour[g.key] || 0, 0, 100);
-          var r = favourRows[g.key];
-          r.fill.style.width = v + '%';
-          r.pct.textContent = v + '%';
-          r.claim.hidden = v < 100;
-        });
         B.clans.forEach(function (c) {
           var v = R.clampInt(state.politicalCapital[c.key] || 0, -100, 100);
           var r = pcRows[c.key];
@@ -886,7 +857,7 @@
         TSI.clear(labelLayer);
         R.mapLabels(state, data).forEach(function (l) {
           labelLayer.appendChild(el('div', {
-            class: 'tsi-bas-maplabel' + (l.repair ? ' tsi-bas-maplabel--repair' : ''), 'data-test': 'map-label-' + l.fac, 'data-fac': l.fac, 'data-level': String(l.level),
+            class: 'tsi-bas-maplabel' + (l.repair ? ' tsi-bas-maplabel--repair' : ''), 'data-test': 'map-label-' + l.fac + (l.part ? '-' + l.part : ''), 'data-fac': l.fac, 'data-level': String(l.level),
             style: 'left:' + (l.x / B.map.width * 100) + '%;top:' + (l.y / B.map.height * 100) + '%'
           }, [el('span', { class: 'tsi-bas-maplabel__name', text: l.name }), el('span', { class: 'tsi-bas-maplabel__level', text: l.single ? 'One level' : 'Level ' + l.level })]));
         });
@@ -2346,6 +2317,12 @@
       /* ---------- The grid ---------- */
       function facArt(id, cls) {
         var f = B.facilityImages[id];
+        /* A list of pictures (the Temple's three Shrine paintings) is drawn side by side, each cut to its middle. */
+        if (Array.isArray(f) && f.length) {
+          return el('div', { class: cls + ' tsi-bas-artstrips', 'data-art': 'strips' }, f.map(function (file) {
+            return el('img', { class: 'tsi-bas-artstrips__img', src: asset('facilities/' + file), alt: '', draggable: 'false' });
+          }));
+        }
         if (f) return el('img', { class: cls, src: asset('facilities/' + f), alt: '', draggable: 'false' });
         /* A new facility with no tile painting yet: its building, cut from
            Harry's map overlay (facilityTileCrops), on a dark ground; with no
@@ -2581,7 +2558,9 @@
         var repair = R.underRepair(state, id);
         var mine = [];
         state.pendingOrders.forEach(function (o, i) { if (o.facId === id) mine.push(pendingRow(o, i)); });
-        var fns = [upgradeRow(fac), researchRow(fac)].filter(Boolean).concat((fac.functions || []).filter(function (fn) { return !R.fnAvailable(state, fac, fn).hidden; }).map(function (fn) {
+        /* The Temple's blessings are not orders: its panel is the three gods (templeSection, below). */
+        var isTemple = id === R.TEMPLE_ID;
+        var fns = isTemple ? [] : [upgradeRow(fac), researchRow(fac)].filter(Boolean).concat((fac.functions || []).filter(function (fn) { return !R.fnAvailable(state, fac, fn).hidden; }).map(function (fn) {
           var req = R.clampInt(fn.requiredFacilityLevel === undefined || fn.requiredFacilityLevel === null ? 1 : fn.requiredFacilityLevel, 1, R.MAX_LEVEL);
           return fnRow(fac, fn, lvl < req);
         }));
@@ -2590,21 +2569,20 @@
         var banner = B.panelImages && B.panelImages[id] ? el('img', { class: 'tsi-bas-facpanel__banner', 'data-test': 'fac-banner', src: asset('facilities/' + B.panelImages[id]), alt: fac.name + ': a painting of the ' + fac.name, draggable: 'false' }) : null;
         TSI.append(facPanelBody, [
           banner,
-          el('div', { class: 'tsi-bas-facpanel__hero' + (banner ? ' tsi-bas-facpanel__hero--banner' : '') + (repair ? ' tsi-bas-facpanel__hero--repair' : '') }, [
-            banner ? null : facArt(id, 'tsi-bas-facpanel__img'),
+          el('div', { class: 'tsi-bas-facpanel__hero' + (banner || isTemple ? ' tsi-bas-facpanel__hero--banner' : '') + (repair ? ' tsi-bas-facpanel__hero--repair' : '') }, [
+            banner || isTemple ? null : facArt(id, 'tsi-bas-facpanel__img'),
             el('div', { class: 'tsi-bas-facpanel__info' }, [
               el('div', { class: 'tsi-bas-facpanel__level', 'data-test': 'fac-level', text: fac.singleLevel ? 'One level only' : 'Level ' + lvl + ' of ' + R.MAX_LEVEL }),
-              el('div', { class: 'tsi-bas-facpanel__status', 'data-test': 'fac-status' }, repair ? repairLabel(repair) : 'Active • each order shows the days it takes'),
+              el('div', { class: 'tsi-bas-facpanel__status', 'data-test': 'fac-status' }, repair ? repairLabel(repair) : isTemple ? 'Active • prayers and blessings happen at once' : 'Active • each order shows the days it takes'),
               repair ? el('div', { class: 'tsi-bas-fac__repair', 'data-test': 'repair-note-' + id, text: 'Under Repair until Day ' + repair + ': no orders, and orders already here wait. Working again on Day ' + (repair + 1) + '.' }) : null,
               el('div', { class: 'tsi-bas-facpanel__orders' }, [label('Orders pending here')].concat(mine.length ? mine : [muted('None.')]))
             ])
           ]),
-          el('div', { class: 'tsi-bas-fac__fns tsi-bas-facpanel__fns' }, fns.length ? fns : [muted('No functions listed.')]),
+          isTemple ? templeSection() : el('div', { class: 'tsi-bas-fac__fns tsi-bas-facpanel__fns' }, fns.length ? fns : [muted('No functions listed.')]),
           id === 'workshop' ? el('div', { class: 'tsi-bas-facpanel__artisan' }, [label('Artisan Tools'), artCard.root]) : null,
           id === 'dock' ? cargoSection() : null,
           id === R.COURIER_FAC ? courierSection() : null,
           penSection(id),
-          R.shrineGod(id) ? shrineSection(id) : null,
           /* A facility in a construction slot can be demolished (Harry, 13
              October 2026); the starting facilities can't. */
           B.startingBuilt.indexOf(id) === -1 ? el('div', { class: 'tsi-bas-facpanel__demolish' }, [
@@ -2903,24 +2881,83 @@
         ]);
       }
 
-      /* ---------- A Shrine's Favour, Great Rites and blessings (pull request 8b) ---------- */
-      function shrineSection(facId) {
-        var god = R.shrineGod(facId);
-        var rites = (state.greatRites || []).filter(function (g) { return g.god === god; });
-        var prot = state.tradeNetwork && state.tradeNetwork.protections && state.tradeNetwork.protections.pelagos_blessing;
-        var held = god === 'pelagos' && prot ? R.clampInt(prot.charges || 0, 0) : 0;
-        return el('div', { class: 'tsi-bas-facpanel__cargo tsi-bas-facpanel__shrine', 'data-test': 'shrine-' + god }, [
-          label('Favour and blessings'),
-          el('div', { class: 'tsi-bas-creatures__room', 'data-test': 'shrine-favour-' + god, text: R.GOD_NAMES[god] + '\'s Favour: ' + R.clampInt(state.favour[god] || 0, 0, 100) + '%. Orders from Level 3 spend it when they start (5%, 10%, then 25% for the Great Rite).' }),
-          god === 'pelagos' ? muted('Blessings of Pelagos held for the Dock: ' + held + (held ? '. The next ship sent with cargo takes one: 10 points off its chance of trouble at sea.' : '.')) : null,
-          rites.length
-            ? el('ul', { class: 'tsi-bas-res-list', 'data-test': 'great-rites-' + god }, rites.map(function (g) {
-              return el('li', { 'data-test': 'great-rite-' + g.status, text: R.RITE_NAMES[g.rite] + (g.status === 'assigned'
-                ? ': with the party since ' + R.dayLabel(g.assignedDay) + ' (in the Explorer\'s Great Rites).'
-                : ': waiting at the Ironbow since ' + R.dayLabel(g.madeDay) + '. The DM gives it to the party on an expedition, in the Explorer.') });
-            }))
-            : null
+      /* ---------- The Temple (the Strip Back Overhaul, step S11, 22 October 2026) ----------
+         The three Shrines became one Temple, and the Favour of the Gods panel went into it. The panel is split into
+         thirds, one for each god (Telluria, Aurush, Pelagos). In each: the god's name, its Favour bar (0 to 100%), Pray to
+         (god) (instant: a d50 added to the bar, which stops at 100) and Receive Blessing (a dropdown of three blessings,
+         greyed out until the bar is full; it takes effect at once, spends the WHOLE bar, and the bar goes back to 0). The
+         rules are in temple-rules.js, the gods and blessings in the Temple's block of facilities-data.js. Each button is
+         wrapped in TSI.oneAtATime, so a double click does it once. What a god last said (the roll, or the blessing
+         received) stays under its buttons until the next one; the Day Log has it too. */
+      var templeSaid = {};      /* god → the last result line (not saved) */
+      var blessingPick = {};    /* god → the blessing chosen in the dropdown (not saved) */
+      var onPray = TSI.oneAtATime(function (god) {
+        var res = R.templePray(state, data, god, rand);
+        if (!res.ok) { say(res.message); return; }
+        templeSaid[god] = res.text;
+        log(res.log[0], res.log[1]);
+        done();
+      });
+      var onReceive = TSI.oneAtATime(async function (god, fnId) {
+        var early = R.templeReceiveBlocker(state, data, god, fnId);
+        if (early) { await say(early); return; }
+        var g = R.templeGod(data, god);
+        var b = R.templeBlessing(data, god, fnId);
+        var ok = await ask('Receive ' + b.label + ' from ' + g.name + '? ' + g.name + '\'s whole bar (' + R.templeBar(state, god) + '%) is spent and goes back to 0%. The blessing happens at once.', 'Receive Blessing', 'Receive ' + b.label);
+        if (!ok || !life.alive) return;
+        var res = R.templeReceive(state, data, god, fnId, rand);
+        if (!res.ok) { await say(res.message); return; }
+        templeSaid[god] = res.text;
+        log(res.log[0], res.log[1]);
+        done();
+      });
+      /* One god's third of the panel. */
+      function godThird(g, view) {
+        var pct = g.bar;
+        var fill = el('div', { class: 'tsi-bas-bar-fill', style: 'width:' + pct + '%' });
+        var bar = el('div', { class: 'tsi-bas-meter__bar tsi-bas-temple__bar', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': String(pct), 'aria-label': g.name + '\'s Favour', 'data-test': 'temple-bar-' + g.id }, fill);
+        var pick = blessingPick[g.id] && g.blessings.some(function (b) { return b.id === blessingPick[g.id]; }) ? blessingPick[g.id] : (g.blessings[0] ? g.blessings[0].id : '');
+        var select = el('select', {
+          class: 'tsi-input tsi-bas-temple__select', 'aria-label': 'Blessing from ' + g.name, 'data-test': 'blessing-select-' + g.id, disabled: g.isFull ? null : true
+        }, g.blessings.map(function (b) { return el('option', { value: b.id, text: b.label }); }));
+        select.value = pick;
+        var note = el('div', { class: 'tsi-bas-temple__note', 'data-test': 'blessing-note-' + g.id });
+        function showNote() {
+          var chosen = g.blessings.filter(function (b) { return b.id === select.value; })[0];
+          note.textContent = chosen ? chosen.notes : '';
+        }
+        select.addEventListener('change', function () { blessingPick[g.id] = select.value; showNote(); });
+        showNote();
+        var why = g.isFull ? '' : g.name + '\'s bar fills at ' + view.full + '%. It is at ' + pct + '% now.';
+        var receive = btn('Receive Blessing', function () { onReceive(g.id, select.value); }, 'tsi-btn--primary tsi-bas-temple__receive', 'blessing-go-' + g.id, { disabled: g.isFull ? null : true, title: why || null });
+        var held = g.id === 'pelagos' ? muted('Blessings of Pelagos held for the Dock: ' + g.held + (g.held ? '. The next ship sent with cargo takes one: 10 points off its chance of trouble at sea.' : '.'), 'tsi-bas-temple__held') : null;
+        var rites = g.rites.length
+          ? el('ul', { class: 'tsi-bas-res-list tsi-bas-temple__rites', 'data-test': 'great-rites-' + g.id }, g.rites.map(function (r) {
+            return el('li', { 'data-test': 'great-rite-' + r.status, text: R.RITE_NAMES[r.rite] + (r.status === 'assigned'
+              ? ': with the party since ' + R.dayLabel(r.assignedDay) + ' (in the Explorer\'s Great Rites).'
+              : ': waiting at the Ironbow since ' + R.dayLabel(r.madeDay) + '. The DM gives it to the party on an expedition, in the Explorer.') });
+          }))
+          : null;
+        return el('section', { class: 'tsi-bas-temple__god tsi-bas-temple__god--' + g.id, 'data-test': 'temple-god-' + g.id, 'data-god': g.id, 'aria-label': g.name }, [
+          g.art ? el('img', { class: 'tsi-bas-temple__art', src: asset('facilities/' + g.art), alt: '', draggable: 'false' }) : null,
+          el('h3', { class: 'tsi-bas-temple__name', 'data-test': 'temple-name-' + g.id }, [godIcon(g.id), g.name]),
+          el('div', { class: 'tsi-bas-temple__favour' }, [bar, el('div', { class: 'tsi-bas-temple__pct', 'data-test': 'temple-favour-' + g.id, text: pct + '%' })]),
+          btn('Pray to ' + g.name, function () { onPray(g.id); }, 'tsi-bas-temple__pray', 'pray-' + g.id, { title: 'Adds a d' + view.die + ' roll (1 to ' + view.die + ' percent) to ' + g.name + '\'s bar, at once. The bar stops at 100%.' }),
+          el('div', { class: 'tsi-bas-temple__said', 'data-test': 'pray-result-' + g.id, role: 'status', 'aria-live': 'polite', text: templeSaid[g.id] || '' }),
+          el('div', { class: 'tsi-bas-temple__give' }, [
+            label('Receive Blessing'),
+            select,
+            note,
+            receive,
+            el('div', { class: 'tsi-bas-temple__why', 'data-test': 'blessing-why-' + g.id, hidden: g.isFull, text: why })
+          ]),
+          held,
+          rites
         ]);
+      }
+      function templeSection() {
+        var view = R.templeView(state, data);
+        return el('div', { class: 'tsi-bas-temple', 'data-test': 'temple' }, view.gods.map(function (g) { return godThird(g, view); }));
       }
 
 
@@ -4075,15 +4112,13 @@
       var openManagement = simplePanel(mgmtCard, 'tsi-bas-panel--wide');
       var openLog = simplePanel(logCard);
       var openInfluence = simplePanel(influenceCard, 'tsi-bas-panel--wide');
-      var openFavour = simplePanel(favourCard);
       var leftButtons = el('div', { class: 'tsi-bas-pbtns tsi-bas-pbtns--left' }, [
         panelButton('warehouse', 'Warehouse', 'warehouse', openWarehouse),
         panelButton('management', 'Management', 'management', openManagement),
         panelButton('log', 'Day Log', 'log', openLog)
       ]);
       var rightButtons = el('div', { class: 'tsi-bas-pbtns tsi-bas-pbtns--right' }, [
-        panelButton('influence', 'Clan Influence', 'influence', openInfluence),
-        panelButton('favour', 'Favour', 'favour', openFavour, { 'aria-label': 'Favour of the Gods' })
+        panelButton('influence', 'Clan Influence', 'influence', openInfluence)
       ]);
 
       /* The grid folds away with ▼ (and back with ▲), remembered. */
@@ -4310,7 +4345,7 @@
       /* For reveal: the data-test of what opens the panel holding sel. */
       function openerFor(test, sel) {
         var fixed = [[whCard, 'open-warehouse'], [mgmtCard, 'open-management'], [logCard, 'open-log'],
-          [influenceCard, 'open-influence'], [favourCard, 'open-favour'], [idCard, 'identity-badge'],
+          [influenceCard, 'open-influence'], [idCard, 'identity-badge'],
           [dipCard, 'tile-hall_of_emissaries'], [ordersCard, 'orders-count'], [artCard, 'tile-workshop']];
         for (var i = 0; i < fixed.length; i++) if (fixed[i][0].root.querySelector(sel)) return fixed[i][1];
         var m = /^(?:issue|sel|days|why|goods)-([a-z_]+)__/.exec(test) || /^repair-note-([a-z_]+)$/.exec(test) ||
@@ -4319,6 +4354,8 @@
         /* A creature's row in its building's panel (pull request 7): where it
            lives, or the building its kind waits for. */
         if (/^(?:creature|stall|acclimatise|beast)-/.test(test) || /^(?:handler|temperament|bond|note|acclimatise)-(?:dialog|name|why|keep|total|problem|text|private)$/.test(test)) return 'tile-' + R.PEN_ID;
+        /* The Temple's thirds: the bars, Pray, Receive Blessing and the Great Rites (22 October 2026). */
+        if (/^(?:pray|blessing|temple|great-rite)/.test(test)) return 'tile-' + R.TEMPLE_ID;
         if (test === 'clear-builds' || (/^build-[a-z_]+$/.test(test) && test !== 'build-panel')) {
           var kind = R.isPlotFacility(data, test.slice(6)) ? 'plot' : 'slot';
           var slot = freeSlot(kind);

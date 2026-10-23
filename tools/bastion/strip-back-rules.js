@@ -237,7 +237,7 @@
     rec.gp = R.stripBackPayGold(s, report, order.costGP, label, 'refund');
     var fav = clampInt(order.favourCost, 0, 100);
     if (fav > 0) {
-      var god = GODS.indexOf(opts.god) !== -1 ? opts.god : R.shrineGod(order.facId);
+      var god = GODS.indexOf(opts.god) !== -1 ? opts.god : R.shrineGod(order.facId, null, data);
       if (god) {
         rec.favour = fav;
         rec.god = god;
@@ -1026,6 +1026,146 @@
     }
   }
 
+  /* Step S11 (Harry, 22 October 2026): the Shrine of Telluria, the Shrine of Aurush and the Shrine of Pelagos become ONE
+     Temple (temple-rules.js; the Temple's block in facilities-data.js).
+     - Their slots become one temple entry in the slot of the one that was built (the first, if several were; else the
+       one that would be ready first); the others' slots are free. facilityLevels.temple is 1 (it has one level); the old
+       levels, repairs and research entries go. Every retired id is recorded in archivedFacilities.
+     - Favour stays exactly as it is, and so do the Great Rites and any Blessing of Pelagos held for the Dock: they
+       belong to the Bastion, not to a building.
+     - Pending orders. A blessing that the Temple still gives (the Temple has a blessing function of that id and that
+       god: Earthward Talisman, Rootguard Salve and the Great Rite of Telluria; Blessed Lantern, Consecrate Expedition
+       Supplies and the Great Rite of Aurush; Voyage Blessing, Bless Commercial Shipment and the Great Rite of Pelagos)
+       MOVES to the Temple, keeping its id, due day, cost and the Favour it already took (it was paid for); the label is
+       written again; it completes on its due day as before. Everything else is CANCELLED, with what it cost given back:
+       Craft; every Pray (the Temple's Pray is instant, so an old one-day prayer ends and its roll is simply not made;
+       it cost nothing); Purification Incense, the Aquatic Protection Charm and Bless Bastion Foundations; and any
+       Upgrade (the Temple has one level). A cancelled order's Favour goes back to its god's bar (up to 100%, the rest
+       said), and the goods it held go back to the Warehouse.
+     Pure: no storage, clock or dice. */
+  var TEMPLE_ID = 'temple';
+  var OLD_SHRINES = { shrine_telluria: 'telluria', shrine_aurush: 'aurush', shrine_pelagos: 'pelagos' };
+  function isOldShrine(id) { return Object.prototype.hasOwnProperty.call(OLD_SHRINES, id); }
+  function detectShrines(s) {
+    var out = [];
+    ['builtExtras', 'builtPlots'].forEach(function (key) {
+      (arr(s[key]) || []).forEach(function (x) { var e = entryOf(x); if (e && isOldShrine(e.facId)) out.push('a place: ' + e.facId); });
+    });
+    ['facilityLevels', 'repairs', 'research'].forEach(function (key) {
+      if (isObj(s[key])) Object.keys(s[key]).forEach(function (id) { if (isOldShrine(id)) out.push('a ' + (key === 'repairs' ? 'repair' : key === 'research' ? 'research' : 'level') + ': ' + id); });
+    });
+    (arr(s.pendingOrders) || []).forEach(function (o) { if (isObj(o) && isOldShrine(o.facId)) out.push('an order: ' + o.facId); });
+    return out;
+  }
+  /* The Temple's blessing function that an old Shrine order of that god becomes, or null (the order ends). */
+  function templeFn(data, god, fnId) {
+    var f = data && R.facility(data, TEMPLE_ID);
+    var fn = f ? R.fn(f, fnId) : null;
+    return fn && fn.blessing === true && fn.god === god ? fn : null;
+  }
+  function shrineEndReason(o, god) {
+    var name = GOD_NAMES[god];
+    if (isObj(o.meta) && o.meta.kind === 'upgrade') return 'the Temple has one level only, so there is nothing to upgrade';
+    if (o.fnId === 'craft') return 'the Temple has no Craft order any more';
+    if (o.fnId === 'pray') {
+      var type = isObj(o.chosen) && isObj(o.chosen.special) ? o.chosen.special.type : '';
+      return type === 'favour_blessing'
+        ? 'praying at the Temple is instant now, so this one-day prayer ended without its roll'
+        : 'the Temple\'s hint and long-rest prayers are gone; Pray to ' + name + ' is instant and adds to the Favour bar';
+    }
+    return 'the Temple gives three blessings for each god, and this is not one of ' + name + '\'s';
+  }
+  function shrinesToTemple(s, data, report) {
+    var found = detectShrines(s);
+    if (!found.length) return;
+    var day = report.day;
+    var cancelledBefore = report.cancelled.length;
+    var penEntry = null;          /* a slot that is already the Temple */
+    var olds = [];                /* every old Shrine found in a slot: { list, index, entry, plot } */
+    [['builtExtras', false], ['builtPlots', true]].forEach(function (pair) {
+      var list = arr(s[pair[0]]);
+      if (!list) return;
+      list.forEach(function (x, i) {
+        var e = entryOf(x);
+        if (!e) return;
+        if (e.facId === TEMPLE_ID && !penEntry) penEntry = { list: list, index: i };
+        if (isOldShrine(e.facId)) olds.push({ list: list, index: i, entry: e, plot: pair[1] });
+      });
+    });
+    /* The slot that carries on as the Temple: one that already is, else a built Shrine (the first), else the one ready first. */
+    var keep = null;
+    if (!penEntry && olds.length) {
+      keep = olds.slice().sort(function (a, b) {
+        var A = a.entry.status === 'building' ? 1 : 0, B2 = b.entry.status === 'building' ? 1 : 0;
+        if (A !== B2) return A - B2;
+        if (A === 1) return dayNum(a.entry.readyDay, 0) - dayNum(b.entry.readyDay, 0) || a.index - b.index;
+        return a.index - b.index;
+      })[0];
+    }
+    var standing = penEntry ? entryOf(penEntry.list[penEntry.index]) : null;
+    var names = [];
+    var stopped = [];
+    olds.forEach(function (o) {
+      var name = R.stripBackName(data, o.entry.facId);
+      var building = o.entry.status === 'building';
+      var rec = { facId: o.entry.facId, name: name, status: building ? 'building' : 'built', slot: o.index, day: day };
+      if (o.plot) rec.plot = true;
+      report.archived.push(rec);
+      names.push(name);
+      if (keep && o === keep) {
+        var made = { facId: TEMPLE_ID, status: building ? 'building' : 'built' };
+        if (building) { made.startDay = o.entry.startDay; made.readyDay = o.entry.readyDay; }
+        o.list[o.index] = made;
+        standing = made;
+      } else {
+        if (building) stopped.push(name);
+        o.list[o.index] = '';
+      }
+    });
+    /* Levels, repairs, research: the old ids go; the Temple has one level. */
+    ['facilityLevels', 'repairs', 'research'].forEach(function (key) {
+      if (!isObj(s[key])) return;
+      Object.keys(OLD_SHRINES).forEach(function (id) { if (id in s[key]) { delete s[key][id]; (report.removed[key] = report.removed[key] || []).push(id); } });
+    });
+    if (standing) {
+      if (!isObj(s.facilityLevels)) s.facilityLevels = {};
+      s.facilityLevels[TEMPLE_ID] = 1;
+    }
+    /* Pending orders. */
+    var temple = R.stripBackName(data, TEMPLE_ID);
+    (arr(s.pendingOrders) || []).slice().forEach(function (o) {
+      if (!isObj(o) || !isOldShrine(o.facId)) return;
+      var god = OLD_SHRINES[o.facId];
+      var upgrade = isObj(o.meta) && o.meta.kind === 'upgrade';
+      var fn = upgrade ? null : templeFn(data, god, o.fnId);
+      if (fn && idOf(o)) {
+        R.stripBackMoveOrder(report, o, { facId: TEMPLE_ID, label: temple + ': ' + (fn.label || fn.id) }, 'the ' + temple);
+        return;
+      }
+      R.stripBackCancel(s, data, report, o, fn ? 'it could not be followed to the ' + temple : shrineEndReason(o, god), { god: god });
+    });
+
+    /* ---------- The words ---------- */
+    if (olds.length) {
+      var these = Object.keys(OLD_SHRINES).filter(function (id) { return olds.some(function (o) { return o.entry.facId === id; }); }).map(function (id) { return 'the ' + R.stripBackName(data, id); });
+      var state = standing && standing.status === 'building' ? ' It is still being built (ready on Day ' + dayNum(standing.readyDay, day) + ').' : '';
+      var freed = olds.length - (keep ? 1 : 0);
+      var theseText = listText(these);
+      R.stripBackSay(report, 'joined', theseText.charAt(0).toUpperCase() + theseText.slice(1) + (these.length > 1 ? ' have become one ' : ' has become the ') + temple + '. Each god has a Favour bar there, a Pray button (instant: it adds a d50 roll, 1 to 50 percent, to the bar) and Receive Blessing, a list of three blessings that opens when the bar is full; a blessing happens at once and spends the whole bar.' + state +
+        (freed > 0 ? (freed === 1 ? ' The other slot is free.' : ' The other slots are free.') : '') +
+        (stopped.length ? ' Building work on ' + listText(stopped.map(function (n) { return 'the ' + n; })) + ' stopped (building costs no gold).' : ''));
+    }
+    var rites = (arr(s.greatRites) || []).filter(function (g) { return isObj(g); });
+    var pel = isObj(s.tradeNetwork) && isObj(s.tradeNetwork.protections) && isObj(s.tradeNetwork.protections.pelagos_blessing) ? clampInt(s.tradeNetwork.protections.pelagos_blessing.charges, 0, 999) : 0;
+    var kept = [];
+    if (rites.length) kept.push(rites.length === 1 ? 'one Great Rite (' + (R.RITE_NAMES[rites[0].rite] || 'a Great Rite') + ')' : rites.length + ' Great Rites');
+    if (pel) kept.push(pel === 1 ? 'one Blessing of Pelagos for the Dock' : pel + ' Blessings of Pelagos for the Dock');
+    R.stripBackSay(report, 'joined', 'Your Favour bars carry over as they are' + (kept.length ? ', and what you already hold is kept: ' + listText(kept) : '') + '.');
+    if (report.cancelled.length > cancelledBefore) {
+      R.stripBackSay(report, 'orders', 'The Temple keeps three blessings for each god; the Craft charms, the hint and long-rest prayers, Purification Incense, the Aquatic Protection Charm and Bless Bastion Foundations are gone, so those orders ended and gave back what they cost.');
+    }
+  }
+
   /* The registry, in the order they run. Add a step ABOVE sweepFacilities. */
   R.stripBackSteps = [
     { id: 'dropEvents', detect: detectEvents, run: dropEvents },
@@ -1036,6 +1176,7 @@
     /* Step S07: the Party Name, and no more founding a Clan. */
     { id: 'identity', detect: detectIdentity, run: dropIdentity },
     { id: 'rehomeBeasts', detect: detectBeastPen, run: rehomeBeasts },
+    { id: 'shrinesToTemple', detect: detectShrines, run: shrinesToTemple },
     { id: 'sweepFacilities', detect: detectGhosts, run: sweepFacilities },
     { id: 'finish', detect: null, run: finish }
   ];

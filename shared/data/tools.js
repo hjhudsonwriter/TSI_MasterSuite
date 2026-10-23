@@ -95,6 +95,8 @@ window.TSI_DATA.tools = [
         'tools/bastion/commerce-rules.js',
         'tools/bastion/courier-rules.js',
         'tools/bastion/creature-rules.js',
+        /* The Temple (22 October 2026): Pray and Receive Blessing. */
+        'tools/bastion/temple-rules.js',
         'tools/bastion/diplomacy-rules.js',
         /* The Beast Handler's link (21 October 2026): the Bastion checks and applies each request from a
            player's companion once, and the DM's panel makes the codes that link a phone. */

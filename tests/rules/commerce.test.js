@@ -137,7 +137,7 @@
 
   test('the Blessing of Pelagos is the only protection left; Fresh Fish sails only on voyages of 2 days or less', function (t) {
     t.same(C.protections.map(function (p) { return [p.facId, p.cut, p.consumes === true, p.available]; }),
-      [['shrine_pelagos', 10, true, true]], 'the Blessing (pull request 8b); the Convoy and the Approaches (20 October 2026) went with the war game (22 October 2026)');
+      [['temple', 10, true, true]], 'the Blessing of Pelagos (pull request 8b, now the Temple\'s); the Convoy and the Approaches (20 October 2026) went with the war game (22 October 2026)');
     t.same(BR.voyageProtections(bastion(1), bdata), [], 'none held: none applies');
     t.equal(BR.goodShipBlocker(bdata, 'fresh_fish', BR.portRoute(bdata, 'timberport')), 'Fresh Fish only ships on a voyage of 2 days or less (it doesn\'t keep longer), and this one takes 7 days.');
     t.equal(BR.goodShipBlocker(bdata, 'fresh_fish', { outDays: 2 }), '', '2 days: it sails');
