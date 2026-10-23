@@ -234,14 +234,6 @@ window.TSI_DATA.bastion = {
     rowthorn: 'ui/rowthorn_trade_route.png'
   },
 
-  /* Party identity (4947-4954): founding a Clan. (The Mercenary Brigade's
-     level 7 and 3 defenders went with the war game, 22 October 2026.) */
-  identityRules: {
-    clanMinLevel: 9,
-    clanSupportTotalMin: 360,
-    clanSupportPerClanMin: 55,
-    clanSupportClanCountMin: 3
-  },
 
   /* ---------- Time (the days overhaul, Harry, 8 October 2026) ----------
      The Bastion follows the Explorer's day (docs/BASTION-OVERHAUL.md).

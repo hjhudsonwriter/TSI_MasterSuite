@@ -1186,34 +1186,22 @@ Its buttons are **Cancel**, plus **Negotiate**, **Receive Delegation** or **Proc
 
 ### 5.9 Identity and the crest
 
-**Identity:**
-- Saved as `organization: { type: 'unsworn' | 'clan', name, chief, motto, foundedAtDay }`, with `clanHonor` (default 40).
-- **The Party Identity panel** (opened from the crest badge) shows:
-  - the crest;
-  - "Unsworn" or "Clan: <name>";
-  - the chief, motto and "Founded on Day N";
-  - while Unsworn, the requirements line "Clan requirements: Level 9+ (OK/NO), Total Support 360+ (OK/NO), 3 clans at 55+ (OK/NO)." and the **Form Clan** button;
-  - once a Clan, the **Clan Honour (0–100)** box.
-- **Form Clan** asks for:
-  - **Clan Name** (required);
-  - **Clan Chief**;
-  - **Motto (optional)**;
-  - a crest box.
-
-  Then **Confirm Founding**. There is no way to rename or disband a Clan on screen.
-- **Being a Clan:**
-  - Lieutenants and regiments can be committed to war (Unsworn: "Clan only");
-  - Clan Honour changes after battles (+6 victory, −8 defeat, −4 withdrawal);
-  - the army is named after the Clan on the War Table;
-  - the badge shows the Clan's name, once a crest is set (with no crest it reads "Add a crest").
+**Identity (changed on 22 October 2026, Strip Back step S07; before it, a party could found a Clan, and `organization`, `clanHonor` and the Form Clan screen described here earlier were removed, with the conversion in `tools/bastion/strip-back-rules.js` step `identity`; commit `b337232` has the old code):**
+- A party can no longer found a Clan. The Bastion saves an optional **`partyName`** (text, at most 40 letters, default empty; tidied by `R.cleanPartyName`: one space between words, no angle brackets or hidden characters).
+- **The Party Identity panel** (a small panel, opened by clicking the crest badge) holds:
+  - **Party Name (optional)**: saved on Enter, on leaving the box or on Escape, never on each key;
+  - the large crest, with the Party Name above it when there is one;
+  - **Create in the Clan Crest Creator ↗** (the one main button while there is no crest), **Upload a picture…** (**Upload another…**) and **Remove**.
+- The Party Name shows only above the crest (on the badge and in this panel). The crest and the name are there from the first day: there is no level, gold or support gate.
+- **A Bastion that had founded a Clan:** its name becomes the Party Name, once, if the Party Name is empty; `organization`, `clanHonor` and `trustedClientsByClan` are dropped from the live save (the copy set aside holds them), and the report's "Your Party" paragraph says the chief, motto and Clan Honour are not kept. The seven Clans' Honour/Respect and Political Capital are not touched.
+- The badge shows the Party Name (two lines at most, the full name as its tooltip) above the crest, and "Add a crest" under the empty shield while there is no crest. Its spoken name is "Crest of <Party Name>" ("Crest of the Ironbow" with no name).
 
 **The crest:**
 - It is saved apart from the state as `tsi.bastion.crest { dataUrl, key, name, design? }`, at 512 px or less on its longest side.
 - It is shown on:
   - the map badge;
   - Party Identity;
-  - the Form Clan box;
-  - every player token on the War Table, and the battle side panel.
+  - (the Form Clan box and the War Table's tokens were removed with founding a Clan and the war game, 22 October 2026).
 - **Ways to set it:**
   - **Create in the Clan Crest Creator ↗** opens the Creator in a new window.
   - The Creator's **Use for the Bastion** writes a 512 × 512 PNG and its design to the hand-off `tsi.suite.handoff-crest`. The Bastion then asks "Use this crest for the Bastion?" (**No / Use this crest**) as it opens, within 2 seconds, or at once if it is already open. While this question is open, no days pass.

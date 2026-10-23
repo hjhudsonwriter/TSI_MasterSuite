@@ -1468,7 +1468,7 @@ window.TSI_DATA.bastionFacilities = [
         "costText": "0",
         "acclimatise": true,
         "options": [],
-        "notes": "A beast housed here must be acclimatised with its handler before it can bond. The handler rolls Animal Handling at the table; you type their total. A pass makes it Bond 1 and it leaves this list. A fail locks that beast for 3 days. The DC is in the data (creatures-data.js), 20 for every kind. It happens at once, with no days."
+        "notes": "A beast housed here must be acclimatised with its handler before it can bond. The handler rolls at the table; you type their total. A pass makes it Bond 1 and it leaves this list. A fail locks that beast for a few days. It happens at once, with no days."
       }
     ]
   },

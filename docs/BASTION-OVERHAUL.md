@@ -185,6 +185,8 @@ Each number is one field (`days`) on the order in `tools/bastion/data/facilities
 
 ## 4. The crest, at any time
 
+> **Changed on 22 October 2026 (Strip Back step S07, `docs/strip-back/S07-built.md`).** A party can no longer found a Clan: Form Clan, its requirements, Clan Honour, the "Unsworn" and "Clan: name" labels and the War Table's tokens are gone. The crest works as described below, but the badge now shows an optional **Party Name** above the crest (no label under it), and clicking the badge opens a small panel with the Party Name box and the same three crest buttons. The bullets about Form Clan, Clan Honour and the War Table below describe the Bastion as it was.
+
 - **Where it lives:** as now, `tsi.bastion.crest` ({ dataUrl, key, name }), plus the Crest Creator's design (its 25 settings) when the crest came from there, so it can be re-edited later. It belongs to the Bastion, not the Clan: forming a Clan doesn't change it, and it's shown whether the party is Unsworn or a Clan.
 - **Three ways to set it,** from the Party Identity panel (and from the crest badge's empty state):
   1. **Create in the Clan Crest Creator ↗** opens the Creator in a new window. The Creator gets a new button beside Download PNG: **Use for the Bastion**. It sends the crest to the Bastion through the suite's hand-off (a new `crest` kind of `TSI.handoff`, like the fight hand-off: a 512-pixel picture plus the design). A Bastion window hears it within a moment and asks "Use this crest for the Bastion?"; if the Bastion isn't open it asks when next opened. No downloading and uploading. This is allowed from a double-clicked file because the Creator draws only its own path data, never a bundled picture (its Download PNG already proves it offline).

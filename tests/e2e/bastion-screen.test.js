@@ -944,61 +944,109 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
   /* ------------------------------------------------------------------ */
   section('The crest badge');
 
-  await check('Party Identity, Form Clan\'s pop-up and the question about a crest sent from the Creator fit the laptop, full screen, the TV and a small window (Build 3)', async () => {
+  const LONG = 'The Honourable Company of the Ironbow';   /* 37 letters: two lines on the badge */
+  const FORTY = 'Wardens of the Ironbow Keep and Sea Road';   /* 40 letters */
+  await check('Party Identity (a small panel) and the question about a crest sent from the Creator fit the laptop, full screen, the TV and a small window, with a 40-letter Party Name or none', async () => {
     const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
-    const keep = await page.evaluate(() => { const s = TSI.bastion.debug.state(); return { level: s.partyLevel, pc: Object.assign({}, s.politicalCapital) }; });
-    await setUp(page, (s) => { s.partyLevel = 9; s.politicalCapital.blackstone = 10; s.politicalCapital.bacca = 10; s.politicalCapital.farmer = 10; s.politicalCapital.slade = -10; });
+    equal(FORTY.length, 40);
     for (const size of ['laptop', 'laptopFull', 'tv', 'smallWindow']) {
-      await page.setViewportSize(H.SIZES[size].viewport);
-      await page.waitForTimeout(250);
-      await pause(page);
-      await page.click('[data-test=identity-badge]');
-      await page.waitForSelector('[data-test=panel-identity] [data-test=crest-create]');
-      equal((await H.layoutCheck(page, ['[data-test=panel-identity]', '[data-test=crest-create]', '[data-test=crest-add]', '[data-test=form-clan]', '[data-test=panel-identity] .tsi-modal__foot button'])).outOfView, [], size + ': Party Identity');
-      await page.click('[data-test=form-clan]');
-      await page.waitForSelector('[data-test=crest-field]');
-      equal((await H.layoutCheck(page, ['[data-test=clan-name]', '[data-test=crest-field]', '[data-test=crest-new]', '[data-test=crest-upload]', POP + ' .tsi-modal__foot button'])).outOfView, [], size + ': Form Clan');
-      if (size === 'laptop') await H.shot(page, 'bs-06-form-clan');
-      await page.click(POP + ' .tsi-modal__foot button:text-is("Cancel")');
-      await page.waitForTimeout(200);
-      await page.keyboard.press('Escape');
-      await page.waitForTimeout(200);
-      await page.evaluate(p => TSI.handoff.write('crest', { id: 'crest-fit', at: 1, name: 'Fit', dataUrl: p, design: { clanName: 'Fit' } }), png);
-      await page.waitForSelector('[data-test=crest-offer]', { timeout: 6000 });
-      equal((await H.layoutCheck(page, ['[data-test=crest-offer]', POP + ' .tsi-modal__foot button'])).outOfView, [], size + ': the crest question');
-      await page.click(POP + ' .tsi-modal__foot button:text-is("No")');
-      await page.waitForTimeout(200);
+      for (const name of ['', FORTY]) {
+        await setUp(page, (s) => { s.partyName = ''; });
+        await page.setViewportSize(H.SIZES[size].viewport);
+        await page.waitForTimeout(250);
+        await pause(page);
+        await page.click('[data-test=identity-badge]');
+        await page.waitForSelector('[data-test=panel-identity] [data-test=crest-create]');
+        if (name) { await page.fill('[data-test=party-name]', name); await page.press('[data-test=party-name]', 'Enter'); await page.waitForFunction(n => TSI.bastion.debug.state().partyName === n, name); }
+        const label = size + (name ? ' with a name' : '');
+        equal((await H.layoutCheck(page, ['[data-test=panel-identity]', '[data-test=party-name]', '[data-test=party-name-shown]:not([hidden])', '[data-test=crest-create]', '[data-test=crest-add]', '[data-test=panel-identity] .tsi-modal__foot button'].filter(q => name || q.indexOf('party-name-shown') === -1))).outOfView, [], label + ': Party Identity');
+        const w = (await rect(page, '[data-test=panel-identity]')).w;
+        assert(w <= 541, label + ': a small panel, not the 760-pixel one: ' + w);
+        if (size === 'laptop') await H.shot(page, 'bs-06-party-identity' + (name ? '-named' : ''));
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(200);
+        if (name) {
+          await page.evaluate(p => TSI.handoff.write('crest', { id: 'crest-fit', at: 1, name: 'Fit', dataUrl: p, design: { clanName: 'Fit' } }), png);
+          await page.waitForSelector('[data-test=crest-offer]', { timeout: 6000 });
+          equal((await H.layoutCheck(page, ['[data-test=crest-offer]', POP + ' .tsi-modal__foot button'])).outOfView, [], size + ': the crest question');
+          await page.click(POP + ' .tsi-modal__foot button:text-is("No")');
+          await page.waitForTimeout(200);
+        }
+      }
     }
     await page.setViewportSize(H.SIZES.laptop.viewport);
-    await page.evaluate(k => TSI.bastion.debug.change(s => { s.partyLevel = k.level; s.politicalCapital = k.pc; }), keep);
+    await setUp(page, (s) => { s.partyName = ''; });
     equal(await page.evaluate(() => TSI.store.has('tsi.bastion.crest')), false, 'No each time: no crest');
-    equal((await st(page)).organization.type, 'unsworn');
   });
 
-  await check('the badge says "Add a crest" until there is one, and opens Party Identity; with a crest (even Unsworn) it shows it, then the Clan\'s name (Build 3)', async () => {
-    equal(await bare(page, '[data-test=identity-badge]'), 'Add a crest');
+  await check('the badge says "Add a crest" until there is a crest, opens Party Identity from the keyboard, and Escape gives the focus back to it', async () => {
+    equal(await page.$eval('[data-test=identity-badge]', n => Array.from(n.children).filter(c => !c.hidden).map(c => c.textContent).join(' ').trim()), 'Add a crest', 'the words on it, as typed (the style makes them capitals)');
     equal(await page.getAttribute('[data-test=identity-badge]', 'aria-label'), 'Crest of the Ironbow: no crest yet. Open Party Identity.');
+    equal(await page.$eval('[data-test=identity-badge]', n => n.tagName), 'BUTTON', 'a button, so Enter and Space work');
     await page.focus('[data-test=identity-badge]');
     await page.keyboard.press('Enter');
-    await page.waitForSelector('[data-test=panel-identity] [data-test=form-clan]');
     await page.waitForSelector('[data-test=panel-identity] [data-test=crest-create]');
-    equal(await page.evaluate(() => !!document.activeElement.closest('[data-test=panel-identity]')), true, 'from the keyboard, the focus goes into the panel (Clan Honour is hidden until there\'s a Clan)');
+    equal(await page.evaluate(() => !!document.activeElement.closest('[data-test=panel-identity]')), true, 'from the keyboard, the focus goes into the panel');
     await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !document.querySelector('[data-test=panel-identity]'));
+    equal(await page.evaluate(() => document.activeElement && document.activeElement.getAttribute('data-test')), 'identity-badge', 'the focus is back on the badge');
+    await page.keyboard.press('Space');
+    await page.waitForSelector('[data-test=panel-identity]');
+    await page.keyboard.press('Escape');
+  });
+
+  await check('with a crest the badge shows only the crest; with a Party Name it shows the name above the crest, and says "Crest of <name>" aloud', async () => {
     const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
     await page.evaluate(p => TSI.store.set('tsi.bastion.crest', { dataUrl: p, key: 'k1', name: 'c.png' }), png);
     await page.evaluate(() => TSI.store.flush());
     await page.reload();
     await page.waitForSelector('[data-test=day-status]');
-    equal(await bare(page, '[data-test=identity-badge]'), 'Unsworn');
-    equal(await page.$eval('.tsi-bas-badge__img', i => !i.hidden && i.getAttribute('src').indexOf('data:image/png') === 0), true);
-    equal(await page.getAttribute('[data-test=identity-badge]', 'aria-label'), 'Crest of the Ironbow. Open Party Identity.');
-    await setUp(page, (s) => { s.organization = { type: 'clan', name: 'Clan Ironbow', chief: 'Harry', motto: '', foundedAtDay: 22 }; });
+    const look = () => page.evaluate(() => {
+      const b = document.querySelector('[data-test=identity-badge]');
+      return { text: Array.from(b.children).filter(c => !c.hidden).map(c => c.textContent).join(' ').trim(), aria: b.getAttribute('aria-label'), title: b.title, img: !b.querySelector('img').hidden && b.querySelector('img').getAttribute('src').indexOf('data:image/png') === 0 };
+    });
+    equal(await look(), { text: '', aria: 'Crest of the Ironbow. Open Party Identity.', title: 'Party Identity', img: true });
+    await setUp(page, (s) => { s.partyName = 'Wardens of the Ironbow'; });
+    equal(await look(), { text: 'Wardens of the Ironbow', aria: 'Crest of Wardens of the Ironbow. Open Party Identity.', title: 'Wardens of the Ironbow', img: true });
     await page.evaluate(() => TSI.store.flush());
     await page.reload();
     await page.waitForSelector('[data-test=day-status]');
-    equal(await bare(page, '[data-test=identity-badge]'), 'Clan Ironbow');
-    equal(await page.$eval('.tsi-bas-badge__img', i => !i.hidden && i.getAttribute('src').indexOf('data:image/png') === 0), true);
-    equal(await page.getAttribute('[data-test=identity-badge]', 'aria-label'), 'Crest of Clan Ironbow. Open Party Identity.');
+    equal((await look()).text, 'Wardens of the Ironbow', 'kept after a reload');
+    await setUp(page, (s) => { s.partyName = ''; });
+  });
+
+  await check('the badge, with or without a crest and with a name of 1, 2 or 40 letters, stays inside the painting, clear of the Hall and of every label, on all four sizes; a name of two lines shows whole', async () => {
+    for (const crest of [true, false]) {
+      if (!crest) {
+        await page.evaluate(() => { TSI.store.remove('tsi.bastion.crest'); return TSI.store.flush(); });
+        await page.reload();
+        await page.waitForSelector('[data-test=day-status]');
+      }
+      for (const size of ['laptop', 'laptopFull', 'tv', 'smallWindow']) {
+        await page.setViewportSize(H.SIZES[size].viewport);
+        await page.waitForTimeout(250);
+        for (const name of ['', 'Ironbow', LONG, FORTY]) {
+          await page.evaluate(n => TSI.bastion.debug.change(s => { s.partyName = n; }), name);
+          await page.waitForTimeout(220);
+          const map = await rect(page, '.tsi-bas-map');
+          const badge = await rect(page, '[data-test=identity-badge]');
+          const k = map.w / 3000;
+          const hall = { x: map.x + 2595 * k, y: map.y + 376 * k, right: map.x + 2943 * k, bottom: map.y + 649 * k };
+          const tag = size + ', ' + (crest ? 'a crest' : 'no crest') + ', name ' + JSON.stringify(name);
+          assert(badge.bottom <= hall.y - 1 || badge.right <= hall.x || badge.x >= hall.right, tag + ': clear of the Hall: ' + JSON.stringify([badge, hall]));
+          assert(badge.x >= map.x && badge.right <= map.right - 8 && badge.y >= map.y && badge.bottom <= map.bottom, tag + ': inside the painting');
+          const labels = await page.$$eval('.tsi-bas-maplabel', ls => ls.map(l => { const r = l.getBoundingClientRect(); return { fac: l.dataset.fac, x: r.x, y: r.y, right: r.right, bottom: r.bottom }; }));
+          for (const l of labels) assert(!overlaps(l, badge), tag + ': the ' + l.fac + '\'s label is clear of the badge');
+          if (name) {
+            const shown = await page.$eval('[data-test=badge-name]', n => ({ cut: n.scrollHeight > n.clientHeight + 1, lines: Math.round(n.getBoundingClientRect().height / parseFloat(getComputedStyle(n).lineHeight)), text: n.textContent }));
+            assert(!shown.cut && shown.lines <= 2 && shown.text === name, tag + ': the whole name shows, in at most two lines: ' + JSON.stringify(shown));
+          }
+          assert(badge.h <= 126, tag + ': no taller than 126 pixels (' + Math.round(badge.h) + ')');
+        }
+      }
+    }
+    await page.setViewportSize(H.SIZES.laptop.viewport);
+    await setUp(page, (s) => { s.partyName = ''; });
   });
 
   /* ------------------------------------------------------------------ */

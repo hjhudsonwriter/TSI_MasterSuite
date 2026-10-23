@@ -5,7 +5,9 @@
    afterwards; the Bonding Days counter says how many days the beast has been on the road (and whether it is out now); the
    five pills FILL as the Bastion counts days (a full one says it is ready and waits for the DM, with a soft pulse that
    "reduce motion" switches off); each pill is a progress bar for a screen reader; and a new snapshot grows a pill in place
-   instead of redrawing the page, so a greeting or a roll is never cut and a pill never jumps.
+   instead of redrawing the page, so a greeting or a roll is never cut and a pill never jumps; and at the laptop's 1707 x 930
+   and the TV's 1920 x 1080 the sticky tab bar covers nothing of the Bond card (the five bond names, the Bonding Days line,
+   the "Ready" line and the kind line), whether the beast is away or a level is ready.
    Run with:  node tests/e2e/beasthandler-bond.test.js */
 'use strict';
 
@@ -260,11 +262,112 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     equal(await bare(bh, '[data-test=bh-days]'), '20', 'a beast at Bond 3 still has the days that level means');
   });
 
+  /* ---------------- The tab bar covers nothing of the Bond card (22 October 2026, the review) ---------------- */
+  /* For each thing the player must read on the Bond page: is it inside the window, and is it what the eye lands on at its
+     middle (not the sticky tab bar, which is drawn over the bottom of the window)? */
+  const coverage = page => page.evaluate(() => {
+    window.scrollTo(0, 0);
+    const nav = document.querySelector('.tsi-bh-nav');
+    const things = [];
+    document.querySelectorAll('.tsi-bh-pill__label').forEach((n, i) => things.push(['bond name ' + (i + 1) + ' (' + n.textContent + ')', n]));
+    things.push(['Bonding Days line', document.querySelector('[data-test=bh-days-line]')]);
+    things.push(['kind line', document.querySelector('[data-test=bh-kind]')]);
+    const ready = document.querySelector('[data-test=bh-ready]');
+    if (ready && !ready.hidden) things.push(['Ready line', ready]);
+    return {
+      vh: innerHeight, navTop: Math.round(nav.getBoundingClientRect().top), scrollY: Math.round(scrollY),
+      bad: things.map(([label, n]) => {
+        const r = n.getBoundingClientRect();
+        const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        const ok = !!hit && !nav.contains(hit) && (n.contains(hit) || hit.contains(n)) && r.top >= 0 && r.bottom <= innerHeight;
+        return ok ? null : label + ' at ' + Math.round(r.top) + '-' + Math.round(r.bottom) + ' under ' + (hit ? (hit.className || hit.tagName) : 'nothing');
+      }).filter(Boolean),
+      count: things.length
+    };
+  });
+  await check('laptop (1707 x 930, pixel ratio 1.5): the tab bar covers none of the Bond card, with a beast away on the road and with a level ready (Bond 3 and Bond 4)', async () => {
+    await bh.click('[data-test=bh-back]').catch(() => {});
+    await bh.waitForSelector('[data-test=bh-beast-cr-stormwing]');
+    await setBonding({ bond: 3, ready: null, bonding: { away: true, awaySince: 12, lastTick: 12, days: 24 } });
+    await bh.click('[data-test=bh-beast-cr-stormwing]');
+    await bh.waitForSelector('[data-test=bh-bond]');
+    await bh.waitForTimeout(500);
+    equal(await bh.evaluate(() => [innerWidth, innerHeight, devicePixelRatio]), [1707, 930, 1.5]);
+    let c = await coverage(bh);
+    equal(c.bad, [], 'away: ' + JSON.stringify(c));
+    equal(c.count, 7, 'the five bond names, the Bonding Days line and the kind line');
+    await H.shot(bh, 'beasthandler-bond-laptop-away');
+    await setBonding({ bond: 3, ready: 4, bonding: { away: true, awaySince: 12, lastTick: 22, days: 30 } });
+    c = await coverage(bh);
+    equal(c.bad, [], 'ready: ' + JSON.stringify(c));
+    equal(c.count, 8, 'and the Ready line');
+    equal(await bare(bh, '[data-test=bh-ready]'), 'Ready: waiting for a moment with your DM');
+    /* The page may scroll a little (the connection line under the bar), but never sideways. */
+    equal(await bh.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), true);
+    await H.shot(bh, 'beasthandler-bond-laptop-ready');
+    /* The same on the laptop in full screen (1707 x 1067). */
+    await bh.setViewportSize({ width: 1707, height: 1067 });
+    await bh.waitForTimeout(300);
+    c = await coverage(bh);
+    equal(c.bad, [], 'full screen: ' + JSON.stringify(c));
+    await bh.setViewportSize({ width: 1707, height: 930 });
+    await bh.waitForTimeout(200);
+  });
+
   await check('nothing went wrong or reached for the internet', async () => {
     equal(ctx.log.net, []);
     equal(ctx.log.failed, []);
     equal(ctx.log.errors, []);
     equal(ctx.log.consoleErrors.filter(e => !/Failed to load resource/.test(e)), []);
+  });
+
+  /* The TV: an extended second screen at 1920 x 1080, pixel ratio 1. */
+  const tvCtx = await H.newContext(browser, 'tv', { backedUp: true });
+  await tvCtx.setOffline(true);
+  const tex = await tvCtx.newPage();
+  await tex.goto(HARNESS + '?tool=explorer');
+  await tex.waitForSelector('[data-test=camp]');
+  const tba = await tvCtx.newPage();
+  await tba.goto(HARNESS + '?tool=bastion');
+  await tba.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().anchored, null, { timeout: 8000 });
+  const tvState = fields => tba.evaluate(f => TSI.bastion.debug.change(s => {
+    const R = TSI.bastion.rules;
+    if (!s.creatures.length) {
+      s.partyLevel = 9; s.treasuryGP = 400;
+      s.builtExtras = [{ facId: 'beast_pen', status: 'built' }];
+      s.facilityLevels.beast_pen = 1;
+      const c = { id: 'cr-stormwing', species: 'wyvern', owner: '', name: 'Stormwing', status: 'housed', home: 'beast_pen', grantedDay: 1, housedDay: 1, msgId: '' };
+      c.development = R.newDevelopment(c, s.day); c.development.handlerId = 'Mira'; c.development.regional = 'Widowspine';
+      s.creatures = [c];
+    }
+    const d = s.creatures[0].development;
+    d.bond.level = f.bond; d.bond.ready = f.ready; d.bonding = f.bonding;
+  }), fields).then(() => tba.evaluate(() => TSI.store.flush()));
+  await tvState({ bond: 3, ready: null, bonding: { away: true, awaySince: 12, lastTick: 12, days: 24 } });
+  await tba.waitForTimeout(500);
+  const tbh = await tvCtx.newPage();
+  await tbh.goto(HARNESS + '?tool=beasthandler');
+  await tbh.waitForSelector('[data-test=bh-viewas]');
+  await tbh.selectOption('[data-test=bh-viewas]', 'Mira');
+  await tbh.waitForSelector('[data-test=bh-beast-cr-stormwing][data-mine=yes]');
+  await check('TV (1920 x 1080, pixel ratio 1): the tab bar covers none of the Bond card, with a beast away and with a level ready', async () => {
+    await tbh.click('[data-test=bh-beast-cr-stormwing]');
+    await tbh.waitForSelector('[data-test=bh-bond]');
+    await tbh.waitForTimeout(500);
+    equal(await tbh.evaluate(() => [innerWidth, innerHeight, devicePixelRatio]), [1920, 1080, 1]);
+    let c = await coverage(tbh);
+    equal(c.bad, [], 'away: ' + JSON.stringify(c));
+    equal(c.count, 7);
+    await tvState({ bond: 3, ready: 4, bonding: { away: true, awaySince: 12, lastTick: 22, days: 30 } });
+    await tbh.evaluate(() => TSI.beasthandler.debug.refresh());
+    await tbh.waitForTimeout(500);
+    c = await coverage(tbh);
+    equal(c.bad, [], 'ready: ' + JSON.stringify(c));
+    equal(c.count, 8);
+    await H.shot(tbh, 'beasthandler-bond-tv-ready');
+    equal(tvCtx.log.net, []);
+    equal(tvCtx.log.failed, []);
+    equal(tvCtx.log.errors, []);
   });
 
   await browser.close();

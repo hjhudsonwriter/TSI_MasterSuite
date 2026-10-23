@@ -245,13 +245,48 @@
     t.same(lines, [['Order Completed', 'Beast Pen: House Beast Here (Elara\'s wyvern) → Elara\'s wyvern lives at the Ironbow now, at the Beast Pen (Elara\'s).']]);
     t.same([b.creatures[0].id, b.creatures[0].home, b.creatures[0].development.bond.level, b.creatures[0].development.handlerId], ['elara_wyvern', PEN, 1, 'elara'], 'she keeps her Bond 1 and her handler');
     t.same(BR.completeSimpleOrder(b, bdata, order, dice([0.5])), [['Creatures', 'Beast Pen: House Beast Here (Elara\'s wyvern): Elara\'s wyvern already has a home at the Beast Pen, so nothing changed.']], 'once');
-    /* With a wyvern already housed, there is no room. */
+    /* With a wyvern already housed, there is no room: she is recorded waiting for a home, never lost with her order. */
     var c = withPen();
     housed(c, 1, 'wyvern', 'Ash');
     c.pendingOrders.push(copy(order));
     var again = BR.completeSimpleOrder(c, bdata, c.pendingOrders[0], dice([0.5]));
-    t.same(again, [['Creatures', 'Beast Pen: House Beast Here (Elara\'s wyvern): the Beast Pen keeps one wyvern and Ash lives here, so nothing changed.']]);
-    t.equal(c.creatures.length, 1);
+    t.same(again, [['Creatures', 'Beast Pen: House Beast Here (Elara\'s wyvern): the Beast Pen keeps one wyvern and Ash lives here, so Elara\'s wyvern keeps waiting for a home. It is listed in the Beast Pen, not lost.']]);
+    t.same(c.creatures.map(function (x) { return [x.id, x.status, x.home]; }).slice(1), [['elara_wyvern', 'waiting', '']], 'she is in the list, waiting');
+    t.same([c.creatures[1].development.handlerId, c.creatures[1].development.bond.level], ['elara', 1], 'with the relationship the story gave her');
+    BR.removeOrder(c, 'e1');
+    t.same(BR.waitingCreatures(c, bdata, 'wyvern').map(function (x) { return x.id; }), ['elara_wyvern'], 'she can be housed later: she is on the waiting list');
+    t.equal(BR.releaseBlocker(c, bdata, c.creatures[1]), 'Elara\'s wyvern is part of the story, and the Explorer cannot grant it again, so it stays at the Ironbow.', 'and she cannot be released by mistake');
+    t.equal(BR.housingBlocker(c, bdata, BR.facility(bdata, PEN), BR.facility(bdata, PEN).functions[0]), 'The Beast Pen keeps one wyvern at a time: Ash lives here.', 'the Pen says plainly why she waits');
+    /* Asked again (a repeat of the same order), nothing is made twice. */
+    c.pendingOrders.push(copy(order));
+    t.equal(BR.completeSimpleOrder(c, bdata, c.pendingOrders[0], dice([0.5]))[0][0], 'Creatures');
+    t.equal(c.creatures.length, 2, 'still two records');
+    /* Cancelled by the DM, or the Pen demolished with only her order pending: she is kept, waiting, in the same way. */
+    var d = withPen();
+    d.pendingOrders.push(copy(order));
+    var cl = BR.cancelOrder(d, 'e1', bdata, 0);
+    t.same([d.creatures.map(function (x) { return [x.id, x.status]; }), d.pendingOrders.length], [[['elara_wyvern', 'waiting']], 0], 'cancelled: kept');
+    t.equal(cl[1], 'Cancelled Beast Pen: House Beast Here (Elara\'s wyvern). Elara\'s wyvern stays at the Ironbow, waiting for a home.');
+    var e = withPen();
+    e.pendingOrders.push(copy(order));
+    var dem = BR.demolishFacility(e, bdata, PEN);
+    t.equal(dem.ok, true);
+    t.same(e.creatures.map(function (x) { return [x.id, x.status]; }), [['elara_wyvern', 'waiting']], 'demolished: kept');
+    t.ok(/Elara's wyvern stays at the Ironbow, waiting for a home\.$/.test(dem.log[1]), dem.log[1]);
+    /* An order for an ordinary granted beast is unchanged by all this. */
+    var f = withPen();
+    var gid1 = grant(f, 1, 'griffin', 'Swiftwing');
+    issueHouse(f);
+    BR.cancelOrder(f, lastOrder(f).id, bdata, 0);
+    t.same(f.creatures.map(function (x) { return x.id; }), [gid1], 'no extra record');
+    /* Once the Pen is free of the other wyvern in a (made-up) copy that keeps two of a kind, she is housed by an ordinary order. */
+    var g = withPen();
+    g.pendingOrders.push(copy(order));
+    BR.cancelOrder(g, 'e1', bdata, 0);
+    var r = issueHouse(g);
+    t.equal(r.ok, true, 'her House Beast Here order can be given (no other wyvern is housed)');
+    complete(g, lastOrder(g));
+    t.same([BR.creatureById(g, 'elara_wyvern').status, BR.creatureById(g, 'elara_wyvern').home], ['housed', PEN]);
   });
 
   test('a House order from before (up to three side by side) never overfills the Pen: the beast keeps waiting and the log says so', function (t) {
@@ -484,7 +519,7 @@
     t.equal(BR.assignHandler(b, bdata, id, 'Mira', 'x').message, 'Mira is already Swiftwing\'s handler.');
     var r = BR.assignHandler(b, bdata, id, 'Kaelen', 'Mira left the party', false);
     t.same(r.log, ['Creatures', 'Swiftwing\'s handler is now Kaelen (Bond 0: a new pairing).']);
-    t.same([dev(b, id).bond.level, dev(b, id).bonding, dev(b, id).acclimatise, dev(b, id).handlerHistory.length], [0, undefined, undefined, 1], 'a new pairing: Bond 0, no Bonding Days, a clean slate for acclimatising');
+    t.same([dev(b, id).bond.level, dev(b, id).bonding, dev(b, id).acclimatise.retryDay, dev(b, id).handlerHistory.length], [0, undefined, null, 1], 'a new pairing: Bond 0, no Bonding Days (a failed roll\'s wait would be kept: see the review fixes below)');
     t.same(BR.takeOut(b, bdata, id, {}).message, 'Swiftwing must pass Acclimatise With Beast first.');
     var c = withPen(10);
     var cid = acclimatised(c, 1, 'griffin', 'Swiftwing');
@@ -813,6 +848,9 @@
     t.same(res.report.cancelled.filter(function (c) { return c.id === 'hv-28'; }).map(function (c) { return [c.gp, /training and riding are gone/.test(c.why)]; }), [[150, true]]);
     t.same(res.report.moved.filter(function (m) { return m.id === 'hv-27'; }).map(function (m) { return m.to; }), ['the Beast Pen']);
     var lines = s.migration.v4.lines.join('\n');
+    t.ok(/^The three beast buildings became one Beast Pen; [\d,]+ gp went back into the treasury; /.test(s.migration.v4.summary), 'the summary: ' + s.migration.v4.summary);
+    var otherPlaces = res.report.archived.filter(function (a) { return !/^(wyvern_roost|griffin_tower|dire_wolf_den)$/.test(a.facId); }).length;
+    t.ok(otherPlaces === 0 ? !/places? removed/.test(s.migration.v4.summary) : s.migration.v4.summary.indexOf((otherPlaces === 1 ? '1 place' : otherPlaces + ' places') + ' removed') !== -1, 'the three buildings are not counted as "removed": they are the Pen (only the ' + otherPlaces + ' other places are)');
     t.ok(/The Wyvern Roost, Griffin Tower and Dire Wolf Den have become one Beast Pen\. It keeps one beast of each kind: a wyvern, a griffin, a dire wolf, a buckbear and a fellcat\. The other slots are free\./.test(lines), lines);
     t.ok(/All 4 of your beasts are still here/.test(lines));
     t.ok(/A beast at Bond 1 or more counts as acclimatised: Elara's wyvern, Swiftwing and Ashfang\./.test(lines));
@@ -874,7 +912,14 @@
     t.same(res.save.builtExtras.map(function (e) { return e && (e.facId || e); }), ['library_scriptorium', PEN, 'arcane_laboratory'], 'in the first empty slot, built');
     t.equal(res.save.facilityLevels[PEN], 1);
     t.same(res.save.creatures.map(function (c) { return [c.id, c.status, c.home]; }), [['c1', 'housed', PEN], ['c2', 'waiting', '']]);
-    t.ok(/Your beasts had no building left standing, so the Beast Pen was built for you, free, in an empty slot/.test(res.save.migration.v4.lines.join(' ')));
+    t.ok(/Your beast had no building left standing, so the Beast Pen was built for you, free, in an empty slot \(a Beast Pen costs time, never gold\)\. It is still there\./.test(res.save.migration.v4.lines.join(' ')), 'one beast: singular: ' + res.save.migration.v4.lines.join(' '));
+    t.ok(/^A Beast Pen was built for your beasts(;|\.)/.test(res.save.migration.v4.summary), 'and the one-line summary says it was built, not "nothing changed": ' + res.save.migration.v4.summary);
+    var three = convert(v3(function (s) {
+      s.builtExtras = ['library_scriptorium'];
+      s.creatures = [creature('c1', 'griffin', 'Swiftwing', 'housed', 'griffin_tower', 1), creature('c2', 'dire_wolf', 'Ashfang', 'housed', 'dire_wolf_den', 0), creature('c3', 'wyvern', 'Ash', 'housed', 'wyvern_roost', 2)];
+    }));
+    t.same(three.problems, []);
+    t.ok(/Your beasts had no building left standing, so the Beast Pen was built for you, free, in an empty slot \(a Beast Pen costs time, never gold\)\. They are all still there\./.test(three.save.migration.v4.lines.join(' ')), 'three beasts: plural');
     t.equal(res.save.archivedFacilities.some(function (a) { return a.facId === PEN; }), false);
     var full = convert(v3(function (s) {
       s.builtExtras = ['library_scriptorium', old('arcane_laboratory')];
@@ -936,6 +981,40 @@
     t.equal(BR.completeSimpleOrder(b, data, e, dice([0.5]))[0][0], 'Order Completed', 'Elara\'s order records her (a wyvern waits, but none is housed yet)');
   });
 
+  test('a waiting wyvern and Elara\'s House order while the Pen already holds a wyvern: the report says plainly who waits and why, nothing is lost, and when her order completes she is kept waiting', function (t) {
+    var raw = v3(function (s) {
+      s.builtExtras = [old('wyvern_roost')];
+      s.creatures = [creature('w1', 'wyvern', 'Ash', 'housed', 'wyvern_roost', 1), creature('w2', 'wyvern', 'Skyrender', 'waiting', '', null), creature('g1', 'griffin', 'Swiftwing', 'waiting', '', null)];
+      s.pendingOrders = [order('e', 'wyvern_roost', 'house_elara_wyvern', { chosen: { creatureId: 'elara_wyvern' }, label: 'Wyvern Roost: House Elara\'s Wyvern', dueDay: 14 })];
+    });
+    var res = convert(raw);
+    t.same(res.problems, [], 'the audit');
+    var lines = res.save.migration.v4.lines.join('\n');
+    t.ok(/The House order for Elara's wyvern carries on, but the Beast Pen already holds a wyvern, so Elara's wyvern will wait for a home when it completes \(it is added to the list of waiting beasts then; it is not lost\)\./.test(lines), lines);
+    t.ok(/Skyrender is waiting for a home, because the Beast Pen already holds a wyvern\. It stays on the waiting list; nothing is sent away\./.test(lines), lines);
+    t.equal(/Swiftwing is waiting for a home/.test(lines), false, 'a griffin waiting is not blocked: no griffin is housed');
+    t.ok(/^The beast building became the Beast Pen; 1 order moved(;|\.)/.test(res.save.migration.v4.summary), 'the one-line summary: ' + res.save.migration.v4.summary);
+    t.same(res.save.creatures.map(function (c) { return c.id; }), ['w1', 'w2', 'g1'], 'conversion adds and removes nobody');
+    /* Two waiting wyverns and a griffin: the line names each with its kind. */
+    var two = convert(v3(function (s) {
+      s.builtExtras = [old('wyvern_roost')];
+      s.creatures = [creature('w1', 'wyvern', 'Ash', 'housed', 'wyvern_roost', 1), creature('g0', 'griffin', 'Talon', 'housed', 'griffin_tower', 1), creature('w2', 'wyvern', 'Skyrender', 'waiting', '', null), creature('g1', 'griffin', 'Swiftwing', 'waiting', '', null)];
+    }));
+    t.same(two.problems, []);
+    t.ok(/These beasts are waiting for a home, because the Beast Pen already holds one of their kind: Skyrender \(a wyvern\) and Swiftwing \(a griffin\)\. They stay on the waiting list; nothing is sent away\./.test(two.save.migration.v4.lines.join(' ')), two.save.migration.v4.lines.join(' '));
+    /* When her order's day comes, she is recorded waiting, and the order is gone: she is not lost. */
+    var b = BR.fromSave(copy(res.save), data);
+    b.day = 14;
+    var o = b.pendingOrders[0];
+    var done = BR.completeSimpleOrder(b, data, o, dice([0.5]));
+    BR.removeOrder(b, o.id);
+    t.equal(done[0][0], 'Creatures');
+    t.same(b.creatures.map(function (c) { return [c.id, c.status, c.home]; }), [['w1', 'housed', PEN], ['w2', 'waiting', ''], ['g1', 'waiting', ''], ['elara_wyvern', 'waiting', '']], 'three waiting, one housed, none lost');
+    t.same(b.pendingOrders, []);
+    t.equal(canon(BR.fromSave(BR.toSave(b), data)), canon(b), 'she survives a save and a reload');
+    t.equal(canon(BR.migrateToV4(res.save, data).save), canon(res.save), 'converting again changes nothing');
+  });
+
   test('a beast that is Bond 1 or more is acclimatised, Bond 0 must roll; a bond waiting for the DM\'s scene still waits; nothing is credited and nothing rolled', function (t) {
     var ready = creature('r1', 'griffin', 'Swiftwing', 'housed', 'griffin_tower', 2);
     ready.development.bond.ready = 3;
@@ -987,6 +1066,57 @@
     });
   });
 
+  test('fuzz: a damaged entry (empty, text, a number, a wrong shape) in the creatures, the orders, the slots or the levels never stops the conversion; the audit stays clean and converting again changes nothing', function (t) {
+    var junk = [null, 'x', 5, true, [], {}, [null], { id: null }, { facId: 5 }, { facId: 'wyvern_roost' }, { id: 'o1', facId: 'wyvern_roost', fnId: 5 }, { id: 'c9', status: 'housed', species: 7, development: 'x' }];
+    function base() {
+      return v3(function (s) {
+        s.builtExtras = [old('wyvern_roost'), old('griffin_tower')];
+        s.builtPlots = ['', old('dire_wolf_den')];
+        s.facilityLevels = { wyvern_roost: 2, griffin_tower: 1 };
+        s.repairs = { wyvern_roost: 20 };
+        s.creatures = [creature('g1', 'griffin', 'Swiftwing', 'housed', 'griffin_tower', 2), creature('w1', 'wyvern', 'Ash', 'waiting', '', null), creature('d1', 'dire_wolf', 'Ashfang', 'housed', 'dire_wolf_den', 0, { development: { bond: { level: 1 } } })];
+        s.pendingOrders = [
+          order('e', 'wyvern_roost', 'house_elara_wyvern', { chosen: { creatureId: 'elara_wyvern' }, label: 'Wyvern Roost: House Elara\'s Wyvern', dueDay: 14 }),
+          order('w', 'wyvern_roost', 'house_wyvern', { chosen: { label: 'Ash', creatureId: 'w1' }, optionLabel: 'Ash', label: 'Wyvern Roost: House a Wyvern (Ash)', dueDay: 15 }),
+          order('t', 'griffin_tower', 'grf_keeper_routine', { chosen: { label: 'Swiftwing', trainCreatureId: 'g1' }, label: 'Griffin Tower: Keeper\'s Routine', dueDay: 20 })
+        ];
+      });
+    }
+    var tried = 0;
+    function attempt(label, s) {
+      tried++;
+      var res;
+      try { res = convert(s); } catch (e) { t.ok(false, label + ' threw: ' + e.message); return; }
+      t.same(res.problems, [], label + ': the audit');
+      t.equal(res.save.v, 4, label + ': converted');
+      try { BR.fromSave(copy(res.save), data); } catch (e2) { t.ok(false, label + ': the converted save would not load: ' + e2.message); }
+      t.equal(canon(BR.migrateToV4(res.save, data).save), canon(res.save), label + ': converting again changes nothing');
+    }
+    ['creatures', 'pendingOrders', 'builtExtras', 'builtPlots'].forEach(function (key) {
+      junk.forEach(function (j, i) {
+        var tail = base(); tail[key] = (Array.isArray(tail[key]) ? tail[key] : []).concat([j]); attempt(key + ' + junk ' + i + ' at the end', tail);
+        var head = base(); head[key] = [j].concat(Array.isArray(head[key]) ? head[key] : []); attempt(key + ' + junk ' + i + ' at the start', head);
+      });
+    });
+    ['facilityLevels', 'repairs', 'research'].forEach(function (key) {
+      junk.forEach(function (j, i) {
+        var whole = base(); whole[key] = j; attempt(key + ' = junk ' + i, whole);
+        var one = base(); one[key] = { wyvern_roost: j, griffin_tower: j, dire_wolf_den: j, beast_pen: j }; attempt(key + ' ids = junk ' + i, one);
+      });
+    });
+    ['status', 'home', 'name', 'species', 'development', 'id'].forEach(function (field) {
+      junk.forEach(function (j, i) {
+        var s = base(); s.creatures.forEach(function (c) { c[field] = j; }); attempt('every creature ' + field + ' = junk ' + i, s);
+      });
+    });
+    ['bond', 'chronicle', 'handlerId', 'training', 'harness', 'firstFlight'].forEach(function (field) {
+      junk.forEach(function (j, i) {
+        var s = base(); s.creatures.forEach(function (c) { if (c && c.development) c.development[field] = j; }); attempt('every development.' + field + ' = junk ' + i, s);
+      });
+    });
+    t.ok(tried > 300, 'a good many shapes were tried: ' + tried);
+  });
+
   test('a damaged field in the beast parts is ignored, not refused', function (t) {
     ['x', 5, null, [1], {}].forEach(function (v) {
       var res = convert(v3(function (s) { s.creatures = v; s.builtExtras = [old('wyvern_roost')]; s.facilityLevels = { wyvern_roost: v }; s.repairs = { griffin_tower: v }; }));
@@ -997,4 +1127,331 @@
     t.same(odd.problems, [], 'an order with no creature is cancelled, not a problem');
     t.equal(odd.report.cancelled.filter(function (c) { return c.id === 'o1'; }).length, 1);
   });
+  /* ---------------------------------------------------------------- */
+  group('Beast Pen: the independent review\'s fixes (22 October 2026)');
+
+  test('the handler\'s history survives a save and a reload and records who, how bonded and why', function (t) {
+    var b = withPen(10);
+    var id = acclimatised(b, 1, 'griffin', 'Swiftwing', 'Mira');
+    dev(b, id).bond.level = 3;
+    t.equal(BR.assignHandler(b, bdata, id, 'Kaelen', '   ').ok, false, 'a change needs a reason');
+    var r = BR.assignHandler(b, bdata, id, 'Kaelen', 'Mira left the party', false);
+    t.equal(r.ok, true);
+    var back = reload(b);
+    var h = dev(back, id).handlerHistory;
+    t.same(h.map(function (x) { return [x.handlerId, x.bond, x.reason]; }), [['Mira', 3, 'Mira left the party']], 'who, which bond, and why');
+    t.same([dev(back, id).handlerId, dev(back, id).bond.level], ['Kaelen', 0], 'the new pairing starts at Bond 0');
+    t.ok(dev(back, id).chronicle.some(function (e) { return e.cat === 'handler' && /Handler changed to Kaelen\. The new pairing starts at Bond 0 \(Bond 3 kept in the history\)\. It must be acclimatised again\. Reason: Mira left the party/.test(e.text); }), 'and the Chronicle says so');
+    /* Twice over: the older entry is kept beside the newer. */
+    dev(back, id).bond.level = 2;
+    BR.assignHandler(back, bdata, id, 'Umbrys', 'Kaelen moved on', true);
+    var again = reload(back);
+    t.same(dev(again, id).handlerHistory.map(function (x) { return [x.handlerId, x.bond]; }), [['Mira', 3], ['Kaelen', 2]], 'two changes, two entries, in order');
+    t.same([dev(again, id).handlerId, dev(again, id).bond.level], ['Umbrys', 2], 'the credited bond is kept');
+  });
+
+  test('the first handler: no reason needed, the name is tidied, an empty one is refused, and nothing goes in the history', function (t) {
+    var b = withPen(10);
+    var id = housed(b, 1, 'griffin', 'Swiftwing');
+    t.equal(BR.assignHandler(b, bdata, id, '   ', '').message, 'Type the handler\'s name.');
+    var r = BR.assignHandler(b, bdata, id, '  Mira   Stone  ', '');
+    t.same(r, { ok: true, log: ['Creatures', 'Mira Stone is now Swiftwing\'s handler.'] });
+    t.same([dev(b, id).handlerId, dev(b, id).handlerHistory], ['Mira Stone', []]);
+    t.equal(dev(b, id).chronicle[dev(b, id).chronicle.length - 1].text, 'Mira Stone assigned as handler.');
+    var c = housed(b, 2, 'wyvern', 'Ash');
+    BR.assignHandler(b, bdata, c, 'Kaelen', 'Chosen at the table');
+    t.equal(dev(b, c).chronicle[dev(b, c).chronicle.length - 1].text, 'Kaelen assigned as handler. Chosen at the table', 'a note given with the first handler is kept');
+    t.equal(BR.assignHandler(b, bdata, 'nobody', 'Mira', '').message, 'That creature isn\'t at the Ironbow any more.');
+  });
+
+  test('a handler change clears a bond waiting for the DM\'s scene, and a failed roll\'s 3-day wait belongs to the beast, not the handler', function (t) {
+    var b = withPen(10);
+    var id = acclimatised(b, 1, 'griffin', 'Swiftwing', 'Mira');
+    BR.takeOut(b, bdata, id, {});
+    passDays(b, 10);
+    t.same([dev(b, id).bond.level, dev(b, id).bond.ready], [1, 2], 'Bond 2 is waiting for a scene');
+    BR.returnToPit(b, bdata, id, {});
+    BR.assignHandler(b, bdata, id, 'Kaelen', 'a new player', true);
+    t.same([dev(b, id).bond.level, dev(b, id).bond.ready], [1, null], 'the waiting milestone does not carry over to the new pairing (the credited bond stays)');
+    t.equal(BR.nextStepLine(b, bdata, BR.creatureById(b, id)), 'At the Beast Pen: take Swiftwing on the road to bond (10 more days to Bond 2).');
+    /* A failed roll on Day 20 locks the beast until Day 23; changing its handler on Day 21 does not unlock it. */
+    var c = withPen(20);
+    var cid = housed(c, 1, 'dire_wolf', 'Ashfang');
+    BR.assignHandler(c, bdata, cid, 'Mira', '');
+    var fail = BR.acclimatise(c, bdata, cid, 12, { rand: dice([0.5]) });
+    t.same([fail.pass, fail.retryDay], [false, 23]);
+    c.day = 21;
+    var tries = dev(c, cid).acclimatise.tries;
+    t.equal(BR.assignHandler(c, bdata, cid, 'Kaelen', 'Mira cannot come').ok, true);
+    t.same([dev(c, cid).acclimatise.retryDay, dev(c, cid).acclimatise.tries, dev(c, cid).handlerId], [23, tries, 'Kaelen'], 'the wait and the count of tries are kept');
+    t.equal(BR.acclimatiseBlocker(c, bdata, cid, {}), 'Ashfang can try again on Day 23.', 'still locked with the new handler');
+    t.equal(BR.acclimatise(c, bdata, cid, 25, {}).message, 'Ashfang can try again on Day 23.', 'and a roll is refused, with nothing recorded');
+    t.equal(dev(c, cid).bond.level, 0);
+    c.day = 22;
+    t.equal(BR.acclimatiseBlocker(c, bdata, cid, {}), 'Ashfang can try again on Day 23.', 'Day 22 is still locked (a fail on Day 20 blocks Days 21 and 22)');
+    c.day = 23;
+    t.equal(BR.acclimatiseBlocker(c, bdata, cid, {}), '', 'Day 23 is allowed');
+    t.equal(BR.nextStepLine(c, bdata, BR.creatureById(c, cid)), 'Ready to acclimatise: Kaelen rolls Animal Handling against DC 20.');
+    var pass = BR.acclimatise(c, bdata, cid, 20, { rand: dice([0.5]) });
+    t.same([pass.ok, pass.pass, dev(c, cid).acclimatise.tries], [true, true, tries + 1]);
+  });
+
+  test('beasts already housed stay and still work: an over-limit beast (two griffins in an older save) can be acclimatised, taken out, and earns Bonding Days', function (t) {
+    var b = withPen(10);
+    ['g1', 'g2'].forEach(function (id, i) {
+      var c = { id: id, species: 'griffin', owner: '', name: id === 'g1' ? 'Swiftwing' : 'Talon', status: 'housed', home: PEN, grantedDay: 1, housedDay: 2, msgId: '' };
+      c.development = BR.newDevelopment(c, 10);
+      b.creatures.push(c);
+    });
+    t.same([BR.penRoom(b, bdata, 'griffin').over, BR.penRoom(b, bdata, 'griffin').free], [1, 0]);
+    BR.assignHandler(b, bdata, 'g1', 'Mira', '');
+    BR.assignHandler(b, bdata, 'g2', 'Kaelen', '');
+    t.same(BR.acclimatiseOptions(b, bdata).map(function (o) { return o.creatureId; }), ['g1', 'g2'], 'both are offered');
+    t.equal(BR.acclimatise(b, bdata, 'g1', 21, { rand: dice([0.5]) }).pass, true, 'a Bond 0 beast of the extra kind can be acclimatised');
+    t.equal(BR.acclimatise(b, bdata, 'g2', 22, { rand: dice([0.5]) }).pass, true);
+    t.equal(BR.takeOut(b, bdata, 'g1', {}).ok, true, 'and taken out');
+    t.equal(BR.takeOut(b, bdata, 'g2', {}).ok, true);
+    passDays(b, 4);
+    t.same([dev(b, 'g1').bonding.days, dev(b, 'g2').bonding.days], [4, 4], 'both earn Bonding Days');
+    BR.returnToPit(b, bdata, 'g2', {});
+    var back = reload(b);
+    t.same([BR.penRoom(back, bdata, 'griffin').housed.length, dev(back, 'g1').bonding.days, BR.isAway(BR.creatureById(back, 'g1'))], [2, 4, true], 'a reload keeps both and the days');
+    passDays(back, 6);
+    t.same([dev(back, 'g1').bonding.days, dev(back, 'g1').bond.ready, dev(back, 'g2').bonding.days], [10, 2, 4], 'the one out reaches Bond 2; the one at the Pen stands still');
+    t.equal(issueHouseWaiting(back, 'griffin').ok, false, 'a third griffin still waits');
+  });
+  function issueHouseWaiting(b, species) {
+    grant(b, 7, species, 'Third');
+    return issueHouse(b, 0);
+  }
+
+  test('one level for each scene across a long wait: 35 days with no scene confirm Bond 2, and the next prompt is Bond 3 (not Bond 4); the days keep counting; Bond 5 takes four separate confirmations', function (t) {
+    var b = withPen(10);
+    var id = acclimatised(b, 1, 'griffin', 'Swiftwing');
+    BR.takeOut(b, bdata, id, {});
+    passDays(b, 35);
+    t.same([dev(b, id).bonding.days, dev(b, id).bond.level, dev(b, id).bond.ready], [35, 1, 2], '35 days at Bond 1: the first prompt is Bond 2');
+    var c1 = BR.confirmBond(b, bdata, id, 'First scene');
+    t.same([c1.level, c1.readyNext, dev(b, id).bond.ready, dev(b, id).bonding.days], [2, 3, 3, 35], 'Bond 2 now; the next prompt is Bond 3; no day lost');
+    var c2 = BR.confirmBond(b, bdata, id, 'Second scene');
+    t.same([c2.level, c2.readyNext, dev(b, id).bonding.days], [3, 4, 35], 'Bond 3 now; 35 days meets Bond 4\'s 30, so Bond 4 is the next prompt');
+    var c3 = BR.confirmBond(b, bdata, id, 'Third scene');
+    t.same([c3.level, c3.readyNext, dev(b, id).bond.ready], [4, null, null], 'Bond 4 now; Bond 5 needs 50 days and is not ready');
+    t.equal(BR.confirmBond(b, bdata, id, 'Too early').ok, false, 'nothing to confirm yet');
+    passDays(b, 14);
+    t.same([dev(b, id).bonding.days, dev(b, id).bond.ready], [49, null], '49 days: not yet');
+    passDay(b);
+    t.same([dev(b, id).bonding.days, dev(b, id).bond.ready, dev(b, id).bond.level], [50, 5, 4], 'the 50th day makes Bond 5 ready, but it is not given');
+    var c4 = BR.confirmBond(b, bdata, id, 'Final scene');
+    t.same([c4.level, c4.readyNext], [5, null]);
+    t.equal(BR.bondProgress(b, bdata, BR.creatureById(b, id)).pill, null);
+    /* A very long wait: 60 days, and still it is one scene for each level, four in all. */
+    var c = withPen(10);
+    var cid = acclimatised(c, 1, 'wyvern', 'Ash');
+    BR.takeOut(c, bdata, cid, {});
+    passDays(c, 60);
+    var levels = [];
+    for (var n = 0; n < 6; n++) { var r = BR.confirmBond(c, bdata, cid, 'Scene ' + n); if (!r.ok) break; levels.push(r.level); }
+    t.same(levels, [2, 3, 4, 5], 'four separate confirmations, one level each');
+    t.same([dev(c, cid).bond.level, dev(c, cid).bonding.days], [5, 60]);
+  });
+
+  test('confirming a bond writes exactly one Chronicle line, and a refused confirmation writes none', function (t) {
+    var b = withPen(10);
+    var id = acclimatised(b, 1, 'griffin', 'Swiftwing');
+    BR.takeOut(b, bdata, id, {});
+    passDays(b, 25);
+    var len = function () { return dev(b, id).chronicle.length; };
+    var before = len();
+    BR.confirmBond(b, bdata, id, 'x');
+    t.equal(len(), before, 'a too-short reason: nothing written');
+    var r = BR.confirmBond(b, bdata, id, 'The griffin landed on Mira\'s arm');
+    t.equal(r.ok, true);
+    t.equal(len(), before + 1, 'exactly one line');
+    var e = dev(b, id).chronicle[len() - 1];
+    t.same([e.cat, e.by, e.private === true, e.text], ['bond', 'DM', false, 'Bond 2 (Trusting) confirmed by the DM. The griffin landed on Mira\'s arm']);
+    var mid = len();
+    BR.confirmBond(b, bdata, id, 'The second scene');
+    t.equal(len(), mid + 1, 'the next level writes its own single line');
+    t.equal(BR.confirmBond(b, bdata, id, 'nothing ready').ok, false);
+    t.equal(len(), mid + 1, 'a refusal writes nothing');
+  });
+
+  test('the small rules: temperament notes are tidied and clipped, a regional variety is cleaned, an empty note is refused', function (t) {
+    var b = withPen(10);
+    var id = housed(b, 1, 'griffin', 'Swiftwing');
+    var long = new Array(200).join('x');
+    var r = BR.setTemperament(b, bdata, id, { dominant: '  Proud   and  bold ', attachment: long, trigger: 5, regional: ' <b>Stormcrest</b>   Reach ' });
+    t.equal(r.ok, true);
+    var d = dev(b, id);
+    t.same([d.temperament.dominant, d.temperament.attachment.length, d.temperament.trigger], ['Proud and bold', 120, ''], 'tidied, clipped to 120, a non-text value ignored');
+    t.equal(d.regional, 'b Stormcrest /b Reach', 'angle brackets become spaces; spaces collapse');
+    BR.setTemperament(b, bdata, id, { regional: '' });
+    t.equal('regional' in dev(b, id), false, 'empty clears it');
+    BR.setTemperament(b, bdata, id, { regional: new Array(100).join('y') });
+    t.equal(dev(b, id).regional.length, 60);
+    t.equal(BR.setTemperament(b, bdata, 'nobody', {}).ok, false);
+    ['', '   ', 'ab', '\n'].forEach(function (note) {
+      var before = dev(b, id).chronicle.length;
+      t.same(BR.addChronicleNote(b, bdata, id, note), { ok: false, message: 'Write the note.' }, JSON.stringify(note) + ' is refused');
+      t.equal(dev(b, id).chronicle.length, before);
+    });
+    var ok = BR.addChronicleNote(b, bdata, id, '  A  quiet evening ', true);
+    t.same([ok.ok, ok.log[1]], [true, 'A note was added to Swiftwing\'s Chronicle (DM only).']);
+    var last = dev(b, id).chronicle[dev(b, id).chronicle.length - 1];
+    t.same([last.text, last.private, last.cat], ['A quiet evening', true, 'note']);
+  });
+
+  test('take out with no handler is refused (a beast brought to a bond by an older save), and each refusal changes nothing', function (t) {
+    var b = withPen(10);
+    var id = housed(b, 1, 'griffin', 'Swiftwing');
+    BR.ensureDev(b, BR.creatureById(b, id)).bond.level = 2;
+    var snapshot = canon(b);
+    t.equal(BR.takeOut(b, bdata, id, {}).message, 'Swiftwing has no handler. Assign one first.');
+    t.equal(canon(b), snapshot, 'nothing changed');
+    BR.assignHandler(b, bdata, id, 'Mira', '');
+    t.equal(BR.takeOut(b, bdata, id, {}).ok, true);
+    t.equal(BR.takeOut(b, bdata, id, {}).message, 'Swiftwing is already away from the Ironbow.');
+    t.equal(BR.returnToPit(b, bdata, id, {}).ok, true);
+    t.equal(BR.returnToPit(b, bdata, id, {}).message, 'Swiftwing is already at the Beast Pen.');
+  });
+
+  test('the DM\'s one-line "what comes next" for every state of a beast, Bond 5 included', function (t) {
+    var b = withPen(10);
+    var w = grant(b, 1, 'griffin', 'Swiftwing');
+    var line = function (id) { return BR.nextStepLine(b, bdata, BR.creatureById(b, id)); };
+    t.equal(line(w), 'Needs a home at the Beast Pen first.', 'waiting');
+    var id = housed(b, 2, 'wyvern', 'Ash');
+    t.equal(line(id), 'Assign a handler, then Acclimatise With Beast.', 'housed, no handler');
+    BR.assignHandler(b, bdata, id, 'Mira', '');
+    t.equal(line(id), 'Ready to acclimatise: Mira rolls Animal Handling against DC 20.', 'Bond 0 with a handler');
+    BR.acclimatise(b, bdata, id, 5, {});
+    t.equal(line(id), 'Its last try failed. It can try again on Day 13.', 'after a fail on Day 10');
+    b.day = 13;
+    BR.acclimatise(b, bdata, id, 20, { rand: dice([0.5]) });
+    t.equal(line(id), 'At the Beast Pen: take Ash on the road to bond (10 more days to Bond 2).', 'Bond 1 at the Pen');
+    BR.takeOut(b, bdata, id, {});
+    passDays(b, 3);
+    t.equal(line(id), 'Out on the road with Mira: 3 of 10 days to Bond 2.', 'away');
+    passDays(b, 7);
+    t.equal(line(id), 'Bond 2 (Trusting) is ready: confirm it after a scene at the table.', 'ready');
+    BR.confirmBond(b, bdata, id, 'a scene');
+    t.equal(line(id), 'Out on the road with Mira: 0 of 10 days to Bond 3.', 'the next level starts empty, still away');
+    passDays(b, 40);
+    ['one', 'two', 'three', 'four'].forEach(function () { BR.confirmBond(b, bdata, id, 'a scene'); });
+    t.equal(dev(b, id).bond.level, 5);
+    t.equal(line(id), 'Bond 5 (Legendary Partnership): the highest bond.', 'Bond 5');
+  });
+
+  test('a reload while a day is genuinely in progress (a beast away, the day half done) counts that day exactly once', function (t) {
+    var b = withPen(10);
+    var id = acclimatised(b, 1, 'griffin', 'Swiftwing');
+    BR.takeOut(b, bdata, id, {});
+    BR.startDay(b, bdata, 0);
+    b.dayInProgress.stage = 'orders';
+    b.dayInProgress.skipped = ['some-order'];
+    t.same([b.day, dev(b, id).bonding.days], [11, 1], 'Day 11 is counted when it starts');
+    var back = reload(b);
+    t.same([back.day, !!back.dayInProgress, back.dayInProgress.stage, back.dayInProgress.skipped, dev(back, id).bonding.days, dev(back, id).bonding.lastTick], [11, true, 'orders', ['some-order'], 1, 11], 'saved mid-stage, with the count');
+    /* What the Bastion does on opening (passDays in tool.js): a day in progress is resumed, never started again. */
+    function open(s, explorerDay) {
+      var act = BR.clockAction(s, explorerDay);
+      var started = 0;
+      if (act.kind === 'pass' && (act.days > 0 || s.dayInProgress)) {
+        for (;;) {
+          if (!s.dayInProgress) {
+            if (explorerDay <= s.day) break;
+            BR.startDay(s, bdata, 0);
+            started++;
+          }
+          BR.finishDay(s);
+        }
+      }
+      return started;
+    }
+    t.equal(open(back, 11), 0, 'the Explorer is on Day 11: the half-done day is finished, none is started');
+    t.same([back.day, !!back.dayInProgress, dev(back, id).bonding.days], [11, false, 1], 'Day 11 counted once');
+    var again = reload(back);
+    t.equal(open(again, 11), 0);
+    t.equal(dev(again, id).bonding.days, 1, 'opened a third time: still once');
+    /* Closed again part-way through Day 12 and opened a day later: two more days, each once. */
+    t.equal(open(again, 12), 1);
+    t.equal(dev(again, id).bonding.days, 2);
+    var mid = reload(again);
+    mid.dayInProgress = { day: 13, stage: 'trade', skipped: [], attackRolled: false, news: [] };
+    mid.day = 13;
+    dev(mid, id).bonding.days = 3; dev(mid, id).bonding.lastTick = 13;
+    t.equal(open(reload(mid), 14), 1, 'Day 13 is resumed, Day 14 started');
+    var done = reload(mid);
+    open(done, 14);
+    t.same([done.day, dev(done, id).bonding.days, dev(done, id).bonding.lastTick], [14, 4, 14], 'Day 13 once, Day 14 once');
+  });
+
+  test('renaming a waiting beast whose name has dollar signs writes the name as typed in its House order (no replacement patterns)', function (t) {
+    var b = withPen(10);
+    var id = grant(b, 1, 'griffin', 'Swiftwing');
+    issueHouse(b);
+    var o = lastOrder(b);
+    ['A$&B', '$1', '$$', '$`x$\'', '$<name>'].forEach(function (nm) {
+      var r = BR.renameCreature(b, bdata, id, nm);
+      t.equal(r.ok, true);
+      t.equal(o.label, 'Beast Pen: House Beast Here (' + nm + ')', nm + ' in the label');
+      t.equal(o.optionLabel, nm);
+      t.equal(BR.creatureName(bdata, BR.creatureById(b, id)), nm);
+    });
+    BR.renameCreature(b, bdata, id, '');
+    t.equal(o.label, 'Beast Pen: House Beast Here (granted Day 5)', 'an empty name gives back the usual one');
+  });
+
+  test('Clear extra builds follows the Pen\'s Demolish rule: refused while any beast lives in it, allowed when none does', function (t) {
+    var b = withPen(10);
+    t.equal(BR.clearBuildsBlocker(b, bdata), '', 'an empty Pen can go');
+    housed(b, 1, 'griffin', 'Swiftwing');
+    t.equal(BR.clearBuildsBlocker(b, bdata), 'Clear extra builds would also demolish the Beast Pen, and a beast lives in it: there is nowhere else for it to go. Nothing was cleared. Demolish the buildings you do not want one at a time instead.');
+    housed(b, 2, 'wyvern', 'Ash');
+    t.ok(/and 2 beasts live in it: there is nowhere else for them to go\./.test(BR.clearBuildsBlocker(b, bdata)));
+    b.builtExtras = [{ facId: PEN, status: 'building', startDay: 1, readyDay: 22 }];
+    t.ok(BR.clearBuildsBlocker(b, bdata) !== '', 'a Pen still being built counts, as Demolish does');
+    b.builtExtras = [];
+    b.builtPlots = [PEN];
+    t.ok(BR.clearBuildsBlocker(b, bdata) !== '', 'a Pen in a plot counts too (a bare name in the slot)');
+    b.builtPlots = [];
+    t.equal(BR.clearBuildsBlocker(b, bdata), '', 'no Pen standing: nothing to refuse');
+    var waiting = withPen(10);
+    grant(waiting, 1, 'griffin', 'Swiftwing');
+    t.equal(BR.clearBuildsBlocker(waiting, bdata), '', 'a beast that only waits has no home to lose');
+  });
+
+  test('the Acclimatise row\'s DC and note are made from the data: one kind\'s DC, the shared DC or the range, and the days to wait', function (t) {
+    t.equal(BR.acclimatiseDcText(bdata, 'griffin'), 'DC 20');
+    t.equal(BR.acclimatiseDcText(bdata), 'DC 20', 'the same for every kind: just the number');
+    var custom = copy(CR);
+    custom.species.fellcat.acclimatiseDC = 23;
+    custom.acclimatise = { dc: 18, skill: 'Animal Handling', retryDays: 5 };
+    var cd = Object.assign({}, bdata, { creatures: custom });
+    t.equal(BR.acclimatiseDcText(cd, 'fellcat'), 'DC 23');
+    t.equal(BR.acclimatiseDcText(cd, 'wyvern'), 'DC 18');
+    t.equal(BR.acclimatiseDcText(cd), 'DC 18 to 23');
+    var note = BR.acclimatiseNote(cd);
+    t.ok(/Animal Handling at the table/.test(note) && /\(DC 18 to 23, each kind has its own\)/.test(note) && /locks that beast for 5 days\./.test(note), note);
+    t.ok(/\(DC 20\): the beast becomes Bond 1/.test(BR.acclimatiseNote(bdata)) && /locks that beast for 3 days\./.test(BR.acclimatiseNote(bdata)), BR.acclimatiseNote(bdata));
+    t.equal(/creatures-data|\.js\b/.test(BR.acclimatiseNote(bdata)), false, 'no file names in what the DM reads');
+    var fn = BR.facility(bdata, PEN).functions[1];
+    t.equal(/creatures-data|\b20\b|\b3 days\b/.test(fn.notes), false, 'the data\'s own note has no file name and no DC or days that could go out of step');
+  });
+
+  test('a kind this copy does not know lives in the Pen too: its lines never say "at the its home"', function (t) {
+    var b = withPen(10);
+    b.creatures.push({ id: 'x1', species: 'phoenix', owner: '', name: 'Emberwing', status: 'waiting', home: '', grantedDay: 3, housedDay: null, msgId: '' });
+    var c = BR.creatureById(b, 'x1');
+    t.equal(BR.speciesHome(bdata, 'phoenix'), PEN);
+    t.equal(BR.penStatus(b, bdata, c).line, 'Waiting for a home at the Beast Pen.');
+    t.equal(BR.nextStepLine(b, bdata, c), 'Needs a home at the Beast Pen first.');
+    t.equal(BR.speciesName(bdata, 'phoenix'), 'Unknown creature');
+    t.equal(BR.releaseBlocker(b, bdata, c), '', 'and a waiting one can be released');
+    t.equal(BR.renameCreature(b, bdata, 'x1', 'Cinder').ok, true);
+    t.equal(BR.assignHandler(b, bdata, 'x1', 'Mira', '').ok, true);
+    t.equal(reload(b).creatures.filter(function (x) { return x.id === 'x1'; }).length, 1, 'and it survives a reload');
+  });
+
 }());

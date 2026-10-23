@@ -181,14 +181,14 @@
     var e = houseElara(b);
     b.treasuryGP = 7654321;
     BR.log(b, 'Secret', 'SECRETLOGLINE', 10);
-    b.organization.name = 'SECRETCLANNAME';
+    b.partyName = 'SECRETPARTYNAME';
     b.dmEdits = { done: { SECRETEDIT: true } };
     b.warehouse = [{ id: 'SECRETWAREHOUSE', qty: 3 }];
     var w = housed(b, 'griffin', 'Stormwing');
     BR.assignHandler(b, bdata, w.id, 'Mira', '');
     var m = snap(b, 'Mira');
     var raw = JSON.stringify(m);
-    ['7654321', 'SECRETLOGLINE', 'SECRETCLANNAME', 'SECRETEDIT', 'SECRETWAREHOUSE', 'treasury', 'pendingOrders', 'warRecovery', 'msgId', 'grantedDay', 'housedDay', 'handlerHistory', 'development', 'retryDay', 'acclimatise', 'tries'].forEach(function (needle) {
+    ['7654321', 'SECRETLOGLINE', 'SECRETPARTYNAME', 'SECRETEDIT', 'SECRETWAREHOUSE', 'treasury', 'pendingOrders', 'warRecovery', 'msgId', 'grantedDay', 'housedDay', 'handlerHistory', 'development', 'retryDay', 'acclimatise', 'tries'].forEach(function (needle) {
       t.ok(raw.indexOf(needle) === -1, 'no "' + needle + '" in the snapshot');
     });
     t.same(Object.keys(m).sort(), ['asOfDay', 'asOfLabel', 'campaign', 'creatures', 'facilities', 'handler', 'kind', 'version']);
