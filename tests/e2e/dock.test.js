@@ -248,7 +248,7 @@ async function panelFits(ba, sels) {
     await page.waitForSelector('[data-test=changes-box]');
     const box = await bare(page, '[data-test=changes-box]');
     assert(/Your Register Port Charter order carries on at the Dock, with the same due day\./.test(box), box);
-    assert(/a prepared Commercial Convoy ended with it/.test(box), box);
+    assert(/The Commercial Convoy you had ready for the next ship is gone with the Barracks/.test(box), box);
     assert(/Hall of Emissaries: Register Port Charter \(Goldport\) \(now at the Dock\)/.test(box), box);
     await H.ackChanges(page);
     const s = await page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.debug.state())));

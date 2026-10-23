@@ -30,7 +30,7 @@ Not added to `docs/KNOWN_ISSUES.md` itself, to avoid merge clashes. Numbers are 
 **Changed, Harry's request** · behaviour
 
 - **Before:** the Dock listed three protections (Commercial Convoy −5, Protected Maritime Approaches −5, Blessing of Pelagos −10); `commerce.test.js` and `charter-terms` asserted three.
-- **After:** the data lists only the Blessing of Pelagos, so the Dock's list reads only it. A held Convoy charge or Approaches window in an old save is dropped when the Bastion is converted (with a line; free to prepare, so nothing is owed); the Blessing is never touched. `R.protectionBusy` and the Barracks/Watchtower orders that set the two charges still exist until the war lane removes those facilities.
+- **After:** the data lists only the Blessing of Pelagos, so the Dock's list reads only it. A held Convoy charge or Approaches window in an old save is dropped when the Bastion is converted, by the war removal's own step (with a line; free to prepare, so nothing is owed); the Blessing is never touched. (The Barracks and Watchtower, and `R.protectionBusy`, went with the war game in step S06.)
 
 ### BP-S09-a · The Hall of Emissaries is one level with no orders (BAS-103)
 **Changed, Harry's request** · behaviour
@@ -66,7 +66,7 @@ Not added to `docs/KNOWN_ISSUES.md` itself, to avoid merge clashes. Numbers are 
 **Left alone, coverage lost** · test
 
 - **Before:** `phase9` paused a day on the Hall's typed d20 (a Secure Trade Agreement order) to check Enter and Space cannot start anything else (BAS-10), a cancelled roll keeps the order due with Resolve (BAS-02, BAS-13), and closing the window mid-day loses nothing (BAS-02).
-- **After:** deleted, because the Hall's actions were the only orders that asked for a typed d20 inside a day (the War Council's War Actions the other, which the war lane removes). The rules for a skipped order (`R.skipOrder`) and the Resolve button remain in the code with no user; the lead may want to remove them with the dice box (`rollD20`) in the clean-up step.
+- **After:** deleted, because the Hall's actions were the only orders that asked for a typed d20 inside a day (the War Council's War Actions were the other, and the war removal took them out). The rules for a skipped order (`R.skipOrder`) and the Resolve button, and the dice box (`rollD20`), remain in the code with no user; the lead may want to remove them in the clean-up step.
 
 ### BP-S09-g · Left alone: Favour Tokens pill, `state.diplomacy`
 **Left alone, for S10** · cleanup
