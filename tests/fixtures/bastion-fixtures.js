@@ -3585,14 +3585,6 @@ window.TSI_FIXTURES = {
     "day": 1
    }
   ],
-  "organization": {
-   "type": "clan",
-   "name": "Clan Ironbow",
-   "chief": "Harry",
-   "motto": "Root and Steel",
-   "foundedAtDay": 14
-  },
-  "clanHonor": 55,
   "honourRespectByClan": {
    "blackstone": 2,
    "bacca": -3,
@@ -3601,15 +3593,6 @@ window.TSI_FIXTURES = {
    "molten": 0,
    "rowthorn": 1,
    "karr": 2
-  },
-  "trustedClientsByClan": {
-   "blackstone": 50,
-   "bacca": 50,
-   "farmer": 50,
-   "slade": 50,
-   "molten": 50,
-   "rowthorn": 50,
-   "karr": 50
   },
   "dayInProgress": null,
   "word": [
@@ -3905,6 +3888,23 @@ window.TSI_FIXTURES = {
     "status": "waiting"
    }
   ],
+  "trustedClientsByClan": {
+   "blackstone": 50,
+   "bacca": 50,
+   "farmer": 50,
+   "slade": 50,
+   "molten": 50,
+   "rowthorn": 50,
+   "karr": 50
+  },
+  "clanHonor": 55,
+  "organization": {
+   "type": "clan",
+   "name": "Clan Ironbow",
+   "chief": "Harry",
+   "motto": "Root and Steel",
+   "foundedAtDay": 14
+  },
   "wars": {
    "bacca": {
     "since": 30,
