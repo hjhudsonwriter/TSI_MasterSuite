@@ -267,7 +267,7 @@ const writeLog = page => page.evaluate(() => window.__writes.slice());
       await page.evaluate(() => TSI.bastion.debug.change(s => { s.treasuryGP = 9999; }));
       await page.click('[data-test=open-management]');
       await page.waitForSelector('[data-test=changes-row]');
-      assert(/The Bastion's change of 22 October 2026 \(Day 40\): 270 gp went back into the treasury; 2 orders were cancelled/.test(await bare(page, '[data-test=changes-row]')), await bare(page, '[data-test=changes-row]'));
+      assert(/The Bastion's change of 22 October 2026 \(Day 40\): The three beast buildings became one Beast Pen; 270 gp went back into the treasury; 2 orders were cancelled/.test(await bare(page, '[data-test=changes-row]')), await bare(page, '[data-test=changes-row]'));
       await page.click('[data-test=show-changes]');
       await page.waitForSelector('[data-test=changes-box]');
       const text = await bare(page, '[data-test=changes-box]');
