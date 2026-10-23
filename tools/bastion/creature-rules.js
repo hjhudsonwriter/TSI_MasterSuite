@@ -12,7 +12,7 @@
    days, no gold) houses the waiting creature the DM picks: the order keeps
    its id (as Register Port Charter keeps its Charter), and when it completes
    the creature is 'housed' there, once. Nothing makes an animal by itself
-   (Elara's wyvern too: an old save that has her keeps her).
+   (Elara's wyvern too: an old save that has it keeps it).
 
    Room: the Pen keeps ONE beast of each kind (creatures-data.js "pen"). A kind
    is full when one is housed or being housed; a creature of a full kind waits
@@ -92,10 +92,11 @@
     var sp = R.creatureSpecies(data, id);
     return sp && typeof sp.plural === 'string' && sp.plural ? sp.plural.toLowerCase() : R.speciesNoun(data, id) + 's';
   };
-  /* The facility a kind of creature lives in ('griffin' → 'griffin_tower'), or ''. */
+  /* The facility a kind of creature lives in ('griffin' → 'beast_pen'). A kind this copy does not know (a save from a newer
+     copy) lives in the Pen too, so its lines never say "at the its home". */
   R.speciesHome = function (data, id) {
     var sp = R.creatureSpecies(data, id);
-    return sp && typeof sp.home === 'string' ? sp.home : '';
+    return sp && typeof sp.home === 'string' && sp.home ? sp.home : R.PEN_ID;
   };
   function facName(data, facId) {
     var f = facId ? R.facility(data, facId) : null;
@@ -127,6 +128,22 @@
     };
   };
   R.acclimatiseDC = function (data, species) { return R.acclimatiseData(data, species).dc; };
+  /* "DC 20" for one kind; for no kind in particular, the one DC every kind shares, or the range ("DC 18 to 22"). */
+  R.acclimatiseDcText = function (data, species) {
+    if (species) return 'DC ' + R.acclimatiseDC(data, species);
+    var sp = cdata(data).species;
+    var dcs = [R.acclimatiseDC(data)];
+    Object.keys(isObj(sp) ? sp : {}).forEach(function (k) { dcs.push(R.acclimatiseDC(data, k)); });
+    var lo = Math.min.apply(null, dcs), hi = Math.max.apply(null, dcs);
+    return lo === hi ? 'DC ' + lo : 'DC ' + lo + ' to ' + hi;
+  };
+  /* What the order says about itself, made from the data (so it can never go out of step with it). */
+  R.acclimatiseNote = function (data) {
+    var ad = R.acclimatiseData(data);
+    var dc = R.acclimatiseDcText(data);
+    return 'A beast housed here must be acclimatised with its handler before it can bond. The handler rolls ' + ad.skill + ' at the table; you type their total. ' +
+      'A total of the DC or more passes (' + dc + (/ to /.test(dc) ? ', each kind has its own' : '') + '): the beast becomes Bond 1 and leaves this list. A lower total locks that beast for ' + R.daysText(ad.retryDays) + '. It happens at once, with no days.';
+  };
   /* The Bonding Days a level needs in all (Bond 2: 10, 3: 20, 4: 30, 5: 50); 0 for Bond 1 or less, null above 5. */
   R.bondTotal = function (data, level) {
     var n = clampInt(level, 0, 99);
@@ -213,6 +230,8 @@
     if (!isObj(c) || !R.creatureById(s, c.id)) return 'That creature isn\'t at the Ironbow any more.';
     var name = R.creatureName(data, c);
     if (c.status !== 'waiting') return name + ' lives at the Ironbow now, and stays.';
+    /* A story beast is not a grant the Explorer can send again, so it is never released. */
+    if (R.creatureUnique(data, c.id)) return name + ' is part of the story, and the Explorer cannot grant it again, so it stays at the Ironbow.';
     if (R.houseOrderFor(s, c.id)) return name + ' is being housed. Cancel that order first.';
     return '';
   };
@@ -240,7 +259,8 @@
     var o = R.houseOrderFor(s, c.id);
     var fresh = R.creatureOrderName(c);
     if (o) {
-      if (typeof o.label === 'string' && oldOrderName && o.label.indexOf('(' + oldOrderName + ')') !== -1) o.label = o.label.replace('(' + oldOrderName + ')', '(' + fresh + ')');
+      /* A function, not a string, as the replacement: a name with $& or $1 in it must be written as typed. */
+      if (typeof o.label === 'string' && oldOrderName && o.label.indexOf('(' + oldOrderName + ')') !== -1) o.label = o.label.replace('(' + oldOrderName + ')', function () { return '(' + fresh + ')'; });
       o.optionLabel = fresh;
     }
     var line = before === after ? before + ' keeps its name.' : before + ' is now called ' + after + '.';
@@ -332,9 +352,17 @@
       var u = R.creatureUnique(data, id);
       var w = { id: id, species: txt(u.species, 40), owner: txt(u.owner, 40), name: '', status: 'housed', home: fac.id, grantedDay: s.day, housedDay: s.day, msgId: '' };
       var uroom = R.penRoom(s, data, w.species);
-      /* The order itself is pending, so it counts as the one place for this kind: only already-housed beasts can fill it. */
-      if (uroom.housed.length >= uroom.perKind) return ['Creatures', lab + ': the Beast Pen keeps one ' + R.speciesNoun(data, w.species) + ' and ' + R.creatureName(data, uroom.housed[0]) + ' lives here, so nothing changed.'];
       if (id === 'elara_wyvern') w.development = R.newDevelopment(w, s.day);
+      /* The order itself is pending, so it counts as the one place for this kind: only already-housed beasts can fill it.
+         When they do, the story beast is recorded all the same, waiting for a home like a granted one, so it is never lost
+         with its order (the Explorer cannot grant it again). */
+      if (uroom.housed.length >= uroom.perKind) {
+        w.status = 'waiting';
+        w.home = '';
+        w.housedDay = null;
+        R.creatures(s).push(w);
+        return ['Creatures', lab + ': the Beast Pen keeps ' + (uroom.perKind === 1 ? 'one ' + R.speciesNoun(data, w.species) : plural(uroom.perKind, R.speciesNoun(data, w.species), R.speciesNounPlural(data, w.species))) + ' and ' + R.creatureName(data, uroom.housed[0]) + ' lives here, so ' + R.creatureName(data, w) + ' keeps waiting for a home. It is listed in the Beast Pen, not lost.'];
+      }
       R.creatures(s).push(w);
       var owner = R.creatureOwnerName(data, w);
       return ['Order Completed', lab + ' → ' + R.creatureName(data, w) + ' lives at the Ironbow now, at the ' + fac.name + (owner ? ' (' + owner + '\'s)' : '') + '.'];
@@ -354,6 +382,25 @@
     c.home = fac.id;
     c.housedDay = s.day;
     return ['Order Completed', lab + ' → ' + name + ' has a home at the ' + fac.name + '. Acclimatise it with its handler (Acclimatise With Beast) before it can go out on the road.'];
+  };
+
+  /* A House order for a story beast that is not recorded yet (Elara's wyvern, ordered before the Strip Back Overhaul) is
+     the only thing that holds it: when such an order goes without completing (the DM cancels it, or the Pen it was for
+     is demolished), it is recorded waiting for a home, exactly as a granted beast would be, so nothing is lost with it.
+     orders: the orders going. Returns the creatures recorded. */
+  R.keepStoryBeasts = function (s, data, orders) {
+    var kept = [];
+    (arr(orders) || []).forEach(function (o) {
+      if (!isHouseOrder(o)) return;
+      var id = o.chosen.creatureId;
+      var u = R.creatureUnique(data, id);
+      if (!u || R.creatureById(s, id)) return;
+      var w = { id: id, species: txt(u.species, 40), owner: txt(u.owner, 40), name: '', status: 'waiting', home: '', grantedDay: s.day, housedDay: null, msgId: '' };
+      if (id === 'elara_wyvern') w.development = R.newDevelopment(w, s.day);
+      R.creatures(s).push(w);
+      kept.push(w);
+    });
+    return kept;
   };
 
   /* ---------- Grants from the Explorer ---------- */
@@ -654,10 +701,22 @@
     return 'The Beast Pen can\'t be demolished while ' + (n === 1 ? 'a beast lives' : plural(n, 'beast', 'beasts') + ' live') + ' in it: there is nowhere else for ' + (n === 1 ? 'it' : 'them') + ' to go.';
   };
 
+  /* Clear extra builds takes every built extra facility away in one go, so the Pen's rule for Demolish applies to it too: it
+     refuses while any beast lives in the Pen. Returns the sentence that says why, or ''. */
+  R.clearBuildsBlocker = function (s, data) {
+    var stands = (arr(s.builtExtras) || []).concat(arr(s.builtPlots) || []).some(function (x) {
+      return (typeof x === 'string' ? x : isObj(x) ? x.facId : '') === R.PEN_ID;
+    });
+    if (!stands || !R.penHoused(s).length) return '';
+    var n = R.penHoused(s).length;
+    return 'Clear extra builds would also demolish the Beast Pen, and ' + (n === 1 ? 'a beast lives' : plural(n, 'beast', 'beasts') + ' live') + ' in it: there is nowhere else for ' + (n === 1 ? 'it' : 'them') + ' to go. Nothing was cleared. Demolish the buildings you do not want one at a time instead.';
+  };
+
   /* ----- the DM's actions ----- */
   /* Assign (or change) the handler. The first assignment keeps the bond; a change keeps the history and starts the new
      pairing at Bond 0 (it must be acclimatised with the new handler), unless the DM credits the old bond (keepBond).
-     Never while the beast is away: it has to be back at the Pen first. A new pairing starts its Bonding Days again. */
+     Never while the beast is away: it has to be back at the Pen first. A new pairing starts its Bonding Days again; a failed
+     acclimatisation roll's wait (3 days) is kept, whoever the handler is. */
   R.assignHandler = function (s, data, id, handler, reason, keepBond) {
     var c = R.creatureById(s, id);
     if (!c) return gone();
@@ -675,9 +734,9 @@
       if (!keepBond) d.bond.level = 0;
       d.bond.ready = null;
       d.handlerId = h;
-      /* A new pairing: its own Bonding Days, and its own try at acclimatising. */
+      /* A new pairing: its own Bonding Days. A failed acclimatisation roll still holds, though (Harry: "that beast cannot try
+         again for 3 in-game days"): the wait belongs to the beast, not to its handler, so d.acclimatise stays as it was. */
       delete d.bonding;
-      delete d.acclimatise;
       R.addChronicle(s, c, 'handler', 'Handler changed to ' + R.handlerName(h) + '. ' + (keepBond ? 'The DM credited the old bond (Bond ' + was + ').' : 'The new pairing starts at Bond 0 (Bond ' + was + ' kept in the history). It must be acclimatised again.') + ' Reason: ' + why, 'DM');
       return { ok: true, log: ['Creatures', name + '\'s handler is now ' + R.handlerName(h) + (keepBond ? ' (Bond ' + d.bond.level + ' credited).' : ' (Bond 0: a new pairing).')] };
     }

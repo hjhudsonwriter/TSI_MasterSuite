@@ -144,7 +144,7 @@ async function beastBlock(ba, id) {
     const q = sel => { const n = document.querySelector('[data-test="' + sel + '"]'); return n ? n.textContent.replace(/\s+/g, ' ').trim() : null; };
     const pills = Array.from(document.querySelectorAll('[data-test^="creature-pill-' + i + '-"]')).map(p => ({
       fill: Number(p.getAttribute('data-fill')), now: p.getAttribute('aria-valuenow'), label: p.getAttribute('aria-label'),
-      ready: p.classList.contains('tsi-bas-pill--ready')
+      ready: p.classList.contains('tsi-bas-bond--ready')
     }));
     const go = document.querySelector('[data-test="creature-takeout-' + i + '"]') || document.querySelector('[data-test="creature-return-' + i + '"]');
     return {

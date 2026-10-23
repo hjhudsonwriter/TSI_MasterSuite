@@ -130,7 +130,7 @@
     t.equal(R.demolishFacility(s, data, 'library_scriptorium').ok, false, 'not built any more');
   });
 
-  test('the starting Bastion: two facilities (the Workshop and the Dock), Day 1 (not yet set by the Explorer), level 7, 0 gp, unsworn', function (t) {
+  test('the starting Bastion: two facilities (the Workshop and the Dock), Day 1 (not yet set by the Explorer), level 7, 0 gp, no Party Name', function (t) {
     var s = fresh();
     t.same(R.builtFacilityIds(s, data), ['workshop', 'dock'], 'the Barracks, Armoury and Watchtower went with the war game (22 October 2026)');
     t.equal(s.v, 4, 'a save in days, with the overhauled facilities (13 October 2026) and stripped back (22 October 2026)');
@@ -140,9 +140,8 @@
     t.equal('turn' in s, false, 'no Bastion turn');
     t.equal(s.partyLevel, 7);
     t.equal(s.treasuryGP, 0);
-    t.equal(s.organization.type, 'unsworn');
-    t.equal(s.clanHonor, 40);
-    t.equal(s.trustedClientsByClan.karr, 50);
+    t.equal(s.partyName, '', 'no Party Name yet');
+    t.same(['organization', 'clanHonor', 'trustedClientsByClan'].filter(function (k) { return k in s; }), [], 'a party can no longer found a Clan (22 October 2026): no Clan, no Clan Honour, no Trusted Clients');
     t.equal(s.artisanTools.length, 6);
     t.equal(s.dayInProgress, null);
     t.same(s.word, []);
@@ -747,7 +746,7 @@
     t.equal(R.councilBonus(s), 0, 'the Writ\'s +2 is never granted (B6, kept)');
   });
 
-  group('Bastion: identity');
+  group('Bastion: Clan support (the Clan Influence panel\'s number)');
 
   test('support: (Political Capital + 100) ÷ 2 + Honour/Respect × 4', function (t) {
     var s = fresh();
@@ -755,48 +754,10 @@
     s.politicalCapital.karr = 10;
     s.honourRespectByClan.karr = 2;
     t.equal(R.supportForClanKey(s, 'karr'), 63);
-    t.equal(R.totalSupport(fresh()), 350);
-  });
-
-  test('forming a Clan: level 9, total support 360 and 3 clans at 55, each on both sides of the line', function (t) {
-    function clanState(level, pcs) {
-      var s = fresh();
-      s.partyLevel = level;
-      Object.keys(pcs).forEach(function (k) { s.politicalCapital[k] = pcs[k]; });
-      return R.canFormClan(s, data);
-    }
-    var three = { blackstone: 10, bacca: 10, farmer: 10, slade: -10 };
-    t.same(clanState(9, three), { ok: true, lvlOk: true, totalOk: true, countOk: true });
-    t.equal(clanState(8, three).lvlOk, false);
-    t.equal(clanState(9, { blackstone: 10, bacca: 10, farmer: 10, slade: -12 }).totalOk, false, '359');
-    t.equal(clanState(9, { blackstone: 10, bacca: 10, farmer: 8 }).countOk, false, 'only 2 clans at 55');
-  });
-
-  test('the requirements line is the Clan\'s alone: the Mercenary Brigade is archived (Build 3)', function (t) {
-    var s = fresh();
-    t.equal(R.requirementsHint(s, data), 'Clan requirements: Level 9+ (NO), Total Support 360+ (NO), 3 clans at 55+ (NO).');
-    t.equal(R.canFormMerc, undefined, 'no Form Mercenary Brigade');
-    t.same(Object.keys(data.bastion.identityRules), ['clanMinLevel', 'clanSupportTotalMin', 'clanSupportPerClanMin', 'clanSupportClanCountMin']);
-    s.organization = { type: 'clan', name: 'Clan Ironbow', chief: '', motto: '', foundedAtDay: 1 };
-    t.equal(R.orgLabel(s), 'Clan: Clan Ironbow');
-    t.equal(R.orgLabel(fresh()), 'Unsworn');
-  });
-
-  test('a Brigade in a save from Builds 1 and 2 loads as Unsworn, its name known for the Day Log; its Trusted Clients are kept', function (t) {
-    var save = R.toSave(fresh());
-    save.day = 9;
-    save.organization = { type: 'merc', name: 'The Ironbow Freeblades', chief: '', motto: '', foundedAtDay: 4 };
-    save.trustedClientsByClan.bacca = 12;
-    t.equal(R.saveProblem(save), null, 'still a good save');
-    t.same(R.formerBrigade(save), { name: 'The Ironbow Freeblades' });
-    var back = R.fromSave(JSON.parse(JSON.stringify(save)), data);
-    t.same(back.organization, { type: 'unsworn', name: '', chief: '', motto: '', foundedAtDay: null });
-    t.equal(back.trustedClientsByClan.bacca, 12, 'kept, unread, so the archived Brigade could come back');
-    t.equal(R.formerBrigade(R.toSave(back)), null, 'only once');
-    save.organization.name = '  ';
-    t.same(R.formerBrigade(save), { name: 'the Brigade' });
-    t.equal(R.formerBrigade(R.toSave(fresh())), null);
-    t.equal(R.formerBrigade(null), null);
+    ['canFormClan', 'totalSupport', 'clansAtSupport', 'orgLabel', 'requirementsHint', 'formerBrigade', 'canFormMerc'].forEach(function (k) {
+      t.equal(R[k], undefined, 'R.' + k + ' went with founding a Clan (22 October 2026)');
+    });
+    t.equal(data.bastion.identityRules, undefined, 'and so did its numbers');
   });
 
   group('Bastion: the crest, and the War Table\'s saves (ignored since 22 October 2026)');
@@ -1698,14 +1659,12 @@
 
   group('Bastion: saving');
 
-  test('a save and reload keeps identity, diplomacy, the day, a day in progress and word not yet shown (BAS-01)', function (t) {
+  test('a save and reload keeps the Party Name, diplomacy, the day, a day in progress and word not yet shown (BAS-01)', function (t) {
     var s = built(fresh(), ['hall_of_emissaries']);
     s.day = 12;
     s.anchored = true;
-    s.organization = { type: 'clan', name: 'Clan Ironbow', chief: 'Harry', motto: 'Root and Steel', foundedAtDay: 3 };
-    s.clanHonor = 70;
+    s.partyName = 'The Ironbow Company';
     s.honourRespectByClan.karr = -3;
-    s.trustedClientsByClan.slade = 20;
     s.diplomacy.agreements = [{ title: 'Trade Agreement', clan: 'Clan Karr', startDay: 5, endDay: 26, income: 90, lastShipmentDay: 12 }];
     s.diplomacy.tokens = 2;
     s.diplomacy.cooldowns = { summit: 15 };

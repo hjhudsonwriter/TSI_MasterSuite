@@ -132,15 +132,13 @@
       day: 1,
       anchored: false,
       log: [],
-      /* 'unsworn' or 'clan' (the Mercenary Brigade was archived in the
-         Bastion overhaul, Build 3, and its code deleted with the war game on
-         22 October 2026; commit 4f1db26 has it). */
-      organization: { type: 'unsworn', name: '', chief: '', motto: '', foundedAtDay: null },
-      clanHonor: 40,
+      /* The party's own name (Harry, 22 October 2026): optional, at most
+         R.PARTY_NAME_MAX letters, shown above the crest. The party can no
+         longer found a Clan, so the old organization, clanHonor and
+         trustedClientsByClan fields are gone (R.stripBackSteps 'identity'
+         turned a founded Clan's name into this one). */
+      partyName: '',
       honourRespectByClan: clanMap(0),
-      /* The archived Brigade's Trusted Clients scores: nothing reads them
-         now (a later step of the Strip Back Overhaul drops them). */
-      trustedClientsByClan: clanMap(50),
       /* Where passing a day has got to ({ day, stage, skipped, news }), so it can finish after a cancelled roll or a closed window
          (BAS-02); and "The Ironbow sends word…" not yet shown, [{ day,
          lines }]. */
@@ -369,21 +367,11 @@
       d.diplomacy = dip;
     }
     if (arr(s.log)) d.log = s.log.filter(isObj);
-    /* A Mercenary Brigade (archived in Build 3) becomes Unsworn: the screen
-       says so once and the Day Log keeps its name (R.formerBrigade). */
-    if (isObj(s.organization) && s.organization.type !== 'merc') {
-      var o = s.organization;
-      d.organization = {
-        type: o.type === 'clan' ? 'clan' : 'unsworn',
-        name: typeof o.name === 'string' ? o.name : '',
-        chief: typeof o.chief === 'string' ? o.chief : '',
-        motto: typeof o.motto === 'string' ? o.motto : '',
-        foundedAtDay: dayNum(o.foundedAtDay, null)
-      };
-    }
-    if (s.clanHonor !== undefined && s.clanHonor !== null) d.clanHonor = clampInt(s.clanHonor, 0, 100);
+    /* The Party Name (a founded Clan's name was made into one by the
+       conversion; organization, clanHonor and trustedClientsByClan are not
+       loaded any more). */
+    d.partyName = R.cleanPartyName(s.partyName);
     d.honourRespectByClan = numMap(s.honourRespectByClan, CLAN_KEYS, -5, 5, 0);
-    d.trustedClientsByClan = numMap(s.trustedClientsByClan, CLAN_KEYS, 0, 100, 50);
     if (isObj(s.dayInProgress) && typeof s.dayInProgress.stage === 'string') {
       var dip = s.dayInProgress;
       d.dayInProgress = {
@@ -1212,7 +1200,7 @@
     for (var i = 0; i < lists.length; i++) {
       if (lists[i] in s && !Array.isArray(s[lists[i]])) return 'Its ' + lists[i] + ' list is damaged.';
     }
-    var maps = ['favour', 'politicalCapital', 'tradeNetwork', 'arbitration', 'diplomacy', 'organization', 'facilityLevels', 'bridge'];
+    var maps = ['favour', 'politicalCapital', 'tradeNetwork', 'arbitration', 'diplomacy', 'facilityLevels', 'bridge'];
     for (var j = 0; j < maps.length; j++) {
       if (maps[j] in s && s[maps[j]] !== null && !isObj(s[maps[j]])) return 'Its ' + maps[j] + ' record is damaged.';
     }
@@ -1236,6 +1224,32 @@
     var out = { gridOpen: src.gridOpen !== false };
     if (src.whSort === 'grouped') out.whSort = 'grouped';
     return out;
+  };
+
+  /* The Party Name (Harry, 22 October 2026): a name the party gives itself,
+     shown above the crest. Optional (an empty name shows nothing). Tidied the
+     way the suite tidies words from a save or a box (words(): no angle
+     brackets, control or direction-changing characters, one space between
+     words, nothing at either end) and at most 40 letters, never cutting a
+     picture letter (an emoji) in half. Anything that is not text is no name. */
+  R.PARTY_NAME_MAX = 40;
+  R.cleanPartyName = function (v) {
+    var t = words(v, R.PARTY_NAME_MAX);
+    var last = t.charCodeAt(t.length - 1);
+    if (last >= 0xD800 && last <= 0xDBFF) t = t.slice(0, -1);
+    return t.trim();
+  };
+  /* A short plain-English note for the screen when tidying a typed name changed
+     more than its spaces, or '' when it did not (so nothing is said). */
+  R.partyNameNote = function (raw) {
+    if (typeof raw !== 'string') return '';
+    var spaced = raw.replace(/\s+/g, ' ').trim();
+    var kept = R.cleanPartyName(raw);
+    if (kept === spaced) return '';
+    var noBrackets = spaced.replace(/[<>]/g, ' ').replace(/\s+/g, ' ').trim();
+    if (noBrackets.length <= R.PARTY_NAME_MAX && /[<>]/.test(spaced)) return 'Angle brackets (< and >) can\'t be used in a name, so they were taken out.';
+    if (noBrackets.length > R.PARTY_NAME_MAX) return 'A Party Name can have at most ' + R.PARTY_NAME_MAX + ' letters, so the rest was left off.';
+    return 'Some hidden characters were taken out of the name.';
   };
 
   /* The Bastion's crest picture, saved apart from the Bastion as
@@ -1264,13 +1278,6 @@
       c.design = design;
     }
     return c;
-  };
-  /* The name of a Mercenary Brigade in a save from before Build 3 (Builds 1
-     and 2 still had Form Mercenary Brigade), or null: it loads as Unsworn. */
-  R.formerBrigade = function (saved) {
-    var o = isObj(saved) && isObj(saved.organization) ? saved.organization : null;
-    if (!o || o.type !== 'merc') return null;
-    return { name: typeof o.name === 'string' && o.name.trim() ? o.name.trim() : 'the Brigade' };
   };
   /* A short fingerprint of a picture, so a new one can be told from the old. */
   R.hashText = function (str) {
@@ -1552,6 +1559,8 @@
     var where = place.kind === 'plot' ? 'plot' : 'slot';
     var cancelled = s.pendingOrders.filter(function (o) { return o && o.facId === facId; });
     s.pendingOrders = s.pendingOrders.filter(function (o) { return !(o && o.facId === facId); });
+    /* A story beast only a cancelled House order held (Elara's wyvern) is recorded waiting for a home, never lost with it. */
+    var storyKept = R.keepStoryBeasts ? R.keepStoryBeasts(s, data, cancelled) : [];
     var held = [];
     cancelled.forEach(function (o) { if (arr(o.inputs)) held = held.concat(o.inputs); });
     var back = held.length ? R.returnGoods(s, data, held) : '';
@@ -1562,7 +1571,8 @@
     var moved = place.kind === 'plot' ? R.settlePlots(s, data) : [];
     var body = (building
       ? 'Building work on the ' + name + ' stopped; its ' + where + ' is free.'
-      : 'The ' + name + ' was demolished; its ' + where + ' is free.' + (cancelled.length ? ' Cancelled: ' + cancelled.map(function (o) { return o.label; }).join('; ') + '.' : '') + (back ? ' ' + back : '')) +
+      : 'The ' + name + ' was demolished; its ' + where + ' is free.' + (cancelled.length ? ' Cancelled: ' + cancelled.map(function (o) { return o.label; }).join('; ') + '.' : '') + (back ? ' ' + back : '') +
+        (storyKept.length ? ' ' + storyKept.map(function (c) { return R.creatureName(data, c); }).join(' and ') + ' stays at the Ironbow, waiting for a home.' : '')) +
       (moved.length ? ' ' + R.settleLine(data, moved) : '');
     return { ok: true, log: [building ? 'Construction Stopped' : 'Facility Demolished', body], cancelled: cancelled, moved: moved };
   };
@@ -2174,10 +2184,13 @@
   /* Cancelling an order keeps the gold spent (B9, kept). */
   R.cancelOrder = function (s, id, data, now) {
     var gone = s.pendingOrders.filter(function (x) { return String(x.id) === String(id); })[0];
+    /* A story beast only this order holds (Elara's wyvern) is recorded waiting for a home, never lost with it (creature-rules.js). */
+    var storyKept = gone && R.keepStoryBeasts ? R.keepStoryBeasts(s, data, [gone]) : [];
     s.pendingOrders = s.pendingOrders.filter(function (x) { return String(x.id) !== String(id); });
     /* Goods it held go back to the Warehouse (only an order actually found and
        removed here, so a second Cancel gives nothing back). */
     var back = gone && arr(gone.inputs) && gone.inputs.length ? R.returnGoods(s, data, gone.inputs) : '';
+    if (storyKept.length) return ['Orders', 'Cancelled ' + (gone.label || 'an order') + '. ' + R.creatureName(data, storyKept[0]) + ' stays at the Ironbow, waiting for a home.' + (back ? ' ' + back : '')];
     if (back) return ['Orders', 'Cancelled ' + (gone.label || 'an order') + '. ' + back];
     return ['Orders', 'Cancelled an order.'];
   };
@@ -3081,35 +3094,16 @@
     };
   };
 
-  /* ---------- Identity (4995-5033) ---------- */
+  /* ---------- Clan support (the Clan Influence panel's number) ----------
+     Founding a Clan was taken out on 22 October 2026 (canFormClan,
+     totalSupport, clansAtSupport, orgLabel, requirementsHint and the
+     identityRules data went with it; commit b337232 has them). This one
+     stays only because the Clan Influence panel still shows it, until that
+     panel goes (step S10). */
   R.supportForClanKey = function (s, key) {
     var pc = clampInt(s.politicalCapital[key] || 0, -100, 100);
     var hr = clampInt(s.honourRespectByClan[key] || 0, -5, 5);
     return clampInt(Math.round((pc + 100) / 2 + hr * 4), 0, 100);
-  };
-  R.totalSupport = function (s) {
-    return CLAN_KEYS.reduce(function (sum, k) { return sum + R.supportForClanKey(s, k); }, 0);
-  };
-  R.clansAtSupport = function (s, threshold) {
-    return CLAN_KEYS.filter(function (k) { return R.supportForClanKey(s, k) >= threshold; }).length;
-  };
-  R.canFormClan = function (s, data) {
-    var rules = data.bastion.identityRules;
-    var lvlOk = (s.partyLevel || 1) >= rules.clanMinLevel;
-    var totalOk = R.totalSupport(s) >= rules.clanSupportTotalMin;
-    var countOk = R.clansAtSupport(s, rules.clanSupportPerClanMin) >= rules.clanSupportClanCountMin;
-    return { ok: lvlOk && totalOk && countOk, lvlOk: lvlOk, totalOk: totalOk, countOk: countOk };
-  };
-  R.orgLabel = function (s) {
-    var o = s.organization;
-    if (o.type === 'clan') return 'Clan: ' + (o.name || 'Unnamed');
-    return 'Unsworn';
-  };
-  R.requirementsHint = function (s, data) {
-    var r = data.bastion.identityRules;
-    var c = R.canFormClan(s, data);
-    return 'Clan requirements: Level ' + r.clanMinLevel + '+ (' + (c.lvlOk ? 'OK' : 'NO') + '), Total Support ' + r.clanSupportTotalMin + '+ (' + (c.totalOk ? 'OK' : 'NO') + '), ' +
-      r.clanSupportClanCountMin + ' clans at ' + r.clanSupportPerClanMin + '+ (' + (c.countOk ? 'OK' : 'NO') + ').';
   };
 
   /* ---------- Passing a day, as resumable steps (560-604; BAS-02) ----------
@@ -3204,7 +3198,6 @@
     (s.tradeNetwork.routes || []).forEach(function (r) { mv(r, 'openedDay'); mv(r, 'expiresDay'); mv(r, 'nextDay'); mv(r, 'lastSettledDay'); });
     (s.arbitration.queue || []).forEach(function (q) { mv(q, 'createdDay'); if (q.meta) mv(q.meta, 'disruptedDay'); });
     Object.keys(s.repairs || {}).forEach(function (k) { mv(s.repairs, k); });
-    if (isObj(s.organization)) mv(s.organization, 'foundedAtDay');
     /* Port Charters, ships at sea and standing shipments (pull request 5). */
     if (R.shiftCommerce) R.shiftCommerce(s, n);
     /* The Courier Exchange's parcels (pull request 6). */

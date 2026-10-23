@@ -162,7 +162,9 @@
       notes: [],
       /* said: heading id → sentences, from R.stripBackSay. archived: facilities to record in archivedFacilities. */
       said: {},
-      archived: []
+      archived: [],
+      /* The Beast Pen step (S14): how many old beast buildings became it, and whether it was built free. Only for the one-line summary. */
+      pen: { joined: 0, builtFree: false }
     };
   }
   R.stripBackNewReport = function (s, data) { return newReport(isObj(s) ? s : {}, false, []); };
@@ -637,13 +639,20 @@
   function summaryOf(report) {
     var bits = [];
     var total = report.gold.refunded + report.gold.settlement;
+    /* The Beast Pen comes first (these two start with a capital: the others carry on from them). The three beast buildings
+       that became the Pen are not "removed": they are the Pen. */
+    var pen = isObj(report.pen) ? report.pen : { joined: 0, builtFree: false };
+    if (pen.joined) bits.push(pen.joined === 1 ? 'The beast building became the Beast Pen' : 'The ' + (pen.joined === 2 ? 'two' : pen.joined === 3 ? 'three' : pen.joined) + ' beast buildings became one Beast Pen');
+    if (pen.builtFree) bits.push('A Beast Pen was built for your beasts');
     if (total > 0) bits.push(fmt(total) + ' gp went back into the treasury');
     if (report.cancelled.length) bits.push(plural(report.cancelled.length, 'order was', 'orders were') + ' cancelled');
     if (report.moved.length) bits.push(plural(report.moved.length, 'order', 'orders') + ' moved');
     if (report.goods.length) bits.push('goods went back to the Warehouse');
-    if (report.archived.length) bits.push(plural(report.archived.length, 'place', 'places') + ' removed');
+    var gone = report.archived.length - (pen.joined || 0);
+    if (gone > 0) bits.push(plural(gone, 'place', 'places') + ' removed');
     if (report.removed.events) bits.push('the Bastion\'s event record was dropped');
     if (report.removed.war) bits.push('the army and the war were removed');
+    if (report.removed.identity) bits.push(report.removed.identity.kind ? 'the party\'s ' + (report.removed.identity.kind === 'Clan' ? 'Clan' : 'Mercenary Brigade') + ' is no longer kept' : 'the party\'s Clan scores are no longer kept');
     return bits.length ? bits.join('; ') + '.' : 'Nothing of yours changed.';
   }
   /* What is kept in the save about this conversion (migration.v4). A report that
@@ -702,6 +711,81 @@
     delete s.beast.done;
     delete s.beast.accept;
     delete s.beast.floor;
+  }
+
+  /* Step S07 (Harry, 22 October 2026): the party can no longer found a Clan; it has a Party Name instead.
+     - organization (the Clan's type, name, chief, motto and founding day), clanHonor (the party's own Clan Honour,
+       0 to 100) and trustedClientsByClan (the archived Mercenary Brigade's scores) are dropped from the live save. The
+       copy of the Bastion that is set aside has all of them. Nothing else read them (the war that did went in S06); the
+       seven Clans' Honour/Respect and Political Capital are NOT touched.
+     - A save that had founded a Clan (or, in the first two builds, a Mercenary Brigade): its NAME becomes the Party
+       Name, once, and only if the Party Name is empty (a name already chosen is never replaced). The crest stays.
+     - The report (heading "Your Party") names what is not kept: the chief, the motto and the Clan Honour.
+     A save that only holds the empty values the old Bastion always wrote (no Clan, 40, fifty each) says nothing and
+     does not count as "left over" (it is simply not loaded any more). Whatever is detected is also said, so a
+     "tidied again" notice always has something to tell. Pure: no storage, clock or dice. */
+  var IDENTITY_KEYS = ['organization', 'clanHonor', 'trustedClientsByClan'];
+  var CLAN_HONOUR_START = 40;
+  var TRUSTED_START = 50;
+  function orgOf(s) { return isObj(s.organization) ? s.organization : null; }
+  function orgKind(o) { return o && o.type === 'clan' ? 'Clan' : o && o.type === 'merc' ? 'Mercenary Brigade' : ''; }
+  function honourSet(s) { return typeof s.clanHonor === 'number' && isFinite(s.clanHonor); }
+  function honourLeft(s) { return honourSet(s) && s.clanHonor !== CLAN_HONOUR_START; }
+  function trustedLeft(s) {
+    return isObj(s.trustedClientsByClan) && Object.keys(s.trustedClientsByClan).some(function (k) { var v = s.trustedClientsByClan[k]; return typeof v === 'number' && v !== TRUSTED_START; });
+  }
+  function detectIdentity(s) {
+    var out = [];
+    var o = orgOf(s);
+    if (orgKind(o)) out.push(o.type === 'clan' ? 'a founded Clan' : 'a Mercenary Brigade');
+    if (honourLeft(s)) out.push('the party\'s Clan Honour');
+    if (trustedLeft(s)) out.push('the Trusted Clients scores');
+    return out;
+  }
+  function tidyText(v) { return str(v).replace(/\s+/g, ' ').trim(); }
+  function quoted(t) { return '“' + t + '”'; }
+  /* ["a", "b", "c"] → "A, b and c" (the first letter capital: it starts a sentence). */
+  function sentenceList(items) { var t = listText(items); return t.charAt(0).toUpperCase() + t.slice(1); }
+  function dropIdentity(s, data, report) {
+    var found = detectIdentity(s);
+    var o = orgOf(s);
+    var kind = orgKind(o);
+    var name = o ? tidyText(o.name) : '';
+    var chief = o ? tidyText(o.chief) : '';
+    var motto = o ? tidyText(o.motto) : '';
+    var honour = honourSet(s) ? clampInt(s.clanHonor, 0, 100) : null;
+    var honourChanged = honourLeft(s);
+    var trustedChanged = trustedLeft(s);
+    var current = R.cleanPartyName(s.partyName);
+    var seeded = '';
+    if (kind && !current) {
+      seeded = R.cleanPartyName(name);
+      if (seeded) s.partyName = seeded;
+    }
+    IDENTITY_KEYS.forEach(function (k) { delete s[k]; });
+    if (!found.length) return;
+    report.removed.identity = { kind: kind, name: name, chief: chief, motto: motto, honour: honour, seeded: seeded };
+    if (kind) {
+      var line = kind === 'Clan'
+        ? 'A party can no longer found a Clan, so yours' + (name ? ', ' + quoted(name) + ',' : '') + ' is not one any more.'
+        : 'The Bastion no longer has Mercenary Brigades, so yours' + (name ? ', ' + quoted(name) + ',' : '') + ' is gone.';
+      if (seeded) line += ' Its name is now your Party Name' + (seeded !== name ? ' (tidied to fit: at most ' + R.PARTY_NAME_MAX + ' letters, no angle brackets)' : '') + ', and shows above your crest.';
+      else if (current) line += ' Your Party Name, ' + quoted(current) + ', stays as it is.';
+      else line += ' It had no name, so your Party Name is empty.';
+      var lost = [];
+      if (chief) lost.push('its chief (' + chief + ')');
+      if (motto) lost.push('its motto (' + quoted(motto) + ')');
+      if (honour !== null) lost.push('its Clan Honour (' + honour + ')');
+      line += lost.length
+        ? ' ' + sentenceList(lost) + (lost.length > 1 ? ' are' : ' is') + ' not kept in the Bastion, but the copy of your Bastion that was set aside has everything.'
+        : ' Nothing else of it is kept in the Bastion; the copy of your Bastion that was set aside has everything.';
+      R.stripBackSay(report, 'party', line + ' Your crest stays as it is.');
+    } else if (honourChanged) {
+      R.stripBackSay(report, 'party', 'The party\'s Clan Honour (' + honour + ') is not kept, because a party can no longer found a Clan. The copy of your Bastion that was set aside has it.');
+    }
+    if (trustedChanged) {
+      R.stripBackSay(report, 'party', 'The Trusted Clients scores of the old Mercenary Brigade are not kept: nothing in the Bastion uses them. The copy of your Bastion that was set aside has them.');
+    }
   }
 
   /* Step S14 (Harry, 22 October 2026): the Wyvern Roost, Griffin Tower and Dire Wolf Den become ONE Beast Pen.
@@ -764,8 +848,10 @@
     ['builtExtras', 'builtPlots'].forEach(function (key) {
       (arr(s[key]) || []).forEach(function (x) { var e = entryOf(x); if (e && isOldPenId(e.facId)) out.push('a place: ' + e.facId); });
     });
-    ['facilityLevels', 'repairs', 'research'].forEach(function (key) {
-      if (isObj(s[key])) Object.keys(s[key]).forEach(function (id) { if (isOldPenId(id)) out.push('a ' + (key === 'repairs' ? 'repair' : key === 'research' ? 'research' : 'level') + ': ' + id); });
+    /* (The saved research is not touched: none of the three buildings ever had a research tree, the audit insists the
+       research record comes back exactly as it was, and the Bastion drops a tree it does not know when it loads.) */
+    ['facilityLevels', 'repairs'].forEach(function (key) {
+      if (isObj(s[key])) Object.keys(s[key]).forEach(function (id) { if (isOldPenId(id)) out.push('a ' + (key === 'repairs' ? 'repair' : 'level') + ': ' + id); });
     });
     (arr(s.pendingOrders) || []).forEach(function (o) { if (isObj(o) && isOldPenId(o.facId)) out.push('an order: ' + o.facId); });
     (arr(s.creatures) || []).forEach(function (c) {
@@ -823,6 +909,7 @@
     /* A creature housed but no building standing: the Pen is built free in the first empty slot. */
     var housed = (arr(s.creatures) || []).filter(function (c) { return isObj(c) && c.status === 'housed'; });
     var builtFree = false;
+    report.pen.joined = olds.length;
     if (!standing && housed.length) {
       if (!arr(s.builtExtras)) s.builtExtras = [];
       var at = -1;
@@ -831,9 +918,10 @@
       s.builtExtras[at] = { facId: PEN_ID, status: 'built' };
       standing = s.builtExtras[at];
       builtFree = true;
+      report.pen.builtFree = true;
     }
-    /* Levels, repairs, research: the old ids go; the Pen has one level. */
-    ['facilityLevels', 'repairs', 'research'].forEach(function (key) {
+    /* Levels and repairs: the old ids go; the Pen has one level. */
+    ['facilityLevels', 'repairs'].forEach(function (key) {
       if (!isObj(s[key])) return;
       OLD_PENS.forEach(function (id) { if (id in s[key]) { delete s[key][id]; seen[id] = true; (report.removed[key] = report.removed[key] || []).push(id); } });
     });
@@ -875,9 +963,10 @@
       R.stripBackSay(report, 'joined', 'The ' + listText(these) + (these.length > 1 ? ' have become one Beast Pen. ' : ' has become the Beast Pen. ') + keepsLine + state + (freed > 0 ? (freed === 1 ? ' The other slot is free.' : ' The other slots are free.') : ''));
     }
     if (builtFree) {
-      R.stripBackSay(report, 'beasts', 'Your beasts had no building left standing, so the Beast Pen was built for you, free, in an empty slot (a Beast Pen costs time, never gold). They are all still there.');
+      R.stripBackSay(report, 'beasts', (housed.length === 1 ? 'Your beast had' : 'Your beasts had') + ' no building left standing, so the Beast Pen was built for you, free, in an empty slot (a Beast Pen costs time, never gold). ' + (housed.length === 1 ? 'It is' : 'They are all') + ' still there.');
     }
-    var beasts = arr(s.creatures) || [];
+    /* Only real records: a damaged entry (null, text, a number) is not a beast and is left alone. */
+    var beasts = (arr(s.creatures) || []).filter(isObj);
     if (beasts.length) {
       var hasDev = function (c, key) { return isObj(c.development) && isObj(c.development[key]); };
       R.stripBackSay(report, 'beasts', beasts.length === 1
@@ -910,18 +999,30 @@
           R.stripBackSay(report, 'beasts', 'The Beast Pen keeps ' + (perKind(data) === 1 ? 'one ' + kindNoun(data, k) : plural(perKind(data), kindNoun(data, k), kindNounPlural(data, k))) + ', and ' + count[k] + ' ' + kindNounPlural(data, k) + ' live there. They all stay: nothing is sent away. No more ' + kindNounPlural(data, k) + ' can be housed.');
         }
       });
-      /* A moved House order that will not fit when it completes. */
+      /* A moved House order that will not fit when it completes: the beast keeps waiting (a story beast that is not in the
+         list yet, Elara's wyvern, is added to it as waiting then; nothing is lost). */
+      var ordered = {};
       report.moved.forEach(function (m) {
         var o = orders.filter(function (x) { return isObj(x) && idOf(x) === m.id; })[0];
         if (!o || o.fnId !== 'house_beast') return;
         var cid = isObj(o.chosen) ? o.chosen.creatureId : '';
-        var c = beasts.filter(function (x) { return isObj(x) && x.id === cid; })[0];
+        ordered[cid] = true;
+        var c = beasts.filter(function (x) { return x.id === cid; })[0];
         var uniq = creaturesData(data).unique;
         var species = c ? c.species : (isObj(uniq) && isObj(uniq[cid]) ? uniq[cid].species : '');
         if (species && (count[species] || 0) >= perKind(data)) {
-          R.stripBackSay(report, 'beasts', 'The House order for ' + orderBeastName(data, c, cid) + ' carries on, but the Beast Pen already holds a ' + kindNoun(data, species) + ', so ' + orderBeastName(data, c, cid) + ' will keep waiting for a home when it completes.');
+          var who = orderBeastName(data, c, cid);
+          R.stripBackSay(report, 'beasts', 'The House order for ' + who + ' carries on, but the Beast Pen already holds a ' + kindNoun(data, species) + ', so ' + who + ' will ' + (c ? 'keep waiting' : 'wait') + ' for a home when it completes' +
+            (c ? '.' : ' (it is added to the list of waiting beasts then; it is not lost).'));
         }
       });
+      /* Beasts already waiting with no order, because the Pen already holds one of their kind. */
+      var stuck = beasts.filter(function (c) { return c.status === 'waiting' && !ordered[c.id] && (count[c.species] || 0) >= perKind(data); });
+      if (stuck.length) {
+        R.stripBackSay(report, 'beasts', stuck.length === 1
+          ? beastName(data, stuck[0]) + ' is waiting for a home, because the Beast Pen already holds a ' + kindNoun(data, stuck[0].species) + '. It stays on the waiting list; nothing is sent away.'
+          : 'These beasts are waiting for a home, because the Beast Pen already holds one of their kind: ' + listText(stuck.map(function (c) { return beastName(data, c) + ' (a ' + kindNoun(data, c.species) + ')'; })) + '. They stay on the waiting list; nothing is sent away.');
+      }
     }
   }
 
@@ -1072,6 +1173,8 @@
     { id: 'dropWar', detect: detectWar, run: dropWar },
     { id: 'dropWarFacilities', detect: detectWarFacilities, run: dropWarFacilities },
     { id: 'dropBeastRequests', detect: detectBeastRequests, run: dropBeastRequests },
+    /* Step S07: the Party Name, and no more founding a Clan. */
+    { id: 'identity', detect: detectIdentity, run: dropIdentity },
     { id: 'rehomeBeasts', detect: detectBeastPen, run: rehomeBeasts },
     { id: 'shrinesToTemple', detect: detectShrines, run: shrinesToTemple },
     { id: 'sweepFacilities', detect: detectGhosts, run: sweepFacilities },
