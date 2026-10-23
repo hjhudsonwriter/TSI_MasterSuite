@@ -22,9 +22,9 @@ window.TSI_DATA.bastion = {
     /* The Beast Pen's card shows the Menagerie's painting (Harry, 22 October 2026); the Pen's own picture,
        beast_pen.jpg, spans the top of its panel (panelImages below). The file stays where it is. */
     beast_pen: 'menagerie.png',
-    shrine_telluria: 'shrine_of_telluria.png',
-    shrine_aurush: 'shrine_of_aurush.png',
-    shrine_pelagos: 'shrine_of_pelagos.png',
+    /* The Temple (S11, Harry, 22 October 2026) shows the three Shrines' paintings side by side: a list is drawn as
+       strips, in this order (Telluria, Aurush, Pelagos). The files stay where they are. */
+    temple: ['shrine_of_telluria.png', 'shrine_of_aurush.png', 'shrine_of_pelagos.png'],
     hall_of_emissaries: 'hall_of_emissaries.png',
     /* Harry's own picture (13 October 2026; bastion-new-art/3-courier-exchange). */
     courier_exchange: 'courier_exchange.png'
@@ -80,9 +80,9 @@ window.TSI_DATA.bastion = {
     arcane_laboratory: { x: 633, y: 264 },
     herbal_gardens: { x: 228, y: 511 },
     hall_of_emissaries: { x: 2769, y: 376 },
-    shrine_aurush: { x: 1275, y: 532 },
-    shrine_telluria: { x: 2252, y: 722 },
-    shrine_pelagos: { x: 2668, y: 840 },
+    /* The Temple stands where the three Shrines did, so it is labelled at each: the first point is Aurush's (the Shrine
+       of Aurush stood there), and "also" lists Telluria's and Pelagos's. */
+    temple: { x: 1275, y: 532, also: [{ x: 2252, y: 722 }, { x: 2668, y: 840 }] },
     beast_pen: { x: 2081, y: 326 },
     weavers_hall: { x: 2838, y: 690 },
     stone_masonworks: { x: 2194, y: 829 },
@@ -172,6 +172,8 @@ window.TSI_DATA.bastion = {
     },
     orders: {},
     names: {},
+    /* The god each retired Shrine served, so an old order can still be told apart (a Favour refund goes to its bar). */
+    gods: { shrine_telluria: 'telluria', shrine_aurush: 'aurush', shrine_pelagos: 'pelagos' },
     menagerieValue: {
       'Ape': 500, 'Black Bear': 500, 'Brown Bear': 1000, 'Constrictor Snake': 250, 'Crocodile': 500, 'Dire Wolf': 1000,
       'Giant Vulture': 1000, 'Hyena': 50, 'Jackal': 50, 'Lion': 1000, 'Owlbear': 3500, 'Panther': 250, 'Tiger': 1000
@@ -200,9 +202,10 @@ window.TSI_DATA.bastion = {
       { fac: 'arcane_laboratory', pic: 'map/overlays/laboratory.png' },
       { fac: 'herbal_gardens', pic: 'map/overlays/greenhouse.png' },
       { fac: 'hall_of_emissaries', pic: 'map/overlays/hall_of_emissaries.png' },
-      { fac: 'shrine_aurush', pic: 'map/overlays/shrine_of_aurush.png' },
-      { fac: 'shrine_telluria', pic: 'map/overlays/shrine_of_telluria.png' },
-      { fac: 'shrine_pelagos', pic: 'map/overlays/shrine_of_pelagos.png' },
+      /* The Temple draws all three Shrine buildings (S11); the pictures stay as they were. */
+      { fac: 'temple', pic: 'map/overlays/shrine_of_aurush.png' },
+      { fac: 'temple', pic: 'map/overlays/shrine_of_telluria.png' },
+      { fac: 'temple', pic: 'map/overlays/shrine_of_pelagos.png' },
       { fac: 'beast_pen', pic: 'map/overlays/wyvern_roost.png' },
       { fac: 'weavers_hall', pic: 'map/overlays/weavers_sailmakers_hall.png' },
       { fac: 'stone_masonworks', pic: 'map/overlays/stone_quarry_masonworks.png' },
@@ -248,13 +251,6 @@ window.TSI_DATA.bastion = {
     buildDays: [{ level: 17, days: 35 }, { level: 13, days: 35 }, { level: 9, days: 28 }, { level: 5, days: 21 }],
     every: 7
   },
-
-  /* The three gods on the Favour panel. */
-  gods: [
-    { key: 'telluria', name: 'Telluria' },
-    { key: 'aurush', name: 'Aurush' },
-    { key: 'pelagos', name: 'Pelagos' }
-  ],
 
   /* Library research notes (3290-3301). The keys don't match the Library's
      option names ("Geographical Scriptures"…), so no note is ever added, as

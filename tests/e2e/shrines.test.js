@@ -1,14 +1,16 @@
-/* The Shrines at Levels 2 to 5, the Bastion's half (pull request 8b, part
-   1; Harry's Shrine specification, 15 October 2026), from a double-clicked
-   file, on the test page with Harry's sample file
-   (tests/fixtures/bastion-pr8b-sample.json):
-   - each Shrine's Favour, and orders that spend 5%, 10% or 25% of it when
-     they start;
-   - Bless Bastion Foundations listed but not yet available;
-   - the items reach the Warehouse, and the Courier Exchange lists them;
-   - a Great Rite waits at the Ironbow; a Blessing of Pelagos waits for the
-     Dock's next ship;
+/* The old Shrines, converted into the Temple (the Strip Back Overhaul, step S11, 22 October 2026), from a
+   double-clicked file, on the test page with Harry's sample file (tests/fixtures/bastion-pr8b-sample.json: three
+   Shrines at Level 5, each god's Favour at 60%, a Courier Exchange) made heavier with the orders the Shrines could
+   hold (Rootguard Salve, the Great Rite of Pelagos, Craft, a prayer for Favour, an Aquatic Protection Charm):
+   - the box that says what changed names the Temple, the orders that carried on and the ones that ended, in plain
+     English, and the Favour that came back;
+   - one Temple stands where the first Shrine stood, the other slots are free, each god's Favour is as it was (plus
+     what the cancelled charm gave back);
+   - the two orders that carried on complete on their own due days (the salve into the Warehouse, the Great Rite
+     waiting at the Ironbow with its god), so a day passes without any trouble;
+   - the Courier Exchange lists the Temple's items; the Great Rite shows in Pelagos's third of the panel;
    - a reload changes nothing.
+   (The Temple's own panel is clicked through in tests/e2e/temple.test.js.)
    Run with:  node tests/e2e/shrines.test.js */
 'use strict';
 
@@ -16,44 +18,41 @@ const path = require('path');
 const H = require('./helpers');
 const { section, check, assert, equal } = H;
 
-const INDEX = H.fileUrl('index.html');
-/* The test page, where Harry tries the sample file (it only takes test-page files). */
 const HARNESS = H.fileUrl('tests/harness.html');
-const SAMPLE = path.join(__dirname, '..', 'fixtures', 'bastion-pr8b-sample.json');
+const SAMPLE = require(path.join(__dirname, '..', 'fixtures', 'bastion-pr8b-sample.json'));
 
 const bare = (page, sel) => page.$eval(sel, n => n.textContent.replace(/\s+/g, ' ').trim());
 const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.debug.state())));
-const exs = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.explorer.debug.state())));
 const lastModal = page => page.$$eval('.tsi-modal', ms => ms[ms.length - 1].textContent.replace(/\s+/g, ' ').trim());
-const logText = s => s.log.map(l => l.body).join(' | ');
-const sentTop = page => page.$eval('[data-test=sent]', n => ({
-  status: n.getAttribute('data-status'),
-  title: n.querySelector('strong').textContent,
-  line: n.querySelector('[data-test=sent-line]').textContent
-}));
 
-async function context(browser, size) {
-  const ctx = await H.newContext(browser, size || 'laptop', { acceptDownloads: true });
+/* Harry's sample with the old Shrines' orders in it (version 3: the Bastion converts it when it opens). */
+function withOrders() {
+  const file = JSON.parse(JSON.stringify(SAMPLE));
+  const s = file.records[0].value;
+  const order = (id, facId, fnId, label, dueDay, extra) => Object.assign({ id, facId, fnId, chosen: null, optionLabel: null, notes: '', label, costGP: 0, issuedDay: 1, dueDay }, extra || {});
+  s.pendingOrders = [
+    order('sh-1', 'shrine_telluria', 'prepare_rootguard_salve', 'Shrine of Telluria: Prepare Rootguard Salve (2 doses of Rootguard Salve)', 4,
+      { chosen: { label: '2 doses of Rootguard Salve', outputs: [{ good: 'rootguard_salve', qty: 2 }] }, optionLabel: '2 doses of Rootguard Salve', favourCost: 5 }),
+    order('sh-2', 'shrine_pelagos', 'great_rite_pelagos', 'Shrine of Pelagos: Great Rite of Pelagos', 6, { favourCost: 25 }),
+    order('sh-3', 'shrine_aurush', 'craft', 'Shrine of Aurush: Craft (Aurush Sun Charm)', 5, { chosen: { label: 'Aurush Sun Charm' }, optionLabel: 'Aurush Sun Charm' }),
+    order('sh-4', 'shrine_pelagos', 'pray', 'Shrine of Pelagos: Pray (Pelagos\'s Blessing)', 2, { chosen: { label: 'Pelagos\'s Blessing', special: { type: 'favour_blessing', god: 'pelagos' } }, optionLabel: 'Pelagos\'s Blessing' }),
+    order('sh-5', 'shrine_pelagos', 'prepare_aquatic_protection_charm', 'Shrine of Pelagos: Prepare Aquatic Protection Charm (1 Aquatic Protection Charm)', 5,
+      { chosen: { label: '1 Aquatic Protection Charm', outputs: [{ good: 'aquatic_protection_charm', qty: 1 }] }, optionLabel: '1 Aquatic Protection Charm', favourCost: 5 })
+  ];
+  return H.writeTemp('shrines-heavy.json', file);
+}
+
+async function context(browser) {
+  const ctx = await H.newContext(browser, 'laptop', { acceptDownloads: true });
   await ctx.setOffline(true);
-  /* No travel or campfire events and no weather, like the courier test.
-     window.__dice: the next values Math.random gives, before its usual 0.99
-     (set on the Bastion's page only, for the attack and the battle). */
-  await ctx.addInitScript(() => {
-    window.__dice = [];
-    Math.random = function () { return window.__dice && window.__dice.length ? window.__dice.shift() : 0.99; };
-  });
+  /* No travel or campfire events and no weather: every die comes up 0.99. */
+  await ctx.addInitScript(() => { Math.random = () => 0.99; });
   return ctx;
 }
-async function openExplorer(ctx, page) {
+async function openExplorer(ctx) {
   const p = await ctx.newPage();
-  await p.goto((page || INDEX) + '?tool=explorer');
+  await p.goto(HARNESS + '?tool=explorer');
   await p.waitForSelector('[data-test=camp]');
-  return p;
-}
-async function openBastion(ctx, page) {
-  const p = await ctx.newPage();
-  await p.goto((page || INDEX) + '?tool=bastion');
-  await p.waitForFunction(() => window.TSI && TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().anchored, null, { timeout: 8000 });
   return p;
 }
 async function closeAll(page) {
@@ -62,48 +61,26 @@ async function closeAll(page) {
     await page.waitForTimeout(250);
   }
 }
-/* Make Camp in the Explorer, closing whatever the night brings. Resolves
-   with "The Ironbow sends word…" as the Explorer showed it. */
+/* Make Camp in the Explorer, closing whatever the night brings. */
 async function camp(ex) {
   await ex.waitForTimeout(400);
   await ex.click('[data-test=camp]');
-  let word = null;
   for (let n = 0; n < 20; n++) {
     await ex.waitForTimeout(200);
     if (!(await ex.$('.tsi-modal'))) { if (n > 2) break; continue; }
-    if (await ex.$('[data-test=ironbow-word]')) word = (word || '') + (await bare(ex, '[data-test=ironbow-word]'));
     await ex.click('.tsi-modal__foot button:last-child');
   }
-  return word;
 }
-/* The Bastion reaches a day by itself; its "The Ironbow sends word…" is
-   read and closed on the way. Resolves with the word's text. */
+/* The Bastion reaches a day by itself; "The Ironbow sends word…" is read and closed on the way. */
 async function bastionReaches(ba, day) {
-  let word = '';
-  for (let n = 0; n < 160; n++) {
-    if (await ba.$('[data-test=ironbow-word]')) {
-      word += ' ' + (await bare(ba, '[data-test=ironbow-word]'));
-      await ba.click('[data-test=ironbow-word] .tsi-modal__foot button.tsi-btn--primary');
-    }
-    const ok = await ba.evaluate(d => {
-      const s = TSI.bastion.debug.state();
-      return s.day === d && !s.dayInProgress && !TSI.bastion.debug.busy();
-    }, day);
-    if (ok && !(await ba.$('[data-test=ironbow-word]'))) return word;
+  for (let n = 0; n < 200; n++) {
+    if (await ba.$('[data-test=ironbow-word]')) await ba.click('[data-test=ironbow-word] .tsi-modal__foot button.tsi-btn--primary');
+    const ok = await ba.evaluate(d => { const s = TSI.bastion.debug.state(); return s.day === d && !s.dayInProgress && !TSI.bastion.debug.busy(); }, day);
+    if (ok && !(await ba.$('[data-test=ironbow-word]'))) return;
     await ba.waitForTimeout(250);
   }
   throw new Error('The Bastion didn\'t reach Day ' + day);
 }
-async function passDays(ex, ba, n) {
-  await closeAll(ex);
-  await closeAll(ba);
-  let exWord = '';
-  for (let i = 0; i < n; i++) exWord += ' ' + ((await camp(ex)) || '');
-  const day = await ex.evaluate(() => TSI.explorer.debug.state().travel.day);
-  const baWord = await bastionReaches(ba, day);
-  return { exWord, baWord, day };
-}
-/* A facility's panel, opened from its tile. */
 async function openTile(ba, fac) {
   await closeAll(ba);
   await ba.waitForTimeout(300);
@@ -111,161 +88,91 @@ async function openTile(ba, fac) {
   await ba.waitForSelector('[data-test=panel-fac-' + fac + ']');
   await ba.waitForTimeout(300);
 }
-/* Construct a facility from the first empty construction slot. Resolves with the question. */
-async function construct(ba, fac) {
-  await closeAll(ba);
-  await ba.waitForTimeout(400);
-  const slot = await ba.$eval('button.tsi-bas-tile--slot', b => b.dataset.test);
-  await ba.click('[data-test=' + slot + ']');
-  await ba.waitForSelector('[data-test=build-' + fac + ']');
-  await ba.waitForTimeout(400);
-  await ba.click('[data-test=build-' + fac + ']');
-  await ba.waitForSelector('.tsi-modal__foot button:text-is("Construct")');
-  const q = await lastModal(ba);
-  await H.clickModal(ba, 'Construct');
-  await ba.waitForTimeout(400);
-  return q;
-}
-/* An order's button in its facility's panel (the panel opened first). */
-async function issue(ba, fac, key, choice) {
-  await openTile(ba, fac);
-  if (choice !== undefined) {
-    await ba.selectOption('[data-test=sel-' + key + ']', String(choice));
-    await ba.waitForTimeout(200);
-  }
-  await ba.click('[data-test=issue-' + key + ']');
-  await ba.waitForTimeout(450);
-}
-/* What an order's button says and whether it can be pressed, and the sentence under it. */
-async function orderState(ba, key) {
-  return ba.evaluate(k => {
-    const b = document.querySelector('[data-test="issue-' + k + '"]');
-    const w = document.querySelector('[data-test="why-' + k + '"]');
-    return { button: b.textContent, off: b.disabled, why: w && !w.hidden ? w.textContent : '' };
-  }, key);
-}
-/* The creatures a building's panel lists: { housed: [[name, status]], waiting: [...] }. */
-async function panelCreatures(ba, fac) {
-  return ba.evaluate(f => {
-    const rows = test => Array.from(document.querySelectorAll('[data-test="' + test + '"] [data-creature]'))
-      .map(r => [r.querySelector('.tsi-bas-creature__name').textContent, r.querySelector('.tsi-bas-creature__status').textContent]);
-    const room = document.querySelector('[data-test="creature-room-' + f + '"]');
-    return { room: room ? room.textContent : null, housed: rows('creatures-housed-' + f), waiting: rows('creatures-waiting-' + f) };
-  }, fac);
-}
-/* Grant a creature… in the Explorer: its kind, name and what it's for. */
-async function grant(ex, species, name, why) {
-  await closeAll(ex);
-  await ex.waitForTimeout(400);
-  await ex.click('[data-test=creature-open]');
-  await ex.waitForSelector('[data-test=creature-dialog]');
-  await ex.selectOption('[data-test=creature-species]', species);
-  await ex.fill('[data-test=creature-name]', name || '');
-  await ex.fill('[data-test=creature-why]', why || '');
-  await ex.click('[data-test=creature-dialog] .tsi-modal__foot .tsi-btn--primary');
-  await ex.waitForTimeout(400);
-}
-/* The panel opens with its House order in view, above the footer, and nothing scrolls sideways. */
-async function panelFits(ba, key) {
-  const lay = await H.layoutCheck(ba, ['[data-test=issue-' + key + ']']);
-  const box = await ba.$eval('[data-test=issue-' + key + ']', b => {
-    const r = b.getBoundingClientRect();
-    const f = b.closest('.tsi-modal').querySelector('.tsi-modal__foot');
-    return { bottom: r.bottom, footTop: f ? f.getBoundingClientRect().top : 99999 };
-  });
-  return { sideways: lay.scrollWidth > lay.clientWidth, outOfView: lay.outOfView, underFooter: box.bottom > box.footTop };
-}
-const modalOpen = async page => !!(await page.$('.tsi-modal:not(.tsi-bas-panel)'));
-async function clickPop(page, label) {
-  await page.click('.tsi-modal:not(.tsi-bas-panel) .tsi-modal__foot button:text-is("' + label + '")');
-  await page.waitForTimeout(150);
-}
-
-const text = (page, test) => page.$eval('[data-test=' + test + ']', n => n.textContent.replace(/\s+/g, ' ').trim());
 
 (async () => {
   const browser = await H.chromium.launch();
-  const ctx = await context(browser, 'laptop');
+  const ctx = await context(browser);
   let ba = null;
   let ex = null;
+  let box = '';
 
-  section('Harry\'s sample on the test page');
+  section('Harry\'s sample with the old Shrines\' orders, on the test page');
 
-  await check('the sample imports: the three Shrines at Level 5, each god\'s Favour at 60%, the Courier Exchange at Level 2', async () => {
+  await check('it imports and the box that says what changed describes the Temple, the orders that carried on and the ones that ended', async () => {
     ba = await ctx.newPage();
     await ba.goto(HARNESS + '?tool=bastion');
     await ba.waitForFunction(() => window.TSI && TSI.bastion && TSI.bastion.debug, null, { timeout: 8000 });
-    await H.chooseFile(ba, '[data-test=import-save]', SAMPLE);
+    await H.chooseFile(ba, '[data-test=import-save]', withOrders());
     await H.clickModal(ba, 'Import');
-    await ba.waitForFunction(() => window.TSI && TSI.bastion && TSI.bastion.debug && (TSI.bastion.debug.state().builtExtras || []).filter(Boolean).length === 3, null, { timeout: 8000 });
-    /* The box that says what changed holds the Bastion until it is read (the Strip Back Overhaul). */
+    await ba.waitForSelector('[data-test=changes-box]', { timeout: 8000 });
+    box = await bare(ba, '[data-test=changes-box]');
+    assert(/Places that joined others\. The Shrine of Telluria, the Shrine of Aurush and the Shrine of Pelagos have become one Temple\./.test(box), box);
+    assert(/Each god has a Favour bar there, a Pray button \(instant: it adds a d50 roll, 1 to 50 percent, to the bar\) and Receive Blessing, a list of three blessings that opens when the bar is full/.test(box), box);
+    assert(/Your Favour bars carry over as they are\./.test(box), box);
+    assert(/Favour\. Pelagos: 5% went back to the bar \(on Day 1 it went from 60% to 65%\)\./.test(box), box);
+    assert(/Goods\. /.test(box) === false, 'the charm held no goods, so none came back');
+    assert(/3 orders were cancelled: Shrine of Aurush: Craft \(Aurush Sun Charm\) \(the Temple has no Craft order any more\); Shrine of Pelagos: Pray \(Pelagos's Blessing\) \(praying at the Temple is instant now, so this one-day prayer ended without its roll\); Shrine of Pelagos: Prepare Aquatic Protection Charm \(1 Aquatic Protection Charm\) \(the Temple gives three blessings for each god, and this is not one of Pelagos's\)\./.test(box), box);
+    assert(/2 orders moved with their places, keeping their due days: Shrine of Telluria: Prepare Rootguard Salve \(2 doses of Rootguard Salve\) \(now at the Temple\); Shrine of Pelagos: Great Rite of Pelagos \(now at the Temple\)\./.test(box), box);
+    assert(!/shrine_|undefined|null|NaN|\[object/.test(box), 'no code words');
+    const lay = await H.layoutCheck(ba, ['[data-test=changes-box]', '[data-test=changes-ok]']);
+    assert(lay.scrollWidth <= lay.clientWidth && lay.outOfView.length === 0, 'the box fits: ' + JSON.stringify(lay));
     await H.ackChanges(ba);
-    ex = await openExplorer(ctx, HARNESS);
+    ex = await openExplorer(ctx);
     await ba.waitForFunction(() => TSI.bastion.debug.state().anchored, null, { timeout: 8000 });
+  });
+
+  section('One Temple');
+
+  await check('one Temple stands where the first Shrine did, the other two slots are free, it has one level, and each god\'s Favour is as it was (Pelagos\'s 5% came back)', async () => {
     const s = await bas(ba);
-    equal([s.favour, s.facilityLevels.shrine_telluria, s.facilityLevels.courier_exchange], [{ telluria: 60, aurush: 60, pelagos: 60 }, 5, 2]);
+    equal(s.builtExtras.slice(0, 3).map(e => e && e.facId), ['temple', '', ''], 'the Temple in the first Shrine\'s slot, the other two free');
+    equal(s.builtExtras.filter(Boolean).map(e => e.facId), ['temple'], 'and nothing else');
+    equal([s.facilityLevels.temple, 'shrine_telluria' in s.facilityLevels, 'shrine_aurush' in s.facilityLevels, 'shrine_pelagos' in s.facilityLevels], [1, false, false, false]);
+    equal(s.favour, { telluria: 60, aurush: 60, pelagos: 65 });
+    equal(s.archivedFacilities.filter(a => /^shrine_/.test(a.facId)).map(a => [a.facId, a.name]), [['shrine_telluria', 'Shrine of Telluria'], ['shrine_aurush', 'Shrine of Aurush'], ['shrine_pelagos', 'Shrine of Pelagos']]);
+    equal(s.pendingOrders.map(o => [o.id, o.facId, o.fnId, o.label, o.dueDay, o.favourCost]), [
+      ['sh-1', 'temple', 'prepare_rootguard_salve', 'Temple: Rootguard Salve', 4, 5],
+      ['sh-2', 'temple', 'great_rite_pelagos', 'Temple: Great Rite of Pelagos', 6, 25]
+    ], 'the two that carried on kept their ids, due days and the Favour they had taken');
+    equal(await ba.$('[data-test=tile-shrine_telluria]'), null, 'no Shrine tile');
   });
 
-  section('The Shrines');
-
-  await check('the Shrine of Telluria shows its Favour, its four new orders, and Bless Bastion Foundations not yet available, with the reason', async () => {
-    await openTile(ba, 'shrine_telluria');
-    equal(await text(ba, 'shrine-favour-telluria'), 'Telluria\'s Favour: 60%. Orders from Level 3 spend it when they start (5%, 10%, then 25% for the Great Rite).');
-    equal((await orderState(ba, 'shrine_telluria__prepare_earthward_talisman')).button, 'Issue Order');
-    equal(await orderState(ba, 'shrine_telluria__bless_bastion_foundations'), { button: 'Not available yet', off: true, why: 'Not available yet: no Bastion event damages a facility by natural causes yet (an attack\'s damage never counts). This order opens once one exists.' });
-    const fit = await H.layoutCheck(ba, ['[data-test=issue-shrine_telluria__great_rite_telluria]']);
-    assert(fit.scrollWidth <= fit.clientWidth, 'no sideways scroll');
-  });
-
-  await check('Prepare Rootguard Salve takes 5% of Telluria\'s Favour once (a double click gives one order); the Great Rite takes 25%', async () => {
-    await ba.dblclick('[data-test=issue-shrine_telluria__prepare_rootguard_salve]');
-    await ba.waitForTimeout(400);
-    await ba.click('[data-test=issue-shrine_telluria__great_rite_telluria]');
-    await ba.waitForTimeout(400);
-    const s = await bas(ba);
-    equal([s.favour.telluria, s.pendingOrders.map(o => [o.label, o.dueDay, o.favourCost])], [30, [['Shrine of Telluria: Prepare Rootguard Salve', 5, 5], ['Shrine of Telluria: Great Rite of Telluria', 8, 25]]]);
-    assert(/25% of Telluria's Favour spent \(now 30%\)/.test(s.log.map(l => l.body).join(' | ')));
-    equal(await text(ba, 'shrine-favour-telluria'), 'Telluria\'s Favour: 30%. Orders from Level 3 spend it when they start (5%, 10%, then 25% for the Great Rite).');
-  });
-
-  await check('not enough Favour: the order says so and gives nothing', async () => {
+  await check('the Temple\'s panel shows both orders pending and the three gods\' bars as they were', async () => {
+    await openTile(ba, 'temple');
+    assert(/Temple: Rootguard Salve/.test(await bare(ba, '[data-test=panel-fac-temple]')) && /Temple: Great Rite of Pelagos/.test(await bare(ba, '[data-test=panel-fac-temple]')), await bare(ba, '[data-test=panel-fac-temple]'));
+    equal([await bare(ba, '[data-test=temple-favour-telluria]'), await bare(ba, '[data-test=temple-favour-aurush]'), await bare(ba, '[data-test=temple-favour-pelagos]')], ['60%', '60%', '65%']);
     await closeAll(ba);
-    await ba.evaluate(() => TSI.bastion.debug.change(s => { s.favour.aurush = 4; }));
-    await openTile(ba, 'shrine_aurush');
-    equal(await orderState(ba, 'shrine_aurush__prepare_purification_incense'), { button: 'Can\'t order yet', off: true, why: 'Needs 5% of Aurush\'s Favour; the Ironbow has 4%.' });
-    equal((await orderState(ba, 'shrine_aurush__great_rite_aurush')).why, 'Needs 25% of Aurush\'s Favour; the Ironbow has 4%.');
-    await ba.evaluate(() => TSI.bastion.debug.change(s => { s.favour.aurush = 60; }));
   });
 
-  await check('Bless Commercial Shipment and Bless Voyage at the Shrine of Pelagos', async () => {
-    await openTile(ba, 'shrine_pelagos');
-    await ba.click('[data-test=issue-shrine_pelagos__bless_commercial_shipment]');
-    await ba.waitForTimeout(400);
-    await ba.click('[data-test=issue-shrine_pelagos__bless_voyage]');
-    await ba.waitForTimeout(400);
-    equal((await bas(ba)).favour.pelagos, 50);
-  });
+  section('The carried-over orders complete');
 
-  await check('7 camps later (Day 8): the salve and the blessing are in the Warehouse, Earth\'s Endurance waits at the Ironbow, and a Blessing of Pelagos waits for the Dock', async () => {
+  await check('5 camps later (Day 6): the salve is in the Warehouse (Day 4), the Great Rite of Pelagos waits at the Ironbow (Day 6); nothing is left pending', async () => {
     await closeAll(ba);
-    await passDays(ex, ba, 7);
+    for (let i = 0; i < 5; i++) await camp(ex);
+    const day = await ex.evaluate(() => TSI.explorer.debug.state().travel.day);
+    equal(day, 6);
+    await bastionReaches(ba, day);
     const s = await bas(ba);
-    equal(s.warehouse.filter(w => w.goodId).map(w => [w.goodId, w.qty]).sort(), [['rootguard_salve', 2], ['voyage_blessing', 1]]);
-    equal(s.greatRites.map(g => [g.rite, g.god, g.madeDay, g.status]), [['earths_endurance', 'telluria', 8, 'waiting']]);
-    equal(s.tradeNetwork.protections, { pelagos_blessing: { charges: 1 } });
-    await openTile(ba, 'shrine_telluria');
-    assert(/Earth's Endurance: waiting at the Ironbow since Day 8/.test(await text(ba, 'shrine-telluria')), await text(ba, 'shrine-telluria'));
-    await openTile(ba, 'shrine_pelagos');
-    assert(/Blessings of Pelagos held for the Dock: 1\. The next ship sent with cargo takes one/.test(await text(ba, 'shrine-pelagos')), await text(ba, 'shrine-pelagos'));
+    equal(s.warehouse.filter(w => w.goodId).map(w => [w.goodId, w.qty]), [['rootguard_salve', 2]]);
+    equal(s.greatRites.map(g => [g.id, g.rite, g.god, g.madeDay, g.status]), [['rite-sh-2', 'tides_passage', 'pelagos', 6, 'waiting']]);
+    equal(s.pendingOrders, []);
+    equal(s.favour, { telluria: 60, aurush: 60, pelagos: 65 }, 'finishing an order that is already paid for costs no more Favour');
   });
 
-  await check('the Courier Exchange lists the Shrines\' items beside packs and charts', async () => {
+  await check('the Great Rite shows under Pelagos in the Temple\'s panel, and only there', async () => {
+    await openTile(ba, 'temple');
+    assert(/Tide's Passage: waiting at the Ironbow since Day 6/.test(await bare(ba, '[data-test=temple-god-pelagos]')), await bare(ba, '[data-test=temple-god-pelagos]'));
+    equal(await ba.$('[data-test=great-rites-telluria]'), null);
+    await closeAll(ba);
+  });
+
+  await check('the Courier Exchange lists the Temple\'s items beside packs and charts', async () => {
     await closeAll(ba);
     await openTile(ba, 'courier_exchange');
     await ba.click('[data-test=send-parcel]');
     await ba.waitForTimeout(500);
     const t = await lastModal(ba);
-    assert(/Rootguard Salvein the Warehouse: 2 doses/.test(t) && /Voyage Blessingin the Warehouse: 1 blessing/.test(t) && /Aquatic Protection Charmin the Warehouse: 0 charms/.test(t), t);
+    assert(/Rootguard Salvein the Warehouse: 2 doses/.test(t), t);
     await closeAll(ba);
   });
 
@@ -274,7 +181,8 @@ const text = (page, test) => page.$eval('[data-test=' + test + ']', n => n.textC
     await ba.reload();
     await ba.waitForFunction(() => window.TSI && TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().anchored, null, { timeout: 8000 });
     const after = await bas(ba);
-    equal([after.favour, after.greatRites, after.tradeNetwork.protections, after.warehouse], [before.favour, before.greatRites, before.tradeNetwork.protections, before.warehouse]);
+    equal([after.favour, after.greatRites, after.tradeNetwork.protections, after.warehouse, after.builtExtras, after.pendingOrders], [before.favour, before.greatRites, before.tradeNetwork.protections, before.warehouse, before.builtExtras, before.pendingOrders]);
+    equal(await ba.$('[data-test=changes-box]'), null, 'the box is not shown again once read');
   });
 
   await check('nothing went wrong or reached for the internet', async () => {

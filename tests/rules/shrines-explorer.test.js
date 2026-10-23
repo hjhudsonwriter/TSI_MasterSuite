@@ -24,12 +24,12 @@
     b.greatRites = [{ id: UID, rite: 'cleansing_radiance', god: 'aurush', madeDay: 8, status: 'waiting' }];
     return b;
   }
-  function ritesOf(rite) { return { id: Bg.riteMessageId(UID), type: 'rite', day: 6, at: '2026-10-15T10:00:00.000Z', from: { code: 'DM', title: 'Shrine blessing', step: 'dm' }, riteId: UID, rite: rite || 'cleansing_radiance', text: 'x' }; }
+  function ritesOf(rite) { return { id: Bg.riteMessageId(UID), type: 'rite', day: 6, at: '2026-10-15T10:00:00.000Z', from: { code: 'DM', title: 'Temple blessing', step: 'dm' }, riteId: UID, rite: rite || 'cleansing_radiance', text: 'x' }; }
   function exWith(list, day) { return { travel: { day: day || 10 }, journey: { outbox: list } }; }
   function started() { var s = explorer(6); J.startExpedition(s); return s; }
 
   test('a Great Rite message: fixed id, no Clan; clean() and check() agree; unknown rites are refused', function (t) {
-    var m = Bg.riteMessage({ riteId: UID, rite: 'tides_passage', day: 4, at: 'x', from: { code: 'DM', title: 'Shrine blessing', step: 'dm' }, text: 'Given.' });
+    var m = Bg.riteMessage({ riteId: UID, rite: 'tides_passage', day: 4, at: 'x', from: { code: 'DM', title: 'Temple blessing', step: 'dm' }, text: 'Given.' });
     t.equal(m.id, UID + ':rite:0');
     t.equal(m.type, 'rite');
     t.same(Bg.clean(m), m, 'clean() keeps a rite as it is');

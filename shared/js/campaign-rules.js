@@ -59,7 +59,7 @@
        'cancel': the facility's orders end, with a refund (the Barracks, Armoury,
                  Watchtower, War Room and Menagerie);
        'move':   the facility's orders carry on somewhere else (the Library and
-                 Arcane Laboratory's to the Workshop; the Shrines' to the Temple;
+                 Arcane Laboratory's to the Workshop; the Shrines' blessings to the Temple;
                  the Wyvern Roost, Griffin Tower and Dire Wolf Den's House orders to
                  the Beast Pen), EXCEPT the few that end, which
                  C.cancelledByConversion names exactly.
@@ -75,12 +75,16 @@
     shrine_telluria: 'move', shrine_aurush: 'move', shrine_pelagos: 'move',
     wyvern_roost: 'move', griffin_tower: 'move', dire_wolf_den: 'move'
   };
-  /* The Shrines' orders that end: the proposed default in
-     docs/strip-back/F-temple-hall-dock.md, where the Temple keeps three blessings
-     for each god and drops the Craft charms, Purification Incense, Aquatic
-     Protection Charm and Bless Bastion Foundations. Change this list in the same
-     commit as the step that settles the Shrines, if that step decides otherwise. */
-  var SHRINE_ORDERS_THAT_END = ['craft', 'prepare_purification_incense', 'prepare_aquatic_protection_charm', 'bless_bastion_foundations'];
+  /* The Shrines' orders that carry on at the Temple (step S11, Harry, 22 October 2026): the nine blessings it gives, three
+     for each god (the same ids as the Temple's blessing functions in tools/bastion/data/facilities-data.js, which the step
+     shrinesToTemple in tools/bastion/strip-back-rules.js reads; a test keeps the two the same). Every other Shrine order
+     ends with its cost given back: Craft, every Pray (the Temple's Pray is instant), Purification Incense, the Aquatic
+     Protection Charm and Bless Bastion Foundations. */
+  var SHRINE_ORDERS_THAT_CARRY_ON = {
+    shrine_telluria: ['prepare_earthward_talisman', 'prepare_rootguard_salve', 'great_rite_telluria'],
+    shrine_aurush: ['prepare_blessed_lantern', 'consecrate_expedition_supplies', 'great_rite_aurush'],
+    shrine_pelagos: ['bless_voyage', 'bless_commercial_shipment', 'great_rite_pelagos']
+  };
   /* The House orders the Beast Pen step moves (the same lists as HOUSE_FNS in tools/bastion/strip-back-rules.js). */
   var BEAST_HOUSE_ORDERS = { wyvern_roost: ['house_elara_wyvern', 'house_wyvern'], griffin_tower: ['house_griffin'], dire_wolf_den: ['house_dire_wolf'] };
   /* The Wyvern Roost, Griffin Tower and Dire Wolf Den become ONE Beast Pen when the Bastion converts a version 2 or 3 save
@@ -88,20 +92,27 @@
      read before that must forecast the same: one Pen. (Repairs are no longer forecast at all: the war removal took them out.) */
   function isOldPen(id) { return Object.prototype.hasOwnProperty.call(BEAST_HOUSE_ORDERS, id); }
   function slotId(e) { return typeof e === 'string' ? e : isObj(e) ? str(e.facId) : ''; }
-  /* The day the one Beast Pen will be finished, for a save that will be converted and has none standing yet; else null. */
-  function penReadyDay(ba) {
+  /* The Shrines of Telluria, Aurush and Pelagos likewise become ONE Temple (shrinesToTemple): a built one is the Temple, else the one
+     that would be ready first; the other Shrines' construction stops. */
+  function isOldShrine(id) { return Object.prototype.hasOwnProperty.call(SHRINE_ORDERS_THAT_CARRY_ON, id); }
+  /* The day the one building that several old ones become will be finished, for a save that will be converted and has none
+     standing yet; else null. (isOld says whether an id is one of the old ones; newId is the building they become.) */
+  function mergedReadyDay(ba, isOld, newId) {
     var slots = (Array.isArray(ba.builtExtras) ? ba.builtExtras : []).concat(Array.isArray(ba.builtPlots) ? ba.builtPlots : []);
     var standing = false, soonest = null;
     slots.forEach(function (e) {
       var id = slotId(e);
-      if (id === 'beast_pen') standing = true;
-      else if (isOldPen(id)) {
+      if (id === newId) standing = true;
+      else if (isOld(id)) {
         if (isObj(e) && e.status === 'building') { if (isNum(e.readyDay) && (soonest === null || e.readyDay < soonest)) soonest = e.readyDay; }
         else standing = true;
       }
     });
     return standing ? null : soonest;
   }
+  /* The day the one Beast Pen will be finished, or the one Temple, for a save that will be converted and has none standing yet; else null. */
+  function penReadyDay(ba) { return mergedReadyDay(ba, isOldPen, 'beast_pen'); }
+  function templeReadyDay(ba) { return mergedReadyDay(ba, isOldShrine, 'temple'); }
   /* The war game (the War Council, the War Table, wars, regiments, defenders and Military Actions) was removed on 22
      October 2026 (step S06). A War Action was an order at the War Council, which is not a facility of the catalogue;
      the conversion cancels it (settleWarOrders), so it is never forecast, whatever the save's version. */
@@ -124,12 +135,7 @@
     if (RETIRED_FACILITIES[o.facId] === 'cancel') return true;
     /* Whatever a place's orders do, its Upgrade orders end (the place is going; they cost no gold). */
     if (isObj(o.meta) && o.meta.kind === 'upgrade') return true;
-    if (/^shrine_/.test(o.facId)) {
-      if (SHRINE_ORDERS_THAT_END.indexOf(o.fnId) !== -1) return true;
-      /* A prayer: only the Favour prayer (option 3) carries on, as the Temple's Pray. */
-      if (o.fnId === 'pray') return isObj(o.chosen) && isObj(o.chosen.special) && o.chosen.special.type !== 'favour_blessing';
-      return false;
-    }
+    if (SHRINE_ORDERS_THAT_CARRY_ON[o.facId]) return SHRINE_ORDERS_THAT_CARRY_ON[o.facId].indexOf(o.fnId) === -1;
     /* A creature building: its House orders carry on at the Beast Pen (rehomeBeasts); training, riding and flight orders end. */
     if (BEAST_HOUSE_ORDERS[o.facId]) return BEAST_HOUSE_ORDERS[o.facId].indexOf(o.fnId) === -1;
     /* The Library & Scriptorium and the Arcane Laboratory: their jobs go to the Workshop's Scholar and Alchemist. */
@@ -175,9 +181,12 @@
         if (Object.prototype.hasOwnProperty.call(RETIRED_FACILITIES, e.facId) && RETIRED_FACILITIES[e.facId] === 'cancel') return;
         /* The Roost, Tower and Den: the one ready first carries on as the Beast Pen (below); the others' work stops. */
         if (converting && isOldPen(slotId(e))) return;
+        /* The three Shrines: the same, as the Temple (below). */
+        if (converting && isOldShrine(slotId(e))) return;
         add(e.readyDay, 'built', 'The ' + facilityName(e.facId) + ' is built.');
       });
       if (converting) { var penDay = penReadyDay(ba); if (penDay !== null) add(penDay, 'built', 'The Beast Pen is built.'); }
+      if (converting) { var templeDay = templeReadyDay(ba); if (templeDay !== null) add(templeDay, 'built', 'The Temple is built.'); }
       liveOrders(ba).forEach(function (o) {
         if (!isObj(o) || !isNum(o.dueDay)) return;
         var label = str(o.label) || 'An order';

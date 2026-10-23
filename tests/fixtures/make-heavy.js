@@ -102,6 +102,12 @@ function order(id, facId, fnId, optionIdx, extra) {
   };
   return Object.assign(o, extra || {});
 }
+/* An order at one of the three retired Shrines, as the Bastion saved it before they became the Temple. */
+function shrineOrder(id, facId, fnId, chosen, label, dueDay, extra) {
+  return Object.assign({
+    id, facId, fnId, chosen, optionLabel: chosen ? chosen.label : null, notes: '', label, costGP: 0, issuedDay: DAY - 2, dueDay
+  }, extra || {});
+}
 function held(goodId, qty) { return { goodId, name: R.goodName(data, goodId), qty }; }
 const opt = (facId, fnId, label) => R.fn(R.facility(data, facId), fnId).options.findIndex(o => o.label === label);
 
@@ -128,12 +134,14 @@ s.pendingOrders = [
   order('hv-16', 'arcane_laboratory', 'alchemy', 0),
   /* An upgrade at a facility that is merged away: cancelled. */
   { id: 'hv-17', facId: 'shrine_pelagos', fnId: 'upgrade', chosen: null, optionLabel: null, notes: '', label: 'Shrine of Pelagos: Upgrade to Level 6', costGP: 0, issuedDay: DAY - 1, dueDay: DAY + 28, meta: { kind: 'upgrade', toLevel: 6 } },
-  /* Shrines: the Favour prayer moves, the hint and the long rest are cancelled, a blessing moves, a charm is cancelled with its Favour and goods. */
-  order('hv-18', 'shrine_telluria', 'pray', 2),
-  order('hv-19', 'shrine_pelagos', 'pray', 0),
-  order('hv-20', 'shrine_telluria', 'prepare_rootguard_salve', 0, { favourCost: 5, dueDay: DAY + 2 }),
-  order('hv-21', 'shrine_pelagos', 'prepare_aquatic_protection_charm', 0, { favourCost: 5, inputs: [held('alchemical_flowers', 3)], dueDay: DAY + 2 }),
-  order('hv-22', 'shrine_pelagos', 'great_rite_pelagos', 0, { favourCost: 25, dueDay: DAY + 5 }),
+  /* Shrines (the three Shrines became one Temple in step S11, so they are no longer in the catalogue and these orders are written out
+     as the Bastion saved them): a prayer for Favour, a hint prayer, a salve and a Great Rite (the salve and the Great Rite carry on at the
+     Temple), and an Aquatic Protection Charm (cancelled, with its Favour and goods). */
+  shrineOrder('hv-18', 'shrine_telluria', 'pray', { label: 'Telluria\'s Blessing', special: { type: 'favour_blessing', god: 'telluria' } }, 'Shrine of Telluria: Pray (Telluria\'s Blessing)', 39),
+  shrineOrder('hv-19', 'shrine_pelagos', 'pray', { label: 'Pelagos\'s Tidings', special: { type: 'oracle_hint', god: 'pelagos' } }, 'Shrine of Pelagos: Pray (Pelagos\'s Tidings)', 39),
+  shrineOrder('hv-20', 'shrine_telluria', 'prepare_rootguard_salve', { label: '2 doses of Rootguard Salve', outputs: [{ good: 'rootguard_salve', qty: 2 }] }, 'Shrine of Telluria: Prepare Rootguard Salve (2 doses of Rootguard Salve)', DAY + 2, { favourCost: 5 }),
+  shrineOrder('hv-21', 'shrine_pelagos', 'prepare_aquatic_protection_charm', { label: '1 Aquatic Protection Charm', outputs: [{ good: 'aquatic_protection_charm', qty: 1 }] }, 'Shrine of Pelagos: Prepare Aquatic Protection Charm (1 Aquatic Protection Charm)', DAY + 2, { favourCost: 5, inputs: [held('alchemical_flowers', 3)] }),
+  shrineOrder('hv-22', 'shrine_pelagos', 'great_rite_pelagos', null, 'Shrine of Pelagos: Great Rite of Pelagos', DAY + 5, { favourCost: 25 }),
   /* The Hall: a Port Charter moves to the Dock; the actions are cancelled with their gold. */
   order('hv-23', 'hall_of_emissaries', 'register_port_charter', 0, { chosen: { charterId: 'chr-hv-timberport', label: 'Timberport' }, optionLabel: 'Timberport', label: 'Hall of Emissaries: Register Port Charter (Timberport)', dueDay: DAY + 1 }),
   /* The Hall's actions no longer exist in the data (step S09), so these two are written out as a version 3 Bastion held them. */

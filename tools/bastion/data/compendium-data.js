@@ -1,9 +1,11 @@
-/* The Ironbow Bastion Manager: the 238 compendium entries (62 filled in, the rest name only).
+/* The Ironbow Bastion Manager: the 223 compendium entries (62 filled in, the rest name only).
    A word-for-word copy of the old tool's data/compendium_items.json (265 entries), stored as a
    script so it loads from a double-clicked file. Edit it here.
    The Strip Back Overhaul (22 October 2026) took out the 21 entries that belonged to the war
    game: the Menagerie's 13 beasts, the War Room's six units and Lieutenant, and the old
    Regiment (100). The restore point is commit 4f1db26.
+   The Temple (S11, 22 October 2026) took out the 15 entries that belonged to the three Shrines: the six
+   Craft charms and the nine prayers.
    Step S09 (22 October 2026) took out the 12 entries that were only the Clan and Clan-pair choices of the
    Hall of Emissaries' orders ("Clan Karr", "Bacca + Molten" and the rest); none had anything written in it. */
 window.TSI_DATA = window.TSI_DATA || {};
@@ -65,41 +67,6 @@ window.TSI_DATA.bastionCompendium = {
       "summary": "",
       "source": "",
       "roll20": "https://roll20.net/compendium/dnd5e/Assassin's%20Blood"
-    },
-    "Aurush Ember Charm": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Aurush%20Ember%20Charm"
-    },
-    "Aurush Sun Charm": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Aurush%20Sun%20Charm"
-    },
-    "Aurush's Blessing": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Aurush's%20Blessing"
-    },
-    "Aurush's Insight": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Aurush's%20Insight"
-    },
-    "Aurush's Radiance": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Aurush's%20Radiance"
     },
     "Backpack": {
       "type": "Adventuring Gear",
@@ -990,41 +957,6 @@ window.TSI_DATA.bastionCompendium = {
       "source": "",
       "roll20": "https://roll20.net/compendium/dnd5e/Palisade%20section"
     },
-    "Pelagos Current Charm": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Pelagos%20Current%20Charm"
-    },
-    "Pelagos Tide Charm": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Pelagos%20Tide%20Charm"
-    },
-    "Pelagos's Blessing": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Pelagos's%20Blessing"
-    },
-    "Pelagos's Deep Rest": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Pelagos's%20Deep%20Rest"
-    },
-    "Pelagos's Tidings": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Pelagos's%20Tidings"
-    },
     "Pelagosi Tide-Preacher Disguise": {
       "type": "",
       "attunement": "",
@@ -1480,47 +1412,12 @@ window.TSI_DATA.bastionCompendium = {
       "source": "",
       "roll20": "https://roll20.net/compendium/dnd5e/Tack%20and%20reins"
     },
-    "Telluria's Blessing": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Telluria's%20Blessing"
-    },
-    "Telluria's Embrace": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Telluria's%20Embrace"
-    },
-    "Telluria's Guidance": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Telluria's%20Guidance"
-    },
     "Tellurian Priest Disguise": {
       "type": "",
       "attunement": "",
       "summary": "",
       "source": "",
       "roll20": "https://roll20.net/compendium/dnd5e/Tellurian%20Priest%20Disguise"
-    },
-    "Tellurian Root Charm": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Tellurian%20Root%20Charm"
-    },
-    "Tellurian Stone Charm": {
-      "type": "",
-      "attunement": "",
-      "summary": "",
-      "source": "",
-      "roll20": "https://roll20.net/compendium/dnd5e/Tellurian%20Stone%20Charm"
     },
     "Tent (leather panels)": {
       "type": "",

@@ -596,13 +596,22 @@
     g.assignedDay = s.day;
     return { r: 'applied', held: false, rite: g.rite, riteId: g.id };
   };
-  /* The god whose Favour a Shrine's order spends ('shrine_aurush' → 'aurush'). */
-  R.shrineGod = function (facId) { var m = /^shrine_(telluria|aurush|pelagos)$/.exec(String(facId || '')); return m ? m[1] : ''; };
+  R.GODS = ['telluria', 'aurush', 'pelagos'];
   R.GOD_NAMES = { telluria: 'Telluria', aurush: 'Aurush', pelagos: 'Pelagos' };
+  /* The god a Temple function serves, from the data: the function's own "god" in facilities-data.js ('great_rite_pelagos'
+     → 'pelagos'). The Temple is one building for all three gods, so the facility's id says nothing. A retired Shrine
+     (an old save's order at shrine_aurush) is found in the Strip Back table (bastion-data.js stripBack.gods), when
+     the data is given; with neither, '' (never a made-up god, so nothing is ever charged to favour['']). */
+  R.shrineGod = function (facId, fn, data) {
+    var g = fn && typeof fn.god === 'string' ? fn.god : '';
+    if (R.GODS.indexOf(g) !== -1) return g;
+    var old = data && data.bastion && isObj(data.bastion.stripBack) && isObj(data.bastion.stripBack.gods) ? data.bastion.stripBack.gods[String(facId || '')] : '';
+    return R.GODS.indexOf(old) !== -1 ? old : '';
+  };
   /* Why an order's Favour can't be paid now ('' if it can, or it costs none). */
   R.favourBlocker = function (s, fac, fn) {
     var cost = fn && fn.favourCost ? clampInt(fn.favourCost, 0, 100) : 0;
-    var god = R.shrineGod(fac && fac.id);
+    var god = R.shrineGod(fac && fac.id, fn);
     if (!cost || !god) return '';
     var have = clampInt(isObj(s.favour) ? s.favour[god] : 0, 0, 100);
     return have < cost ? 'Needs ' + cost + '% of ' + R.GOD_NAMES[god] + '\'s Favour; the Ironbow has ' + have + '%.' : '';
@@ -1447,7 +1456,16 @@
       if (!isObj(p) || !okDay(p.x) || !okDay(p.y)) return null;
       var f = R.facility(data, id);
       return { fac: id, name: (f && f.name) || id, level: R.getFacilityLevel(s, id), single: !!(f && f.singleLevel), x: p.x, y: p.y, repair: !!R.underRepair(s, id) };
-    }).filter(Boolean);
+    }).filter(Boolean).reduce(function (out, l) {
+      out.push(l);
+      /* A building painted in more than one place (the Temple's three Shrines) lists its other points in "also": the
+         same label at each, numbered from 2. */
+      var more = isObj(at[l.fac]) && arr(at[l.fac].also) ? at[l.fac].also : [];
+      more.forEach(function (q, i) {
+        if (isObj(q) && okDay(q.x) && okDay(q.y)) out.push(Object.assign({}, l, { x: q.x, y: q.y, part: i + 2 }));
+      });
+      return out;
+    }, []);
   };
   /* Built and working (249-255). */
   R.builtFacilityIds = function (s, data) {
@@ -2054,6 +2072,9 @@
     if (!fac || !fn) return { ok: false };
     var broken = repairRefusal(s, fac);
     if (broken) return broken;
+    /* A Temple blessing happens at once, from the Temple's own buttons (temple-rules.js R.templeReceive); it is never an
+       order with days. (An order carried over from an old Shrine is the only kind that waits.) */
+    if (fn.blessing) return { ok: false, message: 'A blessing is received at the Temple itself: when a god\'s bar is full, choose it there. It happens at once.' };
     /* Acclimatise With Beast is a roll at the table, never an order with days
        (creature-rules.js R.acclimatise). */
     if (fn.acclimatise) return { ok: false, message: 'Acclimatise With Beast is rolled at the table: choose the beast and press its button, then type the handler\'s total.' };
@@ -2105,8 +2126,8 @@
     /* A Shrine order's Favour (pull request 8b): taken once, when it starts. */
     var noFavour = R.favourBlocker ? R.favourBlocker(s, fac, fn) : '';
     if (noFavour) return { ok: false, message: noFavour };
-    var favour = fn.favourCost ? clampInt(fn.favourCost, 0, 100) : 0;
-    if (favour) s.favour[R.shrineGod(fac.id)] -= favour;
+    var favour = fn.favourCost && R.shrineGod(fac.id, fn) ? clampInt(fn.favourCost, 0, 100) : 0;
+    if (favour) s.favour[R.shrineGod(fac.id, fn)] -= favour;
     s.treasuryGP -= costGP;
     /* Its goods leave the Warehouse now and are held by the order (Harry's
        guide: an order's inputs are set aside when it begins). */
@@ -2118,7 +2139,7 @@
     if (favour) o.favourCost = favour;
     s.pendingOrders.push(o);
     return { ok: true, log: ['Order Issued', label + ' (' + days + (days === 1 ? ' day' : ' days') + ': due Day ' + (s.day + days) + ')' + (taken.length ? '. Taken from the Warehouse: ' + R.goodsListText(data, taken) : '') +
-      (favour ? '. ' + favour + '% of ' + R.GOD_NAMES[R.shrineGod(fac.id)] + '\'s Favour spent (now ' + s.favour[R.shrineGod(fac.id)] + '%)' : '') + '.'] };
+      (favour ? '. ' + favour + '% of ' + R.GOD_NAMES[R.shrineGod(fac.id, fn)] + '\'s Favour spent (now ' + s.favour[R.shrineGod(fac.id, fn)] + '%)' : '') + '.'] };
   };
 
   /* Cancelling an order keeps the gold spent (B9, kept). */
@@ -2475,26 +2496,9 @@
     var label = order.label || (fac.name + ': ' + fn.label);
     var optionLabel = order.optionLabel || null;
     var chosen = order.chosen || null;
-    var special = chosen && chosen.special ? chosen.special : null;
-    if (special && special.type) {
-      var god = String(special.god || '').toLowerCase();
-      if (special.type === 'favour_blessing') {
-        var r20 = R.d(20, rand);
-        R.addFavourPercent(s, god, r20);
-        return [['Order Completed', label + ' → Rolled 1d20 = ' + r20 + '. Added +' + r20 + '% to ' + god.toUpperCase() + ' favour.']];
-      }
-      if (special.type === 'oracle_hint') {
-        var r10 = R.d(10, rand);
-        var hit = r10 >= 4 && r10 <= 7;
-        return [['Order Completed', label + ' → Rolled 1d10 = ' + r10 + '. ' + (hit ? 'A hint is granted (DM decides the hint).' : 'No hint this time.')]];
-      }
-      if (special.type === 'blessing_rest') {
-        var r6 = R.d(6, rand);
-        return [['Order Completed', label + ' → Rolled 1d6 = ' + r6 + '. ' + (r6 >= 5 ? 'Long Rest effects granted.' : 'No rest granted.')]];
-      }
-    }
-    /* The Shrines (pull request 8b): a Blessing of Pelagos for the next
-       ship, or a Great Rite waiting at the Ironbow; each once. */
+    /* The Temple's carried-over orders (pull request 8b; moved from the Shrines by the Strip Back Overhaul): a Blessing of
+       Pelagos for the next ship, or a Great Rite waiting at the Ironbow; each once. (A blessing received at the Temple
+       itself happens at once: temple-rules.js.) */
     if (fn.protectionCharge) {
       var t8 = s.tradeNetwork;
       if (!isObj(t8.protections)) t8.protections = {};
@@ -2506,7 +2510,7 @@
     if (fn.greatRite) {
       if (!Array.isArray(s.greatRites)) s.greatRites = [];
       var rid = 'rite-' + String(order.id);
-      if (!s.greatRites.some(function (g) { return g.id === rid; })) s.greatRites.push({ id: rid, rite: fn.greatRite, god: R.shrineGod(fac.id), madeDay: s.day, status: 'waiting' });
+      if (!s.greatRites.some(function (g) { return g.id === rid; })) s.greatRites.push({ id: rid, rite: fn.greatRite, god: R.shrineGod(fac.id, fn), madeDay: s.day, status: 'waiting' });
       return [['Order Completed', (order.label || fac.name + ': ' + fn.label) + ' → ' + R.RITE_NAMES[fn.greatRite] + ' waits at the Ironbow until the DM gives it to the party on an expedition.']];
     }
     if (fac.id === 'dock' && fn.id === 'charter_berth') {

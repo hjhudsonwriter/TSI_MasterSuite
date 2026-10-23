@@ -1472,68 +1472,49 @@ window.TSI_DATA.bastionFacilities = [
       }
     ]
   },
+  /* The Temple (the Strip Back Overhaul, Harry, 22 October 2026, step S11). The three Shrines (Telluria, Aurush
+     and Pelagos) became ONE building. It takes a construction slot, needs party level 8 and takes 21 days to build
+     ("requiredLevel": 8), and has one level only ("singleLevel": true: no Upgrade row). Its panel is split into
+     thirds, one for each god, and nothing in it is an order with days:
+     - Pray to (god) is instant: it adds a random whole number from 1 to "prayDie" (50) to that god's Favour bar,
+       which stops at 100. The roll is the Bastion's own (temple-rules.js, R.templePray).
+     - Receive Blessing is instant too, and only possible when the god's bar is full ("full": 100). It spends the
+       WHOLE bar (the bar goes back to 0) and the chosen blessing happens at once (R.templeReceive).
+     The three blessings for each god are the functions below that name the god ("god"), in the order the dropdown
+     lists them. Goods blessings ("production": true, with an option listing "outputs") go into the Warehouse,
+     "protectionCharge" keeps a Blessing of Pelagos for the Dock's next ship, and "greatRite" makes a Great Rite
+     that waits at the Ironbow until the DM gives it to the party on an expedition in the Explorer.
+     "days" on a blessing is only used by a pending order carried over from an old Shrine (the conversion, step
+     shrinesToTemple in strip-back-rules.js, moves the Shrines' Bless, Prepare and Great Rite orders here, keeping
+     their due days; their function ids are the same as the Shrines' were, so they complete as before).
+     The Craft charms, the hint and long-rest prayers, Purification Incense, the Aquatic Protection Charm and Bless
+     Bastion Foundations are gone. Their goods (and the Courier's and the Travel bags' names for them) stay, so
+     anything already made keeps its name. */
   {
-    "name": "Shrine of Telluria",
-    "id": "shrine_telluria",
+    "name": "Temple",
+    "id": "temple",
     "requiredLevel": 8,
+    "singleLevel": true,
+    "description": "One Temple for the three gods. Each god has a Favour bar: Pray to the god adds to it, and once it is full the god gives a blessing, which spends the whole bar.",
+    "temple": {
+      "full": 100,
+      "prayDie": 50,
+      "gods": [
+        { "id": "telluria", "name": "Telluria", "art": "shrine_of_telluria.png" },
+        { "id": "aurush", "name": "Aurush", "art": "shrine_of_aurush.png" },
+        { "id": "pelagos", "name": "Pelagos", "art": "shrine_of_pelagos.png" }
+      ]
+    },
     "functions": [
       {
-        "id": "craft",
-        "label": "Craft",
-        "days": 5,
-        "options": [
-          {
-            "label": "Tellurian Root Charm",
-            "notes": "Advantage on CON saving throws once per short rest. Value = 100gp."
-          },
-          {
-            "label": "Tellurian Stone Charm",
-            "notes": "Advantage on WIS saving throws once per short rest when on natural ground (earth, rock, etc). Value = 120gp."
-          }
-        ],
-        "costGP": 0,
-        "costText": "0",
-        "notes": null
-      },
-      {
-        "id": "pray",
-        "label": "Pray",
-        "days": 1,
-        "options": [
-          {
-            "label": "Telluria's Guidance",
-            "special": {
-              "type": "oracle_hint",
-              "god": "telluria"
-            }
-          },
-          {
-            "label": "Telluria's Embrace",
-            "special": {
-              "type": "blessing_rest",
-              "god": "telluria"
-            }
-          },
-          {
-            "label": "Telluria's Blessing",
-            "special": {
-              "type": "favour_blessing",
-              "god": "telluria"
-            }
-          }
-        ],
-        "costGP": 0,
-        "costText": "0",
-        "notes": null
-      },
-      {
         "id": "prepare_earthward_talisman",
-        "label": "Prepare Earthward Talisman",
+        "label": "Earthward Talisman",
+        "god": "telluria",
+        "blessing": true,
+        "instant": true,
         "days": 3,
         "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 2,
-        "favourCost": 0,
+        "costText": "The whole bar",
         "production": true,
         "options": [
           {
@@ -1550,12 +1531,13 @@ window.TSI_DATA.bastionFacilities = [
       },
       {
         "id": "prepare_rootguard_salve",
-        "label": "Prepare Rootguard Salve",
+        "label": "Rootguard Salve",
+        "god": "telluria",
+        "blessing": true,
+        "instant": true,
         "days": 4,
         "costGP": 0,
-        "costText": "5% Favour",
-        "requiredFacilityLevel": 3,
-        "favourCost": 5,
+        "costText": "The whole bar",
         "production": true,
         "options": [
           {
@@ -1568,94 +1550,29 @@ window.TSI_DATA.bastionFacilities = [
             ]
           }
         ],
-        "notes": "Two doses, into the Warehouse: each gives advantage on one saving throw against being Restrained by nonmagical vegetation. Takes 5% of Telluria's Favour when it starts."
-      },
-      {
-        "id": "bless_bastion_foundations",
-        "label": "Bless Bastion Foundations",
-        "days": 5,
-        "costGP": 0,
-        "costText": "10% Favour",
-        "requiredFacilityLevel": 4,
-        "favourCost": 10,
-        "waiting": "Not available yet: no Bastion event damages a facility by natural causes yet (an attack's damage never counts). This order opens once one exists.",
-        "notes": "One charge, kept at the Ironbow: it prevents one facility going Under Repair from an environmental cause. It never prevents damage from a military defeat."
+        "notes": "Two doses, into the Warehouse: each gives advantage on one saving throw against being Restrained by nonmagical vegetation."
       },
       {
         "id": "great_rite_telluria",
         "label": "Great Rite of Telluria",
+        "god": "telluria",
+        "blessing": true,
+        "instant": true,
         "days": 7,
         "costGP": 0,
-        "costText": "25% Favour",
-        "requiredFacilityLevel": 5,
-        "favourCost": 25,
+        "costText": "The whole bar",
         "greatRite": "earths_endurance",
         "notes": "Earth's Endurance: one Major Expedition Blessing. It waits at the Ironbow until the DM gives it to the party on an expedition; then it prevents one level of Exhaustion from a failed travel or environmental saving throw, once."
-      }
-    ]
-  },
-  {
-    "name": "Shrine of Aurush",
-    "id": "shrine_aurush",
-    "requiredLevel": 8,
-    "functions": [
-      {
-        "id": "craft",
-        "label": "Craft",
-        "days": 5,
-        "options": [
-          {
-            "label": "Aurush Sun Charm",
-            "notes": "Advantage on DEX saving throws once per short rest while in bright light. Value = 100gp."
-          },
-          {
-            "label": "Aurush Ember Charm",
-            "notes": "Advantage on CHA saving throws once per short rest against fear or charm. Value = 120gp."
-          }
-        ],
-        "costGP": 0,
-        "costText": "0",
-        "notes": null
-      },
-      {
-        "id": "pray",
-        "label": "Pray",
-        "days": 1,
-        "options": [
-          {
-            "label": "Aurush's Insight",
-            "special": {
-              "type": "oracle_hint",
-              "god": "aurush"
-            }
-          },
-          {
-            "label": "Aurush's Radiance",
-            "special": {
-              "type": "blessing_rest",
-              "god": "aurush"
-            }
-          },
-          {
-            "label": "Aurush's Blessing",
-            "special": {
-              "type": "favour_blessing",
-              "god": "aurush"
-            }
-          }
-        ],
-        "costGP": 0,
-        "costText": "0",
-        "notes": null
       },
       {
         "id": "prepare_blessed_lantern",
-        "label": "Prepare Blessed Lantern",
+        "label": "Blessed Lantern",
+        "god": "aurush",
+        "blessing": true,
+        "instant": true,
         "days": 3,
         "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 2,
-        "favourCost": 0,
+        "costText": "The whole bar",
         "production": true,
         "options": [
           {
@@ -1671,35 +1588,14 @@ window.TSI_DATA.bastionFacilities = [
         "notes": "One lantern, into the Warehouse: fuel-free light, 20 ft bright and 20 ft dim, for three days. The Courier Exchange can send it to the party."
       },
       {
-        "id": "prepare_purification_incense",
-        "label": "Prepare Purification Incense",
-        "days": 4,
-        "costGP": 0,
-        "costText": "5% Favour",
-        "requiredFacilityLevel": 3,
-        "favourCost": 5,
-        "production": true,
-        "options": [
-          {
-            "label": "2 portions of Purification Incense",
-            "outputs": [
-              {
-                "good": "purification_incense",
-                "qty": 2
-              }
-            ]
-          }
-        ],
-        "notes": "Two portions, into the Warehouse: each gives advantage on one saving throw against nonmagical poison or disease. Takes 5% of Aurush's Favour when it starts."
-      },
-      {
         "id": "consecrate_expedition_supplies",
         "label": "Consecrate Expedition Supplies",
+        "god": "aurush",
+        "blessing": true,
+        "instant": true,
         "days": 5,
         "costGP": 0,
-        "costText": "10% Favour",
-        "requiredFacilityLevel": 4,
-        "favourCost": 10,
+        "costText": "The whole bar",
         "production": true,
         "options": [
           {
@@ -1712,83 +1608,29 @@ window.TSI_DATA.bastionFacilities = [
             ]
           }
         ],
-        "notes": "Three Cleansing Portions, into the Warehouse: each removes the ordinary Poisoned condition from one creature (no hit points, and no disease or curse cured). Takes 10% of Aurush's Favour when it starts."
+        "notes": "Three Cleansing Portions, into the Warehouse: each removes the ordinary Poisoned condition from one creature (no hit points, and no disease or curse cured)."
       },
       {
         "id": "great_rite_aurush",
         "label": "Great Rite of Aurush",
+        "god": "aurush",
+        "blessing": true,
+        "instant": true,
         "days": 7,
         "costGP": 0,
-        "costText": "25% Favour",
-        "requiredFacilityLevel": 5,
-        "favourCost": 25,
+        "costText": "The whole bar",
         "greatRite": "cleansing_radiance",
         "notes": "Cleansing Radiance: one Major Expedition Blessing. It waits at the Ironbow until the DM gives it to the party on an expedition; then it removes Poisoned or Frightened from up to two party members present, once."
-      }
-    ]
-  },
-  {
-    "name": "Shrine of Pelagos",
-    "id": "shrine_pelagos",
-    "requiredLevel": 8,
-    "functions": [
-      {
-        "id": "craft",
-        "label": "Craft",
-        "days": 5,
-        "options": [
-          {
-            "label": "Pelagos Tide Charm",
-            "notes": "Advantage on STR saving throws once per short rest while wet or near open water. Value = 100gp."
-          },
-          {
-            "label": "Pelagos Current Charm",
-            "notes": "Advantage on INT saving throws once per short rest to resist disorientation/illusion. Value = 120gp."
-          }
-        ],
-        "costGP": 0,
-        "costText": "0",
-        "notes": null
-      },
-      {
-        "id": "pray",
-        "label": "Pray",
-        "days": 1,
-        "options": [
-          {
-            "label": "Pelagos's Tidings",
-            "special": {
-              "type": "oracle_hint",
-              "god": "pelagos"
-            }
-          },
-          {
-            "label": "Pelagos's Deep Rest",
-            "special": {
-              "type": "blessing_rest",
-              "god": "pelagos"
-            }
-          },
-          {
-            "label": "Pelagos's Blessing",
-            "special": {
-              "type": "favour_blessing",
-              "god": "pelagos"
-            }
-          }
-        ],
-        "costGP": 0,
-        "costText": "0",
-        "notes": null
       },
       {
         "id": "bless_voyage",
-        "label": "Bless Voyage",
+        "label": "Voyage Blessing",
+        "god": "pelagos",
+        "blessing": true,
+        "instant": true,
         "days": 3,
         "costGP": 0,
-        "costText": "0",
-        "requiredFacilityLevel": 2,
-        "favourCost": 0,
+        "costText": "The whole bar",
         "production": true,
         "options": [
           {
@@ -1804,46 +1646,26 @@ window.TSI_DATA.bastionFacilities = [
         "notes": "One blessing, into the Warehouse: +2 to one navigation or maritime hazard check during an expedition. The Courier Exchange can send it to the party."
       },
       {
-        "id": "prepare_aquatic_protection_charm",
-        "label": "Prepare Aquatic Protection Charm",
-        "days": 4,
-        "costGP": 0,
-        "costText": "5% Favour",
-        "requiredFacilityLevel": 3,
-        "favourCost": 5,
-        "production": true,
-        "options": [
-          {
-            "label": "1 Aquatic Protection Charm",
-            "outputs": [
-              {
-                "good": "aquatic_protection_charm",
-                "qty": 1
-              }
-            ]
-          }
-        ],
-        "notes": "One charm, into the Warehouse: advantage on one Athletics check involving swimming, currents or a nonmagical water hazard. Takes 5% of Pelagos' Favour when it starts."
-      },
-      {
         "id": "bless_commercial_shipment",
         "label": "Bless Commercial Shipment",
+        "god": "pelagos",
+        "blessing": true,
+        "instant": true,
         "days": 5,
         "costGP": 0,
-        "costText": "10% Favour",
-        "requiredFacilityLevel": 4,
-        "favourCost": 10,
+        "costText": "The whole bar",
         "protectionCharge": "pelagos_blessing",
-        "notes": "One Blessing of Pelagos, kept at the Ironbow: the next ship the Dock sends with cargo takes it, and its chance of trouble at sea is 10 points lower. Takes 10% of Pelagos' Favour when it starts."
+        "notes": "One Blessing of Pelagos, kept at the Ironbow: the next ship the Dock sends with cargo takes it, and its chance of trouble at sea is 10 points lower."
       },
       {
         "id": "great_rite_pelagos",
         "label": "Great Rite of Pelagos",
+        "god": "pelagos",
+        "blessing": true,
+        "instant": true,
         "days": 7,
         "costGP": 0,
-        "costText": "25% Favour",
-        "requiredFacilityLevel": 5,
-        "favourCost": 25,
+        "costText": "The whole bar",
         "greatRite": "tides_passage",
         "notes": "Tide's Passage: one Major Expedition Blessing. It waits at the Ironbow until the DM gives it to the party on an expedition; then it turns one failed water-related navigation or environmental check into a success, once."
       }

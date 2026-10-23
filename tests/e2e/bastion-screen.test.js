@@ -115,12 +115,12 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
       await page.setViewportSize(H.SIZES[size].viewport);
       await page.waitForTimeout(200);
       await page.evaluate(() => TSI.notify('A long notice, to see where it sits: it has two lines of words in it, at least, on both screens.', { type: 'info', title: 'Test.', id: 'tsi-bs-test' }));
-      const hits = await page.evaluate(() => ['open-influence', 'open-favour', 'open-warehouse'].map(t => {
+      const hits = await page.evaluate(() => ['open-influence', 'open-warehouse'].map(t => {
         const b = document.querySelector('[data-test=' + t + ']').getBoundingClientRect();
         const hit = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2);
         return t + ':' + !!(hit && hit.closest('[data-test=' + t + ']'));
       }));
-      equal(hits, ['open-influence:true', 'open-favour:true', 'open-warehouse:true'], size);
+      equal(hits, ['open-influence:true', 'open-warehouse:true'], size);
       const n = await rect(page, '.tsi-notices');
       const bar = await rect(page, '.tsi-bas-bottom');
       assert(n.bottom <= bar.y, size + ': the notices end above the bar: ' + JSON.stringify([n, bar]));
@@ -283,8 +283,8 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     await page.waitForSelector('[data-test=panel-build]');
     equal(await panelOpen(page), 'build');
     assert(/Party level 7: 2 construction slots, 0 in use/.test(await text(page, 'build-panel')));
-    equal(await page.getAttribute('[data-test=build-shrine_telluria]', 'aria-disabled'), 'true', 'the Shrine of Telluria needs level 8');
-    assert(/Locked: level 8/.test(await text(page, 'build-shrine_telluria')));
+    equal(await page.getAttribute('[data-test=build-temple]', 'aria-disabled'), 'true', 'the Temple needs level 8');
+    assert(/Locked: level 8/.test(await text(page, 'build-temple')));
     equal(await page.$('[data-test=build-war_room]'), null, 'the War Room is gone (22 October 2026)');
     equal(await page.getAttribute('[data-test=build-library_scriptorium]', 'aria-disabled'), null);
     await page.hover('[data-test=build-library_scriptorium]');
@@ -297,7 +297,7 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
   });
 
   await check('a locked facility can\'t be chosen', async () => {
-    await page.click('[data-test=build-shrine_telluria]', { force: true });
+    await page.click('[data-test=build-temple]', { force: true });
     await page.waitForTimeout(250);
     equal(await page.$(POP), null, 'no question');
     equal((await st(page)).builtExtras.filter(Boolean), []);
@@ -479,15 +479,15 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
   });
 
   await check('with every construction slot in use but a plot free, the other facilities say "No free slot" and can\'t be chosen', async () => {
-    await setUp(page, (s) => { s.builtExtras = ['library_scriptorium', 'arcane_laboratory', 'shrine_aurush', 'hall_of_emissaries'].map(id => ({ facId: id, status: 'built' })); });
+    await setUp(page, (s) => { s.builtExtras = ['library_scriptorium', 'arcane_laboratory', 'beast_pen', 'hall_of_emissaries'].map(id => ({ facId: id, status: 'built' })); });
     await pause(page);
     await page.click('[data-test=plot-1]');
     await page.waitForSelector('[data-test=build-panel]');
     try {
       assert(/; every construction slot is in use\./.test(await text(page, 'build-panel')), await text(page, 'build-panel'));
-      equal([await page.getAttribute('[data-test=build-shrine_telluria]', 'aria-disabled'), await text(page, 'build-shrine_telluria')], ['true', 'Shrine of TelluriaNo free slot']);
+      equal([await page.getAttribute('[data-test=build-temple]', 'aria-disabled'), await text(page, 'build-temple')], ['true', 'TempleNo free slot']);
       equal(await page.getAttribute('[data-test=build-timber_sawmill]', 'aria-disabled'), null, 'a plot facility still can');
-      await page.click('[data-test=build-shrine_telluria]', { force: true });
+      await page.click('[data-test=build-temple]', { force: true });
       await page.waitForTimeout(250);
       equal(await page.$(POP), null, 'no question');
     } finally {
@@ -898,12 +898,14 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
 
   const PANELS = [['open-warehouse', 'warehouse', 'Warehouse', 'warehouse'], ['open-management', 'management', 'Management', 'explorer-changes'],
     ['open-log', 'log', 'Day Log', 'log'],
-    ['open-influence', 'influence', 'Clan Influence', 'influence'], ['open-favour', 'favour', 'Favour of the Gods', 'favour-telluria']];
-  await check('the bottom bar has no Events button any more (S05): Warehouse, Management and Day Log on the left; Clan Influence and Favour on the right (the War Council went on 22 October 2026)', async () => {
+    ['open-influence', 'influence', 'Clan Influence', 'influence']];
+  await check('the bottom bar has no Events button any more (S05), no Favour button (S11, the Temple has the bars) and no War Council (S06): Warehouse, Management and Day Log on the left; Clan Influence on the right', async () => {
     equal(await page.$$eval('.tsi-bas-pbtns--left [data-test^=open-]', bs => bs.map(b => b.getAttribute('data-test'))), ['open-warehouse', 'open-management', 'open-log']);
-    equal(await page.$$eval('.tsi-bas-pbtns--right [data-test^=open-]', bs => bs.map(b => b.getAttribute('data-test'))), ['open-influence', 'open-favour']);
+    equal(await page.$$eval('.tsi-bas-pbtns--right [data-test^=open-]', bs => bs.map(b => b.getAttribute('data-test'))), ['open-influence']);
     equal(await page.$('[data-test=open-war]'), null, 'no War Council button');
+    equal(await page.$('[data-test=open-favour]'), null, 'no Favour button');
     equal(await page.$('[data-test=open-events]'), null);
+    equal(await page.$('[data-test=open-favour]'), null);
     equal(await page.evaluate(() => TSI.bastion.debug.reveal('roll-event')), false, 'and nothing to reveal for the old button');
   });
   for (const [button, id, title, inside] of PANELS) {
