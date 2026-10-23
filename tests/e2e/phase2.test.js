@@ -662,6 +662,10 @@ async function downloadPng(page) {
       await ba.click('.tsi-modal__foot button:text-is("Use this crest")');
       await ba.waitForFunction(() => { const c = TSI.store.get('tsi.bastion.crest', null); return c && c.design && c.design.clanName === 'Wardens of the Ironbow'; });
       equal(await sent(), null, 'used, so it\'s cleared');
+      /* Taking the crest does not take the Creator's name field as the Bastion's Party Name: that is typed in the Bastion (22 October 2026). */
+      await ba.evaluate(() => TSI.store.flush());
+      equal(await ba.evaluate(() => (TSI.store.get('tsi.bastion.state', null) || {}).partyName), '', 'the Party Name is still empty');
+      equal(await ba.evaluate(() => (document.querySelector('[data-test=badge-name]') || {}).hidden), true, 'and the badge shows no name');
       await ba.close();
     });
 

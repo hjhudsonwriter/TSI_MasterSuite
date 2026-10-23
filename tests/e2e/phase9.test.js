@@ -814,63 +814,54 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
 
   /* ------------------------------------------------------------------ */
   if (want('Party identity')) {
-    section('Party identity');
+    section('Party identity (a Party Name, no Clan)');
     const { context, page } = await newPage(browser, 'laptop');
     await openBastion(page);
 
-    await check('Form Clan needs level 9, 360 support and 3 clans at 55 (both sides of each line)', async () => {
-      await setUp(page, (s) => { s.partyLevel = 8; s.politicalCapital.blackstone = 10; s.politicalCapital.bacca = 10; s.politicalCapital.farmer = 10; s.politicalCapital.slade = -10; });
-      equal(await page.isDisabled('[data-test=form-clan]'), true);
-      assert(/Level 9\+ \(NO\), Total Support 360\+ \(OK\), 3 clans at 55\+ \(OK\)/.test(await text(page, 'requirements')));
-      await page.selectOption('[data-test=level]', '9');
-      equal(await page.isDisabled('[data-test=form-clan]'), false);
-      await setUp(page, (s) => { s.politicalCapital.slade = -12; });
-      equal(await page.isDisabled('[data-test=form-clan]'), true);
-      await setUp(page, (s) => { s.politicalCapital.slade = -10; s.politicalCapital.farmer = 8; });
-      equal(await page.isDisabled('[data-test=form-clan]'), true);
-      await setUp(page, (s) => { s.politicalCapital.farmer = 10; });
-    });
-
-    await check('Honour/Respect edits change support at once', async () => {
+    await check('Honour/Respect edits change support at once (the Clan Influence panel)', async () => {
       await page.fill('[data-test=hr-karr]', '2');
       await page.press('[data-test=hr-karr]', 'Tab');
       equal(await text(page, 'support-karr'), '58/100');
       equal((await st(page)).honourRespectByClan.karr, 2);
     });
 
-    await check('founding a Clan: the name is required, then it\'s sworn', async () => {
-      await pause(page);
-      await page.click('[data-test=form-clan]');
-      await page.waitForSelector('[data-test=clan-name]');
-      await clickModal(page, 'Confirm Founding');
-      assert(/Clan Name is required\./.test(await popText(page)));
-      await clickModal(page, 'OK');
-      await pause(page);
-      await page.click('[data-test=form-clan]');
-      await page.fill('[data-test=clan-name]', 'Clan Ironbow');
-      await page.fill('[data-test=clan-chief]', 'Harry');
-      await clickModal(page, 'Confirm Founding');
-      equal(await text(page, 'org'), 'Clan: Clan Ironbow');
-      equal(await page.isVisible('[data-test=honour-box]'), true);
-      equal((await st(page)).log[0].body, 'Founded Clan: Clan Ironbow (Chief: Harry).');
-      equal((await crestInfo(page)).shown, false, 'no crest was chosen');
+    await check('a party can no longer found a Clan: the Party Identity panel has a Party Name, the crest and its buttons, and no Form Clan, Clan Honour or Unsworn (22 October 2026)', async () => {
+      await page.click('[data-test=identity-badge]');
+      await page.waitForSelector('[data-test=panel-identity]');
+      equal(await page.$('[data-test=form-clan]'), null);
+      equal(await page.$('[data-test=honour-box]'), null);
+      equal(await page.$('[data-test=org]'), null);
+      equal(await page.isVisible('[data-test=party-name]'), true);
       equal(await page.textContent('[data-test=crest-add]'), 'Upload a picture…');
+      assert(!/Unsworn|Form Clan|Found a Clan|Clan Honour|Clan requirements/.test(await bare(page, '[data-test=panel-identity]')), await bare(page, '[data-test=panel-identity]'));
+      await page.keyboard.press('Escape');
+      equal(await page.$('[data-test=panel-identity]'), null);
     });
 
-    await check('a crest can be added later, shrunk to 512 pixels, shown beside the name, kept after reopening, and removed', async () => {
+    await check('a Party Name is typed in the panel (Enter saves it) and shows above the crest', async () => {
+      await page.click('[data-test=identity-badge]');
+      await page.fill('[data-test=party-name]', 'The Ironbow Company');
+      await page.press('[data-test=party-name]', 'Enter');
+      await page.waitForFunction(() => TSI.bastion.debug.state().partyName === 'The Ironbow Company');
+      equal(await text(page, 'party-name-shown'), 'The Ironbow Company');
+      await page.keyboard.press('Escape');
+    });
+
+    await check('a crest can be added later, shrunk to 512 pixels, shown under the Party Name, kept after reopening, and removed', async () => {
+      await page.click('[data-test=identity-badge]');
       await H.chooseFile(page, '[data-test=crest-add]', writeCrest('crest-later.png', 2048));
       await page.waitForFunction(() => { const i = document.querySelector('[data-test=crest]'); return i && i.offsetWidth && i.naturalWidth; });
       const c = await crestInfo(page);
-      equal([c.shown, c.w, c.h, c.alt], [true, 512, 512, 'Crest of Clan Ironbow']);
+      equal([c.shown, c.w, c.h, c.alt], [true, 512, 512, 'Crest of The Ironbow Company']);
       const saved = await page.evaluate(() => TSI.store.get('tsi.bastion.crest'));
       assert(/^data:image\/(webp|png);base64,/.test(saved.dataUrl) && saved.dataUrl.length < 700000 && saved.name === 'tsi-p9-crest-later.png', JSON.stringify([saved.dataUrl.slice(0, 30), saved.dataUrl.length, saved.name]));
-      /* Beside the name: in the same row as the Clan's pill. */
+      /* The name is directly above the crest, in the same column. */
       const box = await page.evaluate(() => {
         const a = document.querySelector('[data-test=crest]').getBoundingClientRect();
-        const b = document.querySelector('[data-test=org]').getBoundingClientRect();
-        return { gap: b.left - a.right, overlapY: Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) };
+        const b = document.querySelector('[data-test=party-name-shown]').getBoundingClientRect();
+        return { gap: a.top - b.bottom, overlapX: Math.min(a.right, b.right) - Math.max(a.left, b.left) };
       });
-      assert(box.gap >= 0 && box.gap < 60 && box.overlapY > 0, JSON.stringify(box));
+      assert(box.gap >= -1 && box.gap < 40 && box.overlapX > 0, JSON.stringify(box));
       await reopen(page);
       equal((await crestInfo(page)).w, 512);
       await pause(page);
@@ -886,13 +877,14 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       await H.shot(page, 'p9-crest-none');
     });
 
-    await check('identity and diplomacy survive reopening (BAS-01)', async () => {
+    await check('the Party Name and diplomacy survive reopening (BAS-01)', async () => {
       await setUp(page, (s) => { s.diplomacy.agreements = [{ id: 'a', title: 'Trade Agreement', clan: 'Clan Karr', startDay: s.day, endDay: s.day + 21, income: 90, lastShipmentDay: s.day }]; s.diplomacy.tokens = 2; });
       const before = await st(page);
       await reopen(page);
       const after = await st(page);
-      ['organization', 'clanHonor', 'honourRespectByClan', 'trustedClientsByClan', 'diplomacy', 'politicalCapital'].forEach(k => equal(after[k], before[k], k));
-      equal(await text(page, 'org'), 'Clan: Clan Ironbow');
+      ['partyName', 'honourRespectByClan', 'diplomacy', 'politicalCapital'].forEach(k => equal(after[k], before[k], k));
+      equal(after.partyName, 'The Ironbow Company');
+      equal(await page.$eval('[data-test=badge-name]', n => n.textContent), 'The Ironbow Company');
     });
     await context.close();
   }
@@ -904,24 +896,26 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
     await openBastion(page);
     await setUp(page, (s) => { s.partyLevel = 7; });
     const crestKey = () => page.evaluate(() => { const c = TSI.store.get('tsi.bastion.crest', null); return c ? c.key : null; });
+    /* What the badge shows: the Party Name above the crest (or nothing), "Add a crest" only while there is no crest, and what it says aloud. */
     const badge = () => page.evaluate(() => {
       const b = document.querySelector('[data-test=identity-badge]');
       const img = b.querySelector('img');
-      return { label: b.querySelector('.tsi-bas-badge__label').textContent, aria: b.getAttribute('aria-label'), img: !img.hidden && !!img.naturalWidth, empty: b.classList.contains('tsi-bas-badge--empty') };
+      const name = b.querySelector('.tsi-bas-badge__name');
+      const label = b.querySelector('.tsi-bas-badge__label');
+      return { name: name.hidden ? '' : name.textContent, label: label.hidden ? '' : label.textContent, aria: b.getAttribute('aria-label'), img: !img.hidden && !!img.naturalWidth, empty: b.classList.contains('tsi-bas-badge--empty') };
     });
 
-    await check('with no crest, the badge says "Add a crest"; Party Identity has a faint shield, the crest\'s buttons, and Form Clan with its requirements; no Brigade anywhere', async () => {
-      equal(await badge(), { label: 'Add a crest', aria: 'Crest of the Ironbow: no crest yet. Open Party Identity.', img: false, empty: true });
+    await check('with no crest, the badge says "Add a crest"; Party Identity has a Party Name box, a faint shield and the crest\'s buttons, and nothing about a Clan or a Brigade', async () => {
+      equal(await badge(), { name: '', label: 'Add a crest', aria: 'Crest of the Ironbow: no crest yet. Open Party Identity.', img: false, empty: true });
       await page.click('[data-test=identity-badge]');
       await page.waitForSelector('[data-test=panel-identity]');
       equal(await page.isVisible('[data-test=crest-empty]'), true);
       equal([await page.textContent('[data-test=crest-create]'), await page.textContent('[data-test=crest-add]'), await page.isVisible('[data-test=crest-delete]')], ['Create in the Clan Crest Creator ↗', 'Upload a picture…', false]);
-      equal([await text(page, 'org'), await page.isVisible('[data-test=form-box]'), await page.isVisible('[data-test=honour-box]')], ['Unsworn', true, false]);
-      equal(await text(page, 'requirements'), 'Clan requirements: Level 9+ (NO), Total Support 360+ (NO), 3 clans at 55+ (NO).');
+      equal([await page.isVisible('[data-test=party-name]'), await page.$('[data-test=form-box]'), await page.$('[data-test=honour-box]'), await page.$('[data-test=org]'), await page.$('[data-test=requirements]')], [true, null, null, null, null]);
       equal(await page.$('[data-test=form-merc]'), null);
       equal(await page.$('[data-test=trust-box]'), null);
-      assert(!/Brigade|Merc/.test(await page.evaluate(() => document.body.textContent)), 'no Brigade on the page');
-      await H.shot(page, 'p9-identity-unsworn');
+      assert(!/Brigade|Merc|Unsworn|Form Clan/.test(await page.evaluate(() => document.body.textContent)), 'no Brigade, Unsworn or Form Clan on the page');
+      await H.shot(page, 'p9-identity-no-crest');
       await page.keyboard.press('Escape');
     });
 
@@ -967,7 +961,7 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       const c = await page.evaluate(() => TSI.store.get('tsi.bastion.crest'));
       equal([c.name, c.design.clanName, Object.keys(c.design).length > 20, /^data:image\/png;base64,/.test(c.dataUrl)], ['Wardens of the Ironbow (Crest Creator).png', 'Wardens of the Ironbow', true, true]);
       await page.waitForFunction(() => { const i = document.querySelector('[data-test=identity-badge] img'); return i && !i.hidden && i.naturalWidth; });
-      equal(await badge(), { label: 'Unsworn', aria: 'Crest of the Ironbow. Open Party Identity.', img: true, empty: false });
+      equal(await badge(), { name: '', label: '', aria: 'Crest of the Ironbow. Open Party Identity.', img: true, empty: false });
       const info = await crestInfo(page);
       equal([info.shown, info.w, info.alt], [true, 512, 'Crest of the Ironbow']);
       equal([await page.textContent('[data-test=crest-add]'), await page.isVisible('[data-test=crest-delete]')], ['Upload another…', true]);
@@ -1042,86 +1036,44 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       await page.waitForTimeout(500);
     });
 
-    await check('a refused file is explained; Unsworn, a picture can be uploaded from the panel, replacing the Creator\'s', async () => {
+    await check('a refused file is explained; a picture can be uploaded from the panel, replacing the Creator\'s', async () => {
       await H.chooseFile(page, '[data-test=crest-add]', H.writeTemp('not-a-crest.txt', 'hello'));
       await page.waitForFunction(() => /PNG, JPG, WebP or GIF/.test(document.body.textContent));
       await clickModal(page, 'OK');
-      await H.chooseFile(page, '[data-test=crest-add]', writeCrest('crest-unsworn.png', 1200));
-      await page.waitForFunction(() => { const c = TSI.store.get('tsi.bastion.crest', null); return c && c.name === 'tsi-p9-crest-unsworn.png'; });
+      await H.chooseFile(page, '[data-test=crest-add]', writeCrest('crest-upload.png', 1200));
+      await page.waitForFunction(() => { const c = TSI.store.get('tsi.bastion.crest', null); return c && c.name === 'tsi-p9-crest-upload.png'; });
       const c = await page.evaluate(() => TSI.store.get('tsi.bastion.crest'));
       equal('design' in c, false, 'an uploaded picture has no design');
       await page.waitForFunction(() => { const i = document.querySelector('[data-test=crest]'); return i && i.naturalWidth === 512; });
-      equal(await st(page).then(x => x.organization.type), 'unsworn');
+      equal(await st(page).then(x => x.partyName), '', 'no Party Name was made up');
     });
 
-    await check('Form Clan keeps the Bastion\'s crest: Upload… shows another, Keep this crest goes back, and Cancel saves nothing', async () => {
-      await setUp(page, (s) => { s.partyLevel = 9; s.politicalCapital.blackstone = 10; s.politicalCapital.bacca = 10; s.politicalCapital.farmer = 10; s.politicalCapital.slade = -10; });
+    await check('a Party Name sits above the crest on the badge, and the crest is "Crest of <name>" (spoken and in the panel)', async () => {
       const key = await crestKey();
       await pause(page);
-      await page.click('[data-test=form-clan]');
-      await page.waitForSelector('[data-test=crest-field]');
-      equal(await page.getAttribute('[data-test=crest-preview]', 'data-key'), key);
-      equal([await text(page, 'crest-field-note'), await page.isVisible('[data-test=crest-keep]')], ['The Bastion\'s crest: the Clan keeps it.', false]);
-      equal([await page.textContent('[data-test=crest-new]'), await page.textContent('[data-test=crest-upload]')], ['Create a new one ↗', 'Upload…']);
-      await H.chooseFile(page, '[data-test=crest-upload]', writeCrest('crest-pop.png', 900));
-      await page.waitForFunction(k => document.querySelector('[data-test=crest-preview]').getAttribute('data-key') !== k, key);
-      equal([await text(page, 'crest-field-note'), await page.isVisible('[data-test=crest-keep]')], ['A new crest: it replaces the Bastion\'s when you confirm the founding.', true]);
-      await page.click('[data-test=crest-keep]');
-      equal(await page.getAttribute('[data-test=crest-preview]', 'data-key'), key);
-      await H.chooseFile(page, '[data-test=crest-upload]', writeCrest('crest-pop.png', 900));
-      await page.waitForSelector('[data-test=crest-keep]:not([hidden])');
-      await clickModal(page, 'Cancel');
-      equal(await crestKey(), key, 'unchanged');
-      equal(await modalOpen(page), false);
-      equal((await st(page)).organization.type, 'unsworn');
-    });
-
-    await check('a crest from the Creator, accepted while Form Clan is open, replaces a picture uploaded there earlier', async () => {
-      await pause(page);
-      await page.click('[data-test=form-clan]');
-      await H.chooseFile(page, '[data-test=crest-upload]', writeCrest('crest-pop.png', 900));
-      await page.waitForSelector('[data-test=crest-keep]:not([hidden])');
-      await page.evaluate(() => {
-        const c = document.createElement('canvas'); c.width = c.height = 64;
-        const g = c.getContext('2d'); g.fillStyle = '#b1122a'; g.fillRect(8, 8, 48, 48);
-        TSI.handoff.write('crest', { id: 'crest-form', at: 1, name: 'Mid-founding', dataUrl: c.toDataURL('image/png'), design: { clanName: 'Mid-founding' } });
-      });
-      await page.waitForSelector('[data-test=crest-offer]', { timeout: 6000 });
-      await clickModal(page, 'Use this crest');
-      const key = await crestKey();
-      equal((await page.evaluate(() => TSI.store.get('tsi.bastion.crest'))).design.clanName, 'Mid-founding');
-      equal([await page.getAttribute('[data-test=crest-preview]', 'data-key'), await page.isVisible('[data-test=crest-keep]')], [key, false], 'the box shows the crest just taken, and the upload is dropped');
-      await clickModal(page, 'Cancel');
-      equal(await crestKey(), key);
-      equal((await st(page)).organization.type, 'unsworn');
-    });
-
-    await check('founding the Clan with no new crest keeps the Bastion\'s; the badge then has the Clan\'s name, and the crest is "Crest of Clan Ironbow"', async () => {
-      const key = await crestKey();
-      await pause(page);
-      await page.click('[data-test=form-clan]');
-      await page.fill('[data-test=clan-name]', 'Clan Ironbow');
-      await page.fill('[data-test=clan-motto]', 'Root and Steel');
-      await clickModal(page, 'Confirm Founding');
-      equal(await crestKey(), key);
-      equal(await badge(), { label: 'Clan Ironbow', aria: 'Crest of Clan Ironbow. Open Party Identity.', img: true, empty: false });
-      equal((await crestInfo(page)).alt, 'Crest of Clan Ironbow');
-      equal([await text(page, 'org'), await page.isVisible('[data-test=honour-box]'), await page.isVisible('[data-test=form-box]')], ['Clan: Clan Ironbow', true, false]);
-      assert(/“Root and Steel”/.test(await text(page, 'org-meta')), await text(page, 'org-meta'));
-      await reveal(page, '[data-test=org]');
-      await H.shot(page, 'p9-identity-clan');
+      await page.click('[data-test=identity-badge]');
+      await page.fill('[data-test=party-name]', 'Wardens of the Ironbow');
+      await page.press('[data-test=party-name]', 'Enter');
+      await page.waitForFunction(() => TSI.bastion.debug.state().partyName === 'Wardens of the Ironbow');
+      equal(await crestKey(), key, 'the crest is untouched');
+      equal(await badge(), { name: 'Wardens of the Ironbow', label: '', aria: 'Crest of Wardens of the Ironbow. Open Party Identity.', img: true, empty: false });
+      equal((await crestInfo(page)).alt, 'Crest of Wardens of the Ironbow');
+      const order = await page.evaluate(() => { const n = document.querySelector('[data-test=badge-name]').getBoundingClientRect(); const i = document.querySelector('.tsi-bas-badge__img').getBoundingClientRect(); return n.bottom <= i.top + 1; });
+      equal(order, true, 'the name is above the crest');
+      await H.shot(page, 'p9-identity-named');
       await page.keyboard.press('Escape');
     });
 
-    await check('Download Save includes the crest; Reset clears it with the rest of the Bastion', async () => {
+    await check('Download Save includes the crest and the Party Name; Reset clears them with the rest of the Bastion', async () => {
       const d = await H.download(page, '[data-test=download-save]');
       const keys = JSON.parse(d.text).records.map(r => r.key);
       assert(keys.indexOf('tsi.bastion.crest') !== -1, keys.join(','));
+      equal(JSON.parse(d.text).records.find(r => r.key === 'tsi.bastion.state').value.partyName, 'Wardens of the Ironbow', 'the Party Name is in the saved Bastion');
       await pause(page);
       await page.click('[data-test=reset]');
       await clickModal(page, 'Reset');
       await page.waitForSelector('[data-test=day-status]');
-      await page.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().organization.type === 'unsworn');
+      await page.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().partyName === '');
       equal(await page.evaluate(() => TSI.store.has('tsi.bastion.crest')), false);
       equal((await crestInfo(page)).shown, false);
     });
