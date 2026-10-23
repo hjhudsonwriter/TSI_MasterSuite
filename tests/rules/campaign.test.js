@@ -69,18 +69,14 @@
     b.anchored = true;
     b.builtExtras = [{ facId: 'arcane_laboratory', status: 'building', startDay: 1, readyDay: 22 }, { facId: 'shrine_aurush', status: 'built' }];
     b.pendingOrders = [
-      { id: 'a', facId: 'barracks', fnId: 'recruit_defenders', label: 'Barracks: Recruit Defenders', issuedDay: 9, dueDay: 14 },
+      { id: 'a', facId: 'library_scriptorium', fnId: 'prepare_overland_travel_charts', label: 'Library & Scriptorium: Prepare Overland Travel Charts', issuedDay: 9, dueDay: 14 },
       { id: 'h', facId: 'hall_of_emissaries', fnId: 'secure_trade_agreement', label: 'Hall of Emissaries: Secure Trade Agreement (Clan Karr)', issuedDay: 10, dueDay: 17 },
-      { id: 'w', facId: 'war_council', fnId: 'war_action', label: 'War Action', issuedDay: 10, dueDay: 13, meta: { kind: 'war_action', objective: 'raid', targetName: 'Bacca' } },
       { id: 'd', facId: 'dock', fnId: 'charter_berth', label: 'Dock: Charter Berth (Longship)', issuedDay: 8, dueDay: 15 }
     ];
-    b.repairs = { dock: 16 };
     b.diplomacy.agreements = [{ title: 'Trade Agreement', clan: 'Clan Karr', startDay: 5, endDay: 26, income: 90, lastShipmentDay: 5 }];
     b.diplomacy.delegations = [{ title: 'Hosted Delegation (assertive)', clan: 'Clan Slade', startDay: 9, endDay: 23 }];
     b.tradeNetwork.active = true;
     b.tradeNetwork.routes = [{ id: 'r', clan: 'Karr', risk: 'high', status: 'active', nextDay: 12, expiresDay: 40 }, { id: 's', clan: 'Farmer', risk: 'low', status: 'active', nextDay: 12, expiresDay: 40 }];
-    b.warRecovery = [{ id: 'x', kind: 'beast', name: 'Ape', status: 'wounded', untilDay: 11 }];
-    b.wars = { bacca: { since: 6, last: 10, next: 13 } };
     return b;
   }
 
@@ -88,13 +84,12 @@
     var e = explorer();
     e.travel.day = 10;
     var s = sum(e, busy());
-    t.same(s.orders, { count: 4, next: { day: 13, label: 'War Action', inDays: 3 }, list: [
-      { day: 13, label: 'War Action', inDays: 3 },
-      { day: 14, label: 'Barracks: Recruit Defenders', inDays: 4 },
+    t.same(s.orders, { count: 3, next: { day: 14, label: 'Library & Scriptorium: Prepare Overland Travel Charts', inDays: 4 }, list: [
+      { day: 14, label: 'Library & Scriptorium: Prepare Overland Travel Charts', inDays: 4 },
       { day: 15, label: 'Dock: Charter Berth (Longship)', inDays: 5 },
       { day: 17, label: 'Hall of Emissaries: Secure Trade Agreement (Clan Karr)', inDays: 7 }
     ] });
-    t.same(s.nextWord, { day: 11, inDays: 1, lines: ['The Ape is fit to fight again.'] });
+    t.same(s.nextWord, { day: 12, inDays: 2, lines: ['The sea route to Karr needs a roll.'] });
     e.travel.day = 11;
     t.same(sum(e, busy()).nextWord.day, 12, 'the Bastion\'s day 11 is still to come, but the DM doc looks after the Explorer\'s day');
     var old = { treasuryGP: 5, partyLevel: 9, turn: 4, builtExtras: [], pendingOrders: [{ completeTurn: 5 }], defenders: {}, warehouse: [] };
@@ -142,6 +137,7 @@
         /* Cancelled by the conversion. */
         order('a', 'barracks', 'recruit_defenders', 'Barracks: Recruit Defenders', 14),
         order('m', 'menagerie', 'recruit_beast', 'Menagerie: Recruit Beast (Tiger)', 15),
+        order('x', 'war_council', 'war_action', 'War Action', 13, { meta: { kind: 'war_action', objective: 'raid', targetName: 'Bacca' } }),
         order('u', 'library_scriptorium', 'upgrade', 'Library & Scriptorium: Upgrade to Level 3', 20, { meta: { kind: 'upgrade', toLevel: 3 } }),
         order('h', 'shrine_pelagos', 'pray', 'Shrine of Pelagos: Pray (Pelagos\'s Tidings)', 11, { chosen: { label: 'Pelagos\'s Tidings', special: { type: 'oracle_hint', god: 'pelagos' } } }),
         order('c', 'shrine_aurush', 'prepare_purification_incense', 'Shrine of Aurush: Prepare Purification Incense', 12),
@@ -158,7 +154,7 @@
       ];
       return b;
     }
-    var cancelled = ['a', 'm', 'u', 'h', 'c', 't'];
+    var cancelled = ['a', 'm', 'x', 'u', 'h', 'c', 't'];
     var kept = ['r', 'l', 'f', 'b', 'w2', 'd', 'w'];
     cancelled.forEach(function (id) { t.equal(C.cancelledByConversion(withOrders(3).pendingOrders.filter(function (o) { return o.id === id; })[0]), true, id + ' is cancelled'); });
     kept.forEach(function (id) { t.equal(C.cancelledByConversion(withOrders(3).pendingOrders.filter(function (o) { return o.id === id; })[0]), false, id + ' is kept or moved'); });
@@ -167,11 +163,11 @@
     t.equal(s3.orders.count, kept.length, 'only what will survive');
     t.equal(s3.orders.next.label, 'Shrine of Telluria: Pray (Telluria\'s Blessing)', 'the Favour prayer moves to the Temple, so it is still due on Day 12');
     var news = JSON.stringify([s3, C.ironbowNews(old, 10, 30)]);
-    ['Barracks', 'Menagerie', 'Pelagos\'s Tidings', 'Purification', 'Riding Harness', 'Upgrade to Level 3'].forEach(function (name) { t.ok(news.indexOf(name) === -1, name + ' is never named'); });
+    ['Barracks', 'Menagerie', 'War Action', 'Pelagos\'s Tidings', 'Purification', 'Riding Harness', 'Upgrade to Level 3'].forEach(function (name) { t.ok(news.indexOf(name) === -1, name + ' is never named'); });
     ['Research (Geographical Scriptures)', 'Alchemy (Antitoxin)', 'Bless Voyage', 'House a Wyvern', 'Charter Berth', 'Craft (Dagger)', 'Pray (Telluria'].forEach(function (name) { t.ok(news.indexOf(name) !== -1, name + ' is still forecast'); });
     t.equal(sum(e, withOrders(2)).orders.count, kept.length, 'a version 2 Bastion is also converted when it opens, so it is read the same way');
     var converted = withOrders(4);
-    t.equal(sum(e, converted).orders.count, 13, 'version 4: nothing is left out');
+    t.equal(sum(e, converted).orders.count, 13, 'version 4: nothing is left out (a War Action an older copy put back is never forecast)');
     t.ok(/Barracks: Recruit Defenders is complete/.test(JSON.stringify(C.ironbowNews(converted, 10, 20))), 'its Barracks order is still forecast');
     var before = JSON.stringify(old);
     C.ironbowNews(old, 10, 20);
@@ -182,7 +178,23 @@
     t.equal(C.cancelledByConversion(order('x', 'wyvern_roost', 'house_elara_wyvern', 'Wyvern Roost: House Elara\'s Wyvern', 14)), false);
   });
 
-  test('the three beast buildings are ONE Beast Pen to a version 3 Bastion read before it is converted: one construction (the one ready first), no repair of a building that is going, none at all of a version 4', function (t) {
+  test('the war game is gone (S06): a Clan at war, a regiment or beast recovering, a facility Under Repair, a War Action and a War Room being built are never forecast, in a version 3 save read before it is converted or in any other', function (t) {
+    [3, 4].forEach(function (v) {
+      var b = bastion();
+      b.v = v;
+      b.day = 10;
+      b.anchored = true;
+      b.builtExtras = [{ facId: 'war_room', status: 'building', startDay: 1, readyDay: 22 }, { facId: 'menagerie', status: 'building', startDay: 1, readyDay: 23 }];
+      b.pendingOrders = [{ id: 'x', facId: 'war_council', fnId: 'war_action', label: 'War Action', issuedDay: 9, dueDay: 13, meta: { kind: 'war_action', objective: 'raid', targetName: 'Bacca' } }];
+      b.wars = { bacca: { since: 6, last: 10, next: 13 } };
+      b.warRecovery = [{ id: 'x', kind: 'beast', name: 'Ape', status: 'wounded', untilDay: 11 }];
+      b.repairs = { dock: 16 };
+      var text = JSON.stringify(C.bastionComing(b));
+      t.ok(!/army|attack|fit to fight|fit for duty|Repairs|War Room|Menagerie/.test(text), 'version ' + v + ': ' + text);
+    });
+  });
+
+  test('the three beast buildings are ONE Beast Pen to a version 3 Bastion read before it is converted: one construction (the one ready first), none at all of a version 4', function (t) {
     function save(v, extra) {
       var b = bastion();
       b.v = v;
@@ -203,12 +215,11 @@
     t.same(lines(save(3, { builtExtras: ['', building('wyvern_roost', 26)], builtPlots: [building('griffin_tower', 19)] })), ['19 The Beast Pen is built.'], 'slots and plots alike');
     t.same(lines(save(3, { builtExtras: [building('wyvern_roost', 'soon')] })), [], 'a damaged day is never guessed');
     t.same(lines(save(3, { builtExtras: [building('herbal_gardens', 15), building('wyvern_roost', 26)] })), ['15 The Herbal Gardens is built.', '26 The Beast Pen is built.'], 'other buildings are named as before');
-    /* Repairs of the buildings that are going are not forecast; repairs of anything else are, and orders are not held back by them. */
-    var repairs = save(3, { repairs: { griffin_tower: 18, wyvern_roost: 12, workshop: 14 }, pendingOrders: [{ id: 'h', facId: 'griffin_tower', fnId: 'house_griffin', label: 'Griffin Tower: House a Griffin (Swiftwing)', issuedDay: 9, dueDay: 15 }] });
-    t.same(lines(repairs), ['15 Griffin Tower: House a Griffin (Swiftwing) is complete.', '15 Repairs: the Workshop is working again.'], 'the order is due on its own day (the Tower\'s repair goes with the Tower); the Workshop\'s repair is still forecast');
+    /* A House order at the Tower is still forecast on its own day (it only moves to the Pen). */
+    t.same(lines(save(3, { pendingOrders: [{ id: 'h', facId: 'griffin_tower', fnId: 'house_griffin', label: 'Griffin Tower: House a Griffin (Swiftwing)', issuedDay: 9, dueDay: 15 }] })), ['15 Griffin Tower: House a Griffin (Swiftwing) is complete.']);
     /* A converted Bastion (version 4) is never filtered: it says what it holds, by its own names. */
-    var v4 = save(4, { repairs: { griffin_tower: 18 }, builtExtras: [building('beast_pen', 31), building('griffin_tower', 22)] });
-    t.same(lines(v4), ['19 Repairs: the Griffin Tower is working again.', '22 The Griffin Tower is built.', '31 The Beast Pen is built.']);
+    var v4 = save(4, { builtExtras: [building('beast_pen', 31), building('griffin_tower', 22)] });
+    t.same(lines(v4), ['22 The Griffin Tower is built.', '31 The Beast Pen is built.']);
     var before = JSON.stringify(three);
     C.bastionComing(three);
     t.equal(JSON.stringify(three), before, 'the save is only read');
@@ -221,11 +232,11 @@
     b.builtExtras = [{ facId: 'hall_of_emissaries', status: 'built' }];
     b.pendingOrders = [
       { id: 'u', facId: 'hall_of_emissaries', fnId: 'upgrade', label: 'Hall of Emissaries: Upgrade to Level 2', costGP: 0, issuedDay: 10, dueDay: 17, meta: { kind: 'upgrade', toLevel: 2 } },
-      { id: 'v', facId: 'barracks', fnId: 'upgrade', label: 'Barracks: Upgrade to Level 3', costGP: 0, issuedDay: 10, dueDay: 24, meta: { kind: 'upgrade', toLevel: 3 } }
+      { id: 'v', facId: 'workshop', fnId: 'upgrade', label: 'Workshop: Upgrade to Level 3', costGP: 0, issuedDay: 10, dueDay: 24, meta: { kind: 'upgrade', toLevel: 3 } }
     ];
     t.same(C.ironbowNews(b, 10, 24).filter(function (w) { return w.day === 17 || w.day === 24; }), [
       { day: 17, lines: ['Hall of Emissaries: Upgrade to Level 2 is complete.'] },
-      { day: 24, lines: ['Barracks: Upgrade to Level 3 is complete.'] }
+      { day: 24, lines: ['Workshop: Upgrade to Level 3 is complete.'] }
     ]);
   });
 
@@ -233,12 +244,11 @@
     var b = busy();
     var before = JSON.stringify(b);
     t.same(C.ironbowNews(b, 10, 17), [
-      { day: 11, lines: ['The Ape is fit to fight again.'] },
       { day: 12, lines: ['The sea route to Karr needs a roll.'] },
-      { day: 13, lines: ['Your army is ready to march on Bacca (Raid).', 'Clan Bacca may attack: the Bastion rolls to see.'] },
-      { day: 14, lines: ['Barracks: Recruit Defenders is complete.'] },
-      { day: 17, lines: ['Hall of Emissaries: Secure Trade Agreement (Clan Karr) needs your roll.', 'Dock: Charter Berth (Longship) is complete.', 'Repairs: the Dock is working again.'] }
-    ], 'the Dock\'s order waits for its repairs; the low-risk route pays without a roll');
+      { day: 14, lines: ['Library & Scriptorium: Prepare Overland Travel Charts is complete.'] },
+      { day: 15, lines: ['Dock: Charter Berth (Longship) is complete.'] },
+      { day: 17, lines: ['Hall of Emissaries: Secure Trade Agreement (Clan Karr) needs your roll.'] }
+    ], 'the low-risk route pays without a roll; no war, recovery or repair lines any more (S06)');
     t.same(C.ironbowNews(b, 17, 29), [
       { day: 22, lines: ['The Arcane Laboratory is built.'] },
       { day: 23, lines: ['Your delegation from Clan Slade has ended.'] },
@@ -260,9 +270,8 @@
 
   test('the word the Explorer sends at Make Camp comes on the days the Bastion itself has news', function (t) {
     var b = busy();
-    b.wars = {};
     b.tradeNetwork.routes = [];
-    b.pendingOrders = b.pendingOrders.filter(function (o) { return o.facId !== 'hall_of_emissaries' && o.facId !== 'war_council'; });
+    b.pendingOrders = b.pendingOrders.filter(function (o) { return o.facId !== 'hall_of_emissaries'; });
     var predicted = C.ironbowNews(b, 10, 30).map(function (w) { return w.day; });
     for (var d = 11; d <= 30; d++) {
       BR.startDay(b, bdata, 0);

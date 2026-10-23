@@ -1,11 +1,11 @@
-/* Negotiated Charter terms and the Barracks and Watchtower protections
-   (Harry, 20 October 2026), from the test page with the internet off:
+/* Negotiated Charter terms and the voyage protections (Harry, 20 October
+   2026; the Barracks' and Watchtower's went with the war game on 22 October
+   2026), from the test page with the internet off:
    - the Hall's Port Charters box shows the terms and a worked estimate;
    - Amend terms… needs valid numbers and a reason, saves, logs and keeps a
      history; Reset to standard terms asks for a reason too;
-   - the Dock shows the terms and the three protections;
-   - Guard Commercial Convoy can be ordered once (the button says so while
-     one is pending).
+   - the Dock shows the terms and the one protection left, the Blessing of
+     Pelagos.
    Run with:  node tests/e2e/charter-terms.test.js */
 'use strict';
 
@@ -29,10 +29,8 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
   await ba.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().anchored, null, { timeout: 8000 });
   await ba.evaluate(() => TSI.bastion.debug.change(s => {
     s.partyLevel = 9;
-    s.builtExtras = [{ facId: 'hall_of_emissaries', status: 'built' }, { facId: 'barracks', status: 'built' }, { facId: 'watchtower', status: 'built' }];
+    s.builtExtras = [{ facId: 'hall_of_emissaries', status: 'built' }];
     s.facilityLevels.hall_of_emissaries = 2;
-    s.facilityLevels.barracks = 2;
-    s.facilityLevels.watchtower = 2;
     s.facilityLevels.dock = 4;
     s.tradeNetwork.portCharters = [{ id: 'chartr-gold00000:dm:0', port: 'goldport', clan: 'molten', mode: 'cargo', status: 'registered', earnedDay: 1, registeredDay: 1, terms: {}, from: { code: 'DM', title: 'DM award' }, text: '' }];
   }));
@@ -85,29 +83,14 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     equal(await bare(ba, '[data-test=charter-terms]'), 'Terms: ×1.00 price · 0 gp shipping a lot · 0% tariff (standard).');
   });
 
-  await check('the Dock shows the Charter terms and the three protections', async () => {
+  await check('the Dock shows the Charter terms and the one protection left, the Blessing of Pelagos', async () => {
     await close();
     await ba.click('[data-test=tile-dock]');
     await ba.waitForSelector('[data-test=dock-cargo]');
     assert(/Terms: ×1.00 price/.test(await bare(ba, '[data-test=dock-charter-goldport]')));
-    equal(await ba.$$eval('[data-test=dock-protections] li', l => l.length), 3);
-    assert(/Commercial Convoy: none ready/.test(await bare(ba, '[data-test=dock-protection-commercial_convoy]')));
-  });
-
-  await check('Guard Commercial Convoy can be ordered once; a second one is refused while it is pending', async () => {
-    await close();
-    await ba.click('[data-test=tile-barracks]');
-    const sel = '[data-test="issue-barracks__guard_commercial_convoy"]';
-    await ba.waitForSelector(sel);
-    equal(await ba.$eval(sel, b => b.disabled), false);
-    await ba.click(sel);
-    await ba.waitForTimeout(500);
-    const s = await bas(ba);
-    equal(s.pendingOrders.filter(o => o.fnId === 'guard_commercial_convoy').map(o => o.dueDay - o.issuedDay), [3]);
-    await ba.click(sel);
-    await ba.waitForSelector('.tsi-modal:not(.tsi-bas-panel)');
-    assert(/already pending/.test(await ba.$eval('.tsi-modal:not(.tsi-bas-panel)', n => n.textContent)), 'a second order is refused');
-    equal((await bas(ba)).pendingOrders.filter(o => o.fnId === 'guard_commercial_convoy').length, 1);
+    equal(await ba.$$eval('[data-test=dock-protections] li', l => l.length), 1);
+    assert(/Blessing of Pelagos: none ready/.test(await bare(ba, '[data-test=dock-protection-pelagos_blessing]')));
+    equal(await ba.$('[data-test=dock-protection-commercial_convoy]'), null, 'no Commercial Convoy any more');
   });
 
   await check('the Hall hides the Secure Trade Agreement, lists Register Port Charter first, and still shows a running agreement\'s days left', async () => {

@@ -33,3 +33,12 @@ body.tsi-bh-phone .tsi-tool { padding: 0; }
 /* Pop-ups sit outside the companion's own box, so their buttons need the phone's tap size here. */
 body.tsi-bh-phone .tsi-modal__foot .tsi-btn { min-height: 44px; }
 body.tsi-bh-phone .tsi-modal .tsi-btn { min-height: 44px; }
+
+/* S17: the "Offline backup" and iPhone help boxes (shut until opened), the message after a link, and the live-update line. */
+.tsi-bhp-backup, .tsi-bhp-help { border: 1px solid var(--tsi-line); border-radius: var(--tsi-radius-sm); background: rgba(255, 255, 255, .02); }
+.tsi-bhp-backup__summary { display: flex; align-items: center; min-height: 44px; padding: 0 var(--tsi-space-3); cursor: pointer; font: 600 14px/1.3 var(--tsi-font-display); letter-spacing: var(--tsi-track-label); color: var(--tsi-gold-text); }
+.tsi-bhp-backup__body { display: grid; gap: var(--tsi-space-3); padding: 0 var(--tsi-space-3) var(--tsi-space-3); }
+.tsi-bhp-backup[open] > .tsi-bhp-backup__summary, .tsi-bhp-help[open] > .tsi-bhp-backup__summary { border-bottom: 1px solid var(--tsi-line); margin-bottom: var(--tsi-space-3); }
+.tsi-bhp-ok { padding: var(--tsi-space-3); border: 1px solid var(--tsi-ok, #5aa86a); border-radius: var(--tsi-radius-sm); color: var(--tsi-text); background: rgba(40, 90, 50, .28); }
+.tsi-bhp-live { display: grid; gap: var(--tsi-space-2); }
+.tsi-bhp-live p { margin: 0; }
