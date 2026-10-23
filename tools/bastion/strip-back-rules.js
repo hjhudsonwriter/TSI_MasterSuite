@@ -644,6 +644,7 @@
     if (report.archived.length) bits.push(plural(report.archived.length, 'place', 'places') + ' removed');
     if (report.removed.events) bits.push('the Bastion\'s event record was dropped');
     if (report.removed.war) bits.push('the army and the war were removed');
+    if (report.removed.identity) bits.push(report.removed.identity.kind ? 'the party\'s ' + (report.removed.identity.kind === 'Clan' ? 'Clan' : 'Mercenary Brigade') + ' is no longer kept' : 'the party\'s Clan scores are no longer kept');
     return bits.length ? bits.join('; ') + '.' : 'Nothing of yours changed.';
   }
   /* What is kept in the save about this conversion (migration.v4). A report that
@@ -702,6 +703,81 @@
     delete s.beast.done;
     delete s.beast.accept;
     delete s.beast.floor;
+  }
+
+  /* Step S07 (Harry, 22 October 2026): the party can no longer found a Clan; it has a Party Name instead.
+     - organization (the Clan's type, name, chief, motto and founding day), clanHonor (the party's own Clan Honour,
+       0 to 100) and trustedClientsByClan (the archived Mercenary Brigade's scores) are dropped from the live save. The
+       copy of the Bastion that is set aside has all of them. Nothing else read them (the war that did went in S06); the
+       seven Clans' Honour/Respect and Political Capital are NOT touched.
+     - A save that had founded a Clan (or, in the first two builds, a Mercenary Brigade): its NAME becomes the Party
+       Name, once, and only if the Party Name is empty (a name already chosen is never replaced). The crest stays.
+     - The report (heading "Your Party") names what is not kept: the chief, the motto and the Clan Honour.
+     A save that only holds the empty values the old Bastion always wrote (no Clan, 40, fifty each) says nothing and
+     does not count as "left over" (it is simply not loaded any more). Whatever is detected is also said, so a
+     "tidied again" notice always has something to tell. Pure: no storage, clock or dice. */
+  var IDENTITY_KEYS = ['organization', 'clanHonor', 'trustedClientsByClan'];
+  var CLAN_HONOUR_START = 40;
+  var TRUSTED_START = 50;
+  function orgOf(s) { return isObj(s.organization) ? s.organization : null; }
+  function orgKind(o) { return o && o.type === 'clan' ? 'Clan' : o && o.type === 'merc' ? 'Mercenary Brigade' : ''; }
+  function honourSet(s) { return typeof s.clanHonor === 'number' && isFinite(s.clanHonor); }
+  function honourLeft(s) { return honourSet(s) && s.clanHonor !== CLAN_HONOUR_START; }
+  function trustedLeft(s) {
+    return isObj(s.trustedClientsByClan) && Object.keys(s.trustedClientsByClan).some(function (k) { var v = s.trustedClientsByClan[k]; return typeof v === 'number' && v !== TRUSTED_START; });
+  }
+  function detectIdentity(s) {
+    var out = [];
+    var o = orgOf(s);
+    if (orgKind(o)) out.push(o.type === 'clan' ? 'a founded Clan' : 'a Mercenary Brigade');
+    if (honourLeft(s)) out.push('the party\'s Clan Honour');
+    if (trustedLeft(s)) out.push('the Trusted Clients scores');
+    return out;
+  }
+  function tidyText(v) { return str(v).replace(/\s+/g, ' ').trim(); }
+  function quoted(t) { return '“' + t + '”'; }
+  /* ["a", "b", "c"] → "A, b and c" (the first letter capital: it starts a sentence). */
+  function sentenceList(items) { var t = listText(items); return t.charAt(0).toUpperCase() + t.slice(1); }
+  function dropIdentity(s, data, report) {
+    var found = detectIdentity(s);
+    var o = orgOf(s);
+    var kind = orgKind(o);
+    var name = o ? tidyText(o.name) : '';
+    var chief = o ? tidyText(o.chief) : '';
+    var motto = o ? tidyText(o.motto) : '';
+    var honour = honourSet(s) ? clampInt(s.clanHonor, 0, 100) : null;
+    var honourChanged = honourLeft(s);
+    var trustedChanged = trustedLeft(s);
+    var current = R.cleanPartyName(s.partyName);
+    var seeded = '';
+    if (kind && !current) {
+      seeded = R.cleanPartyName(name);
+      if (seeded) s.partyName = seeded;
+    }
+    IDENTITY_KEYS.forEach(function (k) { delete s[k]; });
+    if (!found.length) return;
+    report.removed.identity = { kind: kind, name: name, chief: chief, motto: motto, honour: honour, seeded: seeded };
+    if (kind) {
+      var line = kind === 'Clan'
+        ? 'A party can no longer found a Clan, so yours' + (name ? ', ' + quoted(name) + ',' : '') + ' is not one any more.'
+        : 'The Bastion no longer has Mercenary Brigades, so yours' + (name ? ', ' + quoted(name) + ',' : '') + ' is gone.';
+      if (seeded) line += ' Its name is now your Party Name' + (seeded !== name ? ' (tidied to fit: at most ' + R.PARTY_NAME_MAX + ' letters, no angle brackets)' : '') + ', and shows above your crest.';
+      else if (current) line += ' Your Party Name, ' + quoted(current) + ', stays as it is.';
+      else line += ' It had no name, so your Party Name is empty.';
+      var lost = [];
+      if (chief) lost.push('its chief (' + chief + ')');
+      if (motto) lost.push('its motto (' + quoted(motto) + ')');
+      if (honour !== null) lost.push('its Clan Honour (' + honour + ')');
+      line += lost.length
+        ? ' ' + sentenceList(lost) + (lost.length > 1 ? ' are' : ' is') + ' not kept in the Bastion, but the copy of your Bastion that was set aside has everything.'
+        : ' Nothing else of it is kept in the Bastion; the copy of your Bastion that was set aside has everything.';
+      R.stripBackSay(report, 'party', line + ' Your crest stays as it is.');
+    } else if (honourChanged) {
+      R.stripBackSay(report, 'party', 'The party\'s Clan Honour (' + honour + ') is not kept, because a party can no longer found a Clan. The copy of your Bastion that was set aside has it.');
+    }
+    if (trustedChanged) {
+      R.stripBackSay(report, 'party', 'The Trusted Clients scores of the old Mercenary Brigade are not kept: nothing in the Bastion uses them. The copy of your Bastion that was set aside has them.');
+    }
   }
 
   /* Step S14 (Harry, 22 October 2026): the Wyvern Roost, Griffin Tower and Dire Wolf Den become ONE Beast Pen.
@@ -932,6 +1008,8 @@
     { id: 'dropWar', detect: detectWar, run: dropWar },
     { id: 'dropWarFacilities', detect: detectWarFacilities, run: dropWarFacilities },
     { id: 'dropBeastRequests', detect: detectBeastRequests, run: dropBeastRequests },
+    /* Step S07: the Party Name, and no more founding a Clan. */
+    { id: 'identity', detect: detectIdentity, run: dropIdentity },
     { id: 'rehomeBeasts', detect: detectBeastPen, run: rehomeBeasts },
     { id: 'sweepFacilities', detect: detectGhosts, run: sweepFacilities },
     { id: 'finish', detect: null, run: finish }

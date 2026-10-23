@@ -159,13 +159,6 @@
       function begin() {
       var migrating = !!conversion;
       var state = saved ? R.fromSave(TSI.clone(conversion ? conversion.save : saved), data) : R.defaultState(data);
-      /* A Mercenary Brigade (archived in Build 3; Builds 1 and 2 still had
-         Form Mercenary Brigade) loads as Unsworn: the Day Log keeps its
-         name, and the screen says so once, as it opens. */
-      var formerBrigade = saved ? R.formerBrigade(saved) : null;
-      if (formerBrigade) {
-        R.log(state, 'Identity', 'The Mercenary Brigade, ' + formerBrigade.name + ', is no more: the Bastion no longer has Brigades, so the party is Unsworn again. Its Trusted Clients scores are kept in the save. A Clan can be founded in Party Identity.');
-      }
       var ui = R.cleanUi(load('ui', R.isUi, 'the facility grid opened in its usual way (everything else is as it was)'));
       function save() { ctx.store.set('state', R.toSave(state)); }
       /* The Beast Handler's record (its campaign id), made the first time this Bastion opens with it. */
@@ -894,9 +887,9 @@
       /* ================================================================
          The crest (Harry's request, 2 October 2026; at any time since the
          Bastion overhaul, Build 3, 8 October 2026)
-         The crest belongs to the Bastion, not the Clan: it can be set
-         whether the party is Unsworn or a Clan, and forming a Clan keeps it.
-         Three ways, from the Party Identity panel:
+         The crest belongs to the Bastion: it can be set from the very start
+         (a party can no longer found a Clan, 22 October 2026). Three ways,
+         from the Party Identity panel (the crest badge opens it):
          - Create in the Clan Crest Creator ↗: the Creator opens in a new
            window, and its "Use for the Bastion" sends the crest here
            (TSI.handoff 'crest': a 512-pixel PNG and the Creator's design,
@@ -969,8 +962,8 @@
           });
         });
       }
-      /* Every place the crest shows is redrawn when it changes; an open Form
-         Clan pop-up's crest box too. */
+      /* Every place the crest shows is redrawn when it changes (and the
+         panel's status line cleared). */
       var crestWatchers = [];
       function saveCrest(value) {
         crest = value || null;
@@ -987,17 +980,16 @@
           img.setAttribute('data-key', c.key);
         }
       }
-      /* "Crest of the Ironbow" until a Clan is formed, then "Crest of <Clan>". */
+      /* "Crest of the Ironbow" until the party has a name, then "Crest of <Party Name>". */
       function crestName() {
-        var o = state.organization;
-        return 'Crest of ' + (o.type === 'clan' && o.name ? o.name : 'the Ironbow');
+        return 'Crest of ' + (state.partyName || 'the Ironbow');
       }
 
       /* Open the Clan Crest Creator in its own window, unless it's open
          already: its "Use for the Bastion" sends the crest back here. It's
-         only opened from a pop-up (Party Identity, Form Clan), so what
-         happened is written in that pop-up's status line (status): a corner
-         notice would sit under the pop-up's dark backdrop. */
+         only opened from a pop-up (Party Identity), so what happened is
+         written in that pop-up's status line (status): a corner notice would
+         sit under the pop-up's dark backdrop. */
       var creatorOpenedAt = 0;
       function openCreator(status) {
         function tell(text) { if (status) status.textContent = text; }
@@ -1128,168 +1120,72 @@
         }).catch(function (err) { TSI.reportError(err, 'reading the crest saved in another window'); });
       }
 
-      /* The crest part of the Form Clan pop-up: the Bastion's crest, kept
-         unless you choose another (Create a new one ↗ sends one back through
-         the Crest Creator; Upload… takes a picture, used once the founding
-         is confirmed). */
-      function crestField() {
-        var chosen = null;
-        var img = el('img', { class: 'tsi-bas-crest-pick__img', alt: 'Your crest', hidden: true, 'data-test': 'crest-preview' });
-        var empty = el('div', { class: 'tsi-bas-crest-pick__empty', text: 'No crest yet' });
-        var note = muted('');
-        note.setAttribute('data-test', 'crest-field-note');
-        var keep = btn('Keep this crest', null, 'tsi-btn--ghost', 'crest-keep', { hidden: true });
-        var create = btn('Create a new one ↗', null, '', 'crest-new');
-        var upload = btn('Upload…', null, '', 'crest-upload');
-        var status = statusLine('crest-field-status');
-        function show() {
-          var c = chosen || crest;
-          showCrest(img, c);
-          empty.hidden = !!c;
-          keep.hidden = !chosen;
-          keep.textContent = crest ? 'Keep this crest' : 'No crest';
-          note.textContent = chosen ? (crest ? 'A new crest: it replaces the Bastion\'s when you confirm the founding.' : 'Used when you confirm the founding.')
-            : crest ? 'The Bastion\'s crest: the Clan keeps it.'
-            : 'The Clan can have a crest at any time. Create one in the Clan Crest Creator, or upload a picture.';
-        }
-        keep.onclick = function () { chosen = null; show(); upload.focus(); };
-        create.onclick = function () { openCreator(status); };
-        upload.onclick = TSI.oneAtATime(function () {
-          return pickCrest().then(function (c) { if (c && life.alive) { chosen = c; show(); } });
-        });
-        var node = el('div', { class: 'tsi-bas-crest-pick', 'data-test': 'crest-field' }, [
-          el('div', { class: 'tsi-bas-crest-pick__frame' }, [img, empty]),
-          el('div', { class: 'tsi-bas-crest-pick__side' }, [
-            el('span', { class: 'tsi-bas-crest-pick__title', text: 'Crest' }),
-            note,
-            el('div', { class: 'tsi-bas-actions' }, [keep, create, upload]),
-            status
-          ])
-        ]);
-        show();
-        /* A crest taken for the Bastion while this is open (one sent from
-           the Crest Creator and accepted) is the latest choice: it replaces
-           a picture uploaded here earlier. */
-        function changed() { chosen = null; status.textContent = ''; show(); }
-        crestWatchers.push(changed);
-        return {
-          node: node,
-          chosen: function () { return chosen; },
-          stop: function () { var i = crestWatchers.indexOf(changed); if (i !== -1) crestWatchers.splice(i, 1); }
-        };
-      }
-
       /* ================================================================
-         Party Identity (the panel the badge in the map's top-right corner
-         opens): the crest and its three buttons; Unsworn, or the Clan with
-         its chief and motto; Form Clan and its requirements; Clan Honour
-         (once a Clan). The Clans' trackers are in the Clan Influence panel.
+         Party Identity (the small panel the crest badge in the map's
+         top-right corner opens; Harry, 22 October 2026): the Party Name
+         (optional, shown above the crest), and the crest with its three
+         buttons: Create in the Clan Crest Creator, Upload a picture,
+         Remove. A party can no longer found a Clan.
          ================================================================ */
       var idCard = card('identity', 'Party Identity');
-      var orgDesc = muted('');
-      var orgPill = el('div', { class: 'tsi-bas-status-pill', 'data-test': 'org', text: 'Unsworn' });
-      var orgMeta = el('div', { class: 'tsi-bas-identity__meta', 'data-test': 'org-meta' });
+      var nameInput = el('input', {
+        type: 'text', class: 'tsi-input', maxlength: String(R.PARTY_NAME_MAX), autocomplete: 'off', placeholder: 'Optional: a name for your party',
+        'aria-describedby': 'tsi-bas-party-name-hint', 'data-test': 'party-name'
+      });
+      var nameHint = muted('Shown above your crest. Leave it blank for no name. Up to ' + R.PARTY_NAME_MAX + ' letters.');
+      nameHint.id = 'tsi-bas-party-name-hint';
+      var nameStatus = el('div', { class: 'tsi-bas-muted tsi-bas-crest-status', role: 'status', 'aria-live': 'polite', 'data-test': 'party-name-status' });
+      /* Saved when you finish typing (Enter, leaving the box, or closing the panel with Escape), not on every key. */
+      function commitPartyName() {
+        var raw = nameInput.value;
+        var next = R.cleanPartyName(raw);
+        var note = R.partyNameNote(raw);
+        nameInput.value = next;
+        if (next === state.partyName) { nameStatus.textContent = note; return; }
+        state.partyName = next;
+        nameStatus.textContent = note || (next ? 'Saved. It shows above your crest.' : 'Saved. No Party Name is shown.');
+        done();
+      }
+      life.on(nameInput, 'change', commitPartyName);
+      life.on(nameInput, 'keydown', function (e) {
+        if (e.key === 'Enter') nameInput.blur();
+        else if (e.key === 'Escape') commitPartyName();
+      });
+      var partyShown = el('div', { class: 'tsi-bas-identity__party', hidden: true, 'data-test': 'party-name-shown' });
       var crestImg = el('img', { class: 'tsi-bas-crest__img', alt: '', hidden: true, 'data-test': 'crest' });
       var crestEmpty = el('div', { class: 'tsi-bas-crest__empty', 'data-test': 'crest-empty' }, [icon('shield'), el('span', { text: 'No crest yet' })]);
       var crestFrame = el('div', { class: 'tsi-bas-crest tsi-bas-crest--large' }, [crestImg, crestEmpty]);
       var crestStatus = statusLine('crest-status');
       crestWatchers.push(function () { crestStatus.textContent = ''; });
-      var crestCreateBtn = btn('Create in the Clan Crest Creator ↗', function () { openCreator(crestStatus); }, '', 'crest-create');
+      var crestCreateBtn = btn('Create in the Clan Crest Creator ↗', function () { openCreator(crestStatus); }, 'tsi-btn--primary', 'crest-create');
       var crestAddBtn = btn('Upload a picture…', function () { onUploadCrest(); }, 'tsi-btn--ghost', 'crest-add');
       var crestRemoveBtn = btn('Remove', function () { onRemoveCrest(); }, 'tsi-btn--ghost', 'crest-delete');
       var crestActions = el('div', { class: 'tsi-bas-crest-actions' }, [crestCreateBtn, crestAddBtn, crestRemoveBtn]);
-      var formClanBtn = btn('Form Clan', function () { onFormClan(); }, 'tsi-btn--primary', 'form-clan');
-      var reqHint = muted('', 'tsi-bas-req');
-      reqHint.setAttribute('data-test', 'requirements');
-      var formBox = el('div', { class: 'tsi-bas-box', 'data-test': 'form-box' }, [
-        label('Found a Clan'),
-        reqHint,
-        el('div', { class: 'tsi-bas-actions' }, [formClanBtn])
-      ]);
-      var honourInput = numberInput('clan-honour', { min: '0', max: '100', 'aria-label': 'Clan Honour (0 to 100)' });
-      life.on(honourInput, 'change', function () {
-        state.clanHonor = R.clampInt(honourInput.value, 0, 100);
-        honourInput.value = String(state.clanHonor);
-        done();
-      });
-      var honourBox = el('div', { class: 'tsi-bas-box tsi-bas-honour', hidden: true, 'data-test': 'honour-box' }, [
-        label('Clan Honour (0–100)'),
-        field('', honourInput)
-      ]);
       TSI.append(idCard.body, [
+        el('div', { class: 'tsi-bas-identity__name' }, [field('Party Name (optional)', nameInput), nameHint, nameStatus]),
         el('div', { class: 'tsi-bas-identity' }, [
-          crestFrame,
+          el('div', { class: 'tsi-bas-identity__crest' }, [partyShown, crestFrame]),
           el('div', { class: 'tsi-bas-identity__side' }, [
-            el('div', { class: 'tsi-bas-identity__name' }, [orgPill, orgMeta]),
-            orgDesc,
             label('The crest'),
             crestActions,
             crestStatus
           ])
-        ]),
-        formBox,
-        honourBox
+        ])
       ]);
 
       function renderIdentity() {
-        var o = state.organization;
-        var clan = o.type === 'clan';
-        orgPill.textContent = R.orgLabel(state);
-        TSI.clear(orgMeta);
-        if (clan) {
-          TSI.append(orgMeta, [
-            o.chief ? el('div', null, [el('span', { class: 'tsi-bas-muted', text: 'Chief: ' }), o.chief]) : null,
-            o.motto ? el('div', { class: 'tsi-bas-identity__motto', text: '“' + o.motto + '”' }) : null,
-            typeof o.foundedAtDay === 'number' ? muted('Founded on Day ' + o.foundedAtDay) : null
-          ]);
-        }
-        orgDesc.textContent = clan ? 'You are a political entity.'
-          : 'You may found a Clan once enough of the Clans support you.';
+        setValue(nameInput, state.partyName || '');
+        partyShown.textContent = state.partyName || '';
+        partyShown.hidden = !state.partyName;
         showCrest(crestImg, crest);
         crestImg.alt = crest ? crestName() : '';
         crestEmpty.hidden = !!crest;
         crestAddBtn.textContent = crest ? 'Upload another…' : 'Upload a picture…';
         crestRemoveBtn.hidden = !crest;
-        formBox.hidden = clan;
-        reqHint.textContent = R.requirementsHint(state, data);
-        formClanBtn.disabled = !(o.type === 'unsworn' && R.canFormClan(state, data).ok);
-        honourBox.hidden = !clan;
-        setValue(honourInput, R.clampInt(state.clanHonor === undefined || state.clanHonor === null ? 40 : state.clanHonor, 0, 100));
+        /* One main action: making a crest, until there is one. */
+        crestCreateBtn.classList.toggle('tsi-btn--primary', !crest);
+        crestCreateBtn.classList.toggle('tsi-btn--ghost', !!crest);
       }
-
-      /* One founding pop-up at a time, however many clicks. */
-      var onFormClan = TSI.oneAtATime(async function () {
-        if (state.organization.type !== 'unsworn') return;
-        if (!R.canFormClan(state, data).ok) { await say('Not eligible to form a Clan yet. See the requirements hint in the panel.'); return; }
-        var name = el('input', { type: 'text', class: 'tsi-input', placeholder: 'e.g. Clan Ironbow', 'data-test': 'clan-name' });
-        var chief = el('input', { type: 'text', class: 'tsi-input', placeholder: 'Elected Chief name', 'data-test': 'clan-chief' });
-        var motto = el('input', { type: 'text', class: 'tsi-input', placeholder: 'e.g. Root and Steel', 'data-test': 'clan-motto' });
-        var crestPick = crestField();
-        var ok;
-        try {
-          ok = await hallModal({
-            title: 'Form Clan',
-            className: 'tsi-bas-modal tsi-bas-modal--hall tsi-bas-modal--found',
-            body: [field('Clan Name', name), field('Clan Chief', chief), field('Motto (optional)', motto), crestPick.node, muted('This is persistent.')],
-            escValue: false,
-            actions: [{ label: 'Cancel', value: false }, { label: 'Confirm Founding', value: true, primary: true }]
-          });
-        } finally {
-          crestPick.stop();
-        }
-        if (!ok || !life.alive) return;
-        var n = name.value.trim();
-        var ch = chief.value.trim();
-        if (!n) { await say('Clan Name is required.'); return; }
-        state.organization = { type: 'clan', name: n, chief: ch, motto: motto.value.trim(), foundedAtDay: state.day };
-        state.clanHonor = R.clampInt(state.clanHonor === undefined || state.clanHonor === null ? 40 : state.clanHonor, 0, 100);
-        log('Identity', 'Founded Clan: ' + n + (ch ? ' (Chief: ' + ch + ')' : '') + '.');
-        /* The crest stays unless another was chosen here. */
-        if (crestPick.chosen()) saveCrest(crestPick.chosen());
-        done();
-        /* Form Clan has gone from the panel: the focus goes to Clan Honour. */
-        if (honourInput.isConnected && honourInput.offsetParent !== null) honourInput.focus();
-      });
 
       /* ================================================================
          Management: the Explorer's changes, the creatures and the Beast
@@ -3990,7 +3886,7 @@
       });
       var onImport = TSI.oneAtATime(function () { return TSI.backup.importTool('bastion'); });
       var onReset = TSI.oneAtATime(async function () {
-        var ok = await TSI.backup.askReset({ toolId: 'bastion', title: 'Reset the Bastion', okLabel: 'Reset', message: 'Reset the Bastion? This clears its saved data in this browser only: facilities, orders, diplomacy records and the crest. The Explorer is left as it is.' });
+        var ok = await TSI.backup.askReset({ toolId: 'bastion', title: 'Reset the Bastion', okLabel: 'Reset', message: 'Reset the Bastion? This clears its saved data in this browser only: facilities, orders, diplomacy records, the Party Name and the crest. The Explorer is left as it is.' });
         if (!ok || !life.alive) return;
         /* The crest goes too; the panels' open or closed state stays. (Any War Table save an old copy left behind is set aside when the Bastion opens again.) */
         ['state', 'crest'].forEach(function (k) { if (ctx.store.has(k)) ctx.store.remove(k); });
@@ -4041,21 +3937,32 @@
       function openOrders() { return openPanel('orders', { title: ordersCard.title, node: ordersCard.root, cls: 'tsi-bas-panel--wide', back: 'orders-count' }); }
 
       /* The crest badge, in the map's top-right corner: the Bastion's crest,
-         or a faint shield and "Add a crest". It opens the Party Identity
-         panel; its spoken name is "Crest of the Ironbow" until a Clan is
-         formed, then "Crest of <Clan>". */
+         or a faint shield and "Add a crest", with the Party Name above it
+         when there is one. It opens the Party Identity panel; its spoken name
+         is "Crest of the Ironbow" until the party has a name, then "Crest of
+         <Party Name>". */
+      var badgeName = el('span', { class: 'tsi-bas-badge__name', 'aria-hidden': 'true', hidden: true, 'data-test': 'badge-name' });
       var badgeImg = el('img', { class: 'tsi-bas-badge__img', alt: '', hidden: true });
       var badgeShield = el('span', { class: 'tsi-bas-badge__empty', 'aria-hidden': 'true' }, icon('shield'));
       var badgeLabel = el('span', { class: 'tsi-bas-badge__label', 'aria-hidden': 'true', text: 'Add a crest' });
-      var badge = el('button', { type: 'button', class: 'tsi-bas-badge', 'data-test': 'identity-badge', onclick: function () { openIdentity(); } }, [badgeImg, badgeShield, badgeLabel]);
-      function openIdentity() { return openPanel('identity', { title: idCard.title, node: idCard.root, cls: 'tsi-bas-modal--hall', back: 'identity-badge' }); }
+      var badge = el('button', { type: 'button', class: 'tsi-bas-badge', 'data-test': 'identity-badge', onclick: function () { openIdentity(); } }, [badgeName, badgeImg, badgeShield, badgeLabel]);
+      function openIdentity() { return openPanel('identity', { title: idCard.title, node: idCard.root, cls: 'tsi-bas-panel--identity', back: 'identity-badge' }); }
+      var badgeLook = '';
       function renderBadge() {
-        var o = state.organization;
+        var name = state.partyName || '';
+        badgeName.textContent = name;
+        badgeName.hidden = !name;
         showCrest(badgeImg, crest);
         badgeShield.hidden = !!crest;
+        badgeLabel.hidden = !!crest;
         badge.classList.toggle('tsi-bas-badge--empty', !crest);
-        badgeLabel.textContent = !crest ? 'Add a crest' : o.type === 'clan' && o.name ? o.name : 'Unsworn';
+        badge.classList.toggle('tsi-bas-badge--named', !!name);
         badge.setAttribute('aria-label', crestName() + (crest ? '' : ': no crest yet') + '. Open Party Identity.');
+        /* The full name, for when the badge has had to clamp it. */
+        badge.title = name || (crest ? 'Party Identity' : 'Add a crest');
+        /* The map's labels keep clear of the badge: place them again when its size changes. */
+        var look = name + '|' + (crest ? crest.key : '');
+        if (look !== badgeLook) { badgeLook = look; life.raf(placeLabels); }
       }
 
       var treasuryBox = el('label', { class: 'tsi-bas-treasury', title: 'Treasury (gp): saved when you press Enter or leave the box' }, [
@@ -4339,7 +4246,7 @@
       if (settled.length) log('Development Plots', R.settleLine(data, settled));
       renderAll();
       /* The first open saves the starting Bastion, as the old tool did. */
-      if (!saved || formerBrigade || migrating || settled.length) save();
+      if (!saved || migrating || settled.length) save();
       if (settled.length) notice(R.settleLine(data, settled) + ' The Day Log says so too.', { type: 'info', title: 'Development Plots.', id: 'tsi-bas-plots', timeout: 20000 });
       /* The facilities overhaul's report, once. */
       var mig = state.migration && state.migration.v3;
@@ -4347,9 +4254,6 @@
         mig.shown = true;
         save();
         notice('The Bastion\'s facilities have changed: ' + mig.lines.join(' ') + ' The Day Log says so too, and the Bastion as it was is kept as a set-aside copy.', { type: 'info', title: 'Facilities.', id: 'tsi-bas-migration', timeout: 30000 });
-      }
-      if (formerBrigade) {
-        notice('The Mercenary Brigade, ' + formerBrigade.name + ', is no more: the Bastion no longer has Brigades, so the party is Unsworn again. The Day Log says so.', { type: 'info', title: 'Party Identity.', id: 'tsi-bas-brigade', timeout: 20000 });
       }
       /* Read the Explorer's day straight away (then every 2 seconds), and
          any crest sent from the Clan Crest Creator while the Bastion was shut. */

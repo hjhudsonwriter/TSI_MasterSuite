@@ -120,7 +120,7 @@
   });
 
   test('the registry: the steps run in order, the last one finishes, and a later step can be added above the catch-all', function (t) {
-    t.same(R.stripBackSteps.map(function (st) { return st.id; }), ['dropEvents', 'settleWarOrders', 'dropWar', 'dropWarFacilities', 'dropBeastRequests', 'rehomeBeasts', 'sweepFacilities', 'finish']);
+    t.same(R.stripBackSteps.map(function (st) { return st.id; }), ['dropEvents', 'settleWarOrders', 'dropWar', 'dropWarFacilities', 'dropBeastRequests', 'identity', 'rehomeBeasts', 'sweepFacilities', 'finish']);
     var steps = R.stripBackSteps;
     var added = {
       id: 'example',
@@ -145,7 +145,7 @@
     } finally {
       steps.splice(0, 1);
     }
-    t.same(R.stripBackSteps.map(function (st) { return st.id; }), ['dropEvents', 'settleWarOrders', 'dropWar', 'dropWarFacilities', 'dropBeastRequests', 'rehomeBeasts', 'sweepFacilities', 'finish']);
+    t.same(R.stripBackSteps.map(function (st) { return st.id; }), ['dropEvents', 'settleWarOrders', 'dropWar', 'dropWarFacilities', 'dropBeastRequests', 'identity', 'rehomeBeasts', 'sweepFacilities', 'finish']);
   });
 
   group('Strip Back: the catch-all (a facility the Bastion does not know)');
@@ -750,16 +750,19 @@
     function clampTreasury(s) { return Math.max(0, parseInt(s.treasuryGP, 10) || 0); }
   });
 
-  test('so far the conversion changes nothing in any fixture except its version, the Bastion\'s event record (S05), the Beast Handler\'s old request record (S13), the Beast Pen (S14) and the war game and its five facilities (S06): the heavy Bastion keeps its beasts and 200 log lines', function (t) {
+  test('so far the conversion changes nothing in any fixture except its version, the Bastion\'s event record (S05), the Beast Handler\'s old request record (S13), the Beast Pen (S14), the war game and its five facilities (S06) and founding a Clan (S07): the heavy Bastion keeps its beasts and 200 log lines', function (t) {
     var WAR_FIELDS = ['defenders', 'defenderBeasts', 'military', 'militaryActions', 'warMissions', 'warMissionSeq', 'warRecovery', 'wars', 'repairs', 'warLog'];
     Object.keys(FIX).forEach(function (name) {
       if (name === 'bastion-before-overhaul') return;
       var res = convert(FIX[name]);
       /* Headings the earlier steps and the war game's own use. Anything else has to be the heavy Bastion's one event to drop. */
-      t.equal(res.report.lines.filter(function (l) { return !/^(Places that joined others|Places that are gone|The army and the war|Trade|Beasts|Gold|Orders)\. /.test(l); }).length, name === 'bastion-v3-heavy' ? 1 : 0, name + ': only the heavy one had an event to drop');
+      t.equal(res.report.lines.filter(function (l) { return !/^(Places that joined others|Places that are gone|The army and the war|Your Party|Trade|Beasts|Gold|Orders)\. /.test(l); }).length, name === 'bastion-v3-heavy' ? 1 : 0, name + ': only the heavy one had an event to drop');
       var a = clone(res.save), b = clone(FIX[name]);
       delete a.migration; delete b.migration;
       delete b.lastEvent; delete b.lastEventDay;
+      /* Removed with founding a Clan (S07): the Clan, its Honour and the Trusted Clients; the heavy Bastion's Clan name became its Party Name. */
+      ['organization', 'clanHonor', 'trustedClientsByClan'].forEach(function (k) { delete b[k]; });
+      delete a.partyName;
       a.v = 3;
       /* Changed by the Beast Pen (S14) and the war game's five facilities (S06): the slots, levels, orders, gold, the repairs and the creatures' homes.
          They are checked in tests/rules/beast-pen.test.js and in the group at the end of this file. */

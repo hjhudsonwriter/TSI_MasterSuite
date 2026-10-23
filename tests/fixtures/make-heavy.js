@@ -47,6 +47,8 @@ const clone = v => JSON.parse(JSON.stringify(v));
 /* ---------- The save ---------- */
 const s = R.defaultState(data);
 s.v = 3;
+/* A version 3 Bastion had no Party Name, and did have a Clan record, Clan Honour and Trusted Clients scores (below); a new Bastion has the first and none of the others (step S07). */
+delete s.partyName;
 /* A version 3 Bastion started with five facilities; the Barracks, Armoury and Watchtower went with the war game (step S06). */
 s.builtFacilities = ['barracks', 'armoury', 'watchtower', 'workshop', 'dock'];
 s.treasuryGP = 2000;
