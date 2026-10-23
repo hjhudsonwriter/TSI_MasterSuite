@@ -99,7 +99,7 @@
     b.day = 31;
     t.same(BR.completeConstruction(b), [PEN]);
     t.same(b.creatures, [], 'nor does finishing it');
-    t.equal(BR.compendiumIndex(bdata.facilities, bdata.tools).items.length, 270, 'its orders add nothing to the Compendium');
+    t.equal(BR.compendiumIndex(bdata.facilities, bdata.tools).items.length, 258, 'its orders add nothing to the Compendium (270 until the Hall lost its Clan choices, step S09)');
   });
 
   test('one level only: no Upgrade, no unlock lines, and the facility panel says so', function (t) {
@@ -807,7 +807,7 @@
     t.equal(s.pendingOrders.some(function (o) { return o.id === 'hv-28'; }), false, 'the Riding Harness order is cancelled');
     var refund = res.report.gold.items.filter(function (i) { return /Riding Harness/.test(i.label); })[0];
     t.same([refund.gp, refund.kind], [150, 'refund']);
-    t.equal(s.treasuryGP, 2150, 'the 150 gp is back in the treasury');
+    t.equal(s.treasuryGP, 2000 + 150 + 1125 + 830, 'the 150 gp is back in the treasury (and, from the Hall\'s wind-down, S09: 1,125 gp of cancelled orders and 830 gp of final settlement)');
     t.same(res.report.cancelled.filter(function (c) { return c.id === 'hv-28'; }).map(function (c) { return [c.gp, /training and riding are gone/.test(c.why)]; }), [[150, true]]);
     t.same(res.report.moved.filter(function (m) { return m.id === 'hv-27'; }).map(function (m) { return m.to; }), ['the Beast Pen']);
     var lines = s.migration.v4.lines.join('\n');

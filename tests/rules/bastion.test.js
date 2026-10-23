@@ -51,7 +51,7 @@
     t.same(T.bastion.clans.map(function (c) { return c.name; }), ['Blackstone', 'Bacca', 'Farmer', 'Slade', 'Molten', 'Rowthorn', 'Karr']);
     /* The old tool's 265, less Regiment (100), plus the six War Room units of the war's phase 2
        (the old Regiment (100) entry is kept in the data, but nothing lists it any more). */
-    t.equal(R.compendiumIndex(data.facilities, data.tools).items.length, 270);
+    t.equal(R.compendiumIndex(data.facilities, data.tools).items.length, 258, '270, less the 12 Clan and Clan-pair choices of the Hall\'s orders (step S09)');
     t.equal(Object.keys(T.bastionCompendium.items).length, 271);
     /* The War Room's Recruit list is the war data's, in the same order. */
     var warRoom = R.facility(data, 'war_room').functions[0].options.map(function (o) { return o.label; });
@@ -269,14 +269,6 @@
     t.equal(s.warehouse[0].notes, 'Workshop');
   });
 
-  test('an active summit cuts the price of Hall actions', function (t) {
-    var s = built(fresh(), ['hall_of_emissaries']);
-    s.treasuryGP = 1000;
-    s.diplomacy.summits.push({ title: 'Inter-Clan Summit', startDay: 1, endDay: 15, costReductionPct: 25 });
-    order(s, 'hall_of_emissaries', 'secure_trade_agreement', 0, { targetClan: '' });
-    t.equal(s.treasuryGP, 1000 - 187);
-  });
-
   test('orders complete on their day or any later one (BAS-13)', function (t) {
     var s = fresh();
     s.pendingOrders = [{ id: 'a', dueDay: 2 }, { id: 'b', dueDay: 4 }, { id: 'c', dueDay: 3 }];
@@ -285,19 +277,13 @@
     t.same(R.dueOrders(s, ['a']).map(function (o) { return o.id; }), ['c'], 'skipped today');
   });
 
-  test('every order has its days: the five starting facilities, the Hall, the network and the war', function (t) {
+  test('every order has its days: the five starting facilities, the Dock\'s Register Port Charter and the war', function (t) {
     var days = function (facId, fnId) { return R.fn(R.facility(data, facId), fnId).days; };
     t.same([days('workshop', 'craft'), days('workshop', 'craft_magic_item'), days('barracks', 'recruit_defenders'), days('watchtower', 'patrol'), days('dock', 'charter_berth'), days('armoury', 'arm_defenders')], [3, 10, 5, 1, 7, 3]);
-    t.same(['upgrade_hall', 'secure_trade_agreement', 'host_delegation', 'inter_clan_summit', 'arbitration_authority', 'trade_consortium'].map(function (f) { return days('hall_of_emissaries', f); }), [14, 7, 5, 14, 10, 14]);
+    t.equal(days('dock', 'register_port_charter'), 3);
+    t.same(R.facility(data, 'hall_of_emissaries').functions, [], 'the Hall has no orders (step S09)');
     data.facilities.forEach(function (f) { f.functions.forEach(function (fn) { t.ok(fn.days >= 1, f.id + ' ' + fn.id + ' has days'); }); });
-    t.same(['stability', 'yield', 'toggle_high_risk'].map(function (k) { return T.bastion.networkUpgrades[k].days; }), [7, 7, 1]);
     t.equal(R.time(data).musterDays, 3);
-    var s = fresh();
-    s.day = 9;
-    s.treasuryGP = 500;
-    s.tradeNetwork.active = true;
-    R.issueNetworkUpgrade(s, data, 'toggle_high_risk', dice([0.3]));
-    t.equal(s.pendingOrders[0].dueDay, 10);
   });
 
   group('Bastion: completing orders');
@@ -365,22 +351,6 @@
     t.equal(s.warehouse[0].notes, 'Library & Scriptorium');
   });
 
-  test('the Hall\'s old Upgrade Hall: can\'t be ordered since step 1b, but one already ordered completes, up to Level 5 (the bonus stays +6: D7)', function (t) {
-    var s = built(fresh(), ['hall_of_emissaries']);
-    s.treasuryGP = 100;
-    t.same(R.issueOrder(s, data, 'hall_of_emissaries', 'upgrade_hall', 0, dice([0.3])), { ok: false, message: 'That order has been replaced by Upgrade.' });
-    var fn = R.fn(R.facility(data, 'hall_of_emissaries'), 'upgrade_hall');
-    t.same(R.upgradeHall(s, fn), ['Upgrade', 'Hall of Emissaries upgraded to Level 2.']);
-    t.same(R.upgradeHall(s, fn), ['Upgrade', 'Hall of Emissaries upgraded to Level 3.']);
-    t.equal(R.diplomacyModForHall(s), 6);
-    t.same(R.upgradeHall(s, fn), ['Upgrade', 'Hall of Emissaries upgraded to Level 4.']);
-    t.equal(R.diplomacyModForHall(s), 6, 'still +6 at Level 4 (D7)');
-    t.same(R.upgradeHall(s, fn), ['Upgrade', 'Hall of Emissaries upgraded to Level 5.']);
-    t.equal(R.diplomacyModForHall(s), 6, 'and at Level 5');
-    t.same(R.upgradeHall(s, fn), ['Upgrade', 'Hall of Emissaries is already max level.']);
-    t.equal(s.treasuryGP, 100);
-  });
-
   test('warehouse rows: typed values tidied as before', function (t) {
     t.same(R.readWarehouseRow({ item: '  ', qty: 'x', gp: ' 5 ', notes: ' a ' }), { item: 'New Item', qty: 0, gp: '5', notes: 'a' });
     var s = fresh();
@@ -392,205 +362,24 @@
     t.equal(s.warehouse[1].notes, 'Dock | Smithy');
   });
 
-  group('Bastion: the Hall of Emissaries');
-
-  test('tiers from a d20: natural 20 and 1, then by the total against the DC', function (t) {
-    t.equal(R.tierFromRoll(20, 5, 14), 'critical_success');
-    t.equal(R.tierFromRoll(1, 30, 14), 'critical_failure');
-    t.equal(R.tierFromRoll(10, 19, 14), 'great_success');
-    t.equal(R.tierFromRoll(10, 14, 14), 'success');
-    t.equal(R.tierFromRoll(10, 13, 14), 'failure');
-    t.equal(R.tierFromRoll(10, 9, 14), 'bad_failure');
-    t.equal(R.formatTier('critical_failure'), 'Bad Failure');
-  });
-
-  test('planning: one roll for most actions, three for a delegation (B2); cooldowns block', function (t) {
-    var s = built(fresh(), ['hall_of_emissaries']);
-    s.treasuryGP = 5000;
-    var ta = order(s, 'hall_of_emissaries', 'secure_trade_agreement', 1, { targetClan: 'Clan Rowthorn' });
-    var p = R.emissaryPlan(s, data, ta);
-    t.equal(p.rolls.length, 1);
-    t.equal(p.dc, 14);
-    t.equal(p.mod, 2);
-    t.equal(p.opt, 'Clan Rowthorn');
-    var hd = order(s, 'hall_of_emissaries', 'host_delegation', 0, { tone: 'conciliatory', targetClan: 'Clan Blackstone' });
-    p = R.emissaryPlan(s, data, hd);
-    t.same(p.rolls.map(function (r) { return [r.title, r.mod, r.dc]; }), [
-      ['Host Delegation (Clan Blackstone)', 2, 13], ['Diplomacy Roll (conciliatory)', 4, 13], ['Insight Roll (conciliatory)', 2, 12]
-    ]);
-    R.setCooldown(s, 'host_delegation', 14);
-    t.equal(R.emissaryPlan(s, data, hd).blocked, 14);
-    s.day += 10;
-    t.equal(R.emissaryPlan(s, data, hd).blocked, 4, 'days left');
-  });
-
-  test('a Trade Agreement: income per shipment, the weeks chosen and Political Capital by tier', function (t) {
-    var s = built(fresh(), ['hall_of_emissaries']);
-    s.day = 5;
-    s.treasuryGP = 5000;
-    var o = order(s, 'hall_of_emissaries', 'secure_trade_agreement', 0, { targetClan: 'Clan Blackstone', weeks: 6 });
-    t.equal(o.dueDay, 12, '7 days to negotiate');
-    s.day = 12;
-    var p = R.emissaryPlan(s, data, o);
-    var res = R.applyEmissary(s, data, o, p, { main: roll(12, 14) }, dice([0.5, 0, 0]));
-    t.equal(res.tier, 'success');
-    t.same(s.diplomacy.agreements.map(function (a) { return [a.title, a.clan, a.startDay, a.endDay, a.income, a.lastShipmentDay]; }), [['Trade Agreement', 'Clan Blackstone', 12, 54, 100, 12]]);
-    t.equal(R.shipmentsLeft(s.diplomacy.agreements[0], 7), 6, 'six weeks, six shipments');
-    t.equal(R.daysLeft(s, s.diplomacy.agreements[0]), 42);
-    t.equal(s.politicalCapital.blackstone, 8);
-    t.equal(s.warehouse[0].item, 'Trade Agreement Contract');
-    t.equal(res.summary, 'Terms are acceptable. The contract is sealed.');
-    t.same(res.changes, ['Political Capital: +8 (Clan Blackstone)', 'New record: Trade Agreement (42 days, 6 shipments, until Day 54)', 'Income: +100 gp a shipment, every 7 days']);
-    t.equal(res.log[0], 'Order Resolved');
-  });
-
-  test('a Trade Agreement\'s weeks: 1, 3 or 6 as chosen (3 if not), the tier adds or takes a week or two, never under a week', function (t) {
-    function weeksFor(weeks, d20, total) {
-      var s = built(fresh(), ['hall_of_emissaries']);
-      s.treasuryGP = 5000;
-      var o = order(s, 'hall_of_emissaries', 'secure_trade_agreement', 0, { targetClan: 'Clan Karr', weeks: weeks });
-      R.applyEmissary(s, data, o, R.emissaryPlan(s, data, o), { main: roll(d20, total) }, dice([0.5]));
-      var a = s.diplomacy.agreements[0];
-      return a ? (a.endDay - a.startDay) / 7 : 0;
-    }
-    t.same([weeksFor(1, 12, 14), weeksFor(3, 12, 14), weeksFor(6, 12, 14), weeksFor(undefined, 12, 14), weeksFor(4, 12, 14)], [1, 3, 6, 3, 3]);
-    t.same([weeksFor(3, 20, 22), weeksFor(3, 15, 19), weeksFor(3, 10, 12), weeksFor(1, 10, 12)], [5, 4, 2, 1]);
-  });
-
-  test('contracts send a shipment every 7 days from the day signed, the last on the final day, then end with a word', function (t) {
-    var s = fresh();
-    s.day = 12;
-    s.diplomacy.agreements = [{ id: 'a', title: 'Trade Agreement', clan: 'Clan Karr', startDay: 12, endDay: 33, income: 100, lastShipmentDay: 12 }];
-    var paid = [];
-    for (var d = 13; d <= 34; d++) {
-      s.day = d;
-      var before = s.treasuryGP;
-      var out = R.tickDiplomacy(s, data);
-      if (s.treasuryGP > before) paid.push(d);
-      if (out.word.length) t.same([d, out.word], [33, ['Your Trade Agreement with Clan Karr has ended (its last shipment arrived).']]);
-    }
-    t.same(paid, [19, 26, 33]);
-    t.equal(s.treasuryGP, 300);
-    t.equal(s.diplomacy.agreements.length, 0);
-  });
-
-  test('a bad failure: no deal, −20 Political Capital, a 14-day cooldown', function (t) {
-    var s = built(fresh(), ['hall_of_emissaries']);
-    s.treasuryGP = 5000;
-    var o = order(s, 'hall_of_emissaries', 'secure_trade_agreement', 0, { targetClan: 'Clan Blackstone' });
-    var res = R.applyEmissary(s, data, o, R.emissaryPlan(s, data, o), { main: roll(5, 7) }, dice([0.5]));
-    t.equal(res.tier, 'bad_failure');
-    t.equal(s.diplomacy.agreements.length, 0);
-    t.equal(s.politicalCapital.blackstone, -20);
-    t.equal(R.cooldownLeft(s, 'trade_agreement'), 14);
-    t.ok(res.changes.indexOf('Cooldown: 14 days') !== -1);
-    t.equal(res.summary, 'Negotiations sour. Ink never touches parchment.');
-    s.day += 14;
-    R.tickDiplomacy(s, data);
-    t.equal(R.cooldownLeft(s, 'trade_agreement'), 0, 'free again 14 days later');
-    t.same(s.diplomacy.cooldowns, {});
-  });
-
-  test('a natural 1 still signs the deal with no Political Capital change (B20, kept)', function (t) {
-    var s = built(fresh(), ['hall_of_emissaries']);
-    s.treasuryGP = 5000;
-    var o = order(s, 'hall_of_emissaries', 'secure_trade_agreement', 0, { targetClan: 'Clan Blackstone' });
-    var res = R.applyEmissary(s, data, o, R.emissaryPlan(s, data, o), { main: roll(1, 3) }, dice([0.5]));
-    t.equal(res.tier, 'critical_failure');
-    t.equal(s.diplomacy.agreements.length, 1);
-    t.equal(s.politicalCapital.blackstone, 0);
-    t.equal(R.cooldownLeft(s, 'trade_agreement'), 0);
-  });
-
-  test('Host Delegation changes Political Capital once, by its Diplomacy and Insight rolls (B2)', function (t) {
-    var s = built(fresh(), ['hall_of_emissaries']);
-    s.treasuryGP = 1000;
-    var o = order(s, 'hall_of_emissaries', 'host_delegation', 0, { tone: 'conciliatory', targetClan: 'Clan Blackstone' });
-    var p = R.emissaryPlan(s, data, o);
-    var before = s.treasuryGP;
-    var res = R.applyEmissary(s, data, o, p, { main: roll(20, 22), r1: roll(12, 16), r2: roll(11, 13) }, dice([0]));
-    t.equal(s.politicalCapital.blackstone, 15, 'not 15 + 25');
-    t.equal(s.diplomacy.tokens, 1);
-    t.equal(s.treasuryGP, before + 68, '80 gp × 0.85 (conciliatory)');
-    var dl = s.diplomacy.delegations[0];
-    t.equal(dl.endDay - dl.startDay, 28, 'the first roll still sets the length (14 + 14 days)');
-    t.same(res.changes.filter(function (c) { return /Political Capital/.test(c); }), ['Political Capital: +15 (Clan Blackstone)']);
-    t.equal(res.summary, '', 'its summary line stays empty (BAS-34, kept)');
-  });
-
-  test('Host Delegation: one success +8, a near miss 0, two misses −12 and a gold penalty', function (t) {
-    function run(r1, r2) {
-      var s = built(fresh(), ['hall_of_emissaries']);
-      s.treasuryGP = 1000;
-      var o = order(s, 'hall_of_emissaries', 'host_delegation', 2, { tone: 'assertive', targetClan: 'Clan Karr' });
-      s.treasuryGP = 1000;
-      R.applyEmissary(s, data, o, R.emissaryPlan(s, data, o), { main: roll(10, 12), r1: roll(r1, r1), r2: roll(r2, r2) }, dice([0]));
-      return [s.politicalCapital.karr, s.treasuryGP, s.diplomacy.tokens];
-    }
-    t.same(run(13, 3), [8, 1080, 0]);
-    t.same(run(11, 3), [0, 1080, 0]);
-    t.same(run(5, 4), [-12, 950, 0]);
-  });
-
-  test('a Summit gives both clans Political Capital and a Hall discount', function (t) {
-    var s = built(fresh(), ['hall_of_emissaries']);
-    s.facilityLevels.hall_of_emissaries = 2;
-    s.treasuryGP = 1000;
-    var o = order(s, 'hall_of_emissaries', 'inter_clan_summit', 0, { targetClan: '' });
-    t.equal(o.optionLabel, 'Blackstone + Rowthorn');
-    var res = R.applyEmissary(s, data, o, R.emissaryPlan(s, data, o), { main: roll(15, 19) }, dice([0.2]));
-    t.equal(res.tier, 'great_success');
-    t.equal(s.politicalCapital.blackstone, 15);
-    t.equal(s.politicalCapital.rowthorn, 15);
-    t.same([s.diplomacy.summits[0].costReductionPct, s.diplomacy.summits[0].endDay - s.diplomacy.summits[0].startDay], [30, 28]);
-    t.equal(s.warehouse[0].item, 'Summit Charter');
-  });
-
-  test('a Trade Consortium opens the network and a route for its clan', function (t) {
-    var s = built(fresh(), ['hall_of_emissaries']);
-    s.facilityLevels.hall_of_emissaries = 3;
-    s.treasuryGP = 1000;
-    var o = order(s, 'hall_of_emissaries', 'trade_consortium', 1, { targetClan: 'Karr' });
-    t.equal(o.label, 'Hall of Emissaries: Trade Consortium (Karr)');
-    s.day = 15;
-    R.applyEmissary(s, data, o, R.emissaryPlan(s, data, o), { main: roll(15, 21) }, dice([0.5]));
-    t.ok(s.tradeNetwork.active);
-    var r = s.tradeNetwork.routes[0];
-    t.same([r.clan, r.commodity, r.risk, r.openedDay, r.nextDay, r.expiresDay, r.status], ['Karr', 'Wool & Furs', 'high', 15, 22, 50, 'active']);
-    t.equal(r.yieldGP, s.diplomacy.consortiums[0].income);
-  });
-
-  test('a new consortium doesn\'t reopen an expired route (B21, kept)', function (t) {
-    var s = built(fresh(), ['hall_of_emissaries']);
-    s.facilityLevels.hall_of_emissaries = 3;
-    s.treasuryGP = 1000;
-    s.tradeNetwork.routes = [{ id: 'old', clan: 'Karr', status: 'expired' }];
-    var o = order(s, 'hall_of_emissaries', 'trade_consortium', 1, { targetClan: 'Karr' });
-    R.applyEmissary(s, data, o, R.emissaryPlan(s, data, o), { main: roll(15, 21) }, dice([0.5]));
-    t.equal(s.tradeNetwork.routes.length, 1);
-    t.equal(s.diplomacy.consortiums.length, 1);
-  });
-
   group('Bastion: passing a day');
 
-  test('a day\'s steps: the day moves on, building and shipments, then the routes, the orders and the finish, with word from the Ironbow', function (t) {
+  test('a day\'s steps: the day moves on and building is finished, then the trade, the orders and the finish, with word from the Ironbow', function (t) {
     var s = built(fresh(), []);
     s.day = 20;
     s.builtExtras = [{ facId: 'library_scriptorium', status: 'building', startDay: 0, readyDay: 21 }];
-    s.diplomacy.agreements = [{ title: 'Trade Agreement', clan: 'Clan Karr', startDay: 14, endDay: 21, income: 100, lastShipmentDay: 14 }];
     R.startDay(s, data, 1);
     t.equal(s.day, 21);
-    t.equal(s.treasuryGP, 100, 'the last shipment');
-    t.equal(s.diplomacy.agreements.length, 0, 'the agreement ran out');
+    t.equal(s.treasuryGP, 0, 'no contract pays a shipment: the Hall has none (step S09)');
     t.same([s.dayInProgress.day, s.dayInProgress.stage, s.dayInProgress.skipped, s.dayInProgress.attackRolled], [21, 'trade', [], false]);
     t.same(s.builtExtras[0], { facId: 'library_scriptorium', status: 'built' });
     R.finishRoutes(s);
     t.equal(s.dayInProgress.stage, 'orders');
     R.finishDay(s);
     t.equal(s.dayInProgress, null);
-    t.same(titles(s), ['Diplomacy', 'Diplomacy', 'Construction Complete']);
+    t.same(titles(s), ['Construction Complete']);
     t.ok(s.log.every(function (l) { return l.day === 21; }), 'each log line has its day');
-    t.same(s.word, [{ day: 21, lines: ['The Library & Scriptorium is built.', 'Your Trade Agreement with Clan Karr has ended (its last shipment arrived).'] }]);
+    t.same(s.word, [{ day: 21, lines: ['The Library & Scriptorium is built.'] }]);
   });
 
   test('a quiet day adds no word', function (t) {
@@ -663,9 +452,7 @@
     s.anchored = true;
     s.pendingOrders = [{ id: 'o', issuedDay: 28, dueDay: 33 }];
     s.builtExtras = [{ facId: 'library_scriptorium', status: 'building', startDay: 20, readyDay: 41 }];
-    s.diplomacy.agreements = [{ startDay: 26, endDay: 47, lastShipmentDay: 26, income: 10 }];
-    s.diplomacy.cooldowns = { summit: 40 };
-    s.tradeNetwork.routes = [{ id: 'r', openedDay: 25, nextDay: 32, expiresDay: 60, status: 'active' }];
+    s.legacyDiplomacy = { records: [{ kind: 'Trade Agreement', title: 'Trade Agreement', clan: 'Clan Karr', startDay: 26, endDay: 47, endedDay: 29, income: 10, shipments: 3, paid: 30, note: '' }] };
     s.repairs = { barracks: 35 };
     s.wars = { bacca: { since: 20, last: 27, next: 34 } };
     s.warRecovery = [{ id: 'x', untilDay: 37 }];
@@ -673,125 +460,19 @@
     s.log = [{ title: 'x', body: 'y', day: 29 }];
     R.shiftDays(s, -29);
     t.equal(s.day, 1);
-    t.same([s.pendingOrders[0].dueDay, s.builtExtras[0].readyDay, s.diplomacy.agreements[0].endDay, s.diplomacy.cooldowns.summit, s.tradeNetwork.routes[0].nextDay, s.repairs.barracks, s.wars.bacca.next, s.wars.bacca.since, s.warRecovery[0].untilDay, s.defenders.patrolUntil], [4, 12, 18, 11, 3, 6, 5, -9, 8, 2]);
-    t.equal(R.cooldownLeft(s, 'summit'), 10);
+    t.same([s.pendingOrders[0].dueDay, s.builtExtras[0].readyDay, s.legacyDiplomacy.records[0].endDay, s.legacyDiplomacy.records[0].startDay, s.legacyDiplomacy.records[0].endedDay, s.repairs.barracks, s.wars.bacca.next, s.wars.bacca.since, s.warRecovery[0].untilDay, s.defenders.patrolUntil], [4, 12, 18, -3, 0, 6, 5, -9, 8, 2], 'the Hall\'s old agreements, kept as history, move with the days too');
     t.equal(s.log[0].day, 29, 'the log is history');
     t.equal(R.dayLabel(-9), 'before Day 1');
     t.equal(R.dayLabel(4), 'Day 4');
   });
 
   test('which way each order completes', function (t) {
-    t.equal(R.orderKind(data, { facId: 'trade_network' }), 'network');
     t.equal(R.orderKind(data, { facId: 'war_council' }), 'war');
-    t.equal(R.orderKind(data, { facId: 'hall_of_emissaries', fnId: 'host_delegation' }), 'emissary');
-    t.equal(R.orderKind(data, { facId: 'hall_of_emissaries', fnId: 'upgrade_hall' }), 'simple');
+    t.equal(R.orderKind(data, { facId: 'dock', fnId: 'register_port_charter' }), 'simple');
+    t.equal(R.orderKind(data, { facId: 'workshop', fnId: 'upgrade', meta: { kind: 'upgrade' } }), 'simple');
     t.equal(R.orderKind(data, { facId: 'nowhere', fnId: 'x' }), 'none');
-  });
-
-  test('diplomacy each day: shipments, records ending, routes expiring with their consortium, cooldowns ending', function (t) {
-    var s = fresh();
-    s.day = 15;
-    s.diplomacy.consortiums = [{ clan: 'Karr', title: 'Form Trade Consortium', startDay: 8, endDay: 15, income: 50, lastShipmentDay: 8 }];
-    s.tradeNetwork.routes = [{ id: 'r', clan: 'Karr', status: 'active', expiresDay: 43 }];
-    s.diplomacy.cooldowns = { summit: 17, consortium: 15 };
-    var out = R.tickDiplomacy(s, data);
-    t.same(out.logs, [['Diplomacy', 'Contract shipments arrived: +50 gp.'], ['Diplomacy', 'Your Form Trade Consortium with Karr has ended (its last shipment arrived).']]);
-    t.equal(s.tradeNetwork.routes[0].status, 'expired');
-    t.same(s.diplomacy.cooldowns, { summit: 17 });
-    t.equal(R.passiveIncome(s), 0);
-  });
-
-  group('Bastion: trade routes');
-
-  function network(routes) {
-    var s = fresh();
-    s.day = 5;
-    s.tradeNetwork.active = true;
-    s.tradeNetwork.routes = routes;
-    return s;
-  }
-
-  test('route DCs and payouts', function (t) {
-    var s = network([]);
-    t.equal(R.routeDC(s, { risk: 'high' }), 14);
-    t.equal(R.routeDC(s, { risk: 'low' }), 11);
-    t.equal(R.routePayout(s, { yieldGP: 100 }, 'success'), 100);
-    t.equal(R.routePayout(s, { yieldGP: 100 }, 'strong_success'), 120);
-    s.tradeNetwork.highRiskRouting = true;
-    s.tradeNetwork.yieldBonusPct = 5;
-    t.equal(R.routeDC(s, { risk: 'high' }), 16);
-    t.equal(R.routePayout(s, { yieldGP: 100 }, 'success'), 125);
-    t.equal(R.routePayout(s, { yieldGP: 100, status: 'expired' }, 'success'), 0);
-  });
-
-  test('each route pays at most once each time it sails (every 7 days), even after a cancelled roll (BAS-05, BAS-11)', function (t) {
-    var s = network([{ id: 'a', clan: 'Blackstone', risk: 'low', yieldGP: 100, status: 'active', nextDay: 5 }, { id: 'b', clan: 'Karr', risk: 'high', yieldGP: 200, status: 'active', nextDay: 5 }, { id: 'c', clan: 'Bacca', risk: 'low', yieldGP: 50, status: 'active', nextDay: 7 }]);
-    t.ok(R.routesDueToday(s));
-    t.equal(R.routeNeedsRoll(s, s.tradeNetwork.routes[0]), false);
-    t.equal(R.routeNeedsRoll(s, s.tradeNetwork.routes[1]), true);
-    var out = R.settleRoute(s, data, s.tradeNetwork.routes[0], null, dice([0.1]));
-    t.equal(out.gained, 100);
-    /* The Karr roll is cancelled here: nothing more happens. Resolving again only offers Karr. */
-    t.same(R.routesToSettle(s).map(function (r) { return r.id; }), ['b']);
-    R.settleRoute(s, data, s.tradeNetwork.routes[1], roll(15, 15), dice([0.1]));
-    t.equal(s.treasuryGP, 300);
-    t.same(R.routesToSettle(s), []);
-    t.equal(R.routesDueToday(s), false);
-    t.same(s.tradeNetwork.routes.map(function (r) { return r.nextDay; }), [12, 12, 7]);
-    s.day = 7;
-    t.same(R.routesToSettle(s).map(function (r) { return r.id; }), ['c'], 'each on its own 7-day count');
-    s.day = 12;
-    t.equal(R.routesToSettle(s).length, 3, 'a week on, they sail again');
-  });
-
-  test('a failed roll disrupts the route; a disaster also drops stability and files a dispute', function (t) {
-    var s = network([{ id: 'b', clan: 'Karr', commodity: 'Wool & Furs', risk: 'high', yieldGP: 200, status: 'active' }]);
-    var out = R.settleRoute(s, data, s.tradeNetwork.routes[0], roll(12, 12), dice([0.1]));
-    t.equal(out.gained, 0);
-    t.equal(s.tradeNetwork.routes[0].status, 'disrupted');
-    t.equal(s.arbitration.queue.length, 0);
-    s = network([{ id: 'b', clan: 'Karr', commodity: 'Wool & Furs', risk: 'high', yieldGP: 200, status: 'active' }]);
-    out = R.settleRoute(s, data, s.tradeNetwork.routes[0], roll(5, 5), dice([0.1]));
-    t.equal(out.line, 'Karr suffers a catastrophic loss at sea. Status: Disrupted. Market Stability falls by 10%.');
-    t.equal(s.tradeNetwork.stability, 65);
-    var d = s.arbitration.queue[0];
-    t.same([d.a, d.b, d.meta.routeClan, d.meta.commodity, d.meta.disruptedDay, d.meta.stabilityAtFiling, d.createdDay], ['Karr', 'Ironbow Trade Consortium', 'Karr', 'Wool & Furs', 5, 65, 5]);
-  });
-
-  group('Bastion: the Council Ledger');
-
-  function disputed() {
-    var s = network([{ id: 'b', clan: 'Karr', risk: 'high', yieldGP: 200, status: 'disrupted' }]);
-    R.enqueueDispute(s, data, 'Karr', 'Trade disruption and disputed tariffs.', { routeClan: 'Karr' }, dice([0.3]));
-    return s;
-  }
-
-  test('a binding verdict clears the dispute and restores the route', function (t) {
-    var s = disputed();
-    var res = R.rule(s, data, s.arbitration.queue[0].id, 'S', roll(13, 13));
-    t.ok(res.passed);
-    t.equal(s.arbitration.queue.length, 0);
-    t.equal(s.tradeNetwork.routes[0].status, 'active');
-    t.equal(s.politicalCapital.karr, 2);
-    t.equal(s.tradeNetwork.stability, 77);
-    t.same(res.effects, ['Karr accepts a compromise (+2 Political Capital).', 'Market Stability +2%.', 'Karr route status: Restored (Active).']);
-    t.equal(res.log[1], 'The seal is struck. The council has split the claims. (Roll [object Object] = 13 vs DC 13)', 'as before (BAS-29, kept)');
-  });
-
-  test('ruling for either side, and a deadlock', function (t) {
-    var s = disputed();
-    R.rule(s, data, s.arbitration.queue[0].id, 'A', roll(15, 15));
-    t.same([s.politicalCapital.karr, s.tradeNetwork.stability], [6, 74]);
-    s = disputed();
-    R.rule(s, data, s.arbitration.queue[0].id, 'B', roll(15, 15));
-    t.same([s.politicalCapital.karr, s.tradeNetwork.stability], [-4, 79]);
-    s = disputed();
-    var res = R.rule(s, data, s.arbitration.queue[0].id, 'A', roll(12, 12));
-    t.ok(!res.passed);
-    t.ok(res.stillThere);
-    t.same([s.politicalCapital.karr, s.tradeNetwork.stability, s.tradeNetwork.routes[0].status], [-2, 73, 'disrupted']);
-    t.ok(/Returned to docket/.test(s.arbitration.queue[0].reason));
-    t.equal(R.councilBonus(s), 0, 'the Writ\'s +2 is never granted (B6, kept)');
+    t.equal(R.orderKind(data, { facId: 'trade_network', fnId: 'upgrade' }), 'none', 'the Trade Network\'s investments and the Hall\'s actions are gone: such an order is cancelled when the Bastion is converted');
+    t.equal(R.orderKind(data, { facId: 'hall_of_emissaries', fnId: 'host_delegation' }), 'none');
   });
 
   group('Bastion: identity');
@@ -1041,7 +722,7 @@
     t.equal(R.roll20Url('Bag of Holding'), 'https://roll20.net/compendium/dnd5e/Bag%20of%20Holding');
     var out = R.compendiumExport(idx, T.bastionCompendium.items);
     t.equal(out.filled, 0);
-    t.equal(out.kept + out.stubbed, 270);
+    t.equal(out.kept + out.stubbed, 258);
     t.equal(out.kept, 68);
     t.equal(out.file.version, 1);
     t.equal(T.bastion.compendiumCards.length, 36);
@@ -1092,16 +773,6 @@
     t.equal(R.upgradeCheck(s, data, 'library_scriptorium').message, 'The Library & Scriptorium isn\'t built yet.');
     s.builtExtras = [{ facId: 'library_scriptorium', status: 'building', startDay: 1, readyDay: 22 }];
     t.equal(R.upgradeCheck(s, data, 'library_scriptorium').ok, false, 'not while it\'s being built');
-  });
-
-  test('the Hall\'s Upgrade is the same order: Level 4 and 5 keep the +6 (D7); its Level 2 and 3 actions unlock as before', function (t) {
-    var s = built(fresh(), ['hall_of_emissaries']);
-    t.equal(R.diplomacyModForHall(s), 2);
-    t.equal(R.issueUpgrade(s, data, 'hall_of_emissaries', dice([0.3])).ok, true);
-    t.equal(s.pendingOrders[0].label, 'Hall of Emissaries: Upgrade to Level 2');
-    R.completeSimpleOrder(s, data, s.pendingOrders[0], dice([0.3]));
-    t.equal(R.diplomacyModForHall(s), 4);
-    [3, 4, 5].forEach(function (l) { s.facilityLevels.hall_of_emissaries = l; t.equal(R.diplomacyModForHall(s), 6, 'Level ' + l); });
   });
 
   test('levels survive saving, demolishing drops one, and an upgrade order is an ordinary pending order (cancel, demolish, defence lost)', function (t) {
@@ -1925,7 +1596,7 @@
 
   group('Bastion: saving');
 
-  test('a save and reload keeps identity, war log, diplomacy, the day, a day in progress and word not yet shown (BAS-01)', function (t) {
+  test('a save and reload keeps identity, war log, the Hall\'s history, the day, a day in progress and word not yet shown (BAS-01)', function (t) {
     var s = built(fresh(), ['hall_of_emissaries']);
     s.day = 12;
     s.anchored = true;
@@ -1934,9 +1605,7 @@
     s.honourRespectByClan.karr = -3;
     s.trustedClientsByClan.slade = 20;
     s.warLog = [{ id: 'w', title: 'Success: Raid vs Bacca' }];
-    s.diplomacy.agreements = [{ title: 'Trade Agreement', clan: 'Clan Karr', startDay: 5, endDay: 26, income: 90, lastShipmentDay: 12 }];
-    s.diplomacy.tokens = 2;
-    s.diplomacy.cooldowns = { summit: 15 };
+    s.legacyDiplomacy = { records: [{ kind: 'Trade Agreement', title: 'Trade Agreement', clan: 'Clan Karr', startDay: 5, endDay: 26, endedDay: 12, income: 90, shipments: 2, paid: 180, note: '' }] };
     s.defenders.patrolUntil = 14;
     s.dayInProgress = { day: 12, stage: 'orders', skipped: ['x'], attackRolled: true, news: ['The Smithy is built.'] };
     s.word = [{ day: 11, lines: ['Barracks: Recruit Defenders → Recruited 2 defenders.'] }];
@@ -2016,47 +1685,4 @@
     t.same(R.cleanUi({ gridOpen: 'no', warNoticed: [1] }), { gridOpen: true }, 'nonsense is ignored');
   });
 
-  /* ---------- The Secure Trade Agreement is retired (Harry, 20 October 2026) ---------- */
-  test('the Secure Trade Agreement can\'t be ordered and isn\'t shown: hidden, refused by both ways in, nothing paid; Register Port Charter moved to the Dock; the other Hall orders are unchanged', function (t) {
-    var s = fresh();
-    s.day = 5;
-    s.treasuryGP = 1000;
-    s.builtExtras = [{ facId: 'hall_of_emissaries', status: 'built' }];
-    R.ensureLevels(s, data);
-    var fac = R.facility(data, 'hall_of_emissaries');
-    var fn = R.fn(fac, 'secure_trade_agreement');
-    var av = R.fnAvailable(s, fac, fn);
-    t.same([av.ok, av.hidden], [false, true], 'hidden from the Hall');
-    var a = R.issueOrderWithMeta(s, data, 'hall_of_emissaries', 'secure_trade_agreement', 0, { targetClan: 'Clan Karr', weeks: 3 }, dice([0.3]));
-    var b = R.issueOrder(s, data, 'hall_of_emissaries', 'secure_trade_agreement', 0, dice([0.3]));
-    t.same([a.ok, b.ok, s.treasuryGP, s.pendingOrders.length], [false, false, 1000, 0]);
-    var dock = R.facility(data, 'dock');
-    var reg = R.fn(dock, 'register_port_charter');
-    t.same([reg.requiredFacilityLevel, R.fnAvailable(s, dock, reg).ok, R.fn(fac, 'register_port_charter'), fac.functions.map(function (f) { return f.id; }).slice(0, 2)], [1, true, null, ['upgrade_hall', 'secure_trade_agreement']], 'Register Port Charter is the Dock\'s now (Level 1), not the Hall\'s');
-    ['host_delegation', 'trade_consortium', 'inter_clan_summit', 'arbitration_authority'].forEach(function (id) {
-      t.equal(R.fn(fac, id).retiredNote, undefined, id + ' is not retired');
-    });
-    s.facilityLevels.hall_of_emissaries = 5;
-    t.equal(R.fnAvailable(s, fac, R.fn(fac, 'trade_consortium')).ok, true, 'the Trade Consortium is untouched');
-  });
-
-  test('a running agreement finishes under its own terms and pays each shipment once, then simply ends; nothing is archived', function (t) {
-    var s = fresh();
-    s.day = 12;
-    s.diplomacy.agreements = [{ id: 'a', title: 'Trade Agreement', clan: 'Clan Karr', startDay: 12, endDay: 33, income: 100, lastShipmentDay: 12 }];
-    var gold = 0;
-    for (var d = 13; d <= 36; d++) {
-      s.day = d;
-      var before = s.treasuryGP;
-      R.tickDiplomacy(s, data);
-      gold += s.treasuryGP - before;
-      if (d === 20) t.same(s.diplomacy.agreements.length, 1, 'still running with days to go');
-    }
-    t.same([gold, s.diplomacy.agreements.length, s.diplomacy.archivedAgreements], [300, 0, undefined], '3 shipments (Days 19, 26, 33), once each, then it ends');
-    var back = R.fromSave(JSON.parse(JSON.stringify(R.toSave(s))), data);
-    t.equal('archivedAgreements' in back.diplomacy, false);
-    var old = JSON.parse(JSON.stringify(R.toSave(s)));
-    old.diplomacy.archivedAgreements = [{ id: 'x' }];
-    t.equal('archivedAgreements' in R.fromSave(old, data).diplomacy, false, 'an archive an earlier build made is dropped');
-  });
 }());

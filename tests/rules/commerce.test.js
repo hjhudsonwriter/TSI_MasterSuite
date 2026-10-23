@@ -988,20 +988,6 @@
     t.ok(!lines.some(function (l) { return /gp|sold|turned back/.test(l); }), 'never what it sells for');
   });
 
-  test('the old trade is untouched: routes, their income and Expected Income / Week', function (t) {
-    var b = sailed();
-    b.tradeNetwork.active = true;
-    b.tradeNetwork.routes = [{ id: 'r1', clan: 'Molten', commodity: 'Precious Metals', risk: 'low', status: 'active', yieldGP: 100, openedDay: 4, nextDay: 11 }];
-    var before = copy(b.tradeNetwork.routes);
-    var income = BR.passiveIncome(b);
-    b.day = 11;
-    BR.settleVoyages(b, bdata, dice([0.5]));
-    t.same(b.tradeNetwork.routes, before);
-    t.equal(BR.passiveIncome(b), income);
-    t.equal(BR.routesDueToday(b), true, 'the route still sails as before');
-    t.equal(b.treasuryGP, 320, 'only the cargo was paid');
-  });
-
   /* ---------- Negotiated Charter terms and the two protections (Harry, 20 October 2026) ---------- */
   group('Charter terms and commercial protections (20 October 2026)');
 

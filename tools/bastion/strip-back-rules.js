@@ -88,7 +88,7 @@
      (the old War Council's War Actions, the Trade Network's investments).
      The step that removes each one deals with its orders and then takes its
      name off this list; until then the catch-all leaves them alone. */
-  R.STRIP_BACK_PSEUDO_FACILITIES = ['war_council', 'trade_network'];
+  R.STRIP_BACK_PSEUDO_FACILITIES = ['war_council'];
 
   /* The War Table's three saves (tsi.bastion.<name>). Once the War Table is
      gone nothing reads them: the Bastion sets them aside every time it opens
@@ -760,6 +760,171 @@
     }
   }
 
+  /* S09: the Hall of Emissaries is stripped (Harry, 22 October 2026): no orders, no upgrade, no Resolve, no Council
+     Ledger, no Trade Network, no contracts. What the save holds of the old system:
+     - Orders at the Hall (Host Delegation 150 gp, Inter-Clan Summit 450, Secure Writ of Authority 600, Trade Consortium
+       900, the retired Secure Trade Agreement 250, an Upgrade) and the Trade Network's investments (Stability 75 gp,
+       Yield 90 gp) are CANCELLED, and what they cost is handed back (R.stripBackCancel). A Register Port Charter order
+       was moved to the Dock by moveCharterOrders, which runs first.
+     - Running Trade Agreements, Secure Writs of Authority and Trade Consortiums, and live sea routes, are paid out
+       ONCE as a final settlement and then ended (J 4.4's recommended policy; Harry's decision: "stop at migration and
+       stay as read-only history"): for a contract, its income for every shipment still to come; for a route, its
+       expected yield (the "success" payout, no dice) for every sailing still to come before it would have ended. Every
+       amount is itemised in the report, and each contract and route is kept as a line of read-only history
+       (legacyDiplomacy.records), shown in the Hall under "Earlier agreements".
+     - Delegations, Summits (and the discount a Summit gave), cooldowns, Favour Tokens and disputes awaiting judgement
+       simply END (they have no gold value); the report says so.
+     - The Hall's level is 1 (it has one level).
+     NEVER touched (the audit's I6): the Port Charters, ships at sea, standing shipments, sales, market ledger, parcels,
+     the Blessing of Pelagos, Political Capital, Honour/Respect and the Diplomatic Records. Pure: no dice, no clock. */
+  var NETWORK_ID = 'trade_network';
+  var CONTRACT_LISTS = [['agreements', 'Trade Agreement'], ['arbitrations', 'Secure Writ of Authority'], ['consortiums', 'Trade Consortium']];
+  var DIP_LISTS = ['agreements', 'arbitrations', 'consortiums', 'delegations', 'summits'];
+  function isNum(v) { return typeof v === 'number' && isFinite(v); }
+  function clanTitle(c) { var n = str(c).trim(); return !n ? '' : /^clan /i.test(n) ? n : 'Clan ' + n; }
+  function clanPlain(c) { return str(c).trim().toLowerCase().replace(/^clan\s+/, ''); }
+  function hallOrderToEnd(o) {
+    return isObj(o) && ((o.facId === HALL_ID && o.fnId !== 'register_port_charter') || o.facId === NETWORK_ID);
+  }
+  function hallState(s) {
+    var d = isObj(s.diplomacy) ? s.diplomacy : {};
+    var tn = isObj(s.tradeNetwork) ? s.tradeNetwork : {};
+    return { d: d, tn: tn };
+  }
+  /* What a version 4 save may still hold of the Hall that is worth converting again (an older copy of the suite saved over
+     it). Favour Tokens are NOT on the list: nothing can earn them any more, the Clan Influence panel only shows the count
+     until step S10 removes it, and a stray few are harmless; the conversion from version 3 zeroes them (see windDownHall). */
+  function detectHall(s) {
+    var out = [];
+    (arr(s.pendingOrders) || []).forEach(function (o) {
+      if (hallOrderToEnd(o)) out.push(o.facId === NETWORK_ID ? 'a Trade Network investment' : 'an order at the Hall of Emissaries');
+    });
+    var h = hallState(s);
+    DIP_LISTS.forEach(function (k) { if ((arr(h.d[k]) || []).length) out.push('a ' + (k === 'summits' ? 'summit' : k === 'delegations' ? 'delegation' : 'contract')); });
+    if (isObj(h.d.cooldowns) && Object.keys(h.d.cooldowns).length) out.push('a cooldown');
+    if (isObj(s.arbitration) && (arr(s.arbitration.queue) || []).length) out.push('a dispute awaiting judgement');
+    if ((arr(h.tn.routes) || []).length) out.push('a sea route');
+    if (h.tn.active === true) out.push('the Trade Network');
+    if (h.tn.highRiskRouting === true || (isNum(h.tn.yieldBonusPct) && h.tn.yieldBonusPct > 0)) out.push('a Trade Network setting');
+    if (isObj(s.facilityLevels) && isNum(s.facilityLevels[HALL_ID]) && s.facilityLevels[HALL_ID] > 1) out.push('a Hall level above 1');
+    return out;
+  }
+  /* The shipments a contract still has to bring: from its last shipment to its final day, one every `every` days. */
+  function contractShipmentsLeft(rec, every) {
+    var last = dayNum(rec.lastShipmentDay, dayNum(rec.startDay, 0));
+    var end = dayNum(rec.endDay, last);
+    return end > last ? Math.ceil((end - last) / every) : 0;
+  }
+  /* What a route pays for a sailing that goes well, with the yield upgrades and High-Risk Routing the Bastion had. */
+  function routeYield(tn, r) {
+    var base = clampInt(r.yieldGP, 0, 999999);
+    var bonus = clampInt(tn.yieldBonusPct, 0, 200);
+    var hr = tn.highRiskRouting === true ? 20 : 0;
+    return clampInt(Math.floor(base * (100 + bonus + hr) / 100), 0, 999999);
+  }
+  function shipmentWord(n) { return plural(n, 'shipment', 'shipments'); }
+  function windDownHall(s, data, report) {
+    var found = detectHall(s);
+    var day = report.day;
+    var every = Math.max(1, clampInt(R.time ? R.time(data).every : 7, 1, 365));
+    var h = hallState(s);
+    var said = [];
+    /* 1. Orders that end, with what they cost handed back. */
+    var ended = 0;
+    (arr(s.pendingOrders) || []).slice().forEach(function (o) {
+      if (!hallOrderToEnd(o)) return;
+      var upgrade = o.facId === HALL_ID && ((isObj(o.meta) && o.meta.kind === 'upgrade') || o.fnId === 'upgrade' || o.fnId === 'upgrade_hall');
+      var why = o.facId === NETWORK_ID ? 'the Trade Network is gone' : upgrade ? 'the Hall of Emissaries has one level only now, so there is nothing to upgrade' : 'the Hall of Emissaries has no orders any more';
+      if (R.stripBackCancel(s, data, report, o, why)) ended += 1;
+    });
+    /* 2. Contracts and routes: paid out once, then ended, kept as history. */
+    var records = [];
+    function settle(kind, title, clan, startDay, endDay, income, shipments, paid, note, label, sentence) {
+      records.push({ kind: kind, title: title, clan: str(clan), startDay: startDay, endDay: endDay, endedDay: day, income: income, shipments: shipments, paid: paid, note: note });
+      if (paid > 0) R.stripBackPayGold(s, report, paid, label, 'settlement');
+      said.push(sentence);
+    }
+    CONTRACT_LISTS.forEach(function (pair) {
+      (arr(h.d[pair[0]]) || []).forEach(function (r) {
+        if (!isObj(r)) return;
+        var left = contractShipmentsLeft(r, every);
+        var income = clampInt(r.income, 0, 1000000);
+        var paid = income * left;
+        var title = str(r.title).trim() || pair[1];
+        var name = (title === pair[1] ? pair[1] : title) + (clanTitle(r.clan) ? ' with ' + clanTitle(r.clan) : '');
+        var start = dayNum(r.startDay, null), end = dayNum(r.endDay, null);
+        settle(pair[1], title, r.clan, start, end, income, left, paid, '', name,
+          paid > 0 ? 'Your ' + name + ' had ' + shipmentWord(left) + ' of ' + fmt(income) + ' gp still to come, so it was paid out in full (' + fmt(paid) + ' gp) and ended.'
+            : 'Your ' + name + ' had nothing more to pay, so it simply ended.');
+      });
+    });
+    var consortiums = arr(h.d.consortiums) || [];
+    (arr(h.tn.routes) || []).forEach(function (r) {
+      if (!isObj(r)) return;
+      var status = str(r.status).toLowerCase();
+      var running = status !== 'expired' && status !== 'removed' && !(isNum(r.expiresDay) && day > r.expiresDay);
+      var name = 'sea route to ' + (clanTitle(r.clan) || 'a Clan');
+      var each = routeYield(h.tn, r);
+      var sailings = 0;
+      var note = '';
+      if (!running) note = 'it had already ended';
+      else if (status === 'disrupted') note = 'it was disrupted, so it paid nothing';
+      else {
+        /* It sails every `every` days from its next day until it would have ended: its own last day, or the day before
+           its Trade Consortium ended (which ends the route with it). */
+        var consEnd = consortiums.reduce(function (m, c) { return isObj(c) && clanPlain(c.clan) === clanPlain(r.clan) ? Math.max(m, dayNum(c.endDay, m)) : m; }, -100000);
+        var limit = Math.min(isNum(r.expiresDay) ? r.expiresDay : day, consEnd - 1);
+        var next = dayNum(r.nextDay, day);
+        sailings = limit >= next ? Math.floor((limit - next) / every) + 1 : 0;
+        if (!sailings) note = 'its Trade Consortium had ended';
+      }
+      var paid = each * sailings;
+      var label = 'Sea route to ' + (clanTitle(r.clan) || 'a Clan') + (str(r.commodity).trim() ? ' (' + str(r.commodity).trim() + ')' : '');
+      settle('Sea route', 'Sea route to ' + (clanTitle(r.clan) || 'a Clan'), r.clan, dayNum(r.openedDay, null), isNum(r.expiresDay) ? dayNum(r.expiresDay, null) : null, each, sailings, paid, note, label,
+        paid > 0 ? 'Your ' + name + ' had ' + plural(sailings, 'sailing', 'sailings') + ' of about ' + fmt(each) + ' gp still to come, so it was paid out in full (' + fmt(paid) + ' gp) and ended.'
+          : 'Your ' + name + ' ' + (note ? 'ended (' + note + ')' : 'ended') + '; nothing was owed.');
+    });
+    /* Delegations and Summits: no gold left in them. */
+    ['delegations', 'summits'].forEach(function (k) {
+      (arr(h.d[k]) || []).forEach(function (r) {
+        if (!isObj(r)) return;
+        var kind = k === 'summits' ? 'Inter-Clan Summit' : 'Hosted Delegation';
+        var who = k === 'summits' ? str(r.pair).trim() : clanTitle(r.clan);
+        records.push({ kind: kind, title: str(r.title).trim() || kind, clan: k === 'summits' ? str(r.pair) : str(r.clan), startDay: dayNum(r.startDay, null), endDay: dayNum(r.endDay, null), endedDay: day, income: 0, shipments: 0, paid: 0, note: k === 'summits' && clampInt(r.costReductionPct, 0, 90) ? 'it had given a ' + clampInt(r.costReductionPct, 0, 90) + '% discount' : '' });
+        said.push('Your ' + (k === 'summits' ? 'Inter-Clan Summit' : 'delegation') + (who ? ' (' + who + ')' : '') + ' ended' + (k === 'summits' && clampInt(r.costReductionPct, 0, 90) ? ', and so did the ' + clampInt(r.costReductionPct, 0, 90) + '% discount it gave' : '') + '. It had no gold left to pay.');
+      });
+    });
+    var cools = isObj(h.d.cooldowns) ? Object.keys(h.d.cooldowns).length : 0;
+    if (cools) said.push('The waiting time on a diplomatic action ended with the actions themselves.');
+    var tokens = isNum(h.d.tokens) ? clampInt(h.d.tokens, 0, 999) : 0;
+    if (tokens > 0) said.push(plural(tokens, 'Favour Token', 'Favour Tokens') + (tokens === 1 ? ' was' : ' were') + ' never spent on anything, and ' + (tokens === 1 ? 'it ended' : 'they ended') + '.');
+    var disputes = isObj(s.arbitration) ? (arr(s.arbitration.queue) || []).length : 0;
+    if (disputes > 0) said.push(plural(disputes, 'dispute was', 'disputes were') + ' waiting for the Council Ledger, which is gone, so ' + (disputes === 1 ? 'it was' : 'they were') + ' closed without a ruling.');
+    /* 3. The fields themselves. (Quiet when there was nothing in them.) */
+    if (isObj(s.diplomacy)) s.diplomacy = { tokens: 0 };
+    delete s.arbitration;
+    if (isObj(s.tradeNetwork)) ['active', 'strategy', 'stability', 'routes', 'highRiskRouting', 'yieldBonusPct'].forEach(function (k) { delete s.tradeNetwork[k]; });
+    if (records.length) {
+      var old = isObj(s.legacyDiplomacy) && arr(s.legacyDiplomacy.records) ? s.legacyDiplomacy.records.filter(isObj) : [];
+      s.legacyDiplomacy = { records: old.concat(records) };
+    }
+    /* 4. One level. */
+    var hadLevel = isObj(s.facilityLevels) && isNum(s.facilityLevels[HALL_ID]) ? s.facilityLevels[HALL_ID] : 1;
+    var hallBuilt = (arr(s.builtExtras) || []).concat(arr(s.builtPlots) || []).some(function (x) { return slotId(x) === HALL_ID && !(isObj(x) && x.status === 'building'); });
+    if (hadLevel > 1) {
+      s.facilityLevels[HALL_ID] = 1;
+      if (hallBuilt) said.push('The Hall of Emissaries has one level only now, so its Level ' + hadLevel + ' ended.');
+    }
+    /* 5. The words. */
+    if (!found.length && !(tokens > 0)) return;
+    if (records.length) report.removed.hall = { records: records.length };
+    said.forEach(function (line) { R.stripBackSay(report, 'trade', line); });
+    if (hallBuilt || ended || records.length) {
+      R.stripBackSay(report, 'trade', 'The Hall of Emissaries now has no orders and one level. It shows each Clan\'s Honour/Respect and Political Capital, which change only through Change a score in the DM doc or a confirmed Diplomatic Event, and it keeps your Diplomatic Events.' +
+        (records.length ? ' What your agreements and routes were is kept there, to read and not to change, under Earlier agreements.' : ''));
+    }
+  }
+
   /* The registry, in the order they run. Add a step ABOVE sweepFacilities. */
   R.stripBackSteps = [
     { id: 'dropEvents', detect: detectEvents, run: dropEvents },
@@ -768,6 +933,7 @@
     /* ---- S08 and S09 (the Dock and the Hall): their steps stay together ---- */
     { id: 'moveCharterOrders', detect: detectCharterOrders, run: moveCharterOrders },
     { id: 'endOldProtections', detect: detectOldProtections, run: endOldProtections },
+    { id: 'windDownHall', detect: detectHall, run: windDownHall },
     /* ---- end of S08 and S09 ---- */
     { id: 'sweepFacilities', detect: detectGhosts, run: sweepFacilities },
     { id: 'finish', detect: null, run: finish }

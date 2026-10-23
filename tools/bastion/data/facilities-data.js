@@ -65,6 +65,12 @@
    that is still pending when the upgrade completes finishes as usual, because the
    engine finds it by its id. Without the flag (the Herbal Gardens, the Courier
    Exchange) every order stays listed at every level, locked until its level.
+   The Strip Back Overhaul (Harry, 22 October 2026, steps S08 and S09): Register Port Charter moved from the
+   Hall of Emissaries to the Dock (a 3-day order, "portCharter": true), and the Hall lost every other order
+   (Host Delegation, Inter-Clan Summit, Secure Writ of Authority, Trade Consortium and the retired Secure
+   Trade Agreement) and its levels: it has "functions": [] and "singleLevel": true, so it shows the Clans'
+   standing and the Diplomatic Events ledger and nothing else. An order that an older Bastion still held for it
+   is cancelled, with its gold given back, when the Bastion is converted (tools/bastion/strip-back-rules.js).
    Pull request 7 (Harry, 14 October 2026) opened the Wyvern Roost, the Griffin Tower and the
    Dire Wolf Den. The Strip Back Overhaul (Harry, 22 October 2026, step S14) replaced all three
    with ONE building, the Beast Pen: it takes a construction slot, needs party level 5 and takes
@@ -1568,177 +1574,10 @@ window.TSI_DATA.bastionFacilities = [
     "name": "Hall of Emissaries",
     "id": "hall_of_emissaries",
     "requiredLevel": 5,
-    "threshold": "Political / Trade",
-    "description": "A neutral hall for delegations, contracts, arbitration and inter-clan diplomacy.",
-    "functions": [
-      {
-        "id": "upgrade_hall",
-        "retired": true,
-        "label": "Upgrade Hall (Level Up)",
-        "days": 14,
-        "costGP": 0,
-        "special": {
-          "type": "upgrade_facility",
-          "maxLevel": 3,
-          "costByNextLevel": {
-            "2": 600,
-            "3": 1200
-          }
-        }
-      },
-      {
-        "id": "secure_trade_agreement",
-        "label": "Secure Trade Agreement",
-        "retiredNote": "The Secure Trade Agreement is retired; Port Charters replace it.",
-        "days": 7,
-        "costGP": 250,
-        "requiredFacilityLevel": 1,
-        "options": [
-          {
-            "label": "Clan Blackstone",
-            "value": "Blackstone"
-          },
-          {
-            "label": "Clan Rowthorn",
-            "value": "Rowthorn"
-          },
-          {
-            "label": "Clan Karr",
-            "value": "Karr"
-          },
-          {
-            "label": "Clan Farmer",
-            "value": "Farmer"
-          },
-          {
-            "label": "Clan Slade",
-            "value": "Slade"
-          },
-          {
-            "label": "Clan Bacca",
-            "value": "Bacca"
-          },
-          {
-            "label": "Clan Molten",
-            "value": "Molten"
-          }
-        ],
-        "special": {
-          "type": "emissary_action",
-          "kind": "trade_agreement",
-          "durationDays": 21,
-          "incomeMin": 60,
-          "incomeMax": 140
-        }
-      },
-      {
-        "id": "host_delegation",
-        "label": "Host Delegation",
-        "days": 5,
-        "costGP": 150,
-        "requiredFacilityLevel": 1,
-        "options": [
-          {
-            "label": "Clan Blackstone",
-            "value": "Blackstone"
-          },
-          {
-            "label": "Clan Rowthorn",
-            "value": "Rowthorn"
-          },
-          {
-            "label": "Clan Karr",
-            "value": "Karr"
-          },
-          {
-            "label": "Clan Farmer",
-            "value": "Farmer"
-          },
-          {
-            "label": "Clan Slade",
-            "value": "Slade"
-          },
-          {
-            "label": "Clan Bacca",
-            "value": "Bacca"
-          },
-          {
-            "label": "Clan Molten",
-            "value": "Molten"
-          }
-        ],
-        "special": {
-          "type": "emissary_action",
-          "kind": "host_delegation",
-          "durationDays": 14,
-          "oneTimeTreasuryMin": 80,
-          "oneTimeTreasuryMax": 220
-        }
-      },
-      {
-        "id": "inter_clan_summit",
-        "label": "Inter-Clan Summit",
-        "days": 14,
-        "costGP": 450,
-        "requiredFacilityLevel": 2,
-        "options": [
-          {
-            "label": "Blackstone + Rowthorn",
-            "value": "Blackstone/Rowthorn"
-          },
-          {
-            "label": "Blackstone + Karr",
-            "value": "Blackstone/Karr"
-          },
-          {
-            "label": "Rowthorn + Karr",
-            "value": "Rowthorn/Karr"
-          },
-          {
-            "label": "Farmer + Slade",
-            "value": "Farmer/Slade"
-          },
-          {
-            "label": "Bacca + Molten",
-            "value": "Bacca/Molten"
-          }
-        ],
-        "special": {
-          "type": "emissary_action",
-          "kind": "summit",
-          "durationDays": 21,
-          "costReductionPct": 25
-        }
-      },
-      {
-        "id": "arbitration_authority",
-        "label": "Secure Writ of Authority",
-        "days": 10,
-        "costGP": 600,
-        "requiredFacilityLevel": 3,
-        "special": {
-          "type": "emissary_action",
-          "kind": "arbitration",
-          "durationDays": 28,
-          "incomeMin": 90,
-          "incomeMax": 190
-        }
-      },
-      {
-        "id": "trade_consortium",
-        "label": "Trade Consortium",
-        "days": 14,
-        "costGP": 900,
-        "requiredFacilityLevel": 3,
-        "special": {
-          "type": "emissary_action",
-          "kind": "consortium",
-          "durationDays": 35,
-          "incomeMin": 140,
-          "incomeMax": 260
-        }
-      }
-    ]
+    "singleLevel": true,
+    "threshold": "Political",
+    "description": "Where the Ironbow keeps track of how each Clan regards it: Honour/Respect, Political Capital, and the Diplomatic Events that changed them. It has no orders and one level only.",
+    "functions": []
   },
   {
     "name": "Menagerie",

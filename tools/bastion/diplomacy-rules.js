@@ -26,8 +26,9 @@
      use the same records.
 
    The records are a top-level part of the save (s.diplomaticRecords), apart
-   from s.diplomacy (the old agreements, which "Clear Diplomacy Records"
-   still clears): clearing those never touches this ledger. */
+   from s.diplomacy and s.legacyDiplomacy (the Hall's old agreements, which
+   ended in the Strip Back Overhaul, step S09). The ledger is shown in the
+   Hall as "Diplomatic Events". */
 (function () {
   'use strict';
   var TSI = window.TSI = window.TSI || {};

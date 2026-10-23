@@ -23,18 +23,16 @@
      cargo, which goes back into the Warehouse when the ship is home.
    - Standing shipments (Dock Level 4): the same cargo, every 7 days, when a
      ship, the goods and the room are there; otherwise they wait.
-   Everything is settled in the day's 'trade' stage, after the old sea
-   routes and before the orders, in the same save as the stage moving on
-   (tools/bastion/tool.js runDay), so nothing is paid or returned twice.
+   Everything is settled in the day's 'trade' stage, before the orders, in
+   the same save as the stage moving on (tools/bastion/tool.js runDay), so
+   nothing is paid or returned twice.
 
-   Two kinds of route, kept apart (Harry, 14 October 2026):
-   - legacy_abstract: the Hall's old trade (Trade Agreements, the Trade
-     Consortium's sea routes in tradeNetwork.routes), unchanged: it pays a
-     fixed income and never carries goods;
-   - commodity_backed: a Port Charter's route, which only ever carries
-     goods that were really made.
+   There is one kind of route now: a Port Charter's (mode commodity_backed),
+   which only ever carries goods that were really made. The Hall's old
+   abstract trade (Trade Agreements, the Trade Consortium's sea routes) ended
+   in the Strip Back Overhaul, step S09 (strip-back-rules.js windDownHall).
 
-   The new records live inside the Bastion save's tradeNetwork:
+   The records live inside the Bastion save's tradeNetwork:
    portCharters, voyages, schedules, cargoSales and protections. Every
    number comes from data/commerce-data.js (data.commerce). Dice come in as
    rand(), as in the rest of the Bastion's rules. */

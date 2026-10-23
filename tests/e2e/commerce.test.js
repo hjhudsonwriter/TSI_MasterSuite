@@ -499,7 +499,7 @@ async function closePanel(ba) {
   /* ------------------------------------------------------------------ */
   section('Harry\'s sample file (tests/fixtures/bastion-pr5-sample.json), on the test page');
 
-  await check('on the test page (tests/harness.html), with only the Bastion open, the sample imports: the Hall and the Dock at Level 2, goods in the Warehouse; then the Explorer opens beside it, and a change it sent earlier (say, while testing pull request 4) is skipped, not applied', async () => {
+  await check('on the test page (tests/harness.html), with only the Bastion open, the sample imports: the Dock at Level 2, the Hall (Level 2 in the file) at its one level, goods in the Warehouse; then the Explorer opens beside it, and a change it sent earlier (say, while testing pull request 4) is skipped, not applied', async () => {
     const c2 = await context(browser, 'laptop');
     /* An Explorer that sent an Honour/Respect change before: T4 won. */
     const e0 = await openExplorer(c2, HARNESS);
@@ -519,7 +519,7 @@ async function closePanel(ba) {
     await b3.waitForFunction(() => TSI.bastion && TSI.bastion.debug, null, { timeout: 8000 });
     await H.chooseFile(b3, '[data-test=import-save]', require('path').join(__dirname, '..', 'fixtures', 'bastion-pr5-sample.json'));
     await H.clickModal(b3, 'Import');
-    await b3.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().facilityLevels.hall_of_emissaries === 2, null, { timeout: 8000 });
+    await b3.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().facilityLevels.hall_of_emissaries === 1, null, { timeout: 8000 });
     /* The box that says what changed holds the Bastion until it is read (the Strip Back Overhaul). */
     await H.ackChanges(b3);
     const e3 = await openExplorer(c2, HARNESS);
@@ -527,7 +527,7 @@ async function closePanel(ba) {
     await b3.waitForFunction(() => TSI.bastion.debug.state().anchored, null, { timeout: 8000 });
     const s = await bas(b3);
     equal([s.day, s.treasuryGP, s.facilityLevels.dock, s.facilityLevels.hall_of_emissaries, qty(s, 'sawn_lumber'), qty(s, 'raw_stone'), qty(s, 'preserved_fish'), qty(s, 'fresh_fish'), s.bridge.fresh],
-      [1, 500, 2, 2, 4, 6, 2, 4, false]);
+      [1, 500, 2, 1, 4, 6, 2, 4, false]);
     equal([Object.values(s.bridge.done).map(r => r.r), s.honourRespectByClan.slade], [['skipped'], 0], 'the earlier change is skipped');
     await e3.click('[data-test=charter-open]');
     await e3.waitForSelector('[data-test=charter-dialog]');

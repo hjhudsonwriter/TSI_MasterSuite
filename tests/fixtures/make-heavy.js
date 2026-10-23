@@ -132,9 +132,10 @@ s.pendingOrders = [
   order('hv-22', 'shrine_pelagos', 'great_rite_pelagos', 0, { favourCost: 25, dueDay: DAY + 5 }),
   /* The Hall: a Port Charter moves to the Dock; the actions are cancelled with their gold. */
   order('hv-23', 'hall_of_emissaries', 'register_port_charter', 0, { chosen: { charterId: 'chr-hv-timberport', label: 'Timberport' }, optionLabel: 'Timberport', label: 'Hall of Emissaries: Register Port Charter (Timberport)', dueDay: DAY + 1 }),
-  order('hv-24', 'hall_of_emissaries', 'host_delegation', 0, { costGP: 150, meta: { targetClan: 'Slade', notes: '' } }),
-  order('hv-25', 'hall_of_emissaries', 'trade_consortium', 0, { costGP: 900, meta: { targetClan: 'Blackstone', notes: '' } }),
-  { id: 'hv-26', facId: 'trade_network', fnId: 'upgrade', chosen: null, optionLabel: null, label: data.bastion.networkUpgrades.stability.label, costGP: 75, issuedDay: DAY - 1, dueDay: DAY + 6, meta: { kind: 'stability' } },
+  /* The Hall's actions no longer exist in the data (step S09), so these two are written out as a version 3 Bastion held them. */
+  order('hv-24', 'hall_of_emissaries', 'host_delegation', 0, { chosen: { label: 'Clan Blackstone', value: 'Blackstone' }, optionLabel: 'Clan Blackstone', label: 'Hall of Emissaries: Host Delegation (Clan Blackstone)', costGP: 150, dueDay: DAY - 2 + 5, meta: { targetClan: 'Slade', notes: '' } }),
+  order('hv-25', 'hall_of_emissaries', 'trade_consortium', 0, { label: 'Hall of Emissaries: Trade Consortium', costGP: 900, dueDay: DAY - 2 + 14, meta: { targetClan: 'Blackstone', notes: '' } }),
+  { id: 'hv-26', facId: 'trade_network', fnId: 'upgrade', chosen: null, optionLabel: null, label: 'Ironbow Trade Network: Stability Investment', costGP: 75, issuedDay: DAY - 1, dueDay: DAY + 6, meta: { kind: 'stability' } },
   /* The creature buildings: a House order moves, a training order is cancelled (the harness costs 150 gp). */
   order('hv-27', 'wyvern_roost', 'house_wyvern', 0, { chosen: { label: 'Skyrender', creatureId: 'cr-hv-wyvern-skyrender' }, optionLabel: 'Skyrender', label: 'Wyvern Roost: House a Wyvern (Skyrender)', dueDay: DAY + 1 }),
   order('hv-28', 'dire_wolf_den', 'dwf_riding_harness', 0, { chosen: { label: 'Ashfang', trainCreatureId: 'cr-hv-wolf-ashfang' }, optionLabel: 'Ashfang', label: 'Dire Wolf Den: Riding Harness (Ashfang)', costGP: 150, dueDay: DAY + 3 })
@@ -195,9 +196,15 @@ s.diplomacy = {
   cooldowns: { summit: 46 },
   tokens: 2
 };
-s.arbitration = { queue: [] };
-R.enqueueDispute.call(R, s, data, 'Karr', 'A dispute over tariffs and delayed cargo.', { kind: 'trade', routeClan: 'Karr', routeId: 'hv-route-1', risk: 'high', commodity: 'Wool & Furs', disruptedDay: 36, stabilityAtFiling: 70 }, () => 0.123456);
-s.arbitration.queue[0].id = 'hv-dispute-1';
+/* The Hall's sea routes, disputes and contracts no longer exist in a new Bastion (step S09), so this version 3 save's
+   old fields are written out by hand, in the order and shape a version 3 Bastion had them. */
+s.arbitration = {
+  queue: [{
+    id: 'hv-dispute-1', a: 'Karr', b: 'Ironbow Trade Consortium', reason: 'A dispute over tariffs and delayed cargo.', createdDay: DAY,
+    meta: { kind: 'trade', routeClan: 'Karr', routeId: 'hv-route-1', risk: 'high', commodity: 'Wool & Furs', disruptedDay: 36, stabilityAtFiling: 70 }
+  }]
+};
+s.tradeNetwork = Object.assign({ active: false, strategy: 'balanced', stability: 75, routes: [] }, s.tradeNetwork);
 s.tradeNetwork.active = true;
 s.tradeNetwork.strategy = 'balanced';
 s.tradeNetwork.stability = 70;
@@ -313,6 +320,15 @@ s.beast = Object.assign(R.cleanBeast({
   done: { 'cmd-hv-0001': { r: 'applied', why: '', day: 36, at: 1760000400000, type: 'profile.set', handler: 'kaelen', who: 'Kaelen', creature: 'cr-hv-griffin-swiftwing', label: 'Swiftwing: attachment', orderId: '', dueDay: null } },
   floor: 0
 });
+
+/* A version 3 save has no legacyDiplomacy (step S09), and holds arbitration right after tradeNetwork: put the keys back in the order the file always had. */
+delete s.legacyDiplomacy;
+(function moveAfter(o, key, anchor) {
+  const entries = Object.entries(o).filter(([k]) => k !== key);
+  entries.splice(entries.findIndex(([k]) => k === anchor) + 1, 0, [key, o[key]]);
+  Object.keys(o).forEach(k => { delete o[k]; });
+  entries.forEach(([k, v]) => { o[k] = v; });
+}(s, 'arbitration', 'tradeNetwork'));
 
 /* ---------- Check: loading the save drops nothing ---------- */
 const loaded = R.fromSave(clone(s), data);

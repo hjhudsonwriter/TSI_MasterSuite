@@ -1,10 +1,12 @@
-/* The Hall's Clan Relations and Diplomatic Records (pull request 9; Harry,
-   18 October 2026), from a double-clicked file:
-   - the seven Clans' scores and what is running;
-   - a record written as a draft, checked, edited, then confirmed:
-     the scores change once, the restriction is DM-tracked and counts days;
-   - End early, a note, a dismissed draft, the old Clear Diplomacy Records
-     leaves the ledger alone, and a reload changes nothing.
+/* The Hall of Emissaries after the Strip Back Overhaul (step S09, Harry, 22 October 2026), from a
+   double-clicked file. It has one level and no orders; it shows
+   - the seven Clans' Honour/Respect and Political Capital, to read only, and what is running;
+   - the Diplomatic Events ledger (pull request 9's Diplomatic Records): an event written as a draft,
+     checked, edited, then confirmed: the scores change once, the restriction is DM-tracked and counts
+     days; End early, a note, a dismissed draft, a reload that changes nothing;
+   - what the old agreements and sea routes were, as read-only history (Earlier agreements);
+   and nothing else: no actions, Upgrade, Routes, Resolve, Council Ledger, Trade Network or Clear
+   Diplomacy Records. The panel fits the laptop and the TV.
    Run with:  node tests/e2e/hall-records.test.js */
 'use strict';
 
@@ -63,13 +65,23 @@ async function fillRecord(page, f) {
 
   section('The Hall');
 
-  await check('Clan Relations lists the seven Clans with their own scores; Diplomatic Records starts empty; the Hall\'s own orders are still there', async () => {
+  await check('Clan Relations lists the seven Clans with their own scores, to read only; Diplomatic Events starts empty; the Hall has one level and no orders, Upgrade, Routes, Resolve, Council Ledger or Trade Network', async () => {
     await openHall(page);
     equal(await page.$$eval('[data-test=clan-relations] .tsi-bas-rel__row', r => r.length), 7);
     equal(await text(page, 'relations-pc-slade'), 'PC −15');
     equal(await text(page, 'relations-hr-karr'), 'H&R 0');
-    assert(/No records yet/.test(await text(page, 'dip-records-ledger')));
-    equal(await page.$$eval('.tsi-bas-hall__fns .tsi-bas-fn', f => f.length), 6 - 2, 'the Hall\'s orders are unchanged, minus the retired Secure Trade Agreement and Register Port Charter (the Dock\'s now)');
+    equal(await page.$$eval('[data-test=clan-relations] input, [data-test=clan-relations] button, [data-test=clan-relations] select', n => n.length), 0, 'the scores are read-only: nothing to press or type');
+    assert(/Diplomatic Events/.test(await text(page, 'dip-records-ledger')), await text(page, 'dip-records-ledger'));
+    assert(/No events recorded yet/.test(await text(page, 'dip-records-ledger')));
+    assert(/change only through Change a score in the DM doc, or a confirmed Diplomatic Event/.test(await text(page, 'clan-relations')), 'it says how the scores change');
+    equal(await text(page, 'hall-level'), 'One level only');
+    equal(await page.$$('.tsi-bas-hall__fns, .tsi-bas-fn, [data-test^="issue-hall_of_emissaries__"]').then(l => l.length), 0, 'no orders');
+    for (const gone of ['hall-upgrade', 'routes', 'resolve', 'ledger', 'trade-network', 'invest-stability', 'invest-yield', 'toggle-high-risk', 'clear-diplomacy', 'diplomacy-meta', 'hall-charters']) {
+      equal(await page.$('[data-test=' + gone + ']'), null, gone + ' is gone');
+    }
+    assert(await page.$('[data-test=demolish-hall_of_emissaries]'), 'it can still be demolished');
+    assert(await page.$('[data-test=record-new]'), 'Record an event… is there');
+    equal(await text(page, 'record-new'), 'Record an event…');
   });
 
   await check('a record needs a title and valid consequences; the box stays as typed', async () => {
@@ -155,7 +167,7 @@ async function fillRecord(page, f) {
     assert(/Nothing running/.test(await text(page, 'relations-row-karr')));
   });
 
-  await check('a draft can be dismissed from the editor\'s record list; nothing is applied; the old Clear Diplomacy Records leaves the ledger alone', async () => {
+  await check('a draft can be dismissed from the editor\'s record list and nothing is applied', async () => {
     await page.click('[data-test=record-new]');
     await page.waitForSelector('[data-test=record-dialog]');
     await fillRecord(page, { title: 'A rumour', clans: ['slade'], day: 10, consequences: [{ kind: 'pc', clan: 'slade', amount: 5 }] });
@@ -165,10 +177,23 @@ async function fillRecord(page, f) {
     await openHall(page);
     equal(await page.getAttribute('[data-test=record-dr-0002]', 'data-status'), 'dismissed');
     equal((await bas(page)).politicalCapital.slade, -15);
-    await page.click('[data-test=clear-diplomacy]');
-    await H.clickModal(page, 'Clear');
-    await page.waitForTimeout(400);
     equal((await bas(page)).diplomaticRecords.list.length, 2);
+  });
+
+  await check('what the old agreements and routes were is kept as history to read, not to change: Earlier agreements', async () => {
+    await closeAll(page);
+    equal(await page.$('[data-test=earlier-agreements]'), null, 'none until there is something to show');
+    await page.evaluate(() => TSI.bastion.debug.change(s => {
+      s.legacyDiplomacy = { records: [
+        { kind: 'Trade Agreement', title: 'Trade Agreement', clan: 'Clan Karr', startDay: 5, endDay: 33, endedDay: 12, income: 90, shipments: 3, paid: 270, note: '' },
+        { kind: 'Sea route', title: 'Sea route to Clan Molten', clan: 'Molten', startDay: 8, endDay: 43, endedDay: 12, income: 176, shipments: 0, paid: 0, note: 'it was disrupted, so it paid nothing' }
+      ] };
+    }));
+    await openHall(page);
+    await page.click('[data-test=earlier-agreements] summary');
+    equal(await page.$$eval('[data-test=earlier-row]', l => l.map(x => x.textContent)), ['Trade Agreement with Clan Karr · Day 5 to Day 33 · ended Day 12 · paid out in full, 270 gp', 'Sea route to Clan Molten · Day 8 to Day 43 · ended Day 12 · it was disrupted, so it paid nothing']);
+    equal(await page.$$eval('[data-test=earlier-agreements] button, [data-test=earlier-agreements] input', n => n.length), 0, 'read only');
+    assert(/Earlier agreements and routes \(2, ended and kept as history\)/.test(await text(page, 'earlier-agreements')));
   });
 
   await check('a reload changes nothing: the same ledger, the same scores', async () => {
@@ -190,6 +215,18 @@ async function fillRecord(page, f) {
     assert(box.right <= box.w && box.bottom <= box.h + 1, JSON.stringify(box));
     await H.shot(page, 'hall-record-dialog-consequence-laptop');
     await H.clickModal(page, 'Cancel');
+  });
+
+  await check('the Hall, with its history open and many events, fits the TV too', async () => {
+    await page.setViewportSize(H.SIZES.tv.viewport);
+    await openHall(page);
+    await page.click('[data-test=earlier-agreements] summary').catch(() => {});
+    const lay = await H.layoutCheck(page, ['[data-test=record-new]']);
+    assert(lay.scrollWidth <= lay.clientWidth, 'no sideways scroll on the TV');
+    const dlg = await page.$eval('[data-test=panel-diplomacy]', n => { const r = n.getBoundingClientRect(); return { right: r.right, bottom: r.bottom, w: innerWidth, h: innerHeight, sw: n.scrollWidth, cw: n.clientWidth }; });
+    assert(dlg.right <= dlg.w && dlg.bottom <= dlg.h + 1 && dlg.sw <= dlg.cw + 1, JSON.stringify(dlg));
+    await H.shot(page, 'hall-tv');
+    await page.setViewportSize(H.SIZES.laptop.viewport);
   });
 
   await check('nothing went wrong or reached for the internet', async () => {

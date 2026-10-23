@@ -725,7 +725,7 @@
 }
 .tsi-page--bastion .tsi-bas-modal .tsi-bas-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 
-/* The old gold pill buttons (Upgrade, Routes, Resolve, Council Ledger, Invest…). */
+/* The old gold pill buttons. */
 .tsi-page--bastion .tsi-bas-pill,
 .tsi-page--bastion .tsi-bas-modal .tsi-bas-pill {
   padding: 7px 14px;
@@ -1070,19 +1070,6 @@
 }
 .tsi-page--bastion .tsi-bas-dip-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
 .tsi-page--bastion .tsi-bas-dip-right { border-left: 1px solid rgba(255, 255, 255, .12); padding-left: 16px; min-width: 0; }
-.tsi-page--bastion .tsi-bas-dip-boxes { display: flex; flex-direction: column; gap: 10px; }
-.tsi-page--bastion .tsi-bas-dip-box {
-  padding: 10px 12px;
-  border: 1px solid rgba(255, 255, 255, .15);
-  border-radius: 12px;
-  background: rgba(0, 0, 0, .55);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, .25);
-}
-.tsi-page--bastion .tsi-bas-dip-box__title { margin-bottom: 6px; font: 700 12px var(--tsi-font-display); letter-spacing: .06em; text-transform: uppercase; opacity: .8; }
-.tsi-page--bastion .tsi-bas-dip-row { padding: 6px 0; border-top: 1px dashed rgba(255, 255, 255, .1); }
-.tsi-page--bastion .tsi-bas-dip-row:first-of-type { border-top: 0; padding-top: 0; }
-.tsi-page--bastion .tsi-bas-dip-row__name { font-weight: 700; font-size: var(--tsi-fs-body-sm); }
-.tsi-page--bastion .tsi-bas-dip-row__meta { font-size: 14px; color: var(--tsi-text-soft); }
 .tsi-page--bastion .tsi-bas-dip-foot { display: flex; }
 .tsi-page--bastion .tsi-bas-hall {
   display: flex;
@@ -1096,15 +1083,9 @@
 .tsi-page--bastion .tsi-bas-hall__name { font: 700 17px/1.2 var(--tsi-font-display); letter-spacing: .02em; }
 .tsi-page--bastion .tsi-bas-hall__img { height: 170px; overflow: hidden; border-radius: 14px; border: 1px solid rgba(255, 255, 255, .15); background: rgba(0, 0, 0, .25); }
 .tsi-page--bastion .tsi-bas-hall__img img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center 38%; }
-.tsi-page--bastion .tsi-bas-hall__fns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.tsi-page--bastion .tsi-bas-tn { display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 1px solid var(--tsi-line-faint); }
-.tsi-page--bastion .tsi-bas-tn-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.tsi-page--bastion .tsi-bas-tn-stat { padding: 8px 12px; border: 1px solid var(--tsi-line-faint); border-radius: var(--tsi-radius-md); background: rgba(0, 0, 0, .18); }
-.tsi-page--bastion .tsi-bas-tn-stat__label { font-size: 14px; color: var(--tsi-text-soft); }
-.tsi-page--bastion .tsi-bas-tn-stat__val { margin-top: 2px; font: 400 14px var(--tsi-font-mono); color: var(--tsi-gold-text); }
-.tsi-page--bastion .tsi-bas-tn-btns,
-.tsi-page--bastion .tsi-bas-modal .tsi-bas-tn-btns { display: flex; flex-wrap: wrap; gap: 8px; }
-.tsi-page--bastion .tsi-bas-tn-routes { display: flex; flex-direction: column; gap: 6px; }
+/* What the Hall's old agreements and routes were (step S09): to read only. */
+.tsi-page--bastion .tsi-bas-earlier { margin-top: 10px; padding: 8px 12px; border: 1px solid var(--tsi-line-faint); border-radius: var(--tsi-radius-md); background: rgba(0, 0, 0, .14); }
+.tsi-page--bastion .tsi-bas-earlier > summary { cursor: pointer; font-family: var(--tsi-font-display); color: var(--tsi-gold-text); }
 .tsi-page--bastion .tsi-bas-tn-route { padding: 8px 12px; border: 1px solid var(--tsi-line-faint); border-radius: var(--tsi-radius-md); background: rgba(0, 0, 0, .14); }
 .tsi-page--bastion .tsi-bas-tn-route__name { font-weight: 700; }
 .tsi-page--bastion .tsi-bas-tn-route__meta { font-size: 14px; color: var(--tsi-text-soft); }
@@ -1345,7 +1326,6 @@
 }
 .tsi-page--bastion .tsi-bas-res-top { margin-bottom: 10px; }
 .tsi-page--bastion .tsi-bas-res-action { font: 700 18px/1.2 var(--tsi-font-display); }
-.tsi-page--bastion .tsi-bas-res-target { margin-top: 2px; }
 .tsi-page--bastion .tsi-bas-res-roll {
   margin-top: 10px;
   padding: 10px 12px;
@@ -1356,22 +1336,8 @@
 }
 /* The War Report: a long report since war phase 2, so in the body font, not the dice box's. */
 .tsi-page--bastion .tsi-bas-res-roll--pre { white-space: pre-wrap; font: 500 var(--tsi-fs-body-sm)/1.4 var(--tsi-font-body); }
-.tsi-page--bastion .tsi-bas-res-summary {
-  min-height: 1.35em;
-  margin-top: 10px;
-  padding: 10px 12px;
-  border-left: 3px solid rgba(214, 178, 94, .65);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, .03);
-}
-.tsi-page--bastion .tsi-bas-res-summary b { color: var(--tsi-gold-text); }
-.tsi-page--bastion .tsi-bas-res-changes { margin-top: 12px; }
-.tsi-page--bastion .tsi-bas-res-changes__title { margin-bottom: 6px; font: 700 12px var(--tsi-font-display); letter-spacing: .06em; text-transform: uppercase; opacity: .85; }
 .tsi-page--bastion .tsi-bas-res-list { margin: 0; padding-left: 20px; }
 .tsi-page--bastion .tsi-bas-res-list li { margin: 5px 0; }
-.tsi-page--bastion .tsi-bas-res-hero { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
-.tsi-page--bastion .tsi-bas-res-hero img { flex-shrink: 0; width: 140px; border-radius: 14px; border: 1px solid var(--tsi-line-faint); }
-.tsi-page--bastion .tsi-bas-res-hero .tsi-bas-res-summary:first-child { margin-top: 0; }
 
 /* The Routes map, in the Dock (step S08 of the Strip Back Overhaul; it was the Hall's Sea Trade Routes pop-up):
    each Clan with a registered Port Charter glows, and glows brighter while a ship is at sea to it. */
@@ -1436,25 +1402,6 @@
   .tsi-page--bastion .tsi-bas-trademap__route { animation: none; opacity: 1; }
 }
 
-/* The Council Ledger (trade_disputes.png, faint, behind the petitions). */
-.tsi-page--bastion .tsi-bas-modal--ledger { width: min(900px, 96vw); }
-.tsi-page--bastion .tsi-bas-ledger { position: relative; padding: 4px; }
-.tsi-page--bastion .tsi-bas-ledger::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: url("assets/ui/trade_disputes.png") center / cover;
-  opacity: .18;
-  filter: saturate(.9) contrast(1.05);
-  border-radius: 18px;
-  pointer-events: none;
-}
-.tsi-page--bastion .tsi-bas-ledger > * { position: relative; }
-.tsi-page--bastion .tsi-bas-ledger__list { display: flex; flex-direction: column; gap: 12px; margin: 12px 0; }
-.tsi-page--bastion .tsi-bas-dispute { padding: 12px; border: 1px solid var(--tsi-line-faint); border-radius: var(--tsi-radius-md); background: rgba(0, 0, 0, .35); }
-.tsi-page--bastion .tsi-bas-dispute__top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.tsi-page--bastion .tsi-bas-dispute__reason { margin: 6px 0; }
-.tsi-page--bastion .tsi-bas-dispute__choose { margin: 10px 0 6px; }
 
 /* The Compendium. */
 .tsi-page--bastion .tsi-bas-modal--compendium { width: min(1240px, 96vw); }
@@ -1493,7 +1440,6 @@
   .tsi-page--bastion .tsi-bas-brand__sub { display: none; }
   .tsi-page--bastion .tsi-bas-pbtns { grid-template-columns: repeat(2, 74px); }
   .tsi-page--bastion .tsi-bas-stage.is-grid-closed .tsi-bas-pbtns { grid-auto-columns: 74px; }
-  .tsi-page--bastion .tsi-bas-hall__fns { grid-template-columns: 1fr; }
 }
 @media (max-width: 1150px) {
   .tsi-page--bastion .tsi-bas-dip-grid,
@@ -1533,8 +1479,8 @@
 }
 .tsi-bas-modal--word .tsi-bas-word__day:first-child { margin-top: 0; }
 
-/* Demolish (Harry, 13 October 2026): at the foot of a facility's panel,
-   and beside Clear Diplomacy Records in the Hall's. */
+/* Demolish (Harry, 13 October 2026): at the foot of a facility's panel
+   (and of the Hall's). */
 .tsi-page--bastion .tsi-bas-facpanel__demolish { display: flex; justify-content: flex-end; margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--tsi-line); }
 .tsi-page--bastion .tsi-bas-dip-foot { display: flex; gap: 10px; flex-wrap: wrap; }
 .tsi-page--bastion .tsi-btn.tsi-bas-demolish { color: #ffb4a8; border-color: rgba(255, 140, 120, .55); }

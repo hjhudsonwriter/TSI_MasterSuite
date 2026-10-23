@@ -107,7 +107,7 @@
   });
 
   test('the registry: the steps run in order, the last one finishes, and a later step can be added above the catch-all', function (t) {
-    t.same(R.stripBackSteps.map(function (st) { return st.id; }), ['dropEvents', 'dropBeastRequests', 'rehomeBeasts', 'moveCharterOrders', 'endOldProtections', 'sweepFacilities', 'finish']);
+    t.same(R.stripBackSteps.map(function (st) { return st.id; }), ['dropEvents', 'dropBeastRequests', 'rehomeBeasts', 'moveCharterOrders', 'endOldProtections', 'windDownHall', 'sweepFacilities', 'finish']);
     var steps = R.stripBackSteps;
     var added = {
       id: 'example',
@@ -132,7 +132,7 @@
     } finally {
       steps.splice(0, 1);
     }
-    t.same(R.stripBackSteps.map(function (st) { return st.id; }), ['dropEvents', 'dropBeastRequests', 'rehomeBeasts', 'moveCharterOrders', 'endOldProtections', 'sweepFacilities', 'finish']);
+    t.same(R.stripBackSteps.map(function (st) { return st.id; }), ['dropEvents', 'dropBeastRequests', 'rehomeBeasts', 'moveCharterOrders', 'endOldProtections', 'windDownHall', 'sweepFacilities', 'finish']);
   });
 
   group('Strip Back: the catch-all (a facility the Bastion does not know)');
@@ -215,12 +215,11 @@
     t.same(report.cancelled.map(function (c) { return [c.id, c.god, c.favour, c.why]; }), [['f3', 'pelagos', 10, 'the Temple replaces the Shrines']]);
   });
 
-  test('orders kept as they are: at a real facility, an upgrade, and the War Council\'s and Trade Network\'s own orders (their steps deal with them)', function (t) {
+  test('orders kept as they are: at a real facility, an upgrade, and the War Council\'s own orders (its step deals with them)', function (t) {
     var raw = v3(function (s) {
       s.pendingOrders = [
         { id: 'a', facId: 'workshop', fnId: 'upgrade', label: 'Workshop: Upgrade to Level 2', costGP: 0, issuedDay: 10, dueDay: 17, meta: { kind: 'upgrade', toLevel: 2 } },
         { id: 'b', facId: 'war_council', fnId: 'war_action', label: 'War Action', costGP: 0, issuedDay: 10, dueDay: 13, meta: { kind: 'war_action' } },
-        { id: 'c', facId: 'trade_network', fnId: 'upgrade', label: 'Ironbow Trade Network: Stability Investment', costGP: 75, issuedDay: 10, dueDay: 17, meta: { kind: 'stability' } },
         'not an order'
       ];
     });
@@ -228,7 +227,7 @@
     t.same(res.problems, []);
     t.same(res.save.pendingOrders, raw.pendingOrders);
     t.equal(res.save.treasuryGP, 400);
-    t.same(R.STRIP_BACK_PSEUDO_FACILITIES, ['war_council', 'trade_network']);
+    t.same(R.STRIP_BACK_PSEUDO_FACILITIES, ['war_council'], 'the Trade Network\'s orders are dealt with by windDownHall (S09), so it left the list');
   });
 
   test('goods an order held that cannot be read are said, and the rest still go back; an order with no id is still cancelled and refunded', function (t) {
@@ -406,7 +405,7 @@
     caught(t, res, function (a) { a.tradeNetwork.marketLedger = [{ day: 1 }]; }, /marketLedger/, 'the ledger');
     caught(t, res, function (a) { a.tradeNetwork.parcels = [{ id: 'p' }]; }, /parcels/, 'a parcel');
     caught(t, res, function (a) { a.tradeNetwork.protections.pelagos_blessing = { charges: 0 }; }, /Pelagos blessing/, 'the Blessing of Pelagos');
-    t.same(audit(res, function (a) { a.tradeNetwork.active = true; a.tradeNetwork.stability = 10; }), [], 'the rest of the trade network (the Hall\'s old money) is not on the list: a later step winds it down');
+    t.same(audit(res, function (a) { a.tradeNetwork.notListed = 5; }), [], 'the rest of the trade network is not on the list');
   });
 
   test('I7, converting again changes nothing: a conversion that would leave something to convert, or would change again, is caught', function (t) {
@@ -738,6 +737,11 @@
       if (res.report.archived.some(function (x) { return /^(wyvern_roost|griffin_tower|dire_wolf_den)$/.test(x.facId); })) {
         ['builtExtras', 'builtPlots', 'facilityLevels', 'archivedFacilities', 'creatures', 'pendingOrders', 'treasuryGP'].forEach(function (k) { delete a[k]; delete b[k]; });
       }
+      /* Changed by the Hall's wind-down (S09): the old contracts, routes and disputes end and their fields go (checked in tests/rules/hall-dock.test.js), and the Hall has one level. */
+      ['arbitration', 'diplomacy', 'legacyDiplomacy'].forEach(function (k) { delete a[k]; delete b[k]; });
+      if (a.tradeNetwork && b.tradeNetwork) ['active', 'strategy', 'stability', 'routes', 'highRiskRouting', 'yieldBonusPct'].forEach(function (k) { delete a.tradeNetwork[k]; delete b.tradeNetwork[k]; });
+      if (a.facilityLevels && b.facilityLevels) { delete a.facilityLevels.hall_of_emissaries; delete b.facilityLevels.hall_of_emissaries; }
+      if (res.report.gold.settlement > 0 || res.report.cancelled.some(function (c) { return /^(Hall of Emissaries|Ironbow Trade Network)/.test(c.label); })) { ['treasuryGP', 'pendingOrders'].forEach(function (k) { delete a[k]; delete b[k]; }); }
       /* Changed by the Dock (S08): a Register Port Charter order at the Hall moves to the Dock (checked in the S08 group below). */
       if (res.report.moved.some(function (m) { return /^Hall of Emissaries: Register Port Charter/.test(m.label); })) { delete a.pendingOrders; delete b.pendingOrders; }
       /* Removed so far (S13): the Beast Handler's old request record. */
@@ -746,10 +750,10 @@
     });
     var heavy = R.fromSave(clone(FIX['bastion-v3-heavy']), data);
     t.equal(heavy.v, 4);
-    t.equal(heavy.pendingOrders.length, 27, '28, less the Riding Harness (cancelled and refunded)');
+    t.equal(heavy.pendingOrders.length, 24, '28, less the Riding Harness (cancelled and refunded) and, from the Hall\'s wind-down (S09), its Host Delegation and Trade Consortium and the Trade Network\'s investment');
     t.equal(heavy.creatures.length, 4);
     t.equal(heavy.log.length, 200);
-    t.equal(heavy.treasuryGP, 2150, '2,000 and the 150 gp harness back');
+    t.equal(heavy.treasuryGP, 4105, '2,000, the 150 gp harness back, the Hall\'s 1,125 gp of cancelled orders back and 830 gp of final settlement (S09)');
     t.same(heavy.builtExtras.filter(Boolean).map(function (e) { return e.facId; }), ['menagerie', 'war_room', 'library_scriptorium', 'arcane_laboratory', 'shrine_telluria', 'shrine_aurush', 'shrine_pelagos', 'beast_pen', 'hall_of_emissaries']);
     t.equal(heavy.migration.v4.changed, true, 'its event record was dropped, and it says so');
     t.equal('lastEvent' in heavy || 'lastEventDay' in heavy, false);
