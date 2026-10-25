@@ -124,6 +124,35 @@
     t.equal(BR.cleanBeast({ campaignId: 'CAMPAIGN12345678', handlers: [], phoneUrl: 'http://x.example/' }).phoneUrl, undefined);
   });
 
+  test('a phone page address of any accepted length is kept when the save is loaded again: typing it in and loading a save use the same limit', function (t) {
+    t.equal(L.PHONE_URL_MAX, 200);
+    var base = 'https://example.org/';
+    [190, 194, 195, 196, 197, 198, 199, 200].forEach(function (n) {
+      var url = base + new Array(n - base.length + 1).join('a');
+      t.equal(url.length, n);
+      var b = world();
+      var r = BR.setBeastPhoneUrl(b, url);
+      t.same([r.ok, r.url], [true, url], n + ' letters are accepted');
+      var again = BR.fromSave(copy(BR.toSave(b)), bdata);
+      t.equal(again.beast.phoneUrl, url, n + ' letters are still there after saving and loading');
+      t.equal(BR.beastPhoneUrl(again), url, 'and in use');
+      t.equal(BR.cleanBeast({ campaignId: 'CAMPAIGN12345678', handlers: [], phoneUrl: url }).phoneUrl, url);
+    });
+    [201, 202, 250].forEach(function (n) {
+      var url = base + new Array(n - base.length + 1).join('a');
+      var b = world();
+      var r = BR.setBeastPhoneUrl(b, url);
+      t.equal(r.ok, false, n + ' letters are refused when typed in');
+      t.equal(b.beast.phoneUrl, undefined);
+      t.equal(BR.cleanBeast({ campaignId: 'CAMPAIGN12345678', handlers: [], phoneUrl: url }).phoneUrl, undefined, 'and dropped when a save holds one');
+    });
+    ['https://example.org/a', 'https://example.org/', 'https://Example.org/a', 'https://example.org/a?x=1', 'https://example.org/a#b', 'https://example.org:8443/a', 'https://user@example.org/a', 'https://localhost/a', 'https://example.org/a b', 'http://example.org/a', 'https://xn--bcher-kva.example/a', 'https://a.b/'].forEach(function (u) {
+      var typed = L.cleanPhoneUrl(u);
+      var kept = BR.cleanBeast({ campaignId: '', handlers: [], phoneUrl: u }).phoneUrl === u;
+      t.equal(kept, typed.ok && typed.url === u, 'agree about ' + u);
+    });
+  });
+
   test('the online link\'s switch is off by default, only true when pressed, and a Bastion that never used it saves nothing new', function (t) {
     var b = world();
     t.equal(BR.beastOnlineLink(b), false);

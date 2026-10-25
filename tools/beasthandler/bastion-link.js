@@ -70,7 +70,12 @@
     };
     /* Kept only when set, so a Bastion that never used them saves exactly what it did before: the phone page's address
        (an https address, nothing after the page name) and the online link's switch (only ever true if the DM pressed it). */
-    if (typeof src.phoneUrl === 'string' && /^https:\/\/[^\s#?]{4,190}$/.test(src.phoneUrl)) out.phoneUrl = src.phoneUrl;
+    if (typeof src.phoneUrl === 'string' && BH.link) {
+      /* The same check the address gets when it is typed in (and so the same length limit), so an address that was accepted is
+         never quietly dropped on the next load. Only an address that is already in its cleaned form is kept. */
+      var pu = BH.link.cleanPhoneUrl(src.phoneUrl);
+      if (pu.ok && pu.url === src.phoneUrl) out.phoneUrl = pu.url;
+    }
     if (src.onlineLink === true) out.onlineLink = true;
     return out;
   };
