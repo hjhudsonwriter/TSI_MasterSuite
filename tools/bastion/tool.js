@@ -1048,7 +1048,7 @@
       mgmtCard.body.appendChild(changesRow);
       /* "Changes from the Explorer": what the Explorer link has delivered,
          newest first, each counted once; a refused or skipped one says why.
-         It reads the same receipts (state.bridge.done) as Clan Influence's
+         It reads the same receipts (state.bridge.done) as the removed Clan Influence panel's
          list, through R.bridgeChanges. The newest few show; the rest on request. */
       var XCHANGES_SHOWN = 10;
       var xchangesAll = false;
@@ -1523,7 +1523,7 @@
           title: 'Add supplies',
           className: 'tsi-bas-modal tsi-bas-modal--supplies',
           body: [
-            muted('A temporary provision until the Ironbow makes these itself: they go into the Warehouse as if made here, the Day Log records it, and it makes no gold.', 'tsi-bas-courier__intro'),
+            muted('A temporary provision until the Ironbow makes these itself: they go into the Warehouse as if made here, and it makes no gold.', 'tsi-bas-courier__intro'),
             el('div', { class: 'tsi-bas-supplies' }, [field('Supply', goodSel), field('How many', qty)]),
             have
           ],
@@ -1550,7 +1550,7 @@
         var ok = await plainModal({
           title: 'Hand to the party',
           body: [
-            muted(name + ': the Warehouse has ' + have + '. Only the number you hand over leaves the Warehouse, once, and the Day Log records it.', 'tsi-bas-courier__intro'),
+            muted(name + ': the Warehouse has ' + have + '. Only the number you hand over leaves the Warehouse, once.', 'tsi-bas-courier__intro'),
             el('div', { class: 'tsi-bas-supplies' }, [field('How many', qty), field('Recipient', who)]),
             muted('This tool does not keep a character\'s inventory. After handing it over, write the item on that character\'s D&D sheet yourself. Anything that has to be delivered from far away goes by the Courier Exchange, not here.')
           ],
@@ -1562,6 +1562,7 @@
         if (turnRunning) { await say('A day was passing, so nothing was handed over. Try again once it has finished.'); return; }
         var res = R.handToParty(state, row, qty.value, who.value);
         if (!res.ok) { await say(res.message); return; }
+        notice(res.line, { type: 'info', title: 'Handed to the party.', id: 'tsi-bas-handed', timeout: 14000 });
         done();
       });
 
@@ -1961,7 +1962,9 @@
           el('div', { class: 'tsi-bas-actions' }, [
             w.waiting ? btn('Resolve', function () { onResolveOrder(o.id); }, 'tsi-btn--primary', 'resolve-' + i, { disabled: turnRunning }) : null,
             btn('Cancel', async function () {
-              logAll([R.cancelOrder(state, o.id, data)]);
+              var cancelled = R.cancelOrder(state, o.id, data);
+              logAll([cancelled]);
+              notice(cancelled[1], { type: 'info', title: 'Order cancelled.', id: 'tsi-bas-cancelled', timeout: 10000 });
               done();
             }, 'tsi-btn--ghost', 'cancel-' + i)
           ])
@@ -2717,7 +2720,7 @@
          greyed out until the bar is full; it takes effect at once, spends the WHOLE bar, and the bar goes back to 0). The
          rules are in temple-rules.js, the gods and blessings in the Temple's block of facilities-data.js. Each button is
          wrapped in TSI.oneAtATime, so a double click does it once. What a god last said (the roll, or the blessing
-         received) stays under its buttons until the next one; the Day Log has it too. */
+         received) stays under its buttons until the next one. */
       var templeSaid = {};      /* god → the last result line (not saved) */
       var blessingPick = {};    /* god → the blessing chosen in the dropdown (not saved) */
       var onPray = TSI.oneAtATime(function (god) {
@@ -3150,6 +3153,7 @@
         var res = R.demolishFacility(state, data, facId);
         if (!res.ok) { if (res.message) await say(res.message); return; }
         log(res.log[0], res.log[1]);
+        notice(res.log[1], { type: 'info', title: res.log[0] + '.', id: 'tsi-bas-demolished', timeout: 12000 });
         closePanel();
         done();
       });
@@ -3267,7 +3271,9 @@
           } else if (act.kind === 'shift') {
             var from = state.day;
             R.shiftDays(state, act.by);
-            log('Days', 'The Explorer\'s day went back (Reset Travel): the Bastion moves from Day ' + from + ' to Day ' + state.day + ', and everything due keeps its days.');
+            var wentBack = 'The Explorer\'s day went back (Reset Travel): the Bastion moves from Day ' + from + ' to Day ' + state.day + ', and everything due keeps its days.';
+            log('Days', wentBack);
+            notice(wentBack, { type: 'info', title: 'Days.', id: 'tsi-bas-days-back', timeout: 14000 });
             settled = settleInbox();
             done();
           } else if (act.kind === 'pass' && (act.days > 0 || state.dayInProgress)) {
@@ -3410,7 +3416,7 @@
       });
 
       /* An order settled with Resolve (not as a day passes) says what it did
-         in a notice, as well as in the Day Log: a Shrine's prayer roll, a
+         in a notice: a Shrine's prayer roll, a
          craft, an order whose home has gone. */
       function tellResolved(lines, o) {
         var n = R.resolveNotice(lines, o && o.id);
@@ -3511,6 +3517,7 @@
         return TSI.backup.exportTool('bastion').then(function () {
           if (!life.alive) return;
           log('Save File', 'Downloaded the campaign save (the Explorer and the Bastion together).');
+          notice('The campaign save (the Explorer and the Bastion together) was downloaded.', { type: 'info', title: 'Save file.', id: 'tsi-bas-saved', timeout: 8000 });
           done();
         });
       });
@@ -3527,7 +3534,10 @@
         state.partyLevel = R.clampInt(levelSelect.value, 1);
         /* A Herbal Gardens still in a construction slot moves to a plot once one opens. */
         var moved = R.settlePlots(state, data);
-        if (moved.length) log('Development Plots', R.settleLine(data, moved));
+        if (moved.length) {
+          log('Development Plots', R.settleLine(data, moved));
+          notice(R.settleLine(data, moved), { type: 'info', title: 'Development Plots.', id: 'tsi-bas-plots', timeout: 20000 });
+        }
         done();
       });
 
@@ -3764,6 +3774,8 @@
         var lines = Array.isArray(m.lines) ? m.lines : [];
         changesShowing = true;
         if (first) changesOpen = true;
+        /* The Day Log panel is gone: its last 25 entries, as they are in the live save now, can be kept as a text file. */
+        var oldLog = R.oldLogText(state, 25);
         var body = el('div', { class: 'tsi-bas-changes', 'data-test': 'changes-body' }, [
           m.again ? el('p', { class: 'tsi-bas-changes__lead', text: 'An older copy of the suite had saved over your Bastion, so it was converted again. Nothing was lost.' }) : null,
           lines.map(changeLine),
@@ -3772,7 +3784,8 @@
           first && m.gp > 0 ? el('p', { class: 'tsi-bas-changes__live', 'data-test': 'changes-now', text: 'Right now the treasury holds ' + R.stripBackFmt(state.treasuryGP) + ' gp.' }) : null,
           el('p', { class: 'tsi-bas-muted tsi-bas-changes__note', text: R.STRIP_BACK_NOTE }),
           el('div', { class: 'tsi-bas-actions tsi-bas-actions--start' }, [
-            btn('Save this as a text file', function () { TSI.download('bastion-what-changed-day-' + Math.max(1, R.dayNum(m.day, 1)) + '.txt', R.stripBackText(m), 'text/plain'); }, '', 'changes-save')
+            btn('Save this as a text file', function () { TSI.download('bastion-what-changed-day-' + Math.max(1, R.dayNum(m.day, 1)) + '.txt', R.stripBackText(m), 'text/plain'); }, '', 'changes-save'),
+            oldLog ? btn('Save the old Day Log as a text file', function () { TSI.download('bastion-old-day-log-day-' + Math.max(1, R.dayNum(m.day, 1)) + '.txt', oldLog, 'text/plain'); }, '', 'changes-save-log') : null
           ])
         ]);
         return plainModal({
@@ -3879,13 +3892,13 @@
       renderAll();
       /* The first open saves the starting Bastion, as the old tool did. */
       if (!saved || migrating || settled.length) save();
-      if (settled.length) notice(R.settleLine(data, settled) + ' The Day Log says so too.', { type: 'info', title: 'Development Plots.', id: 'tsi-bas-plots', timeout: 20000 });
+      if (settled.length) notice(R.settleLine(data, settled), { type: 'info', title: 'Development Plots.', id: 'tsi-bas-plots', timeout: 20000 });
       /* The facilities overhaul's report, once. */
       var mig = state.migration && state.migration.v3;
       if (mig && !mig.shown) {
         mig.shown = true;
         save();
-        notice('The Bastion\'s facilities have changed: ' + mig.lines.join(' ') + ' The Day Log says so too, and the Bastion as it was is kept as a set-aside copy.', { type: 'info', title: 'Facilities.', id: 'tsi-bas-migration', timeout: 30000 });
+        notice('The Bastion\'s facilities have changed: ' + mig.lines.join(' ') + ' The Bastion as it was is kept as a set-aside copy.', { type: 'info', title: 'Facilities.', id: 'tsi-bas-migration', timeout: 30000 });
       }
       /* Read the Explorer's day straight away (then every 2 seconds), and
          any crest sent from the Clan Crest Creator while the Bastion was shut. */

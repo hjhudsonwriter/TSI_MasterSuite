@@ -54,6 +54,21 @@
   R.log = function (state, title, body, now) {
     state.log.unshift({ title: title, body: body, at: now === undefined ? Date.now() : now, day: typeof state.day === 'number' ? state.day : null });
   };
+  /* The old Day Log as plain text for the conversion box's "Save the old Day Log as a text file" (S10): the newest
+     `max` entries (25 if not said), newest first. '' when there is nothing to save. The panel is gone; this is the
+     only way to read the history. */
+  R.oldLogText = function (s, max) {
+    var list = isObj(s) && Array.isArray(s.log) ? s.log.filter(isObj) : [];
+    var n = typeof max === 'number' && max > 0 ? Math.floor(max) : 25;
+    var shown = list.slice(0, n);
+    if (!shown.length) return '';
+    var lines = ['The old Day Log (the newest ' + shown.length + ' of ' + list.length + ' entries, newest first)', ''];
+    shown.forEach(function (e) {
+      lines.push((typeof e.day === 'number' ? R.dayLabel(e.day) + ' · ' : '') + (typeof e.at === 'number' ? R.formatTime(e.at) : '') + ' · ' + String(e.title || ''));
+      lines.push('  ' + String(e.body || ''));
+    });
+    return lines.join('\n') + '\n';
+  };
   /* A day number as saved: a whole number, which can be 0 or less (before a
      Reset Travel); anything else is the fallback. */
   function dayNum(v, fallback) {

@@ -437,6 +437,17 @@
     t.equal(data.bastion.identityRules, undefined, 'and so did its numbers');
   });
 
+  test('the old Day Log as text: the newest 25 entries, newest first; nothing when empty (S10)', function (t) {
+    var s = fresh();
+    t.equal(R.oldLogText(s, 25), '');
+    for (var i = 1; i <= 30; i++) R.log(s, 'Entry ' + i, 'Body ' + i, 1000 * i);
+    var text = R.oldLogText(s, 25);
+    t.ok(text.indexOf('Entry 30') > -1 && text.indexOf('Entry 6') > -1, 'newest 25 are in');
+    t.ok(text.indexOf('Entry 5\n') === -1 && text.indexOf('· Entry 5') === -1, 'older ones are left out');
+    t.ok(text.indexOf('Entry 30') < text.indexOf('Entry 29'), 'newest first');
+    t.ok(text.indexOf('the newest 25 of 30') > -1);
+  });
+
   group('Bastion: the crest, and the War Table\'s saves (ignored since 22 October 2026)');
 
   test('a crest is a picture record; anything else is refused on import (the War Table\'s saves are not checked any more: Strip Back, 22 October 2026)', function (t) {
