@@ -32,7 +32,7 @@
 
   group('Bastion: content');
 
-  test('the facilities: the war game\'s five and the three Shrines are gone (the Temple is one building), none is still in development; 12 tool tables (9 can be artisan tools), 7 clans, and a Compendium that lists what the facilities offer', function (t) {
+  test('the facilities: the war game\'s five and the three Shrines are gone (the Temple is one building), none is still in development; 12 tool tables, 7 clans, and a Compendium that lists what the facilities offer', function (t) {
     t.ok(data.facilities.length > 0 && data.facilities.every(function (f) { return f.id && f.name && Array.isArray(f.functions); }), 'every facility has an id, a name and a list of orders');
     t.equal(data.facilities.map(function (f) { return f.id; }).filter(function (id, i, a) { return a.indexOf(id) !== i; }).length, 0, 'ids are unique');
     t.same(['barracks', 'armoury', 'watchtower', 'war_room', 'menagerie'].filter(function (id) { return R.facility(data, id); }), [], 'the war game\'s five facilities are gone (S06)');
@@ -44,7 +44,7 @@
     t.same(data.facilities.filter(function (f) { return f.inDevelopment; }).map(function (f) { return f.id; }), []);
     t.same(['smithy', 'arcane_study', 'laboratory', 'library', 'garden', 'greenhouse', 'gaming_hall'].filter(function (id) { return R.facility(data, id); }), [], 'the old ones are gone');
     t.equal(Object.keys(data.tools).length, 12);
-    t.equal(R.toolTableNames(data.tools).length, 9);
+    t.equal(R.toolTableNames, undefined, 'the Artisan Tools picker is gone (step S12)');
     t.same(T.bastion.clans.map(function (c) { return c.name; }), ['Blackstone', 'Bacca', 'Farmer', 'Slade', 'Molten', 'Rowthorn', 'Karr']);
     /* The Compendium lists what the facilities offer, and nothing else: the entries match the index one for one (the war game's units
        and beasts went in S06; the Shrines' six Craft charms and nine prayers went with the Temple in S11). */
@@ -69,7 +69,7 @@
     t.equal(m.base, 'map/bastion_base.jpg');
     t.same([m.width, m.height], [3000, 1250], 'Harry\'s new painting, 12 October 2026');
     m.overlays.forEach(function (o) { t.ok(R.facility(data, o.fac), o.fac); t.ok(/^map\/overlays\/[a-z_]+\.png$/.test(o.pic), o.pic); });
-    t.same(m.overlays.map(function (o) { return o.fac; }), ['library_scriptorium', 'arcane_laboratory', 'herbal_gardens', 'hall_of_emissaries', 'temple', 'temple', 'temple',
+    t.same(m.overlays.map(function (o) { return o.fac; }), ['herbal_gardens', 'hall_of_emissaries', 'temple', 'temple', 'temple',
       'beast_pen', 'weavers_hall', 'stone_masonworks', 'fishery_smokehouse', 'timber_sawmill', 'courier_exchange']);
     t.equal(m.overlays.filter(function (o) { return o.fac === 'menagerie' || o.fac === 'war_room'; }).length, 0, 'no map picture for the war game\'s facilities (the War Room\'s went to assets/extras)');
     t.ok(T.bastion.mapLabels.courier_exchange, 'the Courier Exchange has a place for its label');
@@ -81,22 +81,22 @@
   test('the map overlays: one per built facility with a picture, a shared picture drawn once, darkened while Under Repair', function (t) {
     var s = fresh();
     t.same(R.mapOverlays(s, data), [], 'the starting five are in the base painting');
-    s.builtExtras = ['temple', 'herbal_gardens', 'library_scriptorium'].map(function (id) { return { facId: id, status: 'built' }; });
+    s.builtExtras = ['temple', 'herbal_gardens', 'beast_pen'].map(function (id) { return { facId: id, status: 'built' }; });
     s.builtExtras.push({ facId: 'hall_of_emissaries', status: 'building', startDay: 1, readyDay: 36 });
     t.same(R.mapOverlays(s, data).map(function (o) { return [o.pic, o.facs]; }), [
-      ['map/overlays/library.png', ['library_scriptorium']],
       ['map/overlays/greenhouse.png', ['herbal_gardens']],
       ['map/overlays/shrine_of_aurush.png', ['temple']],
       ['map/overlays/shrine_of_telluria.png', ['temple']],
-      ['map/overlays/shrine_of_pelagos.png', ['temple']]
+      ['map/overlays/shrine_of_pelagos.png', ['temple']],
+      ['map/overlays/wyvern_roost.png', ['beast_pen']]
     ], 'in the data\'s order (the Temple draws all three Shrine buildings); nothing for a building still being built');
     s.repairs = { herbal_gardens: s.day + 3 };
     t.same(R.mapOverlays(s, data).filter(function (o) { return o.repair; }).map(function (o) { return o.facs; }), [['herbal_gardens']], 'darkened while Under Repair');
     /* No two facilities share a picture since the overhaul; the rule still draws a shared one once. */
-    var two = { bastion: Object.assign({}, T.bastion, { map: { overlays: [{ fac: 'herbal_gardens', pic: 'p.png' }, { fac: 'library_scriptorium', pic: 'p.png' }] } }), facilities: data.facilities };
+    var two = { bastion: Object.assign({}, T.bastion, { map: { overlays: [{ fac: 'herbal_gardens', pic: 'p.png' }, { fac: 'beast_pen', pic: 'p.png' }] } }), facilities: data.facilities };
     var shared = R.mapOverlays(s, two);
     t.equal(shared.length, 1, 'a shared picture, drawn once');
-    t.same(shared[0].facs, ['herbal_gardens', 'library_scriptorium']);
+    t.same(shared[0].facs, ['herbal_gardens', 'beast_pen']);
     t.equal(shared[0].repair, true, 'darkened while either is Under Repair');
   });
 
@@ -104,21 +104,21 @@
     var s = fresh();
     s.partyLevel = 9;
     s.treasuryGP = 100;
-    s.builtExtras = [{ facId: 'library_scriptorium', status: 'built' }, { facId: 'herbal_gardens', status: 'building', startDay: 1, readyDay: 22 }, ''];
-    s.facilityLevels.library_scriptorium = 1;
-    s.repairs = { library_scriptorium: 5 };
+    s.builtExtras = [{ facId: 'beast_pen', status: 'built' }, { facId: 'herbal_gardens', status: 'building', startDay: 1, readyDay: 22 }, ''];
+    s.facilityLevels.beast_pen = 1;
+    s.repairs = { beast_pen: 5 };
     s.pendingOrders = [
-      { id: 'a', facId: 'library_scriptorium', fnId: 'research', label: 'Library & Scriptorium: Research (Combat Scriptures)', costGP: 0, issuedDay: 1, dueDay: 6 },
+      { id: 'a', facId: 'beast_pen', fnId: 'house_beast', label: 'Beast Pen: House Beast Here (Brindle)', costGP: 0, issuedDay: 1, dueDay: 6 },
       { id: 'b', facId: 'dock', fnId: 'charter_berth', label: 'Dock: Charter a Vessel', costGP: 0, issuedDay: 1, dueDay: 6 }
     ];
-    s.warehouse = [{ name: 'Religious Scriptures', qty: 1, gp: '', notes: 'Library & Scriptorium' }];
-    var r = R.demolishFacility(s, data, 'library_scriptorium');
+    s.warehouse = [{ name: 'Religious Scriptures', qty: 1, gp: '', notes: 'Beast Pen' }];
+    var r = R.demolishFacility(s, data, 'beast_pen');
     t.equal(r.ok, true);
-    t.same(r.log, ['Facility Demolished', 'The Library & Scriptorium was demolished; its slot is free. Cancelled: Library & Scriptorium: Research (Combat Scriptures).']);
+    t.same(r.log, ['Facility Demolished', 'The Beast Pen was demolished; its slot is free. Cancelled: Beast Pen: House Beast Here (Brindle).']);
     t.same(s.builtExtras, ['', { facId: 'herbal_gardens', status: 'building', startDay: 1, readyDay: 22 }, '']);
-    t.same(s.pendingOrders.map(function (o) { return o.id; }), ['b'], 'only the Library\'s order goes');
+    t.same(s.pendingOrders.map(function (o) { return o.id; }), ['b'], 'only the Beast Pen\'s order goes');
     t.equal(s.treasuryGP, 100, 'no refund (B9)');
-    t.equal(s.facilityLevels.library_scriptorium, undefined);
+    t.equal(s.facilityLevels.beast_pen, undefined);
     t.same(s.repairs, {});
     t.equal(s.warehouse.length, 1, 'what it made stays');
     var g = R.demolishFacility(s, data, 'herbal_gardens');
@@ -127,14 +127,15 @@
     var b = R.demolishFacility(s, data, 'workshop');
     t.equal(b.ok, false);
     t.ok(/starting facilities/.test(b.message));
-    t.equal(R.demolishFacility(s, data, 'library_scriptorium').ok, false, 'not built any more');
+    t.equal(R.demolishFacility(s, data, 'beast_pen').ok, false, 'not built any more');
   });
 
   test('the starting Bastion: two facilities (the Workshop and the Dock), Day 1 (not yet set by the Explorer), level 7, 0 gp, no Party Name', function (t) {
     var s = fresh();
     t.same(R.builtFacilityIds(s, data), ['workshop', 'dock'], 'the Barracks, Armoury and Watchtower went with the war game (22 October 2026)');
     t.equal(s.v, 4, 'a save in days, with the overhauled facilities (13 October 2026) and stripped back (22 October 2026)');
-    t.same([s.legacyFacilities, s.archivedFacilities, s.migration], [[], [], null]);
+    t.same([s.archivedFacilities, s.migration], [[], null]);
+    t.same(['artisanTools', 'legacyFacilities'].filter(function (k) { return k in s; }), [], 'no Artisan Tools and no list of retired buildings (step S12)');
     t.equal(s.day, 1);
     t.equal(s.anchored, false);
     t.equal('turn' in s, false, 'no Bastion turn');
@@ -142,7 +143,6 @@
     t.equal(s.treasuryGP, 0);
     t.equal(s.partyName, '', 'no Party Name yet');
     t.same(['organization', 'clanHonor', 'trustedClientsByClan'].filter(function (k) { return k in s; }), [], 'a party can no longer found a Clan (22 October 2026): no Clan, no Clan Honour, no Trusted Clients');
-    t.equal(s.artisanTools.length, 6);
     t.equal(s.dayInProgress, null);
     t.same(s.word, []);
   });
@@ -165,11 +165,11 @@
     t.equal(R.startBuild(s, data, 0, 'temple').message, 'Locked. Temple requires party level 8.');
     s.partyLevel = 9;
     R.slotRows(s, 9);
-    var res = R.startBuild(s, data, 0, 'library_scriptorium');
+    var res = R.startBuild(s, data, 0, 'hall_of_emissaries');
     t.ok(res.ok);
-    t.same(res.log, ['Construction Started', 'Library & Scriptorium is under construction (21 days: ready on Day 31).']);
-    t.same(s.builtExtras[0], { facId: 'library_scriptorium', status: 'building', startDay: 10, readyDay: 31 });
-    t.equal(R.startBuild(s, data, 1, 'library_scriptorium').message, 'That facility is already built or under construction.');
+    t.same(res.log, ['Construction Started', 'Hall of Emissaries is under construction (21 days: ready on Day 31).']);
+    t.same(s.builtExtras[0], { facId: 'hall_of_emissaries', status: 'building', startDay: 10, readyDay: 31 });
+    t.equal(R.startBuild(s, data, 1, 'hall_of_emissaries').message, 'That facility is already built or under construction.');
     /* The Wyvern Roost was the example until pull request 7 made it buildable. */
     t.equal(R.startBuild(s, data, 1, 'stone_masonworks', 'slot').ok, false, 'a Development Plot facility can\'t go in a special slot');
     t.equal(R.startBuild(s, data, 1, 'smithy').ok, false, 'the Smithy is gone');
@@ -179,13 +179,13 @@
     t.same(R.completeConstruction(s), [], 'Day 30: not yet');
     t.equal(R.buildDaysLeft(s, s.builtExtras[0]), 1);
     s.day = 31;
-    t.same(R.completeConstruction(s), ['library_scriptorium']);
-    t.same(s.builtExtras[0], { facId: 'library_scriptorium', status: 'built' });
-    t.ok(R.builtFacilityIds(s, data).indexOf('library_scriptorium') !== -1);
+    t.same(R.completeConstruction(s), ['hall_of_emissaries']);
+    t.same(s.builtExtras[0], { facId: 'hall_of_emissaries', status: 'built' });
+    t.ok(R.builtFacilityIds(s, data).indexOf('hall_of_emissaries') !== -1);
   });
 
   test('lowering the level keeps every building, marking the extra ones over capacity (BAS-04, B8)', function (t) {
-    var s = built(fresh(), ['library_scriptorium', 'arcane_laboratory', 'herbal_gardens', 'hall_of_emissaries', 'temple']);
+    var s = built(fresh(), ['beast_pen', 'courier_exchange', 'herbal_gardens', 'hall_of_emissaries', 'temple']);
     var rows = R.slotRows(s, 13);
     t.equal(rows.over, 0);
     rows = R.slotRows(s, 9);
@@ -200,7 +200,7 @@
   });
 
   test('over capacity counts buildings, not slot positions', function (t) {
-    var s = built(fresh(), ['library_scriptorium', '', 'arcane_laboratory', 'herbal_gardens', 'hall_of_emissaries']);
+    var s = built(fresh(), ['beast_pen', '', 'courier_exchange', 'herbal_gardens', 'hall_of_emissaries']);
     var rows = R.slotRows(s, 9);
     t.equal(rows.used, 4);
     t.equal(rows.over, 0);
@@ -212,10 +212,10 @@
   });
 
   test('empty slots past the limit are dropped; built ones stay', function (t) {
-    var s = built(fresh(), ['library_scriptorium', '', '', '', '']);
+    var s = built(fresh(), ['beast_pen', '', '', '', '']);
     R.slotRows(s, 5);
     t.equal(s.builtExtras.length, 2);
-    t.same(s.builtExtras[0], { facId: 'library_scriptorium', status: 'built' });
+    t.same(s.builtExtras[0], { facId: 'beast_pen', status: 'built' });
   });
 
   group('Bastion: orders');
@@ -251,14 +251,17 @@
     t.equal(s.treasuryGP, 400);
   });
 
-  test('Workshop Craft lists what the artisan tools make, sorted, and crafts the choice', function (t) {
+  test('Workshop crafting: each staff member\'s list is made from fixed tool tables, sorted, and crafts the choice', function (t) {
     var s = fresh();
-    s.artisanTools = ['Smith’s Tools', '', '', '', '', ''];
-    var items = R.craftItems(s, data.tools);
+    s.facilityLevels.workshop = 2;
+    var smith = R.fn(R.facility(data, 'workshop'), 'craft_smith');
+    var items = R.craftItemsFor(data, smith, 2);
     t.ok(items.length > 0);
     t.same(items, items.slice().sort(function (a, b) { return a.localeCompare(b); }));
-    var o = order(s, 'workshop', 'craft', 0);
+    t.equal(items.length, data.tools['Smith’s Tools'].length, 'the whole of Smith’s Tools');
+    var o = order(s, 'workshop', 'craft_smith', 0);
     t.equal(o.optionLabel, items[0]);
+    t.equal(o.label, 'Workshop: Smith - ' + items[0]);
     var lines = R.completeSimpleOrder(s, data, o, dice([0.3]));
     t.same(lines, [['Order Completed', o.label + ' → Crafted: ' + items[0] + '.']]);
     t.equal(s.warehouse[0].item, items[0]);
@@ -295,14 +298,16 @@
     t.equal(s.warehouse[1].notes, 'Dock');
   });
 
-  test('Library research notes still don\'t attach (B16, kept)', function (t) {
+  test('Scholar research notes still don\'t attach (B16, kept)', function (t) {
     var s = fresh();
     s.treasuryGP = 100;
-    var o = order(s, 'library_scriptorium', 'research', 0);
+    s.facilityLevels.workshop = 3;
+    var o = order(s, 'workshop', 'research', 0);
     t.equal(o.optionLabel, 'Geographical Scriptures');
+    t.equal(o.label, 'Workshop: Scholar - Research (Geographical Scriptures)');
     t.equal(o.notes, '');
     R.completeSimpleOrder(s, data, o, dice([0.1]));
-    t.equal(s.warehouse[0].notes, 'Library & Scriptorium');
+    t.equal(s.warehouse[0].notes, 'Workshop');
   });
 
   test('warehouse rows: typed values tidied as before', function (t) {
@@ -321,20 +326,20 @@
   test('a day\'s steps: the day moves on and building is finished, then the trade, the orders and the finish, with word from the Ironbow', function (t) {
     var s = built(fresh(), []);
     s.day = 20;
-    s.builtExtras = [{ facId: 'library_scriptorium', status: 'building', startDay: 0, readyDay: 21 }];
+    s.builtExtras = [{ facId: 'hall_of_emissaries', status: 'building', startDay: 0, readyDay: 21 }];
     R.startDay(s, data, 1);
     t.equal(s.day, 21);
     t.equal(s.treasuryGP, 0, 'no contract pays a shipment: the Hall has none (step S09)');
     t.same([s.dayInProgress.day, s.dayInProgress.stage, s.dayInProgress.skipped], [21, 'trade', []]);
     t.equal('attackRolled' in s.dayInProgress, false, 'no attack roll any more (the war game is gone)');
-    t.same(s.builtExtras[0], { facId: 'library_scriptorium', status: 'built' });
+    t.same(s.builtExtras[0], { facId: 'hall_of_emissaries', status: 'built' });
     R.finishRoutes(s);
     t.equal(s.dayInProgress.stage, 'orders');
     R.finishDay(s);
     t.equal(s.dayInProgress, null);
     t.same(titles(s), ['Construction Complete']);
     t.ok(s.log.every(function (l) { return l.day === 21; }), 'each log line has its day');
-    t.same(s.word, [{ day: 21, lines: ['The Library & Scriptorium is built.'] }]);
+    t.same(s.word, [{ day: 21, lines: ['The Hall of Emissaries is built.'] }]);
   });
 
   test('a quiet day adds no word', function (t) {
@@ -406,7 +411,7 @@
     s.day = 30;
     s.anchored = true;
     s.pendingOrders = [{ id: 'o', issuedDay: 28, dueDay: 33 }];
-    s.builtExtras = [{ facId: 'library_scriptorium', status: 'building', startDay: 20, readyDay: 41 }];
+    s.builtExtras = [{ facId: 'hall_of_emissaries', status: 'building', startDay: 20, readyDay: 41 }];
     s.legacyDiplomacy = { records: [{ kind: 'Trade Agreement', title: 'Trade Agreement', clan: 'Clan Karr', startDay: 26, endDay: 47, endedDay: 29, income: 10, shipments: 3, paid: 30, note: '' }] };
     s.repairs = { workshop: 35 };
     s.log = [{ title: 'x', body: 'y', day: 29 }];
@@ -484,7 +489,10 @@
 
   test('the Compendium index, its links, Roll20 and the offline export (B15)', function (t) {
     var idx = R.compendiumIndex(data.facilities, data.tools);
-    t.ok(idx.links['Bag of Holding'].some(function (l) { return l.facName === 'Arcane Laboratory'; }));
+    t.ok(idx.links['Bag of Holding'].some(function (l) { return l.facName === 'Workshop' && l.fnLabel === 'Craft Uncommon'; }), 'Bag of Holding is made by the Alchemist (Craft Uncommon)');
+    t.ok(idx.links['Dread Helm'].every(function (l) { return l.fnLabel === 'Compendium only'; }), 'Dread Helm, Moon-Touched Sword and Smoldering Armor stay in the Compendium only');
+    t.ok(idx.links['Longsword'].some(function (l) { return l.fnLabel === 'Craft (Smith)'; }), 'the Smith crafts a Longsword');
+    t.equal(idx.items.indexOf('Potion of Climbing') !== -1 && idx.links['Potion of Climbing'].every(function (l) { return l.fnLabel !== 'Craft Common'; }), true, 'the duplicate potion is not offered twice by the Alchemist');
     t.equal(R.roll20Url('Bag of Holding'), 'https://roll20.net/compendium/dnd5e/Bag%20of%20Holding');
     var out = R.compendiumExport(idx, T.bastionCompendium.items);
     t.equal(out.filled, 0);
@@ -536,21 +544,21 @@
     t.same(R.dueOrders(s).map(function (x) { return x.facId; }), [], 'the Dock\'s upgrade waits for its repairs');
     s.day = 21;
     t.same(R.dueOrders(s).map(function (x) { return x.facId; }), ['dock']);
-    t.equal(R.upgradeCheck(s, data, 'library_scriptorium').message, 'The Library & Scriptorium isn\'t built yet.');
-    s.builtExtras = [{ facId: 'library_scriptorium', status: 'building', startDay: 1, readyDay: 22 }];
-    t.equal(R.upgradeCheck(s, data, 'library_scriptorium').ok, false, 'not while it\'s being built');
+    t.equal(R.upgradeCheck(s, data, 'beast_pen').message, 'The Beast Pen isn\'t built yet.');
+    s.builtExtras = [{ facId: 'beast_pen', status: 'building', startDay: 1, readyDay: 22 }];
+    t.equal(R.upgradeCheck(s, data, 'beast_pen').ok, false, 'not while it\'s being built');
   });
 
   test('levels survive saving, demolishing drops one, and an upgrade order is an ordinary pending order (cancel, demolish)', function (t) {
-    var s = built(fresh(), ['library_scriptorium']);
-    s.facilityLevels.library_scriptorium = 3;
+    var s = built(fresh(), ['timber_sawmill']);
+    s.facilityLevels.timber_sawmill = 3;
     s.facilityLevels.workshop = 5;
-    R.issueUpgrade(s, data, 'library_scriptorium', dice([0.3]));
+    R.issueUpgrade(s, data, 'timber_sawmill', dice([0.3]));
     var back = R.fromSave(JSON.parse(JSON.stringify(R.toSave(s))), data);
-    t.same([back.facilityLevels.library_scriptorium, back.facilityLevels.workshop, back.pendingOrders[0].meta], [3, 5, { kind: 'upgrade', toLevel: 4 }]);
-    var d = R.demolishFacility(back, data, 'library_scriptorium');
-    t.same(d.cancelled.map(function (o) { return o.label; }), ['Library & Scriptorium: Upgrade to Level 4']);
-    t.equal(back.facilityLevels.library_scriptorium, undefined);
+    t.same([back.facilityLevels.timber_sawmill, back.facilityLevels.workshop, back.pendingOrders[0].meta], [3, 5, { kind: 'upgrade', toLevel: 4 }]);
+    var d = R.demolishFacility(back, data, 'timber_sawmill');
+    t.same(d.cancelled.map(function (o) { return o.label; }), ['Timber Yard & Sawmill: Upgrade to Level 4']);
+    t.equal(back.facilityLevels.timber_sawmill, undefined);
   });
 
   group('Bastion: research (pull request 2, 13 October 2026)');
@@ -809,11 +817,11 @@
     var workshop = R.facility(data, 'workshop');
     var smithing = R.fn(workshop, 'smithing');
     t.equal(smithing.options.length, 29, 'the Smithy\'s 29 items');
-    t.same(R.fnAvailable(R.fromSave(s, data), workshop, smithing), { ok: true });
+    t.same(R.fnAvailable(R.fromSave(s, data), workshop, smithing), { ok: false, hidden: true, message: 'That order isn\'t given any more.' }, 'Smithing is retired (step S12): never offered, though a pending one still finishes');
     var building = R.migrateToV3(v2(function (b) { b.builtExtras = [{ facId: 'smithy', status: 'building', startDay: 4, readyDay: 25 }]; }), data);
     t.same([slots(building.save), building.save.legacyFacilities], [[''], []], 'no Smithing for a Smithy never finished');
     t.equal(building.lines[0], 'Building work on the Smithy stopped: it has joined the Workshop. Its slot is free.');
-    t.same(R.fnAvailable(fresh(), workshop, smithing), { ok: false, hidden: true, message: 'That order isn\'t available here.' }, 'a new Bastion doesn\'t see Smithing');
+    t.same(R.fnAvailable(fresh(), workshop, smithing), { ok: false, hidden: true, message: 'That order isn\'t given any more.' }, 'a new Bastion doesn\'t see Smithing');
   });
 
   test('the Gaming Hall goes (Harry, D2): built or building, its slot is freed, its Trade order cancelled, and it is recorded as archived', function (t) {
@@ -874,18 +882,17 @@
     t.same(slots(plain), ['temple'], 'a Shrine in a version 2 save is the Temple once the Strip Back conversion has run (22 October 2026)');
   });
 
-  test('new orders: Alchemy and Greenhouse Harvest need party level 9; a facility still in development can\'t be built; a plot facility can\'t go in a special slot', function (t) {
-    var s = built(fresh(), ['arcane_laboratory', 'herbal_gardens']);
+  test('new orders: Greenhouse Harvest needs party level 9 (Alchemy has no party level since step S12, only the Alchemist\'s Workshop level); a plot facility can\'t go in a special slot', function (t) {
+    var s = built(fresh(), ['herbal_gardens']);
     s.treasuryGP = 1000;
     s.partyLevel = 8;
-    var lab = R.facility(data, 'arcane_laboratory');
-    t.same(R.fnAvailable(s, lab, R.fn(lab, 'alchemy')), { ok: false, message: 'Needs party level 9.' });
-    t.same(R.issueOrder(s, data, 'arcane_laboratory', 'alchemy', 0, dice([0.3])), { ok: false, message: 'Needs party level 9.' });
+    s.facilityLevels.workshop = 4;
+    var ws = R.facility(data, 'workshop');
+    t.same(R.fnAvailable(s, ws, R.fn(ws, 'alchemy')), { ok: true }, 'no party level gate on Alchemy');
+    t.ok(R.issueOrder(s, data, 'workshop', 'alchemy', 0, dice([0.3])).ok);
     t.equal(R.issueOrder(s, data, 'herbal_gardens', 'cultivate', 0, dice([0.3])).message, 'Needs party level 9.');
-    t.ok(R.issueOrder(s, data, 'arcane_laboratory', 'craft_common', 0, dice([0.3])).ok, 'the Arcane Study\'s orders need nothing more');
     t.ok(R.issueOrder(s, data, 'herbal_gardens', 'harvest', 0, dice([0.3])).ok);
     s.partyLevel = 9;
-    t.ok(R.issueOrder(s, data, 'arcane_laboratory', 'alchemy', 0, dice([0.3])).ok);
     t.ok(R.issueOrder(s, data, 'herbal_gardens', 'cultivate', 0, dice([0.3])).ok);
     t.equal(R.issueOrder(s, data, 'workshop', 'smithing', 0, dice([0.3])).ok, false, 'no Smithing without the old Smithy');
     s.partyLevel = 20;
@@ -1011,7 +1018,7 @@
   });
 
   test('an Herbal Gardens in a special slot moves to the first free plot, keeping its level, orders and research; with no plot free it stays', function (t) {
-    var s = built(fresh(), ['library_scriptorium', 'herbal_gardens']);
+    var s = built(fresh(), ['hall_of_emissaries', 'herbal_gardens']);
     s.partyLevel = 8;
     s.facilityLevels.herbal_gardens = 3;
     s.research = { herbal_gardens: { agricultural: ['fertile_soil'] } };
@@ -1043,10 +1050,10 @@
     t.same([rows.max, rows.used, rows.over], [2, 3, 1]);
     t.same(rows.rows.map(function (r) { return r.overCapacity; }), [false, false, true]);
     t.ok(R.builtFacilityIds(s, data).indexOf('fishery_smokehouse') !== -1, 'still working');
-    var save = R.toSave(plots(9, ['library_scriptorium', 'herbal_gardens']));
+    var save = R.toSave(plots(9, ['hall_of_emissaries', 'herbal_gardens']));
     var back = R.fromSave(JSON.parse(JSON.stringify(save)), data);
     t.same(back.builtPlots, ['', { facId: 'herbal_gardens', status: 'built' }]);
-    t.ok(back.builtExtras.some(function (x) { return x && x.facId === 'library_scriptorium'; }), 'the Library & Scriptorium is kept, in a slot');
+    t.ok(back.builtExtras.some(function (x) { return x && x.facId === 'hall_of_emissaries'; }), 'the Hall of Emissaries is kept, in a slot');
     var plain = plots(9, ['herbal_gardens']);
     t.same(R.fromSave(JSON.parse(JSON.stringify(R.toSave(plain))), data), plain, 'a save and reload keeps the plots');
   });
@@ -1209,19 +1216,21 @@
     t.same([R.goodsQty(s, 'fresh_fish'), R.goodsQty(s, 'preserved_fish')], [3, 3], 'the Fresh Fish is not used up');
   });
 
-  test('the Library & Scriptorium (Harry, 14 October 2026): Prepare Overland Travel Charts at Level 2 makes 1 Overland chart in 4 days, no gold; one at a time, beside scripture Research', function (t) {
-    var s = plots(9, [], ['library_scriptorium']);
-    t.equal(R.issueOrder(s, data, 'library_scriptorium', 'prepare_overland_travel_charts', 0, dice([0.3])).message, 'Needs Level 2.');
-    s.facilityLevels.library_scriptorium = 2;
+  test('the Scholar (Harry, 14 October 2026 for the Library; moved to the Workshop at Level 3 by step S12): Prepare Overland Travel Charts makes 1 Overland chart in 4 days, no gold; the Scholar does one job at a time, so Research waits', function (t) {
+    var s = fresh();
+    s.day = 10;
+    t.equal(R.issueOrder(s, data, 'workshop', 'prepare_overland_travel_charts', 0, dice([0.3])).message, 'Needs Level 3.');
+    s.facilityLevels.workshop = 3;
     var gp = s.treasuryGP;
-    var o = order(s, 'library_scriptorium', 'prepare_overland_travel_charts', 0);
-    t.same([o.dueDay, s.treasuryGP, o.label], [14, gp, 'Library & Scriptorium: Prepare Overland Travel Charts']);
-    t.equal(R.issueOrder(s, data, 'library_scriptorium', 'prepare_overland_travel_charts', 0, dice([0.3])).ok, false, 'one chart order at a time');
-    var res = order(s, 'library_scriptorium', 'research', 0);
-    t.equal(res.fnId, 'research', 'scripture Research still runs beside it');
-    t.same(finish(s, o), [['Order Completed', 'Library & Scriptorium: Prepare Overland Travel Charts → Added to Warehouse: 1 Overland chart.']]);
+    var o = order(s, 'workshop', 'prepare_overland_travel_charts', 0);
+    t.same([o.dueDay, s.treasuryGP, o.label], [14, gp, 'Workshop: Scholar - Prepare Overland Travel Charts']);
+    t.equal(R.issueOrder(s, data, 'workshop', 'prepare_overland_travel_charts', 0, dice([0.3])).ok, false, 'one chart order at a time');
+    var busy = R.issueOrder(s, data, 'workshop', 'research', 0, dice([0.3]));
+    t.same([busy.ok, busy.message], [false, 'The Scholar is busy: Workshop: Scholar - Prepare Overland Travel Charts, due on Day 14.'], 'one job at a time for each staff member');
+    t.same(finish(s, o), [['Order Completed', 'Workshop: Scholar - Prepare Overland Travel Charts → Added to Warehouse: 1 Overland chart.']]);
     t.same([R.goodsQty(s, 'overland_chart'), s.treasuryGP], [1, gp], 'one chart, no gold');
-    t.same(R.fn(R.facility(data, 'library_scriptorium'), 'research').options.map(function (x) { return x.label; }),
+    t.ok(order(s, 'workshop', 'research', 0), 'then the Scholar can research');
+    t.same(R.fn(R.facility(data, 'workshop'), 'research').options.map(function (x) { return x.label; }),
       ['Geographical Scriptures', 'Religious Scriptures', 'Combat Scriptures', 'Political scriptures'], 'the scripture choices are unchanged');
   });
 
@@ -1315,11 +1324,11 @@
     var s = fresh();
     t.same(R.mapLabels(s, data).map(function (l) { return [l.fac, l.level]; }), [['workshop', 1], ['dock', 1]], 'the two starting facilities (the Barracks, Armoury and Watchtower went with the war game)');
     s = plots(9, ['herbal_gardens'], ['hall_of_emissaries', 'beast_pen']);
-    s.builtExtras.push({ facId: 'library_scriptorium', status: 'building', startDay: 1, readyDay: 30 });
+    s.builtExtras.push({ facId: 'temple', status: 'building', startDay: 1, readyDay: 30 });
     s.facilityLevels.workshop = 3;
     var ids = R.mapLabels(s, data).map(function (l) { return l.fac; });
     t.ok(ids.indexOf('herbal_gardens') !== -1 && ids.indexOf('hall_of_emissaries') !== -1);
-    t.equal(ids.indexOf('library_scriptorium'), -1, 'not while being built');
+    t.equal(ids.indexOf('temple'), -1, 'not while being built');
     t.equal(R.mapLabels(s, data).filter(function (l) { return l.fac === 'workshop'; })[0].level, 3);
     var at = data.bastion.mapLabels;
     Object.keys(at).forEach(function (id) {

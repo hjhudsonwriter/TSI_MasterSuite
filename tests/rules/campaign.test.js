@@ -68,9 +68,9 @@
     var b = bastion();
     b.day = 10;
     b.anchored = true;
-    b.builtExtras = [{ facId: 'arcane_laboratory', status: 'building', startDay: 1, readyDay: 22 }, { facId: 'shrine_aurush', status: 'built' }];
+    b.builtExtras = [{ facId: 'hall_of_emissaries', status: 'building', startDay: 1, readyDay: 22 }, { facId: 'shrine_aurush', status: 'built' }];
     b.pendingOrders = [
-      { id: 'a', facId: 'library_scriptorium', fnId: 'prepare_overland_travel_charts', label: 'Library & Scriptorium: Prepare Overland Travel Charts', issuedDay: 9, dueDay: 14 },
+      { id: 'a', facId: 'workshop', fnId: 'prepare_overland_travel_charts', label: 'Workshop: Scholar - Prepare Overland Travel Charts', issuedDay: 9, dueDay: 14 },
       { id: 'h', facId: 'dock', fnId: 'register_port_charter', label: 'Dock: Register Port Charter (Goldport)', issuedDay: 10, dueDay: 17 },
       { id: 'd', facId: 'dock', fnId: 'charter_berth', label: 'Dock: Charter Berth (Longship)', issuedDay: 8, dueDay: 15 }
     ];
@@ -81,12 +81,12 @@
     var e = explorer();
     e.travel.day = 10;
     var s = sum(e, busy());
-    t.same(s.orders, { count: 3, next: { day: 14, label: 'Library & Scriptorium: Prepare Overland Travel Charts', inDays: 4 }, list: [
-      { day: 14, label: 'Library & Scriptorium: Prepare Overland Travel Charts', inDays: 4 },
+    t.same(s.orders, { count: 3, next: { day: 14, label: 'Workshop: Scholar - Prepare Overland Travel Charts', inDays: 4 }, list: [
+      { day: 14, label: 'Workshop: Scholar - Prepare Overland Travel Charts', inDays: 4 },
       { day: 15, label: 'Dock: Charter Berth (Longship)', inDays: 5 },
       { day: 17, label: 'Dock: Register Port Charter (Goldport)', inDays: 7 }
     ] });
-    t.same(s.nextWord, { day: 14, inDays: 4, lines: ['Library & Scriptorium: Prepare Overland Travel Charts is complete.'] });
+    t.same(s.nextWord, { day: 14, inDays: 4, lines: ['Workshop: Scholar - Prepare Overland Travel Charts is complete.'] });
     e.travel.day = 11;
     t.same(sum(e, busy()).nextWord.day, 14, 'the Bastion\'s day 11 is still to come, but the DM doc looks after the Explorer\'s day');
     var old = { treasuryGP: 5, partyLevel: 9, turn: 4, builtExtras: [], pendingOrders: [{ completeTurn: 5 }], defenders: {}, warehouse: [] };
@@ -140,6 +140,7 @@
         order('c', 'shrine_aurush', 'prepare_purification_incense', 'Shrine of Aurush: Prepare Purification Incense', 12),
         order('f', 'shrine_telluria', 'pray', 'Shrine of Telluria: Pray (Telluria\'s Blessing)', 12, { chosen: { label: 'Telluria\'s Blessing', special: { type: 'favour_blessing', god: 'telluria' } } }),
         order('t', 'dire_wolf_den', 'dwf_riding_harness', 'Dire Wolf Den: Riding Harness (Ashfang)', 17),
+        order('q', 'arcane_laboratory', 'some_old_order', 'Arcane Laboratory: An order the Workshop does not give', 16),
         /* Only moved by the conversion: still forecast. */
         order('r', 'library_scriptorium', 'research', 'Library & Scriptorium: Research (Geographical Scriptures)', 18),
         order('l', 'arcane_laboratory', 'alchemy', 'Arcane Laboratory: Alchemy (Antitoxin)', 19),
@@ -153,7 +154,7 @@
       return b;
     }
     /* The Temple's Pray is instant, so even the Favour prayer ends; the Temple's nine blessings carry on (a Great Rite and a Voyage Blessing here). */
-    var cancelled = ['a', 'm', 'x', 'u', 'h', 'c', 'f', 't'];
+    var cancelled = ['a', 'm', 'x', 'u', 'h', 'c', 'f', 't', 'q'];
     var kept = ['r', 'l', 'b', 'g', 'w2', 'd', 'w'];
     cancelled.forEach(function (id) { t.equal(C.cancelledByConversion(withOrders(3).pendingOrders.filter(function (o) { return o.id === id; })[0]), true, id + ' is cancelled'); });
     kept.forEach(function (id) { t.equal(C.cancelledByConversion(withOrders(3).pendingOrders.filter(function (o) { return o.id === id; })[0]), false, id + ' is kept or moved'); });
@@ -266,12 +267,12 @@
     var b = busy();
     var before = JSON.stringify(b);
     t.same(C.ironbowNews(b, 10, 17), [
-      { day: 14, lines: ['Library & Scriptorium: Prepare Overland Travel Charts is complete.'] },
+      { day: 14, lines: ['Workshop: Scholar - Prepare Overland Travel Charts is complete.'] },
       { day: 15, lines: ['Dock: Charter Berth (Longship) is complete.'] },
       { day: 17, lines: ['Dock: Register Port Charter (Goldport) is complete.'] }
     ], 'no war, recovery, repair or roll lines any more (S06), and the Hall has no actions or sea routes to ask for one (S09)');
     t.same(C.ironbowNews(b, 17, 29), [
-      { day: 22, lines: ['The Arcane Laboratory is built.'] }
+      { day: 22, lines: ['The Hall of Emissaries is built.'] }
     ], 'no contract ends and no delegation: the Hall has none now');
     t.same(C.ironbowNews(b, 28, 100), [], 'no Bastion event is due on Day 29, or any day (S05)');
     t.equal(JSON.stringify(C.bastionComing(b)).indexOf('event'), -1, 'the forecast never mentions one');
@@ -300,7 +301,7 @@
       BR.finishDay(b);
     }
     t.same(b.word.map(function (w) { return w.day; }), predicted);
-    t.same(b.word.filter(function (w) { return w.day === 22; })[0].lines, ['The Arcane Laboratory is built.']);
+    t.same(b.word.filter(function (w) { return w.day === 22; })[0].lines, ['The Hall of Emissaries is built.']);
   });
 
   test('the party level is the Bastion\'s', function (t) {

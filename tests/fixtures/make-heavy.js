@@ -127,11 +127,12 @@ s.pendingOrders = [
   order('hv-10', 'war_room', 'drill', 0, { chosen: { label: 'Line Infantry I → Trained', regimentId: 'reg-hv-line', toGrade: 'trained' }, optionLabel: 'Line Infantry I → Trained', label: 'War Room: Drill a Regiment (Line Infantry I → Trained)', costGP: 75, dueDay: 45 }),
   { id: 'hv-11', facId: 'war_council', fnId: 'war_action', chosen: null, optionLabel: null, notes: '', label: 'War Action', issuedDay: DAY - 1, dueDay: DAY + 2, optionIdx: 0, meta: { kind: 'war_action', objective: 'raid', targetKey: 'bacca', targetName: 'Bacca', tier: 'established', declared: { day: DAY - 1, hr: -2, pc: 0, prev: null, quiet: false, rollDone: true } } },
   order('hv-12', 'menagerie', 'recruit_beast', 0, { chosen: { label: 'Tiger', costGP: 1000, costText: '1,000 GP' }, optionLabel: 'Tiger', label: 'Menagerie: Recruit Beast (Tiger)', costGP: 1000, dueDay: 48 }),
-  /* Library and Arcane Laboratory: move to the Workshop. */
-  order('hv-13', 'library_scriptorium', 'research', 0, { notes: R.fn(R.facility(data, 'library_scriptorium'), 'research') && data.bastion.scriptureNotes['Geographical Scriptures'] || '' }),
-  order('hv-14', 'library_scriptorium', 'prepare_overland_travel_charts', 0, { dueDay: DAY + 2 }),
-  order('hv-15', 'arcane_laboratory', 'craft_common', 0),
-  order('hv-16', 'arcane_laboratory', 'alchemy', 0),
+  /* Library and Arcane Laboratory: move to the Workshop's Scholar and Alchemist. Since the Workshop's staff (step S12) neither is in the
+     catalogue, so these four are written out as the Bastion saved them. */
+  shrineOrder('hv-13', 'library_scriptorium', 'research', { label: 'Geographical Scriptures' }, 'Library & Scriptorium: Research (Geographical Scriptures)', DAY + 3, { notes: data.bastion.scriptureNotes['Geographical Scriptures'] || '' }),
+  shrineOrder('hv-14', 'library_scriptorium', 'prepare_overland_travel_charts', { label: '1 Overland chart', outputs: [{ good: 'overland_chart', qty: 1 }] }, 'Library & Scriptorium: Prepare Overland Travel Charts', DAY + 2),
+  shrineOrder('hv-15', 'arcane_laboratory', 'craft_common', { label: 'Bead of Nourishment' }, 'Arcane Laboratory: Craft Common (Bead of Nourishment)', DAY + 3),
+  shrineOrder('hv-16', 'arcane_laboratory', 'alchemy', { label: 'Burnt Othur Fumes (Poison)' }, 'Arcane Laboratory: Alchemy (Burnt Othur Fumes (Poison))', DAY + 3),
   /* An upgrade at a facility that is merged away: cancelled. */
   { id: 'hv-17', facId: 'shrine_pelagos', fnId: 'upgrade', chosen: null, optionLabel: null, notes: '', label: 'Shrine of Pelagos: Upgrade to Level 6', costGP: 0, issuedDay: DAY - 1, dueDay: DAY + 28, meta: { kind: 'upgrade', toLevel: 6 } },
   /* Shrines (the three Shrines became one Temple in step S11, so they are no longer in the catalogue and these orders are written out
@@ -167,7 +168,7 @@ s.politicalCapital = { blackstone: 30, bacca: -20, farmer: 10, slade: 15, molten
 s.honourRespectByClan = { blackstone: 2, bacca: -3, farmer: 0, slade: 1, molten: 0, rowthorn: 1, karr: 2 };
 s.trustedClientsByClan = { blackstone: 50, bacca: 50, farmer: 50, slade: 50, molten: 50, rowthorn: 50, karr: 50 };
 s.clanHonor = 55;
-s.artisanTools = ['Smith\'s Tools', 'Alchemist\'s Supplies', 'Herbalism Kit', 'Tinker\'s Tools', 'Cook\'s Utensils', 'Carpenter\'s Tools'];
+s.artisanTools = ['Smith’s Tools', 'Alchemist’s Supplies', 'Herbalism Kit', 'Weaver’s Tools', 'Calligrapher’s Supplies', 'Carpenter’s Tools'];
 s.legacyFacilities = ['smithy'];
 s.archivedFacilities = [{ facId: 'gaming_hall', name: 'Gaming Hall', status: 'built', slot: 4, day: 12 }];
 s.research = { herbal_gardens: { agricultural: ['fertile_soil'] } };

@@ -888,8 +888,8 @@
       t.same(res.problems, [], 'the audit');
       return res;
     }
-    var a = slots(['library_scriptorium', old('wyvern_roost', { status: 'building', startDay: 5, readyDay: 26 }), old('griffin_tower'), old('dire_wolf_den')]);
-    t.same(a.save.builtExtras.map(function (e) { return e && (e.facId || e); }), ['library_scriptorium', '', PEN, ''], 'the built Tower');
+    var a = slots(['hall_of_emissaries', old('wyvern_roost', { status: 'building', startDay: 5, readyDay: 26 }), old('griffin_tower'), old('dire_wolf_den')]);
+    t.same(a.save.builtExtras.map(function (e) { return e && (e.facId || e); }), ['hall_of_emissaries', '', PEN, ''], 'the built Tower');
     var b = slots([old('dire_wolf_den'), old('griffin_tower'), old('wyvern_roost')]);
     t.same(b.save.builtExtras.map(function (e) { return e && (e.facId || e); }), [PEN, '', ''], 'the first built one');
     var c = slots([old('wyvern_roost', { status: 'building', startDay: 5, readyDay: 40 }), old('griffin_tower', { status: 'building', startDay: 6, readyDay: 28 }), old('dire_wolf_den', { status: 'building', startDay: 7, readyDay: 50 })]);
@@ -905,28 +905,28 @@
 
   test('beasts but no building left standing (it was demolished and they stayed): the Pen is built free in the first empty slot and the report says so; beasts that only wait need no Pen', function (t) {
     var res = convert(v3(function (s) {
-      s.builtExtras = ['library_scriptorium', '', old('arcane_laboratory')];
+      s.builtExtras = ['hall_of_emissaries', '', old('courier_exchange')];
       s.creatures = [creature('c1', 'griffin', 'Swiftwing', 'housed', 'griffin_tower', 2), creature('c2', 'dire_wolf', 'Ashfang', 'waiting', '', null)];
     }));
     t.same(res.problems, []);
-    t.same(res.save.builtExtras.map(function (e) { return e && (e.facId || e); }), ['library_scriptorium', PEN, 'arcane_laboratory'], 'in the first empty slot, built');
+    t.same(res.save.builtExtras.map(function (e) { return e && (e.facId || e); }), ['hall_of_emissaries', PEN, 'courier_exchange'], 'in the first empty slot, built');
     t.equal(res.save.facilityLevels[PEN], 1);
     t.same(res.save.creatures.map(function (c) { return [c.id, c.status, c.home]; }), [['c1', 'housed', PEN], ['c2', 'waiting', '']]);
     t.ok(/Your beast had no building left standing, so the Beast Pen was built for you, free, in an empty slot \(a Beast Pen costs time, never gold\)\. It is still there\./.test(res.save.migration.v4.lines.join(' ')), 'one beast: singular: ' + res.save.migration.v4.lines.join(' '));
     t.ok(/^A Beast Pen was built for your beasts(;|\.)/.test(res.save.migration.v4.summary), 'and the one-line summary says it was built, not "nothing changed": ' + res.save.migration.v4.summary);
     var three = convert(v3(function (s) {
-      s.builtExtras = ['library_scriptorium'];
+      s.builtExtras = ['hall_of_emissaries'];
       s.creatures = [creature('c1', 'griffin', 'Swiftwing', 'housed', 'griffin_tower', 1), creature('c2', 'dire_wolf', 'Ashfang', 'housed', 'dire_wolf_den', 0), creature('c3', 'wyvern', 'Ash', 'housed', 'wyvern_roost', 2)];
     }));
     t.same(three.problems, []);
     t.ok(/Your beasts had no building left standing, so the Beast Pen was built for you, free, in an empty slot \(a Beast Pen costs time, never gold\)\. They are all still there\./.test(three.save.migration.v4.lines.join(' ')), 'three beasts: plural');
     t.equal(res.save.archivedFacilities.some(function (a) { return a.facId === PEN; }), false);
     var full = convert(v3(function (s) {
-      s.builtExtras = ['library_scriptorium', old('arcane_laboratory')];
+      s.builtExtras = ['hall_of_emissaries', old('courier_exchange')];
       s.creatures = [creature('c1', 'griffin', 'Swiftwing', 'housed', 'griffin_tower', 1)];
     }));
     t.same(full.problems, []);
-    t.same(full.save.builtExtras.map(function (e) { return e && (e.facId || e); }), ['library_scriptorium', 'arcane_laboratory', PEN], 'with no empty slot it stands beyond them (the Bastion keeps what it has)');
+    t.same(full.save.builtExtras.map(function (e) { return e && (e.facId || e); }), ['hall_of_emissaries', 'courier_exchange', PEN], 'with no empty slot it stands beyond them (the Bastion keeps what it has)');
     var waiting = convert(v3(function (s) { s.creatures = [creature('c2', 'dire_wolf', 'Ashfang', 'waiting', '', null)]; }));
     t.same(waiting.problems, []);
     t.equal(BR.builtFacilityIds(waiting.save, data).indexOf(PEN), -1, 'a beast that only waits needs nothing built');
