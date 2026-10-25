@@ -233,7 +233,7 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       await check('fits ' + size + ' with no scrolling either way, the main controls in view', async () => {
         await page.setViewportSize(H.SIZES[size].viewport);
         await page.waitForTimeout(250);
-        const lc = await H.layoutCheck(page, ['[data-test=day-status]', '[data-test=level]', '[data-test=treasury]', '[data-test=compendium]', '[data-test=download-save]', '[data-test=import-save]', '[data-test=map]', '[data-test=open-log]', '[data-test=open-war]', '.tsi-bas-tile']);
+        const lc = await H.layoutCheck(page, ['[data-test=day-status]', '[data-test=level]', '[data-test=treasury]', '[data-test=compendium]', '[data-test=download-save]', '[data-test=import-save]', '[data-test=map]', '[data-test=open-management]', '.tsi-bas-tile']);
         equal(lc.scrollWidth, lc.clientWidth, 'no sideways scroll');
         equal(lc.outOfView, [], 'in view');
         equal(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight + 1), true, 'the page itself never scrolls down');

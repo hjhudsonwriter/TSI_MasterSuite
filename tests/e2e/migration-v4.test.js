@@ -204,6 +204,16 @@ const writeLog = page => page.evaluate(() => window.__writes.slice());
       equal(await page.isVisible('[data-test=changes-box]'), true, 'the box is still there');
     });
 
+    await check('"Save the old Day Log as a text file" (S10) downloads the newest 25 entries of the live save\'s log', async () => {
+      const live = await page.evaluate(() => TSI.bastion.debug.state().log.length);
+      assert(live > 25, 'the old save had a long log: ' + live);
+      const d = await H.download(page, '[data-test=changes-save-log]');
+      assert(/^bastion-old-day-log-day-40\.txt$/.test(d.name), d.name);
+      assert(d.text.indexOf('The old Day Log (the newest 25 of ' + live + ' entries, newest first)') === 0, d.text.slice(0, 120));
+      equal(d.text.split('\n').filter(l => /^  /.test(l)).length, 25, 'one body line per entry');
+      equal(await page.isVisible('[data-test=changes-box]'), true, 'the box is still there');
+    });
+
     await check('the copy is the Bastion exactly as it was (version 3, 2,000 gp, 28 orders plus the Old Mill\'s, the army and the war still in it) and is in "Back up everything"', async () => {
       const keys = await quarantined(page);
       equal(keys.length, 1, keys.join());

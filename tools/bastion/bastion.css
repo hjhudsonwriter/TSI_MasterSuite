@@ -271,8 +271,8 @@
   border-top: 1px solid var(--tsi-line-head);
 }
 .tsi-page--bastion .tsi-bas-stage.is-grid-closed .tsi-bas-bottom { height: 64px; }
-.tsi-page--bastion .tsi-bas-pbtns { display: grid; grid-template-columns: repeat(2, 84px); grid-auto-rows: 52px; gap: 6px; }
-.tsi-page--bastion .tsi-bas-stage.is-grid-closed .tsi-bas-pbtns { grid-auto-flow: column; grid-template-columns: none; grid-auto-columns: 84px; grid-template-rows: 48px; grid-auto-rows: 48px; }
+.tsi-page--bastion .tsi-bas-pbtns { display: grid; grid-template-columns: repeat(2, 98px); grid-auto-rows: 52px; gap: 6px; }
+.tsi-page--bastion .tsi-bas-stage.is-grid-closed .tsi-bas-pbtns { grid-auto-flow: column; grid-template-columns: none; grid-auto-columns: 98px; grid-template-rows: 48px; grid-auto-rows: 48px; }
 .tsi-page--bastion .tsi-bas-pbtn {
   position: relative;
   display: flex;
@@ -1154,8 +1154,8 @@
    ========================================================================== */
 @media (max-width: 1400px) {
   .tsi-page--bastion .tsi-bas-brand__sub { display: none; }
-  .tsi-page--bastion .tsi-bas-pbtns { grid-template-columns: repeat(2, 74px); }
-  .tsi-page--bastion .tsi-bas-stage.is-grid-closed .tsi-bas-pbtns { grid-auto-columns: 74px; }
+  .tsi-page--bastion .tsi-bas-pbtns { grid-template-columns: repeat(2, 92px); }
+  .tsi-page--bastion .tsi-bas-stage.is-grid-closed .tsi-bas-pbtns { grid-auto-columns: 92px; }
 }
 @media (max-width: 1150px) {
   .tsi-page--bastion .tsi-bas-dip-grid,
