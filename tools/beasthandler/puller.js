@@ -1,8 +1,10 @@
 /* Scarlett Isles: Beast Handler — the phone's side of the OPTIONAL online link (S17, 22 October 2026).
 
-   Dormant unless tools/beasthandler/relay-config.js holds a database address (it ships
-   empty) AND the phone has been linked with a QR code (or a pairing code). While either
-   is missing, start() does nothing at all: no timer, no listener, no request.
+   Dormant unless tools/beasthandler/relay-config.js says enabled: true (it ships false,
+   and this is the phone's ONLY on-switch: the phone cannot see the Bastion's Switch on)
+   AND holds a database address (it ships empty) AND the phone has been linked with a QR
+   code (or a pairing code). While any of the three is missing, start() does nothing at
+   all: no timer, no listener, no request.
 
    When it is on, the phone looks in its own place in the post box (named by a code
    worked out from the pairing secret, relay.js) every 20 seconds while the page is
@@ -44,7 +46,8 @@
       }
       /* Is there anything to do at all? */
       function active() {
-        return !!(link().configuredUrl() && opts.pairing() && seal().available());
+        /* enabled is checked here in plain sight as well as inside configuredUrl(): the phone's on-switch must be true. */
+        return !!(link().enabled() === true && link().configuredUrl() && opts.pairing() && seal().available());
       }
       function getTransport() {
         if (!transport) transport = opts.transport ? opts.transport(life) : ns.relay.create(life);

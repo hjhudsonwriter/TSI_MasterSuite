@@ -291,6 +291,22 @@
     if (!r.ok && C.kind(t) !== 'pair') r.why = 'That isn\'t a pairing code or a link. A pairing code starts BHP1. and a link has a # in it. Your DM gives you one of them.';
     return r;
   }
+  /* The shut "Using an iPhone Home Screen icon?" help: on the link screen and on the first screen after linking. */
+  function iphoneHelp() {
+    return el('details', { class: 'tsi-bhp-help', 'data-test': 'bhp-iphone-help' }, [
+      el('summary', { class: 'tsi-bhp-backup__summary', text: 'Using an iPhone Home Screen icon?' }),
+      el('div', { class: 'tsi-bhp-backup__body' }, [
+        el('p', { text: 'An iPhone keeps a Home Screen icon\'s saved link apart from Safari\'s, so scanning links Safari, not the icon. To use an icon:' }),
+        el('ol', null, [
+          el('li', { text: 'Scan the QR code with the camera, so this page opens and links in Safari.' }),
+          el('li', { text: 'Press Copy my link on that page.' }),
+          el('li', { text: 'Choose Share, then Add to Home Screen, from that page.' }),
+          el('li', { text: 'Open the new icon, open Offline backup, and paste the link there.' })
+        ]),
+        el('p', { text: 'If Safari ever forgets the link (it can after a week unused), tap the link your DM sent you again, or scan the QR code again.' })
+      ])
+    ]);
+  }
   function screenLink() {
     var input = codeInput('Paste the pairing code or link here', 'bhp-pair-input');
     var problem = el('p', { class: 'tsi-bhp-error', hidden: true, role: 'alert', 'data-test': 'bhp-pair-problem' });
@@ -310,19 +326,7 @@
         el('li', { text: 'This page opens and links itself. Your beasts appear as soon as your DM sends them.' })
       ]),
       el('p', { text: 'If your DM sent you a link in a message instead, just tap it.' }),
-      el('details', { class: 'tsi-bhp-help', 'data-test': 'bhp-iphone-help' }, [
-        el('summary', { class: 'tsi-bhp-backup__summary', text: 'Using an iPhone Home Screen icon?' }),
-        el('div', { class: 'tsi-bhp-backup__body' }, [
-          el('p', { text: 'An iPhone keeps a Home Screen icon\'s saved link apart from Safari\'s, so scanning links Safari, not the icon. To use an icon:' }),
-          el('ol', null, [
-            el('li', { text: 'Scan the QR code with the camera, so this page opens and links in Safari.' }),
-            el('li', { text: 'Press Copy my link on that page.' }),
-            el('li', { text: 'Choose Share, then Add to Home Screen, from that page.' }),
-            el('li', { text: 'Open the new icon, open Offline backup below, and paste the link there.' })
-          ]),
-          el('p', { text: 'If Safari ever forgets the link (it can after a week unused), tap the link your DM sent you again, or scan the QR code again.' })
-        ])
-      ]),
+      iphoneHelp(),
       backupBox('Offline backup: link with a pairing code or a pasted link', [
         el('p', { class: 'tsi-bh-muted', text: 'Paste a pairing code (it starts BHP1.) or a whole link here, then press Link this phone.' }),
         input.node, problem, el('div', { class: 'tsi-bhp-row' }, go)
@@ -348,7 +352,8 @@
         : 'Your phone is linked. Now your DM sends you a snapshot code, which shows your beasts as the Bastion sees them today. Open Offline backup below and paste it there.' }),
       liveRow(),
       backupBox('Offline backup: paste a snapshot code', [input.node, problem, el('div', { class: 'tsi-bhp-row' }, go)]),
-      el('div', { class: 'tsi-bhp-row' }, btn('Unlink this phone', onUnlink, 'tsi-btn--ghost', 'bhp-unlink'))
+      el('div', { class: 'tsi-bhp-row' }, [btn('Copy my link', onCopyLink, '', 'bhp-mylink-button'), btn('Unlink this phone', onUnlink, 'tsi-btn--ghost', 'bhp-unlink')]),
+      iphoneHelp()
     ])));
     if (notice) { var d = root.querySelector('[data-test="bhp-backup"]'); if (d) d.open = true; }
   }
@@ -407,8 +412,30 @@
   var opened = readHash();
   if (opened) handleLink(opened); else start();
   /* A link opened while this page is already showing (the browser may swap just the # part and not load the page again). */
+  /* While a first-meeting reveal is playing the page is never redrawn: the same link is ignored (the # part is already
+     wiped), and a different or damaged one waits until the reveal has ended, then is handled as usual (asking first). */
+  var waiting = null;
+  var waitTimer = null;
+  function revealPlaying() { return !!(view && view.playing && view.playing()); }
+  function handleWaiting() {
+    if (waitTimer !== null && !revealPlaying()) {
+      life.clearInterval(waitTimer); waitTimer = null;
+      var d = waiting; waiting = null;
+      if (d) handleLink(d);
+    }
+  }
+  function sameLink(d) {
+    return !!(d && d.ok && pairing && pairing.secret === d.pairing.secret && P.handlerKey(pairing.handler) === P.handlerKey(d.pairing.handler) && pairing.campaign === d.pairing.campaign);
+  }
   life.on(window, 'hashchange', function () {
     var d = readHash();
-    if (d) handleLink(d);
+    if (!d) return;
+    if (revealPlaying() || waiting) {
+      if (sameLink(d) && !waiting) return;
+      waiting = d;
+      if (waitTimer === null) waitTimer = life.setInterval(handleWaiting, 400);
+      return;
+    }
+    handleLink(d);
   });
 }());

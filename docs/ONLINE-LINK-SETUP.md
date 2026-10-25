@@ -5,6 +5,9 @@ Written 22 October 2026. This guide is for you, Harry. No coding. If a step does
 **Please read this first.**
 
 - **You do not need any of this to use the Beast Handler.** The QR code works with no account and no internet at the table. The online link is an extra, and it is **switched off** and does nothing at all until you do every step below.
+- **One story about the switches.** There are two, and the first is the master:
+  1. **`enabled` in `relay-config.js`.** It ships as `enabled: false`. Phones and the laptop do nothing online unless this file says `enabled: true` **and** holds the post box's address. A phone has no other switch, so a phone only looks in the post box if the copy of this file on the phone page's web address says `true`.
+  2. **Switch on in the Bastion.** The laptop only sends after you press it. **Switch off** stops the **laptop** sending. It does **not** reach phones. To stop phones too, you change `enabled` back to `false` and publish the file again (see "Turning it off").
 - **Nothing in this guide has been tried against the real Google website yet.** It was written from how Google's Firebase console worked when it was written, and the console changes its look now and then. Every step that could not be checked is marked **Not yet tested against the real Google console**, and says what you should see. If your screen is different, the step may have moved: don't guess, ask for help.
 - **Do not use Matt's database.** The Knightly Treasures shop has its own Firebase project. You will make a brand new one that belongs only to you.
 
@@ -21,8 +24,9 @@ A free "post box" at Google holds a scrambled copy of each player's beast page. 
 ## Before you start
 
 1. You need a Google account of **your own** (not Matt's, and not a shared one).
-2. You need to be able to edit one small file in the suite's folder with Notepad (step 5), or to send the address to whoever is helping you with the suite and ask them to do it.
-3. Setting it up takes about 15 minutes.
+2. You need to be able to edit one small file in the suite's folder with Notepad (step 4), or to send the address to whoever is helping you with the suite and ask them to do it.
+3. The phone page has to be on the web, which needs **GitHub Pages** switched on for the suite's repository, publishing the **main** branch (step 4, part B). The phone page with QR support only exists there **after the pull request that adds it has been merged** into main.
+4. Setting it up takes about 15 minutes.
 
 ## Step 1: make a free Firebase project
 
@@ -88,13 +92,17 @@ The rules say who may do what in the post box. They are the rules this suite was
 }
 ```
 
+**What these rules do, and what they do not.** They do: stop anyone listing or browsing the post box, refuse anything that is not exactly the right shape and under 120 KB, and only accept secret-named places of the right kind of name. They do **not** stop a stranger who finds your database address (it is in `relay-config.js`, which is published on the web with the phone page, so it is not secret) from writing documents of the right shape, up to about 120 KB each, at random place names, until the free 1 GB is used up. Nothing in the post box is readable without a player's key, so a stranger cannot read anyone's beasts this way, but they could fill the box. If that ever happens, the post box stops accepting new copies and phones stop updating (the codes under Offline backup keep working). The fix is to delete the Firebase project and make a new one (see "Turning it off" and steps 1 to 4), then publish the new address.
+
 (The `inbox` part is for something this version does not do: players' phones do not send anything back. It is harmless and is kept so the rules are exactly the ones that were tested.)
 
 **You should see:** a message such as "Rules published" or a green tick, and the rules box showing the text you pasted. If Google underlines something in red, you have probably missed a line when copying: select all, delete and paste again.
 
-## Step 4: copy the address into the suite
+## Step 4: copy the address into the suite, and publish the phone page
 
 *The file part can be checked here. The address page is not yet tested against the real Google console.*
+
+**A. The settings file.**
 
 1. Go back to the **Data** tab. At the top is the database's web address, like `https://scarlett-isles-link-default-rtdb.europe-west1.firebasedatabase.app`. Select it and copy it. **Copy only that address.**
 2. In your suite folder open `tools` then `beasthandler` and open **`relay-config.js`** with Notepad (right click, Open with, Notepad).
@@ -102,14 +110,16 @@ The rules say who may do what in the post box. They are the rules this suite was
 
    ```
    window.TSI_DATA.beastRelay = {
+     enabled: false,
      databaseURL: ''
    };
    ```
 
-4. Paste your address **between the two little quote marks**, so it looks like this (with your own address):
+4. Paste your address **between the two little quote marks** and change `false` to `true`, so it looks like this (with your own address):
 
    ```
    window.TSI_DATA.beastRelay = {
+     enabled: true,
      databaseURL: 'https://scarlett-isles-link-default-rtdb.europe-west1.firebasedatabase.app'
    };
    ```
@@ -120,31 +130,42 @@ The rules say who may do what in the post box. They are the rules this suite was
 
 If you would rather not edit the file, send the address to whoever is helping you with the suite and they will do it.
 
-**Two copies need the new file.** The Bastion on your laptop reads the file you just saved. The players' phone page lives on GitHub Pages, so the same change has to be sent there too (whoever is helping you does that with a pull request; GitHub then takes a minute or two to show it). Until the phone page has the address, phones can't look in the post box.
+**Careful:** a fresh ZIP of the suite replaces this file with the empty, switched-off one. After downloading a new ZIP, do this part again.
+
+**B. Publish the phone page (GitHub Pages).** The Bastion on your laptop reads the file you just saved. The players' phone page lives on the web, and **it reads its own copy of `relay-config.js`, the one published there**. So the same change has to be published, and the phone page itself has to be published. *Not yet checked against the live GitHub screens: if yours look different, stop and ask.*
+
+1. The phone page with QR support is only on the web **after the pull request that adds it is merged into the `main` branch**. Until then there is nothing at the address the QR code points to.
+2. On github.com open the repository, then **Settings**, then **Pages**.
+3. Under **Build and deployment**, set **Source** to **Deploy from a branch**. Set the branch to **main** and the folder to **/ (root)**, then press **Save**.
+4. After a minute or two the phone page is at `https://hjhudsonwriter.github.io/TSI_MasterSuite/beasthandler.html`. **The QR code points at that published address**, which is a setting in the Bastion (**Phone page address** in the Beast Handler box). If you publish somewhere else, change that setting.
+5. Your edited `relay-config.js` has to be merged into `main` too (whoever is helping you does that with a pull request). GitHub then takes a minute or two to show it. Until the phone page has the address and `enabled: true`, phones will not look in the post box.
 
 ## Step 5: approve the change to the suite's own rules (CLAUDE.md)
 
-The suite has a standing rule that nothing goes online except the Knightly Treasures link. The online link is an exception to that rule, so the rule has to be changed **by you** before the link is switched on for real. **Nothing in the suite has changed this rule yet.** When you are happy, say "I approve the change to ground rule 2" to whoever is helping you with the suite, and they will make exactly this change, and nothing else:
+The suite has a standing rule that nothing goes online except the Knightly Treasures link. The online link is an exception, so the rule has to be changed **by you** before the link is switched on for real. **Nothing in the suite has changed CLAUDE.md yet.** When you are happy, say "I approve the change to ground rule 2" to whoever is helping you, and they will make exactly the edits below and nothing else. All four are in `CLAUDE.md`.
 
-> **2. No online services, except two.**
->
-> 1. The Notice Board's ★ sends the main quest to Matt Owen's Knightly Treasures shop through his Firebase database, exactly as the old Notice Board did (settings only in `tools/quests/shop-link.js`). It only works when online and skips quietly offline.
-> 2. **The Beast Handler phone link.** The Ironbow Bastion and the Beast Handler phone page may talk to **one small Firebase Realtime Database that Harry owns** (a separate project from Matt's), to keep players' phones up to date. Rules: it is optional and off until `tools/beasthandler/relay-config.js` holds an address **and** the DM presses Switch on in the Bastion; every other tool stays offline; the DM tools never wait on it and work fully offline; nothing readable is stored (everything is encrypted in the browser with a key that only travels in the player's QR link after the `#`); no logins, no accounts for players, no analytics, no paid plan; no library or code is loaded from the internet (only data is sent); tests use a stand-in, never the real database. Don't touch Matt's database.
->
-> **Never commit keys or passwords.** Two public identifiers are allowed: Matt's Firebase web settings in `tools/quests/shop-link.js`, and the address of Harry's own Beast Handler database in `tools/beasthandler/relay-config.js` (it needs no key). Nothing else.
+**Edit 1: ground rule 2, its heading.** Find: `2. No online services, except the Knightly Treasures link`. Replace with: `2. No online services, except two`.
 
-It also changes two short sentences elsewhere in the same file: in ground rule 1, "Nothing loads from the internet automatically" becomes "Nothing loads from the internet automatically (code, fonts, libraries and media; the two links above send and fetch data only)", and in the Scope section, "No other tool may go online" becomes "No other tool may go online except those two".
+**Edit 2: ground rule 2, the sentence "No other tool may go online."** It is in ground rule 2 (the paragraph starting "Remove all Firebase code except one feature"), not in the Scope section. Find: `No other tool may go online. Don't export` and replace with: `No other tool may go online, except the Beast Handler phone link below. Don't export`. Then, directly after that paragraph, add this new paragraph:
+
+> The Beast Handler phone link is the second and last exception. The Ironbow Bastion and the Beast Handler phone page may talk to **one small Firebase Realtime Database that Harry owns** (a separate project from Matt's), to keep players' phones up to date. Rules: it is optional and off until `tools/beasthandler/relay-config.js` says `enabled: true` and holds the database's address, and (on the laptop) the DM presses Switch on in the Bastion; every other tool stays offline; the DM tools never wait on it and work fully offline; nothing readable is stored (everything is encrypted in the browser with a key that only travels in the player's QR link after the `#`); no logins, no accounts for players, no analytics, no paid plan; no library or code is loaded from the internet (only data is sent); tests use a stand-in, never the real database. Don't touch Matt's database.
+
+**Edit 3: ground rule 2, the keys sentence.** Find: `Keep them in one file (tools/quests/shop-link.js) and nowhere else.` Replace with: `Keep them in one file (tools/quests/shop-link.js) and nowhere else. The one other public identifier allowed is the address of Harry's own Beast Handler database, which needs no key, in tools/beasthandler/relay-config.js.`
+
+**Edit 4: ground rule 1.** Find: `Nothing loads from the internet automatically: no CDNs, no Google Fonts.` Replace with: `Nothing loads from the internet automatically (code, fonts, libraries and media; the two links in rule 2 send and fetch data only): no CDNs, no Google Fonts.`
 
 ## Step 6: switch it on in the Bastion
 
 1. Open the Bastion and press the **Beast Pen** tile. At the bottom of its panel is the **Beast Handler (players)** box.
-2. Find **Online link (optional)**. Before you do anything it says **Online link: off (not set up).** After step 4 (and after you reload the Bastion) it says **Online link: off. It is set up; switch it on to keep players' phones up to date by themselves.**
+2. Find **Online link (optional)**. Before you do anything it says **Online link: off (not set up).** If you filled in the address but left `enabled: false` it says **Online link: off. relay-config.js has an address but still says enabled: false.** After step 4 (and after you reload the Bastion) it says **Online link: off. It is set up; switch it on to keep players' phones up to date by themselves.**
 3. Press **Switch on** and read the box that pops up. Press **Switch on** again.
-4. The line changes to **Online link: on.** Within a few seconds it says **Last sent just now** (it sends once for every player who has been given a QR code).
+4. The line changes to **Online link: on.** If no player has been given a QR code yet, it says **Nothing to send yet (no handler has a QR code).** That is normal. Once you have pressed **Show QR to (a player)** (step 8), within a few seconds it says **Last sent just now**.
 
 If the line says **on, but this computer is offline** or **the last send didn't get through**, the Bastion is waiting and will try again by itself (after 5 seconds, then 15, then a minute, then every five minutes). Nothing is lost.
 
 ## Step 7: test the link
+
+**What this proves, and what it does not.** It proves your laptop can put a scrambled message in the post box and read it back, and that a stranger's request to list the whole box, or to write a document of the wrong shape, is refused. It does **not** prove that a stranger can't write correctly shaped documents at random names (see the note under the rules in step 3), that the phone page's copy of `relay-config.js` is right, or that a phone can reach the box.
 
 1. In the same box press **Test the link**. It takes a few seconds.
 2. You should see four lines, each with a tick:
@@ -165,7 +186,7 @@ The test leaves nothing behind in the post box.
 1. In the Beast Handler box press **Show QR to (player's name)**.
 2. The player points their phone's camera at the square and taps the link that pops up. The Beast Handler page opens and says **Linked**.
 3. Within a few seconds their beasts appear by themselves, with a line under them such as **As of Day 14, updated 3 minutes ago**. Pressing **Check now** looks straight away. (Otherwise the phone looks every 20 seconds while its screen is on.)
-4. Change something in the Bastion (for example a beast's name, or let a day pass). After about ten seconds the phone shows the change.
+4. Change something in the Bastion (for example a beast's name, or let a day pass). Within about half a minute the phone shows the change: the phone looks every 20 seconds, and **Check now** looks straight away.
 
 **iPhone:** the camera opens the link in Safari. An iPhone keeps a Home Screen icon's saved link apart from Safari's, so if the player wants an icon they should scan first, press **Copy my link** on the page, add the page to the Home Screen, open the icon, open **Offline backup** and paste the link there.
 
@@ -179,15 +200,20 @@ The test leaves nothing behind in the post box.
 
 ## Turning it off
 
-- **Quick:** in the Beast Handler box press **Switch off**. Nothing is sent from then on. Phones keep the last update and keep working with the codes under **Offline backup**.
-- **Completely off:** also put the address back to nothing in `relay-config.js` (`databaseURL: ''`) and save. Then not even the phone page looks.
-- **Delete the post box and everything in it:** *not yet tested against the real Google console.* In the Firebase console press the small cog beside **Project Overview**, choose **Project settings**, scroll to the bottom of the **General** tab and press **Delete project**, then follow the questions. This removes everything and cannot be undone. Afterwards put the address in `relay-config.js` back to `''`.
+There are two copies of `relay-config.js`: the one in your laptop's suite folder (which the Bastion reads) and the one published on the phone page's web address (which phones read). Changing the laptop copy does **not** change what phones do.
+
+- **Quick, laptop only:** in the Beast Handler box press **Switch off**. The laptop sends nothing from then on. Phones keep the last update and keep working with the codes under **Offline backup**, **but a phone page whose published file still says `enabled: true` keeps looking in the post box every 20 seconds** (it just finds nothing new).
+- **Completely off, laptop and phones:** set `enabled: false` in `relay-config.js` (you can leave the address), save it, **and publish it**: merge the change into `main` so GitHub Pages shows the new file (whoever is helping you does this with a pull request; it takes a minute or two). Phones stop on their next reload of the page. A fresh ZIP of the suite already ships with `enabled: false`, but a ZIP does not change the published copy.
+- **Delete the post box and everything in it:** *not yet tested against the real Google console.* In the Firebase console press the small cog beside **Project Overview**, choose **Project settings**, scroll to the bottom of the **General** tab and press **Delete project**, then follow the questions. This removes everything and cannot be undone. Afterwards set `enabled: false` and `databaseURL: ''` in `relay-config.js` and publish it as above; until the published file changes, phones will keep asking an address that no longer answers (they show the last update they had).
 
 ## If something looks wrong
 
 | You see | What it means | What to do |
 |---|---|---|
 | **Online link: off (not set up).** after you filled in the address | The Bastion has not been reloaded, or the address is not a Firebase Realtime Database address (it must start `https://` and end `firebasedatabase.app` or `firebaseio.com`) | Reload the Bastion; check the file |
+| **Online link: off. relay-config.js has an address but still says enabled: false.** | The on-switch line in the file is still `false` | Change it to `enabled: true`, save, reload the Bastion |
+| The phone never looks in the post box | The published copy of `relay-config.js` still says `enabled: false`, or has no address | Publish the edited file (step 4, part B) |
+| The QR code opens a page that does not exist | GitHub Pages is off, is not publishing `main`, or the pull request is not merged yet | Step 4, part B; or change **Phone page address** |
 | **This browser can't scramble the updates** | The browser does not offer the scrambling the link needs | Use Edge or Chrome on the laptop |
 | **on, but this computer is offline** | No internet right now | Nothing; it sends when the internet is back |
 | The phone says **Waiting for your DM's Bastion to send your beasts** | The Bastion has not sent yet (not open, or the link is off, or this player has no QR link) | Open the Bastion; check the status line; press **Send to phones now** |

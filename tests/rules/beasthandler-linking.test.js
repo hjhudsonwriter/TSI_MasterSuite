@@ -124,6 +124,35 @@
     t.equal(BR.cleanBeast({ campaignId: 'CAMPAIGN12345678', handlers: [], phoneUrl: 'http://x.example/' }).phoneUrl, undefined);
   });
 
+  test('a phone page address of any accepted length is kept when the save is loaded again: typing it in and loading a save use the same limit', function (t) {
+    t.equal(L.PHONE_URL_MAX, 200);
+    var base = 'https://example.org/';
+    [190, 194, 195, 196, 197, 198, 199, 200].forEach(function (n) {
+      var url = base + new Array(n - base.length + 1).join('a');
+      t.equal(url.length, n);
+      var b = world();
+      var r = BR.setBeastPhoneUrl(b, url);
+      t.same([r.ok, r.url], [true, url], n + ' letters are accepted');
+      var again = BR.fromSave(copy(BR.toSave(b)), bdata);
+      t.equal(again.beast.phoneUrl, url, n + ' letters are still there after saving and loading');
+      t.equal(BR.beastPhoneUrl(again), url, 'and in use');
+      t.equal(BR.cleanBeast({ campaignId: 'CAMPAIGN12345678', handlers: [], phoneUrl: url }).phoneUrl, url);
+    });
+    [201, 202, 250].forEach(function (n) {
+      var url = base + new Array(n - base.length + 1).join('a');
+      var b = world();
+      var r = BR.setBeastPhoneUrl(b, url);
+      t.equal(r.ok, false, n + ' letters are refused when typed in');
+      t.equal(b.beast.phoneUrl, undefined);
+      t.equal(BR.cleanBeast({ campaignId: 'CAMPAIGN12345678', handlers: [], phoneUrl: url }).phoneUrl, undefined, 'and dropped when a save holds one');
+    });
+    ['https://example.org/a', 'https://example.org/', 'https://Example.org/a', 'https://example.org/a?x=1', 'https://example.org/a#b', 'https://example.org:8443/a', 'https://user@example.org/a', 'https://localhost/a', 'https://example.org/a b', 'http://example.org/a', 'https://xn--bcher-kva.example/a', 'https://a.b/'].forEach(function (u) {
+      var typed = L.cleanPhoneUrl(u);
+      var kept = BR.cleanBeast({ campaignId: '', handlers: [], phoneUrl: u }).phoneUrl === u;
+      t.equal(kept, typed.ok && typed.url === u, 'agree about ' + u);
+    });
+  });
+
   test('the online link\'s switch is off by default, only true when pressed, and a Bastion that never used it saves nothing new', function (t) {
     var b = world();
     t.equal(BR.beastOnlineLink(b), false);
@@ -250,7 +279,8 @@
   });
 
   test('the online link\'s settings ship empty, and an address must be a Firebase database address (or the made-up test one)', function (t) {
-    t.same(window.TSI_DATA.beastRelay, { databaseURL: '' }, 'relay-config.js ships empty: no address and nothing else');
+    t.same(window.TSI_DATA.beastRelay, { enabled: false, databaseURL: '' }, 'relay-config.js ships switched off and empty: enabled false, no address and nothing else');
+    t.equal(L.enabled(), false);
     t.equal(L.configuredUrl(), '', 'so the link is not set up');
     t.same(L.cleanDatabaseUrl('https://scarlett-isles-link-default-rtdb.firebaseio.com'), { ok: true, url: 'https://scarlett-isles-link-default-rtdb.firebaseio.com' });
     t.equal(L.cleanDatabaseUrl('https://scarlett-isles-link-default-rtdb.europe-west1.firebasedatabase.app/').url, 'https://scarlett-isles-link-default-rtdb.europe-west1.firebasedatabase.app');
@@ -262,14 +292,98 @@
     });
     var was = window.TSI_DATA.beastRelay;
     try {
-      window.TSI_DATA.beastRelay = { databaseURL: 'https://evil.example.com' };
+      window.TSI_DATA.beastRelay = { enabled: true, databaseURL: 'https://evil.example.com' };
       t.equal(L.configuredUrl(), '', 'an address that is not a database address counts as not set up');
       window.TSI_DATA.beastRelay = null;
       t.equal(L.configuredUrl(), '');
-      window.TSI_DATA.beastRelay = { databaseURL: 'https://x-default-rtdb.firebaseio.com' };
+      window.TSI_DATA.beastRelay = { enabled: true, databaseURL: 'https://x-default-rtdb.firebaseio.com' };
       t.equal(L.configuredUrl(), 'https://x-default-rtdb.firebaseio.com');
     } finally { window.TSI_DATA.beastRelay = was; }
     t.equal(L.configuredUrl(), '');
+  });
+
+  test('the settings file\'s on-switch: only a real true together with a good address sets the link up; an address alone, or true alone, is "not set up"', function (t) {
+    var url = 'https://x-default-rtdb.firebaseio.com';
+    var was = window.TSI_DATA.beastRelay;
+    try {
+      [false, undefined, null, 'true', 'TRUE', 'yes', 1, 0, {}, [], [true]].forEach(function (v) {
+        window.TSI_DATA.beastRelay = { enabled: v, databaseURL: url };
+        t.equal(L.enabled(), false, 'enabled ' + JSON.stringify(v));
+        t.equal(L.configuredUrl(), '', 'an address with the switch off is not set up: ' + JSON.stringify(v));
+        t.equal(L.addressFilled(), true, 'but the address is known to be filled in');
+      });
+      window.TSI_DATA.beastRelay = { databaseURL: url };
+      t.equal(L.configuredUrl(), '', 'a file with no enabled line at all is off');
+      window.TSI_DATA.beastRelay = { enabled: true, databaseURL: '' };
+      t.equal(L.configuredUrl(), '', 'enabled with no address is not set up');
+      t.equal(L.addressFilled(), false);
+      window.TSI_DATA.beastRelay = { enabled: true, databaseURL: 'https://evil.example.com' };
+      t.equal(L.configuredUrl(), '', 'enabled with an address that is not a Firebase one is not set up');
+      window.TSI_DATA.beastRelay = { enabled: true, databaseURL: url };
+      t.equal(L.enabled(), true);
+      t.equal(L.configuredUrl(), url);
+      window.TSI_DATA.beastRelay = undefined;
+      t.equal(L.enabled(), false);
+      t.equal(L.configuredUrl(), '');
+    } finally { window.TSI_DATA.beastRelay = was; }
+    t.same(window.TSI_DATA.beastRelay, { enabled: false, databaseURL: '' }, 'and it is put back as shipped');
+  });
+
+  test('the QR link carries no online flag: it is the address and the four-part pairing only, whatever the online link\'s switches say', function (t) {
+    var b = world();
+    BR.beastEnsurePaired(b, bdata, 'Mira');
+    var before = BR.beastLink(b, bdata, 'mira').link;
+    BR.setBeastOnlineLink(b, true);
+    var was = window.TSI_DATA.beastRelay;
+    var on;
+    try {
+      window.TSI_DATA.beastRelay = { enabled: true, databaseURL: 'https://x-default-rtdb.firebaseio.com' };
+      on = BR.beastLink(b, bdata, 'mira').link;
+    } finally { window.TSI_DATA.beastRelay = was; }
+    t.equal(on, before, 'the very same link with every switch on');
+    t.equal(fragment(on).split('.').length, 4, 'L1, campaign, secret, name: nothing else');
+    t.equal(on.indexOf('?'), -1);
+    t.ok(!/online|relay|enabled|live/i.test(on.slice(on.indexOf('#') + 1)), 'no word about the online link in the private part');
+    t.same(Object.keys(C.decodeLink(on).pairing).sort(), ['campaign', 'handler', 'name', 'secret'], 'and the phone reads nothing else from it');
+  });
+
+  test('the database address check is not fooled by look-alike hosts, the made-up test host used as a prefix or a suffix, user names, backslashes, odd ports or odd spellings', function (t) {
+    var real = 'https://scarlett-isles-link-default-rtdb.europe-west1.firebasedatabase.app';
+    [
+      'https://x.firebaseio.com.evil.example', 'https://x.firebasedatabase.app.evil.example', 'https://x.firebaseio.com.invalid', 'https://x.firebaseio.com.',
+      'https://xfirebaseio.com', 'https://firebaseio.com', 'https://.firebaseio.com', 'https://firebasedatabase.app', 'https://evil-firebaseio.com',
+      'https://tsi-test-relay.invalid.evil.example', 'https://tsi-test-relay.invalid.', 'https://xtsi-test-relay.invalid', 'https://evil.example/tsi-test-relay.invalid',
+      'https://tsi-test-relay.invalid@evil.example', 'https://x.firebaseio.com@evil.example', 'https://evil.example@x.firebaseio.com', 'https://evil.example:pw@x.firebaseio.com',
+      'https://evil.example\\@x.firebaseio.com', 'https://x.firebaseio.com\\.evil.example', 'https://evil.example\\.x.firebaseio.com',
+      'https://x.firebaseio.com%2eevil.example', 'https://x.firebaseio.com%00.evil.example', 'https://x.firebaseio.com/.evil.example', 'https://x.firebaseio.com?.evil.example', 'https://x.firebaseio.com#.evil.example',
+      'https://x.firebaseio.com:8443', 'https://x.firebaseio.com:80', 'https://tsi-test-relay.invalid:8443', 'https://127.0.0.1', 'https://[::1]', 'https://localhost',
+      'https://xn--firebaseio-9ya.com', 'https://x.firebaseio.com\u0000.evil.example', 'https://x.firebaseio.com\n.evil.example', ' https://x.firebaseio.com.evil.example ',
+      'http://x.firebaseio.com', 'HTTP://x.firebaseio.com', '//x.firebaseio.com', 'wss://x.firebaseio.com', 'https:/x.firebaseio.com.evil.example', 'x.firebaseio.com', 'https://'
+    ].forEach(function (v) {
+      t.equal(L.cleanDatabaseUrl(v).ok, false, 'not a database address: ' + JSON.stringify(v));
+      t.equal(L.isTestHost(v), false, 'and not the test host: ' + JSON.stringify(v));
+    });
+    var lookalike = 'https://tsi-test-relay.invalid.firebaseio.com';
+    t.equal(L.cleanDatabaseUrl(lookalike).ok, true, 'it ends in firebaseio.com');
+    t.equal(L.isTestHost(lookalike), false, 'but it is not the test host');
+    t.equal(L.isTestHost('https://tsi-test-relay.invalid.firebasedatabase.app'), false);
+    t.equal(L.isTestHost('https://' + L.TEST_HOST), true);
+    t.equal(L.isTestHost('https://' + L.TEST_HOST + '/'), true);
+    t.equal(L.isTestHost('https://TSI-TEST-RELAY.INVALID'), true, 'capitals in a host mean nothing');
+    t.equal(L.isTestHost(real), false);
+    ['', null, undefined, 5, {}, []].forEach(function (v) { t.equal(L.isTestHost(v), false); });
+    var BHr = TSI.beasthandler.relay;
+    t.equal(BHr.allowed('https://' + L.TEST_HOST), true);
+    [lookalike, 'https://tsi-test-relay.invalid.firebasedatabase.app', real, 'https://x.firebaseio.com.evil.example'].forEach(function (v) {
+      t.equal(BHr.allowed(v), navigator.webdriver !== true, 'a test browser may not use ' + v);
+    });
+    ['https://:@x.firebaseio.com', 'https://x.firebaseio.com\\', 'https://X.FireBaseIO.com/', real + '/', 'https://x.firebaseio.com:443', 'https://x.firebaseio.com。', 'https://x．firebaseio．com'].forEach(function (v) {
+      var r = L.cleanDatabaseUrl(v);
+      if (!r.ok) return;
+      t.ok(/^https:\/\/[a-z0-9-]+(\.[a-z0-9-]+)*\.(firebaseio\.com|firebasedatabase\.app)$/.test(r.url), 'accepted only as a clean origin: ' + JSON.stringify(v) + ' → ' + r.url);
+    });
+    t.equal(L.cleanDatabaseUrl('https://:@x.firebaseio.com').url, 'https://x.firebaseio.com', 'an empty user name is dropped');
+    t.equal(L.cleanDatabaseUrl('https://X.FireBaseIO.com/').url, 'https://x.firebaseio.com');
   });
 
   test('the QR code: a square of dark and light squares for the link, big enough to scan, drawn as a picture with a white margin', function (t) {

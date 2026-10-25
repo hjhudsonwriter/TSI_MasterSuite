@@ -1,9 +1,11 @@
 /* Scarlett Isles: Beast Handler — the Bastion's side of the OPTIONAL online link (S17, 22 October 2026).
 
    Dormant unless the DM has pressed "Switch on" (s.beast.onlineLink) AND
-   tools/beasthandler/relay-config.js holds a database address. Until then its timer
-   does one cheap check and goes back to sleep: no request of any kind is made, no
-   snapshot is built, nothing is scrambled.
+   tools/beasthandler/relay-config.js says enabled: true and holds a database address
+   (the settings file's enabled line is the master switch for the laptop and for every
+   phone; "Switch on" is the laptop's own, extra switch). Until then its timer does one
+   cheap check and goes back to sleep: no request of any kind is made, no snapshot is
+   built, nothing is scrambled.
 
    When it is on, it keeps each linked player's phone up to date, in the background:
    - once when the Bastion opens (and once for a handler as soon as they have a QR
@@ -33,8 +35,10 @@
       opts = opts || {};
       var now = opts.now || function () { return Date.now(); };
       var life = host.life;
-      var entries = {};        /* chan → { hash, lastAt, nextTry, failures, madeAt } */
-      var known = {};          /* handler id → the chan we last published for them (so a code taken back can be cleaned up) */
+      /* Maps, not plain objects: a handler may be named anything a player can type ("__proto__", "constructor"), and a plain
+         object would silently lose such a handler (assigning to __proto__ does nothing), so its copy would never be sent or cleaned up. */
+      var entries = new Map(); /* chan → { hash, lastAt, nextTry, failures, madeAt } */
+      var known = new Map();   /* handler id → the chan we last published for them (so a code taken back can be cleaned up) */
       var transport = null;
       var busy = false;
       var forceAll = false;
@@ -54,7 +58,7 @@
         var s = liveState();
         var url = link().configuredUrl();
         var st = { state: 'unset', lastAt: lastAt, sent: sent };
-        if (!url) return st;
+        if (!url) { if (!link().enabled() && link().addressFilled()) st.state = 'notenabled'; return st; }
         if (!s || !R().beastOnlineLink(s)) { st.state = 'off'; return st; }
         if (!seal().available()) { st.state = 'unsupported'; return st; }
         if (!onlineNow()) { st.state = 'offline'; return st; }
@@ -115,34 +119,35 @@
         var force = forceAll;
         forceAll = false;
         var handlers = (s.beast && Array.isArray(s.beast.handlers) ? s.beast.handlers : []).filter(function (h) { return h && h.secret; });
-        var live = {};
-        handlers.forEach(function (h) { live[h.id] = seal().chan(h.secret); });
+        var live = new Map();
+        handlers.forEach(function (h) { live.set(h.id, seal().chan(h.secret)); });
         /* A code taken back or replaced: remove the old copy from the post box. */
-        var stale = Object.keys(known).filter(function (id) { return known[id] !== live[id]; });
+        var stale = Array.from(known.keys()).filter(function (id) { return known.get(id) !== live.get(id); });
         var job = null;
         if (stale.length) {
           var id = stale[0];
-          var old = known[id];
+          var old = known.get(id);
           busy = true;
           job = transport.deleteState(old).then(function (r) {
-            if (r.ok || r.why === 'refused') { delete known[id]; delete entries[old]; }
+            if (r.ok || r.why === 'refused') { known.delete(id); entries.delete(old); }
           });
         } else {
           var now0 = now();
           for (var i = 0; i < handlers.length && !job; i++) {
             var h = handlers[i];
-            var chan = live[h.id];
+            var chan = live.get(h.id);
             var body = R().beastSnapshotBody(s, host.data, h.id);
             if (!chan || !body.ok) continue;
-            var entry = entries[chan] = entries[chan] || {};
+            var entry = entries.get(chan);
+            if (!entry) { entry = {}; entries.set(chan, entry); }
             var hash = link().contentKey(body.snapshot);
             if (force) entry.nextTry = 0;
             if (link().shouldPublish(entry, hash, now0, force)) {
               busy = true;
-              known[h.id] = chan;
+              known.set(h.id, chan);
               job = publish(chan, body, hash, entry);
             } else {
-              known[h.id] = chan;
+              known.set(h.id, chan);
             }
           }
         }
@@ -170,7 +175,7 @@
       /* Sleep, wake: the timer runs always but does nothing while the link is off. */
       var timer = life.setInterval(function () { tick(); }, opts.tickMs || link().TICK_MS);
       life.on(window, 'online', function () {
-        Object.keys(entries).forEach(function (c) { entries[c].nextTry = 0; });
+        entries.forEach(function (e) { e.nextTry = 0; });
         tick();
       });
       life.on(window, 'offline', function () { changed(); });
@@ -183,8 +188,8 @@
         status: status,
         statusLine: function () { return link().statusLine(status(), now()); },
         onStatus: function (fn) { listeners.push(fn); return function () { listeners = listeners.filter(function (f) { return f !== fn; }); }; },
-        /* For tests: what has been remembered about the posted copies (no secrets). */
-        debug: function () { return { known: JSON.parse(JSON.stringify(known)), entries: Object.keys(entries).map(function (c) { return { chan: c, hash: entries[c].hash || '', failures: entries[c].failures || 0, lastAt: entries[c].lastAt || 0 }; }), sent: sent, timer: timer !== null }; }
+        /* For tests: what has been remembered about the posted copies (no secrets). known is a list of [handler id, place]. */
+        debug: function () { return { known: Array.from(known.entries()), entries: Array.from(entries.entries()).map(function (kv) { return { chan: kv[0], hash: kv[1].hash || '', failures: kv[1].failures || 0, lastAt: kv[1].lastAt || 0 }; }), sent: sent, timer: timer !== null }; }
       };
     }
   };

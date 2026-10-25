@@ -460,6 +460,8 @@
         /* The host's picture changed: redraw (only what is open stays open). */
         refresh: function () { fixRoute(); render(); },
         render: render,
+        /* Is a first-meeting reveal on screen (or its closing curtain still up)? A redraw of the page would cut it. */
+        playing: function () { return !!(meetingNow || (meet && meet.closing())); },
         ui: ui
       };
     }

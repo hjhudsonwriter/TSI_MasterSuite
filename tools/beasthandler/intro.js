@@ -324,14 +324,16 @@
       }
 
       /* ---------- The closing sequence: the panel fades to black, "Welcome…", black, then the beast ---------- */
+      var tail = false;   /* the closing curtain is still on the page */
       function close(d) {
         env.markSeen(d.id);   /* it has been watched to the end: it never plays here again */
+        tail = true;
         st.fading = true;
         var text = M.meetingText(d);
         var textNode = el('p', { class: 'tsi-bh-curtain__text', 'data-test': 'bh-curtain-text' });
         var curtain = el('div', { class: 'tsi-bh-curtain', 'data-test': 'bh-curtain', role: 'status', 'aria-live': 'polite' }, textNode);
         document.body.appendChild(curtain);
-        function tidy() { if (curtain.parentNode) curtain.parentNode.removeChild(curtain); env.setInert(false); }
+        function tidy() { tail = false; if (curtain.parentNode) curtain.parentNode.removeChild(curtain); env.setInert(false); }
         life.onStop(tidy);
         env.setInert(true);   /* nothing behind the black can be tabbed to or read out */
         env.rerender(false);  /* the panel stays, dimmed and untouchable, while the black comes over it */
@@ -397,6 +399,8 @@
         active: active, render: render,
         /* Is a meeting already under way for this beast? */
         has: function (d) { return mine(d); },
+        /* The closing curtain (fade to black, Welcome…, fade in) has not finished yet. */
+        closing: function () { return tail; },
         /* A roll is playing now: the screen holds back redraws. */
         busy: function () { return !!st && st.animating > 0; },
         /* fn runs each time the last playing roll finishes. */
