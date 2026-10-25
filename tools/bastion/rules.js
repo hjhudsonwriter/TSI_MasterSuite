@@ -145,7 +145,6 @@
       facilityLevels: {},
       pendingOrders: [],
       warehouse: [],
-      artisanTools: ['', '', '', '', '', ''],
       favour: { telluria: 0, aurush: 0, pelagos: 0 },
       politicalCapital: clanMap(0),
       tradeNetwork: R.defaultTradeNetwork(),
@@ -180,11 +179,9 @@
          conversion to version 4 clears any a Bastion had), so this stays empty
          and R.underRepair is left as it was. */
       repairs: {},
-      /* The facilities overhaul (13 October 2026): v 3. Retired buildings
-         whose old order is kept ("smithy": the Workshop's Smithing), the
-         buildings retired from this Bastion (an audit record), and the
-         one-time conversion's report. */
-      legacyFacilities: [],
+      /* The facilities overhaul (13 October 2026): v 3. The buildings retired from this Bastion (an audit
+         record), and the one-time conversion's report. (The Artisan Tools and the list of retired buildings
+         whose old order was kept, legacyFacilities, ended with the Workshop's staff: step S12.) */
       research: {},
       archivedFacilities: [],
       migration: null,
@@ -238,7 +235,14 @@
     var lines = [];
     var legacy = arr(s.legacyFacilities) ? s.legacyFacilities.slice() : [];
     var archived = arr(s.archivedFacilities) ? s.archivedFacilities.slice() : [];
-    function nameOf(id) { var f = R.facility(data, id); return (f && f.name) || id; }
+    /* A facility's name, even one the catalogue no longer holds (the Library & Scriptorium and the Arcane Laboratory,
+       since step S12): the Strip Back table's, then the id. */
+    function nameOf(id) {
+      var f = R.facility(data, id);
+      if (f && f.name) return f.name;
+      var sb = data.bastion && data.bastion.stripBack && data.bastion.stripBack.facilities;
+      return (sb && typeof sb[id] === 'string' && sb[id]) || id;
+    }
     var extrasIn = arr(s.builtExtras) ? s.builtExtras : [];
     var slots = extrasIn.map(function (x, i) {
       if (!x) return '';
@@ -375,7 +379,6 @@
     d.day = Math.max(1, dayNum(s.day, 1));
     d.anchored = s.anchored === true;
     if (arr(s.warehouse)) d.warehouse = R.cleanWarehouse(s.warehouse, data);
-    if (arr(s.artisanTools)) d.artisanTools = s.artisanTools.map(function (x) { return typeof x === 'string' ? x : ''; });
     d.favour = numMap(s.favour, ['telluria', 'aurush', 'pelagos'], 0, 100, 0);
     d.politicalCapital = numMap(s.politicalCapital, CLAN_KEYS, -100, 100, 0);
     if (isObj(s.tradeNetwork)) {
@@ -406,7 +409,6 @@
       });
     }
     d.repairs = cleanRepairs(s.repairs, data);
-    d.legacyFacilities = arr(s.legacyFacilities) ? s.legacyFacilities.filter(function (x) { return typeof x === 'string'; }) : [];
     d.archivedFacilities = arr(s.archivedFacilities) ? s.archivedFacilities.filter(isObj) : [];
     d.migration = isObj(s.migration) ? s.migration : null;
     d.research = R.cleanResearch(s.research, data);
@@ -1670,9 +1672,15 @@
     var swap = R.levelReplacement(data, facId, level);
     if (swap) out.push(swap.text.charAt(0).toUpperCase() + swap.text.slice(1));
     else (fac.functions || []).forEach(function (fn) {
-      if (!fn || fn.id === 'upgrade' || fn.id === 'upgrade_hall') return;
+      if (!fn || fn.id === 'upgrade' || fn.id === 'upgrade_hall' || fn.retired) return;
+      /* The Workshop's orders are listed by the staff member who opens them (below). */
+      if (fn.staff) return;
       var req = clampInt(fn.requiredFacilityLevel === undefined || fn.requiredFacilityLevel === null ? 1 : fn.requiredFacilityLevel, 1, R.MAX_LEVEL);
       if (req === level && level > 1) out.push(fn.label || fn.id);
+    });
+    /* A level that opens a staff member (the Workshop's, step S12): "The Smith: ...". */
+    if (level > 1) (Array.isArray(fac.staff) ? fac.staff : []).forEach(function (st) {
+      if (st.level === level) out.push('The ' + st.name + (st.blurb ? ': ' + st.blurb : ''));
     });
     var fx = data && data.bastion && data.bastion.levelEffects;
     var lines = isObj(fx) && isObj(fx[facId]) ? fx[facId][level] : null;
@@ -1982,22 +1990,53 @@
     }
     return { costGP: 0, costText: '0gp' };
   };
-  /* The tool tables that can be picked as artisan tools (3420-3422). */
-  R.toolTableNames = function (tools) {
-    return Object.keys(tools || {}).filter(function (k) { return /Tools$/.test(k) || /Supplies$/.test(k); });
+  /* ---------- The Workshop's staff (Strip Back Overhaul, step S12) ----------
+     The Workshop has five staff who open one by one as it is upgraded: the Handyman (Level 1), the Smith (2), the Scholar (3),
+     the Alchemist (4) and the Artisan (5). Each is listed in facilities-data.js ("staff") and each of the Workshop's orders
+     names its staff member ("staff") and the level that opens it ("requiredFacilityLevel"). A craft order ("craftTables")
+     offers every item in the tool tables it names (tools-data.js), A to Z, 3 days each. Each staff member does ONE job at
+     a time (R.staffBusy); the five work in parallel. The Artisan Tools card (six tables picked by the DM) is gone. */
+  R.staffOf = function (fac, fn) {
+    var list = fac && Array.isArray(fac.staff) ? fac.staff : [];
+    for (var i = 0; i < list.length; i++) if (fn && list[i].id === fn.staff) return list[i];
+    return null;
   };
-  /* What the Workshop can craft with the chosen artisan tools (4514-4528). */
-  R.craftItems = function (s, tools) {
+  R.workshopStaff = function (data) {
+    var fac = R.facility(data, 'workshop');
+    return fac && Array.isArray(fac.staff) ? fac.staff : [];
+  };
+  /* The orders a staff member gives, in data order (the retired ones left out). */
+  R.staffOrders = function (fac, staffId) {
+    return ((fac && fac.functions) || []).filter(function (fn) { return fn && fn.staff === staffId && !fn.retired; });
+  };
+  /* What a craft order can make: every item of the tables it names, A to Z, once; at Workshop Level 5 the Artisan's extras
+     for that order join them (the hook; empty until Harry supplies them). */
+  R.craftItemsFor = function (data, fn, level) {
     var seen = {};
-    (s.artisanTools || []).filter(Boolean).forEach(function (t) {
-      (tools[t] || []).forEach(function (item) { seen[String(item)] = true; });
+    ((fn && fn.craftTables) || []).forEach(function (t) {
+      ((data.tools || {})[t] || []).forEach(function (item) { seen[String(item)] = true; });
     });
+    if (level >= R.MAX_LEVEL) ((fn && fn.artisanExtras) || []).forEach(function (item) { seen[String(item)] = true; });
     return Object.keys(seen).sort(function (a, b) { return a.localeCompare(b); });
+  };
+  /* Why a staff member can't take this order now ("The Smith is busy: Workshop: Smith - Longsword, due on Day 14."), or null.
+     Only the staff member's own pending orders count: another staff member's, an upgrade and a facility Research don't. */
+  R.staffBusy = function (s, data, fac, fn) {
+    var who = R.staffOf(fac, fn);
+    if (!who) return null;
+    var running = (s.pendingOrders || []).filter(function (o) {
+      if (!isObj(o) || o.facId !== fac.id) return false;
+      if (isObj(o.meta) && (o.meta.kind === 'upgrade' || o.meta.kind === 'research')) return false;
+      var f = R.fn(fac, o.fnId);
+      return !!(f && f.staff === who.id);
+    });
+    if (!running.length) return null;
+    return 'The ' + who.name + ' is busy: ' + (running[0].label || 'an order') + ', due on Day ' + running[0].dueDay + '.';
   };
   /* The choices a function's list shows. */
   R.fnOptions = function (s, data, fac, fn) {
-    if (fac.id === 'workshop' && fn.id === 'craft') {
-      return R.craftItems(s, data.tools).map(function (name) { return { label: name, craftItem: name }; });
+    if (fn.craftTables) {
+      return R.craftItemsFor(data, fn, R.getFacilityLevel(s, fac.id)).map(function (name) { return { label: name, craftItem: name }; });
     }
     /* The Dock's Register Port Charter: the Charters held and not yet
        registered or being registered (pull request 5; it moved from the Hall
@@ -2013,11 +2052,19 @@
     return fn.options || [];
   };
   function orderLabel(fac, fn, optionLabel) {
+    /* A Workshop order names the staff member who does it ("Workshop: Smith - Longsword"). */
+    var who = R.staffOf(fac, fn);
+    if (who) {
+      if (fn.craftTables) return fac.name + ': ' + who.name + ' - ' + (optionLabel || fn.label);
+      if (fn.production && (fn.options || []).length === 1) return fac.name + ': ' + who.name + ' - ' + fn.label;
+      return fac.name + ': ' + who.name + ' - ' + fn.label + (optionLabel ? ' (' + optionLabel + ')' : '');
+    }
     /* A production order with only one choice doesn't repeat it ("Timber Yard & Sawmill: Harvest Timber"). */
     if (fn.production && (fn.options || []).length === 1) return fac.name + ': ' + fn.label;
     if (fn.production && optionLabel) return fac.name + ': ' + fn.label + ' → ' + optionLabel;
     return fac.name + ': ' + fn.label + (optionLabel ? ' (' + optionLabel + ')' : '');
   }
+  R.orderLabel = orderLabel;
   function pendingSame(s, facId, fnId) {
     return s.pendingOrders.some(function (o) { return o.facId === facId && o.fnId === fnId; });
   }
@@ -2042,8 +2089,7 @@
 
   /* Can this order be given here? The facilities overhaul keeps each
      merged order's old party level ("requiredPartyLevel") and keeps the
-     Smithy's order only for a Bastion that had a Smithy ("onlyIfLegacy";
-     hidden otherwise). Returns { ok } or { ok: false, hidden?, message }. */
+     Smithy's order, which step S12 retired ("retired": hidden). Returns { ok } or { ok: false, hidden?, message }. */
   R.fnAvailable = function (s, fac, fn) {
     /* An order whose effect has nothing to work on yet (pull request 8b:
        Bless Bastion Foundations): listed, never given. */
@@ -2059,7 +2105,8 @@
     /* An order a facility level unlocks (the Hall's, and the production orders: pull request 3). */
     var need = clampInt(fn && fn.requiredFacilityLevel ? fn.requiredFacilityLevel : 1, 1, R.MAX_LEVEL);
     if (fac && need > 1 && R.getFacilityLevel(s, fac.id) < need) return { ok: false, message: 'Needs Level ' + need + '.' };
-    if (fn && fn.onlyIfLegacy && (s.legacyFacilities || []).indexOf(fn.onlyIfLegacy) === -1) return { ok: false, hidden: true, message: 'That order isn\'t available here.' };
+    /* An order that has ended ("retired": the Smithy's Smithing, replaced by the Smith) is never offered; one already pending still finishes. */
+    if (fn && fn.retired) return { ok: false, hidden: true, message: 'That order isn\'t given any more.' };
     var lvl = Number(fn && fn.requiredPartyLevel || 0);
     if (lvl && s.partyLevel < lvl) return { ok: false, message: 'Needs party level ' + lvl + '.' };
     return { ok: true };
@@ -2090,6 +2137,9 @@
       if (homeless) return { ok: false, message: homeless };
     }
     /* The House order is the one order that can be pending more than once: up to one for each beast (and one for each kind: housingBlocker). */
+    /* A Workshop staff member does one job at a time (the five work side by side). */
+    var occupied = R.staffBusy(s, data, fac, fn);
+    if (occupied) return { ok: false, message: occupied };
     if (!(fn.housesCreature || fn.housesSpecies) && pendingSame(s, facId, fnId)) return { ok: false, message: 'That order is already pending.' };
     var busy = productionBusy(s, data, fac, fn);
     if (busy) return { ok: false, message: busy };
@@ -2100,8 +2150,9 @@
     if (fn.options && fn.options.length) {
       chosen = fn.options[clampInt(optionIdx, 0)] || null;
       optionLabel = chosen && chosen.label ? chosen.label : String(chosen || '');
-    } else if (fac.id === 'workshop' && fn.id === 'craft') {
-      var picked = R.craftItems(s, data.tools)[clampInt(optionIdx, 0)] || '';
+    } else if (fn.craftTables) {
+      var picked = R.craftItemsFor(data, fn, R.getFacilityLevel(s, fac.id))[clampInt(optionIdx, 0)] || '';
+      if (!picked) return { ok: false, message: 'There is nothing on this list to craft.' };
       chosen = { label: picked, craftItem: picked };
       optionLabel = picked;
     } else if (fn.portCharter) {
@@ -2119,7 +2170,7 @@
       chosen = { creatureId: String(fn.housesCreature) };
     }
     var notes = '';
-    if (facId === 'library_scriptorium' && fnId === 'research') notes = data.bastion.scriptureNotes[String(optionLabel || '').trim()] || '';
+    if (facId === 'workshop' && fnId === 'research') notes = data.bastion.scriptureNotes[String(optionLabel || '').trim()] || '';
     var inputs = chosen && Array.isArray(chosen.inputs) ? chosen.inputs : [];
     var costGP = R.computeFnCost(s, fac, fn, chosen).costGP;
     if (costGP > s.treasuryGP) return { ok: false, message: 'Not enough gp. Need ' + costGP + 'gp, you have ' + s.treasuryGP + 'gp.' };
@@ -2517,7 +2568,7 @@
       R.appendToWarehouse(s, optionLabel || 'Chartered vessel', 1, '', 'Dock', rand);
       return [['Order Completed', label + ' → Added to Warehouse.']];
     }
-    if (fac.id === 'workshop' && fn.id === 'craft' && chosen && chosen.craftItem) {
+    if (fac.id === 'workshop' && chosen && chosen.craftItem) {
       R.appendToWarehouse(s, chosen.craftItem, 1, '', 'Workshop', rand);
       return [['Order Completed', label + ' → Crafted: ' + chosen.craftItem + '.']];
     }
@@ -2703,19 +2754,32 @@
       var sig = facName + '__' + (fnLabel || '');
       if (!map[key].some(function (x) { return x.facName + '__' + (x.fnLabel || '') === sig; })) map[key].push({ facName: facName, fnLabel: fnLabel || '' });
     };
+    var owned = {};
     facilities.forEach(function (fac) {
       var facName = fac.name || fac.id || 'Unknown Facility';
       (fac.functions || []).forEach(function (fn) {
         if (fn.production) return; /* goods and recipes aren't Compendium items */
+        if (fn.retired) return;    /* the Smithy's old Smithing: the Smith crafts the same items */
         var fnLabel = fn.label || fn.id || '';
+        /* A craft order (the Workshop's staff): every item of its tool tables, under the staff member who crafts it. */
+        if (Array.isArray(fn.craftTables)) {
+          var who = R.staffOf(fac, fn);
+          fn.craftTables.forEach(function (t) {
+            owned[t] = true;
+            ((tools || {})[t] || []).forEach(function (item) { add(String(item), facName, 'Craft' + (who ? ' (' + who.name + ')' : '')); });
+          });
+        }
         (Array.isArray(fn.options) ? fn.options : []).forEach(function (o) {
           if (o && typeof o === 'object' && 'label' in o) add(o.label, facName, fnLabel);
           else add(String(o), facName, fnLabel);
         });
       });
     });
+    /* The tables no staff member crafts from (the Arcana, Armaments and Magic Items tables) stay in the Compendium for
+       reference: an item only they hold is listed as "Compendium only" (Dread Helm, Moon-Touched Sword, Smoldering Armor). */
     Object.keys(tools || {}).forEach(function (t) {
-      (Array.isArray(tools[t]) ? tools[t] : []).forEach(function (item) { add(String(item), 'Workshop', 'Craft (via Artisan Tools)'); });
+      if (owned[t]) return;
+      (Array.isArray(tools[t]) ? tools[t] : []).forEach(function (item) { if (!map[String(item).trim()]) add(String(item), 'Workshop', 'Compendium only'); });
     });
     var items = order.slice().sort(function (a, b) { return a.localeCompare(b, undefined, { sensitivity: 'base' }); });
     return { items: items, links: map };
