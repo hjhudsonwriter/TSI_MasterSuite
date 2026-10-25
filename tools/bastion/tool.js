@@ -1712,50 +1712,6 @@
         done();
       });
 
-      var artCard = card('artisan', 'Artisan Tools', { cls: 'tsi-bas-card--art tsi-bas-card--artisan' });
-      var toolTables = R.toolTableNames(data.tools);
-      var artisanSelects = [0, 1, 2, 3, 4, 5].map(function (i) {
-        var sel = el('select', { class: 'tsi-input', 'data-test': 'artisan-' + i, 'aria-label': 'Set ' + (i + 1) },
-          [el('option', { value: '', text: '(None)' })].concat(toolTables.map(function (t) { return el('option', { value: t, text: t }); })));
-        life.on(sel, 'change', function () {
-          while (state.artisanTools.length < 6) state.artisanTools.push('');
-          state.artisanTools[i] = sel.value || '';
-          done();
-        });
-        bindTip(sel, function () {
-          var table = sel.value;
-          if (!table) return null;
-          var items = data.tools[table] || [];
-          var preview = items.slice(0, 24);
-          return {
-            title: table,
-            parts: items.length ? [muted('Enables ' + items.length + ' craftable item(s). Showing first ' + preview.length + ':'), tipList(preview)] : [muted('No items found for this tool table.')]
-          };
-        });
-        return sel;
-      });
-      TSI.append(artCard.body, [
-        muted('Select up to 6 tool/supply sets. Workshop Craft will use these.'),
-        el('div', { class: 'tsi-bas-tool-grid' }, artisanSelects.map(function (sel, i) { return field('Set ' + (i + 1), sel); })),
-        el('div', { class: 'tsi-bas-actions tsi-bas-actions--start' }, [
-          btn('Save', function () {
-            log('Artisan Tools', 'Saved artisan tool selections.');
-            done();
-          }, '', 'save-artisan'),
-          btn('Clear', async function () {
-            if (state.artisanTools.some(Boolean) && !(await ask('Clear the artisan tool selections? Workshop Craft will need them picked again.', 'Clear', 'Clear artisan tools'))) return;
-            if (!life.alive) return;
-            state.artisanTools = ['', '', '', '', '', ''];
-            log('Artisan Tools', 'Cleared artisan tool selections.');
-            done();
-          }, '', 'clear-artisan')
-        ])
-      ]);
-      function renderArtisan() {
-        while (state.artisanTools.length < 6) state.artisanTools.push('');
-        artisanSelects.forEach(function (sel, i) { setValue(sel, state.artisanTools[i] || ''); });
-      }
-
       /* ================================================================
          Facilities: the grid in the map's bottom bar, the build panel,
          each facility's panel, and the Orders panel
@@ -1994,7 +1950,7 @@
       function fnRow(fac, fn, locked) {
         if (fn.acclimatise) return acclimatiseRow(fac, fn, locked);
         var key = fac.id + '__' + fn.id;
-        var isCraft = fac.id === 'workshop' && fn.id === 'craft';
+        var isCraft = !!fn.craftTables;   /* a Workshop craft order: its list is the items of its tool tables */
         /* The Dock's Register Port Charter: a list of the Charters to register (pull request 5; the Hall's until step S08). */
         var isCharter = !!fn.portCharter;
         /* A House order (pull request 7): the Beast Pen's lists the beasts waiting for a home. */
@@ -2025,14 +1981,16 @@
         /* A production order (pull request 3): what the chosen recipe uses and makes. */
         var goodsLine = fn.production ? el('div', { class: 'tsi-bas-fn__goods', 'data-test': 'goods-' + key }) : null;
         /* Why a House order can't be given now, in a sentence (pull request 7). */
-        var whyLine = (isHousing || (fn.favourCost && !fn.production) || fn.waiting) ? el('div', { class: 'tsi-bas-fn__why', 'data-test': 'why-' + key, hidden: true }) : null;
+        var whyLine = (isHousing || (fn.favourCost && !fn.production) || fn.waiting || fn.staff) ? el('div', { class: 'tsi-bas-fn__why', 'data-test': 'why-' + key, hidden: true }) : null;
         function chosenNow() {
           if (isHousing && fn.housesSpecies) return options[select ? R.clampInt(select.value, 0) : 0] || null;
           return fn.production && fn.options && fn.options.length ? fn.options[select ? R.clampInt(select.value, 0) : 0] || null : null;
         }
         function refresh() {
           var chosen = chosenNow();
-          var why = repair ? null : !avail.ok ? avail.message : fn.production ? (R.productionBusy(state, data, fac, fn) || R.recipeBlocker(state, data, fac, fn, chosen))
+          /* A Workshop staff member does one job at a time. */
+          var staffWhy = fn.staff && !repair && avail.ok ? R.staffBusy(state, data, fac, fn) : null;
+          var why = repair ? null : !avail.ok ? avail.message : staffWhy ? staffWhy : fn.production ? (R.productionBusy(state, data, fac, fn) || R.recipeBlocker(state, data, fac, fn, chosen))
             : isCharter && R.registerBusy(state, data) ? R.registerBusy(state, data)
             : isCharter && !options.length ? 'No Port Charter to register: the DM grants one in the Explorer, and each is registered once.'
             : isHousing ? R.housingBlocker(state, data, fac, fn, fn.housesSpecies && chosen ? chosen.creatureId : undefined) || null : null;
@@ -2041,7 +1999,7 @@
           if (noFavour) why = noFavour;
           issue.disabled = !!(locked || repair > 0 || why);
           issue.title = repair ? repairText(fac, repair) : why || null;
-          issue.textContent = repair ? 'Under Repair' : !avail.ok ? avail.message : why && fn.production ? 'Can\'t order yet' : why && isCharter ? (options.length ? 'One at a time' : 'No Port Charter to register')
+          issue.textContent = repair ? 'Under Repair' : !avail.ok ? avail.message : staffWhy ? 'Busy' : why && fn.production ? 'Can\'t order yet' : why && isCharter ? (options.length ? 'One at a time' : 'No Port Charter to register')
             : why && isHousing ? housingShort(fac, fn, chosen) : noFavour ? 'Not enough Favour' : 'Issue Order';
           if (whyLine) {
             var wtext = !avail.ok && avail.why ? avail.why : why && !repair && avail.ok ? why : '';
@@ -2071,6 +2029,57 @@
           whyLine,
           issue,
           !isCraft && fn.notes ? el('div', { class: 'tsi-bas-fn__notes', text: fn.notes }) : null
+        ]);
+      }
+      /* ---------- The Workshop's staff (Strip Back Overhaul, step S12) ----------
+         Five cards side by side: the Handyman (Level 1), Smith (2), Scholar (3), Alchemist (4) and Artisan (5) open one by
+         one as the Workshop is upgraded; a staff member who isn't open yet is greyed, with the level that opens them. An open
+         one shows his jobs (a dropdown when he has more than one) and the usual order row for the job chosen: a staff member
+         does one job at a time (R.staffBusy), the five work side by side. Under the cards, Craft Magic Item, which is not a
+         staff job. The Artisan Tools card this replaces is gone. */
+      function staffCard(fac, st, lvl) {
+        var locked = lvl < st.level;
+        var jobs = R.staffOrders(fac, st.id);
+        var jobKey = 'staff_' + st.id;
+        var pick = jobs.length ? R.clampInt(selections[jobKey], 0, jobs.length - 1) : 0;
+        var fn = jobs[pick] || null;
+        var running = state.pendingOrders.filter(function (o) { var f = R.fn(fac, o.fnId); return o.facId === fac.id && f && f.staff === st.id && !(o.meta && o.meta.kind); });
+        var parts = [
+          el('div', { class: 'tsi-bas-staff__head' }, [
+            el('div', { class: 'tsi-bas-staff__name', text: st.name }),
+            el('div', { class: 'tsi-bas-staff__level', 'data-test': 'staff-level-' + st.id, text: locked ? 'Opens at Level ' + st.level : 'Level ' + st.level + ' · open' })
+          ]),
+          el('div', { class: 'tsi-bas-staff__blurb', text: st.blurb || '' })
+        ];
+        if (st.placeholder && st.note && (locked || fn)) parts.push(el('div', { class: 'tsi-bas-staff__placeholder', 'data-test': 'staff-placeholder-' + st.id, text: st.note }));
+        if (locked) {
+          parts.push(el('div', { class: 'tsi-bas-staff__locked', 'data-test': 'staff-locked-' + st.id, text: jobs.length ? 'Gives: ' + jobs.map(function (j) { return j.jobLabel || j.label; }).join('; ') + '.' : 'Not open yet.' }));
+        } else if (!fn) {
+          parts.push(el('div', { class: 'tsi-bas-staff__empty', 'data-test': 'staff-empty-' + st.id, text: st.note || 'Nothing to give yet.' }));
+        } else {
+          if (jobs.length > 1) {
+            var sel = el('select', { class: 'tsi-input tsi-bas-staff__job', 'aria-label': st.name + '\'s job', 'data-test': 'staff-job-' + st.id }, jobs.map(function (j, i) {
+              return el('option', { value: String(i), text: j.jobLabel || j.label });
+            }));
+            sel.value = String(pick);
+            sel.addEventListener('change', function () { selections[jobKey] = sel.value; renderFacPanel(fac.id); });
+            parts.push(sel);
+          }
+          if (jobs.length === 1) parts.push(el('div', { class: 'tsi-bas-staff__job-title', text: fn.jobLabel || fn.label }));
+          parts.push(fnRow(fac, fn, false));
+          if (running.length) parts.push(el('div', { class: 'tsi-bas-staff__busy', 'data-test': 'staff-busy-' + st.id, text: 'Working on: ' + running.map(function (o) { return o.label + ' (Day ' + o.dueDay + ')'; }).join('; ') }));
+        }
+        return el('div', { class: 'tsi-bas-staff' + (locked ? ' is-locked' : ''), 'data-test': 'staff-' + st.id, 'aria-disabled': locked ? 'true' : null }, parts);
+      }
+      function workshopSection(fac, lvl) {
+        var magic = R.fn(fac, 'craft_magic_item');
+        return el('div', { class: 'tsi-bas-workshop', 'data-test': 'workshop-staff' }, [
+          label('Staff'),
+          el('div', { class: 'tsi-bas-staff__grid' }, R.workshopStaff(data).map(function (st) { return staffCard(fac, st, lvl); })),
+          magic ? el('div', { class: 'tsi-bas-workshop__magic', 'data-test': 'workshop-magic' }, [
+            el('div', { class: 'tsi-bas-workshop__tag', text: 'Not a staff job' }),
+            fnRow(fac, magic, lvl < R.clampInt(magic.requiredFacilityLevel || 1, 1, R.MAX_LEVEL))
+          ]) : null
         ]);
       }
       /* A House order's button when it can't be given (the sentence is under it). */
@@ -2294,8 +2303,8 @@
       /* ---------- A facility's panel ----------
          Its painting, level and status, the orders pending there (with
          Cancel, and Resolve for one waiting for a roll), then its orders as
-         before, each with the days it takes. The Workshop's also holds the
-         Artisan Tools, which its Craft list uses. */
+         before, each with the days it takes. The Workshop's holds its five
+         staff (workshopSection) in place of the old Artisan Tools card. */
       function openFacility(id) {
         if (id === 'hall_of_emissaries') {
           return openPanel('diplomacy', { title: dipCard.title, node: dipCard.root, cls: 'tsi-bas-panel--wide tsi-bas-modal--hall', back: 'tile-' + id });
@@ -2374,7 +2383,9 @@
         state.pendingOrders.forEach(function (o, i) { if (o.facId === id) mine.push(pendingRow(o, i)); });
         /* The Temple's blessings are not orders: its panel is the three gods (templeSection, below). */
         var isTemple = id === R.TEMPLE_ID;
-        var fns = isTemple ? [] : [upgradeRow(fac), researchRow(fac)].filter(Boolean).concat((fac.functions || []).filter(function (fn) { return !R.fnAvailable(state, fac, fn).hidden; }).map(function (fn) {
+        /* The Workshop's orders are its staff's (workshopSection, below): its panel lists only the Upgrade row here. */
+        var isWorkshop = Array.isArray(fac.staff) && fac.staff.length > 0;
+        var fns = isTemple ? [] : isWorkshop ? [upgradeRow(fac)] : [upgradeRow(fac), researchRow(fac)].filter(Boolean).concat((fac.functions || []).filter(function (fn) { return !R.fnAvailable(state, fac, fn).hidden; }).map(function (fn) {
           var req = R.clampInt(fn.requiredFacilityLevel === undefined || fn.requiredFacilityLevel === null ? 1 : fn.requiredFacilityLevel, 1, R.MAX_LEVEL);
           return fnRow(fac, fn, lvl < req);
         }));
@@ -2395,7 +2406,7 @@
             ])
           ]),
           id === 'dock' ? null : isTemple ? templeSection() : fnsNode,
-          id === 'workshop' ? el('div', { class: 'tsi-bas-facpanel__artisan' }, [label('Artisan Tools'), artCard.root]) : null,
+          isWorkshop ? workshopSection(fac, lvl) : null,
           id === 'dock' ? dockTabs(fnsNode) : null,
           id === R.COURIER_FAC ? courierSection() : null,
           penSection(id),
@@ -3877,7 +3888,6 @@
         renderManagement();
         renderDiplomacy();
         renderWarehouse();
-        renderArtisan();
         renderFacilities();
         renderPanel();
         /* An open Ship cargo or Standing shipment pop-up follows the Bastion. */
