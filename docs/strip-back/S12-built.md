@@ -36,4 +36,8 @@ Pure, idempotent, audit-clean, plain-English lines. A save with a Library or Lab
 
 ## Results
 
-See the end of the build report given to the lead (every gate is listed there).
+One at a time, from a double-clicked index.html with the internet off, in this worktree:
+- Rules page 1151/1151 (was 1131; +20 new); static check passes.
+- New `workshop` 16/16 (layout at 1707 x 930 ratio 1.5, 1920 x 1080 ratio 1 and 1280 x 720). `bastion-screen` 54/54, `phase9` 66/66, `creatures` 23/23, `courier` 27/27, `migration-v4` 35/35 (the box's expected lines now include the Workshop's).
+- `beast-pen` 24/24, `bridge` 37/37, `dmdoc` 50/50, `bastion-days` 16/16, `guide` 21/21, `phase1` 129/129, `temple` 18/18, `party-name` 26/26, `dock` 12/12, `hall-records` 12/12, `beasthandler` 15/15.
+- `phase8` 77/78: the one failure is "Compared with the old Explorer", which needs `_legacy/` (known in a worktree).
