@@ -343,9 +343,9 @@ All 139 media files from the old Bastion (131 PNGs and 8 SVGs). 121 distinct fil
 | `assets/ui/molten_trade_route.png` | `tools/bastion/assets/ui/molten_trade_route.png` | 38 KB, 1494 × 1996 | Yes: Molten's glowing route on the Sea Trade Routes map |
 | `assets/ui/rowthorn_trade_route.png` | `tools/bastion/assets/ui/rowthorn_trade_route.png` | 32 KB, 1494 × 1996 | Yes: Rowthorn's glowing route on the Sea Trade Routes map |
 | `assets/ui/slade_trade_route.png` | `tools/bastion/assets/ui/slade_trade_route.png` | 35 KB, 1494 × 1996 | Yes: Slade's glowing route on the Sea Trade Routes map |
-| `assets/ui/trade_disputes.png` | `tools/bastion/assets/ui/trade_disputes.png` | 2.57 MB, 1536 × 1024 | Yes: faint behind the Council Ledger |
-| `assets/ui/trade_signing.png` | `tools/bastion/assets/ui/trade_signing.png` | 4.39 MB, 2048 × 1365 | Yes: the trade network's result boxes |
-| `assets/ui/wax_stamp.png` | `tools/bastion/assets/ui/wax_stamp.png` | 2.09 MB, 1536 × 1024 | Yes: the Council Verdict box |
+| `assets/ui/trade_disputes.png` | `tools/bastion/assets/extras/ui/trade_disputes.png` | 2.57 MB, 1536 × 1024 | No longer: the Council Ledger went with the Hall's stripping (S09); moved to extras (S19) |
+| `assets/ui/trade_signing.png` | `tools/bastion/assets/extras/ui/trade_signing.png` | 4.39 MB, 2048 × 1365 | No longer: the trade network's result boxes went (S09); moved to extras (S19) |
+| `assets/ui/wax_stamp.png` | `tools/bastion/assets/extras/ui/wax_stamp.png` | 2.09 MB, 1536 × 1024 | No longer: the Council Verdict box went (S09); moved to extras (S19) |
 | `data/compendium_cards/Acid.png` | `tools/bastion/assets/extras/compendium_cards/Acid.png` | 29 KB, 444 × 229 | No: a card whose name doesn't exactly match a Compendium item, so it never showed (B15) |
 | `data/compendium_cards/Alchemist's Fire.png` | `tools/bastion/assets/extras/compendium_cards/Alchemist's Fire.png` | 33 KB, 444 × 229 | No: a card whose name doesn't exactly match a Compendium item, so it never showed (B15) |
 | `data/compendium_cards/Arcane Focus.png` | `tools/bastion/assets/extras/compendium_cards/Arcane Focus.png` | 28 KB, 444 × 300 | No: a card whose name doesn't exactly match a Compendium item, so it never showed (B15) |
@@ -437,8 +437,8 @@ Harry's own art, uploaded to `bastion-new-art/` (kept there untouched, with its 
 | `bastion-new-art/1-first-upload/07_Shrine_of_Telluria_Overlay.png` | `tools/bastion/assets/map/overlays/shrine_of_telluria.png` | 3000 × 1250 | Yes: the Shrine of Telluria |
 | `bastion-new-art/1-first-upload/08_Shrine_of_Pelagos_Overlay.png` | `tools/bastion/assets/map/overlays/shrine_of_pelagos.png` | 3000 × 1250 | Yes: the Shrine of Pelagos |
 | `bastion-new-art/2-second-upload/09_Wyvern_Roost_Overlay.png` | `tools/bastion/assets/map/overlays/wyvern_roost.png` | 3000 × 1250 | Yes: in Construction, the Wyvern Roost's tile shows its building cut from this picture while it's in development; on the map once it can be built and is built |
-| `bastion-new-art/2-second-upload/10_Griffin_Tower_Overlay.png` | `tools/bastion/assets/map/overlays/griffin_tower.png` | 3000 × 1250 | Yes: in Construction, the Griffin Tower's tile shows its building cut from this picture while it's in development; on the map once it can be built and is built |
-| `bastion-new-art/2-second-upload/11_Dire_Wolf_Den_Overlay.png` | `tools/bastion/assets/map/overlays/dire_wolf_den.png` | 3000 × 1250 | Yes: in Construction, the Dire Wolf Den's tile shows its building cut from this picture while it's in development; on the map once it can be built and is built |
+| `bastion-new-art/2-second-upload/10_Griffin_Tower_Overlay.png` | `tools/bastion/assets/extras/map/overlays/griffin_tower.png` | 3000 × 1250 | No longer: the Griffin Tower's tile art; the Beast Pen replaced the three pens (S10); moved to extras (S19) |
+| `bastion-new-art/2-second-upload/11_Dire_Wolf_Den_Overlay.png` | `tools/bastion/assets/extras/map/overlays/dire_wolf_den.png` | 3000 × 1250 | No longer: the Dire Wolf Den's tile art; the Beast Pen replaced the three pens (S10); moved to extras (S19) |
 | `bastion-new-art/2-second-upload/12_Weavers_Sailmakers_Hall_Overlay.png` | `tools/bastion/assets/map/overlays/weavers_sailmakers_hall.png` | 3000 × 1250 | Yes: in Construction, the Weavers' Hall's tile shows its building cut from this picture while it's in development; on the map once it can be built and is built |
 | `bastion-new-art/2-second-upload/13_Stone_Quarry_Masonworks_Overlay.png` | `tools/bastion/assets/map/overlays/stone_quarry_masonworks.png` | 3000 × 1250 | Yes: in Construction, the Stone Quarry & Masonworks's tile shows its building cut from this picture while it's in development; on the map once it can be built and is built |
 | `bastion-new-art/2-second-upload/14_Fishery_Smokehouse_Overlay.png` | `tools/bastion/assets/map/overlays/fishery_smokehouse.png` | 3000 × 1250 | Yes: in Construction, the Fishery & Smokehouse's tile shows its building cut from this picture while it's in development; on the map once it can be built and is built |
@@ -525,3 +525,16 @@ Ten PNGs (941 × 1672, about 3 MB each), each named for its Regional Variety: `W
 
 **Still unused, kept:** `tools/beasthandler/assets/extras/wyvern/wyvern-1-mossy-green-misty-valleys.webp` and `wyvern-2-volcanic-copper-wings.webp` (first sent in the chat; they belong to none of the five varieties).
 
+
+
+## Strip Back Overhaul, step S19: pictures moved to extras (25 October 2026)
+
+Nothing deleted. Five pictures no longer used moved with `git mv` (byte-for-byte). The Temple shows its three Shrine paintings (tile) and three map overlays; the Beast Pen's tile is `facilities/menagerie.png`, its panel strip `facilities/beast_pen.jpg` and its map overlay `map/overlays/wyvern_roost.png`.
+
+| Old location | New location |
+|---|---|
+| `tools/bastion/assets/ui/trade_signing.png` | `tools/bastion/assets/extras/ui/trade_signing.png` |
+| `tools/bastion/assets/ui/trade_disputes.png` | `tools/bastion/assets/extras/ui/trade_disputes.png` |
+| `tools/bastion/assets/ui/wax_stamp.png` | `tools/bastion/assets/extras/ui/wax_stamp.png` |
+| `tools/bastion/assets/map/overlays/griffin_tower.png` | `tools/bastion/assets/extras/map/overlays/griffin_tower.png` |
+| `tools/bastion/assets/map/overlays/dire_wolf_den.png` | `tools/bastion/assets/extras/map/overlays/dire_wolf_den.png` |

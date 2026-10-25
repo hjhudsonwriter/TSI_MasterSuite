@@ -146,3 +146,15 @@ Harry asked for the new art first, ahead of the facilities overhaul (decisions D
   - overlays are drawn in the table's order.
 - **The crest badge** sits over the painting's top-right sky. A test checks it never covers the Hall of Emissaries on the laptop, in full screen, on the TV or in a 1280 × 720 window.
 
+
+
+## S19 (25 October 2026): retired pictures
+
+The Griffin Tower and Dire Wolf Den map overlays went with the three pens (the Beast Pen replaced them). Moved byte-for-byte:
+
+| Old location | New location |
+|---|---|
+| `tools/bastion/assets/map/overlays/griffin_tower.png` | `tools/bastion/assets/extras/map/overlays/griffin_tower.png` |
+| `tools/bastion/assets/map/overlays/dire_wolf_den.png` | `tools/bastion/assets/extras/map/overlays/dire_wolf_den.png` |
+
+The Temple draws `shrine_of_aurush.png`, `shrine_of_telluria.png` and `shrine_of_pelagos.png` (map overlays) and shows the three Shrine paintings as strips on its tile. The Beast Pen draws `wyvern_roost.png` on the map and uses the Menagerie picture for its tile (an open question for Harry).
