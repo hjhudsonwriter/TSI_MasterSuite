@@ -1,0 +1,16 @@
+# S12 known issues (draft for docs/KNOWN_ISSUES.md)
+
+| Id | What | Before / after | Left alone or fixed |
+|---|---|---|---|
+| WS-a | **Handyman's list is a PLACEHOLDER** (Harry will supply it) | Before: the DM picked up to six tool tables. After: the Handyman crafts from the six tables nobody else claims (103 items, 3 days), marked PLACEHOLDER in the data, on his card and here. | Placeholder, by decision |
+| WS-b | **Artisan's extras are a placeholder**: "Extra options: to come" | After: a card with no orders; `artisanExtras` on every craft order is the hook (empty). | Placeholder, by decision |
+| WS-c | **Smithing retired** | Before: a 5-day, 29-item order for Bastions that had a Smithy. After: hidden; the Smith crafts the 30 items of Smith's Tools in 3 days. A Smithing order already pending still finishes. | Deliberate |
+| WS-d | **Library & Scriptorium and Arcane Laboratory removed** | Their jobs are the Scholar's and Alchemist's; pending orders move with their ids and days; upgrades there are cancelled (free); slots freed. | Deliberate |
+| WS-e | **QUESTION FOR HARRY: charts and Research now need the Workshop at Level 3.** | Before: Overland charts needed the Library at Level 2 (7 days of upgrading). After: the Scholar opens at Workshop Level 3 (7 + 14 days of upgrading, 21 in all). The Workshop's own level is NOT raised for a Bastion that had a Library, so such a Bastion cannot prepare charts until the Workshop is upgraded. The conversion report says so. Should a Bastion that had a Library at Level 2 get the Workshop raised to Level 3 once, as a goodwill step? (Not done: it would give free levels.) Likewise the Alchemist needs Level 4 for orders the Laboratory gave from the start (Craft Common and Uncommon had no level need; Alchemy needed party level 9). | Question |
+| WS-f | **Alchemy's party-level-9 gate dropped** (Harry's E Q5 default) | Before: Alchemy needed party level 9. After: only Workshop Level 4. | Deliberate |
+| WS-g | **Duplicate potions left out of the Alchemist's lists** | Potion of Climbing (Craft Common), Potion of Resistance and Potion of Water Breathing (Craft Uncommon) are offered once, at 3 days, by Alchemist's Supplies. An order already pending for one still finishes. | Deliberate |
+| WS-h | **Several jobs at one staff member after conversion** | A Bastion that had a Library chart order and a Research order running at once keeps both (they finish as before); new orders wait until the Scholar is free. | Left alone |
+| WS-i | **BAS-26 (scripture notes never attach) moves with Research** | The benefit text still does not attach. | Left alone |
+| WS-j | **The Library and Laboratory buildings are no longer drawn on the map**; their paintings and map overlays are in `assets/extras/`. | Could be drawn when the Workshop reaches Level 3 and 4 if Harry likes. | Left alone |
+| WS-k | `bastion-screen` ended with a "The Bastion has changed" box over the last check (Favour Tokens the Hall's wind-down still finds in a save an earlier check left); the test now presses "I've read this". | Test only. | Fixed in the test |
+| WS-l | Rope of Climbing is in Craft Magic Item but in no reference table (harmless, as before). | | Left alone |
