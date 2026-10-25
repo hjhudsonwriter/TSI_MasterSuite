@@ -24,10 +24,12 @@
     BR.beastState(b);
     return b;
   }
-  /* The settings object is shared, so every test that fills it in puts it back. */
-  function withConfig(url, fn) {
+  /* The settings object is shared, so every test that fills it in puts it back. enabled is the file's on-switch (true unless a test says otherwise). */
+  function withConfig(url, fn, enabled) {
     var was = window.TSI_DATA.beastRelay;
-    window.TSI_DATA.beastRelay = { databaseURL: url };
+    var cfg = { databaseURL: url };
+    if (enabled !== 'omit') cfg.enabled = enabled === undefined ? true : enabled;   /* 'omit': a settings file with no enabled line at all */
+    window.TSI_DATA.beastRelay = cfg;
     function restore() { window.TSI_DATA.beastRelay = was; }
     var out;
     try { out = fn(); } catch (e) { restore(); throw e; }
@@ -178,7 +180,10 @@
     var life = TSI.createLife('a test of the real transport');
     var tr = RL.http(TEST_URL, life);
     var was = RL.TIMEOUT_MS;
-    function end() { window.fetch = saved; RL.TIMEOUT_MS = was; life.stop(); }
+    /* The transport checks the settings file's on-switch on every request, so the file is made to say "on" for this test. */
+    var wasConfig = window.TSI_DATA.beastRelay;
+    window.TSI_DATA.beastRelay = { enabled: true, databaseURL: TEST_URL };
+    function end() { window.fetch = saved; RL.TIMEOUT_MS = was; window.TSI_DATA.beastRelay = wasConfig; life.stop(); }
     script.push({ status: 204 }, { status: 200, body: '1234' }, { status: 200, body: JSON.stringify({ t: 3, d: 'a.b' }) }, { status: 200, body: 'null' }, { status: 204 },
       { status: 401, body: '{"error":"Permission denied"}' }, { status: 500 }, { status: 200, body: '{oops' }, new TypeError('Failed to fetch'));
     return tr.putState(chan, { t: 3, d: 'a.b' }).then(function (put) {
@@ -692,5 +697,105 @@
       });
     });
     return calls.then(function (c) { life.stop(); t.same(c, [], 'no request of any kind'); });
+  });
+  test('the phone has its own on-switch (enabled in relay-config.js): with an address and a linked phone but enabled false, missing or not a real true, the phone makes no request, no timer and no listener', function (t) {
+    var made = 0;
+    var life = TSI.createLife('a phone');
+    var pairing = { campaign: 'CAMPAIGN12345678', handler: 'mira', name: 'Mira', secret: SECRET };
+    var puller = BH.puller.create({ life: life, pairing: function () { return pairing; }, held: function () { return null; }, take: function () {}, transport: function () { made++; return RL.memory(); } });
+    var calls = watchNetwork(function () {
+      var chain = Promise.resolve();
+      [false, 'omit', 'true', 'yes', 1, 0, null, {}, [true]].forEach(function (v) {
+        chain = chain.then(function () {
+          return withConfig(TEST_URL, function () {
+            puller.start();
+            t.equal(puller.active(), false, 'enabled ' + (v === 'omit' ? 'missing' : JSON.stringify(v)) + ': nothing to do');
+            t.same(puller.debug(), { started: false, timer: false, lastT: null });
+            return puller.check(true).then(function (st) { t.equal(st.state, 'off'); });
+          }, v);
+        });
+      });
+      return chain.then(function () {
+        document.dispatchEvent(new Event('visibilitychange'));
+        window.dispatchEvent(new Event('online'));
+        t.equal(made, 0, 'no post box was ever made, however many times it was asked');
+        return withConfig(TEST_URL, function () {
+          puller.start();
+          t.equal(puller.active(), true, 'enabled true, an address and a linked phone: it runs');
+          t.equal(puller.debug().timer, true);
+          return puller.check(true).then(function () {
+            t.ok(made >= 1, 'and it looks in the post box');
+            puller.stop();
+            t.equal(puller.debug().timer, false);
+          });
+        });
+      });
+    });
+    return calls.then(function (c) { life.stop(); t.same(c, [], 'no fetch, no XMLHttpRequest, no EventSource, no WebSocket, no beacon'); });
+  });
+
+  test('with enabled false the real transport sends nothing even if something calls it directly; with enabled true it sends exactly the one request asked for', function (t) {
+    var chan = S.chan(SECRET);
+    var life = TSI.createLife('a direct caller');
+    var calls = watchNetwork(function (log) {
+      var tr = RL.http(TEST_URL, life);
+      return withConfig(TEST_URL, function () { return tr.getStamp(chan); }, false).then(function (r) {
+        t.same([r.ok, r.why], [false, 'closed']);
+        return withConfig(TEST_URL, function () { return tr.putState(chan, { t: 1, d: 'a.b' }); }, 'omit');
+      }).then(function (r) {
+        t.equal(r.ok, false);
+        t.same(log, [], 'nothing left while the file did not say enabled: true');
+        return withConfig('https://x-default-rtdb.firebaseio.com', function () { return tr.getStamp(chan); });
+      }).then(function (r) {
+        t.equal(r.ok, false, 'a different address from the one the file holds is refused too');
+        t.same(log, [], 'still nothing');
+        return withConfig(TEST_URL, function () { return tr.getStamp(chan); });
+      }).then(function () {
+        t.equal(log.length, 1, 'switched on, the one request is made');
+        t.equal(log[0], 'fetch ' + TEST_URL + '/tsi/state/' + chan + '/t.json');
+      });
+    });
+    return calls.then(function () { life.stop(); });
+  });
+
+  test('the Bastion with its own switch on and an address but enabled false in the file sends nothing, builds nothing, and says why', function (t) {
+    return withConfig(TEST_URL, function () {
+      var w = setup();
+      BR.setBeastOnlineLink(w.b, true);
+      return watchNetwork(function () {
+        return w.pub.tick().then(function (st) {
+          t.equal(st.state, 'notenabled');
+          t.ok(/enabled: false/.test(L.statusLine(st, 0)), L.statusLine(st, 0));
+          t.equal(w.made(), 0, 'no post box was made');
+          t.same(w.store.log, []);
+          return w.pub.selfTest();
+        }).then(function (r) {
+          t.equal(r.ok, false, '"Test the link" does not run either');
+          t.same(w.store.log, []);
+          return w.pub.sendNow();
+        }).then(function () {
+          t.same(w.store.log, [], 'nor does Send to phones now');
+          t.equal(w.made(), 0);
+        });
+      }).then(function (calls) {
+        t.same(calls, [], 'no request of any kind');
+        w.life.stop();
+      });
+    }, false);
+  });
+
+  test('with the file on (enabled true and an address) but the DM\'s Switch on not pressed, the Bastion still sends nothing; pressing it sends', function (t) {
+    return withConfig(TEST_URL, function () {
+      var w = setup();
+      return w.pub.tick().then(function (st) {
+        t.equal(st.state, 'off');
+        t.equal(w.made(), 0);
+        BR.setBeastOnlineLink(w.b, true);
+        return w.pub.tick();
+      }).then(function () {
+        t.equal(Object.keys(w.store.docs).length, 1, 'both switches on: it sends');
+        w.life.stop();
+      });
+    });
   });
 }());

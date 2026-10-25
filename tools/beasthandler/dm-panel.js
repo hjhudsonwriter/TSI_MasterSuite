@@ -10,7 +10,8 @@
    - change the "Phone page address" the QR code points at;
    - see (and, once set up, switch on) the OPTIONAL online link, which keeps phones
      up to date by themselves. It is off, and does nothing at all, until the DM sets
-     it up (docs/ONLINE-LINK-SETUP.md) and switches it on;
+     it up (relay-config.js: an address and enabled: true; docs/ONLINE-LINK-SETUP.md)
+     and switches it on here. Switch off stops this laptop only;
    - under "Offline backup" (shut until opened): the old copy-and-paste way, a pairing
      code and a snapshot code to send in a message, so the table never depends on
      the internet.
@@ -209,13 +210,13 @@
       });
       function onlineBox(s) {
         var st = pub ? pub.status() : { state: 'unset' };
-        var configured = st.state !== 'unset';
-        var on = st.state !== 'unset' && st.state !== 'off';
+        var configured = st.state !== 'unset' && st.state !== 'notenabled';
+        var on = configured && st.state !== 'off';
         statusNode = el('p', { class: 'tsi-bas-beast__status', 'data-test': 'beast-online-status', role: 'status', text: BH.link.statusLine(st, Date.now()) });
         var kids = [
           el('div', { class: 'tsi-bas-label', text: 'Online link (optional)' }),
           statusNode,
-          muted('Keeps players\' phones up to date by themselves, through a small private post box that you set up. Everything sent is scrambled first. It does nothing until you set it up and switch it on, and the codes under Offline backup always still work.'),
+          muted('Keeps players\' phones up to date by themselves, through a small private post box that you set up. Everything sent is scrambled first. It does nothing until relay-config.js has the address and says enabled: true, and you press Switch on here. Switch off stops this laptop sending; phones keep looking until enabled is set back to false in the published relay-config.js. The codes under Offline backup always still work.'),
           el('p', { class: 'tsi-bas-muted' }, el('a', { href: TSI.path('guide.html') + '#beasthandler-online', target: '_blank', rel: 'noopener', 'data-test': 'beast-online-guide', text: 'How to set it up' }))
         ];
         var row = [];

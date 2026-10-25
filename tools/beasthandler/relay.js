@@ -1,14 +1,19 @@
 /* Scarlett Isles: Beast Handler — the OPTIONAL online link: talking to the post box (S17, 22 October 2026).
 
-   READ THIS FIRST. This file is completely dormant unless BOTH of these are true:
-   1. tools/beasthandler/relay-config.js holds a database address (it ships empty), and
-   2. in the Bastion, the DM has pressed "Switch on" in the Beast Handler box (the
-      switch is s.beast.onlineLink in the Bastion's save, off until pressed). On the
-      player's phone page the address alone is enough, because only a phone that has
-      been linked with a QR code ever looks.
+   READ THIS FIRST. This file is completely dormant unless the settings file switches
+   it on:
+   1. tools/beasthandler/relay-config.js says enabled: true (it ships false) AND holds
+      a database address (it ships empty). That is the only on-switch the player's
+      phone page has, and a phone also has to have been linked with a QR code (or a
+      pairing code) before it ever looks.
+   2. In the Bastion, as well as 1, the DM has to press "Switch on" in the Beast
+      Handler box (the switch is s.beast.onlineLink in the Bastion's save, off until
+      pressed). The phone cannot see that switch.
    Until then nothing here makes a request of any kind: R.create() hands back null,
    and null means "do nothing". Nothing else in the suite can reach this file's
-   network calls, and the one place that does is R.http() below.
+   network calls, and the one place that does is R.http() below, which also checks
+   (on every request) that the settings file still says enabled: true with this
+   address, so even a caller that bypasses R.create() sends nothing while it is off.
 
    What it is: a small "post box" at Google (a Firebase Realtime Database that Harry
    owns, in a project that is NOT the Knightly Treasures shop's) that keeps a player's
@@ -132,6 +137,8 @@
 
     function request(method, path, body) {
       if (closed || (life && !life.alive)) return no('closed');
+      /* The settings file's on-switch, checked at the very last step: no enabled: true with this address, no request. */
+      if (L().configuredUrl() !== base) return no('closed');
       if (typeof fetch !== 'function') return no('unsupported');
       return new Promise(function (resolve) {
         var finished = false;

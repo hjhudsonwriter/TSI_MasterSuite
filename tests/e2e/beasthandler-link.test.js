@@ -45,10 +45,12 @@ const SPY = () => {
   window.__copied = [];
   try { Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: t => { window.__copied.push(t); return Promise.resolve(); } } }); } catch (e) { /* the real clipboard */ }
 };
-/* Settings for the online link, set before the page's own scripts run, and kept even when relay-config.js assigns its empty ones. */
-const CONFIG = url => {
+/* Settings for the online link, set before the page's own scripts run, and kept even when relay-config.js assigns its empty ones.
+   arg: the made-up address (the file's on-switch is then on), or { enabled, databaseURL } to choose the on-switch too. */
+const CONFIG = arg => {
+  const cfg = typeof arg === 'string' ? { enabled: true, databaseURL: arg } : arg;
   let data = {};
-  Object.defineProperty(window, 'TSI_DATA', { configurable: true, get: () => data, set: v => { data = v; Object.defineProperty(data, 'beastRelay', { configurable: true, get: () => ({ databaseURL: url }), set: () => {} }); } });
+  Object.defineProperty(window, 'TSI_DATA', { configurable: true, get: () => data, set: v => { data = v; Object.defineProperty(data, 'beastRelay', { configurable: true, get: () => ({ enabled: cfg.enabled, databaseURL: cfg.databaseURL }), set: () => {} }); } });
   window.TSI_DATA = data;
 };
 
@@ -77,6 +79,8 @@ async function decodeQr(browser, png) {
 async function fakeRelay(context, db) {
   /* Anything else on the internet is stopped and counted (registered first, so the specific route below wins). */
   await context.route(/^(https?|wss?):\/\//, r => { db.stray.push(r.request().url()); return r.abort(); });
+  /* An EventSource is a web request (caught above); a WebSocket has its own kind of route. */
+  await context.routeWebSocket(/.*/, ws => { db.stray.push('websocket ' + ws.url()); ws.close(); });
   await context.route(new RegExp('^https://' + TEST_HOST.replace(/\./g, '\\.') + '/'), async route => {
     const req = route.request();
     const cors = { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET,PUT,DELETE,OPTIONS', 'access-control-allow-headers': 'content-type', 'access-control-max-age': '600' };
@@ -582,6 +586,35 @@ const newDb = () => ({ docs: {}, log: [], stray: [] });
     equal(await pp.$('[data-test=bhp-check]'), null);
   });
 
+  /* The phone's own on-switch: the file's "enabled". An address alone does nothing on a phone, however it was linked. */
+  const db0 = newDb();
+  await check('a phone that is linked (by QR) and whose settings file holds an address but says enabled: false makes no request of any kind, not at start, not when the page comes back to the front, not when the phone comes back online; with enabled: true the same phone looks', async () => {
+    const off = await phoneCtx({}, { offline: false });
+    await fakeRelay(off, db0);
+    await off.addInitScript(CONFIG, { enabled: false, databaseURL: TEST_URL });
+    const op = await off.newPage();
+    await op.goto(PHONE + fragment(miraLink));
+    await op.waitForSelector('[data-test=bhp-screen-snap]');
+    equal((await stored(op)).secret, mira.secret, 'it is linked');
+    await op.evaluate(() => { document.dispatchEvent(new Event('visibilitychange')); window.dispatchEvent(new Event('online')); });
+    await op.waitForTimeout(2500);
+    equal(await op.evaluate(() => window.__net), [], 'no fetch, XMLHttpRequest, EventSource, WebSocket or beacon');
+    equal([db0.log, db0.stray, off.log.net], [[], [], []], 'the made-up database and the browser saw nothing');
+    equal([await op.$('[data-test=bhp-live]'), await op.$('[data-test=bhp-check]')], [null, null], 'no live-update line and no Check now button');
+    const on = await phoneCtx({}, { offline: false });
+    await fakeRelay(on, db0);
+    await on.addInitScript(CONFIG, { enabled: true, databaseURL: TEST_URL });
+    const np = await on.newPage();
+    await np.goto(PHONE + fragment(miraLink));
+    await np.waitForSelector('[data-test=bhp-screen-snap]');
+    await np.waitForSelector('[data-test=bhp-check]', { timeout: 8000 });
+    for (let i = 0; i < 20 && !db0.log.length; i++) await np.waitForTimeout(250);
+    assert(db0.log.length >= 1 && db0.log.every(l => /^GET \/tsi\/state\//.test(l)), 'with both set it looks in the post box: ' + JSON.stringify(db0.log));
+    equal(db0.stray, [], 'and only in the made-up one');
+    await off.close();
+    await on.close();
+  });
+
   /* The test page never makes a request, even when it is set up and switched on: it gets a stand-in kept in memory. */
   const tctx = await H.newContext(browser, 'laptop', { backedUp: true });
   await tctx.route(/^(https?|wss?):\/\//, r => r.abort());
@@ -777,6 +810,32 @@ const newDb = () => ({ docs: {}, log: [], stray: [] });
     assert(urls.length > 5, 'it did use the made-up database');
     assert(urls.every(u => u.indexOf('https://' + TEST_HOST + '/') === 0), urls.filter(u => u.indexOf('https://' + TEST_HOST + '/') !== 0).join(', '));
     equal([odm.log.errors, oph.log.errors], [[], []]);
+  });
+
+  await check('the isolation itself works: a WebSocket, an EventSource, a beacon, a fetch and an XMLHttpRequest to a real-looking address from an online browser are all stopped and counted, and none of them reaches it', async () => {
+    const probe = await odm.newPage();
+    await probe.goto(HARNESS + '?tool=explorer');
+    await probe.evaluate(() => {
+      try { new WebSocket('wss://real-database.example/.ws'); } catch (e) { /* refused is fine */ }
+      try { const es = new EventSource('https://real-database.example/x.json'); es.onerror = () => es.close(); } catch (e) { /* refused is fine */ }
+      try { navigator.sendBeacon('https://real-database.example/b', 'x'); } catch (e) { /* refused is fine */ }
+      fetch('https://real-database.example/f').catch(() => {});
+      const x = new XMLHttpRequest(); x.open('GET', 'https://real-database.example/xhr'); try { x.send(); } catch (e) { /* refused is fine */ }
+    });
+    for (let i = 0; i < 40 && db.stray.length < 5; i++) await probe.waitForTimeout(100);
+    const kinds = db.stray.map(u => /^websocket /.test(u) ? 'websocket' : /\/\.ws$|\/x\.json$|\/b$|\/f$|\/xhr$/.exec(u)[0]).sort();
+    equal(kinds, ['/b', '/f', '/x.json', '/xhr', 'websocket'].sort(), 'all five were caught: ' + db.stray.join(', '));
+    equal(await probe.evaluate(() => window.__net.map(x => x.split(' ')[0]).sort()), ['beacon', 'eventsource', 'fetch', 'websocket', 'xhr'], 'and the request spy saw all five kinds');
+    db.stray.length = 0;
+    await probe.close();
+  });
+
+  await check('in the online run the pages\' own request spy saw nothing but requests for the made-up database: no XMLHttpRequest, EventSource, WebSocket or beacon, and no other address', async () => {
+    for (const [name, page] of [['Explorer', oex], ['Bastion', oba], ['phone', opp]]) {
+      const net = await page.evaluate(() => window.__net);
+      assert(net.every(x => x.indexOf('fetch https://' + TEST_HOST + '/') === 0), name + ': ' + net.filter(x => x.indexOf('fetch https://' + TEST_HOST + '/') !== 0).join(', '));
+    }
+    equal(db.stray, [], 'and nothing was stopped on its way to anywhere else');
   });
 
   await check('nothing went wrong in any browser: no page errors, no missing files', async () => {

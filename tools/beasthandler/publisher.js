@@ -1,9 +1,11 @@
 /* Scarlett Isles: Beast Handler — the Bastion's side of the OPTIONAL online link (S17, 22 October 2026).
 
    Dormant unless the DM has pressed "Switch on" (s.beast.onlineLink) AND
-   tools/beasthandler/relay-config.js holds a database address. Until then its timer
-   does one cheap check and goes back to sleep: no request of any kind is made, no
-   snapshot is built, nothing is scrambled.
+   tools/beasthandler/relay-config.js says enabled: true and holds a database address
+   (the settings file's enabled line is the master switch for the laptop and for every
+   phone; "Switch on" is the laptop's own, extra switch). Until then its timer does one
+   cheap check and goes back to sleep: no request of any kind is made, no snapshot is
+   built, nothing is scrambled.
 
    When it is on, it keeps each linked player's phone up to date, in the background:
    - once when the Bastion opens (and once for a handler as soon as they have a QR
@@ -54,7 +56,7 @@
         var s = liveState();
         var url = link().configuredUrl();
         var st = { state: 'unset', lastAt: lastAt, sent: sent };
-        if (!url) return st;
+        if (!url) { if (!link().enabled() && link().addressFilled()) st.state = 'notenabled'; return st; }
         if (!s || !R().beastOnlineLink(s)) { st.state = 'off'; return st; }
         if (!seal().available()) { st.state = 'unsupported'; return st; }
         if (!onlineNow()) { st.state = 'offline'; return st; }

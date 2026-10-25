@@ -11,8 +11,9 @@
       browser never sends it to any server. This file builds that address,
       checks the address the DM types in, and checks what the phone page reads.
 
-   2. THE OPTIONAL ONLINE LINK (off unless the DM switches it on and the file
-      relay-config.js holds a database address; see docs/ONLINE-LINK-SETUP.md).
+   2. THE OPTIONAL ONLINE LINK (off unless the file relay-config.js says enabled: true
+      and holds a database address, and, on the laptop, the DM switches it on; see
+      docs/ONLINE-LINK-SETUP.md).
       This file only DECIDES things (is a snapshot worth sending? how long to
       wait after a failure? is an incoming snapshot acceptable?). Nothing in it
       reaches the network; relay.js does that, and only when switched on. */
@@ -32,6 +33,9 @@
   /* The address tests use. It can never be reached: ".invalid" is a name that is reserved so it never exists. Tests send
      requests for it to a stand-in database; see relay.js. */
   L.TEST_HOST = 'tsi-test-relay.invalid';
+  /* The longest phone page address that is accepted, when typed in (cleanPhoneUrl) and when a save is loaded (bastion-link.js
+     R.cleanBeast asks cleanPhoneUrl, so the two can never disagree about a saved address). */
+  L.PHONE_URL_MAX = 200;
 
   /* ---------- The phone page's address (a setting the DM can change) ---------- */
   /* { ok, url } with anything after the page name (a ? part, a # part) taken off, or { ok: false, why }. Only https
@@ -48,7 +52,7 @@
     if (u.protocol !== 'https:' || !u.hostname || u.username || u.password) return { ok: false, why: 'That doesn\'t look like a plain web address.' };
     if (!/^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$/.test(u.hostname) || u.hostname.indexOf('.') === -1) return { ok: false, why: 'That doesn\'t look like a web address that works on a phone.' };
     var url = u.origin + u.pathname;
-    if (url.length > 200) return { ok: false, why: 'That address is too long.' };
+    if (url.length > L.PHONE_URL_MAX) return { ok: false, why: 'That address is too long.' };
     return { ok: true, url: url };
   };
   /* The address in use: the one the DM saved if it is good, else the default. */
@@ -84,10 +88,17 @@
     var r = L.cleanDatabaseUrl(url);
     return r.ok && /^https:\/\/tsi-test-relay\.invalid$/.test(r.url);
   };
-  /* The database address from the settings file, or '' while the link is not set up. */
+  function relaySettings() { return window.TSI_DATA && isObj(window.TSI_DATA.beastRelay) ? window.TSI_DATA.beastRelay : null; }
+  /* The settings file's own on-switch (relay-config.js, "enabled"). It is the only switch the phone page has, and it is
+     off unless the file says exactly true. The Bastion needs it too, and in addition the DM's Switch on. */
+  L.enabled = function () { var cfg = relaySettings(); return !!cfg && cfg.enabled === true; };
+  /* A good database address is filled in (whether or not the link is switched on in the file). */
+  L.addressFilled = function () { var cfg = relaySettings(); return L.cleanDatabaseUrl(cfg ? cfg.databaseURL : '').ok; };
+  /* The database address from the settings file, or '' while the link is not set up: that is, unless the file says
+     enabled: true AND holds a good address. Every part of the online link asks this before it does anything. */
   L.configuredUrl = function () {
-    var cfg = window.TSI_DATA && isObj(window.TSI_DATA.beastRelay) ? window.TSI_DATA.beastRelay : null;
-    var r = L.cleanDatabaseUrl(cfg ? cfg.databaseURL : '');
+    if (!L.enabled()) return '';
+    var r = L.cleanDatabaseUrl(relaySettings().databaseURL);
     return r.ok ? r.url : '';
   };
 
@@ -166,6 +177,7 @@
     st = st || {};
     switch (st.state) {
       case 'unset': return 'Online link: off (not set up).';
+      case 'notenabled': return 'Online link: off. relay-config.js has an address but still says enabled: false. Change it to true to set the link up.';
       case 'off': return 'Online link: off. It is set up; switch it on to keep players\' phones up to date by themselves.';
       case 'unsupported': return 'Online link: off. This browser can\'t scramble the updates, so nothing is sent.';
       case 'offline': return 'Online link: on, but this computer is offline. It will send as soon as it is back online.';
