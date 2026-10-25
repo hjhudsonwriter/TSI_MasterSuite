@@ -319,8 +319,6 @@
         plus: 'M12 5v14 M5 12h14',
         warehouse: 'M4 8l8-4 8 4v9l-8 4-8-4z M4 8l8 4 8-4 M12 12v9',
         management: 'M9 11a3 3 0 100-6 3 3 0 000 6z M3 20c0-3.3 2.7-5 6-5s6 1.7 6 5 M16.5 11a2.5 2.5 0 100-5 M16 15c2.8 0 5 1.6 5 4.5',
-        log: 'M6 4h12v16H6z M9 8h6 M9 12h6 M9 16h4',
-        influence: 'M12 4v16 M8 20h8 M5 7h14 M5 7l-3 6a3 3 0 006 0z M19 7l-3 6a3 3 0 006 0z',
         shield: 'M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z',
         up: 'M6 15l6-6 6 6',
         down: 'M6 9l6 6 6-6'
@@ -671,147 +669,13 @@
         svg.appendChild(path);
         return svg;
       }
-      /* The Clan Influence panel: one row per Clan, with its Political
-         Capital bar (and Honour Change at ±100), its Honour/Respect (the
-         DM's to set, −5 to +5) and the support they add up to; then the
-         changes from the Explorer and the Favour Tokens. (Before the new
-         screen the bars sat in the left column and the rest in Party
-         Identity & Clan Influence.)
-         The Honour/Respect box adds what the DM typed, as a difference from
-         what it showed, rather than writing over the value: a change from
-         the Explorer can land while it's being typed (as the Warehouse's
-         goods counts do). */
-      var pcRows = {};
-      var trackerRows = {};
-      var influenceList = el('div', { class: 'tsi-bas-influence', 'data-test': 'influence' }, B.clans.map(function (c) {
-        var fill = el('div', { class: 'tsi-bas-bar-fill tsi-bas-bar-fill--pc' });
-        var val = el('div', { class: 'tsi-bas-meter__val', 'data-test': 'pc-' + c.key, text: '0' });
-        var change = btn('Honour Change', function () {
-          state.politicalCapital[c.key] = 0;
-          log('Honour Change', 'Honour Change prompted for Clan ' + c.key.toUpperCase() + '. Political Capital reset to neutral.');
-          done();
-        }, 'tsi-btn--ghost tsi-bas-meter__btn', 'honour-' + c.key, { hidden: true });
-        pcRows[c.key] = { fill: fill, val: val, change: change };
-        var input = numberInput('hr-' + c.key, { min: '-5', max: '5', 'aria-label': c.name + ' Honour/Respect (-5 to +5)' });
-        var support = el('div', { class: 'tsi-bas-influence__support', 'data-test': 'support-' + c.key });
-        var row = { input: input, support: support, shown: 0 };
-        life.on(input, 'change', function () {
-          var typed = R.clampInt(input.value, -5, 5);
-          var now = R.clampInt(state.honourRespectByClan[c.key] || 0, -5, 5);
-          state.honourRespectByClan[c.key] = R.clampInt(now + typed - row.shown, -5, 5);
-          row.shown = state.honourRespectByClan[c.key];
-          input.value = String(row.shown);
-          done();
-        });
-        /* Left without typing (the pop-up puts the focus in the first box):
-           catch up with any change that landed meanwhile. */
-        life.on(input, 'blur', function () {
-          row.shown = R.clampInt(state.honourRespectByClan[c.key] || 0, -5, 5);
-          input.value = String(row.shown);
-        });
-        trackerRows[c.key] = row;
-        return el('div', { class: 'tsi-bas-influence__row' }, [
-          el('div', { class: 'tsi-bas-influence__name', text: c.name }),
-          el('div', { class: 'tsi-bas-influence__pc' }, [
-            el('div', { class: 'tsi-bas-meter__bar tsi-bas-meter__bar--pc' }, fill),
-            val, change
-          ]),
-          field('Honour/Respect', input, 'tsi-bas-influence__hr'),
-          el('div', { class: 'tsi-bas-influence__sup' }, [el('span', { class: 'tsi-bas-influence__sup-label', text: 'Support' }), support])
-        ]);
-      }));
-      var tokensPill = el('div', { class: 'tsi-bas-token-pill', 'data-test': 'tokens', text: '0' });
-      var bridgeList = el('div', { class: 'tsi-bas-influence__log', 'data-test': 'bridge-log' });
-      var influenceCard = card('influence', 'Clan Influence');
-      TSI.append(influenceCard.body, [
-        muted('Political Capital starts neutral; diplomacy raises or lowers it (−100 to +100). When it reaches ±100, press Honour Change and the bar returns to neutral. Honour/Respect is yours to set (−5 to +5), and some Explorer events change it by 1 by themselves; support adds the two together (0 to 100).'),
-        influenceList,
-        el('div', { class: 'tsi-bas-asset tsi-bas-bridge' }, [
-          el('div', { class: 'tsi-bas-asset__name', text: 'Changes from the Explorer' }),
-          muted('Each Explorer event that changes a Clan\'s Honour/Respect does so once, here. The newest 10:', 'tsi-bas-asset__desc'),
-          bridgeList
-        ]),
-        el('div', { class: 'tsi-bas-asset' }, [
-          el('div', { class: 'tsi-bas-asset__name', text: 'Favour Tokens' }),
-          muted('Earned from strong delegations. Spend later to influence negotiations.', 'tsi-bas-asset__desc'),
-          tokensPill
-        ])
-      ]);
-
-      function renderSide() {
-        B.clans.forEach(function (c) {
-          var v = R.clampInt(state.politicalCapital[c.key] || 0, -100, 100);
-          var r = pcRows[c.key];
-          var side = Math.min(100, Math.abs(v)) / 100 * 50;
-          r.fill.style.left = (v >= 0 ? 50 : 50 - side) + '%';
-          r.fill.style.width = side + '%';
-          r.val.textContent = String(v);
-          r.change.hidden = Math.abs(v) < 100;
-          var t = trackerRows[c.key];
-          /* A box being typed in keeps what's typed; one only focused follows the save. */
-          if (document.activeElement !== t.input || t.input.value === String(t.shown)) {
-            t.shown = R.clampInt(state.honourRespectByClan[c.key] || 0, -5, 5);
-            t.input.value = String(t.shown);
-          }
-          TSI.clear(t.support);
-          TSI.append(t.support, [el('b', { text: String(R.supportForClanKey(state, c.key)) }), '/100']);
-        });
-        tokensPill.textContent = String(R.clampInt(state.diplomacy.tokens || 0, 0, 999));
-        renderBridge();
-      }
-
-      /* Clan Influence's "Changes from the Explorer": the newest receipts. */
-      function renderBridge() {
-        TSI.clear(bridgeList);
-        var list = R.bridgeHistory(state, 10);
-        if (!list.length) { bridgeList.appendChild(muted('None yet.', 'tsi-bas-influence__lognone')); return; }
-        list.forEach(function (r) {
-          var clan = clanTitle(r.clan);
-          /* A Port Charter (pull request 5). An older copy of the suite can
-             strip a receipt's kind; the Charter it made still names it. */
-          /* A griffin or dire wolf the DM granted (pull request 7). */
-          var creature = r.type === 'creature';
-          /* A Great Rite given to the party (pull request 8b). */
-          var rite = r.type === 'rite';
-          var made = r.type === 'charter' || creature || rite ? null : R.charterById(state, r.id);
-          var charter = r.type === 'charter' || !!made;
-          /* A parcel collected in the Explorer (pull request 6), known by its
-             receipt's kind or, if an older copy stripped that, by its
-             pickup id (which only a parcel pickup has). */
-          var pid = TSI.bridge && !creature && !rite ? TSI.bridge.parcelIdOf(r.id) : '';
-          var sent = pid ? R.parcelById(state, pid) : null;
-          var parcel = !charter && !creature && !rite && (r.type === 'parcel_collected' || !!pid);
-          var town = parcel ? R.courierPointName(r.point || (sent ? sent.point : '')) : '';
-          var what = charter ? 'Port Charter: ' + R.portWithClan(data, made ? made.port : r.port, made ? made.clan : r.clan) : clan;
-          var head = rite ? (r.r === 'applied' ? 'Great Rite: ' + R.RITE_NAMES[r.rite] + ' went with the party' + (r.held ? ' (already marked)' : '') : (r.r === 'skipped' ? 'Skipped: ' : 'Refused: ') + 'Great Rite handover')
-            : creature ? R.creatureReceiptHead(data, r)
-            : parcel
-            ? (r.r === 'applied' ? 'Parcel collected: ' + town + (r.held ? ' (already recorded)' : '') : (r.r === 'skipped' ? 'Skipped: ' : 'Refused: ') + 'parcel collected at ' + town)
-            : charter
-            ? (r.r === 'applied' ? what + (r.held ? ' (already held)' : '') : (r.r === 'skipped' ? 'Skipped: ' : 'Refused: ') + what)
-            : r.r === 'applied'
-            ? (r.hr ? clan + ' ' + signedNum(r.hr) + ' (' + signedNum(r.was) + ' → ' + signedNum(r.now) + ')' : clan + ': no change, already at ' + signedNum(r.now))
-            : (r.r === 'skipped' ? 'Skipped: ' : 'Refused: ') + clan;
-          bridgeList.appendChild(el('div', { class: 'tsi-bas-influence__logrow tsi-bas-influence__logrow--' + r.r, 'data-test': 'bridge-row', 'data-result': r.r }, [
-            el('div', { class: 'tsi-bas-influence__loghead' }, [el('strong', { text: head }), typeof r.day === 'number' ? ' · ' + R.dayLabel(r.day) : '']),
-            r.text ? el('div', { class: 'tsi-bas-influence__logtext', text: r.text }) : null,
-            r.why ? el('div', { class: 'tsi-bas-influence__logwhy', text: r.why + (r.r === 'skipped' ? (parcel ? ' The items stay in the Travel bags.' : charter || creature ? ' Grant it again in the Explorer if it should count.' : rite ? '' : ' Type it in above if it should count.') : '') }) : null
-          ]));
-        });
-      }
-
       /* ================================================================
-         The Day Log panel and the Bastion Map
+         The Bastion Map
+         (The Clan Influence and Day Log panels went with the Strip Back
+         Overhaul, step S10: Political Capital and Honour/Respect are read in
+         the Hall's Clan Relations, the Explorer's changes in Management, and
+         what happens is said in notices and "The Ironbow sends word".)
          ================================================================ */
-      var logList = el('div', { class: 'tsi-bas-log', 'data-test': 'log' });
-      var logCard = card('log', 'Day Log');
-      logCard.head.appendChild(btn('Clear log', async function () {
-        if (state.log.length && !(await ask('Clear the Day Log (' + state.log.length + (state.log.length === 1 ? ' entry' : ' entries') + ')? It is the Bastion\'s history of what happened, and it cannot be undone.', 'Clear', 'Clear the Day Log'))) return;
-        if (!life.alive) return;
-        state.log = [];
-        done();
-      }, 'tsi-btn--ghost', 'clear-log'));
-      logCard.body.appendChild(logList);
 
       /* The painting, with the building overlays (full-frame pictures the
          same size as it), fitted into the map panel and never cropped, so
@@ -835,17 +699,6 @@
         return 'Day ' + state.day + (state.anchored ? '' : ' · the Explorer sets the day');
       }
       function renderTop() {
-        TSI.clear(logList);
-        if (!state.log.length) logList.appendChild(muted('No log entries yet.'));
-        state.log.slice(0, 80).forEach(function (e) {
-          logList.appendChild(el('div', { class: 'tsi-bas-log__entry' }, [
-            el('div', { class: 'tsi-bas-log__top' }, [
-              el('div', { class: 'tsi-bas-log__title', text: e.title }),
-              el('div', { class: 'tsi-bas-log__time', text: (typeof e.day === 'number' ? R.dayLabel(e.day) + ' · ' : '') + R.formatTime(e.at) })
-            ]),
-            el('div', { class: 'tsi-bas-log__body', text: e.body || '' })
-          ]));
-        });
         /* A built facility with overlay art shows on the map (bastion-data.js map). */
         TSI.clear(overlayLayer);
         R.mapOverlays(state, data).forEach(function (o) {
@@ -3761,15 +3614,9 @@
       function simplePanel(c, cls) { return function () { return openPanel(c.id, { title: c.title, node: c.root, cls: cls || '', back: 'open-' + c.id }); }; }
       var openWarehouse = simplePanel(whCard, 'tsi-bas-panel--wide');
       var openManagement = simplePanel(mgmtCard, 'tsi-bas-panel--wide');
-      var openLog = simplePanel(logCard);
-      var openInfluence = simplePanel(influenceCard, 'tsi-bas-panel--wide');
       var leftButtons = el('div', { class: 'tsi-bas-pbtns tsi-bas-pbtns--left' }, [
         panelButton('warehouse', 'Warehouse', 'warehouse', openWarehouse),
-        panelButton('management', 'Management', 'management', openManagement),
-        panelButton('log', 'Day Log', 'log', openLog)
-      ]);
-      var rightButtons = el('div', { class: 'tsi-bas-pbtns tsi-bas-pbtns--right' }, [
-        panelButton('influence', 'Clan Influence', 'influence', openInfluence)
+        panelButton('management', 'Management', 'management', openManagement)
       ]);
 
       /* The grid folds away with ▼ (and back with ▲), remembered. */
@@ -3782,7 +3629,7 @@
       /* The tiles sit in a tray that rises a little over the sea at the
          foot of the painting while it's open (Harry, 13 October 2026). */
       var gridWrap = el('div', { class: 'tsi-bas-gridwrap' }, [el('div', { class: 'tsi-bas-tray', 'data-test': 'grid-tray' }, [gridToggle, grid])]);
-      var bottomBar = el('div', { class: 'tsi-bas-bottom' }, [leftButtons, gridWrap, rightButtons]);
+      var bottomBar = el('div', { class: 'tsi-bas-bottom' }, [leftButtons, gridWrap]);
       function renderGridState() {
         stage.classList.toggle('is-grid-closed', !ui.gridOpen);
         grid.hidden = !ui.gridOpen;
@@ -3870,7 +3717,6 @@
         if (R.pruneEmptyCargo(state, data)) save();
         setValue(levelSelect, state.partyLevel);
         renderTurnButton();
-        renderSide();
         renderTop();
         renderIdentity();
         renderBadge();
@@ -4005,8 +3851,7 @@
       }
       /* For reveal: the data-test of what opens the panel holding sel. */
       function openerFor(test, sel) {
-        var fixed = [[whCard, 'open-warehouse'], [mgmtCard, 'open-management'], [logCard, 'open-log'],
-          [influenceCard, 'open-influence'], [idCard, 'identity-badge'],
+        var fixed = [[whCard, 'open-warehouse'], [mgmtCard, 'open-management'], [idCard, 'identity-badge'],
           [dipCard, 'tile-hall_of_emissaries'], [ordersCard, 'orders-count'], [artCard, 'tile-workshop']];
         for (var i = 0; i < fixed.length; i++) if (fixed[i][0].root.querySelector(sel)) return fixed[i][1];
         var m = /^(?:issue|sel|days|why|goods)-([a-z_]+)__/.exec(test) || /^repair-note-([a-z_]+)$/.exec(test) ||

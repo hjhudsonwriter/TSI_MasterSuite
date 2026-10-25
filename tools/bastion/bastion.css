@@ -239,8 +239,7 @@
 }
 
 /* The suite's notices sit in the bottom-right corner, which on the Bastion
-   is the bottom bar's buttons (Clan Influence, Favour), and
-   where the DM doc and the crest badge open. Here they sit on the left,
+   is where the DM doc and the crest badge open. Here they sit on the left,
    just above the bar (128 pixels, and its 15-pixel frame). */
 .tsi-page--bastion .tsi-notices {
   left: 16px;
@@ -261,7 +260,7 @@
   z-index: 3; /* the open tray rises over the foot of the painting */
   flex: 0 0 auto;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
   align-items: center;
   gap: 12px;
@@ -582,27 +581,6 @@
 .tsi-page--bastion .tsi-bas-buildopt__lock .tsi-bas-icon { width: 14px; height: 14px; }
 .tsi-page--bastion .tsi-bas-buildpanel__foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 8px; border-top: 1px solid var(--tsi-line-faint); }
 
-/* Clan Influence: one row per Clan. */
-.tsi-page--bastion .tsi-bas-influence { display: flex; flex-direction: column; gap: 6px; }
-.tsi-page--bastion .tsi-bas-influence__row {
-  display: grid;
-  grid-template-columns: 110px minmax(0, 1fr) 210px 90px;
-  gap: 12px;
-  align-items: center;
-  padding: 6px 10px;
-  border: 1px solid var(--tsi-line-faint);
-  border-radius: var(--tsi-radius-md);
-  background: var(--tsi-inset-fill);
-}
-.tsi-page--bastion .tsi-bas-influence__name { font: 700 12px var(--tsi-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--tsi-gold-text); }
-.tsi-page--bastion .tsi-bas-influence__pc { display: grid; grid-template-columns: minmax(0, 1fr) 44px auto; gap: 8px; align-items: center; }
-.tsi-page--bastion .tsi-bas-influence .tsi-bas-influence__hr { flex-direction: row; align-items: center; justify-content: flex-end; gap: 8px; margin: 0; font-size: 11px; }
-.tsi-page--bastion .tsi-bas-influence .tsi-bas-influence__hr .tsi-input { flex: 0 0 64px; width: 64px; }
-.tsi-page--bastion .tsi-bas-influence__sup { display: flex; flex-direction: column; align-items: flex-end; }
-.tsi-page--bastion .tsi-bas-influence__sup-label { font: 400 10px var(--tsi-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--tsi-text-soft); }
-.tsi-page--bastion .tsi-bas-influence__support { font: 400 13px var(--tsi-font-mono); color: var(--tsi-text); }
-.tsi-page--bastion .tsi-bas-influence__support b { color: var(--tsi-gold-text); }
-
 /* ---------- Panels ---------- */
 .tsi-page--bastion .tsi-bas-card {
   position: relative;
@@ -789,17 +767,6 @@
   border-radius: var(--tsi-radius-pill);
   background: linear-gradient(90deg, rgba(214, 178, 94, .55), rgba(177, 18, 42, .65));
 }
-.tsi-page--bastion .tsi-bas-bar-fill--pc { position: absolute; top: 0; left: 50%; background: linear-gradient(90deg, rgba(214, 178, 94, .45), rgba(177, 18, 42, .70)); }
-/* The neutral mark in the middle of each Political Capital bar. */
-.tsi-page--bastion .tsi-bas-meter__bar--pc::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: -2px;
-  bottom: -2px;
-  width: 2px;
-  background: rgba(214, 178, 94, .55);
-}
 .tsi-page--bastion .tsi-bas-god-icon { width: 16px; height: 16px; flex-shrink: 0; }
 .tsi-page--bastion .tsi-bas-god-icon path { fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 .tsi-page--bastion .tsi-bas-god-icon--telluria { color: var(--tsi-telluria); filter: drop-shadow(0 0 4px rgba(55, 200, 95, .6)); }
@@ -844,38 +811,10 @@
 }
 .tsi-page--bastion .tsi-bas-asset__name { font-size: 15px; }
 .tsi-page--bastion .tsi-bas-asset__desc { grid-column: 1; font-size: 14px; }
-.tsi-page--bastion .tsi-bas-token-pill {
-  grid-column: 2;
-  grid-row: 1 / span 2;
-  min-width: 44px;
-  padding: 6px 10px;
-  text-align: center;
-  border-radius: var(--tsi-radius-pill);
-  border: 1px solid var(--tsi-line);
-  background: rgba(0, 0, 0, .25);
-  font: 400 13px var(--tsi-font-mono);
-  color: var(--tsi-gold-text);
-}
-
-/* ---------- Day Log · Bastion Map · Bastion Event ---------- */
+/* ---------- Bastion Map · Bastion Event ---------- */
 .tsi-page--bastion .tsi-bas-card--tall { display: flex; flex-direction: column; }
 .tsi-page--bastion .tsi-bas-card--tall > .tsi-bas-card__body { flex: 1; min-height: 0; }
-.tsi-page--bastion .tsi-bas-log {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 62vh;
-  min-height: 120px;
-  overflow: auto;
-  padding-right: 4px;
-}
-.tsi-page--bastion .tsi-bas-log__entry { padding: 8px 10px; border: 1px solid var(--tsi-hairline); border-radius: var(--tsi-radius-md); background: rgba(255, 255, 255, .02); }
-.tsi-page--bastion .tsi-bas-log__top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 10px; }
-.tsi-page--bastion .tsi-bas-log__title { font: 600 13px/1.3 var(--tsi-font-display); letter-spacing: .03em; }
-.tsi-page--bastion .tsi-bas-log__time { font: 400 12px var(--tsi-font-mono); color: var(--tsi-text-soft); }
-.tsi-page--bastion .tsi-bas-log__body { margin-top: 4px; font-size: 15px; line-height: 1.3; color: var(--tsi-text-muted); }
-
-/* ---------- Clan Influence ---------- */
+/* ---------- Clan Relations (the Hall) ---------- */
 .tsi-page--bastion .tsi-bas-clan-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 8px; }
 .tsi-page--bastion .tsi-bas-clan-row {
   display: grid;
@@ -1265,23 +1204,6 @@
 .tsi-page--bastion .tsi-bas-buildopt--dev .tsi-bas-buildopt__lock { color: var(--tsi-gold, #d6b25e); }
 
 .tsi-page--bastion .tsi-bas-buildopt--dev .tsi-bas-buildopt__img { filter: saturate(.85) brightness(.8); }
-
-/* ---------- Clan Influence: changes from the Explorer (pull request 4) ---------- */
-.tsi-page--bastion .tsi-bas-influence__log { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
-.tsi-page--bastion .tsi-bas-influence__logrow {
-  padding: 6px 8px;
-  border-radius: var(--tsi-radius-md);
-  border: 1px solid var(--tsi-line-faint);
-  background: rgba(0, 0, 0, .22);
-  font-size: 15px;
-  line-height: 1.3;
-}
-.tsi-page--bastion .tsi-bas-influence__loghead strong { color: var(--tsi-gold-text); }
-.tsi-page--bastion .tsi-bas-influence__logrow--skipped .tsi-bas-influence__loghead strong { color: var(--tsi-warn); }
-.tsi-page--bastion .tsi-bas-influence__logrow--refused .tsi-bas-influence__loghead strong { color: var(--tsi-danger); }
-.tsi-page--bastion .tsi-bas-influence__logtext { color: var(--tsi-text); overflow-wrap: anywhere; }
-.tsi-page--bastion .tsi-bas-influence__logwhy { color: var(--tsi-text-muted); font-size: 14px; }
-.tsi-page--bastion .tsi-bas-asset.tsi-bas-bridge { grid-template-columns: minmax(0, 1fr); }
 
 /* ---------- Management: changes from the Explorer (Strip Back Overhaul, S02) ---------- */
 .tsi-page--bastion .tsi-bas-xchanges__list { display: flex; flex-direction: column; gap: 6px; }

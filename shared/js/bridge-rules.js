@@ -548,7 +548,7 @@
       return { kind: 'applied', line: 'Applied' + (isWhole(r.day) ? ' on ' + (r.day >= 1 ? 'Day ' + r.day : 'a day before Day 1') : '') + (typeof r.was === 'number' && typeof r.now === 'number' ? ': ' + signed(r.was) + ' → ' + signed(r.now) + '.' : '.') };
     }
     if (r && r.r === 'refused') return { kind: 'refused', line: 'Refused: ' + (str(r.why) || 'the Bastion couldn\'t use it.') + ' Nothing changed.' };
-    if (r && r.r === 'skipped') return { kind: 'skipped', line: 'Skipped: sent before this Bastion started. Type it in by hand if it should count.' };
+    if (r && r.r === 'skipped') return { kind: 'skipped', line: 'Skipped: sent before this Bastion started. Use Change a score in the DM doc if it should count.' };
     if (r) return { kind: 'refused', line: 'Refused: the Bastion couldn\'t use it. Nothing changed.' };
     var day = typeof bastionSave.day === 'number' ? bastionSave.day : null;
     if (bastionSave.anchored !== true) return { kind: 'waiting', line: 'Waiting for the Bastion to open.' };

@@ -95,8 +95,8 @@
   }
   /* The Hall of Emissaries' old contracts, delegations, summits and cooldowns are gone (the Strip Back Overhaul,
      Harry, 22 October 2026, step S09: R.migrateToV4's windDownHall ends them and keeps them as history in
-     legacyDiplomacy). Only the Favour Tokens count is left, because the Clan Influence panel still shows it until
-     that panel goes (step S10); the conversion sets it to 0. */
+     legacyDiplomacy). Only the Favour Tokens count is left (always 0, never shown: the Clan Influence panel went in
+     step S10); the conversion sets it to 0. */
   R.defaultDiplomacy = function () {
     return { tokens: 0 };
   };
@@ -432,7 +432,7 @@
 
   /* ---------- Scores set by hand in the DM doc (Harry, 19 October 2026) ----------
      The DM doc keeps a list of edits (shared/js/dmdoc-rules.js). Each is
-     applied here once: the score is set, the Day Log says what it was and
+     applied here once: the score is set, a short notice says what it was and
      is now, and a receipt (dmEdits.done[id]) is kept in the same save, so a
      reload or a second look can't apply it again. An edit that can't be
      used (a Clan or value this copy doesn't know) is refused for good, with
@@ -931,20 +931,20 @@
         R.log(s, 'From the Explorer', newer + (newer === 1 ? ' message' : ' messages') + ' from a newer copy of the suite, sent before this Bastion started, ' + (newer === 1 ? 'was' : 'were') + ' skipped, so nothing counts twice.', at);
       }
       if (standing) {
-        R.log(s, 'From the Explorer', standing + (standing === 1 ? ' change' : ' changes') + ' to Honour/Respect, sent before this Bastion started, ' + (standing === 1 ? 'was' : 'were') + ' skipped, so nothing counts twice. Clan Influence lists ' + (standing === 1 ? 'it, to type in by hand if it should count.' : 'them, to type in by hand if they should count.'), at);
+        R.log(s, 'From the Explorer', standing + (standing === 1 ? ' change' : ' changes') + ' to Honour/Respect, sent before this Bastion started, ' + (standing === 1 ? 'was' : 'were') + ' skipped, so nothing counts twice. Use Change a score in the DM doc if ' + (standing === 1 ? 'it' : 'they') + ' should count.', at);
       }
       if (charters) {
-        R.log(s, 'From the Explorer', charters + (charters === 1 ? ' Port Charter' : ' Port Charters') + ', sent before this Bastion started, ' + (charters === 1 ? 'was' : 'were') + ' skipped, so nothing counts twice. Clan Influence lists ' + (charters === 1 ? 'it: grant it again in the Explorer if it should count.' : 'them: grant them again in the Explorer if they should count.'), at);
+        R.log(s, 'From the Explorer', charters + (charters === 1 ? ' Port Charter' : ' Port Charters') + ', sent before this Bastion started, ' + (charters === 1 ? 'was' : 'were') + ' skipped, so nothing counts twice. ' + (charters === 1 ? 'Grant it again in the Explorer if it should count.' : 'Grant them again in the Explorer if they should count.'), at);
       }
       /* A Bastion starting from nothing has no parcels, so a pickup sent
          before it changes nothing here: the items stay in the Travel bags. */
       if (pickups) {
-        R.log(s, 'From the Explorer', pickups + (pickups === 1 ? ' parcel pickup' : ' parcel pickups') + ', collected before this Bastion started, ' + (pickups === 1 ? 'was' : 'were') + ' skipped, so nothing counts twice. Clan Influence lists ' + (pickups === 1 ? 'it' : 'them') + '; the items stay in the Travel bags.', at);
+        R.log(s, 'From the Explorer', pickups + (pickups === 1 ? ' parcel pickup' : ' parcel pickups') + ', collected before this Bastion started, ' + (pickups === 1 ? 'was' : 'were') + ' skipped, so nothing counts twice. The items stay in the Travel bags.', at);
       }
       /* Griffins and dire wolves granted before this Bastion started (pull
          request 7): none is held, so none can count twice. */
       if (grants) {
-        R.log(s, 'From the Explorer', grants + (grants === 1 ? ' creature grant' : ' creature grants') + ', sent before this Bastion started, ' + (grants === 1 ? 'was' : 'were') + ' skipped, so nothing counts twice. Clan Influence lists ' + (grants === 1 ? 'it: grant it again in the Explorer if it should count.' : 'them: grant them again in the Explorer if they should count.'), at);
+        R.log(s, 'From the Explorer', grants + (grants === 1 ? ' creature grant' : ' creature grants') + ', sent before this Bastion started, ' + (grants === 1 ? 'was' : 'were') + ' skipped, so nothing counts twice. ' + (grants === 1 ? 'Grant it again in the Explorer if it should count.' : 'Grant them again in the Explorer if they should count.'), at);
       }
       /* A Great Rite given to the party before this Bastion started (pull
          request 8b): the Bastion holds none, so nothing counts twice. */
@@ -1045,7 +1045,7 @@
     return out;
   };
 
-  /* The newest receipts first, for Clan Influence's "Changes from the
+  /* The newest receipts first, for Management's "Changes from the
      Explorer" list: [{ id, r, day, clan, hr, was, now, text, why }]. */
   R.bridgeHistory = function (s, max) {
     var done = isObj(s.bridge) && isObj(s.bridge.done) ? s.bridge.done : {};
@@ -1057,7 +1057,7 @@
   /* ---------- What the Explorer link delivered, in words ----------
      (Strip Back Overhaul, step S02: replacement before removal. The list in
      Management, "Changes from the Explorer", and the notices read these, so
-     Clan Influence can go without the Explorer's deliveries, refusals and
+     Clan Influence could go without the Explorer's deliveries, refusals and
      skips losing their home. Plain functions: no screen, no clock, no dice.)
 
      R.bridgeChange(s, data, receipt) says one receipt (a record of
@@ -2191,7 +2191,7 @@
      Warehouse row (typed by hand, not a good the Ironbow makes) goes to the
      party. Only the quantity handed over leaves the row, once; a row that
      reaches 0 is removed. The suite doesn't hold a character's inventory, so
-     the Day Log says plainly that the DM records the item on the D&D sheet.
+     the dialog says plainly that the DM records the item on the D&D sheet.
      Goods the Ironbow makes, and anything physically delivered, go by the
      Courier Exchange instead. Returns { ok, message } or { ok, line }. */
   R.HAND_RECIPIENT_MAX = 60;
@@ -2552,18 +2552,6 @@
   };
   R.removeOrder = function (s, id) {
     s.pendingOrders = s.pendingOrders.filter(function (o) { return o.id !== id; });
-  };
-
-  /* ---------- Clan support (the Clan Influence panel's number) ----------
-     Founding a Clan was taken out on 22 October 2026 (canFormClan,
-     totalSupport, clansAtSupport, orgLabel, requirementsHint and the
-     identityRules data went with it; commit b337232 has them). This one
-     stays only because the Clan Influence panel still shows it, until that
-     panel goes (step S10). */
-  R.supportForClanKey = function (s, key) {
-    var pc = clampInt(s.politicalCapital[key] || 0, -100, 100);
-    var hr = clampInt(s.honourRespectByClan[key] || 0, -5, 5);
-    return clampInt(Math.round((pc + 100) / 2 + hr * 4), 0, 100);
   };
 
   /* ---------- Passing a day, as resumable steps (560-604; BAS-02) ----------

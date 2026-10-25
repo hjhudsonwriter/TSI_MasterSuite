@@ -427,14 +427,10 @@
     t.equal(R.orderKind(data, { facId: 'hall_of_emissaries', fnId: 'host_delegation' }), 'none');
   });
 
-  group('Bastion: Clan support (the Clan Influence panel\'s number)');
+  group('Bastion: Clan support is gone');
 
-  test('support: (Political Capital + 100) ÷ 2 + Honour/Respect × 4', function (t) {
-    var s = fresh();
-    t.equal(R.supportForClanKey(s, 'karr'), 50);
-    s.politicalCapital.karr = 10;
-    s.honourRespectByClan.karr = 2;
-    t.equal(R.supportForClanKey(s, 'karr'), 63);
+  test('support: the Clan Influence panel and its number went (S10)', function (t) {
+    t.equal(R.supportForClanKey, undefined, 'R.supportForClanKey went with the Clan Influence panel');
     ['canFormClan', 'totalSupport', 'clansAtSupport', 'orgLabel', 'requirementsHint', 'formerBrigade', 'canFormMerc'].forEach(function (k) {
       t.equal(R[k], undefined, 'R.' + k + ' went with founding a Clan (22 October 2026)');
     });
