@@ -1713,7 +1713,7 @@ window.TSI_FIXTURES = {
     },
     "optionLabel": "1 Overland chart",
     "notes": "",
-    "label": "Library & Scriptorium: Prepare Overland Travel Charts (1 Overland chart)",
+    "label": "Library & Scriptorium: Prepare Overland Travel Charts",
     "costGP": 0,
     "issuedDay": 38,
     "dueDay": 42
@@ -2002,14 +2002,6 @@ window.TSI_FIXTURES = {
     "gp": "",
     "notes": "Library & Scriptorium"
    }
-  ],
-  "artisanTools": [
-   "Smith's Tools",
-   "Alchemist's Supplies",
-   "Herbalism Kit",
-   "Tinker's Tools",
-   "Cook's Utensils",
-   "Carpenter's Tools"
   ],
   "favour": {
    "telluria": 70,
@@ -3606,9 +3598,6 @@ window.TSI_FIXTURES = {
   "repairs": {
    "watchtower": 43
   },
-  "legacyFacilities": [
-   "smithy"
-  ],
   "research": {
    "herbal_gardens": {
     "agricultural": [
@@ -3898,6 +3887,17 @@ window.TSI_FIXTURES = {
    "karr": 50
   },
   "clanHonor": 55,
+  "artisanTools": [
+   "Smith’s Tools",
+   "Alchemist’s Supplies",
+   "Herbalism Kit",
+   "Weaver’s Tools",
+   "Calligrapher’s Supplies",
+   "Carpenter’s Tools"
+  ],
+  "legacyFacilities": [
+   "smithy"
+  ],
   "organization": {
    "type": "clan",
    "name": "Clan Ironbow",

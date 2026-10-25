@@ -46,7 +46,7 @@ window.TSI_DATA.bastionGoods = {
     { id: 'restorative_herbs', name: 'Restorative Herbs', kind: 'ingredient', batch: 10, use: 'Medical supply recipes and future restorative crafting.' },
     { id: 'antivenom_roots', name: 'Antivenom Roots', kind: 'ingredient', batch: 10, use: 'Antitoxin and specialised antidote recipes.' },
     { id: 'toxic_blossoms', name: 'Toxic Blossoms', kind: 'ingredient', batch: 10, use: 'Poison preparation and alchemical crafting.' },
-    { id: 'alchemical_flowers', name: 'Alchemical Flowers', kind: 'ingredient', batch: 10, use: 'Advanced Arcane Laboratory ingredients and botanical extracts.' },
+    { id: 'alchemical_flowers', name: 'Alchemical Flowers', kind: 'ingredient', batch: 10, use: 'Advanced ingredients for the Workshop\'s Alchemist and botanical extracts.' },
 
     { id: 'expedition_provision_pack', name: 'Expedition Provision Pack', kind: 'supply', pack: '10 character-days of rations (a party of five for two days)' },
     /* Pull request 6 (Harry, 14 October 2026): named as the Explorer's

@@ -472,8 +472,8 @@
       t.same(res.problems, [], 'the audit');
       return res;
     }
-    var a = slots(['library_scriptorium', shrine('telluria', { status: 'building', startDay: 5, readyDay: 26 }), shrine('aurush'), shrine('pelagos', { status: 'building', startDay: 6, readyDay: 27 })]);
-    t.same(a.save.builtExtras.map(function (e) { return e && (e.facId || e); }), ['library_scriptorium', '', TEMPLE, ''], 'the built Aurush');
+    var a = slots(['hall_of_emissaries', shrine('telluria', { status: 'building', startDay: 5, readyDay: 26 }), shrine('aurush'), shrine('pelagos', { status: 'building', startDay: 6, readyDay: 27 })]);
+    t.same(a.save.builtExtras.map(function (e) { return e && (e.facId || e); }), ['hall_of_emissaries', '', TEMPLE, ''], 'the built Aurush');
     t.ok(/Building work on the Shrine of Telluria and the Shrine of Pelagos stopped \(building costs no gold\)\./.test(a.save.migration.v4.lines.join(' ')));
     var b = slots([shrine('pelagos'), shrine('aurush'), shrine('telluria')]);
     t.same(b.save.builtExtras.map(function (e) { return e && (e.facId || e); }), [TEMPLE, '', ''], 'the first built one');

@@ -512,7 +512,26 @@
 .tsi-page--bastion .tsi-bas-facpanel__status { font-size: var(--tsi-fs-body-sm); color: var(--tsi-text-muted); }
 .tsi-page--bastion .tsi-bas-facpanel__orders { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1px dashed rgba(255, 255, 255, .14); border-radius: var(--tsi-radius-md); background: rgba(0, 0, 0, .18); }
 .tsi-page--bastion .tsi-bas-facpanel__fns { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 10px; }
-.tsi-page--bastion .tsi-bas-facpanel__artisan { display: flex; flex-direction: column; gap: 8px; padding-top: 10px; border-top: 1px solid var(--tsi-line-faint); }
+/* The Workshop's five staff (step S12): cards side by side, the locked ones greyed; Craft Magic Item beneath them. */
+.tsi-page--bastion .tsi-bas-workshop { display: flex; flex-direction: column; gap: 8px; padding-top: 10px; border-top: 1px solid var(--tsi-line-faint); }
+.tsi-page--bastion .tsi-bas-staff__grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; align-items: start; }
+.tsi-page--bastion .tsi-bas-staff { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 8px; border: 1px solid rgba(214, 178, 94, .55); border-radius: var(--tsi-radius-md); background: rgba(0, 0, 0, .22); }
+.tsi-page--bastion .tsi-bas-staff.is-locked { opacity: .55; filter: grayscale(.6); border-style: dashed; border-color: rgba(214, 178, 94, .28); }
+.tsi-page--bastion .tsi-bas-staff__head { display: flex; flex-direction: column; gap: 1px; }
+.tsi-page--bastion .tsi-bas-staff__name { font: 700 15px/1.2 var(--tsi-font-display); letter-spacing: var(--tsi-track-heading); text-transform: uppercase; color: var(--tsi-gold-text); }
+.tsi-page--bastion .tsi-bas-staff__level { font-size: var(--tsi-fs-body-sm); color: var(--tsi-text-muted); }
+.tsi-page--bastion .tsi-bas-staff__blurb { font-size: var(--tsi-fs-body-sm); line-height: 1.25; color: var(--tsi-text-muted); }
+.tsi-page--bastion .tsi-bas-staff__placeholder { font-size: 13px; line-height: 1.25; color: #e7b9a4; }
+.tsi-page--bastion .tsi-bas-staff__locked,
+.tsi-page--bastion .tsi-bas-staff__empty { font-size: var(--tsi-fs-body-sm); line-height: 1.3; }
+.tsi-page--bastion .tsi-bas-staff__job-title { font: 600 13px/1.2 var(--tsi-font-display); letter-spacing: var(--tsi-track-label); color: var(--tsi-gold-text); }
+.tsi-page--bastion .tsi-bas-staff__busy { font-size: 13px; line-height: 1.25; color: var(--tsi-text-muted); }
+.tsi-page--bastion .tsi-bas-staff .tsi-bas-fn { padding: 6px; }
+.tsi-page--bastion .tsi-bas-staff .tsi-input { max-width: 100%; }
+.tsi-page--bastion .tsi-bas-workshop__magic { display: flex; flex-direction: column; gap: 4px; padding: 8px; border: 1px solid var(--tsi-line-faint); border-radius: var(--tsi-radius-md); background: rgba(0, 0, 0, .14); }
+.tsi-page--bastion .tsi-bas-workshop__tag { font: 700 12px/1 var(--tsi-font-display); letter-spacing: var(--tsi-track-label); text-transform: uppercase; color: var(--tsi-text-muted); }
+@media (max-width: 1500px) { .tsi-page--bastion .tsi-bas-staff__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 760px) { .tsi-page--bastion .tsi-bas-staff__grid { grid-template-columns: minmax(0, 1fr); } }
 /* The Dock's Cargo and Port Charters (pull request 5). */
 .tsi-page--bastion .tsi-bas-facpanel__cargo { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--tsi-line-faint); }
 .tsi-page--bastion .tsi-bas-cargo__group { display: flex; flex-direction: column; gap: 4px; }
@@ -854,7 +873,6 @@
 .tsi-page--bastion .tsi-bas-box--treasury::before { background-image: url("assets/panels/treasury.png"); }
 
 .tsi-page--bastion .tsi-bas-card--warehouse::before { background-image: url("assets/panels/warehouse.png"); }
-.tsi-page--bastion .tsi-bas-card--artisan::before { background-image: url("assets/panels/artisan_tools.png"); }
 
 /* A box that can't be used looks it (it looked just like a working one: Harry's report, 2 October 2026). */
 .tsi-page--bastion .tsi-input:disabled { opacity: .45; cursor: not-allowed; }
@@ -1009,7 +1027,6 @@
 }
 .tsi-page--bastion .tsi-bas-wh__body { display: flex; flex-direction: column; gap: 8px; max-height: 360px; overflow-y: auto; padding-right: 4px; }
 .tsi-page--bastion .tsi-bas-wh__row { padding: 8px; border: 1px solid var(--tsi-line-faint); border-radius: var(--tsi-radius-row); background: var(--tsi-inset-fill); }
-.tsi-page--bastion .tsi-bas-tool-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 
 /* ---------- Facilities (the old carousel's pieces still used by the panels) ---------- */
 .tsi-page--bastion .tsi-bas-fac__fns { display: flex; flex-direction: column; gap: 8px; }
@@ -1169,7 +1186,6 @@
   .tsi-page--bastion .tsi-bas-comp { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 900px) {
-  .tsi-page--bastion .tsi-bas-tool-grid { grid-template-columns: minmax(0, 1fr); }
   .tsi-page--bastion .tsi-bas-clan-grid { grid-template-columns: minmax(0, 1fr); }
   .tsi-page--bastion .tsi-bas-clan-row { grid-template-columns: 1fr 1fr; }
   .tsi-page--bastion .tsi-bas-wh__head { display: none; }
@@ -1294,3 +1310,9 @@
 @media (prefers-reduced-motion: no-preference) {
   .tsi-page--bastion .tsi-bas-bond__fill { transition: width calc(.9s * var(--tsi-signature-slowdown, 1)) ease-out; }
 }
+
+/* The Workshop's panel keeps its picture small so the five staff and Craft Magic Item fit the laptop without scrolling (step S12). */
+.tsi-page--bastion [data-fac="workshop"] .tsi-bas-facpanel__hero { grid-template-columns: 110px minmax(0, 1fr); gap: 12px; }
+.tsi-page--bastion [data-fac="workshop"] .tsi-bas-facpanel__img { width: 110px; height: 110px; }
+.tsi-page--bastion [data-fac="workshop"] .tsi-bas-facpanel__orders { padding: 6px 10px; }
+.tsi-page--bastion [data-fac="workshop"] .tsi-bas-facpanel { gap: 8px; }

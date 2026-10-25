@@ -312,8 +312,8 @@ All 139 media files from the old Bastion (131 PNGs and 8 SVGs). 121 distinct fil
 | `assets/facilities/greenhouse.png` | `tools/bastion/assets/facilities/greenhouse.png` | 2.09 MB, 1024 × 1024 | Yes: the Herbal Gardens' picture (the Greenhouse's until 13 October 2026) |
 | `assets/facilities/hall_inner.png` | `tools/bastion/assets/facilities/hall_inner.png` | 2.61 MB, 1536 × 1024 | Yes: the painted hall behind the Hall's pop-ups |
 | `assets/facilities/hall_of_emissaries.png` | `tools/bastion/assets/facilities/hall_of_emissaries.png` | 1.65 MB, 1024 × 1024 | Yes: the Hall's picture, and faint behind the Diplomacy & Trade panel |
-| `assets/facilities/laboratory.png` | `tools/bastion/assets/facilities/laboratory.png` | 2.06 MB, 1024 × 1024 | Yes: the Arcane Laboratory's picture (the Laboratory's until 13 October 2026) |
-| `assets/facilities/library.png` | `tools/bastion/assets/facilities/library.png` | 1.77 MB, 1024 × 1024 | Yes: the Library & Scriptorium's picture (the Library's until 13 October 2026) |
+| `assets/facilities/laboratory.png` | `tools/bastion/assets/extras/facilities/laboratory.png` | 2.06 MB, 1024 × 1024 | No longer: the Arcane Laboratory's picture, until it joined the Workshop's Alchemist (22 October 2026, step S12) |
+| `assets/facilities/library.png` | `tools/bastion/assets/extras/facilities/library.png` | 1.77 MB, 1024 × 1024 | No longer: the Library & Scriptorium's picture, until it joined the Workshop's Scholar (22 October 2026, step S12) |
 | `assets/facilities/menagerie.png` | `tools/bastion/assets/facilities/menagerie.png` | 1.95 MB, 1024 × 1024 | Yes: the Beast Pen's tile (Harry, 22 October 2026: the Menagerie went with the war game, and its painting stays as the Pen's card until Harry paints another). Not moved to extras |
 | `assets/facilities/shrine_of_aurush.png` | `tools/bastion/assets/facilities/shrine_of_aurush.png` | 2.54 MB, 1536 × 1024 | Yes: the Shrine of Aurush card's picture |
 | `assets/facilities/shrine_of_pelagos.png` | `tools/bastion/assets/facilities/shrine_of_pelagos.png` | 2.51 MB, 1536 × 1024 | Yes: the Shrine of Pelagos card's picture |
@@ -330,7 +330,7 @@ All 139 media files from the old Bastion (131 PNGs and 8 SVGs). 121 distinct fil
 | `assets/library_overlay.png` | `tools/bastion/assets/extras/old-map/overlays/library_overlay.png` | 73 KB, 1152 × 768 | No longer: showed the Library on the old map, until 13 October 2026 |
 | `assets/smithy_overlay.png` | `tools/bastion/assets/extras/old-map/overlays/smithy_overlay.png` | 66 KB, 1152 × 768 | No longer: showed the Smithy on the old map, until 13 October 2026 |
 | `assets/war_room_overlay.png` | `tools/bastion/assets/extras/old-map/overlays/war_room_overlay.png` | 191 KB, 1152 × 768 | No longer: showed the War Room on the old map, until 13 October 2026 |
-| `assets/artisan_tools.png` | `tools/bastion/assets/panels/artisan_tools.png` | 1.88 MB, 1024 × 1024 | Yes: faint behind the Artisan Tools panel |
+| `assets/artisan_tools.png` | `tools/bastion/assets/extras/panels/artisan_tools.png` | 1.88 MB, 1024 × 1024 | No longer: it sat faintly behind the Artisan Tools card, which the Workshop's five staff replaced (22 October 2026, step S12) |
 | `assets/bastion_defenders.png` | `tools/bastion/assets/extras/panels/bastion_defenders.png` | 1.82 MB, 1024 × 1024 | No longer: was faint behind the Bastion Defenders box, until the war game was removed (22 October 2026) |
 | `assets/military.png` | `tools/bastion/assets/extras/panels/military.png` | 1.84 MB, 1024 × 1024 | No longer: was faint behind the Military box, until the war game was removed (22 October 2026) |
 | `assets/treasury.png` | `tools/bastion/assets/panels/treasury.png` | 1.99 MB, 1024 × 1024 | Yes: faint behind the Treasury box |
@@ -428,8 +428,8 @@ Harry's own art, uploaded to `bastion-new-art/` (kept there untouched, with its 
 | Original | In the suite | Size | Used? |
 |---|---|---|---|
 | `bastion-new-art/Bastion_Base_3000x1250.jpg` | `tools/bastion/assets/map/bastion_base.jpg` | 1.53 MB, 3000 × 1250 | Yes: the Bastion Map |
-| `bastion-new-art/1-first-upload/01_Library_Overlay.png` | `tools/bastion/assets/map/overlays/library.png` | 3000 × 1250 | Yes: the Library & Scriptorium, once built |
-| `bastion-new-art/1-first-upload/02_Laboratory_Overlay.png` | `tools/bastion/assets/map/overlays/laboratory.png` | 3000 × 1250 | Yes: the Arcane Laboratory, once built |
+| `bastion-new-art/1-first-upload/01_Library_Overlay.png` | `tools/bastion/assets/extras/map/overlays/library.png` | 3000 × 1250 | No longer: the Library & Scriptorium's building, until it joined the Workshop (step S12) |
+| `bastion-new-art/1-first-upload/02_Laboratory_Overlay.png` | `tools/bastion/assets/extras/map/overlays/laboratory.png` | 3000 × 1250 | No longer: the Arcane Laboratory's building, until it joined the Workshop (step S12) |
 | `bastion-new-art/1-first-upload/03_Greenhouse_Overlay.png` | `tools/bastion/assets/map/overlays/greenhouse.png` | 3000 × 1250 | Yes: the Herbal Gardens, once built |
 | `bastion-new-art/1-first-upload/04_War_Room_Overlay.png` | `tools/bastion/assets/extras/map/overlays/war_room.png` | 3000 × 1250 | No longer: showed the War Room on the map, until the war game was removed (22 October 2026) |
 | `bastion-new-art/1-first-upload/05_Hall_of_Emissaries_Overlay.png` | `tools/bastion/assets/map/overlays/hall_of_emissaries.png` | 3000 × 1250 | Yes: the Hall of Emissaries |

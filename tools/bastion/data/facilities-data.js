@@ -91,21 +91,265 @@
    Training, harnesses, first flight and the three old buildings' other orders are gone; the
    conversion (R.migrateToV4, strip-back-rules.js, step rehomeBeasts) moves a House order to
    House Beast Here and cancels the rest. */
+/* The Strip Back Overhaul (Harry, 22 October 2026, step S12): THE WORKSHOP'S STAFF. The Workshop has five staff ("staff": id,
+   name, the Workshop level that opens them, a line about each) who open one by one: the Handyman (Level 1), Smith (2), Scholar
+   (3), Alchemist (4) and Artisan (5). Each order names its staff member ("staff") and the level that opens it
+   ("requiredFacilityLevel"); a staff member does one job at a time and the five work side by side. A craft order has "craftTables"
+   (the tables of tools-data.js whose items it offers, A to Z, 3 days each) and "artisanExtras" (the Artisan's hook: items added to
+   it at Level 5, empty until Harry supplies them). The Handyman's list and the Artisan's extras are PLACEHOLDERS ("placeholder":
+   true): Harry will supply them, by editing this file. The Library & Scriptorium's Research and Prepare Overland Travel Charts
+   are the Scholar's; the Arcane Laboratory's Craft Common, Craft Uncommon and Alchemy are the Alchemist's (the three potions
+   that the Alchemist's Supplies list already has, Potion of Climbing, Resistance and Water Breathing, are left out; no party
+   level is needed). The two facilities are gone (a saved Bastion is converted: R.migrateToV4, step workshopStaff). Craft
+   Magic Item has no staff member. The Smithy's Smithing is "retired": hidden, kept only so one already pending still finishes
+   (the Smith crafts the same items). The Artisan Tools (six picked tool tables) are gone. */
 window.TSI_DATA = window.TSI_DATA || {};
 window.TSI_DATA.bastionFacilities = [
   {
     "name": "Workshop",
     "id": "workshop",
     "requiredLevel": 5,
+    "staff": [
+      {
+        "id": "handyman",
+        "name": "Handyman",
+        "level": 1,
+        "blurb": "Common crafting",
+        "placeholder": true,
+        "note": "PLACEHOLDER: the Handyman’s list is to be supplied. Until then he crafts from the six tool tables nobody else claims."
+      },
+      {
+        "id": "smith",
+        "name": "Smith",
+        "level": 2,
+        "blurb": "Weapons, armour and ironwork (Smith’s Tools)"
+      },
+      {
+        "id": "scholar",
+        "name": "Scholar",
+        "level": 3,
+        "blurb": "Calligraphy, Overland charts and scripture Research"
+      },
+      {
+        "id": "alchemist",
+        "name": "Alchemist",
+        "level": 4,
+        "blurb": "Alchemist’s Supplies, poisons and the laboratory’s magic items"
+      },
+      {
+        "id": "artisan",
+        "name": "Artisan",
+        "level": 5,
+        "blurb": "Extra options for every list above",
+        "placeholder": true,
+        "note": "Extra options: to come."
+      }
+    ],
     "functions": [
       {
         "id": "craft",
         "label": "Craft",
+        "jobLabel": "Craft (common crafting)",
         "days": 3,
         "options": [],
         "costGP": 0,
         "costText": "0",
-        "notes": "Outputs/dropdowns for the Craft function will be populated based on the selected toolsets added to the workshop facility (see TOOLS_TABLES sheet):\nSmith’s Tools\nTinker’s Tools\nAlchemist’s Supplies\nWeaver’s Tools\nLeatherworker’s Tools\nCarpenter’s Tools\nMason’s Tools\nGlassblower’s Tools\nCobbler’s Tools\nThieves’ Tools\nBrewer’s Supplies\nCalligrapher’s Supplies"
+        "staff": "handyman",
+        "requiredFacilityLevel": 1,
+        "craftTables": [
+          "Weaver’s Tools",
+          "Leatherworker’s Tools",
+          "Carpenter’s Tools",
+          "Mason’s Tools",
+          "Glassblower’s Tools",
+          "Brewer’s Supplies"
+        ],
+        "artisanExtras": [],
+        "notes": "PLACEHOLDER (Harry will supply the Handyman’s list): until then the Handyman crafts from the six tool tables no other staff member claims.",
+        "placeholder": true
+      },
+      {
+        "id": "craft_smith",
+        "label": "Craft",
+        "jobLabel": "Craft (Smith’s Tools)",
+        "days": 3,
+        "options": [],
+        "costGP": 0,
+        "costText": "0",
+        "staff": "smith",
+        "requiredFacilityLevel": 2,
+        "craftTables": [
+          "Smith’s Tools"
+        ],
+        "artisanExtras": [],
+        "notes": null
+      },
+      {
+        "id": "craft_scholar",
+        "label": "Craft",
+        "jobLabel": "Craft (Calligrapher’s Supplies)",
+        "days": 3,
+        "options": [],
+        "costGP": 0,
+        "costText": "0",
+        "staff": "scholar",
+        "requiredFacilityLevel": 3,
+        "craftTables": [
+          "Calligrapher’s Supplies"
+        ],
+        "artisanExtras": [],
+        "notes": null
+      },
+      {
+        "id": "research",
+        "label": "Research",
+        "days": 5,
+        "options": [
+          {
+            "label": "Geographical Scriptures"
+          },
+          {
+            "label": "Religious Scriptures"
+          },
+          {
+            "label": "Combat Scriptures"
+          },
+          {
+            "label": "Political scriptures"
+          }
+        ],
+        "costGP": 0,
+        "costText": "0",
+        "notes": null,
+        "jobLabel": "Research (scriptures)",
+        "staff": "scholar",
+        "requiredFacilityLevel": 3
+      },
+      {
+        "id": "prepare_overland_travel_charts",
+        "label": "Prepare Overland Travel Charts",
+        "days": 4,
+        "costGP": 0,
+        "costText": "0",
+        "notes": "Each Overland chart gives 3 days of use in the Travel bags: one more 6-mile hex on a day it's used. The Courier Exchange can send it to the party.",
+        "requiredFacilityLevel": 3,
+        "production": true,
+        "options": [
+          {
+            "label": "1 Overland chart",
+            "outputs": [
+              {
+                "good": "overland_chart",
+                "qty": 1
+              }
+            ]
+          }
+        ],
+        "jobLabel": "Prepare Overland Travel Charts",
+        "staff": "scholar"
+      },
+      {
+        "id": "craft_alchemist",
+        "label": "Craft",
+        "jobLabel": "Craft (Alchemist’s Supplies)",
+        "days": 3,
+        "options": [],
+        "costGP": 0,
+        "costText": "0",
+        "staff": "alchemist",
+        "requiredFacilityLevel": 4,
+        "craftTables": [
+          "Alchemist’s Supplies"
+        ],
+        "artisanExtras": [],
+        "notes": null
+      },
+      {
+        "id": "alchemy",
+        "label": "Alchemy",
+        "days": 5,
+        "options": [
+          {
+            "label": "Burnt Othur Fumes (Poison)"
+          },
+          {
+            "label": "Essence of Ether (Poison)"
+          },
+          {
+            "label": "Torpor (Poison)"
+          }
+        ],
+        "costGP": 0,
+        "costText": "0",
+        "notes": "The three poisons the Alchemist’s Supplies list does not cover (5 days each).",
+        "jobLabel": "Alchemy (three poisons)",
+        "staff": "alchemist",
+        "requiredFacilityLevel": 4
+      },
+      {
+        "id": "craft_common",
+        "label": "Craft Common",
+        "days": 5,
+        "options": [
+          {
+            "label": "Bead of Nourishment"
+          },
+          {
+            "label": "Bead of Refreshment"
+          },
+          {
+            "label": "Lock of Trickery"
+          },
+          {
+            "label": "Mystery Key"
+          }
+        ],
+        "costGP": 0,
+        "costText": "0",
+        "notes": null,
+        "jobLabel": "Craft Common",
+        "staff": "alchemist",
+        "requiredFacilityLevel": 4
+      },
+      {
+        "id": "craft_uncommon",
+        "label": "Craft Uncommon",
+        "days": 10,
+        "options": [
+          {
+            "label": "Bag of Holding"
+          },
+          {
+            "label": "Cap of Water Breathing"
+          },
+          {
+            "label": "Circlet of Blasting"
+          },
+          {
+            "label": "Cloak of Protection"
+          },
+          {
+            "label": "Gem of Brightness"
+          },
+          {
+            "label": "Hat of Disguise"
+          },
+          {
+            "label": "Potion of Poison"
+          },
+          {
+            "label": "Saddle of the Cavalier"
+          },
+          {
+            "label": "Sending Stones"
+          }
+        ],
+        "costGP": 0,
+        "costText": "0",
+        "notes": null,
+        "jobLabel": "Craft Uncommon",
+        "staff": "alchemist",
+        "requiredFacilityLevel": 4
       },
       {
         "id": "craft_magic_item",
@@ -181,7 +425,7 @@ window.TSI_DATA.bastionFacilities = [
         ],
         "costGP": 0,
         "costText": "0",
-        "notes": "This function (Craft Magic Item) is not available until the players reach Level 9."
+        "notes": "Not a staff job: it is made by the Workshop itself, with no party level needed."
       },
       {
         "id": "smithing",
@@ -278,8 +522,9 @@ window.TSI_DATA.bastionFacilities = [
         ],
         "costGP": null,
         "costText": null,
-        "notes": "The old Smithy's order, kept for Bastions that had a Smithy before it joined the Workshop (13 October 2026). Craft with Smith's Tools makes the same items in 3 days.",
-        "onlyIfLegacy": "smithy"
+        "notes": "RETIRED: the Smithy’s old order (5 days). The Smith crafts the same items in 3 days. Kept only so a Smithing order that was already pending finishes.",
+        "retired": true,
+        "staff": "smith"
       }
     ]
   },
@@ -349,210 +594,6 @@ window.TSI_DATA.bastionFacilities = [
         "options": [],
         "notes": "Registers a Port Charter the DM granted in the Explorer, so the Dock can ship cargo to that port. No gold and no roll."
       }
-    ]
-  },
-  {
-    "name": "Arcane Laboratory",
-    "id": "arcane_laboratory",
-    "requiredLevel": 5,
-    "mergedFrom": [
-      "arcane_study",
-      "laboratory"
-    ],
-    "functions": [
-      {
-        "id": "craft_common",
-        "label": "Craft Common",
-        "days": 5,
-        "options": [
-          {
-            "label": "Bead of Nourishment"
-          },
-          {
-            "label": "Bead of Refreshment"
-          },
-          {
-            "label": "Lock of Trickery"
-          },
-          {
-            "label": "Mystery Key"
-          },
-          {
-            "label": "Potion of Climbing"
-          }
-        ],
-        "costGP": 0,
-        "costText": "0",
-        "notes": null
-      },
-      {
-        "id": "craft_uncommon",
-        "label": "Craft Uncommon",
-        "days": 10,
-        "options": [
-          {
-            "label": "Bag of Holding"
-          },
-          {
-            "label": "Cap of Water Breathing"
-          },
-          {
-            "label": "Circlet of Blasting"
-          },
-          {
-            "label": "Cloak of Protection"
-          },
-          {
-            "label": "Gem of Brightness"
-          },
-          {
-            "label": "Hat of Disguise"
-          },
-          {
-            "label": "Potion of Poison"
-          },
-          {
-            "label": "Potion of Resistance"
-          },
-          {
-            "label": "Potion of Water Breathing"
-          },
-          {
-            "label": "Saddle of the Cavalier"
-          },
-          {
-            "label": "Sending Stones"
-          }
-        ],
-        "costGP": 0,
-        "costText": "0",
-        "notes": null
-      },
-      {
-        "id": "alchemy",
-        "label": "Alchemy",
-        "days": 5,
-        "options": [
-          {
-            "label": "Burnt Othur Fumes (Poison)"
-          },
-          {
-            "label": "Essence of Ether (Poison)"
-          },
-          {
-            "label": "Torpor (Poison)"
-          },
-          {
-            "label": "Acid vial"
-          },
-          {
-            "label": "Alchemist’s fire"
-          },
-          {
-            "label": "Basic poison"
-          },
-          {
-            "label": "Antitoxin"
-          },
-          {
-            "label": "Firebomb (reskinned alchemist’s fire)"
-          },
-          {
-            "label": "Frost vial (cold variant)"
-          },
-          {
-            "label": "Sticky bomb (glue grenade)"
-          },
-          {
-            "label": "Potion of healing (common)"
-          },
-          {
-            "label": "Potion of greater healing (base item)"
-          },
-          {
-            "label": "Potion of superior healing (base item)"
-          },
-          {
-            "label": "Potion of supreme healing (base item)"
-          },
-          {
-            "label": "Potion of climbing (base item)"
-          },
-          {
-            "label": "Potion of water breathing (base item)"
-          },
-          {
-            "label": "Potion of resistance (base item)"
-          },
-          {
-            "label": "Darkvision draught (base item)"
-          },
-          {
-            "label": "Stoneskin varnish (base item)"
-          },
-          {
-            "label": "Vitality tonic (base item)"
-          }
-        ],
-        "costGP": 0,
-        "costText": "0",
-        "notes": null,
-        "requiredPartyLevel": 9
-      }
-    ]
-  },
-  {
-    "name": "Library & Scriptorium",
-    "id": "library_scriptorium",
-    "requiredLevel": 5,
-    "productionLimit": 1,
-    "functions": [
-      {
-        "id": "research",
-        "label": "Research",
-        "days": 5,
-        "options": [
-          {
-            "label": "Geographical Scriptures"
-          },
-          {
-            "label": "Religious Scriptures"
-          },
-          {
-            "label": "Combat Scriptures"
-          },
-          {
-            "label": "Political scriptures"
-          }
-        ],
-        "costGP": 0,
-        "costText": "0",
-        "notes": null
-      },
-      {
-        "id": "prepare_overland_travel_charts",
-        "label": "Prepare Overland Travel Charts",
-        "days": 4,
-        "costGP": 0,
-        "costText": "0",
-        "notes": "Each Overland chart gives 3 days of use in the Travel bags: one more 6-mile hex on a day it's used. The Courier Exchange can send it to the party.",
-        "requiredFacilityLevel": 2,
-        "production": true,
-        "options": [
-          {
-            "label": "1 Overland chart",
-            "outputs": [
-              {
-                "good": "overland_chart",
-                "qty": 1
-              }
-            ]
-          }
-        ]
-      }
-    ],
-    "mergedFrom": [
-      "library"
     ]
   },
   {
@@ -636,7 +677,7 @@ window.TSI_DATA.bastionFacilities = [
         "days": 4,
         "costGP": 0,
         "costText": "0",
-        "notes": "Crafting ingredients for the Herbal Gardens' own recipes (and, later, the Arcane Laboratory's).",
+        "notes": "Crafting ingredients for the Herbal Gardens' own recipes (and, later, the Workshop's Alchemist's).",
         "requiredFacilityLevel": 2,
         "production": true,
         "options": [

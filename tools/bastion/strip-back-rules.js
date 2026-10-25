@@ -1367,6 +1367,146 @@
     }
   }
 
+  /* ================================================================================================
+     STEP S12: THE WORKSHOP'S STAFF (Harry, 22 October 2026; docs/strip-back/E-workshop-dev.md, J 4.3,
+     docs/strip-back/S12-built.md)
+     ================================================================================================
+     The Library & Scriptorium and the Arcane Laboratory are gone: their jobs belong to the Workshop's Scholar (Research and
+     Prepare Overland Travel Charts) and Alchemist (Craft Common, Craft Uncommon and Alchemy), and the Artisan Tools card (six
+     tool tables the DM picked) is gone with the five staff who open one by one as the Workshop is upgraded. What the save holds:
+     - Pending Research and Prepare Overland Travel Charts orders at the Library, and Craft Common, Craft Uncommon and
+       Alchemy orders at the Laboratory, MOVE to the Workshop. They keep their id (the Workshop's orders have the same ids), due
+       day, cost, issue day and chosen item (a Potion of Climbing ordered at the Laboratory is still made, though the Alchemist's
+       list no longer offers it twice); only the place and the name change ("Workshop: Scholar - Research (Combat Scriptures)").
+       They complete through the same code as before.
+     - Any other order at the two places (an Upgrade, or one the Workshop does not give) is CANCELLED, with what it cost given back.
+     - The two places' slots are freed (a building under way stops: building costs no gold), their levels and repairs go
+       (the Workshop's own level is NOT raised: the Scholar opens at Workshop Level 3 and the Alchemist at Level 4), and each is
+       recorded in archivedFacilities.
+     - artisanTools (six table names) and legacyFacilities (the Smithy) are dropped; the report names the tables the DM had
+       chosen and where each one went. A Smithing order already pending finishes: the order stays in the data, retired.
+     Pure: no storage, clock or dice. */
+  var WORKSHOP_ID = 'workshop';
+  var WORKSHOP_PLACES = {
+    library_scriptorium: ['research', 'prepare_overland_travel_charts'],
+    arcane_laboratory: ['craft_common', 'craft_uncommon', 'alchemy']
+  };
+  function isWorkshopPlace(id) { return Object.prototype.hasOwnProperty.call(WORKSHOP_PLACES, id); }
+  function chosenTables(s) { return (arr(s.artisanTools) || []).filter(function (t) { return typeof t === 'string' && t.trim() !== ''; }); }
+  function detectWorkshop(s) {
+    var out = [];
+    ['builtExtras', 'builtPlots'].forEach(function (key) {
+      (arr(s[key]) || []).forEach(function (x) { var e = entryOf(x); if (e && isWorkshopPlace(e.facId)) out.push('a place: ' + e.facId); });
+    });
+    ['facilityLevels', 'repairs'].forEach(function (key) {
+      if (isObj(s[key])) Object.keys(s[key]).forEach(function (id) { if (isWorkshopPlace(id)) out.push('a ' + (key === 'repairs' ? 'repair' : 'level') + ': ' + id); });
+    });
+    (arr(s.pendingOrders) || []).forEach(function (o) { if (isObj(o) && isWorkshopPlace(o.facId)) out.push('an order: ' + o.facId); });
+    if (chosenTables(s).length) out.push('artisan tools');
+    if ((arr(s.legacyFacilities) || []).length) out.push('retired buildings');
+    return out;
+  }
+  /* Which staff member crafts from a table, and the Workshop Level that opens him: { name, level, placeholder } or null. */
+  function tableOwner(data, table) {
+    var fac = R.facility(data, WORKSHOP_ID);
+    var fns = (fac && fac.functions) || [];
+    for (var i = 0; i < fns.length; i++) {
+      if (arr(fns[i].craftTables) && fns[i].craftTables.indexOf(table) !== -1) {
+        var who = R.staffOf(fac, fns[i]);
+        if (who) return { name: who.name, level: who.level, placeholder: who.placeholder === true };
+      }
+    }
+    return null;
+  }
+  function workshopStaff(s, data, report) {
+    var fac = R.facility(data, WORKSHOP_ID);
+    var day = report.day;
+    var wname = R.stripBackName(data, WORKSHOP_ID);
+    var present = {};          /* the places this save really had: id → { was built, building, level } */
+    var slotsFreed = 0;
+    var stopped = [];
+    [['builtExtras', false], ['builtPlots', true]].forEach(function (pair) {
+      var list = arr(s[pair[0]]);
+      if (!list) return;
+      list.forEach(function (x, i) {
+        var e = entryOf(x);
+        if (!e || !isWorkshopPlace(e.facId)) return;
+        var building = e.status === 'building';
+        var rec = { facId: e.facId, name: R.stripBackName(data, e.facId), status: building ? 'building' : 'built', slot: i, day: day };
+        if (pair[1]) rec.plot = true;
+        report.archived.push(rec);
+        present[e.facId] = present[e.facId] || { building: building, level: 0 };
+        if (building) stopped.push(rec.name);
+        list[i] = '';
+        slotsFreed += 1;
+      });
+    });
+    /* (Research is not touched: only the Herbal Gardens has a research tree, and the audit keeps that record as it was.) */
+    ['facilityLevels', 'repairs'].forEach(function (key) {
+      if (!isObj(s[key])) return;
+      Object.keys(WORKSHOP_PLACES).forEach(function (id) {
+        if (!(id in s[key])) return;
+        if (key === 'facilityLevels') { present[id] = present[id] || { building: false, level: 0 }; present[id].level = clampInt(s[key][id], 1, 5); }
+        delete s[key][id];
+        (report.removed[key] = report.removed[key] || []).push(id);
+      });
+    });
+    /* Pending orders at the two places. */
+    var movedHere = 0;
+    (arr(s.pendingOrders) || []).slice().forEach(function (o) {
+      if (!isObj(o) || !isWorkshopPlace(o.facId)) return;
+      present[o.facId] = present[o.facId] || { building: false, level: 0 };
+      var place = R.stripBackName(data, o.facId);
+      var upgrade = isObj(o.meta) && o.meta.kind === 'upgrade';
+      var fn = !upgrade && fac && WORKSHOP_PLACES[o.facId].indexOf(o.fnId) !== -1 ? R.fn(fac, o.fnId) : null;
+      if (fn && idOf(o) && !(isObj(o.meta) && o.meta.kind === 'research')) {
+        R.stripBackMoveOrder(report, o, { facId: WORKSHOP_ID, label: R.orderLabel(fac, fn, str(o.optionLabel).trim() || (isObj(o.chosen) ? str(o.chosen.label).trim() : '')) }, 'the ' + wname);
+        movedHere += 1;
+        return;
+      }
+      R.stripBackCancel(s, data, report, o, upgrade
+        ? 'the ' + place + ' is part of the ' + wname + ' now, so there is nothing to upgrade there (upgrades cost no gold)'
+        : fn ? 'it could not be followed to the ' + wname
+        : 'the ' + wname + ' does not give this order');
+    });
+
+    /* ---------- The words ---------- */
+    var names = Object.keys(WORKSHOP_PLACES).filter(function (id) { return present[id]; }).map(function (id) { return 'the ' + R.stripBackName(data, id); });
+    if (names.length) {
+      var ws = clampInt(isObj(s.facilityLevels) ? s.facilityLevels[WORKSHOP_ID] : 1, 1, 5);
+      var staffLevel = function (id) { var st = (fac && arr(fac.staff) || []).filter(function (x) { return x.id === id; })[0]; return st ? st.level : 0; };
+      var lead = listText(names);
+      var text = lead.charAt(0).toUpperCase() + lead.slice(1) + (names.length > 1 ? ' have' : ' has') + ' joined the ' + wname + ', so ' + (slotsFreed === 1 ? 'its slot is' : slotsFreed > 1 ? 'their slots are' : 'there is no slot to free') +
+        (slotsFreed ? ' free' : '') + '. The jobs now belong to the ' + wname + '\'s staff: ' +
+        (present.library_scriptorium ? 'the Scholar (Research and Prepare Overland Travel Charts; opens at ' + wname + ' Level ' + staffLevel('scholar') + ')' : '') +
+        (present.library_scriptorium && present.arcane_laboratory ? ' and ' : '') +
+        (present.arcane_laboratory ? 'the Alchemist (Craft Common, Craft Uncommon and Alchemy; opens at ' + wname + ' Level ' + staffLevel('alchemist') + ')' : '') + '.' +
+        (stopped.length ? ' Building work on ' + listText(stopped.map(function (n) { return 'the ' + n; })) + ' stopped (building costs no gold).' : '');
+      R.stripBackSay(report, 'joined', text);
+      var cut = [];
+      if (present.library_scriptorium && ws < staffLevel('scholar')) cut.push('Overland charts and Research now need the Scholar, who opens at ' + wname + ' Level ' + staffLevel('scholar') + ' (your ' + wname + ' is at Level ' + ws + ')' +
+        (present.library_scriptorium.level ? ', where your Library & Scriptorium was at Level ' + present.library_scriptorium.level : ''));
+      if (present.arcane_laboratory && ws < staffLevel('alchemist')) cut.push('the Alchemist opens at ' + wname + ' Level ' + staffLevel('alchemist') + ' (your ' + wname + ' is at Level ' + ws + ')');
+      R.stripBackSay(report, 'joined', 'The ' + wname + '\'s own level has not been raised' + (cut.length ? ': ' + cut.join('; ') + '. Upgrading the ' + wname + ' opens them.' : '.'));
+      if (movedHere) R.stripBackSay(report, 'joined', (movedHere === 1 ? 'The order you had running carries' : 'The ' + movedHere + ' orders you had running carry') + ' on at the ' + wname + ', with the same due ' + (movedHere === 1 ? 'day' : 'days') + '.');
+    }
+    var tables = chosenTables(s);
+    if (tables.length) {
+      var seen = {};
+      var places = tables.filter(function (t) { if (seen[t]) return false; seen[t] = true; return true; }).map(function (t) {
+        var o = tableOwner(data, t);
+        return t + (o ? ' now belongs to the ' + o.name + ' (opens at ' + wname + ' Level ' + o.level + (o.placeholder ? '; his list is a placeholder until you supply it' : '') + ')' : ' is no longer used');
+      });
+      R.stripBackSay(report, 'joined', 'The Artisan Tools card is gone. You had chosen ' + listText(Object.keys(seen)) + ': ' + places.join('; ') + '. The ' + wname + '\'s five staff (Handyman, Smith, Scholar, Alchemist and Artisan) open one by one as it is upgraded, and each crafts from fixed lists.');
+    }
+    if ((arr(s.legacyFacilities) || []).indexOf('smithy') !== -1) {
+      R.stripBackSay(report, 'joined', 'The Smithy\'s old Smithing order is replaced by the Smith\'s Craft (3 days, opens at ' + wname + ' Level 2). A Smithing order that was already running finishes as normal.');
+    }
+    /* The two old fields go (R.fromSave no longer loads them either). */
+    delete s.artisanTools;
+    delete s.legacyFacilities;
+  }
+
   /* The registry, in the order they run. Add a step ABOVE sweepFacilities. */
   R.stripBackSteps = [
     { id: 'dropEvents', detect: detectEvents, run: dropEvents },
@@ -1382,6 +1522,8 @@
     { id: 'moveCharterOrders', detect: detectCharterOrders, run: moveCharterOrders },
     { id: 'windDownHall', detect: detectHall, run: windDownHall },
     /* ---- end of S08 and S09 ---- */
+    /* Step S12: the Workshop's staff (the Library & Scriptorium and the Arcane Laboratory join the Workshop; no more Artisan Tools). */
+    { id: 'workshopStaff', detect: detectWorkshop, run: workshopStaff },
     { id: 'sweepFacilities', detect: detectGhosts, run: sweepFacilities },
     { id: 'finish', detect: null, run: finish }
   ];

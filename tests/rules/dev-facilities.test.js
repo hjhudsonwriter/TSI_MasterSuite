@@ -324,7 +324,7 @@
     t.equal(R.levelReplacement(data, 'courier_exchange', 2), null);
     t.same(R.levelUnlocks(data, 'courier_exchange', 2), ['Regional deliveries: 2 parcels on the road at once, 10 items a parcel']);
     t.equal(R.upgradeReplaceNotice(s, data, 'courier_exchange'), null);
-    t.same(R.levelUnlocks(data, 'library_scriptorium', 2), ['Prepare Overland Travel Charts']);
+    t.same(R.levelUnlocks(data, 'workshop', 3), ['The Scholar: Calligraphy, Overland charts and scripture Research']);
     t.same(R.levelUnlocks(data, 'dock', 2), ['Cargo ships: 2 lots on 1 ship']);
     t.same(data.facilities.filter(function (f) { return f.levelOrders; }).map(function (f) { return f.id; }).sort(), IDS.slice().sort(), 'exactly the four carry the flag');
   });

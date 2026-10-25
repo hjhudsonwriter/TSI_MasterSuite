@@ -365,7 +365,7 @@
   group('Creatures: the save');
 
   test('a Bastion saved before pull request 7 loads with no creatures, the same twice', function (t) {
-    var s = copy(BR.toSave(bastion(10, ['library_scriptorium'])));
+    var s = copy(BR.toSave(bastion(10, ['hall_of_emissaries'])));
     delete s.creatures;
     var b = BR.fromSave(s, bdata);
     t.same(b.creatures, []);

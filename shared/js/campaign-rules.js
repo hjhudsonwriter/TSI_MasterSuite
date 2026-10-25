@@ -85,6 +85,15 @@
     shrine_aurush: ['prepare_blessed_lantern', 'consecrate_expedition_supplies', 'great_rite_aurush'],
     shrine_pelagos: ['bless_voyage', 'bless_commercial_shipment', 'great_rite_pelagos']
   };
+  /* The orders of the Library & Scriptorium and the Arcane Laboratory that carry on at the Workshop's Scholar and Alchemist (step
+     S12; the same ids as the Workshop's orders in tools/bastion/data/facilities-data.js, which the step workshopStaff in
+     tools/bastion/strip-back-rules.js reads; a test keeps the two the same). Anything else at those places ends with its
+     cost given back (an Upgrade). */
+  var WORKSHOP_ORDERS_THAT_MOVE = {
+    library_scriptorium: ['research', 'prepare_overland_travel_charts'],
+    arcane_laboratory: ['craft_common', 'craft_uncommon', 'alchemy']
+  };
+  function isWorkshopPlace(id) { return Object.prototype.hasOwnProperty.call(WORKSHOP_ORDERS_THAT_MOVE, id); }
   /* The House orders the Beast Pen step moves (the same lists as HOUSE_FNS in tools/bastion/strip-back-rules.js). */
   var BEAST_HOUSE_ORDERS = { wyvern_roost: ['house_elara_wyvern', 'house_wyvern'], griffin_tower: ['house_griffin'], dire_wolf_den: ['house_dire_wolf'] };
   /* The Wyvern Roost, Griffin Tower and Dire Wolf Den become ONE Beast Pen when the Bastion converts a version 2 or 3 save
@@ -139,6 +148,7 @@
     /* A creature building: its House orders carry on at the Beast Pen (rehomeBeasts); training, riding and flight orders end. */
     if (BEAST_HOUSE_ORDERS[o.facId]) return BEAST_HOUSE_ORDERS[o.facId].indexOf(o.fnId) === -1;
     /* The Library & Scriptorium and the Arcane Laboratory: their jobs go to the Workshop's Scholar and Alchemist. */
+    if (WORKSHOP_ORDERS_THAT_MOVE[o.facId]) return WORKSHOP_ORDERS_THAT_MOVE[o.facId].indexOf(o.fnId) === -1;
     return false;
   }
   /* The pending orders a Bastion save will really have (see above). */
@@ -183,6 +193,8 @@
         if (converting && isOldPen(slotId(e))) return;
         /* The three Shrines: the same, as the Temple (below). */
         if (converting && isOldShrine(slotId(e))) return;
+        /* The Library & Scriptorium and the Arcane Laboratory join the Workshop: work on them stops. */
+        if (converting && isWorkshopPlace(slotId(e))) return;
         add(e.readyDay, 'built', 'The ' + facilityName(e.facId) + ' is built.');
       });
       if (converting) { var penDay = penReadyDay(ba); if (penDay !== null) add(penDay, 'built', 'The Beast Pen is built.'); }

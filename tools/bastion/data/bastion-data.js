@@ -13,11 +13,11 @@ window.TSI_DATA.bastion = {
      facilities overhaul (13 October 2026) the merged facilities use the
      painting of the building whose map overlay they show; the Arcane Study's,
      Smithy's, Garden's and Gaming Hall's paintings are in assets/extras/. */
+  /* The Library & Scriptorium's and the Arcane Laboratory's paintings, map overlays and the Artisan Tools picture
+     were moved to assets/extras/ when the Workshop took their jobs (step S12, Harry, 22 October 2026). */
   facilityImages: {
     workshop: 'workshop.png',
     dock: 'docks.png',
-    arcane_laboratory: 'laboratory.png',
-    library_scriptorium: 'library.png',
     herbal_gardens: 'greenhouse.png',
     /* The Beast Pen's card shows the Menagerie's painting (Harry, 22 October 2026); the Pen's own picture,
        beast_pen.jpg, spans the top of its panel (panelImages below). The file stays where it is. */
@@ -76,8 +76,6 @@ window.TSI_DATA.bastion = {
   mapLabels: {
     workshop: { x: 1030, y: 350 },
     dock: { x: 1260, y: 760 },
-    library_scriptorium: { x: 216, y: 261 },
-    arcane_laboratory: { x: 633, y: 264 },
     herbal_gardens: { x: 228, y: 511 },
     hall_of_emissaries: { x: 2769, y: 376 },
     /* The Temple stands where the three Shrines did, so it is labelled at each: the first point is Aurush's (the Shrine
@@ -198,8 +196,6 @@ window.TSI_DATA.bastion = {
     width: 3000,
     height: 1250,
     overlays: [
-      { fac: 'library_scriptorium', pic: 'map/overlays/library.png' },
-      { fac: 'arcane_laboratory', pic: 'map/overlays/laboratory.png' },
       { fac: 'herbal_gardens', pic: 'map/overlays/greenhouse.png' },
       { fac: 'hall_of_emissaries', pic: 'map/overlays/hall_of_emissaries.png' },
       /* The Temple draws all three Shrine buildings (S11); the pictures stay as they were. */

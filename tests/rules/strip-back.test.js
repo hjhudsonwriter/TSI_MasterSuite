@@ -122,7 +122,7 @@
   test('the registry: the steps run in order, the last one finishes, and a later step can be added above the catch-all', function (t) {
     var ids = R.stripBackSteps.map(function (st) { return st.id; });
     t.same(ids.slice(-2), ['sweepFacilities', 'finish'], 'the catch-all and the last step stay at the end');
-    ['dropEvents', 'settleWarOrders', 'dropWar', 'dropWarFacilities', 'dropBeastRequests', 'identity', 'rehomeBeasts', 'shrinesToTemple', 'moveCharterOrders', 'windDownHall'].forEach(function (id) {
+    ['dropEvents', 'settleWarOrders', 'dropWar', 'dropWarFacilities', 'dropBeastRequests', 'identity', 'rehomeBeasts', 'shrinesToTemple', 'moveCharterOrders', 'windDownHall', 'workshopStaff'].forEach(function (id) {
       t.ok(ids.indexOf(id) !== -1 && ids.indexOf(id) < ids.length - 2, id + ' is a step, above the catch-all');
     });
     var steps = R.stripBackSteps;
@@ -151,7 +151,7 @@
     }
     var ids = R.stripBackSteps.map(function (st) { return st.id; });
     t.same(ids.slice(-2), ['sweepFacilities', 'finish'], 'the catch-all and the last step stay at the end');
-    ['dropEvents', 'settleWarOrders', 'dropWar', 'dropWarFacilities', 'dropBeastRequests', 'identity', 'rehomeBeasts', 'shrinesToTemple', 'moveCharterOrders', 'windDownHall'].forEach(function (id) {
+    ['dropEvents', 'settleWarOrders', 'dropWar', 'dropWarFacilities', 'dropBeastRequests', 'identity', 'rehomeBeasts', 'shrinesToTemple', 'moveCharterOrders', 'windDownHall', 'workshopStaff'].forEach(function (id) {
       t.ok(ids.indexOf(id) !== -1 && ids.indexOf(id) < ids.length - 2, id + ' is a step, above the catch-all');
     });
   });
@@ -294,7 +294,7 @@
     ids.forEach(function (id) {
       /* The three creature buildings (S14) and the war game's five facilities (S06) are already out of the catalogue: their names are the table's own. */
       var fac = R.facility(data, id);
-      var own = { wyvern_roost: 'Wyvern Roost', griffin_tower: 'Griffin Tower', dire_wolf_den: 'Dire Wolf Den', menagerie: 'Menagerie', war_room: 'War Room', armoury: 'Armoury', watchtower: 'Watchtower', barracks: 'Barracks', shrine_telluria: 'Shrine of Telluria', shrine_aurush: 'Shrine of Aurush', shrine_pelagos: 'Shrine of Pelagos' };
+      var own = { wyvern_roost: 'Wyvern Roost', griffin_tower: 'Griffin Tower', dire_wolf_den: 'Dire Wolf Den', menagerie: 'Menagerie', war_room: 'War Room', armoury: 'Armoury', watchtower: 'Watchtower', barracks: 'Barracks', library_scriptorium: 'Library & Scriptorium', arcane_laboratory: 'Arcane Laboratory', shrine_telluria: 'Shrine of Telluria', shrine_aurush: 'Shrine of Aurush', shrine_pelagos: 'Shrine of Pelagos' };
       t.equal(T.bastion.stripBack.facilities[id], fac ? fac.name : own[id], id + ': spelt as the catalogue spells it');
     });
     t.equal(R.stripBackName(data, 'wyvern_roost'), 'Wyvern Roost', 'still named after its definition went');
@@ -770,6 +770,8 @@
       delete b.lastEvent; delete b.lastEventDay;
       /* Removed with founding a Clan (S07): the Clan, its Honour and the Trusted Clients; the heavy Bastion's Clan name became its Party Name. */
       ['organization', 'clanHonor', 'trustedClientsByClan'].forEach(function (k) { delete b[k]; });
+      /* Removed with the Workshop's staff (S12): the Artisan Tools and the list of retired buildings (checked in tests/rules/workshop-staff.test.js). */
+      delete b.artisanTools; delete b.legacyFacilities;
       delete a.partyName;
       a.v = 3;
       /* Changed by the Beast Pen (S14) and the war game's five facilities (S06): the slots, levels, orders, gold, the repairs and the creatures' homes.
@@ -798,7 +800,7 @@
     t.equal(heavy.creatures.length, 4);
     t.equal(heavy.log.length, 200);
     t.equal(heavy.treasuryGP, raw.treasuryGP + res.report.gold.refunded + res.report.gold.settlement, '2,000, what the cancelled orders cost and, from the Hall\'s wind-down (S09), the final settlement of its running contracts');
-    t.same(heavy.builtExtras.filter(Boolean).map(function (e) { return e.facId; }), ['library_scriptorium', 'arcane_laboratory', 'temple', 'beast_pen', 'hall_of_emissaries'], 'the three Shrines are one Temple');
+    t.same(heavy.builtExtras.filter(Boolean).map(function (e) { return e.facId; }), ['temple', 'beast_pen', 'hall_of_emissaries'], 'the three Shrines are one Temple, and the Library and Laboratory slots are free (S12)');
     t.equal(heavy.migration.v4.changed, true, 'its event record, the war game and its facilities were dropped, and it says so');
     t.equal('lastEvent' in heavy || 'lastEventDay' in heavy, false);
   });
@@ -829,7 +831,7 @@
     t.equal(h.tradeNetwork.voyages.length, 1);
     t.equal(h.tradeNetwork.schedules.length, 1);
     t.equal(h.tradeNetwork.parcels.length, 2);
-    t.ok(R.facility(data, 'library_scriptorium') && !R.facility(data, 'war_room'), 'the facilities it uses are in the catalogue today, but for the war game\'s five (written out in the generator)');
+    t.ok(!R.facility(data, 'library_scriptorium') && !R.facility(data, 'arcane_laboratory') && !R.facility(data, 'war_room'), 'the facilities it uses are in the catalogue today, but for the war game\'s five, the Shrines, the Library and the Laboratory (written out in the generator)');
   });
 
   test('a version 2 fixture goes through version 3 and then version 4 in one go, and the report holds both lists', function (t) {
