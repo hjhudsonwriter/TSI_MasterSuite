@@ -115,12 +115,12 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
       await page.setViewportSize(H.SIZES[size].viewport);
       await page.waitForTimeout(200);
       await page.evaluate(() => TSI.notify('A long notice, to see where it sits: it has two lines of words in it, at least, on both screens.', { type: 'info', title: 'Test.', id: 'tsi-bs-test' }));
-      const hits = await page.evaluate(() => ['open-influence', 'open-warehouse'].map(t => {
+      const hits = await page.evaluate(() => ['open-management', 'open-warehouse'].map(t => {
         const b = document.querySelector('[data-test=' + t + ']').getBoundingClientRect();
         const hit = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2);
         return t + ':' + !!(hit && hit.closest('[data-test=' + t + ']'));
       }));
-      equal(hits, ['open-influence:true', 'open-warehouse:true'], size);
+      equal(hits, ['open-management:true', 'open-warehouse:true'], size);
       const n = await rect(page, '.tsi-notices');
       const bar = await rect(page, '.tsi-bas-bottom');
       assert(n.bottom <= bar.y, size + ': the notices end above the bar: ' + JSON.stringify([n, bar]));
@@ -896,12 +896,14 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
   /* ------------------------------------------------------------------ */
   section('The panels the bottom bar opens');
 
-  const PANELS = [['open-warehouse', 'warehouse', 'Warehouse', 'warehouse'], ['open-management', 'management', 'Management', 'explorer-changes'],
-    ['open-log', 'log', 'Day Log', 'log'],
-    ['open-influence', 'influence', 'Clan Influence', 'influence']];
-  await check('the bottom bar has no Events button any more (S05), no Favour button (S11, the Temple has the bars) and no War Council (S06): Warehouse, Management and Day Log on the left; Clan Influence on the right', async () => {
-    equal(await page.$$eval('.tsi-bas-pbtns--left [data-test^=open-]', bs => bs.map(b => b.getAttribute('data-test'))), ['open-warehouse', 'open-management', 'open-log']);
-    equal(await page.$$eval('.tsi-bas-pbtns--right [data-test^=open-]', bs => bs.map(b => b.getAttribute('data-test'))), ['open-influence']);
+  const PANELS = [['open-warehouse', 'warehouse', 'Warehouse', 'warehouse'], ['open-management', 'management', 'Management', 'explorer-changes']];
+  await check('the bottom bar has only Warehouse and Management (S10: the Day Log and Clan Influence went with S05, S06 and S11\'s other removals): nothing on the right, no removed button, no removed panel', async () => {
+    equal(await page.$$eval('.tsi-bas-pbtns [data-test^=open-]', bs => bs.map(b => b.getAttribute('data-test'))), ['open-warehouse', 'open-management']);
+    equal(await page.$('.tsi-bas-pbtns--right'), null, 'nothing on the right');
+    for (const gone of ['open-log', 'open-influence']) equal(await page.$('[data-test=' + gone + ']'), null, gone + ' is gone');
+    equal(await page.evaluate(() => TSI.bastion.debug.reveal('clear-log')), false, 'and nothing to reveal for Clear log');
+    const words = await page.evaluate(() => document.body.innerText);
+    assert(!/Day Log|Clan Influence|Clear log|Honour Change|Favour Tokens/.test(words), 'no removed panel is named on the page');
     equal(await page.$('[data-test=open-war]'), null, 'no War Council button');
     equal(await page.$('[data-test=open-favour]'), null, 'no Favour button');
     equal(await page.$('[data-test=open-events]'), null);
@@ -922,24 +924,13 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     });
   }
 
-  await check('one panel at a time: the Day Log keeps the day of each entry', async () => {
-    await page.click('[data-test=open-log]');
-    await page.waitForSelector('[data-test=panel-log]');
-    assert(/Day 22 ·/.test(await text(page, 'log')), 'the Herbal Gardens finished on Day 22');
-    equal(await page.$$eval('.tsi-bas-panel', ps => ps.length), 1);
+  await check('one panel at a time: opening Management over Warehouse leaves one panel open', async () => {
+    await page.click('[data-test=open-warehouse]');
+    await page.waitForSelector('[data-test=panel-warehouse]');
     await page.keyboard.press('Escape');
-  });
-
-  await check('Clan Influence: each Clan\'s Political Capital, Honour/Respect and support on one row; Favour Tokens below', async () => {
-    await setUp(page, (s) => { s.politicalCapital.karr = 40; s.honourRespectByClan.karr = 2; s.diplomacy.tokens = 3; });
-    await page.click('[data-test=open-influence]');
-    await page.waitForSelector('[data-test=panel-influence]');
-    const support = await page.evaluate(() => TSI.bastion.rules.supportForClanKey(TSI.bastion.debug.state(), 'karr'));
-    equal([await text(page, 'pc-karr'), await page.inputValue('[data-test=hr-karr]'), await text(page, 'support-karr'), await text(page, 'tokens')], ['40', '2', support + '/100', '3']);
-    await page.fill('[data-test=hr-karr]', '9');
-    await page.press('[data-test=hr-karr]', 'Tab');
-    await page.waitForTimeout(150);
-    equal((await st(page)).honourRespectByClan.karr, 5, 'kept within −5 to +5');
+    await page.click('[data-test=open-management]');
+    await page.waitForSelector('[data-test=panel-management]');
+    equal(await page.$$eval('.tsi-bas-panel', ps => ps.length), 1);
     await page.keyboard.press('Escape');
   });
 

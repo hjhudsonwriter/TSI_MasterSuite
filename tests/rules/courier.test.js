@@ -439,16 +439,16 @@
     var r = BR.applyInbox(b, bdata, exWith([m, standingMsg(), charterMsg()]), 1000);
     t.equal(r.skipped, 3);
     t.same(b.log.map(function (l) { return l.body; }), [
-      '1 parcel pickup, collected before this Bastion started, was skipped, so nothing counts twice. Clan Influence lists it; the items stay in the Travel bags.',
-      '1 Port Charter, sent before this Bastion started, was skipped, so nothing counts twice. Clan Influence lists it: grant it again in the Explorer if it should count.',
-      '1 change to Honour/Respect, sent before this Bastion started, was skipped, so nothing counts twice. Clan Influence lists it, to type in by hand if it should count.'
+      '1 parcel pickup, collected before this Bastion started, was skipped, so nothing counts twice. The items stay in the Travel bags.',
+      '1 Port Charter, sent before this Bastion started, was skipped, so nothing counts twice. Grant it again in the Explorer if it should count.',
+      '1 change to Honour/Respect, sent before this Bastion started, was skipped, so nothing counts twice. Use Change a score in the DM doc if it should count.'
     ]);
     t.same([b.bridge.done[m.id].r, b.bridge.done[m.id].type, b.bridge.done[m.id].parcel], ['skipped', 'parcel_collected', 'qqqqqq11111']);
     t.equal(Bg.statusOf(m, copy(BR.toSave(b))).line, 'Skipped: collected before this Bastion started.');
     var two = BR.defaultState(bdata);
     BR.anchor(two, 12);
     BR.applyInbox(two, bdata, exWith([m, pickup({ id: 'qqqqqq22222', point: 'goldport', goods: [] })]), 1000);
-    t.same(two.log.map(function (l) { return l.body; }), ['2 parcel pickups, collected before this Bastion started, were skipped, so nothing counts twice. Clan Influence lists them; the items stay in the Travel bags.']);
+    t.same(two.log.map(function (l) { return l.body; }), ['2 parcel pickups, collected before this Bastion started, were skipped, so nothing counts twice. The items stay in the Travel bags.']);
   });
 
   /* ---------------------------------------------------------------- */

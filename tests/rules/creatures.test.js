@@ -301,8 +301,8 @@
     var r = BR.applyInbox(b, bdata, exWith([m, standingMsg(), grantMsg({ id: gid(2), species: 'dire_wolf' })]), 1000);
     t.equal(r.skipped, 3);
     t.same(b.log.map(function (l) { return l.body; }), [
-      '2 creature grants, sent before this Bastion started, were skipped, so nothing counts twice. Clan Influence lists them: grant them again in the Explorer if they should count.',
-      '1 change to Honour/Respect, sent before this Bastion started, was skipped, so nothing counts twice. Clan Influence lists it, to type in by hand if it should count.'
+      '2 creature grants, sent before this Bastion started, were skipped, so nothing counts twice. Grant them again in the Explorer if they should count.',
+      '1 change to Honour/Respect, sent before this Bastion started, was skipped, so nothing counts twice. Use Change a score in the DM doc if it should count.'
     ]);
     t.same([b.bridge.done[m.id].r, b.bridge.done[m.id].type, b.bridge.done[m.id].species, b.bridge.done[m.id].name], ['skipped', 'creature', 'griffin', 'Swiftwing']);
     t.same(b.creatures, []);
@@ -311,7 +311,7 @@
     var one = BR.defaultState(bdata);
     BR.anchor(one, 12);
     BR.applyInbox(one, bdata, exWith([m]), 1000);
-    t.same(one.log.map(function (l) { return l.body; }), ['1 creature grant, sent before this Bastion started, was skipped, so nothing counts twice. Clan Influence lists it: grant it again in the Explorer if it should count.']);
+    t.same(one.log.map(function (l) { return l.body; }), ['1 creature grant, sent before this Bastion started, was skipped, so nothing counts twice. Grant it again in the Explorer if it should count.']);
   });
 
   test('a damaged grant is refused, with its receipt, and nothing is held', function (t) {

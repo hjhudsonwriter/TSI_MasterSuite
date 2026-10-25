@@ -230,19 +230,13 @@ async function changeRows(ba) {
     await waitStatus(ex, ['applied']);
   });
 
-  await check('typing in an Honour/Respect box while a change from the Explorer lands keeps both', async () => {
-    await ba.evaluate(() => TSI.bastion.debug.reveal('hr-slade'));
-    await ba.waitForSelector('[data-test=hr-slade]');
-    await ba.click('[data-test=hr-slade]');
-    await ba.fill('[data-test=hr-slade]', '2');
+  await check('a second change from the Explorer lands once, and there is no Honour/Respect box to type in (S10: only the DM doc\'s Change a score does that)', async () => {
+    equal(await ba.evaluate(() => TSI.bastion.debug.reveal('hr-slade')), false, 'no box to reveal');
     await playT4Won(ex);
     await ba.waitForFunction(() => TSI.bastion.debug.state().honourRespectByClan.slade === 1, null, { timeout: 6000 });
-    equal(await ba.inputValue('[data-test=hr-slade]'), '2', 'what the DM typed stays in the box');
-    await ba.press('[data-test=hr-slade]', 'Tab');
-    await ba.waitForTimeout(200);
-    equal((await bas(ba)).honourRespectByClan.slade, 3, 'the Explorer\'s +1 and the DM\'s +2');
-    equal(await ba.inputValue('[data-test=hr-slade]'), '3');
-    await ba.keyboard.press('Escape');
+    equal(await ba.$('[data-test=hr-slade]'), null, 'no typed box on the screen');
+    await ba.waitForTimeout(300);
+    equal((await bas(ba)).honourRespectByClan.slade, 1, 'counted once');
     await waitStatus(ex, ['applied', 'applied']);
   });
 

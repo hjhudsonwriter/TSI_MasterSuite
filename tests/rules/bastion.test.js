@@ -427,18 +427,25 @@
     t.equal(R.orderKind(data, { facId: 'hall_of_emissaries', fnId: 'host_delegation' }), 'none');
   });
 
-  group('Bastion: Clan support (the Clan Influence panel\'s number)');
+  group('Bastion: Clan support is gone');
 
-  test('support: (Political Capital + 100) ÷ 2 + Honour/Respect × 4', function (t) {
-    var s = fresh();
-    t.equal(R.supportForClanKey(s, 'karr'), 50);
-    s.politicalCapital.karr = 10;
-    s.honourRespectByClan.karr = 2;
-    t.equal(R.supportForClanKey(s, 'karr'), 63);
+  test('support: the Clan Influence panel and its number went (S10)', function (t) {
+    t.equal(R.supportForClanKey, undefined, 'R.supportForClanKey went with the Clan Influence panel');
     ['canFormClan', 'totalSupport', 'clansAtSupport', 'orgLabel', 'requirementsHint', 'formerBrigade', 'canFormMerc'].forEach(function (k) {
       t.equal(R[k], undefined, 'R.' + k + ' went with founding a Clan (22 October 2026)');
     });
     t.equal(data.bastion.identityRules, undefined, 'and so did its numbers');
+  });
+
+  test('the old Day Log as text: the newest 25 entries, newest first; nothing when empty (S10)', function (t) {
+    var s = fresh();
+    t.equal(R.oldLogText(s, 25), '');
+    for (var i = 1; i <= 30; i++) R.log(s, 'Entry ' + i, 'Body ' + i, 1000 * i);
+    var text = R.oldLogText(s, 25);
+    t.ok(text.indexOf('Entry 30') > -1 && text.indexOf('Entry 6') > -1, 'newest 25 are in');
+    t.ok(text.indexOf('Entry 5\n') === -1 && text.indexOf('· Entry 5') === -1, 'older ones are left out');
+    t.ok(text.indexOf('Entry 30') < text.indexOf('Entry 29'), 'newest first');
+    t.ok(text.indexOf('the newest 25 of 30') > -1);
   });
 
   group('Bastion: the crest, and the War Table\'s saves (ignored since 22 October 2026)');

@@ -233,7 +233,7 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       await check('fits ' + size + ' with no scrolling either way, the main controls in view', async () => {
         await page.setViewportSize(H.SIZES[size].viewport);
         await page.waitForTimeout(250);
-        const lc = await H.layoutCheck(page, ['[data-test=day-status]', '[data-test=level]', '[data-test=treasury]', '[data-test=compendium]', '[data-test=download-save]', '[data-test=import-save]', '[data-test=map]', '[data-test=open-log]', '[data-test=open-war]', '.tsi-bas-tile']);
+        const lc = await H.layoutCheck(page, ['[data-test=day-status]', '[data-test=level]', '[data-test=treasury]', '[data-test=compendium]', '[data-test=download-save]', '[data-test=import-save]', '[data-test=map]', '[data-test=open-management]', '.tsi-bas-tile']);
         equal(lc.scrollWidth, lc.clientWidth, 'no sideways scroll');
         equal(lc.outOfView, [], 'in view');
         equal(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight + 1), true, 'the page itself never scrolls down');
@@ -604,11 +604,11 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
     const { context, page } = await newPage(browser, 'laptop');
     await openBastion(page);
 
-    await check('Honour/Respect edits change support at once (the Clan Influence panel)', async () => {
-      await page.fill('[data-test=hr-karr]', '2');
-      await page.press('[data-test=hr-karr]', 'Tab');
-      equal(await text(page, 'support-karr'), '58/100');
-      equal((await st(page)).honourRespectByClan.karr, 2);
+    await check('Honour/Respect has no typed box and no Support number any more (the Clan Influence panel went in S10): the number is saved, and only the DM doc changes it', async () => {
+      equal(await page.$('[data-test=hr-karr]'), null, 'no box');
+      equal(await page.$('[data-test=support-karr]'), null, 'no Support');
+      equal(await page.evaluate(() => typeof TSI.bastion.rules.supportForClanKey), 'undefined');
+      equal((await st(page)).honourRespectByClan.karr, 0);
     });
 
     await check('a party can no longer found a Clan: the Party Identity panel has a Party Name, the crest and its buttons, and no Form Clan, Clan Honour or Unsworn (22 October 2026)', async () => {
@@ -968,14 +968,12 @@ const ALL_EXTRAS = ['arcane_laboratory', 'library_scriptorium', 'herbal_gardens'
       equal(await page.isVisible('[data-test=grid]'), true);
     });
 
-    await check('Clan Influence: at -100 Honour Change resets Political Capital to neutral (the Favour bars are in the Temple now: see temple.test.js)', async () => {
+    await check('at -100 Political Capital stays where it is: there is no Honour Change button any more, and no Favour of the Gods panel (the bars are in the Temple: see temple.test.js)', async () => {
       await setUp(page, (s) => { s.favour.pelagos = 100; s.politicalCapital.molten = -100; });
       equal(await page.$('[data-test=open-favour]'), null, 'no Favour of the Gods panel any more');
-      await pause(page);
-      await page.click('[data-test=open-influence]');
-      await page.waitForSelector('[data-test=honour-molten]');
-      await page.click('[data-test=honour-molten]');
-      equal((await st(page)).politicalCapital.molten, 0);
+      equal(await page.$('[data-test=open-influence]'), null, 'no Clan Influence panel any more');
+      equal(await page.$('[data-test=honour-molten]'), null, 'no Honour Change button');
+      equal((await st(page)).politicalCapital.molten, -100);
     });
 
     await check('the Compendium: it lists what the facilities offer, with search, details, card and Roll20 link', async () => {

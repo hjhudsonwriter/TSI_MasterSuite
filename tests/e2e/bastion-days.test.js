@@ -41,8 +41,8 @@ async function bastionReaches(ba, day) {
   }, day, { timeout: 8000 });
 }
 /* Since the new screen (Build 2), orders are given in a facility's panel,
-   opened from its tile, and the Orders and Day Log panels open from the
-   top bar and the bottom bar. */
+   opened from its tile, and the Orders panel opens from the
+   top bar. */
 async function recruit(ba) {
   /* The Dock's Charter Berth (7 days; the war game's Barracks was the example until 22 October 2026). It costs gold, so the treasury is topped up first. */
   await ba.evaluate(() => TSI.bastion.debug.change(s => { if (s.treasuryGP < 500) s.treasuryGP = 500; }));
@@ -142,7 +142,7 @@ async function closeWord(ba) {
     equal(s.pendingOrders.length, 0);
     equal(berths(s), 1, 'one chartered vessel in the Warehouse, counted once');
     assert(s.log.some(l => l.day === 8 && /Charter Berth/.test(l.title + ' ' + l.body)), 'the Day Log has it');
-    assert(/Day 8/.test(await panelText(ba, 'open-log', 'log')), 'the Day Log shows Day 8');
+    equal(await ba.$('[data-test=open-log]'), null, 'there is no Day Log panel to look in: the word pop-up above is where it was said');
   });
 
   await check('a day with nothing to report brings no word in either window', async () => {

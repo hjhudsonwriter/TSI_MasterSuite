@@ -319,8 +319,6 @@
         plus: 'M12 5v14 M5 12h14',
         warehouse: 'M4 8l8-4 8 4v9l-8 4-8-4z M4 8l8 4 8-4 M12 12v9',
         management: 'M9 11a3 3 0 100-6 3 3 0 000 6z M3 20c0-3.3 2.7-5 6-5s6 1.7 6 5 M16.5 11a2.5 2.5 0 100-5 M16 15c2.8 0 5 1.6 5 4.5',
-        log: 'M6 4h12v16H6z M9 8h6 M9 12h6 M9 16h4',
-        influence: 'M12 4v16 M8 20h8 M5 7h14 M5 7l-3 6a3 3 0 006 0z M19 7l-3 6a3 3 0 006 0z',
         shield: 'M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z',
         up: 'M6 15l6-6 6 6',
         down: 'M6 9l6 6 6-6'
@@ -671,147 +669,13 @@
         svg.appendChild(path);
         return svg;
       }
-      /* The Clan Influence panel: one row per Clan, with its Political
-         Capital bar (and Honour Change at ±100), its Honour/Respect (the
-         DM's to set, −5 to +5) and the support they add up to; then the
-         changes from the Explorer and the Favour Tokens. (Before the new
-         screen the bars sat in the left column and the rest in Party
-         Identity & Clan Influence.)
-         The Honour/Respect box adds what the DM typed, as a difference from
-         what it showed, rather than writing over the value: a change from
-         the Explorer can land while it's being typed (as the Warehouse's
-         goods counts do). */
-      var pcRows = {};
-      var trackerRows = {};
-      var influenceList = el('div', { class: 'tsi-bas-influence', 'data-test': 'influence' }, B.clans.map(function (c) {
-        var fill = el('div', { class: 'tsi-bas-bar-fill tsi-bas-bar-fill--pc' });
-        var val = el('div', { class: 'tsi-bas-meter__val', 'data-test': 'pc-' + c.key, text: '0' });
-        var change = btn('Honour Change', function () {
-          state.politicalCapital[c.key] = 0;
-          log('Honour Change', 'Honour Change prompted for Clan ' + c.key.toUpperCase() + '. Political Capital reset to neutral.');
-          done();
-        }, 'tsi-btn--ghost tsi-bas-meter__btn', 'honour-' + c.key, { hidden: true });
-        pcRows[c.key] = { fill: fill, val: val, change: change };
-        var input = numberInput('hr-' + c.key, { min: '-5', max: '5', 'aria-label': c.name + ' Honour/Respect (-5 to +5)' });
-        var support = el('div', { class: 'tsi-bas-influence__support', 'data-test': 'support-' + c.key });
-        var row = { input: input, support: support, shown: 0 };
-        life.on(input, 'change', function () {
-          var typed = R.clampInt(input.value, -5, 5);
-          var now = R.clampInt(state.honourRespectByClan[c.key] || 0, -5, 5);
-          state.honourRespectByClan[c.key] = R.clampInt(now + typed - row.shown, -5, 5);
-          row.shown = state.honourRespectByClan[c.key];
-          input.value = String(row.shown);
-          done();
-        });
-        /* Left without typing (the pop-up puts the focus in the first box):
-           catch up with any change that landed meanwhile. */
-        life.on(input, 'blur', function () {
-          row.shown = R.clampInt(state.honourRespectByClan[c.key] || 0, -5, 5);
-          input.value = String(row.shown);
-        });
-        trackerRows[c.key] = row;
-        return el('div', { class: 'tsi-bas-influence__row' }, [
-          el('div', { class: 'tsi-bas-influence__name', text: c.name }),
-          el('div', { class: 'tsi-bas-influence__pc' }, [
-            el('div', { class: 'tsi-bas-meter__bar tsi-bas-meter__bar--pc' }, fill),
-            val, change
-          ]),
-          field('Honour/Respect', input, 'tsi-bas-influence__hr'),
-          el('div', { class: 'tsi-bas-influence__sup' }, [el('span', { class: 'tsi-bas-influence__sup-label', text: 'Support' }), support])
-        ]);
-      }));
-      var tokensPill = el('div', { class: 'tsi-bas-token-pill', 'data-test': 'tokens', text: '0' });
-      var bridgeList = el('div', { class: 'tsi-bas-influence__log', 'data-test': 'bridge-log' });
-      var influenceCard = card('influence', 'Clan Influence');
-      TSI.append(influenceCard.body, [
-        muted('Political Capital starts neutral; diplomacy raises or lowers it (−100 to +100). When it reaches ±100, press Honour Change and the bar returns to neutral. Honour/Respect is yours to set (−5 to +5), and some Explorer events change it by 1 by themselves; support adds the two together (0 to 100).'),
-        influenceList,
-        el('div', { class: 'tsi-bas-asset tsi-bas-bridge' }, [
-          el('div', { class: 'tsi-bas-asset__name', text: 'Changes from the Explorer' }),
-          muted('Each Explorer event that changes a Clan\'s Honour/Respect does so once, here. The newest 10:', 'tsi-bas-asset__desc'),
-          bridgeList
-        ]),
-        el('div', { class: 'tsi-bas-asset' }, [
-          el('div', { class: 'tsi-bas-asset__name', text: 'Favour Tokens' }),
-          muted('Earned from strong delegations. Spend later to influence negotiations.', 'tsi-bas-asset__desc'),
-          tokensPill
-        ])
-      ]);
-
-      function renderSide() {
-        B.clans.forEach(function (c) {
-          var v = R.clampInt(state.politicalCapital[c.key] || 0, -100, 100);
-          var r = pcRows[c.key];
-          var side = Math.min(100, Math.abs(v)) / 100 * 50;
-          r.fill.style.left = (v >= 0 ? 50 : 50 - side) + '%';
-          r.fill.style.width = side + '%';
-          r.val.textContent = String(v);
-          r.change.hidden = Math.abs(v) < 100;
-          var t = trackerRows[c.key];
-          /* A box being typed in keeps what's typed; one only focused follows the save. */
-          if (document.activeElement !== t.input || t.input.value === String(t.shown)) {
-            t.shown = R.clampInt(state.honourRespectByClan[c.key] || 0, -5, 5);
-            t.input.value = String(t.shown);
-          }
-          TSI.clear(t.support);
-          TSI.append(t.support, [el('b', { text: String(R.supportForClanKey(state, c.key)) }), '/100']);
-        });
-        tokensPill.textContent = String(R.clampInt(state.diplomacy.tokens || 0, 0, 999));
-        renderBridge();
-      }
-
-      /* Clan Influence's "Changes from the Explorer": the newest receipts. */
-      function renderBridge() {
-        TSI.clear(bridgeList);
-        var list = R.bridgeHistory(state, 10);
-        if (!list.length) { bridgeList.appendChild(muted('None yet.', 'tsi-bas-influence__lognone')); return; }
-        list.forEach(function (r) {
-          var clan = clanTitle(r.clan);
-          /* A Port Charter (pull request 5). An older copy of the suite can
-             strip a receipt's kind; the Charter it made still names it. */
-          /* A griffin or dire wolf the DM granted (pull request 7). */
-          var creature = r.type === 'creature';
-          /* A Great Rite given to the party (pull request 8b). */
-          var rite = r.type === 'rite';
-          var made = r.type === 'charter' || creature || rite ? null : R.charterById(state, r.id);
-          var charter = r.type === 'charter' || !!made;
-          /* A parcel collected in the Explorer (pull request 6), known by its
-             receipt's kind or, if an older copy stripped that, by its
-             pickup id (which only a parcel pickup has). */
-          var pid = TSI.bridge && !creature && !rite ? TSI.bridge.parcelIdOf(r.id) : '';
-          var sent = pid ? R.parcelById(state, pid) : null;
-          var parcel = !charter && !creature && !rite && (r.type === 'parcel_collected' || !!pid);
-          var town = parcel ? R.courierPointName(r.point || (sent ? sent.point : '')) : '';
-          var what = charter ? 'Port Charter: ' + R.portWithClan(data, made ? made.port : r.port, made ? made.clan : r.clan) : clan;
-          var head = rite ? (r.r === 'applied' ? 'Great Rite: ' + R.RITE_NAMES[r.rite] + ' went with the party' + (r.held ? ' (already marked)' : '') : (r.r === 'skipped' ? 'Skipped: ' : 'Refused: ') + 'Great Rite handover')
-            : creature ? R.creatureReceiptHead(data, r)
-            : parcel
-            ? (r.r === 'applied' ? 'Parcel collected: ' + town + (r.held ? ' (already recorded)' : '') : (r.r === 'skipped' ? 'Skipped: ' : 'Refused: ') + 'parcel collected at ' + town)
-            : charter
-            ? (r.r === 'applied' ? what + (r.held ? ' (already held)' : '') : (r.r === 'skipped' ? 'Skipped: ' : 'Refused: ') + what)
-            : r.r === 'applied'
-            ? (r.hr ? clan + ' ' + signedNum(r.hr) + ' (' + signedNum(r.was) + ' → ' + signedNum(r.now) + ')' : clan + ': no change, already at ' + signedNum(r.now))
-            : (r.r === 'skipped' ? 'Skipped: ' : 'Refused: ') + clan;
-          bridgeList.appendChild(el('div', { class: 'tsi-bas-influence__logrow tsi-bas-influence__logrow--' + r.r, 'data-test': 'bridge-row', 'data-result': r.r }, [
-            el('div', { class: 'tsi-bas-influence__loghead' }, [el('strong', { text: head }), typeof r.day === 'number' ? ' · ' + R.dayLabel(r.day) : '']),
-            r.text ? el('div', { class: 'tsi-bas-influence__logtext', text: r.text }) : null,
-            r.why ? el('div', { class: 'tsi-bas-influence__logwhy', text: r.why + (r.r === 'skipped' ? (parcel ? ' The items stay in the Travel bags.' : charter || creature ? ' Grant it again in the Explorer if it should count.' : rite ? '' : ' Type it in above if it should count.') : '') }) : null
-          ]));
-        });
-      }
-
       /* ================================================================
-         The Day Log panel and the Bastion Map
+         The Bastion Map
+         (The Clan Influence and Day Log panels went with the Strip Back
+         Overhaul, step S10: Political Capital and Honour/Respect are read in
+         the Hall's Clan Relations, the Explorer's changes in Management, and
+         what happens is said in notices and "The Ironbow sends word".)
          ================================================================ */
-      var logList = el('div', { class: 'tsi-bas-log', 'data-test': 'log' });
-      var logCard = card('log', 'Day Log');
-      logCard.head.appendChild(btn('Clear log', async function () {
-        if (state.log.length && !(await ask('Clear the Day Log (' + state.log.length + (state.log.length === 1 ? ' entry' : ' entries') + ')? It is the Bastion\'s history of what happened, and it cannot be undone.', 'Clear', 'Clear the Day Log'))) return;
-        if (!life.alive) return;
-        state.log = [];
-        done();
-      }, 'tsi-btn--ghost', 'clear-log'));
-      logCard.body.appendChild(logList);
 
       /* The painting, with the building overlays (full-frame pictures the
          same size as it), fitted into the map panel and never cropped, so
@@ -835,17 +699,6 @@
         return 'Day ' + state.day + (state.anchored ? '' : ' · the Explorer sets the day');
       }
       function renderTop() {
-        TSI.clear(logList);
-        if (!state.log.length) logList.appendChild(muted('No log entries yet.'));
-        state.log.slice(0, 80).forEach(function (e) {
-          logList.appendChild(el('div', { class: 'tsi-bas-log__entry' }, [
-            el('div', { class: 'tsi-bas-log__top' }, [
-              el('div', { class: 'tsi-bas-log__title', text: e.title }),
-              el('div', { class: 'tsi-bas-log__time', text: (typeof e.day === 'number' ? R.dayLabel(e.day) + ' · ' : '') + R.formatTime(e.at) })
-            ]),
-            el('div', { class: 'tsi-bas-log__body', text: e.body || '' })
-          ]));
-        });
         /* A built facility with overlay art shows on the map (bastion-data.js map). */
         TSI.clear(overlayLayer);
         R.mapOverlays(state, data).forEach(function (o) {
@@ -1195,7 +1048,7 @@
       mgmtCard.body.appendChild(changesRow);
       /* "Changes from the Explorer": what the Explorer link has delivered,
          newest first, each counted once; a refused or skipped one says why.
-         It reads the same receipts (state.bridge.done) as Clan Influence's
+         It reads the same receipts (state.bridge.done) as the removed Clan Influence panel's
          list, through R.bridgeChanges. The newest few show; the rest on request. */
       var XCHANGES_SHOWN = 10;
       var xchangesAll = false;
@@ -1670,7 +1523,7 @@
           title: 'Add supplies',
           className: 'tsi-bas-modal tsi-bas-modal--supplies',
           body: [
-            muted('A temporary provision until the Ironbow makes these itself: they go into the Warehouse as if made here, the Day Log records it, and it makes no gold.', 'tsi-bas-courier__intro'),
+            muted('A temporary provision until the Ironbow makes these itself: they go into the Warehouse as if made here, and it makes no gold.', 'tsi-bas-courier__intro'),
             el('div', { class: 'tsi-bas-supplies' }, [field('Supply', goodSel), field('How many', qty)]),
             have
           ],
@@ -1697,7 +1550,7 @@
         var ok = await plainModal({
           title: 'Hand to the party',
           body: [
-            muted(name + ': the Warehouse has ' + have + '. Only the number you hand over leaves the Warehouse, once, and the Day Log records it.', 'tsi-bas-courier__intro'),
+            muted(name + ': the Warehouse has ' + have + '. Only the number you hand over leaves the Warehouse, once.', 'tsi-bas-courier__intro'),
             el('div', { class: 'tsi-bas-supplies' }, [field('How many', qty), field('Recipient', who)]),
             muted('This tool does not keep a character\'s inventory. After handing it over, write the item on that character\'s D&D sheet yourself. Anything that has to be delivered from far away goes by the Courier Exchange, not here.')
           ],
@@ -1709,6 +1562,7 @@
         if (turnRunning) { await say('A day was passing, so nothing was handed over. Try again once it has finished.'); return; }
         var res = R.handToParty(state, row, qty.value, who.value);
         if (!res.ok) { await say(res.message); return; }
+        notice(res.line, { type: 'info', title: 'Handed to the party.', id: 'tsi-bas-handed', timeout: 14000 });
         done();
       });
 
@@ -2108,7 +1962,9 @@
           el('div', { class: 'tsi-bas-actions' }, [
             w.waiting ? btn('Resolve', function () { onResolveOrder(o.id); }, 'tsi-btn--primary', 'resolve-' + i, { disabled: turnRunning }) : null,
             btn('Cancel', async function () {
-              logAll([R.cancelOrder(state, o.id, data)]);
+              var cancelled = R.cancelOrder(state, o.id, data);
+              logAll([cancelled]);
+              notice(cancelled[1], { type: 'info', title: 'Order cancelled.', id: 'tsi-bas-cancelled', timeout: 10000 });
               done();
             }, 'tsi-btn--ghost', 'cancel-' + i)
           ])
@@ -2864,7 +2720,7 @@
          greyed out until the bar is full; it takes effect at once, spends the WHOLE bar, and the bar goes back to 0). The
          rules are in temple-rules.js, the gods and blessings in the Temple's block of facilities-data.js. Each button is
          wrapped in TSI.oneAtATime, so a double click does it once. What a god last said (the roll, or the blessing
-         received) stays under its buttons until the next one; the Day Log has it too. */
+         received) stays under its buttons until the next one. */
       var templeSaid = {};      /* god → the last result line (not saved) */
       var blessingPick = {};    /* god → the blessing chosen in the dropdown (not saved) */
       var onPray = TSI.oneAtATime(function (god) {
@@ -3297,6 +3153,7 @@
         var res = R.demolishFacility(state, data, facId);
         if (!res.ok) { if (res.message) await say(res.message); return; }
         log(res.log[0], res.log[1]);
+        notice(res.log[1], { type: 'info', title: res.log[0] + '.', id: 'tsi-bas-demolished', timeout: 12000 });
         closePanel();
         done();
       });
@@ -3414,7 +3271,9 @@
           } else if (act.kind === 'shift') {
             var from = state.day;
             R.shiftDays(state, act.by);
-            log('Days', 'The Explorer\'s day went back (Reset Travel): the Bastion moves from Day ' + from + ' to Day ' + state.day + ', and everything due keeps its days.');
+            var wentBack = 'The Explorer\'s day went back (Reset Travel): the Bastion moves from Day ' + from + ' to Day ' + state.day + ', and everything due keeps its days.';
+            log('Days', wentBack);
+            notice(wentBack, { type: 'info', title: 'Days.', id: 'tsi-bas-days-back', timeout: 14000 });
             settled = settleInbox();
             done();
           } else if (act.kind === 'pass' && (act.days > 0 || state.dayInProgress)) {
@@ -3557,7 +3416,7 @@
       });
 
       /* An order settled with Resolve (not as a day passes) says what it did
-         in a notice, as well as in the Day Log: a Shrine's prayer roll, a
+         in a notice: a Shrine's prayer roll, a
          craft, an order whose home has gone. */
       function tellResolved(lines, o) {
         var n = R.resolveNotice(lines, o && o.id);
@@ -3658,6 +3517,7 @@
         return TSI.backup.exportTool('bastion').then(function () {
           if (!life.alive) return;
           log('Save File', 'Downloaded the campaign save (the Explorer and the Bastion together).');
+          notice('The campaign save (the Explorer and the Bastion together) was downloaded.', { type: 'info', title: 'Save file.', id: 'tsi-bas-saved', timeout: 8000 });
           done();
         });
       });
@@ -3674,7 +3534,10 @@
         state.partyLevel = R.clampInt(levelSelect.value, 1);
         /* A Herbal Gardens still in a construction slot moves to a plot once one opens. */
         var moved = R.settlePlots(state, data);
-        if (moved.length) log('Development Plots', R.settleLine(data, moved));
+        if (moved.length) {
+          log('Development Plots', R.settleLine(data, moved));
+          notice(R.settleLine(data, moved), { type: 'info', title: 'Development Plots.', id: 'tsi-bas-plots', timeout: 20000 });
+        }
         done();
       });
 
@@ -3761,15 +3624,9 @@
       function simplePanel(c, cls) { return function () { return openPanel(c.id, { title: c.title, node: c.root, cls: cls || '', back: 'open-' + c.id }); }; }
       var openWarehouse = simplePanel(whCard, 'tsi-bas-panel--wide');
       var openManagement = simplePanel(mgmtCard, 'tsi-bas-panel--wide');
-      var openLog = simplePanel(logCard);
-      var openInfluence = simplePanel(influenceCard, 'tsi-bas-panel--wide');
       var leftButtons = el('div', { class: 'tsi-bas-pbtns tsi-bas-pbtns--left' }, [
         panelButton('warehouse', 'Warehouse', 'warehouse', openWarehouse),
-        panelButton('management', 'Management', 'management', openManagement),
-        panelButton('log', 'Day Log', 'log', openLog)
-      ]);
-      var rightButtons = el('div', { class: 'tsi-bas-pbtns tsi-bas-pbtns--right' }, [
-        panelButton('influence', 'Clan Influence', 'influence', openInfluence)
+        panelButton('management', 'Management', 'management', openManagement)
       ]);
 
       /* The grid folds away with ▼ (and back with ▲), remembered. */
@@ -3782,7 +3639,7 @@
       /* The tiles sit in a tray that rises a little over the sea at the
          foot of the painting while it's open (Harry, 13 October 2026). */
       var gridWrap = el('div', { class: 'tsi-bas-gridwrap' }, [el('div', { class: 'tsi-bas-tray', 'data-test': 'grid-tray' }, [gridToggle, grid])]);
-      var bottomBar = el('div', { class: 'tsi-bas-bottom' }, [leftButtons, gridWrap, rightButtons]);
+      var bottomBar = el('div', { class: 'tsi-bas-bottom' }, [leftButtons, gridWrap]);
       function renderGridState() {
         stage.classList.toggle('is-grid-closed', !ui.gridOpen);
         grid.hidden = !ui.gridOpen;
@@ -3870,7 +3727,6 @@
         if (R.pruneEmptyCargo(state, data)) save();
         setValue(levelSelect, state.partyLevel);
         renderTurnButton();
-        renderSide();
         renderTop();
         renderIdentity();
         renderBadge();
@@ -3918,6 +3774,8 @@
         var lines = Array.isArray(m.lines) ? m.lines : [];
         changesShowing = true;
         if (first) changesOpen = true;
+        /* The Day Log panel is gone: its last 25 entries, as they are in the live save now, can be kept as a text file. */
+        var oldLog = R.oldLogText(state, 25);
         var body = el('div', { class: 'tsi-bas-changes', 'data-test': 'changes-body' }, [
           m.again ? el('p', { class: 'tsi-bas-changes__lead', text: 'An older copy of the suite had saved over your Bastion, so it was converted again. Nothing was lost.' }) : null,
           lines.map(changeLine),
@@ -3926,7 +3784,8 @@
           first && m.gp > 0 ? el('p', { class: 'tsi-bas-changes__live', 'data-test': 'changes-now', text: 'Right now the treasury holds ' + R.stripBackFmt(state.treasuryGP) + ' gp.' }) : null,
           el('p', { class: 'tsi-bas-muted tsi-bas-changes__note', text: R.STRIP_BACK_NOTE }),
           el('div', { class: 'tsi-bas-actions tsi-bas-actions--start' }, [
-            btn('Save this as a text file', function () { TSI.download('bastion-what-changed-day-' + Math.max(1, R.dayNum(m.day, 1)) + '.txt', R.stripBackText(m), 'text/plain'); }, '', 'changes-save')
+            btn('Save this as a text file', function () { TSI.download('bastion-what-changed-day-' + Math.max(1, R.dayNum(m.day, 1)) + '.txt', R.stripBackText(m), 'text/plain'); }, '', 'changes-save'),
+            oldLog ? btn('Save the old Day Log as a text file', function () { TSI.download('bastion-old-day-log-day-' + Math.max(1, R.dayNum(m.day, 1)) + '.txt', oldLog, 'text/plain'); }, '', 'changes-save-log') : null
           ])
         ]);
         return plainModal({
@@ -4005,8 +3864,7 @@
       }
       /* For reveal: the data-test of what opens the panel holding sel. */
       function openerFor(test, sel) {
-        var fixed = [[whCard, 'open-warehouse'], [mgmtCard, 'open-management'], [logCard, 'open-log'],
-          [influenceCard, 'open-influence'], [idCard, 'identity-badge'],
+        var fixed = [[whCard, 'open-warehouse'], [mgmtCard, 'open-management'], [idCard, 'identity-badge'],
           [dipCard, 'tile-hall_of_emissaries'], [ordersCard, 'orders-count'], [artCard, 'tile-workshop']];
         for (var i = 0; i < fixed.length; i++) if (fixed[i][0].root.querySelector(sel)) return fixed[i][1];
         var m = /^(?:issue|sel|days|why|goods)-([a-z_]+)__/.exec(test) || /^repair-note-([a-z_]+)$/.exec(test) ||
@@ -4034,13 +3892,13 @@
       renderAll();
       /* The first open saves the starting Bastion, as the old tool did. */
       if (!saved || migrating || settled.length) save();
-      if (settled.length) notice(R.settleLine(data, settled) + ' The Day Log says so too.', { type: 'info', title: 'Development Plots.', id: 'tsi-bas-plots', timeout: 20000 });
+      if (settled.length) notice(R.settleLine(data, settled), { type: 'info', title: 'Development Plots.', id: 'tsi-bas-plots', timeout: 20000 });
       /* The facilities overhaul's report, once. */
       var mig = state.migration && state.migration.v3;
       if (mig && !mig.shown) {
         mig.shown = true;
         save();
-        notice('The Bastion\'s facilities have changed: ' + mig.lines.join(' ') + ' The Day Log says so too, and the Bastion as it was is kept as a set-aside copy.', { type: 'info', title: 'Facilities.', id: 'tsi-bas-migration', timeout: 30000 });
+        notice('The Bastion\'s facilities have changed: ' + mig.lines.join(' ') + ' The Bastion as it was is kept as a set-aside copy.', { type: 'info', title: 'Facilities.', id: 'tsi-bas-migration', timeout: 30000 });
       }
       /* Read the Explorer's day straight away (then every 2 seconds), and
          any crest sent from the Clan Crest Creator while the Bastion was shut. */

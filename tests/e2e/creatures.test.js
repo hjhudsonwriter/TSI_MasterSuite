@@ -540,10 +540,10 @@ async function clickPop(page, label) {
     /* The sample, with only the Bastion open. */
     const b3 = await c2.newPage();
     await b3.goto(HARNESS + '?tool=bastion');
-    await b3.waitForFunction(() => TSI.bastion && TSI.bastion.debug, null, { timeout: 8000 });
+    await b3.waitForFunction(() => window.TSI && TSI.bastion && TSI.bastion.debug, null, { timeout: 8000 });
     await H.chooseFile(b3, '[data-test=import-save]', SAMPLE);
     await H.clickModal(b3, 'Import');
-    await b3.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().facilityLevels.library_scriptorium === 2, null, { timeout: 8000 });
+    await b3.waitForFunction(() => window.TSI && TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().facilityLevels.library_scriptorium === 2, null, { timeout: 8000 });
     /* The box that says what changed holds the Bastion until it is read (the Strip Back Overhaul). */
     await H.ackChanges(b3);
     const e3 = await openExplorer(c2, HARNESS);

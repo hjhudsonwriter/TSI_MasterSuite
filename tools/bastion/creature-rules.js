@@ -430,7 +430,7 @@
     var noun = R.speciesNoun(data, c.species);
     return (/^[aeiou]/.test(noun) ? 'an ' : 'a ') + noun + (c.name ? ' (' + c.name + ')' : '');
   }
-  /* The Day Log's line for a grant: "Creature granted (DM, Day 5): a
+  /* The log line for a grant: "Creature granted (DM, Day 5): a
      griffin (Swiftwing), waiting for a home at the Griffin Tower." */
   R.creatureGrantLine = function (s, data, res, from) {
     var c = res.creature;
@@ -444,7 +444,7 @@
   R.creatureGrantNotice = function (s, data, c) {
     return 'From the Explorer: ' + grantWhat(data, c) + ' for the Ironbow, waiting for a home at the ' + facName(data, R.speciesHome(data, c.species)) + '.';
   };
-  /* Clan Influence's "Changes from the Explorer" heading for a creature's
+  /* Management's "Changes from the Explorer" heading for a creature's
      receipt: "Creature granted: Griffin (Swiftwing)". */
   R.creatureReceiptHead = function (data, r) {
     var what = R.speciesName(data, r && r.species) + (r && r.name ? ' (' + r.name + ')' : '');
@@ -527,7 +527,7 @@
   /* A day passes (R.startDay calls this once for each new day): every beast out on the road with its handler earns one
      Bonding Day, once. The guard is lastTick, the last Explorer day credited: asked again for the same day it does
      nothing. The counter keeps counting while a milestone waits for the DM (nothing is lost); a level that has just
-     become ready is said once, in the Day Log and in "The Ironbow sends word…". Returns the lines said. */
+     become ready is said once, in "The Ironbow sends word…". Returns the lines said. */
   R.tickBonding = function (s, data, now) {
     var said = [];
     R.creatures(s).forEach(function (c) {
