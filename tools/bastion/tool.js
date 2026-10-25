@@ -1,7 +1,7 @@
 /* The Ironbow Bastion Manager — the screen.
    The old tool rebuilt as it was: party level and treasury;
    building in construction slots; facility orders; the Hall of Emissaries, trade routes and the Council
-   Ledger; party identity; the warehouse and artisan
+   Ledger; party identity; the warehouse and (until step S12) artisan
    tools; Favour of The Gods and Political Capital; the Compendium.
    The war game (the War Council, the War Table, Military Actions, wars,
    regiments, defenders and the Menagerie's beasts) was removed on 22
@@ -338,7 +338,7 @@
       }
 
       /* The suite's tooltip card (shared/js/tooltip.js), for the grid's
-         tiles, the top bar's counts, the artisan tools and the Hall's
+         tiles, the top bar's counts, the Workshop's staff and the Hall's
          actions. It sits beside what it describes, and above the panels. */
       var TIP = TSI.tooltip;
       function hideTip() { TIP.hide(); }
@@ -1523,7 +1523,7 @@
       }
 
       /* ================================================================
-         Warehouse · Artisan Tools
+         Warehouse
          ================================================================ */
       var whCard = card('warehouse', 'Warehouse', { cls: 'tsi-bas-card--art tsi-bas-card--warehouse' });
       var whBody = el('div', { class: 'tsi-bas-wh__body', 'data-test': 'warehouse' });
@@ -4017,8 +4017,9 @@
       function openerFor(test, sel) {
         var fixed = [[whCard, 'open-warehouse'], [mgmtCard, 'open-management'], [logCard, 'open-log'],
           [influenceCard, 'open-influence'], [idCard, 'identity-badge'],
-          [dipCard, 'tile-hall_of_emissaries'], [ordersCard, 'orders-count'], [artCard, 'tile-workshop']];
+          [dipCard, 'tile-hall_of_emissaries'], [ordersCard, 'orders-count']];
         for (var i = 0; i < fixed.length; i++) if (fixed[i][0].root.querySelector(sel)) return fixed[i][1];
+        if (/^(?:staff-|workshop-staff|workshop-magic)/.test(test)) return 'tile-workshop';
         var m = /^(?:issue|sel|days|why|goods)-([a-z_]+)__/.exec(test) || /^repair-note-([a-z_]+)$/.exec(test) ||
           /^(?:creatures|creature-room|creatures-housed|creatures-waiting|creatures-later)-([a-z_]+)$/.exec(test);
         if (m) return 'tile-' + m[1];
