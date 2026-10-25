@@ -30,6 +30,7 @@ Every bug found in the eight old tools during planning, and what the rebuild wil
 | Arenas of The Scarlett Isles (ARN) | 8 | 2 | 0 | 17 | 0 |
 | The Heartwood Ritual (RIT) | 9 | 1 | 0 | 15 | 1 |
 | Pelagosi Puzzle Trials (PEL) | 11 | 1 | 0 | 6 | 0 |
+| Strip Back Overhaul (BAS-SB), 80 entries, see the section at the end | counted in the entries | | | | |
 
 (The counts are worked out from the entries below. If they ever disagree, the entries win.)
 
@@ -3548,3 +3549,547 @@ Old repo: `_legacy/pelagosi_marker_rune_puzzle` (file:line references point ther
   - The gold-filled main button is a Beast Handler style; the rest of the suite keeps its crimson main buttons.
 - **Not done / not checked:** Safari and a real iPhone (as before); Firefox; any sound with the cinematic.
 - **Tests:** `tests/e2e/beasthandler-meet.test.js` (the whole sequence on the laptop and a phone, a refusal, a beast with written lines, keyboard use); `beasthandler.test.js`, `beasthandler-write.test.js` and `beasthandler-phone.test.js` updated; `tests/rules/beasthandler-model.test.js` and `beasthandler-profile.test.js` (bond pills, possessive names, pending overlay, waiting and refused requests, the meeting's words, name matching, the subspecies roll).
+
+---
+
+## Strip Back Overhaul (steps S01 to S17, 22 to 25 October 2026)
+
+These entries come from each step's draft in `docs/strip-back/*-known-issues-draft.md`, renumbered BAS-SB-01 to BAS-SB-80. Each has a Before and an After. Step S12 and S10 are short lists.
+
+**Internal Day Log data is still kept.** The Day Log screen is gone, but the Bastion still writes its internal log (`state.log`) into the save and it still grows; nothing shows it. Removing it (step S18) was deliberately NOT done. The old Day Log text file reads the live save's log until S18 moves that to the set-aside copy.
+
+### BAS-SB-01 · The Explorer's deliveries and refusals get a home in Management, and a refusal tells you why in a notice (Strip Back Overhaul, S02)
+**Deliberate change** (Harry's STRIP BACK handover: Clan Influence and the Day Log go; replacement before removal, J 8) · usability
+
+- **Before:** what the Explorer link delivered was listed only in Clan Influence's "Changes from the Explorer" (the newest ten, no way to see more). A change the Bastion could not use was explained only there ("Clan Influence says why"), and that notice was shown only when no other change was applied at the same moment (the two shared one notice id, so the later one replaced the earlier). A change skipped because it was sent before the Bastion started was told only in the Day Log. An order finished with Resolve (a Shrine's prayer roll, a craft) was told only in the Day Log.
+- **After:**
+  - Management has a **"Changes from the Explorer"** box: every change the Explorer link delivered, newest first (the newest ten, "Show all" for the rest), each with what it was, the day, the Explorer's own words and, for a refused or skipped one, the reason (always one) and what to do about a skipped one. It reads the same receipts as the old list (`state.bridge.done`), so nothing was added to the save. The Clan Influence panel and its list are untouched until S10.
+  - A change the Bastion cannot use has its **own warning notice with the reason** ("Not used."), separate from any applied notice. More than three refusals show the first three and count the rest.
+  - Changes **skipped** because they were sent before the Bastion started are told in a notice ("Skipped.") with the reason and what to do.
+  - An order finished with **Resolve** says what it did in a notice ("Order resolved."), as well as in the Day Log. An order completed as a day passes still goes into "The Ironbow sends word…" only.
+  - The applied notices say "Changes from the Explorer, in Management, lists it." (they used to name Clan Influence).
+- **Wording changes:** a skipped Honour/Respect change now says "Use Change a score in the DM doc if it should count." where the old list said "Type it in above if it should count." (the typed box goes with Clan Influence).
+- **Left alone:** the Day Log lines written by `R.applyInbox` still say "Clan Influence lists it" (their text is asserted by tests; the Day Log goes in S18); the Explorer's own "Sent to the Bastion" line for a skipped Honour/Respect change still ends "Type it in by hand if it should count." (`shared/js/bridge-rules.js`); reword in S10 if wanted.
+- **Evidence:** `tools/bastion/rules.js` (`R.bridgeChange`, `R.bridgeChanges`, `R.settledNotices`, `R.resolveNotice`, `R.applyInbox`'s new `refusals` and `skips`), `tools/bastion/tool.js` (Management box, `tellSettled`, `tellResolved`), `tools/bastion/bastion.css`; `tests/rules/bridge.test.js` (18 tests), `tests/e2e/bridge.test.js`, `commerce.test.js`, `courier.test.js`, `creatures.test.js`.
+
+### BAS-SB-02 · Bastion Events removed (Strip Back Overhaul, S05)
+**Deliberate change** (Harry's STRIP BACK handover: remove the Events panel and its functionality) · other
+
+- **Before:** the Bastion had an Events panel (a bottom-bar button, **Roll Bastion Event**, and the last event with its description) and rolled a d100 event by itself every 28 days (Days 29, 57, 85…), logging "Auto event" and adding "Bastion event: X (rolled N)." to "The Ironbow sends word…". The DM doc's "Next word from the Ironbow" and the Explorer's "The Ironbow sends word…" announced "A Bastion event is due." every 28 days. An event was only text for the DM: nothing in it changed the Bastion's numbers.
+- **After:** all of that is gone: the panel and its button (the left side of the bottom bar is Warehouse, Management, Day Log), the roll, the automatic event, `events-data.js`, `R.rollEvent` / `resolveEvent` / `isEventDay` / `nextEventDay`, `BASTION_EVENT_EVERY`, `time.eventEvery`, the forecast line and the event CSS. `R.finishDay` now only keeps the day's news. The Bastion's save holds no `lastEvent` or `lastEventDay`.
+- **Migration** (`dropEvents`, first in `R.stripBackSteps`): drops `lastEvent`, `lastEventDay` and any pending-event record. A save that never rolled one leaves no trace and nothing is said. One that did gets one line in "The Bastion has changed" under "Bastion events": "The Bastion no longer has events, so the last one it rolled (Friendly Visitors, Day 29) is not kept. It was only a note for you; nothing in it changed the Bastion's numbers." Old "Bastion event: …" lines already in "The Ironbow sends word…" are kept (history). Nothing is refunded (an event never cost or gave anything).
+- **Side effect to know about:** the DM doc's "Next word from the Ironbow" now reads "nothing due" (or "Bastion not saved yet") when nothing is coming, where it used to always show the next event day. With the Bastion saved and nothing pending, the Explorer's Make Camp no longer shows "The Ironbow sends word…" on Day 29.
+- **Left alone:** the war game's own **Defend Bastion** event (`war-campaign-rules.js`, the War Council and the War Table), which shares no code with Bastion Events and goes with the war removal; the shrines' text "no Bastion event damages a facility by natural causes yet" (still true; goes with the shrines in S11).
+- **Evidence:** `tools/bastion/rules.js`, `tools/bastion/tool.js`, `tools/bastion/strip-back-rules.js` (`dropEvents`), `shared/js/campaign-rules.js`, `shared/data/tools.js`, `tests/rules.html`; `tests/rules/strip-back.test.js` (10 tests), `bastion.test.js`, `campaign.test.js`, `explorer.test.js`; `tests/e2e/phase9.test.js`, `bastion-screen.test.js`, `dmdoc.test.js`.
+
+### BAS-SB-03 · The war game is removed (Strip Back Overhaul, S06)
+**Deliberate change** · other
+
+- **Before:** the Bastion had a War Council and War Table (regiments, Lieutenants, a battle engine, enemy armies, campaign wars against Clans, Military Actions, a Defend Bastion event, defenders and an armoury, a war log) and the Compendium listed the units.
+- **After:** all of it is gone from the screen, the rules, the data, the forecast, the DM doc, the Compendium (21 entries) and the guide; the war pictures are in `tools/bastion/assets/extras/`, the old documents in `docs/archive/` with a "removed 22 October 2026" banner.
+- **Evidence:** `tools/bastion/` (war files deleted), `tools/bastion/rules.js`, `shared/js/campaign-rules.js`, `guide.html`; `tests/static-check.js`.
+
+### BAS-SB-04 · Barracks, Armoury, Watchtower, War Room and Menagerie are removed
+**Deliberate change** · other
+
+- **Before:** the Bastion had 20 facilities and started with five built (Workshop, Dock, Barracks, Armoury, Watchtower).
+- **After:** 15 facilities, and it starts with two built (Workshop, Dock). In an existing Bastion the five go to "gone facilities" (`archivedFacilities`), with their slots freed and their levels removed.
+- **Evidence:** `tools/bastion/data/facilities-data.js`, `bastion-data.js` (`startingBuilt`), `strip-back-rules.js` (`dropWarFacilities`); `tests/rules/bastion.test.js`, `strip-back.test.js`.
+
+### BAS-SB-05 · Orders of the removed facilities, and War Actions, are cancelled when a saved Bastion is converted
+**Deliberate change** · data
+
+- **Before:** a pending Drill, Arm Defenders, Recruit Beast or build order of a war facility, or a War Action, would have kept running.
+- **After:** the conversion cancels each one and gives back the gold it cost (the report lists them); a War Action cost no gold, so nothing is refunded, and the Honour/Respect and Political Capital it took are not given back (the report points at Change a score in the DM doc).
+- **Evidence:** `strip-back-rules.js` (`settleWarOrders`); `tests/rules/strip-back.test.js`, `tests/e2e/migration-v4.test.js`.
+
+### BAS-SB-06 · The army, the wars, the Menagerie's beasts and the war log are dropped when a saved Bastion is converted
+**Deliberate change** · data
+
+- **Before:** a version 3 save kept `defenders`, `defenderBeasts`, `military`, `militaryActions`, `warMissions`, `warRecovery`, `wars`, `warLog` and the day's attack roll.
+- **After:** they are deleted and said in plain English (the beasts with what they cost, so a purchase made is not refunded; the Clans named as at war; regiments and the Lieutenant). Nothing is dropped silently, and the converted file passes the audit (I1 to I7). A re-run on a version 4 save tidies again with a short notice.
+- **Evidence:** `strip-back-rules.js` (`dropWar`); `tests/rules/strip-back.test.js`, `tests/e2e/migration-v4.test.js`.
+
+### BAS-SB-07 · Facilities Under Repair are cleared when a version 3 Bastion is converted
+**Deliberate change** · data
+
+- **Before:** a facility Under Repair after a lost battle stayed under repair for its days.
+- **After:** only a lost battle in the war game ever caused a repair, so a first conversion clears them (the facilities work again, said in the report). The Under Repair machinery stays for later steps (an empty `repairs`), and a re-run on a version 4 save never clears repairs.
+- **Evidence:** `strip-back-rules.js` (`dropWar`); `tests/rules/bastion.test.js` (repairs).
+
+### BAS-SB-08 · The Commercial Convoy and the Maritime Approaches protections are gone from the Dock
+**Deliberate change** · other
+
+- **Before:** the Barracks and the Watchtower gave the Dock two voyage protections (Guard Commercial Convoy, Protected Maritime Approaches) beside the Blessing of Pelagos.
+- **After:** the Dock offers only the Blessing of Pelagos. A saved Convoy or Approaches is dropped on conversion and said (a held Convoy was a charge for the next ship, not gold). The generic charge-and-window rules stay (the Blessing uses them); `R.protectionBusy` is removed.
+- **Evidence:** `tools/bastion/data/commerce-data.js`, `commerce-rules.js`, `strip-back-rules.js` (`dropWarFacilities`); `tests/rules/commerce.test.js`, `tests/e2e/charter-terms.test.js`.
+
+### BAS-SB-09 · The War Table's saves are set aside after the conversion, and Reset no longer lists them
+**Deliberate change** · data
+
+- **Before:** the War Table kept its settings and map in `tsi.bastion.warTable` and its map keys; Reset listed them and a backup checked them.
+- **After:** they are ignored by import checks, set aside (not deleted) by the Bastion's start-up only after the conversion has passed its check and the converted Bastion has been saved, and left out of Reset.
+- **Evidence:** `tools/bastion/tool.js` (`sweepOrphans`), `rules.js` (`importProblem`); `tests/rules/bastion.test.js`, `tests/e2e/migration-v4.test.js`, `bastion-screen.test.js`.
+
+### BAS-SB-10 · Left alone (not bugs I fixed; to know about)
+- A version 3 save's report always says the Barracks, Armoury and Watchtower are gone (they were starting facilities), so the short "nothing to convert" box cannot be reached by a real version 3 save.
+- `tests/rules/bastion.test.js` still has an old "never touched" test for the version 2 to 3 conversion that uses a War Room and wars as sample data; it tests that older conversion, which is unchanged, and passes.
+- The heavy fixture (`tests/fixtures/bastion-v3-heavy.json`) was regenerated: the key order of war fields differs; harmless.
+- The shared disk filled up while this step ran (other lanes' worktrees). It is an environment problem, not a code one; it truncated one rules run, which was re-run in full.
+
+### BAS-SB-11 · A party can no longer found a Clan; it has a Party Name instead (Strip Back Overhaul, S07)
+**Deliberate change** · other
+
+- **Before:** at party level 9, with a total support of 360 and three Clans at 55, the party could press Form Clan and become "Clan: <name>" with a chief, a motto and Clan Honour; until then it was "Unsworn". The Party Identity panel was a 760 px panel with the status pill, the requirements line, Form Clan and the crest buttons.
+- **After:** no Form Clan, requirements, Clan Honour, "Unsworn" or "Clan: name" anywhere. The crest badge opens a small (540 px) Party Identity panel: Party Name (optional, 40 letters), Create in the Clan Crest Creator, Upload, Remove. The name shows above the crest (badge and panel) and nowhere else. The crest works from the first day, with no gate.
+- **Evidence:** `tools/bastion/tool.js` (identity card, badge), `tools/bastion/rules.js` (`R.cleanPartyName`), `tools/bastion/bastion.css`; `tests/e2e/party-name.test.js`, `tests/rules/party-name.test.js`, `tests/e2e/bastion-screen.test.js`, `phase9.test.js`.
+
+### BAS-SB-12 · A Bastion that had founded a Clan keeps the Clan's name as its Party Name; the rest of the Clan is dropped when it is converted
+**Deliberate change** · data
+
+- **Before:** a version 3 save held `organization` (type, name, chief, motto, founding day), `clanHonor` and `trustedClientsByClan` (the archived Brigade's scores).
+- **After:** the conversion (step `identity`) puts the Clan's name in `partyName` once (only if the Party Name is empty), deletes the three fields from the live save and says so in the box that says what changed ("Your Party": the chief, motto and Clan Honour are not kept; the set-aside copy has everything). The crest stays. The seven Clans' Honour/Respect and Political Capital are untouched. Pure, idempotent, audit-clean; a save with only the empty defaults hears nothing.
+- **Evidence:** `tools/bastion/strip-back-rules.js` (`detectIdentity`, `dropIdentity`); `tests/rules/party-name.test.js`, `tests/e2e/party-name.test.js`, `tests/e2e/migration-v4.test.js`.
+
+### BAS-SB-13 · A Mercenary Brigade's name (Builds 1 and 2, 8 October 2026) also becomes the Party Name
+**Deliberate change** · data
+
+- **Before:** such a save loaded as Unsworn with a Day Log line naming the Brigade.
+- **After:** the same conversion step keeps the Brigade's name as the Party Name and says it was a Brigade. The Day Log line and the corner notice are gone (the Day Log is going, and the report says it once).
+- **Evidence:** `strip-back-rules.js` (`dropIdentity`); `tests/rules/party-name.test.js`.
+
+### BAS-SB-14 · Taking a crest from the Creator does not take its "Clan/Party Name" field
+**Left alone** · other
+
+- **Before and after:** the Creator's name field names the downloaded file and rides along in the hand-off; the Bastion uses it only in the crest's file name ("<name> (Crest Creator).png"). It is not copied into the Party Name; the Party Name is typed in the Bastion. The tool is still called "Clan Crest Creator" and the field "Clan/Party Name" (Harry: for now).
+- **Evidence:** `tests/e2e/phase2.test.js`; `tools/crest/tool.js` (untouched).
+
+### BAS-SB-15 · A very long name with no spaces is cut with "…" on the badge
+**Left alone** · other
+
+- **Before:** a long Clan name was clamped to two lines under the crest.
+- **After:** the Party Name takes two lines at most above the crest, and the badge widens (up to 236 px) so a normal 40-letter name shows whole. A 40-letter name of wide capitals with no spaces is cut with an ellipsis on the badge; the full name is the badge's tooltip and is in the panel. Leading and repeated spaces count towards the box's 40-character stop (the saved name is tidied afterwards).
+- **Evidence:** `tools/bastion/bastion.css` (`.tsi-bas-badge__name`); `tests/e2e/bastion-screen.test.js`.
+
+### BAS-SB-16 · The Clan Influence panel still shows "support" until it goes
+**Left alone** · other
+
+- **Before and after:** `R.supportForClanKey` (the number beside each Clan in the Clan Influence panel) is kept, because that panel is removed by step S10, which should delete the function and its test group ("Bastion: Clan support") with it. The functions only founding a Clan used (`totalSupport`, `clansAtSupport`, `canFormClan`, the 360/55/3 numbers) are gone.
+- **Evidence:** `tools/bastion/rules.js`, `tests/rules/bastion.test.js`, `tests/e2e/phase9.test.js` (Honour/Respect check).
+
+### BAS-SB-17 · The Dock takes the Port Charter system (BAS-104)
+**Changed, Harry's request** · behaviour
+
+- **Before:** Register Port Charter was an order at the Hall of Emissaries; the Port Charters box with each Charter's terms (Amend, Reset, history) was in the Hall's panel; the Dock only listed the Charters.
+- **After:** Register Port Charter is a 3-day, no-gold, no-roll order at the **Dock** (any Dock level, as it was any Hall level); the Charters, their terms and history are in the Dock's **Port Charters** tab. The Hall has no Port Charter code or text left. Nothing about a Charter's rules, price, terms or ships changed.
+
+### BAS-SB-18 · The Dock panel has four tabs
+**Changed, to fit the laptop** · layout
+
+- **Before:** one long panel (about 1,025 px of content in a 740 px body on the laptop with three Charters and no ships), with the orders first and the cargo section underneath.
+- **After:** tabs **Cargo** (opens here; Ship cargo… in view), **Orders** (Upgrade, Charter Berth, Register Port Charter), **Port Charters**, **Routes**. The selectors tests use (`ship-cargo`, `dock-cargo`, `dock-charter-<port>`, `dock-protections`, `voyages`, `schedules`, `sales`) are the same; the order buttons are under Orders.
+
+### BAS-SB-19 · The Routes map now shows Port Charters and ships, and it moved to the Dock (BAS-27, BAS-05, BAS-11 become history)
+**Changed, Harry's request** · behaviour
+
+- **Before:** the Hall's Routes pill opened a pop-up map that glowed a Clan only for a running Trade Consortium route or Trade Agreement (and a Trade Agreement found no art, BAS-27, because its Clan was saved as "Clan Karr"); in a new game it could never show anything once the Consortium went.
+- **After:** the Dock's Routes tab glows each Clan with a **registered** Port Charter (steady) and brighter while a ship is at sea to it; an earned Charter lights nothing but is listed. The map is Clan-level (seven lanes for ten ports); there are no port pins or ship pictures (new art would be needed). It stops pulsing with "reduce motion".
+
+### BAS-SB-20 · Explorer dialog's wrong "Level 2" text fixed
+**Fixed (wording)** · text
+
+- **Before:** the Explorer's Port Charter dialog said a "Register Port Charter order at the Hall of Emissaries (Level 2, 3 days)" registers it; the order was always Level 1.
+- **After:** "a Register Port Charter order at the Dock (3 days) registers it." The same change in the Explorer's harbour box line, the Bastion's notice and log line, the Dock's blocked-shipping messages and `shared/data/ports.js`.
+
+### BAS-SB-21 · Voyage protections from the Barracks and Watchtower are gone (BAS-111)
+**Changed, Harry's request** · behaviour
+
+- **Before:** the Dock listed three protections (Commercial Convoy −5, Protected Maritime Approaches −5, Blessing of Pelagos −10); `commerce.test.js` and `charter-terms` asserted three.
+- **After:** the data lists only the Blessing of Pelagos, so the Dock's list reads only it. A held Convoy charge or Approaches window in an old save is dropped when the Bastion is converted, by the war removal's own step (with a line; free to prepare, so nothing is owed); the Blessing is never touched. (The Barracks and Watchtower, and `R.protectionBusy`, went with the war game in step S06.)
+
+### BAS-SB-22 · The Hall of Emissaries is one level with no orders (BAS-103)
+**Changed, Harry's request** · behaviour
+
+- **Before:** five orders (Host Delegation, Inter-Clan Summit, Secure Writ of Authority, Trade Consortium, the retired Secure Trade Agreement), an Upgrade to Level 5 that raised a diplomacy-roll bonus, Routes, Resolve, a Council Ledger, an Ironbow Trade Network section (stability, income, yield, High-Risk Routing, investments), a Clear Diplomacy Records button, and automatic weekly payments.
+- **After:** `functions: []`, `singleLevel: true`. The panel shows the Clans' Honour/Respect and Political Capital to read only, **Diplomatic Events** (the old Diplomatic Records ledger) and the read-only Earlier agreements and routes. Honour/Respect and Political Capital change only through Change a score in the DM doc or a confirmed Diplomatic Event. No diplomatic incident happens by itself.
+
+### BAS-SB-23 · Hall rules removed: B2, B3, B6, B20, B21, BAS-05, BAS-11, BAS-29, BAS-34 become history
+**Changed, Harry's request** · behaviour
+
+- **Before:** these entries describe rules in `R.emissaryPlan`, `R.applyEmissary`, `R.settleRoute`, `R.rule`, `R.tickDiplomacy` and friends (a natural 1 signing a deal, Host Delegation's two rolls, a Writ bonus never granted, a route paying once a sailing, the "[object Object]" in the verdict log, an outcome text never shown, a consortium not reopening an expired route).
+- **After:** the code and its data (`hallDC`, `hallTiers`, `delegation`, `networkUpgrades`, `councilDC`, `reactions`, `hallTips`…) are deleted. Add "removed in the Strip Back Overhaul" to those entries.
+
+### BAS-SB-24 · Running contracts and sea routes are paid out once, then end (decision 4.4 of the plan; BAS-83 history)
+**Changed, Harry's request ("stop at migration, stay as read-only history"); final settlement is the recommended policy** · migration
+
+- **Before:** each contract paid its income every 7 days into the treasury; each live route paid its yield every 7 days (a d20 for a high-risk one, a dispute for a bad failure).
+- **After:** when an old Bastion is converted, the remaining income is paid **once**, from the save, with no dice (a contract: `income × shipments still to come`; a route: its expected yield for each sailing still to come until it, or its Trade Consortium, would have ended; a disrupted, expired or Consortium-less route is owed nothing), every amount itemised in "The Bastion has changed", then each is ended and kept as one line of read-only history. A second conversion or a reload pays nothing more.
+
+### BAS-SB-25 · Hall orders waiting at conversion are cancelled with their gold back
+**Changed, deliberate departure from "Cancel keeps the gold" (B9)** · migration
+
+- **Before:** an order the DM had paid for and not yet seen resolve (150 / 450 / 600 / 900 / 250 gp for the five actions; Stability 75 gp and Yield 90 gp for the Trade Network) would have completed to nothing and lost the gold.
+- **After:** each is cancelled by name with `costGP` returned, the treasury rising by exactly the itemised sum (audit I1). An Upgrade at the Hall is cancelled (free). The Register Port Charter order moves to the Dock instead (BP-S08-a).
+
+### BAS-SB-26 · Delegations, Summits, cooldowns, Favour Tokens and disputes end
+**Changed, Harry's request** · migration
+
+- **Before:** a delegation and Summit lasted their days (the Summit cut Hall action prices 25%), a bad failure set a 14-day cooldown, Host Delegation could award Favour Tokens (never spent on anything), and a disastrous sailing filed a dispute for the Council Ledger.
+- **After:** all end at conversion with a sentence each; no gold is owed for any of them (a disputed route's ruling can no longer restore it). The Clan Influence panel's Favour Tokens pill reads 0 until S10 removes it.
+
+### BAS-SB-27 · Four phase9 checks about a day paused on a dice box were deleted
+**Left alone, coverage lost** · test
+
+- **Before:** `phase9` paused a day on the Hall's typed d20 (a Secure Trade Agreement order) to check Enter and Space cannot start anything else (BAS-10), a cancelled roll keeps the order due with Resolve (BAS-02, BAS-13), and closing the window mid-day loses nothing (BAS-02).
+- **After:** deleted, because the Hall's actions were the only orders that asked for a typed d20 inside a day (the War Council's War Actions were the other, and the war removal took them out). The rules for a skipped order (`R.skipOrder`) and the Resolve button, and the dice box (`rollD20`), remain in the code with no user; the lead may want to remove them in the clean-up step.
+
+### BAS-SB-28 · Left alone: Favour Tokens pill, `state.diplomacy`
+**Left alone, for S10** · cleanup
+
+- `state.diplomacy` is `{ tokens }` and the Clan Influence panel still shows the Favour Tokens count (always 0 after conversion). S10 can delete both. `R.supportForClanKey` (Support) is untouched (Clan Influence and Form Clan).
+
+### BAS-SB-29 · Clan Influence and the Day Log leave the bottom bar (Strip Back Overhaul, S10)
+
+- **Changed on purpose.** Before: Clan Influence and Day Log opened from the bottom bar. After: both gone; Political Capital and Honour/Respect are read in the Hall's Clan Relations and changed only by Change a score in the DM doc.
+- **Fixed.** Before: "Management" was clipped to "MANAGEMEN" on the bottom-bar button at 1920 x 1080. After: the panel buttons are wider.
+- **Left alone.** `state.log` is still written and still saved (it grows without limit) until step S18; nothing shows it. The old-Day-Log text file reads the live save's log, so S18 must move that to the set-aside copy.
+- **Left alone.** Rule functions still return `{ log: [...] }` pairs; the screen writes them to `state.log` only.
+- **Left alone.** Beast Handler link code (`bastion-link.js`) comments still mention "the Day Log"; S18 sweeps them.
+
+### BAS-SB-30 · One Temple replaces the Shrine of Telluria, the Shrine of Aurush and the Shrine of Pelagos
+**Changed, Harry's request** · behaviour
+
+- **Before:** three buildings (party level 8, a slot each, levels 1 to 5, Craft, Pray and four blessing orders each).
+- **After:** one building, `temple`: party level 8, a construction slot, 21 days, one level only (no Upgrade row). Its panel is split into thirds, one for each god. The world text "Temple of ..." (regions, Explorer events, the Notice Board) is not touched.
+
+### BAS-SB-31 · Pray to (god) is instant and adds a d50, not a 1-day order with a 1d20
+**Changed, Harry's request** · behaviour
+
+- **Before:** Pray was a 1-day order; its third option rolled 1d20 and added that many percent to the bar.
+- **After:** a button in each god's third; the Bastion rolls a d50 (1 to 50 percent), adds it to the bar at once (the bar stops at 100) and shows the roll. Praying at a full bar adds nothing and says so (my judgement call: the button is not disabled, since Harry did not say it should be).
+
+### BAS-SB-32 · Receive Blessing: three blessings a god, only on a full bar, instant, the whole bar spent
+**Changed, Harry's request** · behaviour
+
+- **Before:** four blessing orders a god at Levels 2 to 5, each taking days and 0, 5, 10 or 25 percent of the bar when it started; Cancel never gave the Favour back.
+- **After:** a dropdown of three (Pelagos: Voyage Blessing, Bless Commercial Shipment, Great Rite of Pelagos; Aurush: Blessed Lantern, Consecrate Expedition Supplies, Great Rite of Aurush; Telluria: Earthward Talisman, Rootguard Salve, Great Rite of Telluria), greyed out until the bar is 100. It happens at once, spends the whole bar and makes no order (so there is nothing to cancel). A full bar now takes about 4 prayers (a d50 averages 25.5), against about 10 with the old 1d20 (10.5), so blessings come faster; the numbers (`prayDie`, `full`) are in the Temple's data.
+- **Judgement call:** pressing Receive Blessing asks first ("the whole bar is spent"), because a mis-click costs a whole bar and the dropdown starts on its first blessing.
+
+### BAS-SB-33 · Craft charms, the hint and long-rest prayers, Purification Incense, the Aquatic Protection Charm and Bless Bastion Foundations are gone
+**Changed, Harry's request** · behaviour
+
+- **Before:** six charms (Craft), two prayers that rolled a hint or a long rest, and three more blessing orders (one of them, Bless Bastion Foundations, listed but never available).
+- **After:** none of them exist. Their goods (Purification Incense, Aquatic Protection Charm and the rest) stay in the catalogue, the Courier and the Travel bags so anything already made keeps its name. The Compendium loses their 15 names (270 items become 255).
+
+### BAS-SB-34 · The Favour of the Gods panel, its button and Claim are removed
+**Changed, Harry's request** · behaviour
+
+- **Before:** a bottom-bar Favour button opened three bars with a Claim button at 100 that only reset the bar.
+- **After:** the bars are in the Temple; Receive Blessing is what resets a bar. The saved `favour` map is unchanged; the DM doc's "Where the party is" god card and Change A Score for Favour work as before.
+
+### BAS-SB-35 · Converting a saved Bastion: the Shrines become one Temple
+**Changed, Harry's request** · data
+
+- **Before:** a saved Bastion had up to three Shrine slots, their levels and pending orders.
+- **After:** the first built Shrine's slot (else the one ready first) is the Temple; the rest are free; its level is 1. The nine orders the Temple still gives move to it (id, due day and what they cost kept) and complete on their due days. Everything else (Craft, every Pray, Incense, the Aquatic Charm, Bless Bastion Foundations, Upgrades) is cancelled with Favour (up to 100, overflow said), goods and gold given back, and reported in plain English. A pending Favour prayer is cancelled too: its roll is not made (it cost nothing). Held Blessings of Pelagos, Great Rites and Favour are kept exactly.
+
+### BAS-SB-36 · Left alone: the generic `favourCost` machinery
+**Not fixed, my judgement call** · code
+
+- **Before:** `R.issueOrder`, `R.favourBlocker` and the facility rows take a Favour cost from a god's bar when an order starts.
+- **After:** the same code stays, but no function in the data has a `favourCost` any more, so it is never used. It is left in so as not to widen the merge with the other lanes; a later step can delete it.
+
+### BAS-SB-37 · Left alone: the word rule that turns `shrine_aurush` into "Shrine of Aurush"
+**Not fixed, my judgement call** · code
+
+- **Before/After:** `shared/js/campaign-rules.js` still names a retired Shrine id in words; the Explorer and the DM doc read a version 3 save before the Bastion converts it, and its orders still say "Shrine of ...". It can go once no version 3 save can be read.
+
+### BAS-SB-38 · No Temple is built for free when only orders are found
+**Changed, my judgement call** · data
+
+- **Before/After:** if an old save holds a Shrine order but no Shrine standing, the order moves to the Temple (it completes on its day; Favour, Great Rites and held blessings never need a building) but no Temple appears. (The Beast Pen step builds a free Pen only when beasts would otherwise be invisible; nothing is invisible here.)
+
+### BAS-SB-39 · The Workshop staff (Strip Back Overhaul, S12)
+
+| Id | What | Before / after | Left alone or fixed |
+|---|---|---|---|
+| WS-a | **Handyman's list is a PLACEHOLDER** (Harry will supply it) | Before: the DM picked up to six tool tables. After: the Handyman crafts from the six tables nobody else claims (103 items, 3 days), marked PLACEHOLDER in the data, on his card and here. | Placeholder, by decision |
+| WS-b | **Artisan's extras are a placeholder**: "Extra options: to come" | After: a card with no orders; `artisanExtras` on every craft order is the hook (empty). | Placeholder, by decision |
+| WS-c | **Smithing retired** | Before: a 5-day, 29-item order for Bastions that had a Smithy. After: hidden; the Smith crafts the 30 items of Smith's Tools in 3 days. A Smithing order already pending still finishes. | Deliberate |
+| WS-d | **Library & Scriptorium and Arcane Laboratory removed** | Their jobs are the Scholar's and Alchemist's; pending orders move with their ids and days; upgrades there are cancelled (free); slots freed. | Deliberate |
+| WS-e | **QUESTION FOR HARRY: charts and Research now need the Workshop at Level 3.** | Before: Overland charts needed the Library at Level 2 (7 days of upgrading). After: the Scholar opens at Workshop Level 3 (7 + 14 days of upgrading, 21 in all). The Workshop's own level is NOT raised for a Bastion that had a Library, so such a Bastion cannot prepare charts until the Workshop is upgraded. The conversion report says so. Should a Bastion that had a Library at Level 2 get the Workshop raised to Level 3 once, as a goodwill step? (Not done: it would give free levels.) Likewise the Alchemist needs Level 4 for orders the Laboratory gave from the start (Craft Common and Uncommon had no level need; Alchemy needed party level 9). | Question |
+| WS-f | **Alchemy's party-level-9 gate dropped** (Harry's E Q5 default) | Before: Alchemy needed party level 9. After: only Workshop Level 4. | Deliberate |
+| WS-g | **Duplicate potions left out of the Alchemist's lists** | Potion of Climbing (Craft Common), Potion of Resistance and Potion of Water Breathing (Craft Uncommon) are offered once, at 3 days, by Alchemist's Supplies. An order already pending for one still finishes. | Deliberate |
+| WS-h | **Several jobs at one staff member after conversion** | A Bastion that had a Library chart order and a Research order running at once keeps both (they finish as before); new orders wait until the Scholar is free. | Left alone |
+| WS-i | **BAS-26 (scripture notes never attach) moves with Research** | The benefit text still does not attach. | Left alone |
+| WS-j | **The Library and Laboratory buildings are no longer drawn on the map**; their paintings and map overlays are in `assets/extras/`. | Could be drawn when the Workshop reaches Level 3 and 4 if Harry likes. | Left alone |
+| WS-k | `bastion-screen` ended with a "The Bastion has changed" box over the last check (Favour Tokens the Hall's wind-down still finds in a save an earlier check left); the test now presses "I've read this". | Test only. | Fixed in the test |
+| WS-l | Rope of Climbing is in Craft Magic Item but in no reference table (harmless, as before). | | Left alone |
+
+### BAS-SB-40 · The app no longer sends anything (Strip Back Overhaul, S13)
+**Changed, Harry's request** · behaviour
+
+- **Before:** a player could ask the Bastion to change a profile line or start a free training order; the request travelled as a signed `BHC1.` code (phone) or through the `tsi.beasthandler.queue` key (laptop), the Bastion kept a receipt for each in `s.beast.done`, and the DM had a "Take requests from handlers" switch, a "Paste a request code…" button and a "Latest requests" list.
+- **After:** the app is read-only and sends nothing. The request code, the receipts, the queue, the switch, the paste box, the list, the Orders tab, the waiting overlays, "Edit or roll this profile" and the "From the Beast Handler:" notice are gone. A saved Bastion that still holds the old record (`accept`, `done`, `floor`) loads quietly and the version 4 conversion drops it (step `dropBeastRequests`); the old queue key and a phone's old outbox and draft keys are deleted when the Bastion, the laptop copy or the phone page opens.
+
+### BAS-SB-41 · The Bastion rolls a beast's first meeting, once
+**Changed, Harry's request** · behaviour
+
+- **Before:** the player typed, tapped or rolled a subspecies and three personality lines on the phone, and the phone sent them as a request.
+- **After:** at Bond 1 the Bastion rolls the subspecies (fixed per kind, `data/initiation-data.js`) and the three personality lines (d12, d8, d8, genuinely random) once, keeps them in `development.initiation`, fills blank lines only, and writes a Day Log line ("first meeting prepared… staged: fixed until further notice"). Beasts already at Bond 1 or more with no variety are rolled for once, when the Bastion opens or a day passes (Elara's wyvern becomes a Bloodcrest). A beast that already has a variety is never rolled for.
+
+### BAS-SB-42 · The first meeting is a reveal of what the Bastion decided
+**Changed, Harry's request** · behaviour
+
+- **Before:** panel 2 and 3 were typed fields, five tap chips and Roll buttons that only suggested a line.
+- **After:** panel 2 is shuffled medallions, one "Roll for subspecies" button, a die and a hopping marker that lands on the Bastion's answer; panel 3 is three cards whose dice settle on the Bastion's real numbers. Once per device per beast (phone: `tsi.beasthandler.phone.seen`; laptop: session only), no skip on a phone, "Skip for now" on the laptop.
+
+### BAS-SB-43 · Fixed subspecies "until further notice" (left alone, to tell Harry)
+**Left alone, by design** · content
+
+- Every wyvern meets as a Bloodcrest, griffin as Dawnmantle, dire wolf as Blacktide, Buckbear as Broadcrown, Fellcat as Lichenback, however the dice look; a beast released and granted again would meet the same variety. Changing `mode` to `random` in `tools/beasthandler/data/initiation-data.js` gives chance back. The Day Log says "staged" so Harry can tell later that it was not a chance outcome.
+
+### BAS-SB-44 · The reveal's marker goes round about three times, not "one to two" (left alone)
+**Left alone, judgement call** · visual
+
+- The brief's lap count cannot be had together with 3.5 to 4.5 seconds and gaps of about 90 to 420 ms on five or six medallions. The times and gaps are kept; the marker goes round about 2.5 to 4 times.
+
+### BAS-SB-45 · Tabs and pages
+**Changed, Harry's request** · behaviour
+
+- **Before:** bottom bar Profile, Orders, Chronicle; the picture page was reached by "Back"; Profile had an editor.
+- **After:** Profile, Bond, Chronicle; Bond is the page a beast opens on; Profile is read-only; "Back" is always "All beasts". A beast that is not acclimatised (Bond 0) is a line "Not acclimatised yet" with no detail, on the phone and on the laptop. After "Skip for now" on the laptop the page shows the real subspecies and picture (the Bastion already holds it); "Subspecies not chosen yet" is now "Subspecies not known yet".
+
+### BAS-SB-46 · Snapshot version 2 (phones must be given a new snapshot once)
+**Changed** · compatibility
+
+- **Before:** snapshot version 1 held orders, training, receipts and a request fingerprint for each beast.
+- **After:** version 2 holds none of those, shows a Bond 0 beast as a name only, and carries `available` and the first meeting to the beast's own handler. A phone holding a version 1 snapshot forgets it and asks for a new one (its link is kept).
+
+### BAS-SB-47 · Beast Handler laptop copy saves nothing
+**Changed** · behaviour
+
+- **Before:** the laptop copy saved a queue of requests, so it had Export and Import buttons.
+- **After:** it saves nothing (`saves: false`), so no Export and Import for this tool. Which first meetings were shown is remembered for the window's session only. An old backup that holds `tsi.beasthandler.queue` still restores; nothing reads it and it is cleared the next time the Bastion or the Beast Handler opens.
+
+### BAS-SB-48 · Not done, left for the next steps
+**Left alone** · scope
+
+- Buckbear and Fellcat cannot be housed or shown (no building until the Beast Pen); the reveal's five-kinds test patches the two kinds into the page. The Bonding Days counter and filling pills are S15; QR pairing and the online link are S17. The Buckbear and Fellcat d8 tables are still DRAFT.
+- `tests/fixtures/bastion-v3-heavy.json` and `bastion-fixtures.js` were not regenerated (they still hold the old request record, which is what the new conversion step is tested on); `make-heavy.js` writes that old shape on purpose.
+- Firefox, Edge itself and a real phone were not tested.
+
+### BAS-SB-49 · One Beast Pen replaces the Wyvern Roost, Griffin Tower and Dire Wolf Den
+**Changed, Harry's request** · behaviour
+
+- **Before:** three buildings (each with levels, upgrade rows, room that grew with the level), each housing one kind of beast, with a list of training programmes.
+- **After:** one building, `beast_pen`: party level 5, a construction slot, 21 days, **one level only** (no Upgrade row), housing **one beast of each of five kinds** (wyvern, griffin, dire wolf, buckbear, fellcat). Only two orders: House Beast Here and Acclimatise With Beast. A beast already housed when the limit arrived stays; the limit only blocks housing a new one. Demolishing the Pen is refused while any beast lives in it.
+
+### BAS-SB-50 · The training programmes, riding harness, first flight, Rider's Pact and Controlled Ascent are removed
+**Changed, Harry's request** · behaviour
+
+- **Before:** each old building had a list of free programmes and riding preparation orders (the 150 gp harness, first flight, Rider's Pact), and a Riding line in each beast's block.
+- **After:** none of it exists on screen. What an old save had recorded for a beast (programmes done, harness, flight, riding) stays in the saved beast's `development` out of sight, so nothing is lost; no new order can add to it.
+
+### BAS-SB-51 · Bonding is by days on the road, not by orders
+**Changed, Harry's request** · behaviour
+
+- **Before:** the DM issued training orders; finishing one made the next bond milestone ready.
+- **After:** a beast at Bond 1 or more, taken out on the road ("Away from the Ironbow"), earns one **Bonding Day** for each day the Explorer passes (Bond 2 at 10 days in all, 3 at 20, 4 at 30, 5 at 50; numbers in `creatures-data.js` as `bondTotals`). Days are totals, never lost, keep counting while a milestone waits, and one level rises per scene. The DM still confirms each level with a reason, as before.
+
+### BAS-SB-52 · Acclimatise With Beast is typed at the table, DC 20 for every kind
+**Changed, Harry's request** · behaviour
+
+- **Before:** acclimatising was a free training order (Safe Acclimatisation, 5 days) at the old building.
+- **After:** the handler rolls Animal Handling at the table and the DM types the total. 20 or more passes (Bond 1, the beast leaves the list and its first meeting is rolled for the Beast Handler); a lower total locks that beast for 3 in-game days (a fail on Day 10 blocks Days 11 and 12; Day 13 is allowed). The DC and the 3 days are in `creatures-data.js` (a per-kind DC is possible later). The roll is instant, so it is not a pending order; the order has "days: 1" in its data only to satisfy the rule that every order has days.
+
+### BAS-SB-53 · Take a beast out on the road and return it: refused mid-day and while the Bastion is behind
+**Changed, my judgement call** · behaviour
+
+- **Before:** nothing like it.
+- **After:** both buttons ("Take (name) on the road", "Return (name) to the Beast Pen") are switched off, with a reason, while the Bastion is behind the Explorer's day or a day is part-way through, so the day the trip starts or ends can never be miscounted. The day a beast goes out is not counted; each day after it is.
+
+### BAS-SB-54 · A beast already at a bond level counts as having that level's days
+**Changed, my judgement call** · behaviour
+
+- **Before:** a beast brought to Bond 3 by the old orders had no days at all.
+- **After:** the effective Bonding Days are the larger of what was counted and the total for the beast's level (Bond 3 counts as 20), so the pill for the next level starts at its own beginning and a migrated beast is not sent back to zero.
+
+### BAS-SB-55 · Elara's wyvern is no longer given to a new Bastion
+**Changed, Harry's request** · behaviour
+
+- **Before:** a new Bastion held a "House Elara's Wyvern" order for her wyvern.
+- **After:** a new Bastion starts with no beast. An existing save that already has her wyvern keeps it (as Bond 1, and the old Elara order, if still pending, moves to the Pen as a House order that completes only if no wyvern is housed yet).
+
+### BAS-SB-56 · The old buildings' orders after the conversion
+**Changed, Harry's request** · behaviour
+
+- **Before:** House orders were pending at the Roost, Tower or Den; training, upgrade and riding orders ran there.
+- **After:** the conversion step `rehomeBeasts` moves each House order to the Pen (same cost, inputs and due day; the label becomes "Beast Pen: House Beast Here (name)"), cancels training and upgrade orders with a refund through the shared refund helper, frees any extra built slot, releases no creature, and gives a free Pen only if beasts are already housed and no old building stands. It rolls no dice and writes plain-English lines under "joined", "beasts" and "orders". A House order that would break the one-of-each limit keeps that beast waiting, and the report line says so.
+
+### BAS-SB-57 · Buckbear and Fellcat can be granted in the Explorer
+**Changed, Harry's request** · behaviour
+
+- **Before:** the Grant a creature dialog offered a wyvern, a griffin or a dire wolf.
+- **After:** it offers five kinds and says the Pen keeps one of each. The fallback list in `shared/js/bridge-rules.js` was extended, with a test that it equals the Bastion's own data.
+
+### BAS-SB-58 · The Pen's map overlay and tile reuse existing pictures
+**Left alone, by design** · visual
+
+- **Before:** the Roost, Tower and Den each had their own building on the map and a tile picture.
+- **After:** the Pen's panel carries Harry's `beast_pen.jpg` across the top; its tile uses the Menagerie's painting (`menagerie.png`) and its place on the map is the Wyvern Roost's building overlay. All those files stay where they are (the Menagerie facility itself is not touched here). Harry may want a new tile and overlay later.
+
+### BAS-SB-59 · `R.creatureStatus` and the war lines for beasts are left in place
+**Left alone, by design** · code
+
+- **Before / After:** unchanged. The beasts' fighting stats, "Creatures defend the Ironbow" and the War Table lines belong to the war code, which another step removes. The Pen's screens no longer use `R.creatureStatus`; whoever removes the war code can delete it.
+
+### BAS-SB-60 · Reset Travel can show a trip as starting "before Day 1"
+**Left alone, judgement call** · visual
+
+- **Before:** n/a (new field).
+- **After:** the day a beast went out moves back with everything else when Reset Travel moves the Bastion back; if that makes it earlier than Day 1 the panel says "out on the road since before Day 1" (the Bonding Days are untouched and the next camp counts normally). The same happens to old orders' issue days.
+
+### BAS-SB-61 · The Bastion window does not pause part-way through a catch-up
+**Left alone, by design** · behaviour
+
+- **Before / After:** when the Bastion has several days to catch up it passes them in one quick run, so a window closed or reloaded "part-way" in practice leaves the last saved day, and the next open continues from there. The tests prove each day is credited once from a save left at Day 19 with the Explorer on Day 25, and after reloads at six moments around a day passing.
+
+### BAS-SB-62 · Beast Handler: the Bond page shows Bonding Days and pills that fill
+**Changed, Harry's request** · behaviour
+
+- **Before:** five pills, full up to the bond level.
+- **After:** a Bonding Days counter and a line (*On the road with (handler) since Day N* or *Resting at the Beast Pen: bonding is paused*); the next pill fills as the days pass; a full pill reads "Ready: waiting for a moment with your DM" with a soft pulse (none under reduced motion); each pill is a progress bar for a screen reader ("Bond 3, Bonded: 7 of 10 days"); a new snapshot changes the numbers in place without redrawing, so a roll or greeting is never cut.
+
+### BAS-SB-63 · The snapshot gains a `bonding` block and a `place`; its version stays 2
+**Changed, Harry's request** · behaviour
+
+- **Before:** the snapshot listed buildings and, for an acclimatised beast of the handler's own, a detail block.
+- **After:** one facility entry (Beast Pen, level 1), a `place` ("pen" or "away") on each creature and its detail, and a `bonding` block (away, since, days, next pill, ready) for the handler's own acclimatised beast only. A Bond 0 beast still sends no detail. An older snapshot has no counter until a new one is pasted; nothing breaks. Every new field has a leak test with a reason.
+
+### BAS-SB-64 · The Beast Handler (players) box moved from Management into the Pen's panel
+**Changed, Harry's request** · visual
+
+- **Before:** the pairing and snapshot controls sat in Management with the creatures list.
+- **After:** both the list of creatures and the box are in the Beast Pen's panel; Management no longer has a creatures list or the box.
+
+### BAS-SB-65 · Test and tool notes
+**Left alone** · tests
+
+- `tests/e2e/phase8.test.js`: "Compared with the old Explorer" needs the `_legacy/` scratch folder and always fails in a clean worktree (known; unchanged by this step).
+- `tests/e2e/war-room.test.js` (line about `griffin_tower`) and any other test that opens a war screen belong to the war-removal step; they are left as they were.
+
+### BAS-SB-66 · DM doc overhaul: four panels, a Quest box, imports, one pop-out (Strip Back Overhaul, S16)
+**Changed, Harry's request** · usability
+
+- **Before:** the DM doc was one narrow column (440 by 800) of six tiles and flat sections; the pop-out opened portrait (520 by 900) and a second click opened a second window; there was nowhere to keep session text.
+- **After:** four panels in a 2 by 2 grid. **Party** (level, event gold, effects for the whole party, a held Great Rite as one line, and each hero with that hero's own effects beside their name), **Bastion** (orders pending, up to five listed, next first; next word from the Ironbow, every line), **Explorer** (day, expedition line, where the party is with the Clan's Political Capital and Honour/Respect, the god's Favour and the Hall's agreements, Change a score, Threads), **Quest** (a plain text box, saved as you type). The floating panel first opens 1040 by 640 (it fits the laptop and the TV) and stacks into one column below about 760 pixels wide; each panel scrolls on its own. Pop out opens landscape (1100 by 760), and only one pop-out can be open at a time (it holds a Web Lock, `tsi.suite.lock.dmdoc`, like the tools do).
+- **New saved data:** `tsi.dmdoc.quest` = `{ text, at }`, up to 200,000 characters (it is in the existing DM doc family, so Back up everything and Restore already carry it, with no change). `tsi.dmdoc.layout` now carries `v: 2`; a layout saved by the old single column is ignored once, so it reopens at the new size.
+- **Explorer:** the expedition record is now `{ v: 2, n, active, startedDay, endedDay }`. `endedDay` is set when the DM presses End expedition and cleared when the next starts (null = none or unknown). **Reset Travel moves both days with every other day** (`J.shiftDays`), so they can be 0 or below afterwards; the DM doc writes them with a minus sign and adds "(Reset Travel moved the days)". A record without `v: 2` is an older one, where 0 meant "not known": on load (and in the DM doc) an expedition that had already ended gets its end day from the journey log's "Expedition N ended on Day D." line once, while that line is still there, and keeps it from then on; otherwise it stays unknown (the DM doc says "Expedition ended - began Day N"). A day is never guessed. An expedition record saved by the first S16 build (no `v`) and already moved by a Reset Travel before this fix keeps its old numbers (not recoverable).
+- **Quest import:** `shared/js/doc-text.js` reads .docx (a small zip reader plus the browser's own `DecompressionStream('deflate-raw')`; no library), PDF (the bundled PDF.js, loaded only when a PDF is chosen, each text item's end-of-line flag kept, a blank line between pages) and .txt / .md. A box that already has text asks Replace, Add to the end or Cancel. Plain messages for a scanned PDF, an old .doc, a password-protected file, a damaged zip, a file over 20 MB and text over the box's limit (the import is refused whole; nothing is cut).
+- **Never shared:** nothing but `shared/js/dmdoc.js` and `shared/js/dmdoc-rules.js` mention the Quest key (checked by `tests/e2e/dmdoc.test.js`); the Beast Handler snapshot is built from an allow-list and is tested not to carry it (`tests/rules/beasthandler-projection.test.js`). The Beast Handler phone page loads no DM doc script.
+- **Reworded:** the Change-a-score dialog, the DM doc's own help line and the Bastion's notice ("From the DM doc: ... ") no longer promise a Day Log. `R.applyDmEdits` still writes its Day Log line (the Bastion's Day Log is removed in a later step, and `tests/e2e/dmdoc-edit.test.js` still asserts that line; it goes with that step).
+- **Left alone:** `bastionComing` (it still announces the war, the Hall's removed orders, the removed Host Delegation / Secure Writ / Summit / Consortium endings, war recovery and the 28-day Bastion event); the Bastion-removal steps prune their own branches. `summary` keeps `effects` (all of them) as well as the new `heroes[].effects` and `partyEffects`.
+- **Judgement calls (say if any should change):**
+  - The Expedition line sits right under Day (the handover lists it last): it is one short line, and the Explorer panel is the one that scrolls.
+  - An active expedition that began today reads "Expedition: began today (Day 4)"; otherwise "Expedition: began Day 4 · running 3 days". Ended: "Expedition ended - Day 4 to Day 9" (a plain hyphen, as Harry wrote it).
+  - The panel lists the last three score changes (the dialog and the Bastion's receipts keep all of them).
+  - Last typed wins between two windows: a window with unsaved typing keeps it (and says so) and its next save replaces the other copy.
+- **Quest box and other windows (after review):** the saved text is taken whenever it differs from what this window last saved or loaded and no typing is unsaved, even with the caret in the box (the caret stays); with unsaved typing the typing is kept and a note says so. A Restore (older `at`, or no Quest text) reaches an open DM doc window by a `storage` event on `tsi.suite.replaced` (written by `TSI.store.replace`), and in any case when the window is focused, comes back into view or the box is clicked out of. The Quest key is therefore read on open, window focus, tab visible, blur and after a Restore elsewhere, never on the timer.
+- **Last-moments safety net:** typing is copied to `localStorage` (`tsi.suite.dmdoc-quest-draft`, not a save, so no backup holds it) about 0.15 s after each key and in full on `pagehide`; if the browser has not finished the IndexedDB write, the copy is put back at the next DM doc open when it is newer than the saved text. A copy another open window is still writing is left alone for 5 seconds. With no small storage (memory mode) there is no safety net and the panel says "Not saved".
+- **Text files:** a text file that is not valid UTF-8 (Word's plain-text save, ANSI) is read as Windows-1252 and the success message says so; UTF-16 files are read from their byte-order mark.
+- **Word files:** unpacking is stopped once the text passes 20 MB, whatever size the zip declares ("too big to read"). **PDFs:** reading stops once the text is known to be longer than the box; it says "more than 200,000 characters" and imports nothing (never a cut-off text). Tidying imported text is linear (a 200,000-space run is instant) and done once; a vertical tab or form feed is a line break.
+- **Orders:** an order whose day has passed reads "Was due Day 7, 2 days ago" (the Bastion's panel text, not "today").
+- **Damaged saves:** names such as `constructor`, `__proto__` or `toString` in an effect, rite, Region, agreement kind or score kind no longer break the summary (own-property lookups; a hero lookup uses a null-prototype object). Not touched: `bastionComing`'s own lookups (`FACILITY_NAMES`, `OBJECTIVES`), which the Bastion-removal steps prune; a name like `constructor` there prints oddly but cannot throw.
+- **Keys typed in the Quest box:** the Heartwood Ritual's roll window ignored the typing-in-a-box rule, so Enter applied and Esc closed an open roll while typing in the Quest box; it now only reacts to typing inside its own roll window. Audited every `keydown`/`keyup` handler in `tools/` and `shared/js`: the Bastion's and Crest's Escape handlers for their open pickers now ignore typing elsewhere; the Combat Tracker, War Table, Explorer and `life.onKey` ones already did.
+- **Limits to know:**
+  - **Restore from a backup made before this change** has no `tsi.dmdoc.quest`, so Restore empties the Quest box (it deletes saved items the backup does not hold). The guide says so. Save as text file first if the notes matter.
+  - A browser without Web Locks (untested in Firefox) allows more than one pop-out window, as before; the Quest text then follows "last typed wins".
+  - If the browser is saving nowhere (memory mode) the Quest panel says plainly that the text will be lost when the window closes, and shows "Not saved".
+  - Text boxes, headers, footers, footnotes, comments and pictures in a Word file are not read; a PDF of pictures (a scan) has no text. The PDF reader (1.5 MB) stays loaded in that window after the first PDF, as it does in the Combat Tracker.
+  - A second click on Pop out within a few seconds of the first (while the new window is still starting) is told "already open", not ignored.
+- **Tests:** `tests/rules/dmdoc.test.js`, `doc-text.test.js`, `campaign.test.js`, `shrines-explorer.test.js`, `beasthandler-projection.test.js`; `tests/e2e/dmdoc.test.js`, `dmdoc-edit.test.js`, `dmdoc-fixtures.js` (a .docx made with Node's `zlib.deflateRawSync`, a hand-written PDF), `phase1.test.js` (new default size, saved layout version), `guide.test.js`.
+- **Not checked:** Firefox (Web Locks, `DecompressionStream`, container queries are all in current Firefox but were not run here); Edge itself (Chromium was used); a real second screen.
+
+### BAS-SB-67 · A phone is linked by scanning a QR code, not by pasting a code
+**Changed, Harry's request** · behaviour
+
+- **Before:** the DM pressed Pairing code…, sent the BHP1 text, and the player pasted it into the phone page.
+- **After:** the DM presses **Show QR to (name)**, the player scans it with the phone camera and the page links itself. The pairing code (BHP1) and the snapshot code (BHS1) still work, tucked into a shut **Offline backup** box in the DM's box and on the phone page. A phone linked the old way keeps working (the QR link carries the same secret).
+
+### BAS-SB-68 · The online link is built and switched off; the suite's rule about going online is NOT changed
+**Left alone, awaiting Harry** · policy
+
+- **Before:** nothing online except the Notice Board's Knightly Treasures link (CLAUDE.md ground rule 2).
+- **After:** an optional online link exists (a small scrambled post box that Harry would own, in a Firebase Realtime Database) but is dormant: `tools/beasthandler/relay-config.js` ships with an empty address and the Bastion's switch (`s.beast.onlineLink`) is off. While either is missing, no request of any kind is made by the Bastion or the phone page (tested with a request spy). CLAUDE.md is unchanged. The exact wording Harry would approve is in `docs/ONLINE-LINK-SETUP.md` step 5.
+
+### BAS-SB-69 · The settings file holds an address only, never a key
+**Left alone** · policy
+
+- **Before:** the only Firebase settings in the repo are Matt's, in `tools/quests/shop-link.js`.
+- **After:** `tools/beasthandler/relay-config.js` is meant to hold one value, the post box's web address (a public identifier, not a password). The link talks to the database with plain web requests, not Google's library, so no key is needed and none is allowed (the guide tells Harry not to paste the console's `apiKey` block). The address validator accepts only an https Firebase Realtime Database address.
+
+### BAS-SB-70 · The online link only runs while the Bastion window is open
+**Left alone** · limitation
+
+- **Before:** n/a.
+- **After:** the Bastion is the only place days pass, so it is the only sender; with it closed, phones show the last copy they got. If another window hides the Bastion, Edge slows its timers (about a minute), so an update can be up to a minute late. The phone says "As of Day N, updated 3 minutes ago" so players can see how fresh it is.
+
+### BAS-SB-71 · The phone refuses a snapshot older than the one it holds; a laptop clock set back would stop updates
+**Left alone** · limitation
+
+- **Before:** the same rule already protected pasted snapshots.
+- **After:** each online copy is stamped with the Bastion's clock (kept increasing within a session). If the laptop's clock were moved back by hours or days, new copies would look older than what a phone holds and be refused until the clock catches up, or the player presses Unlink and links again. Unlikely at a table; noted.
+
+### BAS-SB-72 · An iPhone Home Screen icon keeps its saved link apart from Safari's
+**Left alone** · limitation (documented)
+
+- **Before:** the same limit applied to pasted pairing codes.
+- **After:** scanning links Safari, not an icon added earlier. The phone page has **Copy my link** (in Safari) and the icon's link screen accepts a pasted link under Offline backup; the help text on the link screen and in the QR window says so. Not tried on a real iPhone.
+
+### BAS-SB-73 · A backup file holds every handler's secret, so it can open their online copy
+**Left alone** · limitation (existing risk, now slightly larger)
+
+- **Before:** a "Back up everything" file already held each handler's pairing secret (anyone with it could sign a snapshot for that player).
+- **After:** the online channel and key are worked out from the same secret, so whoever holds a backup could also read that handler's scrambled copy. The setup guide tells Harry not to share backups.
+
+### BAS-SB-74 · The post box's rules let anyone who knows a secret-named place overwrite or delete that place
+**Left alone** · by design (tested rules from the research, unchanged)
+
+- **Before:** n/a.
+- **After:** a stranger can't list or read the post box and can't make the Bastion do anything, but whoever knows a handler's place name (which can't be worked back to the secret) could overwrite or delete that copy; the worst case is a blank or stale page on that phone until the next send (a changed copy is checked and refused on the phone). The rules' unused `inbox` half is kept so they stay exactly the ones that were tested.
+
+### BAS-SB-75 · Phones look every 20 seconds; there is no live push
+**Changed, my judgement call** · behaviour
+
+- **Before:** the research proposed a live stream with polling as the fallback.
+- **After:** polling only: a 13-byte "time of latest update" request every 20 seconds while the page is showing (plus on return to the page, on coming back online, and on **Check now**); the whole copy is fetched only when that time changes. A live stream could not be tested against the real service from here.
+
+### BAS-SB-76 · Automated browsers can use only the made-up test address
+**Changed, my judgement call** · safety
+
+- **Before:** n/a.
+- **After:** `relay.js` refuses any database address except `tsi-test-relay.invalid` when `navigator.webdriver` is true (Playwright and Selenium set it), and the test page (`TSI.space === 'test'`) always gets an in-memory stand-in. So a test run can't reach a real database even if Harry has filled in a real address.
+
+### BAS-SB-77 · "Add a handler…" no longer asks before swapping a code
+**Changed, my judgement call** · behaviour
+
+- **Before:** typing the name of an already-paired handler asked "the old one stops working. Make a new code?" and made a new pairing code.
+- **After:** it shows that handler's QR code again and changes nothing, so there is nothing to ask. A new secret is made only by **Take back code** then **Show QR to…**, or by **New pairing code…** under Offline backup (which still asks first).
+
+### BAS-SB-78 · The QR window's link is plain text, not a text box
+**Changed, my judgement call** · behaviour
+
+- **Before:** (new window) the link first went in a read-only text box.
+- **After:** plain text that selects with one click, because the shared pop-up gives keyboard focus to the first text box, which scrolled the QR picture out of sight on a phone-sized screen.
+
+### BAS-SB-79 · The QR link carries the Bastion's save id as well as the secret
+**Changed, my judgement call** · format
+
+- **Before:** the research proposed `L1.<secret>.<name>` and the phone taking the save id from its first snapshot.
+- **After:** `L1.<campaign>.<secret>.<name>`: 16 more letters (the QR is still a small 45 to 49 squares wide) so the phone keeps the strict "this snapshot is for this Bastion save" check it has always had. The name is carried as URL-safe letters of its UTF-8 so accents and spaces survive.
+
+### BAS-SB-80 · Not tested here
+**Left alone** · test gaps
+
+- The real Google Firebase console and every step of `docs/ONLINE-LINK-SETUP.md` marked so; a real database accepting requests from a double-clicked file and from the GitHub Pages address (CORS); a real phone camera (including iPhone Safari and Home Screen behaviour); GitHub Pages serving the new phone page (the QR code points at the address in the Phone page address box, which is only right once this is merged and Pages publishes `main`); Firefox (WebCrypto and `history.replaceState` from a file). Edge itself was not run; Chromium was.
