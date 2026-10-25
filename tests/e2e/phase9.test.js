@@ -242,7 +242,7 @@ const ALL_EXTRAS = ['beast_pen', 'herbal_gardens', 'temple', 'hall_of_emissaries
     await page.setViewportSize(H.SIZES.laptop.viewport);
     await H.shot(page, 'p9-01-laptop');
 
-    await check('every facility picture, the new map and its ten overlays load with no internet; every label fits on the painting, none over another', async () => {
+    await check('every facility picture, the new map and its nine overlays load with no internet; every label fits on the painting, none over another', async () => {
       /* (The Courier Exchange is put on a plot by hand, as it can't be built yet, to check its overlay and label beside the Temple's.) */
       await setUp(page, (s) => {
         s.partyLevel = 17;
@@ -284,7 +284,7 @@ const ALL_EXTRAS = ['beast_pen', 'herbal_gardens', 'temple', 'hall_of_emissaries
             onTray: ls.filter(l => hit(l, tray)).map(l => l.fac)
           };
         });
-        equal(m, { tiles: 14, cut: [], n: 12, clash: [], off: [], onBadge: [], onTray: [] }, size + ': fourteen whole, square tiles (two starting facilities, six slots and six plots); twelve labels (one for each facility built, the Temple\'s at each of its three buildings), each clear of the others, the badge and the tray');
+        equal(m, { tiles: 14, cut: [], n: 11, clash: [], off: [], onBadge: [], onTray: [] }, size + ': fourteen whole, square tiles (two starting facilities, six slots and six plots); eleven labels (one for each facility built, the Temple\'s at each of its three buildings), each clear of the others, the badge and the tray');
         await H.shot(page, 'p9-02-everything-built-' + size);
       }
       await page.setViewportSize(H.SIZES.laptop.viewport);
@@ -420,7 +420,7 @@ const ALL_EXTRAS = ['beast_pen', 'herbal_gardens', 'temple', 'hall_of_emissaries
       await page.click('[data-test=clear-builds]');
       assert(/\(slots and Development Plots\) only\? Your starting facilities \(the Workshop and the Dock\) remain/.test(await popText(page)));
       await clickModal(page, 'Cancel');
-      equal((await st(page)).builtExtras.filter(Boolean).length, 4);
+      equal((await st(page)).builtExtras.filter(Boolean).length, 3);
       await page.waitForTimeout(400);
       await page.click('[data-test=clear-builds]');
       await clickModal(page, 'Clear');
@@ -1230,7 +1230,7 @@ const ALL_EXTRAS = ['beast_pen', 'herbal_gardens', 'temple', 'hall_of_emissaries
       equal([s.partyLevel, s.treasuryGP, s.builtPlots.filter(Boolean).map(e => e.facId)], [13, 3000, ['herbal_gardens', 'timber_sawmill', 'fishery_smokehouse']]);
       equal(s.warehouse.map(w => [w.goodId || w.item, w.qty]), [['Rope (50 ft)', 2], ['raw_timber', 2], ['fresh_fish', 1], ['preserved_fish', 1], ['restorative_herbs', 20], ['antivenom_roots', 5], ['alchemical_flowers', 20]]);
       equal(await page.$$eval('[data-test=grid-plots] .tsi-bas-tile--plot', ts => ts.map(t => t.dataset.test)), ['plot-3']);
-      equal(await page.$$eval('.tsi-bas-maplabel', ls => ls.length), 11, 'the starting two, four in slots (the Shrine of Aurush is the Temple now, labelled at each of its three buildings) and three on plots, each labelled');
+      equal(await page.$$eval('.tsi-bas-maplabel', ls => ls.length), 9, 'the starting two, two in slots (the Library and the Laboratory joined the Workshop) (the Shrine of Aurush is the Temple now, labelled at each of its three buildings) and three on plots, each labelled');
       await H.dismissNotices(page);
     });
 

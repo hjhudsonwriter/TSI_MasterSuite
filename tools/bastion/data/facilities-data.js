@@ -91,6 +91,18 @@
    Training, harnesses, first flight and the three old buildings' other orders are gone; the
    conversion (R.migrateToV4, strip-back-rules.js, step rehomeBeasts) moves a House order to
    House Beast Here and cancels the rest. */
+/* The Strip Back Overhaul (Harry, 22 October 2026, step S12): THE WORKSHOP'S STAFF. The Workshop has five staff ("staff": id,
+   name, the Workshop level that opens them, a line about each) who open one by one: the Handyman (Level 1), Smith (2), Scholar
+   (3), Alchemist (4) and Artisan (5). Each order names its staff member ("staff") and the level that opens it
+   ("requiredFacilityLevel"); a staff member does one job at a time and the five work side by side. A craft order has "craftTables"
+   (the tables of tools-data.js whose items it offers, A to Z, 3 days each) and "artisanExtras" (the Artisan's hook: items added to
+   it at Level 5, empty until Harry supplies them). The Handyman's list and the Artisan's extras are PLACEHOLDERS ("placeholder":
+   true): Harry will supply them, by editing this file. The Library & Scriptorium's Research and Prepare Overland Travel Charts
+   are the Scholar's; the Arcane Laboratory's Craft Common, Craft Uncommon and Alchemy are the Alchemist's (the three potions
+   that the Alchemist's Supplies list already has, Potion of Climbing, Resistance and Water Breathing, are left out; no party
+   level is needed). The two facilities are gone (a saved Bastion is converted: R.migrateToV4, step workshopStaff). Craft
+   Magic Item has no staff member. The Smithy's Smithing is "retired": hidden, kept only so one already pending still finishes
+   (the Smith crafts the same items). The Artisan Tools (six picked tool tables) are gone. */
 window.TSI_DATA = window.TSI_DATA || {};
 window.TSI_DATA.bastionFacilities = [
   {
@@ -665,7 +677,7 @@ window.TSI_DATA.bastionFacilities = [
         "days": 4,
         "costGP": 0,
         "costText": "0",
-        "notes": "Crafting ingredients for the Herbal Gardens' own recipes (and, later, the Arcane Laboratory's).",
+        "notes": "Crafting ingredients for the Herbal Gardens' own recipes (and, later, the Workshop's Alchemist's).",
         "requiredFacilityLevel": 2,
         "production": true,
         "options": [

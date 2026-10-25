@@ -3,7 +3,7 @@
    Griffin Tower and Dire Wolf Den on 22 October 2026), clicked through from a
    double-clicked index.html with the internet off, with the Explorer and the
    Bastion open side by side:
-   - the Library & Scriptorium at Level 2: Prepare Overland Travel Charts
+   - the Scholar (Workshop Level 3): Prepare Overland Travel Charts
      makes 1 Overland chart in 4 days, with no gold;
    - the Beast Pen builds in a construction slot in 21 days and brings no beast;
    - Grant a creature… in the Explorer: five kinds, "the Beast Pen" named once;
@@ -32,7 +32,7 @@ const INDEX = H.fileUrl('index.html');
 const HARNESS = H.fileUrl('tests/harness.html');
 const SAMPLE = path.join(__dirname, '..', 'fixtures', 'bastion-pr7-sample.json');
 const CHART = 'overland_chart';
-const CHART_ORDER = 'library_scriptorium__prepare_overland_travel_charts';
+const CHART_ORDER = 'workshop__prepare_overland_travel_charts';
 const HOUSE = 'beast_pen__house_beast';
 
 const bare = (page, sel) => page.$eval(sel, n => n.textContent.replace(/\s+/g, ' ').trim());
@@ -129,6 +129,12 @@ async function openTile(ba, fac) {
   await ba.waitForSelector('[data-test=panel-fac-' + fac + ']');
   await ba.waitForTimeout(300);
 }
+/* The Workshop's panel with the Scholar's chart job chosen (the Library's order moved to the Scholar, step S12). */
+async function showChart(ba) {
+  await openTile(ba, 'workshop');
+  await ba.selectOption('[data-test=staff-job-scholar]', '2');
+  await ba.waitForSelector('[data-test=issue-' + CHART_ORDER + ']');
+}
 /* Construct a facility from the first empty construction slot. Resolves with the question. */
 async function construct(ba, fac) {
   await closeAll(ba);
@@ -216,9 +222,9 @@ async function clickPop(page, label) {
   let wolf = null;    /* the dire wolf, granted with no name */
 
   /* ------------------------------------------------------------------ */
-  section('The Library & Scriptorium\'s chart order');
+  section('The Scholar\'s chart order (the Library & Scriptorium\'s, moved to the Workshop)');
 
-  await check('the Explorer and the Bastion open side by side; at Level 1 the Library\'s Prepare Overland Travel Charts says "Needs Level 2"', async () => {
+  await check('the Explorer and the Bastion open side by side; at Workshop Level 1 the Scholar\'s Prepare Overland Travel Charts says "Needs Level 3"', async () => {
     ex = await openExplorer(ctx);
     await ex.waitForTimeout(600);
     ba = await openBastion(ctx);
@@ -226,17 +232,19 @@ async function clickPop(page, label) {
     await ba.waitForTimeout(400);
     await ba.evaluate(() => TSI.bastion.debug.change(s => {
       s.treasuryGP = 100;
-      s.builtExtras = [{ facId: 'library_scriptorium', status: 'built' }];
-      s.facilityLevels.library_scriptorium = 1;
+      s.builtExtras = [];
+      s.facilityLevels.workshop = 3;
     }));
-    await openTile(ba, 'library_scriptorium');
-    equal(await orderState(ba, CHART_ORDER), { button: 'Needs Level 2.', off: true, why: '' });
+    await ba.evaluate(() => TSI.bastion.debug.change(s => { s.facilityLevels.workshop = 1; }));
+    await openTile(ba, 'workshop');
+    equal(await bare(ba, '[data-test=staff-level-scholar]'), 'Opens at Level 3', 'the Scholar is not open yet');
+    equal(await ba.$('[data-test=issue-' + CHART_ORDER + ']'), null);
     await closeAll(ba);
   });
 
-  await check('at Level 2: it takes 4 days, makes 1 Overland chart and costs nothing; Issue Order takes no gold, and a second chart order waits its turn', async () => {
-    await ba.evaluate(() => TSI.bastion.debug.change(s => { s.facilityLevels.library_scriptorium = 2; }));
-    await openTile(ba, 'library_scriptorium');
+  await check('at Workshop Level 3: it takes 4 days, makes 1 Overland chart and costs nothing; Issue Order takes no gold, and the Scholar does one job at a time', async () => {
+    await ba.evaluate(() => TSI.bastion.debug.change(s => { s.facilityLevels.workshop = 3; }));
+    await showChart(ba);
     equal(await bare(ba, '[data-test=days-' + CHART_ORDER + ']'), 'Takes 4 days');
     assert(/Makes: 1 Overland chart/.test(await bare(ba, '[data-test=goods-' + CHART_ORDER + ']')), await bare(ba, '[data-test=goods-' + CHART_ORDER + ']'));
     equal((await orderState(ba, CHART_ORDER)).button, 'Issue Order');
@@ -244,11 +252,10 @@ async function clickPop(page, label) {
     await ba.waitForTimeout(450);
     const s = await bas(ba);
     const o = s.pendingOrders.filter(x => x.fnId === 'prepare_overland_travel_charts');
-    equal([o.length, o[0].label, o[0].dueDay, s.treasuryGP], [1, 'Library & Scriptorium: Prepare Overland Travel Charts', 5, 100]);
-    await openTile(ba, 'library_scriptorium');
+    equal([o.length, o[0].label, o[0].dueDay, s.treasuryGP], [1, 'Workshop: Scholar - Prepare Overland Travel Charts', 5, 100]);
+    await showChart(ba);
     const again = await orderState(ba, CHART_ORDER);
-    equal([again.button, again.off], ['Can\'t order yet', true], 'one chart order at a time');
-    equal(await ba.isDisabled('[data-test=issue-library_scriptorium__research]'), false, 'scripture Research still runs beside it');
+    equal([again.button, again.off], ['Busy', true], 'one chart order at a time: the Scholar is busy');
     await closeAll(ba);
   });
 
@@ -259,22 +266,22 @@ async function clickPop(page, label) {
     const asked = await construct(ba, 'beast_pen');
     assert(asked.includes('Construct the Beast Pen? It takes 21 days.'), asked);
     const s = await bas(ba);
-    equal(s.builtExtras.filter(Boolean).slice(1).map(e => [e.facId, e.status, e.startDay, e.readyDay]), [['beast_pen', 'building', 1, 22]]);
+    equal(s.builtExtras.filter(Boolean).map(e => [e.facId, e.status, e.startDay, e.readyDay]), [['beast_pen', 'building', 1, 22]]);
     equal([s.builtPlots.filter(Boolean), s.treasuryGP, s.creatures], [[], 100, []], 'no plot used, no gold, and no beast');
   });
 
-  await check('4 camps later the Library has made 1 Overland chart, into the Warehouse, with no gold spent', async () => {
+  await check('4 camps later the Scholar has made 1 Overland chart, into the Warehouse, with no gold spent', async () => {
     const w = await passDays(ex, ba, 4);
-    assert(/Library & Scriptorium: Prepare Overland Travel Charts is complete\./.test(w.exWord), 'the Explorer\'s word: ' + w.exWord);
+    assert(/Workshop: Scholar - Prepare Overland Travel Charts is complete\./.test(w.exWord), 'the Explorer\'s word: ' + w.exWord);
     const s = await bas(ba);
-    equal([s.day, qty(s, CHART), s.treasuryGP, s.pendingOrders.filter(o => o.facId === 'library_scriptorium').length], [5, 1, 100, 0]);
-    assert(s.log.some(l => l.body === 'Library & Scriptorium: Prepare Overland Travel Charts → Added to Warehouse: 1 Overland chart.'), logText(s));
+    equal([s.day, qty(s, CHART), s.treasuryGP, s.pendingOrders.filter(o => o.fnId === 'prepare_overland_travel_charts').length], [5, 1, 100, 0]);
+    assert(s.log.some(l => l.body === 'Workshop: Scholar - Prepare Overland Travel Charts → Added to Warehouse: 1 Overland chart.'), logText(s));
   });
 
   await check('17 camps more (Day 22): the Pen is built, at its one level, with nobody living in it', async () => {
     await passDays(ex, ba, 17);
     const s = await bas(ba);
-    equal([s.day, s.builtExtras.filter(Boolean).map(e => e.facId + ' ' + e.status)], [22, ['library_scriptorium built', 'beast_pen built']]);
+    equal([s.day, s.builtExtras.filter(Boolean).map(e => e.facId + ' ' + e.status)], [22, ['beast_pen built']]);
     equal(s.facilityLevels.beast_pen, 1);
     equal(s.creatures, []);
   });
@@ -500,7 +507,7 @@ async function clickPop(page, label) {
     assert(/The Beast Pen can't be demolished while 4 beasts live in it: there is nowhere else for them to go\./.test(await lastModal(ba)), await lastModal(ba));
     await H.clickModal(ba, 'OK');
     const s = await bas(ba);
-    equal(s.builtExtras.filter(Boolean).map(e => e.facId), ['library_scriptorium', 'beast_pen'], 'still standing');
+    equal(s.builtExtras.filter(Boolean).map(e => e.facId), ['beast_pen'], 'still standing');
     equal(s.creatures, before, 'nobody moved');
     await closeAll(ba);
   });
@@ -527,7 +534,7 @@ async function clickPop(page, label) {
   /* ------------------------------------------------------------------ */
   section('Harry\'s sample file (tests/fixtures/bastion-pr7-sample.json), on the test page');
 
-  await check('on the test page, with only the Bastion open, the sample imports and its Roost, Tower and Den become the one Beast Pen (the Library at Level 2, 300 gp, no beasts); then the Explorer opens beside it, and a griffin granted earlier is skipped, not held', async () => {
+  await check('on the test page, with only the Bastion open, the sample imports and its Roost, Tower and Den become the one Beast Pen (the Library joins the Workshop, 300 gp, no beasts); then the Explorer opens beside it, and a griffin granted earlier is skipped, not held', async () => {
     const c2 = await context(browser, 'laptop');
     /* Earlier testing on the test page: a griffin granted and held. */
     const e0 = await openExplorer(c2, HARNESS);
@@ -543,7 +550,7 @@ async function clickPop(page, label) {
     await b3.waitForFunction(() => TSI.bastion && TSI.bastion.debug, null, { timeout: 8000 });
     await H.chooseFile(b3, '[data-test=import-save]', SAMPLE);
     await H.clickModal(b3, 'Import');
-    await b3.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().facilityLevels.library_scriptorium === 2, null, { timeout: 8000 });
+    await b3.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().v === 4 && TSI.bastion.debug.state().treasuryGP === 300, null, { timeout: 8000 });
     /* The box that says what changed holds the Bastion until it is read (the Strip Back Overhaul). */
     await H.ackChanges(b3);
     const e3 = await openExplorer(c2, HARNESS);
@@ -551,15 +558,16 @@ async function clickPop(page, label) {
     await b3.waitForFunction(() => TSI.bastion.debug.state().anchored && !TSI.bastion.debug.state().bridge.fresh, null, { timeout: 8000 });
     const s = await bas(b3);
     equal([s.treasuryGP, s.partyLevel, s.builtExtras.filter(Boolean), s.builtPlots.filter(Boolean), s.creatures],
-      [300, 9, ['library_scriptorium', 'beast_pen'].map(id => ({ facId: id, status: 'built' })), [], []]);
-    equal(['library_scriptorium', 'beast_pen', 'wyvern_roost', 'griffin_tower', 'dire_wolf_den'].map(f => s.facilityLevels[f]), [2, 1, undefined, undefined, undefined]);
+      [300, 9, ['beast_pen'].map(id => ({ facId: id, status: 'built' })), [], []]);
+    equal(['library_scriptorium', 'beast_pen', 'wyvern_roost', 'griffin_tower', 'dire_wolf_den'].map(f => s.facilityLevels[f]), [undefined, 1, undefined, undefined, undefined]);
     equal(Object.values(s.bridge.done).map(r => [r.r, r.type, r.species, r.name]), [['skipped', 'creature', 'griffin', 'Old Test']], 'the earlier grant is skipped');
     assert(/1 creature grant, sent before this Bastion started, was skipped, so nothing counts twice\./.test(logText(s)), logText(s));
     assert(/A sample Bastion for trying the creatures/.test(logText(s)), logText(s));
     await e3.waitForFunction(() => { const n = document.querySelector('[data-test=sent]'); return n && n.getAttribute('data-status') === 'skipped'; }, null, { timeout: 8000 });
     equal(await bare(e3, '[data-test=sent-line]'), 'Skipped: sent before this Bastion started. Grant it again if it should count.');
     /* The sample works: the chart order can be given; the Pen has nobody waiting. */
-    await openTile(b3, 'library_scriptorium');
+    await b3.evaluate(() => TSI.bastion.debug.change(s => { s.facilityLevels.workshop = 3; }));
+    await showChart(b3);
     equal((await orderState(b3, CHART_ORDER)).button, 'Issue Order');
     await openTile(b3, 'beast_pen');
     equal((await orderState(b3, HOUSE)).why, 'No beast is waiting for a home. The DM grants one in the Explorer.');
@@ -595,8 +603,8 @@ async function clickPop(page, label) {
     const b2 = await openBastion(tv);
     await b2.evaluate(() => TSI.bastion.debug.change(s => {
       s.partyLevel = 9;
-      s.builtExtras = ['library_scriptorium', 'beast_pen'].map(id => ({ facId: id, status: 'built' }));
-      s.facilityLevels.library_scriptorium = 2;
+      s.builtExtras = ['beast_pen'].map(id => ({ facId: id, status: 'built' }));
+      s.facilityLevels.workshop = 3;
       const C = (id, species, name, status) => ({ id, species, owner: '', name, status, home: status === 'housed' ? 'beast_pen' : '', grantedDay: 1, housedDay: status === 'housed' ? 1 : null, msgId: id.slice(3) + ':dm:0' });
       s.creatures = [
         C('cr-tvwyvern', 'wyvern', 'Stormtalon', 'housed'), C('cr-tvgriffin1', 'griffin', 'Swiftwing', 'housed'),
