@@ -453,7 +453,7 @@
         return w.pub.tick();
       }).then(function () {
         t.equal(Object.keys(w.store.docs).length, 0, 'the old copy is gone');
-        t.same(w.pub.debug().known, {}, 'and forgotten');
+        t.same(w.pub.debug().known, [], 'and forgotten');
         BR.beastEnsurePaired(w.b, bdata, 'Mira');
         w.clock.t += 20000;
         return w.pub.tick();
@@ -542,6 +542,47 @@
           return made[0].getState(S.chan(BR.beastSecret(b, 'mira')));
         });
       }).then(function (r) { t.equal(r.why, 'closed', 'and the post box connection is closed'); });
+    });
+  });
+
+  test('handlers named after the language\'s own words (__proto__, constructor, toString) are published, kept apart and cleaned up like any other handler', function (t) {
+    return withConfig(TEST_URL, function () {
+      var w = setup();   /* Mira is paired already */
+      var odd = ['__proto__', 'constructor', 'toString'];
+      odd.forEach(function (name) { t.equal(BR.beastEnsurePaired(w.b, bdata, name).ok, true, name + ' can be paired'); });
+      t.equal(w.b.beast.handlers.length, 4, 'four handlers, none lost');
+      t.equal(BR.fromSave(JSON.parse(JSON.stringify(BR.toSave(w.b))), bdata).beast.handlers.length, 4, 'and all four survive saving and loading');
+      var chans = new Map();   /* a Map: the test would hit the very bug it is checking for with a plain object */
+      var names = ['mira'].concat(odd);
+      names.forEach(function (n) { chans.set(n, S.chan(BR.beastSecret(w.b, n))); t.ok(/^[A-Za-z0-9_-]{43}$/.test(chans.get(n)), n + ' has a place of its own'); });
+      t.equal(new Set(Array.from(chans.values())).size, 4, 'four different places');
+      BR.setBeastOnlineLink(w.b, true);
+      function sendAll(n) {
+        var chain = Promise.resolve();
+        for (var i = 0; i < n; i++) chain = chain.then(function () { w.clock.t += 11000; return w.pub.tick(); });
+        return chain;
+      }
+      return sendAll(6).then(function () {
+        var have = Object.keys(w.store.docs).sort();
+        t.same(have, names.map(function (n) { return chans.get(n); }).sort(), 'every one of the four copies is in the post box');
+        t.equal(w.pub.debug().known.length, 4, 'and all four are remembered, by name');
+        t.same(w.pub.debug().known.map(function (kv) { return kv[0]; }).sort(), ['__proto__', 'constructor', 'mira', 'tostring'], 'under their own names (a handler id is lower-case)');
+        t.equal(w.pub.debug().entries.length, 4);
+        var sentBefore = w.pub.debug().sent;
+        return sendAll(3).then(function () { t.equal(w.pub.debug().sent, sentBefore, 'nothing changed, so nothing is sent again'); });
+      }).then(function () {
+        names.forEach(function (n) { BR.beastRevoke(w.b, n); });
+        return sendAll(8);
+      }).then(function () {
+        t.same(Object.keys(w.store.docs), [], 'every taken-back code had its copy removed, including the odd names');
+        t.same(w.pub.debug().known, [], 'and none is remembered');
+        t.equal(w.pub.debug().entries.length, 0);
+        BR.beastEnsurePaired(w.b, bdata, '__proto__');
+        return sendAll(2);
+      }).then(function () {
+        t.same(Object.keys(w.store.docs), [S.chan(BR.beastSecret(w.b, '__proto__'))], 'a new pairing for __proto__ is sent to a new place');
+        w.life.stop();
+      });
     });
   });
 
