@@ -347,6 +347,45 @@
     t.same(Object.keys(C.decodeLink(on).pairing).sort(), ['campaign', 'handler', 'name', 'secret'], 'and the phone reads nothing else from it');
   });
 
+  test('the database address check is not fooled by look-alike hosts, the made-up test host used as a prefix or a suffix, user names, backslashes, odd ports or odd spellings', function (t) {
+    var real = 'https://scarlett-isles-link-default-rtdb.europe-west1.firebasedatabase.app';
+    [
+      'https://x.firebaseio.com.evil.example', 'https://x.firebasedatabase.app.evil.example', 'https://x.firebaseio.com.invalid', 'https://x.firebaseio.com.',
+      'https://xfirebaseio.com', 'https://firebaseio.com', 'https://.firebaseio.com', 'https://firebasedatabase.app', 'https://evil-firebaseio.com',
+      'https://tsi-test-relay.invalid.evil.example', 'https://tsi-test-relay.invalid.', 'https://xtsi-test-relay.invalid', 'https://evil.example/tsi-test-relay.invalid',
+      'https://tsi-test-relay.invalid@evil.example', 'https://x.firebaseio.com@evil.example', 'https://evil.example@x.firebaseio.com', 'https://evil.example:pw@x.firebaseio.com',
+      'https://evil.example\\@x.firebaseio.com', 'https://x.firebaseio.com\\.evil.example', 'https://evil.example\\.x.firebaseio.com',
+      'https://x.firebaseio.com%2eevil.example', 'https://x.firebaseio.com%00.evil.example', 'https://x.firebaseio.com/.evil.example', 'https://x.firebaseio.com?.evil.example', 'https://x.firebaseio.com#.evil.example',
+      'https://x.firebaseio.com:8443', 'https://x.firebaseio.com:80', 'https://tsi-test-relay.invalid:8443', 'https://127.0.0.1', 'https://[::1]', 'https://localhost',
+      'https://xn--firebaseio-9ya.com', 'https://x.firebaseio.com\u0000.evil.example', 'https://x.firebaseio.com\n.evil.example', ' https://x.firebaseio.com.evil.example ',
+      'http://x.firebaseio.com', 'HTTP://x.firebaseio.com', '//x.firebaseio.com', 'wss://x.firebaseio.com', 'https:/x.firebaseio.com.evil.example', 'x.firebaseio.com', 'https://'
+    ].forEach(function (v) {
+      t.equal(L.cleanDatabaseUrl(v).ok, false, 'not a database address: ' + JSON.stringify(v));
+      t.equal(L.isTestHost(v), false, 'and not the test host: ' + JSON.stringify(v));
+    });
+    var lookalike = 'https://tsi-test-relay.invalid.firebaseio.com';
+    t.equal(L.cleanDatabaseUrl(lookalike).ok, true, 'it ends in firebaseio.com');
+    t.equal(L.isTestHost(lookalike), false, 'but it is not the test host');
+    t.equal(L.isTestHost('https://tsi-test-relay.invalid.firebasedatabase.app'), false);
+    t.equal(L.isTestHost('https://' + L.TEST_HOST), true);
+    t.equal(L.isTestHost('https://' + L.TEST_HOST + '/'), true);
+    t.equal(L.isTestHost('https://TSI-TEST-RELAY.INVALID'), true, 'capitals in a host mean nothing');
+    t.equal(L.isTestHost(real), false);
+    ['', null, undefined, 5, {}, []].forEach(function (v) { t.equal(L.isTestHost(v), false); });
+    var BHr = TSI.beasthandler.relay;
+    t.equal(BHr.allowed('https://' + L.TEST_HOST), true);
+    [lookalike, 'https://tsi-test-relay.invalid.firebasedatabase.app', real, 'https://x.firebaseio.com.evil.example'].forEach(function (v) {
+      t.equal(BHr.allowed(v), navigator.webdriver !== true, 'a test browser may not use ' + v);
+    });
+    ['https://:@x.firebaseio.com', 'https://x.firebaseio.com\\', 'https://X.FireBaseIO.com/', real + '/', 'https://x.firebaseio.com:443', 'https://x.firebaseio.com。', 'https://x．firebaseio．com'].forEach(function (v) {
+      var r = L.cleanDatabaseUrl(v);
+      if (!r.ok) return;
+      t.ok(/^https:\/\/[a-z0-9-]+(\.[a-z0-9-]+)*\.(firebaseio\.com|firebasedatabase\.app)$/.test(r.url), 'accepted only as a clean origin: ' + JSON.stringify(v) + ' → ' + r.url);
+    });
+    t.equal(L.cleanDatabaseUrl('https://:@x.firebaseio.com').url, 'https://x.firebaseio.com', 'an empty user name is dropped');
+    t.equal(L.cleanDatabaseUrl('https://X.FireBaseIO.com/').url, 'https://x.firebaseio.com');
+  });
+
   test('the QR code: a square of dark and light squares for the link, big enough to scan, drawn as a picture with a white margin', function (t) {
     var link = L.buildLink('', { campaign: CAMPAIGN, handler: 'mira', name: 'Mira', secret: SECRET });
     var m = Q.matrix(link);
