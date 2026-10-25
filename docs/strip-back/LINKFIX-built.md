@@ -16,4 +16,4 @@ Branch `linkfix`, from `main` (db85b56). The online link stays built and switche
 The Pages steps and the Google console steps are still unchecked against the real screens. A phone's `seen` list in phone.js is a plain object keyed by creature id; ids are filtered by `P.safeKey` before they reach a phone, so it was left.
 
 ## Gates
-See the final report.
+Run one at a time from double-clicked files (Chromium): rules page 1140 tests passed; static check passed; beasthandler-link 39 of 39; beasthandler 15; beasthandler-meet 34 (one layout check failed once while other gates shared the machine, then passed alone); beasthandler-phone 15; beasthandler-bond 14; beasthandler-sweep 17; beast-pen 24; phase4 57; guide 21; phase1 129.
