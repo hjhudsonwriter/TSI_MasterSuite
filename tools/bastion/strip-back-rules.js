@@ -1380,7 +1380,7 @@
        list no longer offers it twice); only the place and the name change ("Workshop: Scholar - Research (Combat Scriptures)").
        They complete through the same code as before.
      - Any other order at the two places (an Upgrade, or one the Workshop does not give) is CANCELLED, with what it cost given back.
-     - The two places' slots are freed (a building under way stops: building costs no gold), their levels, repairs and research go
+     - The two places' slots are freed (a building under way stops: building costs no gold), their levels and repairs go
        (the Workshop's own level is NOT raised: the Scholar opens at Workshop Level 3 and the Alchemist at Level 4), and each is
        recorded in archivedFacilities.
      - artisanTools (six table names) and legacyFacilities (the Smithy) are dropped; the report names the tables the DM had
@@ -1398,8 +1398,8 @@
     ['builtExtras', 'builtPlots'].forEach(function (key) {
       (arr(s[key]) || []).forEach(function (x) { var e = entryOf(x); if (e && isWorkshopPlace(e.facId)) out.push('a place: ' + e.facId); });
     });
-    ['facilityLevels', 'repairs', 'research'].forEach(function (key) {
-      if (isObj(s[key])) Object.keys(s[key]).forEach(function (id) { if (isWorkshopPlace(id)) out.push('a ' + (key === 'repairs' ? 'repair' : key === 'research' ? 'research' : 'level') + ': ' + id); });
+    ['facilityLevels', 'repairs'].forEach(function (key) {
+      if (isObj(s[key])) Object.keys(s[key]).forEach(function (id) { if (isWorkshopPlace(id)) out.push('a ' + (key === 'repairs' ? 'repair' : 'level') + ': ' + id); });
     });
     (arr(s.pendingOrders) || []).forEach(function (o) { if (isObj(o) && isWorkshopPlace(o.facId)) out.push('an order: ' + o.facId); });
     if (chosenTables(s).length) out.push('artisan tools');
@@ -1441,7 +1441,8 @@
         slotsFreed += 1;
       });
     });
-    ['facilityLevels', 'repairs', 'research'].forEach(function (key) {
+    /* (Research is not touched: only the Herbal Gardens has a research tree, and the audit keeps that record as it was.) */
+    ['facilityLevels', 'repairs'].forEach(function (key) {
       if (!isObj(s[key])) return;
       Object.keys(WORKSHOP_PLACES).forEach(function (id) {
         if (!(id in s[key])) return;
