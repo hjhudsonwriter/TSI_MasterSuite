@@ -63,6 +63,12 @@
     showFull();
     var waiting = el('div', { class: 'tsi-xpv-waiting', 'data-test': 'pv-waiting', role: 'status' }, [el('div', { class: 'tsi-xpv-waiting__text', text: 'Waiting for the DM...' })]);
 
+    /* The night's fade: black over the map only (the slim row stays). */
+    var dim = el('div', { class: 'tsi-xpv-dim', 'aria-hidden': 'true', 'data-test': 'pv-dim' });
+    stage.appendChild(dim);
+    /* The DM's open pin card, read only. */
+    var pinHost = el('div', { class: 'tsi-xpv-pinhost', 'data-test': 'pv-pin-host', hidden: true });
+    stage.appendChild(pinHost);
     var frame = el('div', { class: 'tsi-xpv', 'data-test': 'pv-frame' }, [row, stage, full, waiting]);
     root.appendChild(frame);
 
@@ -166,11 +172,69 @@
 
     window.addEventListener('resize', drawAll);
 
+    /* ---- The pin card ---- */
+    var pinId = null;
+    function drawPin() {
+      var p = snap && snap.pin;
+      if (!p) { pinId = null; TSI.clear(pinHost); pinHost.hidden = true; return; }
+      if (pinId === p.id) return;
+      pinId = p.id;
+      TSI.clear(pinHost);
+      pinHost.appendChild(el('div', { class: 'tsi-xpv-pincard', 'data-test': 'pv-pin', 'data-id': p.id, role: 'dialog', 'aria-label': p.label || 'Location' }, [
+        el('h2', { class: 'tsi-xpv-pincard__title', 'data-test': 'pv-pin-title', text: p.label || 'Location' }),
+        p.image ? el('div', { class: 'tsi-xpv-pincard__media' }, el('img', { src: TSI.path(p.image), alt: p.label || '', draggable: 'false' })) : null,
+        p.description ? el('p', { class: 'tsi-xpv-pincard__text', 'data-test': 'pv-pin-text', text: p.description }) : null
+      ]));
+      pinHost.hidden = false;
+    }
+
+    /* ---- Night and campfire fades ----
+       dim 'event' (a campfire event open on the DM's side): very dark, held until the DM's event closes.
+       A new 'camp' number: black out, a short hold, back in. Reduced motion: a quick cross-fade, no hold.
+       Never stuck: the suite window closing or going quiet (the status line shows), or this window being
+       reloaded, all return it to normal. */
+    var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
+    var mode = 'none';
+    var lastCamp = null;
+    var timers = [];
+    function later(fn, ms) { timers.push(setTimeout(fn, ms)); }
+    function stopTimers() { timers.splice(0).forEach(clearTimeout); }
+    function setDim(opacity, secs) {
+      dim.style.transitionDuration = (reduced && reduced.matches ? 0.25 : secs) + 's';
+      dim.style.opacity = String(opacity);
+    }
+    function release() { stopTimers(); mode = 'none'; setDim(0, 0.6); }
+    function drawDim() {
+      if (!snap) return;
+      var nightNow = lastCamp !== null && snap.camp !== lastCamp;
+      lastCamp = snap.camp;
+      if (snap.dim === 'event') {
+        if (mode !== 'event') { stopTimers(); mode = 'event'; setDim(0.92, 1.5); }
+        return;
+      }
+      if (mode === 'event') { stopTimers(); mode = 'none'; setDim(0, 1.5); return; }
+      if (nightNow) {
+        stopTimers();
+        mode = 'night';
+        var quick = reduced && reduced.matches;
+        setDim(1, 1.5);
+        later(function () { setDim(0, 1.5); }, quick ? 300 : 2100);
+        later(function () { mode = 'none'; }, quick ? 700 : 3700);
+      }
+    }
+    setInterval(function () {
+      var st = document.getElementById('tsi-player-status');
+      var gone = !window.opener || window.opener.closed || (st && !st.hidden && st.textContent);
+      if (gone && (mode !== 'none' || dim.style.opacity > 0)) release();
+    }, 500);
+
     return {
       state: function (payload) {
         if (!payload || payload.v !== 1 || !payload.board || !Array.isArray(payload.tokens)) return;
         snap = payload;
         drawAll();
+        drawPin();
+        drawDim();
       },
       message: function (type, payload) {
         if (type === 'map' && payload && typeof payload.dataUrl === 'string' && payload.key) {

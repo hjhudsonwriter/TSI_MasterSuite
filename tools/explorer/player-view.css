@@ -69,6 +69,22 @@
 }
 .tsi-xpv-token span { letter-spacing: .5px; }
 
+/* ---------- The night's fade and the DM's open pin card ---------- */
+.tsi-xpv-dim { position: absolute; inset: 0; z-index: 40; background: #000; opacity: 0; pointer-events: none; transition-property: opacity; transition-timing-function: ease-in-out; transition-duration: 1.5s; }
+.tsi-xpv-pinhost { position: absolute; inset: 0; z-index: 30; display: grid; place-items: center; padding: 3vh 3vw; background: rgba(5, 3, 4, .55); }
+.tsi-xpv-pinhost[hidden] { display: none; }
+.tsi-xpv-pincard {
+  display: flex; flex-direction: column; gap: 1.2vh; box-sizing: border-box; max-width: min(92vw, 1100px); max-height: 100%; overflow: hidden;
+  padding: clamp(14px, 2.4vh, 28px) clamp(16px, 2vw, 32px);
+  border: 1px solid var(--tsi-line-control); border-radius: 14px;
+  background: linear-gradient(180deg, rgba(58, 14, 22, .97), rgba(14, 8, 10, .97));
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .7);
+}
+.tsi-xpv-pincard__title { margin: 0; font: 600 clamp(20px, 3.4vh, 38px) var(--tsi-font-display); letter-spacing: .06em; color: var(--tsi-gold-text); text-align: center; }
+.tsi-xpv-pincard__media { min-height: 0; display: grid; place-items: center; }
+.tsi-xpv-pincard__media img { display: block; max-width: 100%; max-height: 68vh; object-fit: contain; border-radius: 8px; }
+.tsi-xpv-pincard__text { margin: 0; font-size: clamp(15px, 2.4vh, 26px); line-height: 1.4; }
+
 /* ---------- Full screen, and waiting ---------- */
 .tsi-xpv-full {
   position: absolute;

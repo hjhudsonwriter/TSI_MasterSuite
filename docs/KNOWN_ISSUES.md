@@ -4180,3 +4180,11 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 ### BAS-SB-98 · The players' map shows the fog and the weather video too (26 October 2026)
 
 - Left alone: Harry said players see everything on the map, so the fog of war is drawn on the TV exactly as on the DM's map (dark, with the uncovered hexes cut out), and so is the day's weather video. A town pin hidden by fog on the DM's map is hidden on the TV too.
+
+### BAS-SB-99 · The players' pin card shows what the DM's card shows (26 October 2026)
+
+- Left alone: a town pin's data has no DM-only note field (only name, picture and description, and the description is empty today), so the players' card shows exactly those three; the Port Charter and Courier boxes on the DM's card are not sent. If a secret field is ever added to the pins, `R.playerSnapshot` copies fields one by one, so it will not be sent until named there.
+
+### BAS-SB-100 · Night and campfire fades on the players' map (26 October 2026)
+
+- Before: nothing on the TV when the DM made camp. After: Make Camp fades the players' map out and in once (about 1.5 s, 0.6 s hold, 1.5 s); a campfire event holds it very dark (92%) until the DM closes it. Only a campfire (camp or night) event holds it, not weather or Ironbow pop-ups. Released if the DM window closes or the link goes quiet.

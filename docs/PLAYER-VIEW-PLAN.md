@@ -44,4 +44,4 @@ Two ways of seeing the Explorer and the Bastion:
 - Facility panels are purely visual; every panel shows name, tagline, level and orders. The picture fills most of the screen (slim header, big framed 4:3 picture, a compact strip of facts beneath).
 
 ## Status
-P1 to P4 built (see docs/PROGRESS.md). P4 built: the Explorer's Player View (the Explorer has no pan or zoom, so it mirrors the whole map).
+P1 to P4 built (see docs/PROGRESS.md). P4 built (with pin cards and the night and campfire fades): the Explorer's Player View (the Explorer has no pan or zoom, so it mirrors the whole map).

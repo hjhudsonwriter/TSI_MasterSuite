@@ -12,6 +12,7 @@
 ### 26 October 2026: the Explorer's Player View (P4)
 
 - Done: **Open Player View** in the Explorer's View box; `player.html?view=explorer` shows the map filling the window under a slim row (Day, Daily Travel, Gold) with heroes, grid, pins, fog and weather; snapshot rules and leak tests (`tools/explorer/player-view-rules.js`, `tests/rules/player-view-explorer.test.js`); the grid and fog drawing moved into `tools/explorer/draw.js`, shared by both maps; an uploaded map is sent once; guide and KNOWN_ISSUES (BAS-SB-95 to 98); `tests/e2e/player-view-explorer.test.js`.
+- Added the same day: the DM's open town-pin card mirrors to the players (read only); Make Camp fades the players' map to black and back, and a campfire event holds it very dark until closed (BAS-SB-99, BAS-SB-100).
 - Note: the Explorer has no pan or zoom, so "the same view" is the whole map, fitted and centred (BAS-SB-96).
 - Next: P5 (Bastion artwork), P6 (checks on Harry's screens).
 

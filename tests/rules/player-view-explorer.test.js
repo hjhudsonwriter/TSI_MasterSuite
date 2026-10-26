@@ -117,8 +117,30 @@
 
   test('the snapshot has only the listed top-level fields, and survives a structured clone shape (plain JSON)', function (t) {
     var s = snap(busy());
-    t.same(Object.keys(s).sort(), ['board', 'day', 'fog', 'gold', 'grid', 'limit', 'map', 'markers', 'miles', 'tokens', 'v', 'weather']);
+    t.same(Object.keys(s).sort(), ['board', 'day', 'fog', 'gold', 'grid', 'limit', 'map', 'markers', 'miles', 'pin', 'dim', 'camp', 'tokens', 'v', 'weather'].sort());
     t.same(JSON.parse(JSON.stringify(s)), s);
+  });
+
+  test('an open pin card sends only its name, picture and description, looked up by id', function (t) {
+    var b = busy();
+    var m = D.markersByMapId.the_east_isle[0];
+    var s = R.playerSnapshot(b, D, { pin: m.id });
+    t.same(Object.keys(s.pin).sort(), ['description', 'id', 'image', 'label']);
+    t.same([s.pin.id, s.pin.label, s.pin.image], [m.id, m.label, m.submapImage]);
+    t.equal(R.playerSnapshot(b, D, {}).pin, null);
+    t.equal(R.playerSnapshot(b, D, { pin: 'nope' }).pin, null, 'an unknown id sends nothing');
+    t.equal(R.playerSnapshot(b, D, { pin: { label: 'ZZPINJUNK', description: 'ZZPINDESC' } }).pin, null, 'only an id is taken, never the DM\'s own text');
+    var json = JSON.stringify(s);
+    t.ok(json.indexOf('ZZ') === -1);
+  });
+
+  test('dim and camp: only the known words and a whole count get through', function (t) {
+    var b = busy();
+    t.same([R.playerSnapshot(b, D, { dim: 'event', camp: 3 }).dim, R.playerSnapshot(b, D, { dim: 'event', camp: 3 }).camp], ['event', 3]);
+    t.equal(R.playerSnapshot(b, D, { dim: 'night' }).dim, 'night');
+    t.equal(R.playerSnapshot(b, D, { dim: 'ZZ' }).dim, 'none');
+    t.equal(R.playerSnapshot(b, D, { camp: -2 }).camp, 0);
+    t.equal(R.playerSnapshot(b, D).dim, 'none');
   });
 
   test('building a snapshot changes nothing in the state', function (t) {
