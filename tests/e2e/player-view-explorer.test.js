@@ -302,12 +302,13 @@ async function openPlayer(page, size) {
       equal((await st(page)).journey.gold, 1);
     });
 
-    await check('closing the DM tool closes the players\' window', async () => {
+    await check('leaving the DM tool leaves the players\' window open, with its last picture (more in player-view-keep-open.test.js)', async () => {
       await dismissModals(page);
-      await page.click('.tsi-topbar a[href], .tsi-topbar__home, [data-test=home]').catch(() => {});
       await page.evaluate(() => { location.href = location.href.replace(/\?.*$/, ''); });
-      await pv.waitForEvent('close', { timeout: 8000 }).catch(() => {});
-      assert(pv.isClosed(), 'the window closed');
+      await page.waitForSelector('.tsi-card');
+      await page.waitForTimeout(1500);
+      assert(!pv.isClosed(), 'the window stays');
+      equal(await pv.isVisible('[data-test=pv-waiting]'), false, 'and still shows the map');
     });
 
     const bad = context.log.net.concat(context.log.failed, context.log.errors);

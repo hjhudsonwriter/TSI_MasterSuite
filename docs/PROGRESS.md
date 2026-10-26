@@ -18,6 +18,7 @@
 
 ### 26 October 2026: the Bastion's Player View (P1 to P3)
 
+- The Explorer's and Bastion's Player View windows stay open when the DM switches tool, goes Home or reloads, and reconnect by themselves (`keepOpen`, `tests/e2e/player-view-keep-open.test.js`).
 - The Beast Pen's Player View panel: its painting and a list of the housed beasts (name, kind, handler).
 - The Party Quarters tile opens a small panel, with a bare picture-only panel for the players; the Workshop's Level 3 picture is in.
 - Workshop pictures (P5, first part): Harry's five level pictures are in, per level, filling the panel with a focus point; see KNOWN_ISSUES.

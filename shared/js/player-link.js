@@ -9,7 +9,14 @@
      tool sends it the full picture.
    - The player window says "hello" every 2 seconds. If the tool's page was
      reloaded, that's how the new page finds the window again.
-   - When the tool closes, the player window closes too.
+   - When the tool closes, the player window closes too, unless the link was made with keepOpen: true (the Explorer's and the
+     Bastion's Player Views, 26 October 2026). Those windows stay open, keep the last picture they were sent, and are
+     found again by themselves (no click) when the tool is opened again or the DM's page is reloaded: the link listens from
+     the moment the tool starts, and the window's next "hello" (within 2 seconds) is answered with the whole picture.
+     Why this works: a window opened with window.open keeps window.opener for as long as the DM's browser window lives,
+     even when the DM's page is reloaded or another tool is drawn in it, so the player window can always post to it.
+     Where the browser has lost that link (the player window was itself opened some other way), Open Player View falls
+     back to window.open('', name), which finds the window by its name (only inside a click) and brings it forward.
 
    var link = ctx.playerLink({ view: 'check', getState: () => ({ ... }), onMessage: (type, payload) => {} });
    link.open();              // from a click
@@ -27,6 +34,7 @@
     if (!view || !life) throw new Error('A player link needs a view and a life.');
     var name = options.name || 'tsi-player-' + view;
     var features = options.features || 'popup,width=1280,height=800';
+    var keepOpen = options.keepOpen === true;
     var win = null;
     var connected = false;
 
@@ -83,6 +91,27 @@
           win.focus();
           return win;
         }
+        if (keepOpen) {
+          /* A window this name already belongs to (opened before this page was reloaded, say) is found, not opened again. */
+          var found = null;
+          try { found = window.open('', name, features); } catch (err) { found = null; }
+          if (found) {
+            var blank = false;
+            try { blank = found.location.href === 'about:blank'; } catch (err) { blank = false; /* another page's: it is ours already */ }
+            if (!blank) {
+              win = found;
+              setStatus('opening');
+              try { found.focus(); } catch (err) { /* nothing to do */ }
+              try { found.postMessage({ tsi: TAG, v: 1, view: view, from: 'dm', type: 'ack' }, '*'); } catch (err) { /* it says hello soon */ }
+              return found;
+            }
+            win = found;
+            connected = false;
+            found.location.href = TSI.path('player.html') + '?view=' + encodeURIComponent(view);
+            setStatus('opening');
+            return found;
+          }
+        }
         var url = TSI.path('player.html') + '?view=' + encodeURIComponent(view);
         win = window.open(url, name, features);
         connected = false;
@@ -105,7 +134,16 @@
         return post(type, payload);
       },
 
+      /* Leaving the tool: a keepOpen window is only told, and stays (it keeps its last picture). */
+      detach: function () {
+        if (win && !win.closed) post('detach');
+        win = null;
+        connected = false;
+        setStatus('closed');
+      },
+
       close: function () {
+        if (keepOpen) { link.detach(); return; }
         if (win && !win.closed) {
           post('close');
           try { win.close(); } catch (e) { /* the window closes itself on the message */ }

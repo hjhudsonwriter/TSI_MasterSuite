@@ -44,6 +44,7 @@ Two ways of seeing the Explorer and the Bastion:
 - Facility panels are purely visual; every panel shows name, tagline, level and orders. The picture fills most of the screen (slim header, big framed 4:3 picture, a compact strip of facts beneath).
 
 ## Status
+The Explorer's and Bastion's windows stay open between tools and reconnect by themselves (26 October 2026); only a closed DM browser window, after about 30 seconds, closes them.
 The Beast Pen's panel shows only its painting and the housed beasts' name, kind and handler (26 October 2026).
 The Party Quarters has a bare panel (name and picture only), opened from its DM tile (26 October 2026).
 P1 to P4 built (see docs/PROGRESS.md). P4 built (with pin cards and the night and campfire fades): the Explorer's Player View (the Explorer has no pan or zoom, so it mirrors the whole map).
