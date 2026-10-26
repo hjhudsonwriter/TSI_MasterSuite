@@ -119,7 +119,6 @@
     var out = BR.clearExplorerDeliveries(b, 'reset1');
     t.equal(out.receipts, 2);
     t.same(b.bridge.done, {});
-    t.equal(b.bridge.fresh, false);
     t.equal(b.bridge.resetSeen, 'reset1');
     t.equal(BR.clearExplorerDeliveries(b, 'reset1'), null, 'the same reset again does nothing');
     t.equal(BR.clearExplorerDeliveries(b, ''), null, 'no id, no change');
@@ -154,6 +153,13 @@
     var back = BR.fromSave(copy(BR.toSave(b)), bdata);
     t.equal(back.bridge.resetSeen, 'r9');
     t.equal(BR.clearExplorerDeliveries(back, 'r9'), null);
+  });
+
+  test('a Bastion that has just started from nothing stays fresh, so it still skips what was sent before it', function (t) {
+    var b = bastion();
+    b.bridge = { fresh: true, done: {} };
+    BR.clearExplorerDeliveries(b, 'r');
+    t.equal(b.bridge.fresh, true);
   });
 
   test('after the clear, a fresh Day 1 message applies as normal (nothing is skipped as old)', function (t) {

@@ -698,7 +698,7 @@ function serve(dir) {
       await closeAll(page);
     });
 
-    await check('Reset Travel asks first, then goes back to day 1 with no miles', async () => {
+    await check('Reset to Day 1 asks first, then goes back to day 1 with no miles', async () => {
       await pause(page);
       await page.click('[data-test=reset-travel]');
       assert(/Reset travel back to Day 1/.test(await H.modalText(page)));

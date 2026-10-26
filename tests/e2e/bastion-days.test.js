@@ -245,7 +245,7 @@ async function closeWord(ba) {
   await check('Reset Travel asks first; then the Explorer is on Day 1 and the Bastion moves back 8 days with it, the order still 7 days off', async () => {
     await ex.waitForTimeout(400);
     await ex.click('[data-test=reset-travel]');
-    assert(/Reset travel back to Day 1/.test(await H.modalText(ex)));
+    assert(/Start again from Day 1/.test(await H.modalText(ex)));
     await H.clickModal(ex, 'OK');
     await ex.waitForTimeout(300);
     equal(await exDay(ex), 1);

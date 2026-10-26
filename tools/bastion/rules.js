@@ -592,7 +592,7 @@
     if (s.bridge.resetSeen === id) return null;
     var out = { receipts: Object.keys(s.bridge.done).length, creatures: 0, charters: 0 };
     s.bridge.done = {};
-    s.bridge.fresh = false;
+    /* (A Bastion that has just started from nothing stays "fresh", so it still skips what was sent before it.) */
     s.bridge.resetSeen = id;
     if (Array.isArray(s.creatures)) {
       var before = s.creatures.length;
