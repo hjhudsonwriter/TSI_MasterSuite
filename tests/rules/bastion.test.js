@@ -28,7 +28,6 @@
     } finally { if (note) fnDef.retiredNote = note; }
   }
   function roll(d20, total) { return { d20: d20, total: total }; }
-  function titles(s) { return s.log.map(function (l) { return l.title; }); }
 
   group('Bastion: content');
 
@@ -69,27 +68,25 @@
     t.equal(m.base, 'map/bastion_base.jpg');
     t.same([m.width, m.height], [3000, 1250], 'Harry\'s new painting, 12 October 2026');
     m.overlays.forEach(function (o) { t.ok(R.facility(data, o.fac), o.fac); t.ok(/^map\/overlays\/[a-z_]+\.png$/.test(o.pic), o.pic); });
-    t.same(m.overlays.map(function (o) { return o.fac; }), ['herbal_gardens', 'hall_of_emissaries', 'temple', 'temple', 'temple',
+    t.same(m.overlays.map(function (o) { return o.fac; }), ['herbal_gardens', 'hall_of_emissaries', 'temple',
       'beast_pen', 'weavers_hall', 'stone_masonworks', 'fishery_smokehouse', 'timber_sawmill', 'courier_exchange']);
     t.equal(m.overlays.filter(function (o) { return o.fac === 'menagerie' || o.fac === 'war_room'; }).length, 0, 'no map picture for the war game\'s facilities (the War Room\'s went to assets/extras)');
     t.ok(T.bastion.mapLabels.courier_exchange, 'the Courier Exchange has a place for its label');
-    t.same(m.overlays.filter(function (o) { return o.fac === 'temple'; }).map(function (o) { return o.pic; }), ['map/overlays/shrine_of_aurush.png', 'map/overlays/shrine_of_telluria.png', 'map/overlays/shrine_of_pelagos.png'], 'the Temple draws the three Shrine buildings');
+    t.same(m.overlays.filter(function (o) { return o.fac === 'temple'; }).map(function (o) { return o.pic; }), ['map/overlays/temple.png'], 'the Temple draws its one new building (Harry\'s designs of 26 October 2026)');
     t.same(T.bastion.facilityImages.temple, ['shrine_of_telluria.png', 'shrine_of_aurush.png', 'shrine_of_pelagos.png'], 'and its tile shows the three Shrine paintings side by side');
-    t.same([T.bastion.mapLabels.temple.x, T.bastion.mapLabels.temple.y, T.bastion.mapLabels.temple.also], [1275, 532, [{ x: 2252, y: 722 }, { x: 2668, y: 840 }]], 'a label at each of the three buildings');
+    t.same([T.bastion.mapLabels.temple.x, T.bastion.mapLabels.temple.y, T.bastion.mapLabels.temple.also], [182, 150, undefined], 'one label, at the new building');
   });
 
   test('the map overlays: one per built facility with a picture, a shared picture drawn once, darkened while Under Repair', function (t) {
     var s = fresh();
-    t.same(R.mapOverlays(s, data), [], 'the starting five are in the base painting');
+    t.same(R.mapOverlays(s, data), [], 'the starting buildings (the Workshop, the Dock and the Party Quarters) are in the base painting');
     s.builtExtras = ['temple', 'herbal_gardens', 'beast_pen'].map(function (id) { return { facId: id, status: 'built' }; });
     s.builtExtras.push({ facId: 'hall_of_emissaries', status: 'building', startDay: 1, readyDay: 36 });
     t.same(R.mapOverlays(s, data).map(function (o) { return [o.pic, o.facs]; }), [
-      ['map/overlays/greenhouse.png', ['herbal_gardens']],
-      ['map/overlays/shrine_of_aurush.png', ['temple']],
-      ['map/overlays/shrine_of_telluria.png', ['temple']],
-      ['map/overlays/shrine_of_pelagos.png', ['temple']],
-      ['map/overlays/wyvern_roost.png', ['beast_pen']]
-    ], 'in the data\'s order (the Temple draws all three Shrine buildings); nothing for a building still being built');
+      ['map/overlays/herbal_gardens.png', ['herbal_gardens']],
+      ['map/overlays/temple.png', ['temple']],
+      ['map/overlays/beast_pen.png', ['beast_pen']]
+    ], 'in the data\'s order; nothing for a building still being built');
     s.repairs = { herbal_gardens: s.day + 3 };
     t.same(R.mapOverlays(s, data).filter(function (o) { return o.repair; }).map(function (o) { return o.facs; }), [['herbal_gardens']], 'darkened while Under Repair');
     /* No two facilities share a picture since the overhaul; the rule still draws a shared one once. */
@@ -337,8 +334,7 @@
     t.equal(s.dayInProgress.stage, 'orders');
     R.finishDay(s);
     t.equal(s.dayInProgress, null);
-    t.same(titles(s), ['Construction Complete']);
-    t.ok(s.log.every(function (l) { return l.day === 21; }), 'each log line has its day');
+    t.equal(s.log, undefined, 'no Day Log is kept (S18)');
     t.same(s.word, [{ day: 21, lines: ['The Hall of Emissaries is built.'] }]);
   });
 
@@ -350,7 +346,7 @@
     R.finishDay(s);
     t.equal(s.day, 4);
     t.same(s.word, []);
-    t.same(s.log, []);
+    t.equal(s.log, undefined);
   });
 
   test('no Bastion event comes any more: Day 29, 57 and 85 pass like any other day, the state holds no event, and the event rules are gone (S05)', function (t) {
@@ -364,7 +360,7 @@
       R.finishRoutes(s);
       R.finishDay(s);
       t.equal(s.day, before + 1);
-      t.same(s.log, [], 'nothing logged on Day ' + s.day);
+      t.equal(s.log, undefined, 'nothing logged on Day ' + s.day);
       t.same(s.word, [], 'no word on Day ' + s.day);
       t.equal('lastEvent' in s || 'lastEventDay' in s, false, 'no event record on Day ' + s.day);
     });
@@ -414,11 +410,11 @@
     s.builtExtras = [{ facId: 'hall_of_emissaries', status: 'building', startDay: 20, readyDay: 41 }];
     s.legacyDiplomacy = { records: [{ kind: 'Trade Agreement', title: 'Trade Agreement', clan: 'Clan Karr', startDay: 26, endDay: 47, endedDay: 29, income: 10, shipments: 3, paid: 30, note: '' }] };
     s.repairs = { workshop: 35 };
-    s.log = [{ title: 'x', body: 'y', day: 29 }];
+    s.legacyLog = [{ title: 'x', body: 'y', day: 29 }];
     R.shiftDays(s, -29);
     t.equal(s.day, 1);
     t.same([s.pendingOrders[0].dueDay, s.builtExtras[0].readyDay, s.legacyDiplomacy.records[0].endDay, s.legacyDiplomacy.records[0].startDay, s.legacyDiplomacy.records[0].endedDay, s.repairs.workshop], [4, 12, 18, -3, 0, 6], 'the Hall\'s old agreements, kept as history, move with the days too');
-    t.equal(s.log[0].day, 29, 'the log is history');
+    t.equal(s.legacyLog[0].day, 29, 'the old log is history');
     t.equal(R.dayLabel(-9), 'before Day 1');
     t.equal(R.dayLabel(4), 'Day 4');
   });
@@ -445,7 +441,9 @@
   test('the old Day Log as text: the newest 25 entries, newest first; nothing when empty (S10)', function (t) {
     var s = fresh();
     t.equal(R.oldLogText(s, 25), '');
-    for (var i = 1; i <= 30; i++) R.log(s, 'Entry ' + i, 'Body ' + i, 1000 * i);
+    s.legacyLog = [];
+    for (var i = 1; i <= 30; i++) s.legacyLog.unshift({ title: 'Entry ' + i, body: 'Body ' + i, at: 1000 * i, day: null });
+    t.equal(R.log, undefined, 'R.log is gone (S18)');
     var text = R.oldLogText(s, 25);
     t.ok(text.indexOf('Entry 30') > -1 && text.indexOf('Entry 6') > -1, 'newest 25 are in');
     t.ok(text.indexOf('Entry 5\n') === -1 && text.indexOf('· Entry 5') === -1, 'older ones are left out');
@@ -772,8 +770,7 @@
       'The Garden is now the Herbal Gardens (still being built).',
       '3 pending orders moved with their facilities, keeping their due days.'
     ]);
-    t.same([s.log[0].title, s.log[0].day], ['Facilities', 12]);
-    t.equal(s.log[0].body, 'The facilities overhaul (13 October 2026): ' + res.lines.join(' '));
+    t.equal(s.log, undefined, 'no Day Log entry is written any more (S18)');
     t.same(s.migration, { v3: { day: 12, lines: res.lines, shown: false } }, 'the notice is still to be shown');
     t.same([s.legacyFacilities, s.archivedFacilities], [[], []]);
   });
@@ -871,7 +868,7 @@
     });
     t.same([s.facilityLevels.hall_of_emissaries, s.facilityLevels.war_room], [3, 1]);
     t.same(s.pendingOrders, raw.pendingOrders, 'the Hall\'s upgrade carries on');
-    t.same(s.log.slice(1), raw.log, 'the Day Log keeps its old names (history); the overhaul\'s entry goes on top');
+    t.same(s.log, raw.log, 'an old Day Log is left exactly as it was (history); no entry is added (S18)');
     t.same(slots(s), ['hall_of_emissaries', 'war_room', 'library_scriptorium']);
   });
 
@@ -882,10 +879,9 @@
     var twice = R.fromSave(JSON.parse(JSON.stringify(R.toSave(once))), data);
     t.same(twice, once, 'a v 3 save is loaded as it is');
     t.same(R.migrateToV3(R.toSave(once), data), { save: R.toSave(once), lines: [] }, 'and isn\'t converted again');
-    t.equal(once.log.filter(function (l) { return l.title === 'Facilities'; }).length, 1, 'one Day Log entry');
+    t.equal(once.log, undefined, 'no Day Log is kept in a loaded Bastion (S18)');
     var plain = R.fromSave(v2(function (b) { b.builtExtras = [{ facId: 'shrine_aurush', status: 'built' }]; }), data);
     t.same(plain.migration.v3, { day: 12, lines: [], shown: true }, 'nothing changed: no notice');
-    t.equal(plain.log.filter(function (l) { return l.title === 'Facilities'; }).length, 0);
     t.same(slots(plain), ['temple'], 'a Shrine in a version 2 save is the Temple once the Strip Back conversion has run (22 October 2026)');
   });
 

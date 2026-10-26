@@ -589,7 +589,6 @@
     t.equal(r1.applied.length, 1);
     t.equal(b.honourRespectByClan.slade, 1);
     t.same([b.bridge.done[msg().id].r, b.bridge.done[msg().id].was, b.bridge.done[msg().id].now], ['applied', 0, 1]);
-    t.ok(/From the Explorer/.test(b.log[0].title) && /Clan Slade/.test(b.log[0].body));
     var r2 = BR.applyInbox(b, bdata, ex, 2000);
     t.equal(r2.changed, false);
     t.equal(b.honourRespectByClan.slade, 1);
@@ -635,7 +634,6 @@
     t.equal(kept.bridge.fresh, false);
     t.equal(kept.honourRespectByClan.slade, 0);
     t.equal(kept.bridge.done[msg().id].r, 'skipped');
-    t.ok(/skipped/.test(kept.log[0].body));
     var later = msg({ id: 'yyyyyy-00000008:won:2' });
     BR.applyInbox(kept, bdata, exWith([msg(), later]), 2000);
     t.equal(kept.honourRespectByClan.slade, 1, 'later changes apply as normal');
@@ -952,7 +950,6 @@
     t.ok(/^3: From the Explorer: a change \(T4, Day 3\) couldn.t be used, so nothing changed: Its change isn.t \+1 or −1\.$/.test(lines[0]), lines[0]);
     t.equal(b.honourRespectByClan.slade, 0, 'and nothing changed');
     t.equal(b.bridge.done[msg().id].r, 'refused');
-    t.equal(b.log.filter(function (l) { return /couldn.t be used/.test(l.body); }).length, 1, 'one Day Log line');
     var again = BR.applyInbox(b, bdata, { travel: { day: 4 }, journey: { outbox: [msg({ day: 3, hr: 3 })] } }, 9000);
     t.equal(again.refused, 0, 'a second look finds it already settled');
   });

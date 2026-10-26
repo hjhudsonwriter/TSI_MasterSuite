@@ -202,10 +202,9 @@ async function changeRows(ba) {
     equal(out.map(m => [m.clan, m.hr]), [['farmer', 1]]);
   });
 
-  await check('within a few seconds the Bastion has it: Honour/Respect +1, a Day Log line and a notice', async () => {
+  await check('within a few seconds the Bastion has it: Honour/Respect +1 and a notice', async () => {
     await ba.waitForFunction(() => TSI.bastion.debug.state().honourRespectByClan.farmer === 1, null, { timeout: 6000 });
     const s = await bas(ba);
-    assert(s.log.some(l => l.title === 'From the Explorer' && /Clan Farmer/.test(l.body)), 'the Day Log');
     await H.waitForNotice(ba, /From the Explorer: Honour\/Respect \+1 with Clan Farmer/);
     const rows = await changeRows(ba);
     equal(rows.length, 1);
@@ -259,9 +258,7 @@ async function changeRows(ba) {
     await ba3.waitForFunction(() => TSI.bastion.debug.state().day === 3 && !TSI.bastion.debug.busy(), null, { timeout: 10000 });
     const s = await bas(ba3);
     equal(s.honourRespectByClan.slade, 1);
-    const line = s.log.filter(l => l.title === 'From the Explorer');
-    equal(line.length, 1);
-    equal(line[0].day, 1, 'applied on the day it happened, before Days 2 and 3 passed');
+    equal(Object.values(s.bridge.done).map(r => r.day), [1], 'applied on the day it happened, before Days 2 and 3 passed');
     await waitStatus(ex3, ['applied']);
   });
 
@@ -279,8 +276,6 @@ async function changeRows(ba) {
     await ba3.waitForFunction(() => TSI.bastion.debug.state().day === 5 && !TSI.bastion.debug.busy(), null, { timeout: 10000 });
     const s = await bas(ba3);
     equal(s.honourRespectByClan.slade, 2);
-    const lines = s.log.filter(l => l.title === 'From the Explorer');
-    equal(lines.map(l => l.day), [4, 1], 'logged on Day 4, the day it happened');
     equal(Object.values(s.bridge.done).map(r => r.day).sort(), [1, 4]);
   });
 
@@ -397,7 +392,7 @@ async function changeRows(ba) {
     await ba5.waitForTimeout(150);
   });
 
-  await check('Resolve on a due order: its result comes up as a notice (and is still in the Day Log)', async () => {
+  await check('Resolve on a due order: its result comes up as a notice', async () => {
     await H.dismissNotices(ba5);
     await ba5.evaluate(() => TSI.bastion.debug.change(s => {
       s.pendingOrders.push({ id: 'p1', facId: 'dock', fnId: 'charter_berth', optionLabel: 'Keelboat', label: 'Dock: Charter Berth (Keelboat)', costGP: 100, issuedDay: 1, dueDay: s.day });
@@ -411,7 +406,6 @@ async function changeRows(ba) {
     assert(/tsi-notice--info/.test(n.cls) && /^Order resolved\./.test(n.text), n.text);
     const s = await bas(ba5);
     equal(s.pendingOrders, []);
-    assert(s.log.some(l => l.body === 'Dock: Charter Berth (Keelboat) → Added to Warehouse.'), 'the Day Log line is still written');
   });
   await E2.close();
 
@@ -462,11 +456,10 @@ async function changeRows(ba) {
     equal(s.honourRespectByClan.slade, 0, 'nothing changed');
   });
 
-  await check('it is only ever told once: the receipt says Refused once, the Day Log has one line, and no second notice comes later', async () => {
+  await check('it is only ever told once: the receipt says Refused once, and no second notice comes later', async () => {
     await ba6.waitForTimeout(4500);
     const s = await bas(ba6);
     equal(Object.values(s.bridge.done).map(r => r.r), ['refused']);
-    equal(s.log.filter(l => /couldn.t be used, so nothing changed/.test(l.body)).length, 1);
     const notes = await ba6.$$eval('.tsi-notice', ns => ns.map(n => n.textContent));
     equal(notes.filter(x => /couldn.t be used/.test(x)).length, 1);
   });

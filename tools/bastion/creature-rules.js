@@ -241,7 +241,6 @@
     if (why) return { ok: false, message: why };
     var name = R.creatureName(data, c);
     s.creatures = R.creatures(s).filter(function (x) { return x !== c; });
-    R.log(s, 'Creatures', name + ' was released: it no longer waits at the Ironbow.', now);
     return { ok: true, name: name };
   };
   /* The DM's name for a creature at the Ironbow: any of them, waiting or
@@ -264,7 +263,6 @@
       o.optionLabel = fresh;
     }
     var line = before === after ? before + ' keeps its name.' : before + ' is now called ' + after + '.';
-    if (before !== after) R.log(s, 'Creatures', line, now);
     return { ok: true, changed: before !== after, name: after, log: ['Creatures', line] };
   };
   /* The creatures housed at a building (kept when it's demolished). */
@@ -542,7 +540,6 @@
       if (made) {
         var name = R.creatureName(data, c);
         var line = name + ' and ' + R.handlerName(d.handlerId) + ' have spent ' + plural(R.bondingDays(data, c), 'day', 'days') + ' together: Bond ' + made + ' (' + R.bondName(made) + ') is ready. Run a scene at the table, then confirm it in the Beast Pen.';
-        R.log(s, 'Creatures', line, now);
         R.addWord(s, line);
         said.push(line);
       }

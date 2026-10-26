@@ -32,13 +32,8 @@
     });
   });
 
-  test('the Buckbear and Fellcat d8 tables are a DRAFT, marked so, until Harry approves or replaces them', function (t) {
-    ['buckbear', 'fellcat'].forEach(function (k) {
-      t.equal(B.species[k].draft, true, k + ' kind is marked draft');
-      t.equal(B.species[k].attachment.draft, true, k + ' attachment');
-      t.equal(B.species[k].trigger.draft, true, k + ' trigger');
-    });
-    ['wyvern', 'griffin', 'dire_wolf'].forEach(function (k) { t.ok(!B.species[k].draft && !B.species[k].attachment.draft && !B.species[k].trigger.draft, k + ' is Harry\'s own and not draft'); });
+  test('no table is marked draft: Harry approved the Buckbear and Fellcat d8 tables on 26 October 2026', function (t) {
+    ['wyvern', 'griffin', 'dire_wolf', 'buckbear', 'fellcat'].forEach(function (k) { t.ok(!B.species[k].draft && !B.species[k].attachment.draft && !B.species[k].trigger.draft, k + ' is not draft'); });
   });
 
   test('Harry\'s exact words, a spread of them, spelt as he wrote them', function (t) {

@@ -234,6 +234,9 @@ body.tsi-bh-phone .tsi-btn--primary:hover { filter: brightness(1.06); }
 .tsi-tool--beasthandler .tsi-bh-hero2::before { content: ''; display: block; padding-top: 125%; }
 .tsi-tool--beasthandler .tsi-bh-hero2--art { border-color: rgba(244, 205, 118, .35); box-shadow: var(--tsi-shadow-card), 0 0 28px rgba(244, 205, 118, .12); }
 .tsi-tool--beasthandler .tsi-bh-hero2__tap { position: absolute; inset: 0; display: block; padding: 0; margin: 0; border: 0; background: none; cursor: pointer; }
+.tsi-tool--beasthandler .tsi-bh-hero2__tap { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
+.tsi-tool--beasthandler .tsi-bh-hero2__clip { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 28%; opacity: 0; pointer-events: none; }
+.tsi-tool--beasthandler .tsi-bh-hero2--clip .tsi-bh-hero2__clip { opacity: 1; }
 .tsi-tool--beasthandler .tsi-bh-hero2__img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 28%; }
 /* A soft fade at the foot of the picture, so it sits in the page and the subspecies name reads over it. */
 .tsi-tool--beasthandler .tsi-bh-hero2__shade { position: absolute; left: 0; right: 0; bottom: 0; height: 34%; pointer-events: none; background: linear-gradient(180deg, rgba(19, 19, 21, 0), rgba(19, 19, 21, .85)); }

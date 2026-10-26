@@ -93,8 +93,6 @@
     var again = BR.confirmDipRecord(b, bdata, r.id);
     t.equal(again.ok, false);
     t.same([b.honourRespectByClan.karr, b.politicalCapital.karr, b.honourRespectByClan.slade], [-5, 100, 1], 'a second confirm changes nothing');
-    t.equal(b.log[0].title, 'Diplomatic Records');
-    t.equal(b.log.filter(function (l) { return l.title === 'Diplomatic Records'; }).length, 1);
   });
 
   test('a restriction is DM-tracked: it counts its days from confirmation, expires by itself, and can be ended early', function (t) {

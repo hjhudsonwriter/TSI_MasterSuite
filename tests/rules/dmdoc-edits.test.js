@@ -44,11 +44,8 @@
     var e = edit('pc', 'blackstone', -35);
     var r = BR.applyDmEdits(s, [e], 5000);
     t.same([r.changed, r.refused, s.politicalCapital.blackstone], [true, 0, -35]);
-    t.equal(s.log.length, 1);
-    t.ok(/Political Capital for Clan Blackstone set by the DM: 20 to -35\./.test(s.log[0].body), s.log[0].body);
     t.same([s.dmEdits.done[e.id].r, s.dmEdits.done[e.id].was, s.dmEdits.done[e.id].now, s.dmEdits.done[e.id].day], ['applied', 20, -35, 14]);
     var again = BR.applyDmEdits(s, [e], 9000);
-    t.same([again.changed, s.log.length, s.politicalCapital.blackstone], [false, 1, -35], 'a second look changes nothing');
     s.politicalCapital.blackstone = 7;
     BR.applyDmEdits(s, [e], 9500);
     t.equal(s.politicalCapital.blackstone, 7, 'and a later change in the Bastion is not overwritten by an old edit');

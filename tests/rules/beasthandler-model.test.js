@@ -37,11 +37,11 @@
   });
 
   test('a picture is empty until one is added, and a variety\'s own picture wins when it has one', function (t) {
-    t.same(M.artFor(T.beastArt, 'wyvern', ''), { src: '', label: 'Wyvern', alt: 'A wyvern' });
-    t.same(M.artFor(T.beastArt, 'wyvern', 'widowspine'), { src: 'wyvern/widowspine.webp', label: 'Wyvern', alt: 'A wyvern' }, 'its own picture');
-    t.same(M.artFor(T.beastArt, 'dire_wolf', 'icepelt'), { src: 'dire-wolf/icepelt.webp', label: 'Dire Wolf', alt: 'A dire wolf' }, 'Harry\'s Icepelt picture');
-    t.same(M.artFor(T.beastArt, 'dire_wolf', ''), { src: '', label: 'Dire Wolf', alt: 'A dire wolf' }, 'no variety: no picture');
-    t.same(M.artFor(T.beastArt, 'dire_wolf', 'unknownvariety'), { src: '', label: 'Dire Wolf', alt: 'A dire wolf' });
+    t.same(M.artFor(T.beastArt, 'wyvern', ''), { src: '', video: '', label: 'Wyvern', alt: 'A wyvern' });
+    t.same(M.artFor(T.beastArt, 'wyvern', 'widowspine'), { src: 'wyvern/widowspine.webp', video: '', label: 'Wyvern', alt: 'A wyvern' }, 'its own picture');
+    t.same(M.artFor(T.beastArt, 'dire_wolf', 'icepelt'), { src: 'dire-wolf/icepelt.webp', video: '', label: 'Dire Wolf', alt: 'A dire wolf' }, 'Harry\'s Icepelt picture');
+    t.same(M.artFor(T.beastArt, 'dire_wolf', ''), { src: '', video: '', label: 'Dire Wolf', alt: 'A dire wolf' }, 'no variety: no picture');
+    t.same(M.artFor(T.beastArt, 'dire_wolf', 'unknownvariety'), { src: '', video: '', label: 'Dire Wolf', alt: 'A dire wolf' });
     ['nightfang', 'icepelt', 'slatejaw', 'reedshadow', 'hollowhowl'].forEach(function (v) { t.equal(M.artFor(T.beastArt, 'dire_wolf', v).src, 'dire-wolf/' + v + '.webp'); });
     t.same(M.artFor(T.beastArt, 'unicorn', ''), { src: '', label: 'Beast', alt: 'A beast' });
     var art = { species: { wyvern: { label: 'Wyvern', alt: 'A wyvern', default: { src: 'w.png' }, variants: { widowspine: { src: 'ws.png' } } } } };
@@ -53,8 +53,8 @@
     t.equal(M.artFor(T.beastArt, 'dire_wolf', 'blacktide').src, 'dire-wolf/blacktide.webp');
     t.equal(M.artFor(T.beastArt, 'buckbear', 'broadcrown').src, 'buckbear/broadcrown.webp');
     t.equal(M.artFor(T.beastArt, 'fellcat', 'lichenback').src, 'fellcat/lichenback.webp');
-    t.same(M.artFor(T.beastArt, 'buckbear', 'cragbuck'), { src: '', label: 'Buckbear', alt: 'A buckbear' }, 'a variety with no picture shows the empty frame');
-    t.same(M.artFor(T.beastArt, 'fellcat', 'mistveil'), { src: '', label: 'Fellcat', alt: 'A fellcat' });
+    t.same(M.artFor(T.beastArt, 'buckbear', 'cragbuck'), { src: '', video: '', label: 'Buckbear', alt: 'A buckbear' }, 'a variety with no picture shows the empty frame');
+    t.same(M.artFor(T.beastArt, 'fellcat', 'mistveil'), { src: '', video: '', label: 'Fellcat', alt: 'A fellcat' });
   });
 
   test('the Home screen says the right friendly thing when there is nothing to list', function (t) {

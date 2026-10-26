@@ -798,7 +798,8 @@
     var res = convert(raw);
     t.equal(heavy.pendingOrders.length, raw.pendingOrders.length - res.report.cancelled.length, 'every order is kept, moved or cancelled: the war game\'s, the Riding Harness, and the Shrines\' Upgrade, two prayers and Aquatic Protection Charm are cancelled; the Roost\'s House order, the salve and the Great Rite move');
     t.equal(heavy.creatures.length, 4);
-    t.equal(heavy.log.length, 200);
+    t.equal(heavy.legacyLog.length, 200, 'the old Day Log is kept untouched as the set-aside copy (S18)');
+    t.equal(heavy.log, undefined);
     t.equal(heavy.treasuryGP, raw.treasuryGP + res.report.gold.refunded + res.report.gold.settlement, '2,000, what the cancelled orders cost and, from the Hall\'s wind-down (S09), the final settlement of its running contracts');
     t.same(heavy.builtExtras.filter(Boolean).map(function (e) { return e.facId; }), ['temple', 'beast_pen', 'hall_of_emissaries'], 'the three Shrines are one Temple, and the Library and Laboratory slots are free (S12)');
     t.equal(heavy.migration.v4.changed, true, 'its event record, the war game and its facilities were dropped, and it says so');
@@ -1123,7 +1124,7 @@
     var loaded = R.fromSave(clone(raw), data);
     t.equal('lastEvent' in loaded || 'lastEventDay' in loaded, false);
     t.same(R.fromSave(R.toSave(loaded), data), loaded, 'loading twice gives the same Bastion');
-    t.equal(loaded.log.length, 200, 'the Day Log is untouched (its own step is later)');
+    t.equal(loaded.legacyLog.length, 200, 'the old Day Log is kept untouched (S18)');
     t.equal(loaded.word.length, raw.word.length, 'and so is the Ironbow\'s word');
   });
 

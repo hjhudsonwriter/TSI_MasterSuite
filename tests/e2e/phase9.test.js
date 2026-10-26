@@ -377,7 +377,6 @@ const ALL_EXTRAS = ['beast_pen', 'herbal_gardens', 'temple', 'hall_of_emissaries
       await days(page, 1, []);
       equal(await page.$eval('[data-test=tile-hall_of_emissaries]', t => [t.tagName, t.classList.contains('tsi-bas-tile--built')]), ['BUTTON', true]);
       equal(await page.$$eval('.tsi-bas-map__overlay', os => os.map(o => o.dataset.fac)), ['hall_of_emissaries', 'beast_pen'], 'the Beast Pen was built beside it, and is finished on the same day');
-      assert((await st(page)).log.some(l => l.title === 'Construction Complete' && l.body === 'Hall of Emissaries is now built and active.'));
     });
 
     await check('lowering the level keeps every building, marked over capacity (BAS-04, B8)', async () => {
@@ -468,7 +467,7 @@ const ALL_EXTRAS = ['beast_pen', 'herbal_gardens', 'temple', 'hall_of_emissaries
       await pause(page);
       await page.click('[data-test=cancel-0]');
       const s = await st(page);
-      equal([s.treasuryGP, s.pendingOrders.length, s.log[0].body], [300, 0, 'Cancelled an order.']);
+      equal([s.treasuryGP, s.pendingOrders.length], [300, 0]);
     });
 
     await check('orders complete on their days: the ship is in the warehouse on Day 8', async () => {
@@ -480,7 +479,6 @@ const ALL_EXTRAS = ['beast_pen', 'herbal_gardens', 'temple', 'hall_of_emissaries
       const s = await st(page);
       equal(s.pendingOrders, []);
       assert(s.warehouse.some(w => w.item === 'Longship' && w.notes === 'Dock'), JSON.stringify(s.warehouse));
-      assert(/Dock: Charter Berth \(Longship\) → Added to Warehouse\./.test(s.log.map(l => l.body).join('|')));
     });
     await context.close();
   }
@@ -511,7 +509,6 @@ const ALL_EXTRAS = ['beast_pen', 'herbal_gardens', 'temple', 'hall_of_emissaries
       await word(page);
       const s = await st(page);
       equal(s.day, 5);
-      equal(s.log.filter(l => /Dock: Charter Berth \(Longship\) → Added to Warehouse\./.test(l.body)).length, 1, 'the order completed once');
       equal(s.warehouse.filter(w => w.item === 'Longship' && w.notes === 'Dock').reduce((n, w) => n + w.qty, 0), 1, 'and one ship came');
     });
 
@@ -528,11 +525,10 @@ const ALL_EXTRAS = ['beast_pen', 'herbal_gardens', 'temple', 'hall_of_emissaries
       equal(await text(page, 'day-status'), 'Day 29');
       const s = await st(page);
       equal('lastEvent' in s || 'lastEventDay' in s, false, 'the Bastion keeps no event record');
-      assert(!s.log.some(l => /Auto event|Bastion Event/.test(l.title + ' ' + l.body)), 'nothing in the Day Log: ' + JSON.stringify(s.log.slice(0, 2)));
       assert(JSON.stringify(s.word).indexOf('Bastion event') === -1, 'and no word from the Ironbow about one');
     });
 
-    await check('Reset Travel in the Explorer moves every Bastion day back, and the log says so', async () => {
+    await check('Reset Travel in the Explorer moves every Bastion day back, ', async () => {
       await issue(page, 'dock', 'charter_berth', 0);
       const before = await st(page);
       equal([before.day, before.pendingOrders[0].dueDay], [29, 36]);
@@ -540,7 +536,6 @@ const ALL_EXTRAS = ['beast_pen', 'herbal_gardens', 'temple', 'hall_of_emissaries
       await page.waitForFunction(() => TSI.bastion.debug.state().day === 1);
       const s = await st(page);
       equal(s.pendingOrders[0].dueDay, 8, 'still 7 days off');
-      equal(s.log[0].body, 'The Explorer\'s day went back (Reset Travel): the Bastion moves from Day 29 to Day 1, and everything due keeps its days.');
       equal(await text(page, 'day-status'), 'Day 1');
     });
 
@@ -575,12 +570,11 @@ const ALL_EXTRAS = ['beast_pen', 'herbal_gardens', 'temple', 'hall_of_emissaries
       await page.keyboard.press('Escape');
     });
 
-    await check('days pass with nothing from the Hall: no shipment, no roll, no word, no Diplomacy line in the Day Log', async () => {
+    await check('days pass with nothing from the Hall: no shipment, no roll, no word', async () => {
       const gp = (await st(page)).treasuryGP;
       await days(page, 7, []);
       const s = await st(page);
       equal(s.treasuryGP, gp);
-      equal(s.log.filter(l => l.title === 'Diplomacy').length, 0);
       equal(s.word.length, 0);
     });
 
@@ -909,7 +903,7 @@ const ALL_EXTRAS = ['beast_pen', 'herbal_gardens', 'temple', 'hall_of_emissaries
       await pause(page);
     });
 
-    await check('Hand to the party: asks first, takes only what is handed over, once, and the Day Log says so', async () => {
+    await check('Hand to the party: asks first, takes only what is handed over, once', async () => {
       await page.click('[data-test=wh-hand-0]');
       await page.waitForTimeout(500);
       const t = await popText(page);
@@ -926,8 +920,6 @@ const ALL_EXTRAS = ['beast_pen', 'herbal_gardens', 'temple', 'hall_of_emissaries
       await pause(page);
       const s = await st(page);
       equal(s.warehouse.map(w => [w.item, w.qty]), [['Rope', 1], ['Lantern', 1]], 'five-less-two style: 3 less 2');
-      equal(s.log.filter(l => /Handed to the party/.test(l.body)).length, 1, 'logged once');
-      assert(/2 \u00d7 Rope \(to Borin\) on Day 1/.test(s.log[0].body) && /D&D sheet/.test(s.log[0].body), s.log[0].body);
     });
 
     await check('Remove and Clear (Clear is logged twice, as before: BAS-31, kept)', async () => {
@@ -942,7 +934,6 @@ const ALL_EXTRAS = ['beast_pen', 'herbal_gardens', 'temple', 'hall_of_emissaries
       await pause(page);
       const s = await st(page);
       equal(s.warehouse.map(w => w.item), ['New Item']);
-      equal(s.log.slice(0, 2).map(l => l.body), ['Cleared warehouse.', 'Cleared warehouse.']);
     });
 
     await check('the Workshop has no Artisan Tools picker: the Handyman\'s Craft list is fixed (the full staff click-through is tests/e2e/workshop.test.js)', async () => {
@@ -1031,7 +1022,6 @@ const ALL_EXTRAS = ['beast_pen', 'herbal_gardens', 'temple', 'hall_of_emissaries
       const rec = file.records.find(r => r.key === 'tsi.bastion.state');
       equal([rec.value.treasuryGP, rec.value.day, rec.value.v], [1234, 2, 4]);
       equal(file.records.find(r => r.key === 'tsi.explorer.save').value.travel.day, 2, 'the Explorer\'s half');
-      await page.waitForFunction(() => TSI.bastion.debug.state().log[0].title === 'Save File');
     });
 
     await check('Import asks first, and Cancel changes nothing', async () => {
@@ -1113,7 +1103,7 @@ const ALL_EXTRAS = ['beast_pen', 'herbal_gardens', 'temple', 'hall_of_emissaries
       ]
     });
 
-    await check('a Bastion from before the facilities overhaul is converted once: a notice and a Day Log entry say what changed, and the Bastion as it was is kept aside', async () => {
+    await check('a Bastion from before the facilities overhaul is converted once: a notice says what changed, and the Bastion as it was is kept aside', async () => {
       await H.dismissNotices(page);
       const d = (await st(page)).day;
       await page.evaluate(v => TSI.store.set('tsi.bastion.state', v), beforeOverhaul(d));
@@ -1125,13 +1115,11 @@ const ALL_EXTRAS = ['beast_pen', 'herbal_gardens', 'temple', 'hall_of_emissaries
       equal(s.builtExtras, ['', '', '', '', ''], 'the Arcane Laboratory joined the Workshop: its slot is free (step S12)');
       /* The Garden became the Herbal Gardens, and moved to a Development Plot (open at party level 13), still being built. */
       equal(s.builtPlots, [{ facId: 'herbal_gardens', status: 'building', startDay: 1, readyDay: d + 9 }, '', '', '']);
-      assert(s.log.some(l => l.title === 'Development Plots' && l.body === 'The Herbal Gardens moved to a Development Plot; its construction slot is free.'), 'the Day Log says so');
       equal(s.pendingOrders.map(o => [o.id, o.facId, o.fnId, o.dueDay]), [['o1', 'workshop', 'alchemy', d + 6], ['o2', 'workshop', 'smithing', d + 5]]);
       equal([s.facilityLevels.arcane_laboratory, s.repairs.arcane_laboratory, s.legacyFacilities, s.artisanTools, s.treasuryGP], [undefined, undefined, undefined, undefined, 400], 'the Laboratory\'s level and repair are gone (step S12), so are the Artisan Tools and the list of retired buildings');
       equal(s.archivedFacilities.map(a => a.name), ['Gaming Hall', 'Barracks', 'Armoury', 'Watchtower', 'Arcane Laboratory']);
       equal(s.migration.v3.shown, true, 'the notice has been shown');
-      const entry = s.log.find(l => l.title === 'Facilities');
-      assert(entry && /^The facilities overhaul \(13 October 2026\): /.test(entry.body) && /The Arcane Study and the Laboratory are now one Arcane Laboratory: the other slot is free\./.test(entry.body), JSON.stringify(entry));
+      equal(s.log, undefined, 'no Day Log entry is written (S18)');
       const keys = (await page.evaluate(() => TSI.store.keys())).filter(k => k.indexOf('tsi.quarantine.bastion.state') === 0);
       equal(keys.length, before + 1, 'the Bastion as it was is set aside');
       const kept = await page.evaluate(k => TSI.store.get(k), keys[keys.length - 1]);
@@ -1147,15 +1135,15 @@ const ALL_EXTRAS = ['beast_pen', 'herbal_gardens', 'temple', 'hall_of_emissaries
       await page.keyboard.press('Escape');
     });
 
-    await check('opened again, nothing is converted twice: no notice, no second copy, no second Day Log entry', async () => {
+    await check('opened again, nothing is converted twice: no notice, no second copy', async () => {
       const keysBefore = (await page.evaluate(() => TSI.store.keys())).filter(k => k.indexOf('tsi.quarantine.bastion.state') === 0).length;
       const was = await st(page);
       await reopen(page);
       await page.waitForTimeout(600);
       equal(await page.evaluate(() => Array.from(document.querySelectorAll('.tsi-notice')).filter(n => /facilities have changed|moved to a Development Plot/.test(n.textContent)).length), 0);
       const s = await st(page);
-      equal([s.builtExtras, s.builtPlots, s.pendingOrders.map(o => o.fnId), s.log.filter(l => l.title === 'Facilities').length, s.log.filter(l => l.title === 'Development Plots').length],
-        [was.builtExtras, was.builtPlots, was.pendingOrders.map(o => o.fnId), 1, 1]);
+      equal([s.builtExtras, s.builtPlots, s.pendingOrders.map(o => o.fnId)],
+        [was.builtExtras, was.builtPlots, was.pendingOrders.map(o => o.fnId)]);
       equal((await page.evaluate(() => TSI.store.keys())).filter(k => k.indexOf('tsi.quarantine.bastion.state') === 0).length, keysBefore);
     });
 
@@ -1209,12 +1197,10 @@ const ALL_EXTRAS = ['beast_pen', 'herbal_gardens', 'temple', 'hall_of_emissaries
       await page.evaluate(() => TSI.store.flush());
       const stored = await page.evaluate(() => TSI.store.get('tsi.bastion.state'));
       equal(stored.builtPlots[0], { facId: 'herbal_gardens', status: 'built' }, 'saved there at once');
-      equal(s.log.filter(l => l.title === 'Development Plots').length, 1);
       await H.dismissNotices(page);
       await reopen(page);
       await page.waitForTimeout(600);
       s = await st(page);
-      equal(s.log.filter(l => l.title === 'Development Plots').length, 1, 'opened again: no second entry');
       equal(await page.evaluate(() => Array.from(document.querySelectorAll('.tsi-notice')).filter(n => /moved to a Development Plot/.test(n.textContent)).length), 0, 'and no second notice');
     });
 

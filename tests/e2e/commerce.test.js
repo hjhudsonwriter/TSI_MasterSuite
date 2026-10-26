@@ -190,7 +190,6 @@ async function closePanel(ba) {
     assert(!/Register Port Charter[^.]*needs your roll/.test(w.exWord));
     const s = await bas(ba);
     equal([s.day, s.tradeNetwork.portCharters[0].status, s.tradeNetwork.portCharters[0].registeredDay], [4, 'registered', 4]);
-    assert(/The Port Charter for Goldport \(Clan Molten\) is registered/.test(s.log.map(l => l.body).join(' ')));
     equal(qty(s, 'sawn_lumber'), 3, 'nothing went into the Warehouse');
   });
 
@@ -333,7 +332,6 @@ async function closePanel(ba) {
       [before.treasuryGP, before.tradeNetwork.cargoSales.length, 1, 5], 'nothing sold or paid; the standing shipment is still set up');
     assert(new RegExp('Recalled on the way to Goldport, bringing its cargo home: back Day ' + (s.day + 2)).test(await bare(ba, '[data-test=voyage]')), await bare(ba, '[data-test=voyage]'));
     equal(await ba.$('[data-test=recall-ship]'), null, 'it can\'t be recalled twice');
-    assert(/was recalled and turned for home; nothing was sold/.test(s.log.map(l => l.body).join(' ')));
     await closePanel(ba);
   });
 

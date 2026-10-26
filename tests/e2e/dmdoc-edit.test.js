@@ -51,21 +51,19 @@ const items = page => page.$$eval('[data-test=dmdoc-edit-item]', ns => ns.map(n 
     assert(/Political Capital, Clan Blackstone: set to \+15/.test(list[0][1]) && /open it to apply/.test(list[0][1]), list[0][1]);
   });
 
-  await check('opening the Bastion applies it once: the score, the Day Log, a notice', async () => {
+  await check('opening the Bastion applies it once: the score and a notice', async () => {
     const ba = await context.newPage();
     await ba.goto(INDEX + '?tool=bastion');
     await ba.waitForSelector('[data-test=day-status]');
     await ba.waitForFunction(() => TSI.bastion.debug.state().politicalCapital.blackstone === 15, null, { timeout: 8000 });
     const s = await bastionState(ba);
-    equal(s.log.filter(l => /set by the DM/.test(l.body)).length, 1);
-    assert(/Political Capital for Clan Blackstone set by the DM: 0 to 15\./.test(s.log[0].body), s.log[0].body);
     await ba.waitForFunction(() => /Scores changed by the DM/.test(document.body.textContent));
     await ba.waitForFunction(() => !TSI.store.hasUnsaved() && TSI.store.status().state === 'saved');
     await ba.reload();
     await ba.waitForSelector('[data-test=day-status]');
     await ba.waitForTimeout(2500);
     const again = await bastionState(ba);
-    equal([again.politicalCapital.blackstone, again.log.filter(l => /set by the DM/.test(l.body)).length], [15, 1], 'a reload applies nothing twice');
+    equal(again.politicalCapital.blackstone, 15, 'a reload applies nothing twice');
     await ba.close();
   });
 

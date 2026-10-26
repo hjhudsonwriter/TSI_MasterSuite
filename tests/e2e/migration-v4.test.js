@@ -206,8 +206,8 @@ const writeLog = page => page.evaluate(() => window.__writes.slice());
       equal(await page.isVisible('[data-test=changes-box]'), true, 'the box is still there');
     });
 
-    await check('"Save the old Day Log as a text file" (S10) downloads the newest 25 entries of the live save\'s log', async () => {
-      const live = await page.evaluate(() => TSI.bastion.debug.state().log.length);
+    await check('"Save the old Day Log as a text file" (S10) downloads the newest 25 entries of the old log kept in the live save', async () => {
+      const live = await page.evaluate(() => TSI.bastion.debug.state().legacyLog.length);
       assert(live > 25, 'the old save had a long log: ' + live);
       const d = await H.download(page, '[data-test=changes-save-log]');
       assert(/^bastion-old-day-log-day-40\.txt$/.test(d.name), d.name);

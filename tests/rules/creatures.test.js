@@ -223,7 +223,6 @@
     t.same(b.creatures, [{ id: 'cr-grantx-0a0b0c0d-dm-0', species: 'griffin', owner: '', name: 'Swiftwing', status: 'waiting', home: '', grantedDay: 5, housedDay: null, msgId: m.id }]);
     t.equal(BR.creatureIdFor(m.id), 'cr-grantx-0a0b0c0d-dm-0');
     t.same(b.bridge.done[m.id], { r: 'applied', day: 10, at: 1000, clan: '', hr: 0, was: 0, now: 0, text: m.text, why: '', type: 'creature', species: 'griffin', name: 'Swiftwing', creatureId: 'cr-grantx-0a0b0c0d-dm-0', held: false });
-    t.equal(b.log[0].body, 'Creature granted (DM, Day 5): a griffin (Swiftwing), waiting for a home at the Beast Pen. Griffin for the Ironbow (Swiftwing).');
     t.same(b.honourRespectByClan, hr, 'never Honour/Respect');
     t.equal(BR.applyInbox(b, bdata, exWith([m]), 2000).changed, false, 'a second look changes nothing');
     t.equal(Bg.statusOf(m, copy(BR.toSave(b))).line, 'Applied on Day 10: the Bastion holds the griffin (Swiftwing); house it at the Beast Pen.');
@@ -263,7 +262,6 @@
     delete b.bridge.done[m.id];
     var r = BR.applyInbox(b, bdata, exWith([m]), 2000);
     t.same([r.creatures, b.creatures.length, b.bridge.done[m.id].held], [[], 1, true]);
-    t.equal(b.log[0].body, 'Creature granted (DM, Day 5): the Bastion already holds a griffin (Swiftwing), so nothing changed. Griffin for the Ironbow (Swiftwing).');
     t.equal(Bg.statusOf(m, copy(BR.toSave(b))).line, 'Applied on Day 10: the Bastion already held the griffin (Swiftwing), so nothing changed.');
   });
 
@@ -300,10 +298,6 @@
     var m = grantMsg();
     var r = BR.applyInbox(b, bdata, exWith([m, standingMsg(), grantMsg({ id: gid(2), species: 'dire_wolf' })]), 1000);
     t.equal(r.skipped, 3);
-    t.same(b.log.map(function (l) { return l.body; }), [
-      '2 creature grants, sent before this Bastion started, were skipped, so nothing counts twice. Grant them again in the Explorer if they should count.',
-      '1 change to Honour/Respect, sent before this Bastion started, was skipped, so nothing counts twice. Use Change a score in the DM doc if it should count.'
-    ]);
     t.same([b.bridge.done[m.id].r, b.bridge.done[m.id].type, b.bridge.done[m.id].species, b.bridge.done[m.id].name], ['skipped', 'creature', 'griffin', 'Swiftwing']);
     t.same(b.creatures, []);
     t.equal(Bg.statusOf(m, copy(BR.toSave(b))).line, 'Skipped: sent before this Bastion started. Grant it again if it should count.');
@@ -311,7 +305,6 @@
     var one = BR.defaultState(bdata);
     BR.anchor(one, 12);
     BR.applyInbox(one, bdata, exWith([m]), 1000);
-    t.same(one.log.map(function (l) { return l.body; }), ['1 creature grant, sent before this Bastion started, was skipped, so nothing counts twice. Grant it again in the Explorer if it should count.']);
   });
 
   test('a damaged grant is refused, with its receipt, and nothing is held', function (t) {

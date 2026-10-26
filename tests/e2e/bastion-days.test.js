@@ -141,8 +141,7 @@ async function closeWord(ba) {
     const s = await bas(ba);
     equal(s.pendingOrders.length, 0);
     equal(berths(s), 1, 'one chartered vessel in the Warehouse, counted once');
-    assert(s.log.some(l => l.day === 8 && /Charter Berth/.test(l.title + ' ' + l.body)), 'the Day Log has it');
-    equal(await ba.$('[data-test=open-log]'), null, 'there is no Day Log panel to look in: the word pop-up above is where it was said');
+    equal(await ba.$('[data-test=open-log]'), null, 'there is no log panel: the word pop-up above is where it was said');
   });
 
   await check('a day with nothing to report brings no word in either window', async () => {
@@ -185,7 +184,6 @@ async function closeWord(ba) {
     await ba.waitForTimeout(2500);
     const s = await bas(ba);
     equal(s.day, 9);
-    assert(!s.log.some(l => /went back/.test(l.body)), 'no false Reset Travel in the Day Log');
   });
 
   /* ------------------------------------------------------------------ */

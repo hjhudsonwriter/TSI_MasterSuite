@@ -50,15 +50,8 @@
     var pad = function (n) { return String(n).padStart(2, '0'); };
     return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
   };
-  /* Each log entry is stamped with the day it happened on. */
-  R.log = function (state, title, body, now) {
-    state.log.unshift({ title: title, body: body, at: now === undefined ? Date.now() : now, day: typeof state.day === 'number' ? state.day : null });
-  };
-  /* The old Day Log as plain text for the conversion box's "Save the old Day Log as a text file" (S10): the newest
-     `max` entries (25 if not said), newest first. '' when there is nothing to save. The panel is gone; this is the
-     only way to read the history. */
   R.oldLogText = function (s, max) {
-    var list = isObj(s) && Array.isArray(s.log) ? s.log.filter(isObj) : [];
+    var list = isObj(s) && Array.isArray(s.legacyLog) ? s.legacyLog.filter(isObj) : [];
     var n = typeof max === 'number' && max > 0 ? Math.floor(max) : 25;
     var shown = list.slice(0, n);
     if (!shown.length) return '';
@@ -175,7 +168,6 @@
       v: 4,
       day: 1,
       anchored: false,
-      log: [],
       /* The party's own name (Harry, 22 October 2026): optional, at most
          R.PARTY_NAME_MAX letters, shown above the crest. The party can no
          longer found a Clan, so the old organization, clanHonor and
@@ -345,10 +337,6 @@
     s.archivedFacilities = archived;
     s.v = 3;
     s.migration = { v3: { day: day, lines: lines, shown: !lines.length } };
-    if (lines.length) {
-      if (!arr(s.log)) s.log = [];
-      s.log.unshift({ title: 'Facilities', body: 'The facilities overhaul (13 October 2026): ' + lines.join(' '), at: Date.now(), day: day });
-    }
     return { save: s, lines: lines };
   };
 
@@ -403,7 +391,9 @@
     }
     if (isObj(s.diplomacy) && typeof s.diplomacy.tokens === 'number') d.diplomacy = { tokens: clampInt(s.diplomacy.tokens, 0, 999) };
     d.legacyDiplomacy = R.cleanLegacyDiplomacy(s.legacyDiplomacy);
-    if (arr(s.log)) d.log = s.log.filter(isObj);
+    /* An old Day Log is kept as it was (S18) for the text-file button; nothing writes to it. */
+    if (arr(s.legacyLog) && s.legacyLog.length) d.legacyLog = s.legacyLog.filter(isObj);
+    else if (arr(s.log) && s.log.length) d.legacyLog = s.log.filter(isObj);
     /* The Party Name (a founded Clan's name was made into one by the
        conversion; organization, clanHonor and trustedClientsByClan are not
        loaded any more). */
@@ -498,7 +488,6 @@
         rec.now = c.value;
         var unit = e.kind === 'favour' ? '%' : '';
         var line = D.EDIT_KINDS[e.kind].label + ' for ' + D.keyName(e.kind, e.key) + ' set by the DM: ' + rec.was + unit + ' to ' + c.value + unit + '.';
-        R.log(s, 'DM doc', line, at);
         out.lines.push(line);
       }
       s.dmEdits.done[e.id] = rec;
@@ -944,30 +933,12 @@
       if (pickups) skipSaid(pickups, (pickups === 1 ? 'parcel pickup' : 'parcel pickups') + ', collected before this Bastion started,', 'The items stay in the Travel bags.');
       if (grants) skipSaid(grants, (grants === 1 ? 'creature grant' : 'creature grants') + ', sent before this Bastion started,', grants === 1 ? 'Grant it again in the Explorer if it should count.' : 'Grant them again in the Explorer if they should count.');
       if (rites) skipSaid(rites, (rites === 1 ? 'Great Rite handover' : 'Great Rite handovers') + ', sent before this Bastion started,');
-      if (newer) {
-        R.log(s, 'From the Explorer', newer + (newer === 1 ? ' message' : ' messages') + ' from a newer copy of the suite, sent before this Bastion started, ' + (newer === 1 ? 'was' : 'were') + ' skipped, so nothing counts twice.', at);
-      }
-      if (standing) {
-        R.log(s, 'From the Explorer', standing + (standing === 1 ? ' change' : ' changes') + ' to Honour/Respect, sent before this Bastion started, ' + (standing === 1 ? 'was' : 'were') + ' skipped, so nothing counts twice. Use Change a score in the DM doc if ' + (standing === 1 ? 'it' : 'they') + ' should count.', at);
-      }
-      if (charters) {
-        R.log(s, 'From the Explorer', charters + (charters === 1 ? ' Port Charter' : ' Port Charters') + ', sent before this Bastion started, ' + (charters === 1 ? 'was' : 'were') + ' skipped, so nothing counts twice. ' + (charters === 1 ? 'Grant it again in the Explorer if it should count.' : 'Grant them again in the Explorer if they should count.'), at);
-      }
       /* A Bastion starting from nothing has no parcels, so a pickup sent
          before it changes nothing here: the items stay in the Travel bags. */
-      if (pickups) {
-        R.log(s, 'From the Explorer', pickups + (pickups === 1 ? ' parcel pickup' : ' parcel pickups') + ', collected before this Bastion started, ' + (pickups === 1 ? 'was' : 'were') + ' skipped, so nothing counts twice. The items stay in the Travel bags.', at);
-      }
       /* Griffins and dire wolves granted before this Bastion started (pull
          request 7): none is held, so none can count twice. */
-      if (grants) {
-        R.log(s, 'From the Explorer', grants + (grants === 1 ? ' creature grant' : ' creature grants') + ', sent before this Bastion started, ' + (grants === 1 ? 'was' : 'were') + ' skipped, so nothing counts twice. ' + (grants === 1 ? 'Grant it again in the Explorer if it should count.' : 'Grant them again in the Explorer if they should count.'), at);
-      }
       /* A Great Rite given to the party before this Bastion started (pull
          request 8b): the Bastion holds none, so nothing counts twice. */
-      if (rites) {
-        R.log(s, 'From the Explorer', rites + (rites === 1 ? ' Great Rite handover' : ' Great Rite handovers') + ', sent before this Bastion started, ' + (rites === 1 ? 'was' : 'were') + ' skipped, so nothing counts twice.', at);
-      }
       return out;
     }
     B.pending(explorerSave, done, day).forEach(function (m) {
@@ -985,7 +956,6 @@
         var cline = 'Port Charter for ' + where + ' (' + fromText(m) + '): ' + (got.added
           ? 'the Bastion now holds it. Register it at the Dock' + regLevel + ' before the Dock ships cargo there.'
           : 'the Bastion already holds it, so nothing changed.');
-        R.log(s, 'From the Explorer', cline + (m.text ? ' ' + txt(m.text, 200) : ''), at);
         R.addWord(s, 'From the Explorer: Port Charter for ' + where + (got.added ? '.' : ' (already held).'));
         out.charters.push(cline);
         return;
@@ -1000,11 +970,9 @@
         if (pr.r === 'refused') {
           out.refused += 1;
           out.refusals.push('A parcel pickup from the Explorer (' + fromText(m) + ') couldn\'t be used, so nothing changed: ' + pr.why);
-          R.log(s, 'From the Explorer', 'A parcel pickup from the Explorer (' + fromText(m) + ') couldn\'t be used, so nothing changed: ' + pr.why, at);
           R.addWord(s, 'From the Explorer: a parcel pickup (' + fromText(m) + ') couldn\'t be used, so nothing changed: ' + pr.why);
           return;
         }
-        R.log(s, 'From the Explorer', pr.line, at);
         if (!pr.held) {
           R.addWord(s, 'From the Explorer: ' + pr.word);
           out.parcels.push(pr.notice);
@@ -1018,7 +986,6 @@
         if (!R.addCreatureGrant) return;
         var cg = R.addCreatureGrant(s, data, m, day);
         receipt(m, 'applied', creatureExtra(m, cg));
-        R.log(s, 'From the Explorer', R.creatureGrantLine(s, data, cg, fromText(m)) + (m.text ? ' ' + txt(m.text, 200) : ''), at);
         if (cg.added) {
           var notice = R.creatureGrantNotice(s, data, cg.creature);
           R.addWord(s, notice);
@@ -1034,11 +1001,9 @@
         if (rr.r === 'refused') {
           out.refused += 1;
           out.refusals.push('A Great Rite handover from the Explorer (' + fromText(m) + ') couldn\'t be used, so nothing changed: ' + rr.why);
-          R.log(s, 'From the Explorer', 'A Great Rite handover from the Explorer (' + fromText(m) + ') couldn\'t be used, so nothing changed: ' + rr.why, at);
           R.addWord(s, 'From the Explorer: a Great Rite handover (' + fromText(m) + ') couldn\'t be used, so nothing changed: ' + rr.why);
           return;
         }
-        R.log(s, 'From the Explorer', R.RITE_NAMES[rr.rite] + (rr.held ? ' was already marked as with the party, so nothing changed' : ' went with the party (' + fromText(m) + ')') + '.', at);
         if (!rr.held) R.addWord(s, 'From the Explorer: ' + R.RITE_NAMES[rr.rite] + ' went with the party.');
         return;
       }
@@ -1048,14 +1013,12 @@
         receipt(m, 'refused', Object.assign(charterExtra(m), { why: why }));
         out.refused += 1;
         out.refusals.push('A change from the Explorer (' + fromText(m) + ') couldn\'t be used, so nothing changed: ' + why);
-        R.log(s, 'From the Explorer', 'A change from the Explorer couldn\'t be used, so nothing changed: ' + why + (m.text ? ' (' + txt(m.text, 200) + ')' : ''), at);
         R.addWord(s, 'From the Explorer: a change (' + fromText(m) + ') couldn\'t be used, so nothing changed: ' + why);
         return;
       }
       receipt(m, 'applied', { hr: res.delta, was: res.was, now: res.now });
       var line = 'Honour/Respect ' + signedNum(m.hr) + ' with ' + clanLabel(data, m.clan) + ' (' + fromText(m) + ')' +
         (res.delta ? ': ' + signedNum(res.was) + ' → ' + signedNum(res.now) + '.' : ': already at ' + signedNum(res.now) + ', so it stays there.');
-      R.log(s, 'From the Explorer', line + (m.text ? ' ' + txt(m.text, 200) : ''), at);
       R.addWord(s, 'From the Explorer: ' + line);
       out.applied.push(line);
     });
@@ -1232,7 +1195,7 @@
     var marks = ['treasuryGP', 'partyLevel', 'day', 'builtExtras', 'pendingOrders', 'warehouse'];
     var found = marks.filter(function (k) { return k in s; }).length;
     if (found < 4) return 'It doesn\'t look like a Bastion save.';
-    var lists = ['builtExtras', 'builtPlots', 'pendingOrders', 'warehouse', 'log', 'creatures', 'greatRites'];
+    var lists = ['builtExtras', 'builtPlots', 'pendingOrders', 'warehouse', 'log', 'legacyLog', 'creatures', 'greatRites'];
     for (var i = 0; i < lists.length; i++) {
       if (lists[i] in s && !Array.isArray(s[lists[i]])) return 'Its ' + lists[i] + ' list is damaged.';
     }
@@ -2276,7 +2239,6 @@
     var line = 'Handed to the party: ' + n + ' \u00d7 ' + name + (who ? ' (to ' + who + ')' : '') + ' on ' + R.dayLabel(state.day) + '. ' +
       (row.qty > 0 ? row.qty + ' left in the Warehouse. ' : 'None left in the Warehouse. ') +
       'The DM records it on the character\'s D&D sheet: this tool doesn\'t.';
-    R.log(state, 'Warehouse', line, now);
     return { ok: true, line: line, left: Math.max(0, row.qty) };
   };
 
@@ -2640,7 +2602,6 @@
     R.completeConstruction(s).forEach(function (id) {
       var fac = R.facility(data, id);
       var name = fac ? fac.name : id;
-      R.log(s, 'Construction Complete', name + ' is now built and active.', now);
       R.addWord(s, 'The ' + name + ' is built.');
     });
     /* The Beast Pen (22 October 2026): each beast out on the road with its handler earns one Bonding Day for this day,

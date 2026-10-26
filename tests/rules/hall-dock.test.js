@@ -291,7 +291,7 @@
     b.day = 10;
     b.treasuryGP = 100;
     R.startDay(b, data, 0);
-    t.same([b.day, b.treasuryGP, b.log.length, b.dayInProgress.stage], [11, 100, 0, 'trade']);
+    t.same([b.day, b.treasuryGP, b.dayInProgress.stage], [11, 100, 'trade']);
     R.finishRoutes(b);
     t.equal(b.dayInProgress.stage, 'orders');
   });

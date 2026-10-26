@@ -134,7 +134,6 @@ async function fillRecord(page, f) {
     await page.waitForTimeout(500);
     const s = await bas(page);
     equal([s.honourRespectByClan.karr, s.diplomaticRecords.list[0].status, s.diplomaticRecords.list[0].consequences.map(c => c.status)], [-1, 'confirmed', ['active', 'applied']]);
-    equal(s.log.filter(l => l.title === 'Diplomatic Records').length, 1);
   });
 
   await check('Clan Relations now shows Karr at −1 with the restriction running to its last day', async () => {

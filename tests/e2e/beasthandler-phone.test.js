@@ -83,12 +83,11 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
   });
 
   let pairingCode, snapCode;
-  await check('the DM makes a pairing code for Mira in the Management box; the secret is not in the Day Log', async () => {
+  await check('the DM makes a pairing code for Mira in the Management box', async () => {
     pairingCode = await dmCode('beast-pair-mira', 'beast-pair-dialog');
     assert(/^BHP1\.[A-Za-z0-9_-]+$/.test(pairingCode), pairingCode.slice(0, 20));
     const s = await state();
     assert(s.beast.handlers.length === 1 && s.beast.handlers[0].secret.length === 24);
-    assert(JSON.stringify(s.log).indexOf(s.beast.handlers[0].secret) === -1);
   });
 
   await check('a wrong code is refused in plain words; the right one links the phone', async () => {

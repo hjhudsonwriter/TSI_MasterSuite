@@ -313,7 +313,6 @@
       }
     });
     note(r, s.day, 'Confirmed.' + (lines.length ? ' ' + lines.join('; ') : ''));
-    R.log(s, 'Diplomatic Records', r.title + ' was confirmed' + (lines.length ? ': ' + lines.join('; ') + '.' : '.'), now);
     return { ok: true, lines: lines };
   };
   R.dismissDipRecord = function (s, id, now) {
@@ -322,7 +321,6 @@
     if (r.status !== 'draft') return { ok: false, message: r.status === 'confirmed' ? 'A confirmed record can\'t be dismissed.' : 'That record is already dismissed.' };
     r.status = 'dismissed';
     note(r, s.day, 'Dismissed: nothing was applied.');
-    R.log(s, 'Diplomatic Records', r.title + ' was dismissed: nothing was applied.', now);
     return { ok: true };
   };
   /* A note on any record, whatever its state. It changes nothing else. */
@@ -358,7 +356,6 @@
     c.endedDay = s.day;
     var line = k.label + (c.clan ? ' (' + clanName(data, c.clan) + ')' : '') + ': ' + (c.text || '') + ' ended early.';
     note(r, s.day, line);
-    R.log(s, 'Diplomatic Records', r.title + ': ' + line, now);
     return { ok: true, line: line };
   };
 

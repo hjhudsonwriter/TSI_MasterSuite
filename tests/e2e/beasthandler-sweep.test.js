@@ -31,8 +31,6 @@ const bare = (page, sel) => page.$eval(sel, n => n.textContent.replace(/\s+/g, '
 const beast = (s, id) => s.creatures.filter(c => c.id === id)[0];
 /* The same value with every object's keys in order (a save and a load can reorder keys; the content is what is compared). */
 const canon = v => JSON.stringify(v, (k, x) => (x && typeof x === 'object' && !Array.isArray(x) ? Object.keys(x).sort().reduce((o, key) => { o[key] = x[key]; return o; }, {}) : x));
-/* The Day Log lines the first meeting wrote for one beast. */
-const metLines = (s, name) => s.log.filter(l => l.title === 'Beast Handler' && l.body.indexOf(name + ': first meeting prepared.') === 0).length;
 
 async function newContext(browser) {
   const ctx = await H.newContext(browser, 'laptop', { acceptDownloads: true, backedUp: true });
@@ -114,7 +112,7 @@ function setUpBeasts(ba) {
       equal(beast(s, 'cr-a').development.regional, undefined, 'no subspecies yet');
     });
 
-    await check('opening the Bastion introduces the Bond 1 beast with no subspecies: a subspecies, three personality lines, the die numbers, one change note, one Day Log line', async () => {
+    await check('opening the Bastion introduces the Bond 1 beast with no subspecies: a subspecies, three personality lines, the die numbers, one change note', async () => {
       await ba.reload();
       await ba.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().anchored, null, { timeout: 8000 });
       const s = await bas(ba);
@@ -123,7 +121,6 @@ function setUpBeasts(ba) {
       equal(a.initiation.rolls, { dominant: 12, attachment: 8, trigger: 8 }, 'every die comes up the same in this test');
       assert(a.temperament.dominant && a.temperament.attachment && a.temperament.trigger, 'the three lines are written');
       equal(a.profileLog.length, 1, 'one change note');
-      equal(metLines(s, 'Stormwing'), 1, 'one Day Log line');
       frozen = canon(a);
     });
 
@@ -133,17 +130,15 @@ function setUpBeasts(ba) {
       equal([!!b.initiation, b.regional, b.profileLog || []], [false, undefined, []]);
       const c = beast(s, 'cr-c').development;
       equal([!!c.initiation, c.regional, c.profileLog || []], [false, 'Icepelt', []]);
-      equal(metLines(s, 'Swiftwing') + metLines(s, 'Ashfang'), 0);
     });
 
-    await check('opening it again, three times, rolls nothing more: the same numbers, the same lines, one note, one Day Log line', async () => {
+    await check('opening it again, three times, rolls nothing more: the same numbers, the same lines, one note', async () => {
       for (let i = 0; i < 3; i++) {
         await ba.reload();
         await ba.waitForFunction(() => TSI.bastion && TSI.bastion.debug && TSI.bastion.debug.state().anchored, null, { timeout: 8000 });
         await ba.waitForTimeout(2300);   /* longer than the Bastion's own two-second look */
         const s = await bas(ba);
         equal(canon(beast(s, 'cr-a').development), frozen, 'open number ' + (i + 2));
-        equal(metLines(s, 'Stormwing'), 1);
       }
     });
     await ctx.close();
@@ -168,7 +163,6 @@ function setUpBeasts(ba) {
       await ba.waitForTimeout(2600);
       const d = await elara();
       equal([!!d.initiation, d.regional || null], [false, null]);
-      equal(metLines(await bas(ba), 'Elara\'s wyvern'), 0);
       equal(!!(await stored()).initiation, false, 'and nothing is saved either');
     });
 
@@ -197,7 +191,6 @@ function setUpBeasts(ba) {
       const d = beast(s, 'elara_wyvern').development;
       equal([d.initiation.regional, d.regional], ['bloodcrest', 'Bloodcrest']);
       equal(d.profileLog.length, 1);
-      equal(metLines(s, 'Elara\'s wyvern'), 1, 'one Day Log line');
       equal(beast(s, 'cr-hv-griffin-swiftwing').development.regional, 'Highland');
       equal(beast(s, 'cr-hv-wolf-ashfang').development.regional, 'Northern Moor');
       equal([!!beast(s, 'cr-hv-griffin-swiftwing').development.initiation, !!beast(s, 'cr-hv-wolf-ashfang').development.initiation], [false, false]);
@@ -215,7 +208,6 @@ function setUpBeasts(ba) {
         equal(await ba.$('[data-test=changes-box]'), null, 'the read report does not come back');
         const s = await bas(ba);
         equal(canon(beast(s, 'elara_wyvern').development), frozen);
-        equal(metLines(s, 'Elara\'s wyvern'), 1);
       }
     });
     await ctx.close();
@@ -241,7 +233,6 @@ function setUpBeasts(ba) {
       const s = await bas(ba);
       day0 = s.day;
       equal([!!beast(s, 'cr-b').development.initiation, beast(s, 'cr-b').development.regional], [false, undefined]);
-      equal(metLines(s, 'Swiftwing'), 0);
     });
 
     let frozen = null;
@@ -255,7 +246,6 @@ function setUpBeasts(ba) {
       const d = beast(s, 'cr-b').development;
       equal([d.initiation && d.initiation.regional, d.regional], ['dawnmantle', 'Dawnmantle'], 'a griffin meets as a Dawnmantle');
       equal(d.profileLog.length, 1);
-      equal(metLines(s, 'Swiftwing'), 1);
       equal(s.day, day0 + 1, 'and the day did pass');
       frozen = canon(d);
     });
@@ -268,7 +258,6 @@ function setUpBeasts(ba) {
       const s = await bas(ba);
       equal(canon(beast(s, 'cr-b').development.initiation), canon(JSON.parse(frozen).initiation));
       equal(canon(s.creatures.map(c => [c.id, c.development && c.development.initiation, c.development && c.development.regional])), before);
-      equal(metLines(s, 'Swiftwing'), 1);
       equal(beast(s, 'cr-b').development.profileLog.length, 1);
     });
     await ctx.close();

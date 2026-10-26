@@ -168,16 +168,13 @@
     t.same(Object.keys(BR.cleanBeast(null)).sort(), ['campaignId', 'handlers'], 'the shape older saves have is unchanged');
   });
 
-  test('showing a QR code makes the pairing once and never changes it afterwards; the link holds the secret and the secret is never in the Day Log or a snapshot', function (t) {
+  test('showing a QR code makes the pairing once and never changes it afterwards; the link holds the secret and the secret is never in a snapshot', function (t) {
     var b = world();
-    var logBefore = b.log.length;
     t.equal(BR.beastLink(b, bdata, 'mira').ok, false, 'nothing to show before a pairing');
     var made = BR.beastEnsurePaired(b, bdata, ' Mira ');
     t.same([made.ok, made.made, made.handler, made.name], [true, true, 'mira', 'Mira']);
     var secret = BR.beastSecret(b, 'mira');
     t.ok(/^[A-Za-z0-9]{24}$/.test(secret));
-    var logAfterPair = b.log.length;
-    t.equal(logAfterPair, logBefore + 1, 'one Day Log line for the new pairing');
     var res = BR.beastLink(b, bdata, 'mira');
     t.equal(res.ok, true);
     t.equal(res.link.indexOf(L.DEFAULT_PHONE_URL + '#L1.' + BR.beastCampaignId(b) + '.' + secret + '.'), 0);
@@ -186,8 +183,6 @@
     t.same([again.ok, again.made], [true, false]);
     t.equal(BR.beastSecret(b, 'mira'), secret, 'showing it again does not change the secret');
     t.equal(BR.beastLink(b, bdata, 'mira').link, link1);
-    t.equal(b.log.length, logAfterPair, 'showing the QR code writes nothing to the Day Log');
-    t.equal(JSON.stringify(b.log).indexOf(secret), -1, 'the secret is not in the Day Log');
     var snap = BR.beastSnapshotCode(b, bdata, 'mira');
     t.equal(JSON.stringify(snap.snapshot).indexOf(secret), -1, 'nor in the snapshot');
     t.equal(snap.code.indexOf(secret), -1, 'nor in the snapshot code');

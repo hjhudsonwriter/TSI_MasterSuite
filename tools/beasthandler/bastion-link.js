@@ -127,14 +127,12 @@
     var e = entryFor(s, nm, true, known ? known.name : nm);
     if (!e) return { ok: false, message: 'There are too many handlers already.' };
     e.secret = H.randomId(24);
-    R.log(s, 'Beast Handler', 'A pairing code was made for ' + e.name + '. Any older code for them no longer works.');
     return { ok: true, handler: e.id, name: e.name, pairing: { campaign: R.beastState(s).campaignId, handler: e.id, name: e.name, secret: e.secret } };
   };
   R.beastRevoke = function (s, id) {
     var e = entryFor(s, id, false);
     if (!e || !e.secret) return { ok: false, message: 'That handler has no code to take back.' };
     e.secret = '';
-    R.log(s, 'Beast Handler', 'The code for ' + e.name + ' was taken back. Snapshots made with it no longer open on their phone.');
     return { ok: true, name: e.name };
   };
 
@@ -156,7 +154,7 @@
   };
   /* The link a handler's phone is linked with, from the pairing they already have (it never makes a new secret, so showing
      the QR again changes nothing). { ok, link, name, handler } or { ok: false, message }. The link holds the secret: it
-     is for that handler's eyes only, so it is never written to the Day Log or a snapshot. */
+     is for that handler's eyes only, so it is never written into the save or a snapshot. */
   R.beastLink = function (s, data, handlerId) {
     var e = entryFor(s, handlerId, false);
     if (!e || !e.secret) return { ok: false, message: 'Make a pairing for this handler first.' };
@@ -182,7 +180,7 @@
 
   /* ---------- Applying a profile ---------- */
   /* Set a beast's profile lines (the player's or the DM's words). Keeps a note of what changed in
-     development.profileLog (and says so in the Day Log); the Chronicle is not touched, and nothing
+     development.profileLog; the Chronicle is not touched, and nothing
      about bond, stats, training or abilities moves. fields are already cleaned (Pf.check). */
   R.setProfile = function (s, data, id, clean, by) {
     var c = R.creatureById(s, id);
@@ -202,7 +200,6 @@
     if (d.profileLog.length > PROFILE_LOG_MAX) d.profileLog = d.profileLog.slice(d.profileLog.length - PROFILE_LOG_MAX);
     var name = R.creatureName(data, c);
     var parts = changed.map(function (f) { return Pf.LABELS[f] + ' ' + (before[f] ? '"' + before[f] + '"' : '(blank)') + ' → ' + (clean[f] ? '"' + clean[f] + '"' : '(blank)'); });
-    R.log(s, 'Beast Handler', name + '\'s profile was changed by ' + plain(by || 'the DM', 40) + ': ' + parts.join('; ') + '.');
     return { ok: true, changed: changed, name: name };
   };
 
@@ -220,7 +217,7 @@
      - Lines the DM has already written are kept; the roll fills blanks only. Its die number is the matching table
        row's roll, or 0 when the line matches none (then there is nothing to roll for on the phone).
      - It never touches a bond, a stat, an ability or the Chronicle: it writes the profile through R.setProfile
-       (which keeps the change note and the Day Log line) and says in the Day Log when the variety was staged. */
+       (which keeps the change note). */
   function initiationData() { return window.TSI_DATA && isObj(window.TSI_DATA.beastInitiation) ? window.TSI_DATA.beastInitiation : {}; }
   function profileTables() { return window.TSI_DATA && isObj(window.TSI_DATA.beastProfile) ? window.TSI_DATA.beastProfile : null; }
   /* The kind's variety table entry for an id or a name, or null. */
@@ -290,7 +287,6 @@
     var line = name + ': first meeting prepared. Regional Variety ' + picked.variety.name +
       (picked.mode === 'fixed' ? ' (staged: fixed until further notice)' : ' (rolled d' + picked.of + ' ' + picked.roll + ')') +
       (parts.length ? '; ' + parts.join('; ') : '') + '. The player\'s Beast Handler plays it as a reveal.';
-    R.log(s, 'Beast Handler', line);
     return { ok: true, initiated: true, regional: picked.variety.name, regionalId: picked.variety.id, rolls: rolls, changed: res.changed || [], lines: [line] };
   };
 

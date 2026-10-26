@@ -6,9 +6,8 @@
    - Dominant Temperament: one d12 table, the same for every kind of beast.
    - Attachment Cue and Instinctive Trigger: one d8 table each for the
      Wyvern, the Griffin, the Dire Wolf, the Buckbear and the Fellcat. The
-     Buckbear and Fellcat d8 tables are DRAFT (22 October 2026): Harry had
-     not written them yet, so they are marked `draft: true` for him to
-     approve or replace.
+     Buckbear and Fellcat d8 tables were a DRAFT (22 October 2026): Harry had
+     not written them yet, so they were marked `draft: true`; Harry approved them on 26 October 2026.
    - Regional Variety: every variety Harry has written for each kind (26 October 2026
      spec). Only those marked `rollable: true` can come up at a beast's first
      meeting (two or three for each kind); the rest are on record but nothing
@@ -171,11 +170,10 @@ window.TSI_DATA.beastProfile = {
 
     /* The Buckbear and the Fellcat joined the Beast Pen on 22 October 2026. The five
        varieties of each are Harry's words. The two d8 tables of each are a DRAFT
-       written for him to approve or replace (draft: true). */
+       written for him to approve or replace; he approved them on 26 October 2026. */
     buckbear: {
-      draft: true,
       attachment: {
-        dice: 8, draft: true,
+        dice: 8,
         entries: [
           { roll: 1, label: 'Low, contented huff' },
           { roll: 2, label: 'Lowers its antlers' },
@@ -188,7 +186,7 @@ window.TSI_DATA.beastProfile = {
         ]
       },
       trigger: {
-        dice: 8, draft: true,
+        dice: 8,
         entries: [
           { roll: 1, label: 'Unexpected restraint' },
           { roll: 2, label: 'Strangers near its food' },
@@ -210,9 +208,8 @@ window.TSI_DATA.beastProfile = {
     },
 
     fellcat: {
-      draft: true,
       attachment: {
-        dice: 8, draft: true,
+        dice: 8,
         entries: [
           { roll: 1, label: 'Slow, trusting blink' },
           { roll: 2, label: 'Low, rumbling purr' },
@@ -225,7 +222,7 @@ window.TSI_DATA.beastProfile = {
         ]
       },
       trigger: {
-        dice: 8, draft: true,
+        dice: 8,
         entries: [
           { roll: 1, label: 'Being grabbed from behind' },
           { roll: 2, label: 'Sudden bright light' },

@@ -305,7 +305,6 @@
     var p = BR.parcels(b)[0];
     t.same([p.status, p.collectedDay, p.collectId], ['collected', 12, m.id]);
     t.same(b.bridge.done[m.id], { r: 'applied', day: 12, at: 1000, clan: 'slade', hr: 0, was: 0, now: 0, text: m.text, why: '', type: 'parcel_collected', parcel: w.p.id, point: 'slades_muster', held: false });
-    t.equal(b.log[0].body, 'Parcel collected at Slade’s Muster (DM, Day 12): 3 Expedition Provision Packs. The parcel is closed.');
     t.same([b.honourRespectByClan, b.politicalCapital], [hr, pc], 'never Honour/Respect');
     t.equal(BR.applyInbox(b, bdata, exWith([m]), 2000).changed, false, 'a second look changes nothing');
     var back = reload(b);
@@ -371,7 +370,6 @@
     t.equal(Bg.check(m), '');
     BR.applyInbox(w.b, bdata, exWith([m]), 1000);
     t.same([BR.parcels(w.b)[0].status, w.b.bridge.done[m.id].point], ['collected', 'slades_muster']);
-    t.ok(/The Explorer named Bretan, but the parcel was sent to Slade’s Muster\./.test(w.b.log[0].body), w.b.log[0].body);
     var x = waiting();
     var odd = pickup(x.p, { point: 'atlantis', clan: 'ironbow', extra: 'kept by a newer copy' });
     t.equal(Bg.check(odd), '', 'town, Clan and other fields are only for showing');
@@ -403,7 +401,6 @@
     var r = BR.applyInbox(b, bdata, exWith([pickup(p, { day: 11 })], 11), 1000);
     t.equal(r.parcels.length, 1);
     t.same([p.status, p.collectedDay, p.arrivedDay], ['collected', 11, null]);
-    t.ok(/hadn't recorded its arrival yet/.test(b.log[0].body));
     b.day = 20;
     t.equal(BR.settleParcels(b, bdata).changed, false);
     t.same([p.status, qty(b, PACK)], ['collected', 3]);
@@ -438,17 +435,11 @@
     var m = pickup({ id: 'qqqqqq11111', point: 'slades_muster', goods: packs(3) });
     var r = BR.applyInbox(b, bdata, exWith([m, standingMsg(), charterMsg()]), 1000);
     t.equal(r.skipped, 3);
-    t.same(b.log.map(function (l) { return l.body; }), [
-      '1 parcel pickup, collected before this Bastion started, was skipped, so nothing counts twice. The items stay in the Travel bags.',
-      '1 Port Charter, sent before this Bastion started, was skipped, so nothing counts twice. Grant it again in the Explorer if it should count.',
-      '1 change to Honour/Respect, sent before this Bastion started, was skipped, so nothing counts twice. Use Change a score in the DM doc if it should count.'
-    ]);
     t.same([b.bridge.done[m.id].r, b.bridge.done[m.id].type, b.bridge.done[m.id].parcel], ['skipped', 'parcel_collected', 'qqqqqq11111']);
     t.equal(Bg.statusOf(m, copy(BR.toSave(b))).line, 'Skipped: collected before this Bastion started.');
     var two = BR.defaultState(bdata);
     BR.anchor(two, 12);
     BR.applyInbox(two, bdata, exWith([m, pickup({ id: 'qqqqqq22222', point: 'goldport', goods: [] })]), 1000);
-    t.same(two.log.map(function (l) { return l.body; }), ['2 parcel pickups, collected before this Bastion started, were skipped, so nothing counts twice. The items stay in the Travel bags.']);
   });
 
   /* ---------------------------------------------------------------- */

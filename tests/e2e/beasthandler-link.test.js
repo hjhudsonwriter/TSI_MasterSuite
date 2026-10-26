@@ -6,7 +6,7 @@
    Checks:
    1. The DM's box (Bastion): Show QR per handler, the phone page address, "Online link: off (not set up)", the Offline
       backup (shut), the QR code itself (read back from the picture with an independent reader: it holds exactly the
-      expected address), nothing in the Day Log, the layout at 390 px, 1707 x 930 (ratio 1.5) and 1920 x 1080 (ratio 1).
+      expected address), nothing written into the save, the layout at 390 px, 1707 x 930 (ratio 1.5) and 1920 x 1080 (ratio 1).
    2. The phone page: opened from a link it links itself and removes the # part from the address bar; it keeps the link
       after a reload; a damaged link gives a friendly message; a different link asks first; the Offline backup (codes)
       still works; Copy my link; no DM tool or QR maker is loaded; it fits a phone.
@@ -175,7 +175,7 @@ const newDb = () => ({ docs: {}, log: [], stray: [] });
   });
 
   let miraLink;
-  await check('Show QR to Mira makes her pairing once, says to show it only to her, and gives the plain link with the iPhone Home Screen tip; the Day Log never holds the secret', async () => {
+  await check('Show QR to Mira makes her pairing once, says to show it only to her, and gives the plain link with the iPhone Home Screen tip; the save never holds the secret anywhere but the pairing', async () => {
     equal((await state()).beast.handlers.length, 0, 'no pairing yet');
     miraLink = await showQr('Mira');
     const s = await state();
@@ -188,7 +188,6 @@ const newDb = () => ({ docs: {}, log: [], stray: [] });
     assert(/Take back code/.test(text), 'and what to do if it gets out');
     equal(await ba.$eval('[data-test=beast-qr] svg', n => n.getAttribute('role')), 'img');
     equal(await ba.$$eval('[data-test=beast-qr-dialog] canvas', n => n.length), 0, 'drawn as a picture, not on a canvas');
-    assert(JSON.stringify(s.log).indexOf(mira.secret) === -1, 'the secret is not in the Day Log');
   });
 
   await check('the QR picture, read back by an independent reader, holds exactly that link', async () => {
@@ -199,7 +198,7 @@ const newDb = () => ({ docs: {}, log: [], stray: [] });
     await H.shot(ba, 'beasthandler-link-qr');
   });
 
-  await check('Copy link copies the address; showing the QR again changes nothing and writes nothing to the Day Log', async () => {
+  await check('Copy link copies the address; showing the QR again changes nothing', async () => {
     await ba.click('[data-test=beast-qr-copy]');
     await ba.waitForTimeout(250);
     equal(await ba.evaluate(() => window.__copied), [miraLink]);
@@ -210,7 +209,6 @@ const newDb = () => ({ docs: {}, log: [], stray: [] });
     await closeDialog();
     const after = await state();
     equal(after.beast.handlers[0].secret, before.beast.handlers[0].secret, 'the secret did not change');
-    equal(after.log.length, before.log.length, 'nothing written to the Day Log');
   });
 
   await check('the QR link opened as a file URL is the address of the phone page plus the # part: it never carries a ? part (which a server would see)', async () => {
