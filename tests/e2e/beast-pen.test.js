@@ -26,7 +26,6 @@ const bare = (page, sel) => page.$eval(sel, n => n.textContent.replace(/\s+/g, '
 const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.debug.state())));
 const exDay = page => page.evaluate(() => TSI.explorer.debug.state().travel.day);
 const lastModal = page => page.$$eval('.tsi-modal', ms => ms[ms.length - 1].textContent.replace(/\s+/g, ' ').trim());
-const logText = s => s.log.map(l => l.body).join(' | ');
 const beast = (s, id) => s.creatures.filter(c => c.id === id)[0];
 
 async function context(browser, size) {
@@ -251,7 +250,6 @@ const STORM = 'cr-storm';
     await ba.waitForTimeout(300);
     const after = await bas(ba);
     equal(beast(after, SWIFT).development, beast(before, SWIFT).development, 'Cancel changes nothing');
-    equal(after.log.length, before.log.length);
   });
 
   await check('a total of 19 fails: Swiftwing stays at Bond 0 and can\'t try again until Day 4 (the roll was on Day 1); the DM-only Chronicle has the failure', async () => {
@@ -261,7 +259,6 @@ const STORM = 'cr-storm';
     const c = beast(s, SWIFT);
     equal([c.development.bond.level, c.development.acclimatise.retryDay, c.development.acclimatise.last.pass, c.development.acclimatise.last.total], [0, 4, false, 19]);
     assert(c.development.chronicle.some(e => e.private === true && /Acclimatisation failed on Day 1: rolled 19 against DC 20/.test(e.text)), 'a DM-only line');
-    assert(/failed acclimatisation \(Animal Handling 19 against DC 20\)/.test(logText(s)), logText(s));
     await openPen(ba);
     const st = await orderState(ba, ACC);
     equal([st.off, st.why], [true, 'Swiftwing can try again on Day 4.']);
@@ -285,7 +282,6 @@ const STORM = 'cr-storm';
     const c = beast(s, SWIFT);
     equal([c.development.bond.level, c.development.bond.ready, c.development.acclimatise.tries, c.development.acclimatise.retryDay], [1, null, 2, null]);
     assert(c.development.initiation && c.development.initiation.rolls, 'the first meeting is rolled');
-    assert(/passed acclimatisation \(Animal Handling 20 against DC 20\): Bond 1 on Day 4/.test(logText(s)), logText(s));
     await openPen(ba);
     const opts = await ba.$$eval('[data-test=sel-' + ACC + '] option', n => n.map(o => o.textContent));
     equal(opts, ['Stormwing (Wyvern): needs a handler'], 'Swiftwing is gone from the list');
@@ -313,7 +309,6 @@ const STORM = 'cr-storm';
     equal(b.assignOff, true);
     const s = await bas(ba);
     equal([beast(s, SWIFT).development.bonding.away, beast(s, SWIFT).development.bonding.awaySince, beast(s, SWIFT).development.bonding.lastTick], [true, 4, 4]);
-    assert(/Swiftwing is away from the Ironbow with Mira \(Day 4\)/.test(logText(s)), logText(s));
   });
 
   await check('3 camps later (Day 7): 3 Bonding Days, the second pill is three tenths full, and the first stays full', async () => {
@@ -332,7 +327,6 @@ const STORM = 'cr-storm';
     await ba.waitForTimeout(400);
     let b = await beastBlock(ba, SWIFT);
     equal([b.status, b.days, b.go.text], ['At the Beast Pen', '3', 'Take Swiftwing on the road']);
-    assert(/Swiftwing is back at the Beast Pen on Day 7 after 3 days on the road \(3 Bonding Days in all\)/.test(logText(await bas(ba))));
     await passDays(ex, ba, 2);
     await openPen(ba);
     b = await beastBlock(ba, SWIFT);
@@ -428,7 +422,6 @@ const STORM = 'cr-storm';
     const s = await bas(ba);
     const d = beast(s, SWIFT).development;
     equal([s.day, d.bonding.days, d.bonding.lastTick, d.bond.level, d.bond.ready], [25, 19, 25, 2, null]);
-    equal(logText(s).split('have spent').length - 1, 1, 'only the Day 16 milestone line, nothing said twice');
   });
 
   await check('it carries on from there: one more camp makes 20 days, and Bond 3 is ready', async () => {
@@ -456,7 +449,6 @@ const STORM = 'cr-storm';
       equal([d.bonding.days, d.bonding.lastTick], [days, day], 'after a reload ' + wait + ' ms after camp, on Day ' + day);
     }
     const s = await bas(ba);
-    equal(logText(s).split('have spent').length - 1, 2, 'the Day 16 and Day 26 milestone lines, and no more');
   });
 
   /* ------------------------------------------------------------------ */

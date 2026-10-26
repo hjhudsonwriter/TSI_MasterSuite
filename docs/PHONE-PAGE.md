@@ -103,7 +103,7 @@ In that phone's browser only, under names starting `tsi.beasthandler.phone`: the
 
 ## What a phone can never do
 
-- see the treasury, the Day Log, DM notes, other buildings, other players' details (their beasts appear only as a name, handler and bond line), the first meeting or profile of a beast that isn't theirs, or anything from your save that isn't in their snapshot;
+- see the treasury, DM notes, other buildings, other players' details (their beasts appear only as a name, handler and bond line), the first meeting or profile of a beast that isn't theirs, or anything from your save that isn't in their snapshot;
 - change anything at all: a bond, a name, a handler, a milestone, a Chronicle line, a profile line, a build or a purchase, or spend any gold. It sends nothing to your Bastion, so it has nothing to forge or repeat: a player who edits their own phone can only change what their own screen shows.
 
 ## Things to know

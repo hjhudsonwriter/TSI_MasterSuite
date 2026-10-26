@@ -28,7 +28,6 @@ const BLESSINGS = {
 
 const bare = (page, sel) => page.$eval(sel, n => n.textContent.replace(/\s+/g, ' ').trim());
 const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.debug.state())));
-const logText = s => s.log.map(l => l.body).join(' | ');
 const popUp = page => page.$('.tsi-modal:not(.tsi-bas-panel)');
 
 async function context(browser, size) {
@@ -189,7 +188,7 @@ async function receive(ba, god, label, answer) {
 
   section('Pray to (god): instant, a d50, the bar stops at 100');
 
-  await check('a roll of 1, 26 and 50 add exactly that to the bar; the result line says the roll; no order is made; the Day Log has it', async () => {
+  await check('a roll of 1, 26 and 50 add exactly that to the bar; the result line says the roll; no order is made', async () => {
     await pray(ba, 'aurush', 0);
     let t = await third(ba, 'aurush');
     equal([t.pct, t.bar, t.width], ['1%', '1', '1%']);
@@ -203,7 +202,6 @@ async function receive(ba, god, label, answer) {
     const s = await bas(ba);
     equal(s.favour, { telluria: 50, aurush: 27, pelagos: 0 }, 'each god\'s own bar');
     equal(s.pendingOrders, [], 'instant: no order');
-    assert(/Prayed to Aurush\. Rolled a d50: 26\./.test(logText(s)), 'the Day Log says so');
     equal(await bare(ba, '[data-test=pray-result-pelagos]'), '', 'a god not prayed to says nothing');
   });
 
@@ -246,7 +244,6 @@ async function receive(ba, god, label, answer) {
     await receive(ba, 'telluria', 'Great Rite of Telluria');
     const s = await bas(ba);
     equal([s.favour.telluria, s.pendingOrders, s.greatRites.map(g => [g.rite, g.god, g.status])], [0, [], [['earths_endurance', 'telluria', 'waiting']]]);
-    assert(/Received Great Rite of Telluria from Telluria\./.test(logText(s)), logText(s));
     const t = await third(ba, 'telluria');
     equal([t.pct, t.selectOff, t.goOff], ['0%', true, true], 'greyed out again');
     assert(/Great Rite of Telluria: Earth's Endurance waits at the Ironbow until the DM gives it to the party on an expedition, in the Explorer\./.test(t.said), t.said);
@@ -279,16 +276,15 @@ async function receive(ba, god, label, answer) {
 
   section('A double click does it once');
 
-  await check('a double click on Pray to Pelagos prays once: one roll in the Day Log, the bar moves once', async () => {
+  await check('a double click on Pray to Pelagos prays once: the bar moves once', async () => {
     await setBars(ba, { telluria: 0, aurush: 0, pelagos: 0 });
     await ba.waitForTimeout(500);
-    const before = (await bas(ba)).log.filter(l => l.title === 'Prayer').length;
     await ba.evaluate(() => { window.__dice = [0.19, 0.19, 0.19]; });     /* 10 each: a second roll would show as 20 */
     await ba.dblclick('[data-test=pray-pelagos]');
     await ba.waitForTimeout(400);
     await ba.evaluate(() => { window.__dice = []; });
     const s = await bas(ba);
-    equal([s.favour.pelagos, s.log.filter(l => l.title === 'Prayer').length - before], [10, 1]);
+    equal(s.favour.pelagos, 10);
   });
 
   await check('a double click on Receive Blessing asks once and gives one blessing: the Warehouse gains one, not two', async () => {

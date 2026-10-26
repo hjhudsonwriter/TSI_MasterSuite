@@ -24,7 +24,6 @@ const bare = (page, sel) => page.$eval(sel, n => n.textContent.replace(/\s+/g, '
 const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.debug.state())));
 const exs = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.explorer.debug.state())));
 const lastModal = page => page.$$eval('.tsi-modal', ms => ms[ms.length - 1].textContent.replace(/\s+/g, ' ').trim());
-const logText = s => s.log.map(l => l.body).join(' | ');
 const sentTop = page => page.$eval('[data-test=sent]', n => ({
   status: n.getAttribute('data-status'),
   title: n.querySelector('strong').textContent,

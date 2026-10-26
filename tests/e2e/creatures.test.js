@@ -40,7 +40,6 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
 const exs = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.explorer.debug.state())));
 const qty = (s, id) => s.warehouse.filter(w => w.goodId === id).reduce((n, w) => n + w.qty, 0);
 const lastModal = page => page.$$eval('.tsi-modal', ms => ms[ms.length - 1].textContent.replace(/\s+/g, ' ').trim());
-const logText = s => s.log.map(l => l.body).join(' | ');
 const byName = (s, name) => s.creatures.filter(c => c.name === name)[0];
 /* The creatures as the Bastion keeps them: [id, kind, name, status, home]. */
 const register = s => s.creatures.map(c => [c.id, c.species, c.name, c.status, c.home]);
@@ -275,7 +274,6 @@ async function clickPop(page, label) {
     assert(/Workshop: Scholar - Prepare Overland Travel Charts is complete\./.test(w.exWord), 'the Explorer\'s word: ' + w.exWord);
     const s = await bas(ba);
     equal([s.day, qty(s, CHART), s.treasuryGP, s.pendingOrders.filter(o => o.fnId === 'prepare_overland_travel_charts').length], [5, 1, 100, 0]);
-    assert(s.log.some(l => l.body === 'Workshop: Scholar - Prepare Overland Travel Charts → Added to Warehouse: 1 Overland chart.'), logText(s));
   });
 
   await check('17 camps more (Day 22): the Pen is built, at its one level, with nobody living in it', async () => {
@@ -330,7 +328,7 @@ async function clickPop(page, label) {
     equal((await sentTop(ex)).title, 'Creature: Griffin (Swiftwing)');
   });
 
-  await check('the Bastion holds Swiftwing once, waiting for a home: a notice, the Day Log, and "Creature granted: Griffin (Swiftwing)" in Management\'s Changes from the Explorer', async () => {
+  await check('the Bastion holds Swiftwing once, waiting for a home: a notice and "Creature granted: Griffin (Swiftwing)" in Management\'s Changes from the Explorer', async () => {
     await ba.waitForFunction(() => TSI.bastion.debug.state().creatures.length === 1, null, { timeout: 8000 });
     await H.waitForNotice(ba, /From the Explorer: a griffin \(Swiftwing\) for the Ironbow, waiting for a home at the Beast Pen\./);
     const s = await bas(ba);
@@ -339,7 +337,6 @@ async function clickPop(page, label) {
     const msg = (await exs(ex)).journey.outbox.filter(m => m.type === 'creature')[0];
     equal(c, { id: 'cr-' + msg.id.replace(/:/g, '-'), species: 'griffin', owner: '', name: 'Swiftwing', status: 'waiting', home: '', grantedDay: 22, housedDay: null, msgId: msg.id });
     equal(Object.values(s.bridge.done).map(r => [r.r, r.type, r.species, r.name, r.creatureId, r.held]), [['applied', 'creature', 'griffin', 'Swiftwing', swift, false]], 'one receipt');
-    assert(s.log.some(l => l.body === 'Creature granted (DM, Day 22): a griffin (Swiftwing), waiting for a home at the Beast Pen. Griffin for the Ironbow (Swiftwing): Won at the Ember Fair.'), logText(s));
     equal(s.treasuryGP, gp = 100, 'no gold');
     await H.dismissNotices(ba);
     await closeAll(ba);
@@ -411,7 +408,6 @@ async function clickPop(page, label) {
     const s = await bas(ba);
     equal([s.day, s.treasuryGP], [25, gp]);
     equal(register(s), [[swift, 'griffin', 'Swiftwing', 'housed', 'beast_pen'], [wolf, 'dire_wolf', '', 'housed', 'beast_pen']]);
-    assert(s.log.some(l => l.body === 'Beast Pen: House Beast Here (Swiftwing) → Swiftwing has a home at the Beast Pen. Acclimatise it with its handler (Acclimatise With Beast) before it can go out on the road.'), logText(s));
     equal(s.creatures.filter(c => c.id === 'elara_wyvern').length, 0, 'Elara\'s wyvern is not made by the Bastion any more');
     await openTile(ba, 'beast_pen');
     const p = await panelCreatures(ba);
@@ -435,7 +431,6 @@ async function clickPop(page, label) {
     await rename('Greyfang', 'Rename');
     await openTile(ba, 'beast_pen');
     equal((await panelCreatures(ba)).stalls.dire_wolf[0][0], 'Greyfang');
-    assert((await bas(ba)).log.some(l => /Dire Wolf \(granted Day 22\) is now called Greyfang/.test(l.body)), 'the Day Log says so');
     await rename('', 'Rename');
     await openTile(ba, 'beast_pen');
     equal((await panelCreatures(ba)).stalls.dire_wolf[0][0], 'Dire Wolf (granted Day 22)');
@@ -561,8 +556,6 @@ async function clickPop(page, label) {
       [300, 9, ['beast_pen'].map(id => ({ facId: id, status: 'built' })), [], []]);
     equal(['library_scriptorium', 'beast_pen', 'wyvern_roost', 'griffin_tower', 'dire_wolf_den'].map(f => s.facilityLevels[f]), [undefined, 1, undefined, undefined, undefined]);
     equal(Object.values(s.bridge.done).map(r => [r.r, r.type, r.species, r.name]), [['skipped', 'creature', 'griffin', 'Old Test']], 'the earlier grant is skipped');
-    assert(/1 creature grant, sent before this Bastion started, was skipped, so nothing counts twice\./.test(logText(s)), logText(s));
-    assert(/A sample Bastion for trying the creatures/.test(logText(s)), logText(s));
     await e3.waitForFunction(() => { const n = document.querySelector('[data-test=sent]'); return n && n.getAttribute('data-status') === 'skipped'; }, null, { timeout: 8000 });
     equal(await bare(e3, '[data-test=sent-line]'), 'Skipped: sent before this Bastion started. Grant it again if it should count.');
     /* The sample works: the chart order can be given; the Pen has nobody waiting. */

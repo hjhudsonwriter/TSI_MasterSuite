@@ -193,7 +193,6 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     equal(s.creatures.map(c => c.development ? c.development.bond.level : -1), [1, 2, 3, -1, 0], 'every bond is as the DM set it');
     equal(s.creatures[4].development.bond.level, 0);
     equal(s.creatures[0].development.regional, 'Widowspine');
-    equal(s.log.filter(l => /Beast Handler/.test(l.title)).length, 0, 'the Day Log has nothing from the app');
   });
 
   for (const [label, size, opts] of [

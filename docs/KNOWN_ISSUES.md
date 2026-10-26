@@ -3556,7 +3556,7 @@ Old repo: `_legacy/pelagosi_marker_rune_puzzle` (file:line references point ther
 
 These entries come from each step's draft in `docs/strip-back/*-known-issues-draft.md`, renumbered BAS-SB-01 to BAS-SB-80. Each has a Before and an After. Step S12 and S10 are short lists.
 
-**Internal Day Log data is still kept.** The Day Log screen is gone, but the Bastion still writes its internal log (`state.log`) into the save and it still grows; nothing shows it. Removing it (step S18) was deliberately NOT done. The old Day Log text file reads the live save's log until S18 moves that to the set-aside copy.
+**Internal Day Log data: removed (S18, 26 October 2026).** See BAS-SB-83. The Bastion no longer writes or keeps a Day Log; a save that still holds one keeps it untouched as `legacyLog`, only for the old text-file button.
 
 ### BAS-SB-01 · The Explorer's deliveries and refusals get a home in Management, and a refusal tells you why in a notice (Strip Back Overhaul, S02)
 **Deliberate change** (Harry's STRIP BACK handover: Clan Influence and the Day Log go; replacement before removal, J 8) · usability
@@ -4106,3 +4106,11 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 - **Pictures:** Harry's new Leafwing, Ironcrown, Bloodcrest (wyverns), Shovelhorn (Buckbear) and Smokecoat (Fellcat) are in `tools/beasthandler/assets/`. The old Ironcrown and Bloodcrest pictures are kept in `assets/extras/wyvern-previous/`. A variety with no picture yet still shows the plain frame.
 - **Text:** the "Camouflage: …" lines at the end of the Fellcat descriptions are removed so the tables match Harry's PDF exactly.
 - **Online link:** Harry approved the change to ground rule 2 on 26 October 2026, so `CLAUDE.md` now has the four edits from docs/ONLINE-LINK-SETUP.md, Step 5, and `tools/beasthandler/relay-config.js` ships with the post box's address and `enabled: true`. The laptop still sends nothing until the DM presses Switch on in the Bastion. Tests pin the old first-meeting answers with `window.TSI_TEST_FIXED_INITIATION`, and the link tests use their own settings.
+
+### BAS-SB-83 · The Day Log data is gone (step S18, 26 October 2026)
+**Changed, Harry's request** · saves, wording
+
+- **Before:** the Day Log screen was gone but the Bastion still wrote an internal log (`state.log`, about 77 places across the Bastion and Beast Handler code) into every save, where it kept growing and nothing showed it. Some notices and test names still said "Day Log".
+- **After:** nothing writes a log any more: `R.log`, `log()`, `logAll()` and `state.log` are deleted, and so is the "Facilities" entry the facilities conversion used to add. Nothing in the game ever read the log back, so no rule changed. The Ironbow's word, notices and receipts are untouched.
+- **Old saves:** a save that still holds a log loads fine. The log is kept exactly as it was under the new name `legacyLog` (never added to, never trimmed), so the conversion box's "Save the old Day Log as a text file" button still works for a Bastion converted earlier. A new or already-clean Bastion has no `legacyLog` and the button does not appear.
+- **Left alone:** the rules functions still return their `[title, body]` line (`res.log`) because some screens show it in a notice or a message; it is just no longer stored. The old saved fixtures in `tests/fixtures/` keep their `log` on purpose, as examples of old saves.

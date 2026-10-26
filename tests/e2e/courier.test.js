@@ -41,7 +41,6 @@ const rows = (s, id) => s.warehouse.filter(w => w.goodId === id).length;
 const bag = (s, kind) => (s.journey.inventory || []).filter(i => i.kind === kind).reduce((n, i) => n + i.qty, 0);
 const parcel = (s, point) => s.tradeNetwork.parcels.filter(p => p.point === point).slice(-1)[0];
 const lastModal = page => page.$$eval('.tsi-modal', ms => ms[ms.length - 1].textContent.replace(/\s+/g, ' ').trim());
-const logText = s => s.log.map(l => l.body).join(' | ');
 
 async function context(browser, size) {
   const ctx = await H.newContext(browser, size || 'laptop', { acceptDownloads: true });
@@ -252,17 +251,16 @@ async function panelFits(ba) {
     await ba.waitForTimeout(600);
     const s = await bas(ba);
     equal([qty(s, PACK), rows(s, PACK), s.treasuryGP], [4, 1, 60]);
-    equal([s.log[0].body, s.log.filter(l => /^Added by hand/.test(l.body)).length], ['Added by hand (DM): 4 Expedition Provision Packs.', 1], 'one line in the Day Log');
     await closeAll(ba);
   });
 
   await check('2 Overland charts, then 1 more pack, which joins the packs\' row in the Warehouse', async () => {
     await addSupplies(ba, CHART, 2);
     let s = await bas(ba);
-    equal([qty(s, CHART), s.log[0].body], [2, 'Added by hand (DM): 2 Overland charts.']);
+    equal(qty(s, CHART), 2);
     await addSupplies(ba, PACK, 1);
     s = await bas(ba);
-    equal([qty(s, PACK), rows(s, PACK), s.log[0].body, s.treasuryGP], [5, 1, 'Added by hand (DM): 1 Expedition Provision Pack.', 60]);
+    equal([qty(s, PACK), rows(s, PACK), s.treasuryGP], [5, 1, 60]);
   });
 
   await check('a reload of the Bastion adds nothing more', async () => {
@@ -299,7 +297,6 @@ async function panelFits(ba) {
     equal([s.treasuryGP, qty(s, PACK), qty(s, CHART), s.tradeNetwork.parcels.length], [55, 2, 1, 1]);
     const p = s.tradeNetwork.parcels[0];
     equal([p.point, p.status, p.goods, p.items, p.departDay, p.readyDay, p.feeGP], ['slades_muster', 'in_transit', [{ goodId: PACK, qty: 3 }, { goodId: CHART, qty: 1 }], 4, 22, 24, 5]);
-    equal(s.log[0].body, 'A parcel left for ' + SLADE + ': 3 Expedition Provision Packs, 1 Overland chart, from the Warehouse (fee 5 gp from the treasury). It reaches ' + SLADE + ' on Day 24 and waits there until the party collects it.');
     await openCourier(ba);
     equal(await ba.$eval('[data-test=send-parcel]', b => b.disabled), true);
     equal(await bare(ba, '[data-test=parcel-why]'), 'A parcel is already travelling: the first place is free on Day 24.');
@@ -607,7 +604,6 @@ async function panelFits(ba) {
     equal([s.treasuryGP, s.partyLevel, s.builtPlots.filter(Boolean), s.facilityLevels.courier_exchange, qty(s, PACK), qty(s, CHART), s.tradeNetwork.parcels],
       [300, 9, [{ facId: 'courier_exchange', status: 'built' }], 2, 6, 2, []]);
     equal(Object.values(s.bridge.done).map(r => [r.r, r.type]), [['skipped', 'parcel_collected']], 'the earlier pickup is skipped');
-    assert(/1 parcel pickup, collected before this Bastion started, was skipped, so nothing counts twice\./.test(logText(s)), logText(s));
     await e3.waitForFunction(() => { const n = document.querySelector('[data-test=sent]'); return n && n.getAttribute('data-status') === 'skipped'; }, null, { timeout: 8000 });
     equal(await bare(e3, '[data-test=sent-line]'), 'Skipped: collected before this Bastion started.');
     /* The sample's Courier Exchange works: a parcel to Moorcastle (Level 2). */

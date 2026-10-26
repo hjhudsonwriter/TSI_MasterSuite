@@ -2,7 +2,7 @@
 
 ## Where things stand
 
-**Strip Back Overhaul (steps S01 to S17, 22 to 25 October 2026) is built and merged; S19 (art) and S20 (guide and home-screen text) and S21 (these docs) are done. S18 (removing the internal Day Log data) was deliberately NOT done.** The war game, Clan founding, the Hall's trade system, the three Shrines, the Library, Arcane Laboratory, Clan Influence and the Day Log screens are gone or folded into the Temple, Beast Pen, Dock and Workshop. Details: `docs/STRIP-BACK-PLAN.md`, `docs/strip-back/*-built.md`, and the new "Strip Back Overhaul" section at the end of `docs/KNOWN_ISSUES.md` (BAS-SB-01 onwards).
+**Strip Back Overhaul (steps S01 to S17, 22 to 25 October 2026) is built and merged; S19 (art) and S20 (guide and home-screen text) and S21 (these docs) are done. S18 (removing the internal Day Log data) is done (26 October 2026, BAS-SB-83).** The war game, Clan founding, the Hall's trade system, the three Shrines, the Library, Arcane Laboratory, Clan Influence and the Day Log screens are gone or folded into the Temple, Beast Pen, Dock and Workshop. Details: `docs/STRIP-BACK-PLAN.md`, `docs/strip-back/*-built.md`, and the new "Strip Back Overhaul" section at the end of `docs/KNOWN_ISSUES.md` (BAS-SB-01 onwards).
 
 ### Strip Back Overhaul: done
 - All 14 development-facility orders are self-contained, including the four Level 5 bulk orders.
@@ -10,7 +10,7 @@
 - `guide.html` facilities paragraph brought up to date.
 
 ### Strip Back Overhaul: next
-- S18: stop writing, and drop, the internal Day Log (`state.log`) from the save, and move the old Day Log text file to the set-aside copy. Not started; the data is still kept in the save but no longer shown.
+- S18: done (BAS-SB-83). Nothing writes the Day Log any more; an old log in a save is kept untouched as `legacyLog`, which only the old Day Log text-file button reads.
 - Harry to amend CLAUDE.md ground rule 2 for the online link (the Beast Handler QR/online link is built and switched off; nothing in CLAUDE.md was changed).
 
 ### Strip Back Overhaul: open questions for Harry

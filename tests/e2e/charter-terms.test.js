@@ -74,7 +74,6 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     const s = await bas(ba);
     equal(s.tradeNetwork.portCharters[0].terms, { priceMult: 1.25, feePerLot: 5, tariffPct: 10 });
     equal(s.tradeNetwork.portCharters[0].termsLog.map(e => [e.kind, e.why]), [['amend', 'The party saved the harbour master\'s daughter.']]);
-    assert(s.log.some(l => /Charter terms amended/.test(l.body || l.text || '')), 'a Day Log entry');
     await ba.waitForSelector('[data-test=terms-history]');
     equal(await bare(ba, '[data-test=charter-terms]'), 'Terms: ×1.25 price · 5 gp shipping a lot · 10% tariff (negotiated).');
   });

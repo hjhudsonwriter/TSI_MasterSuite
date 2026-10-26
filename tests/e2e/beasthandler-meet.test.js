@@ -280,13 +280,11 @@ const checkS = (name, fn) => check(name, async () => {
     await bh.evaluate(() => { window.TSI_BH_SPEED = 0.02; });
   });
 
-  await checkS('the reveal changed nothing in the Bastion: one roll per beast, no re-roll, no request, nothing in the Day Log from the app', async () => {
+  await checkS('the reveal changed nothing in the Bastion: one roll per beast, no re-roll, no request', async () => {
     const s = await state();
     const c = s.creatures.find(x => x.id === 'cr-stormwing');
     equal(c.development.regional, 'Bloodcrest');
     equal(c.development.profileLog.length, 1, 'one change note: the first meeting');
-    equal(s.log.filter(l => /Beast Handler/.test(l.title)).length >= 6, true, 'the Bastion\'s own lines about the first meetings are there');
-    equal(s.log.filter(l => /Stormwing/.test(l.body) && /Beast Handler/.test(l.title)).length, 2, 'two lines about Stormwing: the profile change and the first meeting, both written when the Bastion rolled it');
     const swept = await ba.evaluate(() => { let r; TSI.bastion.debug.change(s => {
       const T = window.TSI_DATA;
       const data = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier, creatures: T.bastionCreatures };

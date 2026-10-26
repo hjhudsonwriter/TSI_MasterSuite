@@ -373,7 +373,7 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     await page.keyboard.press('Escape');
   });
 
-  await check('Demolish (Harry, 13 October 2026): it asks first, saying an order here is cancelled; then the slot is free, the order gone, and the Day Log says so', async () => {
+  await check('Demolish (Harry, 13 October 2026): it asks first, saying an order here is cancelled; then the slot is free, and the order gone', async () => {
     await pause(page);
     await setUp(page, (s) => { s.pendingOrders.push({ id: 'dm1', facId: 'beast_pen', fnId: 'research', chosen: { label: 'Arcana' }, optionLabel: 'Arcana', notes: '', label: 'Beast Pen: Research (Arcana)', costGP: 0, issuedDay: s.day, dueDay: s.day + 5 }); });
     await page.click('[data-test=tile-beast_pen]');
@@ -394,13 +394,12 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     const s = await st(page);
     equal(s.builtExtras.filter(Boolean), [], 'the slot is free');
     equal(s.pendingOrders.filter(o => o.facId === 'beast_pen'), [], 'its order is cancelled');
-    equal([s.log[0].title, s.log[0].body], ['Facility Demolished', 'The Beast Pen was demolished; its slot is free. Cancelled: Beast Pen: Research (Arcana).']);
     equal(await text(page, 'facilities-n'), '2');
     equal(await page.$('[data-test=tile-beast_pen]'), null);
     equal(await page.$('[data-test=map-label-beast_pen]'), null, 'its label goes too');
   });
 
-  await check('stopping a building: its slot is free again, and the Day Log says so', async () => {
+  await check('stopping a building: its slot is free again', async () => {
     await pause(page);
     await page.click('[data-test=slot-0]');
     await page.waitForSelector('[data-test=build-beast_pen]');
@@ -416,7 +415,6 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     await page.waitForTimeout(300);
     const s = await st(page);
     equal(s.builtExtras.filter(Boolean), []);
-    equal([s.log[0].title, s.log[0].body], ['Construction Stopped', 'Building work on the Beast Pen stopped; its slot is free.']);
   });
 
   /* ------------------------------------------------------------------ */
@@ -475,7 +473,6 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     equal([s.builtExtras.filter(Boolean), s.builtPlots[0], s.facilityLevels.herbal_gardens], [[], { facId: 'herbal_gardens', status: 'built' }, 2]);
     equal(await page.$eval('[data-test=tile-herbal_gardens]', t => !!t.closest('[data-test=grid-plots]')), true, 'now in the plots row');
     equal(await text(page, 'map-label-herbal_gardens'), 'Herbal GardensLevel 2');
-    assert(s.log.some(l => /The Herbal Gardens moved to a Development Plot; its construction slot is free\./.test(l.body)), 'the Day Log says so');
   });
 
   await check('with every construction slot in use but a plot free, the other facilities say "No free slot" and can\'t be chosen', async () => {
@@ -520,7 +517,6 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     await pause(page);
     await page.click('[data-test=issue-stone_masonworks__produce_dressed_stone]');
     await page.waitForFunction(() => TSI.bastion.debug.state().pendingOrders.some(o => o.fnId === 'produce_dressed_stone'));
-    assert(!/Taken from the Warehouse/.test((await st(page)).log[0].body), 'nothing was taken');
     await page.keyboard.press('Escape');
     await page.waitForTimeout(150);
     await days(page, 4);
@@ -629,7 +625,6 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     await page.waitForFunction(() => TSI.bastion.debug.state().pendingOrders.some(o => o.fnId === 'saw_lumber'));
     let s = await st(page);
     equal(s.warehouse.filter(w => w.goodId).map(w => [w.goodId, w.qty]), [['raw_timber', 2]], 'the Raw Timber is untouched');
-    assert(!/Taken from the Warehouse/.test(s.log[0].body), s.log[0].body);
     assert(!/Holding/.test(await bare(page, '[data-test=panel-fac-timber_sawmill]')), 'the order holds nothing');
     const i = s.pendingOrders.findIndex(o => o.fnId === 'saw_lumber');
     equal(s.pendingOrders[i].inputs, undefined);
@@ -644,7 +639,6 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     await page.waitForTimeout(250);
     s = await st(page);
     equal(s.warehouse.filter(w => w.goodId).map(w => [w.goodId, w.qty]), [['raw_timber', 2]], 'nothing extra came back');
-    equal([s.log[0].title, s.log[0].body], ['Orders', 'Cancelled an order.']);
     equal(s.pendingOrders.length, 0);
     await page.keyboard.press('Escape');
     await page.waitForTimeout(150);
@@ -765,7 +759,6 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     await page.click('[data-test=dock-tab-orders]'); /* the Dock opens on Cargo (step S08): its orders are under Orders */
     equal(await text(page, 'fac-level'), 'Level 2 of 5');
     equal(await text(page, 'upgrade-text-dock'), 'To Level 3: takes 14 days, no gold.');
-    assert((await st(page)).log.some(l => l.body === 'Dock: Upgrade to Level 2 → The Dock is now Level 2.'));
     await H.shot(page, 'bs-04-upgrade');
     await page.keyboard.press('Escape');
   });
@@ -854,7 +847,6 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     equal(await page.getAttribute('[data-test=choice-efficient_planting]', 'data-state'), 'done');
     equal(await page.getAttribute('[data-test=choice-crop_rotation]', 'data-state'), 'open', 'Stage II opens');
     equal(await page.isDisabled('[data-test=research-crop_rotation]'), true, 'but no token is free');
-    assert((await st(page)).log.some(l => l.title === 'Research Complete'));
   });
 
   await check('Undo asks first; then the token is free again, the gold isn\'t given back, and the Harvest is back to 7 days', async () => {
