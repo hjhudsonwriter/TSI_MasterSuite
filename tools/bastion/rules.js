@@ -1314,14 +1314,14 @@
     return null;
   };
 
+  /* The most construction slots and Development Plots a Bastion can have: six of each (Harry, 26 October 2026). */
+  R.MAX_SLOTS = 6;
+  R.MAX_PLOTS = 6;
   /* Construction slots by party level (1503-1510). */
   R.constructionSlotsForLevel = function (level) {
     var lvl = clampInt(level, 1, 20);
-    if (lvl >= 17) return 6;
-    if (lvl >= 13) return 5;
-    if (lvl >= 9) return 4;
-    if (lvl >= 5) return 2;
-    return 0;
+    var n = lvl >= 17 ? 6 : lvl >= 13 ? 5 : lvl >= 9 ? 4 : lvl >= 5 ? 2 : 0;
+    return Math.min(n, R.MAX_SLOTS);
   };
   /* Build time in days by the facility's required level (216-223; it was
      3 / 4 / 5 / 5 turns, now bastion-data.js time.buildDays). */
@@ -1362,7 +1362,7 @@
     var lvl = clampInt(level, 1, 20);
     var rows = (data && data.bastion && arr(data.bastion.developmentPlots)) || [{ from: 1, plots: 0 }, { from: 9, plots: 2 }, { from: 13, plots: 4 }, { from: 17, plots: 6 }];
     var n = 0;
-    rows.forEach(function (r) { if (lvl >= clampInt(r.from, 1, 20)) n = clampInt(r.plots, 0, 20); });
+    rows.forEach(function (r) { if (lvl >= clampInt(r.from, 1, 20)) n = clampInt(r.plots, 0, R.MAX_PLOTS); });
     return n;
   };
   R.isPlotFacility = function (data, facId) { var f = R.facility(data, facId); return !!(f && f.plot); };

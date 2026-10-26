@@ -4132,3 +4132,7 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 ### BAS-SB-86 · Every subspecies gets a medallion at the first meeting (Beast Handler, 26 October 2026)
 
 - Before: the "Roll for subspecies" panel showed only the varieties marked `rollable: true` (2 or 3 medallions). After (Harry): it shows all of the kind's varieties (Wyvern 8, Griffin 8, Dire Wolf 7, Buckbear 5, Fellcat 5) for the look of a wider choice, and the die is the same size as the number of medallions (d8, d7, d5). The answer is unchanged: `R.initiationVariety` still picks only a rollable one, and the marker's path still takes 3.5 to 4.5 seconds. Medallions carry no pictures, so a variety without one breaks nothing; the panel is tested from 320 px to the TV.
+
+### BAS-SB-87 · At most six construction slots and six Development Plots (26 October 2026)
+
+- Before: the slot rules gave 0 / 2 / 4 / 5 / 6 slots and 0 / 2 / 4 / 6 plots by party level, but nothing held them to six if a data table said more. After (Harry): `R.MAX_SLOTS` and `R.MAX_PLOTS` (both 6) cap `R.constructionSlotsForLevel` and `R.plotsForLevel`, and a test checks every party level from 1 to 20. The top row of the bottom bar still shows 8 tiles: the two starting facilities (Workshop, Dock) are not construction slots, plus the six slots. Left as it is; ask Harry if he wants the two starting tiles moved. A Bastion that already holds more than six buildings (an old save) keeps them all, marked over capacity, as before.
