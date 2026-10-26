@@ -161,6 +161,8 @@
       /* The Hall's Diplomatic Events ledger (pull request 9, diplomacy-rules.js; its Diplomatic Records). */
       diplomaticRecords: { next: 1, list: [] },
       dmEdits: { done: {} },
+      /* The Prison Tower's three cells and those freed from it (prison-rules.js). */
+      prison: { cells: [null, null, null], freed: [] },
       /* The days overhaul (8 October 2026): v 2 marks a save in days. day is
          the last day the Bastion has passed; anchored, whether it has read
          the Explorer's day yet (until then any Explorer day moves the whole
@@ -423,6 +425,7 @@
     /* The Beast Handler's record (tools/beasthandler/bastion-link.js): only if the save has one. */
     if (isObj(s.beast) && R.cleanBeast) d.beast = R.cleanBeast(s.beast);
     d.greatRites = R.cleanGreatRites(s.greatRites);
+    if (R.cleanPrison) d.prison = R.cleanPrison(s.prison, d.day, data);
     d.dmEdits = R.cleanDmEdits(s.dmEdits);
     d.diplomaticRecords = R.cleanDiplomaticRecords ? R.cleanDiplomaticRecords(s.diplomaticRecords, d.day, data) : (isObj(s.diplomaticRecords) ? s.diplomaticRecords : { next: 1, list: [] });
     /* Port Charters, ships at sea, standing shipments and sales (pull
@@ -1331,6 +1334,10 @@
     for (var i = 0; i < rows.length; i++) if (rl >= rows[i].level) return clampInt(rows[i].days, 0);
     return 0;
   };
+  /* A facility's own build time: its "buildDays" if the data gives one (the Prison Tower's 21), else by its required level. */
+  R.buildDaysForFacility = function (fac, data) {
+    return fac && typeof fac.buildDays === 'number' && fac.buildDays >= 0 ? Math.floor(fac.buildDays) : R.buildDaysForRequiredLevel(fac && fac.requiredLevel, data);
+  };
   /* Old saves' plain names become { facId, status: "built" } (229-237).
      The Development Plots (s.builtPlots, pull request 3) are the same. */
   /* In place, so a list held elsewhere stays the same list. */
@@ -1527,7 +1534,7 @@
       var pr = R.plotRows(s, s.partyLevel, data);
       if (!pr.rows[slotIndex] || !pr.rows[slotIndex].canBuild) return { ok: false, message: 'The ' + name + ' needs a free Development Plot: plots open at party level 9 (2), 13 (4) and 17 (6).' };
     }
-    var days = R.buildDaysForRequiredLevel(req, data);
+    var days = R.buildDaysForFacility(fac, data);
     if (days <= 0) {
       list[slotIndex] = { facId: facId, status: 'built' };
       return { ok: true, log: ['Construction', name + ' built instantly.'] };
@@ -1553,6 +1560,9 @@
     /* The Beast Pen stays while any beast lives in it (creature-rules.js). */
     var penWhy = R.penDemolishBlocker ? R.penDemolishBlocker(s, data, facId) : '';
     if (penWhy) return { ok: false, message: penWhy };
+    /* The Prison Tower stays while anyone is held in it (prison-rules.js). */
+    var prisonWhy = R.prisonDemolishBlocker ? R.prisonDemolishBlocker(s, data, facId) : '';
+    if (prisonWhy) return { ok: false, message: prisonWhy };
     var building = place.entry.status === 'building';
     (place.kind === 'plot' ? s.builtPlots : s.builtExtras)[place.index] = '';
     var where = place.kind === 'plot' ? 'plot' : 'slot';
@@ -2608,6 +2618,8 @@
        once (creature-rules.js R.tickBonding). It is in the same change as the day moving on, so a day can never be
        counted without being passed, or passed without being counted. */
     if (R.tickBonding) R.tickBonding(s, data, now);
+    /* The Prison Tower (26 October 2026): a prisoner whose sentence ends today is released, once, and the Ironbow says so. */
+    if (R.tickPrison) R.tickPrison(s, data);
   };
   /* The day's trade is done (ships settled): on to the orders. (The Hall's sea routes used to be settled here too.) */
   R.finishRoutes = function (s) {
@@ -2677,6 +2689,8 @@
       if (isObj(dv.bonding)) { mv(dv.bonding, 'awaySince'); mv(dv.bonding, 'lastTick'); }
       if (isObj(dv.acclimatise)) { mv(dv.acclimatise, 'retryDay'); if (isObj(dv.acclimatise.last)) mv(dv.acclimatise.last, 'day'); }
     });
+    /* The Prison Tower's lock-up and end days. */
+    if (R.shiftPrison) R.shiftPrison(s, n);
     /* The Great Rites (pull request 8b): the day each was made. */
     (Array.isArray(s.greatRites) ? s.greatRites : []).forEach(function (g) { mv(g, 'madeDay'); if (g && g.assignedDay !== undefined) mv(g, 'assignedDay'); });
   };

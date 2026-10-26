@@ -1513,6 +1513,24 @@ window.TSI_DATA.bastionFacilities = [
       }
     ]
   },
+  /* The Prison Tower (Harry, 26 October 2026): a narrative device. A place for the party to lock up people they have
+     captured, or people tied to a quest. It needs party level 9, takes a construction slot and 21 days ("buildDays": 21; a level 9 building otherwise takes 28), has one level
+     only ("singleLevel": true) and no gold, no costs and no orders. Its panel shows "cells" cells; the DM locks a
+     prisoner up by hand for one of "sentences" days (the sentence counts from the lock-up day). The rules are in
+     prison-rules.js. */
+  {
+    "name": "Prison Tower",
+    "id": "prison_tower",
+    "requiredLevel": 9,
+    "buildDays": 21,
+    "singleLevel": true,
+    "description": "Where the party can lock up people they have captured, or people tied to a quest. It has three cells. A prisoner is held for 7, 14, 21 or 28 days, then released; the DM can interrogate them or release them early.",
+    "prison": {
+      "cells": 3,
+      "sentences": [7, 14, 21, 28]
+    },
+    "functions": []
+  },
   /* The Temple (the Strip Back Overhaul, Harry, 22 October 2026, step S11). The three Shrines (Telluria, Aurush
      and Pelagos) became ONE building. It takes a construction slot, needs party level 8 and takes 21 days to build
      ("requiredLevel": 8), and has one level only ("singleLevel": true: no Upgrade row). Its panel is split into

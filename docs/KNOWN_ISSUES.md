@@ -4136,3 +4136,16 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 ### BAS-SB-87 · At most six construction slots and six Development Plots (26 October 2026)
 
 - Before: the slot rules gave 0 / 2 / 4 / 5 / 6 slots and 0 / 2 / 4 / 6 plots by party level, but nothing held them to six if a data table said more. After (Harry): `R.MAX_SLOTS` and `R.MAX_PLOTS` (both 6) cap `R.constructionSlotsForLevel` and `R.plotsForLevel`, and a test checks every party level from 1 to 20. The top row of the bottom bar still shows 8 tiles: the two starting facilities (Workshop, Dock) are not construction slots, plus the six slots. Left as it is; ask Harry if he wants the two starting tiles moved. A Bastion that already holds more than six buildings (an old save) keeps them all, marked over capacity, as before.
+
+### BAS-SB-88 · Prison Tower: a new facility (26 October 2026)
+
+- Before: no way to hold captured people in the Bastion. After (Harry): the Prison Tower (`prison_tower`), party level 9, a construction slot, 21 days (a new per-facility `buildDays` in `facilities-data.js`, because the level table gives 28 days at level 9), one level, three cells, no gold. Rules in `tools/bastion/prison-rules.js`; saved as `prison` (additive, Bastion save stays version 4; an older save loads with three empty cells). Its picture is cut from the map overlay, with no painting banner.
+
+### BAS-SB-89 · Prison Tower: when a sentence ends, and how the Explorer is told (26 October 2026)
+
+- Before: n/a. After: a prisoner is released on the day `lock-up day + sentence` is reached, by `R.startDay`, once (the cell is emptied), with a line in "The Ironbow sends word…"; the Explorer already reads the saved Bastion for this kind of news (`TSI.campaign.bastionComing`, kind `prison`), so it says the same line before the day. Catch-up over many days frees each prisoner on their own day; Reset Travel moves every prison day with `R.shiftDays`. No new channel.
+
+### BAS-SB-90 · Prison Tower: Under Repair, demolishing and the record of who left (26 October 2026)
+
+- Before: n/a. After: Under Repair, sentences keep counting and end on their day, but Lock up, Interrogate and Release are greyed out until the repair ends (a repair can only come from old war saves). The Tower cannot be demolished while a cell is in use. Everyone who leaves (served or released early with the reason typed) is kept in the save's `prison.freed` (last 30), not shown anywhere yet; the notes on a freed prisoner go with that record. Left as is: a notice for a failed or passed interrogation shows in the Bastion's own window (notices do not cross windows); only the sentence ending reaches the Explorer.
+

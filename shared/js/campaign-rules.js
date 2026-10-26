@@ -208,6 +208,10 @@
            step S09). */
         add(day, 'order', label + ' is complete.');
       });
+      /* The Prison Tower (26 October 2026): the day each prisoner's sentence ends. */
+      (isObj(ba.prison) && Array.isArray(ba.prison.cells) ? ba.prison.cells : []).forEach(function (c) {
+        if (isObj(c) && str(c.name)) add(c.endDay, 'prison', str(c.name) + ' is released from the Prison Tower: their sentence is served.');
+      });
       var tn = isObj(ba.tradeNetwork) ? ba.tradeNetwork : {};
       /* Cargo ships (pull request 5): when each reaches its port and comes
          home, and when a standing shipment is due to sail. Never what it

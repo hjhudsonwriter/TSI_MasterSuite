@@ -815,6 +815,21 @@
 .tsi-page--bastion .tsi-bas-temple__held,
 .tsi-page--bastion .tsi-bas-temple__rites { margin: 0; font-size: var(--tsi-fs-body-sm); }
 @media (max-width: 820px) { .tsi-page--bastion .tsi-bas-temple { grid-template-columns: minmax(0, 1fr); } }
+
+/* The Prison Tower: three cells side by side (26 October 2026). */
+.tsi-page--bastion .tsi-bas-prison { margin-top: 12px; }
+.tsi-page--bastion .tsi-bas-prison__cells { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.tsi-page--bastion .tsi-bas-prison__cell { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0; padding: 12px; border: 1px solid var(--tsi-line-faint); border-radius: var(--tsi-radius-md); background: var(--tsi-inset-fill); overflow-wrap: anywhere; }
+.tsi-page--bastion .tsi-bas-prison__name { margin: 0; font: 700 16px var(--tsi-font-display); letter-spacing: var(--tsi-track-heading); text-transform: uppercase; color: var(--tsi-gold-text); }
+.tsi-page--bastion .tsi-bas-prison__who { font: 700 18px var(--tsi-font-display); color: var(--tsi-text); }
+.tsi-page--bastion .tsi-bas-prison__line,
+.tsi-page--bastion .tsi-bas-prison__notes { font-size: var(--tsi-fs-body-sm); color: var(--tsi-text-muted); }
+.tsi-page--bastion .tsi-bas-prison__notes ul { margin: 4px 0 0; padding-left: 18px; }
+.tsi-page--bastion .tsi-bas-prison__buttons,
+.tsi-page--bastion .tsi-bas-prison__ask { display: flex; flex-wrap: wrap; gap: 8px; }
+.tsi-page--bastion .tsi-bas-prison__ask { margin: 8px 0; }
+.tsi-page--bastion .tsi-bas-prison__why { margin-top: 10px; }
+@media (max-width: 820px) { .tsi-page--bastion .tsi-bas-prison__cells { grid-template-columns: minmax(0, 1fr); } }
 /* A tile or picture made of several paintings side by side (the Temple's three Shrines). */
 .tsi-page--bastion .tsi-bas-artstrips { display: flex; overflow: hidden; }
 .tsi-page--bastion .tsi-bas-artstrips__img { display: block; flex: 1 1 0; min-width: 0; height: 100%; object-fit: cover; }

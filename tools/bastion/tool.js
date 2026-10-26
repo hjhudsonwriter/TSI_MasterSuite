@@ -2224,9 +2224,11 @@
         state.pendingOrders.forEach(function (o, i) { if (o.facId === id) mine.push(pendingRow(o, i)); });
         /* The Temple's blessings are not orders: its panel is the three gods (templeSection, below). */
         var isTemple = id === R.TEMPLE_ID;
+        /* The Prison Tower has no orders: its panel is the three cells (prisonSection, below). */
+        var isPrison = id === R.PRISON_ID;
         /* The Workshop's orders are its staff's (workshopSection, below): its panel lists only the Upgrade row here. */
         var isWorkshop = Array.isArray(fac.staff) && fac.staff.length > 0;
-        var fns = isTemple ? [] : isWorkshop ? [upgradeRow(fac)] : [upgradeRow(fac), researchRow(fac)].filter(Boolean).concat((fac.functions || []).filter(function (fn) { return !R.fnAvailable(state, fac, fn).hidden; }).map(function (fn) {
+        var fns = isTemple || isPrison ? [] : isWorkshop ? [upgradeRow(fac)] : [upgradeRow(fac), researchRow(fac)].filter(Boolean).concat((fac.functions || []).filter(function (fn) { return !R.fnAvailable(state, fac, fn).hidden; }).map(function (fn) {
           var req = R.clampInt(fn.requiredFacilityLevel === undefined || fn.requiredFacilityLevel === null ? 1 : fn.requiredFacilityLevel, 1, R.MAX_LEVEL);
           return fnRow(fac, fn, lvl < req);
         }));
@@ -2241,12 +2243,12 @@
             banner || isTemple ? null : facArt(id, 'tsi-bas-facpanel__img'),
             el('div', { class: 'tsi-bas-facpanel__info' }, [
               el('div', { class: 'tsi-bas-facpanel__level', 'data-test': 'fac-level', text: fac.singleLevel ? 'One level only' : 'Level ' + lvl + ' of ' + R.MAX_LEVEL }),
-              el('div', { class: 'tsi-bas-facpanel__status', 'data-test': 'fac-status' }, repair ? repairLabel(repair) : isTemple ? 'Active • prayers and blessings happen at once' : 'Active • each order shows the days it takes'),
+              el('div', { class: 'tsi-bas-facpanel__status', 'data-test': 'fac-status' }, repair ? repairLabel(repair) : isTemple ? 'Active • prayers and blessings happen at once' : isPrison ? 'Standing • the DM locks prisoners up by hand' : 'Active • each order shows the days it takes'),
               repair ? el('div', { class: 'tsi-bas-fac__repair', 'data-test': 'repair-note-' + id, text: 'Under Repair until Day ' + repair + ': no orders, and orders already here wait. Working again on Day ' + (repair + 1) + '.' }) : null,
               el('div', { class: 'tsi-bas-facpanel__orders' }, [label('Orders pending here')].concat(mine.length ? mine : [muted('None.')]))
             ])
           ]),
-          id === 'dock' ? null : isTemple ? templeSection() : fnsNode,
+          id === 'dock' ? null : isTemple ? templeSection() : isPrison ? prisonSection() : fnsNode,
           isWorkshop ? workshopSection(fac, lvl) : null,
           id === 'dock' ? dockTabs(fnsNode) : null,
           id === R.COURIER_FAC ? courierSection() : null,
@@ -2781,6 +2783,153 @@
         return el('div', { class: 'tsi-bas-temple', 'data-test': 'temple' }, view.gods.map(function (g) { return godThird(g, view); }));
       }
 
+      /* ---------- The Prison Tower (Harry, 26 October 2026) ----------
+         Three cells, side by side. An empty cell has Lock up a prisoner…; a cell in use shows the prisoner (name, thread,
+         sentence, the day they are released, the release conditions and what interrogation found) with Interrogate and
+         Release. Locking up asks for a name, a thread or quest, a sentence of 7, 14, 21 or 28 days and (optionally) the
+         release conditions. Release asks for a reason. Interrogate asks whether the check was passed: if not, a notice says
+         "(name) holds their tongue."; if so, a notice says "(name) starts talking." and a box takes what was discovered,
+         kept on the prisoner. A sentence ending is done by the day passing (R.tickPrison); the Explorer learns of it the
+         way it learns the rest of the Ironbow's news. The rules are in prison-rules.js. */
+      var prisonNoticeSeq = 0;
+      function prisonNotice(message) {
+        prisonNoticeSeq += 1;
+        notice(message, { type: 'info', title: 'Prison Tower.', id: 'tsi-bas-prison-' + prisonNoticeSeq, timeout: 12000 });
+      }
+      /* A dialog's main button off, with the reason, until check() says it is fine. */
+      function gateDialog(mainBtn, problem, bad) {
+        problem.textContent = bad; problem.hidden = !bad;
+        if (mainBtn) { mainBtn.disabled = !!bad; mainBtn.title = bad; }
+      }
+      var onLockUp = TSI.oneAtATime(async function (index) {
+        var early = R.prisonBlocker(state, data);
+        if (early) { await say(early); return; }
+        var name = el('input', { type: 'text', class: 'tsi-input', maxlength: String(R.PRISON_NAME_MAX), 'data-test': 'lockup-name', 'aria-label': 'The prisoner\'s name' });
+        var thread = el('input', { type: 'text', class: 'tsi-input', maxlength: String(R.PRISON_THREAD_MAX), placeholder: 'The thread or quest they are tied to', 'data-test': 'lockup-thread', 'aria-label': 'The related thread or quest' });
+        var days = el('select', { class: 'tsi-input', 'data-test': 'lockup-days', 'aria-label': 'Length of sentence' }, [el('option', { value: '', text: 'Choose…' })].concat(R.prisonSentences(data).map(function (n) { return el('option', { value: String(n), text: n + ' days' }); })));
+        var conditions = el('input', { type: 'text', class: 'tsi-input', maxlength: String(R.PRISON_CONDITIONS_MAX), placeholder: 'Optional', 'data-test': 'lockup-conditions', 'aria-label': 'Release conditions (optional)' });
+        var problem = el('div', { class: 'tsi-bas-repair-text', 'data-test': 'lockup-problem', hidden: true });
+        var mainBtn = null;
+        function check() { gateDialog(mainBtn, problem, R.prisonLockUpBlocker(state, data, index, { name: name.value, thread: thread.value, days: days.value, conditions: conditions.value })); }
+        [name, thread, conditions].forEach(function (x) { x.addEventListener('input', check); });
+        days.addEventListener('change', check);
+        var ok = await plainModal({
+          title: 'Lock up a prisoner: Cell ' + (index + 1),
+          className: 'tsi-bas-modal',
+          body: [
+            muted('The sentence counts from today (' + R.dayLabel(state.day) + '): a 7-day sentence ends on ' + R.dayLabel(state.day + 7) + '.'),
+            field('Name', name), field('Related thread or quest', thread), field('Length of sentence', days), field('Release conditions (optional)', conditions), problem
+          ],
+          actions: [{ label: 'Cancel', value: false }, { label: 'Lock up', value: true, primary: true }],
+          onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'lockup-dialog'); mainBtn = parts.dialog.querySelector('.tsi-modal__foot .tsi-btn--primary'); check(); setTimeout(function () { name.focus(); }, 0); }
+        });
+        if (!ok || !life.alive) return;
+        var res = R.prisonLockUp(state, data, index, { name: name.value, thread: thread.value, days: days.value, conditions: conditions.value });
+        if (!res.ok) { await say(res.message); return; }
+        done();
+      });
+      var onReleasePrisoner = TSI.oneAtATime(async function (index) {
+        var c = R.prison(state, data).cells[index];
+        var early = R.prisonBlocker(state, data) || (c ? '' : 'That cell is empty.');
+        if (early) { await say(early); return; }
+        var why = el('textarea', { class: 'tsi-input', rows: '3', maxlength: '300', placeholder: 'Why the party let them go (required)', 'data-test': 'release-reason' });
+        var problem = el('div', { class: 'tsi-bas-repair-text', 'data-test': 'release-problem', hidden: true });
+        var mainBtn = null;
+        function check() { gateDialog(mainBtn, problem, R.prisonReleaseBlocker(state, data, index, why.value)); }
+        why.addEventListener('input', check);
+        var ok = await plainModal({
+          title: 'Release ' + c.name,
+          className: 'tsi-bas-modal',
+          body: [muted(c.name + ' has ' + R.daysText(R.prisonDaysLeft(state, c)) + ' of the sentence left. Releasing them now frees Cell ' + (index + 1) + '.'), field('Why they were released', why), problem],
+          actions: [{ label: 'Cancel', value: false }, { label: 'Release', value: true, primary: true }],
+          onOpen: function (parts) { parts.dialog.setAttribute('data-test', 'release-dialog'); mainBtn = parts.dialog.querySelector('.tsi-modal__foot .tsi-btn--primary'); check(); setTimeout(function () { why.focus(); }, 0); }
+        });
+        if (!ok || !life.alive) return;
+        var res = R.prisonRelease(state, data, index, why.value);
+        if (!res.ok) { await say(res.message); return; }
+        done();
+        prisonNotice(res.line);
+      });
+      var onInterrogate = TSI.oneAtATime(async function (index) {
+        var c = R.prison(state, data).cells[index];
+        var early = R.prisonBlocker(state, data) || (c ? '' : 'That cell is empty.');
+        if (early) { await say(early); return; }
+        var name = c.name;
+        var talk = el('textarea', { class: 'tsi-input', rows: '4', maxlength: String(R.PRISON_NOTE_MAX), placeholder: 'What did they say?', 'data-test': 'interrogate-text', 'aria-label': 'What was discovered' });
+        var talkField = field('What was discovered', talk);
+        talkField.hidden = true;
+        var problem = el('div', { class: 'tsi-bas-repair-text', 'data-test': 'interrogate-problem', hidden: true });
+        var mainBtn = null;
+        var close = null;
+        var passed = false;
+        function check() { gateDialog(mainBtn, problem, passed ? R.prisonNoteBlocker(state, data, index, talk.value) : ''); }
+        var passBtn = btn('Check passed', function () {
+          var res = R.prisonInterrogate(state, data, index, true);
+          if (!res.ok) { say(res.message); return; }
+          passed = true;
+          prisonNotice(res.line);
+          passBtn.disabled = true; failBtn.disabled = true;
+          talkField.hidden = false;
+          if (mainBtn) mainBtn.hidden = false;
+          check();
+          talk.focus();
+        }, 'tsi-btn--primary', 'interrogate-pass');
+        var failBtn = btn('Check failed', function () {
+          var res = R.prisonInterrogate(state, data, index, false);
+          if (!res.ok) { say(res.message); return; }
+          prisonNotice(res.line);
+          if (close) close(false);
+        }, '', 'interrogate-fail');
+        talk.addEventListener('input', check);
+        var ok = await plainModal({
+          title: 'Interrogate ' + name,
+          className: 'tsi-bas-modal',
+          body: [
+            muted('Run the check at the table (Intimidation, Persuasion, or whatever fits). Did the party pass it?'),
+            el('div', { class: 'tsi-bas-prison__ask' }, [passBtn, failBtn]),
+            talkField, problem
+          ],
+          actions: [{ label: 'Close', value: false }, { label: 'Save what they said', value: true, primary: true }],
+          onOpen: function (parts) { close = parts.close; parts.dialog.setAttribute('data-test', 'interrogate-dialog'); mainBtn = parts.dialog.querySelector('.tsi-modal__foot .tsi-btn--primary'); mainBtn.hidden = true; }
+        });
+        if (!ok || !life.alive) return;
+        var res = R.prisonAddNote(state, data, index, talk.value);
+        if (!res.ok) { await say(res.message); return; }
+        done();
+      });
+      /* One cell. */
+      function prisonCell(c, index, blocked) {
+        var head = el('h3', { class: 'tsi-bas-prison__name', 'data-test': 'prison-cell-name-' + index, text: 'Cell ' + (index + 1) });
+        if (!c) {
+          return el('section', { class: 'tsi-bas-prison__cell tsi-bas-prison__cell--empty', 'data-test': 'prison-cell-' + index, 'data-state': 'empty', 'aria-label': 'Cell ' + (index + 1) }, [
+            head, muted('Empty.', 'tsi-bas-prison__none'),
+            btn('Lock up a prisoner…', function () { onLockUp(index); }, 'tsi-btn--primary', 'lockup-' + index, { disabled: blocked ? true : null, title: blocked || null })
+          ]);
+        }
+        var left = R.prisonDaysLeft(state, c);
+        var line = function (labelText, value, test) { return el('div', { class: 'tsi-bas-prison__line' }, [el('b', { text: labelText + ' ' }), el('span', { 'data-test': test || null, text: value })]); };
+        return el('section', { class: 'tsi-bas-prison__cell', 'data-test': 'prison-cell-' + index, 'data-state': 'held', 'aria-label': 'Cell ' + (index + 1) + ': ' + c.name }, [
+          head,
+          el('div', { class: 'tsi-bas-prison__who', 'data-test': 'prisoner-name-' + index, text: c.name }),
+          line('Thread', c.thread, 'prisoner-thread-' + index),
+          line('Sentence', c.days + ' days, from ' + R.dayLabel(c.lockedDay), 'prisoner-sentence-' + index),
+          line('Released', R.dayLabel(c.endDay) + ' (' + (left === 0 ? 'today' : R.daysText(left) + ' left') + ')', 'prisoner-release-' + index),
+          c.conditions ? line('Release conditions', c.conditions, 'prisoner-conditions-' + index) : null,
+          c.notes.length ? el('div', { class: 'tsi-bas-prison__notes', 'data-test': 'prisoner-notes-' + index }, [el('b', { text: 'What they have said' }), el('ul', { class: 'tsi-bas-res-list' }, c.notes.map(function (n) { return el('li', { text: R.dayLabel(n.day) + ': ' + n.text }); }))]) : null,
+          el('div', { class: 'tsi-bas-prison__buttons' }, [
+            btn('Interrogate', function () { onInterrogate(index); }, '', 'interrogate-' + index, { disabled: blocked ? true : null, title: blocked || null }),
+            btn('Release', function () { onReleasePrisoner(index); }, 'tsi-btn--ghost', 'release-prisoner-' + index, { disabled: blocked ? true : null, title: blocked || null })
+          ])
+        ]);
+      }
+      function prisonSection() {
+        var blocked = R.prisonBlocker(state, data);
+        return el('div', { class: 'tsi-bas-prison', 'data-test': 'prison' }, [
+          el('div', { class: 'tsi-bas-prison__cells' }, R.prison(state, data).cells.map(function (c, i) { return prisonCell(c, i, blocked); })),
+          blocked && R.prisonBuilt(state, data) ? muted(blocked, 'tsi-bas-prison__why') : null
+        ]);
+      }
+
 
       /* ---------- The Courier Exchange's parcels (pull request 6, Harry, 14 October 2026) ----------
          A parcel of supplies from the Warehouse goes to a town the level
@@ -3039,7 +3188,7 @@
           }
           var req = Number(f.requiredLevel || 0);
           var locked = state.partyLevel < req;
-          var days = R.buildDaysForRequiredLevel(req, data);
+          var days = R.buildDaysForFacility(f, data);
           var where = f.plot ? atPlot : atSlot;
           /* A production facility needs a Development Plot (pull request 3);
              any other, a construction slot. */
@@ -3081,7 +3230,7 @@
       }
       var onConstruct = TSI.oneAtATime(async function (slotIndex, facId) {
         var f = R.facility(data, facId);
-        var days = R.buildDaysForRequiredLevel(Number(f.requiredLevel || 0), data);
+        var days = R.buildDaysForFacility(f, data);
         var ok = await ask('Construct the ' + f.name + '? It takes ' + R.daysText(days) + '.', 'Construct', 'Construction');
         if (!ok || !life.alive) return;
         if (onBuild(slotIndex, facId)) closePanel();
@@ -3850,6 +3999,7 @@
         if (/^(?:creature|stall|acclimatise|beast)-/.test(test) || /^(?:handler|temperament|bond|note|acclimatise)-(?:dialog|name|why|keep|total|problem|text|private)$/.test(test)) return 'tile-' + R.PEN_ID;
         /* The Temple's thirds: the bars, Pray, Receive Blessing and the Great Rites (22 October 2026). */
         if (/^(?:pray|blessing|temple|great-rite)/.test(test)) return 'tile-' + R.TEMPLE_ID;
+        if (/^(?:prison|cell|lockup|interrogate|release-prisoner)/.test(test)) return 'tile-' + R.PRISON_ID;
         if (test === 'clear-builds' || (/^build-[a-z_]+$/.test(test) && test !== 'build-panel')) {
           var kind = R.isPlotFacility(data, test.slice(6)) ? 'plot' : 'slot';
           var slot = freeSlot(kind);

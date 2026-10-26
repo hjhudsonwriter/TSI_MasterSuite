@@ -69,7 +69,7 @@
     t.same([m.width, m.height], [3000, 1250], 'Harry\'s new painting, 12 October 2026');
     m.overlays.forEach(function (o) { t.ok(R.facility(data, o.fac), o.fac); t.ok(/^map\/overlays\/[a-z_]+\.png$/.test(o.pic), o.pic); });
     t.same(m.overlays.map(function (o) { return o.fac; }), ['herbal_gardens', 'hall_of_emissaries', 'temple',
-      'beast_pen', 'weavers_hall', 'stone_masonworks', 'fishery_smokehouse', 'timber_sawmill', 'courier_exchange']);
+      'beast_pen', 'prison_tower', 'weavers_hall', 'stone_masonworks', 'fishery_smokehouse', 'timber_sawmill', 'courier_exchange']);
     t.equal(m.overlays.filter(function (o) { return o.fac === 'menagerie' || o.fac === 'war_room'; }).length, 0, 'no map picture for the war game\'s facilities (the War Room\'s went to assets/extras)');
     t.ok(T.bastion.mapLabels.courier_exchange, 'the Courier Exchange has a place for its label');
     t.same(m.overlays.filter(function (o) { return o.fac === 'temple'; }).map(function (o) { return o.pic; }), ['map/overlays/temple.png'], 'the Temple draws its one new building (Harry\'s designs of 26 October 2026)');

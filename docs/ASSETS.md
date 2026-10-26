@@ -557,7 +557,8 @@ Harry's `New_Bastion_Designs` folder (uploaded to the repository root) was moved
 |---|---|
 | `New_Bastion_Designs/NEW_Bastion_Start.png` | converted to `tools/bastion/assets/map/bastion_base.jpg` (the PNG is kept in `tools/bastion/assets/extras/map-2026-10-26/`) |
 | `New_Bastion_Designs/Bastion_Overlay_{BeastPen,CourierExchange,FisheryAndSmokehouse,HallOfEmissaries,HerbalGardens,StoneQuarryAndMasonworks,Temple,TimberYardAndSawmill,WeaversHall}.png` | `tools/bastion/assets/map/overlays/{beast_pen,courier_exchange,fishery_smokehouse,hall_of_emissaries,herbal_gardens,stone_quarry_masonworks,temple,timber_yard_sawmill,weavers_hall}.png` |
-| `Bastion_Overlay_{Dock,Workshop,PartyQuarters,PrisonTower}.png`, `Bastion_Empty.png`, `Bastion_Complete_Reference.png`, `Bastion_Overlays_Full.png` | `tools/bastion/assets/extras/map-2026-10-26/` |
+| `Bastion_Overlay_PrisonTower.png` | `tools/bastion/assets/map/overlays/prison_tower.png` (the Prison Tower, 26 October 2026; moved from `extras/map-2026-10-26/overlay_PrisonTower.png`) |
+| `Bastion_Overlay_{Dock,Workshop,PartyQuarters}.png`, `Bastion_Empty.png`, `Bastion_Complete_Reference.png`, `Bastion_Overlays_Full.png` | `tools/bastion/assets/extras/map-2026-10-26/` |
 | the previous base and all eleven previous overlays | `tools/bastion/assets/extras/map-previous/` |
 
 ## Beast loop videos, 26 October 2026
