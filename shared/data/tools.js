@@ -123,8 +123,20 @@ window.TSI_DATA.tools = [
            on Import (the Explorer and the Bastion save as one campaign). */
         'tools/explorer/rules.js',
         'tools/explorer/journey.js',
+        'tools/bastion/player-view-rules.js',
         'tools/bastion/tool.js'
       ]
+    },
+    /* The Player View (26 October 2026): the Bastion for the TV, view-only, fed by a snapshot of what players may see. */
+    playerViews: {
+      bastion: {
+        css: ['tools/bastion/player-view.css'],
+        js: [
+          'tools/bastion/data/bastion-data.js',
+          'tools/bastion/data/player-panels-data.js',
+          'tools/bastion/player-view.js'
+        ]
+      }
     }
   },
   {
@@ -152,6 +164,8 @@ window.TSI_DATA.tools = [
            grant in the Explorer, and their names. */
         'tools/bastion/data/creatures-data.js',
         'tools/explorer/rules.js',
+        'tools/explorer/draw.js',
+        'tools/explorer/player-view-rules.js',
         'tools/explorer/journey.js',
         'tools/explorer/fights.js',
         /* The Bastion's rules, only to check its half of a campaign file
@@ -160,6 +174,13 @@ window.TSI_DATA.tools = [
         'tools/bastion/strip-back-rules.js',
         'tools/explorer/tool.js'
       ]
+    },
+    /* The Player View (26 October 2026): the map for the TV, view-only, drawn by the Explorer's own drawing code. */
+    playerViews: {
+      explorer: {
+        css: ['tools/explorer/player-view.css'],
+        js: ['tools/explorer/rules.js', 'tools/explorer/draw.js', 'tools/explorer/player-view.js']
+      }
     }
   },
   {

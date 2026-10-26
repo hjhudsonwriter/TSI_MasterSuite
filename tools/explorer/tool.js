@@ -70,7 +70,7 @@
         state.mapAspect = null;
       }
       var uploadUrl = state.mapUploadKey && upload ? upload.dataUrl : null;
-      function saveNow() { ctx.store.set('save', R.toSave(state)); }
+      function saveNow() { ctx.store.set('save', R.toSave(state)); queuePlayerSync(); }
 
       /* Not saved: selection, the hero whose miles show, drags and modes. */
       var selected = new Set();
@@ -78,6 +78,34 @@
       var drag = null;
       var pickXY = false;
       var uiHidden = false;
+
+      /* ---------- The Player View (26 October 2026; docs/PLAYER-VIEW-PLAN.md) ----------
+         A second window for the TV that only looks. It is sent a snapshot of what the players may see
+         (R.playerSnapshot, player-view-rules.js), never the save, whenever the Explorer changes (at most once a frame).
+         The map picture, when the DM has uploaded one, is sent once in a message of its own (a data URL string, as
+         the Explorer stores it) and the window keeps it; it is sent again only when the picture changes. */
+      var pvStatus = el('span', { class: 'tsi-exp-pvstatus', 'data-test': 'player-view-status', role: 'status', text: 'Not open' });
+      var pvLink = ctx.playerLink({
+        view: 'explorer',
+        name: 'ScarlettExplorerPlayers',
+        features: 'popup=yes,width=1400,height=800',
+        getState: function () { return R.playerSnapshot(state, DATA); },
+        onStatus: function (st) {
+          pvStatus.textContent = st === 'connected' ? 'Connected' : st === 'opening' ? 'Opening…' : st === 'blocked' ? 'Blocked' : 'Not open';
+          pvStatus.classList.toggle('is-connected', st === 'connected');
+        },
+        onMessage: function (type, payload) {
+          if (type === 'needmap' && uploadUrl && state.mapUploadKey && payload && payload.key === R.mapKey(state)) {
+            pvLink.send('map', { key: R.mapKey(state), dataUrl: uploadUrl });
+          }
+        }
+      });
+      var pvQueued = false;
+      function queuePlayerSync() {
+        if (pvQueued || !life.alive || !pvLink.isConnected()) return;
+        pvQueued = true;
+        life.raf(function () { pvQueued = false; pvLink.sync(); });
+      }
 
       function note(message, title) { return TSI.modal.alert({ title: title || 'Scarlett Isles Explorer', message: message }); }
       function ask(message, okLabel) { return TSI.modal.confirm({ title: 'Scarlett Isles Explorer', message: message, okLabel: okLabel || 'OK' }); }
@@ -105,6 +133,8 @@
       var uploadLabel = el('label', { class: 'tsi-btn tsi-btn--small tsi-exp-upload', tabindex: '0', role: 'button', 'data-test': 'upload' }, ['Upload map', uploadInput]);
 
       var btnFullscreen = btn('Fullscreen', toggleFullscreen, '', 'fullscreen');
+      var btnPlayerView = btn('Open Player View', function () { pvLink.open(); }, 'tsi-btn--ghost', 'open-player-view');
+      btnPlayerView.title = 'Open the players\' view of the map in a new window, to drag onto the TV. It only looks.';
       var btnHideUi = btn('Hide UI', function () { setUiHidden(!uiHidden); }, '', 'hide-ui');
       var btnGrid = btn('Hex Grid: On', function () { state.grid.enabled = !state.grid.enabled; saveNow(); renderAll(); }, '', 'grid');
       var btnFog = btn('Fog of War: Off', toggleFog, '', 'fog');
@@ -132,7 +162,7 @@
           row([mapSelect, btn('Load', onLoadPreset, '', 'load')], 'tsi-exp-row--select'),
           row([uploadLabel, btn('Clear map', onClearMap, '', 'clear-map')])
         ]),
-        section('View', [row([btnFullscreen, btnHideUi])]),
+        sectionWith('View', el('span', { class: 'tsi-exp-pvbox' }, [btnPlayerView, pvStatus]), [row([btnFullscreen, btnHideUi])]),
         section('Hex grid', [
           row([btnGrid]),
           row([btn('Hex −', function () { gridSize(-2); }, '', 'hex-down'), btn('Hex +', function () { gridSize(2); }, '', 'hex-up')]),
@@ -287,65 +317,19 @@
         var p = pointerOnStage(e);
         return R.toBoard(view, p.x, p.y);
       }
-      function hexPath(c, cx, cy, r) {
-        c.beginPath();
-        for (var i = 0; i < 6; i++) {
-          var angle = (Math.PI / 180) * (60 * i - 30);
-          var x = cx + r * Math.cos(angle);
-          var y = cy + r * Math.sin(angle);
-          if (i === 0) c.moveTo(x, y); else c.lineTo(x, y);
-        }
-        c.closePath();
-      }
-
       /* ---------- Drawing ---------- */
       function drawGrid() {
         var s = sizeCanvas(gridCanvas);
-        if (!state.grid.enabled) return;
-        var c = s.ctx;
-        var r = R.hexSize(state.grid) * view.fit;
-        c.globalAlpha = R.gridOpacity(state.grid);
-        c.lineWidth = 1;
-        c.strokeStyle = 'rgba(231,231,234,0.9)';
-        var tl = R.toBoard(view, 0, 0);
-        var br = R.toBoard(view, s.w, s.h);
-        var range = R.hexRange(state.grid, tl.x, tl.y, br.x, br.y);
-        for (var rr = range.rMin; rr <= range.rMax; rr++) {
-          for (var qq = range.qMin; qq <= range.qMax; qq++) {
-            var b = R.axialToPixel(state.grid, qq, rr);
-            var p = R.toScreen(view, b.x, b.y);
-            if (p.x < -2 * r || p.x > s.w + 2 * r || p.y < -2 * r || p.y > s.h + 2 * r) continue;
-            hexPath(c, p.x, p.y, r);
-            c.stroke();
-          }
-        }
-        c.globalAlpha = 1;
+        ns.draw.grid(s.ctx, s.w, s.h, view, state.grid);
       }
 
       /* Fog: the whole map area dark, with the uncovered hexes cut out. Only
-         plain fills are drawn here, never a picture. */
+         plain fills are drawn here, never a picture (tools/explorer/draw.js,
+         which the Player View draws with too). */
       function drawFog() {
         var s = sizeCanvas(fogCanvas);
         if (!state.fog.enabled) return;
-        var c = s.ctx;
-        var store = R.fogStore(state);
-        var r = R.hexSize(state.grid) * view.fit;
-        c.globalAlpha = 0.86;
-        c.fillStyle = 'rgba(0,0,0,1)';
-        c.fillRect(0, 0, s.w, s.h);
-        c.globalAlpha = 1;
-        c.globalCompositeOperation = 'destination-out';
-        Object.keys(store).forEach(function (key) {
-          var parts = key.split(',');
-          var q = Number(parts[0]), rr = Number(parts[1]);
-          if (!Number.isFinite(q) || !Number.isFinite(rr)) return;
-          var b = R.axialToPixel(state.grid, q, rr);
-          var p = R.toScreen(view, b.x, b.y);
-          if (p.x < -2 * r || p.x > s.w + 2 * r || p.y < -2 * r || p.y > s.h + 2 * r) return;
-          hexPath(c, p.x, p.y, r * 0.98);
-          c.fill();
-        });
-        c.globalCompositeOperation = 'source-over';
+        ns.draw.fog(s.ctx, s.w, s.h, view, state.grid, R.fogStore(state));
       }
 
       function renderPins() {
@@ -368,6 +352,7 @@
 
       var tokenEls = {};
       function renderTokens() {
+        queuePlayerSync();
         var spots = R.layoutTokens(state, board, drag ? drag.anchorId : null);
         state.tokens.forEach(function (t) {
           var node = tokenEls[t.id];
@@ -386,6 +371,7 @@
       }
 
       function updateTravelUI() {
+        queuePlayerSync();
         var focus = R.focusToken(state, focusId);
         var limit = R.dayLimit(state);
         var used = R.milesShown(focus, limit);
@@ -481,6 +467,7 @@
       }
 
       function redrawMap() {
+        queuePlayerSync();
         layout();
         drawGrid();
         drawFog();
@@ -2236,6 +2223,8 @@
           if (m) openPlace(m);
           return !!m;
         },
+        /* Change the state as the DM's screen would, then save and redraw (the tests). */
+        change: function (fn) { fn(state); saveNow(); renderAll(); },
         board: function () { return board; },
         view: function () { return view; },
         focus: function () { return focusId; },
