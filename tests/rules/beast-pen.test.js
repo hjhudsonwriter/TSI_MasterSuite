@@ -117,8 +117,8 @@
     var B = T.bastion;
     t.equal(B.facilityImages[PEN], 'beast_pen.jpg');
     t.equal(B.panelImages[PEN], 'beast_pen.jpg');
-    t.same(B.map.overlays.filter(function (o) { return o.fac === PEN; }), [{ fac: PEN, pic: 'map/overlays/wyvern_roost.png' }], 'the Menagerie never had a map picture, so the map reuses the Wyvern Roost\'s building');
-    t.same(B.mapLabels[PEN], { x: 2081, y: 326 });
+    t.same(B.map.overlays.filter(function (o) { return o.fac === PEN; }), [{ fac: PEN, pic: 'map/overlays/beast_pen.png' }], 'the Beast Pen has its own map picture (Harry\'s designs of 26 October 2026)');
+    t.same(B.mapLabels[PEN], { x: 1904, y: 478 });
     ['wyvern_roost', 'griffin_tower', 'dire_wolf_den'].forEach(function (id) {
       t.equal(B.mapLabels[id], undefined, id + ' has no map label');
       t.equal(B.facilityTileCrops[id], undefined, id + ' has no tile crop');

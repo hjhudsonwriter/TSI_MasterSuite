@@ -548,3 +548,14 @@ Nothing deleted. Five pictures no longer used moved with `git mv` (byte-for-byte
 | `tools/beasthandler/assets/wyvern/bloodcrest.webp` | Bloodcrest (replaces the old one, kept at `assets/extras/wyvern-previous/bloodcrest-old.webp`) |
 | `tools/beasthandler/assets/buckbear/shovelhorn.webp` | Shovelhorn (new) |
 | `tools/beasthandler/assets/fellcat/smokecoat.webp` | Smokecoat (new) |
+
+## New Bastion map, 26 October 2026
+
+Harry's `New_Bastion_Designs` folder (uploaded to the repository root) was moved:
+
+| Old location | New location |
+|---|---|
+| `New_Bastion_Designs/NEW_Bastion_Start.png` | converted to `tools/bastion/assets/map/bastion_base.jpg` (the PNG is kept in `tools/bastion/assets/extras/map-2026-10-26/`) |
+| `New_Bastion_Designs/Bastion_Overlay_{BeastPen,CourierExchange,FisheryAndSmokehouse,HallOfEmissaries,HerbalGardens,StoneQuarryAndMasonworks,Temple,TimberYardAndSawmill,WeaversHall}.png` | `tools/bastion/assets/map/overlays/{beast_pen,courier_exchange,fishery_smokehouse,hall_of_emissaries,herbal_gardens,stone_quarry_masonworks,temple,timber_yard_sawmill,weavers_hall}.png` |
+| `Bastion_Overlay_{Dock,Workshop,PartyQuarters,PrisonTower}.png`, `Bastion_Empty.png`, `Bastion_Complete_Reference.png`, `Bastion_Overlays_Full.png` | `tools/bastion/assets/extras/map-2026-10-26/` |
+| the previous base and all eleven previous overlays | `tools/bastion/assets/extras/map-previous/` |
