@@ -9,6 +9,11 @@
 - Five unused pictures moved to `tools/bastion/assets/extras/` (see `docs/ASSETS.md` and `docs/BASTION-MAP-ART.md`); nothing deleted. The Temple's three Shrine paintings and map overlays and the Beast Pen's tile, panel strip and map overlay are wired.
 - `guide.html` facilities paragraph brought up to date.
 
+### 26 October 2026: zoom and pan, and Reset to Day 1 (BAS-SB-101 to 103)
+
+- Zoom and pan in the Explorer (wheel at the pointer, drag, +/-/0, + - Fit buttons), mirrored by the Player View as the region of the map the DM sees (`tools/explorer/rules.js` R.zoomView, R.visibleRegion, R.regionView; tests in `tests/rules/player-view-explorer.test.js` and `tests/e2e/player-view-explorer.test.js`).
+- Reset to Day 1 blanks the Explorer; the Bastion drops the Explorer's deliveries once (`R.resetToDayOne`, `R.clearExplorerDeliveries`; `tests/rules/explorer-reset.test.js`, `tests/e2e/explorer-reset.test.js`).
+
 ### 26 October 2026: the Explorer's Player View (P4)
 
 - Done: **Open Player View** in the Explorer's View box; `player.html?view=explorer` shows the map filling the window under a slim row (Day, Daily Travel, Gold) with heroes, grid, pins, fog and weather; snapshot rules and leak tests (`tools/explorer/player-view-rules.js`, `tests/rules/player-view-explorer.test.js`); the grid and fog drawing moved into `tools/explorer/draw.js`, shared by both maps; an uploaded map is sent once; guide and KNOWN_ISSUES (BAS-SB-95 to 98); `tests/e2e/player-view-explorer.test.js`.

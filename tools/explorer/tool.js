@@ -90,7 +90,7 @@
         name: 'ScarlettExplorerPlayers',
         keepOpen: true,
         features: 'popup=yes,width=1400,height=800',
-        getState: function () { return R.playerSnapshot(state, DATA, { pin: pvPin, dim: pvDim(), camp: pvCamp }); },
+        getState: function () { return R.playerSnapshot(state, DATA, { view: R.visibleRegion(view, stage.clientWidth || 1, stage.clientHeight || 1, board), pin: pvPin, dim: pvDim(), camp: pvCamp }); },
         onStatus: function (st) {
           pvStatus.textContent = st === 'connected' ? 'Connected' : st === 'opening' ? 'Opening…' : st === 'blocked' ? 'Blocked' : 'Not open';
           pvStatus.classList.toggle('is-connected', st === 'connected');
@@ -149,6 +149,14 @@
       var btnFullscreen = btn('Fullscreen', toggleFullscreen, '', 'fullscreen');
       var btnPlayerView = btn('Open Player View', function () { pvLink.open(); }, 'tsi-btn--ghost', 'open-player-view');
       btnPlayerView.title = 'Open the players\' view of the map in a new window, to drag onto the TV. It only looks.';
+      var btnZoomIn = btn('+', function () { zoomBy(1.4); }, 'tsi-exp-zoom', 'zoom-in');
+      var btnZoomOut = btn('−', function () { zoomBy(1 / 1.4); }, 'tsi-exp-zoom', 'zoom-out');
+      var btnFit = btn('Fit', function () { zoomFit(); }, 'tsi-exp-zoom', 'zoom-fit');
+      btnZoomIn.title = 'Zoom in (+, or the mouse wheel over the map)';
+      btnZoomOut.title = 'Zoom out (−)';
+      btnFit.title = 'Show the whole map (0). Drag the map to move it when zoomed in.';
+      btnZoomIn.setAttribute('aria-label', 'Zoom in');
+      btnZoomOut.setAttribute('aria-label', 'Zoom out');
       var btnHideUi = btn('Hide UI', function () { setUiHidden(!uiHidden); }, '', 'hide-ui');
       var btnGrid = btn('Hex Grid: On', function () { state.grid.enabled = !state.grid.enabled; saveNow(); renderAll(); }, '', 'grid');
       var btnFog = btn('Fog of War: Off', toggleFog, '', 'fog');
@@ -176,7 +184,7 @@
           row([mapSelect, btn('Load', onLoadPreset, '', 'load')], 'tsi-exp-row--select'),
           row([uploadLabel, btn('Clear map', onClearMap, '', 'clear-map')])
         ]),
-        sectionWith('View', el('span', { class: 'tsi-exp-pvbox' }, [btnPlayerView, pvStatus]), [row([btnFullscreen, btnHideUi])]),
+        sectionWith('View', el('span', { class: 'tsi-exp-pvbox' }, [btnPlayerView, pvStatus]), [row([btnFullscreen, btnHideUi, btnZoomOut, btnZoomIn, btnFit])]),
         section('Hex grid', [
           row([btnGrid]),
           row([btn('Hex −', function () { gridSize(-2); }, '', 'hex-down'), btn('Hex +', function () { gridSize(2); }, '', 'hex-up')]),
@@ -301,10 +309,12 @@
 
       /* ---------- Where things are on screen ---------- */
       var board = R.board(R.aspect(state, DATA));
+      /* Zoom and pan (26 October 2026): not saved. zoom 1 is the whole map fitted, as it always was. */
+      var viewZoom = 1, viewCx = 0.5, viewCy = 0.5;
       var view = R.view(1, 1, board);
       function layout() {
         board = R.board(R.aspect(state, DATA));
-        view = R.view(stage.clientWidth || 1, stage.clientHeight || 1, board);
+        view = R.zoomView(stage.clientWidth || 1, stage.clientHeight || 1, board, viewZoom, viewCx, viewCy);
         var t = 'translate(' + view.ox + 'px,' + view.oy + 'px) scale(' + view.fit + ')';
         [mapLayer, tokenLayer].forEach(function (layer) {
           layer.style.width = board.w + 'px';
@@ -504,6 +514,7 @@
         var res = R.loadPreset(state, DATA, id);
         if (!res) { note('Preset map not found.'); return; }
         dropUpload();
+        zoomFit();
         layout();
         if (res.spawned && state.fog.enabled) R.revealAroundFocus(state, board, focusId);
         saveNow();
@@ -536,6 +547,7 @@
             state.mapAspect = probe.naturalWidth && probe.naturalHeight ? probe.naturalWidth / probe.naturalHeight : null;
             state.mapPresetId = null;
             ctx.store.set('mapImage', { dataUrl: dataUrl, key: key, name: file.name });
+            viewZoom = 1; viewCx = 0.5; viewCy = 0.5;
             saveNow();
             renderAll();
           };
@@ -561,6 +573,7 @@
           state.mapUploadKey = null;
           state.mapAspect = null;
           dropUpload();
+          viewZoom = 1; viewCx = 0.5; viewCy = 0.5;
           saveNow();
           renderAll();
         });
@@ -678,17 +691,60 @@
         resizeTokens(e.deltaY < 0 ? 2 : -2);
       }, { passive: false });
 
+      /* ---------- Zoom and pan ---------- */
+      var viewQueued = false;
+      function applyView() {
+        /* Keep the map where the limits allow (it can't leave the area), then redraw once a frame. */
+        var v = R.zoomView(stage.clientWidth || 1, stage.clientHeight || 1, board, viewZoom, viewCx, viewCy);
+        var c = R.viewCentre(v, stage.clientWidth || 1, stage.clientHeight || 1, board);
+        viewZoom = v.zoom; viewCx = c.cx; viewCy = c.cy;
+        layout();
+        if (viewQueued) return;
+        viewQueued = true;
+        life.raf(function () { viewQueued = false; redrawMap(); });
+      }
+      function setView(r) { viewZoom = r.zoom; viewCx = r.cx; viewCy = r.cy; applyView(); }
+      function zoomBy(factor, sx, sy) {
+        var W = stage.clientWidth || 1, H = stage.clientHeight || 1;
+        if (sx === undefined) { sx = W / 2; sy = H / 2; }
+        setView(R.zoomAround(view, W, H, board, viewZoom * factor, sx, sy));
+      }
+      function zoomFit() { viewZoom = 1; viewCx = 0.5; viewCy = 0.5; applyView(); }
+      life.on(stage, 'wheel', function (e) {
+        /* Over a hero the wheel still makes it bigger or smaller (above). */
+        if (e.target.closest('.tsi-exp-token')) return;
+        e.preventDefault();
+        var dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
+        var p = pointerOnStage(e);
+        zoomBy(Math.exp(-dy * (e.ctrlKey ? 0.01 : 0.0015)), p.x, p.y);
+      }, { passive: false });
+      stage.tabIndex = 0;
+      life.on(stage, 'keydown', function (e) {
+        if (e.ctrlKey || e.altKey || e.metaKey) return;
+        if (e.key === '+' || e.key === '=') { e.preventDefault(); zoomBy(1.4); }
+        else if (e.key === '-' || e.key === '_') { e.preventDefault(); zoomBy(1 / 1.4); }
+        else if (e.key === '0') { e.preventDefault(); zoomFit(); }
+      });
+
       /* ---------- Selecting and dragging ---------- */
       var box = null;
+      var pan = null;
       life.on(stage, 'pointerdown', function (e) {
         if (e.button !== 0) return;
         if (e.target.closest('.tsi-exp-token') || e.target.closest('.tsi-exp-pin') || e.target.closest('.tsi-exp-showui')) return;
         if (pickXY) { pickAt(e); return; }
         var p = pointerOnStage(e);
-        box = { x: p.x, y: p.y, pointerId: e.pointerId };
+        try { stage.focus({ preventScroll: true }); } catch (err) { /* ignore */ }
         try { stage.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
-        setMarquee(p.x, p.y, p.x, p.y);
-        marquee.hidden = false;
+        /* Zoomed in, dragging the empty map moves it (after a few pixels, so a plain click still does what it did);
+           hold Shift to draw the selection box instead. Not zoomed, the box is as it always was. */
+        if (viewZoom > 1 && !e.shiftKey) {
+          pan = { x: p.x, y: p.y, from: { zoom: viewZoom, ox: view.ox, oy: view.oy, fit: view.fit }, moved: false, pointerId: e.pointerId };
+        } else {
+          box = { x: p.x, y: p.y, pointerId: e.pointerId };
+          setMarquee(p.x, p.y, p.x, p.y);
+          marquee.hidden = false;
+        }
         /* Without Ctrl, a new box starts a fresh selection. */
         if (!e.ctrlKey) selected.clear();
         renderTokens();
@@ -700,11 +756,21 @@
         marquee.style.height = Math.abs(y2 - y1) + 'px';
       }
       life.on(stage, 'pointermove', function (e) {
+        if (pan) {
+          var q = pointerOnStage(e);
+          var dx = q.x - pan.x, dy = q.y - pan.y;
+          if (!pan.moved && Math.abs(dx) + Math.abs(dy) < 5) return;
+          pan.moved = true;
+          stage.classList.add('tsi-exp-stage--panning');
+          setView(R.panBy(pan.from, stage.clientWidth || 1, stage.clientHeight || 1, board, dx, dy));
+          return;
+        }
         if (!box) return;
         var p = pointerOnStage(e);
         setMarquee(box.x, box.y, p.x, p.y);
       });
       function endBox(e) {
+        if (pan) { pan = null; stage.classList.remove('tsi-exp-stage--panning'); return; }
         if (!box) return;
         var p = pointerOnStage(e);
         var a = R.toBoard(view, Math.min(box.x, p.x), Math.min(box.y, p.y));
@@ -719,7 +785,7 @@
         renderTokens();
       }
       life.on(stage, 'pointerup', endBox);
-      life.on(stage, 'pointercancel', function () { box = null; marquee.hidden = true; });
+      life.on(stage, 'pointercancel', function () { box = null; pan = null; stage.classList.remove('tsi-exp-stage--panning'); marquee.hidden = true; });
 
       life.on(tokenLayer, 'pointerdown', function (e) {
         var node = e.target.closest('.tsi-exp-token');
@@ -2256,6 +2322,7 @@
         change: function (fn) { fn(state); saveNow(); renderAll(); },
         board: function () { return board; },
         view: function () { return view; },
+        zoomState: function () { return { zoom: viewZoom, cx: viewCx, cy: viewCy }; },
         focus: function () { return focusId; },
         selected: function () { return Array.from(selected); },
         toScreen: function (bx, by) {

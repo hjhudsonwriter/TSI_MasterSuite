@@ -509,3 +509,9 @@
 .tsi-tool--explorer .tsi-exp-pvstatus { font: 400 12px var(--tsi-font-display); letter-spacing: .04em; color: var(--tsi-text-faint); white-space: nowrap; align-self: center; }
 .tsi-tool--explorer .tsi-exp-pvstatus.is-connected { color: #9fd68a; }
 .tsi-tool--explorer .tsi-exp-pvbox { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; }
+
+/* Zoom and pan (26 October 2026). */
+.tsi-tool--explorer .tsi-exp-zoom { min-width: 34px; padding-left: 8px; padding-right: 8px; }
+.tsi-tool--explorer .tsi-exp-stage:focus { outline: none; }
+.tsi-tool--explorer .tsi-exp-stage:focus-visible { box-shadow: inset 0 0 0 2px rgba(214, 178, 94, .55); }
+.tsi-tool--explorer .tsi-exp-stage--panning { cursor: grabbing; }

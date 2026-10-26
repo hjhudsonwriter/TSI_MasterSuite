@@ -291,6 +291,61 @@
     var fit = Math.max(0.0001, Math.min(stageW / board.w, stageH / board.h));
     return { fit: fit, ox: (stageW - board.w * fit) / 2, oy: (stageH - board.h * fit) / 2 };
   };
+  /* ---------- Zoom and pan (Harry, 26 October 2026) ----------
+     The view is { zoom, cx, cy }: zoom 1 (the whole map fitted, as before) to R.ZOOM_MAX, and the point of the map
+     (cx, cy: fractions of the board, 0 to 1) shown at the middle of the map area. None of it is saved with the game.
+     The map can never leave the area: while it is bigger than the area, its edge stops at the area's edge; while it is
+     smaller (zoom 1 on a different-shaped window), it stays centred. */
+  R.ZOOM_MAX = 6;
+  R.clampZoom = function (z) { return R.clamp(Number(z) || 1, 1, R.ZOOM_MAX); };
+  R.zoomView = function (stageW, stageH, board, zoom, cx, cy) {
+    var z = R.clampZoom(zoom);
+    var base = R.view(stageW, stageH, board);
+    var fit = base.fit * z;
+    var cw = board.w * fit, ch = board.h * fit;
+    var fx = R.clamp(Number(cx), 0, 1), fy = R.clamp(Number(cy), 0, 1);
+    if (!Number.isFinite(fx)) fx = 0.5;
+    if (!Number.isFinite(fy)) fy = 0.5;
+    var ox = cw <= stageW ? (stageW - cw) / 2 : R.clamp(stageW / 2 - fx * cw, stageW - cw, 0);
+    var oy = ch <= stageH ? (stageH - ch) / 2 : R.clamp(stageH / 2 - fy * ch, stageH - ch, 0);
+    return { fit: fit, ox: ox, oy: oy, zoom: z };
+  };
+  /* The point of the map at the middle of the area, as { cx, cy } fractions. */
+  R.viewCentre = function (v, stageW, stageH, board) {
+    return { cx: (stageW / 2 - v.ox) / (board.w * v.fit), cy: (stageH / 2 - v.oy) / (board.h * v.fit) };
+  };
+  /* Zoom to newZoom keeping the map point under the pointer (sx, sy, in the area) where it is. Returns { zoom, cx, cy }. */
+  R.zoomAround = function (v, stageW, stageH, board, newZoom, sx, sy) {
+    var z = R.clampZoom(newZoom);
+    var base = R.view(stageW, stageH, board);
+    var fit = base.fit * z;
+    var bx = (sx - v.ox) / v.fit, by = (sy - v.oy) / v.fit;
+    var ox = sx - bx * fit, oy = sy - by * fit;
+    return { zoom: z, cx: (stageW / 2 - ox) / (board.w * fit), cy: (stageH / 2 - oy) / (board.h * fit) };
+  };
+  /* Slide the map by dx, dy pixels (dragging). Returns { zoom, cx, cy }. */
+  R.panBy = function (v, stageW, stageH, board, dx, dy) {
+    var c = R.viewCentre({ fit: v.fit, ox: v.ox + dx, oy: v.oy + dy }, stageW, stageH, board);
+    return { zoom: v.zoom, cx: c.cx, cy: c.cy };
+  };
+  /* The part of the MAP the area shows, as fractions of the board: { x0, y0, x1, y1 }. At zoom 1 it is the whole map
+     (0, 0, 1, 1), whatever the window's shape: the part of the area beyond the map is not map. */
+  R.visibleRegion = function (v, stageW, stageH, board) {
+    var f = function (n) { return R.clamp(n, 0, 1); };
+    return {
+      x0: f((0 - v.ox) / (board.w * v.fit)), y0: f((0 - v.oy) / (board.h * v.fit)),
+      x1: f((stageW - v.ox) / (board.w * v.fit)), y1: f((stageH - v.oy) / (board.h * v.fit))
+    };
+  };
+  /* The view that shows that region of the map, as large as it can be, centred, in an area of another shape (the
+     Player View's window): the region is fully in view, with dark margins (or more of the map) on the longer side. */
+  R.regionView = function (r, stageW, stageH, board) {
+    var x0 = Number(r && r.x0), y0 = Number(r && r.y0), x1 = Number(r && r.x1), y1 = Number(r && r.y1);
+    if (!(x0 >= 0 && y0 >= 0 && x1 <= 1 && y1 <= 1 && x1 - x0 > 0.0005 && y1 - y0 > 0.0005)) { x0 = 0; y0 = 0; x1 = 1; y1 = 1; }
+    var rw = (x1 - x0) * board.w, rh = (y1 - y0) * board.h;
+    var fit = Math.max(0.0001, Math.min(stageW / rw, stageH / rh));
+    return { fit: fit, ox: stageW / 2 - ((x0 + x1) / 2) * board.w * fit, oy: stageH / 2 - ((y0 + y1) / 2) * board.h * fit };
+  };
   R.toScreen = function (v, bx, by) { return { x: v.ox + bx * v.fit, y: v.oy + by * v.fit }; };
   R.toBoard = function (v, sx, sy) { return { x: (sx - v.ox) / v.fit, y: (sy - v.oy) / v.fit }; };
 

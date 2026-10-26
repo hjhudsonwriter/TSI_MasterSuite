@@ -36,7 +36,7 @@ Two ways of seeing the Explorer and the Bastion:
 
 ## Harry's answers (26 October 2026)
 - Same laptop only (two windows); no phone or second-computer link.
-- The Explorer's Player View copies the DM's pan and zoom.
+- The Explorer's Player View copies the DM's pan and zoom (built 26 October 2026 with the Explorer's new zoom and pan).
 - Players see everything on the maps.
 - "Daily Travel" is one figure out of the daily limit.
 - Gold is the travel purse.
@@ -47,4 +47,4 @@ Two ways of seeing the Explorer and the Bastion:
 The Explorer's and Bastion's windows stay open between tools and reconnect by themselves (26 October 2026); only a closed DM browser window, after about 30 seconds, closes them.
 The Beast Pen's panel shows only its painting and the housed beasts' name, kind and handler (26 October 2026).
 The Party Quarters has a bare panel (name and picture only), opened from its DM tile (26 October 2026).
-P1 to P4 built (see docs/PROGRESS.md). P4 built (with pin cards and the night and campfire fades): the Explorer's Player View (the Explorer has no pan or zoom, so it mirrors the whole map).
+P1 to P4 built (see docs/PROGRESS.md). P4 built (with pin cards and the night and campfire fades): the Explorer's Player View (the earlier note that the Explorer has no pan or zoom is replaced: the Explorer now zooms and pans, and the Player View copies it, BAS-SB-101).

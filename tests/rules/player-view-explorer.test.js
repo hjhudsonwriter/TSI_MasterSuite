@@ -117,7 +117,7 @@
 
   test('the snapshot has only the listed top-level fields, and survives a structured clone shape (plain JSON)', function (t) {
     var s = snap(busy());
-    t.same(Object.keys(s).sort(), ['board', 'day', 'fog', 'gold', 'grid', 'limit', 'map', 'markers', 'miles', 'pin', 'dim', 'camp', 'tokens', 'v', 'weather'].sort());
+    t.same(Object.keys(s).sort(), ['board', 'day', 'fog', 'gold', 'grid', 'limit', 'map', 'markers', 'miles', 'pin', 'dim', 'camp', 'tokens', 'v', 'view', 'weather'].sort());
     t.same(JSON.parse(JSON.stringify(s)), s);
   });
 
@@ -143,10 +143,91 @@
     t.equal(R.playerSnapshot(b, D).dim, 'none');
   });
 
+  test('the view: the whole map by default; a region from the DM is sent as fractions; nonsense falls back to the whole map', function (t) {
+    var b = busy();
+    t.same(R.playerSnapshot(b, D).view, { x0: 0, y0: 0, x1: 1, y1: 1 });
+    t.same(R.playerSnapshot(b, D, { view: { x0: 0.25, y0: 0.1, x1: 0.75, y1: 0.6 } }).view, { x0: 0.25, y0: 0.1, x1: 0.75, y1: 0.6 });
+    ['ZZ', { x0: 0.6, y0: 0, x1: 0.5, y1: 1 }, { x0: -1, y0: 0, x1: 1, y1: 1 }, { x0: 0, y0: 0, x1: 'a', y1: 1 }].forEach(function (bad) {
+      t.same(R.playerSnapshot(b, D, { view: bad }).view, { x0: 0, y0: 0, x1: 1, y1: 1 });
+    });
+  });
+
   test('building a snapshot changes nothing in the state', function (t) {
     var b = busy();
     var before = JSON.stringify(b);
     snap(b);
     t.equal(JSON.stringify(b), before);
+  });
+
+  group('Explorer zoom and pan');
+
+  var board = R.board(4 / 3);
+  var W = 1200, H = 700;
+  function near(a, b) { return Math.abs(a - b) < 1e-6; }
+
+  test('zoom 1 is the whole map fitted and centred, exactly as R.view', function (t) {
+    var v = R.zoomView(W, H, board, 1, 0.9, 0.1);
+    var base = R.view(W, H, board);
+    t.same([v.fit, v.ox, v.oy], [base.fit, base.ox, base.oy]);
+  });
+
+  test('zoomed in, the map fills the area and its edges stop at the area\'s edges', function (t) {
+    var v = R.zoomView(W, H, board, 3, 0, 0);
+    t.ok(near(v.ox, 0) && near(v.oy, 0), 'top left corner stops at the corner');
+    var e = R.zoomView(W, H, board, 3, 1, 1);
+    t.ok(near(e.ox + board.w * e.fit, W) && near(e.oy + board.h * e.fit, H), 'bottom right corner stops at the corner');
+    t.equal(R.zoomView(W, H, board, 99, 0.5, 0.5).zoom, R.ZOOM_MAX);
+    t.equal(R.zoomView(W, H, board, 0.2, 0.5, 0.5).zoom, 1);
+  });
+
+  test('zooming around the pointer keeps the map point under the pointer where it was', function (t) {
+    var v = R.zoomView(W, H, board, 1, 0.5, 0.5);
+    var sx = 700, sy = 300;
+    var before = R.toBoard(v, sx, sy);
+    var r = R.zoomAround(v, W, H, board, 2.5, sx, sy);
+    var v2 = R.zoomView(W, H, board, r.zoom, r.cx, r.cy);
+    var after = R.toBoard(v2, sx, sy);
+    t.ok(Math.abs(before.x - after.x) < 0.01 && Math.abs(before.y - after.y) < 0.01, JSON.stringify([before, after]));
+    t.equal(v2.zoom, 2.5);
+  });
+
+  test('panning slides the map and is clamped; at zoom 1 there is nothing to pan', function (t) {
+    var v = R.zoomView(W, H, board, 2, 0.5, 0.5);
+    var r = R.panBy(v, W, H, board, -100, -50);
+    var v2 = R.zoomView(W, H, board, r.zoom, r.cx, r.cy);
+    t.ok(near(v2.ox, v.ox - 100) && near(v2.oy, v.oy - 50));
+    var far = R.panBy(v, W, H, board, 99999, 99999);
+    var v3 = R.zoomView(W, H, board, far.zoom, far.cx, far.cy);
+    t.ok(near(v3.ox, 0) && near(v3.oy, 0), 'cannot leave the area');
+    var one = R.zoomView(W, H, board, 1, 0.5, 0.5);
+    var p = R.panBy(one, W, H, board, 80, 80);
+    var v4 = R.zoomView(W, H, board, p.zoom, p.cx, p.cy);
+    t.same([v4.ox, v4.oy], [one.ox, one.oy]);
+  });
+
+  test('the visible region is the whole map at zoom 1 in any window shape, and the real region when zoomed', function (t) {
+    [[1200, 700], [900, 900], [1920, 1080], [500, 1000]].forEach(function (sz) {
+      var v = R.zoomView(sz[0], sz[1], board, 1, 0.5, 0.5);
+      var r = R.visibleRegion(v, sz[0], sz[1], board);
+      t.ok(near(r.x0, 0) && near(r.y0, 0) && near(r.x1, 1) && near(r.y1, 1), sz.join('x'));
+    });
+    var v = R.zoomView(W, H, board, 2, 0.5, 0.5);
+    var r = R.visibleRegion(v, W, H, board);
+    t.ok(near((r.x0 + r.x1) / 2, 0.5) && near((r.y0 + r.y1) / 2, 0.5));
+    t.ok(r.x1 - r.x0 < 1 && r.y1 - r.y0 < 1);
+  });
+
+  test('the players\' window shows the same region in its own shape: the region is fully in view, centred, and the whole map at zoom 1 looks as before', function (t) {
+    var whole = R.regionView({ x0: 0, y0: 0, x1: 1, y1: 1 }, 1920, 1080, board);
+    var base = R.view(1920, 1080, board);
+    t.same([whole.fit, whole.ox, whole.oy], [base.fit, base.ox, base.oy]);
+    var region = { x0: 0.2, y0: 0.3, x1: 0.5, y1: 0.55 };
+    [[1920, 1080], [900, 900], [1707, 930]].forEach(function (sz) {
+      var rv = R.regionView(region, sz[0], sz[1], board);
+      var a = R.toScreen(rv, region.x0 * board.w, region.y0 * board.h), b = R.toScreen(rv, region.x1 * board.w, region.y1 * board.h);
+      t.ok(a.x >= -0.01 && a.y >= -0.01 && b.x <= sz[0] + 0.01 && b.y <= sz[1] + 0.01, 'inside ' + sz.join('x'));
+      t.ok(near((a.x + b.x) / 2, sz[0] / 2) && near((a.y + b.y) / 2, sz[1] / 2), 'centred ' + sz.join('x'));
+    });
+    t.same(R.regionView({ x0: 0.6, y0: 0, x1: 0.5, y1: 1 }, 800, 600, board), R.regionView({ x0: 0, y0: 0, x1: 1, y1: 1 }, 800, 600, board));
   });
 }());
