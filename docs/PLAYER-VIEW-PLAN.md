@@ -21,7 +21,7 @@ Two ways of seeing the Explorer and the Bastion:
 - [x] **P1 Foundation:** snapshot rules and leak tests, Player View window shell for both tools, "Open Player View" button in each DM tool, full-screen button, connection indicator.
 - [x] **P2 Bastion Player View:** full-bleed map, overlays, labels, top-left row, crest, bottom-centre tray.
 - [x] **P3 Facility panels:** the template and the data file, the focus message, a placeholder panel for every facility (Workshop, Dock, Temple, Hall of Emissaries, Beast Pen, Prison Tower, Herbal Gardens, Fishery and Smokehouse, Timber Yard and Sawmill, Stone Quarry and Masonworks, Weavers' Hall, Courier Exchange).
-- **P4 Explorer Player View:** map-only window, slim top row, mirrored view of the DM's map.
+- [x] **P4 Explorer Player View:** map-only window, slim top row, mirrored view of the DM's map.
 - **P5 Artwork wiring:** swap in Harry's pictures and per-facility details as they arrive.
 - **P6 Checks:** tests at 1707x930 and 1920x1080, double-clicked-file run, docs and guide.
 
@@ -44,4 +44,4 @@ Two ways of seeing the Explorer and the Bastion:
 - Facility panels are purely visual; every panel shows name, tagline, level and orders. The picture fills most of the screen (slim header, big framed 4:3 picture, a compact strip of facts beneath).
 
 ## Status
-P1 to P3 built (see docs/PROGRESS.md). The Explorer view is a stub waiting for P4.
+P1 to P4 built (see docs/PROGRESS.md). P4 built: the Explorer's Player View (the Explorer has no pan or zoom, so it mirrors the whole map).

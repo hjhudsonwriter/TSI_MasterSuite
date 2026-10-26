@@ -95,8 +95,8 @@
           pvStatus.classList.toggle('is-connected', st === 'connected');
         },
         onMessage: function (type, payload) {
-          if (type === 'needmap' && uploadUrl && state.mapUploadKey && payload && payload.key === state.mapUploadKey) {
-            pvLink.send('map', { key: state.mapUploadKey, dataUrl: uploadUrl });
+          if (type === 'needmap' && uploadUrl && state.mapUploadKey && payload && payload.key === R.mapKey(state)) {
+            pvLink.send('map', { key: R.mapKey(state), dataUrl: uploadUrl });
           }
         }
       });
@@ -162,7 +162,7 @@
           row([mapSelect, btn('Load', onLoadPreset, '', 'load')], 'tsi-exp-row--select'),
           row([uploadLabel, btn('Clear map', onClearMap, '', 'clear-map')])
         ]),
-        section('View', [row([btnFullscreen, btnHideUi]), row([btnPlayerView, pvStatus])]),
+        sectionWith('View', el('span', { class: 'tsi-exp-pvbox' }, [btnPlayerView, pvStatus]), [row([btnFullscreen, btnHideUi])]),
         section('Hex grid', [
           row([btnGrid]),
           row([btn('Hex −', function () { gridSize(-2); }, '', 'hex-down'), btn('Hex +', function () { gridSize(2); }, '', 'hex-up')]),
@@ -2223,6 +2223,8 @@
           if (m) openPlace(m);
           return !!m;
         },
+        /* Change the state as the DM's screen would, then save and redraw (the tests). */
+        change: function (fn) { fn(state); saveNow(); renderAll(); },
         board: function () { return board; },
         view: function () { return view; },
         focus: function () { return focusId; },

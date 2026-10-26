@@ -387,10 +387,10 @@ const SECRETS = ['ZZWAREHOUSE', 'ZZDMNOTE', 'ZZPRISONER', 'ZZBEAST', 'ZZPAIRCODE
       equal(await pv.$eval('.tsi-bpv-waiting__text', n => getComputedStyle(n).animationName), 'none', 'no breathing with reduced motion');
       equal(await pv.isVisible('[data-test=pv-waiting]'), true);
     });
-    await check('the explorer view is a stub that waits too', async () => {
+    await check('the Explorer view waits too', async () => {
       await pv.goto(H.fileUrl('player.html') + '?view=explorer');
-      await pv.waitForSelector('[data-test=xpv-waiting]');
-      equal(await bare(pv, '[data-test=xpv-waiting]'), 'Waiting for the DM...');
+      await pv.waitForSelector('[data-test=pv-waiting]');
+      equal(await bare(pv, '[data-test=pv-waiting]'), 'Waiting for the DM...');
     });
     await context.close();
   }

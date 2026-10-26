@@ -508,3 +508,4 @@
 /* The Player View's status next to its button. */
 .tsi-tool--explorer .tsi-exp-pvstatus { font: 400 12px var(--tsi-font-display); letter-spacing: .04em; color: var(--tsi-text-faint); white-space: nowrap; align-self: center; }
 .tsi-tool--explorer .tsi-exp-pvstatus.is-connected { color: #9fd68a; }
+.tsi-tool--explorer .tsi-exp-pvbox { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; }

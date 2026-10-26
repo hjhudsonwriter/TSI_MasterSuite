@@ -9,6 +9,12 @@
 - Five unused pictures moved to `tools/bastion/assets/extras/` (see `docs/ASSETS.md` and `docs/BASTION-MAP-ART.md`); nothing deleted. The Temple's three Shrine paintings and map overlays and the Beast Pen's tile, panel strip and map overlay are wired.
 - `guide.html` facilities paragraph brought up to date.
 
+### 26 October 2026: the Explorer's Player View (P4)
+
+- Done: **Open Player View** in the Explorer's View box; `player.html?view=explorer` shows the map filling the window under a slim row (Day, Daily Travel, Gold) with heroes, grid, pins, fog and weather; snapshot rules and leak tests (`tools/explorer/player-view-rules.js`, `tests/rules/player-view-explorer.test.js`); the grid and fog drawing moved into `tools/explorer/draw.js`, shared by both maps; an uploaded map is sent once; guide and KNOWN_ISSUES (BAS-SB-95 to 98); `tests/e2e/player-view-explorer.test.js`.
+- Note: the Explorer has no pan or zoom, so "the same view" is the whole map, fitted and centred (BAS-SB-96).
+- Next: P5 (Bastion artwork), P6 (checks on Harry's screens).
+
 ### 26 October 2026: the Bastion's Player View (P1 to P3)
 
 - Done: the snapshot rules and leak tests, the Player View window (`player.html?view=bastion`: full-screen map, top-left numbers, crest, tray arrow, facility panels with big framed artwork), the **Open Player View** button, the focus message, `tools/bastion/data/player-panels-data.js`, an Explorer stub view, the guide, and the tests (`tests/rules/player-view.test.js`, `tests/e2e/player-view-bastion.test.js`).

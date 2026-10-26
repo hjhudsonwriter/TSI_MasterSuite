@@ -4164,3 +4164,19 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 ### BAS-SB-94 · Facility panel pictures are the existing paintings for now (26 October 2026)
 
 - Before: no picture for the players. After: each panel uses the facility's existing painting (the Temple its three shrines side by side; the Prison Tower and other cut-from-the-map buildings their cropped building) until Harry's 4:3 pictures are named in `player-panels-data.js` (`art`). The picture is shown whole (never cropped), so a non-4:3 painting has dark margins.
+
+### BAS-SB-95 · The Explorer's Player View (26 October 2026; phase P4 of docs/PLAYER-VIEW-PLAN.md)
+
+- Before: the Explorer's Player View was a "Waiting for the DM..." stub. After: **Open Player View** (in the Explorer's View box) opens a view-only window with the map filling it under one slim row (Day, Daily Travel, Gold), fed only by `R.playerSnapshot` (`tools/explorer/player-view-rules.js`). The hex grid and fog are drawn by one shared function (`tools/explorer/draw.js`) used by both the DM's map and the players'. It writes nothing; `tests/rules/player-view-explorer.test.js` and `tests/e2e/player-view-explorer.test.js` prove nothing DM-only is sent. Same laptop only.
+
+### BAS-SB-96 · The Explorer has no pan or zoom, so there is nothing to copy (26 October 2026)
+
+- Left alone: the brief asked the players' map to copy the DM's pan and zoom, but the DM's Explorer always shows the whole map fitted and centred (it has no pan or zoom). The players' window therefore shows the same whole map, fitted into its own shape, so a TV and the laptop show the same region; the tests check each hero sits at the same fraction of the picture in both windows, in any window shape. If a zoom is ever added to the Explorer, the snapshot will need a view field.
+
+### BAS-SB-97 · Daily Travel on the TV is the furthest any hero has gone (26 October 2026)
+
+- Left alone: the Explorer counts miles per hero (the DM's panel shows one hero at a time). The heroes normally move together, so the TV shows the highest count of any hero out of today's limit (a chart's extra miles included). If one hero is dragged alone, the TV shows that hero's miles.
+
+### BAS-SB-98 · The players' map shows the fog and the weather video too (26 October 2026)
+
+- Left alone: Harry said players see everything on the map, so the fog of war is drawn on the TV exactly as on the DM's map (dark, with the uncovered hexes cut out), and so is the day's weather video. A town pin hidden by fog on the DM's map is hidden on the TV too.
