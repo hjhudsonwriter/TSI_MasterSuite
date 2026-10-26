@@ -19,7 +19,7 @@
      its Bonding Days and pills (how far it is to its next bond level), its
      profile, its Chronicle (without the DM's DM-only notes), its picture key
      and the first meeting the Bastion rolled for it (null until it has one).
-   It never holds the treasury, the Day Log, the DM's notes, other
+   It never holds the treasury, the DM's notes, other
    buildings, or any raw part of the save, and since version 2 it holds no
    orders, training, receipts or request fingerprints: the app sends the
    Bastion nothing, so there is nothing to answer.

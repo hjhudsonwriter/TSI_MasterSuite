@@ -624,7 +624,7 @@
     t.equal(dev(c, cid).bonding.days, 1);
   });
 
-  test('the levels: Bond 2 at 10 total days, 3 at 20, 4 at 30, 5 at 50; a milestone is said once, in the Day Log and "The Ironbow sends word"', function (t) {
+  test('the levels: Bond 2 at 10 total days, 3 at 20, 4 at 30, 5 at 50; a milestone is said once in "The Ironbow sends word"', function (t) {
     var b = withPen(10);
     var id = acclimatised(b, 1, 'griffin', 'Swiftwing');
     BR.takeOut(b, bdata, id, {});
@@ -632,13 +632,9 @@
     t.same([dev(b, id).bonding.days, dev(b, id).bond.ready], [9, null], '9 days: not yet');
     BR.startDay(b, bdata, 0);
     t.same([dev(b, id).bonding.days, dev(b, id).bond.ready], [10, 2], 'the 10th day makes Bond 2 ready');
-    var said = b.log.filter(function (l) { return /Bond 2 \(Trusting\) is ready/.test(l.body); });
-    t.equal(said.length, 1);
-    t.equal(said[0].body, 'Swiftwing and Mira have spent 10 days together: Bond 2 (Trusting) is ready. Run a scene at the table, then confirm it in the Beast Pen.');
-    t.same(b.dayInProgress.news, [said[0].body], 'and in the Ironbow\'s word');
+    t.same(b.dayInProgress.news, ['Swiftwing and Mira have spent 10 days together: Bond 2 (Trusting) is ready. Run a scene at the table, then confirm it in the Beast Pen.'], 'said once, in the Ironbow\'s word');
     BR.finishDay(b);
     passDays(b, 3);
-    t.equal(b.log.filter(function (l) { return /is ready/.test(l.body); }).length, 1, 'never said again while it waits');
     t.equal(dev(b, id).bond.ready, 2);
     var thresholds = [];
     var c = withPen(10);

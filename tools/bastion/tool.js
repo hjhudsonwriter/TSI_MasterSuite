@@ -170,8 +170,6 @@
       function reportUnread() { return !!(state.migration && state.migration.v4 && state.migration.v4.shown !== true); }
       if (R.sweepInitiation && !reportUnread() && R.sweepInitiation(state, data, rand).changed) save();
       function saveUi() { ctx.store.set('ui', TSI.clone(ui)); }
-      function log(title, body) { R.log(state, title, body); }
-      function logAll(lines) { (lines || []).forEach(function (l) { log(l[0], l[1]); }); }
       /* Save, then redraw. */
       function done() { save(); if (life.alive) renderAll(); }
 
@@ -422,7 +420,6 @@
         if (!ok || !life.alive) return;
         var res = R.assignHandler(state, data, id, who.value, why.value, keep.checked);
         if (!res.ok) { await say(res.message); return; }
-        log(res.log[0], res.log[1]);
         done();
       });
       var onTemperament = TSI.oneAtATime(async function (id) {
@@ -484,7 +481,6 @@
         if (!ok || !life.alive) return;
         var res = R.confirmBond(state, data, id, why.value);
         if (!res.ok) { await say(res.message); return; }
-        log(res.log[0], res.log[1]);
         done();
       });
       var onChronicleNote = TSI.oneAtATime(async function (id) {
@@ -537,20 +533,17 @@
         if (!ok || !life.alive) return;
         var res = R.acclimatise(state, data, id, box.value, await penCtxNow());
         if (!res.ok) { await say(res.message); return; }
-        log(res.log[0], res.log[1]);
         done();
         await say((res.pass ? 'Passed. ' : 'Failed. ') + res.log[1]);
       });
       var onTakeOut = TSI.oneAtATime(async function (id) {
         var res = R.takeOut(state, data, id, await penCtxNow());
         if (!res.ok) { await say(res.message); return; }
-        log(res.log[0], res.log[1]);
         done();
       });
       var onReturnToPit = TSI.oneAtATime(async function (id) {
         var res = R.returnToPit(state, data, id, await penCtxNow());
         if (!res.ok) { await say(res.message); return; }
-        log(res.log[0], res.log[1]);
         done();
       });
       /* The five bond pills (Bond 1 to 5): full up to the bond, and the next one filling with the Bonding Days. */
@@ -1407,7 +1400,6 @@
           }, 'tsi-btn--primary', 'add-item'),
           btn('+ Add supplies', function () { onAddSupplies(); }, '', 'add-supplies'),
           btn('Save Warehouse', function () {
-            log('Warehouse', 'Saved warehouse.');
             done();
           }, '', 'save-warehouse'),
           btn('Clear', async function () {
@@ -1416,8 +1408,6 @@
             if (!life.alive) return;
             state.warehouse = [];
             /* Logged twice, as before (BAS-31, kept). */
-            log('Warehouse', 'Cleared warehouse.');
-            log('Warehouse', 'Cleared warehouse.');
             done();
           }, '', 'clear-warehouse')
         ])
@@ -1534,7 +1524,6 @@
         if (turnRunning) { await say('A day was passing, so nothing was added. Try again once it has finished.'); return; }
         var res = R.addSupplies(state, data, goodSel.value, qty.value);
         if (!res.ok) { await say(res.message); return; }
-        log(res.log[0], res.log[1]);
         done();
       });
 
@@ -1747,7 +1736,6 @@
         if (!ok || !life.alive) return;
         var res = R.startResearch(state, data, facId, branchId, choiceId, rand);
         if (!res.ok) { if (res.message) await say(res.message); return; }
-        log(res.log[0], res.log[1]);
         done();
       });
       var onUndoResearch = TSI.oneAtATime(async function (facId, branchId, stageIdx) {
@@ -1759,7 +1747,6 @@
         if (!ok || !life.alive) return;
         var res = R.undoResearch(state, data, facId, branchId, stageIdx);
         if (!res.ok) { if (res.message) await say(res.message); return; }
-        log(res.log[0], res.log[1]);
         done();
       });
 
@@ -1971,7 +1958,6 @@
             w.waiting ? btn('Resolve', function () { onResolveOrder(o.id); }, 'tsi-btn--primary', 'resolve-' + i, { disabled: turnRunning }) : null,
             btn('Cancel', async function () {
               var cancelled = R.cancelOrder(state, o.id, data);
-              logAll([cancelled]);
               notice(cancelled[1], { type: 'info', title: 'Order cancelled.', id: 'tsi-bas-cancelled', timeout: 10000 });
               done();
             }, 'tsi-btn--ghost', 'cancel-' + i)
@@ -2469,7 +2455,6 @@
         var pick = picker.read();
         var res = R.dispatchCargo(state, data, pick.charterId, pick.picks, rand);
         if (!res.ok) { await say(res.message); return; }
-        log(res.log[0], res.log[1]);
         done();
       });
       var onSchedule = TSI.oneAtATime(async function () {
@@ -2489,7 +2474,6 @@
         var pick = picker.read();
         var res = R.setSchedule(state, data, pick.charterId, pick.picks, rand);
         if (!res.ok) { await say(res.message); return; }
-        log(res.log[0], res.log[1]);
         done();
       });
       var onRecall = TSI.oneAtATime(async function (id) {
@@ -2504,7 +2488,6 @@
         if (!life.alive || turnRunning) return;
         var res = R.recallVoyage(state, data, id);
         if (!res.ok) { await say(res.message); return; }
-        log(res.log[0], res.log[1]);
         done();
       });
       var onStopSchedule = TSI.oneAtATime(async function (id) {
@@ -2512,7 +2495,6 @@
         if (!(await ask('Stop this standing shipment? Ships already at sea carry on.', 'Stop'))) return;
         var res = R.stopSchedule(state, data, id);
         if (!res.ok) { await say(res.message); return; }
-        log(res.log[0], res.log[1]);
         done();
       });
 
@@ -2642,7 +2624,6 @@
         if (!ok || !life.alive || turnRunning) return;
         var res = reset ? R.resetCharterTerms(state, data, id, why.value) : R.amendCharterTerms(state, data, id, { priceMult: price.value, feePerLot: fee.value, tariffPct: tariff.value }, why.value);
         if (!res.ok) { await say(res.message); return; }
-        log(res.log[0], res.log[1]);
         done();
       });
 
@@ -2737,7 +2718,6 @@
         var res = R.templePray(state, data, god, rand);
         if (!res.ok) { say(res.message); return; }
         templeSaid[god] = res.text;
-        log(res.log[0], res.log[1]);
         done();
       });
       var onReceive = TSI.oneAtATime(async function (god, fnId) {
@@ -2750,7 +2730,6 @@
         var res = R.templeReceive(state, data, god, fnId, rand);
         if (!res.ok) { await say(res.message); return; }
         templeSaid[god] = res.text;
-        log(res.log[0], res.log[1]);
         done();
       });
       /* One god's third of the panel. */
@@ -2986,7 +2965,6 @@
         var pick = picker.read();
         var res = R.sendParcel(state, data, pick.pointId, pick.picks, rand, lastExplorer);
         if (!res.ok) { await say(res.message); return; }
-        log(res.log[0], res.log[1]);
         done();
       });
       var onRecallParcel = TSI.oneAtATime(async function (id) {
@@ -3004,7 +2982,6 @@
         if (state.day !== asked) { await say('A day passed while the question was open, so the parcel wasn\'t recalled: its way home is longer now. Try again to see the new day.'); return; }
         var res = R.recallParcel(state, data, id);
         if (!res.ok) { await say(res.message); return; }
-        log(res.log[0], res.log[1]);
         done();
       });
 
@@ -3131,7 +3108,6 @@
         if (!facId) return false;
         var res = R.startBuild(state, data, slotIndex, facId);
         if (!res.ok) { if (res.message) say(res.message); return false; }
-        log(res.log[0], res.log[1]);
         done();
         return true;
       }
@@ -3162,7 +3138,6 @@
         if (!ok || !life.alive) return;
         var res = R.demolishFacility(state, data, facId);
         if (!res.ok) { if (res.message) await say(res.message); return; }
-        log(res.log[0], res.log[1]);
         notice(res.log[1], { type: 'info', title: res.log[0] + '.', id: 'tsi-bas-demolished', timeout: 12000 });
         closePanel();
         done();
@@ -3178,7 +3153,6 @@
         if (penWhy) { await say(penWhy); return; }
         state.builtExtras = [];
         state.builtPlots = [];
-        log('Facilities', 'Cleared extra built facilities.');
         done();
       }
 
@@ -3189,7 +3163,6 @@
         if (!fac || !fn) return;
         var res = R.issueOrder(state, data, facId, fnId, select ? select.value : 0, rand);
         if (!res.ok) { if (res.message) await say(res.message); return; }
-        log(res.log[0], res.log[1]);
         done();
       });
       var onUpgrade = TSI.oneAtATime(async function (facId) {
@@ -3203,7 +3176,6 @@
         }
         var res = R.issueUpgrade(state, data, facId, rand);
         if (!res.ok) { if (res.message) await say(res.message); return; }
-        log(res.log[0], res.log[1]);
         done();
       });
 
@@ -3282,7 +3254,6 @@
             var from = state.day;
             R.shiftDays(state, act.by);
             var wentBack = 'The Explorer\'s day went back (Reset Travel): the Bastion moves from Day ' + from + ' to Day ' + state.day + ', and everything due keeps its days.';
-            log('Days', wentBack);
             notice(wentBack, { type: 'info', title: 'Days.', id: 'tsi-bas-days-back', timeout: 14000 });
             settled = settleInbox();
             done();
@@ -3369,13 +3340,11 @@
              come home, standing shipments sail. Saved in the same write as
              the stage moving on, so none of it can happen twice. */
           var sea = R.settleVoyages(state, data, rand);
-          logAll(sea.log);
           sea.word.forEach(function (w) { R.addWord(state, w); });
           /* The Courier Exchange's parcels (pull request 6): one reaching its
              town waits there for the party; a recalled one coming home puts
              its contents back into the Warehouse. Same write, so once. */
           var post = R.settleParcels(state, data);
-          logAll(post.log);
           post.word.forEach(function (w) { R.addWord(state, w); });
           R.finishRoutes(state);
           save();
@@ -3441,7 +3410,6 @@
         if (kind === 'simple') {
           var lines = R.completeSimpleOrder(state, data, o, rand);
           R.removeOrder(state, o.id);
-          logAll(lines);
           if (inDay) (lines || []).forEach(function (l) { R.addWord(state, l[1]); });
           else tellResolved(lines, o);
           done();
@@ -3452,7 +3420,6 @@
         var dropped = R.dropOrderGoods(state, data, o);
         R.removeOrder(state, o.id);
         if (dropped) {
-          logAll(dropped);
           if (inDay) dropped.forEach(function (l) { R.addWord(state, l[1]); });
           else tellResolved(dropped, o);
         }
@@ -3526,7 +3493,6 @@
       var onDownload = TSI.oneAtATime(function () {
         return TSI.backup.exportTool('bastion').then(function () {
           if (!life.alive) return;
-          log('Save File', 'Downloaded the campaign save (the Explorer and the Bastion together).');
           notice('The campaign save (the Explorer and the Bastion together) was downloaded.', { type: 'info', title: 'Save file.', id: 'tsi-bas-saved', timeout: 8000 });
           done();
         });
@@ -3545,7 +3511,6 @@
         /* A Herbal Gardens still in a construction slot moves to a plot once one opens. */
         var moved = R.settlePlots(state, data);
         if (moved.length) {
-          log('Development Plots', R.settleLine(data, moved));
           notice(R.settleLine(data, moved), { type: 'info', title: 'Development Plots.', id: 'tsi-bas-plots', timeout: 20000 });
         }
         done();
@@ -3783,7 +3748,7 @@
         var lines = Array.isArray(m.lines) ? m.lines : [];
         changesShowing = true;
         if (first) changesOpen = true;
-        /* The Day Log panel is gone: its last 25 entries, as they are in the live save now, can be kept as a text file. */
+        /* The Day Log is gone (S18): a Bastion converted earlier still holds its last entries, untouched, and the last 25 can be kept as a text file. */
         var oldLog = R.oldLogText(state, 25);
         var body = el('div', { class: 'tsi-bas-changes', 'data-test': 'changes-body' }, [
           m.again ? el('p', { class: 'tsi-bas-changes__lead', text: 'An older copy of the suite had saved over your Bastion, so it was converted again. Nothing was lost.' }) : null,
@@ -3898,7 +3863,6 @@
       /* A Herbal Gardens built in a construction slot before Development Plots
          existed moves to a free plot (Harry's facility guide, 13 October 2026). */
       var settled = R.settlePlots(state, data);
-      if (settled.length) log('Development Plots', R.settleLine(data, settled));
       renderAll();
       /* The first open saves the starting Bastion, as the old tool did. */
       if (!saved || migrating || settled.length) save();

@@ -294,7 +294,6 @@
     var c = BR.charterFor(b, 'goldport');
     t.same([c.status, c.clan, c.mode, c.earnedDay, c.registeredDay], ['earned', 'molten', 'commodity_backed', 3, null]);
     t.same(b.bridge.done[charterMsg().id], { r: 'applied', day: 4, at: 1000, clan: 'molten', hr: 0, was: 0, now: 0, text: 'For clearing the harbour of wreckers.', why: '', type: 'charter', port: 'goldport', held: false });
-    t.ok(/Port Charter for Goldport \(Clan Molten\) \(DM, Day 3\): the Bastion now holds it\. Register it at the Dock before the Dock ships cargo there/.test(b.log[0].body));
     t.equal(BR.applyInbox(b, bdata, exWith([charterMsg()]), 2000).changed, false, 'a second look changes nothing');
     t.same(b.honourRespectByClan, BR.defaultState(bdata).honourRespectByClan);
   });
@@ -305,7 +304,6 @@
     BR.applyInbox(b, bdata, exWith([charterMsg(), second]), 1000);
     t.equal(BR.portCharters(b).length, 1);
     t.equal(b.bridge.done[second.id].held, true);
-    t.ok(/already holds it/.test(b.log[0].body));
   });
 
   test('a damaged Port Charter gets a refused receipt naming its port, and nothing is held', function (t) {
@@ -336,8 +334,6 @@
     BR.anchor(f, 5);
     BR.applyInbox(f, bdata, exWith([newer]), 1000);
     t.equal(f.bridge.done[newer.id].r, 'skipped');
-    t.equal(f.log.length, 1);
-    t.equal(f.log[0].body, '1 message from a newer copy of the suite, sent before this Bastion started, was skipped, so nothing counts twice.');
   });
 
   test('a Bastion starting from nothing skips a Port Charter sent before it, and lists it', function (t) {
@@ -347,8 +343,6 @@
     t.equal(r.skipped, 2);
     t.same(BR.portCharters(b), []);
     t.same([b.bridge.done[charterMsg().id].r, b.bridge.done[charterMsg().id].type], ['skipped', 'charter']);
-    t.ok(/1 Port Charter, sent before this Bastion started, was skipped/.test(b.log[0].body));
-    t.ok(/1 change to Honour\/Respect, sent before this Bastion started, was skipped/.test(b.log[1].body), 'the Honour/Respect line is as before');
   });
 
   test('receipts reload: a Port Charter\'s keeps its port; a pull request 4 receipt is exactly as before', function (t) {

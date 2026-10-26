@@ -180,7 +180,7 @@
     var b = world();
     var e = houseElara(b);
     b.treasuryGP = 7654321;
-    BR.log(b, 'Secret', 'SECRETLOGLINE', 10);
+    b.legacyLog = [{ title: 'Secret', body: 'SECRETLOGLINE', at: 10, day: 1 }];
     b.partyName = 'SECRETPARTYNAME';
     b.dmEdits = { done: { SECRETEDIT: true } };
     b.warehouse = [{ id: 'SECRETWAREHOUSE', qty: 3 }];

@@ -187,22 +187,6 @@
     t.equal(d.profileLog[0].by, 'the first meeting');
   });
 
-  test('the Day Log says the variety was staged; in random mode it says it was rolled', function (t) {
-    var b = world();
-    var c = beast(b, 'wyvern', 'Logged', 1);
-    withMode('fixed', function () { BR.rollInitiation(b, bdata, c.id, seq([0.4, 0.4, 0.4])); });
-    var staged = b.log.filter(function (l) { return /staged: fixed until further notice/.test(l.body); });
-    t.equal(staged.length, 1);
-    t.ok(/Logged: first meeting prepared\. Regional Variety Bloodcrest \(staged: fixed until further notice\); Dominant Temperament d12 5; Attachment Cue d8 4; Instinctive Trigger d8 4\./.test(staged[0].body), staged[0].body);
-    withMode('random', function () {
-      var b2 = world();
-      var c2 = beast(b2, 'griffin', 'Rolled', 1);
-      BR.rollInitiation(b2, bdata, c2.id, seq([face(2, 2), 0.4, 0.4, 0.4]));
-      t.ok(b2.log.some(function (l) { return /Regional Variety Silvershroud \(rolled d2 2\)/.test(l.body); }), b2.log[0].body);
-      t.ok(!b2.log.some(function (l) { return /staged/.test(l.body); }));
-    });
-  });
-
   test('a fixed variety that is not one of the kind\'s own falls back to an even pick, and a kind with no varieties is left alone', function (t) {
     var rule = T.beastInitiation.regional;
     var was = rule.fixed.wyvern;
