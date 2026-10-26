@@ -23,6 +23,7 @@ window.TSI_DATA.beastArt = {
         widowspine: { src: 'wyvern/widowspine.webp' },
         bleakhook: { src: 'wyvern/bleakhook.webp' },
         ironcrown: { src: 'wyvern/ironcrown.webp' },
+        leafwing: { src: 'wyvern/leafwing.webp' },
         bloodcrest: { src: 'wyvern/bloodcrest.webp' },
         shadowmount: { src: 'wyvern/shadowmount.webp' }
       }
@@ -54,13 +55,15 @@ window.TSI_DATA.beastArt = {
     buckbear: {
       label: 'Buckbear', alt: 'A buckbear', default: { src: '' },
       variants: {
-        broadcrown: { src: 'buckbear/broadcrown.webp' }
+        broadcrown: { src: 'buckbear/broadcrown.webp' },
+        shovelhorn: { src: 'buckbear/shovelhorn.webp' }
       }
     },
     fellcat: {
       label: 'Fellcat', alt: 'A fellcat', default: { src: '' },
       variants: {
-        lichenback: { src: 'fellcat/lichenback.webp' }
+        lichenback: { src: 'fellcat/lichenback.webp' },
+        smokecoat: { src: 'fellcat/smokecoat.webp' }
       }
     }
   }

@@ -80,7 +80,6 @@
     t.equal(area('fellcat', 'Whiteout').area, 'Icepoint');
     t.equal(area('fellcat', 'Tawnyfell').where, 'The scree and lower slopes of The Fangs');
     t.equal(area('fellcat', 'Smokecoat').area, 'Western Province (Clan Farmer)');
-    t.ok(/Camouflage: sea mist\.$/.test(area('fellcat', 'Mistveil').appearance), 'a Fellcat\'s camouflage is kept');
     t.equal(area('griffin', 'Embermantle').where, 'Redport and the western coastal cliffs');
     t.ok(/^Dark slate-to-blue-black scales, pale stone-grey breast/.test(area('wyvern', 'Widowspine').appearance));
     t.ok(/pale amber to moss-green eyes\.$/.test(area('dire_wolf', 'Nightfang').appearance));

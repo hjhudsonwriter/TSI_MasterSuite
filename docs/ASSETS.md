@@ -538,3 +538,13 @@ Nothing deleted. Five pictures no longer used moved with `git mv` (byte-for-byte
 | `tools/bastion/assets/ui/wax_stamp.png` | `tools/bastion/assets/extras/ui/wax_stamp.png` |
 | `tools/bastion/assets/map/overlays/griffin_tower.png` | `tools/bastion/assets/extras/map/overlays/griffin_tower.png` |
 | `tools/bastion/assets/map/overlays/dire_wolf_den.png` | `tools/bastion/assets/extras/map/overlays/dire_wolf_den.png` |
+
+## Variety pictures added 26 October 2026
+
+| New file | Subspecies |
+|---|---|
+| `tools/beasthandler/assets/wyvern/leafwing.webp` | Leafwing (new) |
+| `tools/beasthandler/assets/wyvern/ironcrown.webp` | Ironcrown (replaces the old one, kept at `assets/extras/wyvern-previous/ironcrown-old.webp`) |
+| `tools/beasthandler/assets/wyvern/bloodcrest.webp` | Bloodcrest (replaces the old one, kept at `assets/extras/wyvern-previous/bloodcrest-old.webp`) |
+| `tools/beasthandler/assets/buckbear/shovelhorn.webp` | Shovelhorn (new) |
+| `tools/beasthandler/assets/fellcat/smokecoat.webp` | Smokecoat (new) |

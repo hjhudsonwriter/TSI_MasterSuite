@@ -279,12 +279,12 @@
       var w = setup();
       /* 1. Settings empty, switch off. */
       return w.pub.tick().then(function (st) {
-        t.equal(st.state, 'unset');
+        t.equal(st.state, 'notenabled');
         /* 2. Switch ON but settings empty: still nothing. */
         BR.setBeastOnlineLink(w.b, true);
         return w.pub.tick();
       }).then(function (st) {
-        t.equal(st.state, 'unset', 'a switch with no address does nothing');
+        t.equal(st.state, 'notenabled', 'the laptop switch alone does nothing while relay-config.js says enabled: false');
         BR.setBeastOnlineLink(w.b, false);
         /* 3. Settings filled, switch off: still nothing. */
         return withConfig(TEST_URL, function () { return w.pub.tick(); });

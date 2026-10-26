@@ -238,11 +238,11 @@ window.TSI_DATA.beastProfile = {
         ]
       },
       regional: [
-        { id: 'mistveil', name: 'Mistveil', area: 'North Isle (Clan Karr)', where: 'The coast and fog banks of Bleaker\'s Bay', appearance: 'A thick silver coat with faint smoke-grey rosettes; tufted ears and oversized paws; pale grey-green eyes; fur that holds a damp sheen from the sea air. Camouflage: sea mist.' },
-        { id: 'whiteout', name: 'Whiteout', area: 'Icepoint', where: 'Icepoint', appearance: 'The palest and heaviest variety; an almost pure white coat with barely visible markings; the deepest fur, with fur-covered paw pads; a long, thick tail it wraps over its face when resting; ice-blue eyes. Camouflage: snow.' },
-        { id: 'lichenback', name: 'Lichenback', rollable: true, area: 'The northern highlands', where: 'The northern highlands', appearance: 'Leaner, built for rock rather than snow; a grey coat mottled grey-green like lichen, turning frost-white in winter; the longest ear tufts and a shorter tail; hard, scarred paw pads. Camouflage: frost-covered stone.' },
-        { id: 'tawnyfell', name: 'Tawnyfell', area: 'Midland Province (Clan Bacca)', where: 'The scree and lower slopes of The Fangs', appearance: 'A shorter coat, smoke-brown to tawny-grey; longer legs; hunts at dusk below the snowline. Camouflage: scree and twilight.' },
-        { id: 'smokecoat', name: 'Smokecoat', rollable: true, area: 'Western Province (Clan Farmer)', where: 'The high gorges of the Shadow Mountains', appearance: 'The smallest and rarest variety; a charcoal-grey coat with near-black rosettes; hunts at night. Camouflage: darkness and shadowed rock.' }
+        { id: 'mistveil', name: 'Mistveil', area: 'North Isle (Clan Karr)', where: 'The coast and fog banks of Bleaker\'s Bay', appearance: 'A thick silver coat with faint smoke-grey rosettes; tufted ears and oversized paws; pale grey-green eyes; fur that holds a damp sheen from the sea air.' },
+        { id: 'whiteout', name: 'Whiteout', area: 'Icepoint', where: 'Icepoint', appearance: 'The palest and heaviest variety; an almost pure white coat with barely visible markings; the deepest fur, with fur-covered paw pads; a long, thick tail it wraps over its face when resting; ice-blue eyes.' },
+        { id: 'lichenback', name: 'Lichenback', rollable: true, area: 'The northern highlands', where: 'The northern highlands', appearance: 'Leaner, built for rock rather than snow; a grey coat mottled grey-green like lichen, turning frost-white in winter; the longest ear tufts and a shorter tail; hard, scarred paw pads.' },
+        { id: 'tawnyfell', name: 'Tawnyfell', area: 'Midland Province (Clan Bacca)', where: 'The scree and lower slopes of The Fangs', appearance: 'A shorter coat, smoke-brown to tawny-grey; longer legs; hunts at dusk below the snowline.' },
+        { id: 'smokecoat', name: 'Smokecoat', rollable: true, area: 'Western Province (Clan Farmer)', where: 'The high gorges of the Shadow Mountains', appearance: 'The smallest and rarest variety; a charcoal-grey coat with near-black rosettes; hunts at night.' }
       ]
     }
   }

@@ -53,7 +53,7 @@
     t.equal(M.artFor(T.beastArt, 'dire_wolf', 'blacktide').src, 'dire-wolf/blacktide.webp');
     t.equal(M.artFor(T.beastArt, 'buckbear', 'broadcrown').src, 'buckbear/broadcrown.webp');
     t.equal(M.artFor(T.beastArt, 'fellcat', 'lichenback').src, 'fellcat/lichenback.webp');
-    t.same(M.artFor(T.beastArt, 'buckbear', 'shovelhorn'), { src: '', label: 'Buckbear', alt: 'A buckbear' }, 'a variety with no picture shows the empty frame');
+    t.same(M.artFor(T.beastArt, 'buckbear', 'cragbuck'), { src: '', label: 'Buckbear', alt: 'A buckbear' }, 'a variety with no picture shows the empty frame');
     t.same(M.artFor(T.beastArt, 'fellcat', 'mistveil'), { src: '', label: 'Fellcat', alt: 'A fellcat' });
   });
 
@@ -83,7 +83,7 @@
 
   test('every Regional Variety has its own picture unless it is on the "pictures to come" list, and no picture belongs to an unknown variety', function (t) {
     /* Harry's 26 October 2026 varieties that have no picture file yet; the page shows the kind's plain picture for these. */
-    var TO_COME = { wyvern: ['flamescale', 'leafwing', 'razortail'], griffin: ['gloamquill', 'frostcrown', 'wrecktalon'], dire_wolf: ['sunmane'], buckbear: ['shovelhorn', 'cragbuck', 'fenwallow', 'saltcoat'], fellcat: ['mistveil', 'whiteout', 'tawnyfell', 'smokecoat'] };
+    var TO_COME = { wyvern: ['flamescale', 'razortail'], griffin: ['gloamquill', 'frostcrown', 'wrecktalon'], dire_wolf: ['sunmane'], buckbear: ['cragbuck', 'fenwallow', 'saltcoat'], fellcat: ['mistveil', 'whiteout', 'tawnyfell'] };
     Object.keys(TO_COME).forEach(function (sp) {
       var ids = T.beastProfile.species[sp].regional.map(function (r) { return r.id; }).sort();
       var pics = Object.keys(T.beastArt.species[sp].variants).sort();

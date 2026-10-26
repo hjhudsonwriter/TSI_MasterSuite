@@ -43,5 +43,5 @@
 window.TSI_DATA = window.TSI_DATA || {};
 window.TSI_DATA.beastRelay = {
   enabled: false,
-  databaseURL: ''
+  databaseURL: 'https://scarlett-isles-link-default-rtdb.europe-west1.firebasedatabase.app'
 };

@@ -4099,3 +4099,10 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 **Left alone** · test gaps
 
 - The real Google Firebase console and every step of `docs/ONLINE-LINK-SETUP.md` marked so; a real database accepting requests from a double-clicked file and from the GitHub Pages address (CORS); a real phone camera (including iPhone Safari and Home Screen behaviour); GitHub Pages serving the new phone page (the QR code points at the address in the Phone page address box, which is only right once this is merged and Pages publishes `main`); Firefox (WebCrypto and `history.replaceState` from a file). Edge itself was not run; Chromium was.
+
+### BAS-SB-82 · New variety pictures, the Camouflage lines removed, and the post box's address added (26 October 2026)
+**Changed, Harry's request** · content
+
+- **Pictures:** Harry's new Leafwing, Ironcrown, Bloodcrest (wyverns), Shovelhorn (Buckbear) and Smokecoat (Fellcat) are in `tools/beasthandler/assets/`. The old Ironcrown and Bloodcrest pictures are kept in `assets/extras/wyvern-previous/`. A variety with no picture yet still shows the plain frame.
+- **Text:** the "Camouflage: …" lines at the end of the Fellcat descriptions are removed so the tables match Harry's PDF exactly.
+- **Online link:** the post box's web address is in `tools/beasthandler/relay-config.js`, but `enabled` stays `false` until Harry approves the change to ground rule 2 of CLAUDE.md (docs/ONLINE-LINK-SETUP.md, Step 5). `CLAUDE.md` is not edited. With `enabled: false` nothing goes online.
