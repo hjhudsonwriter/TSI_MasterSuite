@@ -565,3 +565,14 @@ Harry's `New_Bastion_Designs` folder (uploaded to the repository root) was moved
 ## Beast loop videos, 26 October 2026
 
 Harry's originals (`DW_Blacktide.mp4` and ten others, 7 to 19 MB each, 720 x 1280, no sound) were shrunk with ffmpeg (H.264, CRF 30, no audio) and stored as `tools/beasthandler/assets/<kind>/<variety>.mp4`: wyvern/ironcrown, leafwing, bloodcrest; dire-wolf/blacktide, slatejaw; griffin/dawnmantle, silvershroud; buckbear/broadcrown, shovelhorn; fellcat/lichenback, smokecoat. The originals are not in the repository.
+
+## The Bastion's Player View: Workshop pictures, 26 October 2026
+
+Harry's upload of 26 October 2026: five 2000 x 1116 JPEGs, already optimised, one per Workshop level (Level 1 the Handyman alone; each level adds a worker: Smith, Scholar, Alchemist, then an armoured Artisan). Named in `tools/bastion/data/player-panels-data.js` (`art.levels`). Harry's count of the people shows the files are Levels 1, 2, 4 and 5 (the staff visible equal the level): his `workshop-level-3.jpg` is kept as `workshop-level-4.jpg`, there is no Level 3 picture yet, and his other 4-person picture is a spare.
+
+| Old location | New location |
+|---|---|
+| Harry's upload `workshop-level-1.jpg`, `-2.jpg` | `tools/bastion/assets/player-panels/workshop-level-1.jpg`, `-2.jpg` |
+| Harry's upload `workshop-level-3.jpg` (4 people) | `tools/bastion/assets/player-panels/workshop-level-4.jpg` (renamed) |
+| Harry's upload `workshop-level-4.jpg` (4 people, nearly the same) | `tools/bastion/assets/extras/player-panels/workshop-spare-4-people.jpg` (unused spare) |
+| Harry's upload `workshop-level-5.jpg` | `tools/bastion/assets/player-panels/workshop-level-5.jpg` |

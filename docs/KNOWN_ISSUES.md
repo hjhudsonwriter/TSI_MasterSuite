@@ -4188,3 +4188,8 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 ### BAS-SB-100 · Night and campfire fades on the players' map (26 October 2026)
 
 - Before: nothing on the TV when the DM made camp. After: Make Camp fades the players' map out and in once (about 1.5 s, 0.6 s hold, 1.5 s); a campfire event holds it very dark (92%) until the DM closes it. Only a campfire (camp or night) event holds it, not weather or Ironbow pop-ups. Released if the DM window closes or the link goes quiet.
+
+### BAS-SB-101 · The Workshop's Player View pictures: one per level, filling the panel (26 October 2026)
+
+- Before: the Workshop's panel showed its single painting, whole, with dark margins. After: Harry's five 16:9 pictures (`player-panels/workshop-level-1.jpg` to `-5.jpg`) are chosen by the Workshop's current level and fade in when it upgrades while the panel is open (no fade with reduced motion); all panel pictures now fill the picture area, cropped to fit around a `focus` point set in `player-panels-data.js` (Workshop: centre, 62% down). A level with no picture uses the nearest lower one. **Level 3 has no picture yet** (Harry's files show 1, 2, 4 and 5 staff): Level 3 shows Level 2's until Harry supplies a 3-person picture, to be saved as `workshop-level-3.jpg` and added at the empty `3:` slot in the data file. His second 4-person picture is kept unused in `assets/extras/player-panels/`.
+

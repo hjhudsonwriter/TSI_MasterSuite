@@ -18,6 +18,8 @@
 
 ### 26 October 2026: the Bastion's Player View (P1 to P3)
 
+- Workshop pictures (P5, first part): Harry's five level pictures are in, per level, filling the panel with a focus point; see KNOWN_ISSUES.
+
 - Done: the snapshot rules and leak tests, the Player View window (`player.html?view=bastion`: full-screen map, top-left numbers, crest, tray arrow, facility panels with big framed artwork), the **Open Player View** button, the focus message, `tools/bastion/data/player-panels-data.js`, an Explorer stub view, the guide, and the tests (`tests/rules/player-view.test.js`, `tests/e2e/player-view-bastion.test.js`).
 - Next: P4 (the Explorer's Player View, copying the DM's pan and zoom), P5 (Harry's artwork into `tools/bastion/assets/player-panels/`), P6 (checks on Harry's screens).
 

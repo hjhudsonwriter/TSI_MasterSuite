@@ -209,23 +209,51 @@ const SECRETS = ['ZZWAREHOUSE', 'ZZDMNOTE', 'ZZPRISONER', 'ZZBEAST', 'ZZPAIRCODE
     section('Facility panels at ' + name);
     await check('opening the Workshop in the DM view opens the illustrated panel: name, tagline, picture, level, orders pending, staff and a line of text', async () => {
       await change(page, s => {
-        s.facilityLevels.workshop = 3;
+        s.facilityLevels.workshop = 1;
         s.pendingOrders.push({ id: 'zz2', facId: 'workshop', fnId: 'x', chosen: null, optionLabel: null, notes: 'ZZDMNOTE', label: 'Workshop: Craft: Longsword', costGP: 12, issuedDay: s.day, dueDay: s.day + 3 });
       });
       await page.click('[data-test=tile-workshop]');
       await pv.waitForSelector('[data-test=pv-panel]');
       equal(await bare(pv, '[data-test=pv-panel-title]'), 'Workshop');
       equal(await bare(pv, '[data-test=pv-panel-tagline]'), 'Need something? Craft it here...');
-      equal(await bare(pv, '[data-test=pv-panel-level]'), 'Level 3');
+      equal(await bare(pv, '[data-test=pv-panel-level]'), 'Level 1');
       equal(await bare(pv, '[data-test=pv-panel-orders]'), 'Orders pending: Workshop: Craft: Longsword');
       equal(await bare(pv, '[data-test=pv-panel-staff]'), 'Staff: Handyman Smith Scholar Alchemist Artisan');
-      equal(await pv.$$eval('.tsi-bpv-staff__one.is-locked', n => n.map(x => x.textContent)), ['Alchemist', 'Artisan']);
+      equal(await pv.$$eval('.tsi-bpv-staff__one.is-locked', n => n.map(x => x.textContent)), ['Smith', 'Scholar', 'Alchemist', 'Artisan']);
       equal(await bare(pv, '[data-test=pv-panel-blurb]'), 'Hand your plans to the staff and they will see them made.');
       equal(await pv.$eval('.tsi-bpv-panel__art', i => i.naturalWidth > 0), true, 'the facility\'s painting');
       equal(await pv.$$eval('.tsi-bpv-panel button, .tsi-bpv-panel input, .tsi-bpv-panel select', n => n.length), 0, 'nothing to press');
       const p = await rect(pv, '[data-test=pv-panel]');
       assert(p.x >= 0 && p.y >= 0 && p.right <= size.width && p.bottom <= size.height, 'the panel fits the screen: ' + JSON.stringify(p));
       await H.shot(pv, 'pv-panel-workshop-' + name);
+      await H.shot(pv, 'pv-panel-workshop-level1-' + name);
+    });
+
+    await check('the Workshop\'s picture is the one for its level, fills the picture area (cropped to fit, no letterboxing) and the header and info strip are clear of it', async () => {
+      equal(await pv.$$eval('.tsi-bpv-panel__art', n => n.map(x => x.dataset.art)), ['workshop-level-1.jpg']);
+      const art = await rect(pv, '.tsi-bpv-panel__art'), wrap = await rect(pv, '.tsi-bpv-panel__art-wrap');
+      assert(Math.abs(art.w - wrap.w) < 3 && Math.abs(art.h - wrap.h) < 3, 'the picture fills its area');
+      equal(await pv.$eval('.tsi-bpv-panel__art', n => [getComputedStyle(n).objectFit, getComputedStyle(n).objectPosition]), ['cover', '50% 62%']);
+      assert(wrap.h > size.height * 0.7 && wrap.w > size.width * 0.95, 'big: ' + JSON.stringify(wrap));
+      const head = await rect(pv, '.tsi-bpv-panel__head'), info = await rect(pv, '.tsi-bpv-panel__info'), blurb = await rect(pv, '.tsi-bpv-panel__blurb');
+      assert(head.bottom <= wrap.y + 1 && info.y >= wrap.bottom - 1 && blurb.bottom <= size.height, 'header above, strip below, all on screen');
+      assert(await pv.evaluate(() => document.documentElement.scrollHeight <= innerHeight), 'no scrolling');
+    });
+
+    await check('upgrading the Workshop while the panel is open changes the picture, fading the next one in; level 5 shows all five workers\' picture', async () => {
+      await change(page, s => { s.facilityLevels.workshop = 2; });
+      await pv.waitForFunction(() => document.querySelectorAll('.tsi-bpv-panel__art').length === 1 && document.querySelector('.tsi-bpv-panel__art').dataset.art === 'workshop-level-2.jpg', null, { timeout: 5000 });
+      await change(page, s => { s.facilityLevels.workshop = 3; });
+      await pv.waitForFunction(() => document.querySelector('[data-test=pv-panel-level]').textContent.trim() === 'Level 3');
+      await pv.waitForTimeout(1200);
+      equal(await pv.$$eval('.tsi-bpv-panel__art', n => n.map(x => x.dataset.art)), ['workshop-level-2.jpg'], 'no picture for Level 3 yet: Level 2\'s stays');
+      await change(page, s => { s.facilityLevels.workshop = 4; });
+      await pv.waitForFunction(() => document.querySelectorAll('.tsi-bpv-panel__art').length === 1 && document.querySelector('.tsi-bpv-panel__art').dataset.art === 'workshop-level-4.jpg', null, { timeout: 5000 });
+      await change(page, s => { s.facilityLevels.workshop = 5; });
+      await pv.waitForFunction(() => document.querySelectorAll('.tsi-bpv-panel__art').length === 1 && document.querySelector('.tsi-bpv-panel__art').dataset.art === 'workshop-level-5.jpg', null, { timeout: 5000 });
+      equal(await pv.$eval('.tsi-bpv-panel__art', i => i.naturalWidth), 2000);
+      equal(await pv.$$eval('.tsi-bpv-staff__one.is-locked', n => n.length), 0);
+      await H.shot(pv, 'pv-panel-workshop-level5-' + name);
     });
 
     await check('the DM\'s own panel text (buttons, order notes, gold costs) is not in it', async () => {

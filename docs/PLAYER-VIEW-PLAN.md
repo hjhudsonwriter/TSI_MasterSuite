@@ -22,7 +22,7 @@ Two ways of seeing the Explorer and the Bastion:
 - [x] **P2 Bastion Player View:** full-bleed map, overlays, labels, top-left row, crest, bottom-centre tray.
 - [x] **P3 Facility panels:** the template and the data file, the focus message, a placeholder panel for every facility (Workshop, Dock, Temple, Hall of Emissaries, Beast Pen, Prison Tower, Herbal Gardens, Fishery and Smokehouse, Timber Yard and Sawmill, Stone Quarry and Masonworks, Weavers' Hall, Courier Exchange).
 - [x] **P4 Explorer Player View:** map-only window, slim top row, mirrored view of the DM's map.
-- **P5 Artwork wiring:** swap in Harry's pictures and per-facility details as they arrive.
+- [~] **P5 Artwork wiring** (the Workshop's five level pictures are in, 26 October 2026): swap in Harry's pictures and per-facility details as they arrive.
 - **P6 Checks:** tests at 1707x930 and 1920x1080, double-clicked-file run, docs and guide.
 
 ## Roadblocks and risks (plain terms)

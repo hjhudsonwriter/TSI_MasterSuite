@@ -39,12 +39,33 @@
     return el('div', { class: cls + ' tsi-bpv-noart' }, [el('span', { text: name || id })]);
   }
 
-  /* The picture on a facility's panel: Harry's own (player-panels data), else the panel painting, else the tile's. */
-  function panelArt(def, id, name) {
-    if (def && def.art) return el('img', { class: 'tsi-bpv-panel__art', src: assetUrl('player-panels/' + def.art), alt: name + ': a painting', draggable: 'false' });
-    var wide = B().panelImages && B().panelImages[id];
-    if (wide) return el('img', { class: 'tsi-bpv-panel__art', src: assetUrl('facilities/' + wide), alt: name + ': a painting', draggable: 'false' });
-    return art(id, name, 'tsi-bpv-panel__art', true);
+  /* The picture file for a facility at a level (player-panels data), or '' when it has none of its own: a single file,
+     or art.levels, using the nearest lower level's picture when a level has none. */
+  function artFile(def, level) {
+    var a = def && def.art;
+    if (!a) return '';
+    if (typeof a === 'string') return a;
+    var lv = a.levels || {};
+    for (var n = level; n >= 1; n--) if (lv[n]) return lv[n];
+    for (n = level + 1; n <= 5; n++) if (lv[n]) return lv[n];
+    return '';
+  }
+  /* The picture on a facility's panel: Harry's own (player-panels data), else the panel painting, else the tile's.
+     It fills the picture area, cropped to fit, keeping the data's focus point in view. */
+  function panelArt(def, id, name, level) {
+    var file = artFile(def, level);
+    var fx = def && def.focus && typeof def.focus.x === 'number' ? def.focus.x : 50;
+    var fy = def && def.focus && typeof def.focus.y === 'number' ? def.focus.y : 50;
+    var node;
+    if (file) {
+      node = el('img', { class: 'tsi-bpv-panel__art', src: assetUrl('player-panels/' + file), alt: name + ': a painting', draggable: 'false' });
+    } else {
+      var wide = B().panelImages && B().panelImages[id];
+      node = wide ? el('img', { class: 'tsi-bpv-panel__art', src: assetUrl('facilities/' + wide), alt: name + ': a painting', draggable: 'false' }) : art(id, name, 'tsi-bpv-panel__art', true);
+    }
+    node.style.objectPosition = fx + '% ' + fy + '%';
+    node.setAttribute('data-art', file || 'existing');
+    return node;
   }
 
   function levelText(f) { return f.single ? 'One level' : 'Level ' + f.level; }
@@ -202,10 +223,37 @@
       for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
       return null;
     }
+    /* The picture area is kept while the same facility stays open, so a new level's picture can fade in over the old. */
+    var artWrap = null;
+    var artFac = null;
+    var artKey = null;
+    function artArea(def, f, title, shrines) {
+      var key = artFile(def, f.level) || 'existing';
+      if (!artWrap || artFac !== focus) {
+        artWrap = el('div', { class: 'tsi-bpv-panel__art-wrap' }, panelArt(def, focus, title, f.level));
+        artFac = focus;
+        artKey = key;
+      } else if (key !== artKey) {
+        artKey = key;
+        var older = Array.prototype.slice.call(artWrap.querySelectorAll('.tsi-bpv-panel__art'));
+        var fresh = panelArt(def, focus, title, f.level);
+        fresh.classList.add('is-entering');
+        artWrap.appendChild(fresh);
+        var go = function () {
+          fresh.classList.remove('is-entering');
+          setTimeout(function () { older.forEach(function (n) { if (n.parentNode) n.parentNode.removeChild(n); }); }, 700);
+        };
+        if (fresh.complete === false) { fresh.addEventListener('load', function () { requestAnimationFrame(go); }); fresh.addEventListener('error', go); } else requestAnimationFrame(function () { requestAnimationFrame(go); });
+      }
+      artWrap.classList.toggle('is-repair', !!f.repair);
+      Array.prototype.slice.call(artWrap.querySelectorAll('.tsi-bpv-shrines')).forEach(function (n) { n.parentNode.removeChild(n); });
+      if (shrines) artWrap.appendChild(shrines);
+      return artWrap;
+    }
     function drawPanel() {
       TSI.clear(panelHost);
       var f = snap && focus && snap.facilities[focus];
-      if (!f) { panelHost.hidden = true; stage.classList.remove('has-panel'); return; }
+      if (!f) { panelHost.hidden = true; stage.classList.remove('has-panel'); artWrap = null; artFac = null; return; }
       var def = panelDef(focus);
       var widgets = def ? def.widgets : ['level', 'orders'];
       var title = (def && def.title) || f.name;
@@ -245,7 +293,7 @@
           el('h2', { class: 'tsi-bpv-panel__title', 'data-test': 'pv-panel-title', text: title }),
           el('div', { class: 'tsi-bpv-panel__tagline', 'data-test': 'pv-panel-tagline', text: def ? def.tagline : '' })
         ]),
-        el('div', { class: 'tsi-bpv-panel__art-wrap' + (f.repair ? ' is-repair' : '') }, [panelArt(def, focus, title), shrines]),
+        artArea(def, f, title, shrines),
         el('div', { class: 'tsi-bpv-panel__info' }, info),
         def && def.blurb ? el('p', { class: 'tsi-bpv-panel__blurb', 'data-test': 'pv-panel-blurb', text: def.blurb }) : null
       ]);
