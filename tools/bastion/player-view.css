@@ -1,0 +1,306 @@
+/* The Ironbow Bastion Manager: the Player View (tools/bastion/player-view.js). Every class starts tsi-bpv.
+   The map fills the screen: as large as it can be with the whole picture showing, centred, on a dark ground.
+   Sizes follow the window (vw, vh and the map's own width) so the same page suits the laptop and the TV. */
+
+.tsi-player--bastion { background: #050304; }
+
+.tsi-bpv {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: #050304;
+  color: var(--tsi-text);
+  user-select: none;
+  -webkit-user-select: none;
+  --tsi-bpv-tile: clamp(54px, 7.4vh, 92px);
+}
+
+/* The Player View's connection note moves up, clear of the tray's arrow. */
+.tsi-player--bastion .tsi-player__status { bottom: auto; top: 14px; }
+
+/* ---------- The map ---------- */
+.tsi-bpv-map {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(100vw, calc(100vh * var(--tsi-bpv-w, 3000) / var(--tsi-bpv-h, 1250)));
+  aspect-ratio: var(--tsi-bpv-ratio, 3000 / 1250);
+  transform: translate(-50%, -50%);
+  container-type: inline-size;
+}
+.tsi-bpv-map__img { display: block; width: 100%; height: 100%; object-fit: fill; pointer-events: none; }
+.tsi-bpv-map__overlays { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.tsi-bpv-map__overlay { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; }
+.tsi-bpv-map__overlay--repair { filter: grayscale(.7) brightness(.55) sepia(.35); }
+.tsi-bpv-map__img,
+.tsi-bpv-map__overlays { transition: filter var(--tsi-dur-slow) var(--tsi-ease); }
+.tsi-bpv:not(.is-tray-closed) .tsi-bpv-map__img,
+.tsi-bpv:not(.is-tray-closed) .tsi-bpv-map__overlays { filter: saturate(.72) sepia(.18) contrast(.9) brightness(.97); }
+.tsi-bpv-map__haze {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 75% 70% at 50% 55%, rgba(255, 236, 200, 0) 35%, rgba(60, 28, 18, .32) 100%),
+    linear-gradient(180deg, rgba(255, 232, 190, .26) 0%, rgba(240, 200, 140, .16) 45%, rgba(214, 178, 94, .12) 100%);
+  transition: opacity var(--tsi-dur-slow) var(--tsi-ease), visibility 0s linear 0s;
+}
+.tsi-bpv-map__labels { position: absolute; inset: 0; pointer-events: none; z-index: 1; transition: opacity var(--tsi-dur-slow) var(--tsi-ease), visibility 0s linear 0s; }
+.tsi-bpv.is-tray-closed .tsi-bpv-map__haze,
+.tsi-bpv.is-tray-closed .tsi-bpv-map__labels { opacity: 0; visibility: hidden; transition: opacity var(--tsi-dur-slow) var(--tsi-ease), visibility 0s linear var(--tsi-dur-slow); }
+.tsi-bpv-maplabel {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: .2em .75em .25em;
+  border: 1px solid rgba(214, 178, 94, .8);
+  border-radius: 6px;
+  background: linear-gradient(180deg, rgba(122, 12, 27, .92), rgba(58, 18, 25, .92));
+  box-shadow: 0 0 10px rgba(214, 178, 94, .25), 0 3px 8px rgba(0, 0, 0, .55);
+  color: #f5f1e8;
+  text-align: center;
+  white-space: nowrap;
+  font-size: clamp(10px, 0.85cqw, 26px);
+}
+.tsi-bpv-maplabel__name { font: 600 1em/1.15 var(--tsi-font-display); letter-spacing: .05em; text-transform: uppercase; }
+.tsi-bpv-maplabel__level { font: 600 .95em/1.15 var(--tsi-font-display); letter-spacing: .04em; color: var(--tsi-gold-text); }
+.tsi-bpv-maplabel--repair { background: linear-gradient(180deg, rgba(60, 50, 48, .92), rgba(30, 24, 22, .92)); }
+
+/* ---------- The row of numbers, top left ---------- */
+.tsi-bpv-row {
+  position: absolute;
+  top: clamp(10px, 1.6vh, 20px);
+  left: clamp(10px, 1.4vw, 26px);
+  z-index: 3;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: clamp(6px, .8vw, 14px);
+}
+.tsi-bpv-pill {
+  display: inline-flex;
+  align-items: baseline;
+  gap: .5em;
+  padding: .35em .95em;
+  border: 1px solid var(--tsi-line-control);
+  border-radius: var(--tsi-radius-pill);
+  background: rgba(8, 5, 6, .72);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .45);
+  font-size: clamp(13px, 1.9vh, 22px);
+  white-space: nowrap;
+}
+.tsi-bpv-pill__label { font: 400 .8em var(--tsi-font-display); letter-spacing: var(--tsi-track-label, .08em); text-transform: uppercase; color: var(--tsi-gold-text); }
+.tsi-bpv-pill__n { font: 700 1.1em var(--tsi-font-display); color: var(--tsi-text); }
+
+/* ---------- The crest, top right (as the DM's badge; nothing to press) ---------- */
+.tsi-bpv-badge {
+  --tsi-bpv-crest: clamp(70px, 12vh, 150px);
+  position: absolute;
+  top: clamp(10px, 1.6vh, 20px);
+  right: clamp(10px, 1.4vw, 26px);
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  box-sizing: border-box;
+  width: fit-content;
+  min-width: 112px;
+  max-width: min(300px, 26vw);
+  padding: 8px 8px 7px;
+  border: 1px solid rgba(214, 178, 94, .75);
+  border-radius: var(--tsi-radius-lg);
+  background: rgba(8, 5, 6, .72);
+  box-shadow: 0 0 18px rgba(214, 178, 94, .25), 0 8px 18px rgba(0, 0, 0, .5);
+  pointer-events: none;
+}
+.tsi-bpv-badge[hidden] { display: none; }
+.tsi-bpv-badge__img { width: var(--tsi-bpv-crest); height: var(--tsi-bpv-crest); object-fit: contain; filter: drop-shadow(0 4px 8px rgba(0, 0, 0, .55)); }
+.tsi-bpv-badge__img[hidden], .tsi-bpv-badge__name[hidden], .tsi-bpv-badge__empty[hidden] { display: none; }
+.tsi-bpv-badge__empty .tsi-bpv-icon { width: calc(var(--tsi-bpv-crest) * .6); height: calc(var(--tsi-bpv-crest) * .6); color: rgba(214, 178, 94, .45); margin: 4px 0; }
+.tsi-bpv-badge__name {
+  max-width: 100%;
+  text-align: center;
+  font: 600 clamp(11px, 1.6vh, 18px)/1.15 var(--tsi-font-display);
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--tsi-gold-text);
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.tsi-bpv-icon { display: block; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------- The tray, bottom centre ---------- */
+.tsi-bpv-tray {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  max-width: 98vw;
+  padding: 4px 12px 0;
+  box-sizing: border-box;
+  border: 1px solid var(--tsi-line-head);
+  border-bottom: 0;
+  border-radius: 14px 14px 0 0;
+  background: linear-gradient(180deg, rgba(27, 10, 13, .96), rgba(22, 9, 11, .96));
+  box-shadow: 0 -6px 18px rgba(0, 0, 0, .45);
+}
+.tsi-bpv.is-tray-closed .tsi-bpv-tray { padding: 0 0 8px; border: 0; background: none; box-shadow: none; }
+.tsi-bpv-arrow {
+  width: clamp(48px, 5vh, 64px);
+  height: clamp(20px, 2.4vh, 28px);
+  padding: 0;
+  border: 1px solid var(--tsi-line-control);
+  border-radius: 9px;
+  background: rgba(8, 5, 6, .72);
+  color: var(--tsi-gold-text);
+  cursor: pointer;
+}
+.tsi-bpv-arrow:hover, .tsi-bpv-arrow:focus-visible { border-color: var(--tsi-gold); box-shadow: 0 0 10px rgba(214, 178, 94, .4); }
+.tsi-bpv-icon--arrow { width: 70%; height: 90%; margin: 0 auto; transition: transform var(--tsi-dur-base) var(--tsi-ease); }
+.tsi-bpv-arrow.is-open .tsi-bpv-icon--arrow { transform: rotate(180deg); }
+.tsi-bpv-grid { display: flex; flex-direction: column; align-items: center; gap: 6px; max-width: 100%; padding-bottom: 6px; }
+.tsi-bpv-grid[hidden] { display: none; }
+.tsi-bpv-grid__row { display: flex; justify-content: center; gap: 6px; max-width: 100%; }
+.tsi-bpv-tile {
+  position: relative;
+  flex: 0 1 var(--tsi-bpv-tile);
+  width: var(--tsi-bpv-tile);
+  min-width: 40px;
+  aspect-ratio: 1;
+  border: 1px solid rgba(214, 178, 94, .55);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, .45);
+  overflow: hidden;
+  box-sizing: border-box;
+  color: var(--tsi-gold-text);
+}
+.tsi-bpv-tile--empty { border-style: dashed; background: rgba(0, 0, 0, .35); }
+.tsi-bpv-tile--locked { background: rgba(0, 0, 0, .55); border-color: rgba(214, 178, 94, .25); }
+.tsi-bpv-tile--plot { border-style: dashed; border-color: rgba(150, 190, 110, .6); background: rgba(10, 24, 8, .4); }
+.tsi-bpv-tile--plot.tsi-bpv-tile--locked { border-color: rgba(150, 190, 110, .22); }
+.tsi-bpv-tile--building .tsi-bpv-tile__img,
+.tsi-bpv-tile--repair .tsi-bpv-tile__img { filter: grayscale(.6) brightness(.45) sepia(.3); }
+.tsi-bpv-tile__img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.tsi-bpv-strips { display: flex; }
+.tsi-bpv-strips__img { flex: 1 1 0; min-width: 0; height: 100%; object-fit: cover; }
+.tsi-bpv-crop { background-repeat: no-repeat; background-color: #0a0607; }
+.tsi-bpv-noart { display: flex; align-items: center; justify-content: center; text-align: center; font: 600 11px/1.1 var(--tsi-font-display); padding: 4px; }
+.tsi-bpv-tile__days, .tsi-bpv-tile__count {
+  position: absolute;
+  min-width: 1.4em;
+  padding: 0 .3em;
+  border-radius: 999px;
+  text-align: center;
+  font: 700 clamp(11px, 1.5vh, 15px)/1.5 var(--tsi-font-display);
+  background: rgba(8, 5, 6, .85);
+  border: 1px solid var(--tsi-gold);
+  color: var(--tsi-text);
+}
+.tsi-bpv-tile__count { top: 3px; right: 3px; }
+.tsi-bpv-tile__days { left: 50%; top: 50%; transform: translate(-50%, -50%); }
+
+/* ---------- A facility's panel ---------- */
+.tsi-bpv-panelhost {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  padding: 3vh 3vw;
+  background: rgba(5, 3, 4, .7);
+  animation: tsi-bpv-in var(--tsi-dur-slow) var(--tsi-ease);
+}
+.tsi-bpv-panelhost[hidden] { display: none; }
+.tsi-bpv-panel {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(8px, 1.4vh, 16px);
+  width: min(1180px, 94vw);
+  max-height: 94vh;
+  box-sizing: border-box;
+  padding: clamp(12px, 2vh, 24px) clamp(14px, 2vw, 30px);
+  border: 1px solid var(--tsi-line-feature);
+  border-radius: var(--tsi-radius-xl);
+  background: linear-gradient(180deg, rgba(0, 0, 0, .45), rgba(0, 0, 0, .25)), var(--tsi-panel-fill);
+  box-shadow: 0 0 40px rgba(214, 178, 94, .25), 0 20px 50px rgba(0, 0, 0, .65);
+}
+.tsi-bpv-panel__head { display: flex; align-items: baseline; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+.tsi-bpv-panel__title { margin: 0; font: 600 clamp(22px, 4vh, 42px)/1.1 var(--tsi-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--tsi-gold); }
+.tsi-bpv-panel__tagline { font: italic 500 clamp(16px, 2.6vh, 28px)/1.2 var(--tsi-font-body); color: var(--tsi-text-muted); text-align: right; }
+.tsi-bpv-panel__art-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: clamp(160px, 50vh, 620px);
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--tsi-line);
+  border-radius: var(--tsi-radius-md);
+  background: #0a0607;
+}
+.tsi-bpv-panel__art-wrap.is-repair .tsi-bpv-panel__art { filter: grayscale(.6) brightness(.55) sepia(.3); }
+img.tsi-bpv-panel__art { width: 100%; height: 100%; object-fit: cover; }
+.tsi-bpv-panel__art.tsi-bpv-strips { width: 100%; height: 100%; }
+.tsi-bpv-panel__art.tsi-bpv-crop { height: 100%; max-width: 100%; }
+.tsi-bpv-panel__art.tsi-bpv-noart { width: 100%; height: 100%; font-size: 28px; }
+.tsi-bpv-panel__info { display: flex; flex-direction: column; gap: clamp(4px, .8vh, 10px); font: 400 clamp(15px, 2.4vh, 26px)/1.3 var(--tsi-font-body); }
+.tsi-bpv-info__label { font: 600 .85em var(--tsi-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--tsi-gold-text); }
+.tsi-bpv-info__repair { color: #ffd0c8; }
+.tsi-bpv-staff__list { display: inline-flex; flex-wrap: wrap; gap: .4em .9em; }
+.tsi-bpv-staff__one { font-weight: 600; color: var(--tsi-text); }
+.tsi-bpv-staff__one.is-locked { color: var(--tsi-text-faint); opacity: .55; }
+.tsi-bpv-shrines { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(8px, 1.4vw, 24px); }
+.tsi-bpv-god { padding: .5em .8em .6em; border: 1px solid var(--tsi-line-control); border-radius: var(--tsi-radius-md); background: rgba(8, 5, 6, .6); text-align: center; }
+.tsi-bpv-god__name { font: 600 .9em var(--tsi-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--tsi-gold); margin-bottom: .4em; }
+.tsi-bpv-bar { height: .7em; border-radius: 999px; background: rgba(255, 255, 255, .12); overflow: hidden; }
+.tsi-bpv-bar__fill { height: 100%; border-radius: 999px; transition: width var(--tsi-dur-slow) var(--tsi-ease); }
+.tsi-bpv-god--green .tsi-bpv-bar__fill { background: #5fa84a; }
+.tsi-bpv-god--orange .tsi-bpv-bar__fill { background: #e08a2c; }
+.tsi-bpv-god--blue .tsi-bpv-bar__fill { background: #4a8fd0; }
+.tsi-bpv-panel__blurb { margin: 0; font: italic 500 clamp(16px, 2.5vh, 28px)/1.3 var(--tsi-font-body); color: var(--tsi-text-muted); }
+
+/* ---------- Full screen, and waiting ---------- */
+.tsi-bpv-full {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 7;
+  padding: 6px 14px;
+  border: 1px solid var(--tsi-line-control);
+  border-radius: var(--tsi-radius-pill);
+  background: rgba(8, 5, 6, .8);
+  color: var(--tsi-gold-text);
+  font: 400 13px var(--tsi-font-display);
+  letter-spacing: .06em;
+  cursor: pointer;
+  transition: opacity var(--tsi-dur-slow) var(--tsi-ease);
+}
+.tsi-bpv-full.is-faded { opacity: 0; pointer-events: none; }
+.tsi-bpv-waiting {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: grid;
+  place-items: center;
+  background: #050304;
+}
+.tsi-bpv-waiting[hidden] { display: none; }
+.tsi-bpv-waiting__text { font: 600 clamp(20px, 3.4vh, 36px) var(--tsi-font-display); letter-spacing: .12em; color: var(--tsi-gold-text); animation: tsi-bpv-breathe 3.2s ease-in-out infinite; }
+
+@keyframes tsi-bpv-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes tsi-bpv-breathe { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .tsi-bpv-panelhost, .tsi-bpv-waiting__text { animation: none; }
+  .tsi-bpv *, .tsi-bpv-full { transition-duration: 0s !important; }
+}

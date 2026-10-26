@@ -1,0 +1,4 @@
+/* The Explorer's Player View (a stub until phase P4). Every class starts tsi-xpv. */
+.tsi-player--explorer { background: #050304; }
+.tsi-xpv { position: absolute; inset: 0; display: grid; place-items: center; background: #050304; }
+.tsi-xpv__text { font: 600 clamp(20px, 3.4vh, 36px) var(--tsi-font-display); letter-spacing: .12em; color: var(--tsi-gold-text); }

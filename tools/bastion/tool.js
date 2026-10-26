@@ -289,7 +289,7 @@
             parts.dialog.setAttribute('data-test', 'panel-' + id);
           }
         }).then(function (v) {
-          if (shown === entry) shown = null;
+          if (shown === entry) { shown = null; sendPlayerFocus(); }
           hideTip();
           if (life.alive && spec.back && (!document.activeElement || document.activeElement === document.body)) {
             var again = page.querySelector('[data-test="' + spec.back + '"]');
@@ -298,11 +298,13 @@
           return v;
         });
         shown = entry;
+        sendPlayerFocus();
         return entry.promise;
       }
       function closePanel() {
         var s = shown;
         shown = null;
+        sendPlayerFocus();
         if (s && s.close) s.close('close');
       }
       function renderPanel() { if (shown && shown.render) shown.render(); }
@@ -631,6 +633,36 @@
          to finish it; days pass by themselves as the Explorer makes camp. */
       var dayStatus = el('div', { class: 'tsi-bas-daystatus', 'data-test': 'day-status', role: 'status' });
       var advanceBtn = el('button', { type: 'button', class: 'tsi-btn tsi-btn--primary tsi-bas-advance', 'data-test': 'advance', hidden: true }, 'Finish Day');
+      /* ---------- The Player View (26 October 2026; docs/PLAYER-VIEW-PLAN.md) ----------
+         A second window for the TV that only looks. It is sent a snapshot of what players may see (R.playerSnapshot,
+         player-view-rules.js), never the save, whenever the Bastion is redrawn (at most once a frame), and a 'focus'
+         message when the DM opens or closes a facility's panel. It sends nothing back. */
+      var pvStatus = el('span', { class: 'tsi-bas-pvstatus', 'data-test': 'player-view-status', role: 'status', text: 'Not open' });
+      var pvLink = ctx.playerLink({
+        view: 'bastion',
+        name: 'ScarlettBastionPlayers',
+        features: 'popup=yes,width=1400,height=800',
+        getState: function () { return R.playerSnapshot(state, data, { crest: crest, focus: pvFocus() }); },
+        onStatus: function (st) {
+          pvStatus.textContent = st === 'connected' ? 'Connected' : st === 'opening' ? 'Opening…' : st === 'blocked' ? 'Blocked' : 'Not open';
+          pvStatus.classList.toggle('is-connected', st === 'connected');
+        }
+      });
+      var pvQueued = false;
+      var pvLastFocus = null;
+      function pvFocus() { return shown ? R.playerFocusOf(shown.id) : null; }
+      /* Send the picture again, once at the next frame however many changes there were. */
+      function queuePlayerSync() {
+        if (pvQueued || !life.alive || !pvLink.isConnected()) return;
+        pvQueued = true;
+        life.raf(function () { pvQueued = false; pvLink.sync(); });
+      }
+      function sendPlayerFocus() {
+        var f = pvFocus();
+        if (f === pvLastFocus) return;
+        pvLastFocus = f;
+        pvLink.send('focus', { focus: f });
+      }
       var bar = el('header', { class: 'tsi-bas-head' }, [
         el('div', { class: 'tsi-bas-brand' }, [
           el('div', { class: 'tsi-bas-brand__title', text: 'The Ironbow' }),
@@ -639,6 +671,8 @@
         el('div', { class: 'tsi-bas-head__controls' }, [
           el('label', { class: 'tsi-bas-field tsi-bas-field--inline' }, [el('span', { text: 'Party Level' }), levelSelect]),
           btn('Compendium', function () { onCompendium(); }, '', 'compendium'),
+          btn('Open Player View', function () { pvLink.open(); }, 'tsi-btn--ghost', 'open-player-view', { title: 'Open the players\' view of the Bastion in a new window, to drag onto the TV. It only looks.' }),
+          pvStatus,
           btn('Reset', function () { onReset(); }, 'tsi-btn--ghost', 'reset', { title: 'Clears the Bastion\'s saved data in this browser.' }),
           btn('Download Save (JSON)', function () { onDownload(); }, '', 'download-save'),
           btn('Import Save (JSON)', function () { onImport(); }, '', 'import-save')
@@ -794,6 +828,7 @@
         if (crest) ctx.store.set('crest', crest);
         else if (ctx.store.has('crest')) ctx.store.remove('crest');
         crestWatchers.slice().forEach(function (fn) { fn(); });
+        queuePlayerSync();
       }
       /* Show a crest in an <img> (only reloading it when it's a new one). */
       function showCrest(img, c) {
@@ -3871,6 +3906,7 @@
         renderPanel();
         /* An open Ship cargo or Standing shipment pop-up follows the Bastion. */
         if (livePicker) livePicker.update();
+        queuePlayerSync();
       }
 
       /* The old Bastion set aside: say so. */

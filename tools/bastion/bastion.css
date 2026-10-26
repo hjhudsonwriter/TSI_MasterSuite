@@ -87,6 +87,9 @@
   text-overflow: ellipsis;
 }
 .tsi-page--bastion .tsi-bas-head__controls { display: flex; flex-wrap: nowrap; align-items: center; justify-content: flex-end; gap: 8px; }
+/* The Player View's connection note, beside its button. */
+.tsi-page--bastion .tsi-bas-pvstatus { font: 400 12px var(--tsi-font-display); letter-spacing: .04em; color: var(--tsi-text-faint); white-space: nowrap; }
+.tsi-page--bastion .tsi-bas-pvstatus.is-connected { color: #9fd68a; }
 .tsi-page--bastion .tsi-bas-field--inline { flex-direction: row; align-items: center; gap: 8px; white-space: nowrap; }
 .tsi-page--bastion .tsi-bas-level { width: 74px; }
 .tsi-page--bastion .tsi-bas-advance { padding: 6px 14px; }
