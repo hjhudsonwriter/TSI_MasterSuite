@@ -18,9 +18,9 @@ Two ways of seeing the Explorer and the Bastion:
 5. **Facility panels as a template.** One illustrated-panel template (title, tagline, artwork, level, pending orders, a few per-facility widgets such as the Temple's three favour bars or the Workshop's staff list), driven by a data file with one entry per facility. Until Harry's artwork arrives, each uses the existing facility painting, so everything works and the art just drops in later.
 
 ## Phases
-- **P1 Foundation:** snapshot rules and leak tests, Player View window shell for both tools, "Open Player View" button in each DM tool, full-screen button, connection indicator.
-- **P2 Bastion Player View:** full-bleed map, overlays, labels, top-left row, crest, bottom-centre tray.
-- **P3 Facility panels:** the template and the data file, the focus message, a placeholder panel for every facility (Workshop, Dock, Temple, Hall of Emissaries, Beast Pen, Prison Tower, Herbal Gardens, Fishery and Smokehouse, Timber Yard and Sawmill, Stone Quarry and Masonworks, Weavers' Hall, Courier Exchange).
+- [x] **P1 Foundation:** snapshot rules and leak tests, Player View window shell for both tools, "Open Player View" button in each DM tool, full-screen button, connection indicator.
+- [x] **P2 Bastion Player View:** full-bleed map, overlays, labels, top-left row, crest, bottom-centre tray.
+- [x] **P3 Facility panels:** the template and the data file, the focus message, a placeholder panel for every facility (Workshop, Dock, Temple, Hall of Emissaries, Beast Pen, Prison Tower, Herbal Gardens, Fishery and Smokehouse, Timber Yard and Sawmill, Stone Quarry and Masonworks, Weavers' Hall, Courier Exchange).
 - **P4 Explorer Player View:** map-only window, slim top row, mirrored view of the DM's map.
 - **P5 Artwork wiring:** swap in Harry's pictures and per-facility details as they arrive.
 - **P6 Checks:** tests at 1707x930 and 1920x1080, double-clicked-file run, docs and guide.
@@ -34,5 +34,14 @@ Two ways of seeing the Explorer and the Bastion:
 6. **Pop-up and full-screen rules.** Browsers only allow a window to go full screen after a click; the Player View has a button for it. Popup windows can be blocked once; the button explains this if so.
 7. **Keeping DM View untouched** is easy: only a small button is added.
 
-## Questions for Harry
-See the chat message; answers will be recorded here.
+## Harry's answers (26 October 2026)
+- Same laptop only (two windows); no phone or second-computer link.
+- The Explorer's Player View copies the DM's pan and zoom.
+- Players see everything on the maps.
+- "Daily Travel" is one figure out of the daily limit.
+- Gold is the travel purse.
+- Pending order NAMES are shown.
+- Facility panels are purely visual; every panel shows name, tagline, level and orders. The picture fills most of the screen (slim header, big framed 4:3 picture, a compact strip of facts beneath).
+
+## Status
+P1 to P3 built (see docs/PROGRESS.md). The Explorer view is a stub waiting for P4.

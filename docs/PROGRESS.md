@@ -9,6 +9,11 @@
 - Five unused pictures moved to `tools/bastion/assets/extras/` (see `docs/ASSETS.md` and `docs/BASTION-MAP-ART.md`); nothing deleted. The Temple's three Shrine paintings and map overlays and the Beast Pen's tile, panel strip and map overlay are wired.
 - `guide.html` facilities paragraph brought up to date.
 
+### 26 October 2026: the Bastion's Player View (P1 to P3)
+
+- Done: the snapshot rules and leak tests, the Player View window (`player.html?view=bastion`: full-screen map, top-left numbers, crest, tray arrow, facility panels with big framed artwork), the **Open Player View** button, the focus message, `tools/bastion/data/player-panels-data.js`, an Explorer stub view, the guide, and the tests (`tests/rules/player-view.test.js`, `tests/e2e/player-view-bastion.test.js`).
+- Next: P4 (the Explorer's Player View, copying the DM's pan and zoom), P5 (Harry's artwork into `tools/bastion/assets/player-panels/`), P6 (checks on Harry's screens).
+
 ### 26 October 2026: Beast Handler reveal, Prison Tower, six slots
 - Beast Handler first meeting shows every subspecies as a medallion (BAS-SB-86); the answer is still a rollable one.
 - Prison Tower built (BAS-SB-88 to 90): level 9, 21 days, three cells, Interrogate and Release; tests `tests/rules/prison.test.js` and `tests/e2e/prison.test.js`.

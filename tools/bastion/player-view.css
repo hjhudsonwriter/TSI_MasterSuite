@@ -209,65 +209,56 @@
 .tsi-bpv-tile__count { top: 3px; right: 3px; }
 .tsi-bpv-tile__days { left: 50%; top: 50%; transform: translate(-50%, -50%); }
 
-/* ---------- A facility's panel ---------- */
+/* ---------- A facility's panel ----------
+   Harry's mock-ups: a slim header (name left, tagline right), the picture filling most of the screen in a thin gold
+   frame (the whole picture shows, as large as it can be; 4:3 art first), and a compact strip of small facts beneath. */
 .tsi-bpv-panelhost {
   position: absolute;
   inset: 0;
   z-index: 5;
-  display: grid;
-  place-items: center;
-  padding: 3vh 3vw;
-  background: rgba(5, 3, 4, .7);
+  padding: 1.2vh 1.2vw;
+  box-sizing: border-box;
+  background: rgba(5, 3, 4, .94);
   animation: tsi-bpv-in var(--tsi-dur-slow) var(--tsi-ease);
 }
 .tsi-bpv-panelhost[hidden] { display: none; }
-.tsi-bpv-panel {
-  display: flex;
-  flex-direction: column;
-  gap: clamp(8px, 1.4vh, 16px);
-  width: min(1180px, 94vw);
-  max-height: 94vh;
-  box-sizing: border-box;
-  padding: clamp(12px, 2vh, 24px) clamp(14px, 2vw, 30px);
-  border: 1px solid var(--tsi-line-feature);
-  border-radius: var(--tsi-radius-xl);
-  background: linear-gradient(180deg, rgba(0, 0, 0, .45), rgba(0, 0, 0, .25)), var(--tsi-panel-fill);
-  box-shadow: 0 0 40px rgba(214, 178, 94, .25), 0 20px 50px rgba(0, 0, 0, .65);
-}
-.tsi-bpv-panel__head { display: flex; align-items: baseline; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
-.tsi-bpv-panel__title { margin: 0; font: 600 clamp(22px, 4vh, 42px)/1.1 var(--tsi-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--tsi-gold); }
-.tsi-bpv-panel__tagline { font: italic 500 clamp(16px, 2.6vh, 28px)/1.2 var(--tsi-font-body); color: var(--tsi-text-muted); text-align: right; }
+.tsi-bpv-panel { display: flex; flex-direction: column; gap: clamp(5px, .9vh, 12px); width: 100%; height: 100%; box-sizing: border-box; }
+.tsi-bpv-panel__head { flex: 0 0 auto; display: flex; align-items: baseline; justify-content: space-between; gap: 24px; padding: 0 .4vw; }
+.tsi-bpv-panel__title { margin: 0; font: 600 clamp(20px, 3.6vh, 38px)/1.1 var(--tsi-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--tsi-gold); }
+.tsi-bpv-panel__tagline { font: italic 500 clamp(15px, 2.4vh, 26px)/1.2 var(--tsi-font-body); color: var(--tsi-text-muted); text-align: right; }
 .tsi-bpv-panel__art-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  height: clamp(160px, 50vh, 620px);
-  min-height: 0;
   overflow: hidden;
-  border: 1px solid var(--tsi-line);
-  border-radius: var(--tsi-radius-md);
+  border: 1px solid var(--tsi-line-feature);
+  border-radius: var(--tsi-radius-sm);
   background: #0a0607;
+  box-shadow: 0 0 24px rgba(214, 178, 94, .2);
 }
 .tsi-bpv-panel__art-wrap.is-repair .tsi-bpv-panel__art { filter: grayscale(.6) brightness(.55) sepia(.3); }
-img.tsi-bpv-panel__art { width: 100%; height: 100%; object-fit: cover; }
+img.tsi-bpv-panel__art { width: 100%; height: 100%; object-fit: contain; }
 .tsi-bpv-panel__art.tsi-bpv-strips { width: 100%; height: 100%; }
 .tsi-bpv-panel__art.tsi-bpv-crop { height: 100%; max-width: 100%; }
 .tsi-bpv-panel__art.tsi-bpv-noart { width: 100%; height: 100%; font-size: 28px; }
-.tsi-bpv-panel__info { display: flex; flex-direction: column; gap: clamp(4px, .8vh, 10px); font: 400 clamp(15px, 2.4vh, 26px)/1.3 var(--tsi-font-body); }
+.tsi-bpv-panel__info { flex: 0 0 auto; display: flex; flex-wrap: wrap; align-items: baseline; gap: .2em 2.4vw; padding: 0 .4vw; font: 400 clamp(14px, 2.2vh, 24px)/1.25 var(--tsi-font-body); }
 .tsi-bpv-info__label { font: 600 .85em var(--tsi-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--tsi-gold-text); }
 .tsi-bpv-info__repair { color: #ffd0c8; }
-.tsi-bpv-staff__list { display: inline-flex; flex-wrap: wrap; gap: .4em .9em; }
+.tsi-bpv-staff__list { display: inline-flex; flex-wrap: wrap; gap: .2em .9em; }
 .tsi-bpv-staff__one { font-weight: 600; color: var(--tsi-text); }
 .tsi-bpv-staff__one.is-locked { color: var(--tsi-text-faint); opacity: .55; }
-.tsi-bpv-shrines { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(8px, 1.4vw, 24px); }
-.tsi-bpv-god { padding: .5em .8em .6em; border: 1px solid var(--tsi-line-control); border-radius: var(--tsi-radius-md); background: rgba(8, 5, 6, .6); text-align: center; }
-.tsi-bpv-god__name { font: 600 .9em var(--tsi-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--tsi-gold); margin-bottom: .4em; }
-.tsi-bpv-bar { height: .7em; border-radius: 999px; background: rgba(255, 255, 255, .12); overflow: hidden; }
+.tsi-bpv-shrines { position: absolute; left: 4%; right: 4%; bottom: 3%; display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(8px, 1.4vw, 24px); font-size: clamp(14px, 2.2vh, 24px); }
+.tsi-bpv-god { padding: .4em .8em .5em; border: 1px solid var(--tsi-line-control); border-radius: var(--tsi-radius-md); background: rgba(8, 5, 6, .8); text-align: center; }
+.tsi-bpv-god__name { font: 600 .95em var(--tsi-font-display); letter-spacing: .08em; text-transform: uppercase; color: var(--tsi-gold); margin-bottom: .35em; }
+.tsi-bpv-bar { height: .65em; border-radius: 999px; background: rgba(255, 255, 255, .15); overflow: hidden; }
 .tsi-bpv-bar__fill { height: 100%; border-radius: 999px; transition: width var(--tsi-dur-slow) var(--tsi-ease); }
 .tsi-bpv-god--green .tsi-bpv-bar__fill { background: #5fa84a; }
 .tsi-bpv-god--orange .tsi-bpv-bar__fill { background: #e08a2c; }
 .tsi-bpv-god--blue .tsi-bpv-bar__fill { background: #4a8fd0; }
-.tsi-bpv-panel__blurb { margin: 0; font: italic 500 clamp(16px, 2.5vh, 28px)/1.3 var(--tsi-font-body); color: var(--tsi-text-muted); }
+.tsi-bpv-panel__blurb { flex: 0 0 auto; margin: 0; padding: 0 .4vw; font: italic 500 clamp(15px, 2.3vh, 26px)/1.25 var(--tsi-font-body); color: var(--tsi-text-muted); }
 
 /* ---------- Full screen, and waiting ---------- */
 .tsi-bpv-full {
@@ -304,3 +295,8 @@ img.tsi-bpv-panel__art { width: 100%; height: 100%; object-fit: cover; }
   .tsi-bpv-panelhost, .tsi-bpv-waiting__text { animation: none; }
   .tsi-bpv *, .tsi-bpv-full { transition-duration: 0s !important; }
 }
+
+/* While a facility's panel fills the screen, the numbers, crest and tray step out of its way. */
+.tsi-bpv.has-panel .tsi-bpv-row,
+.tsi-bpv.has-panel .tsi-bpv-badge,
+.tsi-bpv.has-panel .tsi-bpv-tray { visibility: hidden; }

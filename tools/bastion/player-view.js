@@ -210,6 +210,7 @@
       var widgets = def ? def.widgets : ['level', 'orders'];
       var title = (def && def.title) || f.name;
       var info = [];
+      var shrines = null;
       if (widgets.indexOf('level') !== -1) {
         info.push(el('div', { class: 'tsi-bpv-info', 'data-test': 'pv-panel-level' }, [
           el('b', { class: 'tsi-bpv-info__label', text: levelText(f) }),
@@ -231,7 +232,7 @@
         ]));
       }
       if (widgets.indexOf('shrines') !== -1 && f.gods) {
-        info.push(el('div', { class: 'tsi-bpv-shrines', 'data-test': 'pv-panel-shrines' }, f.gods.map(function (g) {
+        shrines = (el('div', { class: 'tsi-bpv-shrines', 'data-test': 'pv-panel-shrines' }, f.gods.map(function (g) {
           var fill = el('div', { class: 'tsi-bpv-bar__fill', style: 'width:' + Math.max(0, Math.min(100, g.pct)) + '%' });
           return el('div', { class: 'tsi-bpv-god tsi-bpv-god--' + (GOD_COLOUR[g.id] || 'green'), 'data-test': 'pv-god-' + g.id, 'data-pct': String(g.pct) }, [
             el('div', { class: 'tsi-bpv-god__name', text: g.name }),
@@ -244,7 +245,7 @@
           el('h2', { class: 'tsi-bpv-panel__title', 'data-test': 'pv-panel-title', text: title }),
           el('div', { class: 'tsi-bpv-panel__tagline', 'data-test': 'pv-panel-tagline', text: def ? def.tagline : '' })
         ]),
-        el('div', { class: 'tsi-bpv-panel__art-wrap' + (f.repair ? ' is-repair' : '') }, panelArt(def, focus, title)),
+        el('div', { class: 'tsi-bpv-panel__art-wrap' + (f.repair ? ' is-repair' : '') }, [panelArt(def, focus, title), shrines]),
         el('div', { class: 'tsi-bpv-panel__info' }, info),
         def && def.blurb ? el('p', { class: 'tsi-bpv-panel__blurb', 'data-test': 'pv-panel-blurb', text: def.blurb }) : null
       ]);

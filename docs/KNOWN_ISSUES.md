@@ -4153,3 +4153,14 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 
 - Before: up to six construction slots (0 / 2 / 4 / 5 / 6 by party level) and two starting tiles. After (Harry: "workshop, dock, party quarters = 3, then 4 slots extra for Temple, Hall, Prison Tower, Beast Pen"): `R.MAX_SLOTS` is 4 (0 below party level 5, 2 at 5, 4 from 9); Development Plots stay at 6. The top row is three starting tiles plus four slots (7). The third starting tile, the Party Quarters, is a picture only (`startTiles` in `bastion-data.js`, cut from `map/party_quarters.png`): no panel, no map label, not counted as a facility, nothing in the save; its tooltip says "Party Quarters". An old save holding more than four buildings in slots keeps them all, marked over capacity.
 
+### BAS-SB-92 · The Bastion's Player View (26 October 2026; phases P1 to P3 of docs/PLAYER-VIEW-PLAN.md)
+
+- Before: the Bastion had no view for the players. After: **Open Player View** opens a view-only window (the same second-window system as the Battlemap) showing the map, numbers, crest, facility tray and simple illustrated facility panels, fed only by `R.playerSnapshot` (`tools/bastion/player-view-rules.js`); it writes nothing, and `tests/rules/player-view.test.js` and `tests/e2e/player-view-bastion.test.js` prove nothing DM-only is sent. Same laptop only (two windows).
+
+### BAS-SB-93 · The Player View's map labels are not nudged apart (26 October 2026)
+
+- Left alone: the DM's map nudges labels clear of each other and of the crest (`placeLabels`); the Player View places them at their exact spots. After Harry's art or a crowded Bastion, a label may touch another or the crest on the TV. Not a bug that loses anything; to be tuned on Harry's screen.
+
+### BAS-SB-94 · Facility panel pictures are the existing paintings for now (26 October 2026)
+
+- Before: no picture for the players. After: each panel uses the facility's existing painting (the Temple its three shrines side by side; the Prison Tower and other cut-from-the-map buildings their cropped building) until Harry's 4:3 pictures are named in `player-panels-data.js` (`art`). The picture is shown whole (never cropped), so a non-4:3 painting has dark margins.
