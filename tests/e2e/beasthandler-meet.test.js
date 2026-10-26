@@ -65,6 +65,8 @@ const checkS = (name, fn) => check(name, async () => {
   const addBeast = (id, species, name, home, opts) => ba.evaluate(([id, species, name, home, opts]) => TSI.bastion.debug.change(s => {
     const R = TSI.bastion.rules;
     const T = window.TSI_DATA;
+    /* These tests pin the staged answers of the fixed mode; the random pick among the rollable varieties (26 October 2026) is covered by the rules tests. */
+    T.beastInitiation.regional.mode = 'fixed';
     const data = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier, creatures: T.bastionCreatures };
     const c = { id, species, owner: '', name, status: 'housed', home, grantedDay: 1, housedDay: 1, msgId: '' };
     c.development = R.newDevelopment(c, s.day); c.development.handlerId = 'Mira';
@@ -172,15 +174,15 @@ const checkS = (name, fn) => check(name, async () => {
     await H.shot(bh, 'beasthandler-meet-1');
   });
 
-  await checkS('panel 2: the wyvern\'s five subspecies as medallions (name only), a die, one button, no text box, nothing to tap; where it lives and how it looks stay hidden', async () => {
+  await checkS('panel 2: the wyvern\'s three rollable subspecies as medallions (name only), a die, one button, no text box, nothing to tap; where it lives and how it looks stay hidden', async () => {
     await toPanel2();
     assert(/There are many subspecies of wyvern in The Scarlett Isles, but which one is Stormwing\?/.test(await bare(bh, '[data-test=bh-meet-title]')), await bare(bh, '[data-test=bh-meet-title]'));
-    equal((await bh.$$eval('.tsi-bh-medal__name', n => n.map(x => x.textContent))).sort(), ['Bleakhook', 'Bloodcrest', 'Ironcrown', 'Shadowmount', 'Widowspine']);
-    equal(await bh.$$eval('.tsi-bh-medal__n', n => n.map(x => x.textContent)), ['1', '2', '3', '4', '5'], 'numbered by place');
+    equal((await bh.$$eval('.tsi-bh-medal__name', n => n.map(x => x.textContent))).sort(), ['Bloodcrest', 'Ironcrown', 'Leafwing']);
+    equal(await bh.$$eval('.tsi-bh-medal__n', n => n.map(x => x.textContent)), ['1', '2', '3'], 'numbered by place');
     equal(await bh.$$eval('.tsi-bh-medal', n => n.filter(x => x.matches('button, a, [tabindex], [role=button]')).length), 0, 'a medallion cannot be pressed');
     equal(await bh.$$eval('.tsi-bh input, .tsi-bh textarea, .tsi-bh datalist', n => n.length), 0, 'no text box and no list to pick from');
     equal(await bh.$$eval('.tsi-bh .tsi-btn--primary', n => n.filter(x => !x.hidden).map(x => x.textContent)), ['Roll for subspecies'], 'one main button');
-    equal(await bare(bh, '[data-test=bh-meet-die]'), 'd5');
+    equal(await bare(bh, '[data-test=bh-meet-die]'), 'd3');
     equal(await bh.$eval('[data-test=bh-meet-medals]', n => n.getAttribute('data-lit')), '', 'the marker is not on any medallion yet');
     equal(await bare(bh, '[data-test=bh-meet-about]'), '', 'nothing is told about a variety before the roll');
     equal(await bh.$eval('[data-test=bh-meet-next]', n => n.hidden), true, 'no way on until it has landed');
@@ -197,8 +199,8 @@ const checkS = (name, fn) => check(name, async () => {
     assert(r.path.length >= 10, 'the marker hopped from medallion to medallion: ' + r.path.length + ' stops');
     equal(r.path[r.path.length - 1], String(r.order.indexOf('bloodcrest')), 'and the last one is the answer');
     equal(await bh.$eval('[data-test=bh-meet-die]', n => n.getAttribute('data-state')), 'landed');
-    assert(/East Isle: The red-cliff coastline/.test(await bare(bh, '[data-test=bh-meet-about]')), await bare(bh, '[data-test=bh-meet-about]'));
-    assert(/Deep crimson to burnt-rust scales/.test(await bare(bh, '[data-test=bh-meet-about]')));
+    assert(/East Isle: Red-cliff coastline/.test(await bare(bh, '[data-test=bh-meet-about]')), await bare(bh, '[data-test=bh-meet-about]'));
+    assert(/Rich crimson and burnt-rust scales/.test(await bare(bh, '[data-test=bh-meet-about]')));
     equal(await bh.$('[data-test=bh-meet-roll-regional]') === null || await bh.$eval('[data-test=bh-meet-roll-regional]', n => n.hidden), true, 'the Roll button is gone: it cannot be rolled again');
     equal(await bh.$('[data-test=bh-meet-back]') === null || await bh.$eval('[data-test=bh-meet-back]', n => n.hidden), true, 'and there is no Back to roll again');
     equal(await noPicture(), 0, 'the picture is still not shown');
@@ -327,7 +329,7 @@ const checkS = (name, fn) => check(name, async () => {
       await step(1);
       await toPanel2();
       const n = await bh.$$eval('.tsi-bh-medal', x => x.length);
-      equal(n, kind === 'dire_wolf' ? 6 : 5, kind + ' medallions');
+      equal(n, kind === 'wyvern' ? 3 : 2, kind + ' medallions (only the rollable varieties)');
       const r = await rollSubspecies();
       equal(r.variety, FIXED[kind], kind + ' meets as ' + FIXED[kind]);
       equal(r.about, NAMES[FIXED[kind]]);
@@ -423,11 +425,11 @@ const checkS = (name, fn) => check(name, async () => {
     await toPanel2();
     const r = await rollSubspecies();
     equal(r.variety, 'blacktide');
-    await dmEdit('cr-mid', { regional: 'Icepelt' });
-    await bh.waitForFunction(() => { const l = document.querySelector('.tsi-bh-medal--lit'); return l && l.getAttribute('data-variety') === 'icepelt'; }, null, { timeout: 8000 });
-    equal(await bare(bh, '[data-test=bh-meet-about] h2'), 'Icepelt');
+    await dmEdit('cr-mid', { regional: 'Slatejaw' });
+    await bh.waitForFunction(() => { const l = document.querySelector('.tsi-bh-medal--lit'); return l && l.getAttribute('data-variety') === 'slatejaw'; }, null, { timeout: 8000 });
+    equal(await bare(bh, '[data-test=bh-meet-about] h2'), 'Slatejaw');
     equal(await bh.$$eval('.tsi-bh-medal', n => n.map(x => x.getAttribute('data-variety'))), r.order, 'the medallions did not move');
-    equal(await bare(bh, '[data-test=bh-meet-die]'), String(r.order.indexOf('icepelt') + 1));
+    equal(await bare(bh, '[data-test=bh-meet-die]'), String(r.order.indexOf('slatejaw') + 1));
     await dmEdit('cr-mid', { regional: '' });
     await step(3);
     equal(await bh.$('.tsi-bh-medal'), null);
@@ -781,7 +783,7 @@ const checkS = (name, fn) => check(name, async () => {
 
   await checkS('a subspecies name never breaks in the middle of a word, is never clipped and never scrolls the page sideways, for every variety of every kind at 320, 360, 390, 480, 600, the laptop and the TV (the Dire Wolf has six)', async () => {
     const sizes = [[320, 568], [360, 640], [390, 844], [480, 800], [600, 900], [1707, 930], [1920, 1080]];
-    const kinds = [['cr-stormwing', 5], ['cr-swiftwing', 5], ['cr-ashfang', 6], ['cr-tusk', 5], ['cr-prowl', 5]];
+    const kinds = [['cr-stormwing', 3], ['cr-swiftwing', 2], ['cr-ashfang', 2], ['cr-tusk', 2], ['cr-prowl', 2]];
     for (const [w, h] of sizes) {
       const p = await ctx.newPage();
       await p.setViewportSize({ width: w, height: h });
@@ -882,7 +884,7 @@ const checkS = (name, fn) => check(name, async () => {
     await pp.click('[data-test=bh-meet-continue]');
     await pp.waitForSelector('[data-test=bh-meet][data-step="2"]');
     await fit('2');
-    equal(await pp.$$eval('.tsi-bh-medal', n => n.length), 6, 'the six dire wolf subspecies');
+    equal(await pp.$$eval('.tsi-bh-medal', n => n.length), 2, 'the two rollable dire wolf subspecies');
     await pp.click('[data-test=bh-meet-roll-regional]');
     await pp.waitForSelector('[data-test=bh-meet-next]:not([hidden])', { timeout: 15000 });
     await fit('2-landed');

@@ -140,6 +140,7 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
     equal(await bh.$('[data-test=bh-meet]'), null);
     await ba.evaluate(() => TSI.bastion.debug.change(s => {
       const T = window.TSI_DATA;
+      T.beastInitiation.regional.mode = 'fixed'; /* these tests pin the fixed answer; random mode is covered by the rules tests */
       const data = { bastion: T.bastion, facilities: T.bastionFacilities, tools: T.bastionTools, research: T.bastionResearch, goods: T.bastionGoods, commerce: T.bastionCommerce, courier: T.bastionCourier, creatures: T.bastionCreatures };
       TSI.bastion.rules.sweepInitiation(s, data, Math.random);
     }));
