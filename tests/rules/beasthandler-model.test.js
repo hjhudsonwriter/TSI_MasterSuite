@@ -189,7 +189,8 @@
 
   test('the kind\'s varieties come in the table\'s order, and a shuffle is a fresh order of the same ones that never changes the original', function (t) {
     var v = M.revealVarieties(T.beastProfile, 'dire_wolf');
-    t.same(v.map(function (x) { return x.name; }), ['Slatejaw', 'Blacktide'], 'only the rollable ones (Harry, 26 October 2026)');
+    t.equal(v.length, 7, 'every variety of the kind gets a medallion, rollable or not');
+    t.same(v.map(function (x) { return x.id; }), T.beastProfile.species.dire_wolf.regional.map(function (r) { return r.id; }), 'in the table\'s order');
     t.same(Object.keys(v[0]).sort(), ['id', 'name'], 'only the name and id: where it lives and how it looks stay hidden until the roll lands');
     t.same(M.revealVarieties(T.beastProfile, 'unicorn'), []);
     var before = JSON.stringify(v);
@@ -343,10 +344,10 @@
     t.equal(M.revealTarget({ profile: { regional: 'Bloodcrest' } }, T.beastProfile).kind, 'none', 'no kind, no throw');
   });
 
-  test('every kind\'s varieties are found by name, so the staged roll can land on each of them (only the rollable ones are listed; Harry, 26 October 2026)', function (t) {
+  test('every kind\'s varieties are found by name, so the staged roll can land on each of them (all of them are listed)', function (t) {
     ['wyvern', 'griffin', 'dire_wolf', 'buckbear', 'fellcat'].forEach(function (k) {
       var list = M.revealVarieties(T.beastProfile, k);
-      t.same(list.map(function (v) { return v.id; }), T.beastProfile.species[k].regional.filter(function (r) { return r.rollable === true; }).map(function (r) { return r.id; }), k + ' lists its rollable varieties');
+      t.same(list.map(function (v) { return v.id; }), T.beastProfile.species[k].regional.map(function (r) { return r.id; }), k + ' lists all its varieties');
       list.forEach(function (v) {
         var got = M.revealTarget({ species: { id: k }, profile: { regional: v.name }, initiation: { regional: 'zzz' } }, T.beastProfile);
         t.same([got.id, got.kind], [v.id, 'now'], k + ' ' + v.name);

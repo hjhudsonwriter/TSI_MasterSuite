@@ -161,6 +161,8 @@
       /* The Hall's Diplomatic Events ledger (pull request 9, diplomacy-rules.js; its Diplomatic Records). */
       diplomaticRecords: { next: 1, list: [] },
       dmEdits: { done: {} },
+      /* The Prison Tower's three cells and those freed from it (prison-rules.js). */
+      prison: { cells: [null, null, null], freed: [] },
       /* The days overhaul (8 October 2026): v 2 marks a save in days. day is
          the last day the Bastion has passed; anchored, whether it has read
          the Explorer's day yet (until then any Explorer day moves the whole
@@ -423,6 +425,7 @@
     /* The Beast Handler's record (tools/beasthandler/bastion-link.js): only if the save has one. */
     if (isObj(s.beast) && R.cleanBeast) d.beast = R.cleanBeast(s.beast);
     d.greatRites = R.cleanGreatRites(s.greatRites);
+    if (R.cleanPrison) d.prison = R.cleanPrison(s.prison, d.day, data);
     d.dmEdits = R.cleanDmEdits(s.dmEdits);
     d.diplomaticRecords = R.cleanDiplomaticRecords ? R.cleanDiplomaticRecords(s.diplomaticRecords, d.day, data) : (isObj(s.diplomaticRecords) ? s.diplomaticRecords : { next: 1, list: [] });
     /* Port Charters, ships at sea, standing shipments and sales (pull
@@ -1314,14 +1317,14 @@
     return null;
   };
 
+  /* The most construction slots and Development Plots a Bastion can have: six of each (Harry, 26 October 2026). */
+  R.MAX_SLOTS = 6;
+  R.MAX_PLOTS = 6;
   /* Construction slots by party level (1503-1510). */
   R.constructionSlotsForLevel = function (level) {
     var lvl = clampInt(level, 1, 20);
-    if (lvl >= 17) return 6;
-    if (lvl >= 13) return 5;
-    if (lvl >= 9) return 4;
-    if (lvl >= 5) return 2;
-    return 0;
+    var n = lvl >= 17 ? 6 : lvl >= 13 ? 5 : lvl >= 9 ? 4 : lvl >= 5 ? 2 : 0;
+    return Math.min(n, R.MAX_SLOTS);
   };
   /* Build time in days by the facility's required level (216-223; it was
      3 / 4 / 5 / 5 turns, now bastion-data.js time.buildDays). */
@@ -1330,6 +1333,10 @@
     var rows = R.time(data).buildDays;
     for (var i = 0; i < rows.length; i++) if (rl >= rows[i].level) return clampInt(rows[i].days, 0);
     return 0;
+  };
+  /* A facility's own build time: its "buildDays" if the data gives one (the Prison Tower's 21), else by its required level. */
+  R.buildDaysForFacility = function (fac, data) {
+    return fac && typeof fac.buildDays === 'number' && fac.buildDays >= 0 ? Math.floor(fac.buildDays) : R.buildDaysForRequiredLevel(fac && fac.requiredLevel, data);
   };
   /* Old saves' plain names become { facId, status: "built" } (229-237).
      The Development Plots (s.builtPlots, pull request 3) are the same. */
@@ -1362,7 +1369,7 @@
     var lvl = clampInt(level, 1, 20);
     var rows = (data && data.bastion && arr(data.bastion.developmentPlots)) || [{ from: 1, plots: 0 }, { from: 9, plots: 2 }, { from: 13, plots: 4 }, { from: 17, plots: 6 }];
     var n = 0;
-    rows.forEach(function (r) { if (lvl >= clampInt(r.from, 1, 20)) n = clampInt(r.plots, 0, 20); });
+    rows.forEach(function (r) { if (lvl >= clampInt(r.from, 1, 20)) n = clampInt(r.plots, 0, R.MAX_PLOTS); });
     return n;
   };
   R.isPlotFacility = function (data, facId) { var f = R.facility(data, facId); return !!(f && f.plot); };
@@ -1527,7 +1534,7 @@
       var pr = R.plotRows(s, s.partyLevel, data);
       if (!pr.rows[slotIndex] || !pr.rows[slotIndex].canBuild) return { ok: false, message: 'The ' + name + ' needs a free Development Plot: plots open at party level 9 (2), 13 (4) and 17 (6).' };
     }
-    var days = R.buildDaysForRequiredLevel(req, data);
+    var days = R.buildDaysForFacility(fac, data);
     if (days <= 0) {
       list[slotIndex] = { facId: facId, status: 'built' };
       return { ok: true, log: ['Construction', name + ' built instantly.'] };
@@ -1553,6 +1560,9 @@
     /* The Beast Pen stays while any beast lives in it (creature-rules.js). */
     var penWhy = R.penDemolishBlocker ? R.penDemolishBlocker(s, data, facId) : '';
     if (penWhy) return { ok: false, message: penWhy };
+    /* The Prison Tower stays while anyone is held in it (prison-rules.js). */
+    var prisonWhy = R.prisonDemolishBlocker ? R.prisonDemolishBlocker(s, data, facId) : '';
+    if (prisonWhy) return { ok: false, message: prisonWhy };
     var building = place.entry.status === 'building';
     (place.kind === 'plot' ? s.builtPlots : s.builtExtras)[place.index] = '';
     var where = place.kind === 'plot' ? 'plot' : 'slot';
@@ -2608,6 +2618,8 @@
        once (creature-rules.js R.tickBonding). It is in the same change as the day moving on, so a day can never be
        counted without being passed, or passed without being counted. */
     if (R.tickBonding) R.tickBonding(s, data, now);
+    /* The Prison Tower (26 October 2026): a prisoner whose sentence ends today is released, once, and the Ironbow says so. */
+    if (R.tickPrison) R.tickPrison(s, data);
   };
   /* The day's trade is done (ships settled): on to the orders. (The Hall's sea routes used to be settled here too.) */
   R.finishRoutes = function (s) {
@@ -2677,6 +2689,8 @@
       if (isObj(dv.bonding)) { mv(dv.bonding, 'awaySince'); mv(dv.bonding, 'lastTick'); }
       if (isObj(dv.acclimatise)) { mv(dv.acclimatise, 'retryDay'); if (isObj(dv.acclimatise.last)) mv(dv.acclimatise.last, 'day'); }
     });
+    /* The Prison Tower's lock-up and end days. */
+    if (R.shiftPrison) R.shiftPrison(s, n);
     /* The Great Rites (pull request 8b): the day each was made. */
     (Array.isArray(s.greatRites) ? s.greatRites : []).forEach(function (g) { mv(g, 'madeDay'); if (g && g.assignedDay !== undefined) mv(g, 'assignedDay'); });
   };

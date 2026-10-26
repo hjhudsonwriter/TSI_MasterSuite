@@ -4128,3 +4128,24 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 - **Before:** a tap on the picture only gave a short glow.
 - **After:** on the Bond page, tapping the picture (finger, mouse, or Space/Enter) plays that variety's short video over it once, with no sound, then the still returns. (It first played while held, as a loop; changed the same day because a long press on a phone picture opens the browser's own menu and stops it.) A variety with no video keeps the glow. Eleven loops are in (Wyvern: Ironcrown, Leafwing, Bloodcrest; Dire Wolf: Blacktide, Slatejaw; Griffin: Dawnmantle, Silvershroud; Buckbear: Broadcrown, Shovelhorn; Fellcat: Lichenback, Smokecoat), re-encoded here from Harry's originals (H.264, no sound, about 0.4 to 2 MB each) and named for their variety in `tools/beasthandler/assets/<kind>/`. The originals were not committed. A video is added by naming it in `tools/beasthandler/data/art-map.js` (`video:`).
 - **Not tested here:** a real phone (the test browser plays them; the iPhone and Edge were not tried). The page loads each beast's clip when its Bond page opens, so it may take a moment on a slow connection.
+
+### BAS-SB-86 · Every subspecies gets a medallion at the first meeting (Beast Handler, 26 October 2026)
+
+- Before: the "Roll for subspecies" panel showed only the varieties marked `rollable: true` (2 or 3 medallions). After (Harry): it shows all of the kind's varieties (Wyvern 8, Griffin 8, Dire Wolf 7, Buckbear 5, Fellcat 5) for the look of a wider choice, and the die is the same size as the number of medallions (d8, d7, d5). The answer is unchanged: `R.initiationVariety` still picks only a rollable one, and the marker's path still takes 3.5 to 4.5 seconds. Medallions carry no pictures, so a variety without one breaks nothing; the panel is tested from 320 px to the TV.
+
+### BAS-SB-87 · At most six construction slots and six Development Plots (26 October 2026)
+
+- Before: the slot rules gave 0 / 2 / 4 / 5 / 6 slots and 0 / 2 / 4 / 6 plots by party level, but nothing held them to six if a data table said more. After (Harry): `R.MAX_SLOTS` and `R.MAX_PLOTS` (both 6) cap `R.constructionSlotsForLevel` and `R.plotsForLevel`, and a test checks every party level from 1 to 20. The top row of the bottom bar still shows 8 tiles: the two starting facilities (Workshop, Dock) are not construction slots, plus the six slots. Left as it is; ask Harry if he wants the two starting tiles moved. A Bastion that already holds more than six buildings (an old save) keeps them all, marked over capacity, as before.
+
+### BAS-SB-88 · Prison Tower: a new facility (26 October 2026)
+
+- Before: no way to hold captured people in the Bastion. After (Harry): the Prison Tower (`prison_tower`), party level 9, a construction slot, 21 days (a new per-facility `buildDays` in `facilities-data.js`, because the level table gives 28 days at level 9), one level, three cells, no gold. Rules in `tools/bastion/prison-rules.js`; saved as `prison` (additive, Bastion save stays version 4; an older save loads with three empty cells). Its picture is cut from the map overlay, with no painting banner.
+
+### BAS-SB-89 · Prison Tower: when a sentence ends, and how the Explorer is told (26 October 2026)
+
+- Before: n/a. After: a prisoner is released on the day `lock-up day + sentence` is reached, by `R.startDay`, once (the cell is emptied), with a line in "The Ironbow sends word…"; the Explorer already reads the saved Bastion for this kind of news (`TSI.campaign.bastionComing`, kind `prison`), so it says the same line before the day. Catch-up over many days frees each prisoner on their own day; Reset Travel moves every prison day with `R.shiftDays`. No new channel.
+
+### BAS-SB-90 · Prison Tower: Under Repair, demolishing and the record of who left (26 October 2026)
+
+- Before: n/a. After: Under Repair, sentences keep counting and end on their day, but Lock up, Interrogate and Release are greyed out until the repair ends (a repair can only come from old war saves). The Tower cannot be demolished while a cell is in use. Everyone who leaves (served or released early with the reason typed) is kept in the save's `prison.freed` (last 30), not shown anywhere yet; the notes on a freed prisoner go with that record. Left as is: a notice for a failed or passed interrogation shows in the Bastion's own window (notices do not cross windows); only the sentence ending reaches the Explorer.
+

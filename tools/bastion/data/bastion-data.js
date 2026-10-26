@@ -40,6 +40,7 @@ window.TSI_DATA.bastion = {
      (facilityImages, above). */
   facilityTileCrops: {
     beast_pen: { pic: 'map/overlays/beast_pen.png', x: 1639, y: 458, w: 531, h: 240 },
+    prison_tower: { pic: 'map/overlays/prison_tower.png', x: 791, y: 261, w: 325, h: 231 },
     weavers_hall: { pic: 'map/overlays/weavers_hall.png', x: 2097, y: 409, w: 279, h: 143 },
     stone_masonworks: { pic: 'map/overlays/stone_quarry_masonworks.png', x: 1965, y: 646, w: 635, h: 331 },
     fishery_smokehouse: { pic: 'map/overlays/fishery_smokehouse.png', x: 130, y: 578, w: 579, h: 408 },
@@ -71,12 +72,13 @@ window.TSI_DATA.bastion = {
      in the painting, but they were the Watchtower, Barracks and Armoury,
      which went with the war game, so they have no label now.) */
   mapLabels: {
-    workshop: { x: 1030, y: 350 },
+    workshop: { x: 1170, y: 440 },   /* over the smoke from the Workshop's chimney (Harry, 26 October 2026) */
     dock: { x: 1260, y: 760 },
     herbal_gardens: { x: 196, y: 464 },
     hall_of_emissaries: { x: 1582, y: 301 },
     temple: { x: 182, y: 150 },
     beast_pen: { x: 1904, y: 478 },
+    prison_tower: { x: 953, y: 281 },
     weavers_hall: { x: 2236, y: 429 },
     stone_masonworks: { x: 2282, y: 666 },
     fishery_smokehouse: { x: 419, y: 598 },
@@ -195,6 +197,7 @@ window.TSI_DATA.bastion = {
       { fac: 'hall_of_emissaries', pic: 'map/overlays/hall_of_emissaries.png' },
       { fac: 'temple', pic: 'map/overlays/temple.png' },
       { fac: 'beast_pen', pic: 'map/overlays/beast_pen.png' },
+      { fac: 'prison_tower', pic: 'map/overlays/prison_tower.png' },
       { fac: 'weavers_hall', pic: 'map/overlays/weavers_hall.png' },
       { fac: 'stone_masonworks', pic: 'map/overlays/stone_quarry_masonworks.png' },
       { fac: 'fishery_smokehouse', pic: 'map/overlays/fishery_smokehouse.png' },

@@ -158,3 +158,7 @@ The Griffin Tower and Dire Wolf Den map overlays went with the three pens (the B
 | `tools/bastion/assets/map/overlays/dire_wolf_den.png` | `tools/bastion/assets/extras/map/overlays/dire_wolf_den.png` |
 
 The Temple draws `shrine_of_aurush.png`, `shrine_of_telluria.png` and `shrine_of_pelagos.png` (map overlays) and shows the three Shrine paintings as strips on its tile. The Beast Pen draws `wyvern_roost.png` on the map and uses the Menagerie picture for its tile (an open question for Harry).
+
+## The Prison Tower (26 October 2026)
+
+Harry's `overlay_PrisonTower.png` moved byte-for-byte from `tools/bastion/assets/extras/map-2026-10-26/overlay_PrisonTower.png` to `tools/bastion/assets/map/overlays/prison_tower.png` (a full 3000 x 1250 see-through overlay, like the others). It is in the map table in `bastion-data.js`; its label sits at x 953, y 281; its tile and card are cut from the overlay (`facilityTileCrops.prison_tower`: x 791, y 261, 325 x 231, with a 20 px margin). Its panel has no painting banner.

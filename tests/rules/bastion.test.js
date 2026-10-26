@@ -69,7 +69,7 @@
     t.same([m.width, m.height], [3000, 1250], 'Harry\'s new painting, 12 October 2026');
     m.overlays.forEach(function (o) { t.ok(R.facility(data, o.fac), o.fac); t.ok(/^map\/overlays\/[a-z_]+\.png$/.test(o.pic), o.pic); });
     t.same(m.overlays.map(function (o) { return o.fac; }), ['herbal_gardens', 'hall_of_emissaries', 'temple',
-      'beast_pen', 'weavers_hall', 'stone_masonworks', 'fishery_smokehouse', 'timber_sawmill', 'courier_exchange']);
+      'beast_pen', 'prison_tower', 'weavers_hall', 'stone_masonworks', 'fishery_smokehouse', 'timber_sawmill', 'courier_exchange']);
     t.equal(m.overlays.filter(function (o) { return o.fac === 'menagerie' || o.fac === 'war_room'; }).length, 0, 'no map picture for the war game\'s facilities (the War Room\'s went to assets/extras)');
     t.ok(T.bastion.mapLabels.courier_exchange, 'the Courier Exchange has a place for its label');
     t.same(m.overlays.filter(function (o) { return o.fac === 'temple'; }).map(function (o) { return o.pic; }), ['map/overlays/temple.png'], 'the Temple draws its one new building (Harry\'s designs of 26 October 2026)');
@@ -148,6 +148,12 @@
 
   test('construction slots by party level: 0 / 2 / 4 / 5 / 6', function (t) {
     t.same([1, 4, 5, 8, 9, 12, 13, 16, 17, 20].map(R.constructionSlotsForLevel), [0, 0, 2, 2, 4, 4, 5, 5, 6, 6]);
+    for (var lv = 1; lv <= 20; lv++) {
+      t.ok(R.constructionSlotsForLevel(lv) <= 6 && R.plotsForLevel(lv, data) <= 6, 'level ' + lv + ' never has more than six slots or six plots');
+    }
+    var big = JSON.parse(JSON.stringify(data));
+    big.bastion.developmentPlots = [{ from: 1, plots: 9 }];
+    t.equal(R.plotsForLevel(20, big), 6, 'a plot table that says more than six is held to six');
   });
 
   test('build times by the facility\'s level: 21 / 28 / 35 days (3 / 4 / 5 turns at 7 days a turn)', function (t) {
