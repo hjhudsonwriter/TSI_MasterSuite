@@ -196,6 +196,68 @@ async function openPlayer(page, size) {
       await pv.waitForFunction(() => { const c = document.querySelector('[data-test=pv-fog]'); return !c.getContext('2d').getImageData(0, 0, c.width, c.height).data.some((v, i) => i % 4 === 3 && v > 0); });
     });
 
+    await check('opening a town pin in the DM view opens the same card for the players; closing, or opening another, follows', async () => {
+      equal(await pv.isVisible('[data-test=pv-pin]'), false);
+      await page.evaluate(() => TSI.explorer.debug.openPin('swyth'));
+      await pv.waitForSelector('[data-test=pv-pin]');
+      equal(await bare(pv, '[data-test=pv-pin-title]'), 'Swyth');
+      await pv.waitForFunction(() => document.querySelector('[data-test=pv-pin] img').complete && document.querySelector('[data-test=pv-pin] img').naturalWidth > 0);
+      const c = await rect(pv, '[data-test=pv-pin]');
+      assert(c.x >= 0 && c.right <= size.width && c.bottom <= size.height, 'the card fits: ' + JSON.stringify(c));
+      equal(await pv.$$eval('[data-test=pv-pin] button, [data-test=pv-pin] input, [data-test=pv-pin] a', n => n.length), 0, 'read only');
+      equal(await pv.$eval('[data-test=pv-pin-host]', n => getComputedStyle(n).pointerEvents), 'none');
+      await H.shot(pv, 'pv-explorer-pin-' + name);
+      await H.clickModal(page, 'Close');
+      await pv.waitForSelector('[data-test=pv-pin]', { state: 'detached' });
+      await page.waitForTimeout(450);
+      await page.evaluate(() => TSI.explorer.debug.openPin('greymyr'));
+      await pv.waitForFunction(() => document.querySelector('[data-test=pv-pin-title]') && document.querySelector('[data-test=pv-pin-title]').textContent === 'Greymyr');
+      await H.clickModal(page, 'Close');
+      await pv.waitForSelector('[data-test=pv-pin]', { state: 'detached' });
+    });
+
+    const dimNow = () => pv.$eval('[data-test=pv-dim]', n => Number(getComputedStyle(n).opacity));
+    await check('Make Camp fades the players\' map to black and back in; the slim row stays', async () => {
+      await page.evaluate(() => { Math.random = () => 0.999; });
+      await page.click('[data-test=camp]');
+      await pv.waitForFunction(() => Number(getComputedStyle(document.querySelector('[data-test=pv-dim]')).opacity) > 0.9, null, { timeout: 4000 });
+      assert(await pv.isVisible('[data-test=pv-row]'), 'the row stays');
+      const eventOpen = await page.waitForSelector('.tsi-modal.tsi-exp-journey', { timeout: 1500 }).then(() => true, () => false);
+      if (eventOpen) {
+        await pv.waitForTimeout(4500);
+        const d = await dimNow();
+        assert(d > 0.85 && d < 0.97, 'held very dark but not black: ' + d);
+        await H.clickModal(page, 'Close');
+      } else {
+        await pv.waitForTimeout(4000);
+      }
+      await pv.waitForFunction(() => Number(getComputedStyle(document.querySelector('[data-test=pv-dim]')).opacity) < 0.05, null, { timeout: 6000 });
+      await dismissModals(page);
+    });
+
+    await check('a campfire event holds the map very dark until the DM closes it, then fades back in', async () => {
+      await page.evaluate(() => TSI.explorer.debug.startEvent('c1', 'camp'));
+      await page.waitForSelector('.tsi-modal.tsi-exp-journey');
+      await pv.waitForFunction(() => { const o = Number(getComputedStyle(document.querySelector('[data-test=pv-dim]')).opacity); return o > 0.9 && o < 0.95; }, null, { timeout: 4000 });
+      await pv.waitForTimeout(2500);
+      const d = await dimNow();
+      assert(d > 0.9 && d < 0.95, 'still held: ' + d);
+      await page.waitForTimeout(400);
+      await page.click('[data-test=skip-event]');
+      await dismissModals(page);
+      await pv.waitForFunction(() => Number(getComputedStyle(document.querySelector('[data-test=pv-dim]')).opacity) < 0.05, null, { timeout: 4000 });
+    });
+
+    await check('with reduced motion the fade is a quick cross-fade', async () => {
+      await pv.emulateMedia({ reducedMotion: 'reduce' });
+      await page.evaluate(() => TSI.explorer.debug.startEvent('c2', 'camp'));
+      await page.waitForSelector('.tsi-modal.tsi-exp-journey');
+      await pv.waitForFunction(() => Number(getComputedStyle(document.querySelector('[data-test=pv-dim]')).opacity) > 0.85, null, { timeout: 900 });
+      await H.clickModal(page, 'Close');
+      await pv.waitForFunction(() => Number(getComputedStyle(document.querySelector('[data-test=pv-dim]')).opacity) < 0.05, null, { timeout: 900 });
+      await pv.emulateMedia({ reducedMotion: 'no-preference' });
+    });
+
     await check('the same region at any window shape: resizing either window keeps every hero at the same place on the picture', async () => {
       const t = (await st(page)).tokens[0].id;
       await pv.setViewportSize({ width: 900, height: 900 });
@@ -241,6 +303,7 @@ async function openPlayer(page, size) {
     });
 
     await check('closing the DM tool closes the players\' window', async () => {
+      await dismissModals(page);
       await page.click('.tsi-topbar a[href], .tsi-topbar__home, [data-test=home]').catch(() => {});
       await page.evaluate(() => { location.href = location.href.replace(/\?.*$/, ''); });
       await pv.waitForEvent('close', { timeout: 8000 }).catch(() => {});

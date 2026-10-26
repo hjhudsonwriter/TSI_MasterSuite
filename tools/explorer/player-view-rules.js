@@ -21,7 +21,12 @@
      grid: { enabled, r, offsetX, offsetY, opacity },
      fog: { enabled, hexes: ['q,r', ...] },     the uncovered hexes
      markers: [{ id, label, thumb, x, y }],     the town pins showing (x and y are fractions of the board)
-     tokens: [{ id, name, initial, size, x, y }]   the heroes, as drawn: top-left corner in board units
+     tokens: [{ id, name, initial, size, x, y }],  the heroes, as drawn: top-left corner in board units
+     pin: { id, label, image, description } or null,   the town pin card the DM has open: only what the card itself shows
+                                                    (its name, picture and description); never the Port Charter or
+                                                    Courier boxes, which are the DM's
+     dim: 'none' | 'night' | 'event',     'event' while a campfire event is open in the DM's window: the map stays very dark
+     camp: n                               how many times the DM has made camp; each new number fades the map out and in once
    } */
 (function () {
   'use strict';
@@ -33,7 +38,9 @@
   function str(v, max) { return typeof v === 'string' ? v.slice(0, max || 200) : ''; }
   function num(v, fallback) { return typeof v === 'number' && isFinite(v) ? v : fallback; }
 
-  R.playerSnapshot = function (s, data) {
+  /* extras: { pin: a marker's id or null, dim: 'none' | 'night' | 'event', camp: a whole number }. */
+  R.playerSnapshot = function (s, data, extras) {
+    extras = extras && typeof extras === 'object' ? extras : {};
     var limit = R.dayLimit(s);
     /* The heroes always move together: one figure for the party, the furthest any hero has gone today. */
     var used = 0;
@@ -56,6 +63,20 @@
       hexes = Object.keys(store).filter(function (k) { return store[k]; });
     }
 
+    /* The open pin card: looked up in the data by id, so only the card's own fields can be sent. */
+    var pin = null;
+    if (typeof extras.pin === 'string' && extras.pin) {
+      var list = (data.markersByMapId && data.markersByMapId[s.mapPresetId || '']) || [];
+      for (var i = 0; i < list.length; i++) {
+        if (list[i].id === extras.pin) {
+          pin = { id: str(list[i].id, 80), label: str(list[i].label, 120), image: str(list[i].submapImage, 300), description: str(list[i].description == null ? '' : String(list[i].description), 4000) };
+          break;
+        }
+      }
+    }
+    var dim = extras.dim === 'event' || extras.dim === 'night' ? extras.dim : 'none';
+    var camp = typeof extras.camp === 'number' && isFinite(extras.camp) && extras.camp > 0 ? Math.floor(extras.camp) : 0;
+
     var spots = R.layoutTokens(s, board, null);
     return {
       v: 1,
@@ -74,7 +95,10 @@
       tokens: s.tokens.map(function (t) {
         var spot = spots[t.id] || { x: 0, y: 0 };
         return { id: str(t.id, 60), name: str(t.name, 80), initial: str(t.initial, 4), size: num(Number(t.size), 46), x: spot.x, y: spot.y };
-      })
+      }),
+      pin: pin,
+      dim: dim,
+      camp: camp
     };
   };
 }());

@@ -188,7 +188,8 @@
       t.equal(R.facility(data, p.id).name, p.title, p.id + '\'s title is its name');
       t.ok(p.tagline && p.blurb, p.id + ' has a tagline and a blurb');
       t.ok(p.widgets.indexOf('level') !== -1 && p.widgets.indexOf('orders') !== -1, p.id + ' shows its level and orders');
-      t.ok(p.art === null || /^[a-z0-9_\-]+\.(png|jpg|webp)$/.test(p.art), p.id + '\'s art is a file name or null');
+      var files = p.art === null ? [] : typeof p.art === 'string' ? [p.art] : Object.keys(p.art.levels).map(function (k) { return p.art.levels[k]; });
+      t.ok(files.every(function (f) { return /^[a-z0-9_\-]+\.(png|jpg|webp)$/.test(f); }), p.id + '\'s art is file names or null');
     });
     t.equal(panels.filter(function (p) { return p.id === 'party_quarters'; }).length, 0);
   });

@@ -4,9 +4,11 @@
    id       the facility's id (facilities-data.js)
    title    the name in the header (left)
    tagline  the short line in the header (right)
-   art      a picture in tools/bastion/assets/player-panels/ (for example 'workshop.png'). Leave it null until Harry's
-            picture arrives: the panel then shows the facility's existing painting (bastion-data.js panelImages,
-            facilityImages, then the building cut from the map)
+   art      a picture in tools/bastion/assets/player-panels/ (for example 'workshop.png'), or { levels: { 1: 'a.jpg', 2: 'b.jpg' } }
+            for one picture per facility level (a level with none uses the nearest lower level's). Leave it null until
+            Harry's picture arrives: the panel then shows the facility's existing painting (bastion-data.js panelImages,
+            facilityImages, then the building cut from the map). Pictures fill the picture area (cropped to fit)
+   focus    where the crop keeps in view, { x: 50, y: 50 } by default: percent across and down the picture
    blurb    one or two lines under the picture
    widgets  the small things shown under the picture:
               'level'    "Level 3" (or "One level")
@@ -17,7 +19,9 @@
 window.TSI_DATA = window.TSI_DATA || {};
 
 window.TSI_DATA.bastionPlayerPanels = [
-  { id: 'workshop', title: 'Workshop', tagline: 'Need something? Craft it here...', art: null,
+  { id: 'workshop', title: 'Workshop', tagline: 'Need something? Craft it here...',
+    art: { levels: { 1: 'workshop-level-1.jpg', 2: 'workshop-level-2.jpg', /* 3: 'workshop-level-3.jpg' (no 3-person picture yet: Level 3 shows Level 2's) */ 4: 'workshop-level-4.jpg', 5: 'workshop-level-5.jpg' } },
+    focus: { x: 50, y: 62 },
     blurb: 'Hand your plans to the staff and they will see them made.', widgets: ['level', 'orders', 'staff'] },
   { id: 'temple', title: 'Temple', tagline: 'The Triarchy is always listening...', art: null,
     blurb: 'Say a prayer at a shrine and the gods may respond.', widgets: ['level', 'orders', 'shrines'] },

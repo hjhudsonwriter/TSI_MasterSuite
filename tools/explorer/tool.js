@@ -89,7 +89,7 @@
         view: 'explorer',
         name: 'ScarlettExplorerPlayers',
         features: 'popup=yes,width=1400,height=800',
-        getState: function () { return R.playerSnapshot(state, DATA); },
+        getState: function () { return R.playerSnapshot(state, DATA, { pin: pvPin, dim: pvDim(), camp: pvCamp }); },
         onStatus: function (st) {
           pvStatus.textContent = st === 'connected' ? 'Connected' : st === 'opening' ? 'Opening…' : st === 'blocked' ? 'Blocked' : 'Not open';
           pvStatus.classList.toggle('is-connected', st === 'connected');
@@ -101,6 +101,19 @@
         }
       });
       var pvQueued = false;
+      /* What the players also see: the pin card the DM has open (the pin's id), a count of nights (each Make Camp adds
+         one, so their window fades to black once), and the campfire event being open (their map stays very dark). */
+      var pvPin = null;
+      var pvCamp = 0;
+      var pvNightUntil = 0;
+      function pvEventOpen() {
+        var c = state.journey && state.journey.current;
+        return !!(journeyOpen && c && (c.kind === 'camp' || c.kind === 'night'));
+      }
+      function pvDim() {
+        if (pvEventOpen()) return 'event';
+        return Date.now() < pvNightUntil ? 'night' : 'none';
+      }
       function queuePlayerSync() {
         if (pvQueued || !life.alive || !pvLink.isConnected()) return;
         pvQueued = true;
@@ -816,6 +829,8 @@
           if (!life.alive) return null;
           if (state.journey.current) return showEvents([{ kind: 'journey' }]);
           var queue = R.makeCamp(state, DATA, JDEFS, rand, bastion);
+          pvCamp++;
+          pvNightUntil = Date.now() + 4000;
           saveNow();
           setNotice('');
           updateTravelUI();
@@ -1774,6 +1789,7 @@
       function openJourney() {
         if (!state.journey.current || journeyOpen) return Promise.resolve(null);
         journeyOpen = true;
+        queuePlayerSync();
         var api = null;
         var shown = 0;
         var finished = false;
@@ -2113,6 +2129,7 @@
           }
         }).then(function (value) {
           journeyOpen = false;
+          queuePlayerSync();
           journeyRefresh = null;
           /* Closed by the suite (leaving the tool): the event waits, saved, for next time. */
           if (value === undefined || !life.alive) return null;
@@ -2163,11 +2180,16 @@
         if (point) boxes.push(courierBox(point));
         if (boxes.length > 1) body.push(el('div', { class: 'tsi-exp-place-boxes' }, boxes));
         else if (boxes.length) body.push(boxes[0]);
+        pvPin = m.id;
+        queuePlayerSync();
         return TSI.modal.open({
           title: 'Location',
           className: 'tsi-exp-place' + (port ? ' tsi-exp-place--port' : '') + (point ? ' tsi-exp-place--post' : ''),
           body: body,
           actions: [{ label: 'Close', value: true }]
+        }).then(function (v) {
+          if (pvPin === m.id) { pvPin = null; queuePlayerSync(); }
+          return v;
         });
       }
 
