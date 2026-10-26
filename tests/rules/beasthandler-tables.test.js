@@ -19,7 +19,7 @@
     t.equal(B.dominant.entries[11].note, 'Shows strong attachment to familiar individuals');
   });
 
-  test('every kind has a d8 Attachment Cue table, a d8 Instinctive Trigger table and its Regional Varieties (8 Wyvern, 8 Griffin, 7 Dire Wolf, 5 Buckbear, 5 Fellcat; Harry's PDF of 26 October 2026)', function (t) {
+  test('every kind has a d8 Attachment Cue table, a d8 Instinctive Trigger table and its Regional Varieties (8 Wyvern, 8 Griffin, 7 Dire Wolf, 5 Buckbear, 5 Fellcat; Harry\'s PDF of 26 October 2026)', function (t) {
     t.same(Object.keys(B.species), KINDS);
     KINDS.forEach(function (k) {
       ['attachment', 'trigger'].forEach(function (which) {
@@ -64,11 +64,11 @@
     t.same(names('buckbear'), ['Broadcrown', 'Shovelhorn', 'Cragbuck', 'Fenwallow', 'Saltcoat']);
     t.same(names('fellcat'), ['Mistveil', 'Whiteout', 'Lichenback', 'Tawnyfell', 'Smokecoat']);
     function area(k, n) { return B.species[k].regional.filter(function (r) { return r.name === n; })[0]; }
-    t.same([area('wyvern', 'Widowspine').area, area('wyvern', 'Widowspine').where], ['The Black Straits', 'Sea stacks, storm-lashed cliffs and narrow coastal passages']);
+    t.same([area('wyvern', 'Widowspine').area, area('wyvern', 'Widowspine').where], ['The Black Straits', 'Storm-lashed sea stacks, coastal cliffs and narrow sea passages']);
     t.equal(area('wyvern', 'Bleakhook').area, 'North Isle');
     t.equal(area('wyvern', 'Bleakhook').where, 'Bleakharbour and the exposed northern coastline of Clan Karr');
-    t.equal(area('dire_wolf', 'Icepelt').where, 'Bleaker\'s Bay, Bleakharbour and the northern coastal uplands');
-    t.equal(area('griffin', 'Silvershroud').where, 'The shores and mist-covered approaches of Eastlake, near Swyth');
+    t.equal(area('dire_wolf', 'Icepelt').where, 'Bleaker\'s Bay, Bleakharbour and northern coastal uplands');
+    t.equal(area('griffin', 'Silvershroud').where, 'Mist-covered shores and approaches of Eastlake near Swyth');
     t.equal(area('griffin', 'Galeclaw').area, 'Northern Province');
     /* 22 October 2026: Harry's own words for the sixth wolf and the new kinds. */
     t.same([area('dire_wolf', 'Blacktide').area, area('dire_wolf', 'Blacktide').where], ['The Black Straits (South) and Bolt Isle', 'Surf-cut rocks, wreck beaches, smugglers\' coves and pirate havens']);
@@ -82,8 +82,8 @@
     t.equal(area('fellcat', 'Smokecoat').area, 'Western Province (Clan Farmer)');
     t.ok(/Camouflage: sea mist\.$/.test(area('fellcat', 'Mistveil').appearance), 'a Fellcat\'s camouflage is kept');
     t.equal(area('griffin', 'Embermantle').where, 'Redport and the western coastal cliffs');
-    t.ok(/^Near-black, wet-slate scales; long ivory-white spines;/.test(area('wyvern', 'Widowspine').appearance));
-    t.ok(/Older animals develop a distinctive grey mantle\.$/.test(area('dire_wolf', 'Nightfang').appearance));
+    t.ok(/^Dark slate-to-blue-black scales, pale stone-grey breast/.test(area('wyvern', 'Widowspine').appearance));
+    t.ok(/pale amber to moss-green eyes\.$/.test(area('dire_wolf', 'Nightfang').appearance));
     t.ok(KINDS.reduce(function (all, k) { return all.concat(B.species[k].regional); }, []).every(function (r) {
       return r.id && r.name && r.area && r.appearance && /^[a-z]+$/.test(r.id) && r.id === r.name.toLowerCase();
     }), 'every variety is complete, with a plain id');
