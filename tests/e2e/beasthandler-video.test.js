@@ -39,23 +39,20 @@ const HARNESS = H.fileUrl('tests/harness.html');
   await bh.selectOption('[data-test=bh-viewas]', 'Mira');
   await bh.waitForSelector('[data-test=bh-beast-cr-iron][data-mine=yes]');
 
-  await check('holding the picture of a variety with a video plays it, looping, and letting go stops it', async () => {
+  await check('tapping the picture of a variety with a video plays it once, then the still returns', async () => {
     await bh.click('[data-test=bh-beast-cr-iron]');
     await bh.waitForSelector('[data-test=bh-clip]', { state: 'attached' });
     const before = await bh.$eval('[data-test=bh-clip]', v => ({ paused: v.paused, loop: v.loop, muted: v.muted, shown: getComputedStyle(v).opacity }));
     equal(before.paused, true, 'not playing before it is held');
-    equal(before.loop, true);
+    equal(before.loop, false, 'it plays once, not on a loop');
     equal(before.muted, true);
     equal(before.shown, '0', 'invisible before it is held');
     await bh.waitForFunction(() => document.querySelector('[data-test=bh-clip]').readyState >= 3, null, { timeout: 15000 });
-    const box = await bh.$eval('[data-test=bh-greet-large]', n => { const r = n.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
-    await bh.mouse.move(box.x, box.y);
-    await bh.mouse.down();
+    await bh.click('[data-test=bh-greet-large]');
     await bh.waitForFunction(() => { const v = document.querySelector('[data-test=bh-clip]'); return !v.paused && v.currentTime > 0.3; }, null, { timeout: 8000 });
-    equal(await bh.$eval('.tsi-bh-hero2', f => f.classList.contains('tsi-bh-hero2--clip')), true, 'the clip shows while held');
-    await bh.mouse.up();
-    await bh.waitForFunction(() => document.querySelector('[data-test=bh-clip]').paused, null, { timeout: 4000 });
-    equal(await bh.$eval('.tsi-bh-hero2', f => f.classList.contains('tsi-bh-hero2--clip')), false, 'and it goes when let go');
+    equal(await bh.$eval('.tsi-bh-hero2', f => f.classList.contains('tsi-bh-hero2--clip')), true, 'the clip shows while it plays');
+    await bh.waitForFunction(() => !document.querySelector('.tsi-bh-hero2').classList.contains('tsi-bh-hero2--clip'), null, { timeout: 20000 });
+    equal(await bh.$eval('[data-test=bh-clip]', v => v.paused), true, 'and it stops by itself at the end, the still returning');
   });
 
   await check('a variety with no video has no clip, and its tap still gives the greeting glow', async () => {
