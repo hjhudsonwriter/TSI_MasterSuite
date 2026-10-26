@@ -158,12 +158,12 @@ async function receive(ba, god, label, answer) {
 
   section('The panel in thirds');
 
-  await check('its tile shows the three Shrine paintings; the map draws the three buildings and labels each', async () => {
+  await check('its tile shows the three Shrine paintings; the map draws the one Temple building and labels it', async () => {
     await closeAll(ba);
     await ba.waitForFunction(() => Array.from(document.images).every(i => i.complete));
     equal(await ba.$$eval('[data-test=tile-temple] img', is => is.map(i => i.getAttribute('src').split('/').pop() + ':' + (i.naturalWidth > 0))), ['shrine_of_telluria.png:true', 'shrine_of_aurush.png:true', 'shrine_of_pelagos.png:true']);
-    equal(await ba.$$eval('.tsi-bas-map__overlay[data-fac=temple]', os => os.map(o => o.getAttribute('src').split('/').pop() + ':' + (o.naturalWidth > 0))), ['shrine_of_aurush.png:true', 'shrine_of_telluria.png:true', 'shrine_of_pelagos.png:true']);
-    equal(await ba.$$eval('[data-test^=map-label-temple]', ls => ls.map(l => l.dataset.test + ':' + l.textContent.replace(/\s+/g, ' '))), ['map-label-temple:TempleOne level', 'map-label-temple-2:TempleOne level', 'map-label-temple-3:TempleOne level']);
+    equal(await ba.$$eval('.tsi-bas-map__overlay[data-fac=temple]', os => os.map(o => o.getAttribute('src').split('/').pop() + ':' + (o.naturalWidth > 0))), ['temple.png:true']);
+    equal(await ba.$$eval('[data-test^=map-label-temple]', ls => ls.map(l => l.dataset.test + ':' + l.textContent.replace(/\s+/g, ' '))), ['map-label-temple:TempleOne level']);
     await H.shot(ba, 'temple-map');
   });
 

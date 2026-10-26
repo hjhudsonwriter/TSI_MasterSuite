@@ -39,13 +39,11 @@ window.TSI_DATA.bastion = {
      little room round it). The Courier Exchange has its own picture
      (facilityImages, above). */
   facilityTileCrops: {
-    /* The Beast Pen (S14) uses the Wyvern Roost's building until Harry paints its own: the Menagerie never
-       had a map overlay to reuse (its card painting is in facilityImages). */
-    beast_pen: { pic: 'map/overlays/wyvern_roost.png', x: 1934, y: 296, w: 295, h: 194 },
-    weavers_hall: { pic: 'map/overlays/weavers_sailmakers_hall.png', x: 2668, y: 670, w: 331, h: 170 },
-    stone_masonworks: { pic: 'map/overlays/stone_quarry_masonworks.png', x: 2004, y: 809, w: 380, h: 206 },
-    fishery_smokehouse: { pic: 'map/overlays/fishery_smokehouse.png', x: 11, y: 714, w: 349, h: 252 },
-    timber_sawmill: { pic: 'map/overlays/timber_yard_sawmill.png', x: 1648, y: 827, w: 380, h: 188 }
+    beast_pen: { pic: 'map/overlays/beast_pen.png', x: 1639, y: 458, w: 531, h: 240 },
+    weavers_hall: { pic: 'map/overlays/weavers_hall.png', x: 2097, y: 409, w: 279, h: 143 },
+    stone_masonworks: { pic: 'map/overlays/stone_quarry_masonworks.png', x: 1965, y: 646, w: 635, h: 331 },
+    fishery_smokehouse: { pic: 'map/overlays/fishery_smokehouse.png', x: 130, y: 578, w: 579, h: 408 },
+    timber_sawmill: { pic: 'map/overlays/timber_yard_sawmill.png', x: 2341, y: 474, w: 389, h: 193 }
   },
   /* Development Plots (the facilities overhaul's pull request 3; Harry's
      facility guide, 13 October 2026): a second kind of construction slot,
@@ -75,17 +73,15 @@ window.TSI_DATA.bastion = {
   mapLabels: {
     workshop: { x: 1030, y: 350 },
     dock: { x: 1260, y: 760 },
-    herbal_gardens: { x: 228, y: 511 },
-    hall_of_emissaries: { x: 2769, y: 376 },
-    /* The Temple stands where the three Shrines did, so it is labelled at each: the first point is Aurush's (the Shrine
-       of Aurush stood there), and "also" lists Telluria's and Pelagos's. */
-    temple: { x: 1275, y: 532, also: [{ x: 2252, y: 722 }, { x: 2668, y: 840 }] },
-    beast_pen: { x: 2081, y: 326 },
-    weavers_hall: { x: 2838, y: 690 },
-    stone_masonworks: { x: 2194, y: 829 },
-    fishery_smokehouse: { x: 185, y: 734 },
-    timber_sawmill: { x: 1838, y: 847 },
-    courier_exchange: { x: 1454, y: 547 }
+    herbal_gardens: { x: 196, y: 464 },
+    hall_of_emissaries: { x: 1582, y: 301 },
+    temple: { x: 182, y: 150 },
+    beast_pen: { x: 1904, y: 478 },
+    weavers_hall: { x: 2236, y: 429 },
+    stone_masonworks: { x: 2282, y: 666 },
+    fishery_smokehouse: { x: 419, y: 598 },
+    timber_sawmill: { x: 2535, y: 494 },
+    courier_exchange: { x: 819, y: 484 }
   },
   /* Facility levels (the facilities overhaul's step 1b, 13 October 2026;
      Harry's decisions D6 to D8): every facility goes from Level 1 to 5. An
@@ -195,14 +191,11 @@ window.TSI_DATA.bastion = {
     width: 3000,
     height: 1250,
     overlays: [
-      { fac: 'herbal_gardens', pic: 'map/overlays/greenhouse.png' },
+      { fac: 'herbal_gardens', pic: 'map/overlays/herbal_gardens.png' },
       { fac: 'hall_of_emissaries', pic: 'map/overlays/hall_of_emissaries.png' },
-      /* The Temple draws all three Shrine buildings (S11); the pictures stay as they were. */
-      { fac: 'temple', pic: 'map/overlays/shrine_of_aurush.png' },
-      { fac: 'temple', pic: 'map/overlays/shrine_of_telluria.png' },
-      { fac: 'temple', pic: 'map/overlays/shrine_of_pelagos.png' },
-      { fac: 'beast_pen', pic: 'map/overlays/wyvern_roost.png' },
-      { fac: 'weavers_hall', pic: 'map/overlays/weavers_sailmakers_hall.png' },
+      { fac: 'temple', pic: 'map/overlays/temple.png' },
+      { fac: 'beast_pen', pic: 'map/overlays/beast_pen.png' },
+      { fac: 'weavers_hall', pic: 'map/overlays/weavers_hall.png' },
       { fac: 'stone_masonworks', pic: 'map/overlays/stone_quarry_masonworks.png' },
       { fac: 'fishery_smokehouse', pic: 'map/overlays/fishery_smokehouse.png' },
       { fac: 'timber_sawmill', pic: 'map/overlays/timber_yard_sawmill.png' },

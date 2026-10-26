@@ -68,27 +68,25 @@
     t.equal(m.base, 'map/bastion_base.jpg');
     t.same([m.width, m.height], [3000, 1250], 'Harry\'s new painting, 12 October 2026');
     m.overlays.forEach(function (o) { t.ok(R.facility(data, o.fac), o.fac); t.ok(/^map\/overlays\/[a-z_]+\.png$/.test(o.pic), o.pic); });
-    t.same(m.overlays.map(function (o) { return o.fac; }), ['herbal_gardens', 'hall_of_emissaries', 'temple', 'temple', 'temple',
+    t.same(m.overlays.map(function (o) { return o.fac; }), ['herbal_gardens', 'hall_of_emissaries', 'temple',
       'beast_pen', 'weavers_hall', 'stone_masonworks', 'fishery_smokehouse', 'timber_sawmill', 'courier_exchange']);
     t.equal(m.overlays.filter(function (o) { return o.fac === 'menagerie' || o.fac === 'war_room'; }).length, 0, 'no map picture for the war game\'s facilities (the War Room\'s went to assets/extras)');
     t.ok(T.bastion.mapLabels.courier_exchange, 'the Courier Exchange has a place for its label');
-    t.same(m.overlays.filter(function (o) { return o.fac === 'temple'; }).map(function (o) { return o.pic; }), ['map/overlays/shrine_of_aurush.png', 'map/overlays/shrine_of_telluria.png', 'map/overlays/shrine_of_pelagos.png'], 'the Temple draws the three Shrine buildings');
+    t.same(m.overlays.filter(function (o) { return o.fac === 'temple'; }).map(function (o) { return o.pic; }), ['map/overlays/temple.png'], 'the Temple draws its one new building (Harry\'s designs of 26 October 2026)');
     t.same(T.bastion.facilityImages.temple, ['shrine_of_telluria.png', 'shrine_of_aurush.png', 'shrine_of_pelagos.png'], 'and its tile shows the three Shrine paintings side by side');
-    t.same([T.bastion.mapLabels.temple.x, T.bastion.mapLabels.temple.y, T.bastion.mapLabels.temple.also], [1275, 532, [{ x: 2252, y: 722 }, { x: 2668, y: 840 }]], 'a label at each of the three buildings');
+    t.same([T.bastion.mapLabels.temple.x, T.bastion.mapLabels.temple.y, T.bastion.mapLabels.temple.also], [182, 150, undefined], 'one label, at the new building');
   });
 
   test('the map overlays: one per built facility with a picture, a shared picture drawn once, darkened while Under Repair', function (t) {
     var s = fresh();
-    t.same(R.mapOverlays(s, data), [], 'the starting five are in the base painting');
+    t.same(R.mapOverlays(s, data), [], 'the starting buildings (the Workshop, the Dock and the Party Quarters) are in the base painting');
     s.builtExtras = ['temple', 'herbal_gardens', 'beast_pen'].map(function (id) { return { facId: id, status: 'built' }; });
     s.builtExtras.push({ facId: 'hall_of_emissaries', status: 'building', startDay: 1, readyDay: 36 });
     t.same(R.mapOverlays(s, data).map(function (o) { return [o.pic, o.facs]; }), [
-      ['map/overlays/greenhouse.png', ['herbal_gardens']],
-      ['map/overlays/shrine_of_aurush.png', ['temple']],
-      ['map/overlays/shrine_of_telluria.png', ['temple']],
-      ['map/overlays/shrine_of_pelagos.png', ['temple']],
-      ['map/overlays/wyvern_roost.png', ['beast_pen']]
-    ], 'in the data\'s order (the Temple draws all three Shrine buildings); nothing for a building still being built');
+      ['map/overlays/herbal_gardens.png', ['herbal_gardens']],
+      ['map/overlays/temple.png', ['temple']],
+      ['map/overlays/beast_pen.png', ['beast_pen']]
+    ], 'in the data\'s order; nothing for a building still being built');
     s.repairs = { herbal_gardens: s.day + 3 };
     t.same(R.mapOverlays(s, data).filter(function (o) { return o.repair; }).map(function (o) { return o.facs; }), [['herbal_gardens']], 'darkened while Under Repair');
     /* No two facilities share a picture since the overhaul; the rule still draws a shared one once. */

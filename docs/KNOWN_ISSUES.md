@@ -4114,3 +4114,10 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 - **After:** nothing writes a log any more: `R.log`, `log()`, `logAll()` and `state.log` are deleted, and so is the "Facilities" entry the facilities conversion used to add. Nothing in the game ever read the log back, so no rule changed. The Ironbow's word, notices and receipts are untouched.
 - **Old saves:** a save that still holds a log loads fine. The log is kept exactly as it was under the new name `legacyLog` (never added to, never trimmed), so the conversion box's "Save the old Day Log as a text file" button still works for a Bastion converted earlier. A new or already-clean Bastion has no `legacyLog` and the button does not appear.
 - **Left alone:** the rules functions still return their `[title, body]` line (`res.log`) because some screens show it in a notice or a message; it is just no longer stored. The old saved fixtures in `tests/fixtures/` keep their `log` on purpose, as examples of old saves.
+
+### BAS-SB-84 · New Bastion map: the start painting is the base, and the buildings have new designs (26 October 2026)
+**Changed, Harry's request** · visual
+
+- **Before:** the base painting held the Workshop and Dock; each other building came from an overlay, placed on the old map (the Temple had three small overlays, the Beast Pen borrowed the Wyvern Roost).
+- **After:** the base is Harry's `NEW_Bastion_Start.png` (the Workshop, the Dock and the Party Quarters are painted in, so a new Bastion begins with exactly those). The Party Quarters is picture only: no panel, no label. The nine other buildings use Harry's new overlays (the Temple one, the Beast Pen its own), and their labels and tile crops were re-measured from the new pictures. The Dock, Workshop and Party Quarters overlays, the Prison Tower (no facility yet), the empty map and the reference images are kept in `tools/bastion/assets/extras/map-2026-10-26/`; the old overlays and base are in `extras/map-previous/`.
+- **Left alone:** the Workshop and Dock are in the base painting, so they cannot be darkened for Under Repair (as before).

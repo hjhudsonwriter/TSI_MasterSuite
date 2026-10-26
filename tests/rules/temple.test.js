@@ -67,7 +67,7 @@
     t.same([c.ok, c.top, c.single, c.message], [false, true, true, 'The Temple has one level only.']);
     t.same(BR.issueUpgrade(b, data, TEMPLE, dice([0.3])).ok, false);
     t.same(b.pendingOrders, []);
-    t.same(BR.mapLabels(b, data).filter(function (l) { return l.fac === TEMPLE; }).map(function (l) { return [l.name, l.single]; }), [['Temple', true], ['Temple', true], ['Temple', true]], 'labelled at each of its three buildings on the map');
+    t.same(BR.mapLabels(b, data).filter(function (l) { return l.fac === TEMPLE; }).map(function (l) { return [l.name, l.single]; }), [['Temple', true]], 'labelled at its one building on the map');
   });
 
   test('the gods, the die and the number that fills a bar are in the data; three blessings for each god, in Harry\'s order and words', function (t) {
