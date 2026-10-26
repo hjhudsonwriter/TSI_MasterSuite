@@ -72,7 +72,7 @@ window.TSI_DATA.bastion = {
      in the painting, but they were the Watchtower, Barracks and Armoury,
      which went with the war game, so they have no label now.) */
   mapLabels: {
-    workshop: { x: 1030, y: 350 },
+    workshop: { x: 1170, y: 440 },   /* over the smoke from the Workshop's chimney (Harry, 26 October 2026) */
     dock: { x: 1260, y: 760 },
     herbal_gardens: { x: 196, y: 464 },
     hall_of_emissaries: { x: 1582, y: 301 },
