@@ -3442,6 +3442,25 @@
              look (2 seconds on) passes the day once it's answered. */
           /* Nor while "what changed" is waiting to be read (changesOpen). */
           if (!life.alive || turnRunning || crestOfferOpen || changesOpen) return null;
+          /* The Explorer was reset to Day 1: drop what it delivered, once (after a safety copy of this save). */
+          var resetId = ex && typeof ex.resetId === 'string' ? ex.resetId : '';
+          var cleared = null;
+          if (resetId && !(state.bridge && state.bridge.resetSeen === resetId)) {
+            return TSI.store.keepCopy('tsi.bastion.state', 'Before the Explorer was reset to Day 1').catch(function () { return null; }).then(function () {
+              if (!life.alive) return null;
+              cleared = R.clearExplorerDeliveries(state, resetId);
+              if (cleared) {
+                var bits = [];
+                if (cleared.receipts) bits.push(cleared.receipts + (cleared.receipts === 1 ? ' change from the Explorer' : ' changes from the Explorer'));
+                if (cleared.creatures) bits.push(cleared.creatures + (cleared.creatures === 1 ? ' creature waiting for a home' : ' creatures waiting for a home'));
+                if (cleared.charters) bits.push(cleared.charters + (cleared.charters === 1 ? ' Port Charter not yet registered' : ' Port Charters not yet registered'));
+                notice('The Explorer was reset to Day 1, so the Bastion dropped what it had delivered' + (bits.length ? ': ' + bits.join(', ') : '') + '. Buildings, orders, the treasury and the Warehouse are untouched.', { type: 'info', title: 'Reset.', id: 'tsi-bas-explorer-reset', timeout: 14000 });
+                done();
+              }
+              clockBusy = false;
+              return checkClock();
+            });
+          }
           var act = R.clockAction(state, explorerDay);
           var settled = null;
           if (act.kind === 'anchor') {

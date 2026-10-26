@@ -117,7 +117,8 @@
       tokens: state.tokens.map(function (t) {
         return { id: t.id, name: t.name, initial: t.initial, x: t.x, y: t.y, size: t.size, groupId: t.groupId || null, milesUsed: t.milesUsed };
       }),
-      journey: TSI.clone(state.journey || journeyRules().empty())
+      journey: TSI.clone(state.journey || journeyRules().empty()),
+      resetId: typeof state.resetId === 'string' ? state.resetId : ''
     };
   };
 
@@ -164,6 +165,7 @@
     }
     if (isObj(saved.snap) && typeof saved.snap.enabled === 'boolean') state.snap.enabled = saved.snap.enabled;
     if (typeof saved.freeMove === 'boolean') state.freeMove = saved.freeMove;
+    if (typeof saved.resetId === 'string' && /^[A-Za-z0-9]{1,60}$/.test(saved.resetId)) state.resetId = saved.resetId;
     if (isObj(saved.travel)) {
       var t = saved.travel;
       var d = state.travel;
@@ -803,6 +805,22 @@
     state.travel.dayLost = false;
     state.tokens.forEach(function (t) { t.milesUsed = 0; });
     if (isObj(state.journey)) journeyRules().shiftDays(state, delta);
+  };
+
+  /* Start again from Day 1 and BLANK (Harry, 26 October 2026; replaces Reset Travel's "effects and threads stay").
+     Cleared: the day and miles, today's weather and any pending camp or event, the journey (event gold, effects,
+     threads, the log, the messages sent to the Bastion, the Travel bags, the expedition and any Great Rite), Free Move.
+     Kept: the map picture and its grid, the fog already uncovered on each map, the region, the heroes (their names,
+     places and sizes; only their miles go back to 0), and the pins and towns (they are data, not saved). A new
+     resetId is saved so the Bastion, which reads this save, clears what the Explorer delivered to it, once. */
+  R.resetToDayOne = function (state, rand) {
+    var keep = state.travel && state.travel.provinceId;
+    state.travel = R.defaultTravel();
+    if (keep) state.travel.provinceId = keep;
+    state.tokens.forEach(function (t) { t.milesUsed = 0; });
+    state.freeMove = false;
+    state.journey = journeyRules().empty();
+    state.resetId = R.uid(rand || Math.random);
   };
 
   /* ---------- Weather ---------- */

@@ -275,7 +275,7 @@
         pills,
         btnCamp,
         row([btnBastion]),
-        row([btnFreeMove, btn('Reset Travel', resetTravel, '', 'reset-travel')]),
+        row([btnFreeMove, btn('Reset to Day 1', resetTravel, '', 'reset-travel')]),
         row([btnRollNow]),
         section('Main campaign', [
           row([mainSelect, btn('Queue', queueMainEvent, '', 'queue')], 'tsi-exp-row--select')
@@ -801,12 +801,18 @@
         setNotice(state.freeMove ? 'Free Move enabled: miles/events paused.' : 'Free Move disabled.');
       }
       function resetTravel() {
-        ask('Reset travel back to Day 1 and clear miles for ALL heroes? Active Effects and Threads stay, counted from the new Day 1. The Bastion follows the Explorer\'s day, so its calendar goes back to Day 1 as well: every order, build and timer there keeps the same number of days to go, but its dates move with it. Back up first if you are unsure.').then(function (ok) {
+        ask('Start again from Day 1, with a blank Explorer? This clears the day and every hero\'s miles, today\'s weather, any event in progress, the Active Effects and Threads, the journey log, the party\'s event gold, the Travel bags, the expedition and the changes sent to the Bastion. The Bastion drops what the Explorer delivered to it as well (its "Changes from the Explorer" list, creatures still waiting for a home and Port Charters not yet registered) and its calendar goes back to Day 1; its buildings, orders, treasury and Warehouse are not touched. What stays: the map and its grid, the fog already uncovered, the heroes (names and places) and the pins. A safety copy of the Explorer is kept first.').then(function (ok) {
           if (!ok) return;
-          R.resetTravel(state);
-          setNotice('');
-          saveNow();
-          updateTravelUI();
+          return TSI.store.keepCopy('tsi.explorer.save', 'Before the Explorer was reset to Day 1').catch(function () { return null; }).then(function () {
+            if (!life.alive) return;
+            R.resetToDayOne(state, rand);
+            pvPin = null;
+            pvNightUntil = 0;
+            focusId = state.tokens[0] ? state.tokens[0].id : null;
+            setNotice('');
+            saveNow();
+            renderAll();
+          });
         });
       }
       life.on(provinceSelect, 'change', function () {
