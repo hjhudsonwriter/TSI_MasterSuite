@@ -234,14 +234,17 @@
     var sp = t && isObj(t.species) ? t.species[speciesId] : null;
     var list = arr(sp && sp.regional);
     if (!list.length) return null;
+    /* Only the varieties marked rollable can come up at a first meeting (every one if none is marked). */
+    var rollable = list.filter(function (v) { return v.rollable === true; });
     var rule = isObj(initiationData().regional) ? initiationData().regional : {};
     if (rule.mode === 'fixed' && isObj(rule.fixed)) {
       var fixed = varietyOf(sp, rule.fixed[speciesId]);
       if (fixed) return { variety: fixed, mode: 'fixed' };
     }
     var r = typeof rand === 'function' ? rand() : Math.random();
-    var n = Math.min(list.length, Math.max(1, Math.floor((isFinite(r) ? r : 0) * list.length) + 1));
-    return { variety: list[n - 1], mode: 'random', roll: n, of: list.length };
+    var pool = rollable.length ? rollable : list;
+    var n = Math.min(pool.length, Math.max(1, Math.floor((isFinite(r) ? r : 0) * pool.length) + 1));
+    return { variety: pool[n - 1], mode: 'random', roll: n, of: pool.length };
   };
 
   /* Roll the first meeting for one beast, once. rand: 0 up to (not including) 1.

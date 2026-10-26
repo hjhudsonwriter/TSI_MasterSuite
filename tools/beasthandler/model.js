@@ -176,7 +176,9 @@
   /* The kind's varieties as the reveal shows them: [{ id, name }] in the table's own order. */
   M.revealVarieties = function (tables, speciesId) {
     var sp = tables && isObj(tables.species) ? tables.species[speciesId] : null;
-    return (sp && Array.isArray(sp.regional) ? sp.regional : []).map(function (r) { return { id: r.id, name: r.name }; });
+    var all = sp && Array.isArray(sp.regional) ? sp.regional : [];
+    var pool = all.filter(function (r) { return r.rollable === true; });
+    return (pool.length ? pool : all).map(function (r) { return { id: r.id, name: r.name }; });
   };
   /* A fresh order for a list (Fisher-Yates). rand: 0 up to (not including) 1. The list given is not changed. */
   M.shuffle = function (list, rand) {

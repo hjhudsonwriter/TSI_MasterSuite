@@ -148,7 +148,13 @@
       /* ---------- Panel 2: which subspecies (the staged roll) ---------- */
       function panelSubspecies(d, text) {
         var reg = st.reg;
-        if (!st.order) st.order = M.shuffle(M.revealVarieties(env.tables, d.species.id), Math.random);
+        if (!st.order) {
+          var pool = M.revealVarieties(env.tables, d.species.id);
+          /* An old save can hold a variety that is not one of the rollable ones: it still gets its medallion. */
+          var tgt = M.revealTarget(d, env.tables);
+          if (tgt.id && !pool.some(function (v) { return v.id === tgt.id; })) pool = pool.concat([{ id: tgt.id, name: tgt.name }]);
+          st.order = M.shuffle(pool, Math.random);
+        }
         var order = st.order;
         var n = order.length;
         var noun = M.speciesNoun(d);

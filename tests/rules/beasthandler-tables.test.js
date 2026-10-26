@@ -5,7 +5,7 @@
   var T = window.TSI_DATA;
   var B = T.beastProfile;
   var KINDS = ['wyvern', 'griffin', 'dire_wolf', 'buckbear', 'fellcat'];
-  var VARIETIES = { wyvern: 5, griffin: 5, dire_wolf: 6, buckbear: 5, fellcat: 5 };
+  var VARIETIES = { wyvern: 8, griffin: 8, dire_wolf: 7, buckbear: 5, fellcat: 5 };
 
   group('Beast Handler: Harry\'s profile tables (21 October 2026)');
 
@@ -19,7 +19,7 @@
     t.equal(B.dominant.entries[11].note, 'Shows strong attachment to familiar individuals');
   });
 
-  test('every kind has a d8 Attachment Cue table, a d8 Instinctive Trigger table and its Regional Varieties (five each, six for the Dire Wolf)', function (t) {
+  test('every kind has a d8 Attachment Cue table, a d8 Instinctive Trigger table and its Regional Varieties (8 Wyvern, 8 Griffin, 7 Dire Wolf, 5 Buckbear, 5 Fellcat; Harry's PDF of 26 October 2026)', function (t) {
     t.same(Object.keys(B.species), KINDS);
     KINDS.forEach(function (k) {
       ['attachment', 'trigger'].forEach(function (which) {
@@ -56,11 +56,11 @@
     t.equal(S.dire_wolf.trigger.entries[6].label, 'Thunderstorms');
   });
 
-  test('the twenty-one Regional Varieties, by kind, with their areas', function (t) {
+  test('the thirty-three Regional Varieties, by kind, with their areas', function (t) {
     function names(k) { return B.species[k].regional.map(function (r) { return r.name; }); }
-    t.same(names('wyvern'), ['Widowspine', 'Bleakhook', 'Ironcrown', 'Bloodcrest', 'Shadowmount']);
-    t.same(names('griffin'), ['Dawnmantle', 'Thunderwing', 'Silvershroud', 'Galeclaw', 'Embermantle']);
-    t.same(names('dire_wolf'), ['Nightfang', 'Icepelt', 'Slatejaw', 'Reedshadow', 'Hollowhowl', 'Blacktide']);
+    t.same(names('wyvern'), ['Widowspine', 'Bleakhook', 'Ironcrown', 'Bloodcrest', 'Shadowmount', 'Flamescale', 'Leafwing', 'Razortail']);
+    t.same(names('griffin'), ['Dawnmantle', 'Thunderwing', 'Silvershroud', 'Galeclaw', 'Embermantle', 'Gloamquill', 'Wrecktalon', 'Frostcrown']);
+    t.same(names('dire_wolf'), ['Nightfang', 'Icepelt', 'Slatejaw', 'Reedshadow', 'Hollowhowl', 'Sunmane', 'Blacktide']);
     t.same(names('buckbear'), ['Broadcrown', 'Shovelhorn', 'Cragbuck', 'Fenwallow', 'Saltcoat']);
     t.same(names('fellcat'), ['Mistveil', 'Whiteout', 'Lichenback', 'Tawnyfell', 'Smokecoat']);
     function area(k, n) { return B.species[k].regional.filter(function (r) { return r.name === n; })[0]; }
@@ -85,7 +85,7 @@
     t.ok(/^Near-black, wet-slate scales; long ivory-white spines;/.test(area('wyvern', 'Widowspine').appearance));
     t.ok(/Older animals develop a distinctive grey mantle\.$/.test(area('dire_wolf', 'Nightfang').appearance));
     t.ok(KINDS.reduce(function (all, k) { return all.concat(B.species[k].regional); }, []).every(function (r) {
-      return r.id && r.name && r.area && r.where && r.appearance && /^[a-z]+$/.test(r.id) && r.id === r.name.toLowerCase();
+      return r.id && r.name && r.area && r.appearance && /^[a-z]+$/.test(r.id) && r.id === r.name.toLowerCase();
     }), 'every variety is complete, with a plain id');
   });
 
@@ -114,12 +114,13 @@
     Object.keys(sp).forEach(function (k) { t.ok(KINDS.indexOf(k) !== -1, k + ' has profile tables'); });
   });
 
-  test('the first meeting\'s fixed answers name a variety that exists for each kind (Harry, 22 October 2026)', function (t) {
+  test('the first meeting rolls among the rollable varieties only (Harry, 26 October 2026)', function (t) {
     var I = T.beastInitiation;
-    t.equal(I.regional.mode, 'fixed');
-    t.same(I.regional.fixed, { wyvern: 'bloodcrest', griffin: 'dawnmantle', dire_wolf: 'blacktide', buckbear: 'broadcrown', fellcat: 'lichenback' });
+    t.equal(I.regional.mode, 'random');
+    var ROLLABLE = { wyvern: ['leafwing', 'ironcrown', 'bloodcrest'], griffin: ['dawnmantle', 'silvershroud'], dire_wolf: ['slatejaw', 'blacktide'], buckbear: ['broadcrown', 'shovelhorn'], fellcat: ['lichenback', 'smokecoat'] };
     KINDS.forEach(function (k) {
-      t.ok(B.species[k].regional.some(function (r) { return r.id === I.regional.fixed[k]; }), k + ' fixed variety is one of its varieties');
+      var got = B.species[k].regional.filter(function (r) { return r.rollable === true; }).map(function (r) { return r.id; });
+      t.same(got.slice().sort(), ROLLABLE[k].slice().sort(), k + ' rollable set');
     });
     t.equal(I.personality.mode, 'random');
   });

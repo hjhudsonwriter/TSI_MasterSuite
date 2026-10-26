@@ -24,7 +24,11 @@ window.TSI_DATA = window.TSI_DATA || {};
 window.TSI_DATA.beastInitiation = {
   version: 1,
   regional: {
-    mode: 'fixed',
+    /* 26 October 2026 (Harry): the die looks random and now is: an even pick among the varieties marked
+       rollable in data/profile-tables.js (Wyvern: Leafwing, Ironcrown, Bloodcrest; Dire Wolf: Blacktide,
+       Slatejaw; Griffin: Dawnmantle, Silvershroud; Fellcat: Lichenback, Smokecoat; Buckbear: Broadcrown,
+       Shovelhorn). Put mode back to 'fixed' to name one variety for each kind. */
+    mode: 'random',
     fixed: { wyvern: 'bloodcrest', griffin: 'dawnmantle', dire_wolf: 'blacktide', buckbear: 'broadcrown', fellcat: 'lichenback' }
   },
   personality: { mode: 'random' }

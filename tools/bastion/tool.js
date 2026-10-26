@@ -434,7 +434,6 @@
         /* The listed choices for this kind of beast (Harry's tables) are suggestions: anything can be typed. */
         var lists = {};
         var fieldDefs = [['dominant', 'Dominant temperament', t.dominant], ['attachment', 'Attachment cue', t.attachment], ['trigger', 'Instinctive trigger', t.trigger]];
-        if (opts) fieldDefs.push(['regional', 'Regional variety', dv.regional || '']);
         var boxes = fieldDefs.map(function (k) {
           var attrs = { type: 'text', class: 'tsi-input', maxlength: k[0] === 'regional' ? '60' : '120', value: k[2] || '', 'data-test': 'temperament-' + k[0] };
           if (opts && opts[k[0]] && opts[k[0]].length) {

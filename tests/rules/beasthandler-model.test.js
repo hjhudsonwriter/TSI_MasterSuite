@@ -81,19 +81,17 @@
     t.equal(M.handlerChoices().length, 1);
   });
 
-  test('every Regional Variety of the first three kinds has its own picture, and no picture belongs to an unknown variety; the new kinds\' pictures belong to real varieties', function (t) {
-    ['buckbear', 'fellcat'].forEach(function (sp) {
-      var ids = T.beastProfile.species[sp].regional.map(function (r) { return r.id; });
-      Object.keys(T.beastArt.species[sp].variants).forEach(function (id) {
-        t.ok(ids.indexOf(id) !== -1, sp + '/' + id + ' is a real variety');
-        t.ok(new RegExp('^' + sp + '/' + id + '\\.webp$').test(T.beastArt.species[sp].variants[id].src), sp + '/' + id + ' points at its own file');
-      });
-    });
-    ['wyvern', 'griffin', 'dire_wolf'].forEach(function (sp) {
+  test('every Regional Variety has its own picture unless it is on the "pictures to come" list, and no picture belongs to an unknown variety', function (t) {
+    /* Harry's 26 October 2026 varieties that have no picture file yet; the page shows the kind's plain picture for these. */
+    var TO_COME = { wyvern: ['flamescale', 'leafwing', 'razortail'], griffin: ['gloamquill', 'frostcrown', 'wrecktalon'], dire_wolf: ['sunmane'], buckbear: ['shovelhorn', 'cragbuck', 'fenwallow', 'saltcoat'], fellcat: ['mistveil', 'whiteout', 'tawnyfell', 'smokecoat'] };
+    Object.keys(TO_COME).forEach(function (sp) {
       var ids = T.beastProfile.species[sp].regional.map(function (r) { return r.id; }).sort();
       var pics = Object.keys(T.beastArt.species[sp].variants).sort();
-      t.same(pics, ids, sp + ': one picture for each of its five varieties');
+      var expected = ids.filter(function (id) { return TO_COME[sp].indexOf(id) === -1; });
+      t.same(pics, expected, sp + ': a picture for every variety not on the pictures-to-come list');
+      TO_COME[sp].forEach(function (id) { t.ok(ids.indexOf(id) !== -1, sp + '/' + id + ' is a real variety'); });
       pics.forEach(function (id) { t.ok(new RegExp('^' + sp.replace('_', '-') + '/' + id + '\\.webp$').test(T.beastArt.species[sp].variants[id].src), sp + '/' + id + ' points at its own file'); });
+      TO_COME[sp].forEach(function (id) { t.equal(M.artFor(T.beastArt, sp, id).src, T.beastArt.species[sp].src || '', sp + '/' + id + ' falls back to the kind picture, never a broken file'); });
     });
     t.equal(M.artFor(T.beastArt, 'griffin', 'embermantle').src, 'griffin/embermantle.webp');
     t.equal(M.artFor(T.beastArt, 'wyvern', 'shadowmount').src, 'wyvern/shadowmount.webp');
@@ -191,7 +189,7 @@
 
   test('the kind\'s varieties come in the table\'s order, and a shuffle is a fresh order of the same ones that never changes the original', function (t) {
     var v = M.revealVarieties(T.beastProfile, 'dire_wolf');
-    t.same(v.map(function (x) { return x.name; }), ['Nightfang', 'Icepelt', 'Slatejaw', 'Reedshadow', 'Hollowhowl', 'Blacktide']);
+    t.same(v.map(function (x) { return x.name; }), ['Slatejaw', 'Blacktide'], 'only the rollable ones (Harry, 26 October 2026)');
     t.same(Object.keys(v[0]).sort(), ['id', 'name'], 'only the name and id: where it lives and how it looks stay hidden until the roll lands');
     t.same(M.revealVarieties(T.beastProfile, 'unicorn'), []);
     var before = JSON.stringify(v);
@@ -202,7 +200,7 @@
       orders[o.map(function (x) { return x.id; }).join(',')] = true;
     }
     t.equal(JSON.stringify(v), before);
-    t.ok(Object.keys(orders).length > 20, 'different orders come up: ' + Object.keys(orders).length);
+    t.ok(Object.keys(orders).length >= 2, 'different orders come up: ' + Object.keys(orders).length);
     var seq = [0.99, 0.0, 0.5, 0.2, 0.7];
     var k = 0;
     t.same(M.shuffle([1, 2, 3, 4, 5, 6], function () { return seq[k++ % seq.length]; }), M.shuffle([1, 2, 3, 4, 5, 6], (function () { var j = 0; return function () { return seq[j++ % seq.length]; }; }())), 'the same dice give the same order');
@@ -345,10 +343,10 @@
     t.equal(M.revealTarget({ profile: { regional: 'Bloodcrest' } }, T.beastProfile).kind, 'none', 'no kind, no throw');
   });
 
-  test('every kind\'s varieties are found by name, so the staged roll can land on each of them (the Dire Wolf\'s six too)', function (t) {
+  test('every kind\'s varieties are found by name, so the staged roll can land on each of them (only the rollable ones are listed; Harry, 26 October 2026)', function (t) {
     ['wyvern', 'griffin', 'dire_wolf', 'buckbear', 'fellcat'].forEach(function (k) {
       var list = M.revealVarieties(T.beastProfile, k);
-      t.ok(list.length >= 5, k + ' has its varieties');
+      t.same(list.map(function (v) { return v.id; }), T.beastProfile.species[k].regional.filter(function (r) { return r.rollable === true; }).map(function (r) { return r.id; }), k + ' lists its rollable varieties');
       list.forEach(function (v) {
         var got = M.revealTarget({ species: { id: k }, profile: { regional: v.name }, initiation: { regional: 'zzz' } }, T.beastProfile);
         t.same([got.id, got.kind], [v.id, 'now'], k + ' ' + v.name);

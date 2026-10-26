@@ -35,13 +35,15 @@
     rule.mode = mode;
     try { return fn(); } finally { rule.mode = was; }
   }
+  /* The first meeting is random among the rollable varieties since 26 October 2026; these tests pin the older fixed mode, which still works. */
+  function testFixed(name, fn) { test(name, function (t) { withMode('fixed', function () { fn(t); }); }); }
   function lines(c) { var t = c.development.temperament; return [t.dominant, t.attachment, t.trigger]; }
 
   group('Beast Handler: the Bastion rolls the first meeting once (22 October 2026)');
 
   test('the data names one real variety for each of the five kinds, and the personality is genuinely random', function (t) {
     var D = T.beastInitiation;
-    t.equal(D.regional.mode, 'fixed');
+    t.equal(D.regional.mode, 'random');
     t.same(D.regional.fixed, FIXED);
     KINDS.forEach(function (k) {
       t.ok(T.beastProfile.species[k].regional.some(function (v) { return v.id === FIXED[k]; }), k + ' has a variety called ' + FIXED[k]);
@@ -49,7 +51,7 @@
     t.equal(D.personality.mode, 'random');
   });
 
-  test('each kind meets as the variety fixed for it, and the Bastion keeps its id, three die numbers and the day', function (t) {
+  testFixed('each kind meets as the variety fixed for it, and the Bastion keeps its id, three die numbers and the day', function (t) {
     KINDS.forEach(function (kind) {
       var b = world();
       var c = beast(b, kind, 'Test ' + kind, 1);
@@ -69,7 +71,7 @@
     });
   });
 
-  test('the fixed variety ignores the dice: any seed gives the same variety, though the personality follows the dice', function (t) {
+  testFixed('the fixed variety ignores the dice: any seed gives the same variety, though the personality follows the dice', function (t) {
     var seen = {};
     [0, 0.2, 0.5, 0.99].forEach(function (r) {
       var b = world();
@@ -80,10 +82,10 @@
     t.same(Object.keys(seen), ['bloodcrest']);
   });
 
-  test('mode random gives an even pick over every variety of the kind (the six Dire Wolf varieties each come up once in six faces)', function (t) {
+  test('mode random gives an even pick over the rollable varieties of the kind only (Harry, 26 October 2026)', function (t) {
     withMode('random', function () {
       KINDS.forEach(function (kind) {
-        var list = T.beastProfile.species[kind].regional;
+        var list = T.beastProfile.species[kind].regional.filter(function (v) { return v.rollable === true; });
         var counts = {};
         for (var i = 0; i < list.length * 100; i++) {
           var b = world();
@@ -97,7 +99,7 @@
     });
   });
 
-  test('every face of the d12 Dominant Temperament and of both d8s can come up, and each lands on its own table row', function (t) {
+  testFixed('every face of the d12 Dominant Temperament and of both d8s can come up, and each lands on its own table row', function (t) {
     var sp = T.beastProfile.species.griffin;
     for (var r = 1; r <= 12; r++) {
       var b = world();
@@ -117,7 +119,7 @@
     }
   });
 
-  test('the two draft d8 tables (Buckbear, Fellcat) roll like the others', function (t) {
+  testFixed('the two draft d8 tables (Buckbear, Fellcat) roll like the others', function (t) {
     ['buckbear', 'fellcat'].forEach(function (kind) {
       var b = world();
       var c = beast(b, kind, 'Draft', 1);
@@ -188,15 +190,15 @@
   test('the Day Log says the variety was staged; in random mode it says it was rolled', function (t) {
     var b = world();
     var c = beast(b, 'wyvern', 'Logged', 1);
-    BR.rollInitiation(b, bdata, c.id, seq([0.4, 0.4, 0.4]));
+    withMode('fixed', function () { BR.rollInitiation(b, bdata, c.id, seq([0.4, 0.4, 0.4])); });
     var staged = b.log.filter(function (l) { return /staged: fixed until further notice/.test(l.body); });
     t.equal(staged.length, 1);
     t.ok(/Logged: first meeting prepared\. Regional Variety Bloodcrest \(staged: fixed until further notice\); Dominant Temperament d12 5; Attachment Cue d8 4; Instinctive Trigger d8 4\./.test(staged[0].body), staged[0].body);
     withMode('random', function () {
       var b2 = world();
       var c2 = beast(b2, 'griffin', 'Rolled', 1);
-      BR.rollInitiation(b2, bdata, c2.id, seq([face(3, 5), 0.4, 0.4, 0.4]));
-      t.ok(b2.log.some(function (l) { return /Regional Variety Silvershroud \(rolled d5 3\)/.test(l.body); }), b2.log[0].body);
+      BR.rollInitiation(b2, bdata, c2.id, seq([face(2, 2), 0.4, 0.4, 0.4]));
+      t.ok(b2.log.some(function (l) { return /Regional Variety Silvershroud \(rolled d2 2\)/.test(l.body); }), b2.log[0].body);
       t.ok(!b2.log.some(function (l) { return /staged/.test(l.body); }));
     });
   });
@@ -205,12 +207,12 @@
     var rule = T.beastInitiation.regional;
     var was = rule.fixed.wyvern;
     rule.fixed.wyvern = 'nosuchvariety';
-    try {
+    try { withMode('fixed', function () {
       var b = world();
       var c = beast(b, 'wyvern', 'Fallback', 1);
-      BR.rollInitiation(b, bdata, c.id, seq([face(2, 5), 0.5, 0.5, 0.5]));
-      t.equal(c.development.initiation.regional, 'bleakhook');
-    } finally { rule.fixed.wyvern = was; }
+      BR.rollInitiation(b, bdata, c.id, seq([face(1, 3), 0.5, 0.5, 0.5]));
+      t.equal(c.development.initiation.regional, 'ironcrown');
+    }); } finally { rule.fixed.wyvern = was; }
     var b2 = world();
     var odd = beast(b2, 'cockatrice', 'Odd', 1);
     var before = JSON.stringify(b2);
@@ -222,7 +224,7 @@
     t.equal(BR.rollInitiation(b2, bdata, 'nobody', seq([0.5])).ok, false);
   });
 
-  test('a missing d8 table is skipped cleanly: its line stays blank, its number is 0, and the rest is still done', function (t) {
+  testFixed('a missing d8 table is skipped cleanly: its line stays blank, its number is 0, and the rest is still done', function (t) {
     var sp = T.beastProfile.species.fellcat;
     var saved = sp.trigger;
     delete sp.trigger;
@@ -240,7 +242,7 @@
 
   group('Beast Handler: the one-off sweep, and the snapshot never rolls (22 October 2026)');
 
-  test('the sweep rolls every beast at Bond 1 or more that has no initiation and no variety, and nobody else', function (t) {
+  testFixed('the sweep rolls every beast at Bond 1 or more that has no initiation and no variety, and nobody else', function (t) {
     var b = world();
     var elara = beast(b, 'wyvern', 'Elara\'s', 1);
     var devoted = beast(b, 'griffin', 'Devoted', 4);
