@@ -29,6 +29,8 @@ Double-click `index.html` to open the suite. The plan is in `docs/PLAN.md`, the 
 
 ## Done
 
+- **Beast varieties (26 October 2026):** all 33 varieties from Harry's PDF BEAST_INFO_TABLES are in; the first meeting is random among the 11 marked rollable and no variety can be typed by hand (BAS-SB-43, BAS-SB-81); pictures for the new varieties are still to come.
+
 ### Scarlett Isles: Beast Handler, a new look, a new beast page and a first-meeting sequence (21 October 2026)
 Harry's four requests, in one pull request. Awaiting Harry's check.
 - **Colours:** the companion (laptop and phone) now uses the charcoal-and-gold scheme sampled from Harry's Google Stitch mock-ups: near-black page, charcoal cards with thin grey borders, gold headings, gold-filled main buttons with dark text. It applies inside the Beast Handler only (its pop-ups match too); the rest of the suite keeps the crimson-and-gold look.

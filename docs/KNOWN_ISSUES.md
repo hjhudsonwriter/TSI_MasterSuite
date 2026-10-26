@@ -3844,10 +3844,16 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 - **Before:** panel 2 and 3 were typed fields, five tap chips and Roll buttons that only suggested a line.
 - **After:** panel 2 is shuffled medallions, one "Roll for subspecies" button, a die and a hopping marker that lands on the Bastion's answer; panel 3 is three cards whose dice settle on the Bastion's real numbers. Once per device per beast (phone: `tsi.beasthandler.phone.seen`; laptop: session only), no skip on a phone, "Skip for now" on the laptop.
 
-### BAS-SB-43 · Fixed subspecies "until further notice" (left alone, to tell Harry)
+### BAS-SB-43 · Subspecies at the first meeting: random among the rollable ones (changed 26 October 2026)
 **Left alone, by design** · content
 
-- Every wyvern meets as a Bloodcrest, griffin as Dawnmantle, dire wolf as Blacktide, Buckbear as Broadcrown, Fellcat as Lichenback, however the dice look; a beast released and granted again would meet the same variety. Changing `mode` to `random` in `tools/beasthandler/data/initiation-data.js` gives chance back. The Day Log says "staged" so Harry can tell later that it was not a chance outcome.
+- Before: every wyvern met as a Bloodcrest, griffin as Dawnmantle, dire wolf as Blacktide, Buckbear as Broadcrown, Fellcat as Lichenback, "fixed until further notice". After (Harry, 26 October 2026): the first meeting is an even pick among the varieties marked `rollable: true` in `tools/beasthandler/data/profile-tables.js`: Wyvern Leafwing, Ironcrown, Bloodcrest; Griffin Dawnmantle, Silvershroud; Dire Wolf Slatejaw, Blacktide; Buckbear Broadcrown, Shovelhorn; Fellcat Lichenback, Smokecoat. The other varieties are stored in the tables (33 in all: Wyvern 8, Griffin 8, Dire Wolf 7, Buckbear 5, Fellcat 5) but never come up by chance. `mode: 'fixed'` in `tools/beasthandler/data/initiation-data.js` still works. The Day Log says "rolled d2/d3 n" in random mode and "staged" only in fixed mode.
+- The tables come from Harry's PDF BEAST_INFO_TABLES of 26 October 2026. Some new varieties (Leafwing, Flamescale, Razortail, Sunmane, Gloamquill, Wrecktalon, Frostcrown, Smokecoat, Shovelhorn and the other Buckbear and Fellcat ones) have no picture file yet: the page shows the plain frame (no broken image) until the picture is added.
+
+### BAS-SB-81 · No variety can be typed by hand any more (26 October 2026)
+**Fixed by request** · content
+
+- Before: the DM could type a Regional Variety in the Bastion's Temperament editor. After: that box is gone; the Bastion's first-meeting roll is the only thing that gives a beast a variety. A variety already stored on an old save stays and still shows (the reveal gives it a medallion even if it is not a rollable one). The rules function `setTemperament` can still accept a `regional` value, but nothing in the screens calls it that way.
 
 ### BAS-SB-44 · The reveal's marker goes round about three times, not "one to two" (left alone)
 **Left alone, judgement call** · visual
