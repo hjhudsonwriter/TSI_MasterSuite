@@ -2070,9 +2070,12 @@
         bindFocusTip(tile, tile, build);
         return tile;
       }
-      /* A starting tile that is only a picture: no panel, no label on the map, not a facility in the save. */
+      /* A starting tile that is only a picture: no orders, no level, no label on the map, not a facility in the save. It opens a
+         small panel (the Party Quarters' name and a line), and the players' window shows its picture. */
+      var partyCard = card('party_quarters', 'Party Quarters');
+      partyCard.body.appendChild(muted('Your party\'s own rooms. Nothing to manage here yet.'));
       function startTile(t) {
-        var tile = el('div', { class: 'tsi-bas-tile tsi-bas-tile--built tsi-bas-tile--static', role: 'img', tabindex: '0', 'data-test': 'tile-' + t.id, 'data-fac': t.id, 'aria-label': t.name }, [facArt(t.id, 'tsi-bas-tile__img')]);
+        var tile = el('button', { type: 'button', class: 'tsi-bas-tile tsi-bas-tile--built tsi-bas-tile--static', 'data-test': 'tile-' + t.id, 'data-fac': t.id, 'aria-label': t.name + '. Open its panel.', onclick: function () { openPanel('party_quarters', { title: partyCard.title, node: partyCard.root, back: 'tile-' + t.id }); } }, [facArt(t.id, 'tsi-bas-tile__img')]);
         var build = function () { return { title: t.name, parts: [] }; };
         bindTip(tile, build, { noChange: true });
         bindFocusTip(tile, tile, build);

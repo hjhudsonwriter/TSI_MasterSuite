@@ -8,6 +8,7 @@
             for one picture per facility level (a level with none uses the nearest lower level's). Leave it null until
             Harry's picture arrives: the panel then shows the facility's existing painting (bastion-data.js panelImages,
             facilityImages, then the building cut from the map). Pictures fill the picture area (cropped to fit)
+   bare     true: only the title and the picture (the Party Quarters)
    focus    where the crop keeps in view, { x: 50, y: 50 } by default: percent across and down the picture
    blurb    one or two lines under the picture
    widgets  the small things shown under the picture:
@@ -20,9 +21,13 @@ window.TSI_DATA = window.TSI_DATA || {};
 
 window.TSI_DATA.bastionPlayerPanels = [
   { id: 'workshop', title: 'Workshop', tagline: 'Need something? Craft it here...',
-    art: { levels: { 1: 'workshop-level-1.jpg', 2: 'workshop-level-2.jpg', /* 3: 'workshop-level-3.jpg' (no 3-person picture yet: Level 3 shows Level 2's) */ 4: 'workshop-level-4.jpg', 5: 'workshop-level-5.jpg' } },
+    art: { levels: { 1: 'workshop-level-1.jpg', 2: 'workshop-level-2.jpg', 3: 'workshop-level-3.jpg', 4: 'workshop-level-4.jpg', 5: 'workshop-level-5.jpg' } },
     focus: { x: 50, y: 62 },
     blurb: 'Hand your plans to the staff and they will see them made.', widgets: ['level', 'orders', 'staff'] },
+  /* The Party Quarters is not a facility (no level, orders or map label): its panel is only its name and picture. bare: true
+     draws no tagline, no info strip and no blurb. */
+  { id: 'party_quarters', title: 'Party Quarters', tagline: '', art: 'party_quarters.jpg', focus: { x: 50, y: 50 },
+    blurb: '', widgets: [], bare: true },
   { id: 'temple', title: 'Temple', tagline: 'The Triarchy is always listening...', art: null,
     blurb: 'Say a prayer at a shrine and the gods may respond.', widgets: ['level', 'orders', 'shrines'] },
   { id: 'dock', title: 'Dock', tagline: 'Ships come and go with the tide...', art: 'dock.jpg', focus: { x: 50, y: 55 },

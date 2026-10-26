@@ -245,8 +245,17 @@ const SECRETS = ['ZZWAREHOUSE', 'ZZDMNOTE', 'ZZPRISONER', 'ZZBEAST', 'ZZPAIRCODE
       await pv.waitForFunction(() => document.querySelectorAll('.tsi-bpv-panel__art').length === 1 && document.querySelector('.tsi-bpv-panel__art').dataset.art === 'workshop-level-2.jpg', null, { timeout: 5000 });
       await change(page, s => { s.facilityLevels.workshop = 3; });
       await pv.waitForFunction(() => document.querySelector('[data-test=pv-panel-level]').textContent.trim() === 'Level 3');
+      await pv.waitForFunction(() => document.querySelectorAll('.tsi-bpv-panel__art').length === 1 && document.querySelector('.tsi-bpv-panel__art').dataset.art === 'workshop-level-3.jpg', null, { timeout: 5000 });
+      await H.shot(pv, 'pv-panel-workshop-level3-' + name);
+      /* A level with no picture of its own uses the nearest lower level's (the data's level 3 taken out for a moment). */
+      await pv.evaluate(() => { window.__l3 = TSI_DATA.bastionPlayerPanels[0].art.levels[3]; delete TSI_DATA.bastionPlayerPanels[0].art.levels[3]; });
+      await change(page, s => { s.facilityLevels.workshop = 2; });
+      await pv.waitForFunction(() => document.querySelectorAll('.tsi-bpv-panel__art').length === 1 && document.querySelector('.tsi-bpv-panel__art').dataset.art === 'workshop-level-2.jpg', null, { timeout: 5000 });
+      await change(page, s => { s.facilityLevels.workshop = 3; });
+      await pv.waitForFunction(() => document.querySelector('[data-test=pv-panel-level]').textContent.trim() === 'Level 3');
       await pv.waitForTimeout(1200);
-      equal(await pv.$$eval('.tsi-bpv-panel__art', n => n.map(x => x.dataset.art)), ['workshop-level-2.jpg'], 'no picture for Level 3 yet: Level 2\'s stays');
+      equal(await pv.$$eval('.tsi-bpv-panel__art', n => n.map(x => x.dataset.art)), ['workshop-level-2.jpg'], 'no picture for the level: the lower one stays');
+      await pv.evaluate(() => { TSI_DATA.bastionPlayerPanels[0].art.levels[3] = window.__l3; });
       await change(page, s => { s.facilityLevels.workshop = 4; });
       await pv.waitForFunction(() => document.querySelectorAll('.tsi-bpv-panel__art').length === 1 && document.querySelector('.tsi-bpv-panel__art').dataset.art === 'workshop-level-4.jpg', null, { timeout: 5000 });
       await change(page, s => { s.facilityLevels.workshop = 5; });
@@ -272,6 +281,25 @@ const SECRETS = ['ZZWAREHOUSE', 'ZZDMNOTE', 'ZZPRISONER', 'ZZBEAST', 'ZZPAIRCODE
       equal(await pv.$('[data-test=pv-panel-staff]'), null, 'only the Workshop shows staff');
       await page.keyboard.press('Escape');
       await pv.waitForSelector('[data-test=pv-panel]', { state: 'detached' });
+    });
+
+    await check('the Party Quarters tile opens a small DM panel, and the players see only its name and picture, filling the panel', async () => {
+      await pause(page);
+      const before = await page.evaluate(() => JSON.stringify(TSI.bastion.rules.toSave(TSI.bastion.debug.state())));
+      await page.click('[data-test=tile-party_quarters]');
+      await page.waitForSelector('[data-test=panel-party_quarters]');
+      equal(await page.textContent('[data-test=panel-party_quarters] .tsi-bas-card__body'), 'Your party\'s own rooms. Nothing to manage here yet.');
+      await pv.waitForSelector('[data-test=pv-panel][data-fac=party_quarters]');
+      equal(await bare(pv, '[data-test=pv-panel-title]'), 'Party Quarters');
+      equal(await pv.$$eval('[data-test=pv-panel] > *', n => n.map(x => x.className.replace('tsi-bpv-panel__', ''))), ['head', 'art-wrap']);
+      equal(await pv.$('[data-test=pv-panel-tagline], [data-test=pv-panel-level], [data-test=pv-panel-orders], [data-test=pv-panel-blurb]'), null);
+      equal(await pv.$$eval('.tsi-bpv-panel__art', n => n.map(x => x.dataset.art)), ['party_quarters.jpg']);
+      const art = await rect(pv, '.tsi-bpv-panel__art'), wrap = await rect(pv, '.tsi-bpv-panel__art-wrap');
+      assert(Math.abs(art.w - wrap.w) < 3 && Math.abs(art.h - wrap.h) < 3 && wrap.h > size.height * 0.8, 'the picture fills the rest of the panel');
+      await H.shot(pv, 'pv-panel-party-quarters-' + name);
+      await page.keyboard.press('Escape');
+      await pv.waitForSelector('[data-test=pv-panel]', { state: 'detached' });
+      equal(await page.evaluate(() => JSON.stringify(TSI.bastion.rules.toSave(TSI.bastion.debug.state()))), before, 'nothing in the save changed');
     });
 
     await check('the Beast Pen shows "None" for no orders, and "One level"', async () => {

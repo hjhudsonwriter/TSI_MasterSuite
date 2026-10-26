@@ -15,7 +15,7 @@
      tiles: [{ row, kind, fac, name, level, single, repair, orders, daysLeft }],
                                                     the tray: kind is 'built', 'building', 'empty', 'locked' or 'picture'
      facilities: { id: { name, level, single, repair, orders: [names], staff?, gods? } },   built facilities
-     focus: a built facility's id, or null           the facility panel the DM has open
+     focus: a built facility's id, 'party_quarters', or null           the facility panel the DM has open
    }
    facilities.workshop.staff is [{ id, name, level, open }]; facilities.temple.gods is [{ id, name, pct }] (0 to 100).
    The Prison Tower and the Beast Pen show only a level and their pending orders' names (nothing about the cells or the
@@ -34,7 +34,11 @@
   function num(v, fallback) { return typeof v === 'number' && isFinite(v) ? v : fallback; }
 
   /* The Hall's panel is "diplomacy" and every other facility's is "fac-<id>" (tool.js). */
+  /* The Party Quarters is not a facility, but the DM can open a panel for it and the players see its picture: the one id
+     besides the built facilities' that a focus may name. */
+  R.PARTY_QUARTERS_ID = 'party_quarters';
   R.playerFocusOf = function (panelId) {
+    if (panelId === R.PARTY_QUARTERS_ID) return panelId;
     if (panelId === 'diplomacy') return 'hall_of_emissaries';
     var m = /^fac-([a-z_]+)$/.exec(String(panelId || ''));
     return m ? m[1] : null;
@@ -115,7 +119,7 @@
     rowTiles(R.plotRows(s, s.partyLevel, data), R.plotsForLevel(20, data), 'plot');
 
     var crest = extras.crest;
-    var focus = typeof extras.focus === 'string' && facilities[extras.focus] ? extras.focus : null;
+    var focus = typeof extras.focus === 'string' && (facilities[extras.focus] || extras.focus === R.PARTY_QUARTERS_ID) ? extras.focus : null;
     return {
       v: 1,
       day: R.dayNum(s.day, 1),
