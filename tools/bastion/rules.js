@@ -1317,13 +1317,14 @@
     return null;
   };
 
-  /* The most construction slots and Development Plots a Bastion can have: six of each (Harry, 26 October 2026). */
-  R.MAX_SLOTS = 6;
+  /* The most construction slots and Development Plots a Bastion can have: four slots (one each for the Temple, the Hall of
+     Emissaries, the Prison Tower and the Beast Pen) and six plots (Harry, 26 October 2026). */
+  R.MAX_SLOTS = 4;
   R.MAX_PLOTS = 6;
-  /* Construction slots by party level (1503-1510). */
+  /* Construction slots by party level: 0 / 2 / 4 (5 and 9). */
   R.constructionSlotsForLevel = function (level) {
     var lvl = clampInt(level, 1, 20);
-    var n = lvl >= 17 ? 6 : lvl >= 13 ? 5 : lvl >= 9 ? 4 : lvl >= 5 ? 2 : 0;
+    var n = lvl >= 9 ? 4 : lvl >= 5 ? 2 : 0;
     return Math.min(n, R.MAX_SLOTS);
   };
   /* Build time in days by the facility's required level (216-223; it was

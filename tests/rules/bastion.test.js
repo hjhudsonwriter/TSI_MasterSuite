@@ -146,10 +146,16 @@
 
   group('Bastion: construction');
 
-  test('construction slots by party level: 0 / 2 / 4 / 5 / 6', function (t) {
-    t.same([1, 4, 5, 8, 9, 12, 13, 16, 17, 20].map(R.constructionSlotsForLevel), [0, 0, 2, 2, 4, 4, 5, 5, 6, 6]);
+  test('the Party Quarters is a picture-only starting tile: not a facility, with its crop and overlay in the data (26 October 2026)', function (t) {
+    t.equal(R.facility(data, 'party_quarters'), null);
+    t.same(T.bastion.startTiles, [{ id: 'party_quarters', name: 'Party Quarters', pic: 'map/party_quarters.png', x: 1730, y: 205, w: 443, h: 309 }]);
+    t.same(R.builtFacilityIds(R.defaultState(data), data), ['workshop', 'dock'], 'not counted among the facilities');
+  });
+
+  test('construction slots by party level: 0 / 2 / 4', function (t) {
+    t.same([1, 4, 5, 8, 9, 12, 13, 16, 17, 20].map(R.constructionSlotsForLevel), [0, 0, 2, 2, 4, 4, 4, 4, 4, 4]);
     for (var lv = 1; lv <= 20; lv++) {
-      t.ok(R.constructionSlotsForLevel(lv) <= 6 && R.plotsForLevel(lv, data) <= 6, 'level ' + lv + ' never has more than six slots or six plots');
+      t.ok(R.constructionSlotsForLevel(lv) <= 4 && R.plotsForLevel(lv, data) <= 6, 'level ' + lv + ' never has more than four slots or six plots');
     }
     var big = JSON.parse(JSON.stringify(data));
     big.bastion.developmentPlots = [{ from: 1, plots: 9 }];
@@ -189,8 +195,8 @@
 
   test('lowering the level keeps every building, marking the extra ones over capacity (BAS-04, B8)', function (t) {
     var s = built(fresh(), ['beast_pen', 'courier_exchange', 'herbal_gardens', 'hall_of_emissaries', 'temple']);
-    var rows = R.slotRows(s, 13);
-    t.equal(rows.over, 0);
+    var rows = R.slotRows(s, 20);
+    t.equal(rows.over, 1, 'five buildings in a four-slot Bastion (an old save): the fifth is over capacity');
     rows = R.slotRows(s, 9);
     t.equal(s.builtExtras.length, 5, 'nothing deleted');
     t.equal(rows.used, 5);
@@ -198,8 +204,10 @@
     t.same(rows.rows.map(function (r) { return r.overCapacity; }), [false, false, false, false, true]);
     t.ok(rows.rows.every(function (r) { return !r.canBuild; }), 'no room to build');
     t.ok(R.builtFacilityIds(s, data).indexOf('temple') !== -1, 'still built and working');
-    rows = R.slotRows(s, 13);
-    t.equal(rows.over, 0, 'back up: nothing over');
+    rows = R.slotRows(s, 5);
+    t.equal(rows.over, 3, 'two slots at level 5: three over');
+    rows = R.slotRows(s, 20);
+    t.equal(rows.over, 1, 'back up: still one over (four slots at most)');
   });
 
   test('over capacity counts buildings, not slot positions', function (t) {

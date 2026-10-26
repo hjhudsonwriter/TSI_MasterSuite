@@ -254,11 +254,11 @@ const ALL_EXTRAS = ['beast_pen', 'herbal_gardens', 'temple', 'hall_of_emissaries
       const imgs = await page.$$eval('img.tsi-bas-tile__img, .tsi-bas-map__overlay, .tsi-bas-map__img', is => is.map(i => [i.getAttribute('src').split('/').pop(), i.naturalWidth]));
       equal(imgs.filter(i => !i[1]), [], 'all loaded');
       equal(await page.$$eval('[data-test=tile-fishery_smokehouse] [data-art=crop], [data-test=tile-timber_sawmill] [data-art=crop]', cs => cs.length), 2, 'the two crops');
-      equal(await page.$$eval('.tsi-bas-tile--built', ts => ts.length), 9, 'every facility that can be built has a tile, the Hall and the Temple too (the Temple is one tile for the three Shrines)');
+      equal(await page.$$eval('.tsi-bas-tile--built', ts => ts.length), 10, 'every facility that can be built has a tile, the Hall and the Temple too, and the picture-only Party Quarters tile');
       equal(await page.$$eval('[data-test=grid-plots] .tsi-bas-tile--built', ts => ts.map(t => t.dataset.fac)), ['herbal_gardens', 'fishery_smokehouse', 'timber_sawmill', 'courier_exchange'], 'the production facilities on the plots, in the row below');
       equal(await page.$eval('.tsi-bas-map__img', i => [i.naturalWidth, i.naturalHeight]), [3000, 1250], 'Harry\'s new painting');
-      equal(await page.$$eval('.tsi-bas-map__overlay', os => os.map(o => o.dataset.fac)), ['herbal_gardens', 'hall_of_emissaries', 'temple', 'temple', 'temple', 'beast_pen', 'fishery_smokehouse', 'timber_sawmill', 'courier_exchange'], 'the Temple draws the three Shrine buildings; nothing for the war game\'s facilities, which are gone');
-      equal(await page.$$eval('.tsi-bas-map__overlay', os => os.map(o => o.naturalWidth + 'x' + o.naturalHeight)), Array(9).fill('3000x1250'));
+      equal(await page.$$eval('.tsi-bas-map__overlay', os => os.map(o => o.dataset.fac)), ['herbal_gardens', 'hall_of_emissaries', 'temple', 'beast_pen', 'fishery_smokehouse', 'timber_sawmill', 'courier_exchange'], 'the Temple draws its one building; nothing for the war game\'s facilities, which are gone');
+      equal(await page.$$eval('.tsi-bas-map__overlay', os => os.map(o => o.naturalWidth + 'x' + o.naturalHeight)), Array(7).fill('3000x1250'));
       equal((await H.layoutCheck(page, ['.tsi-bas-tile'])).scrollWidth, H.SIZES.laptop.viewport.width, 'no sideways scroll');
       for (const size of ['laptop', 'laptopFull', 'tv', 'smallWindow']) {
         await page.setViewportSize(H.SIZES[size].viewport);
@@ -272,7 +272,7 @@ const ALL_EXTRAS = ['beast_pen', 'herbal_gardens', 'temple', 'hall_of_emissaries
           const hit = (a, b) => a.x < b.right - 1 && b.x < a.right - 1 && a.y < b.bottom - 1 && b.y < a.bottom - 1;
           const clash = [];
           ls.forEach((a, i) => ls.slice(i + 1).forEach(b => { if (hit(a, b)) clash.push(a.fac + '/' + b.fac); }));
-          /* All fourteen tiles (two starting facilities, six slots and six plots, built or empty) whole and square inside the grid. */
+          /* All thirteen tiles (three starting tiles, four slots and six plots, built or empty) whole and square inside the grid. */
           const grid = box(document.querySelector('[data-test=grid]'));
           const tiles = Array.from(document.querySelectorAll('[data-test=grid] .tsi-bas-tile')).map(t => Object.assign({ t: t.dataset.test }, box(t)));
           const cut = tiles.filter(t => t.x < grid.x - 0.5 || t.right > grid.right + 0.5 || t.y < grid.y - 0.5 || t.bottom > grid.bottom + 0.5 || Math.abs((t.right - t.x) - (t.bottom - t.y)) > 1 || t.right - t.x < 40).map(t => t.t);
@@ -284,7 +284,7 @@ const ALL_EXTRAS = ['beast_pen', 'herbal_gardens', 'temple', 'hall_of_emissaries
             onTray: ls.filter(l => hit(l, tray)).map(l => l.fac)
           };
         });
-        equal(m, { tiles: 14, cut: [], n: 11, clash: [], off: [], onBadge: [], onTray: [] }, size + ': fourteen whole, square tiles (two starting facilities, six slots and six plots); eleven labels (one for each facility built, the Temple\'s at each of its three buildings), each clear of the others, the badge and the tray');
+        equal(m, { tiles: 13, cut: [], n: 9, clash: [], off: [], onBadge: [], onTray: [] }, size + ': thirteen whole, square tiles (three starting tiles, four slots and six plots); eleven labels (one for each facility built, the Temple\'s at each of its three buildings), each clear of the others, the badge and the tray');
         await H.shot(page, 'p9-02-everything-built-' + size);
       }
       await page.setViewportSize(H.SIZES.laptop.viewport);
@@ -324,14 +324,14 @@ const ALL_EXTRAS = ['beast_pen', 'herbal_gardens', 'temple', 'hall_of_emissaries
       await page.waitForFunction(() => !TSI.bastion.debug.panel());
     }
 
-    await check('slots open to build by party level: 0 / 2 / 4 / 5 / 6', async () => {
+    await check('slots open to build by party level: 0 / 2 / 4', async () => {
       const out = [];
       for (const lvl of ['4', '5', '9', '13', '17']) {
         await page.selectOption('[data-test=level]', lvl);
         await page.waitForTimeout(80);
         out.push(await slotsOpen());
       }
-      equal(out, [0, 2, 4, 5, 6]);
+      equal(out, [0, 2, 4, 4, 4]);
     });
 
     await check('locked facilities stay listed but can\'t be picked', async () => {
@@ -1112,7 +1112,7 @@ const ALL_EXTRAS = ['beast_pen', 'herbal_gardens', 'temple', 'hall_of_emissaries
       await H.waitForNotice(page, /Facilities\. The Bastion's facilities have changed: The Smithy joined the Workshop: its slot is free, and the Workshop keeps the Smithy's order\. The Gaming Hall is no longer part of the Bastion; its slot is free\./);
       const s = await st(page);
       equal(s.v, 4, 'version 2 goes on to version 4 (the Strip Back Overhaul, 22 October 2026)');
-      equal(s.builtExtras, ['', '', '', '', ''], 'the Arcane Laboratory joined the Workshop: its slot is free (step S12)');
+      equal(s.builtExtras, ['', '', '', ''], 'the Arcane Laboratory joined the Workshop: its slot is free (step S12)');
       /* The Garden became the Herbal Gardens, and moved to a Development Plot (open at party level 13), still being built. */
       equal(s.builtPlots, [{ facId: 'herbal_gardens', status: 'building', startDay: 1, readyDay: d + 9 }, '', '', '']);
       equal(s.pendingOrders.map(o => [o.id, o.facId, o.fnId, o.dueDay]), [['o1', 'workshop', 'alchemy', d + 6], ['o2', 'workshop', 'smithing', d + 5]]);
@@ -1214,7 +1214,7 @@ const ALL_EXTRAS = ['beast_pen', 'herbal_gardens', 'temple', 'hall_of_emissaries
       equal([s.partyLevel, s.treasuryGP, s.builtPlots.filter(Boolean).map(e => e.facId)], [13, 3000, ['herbal_gardens', 'timber_sawmill', 'fishery_smokehouse']]);
       equal(s.warehouse.map(w => [w.goodId || w.item, w.qty]), [['Rope (50 ft)', 2], ['raw_timber', 2], ['fresh_fish', 1], ['preserved_fish', 1], ['restorative_herbs', 20], ['antivenom_roots', 5], ['alchemical_flowers', 20]]);
       equal(await page.$$eval('[data-test=grid-plots] .tsi-bas-tile--plot', ts => ts.map(t => t.dataset.test)), ['plot-3']);
-      equal(await page.$$eval('.tsi-bas-maplabel', ls => ls.length), 9, 'the starting two, two in slots (the Library and the Laboratory joined the Workshop) (the Shrine of Aurush is the Temple now, labelled at each of its three buildings) and three on plots, each labelled');
+      equal(await page.$$eval('.tsi-bas-maplabel', ls => ls.length), 7, 'the starting two, two in slots (the Library and the Laboratory joined the Workshop) (the Temple has one label now) and three on plots, each labelled');
       await H.dismissNotices(page);
     });
 

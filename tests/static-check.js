@@ -90,6 +90,7 @@ try {
   /* A facility's picture is one file, or a list of files drawn side by side (the Temple's three Shrine paintings). */
   Object.keys(B.facilityImages || {}).forEach(k => [].concat(B.facilityImages[k]).forEach(f => need(from + ' facilityImages.' + k, assets('facilities/' + f), 'picture')));
   Object.keys(B.panelImages || {}).forEach(k => need(from + ' panelImages.' + k, assets('facilities/' + B.panelImages[k]), 'picture'));
+  (B.startTiles || []).forEach(t => need(from + ' startTiles.' + t.id, assets(t.pic), 'picture'));
   Object.keys(B.facilityTileCrops || {}).forEach(k => need(from + ' facilityTileCrops.' + k, assets(B.facilityTileCrops[k].pic), 'picture'));
   need(from + ' map.base', assets(B.map.base), 'picture');
   (B.map.overlays || []).forEach(o => need(from + ' map.overlays (' + o.fac + ')', assets(o.pic), 'picture'));

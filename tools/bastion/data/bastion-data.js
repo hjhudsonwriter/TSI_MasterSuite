@@ -38,6 +38,11 @@ window.TSI_DATA.bastion = {
      painting (from bastion-new-art/2-second-upload/placements.json, with a
      little room round it). The Courier Exchange has its own picture
      (facilityImages, above). */
+  /* The Party Quarters (Harry, 26 October 2026): the third starting tile, a picture only (cut from its overlay, with a 20 px
+     margin). It is not a facility: no panel, no map label, not counted, nothing in the save. */
+  startTiles: [
+    { id: 'party_quarters', name: 'Party Quarters', pic: 'map/party_quarters.png', x: 1730, y: 205, w: 443, h: 309 }
+  ],
   facilityTileCrops: {
     beast_pen: { pic: 'map/overlays/beast_pen.png', x: 1639, y: 458, w: 531, h: 240 },
     prison_tower: { pic: 'map/overlays/prison_tower.png', x: 791, y: 261, w: 325, h: 231 },
@@ -51,8 +56,8 @@ window.TSI_DATA.bastion = {
      only for the six economic facilities marked "plot" in
      facilities-data.js (Herbal Gardens, Fishery & Smokehouse, Timber Yard &
      Sawmill, Stone Quarry & Masonworks, Weavers' Hall, Courier Exchange).
-     The other optional facilities keep the construction slots (0 / 2 / 4 /
-     5 / 6 by party level). Plots open by party level: "from" the level,
+     The other optional facilities keep the construction slots (0 / 2 /
+     4 by party level). Plots open by party level: "from" the level,
      "plots" in all. The starting facilities use neither. */
   developmentPlots: [
     { from: 1, plots: 0 },
