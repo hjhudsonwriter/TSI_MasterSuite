@@ -576,3 +576,7 @@ Harry's upload of 26 October 2026: five 2000 x 1116 JPEGs, already optimised, on
 | Harry's upload `workshop-level-3.jpg` (4 people) | `tools/bastion/assets/player-panels/workshop-level-4.jpg` (renamed) |
 | Harry's upload `workshop-level-4.jpg` (4 people, nearly the same) | `tools/bastion/assets/extras/player-panels/workshop-spare-4-people.jpg` (unused spare) |
 | Harry's upload `workshop-level-5.jpg` | `tools/bastion/assets/player-panels/workshop-level-5.jpg` |
+
+## Player View pictures: Dock and Courier Exchange, 26 October 2026
+
+Harry's uploads (2000 x 1116, no level pictures yet) are `tools/bastion/assets/player-panels/dock.jpg` and `tools/bastion/assets/player-panels/courier_exchange.jpg`, named in `tools/bastion/data/player-panels-data.js`.
