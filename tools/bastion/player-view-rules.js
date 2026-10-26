@@ -18,8 +18,8 @@
      focus: a built facility's id, 'party_quarters', or null           the facility panel the DM has open
    }
    facilities.workshop.staff is [{ id, name, level, open }]; facilities.temple.gods is [{ id, name, pct }] (0 to 100).
-   The Prison Tower and the Beast Pen show only a level and their pending orders' names (nothing about the cells or the
-   beasts). */
+   The Prison Tower shows only a level and its pending orders' names (nothing about the cells). The Beast Pen adds
+   facilities.beast_pen.beasts: [{ name, species, handler }] and more (a count), and nothing else about the beasts. */
 (function () {
   'use strict';
 
@@ -36,6 +36,8 @@
   /* The Hall's panel is "diplomacy" and every other facility's is "fac-<id>" (tool.js). */
   /* The Party Quarters is not a facility, but the DM can open a panel for it and the players see its picture: the one id
      besides the built facilities' that a focus may name. */
+  /* The most beasts the Beast Pen's panel lists (the rest are "and N more"). */
+  R.PLAYER_BEAST_MAX = 8;
   R.PARTY_QUARTERS_ID = 'party_quarters';
   R.playerFocusOf = function (panelId) {
     if (panelId === R.PARTY_QUARTERS_ID) return panelId;
@@ -83,6 +85,17 @@
         f.gods = R.templeGods(data).map(function (g) {
           return { id: str(g.id, 20), name: str(g.name, 40), pct: R.templeBar(s, g.id) };
         });
+      }
+      /* The Beast Pen lists the beasts housed there: a name, the kind (not the variety) and the handler's name, nothing else. */
+      if (id === R.PEN_ID) {
+        var housed = R.penHoused(s).filter(isObj);
+        f.beasts = housed.slice(0, R.PLAYER_BEAST_MAX).map(function (c) {
+          var u = R.creatureUnique(data, c.id);
+          var named = (typeof c.name === 'string' && c.name) || (u && (u.name || u.defaultName)) || '';
+          var d = R.devView(s, c);
+          return { name: str(named || R.speciesName(data, c.species), 60), species: str(R.speciesName(data, c.species), 40), handler: str(d && d.handlerId ? R.handlerName(d.handlerId) : '', 60) };
+        });
+        f.more = Math.max(0, housed.length - R.PLAYER_BEAST_MAX);
       }
       facilities[id] = f;
     });

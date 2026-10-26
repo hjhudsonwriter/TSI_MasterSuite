@@ -15,6 +15,7 @@
               'level'    "Level 3" (or "One level")
               'orders'   "Orders pending" with the names of the pending orders, or "None"
               'staff'    the Workshop's five staff, those not yet open greyed
+              'beasts'   the Beast Pen's housed beasts: name, kind and handler
               'shrines'  the Temple's three gods with their favour bars (Telluria green, Aurush orange, Pelagos blue)
    These texts are Harry's to edit. */
 window.TSI_DATA = window.TSI_DATA || {};
@@ -34,8 +35,9 @@ window.TSI_DATA.bastionPlayerPanels = [
     blurb: 'Chart voyages and charter trade across the sea.', widgets: ['level', 'orders'] },
   { id: 'hall_of_emissaries', title: 'Hall of Emissaries', tagline: 'Every Clan has an ear in this room...', art: null,
     blurb: 'Meet envoys and learn where each Clan stands.', widgets: ['level', 'orders'] },
-  { id: 'beast_pen', title: 'Beast Pen', tagline: 'Something stirs in the stalls...', art: null,
-    blurb: 'House the beasts that follow your banner, and bond with them on the road.', widgets: ['level', 'orders'] },
+  /* The Beast Pen shows no level, orders or blurb: only the beasts housed there (name, kind and handler). */
+  { id: 'beast_pen', title: 'Beast Pen', tagline: 'Something stirs in the stalls...', art: 'beast_pen.jpg', focus: { x: 50, y: 50 },
+    blurb: '', widgets: ['beasts'] },
   { id: 'prison_tower', title: 'Prison Tower', tagline: 'Stone walls keep their secrets...', art: null,
     blurb: 'Lock up captives here, and question them if you dare.', widgets: ['level', 'orders'] },
   { id: 'herbal_gardens', title: 'Herbal Gardens', tagline: 'Green things grow where care is given...', art: null,

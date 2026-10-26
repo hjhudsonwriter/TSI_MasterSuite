@@ -248,6 +248,11 @@ img.tsi-bpv-panel__art.is-entering { opacity: 0; }
 .tsi-bpv-panel__info { flex: 0 0 auto; display: flex; flex-wrap: wrap; align-items: baseline; gap: .2em 2.4vw; padding: 0 .4vw; font: 400 clamp(14px, 2.2vh, 24px)/1.25 var(--tsi-font-body); }
 .tsi-bpv-info__label { font: 600 .85em var(--tsi-font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--tsi-gold-text); }
 .tsi-bpv-info__repair { color: #ffd0c8; }
+.tsi-bpv-beasts { flex: 1 1 100%; display: flex; flex-wrap: wrap; align-items: baseline; gap: .2em 1.6em; }
+.tsi-bpv-beasts__list { display: inline-flex; flex-wrap: wrap; gap: .2em 1.8em; }
+.tsi-bpv-beasts__name { font-weight: 700; color: var(--tsi-text); }
+.tsi-bpv-beasts__none { color: var(--tsi-text-faint); font-style: italic; }
+.tsi-bpv-beasts__more { color: var(--tsi-text-muted); font-style: italic; }
 .tsi-bpv-staff__list { display: inline-flex; flex-wrap: wrap; gap: .2em .9em; }
 .tsi-bpv-staff__one { font-weight: 600; color: var(--tsi-text); }
 .tsi-bpv-staff__one.is-locked { color: var(--tsi-text-faint); opacity: .55; }
