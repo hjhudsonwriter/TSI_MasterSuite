@@ -559,3 +559,7 @@ Harry's `New_Bastion_Designs` folder (uploaded to the repository root) was moved
 | `New_Bastion_Designs/Bastion_Overlay_{BeastPen,CourierExchange,FisheryAndSmokehouse,HallOfEmissaries,HerbalGardens,StoneQuarryAndMasonworks,Temple,TimberYardAndSawmill,WeaversHall}.png` | `tools/bastion/assets/map/overlays/{beast_pen,courier_exchange,fishery_smokehouse,hall_of_emissaries,herbal_gardens,stone_quarry_masonworks,temple,timber_yard_sawmill,weavers_hall}.png` |
 | `Bastion_Overlay_{Dock,Workshop,PartyQuarters,PrisonTower}.png`, `Bastion_Empty.png`, `Bastion_Complete_Reference.png`, `Bastion_Overlays_Full.png` | `tools/bastion/assets/extras/map-2026-10-26/` |
 | the previous base and all eleven previous overlays | `tools/bastion/assets/extras/map-previous/` |
+
+## Beast loop videos, 26 October 2026
+
+Harry's originals (`DW_Blacktide.mp4` and ten others, 7 to 19 MB each, 720 x 1280, no sound) were shrunk with ffmpeg (H.264, CRF 30, no audio) and stored as `tools/beasthandler/assets/<kind>/<variety>.mp4`: wyvern/ironcrown, leafwing, bloodcrest; dire-wolf/blacktide, slatejaw; griffin/dawnmantle, silvershroud; buckbear/broadcrown, shovelhorn; fellcat/lichenback, smokecoat. The originals are not in the repository.

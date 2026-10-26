@@ -71,7 +71,7 @@
         var name = String(d.profile.regional || '').trim();
         var info = name ? M.regionalInfo(tables, d.species.id, name) : null;
         var pic = info ? M.artFor(art, d.species.id, info.id) : null;
-        return { name: name, info: info, src: pic && pic.src ? pic.src : '', alt: pic ? pic.alt + ' (' + info.name + ')' : '' };
+        return { name: name, info: info, src: pic && pic.src ? pic.src : '', video: pic && pic.video ? pic.video : '', alt: pic ? pic.alt + ' (' + info.name + ')' : '' };
       }
       function pictureEl(d, pic, cls) {
         return el('img', { class: cls, src: TSI.path('tools/beasthandler/assets/' + pic.src), alt: pic.alt, draggable: 'false' });
@@ -92,10 +92,37 @@
             if (img.parentNode) img.parentNode.removeChild(img);
             lost.hidden = false;
           });
-          frame.appendChild(el('button', {
+          var tapBtn = el('button', {
             type: 'button', class: 'tsi-bh-hero2__tap', 'aria-label': 'Greet ' + d.name, 'data-test': 'bh-greet-large',
             onclick: function () { frame.classList.add('tsi-bh-hero2--greet'); life.setTimeout(function () { frame.classList.remove('tsi-bh-hero2--greet'); }, 900); }
-          }, img));
+          }, img);
+          /* Hold the picture and, if the variety has one, its short loop plays over it; let go and it stops (26 October 2026). */
+          if (pic.video) {
+            var clip = el('video', { class: 'tsi-bh-hero2__clip', 'data-test': 'bh-clip', muted: '', loop: '', playsinline: '', preload: 'auto', 'aria-hidden': 'true', tabindex: '-1', src: TSI.path('tools/beasthandler/assets/' + pic.video) });
+            clip.muted = true;
+            var playing = false;
+            var startClip = function () {
+              if (playing) return;
+              playing = true; frame.classList.add('tsi-bh-hero2--clip');
+              try { clip.currentTime = 0; var pr = clip.play(); if (pr && pr.catch) pr.catch(function () { stopClip(); }); } catch (e) { stopClip(); }
+            };
+            var stopClip = function () {
+              if (!playing) return;
+              playing = false; frame.classList.remove('tsi-bh-hero2--clip');
+              try { clip.pause(); } catch (e) { /* nothing playing */ }
+            };
+            clip.addEventListener('error', function () { stopClip(); if (clip.parentNode) clip.parentNode.removeChild(clip); });
+            tapBtn.appendChild(clip);
+            tapBtn.addEventListener('pointerdown', startClip);
+            ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (n) { tapBtn.addEventListener(n, stopClip); });
+            tapBtn.addEventListener('keydown', function (ev) { if ((ev.key === ' ' || ev.key === 'Enter') && !ev.repeat) startClip(); });
+            tapBtn.addEventListener('keyup', function (ev) { if (ev.key === ' ' || ev.key === 'Enter') stopClip(); });
+            tapBtn.addEventListener('blur', stopClip);
+            tapBtn.addEventListener('contextmenu', function (ev) { ev.preventDefault(); });
+            life.on(window, 'pagehide', stopClip);
+            life.on(document, 'visibilitychange', function () { if (document.hidden) stopClip(); });
+          }
+          frame.appendChild(tapBtn);
         } else {
           frame.setAttribute('role', 'img');
           frame.setAttribute('aria-label', 'No picture yet for ' + d.name);

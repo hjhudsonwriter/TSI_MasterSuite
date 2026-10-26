@@ -12,7 +12,10 @@
    to its name, e.g. src: 'wyvern-widowspine.png'. A variant is picked by
    the Regional Variety's id (profile-tables.js); "default" is used when a
    creature has none, or none has its own picture yet. Changing a picture
-   never changes anything about a creature's game. */
+   never changes anything about a creature's game.
+
+   A variant may also name a short looping video (video: 'wyvern/ironcrown.mp4', 26 October 2026). While a player
+   presses and holds the picture the video plays over it, and it goes when they let go. */
 window.TSI_DATA = window.TSI_DATA || {};
 window.TSI_DATA.beastArt = {
   version: 1,
@@ -22,18 +25,18 @@ window.TSI_DATA.beastArt = {
       variants: {
         widowspine: { src: 'wyvern/widowspine.webp' },
         bleakhook: { src: 'wyvern/bleakhook.webp' },
-        ironcrown: { src: 'wyvern/ironcrown.webp' },
-        leafwing: { src: 'wyvern/leafwing.webp' },
-        bloodcrest: { src: 'wyvern/bloodcrest.webp' },
+        ironcrown: { src: 'wyvern/ironcrown.webp', video: 'wyvern/ironcrown.mp4' },
+        leafwing: { src: 'wyvern/leafwing.webp', video: 'wyvern/leafwing.mp4' },
+        bloodcrest: { src: 'wyvern/bloodcrest.webp', video: 'wyvern/bloodcrest.mp4' },
         shadowmount: { src: 'wyvern/shadowmount.webp' }
       }
     },
     griffin: {
       label: 'Griffin', alt: 'A griffin', default: { src: '' },
       variants: {
-        dawnmantle: { src: 'griffin/dawnmantle.webp' },
+        dawnmantle: { src: 'griffin/dawnmantle.webp', video: 'griffin/dawnmantle.mp4' },
         thunderwing: { src: 'griffin/thunderwing.webp' },
-        silvershroud: { src: 'griffin/silvershroud.webp' },
+        silvershroud: { src: 'griffin/silvershroud.webp', video: 'griffin/silvershroud.mp4' },
         galeclaw: { src: 'griffin/galeclaw.webp' },
         embermantle: { src: 'griffin/embermantle.webp' }
       }
@@ -44,10 +47,10 @@ window.TSI_DATA.beastArt = {
       variants: {
         nightfang: { src: 'dire-wolf/nightfang.webp' },
         icepelt: { src: 'dire-wolf/icepelt.webp' },
-        slatejaw: { src: 'dire-wolf/slatejaw.webp' },
+        slatejaw: { src: 'dire-wolf/slatejaw.webp', video: 'dire-wolf/slatejaw.mp4' },
         reedshadow: { src: 'dire-wolf/reedshadow.webp' },
         hollowhowl: { src: 'dire-wolf/hollowhowl.webp' },
-        blacktide: { src: 'dire-wolf/blacktide.webp' }
+        blacktide: { src: 'dire-wolf/blacktide.webp', video: 'dire-wolf/blacktide.mp4' }
       }
     },
     /* 22 October 2026: Harry's first paintings for the two new kinds. The other
@@ -55,15 +58,15 @@ window.TSI_DATA.beastArt = {
     buckbear: {
       label: 'Buckbear', alt: 'A buckbear', default: { src: '' },
       variants: {
-        broadcrown: { src: 'buckbear/broadcrown.webp' },
-        shovelhorn: { src: 'buckbear/shovelhorn.webp' }
+        broadcrown: { src: 'buckbear/broadcrown.webp', video: 'buckbear/broadcrown.mp4' },
+        shovelhorn: { src: 'buckbear/shovelhorn.webp', video: 'buckbear/shovelhorn.mp4' }
       }
     },
     fellcat: {
       label: 'Fellcat', alt: 'A fellcat', default: { src: '' },
       variants: {
-        lichenback: { src: 'fellcat/lichenback.webp' },
-        smokecoat: { src: 'fellcat/smokecoat.webp' }
+        lichenback: { src: 'fellcat/lichenback.webp', video: 'fellcat/lichenback.mp4' },
+        smokecoat: { src: 'fellcat/smokecoat.webp', video: 'fellcat/smokecoat.mp4' }
       }
     }
   }

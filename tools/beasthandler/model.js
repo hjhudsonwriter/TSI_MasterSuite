@@ -100,7 +100,7 @@
     var sp = art && isObj(art.species) ? art.species[speciesId] : null;
     if (!sp) return { src: '', label: 'Beast', alt: 'A beast' };
     var pick = regionalId && isObj(sp.variants) && sp.variants[regionalId] ? sp.variants[regionalId] : sp.default;
-    return { src: pick && typeof pick.src === 'string' ? pick.src : '', label: sp.label, alt: sp.alt };
+    return { src: pick && typeof pick.src === 'string' ? pick.src : '', video: pick && typeof pick.video === 'string' ? pick.video : '', label: sp.label, alt: sp.alt };
   };
 
   /* What the Home screen says when there is nothing to list, or ''. */
