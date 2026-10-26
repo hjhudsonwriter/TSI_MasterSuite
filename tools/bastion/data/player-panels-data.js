@@ -25,7 +25,7 @@ window.TSI_DATA.bastionPlayerPanels = [
     blurb: 'Hand your plans to the staff and they will see them made.', widgets: ['level', 'orders', 'staff'] },
   { id: 'temple', title: 'Temple', tagline: 'The Triarchy is always listening...', art: null,
     blurb: 'Say a prayer at a shrine and the gods may respond.', widgets: ['level', 'orders', 'shrines'] },
-  { id: 'dock', title: 'Dock', tagline: 'Ships come and go with the tide...', art: null,
+  { id: 'dock', title: 'Dock', tagline: 'Ships come and go with the tide...', art: 'dock.jpg', focus: { x: 50, y: 55 },
     blurb: 'Chart voyages and charter trade across the sea.', widgets: ['level', 'orders'] },
   { id: 'hall_of_emissaries', title: 'Hall of Emissaries', tagline: 'Every Clan has an ear in this room...', art: null,
     blurb: 'Meet envoys and learn where each Clan stands.', widgets: ['level', 'orders'] },
@@ -43,6 +43,6 @@ window.TSI_DATA.bastionPlayerPanels = [
     blurb: 'Quarry and dress stone for the Ironbow\'s works.', widgets: ['level', 'orders'] },
   { id: 'weavers_hall', title: 'Weavers\' Hall', tagline: 'Looms clatter and sails take shape...', art: null,
     blurb: 'Weave cloth, rope and sails.', widgets: ['level', 'orders'] },
-  { id: 'courier_exchange', title: 'Courier Exchange', tagline: 'Every letter finds its road...', art: null,
+  { id: 'courier_exchange', title: 'Courier Exchange', tagline: 'Every letter finds its road...', art: 'courier_exchange.jpg', focus: { x: 50, y: 58 },
     blurb: 'Send parcels across the Isles and collect what arrives.', widgets: ['level', 'orders'] }
 ];
