@@ -88,6 +88,7 @@
       var pvLink = ctx.playerLink({
         view: 'explorer',
         name: 'ScarlettExplorerPlayers',
+        keepOpen: true,
         features: 'popup=yes,width=1400,height=800',
         getState: function () { return R.playerSnapshot(state, DATA, { pin: pvPin, dim: pvDim(), camp: pvCamp }); },
         onStatus: function (st) {

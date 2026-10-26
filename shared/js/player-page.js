@@ -8,13 +8,20 @@
      title: 'Notice Board',
      mount: function (root, api) { ... },   // api.send(type, payload) talks back to the tool
      state: function (payload) { ... },     // the full picture
-     message: function (type, payload) { ... }
-   }); */
+     message: function (type, payload) { ... },
+     keepOpen: true,                        // optional: the window outlives the DM's tool (see below)
+     lost: function () { ... }              // optional: the DM's tool has gone quiet; let go of anything held
+   });
+
+   A keepOpen view (the Explorer's and the Bastion's) stays open when the DM switches tool or reloads the suite, and keeps
+   showing the last picture; the DM's tool finds it again by itself when it hears this window's "hello". It closes itself
+   only if the window that opened it has been closed for good for about 30 seconds, or when someone closes it by hand. */
 (function () {
   'use strict';
 
   var TSI = window.TSI;
   var TAG = 'player-link';
+  var OPENER_GONE_MS = 30000;
   var params = new URLSearchParams(location.search);
   var viewId = params.get('view') || '';
   var root = document.getElementById('tsi-player-root');
@@ -24,6 +31,9 @@
   var hasState = false;
   var lastAck = 0;
   var queue = [];
+  var detached = false;
+  var hadOpener = !!window.opener;
+  var openerGoneSince = 0;
 
   TSI.registerPlayerView = function (id, def) { views[id] = def; };
 
@@ -56,9 +66,17 @@
     if (!d || d.tsi !== TAG || d.from !== 'dm' || d.view !== viewId) return;
     if (!window.opener || event.source !== window.opener) return;
     lastAck = Date.now();
-    showStatus('');
-    if (d.type === 'ack') return;
+    if (d.type !== 'detach') showStatus('');
+    if (d.type === 'ack') { detached = false; return; }
     if (d.type === 'close') { window.close(); return; }
+    if (d.type === 'detach') {
+      /* The DM has switched tool: keep the last picture, let go of anything held (a night fade, say), and say so quietly. */
+      detached = true;
+      if (view && view.lost) view.lost();
+      showStatus(hasState ? 'The DM has switched tool. This shows the last picture.' : 'Waiting for the suite…');
+      return;
+    }
+    detached = false;
     if (!view) { queue.push(d); return; }
     deliver(d);
   }, 'the player window'));
@@ -67,11 +85,21 @@
   setInterval(function () {
     if (!window.opener || window.opener.closed) {
       showStatus('The suite window has closed. This shows the last thing it was sent.');
+      if (view && view.lost) view.lost();
+      /* A keepOpen window whose suite window has gone for good would hang about for ever: it closes itself after a while. */
+      if (hadOpener && view && view.keepOpen) {
+        if (!openerGoneSince) openerGoneSince = Date.now();
+        else if (Date.now() - openerGoneSince > OPENER_GONE_MS) window.close();
+      }
       return;
     }
+    openerGoneSince = 0;
     post('hello', { hasState: hasState });
-    if (Date.now() - lastAck > 6500) showStatus('Waiting for the suite…');
-    else showStatus('');
+    if (detached) return;
+    if (Date.now() - lastAck > 6500) {
+      showStatus(hasState ? 'Waiting for the DM. This shows the last picture.' : 'Waiting for the suite…');
+      if (hasState && view && view.lost) view.lost();
+    } else showStatus('');
   }, 2000);
 
   /* ---------- The built-in "check" view, for testing player windows ---------- */

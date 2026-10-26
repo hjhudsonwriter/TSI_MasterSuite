@@ -229,6 +229,11 @@
     }, 500);
 
     return {
+      /* The DM's Explorer has gone quiet: nothing stays dark, and a half-open town card closes. */
+      lost: function () {
+        if (mode !== 'none' || dim.style.opacity > 0) release();
+        pinId = null; TSI.clear(pinHost); pinHost.hidden = true;
+      },
       state: function (payload) {
         if (!payload || payload.v !== 1 || !payload.board || !Array.isArray(payload.tokens)) return;
         snap = payload;
@@ -249,6 +254,8 @@
     title: 'Scarlett Isles Explorer',
     mount: function (root, api) { this.pv = createView(root, api); },
     state: function (payload) { this.pv.state(payload); },
-    message: function (type, payload) { this.pv.message(type, payload); }
+    message: function (type, payload) { this.pv.message(type, payload); },
+    keepOpen: true,
+    lost: function () { this.pv.lost(); }
   });
 }());

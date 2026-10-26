@@ -441,11 +441,12 @@ const SECRETS = ['ZZWAREHOUSE', 'ZZDMNOTE', 'ZZPRISONER', 'ZZBEAST', 'ZZPAIRCODE
       equal(extra, 0);
     });
 
-    await check('leaving the Bastion closes the Player View (and the DM status goes back to Not open)', async () => {
-      await page.click('.tsi-topbar a[href], .tsi-topbar__home, [data-test=home]').catch(() => {});
+    await check('leaving the Bastion leaves the Player View open, with its last picture (more in player-view-keep-open.test.js)', async () => {
       await page.evaluate(() => { location.href = location.href.replace(/\?.*$/, ''); });
-      await pv.waitForEvent('close', { timeout: 8000 }).catch(() => {});
-      assert(pv.isClosed(), 'the window closed');
+      await page.waitForSelector('.tsi-card');
+      await page.waitForTimeout(1500);
+      assert(!pv.isClosed(), 'the window stays');
+      equal(await pv.isVisible('[data-test=pv-waiting]'), false, 'and still shows the map');
     });
 
     const bad = context.log.net.concat(context.log.failed, context.log.errors);

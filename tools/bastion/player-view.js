@@ -347,6 +347,8 @@
     title: 'The Ironbow Bastion',
     mount: function (root, api) { this.pv = createView(root, api); },
     state: function (payload) { this.pv.state(payload); },
-    message: function (type, payload) { this.pv.message(type, payload); }
+    message: function (type, payload) { this.pv.message(type, payload); },
+    keepOpen: true,
+    lost: function () { /* nothing is held: the map stays as it was */ }
   });
 }());

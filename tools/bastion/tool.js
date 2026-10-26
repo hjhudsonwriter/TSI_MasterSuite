@@ -641,6 +641,7 @@
       var pvLink = ctx.playerLink({
         view: 'bastion',
         name: 'ScarlettBastionPlayers',
+        keepOpen: true,
         features: 'popup=yes,width=1400,height=800',
         getState: function () { return R.playerSnapshot(state, data, { crest: crest, focus: pvFocus() }); },
         onStatus: function (st) {
