@@ -25,6 +25,8 @@ const PHONE = H.fileUrl('beasthandler.html');
 const bare = (page, sel) => page.$eval(sel, n => n.textContent.replace(/\s+/g, ' ').trim());
 const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.debug.state())));
 const QUICK = () => { window.TSI_BH_SPEED = 0.02; };
+const WYVERNS = ['Widowspine', 'Bleakhook', 'Ironcrown', 'Bloodcrest', 'Shadowmount', 'Flamescale', 'Leafwing', 'Razortail'];
+const COUNT = { wyvern: 8, griffin: 8, dire_wolf: 7, buckbear: 5, fellcat: 5 };
 const FIXED = { wyvern: 'bloodcrest', griffin: 'dawnmantle', dire_wolf: 'blacktide', buckbear: 'broadcrown', fellcat: 'lichenback' };
 const NAMES = { bloodcrest: 'Bloodcrest', dawnmantle: 'Dawnmantle', blacktide: 'Blacktide', broadcrown: 'Broadcrown', lichenback: 'Lichenback' };
 /* A failing check leaves a picture of each open companion window, so a failure can be seen rather than guessed at. */
@@ -174,15 +176,15 @@ const checkS = (name, fn) => check(name, async () => {
     await H.shot(bh, 'beasthandler-meet-1');
   });
 
-  await checkS('panel 2: the wyvern\'s three rollable subspecies as medallions (name only), a die, one button, no text box, nothing to tap; where it lives and how it looks stay hidden', async () => {
+  await checkS('panel 2: the wyvern\'s eight subspecies as medallions (name only), a die, one button, no text box, nothing to tap; where it lives and how it looks stay hidden', async () => {
     await toPanel2();
     assert(/There are many subspecies of wyvern in The Scarlett Isles, but which one is Stormwing\?/.test(await bare(bh, '[data-test=bh-meet-title]')), await bare(bh, '[data-test=bh-meet-title]'));
-    equal((await bh.$$eval('.tsi-bh-medal__name', n => n.map(x => x.textContent))).sort(), ['Bloodcrest', 'Ironcrown', 'Leafwing']);
-    equal(await bh.$$eval('.tsi-bh-medal__n', n => n.map(x => x.textContent)), ['1', '2', '3'], 'numbered by place');
+    equal((await bh.$$eval('.tsi-bh-medal__name', n => n.map(x => x.textContent))).sort(), WYVERNS.slice().sort());
+    equal(await bh.$$eval('.tsi-bh-medal__n', n => n.map(x => x.textContent)), ['1', '2', '3', '4', '5', '6', '7', '8'], 'numbered by place');
     equal(await bh.$$eval('.tsi-bh-medal', n => n.filter(x => x.matches('button, a, [tabindex], [role=button]')).length), 0, 'a medallion cannot be pressed');
     equal(await bh.$$eval('.tsi-bh input, .tsi-bh textarea, .tsi-bh datalist', n => n.length), 0, 'no text box and no list to pick from');
     equal(await bh.$$eval('.tsi-bh .tsi-btn--primary', n => n.filter(x => !x.hidden).map(x => x.textContent)), ['Roll for subspecies'], 'one main button');
-    equal(await bare(bh, '[data-test=bh-meet-die]'), 'd3');
+    equal(await bare(bh, '[data-test=bh-meet-die]'), 'd8');
     equal(await bh.$eval('[data-test=bh-meet-medals]', n => n.getAttribute('data-lit')), '', 'the marker is not on any medallion yet');
     equal(await bare(bh, '[data-test=bh-meet-about]'), '', 'nothing is told about a variety before the roll');
     equal(await bh.$eval('[data-test=bh-meet-next]', n => n.hidden), true, 'no way on until it has landed');
@@ -327,7 +329,7 @@ const checkS = (name, fn) => check(name, async () => {
       await step(1);
       await toPanel2();
       const n = await bh.$$eval('.tsi-bh-medal', x => x.length);
-      equal(n, kind === 'wyvern' ? 3 : 2, kind + ' medallions (only the rollable varieties)');
+      equal(n, COUNT[kind], kind + ' medallions (every variety, rollable or not)');
       const r = await rollSubspecies();
       equal(r.variety, FIXED[kind], kind + ' meets as ' + FIXED[kind]);
       equal(r.about, NAMES[FIXED[kind]]);
@@ -779,9 +781,9 @@ const checkS = (name, fn) => check(name, async () => {
     return { bad, over: shell.scrollWidth - shell.clientWidth, off: Math.round(Math.max(0, list.right - innerWidth, -list.left)), medals: document.querySelectorAll('.tsi-bh-medal').length };
   };
 
-  await checkS('a subspecies name never breaks in the middle of a word, is never clipped and never scrolls the page sideways, for every variety of every kind at 320, 360, 390, 480, 600, the laptop and the TV (the Dire Wolf has six)', async () => {
+  await checkS('a subspecies name never breaks in the middle of a word, is never clipped and never scrolls the page sideways, for every variety of every kind at 320, 360, 390, 480, 600, the laptop and the TV (the Wyvern and Griffin have eight)', async () => {
     const sizes = [[320, 568], [360, 640], [390, 844], [480, 800], [600, 900], [1707, 930], [1920, 1080]];
-    const kinds = [['cr-stormwing', 3], ['cr-swiftwing', 2], ['cr-ashfang', 2], ['cr-tusk', 2], ['cr-prowl', 2]];
+    const kinds = [['cr-stormwing', 8], ['cr-swiftwing', 8], ['cr-ashfang', 7], ['cr-tusk', 5], ['cr-prowl', 5]];
     for (const [w, h] of sizes) {
       const p = await ctx.newPage();
       await p.setViewportSize({ width: w, height: h });
@@ -882,7 +884,7 @@ const checkS = (name, fn) => check(name, async () => {
     await pp.click('[data-test=bh-meet-continue]');
     await pp.waitForSelector('[data-test=bh-meet][data-step="2"]');
     await fit('2');
-    equal(await pp.$$eval('.tsi-bh-medal', n => n.length), 2, 'the two rollable dire wolf subspecies');
+    equal(await pp.$$eval('.tsi-bh-medal', n => n.length), 7, 'all seven dire wolf subspecies');
     await pp.click('[data-test=bh-meet-roll-regional]');
     await pp.waitForSelector('[data-test=bh-meet-next]:not([hidden])', { timeout: 15000 });
     await fit('2-landed');
