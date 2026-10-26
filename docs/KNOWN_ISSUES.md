@@ -4133,7 +4133,7 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 
 - Before: the "Roll for subspecies" panel showed only the varieties marked `rollable: true` (2 or 3 medallions). After (Harry): it shows all of the kind's varieties (Wyvern 8, Griffin 8, Dire Wolf 7, Buckbear 5, Fellcat 5) for the look of a wider choice, and the die is the same size as the number of medallions (d8, d7, d5). The answer is unchanged: `R.initiationVariety` still picks only a rollable one, and the marker's path still takes 3.5 to 4.5 seconds. Medallions carry no pictures, so a variety without one breaks nothing; the panel is tested from 320 px to the TV.
 
-### BAS-SB-87 · At most six construction slots and six Development Plots (26 October 2026)
+### BAS-SB-87 · At most six construction slots and six Development Plots (26 October 2026; the slot cap replaced by BAS-SB-91)
 
 - Before: the slot rules gave 0 / 2 / 4 / 5 / 6 slots and 0 / 2 / 4 / 6 plots by party level, but nothing held them to six if a data table said more. After (Harry): `R.MAX_SLOTS` and `R.MAX_PLOTS` (both 6) cap `R.constructionSlotsForLevel` and `R.plotsForLevel`, and a test checks every party level from 1 to 20. The top row of the bottom bar still shows 8 tiles: the two starting facilities (Workshop, Dock) are not construction slots, plus the six slots. Left as it is; ask Harry if he wants the two starting tiles moved. A Bastion that already holds more than six buildings (an old save) keeps them all, marked over capacity, as before.
 
@@ -4148,4 +4148,8 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 ### BAS-SB-90 · Prison Tower: Under Repair, demolishing and the record of who left (26 October 2026)
 
 - Before: n/a. After: Under Repair, sentences keep counting and end on their day, but Lock up, Interrogate and Release are greyed out until the repair ends (a repair can only come from old war saves). The Tower cannot be demolished while a cell is in use. Everyone who leaves (served or released early with the reason typed) is kept in the save's `prison.freed` (last 30), not shown anywhere yet; the notes on a freed prisoner go with that record. Left as is: a notice for a failed or passed interrogation shows in the Bastion's own window (notices do not cross windows); only the sentence ending reaches the Explorer.
+
+### BAS-SB-91 · Construction slots capped at four, and a Party Quarters tile (26 October 2026)
+
+- Before: up to six construction slots (0 / 2 / 4 / 5 / 6 by party level) and two starting tiles. After (Harry: "workshop, dock, party quarters = 3, then 4 slots extra for Temple, Hall, Prison Tower, Beast Pen"): `R.MAX_SLOTS` is 4 (0 below party level 5, 2 at 5, 4 from 9); Development Plots stay at 6. The top row is three starting tiles plus four slots (7). The third starting tile, the Party Quarters, is a picture only (`startTiles` in `bastion-data.js`, cut from `map/party_quarters.png`): no panel, no map label, not counted as a facility, nothing in the save; its tooltip says "Party Quarters". An old save holding more than four buildings in slots keeps them all, marked over capacity.
 

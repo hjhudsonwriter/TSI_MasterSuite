@@ -72,8 +72,8 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
       equal(lc.scrollWidth, lc.clientWidth, 'no sideways scroll');
       equal(lc.outOfView, [], 'in view');
       equal(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight + 1), true, 'the page doesn\'t scroll down');
-      equal(await page.$$eval('.tsi-bas-tile', ts => ts.length), 14, 'two facilities, six slots and six Development Plots');
-      equal(await page.$$eval('[data-test=grid-slots] .tsi-bas-tile', ts => ts.length), 8, 'the top row: the facilities and slots');
+      equal(await page.$$eval('.tsi-bas-tile', ts => ts.length), 13, 'three starting tiles, four slots and six Development Plots');
+      equal(await page.$$eval('[data-test=grid-slots] .tsi-bas-tile', ts => ts.length), 7, 'the top row: the three starting tiles and the slots');
       equal(await page.$$eval('[data-test=grid-plots] .tsi-bas-tile', ts => ts.length), 6, 'the row below: the plots');
       const map = await rect(page, '.tsi-bas-map');
       assert(Math.abs(map.w / map.h - 3000 / 1250) < 0.01, 'fitted, not stretched: ' + JSON.stringify(map));
@@ -193,9 +193,14 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
   /* ------------------------------------------------------------------ */
   section('The facility grid');
 
-  await check('the two starting facilities first (Workshop, Dock; the Barracks, Watchtower and Armoury went on 22 October 2026), then the six slots; the six Development Plots in the row below', async () => {
-    equal(await page.$$eval('[data-test=grid-slots] .tsi-bas-tile', ts => ts.slice(0, 2).map(t => t.dataset.fac)), ['workshop', 'dock']);
-    equal(await page.$$eval('[data-test=grid-slots] .tsi-bas-tile', ts => ts.slice(2).map(t => t.dataset.test)), ['slot-0', 'slot-1', 'slot-2', 'slot-3', 'slot-4', 'slot-5']);
+  await check('the two starting facilities first (Workshop, Dock; the Barracks, Watchtower and Armoury went on 22 October 2026), then the Party Quarters picture (not a button, no panel, tooltip "Party Quarters"), then the four slots; the six Development Plots in the row below', async () => {
+    equal(await page.$eval('[data-test=tile-party_quarters]', n => [n.tagName, n.getAttribute('aria-label')]), ['DIV', 'Party Quarters']);
+    await page.hover('[data-test=tile-party_quarters]');
+    await page.waitForSelector('[data-test=tooltip]');
+    equal(await page.$eval('[data-test=tooltip]', n => n.textContent.replace(/\s+/g, ' ').trim()), 'Party Quarters');
+    await page.mouse.move(5, 5);
+    equal(await page.$$eval('[data-test=grid-slots] .tsi-bas-tile', ts => ts.slice(0, 3).map(t => t.dataset.fac)), ['workshop', 'dock', 'party_quarters']);
+    equal(await page.$$eval('[data-test=grid-slots] .tsi-bas-tile', ts => ts.slice(3).map(t => t.dataset.test)), ['slot-0', 'slot-1', 'slot-2', 'slot-3']);
     equal(await page.$$eval('[data-test=grid-plots] .tsi-bas-tile', ts => ts.map(t => t.dataset.test)), ['plot-0', 'plot-1', 'plot-2', 'plot-3', 'plot-4', 'plot-5']);
     const a = await rect(page, '[data-test=tile-workshop]');
     const b = await rect(page, '[data-test=plot-0]');
@@ -214,15 +219,15 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     await page.mouse.move(5, 500);
   });
 
-  await check('at level 7: two slots open to build, four locked until levels 9, 9, 13 and 17', async () => {
+  await check('at level 7: two slots open to build, two locked until level 9', async () => {
     equal(await page.$$eval('.tsi-bas-tile--slot', ts => ts.map(t => t.dataset.test)), ['slot-0', 'slot-1']);
     const locked = [];
-    for (const i of [2, 3, 4, 5]) {
+    for (const i of [2, 3]) {
       await page.hover('[data-test=slot-' + i + ']');
       await page.waitForSelector('[data-test=tooltip]:not([hidden])');
       locked.push((/Unlocks at party level (\d+)/.exec(await bare(page, '[data-test=tooltip]')) || [])[1]);
     }
-    equal(locked, ['9', '9', '13', '17']);
+    equal(locked, ['9', '9']);
     await page.hover('[data-test=slot-0]');
     assert(/Click to build a new facility/.test(await bare(page, '[data-test=tooltip]')));
   });
@@ -236,7 +241,7 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     await page.mouse.move(5, 500);
   });
 
-  await check('levels 4 and 17: no slot open below 5; all six at 17', async () => {
+  await check('levels 4 and 17: no slot open below 5; all four at 17', async () => {
     await page.selectOption('[data-test=level]', '4');
     await page.waitForTimeout(150);
     equal(await page.$$eval('.tsi-bas-tile--slot', ts => ts.length), 0);
@@ -244,7 +249,7 @@ function overlaps(a, b) { return a.x < b.right - 1 && b.x < a.right - 1 && a.y <
     assert(/Unlocks at party level 5/.test(await bare(page, '[data-test=tooltip]')));
     await page.selectOption('[data-test=level]', '17');
     await page.waitForTimeout(150);
-    equal(await page.$$eval('.tsi-bas-tile--slot', ts => ts.length), 6);
+    equal(await page.$$eval('.tsi-bas-tile--slot', ts => ts.length), 4);
     await page.selectOption('[data-test=level]', '7');
     await page.waitForTimeout(150);
     await page.mouse.move(5, 500);

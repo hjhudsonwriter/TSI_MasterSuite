@@ -272,7 +272,7 @@ const ALL_EXTRAS = ['beast_pen', 'herbal_gardens', 'temple', 'hall_of_emissaries
           const hit = (a, b) => a.x < b.right - 1 && b.x < a.right - 1 && a.y < b.bottom - 1 && b.y < a.bottom - 1;
           const clash = [];
           ls.forEach((a, i) => ls.slice(i + 1).forEach(b => { if (hit(a, b)) clash.push(a.fac + '/' + b.fac); }));
-          /* All fourteen tiles (two starting facilities, six slots and six plots, built or empty) whole and square inside the grid. */
+          /* All thirteen tiles (three starting tiles, four slots and six plots, built or empty) whole and square inside the grid. */
           const grid = box(document.querySelector('[data-test=grid]'));
           const tiles = Array.from(document.querySelectorAll('[data-test=grid] .tsi-bas-tile')).map(t => Object.assign({ t: t.dataset.test }, box(t)));
           const cut = tiles.filter(t => t.x < grid.x - 0.5 || t.right > grid.right + 0.5 || t.y < grid.y - 0.5 || t.bottom > grid.bottom + 0.5 || Math.abs((t.right - t.x) - (t.bottom - t.y)) > 1 || t.right - t.x < 40).map(t => t.t);
@@ -284,7 +284,7 @@ const ALL_EXTRAS = ['beast_pen', 'herbal_gardens', 'temple', 'hall_of_emissaries
             onTray: ls.filter(l => hit(l, tray)).map(l => l.fac)
           };
         });
-        equal(m, { tiles: 14, cut: [], n: 11, clash: [], off: [], onBadge: [], onTray: [] }, size + ': fourteen whole, square tiles (two starting facilities, six slots and six plots); eleven labels (one for each facility built, the Temple\'s at each of its three buildings), each clear of the others, the badge and the tray');
+        equal(m, { tiles: 13, cut: [], n: 11, clash: [], off: [], onBadge: [], onTray: [] }, size + ': thirteen whole, square tiles (three starting tiles, four slots and six plots); eleven labels (one for each facility built, the Temple\'s at each of its three buildings), each clear of the others, the badge and the tray');
         await H.shot(page, 'p9-02-everything-built-' + size);
       }
       await page.setViewportSize(H.SIZES.laptop.viewport);
@@ -324,14 +324,14 @@ const ALL_EXTRAS = ['beast_pen', 'herbal_gardens', 'temple', 'hall_of_emissaries
       await page.waitForFunction(() => !TSI.bastion.debug.panel());
     }
 
-    await check('slots open to build by party level: 0 / 2 / 4 / 5 / 6', async () => {
+    await check('slots open to build by party level: 0 / 2 / 4', async () => {
       const out = [];
       for (const lvl of ['4', '5', '9', '13', '17']) {
         await page.selectOption('[data-test=level]', lvl);
         await page.waitForTimeout(80);
         out.push(await slotsOpen());
       }
-      equal(out, [0, 2, 4, 5, 6]);
+      equal(out, [0, 2, 4, 4, 4]);
     });
 
     await check('locked facilities stay listed but can\'t be picked', async () => {

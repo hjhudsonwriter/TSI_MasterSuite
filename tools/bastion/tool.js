@@ -1568,7 +1568,7 @@
       var GRID_START = B.startingBuilt.slice();
       var SLOT_COUNT = R.constructionSlotsForLevel(20);
       var PLOT_COUNT = R.plotsForLevel(20, data);
-      /* The party level a slot (0 to 5) opens at: 5, 5, 9, 9, 13, 17. */
+      /* The party level a slot (0 to 3) opens at: 5, 5, 9, 9. */
       function slotOpensAt(i) {
         for (var lvl = 1; lvl <= 20; lvl++) if (R.constructionSlotsForLevel(lvl) > i) return lvl;
         return null;
@@ -1989,7 +1989,7 @@
         /* A new facility with no tile painting yet: its building, cut from
            Harry's map overlay (facilityTileCrops), on a dark ground; with no
            art at all, its name on a plain frame. */
-        var c = B.facilityTileCrops && B.facilityTileCrops[id];
+        var c = (B.facilityTileCrops && B.facilityTileCrops[id]) || (B.startTiles || []).filter(function (x) { return x.id === id; })[0];
         if (c) {
           var W = B.map.width, Hh = B.map.height;
           var crop = el('div', { class: cls + ' tsi-bas-artcrop', 'data-art': 'crop' });
@@ -2031,6 +2031,14 @@
           else parts.push(muted('No orders pending here.'));
           return { title: name, parts: parts, foot: 'Click to open its orders' };
         };
+        bindTip(tile, build, { noChange: true });
+        bindFocusTip(tile, tile, build);
+        return tile;
+      }
+      /* A starting tile that is only a picture: no panel, no label on the map, not a facility in the save. */
+      function startTile(t) {
+        var tile = el('div', { class: 'tsi-bas-tile tsi-bas-tile--built tsi-bas-tile--static', role: 'img', tabindex: '0', 'data-test': 'tile-' + t.id, 'data-fac': t.id, 'aria-label': t.name }, [facArt(t.id, 'tsi-bas-tile__img')]);
+        var build = function () { return { title: t.name, parts: [] }; };
         bindTip(tile, build, { noChange: true });
         bindFocusTip(tile, tile, build);
         return tile;
@@ -2111,6 +2119,8 @@
         /* Two rows (Harry, 13 October 2026): the starting facilities and the
            construction slots above, the Development Plots below. */
         var tiles = GRID_START.map(function (id) { return builtTile(id); });
+        /* The third starting tile, the Party Quarters: a picture only (Harry, 26 October 2026). */
+        (B.startTiles || []).forEach(function (t) { tiles.push(startTile(t)); });
         var plotTiles = [];
         for (var i = 0; i < Math.max(SLOT_COUNT, slots.rows.length); i++) {
           var row = slots.rows[i];
