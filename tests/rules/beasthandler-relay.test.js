@@ -246,6 +246,8 @@
   });
 
   test('the post box is used only with a Firebase address in the settings AND not by an automated browser, except the made-up test address; asking for one sends nothing', function (t) {
+    /* The suite now ships with Harry's real post box address (26 October 2026); this test is about empty settings. */
+    return withConfig('', function () {
     var real = 'https://scarlett-isles-link-default-rtdb.firebaseio.com';
     var calls = watchNetwork(function () {
       t.equal(RL.config().ok, false, 'the shipped settings are empty');
@@ -271,20 +273,23 @@
       withConfig('https://evil.example.com', function () { t.equal(RL.create(TSI.createLife('w')), null); });
     });
     t.same(calls, [], 'nothing was sent');
+    }, false);
   });
 
   test('the sender is dormant: with the switch off, or the settings empty, it sends nothing, builds nothing and never even asks for a post box', function (t) {
+    /* The suite now ships with Harry's real post box address (26 October 2026); this test is about empty settings. */
+    return withConfig('', function () {
     var calls = [];
     return watchNetwork(function () {
       var w = setup();
       /* 1. Settings empty, switch off. */
       return w.pub.tick().then(function (st) {
-        t.equal(st.state, 'notenabled');
+        t.equal(st.state, 'unset');
         /* 2. Switch ON but settings empty: still nothing. */
         BR.setBeastOnlineLink(w.b, true);
         return w.pub.tick();
       }).then(function (st) {
-        t.equal(st.state, 'notenabled', 'the laptop switch alone does nothing while relay-config.js says enabled: false');
+        t.equal(st.state, 'unset', 'a switch with no address does nothing');
         BR.setBeastOnlineLink(w.b, false);
         /* 3. Settings filled, switch off: still nothing. */
         return withConfig(TEST_URL, function () { return w.pub.tick(); });
@@ -296,6 +301,7 @@
         w.life.stop();
       });
     }).then(function (c) { t.same(c, [], 'no fetch, no XMLHttpRequest, no EventSource, no WebSocket, no beacon'); });
+    }, false);
   });
 
   test('switched on, the sender puts one scrambled copy for each linked handler in the post box, once, and the box holds nothing readable', function (t) {
@@ -705,6 +711,8 @@
   });
 
   test('the phone\'s side is dormant too: with the settings empty, or no link, start() makes no timer, no listener and no request', function (t) {
+    /* The suite now ships with Harry's real post box address (26 October 2026); this test is about empty settings. */
+    return withConfig('', function () {
     var made = 0;
     var life = TSI.createLife('a phone');
     var pairing = { campaign: 'CAMPAIGN12345678', handler: 'mira', name: 'Mira', secret: SECRET };
@@ -738,6 +746,7 @@
       });
     });
     return calls.then(function (c) { life.stop(); t.same(c, [], 'no request of any kind'); });
+    }, false);
   });
   test('the phone has its own on-switch (enabled in relay-config.js): with an address and a linked phone but enabled false, missing or not a real true, the phone makes no request, no timer and no listener', function (t) {
     var made = 0;

@@ -49,21 +49,23 @@ Harry runs the suite from a folder on his laptop at the table, where there may b
 
 Browsers block several things when a page is opened straight from a file, so at runtime:
 
-Nothing loads from the internet automatically: no CDNs, no Google Fonts. Bundle fonts, libraries (such as PDF.js and the Firebase library for the Knightly Treasures link) and media locally, with their licences in licences/. Clickable links to websites (Roll20, stat blocks, the Knightly Treasures shop) are fine; they open in the browser and only work online.
+Nothing loads from the internet automatically (code, fonts, libraries and media; the two links in rule 2 send and fetch data only): no CDNs, no Google Fonts. Bundle fonts, libraries (such as PDF.js and the Firebase library for the Knightly Treasures link) and media locally, with their licences in licences/. Clickable links to websites (Roll20, stat blocks, the Knightly Treasures shop) are fine; they open in the browser and only work online.
 No ES modules or local fetch(). No import, no <script type="module">, and no fetch() of local files. Load code with plain <script> tags, and store content data as .js files (for example window.TSI_DATA.quests = [...]).
 No service workers.
 Player-view windows use postMessage. This covers the battlemap and the notice board. The Heartwood Ritual's cinematics play inside the Ritual's own page, as in the old tool. Talk to the window you opened with postMessage, and confirm it works from a double-clicked file.
 No exporting canvases that contain bundled images. Never read pixels from, or export, a canvas that has had a bundled image file drawn on it, because Chrome blocks this from a file. Images the user uploads (read with FileReader) are fine.
 Avoid build steps. A build step is only allowed if its output still meets this rule. Prefer none, so Harry and future sessions can edit files directly.
-2. No online services, except the Knightly Treasures link
+2. No online services, except two
 
 Harry has never set up or used Firebase. He doesn't know what it is, so explain it in plain English if it comes up.
 
-Remove all Firebase code except one feature: the Notice Board's ★ sends the main quest to Matt Owen's Knightly Treasures shop through his Firebase database, exactly as the old Notice Board did. It only works when online; offline it skips quietly and the Notice Board works fully. No other tool may go online. Don't export, migrate or change Matt's database, its rules or its data.
+Remove all Firebase code except one feature: the Notice Board's ★ sends the main quest to Matt Owen's Knightly Treasures shop through his Firebase database, exactly as the old Notice Board did. It only works when online; offline it skips quietly and the Notice Board works fully. No other tool may go online, except the Beast Handler phone link below. Don't export, migrate or change Matt's database, its rules or its data.
+
+The Beast Handler phone link is the second and last exception. The Ironbow Bastion and the Beast Handler phone page may talk to **one small Firebase Realtime Database that Harry owns** (a separate project from Matt's), to keep players' phones up to date. Rules: it is optional and off until `tools/beasthandler/relay-config.js` says `enabled: true` and holds the database's address, and (on the laptop) the DM presses Switch on in the Bastion; every other tool stays offline; the DM tools never wait on it and work fully offline; nothing readable is stored (everything is encrypted in the browser with a key that only travels in the player's QR link after the `#`); no logins, no accounts for players, no analytics, no paid plan; no library or code is loaded from the internet (only data is sent); tests use a stand-in, never the real database. Don't touch Matt's database.
 Tell Harry, in plain English, what the Firebase code was doing in each tool.
 Ignore the handover's Firebase instructions: exports, migration, database rules and sync adapters.
 No logins, analytics or paid APIs.
-Never commit keys or passwords. The one exception is the Knightly Treasures Firebase web settings. They are a public identifier, not a password, and they're already public in the old Notice Board repo. Keep them in one file (tools/quests/shop-link.js) and nowhere else.
+Never commit keys or passwords. The one exception is the Knightly Treasures Firebase web settings. They are a public identifier, not a password, and they're already public in the old Notice Board repo. Keep them in one file (tools/quests/shop-link.js) and nowhere else. The one other public identifier allowed is the address of Harry's own Beast Handler database, which needs no key, in tools/beasthandler/relay-config.js.
 3. Saves stay in the browser, with backups
 Autosave. Save locally, and start every storage key with tsi. so nothing clashes with other files opened from the laptop.
 Per-tool backups. Every tool that saves state gets Export and Import buttons that use a JSON file.

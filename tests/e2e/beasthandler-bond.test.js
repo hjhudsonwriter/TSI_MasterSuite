@@ -22,6 +22,7 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
   section('Beast Handler: the tab bar and the Bond page');
 
   const ctx = await H.newContext(browser, 'laptop', { backedUp: true });
+  await ctx.addInitScript(() => { window.TSI_TEST_FIXED_INITIATION = true; });
   await ctx.setOffline(true);
   const ex = await ctx.newPage();
   await ex.goto(HARNESS + '?tool=explorer');
@@ -324,6 +325,7 @@ const bas = page => page.evaluate(() => JSON.parse(JSON.stringify(TSI.bastion.de
 
   /* The TV: an extended second screen at 1920 x 1080, pixel ratio 1. */
   const tvCtx = await H.newContext(browser, 'tv', { backedUp: true });
+  await tvCtx.addInitScript(() => { window.TSI_TEST_FIXED_INITIATION = true; });
   await tvCtx.setOffline(true);
   const tex = await tvCtx.newPage();
   await tex.goto(HARNESS + '?tool=explorer');

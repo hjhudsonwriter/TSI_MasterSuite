@@ -42,6 +42,6 @@
    made-up address "tsi-test-relay.invalid", which belongs to a stand-in. */
 window.TSI_DATA = window.TSI_DATA || {};
 window.TSI_DATA.beastRelay = {
-  enabled: false,
+  enabled: true,
   databaseURL: 'https://scarlett-isles-link-default-rtdb.europe-west1.firebasedatabase.app'
 };

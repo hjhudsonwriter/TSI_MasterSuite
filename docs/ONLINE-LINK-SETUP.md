@@ -142,7 +142,7 @@ If you would rather not edit the file, send the address to whoever is helping yo
 
 ## Step 5: approve the change to the suite's own rules (CLAUDE.md)
 
-The suite has a standing rule that nothing goes online except the Knightly Treasures link. The online link is an exception, so the rule has to be changed **by you** before the link is switched on for real. **Nothing in the suite has changed CLAUDE.md yet.** When you are happy, say "I approve the change to ground rule 2" to whoever is helping you, and they will make exactly the edits below and nothing else. All four are in `CLAUDE.md`.
+The suite has a standing rule that nothing goes online except the Knightly Treasures link. The online link is an exception, so the rule has to be changed **by you** before the link is switched on for real. **Done on 26 October 2026: Harry approved this and the four edits below are now in CLAUDE.md.** When you are happy, say "I approve the change to ground rule 2" to whoever is helping you, and they will make exactly the edits below and nothing else. All four are in `CLAUDE.md`.
 
 **Edit 1: ground rule 2, its heading.** Find: `2. No online services, except the Knightly Treasures link`. Replace with: `2. No online services, except two`.
 

@@ -38,7 +38,7 @@ async function newContext(browser) {
   const ctx = await H.newContext(browser, 'laptop', { acceptDownloads: true, backedUp: true });
   await ctx.setOffline(true);
   /* No travel or campfire events and no weather; every die comes up the same (so the first meeting's rolls are known). */
-  await ctx.addInitScript(() => { Math.random = () => 0.99; });
+  await ctx.addInitScript(() => { Math.random = () => 0.99; window.TSI_TEST_FIXED_INITIATION = true; });
   return ctx;
 }
 async function openExplorer(ctx) {

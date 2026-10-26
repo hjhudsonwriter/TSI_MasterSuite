@@ -279,9 +279,9 @@
   });
 
   test('the online link\'s settings ship empty, and an address must be a Firebase database address (or the made-up test one)', function (t) {
-    t.same(window.TSI_DATA.beastRelay, { enabled: false, databaseURL: 'https://scarlett-isles-link-default-rtdb.europe-west1.firebasedatabase.app' }, 'relay-config.js ships switched off and empty: enabled false, no address and nothing else');
-    t.equal(L.enabled(), false);
-    t.equal(L.configuredUrl(), '', 'so the link is not set up');
+    t.same(window.TSI_DATA.beastRelay, { enabled: true, databaseURL: 'https://scarlett-isles-link-default-rtdb.europe-west1.firebasedatabase.app' }, 'relay-config.js ships switched on with the post box address (approved 26 October 2026)');
+    t.equal(L.enabled(), true);
+    t.equal(L.configuredUrl(), 'https://scarlett-isles-link-default-rtdb.europe-west1.firebasedatabase.app', 'so the link is set up (the Bastion still sends nothing until the DM presses Switch on)');
     t.same(L.cleanDatabaseUrl('https://scarlett-isles-link-default-rtdb.firebaseio.com'), { ok: true, url: 'https://scarlett-isles-link-default-rtdb.firebaseio.com' });
     t.equal(L.cleanDatabaseUrl('https://scarlett-isles-link-default-rtdb.europe-west1.firebasedatabase.app/').url, 'https://scarlett-isles-link-default-rtdb.europe-west1.firebasedatabase.app');
     t.equal(L.cleanDatabaseUrl('https://' + L.TEST_HOST).ok, true);
@@ -299,7 +299,7 @@
       window.TSI_DATA.beastRelay = { enabled: true, databaseURL: 'https://x-default-rtdb.firebaseio.com' };
       t.equal(L.configuredUrl(), 'https://x-default-rtdb.firebaseio.com');
     } finally { window.TSI_DATA.beastRelay = was; }
-    t.equal(L.configuredUrl(), '');
+    t.equal(L.configuredUrl(), 'https://scarlett-isles-link-default-rtdb.europe-west1.firebasedatabase.app');
   });
 
   test('the settings file\'s on-switch: only a real true together with a good address sets the link up; an address alone, or true alone, is "not set up"', function (t) {
@@ -326,7 +326,7 @@
       t.equal(L.enabled(), false);
       t.equal(L.configuredUrl(), '');
     } finally { window.TSI_DATA.beastRelay = was; }
-    t.same(window.TSI_DATA.beastRelay, { enabled: false, databaseURL: 'https://scarlett-isles-link-default-rtdb.europe-west1.firebasedatabase.app' }, 'and it is put back as shipped');
+    t.same(window.TSI_DATA.beastRelay, { enabled: true, databaseURL: 'https://scarlett-isles-link-default-rtdb.europe-west1.firebasedatabase.app' }, 'and it is put back as shipped');
   });
 
   test('the QR link carries no online flag: it is the address and the four-part pairing only, whatever the online link\'s switches say', function (t) {

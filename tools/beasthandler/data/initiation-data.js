@@ -28,7 +28,8 @@ window.TSI_DATA.beastInitiation = {
        rollable in data/profile-tables.js (Wyvern: Leafwing, Ironcrown, Bloodcrest; Dire Wolf: Blacktide,
        Slatejaw; Griffin: Dawnmantle, Silvershroud; Fellcat: Lichenback, Smokecoat; Buckbear: Broadcrown,
        Shovelhorn). Put mode back to 'fixed' to name one variety for each kind. */
-    mode: 'random',
+    /* A test page may set window.TSI_TEST_FIXED_INITIATION to pin the fixed answers (like TSI_BH_SPEED, it is only ever set by tests). */
+    mode: window.TSI_TEST_FIXED_INITIATION ? 'fixed' : 'random',
     fixed: { wyvern: 'bloodcrest', griffin: 'dawnmantle', dire_wolf: 'blacktide', buckbear: 'broadcrown', fellcat: 'lichenback' }
   },
   personality: { mode: 'random' }
