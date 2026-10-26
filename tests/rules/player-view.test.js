@@ -25,7 +25,17 @@
     b.diplomaticRecords = { next: 2, list: [{ id: 1, text: 'ZZRECORD' }] };
     b.notes = 'ZZDMNOTE';
     b.dmDoc = { text: 'ZZDMDOC' };
-    b.creatures = [{ id: 'c1', name: 'ZZBEAST', kind: 'wyvern' }];
+    b.creatures = [
+      { id: 'c1', name: 'Stormwing', species: 'wyvern', variety: 'ZZVARIETY', status: 'housed', home: 'beast_pen', grantedDay: 2, notes: 'ZZBEAST', away: 'ZZAWAY' },
+      { id: 'c2', name: '', species: 'dire_wolf', status: 'housed', home: 'beast_pen', grantedDay: 3 },
+      { id: 'c3', name: 'ZZWAITING', species: 'fellcat', status: 'waiting', grantedDay: 4 }
+    ];
+    b.creatures.forEach(function (c) { R.ensureDev(b, c); });
+    b.creatures[0].development.handlerId = 'Mira';
+    b.creatures[0].development.bond.level = 3;
+    b.creatures[0].development.temperament.dominant = 'ZZTEMPER';
+    b.creatures[0].development.chronicle.push({ id: 'ch-1', day: 3, cat: 'bond', text: 'ZZCHRON', by: 'DM', link: '' });
+    b.creatures[0].development.bonding = { away: true, since: 5, days: 7 };
     b.beast = { campaignId: 'ZZPAIRCODE', secret: 'ZZSECRET' };
     b.notices = [{ text: 'ZZNOTICE' }];
     b.prison.cells[0] = { name: 'ZZPRISONER', thread: 'ZZTHREAD', days: 7, sentenceEnds: 30, conditions: 'ZZCOND', found: 'ZZFOUND' };
@@ -124,7 +134,7 @@
 
   group('Player View: nothing DM-only leaks');
 
-  var SECRETS = ['ZZWAREHOUSE', 'ZZRECORD', 'ZZDMNOTE', 'ZZDMDOC', 'ZZBEAST', 'ZZPAIRCODE', 'ZZSECRET', 'ZZNOTICE', 'ZZPRISONER', 'ZZTHREAD', 'ZZCOND', 'ZZFOUND',
+  var SECRETS = ['ZZVARIETY', 'ZZAWAY', 'ZZTEMPER', 'ZZCHRON', 'ZZWAITING', 'ZZWAREHOUSE', 'ZZRECORD', 'ZZDMNOTE', 'ZZDMDOC', 'ZZBEAST', 'ZZPAIRCODE', 'ZZSECRET', 'ZZNOTICE', 'ZZPRISONER', 'ZZTHREAD', 'ZZCOND', 'ZZFOUND',
     'ZZCHOSEN', 'ZZOPTION', 'ZZORDERNOTE', 'ZZINPUT', 'ZZMETA', 'ZZCRESTFILE'];
 
   test('none of the DM\'s notes, doc, Warehouse, records, creatures, prisoners, Beast Handler codes, notices or order details are in it', function (t) {
@@ -152,14 +162,56 @@
     s.labels.forEach(function (l) { t.ok(Object.keys(l).every(function (k) { return ['fac', 'name', 'level', 'single', 'x', 'y', 'repair', 'part'].indexOf(k) !== -1; }), 'a label has only its own fields'); });
     s.tiles.forEach(function (x) { t.ok(Object.keys(x).every(function (k) { return ['row', 'kind', 'fac', 'name', 'level', 'single', 'repair', 'orders', 'daysLeft', 'plot'].indexOf(k) !== -1; }), 'a tile has only its own fields'); });
     Object.keys(s.facilities).forEach(function (id) {
-      t.ok(Object.keys(s.facilities[id]).every(function (k) { return ['name', 'level', 'single', 'repair', 'orders', 'staff', 'gods'].indexOf(k) !== -1; }), id + ' has only its own fields');
+      t.ok(Object.keys(s.facilities[id]).every(function (k) { return ['name', 'level', 'single', 'repair', 'orders', 'staff', 'gods', 'beasts', 'more'].indexOf(k) !== -1; }), id + ' has only its own fields');
     });
   });
 
   test('the Prison Tower and the Beast Pen show only a level and their orders\' names', function (t) {
     var s = snap(busy());
     t.same(Object.keys(s.facilities.prison_tower).sort(), ['level', 'name', 'orders', 'repair', 'single']);
-    t.same(Object.keys(s.facilities.beast_pen).sort(), ['level', 'name', 'orders', 'repair', 'single']);
+    t.same(Object.keys(s.facilities.beast_pen).sort(), ['beasts', 'level', 'more', 'name', 'orders', 'repair', 'single']);
+  });
+
+  test('the Beast Pen lists the housed beasts: name, kind and handler only, in the Pen\'s order', function (t) {
+    var s = snap(busy());
+    var pen = s.facilities.beast_pen;
+    t.same(pen.beasts, [{ name: 'Stormwing', species: 'Wyvern', handler: 'Mira' }, { name: 'Dire Wolf', species: 'Dire Wolf', handler: '' }]);
+    t.equal(pen.more, 0);
+    pen.beasts.forEach(function (b) { t.same(Object.keys(b).sort(), ['handler', 'name', 'species']); });
+    var text = JSON.stringify(s);
+    ['bond', 'temper', 'chronicle', 'variety', 'away', 'bonding', 'Bond'].forEach(function (w) { t.equal(text.indexOf(w), -1, w + ' must not be sent'); });
+    t.equal(s.facilities.workshop.beasts, undefined, 'only the Pen has a list');
+  });
+
+  test('a beast out on the road still lists, nothing more; one still waiting for a home is not listed', function (t) {
+    var b = busy();
+    var s = snap(b);
+    t.equal(s.facilities.beast_pen.beasts.length, 2);
+    b.creatures[2].status = 'housed'; b.creatures[2].home = 'beast_pen';
+    t.equal(snap(b).facilities.beast_pen.beasts.length, 3);
+  });
+
+  test('more than eight beasts: the first eight and a count of the rest', function (t) {
+    var b = busy();
+    for (var i = 0; i < 9; i++) b.creatures.push({ id: 'x' + i, name: 'Beast' + i, species: 'griffin', status: 'housed', home: 'beast_pen', grantedDay: 1 });
+    var pen = snap(b).facilities.beast_pen;
+    t.equal(pen.beasts.length, 8);
+    t.equal(pen.more, 3, '11 housed, 8 shown');
+  });
+
+  test('renaming, reassigning the handler and releasing show at the next snapshot', function (t) {
+    var b = busy();
+    b.creatures[0].name = 'Skyrender';
+    b.creatures[0].development.handlerId = 'Tobin';
+    b.creatures[1].status = 'gone';
+    var pen = snap(b).facilities.beast_pen;
+    t.same(pen.beasts, [{ name: 'Skyrender', species: 'Wyvern', handler: 'Tobin' }]);
+  });
+
+  test('no Beast Pen built: no list', function (t) {
+    var b = busy();
+    b.builtExtras = b.builtExtras.filter(function (e) { return e.facId !== 'beast_pen'; });
+    t.equal(snap(b).facilities.beast_pen, undefined);
   });
 
   test('the snapshot is plain data: it survives a copy through JSON unchanged', function (t) {
@@ -191,8 +243,11 @@
       if (p.bare) { t.equal(p.id, 'party_quarters'); t.same(p.widgets, []); t.equal(p.tagline + p.blurb, ''); t.equal(p.title, 'Party Quarters'); }
       else {
       t.equal(R.facility(data, p.id).name, p.title, p.id + '\'s title is its name');
+      if (p.id === 'beast_pen') { t.ok(p.tagline, 'a tagline'); t.equal(p.blurb, ''); t.same(p.widgets, ['beasts']); }
+      else {
       t.ok(p.tagline && p.blurb, p.id + ' has a tagline and a blurb');
       t.ok(p.widgets.indexOf('level') !== -1 && p.widgets.indexOf('orders') !== -1, p.id + ' shows its level and orders');
+      }
       }
       var files = p.art === null ? [] : typeof p.art === 'string' ? [p.art] : Object.keys(p.art.levels).map(function (k) { return p.art.levels[k]; });
       t.ok(files.every(function (f) { return /^[a-z0-9_\-]+\.(png|jpg|webp)$/.test(f); }), p.id + '\'s art is file names or null');
@@ -200,10 +255,11 @@
     t.equal(panels.filter(function (p) { return p.bare; }).length, 1, 'only the Party Quarters is bare');
   });
 
-  test('the Workshop shows staff, the Temple shows shrines, nobody else does', function (t) {
+  test('the Workshop shows staff, the Temple shows shrines, the Beast Pen shows beasts, nobody else does', function (t) {
     T.bastionPlayerPanels.forEach(function (p) {
       t.equal(p.widgets.indexOf('staff') !== -1, p.id === 'workshop', p.id + ' staff');
       t.equal(p.widgets.indexOf('shrines') !== -1, p.id === 'temple', p.id + ' shrines');
+      t.equal(p.widgets.indexOf('beasts') !== -1, p.id === 'beast_pen', p.id + ' beasts');
     });
   });
 }());

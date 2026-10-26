@@ -302,14 +302,37 @@ const SECRETS = ['ZZWAREHOUSE', 'ZZDMNOTE', 'ZZPRISONER', 'ZZBEAST', 'ZZPAIRCODE
       equal(await page.evaluate(() => JSON.stringify(TSI.bastion.rules.toSave(TSI.bastion.debug.state()))), before, 'nothing in the save changed');
     });
 
-    await check('the Beast Pen shows "None" for no orders, and "One level"', async () => {
+    await check('the Beast Pen\'s panel is its picture with only a list of the beasts housed there (name, kind, handler): no level, orders or blurb; it follows housing, renaming, handlers and release', async () => {
       await pause(page);
       await page.click('[data-test=tile-beast_pen]');
       await pv.waitForSelector('[data-test=pv-panel][data-fac=beast_pen]');
-      equal(await bare(pv, '[data-test=pv-panel-level]'), 'One level');
-      equal(await bare(pv, '[data-test=pv-panel-orders]'), 'Orders pending: None');
+      equal(await bare(pv, '[data-test=pv-panel-title]'), 'Beast Pen');
+      equal(await bare(pv, '[data-test=pv-panel-tagline]'), 'Something stirs in the stalls...');
+      equal(await pv.$('[data-test=pv-panel-level], [data-test=pv-panel-orders], [data-test=pv-panel-blurb], [data-test=pv-panel-staff]'), null);
+      equal(await bare(pv, '[data-test=pv-panel-beasts]'), 'No beasts housed yet.', 'a beast only granted (ZZBEAST) is not listed');
+      equal(await pv.$$eval('.tsi-bpv-panel__art', n => n.map(x => x.dataset.art)), ['beast_pen.jpg']);
+      await change(page, s => {
+        const R = TSI.bastion.rules;
+        s.creatures = [
+          { id: 'b1', name: 'Stormwing', species: 'wyvern', variety: 'ZZVARIETY', status: 'housed', home: 'beast_pen', grantedDay: 1, notes: 'ZZBEAST' },
+          { id: 'b2', name: 'Ashfang', species: 'dire_wolf', status: 'housed', home: 'beast_pen', grantedDay: 1 },
+          { id: 'b3', name: 'Quillfeather', species: 'griffin', status: 'housed', home: 'beast_pen', grantedDay: 1 }
+        ];
+        s.creatures.forEach(c => R.ensureDev(s, c));
+        s.creatures[0].development.handlerId = 'Mira';
+        s.creatures[0].development.temperament.dominant = 'ZZTEMPER';
+        s.creatures[0].development.bond.level = 2;
+        s.creatures[2].development.handlerId = 'Tobin';
+      });
+      await pv.waitForSelector('[data-test=pv-beast-2]');
+      equal(await pv.$$eval('.tsi-bpv-beasts__one', n => n.map(x => x.textContent.replace(/\s+/g, ' ').trim())), ['Stormwing · Wyvern · Mira', 'Ashfang · Dire Wolf · no handler yet', 'Quillfeather · Griffin · Tobin']);
       const t = await pv.$eval('[data-test=pv-panel]', n => n.textContent);
-      assert(t.indexOf('ZZBEAST') === -1, 'no creature details');
+      for (const w of ['ZZBEAST', 'ZZVARIETY', 'ZZTEMPER', 'Bond']) assert(t.indexOf(w) === -1, w + ' is DM only');
+      const art = await rect(pv, '.tsi-bpv-panel__art'), wrap = await rect(pv, '.tsi-bpv-panel__art-wrap'), info = await rect(pv, '.tsi-bpv-panel__info');
+      assert(Math.abs(art.w - wrap.w) < 3 && wrap.h > size.height * 0.7 && info.bottom <= size.height, 'the picture fills the area and the list is on screen');
+      await H.shot(pv, 'pv-panel-beast-pen-' + name);
+      await change(page, s => { s.creatures[1].name = 'Emberjaw'; s.creatures[1].development.handlerId = 'Rook'; s.creatures[2].status = 'gone'; });
+      await pv.waitForFunction(() => [...document.querySelectorAll('.tsi-bpv-beasts__one')].map(x => x.textContent.replace(/\s+/g, ' ').trim()).join('|') === 'Stormwing · Wyvern · Mira|Emberjaw · Dire Wolf · Rook');
       await page.keyboard.press('Escape');
       await pv.waitForSelector('[data-test=pv-panel]', { state: 'detached' });
     });

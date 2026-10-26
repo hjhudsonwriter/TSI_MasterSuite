@@ -4196,3 +4196,7 @@ These entries come from each step's draft in `docs/strip-back/*-known-issues-dra
 ### BAS-SB-102 · The Party Quarters tile opens a small panel, and the players see its picture (26 October 2026)
 
 - Before (BAS-SB-91): the Party Quarters tile was only a picture, not clickable, with no panel. After (Harry): clicking it opens a minimal DM panel (the name and "Your party's own rooms. Nothing to manage here yet.") and the Player View shows a bare panel: only "Party Quarters" in the header and `party_quarters.jpg` filling the rest (data flag `bare: true`). It is still not a facility: no level, orders, map label or save change; the snapshot's focus accepts the id `party_quarters` explicitly and no other non-facility.
+
+### BAS-SB-103 · The Beast Pen's Player View panel lists the housed beasts (26 October 2026)
+
+- Before: the Pen's panel for the players would have shown a level and orders. After (Harry): its painting (a copy of `facilities/beast_pen.jpg`, as `player-panels/beast_pen.jpg`), the tagline "Something stirs in the stalls..." and one line per beast housed there: name, kind (Wyvern, Griffin, Dire Wolf, Buckbear, Fellcat; not the variety) and handler, or "no handler yet"; "No beasts housed yet." when none. Nothing else about a beast is sent (no bond, temperament, notes, chronicle or where it is). A beast out on the road still lists. At most 8 are listed, then "and N more".

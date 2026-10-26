@@ -271,6 +271,18 @@
           el('span', { class: 'tsi-bpv-info__text', text: f.orders.length ? f.orders.join(', ') : 'None' })
         ]));
       }
+      if (widgets.indexOf('beasts') !== -1) {
+        var beasts = f.beasts || [];
+        info.push(el('div', { class: 'tsi-bpv-info tsi-bpv-beasts', 'data-test': 'pv-panel-beasts' }, beasts.length ? [
+          el('b', { class: 'tsi-bpv-info__label', text: 'Housed: ' }),
+          el('span', { class: 'tsi-bpv-beasts__list' }, beasts.map(function (b, i) {
+            return el('span', { class: 'tsi-bpv-beasts__one', 'data-test': 'pv-beast-' + i }, [
+              el('b', { class: 'tsi-bpv-beasts__name', text: b.name }), ' · ' + b.species + ' · ', el('span', { class: b.handler ? '' : 'tsi-bpv-beasts__none', text: b.handler || 'no handler yet' })
+            ]);
+          })),
+          f.more ? el('span', { class: 'tsi-bpv-beasts__more', 'data-test': 'pv-beasts-more', text: 'and ' + f.more + ' more' }) : null
+        ] : [el('span', { class: 'tsi-bpv-info__text', 'data-test': 'pv-beasts-none', text: 'No beasts housed yet.' })]));
+      }
       if (widgets.indexOf('staff') !== -1 && f.staff) {
         info.push(el('div', { class: 'tsi-bpv-info tsi-bpv-staff', 'data-test': 'pv-panel-staff' }, [
           el('b', { class: 'tsi-bpv-info__label', text: 'Staff: ' }),

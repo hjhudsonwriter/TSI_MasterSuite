@@ -582,3 +582,4 @@ Harry's upload of 26 October 2026: five 2000 x 1116 JPEGs, already optimised, on
 Harry's uploads (2000 x 1116, no level pictures yet) are `tools/bastion/assets/player-panels/dock.jpg` and `tools/bastion/assets/player-panels/courier_exchange.jpg`, named in `tools/bastion/data/player-panels-data.js`.
 | Harry's `workshop-level-3.jpg` (3 people, added 26 October 2026) | `tools/bastion/assets/player-panels/workshop-level-3.jpg` |
 | Harry's `party_quarters.jpg` (a hall with a fireplace, 26 October 2026) | `tools/bastion/assets/player-panels/party_quarters.jpg` |
+| `tools/bastion/assets/facilities/beast_pen.jpg` (kept where it is) | copied to `tools/bastion/assets/player-panels/beast_pen.jpg` (the Beast Pen's Player View panel, 26 October 2026) |
